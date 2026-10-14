@@ -3,20 +3,25 @@
 // the file's moov and handed back for caching) and its byte source. A decoder is closed after
 // IDLE_MS without requests, and at most MAX_LIVE_DECODERS are open at once (the least recently used
 // idle one is closed to make room). The index stays, so a later request only creates a decoder. A
-// video closed while it opens is dropped when the open ends.
+// session idle for RING_IDLE_MS closes the frames of its ring: during playback several decoders stay
+// live (one per media of the cuts ahead), and the pictures their rings hold are pictures the decoder
+// in use cannot have (measured in Batch 09: hardware decoders reallocating picture buffers on the GPU
+// thread). A video closed while it opens is dropped when the open ends.
 import type { Lod } from "../cache/TexturePool.js";
 import { ByteSource } from "../bytes/ByteSource.js";
 import { frameAt, sampleIndexFromMp4, type SampleIndex } from "../demux/sampleIndex.js";
 import { readSampleIndex, writeSampleIndex } from "../demux/sampleIndexFile.js";
 import { readMp4 } from "../probe/mp4Probe.js";
 import { ProbeError } from "../probe/types.js";
-import { abortError, type FramePriority, type OpenVideoResult, type VideoInfo, type WorkerDecodeStats } from "../workers/protocol.js";
+import { abortError, type FramePriority, type OpenVideoResult, type PrefetchParams, type VideoInfo, type WorkerDecodeStats } from "../workers/protocol.js";
 import { UnsupportedCodecError, VideoDecodeSession, type DecodedFrame, type DecoderCallbacks, type DecoderLike } from "./VideoDecodeSession.js";
 
 export { UnsupportedCodecError };
 
 /** A decoder with no request for this long is closed (P13). */
 export const IDLE_MS = 10_000;
+/** A session with no request for this long gives the frames of its ring back. */
+export const RING_IDLE_MS = 1_000;
 /** Open decoders at most (hardware decoders are a limited resource). */
 export const MAX_LIVE_DECODERS = 6;
 
@@ -24,6 +29,7 @@ export interface DecodeSessionsDeps<F extends DecodedFrame> {
   createDecoder(callbacks: DecoderCallbacks<F>): DecoderLike;
   isConfigSupported(config: VideoDecoderConfig): Promise<boolean>;
   idleMs?: number;
+  ringIdleMs?: number;
   maxLiveDecoders?: number;
 }
 
@@ -33,6 +39,7 @@ interface Entry<F extends DecodedFrame> {
   info: VideoInfo;
   lastUsed: number;
   idleTimer: ReturnType<typeof setTimeout> | null;
+  ringTimer: ReturnType<typeof setTimeout> | null;
 }
 
 /** A frame for the main thread (`DeliveredFrame` in the worker, where F is VideoFrame). */
@@ -92,11 +99,12 @@ export class DecodeSessions<F extends DecodedFrame = VideoFrame> {
     return { frame, timeUs: frame.timestamp, approximate: frame.timestamp !== index.displayTimesUs[position] };
   }
 
-  /** Emits each frame shown in [fromUs, toUs]. */
-  async prefetch(params: { mediaId: string; lod: Lod; fromUs: number; toUs: number }, signal: AbortSignal, emit: (value: Delivered<F>) => void): Promise<{ frames: number }> {
+  /** Emits each frame shown in [fromUs, toUs] (every `stride`-th one). */
+  async prefetch(params: PrefetchParams, signal: AbortSignal, emit: (value: Delivered<F>) => void): Promise<{ frames: number }> {
     const entry = this.entry(params.mediaId, params.lod);
     const { index } = entry.session;
-    const frames = await entry.session.prefetch(frameAt(index, params.fromUs), frameAt(index, params.toUs), signal, (frame) => emit({ frame, timeUs: frame.timestamp, approximate: false }));
+    const options = { ...(params.priority && { priority: params.priority }), ...(params.stride && { stride: params.stride }) };
+    const frames = await entry.session.prefetch(frameAt(index, params.fromUs), frameAt(index, params.toUs), signal, (frame) => emit({ frame, timeUs: frame.timestamp, approximate: false }), options);
     return { frames };
   }
 
@@ -151,7 +159,7 @@ export class DecodeSessions<F extends DecodedFrame = VideoFrame> {
         indexFromCache: fromCache,
       };
       this.remove(mediaId, lod);
-      this.entries.set(keyOf(mediaId, lod), { session, source, info, lastUsed: ++this.clock, idleTimer: null });
+      this.entries.set(keyOf(mediaId, lod), { session, source, info, lastUsed: ++this.clock, idleTimer: null, ringTimer: null });
       return { info, index: bytes };
     } catch (error) {
       source.release();
@@ -164,6 +172,7 @@ export class DecodeSessions<F extends DecodedFrame = VideoFrame> {
       if (!key.startsWith(`${mediaId}|`) || (lod && key !== keyOf(mediaId, lod))) continue;
       this.entries.delete(key);
       if (entry.idleTimer !== null) clearTimeout(entry.idleTimer);
+      if (entry.ringTimer !== null) clearTimeout(entry.ringTimer);
       entry.session.dispose();
       for (const stat of SUMMED) this.closedStats[stat] += entry.session.stats[stat];
       entry.source.release();
@@ -189,7 +198,9 @@ export class DecodeSessions<F extends DecodedFrame = VideoFrame> {
         if (!entry) return;
         entry.lastUsed = ++this.clock;
         if (entry.idleTimer !== null) clearTimeout(entry.idleTimer);
+        if (entry.ringTimer !== null) clearTimeout(entry.ringTimer);
         entry.idleTimer = null;
+        entry.ringTimer = null;
       },
       onIdle: () => {
         const entry = this.entryOf(session);
@@ -202,6 +213,11 @@ export class DecodeSessions<F extends DecodedFrame = VideoFrame> {
           session.closeDecoder();
           this.idleCloses += 1;
         }, this.deps.idleMs ?? IDLE_MS);
+        if (entry.ringTimer !== null) clearTimeout(entry.ringTimer);
+        entry.ringTimer = setTimeout(() => {
+          entry.ringTimer = null;
+          if (!session.busy) session.releaseRing();
+        }, this.deps.ringIdleMs ?? RING_IDLE_MS);
       },
     });
     return session;

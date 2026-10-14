@@ -3,10 +3,11 @@
 // - Seek: feed on from the sync sample before the target (`keyFor`), in decode order (dts), with
 //   no flush and no reset. Both measured 3-5x slower decoding of the frames that follow on Chrome's
 //   hardware decoders (11 frames of 4K HEVC: ~110 ms fed straight on, 300-600 ms after a flush or a
-//   reset). Chunks still in flight from a superseded run are decoded first and land in the ring.
-//   Leading pictures of an open GOP decoded without the GOP before them have wrong references: they
-//   are dropped, in the current run and in the superseded ones. Outputs are matched by timestamp (cts
-//   in us); frames before the target are decoded but not delivered.
+//   reset). Chunks still in flight from a superseded run are decoded first and land in the ring,
+//   tracked apart from the new run's (which may feed the same timestamps). Leading pictures of an open
+//   GOP decoded without the GOP before them have wrong references: they are dropped, in the current
+//   run and in the superseded ones. Outputs are matched by timestamp (cts in us); frames before the
+//   target are decoded but not delivered.
 // - Sequential continuation: a target ahead of the decoder in the same run is reached by feeding on,
 //   without a seek (frames 0..300 cost one seek). A leading picture of the run's own sync sample
 //   cannot be reached that way: it needs a seek to the GOP before.
@@ -16,8 +17,12 @@
 //   with nothing left in its queue) gets one more chunk each time, for the session.
 // - Backpressure: at most MAX_IN_FLIGHT chunks fed and not yet output, and the decoder's
 //   `decodeQueueSize` kept below MAX_DECODE_QUEUE.
-// - The last RING_SIZE outputs stay in a ring, so short backward steps need no seek. Callers get
-//   clones; ring frames are closed when they leave the ring or when the decoder closes (P13).
+// - The last RING_SIZE outputs stay in a ring, so short backward steps need no seek. Frame requests
+//   get clones; ring frames are closed when they leave the ring or when the decoder closes (P13).
+//   Prefetches (playback windows) take their frames out of the ring instead: a hardware decoder
+//   whose pictures stay referenced has to allocate new ones on the GPU thread, which made 4K60
+//   playback miss vsyncs (Batch 09), and frames played forward are not stepped back to from here
+//   (the texture pool keeps the recent ones).
 // - A decoder that fails before the session ever decoded a frame (Chrome's isConfigSupported accepts
 //   configurations its decoders then refuse, e.g. sizes beyond the hardware) marks the video
 //   undecodable: later requests fail at once with UnsupportedCodecError.
@@ -115,9 +120,10 @@ interface FrameJob<F> extends JobBase {
 
 interface PrefetchJob<F> extends JobBase {
   kind: "prefetch";
-  /** Next display position to deliver, and the last one. */
+  /** Next display position to deliver, the last one, and the step between delivered positions. */
   next: number;
   to: number;
+  stride: number;
   delivered: number;
   onFrame(frame: F): void;
   resolve(count: number): void;
@@ -142,11 +148,13 @@ export class VideoDecodeSession<F extends DecodedFrame = VideoFrame> {
   /** Time of the sync sample the current run started from: its leading pictures are dropped. */
   private runStartUs = -Infinity;
   /**
-   * Leading pictures of superseded runs still in the decoder (timestamp -> copies): their outputs come
-   * before any copy fed later and are dropped. One the decoder never outputs (it may skip them) costs a
-   * later copy of that frame; a flush or a new decoder clears them.
+   * Frames of superseded runs still in the decoder: timestamp -> one flag per copy, oldest first, true
+   * for a leading picture (decoded without its references). Their outputs come before any copy fed
+   * later: a leading one is dropped, the others land in the ring, and neither touches the current
+   * run's pending frames or last output. One the decoder never outputs (it may skip them) costs a later
+   * copy of that frame; a flush or a new decoder clears them.
    */
-  private readonly staleLeading = new Map<number, number>();
+  private readonly stale = new Map<number, boolean[]>();
   /** When the decoder last got a chunk or produced a frame (stall detection). */
   private lastProgressAt = 0;
   /** When the newest decoded frame was last sent as an approximate one. */
@@ -199,11 +207,24 @@ export class VideoDecodeSession<F extends DecodedFrame = VideoFrame> {
     });
   }
 
-  /** Delivers the frames at display positions [from, to] in order. Resolves with how many were delivered. */
-  prefetch(from: number, to: number, signal: AbortSignal, onFrame: (frame: F) => void): Promise<number> {
+  /**
+   * Delivers the frames at display positions from, from + stride, ... up to `to`, in order (every frame
+   * in between is decoded too). Resolves with how many were delivered. Playback windows run at
+   * `playback` priority, ahead of idle warming.
+   */
+  prefetch(from: number, to: number, signal: AbortSignal, onFrame: (frame: F) => void, options: { priority?: FramePriority; stride?: number } = {}): Promise<number> {
+    const stride = Math.max(1, Math.floor(options.stride ?? 1));
     return new Promise<number>((resolve, reject) => {
-      this.enqueue({ kind: "prefetch", next: from, to, delivered: 0, priority: "idle", signal, order: this.nextOrder++, resolve, reject, onFrame });
+      this.enqueue({ kind: "prefetch", next: from, to, stride, delivered: 0, priority: options.priority ?? "idle", signal, order: this.nextOrder++, resolve, reject, onFrame });
     });
+  }
+
+  /**
+   * Closes the ring's frames and keeps the decoder and its run: a hardware decoder whose pictures the
+   * app holds has to allocate new ones (and stalls when it cannot), so idle sessions give theirs back.
+   */
+  releaseRing(): void {
+    for (const entry of this.ring.splice(0)) this.release(entry);
   }
 
   /** Frees the decoder and the ring (idle for too long, or making room for another media). Jobs stay possible. */
@@ -212,7 +233,7 @@ export class VideoDecodeSession<F extends DecodedFrame = VideoFrame> {
     this.decoder = null;
     this.nextFeed = -1;
     this.pending.clear();
-    this.staleLeading.clear();
+    this.stale.clear();
     for (const entry of this.ring.splice(0)) this.release(entry);
   }
 
@@ -308,9 +329,9 @@ export class VideoDecodeSession<F extends DecodedFrame = VideoFrame> {
       const d = this.index.displayOrder[job.next] as number;
       const entry = this.ringEntry(this.index.timesUs[d] as number) ?? (await this.decodeTo(d, job));
       if (!entry) return;
-      job.onFrame(this.take(entry));
+      job.onFrame(this.handOver(entry));
       job.delivered += 1;
-      job.next += 1;
+      job.next += job.stride;
     }
     job.resolve(job.delivered);
   }
@@ -384,7 +405,12 @@ export class VideoDecodeSession<F extends DecodedFrame = VideoFrame> {
   private seek(key: number): void {
     const decoder = this.decoder ?? this.createDecoder();
     if (decoder.state !== "configured") decoder.configure(this.config);
-    for (const t of this.pending) if (t < this.runStartUs) this.staleLeading.set(t, (this.staleLeading.get(t) ?? 0) + 1);
+    for (const t of this.pending) {
+      const leading = t < this.runStartUs;
+      const copies = this.stale.get(t);
+      if (copies) copies.push(leading);
+      else this.stale.set(t, [leading]);
+    }
     this.pending.clear();
     this.lastOutputUs = -Infinity;
     this.runStartUs = this.index.timesUs[key] as number;
@@ -404,7 +430,7 @@ export class VideoDecodeSession<F extends DecodedFrame = VideoFrame> {
         this.decoder = null;
         this.nextFeed = -1;
         this.pending.clear();
-        this.staleLeading.clear();
+        this.stale.clear();
         this.wake();
       },
       dequeue: () => this.wake(),
@@ -462,7 +488,7 @@ export class VideoDecodeSession<F extends DecodedFrame = VideoFrame> {
       }
     }
     this.pending.clear();
-    this.staleLeading.clear();
+    this.stale.clear();
   }
 
   private output(decoder: DecoderLike, frame: F): void {
@@ -474,17 +500,20 @@ export class VideoDecodeSession<F extends DecodedFrame = VideoFrame> {
     this.everDecoded = true;
     this.lastProgressAt = this.now();
     const timestamp = frame.timestamp;
-    const stale = this.staleLeading.get(timestamp);
-    if (stale !== undefined) {
-      // A leading picture of a superseded run, decoded without its references.
-      if (stale > 1) this.staleLeading.set(timestamp, stale - 1);
-      else this.staleLeading.delete(timestamp);
-      this.stats.dropped += 1;
-      frame.close();
-      this.wake();
-      return;
-    }
-    if (this.pending.has(timestamp)) {
+    const copies = this.stale.get(timestamp);
+    if (copies) {
+      const leading = copies.shift() as boolean;
+      if (copies.length === 0) this.stale.delete(timestamp);
+      if (leading) {
+        // A leading picture of a superseded run, decoded without its references.
+        this.stats.dropped += 1;
+        frame.close();
+        this.wake();
+        return;
+      }
+      // A frame of a superseded run: kept, the current run's bookkeeping stays as it is (a copy of the
+      // same timestamp fed by this run is still to come).
+    } else if (this.pending.has(timestamp)) {
       // Outputs come in display order: what was fed and shows before this frame will never come.
       for (const t of this.pending) if (t <= timestamp) this.pending.delete(t);
       this.lastOutputUs = timestamp;
@@ -520,6 +549,13 @@ export class VideoDecodeSession<F extends DecodedFrame = VideoFrame> {
   private take(entry: RingEntry<F>): F {
     entry.delivered = true;
     return entry.frame.clone();
+  }
+
+  /** Takes the frame out of the ring: the caller owns (and closes) the decoder's picture itself. */
+  private handOver(entry: RingEntry<F>): F {
+    const at = this.ring.indexOf(entry);
+    if (at !== -1) this.ring.splice(at, 1);
+    return entry.frame;
   }
 
   private release(entry: RingEntry<F>): void {

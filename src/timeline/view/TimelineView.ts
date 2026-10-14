@@ -22,6 +22,7 @@ import { TextCache } from "./textCache.js";
 import {
   fitView,
   keyZoomAnchor,
+  pageToFrame,
   scrollBy,
   wheelDeltaPx,
   wheelZoomFactor,
@@ -95,6 +96,8 @@ export class TimelineView {
   /** Zoom shown while the toolbar slider is dragged; written to the session once on release. */
   private ephemeral: TimelineViewport | null = null;
   private gesture: Gesture | null = null;
+  /** Follow playhead (spec §6.2): on until the user scrolls or wheel-zooms, back on at the next play. */
+  private following = true;
   /** Last pointer position over the overlay in CSS px, or null once it left. */
   private pointer: { x: number; y: number } | null = null;
   private hover: HitResult | null = null;
@@ -263,6 +266,27 @@ export class TimelineView {
     this.writeViewport(fitView(this.zoomContext()), 0);
   }
 
+  /** Pages the view so `frame` is in it (spec §6.2 paging): keyboard jumps and the timecode field. */
+  reveal(frame: number): void {
+    if (!this.mounted || this.ephemeral) return;
+    const next = pageToFrame(this.viewport(), frame, this.zoomContext());
+    if (next) this.writeViewport(next);
+  }
+
+  /** During playback: pages the view when the playhead leaves it, unless the user scrolled since play. */
+  follow(frame: number): void {
+    if (this.following) this.reveal(frame);
+  }
+
+  /** Playback started: follow the playhead again. */
+  resumeFollowing(): void {
+    this.following = true;
+  }
+
+  get isFollowing(): boolean {
+    return this.following;
+  }
+
   /** Slider drag: draw at `pxPerFrame` without touching the session. */
   previewZoom(pxPerFrame: number): void {
     if (!this.mounted) return;
@@ -392,6 +416,8 @@ export class TimelineView {
       // Mod/Alt+wheel and trackpad pinches (Chrome sends them with ctrlKey): zoom at the cursor.
       const factor = wheelZoomFactor(wheelDeltaPx(event.deltaY, event.deltaMode, geometry.area.height));
       const anchorX = Math.min(Math.max(event.offsetX - geometry.headerWidth, 0), geometry.area.width);
+      // A manual zoom or scroll stops follow playhead until the next play (spec §6.2).
+      this.following = false;
       this.writeViewport(zoomAt(view, view.pxPerFrame * factor, view.scrollFrame + anchorX / view.pxPerFrame, anchorX, context));
       return;
     }
@@ -401,7 +427,10 @@ export class TimelineView {
       dx = dy;
       dy = 0;
     }
-    if (dx !== 0) this.writeViewport(scrollBy(view, dx, context));
+    if (dx !== 0) {
+      this.following = false;
+      this.writeViewport(scrollBy(view, dx, context));
+    }
     if (dy !== 0) this.scrollVertically(dy);
   }
 

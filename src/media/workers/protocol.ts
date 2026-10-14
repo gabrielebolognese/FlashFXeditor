@@ -81,6 +81,17 @@ export interface WorkerDecodeStats {
   indexFromCache: number;
   idleCloses: number;
 }
+export interface PrefetchParams {
+  mediaId: string;
+  lod: Lod;
+  fromUs: number;
+  toUs: number;
+  /** `playback` windows go before `idle` warming in the media's decoder (default `idle`). */
+  priority?: Exclude<FramePriority, "scrub">;
+  /** Deliver every stride-th frame (shuttle speeds); the frames between are decoded but not sent. */
+  stride?: number;
+}
+
 export interface WorkerMethods {
   /** Metadata of a media file. */
   probe: { params: { file: Blob; container: WorkerContainer; type: string }; result: ProbeResult };
@@ -92,8 +103,8 @@ export interface WorkerMethods {
   openVideo: { params: { mediaId: string; lod: Lod; file: File; cachedIndex: Blob | null }; result: OpenVideoResult };
   /** The frame shown at `timeUs`. Scrubs far from a keyframe post the keyframe first as progress. */
   requestFrame: { params: { mediaId: string; lod: Lod; timeUs: number; priority: FramePriority }; result: DeliveredFrame; progress: DeliveredFrame };
-  /** Decodes the frames shown in [fromUs, toUs] and posts each one as progress. */
-  prefetch: { params: { mediaId: string; lod: Lod; fromUs: number; toUs: number }; result: { frames: number }; progress: DeliveredFrame };
+  /** Decodes the frames shown in [fromUs, toUs] and posts each one (every `stride`-th) as progress. */
+  prefetch: { params: PrefetchParams; result: { frames: number }; progress: DeliveredFrame };
   /** Closes the sessions of a media (removed from the project, or the project closed). */
   closeVideo: { params: { mediaId: string }; result: null };
   decodeStats: { params: Record<string, never>; result: WorkerDecodeStats };

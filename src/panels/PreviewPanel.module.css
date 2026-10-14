@@ -21,7 +21,27 @@
   pointer-events: none;
 }
 
-/* Preview chrome v1 (§7.8): the playhead timecode as mono text, a static quality chip, Fit. */
+/*
+ * Preview chrome (§7.8, gap: the DS has no transport bar): readouts on the left, the transport
+ * centered, loop and Fit on the right, in a strip with the panel header's metrics.
+ */
+.bar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-2);
+  height: var(--panel-header-height);
+  padding: 0 var(--space-2) 0 var(--space-3);
+}
+
+.readouts {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  overflow: hidden;
+}
+
 .timecode {
   color: var(--text-primary);
   font: var(--type-mono);
@@ -29,11 +49,29 @@
   white-space: nowrap;
 }
 
-.spacer {
-  flex: 1 1 auto;
+.duration {
+  color: var(--text-tertiary);
+  font: var(--type-mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
-.quality {
+.transport {
+  display: flex;
+  align-items: center;
+  gap: var(--space-0);
+}
+
+.tools {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: var(--space-0);
+  min-width: 0;
+}
+
+/* Chips (DS: surface-3, 9.5-10px, radius sm): the fps badge and the quality mode. */
+.badge {
   flex: none;
   padding: 0 var(--space-1);
   border-radius: var(--radius-sm);
@@ -41,4 +79,27 @@
   color: var(--text-tertiary);
   font: var(--type-badge);
   white-space: nowrap;
+}
+
+/* Status strip (§13, gap: the DS has none): a compact row under the transport, tertiary caption text. */
+.status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  height: var(--control-compact);
+  padding: 0 var(--space-3);
+  border-top: 1px solid var(--hairline);
+  color: var(--text-tertiary);
+  font: var(--type-caption);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.statusValue {
+  font: var(--type-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.statusValue[hidden] {
+  display: none;
 }

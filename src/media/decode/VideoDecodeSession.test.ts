@@ -294,6 +294,30 @@ describe("VideoDecodeSession", () => {
     expect(delivered).toEqual(Array.from({ length: 100 }, (_, p) => us(p)));
   });
 
+  it("delivers every stride-th frame of a prefetch and decodes the ones between", async () => {
+    const { session, decoder } = setup(linearIndex(60));
+    const delivered: number[] = [];
+    const count = await session.prefetch(2, 20, new AbortController().signal, (frame) => {
+      delivered.push(frame.timestamp);
+      frame.close();
+    }, { stride: 4, priority: "playback" });
+    expect(count).toBe(5);
+    expect(delivered).toEqual([2, 6, 10, 14, 18].map(us));
+    expect(decoder().fed.length).toBeGreaterThanOrEqual(19);
+    expect(session.stats.seeks).toBe(1);
+    expect(frameCounter.open).toBe(session.openFrames);
+  });
+
+  it("runs a playback window before idle warming queued ahead of it", async () => {
+    const { session } = setup(linearIndex(300));
+    const order: string[] = [];
+    const busy = session.prefetch(0, 2, new AbortController().signal, (frame) => frame.close());
+    const warm = session.prefetch(200, 202, new AbortController().signal, (frame) => frame.close()).then(() => order.push("warm"));
+    const window = session.prefetch(10, 12, new AbortController().signal, (frame) => frame.close(), { priority: "playback" }).then(() => order.push("window"));
+    await Promise.all([busy, warm, window]);
+    expect(order).toEqual(["window", "warm"]);
+  });
+
   it("closes the ring with the decoder and starts a new one on demand", async () => {
     const { session, decoders, shown } = setup(linearIndex(60));
     await shown(10);
@@ -384,6 +408,65 @@ describe("VideoDecodeSession", () => {
     expect(frame?.corrupt).toBe(false);
     expect(session.stats.seeks).toBe(2);
     expect(decoder().fed.filter((c) => c.type === "key").map((c) => c.timestamp)).toEqual([us(4), us(0), us(4)]);
+  });
+
+  it("keeps the frames of a superseded run apart from the new run's copies of the same timestamps", async () => {
+    // I0 P2 B1 | CRA4 RASL3 P7 B5 B6 | I8 P9 P10 P11: RASL3 references P2.
+    const index = indexOf([
+      { cts: 0, sync: true },
+      { cts: 2, sync: false },
+      { cts: 1, sync: false },
+      { cts: 4, sync: true },
+      { cts: 3, sync: false },
+      { cts: 7, sync: false },
+      { cts: 5, sync: false },
+      { cts: 6, sync: false },
+      ...Array.from({ length: 4 }, (_, i) => ({ cts: 8 + i, sync: i === 0 })),
+    ]);
+    const { session, decoder } = setup(index, { reorder: 1, auto: false, decodeOrder: Array.from(index.timesUs), references: new Map([[us(3), us(2)]]) });
+    const settle = async () => {
+      for (let j = 0; j < 8; j++) await Promise.resolve();
+    };
+    const pump = async (request: Promise<FakeFrame>) => {
+      let result: FakeFrame | null = null;
+      void request.then((frame) => (result = frame));
+      for (let i = 0; i < 100 && !result; i++) {
+        decoder().step();
+        await settle();
+      }
+      return result as FakeFrame | null;
+    };
+    // A playback window from frame 4 takes its frames out of the ring; it is cancelled after 4 and 5,
+    // with P7 and B6 still in the decoder.
+    const window = new AbortController();
+    const delivered: number[] = [];
+    void session
+      .prefetch(4, 6, window.signal, (frame) => {
+        delivered.push(frame.timestamp);
+        frame.close();
+      })
+      .catch(() => undefined);
+    await settle();
+    for (let i = 0; i < 20 && delivered.length < 2; i++) {
+      decoder().step();
+      await settle();
+    }
+    expect(delivered).toEqual([us(4), us(5)]);
+    window.abort();
+    // Frame 5 again: no longer in the ring, so a new run starts at CRA4 and feeds 7 while the
+    // superseded run's 7 is still to come out. That output must not count as the new run's.
+    const five = await pump(session.frame(5, "playback", new AbortController().signal));
+    five?.close();
+    expect(five?.timestamp).toBe(us(5));
+    expect(session.stats.seeks).toBe(2);
+    // The new run's RASL3 (decoded without P2) was dropped, not kept as frame 3.
+    const three = await pump(session.frame(3, "playback", new AbortController().signal));
+    three?.close();
+    expect(three?.timestamp).toBe(us(3));
+    expect(three?.corrupt).toBe(false);
+    expect(session.stats.seeks).toBe(3);
+    session.dispose();
+    expect(frameCounter.open).toBe(0);
   });
 
   it("counts no stall while the decoder works on chunks it was just given", async () => {

@@ -1,5 +1,6 @@
 // App-wide singletons. Created once; React components and canvas views import them directly.
 import { version as appVersion } from "../../package.json";
+import { AudioClock } from "../audio/AudioClock.js";
 import { ActionRegistry } from "../core/commands/ActionRegistry.js";
 import { createProject } from "../core/document/project.js";
 import { KeyDispatcher } from "../core/keyboard/KeyDispatcher.js";
@@ -40,6 +41,8 @@ export const documentStore = new DocumentStore(
   { session: sessionStore },
 );
 export const actions = new ActionRegistry();
+/** The master clock of playback: an AudioContext created on the first pointer or key press (spec §8). */
+export const audioClock = new AudioClock();
 const keyValueStore = idbKeyValueStore();
 export const recentProjects = new RecentProjects(keyValueStore);
 export const appSettings = createAppSettings(keyValueStore);
@@ -78,6 +81,8 @@ export function startServices(): () => void {
     themeBridge.watch(),
     themeBridge.subscribe((next) => console.debug("[theme] changed", next)),
     focusScopes.attach(document),
+    // Before the key dispatcher: the first key press creates the AudioContext, then plays.
+    audioClock.attach(window),
     keyDispatcher.attach(window),
     installTooltips(document, theme.tooltipDelay),
   ];

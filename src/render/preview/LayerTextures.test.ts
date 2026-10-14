@@ -200,6 +200,31 @@ describe("LayerTextures", () => {
     expect(requests.map((r) => r.timeUs)).toEqual([1000 + 40 * FRAME, 1000 + 41 * FRAME, 1000 + 40 * FRAME]);
   });
 
+  it("while playing, asks for nothing and uses no stand-in: a frame not decoded yet holds the track's previous layer", () => {
+    const { textures, cache, requests, frames } = setup();
+    const shown = cache("a", 1000 + 10 * FRAME);
+    cache("a", 1000);
+    resolve(textures, "playback", media({ trackId: "v1", mediaId: "a", timeUs: 10 * FRAME }));
+    expect(textures.stats).toMatchObject({ exact: 1 });
+    // Frame 11 is not decoded yet: the nearest cached frame (0) is not shown, frame 10 stays.
+    const held = resolve(textures, "playback", media({ trackId: "v1", mediaId: "a", timeUs: 11 * FRAME }));
+    expect(textureOf(held[0])).toBe(shown);
+    expect(textures.stats).toMatchObject({ exact: 0, standIns: 0, held: 1 });
+    expect(requests).toHaveLength(0);
+    expect(frames.getFrame).not.toHaveBeenCalled();
+    const next = cache("a", 1000 + 11 * FRAME);
+    expect(textureOf(resolve(textures, "playback", media({ trackId: "v1", mediaId: "a", timeUs: 11 * FRAME }))[0])).toBe(next);
+  });
+
+  it("cancels a paused-time request for another frame once playing", () => {
+    const { textures, requests } = setup();
+    resolve(textures, "idle", media({ trackId: "v1", mediaId: "a", timeUs: 10 * FRAME }));
+    expect(requests).toHaveLength(1);
+    resolve(textures, "playback", media({ trackId: "v1", mediaId: "a", timeUs: 12 * FRAME }));
+    expect(requests[0]?.options.signal?.aborted).toBe(true);
+    expect(requests).toHaveLength(1);
+  });
+
   it("releases a track that shows nothing at the frame (pin and request)", () => {
     const { textures, cache, pool, requests } = setup();
     cache("a", 1000);

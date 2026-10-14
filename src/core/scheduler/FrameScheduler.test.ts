@@ -114,4 +114,40 @@ describe("FrameScheduler", () => {
     frames.tick();
     expect(order).toEqual(["content", "overlay", "preview", "stats"]);
   });
+
+  it("runs tickers before the views, so what a ticker invalidates is drawn in the same frame", () => {
+    const frames = fakeFrames();
+    const scheduler = new FrameScheduler(frames.request, frames.cancel);
+    const order: string[] = [];
+    scheduler.register("preview", { render: () => order.push("preview") });
+    const stop = scheduler.addTicker((time) => {
+      order.push(`tick ${time}`);
+      scheduler.invalidate("preview");
+    });
+    expect(frames.pending()).toBe(1);
+    frames.tick(10);
+    expect(order).toEqual(["tick 10", "preview"]);
+    // A registered ticker keeps the loop running, one request per frame.
+    expect(frames.pending()).toBe(1);
+    frames.tick(26);
+    expect(order).toEqual(["tick 10", "preview", "tick 26", "preview"]);
+    stop();
+    frames.tick(42);
+    expect(order).toHaveLength(4);
+    expect(scheduler.isScheduled()).toBe(false);
+  });
+
+  it("keeps ticking when a ticker throws", () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const frames = fakeFrames();
+    const scheduler = new FrameScheduler(frames.request, frames.cancel);
+    const ok = vi.fn();
+    scheduler.addTicker(() => {
+      throw new Error("boom");
+    });
+    scheduler.addTicker(ok);
+    frames.tick();
+    frames.tick();
+    expect(ok).toHaveBeenCalledTimes(2);
+  });
 });

@@ -165,6 +165,32 @@ describe("TimelineView", () => {
     expect(view.stats.clipsDrawn).toBe(500);
   });
 
+  it("follows the playhead: pages exactly when it leaves the right edge, until the user scrolls, then again after resume", () => {
+    const { view, session, overlay } = setup(500);
+    const scroll = () => session.state.getState().timeline.scrollFrame;
+    // 824 px of track area at 4 px/frame: frames [0, 206) are in view.
+    view.follow(205);
+    expect(scroll()).toBe(0);
+    view.follow(206);
+    expect(scroll()).toBeCloseTo(206 * 0.9, 9);
+    // A vertical wheel does not count as a manual scroll; a horizontal one stops following.
+    overlay.dispatchEvent(new WheelEvent("wheel", { clientX: 300, clientY: 200, deltaY: 40, cancelable: true }));
+    view.follow(1000);
+    expect(scroll()).toBe(1000 - 206 * 0.1);
+    overlay.dispatchEvent(new WheelEvent("wheel", { clientX: 300, clientY: 200, deltaY: 40, shiftKey: true, cancelable: true }));
+    const scrolled = scroll();
+    view.follow(3000);
+    expect(view.isFollowing).toBe(false);
+    expect(scroll()).toBe(scrolled);
+    view.resumeFollowing();
+    view.follow(3000);
+    expect(scroll()).toBeCloseTo(3000 - 206 * 0.1, 9);
+    // Keyboard jumps page the view whether following or not.
+    overlay.dispatchEvent(new WheelEvent("wheel", { clientX: 300, clientY: 200, deltaX: 40, cancelable: true }));
+    view.reveal(10);
+    expect(scroll()).toBe(0);
+  });
+
   it("zooms at the cursor with Mod+wheel and scrolls with the wheel", () => {
     const { view, session, overlay, scheduler } = setup(200);
     const before = session.state.getState().timeline;

@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { applyToPoint } from "../mat3.js";
-import { deviceSize, frameTransform, zoomLabel } from "./viewport.js";
+import { applyToPoint, mutableIdentity } from "../mat3.js";
+import { deviceSizeInto, frameTransformInto, zoomLabel, type PreviewZoom, type Size } from "./viewport.js";
+
+const frameTransform = (zoom: PreviewZoom, frame: Size, target: Size, margin: number) => frameTransformInto(mutableIdentity(), zoom, frame, target, margin);
 
 const FRAME = { width: 1080, height: 1920 };
 
-describe("frameTransform", () => {
+describe("frameTransformInto", () => {
   it("letterboxes a 9:16 frame at Fit inside the margin, centered on whole pixels", () => {
     const m = frameTransform("fit", FRAME, { width: 1000, height: 1000 }, 20);
     const topLeft = applyToPoint(m, 0, 0);
@@ -43,9 +45,16 @@ describe("frameTransform", () => {
   });
 });
 
-describe("deviceSize", () => {
-  it("rounds css px times the device pixel ratio, at least 1", () => {
-    expect(deviceSize({ width: 333, height: 0 }, 1.25)).toEqual({ width: 416, height: 1 });
+describe("deviceSizeInto", () => {
+  it("rounds css px times the device pixel ratio, at least 1, into the given struct", () => {
+    const out = { width: 0, height: 0 };
+    expect(deviceSizeInto(out, { width: 333, height: 0 }, 1.25)).toBe(out);
+    expect(out).toEqual({ width: 416, height: 1 });
+  });
+
+  it("writes the transform into the given matrix", () => {
+    const out = mutableIdentity();
+    expect(frameTransformInto(out, 1, FRAME, { width: 800, height: 600 }, 16)).toBe(out);
   });
 });
 

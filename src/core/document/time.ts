@@ -61,6 +61,14 @@ export function usToFrameFloor(us: Us, fps: Rational): Frame {
   return floorDiv(us * fps.num, US_PER_SECOND * fps.den);
 }
 
+/**
+ * Whole frames played in `seconds` of clock time at `speed` (spec §8: floor(elapsed * speed * fps)),
+ * the elapsed time taken to the nearest microsecond. `speed` > 0; the caller applies the direction.
+ */
+export function playedFrames(seconds: number, speed: number, fps: Rational): Frame {
+  return usToFrameFloor(Math.max(0, Math.round(seconds * speed * US_PER_SECOND)), fps);
+}
+
 /** A count of `timescale` ticks per second (mp4 track times, audio samples) to the nearest microsecond. */
 export function ticksToUs(ticks: number, timescale: number): Us {
   return roundDiv(ticks * US_PER_SECOND, timescale);

@@ -7,12 +7,13 @@
 import type { RGBA } from "../../core/document/types.js";
 import type { DrawList, Layer, UvRect } from "../compositor/drawList.js";
 import { invertInto, multiplyInto, mutableIdentity, setMat, type Mat3, type MutableMat3 } from "../mat3.js";
+import { fitWithin } from "./fitWithin.js";
 import type { GpuDevice } from "./GpuDevice.js";
 import { layerFloats, LAYER_SIZE, LAYER_STRIDE, packLayer, packMat3, pixelsToClipInto, VIEW_SIZE } from "./layerUniforms.js";
 import { generateMipmaps, mipLevelCount, textureBytes, type MipGenerator } from "./mipmaps.js";
 import { paddedBytesPerRow, unpadAndUnpremultiply } from "./readback.js";
 import type { CanvasTarget, DeviceEvent, OffscreenTarget, Renderer, RenderTarget, TextureHandle, TextureOptions, Viewport } from "./renderer.js";
-import { DISSOLVE_WGSL, MIPMAP_WGSL, SOLID_WGSL, TEXTURED_WGSL } from "./shaders.js";
+import { DISSOLVE_WGSL, MIPMAP_WGSL, SCALE_WGSL, SOLID_WGSL, TEXTURED_WGSL } from "./shaders.js";
 
 /** Textures, offscreen targets and mip levels are rgba8 (spec §9.3); canvases use the preferred format. */
 const TEXTURE_FORMAT: GPUTextureFormat = "rgba8unorm";
@@ -39,21 +40,29 @@ interface DeviceResources {
   modules: Record<PipelineKind, GPUShaderModule>;
   pipelines: Map<GPUTextureFormat, Pipelines>;
   mips: MipGenerator;
+  /** Draws a video frame into a smaller texture (`TextureOptions.maxSize`). */
+  scaler: { pipeline: GPURenderPipeline; layout: GPUBindGroupLayout; sampler: GPUSampler };
   viewBuffer: GPUBuffer;
   layerBuffer: GPUBuffer;
   layerCapacity: number;
   group: GPUBindGroup;
 }
 
+/** Takes a destroyed handle's GPU texture back for reuse; false when it does not (the texture is destroyed). */
+type Recycle = (texture: GpuTexture) => boolean;
+
 class GpuTexture implements TextureHandle {
   private destroyed = false;
 
   constructor(
     readonly texture: GPUTexture,
+    /** The view the bind group samples; also the render attachment of a scaled upload. */
+    readonly view: GPUTextureView,
     readonly bindGroup: GPUBindGroup,
     readonly bytes: number,
-    private readonly generation: number,
+    readonly generation: number,
     private readonly currentGeneration: () => number,
+    private readonly recycle: Recycle | null = null,
   ) {}
 
   get width(): number {
@@ -75,9 +84,25 @@ class GpuTexture implements TextureHandle {
   destroy(): void {
     if (this.destroyed) return;
     this.destroyed = true;
-    this.texture.destroy();
+    if (!this.recycle?.(this)) this.texture.destroy();
   }
 }
+
+/** A video-frame texture left by a destroyed handle, kept for the next upload of the same size. */
+interface SpareTexture {
+  texture: GPUTexture;
+  view: GPUTextureView;
+  bindGroup: GPUBindGroup;
+  bytes: number;
+  generation: number;
+}
+
+/**
+ * Spare video-frame textures kept at most. Uploads into a recycled texture instead of a new one per
+ * frame: Batch 06 measured hardware decoding slower with a create + destroy per frame (1080p H.264
+ * 8.5-11.5 ms/frame against 7.3 with one reused texture).
+ */
+const MAX_SPARE_FRAMES = 4;
 
 class GpuCanvasTarget implements CanvasTarget {
   readonly kind = "canvas";
@@ -143,6 +168,7 @@ export class WebGpuRenderer implements Renderer {
   private resources: DeviceResources | null = null;
   private readonly canvases = new Set<GpuCanvasTarget>();
   private readonly listeners = new Set<(event: DeviceEvent) => void>();
+  private readonly spares: SpareTexture[] = [];
   private layerData = new Float32Array(layerFloats(INITIAL_LAYERS));
   private readonly viewData = new Float32Array(VIEW_SIZE / 4);
   private readonly canvasFormat: GPUTextureFormat;
@@ -164,6 +190,7 @@ export class WebGpuRenderer implements Renderer {
     gpu.subscribe((state, device) => {
       const had = this.resources !== null;
       this.resources = null;
+      for (const spare of this.spares.splice(0)) spare.texture.destroy();
       if (state === "ready" && device) {
         this.resources = this.build(device, gpu.generation);
         for (const target of this.canvases) this.configure(target);
@@ -199,7 +226,12 @@ export class WebGpuRenderer implements Renderer {
   uploadVideoFrame(frame: VideoFrame, options: TextureOptions = {}): TextureHandle {
     try {
       const res = this.require();
-      const texture = this.copyIn(res, frame, frame.displayWidth, frame.displayHeight, { mipmaps: false, ...options });
+      const { width, height } = fitWithin(frame.displayWidth, frame.displayHeight, options.maxSize);
+      const into = this.spareFor(res, width, height);
+      const texture =
+        width === frame.displayWidth && height === frame.displayHeight
+          ? this.copyIn(res, frame, width, height, { mipmaps: false, ...options }, into, this.recycleFrame)
+          : this.scaleIn(res, frame, width, height, options, into);
       // Sends the copy now rather than with the next draw: until it runs, the decoder cannot reuse
       // the frame's picture buffer (measured: hardware decoding 25-35% faster with uploads in flight).
       res.device.queue.submit([]);
@@ -209,9 +241,12 @@ export class WebGpuRenderer implements Renderer {
     }
   }
 
-  /** A new texture holding `source`. A failed copy (a closed source) destroys the texture before rethrowing (P13). */
-  private copyIn(res: DeviceResources, source: ImageBitmap | VideoFrame, width: number, height: number, options: TextureOptions): GpuTexture {
-    const texture = this.newTexture(res, width, height, options);
+  /**
+   * A texture holding `source`: `into` (a recycled one) or a new one. A failed copy (a closed source)
+   * destroys the texture before rethrowing (P13).
+   */
+  private copyIn(res: DeviceResources, source: ImageBitmap | VideoFrame, width: number, height: number, options: TextureOptions, into: GpuTexture | null = null, recycle: Recycle | null = null): GpuTexture {
+    const texture = into ?? this.newTexture(res, width, height, options, recycle);
     try {
       res.device.queue.copyExternalImageToTexture({ source }, { texture: texture.texture, premultipliedAlpha: true }, [width, height]);
       if (texture.mipLevels > 1) generateMipmaps(res.device, res.mips, texture.texture);
@@ -362,7 +397,56 @@ export class WebGpuRenderer implements Renderer {
     target.configured = res.generation;
   }
 
-  private newTexture(res: DeviceResources, width: number, height: number, options: TextureOptions): GpuTexture {
+  /**
+   * A `width` x `height` texture showing the whole frame: the frame is sampled as decoded (an external
+   * texture) and drawn once, which costs far less than copying it at full size (4K HEVC on an RDNA2
+   * GPU: 70 decoded frames/s scaled to 1080p, 56 copied at 4K, 103 decoded and dropped).
+   */
+  private scaleIn(res: DeviceResources, frame: VideoFrame, width: number, height: number, options: TextureOptions, into: GpuTexture | null): GpuTexture {
+    const texture = into ?? this.newTexture(res, width, height, { ...options, mipmaps: false }, this.recycleFrame);
+    try {
+      const { scaler, device } = res;
+      const source = device.importExternalTexture({ source: frame });
+      const bindGroup = device.createBindGroup({
+        layout: scaler.layout,
+        entries: [
+          { binding: 0, resource: scaler.sampler },
+          { binding: 1, resource: source },
+        ],
+      });
+      const encoder = device.createCommandEncoder({ label: "scale frame" });
+      const pass = encoder.beginRenderPass({ colorAttachments: [{ view: texture.view, loadOp: "clear", storeOp: "store", clearValue: [0, 0, 0, 1] }] });
+      pass.setPipeline(scaler.pipeline);
+      pass.setBindGroup(0, bindGroup);
+      pass.draw(3);
+      pass.end();
+      // Submitted before the frame is closed: the queued work keeps the picture alive.
+      device.queue.submit([encoder.finish()]);
+    } catch (error) {
+      texture.destroy();
+      throw error;
+    }
+    return texture;
+  }
+
+  /** A spare video-frame texture of this size, wrapped in a new handle; null when there is none. */
+  private spareFor(res: DeviceResources, width: number, height: number): GpuTexture | null {
+    const w = this.clampSize(width);
+    const h = this.clampSize(height);
+    const at = this.spares.findIndex((spare) => spare.generation === res.generation && spare.texture.width === w && spare.texture.height === h);
+    if (at === -1) return null;
+    const spare = this.spares.splice(at, 1)[0] as SpareTexture;
+    return new GpuTexture(spare.texture, spare.view, spare.bindGroup, spare.bytes, res.generation, () => this.resources?.generation ?? -1, this.recycleFrame);
+  }
+
+  /** A destroyed video-frame handle gives its texture back, up to MAX_SPARE_FRAMES of the current device. */
+  private readonly recycleFrame = (texture: GpuTexture): boolean => {
+    if (texture.generation !== this.resources?.generation || this.spares.length >= MAX_SPARE_FRAMES) return false;
+    this.spares.push({ texture: texture.texture, view: texture.view, bindGroup: texture.bindGroup, bytes: texture.bytes, generation: texture.generation });
+    return true;
+  };
+
+  private newTexture(res: DeviceResources, width: number, height: number, options: TextureOptions, recycle: Recycle | null = null): GpuTexture {
     const w = this.clampSize(width);
     const h = this.clampSize(height);
     const levels = options.mipmaps ? mipLevelCount(w, h) : 1;
@@ -374,15 +458,16 @@ export class WebGpuRenderer implements Renderer {
       // copyExternalImageToTexture and mip generation need RENDER_ATTACHMENT; readback needs COPY_SRC.
       usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.COPY_SRC | GPUTextureUsage.RENDER_ATTACHMENT,
     });
+    const view = texture.createView();
     const bindGroup = res.device.createBindGroup({
       label: options.label ?? "texture",
       layout: res.textureLayout,
       entries: [
         { binding: 0, resource: res.sampler },
-        { binding: 1, resource: texture.createView() },
+        { binding: 1, resource: view },
       ],
     });
-    return new GpuTexture(texture, bindGroup, textureBytes(w, h, levels), res.generation, () => this.resources?.generation ?? -1);
+    return new GpuTexture(texture, view, bindGroup, textureBytes(w, h, levels), res.generation, () => this.resources?.generation ?? -1, recycle);
   }
 
   /** Fills the record pool: the frame background, the layers, then the border around the frame. */
@@ -541,6 +626,25 @@ export class WebGpuRenderer implements Renderer {
         primitive: { topology: "triangle-list" },
       }),
     };
+    const scaleLayout = device.createBindGroupLayout({
+      label: "scale source",
+      entries: [
+        { binding: 0, visibility: GPUShaderStage.FRAGMENT, sampler: { type: "filtering" } },
+        { binding: 1, visibility: GPUShaderStage.FRAGMENT, externalTexture: {} },
+      ],
+    });
+    const scaleModule = module("scale", SCALE_WGSL);
+    const scaler = {
+      layout: scaleLayout,
+      sampler: device.createSampler({ label: "scale", minFilter: "linear", magFilter: "linear" }),
+      pipeline: device.createRenderPipeline({
+        label: "scale frame",
+        layout: layout("scale", [scaleLayout]),
+        vertex: { module: scaleModule, entryPoint: "vs" },
+        fragment: { module: scaleModule, entryPoint: "fs", targets: [{ format: TEXTURE_FORMAT }] },
+        primitive: { topology: "triangle-list" },
+      }),
+    };
     const partial = {
       device,
       generation,
@@ -555,6 +659,7 @@ export class WebGpuRenderer implements Renderer {
       modules: { textured: module("textured", TEXTURED_WGSL), dissolve: module("dissolve", DISSOLVE_WGSL), solid: module("solid", SOLID_WGSL) },
       pipelines: new Map<GPUTextureFormat, Pipelines>(),
       mips,
+      scaler,
       viewBuffer: device.createBuffer({ label: "view", size: VIEW_SIZE, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST }),
       layerBuffer: layerBuffer(device, INITIAL_LAYERS),
       layerCapacity: INITIAL_LAYERS,

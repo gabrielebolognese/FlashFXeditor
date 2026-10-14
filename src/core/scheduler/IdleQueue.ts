@@ -1,6 +1,6 @@
 // Background work queue (spec §3.4): runs small tasks in requestIdleCallback slices with a deadline,
-// and pauses entirely while playing or dragging.
-// TODO(batch 09): pause/resume from the playback engine; gestures pause it from Batch 11 on.
+// and pauses entirely while playing or dragging. The playback engine pauses it while playing.
+// TODO(batch 11): gestures pause it too (then count the pausers, so one resume does not undo another's pause).
 
 export type IdleTask = () => void;
 

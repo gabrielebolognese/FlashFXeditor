@@ -132,6 +132,15 @@ export function nearestPosition(times: ArrayLike<number>, timeUs: number): numbe
 }
 
 /**
+ * Display position of the frame a clip shows at media time `mediaTimeUs` (§5.1): media time 0 is the
+ * first frame (the container's first cts may come after 0; edit lists are not applied), and the
+ * nearest frame time wins. `times` must not be empty.
+ */
+export function mediaTimePosition(times: ArrayLike<number>, mediaTimeUs: number): number {
+  return nearestPosition(times, (times[0] as number) + mediaTimeUs);
+}
+
+/**
  * Decode index of the sync sample to start from to show decode index `d`. A leading picture (shown
  * before its sync sample, e.g. RASL frames of an open-GOP HEVC CRA) needs the previous GOP too, so
  * its start is the sync sample before that one.

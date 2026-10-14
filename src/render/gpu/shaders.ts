@@ -80,6 +80,32 @@ fn fs(in: VertexOut) -> @location(0) vec4f {
 }
 `;
 
+/** A video frame drawn into a smaller texture (sampled as decoded: no full-size copy first). */
+export const SCALE_WGSL = /* wgsl */ `
+@group(0) @binding(0) var sourceSampler: sampler;
+@group(0) @binding(1) var source: texture_external;
+
+struct VertexOut {
+  @builtin(position) position: vec4f,
+  @location(0) uv: vec2f,
+};
+
+@vertex
+fn vs(@builtin(vertex_index) index: u32) -> VertexOut {
+  var points = array<vec2f, 3>(vec2f(-1.0, -1.0), vec2f(3.0, -1.0), vec2f(-1.0, 3.0));
+  let p = points[index];
+  var out: VertexOut;
+  out.position = vec4f(p, 0.0, 1.0);
+  out.uv = vec2f((p.x + 1.0) * 0.5, (1.0 - p.y) * 0.5);
+  return out;
+}
+
+@fragment
+fn fs(in: VertexOut) -> @location(0) vec4f {
+  return vec4f(textureSampleBaseClampToEdge(source, sourceSampler, in.uv).rgb, 1.0);
+}
+`;
+
 /** Mip generation: a full-screen triangle sampling the previous level with linear filtering. */
 export const MIPMAP_WGSL = /* wgsl */ `
 @group(0) @binding(0) var sourceSampler: sampler;

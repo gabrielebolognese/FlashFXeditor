@@ -5,6 +5,7 @@ import { createRoot } from "react-dom/client";
 import { App } from "./app/App.js";
 import { findMissingApis, GPU_ADAPTER_LABEL } from "./app/compat.js";
 import { installMediaController } from "./app/mediaController.js";
+import { installPlaybackController } from "./app/playbackController.js";
 import { installPreviewController, startGpu } from "./app/previewController.js";
 import { installProjectController } from "./app/projectController.js";
 import { startServices } from "./app/services.js";
@@ -30,6 +31,7 @@ async function start(): Promise<void> {
   installMediaController();
   installPreviewController();
   installTimelineController();
+  installPlaybackController();
   root.render(
     <StrictMode>
       <App />

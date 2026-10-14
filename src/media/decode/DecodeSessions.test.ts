@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { buildMp4, ROTATE_90_MATRIX, videoSamples } from "../probe/testMp4.js";
-import { DecodeSessions, IDLE_MS, NotOpenError, UnsupportedCodecError, type Delivered } from "./DecodeSessions.js";
+import { DecodeSessions, IDLE_MS, NotOpenError, RING_IDLE_MS, UnsupportedCodecError, type Delivered } from "./DecodeSessions.js";
 import { FakeDecoder, frameCounter, type FakeFrame, type FakeOptions } from "./testDecoder.js";
 
 const FRAME_US = 33_367; // 1001 ticks at 30000
@@ -109,9 +109,13 @@ describe("DecodeSessions", () => {
     await vi.advanceTimersByTimeAsync(IDLE_MS - 100);
     // A request restarts the countdown.
     await frame("a", frameUs(6));
-    await vi.advanceTimersByTimeAsync(IDLE_MS - 100);
-    expect(sessions.stats()).toMatchObject({ liveDecoders: 1, idleCloses: 0 });
     expect(sessions.stats().openFrames).toBeGreaterThan(0);
+    // Idle for a second: the ring's frames go back, the decoder stays.
+    await vi.advanceTimersByTimeAsync(RING_IDLE_MS + 1);
+    expect(sessions.stats()).toMatchObject({ liveDecoders: 1, openFrames: 0, idleCloses: 0 });
+    expect(frameCounter.open).toBe(0);
+    await vi.advanceTimersByTimeAsync(IDLE_MS - 100 - RING_IDLE_MS - 1);
+    expect(sessions.stats()).toMatchObject({ liveDecoders: 1, idleCloses: 0 });
     await vi.advanceTimersByTimeAsync(200);
     expect(sessions.stats()).toMatchObject({ liveDecoders: 0, openFrames: 0, idleCloses: 1, sessions: 1 });
     expect(frameCounter.open).toBe(0);

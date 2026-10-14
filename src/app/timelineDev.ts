@@ -1,12 +1,14 @@
-// Dev command: fills the open project with generated clips for the timeline stress checks (spec
-// P14: 500 clips on 8 tracks). Solid clips on new video tracks; when the project has media with
-// sound, two of the tracks are audio tracks using it. One undo step.
-import { addTrack } from "../core/commands/basicCommands.js";
+// Dev commands: fill the open project with generated clips for the timeline stress checks (spec
+// P14: 500 clips on 8 tracks; solid clips on new video tracks, and when the project has media with
+// sound, two of the tracks are audio tracks using it) and for the playback checks (a cut every
+// second on V1, Batch 09). One undo step each.
+import { addTrack, removeClips } from "../core/commands/basicCommands.js";
 import type { Command } from "../core/commands/command.js";
 import { emptyTrack, nextTrackName } from "../core/document/project.js";
-import { frameToUs, usToFrameFloor } from "../core/document/time.js";
-import type { Clip, MediaItem, Project, Track } from "../core/document/types.js";
+import { frameToUs, secondsToFrames, usToFrameFloor } from "../core/document/time.js";
+import type { Clip, Frame, MediaItem, Project, Track } from "../core/document/types.js";
 import type { DocumentStore } from "../core/store/DocumentStore.js";
+import { defaultTransform } from "../timeline/edit/insertMedia.js";
 
 const IDENTITY = { x: 0, y: 0, scale: 1, rotation: 0, anchor: { x: 0.5, y: 0.5 }, flipH: false, flipV: false };
 
@@ -83,4 +85,50 @@ export function generateTestClips(store: DocumentStore, options: { clips?: numbe
     for (const track of tracks) store.dispatch(addTrack(track));
     store.dispatch(bulkAddClips(clips));
   });
+}
+
+/**
+ * Dev command for the playback checks (Batch 09 acceptance 1): replaces the clips of the first video
+ * track with `clips` cuts of `seconds` each, cycling through the project's videos and taking each
+ * one's next unused stretch (every source is read forward, from the start again once used up), at
+ * the default Fit. One undo step. Returns the number of clips made.
+ */
+export function generateCutTimeline(store: DocumentStore, options: { clips?: number; seconds?: number } = {}): number {
+  const project: Project = store.getState();
+  const { fps } = project.settings;
+  const length = Math.max(1, secondsToFrames(options.seconds ?? 1, fps));
+  const track = project.tracks.find((candidate) => candidate.kind === "video");
+  const videos = Object.values(project.media).filter((media) => media.kind === "video" && usToFrameFloor(media.durationUs, fps) >= length);
+  if (!track || videos.length === 0) return 0;
+  const used = new Map<string, Frame>();
+  const clips: Clip[] = [];
+  for (let i = 0; i < (options.clips ?? 60); i++) {
+    const media = videos[i % videos.length] as MediaItem;
+    let from = used.get(media.id) ?? 0;
+    if (from + length > usToFrameFloor(media.durationUs, fps)) from = 0;
+    used.set(media.id, from + length);
+    clips.push({
+      id: crypto.randomUUID(),
+      kind: "video",
+      trackId: track.id,
+      name: media.name,
+      start: i * length,
+      duration: length,
+      enabled: true,
+      mediaId: media.id,
+      in: frameToUs(from, fps),
+      out: frameToUs(from + length, fps),
+      speed: 1,
+      transform: defaultTransform(media, project.settings),
+      opacity: 1,
+      crop: { left: 0, top: 0, right: 0, bottom: 0 },
+      volume: { gainDb: 0, muted: false },
+      fades: { in: 0, out: 0 },
+    });
+  }
+  store.transaction(`Generate ${clips.length} cuts`, () => {
+    if (track.clipIds.length > 0) store.dispatch(removeClips(track.clipIds));
+    store.dispatch(bulkAddClips(clips));
+  });
+  return clips.length;
 }

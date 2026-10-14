@@ -10,7 +10,7 @@
 import type { MediaId } from "../../core/document/types.js";
 import type { Renderer, TextureHandle } from "../../render/gpu/renderer.js";
 import type { Lod, TextureKey, TexturePool } from "../cache/TexturePool.js";
-import { positionAt } from "../demux/sampleIndex.js";
+import { mediaTimePosition, positionAt } from "../demux/sampleIndex.js";
 import { abortError, FRAME_PRIORITY_RANK, type DeliveredFrame, type FramePriority, type Priority, type VideoInfo, type WorkerDecodeStats } from "../workers/protocol.js";
 import type { WorkerPool } from "../workers/WorkerPool.js";
 
@@ -38,6 +38,17 @@ export interface FrameResult {
   timeUs: number;
   /** A stand-in (P8), or, for a request's own result, the nearest frame the decoder could produce. */
   approximate: boolean;
+}
+
+export interface PrefetchOptions {
+  lod?: Lod;
+  /** `playback` windows go before `idle` warming (default `idle`). */
+  priority?: Exclude<FramePriority, "scrub">;
+  /** Every stride-th frame of the range (shuttle speeds). */
+  stride?: number;
+  signal?: AbortSignal;
+  /** Each frame once it is in the pool. */
+  onFrame?: (result: FrameResult) => void;
 }
 
 export interface FrameRequestOptions {
@@ -76,6 +87,8 @@ export interface FrameServiceDeps {
   workers: Pick<WorkerPool, "request">;
   renderer: Pick<Renderer, "ready" | "uploadVideoFrame">;
   pool: Pick<TexturePool, "get" | "put" | "nearest" | "deleteMedia">;
+  /** Long edge frames are scaled down to on upload (the project's long edge); none when undefined. */
+  uploadSize?: () => number | undefined;
   now?: () => number;
 }
 
@@ -159,6 +172,22 @@ export class FrameService {
     return this.infos.get(keyOf(mediaId, lod)) ?? null;
   }
 
+  /**
+   * Writes into `out` the pool key of the frame nearest to media time `mediaTimeUs` of an opened video
+   * (media time 0 is the first frame: the container's first cts may come after 0, edit lists are not
+   * applied), and returns its display position. -1 when the video is not open or has no frames.
+   */
+  frameKeyInto(out: TextureKey, mediaId: MediaId, mediaTimeUs: number, lod: Lod = "full"): number {
+    const info = this.infos.get(keyOf(mediaId, lod));
+    const times = info?.frameTimesUs;
+    if (!times || times.length === 0) return -1;
+    const position = mediaTimePosition(times, mediaTimeUs);
+    out.mediaId = mediaId;
+    out.lod = lod;
+    out.timeUs = times[position] as number;
+    return position;
+  }
+
   /** The frame shown at `timeUs` as a pool texture. Rejects with an AbortError when superseded or aborted. */
   async getFrame(mediaId: MediaId, timeUs: number, options: FrameRequestOptions = {}): Promise<FrameResult> {
     const { lod = "full", priority = "scrub", signal, onApproximate } = options;
@@ -198,21 +227,28 @@ export class FrameService {
   }
 
   /** Decodes the frames shown in [fromUs, toUs] into the pool. Cancelled by a scrub of the same media. */
-  async prefetch(mediaId: MediaId, fromUs: number, toUs: number, options: { lod?: Lod; signal?: AbortSignal } = {}): Promise<number> {
-    const { lod = "full", signal } = options;
+  async prefetch(mediaId: MediaId, fromUs: number, toUs: number, options: PrefetchOptions = {}): Promise<number> {
+    const { lod = "full", priority = "idle", stride = 1, signal, onFrame } = options;
     const lane = this.lane(mediaId, lod);
     const controller = this.track(lane, signal);
     lane.prefetches.add(controller);
     try {
       const info = this.infos.get(keyOf(mediaId, lod)) ?? (await this.video(mediaId, lod));
       if (!info.decodable) throw unsupported(info);
-      await this.acquire(lane, "idle", controller.signal);
+      await this.acquire(lane, priority, controller.signal);
       try {
         this.counters.workerRequests += 1;
         const { frames } = await this.deps.workers.request(
           "prefetch",
-          { mediaId, lod, fromUs, toUs },
-          { priority: WORKER_PRIORITY.idle, signal: controller.signal, onProgress: (value) => void this.receive(mediaId, lod, value) },
+          { mediaId, lod, fromUs, toUs, priority, ...(stride > 1 && { stride }) },
+          {
+            priority: WORKER_PRIORITY[priority],
+            signal: controller.signal,
+            onProgress: (value) => {
+              const result = this.receive(mediaId, lod, value);
+              if (result && onFrame && !controller.signal.aborted) onFrame(result);
+            },
+          },
         );
         return frames;
       } finally {
@@ -353,7 +389,8 @@ export class FrameService {
       const existing = this.deps.pool.get(key);
       if (existing) return { texture: existing, key, timeUs, approximate };
       if (!this.deps.renderer.ready) return null;
-      const texture = this.deps.renderer.uploadVideoFrame(frame, { label: `${mediaId} @${timeUs}us` });
+      const maxSize = this.deps.uploadSize?.();
+      const texture = this.deps.renderer.uploadVideoFrame(frame, { label: `${mediaId} @${timeUs}us`, ...(maxSize !== undefined && { maxSize }) });
       this.deps.pool.put(key, texture);
       return { texture, key, timeUs, approximate };
     } finally {

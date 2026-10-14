@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { FPS_30, firstFrameOfSecond, formatDurationUs, formatTimecode, framesToSourceUs, frameToUs, parseTimecode, secondOfFrame, secondsToFrames, ticksToUs, usPerFrame, usToFrame, usToFrameFloor } from "./time.js";
+import { FPS_30, firstFrameOfSecond, formatDurationUs, formatTimecode, framesToSourceUs, frameToUs, parseTimecode, playedFrames, secondOfFrame, secondsToFrames, ticksToUs, usPerFrame, usToFrame, usToFrameFloor } from "./time.js";
 import type { Rational } from "./types.js";
 
 const NTSC: Rational = { num: 30000, den: 1001 };
@@ -170,6 +170,19 @@ describe("seconds and frames", () => {
     expect(secondsToFrames(2, NTSC)).toBe(60);
     expect(secondsToFrames(5, FPS_24)).toBe(120);
     expect(secondsToFrames(0.5, FPS_60)).toBe(30);
+  });
+});
+
+describe("playedFrames", () => {
+  it("counts whole frames of clock time at a speed, rounding the time to microseconds", () => {
+    expect(playedFrames(1, 1, FPS_30)).toBe(30);
+    expect(playedFrames(1 - 1e-9, 1, FPS_30)).toBe(30);
+    expect(playedFrames(0.0333, 1, FPS_30)).toBe(0);
+    expect(playedFrames(0.034, 1, FPS_30)).toBe(1);
+    expect(playedFrames(1, 8, FPS_30)).toBe(240);
+    expect(playedFrames(1001 / 30000, 1, NTSC)).toBe(1);
+    expect(playedFrames(60, 1, NTSC)).toBe(1798);
+    expect(playedFrames(-1, 1, FPS_30)).toBe(0);
   });
 });
 

@@ -7,6 +7,7 @@ import {
   keyZoomAnchor,
   MAX_PX_PER_FRAME,
   MIN_PX_PER_FRAME,
+  pageToFrame,
   pxToSlider,
   scrollBy,
   sliderToPx,
@@ -122,5 +123,36 @@ describe("slider and wheel", () => {
     expect(wheelDeltaPx(3, 1, 500)).toBe(48);
     expect(wheelDeltaPx(1, 2, 500)).toBe(500);
     expect(wheelDeltaPx(-12.5, 0, 500)).toBe(-12.5);
+  });
+});
+
+describe("pageToFrame (follow playhead)", () => {
+  // 800 px at 4 px/frame: 200 frames visible.
+  const view = { pxPerFrame: 4, scrollFrame: 100 };
+
+  it("pages exactly when the playhead leaves the right edge, by one view width minus 10%", () => {
+    expect(pageToFrame(view, 100, LONG)).toBeNull();
+    // x = 796 px: the playhead line is still inside the 800 px area.
+    expect(pageToFrame(view, 299, LONG)).toBeNull();
+    expect(pageToFrame({ pxPerFrame: 4, scrollFrame: 100.1 }, 299.9, LONG)).toBeNull();
+    // x = 800 px: it left.
+    expect(pageToFrame(view, 300, LONG)).toEqual({ pxPerFrame: 4, scrollFrame: 280 });
+    // After the page it sits 10% inside the left edge.
+    expect((300 - 280) * 4).toBe(80);
+  });
+
+  it("brings a frame far beyond the view in 10% inside the edge it comes in from", () => {
+    expect(pageToFrame(view, 5000, LONG)).toEqual({ pxPerFrame: 4, scrollFrame: 4980 });
+    expect(pageToFrame(view, 99, LONG)).toEqual({ pxPerFrame: 4, scrollFrame: 0 });
+    expect(pageToFrame({ pxPerFrame: 4, scrollFrame: 5000 }, 4999, LONG)).toEqual({ pxPerFrame: 4, scrollFrame: 4820 });
+    expect(pageToFrame({ pxPerFrame: 4, scrollFrame: 5000 }, 1000, LONG)).toEqual({ pxPerFrame: 4, scrollFrame: 820 });
+  });
+
+  it("stays within the scroll limits and does nothing when the view cannot move", () => {
+    const short: ZoomContext = { width: 800, contentEnd: 400, fps: FPS };
+    // The view may end at most 25% of its width past the content end: scroll <= 400 - 150.
+    expect(pageToFrame({ pxPerFrame: 4, scrollFrame: 100 }, 300, short)).toEqual({ pxPerFrame: 4, scrollFrame: 250 });
+    expect(pageToFrame({ pxPerFrame: 4, scrollFrame: 250 }, 450, short)).toBeNull();
+    expect(pageToFrame(view, 300, { ...LONG, width: 0 })).toBeNull();
   });
 });

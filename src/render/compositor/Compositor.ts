@@ -37,14 +37,20 @@ interface WritableComposite extends Composite {
 
 const DEG = Math.PI / 180;
 
-/** Exact sine/cosine for quarter turns, so 90° rotations land on whole pixels. */
-function sinCos(degrees: number): [number, number] {
+/** Scratch result of `sinCos` (evaluating runs every playback frame: no allocation). */
+const trig = { sin: 0, cos: 1 };
+
+/** Exact sine/cosine for quarter turns, so 90° rotations land on whole pixels. Read the result before the next call. */
+function sinCos(degrees: number): Readonly<typeof trig> {
   const turns = ((degrees % 360) + 360) % 360;
-  if (turns === 0) return [0, 1];
-  if (turns === 90) return [1, 0];
-  if (turns === 180) return [0, -1];
-  if (turns === 270) return [-1, 0];
-  return [Math.sin(degrees * DEG), Math.cos(degrees * DEG)];
+  if (turns % 90 === 0) {
+    trig.sin = turns === 90 ? 1 : turns === 270 ? -1 : 0;
+    trig.cos = turns === 0 ? 1 : turns === 180 ? -1 : 0;
+  } else {
+    trig.sin = Math.sin(degrees * DEG);
+    trig.cos = Math.cos(degrees * DEG);
+  }
+  return trig;
 }
 
 const clamp01 = (value: number) => (Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : 0);
@@ -69,7 +75,7 @@ export function sourceTimeUs(clip: Pick<MediaClip, "start" | "in" | "out" | "spe
  * scale, rotation, then position relative to the center of a `frameWidth` x `frameHeight` frame.
  */
 export function writeModel(out: MutableMat3, transform: Transform, width: number, height: number, frameWidth: number, frameHeight: number): MutableMat3 {
-  const [sin, cos] = sinCos(transform.rotation);
+  const { sin, cos } = sinCos(transform.rotation);
   const sx = transform.scale;
   const sy = transform.scaleY ?? transform.scale;
   const a = cos * sx;

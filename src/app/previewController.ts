@@ -1,7 +1,8 @@
-// Preview wiring (spec §7.1, §9.3, §9.4): the app's one GPU device, renderer and texture pool, the
+// Preview wiring (spec §7.1, §8, §9.3, §9.4): the app's one GPU device, renderer and texture pool, the
 // frame service (video frames from decode.worker into the pool), still images, the preview canvas
-// view (the composite at the playhead) and its dev stats, the preview chrome readouts and Export frame.
-// Framework-free; PreviewPanel only mounts the canvas host, the chrome bar and the stats element.
+// view (the composite at the playhead) and its dev stats, the playback engine that drives it, the
+// preview chrome readouts and Export frame. Framework-free; PreviewPanel only mounts the canvas host,
+// the chrome bar and the stats element.
 import { formatTimecode } from "../core/document/time.js";
 import type { MediaId } from "../core/document/types.js";
 import { createStore } from "../core/store/createStore.js";
@@ -9,17 +10,20 @@ import { DEFAULT_TEXTURE_BUDGET, TexturePool } from "../media/cache/TexturePool.
 import { FrameService, type FrameSource } from "../media/decode/FrameService.js";
 import { ImageService } from "../media/decode/ImageService.js";
 import { svgPoster } from "../media/probe/svgProbe.js";
-import { isAbortError } from "../media/workers/protocol.js";
+import { isAbortError, type FramePriority } from "../media/workers/protocol.js";
+import { PlaybackEngine } from "../playback/PlaybackEngine.js";
 import { errorMessage } from "../project/errorMessage.js";
 import type { FsDir } from "../project/fs.js";
 import { resolveFile, safeFileName, sampleIndexPath, writeFileAt } from "../project/mediaFiles.js";
+import { formatFps } from "../project/projectPresets.js";
 import { GpuDevice } from "../render/gpu/GpuDevice.js";
 import { WebGpuRenderer } from "../render/gpu/WebGpuRenderer.js";
 import { PreviewStatsOverlay } from "../render/preview/PreviewStatsOverlay.js";
 import { PreviewView } from "../render/preview/PreviewView.js";
 import type { PreviewZoom } from "../render/preview/viewport.js";
+import { contentEnd } from "../timeline/model/queries.js";
 import { showToast } from "../ui/toasts.js";
-import { actions, documentStore, layoutStore, scheduler, sessionStore, themeBridge, workerPool } from "./services.js";
+import { actions, audioClock, documentStore, idleQueue, layoutStore, scheduler, sessionStore, themeBridge, workerPool } from "./services.js";
 import { timelineView } from "./timelineController.js";
 
 const MB = 1024 * 1024;
@@ -27,11 +31,23 @@ const MB = 1024 * 1024;
 export const gpuDevice = new GpuDevice();
 export const renderer = new WebGpuRenderer(gpuDevice);
 export const texturePool = new TexturePool();
-/** Video frames for every view (the preview now, playback and export later). */
-export const frameService = new FrameService({ workers: workerPool, renderer, pool: texturePool });
+/**
+ * Video frames for the preview and playback. Frames are uploaded at most at the project's long edge:
+ * the preview never draws more of them (a 4K frame in a 1080x1920 project).
+ * TODO(batch 21): detail-on-zoom renders above 100% need more than the project size.
+ */
+export const frameService = new FrameService({
+  workers: workerPool,
+  renderer,
+  pool: texturePool,
+  uploadSize: () => {
+    const { width, height } = documentStore.getState().settings;
+    return Math.max(width, height);
+  },
+});
 /** Still image textures. */
 export const imageService = new ImageService({ workers: workerPool, renderer, pool: texturePool, document: documentStore, svgBitmap: svgPoster });
-export const previewView = new PreviewView({
+export const previewView: PreviewView = new PreviewView({
   renderer,
   scheduler,
   layout: layoutStore,
@@ -41,9 +57,22 @@ export const previewView = new PreviewView({
   frames: frameService,
   images: imageService,
   pool: texturePool,
-  scrubbing: () => timelineView.scrubbing,
+  priority: (): FramePriority => (playbackEngine.playing ? "playback" : timelineView.scrubbing ? "scrub" : "idle"),
 });
-export const previewStats = new PreviewStatsOverlay({ scheduler, preview: previewView, pool: texturePool, gpu: gpuDevice, frames: frameService });
+/** Plays the timeline through the preview (spec §8). */
+export const playbackEngine: PlaybackEngine = new PlaybackEngine({
+  scheduler,
+  clock: audioClock,
+  document: documentStore,
+  session: sessionStore,
+  frames: frameService,
+  images: imageService,
+  pool: texturePool,
+  preview: previewView,
+  scrubbing: () => timelineView.scrubbing,
+  idle: idleQueue,
+});
+export const previewStats = new PreviewStatsOverlay({ scheduler, preview: previewView, pool: texturePool, gpu: gpuDevice, frames: frameService, playback: playbackEngine });
 
 /** Pool budgets of the dev select: the P6 default and the Batch 05 test budget. */
 export const POOL_BUDGETS: readonly number[] = [DEFAULT_TEXTURE_BUDGET, 64 * MB];
@@ -84,6 +113,7 @@ export function startGpu(adapter: GPUAdapter): void {
       preview: previewView,
       frames: frameService,
       images: imageService,
+      playback: playbackEngine,
     }));
   }
 }
@@ -120,6 +150,7 @@ function releaseRemovedMedia(): () => void {
 /** Wires the preview to a newly opened project. */
 export function attachPreview(dir: FsDir, isWritable: () => boolean): void {
   detachPreview();
+  playbackEngine.pause();
   const source = frameSource(dir, isWritable);
   const stops = [
     frameService.attach(source),
@@ -134,8 +165,9 @@ export function attachPreview(dir: FsDir, isWritable: () => boolean): void {
   };
 }
 
-/** Before the project closes: frees its decoders and textures (P13). */
+/** Before the project closes: stops playback, frees its decoders and textures (P13). */
 export function detachPreview(): void {
+  playbackEngine.pause();
   stopProject?.();
   stopProject = null;
   texturePool.clear();
@@ -145,17 +177,29 @@ export function setPreviewZoom(zoom: PreviewZoom): void {
   sessionStore.state.set((state) => (state.preview.zoom === zoom ? state : { ...state, preview: { ...state.preview, zoom } }));
 }
 
+export interface PreviewReadouts {
+  timecode: HTMLElement;
+  duration: HTMLElement;
+  fps: HTMLElement;
+}
+
 /**
- * The preview chrome's playhead timecode (spec §7.8), written by subscriptions, never by React (P1).
- * TODO(batch 09): transport buttons, duration and fps badge next to it.
+ * The preview chrome's readouts (spec §7.8): playhead timecode, duration and fps badge, written by
+ * subscriptions, never by React (P1). The timecode changes every frame during playback.
  */
-export function bindPreviewTimecode(element: HTMLElement): () => void {
-  const show = () => {
-    const text = formatTimecode(sessionStore.state.getState().playhead, documentStore.getState().settings.fps);
+export function bindPreviewReadouts({ timecode, duration, fps }: PreviewReadouts): () => void {
+  const write = (element: HTMLElement, text: string) => {
     if (element.textContent !== text) element.textContent = text;
   };
-  const stops = [sessionStore.state.select((state) => state.playhead, show), documentStore.subscribe(show, { affects: ["settings"] })];
-  show();
+  const showTimecode = () => write(timecode, formatTimecode(sessionStore.state.getState().playhead, documentStore.getState().settings.fps));
+  const showDocument = () => {
+    const project = documentStore.getState();
+    write(duration, formatTimecode(contentEnd(project), project.settings.fps));
+    write(fps, `${formatFps(project.settings.fps)} fps`);
+    showTimecode();
+  };
+  const stops = [sessionStore.state.select((state) => state.playhead, showTimecode), documentStore.subscribe(showDocument, { affects: ["timeline", "clips", "settings"] })];
+  showDocument();
   return () => {
     for (const stop of stops) stop();
   };

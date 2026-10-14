@@ -51,6 +51,11 @@ export interface TextureOptions {
   /** Full mip chain (static images): no aliasing when drawn small. */
   mipmaps?: boolean;
   label?: string;
+  /**
+   * Video frames: a frame whose long edge is larger is scaled down to it on the GPU while uploading
+   * (the preview of a 1080x1920 project never draws more than 1920 px of a 4K frame).
+   */
+  maxSize?: number;
 }
 
 export interface Renderer {

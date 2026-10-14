@@ -1,8 +1,9 @@
 // GPU texture pool (spec §9.3, P6, P13): the main-thread cache of uploaded frames and images, an LRU
 // within a byte budget. Keys are `(mediaId, lod, timeUs)`; a static image has one mipmapped texture
-// under `imageKey`. Pinned entries are never evicted. Every texture that leaves the pool (eviction,
-// replacement, delete, clear) is destroyed at once.
-// TODO(batch 09): the playback engine pins the frames within ±1 s of the playhead (P6).
+// under `imageKey`. Pinned entries are never evicted: the preview pins what it draws, the playback
+// engine the frames of its windows ahead of the playhead (P6). Every texture that leaves the pool
+// (eviction, replacement, delete, clear) is destroyed at once (video frame textures go back to the
+// renderer for reuse).
 import type { MediaId } from "../../core/document/types.js";
 import type { TextureHandle } from "../../render/gpu/renderer.js";
 

@@ -1,10 +1,11 @@
-// Timeline wiring (spec §6): the timeline view, the zoom and playhead actions (§6.2, §6.5), the
-// toolbar's direct-DOM bindings (zoom slider, timecode field, duration: no React render while they
-// change, P1), insert at the playhead from the media panel (§6.14) and the dev clip generator.
+// Timeline wiring (spec §6): the timeline view, the zoom and edit-point/marker navigation actions
+// (§6.2, §6.5; the transport keys are in playbackController), the toolbar's direct-DOM bindings (zoom
+// slider, timecode field, duration: no React render while they change, P1), insert at the playhead
+// from the media panel (§6.14) and the dev clip generator.
 import { addTrack, updateClip, type ClipPatch } from "../core/commands/basicCommands.js";
 import type { ActionRun } from "../core/commands/ActionRegistry.js";
 import { emptyTrack, nextTrackName } from "../core/document/project.js";
-import { formatTimecode, parseTimecode, secondsToFrames } from "../core/document/time.js";
+import { formatTimecode, parseTimecode } from "../core/document/time.js";
 import type { Frame, MediaId, Project, TrackKind } from "../core/document/types.js";
 import { createStore } from "../core/store/createStore.js";
 import { setPlayhead } from "../core/store/sessionStore.js";
@@ -13,12 +14,9 @@ import { contentEnd, markerFrames, navigationPoints, nextEditPoint, prevEditPoin
 import { TimelineView } from "../timeline/view/TimelineView.js";
 import { pxToSlider, sliderToPx, zoomLimits, ZOOM_IN_STEP, ZOOM_OUT_STEP, type ZoomContext } from "../timeline/view/zoom.js";
 import { showToast } from "../ui/toasts.js";
-import { generateTestClips } from "./timelineDev.js";
+import { generateCutTimeline, generateTestClips } from "./timelineDev.js";
 import { actions, documentStore, layoutStore, scheduler, sessionStore, themeBridge } from "./services.js";
 
-/** Hold-to-repeat for the frame-stepping keys (the dispatcher suppresses OS repeats, spec §3.6). */
-const STEP_REPEAT_DELAY_MS = 300;
-const STEP_REPEAT_MS = 33;
 /** Zoom slider resolution (positions per full range). */
 const SLIDER_STEPS = 1000;
 
@@ -123,7 +121,7 @@ export function bindTimecode(input: HTMLInputElement, duration: HTMLElement): ()
   const onKeyDown = (event: KeyboardEvent) => {
     if (event.key === "Enter") {
       const frame = parseTimecode(input.value, fps(), { current: playhead() });
-      if (frame !== null) setPlayhead(sessionStore, frame);
+      if (frame !== null) movePlayhead(frame);
       input.blur();
     } else if (event.key === "Escape") {
       input.blur();
@@ -153,36 +151,16 @@ export function bindTimecode(input: HTMLInputElement, duration: HTMLElement): ()
   };
 }
 
-/** A frame-stepping action: steps once on key down (or click), then repeats while the key is held. */
-function steppingAction(frames: () => Frame): ActionRun {
-  let delay: ReturnType<typeof setTimeout> | null = null;
-  let repeat: ReturnType<typeof setInterval> | null = null;
-  const stop = () => {
-    if (delay !== null) clearTimeout(delay);
-    if (repeat !== null) clearInterval(repeat);
-    delay = null;
-    repeat = null;
-  };
-  const step = () => setPlayhead(sessionStore, playhead() + frames());
-  return (context) => {
-    if (context?.phase === "up") {
-      stop();
-      return;
-    }
-    stop();
-    step();
-    if (context?.phase === "down") {
-      delay = setTimeout(() => {
-        repeat = setInterval(step, STEP_REPEAT_MS);
-      }, STEP_REPEAT_DELAY_MS);
-    }
-  };
+/** Moves the playhead and pages the view to it when it lands outside (spec §6.2 paging). */
+export function movePlayhead(frame: Frame): void {
+  setPlayhead(sessionStore, frame);
+  timelineView.reveal(playhead());
 }
 
 function jumpTo(target: (project: Project, frame: Frame) => Frame | null): ActionRun {
   return () => {
     const frame = target(documentStore.getState(), playhead());
-    if (frame !== null) setPlayhead(sessionStore, frame);
+    if (frame !== null) movePlayhead(frame);
   };
 }
 
@@ -193,19 +171,10 @@ function inOut(): (Frame | null)[] {
 
 /** Registers the timeline actions. Returns a stop function. */
 export function installTimelineController(): () => void {
-  const second = () => secondsToFrames(1, documentStore.getState().settings.fps);
   const stops = [
     actions.register("timeline.zoomIn", () => timelineView.zoomBy(ZOOM_IN_STEP)),
     actions.register("timeline.zoomOut", () => timelineView.zoomBy(ZOOM_OUT_STEP)),
     actions.register("timeline.zoomFit", () => timelineView.fit()),
-    actions.register("transport.stepBack", steppingAction(() => -1)),
-    actions.register("transport.stepForward", steppingAction(() => 1)),
-    actions.register("transport.stepBack5", steppingAction(() => -5)),
-    actions.register("transport.stepForward5", steppingAction(() => 5)),
-    actions.register("transport.stepBack1s", steppingAction(() => -second())),
-    actions.register("transport.stepForward1s", steppingAction(() => second())),
-    actions.register("transport.goToStart", () => setPlayhead(sessionStore, 0)),
-    actions.register("transport.goToEnd", jumpTo((project) => contentEnd(project))),
     actions.register("timeline.prevEditPoint", jumpTo((project, frame) => prevEditPoint(navigationPoints(project, inOut()), frame))),
     actions.register("timeline.nextEditPoint", jumpTo((project, frame) => nextEditPoint(navigationPoints(project, inOut()), frame))),
     actions.register("timeline.prevMarker", jumpTo((project, frame) => prevEditPoint(markerFrames(project), frame))),
@@ -216,7 +185,9 @@ export function installTimelineController(): () => void {
     stops.push(actions.register("dev.generateTimeline", () => generate()));
     // Console access for the acceptance checks, e.g. `__editor.timeline.generate(500, 8)`.
     const editor = ((globalThis as { __editor?: Record<string, unknown> }).__editor ??= {});
-    editor.timeline = { view: timelineView, generate, insert: insertMediaAtPlayhead };
+    // `__editor.timeline.cuts(60, 1)`: 60 one-second clips on V1 cycling through the project's videos (playback checks).
+    const cuts = (clips?: number, seconds?: number) => generateCutTimeline(documentStore, { ...(clips !== undefined && { clips }), ...(seconds !== undefined && { seconds }) });
+    editor.timeline = { view: timelineView, generate, cuts, insert: insertMediaAtPlayhead };
     // Raw clip edits for the compositor checks, e.g. `__editor.clips.update(id, { opacity: 0.5 })`.
     editor.clips = {
       list: () => Object.values(documentStore.getState().clips),

@@ -1,9 +1,10 @@
-import { Expand, Gauge, ImageDown } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { Expand, Gauge, ImageDown, Pause, Play, Repeat, SkipBack, SkipForward, StepBack, StepForward } from "lucide-react";
+import { useEffect, useRef, useSyncExternalStore } from "react";
 import { CanvasHost } from "../app/CanvasHost.js";
 import { PanelFrame, PanelTitle } from "../app/PanelFrame.js";
-import { bindPreviewTimecode, exportFrame, POOL_BUDGETS, previewDev, previewStats, previewView, setPreviewZoom, type PreviewDevState } from "../app/previewController.js";
-import { sessionStore } from "../app/services.js";
+import { bindPlaybackStatus } from "../app/playbackController.js";
+import { bindPreviewReadouts, exportFrame, playbackEngine, POOL_BUDGETS, previewDev, previewStats, previewView, setPreviewZoom, type PreviewDevState } from "../app/previewController.js";
+import { actions, sessionStore } from "../app/services.js";
 import type { SessionState } from "../core/store/sessionStore.js";
 import { useStoreSelector } from "../core/store/useStoreSelector.js";
 import { ZOOM_CHOICES, zoomLabel, type PreviewZoom } from "../render/preview/viewport.js";
@@ -16,6 +17,7 @@ const ZOOM_OPTIONS = ZOOM_CHOICES.map((zoom) => ({ value: String(zoom), label: z
 const BUDGET_OPTIONS = POOL_BUDGETS.map((bytes) => ({ value: String(bytes), label: `Pool ${Math.round(bytes / (1024 * 1024))} MB` }));
 
 const selectZoom = (state: SessionState) => state.preview.zoom;
+const selectLoop = (state: SessionState) => state.loop;
 const selectStats = (state: PreviewDevState) => state.stats;
 const selectBudget = (state: PreviewDevState) => state.budget;
 const toggleStats = () => previewDev.set((state) => ({ ...state, stats: !state.stats }));
@@ -23,6 +25,10 @@ const setBudget = (value: string) => previewDev.set((state) => ({ ...state, budg
 const setZoom = (value: string) => setPreviewZoom((value === "fit" ? "fit" : Number(value)) as PreviewZoom);
 
 const fit = () => setPreviewZoom("fit");
+const run = (id: string) => () => void actions.run(id);
+// Play/pause only: the engine notifies on every dropped frame too, but this snapshot changes only on play and pause (P1).
+const subscribePlayback = (listener: () => void) => playbackEngine.subscribe(listener);
+const isPlaying = () => playbackEngine.playing;
 
 // TODO(batch 21): the real zoom dropdown, pan, the quality dropdown, overlays, fullscreen.
 function PreviewActions() {
@@ -53,29 +59,82 @@ function StatsOverlay() {
   return <pre ref={ref} className={styles.stats} aria-label="GPU stats" />;
 }
 
-/** Playhead timecode, written by a subscription (no React render while it changes, P1). */
-function Timecode() {
-  const ref = useRef<HTMLSpanElement>(null);
+/** Playhead timecode, duration and fps badge, written by subscriptions (no React render while they change, P1). */
+function Readouts() {
+  const timecode = useRef<HTMLSpanElement>(null);
+  const duration = useRef<HTMLSpanElement>(null);
+  const fps = useRef<HTMLSpanElement>(null);
   useEffect(() => {
-    const element = ref.current;
-    return element ? bindPreviewTimecode(element) : undefined;
+    if (!timecode.current || !duration.current || !fps.current) return undefined;
+    return bindPreviewReadouts({ timecode: timecode.current, duration: duration.current, fps: fps.current });
   }, []);
-  return <span ref={ref} className={styles.timecode} aria-label="Playhead timecode" />;
+  return (
+    <div className={styles.readouts}>
+      <span ref={timecode} className={styles.timecode} aria-label="Playhead timecode" />
+      <span ref={duration} className={styles.duration} aria-label="Duration" data-tooltip="Duration" />
+      <span ref={fps} className={styles.badge} data-tooltip="Project frame rate" />
+    </div>
+  );
 }
 
 /**
- * Preview chrome v1 (spec §7.8): timecode, a static quality label and Fit.
- * TODO(batch 09): transport buttons, duration, fps badge; TODO(batch 24): the quality follows proxies.
+ * Transport (spec §7.8). React renders it on play and pause only.
+ * TODO(batch 19): play in/out. TODO(batch 10): mute and the master volume knob.
  */
+function Transport() {
+  const playing = useSyncExternalStore(subscribePlayback, isPlaying);
+  return (
+    <div className={styles.transport}>
+      <IconButton icon={SkipBack} label="Go to start" commandId="transport.goToStart" onClick={run("transport.goToStart")} />
+      <IconButton icon={StepBack} label="Previous frame" commandId="transport.stepBack" onClick={run("transport.stepBack")} />
+      <IconButton icon={playing ? Pause : Play} label={playing ? "Pause" : "Play"} commandId="transport.playPause" size="default" onClick={run("transport.playPause")} />
+      <IconButton icon={StepForward} label="Next frame" commandId="transport.stepForward" onClick={run("transport.stepForward")} />
+      <IconButton icon={SkipForward} label="Go to end" commandId="transport.goToEnd" onClick={run("transport.goToEnd")} />
+    </div>
+  );
+}
+
+function LoopToggle() {
+  const loop = useStoreSelector(sessionStore.state, selectLoop);
+  return <IconButton icon={Repeat} label="Loop playback" commandId="transport.toggleLoop" pressed={loop} onClick={run("transport.toggleLoop")} />;
+}
+
+/**
+ * The status strip under the transport (spec §13): quality mode, dropped frames of the last playback,
+ * texture pool usage (dev GPU stats on). Its texts are written in the scheduler loop.
+ * TODO(batch 24): the quality label follows proxies.
+ */
+function StatusStrip() {
+  const dropped = useRef<HTMLSpanElement>(null);
+  const pool = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    if (!dropped.current || !pool.current) return undefined;
+    return bindPlaybackStatus(dropped.current, pool.current);
+  }, []);
+  return (
+    <div className={styles.status}>
+      <span className={styles.badge} data-tooltip="Preview quality">
+        Auto: full
+      </span>
+      <span ref={dropped} className={styles.statusValue} data-tooltip="Dropped frames of the last playback" />
+      <span ref={pool} className={styles.statusValue} data-tooltip="Texture pool (dev)" hidden />
+    </div>
+  );
+}
+
+/** Preview chrome (spec §7.8, §13): readouts, transport, loop and Fit, then the status strip. */
 function PreviewChrome() {
   return (
     <>
-      <Timecode />
-      <span className={styles.spacer} />
-      <span className={styles.quality} data-tooltip="Preview quality">
-        Auto: full
-      </span>
-      <IconButton icon={Expand} label="Fit the frame in the panel" text="Fit" onClick={fit} />
+      <div className={styles.bar}>
+        <Readouts />
+        <Transport />
+        <div className={styles.tools}>
+          <LoopToggle />
+          <IconButton icon={Expand} label="Fit the frame in the panel" text="Fit" onClick={fit} />
+        </div>
+      </div>
+      <StatusStrip />
     </>
   );
 }

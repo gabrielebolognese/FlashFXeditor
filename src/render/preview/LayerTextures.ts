@@ -6,6 +6,9 @@
 //   the first layer of a media gets the scrub request in a pass, so two layers of one media do not
 //   supersede each other. The stand-in the frame service offers (the nearest cached frame, then a
 //   closer keyframe) is drawn meanwhile with the layer's own geometry.
+// - While playing (`playback` priority) nothing is requested and no stand-in is used: the playback
+//   engine's windows bring the frames, and a frame not decoded yet holds the track's previous layer
+//   (no stand-in churn back and forth in time).
 // - With nothing of that media ready, the slot draws its last layer as it was (texture, matrix, crop,
 //   opacity): a cut never flashes black while the new clip's frame decodes.
 // - A request that settles on another frame (the decoder could not produce it) is drawn, but not
@@ -13,12 +16,13 @@
 // - What is drawn stays pinned in the pool. Late frames call `onChange` (the view redraws).
 // - `warm` prefetches the edge frames of the clips next to the playhead, so a scrub across a cut
 //   finds the new clip's frame cached.
-// The draw list and the slot structs are reused between passes.
+// The draw list, the slot structs and their keys are reused between passes: a pass allocates nothing
+// unless it requests or pins a new frame.
 import type { MediaId, TrackId } from "../../core/document/types.js";
 import { imageKey, type TextureKey, type TexturePool } from "../../media/cache/TexturePool.js";
 import type { FrameResult, FrameService } from "../../media/decode/FrameService.js";
 import type { ImageService } from "../../media/decode/ImageService.js";
-import { nearestPosition } from "../../media/demux/sampleIndex.js";
+import { mediaTimePosition } from "../../media/demux/sampleIndex.js";
 import { isAbortError, type FramePriority } from "../../media/workers/protocol.js";
 import type { NeighborFrame } from "../compositor/Compositor.js";
 import type { Composite, DrawList, Layer, MediaLayer, TextureLayer } from "../compositor/drawList.js";
@@ -53,7 +57,7 @@ export interface LayerTexturesStats {
 type WritableTextureLayer = Omit<TextureLayer, "transform"> & { transform: MutableMat3 };
 
 interface Pending {
-  id: string;
+  key: TextureKey;
   controller: AbortController;
 }
 
@@ -62,16 +66,27 @@ interface Slot {
   /** The best stand-in for the pending (or settled) frame. */
   standIn: FrameResult | null;
   /** A frame whose request settled on another frame: not asked again while it is wanted. */
-  settled: string | null;
+  settled: boolean;
+  settledKey: TextureKey;
   /** The layer drawn last; `texture` is null before the first draw. */
   shown: WritableTextureLayer;
   hasShown: boolean;
-  pinned: string | null;
+  /** The key pinned for what is drawn; meaningful while `unpin` is set. */
+  pinnedKey: TextureKey;
   unpin: (() => void) | null;
   pass: number;
 }
 
 const keyId = (key: TextureKey) => `${key.mediaId}|${key.lod}|${key.timeUs}`;
+const sameKey = (a: TextureKey, b: TextureKey) => a.timeUs === b.timeUs && a.mediaId === b.mediaId && a.lod === b.lod;
+const newKey = (): TextureKey => ({ mediaId: "", lod: "full", timeUs: 0 });
+
+function copyKey(out: TextureKey, key: TextureKey): TextureKey {
+  out.mediaId = key.mediaId;
+  out.lod = key.lod;
+  out.timeUs = key.timeUs;
+  return out;
+}
 
 export class LayerTextures {
   private readonly slots = new Map<TrackId, Slot>();
@@ -84,6 +99,8 @@ export class LayerTextures {
   private readonly failed = new Set<MediaId>();
   private pass = 0;
   private resolving = false;
+  /** Scratch key of the frame a layer wants (copied when it is kept). */
+  private readonly wanted = newKey();
   readonly stats: LayerTexturesStats = { layers: 0, exact: 0, standIns: 0, held: 0, missing: 0, pending: 0, warming: 0, failed: 0 };
 
   constructor(private readonly deps: LayerTexturesDeps) {}
@@ -146,8 +163,9 @@ export class LayerTextures {
       const id = keyId(key);
       if (this.warming.has(id)) continue;
       this.warming.add(id);
+      const timeUs = key.timeUs;
       this.deps.frames
-        .prefetch(mediaId, key.timeUs, key.timeUs)
+        .prefetch(mediaId, timeUs, timeUs)
         .catch(() => undefined)
         .finally(() => {
           this.warming.delete(id);
@@ -194,11 +212,15 @@ export class LayerTextures {
     if (texture && key) {
       this.cancel(slot);
       slot.standIn = null;
-      slot.settled = null;
+      slot.settled = false;
       this.stats.exact += 1;
       return this.show(slot, layer, texture, key);
     }
-    if (key && !layer.still) this.request(slot, key, priority);
+    if (priority === "playback") {
+      // The engine's windows bring the frame: hold the track's previous layer meanwhile.
+      if (slot.pending && !(key && sameKey(slot.pending.key, key))) this.cancel(slot);
+      slot.standIn = null;
+    } else if (key && !layer.still) this.request(slot, key, priority);
     const standIn = slot.standIn;
     if (standIn && standIn.key.mediaId === mediaId && standIn.texture.valid) {
       this.stats.standIns += 1;
@@ -211,7 +233,10 @@ export class LayerTextures {
     return null;
   }
 
-  /** The pool key of the video frame nearest to media time `timeUs`; null until the video is open. */
+  /**
+   * The pool key of the video frame nearest to media time `timeUs` (media time 0 is the first frame),
+   * in a scratch key valid until the next call; null until the video is open.
+   */
   private videoKey(mediaId: MediaId, timeUs: number): TextureKey | null {
     const info = this.deps.frames.info(mediaId);
     if (!info) {
@@ -223,22 +248,25 @@ export class LayerTextures {
       this.fail(mediaId, `this browser cannot decode ${info.codec}`);
       return null;
     }
-    // Media time 0 is the first frame: the container's first cts may come after 0 (no edit list applied).
-    return { mediaId, lod: "full", timeUs: times[nearestPosition(times, (times[0] as number) + timeUs)] as number };
+    const key = this.wanted;
+    key.mediaId = mediaId;
+    key.lod = "full";
+    key.timeUs = times[mediaTimePosition(times, timeUs)] as number;
+    return key;
   }
 
-  private request(slot: Slot, key: TextureKey, priority: FramePriority): void {
-    const id = keyId(key);
-    if (slot.pending?.id === id || slot.settled === id) return;
+  private request(slot: Slot, wantedKey: TextureKey, priority: FramePriority): void {
+    if ((slot.pending && sameKey(slot.pending.key, wantedKey)) || (slot.settled && sameKey(slot.settledKey, wantedKey))) return;
     this.cancel(slot);
     slot.standIn = null;
-    slot.settled = null;
+    slot.settled = false;
+    const key = copyKey(newKey(), wantedKey);
     let wanted = priority;
     if (priority === "scrub") {
       if (this.scrubbed.has(key.mediaId)) wanted = "idle";
       else this.scrubbed.add(key.mediaId);
     }
-    const pending: Pending = { id, controller: new AbortController() };
+    const pending: Pending = { key, controller: new AbortController() };
     slot.pending = pending;
     this.deps.frames
       .getFrame(key.mediaId, key.timeUs, {
@@ -257,7 +285,8 @@ export class LayerTextures {
           slot.pending = null;
           if (result.approximate) {
             slot.standIn = result;
-            slot.settled = id;
+            slot.settled = true;
+            copyKey(slot.settledKey, key);
           }
           this.deps.onChange();
         },
@@ -271,7 +300,8 @@ export class LayerTextures {
           }
           if ((error as { name?: unknown }).name === "UnsupportedCodecError") this.fail(key.mediaId, (error as Error).message);
           else {
-            slot.settled = id;
+            slot.settled = true;
+            copyKey(slot.settledKey, key);
             console.warn(`[preview] no frame of ${key.mediaId} at ${key.timeUs} us`, error);
           }
         },
@@ -318,12 +348,11 @@ export class LayerTextures {
 
   /** Draws `texture` with the layer's geometry from this slot, pinning it in the pool. */
   private show(slot: Slot, layer: MediaLayer, texture: TextureHandle, key: TextureKey): TextureLayer {
-    const id = keyId(key);
-    if (slot.pinned !== id) {
+    if (!slot.unpin || !sameKey(slot.pinnedKey, key)) {
       const unpin = this.deps.pool.pin(key);
       slot.unpin?.();
       slot.unpin = unpin;
-      slot.pinned = id;
+      copyKey(slot.pinnedKey, key);
     }
     const shown = slot.shown;
     shown.texture = texture;
@@ -343,10 +372,11 @@ export class LayerTextures {
       slot = {
         pending: null,
         standIn: null,
-        settled: null,
+        settled: false,
+        settledKey: newKey(),
         shown: { kind: "texture", texture: NO_TEXTURE, transform: mutableIdentity(), opacity: 1, crop: { u0: 0, v0: 0, u1: 1, v1: 1 }, flipX: false, flipY: false },
         hasShown: false,
-        pinned: null,
+        pinnedKey: newKey(),
         unpin: null,
         pass: 0,
       };
@@ -365,7 +395,6 @@ export class LayerTextures {
     this.cancel(slot);
     slot.unpin?.();
     slot.unpin = null;
-    slot.pinned = null;
     slot.standIn = null;
     slot.hasShown = false;
     slot.shown.texture = NO_TEXTURE;

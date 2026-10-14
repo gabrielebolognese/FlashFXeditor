@@ -79,6 +79,32 @@ export function scrollBy(view: TimelineViewport, deltaPx: number, context: ZoomC
   return scrollFrame === view.scrollFrame ? view : { pxPerFrame: view.pxPerFrame, scrollFrame };
 }
 
+/** Follow playhead pages by the view width minus this fraction of it (spec §6.2). */
+export const PAGE_OVERLAP = 0.1;
+
+/**
+ * Follow playhead (spec §6.2): when `frame` is out of view (x before 0, or at or past the right edge of
+ * the track area) the view pages toward it by its width minus 10%, and a frame further away lands 10%
+ * inside the edge it comes in from. Null when the frame is in view or the view cannot move.
+ */
+export function pageToFrame(view: TimelineViewport, frame: number, context: ZoomContext): TimelineViewport | null {
+  if (context.width <= 0) return null;
+  const visible = context.width / view.pxPerFrame;
+  const x = (frame - view.scrollFrame) * view.pxPerFrame;
+  let scroll: number;
+  if (x >= context.width) {
+    scroll = view.scrollFrame + visible * (1 - PAGE_OVERLAP);
+    if (frame >= scroll + visible) scroll = frame - visible * PAGE_OVERLAP;
+  } else if (x < 0) {
+    scroll = view.scrollFrame - visible * (1 - PAGE_OVERLAP);
+    if (frame < scroll) scroll = frame - visible * (1 - PAGE_OVERLAP);
+  } else {
+    return null;
+  }
+  const scrollFrame = clampScroll(scroll, view.pxPerFrame, context);
+  return scrollFrame === view.scrollFrame ? null : { pxPerFrame: view.pxPerFrame, scrollFrame };
+}
+
 /** Zoom slider position 0..1, logarithmic over the limits (spec §6.2). */
 export function pxToSlider(pxPerFrame: number, limits: { min: number; max: number }): number {
   if (limits.max <= limits.min) return 1;

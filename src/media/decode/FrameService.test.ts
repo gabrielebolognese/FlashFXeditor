@@ -38,7 +38,7 @@ function texture(): TextureHandle & { destroyed: boolean } {
 }
 
 /** A FrameService over a scripted worker: openVideo answers at once, frame requests wait for `deliver`. */
-function setup(options: { info?: VideoInfo; cachedIndex?: boolean; ready?: boolean } = {}) {
+function setup(options: { info?: VideoInfo; cachedIndex?: boolean; ready?: boolean; uploadSize?: number } = {}) {
   const calls: Call[] = [];
   const opens: unknown[] = [];
   const workers = {
@@ -56,10 +56,12 @@ function setup(options: { info?: VideoInfo; cachedIndex?: boolean; ready?: boole
     }),
   };
   const uploads: FakeFrame[] = [];
+  const uploadOptions: unknown[] = [];
   const renderer = {
     ready: options.ready ?? true,
-    uploadVideoFrame: (frame: VideoFrame) => {
+    uploadVideoFrame: (frame: VideoFrame, opts?: unknown) => {
       uploads.push(frame as unknown as FakeFrame);
+      uploadOptions.push(opts);
       frame.close();
       return texture();
     },
@@ -74,7 +76,7 @@ function setup(options: { info?: VideoInfo; cachedIndex?: boolean; ready?: boole
     },
   };
   let clock = 0;
-  const frames = new FrameService({ workers: workers as never, renderer, pool, now: () => clock });
+  const frames = new FrameService({ workers: workers as never, renderer, pool, now: () => clock, ...(options.uploadSize && { uploadSize: () => options.uploadSize }) });
   const detach = frames.attach(source);
   const frameCalls = () => calls.filter((c) => c.method === "requestFrame" && !c.options.signal?.aborted);
   /** Answers a frame request with a frame at its requested time (or `timeUs`). */
@@ -82,7 +84,7 @@ function setup(options: { info?: VideoInfo; cachedIndex?: boolean; ready?: boole
   const tick = (ms: number) => {
     clock += ms;
   };
-  return { frames, workers, calls, frameCalls, opens, deliver, pool, uploads, writes, detach, tick };
+  return { frames, workers, calls, frameCalls, opens, deliver, pool, uploads, uploadOptions, writes, detach, tick };
 }
 
 const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
@@ -171,6 +173,41 @@ describe("FrameService", () => {
     expect(await done).toBe(3);
     for (let i = 0; i < 3; i++) expect(pool.has({ mediaId: "m1", lod: "full", timeUs: i * FRAME })).toBe(true);
     expect(frameCounter.open).toBe(0);
+  });
+
+  it("sends playback windows with their priority and stride and reports each frame in the pool", async () => {
+    const { frames, calls, pool } = setup();
+    await frames.video("m1");
+    const received: FrameResult[] = [];
+    const done = frames.prefetch("m1", 4 * FRAME, 12 * FRAME, { priority: "playback", stride: 4, onFrame: (result) => received.push(result) });
+    await settle();
+    const call = calls.find((c) => c.method === "prefetch") as Call;
+    expect(call.params).toMatchObject({ mediaId: "m1", fromUs: 4 * FRAME, toUs: 12 * FRAME, priority: "playback", stride: 4 });
+    expect(call.options.priority).toBe("playback");
+    for (const i of [4, 8, 12]) call.options.onProgress?.({ frame: new FakeFrame(i * FRAME) as unknown as VideoFrame, timeUs: i * FRAME, approximate: false });
+    call.resolve({ frames: 3 });
+    expect(await done).toBe(3);
+    expect(received.map((r) => r.key.timeUs)).toEqual([4 * FRAME, 8 * FRAME, 12 * FRAME]);
+    expect(received.every((r) => pool.get(r.key) === r.texture)).toBe(true);
+  });
+
+  it("uploads frames at most at the configured long edge", async () => {
+    const { frames, frameCalls, deliver, uploadOptions } = setup({ uploadSize: 1920 });
+    const request = frames.getFrame("m1", 0);
+    await settle();
+    deliver(frameCalls()[0] as Call);
+    await request;
+    expect(uploadOptions[0]).toMatchObject({ maxSize: 1920 });
+  });
+
+  it("maps media time to the nearest frame key of an opened video, media time 0 being the first frame", async () => {
+    const { frames } = setup({ info: info({ frameTimesUs: Float64Array.from([1000, 1000 + FRAME, 1000 + 2 * FRAME]) }) });
+    const key = { mediaId: "", lod: "full" as const, timeUs: 0 };
+    expect(frames.frameKeyInto(key, "m1", 0)).toBe(-1);
+    await frames.video("m1");
+    expect(frames.frameKeyInto(key, "m1", FRAME - 100)).toBe(1);
+    expect(key).toEqual({ mediaId: "m1", lod: "full", timeUs: 1000 + FRAME });
+    expect(frames.frameKeyInto(key, "m1", 10 * FRAME)).toBe(2);
   });
 
   it("keeps at most four requests per media at the worker, the most urgent first", async () => {
