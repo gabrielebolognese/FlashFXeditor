@@ -1,6 +1,6 @@
 # Progress
 
-last_completed_batch: 01
+last_completed_batch: 02
 in_progress_batch: none
 skipped_batches: []
 needs_human: none
@@ -24,15 +24,22 @@ Decisions that diverge from docs/EDITOR_SPEC.md, with the reason. Each one also 
 - The design system file is `DESIGN_SYSTEM.md` (repo root), not `DESIGN_SYSTEMS.md` as the docs say. Every reference to `DESIGN_SYSTEMS.md` means this file. Reason: the real filename, kept as-is per NEXT_BATCH_SETUP §0.
 - Styling uses plain CSS Modules + CSS custom properties, not the Tailwind named in `DESIGN_SYSTEM.md`. Reason: spec §3.1 (binding) forbids Tailwind; DS values are kept verbatim as tokens. Approved with the Batch 01 plan. (Batch 01)
 - Node engine is `>=22.12` (spec says nothing; scaffold said 20). Reason: Vitest 5 requires it. (Batch 01)
+- Track heights live only in the document (`Track.height`, §5.2), not in session state as §5.3 also lists. Reason: one source of truth, and §5.2 types are required verbatim. (Batch 02)
+- Undo restores the selection from before the undone command, redo the one after it (§6.19's wording is ambiguous). (Batch 02)
 
 ## Follow-ups
 Small things discovered during a batch that belong to a later batch. Format: `- [from Batch NN -> Batch MM] description`.
 - [from Batch 00 -> Batch 01] `npm run check` and `npm run lint` do not exist yet; Batch 01 creates them along with the Vite + React scaffold. (done in Batch 01)
-- [from Batch 01 -> Batch 02] `KeyDispatcher.onAction` only logs (`app/services.ts`); route it to the command registry.
+- [from Batch 01 -> Batch 02] `KeyDispatcher.onAction` only logs (`app/services.ts`); route it to the command registry. (done in Batch 02: `ActionRegistry`)
 - [from Batch 01 -> Batch 03] Persist splitter positions per project (session.json); localStorage `layout.v1` stays the global fallback.
 - [from Batch 01 -> Batch 05] Unsupported screen should also trigger when `navigator.gpu` exists but no adapter can be acquired.
 - [from Batch 01 -> Batch 09] Pause/resume the `IdleQueue` from playback (and from gestures from Batch 11 on).
 - [from Batch 01 -> Batch 42] Chrome reserves Ctrl+N, Ctrl+T and Ctrl+W in a normal tab; pages cannot preventDefault them, so `project.new` (Mod+N) opens a browser window instead. Decide on an alternative binding or document the installed-app (PWA window) route.
+- [from Batch 02 -> Batch 03] `DocumentStore.load(project)` (replace the document, clear the history); persist `SessionState` + the selection snapshot (arrays) in session.json; default tracks for a new project (`createProject` makes none); keep `meta.modifiedAt` current on save.
+- [from Batch 02 -> Batch 07] Default `timeline.pxPerFrame` in `DEFAULT_SESSION` is a placeholder (4).
+- [from Batch 02 -> Batch 16] Selection kind `track` has no track id field (§3.3 shape kept as written); add one with track selection. Link-group offsets are not validated (allowed by §5.2); the sync badge needs an offset query.
+- [from Batch 02 -> Batch 34] `validate.ts` applies the media in/out rules to image clips too; decide the rule for stills.
+- [from Batch 02 -> Batch 41] `validate.ts` requires a media clip's `mediaId` to exist in `project.media`; "Remove, keep offline clips" must keep the media record (marked missing) or relax this check.
 
 ## Dependencies
 Why each dependency exists (Batch rule 8).
@@ -42,6 +49,7 @@ Why each dependency exists (Batch rule 8).
 - `vitest`, `jsdom`: unit tests; jsdom for the DOM-dependent core tests (keyboard dispatcher, focus scopes, theme bridge). (Batch 01)
 - `eslint`, `typescript-eslint`, `eslint-plugin-react-hooks`: `npm run lint`, including the color-literal rule of §3.7. (Batch 01)
 - `@types/react`, `@types/react-dom`, `@types/node`: typings. (Batch 01)
+- `immer` 11: `produceWithPatches`/`applyPatches` for commands and undo (spec §3.3 names it). (Batch 02)
 
 ## Batch log
 
@@ -86,3 +94,30 @@ Why each dependency exists (Batch rule 8).
   2. React DevTools Profiler: record while dragging each splitter and while hovering the toolbar; expect zero commits. (Automated with a commit-counting hook, not the real Profiler.)
   3. DevTools console with the "Verbose" level enabled: on load `[theme]` is logged; click the timeline and press Ctrl+K → `[cmd] edit.split {scope: 'timeline', ...}`; click the preview and press Left → `canvas.nudgeLeft`; in `document.documentElement.setAttribute('data-theme','x')` → `[theme] changed`.
   4. Temporarily add `const x = "#ff0000";` to any `.ts` file under `src/`, run `npm run lint` (fails), remove it.
+
+### Batch 02: Document model, time math, commands and undo
+- status: done
+- date: 2026-10-14
+- notes:
+  - `core/document`: `types.ts` (§5.2 verbatim + `SCHEMA_VERSION = 1`, `JsonValue`), `time.ts` (exact integer `frameToUs`/`usToFrame`, `formatTimecode` `mm:ss:ff` / `mm:ss.mmm` with hours only when needed, `parseTimecode` with `+30`, `-15`, `+2.`), `validate.ts` (every §5.2 invariant; `DocumentInvariantError` names track and clip), `project.ts` (`createProject` defaults 1080×1920, 30/1, 48 kHz), `fixtures.ts` (test builders only).
+  - `core/commands`: `Command` (`id`, `label`, `coalesceKey?`, `affects`, `run(draft, ctx)`), `CommandContext` (`playhead`, `selection` snapshot, `newId`), `UndoStack` (patches, inverse patches, selection before/after, 300 ms coalescing by key, sealed after undo/redo, limit 1000, labels), `basicCommands.ts` (`track.add`, `track.remove`, `clip.add`, `clip.remove`, `clip.update`), `ActionRegistry` (action id -> handler; keys and buttons both call `run`).
+  - `core/store`: `DocumentStore` (`getState`, `dispatch(cmd, {selection?})`, `subscribe(listener, {affects?})`, `transaction(label, fn)` with nested rollback, `undo`/`redo`, `history` store; dev validation after every commit, undo and redo; invalid results throw and leave the document untouched), `SessionStore` (§5.3 shape; `state` and `selection` on separate channels; `setPlayhead`, `setSelection`), `selection.ts` (Set in memory, array snapshots), `useStoreSelector` (`useSyncExternalStore` + memoized `Object.is` bail-out).
+  - `timeline/model/queries.ts`: per-track index (start-sorted clips, `maxDuration`, `end`) cached per (clips record, track) so it is rebuilt only for new document versions; `clipAtFrame`, `clipsAtFrame`, `clipsInRange` (binary search bounded by max duration), `neighbors`, `trackGaps`, `gapAt`, `trackEnd`, `contentEnd`, `editPoints`, `next/prevEditPoint`.
+  - App: `services.ts` creates `sessionStore`, `documentStore` (empty project) and `actions`; `history.undo`/`history.redo` registered; `KeyDispatcher.onAction` routes registered ids to `actions`, unregistered ids are still logged and consume the key. App bar Undo/Redo are enabled from `documentStore.history`, with "Undo <label>" tooltips.
+  - Measured: 149 unit tests in 19 files (+89 tests). 10,000 trivial dispatches with dev validation on: ~62 ms warm when run alone (raw Immer alone is ~39 ms); the test warms up and takes the best of 3 runs because the other test workers compete for the CPU: 83–113 ms best, while single runs during the full parallel suite reached 206–305 ms (limit 300; a single cold run once failed at 305 ms). Fuzz: 3 seeds × 1,000 random raw ops (994–998 real changes each, 38–55 clips on 5–7 tracks), validated after every op, undone to a deep-equal original and redone to a deep-equal final; plus 1,000 interleaved ops/undos/redos. 29.97 round-trips every frame of 1 hour; every frame of 10 minutes round-trips format→parse at 24/29.97/30/60 in both modes; 10:00:00 at 29.97 is frame 17983 (600.033 s, zero drift). Build 205.2 kB JS (67.9 kB gzip; immer adds ~8 kB gzip), 13.4 kB CSS.
+  - Headless Chrome (CDP) on the dev server: Undo/Redo start disabled; after a dispatch Undo enables with "Undo Rename project"; Ctrl+Z undoes, Ctrl+Shift+Z and Ctrl+Y redo, button clicks do the same; Ctrl+Z in a text input does not reach the document; no console warnings or errors. Batch 01 regression at 1600×900: no overflow, panels 1088 / 512×860 / 430+430 / media 533, same as Batch 01.
+- deviations:
+  - Track heights: §5.3 lists them as session state, but §5.2 has `Track.height` in the document and this batch requires §5.2 exactly. Kept only in the document; `SessionState` has no track heights. Splitter positions stay in `layoutStore` (per-project persistence is a Batch 03 follow-up).
+  - Undo selection: §6.19 says "restored to what it was after the undone command", which is ambiguous. Undo restores the selection from before the command and redo the one after it (callers pass `{ selection }` to `dispatch` when a command changes it, e.g. delete). A selection made after the command is replaced on undo. Ids that no longer exist are dropped.
+  - "Set playhead" and "set selection" are session functions (`setPlayhead`, `setSelection`), not document commands: session state is never undoable (§3.3).
+  - Later-batch types (`LabelColor`, `EaseId`, `Gradient`, `Transition`, `TextContent`, `TextStyle`, `TextAnim`, `TextPreset`, `CaptionTrackData`) are opaque JSON placeholders with `TODO(batch NN)`.
+  - Functional defaults where the spec is silent: `RGBA` channels 0..1; timecode seconds are wall-clock seconds, so 29.97 shows no drift; plain digits are frames; in frames mode `.` and `:` both separate right-aligned fields, in ms mode `.` starts decimal seconds; undo history limit 1000 steps; new video tracks go above the other video tracks, caption tracks above all video, audio tracks at the end.
+  - Validation adds checks implied by the spec: integer frames and microseconds, `start >= 0`, `speed > 0`, media existence, unique track ids, a clip on exactly one track, clip record keys equal ids, video tracks before audio tracks, `captionTracks` keys are caption tracks. Link-group offsets are allowed by §5.2, so they are not errors.
+  - `Store.get()` renamed to `getState()` so all stores share the `{ getState, subscribe }` shape `useStoreSelector` reads.
+  - The follow-up's "command registry" is `ActionRegistry` (action ids), to keep it apart from document `Command`s.
+  - Removed the one-line placeholders `core/commands/index.ts`, `core/document/index.ts`, `timeline/model/index.ts` now that the folders have real modules.
+- follow-ups: [from Batch 02 -> Batch 03] `load(project)`, session.json, default tracks, `modifiedAt`; [from Batch 02 -> Batch 07] default `pxPerFrame`; [from Batch 02 -> Batch 16] track selection id, link offset query; [from Batch 02 -> Batch 34] image in/out rule; [from Batch 02 -> Batch 41] offline clips vs media-existence check
+- design gaps: none
+- pending manual checks:
+  1. Optional (already automated over CDP): `npm run dev`, open the app in Chrome, DevTools console: `const s = await import('/src/app/services.ts'); s.documentStore.dispatch({ id: 'test.rename', label: 'Rename project', affects: ['settings'], run: d => { d.name = 'Renamed' } })`. Expect Undo enabled with tooltip "Undo Rename project"; Ctrl+Z → `s.documentStore.getState().name` is "Untitled project" and Redo is enabled; Ctrl+Shift+Z and Ctrl+Y redo; the buttons do the same.
+  2. React DevTools Profiler, recording: run the dispatch above (expect one commit, AppBar only), then `(await import('/src/core/store/sessionStore.ts')).setPlayhead(s.sessionStore, 100)` (expect zero commits).

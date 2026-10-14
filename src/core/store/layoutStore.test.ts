@@ -48,16 +48,16 @@ describe("effectiveRatios", () => {
 
 describe("createLayoutStore", () => {
   it("starts from the defaults and loads persisted ratios", () => {
-    expect(createLayoutStore(null).get().ratios).toEqual(DEFAULT_RATIOS);
+    expect(createLayoutStore(null).getState().ratios).toEqual(DEFAULT_RATIOS);
     const storage = memoryStorage({ "layout.v1": JSON.stringify({ left: 0.6, top: 0.4, media: 0.5 }) });
-    expect(createLayoutStore(storage).get().ratios).toEqual({ left: 0.6, top: 0.4, media: 0.5 });
+    expect(createLayoutStore(storage).getState().ratios).toEqual({ left: 0.6, top: 0.4, media: 0.5 });
   });
 
   it("ignores corrupt or out-of-range persisted values", () => {
     const corrupt = memoryStorage({ "layout.v1": "{nope" });
-    expect(createLayoutStore(corrupt).get().ratios).toEqual(DEFAULT_RATIOS);
+    expect(createLayoutStore(corrupt).getState().ratios).toEqual(DEFAULT_RATIOS);
     const outOfRange = memoryStorage({ "layout.v1": JSON.stringify({ left: 4, top: "x", media: 0.3 }) });
-    expect(createLayoutStore(outOfRange).get().ratios).toEqual({ ...DEFAULT_RATIOS, media: 0.3 });
+    expect(createLayoutStore(outOfRange).getState().ratios).toEqual({ ...DEFAULT_RATIOS, media: 0.3 });
   });
 
   it("clamps dragged ratios and persists only on request", () => {
@@ -65,19 +65,19 @@ describe("createLayoutStore", () => {
     const store = createLayoutStore(storage);
     store.setWorkspace({ width: 1600, height: 860 });
     store.setRatio("left", 0.99);
-    expect(store.get().ratios.left).toBeCloseTo(1 - MIN_SIZES.preview / 1600);
+    expect(store.getState().ratios.left).toBeCloseTo(1 - MIN_SIZES.preview / 1600);
     expect(storage.data.size).toBe(0);
     store.persist();
     expect(JSON.parse(storage.data.get("layout.v1")!).left).toBeCloseTo(1 - MIN_SIZES.preview / 1600);
     const reloaded = createLayoutStore(storage);
-    expect(reloaded.get().ratios.left).toBeCloseTo(1 - MIN_SIZES.preview / 1600);
+    expect(reloaded.getState().ratios.left).toBeCloseTo(1 - MIN_SIZES.preview / 1600);
   });
 
   it("resets a splitter to its default", () => {
     const store = createLayoutStore(null);
     store.setRatio("top", 0.3);
     store.resetRatio("top");
-    expect(store.get().ratios.top).toBe(DEFAULT_RATIOS.top);
+    expect(store.getState().ratios.top).toBe(DEFAULT_RATIOS.top);
   });
 
   it("does not notify for identical panel sizes", () => {

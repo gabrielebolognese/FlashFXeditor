@@ -4,7 +4,7 @@
 export type Equality<T> = (a: T, b: T) => boolean;
 
 export interface Store<T> {
-  get(): T;
+  getState(): T;
   set(next: T | ((prev: T) => T)): void;
   subscribe(listener: (state: T, prev: T) => void): () => void;
   /** Calls `onChange` when the selected value changes (by `equals`, default Object.is). */
@@ -33,7 +33,7 @@ export function createStore<T>(initial: T): Store<T> {
   };
 
   return {
-    get: () => state,
+    getState: () => state,
     set(next) {
       const prev = state;
       state = typeof next === "function" ? (next as (prev: T) => T)(prev) : next;

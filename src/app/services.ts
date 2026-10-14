@@ -1,11 +1,16 @@
 // App-wide singletons. Created once; React components and canvas views import them directly.
+import { version as appVersion } from "../../package.json";
+import { ActionRegistry } from "../core/commands/ActionRegistry.js";
+import { createProject } from "../core/document/project.js";
 import { KeyDispatcher } from "../core/keyboard/KeyDispatcher.js";
 import { FocusScopeTracker } from "../core/keyboard/focusScope.js";
 import { DEFAULT_KEYMAP } from "../core/keyboard/keymap.js";
 import { detectPlatform } from "../core/keyboard/keys.js";
 import { FrameScheduler } from "../core/scheduler/FrameScheduler.js";
 import { IdleQueue } from "../core/scheduler/IdleQueue.js";
+import { DocumentStore } from "../core/store/DocumentStore.js";
 import { createLayoutStore } from "../core/store/layoutStore.js";
+import { createSessionStore } from "../core/store/sessionStore.js";
 import { ThemeBridge } from "../core/theme/theme.js";
 import { installTooltips } from "../ui/tooltipController.js";
 
@@ -22,6 +27,20 @@ export const scheduler = new FrameScheduler();
 export const idleQueue = new IdleQueue();
 export const focusScopes = new FocusScopeTracker();
 export const layoutStore = createLayoutStore(localStorageOrNull());
+export const sessionStore = createSessionStore();
+// TODO(batch 03): the document comes from the opened project folder.
+export const documentStore = new DocumentStore(
+  createProject({ id: crypto.randomUUID(), name: "Untitled project", now: new Date().toISOString(), appVersion }),
+  { session: sessionStore },
+);
+export const actions = new ActionRegistry();
+
+actions.register("history.undo", () => {
+  documentStore.undo();
+});
+actions.register("history.redo", () => {
+  documentStore.redo();
+});
 
 /** Starts the global listeners (keyboard, focus scopes, theme, tooltips). Returns a stop function. */
 export function startServices(): () => void {
@@ -32,8 +51,9 @@ export function startServices(): () => void {
     keymap: DEFAULT_KEYMAP,
     platform: detectPlatform(),
     getScope: () => focusScopes.scope,
-    // TODO(batch 02): dispatch to the command registry instead of logging.
     onAction: (id, context) => {
+      if (actions.has(id)) return actions.run(id, context);
+      // Not wired yet: log it and keep consuming the key, as before.
       console.debug("[cmd]", id, context);
     },
   });

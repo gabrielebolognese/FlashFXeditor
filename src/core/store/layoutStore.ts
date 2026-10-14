@@ -104,7 +104,7 @@ export function createLayoutStore(storage: StorageLike | null): LayoutStore {
     },
     persist() {
       try {
-        storage?.setItem(STORAGE_KEY, JSON.stringify(store.get().ratios));
+        storage?.setItem(STORAGE_KEY, JSON.stringify(store.getState().ratios));
       } catch {
         // Storage full or blocked: layout simply does not persist.
       }
