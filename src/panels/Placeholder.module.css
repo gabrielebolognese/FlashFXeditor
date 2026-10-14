@@ -1,0 +1,24 @@
+.placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  width: 100%;
+  height: 100%;
+  padding: var(--space-4);
+  text-align: center;
+}
+
+.name {
+  font: var(--type-overline);
+  letter-spacing: var(--type-overline-track);
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.detail {
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-track);
+  color: var(--text-muted);
+}

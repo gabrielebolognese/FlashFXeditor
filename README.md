@@ -1,25 +1,29 @@
-# ts-project
+# Shorts Editor
 
-Blank TypeScript project (Node, ESM, strict).
+Browser-based editor for short-form vertical video. Desktop Chrome or Edge only (WebGPU, WebCodecs,
+File System Access).
+
+- Specification: `docs/EDITOR_SPEC.md`
+- Build plan and progress: `docs/BATCHES.md`, `docs/PROGRESS.md`
+- Design system: `DESIGN_SYSTEM.md`
 
 ## Setup
 
+Requires Node 22.12 or newer.
+
 ```bash
 npm install
+npm run dev
 ```
 
 ## Scripts
 
 | Command | What it does |
 | --- | --- |
-| `npm run dev` | Run `src/index.ts` with tsx, watching for changes |
-| `npm run build` | Compile to `dist/` |
-| `npm start` | Run the compiled output |
+| `npm run dev` | Vite dev server |
+| `npm run build` | Production build to `dist/` |
+| `npm run preview` | Serve the production build |
 | `npm run typecheck` | Type check without emitting |
-| `npm test` | Run vitest once |
-| `npm run test:watch` | Run vitest in watch mode |
-
-## Notes
-
-- ESM only (`"type": "module"`), so relative imports need the `.js` extension even in `.ts` files.
-- `tsconfig.json` is strict, including `noUncheckedIndexedAccess` and `exactOptionalPropertyTypes`. Loosen those first if a dependency fights you.
+| `npm run lint` | ESLint (including the color-literal rule) and the CSS color check |
+| `npm test` | Run Vitest once |
+| `npm run check` | typecheck + lint + test + build |

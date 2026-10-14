@@ -1,20 +1,23 @@
 # Project context
 
-Blank TypeScript scaffold. Node >= 20, ESM, strict tsconfig, vitest for tests.
+Shorts Editor: browser video editor. Vite + React 18 (chrome only) + TypeScript strict, ESM, Vitest (jsdom). Node >= 22.12.
 
 ## Conventions
 
 - ESM only. Relative imports must end in `.js` (e.g. `import { x } from "./thing.js"`).
 - Source lives in `src/`, build output in `dist/` (gitignored).
 - Tests are colocated as `*.test.ts` next to the code they cover.
-- Run `npm run typecheck` before considering a change done.
+- Styling: CSS Modules (`*.module.css`) with design tokens from `src/styles/tokens.css`; color literals live only in that file (enforced by `npm run lint`).
+- Run `npm run check` before considering a change done.
 
 ## Commands
 
 - Dev: `npm run dev`
 - Build: `npm run build`
 - Typecheck: `npm run typecheck`
+- Lint (ESLint + CSS color check): `npm run lint`
 - Test: `npm test`
+- Everything: `npm run check`
 
 # Shorts Editor: project memory
 

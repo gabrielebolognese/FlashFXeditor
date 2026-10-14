@@ -1,0 +1,89 @@
+.bar {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.group {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-0);
+}
+
+/* Divider before every group but the first; it belongs to the group so hiding the group hides it. */
+.group + .group::before {
+  content: "";
+  flex: none;
+  width: 1px;
+  height: var(--space-5);
+  margin: 0 var(--space-2);
+  background: var(--hairline);
+}
+
+.group[hidden],
+.more[hidden] {
+  display: none;
+}
+
+.more {
+  display: flex;
+  flex: none;
+  padding-left: var(--space-2);
+}
+
+.end {
+  display: flex;
+  flex: none;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin-left: auto;
+  padding-left: var(--space-4);
+}
+
+.timecode {
+  color: var(--text-primary);
+  font: var(--type-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.duration {
+  color: var(--text-tertiary);
+  font: var(--type-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.slider {
+  flex: none;
+  width: calc(var(--space-6) * 3);
+  height: var(--control-compact);
+  margin: 0 var(--space-1);
+  accent-color: var(--accent);
+}
+
+.slider:disabled {
+  opacity: var(--disabled-opacity);
+}
+
+.overflowMenu {
+  position: fixed;
+  z-index: var(--z-overlay);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-1);
+  margin-top: var(--space-1);
+  padding: var(--space-1);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  background: var(--material-menu-bg);
+  backdrop-filter: var(--material-menu-filter);
+  box-shadow: var(--shadow-overlay);
+}
+
+/* Inside the overflow menu each group is its own row, so no dividers. */
+.overflowMenu .group + .group::before {
+  display: none;
+}

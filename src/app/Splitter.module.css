@@ -1,0 +1,62 @@
+/* The hit area is wider than the visible hairline; both are design-system gaps (see tokens.css). */
+.splitter {
+  position: absolute;
+  z-index: 1;
+  touch-action: none;
+}
+
+.splitter[data-axis="x"] {
+  top: 0;
+  bottom: 0;
+  width: var(--splitter-hit);
+  transform: translateX(-50%);
+  cursor: col-resize;
+}
+
+.splitter[data-axis="y"] {
+  left: 0;
+  right: 0;
+  height: var(--splitter-hit);
+  transform: translateY(-50%);
+  cursor: row-resize;
+}
+
+.splitter[data-splitter="left"] {
+  left: calc(var(--layout-left) * 100%);
+}
+
+.splitter[data-splitter="media"] {
+  left: calc(var(--layout-media) * 100%);
+}
+
+.splitter[data-splitter="top"] {
+  top: calc(var(--layout-top) * 100%);
+}
+
+.splitter::after {
+  content: "";
+  position: absolute;
+  background: var(--hairline);
+  transition: background-color var(--duration-micro) var(--ease-out);
+}
+
+.splitter[data-axis="x"]::after {
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: var(--splitter-line);
+  transform: translateX(-50%);
+}
+
+.splitter[data-axis="y"]::after {
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: var(--splitter-line);
+  transform: translateY(-50%);
+}
+
+.splitter:hover::after,
+.splitter[data-dragging]::after {
+  background: var(--accent-dim);
+}

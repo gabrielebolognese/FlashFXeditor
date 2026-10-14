@@ -1,0 +1,34 @@
+/*
+ * Layout of spec §2. The split ratios are CSS variables written by useWorkspaceLayout from the layout
+ * store; splitters sit absolutely on the boundaries, so panels share edges with no gutters.
+ */
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.workspace {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, calc(var(--layout-left) * 100%)) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.leftGroup {
+  position: relative;
+  display: grid;
+  grid-template-rows: minmax(0, calc(var(--layout-top) * 100%)) minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+}
+
+.topRow {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, calc(var(--layout-media) * 100%)) minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+}

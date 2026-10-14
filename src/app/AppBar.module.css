@@ -1,0 +1,103 @@
+.bar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-2);
+  height: var(--appbar-height);
+  padding: 0 var(--space-2) 0 var(--space-3);
+  border-bottom: 1px solid var(--hairline);
+  background: var(--surface-1);
+}
+
+.brand {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: calc(var(--space-6) - var(--space-1));
+  height: calc(var(--space-6) - var(--space-1));
+  border-radius: var(--radius-sm);
+  background: var(--brand-gold);
+  color: var(--on-brand-gold);
+  font: var(--type-body-strong);
+}
+
+.projectName {
+  margin-left: var(--space-1);
+  overflow: hidden;
+  color: var(--text-primary);
+  font: var(--type-title);
+  letter-spacing: var(--type-title-track);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.saveDot {
+  flex: none;
+  width: var(--space-2);
+  height: var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--text-muted);
+}
+
+.saveDot[data-state="saved"] {
+  background: var(--success);
+}
+
+.saveDot[data-state="dirty"] {
+  background: var(--accent);
+}
+
+.saveDot[data-state="error"] {
+  background: var(--danger);
+}
+
+.divider {
+  flex: none;
+  width: 1px;
+  height: var(--space-5);
+  margin: 0 var(--space-1);
+  background: var(--hairline);
+}
+
+.badge {
+  flex: none;
+  padding: var(--space-0) var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--surface-3);
+  color: var(--text-secondary);
+  font: var(--type-mono);
+  white-space: nowrap;
+}
+
+.spacer {
+  flex: 1 1 auto;
+}
+
+/* The one hero button of the screen: brand-gold gradient. */
+.export {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-2);
+  height: var(--control-default);
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--brand-gold);
+  color: var(--on-brand-gold);
+  font: var(--type-body-strong);
+  letter-spacing: var(--type-body-strong-track);
+  transition: background var(--duration-micro) var(--ease-out);
+}
+
+.export:not([aria-disabled]):hover {
+  background: var(--brand-gold-hover);
+}
+
+.export[aria-disabled] {
+  opacity: var(--disabled-opacity);
+}
+
+.exportIcon {
+  width: var(--icon-size);
+  height: var(--icon-size);
+}

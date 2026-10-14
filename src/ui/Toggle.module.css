@@ -1,0 +1,37 @@
+/* Switch metrics are a design-system gap: track = default control width x 16px, thumb 12px. */
+.toggle {
+  position: relative;
+  flex: none;
+  width: var(--control-default);
+  height: var(--space-5);
+  border-radius: var(--radius-pill);
+  background: var(--surface-4);
+  box-shadow: var(--shadow-top-highlight);
+  transition: background-color var(--duration-micro) var(--ease-out);
+}
+
+.thumb {
+  position: absolute;
+  top: var(--space-0);
+  left: var(--space-0);
+  width: var(--space-4);
+  height: var(--space-4);
+  border-radius: var(--radius-pill);
+  background: var(--text-tertiary);
+  transition:
+    transform var(--duration-micro) var(--ease-out),
+    background-color var(--duration-micro) var(--ease-out);
+}
+
+.toggle[aria-checked="true"] {
+  background: var(--accent);
+}
+
+.toggle[aria-checked="true"] .thumb {
+  background: var(--on-accent);
+  transform: translateX(calc(var(--control-default) - var(--space-4) - 2 * var(--space-0)));
+}
+
+.toggle[aria-disabled] {
+  opacity: var(--disabled-opacity);
+}

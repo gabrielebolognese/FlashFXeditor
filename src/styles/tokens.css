@@ -1,0 +1,163 @@
+/*
+ * Design tokens transcribed from DESIGN_SYSTEM.md. This is the ONLY file allowed to contain color
+ * literals (enforced by eslint + scripts/check-css-colors.mjs). Canvases read these through
+ * src/core/theme/theme.ts. Values marked "gap" are not defined by the design system; they are
+ * functional defaults logged in docs/PROGRESS.md.
+ */
+
+:root,
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* Surface ladder, depth via a lighter step, never a shadow */
+  --bg-sunken: #070f1c;
+  --bg: #0a1424;
+  --surface-1: #0e1b2e;
+  --surface-2: #142338;
+  --surface-3: #1a2a42;
+  --surface-4: #21344e;
+  --surface-5: #2a3f5c;
+
+  /* Lines, white-alpha, adapt to any surface */
+  --hairline: rgba(255, 255, 255, 0.08);
+  --border: rgba(255, 255, 255, 0.14);
+  --hover-wash: rgba(255, 255, 255, 0.04); /* menus: hover = bg-white/[0.04] */
+
+  /* Accent, the gold, used sparingly */
+  --accent: #d9a521;
+  --accent-hover: #f0bd45;
+  --accent-wash: rgba(217, 165, 33, 0.12);
+  --accent-dim: #a87d18;
+  --on-accent: #12161c;
+
+  /* Brand gold (logo mark + one hero button per screen) */
+  --brand-gold-from: #f7b500;
+  --brand-gold-to: #e09000;
+  --brand-gold-hover: #ffc83d;
+  --on-brand-gold: #0a0f16;
+  --brand-gold: linear-gradient(135deg, var(--brand-gold-from), var(--brand-gold-to));
+
+  /* Text, hierarchy via value step */
+  --text-primary: #e6edf6;
+  --text-secondary: #94a3b8;
+  --text-tertiary: #64748b;
+  --text-muted: #475569;
+
+  /* Semantic */
+  --success: #3dbe7a;
+  --danger: #e5545a;
+  --info: #4c86d6;
+  --live: #ff3b5c;
+
+  /* Typography */
+  --font-ui: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+  --font-mono: "SF Mono", ui-monospace, "Cascadia Code", monospace;
+
+  /* Type scale: size / line / tracking / weight. Tracking unit is px (gap: the DS gives unitless values). */
+  --type-overline-size: 10px;
+  --type-overline-line: 12px;
+  --type-overline-track: 0.4px;
+  --type-overline-weight: 600;
+  --type-caption-size: 11px;
+  --type-caption-line: 14px;
+  --type-caption-track: 0.05px;
+  --type-caption-weight: 500;
+  --type-body-size: 12px;
+  --type-body-line: 16px;
+  --type-body-track: 0px;
+  --type-body-weight: 450;
+  --type-body-strong-size: 12px;
+  --type-body-strong-line: 16px;
+  --type-body-strong-track: 0px;
+  --type-body-strong-weight: 600;
+  --type-title-size: 13px;
+  --type-title-line: 18px;
+  --type-title-track: -0.1px;
+  --type-title-weight: 600;
+  --type-stat-size: 15px;
+  --type-stat-line: 20px;
+  --type-stat-track: -0.2px;
+  --type-stat-weight: 600;
+  --type-display-size: 22px;
+  --type-display-line: 26px;
+  --type-display-track: -0.4px;
+  --type-display-weight: 600;
+
+  /* Font shorthands composed from the scale (pair with the matching -track for letter-spacing) */
+  --type-overline: var(--type-overline-weight) var(--type-overline-size) / var(--type-overline-line) var(--font-ui);
+  --type-caption: var(--type-caption-weight) var(--type-caption-size) / var(--type-caption-line) var(--font-ui);
+  --type-body: var(--type-body-weight) var(--type-body-size) / var(--type-body-line) var(--font-ui);
+  --type-body-strong: var(--type-body-strong-weight) var(--type-body-strong-size) / var(--type-body-strong-line) var(--font-ui);
+  --type-title: var(--type-title-weight) var(--type-title-size) / var(--type-title-line) var(--font-ui);
+  --type-stat: var(--type-stat-weight) var(--type-stat-size) / var(--type-stat-line) var(--font-ui);
+  --type-display: var(--type-display-weight) var(--type-display-size) / var(--type-display-line) var(--font-ui);
+  --type-mono: var(--type-caption-weight) var(--type-caption-size) / var(--type-caption-line) var(--font-mono);
+
+  /* Radii */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --radius-island: 14px;
+  --radius-pill: 999px;
+
+  /* Control heights */
+  --control-compact: 24px;
+  --control-default: 28px;
+  --control-comfortable: 32px;
+
+  /* Icons (DS: 11-16px, 13-14 typical in toolbars) */
+  --icon-size: 14px;
+  --icon-size-sm: 12px;
+
+  /* Spacing (gap: the DS uses Tailwind steps but defines no tokens) */
+  --space-0: 2px;
+  --space-1: 4px;
+  --space-2: 6px;
+  --space-3: 8px;
+  --space-4: 12px;
+  --space-5: 16px;
+  --space-6: 24px;
+
+  /* Shell metrics (DS: headers ~36-44px; exact values are gaps) */
+  --appbar-height: 40px;
+  --panel-header-height: 32px;
+  --splitter-line: 1px;
+  --splitter-hit: 6px;
+
+  /* Elevation, floating only */
+  --shadow-overlay: 0 8px 24px -4px rgba(0, 0, 0, 0.5), 0 2px 6px -2px rgba(0, 0, 0, 0.4);
+  --shadow-modal: 0 16px 48px -8px rgba(0, 0, 0, 0.6), 0 4px 12px -4px rgba(0, 0, 0, 0.45);
+  --shadow-top-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --focus-ring: 0 0 0 2px rgba(217, 165, 33, 0.55), 0 0 0 4px rgba(217, 165, 33, 0.15);
+
+  /* Materials (glass), floating surfaces only */
+  --material-menu-bg: rgba(26, 42, 66, 0.85);
+  --material-menu-filter: blur(24px) saturate(1.8);
+  --material-island-bg: rgba(20, 35, 57, 0.78);
+  --material-island-filter: blur(20px) saturate(1.8);
+  --material-scrim-bg: rgba(0, 0, 0, 0.6);
+  --material-scrim-filter: blur(4px);
+
+  /* Motion */
+  --duration-instant: 80ms;
+  --duration-micro: 120ms;
+  --duration-standard: 200ms;
+  --duration-large: 300ms;
+  --ease-out: cubic-bezier(0.2, 0, 0, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-move: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-spring: cubic-bezier(0.34, 1.3, 0.64, 1);
+
+  /* States */
+  --disabled-opacity: 0.6;
+  --tooltip-delay: 400ms; /* gap */
+
+  /* Z-index ladder */
+  --z-canvas-banner: 40;
+  --z-overlay: 90;
+  --z-island: 95;
+  --z-modal: 100;
+  --z-recovery: 200;
+  --z-top: 9999;
+}
