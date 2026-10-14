@@ -1,7 +1,11 @@
 // The one message protocol of the media workers (spec §3.5): typed methods, request ids, priorities
 // and cancellation. The main thread talks to workers only through WorkerPool; workers serve requests
-// through WorkerHost. Results carry transferables (ImageBitmap, VideoFrame, ArrayBuffer) only.
+// through WorkerHost. Results carry transferables (ImageBitmap, VideoFrame, ArrayBuffer) only. A
+// request may also post `progress` values before its result (frames of a prefetch, the approximate
+// frame of a scrub).
+import type { Lod } from "../cache/TexturePool.js";
 import type { ProbeResult } from "../probe/types.js";
+import type { Rotation } from "../probe/rotation.js";
 
 /** Scheduling classes, most urgent first. A worker starts queued requests in this order. */
 export type Priority = "user" | "playback" | "prefetch" | "background";
@@ -20,6 +24,60 @@ export interface PosterResult {
 /** Containers a worker can probe. Audio-only formats and SVG are probed on the main thread. */
 export type WorkerContainer = "mp4" | "image";
 
+/** Frame request classes (spec §3.5, P8), most urgent first. */
+export type FramePriority = "scrub" | "playback" | "idle";
+
+export const FRAME_PRIORITY_RANK: Record<FramePriority, number> = { scrub: 0, playback: 1, idle: 2 };
+
+/** A video opened for frame requests. */
+export interface VideoInfo {
+  /** Frame times in display order: integer us of the container cts (edit lists not applied). */
+  frameTimesUs: Float64Array;
+  codec: string;
+  codedWidth: number;
+  codedHeight: number;
+  /** Clockwise quarter turns to show the frame upright (applied in the layer transform, §9.3). */
+  rotation: Rotation;
+  /** False when this browser has no decoder for the codec (`VideoDecoder.isConfigSupported`). */
+  decodable: boolean;
+  /** True when the sample index was loaded from cache/index/ instead of parsing the file. */
+  indexFromCache: boolean;
+}
+
+export interface OpenVideoResult {
+  info: VideoInfo;
+  /** A newly built sample index for cache/index/; null when it was loaded from there. */
+  index: ArrayBuffer | null;
+}
+
+/** A decoded frame posted to the main thread, which uploads and closes it at once (P5, P13). */
+export interface DeliveredFrame {
+  frame: VideoFrame;
+  /** The frame's time (us), a value of `VideoInfo.frameTimesUs`. */
+  timeUs: number;
+  /** The nearest keyframe, shown while the exact frame decodes (P8). */
+  approximate: boolean;
+}
+
+/** Decode statistics of the worker (dev stats). */
+export interface WorkerDecodeStats {
+  /** Sessions with a sample index (one per media and lod opened). */
+  sessions: number;
+  /** Sessions holding a VideoDecoder. */
+  liveDecoders: number;
+  /** VideoFrames the worker holds (backward-step rings). */
+  openFrames: number;
+  seeks: number;
+  decoded: number;
+  /** Decoded frames never delivered (before a seek target, or cancelled). */
+  dropped: number;
+  ringHits: number;
+  /** Waits that ended with one more chunk fed (decoders holding frames longer than the content needs). */
+  stalls: number;
+  indexParsed: number;
+  indexFromCache: number;
+  idleCloses: number;
+}
 export interface WorkerMethods {
   /** Metadata of a media file. */
   probe: { params: { file: Blob; container: WorkerContainer; type: string }; result: ProbeResult };
@@ -27,14 +85,32 @@ export interface WorkerMethods {
   poster: { params: { file: Blob; kind: "video" | "image"; maxSize: number }; result: PosterResult };
   /** Decodes an image file (cached posters) into a bitmap of at most `maxSize` px. */
   decodeImage: { params: { blob: Blob; maxSize: number }; result: ImageBitmap };
-  // TODO(batch 06): requestFrame(mediaId, timeUs, priority, lod) and prefetch(mediaId, fromUs, toUs).
+  /** Loads (cachedIndex) or builds the sample index of a video and checks that it can be decoded. */
+  openVideo: { params: { mediaId: string; lod: Lod; file: File; cachedIndex: Blob | null }; result: OpenVideoResult };
+  /** The frame shown at `timeUs`. Scrubs far from a keyframe post the keyframe first as progress. */
+  requestFrame: { params: { mediaId: string; lod: Lod; timeUs: number; priority: FramePriority }; result: DeliveredFrame; progress: DeliveredFrame };
+  /** Decodes the frames shown in [fromUs, toUs] and posts each one as progress. */
+  prefetch: { params: { mediaId: string; lod: Lod; fromUs: number; toUs: number }; result: { frames: number }; progress: DeliveredFrame };
+  /** Closes the sessions of a media (removed from the project, or the project closed). */
+  closeVideo: { params: { mediaId: string }; result: null };
+  decodeStats: { params: Record<string, never>; result: WorkerDecodeStats };
 }
 
 export type Method = keyof WorkerMethods;
 export type Params<M extends Method> = WorkerMethods[M]["params"];
 export type Result<M extends Method> = WorkerMethods[M]["result"];
+export type Progress<M extends Method> = WorkerMethods[M] extends { progress: infer P } ? P : never;
 
-export const METHOD_WORKER: Record<Method, WorkerKind> = { probe: "decode", poster: "decode", decodeImage: "decode" };
+export const METHOD_WORKER: Record<Method, WorkerKind> = {
+  probe: "decode",
+  poster: "decode",
+  decodeImage: "decode",
+  openVideo: "decode",
+  requestFrame: "decode",
+  prefetch: "decode",
+  closeVideo: "decode",
+  decodeStats: "decode",
+};
 
 export type RequestMessage = { [M in Method]: { type: "request"; id: number; method: M; priority: Priority; params: Params<M> } }[Method];
 export interface CancelMessage {
@@ -49,7 +125,7 @@ export interface ErrorInfo {
   message: string;
 }
 
-export type FromWorker = { type: "result"; id: number; value: unknown } | { type: "error"; id: number; error: ErrorInfo };
+export type FromWorker = { type: "result"; id: number; value: unknown } | { type: "progress"; id: number; value: unknown } | { type: "error"; id: number; error: ErrorInfo };
 
 export function toErrorInfo(error: unknown): ErrorInfo {
   if (typeof error === "object" && error !== null) {

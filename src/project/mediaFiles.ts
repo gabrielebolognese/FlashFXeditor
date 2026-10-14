@@ -1,10 +1,12 @@
 // Media files inside the project folder (spec §9.1 copy mode, §9.7): sources are copied into media/
-// under names that never overwrite another file, and poster thumbnails live in cache/thumbs/.
+// under names that never overwrite another file; poster thumbnails live in cache/thumbs/ and video
+// sample indexes in cache/index/.
 import type { FsDir, WriteFileOptions } from "./fs.js";
 import { subdir } from "./layout.js";
 
 export const MEDIA_DIR = "media";
 export const THUMBS_DIR = "cache/thumbs";
+export const INDEX_DIR = "cache/index";
 
 const MAX_NAME_LENGTH = 180;
 // Characters Windows, macOS or the File System Access API refuse in names, and control characters.
@@ -94,4 +96,9 @@ export async function copyIntoMedia(root: FsDir, file: Blob, name: string, taken
 /** Where a media item's poster thumbnail is cached (disposable). */
 export function posterPath(mediaId: string): string {
   return `${THUMBS_DIR}/${mediaId}.poster.webp`;
+}
+
+/** Where a video's sample index is cached (disposable, spec §9.2). */
+export function sampleIndexPath(mediaId: string): string {
+  return `${INDEX_DIR}/${mediaId}.bin`;
 }

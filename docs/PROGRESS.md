@@ -1,6 +1,6 @@
 # Progress
 
-last_completed_batch: 05
+last_completed_batch: 06
 in_progress_batch: none
 skipped_batches: []
 needs_human: none
@@ -28,7 +28,8 @@ Items the design system did not define and the functional default that was used 
 - Media list view: 24px sticky header (overline columns, the active one primary with a chevron), 28px rows with hairline separators, hover `--hover-wash`, selected `--accent-wash`; thumbnail column `--media-list-thumb-width` 40px; minimum width 24 x `--control-default` with horizontal scroll. (Batch 04)
 - Compact Select (24px, caption type) for panel header strips; empty media state: 28px muted icon, title type, caption hint, primary "Import media". (Batch 04)
 - Preview canvas: outside the frame `--bg-sunken` (same as the well), frame edge a 1 px `--hairline` (one device px per CSS px, rounded), margin around the frame at Fit `--preview-margin` = `--space-5` (16px). The frame interior is the project background. (Batch 05)
-- Dev GPU stats readout: a `--type-mono` chip on `--surface-3` with a hairline border and radius-sm, top-left over the preview at `--space-3`, secondary text. (Batch 05)
+- Dev GPU stats readout: a `--type-mono` chip on `--surface-3` with a hairline border and radius-sm, top-left over the preview at `--space-3`, secondary text. (Batch 05) Since Batch 06 it spans the well (left and right `--space-3`) and wraps its lines.
+- Dev scrub bar (temporary, Batch 06): a `--control-default` (28px) strip at the bottom of the preview well, `--space-3` from the edges, `--surface-3` with a hairline border and radius-md; a range input with `accent-color: var(--accent)`; a `--type-mono` readout in secondary text with tabular figures; a `--type-badge` status (tertiary, "exact" secondary, "approx" `--info`, errors `--danger` on the new `--danger-wash` = danger at 12%, DS: "semantic states use success/danger/info at low opacity"). (Batch 06)
 
 ## Global deviations
 Decisions that diverge from docs/EDITOR_SPEC.md, with the reason. Each one also appears under its batch.
@@ -40,6 +41,8 @@ Decisions that diverge from docs/EDITOR_SPEC.md, with the reason. Each one also 
 - Backups in `history/` are named with UTC timestamps (`project-YYYYMMDD-HHMMSS.json`, then `-2`, `-3`... for saves within one second). Reason: local time can run backwards at a daylight-saving fall-back, and the rotation (oldest name first) would then delete the new backups. (Batch 03)
 - `edit.delete` (Delete/Backspace) is also bound in the `media` scope. Reason: §12 asks for Delete in the media panel while the §18 table lists only timeline and preview; §12 is the more specific rule. (Batch 04)
 - Media items are created with their applicable analysis `pending` (§9.1); the IdleQueue consumer picks them up and queues placeholder jobs without writing the document (no undo steps). (Batch 04)
+- The sample index is built from the moov's sample tables (read by `readMp4`, mdat never read), not by streaming the whole file through mp4box extraction (§9.2, Batch 06 Build). For the MP4/MOV files the app accepts, the moov already lists every sample's offset, size, dts, cts and sync flag; streaming would read gigabytes of mdat for nothing. Fragmented MP4 (samples in moof boxes) is refused by the probe since Batch 04. (Batch 06)
+- Seeks feed the keyframe straight into the running decoder, with no `flush()` and no `reset()` (§9.2 says "flush, feed from the sync sample"). Measured in Chrome 155 on an RDNA2 GPU: 11 frames of 4K HEVC took ~110 ms fed straight on, and 300-600 ms after a flush or a reset + configure (1080p H.264: 32-55 ms against 137-152 ms). Frame requests feed only what their target needs (`feedUntil`), so the decoder is idle when the next seek comes. (Batch 06)
 - The frame rate can change only while the project has no clips and no markers; resolution changes use "keep". Reason: the §15 conversions (fps ratio, "Scale layout") belong to Batch 42 (this batch's "Do not build yet"), and an unconverted fps change breaks the media-clip duration invariant. (Batch 03)
 
 ## Follow-ups
@@ -59,7 +62,7 @@ Small things discovered during a batch that belong to a later batch. Format: `- 
 - [from Batch 03 -> Batch 25] The Project section is a plain section: make it collapsible (state in `collapsedSections`) with the properties framework; `TextField` has no scrub mode.
 - [from Batch 03 -> Batch 40] Mod+S does nothing while a text input or a dialog has focus (inputs own their keys, the dialog scope is isolated), so Chrome's "Save page" dialog opens. Decide whether Mod+S is preventDefault-ed everywhere.
 - [from Batch 03 -> Batch 04] The 10,000-dispatch perf test (`src/core/store/DocumentStore.test.ts`, limit 300 ms) hit 332 ms best-of-3 in one full `npm run check` while 32 jsdom test files ran in parallel (56–90 ms alone). Run perf tests in their own sequential pass (or a separate Vitest project) so CPU contention cannot turn an unattended run red. (done in Batch 04: `*.perf.test.ts` run in the "perf" Vitest project after the unit tests)
-- [from Batch 04 -> Batch 06] The decode engine builds on `readMp4` (sample table, description, rotation) and `ByteSource`; persist the sample index in `cache/index/`; add cancellation by priority class (a scrub cancels pending prefetches of the same media) to `WorkerHost`/`WorkerPool` (only per-request cancellation exists).
+- [from Batch 04 -> Batch 06] The decode engine builds on `readMp4` (sample table, description, rotation) and `ByteSource`; persist the sample index in `cache/index/`; add cancellation by priority class (a scrub cancels pending prefetches of the same media) to `WorkerHost`/`WorkerPool` (only per-request cancellation exists). (done in Batch 06: `demux/sampleIndex*.ts` + `cache/index/<id>.bin`; the class cancellation lives in `FrameService`, which aborts the superseded scrub and the prefetches of the media through the existing per-request cancel messages)
 - [from Batch 04 -> Batch 10] The audio probe decodes whole non-MP4 files with `decodeAudioData` (resampled to 48 kHz, so the source rate is unknown; long files cost memory): reuse the decoded-audio cache / segmented decode. The peaks job replaces the `AnalysisScheduler` placeholder; decide how `analysis.peaks` becomes "ready" without an undo step per media.
 - [from Batch 04 -> Batch 15] `edit.delete` and `edit.rename` are registered in `app/mediaController.ts` and only log outside the media scope: route the timeline/preview scopes to clip delete/rename there (or split the handler by scope).
 - [from Batch 04 -> Batch 17] Card posters (first frame, `cache/thumbs/<id>.poster.webp`) give way to the sprite sheets; the analysis placeholder marks `analysis.thumbs`.
@@ -74,8 +77,12 @@ Small things discovered during a batch that belong to a later batch. Format: `- 
 - [from Batch 05 -> Batch 21] The header Zoom select (Fit/25-400%, session `preview.zoom`) is the Batch 05 stand-in: pan, wheel zoom at the cursor, Mod+0/1/2 (`canvas.zoom*` are in the keymap but unregistered), the §7.1 detail-on-zoom offscreen render, quality modes. 100% = one project px per device px (see the batch deviations). The canvas CSS size follows the fractional panel size; use `devicePixelContentBoxSize` if exact backing pixels matter.
 - [from Batch 05 -> Batch 44] Export frame lives in the preview header (`preview.exportFrame`, `exportFrame()` in `app/previewController.ts`: picker first, then `PreviewView.renderFrame()` at project size, PNG); move or mirror it in the Export tab.
 - [from Batch 05 -> Batch 46] The dev pool-budget select and the GPU stats toggle show in dev builds only (`import.meta.env.DEV`); §13 wants the pool memory in the status strip behind a dev toggle.
-- [from Batch 05 -> Batch 06] `WebGpuRenderer.uploadImageBitmap`/`uploadVideoFrame`: destroy the new texture when `copyExternalImageToTexture` throws (closed source) before rethrowing (P13). (found in the Batch 05 review)
+- [from Batch 05 -> Batch 06] `WebGpuRenderer.uploadImageBitmap`/`uploadVideoFrame`: destroy the new texture when `copyExternalImageToTexture` throws (closed source) before rethrowing (P13). (found in the Batch 05 review) (done in Batch 06: `WebGpuRenderer.copyIn`)
 - [from Batch 05 -> Batch 08] `PreviewStatsOverlay` can run before the preview render it reports when `previewOverlay` is invalidated first in a frame (`FrameScheduler` orders views by flag invalidation order): it then shows `renders` one behind. Make the overlay invalidate itself from the preview's render, or have the scheduler render `previewOverlay` views after `preview` ones. (found in the Batch 05 review)
+- [from Batch 06 -> Batch 08] Remove `render/preview/VideoHarness.ts`, the `ScrubBar` of `PreviewPanel.tsx` (and its `.scrub*` CSS), `PreviewView.clearLayers` and `pickPreviewMedia` with the image harness. The compositor asks `frameService.getFrame(mediaId, sourceTimeUs, { priority })` and pins what it draws. Frame times are the container's cts in us with no edit list applied (a file with a composition offset starts after 0; `positionAt` maps earlier times to the first frame): decide how media time maps to cts there.
+- [from Batch 06 -> Batch 09] Uploads cost decoder throughput: `copyExternalImageToTexture` from a hardware frame took 1080p H.264 from 2.9 ms/frame (frames closed) to 7.3 (one reused texture) and 8.5-11.5 (a new texture per frame), and 4K HEVC from 11 to 21-29 ms/frame (headless Chrome 155, RDNA2). For playback, recycle evicted frame textures of the same size instead of create + destroy, and consider `importExternalTexture` for the frame on screen. Use `frameService.prefetch` windows rather than one request per frame (a request round trip costs 15-30 ms per frame). Hardware decoders stall when the app holds many of their frames (20 held frames hung one); the session's stall fallback frees its ring, but keep windows small.
+- [from Batch 06 -> Batch 24] Exact-frame latency deep in a GOP is bound by the hardware decode rate (~10 ms per 4K HEVC frame at 84 Mbps: median 593 ms 41-59 frames past a keyframe in 1 s GOPs). Proxies (540p, a keyframe every 15 frames) are the way to P8's 50 ms. `lod: "proxy"` has no file yet: `frameSource` in `app/previewController.ts` returns null (`TODO(batch 24)`), and its sample index needs its own cache name.
+- [from Batch 06 -> Batch 41] `frameSource` resolves copy-mode media only (`TODO(batch 41)`: media referenced by a file handle).
 - [from Batch 03 -> Batch 42] fps conversion and "Scale layout" in the Project section (`project.setFrameRate` refuses projects with clips or markers); recent-project thumbnails (`RecentProject.thumbnail` is null); the autosave delay moves to the settings panel (stored in IndexedDB `settings.v1`); the history list reads backup names with `backupSortKey` (UTC, `-N` suffix).
 
 ## Dependencies
@@ -366,3 +373,106 @@ Why each dependency exists (Batch rule 8).
   - Observations (not blocking; follow-ups added):
     1. `src/render/preview/PreviewStatsOverlay.ts:28`: the comment says the overlay runs after the preview render it reports. But `FrameScheduler.frame` (`src/core/scheduler/FrameScheduler.ts:59-63`) orders views by the order their flags were invalidated. When a new image loads, `pool.put` (`src/render/preview/ImageHarness.ts:111`) invalidates `previewOverlay` before `draw` -> `setLayers` (line 90) invalidates `preview`. The overlay then writes the old `renders` count and stays one behind until the next invalidation. Dev only; the splitter-drag check is not affected, because only `preview` is dirty there.
     2. `src/render/gpu/WebGpuRenderer.ts:167-168` and `176-177`: when `copyExternalImageToTexture` throws (a closed `ImageBitmap` or `VideoFrame`), the texture just created is neither returned nor destroyed, so its GPU memory waits for garbage collection (P13). No caller can reach this today. `uploadVideoFrame` gets its first caller in Batch 06.
+
+### Batch 06: Video decode engine and frame delivery
+- status: done
+- date: 2026-10-14
+- notes:
+  - Protocol (§3.5): `media/workers/protocol.ts` gains a `progress` message (one request can post several frames before its result), the frame priorities `scrub > playback > idle`, and the methods `openVideo`, `requestFrame`, `prefetch`, `closeVideo` and `decodeStats`. `WorkerHost` handlers get an `emit`; a progress value posted after a cancel is closed in the worker. Frame methods are "immediate": they start at once instead of waiting for the two queued slots, because each session orders its own jobs. `WorkerPool.request` takes `onProgress`, and progress that nobody takes is closed.
+  - Sample index (§9.2, §9.1): `media/demux/sampleIndex.ts` holds the track in typed arrays: offsets, sizes, dts, cts, durations and sync flags in decode order. Its lookups are display order (by cts), `frameAt`/`positionAt` (binary search), `keyFor` and `feedUntil`. `keyFor` gives the sync sample to start from, one GOP earlier for a leading picture of an open GOP. `feedUntil` is the last decode index the decoder needs to show a frame (B-frames). `sampleIndexFile.ts` stores it in `cache/index/<mediaId>.bin`: magic, version, the source's size and lastModified, codec, description, size and rotation, then the 8-byte-aligned arrays. A mismatched or damaged file reads as null, and the index is rebuilt.
+  - `media/decode/VideoDecodeSession.ts` (worker), one per video and lod:
+    - Jobs run one at a time, by priority; a prefetch yields to a frame request.
+    - A seek feeds the keyframe straight into the configured decoder (see Global deviations). Chunks go in dts order, outputs are matched by cts timestamp, and frames before the target are not delivered.
+    - Sequential requests continue without a seek. A frame request feeds only up to `feedUntil` of its target; a prefetch feeds ahead through its range.
+    - Backpressure: at most 8 chunks in flight and `decodeQueueSize` below 4.
+    - An 8-frame ring serves backward steps, and callers get clones. The end of the track flushes.
+    - A decoder that holds frames longer than the content needs (no output for 100 ms while idle) gets one more chunk each time, remembered for the session, and its ring is freed.
+    - Leading pictures decoded without their previous GOP are dropped.
+    - A decoder that fails before the session ever produced a frame marks the video undecodable (`UnsupportedCodecError`).
+    - Scrubs: the keyframe first when the target is 4 or more frames past it, then the newest decoded frame at most every 33 ms across scrubs, once a scrub has waited 16 ms. A fast drag supersedes every request before it completes, so these are what move on screen.
+    - `createVideoDecoder` wraps WebCodecs behind `DecoderLike`; `testDecoder.ts` is the test fake.
+  - `media/decode/DecodeSessions.ts` (worker registry):
+    - `open` loads the cached index or builds it (handing the bytes back for caching) and checks `VideoDecoder.isConfigSupported`. It answers frame times (display order, us), codec, coded size, rotation, `decodable` and `indexFromCache`.
+    - `requestFrame` / `prefetch` map times to frames; `close`; stats.
+    - A decoder closes after 10 s without requests, and at most 6 are live (LRU among idle ones). The index stays, so a later request only creates a decoder.
+    - Wired into `decode.worker.ts`.
+  - `media/decode/FrameService.ts` (main thread), `getFrame(mediaId, timeUs, { lod, priority, signal, onApproximate })`:
+    - The time snaps to the frame shown at it, and a pool hit answers without the worker. Otherwise the worker's frame is uploaded and closed at once (P5, P13) and put in the `TexturePool` under `(mediaId, lod, frameTimeUs)`. A cached texture is never replaced, because it may be on screen.
+    - Stand-ins: the nearest cached frame (new `TexturePool.nearest`) is shown synchronously, inside the call, then any closer frame from the worker.
+    - A scrub supersedes the previous scrub of the same media and cancels its prefetches.
+    - At most 4 requests per media at the worker; the rest wait, most urgent first.
+    - A worker that lost its sessions is reopened once.
+    - `prefetch`, `release(mediaId)`, and `attach(source)` per project (file, read and write of `cache/index/`; read-only projects skip the write).
+    - Stats: approximate and exact latency (last, p95 of 64), requests, pool hits, superseded, failed, frames received, open frames.
+  - `WebGpuRenderer`: a failed external copy destroys its new texture (Batch 05 follow-up). `uploadVideoFrame` also submits the queue at once, so the decoder gets its picture buffer back sooner (measured 25-35% faster decoding while uploading).
+  - Preview:
+    - `VideoHarness` (temporary) follows the Media panel selection and opens the video. A native range over the frame positions asks `getFrame` with scrub priority on each input and draws stand-ins, then the exact frame, upright through `rotatedContainTransform` (§9.3: rotation in the layer transform). It pins the shown frame and redraws after a device loss.
+    - The bar, readout and status are DOM written by the harness, so React mounts `ScrubBar` once.
+    - Unsupported codecs show "Can't decode HEVC (hvc1…) in this browser" and disable the bar.
+    - `ImageHarness` and `VideoHarness` share `pickPreviewMedia`, and each clears only its own layers (`PreviewView.clearLayers`).
+    - The dev stats overlay adds two lines of decode stats (worker counters polled every 500 ms while shown) and the open VideoFrames on each side.
+    - `app/previewController.ts` owns `frameService` and `videoHarness`; media leaving the project release their sessions and textures.
+  - Also: `codecLabel` moved to `media/mediaKinds.ts`; `sampleIndexPath`/`INDEX_DIR` in `project/mediaFiles.ts`; the `media/demux/index.ts` placeholder removed; the `TODO(batch 06)` comments retired.
+  - Measured:
+    - 447 unit tests in 59 files (+55 tests, +4 files), plus the perf project.
+    - Build: 323.10 kB JS (106.36 kB gzip, +12.9 / +4.0 kB), 34.64 kB CSS, decode.worker 204.53 kB (+14.0 kB).
+  - Headless Chrome 155 (CDP, AMD RDNA2, dev server, OPFS project), test media and results:
+    - Media were made in the page with WebCodecs and wrapped by `testMp4.ts`, each frame showing its index as 12 black/white stripes, read back through `renderFrame()`:
+      - `uhd60.mp4`: HEVC 3840×2160 at 60 fps timestamps, 360 frames, a keyframe every 60, 63.4 MB ≈ 84 Mbps.
+      - `fhd60.mp4`: H.264 1920×1080 60 fps, 360 frames, 1 s GOPs, 24.2 MB.
+      - `portrait.mov`: HEVC 1920×1080 30 fps with the rotation-90 matrix.
+    - Acceptance 1, 40 random jumps per video. Wrong frames: 0/80. A frame was drawn in the first animation frame in 38/40 per video; the misses are the first scrub of a just-opened video, which waits for its keyframe.
+
+      | Exact latency | 1080p H.264 | 4K HEVC |
+      | --- | --- | --- |
+      | Median | 38 ms | 181 ms |
+      | 0-15 frames past a keyframe | 18 ms | 29 ms |
+      | 16-40 frames | 38 ms | 206 ms |
+      | 41-59 frames | 125 ms | 593 ms |
+      | p95 | 170 ms | 679 ms |
+
+    - Acceptance 1, drags with one bar move per animation frame:
+
+      | Animation frames with a new image | 1080p | 4K |
+      | --- | --- | --- |
+      | Forward, 1 frame per move | 181/181 | 145/181 (max 4 frames without one) |
+      | Forward, 3 frames per move | 59/60 | 15/60 (max 8; the decoder runs at ~100 fps) |
+      | Backward, 1 frame per move | 82/110 (max 2) | 50/110 (max 11) |
+      | Backward, 4 frames per move | 32/61 (max 5) | 23/61 (max 8) |
+
+      The exact frame came 0-28 ms (1080p) and 0-168 ms (4K) after the drag stopped. React commits during drags: 0.
+    - Seek cost by GOP depth, through `FrameService`, empty pool, at depths 0/10/30/59: 1080p 39/34/88/169 ms, 4K 40/116/298/580 ms. Raw hardware decode is ~2.4-3 ms per 1080p frame and ~9.6-11 per 4K frame.
+    - Acceptance 2: frames 0..300 through `getFrame` (playback) cost 1 seek per video, with every frame time right and 0 open frames on the main thread.
+    - Acceptance 3: 18 switches among the three videos (with scrubs) kept at most 3 live decoders, 0 open VideoFrames on the main thread, and 24 in the worker (three rings). 10.6 s after the last request: 0 decoders and 0 open frames on both sides (5 idle closes).
+    - Acceptance 4: with `cache/index/` emptied, the first opens parsed 3 and wrote 3 `.bin` files (12 KB for 360 frames). After a reload, all 3 came from the cache, 0 parsed, and the three opens took 17 ms together.
+    - Rotation: `portrait.mov` fills the 1080×1920 frame turned clockwise (coded top-left at the top-right), and frames 0, 45, 119 and 31 are exact.
+    - Unsupported: Chrome's `isConfigSupported` accepts a 16000×16000 HEVC and a 4:4:4 RExt HEVC; their decoders refuse at configure. The bar shows the danger chip "Can't decode HEVC (hvc1.1.6.L153.90) in this browser" and disables itself, and later requests fail at once with no decoding.
+    - Device loss (`device.destroy()`) with frame 100 on screen: redrawn exactly 64 ms later.
+    - Regression:
+      - Image and video selections take turns (the bar hides for images).
+      - Removing media closes its sessions (3 → 2), and undo brings them back.
+      - Posters for imports.
+      - No header overflow at 1584×749.
+      - Only the expected console warnings (device lost; no poster for the undecodable files).
+- deviations:
+  - The sample index from the moov tables, and seeks with no flush or reset: see Global deviations.
+  - Acceptance 1 is met only near a keyframe. Exact frames within 80 ms (1080p) / 120 ms (4K) hold for forward drags, ring and pool hits, and targets up to ~25 (1080p) / ~10 (4K) frames past a keyframe; the medians are 38 ms and 181 ms. Deeper in a 1 s GOP the time is the hardware decode rate times the distance (about 10 ms per 4K frame here). Stand-ins (the nearest cached frame within the same call, the keyframe, then the newest decoded frame) keep the picture moving meanwhile. Proxies (Batch 24, P8's "50 ms on proxy") are the spec's answer; follow-up added.
+  - Progressive delivery goes beyond "keyframe first, then exact": the nearest cached frame is shown at once (P8 wording), and a scrub waiting longer than 16 ms also gets the newest decoded frame, every 33 ms at most.
+  - Class cancellation is done in `FrameService` (superseded scrub, prefetches of the scrubbed media) with the per-request cancel messages, not with a group cancel in `WorkerHost`/`WorkerPool`.
+  - Frame methods skip the worker's two-slot queue ("immediate"); each session orders its jobs by priority.
+  - At most 6 live decoders (the spec gives no number), and the decoder idle close is 10 s (P13).
+  - A decoder that fails before any frame came out marks the video undecodable, because `isConfigSupported` alone missed real refusals. The error badge is in the preview's dev bar, not on media cards.
+  - A frame request feeds only what its target needs; the spec's "at most 8 in flight" and `decodeQueueSize` limits apply on top.
+  - `uploadVideoFrame` submits an empty command list after the copy (see notes).
+  - `lod: "proxy"` is accepted end to end, but there are no proxy files yet (the frame source returns null).
+  - The dev scrub bar shows in production builds too, like the Batch 05 image harness: it is the only way to see video before Batch 08.
+- follow-ups: [from Batch 06 -> Batch 08] remove the video harness and scrub bar, the compositor uses FrameService, edit lists / media time; [from Batch 06 -> Batch 09] upload cost (recycle textures, importExternalTexture), prefetch windows, decoder pool stalls; [from Batch 06 -> Batch 24] deep-GOP latency needs proxies, proxy frame source and index name; [from Batch 06 -> Batch 41] frame source for referenced media
+- design gaps: dev scrub bar, `--danger-wash`, stats overlay width (details in Design system gaps)
+- pending manual checks:
+  1. Real phone clips: `npm run dev`, open a project, import a 4K60 HEVC iPhone clip and a 1080p Android clip. Turn on GPU stats (gauge button) and click a clip. The scrub bar appears at the bottom of the preview. Drag it: the picture follows (stand-ins first), the status ends on "exact N ms", and a portrait iPhone clip is upright. Note the "frame ms" line: approx stays near 0; exact depends on how far the frame is from a keyframe (phone GOPs are often 1-2 s).
+  2. Sequential frames: with a video selected, run in the console `const f = __editor.frames, id = [...document.querySelectorAll('[data-media-id]')][0]?.dataset.mediaId` (or take the id from the project.json media list), then `const info = await f.video(id); for (let i = 0; i <= 300; i++) await f.getFrame(id, info.frameTimesUs[i], { priority: "playback" })`. The stats "seeks" line grows by 1.
+  3. Switch between three videos a few times, then click an image (or empty space) and wait 10 s. The stats read "decoders 0/3" and "open VideoFrames: main 0 · worker 0".
+  4. Reload the page and reopen the project. Select a video: the stats read "index cached 1 parsed 0" (the first open after an import reads "parsed"). In Explorer, `cache/index/` holds one `.bin` per opened video.
+  5. React DevTools Profiler, recording while dragging the scrub bar: no commits.
+  6. A video your machine cannot decode (e.g. HEVC on a PC without HEVC decoding): the bar shows the red "Can't decode HEVC (…) in this browser" chip and is disabled.
+  7. P1 re-check: playback does not exist until Batch 09; the drag measurements above made 0 React commits. Re-verify in Batch 10.

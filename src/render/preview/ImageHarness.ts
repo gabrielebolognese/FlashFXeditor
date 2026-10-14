@@ -17,7 +17,7 @@ import { containTransform } from "./viewport.js";
 export interface ImageHarnessDeps {
   renderer: Renderer;
   pool: TexturePool;
-  preview: { setLayers(layers: readonly Layer[]): void };
+  preview: { setLayers(layers: readonly Layer[]): void; clearLayers(owned: readonly Layer[]): void };
   document: Pick<DocumentStore, "getState" | "subscribe">;
   /** The Media panel state: its selection (ids and the clicked one). */
   panel: Pick<Store<{ selection: MediaSelectionLike }>, "getState" | "select">;
@@ -35,6 +35,8 @@ export class ImageHarness {
   private loading: AbortController | null = null;
   /** Media with a texture in the pool, to drop them when the media leaves the project. */
   private readonly uploaded = new Set<MediaId>();
+  /** What this harness gave the preview (cleared only if still shown). */
+  private layers: readonly Layer[] = [];
 
   constructor(private readonly deps: ImageHarnessDeps) {}
 
@@ -73,7 +75,8 @@ export class ImageHarness {
     this.unpin = null;
     this.current = id;
     if (!id) {
-      this.deps.preview.setLayers([]);
+      this.deps.preview.clearLayers(this.layers);
+      this.layers = [];
       return;
     }
     this.unpin = this.deps.pool.pin(imageKey(id));
@@ -117,7 +120,7 @@ export class ImageHarness {
   }
 
   private draw(texture: TextureHandle): void {
-    this.deps.preview.setLayers([
+    this.layers = [
       {
         kind: "texture",
         texture,
@@ -127,7 +130,8 @@ export class ImageHarness {
         flipX: false,
         flipY: false,
       },
-    ]);
+    ];
+    this.deps.preview.setLayers(this.layers);
   }
 
   private frame() {
@@ -135,16 +139,22 @@ export class ImageHarness {
   }
 }
 
-interface MediaSelectionLike {
+export interface MediaSelectionLike {
   ids: ReadonlySet<MediaId>;
   anchor: MediaId | null;
 }
 
 const isSvg = (item: MediaItem) => item.codec === "svg";
+const isVisual = (item: MediaItem | undefined) => item?.kind === "image" || item?.kind === "video";
 
-/** The clicked image when it is one, else the first selected image. */
-function pickImage(selection: MediaSelectionLike, media: Record<MediaId, MediaItem>): MediaId | null {
-  if (selection.anchor && selection.ids.has(selection.anchor) && media[selection.anchor]?.kind === "image") return selection.anchor;
-  for (const id of selection.ids) if (media[id]?.kind === "image") return id;
+/** The media the preview harnesses show: the clicked one when it is an image or a video, else the first selected one. */
+export function pickPreviewMedia(selection: MediaSelectionLike, media: Record<MediaId, MediaItem>): MediaId | null {
+  if (selection.anchor && selection.ids.has(selection.anchor) && isVisual(media[selection.anchor])) return selection.anchor;
+  for (const id of selection.ids) if (isVisual(media[id])) return id;
   return null;
+}
+
+function pickImage(selection: MediaSelectionLike, media: Record<MediaId, MediaItem>): MediaId | null {
+  const id = pickPreviewMedia(selection, media);
+  return id !== null && media[id]?.kind === "image" ? id : null;
 }

@@ -46,6 +46,7 @@
   /* Semantic */
   --success: #3dbe7a;
   --danger: #e5545a;
+  --danger-wash: rgba(229, 84, 90, 0.12); /* gap: DS "semantic states ... at low opacity" */
   --info: #4c86d6;
   --live: #ff3b5c;
 

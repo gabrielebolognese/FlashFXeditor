@@ -2,7 +2,7 @@ import { Gauge, ImageDown } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { CanvasHost } from "../app/CanvasHost.js";
 import { PanelFrame, PanelTitle } from "../app/PanelFrame.js";
-import { exportFrame, POOL_BUDGETS, previewDev, previewStats, previewView, setPreviewZoom, type PreviewDevState } from "../app/previewController.js";
+import { exportFrame, POOL_BUDGETS, previewDev, previewStats, previewView, setPreviewZoom, videoHarness, type PreviewDevState } from "../app/previewController.js";
 import { sessionStore } from "../app/services.js";
 import type { SessionState } from "../core/store/sessionStore.js";
 import { useStoreSelector } from "../core/store/useStoreSelector.js";
@@ -51,6 +51,28 @@ function StatsOverlay() {
   return <pre ref={ref} className={styles.stats} aria-label="GPU stats" />;
 }
 
+/**
+ * Batch 06 dev scrub bar (TODO(batch 08): removed): rendered once; the video harness owns its value,
+ * text and visibility, so dragging it makes no React commit (P1).
+ */
+function ScrubBar() {
+  const rootRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const readoutRef = useRef<HTMLSpanElement>(null);
+  const statusRef = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    const [root, input, readout, status] = [rootRef.current, inputRef.current, readoutRef.current, statusRef.current];
+    return root && input && readout && status ? videoHarness.attachBar({ root, input, readout, status }) : undefined;
+  }, []);
+  return (
+    <div ref={rootRef} className={styles.scrub}>
+      <input ref={inputRef} type="range" className={styles.scrubInput} aria-label="Video frame (dev)" />
+      <span ref={readoutRef} className={styles.scrubReadout} />
+      <span ref={statusRef} className={styles.scrubStatus} />
+    </div>
+  );
+}
+
 export function PreviewPanel() {
   const canvasRef = useRef<HTMLDivElement>(null);
   const stats = useStoreSelector(previewDev, selectStats);
@@ -64,6 +86,7 @@ export function PreviewPanel() {
         <CanvasHost panel="preview">
           <div ref={canvasRef} className={styles.canvas} />
           {stats && <StatsOverlay />}
+          <ScrubBar />
         </CanvasHost>
       </div>
     </PanelFrame>

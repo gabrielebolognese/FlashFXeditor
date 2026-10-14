@@ -3,7 +3,7 @@
 // 1 px DS border, at devicePixelRatio, and only from the FrameScheduler's `preview` flag: a resize, a
 // zoom, a settings change, new layers or a new GPU device invalidate it, and the next frame draws once.
 // The backing store is resized inside `render`, so a resize never shows a cleared canvas.
-// TODO(batch 08): the compositor's draw list replaces `setLayers` (and the Batch 05 image harness).
+// TODO(batch 08): the compositor's draw list replaces `setLayers`/`clearLayers` (and the Batch 05/06 harnesses).
 import type { RGBA } from "../../core/document/types.js";
 import type { FrameScheduler, RenderView } from "../../core/scheduler/FrameScheduler.js";
 import type { Store } from "../../core/store/createStore.js";
@@ -97,6 +97,11 @@ export class PreviewView implements RenderView {
   setLayers(layers: readonly Layer[]): void {
     this.layers = layers;
     this.deps.scheduler.invalidate("preview");
+  }
+
+  /** Clears the layers if they are still `owned` (the Batch 05/06 harnesses share the preview). */
+  clearLayers(owned: readonly Layer[]): void {
+    if (this.layers === owned && owned.length > 0) this.setLayers([]);
   }
 
   /** The frame and its layers as the next render would draw them. */

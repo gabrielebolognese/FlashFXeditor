@@ -7,6 +7,7 @@
 .stats {
   position: absolute;
   top: var(--space-3);
+  right: var(--space-3);
   left: var(--space-3);
   z-index: 1;
   margin: 0;
@@ -16,6 +17,70 @@
   background: var(--surface-3);
   color: var(--text-secondary);
   font: var(--type-mono);
-  white-space: pre;
+  white-space: pre-wrap;
   pointer-events: none;
+}
+
+/* Batch 06 dev scrub bar (gap: a temporary control; removed in Batch 08). A raised strip at the
+   bottom of the well: range input, mono readout, and a status chip (approx in info, errors as a
+   danger chip at low opacity). */
+.scrub {
+  position: absolute;
+  right: var(--space-3);
+  bottom: var(--space-3);
+  left: var(--space-3);
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  height: var(--control-default);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-md);
+  background: var(--surface-3);
+}
+
+.scrub[hidden] {
+  display: none;
+}
+
+.scrubInput {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.scrubReadout {
+  flex: none;
+  color: var(--text-secondary);
+  font: var(--type-mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.scrubStatus {
+  flex: none;
+  max-width: 50%;
+  overflow: hidden;
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-sm);
+  color: var(--text-tertiary);
+  font: var(--type-badge);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scrubStatus[data-state="approx"] {
+  color: var(--info);
+}
+
+.scrubStatus[data-state="exact"] {
+  color: var(--text-secondary);
+}
+
+.scrubStatus[data-state="error"] {
+  max-width: none;
+  background: var(--danger-wash);
+  color: var(--danger);
 }

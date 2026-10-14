@@ -34,6 +34,27 @@ export function frameTransform(zoom: PreviewZoom, frame: Size, target: Size, mar
   return [width / frame.width, 0, 0, height / frame.height, x, y];
 }
 
+/**
+ * Like `containTransform` for a frame shown turned by `rotation` (clockwise quarter turns, spec §9.3):
+ * `content` is the coded size; the turned frame is contained and centered in `box`.
+ */
+export function rotatedContainTransform(content: Size, rotation: 0 | 90 | 180 | 270, box: Size): Mat3 {
+  const quarter = rotation === 90 || rotation === 270;
+  const shown = quarter ? { width: content.height, height: content.width } : content;
+  const [w, , , h, x, y] = containTransform(shown, box);
+  // Where the unit quad's corners go: (u, v) -> (a u + c v + tx, b u + d v + ty).
+  switch (rotation) {
+    case 90:
+      return [0, h, -w, 0, x + w, y];
+    case 180:
+      return [-w, 0, 0, -h, x + w, y + h];
+    case 270:
+      return [0, -h, w, 0, x, y + h];
+    default:
+      return [w, 0, 0, h, x, y];
+  }
+}
+
 /** Maps the unit quad onto `content` contained (letterboxed) and centered in `box`. */
 export function containTransform(content: Size, box: Size): Mat3 {
   const scale = Math.min(box.width / content.width, box.height / content.height);

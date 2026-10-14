@@ -2,8 +2,8 @@
 // parsed: files with the moov at the end are handled by jumping to the offset mp4box asks for, so the
 // mdat is never read. Gives codec strings, the decoder description (avcC/hvcC/av1C/vpcC), coded
 // size, rotation from the tkhd matrix, durations, the frame rate from sample deltas, and the audio
-// codec, channels and rate. The sample table stays in memory for the poster frame only.
-// TODO(batch 06): the sample index is persisted to cache/index/ by the decode engine.
+// codec, channels and rate. The sample table feeds the poster frame and the decode engine's sample
+// index (demux/sampleIndex.ts, persisted in cache/index/).
 import { createFile, DataStream, Endianness, MP4BoxBuffer, type Movie, type Sample, type Track } from "mp4box";
 import type { Rational } from "../../core/document/types.js";
 import { ticksToUs } from "../../core/document/time.js";

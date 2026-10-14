@@ -95,7 +95,7 @@ async function switchTo(opened: OpenedProject): Promise<void> {
   });
   current = session;
   attachMedia(session.dir, () => !session.readOnly);
-  attachPreview(session.dir);
+  attachPreview(session.dir, () => !session.readOnly);
   setView({
     project: { id: opened.project.id, folder: opened.dir.name },
     dialog: opened.recovery ? { kind: "recovery", recovery: opened.recovery } : null,

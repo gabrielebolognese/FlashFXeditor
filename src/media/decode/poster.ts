@@ -1,7 +1,7 @@
 // Poster frames for the media panel (Batch 04), run in decode.worker: the first frame of a video
 // (one sync sample through a VideoDecoder) or the image itself, drawn upright into an OffscreenCanvas
 // of at most `maxSize` px, returned as a transferable ImageBitmap plus a WebP blob for cache/thumbs/.
-// TODO(batch 06): VideoDecodeSession replaces the one-shot decoder for real frame delivery.
+// Posters keep this one-shot decoder (one key sample); preview frames come from VideoDecodeSession.
 import { ticksToUs } from "../../core/document/time.js";
 import { ByteSource } from "../bytes/ByteSource.js";
 import { readMp4 } from "../probe/mp4Probe.js";

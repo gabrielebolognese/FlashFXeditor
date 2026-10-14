@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { ProbeResult } from "../probe/types.js";
-import type { FromWorker, ToWorker } from "./protocol.js";
+import type { DeliveredFrame, FromWorker, Method, ToWorker } from "./protocol.js";
 import { WorkerHost, type Handlers, type HostScope } from "./WorkerHost.js";
 import { WorkerPool, type WorkerLike } from "./WorkerPool.js";
 
@@ -14,7 +14,7 @@ interface FakeWorker extends WorkerLike {
 }
 
 /** A pool whose workers are in-process hosts; messages are delivered asynchronously, like postMessage. */
-function setup(handlers: Handlers, concurrency = 2) {
+function setup(handlers: Handlers, concurrency = 2, immediate: ReadonlySet<Method> = new Set()) {
   const workers: FakeWorker[] = [];
   const pool = new WorkerPool({
     decode: () => {
@@ -27,7 +27,7 @@ function setup(handlers: Handlers, concurrency = 2) {
         },
       };
       const worker: FakeWorker = {
-        host: new WorkerHost(scope, handlers, concurrency),
+        host: new WorkerHost(scope, handlers, concurrency, immediate),
         terminated: false,
         postMessage: (message) => queueMicrotask(() => toHost?.({ data: message } as MessageEvent<ToWorker>)),
         addEventListener: ((type: "message" | "error", listener: never) => toMain[type].push(listener)) as WorkerLike["addEventListener"],
@@ -58,7 +58,7 @@ describe("WorkerPool + WorkerHost", () => {
     expect(workers).toHaveLength(0);
     await expect(pool.request("probe", { file, container: "mp4", type: "audio/mp4" })).resolves.toEqual(AUDIO);
     expect(workers).toHaveLength(1);
-    expect(probe).toHaveBeenCalledWith({ file, container: "mp4", type: "audio/mp4" }, expect.any(AbortSignal));
+    expect(probe).toHaveBeenCalledWith({ file, container: "mp4", type: "audio/mp4" }, expect.any(AbortSignal), expect.any(Function));
     expect(pool.inFlight).toBe(0);
   });
 
@@ -176,6 +176,87 @@ describe("WorkerPool + WorkerHost", () => {
     } finally {
       vi.unstubAllGlobals();
     }
+  });
+
+  it("delivers progress values before the result", async () => {
+    const { pool } = setup({
+      prefetch: async (_params, _signal, emit) => {
+        emit({ frame: "f1" as unknown as VideoFrame, timeUs: 1, approximate: false });
+        emit({ frame: "f2" as unknown as VideoFrame, timeUs: 2, approximate: false });
+        return { frames: 2 };
+      },
+    });
+    const seen: number[] = [];
+    const result = await pool.request("prefetch", { mediaId: "m", lod: "full", fromUs: 1, toUs: 2 }, { onProgress: (value) => seen.push(value.timeUs) });
+    expect(result).toEqual({ frames: 2 });
+    expect(seen).toEqual([1, 2]);
+  });
+
+  it("closes the frames of progress nobody takes: no listener, or a cancelled request", async () => {
+    // jsdom has no VideoFrame; a stand-in class makes `transferablesOf` pick the frame up.
+    class FakeVideoFrame {
+      readonly close = vi.fn();
+    }
+    vi.stubGlobal("VideoFrame", FakeVideoFrame);
+    try {
+      const frames: FakeVideoFrame[] = [];
+      const gate = deferred<void>();
+      const emitted = deferred<void>();
+      let calls = 0;
+      const { pool } = setup({
+        requestFrame: async (_params, signal, emit) => {
+          const frame = new FakeVideoFrame();
+          frames.push(frame);
+          emit({ frame, timeUs: 0, approximate: true } as unknown as DeliveredFrame);
+          if (++calls === 1) return { frame: new FakeVideoFrame(), timeUs: 0, approximate: false } as unknown as DeliveredFrame;
+          emitted.resolve();
+          await gate.promise;
+          // Emitted after the cancel reached the host: closed in the worker.
+          if (signal.aborted) {
+            const late = new FakeVideoFrame();
+            frames.push(late);
+            emit({ frame: late, timeUs: 1, approximate: true } as unknown as DeliveredFrame);
+          }
+          return { frame: new FakeVideoFrame(), timeUs: 0, approximate: false } as unknown as DeliveredFrame;
+        },
+      });
+      const params = { mediaId: "m", lod: "full" as const, timeUs: 0, priority: "scrub" as const };
+      await pool.request("requestFrame", params);
+      await flush();
+      expect(frames[0]?.close).toHaveBeenCalledTimes(1);
+
+      const controller = new AbortController();
+      const cancelled = pool.request("requestFrame", params, { signal: controller.signal, onProgress: () => undefined });
+      await emitted.promise;
+      controller.abort();
+      await expect(cancelled).rejects.toMatchObject({ name: "AbortError" });
+      await flush();
+      gate.resolve();
+      await flush();
+      expect(frames[2]?.close).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("starts immediate methods at once, beside a full queue", async () => {
+    const gate = deferred<void>();
+    const { pool } = setup(
+      {
+        probe: async () => {
+          await gate.promise;
+          return AUDIO;
+        },
+        decodeStats: async () => ({ sessions: 7 }) as never,
+      },
+      1,
+      new Set<Method>(["decodeStats"]),
+    );
+    const busy = pool.request("probe", { file, container: "mp4", type: "" });
+    const queued = pool.request("probe", { file, container: "mp4", type: "" });
+    await expect(pool.request("decodeStats", {})).resolves.toEqual({ sessions: 7 });
+    gate.resolve();
+    await Promise.all([busy, queued]);
   });
 
   it("rejects an already aborted signal without contacting a worker", async () => {

@@ -2,8 +2,11 @@
 import type { MediaId, MediaItem } from "../../core/document/types.js";
 import { formatDurationUs } from "../../core/document/time.js";
 import type { MediaSort } from "../../core/store/sessionStore.js";
+import { codecLabel } from "../../media/mediaKinds.js";
 import { displaySize } from "../../media/probe/rotation.js";
 import { formatFps } from "../../project/projectPresets.js";
+
+export { codecLabel };
 
 const KIND_ORDER: Record<MediaItem["kind"], number> = { video: 0, audio: 1, image: 2 };
 const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
@@ -69,34 +72,6 @@ export function clickSelection(selection: MediaSelection, id: MediaId, mods: { t
 export function pruneSelection(selection: MediaSelection, exists: (id: MediaId) => boolean): MediaSelection {
   if ([...selection.ids].every(exists) && (selection.anchor === null || exists(selection.anchor))) return selection;
   return { ids: new Set([...selection.ids].filter(exists)), anchor: selection.anchor !== null && exists(selection.anchor) ? selection.anchor : null };
-}
-
-const CODEC_NAMES: [prefix: string, label: string][] = [
-  ["avc1", "H.264"],
-  ["avc3", "H.264"],
-  ["hvc1", "HEVC"],
-  ["hev1", "HEVC"],
-  ["av01", "AV1"],
-  ["vp09", "VP9"],
-  ["vp08", "VP8"],
-  ["mp4a.40", "AAC"],
-  ["mp4a.6b", "MP3"],
-  ["mp4a.69", "MP3"],
-  ["mp4a", "AAC"],
-  ["opus", "Opus"],
-  ["alac", "ALAC"],
-  ["ac-3", "AC-3"],
-  ["ec-3", "E-AC-3"],
-  ["sowt", "PCM"],
-  ["twos", "PCM"],
-  ["lpcm", "PCM"],
-];
-
-/** A readable codec name: "hvc1.1.6.L153.90" -> "HEVC"; unknown codecs in capitals; "" for none. */
-export function codecLabel(codec: string | undefined): string {
-  if (!codec) return "";
-  const lower = codec.toLowerCase();
-  return CODEC_NAMES.find(([prefix]) => lower.startsWith(prefix))?.[1] ?? codec.toUpperCase();
 }
 
 export function audioLabel(item: MediaItem): string {

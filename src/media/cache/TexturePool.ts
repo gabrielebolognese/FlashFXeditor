@@ -69,6 +69,17 @@ export class TexturePool {
     return this.entries.has(keyId(key));
   }
 
+  /** The cached frame of a media closest in time to `timeUs` (stills excluded), without marking it used. */
+  nearest(mediaId: MediaId, lod: Lod, timeUs: number): { key: TextureKey; texture: TextureHandle } | null {
+    let best: Entry | null = null;
+    for (const entry of this.entries.values()) {
+      const { key } = entry;
+      if (key.mediaId !== mediaId || key.lod !== lod || key.timeUs === STILL_US || !entry.texture.valid) continue;
+      if (!best || Math.abs(key.timeUs - timeUs) < Math.abs(best.key.timeUs - timeUs)) best = entry;
+    }
+    return best && { key: best.key, texture: best.texture };
+  }
+
   /** Adds `texture` as the most recently used entry, replacing (and destroying) the previous one. */
   put(key: TextureKey, texture: TextureHandle): void {
     const id = keyId(key);

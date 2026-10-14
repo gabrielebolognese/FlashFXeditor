@@ -54,3 +54,31 @@ export const PICKER_TYPES = [
   { description: "Audio", accept: { "audio/*": [".mp3", ".m4a", ".aac", ".wav", ".ogg"] } },
   { description: "Images", accept: { "image/*": [".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg"] } },
 ];
+
+const CODEC_NAMES: [prefix: string, label: string][] = [
+  ["avc1", "H.264"],
+  ["avc3", "H.264"],
+  ["hvc1", "HEVC"],
+  ["hev1", "HEVC"],
+  ["av01", "AV1"],
+  ["vp09", "VP9"],
+  ["vp08", "VP8"],
+  ["mp4a.40", "AAC"],
+  ["mp4a.6b", "MP3"],
+  ["mp4a.69", "MP3"],
+  ["mp4a", "AAC"],
+  ["opus", "Opus"],
+  ["alac", "ALAC"],
+  ["ac-3", "AC-3"],
+  ["ec-3", "E-AC-3"],
+  ["sowt", "PCM"],
+  ["twos", "PCM"],
+  ["lpcm", "PCM"],
+];
+
+/** A readable codec name: "hvc1.1.6.L153.90" -> "HEVC"; unknown codecs in capitals; "" for none. */
+export function codecLabel(codec: string | undefined): string {
+  if (!codec) return "";
+  const lower = codec.toLowerCase();
+  return CODEC_NAMES.find(([prefix]) => lower.startsWith(prefix))?.[1] ?? codec.toUpperCase();
+}

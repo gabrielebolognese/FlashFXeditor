@@ -1,18 +1,22 @@
-// Preview wiring (spec §7.1, §9.3): the app's one GPU device, renderer and texture pool, the preview
-// canvas view and its dev stats, the Batch 05 image harness of the open project, and Export frame.
-// Framework-free; PreviewPanel only mounts the canvas host and the stats element.
+// Preview wiring (spec §7.1, §9.3): the app's one GPU device, renderer and texture pool, the frame
+// service (video frames from decode.worker into the pool), the preview canvas view and its dev stats,
+// the Batch 05/06 image and video harnesses of the open project, and Export frame.
+// Framework-free; PreviewPanel only mounts the canvas host, the scrub bar and the stats element.
+import type { MediaId } from "../core/document/types.js";
 import { createStore } from "../core/store/createStore.js";
 import { DEFAULT_TEXTURE_BUDGET, TexturePool } from "../media/cache/TexturePool.js";
+import { FrameService, type FrameSource } from "../media/decode/FrameService.js";
 import { svgPoster } from "../media/probe/svgProbe.js";
 import { isAbortError } from "../media/workers/protocol.js";
 import { errorMessage } from "../project/errorMessage.js";
 import type { FsDir } from "../project/fs.js";
-import { resolveFile, safeFileName } from "../project/mediaFiles.js";
+import { resolveFile, safeFileName, sampleIndexPath, writeFileAt } from "../project/mediaFiles.js";
 import { GpuDevice } from "../render/gpu/GpuDevice.js";
 import { WebGpuRenderer } from "../render/gpu/WebGpuRenderer.js";
 import { ImageHarness } from "../render/preview/ImageHarness.js";
 import { PreviewStatsOverlay } from "../render/preview/PreviewStatsOverlay.js";
 import { PreviewView } from "../render/preview/PreviewView.js";
+import { VideoHarness } from "../render/preview/VideoHarness.js";
 import type { PreviewZoom } from "../render/preview/viewport.js";
 import { showToast } from "../ui/toasts.js";
 import { mediaPanel } from "./mediaController.js";
@@ -24,7 +28,11 @@ export const gpuDevice = new GpuDevice();
 export const renderer = new WebGpuRenderer(gpuDevice);
 export const texturePool = new TexturePool();
 export const previewView = new PreviewView({ renderer, scheduler, layout: layoutStore, session: sessionStore.state, document: documentStore, theme: themeBridge });
-export const previewStats = new PreviewStatsOverlay({ scheduler, preview: previewView, pool: texturePool, gpu: gpuDevice });
+/** Video frames for every view (preview now, the compositor and playback later). */
+export const frameService = new FrameService({ workers: workerPool, renderer, pool: texturePool });
+export const previewStats = new PreviewStatsOverlay({ scheduler, preview: previewView, pool: texturePool, gpu: gpuDevice, frames: frameService });
+/** The Batch 06 dev scrub bar: the selected video at any frame. */
+export const videoHarness = new VideoHarness({ frames: frameService, pool: texturePool, preview: previewView, document: documentStore, panel: mediaPanel, renderer });
 
 /** Pool budgets of the dev select: the P6 default and the Batch 05 test budget. */
 export const POOL_BUDGETS: readonly number[] = [DEFAULT_TEXTURE_BUDGET, 64 * MB];
@@ -47,7 +55,7 @@ renderer.subscribe((event) => {
   if (event === "lost") texturePool.clear();
 });
 
-let stopHarness: (() => void) | null = null;
+let stopProject: (() => void) | null = null;
 
 /** Creates the GPU device from the adapter of the startup check. */
 export function startGpu(adapter: GPUAdapter): void {
@@ -63,14 +71,44 @@ export function startGpu(adapter: GPUAdapter): void {
         renderer,
         pool: texturePool,
         preview: previewView,
+        frames: frameService,
       },
     });
   }
 }
 
+/** The project's media files and cache/index/ for the frame service. */
+function frameSource(dir: FsDir, isWritable: () => boolean): FrameSource {
+  return {
+    file: async (mediaId, lod) => {
+      // TODO(batch 24): proxy files; TODO(batch 41): media referenced by a file handle.
+      const item = documentStore.getState().media[mediaId];
+      if (lod !== "full" || !item || !("relPath" in item.file)) return null;
+      return resolveFile(dir, item.file.relPath);
+    },
+    readIndex: async (mediaId, lod) => (lod === "full" ? resolveFile(dir, sampleIndexPath(mediaId)) : null),
+    writeIndex: async (mediaId, lod, bytes) => {
+      if (lod === "full" && isWritable()) await writeFileAt(dir, sampleIndexPath(mediaId), new Blob([bytes]));
+    },
+  };
+}
+
+/** Frees the frames and decoders of media that leave the project (removal, undo of an import). */
+function releaseRemovedMedia(): () => void {
+  let media = documentStore.getState().media;
+  return documentStore.subscribe(
+    (state) => {
+      for (const id of Object.keys(media) as MediaId[]) if (!Object.hasOwn(state.media, id)) frameService.release(id);
+      media = state.media;
+    },
+    { affects: ["media"] },
+  );
+}
+
 /** Wires the preview to a newly opened project. */
-export function attachPreview(dir: FsDir): void {
+export function attachPreview(dir: FsDir, isWritable: () => boolean): void {
   detachPreview();
+  const stopFrames = frameService.attach(frameSource(dir, isWritable));
   const harness = new ImageHarness({
     renderer,
     pool: texturePool,
@@ -81,13 +119,17 @@ export function attachPreview(dir: FsDir): void {
     resolve: (relPath) => resolveFile(dir, relPath),
     svgBitmap: svgPoster,
   });
-  stopHarness = harness.attach();
+  const stops = [stopFrames, releaseRemovedMedia(), harness.attach(), videoHarness.attach()];
+  stopProject = () => {
+    // Harnesses first (they unpin), then the frame service closes the worker sessions.
+    for (const stop of stops.reverse()) stop();
+  };
 }
 
-/** Before the project closes: frees its textures (P13). */
+/** Before the project closes: frees its decoders and textures (P13). */
 export function detachPreview(): void {
-  stopHarness?.();
-  stopHarness = null;
+  stopProject?.();
+  stopProject = null;
   texturePool.clear();
 }
 

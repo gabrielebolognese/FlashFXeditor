@@ -1,0 +1,446 @@
+// Frame requests on the main thread (spec §3.5, §9.3, P5, P8, P13). `getFrame` answers from the
+// TexturePool when the frame is cached; otherwise it asks decode.worker and uploads what comes back
+// (the VideoFrame is closed right after the upload), under `(mediaId, lod, frameTimeUs)`.
+// - Priorities: scrub > playback > idle. A new scrub supersedes the previous scrub of the same media
+//   and cancels its prefetches (P8). At most MAX_IN_FLIGHT_PER_MEDIA requests per media go to the
+//   worker; the rest wait here, most urgent first.
+// - Progressive scrub (P8): the nearest cached frame is shown at once, then the keyframe the worker
+//   decodes first when it is closer, then the exact frame.
+// - The project supplies the files and the cache/index/ files through a `FrameSource`.
+import type { MediaId } from "../../core/document/types.js";
+import type { Renderer, TextureHandle } from "../../render/gpu/renderer.js";
+import type { Lod, TextureKey, TexturePool } from "../cache/TexturePool.js";
+import { positionAt } from "../demux/sampleIndex.js";
+import { abortError, FRAME_PRIORITY_RANK, type DeliveredFrame, type FramePriority, type Priority, type VideoInfo, type WorkerDecodeStats } from "../workers/protocol.js";
+import type { WorkerPool } from "../workers/WorkerPool.js";
+
+export const MAX_IN_FLIGHT_PER_MEDIA = 4;
+/** Latency samples kept for the percentiles. */
+const LATENCY_SAMPLES = 64;
+
+/** Worker queue class of each frame priority. */
+const WORKER_PRIORITY: Record<FramePriority, Priority> = { scrub: "user", playback: "playback", idle: "prefetch" };
+
+/** Where the open project keeps a media's file and its cached sample index. */
+export interface FrameSource {
+  file(mediaId: MediaId, lod: Lod): Promise<File | null>;
+  /** cache/index/ file, or null. */
+  readIndex(mediaId: MediaId, lod: Lod): Promise<Blob | null>;
+  /** Stores a newly built index (a read-only project skips it). */
+  writeIndex(mediaId: MediaId, lod: Lod, bytes: ArrayBuffer): Promise<void>;
+}
+
+export interface FrameResult {
+  /** In the pool under `key`; pin the key to keep drawing it. */
+  texture: TextureHandle;
+  key: TextureKey;
+  /** The frame's time (us): at or before the requested time. */
+  timeUs: number;
+  approximate: boolean;
+}
+
+export interface FrameRequestOptions {
+  lod?: Lod;
+  priority?: FramePriority;
+  signal?: AbortSignal;
+  /** Stand-ins until the exact frame is ready (P8): the nearest cached frame, then a closer keyframe. */
+  onApproximate?: (result: FrameResult) => void;
+}
+
+export interface FrameServiceStats {
+  requests: number;
+  poolHits: number;
+  workerRequests: number;
+  /** Scrubs replaced by a newer one, and prefetches cancelled by a scrub. */
+  superseded: number;
+  failed: number;
+  framesReceived: number;
+  /** Frames received and not closed yet: 0 whenever the main thread is idle (P13). */
+  openFrames: number;
+  /** ms from the request to the first frame shown (approximate or exact), and to the exact frame. */
+  approxLastMs: number | null;
+  approxP95Ms: number | null;
+  exactLastMs: number | null;
+  exactP95Ms: number | null;
+  indexFromCache: number;
+  indexParsed: number;
+}
+
+/** The video cannot be decoded in this browser. */
+export class UnsupportedCodecError extends Error {
+  override name = "UnsupportedCodecError";
+}
+
+export interface FrameServiceDeps {
+  workers: Pick<WorkerPool, "request">;
+  renderer: Pick<Renderer, "ready" | "uploadVideoFrame">;
+  pool: Pick<TexturePool, "get" | "put" | "nearest" | "deleteMedia">;
+  now?: () => number;
+}
+
+interface Waiter {
+  rank: number;
+  start: () => void;
+}
+
+/** Requests of one media at one lod. */
+interface Lane {
+  active: number;
+  waiting: Waiter[];
+  scrub: AbortController | null;
+  prefetches: Set<AbortController>;
+  all: Set<AbortController>;
+}
+
+const keyOf = (mediaId: MediaId, lod: Lod) => `${mediaId}|${lod}`;
+const supersededError = () => new DOMException("Superseded by a newer request", "AbortError");
+
+function percentile95(samples: readonly number[]): number | null {
+  if (samples.length === 0) return null;
+  const sorted = [...samples].sort((a, b) => a - b);
+  return sorted[Math.min(sorted.length - 1, Math.ceil(sorted.length * 0.95) - 1)] as number;
+}
+
+export class FrameService {
+  private source: FrameSource | null = null;
+  /** Bumped on attach/detach: opens from a previous project are dropped. */
+  private generation = 0;
+  private readonly videos = new Map<string, Promise<VideoInfo>>();
+  private readonly infos = new Map<string, VideoInfo>();
+  private readonly lanes = new Map<string, Lane>();
+  private readonly listeners = new Set<() => void>();
+  private readonly approxSamples: number[] = [];
+  private readonly exactSamples: number[] = [];
+  private readonly counters = { requests: 0, poolHits: 0, workerRequests: 0, superseded: 0, failed: 0, framesReceived: 0, openFrames: 0, indexFromCache: 0, indexParsed: 0 };
+  private approxLastMs: number | null = null;
+  private exactLastMs: number | null = null;
+
+  constructor(private readonly deps: FrameServiceDeps) {}
+
+  /** Serves the media of a project until the returned function is called (which closes them all). */
+  attach(source: FrameSource): () => void {
+    this.detach();
+    this.source = source;
+    this.generation += 1;
+    const generation = this.generation;
+    return () => {
+      if (this.generation === generation) this.detach();
+    };
+  }
+
+  /** Opens a video (once) and gives its frame times, codec and rotation. */
+  video(mediaId: MediaId, lod: Lod = "full"): Promise<VideoInfo> {
+    const key = keyOf(mediaId, lod);
+    let video = this.videos.get(key);
+    if (!video) {
+      video = this.open(mediaId, lod);
+      this.videos.set(key, video);
+      video.then(
+        (info) => {
+          if (this.videos.get(key) === video) this.infos.set(key, info);
+        },
+        () => {
+          if (this.videos.get(key) === video) this.videos.delete(key);
+        },
+      );
+    }
+    return video;
+  }
+
+  /** The info of an opened video, synchronously; null before `video` resolved. */
+  info(mediaId: MediaId, lod: Lod = "full"): VideoInfo | null {
+    return this.infos.get(keyOf(mediaId, lod)) ?? null;
+  }
+
+  /** The frame shown at `timeUs` as a pool texture. Rejects with an AbortError when superseded or aborted. */
+  async getFrame(mediaId: MediaId, timeUs: number, options: FrameRequestOptions = {}): Promise<FrameResult> {
+    const { lod = "full", priority = "scrub", signal, onApproximate } = options;
+    const started = this.now();
+    this.counters.requests += 1;
+    const lane = this.lane(mediaId, lod);
+    const controller = this.track(lane, signal);
+    if (priority === "scrub") {
+      if (lane.scrub) {
+        this.counters.superseded += 1;
+        lane.scrub.abort(supersededError());
+      }
+      lane.scrub = controller;
+      for (const prefetch of lane.prefetches) {
+        this.counters.superseded += 1;
+        prefetch.abort(supersededError());
+      }
+    }
+    try {
+      for (let attempt = 0; ; attempt++) {
+        try {
+          return await this.fetchFrame(mediaId, lod, timeUs, priority, controller.signal, started, onApproximate);
+        } catch (error) {
+          // The worker was restarted and lost its sessions: open the video again, once.
+          if (attempt > 0 || !isNamed(error, "NotOpenError")) throw error;
+          this.forget(mediaId, lod);
+        }
+      }
+    } catch (error) {
+      if (!isNamed(error, "AbortError")) this.counters.failed += 1;
+      throw error;
+    } finally {
+      if (lane.scrub === controller) lane.scrub = null;
+      this.untrack(lane, controller);
+      this.changed();
+    }
+  }
+
+  /** Decodes the frames shown in [fromUs, toUs] into the pool. Cancelled by a scrub of the same media. */
+  async prefetch(mediaId: MediaId, fromUs: number, toUs: number, options: { lod?: Lod; signal?: AbortSignal } = {}): Promise<number> {
+    const { lod = "full", signal } = options;
+    const lane = this.lane(mediaId, lod);
+    const controller = this.track(lane, signal);
+    lane.prefetches.add(controller);
+    try {
+      const info = this.infos.get(keyOf(mediaId, lod)) ?? (await this.video(mediaId, lod));
+      if (!info.decodable) throw unsupported(info);
+      await this.acquire(lane, "idle", controller.signal);
+      try {
+        this.counters.workerRequests += 1;
+        const { frames } = await this.deps.workers.request(
+          "prefetch",
+          { mediaId, lod, fromUs, toUs },
+          { priority: WORKER_PRIORITY.idle, signal: controller.signal, onProgress: (value) => void this.receive(mediaId, lod, value) },
+        );
+        return frames;
+      } finally {
+        this.releaseSlot(lane);
+      }
+    } finally {
+      lane.prefetches.delete(controller);
+      this.untrack(lane, controller);
+      this.changed();
+    }
+  }
+
+  /** A media left the project: cancel its requests, close its worker sessions, free its textures. */
+  release(mediaId: MediaId): void {
+    let known = false;
+    for (const [key, lane] of [...this.lanes]) {
+      if (!key.startsWith(`${mediaId}|`)) continue;
+      for (const controller of lane.all) controller.abort(abortError());
+      this.lanes.delete(key);
+    }
+    for (const key of [...this.videos.keys()]) {
+      if (!key.startsWith(`${mediaId}|`)) continue;
+      known = true;
+      this.videos.delete(key);
+      this.infos.delete(key);
+    }
+    if (known) void this.deps.workers.request("closeVideo", { mediaId }, { priority: "user" }).catch(() => undefined);
+    this.deps.pool.deleteMedia(mediaId);
+  }
+
+  get stats(): FrameServiceStats {
+    return {
+      ...this.counters,
+      approxLastMs: this.approxLastMs,
+      approxP95Ms: percentile95(this.approxSamples),
+      exactLastMs: this.exactLastMs,
+      exactP95Ms: percentile95(this.exactSamples),
+    };
+  }
+
+  /** The decode worker's own counters (dev stats). */
+  workerStats(): Promise<WorkerDecodeStats> {
+    return this.deps.workers.request("decodeStats", {}, { priority: "user" });
+  }
+
+  /** Called after each request settles (dev stats). */
+  subscribe(listener: () => void): () => void {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  }
+
+  private detach(): void {
+    const media = new Set([...this.videos.keys(), ...this.lanes.keys()].map((key) => key.slice(0, key.lastIndexOf("|"))));
+    for (const mediaId of media) this.release(mediaId);
+    this.source = null;
+    this.generation += 1;
+  }
+
+  private async open(mediaId: MediaId, lod: Lod): Promise<VideoInfo> {
+    const source = this.source;
+    const generation = this.generation;
+    if (!source) throw new Error("No project is open");
+    const [file, cachedIndex] = await Promise.all([source.file(mediaId, lod), source.readIndex(mediaId, lod).catch(() => null)]);
+    if (!file) throw new Error("The media file is missing");
+    if (generation !== this.generation) throw abortError();
+    const { info, index } = await this.deps.workers.request("openVideo", { mediaId, lod, file, cachedIndex }, { priority: "user" });
+    if (generation !== this.generation) throw abortError();
+    if (info.indexFromCache) this.counters.indexFromCache += 1;
+    else this.counters.indexParsed += 1;
+    if (index) {
+      source.writeIndex(mediaId, lod, index).catch((error: unknown) => console.warn(`[media] could not cache the sample index of ${mediaId}`, error));
+    }
+    return info;
+  }
+
+  private async fetchFrame(mediaId: MediaId, lod: Lod, timeUs: number, priority: FramePriority, signal: AbortSignal, started: number, onApproximate?: (result: FrameResult) => void): Promise<FrameResult> {
+    // Known videos answer synchronously up to the worker request, so a cached stand-in shows this frame.
+    const info = this.infos.get(keyOf(mediaId, lod)) ?? (await this.video(mediaId, lod));
+    signal.throwIfAborted();
+    if (!info.decodable) throw unsupported(info);
+    const frameUs = info.frameTimesUs[positionAt(info.frameTimesUs, timeUs)] as number;
+    const key: TextureKey = { mediaId, lod, timeUs: frameUs };
+    const cached = this.deps.pool.get(key);
+    if (cached) {
+      this.counters.poolHits += 1;
+      return { texture: cached, key, timeUs: frameUs, approximate: false };
+    }
+    let shownDistance = Infinity;
+    const show = (result: FrameResult) => {
+      const distance = Math.abs(result.timeUs - frameUs);
+      if (!onApproximate || distance >= shownDistance || signal.aborted) return;
+      if (shownDistance === Infinity) this.recordApprox(started);
+      shownDistance = distance;
+      onApproximate({ ...result, approximate: true });
+    };
+    const near = onApproximate ? this.deps.pool.nearest(mediaId, lod, frameUs) : null;
+    if (near) show({ texture: near.texture, key: near.key, timeUs: near.key.timeUs, approximate: true });
+
+    const lane = this.lane(mediaId, lod);
+    await this.acquire(lane, priority, signal);
+    try {
+      this.counters.workerRequests += 1;
+      const delivered = await this.deps.workers.request(
+        "requestFrame",
+        { mediaId, lod, timeUs: frameUs, priority },
+        {
+          priority: WORKER_PRIORITY[priority],
+          signal,
+          onProgress: (value) => {
+            const result = this.receive(mediaId, lod, value);
+            if (result) show(result);
+          },
+        },
+      );
+      const result = this.receive(mediaId, lod, delivered);
+      if (!result) throw new Error("The GPU device is not ready");
+      if (shownDistance === Infinity) this.recordApprox(started);
+      this.recordExact(started);
+      return result;
+    } finally {
+      this.releaseSlot(lane);
+    }
+  }
+
+  /** Uploads a frame from the worker into the pool and closes it at once (P5, P13). */
+  private receive(mediaId: MediaId, lod: Lod, delivered: DeliveredFrame): FrameResult | null {
+    const { frame, timeUs, approximate } = delivered;
+    this.counters.framesReceived += 1;
+    this.counters.openFrames += 1;
+    try {
+      const key: TextureKey = { mediaId, lod, timeUs };
+      // Never replace a cached texture: it may be on screen (pinned).
+      const existing = this.deps.pool.get(key);
+      if (existing) return { texture: existing, key, timeUs, approximate };
+      if (!this.deps.renderer.ready) return null;
+      const texture = this.deps.renderer.uploadVideoFrame(frame, { label: `${mediaId} @${timeUs}us` });
+      this.deps.pool.put(key, texture);
+      return { texture, key, timeUs, approximate };
+    } finally {
+      frame.close();
+      this.counters.openFrames -= 1;
+    }
+  }
+
+  private lane(mediaId: MediaId, lod: Lod): Lane {
+    const key = keyOf(mediaId, lod);
+    let lane = this.lanes.get(key);
+    if (!lane) {
+      lane = { active: 0, waiting: [], scrub: null, prefetches: new Set(), all: new Set() };
+      this.lanes.set(key, lane);
+    }
+    return lane;
+  }
+
+  /** A controller for one request, aborted with the caller's signal too. */
+  private track(lane: Lane, signal: AbortSignal | undefined): AbortController {
+    const controller = new AbortController();
+    if (signal?.aborted) controller.abort(signal.reason);
+    else signal?.addEventListener("abort", () => controller.abort(signal.reason), { once: true });
+    lane.all.add(controller);
+    return controller;
+  }
+
+  private untrack(lane: Lane, controller: AbortController): void {
+    lane.all.delete(controller);
+  }
+
+  /** Waits for one of the media's worker slots, most urgent request first. */
+  private acquire(lane: Lane, priority: FramePriority, signal: AbortSignal): Promise<void> {
+    signal.throwIfAborted();
+    if (lane.active < MAX_IN_FLIGHT_PER_MEDIA) {
+      lane.active += 1;
+      return Promise.resolve();
+    }
+    return new Promise<void>((resolve, reject) => {
+      const waiter: Waiter = {
+        rank: FRAME_PRIORITY_RANK[priority],
+        start: () => {
+          signal.removeEventListener("abort", onAbort);
+          lane.active += 1;
+          resolve();
+        },
+      };
+      const onAbort = () => {
+        const at = lane.waiting.indexOf(waiter);
+        if (at !== -1) lane.waiting.splice(at, 1);
+        reject(signal.reason);
+      };
+      signal.addEventListener("abort", onAbort, { once: true });
+      // By priority, then arrival.
+      let at = lane.waiting.length;
+      while (at > 0 && (lane.waiting[at - 1] as Waiter).rank > waiter.rank) at--;
+      lane.waiting.splice(at, 0, waiter);
+    });
+  }
+
+  private releaseSlot(lane: Lane): void {
+    lane.active -= 1;
+    const next = lane.waiting.shift();
+    next?.start();
+  }
+
+  private forget(mediaId: MediaId, lod: Lod): void {
+    this.videos.delete(keyOf(mediaId, lod));
+    this.infos.delete(keyOf(mediaId, lod));
+  }
+
+  private recordApprox(started: number): void {
+    this.approxLastMs = this.now() - started;
+    pushSample(this.approxSamples, this.approxLastMs);
+  }
+
+  private recordExact(started: number): void {
+    this.exactLastMs = this.now() - started;
+    pushSample(this.exactSamples, this.exactLastMs);
+  }
+
+  private now(): number {
+    return this.deps.now?.() ?? performance.now();
+  }
+
+  private changed(): void {
+    for (const listener of [...this.listeners]) listener();
+  }
+}
+
+function pushSample(samples: number[], value: number): void {
+  samples.push(value);
+  if (samples.length > LATENCY_SAMPLES) samples.shift();
+}
+
+function unsupported(info: VideoInfo): UnsupportedCodecError {
+  return new UnsupportedCodecError(`This browser cannot decode ${info.codec}`);
+}
+
+function isNamed(error: unknown, name: string): boolean {
+  return typeof error === "object" && error !== null && (error as { name?: unknown }).name === name;
+}

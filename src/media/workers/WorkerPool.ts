@@ -2,7 +2,7 @@
 // `request` resolves with the typed result; aborting its signal cancels it in the worker and rejects
 // at once with an AbortError. A crashed worker rejects everything it had and is recreated on the next
 // request.
-import { abortError, closeTransferables, fromErrorInfo, METHOD_WORKER, type FromWorker, type Method, type Params, type Priority, type Result, type ToWorker, type WorkerKind } from "./protocol.js";
+import { abortError, closeTransferables, fromErrorInfo, METHOD_WORKER, type FromWorker, type Method, type Params, type Priority, type Progress, type Result, type ToWorker, type WorkerKind } from "./protocol.js";
 
 export interface WorkerLike {
   postMessage(message: ToWorker, transfer?: Transferable[]): void;
@@ -13,16 +13,19 @@ export interface WorkerLike {
 
 export type WorkerFactories = Record<WorkerKind, () => WorkerLike>;
 
-export interface RequestOptions {
+export interface RequestOptions<P = unknown> {
   priority?: Priority;
   signal?: AbortSignal;
   transfer?: Transferable[];
+  /** Receives the request's progress values (and owns their frames). Without it they are closed. */
+  onProgress?: (value: P) => void;
 }
 
 interface Pending {
   kind: WorkerKind;
   resolve: (value: unknown) => void;
   reject: (error: unknown) => void;
+  progress: ((value: unknown) => void) | undefined;
   cleanup: () => void;
 }
 
@@ -38,8 +41,8 @@ export class WorkerPool {
     return this.pending.size;
   }
 
-  request<M extends Method>(method: M, params: Params<M>, options: RequestOptions = {}): Promise<Result<M>> {
-    const { signal, priority = "background", transfer = [] } = options;
+  request<M extends Method>(method: M, params: Params<M>, options: RequestOptions<Progress<M>> = {}): Promise<Result<M>> {
+    const { signal, priority = "background", transfer = [], onProgress } = options;
     if (signal?.aborted) return Promise.reject(signal.reason ?? abortError());
     const kind = METHOD_WORKER[method];
     const worker = this.worker(kind);
@@ -56,6 +59,7 @@ export class WorkerPool {
         kind,
         resolve: resolve as (value: unknown) => void,
         reject,
+        progress: onProgress as ((value: unknown) => void) | undefined,
         cleanup: () => signal?.removeEventListener("abort", onAbort),
       });
       worker.postMessage({ type: "request", id, method, priority, params } as ToWorker, transfer);
@@ -81,6 +85,19 @@ export class WorkerPool {
   }
 
   private receive(message: FromWorker): void {
+    if (message.type === "progress") {
+      const progress = this.pending.get(message.id)?.progress;
+      // Nobody takes it (cancelled, or no listener): free its frames (P13).
+      if (!progress) closeTransferables(message.value);
+      else {
+        try {
+          progress(message.value);
+        } catch (error) {
+          console.error("[media] progress listener failed", error);
+        }
+      }
+      return;
+    }
     const entry = this.settle(message.id);
     if (!entry) {
       // Cancelled or failed already. A result the worker posted before the cancel reached it still

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { applyToPoint } from "../mat3.js";
-import { containTransform, deviceSize, frameTransform, zoomLabel } from "./viewport.js";
+import { containTransform, deviceSize, frameTransform, rotatedContainTransform, zoomLabel } from "./viewport.js";
 
 const FRAME = { width: 1080, height: 1920 };
 
@@ -66,5 +66,35 @@ describe("zoomLabel", () => {
     expect(zoomLabel("fit")).toBe("Fit");
     expect(zoomLabel(0.25)).toBe("25%");
     expect(zoomLabel(4)).toBe("400%");
+  });
+});
+
+describe("rotatedContainTransform", () => {
+  const coded = { width: 1920, height: 1080 };
+  const box = { width: 1080, height: 1920 };
+  const corners = (rotation: 0 | 90 | 180 | 270) => {
+    const m = rotatedContainTransform(coded, rotation, box);
+    return [applyToPoint(m, 0, 0), applyToPoint(m, 1, 0), applyToPoint(m, 0, 1)];
+  };
+
+  it("turns a landscape-coded portrait clip (rotation 90) clockwise to fill a portrait frame", () => {
+    // Coded top-left goes to the top-right, top-right to the bottom-right, bottom-left to the top-left.
+    expect(corners(90)).toEqual([
+      { x: 1080, y: 0 },
+      { x: 1080, y: 1920 },
+      { x: 0, y: 0 },
+    ]);
+  });
+
+  it("handles 180 and 270, and leaves 0 as a plain contain", () => {
+    expect(corners(270)).toEqual([
+      { x: 0, y: 1920 },
+      { x: 0, y: 0 },
+      { x: 1080, y: 1920 },
+    ]);
+    const half = rotatedContainTransform({ width: 1080, height: 1920 }, 180, box);
+    expect(applyToPoint(half, 0, 0)).toEqual({ x: 1080, y: 1920 });
+    expect(applyToPoint(half, 1, 1)).toEqual({ x: 0, y: 0 });
+    expect(rotatedContainTransform(coded, 0, box)).toEqual(containTransform(coded, box));
   });
 });
