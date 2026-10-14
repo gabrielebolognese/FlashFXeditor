@@ -17,7 +17,9 @@ field() { grep -E "^$1:" docs/PROGRESS.md | head -1 | sed -E "s/^$1:[[:space:]]*
 # PROGRESS.md stores two-digit numbers ("08"); force base 10 so bash does not read them as octal.
 last_done() { echo $((10#$(field last_completed_batch))); }
 log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" | tee -a "$LOG"; }
-run_claude() { claude -p "$1" --dangerously-skip-permissions --max-turns "$MAX_TURNS" --output-format text 2>&1 | tee -a "$LOG"; }
+# MSYS_NO_PATHCONV: Git Bash would rewrite "/next-batch" into "C:/Program Files/Git/next-batch".
+# < /dev/null: detach the session from the terminal; attached sessions were aborted ~20 s in.
+run_claude() { MSYS_NO_PATHCONV=1 claude -p "$1" --dangerously-skip-permissions --max-turns "$MAX_TURNS" --output-format text < /dev/null 2>&1 | tee -a "$LOG"; }
 
 while true; do
   last="$(last_done)"
