@@ -1,0 +1,41 @@
+# Project context
+
+Blank TypeScript scaffold. Node >= 20, ESM, strict tsconfig, vitest for tests.
+
+## Conventions
+
+- ESM only. Relative imports must end in `.js` (e.g. `import { x } from "./thing.js"`).
+- Source lives in `src/`, build output in `dist/` (gitignored).
+- Tests are colocated as `*.test.ts` next to the code they cover.
+- Run `npm run typecheck` before considering a change done.
+
+## Commands
+
+- Dev: `npm run dev`
+- Build: `npm run build`
+- Typecheck: `npm run typecheck`
+- Test: `npm test`
+
+# Shorts Editor: project memory
+
+## Documents (read these, never guess)
+- `docs/EDITOR_SPEC.md`: the master specification. Sections are referenced as §n.n from the batches. §3 (architecture) and §4 (performance rules) are binding in every batch.
+- `docs/BATCHES.md`: the ordered build plan with acceptance criteria. Work happens one batch at a time through `/next-batch`.
+- `docs/PROGRESS.md`: current state, deviations, follow-ups, design system gaps. Update it at the end of every batch.
+- `DESIGN_SYSTEM.md` (the docs call it `DESIGN_SYSTEMS.md`; same file): the only source for colors, typography, spacing, radii, icon size, button size, control heights, shadows and theme. Read it before any UI work. No color or size literals in code: tokens only (CSS custom properties + the `Theme` bridge for canvases).
+
+## Workflow
+- `/next-batch` loads the next batch, presents a plan and waits for the word `Go`. Nothing is built before `Go`.
+- One batch = one commit `batch-NN: <title>`. `npm run check` must be green before a batch is marked done.
+- Do not build features from later batches. Leave `// TODO(batch NN)` hooks instead.
+- Deviations from the spec are allowed only with a written reason in `docs/PROGRESS.md`.
+
+## Architecture reminders (details in EDITOR_SPEC.md §3 and §4)
+- React is for panel chrome only. Timeline, preview, gizmo and text rasterizer are framework-free classes drawing to canvases through the single `FrameScheduler`.
+- Document = immutable `Project` updated only via commands (Immer `produceWithPatches`, patches = undo). Session state (selection, playhead, zoom) is separate and not undoable. Gestures write ephemeral state and commit one command on release.
+- Time: integer frames at project fps in the document; integer microseconds for media. No floats persisted.
+- All media work (demux, decode, encode, analysis) runs in workers; the main thread only uploads to the GPU and closes frames immediately.
+- Zero React commits during playback, scrubbing, dragging and field scrubbing. Verify with the Profiler when touching anything interactive.
+
+## Scripts
+- `npm run dev`, `npm run check` (typecheck + lint + test + build), `npm test`, `npm run build`.
