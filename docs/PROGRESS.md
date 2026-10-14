@@ -1,6 +1,6 @@
 # Progress
 
-last_completed_batch: 07
+last_completed_batch: 08
 in_progress_batch: none
 skipped_batches: []
 needs_human: none
@@ -29,11 +29,12 @@ Items the design system did not define and the functional default that was used 
 - Compact Select (24px, caption type) for panel header strips; empty media state: 28px muted icon, title type, caption hint, primary "Import media". (Batch 04)
 - Preview canvas: outside the frame `--bg-sunken` (same as the well), frame edge a 1 px `--hairline` (one device px per CSS px, rounded), margin around the frame at Fit `--preview-margin` = `--space-5` (16px). The frame interior is the project background. (Batch 05)
 - Dev GPU stats readout: a `--type-mono` chip on `--surface-3` with a hairline border and radius-sm, top-left over the preview at `--space-3`, secondary text. (Batch 05) Since Batch 06 it spans the well (left and right `--space-3`) and wraps its lines.
-- Dev scrub bar (temporary, Batch 06): a `--control-default` (28px) strip at the bottom of the preview well, `--space-3` from the edges, `--surface-3` with a hairline border and radius-md; a range input with `accent-color: var(--accent)`; a `--type-mono` readout in secondary text with tabular figures; a `--type-badge` status (tertiary, "exact" secondary, "approx" `--info`, errors `--danger` on the new `--danger-wash` = danger at 12%, DS: "semantic states use success/danger/info at low opacity"). (Batch 06)
+- Dev scrub bar (temporary, Batch 06): a `--control-default` (28px) strip at the bottom of the preview well, `--space-3` from the edges, `--surface-3` with a hairline border and radius-md; a range input with `accent-color: var(--accent)`; a `--type-mono` readout in secondary text with tabular figures; a `--type-badge` status (tertiary, "exact" secondary, "approx" `--info`, errors `--danger` on the new `--danger-wash` = danger at 12%, DS: "semantic states use success/danger/info at low opacity"). (Batch 06) Removed in Batch 08 with `--danger-wash` (nothing else used it).
 
 - Timeline metrics (Batch 07): header column `--timeline-header-width` 176px, ruler `--timeline-ruler-height` = `--control-default` (28px), V/A divider `--timeline-divider-height` = `--space-1` on `--surface-2`, "+ track" rows `--timeline-add-row-height` = `--control-compact`, track heights `--track-height-s/m/l` 32/56/88 (the spec §6.2 defaults), clip label bar `--clip-label-height` 16px, clip inset `--clip-inset` = `--space-0`, clip corners `--radius-sm`. Surfaces: ruler and header column `--surface-1`, track rows `--bg`, outside the rows `--bg-sunken`, row separators and the header edge `--hairline`.
 - Clip colors per kind (Batch 07, the DS has none; washes of DS colors, never the gold): video `--info` at 34% body / 62% label bar, audio `--success` 26% / 50%, image `--text-secondary` 26% / 46%, text `--text-primary` 16% / 30%, solid `--surface-4` / `--surface-5`, caption `--text-tertiary` 30% / 55%; name and 12px kind glyph in `--text-primary`. Selection: `--accent` outline `--selection-outline` 1.5px rounded to device px, the primary one device px thicker, body tinted with `--accent-wash`. Hover: `--clip-hover-wash` (white 7%: the DS menu wash, 4%, does not show on clip colors).
 - Playhead and ruler (Batch 07): playhead `--playhead` = `--live` (DS: "scrub red, distinct from selection gold"), `--playhead-width` 1px, 2px while dragged (`--playhead-width-active`), pentagon head `--playhead-head-width/-height` 11x10px at the bottom of the ruler. Ruler labels in mono caption type, second labels `--text-secondary`, frame labels `--text-tertiary`, label gap `--space-3`; major ticks `--space-3` long in `--border`, minor ticks `--space-1` in `--hairline`, at least `--space-3` apart. Content end marker: 1px `--border` line through the tracks, `--text-tertiary` in the ruler.
+- Preview chrome v1 (Batch 08): a footer strip under the preview canvas that mirrors the panel header (`--panel-header-height`, `--surface-1`, hairline top border, `--space-2`/`--space-3` padding; new `PanelFrame` `footer` slot, the DS has no panel footer). Timecode as `--type-mono` primary text with tabular figures; the static quality label "Auto: full" as a `--type-badge` chip on `--surface-3`, `--text-tertiary`, radius-sm (the §13 wording); Fit as a compact IconButton with the `Expand` icon (the timeline's Zoom to fit icon) and the text "Fit".
 - Timeline chrome (Batch 07): track header = 14px kind glyph in `--text-tertiary` + name in body type `--text-secondary`; "+ Video track" / "+ Audio track" rows in caption type `--text-tertiary` with a 12px plus glyph, hover `--hover-wash`. Toolbar timecode field reads as mono text, `--border` on hover and the DS input focus (`--accent-dim` border + `--accent-wash` ring) when edited, 80px wide (3 x `--space-6` + `--space-3`). Dev stats chip: the preview's chip, bottom right of the timeline.
 
 ## Global deviations
@@ -51,6 +52,9 @@ Decisions that diverge from docs/EDITOR_SPEC.md, with the reason. Each one also 
 - Image clips may run past their media's `durationUs` (`validate.ts`): a still has `durationUs: 0` and §6.14 gives images 5 s. Video and audio clips stay bound by the media. Animated images (loop or hold) are Batch 34's. (Batch 07)
 - Timeline zoom limits (§6.2 "fit-to-content down to 0.01 px/frame, up to 400") are applied only when the user zooms or scrolls, never on document changes, so an undo that shortens the content never moves the view. The zoom-out limit is Fit (content + 2 s); a view already below it is never pushed further out. (Batch 07)
 - Session `timeline.scrollY` is relative to the resting divider position (the divider rests at half the track area height; video tracks stack up from it, audio tracks down, §6.2) and may be negative; session.json accepts negative values. (Batch 07)
+- Commands carry a 10th invalidation flag, `composite` (§3.4 lists nine): the rendered frame changes but nothing the timeline draws does. `clip.update` patches that touch only `transform`, `opacity` or `crop` carry `composite` instead of `clips`, so the timeline never redraws for them (Batch 08 acceptance 4). (Batch 08)
+- Default transform on insert is Fit for every media with a size, not only when the aspect differs: same-aspect media of another size fill the frame exactly (scale 1 when the sizes match). "1:1 scale otherwise" taken literally would show 4K phone footage at twice the 1080x1920 frame. (Batch 08)
+- Media time 0 is the first frame: the compositor asks for `firstCts + sourceTime` (edit lists are still not applied, Batch 06), and picks the frame time nearest to it (§5.1). (Batch 08)
 - The frame rate can change only while the project has no clips and no markers; resolution changes use "keep". Reason: the §15 conversions (fps ratio, "Scale layout") belong to Batch 42 (this batch's "Do not build yet"), and an unconverted fps change breaks the media-clip duration invariant. (Batch 03)
 
 ## Follow-ups
@@ -80,20 +84,20 @@ Small things discovered during a batch that belong to a later batch. Format: `- 
 - [from Batch 04 -> Batch 41] Reference import mode: the `importMode` app setting exists (no UI) and falls back to copy; store handles through `project/kv.ts`; posters of reference media; "Remove and delete clips" and the media-file deletion checkbox (disabled / absent now); `media.remove` refuses media used by clips; bins, search, filter chips, missing media.
 - [from Batch 04 -> Batch 46] After an import every new card is selected (gold borders on all of them): review against "gold is used sparingly". The list view needs horizontal scroll below ~670 px.
 - [from Batch 04 -> Batch 07] `src/core/scheduler/FrameScheduler.ts` has `TODO(batch 02)` (map document `affects` flags onto view flags), which points at a finished batch; the timeline view is the first document subscriber, so do the mapping there and retag the TODO. (found in the Batch 04 review) (done in Batch 07: `TimelineView` maps document `affects` to `timelineContent`; the TODO is now a comment)
-- [from Batch 05 -> Batch 08] Remove `render/preview/ImageHarness.ts` and the `setLayers` entry point of `PreviewView` (the compositor's draw list replaces them). `WebGpuRenderer.draw` builds a `DrawRecord` array and uniform objects per call; make it allocation-free once the draw list is a reused struct array. Frame textures go into `TexturePool` under `(mediaId, lod, timeUs)`.
+- [from Batch 05 -> Batch 08] Remove `render/preview/ImageHarness.ts` and the `setLayers` entry point of `PreviewView` (the compositor's draw list replaces them). `WebGpuRenderer.draw` builds a `DrawRecord` array and uniform objects per call; make it allocation-free once the draw list is a reused struct array. Frame textures go into `TexturePool` under `(mediaId, lod, timeUs)`. (done in Batch 08: harness and `setLayers` removed; `draw` fills a pooled record array and packs uniforms in place)
 - [from Batch 05 -> Batch 09] `TexturePool` pinning exists per key (`pin`); pin the frames within ±1 s of the playhead (P6, `TODO(batch 09)` in the pool).
 - [from Batch 05 -> Batch 21] The header Zoom select (Fit/25-400%, session `preview.zoom`) is the Batch 05 stand-in: pan, wheel zoom at the cursor, Mod+0/1/2 (`canvas.zoom*` are in the keymap but unregistered), the §7.1 detail-on-zoom offscreen render, quality modes. 100% = one project px per device px (see the batch deviations). The canvas CSS size follows the fractional panel size; use `devicePixelContentBoxSize` if exact backing pixels matter.
 - [from Batch 05 -> Batch 44] Export frame lives in the preview header (`preview.exportFrame`, `exportFrame()` in `app/previewController.ts`: picker first, then `PreviewView.renderFrame()` at project size, PNG); move or mirror it in the Export tab.
 - [from Batch 05 -> Batch 46] The dev pool-budget select and the GPU stats toggle show in dev builds only (`import.meta.env.DEV`); §13 wants the pool memory in the status strip behind a dev toggle.
 - [from Batch 05 -> Batch 06] `WebGpuRenderer.uploadImageBitmap`/`uploadVideoFrame`: destroy the new texture when `copyExternalImageToTexture` throws (closed source) before rethrowing (P13). (found in the Batch 05 review) (done in Batch 06: `WebGpuRenderer.copyIn`)
-- [from Batch 05 -> Batch 08] `PreviewStatsOverlay` can run before the preview render it reports when `previewOverlay` is invalidated first in a frame (`FrameScheduler` orders views by flag invalidation order): it then shows `renders` one behind. Make the overlay invalidate itself from the preview's render, or have the scheduler render `previewOverlay` views after `preview` ones. (found in the Batch 05 review)
-- [from Batch 06 -> Batch 08] Remove `render/preview/VideoHarness.ts`, the `ScrubBar` of `PreviewPanel.tsx` (and its `.scrub*` CSS), `PreviewView.clearLayers` and `pickPreviewMedia` with the image harness. The compositor asks `frameService.getFrame(mediaId, sourceTimeUs, { priority })` and pins what it draws. Frame times are the container's cts in us with no edit list applied (a file with a composition offset starts after 0; `positionAt` maps earlier times to the first frame): decide how media time maps to cts there.
-- [from Batch 06 -> Batch 08] A `getFrame` result can be approximate since the Batch 06 fixes: when the decoder cannot produce the frame, the result is the nearest one it did, with that frame's time and pool key. The compositor draws it but must not treat it as the frame at the requested time (ask again on a later render). (found in the Batch 06 fixes)
+- [from Batch 05 -> Batch 08] `PreviewStatsOverlay` can run before the preview render it reports when `previewOverlay` is invalidated first in a frame (`FrameScheduler` orders views by flag invalidation order): it then shows `renders` one behind. Make the overlay invalidate itself from the preview's render, or have the scheduler render `previewOverlay` views after `preview` ones. (found in the Batch 05 review) (done in Batch 08: `FrameScheduler` renders flags in a fixed order, content before overlay)
+- [from Batch 06 -> Batch 08] Remove `render/preview/VideoHarness.ts`, the `ScrubBar` of `PreviewPanel.tsx` (and its `.scrub*` CSS), `PreviewView.clearLayers` and `pickPreviewMedia` with the image harness. The compositor asks `frameService.getFrame(mediaId, sourceTimeUs, { priority })` and pins what it draws. Frame times are the container's cts in us with no edit list applied (a file with a composition offset starts after 0; `positionAt` maps earlier times to the first frame): decide how media time maps to cts there. (done in Batch 08: all removed; media time 0 = the first frame's cts, Global deviations)
+- [from Batch 06 -> Batch 08] A `getFrame` result can be approximate since the Batch 06 fixes: when the decoder cannot produce the frame, the result is the nearest one it did, with that frame's time and pool key. The compositor draws it but must not treat it as the frame at the requested time (ask again on a later render). (found in the Batch 06 fixes) (done in Batch 08: `LayerTextures` draws it and asks again once the layer wants another frame)
 - [from Batch 06 -> Batch 09] Uploads cost decoder throughput: `copyExternalImageToTexture` from a hardware frame took 1080p H.264 from 2.9 ms/frame (frames closed) to 7.3 (one reused texture) and 8.5-11.5 (a new texture per frame), and 4K HEVC from 11 to 21-29 ms/frame (headless Chrome 155, RDNA2). For playback, recycle evicted frame textures of the same size instead of create + destroy, and consider `importExternalTexture` for the frame on screen. Use `frameService.prefetch` windows rather than one request per frame (a request round trip costs 15-30 ms per frame). Hardware decoders stall when the app holds many of their frames (20 held frames hung one); the session's stall fallback frees its ring, but keep windows small.
 - [from Batch 06 -> Batch 09] `VideoDecodeSession.output` (`src/media/decode/VideoDecodeSession.ts:487-497`) drops a leading picture of the current run only while its timestamp is still pending. When a superseded run's output has a timestamp that is also pending in the new run, it prunes every pending entry at or before it (line 489). A leading picture of the new run that comes out after that lands in the ring as a valid frame. Track pending timestamps per run. (found in the Batch 06 re-review, not reproduced)
 - [from Batch 06 -> Batch 24] Exact-frame latency deep in a GOP is bound by the hardware decode rate (~10 ms per 4K HEVC frame at 84 Mbps: median 593 ms 41-59 frames past a keyframe in 1 s GOPs). Proxies (540p, a keyframe every 15 frames) are the way to P8's 50 ms. `lod: "proxy"` has no file yet: `frameSource` in `app/previewController.ts` returns null (`TODO(batch 24)`), and its sample index needs its own cache name.
 - [from Batch 06 -> Batch 41] `frameSource` resolves copy-mode media only (`TODO(batch 41)`: media referenced by a file handle).
-- [from Batch 07 -> Batch 08] Inserted clips get the identity transform (scale 1 = native size, anchor at the center): Batch 08's "default transform on insert: Fit" goes into `mediaClip` in `src/timeline/edit/insertMedia.ts` (`TODO(batch 08)`).
+- [from Batch 07 -> Batch 08] Inserted clips get the identity transform (scale 1 = native size, anchor at the center): Batch 08's "default transform on insert: Fit" goes into `mediaClip` in `src/timeline/edit/insertMedia.ts` (`TODO(batch 08)`). (done in Batch 08: `defaultTransform`)
 - [from Batch 07 -> Batch 09] Follow playhead (§6.2 paging during playback) belongs to playback. Keyboard jumps (End, Up/Down, the timecode field) do not scroll the view to the playhead yet.
 - [from Batch 07 -> Batch 11] A click selects only the clicked clip, Shift+click toggles (`clickClipSelection`): the linked partner is not selected (session `linkedSelection` is ignored), and a plain click inside a multi-selection replaces it (Batch 11 must keep it for drags). Mod/Alt variants and the marquee too.
 - [from Batch 07 -> Batch 12] Ruler scrubbing with Shift should snap to edit points and markers while snapping is on (`TODO(batch 12)` in `TimelineView.onPointerDown`).
@@ -102,6 +106,11 @@ Small things discovered during a batch that belong to a later batch. Format: `- 
 - [from Batch 07 -> Batch 18] No scrollbars yet (horizontal with zoom handles, vertical): vertical scrolling is wheel-only, and in a project with many video tracks the top ones sit above the resting divider until the user scrolls up. Zoom to selection stays disabled. The timecode field ignores invalid input silently (no feedback) and uses mm:ss:ff only.
 - [from Batch 07 -> Batch 46] The timeline toolbar's Zoom group (Batch 01 priority 1) is the first to overflow into "...": at a 1600 px window the slider and zoom buttons sit in the overflow menu (they fit at 1920 px). On an empty or very short project the zoom-out limit is Fit (content + 2 s), so the view cannot go back beyond about 2 s once zoomed in past that. Review both.
 - [from Batch 03 -> Batch 42] fps conversion and "Scale layout" in the Project section (`project.setFrameRate` refuses projects with clips or markers); recent-project thumbnails (`RecentProject.thumbnail` is null); the autosave delay moves to the settings panel (stored in IndexedDB `settings.v1`); the history list reads backup names with `backupSortKey` (UTC, `-N` suffix).
+- [from Batch 08 -> Batch 09] Playback evaluates each frame through `Compositor.evaluate` + `LayerTextures.resolve` (add a `playback` priority pass, no stand-in churn). The cut warming of `LayerTextures.warm` (edge frames of the clips within 2 s of the playhead) is the scrub side of P7; the lookahead scan extends it. Transport buttons, duration and fps badge go into the preview footer (`TODO(batch 09)` in `PreviewPanel.tsx`); the footer timecode is read-only (the timeline toolbar field is the editable one).
+- [from Batch 08 -> Batch 24] Exact frames deep in long GOPs miss Batch 08's 100 ms: 1080x1920 H.264 with 2 s GOPs took 108 and 133 ms 59 frames past a keyframe (hardware decode ~2 ms/frame; 1 s GOPs stayed at 47-98 ms). Proxies are the fix.
+- [from Batch 08 -> Batch 26] One-click Fill next to the default Fit (§6.19, §11); `defaultTransform` in `timeline/edit/insertMedia.ts` holds the Fit math.
+- [from Batch 08 -> Batch 41] Undecodable or missing media draw nothing (a console warning; `TODO(batch 41)` in `LayerTextures.fail`): the labeled gray offline slate.
+- [from Batch 08 -> Batch 44] Export frame (and later the export) draws the last resolved draw list, which may hold stand-ins while frames load: export must wait for exact frames.
 
 ## Dependencies
 Why each dependency exists (Batch rule 8).
@@ -733,3 +742,103 @@ Why each dependency exists (Batch rule 8).
   - Literals: the fix adds no CSS and no color, font or size literal. The canvas code still reads every color and metric from the `Theme`.
   - §3/§4: the hover is ephemeral state owned by the view (§3.3). The cursor is written only when it changes, from the hover hit each overlay frame (§6.18). The content canvas is not redrawn for hover or the playhead (P3). One hit test per overlay frame costs a few binary searches (P10). Gestures write session state only, and "+ track" is one command.
   - TODOs: every TODO in the batch's files has a `(batch NN)` tag. A grep finds none without one, and all of them point at Batch 08 or later.
+
+### Batch 08: Compositor and preview at the playhead
+- status: done
+- date: 2026-10-14
+- notes:
+  - `src/render/compositor/Compositor.ts`:
+    - `evaluate(doc, frame)` walks the visible video tracks from the bottom up. On each it takes the clip at the frame with a binary search (`clipInIndex`/`lastClipStartingBy`, now exported from `timeline/model/queries.ts`) and skips disabled clips.
+    - Video and image clips become `media` layers with: mediaId, still flag, media time (§5.1 `in + framesToSourceUs(frame - start, speed)`, kept inside [in, out)), opacity × fades, the crop as a texture UV rect, and one matrix.
+    - The matrix composes, first to last: the crop rectangle in texture space, rotation metadata (the texture stays as coded, §9.3), flips (the content mirrors in place), the display size, then the clip transform (anchor in content fractions, scale/scaleY, rotation in clockwise degrees with exact quarter turns, position from the frame center).
+    - Crop fractions cut the shown (upright, flipped) sides. Fades are 0 on the first frame of a fade-in and on the last frame of a fade-out.
+    - Rect solids with a flat RGBA fill become `solid` layers. Text, captions, other shapes, keyframes and transitions are `TODO(batch 28/32/34/35/36)`.
+    - `neighbors(doc, frame)` lists the edge frames of the clips just before and after the playhead on each track, within 2 s.
+    - Layer structs, arrays and scratch matrices are reused between frames, with no closures.
+  - `drawList.ts` gains `MediaLayer`, `CompositeLayer` and `Composite`.
+  - `DrawListSnapshot` flattens the last drawn list into reused buffers: numbers, plus texture identities and their `valid` flag. A render whose list and viewport are unchanged skips the GPU draw (§9.4).
+  - `src/render/preview/LayerTextures.ts` (media layers → pool textures) keeps one slot per track:
+    - It snaps to the nearest frame time (`nearestPosition`, new in `sampleIndex.ts`) and draws a pool hit at once.
+    - Otherwise it requests the frame through `frameService.getFrame`, with `scrub` priority while the ruler is dragged (`TimelineView.scrubbing`) and `idle` otherwise. Only the first layer of a media gets the scrub request in a pass. A superseded slot request is aborted.
+    - It draws the FrameService stand-in (nearest cached frame, then a closer keyframe) in the same pass. With nothing of that media ready, it draws the slot's last layer as it was (texture, matrix, crop, opacity), so cuts never flash black.
+    - A request that settles on another frame is drawn and asked again only after the layer wants another frame.
+    - It pins what is drawn and calls `onChange` (invalidate `preview`) for late frames.
+    - `warm()` prefetches neighbour edge frames that are not cached yet and leaves alone the media being drawn, so a scrub never cancels them.
+    - Undecodable or missing media are left out with one warning.
+  - `src/media/decode/ImageService.ts`: still images are decoded in decode.worker (SVG on the main thread), uploaded once with mipmaps under `imageKey` and their bitmaps closed. Loads are shared and cancelled when the project detaches.
+  - `PreviewView`:
+    - Subscribes to the playhead, document affects (`timeline`, `clips`, `tracks`, `media`, `settings`, `composite`), size, zoom, theme, DPR and the device.
+    - Each render runs evaluate → resolve → warm → snapshot compare → draw or skip.
+    - Stats: draws, skipped, ms and the per-pass layer counts (exact, stand-in, held, missing, pending, warming, failed), shown in the dev GPU stats overlay.
+    - `setLayers`/`clearLayers` are gone. Export frame draws the last resolved list.
+  - Removed: `ImageHarness.ts`, `VideoHarness.ts`, `pickPreviewMedia`, the dev `ScrubBar` and its CSS, `--danger-wash`, and the harness-only `containTransform`/`rotatedContainTransform` (their rotation cases moved into `Compositor.test.ts`).
+  - Insert: `defaultTransform(media, frame)` in `insertMedia.ts` gives Fit through the display size (rotation metadata swaps width and height), anchored at the media center. A video's linked audio clip keeps scale 1.
+  - `basicCommands.ts`: `clipPatchAffects`. Transform/opacity/crop-only patches carry the new `composite` flag (Global deviations), and undo carries the same flags.
+  - `FrameScheduler` renders the dirty flags in a fixed order (`timelineContent`, `timelineOverlay`, `preview`, `previewOverlay`, ...). That fixes the Batch 05 stats-ordering follow-up.
+  - `WebGpuRenderer.draw` allocates nothing on our side once warm (Batch 05 follow-up):
+    - a pooled record array with two texture slots;
+    - `invertInto`/`multiplyInto`/`pixelsToClipInto`;
+    - reused frame/scissor rects, clear color, pass descriptor and a `Uint32Array` dynamic offset;
+    - `packLayer`/`packMat3` writing element by element.
+
+    `mat3.ts` gains `MutableMat3`, `setMat`, `multiplyInto` and `invertInto`. `time.ts` gains `framesToSourceUs`.
+  - Preview chrome v1: `PanelFrame` gets a `footer` slot outside the measured body. The preview footer holds the playhead timecode (`bindPreviewTimecode`, direct DOM), the static "Auto: full" quality chip and Fit (session `preview.zoom = "fit"`).
+  - Dev: `__editor.clips.list()` and `__editor.clips.update(id, patch)` (the raw `clip.update`), plus `__editor.images`.
+  - Measured:
+    - 551 unit tests in 72 files (+34 tests, +3 files: Compositor, LayerTextures, ImageService), plus the perf project.
+    - Build: 365.07 kB JS (120.32 kB gzip, +8.51 / +3.04 kB), 35.85 kB CSS (−0.47 kB, the scrub bar CSS is gone); decode.worker 205.39 kB unchanged.
+  - Headless Chrome 155. Setup: CDP, dev server, AMD RDNA2, 1600x900, OPFS projects. Test clips are H.264 encoded in the page: each frame shows a flat color and 12 stripes encoding its index, and the coded top-left corner carries a white marker. React commits were counted through the DevTools hook.
+    - Acceptance 1: three PNGs (400x300 red, 300x300 green, 200x500 blue) were inserted, moved to V1..V3 at frame 0, then set through `__editor.clips.update`:
+      - red: opacity 1 at (−150, −300);
+      - green: opacity 0.6, scale 1.5 at (120, −100);
+      - blue: opacity 0.35, rotated 30° at (0, 150).
+
+      `renderFrame()` was compared with a Canvas2D reference built from the clip semantics (translate to center + (x, y), rotate, scale, globalAlpha):
+      - 0 pixels differ by more than 1 away from edges;
+      - 1,376 of 2,073,600 edge pixels differ by more than 3 (max 52), because Canvas2D antialiases quad edges and the GPU quads are not antialiased;
+      - a red-only pixel is exactly (230, 40, 40).
+    - Acceptance 2: clips a | b | c on V1 (540x960, 90 frames each, GOP 30), scrubbed by real ruler drags, with every preview render logged.
+      - Slow scrub 60→120 (61 moves): 119 renders with 0 black and 0 wrong-media renders. The first render after the cut at 90 drew b's frame 0, already exact because it was warmed. Exact frames arrived in at most 17 ms.
+      - Back 120→75: every frame exact at once.
+      - Fast sweeps 0→269 and 269→0 (7 frames per move): 0 black and 0 wrong media. Every cut crossing drew the new clip's frame in its first render (exact, or a same-media stand-in). Exact frames arrived in at most 34 ms.
+      - Cold frames (never decoded) on 1080x1920 H.264:
+        - GOP 30: 47-98 ms;
+        - GOP 60: 15-19 ms at keyframes and on the warmed cut, 52 ms 30-35 frames past a keyframe, 108 and 133 ms 59 frames past one (see deviations).
+      - The first render after each settle always showed a same-media stand-in. 0 React commits in every scrub.
+    - Acceptance 3:
+      - A 640x360 clip got scale 1.6875 on insert. Rows above y = 656 and below y = 1264 are black, the content is centered, and the stripes decode the exact frame (110 = offset 100 + 10).
+      - A 640x360 clip with the iPhone rotation-90 matrix got scale 3 and fills the 1080x1920 frame upright: the coded top-left marker is at the top right, and the stripes run down the right edge and decode the exact frame (320). The rotated clip's first render showed its warmed frame 0 as the stand-in.
+    - Acceptance 4: opacity 0.5 through `__editor.clips.update` gave preview +1 draw, timeline content +0 and overlay +0. Undo, redo, a crop and a transform did the same. The same opacity again is a no-op. A rename (control) redraws the timeline content, and the preview skips its identical frame. The center pixel went from (41, 150, 200) to (20, 75, 100).
+    - Regression:
+      - Batch 05: `device.destroy()` → generation 2, the exact frame drawn again; PNG color exact (acceptance 1).
+      - Batch 06: exact frames on scrubs (above); main-thread open VideoFrames 0.
+      - Batch 07: real double-clicks on three cards made clips 0-45, 45-90, 90-135 at Fit scale 1.6875 with the playhead at 135; Ctrl+Z ×3 left 2, 1, then 0 clips, and redo ×3 restored 3.
+      - `generate(500, 8)` wheel sweeps (Ctrl/Alt zoom, scroll; one event per frame): median 16.7 ms, p95 16.9-17.1 ms, max 33 ms, no long tasks, 0 commits, 0 preview renders. The first sweep right after generating had one 134 ms frame.
+      - Ruler drag: 0 content draws; the overlay and the preview redraw per move. Each move first renders the previous exact frame as the stand-in (skipped, identical), then draws the exact frame about 15 ms later.
+- deviations:
+  - `composite` invalidation flag, Fit for every media, media time 0 = first frame: see Global deviations.
+  - Rect solids with a flat fill are drawn now: the draw list's `SolidLayer` and the solid pipeline exist since Batch 05, §9.4 resolves "solids to geometry", and the dev generator makes rect solids. Shapes, gradients and radius stay in Batch 34.
+  - Cut warming (not in the Build list): the edge frames of the clips within 2 s of the playhead are prefetched. Without it, a scrub that crosses into a never-decoded clip could show only the previous clip's last frame until the decoder answers. It is the scrub side of P7, and it never touches media a layer is drawing.
+  - Acceptance 2's "exact frame within 100 ms" holds for 1 s GOPs (47-98 ms cold at 1080x1920) but not deep in 2 s GOPs (108 and 133 ms, 59 frames past a keyframe). That case is bound by the hardware decode rate (~2 ms/frame), as measured in Batch 06; proxies (Batch 24) are the fix. Logged as a follow-up.
+  - Frames are picked by nearest frame time (§5.1), not by "shown at" (`positionAt`).
+  - Flips mirror the content in place (around the media center, not the anchor). Crop applies to the media as shown.
+  - The footer timecode is a read-only readout (§7.8 says editable; the timeline toolbar field is the editable one, and the transport comes in Batch 09). The quality label is static "Auto: full" (§13 wording).
+  - Export frame draws the last resolved list, which may hold stand-ins while frames load.
+  - The preview reads the ruler-scrub state from `TimelineView.scrubbing`, ephemeral state owned by the view running the gesture (§3.3).
+  - `scripts/run-batches.sh` (the runner's 6 h timeout, an uncommitted change made before this run) is left out of the batch commit.
+- follow-ups: [from Batch 08 -> Batch 09] playback through the compositor, lookahead beyond cut warming, transport in the footer; [from Batch 08 -> Batch 24] exact latency deep in 2 s GOPs; [from Batch 08 -> Batch 26] one-click Fill; [from Batch 08 -> Batch 41] offline slate for undecodable or missing media; [from Batch 08 -> Batch 44] export waits for exact frames
+- design gaps: preview chrome v1 (footer strip, timecode, quality chip, Fit; details in Design system gaps); `--danger-wash` removed with the scrub bar
+- pending manual checks:
+  1. Stack (acceptance 1): `npm run dev`, open a project and import three images (or videos).
+     - Double-click each card with the playhead at 0: they land one after another on V1.
+     - Click "+ Video track" twice (V2, V3). In the console, run `__editor.clips.list().map(c => [c.id, c.name, c.trackId])`, then `__editor.clips.update(id, { trackId: "<V2 id>", start: 0 })` and the same with the V3 id.
+     - Set opacities and positions, e.g. `__editor.clips.update(id, { opacity: 0.6, transform: { ...__editor.clips.list().find(c => c.id === id).transform, x: 120, y: -100 } })`.
+
+     The preview shows the three layers blended bottom (V1) to top (V3) at the right places.
+  2. Scrub across cuts (acceptance 2): insert three phone videos by double-click and turn on GPU stats (gauge, dev) in the preview header. Drag the playhead on the ruler slowly and then fast across the cuts. The preview never goes black, the new clip appears as the playhead crosses the cut, and the picture sharpens to the exact frame almost at once. The stats line shows "missing 0".
+  3. Letterbox and rotation (acceptance 3): in a 1080x1920 project, insert a landscape 16:9 video, which shows with black bands above and below. Insert a portrait video shot on an iPhone, which shows upright and fills the frame.
+  4. Opacity (acceptance 4): turn on Timeline stats (gauge, dev) in the timeline toolbar. Run `__editor.clips.update(id, { opacity: 0.5 })` and then Ctrl+Z. The preview changes, and "content N draws" in the timeline chip does not move.
+  5. P1: React DevTools Profiler, recording while you drag the playhead on the ruler over clips: no commits.
+  6. Preview chrome: the footer timecode follows the playhead (arrows, ruler). Set the header Zoom to 200%, then click Fit in the footer: the frame fits again.
+  7. Move the window to a screen with a different scale: the preview and the timeline re-render crisp.
+  8. P1 re-check (every 5 batches): playback arrives in Batch 09; re-verify in Batch 10.

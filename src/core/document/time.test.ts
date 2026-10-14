@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { FPS_30, firstFrameOfSecond, formatDurationUs, formatTimecode, frameToUs, parseTimecode, secondOfFrame, secondsToFrames, ticksToUs, usPerFrame, usToFrame, usToFrameFloor } from "./time.js";
+import { FPS_30, firstFrameOfSecond, formatDurationUs, formatTimecode, framesToSourceUs, frameToUs, parseTimecode, secondOfFrame, secondsToFrames, ticksToUs, usPerFrame, usToFrame, usToFrameFloor } from "./time.js";
 import type { Rational } from "./types.js";
 
 const NTSC: Rational = { num: 30000, den: 1001 };
@@ -53,6 +53,15 @@ describe("frameToUs / usToFrame", () => {
   it("exposes the frame duration", () => {
     expect(usPerFrame(FPS_30)).toBeCloseTo(33_333.333, 2);
     expect(usPerFrame(NTSC)).toBeCloseTo(33_366.667, 2);
+  });
+
+  it("gives the source time played by a frame count at a speed (§5.1)", () => {
+    expect(framesToSourceUs(30, 1, FPS_30)).toBe(1_000_000);
+    expect(framesToSourceUs(1, 1, NTSC)).toBe(frameToUs(1, NTSC));
+    expect(framesToSourceUs(30, 2, FPS_30)).toBe(2_000_000);
+    expect(framesToSourceUs(3, 0.5, FPS_30)).toBe(50_000);
+    expect(framesToSourceUs(1, 1.5, NTSC)).toBe(50_050);
+    expect(Number.isInteger(framesToSourceUs(7, 1.37, NTSC))).toBe(true);
   });
 });
 

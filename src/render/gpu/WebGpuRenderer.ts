@@ -5,11 +5,10 @@
 // rebuilt when GpuDevice replaces a lost device; texture handles of the old device turn invalid and
 // their owners re-upload on "ready".
 import type { RGBA } from "../../core/document/types.js";
-import type { DrawList, Layer } from "../compositor/drawList.js";
-import { FULL_UV } from "../compositor/drawList.js";
-import { applyToPoint, invert, multiply, rectTransform, scaling, type Mat3 } from "../mat3.js";
+import type { DrawList, Layer, UvRect } from "../compositor/drawList.js";
+import { invertInto, multiplyInto, mutableIdentity, setMat, type Mat3, type MutableMat3 } from "../mat3.js";
 import type { GpuDevice } from "./GpuDevice.js";
-import { layerFloats, LAYER_SIZE, LAYER_STRIDE, packLayer, packMat3, pixelsToClip, VIEW_SIZE, type LayerUniform } from "./layerUniforms.js";
+import { layerFloats, LAYER_SIZE, LAYER_STRIDE, packLayer, packMat3, pixelsToClipInto, VIEW_SIZE } from "./layerUniforms.js";
 import { generateMipmaps, mipLevelCount, textureBytes, type MipGenerator } from "./mipmaps.js";
 import { paddedBytesPerRow, unpadAndUnpremultiply } from "./readback.js";
 import type { CanvasTarget, DeviceEvent, OffscreenTarget, Renderer, RenderTarget, TextureHandle, TextureOptions, Viewport } from "./renderer.js";
@@ -114,13 +113,31 @@ class GpuOffscreenTarget implements OffscreenTarget {
   }
 }
 
+/** One quad of a draw. Records are pooled and rewritten every draw (no allocation once warm). */
 interface DrawRecord {
   kind: PipelineKind;
-  uniform: LayerUniform;
-  textures: GpuTexture[];
+  uniform: { transform: MutableMat3; uv: UvRect; color: RGBA; opacity: number; flipX: boolean; flipY: boolean; mix: number };
+  /** Bound at groups 1 and 2 (none for solids, one for textured layers, two for dissolves). */
+  texture0: GpuTexture | null;
+  texture1: GpuTexture | null;
   /** Clipped to the frame rectangle (document layers), or not (the border outside it). */
   clipped: boolean;
 }
+
+interface Rect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+const newRecord = (): DrawRecord => ({
+  kind: "solid",
+  uniform: { transform: mutableIdentity(), uv: { u0: 0, v0: 0, u1: 1, v1: 1 }, color: { r: 0, g: 0, b: 0, a: 0 }, opacity: 1, flipX: false, flipY: false, mix: 0 },
+  texture0: null,
+  texture1: null,
+  clipped: true,
+});
 
 export class WebGpuRenderer implements Renderer {
   private resources: DeviceResources | null = null;
@@ -129,6 +146,18 @@ export class WebGpuRenderer implements Renderer {
   private layerData = new Float32Array(layerFloats(INITIAL_LAYERS));
   private readonly viewData = new Float32Array(VIEW_SIZE / 4);
   private readonly canvasFormat: GPUTextureFormat;
+  // Scratch state of `draw`, reused so a frame allocates nothing on our side (the WebGPU calls do).
+  private readonly recordPool: DrawRecord[] = [];
+  private recordCount = 0;
+  private readonly fillView: Viewport & { transform: MutableMat3 } = { transform: mutableIdentity(), outside: TRANSPARENT, border: null };
+  private readonly toProject = mutableIdentity();
+  private readonly toClip = mutableIdentity();
+  private readonly frameBox: Rect = { x: 0, y: 0, width: 0, height: 0 };
+  private readonly scissorBox: Rect = { x: 0, y: 0, width: 0, height: 0 };
+  private readonly clearValue = { r: 0, g: 0, b: 0, a: 0 };
+  private readonly dynamicOffset = new Uint32Array(1);
+  /** The pass descriptor, created on the first draw; each draw only swaps the attachment's view. */
+  private pass: { attachment: GPURenderPassColorAttachment; descriptor: GPURenderPassDescriptor } | null = null;
 
   constructor(private readonly gpu: GpuDevice) {
     this.canvasFormat = typeof navigator !== "undefined" && navigator.gpu ? navigator.gpu.getPreferredCanvasFormat() : "bgra8unorm";
@@ -232,9 +261,10 @@ export class WebGpuRenderer implements Renderer {
   draw(list: DrawList, target: RenderTarget, viewport?: Viewport): boolean {
     const res = this.resources;
     if (!res || target.width < 1 || target.height < 1 || list.width < 1 || list.height < 1) return false;
-    const view: Viewport = viewport ?? { transform: scaling(target.width / list.width, target.height / list.height), outside: TRANSPARENT, border: null };
-    const toTarget = invert(view.transform);
-    if (!toTarget) return false;
+    let view: Viewport = this.fillView;
+    if (viewport) view = viewport;
+    else setMat(this.fillView.transform, target.width / list.width, 0, 0, target.height / list.height, 0, 0);
+    if (!invertInto(this.toProject, view.transform)) return false;
 
     let attachment: GPUTextureView;
     let format: GPUTextureFormat;
@@ -250,29 +280,38 @@ export class WebGpuRenderer implements Renderer {
       return false;
     }
 
-    const frame = frameRect(view.transform, list.width, list.height);
-    const records = this.records(list, view, toTarget, frame);
-    this.writeUniforms(res, records, multiply(pixelsToClip(target.width, target.height), view.transform));
+    const frame = frameRect(this.frameBox, view.transform, list.width, list.height);
+    this.buildRecords(list, view, frame);
+    this.writeUniforms(res, pixelsToClipInto(this.toClip, target.width, target.height, view.transform));
 
     const pipelines = this.pipelines(res, format);
-    const scissor = clipRect(frame, target.width, target.height);
+    const scissor = clipRect(this.scissorBox, frame, target.width, target.height);
     const encoder = res.device.createCommandEncoder({ label: "draw list" });
-    const pass = encoder.beginRenderPass({
-      colorAttachments: [{ view: attachment, loadOp: "clear", storeOp: "store", clearValue: premultiplied(view.outside) }],
-    });
+    premultipliedInto(this.clearValue, view.outside);
+    if (this.pass) {
+      this.pass.attachment.view = attachment;
+    } else {
+      const created: GPURenderPassColorAttachment = { view: attachment, loadOp: "clear", storeOp: "store", clearValue: this.clearValue };
+      this.pass = { attachment: created, descriptor: { colorAttachments: [created] } };
+    }
+    const pass = encoder.beginRenderPass(this.pass.descriptor);
+    const offset = this.dynamicOffset;
     let clipped = false;
-    records.forEach((record, index) => {
-      if (record.clipped && !scissor) return;
+    for (let index = 0; index < this.recordCount; index++) {
+      const record = this.recordPool[index] as DrawRecord;
+      if (record.clipped && !scissor) continue;
       if (record.clipped !== clipped) {
         if (record.clipped && scissor) pass.setScissorRect(scissor.x, scissor.y, scissor.width, scissor.height);
         else pass.setScissorRect(0, 0, target.width, target.height);
         clipped = record.clipped;
       }
       pass.setPipeline(pipelines[record.kind]);
-      pass.setBindGroup(0, res.group, [index * LAYER_STRIDE]);
-      record.textures.forEach((texture, slot) => pass.setBindGroup(slot + 1, texture.bindGroup));
+      offset[0] = index * LAYER_STRIDE;
+      pass.setBindGroup(0, res.group, offset, 0, 1);
+      if (record.texture0) pass.setBindGroup(1, record.texture0.bindGroup);
+      if (record.texture1) pass.setBindGroup(2, record.texture1.bindGroup);
       pass.draw(4);
-    });
+    }
     pass.end();
     res.device.queue.submit([encoder.finish()]);
     return true;
@@ -346,39 +385,86 @@ export class WebGpuRenderer implements Renderer {
     return new GpuTexture(texture, bindGroup, textureBytes(w, h, levels), res.generation, () => this.resources?.generation ?? -1);
   }
 
-  private records(list: DrawList, view: Viewport, toProject: Mat3, frame: Rect): DrawRecord[] {
-    const solid = (transform: Mat3, color: RGBA, clipped: boolean): DrawRecord => ({
-      kind: "solid",
-      uniform: { transform, uv: FULL_UV, color, opacity: 1, flipX: false, flipY: false, mix: 0 },
-      textures: [],
-      clipped,
-    });
-    const records: DrawRecord[] = [solid(rectTransform(0, 0, list.width, list.height), list.background, true)];
-    for (const layer of list.layers) {
-      const record = layerRecord(layer);
-      if (record) records.push(record);
-    }
+  /** Fills the record pool: the frame background, the layers, then the border around the frame. */
+  private buildRecords(list: DrawList, view: Viewport, frame: Rect): void {
+    this.recordCount = 0;
+    setMat(this.solidRecord(list.background, true).uniform.transform, list.width, 0, 0, list.height, 0, 0);
+    for (const layer of list.layers) this.layerRecord(layer);
     const border = view.border;
     if (border && border.width > 0 && border.color.a > 0) {
       const w = border.width;
       // Target-px rectangles around the frame, mapped back into project px for the shader.
-      const rects: Rect[] = [
-        { x: frame.x - w, y: frame.y - w, width: frame.width + 2 * w, height: w },
-        { x: frame.x - w, y: frame.y + frame.height, width: frame.width + 2 * w, height: w },
-        { x: frame.x - w, y: frame.y, width: w, height: frame.height },
-        { x: frame.x + frame.width, y: frame.y, width: w, height: frame.height },
-      ];
-      for (const r of rects) records.push(solid(multiply(toProject, rectTransform(r.x, r.y, r.width, r.height)), border.color, false));
+      this.edgeRecord(border.color, frame.x - w, frame.y - w, frame.width + 2 * w, w);
+      this.edgeRecord(border.color, frame.x - w, frame.y + frame.height, frame.width + 2 * w, w);
+      this.edgeRecord(border.color, frame.x - w, frame.y, w, frame.height);
+      this.edgeRecord(border.color, frame.x + frame.width, frame.y, w, frame.height);
     }
-    return records;
   }
 
-  private writeUniforms(res: DeviceResources, records: readonly DrawRecord[], projectToClip: Mat3): void {
-    if (records.length > res.layerCapacity) this.growLayers(res, records.length);
-    const floats = layerFloats(records.length);
-    if (this.layerData.length < floats) this.layerData = new Float32Array(layerFloats(res.layerCapacity));
-    records.forEach((record, index) => packLayer(this.layerData, index, record.uniform));
-    res.device.queue.writeBuffer(res.layerBuffer, 0, this.layerData.buffer, 0, records.length * LAYER_STRIDE);
+  private nextRecord(kind: PipelineKind, clipped: boolean): DrawRecord {
+    const record = (this.recordPool[this.recordCount] ??= newRecord());
+    this.recordCount += 1;
+    record.kind = kind;
+    record.clipped = clipped;
+    record.texture0 = null;
+    record.texture1 = null;
+    const u = record.uniform;
+    u.opacity = 1;
+    u.flipX = false;
+    u.flipY = false;
+    u.mix = 0;
+    setUv(u.uv, 0, 0, 1, 1);
+    setColor(u.color, TRANSPARENT);
+    return record;
+  }
+
+  private solidRecord(color: RGBA, clipped: boolean): DrawRecord {
+    const record = this.nextRecord("solid", clipped);
+    setColor(record.uniform.color, color);
+    return record;
+  }
+
+  /** A solid outside the frame clip: a target-px rectangle mapped back into project px. */
+  private edgeRecord(color: RGBA, x: number, y: number, width: number, height: number): void {
+    const transform = this.solidRecord(color, false).uniform.transform;
+    multiplyInto(transform, this.toProject, setMat(transform, width, 0, 0, height, x, y));
+  }
+
+  /** Adds the record of a document layer; layers with a missing or dead texture are skipped. */
+  private layerRecord(layer: Layer): void {
+    switch (layer.kind) {
+      case "texture": {
+        if (!(layer.texture instanceof GpuTexture) || !layer.texture.valid) return;
+        const record = this.nextRecord("textured", true);
+        record.texture0 = layer.texture;
+        copyLayer(record, layer.transform, layer.opacity);
+        setUv(record.uniform.uv, layer.crop.u0, layer.crop.v0, layer.crop.u1, layer.crop.v1);
+        record.uniform.flipX = layer.flipX;
+        record.uniform.flipY = layer.flipY;
+        return;
+      }
+      case "dissolve": {
+        if (!(layer.from instanceof GpuTexture) || !(layer.to instanceof GpuTexture) || !layer.from.valid || !layer.to.valid) return;
+        const record = this.nextRecord("dissolve", true);
+        record.texture0 = layer.from;
+        record.texture1 = layer.to;
+        copyLayer(record, layer.transform, layer.opacity);
+        setUv(record.uniform.uv, layer.crop.u0, layer.crop.v0, layer.crop.u1, layer.crop.v1);
+        record.uniform.mix = layer.mix;
+        return;
+      }
+      case "solid":
+        copyLayer(this.solidRecord(layer.color, true), layer.transform, layer.opacity);
+        return;
+    }
+  }
+
+  private writeUniforms(res: DeviceResources, projectToClip: Mat3): void {
+    const count = this.recordCount;
+    if (count > res.layerCapacity) this.growLayers(res, count);
+    if (this.layerData.length < layerFloats(count)) this.layerData = new Float32Array(layerFloats(res.layerCapacity));
+    for (let index = 0; index < count; index++) packLayer(this.layerData, index, (this.recordPool[index] as DrawRecord).uniform);
+    res.device.queue.writeBuffer(res.layerBuffer, 0, this.layerData.buffer, 0, count * LAYER_STRIDE);
     packMat3(this.viewData, 0, projectToClip);
     res.device.queue.writeBuffer(res.viewBuffer, 0, this.viewData);
   }
@@ -486,13 +572,6 @@ const PREMULTIPLIED_BLEND: GPUBlendState = {
   alpha: { srcFactor: "one", dstFactor: "one-minus-src-alpha", operation: "add" },
 };
 
-interface Rect {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
-
 function layerBuffer(device: GPUDevice, capacity: number): GPUBuffer {
   return device.createBuffer({ label: "layers", size: capacity * LAYER_STRIDE, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
 }
@@ -508,36 +587,56 @@ function groupBindGroup(res: Pick<DeviceResources, "device" | "groupLayout" | "v
   });
 }
 
-function layerRecord(layer: Layer): DrawRecord | null {
-  const base = { transform: layer.transform, opacity: layer.opacity, color: TRANSPARENT, flipX: false, flipY: false, mix: 0 };
-  switch (layer.kind) {
-    case "texture":
-      if (!(layer.texture instanceof GpuTexture) || !layer.texture.valid) return null;
-      return { kind: "textured", uniform: { ...base, uv: layer.crop, flipX: layer.flipX, flipY: layer.flipY }, textures: [layer.texture], clipped: true };
-    case "dissolve":
-      if (!(layer.from instanceof GpuTexture) || !(layer.to instanceof GpuTexture) || !layer.from.valid || !layer.to.valid) return null;
-      return { kind: "dissolve", uniform: { ...base, uv: layer.crop, mix: layer.mix }, textures: [layer.from, layer.to], clipped: true };
-    case "solid":
-      return { kind: "solid", uniform: { ...base, uv: FULL_UV, color: layer.color }, textures: [], clipped: true };
-  }
+function copyLayer(record: DrawRecord, transform: Mat3, opacity: number): void {
+  const t = record.uniform.transform;
+  for (let i = 0; i < 6; i++) t[i] = transform[i] as number;
+  record.uniform.opacity = opacity;
 }
 
-/** The frame (0, 0, width, height in project px) in target px. */
-function frameRect(transform: Mat3, width: number, height: number): Rect {
-  const a = applyToPoint(transform, 0, 0);
-  const b = applyToPoint(transform, width, height);
-  return { x: Math.min(a.x, b.x), y: Math.min(a.y, b.y), width: Math.abs(b.x - a.x), height: Math.abs(b.y - a.y) };
+function setUv(uv: UvRect, u0: number, v0: number, u1: number, v1: number): void {
+  uv.u0 = u0;
+  uv.v0 = v0;
+  uv.u1 = u1;
+  uv.v1 = v1;
 }
 
-/** The integer scissor of `rect` inside the target, or null when nothing of it is visible. */
-function clipRect(rect: Rect, width: number, height: number): Rect | null {
+function setColor(out: RGBA, color: RGBA): void {
+  out.r = color.r;
+  out.g = color.g;
+  out.b = color.b;
+  out.a = color.a;
+}
+
+/** The frame (0, 0, width, height in project px) in target px (the viewport is axis-aligned), into `out`. */
+function frameRect(out: Rect, transform: Mat3, width: number, height: number): Rect {
+  const ax = transform[4];
+  const ay = transform[5];
+  const bx = transform[0] * width + transform[2] * height + ax;
+  const by = transform[1] * width + transform[3] * height + ay;
+  out.x = Math.min(ax, bx);
+  out.y = Math.min(ay, by);
+  out.width = Math.abs(bx - ax);
+  out.height = Math.abs(by - ay);
+  return out;
+}
+
+/** The integer scissor of `rect` inside the target, into `out`; null when nothing of it is visible. */
+function clipRect(out: Rect, rect: Rect, width: number, height: number): Rect | null {
   const x0 = Math.max(0, Math.floor(rect.x));
   const y0 = Math.max(0, Math.floor(rect.y));
   const x1 = Math.min(width, Math.ceil(rect.x + rect.width));
   const y1 = Math.min(height, Math.ceil(rect.y + rect.height));
-  return x1 > x0 && y1 > y0 ? { x: x0, y: y0, width: x1 - x0, height: y1 - y0 } : null;
+  if (x1 <= x0 || y1 <= y0) return null;
+  out.x = x0;
+  out.y = y0;
+  out.width = x1 - x0;
+  out.height = y1 - y0;
+  return out;
 }
 
-function premultiplied(color: RGBA): GPUColor {
-  return { r: color.r * color.a, g: color.g * color.a, b: color.b * color.a, a: color.a };
+function premultipliedInto(out: { r: number; g: number; b: number; a: number }, color: RGBA): void {
+  out.r = color.r * color.a;
+  out.g = color.g * color.a;
+  out.b = color.b * color.a;
+  out.a = color.a;
 }

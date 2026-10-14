@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyToPoint, IDENTITY, invert, multiply, rectTransform, scaling, translation } from "./mat3.js";
+import { applyToPoint, IDENTITY, invert, multiply, multiplyInto, mutableIdentity, rectTransform, scaling, setMat, translation } from "./mat3.js";
 
 describe("mat3", () => {
   it("identity leaves points alone", () => {
@@ -11,6 +11,16 @@ describe("mat3", () => {
     expect(applyToPoint(m, 1, 1)).toEqual({ x: 12, y: 23 });
     const n = multiply(scaling(2, 3), translation(10, 20));
     expect(applyToPoint(n, 1, 1)).toEqual({ x: 22, y: 63 });
+  });
+
+  it("multiplyInto matches multiply and may write over an operand", () => {
+    const a = translation(10, 20);
+    const b = scaling(2, 3);
+    const out = mutableIdentity();
+    expect(multiplyInto(out, a, b)).toEqual(multiply(a, b));
+    const m = setMat(mutableIdentity(), 1, 2, 3, 4, 5, 6);
+    multiplyInto(m, m, translation(1, 1));
+    expect(m).toEqual(multiply([1, 2, 3, 4, 5, 6], translation(1, 1)));
   });
 
   it("rectTransform maps the unit square onto the rectangle", () => {

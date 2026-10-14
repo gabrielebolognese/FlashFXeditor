@@ -9,11 +9,13 @@ export interface PanelFrameProps {
   header: ReactNode;
   /** Right side of the header strip: panel one-click actions. */
   actions?: ReactNode;
+  /** A strip under the body (the preview chrome); the body size excludes it. */
+  footer?: ReactNode;
   children: ReactNode;
 }
 
-/** A panel: header strip + body. The body size is reported to the layout store. */
-export function PanelFrame({ id, header, actions, children }: PanelFrameProps) {
+/** A panel: header strip + body (+ footer strip). The body size is reported to the layout store. */
+export function PanelFrame({ id, header, actions, footer, children }: PanelFrameProps) {
   const bodyRef = useRef<HTMLDivElement>(null);
   usePanelSize(id, bodyRef);
   return (
@@ -25,6 +27,7 @@ export function PanelFrame({ id, header, actions, children }: PanelFrameProps) {
       <div ref={bodyRef} className={styles.body}>
         {children}
       </div>
+      {footer && <footer className={styles.footer}>{footer}</footer>}
     </section>
   );
 }

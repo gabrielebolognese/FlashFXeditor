@@ -2,7 +2,7 @@
 // frame inside the panel with a margin; a numeric zoom is project px per device px (100% = 1:1 pixels)
 // and keeps the frame centered. All sizes here are device px except the frame (project px).
 // TODO(batch 21): pan, wheel zoom anchored at the cursor, Mod+0/1/2.
-import { rectTransform, type Mat3 } from "../mat3.js";
+import type { Mat3 } from "../mat3.js";
 
 export type PreviewZoom = number | "fit";
 
@@ -32,35 +32,6 @@ export function frameTransform(zoom: PreviewZoom, frame: Size, target: Size, mar
   const x = Math.round((target.width - width) / 2);
   const y = Math.round((target.height - height) / 2);
   return [width / frame.width, 0, 0, height / frame.height, x, y];
-}
-
-/**
- * Like `containTransform` for a frame shown turned by `rotation` (clockwise quarter turns, spec §9.3):
- * `content` is the coded size; the turned frame is contained and centered in `box`.
- */
-export function rotatedContainTransform(content: Size, rotation: 0 | 90 | 180 | 270, box: Size): Mat3 {
-  const quarter = rotation === 90 || rotation === 270;
-  const shown = quarter ? { width: content.height, height: content.width } : content;
-  const [w, , , h, x, y] = containTransform(shown, box);
-  // Where the unit quad's corners go: (u, v) -> (a u + c v + tx, b u + d v + ty).
-  switch (rotation) {
-    case 90:
-      return [0, h, -w, 0, x + w, y];
-    case 180:
-      return [-w, 0, 0, -h, x + w, y + h];
-    case 270:
-      return [0, -h, w, 0, x, y + h];
-    default:
-      return [w, 0, 0, h, x, y];
-  }
-}
-
-/** Maps the unit quad onto `content` contained (letterboxed) and centered in `box`. */
-export function containTransform(content: Size, box: Size): Mat3 {
-  const scale = Math.min(box.width / content.width, box.height / content.height);
-  const width = content.width * scale;
-  const height = content.height * scale;
-  return rectTransform((box.width - width) / 2, (box.height - height) / 2, width, height);
 }
 
 /** Backing-store size of a canvas laid out at `css` px on a `dpr` screen. */

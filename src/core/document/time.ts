@@ -45,6 +45,12 @@ export function frameToUs(frame: Frame, fps: Rational): Us {
   return roundDiv(frame * US_PER_SECOND * fps.den, fps.num);
 }
 
+/** Source media time (us) played by `frames` timeline frames at `speed` (§5.1: frames * speed * usPerFrame). */
+export function framesToSourceUs(frames: Frame, speed: number, fps: Rational): Us {
+  if (speed === 1) return frameToUs(frames, fps);
+  return Math.round((frames * speed * US_PER_SECOND * fps.den) / fps.num);
+}
+
 /** Nearest frame to the integer time `us`. */
 export function usToFrame(us: Us, fps: Rational): Frame {
   return roundDiv(us * fps.num, US_PER_SECOND * fps.den);

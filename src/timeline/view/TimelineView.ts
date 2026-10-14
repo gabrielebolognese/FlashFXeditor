@@ -199,6 +199,11 @@ export class TimelineView {
     return this.content !== null;
   }
 
+  /** True while the playhead is dragged on the ruler (the preview then asks frames with scrub priority, P8). */
+  get scrubbing(): boolean {
+    return this.gesture?.kind === "scrub";
+  }
+
   /** Dev stats text target (written after each draw), or null to stop. */
   attachStats(element: HTMLElement | null): void {
     this.statsElement = element;

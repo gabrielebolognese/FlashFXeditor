@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { FULL_UV } from "../compositor/drawList.js";
-import { applyToPoint, multiply, rectTransform } from "../mat3.js";
-import { layerFloats, LAYER_SIZE, LAYER_STRIDE, packLayer, packMat3, pixelsToClip } from "./layerUniforms.js";
+import { applyToPoint, multiply, mutableIdentity, rectTransform } from "../mat3.js";
+import { layerFloats, LAYER_SIZE, LAYER_STRIDE, packLayer, packMat3, pixelsToClip, pixelsToClipInto } from "./layerUniforms.js";
 
 describe("layer uniforms", () => {
   it("fits one layer in the dynamic-offset stride", () => {
@@ -44,5 +44,8 @@ describe("layer uniforms", () => {
     expect(applyToPoint(toClip, 200, 100)).toEqual({ x: 1, y: -1 });
     const quad = multiply(toClip, rectTransform(50, 25, 100, 50));
     expect(applyToPoint(quad, 0.5, 0.5)).toEqual({ x: 0, y: 0 });
+    const view = rectTransform(3, 4, 2, 5);
+    // `+ 0` folds -0 into 0 (a zero times a negative scale).
+    expect(pixelsToClipInto(mutableIdentity(), 200, 100, view).map((v) => v + 0)).toEqual(multiply(toClip, view).map((v) => v + 0));
   });
 });

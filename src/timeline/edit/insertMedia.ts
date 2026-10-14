@@ -8,7 +8,8 @@ import { addClip, addTrack } from "../../core/commands/basicCommands.js";
 import type { Command } from "../../core/commands/command.js";
 import { emptyTrack, nextTrackName } from "../../core/document/project.js";
 import { frameToUs, secondsToFrames, usToFrameFloor } from "../../core/document/time.js";
-import type { Frame, MediaClip, MediaItem, Project, Rational, Track, TrackKind } from "../../core/document/types.js";
+import type { Frame, MediaClip, MediaItem, Project, Rational, Track, TrackKind, Transform } from "../../core/document/types.js";
+import { displaySize } from "../../media/probe/rotation.js";
 import { clipsInRange } from "../model/queries.js";
 
 /** Natural duration of a still image on the timeline (spec §6.14). */
@@ -51,14 +52,23 @@ export function firstFreeStart(project: Project, trackIds: readonly string[], fr
   return start;
 }
 
-function mediaClip(fields: Pick<MediaClip, "id" | "trackId" | "kind" | "name" | "start" | "duration" | "mediaId" | "out"> & { linkGroup?: string }): MediaClip {
+/**
+ * The transform of a newly placed clip (spec §6.19): Fit, the media contained in the frame (letterboxed
+ * when the aspects differ, filling it exactly when they match), centered, anchored at the media center.
+ * Rotation metadata swaps width and height first. Media without a size (audio) keep scale 1.
+ */
+export function defaultTransform(media: MediaItem, frame: { width: number; height: number }): Transform {
+  const shown = media.width && media.height ? displaySize(media.width, media.height, media.rotation) : null;
+  const scale = shown ? Math.min(frame.width / shown.width, frame.height / shown.height) : 1;
+  return { x: 0, y: 0, scale, rotation: 0, anchor: { x: 0.5, y: 0.5 }, flipH: false, flipV: false };
+}
+
+function mediaClip(fields: Pick<MediaClip, "id" | "trackId" | "kind" | "name" | "start" | "duration" | "mediaId" | "out" | "transform"> & { linkGroup?: string }): MediaClip {
   return {
     ...fields,
     enabled: true,
     in: 0,
     speed: 1,
-    // TODO(batch 08): Fit when the media aspect differs from the project (spec §6.19).
-    transform: { x: 0, y: 0, scale: 1, rotation: 0, anchor: { x: 0.5, y: 0.5 }, flipH: false, flipV: false },
     opacity: 1,
     crop: { left: 0, top: 0, right: 0, bottom: 0 },
     volume: { gainDb: 0, muted: false },
@@ -89,6 +99,7 @@ export function planMediaInsert(project: Project, media: MediaItem, at: Frame, n
   // Stills hold for any length; media clips must end inside the media (at most one frame short of a sub-frame file).
   const out = media.kind === "image" ? frameToUs(duration, fps) : Math.min(media.durationUs, frameToUs(duration, fps));
   const linkGroup = targets.length > 1 ? { linkGroup: newId() } : {};
+  const transform = defaultTransform(media, project.settings);
   const clips = targets.map((track) =>
     mediaClip({
       id: newId(),
@@ -99,6 +110,8 @@ export function planMediaInsert(project: Project, media: MediaItem, at: Frame, n
       duration,
       mediaId: media.id,
       out,
+      // The audio clip of a video draws nothing: it keeps scale 1.
+      transform: track === audio ? { ...transform, scale: 1 } : transform,
       ...linkGroup,
     }),
   );

@@ -12,7 +12,7 @@ import { setSelection, type SessionStore } from "./sessionStore.js";
 
 enablePatches();
 
-const ALL_AFFECTS: ReadonlySet<Affect> = new Set<Affect>(["timeline", "clips", "tracks", "media", "text", "captions", "markers", "settings", "audio"]);
+const ALL_AFFECTS: ReadonlySet<Affect> = new Set<Affect>(["timeline", "clips", "tracks", "media", "text", "captions", "markers", "settings", "audio", "composite"]);
 
 export type DocumentListener = (state: Project, prev: Project, affects: ReadonlySet<Affect>) => void;
 

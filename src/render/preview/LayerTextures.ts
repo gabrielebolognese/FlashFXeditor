@@ -1,0 +1,376 @@
+// Media layers to pool textures for the preview (spec §9.3, §9.4, P6, P8). One slot per video track
+// remembers what that track drew last:
+// - The frame a layer wants is its media time snapped to the nearest frame time (§5.1); media time 0
+//   is the first frame. A pool hit draws at once.
+// - Otherwise the frame is requested: scrub priority while the ruler is dragged, idle otherwise. Only
+//   the first layer of a media gets the scrub request in a pass, so two layers of one media do not
+//   supersede each other. The stand-in the frame service offers (the nearest cached frame, then a
+//   closer keyframe) is drawn meanwhile with the layer's own geometry.
+// - With nothing of that media ready, the slot draws its last layer as it was (texture, matrix, crop,
+//   opacity): a cut never flashes black while the new clip's frame decodes.
+// - A request that settles on another frame (the decoder could not produce it) is drawn, but not
+//   taken for the wanted frame: it is asked again once the layer wants another frame.
+// - What is drawn stays pinned in the pool. Late frames call `onChange` (the view redraws).
+// - `warm` prefetches the edge frames of the clips next to the playhead, so a scrub across a cut
+//   finds the new clip's frame cached.
+// The draw list and the slot structs are reused between passes.
+import type { MediaId, TrackId } from "../../core/document/types.js";
+import { imageKey, type TextureKey, type TexturePool } from "../../media/cache/TexturePool.js";
+import type { FrameResult, FrameService } from "../../media/decode/FrameService.js";
+import type { ImageService } from "../../media/decode/ImageService.js";
+import { nearestPosition } from "../../media/demux/sampleIndex.js";
+import { isAbortError, type FramePriority } from "../../media/workers/protocol.js";
+import type { NeighborFrame } from "../compositor/Compositor.js";
+import type { Composite, DrawList, Layer, MediaLayer, TextureLayer } from "../compositor/drawList.js";
+import type { TextureHandle } from "../gpu/renderer.js";
+import { mutableIdentity, type MutableMat3 } from "../mat3.js";
+
+export interface LayerTexturesDeps {
+  frames: Pick<FrameService, "info" | "video" | "getFrame" | "prefetch">;
+  images: Pick<ImageService, "get" | "load">;
+  pool: Pick<TexturePool, "get" | "has" | "pin">;
+  /** A frame arrived after the pass that wanted it: draw again. */
+  onChange(): void;
+}
+
+export interface LayerTexturesStats {
+  /** Media layers of the last pass, and those drawn with their exact frame. */
+  layers: number;
+  exact: number;
+  /** Drawn with a stand-in of the same media (P8). */
+  standIns: number;
+  /** Showing the track's previous layer while the new one loads. */
+  held: number;
+  /** Not drawn: nothing ready and nothing shown before. */
+  missing: number;
+  /** Frame requests in flight, and neighbour frames being warmed. */
+  pending: number;
+  warming: number;
+  /** Media this browser cannot show (unsupported codec, missing file). */
+  failed: number;
+}
+
+type WritableTextureLayer = Omit<TextureLayer, "transform"> & { transform: MutableMat3 };
+
+interface Pending {
+  id: string;
+  controller: AbortController;
+}
+
+interface Slot {
+  pending: Pending | null;
+  /** The best stand-in for the pending (or settled) frame. */
+  standIn: FrameResult | null;
+  /** A frame whose request settled on another frame: not asked again while it is wanted. */
+  settled: string | null;
+  /** The layer drawn last; `texture` is null before the first draw. */
+  shown: WritableTextureLayer;
+  hasShown: boolean;
+  pinned: string | null;
+  unpin: (() => void) | null;
+  pass: number;
+}
+
+const keyId = (key: TextureKey) => `${key.mediaId}|${key.lod}|${key.timeUs}`;
+
+export class LayerTextures {
+  private readonly slots = new Map<TrackId, Slot>();
+  private readonly list: DrawList & { layers: Layer[] } = { width: 0, height: 0, background: { r: 0, g: 0, b: 0, a: 1 }, layers: [] };
+  private readonly scrubbed = new Set<MediaId>();
+  private readonly active = new Set<MediaId>();
+  private readonly opening = new Set<MediaId>();
+  private readonly loadingImages = new Set<MediaId>();
+  private readonly warming = new Set<string>();
+  private readonly failed = new Set<MediaId>();
+  private pass = 0;
+  private resolving = false;
+  readonly stats: LayerTexturesStats = { layers: 0, exact: 0, standIns: 0, held: 0, missing: 0, pending: 0, warming: 0, failed: 0 };
+
+  constructor(private readonly deps: LayerTexturesDeps) {}
+
+  /** The draw list for `composite` with every media layer resolved to a texture (or held, or left out). */
+  resolve(composite: Composite, priority: FramePriority): DrawList {
+    const list = this.list;
+    list.width = composite.width;
+    list.height = composite.height;
+    list.background = composite.background;
+    list.layers.length = 0;
+    this.pass += 1;
+    this.scrubbed.clear();
+    this.active.clear();
+    const stats = this.stats;
+    stats.layers = 0;
+    stats.exact = 0;
+    stats.standIns = 0;
+    stats.held = 0;
+    stats.missing = 0;
+    this.resolving = true;
+    try {
+      for (const layer of composite.layers) {
+        if (layer.kind === "solid") {
+          list.layers.push(layer);
+          continue;
+        }
+        stats.layers += 1;
+        this.active.add(layer.mediaId);
+        const drawn = this.resolveMedia(this.slot(layer.trackId), layer, priority);
+        if (drawn) list.layers.push(drawn);
+        else stats.missing += 1;
+      }
+    } finally {
+      this.resolving = false;
+    }
+    for (const [trackId, slot] of this.slots) {
+      if (slot.pass === this.pass) continue;
+      this.release(slot);
+      this.slots.delete(trackId);
+    }
+    stats.pending = 0;
+    for (const slot of this.slots.values()) if (slot.pending) stats.pending += 1;
+    stats.warming = this.warming.size;
+    stats.failed = this.failed.size;
+    return list;
+  }
+
+  /** Prefetches the neighbour frames that are not cached yet (media drawn by a layer are left alone). */
+  warm(neighbors: readonly NeighborFrame[]): void {
+    for (const neighbor of neighbors) {
+      const { mediaId } = neighbor;
+      if (this.failed.has(mediaId) || this.active.has(mediaId)) continue;
+      if (neighbor.still) {
+        if (!this.deps.images.get(mediaId)) this.loadImage(mediaId);
+        continue;
+      }
+      const key = this.videoKey(mediaId, neighbor.timeUs);
+      if (!key || this.deps.pool.has(key)) continue;
+      const id = keyId(key);
+      if (this.warming.has(id)) continue;
+      this.warming.add(id);
+      this.deps.frames
+        .prefetch(mediaId, key.timeUs, key.timeUs)
+        .catch(() => undefined)
+        .finally(() => {
+          this.warming.delete(id);
+          this.stats.warming = this.warming.size;
+        });
+    }
+    this.stats.warming = this.warming.size;
+  }
+
+  /** A media left the project or came back: forget that it failed. */
+  forget(mediaId: MediaId): void {
+    this.failed.delete(mediaId);
+  }
+
+  /** Drops every slot, request and pin (project closed). */
+  clear(): void {
+    for (const slot of this.slots.values()) this.release(slot);
+    this.slots.clear();
+    this.failed.clear();
+    this.opening.clear();
+    this.loadingImages.clear();
+    this.list.layers.length = 0;
+  }
+
+  /** The last resolved draw list (Export frame draws it). */
+  get current(): DrawList {
+    return this.list;
+  }
+
+  private resolveMedia(slot: Slot, layer: MediaLayer, priority: FramePriority): TextureLayer | null {
+    const { mediaId } = layer;
+    // Never ready: holding the track's previous layer would show stale content for good.
+    if (this.failed.has(mediaId)) return null;
+    let key: TextureKey | null;
+    let texture: TextureHandle | null;
+    if (layer.still) {
+      key = imageKey(mediaId);
+      texture = this.deps.images.get(mediaId);
+      if (!texture) this.loadImage(mediaId);
+    } else {
+      key = this.videoKey(mediaId, layer.timeUs);
+      texture = key ? this.deps.pool.get(key) : null;
+    }
+    if (texture && key) {
+      this.cancel(slot);
+      slot.standIn = null;
+      slot.settled = null;
+      this.stats.exact += 1;
+      return this.show(slot, layer, texture, key);
+    }
+    if (key && !layer.still) this.request(slot, key, priority);
+    const standIn = slot.standIn;
+    if (standIn && standIn.key.mediaId === mediaId && standIn.texture.valid) {
+      this.stats.standIns += 1;
+      return this.show(slot, layer, standIn.texture, standIn.key);
+    }
+    if (slot.hasShown && slot.shown.texture.valid) {
+      this.stats.held += 1;
+      return slot.shown;
+    }
+    return null;
+  }
+
+  /** The pool key of the video frame nearest to media time `timeUs`; null until the video is open. */
+  private videoKey(mediaId: MediaId, timeUs: number): TextureKey | null {
+    const info = this.deps.frames.info(mediaId);
+    if (!info) {
+      this.open(mediaId);
+      return null;
+    }
+    const times = info.frameTimesUs;
+    if (!info.decodable || times.length === 0) {
+      this.fail(mediaId, `this browser cannot decode ${info.codec}`);
+      return null;
+    }
+    // Media time 0 is the first frame: the container's first cts may come after 0 (no edit list applied).
+    return { mediaId, lod: "full", timeUs: times[nearestPosition(times, (times[0] as number) + timeUs)] as number };
+  }
+
+  private request(slot: Slot, key: TextureKey, priority: FramePriority): void {
+    const id = keyId(key);
+    if (slot.pending?.id === id || slot.settled === id) return;
+    this.cancel(slot);
+    slot.standIn = null;
+    slot.settled = null;
+    let wanted = priority;
+    if (priority === "scrub") {
+      if (this.scrubbed.has(key.mediaId)) wanted = "idle";
+      else this.scrubbed.add(key.mediaId);
+    }
+    const pending: Pending = { id, controller: new AbortController() };
+    slot.pending = pending;
+    this.deps.frames
+      .getFrame(key.mediaId, key.timeUs, {
+        priority: wanted,
+        signal: pending.controller.signal,
+        onApproximate: (result) => {
+          if (slot.pending !== pending) return;
+          slot.standIn = result;
+          // During `resolve` the pass uses it at once; later it needs a new pass.
+          if (!this.resolving) this.deps.onChange();
+        },
+      })
+      .then(
+        (result) => {
+          if (slot.pending !== pending) return;
+          slot.pending = null;
+          if (result.approximate) {
+            slot.standIn = result;
+            slot.settled = id;
+          }
+          this.deps.onChange();
+        },
+        (error: unknown) => {
+          if (slot.pending !== pending) return;
+          slot.pending = null;
+          if (isAbortError(error)) {
+            // Superseded by someone else's request: ask again in the next pass.
+            if (!pending.controller.signal.aborted) this.deps.onChange();
+            return;
+          }
+          if ((error as { name?: unknown }).name === "UnsupportedCodecError") this.fail(key.mediaId, (error as Error).message);
+          else {
+            slot.settled = id;
+            console.warn(`[preview] no frame of ${key.mediaId} at ${key.timeUs} us`, error);
+          }
+        },
+      );
+  }
+
+  private open(mediaId: MediaId): void {
+    if (this.opening.has(mediaId)) return;
+    this.opening.add(mediaId);
+    this.deps.frames.video(mediaId).then(
+      () => {
+        this.opening.delete(mediaId);
+        this.deps.onChange();
+      },
+      (error: unknown) => {
+        this.opening.delete(mediaId);
+        if (!isAbortError(error)) this.fail(mediaId, error instanceof Error ? error.message : String(error));
+      },
+    );
+  }
+
+  private loadImage(mediaId: MediaId): void {
+    if (this.loadingImages.has(mediaId)) return;
+    this.loadingImages.add(mediaId);
+    this.deps.images.load(mediaId).then(
+      (texture) => {
+        this.loadingImages.delete(mediaId);
+        if (texture) this.deps.onChange();
+      },
+      (error: unknown) => {
+        this.loadingImages.delete(mediaId);
+        if (!isAbortError(error)) this.fail(mediaId, error instanceof Error ? error.message : String(error));
+      },
+    );
+  }
+
+  private fail(mediaId: MediaId, reason: string): void {
+    if (this.failed.has(mediaId)) return;
+    this.failed.add(mediaId);
+    this.stats.failed = this.failed.size;
+    // TODO(batch 41): offline and undecodable media render as a labeled gray slate (§6.19).
+    console.warn(`[preview] cannot show media ${mediaId}: ${reason}`);
+  }
+
+  /** Draws `texture` with the layer's geometry from this slot, pinning it in the pool. */
+  private show(slot: Slot, layer: MediaLayer, texture: TextureHandle, key: TextureKey): TextureLayer {
+    const id = keyId(key);
+    if (slot.pinned !== id) {
+      const unpin = this.deps.pool.pin(key);
+      slot.unpin?.();
+      slot.unpin = unpin;
+      slot.pinned = id;
+    }
+    const shown = slot.shown;
+    shown.texture = texture;
+    for (let i = 0; i < 6; i++) shown.transform[i] = layer.transform[i] as number;
+    shown.opacity = layer.opacity;
+    shown.crop.u0 = layer.crop.u0;
+    shown.crop.v0 = layer.crop.v0;
+    shown.crop.u1 = layer.crop.u1;
+    shown.crop.v1 = layer.crop.v1;
+    slot.hasShown = true;
+    return shown;
+  }
+
+  private slot(trackId: TrackId): Slot {
+    let slot = this.slots.get(trackId);
+    if (!slot) {
+      slot = {
+        pending: null,
+        standIn: null,
+        settled: null,
+        shown: { kind: "texture", texture: NO_TEXTURE, transform: mutableIdentity(), opacity: 1, crop: { u0: 0, v0: 0, u1: 1, v1: 1 }, flipX: false, flipY: false },
+        hasShown: false,
+        pinned: null,
+        unpin: null,
+        pass: 0,
+      };
+      this.slots.set(trackId, slot);
+    }
+    slot.pass = this.pass;
+    return slot;
+  }
+
+  private cancel(slot: Slot): void {
+    slot.pending?.controller.abort();
+    slot.pending = null;
+  }
+
+  private release(slot: Slot): void {
+    this.cancel(slot);
+    slot.unpin?.();
+    slot.unpin = null;
+    slot.pinned = null;
+    slot.standIn = null;
+    slot.hasShown = false;
+    slot.shown.texture = NO_TEXTURE;
+  }
+}
+
+/** The texture of a slot that has drawn nothing yet. */
+const NO_TEXTURE: TextureHandle = { width: 0, height: 0, mipLevels: 0, bytes: 0, valid: false, destroy: () => undefined };

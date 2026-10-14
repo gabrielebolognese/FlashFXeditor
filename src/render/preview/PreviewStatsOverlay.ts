@@ -1,5 +1,6 @@
 // Dev stats over the preview (spec §13 "GPU memory of the texture pool (dev toggle)"): GPU state and
-// recoveries, preview renders against resize events, the texture pool's count, bytes and evictions,
+// recoveries, preview draws (and identical frames skipped) against resize events, the compositor's
+// layers (exact, stand-in, held, missing) and requests, the texture pool's count, bytes and evictions,
 // and the decode engine: latencies to the first and to the exact frame, seeks, live decoders, frames
 // held on each side (the main thread's must stay 0, P13) and sample index cache hits. Plain text
 // written in the scheduler loop; the worker's counters are polled while the overlay is shown. React
@@ -75,7 +76,8 @@ export class PreviewStatsOverlay implements RenderView {
       : "decode worker not started";
     this.element.textContent = [
       `GPU ${gpu.state} · device ${gpu.generation} · restores ${gpu.restores}${recovery}`,
-      `renders ${p.renders} · resizes ${p.resizes} · ${p.width}×${p.height} @${p.dpr}x`,
+      `draws ${p.renders} · skipped ${p.skipped} · ${p.ms.toFixed(2)} ms · resizes ${p.resizes} · ${p.width}×${p.height} @${p.dpr}x`,
+      `layers ${p.textures.layers}: exact ${p.textures.exact} · stand-in ${p.textures.standIns} · held ${p.textures.held} · missing ${p.textures.missing} · pending ${p.textures.pending} · warming ${p.textures.warming} · failed ${p.textures.failed}`,
       `pool ${s.count} tex · ${mb(s.bytes)} / ${mb(s.budget)} MB · pinned ${s.pinned} · evicted ${s.evictions}`,
       `frame ms: approx ${ms(f.approxLastMs)} (p95 ${ms(f.approxP95Ms)}) · exact ${ms(f.exactLastMs)} (p95 ${ms(f.exactP95Ms)}) · requests ${f.requests} · pool hits ${f.poolHits} · superseded ${f.superseded} · failed ${f.failed}`,
       decode,

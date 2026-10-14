@@ -1,7 +1,7 @@
 // Timeline wiring (spec §6): the timeline view, the zoom and playhead actions (§6.2, §6.5), the
 // toolbar's direct-DOM bindings (zoom slider, timecode field, duration: no React render while they
 // change, P1), insert at the playhead from the media panel (§6.14) and the dev clip generator.
-import { addTrack } from "../core/commands/basicCommands.js";
+import { addTrack, updateClip, type ClipPatch } from "../core/commands/basicCommands.js";
 import type { ActionRun } from "../core/commands/ActionRegistry.js";
 import { emptyTrack, nextTrackName } from "../core/document/project.js";
 import { formatTimecode, parseTimecode, secondsToFrames } from "../core/document/time.js";
@@ -217,6 +217,11 @@ export function installTimelineController(): () => void {
     // Console access for the acceptance checks, e.g. `__editor.timeline.generate(500, 8)`.
     const editor = ((globalThis as { __editor?: Record<string, unknown> }).__editor ??= {});
     editor.timeline = { view: timelineView, generate, insert: insertMediaAtPlayhead };
+    // Raw clip edits for the compositor checks, e.g. `__editor.clips.update(id, { opacity: 0.5 })`.
+    editor.clips = {
+      list: () => Object.values(documentStore.getState().clips),
+      update: (clipId: string, patch: ClipPatch) => documentStore.dispatch(updateClip(clipId, patch)),
+    };
   }
   return () => {
     for (const stop of stops) stop();

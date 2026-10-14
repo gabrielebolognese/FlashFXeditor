@@ -1,8 +1,8 @@
-import { Gauge, ImageDown } from "lucide-react";
+import { Expand, Gauge, ImageDown } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { CanvasHost } from "../app/CanvasHost.js";
 import { PanelFrame, PanelTitle } from "../app/PanelFrame.js";
-import { exportFrame, POOL_BUDGETS, previewDev, previewStats, previewView, setPreviewZoom, videoHarness, type PreviewDevState } from "../app/previewController.js";
+import { bindPreviewTimecode, exportFrame, POOL_BUDGETS, previewDev, previewStats, previewView, setPreviewZoom, type PreviewDevState } from "../app/previewController.js";
 import { sessionStore } from "../app/services.js";
 import type { SessionState } from "../core/store/sessionStore.js";
 import { useStoreSelector } from "../core/store/useStoreSelector.js";
@@ -22,7 +22,9 @@ const toggleStats = () => previewDev.set((state) => ({ ...state, stats: !state.s
 const setBudget = (value: string) => previewDev.set((state) => ({ ...state, budget: Number(value) }));
 const setZoom = (value: string) => setPreviewZoom((value === "fit" ? "fit" : Number(value)) as PreviewZoom);
 
-// TODO(batch 08): timecode readout and Fit button; TODO(batch 09): transport; TODO(batch 21): the real zoom dropdown, pan, quality.
+const fit = () => setPreviewZoom("fit");
+
+// TODO(batch 21): the real zoom dropdown, pan, the quality dropdown, overlays, fullscreen.
 function PreviewActions() {
   const zoom = useStoreSelector(sessionStore.state, selectZoom);
   const stats = useStoreSelector(previewDev, selectStats);
@@ -51,25 +53,30 @@ function StatsOverlay() {
   return <pre ref={ref} className={styles.stats} aria-label="GPU stats" />;
 }
 
-/**
- * Batch 06 dev scrub bar (TODO(batch 08): removed): rendered once; the video harness owns its value,
- * text and visibility, so dragging it makes no React commit (P1).
- */
-function ScrubBar() {
-  const rootRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const readoutRef = useRef<HTMLSpanElement>(null);
-  const statusRef = useRef<HTMLSpanElement>(null);
+/** Playhead timecode, written by a subscription (no React render while it changes, P1). */
+function Timecode() {
+  const ref = useRef<HTMLSpanElement>(null);
   useEffect(() => {
-    const [root, input, readout, status] = [rootRef.current, inputRef.current, readoutRef.current, statusRef.current];
-    return root && input && readout && status ? videoHarness.attachBar({ root, input, readout, status }) : undefined;
+    const element = ref.current;
+    return element ? bindPreviewTimecode(element) : undefined;
   }, []);
+  return <span ref={ref} className={styles.timecode} aria-label="Playhead timecode" />;
+}
+
+/**
+ * Preview chrome v1 (spec §7.8): timecode, a static quality label and Fit.
+ * TODO(batch 09): transport buttons, duration, fps badge; TODO(batch 24): the quality follows proxies.
+ */
+function PreviewChrome() {
   return (
-    <div ref={rootRef} className={styles.scrub}>
-      <input ref={inputRef} type="range" className={styles.scrubInput} aria-label="Video frame (dev)" />
-      <span ref={readoutRef} className={styles.scrubReadout} />
-      <span ref={statusRef} className={styles.scrubStatus} />
-    </div>
+    <>
+      <Timecode />
+      <span className={styles.spacer} />
+      <span className={styles.quality} data-tooltip="Preview quality">
+        Auto: full
+      </span>
+      <IconButton icon={Expand} label="Fit the frame in the panel" text="Fit" onClick={fit} />
+    </>
   );
 }
 
@@ -81,12 +88,11 @@ export function PreviewPanel() {
     return host ? previewView.mount(host) : undefined;
   }, []);
   return (
-    <PanelFrame id="preview" header={<PanelTitle>Preview</PanelTitle>} actions={<PreviewActions />}>
+    <PanelFrame id="preview" header={<PanelTitle>Preview</PanelTitle>} actions={<PreviewActions />} footer={<PreviewChrome />}>
       <div className={wellStyles.well}>
         <CanvasHost panel="preview">
           <div ref={canvasRef} className={styles.canvas} />
           {stats && <StatsOverlay />}
-          <ScrubBar />
         </CanvasHost>
       </div>
     </PanelFrame>

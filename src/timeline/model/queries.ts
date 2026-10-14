@@ -60,22 +60,28 @@ function countAtOrBelow(values: readonly number[], value: number): number {
   return lo;
 }
 
-function clipAt(index: TrackIndex, frame: Frame): Clip | null {
-  const clip = index.clips[countAtOrBelow(index.starts, frame) - 1];
+/** Position in `index.clips` of the last clip starting at or before `frame`; -1 when none does. */
+export function lastClipStartingBy(index: TrackIndex, frame: Frame): number {
+  return countAtOrBelow(index.starts, frame) - 1;
+}
+
+/** The clip of an indexed track covering `frame`, or null. */
+export function clipInIndex(index: TrackIndex, frame: Frame): Clip | null {
+  const clip = index.clips[lastClipStartingBy(index, frame)];
   return clip && frame < clip.start + clip.duration ? clip : null;
 }
 
 /** The clip covering `frame` on a track, or null. */
 export function clipAtFrame(project: Project, trackId: TrackId, frame: Frame): Clip | null {
   const index = indexOf(project, trackId);
-  return index ? clipAt(index, frame) : null;
+  return index ? clipInIndex(index, frame) : null;
 }
 
 /** The clip covering `frame` on each track, in track order. */
 export function clipsAtFrame(project: Project, frame: Frame): Clip[] {
   const result: Clip[] = [];
   for (const track of project.tracks) {
-    const clip = clipAt(trackIndex(project, track), frame);
+    const clip = clipInIndex(trackIndex(project, track), frame);
     if (clip) result.push(clip);
   }
   return result;
@@ -120,7 +126,7 @@ export function trackGaps(project: Project, trackId: TrackId): Gap[] {
 /** The gap containing `frame`, or null (also null after the last clip). */
 export function gapAt(project: Project, trackId: TrackId, frame: Frame): Gap | null {
   const index = indexOf(project, trackId);
-  if (!index || frame < 0 || frame >= index.end || clipAt(index, frame)) return null;
+  if (!index || frame < 0 || frame >= index.end || clipInIndex(index, frame)) return null;
   const i = countAtOrBelow(index.starts, frame);
   const before = index.clips[i - 1];
   const after = index.clips[i] as Clip;

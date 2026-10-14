@@ -108,11 +108,22 @@ export function removeClips(clipIds: readonly ClipId[]): Command {
 }
 
 const TIMING_FIELDS = ["start", "duration", "trackId"] as const;
+/** Clip fields only the rendered frame shows: changing them never redraws the timeline. */
+const COMPOSITE_FIELDS: ReadonlySet<string> = new Set(["transform", "opacity", "crop"]);
+
+/** The flags of a clip patch: `composite` for frame-only fields, `clips` (+ `timeline` for timing) otherwise. */
+export function clipPatchAffects(patch: ClipPatch): Affect[] {
+  const keys = Object.keys(patch);
+  const affects: Affect[] = [];
+  if (keys.some((key) => COMPOSITE_FIELDS.has(key))) affects.push("composite");
+  if (keys.length === 0 || keys.some((key) => !COMPOSITE_FIELDS.has(key))) affects.push("clips");
+  if (TIMING_FIELDS.some((field) => field in patch)) affects.push("timeline");
+  return affects;
+}
 
 /** Sets clip fields as given; a new `start` or `trackId` re-sorts the clip into its track. */
 export function updateClip(clipId: ClipId, patch: ClipPatch, options: { label?: string; coalesceKey?: string } = {}): Command {
-  const affects: Affect[] = ["clips"];
-  if (TIMING_FIELDS.some((field) => field in patch)) affects.push("timeline");
+  const affects = clipPatchAffects(patch);
   return {
     id: "clip.update",
     label: options.label ?? "Edit clip",

@@ -4,8 +4,11 @@ import type { Draft } from "immer";
 import type { Frame, Project } from "../document/types.js";
 import type { SelectionSnapshot } from "../store/selection.js";
 
-/** Invalidation flags (spec §3.4). Views map them to their own dirty state. */
-export type Affect = "timeline" | "clips" | "tracks" | "media" | "text" | "captions" | "markers" | "settings" | "audio";
+/**
+ * Invalidation flags (spec §3.4). Views map them to their own dirty state. `composite` (not in §3.4):
+ * the rendered frame changes but nothing the timeline draws does (clip transform, opacity, crop).
+ */
+export type Affect = "timeline" | "clips" | "tracks" | "media" | "text" | "captions" | "markers" | "settings" | "audio" | "composite";
 
 /** What a command may know about the session. Commands never read the session store in `run`. */
 export interface CommandContext {

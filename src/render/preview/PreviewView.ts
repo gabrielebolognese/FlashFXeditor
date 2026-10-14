@@ -1,9 +1,14 @@
-// The preview canvas (spec §7.1, §3.4, P3): a framework-free WebGPU canvas in the preview panel. It
-// draws the project frame letterboxed at Fit (or at the session zoom) on the DS background with a
-// 1 px DS border, at devicePixelRatio, and only from the FrameScheduler's `preview` flag: a resize, a
-// zoom, a settings change, new layers or a new GPU device invalidate it, and the next frame draws once.
-// The backing store is resized inside `render`, so a resize never shows a cleared canvas.
-// TODO(batch 08): the compositor's draw list replaces `setLayers`/`clearLayers` (and the Batch 05/06 harnesses).
+// The preview canvas (spec §7.1, §9.4, §3.4, P3, P8): a framework-free WebGPU canvas in the preview
+// panel showing the composite of the timeline at the playhead, letterboxed at Fit (or at the session
+// zoom) on the DS background with a 1 px DS border, at devicePixelRatio.
+// - It draws only from the FrameScheduler's `preview` flag. The playhead, document changes that can
+//   change the frame (timeline, clips, tracks, media, settings, composite), late frames, a resize, a
+//   zoom, the theme, the DPR and a new GPU device invalidate it.
+// - Each render evaluates the document at the playhead (`Compositor`), resolves media layers to pool
+//   textures (`LayerTextures`: scrub priority while the ruler is dragged, idle otherwise), warms the
+//   cut neighbours, and draws. When the draw list and the viewport equal the last ones drawn, the
+//   GPU draw is skipped (§9.4).
+// - The backing store is resized inside `render`, so a resize never shows a cleared canvas.
 import type { RGBA } from "../../core/document/types.js";
 import { watchDevicePixelRatio } from "../../core/scheduler/devicePixelRatio.js";
 import type { FrameScheduler, RenderView } from "../../core/scheduler/FrameScheduler.js";
@@ -13,30 +18,41 @@ import type { LayoutState } from "../../core/store/layoutStore.js";
 import type { SessionState } from "../../core/store/sessionStore.js";
 import { cssColorToRgba } from "../../core/theme/cssColor.js";
 import type { Theme, ThemeBridge } from "../../core/theme/theme.js";
-import type { DrawList, Layer } from "../compositor/drawList.js";
+import { Compositor } from "../compositor/Compositor.js";
+import type { DrawList } from "../compositor/drawList.js";
+import { DrawListSnapshot } from "../compositor/DrawListSnapshot.js";
 import type { CanvasTarget, Renderer, Viewport } from "../gpu/renderer.js";
+import { mutableIdentity, type Mat3, type MutableMat3 } from "../mat3.js";
+import { LayerTextures, type LayerTexturesDeps, type LayerTexturesStats } from "./LayerTextures.js";
 import { deviceSize, frameTransform, type Size } from "./viewport.js";
 
 const TRANSPARENT: RGBA = { r: 0, g: 0, b: 0, a: 0 };
 
-export interface PreviewViewDeps {
+export interface PreviewViewDeps extends Omit<LayerTexturesDeps, "onChange"> {
   renderer: Renderer;
   scheduler: Pick<FrameScheduler, "register" | "invalidate">;
   layout: Store<LayoutState>;
   session: Store<SessionState>;
   document: Pick<DocumentStore, "getState" | "subscribe">;
   theme: Pick<ThemeBridge, "theme" | "subscribe">;
+  /** True while the playhead is dragged on the ruler (frames are then requested with scrub priority). */
+  scrubbing(): boolean;
 }
 
 export interface PreviewStats {
-  /** Draws issued by the scheduler. */
+  /** GPU draws issued. */
   renders: number;
+  /** Renders that drew nothing because the frame was identical to the one on screen. */
+  skipped: number;
   /** Panel size changes seen (each should cost one render). */
   resizes: number;
+  /** Duration of the last evaluate + resolve + draw. */
+  ms: number;
   /** Backing store in device px. */
   width: number;
   height: number;
   dpr: number;
+  textures: LayerTexturesStats;
 }
 
 interface Chrome {
@@ -48,17 +64,23 @@ interface Chrome {
 export class PreviewView implements RenderView {
   private canvas: HTMLCanvasElement | null = null;
   private target: CanvasTarget | null = null;
-  private layers: readonly Layer[] = [];
   private cssSize: Size = { width: 0, height: 0 };
   private chrome: Chrome;
+  private readonly compositor = new Compositor();
+  private readonly textures: LayerTextures;
+  private readonly snapshot = new DrawListSnapshot();
+  private readonly viewport: Viewport & { transform: MutableMat3 } = { transform: mutableIdentity(), outside: TRANSPARENT, border: { color: TRANSPARENT, width: 1 } };
+  private viewportDrawn = false;
   private readonly stops: (() => void)[] = [];
-  readonly stats: PreviewStats = { renders: 0, resizes: 0, width: 0, height: 0, dpr: 1 };
+  readonly stats: PreviewStats;
 
   constructor(private readonly deps: PreviewViewDeps) {
     this.chrome = chromeFromTheme(deps.theme.theme);
+    this.textures = new LayerTextures({ frames: deps.frames, images: deps.images, pool: deps.pool, onChange: () => deps.scheduler.invalidate("preview") });
+    this.stats = { renders: 0, skipped: 0, resizes: 0, ms: 0, width: 0, height: 0, dpr: 1, textures: this.textures.stats };
   }
 
-  /** Creates the canvas inside `host` and starts following the panel, zoom, settings and theme. */
+  /** Creates the canvas inside `host` and starts following the playhead, the document, the panel, zoom and theme. */
   mount(host: HTMLElement): () => void {
     this.unmount();
     const { renderer, scheduler, layout, session, document, theme } = this.deps;
@@ -79,14 +101,17 @@ export class PreviewView implements RenderView {
         },
         { fireImmediately: true },
       ),
+      session.select((state) => state.playhead, invalidate),
       session.select((state) => state.preview.zoom, invalidate),
-      document.subscribe(invalidate, { affects: ["settings"] }),
+      document.subscribe(invalidate, { affects: ["timeline", "clips", "tracks", "media", "settings", "composite"] }),
       theme.subscribe((next) => {
         this.chrome = chromeFromTheme(next);
         invalidate();
       }),
       renderer.subscribe((event) => {
-        if (event === "ready") invalidate();
+        // A new device: the canvas was reconfigured (cleared) and the pool emptied.
+        if (event === "ready") this.snapshot.reset();
+        invalidate();
       }),
       watchDevicePixelRatio(host.ownerDocument.defaultView, invalidate),
     );
@@ -94,49 +119,49 @@ export class PreviewView implements RenderView {
     return () => this.unmount();
   }
 
-  /** The layers drawn into the frame, bottom to top (project px). */
-  setLayers(layers: readonly Layer[]): void {
-    this.layers = layers;
-    this.deps.scheduler.invalidate("preview");
-  }
-
-  /** Clears the layers if they are still `owned` (the Batch 05/06 harnesses share the preview). */
-  clearLayers(owned: readonly Layer[]): void {
-    if (this.layers === owned && owned.length > 0) this.setLayers([]);
-  }
-
-  /** The frame and its layers as the next render would draw them. */
-  drawList(): DrawList {
-    const { width, height, background } = this.deps.document.getState().settings;
-    return { width, height, background, layers: this.layers };
-  }
-
   render(): void {
     const { canvas, target } = this;
     if (!canvas || !target) return;
+    const started = performance.now();
+    const { renderer, document, session, scrubbing } = this.deps;
     const dpr = canvas.ownerDocument.defaultView?.devicePixelRatio ?? 1;
     const size = deviceSize(this.cssSize, dpr);
+    let resized = false;
     if (size.width !== this.stats.width || size.height !== this.stats.height || dpr !== this.stats.dpr) {
-      this.deps.renderer.resize(target, size.width, size.height);
+      renderer.resize(target, size.width, size.height);
       canvas.style.width = `${this.cssSize.width}px`;
       canvas.style.height = `${this.cssSize.height}px`;
       this.stats.width = size.width;
       this.stats.height = size.height;
       this.stats.dpr = dpr;
+      resized = true;
     }
-    const list = this.drawList();
-    const viewport: Viewport = {
-      transform: frameTransform(this.deps.session.getState().preview.zoom, list, size, this.chrome.margin * dpr),
-      outside: this.chrome.outside,
-      border: { color: this.chrome.border, width: Math.max(1, Math.round(dpr)) },
-    };
-    if (this.deps.renderer.draw(list, target, viewport)) this.stats.renders += 1;
+
+    const doc = document.getState();
+    const { playhead, preview } = session.getState();
+    const list = this.textures.resolve(this.compositor.evaluate(doc, playhead), scrubbing() ? "scrub" : "idle");
+    this.textures.warm(this.compositor.neighbors(doc, playhead));
+
+    const viewChanged = this.updateViewport(frameTransform(preview.zoom, list, size, this.chrome.margin * dpr), Math.max(1, Math.round(dpr)));
+    const listChanged = this.snapshot.update(list);
+    if (!listChanged && !viewChanged && !resized) {
+      this.stats.skipped += 1;
+      this.stats.ms = performance.now() - started;
+      return;
+    }
+    if (renderer.draw(list, target, this.viewport)) {
+      this.stats.renders += 1;
+      this.viewportDrawn = true;
+    } else {
+      this.snapshot.reset();
+    }
+    this.stats.ms = performance.now() - started;
   }
 
-  /** The frame at project size with straight alpha (Export frame). The layers' textures must stay alive meanwhile. */
+  /** The frame at project size with straight alpha (Export frame), as last drawn. */
   async renderFrame(): Promise<ImageBitmap> {
     const { renderer } = this.deps;
-    const list = this.drawList();
+    const list: DrawList = this.textures.current;
     const target = renderer.createOffscreenTarget(list.width, list.height);
     try {
       if (!renderer.draw(list, target)) throw new Error("The GPU device is not ready");
@@ -144,6 +169,18 @@ export class PreviewView implements RenderView {
     } finally {
       renderer.releaseTarget(target);
     }
+  }
+
+  /** Forgets the frames of the closed project (requests, pins, failures). */
+  resetFrames(): void {
+    this.textures.clear();
+    this.snapshot.reset();
+    this.deps.scheduler.invalidate("preview");
+  }
+
+  /** A media left the project or came back. */
+  forgetMedia(mediaId: string): void {
+    this.textures.forget(mediaId);
   }
 
   unmount(): void {
@@ -154,6 +191,26 @@ export class PreviewView implements RenderView {
     this.target = null;
     this.stats.width = 0;
     this.stats.height = 0;
+    this.textures.clear();
+    this.snapshot.reset();
+    this.viewportDrawn = false;
+  }
+
+  /** Writes the viewport of this render; true when it differs from the one drawn last. */
+  private updateViewport(transform: Mat3, borderWidth: number): boolean {
+    const view = this.viewport;
+    const { outside, border } = this.chrome;
+    let changed = !this.viewportDrawn || view.outside !== outside || view.border?.color !== border || view.border.width !== borderWidth;
+    for (let i = 0; i < 6; i++) {
+      if (view.transform[i] !== transform[i]) changed = true;
+      view.transform[i] = transform[i] as number;
+    }
+    view.outside = outside;
+    if (view.border) {
+      view.border.color = border;
+      view.border.width = borderWidth;
+    }
+    return changed;
   }
 }
 

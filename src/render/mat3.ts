@@ -4,7 +4,38 @@
 
 export type Mat3 = readonly [a: number, b: number, c: number, d: number, tx: number, ty: number];
 
+/** A matrix written in place (reused between frames, no allocation). */
+export type MutableMat3 = [a: number, b: number, c: number, d: number, tx: number, ty: number];
+
 export const IDENTITY: Mat3 = [1, 0, 0, 1, 0, 0];
+
+export function mutableIdentity(): MutableMat3 {
+  return [1, 0, 0, 1, 0, 0];
+}
+
+/** Writes the six entries into `out`. Returns `out`. */
+export function setMat(out: MutableMat3, a: number, b: number, c: number, d: number, tx: number, ty: number): MutableMat3 {
+  out[0] = a;
+  out[1] = b;
+  out[2] = c;
+  out[3] = d;
+  out[4] = tx;
+  out[5] = ty;
+  return out;
+}
+
+/** `out = a * b` in place (`out` may be `a` or `b`). Returns `out`. */
+export function multiplyInto(out: MutableMat3, a: Mat3, b: Mat3): MutableMat3 {
+  return setMat(
+    out,
+    a[0] * b[0] + a[2] * b[1],
+    a[1] * b[0] + a[3] * b[1],
+    a[0] * b[2] + a[2] * b[3],
+    a[1] * b[2] + a[3] * b[3],
+    a[0] * b[4] + a[2] * b[5] + a[4],
+    a[1] * b[4] + a[3] * b[5] + a[5],
+  );
+}
 
 /** `a * b`: applies `b` first, then `a`. */
 export function multiply(a: Mat3, b: Mat3): Mat3 {
@@ -37,11 +68,18 @@ export function applyToPoint(m: Mat3, x: number, y: number): { x: number; y: num
 
 /** The inverse matrix, or null when `m` is singular (zero scale). */
 export function invert(m: Mat3): Mat3 | null {
+  const out = mutableIdentity();
+  return invertInto(out, m) ? out : null;
+}
+
+/** Writes the inverse of `m` into `out`; false (and `out` untouched) when `m` is singular. */
+export function invertInto(out: MutableMat3, m: Mat3): boolean {
   const det = m[0] * m[3] - m[1] * m[2];
-  if (det === 0 || !Number.isFinite(det)) return null;
+  if (det === 0 || !Number.isFinite(det)) return false;
   const a = m[3] / det;
   const b = -m[1] / det;
   const c = -m[2] / det;
   const d = m[0] / det;
-  return [a, b, c, d, -(a * m[4] + c * m[5]), -(b * m[4] + d * m[5])];
+  setMat(out, a, b, c, d, -(a * m[4] + c * m[5]), -(b * m[4] + d * m[5]));
+  return true;
 }

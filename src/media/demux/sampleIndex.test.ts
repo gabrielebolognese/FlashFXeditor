@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { ByteSource, ChunkCache } from "../bytes/ByteSource.js";
 import { readMp4 } from "../probe/mp4Probe.js";
 import { buildMp4, DEFAULT_AVCC, ROTATE_90_MATRIX, type TestSample } from "../probe/testMp4.js";
-import { createSampleIndex, frameAt, keyFor, sampleIndexFromMp4, type SampleIndex, type SampleTable } from "./sampleIndex.js";
+import { createSampleIndex, frameAt, keyFor, nearestPosition, sampleIndexFromMp4, type SampleIndex, type SampleTable } from "./sampleIndex.js";
 import { readSampleIndex, writeSampleIndex } from "./sampleIndexFile.js";
 
 const DUR = 1001; // 30000/1001 fps
@@ -87,6 +87,19 @@ describe("frameAt", () => {
     expect(frameAt(index, t(6) - 1)).toBe(5);
     expect(frameAt(index, 0)).toBe(0); // before the first frame (composition delay)
     expect(frameAt(index, 1e12)).toBe(13);
+  });
+});
+
+describe("nearestPosition", () => {
+  it("picks the frame time nearest to the requested time, the earlier one on a tie", () => {
+    const times = [1000, 34_367, 67_733, 101_100];
+    expect(nearestPosition(times, 0)).toBe(0);
+    expect(nearestPosition(times, 33_333)).toBe(1);
+    expect(nearestPosition(times, 17_683)).toBe(0);
+    expect(nearestPosition(times, 17_684)).toBe(1);
+    expect(nearestPosition(times, 66_667)).toBe(2);
+    expect(nearestPosition(times, 5e9)).toBe(3);
+    expect(nearestPosition([], 10)).toBe(0);
   });
 });
 

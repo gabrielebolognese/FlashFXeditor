@@ -123,6 +123,14 @@ export function positionAt(times: ArrayLike<number>, timeUs: number): number {
   return lo;
 }
 
+/** In ascending frame times: the position of the one nearest to `timeUs` (the earlier one on a tie; §5.1). */
+export function nearestPosition(times: ArrayLike<number>, timeUs: number): number {
+  const at = positionAt(times, timeUs);
+  const next = at + 1;
+  if (next >= times.length) return at;
+  return (times[next] as number) - timeUs < timeUs - (times[at] as number) ? next : at;
+}
+
 /**
  * Decode index of the sync sample to start from to show decode index `d`. A leading picture (shown
  * before its sync sample, e.g. RASL frames of an open-GOP HEVC CRA) needs the previous GOP too, so

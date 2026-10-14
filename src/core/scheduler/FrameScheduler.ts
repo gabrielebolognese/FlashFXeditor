@@ -5,6 +5,12 @@
 // draws onto its own flags when it subscribes (e.g. TimelineView: document changes -> timelineContent).
 export type InvalidationFlag = "timelineContent" | "timelineOverlay" | "preview" | "previewOverlay" | "meters" | "mediaThumbs";
 
+/**
+ * Render order within a frame, whatever order the flags were raised in: a layer's base before its
+ * overlay, so an overlay registered on both flags (the preview stats) reports the render it follows.
+ */
+const FLAG_ORDER: readonly InvalidationFlag[] = ["timelineContent", "timelineOverlay", "preview", "previewOverlay", "meters", "mediaThumbs"];
+
 export interface RenderView {
   render(time: number): void;
 }
@@ -58,7 +64,8 @@ export class FrameScheduler {
     this.dirty = new Set();
 
     const toRender = new Set<RenderView>();
-    for (const flag of dirty) {
+    for (const flag of FLAG_ORDER) {
+      if (!dirty.has(flag)) continue;
       const views = this.views.get(flag);
       if (views) for (const view of views) toRender.add(view);
     }

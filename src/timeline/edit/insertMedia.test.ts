@@ -4,7 +4,7 @@ import { frameToUs } from "../../core/document/time.js";
 import type { MediaClip, Project } from "../../core/document/types.js";
 import { DocumentStore } from "../../core/store/DocumentStore.js";
 import { createSessionStore, setPlayhead } from "../../core/store/sessionStore.js";
-import { firstFreeStart, insertCommands, naturalDuration, planMediaInsert, type InsertPlan } from "./insertMedia.js";
+import { defaultTransform, firstFreeStart, insertCommands, naturalDuration, planMediaInsert, type InsertPlan } from "./insertMedia.js";
 
 const FPS = { num: 30, den: 1 };
 
@@ -107,6 +107,26 @@ describe("planMediaInsert", () => {
   it("refuses media without a duration", () => {
     const project = makeProject();
     expect(planMediaInsert(project, makeMedia("empty", "video", 0), 0, counter())).toBeNull();
+  });
+
+  it("fits the media in the frame by default: letterboxed 16:9, upright iPhone video, same-aspect media filling it", () => {
+    const frame = { width: 1080, height: 1920 };
+    const landscape = { ...makeMedia("wide", "video", 1_000_000), width: 1920, height: 1080 };
+    expect(defaultTransform(landscape, frame)).toEqual({ x: 0, y: 0, scale: 0.5625, rotation: 0, anchor: { x: 0.5, y: 0.5 }, flipH: false, flipV: false });
+    // Coded 1920x1080 with rotation 90 shows 1080x1920: it fills the 9:16 frame at scale 1.
+    expect(defaultTransform({ ...landscape, rotation: 90 }, frame).scale).toBe(1);
+    expect(defaultTransform({ ...landscape, width: 2160, height: 3840 }, frame).scale).toBe(0.5);
+    expect(defaultTransform({ ...landscape, width: 720, height: 1280 }, frame).scale).toBe(1.5);
+    expect(defaultTransform({ ...makeMedia("logo", "image", 0), width: 400, height: 200 }, frame).scale).toBe(2.7);
+    expect(defaultTransform(makeMedia("song", "audio", 1_000_000), frame).scale).toBe(1);
+
+    const project = makeProject();
+    project.media.wide = { ...landscape, hasAudio: true };
+    const plan = planMediaInsert(project, project.media.wide, 0, counter())!;
+    const [video, audio] = plan.clips as [MediaClip, MediaClip];
+    expect(video.transform.scale).toBe(0.5625);
+    expect(video.transform.anchor).toEqual({ x: 0.5, y: 0.5 });
+    expect(audio.transform.scale).toBe(1);
   });
 });
 

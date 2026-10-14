@@ -95,4 +95,23 @@ describe("FrameScheduler", () => {
     frames.tick();
     expect(view.render).not.toHaveBeenCalled();
   });
+
+  it("renders a base layer before its overlay whatever order they were invalidated in", () => {
+    const frames = fakeFrames();
+    const scheduler = new FrameScheduler(frames.request, frames.cancel);
+    const order: string[] = [];
+    const preview = { render: () => order.push("preview") };
+    const stats = { render: () => order.push("stats") };
+    scheduler.register("preview", preview);
+    scheduler.register("preview", stats);
+    scheduler.register("previewOverlay", stats);
+    scheduler.register("timelineContent", { render: () => order.push("content") });
+    scheduler.register("timelineOverlay", { render: () => order.push("overlay") });
+    scheduler.invalidate("previewOverlay");
+    scheduler.invalidate("timelineOverlay");
+    scheduler.invalidate("preview");
+    scheduler.invalidate("timelineContent");
+    frames.tick();
+    expect(order).toEqual(["content", "overlay", "preview", "stats"]);
+  });
 });

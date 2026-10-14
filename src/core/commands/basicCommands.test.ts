@@ -115,6 +115,22 @@ describe("clip commands", () => {
     expect("coalesceKey" in updateClip("c1", { name: "x" })).toBe(false);
   });
 
+  it("flags frame-only fields as composite, so the timeline does not redraw for them", () => {
+    expect(updateClip("c1", { opacity: 0.5 }).affects).toEqual(["composite"]);
+    expect(updateClip("c1", { transform: { x: 1, y: 2, scale: 1, rotation: 0, anchor: { x: 0.5, y: 0.5 }, flipH: false, flipV: false }, crop: { left: 0.1, top: 0, right: 0, bottom: 0 } }).affects).toEqual(["composite"]);
+    expect(updateClip("c1", { opacity: 0.5, name: "x" }).affects).toEqual(["composite", "clips"]);
+    expect(updateClip("c1", { opacity: 0.5, start: 3 }).affects).toEqual(["composite", "clips", "timeline"]);
+    expect(updateClip("c1", {}).affects).toEqual(["clips"]);
+    // Undo carries the same flags.
+    const { store } = setup();
+    const seen: string[][] = [];
+    store.subscribe((_state, _prev, affects) => seen.push([...affects]));
+    store.dispatch(updateClip("c1", { opacity: 0.25 }));
+    store.undo();
+    expect(seen).toEqual([["composite"], ["composite"]]);
+    expect(store.getState().clips.c1).toMatchObject({ opacity: 1 });
+  });
+
   it("throws for an unknown clip", () => {
     const { store } = setup();
     expect(() => store.dispatch(updateClip("nope", { name: "x" }))).toThrow(/clip nope does not exist/);
