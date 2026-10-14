@@ -27,7 +27,7 @@ export interface ScrubBarElements {
   input: HTMLInputElement;
   /** Frame number and time. */
   readout: HTMLElement;
-  /** "approx 3 ms", "exact 41 ms", or an error; `data-state` is approx | exact | error | busy. */
+  /** "approx 3 ms", "exact 41 ms", "nearest 90 ms" (an undecodable frame), or an error; `data-state` is approx | exact | error | busy. */
   status: HTMLElement;
 }
 
@@ -151,7 +151,9 @@ export class VideoHarness {
         (result) => {
           if (token !== this.token) return;
           this.display(result);
-          this.setStatus("exact", `exact ${elapsed()} ms`);
+          // Approximate here: the decoder could not produce the frame, this is the nearest one it did.
+          if (result.approximate) this.setStatus("approx", `nearest ${elapsed()} ms`);
+          else this.setStatus("exact", `exact ${elapsed()} ms`);
         },
         (error: unknown) => {
           if (token !== this.token || isAbortError(error)) return;

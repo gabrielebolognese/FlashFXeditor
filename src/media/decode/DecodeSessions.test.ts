@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { buildMp4, ROTATE_90_MATRIX, videoSamples } from "../probe/testMp4.js";
 import { DecodeSessions, IDLE_MS, NotOpenError, UnsupportedCodecError, type Delivered } from "./DecodeSessions.js";
-import { FakeDecoder, frameCounter, type FakeFrame } from "./testDecoder.js";
+import { FakeDecoder, frameCounter, type FakeFrame, type FakeOptions } from "./testDecoder.js";
 
 const FRAME_US = 33_367; // 1001 ticks at 30000
 const frameUs = (n: number) => Math.round((n * 1001 * 1e6) / 30000);
@@ -11,11 +11,11 @@ function videoFile(name: string, frames = 90, lastModified = 1_000): File {
   return new File([bytes as Uint8Array<ArrayBuffer>], name, { lastModified });
 }
 
-function setup(options: { supported?: boolean; maxLiveDecoders?: number } = {}) {
+function setup(options: { supported?: boolean; maxLiveDecoders?: number; decoder?: FakeOptions } = {}) {
   const decoders: FakeDecoder[] = [];
   const sessions = new DecodeSessions<FakeFrame>({
     createDecoder: (callbacks) => {
-      const decoder = new FakeDecoder(callbacks, {});
+      const decoder = new FakeDecoder(callbacks, options.decoder ?? {});
       decoders.push(decoder);
       return decoder;
     },
@@ -159,5 +159,35 @@ describe("DecodeSessions", () => {
     expect(sessions.stats()).toMatchObject({ sessions: 0, liveDecoders: 0, openFrames: 0, seeks: 1 });
     expect(frameCounter.open).toBe(0);
     await expect(frame("a", 0)).rejects.toBeInstanceOf(NotOpenError);
+  });
+
+  it("drops a video closed while it opens, and keeps the others", async () => {
+    const { sessions, frame } = setup();
+    const a = sessions.open({ mediaId: "a", lod: "full", file: videoFile("a.mov"), cachedIndex: null });
+    const b = sessions.open({ mediaId: "b", lod: "full", file: videoFile("b.mov"), cachedIndex: null });
+    sessions.close("a");
+    await expect(a).rejects.toMatchObject({ name: "AbortError" });
+    await b;
+    expect(sessions.stats().sessions).toBe(1);
+    await expect(frame("a", 0)).rejects.toBeInstanceOf(NotOpenError);
+    expect((await frame("b", frameUs(2))).timeUs).toBe(frameUs(2));
+    // Opened again, it stays.
+    await sessions.open({ mediaId: "a", lod: "full", file: videoFile("a.mov"), cachedIndex: null });
+    expect(sessions.stats().sessions).toBe(2);
+  });
+
+  it("marks the nearest frame approximate when the decoder cannot produce the one asked for", async () => {
+    const { sessions, signal } = setup({ decoder: { drop: new Set([frameUs(12)]) } });
+    await sessions.open({ mediaId: "a", lod: "full", file: videoFile("a.mov"), cachedIndex: null });
+    const request = async (timeUs: number) => {
+      const result = await sessions.requestFrame({ mediaId: "a", lod: "full", timeUs, priority: "playback" }, signal, (value) => value.frame.close());
+      result.frame.close();
+      return { timeUs: result.timeUs, approximate: result.approximate };
+    };
+    expect(await request(frameUs(11))).toEqual({ timeUs: frameUs(11), approximate: false });
+    const nearest = await request(frameUs(12));
+    expect(nearest.approximate).toBe(true);
+    expect([frameUs(11), frameUs(13)]).toContain(nearest.timeUs);
+    expect(frameCounter.open).toBe(sessions.stats().openFrames);
   });
 });

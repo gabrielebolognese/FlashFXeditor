@@ -55,7 +55,10 @@ export interface DeliveredFrame {
   frame: VideoFrame;
   /** The frame's time (us), a value of `VideoInfo.frameTimesUs`. */
   timeUs: number;
-  /** The nearest keyframe, shown while the exact frame decodes (P8). */
+  /**
+   * Not the frame at the requested time: a stand-in while the exact frame decodes (P8), or, as a
+   * request's result, the nearest frame the decoder could produce.
+   */
   approximate: boolean;
 }
 

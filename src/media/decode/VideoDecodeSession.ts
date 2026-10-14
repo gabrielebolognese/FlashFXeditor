@@ -5,13 +5,15 @@
 //   hardware decoders (11 frames of 4K HEVC: ~110 ms fed straight on, 300-600 ms after a flush or a
 //   reset). Chunks still in flight from a superseded run are decoded first and land in the ring.
 //   Leading pictures of an open GOP decoded without the GOP before them have wrong references: they
-//   are dropped. Outputs are matched by timestamp (cts in us); frames before the target are decoded
-//   but not delivered.
+//   are dropped, in the current run and in the superseded ones. Outputs are matched by timestamp (cts
+//   in us); frames before the target are decoded but not delivered.
 // - Sequential continuation: a target ahead of the decoder in the same run is reached by feeding on,
-//   without a seek (frames 0..300 cost one seek).
+//   without a seek (frames 0..300 cost one seek). A leading picture of the run's own sync sample
+//   cannot be reached that way: it needs a seek to the GOP before.
 // - A frame request feeds only what its target needs (`feedUntil`), so the decoder is idle when the
-//   next request seeks elsewhere; a prefetch feeds ahead through its range. A decoder that holds frames longer than the
-//   content needs (no output for STALL_MS while idle) gets one more chunk each time, for the session.
+//   next request seeks elsewhere; a prefetch feeds ahead through its range. A decoder that holds frames
+//   longer than the content needs (no output for STALL_MS since it last got a chunk or gave a frame,
+//   with nothing left in its queue) gets one more chunk each time, for the session.
 // - Backpressure: at most MAX_IN_FLIGHT chunks fed and not yet output, and the decoder's
 //   `decodeQueueSize` kept below MAX_DECODE_QUEUE.
 // - The last RING_SIZE outputs stay in a ring, so short backward steps need no seek. Callers get
@@ -38,7 +40,7 @@ export const APPROXIMATE_MIN_FRAMES = 4;
 export const APPROXIMATE_INTERVAL_MS = 33;
 /** A scrub waits this long before it gets the newest decoded frame (one that completes sooner needs none). */
 export const APPROXIMATE_WAIT_MS = 16;
-/** No output for this long with the decoder idle: hold fewer frames and feed one more chunk. */
+/** No output for this long since the decoder last got a chunk, its queue empty: hold fewer frames and feed one more chunk. */
 export const STALL_MS = 100;
 
 /** The video cannot be decoded in this browser (frame requests of such a video fail with it). */
@@ -139,7 +141,13 @@ export class VideoDecodeSession<F extends DecodedFrame = VideoFrame> {
   private lastOutputUs = -Infinity;
   /** Time of the sync sample the current run started from: its leading pictures are dropped. */
   private runStartUs = -Infinity;
-  /** When the decoder last produced a frame (stall detection). */
+  /**
+   * Leading pictures of superseded runs still in the decoder (timestamp -> copies): their outputs come
+   * before any copy fed later and are dropped. One the decoder never outputs (it may skip them) costs a
+   * later copy of that frame; a flush or a new decoder clears them.
+   */
+  private readonly staleLeading = new Map<number, number>();
+  /** When the decoder last got a chunk or produced a frame (stall detection). */
   private lastProgressAt = 0;
   /** When the newest decoded frame was last sent as an approximate one. */
   private lastApproximateAt = -Infinity;
@@ -204,6 +212,7 @@ export class VideoDecodeSession<F extends DecodedFrame = VideoFrame> {
     this.decoder = null;
     this.nextFeed = -1;
     this.pending.clear();
+    this.staleLeading.clear();
     for (const entry of this.ring.splice(0)) this.release(entry);
   }
 
@@ -357,19 +366,30 @@ export class VideoDecodeSession<F extends DecodedFrame = VideoFrame> {
     }
   }
 
-  /** The target is ahead of the decoder in its current run, past the keyframe it needs. */
+  /**
+   * The target is ahead of the decoder in its current run, past the keyframe it needs, and not a
+   * leading picture of the run's sync sample (the run is missing the GOP before it).
+   */
   private canContinue(d: number, key: number, timeUs: number): boolean {
-    return this.decoder !== null && this.nextFeed >= 0 && key <= this.nextFeed && (d < this.nextFeed ? this.pending.has(timeUs) : timeUs > this.lastOutputUs);
+    return (
+      this.decoder !== null &&
+      this.nextFeed >= 0 &&
+      key <= this.nextFeed &&
+      timeUs >= this.runStartUs &&
+      (d < this.nextFeed ? this.pending.has(timeUs) : timeUs > this.lastOutputUs)
+    );
   }
 
   /** Starts a run at sync sample `key` on the same decoder (see the header), or on a new one. */
   private seek(key: number): void {
     const decoder = this.decoder ?? this.createDecoder();
     if (decoder.state !== "configured") decoder.configure(this.config);
+    for (const t of this.pending) if (t < this.runStartUs) this.staleLeading.set(t, (this.staleLeading.get(t) ?? 0) + 1);
     this.pending.clear();
     this.lastOutputUs = -Infinity;
     this.runStartUs = this.index.timesUs[key] as number;
     this.nextFeed = key;
+    this.lastProgressAt = this.now();
     this.stats.seeks += 1;
   }
 
@@ -384,6 +404,7 @@ export class VideoDecodeSession<F extends DecodedFrame = VideoFrame> {
         this.decoder = null;
         this.nextFeed = -1;
         this.pending.clear();
+        this.staleLeading.clear();
         this.wake();
       },
       dequeue: () => this.wake(),
@@ -423,6 +444,7 @@ export class VideoDecodeSession<F extends DecodedFrame = VideoFrame> {
     }
     this.pending.add(timestamp);
     this.nextFeed = i + 1;
+    this.lastProgressAt = this.now();
   }
 
   /** End of the track: the decoder hands out the frames it holds. A keyframe is needed after it. */
@@ -440,6 +462,7 @@ export class VideoDecodeSession<F extends DecodedFrame = VideoFrame> {
       }
     }
     this.pending.clear();
+    this.staleLeading.clear();
   }
 
   private output(decoder: DecoderLike, frame: F): void {
@@ -451,6 +474,16 @@ export class VideoDecodeSession<F extends DecodedFrame = VideoFrame> {
     this.everDecoded = true;
     this.lastProgressAt = this.now();
     const timestamp = frame.timestamp;
+    const stale = this.staleLeading.get(timestamp);
+    if (stale !== undefined) {
+      // A leading picture of a superseded run, decoded without its references.
+      if (stale > 1) this.staleLeading.set(timestamp, stale - 1);
+      else this.staleLeading.delete(timestamp);
+      this.stats.dropped += 1;
+      frame.close();
+      this.wake();
+      return;
+    }
     if (this.pending.has(timestamp)) {
       // Outputs come in display order: what was fed and shows before this frame will never come.
       for (const t of this.pending) if (t <= timestamp) this.pending.delete(t);

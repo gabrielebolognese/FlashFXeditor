@@ -271,4 +271,37 @@ describe("FrameService", () => {
     expect(closed).toEqual([{ mediaId: "m1" }, { mediaId: "m2" }]);
     await expect(frames.video("m1")).rejects.toThrow(/No project/);
   });
+
+  it("cancels the open of a media released while it opens", async () => {
+    const { frames, workers, opens } = setup();
+    // Released while the project files are read: the open never reaches the worker.
+    const early = frames.video("m1");
+    frames.release("m1");
+    await expect(early).rejects.toMatchObject({ name: "AbortError" });
+    expect(opens).toHaveLength(0);
+    // Released while the worker opens it: the worker request is cancelled, then the video closed.
+    let openSignal: AbortSignal | undefined;
+    workers.request.mockImplementationOnce((_method, _params, options = {}) => {
+      openSignal = options.signal;
+      return new Promise((_resolve, reject) => options.signal?.addEventListener("abort", () => reject(options.signal?.reason), { once: true }));
+    });
+    const late = frames.video("m1");
+    await settle();
+    expect(openSignal?.aborted).toBe(false);
+    frames.release("m1");
+    expect(openSignal?.aborted).toBe(true);
+    await expect(late).rejects.toMatchObject({ name: "AbortError" });
+    expect(workers.request).toHaveBeenLastCalledWith("closeVideo", { mediaId: "m1" }, expect.anything());
+  });
+
+  it("passes on a frame the decoder could only approximate, with no exact-latency sample", async () => {
+    const { frames, frameCalls, tick } = setup();
+    const request = frames.getFrame("m1", 12 * FRAME, { priority: "playback" });
+    await settle();
+    tick(20);
+    (frameCalls()[0] as Call).resolve({ frame: new FakeFrame(13 * FRAME), timeUs: 13 * FRAME, approximate: true });
+    expect(await request).toMatchObject({ timeUs: 13 * FRAME, approximate: true, key: { timeUs: 13 * FRAME } });
+    expect(frames.stats).toMatchObject({ exactLastMs: null, approxLastMs: 20, openFrames: 0 });
+    expect(frameCounter.open).toBe(0);
+  });
 });

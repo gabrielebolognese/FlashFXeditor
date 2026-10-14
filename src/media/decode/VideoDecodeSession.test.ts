@@ -354,6 +354,63 @@ describe("VideoDecodeSession", () => {
     expect(dropped).toBeGreaterThanOrEqual(1);
   });
 
+  it("seeks from the GOP before for a leading picture in flight, and drops the copy decoded without it", async () => {
+    // I0 P2 B1 | CRA4 RASL3 P5 P6 ... P11: RASL3 references P2.
+    const index = indexOf([
+      { cts: 0, sync: true },
+      { cts: 2, sync: false },
+      { cts: 1, sync: false },
+      { cts: 4, sync: true },
+      { cts: 3, sync: false },
+      ...Array.from({ length: 7 }, (_, i) => ({ cts: 5 + i, sync: false })),
+    ]);
+    const { session, decoder } = setup(index, { reorder: 1, auto: false, decodeOrder: Array.from(index.timesUs), references: new Map([[us(3), us(2)]]) });
+    // A backward drag: a scrub to frame 5 starts a run at the CRA and is superseded while its chunks
+    // (CRA4, RASL3, P5) are still in the decoder; the next move lands on RASL3.
+    const superseded = new AbortController();
+    void session.frame(5, "scrub", superseded.signal).catch(() => undefined);
+    for (let i = 0; i < 20; i++) await Promise.resolve();
+    expect(decoder().fed.map((c) => c.timestamp)).toEqual([us(4), us(3), us(5)]);
+    superseded.abort();
+    let result: FakeFrame | null = null;
+    void session.frame(3, "scrub", new AbortController().signal, (frame) => frame.close()).then((frame) => (result = frame));
+    for (let i = 0; i < 100 && !result; i++) {
+      decoder().step();
+      for (let j = 0; j < 6; j++) await Promise.resolve();
+    }
+    const frame = result as FakeFrame | null;
+    frame?.close();
+    expect(frame?.timestamp).toBe(us(3));
+    expect(frame?.corrupt).toBe(false);
+    expect(session.stats.seeks).toBe(2);
+    expect(decoder().fed.filter((c) => c.type === "key").map((c) => c.timestamp)).toEqual([us(4), us(0), us(4)]);
+  });
+
+  it("counts no stall while the decoder works on chunks it was just given", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(5_000);
+    // A decoder that takes chunks at once and outputs each frame 17 ms later (a 4K keyframe, a new decoder).
+    const { session, decoder } = setup(linearIndex(240), { latencyMs: 17 }, () => Date.now());
+    const lastFed = () => Math.max(...decoder().fed.map((c) => c.timestamp));
+    const frame = async (position: number, priority: "scrub" | "playback") => {
+      // Scrubs always come with a stand-in callback (DecodeSessions passes one), so they wait in short slices.
+      const request = session.frame(position, priority, new AbortController().signal, (stand) => stand.close());
+      await vi.advanceTimersByTimeAsync(1_000);
+      const result = await request;
+      result.close();
+      return result.timestamp;
+    };
+    expect(await frame(10, "scrub")).toBe(us(10));
+    expect(lastFed()).toBe(us(10));
+    await vi.advanceTimersByTimeAsync(2_000);
+    expect(await frame(50, "scrub")).toBe(us(50));
+    expect(lastFed()).toBe(us(50));
+    // No chunk fed past the target, so the next seek waits for nothing extra.
+    expect(await frame(200, "playback")).toBe(us(200));
+    expect(lastFed()).toBe(us(200));
+    expect(session.stats).toMatchObject({ stalls: 0, seeks: 3 });
+  });
+
   it("shows the nearest frame when the decoder drops the target", async () => {
     const { shown } = setup(linearIndex(60), { drop: new Set([us(12)]) });
     // 11 or 13: the stall that feeds 13 also frees the ring.

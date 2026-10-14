@@ -34,8 +34,9 @@ export interface FrameResult {
   /** In the pool under `key`; pin the key to keep drawing it. */
   texture: TextureHandle;
   key: TextureKey;
-  /** The frame's time (us): at or before the requested time. */
+  /** The frame's time (us): the frame shown at the requested time, or a stand-in near it when `approximate`. */
   timeUs: number;
+  /** A stand-in (P8), or, for a request's own result, the nearest frame the decoder could produce. */
   approximate: boolean;
 }
 
@@ -106,6 +107,8 @@ export class FrameService {
   /** Bumped on attach/detach: opens from a previous project are dropped. */
   private generation = 0;
   private readonly videos = new Map<string, Promise<VideoInfo>>();
+  /** Cancels the open of a video until it settles (`release`). */
+  private readonly opening = new Map<string, AbortController>();
   private readonly infos = new Map<string, VideoInfo>();
   private readonly lanes = new Map<string, Lane>();
   private readonly listeners = new Set<() => void>();
@@ -133,8 +136,10 @@ export class FrameService {
     const key = keyOf(mediaId, lod);
     let video = this.videos.get(key);
     if (!video) {
-      video = this.open(mediaId, lod);
+      const controller = new AbortController();
+      video = this.open(mediaId, lod, controller.signal);
       this.videos.set(key, video);
+      this.opening.set(key, controller);
       video.then(
         (info) => {
           if (this.videos.get(key) === video) this.infos.set(key, info);
@@ -142,7 +147,9 @@ export class FrameService {
         () => {
           if (this.videos.get(key) === video) this.videos.delete(key);
         },
-      );
+      ).finally(() => {
+        if (this.opening.get(key) === controller) this.opening.delete(key);
+      });
     }
     return video;
   }
@@ -231,6 +238,9 @@ export class FrameService {
       known = true;
       this.videos.delete(key);
       this.infos.delete(key);
+      // An open still reading the project files never reaches the worker; one at the worker is cancelled there.
+      this.opening.get(key)?.abort(abortError());
+      this.opening.delete(key);
     }
     if (known) void this.deps.workers.request("closeVideo", { mediaId }, { priority: "user" }).catch(() => undefined);
     this.deps.pool.deleteMedia(mediaId);
@@ -264,14 +274,15 @@ export class FrameService {
     this.generation += 1;
   }
 
-  private async open(mediaId: MediaId, lod: Lod): Promise<VideoInfo> {
+  private async open(mediaId: MediaId, lod: Lod, signal: AbortSignal): Promise<VideoInfo> {
     const source = this.source;
     const generation = this.generation;
     if (!source) throw new Error("No project is open");
     const [file, cachedIndex] = await Promise.all([source.file(mediaId, lod), source.readIndex(mediaId, lod).catch(() => null)]);
     if (!file) throw new Error("The media file is missing");
     if (generation !== this.generation) throw abortError();
-    const { info, index } = await this.deps.workers.request("openVideo", { mediaId, lod, file, cachedIndex }, { priority: "user" });
+    signal.throwIfAborted();
+    const { info, index } = await this.deps.workers.request("openVideo", { mediaId, lod, file, cachedIndex }, { priority: "user", signal });
     if (generation !== this.generation) throw abortError();
     if (info.indexFromCache) this.counters.indexFromCache += 1;
     else this.counters.indexParsed += 1;
@@ -323,7 +334,8 @@ export class FrameService {
       const result = this.receive(mediaId, lod, delivered);
       if (!result) throw new Error("The GPU device is not ready");
       if (shownDistance === Infinity) this.recordApprox(started);
-      this.recordExact(started);
+      // The decoder could not produce the frame: its nearest one is no exact-latency sample.
+      if (!result.approximate) this.recordExact(started);
       return result;
     } finally {
       this.releaseSlot(lane);
