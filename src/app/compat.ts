@@ -1,6 +1,5 @@
 // Required browser APIs (spec §1.4). Missing any of them shows the unsupported screen; there is no
-// degraded mode.
-// TODO(batch 05): also fail when navigator.gpu exists but no adapter can be acquired.
+// degraded mode. WebGPU must also give an adapter (checked at startup, see main.tsx).
 
 interface Requirement {
   label: string;
@@ -18,6 +17,9 @@ const REQUIREMENTS: readonly Requirement[] = [
   { label: "File System Access (showDirectoryPicker)", present: (w) => "showDirectoryPicker" in w },
   { label: "File System Access (showSaveFilePicker)", present: (w) => "showSaveFilePicker" in w },
 ];
+
+/** Shown when navigator.gpu exists but no adapter can be acquired (blocklisted GPU, acceleration off). */
+export const GPU_ADAPTER_LABEL = "A WebGPU adapter (a supported GPU with hardware acceleration turned on)";
 
 /** Labels of the required APIs this browser lacks; empty when everything is available. */
 export function findMissingApis(win: Window): string[] {

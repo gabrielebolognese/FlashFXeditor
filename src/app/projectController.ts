@@ -8,6 +8,7 @@ import { ProjectSession } from "../project/ProjectSession.js";
 import type { RecentProject } from "../project/recentProjects.js";
 import type { Recovery } from "../project/recovery.js";
 import { attachMedia, detachMedia } from "./mediaController.js";
+import { attachPreview, detachPreview } from "./previewController.js";
 import { actions, appSettings, appVersion, documentStore, focusScopes, layoutStore, recentProjects, saveStatus, sessionStore } from "./services.js";
 
 export type Dialog =
@@ -74,6 +75,7 @@ async function closeCurrent(): Promise<void> {
   const session = current;
   current = null;
   if (!session) return;
+  detachPreview();
   detachMedia();
   await session.close();
 }
@@ -93,6 +95,7 @@ async function switchTo(opened: OpenedProject): Promise<void> {
   });
   current = session;
   attachMedia(session.dir, () => !session.readOnly);
+  attachPreview(session.dir);
   setView({
     project: { id: opened.project.id, folder: opened.dir.name },
     dialog: opened.recovery ? { kind: "recovery", recovery: opened.recovery } : null,

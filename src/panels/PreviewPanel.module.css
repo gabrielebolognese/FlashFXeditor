@@ -1,0 +1,21 @@
+.canvas {
+  position: absolute;
+  inset: 0;
+}
+
+/* Dev stats (gap: no DS pattern for debug readouts): a small mono chip over the canvas. */
+.stats {
+  position: absolute;
+  top: var(--space-3);
+  left: var(--space-3);
+  z-index: 1;
+  margin: 0;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+  background: var(--surface-3);
+  color: var(--text-secondary);
+  font: var(--type-mono);
+  white-space: pre;
+  pointer-events: none;
+}

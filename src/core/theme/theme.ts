@@ -42,7 +42,7 @@ export interface Theme {
   radius: { sm: number; md: number; lg: number; xl: number; island: number; pill: number };
   control: { compact: number; default: number; comfortable: number };
   icon: { size: number; small: number };
-  layout: { appBarHeight: number; panelHeaderHeight: number; splitterLine: number; splitterHit: number };
+  layout: { appBarHeight: number; panelHeaderHeight: number; splitterLine: number; splitterHit: number; previewMargin: number };
   motion: { instant: number; micro: number; standard: number; large: number };
   tooltipDelay: number;
 }
@@ -135,6 +135,7 @@ export function readTheme(read: TokenReader, root?: Element): { theme: Theme; mi
       panelHeaderHeight: num("--panel-header-height"),
       splitterLine: num("--splitter-line"),
       splitterHit: num("--splitter-hit"),
+      previewMargin: num("--preview-margin"),
     },
     motion: {
       instant: num("--duration-instant"),

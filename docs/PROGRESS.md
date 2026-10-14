@@ -1,6 +1,6 @@
 # Progress
 
-last_completed_batch: 04
+last_completed_batch: 05
 in_progress_batch: none
 skipped_batches: []
 needs_human: none
@@ -27,6 +27,8 @@ Items the design system did not define and the functional default that was used 
 - Media cards: grid columns `minmax(--media-card-min 112px, 1fr)`, `--space-3` gaps; 16:9 thumbnail well (`--media-thumb-aspect`) on `--bg-sunken` with the kind icon (24px, `--text-muted`) as placeholder; duration badge `--type-badge` (10px mono; DS chips are 9.5-10px) on `--surface-3`, radius-sm; selected = `--accent` border + 1px `--accent-wash` ring and an accent kind icon; hover border `--surface-5`. Kind icons: Film, AudioLines, Image. (Batch 04)
 - Media list view: 24px sticky header (overline columns, the active one primary with a chevron), 28px rows with hairline separators, hover `--hover-wash`, selected `--accent-wash`; thumbnail column `--media-list-thumb-width` 40px; minimum width 24 x `--control-default` with horizontal scroll. (Batch 04)
 - Compact Select (24px, caption type) for panel header strips; empty media state: 28px muted icon, title type, caption hint, primary "Import media". (Batch 04)
+- Preview canvas: outside the frame `--bg-sunken` (same as the well), frame edge a 1 px `--hairline` (one device px per CSS px, rounded), margin around the frame at Fit `--preview-margin` = `--space-5` (16px). The frame interior is the project background. (Batch 05)
+- Dev GPU stats readout: a `--type-mono` chip on `--surface-3` with a hairline border and radius-sm, top-left over the preview at `--space-3`, secondary text. (Batch 05)
 
 ## Global deviations
 Decisions that diverge from docs/EDITOR_SPEC.md, with the reason. Each one also appears under its batch.
@@ -45,7 +47,7 @@ Small things discovered during a batch that belong to a later batch. Format: `- 
 - [from Batch 00 -> Batch 01] `npm run check` and `npm run lint` do not exist yet; Batch 01 creates them along with the Vite + React scaffold. (done in Batch 01)
 - [from Batch 01 -> Batch 02] `KeyDispatcher.onAction` only logs (`app/services.ts`); route it to the command registry. (done in Batch 02: `ActionRegistry`)
 - [from Batch 01 -> Batch 03] Persist splitter positions per project (session.json); localStorage `layout.v1` stays the global fallback. (done in Batch 03)
-- [from Batch 01 -> Batch 05] Unsupported screen should also trigger when `navigator.gpu` exists but no adapter can be acquired.
+- [from Batch 01 -> Batch 05] Unsupported screen should also trigger when `navigator.gpu` exists but no adapter can be acquired. (done in Batch 05: startup adapter check in `main.tsx`)
 - [from Batch 01 -> Batch 09] Pause/resume the `IdleQueue` from playback (and from gestures from Batch 11 on).
 - [from Batch 01 -> Batch 42] Chrome reserves Ctrl+N, Ctrl+T and Ctrl+W in a normal tab; pages cannot preventDefault them, so `project.new` (Mod+N) opens a browser window instead. Decide on an alternative binding or document the installed-app (PWA window) route.
 - [from Batch 02 -> Batch 03] `DocumentStore.load(project)` (replace the document, clear the history); persist `SessionState` + the selection snapshot (arrays) in session.json; default tracks for a new project (`createProject` makes none); keep `meta.modifiedAt` current on save. (done in Batch 03)
@@ -67,6 +69,11 @@ Small things discovered during a batch that belong to a later batch. Format: `- 
 - [from Batch 04 -> Batch 41] Reference import mode: the `importMode` app setting exists (no UI) and falls back to copy; store handles through `project/kv.ts`; posters of reference media; "Remove and delete clips" and the media-file deletion checkbox (disabled / absent now); `media.remove` refuses media used by clips; bins, search, filter chips, missing media.
 - [from Batch 04 -> Batch 46] After an import every new card is selected (gold borders on all of them): review against "gold is used sparingly". The list view needs horizontal scroll below ~670 px.
 - [from Batch 04 -> Batch 07] `src/core/scheduler/FrameScheduler.ts` has `TODO(batch 02)` (map document `affects` flags onto view flags), which points at a finished batch; the timeline view is the first document subscriber, so do the mapping there and retag the TODO. (found in the Batch 04 review)
+- [from Batch 05 -> Batch 08] Remove `render/preview/ImageHarness.ts` and the `setLayers` entry point of `PreviewView` (the compositor's draw list replaces them). `WebGpuRenderer.draw` builds a `DrawRecord` array and uniform objects per call; make it allocation-free once the draw list is a reused struct array. Frame textures go into `TexturePool` under `(mediaId, lod, timeUs)`.
+- [from Batch 05 -> Batch 09] `TexturePool` pinning exists per key (`pin`); pin the frames within ±1 s of the playhead (P6, `TODO(batch 09)` in the pool).
+- [from Batch 05 -> Batch 21] The header Zoom select (Fit/25-400%, session `preview.zoom`) is the Batch 05 stand-in: pan, wheel zoom at the cursor, Mod+0/1/2 (`canvas.zoom*` are in the keymap but unregistered), the §7.1 detail-on-zoom offscreen render, quality modes. 100% = one project px per device px (see the batch deviations). The canvas CSS size follows the fractional panel size; use `devicePixelContentBoxSize` if exact backing pixels matter.
+- [from Batch 05 -> Batch 44] Export frame lives in the preview header (`preview.exportFrame`, `exportFrame()` in `app/previewController.ts`: picker first, then `PreviewView.renderFrame()` at project size, PNG); move or mirror it in the Export tab.
+- [from Batch 05 -> Batch 46] The dev pool-budget select and the GPU stats toggle show in dev builds only (`import.meta.env.DEV`); §13 wants the pool memory in the status strip behind a dev toggle.
 - [from Batch 03 -> Batch 42] fps conversion and "Scale layout" in the Project section (`project.setFrameRate` refuses projects with clips or markers); recent-project thumbnails (`RecentProject.thumbnail` is null); the autosave delay moves to the settings panel (stored in IndexedDB `settings.v1`); the history list reads backup names with `backupSortKey` (UTC, `-N` suffix).
 
 ## Dependencies
@@ -80,6 +87,7 @@ Why each dependency exists (Batch rule 8).
 - `immer` 11: `produceWithPatches`/`applyPatches` for commands and undo (spec §3.3 names it). (Batch 02)
 - `idb-keyval` 6: IndexedDB for recent-project directory handles and global settings (spec §3.1 names it). (Batch 03)
 - `mp4box` 2.4.1: MP4/MOV demux (spec §3.1 names mp4box.js). Imported only by `decode.worker` (190.6 kB worker chunk; the main bundle does not contain it). (Batch 04)
+- `@webgpu/types` 0.1.74 (dev): TypeScript declarations of the WebGPU API (`GPUDevice`, `GPUTexture`...), which `lib.dom` does not ship. Types only, nothing bundled. (Batch 05)
 
 ## Batch log
 
@@ -288,3 +296,59 @@ Why each dependency exists (Batch rule 8).
   - Literals: the fix adds no CSS. The batch CSS still holds only 1px hairlines, the DS input ring, 0/1 opacities and local z-index 1/2. The toast progress width is a computed percentage.
   - §3/§4: posters are now drawn in the scheduler loop (§3.4, P3). Late worker results are closed (P13). Import, rename and remove are one command each. Probe and poster decoding stay in `decode.worker` (SVG and decodeAudioData on the main thread are logged deviations), and poster arrival makes no React commit. Every TODO has a `(batch NN)` tag.
   - Observation (not blocking, older than this batch): `src/core/scheduler/FrameScheduler.ts:5` `TODO(batch 02): map document command affects flags ... onto view flags` points at a finished batch. It dates from Batch 01 (5ec980f), and Batch 02 did not do the mapping. Follow-up added to retarget it to Batch 07, the first view that subscribes to the document.
+
+### Batch 05: WebGPU renderer foundation
+- status: done
+- date: 2026-10-14
+- notes:
+  - Built across two runs: the first run left `render/gpu` and `mat3`/`drawList` uncommitted (they typechecked and their tests passed); the second run checked them and built the rest.
+  - `render/gpu`:
+    - `GpuDevice`: one GPUDevice for the app. On loss (including `device.destroy()`) it asks for a new adapter and device at once, then retries after 50/200/500/1000/2000 ms. It reports `generation`, `restores` and `lastRecoveryMs`.
+    - `Renderer` interface (`draw(list, target, viewport?)`, `createTexture`, `uploadVideoFrame` (closes the frame), `uploadImageBitmap`, `resize`, canvas/offscreen targets, `readBitmap`, `subscribe` "lost"/"ready").
+    - `WebGpuRenderer`: three WGSL pipelines (textured quad with per-layer matrix, opacity, crop UV rect and flips; two-texture dissolve for Batch 36; solid color) with premultiplied alpha blending. One uniform buffer at 256-byte dynamic offsets, a bind group per texture made at upload (none per frame), mip chains rendered level by level (`mipmaps.ts`), a scissor to the frame, the border drawn outside it, and readback with padded rows and un-premultiply (`readback.ts`). Uploads use `copyExternalImageToTexture`. Matrices are 3x3 affine in project px (`render/mat3.ts`); a view uniform maps them to clip space.
+  - `media/cache/TexturePool.ts`: a byte-budget LRU keyed `(mediaId, lod, timeUs)`, with `imageKey(mediaId)` for static mipmapped images. Counted pins, `setBudget`, `delete`/`deleteMedia`/`clear`, stats and a change listener. Every texture leaving the pool is destroyed (P13). The default budget is 768 MB (P6). The pool is emptied on device loss.
+  - `render/preview/`:
+    - `viewport.ts`: Fit letterbox with the margin, edges on whole device px; numeric zoom centered; contain fit; device size.
+    - `PreviewView`: the WebGPU canvas at devicePixelRatio. It follows the layout store (preview panel size), session zoom, document `settings`, Theme and DPR (matchMedia), and the renderer's "ready". It renders only on the scheduler's `preview` flag and resizes the backing store inside `render`. `renderFrame()` draws to an offscreen target at project size and reads it back.
+    - `PreviewStatsOverlay`: the dev text, written in the scheduler loop.
+    - `ImageHarness` (temporary): the image selected in the Media panel is decoded full size in `decode.worker` (`decodeImage`, at most `maxTextureSize`; SVG through `svgPoster` on the main thread), uploaded mipmapped into the pool, pinned, and drawn contained in the project frame. It is uploaded again after a device loss and dropped when its media is removed.
+  - `core/theme/cssColor.ts` turns token strings (hex, rgb/rgba) into RGBA for GPU colors. Theme gains `layout.previewMargin`.
+  - App:
+    - `app/previewController.ts`: GPU, renderer, pool and preview singletons; the harness per open project (attached and detached by `projectController`); `preview.exportFrame`; `__editor` on `globalThis` in dev builds (`__editor.device.destroy()`).
+    - `main.tsx` requests the adapter at startup and shows the unsupported screen when there is none (Batch 01 follow-up).
+    - Preview header: dev pool budget (768/64 MB) and GPU stats toggle, Zoom select (Fit, 25, 50, 100, 200, 400%), Export frame.
+  - Measured:
+    - 392 unit tests in 55 files (+52 tests, +9 files), plus the perf project.
+    - Build: 310.23 kB JS (102.36 kB gzip, +29.4 kB / +9.9 kB gzip), 33.6 kB CSS; decode.worker unchanged.
+  - Headless Chrome 155 (CDP, real AMD RDNA2 adapter) on the dev server: 25 acceptance + 8 regression checks, all passing:
+    - Mipmaps: a 4000x3000 PNG (left half a 1 px checkerboard, then black, then white) at Fit (448x336 device px): checker std dev 0 (mean 128), black/white edge 0 intermediate px. The same view without mipmaps (control) has std dev 42.4.
+    - Zoom: at 100% the image is 1080 px wide (1:1), std 0 and a crisp edge. At 400% the checker resolves (std 43.8).
+    - Letterbox: project background black inside the frame above the image; `--bg-sunken` outside.
+    - Resizing: 20-step splitter drag = 20 resize events, 20 renders, 0 React commits. 5 size changes inside one frame = 1 render. Two window resizes = 2 renders. Idle 1 s = 0 renders. At DPR 2 the backing store doubles (1343x1656 for 671.6x828 css px).
+    - Device loss: `device.destroy()` twice: new device in 35-39 ms (recovery 18-33 ms), texture re-uploaded by 69-108 ms, image redrawn by 104-184 ms.
+    - Pool: 6 images at 768 MB = 137.3 MB. Switching to 64 MB evicts down to 61.0 MB (the evicted 4000x3000 handle reports `valid: false`). Selecting the 61 MB image evicts everything unpinned; switching away evicts it. Five 15.3 MB images keep 4 (61.0 / 64.0 MB). The overlay reads "pool 4 tex · 61.0 / 64.0 MB · pinned 1 · evicted 8".
+    - Export path: `renderFrame()` gives a 1080x1920 bitmap with exact black/white/gray pixels, PNG 48 kB.
+    - Removing the media clears the preview and drops its texture; undo brings it back. A 1920x1080 project re-fits the image (pillarboxed); undo restores.
+    - No adapter (requestAdapter stubbed to null): the unsupported screen names "A WebGPU adapter".
+    - Regression: layout at 1600x900 (preview 512x828 body); header has no overflow; import posters; undo/redo of import; the zoom select writes session zoom; reopening the project clears the preview, keeps one canvas, and brings back posters; Ctrl+K in the timeline logs edit.split; no console errors or warnings (apart from Chrome's "powerPreference is ignored on Windows" note and the expected "device lost (destroyed)" warnings).
+- deviations:
+  - 100% zoom = one project pixel per device pixel (not per CSS px), so 100% is pixel-exact on HiDPI screens; the spec does not say which.
+  - The harness draws into the project frame (`settings.width x height`, 1080x1920 by default) rather than a fixed 1080x1920, so it also follows resolution changes.
+  - The zoom choice is the session's `preview.zoom` (persisted in session.json), shown as a compact select in the preview header; the frame stays centered (no pan) until Batch 21.
+  - Export frame is a header button now (the batch's "dev button"), registered as action `preview.exportFrame` with no shortcut. The save picker opens first so the click's user activation is still valid.
+  - Renderer device events are "lost" and "ready" ("ready" on the first device too), so views draw their first frame and re-upload from one event.
+  - Images are decoded at most `maxTextureSize` px on the long side (8192 on this device). Larger images are scaled down by the worker.
+  - The dev controls (pool budget, stats toggle) and `__editor` exist in dev builds only.
+  - CDP's DPR emulation fires no matchMedia change, so the DPR check was paired with a resize. The matchMedia path is a manual check.
+  - Removed the placeholders `src/render/gpu/index.ts`, `src/render/preview/index.ts`, `src/media/cache/index.ts`.
+- follow-ups: [from Batch 05 -> Batch 08] remove the harness, allocation-free draw; [from Batch 05 -> Batch 09] pin the playhead window; [from Batch 05 -> Batch 21] real zoom/pan, Mod+0/1/2, detail on zoom; [from Batch 05 -> Batch 44] Export frame in the Export tab; [from Batch 05 -> Batch 46] dev controls in the status strip
+- design gaps: preview canvas outside/border/margin, dev stats chip (details in Design system gaps)
+- pending manual checks:
+  1. Real photo: `npm run dev`, open a project, import a 4000x3000 (or larger) photo with fine detail (a fence, a brick wall, text) and click it in the Media panel. At Fit it shows without moiré or shimmering. Set Zoom to 100%: it is sharp, with no blur from upscaling. At 400%: real detail.
+  2. Stats on (gauge button in the preview header, dev build): drag the splitter between the timeline and the preview. "renders" and "resizes" grow by the same amount, and they stay still when nothing moves.
+  3. Device loss: in the DevTools console run `__editor.device.destroy()`. Within a second the image is back, and the stats read "restores 1 (last N ms)".
+  4. Pool: pick "Pool 64 MB" and click through several large photos. The stats never pass "64.0 MB" (except a single image larger than the budget), and "evicted" grows.
+  5. Export frame (picture icon in the preview header): save as PNG. The file is 1080x1920 and matches the preview frame, with no border or outside color.
+  6. Move the window to a monitor with a different display scale (or change the Windows display scale). The preview re-renders sharp at the new devicePixelRatio. This is the matchMedia path; headless emulation cannot trigger it.
+  7. Turn off "Use graphics acceleration when available" in chrome://settings/system, relaunch, and open the app. The unsupported screen lists "A WebGPU adapter", unless Chrome still offers a software adapter.
+  8. P1 re-check (every 5 batches): playback does not exist yet (Batch 09). React commits were 0 during the splitter drag; re-verify the playback rule in Batch 10.

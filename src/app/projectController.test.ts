@@ -21,6 +21,7 @@ vi.mock("./services.js", async () => {
   const { RecentProjects } = await import("../project/recentProjects.js");
   const { IdleQueue } = await import("../core/scheduler/IdleQueue.js");
   const { FrameScheduler } = await import("../core/scheduler/FrameScheduler.js");
+  const { ThemeBridge } = await import("../core/theme/theme.js");
   const sessionStore = createSessionStore();
   return {
     actions: new ActionRegistry(),
@@ -40,6 +41,7 @@ vi.mock("./services.js", async () => {
       () => undefined,
     ),
     sessionStore,
+    themeBridge: new ThemeBridge(document.documentElement, () => () => "0"),
     workerPool: { request: () => new Promise(() => undefined) },
   };
 });
