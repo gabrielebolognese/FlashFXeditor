@@ -1,6 +1,6 @@
 ---
 description: Load the next implementation batch from docs/BATCHES.md into context, present a plan, and build it only after the user replies "Go".
-argument-hint: [batch number | status | plan | redo | skip]
+argument-hint: [batch number | status | plan | redo | skip | auto]
 ---
 
 You are running the batch workflow for the Shorts Editor. Follow these steps exactly and in order.
@@ -18,6 +18,11 @@ Interpret `$ARGUMENTS`:
 - `plan`: same as empty, but never build in this run, even if the user later says Go (plan-only mode).
 - `redo`: target the batch currently in progress, or `last` if none; treat the batch as a fresh implementation of its remaining acceptance items (do not revert finished work).
 - `skip`: ask the user for a one-line reason, record the target batch as skipped in PROGRESS.md (`skipped_batches` and a batch entry with status skipped), then stop.
+- `auto`: unattended run, used by scripts/run-batches.sh. First check the entry of `last_completed_batch` in PROGRESS.md: if it contains `review: rejected` and no `fix-attempt: done` line, target that batch again and fix every problem listed in the review (re-run its acceptance checks, add `fix-attempt: done` to the entry, commit `batch-NN: fixes`, end the run). Otherwise target `last + 1` (or resume `in_progress_batch`). In auto mode:
+  - Write the plan (Step 3) as text but do not stop; continue straight into Step 4.
+  - Never ask a question. Any choice you would have asked about: decide it using the functional defaults in docs/EDITOR_SPEC.md and the Batch rules, log the decision under the batch entry's `deviations` (or `notes`), continue.
+  - Stop without building, writing `needs_human: <one-line reason>` as the top-level field in docs/PROGRESS.md, only when: DESIGN_SYSTEM.md is missing; the batch's Spec refs contradict the current code in a way the spec does not resolve; `npm run check` is still red after two fix attempts; the previous batch has a `pending manual checks` item marked `blocking`.
+  - Never mark a batch done with a red `npm run check`.
 
 Batch numbers are two-digit in headings (`## Batch 07:`); optional batches have a suffix (`## Batch 33 (optional):`).
 
@@ -41,7 +46,7 @@ Output, in this order and nothing else:
 6. **Acceptance checklist**: restate the batch's acceptance items verbatim as checkboxes.
 7. The line: `Reply "Go" to build this batch, or answer the questions / request changes to the plan.`
 
-Then STOP. Write no code, create no files, run no build. Wait for the user. If the user replies with changes or answers, update the plan and stop again. Only the exact word `Go` (any casing) starts implementation. In `plan` mode, never implement.
+Then STOP. Write no code, create no files, run no build. Wait for the user. If the user replies with changes or answers, update the plan and stop again. Only the exact word `Go` (any casing) starts implementation. In `plan` mode, never implement. In `auto` mode, do not stop here: continue straight into Step 4.
 
 If the user answers with a split (e.g. "split: do items 1-4 now, 5-7 as a second Go"), build in passes under the same batch number, one commit per pass (`batch-NN-a: <title>`, `batch-NN-b: <title>`), keeping `in_progress_batch: NN` until the last pass is done.
 
@@ -54,6 +59,7 @@ If the user answers with a split (e.g. "split: do items 1-4 now, 5-7 as a second
 5. Verify the acceptance checklist: run the tests that cover each item; for manual items, do what can be done from the shell (build, scripted checks, dev commands) and list the remainder as `pending manual checks` for the user with exact steps to reproduce.
 6. Update `docs/PROGRESS.md`: `last_completed_batch: NN`, `in_progress_batch: none`, and the batch entry with `status: done`, date, notes (what was built, numbers measured), deviations (with reasons), follow-ups (as `[from Batch NN -> Batch MM]` lines, also copied to the Follow-ups section), design gaps (also copied to the Design system gaps section), pending manual checks.
 7. Commit everything: `git add -A && git commit -m "batch-NN: <title>"`.
+7b. Append a `review request:` line to the batch entry in PROGRESS.md listing the changed files (`git diff --name-only HEAD~1 | tr '\n' ' '`), then commit again with `batch-NN: progress`.
 8. Print a completion report: the checklist with ticks, the pending manual checks, the commit hash, and the line `Next: run /next-batch for Batch MM: <title>`.
 
 Never start the next batch on your own. Never skip the plan step. Never read the whole of `docs/BATCHES.md` or `docs/EDITOR_SPEC.md` into context; extract sections.

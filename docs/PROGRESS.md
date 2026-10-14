@@ -3,6 +3,7 @@
 last_completed_batch: 01
 in_progress_batch: none
 skipped_batches: []
+needs_human: none
 
 ## Design system gaps
 Items the design system did not define and the functional default that was used instead.
@@ -47,8 +48,12 @@ Why each dependency exists (Batch rule 8).
 ### Batch 00: Setup
 - status: done
 - date: 2026-10-14
-- notes: created /next-batch command, PROGRESS.md and CLAUDE.md; moved EDITOR_SPEC.md, BATCHES.md, NEXT_BATCH_SETUP.md into docs/; initialized git
-- deviations: design system path is `DESIGN_SYSTEM.md` (see Global deviations)
+- notes: created /next-batch command, PROGRESS.md and CLAUDE.md; moved EDITOR_SPEC.md, BATCHES.md, NEXT_BATCH_SETUP.md into docs/; initialized git. Later (after Batch 01): applied docs/AUTO_BATCH_SETUP.md: `auto` mode and step 7b in /next-batch, /review-batch command, `scripts/run-batches.sh`, `needs_human` field.
+- deviations:
+  - design system path is `DESIGN_SYSTEM.md` (see Global deviations)
+  - `scripts/run-batches.sh` differs from AUTO_BATCH_SETUP §3 in three places. (1) Batch numbers are read in base 10, because PROGRESS.md stores "01", which bash would treat as octal (so "08" and "09" would fail). (2) Completion is compared as a number, because "02" != "2" as strings, which would stop the run after the first batch. (3) A run that only applied review fixes is detected by a `batch-NN: fixes` HEAD commit, not by grepping the whole file for `fix-attempt: done`, because that grep matches any earlier batch and would skip the retry and could loop forever.
+  - /next-batch Step 3 says outright that `auto` mode does not stop after the plan, so it does not contradict the "Then STOP" line.
+  - Added `.gitattributes` (`*.sh text eol=lf`): `core.autocrlf` is true on this machine, and a CRLF checkout would break the script in bash.
 - follow-ups: [from Batch 00 -> Batch 01] add `lint` and `check` scripts
 - design gaps: none
 - pending manual checks: none
