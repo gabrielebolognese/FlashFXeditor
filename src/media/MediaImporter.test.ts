@@ -79,6 +79,16 @@ describe("MediaImporter", () => {
     expect(dir.fs.log.filter((op) => op.startsWith("write"))).toEqual([]);
   });
 
+  it("refuses extensions named like Object.prototype members by name and imports the rest", async () => {
+    const { documentStore, importer } = await setup();
+    const report = await importer.importFiles([fileOf("clip.constructor"), fileOf("clip.__proto__"), fileOf("good.mov")]);
+    expect(report.refused).toEqual([
+      { name: "clip.constructor", reason: "unsupported file type" },
+      { name: "clip.__proto__", reason: "unsupported file type" },
+    ]);
+    expect(Object.values(documentStore.getState().media).map((m) => m.name)).toEqual(["good.mov"]);
+  });
+
   it("refuses files the probe rejects, without copying them, and imports the rest", async () => {
     const { dir, documentStore, importer } = await setup(async (file) => {
       if (file.name === "broken.mp4") throw new ProbeError("Not a readable MP4/MOV file: no movie header found");

@@ -21,6 +21,13 @@ describe("classifyFile", () => {
     expect(classifyFile("README", "")).toBeNull();
   });
 
+  it("refuses extensions named like Object.prototype members", () => {
+    for (const ext of ["constructor", "__proto__", "toString", "hasOwnProperty", "valueOf"]) {
+      expect(classifyFile(`clip.${ext}`, "")).toBeNull();
+    }
+    expect(classifyFile("constructor", "constructor")).toBeNull();
+  });
+
   it("uses the MIME type for files without an extension (pasted images)", () => {
     expect(classifyFile("image", "image/png")).toMatchObject({ container: "image", mime: "image/png" });
     expect(classifyFile("blob", "text/html")).toBeNull();

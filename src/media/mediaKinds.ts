@@ -13,26 +13,27 @@ export interface FileKind {
   audioCodec?: string;
 }
 
-const BY_EXTENSION: Record<string, FileKind> = {
-  mp4: { container: "mp4", mime: "video/mp4" },
-  mov: { container: "mp4", mime: "video/quicktime" },
-  m4v: { container: "mp4", mime: "video/x-m4v" },
-  m4a: { container: "mp4", mime: "audio/mp4" },
-  mp3: { container: "audio", mime: "audio/mpeg", audioCodec: "mp3" },
-  aac: { container: "audio", mime: "audio/aac", audioCodec: "aac" },
-  wav: { container: "audio", mime: "audio/wav", audioCodec: "pcm" },
-  ogg: { container: "audio", mime: "audio/ogg", audioCodec: "ogg" },
-  png: { container: "image", mime: "image/png" },
-  jpg: { container: "image", mime: "image/jpeg" },
-  jpeg: { container: "image", mime: "image/jpeg" },
-  webp: { container: "image", mime: "image/webp" },
-  gif: { container: "image", mime: "image/gif" },
-  svg: { container: "svg", mime: "image/svg+xml" },
-};
+// A Map, not an object literal: "constructor" or "__proto__" must not look like known extensions.
+const BY_EXTENSION = new Map<string, FileKind>([
+  ["mp4", { container: "mp4", mime: "video/mp4" }],
+  ["mov", { container: "mp4", mime: "video/quicktime" }],
+  ["m4v", { container: "mp4", mime: "video/x-m4v" }],
+  ["m4a", { container: "mp4", mime: "audio/mp4" }],
+  ["mp3", { container: "audio", mime: "audio/mpeg", audioCodec: "mp3" }],
+  ["aac", { container: "audio", mime: "audio/aac", audioCodec: "aac" }],
+  ["wav", { container: "audio", mime: "audio/wav", audioCodec: "pcm" }],
+  ["ogg", { container: "audio", mime: "audio/ogg", audioCodec: "ogg" }],
+  ["png", { container: "image", mime: "image/png" }],
+  ["jpg", { container: "image", mime: "image/jpeg" }],
+  ["jpeg", { container: "image", mime: "image/jpeg" }],
+  ["webp", { container: "image", mime: "image/webp" }],
+  ["gif", { container: "image", mime: "image/gif" }],
+  ["svg", { container: "svg", mime: "image/svg+xml" }],
+]);
 
-const BY_MIME = new Map<string, FileKind>(Object.values(BY_EXTENSION).map((kind) => [kind.mime, kind]));
+const BY_MIME = new Map<string, FileKind>([...BY_EXTENSION.values()].map((kind) => [kind.mime, kind]));
 
-export const ACCEPTED_EXTENSIONS: readonly string[] = Object.keys(BY_EXTENSION).map((ext) => `.${ext}`);
+export const ACCEPTED_EXTENSIONS: readonly string[] = [...BY_EXTENSION.keys()].map((ext) => `.${ext}`);
 
 /** The extension without the dot, lower case; "" when there is none. */
 export function extensionOf(name: string): string {
@@ -43,7 +44,7 @@ export function extensionOf(name: string): string {
 /** null: refused (unknown type). */
 export function classifyFile(name: string, type: string): FileKind | null {
   const ext = extensionOf(name);
-  if (ext) return BY_EXTENSION[ext] ?? null;
+  if (ext) return BY_EXTENSION.get(ext) ?? null;
   return BY_MIME.get(type.toLowerCase()) ?? null;
 }
 

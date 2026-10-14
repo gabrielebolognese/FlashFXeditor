@@ -2,7 +2,7 @@
 // `request` resolves with the typed result; aborting its signal cancels it in the worker and rejects
 // at once with an AbortError. A crashed worker rejects everything it had and is recreated on the next
 // request.
-import { abortError, fromErrorInfo, METHOD_WORKER, type FromWorker, type Method, type Params, type Priority, type Result, type ToWorker, type WorkerKind } from "./protocol.js";
+import { abortError, closeTransferables, fromErrorInfo, METHOD_WORKER, type FromWorker, type Method, type Params, type Priority, type Result, type ToWorker, type WorkerKind } from "./protocol.js";
 
 export interface WorkerLike {
   postMessage(message: ToWorker, transfer?: Transferable[]): void;
@@ -82,7 +82,12 @@ export class WorkerPool {
 
   private receive(message: FromWorker): void {
     const entry = this.settle(message.id);
-    if (!entry) return; // cancelled or failed already
+    if (!entry) {
+      // Cancelled or failed already. A result the worker posted before the cancel reached it still
+      // carries transferred bitmaps or frames: close them here (P13).
+      if (message.type === "result") closeTransferables(message.value);
+      return;
+    }
     if (message.type === "result") entry.resolve(message.value);
     else entry.reject(fromErrorInfo(message.error));
   }

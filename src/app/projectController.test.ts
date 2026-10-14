@@ -20,6 +20,7 @@ vi.mock("./services.js", async () => {
   const { memoryKeyValueStore } = await import("../project/kv.js");
   const { RecentProjects } = await import("../project/recentProjects.js");
   const { IdleQueue } = await import("../core/scheduler/IdleQueue.js");
+  const { FrameScheduler } = await import("../core/scheduler/FrameScheduler.js");
   const sessionStore = createSessionStore();
   return {
     actions: new ActionRegistry(),
@@ -34,6 +35,10 @@ vi.mock("./services.js", async () => {
     layoutStore: createLayoutStore(null),
     recentProjects: new RecentProjects(memoryKeyValueStore()),
     saveStatus: createStore(INITIAL_SAVE_STATUS),
+    scheduler: new FrameScheduler(
+      () => 0,
+      () => undefined,
+    ),
     sessionStore,
     workerPool: { request: () => new Promise(() => undefined) },
   };

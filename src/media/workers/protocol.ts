@@ -87,3 +87,10 @@ export function transferablesOf(value: unknown): Transferable[] {
   if (typeof value !== "object" || value === null) return [];
   return Object.values(value).filter(isTransferable);
 }
+
+/** Frees the bitmaps and frames of a result nobody will receive (spec P13). */
+export function closeTransferables(value: unknown): void {
+  for (const item of transferablesOf(value)) {
+    if ("close" in item && typeof item.close === "function") item.close();
+  }
+}

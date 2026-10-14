@@ -1,12 +1,13 @@
 import { useEffect, useRef } from "react";
-import { posterStore } from "../../app/mediaController.js";
+import { posterPainter, posterStore } from "../../app/mediaController.js";
 import type { MediaId } from "../../core/document/types.js";
 import { useStoreSelector } from "../../core/store/useStoreSelector.js";
 import styles from "./MediaTab.module.css";
 
 /**
- * The poster of one media item. Draws the shared ImageBitmap itself when it arrives (no React state);
- * `data-ready` reveals it over the kind-icon placeholder.
+ * The poster of one media item. The canvas is handed to `posterPainter`, which draws the shared
+ * ImageBitmap in the FrameScheduler loop (no React state); `data-ready` reveals it over the kind-icon
+ * placeholder.
  */
 export function PosterCanvas({ id }: { id: MediaId }) {
   const ref = useRef<HTMLCanvasElement>(null);
@@ -14,16 +15,7 @@ export function PosterCanvas({ id }: { id: MediaId }) {
   useEffect(() => {
     const canvas = ref.current;
     if (!canvas || !posters) return;
-    return posters.observe(id, (bitmap) => {
-      if (!bitmap) {
-        delete canvas.dataset.ready;
-        return;
-      }
-      canvas.width = bitmap.width;
-      canvas.height = bitmap.height;
-      canvas.getContext("2d")?.drawImage(bitmap, 0, 0);
-      canvas.dataset.ready = "";
-    });
+    return posterPainter.attach(canvas, posters, id);
   }, [id, posters]);
   return <canvas ref={ref} className={styles.poster} aria-hidden="true" />;
 }

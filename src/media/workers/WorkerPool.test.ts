@@ -142,6 +142,42 @@ describe("WorkerPool + WorkerHost", () => {
     expect(pool.inFlight).toBe(0);
   });
 
+  it("closes the bitmaps of a result that arrives after its request was aborted", async () => {
+    // jsdom has no ImageBitmap; a stand-in class makes `transferablesOf` pick the bitmap up.
+    class FakeBitmap {
+      readonly close = vi.fn();
+    }
+    vi.stubGlobal("ImageBitmap", FakeBitmap);
+    try {
+      const posted: ToWorker[] = [];
+      let deliver: ((event: MessageEvent<FromWorker>) => void) | null = null;
+      const worker: WorkerLike = {
+        postMessage: (message) => posted.push(message),
+        addEventListener: ((type: "message" | "error", listener: (event: MessageEvent<FromWorker>) => void) => {
+          if (type === "message") deliver = listener;
+        }) as WorkerLike["addEventListener"],
+        terminate: () => undefined,
+      };
+      const pool = new WorkerPool({ decode: () => worker });
+      const controller = new AbortController();
+      const request = pool.request("poster", { file, kind: "image", maxSize: 320 }, { signal: controller.signal });
+      const id = posted[0]?.id ?? -1;
+      // The worker has already posted its result when the cancel goes out.
+      controller.abort();
+      await expect(request).rejects.toMatchObject({ name: "AbortError" });
+      expect(posted[1]).toEqual({ type: "cancel", id });
+      const bitmap = new FakeBitmap();
+      const send = deliver as ((event: MessageEvent<FromWorker>) => void) | null;
+      send?.({ data: { type: "result", id, value: { bitmap, blob: file } } } as MessageEvent<FromWorker>);
+      expect(bitmap.close).toHaveBeenCalledTimes(1);
+      // A late error has nothing to free and is ignored.
+      send?.({ data: { type: "error", id, error: { name: "AbortError", message: "cancelled" } } } as MessageEvent<FromWorker>);
+      expect(pool.inFlight).toBe(0);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it("rejects an already aborted signal without contacting a worker", async () => {
     const { pool, workers } = setup({ probe: async () => AUDIO });
     const controller = new AbortController();

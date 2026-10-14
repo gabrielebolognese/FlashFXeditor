@@ -1,7 +1,7 @@
 // Worker side of the protocol: queues requests by priority (then arrival), runs at most
 // `concurrency` at once, and cancels queued or running requests. A cancelled request always answers
 // with an AbortError, whatever its handler does afterwards.
-import { abortError, PRIORITY_RANK, toErrorInfo, transferablesOf, type FromWorker, type Method, type Params, type RequestMessage, type Result, type ToWorker } from "./protocol.js";
+import { abortError, closeTransferables, PRIORITY_RANK, toErrorInfo, transferablesOf, type FromWorker, type Method, type Params, type RequestMessage, type Result, type ToWorker } from "./protocol.js";
 
 export interface HostScope {
   postMessage(message: FromWorker, transfer: Transferable[]): void;
@@ -93,12 +93,5 @@ export class WorkerHost {
 
   private post(message: FromWorker, transfer: Transferable[] = []): void {
     this.scope.postMessage(message, transfer);
-  }
-}
-
-/** A result nobody will receive: free its bitmaps and frames (spec P13). */
-function closeTransferables(value: unknown): void {
-  for (const item of transferablesOf(value)) {
-    if ("close" in item && typeof item.close === "function") item.close();
   }
 }

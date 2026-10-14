@@ -12,10 +12,11 @@ import { PosterStore } from "../media/PosterStore.js";
 import { svgPoster } from "../media/probe/svgProbe.js";
 import { isAbortError } from "../media/workers/protocol.js";
 import { clickSelection, EMPTY_MEDIA_SELECTION, pruneSelection, type MediaSelection } from "../panels/media/mediaList.js";
+import { PosterPainter } from "../panels/media/PosterPainter.js";
 import { errorMessage } from "../project/errorMessage.js";
 import type { FsDir } from "../project/fs.js";
 import { dismissToast, showToast, updateToast } from "../ui/toasts.js";
-import { actions, appSettings, documentStore, focusScopes, idleQueue, workerPool } from "./services.js";
+import { actions, appSettings, documentStore, focusScopes, idleQueue, scheduler, workerPool } from "./services.js";
 
 export interface MediaPanelState {
   selection: MediaSelection;
@@ -29,6 +30,8 @@ export const mediaPanel = createStore<MediaPanelState>({ selection: EMPTY_MEDIA_
 
 /** The open project's posters. A store: reopening the same project keeps the cards mounted. */
 export const posterStore = createStore<PosterStore | null>(null);
+/** Draws the card posters in the FrameScheduler loop (the `mediaThumbs` view). */
+export const posterPainter = new PosterPainter(scheduler);
 
 /** Imports at least this large show a progress toast (gap: the spec says "large copies"). */
 export const LARGE_IMPORT_BYTES = 32 * 1024 * 1024;
