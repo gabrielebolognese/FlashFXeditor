@@ -13,6 +13,7 @@ import { DocumentStore } from "../core/store/DocumentStore.js";
 import { createLayoutStore } from "../core/store/layoutStore.js";
 import { createSessionStore } from "../core/store/sessionStore.js";
 import { ThemeBridge } from "../core/theme/theme.js";
+import { WorkerPool } from "../media/workers/WorkerPool.js";
 import { createAppSettings } from "../project/appSettings.js";
 import { INITIAL_SAVE_STATUS, type SaveStatus } from "../project/Autosaver.js";
 import { idbKeyValueStore } from "../project/kv.js";
@@ -42,6 +43,10 @@ export const actions = new ActionRegistry();
 const keyValueStore = idbKeyValueStore();
 export const recentProjects = new RecentProjects(keyValueStore);
 export const appSettings = createAppSettings(keyValueStore);
+/** Media workers (spec §3.5), each created on its first request. */
+export const workerPool = new WorkerPool({
+  decode: () => new Worker(new URL("../media/workers/decode.worker.ts", import.meta.url), { type: "module", name: "decode" }),
+});
 /** Save state of the open project, for the app bar dot and the read-only banner. */
 export const saveStatus = createStore<SaveStatus>(INITIAL_SAVE_STATUS);
 export { appVersion };

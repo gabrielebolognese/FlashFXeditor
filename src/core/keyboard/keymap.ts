@@ -54,7 +54,8 @@ export const DEFAULT_KEYMAP: readonly KeyBinding[] = [
   // Editing
   { id: "edit.split", keys: ["Mod+K"], scopes: G },
   { id: "edit.splitAll", keys: ["Mod+Shift+K"], scopes: G },
-  { id: "edit.delete", keys: ["Delete", "Backspace"], scopes: TL_PV },
+  // §12: Delete also removes the selected media in the media panel.
+  { id: "edit.delete", keys: ["Delete", "Backspace"], scopes: ["timeline", "preview", "media"] },
   { id: "edit.rippleDelete", keys: ["Shift+Delete", "Shift+Backspace"], scopes: TL_PV },
   { id: "edit.rippleTrimPrev", keys: ["Q"], scopes: G },
   { id: "edit.rippleTrimNext", keys: ["W"], scopes: G },

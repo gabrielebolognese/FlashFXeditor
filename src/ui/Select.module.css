@@ -18,6 +18,13 @@
   transition: border-color var(--duration-micro) var(--ease-out);
 }
 
+.select[data-size="compact"] {
+  height: var(--control-compact);
+  padding-left: var(--space-2);
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-track);
+}
+
 .select:focus-visible {
   border-color: var(--accent-dim);
   box-shadow: 0 0 0 1px var(--accent-wash);

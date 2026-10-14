@@ -1,7 +1,7 @@
 // In-memory FsDir for the project tests. Logs every write attempt (before checking permission, so
 // "no writes attempted" is testable), can fail chosen operations, and stamps files with a
 // monotonic clock so "newer" comparisons are deterministic. Not imported by app code.
-import type { FsDir, FsEntry, FsFile, PermissionMode, PermissionStatus } from "./fs.js";
+import type { FsDir, FsEntry, FsFile, PermissionMode, PermissionStatus, WriteFileOptions } from "./fs.js";
 
 export type MemoryOp = "write" | "remove" | "mkdir";
 
@@ -36,6 +36,8 @@ export class MemoryFs {
 
 export class MemoryDir implements FsDir {
   readonly files = new Map<string, FsFile>();
+  /** Binary files written with writeFile. */
+  readonly blobs = new Map<string, { data: Blob; lastModified: number }>();
   readonly dirs = new Map<string, MemoryDir>();
 
   constructor(
@@ -60,18 +62,41 @@ export class MemoryDir implements FsDir {
 
   async writeText(name: string, text: string): Promise<void> {
     this.fs.attempt("write", this.child(name));
+    this.blobs.delete(name);
     this.files.set(name, { text, lastModified: ++this.fs.clock });
+  }
+
+  async getFile(name: string): Promise<File | null> {
+    this.fs.checkRead(this.child(name));
+    const blob = this.blobs.get(name);
+    if (blob) return new File([blob.data], name, { lastModified: blob.lastModified });
+    const file = this.files.get(name);
+    return file ? new File([file.text], name, { lastModified: file.lastModified }) : null;
+  }
+
+  async writeFile(name: string, data: Blob, options: WriteFileOptions = {}): Promise<void> {
+    options.signal?.throwIfAborted();
+    this.fs.attempt("write", this.child(name));
+    // Half the bytes, then the rest: progress callers see more than one step.
+    const half = Math.floor(data.size / 2);
+    if (half > 0) options.onProgress?.(half);
+    await Promise.resolve();
+    options.signal?.throwIfAborted();
+    this.files.delete(name);
+    this.blobs.set(name, { data, lastModified: ++this.fs.clock });
+    options.onProgress?.(data.size);
   }
 
   async remove(name: string): Promise<void> {
     this.fs.attempt("remove", this.child(name));
     this.files.delete(name);
+    this.blobs.delete(name);
   }
 
   async list(): Promise<FsEntry[]> {
     this.fs.checkRead(this.path || ".");
     return [
-      ...[...this.files.keys()].map((name) => ({ name, kind: "file" as const })),
+      ...[...this.files.keys(), ...this.blobs.keys()].map((name) => ({ name, kind: "file" as const })),
       ...[...this.dirs.keys()].map((name) => ({ name, kind: "directory" as const })),
     ];
   }
@@ -100,7 +125,7 @@ export class MemoryDir implements FsDir {
   /** Every file and directory below this one, as sorted relative paths (directories end in "/"). */
   tree(): string[] {
     const out: string[] = [];
-    for (const name of this.files.keys()) out.push(name);
+    for (const name of [...this.files.keys(), ...this.blobs.keys()]) out.push(name);
     for (const [name, dir] of this.dirs) {
       out.push(`${name}/`);
       for (const inner of dir.tree()) out.push(`${name}/${inner}`);

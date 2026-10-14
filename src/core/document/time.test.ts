@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { FPS_30, formatTimecode, frameToUs, parseTimecode, usPerFrame, usToFrame } from "./time.js";
+import { FPS_30, formatDurationUs, formatTimecode, frameToUs, parseTimecode, ticksToUs, usPerFrame, usToFrame } from "./time.js";
 import type { Rational } from "./types.js";
 
 const NTSC: Rational = { num: 30000, den: 1001 };
@@ -129,5 +129,31 @@ describe("parseTimecode", () => {
       expect(parseTimecode(text, FPS_30), text).toBeNull();
     }
     expect(parseTimecode("1.2.3", FPS_30, { mode: "ms" })).toBeNull();
+  });
+});
+
+describe("ticksToUs", () => {
+  it("converts track ticks to the nearest microsecond", () => {
+    expect(ticksToUs(90_000, 90_000)).toBe(1_000_000);
+    expect(ticksToUs(1001, 30_000)).toBe(33_367);
+    expect(ticksToUs(20, 600)).toBe(33_333);
+    expect(ticksToUs(44_100 * 61 + 1, 44_100)).toBe(61_000_023);
+    // One hour at a 90 kHz timescale stays exact.
+    expect(ticksToUs(90_000 * 3600, 90_000)).toBe(3_600_000_000);
+  });
+});
+
+describe("formatDurationUs", () => {
+  it("formats badges in whole seconds, at least 1 s when not empty", () => {
+    expect(formatDurationUs(0)).toBe("00:00");
+    expect(formatDurationUs(400_000)).toBe("00:01");
+    expect(formatDurationUs(12_499_999)).toBe("00:12");
+    expect(formatDurationUs(12_500_000)).toBe("00:13");
+    expect(formatDurationUs(3_723_000_000)).toBe("01:02:03");
+  });
+
+  it("formats precise durations with milliseconds", () => {
+    expect(formatDurationUs(12_345_678, true)).toBe("00:12.345");
+    expect(formatDurationUs(61_000_023, true)).toBe("01:01.000");
   });
 });

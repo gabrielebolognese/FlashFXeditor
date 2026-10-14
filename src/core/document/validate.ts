@@ -1,7 +1,7 @@
 // Document invariants (spec §5.2). The DocumentStore runs `assertValid` after every command in dev
 // builds; messages name the track and clip so a broken command is found at once.
 import { usPerFrame } from "./time.js";
-import { isMediaClip, type Clip, type ClipId, type ClipKind, type Project, type Track, type TrackId, type TrackKind } from "./types.js";
+import { isMediaClip, type Clip, type ClipId, type ClipKind, type MediaItem, type Project, type Track, type TrackId, type TrackKind } from "./types.js";
 
 export class DocumentInvariantError extends Error {
   readonly issues: readonly string[];
@@ -19,8 +19,32 @@ const ALLOWED_CLIPS: Record<TrackKind, ReadonlySet<ClipKind>> = {
   caption: new Set(["caption"]),
 };
 
+const ROTATIONS: ReadonlySet<number> = new Set([0, 90, 180, 270]);
+const isPositiveInteger = (value: unknown) => Number.isInteger(value) && (value as number) > 0;
+
 const trackLabel = (track: Track) => `track "${track.name}" (${track.id})`;
 const clipLabel = (clip: Clip) => `clip "${clip.name}" (${clip.id})`;
+
+/** Integer microseconds and sizes (P4), a quarter-turn rotation, and a path inside the project folder. */
+function mediaIssues(key: string, media: MediaItem): string[] {
+  const issues: string[] = [];
+  const label = `media "${media.name}" (${media.id})`;
+  if (key !== media.id) issues.push(`${label}: stored under key ${key}`);
+  if (!Number.isInteger(media.durationUs) || media.durationUs < 0) issues.push(`${label}: durationUs ${media.durationUs} must be an integer >= 0`);
+  if (media.width !== undefined && !isPositiveInteger(media.width)) issues.push(`${label}: width ${media.width} must be a positive integer`);
+  if (media.height !== undefined && !isPositiveInteger(media.height)) issues.push(`${label}: height ${media.height} must be a positive integer`);
+  if (media.rotation !== undefined && !ROTATIONS.has(media.rotation)) issues.push(`${label}: rotation ${media.rotation} must be 0, 90, 180 or 270`);
+  if (media.fps !== undefined && !(isPositiveInteger(media.fps.num) && isPositiveInteger(media.fps.den))) {
+    issues.push(`${label}: fps ${media.fps.num}/${media.fps.den} must be a ratio of positive integers`);
+  }
+  if ("relPath" in media.file) {
+    const path = media.file.relPath;
+    if (path.startsWith("/") || path.split("/").some((part) => part === "" || part === "." || part === "..")) {
+      issues.push(`${label}: relPath "${path}" must be a relative path inside the project folder`);
+    }
+  }
+  return issues;
+}
 
 function clipIssues(project: Project, clip: Clip): string[] {
   const issues: string[] = [];
@@ -88,6 +112,7 @@ export function validateProject(project: Project): string[] {
     if (key !== clip.id) issues.push(`${clipLabel(clip)}: stored under key ${key}`);
     if (!placed.has(clip.id)) issues.push(`${clipLabel(clip)}: not listed on any track (trackId ${clip.trackId})`);
   }
+  for (const [key, media] of Object.entries(project.media)) issues.push(...mediaIssues(key, media));
   for (const trackId of Object.keys(project.captionTracks)) {
     const track = project.tracks.find((t) => t.id === trackId);
     if (track?.kind !== "caption") issues.push(`captionTracks entry ${trackId} has no caption track`);

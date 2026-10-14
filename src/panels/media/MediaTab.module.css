@@ -1,0 +1,305 @@
+.root {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.scroll {
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+}
+
+/* Grid view: cards (design system: surface-1, hairline border, radius-lg, thumbnail on top). */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--media-card-min), 1fr));
+  align-content: start;
+  gap: var(--space-3);
+  min-height: 100%;
+  padding: var(--space-3);
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  background: var(--surface-1);
+  cursor: default;
+  transition: border-color var(--duration-micro) var(--ease-out);
+}
+
+.card:hover {
+  border-color: var(--surface-5);
+}
+
+.card[aria-selected="true"] {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent-wash);
+}
+
+.thumb {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: var(--media-thumb-aspect);
+  background: var(--bg-sunken);
+}
+
+.placeholderIcon {
+  width: var(--control-compact);
+  height: var(--control-compact);
+  color: var(--text-muted);
+}
+
+.poster {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  opacity: 0;
+  transition: opacity var(--duration-standard) var(--ease-out);
+}
+
+.poster[data-ready] {
+  opacity: 1;
+}
+
+/* Chips/badges: surface-3, 10px, radius-sm. */
+.badge {
+  position: absolute;
+  right: var(--space-1);
+  bottom: var(--space-1);
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-sm);
+  background: var(--surface-3);
+  color: var(--text-primary);
+  font: var(--type-badge);
+}
+
+.cardInfo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+  height: var(--control-compact);
+  padding: 0 var(--space-2);
+  margin-top: var(--space-1);
+}
+
+.kindIcon {
+  flex: none;
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+  color: var(--text-tertiary);
+}
+
+.card[aria-selected="true"] .kindIcon,
+.row[aria-selected="true"] .kindIcon {
+  color: var(--accent);
+}
+
+.name {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-primary);
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-track);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.renameInput {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: var(--control-compact);
+  padding: 0 var(--space-1);
+  border: 1px solid var(--accent-dim);
+  border-radius: var(--radius-sm);
+  background: var(--surface-1);
+  box-shadow: 0 0 0 1px var(--accent-wash);
+  color: var(--text-primary);
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-track);
+  user-select: text;
+}
+
+.meta {
+  overflow: hidden;
+  padding: 0 var(--space-2) var(--space-2);
+  color: var(--text-tertiary);
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-track);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* List view: one grid template shared by the header and the rows. */
+.list {
+  --list-columns: var(--media-list-thumb-width) minmax(0, 3fr) repeat(4, minmax(0, 1.2fr)) repeat(3, minmax(0, 0.8fr));
+
+  min-width: calc(var(--control-default) * 24);
+  padding-bottom: var(--space-3);
+}
+
+.listHeader,
+.row {
+  display: grid;
+  grid-template-columns: var(--list-columns);
+  align-items: center;
+  gap: var(--space-3);
+  padding: 0 var(--space-3);
+}
+
+.listHeader {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  height: var(--control-compact);
+  border-bottom: 1px solid var(--hairline);
+  background: var(--bg);
+}
+
+.column {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-0);
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-tertiary);
+  font: var(--type-overline);
+  letter-spacing: var(--type-overline-track);
+  text-align: left;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+button.column:hover,
+.column[aria-sort="ascending"],
+.column[aria-sort="descending"] {
+  color: var(--text-primary);
+}
+
+.sortIcon {
+  flex: none;
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+}
+
+.row {
+  height: var(--control-default);
+  border-bottom: 1px solid var(--hairline);
+  color: var(--text-secondary);
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-track);
+  cursor: default;
+  transition: background-color var(--duration-micro) var(--ease-out);
+}
+
+.row > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.row:hover {
+  background: var(--hover-wash);
+}
+
+.row[aria-selected="true"] {
+  background: var(--accent-wash);
+}
+
+.rowThumb {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: var(--media-thumb-aspect);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--bg-sunken);
+}
+
+.rowThumb .placeholderIcon {
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+}
+
+.rowName {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.mono {
+  font: var(--type-mono);
+}
+
+.muted {
+  color: var(--text-muted);
+}
+
+/* Empty state with its one action. */
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  height: 100%;
+  padding: var(--space-5);
+  text-align: center;
+}
+
+.emptyIcon {
+  width: var(--control-default);
+  height: var(--control-default);
+  color: var(--text-muted);
+}
+
+.emptyTitle {
+  margin: 0;
+  color: var(--text-primary);
+  font: var(--type-title);
+  letter-spacing: var(--type-title-track);
+}
+
+.emptyText {
+  margin: 0 0 var(--space-2);
+  color: var(--text-tertiary);
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-track);
+}
+
+/* Drop target (gap logged in Batch 03): dashed accent-dim outline on accent-wash. */
+.dropOverlay {
+  position: absolute;
+  inset: var(--space-2);
+  z-index: 2;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  border: 1px dashed var(--accent-dim);
+  border-radius: var(--radius-lg);
+  background: var(--accent-wash);
+  color: var(--text-primary);
+  font: var(--type-body-strong);
+  pointer-events: none;
+}
+
+.root[data-dropping] .dropOverlay {
+  display: flex;
+}
+
+.dropIcon {
+  width: var(--control-compact);
+  height: var(--control-compact);
+  color: var(--accent);
+}

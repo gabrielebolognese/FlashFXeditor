@@ -9,7 +9,9 @@ export type Tool = "select" | "razor" | "hand" | "slip" | "slide" | "rateStretch
 export type PreviewQuality = "auto" | "full" | "proxy" | "half" | "quarter";
 export type SafeZone = "none" | "reels" | "tiktok" | "shorts";
 export type MediaTab = "media" | "presets" | "captions";
-export type MediaSort = "name" | "date" | "duration" | "kind";
+/** Header sort choices (§12) plus the list-view columns. */
+export type MediaSort = "name" | "date" | "duration" | "kind" | "resolution" | "fps" | "codec" | "audio" | "used";
+export type MediaView = "grid" | "list";
 
 export interface SessionState {
   playhead: Frame;
@@ -23,7 +25,7 @@ export interface SessionState {
   ripple: boolean;
   loop: boolean;
   audioScrub: boolean;
-  mediaPanel: { tab: MediaTab; sort: MediaSort };
+  mediaPanel: { tab: MediaTab; view: MediaView; sort: MediaSort; descending: boolean };
   /** Properties panel sections by id; true = collapsed. */
   collapsedSections: Record<string, boolean>;
 }
@@ -41,7 +43,7 @@ export const DEFAULT_SESSION: SessionState = {
   ripple: false,
   loop: false,
   audioScrub: false,
-  mediaPanel: { tab: "media", sort: "date" },
+  mediaPanel: { tab: "media", view: "grid", sort: "date", descending: false },
   collapsedSections: {},
 };
 

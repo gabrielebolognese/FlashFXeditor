@@ -12,14 +12,17 @@ export interface SelectProps<T extends string> {
   onChange: (value: T) => void;
   label: string;
   disabled?: boolean | undefined;
+  /** compact: 24px, for panel header strips. */
+  size?: "compact" | "default" | undefined;
 }
 
 /** Native select (keyboard and accessibility for free), styled with tokens. */
-export function Select<T extends string>({ value, options, onChange, label, disabled }: SelectProps<T>) {
+export function Select<T extends string>({ value, options, onChange, label, disabled, size = "default" }: SelectProps<T>) {
   return (
     <span className={styles.wrap}>
       <select
         className={styles.select}
+        data-size={size}
         value={value}
         aria-label={label}
         disabled={disabled}

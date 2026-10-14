@@ -1,0 +1,120 @@
+.host {
+  position: fixed;
+  top: calc(var(--appbar-height) + var(--space-3));
+  left: 50%;
+  z-index: var(--z-island);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  width: var(--toast-width);
+  max-width: calc(100vw - 2 * var(--space-6));
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.toast {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: var(--control-comfortable);
+  padding: var(--space-2) var(--space-1) var(--space-2) var(--space-4);
+  overflow: hidden;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-island);
+  background: var(--material-island-bg);
+  backdrop-filter: var(--material-island-filter);
+  box-shadow: var(--shadow-overlay);
+  pointer-events: auto;
+  animation: island-in var(--duration-large) var(--ease-spring);
+}
+
+@keyframes island-in {
+  from {
+    opacity: 0;
+    transform: translateY(calc(-1 * var(--space-3))) scale(0.96);
+  }
+}
+
+.icon {
+  flex: none;
+  width: var(--icon-size);
+  height: var(--icon-size);
+  color: var(--info);
+}
+
+.toast[data-tone="success"] .icon {
+  color: var(--success);
+}
+
+.toast[data-tone="error"] .icon {
+  color: var(--danger);
+}
+
+.text {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.message {
+  overflow: hidden;
+  font: var(--type-body-strong);
+  color: var(--text-primary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.detail {
+  overflow: hidden;
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-track);
+  color: var(--text-secondary);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow-wrap: anywhere;
+}
+
+.close {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: var(--control-compact);
+  height: var(--control-compact);
+  border-radius: var(--radius-pill);
+  color: var(--text-tertiary);
+  transition:
+    background-color var(--duration-micro) var(--ease-out),
+    color var(--duration-micro) var(--ease-out);
+}
+
+.close:hover {
+  background: var(--hover-wash);
+  color: var(--text-primary);
+}
+
+.closeIcon {
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+}
+
+.track {
+  position: absolute;
+  right: var(--space-4);
+  bottom: 0;
+  left: var(--space-4);
+  height: var(--space-0);
+  border-radius: var(--radius-pill);
+  background: var(--hairline);
+}
+
+.bar {
+  height: 100%;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  transition: width var(--duration-micro) var(--ease-out);
+}

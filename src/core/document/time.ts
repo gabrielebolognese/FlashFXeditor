@@ -50,6 +50,11 @@ export function usToFrame(us: Us, fps: Rational): Frame {
   return roundDiv(us * fps.num, US_PER_SECOND * fps.den);
 }
 
+/** A count of `timescale` ticks per second (mp4 track times, audio samples) to the nearest microsecond. */
+export function ticksToUs(ticks: number, timescale: number): Us {
+  return roundDiv(ticks * US_PER_SECOND, timescale);
+}
+
 // Timecode. Seconds are wall-clock seconds (frame f is in second floor(f / fps)), so at 29.97 the
 // readout never drifts from real time; the frame field counts frames since that second began.
 
@@ -133,4 +138,18 @@ export function parseTimecode(
   if (frames === null || !Number.isSafeInteger(frames)) return null;
   if (sign === 0) return frames;
   return Math.max(0, (options.current ?? 0) + sign * frames);
+}
+
+/**
+ * A media duration for badges and lists: `mm:ss` (hours only when needed), or `mm:ss.mmm` when
+ * `precise`. Badges round to the nearest second; anything longer than zero shows at least 1 s.
+ */
+export function formatDurationUs(us: Us, precise = false): string {
+  const total = Math.max(0, Math.round(us));
+  if (precise) {
+    const ms = Math.floor(total / 1000);
+    return `${clock(Math.floor(ms / 1000))}.${pad(ms % 1000, 3)}`;
+  }
+  const seconds = roundDiv(total, US_PER_SECOND);
+  return clock(total > 0 ? Math.max(1, seconds) : 0);
 }

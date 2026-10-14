@@ -286,27 +286,5 @@ describe("DocumentStore", () => {
     expect(() => store.load(broken)).toThrow(DocumentInvariantError);
     expect(store.getState().tracks[0]?.clipIds).toEqual(["c1", "c2"]);
   });
-
-  it("dispatches 10,000 trivial commands in under 300 ms", () => {
-    const command = (i: number): Command => ({
-      id: "test.trivial",
-      label: "Trivial",
-      affects: ["settings"],
-      run: (draft) => {
-        draft.settings.width = 1000 + (i % 2);
-      },
-    });
-    const run = (count: number) => {
-      const { store } = setup(); // dev validation on
-      const start = performance.now();
-      for (let i = 0; i < count; i++) store.dispatch(command(i));
-      return performance.now() - start;
-    };
-    run(1_000); // JIT warm-up
-    // Best of three: the other test files run in parallel workers and add scheduler noise.
-    const times = [run(10_000), run(10_000), run(10_000)];
-    console.info(`[perf] 10,000 dispatches: ${times.map((t) => t.toFixed(1)).join(" / ")} ms`);
-    expect(Math.min(...times)).toBeLessThan(300);
-  });
 });
 

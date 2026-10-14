@@ -15,6 +15,13 @@ export interface FsEntry {
   kind: "file" | "directory";
 }
 
+export interface WriteFileOptions {
+  /** Called with the bytes written so far, as chunks land. */
+  onProgress?: (written: number) => void;
+  /** Aborts the write; the partial file is discarded by the browser (the stream is aborted). */
+  signal?: AbortSignal;
+}
+
 export interface FsDir {
   readonly name: string;
   /** What to persist in IndexedDB to reopen this folder later (a FileSystemDirectoryHandle). */
@@ -23,6 +30,10 @@ export interface FsDir {
   readFile(name: string): Promise<FsFile | null>;
   /** Creates or replaces a file: opens one writable stream, writes, closes (aborts on failure). */
   writeText(name: string, text: string): Promise<void>;
+  /** The file for reading bytes (media, cached posters); null when it does not exist. */
+  getFile(name: string): Promise<File | null>;
+  /** Creates or replaces a file by streaming a blob into it (large media copies). */
+  writeFile(name: string, data: Blob, options?: WriteFileOptions): Promise<void>;
   /** Deletes a file; a missing file is not an error. */
   remove(name: string): Promise<void>;
   list(): Promise<FsEntry[]>;
@@ -71,6 +82,32 @@ class NativeDir implements FsDir {
       await stream.abort().catch(() => undefined);
       throw error;
     }
+  }
+
+  async getFile(name: string): Promise<File | null> {
+    try {
+      return await (await this.handle.getFileHandle(name)).getFile();
+    } catch (error) {
+      if (isMissing(error)) return null;
+      throw error;
+    }
+  }
+
+  async writeFile(name: string, data: Blob, options: WriteFileOptions = {}): Promise<void> {
+    const { onProgress, signal } = options;
+    signal?.throwIfAborted();
+    const fileHandle = await this.handle.getFileHandle(name, { create: true });
+    const stream = await fileHandle.createWritable();
+    let written = 0;
+    const count = new TransformStream<Uint8Array, Uint8Array>({
+      transform(chunk, controller) {
+        written += chunk.byteLength;
+        onProgress?.(written);
+        controller.enqueue(chunk);
+      },
+    });
+    // pipeTo closes the file stream on success and aborts it (discarding the data) on failure.
+    await data.stream().pipeThrough(count).pipeTo(stream, signal ? { signal } : {});
   }
 
   async remove(name: string): Promise<void> {

@@ -7,6 +7,7 @@ import { createProject, openProjectFolder, ProjectOpenError, type NewProjectSett
 import { ProjectSession } from "../project/ProjectSession.js";
 import type { RecentProject } from "../project/recentProjects.js";
 import type { Recovery } from "../project/recovery.js";
+import { attachMedia, detachMedia } from "./mediaController.js";
 import { actions, appSettings, appVersion, documentStore, focusScopes, layoutStore, recentProjects, saveStatus, sessionStore } from "./services.js";
 
 export type Dialog =
@@ -72,13 +73,15 @@ async function pickFolder(): Promise<FsDir | null> {
 async function closeCurrent(): Promise<void> {
   const session = current;
   current = null;
-  if (session) await session.close();
+  if (!session) return;
+  detachMedia();
+  await session.close();
 }
 
 /** Opening another project closes the current one after saving (spec §15). */
 async function switchTo(opened: OpenedProject): Promise<void> {
   await closeCurrent();
-  current = new ProjectSession(opened, {
+  const session = new ProjectSession(opened, {
     documentStore,
     session: sessionStore,
     layout: layoutStore,
@@ -88,6 +91,8 @@ async function switchTo(opened: OpenedProject): Promise<void> {
     appVersion,
     doc: document,
   });
+  current = session;
+  attachMedia(session.dir, () => !session.readOnly);
   setView({
     project: { id: opened.project.id, folder: opened.dir.name },
     dialog: opened.recovery ? { kind: "recovery", recovery: opened.recovery } : null,

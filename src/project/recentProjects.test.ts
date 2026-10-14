@@ -83,7 +83,7 @@ describe("app settings", () => {
     await settings.load();
     expect(settings.getState()).toEqual(DEFAULT_APP_SETTINGS);
     await settings.update({ autosaveDelayMs: 5000 });
-    expect(kv.data.get("settings.v1")).toEqual({ autosaveDelayMs: 5000 });
+    expect(kv.data.get("settings.v1")).toEqual({ autosaveDelayMs: 5000, importMode: "copy" });
     await settings.update({ autosaveDelayMs: 1234 });
     expect(settings.getState().autosaveDelayMs).toBe(5000);
 
@@ -91,5 +91,15 @@ describe("app settings", () => {
     const reloaded = createAppSettings(kv);
     await reloaded.load();
     expect(reloaded.getState().autosaveDelayMs).toBe(10_000);
+  });
+
+  it("keeps the import mode setting (reference mode is stubbed until Batch 41)", async () => {
+    const kv = memoryKeyValueStore();
+    kv.data.set("settings.v1", { autosaveDelayMs: 1000, importMode: "reference" });
+    const settings = createAppSettings(kv);
+    await settings.load();
+    expect(settings.getState().importMode).toBe("reference");
+    await settings.update({ importMode: "link" as never });
+    expect(settings.getState().importMode).toBe("reference");
   });
 });

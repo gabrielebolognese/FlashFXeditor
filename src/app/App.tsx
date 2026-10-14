@@ -11,6 +11,7 @@ import { appView, type AppView } from "./projectController.js";
 import { ReadOnlyBanner } from "./ReadOnlyBanner.js";
 import { Splitter } from "./Splitter.js";
 import { StartScreen } from "./StartScreen.js";
+import { ToastHost } from "./ToastHost.js";
 import { useWorkspaceLayout } from "./useWorkspaceLayout.js";
 
 const selectProjectId = (view: AppView) => view.project?.id ?? null;
@@ -48,6 +49,7 @@ export function App() {
     <>
       {projectId === null ? <StartScreen /> : <Editor key={projectId} />}
       <DialogHost />
+      <ToastHost />
     </>
   );
 }

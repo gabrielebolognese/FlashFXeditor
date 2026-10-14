@@ -133,3 +133,34 @@ describe("validateProject", () => {
     expect(() => assertValid(valid(), "x")).not.toThrow();
   });
 });
+
+describe("media items", () => {
+  it("accepts complete probed items and stills", () => {
+    const project = makeProject();
+    project.media.v = { ...makeMedia("v"), width: 1920, height: 1080, rotation: 90, fps: { num: 30000, den: 1001 }, codec: "hvc1.1.6.L153.90" };
+    project.media.still = { ...makeMedia("still", "image", 0), width: 640, height: 480 };
+    expect(validateProject(project)).toEqual([]);
+  });
+
+  it("rejects non-integer times and sizes, odd rotations, bad rationals and escaping paths", () => {
+    const project = makeProject();
+    project.media.a = { ...makeMedia("a"), durationUs: 1.5 };
+    project.media.b = { ...makeMedia("b"), width: 0, height: 10.5 };
+    project.media.c = { ...makeMedia("c"), rotation: 45 as 90 };
+    project.media.d = { ...makeMedia("d"), fps: { num: 30, den: 0 } };
+    project.media.e = { ...makeMedia("e"), file: { relPath: "../outside.mp4" } };
+    project.media.f = { ...makeMedia("f"), file: { relPath: "/abs.mp4" } };
+    project.media.key = makeMedia("other");
+    const issues = validateProject(project);
+    expect(issues).toEqual([
+      expect.stringContaining("durationUs 1.5"),
+      expect.stringContaining("width 0"),
+      expect.stringContaining("height 10.5"),
+      expect.stringContaining("rotation 45"),
+      expect.stringContaining("fps 30/0"),
+      expect.stringContaining('relPath "../outside.mp4"'),
+      expect.stringContaining('relPath "/abs.mp4"'),
+      expect.stringContaining("stored under key key"),
+    ]);
+  });
+});

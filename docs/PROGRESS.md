@@ -1,6 +1,6 @@
 # Progress
 
-last_completed_batch: 03
+last_completed_batch: 04
 in_progress_batch: none
 skipped_batches: []
 needs_human: none
@@ -23,6 +23,10 @@ Items the design system did not define and the functional default that was used 
 - Save dot colors: saved `--success`, saving `--info`, unsaved `--accent`, error `--danger`, read-only `--text-muted`; 6px dot in a 16px hit target. (Batch 03)
 - Read-only banner: 32px strip on `--surface-2` under the app bar, hairline bottom, `--info` lock icon, caption text, compact secondary "Allow editing". (Batch 03)
 - Secondary button: `--surface-3` + hairline, hover `--surface-4` + primary text (DS allows surface-1 or surface-3). Drop target: dashed `--accent-dim` outline on `--accent-wash`. (Batch 03)
+- Toasts (the DS "Dynamic Island" gives only material and radius): top center, `--appbar-height` + `--space-3` from the top, `--toast-width` 360px, at most 4 stacked, spring entry; tone icon `--info`/`--success`/`--danger`; body-strong message + caption detail (3 lines max); 2px (`--space-0`) `--accent` progress bar on a `--hairline` track; durations info 4 s, success 3 s, error 7 s; progress toasts stay until done. (Batch 04)
+- Media cards: grid columns `minmax(--media-card-min 112px, 1fr)`, `--space-3` gaps; 16:9 thumbnail well (`--media-thumb-aspect`) on `--bg-sunken` with the kind icon (24px, `--text-muted`) as placeholder; duration badge `--type-badge` (10px mono; DS chips are 9.5-10px) on `--surface-3`, radius-sm; selected = `--accent` border + 1px `--accent-wash` ring and an accent kind icon; hover border `--surface-5`. Kind icons: Film, AudioLines, Image. (Batch 04)
+- Media list view: 24px sticky header (overline columns, the active one primary with a chevron), 28px rows with hairline separators, hover `--hover-wash`, selected `--accent-wash`; thumbnail column `--media-list-thumb-width` 40px; minimum width 24 x `--control-default` with horizontal scroll. (Batch 04)
+- Compact Select (24px, caption type) for panel header strips; empty media state: 28px muted icon, title type, caption hint, primary "Import media". (Batch 04)
 
 ## Global deviations
 Decisions that diverge from docs/EDITOR_SPEC.md, with the reason. Each one also appears under its batch.
@@ -32,6 +36,8 @@ Decisions that diverge from docs/EDITOR_SPEC.md, with the reason. Each one also 
 - Track heights live only in the document (`Track.height`, §5.2), not in session state as §5.3 also lists. Reason: one source of truth, and §5.2 types are required verbatim. (Batch 02)
 - Undo restores the selection from before the undone command, redo the one after it (§6.19's wording is ambiguous). (Batch 02)
 - Backups in `history/` are named with UTC timestamps (`project-YYYYMMDD-HHMMSS.json`, then `-2`, `-3`... for saves within one second). Reason: local time can run backwards at a daylight-saving fall-back, and the rotation (oldest name first) would then delete the new backups. (Batch 03)
+- `edit.delete` (Delete/Backspace) is also bound in the `media` scope. Reason: §12 asks for Delete in the media panel while the §18 table lists only timeline and preview; §12 is the more specific rule. (Batch 04)
+- Media items are created with their applicable analysis `pending` (§9.1); the IdleQueue consumer picks them up and queues placeholder jobs without writing the document (no undo steps). (Batch 04)
 - The frame rate can change only while the project has no clips and no markers; resolution changes use "keep". Reason: the §15 conversions (fps ratio, "Scale layout") belong to Batch 42 (this batch's "Do not build yet"), and an unconverted fps change breaks the media-clip duration invariant. (Batch 03)
 
 ## Follow-ups
@@ -47,10 +53,19 @@ Small things discovered during a batch that belong to a later batch. Format: `- 
 - [from Batch 02 -> Batch 16] Selection kind `track` has no track id field (§3.3 shape kept as written); add one with track selection. Link-group offsets are not validated (allowed by §5.2); the sync badge needs an offset query.
 - [from Batch 02 -> Batch 34] `validate.ts` applies the media in/out rules to image clips too; decide the rule for stills.
 - [from Batch 02 -> Batch 41] `validate.ts` requires a media clip's `mediaId` to exist in `project.media`; "Remove, keep offline clips" must keep the media record (marked missing) or relax this check.
-- [from Batch 03 -> Batch 04] `media/` exists in every project; link-mode media (`file.handleKey`) should store its file handles through `project/kv.ts` (`idbKeyValueStore`), next to the recent-project handles.
+- [from Batch 03 -> Batch 04] `media/` exists in every project; link-mode media (`file.handleKey`) should store its file handles through `project/kv.ts` (`idbKeyValueStore`), next to the recent-project handles. (moved to Batch 41: Batch 04 only stubs reference mode)
 - [from Batch 03 -> Batch 25] The Project section is a plain section: make it collapsible (state in `collapsedSections`) with the properties framework; `TextField` has no scrub mode.
 - [from Batch 03 -> Batch 40] Mod+S does nothing while a text input or a dialog has focus (inputs own their keys, the dialog scope is isolated), so Chrome's "Save page" dialog opens. Decide whether Mod+S is preventDefault-ed everywhere.
-- [from Batch 03 -> Batch 04] The 10,000-dispatch perf test (`src/core/store/DocumentStore.test.ts`, limit 300 ms) hit 332 ms best-of-3 in one full `npm run check` while 32 jsdom test files ran in parallel (56–90 ms alone). Run perf tests in their own sequential pass (or a separate Vitest project) so CPU contention cannot turn an unattended run red.
+- [from Batch 03 -> Batch 04] The 10,000-dispatch perf test (`src/core/store/DocumentStore.test.ts`, limit 300 ms) hit 332 ms best-of-3 in one full `npm run check` while 32 jsdom test files ran in parallel (56–90 ms alone). Run perf tests in their own sequential pass (or a separate Vitest project) so CPU contention cannot turn an unattended run red. (done in Batch 04: `*.perf.test.ts` run in the "perf" Vitest project after the unit tests)
+- [from Batch 04 -> Batch 06] The decode engine builds on `readMp4` (sample table, description, rotation) and `ByteSource`; persist the sample index in `cache/index/`; add cancellation by priority class (a scrub cancels pending prefetches of the same media) to `WorkerHost`/`WorkerPool` (only per-request cancellation exists).
+- [from Batch 04 -> Batch 10] The audio probe decodes whole non-MP4 files with `decodeAudioData` (resampled to 48 kHz, so the source rate is unknown; long files cost memory): reuse the decoded-audio cache / segmented decode. The peaks job replaces the `AnalysisScheduler` placeholder; decide how `analysis.peaks` becomes "ready" without an undo step per media.
+- [from Batch 04 -> Batch 15] `edit.delete` and `edit.rename` are registered in `app/mediaController.ts` and only log outside the media scope: route the timeline/preview scopes to clip delete/rename there (or split the handler by scope).
+- [from Batch 04 -> Batch 17] Card posters (first frame, `cache/thumbs/<id>.poster.webp`) give way to the sprite sheets; the analysis placeholder marks `analysis.thumbs`.
+- [from Batch 04 -> Batch 20] Media panel: hover scrub, drag to the timeline, "unused" dim state and usage count on hover; double-click on a card thumbnail inserts (the name keeps double-click rename).
+- [from Batch 04 -> Batch 24] The list view's Proxy column shows "None".
+- [from Batch 04 -> Batch 34] Stills have `durationUs: 0` (no natural duration); animated GIF/WebP durations come from `ImageDecoder`, and the frame list (`frameDurationsUs`) is returned by the probe but not persisted.
+- [from Batch 04 -> Batch 41] Reference import mode: the `importMode` app setting exists (no UI) and falls back to copy; store handles through `project/kv.ts`; posters of reference media; "Remove and delete clips" and the media-file deletion checkbox (disabled / absent now); `media.remove` refuses media used by clips; bins, search, filter chips, missing media.
+- [from Batch 04 -> Batch 46] After an import every new card is selected (gold borders on all of them): review against "gold is used sparingly". The list view needs horizontal scroll below ~670 px.
 - [from Batch 03 -> Batch 42] fps conversion and "Scale layout" in the Project section (`project.setFrameRate` refuses projects with clips or markers); recent-project thumbnails (`RecentProject.thumbnail` is null); the autosave delay moves to the settings panel (stored in IndexedDB `settings.v1`); the history list reads backup names with `backupSortKey` (UTC, `-N` suffix).
 
 ## Dependencies
@@ -63,6 +78,7 @@ Why each dependency exists (Batch rule 8).
 - `@types/react`, `@types/react-dom`, `@types/node`: typings. (Batch 01)
 - `immer` 11: `produceWithPatches`/`applyPatches` for commands and undo (spec §3.3 names it). (Batch 02)
 - `idb-keyval` 6: IndexedDB for recent-project directory handles and global settings (spec §3.1 names it). (Batch 03)
+- `mp4box` 2.4.1: MP4/MOV demux (spec §3.1 names mp4box.js). Imported only by `decode.worker` (190.6 kB worker chunk; the main bundle does not contain it). (Batch 04)
 
 ## Batch log
 
@@ -190,3 +206,63 @@ Why each dependency exists (Batch rule 8).
   - Evidence: `npm run check` green on the first run (typecheck, lint, 247/247 tests in 32 files, build 246.16 kB JS / 81.00 kB gzip). With the pre-fix `TextField.tsx`, `NumberField.tsx` and `projectController.ts` swapped back in, the new regression tests fail 6 of 11 (Enter commits twice, Escape commits, reopen loads "Reel"). With the fix they all pass. Review items 1-3 are resolved: `useDraft` (`src/ui/useDraft.ts:9-21`) gives at most one commit per Enter/blur and none on Escape, so one edit in the Project section is one command and one undo step (§4 P2); `openDir` flushes before reading (`src/app/projectController.ts:97-99`).
   - Acceptance: (1) folder layout `openProject.test.ts` "creates project.json, session.json and the §9.7 folders"; (2) `ProjectSession.test.ts` "rename: project.json is updated after 1 s and the recent entry follows" + manual check 2 (real permission prompt); (3) `openProject.test.ts` "crash recovery" (4 cases) + `ProjectSession.test.ts` restore/discard + manual check 5; (4) `Autosaver.test.ts` "twenty consecutive saves leave exactly 20 files in history/, and it stays at 20" + `history.test.ts`; (5) `openProject.test.ts` "opens read-only with zero writes" (`memoryFs` logs every write attempt before its permission check), `Autosaver.test.ts`/`ProjectSession.test.ts` read-only cases + manual check 3.
   - Scope: no media copying, templates, or fps/resolution conversion (`setFrameRate` refuses projects with clips or markers, `setResolution` is "keep"; both deviations are written down). Literals: the CSS modules hold only 1px hairline borders, the DS input ring (`0 0 0 1px var(--accent-wash)`) and 0/1 opacity toggles; `strokeWidth={2.5}` is only on hero/CTA icons (DS). Every TODO carries a `(batch NN)` tag. §3/§4: React only for chrome; the save dot and the drop highlight are written to the DOM; project edits are single commands; the session playhead and in/out are sanitized to integer frames; no media or canvas work.
+
+### Batch 04: Media import, probe, media panel basics, worker infrastructure
+- status: done
+- date: 2026-10-14
+- notes:
+  - Workers (§3.5): `media/workers/protocol.ts` (methods `probe`, `poster`, `decodeImage`; request ids; priorities user/playback/prefetch/background; a `cancel` message; errors as name + message; transferables collected from results), `WorkerHost` (worker side: priority queue then arrival order, concurrency 2, an AbortController per request; a cancelled request always answers AbortError and its late result is closed), `WorkerPool` (main side: one worker per kind, created on the first request; abort -> cancel message + immediate AbortError; a crashed worker rejects its requests and is recreated next time), `decode.worker.ts`. Vite builds workers as ES modules.
+  - Bytes (§9.2): `ByteSource` (Blob range reads through `slice().arrayBuffer()`, 4 MB chunks, in-flight reads shared, fresh copies returned) over a `ChunkCache` byte-LRU of 64 MB shared by every source of the worker.
+  - Probe (§9.1): `mp4Probe.ts` feeds mp4box with 1 MB ranged reads and jumps where mp4box asks, so moov-at-end files never read their mdat. It gives codec strings, the avcC/hvcC/av1C/vpcC description, coded size, rotation from the tkhd matrix (`rotation.ts`), durations from the sample tables through the new `time.ts` `ticksToUs`, fps from the first 120 cts deltas (`fps.ts`: the mode, averaged over its cluster, snapped to the nearest standard rate within 0.03%, else timescale/mode), and the audio codec/channels/rate. `imageProbe.ts` (worker): ImageDecoder for GIF/WebP animations, else createImageBitmap. Main thread: `audioProbe.ts` (`decodeAudioData` on an OfflineAudioContext, for mp3/aac/wav/ogg) and `svgProbe.ts` (size from width/height or the viewBox; poster through a sized canvas). `testMp4.ts` is a test-only MP4 writer (there is no ffmpeg on this machine), used by the unit tests and to wrap real WebCodecs output in the browser checks.
+  - Posters: `decode/poster.ts` (worker) decodes the first sync sample with a one-shot VideoDecoder, draws it upright into an OffscreenCanvas (320 px long side) and returns a transferred ImageBitmap plus a WebP blob. `media/PosterStore.ts` follows the document: new media (import, open, undo) get a poster from `cache/thumbs/<id>.poster.webp` (decoded in the worker), or one regenerated and written back (not when read-only); removed media have their bitmap closed; cards observe one id and draw into their own canvas.
+  - Import: `media/mediaKinds.ts` (the 14 §9.1 extensions, a MIME fallback for pasted images; WebM refused), `project/mediaFiles.ts` (safe, case-insensitive unique names; `copyIntoMedia` streamed with progress and cleaned up on failure; project-relative `resolveFile`/`writeFileAt`/`removeFileAt`), `FsDir.getFile`/`FsDir.writeFile` (`blob.stream()` piped into the writable through a byte counter), `media/MediaImporter.ts` (classify -> refuse -> probe 3 at a time -> copy one at a time -> one `media.add`; imports are serialized; an aborted import removes its copies and adds nothing). Document: `core/commands/mediaCommands.ts` (`media.add`, `media.remove`, `media.rename`, `mediaUseCounts`); `validate.ts` checks MediaItems (integer us and sizes, quarter-turn rotation, positive rational fps, relPath inside the project).
+  - `media/AnalysisScheduler.ts` is the IdleQueue consumer: one idle task per media with pending analysis, cancelled when the media goes away, queued again on undo.
+  - App: `app/mediaController.ts` handles the per-project importer, posters and analysis, attached by `projectController` and detached before the project closes. It registers the actions `media.import` (Mod+I, header button, empty-state button; `showOpenFilePicker` with multiple), and `edit.delete` / `edit.rename` in the media scope. It handles drops of files and folders (recursive; handles are requested inside the event), image paste, and the refusal/progress/failure toasts, and owns the `mediaPanel` store (selection, inline rename, remove confirmation) and the `posterStore`. Also new: `ui/toasts.ts` + `app/ToastHost.tsx` (the Dynamic Island) and `RemoveMediaDialog` in `DialogHost`.
+  - Media panel:
+    - Header actions: sort select + direction, grid/list, Import.
+    - Grid of cards: poster canvas, duration badge, kind icon, name with double-click/F2 inline rename, and a meta row (display size and fps, or the codec).
+    - List view: thumbnail, name, duration with ms, resolution, fps, codec, audio, proxy, used. Click a column to sort, again to reverse.
+    - Click / Mod+click / Shift+click selection by event delegation, an empty state, and the drop highlight through a data attribute.
+    - The tab, view, sort and direction persist in session.json.
+  - Measured: 340 unit tests in 46 files (+93), plus the perf project. Build 280.84 kB JS (92.42 kB gzip, +11.4 kB), 33.2 kB CSS, decode.worker 190.56 kB.
+  - Headless Chrome 155 (CDP) on the dev server: OPFS folders stand in for picked folders, and the media are synthesized in the page with WebCodecs (hardware HEVC and H.264 encoders) and wrapped by `testMp4.ts`. 25 + 11 + 3 checks, all passing:
+    - iPhone-style .mov (HEVC 1920x1080, rotation-90 matrix, timescale 600, AAC track): 3,000,000 us, 1920x1080, rotation 90, 30/1, hvc1.1.6.L120.b0 + mp4a.40.2. The card shows "1080×1920 · 30 fps"; the poster is upright portrait (180x320) and not black.
+    - Android-style .mp4 (H.264 720x1280, 90 kHz, jittered deltas with dropped frames, moov at the end): duration exact to the tick sum (4,166,678 us), 30/1, rotation 0.
+    - PNG 640x480 (still, no badge); MP3 (200 hand-made silent frames) 5,224,479 us against 5,224,490 us expected; SVG 200x100 (poster drawn, not cached); animated GIF (3 x 500 ms) 1,500,000 us.
+    - Every file is copied byte-exact into media/; 3 WebP posters land in cache/thumbs/; one undo step "Import 5 media files".
+    - notes.txt: toast "Can't import notes.txt / Unsupported file type"; no media, no file, no undo step. A drop from disk (CDP drag with real files) imports dropped.png and refuses readme.txt by name. A pasted PNG is imported.
+    - Click/Ctrl+click selection; double-click rename + Enter commits; F2 + Escape cancels. Delete opens the "Remove media" dialog with "Remove and delete clips" disabled; Remove from project, then Ctrl+Z restores the media and its poster (from the cache). Delete in the timeline scope does nothing to media. List view columns and the duration sort work; the view persists in session.json.
+    - 500 MB import (10 files of 50 MB) took 2.1-15.5 s, with all bytes copied and the progress toast shown. PerformanceObserver "longtask": none in 5 runs. Event-loop lag 12-25 ms (3 runs). requestAnimationFrame gaps were 21-98 ms in 4 runs and 216 ms in one run with no long task (headless frame scheduling while the browser process takes in 500 MB of blob data).
+    - Reload: all 15 media come back, cached posters are reused (files untouched), and a deleted poster file is regenerated. Reopening the same project re-attaches the mounted cards to the new poster store.
+    - React commits, counted through the DevTools hook: 0 while dragging files over the panel, 0 for poster arrivals, 0 while hovering cards.
+    - Batch 01-03 regression at 1600x900: preview 512x860, media 533x430, timeline 1088x430, no overflow. Ctrl+K in the timeline logs `[cmd] edit.split`; Ctrl+Z / Ctrl+Shift+Z undo and redo; project create/open/reload as above. No console errors (apart from the dev server's favicon 404).
+- deviations:
+  - Delete in the media scope, and analysis "pending" from creation: see Global deviations.
+  - SVG is probed and postered on the main thread, because workers cannot parse or rasterize SVG (createImageBitmap refuses SVG blobs). Its poster is not cached (cheap to redraw).
+  - Audio-only files that are not MP4 use `decodeAudioData` on the main thread, as the batch asks; the browser decodes off-thread. `.m4a` goes through mp4box in the worker. For decodeAudioData formats the probe reports the source sample rate as 0 (the audio is resampled).
+  - `MediaItem.width/height` are the coded size and `rotation` applies on top; the panel shows the displayed size (1080×1920 for an iPhone portrait clip).
+  - A video item's `durationUs` comes from its video track (the audio track can differ by a few ms); audio-only items use the audio track.
+  - Stills have `durationUs: 0` and no duration badge (Batch 34 decides the still-clip rule).
+  - Media names are the original file names, extension included. Rename changes the display name only, never the file.
+  - The "Remove media" dialog has its second option disabled and no file-deletion checkbox (Batch 41 lists that checkbox). Media used by clips cannot be removed yet: the command refuses and the dialog disables the button.
+  - Media panel selection lives in `mediaPanel` (an app store), not in the SessionStore selection (clips/track/cue), and is not persisted. `SessionState.mediaPanel` gains `view` and `descending`; `MediaSort` gains the list columns (resolution, fps, codec, audio, used).
+  - Reference mode is stubbed as the `importMode` app setting (IndexedDB `settings.v1`, no UI); "reference" logs a message and copies.
+  - The poster is the first sync sample (the first frame). A poster that fails (e.g. a codec the browser cannot decode) is tried once per session, and the card keeps its kind icon.
+  - The progress toast appears for imports of 32 MB or more. Paste imports images only, and only when the media panel or nothing owns the keyboard.
+  - Imports run one at a time so two batches never pick the same file name.
+  - Perf tests moved to `*.perf.test.ts` in a "perf" Vitest project (node environment, no file parallelism); `npm test` runs the unit project, then the perf project.
+  - `Select` gained a compact size for header strips.
+  - Removed the placeholders `src/media/{bytes,decode,probe,workers}/index.ts`.
+- follow-ups: [from Batch 04 -> Batch 06] sample index, class cancellation; [from Batch 04 -> Batch 10] decoded-audio reuse, peaks status; [from Batch 04 -> Batch 15] edit.delete/edit.rename outside the media scope; [from Batch 04 -> Batch 17] sprite sheets replace posters; [from Batch 04 -> Batch 20] hover scrub, drag, unused state; [from Batch 04 -> Batch 24] proxy column; [from Batch 04 -> Batch 34] still duration, frame lists; [from Batch 04 -> Batch 41] reference mode (also the Batch 03 kv.ts follow-up), remove-and-delete, used media; [from Batch 04 -> Batch 46] selection gold after import, list width
+- design gaps: toasts (island placement, width, durations, progress bar), media cards, list view, compact select and empty state (details in Design system gaps)
+- pending manual checks:
+  1. Real phone files: `npm run dev`, open a project, then Import (or Mod+I) an iPhone HEVC .mov shot in portrait, an Android H.264 .mp4, a .png and an .mp3. Expect:
+     - The iPhone card shows 1080×1920 (or the phone's size), its fps (e.g. 30 or 29.97), the right duration and an upright poster. HEVC posters need Chrome's hardware HEVC decoder; without it the card keeps the film icon.
+     - The Android clip shows its duration and ~30 fps despite the variable frame rate.
+     - The list view shows codec and audio.
+     - In Explorer, the project's media/ folder has the four files.
+  2. Performance panel: start recording, import ~10 local files totalling ~500 MB, and stop when the progress toast reads "Imported". Expect no red long-task markers over 50 ms on the Main track.
+  3. Pick a .txt or .webm file: an error toast names it and nothing appears.
+  4. Reload the page and reopen the project from Recent: every card has its poster. Close the project, delete `cache/thumbs` in Explorer and reopen: the posters come back and the folder is refilled.
+  5. Drag a folder of clips from Explorer onto the Media panel: the panel highlights, the supported files are imported (subfolders included), and the others are named in a toast.
+  6. React DevTools Profiler, recording: drag files over the Media panel without dropping, and hover the cards (no commits). Import a clip and wait for its poster (commits for the new card only, none when the poster appears).

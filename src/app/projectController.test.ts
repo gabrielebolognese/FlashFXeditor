@@ -19,6 +19,7 @@ vi.mock("./services.js", async () => {
   const { INITIAL_SAVE_STATUS } = await import("../project/Autosaver.js");
   const { memoryKeyValueStore } = await import("../project/kv.js");
   const { RecentProjects } = await import("../project/recentProjects.js");
+  const { IdleQueue } = await import("../core/scheduler/IdleQueue.js");
   const sessionStore = createSessionStore();
   return {
     actions: new ActionRegistry(),
@@ -26,10 +27,15 @@ vi.mock("./services.js", async () => {
     appVersion: "test",
     documentStore: new DocumentStore(createDocument({ id: "placeholder", name: "Placeholder", now: "x", appVersion: "x" }), { session: sessionStore, validate: true }),
     focusScopes: new FocusScopeTracker(),
+    idleQueue: new IdleQueue(
+      () => 0,
+      () => undefined,
+    ),
     layoutStore: createLayoutStore(null),
     recentProjects: new RecentProjects(memoryKeyValueStore()),
     saveStatus: createStore(INITIAL_SAVE_STATUS),
     sessionStore,
+    workerPool: { request: () => new Promise(() => undefined) },
   };
 });
 

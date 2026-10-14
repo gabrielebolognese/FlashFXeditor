@@ -1,4 +1,4 @@
-import { FolderPlus, History, KeyRound, TriangleAlert } from "lucide-react";
+import { FolderPlus, History, KeyRound, Trash2, TriangleAlert } from "lucide-react";
 import { useState } from "react";
 import { useStoreSelector } from "../core/store/useStoreSelector.js";
 import type { FsDir } from "../project/fs.js";
@@ -10,11 +10,15 @@ import { NumberField } from "../ui/NumberField.js";
 import { Select } from "../ui/Select.js";
 import { TextField } from "../ui/TextField.js";
 import { MAX_DIMENSION, MAX_PROJECT_NAME, MIN_DIMENSION } from "../core/commands/projectCommands.js";
+import type { MediaId } from "../core/document/types.js";
+import { documentStore } from "./services.js";
 import styles from "./DialogHost.module.css";
+import { cancelRemove, clipsUsing, confirmRemove, mediaPanel, type MediaPanelState } from "./mediaController.js";
 import { appView, closeDialog, confirmNewProject, keepSavedVersion, restoreRecovery, retryOpen, type Dialog } from "./projectController.js";
 
 const selectDialog = (view: { dialog: Dialog | null }) => view.dialog;
 const selectBusy = (view: { busy: boolean }) => view.busy;
+const selectRemoving = (state: MediaPanelState) => state.removing;
 
 const RESOLUTION_OPTIONS = [...RESOLUTION_PRESETS.map((p) => ({ value: p.id, label: p.label })), { value: CUSTOM_RESOLUTION, label: "Custom" }];
 const FPS_OPTIONS = FRAME_RATES.map((fps) => ({ value: fpsKey(fps), label: `${formatFps(fps)} fps` }));
@@ -151,10 +155,43 @@ function ErrorDialog({ title, message, issues }: { title: string; message: strin
   );
 }
 
+/** Delete in the media panel (spec §12). The files stay in media/. */
+function RemoveMediaDialog({ ids }: { ids: readonly MediaId[] }) {
+  const media = documentStore.getState().media;
+  const names = ids.map((id) => media[id]?.name ?? id);
+  const used = clipsUsing(ids);
+  const subject = ids.length === 1 ? (names[0] ?? "") : `${ids.length} media files`;
+  return (
+    <Modal
+      title="Remove media"
+      icon={Trash2}
+      size="sm"
+      onClose={cancelRemove}
+      footer={
+        <>
+          {/* TODO(batch 41): "Remove and delete clips" and the checkbox that deletes the copied file. */}
+          <Button disabled tooltip="Comes with the advanced media panel (Batch 41)">
+            Remove and delete clips
+          </Button>
+          <Button variant="primary" disabled={used > 0} onClick={confirmRemove}>
+            Remove from project
+          </Button>
+        </>
+      }
+    >
+      <p className={styles.text}>
+        Remove <span className={styles.folder}>{subject}</span> from the project?
+      </p>
+      <p className={styles.note}>{used > 0 ? `Used by ${used} clip${used === 1 ? "" : "s"}: removing used media comes with Batch 41.` : "The files stay in the project's media folder. Undo brings the media back."}</p>
+    </Modal>
+  );
+}
+
 /** The one dialog of the project flows, over the start screen or the editor. */
 export function DialogHost() {
   const dialog = useStoreSelector(appView, selectDialog);
-  if (!dialog) return null;
+  const removing = useStoreSelector(mediaPanel, selectRemoving);
+  if (!dialog) return removing ? <RemoveMediaDialog ids={removing} /> : null;
   switch (dialog.kind) {
     case "newProject":
       return <NewProjectDialog dir={dialog.dir} />;

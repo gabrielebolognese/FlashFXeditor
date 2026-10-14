@@ -3,7 +3,7 @@
 import type { LayoutRatios } from "../core/store/layoutStore.js";
 import { sanitizeRatios } from "../core/store/layoutStore.js";
 import type { SelectionKind, SelectionSnapshot } from "../core/store/selection.js";
-import { DEFAULT_SESSION, type MediaSort, type MediaTab, type PreviewQuality, type SafeZone, type SessionState, type Tool } from "../core/store/sessionStore.js";
+import { DEFAULT_SESSION, type MediaSort, type MediaTab, type MediaView, type PreviewQuality, type SafeZone, type SessionState, type Tool } from "../core/store/sessionStore.js";
 
 export const SESSION_FILE_VERSION = 1;
 
@@ -29,7 +29,8 @@ const TOOLS: Record<Tool, true> = { select: true, razor: true, hand: true, slip:
 const QUALITIES: Record<PreviewQuality, true> = { auto: true, full: true, proxy: true, half: true, quarter: true };
 const SAFE_ZONES: Record<SafeZone, true> = { none: true, reels: true, tiktok: true, shorts: true };
 const MEDIA_TABS: Record<MediaTab, true> = { media: true, presets: true, captions: true };
-const MEDIA_SORTS: Record<MediaSort, true> = { name: true, date: true, duration: true, kind: true };
+const MEDIA_SORTS: Record<MediaSort, true> = { name: true, date: true, duration: true, kind: true, resolution: true, fps: true, codec: true, audio: true, used: true };
+const MEDIA_VIEWS: Record<MediaView, true> = { grid: true, list: true };
 const SELECTION_KINDS: Record<SelectionKind, true> = { clips: true, track: true, cue: true, none: true };
 
 type Raw = Record<string, unknown>;
@@ -75,7 +76,12 @@ function sanitizeState(value: unknown): SessionState {
     ripple: bool(raw.ripple, d.ripple),
     loop: bool(raw.loop, d.loop),
     audioScrub: bool(raw.audioScrub, d.audioScrub),
-    mediaPanel: { tab: oneOf(MEDIA_TABS, mediaPanel.tab, d.mediaPanel.tab), sort: oneOf(MEDIA_SORTS, mediaPanel.sort, d.mediaPanel.sort) },
+    mediaPanel: {
+      tab: oneOf(MEDIA_TABS, mediaPanel.tab, d.mediaPanel.tab),
+      view: oneOf(MEDIA_VIEWS, mediaPanel.view, d.mediaPanel.view),
+      sort: oneOf(MEDIA_SORTS, mediaPanel.sort, d.mediaPanel.sort),
+      descending: bool(mediaPanel.descending, d.mediaPanel.descending),
+    },
     collapsedSections,
   };
 }
