@@ -263,6 +263,30 @@ describe("DocumentStore", () => {
     expect(toSnapshot(session.selection.getState())).toEqual({ clipIds: [], primary: null, kind: "none" });
   });
 
+  it("load() replaces the document, clears history and selection, and notifies every subscriber", () => {
+    const { store, session, original } = setup();
+    store.dispatch(rename("Changed"));
+    setSelection(session, select("c1"));
+    const markers = vi.fn();
+    store.subscribe(markers, { affects: ["markers"] });
+    const next = { ...structuredClone(original), name: "Loaded" };
+    store.load(next);
+    expect(store.getState().name).toBe("Loaded");
+    expect(Object.isFrozen(store.getState())).toBe(true);
+    expect(store.history.getState()).toEqual({ canUndo: false, canRedo: false, undoLabel: null, redoLabel: null });
+    expect(session.selection.getState().kind).toBe("none");
+    expect(markers).toHaveBeenCalledTimes(1);
+    expect(store.undo()).toBe(false);
+  });
+
+  it("load() rejects an invalid document and keeps the current one", () => {
+    const { store, original } = setup();
+    const broken = structuredClone(original);
+    broken.tracks[0]?.clipIds.push("missing");
+    expect(() => store.load(broken)).toThrow(DocumentInvariantError);
+    expect(store.getState().tracks[0]?.clipIds).toEqual(["c1", "c2"]);
+  });
+
   it("dispatches 10,000 trivial commands in under 300 ms", () => {
     const command = (i: number): Command => ({
       id: "test.trivial",

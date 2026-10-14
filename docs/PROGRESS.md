@@ -1,6 +1,6 @@
 # Progress
 
-last_completed_batch: 02
+last_completed_batch: 03
 in_progress_batch: none
 skipped_batches: []
 needs_human: none
@@ -18,6 +18,11 @@ Items the design system did not define and the functional default that was used 
 - Tokenized DS prose values: `--hover-wash` (menus "bg-white/[0.04]"), `--disabled-opacity` 0.6, brand gold stops `--brand-gold-from/-to/-hover`, `--on-brand-gold`. (Batch 01)
 - Panel surfaces: DS has no NLE panel mapping. App bar and panel headers `--surface-1`, panel bodies `--bg`, timeline and preview wells `--bg-sunken`. (Batch 01)
 - Brand mark: DS says "bold letter" but caps weights at 600; used 600. (Batch 01)
+- Modal metrics: DS prose "max-w-sm/md/lg" and "body p-5" tokenized as `--modal-width-sm/md/lg` (384/448/512px) and `--modal-padding` (20px, not on the spacing scale). (Batch 03)
+- Start screen: column `--start-width` 560px, recent-project thumbnail `--recent-thumb-height` 40px at 9:16; brand mark 32px (`--control-comfortable`) with `stat` type; title in `display` type. (Batch 03)
+- Save dot colors: saved `--success`, saving `--info`, unsaved `--accent`, error `--danger`, read-only `--text-muted`; 6px dot in a 16px hit target. (Batch 03)
+- Read-only banner: 32px strip on `--surface-2` under the app bar, hairline bottom, `--info` lock icon, caption text, compact secondary "Allow editing". (Batch 03)
+- Secondary button: `--surface-3` + hairline, hover `--surface-4` + primary text (DS allows surface-1 or surface-3). Drop target: dashed `--accent-dim` outline on `--accent-wash`. (Batch 03)
 
 ## Global deviations
 Decisions that diverge from docs/EDITOR_SPEC.md, with the reason. Each one also appears under its batch.
@@ -26,20 +31,26 @@ Decisions that diverge from docs/EDITOR_SPEC.md, with the reason. Each one also 
 - Node engine is `>=22.12` (spec says nothing; scaffold said 20). Reason: Vitest 5 requires it. (Batch 01)
 - Track heights live only in the document (`Track.height`, §5.2), not in session state as §5.3 also lists. Reason: one source of truth, and §5.2 types are required verbatim. (Batch 02)
 - Undo restores the selection from before the undone command, redo the one after it (§6.19's wording is ambiguous). (Batch 02)
+- Backups in `history/` are named with UTC timestamps (`project-YYYYMMDD-HHMMSS.json`, then `-2`, `-3`... for saves within one second). Reason: local time can run backwards at a daylight-saving fall-back, and the rotation (oldest name first) would then delete the new backups. (Batch 03)
+- The frame rate can change only while the project has no clips and no markers; resolution changes use "keep". Reason: the §15 conversions (fps ratio, "Scale layout") belong to Batch 42 (this batch's "Do not build yet"), and an unconverted fps change breaks the media-clip duration invariant. (Batch 03)
 
 ## Follow-ups
 Small things discovered during a batch that belong to a later batch. Format: `- [from Batch NN -> Batch MM] description`.
 - [from Batch 00 -> Batch 01] `npm run check` and `npm run lint` do not exist yet; Batch 01 creates them along with the Vite + React scaffold. (done in Batch 01)
 - [from Batch 01 -> Batch 02] `KeyDispatcher.onAction` only logs (`app/services.ts`); route it to the command registry. (done in Batch 02: `ActionRegistry`)
-- [from Batch 01 -> Batch 03] Persist splitter positions per project (session.json); localStorage `layout.v1` stays the global fallback.
+- [from Batch 01 -> Batch 03] Persist splitter positions per project (session.json); localStorage `layout.v1` stays the global fallback. (done in Batch 03)
 - [from Batch 01 -> Batch 05] Unsupported screen should also trigger when `navigator.gpu` exists but no adapter can be acquired.
 - [from Batch 01 -> Batch 09] Pause/resume the `IdleQueue` from playback (and from gestures from Batch 11 on).
 - [from Batch 01 -> Batch 42] Chrome reserves Ctrl+N, Ctrl+T and Ctrl+W in a normal tab; pages cannot preventDefault them, so `project.new` (Mod+N) opens a browser window instead. Decide on an alternative binding or document the installed-app (PWA window) route.
-- [from Batch 02 -> Batch 03] `DocumentStore.load(project)` (replace the document, clear the history); persist `SessionState` + the selection snapshot (arrays) in session.json; default tracks for a new project (`createProject` makes none); keep `meta.modifiedAt` current on save.
+- [from Batch 02 -> Batch 03] `DocumentStore.load(project)` (replace the document, clear the history); persist `SessionState` + the selection snapshot (arrays) in session.json; default tracks for a new project (`createProject` makes none); keep `meta.modifiedAt` current on save. (done in Batch 03)
 - [from Batch 02 -> Batch 07] Default `timeline.pxPerFrame` in `DEFAULT_SESSION` is a placeholder (4).
 - [from Batch 02 -> Batch 16] Selection kind `track` has no track id field (§3.3 shape kept as written); add one with track selection. Link-group offsets are not validated (allowed by §5.2); the sync badge needs an offset query.
 - [from Batch 02 -> Batch 34] `validate.ts` applies the media in/out rules to image clips too; decide the rule for stills.
 - [from Batch 02 -> Batch 41] `validate.ts` requires a media clip's `mediaId` to exist in `project.media`; "Remove, keep offline clips" must keep the media record (marked missing) or relax this check.
+- [from Batch 03 -> Batch 04] `media/` exists in every project; link-mode media (`file.handleKey`) should store its file handles through `project/kv.ts` (`idbKeyValueStore`), next to the recent-project handles.
+- [from Batch 03 -> Batch 25] The Project section is a plain section: make it collapsible (state in `collapsedSections`) with the properties framework; `TextField` has no scrub mode.
+- [from Batch 03 -> Batch 40] Mod+S does nothing while a text input or a dialog has focus (inputs own their keys, the dialog scope is isolated), so Chrome's "Save page" dialog opens. Decide whether Mod+S is preventDefault-ed everywhere.
+- [from Batch 03 -> Batch 42] fps conversion and "Scale layout" in the Project section (`project.setFrameRate` refuses projects with clips or markers); recent-project thumbnails (`RecentProject.thumbnail` is null); the autosave delay moves to the settings panel (stored in IndexedDB `settings.v1`); the history list reads backup names with `backupSortKey` (UTC, `-N` suffix).
 
 ## Dependencies
 Why each dependency exists (Batch rule 8).
@@ -50,6 +61,7 @@ Why each dependency exists (Batch rule 8).
 - `eslint`, `typescript-eslint`, `eslint-plugin-react-hooks`: `npm run lint`, including the color-literal rule of §3.7. (Batch 01)
 - `@types/react`, `@types/react-dom`, `@types/node`: typings. (Batch 01)
 - `immer` 11: `produceWithPatches`/`applyPatches` for commands and undo (spec §3.3 names it). (Batch 02)
+- `idb-keyval` 6: IndexedDB for recent-project directory handles and global settings (spec §3.1 names it). (Batch 03)
 
 ## Batch log
 
@@ -125,3 +137,38 @@ Why each dependency exists (Batch rule 8).
 - review: accepted
   - Evidence: `npm run check` green (typecheck, lint, 149/149 tests in 19 files, build 205.2 kB JS); full suite re-run green. Acceptance 1: `undoFuzz.test.ts` (3 seeds × 1,000 ops undone to `toStrictEqual(original)`, redone to final, plus 1,000 interleaved ops/undos/redos). Acceptance 2: `time.test.ts` round-trips every frame of 1 h at 30000/1001 (and 24/25/50/60). Acceptance 3: `DocumentStore.test.ts` perf test, measured alone 3 times at 58.7–90.8 ms per 10,000 dispatches with dev validation on (limit 300). Acceptance 4: `DocumentStore.test.ts` "does not notify a subscriber with affects ['markers'] for a clip update".
   - Scope: commands are raw (no overlap resolution, ripple or trim semantics); no disk serialization; nothing renders the document. No color, font or size literals in the changed files. Every TODO is tagged `(batch NN)` and points at the matching batch. §3.3/§3.4/§4: Immer `produceWithPatches`, commands get playhead/selection through `ctx` only, selection on its own channel, integer frames/µs enforced by `validate.ts`, only `AppBar` re-renders (on history availability/label changes).
+
+### Batch 03: Project folder, persistence, start screen
+- status: done
+- date: 2026-10-14
+- notes:
+  - `project/`: `fs.ts` (`FsDir`: readFile/writeText/remove/list/dir/permissions; `fromHandle` wraps FSA, one writable stream per write, closed or aborted at once), `memoryFs.ts` (in-memory FsDir used by every project test: logs write attempts before the permission check, injectable failures, monotonic mtimes), `layout.ts` (§9.7 tree, `ensureFolderLayout`), `projectFile.ts` (`serializeProject` stamps `meta.modifiedAt`/`appVersion`; `parseProjectFile` = JSON + shape check + `migrateProject` through the `MIGRATIONS` hook + `validateProject`, always on), `sessionFile.ts` (state, selection snapshot, layout ratios; field-by-field sanitizer, never throws), `history.ts` (names, rotation 20), `saveProject.ts` (tmp, backup of the previous file, real write, delete tmp, rotate), `Autosaver.ts` (1 s debounce, 5 s max wait, single flight, `saveNow`/`flush`/`setReadOnly`/`setDelay`, status store; failures set `error` and log), `SessionSaver.ts` (every 10 s when changed, plus flush), `permissions.ts` (`ensureAccess`: readwrite, asking only from `prompt`, else read, else none; `retry` re-asks denied ones), `recovery.ts`, `openProject.ts` (`openProjectFolder`, `createProject`), `ProjectSession.ts` (loads document + session + per-project layout into the stores; autosave, session saves, recent entry name/modified, flush on `visibilitychange`, `close()`), `recentProjects.ts` + `kv.ts` (idb-keyval), `appSettings.ts` (autosave delay), `projectPresets.ts`.
+  - Core: `DocumentStore.load` (validates, clears history and selection, notifies every flag), `layoutStore.setRatios`, `projectCommands.ts` (`project.rename`, `project.setResolution`, `project.setFrameRate`, `project.setBackground`), `color.ts` (hex <-> RGBA), `defaultTracks` (V1 video, A1 audio).
+  - App: `projectController.ts` (`appView` store; new/open/recent/drop/retry flows, one at a time; errors end in a dialog; actions `project.save`, `project.new`, `project.open`; any closing dialog hands the keyboard back to the global scope), `StartScreen` (hero New project, Open project, recent list with remove, folder drop with a DOM-attribute highlight), `DialogHost` (new project form, recovery offer, permission retry, errors) on a new `ui/Modal` (dialog focus scope, focus in, back to the trigger on close), `ReadOnlyBanner`, `AppBar` (click-to-rename name, save dot written to the DOM from the status store with hover details and click to save/retry/allow editing, live badge), `ui/Button`, `ui/TextField`. Properties: `ProjectSection` when nothing is selected (name, resolution presets + custom, fps, background hex, autosave delay).
+  - Measured: 236 unit tests in 29 files (+87). Build 246.0 kB JS (80.95 kB gzip, +13 kB gzip), 25.1 kB CSS.
+  - Headless Chrome (CDP) on the dev server, OPFS directories standing in for picked folders, 37/37 checks: start screen; New project dialog prefilled with the folder name; the folder has project.json, session.json, cache/{index,proxies,thumbs,peaks,text,export-temp}, history/, media/, exports/, presets/text/; tracks V1/A1; a rename in the app bar reached project.json 1062-1075 ms later, not before; dot unsaved -> saved with the time in its tooltip; 1 React commit for the rename and 0 for the save; Ctrl+Z / Ctrl+Shift+Z undo and redo the rename; Ctrl+S adds a backup, also right after the dialog closes; after a reload the project is in Recent ("proj1 · <date>") and opens with its name; a save stuck after the tmp write + reload -> recovery dialog -> Restore -> saved, tmp deleted; fresh project: 20 saves -> 20 files in history/, 25 -> 20; denied write permission -> banner, dot read-only, rename + Ctrl+S + tab hidden + 11 s -> 0 write calls (createWritable, removeEntry, getFileHandle/getDirectoryHandle with create wrapped and counted), "Allow editing" denied keeps it read-only, granted removes the banner and saves the pending rename; Ctrl+O on a folder without project.json -> error dialog, Escape closes it, the project stays open; no console errors or warnings. Splitter drag: 0 React commits; the dragged layout lands in session.json and comes back on reopen with localStorage cleared.
+  - Batch 01/02 regression at 1600x900: panels 1088 / preview 512x860 / 430+430 / media 533, no overflow; Ctrl+K in the timeline still logs `[cmd] edit.split`; undo/redo as above.
+- deviations:
+  - History backup names are UTC (see Global deviations).
+  - Frame rate locked once clips or markers exist; resolution changes are "keep" (see Global deviations).
+  - The autosave interval of §11 is a global app setting (IndexedDB `settings.v1`), not document data: §5.2 settings are verbatim and the interval is not per-project. Choices 1/2/5/10 s, default 1 s (§15). It sets the debounce; the max wait is max(5 s, delay).
+  - Mod+S always writes (and backs up), even with no changes, so "forces a save" is literal; saves within one second keep distinct backups (`-2`, `-3`).
+  - New project: picker first, then a dialog (name prefilled with the folder name, preset, fps), in §15's order. The picked folder becomes the project folder; a folder that already has project.json is refused ("open it instead"). Other files in the folder are left alone.
+  - Permission flow: readwrite is requested only when the browser state is `prompt`; when it is not granted the project opens read-only if read access is granted (requested the same way); with no access a dialog offers "Try again", which also re-asks denied permissions. "Allow editing" (banner or dot) re-asks write access.
+  - Recovery offer: only when project.json.tmp is newer than project.json, differs from it, and parses and validates. Stale or invalid tmps are deleted (when writable). Escape / X on the offer leaves the tmp alone; the next save replaces it. Restoring loads it as the document (undo history cleared) and autosaves it, so the replaced project.json goes to history/.
+  - Recent projects are keyed by project id (a copied folder with the same id replaces the entry), newest first, max 12; the path hint is the folder name (FSA exposes no paths).
+  - Opening another project (Mod+N / Mod+O while one is open) reads the new folder first and closes the current one (flushing saves) only when that succeeded.
+  - `meta.modifiedAt` / `meta.appVersion` are stamped into the saved file by `serializeProject`, not by a command (no undo step, document untouched).
+  - Expected open failures (no project.json, no permission) are logged with `console.info`; unexpected ones with `console.error`.
+  - A dropped folder may open read-only if Chrome does not count the drop as a user gesture for the permission prompt; the banner's "Allow editing" then asks with a click.
+  - `tsconfig` lib adds `DOM.AsyncIterable` (`FileSystemDirectoryHandle.entries()`).
+  - Removed the placeholder `src/project/index.ts`.
+- follow-ups: [from Batch 03 -> Batch 04] media handles through kv.ts; [from Batch 03 -> Batch 25] collapsible Project section; [from Batch 03 -> Batch 40] Mod+S inside inputs and dialogs; [from Batch 03 -> Batch 42] fps conversion, scale layout, recent thumbnails, autosave setting in the settings panel, history list
+- design gaps: modal metrics, start screen metrics, save dot colors, read-only banner, secondary button and drop target (details in Design system gaps)
+- pending manual checks (the headless runs used OPFS folders, which never prompt):
+  1. `npm run dev`, open in Chrome. New project -> pick an empty folder on disk -> Create. In Explorer the folder has project.json, session.json, cache (index, proxies, thumbs, peaks, text, export-temp), history, media, exports, presets/text.
+  2. Click the project name in the app bar, rename, Enter; about 1 s later project.json has the new name. Close the browser, reopen the app: the project is in Recent; click it, Chrome asks for edit access, Allow; the name is intact.
+  3. Repeat the reopen of step 2 but answer the edit prompt with "Don't allow" (allow viewing if asked): the read-only banner shows and the dot is grey; rename the project and wait 15 s: the files in the folder keep their modified times and history is unchanged. Click "Allow editing", Allow: the banner goes away and the rename is saved.
+  4. Drag the project folder from Explorer onto the start screen: it opens (read-only with the banner if Chrome refuses the prompt from a drop; "Allow editing" fixes that).
+  5. Recovery with a real file: with the project closed, copy project.json to project.json.tmp in Explorer, change the tmp's "name" value and save it; open the project from Recent: "Restore unsaved changes?" appears; Restore shows the changed name.
+  6. React DevTools Profiler, recording: rename (one commit), then wait for the save (no further commits); drag a splitter (no commits).

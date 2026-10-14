@@ -88,4 +88,14 @@ describe("createLayoutStore", () => {
     store.setPanelSize("preview", { width: 600, height: 1000 });
     expect(calls).toBe(1);
   });
+
+  it("replaces all ratios at once (a project's saved layout), sanitizing bad values", () => {
+    const store = createLayoutStore(null);
+    let calls = 0;
+    store.subscribe(() => calls++);
+    store.setRatios({ left: 0.6, top: 0.4, media: 1.5 });
+    expect(store.getState().ratios).toEqual({ left: 0.6, top: 0.4, media: DEFAULT_RATIOS.media });
+    store.setRatios({ left: 0.6, top: 0.4, media: DEFAULT_RATIOS.media });
+    expect(calls).toBe(1);
+  });
 });

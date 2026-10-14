@@ -1,0 +1,197 @@
+/* Flex + auto margins: centered, and still scrollable from the top when the list is long. */
+.screen {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: auto;
+  padding: var(--space-6);
+  background: var(--bg-sunken);
+}
+
+.column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  width: 100%;
+  max-width: var(--start-width);
+  margin: auto;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+/* Brand mark: gold-gradient square with the letter (DS sidebar shell). */
+.brand {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: var(--control-comfortable);
+  height: var(--control-comfortable);
+  border-radius: var(--radius-md);
+  background: var(--brand-gold);
+  color: var(--on-brand-gold);
+  font: var(--type-stat);
+  letter-spacing: var(--type-stat-track);
+}
+
+.title {
+  color: var(--text-primary);
+  font: var(--type-display);
+  letter-spacing: var(--type-display-track);
+}
+
+.subtitle {
+  color: var(--text-tertiary);
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-track);
+}
+
+.actions {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.recentSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.overline {
+  color: var(--text-tertiary);
+  font: var(--type-overline);
+  letter-spacing: var(--type-overline-track);
+  text-transform: uppercase;
+}
+
+.empty,
+.hint {
+  color: var(--text-muted);
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-track);
+}
+
+.recentList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Project tile (DS cards): surface-1, hairline, radius-lg; hover lifts the border. */
+.recent {
+  position: relative;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  background: var(--surface-1);
+  transition: border-color var(--duration-micro) var(--ease-out);
+}
+
+.recent:hover,
+.recent:focus-within {
+  border-color: var(--surface-5);
+}
+
+.recentOpen {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  width: 100%;
+  padding: var(--space-3) calc(var(--control-compact) + var(--space-4)) var(--space-3) var(--space-3);
+  border-radius: var(--radius-lg);
+  text-align: left;
+}
+
+.recentOpen[aria-disabled] {
+  opacity: var(--disabled-opacity);
+}
+
+/* TODO(batch 42): real thumbnail captured at the playhead on close. */
+.thumb {
+  display: grid;
+  flex: none;
+  place-items: center;
+  height: var(--recent-thumb-height);
+  aspect-ratio: 9 / 16;
+  border-radius: var(--radius-sm);
+  background: var(--surface-3);
+}
+
+.thumbIcon {
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+  color: var(--text-tertiary);
+}
+
+.recentText {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-0);
+  min-width: 0;
+}
+
+.recentName {
+  overflow: hidden;
+  color: var(--text-primary);
+  font: var(--type-body-strong);
+  letter-spacing: var(--type-body-strong-track);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recentMeta {
+  overflow: hidden;
+  color: var(--text-tertiary);
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-track);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.remove {
+  position: absolute;
+  top: 50%;
+  right: var(--space-3);
+  opacity: 0;
+  transform: translateY(-50%);
+  transition: opacity var(--duration-micro) var(--ease-out);
+}
+
+.recent:hover .remove,
+.recent:focus-within .remove {
+  opacity: 1;
+}
+
+.dropOverlay {
+  position: fixed;
+  inset: var(--space-3);
+  z-index: var(--z-overlay);
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  border: 1px dashed var(--accent-dim);
+  border-radius: var(--radius-xl);
+  background: var(--accent-wash);
+  color: var(--text-primary);
+  font: var(--type-title);
+  letter-spacing: var(--type-title-track);
+  pointer-events: none;
+}
+
+.screen[data-dropping] .dropOverlay {
+  display: flex;
+}
+
+.dropIcon {
+  width: var(--control-default);
+  height: var(--control-default);
+  color: var(--accent);
+}

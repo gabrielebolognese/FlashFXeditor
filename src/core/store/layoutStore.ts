@@ -1,6 +1,6 @@
 // Panel layout state (spec §2.1): splitter ratios (persisted) and live panel sizes reported by
 // ResizeObserver. Ratios are applied to the DOM as CSS variables by a subscription, never by React.
-import { createStore, type Store } from "./createStore.js";
+import { createStore, shallowEqual, type Store } from "./createStore.js";
 
 export type PanelId = "media" | "properties" | "preview" | "timeline";
 export type SplitterId = "left" | "top" | "media";
@@ -50,15 +50,20 @@ function loadRatios(storage: StorageLike | null): LayoutRatios {
   try {
     const raw = storage?.getItem(STORAGE_KEY);
     if (!raw) return { ...DEFAULT_RATIOS };
-    const parsed = JSON.parse(raw) as Partial<Record<SplitterId, unknown>>;
-    const pick = (key: SplitterId) => {
-      const value = parsed[key];
-      return typeof value === "number" && value > 0 && value < 1 ? value : DEFAULT_RATIOS[key];
-    };
-    return { left: pick("left"), top: pick("top"), media: pick("media") };
+    return sanitizeRatios(JSON.parse(raw));
   } catch {
     return { ...DEFAULT_RATIOS };
   }
+}
+
+/** Ratios from untrusted JSON; each invalid or missing value falls back to its default. */
+export function sanitizeRatios(value: unknown): LayoutRatios {
+  const parsed = (typeof value === "object" && value !== null ? value : {}) as Partial<Record<SplitterId, unknown>>;
+  const pick = (key: SplitterId) => {
+    const ratio = parsed[key];
+    return typeof ratio === "number" && ratio > 0 && ratio < 1 ? ratio : DEFAULT_RATIOS[key];
+  };
+  return { left: pick("left"), top: pick("top"), media: pick("media") };
 }
 
 const ZERO: Size = { width: 0, height: 0 };
@@ -68,12 +73,14 @@ export interface LayoutStore extends Store<LayoutState> {
   setRatio(id: SplitterId, ratio: number): void;
   setWorkspace(size: Size): void;
   setPanelSize(id: PanelId, size: Size): void;
+  /** Replaces all preferred ratios (a project's saved layout); clamped when applied, like drags. */
+  setRatios(ratios: LayoutRatios): void;
   /** Writes the ratios to storage (called once at the end of a splitter drag). */
   persist(): void;
   resetRatio(id: SplitterId): void;
 }
 
-// TODO(batch 03): persist splitter positions per project as well (session.json), global stays the fallback.
+// Global persistence (localStorage, last used) lives here; the per-project copy is saved in session.json.
 export function createLayoutStore(storage: StorageLike | null): LayoutStore {
   const store = createStore<LayoutState>({
     ratios: loadRatios(storage),
@@ -101,6 +108,10 @@ export function createLayoutStore(storage: StorageLike | null): LayoutStore {
         if (prev.width === size.width && prev.height === size.height) return s;
         return { ...s, panels: { ...s.panels, [id]: size } };
       });
+    },
+    setRatios(ratios) {
+      const next = sanitizeRatios(ratios);
+      store.set((s) => (shallowEqual(s.ratios, next) ? s : { ...s, ratios: next }));
     },
     persist() {
       try {

@@ -42,3 +42,10 @@
 .input:focus-visible {
   box-shadow: none;
 }
+
+/* TextField: UI font instead of mono. */
+.text {
+  font: var(--type-body);
+  letter-spacing: var(--type-body-track);
+  font-variant-numeric: normal;
+}

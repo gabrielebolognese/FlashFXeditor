@@ -125,6 +125,16 @@
   --splitter-line: 1px;
   --splitter-hit: 6px;
 
+  /* Modals (DS: max-w-sm/md/lg = 24/28/32rem, body p-5 = 20px) */
+  --modal-width-sm: 384px;
+  --modal-width-md: 448px;
+  --modal-width-lg: 512px;
+  --modal-padding: 20px;
+
+  /* Start screen (gap) */
+  --start-width: 560px;
+  --recent-thumb-height: 40px;
+
   /* Elevation, floating only */
   --shadow-overlay: 0 8px 24px -4px rgba(0, 0, 0, 0.5), 0 2px 6px -2px rgba(0, 0, 0, 0.4);
   --shadow-modal: 0 16px 48px -8px rgba(0, 0, 0, 0.6), 0 4px 12px -4px rgba(0, 0, 0, 0.45);

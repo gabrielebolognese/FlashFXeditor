@@ -21,33 +21,78 @@
   font: var(--type-body-strong);
 }
 
-.projectName {
+.projectName,
+.nameInput {
+  min-width: 0;
+  max-width: calc(var(--control-default) * 10);
+  height: var(--control-compact);
   margin-left: var(--space-1);
-  overflow: hidden;
+  padding: 0 var(--space-1);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
   color: var(--text-primary);
   font: var(--type-title);
   letter-spacing: var(--type-title-track);
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
+.projectName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: background-color var(--duration-micro) var(--ease-out);
+}
+
+.projectName:hover {
+  background: var(--hover-wash);
+}
+
+.nameInput {
+  border-color: var(--accent-dim);
+  background: var(--surface-1);
+  box-shadow: 0 0 0 1px var(--accent-wash);
+  user-select: text;
+}
+
+.nameInput:focus-visible {
+  box-shadow: 0 0 0 1px var(--accent-wash);
+}
+
+/* A 16px hit target around the 6px status dot. */
 .saveDot {
+  display: grid;
   flex: none;
+  place-items: center;
+  width: var(--space-5);
+  height: var(--space-5);
+  border-radius: var(--radius-pill);
+}
+
+.saveDot::before {
+  content: "";
   width: var(--space-2);
   height: var(--space-2);
   border-radius: var(--radius-pill);
   background: var(--text-muted);
+  transition: background-color var(--duration-standard) var(--ease-out);
 }
 
-.saveDot[data-state="saved"] {
+.saveDot:hover {
+  background: var(--hover-wash);
+}
+
+.saveDot[data-state="saved"]::before {
   background: var(--success);
 }
 
-.saveDot[data-state="dirty"] {
+.saveDot[data-state="saving"]::before {
+  background: var(--info);
+}
+
+.saveDot[data-state="unsaved"]::before {
   background: var(--accent);
 }
 
-.saveDot[data-state="error"] {
+.saveDot[data-state="error"]::before {
   background: var(--danger);
 }
 

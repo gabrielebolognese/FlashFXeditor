@@ -4,6 +4,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./app/App.js";
 import { findMissingApis } from "./app/compat.js";
+import { installProjectController } from "./app/projectController.js";
 import { startServices } from "./app/services.js";
 import { UnsupportedScreen } from "./app/UnsupportedScreen.js";
 
@@ -16,6 +17,7 @@ if (missing.length > 0) {
   root.render(<UnsupportedScreen missing={missing} />);
 } else {
   startServices();
+  installProjectController();
   root.render(
     <StrictMode>
       <App />

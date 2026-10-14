@@ -7,10 +7,12 @@ import { UndoStack, type UndoEntry } from "../commands/UndoStack.js";
 import type { Project } from "../document/types.js";
 import { assertValid } from "../document/validate.js";
 import { createStore, shallowEqual, type Store } from "./createStore.js";
-import { filterSelection, fromSnapshot, toSnapshot, type Selection, type SelectionSnapshot } from "./selection.js";
+import { EMPTY_SELECTION, filterSelection, fromSnapshot, toSnapshot, type Selection, type SelectionSnapshot } from "./selection.js";
 import { setSelection, type SessionStore } from "./sessionStore.js";
 
 enablePatches();
+
+const ALL_AFFECTS: ReadonlySet<Affect> = new Set<Affect>(["timeline", "clips", "tracks", "media", "text", "captions", "markers", "settings", "audio"]);
 
 export type DocumentListener = (state: Project, prev: Project, affects: ReadonlySet<Affect>) => void;
 
@@ -208,7 +210,20 @@ export class DocumentStore {
     return true;
   }
 
-  // TODO(batch 03): load(project) replacing the document and clearing the history.
+  /**
+   * Replaces the whole document (opening a project, restoring a recovery file): clears the undo
+   * history and the selection, and notifies every subscriber with every flag.
+   */
+  load(project: Project): void {
+    this.assertNoTransaction("load");
+    if (this.validate) assertValid(project, "on load");
+    const prev = this.state;
+    this.state = freeze(project, true);
+    this.undoStack.clear();
+    setSelection(this.session, EMPTY_SELECTION);
+    this.history.set((current) => this.historyState(current));
+    this.notify(prev, ALL_AFFECTS);
+  }
 
   private context(): CommandContext {
     const selection = this.session.selection.getState();
