@@ -1,18 +1,55 @@
-import { Ellipsis } from "lucide-react";
-import { useCallback, useLayoutEffect, useRef, useState } from "react";
+import { Ellipsis, Gauge } from "lucide-react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { actions } from "../../app/services.js";
+import { bindTimecode, bindZoomSlider, timelineDev } from "../../app/timelineController.js";
+import { useStoreSelector } from "../../core/store/useStoreSelector.js";
 import { IconButton } from "../../ui/IconButton.js";
 import { useDismiss } from "../../ui/useDismiss.js";
 import styles from "./TimelineToolbar.module.css";
 import { TOOLBAR_GROUPS, type ToolbarGroup, type ToolbarItem } from "./toolbarGroups.js";
 
-// All actions are disabled until their batches wire them (tools: 11/13/14, toggles: 11/12,
-// edits: 13-19, add: 29/32/34, zoom and timecode: 07/18).
+// Actions stay disabled until their batches wire them (tools: 11/13/14, toggles: 11/12, edits:
+// 13-19, add: 29/32/34, zoom to selection: 18, track height: 16).
+const ENABLED: ReadonlySet<string> = new Set(["timeline.zoomOut", "timeline.zoomIn", "timeline.zoomFit"]);
+
+/** Rendered once; its value follows the zoom through direct DOM writes (no React render, P1). */
+function ZoomSlider() {
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    const input = ref.current;
+    return input ? bindZoomSlider(input) : undefined;
+  }, []);
+  return <input ref={ref} type="range" className={styles.slider} aria-label="Timeline zoom" />;
+}
+
+/** Playhead timecode (editable) and total duration, written by subscriptions, never by React. */
+function Timecode() {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const durationRef = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    const [input, duration] = [inputRef.current, durationRef.current];
+    return input && duration ? bindTimecode(input, duration) : undefined;
+  }, []);
+  return (
+    <>
+      <input ref={inputRef} className={styles.timecode} aria-label="Playhead timecode" data-tooltip="Playhead (type a timecode, +30 or -15 frames, +2. seconds)" spellCheck={false} />
+      <span ref={durationRef} className={styles.duration} data-tooltip="Duration" />
+    </>
+  );
+}
+
+const selectStats = (state: { stats: boolean }) => state.stats;
+const toggleStats = () => timelineDev.set((state) => ({ stats: !state.stats }));
+
+function DevStatsToggle() {
+  const stats = useStoreSelector(timelineDev, selectStats);
+  return <IconButton icon={Gauge} label="Timeline stats (dev)" pressed={stats} onClick={toggleStats} />;
+}
 
 function renderItem(item: ToolbarItem) {
-  if (item.kind === "zoomSlider") {
-    return <input key="zoom-slider" type="range" className={styles.slider} aria-label="Timeline zoom" disabled />;
-  }
+  if (item.kind === "zoomSlider") return <ZoomSlider key="zoom-slider" />;
+  const enabled = ENABLED.has(item.id);
   return (
     <IconButton
       key={item.id}
@@ -21,7 +58,8 @@ function renderItem(item: ToolbarItem) {
       commandId={item.id}
       text={item.text}
       pressed={item.toggle ? false : undefined}
-      disabled
+      disabled={!enabled}
+      onClick={enabled ? () => actions.run(item.id) : undefined}
     />
   );
 }
@@ -108,13 +146,8 @@ export function TimelineToolbar() {
         <IconButton icon={Ellipsis} label="More tools" pressed={overflow !== null} onClick={overflow ? closeOverflow : openOverflow} />
       </div>
       <div className={styles.end} data-end="">
-        {/* TODO(batch 07): live playhead timecode, editable; total duration. */}
-        <span className={styles.timecode} data-tooltip="Playhead">
-          00:00:00
-        </span>
-        <span className={styles.duration} data-tooltip="Duration">
-          00:00:00
-        </span>
+        {import.meta.env.DEV && <DevStatsToggle />}
+        <Timecode />
       </div>
       {overflow &&
         createPortal(

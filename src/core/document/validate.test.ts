@@ -142,6 +142,15 @@ describe("media items", () => {
     expect(validateProject(project)).toEqual([]);
   });
 
+  it("lets an image clip hold a still for any length, but keeps video clips inside their media", () => {
+    const project = base();
+    project.media.still = { ...makeMedia("still", "image", 0), width: 640, height: 480 };
+    const held = withClips(project, [makeMediaClip(project, { id: "i1", trackId: "v1", start: 0, duration: 150, mediaId: "still", kind: "image" })]);
+    expect(validateProject(held)).toEqual([]);
+    const tooLong = withClips(project, [makeMediaClip(project, { id: "c9", trackId: "v1", start: 0, duration: 301, mediaId: "m1" })]);
+    expect(validateProject(tooLong)).toEqual([expect.stringContaining("> media duration 10000000")]);
+  });
+
   it("rejects non-integer times and sizes, odd rotations, bad rationals and escaping paths", () => {
     const project = makeProject();
     project.media.a = { ...makeMedia("a"), durationUs: 1.5 };

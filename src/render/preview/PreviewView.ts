@@ -5,6 +5,7 @@
 // The backing store is resized inside `render`, so a resize never shows a cleared canvas.
 // TODO(batch 08): the compositor's draw list replaces `setLayers`/`clearLayers` (and the Batch 05/06 harnesses).
 import type { RGBA } from "../../core/document/types.js";
+import { watchDevicePixelRatio } from "../../core/scheduler/devicePixelRatio.js";
 import type { FrameScheduler, RenderView } from "../../core/scheduler/FrameScheduler.js";
 import type { Store } from "../../core/store/createStore.js";
 import type { DocumentStore } from "../../core/store/DocumentStore.js";
@@ -162,21 +163,4 @@ function chromeFromTheme(theme: Theme): Chrome {
     border: cssColorToRgba(theme.color.hairline) ?? TRANSPARENT,
     margin: theme.layout.previewMargin,
   };
-}
-
-/** Calls `onChange` whenever devicePixelRatio changes (window moved to another screen, browser zoom). */
-function watchDevicePixelRatio(win: Window | null, onChange: () => void): () => void {
-  if (!win?.matchMedia) return () => {};
-  let query: MediaQueryList | null = null;
-  const listen = () => {
-    query?.removeEventListener("change", changed);
-    query = win.matchMedia(`(resolution: ${win.devicePixelRatio}dppx)`);
-    query.addEventListener("change", changed);
-  };
-  const changed = () => {
-    listen();
-    onChange();
-  };
-  listen();
-  return () => query?.removeEventListener("change", changed);
 }

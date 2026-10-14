@@ -1,0 +1,101 @@
+// Timeline zoom and horizontal scroll (spec §6.2). Pure functions over `{ pxPerFrame, scrollFrame }`;
+// the view and the toolbar write their results to the session store. Limits are applied only when
+// the user zooms or scrolls, so a document change (an undo that shortens the content) never moves
+// the view by itself.
+import { secondsToFrames } from "../../core/document/time.js";
+import type { Frame, Rational } from "../../core/document/types.js";
+
+export const MIN_PX_PER_FRAME = 0.01;
+export const MAX_PX_PER_FRAME = 400;
+export const ZOOM_IN_STEP = 1.25;
+export const ZOOM_OUT_STEP = 0.8;
+/** The view may scroll this fraction of its width past the content end (room to drop clips). */
+export const OVERSCROLL = 0.25;
+const FIT_MARGIN_SECONDS = 2;
+const FIT_MIN_SECONDS = 1;
+/** One wheel notch (100 px of delta) zooms by one key step. */
+const WHEEL_NOTCH_PX = 100;
+const LINE_PX = 16;
+
+export interface TimelineViewport {
+  pxPerFrame: number;
+  scrollFrame: number;
+}
+
+/** What the limits depend on: the track area width (CSS px), the content end and the frame rate. */
+export interface ZoomContext {
+  width: number;
+  contentEnd: Frame;
+  fps: Rational;
+}
+
+const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+
+/** Frames that `Fit` shows: the content plus a 2 s margin, at least 1 s. */
+export function fitFrames(contentEnd: Frame, fps: Rational): number {
+  return Math.max(contentEnd + secondsToFrames(FIT_MARGIN_SECONDS, fps), secondsToFrames(FIT_MIN_SECONDS, fps));
+}
+
+export function fitPxPerFrame(context: ZoomContext): number {
+  if (context.width <= 0) return MIN_PX_PER_FRAME;
+  return clamp(context.width / fitFrames(context.contentEnd, context.fps), MIN_PX_PER_FRAME, MAX_PX_PER_FRAME);
+}
+
+/** Zoomed out as far as Fit-to-content (never below 0.01 px/frame), in to 400 px/frame. */
+export function zoomLimits(context: ZoomContext): { min: number; max: number } {
+  return { min: fitPxPerFrame(context), max: MAX_PX_PER_FRAME };
+}
+
+/** Never before frame 0, never more than OVERSCROLL of the view past the content end. */
+export function clampScroll(scrollFrame: number, pxPerFrame: number, context: ZoomContext): number {
+  const visible = context.width / pxPerFrame;
+  const max = Math.max(0, context.contentEnd - (1 - OVERSCROLL) * visible);
+  return clamp(scrollFrame, 0, max);
+}
+
+/**
+ * Zooms to `pxPerFrame` keeping `anchorFrame` at `anchorX` (CSS px from the left of the track area).
+ * A view already outside the limits (the content got shorter) is never pushed further out.
+ */
+export function zoomAt(view: TimelineViewport, pxPerFrame: number, anchorFrame: number, anchorX: number, context: ZoomContext): TimelineViewport {
+  const limits = zoomLimits(context);
+  const px = clamp(pxPerFrame, Math.min(limits.min, view.pxPerFrame), Math.max(limits.max, view.pxPerFrame));
+  return { pxPerFrame: px, scrollFrame: clampScroll(anchorFrame - anchorX / px, px, context) };
+}
+
+/** The key/button zoom anchor: the playhead when it is visible, else the view center. */
+export function keyZoomAnchor(view: TimelineViewport, playhead: Frame, width: number): { frame: number; x: number } {
+  const x = (playhead - view.scrollFrame) * view.pxPerFrame;
+  if (x >= 0 && x <= width) return { frame: playhead, x };
+  return { frame: view.scrollFrame + width / 2 / view.pxPerFrame, x: width / 2 };
+}
+
+export function fitView(context: ZoomContext): TimelineViewport {
+  return { pxPerFrame: fitPxPerFrame(context), scrollFrame: 0 };
+}
+
+export function scrollBy(view: TimelineViewport, deltaPx: number, context: ZoomContext): TimelineViewport {
+  const scrollFrame = clampScroll(view.scrollFrame + deltaPx / view.pxPerFrame, view.pxPerFrame, context);
+  return scrollFrame === view.scrollFrame ? view : { pxPerFrame: view.pxPerFrame, scrollFrame };
+}
+
+/** Zoom slider position 0..1, logarithmic over the limits (spec §6.2). */
+export function pxToSlider(pxPerFrame: number, limits: { min: number; max: number }): number {
+  if (limits.max <= limits.min) return 1;
+  return clamp(Math.log(pxPerFrame / limits.min) / Math.log(limits.max / limits.min), 0, 1);
+}
+
+export function sliderToPx(position: number, limits: { min: number; max: number }): number {
+  if (limits.max <= limits.min) return limits.max;
+  return limits.min * (limits.max / limits.min) ** clamp(position, 0, 1);
+}
+
+/** A wheel delta in CSS px (`deltaMode` 0 px, 1 lines, 2 pages). */
+export function wheelDeltaPx(delta: number, deltaMode: number, pageSize: number): number {
+  return deltaMode === 1 ? delta * LINE_PX : deltaMode === 2 ? delta * pageSize : delta;
+}
+
+/** Zoom factor for a vertical wheel delta in px: one notch = one key step, pinch deltas scale smoothly. */
+export function wheelZoomFactor(deltaPx: number): number {
+  return ZOOM_IN_STEP ** (-deltaPx / WHEEL_NOTCH_PX);
+}

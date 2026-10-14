@@ -1,6 +1,6 @@
 # Progress
 
-last_completed_batch: 06
+last_completed_batch: 07
 in_progress_batch: none
 skipped_batches: []
 needs_human: none
@@ -31,6 +31,11 @@ Items the design system did not define and the functional default that was used 
 - Dev GPU stats readout: a `--type-mono` chip on `--surface-3` with a hairline border and radius-sm, top-left over the preview at `--space-3`, secondary text. (Batch 05) Since Batch 06 it spans the well (left and right `--space-3`) and wraps its lines.
 - Dev scrub bar (temporary, Batch 06): a `--control-default` (28px) strip at the bottom of the preview well, `--space-3` from the edges, `--surface-3` with a hairline border and radius-md; a range input with `accent-color: var(--accent)`; a `--type-mono` readout in secondary text with tabular figures; a `--type-badge` status (tertiary, "exact" secondary, "approx" `--info`, errors `--danger` on the new `--danger-wash` = danger at 12%, DS: "semantic states use success/danger/info at low opacity"). (Batch 06)
 
+- Timeline metrics (Batch 07): header column `--timeline-header-width` 176px, ruler `--timeline-ruler-height` = `--control-default` (28px), V/A divider `--timeline-divider-height` = `--space-1` on `--surface-2`, "+ track" rows `--timeline-add-row-height` = `--control-compact`, track heights `--track-height-s/m/l` 32/56/88 (the spec §6.2 defaults), clip label bar `--clip-label-height` 16px, clip inset `--clip-inset` = `--space-0`, clip corners `--radius-sm`. Surfaces: ruler and header column `--surface-1`, track rows `--bg`, outside the rows `--bg-sunken`, row separators and the header edge `--hairline`.
+- Clip colors per kind (Batch 07, the DS has none; washes of DS colors, never the gold): video `--info` at 34% body / 62% label bar, audio `--success` 26% / 50%, image `--text-secondary` 26% / 46%, text `--text-primary` 16% / 30%, solid `--surface-4` / `--surface-5`, caption `--text-tertiary` 30% / 55%; name and 12px kind glyph in `--text-primary`. Selection: `--accent` outline `--selection-outline` 1.5px rounded to device px, the primary one device px thicker, body tinted with `--accent-wash`. Hover: `--clip-hover-wash` (white 7%: the DS menu wash, 4%, does not show on clip colors).
+- Playhead and ruler (Batch 07): playhead `--playhead` = `--live` (DS: "scrub red, distinct from selection gold"), `--playhead-width` 1px, 2px while dragged (`--playhead-width-active`), pentagon head `--playhead-head-width/-height` 11x10px at the bottom of the ruler. Ruler labels in mono caption type, second labels `--text-secondary`, frame labels `--text-tertiary`, label gap `--space-3`; major ticks `--space-3` long in `--border`, minor ticks `--space-1` in `--hairline`, at least `--space-3` apart. Content end marker: 1px `--border` line through the tracks, `--text-tertiary` in the ruler.
+- Timeline chrome (Batch 07): track header = 14px kind glyph in `--text-tertiary` + name in body type `--text-secondary`; "+ Video track" / "+ Audio track" rows in caption type `--text-tertiary` with a 12px plus glyph, hover `--hover-wash`. Toolbar timecode field reads as mono text, `--border` on hover and the DS input focus (`--accent-dim` border + `--accent-wash` ring) when edited, 80px wide (3 x `--space-6` + `--space-3`). Dev stats chip: the preview's chip, bottom right of the timeline.
+
 ## Global deviations
 Decisions that diverge from docs/EDITOR_SPEC.md, with the reason. Each one also appears under its batch.
 - The design system file is `DESIGN_SYSTEM.md` (repo root), not `DESIGN_SYSTEMS.md` as the docs say. Every reference to `DESIGN_SYSTEMS.md` means this file. Reason: the real filename, kept as-is per NEXT_BATCH_SETUP §0.
@@ -43,6 +48,9 @@ Decisions that diverge from docs/EDITOR_SPEC.md, with the reason. Each one also 
 - Media items are created with their applicable analysis `pending` (§9.1); the IdleQueue consumer picks them up and queues placeholder jobs without writing the document (no undo steps). (Batch 04)
 - The sample index is built from the moov's sample tables (read by `readMp4`, mdat never read), not by streaming the whole file through mp4box extraction (§9.2, Batch 06 Build). For the MP4/MOV files the app accepts, the moov already lists every sample's offset, size, dts, cts and sync flag; streaming would read gigabytes of mdat for nothing. Fragmented MP4 (samples in moof boxes) is refused by the probe since Batch 04. (Batch 06)
 - Seeks feed the keyframe straight into the running decoder, with no `flush()` and no `reset()` (§9.2 says "flush, feed from the sync sample"). Measured in Chrome 155 on an RDNA2 GPU: 11 frames of 4K HEVC took ~110 ms fed straight on, and 300-600 ms after a flush or a reset + configure (1080p H.264: 32-55 ms against 137-152 ms). Frame requests feed only what their target needs (`feedUntil`), so the decoder is idle when the next seek comes. (Batch 06)
+- Image clips may run past their media's `durationUs` (`validate.ts`): a still has `durationUs: 0` and §6.14 gives images 5 s. Video and audio clips stay bound by the media. Animated images (loop or hold) are Batch 34's. (Batch 07)
+- Timeline zoom limits (§6.2 "fit-to-content down to 0.01 px/frame, up to 400") are applied only when the user zooms or scrolls, never on document changes, so an undo that shortens the content never moves the view. The zoom-out limit is Fit (content + 2 s); a view already below it is never pushed further out. (Batch 07)
+- Session `timeline.scrollY` is relative to the resting divider position (the divider rests at half the track area height; video tracks stack up from it, audio tracks down, §6.2) and may be negative; session.json accepts negative values. (Batch 07)
 - The frame rate can change only while the project has no clips and no markers; resolution changes use "keep". Reason: the §15 conversions (fps ratio, "Scale layout") belong to Batch 42 (this batch's "Do not build yet"), and an unconverted fps change breaks the media-clip duration invariant. (Batch 03)
 
 ## Follow-ups
@@ -54,7 +62,7 @@ Small things discovered during a batch that belong to a later batch. Format: `- 
 - [from Batch 01 -> Batch 09] Pause/resume the `IdleQueue` from playback (and from gestures from Batch 11 on).
 - [from Batch 01 -> Batch 42] Chrome reserves Ctrl+N, Ctrl+T and Ctrl+W in a normal tab; pages cannot preventDefault them, so `project.new` (Mod+N) opens a browser window instead. Decide on an alternative binding or document the installed-app (PWA window) route.
 - [from Batch 02 -> Batch 03] `DocumentStore.load(project)` (replace the document, clear the history); persist `SessionState` + the selection snapshot (arrays) in session.json; default tracks for a new project (`createProject` makes none); keep `meta.modifiedAt` current on save. (done in Batch 03)
-- [from Batch 02 -> Batch 07] Default `timeline.pxPerFrame` in `DEFAULT_SESSION` is a placeholder (4).
+- [from Batch 02 -> Batch 07] Default `timeline.pxPerFrame` in `DEFAULT_SESSION` is a placeholder (4). (done in Batch 07: kept 4 px/frame = 120 px/s at 30 fps, documented)
 - [from Batch 02 -> Batch 16] Selection kind `track` has no track id field (§3.3 shape kept as written); add one with track selection. Link-group offsets are not validated (allowed by §5.2); the sync badge needs an offset query.
 - [from Batch 02 -> Batch 34] `validate.ts` applies the media in/out rules to image clips too; decide the rule for stills.
 - [from Batch 02 -> Batch 41] `validate.ts` requires a media clip's `mediaId` to exist in `project.media`; "Remove, keep offline clips" must keep the media record (marked missing) or relax this check.
@@ -66,12 +74,12 @@ Small things discovered during a batch that belong to a later batch. Format: `- 
 - [from Batch 04 -> Batch 10] The audio probe decodes whole non-MP4 files with `decodeAudioData` (resampled to 48 kHz, so the source rate is unknown; long files cost memory): reuse the decoded-audio cache / segmented decode. The peaks job replaces the `AnalysisScheduler` placeholder; decide how `analysis.peaks` becomes "ready" without an undo step per media.
 - [from Batch 04 -> Batch 15] `edit.delete` and `edit.rename` are registered in `app/mediaController.ts` and only log outside the media scope: route the timeline/preview scopes to clip delete/rename there (or split the handler by scope).
 - [from Batch 04 -> Batch 17] Card posters (first frame, `cache/thumbs/<id>.poster.webp`) give way to the sprite sheets; the analysis placeholder marks `analysis.thumbs`.
-- [from Batch 04 -> Batch 20] Media panel: hover scrub, drag to the timeline, "unused" dim state and usage count on hover; double-click on a card thumbnail inserts (the name keeps double-click rename).
+- [from Batch 04 -> Batch 20] Media panel: hover scrub, drag to the timeline, "unused" dim state and usage count on hover; double-click on a card thumbnail inserts (the name keeps double-click rename). (double-click insert done in Batch 07, on cards and list rows)
 - [from Batch 04 -> Batch 24] The list view's Proxy column shows "None".
 - [from Batch 04 -> Batch 34] Stills have `durationUs: 0` (no natural duration); animated GIF/WebP durations come from `ImageDecoder`, and the frame list (`frameDurationsUs`) is returned by the probe but not persisted.
 - [from Batch 04 -> Batch 41] Reference import mode: the `importMode` app setting exists (no UI) and falls back to copy; store handles through `project/kv.ts`; posters of reference media; "Remove and delete clips" and the media-file deletion checkbox (disabled / absent now); `media.remove` refuses media used by clips; bins, search, filter chips, missing media.
 - [from Batch 04 -> Batch 46] After an import every new card is selected (gold borders on all of them): review against "gold is used sparingly". The list view needs horizontal scroll below ~670 px.
-- [from Batch 04 -> Batch 07] `src/core/scheduler/FrameScheduler.ts` has `TODO(batch 02)` (map document `affects` flags onto view flags), which points at a finished batch; the timeline view is the first document subscriber, so do the mapping there and retag the TODO. (found in the Batch 04 review)
+- [from Batch 04 -> Batch 07] `src/core/scheduler/FrameScheduler.ts` has `TODO(batch 02)` (map document `affects` flags onto view flags), which points at a finished batch; the timeline view is the first document subscriber, so do the mapping there and retag the TODO. (found in the Batch 04 review) (done in Batch 07: `TimelineView` maps document `affects` to `timelineContent`; the TODO is now a comment)
 - [from Batch 05 -> Batch 08] Remove `render/preview/ImageHarness.ts` and the `setLayers` entry point of `PreviewView` (the compositor's draw list replaces them). `WebGpuRenderer.draw` builds a `DrawRecord` array and uniform objects per call; make it allocation-free once the draw list is a reused struct array. Frame textures go into `TexturePool` under `(mediaId, lod, timeUs)`.
 - [from Batch 05 -> Batch 09] `TexturePool` pinning exists per key (`pin`); pin the frames within ±1 s of the playhead (P6, `TODO(batch 09)` in the pool).
 - [from Batch 05 -> Batch 21] The header Zoom select (Fit/25-400%, session `preview.zoom`) is the Batch 05 stand-in: pan, wheel zoom at the cursor, Mod+0/1/2 (`canvas.zoom*` are in the keymap but unregistered), the §7.1 detail-on-zoom offscreen render, quality modes. 100% = one project px per device px (see the batch deviations). The canvas CSS size follows the fractional panel size; use `devicePixelContentBoxSize` if exact backing pixels matter.
@@ -85,6 +93,14 @@ Small things discovered during a batch that belong to a later batch. Format: `- 
 - [from Batch 06 -> Batch 09] `VideoDecodeSession.output` (`src/media/decode/VideoDecodeSession.ts:487-497`) drops a leading picture of the current run only while its timestamp is still pending. When a superseded run's output has a timestamp that is also pending in the new run, it prunes every pending entry at or before it (line 489). A leading picture of the new run that comes out after that lands in the ring as a valid frame. Track pending timestamps per run. (found in the Batch 06 re-review, not reproduced)
 - [from Batch 06 -> Batch 24] Exact-frame latency deep in a GOP is bound by the hardware decode rate (~10 ms per 4K HEVC frame at 84 Mbps: median 593 ms 41-59 frames past a keyframe in 1 s GOPs). Proxies (540p, a keyframe every 15 frames) are the way to P8's 50 ms. `lod: "proxy"` has no file yet: `frameSource` in `app/previewController.ts` returns null (`TODO(batch 24)`), and its sample index needs its own cache name.
 - [from Batch 06 -> Batch 41] `frameSource` resolves copy-mode media only (`TODO(batch 41)`: media referenced by a file handle).
+- [from Batch 07 -> Batch 08] Inserted clips get the identity transform (scale 1 = native size, anchor at the center): Batch 08's "default transform on insert: Fit" goes into `mediaClip` in `src/timeline/edit/insertMedia.ts` (`TODO(batch 08)`).
+- [from Batch 07 -> Batch 09] Follow playhead (§6.2 paging during playback) belongs to playback. Keyboard jumps (End, Up/Down, the timecode field) do not scroll the view to the playhead yet.
+- [from Batch 07 -> Batch 11] A click selects only the clicked clip, Shift+click toggles (`clickClipSelection`): the linked partner is not selected (session `linkedSelection` is ignored), and a plain click inside a multi-selection replaces it (Batch 11 must keep it for drags). Mod/Alt variants and the marquee too.
+- [from Batch 07 -> Batch 12] Ruler scrubbing with Shift should snap to edit points and markers while snapping is on (`TODO(batch 12)` in `TimelineView.onPointerDown`).
+- [from Batch 07 -> Batch 16] Track headers draw only the kind glyph and name: toggles, double-click rename and track selection are `TODO(batch 16)`; header clicks do nothing. The Track height toolbar button stays disabled.
+- [from Batch 07 -> Batch 17] Clips show only body, label bar, kind glyph and name: badges, label colors, filmstrips and waveforms are `TODO(batch 17)`. The per-kind clip colors are design gaps to revisit with the label colors.
+- [from Batch 07 -> Batch 18] No scrollbars yet (horizontal with zoom handles, vertical): vertical scrolling is wheel-only, and in a project with many video tracks the top ones sit above the resting divider until the user scrolls up. Zoom to selection stays disabled. The timecode field ignores invalid input silently (no feedback) and uses mm:ss:ff only.
+- [from Batch 07 -> Batch 46] The timeline toolbar's Zoom group (Batch 01 priority 1) is the first to overflow into "...": at a 1600 px window the slider and zoom buttons sit in the overflow menu (they fit at 1920 px). On an empty or very short project the zoom-out limit is Fit (content + 2 s), so the view cannot go back beyond about 2 s once zoomed in past that. Review both.
 - [from Batch 03 -> Batch 42] fps conversion and "Scale layout" in the Project section (`project.setFrameRate` refuses projects with clips or markers); recent-project thumbnails (`RecentProject.thumbnail` is null); the autosave delay moves to the settings panel (stored in IndexedDB `settings.v1`); the history list reads backup names with `backupSortKey` (UTC, `-N` suffix).
 
 ## Dependencies
@@ -561,3 +577,93 @@ Why each dependency exists (Batch rule 8).
   - Literals: the fix adds no CSS and no color, font or size literal. The batch CSS still uses only tokens, the DS 1px hairline, a local z-index of 1 and `max-width: 50%`.
   - §3/§4: decoding stays in `decode.worker`. The harness writes the status to the DOM, with no React commit. Times stay integer microseconds, and dropped stale copies are closed at once (P13). Every TODO in `src/` has a `(batch NN)` tag: a grep finds none without one.
   - Observation (not blocking, not reproduced): `output` drops a leading picture of the current run only while its timestamp is still pending (`VideoDecodeSession.ts:487-497`). Suppose a superseded run outputs a frame whose timestamp is also pending in the new run. That output prunes every pending entry at or before it (line 489). A leading picture of the new run that comes out afterwards then lands in the ring as a valid frame. Two conditions make this possible: GOPs shorter than the 8-chunk in-flight window, or a re-seek to the same sync sample after a stall freed the ring. Decoders that output in POC order mostly emit the new run's earlier pictures first. Follow-up added for Batch 09.
+
+### Batch 07: Timeline canvas foundation
+- status: done
+- date: 2026-10-14
+- notes:
+  - `src/timeline/view/` (framework-free):
+    - `geometry.ts`: `TimelineGeometry`. Header column, ruler, track area, rows anchored at the video/audio divider (video and caption tracks stack up from it, audio down; the caption track is always S), the "+ track" rows, `frameToX`/`xToFrame` (§6.2), the visible frame range, a binary-search `rowAt`, and the `scrollY` range.
+    - `zoom.ts`: Fit (content + 2 s, at least 1 s), limits (Fit down to 0.01 px/frame, up to 400), `zoomAt` keeping a frame under an x, key zoom anchored at the visible playhead else the center (x1.25 / x0.8), scroll clamps (never before 0, at most 25% of the view past the content end), the logarithmic slider mapping, wheel delta normalization (one notch = one key step, pinch deltas smooth).
+    - `ruler.ts`: levels 1/5/10 frames, 1/2/5/10/30 s, 1/5 min (plus 10/30 min and 1 h for long timelines at 0.01 px/frame). Second ticks sit on wall-clock seconds and frame ticks restart each second (29.97 matches the timecodes). Second labels are placed first; frame numbers fill the gaps only where they fit, and whole timecodes appear once the ticks are far enough apart. A label that would touch the previous one is skipped, so labels never overlap. Minor ticks subdivide at >= 8 px.
+    - `clipLayout.ts`: device-pixel spans, a 1 px separator when a clip abuts the next, sub-pixel clips 1 device px wide, LOD (< 6 px body color only, < 24 px no icon or name, spec §6.4).
+    - `HitTester.ts`: the full §6.18 type list as a flat result (`type`, `frame`, `trackId`, `clipId`, `addTrack`). Real logic for `clip`, `ruler`, `playheadHead` (head width + 2 px), `trackHeader` (rows and the "+ track" rows) and `empty`; the other types carry `TODO(batch NN)`.
+    - `textCache.ts`: label widths measured once per font and string, plus ellipsized names per width, capped at 4096 entries. `glyphs.ts`: lucide path data (Film, AudioLines, Image, Type, Square, Captions, Plus) stroked as `Path2D`.
+    - `drawContent.ts` (sunken well, header column, rows, divider, clips, content end marker, header names and glyphs, "+ track" rows, ruler) and `drawOverlay.ts` (clip and "+ track" hover, playhead line and pentagon head; 2 px while dragged).
+    - Clips: rounded body, label bar (whole clip on S tracks), glyph and ellipsized name. Labels stick to the left edge of the track area when the clip starts off screen. Selected clips have an accent outline (primary +1 device px) and an accent-wash body.
+    - `TimelineView.ts`: two stacked canvases at devicePixelRatio, backing stores sized inside `render`. It registers `timelineContent` and `timelineOverlay`. Subscriptions:
+      - document `affects` timeline/clips/tracks/markers/captions/settings → both canvases (retires the FrameScheduler `TODO(batch 02)`)
+      - session `timeline` (zoom/scroll) → both; `playhead` → overlay only; selection → content only
+      - panel size, theme and DPR (shared `core/scheduler/devicePixelRatio.ts`, also used by `PreviewView`) → both
+    - Input on the overlay canvas:
+      - Ruler pointer down scrubs with pointer capture (no snapping, `TODO(batch 12)`).
+      - Clip click selects, Shift+click toggles (`clickClipSelection` in `core/store/selection.ts`); a click on empty track area clears the selection. "+ Video track" / "+ Audio track" dispatch `track.add`.
+      - Hover invalidates the overlay only when the target changes; the cursor is written only when it changes.
+      - Wheel: Ctrl/Meta/Alt (and pinch) zoom at the cursor, Shift+wheel and deltaX scroll horizontally, plain wheel scrolls tracks vertically.
+    - The toolbar slider draws an ephemeral zoom while dragged and writes the session once on release. Dev stats (draw counts, clips drawn / total, ms).
+  - `src/timeline/edit/insertMedia.ts`: `planMediaInsert` / `insertCommands` (pure).
+    - Natural durations: whole media frames, rounded down so `out <= durationUs`; images 5 s.
+    - Targets: the lowest targeted, unlocked video track (V1) and the first targeted, unlocked audio track (A1). Missing ones are created with the next free name.
+    - Video with audio: the video and audio clips share a new `linkGroup`. Audio-only media: one audio clip.
+    - Placement: the earliest start >= playhead that is free on every target track.
+    - `app/timelineController.ts` runs a plan as one `transaction("Insert clip")` and moves the playhead to the clip end. Double-click on a media card or list row inserts; double-click on the name still renames (`MediaName` stops the event).
+  - `app/timelineController.ts`:
+    - The `timelineView` singleton.
+    - Actions: `timeline.zoomIn/zoomOut/zoomFit`; `transport.stepBack/Forward` (1, 5, 1 s), hold-to-repeat after 300 ms every 33 ms (the dispatcher suppresses OS repeats for held keys); `transport.goToStart/goToEnd` (content end); `timeline.prev/nextEditPoint` (clip starts and ends on unlocked tracks, markers, in/out: `navigationPoints`); `timeline.prev/nextMarker` (`markerFrames`).
+    - Direct-DOM toolbar bindings: the zoom slider position, the editable timecode field (Enter jumps, relative forms through `parseTimecode`, Escape cancels, select-all on focus) and the total duration.
+    - Dev: action `dev.generateTimeline`, `__editor.timeline.generate(clips, tracks)` (solids on new video tracks, audio clips on two new audio tracks when the project has media with sound, one undo step; tree-shaken from production) and the Timeline stats toggle (gauge) in the toolbar.
+  - Toolbar: zoom -, slider, zoom +, Fit enabled; Zoom to selection and Track height stay disabled (Batches 18 and 16). `TimelinePanel` mounts the view once (the placeholder is gone).
+  - Core:
+    - `time.ts` exports `secondOfFrame`, `firstFrameOfSecond`, `secondsToFrames` and `usToFrameFloor`.
+    - `project.ts` exports `emptyTrack` and `nextTrackName` (V1, A1, CC1, skipping names in use).
+    - `queries.ts` adds `markerFrames` and `navigationPoints`.
+    - `validate.ts` lets image clips outlast the still (Global deviations).
+    - Session `scrollY` may be negative.
+    - The Theme gains `space` (`--space-0..6`) and `timeline` (metrics, playhead, clip hover, per-kind clip colors). `__editor` is merged instead of replaced.
+    - Removed the placeholders `src/timeline/edit/index.ts` and `src/timeline/view/index.ts`.
+  - Measured:
+    - 513 unit tests in 69 files (+60 tests, +10 files), plus the perf project.
+    - Build: 356.15 kB JS (117.18 kB gzip, +32.8 / +10.7 kB), 36.32 kB CSS; decode.worker 205.39 kB unchanged.
+  - Headless Chrome 155 (CDP, dev server, AMD RDNA2, 1920x1080, OPFS project; React commits counted through the DevTools hook):
+    - Acceptance 1: 506 clips on 10 tracks (`generate(500, 8)` plus 6 inserted clips), one synthetic wheel event per animation frame across zoom in/out, Alt zoom, Shift+wheel, deltaX and vertical sweeps.
+      - Frame interval median 16.5-16.7 ms, p95 17.3-17.9 ms. One Alt-zoom sweep had p95 39 ms and max 93 ms; a re-run had a max of 38.5 ms and no long tasks.
+      - Content draws: mean 0.6-1.9 ms, max 4.4 ms.
+      - Clips drawn: 5-28 of 506 when zoomed in, up to 382 at the widest partial view. 0 React commits.
+    - Acceptance 2: 224 unclamped wheel-zoom steps at the cursor (Ctrl and Alt, in and out between 0.188 and 400 px/frame): 0 frames of drift. The other steps hit a limit or frame 0, where the clamp wins. `\` gave scroll 0 and a visible range ending after the content end.
+    - Acceptance 3: unit sweep with no overlaps over 0.01-400 px/frame at 24/25/29.97/30/50/60 fps, also past one hour. Screenshots at 400, 120, 90, 30, 9, 3, 1.2, 0.4 and 0.19 px/frame: frame numbers between second labels at 9-30 px/frame, whole timecodes per frame at >= 90.
+    - Acceptance 4: 60 real mouse moves dragging the playhead on the ruler: content +0 draws, overlay +61, 0 commits.
+    - Acceptance 5: real double-clicks on three card thumbnails (2 s, 3 s, 1.5 s clips with audio) made V1/A1 pairs 0-60, 60-150, 150-195, each pair with its own `linkGroup`, playhead 195, timecode and duration "00:06:15". A double-click on a name opened the rename field and inserted nothing. Ctrl+Z three times left 4, 2, then 0 clips; Ctrl+Y three times restored them.
+    - Acceptance 6: 0 React commits for the playhead drag, wheel zoom/scroll, `=`, `-`, `\`, arrows (held Right: 22 frames in 1 s), Home/End, Up/Down, the zoom button, a 31-move slider drag (29 live content draws, the session written once on release) and timecode entries `+30`, `1:05:10`, `-15`.
+    - Also checked:
+      - "+ Video track" added V8 above V7 with the divider y unchanged, and Undo removed it.
+      - DPR 2: backing stores 2598x976 for 1298.8x488 CSS px, crisp text and edges.
+      - Hover lift visible; selection outlines with the thicker primary; sticky labels.
+      - Zoom and scroll restored from session.json after a reload.
+    - Regression (Batches 05, 06):
+      - The PNG renders its exact color through `renderFrame()`.
+      - A video scrub ends on "exact 48 ms".
+      - `device.destroy()` restores the device and redraws.
+      - Only the expected "device lost" warning.
+- deviations:
+  - Image clips can outlast the still; zoom limits apply on user actions only; divider-relative `scrollY` (see Global deviations).
+  - "If the spot is occupied, place it at the next free gap end": read as the earliest start >= playhead where the whole clip fits on every target track (the video and its linked audio stay aligned, nothing is overwritten).
+  - Audio-only media insert one audio clip (no video clip). Inserted clips are not selected; the selection stays as it was.
+  - The divider rests at half the track area (§6.2 only says it stays put); vertical scroll moves both halves together.
+  - Ruler levels beyond 5 min (10 min, 30 min, 1 h) so labels keep fitting at 0.01 px/frame on long timelines, and whole timecodes on frame ticks once they fit (§6.3 asks for frame numbers between seconds; at 90+ px/frame no second boundary may be in view).
+  - Clip labels stick to the visible left edge (not in the spec; long clips starting off screen would otherwise show no name).
+  - Clip hover uses a 7% white wash (`--clip-hover-wash`) instead of the DS menu wash, which is invisible on clip colors.
+  - The slider previews the zoom on the canvases while dragged and writes the session on release (the implementation note's "dispatches once on release"); the slider blurs on release so arrow keys go back to frame stepping.
+  - Shift+Up/Down marker navigation is wired (markers can only be created from Batch 19); Up/Down include markers and in/out as §6.5 says.
+  - `HitResult` is one flat struct with nullable ids instead of a union per type.
+- follow-ups: [from Batch 07 -> Batch 08] default Fit transform on insert; [from Batch 07 -> Batch 09] follow playhead, reveal on keyboard jumps; [from Batch 07 -> Batch 11] linked/multi selection on click; [from Batch 07 -> Batch 12] Shift-snap on ruler scrub; [from Batch 07 -> Batch 16] header toggles, rename, track height; [from Batch 07 -> Batch 17] clip badges, label colors, filmstrips/waveforms; [from Batch 07 -> Batch 18] scrollbars, zoom to selection, timecode feedback; [from Batch 07 -> Batch 46] zoom group overflow priority, zoom-out limit on short projects
+- design gaps: timeline metrics, clip colors per kind, playhead and ruler, timeline chrome (details in Design system gaps)
+- pending manual checks:
+  1. 500 clips with real input: `npm run dev`, open a project, run `__editor.timeline.generate(500, 8)` in the console, and turn on the gauge (Timeline stats, dev) at the right of the timeline toolbar. Ctrl+wheel and a trackpad pinch over the tracks zoom smoothly at the cursor; Shift+wheel and a horizontal swipe scroll; the plain wheel scrolls the tracks. Zoomed in, the chip's "N/506 clips" stays far below 506 and the content ms stays at a few ms.
+  2. Anchor and Fit: put the mouse on a clip edge and Ctrl+wheel in and out. The edge stays under the cursor, except where the view meets frame 0 or a zoom limit. Click the timeline and press `\`: the whole content fits, scrolled to the start.
+  3. Ruler: zoom from fully out to 400 px/frame. Labels never overlap; frame numbers appear between seconds, then whole timecodes per frame.
+  4. P1: React DevTools Profiler, recording while you drag the playhead on the ruler, Ctrl+wheel zoom, press `=`/`-`, and drag the toolbar zoom slider (at a 1600 px window it is in the "..." menu): no commits. With the stats chip on, "content N draws" does not change during the playhead drag while "overlay" grows.
+  5. Insert: with the playhead at 0, double-click three media cards on the thumbnail (not the name). Three video/audio pairs line up end to end on V1/A1 and the playhead ends after the third. Ctrl+Z three times removes one pair each time.
+  6. Keyboard with the timeline focused: Left/Right steps (hold to repeat), Shift (5 frames), Ctrl (1 s), Home/End, Up/Down edit points. In the timecode field: `+30` Enter, then `1:05:10` Enter.
+  7. Move the window to a screen with a different display scale: the timeline re-renders crisp (the matchMedia path; CDP emulation only covers the resize).
+  8. "+ Video track" / "+ Audio track" in the header column add a track above the video tracks or below the audio tracks; the V/A divider does not move.
+  9. P1 re-check (every 5 batches): playback arrives in Batch 09; re-verify in Batch 10.

@@ -34,7 +34,7 @@ export const DEFAULT_SESSION: SessionState = {
   playhead: 0,
   inPoint: null,
   outPoint: null,
-  // TODO(batch 07): default zoom from the timeline view.
+  // 4 px/frame = 120 px/s at 30 fps. scrollY is relative to the resting divider position (may be < 0).
   timeline: { pxPerFrame: 4, scrollFrame: 0, scrollY: 0 },
   preview: { zoom: "fit", panX: 0, panY: 0, quality: "auto", safeZone: "none" },
   activeTool: "select",

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { FPS_30, formatDurationUs, formatTimecode, frameToUs, parseTimecode, ticksToUs, usPerFrame, usToFrame } from "./time.js";
+import { FPS_30, firstFrameOfSecond, formatDurationUs, formatTimecode, frameToUs, parseTimecode, secondOfFrame, secondsToFrames, ticksToUs, usPerFrame, usToFrame, usToFrameFloor } from "./time.js";
 import type { Rational } from "./types.js";
 
 const NTSC: Rational = { num: 30000, den: 1001 };
@@ -129,6 +129,38 @@ describe("parseTimecode", () => {
       expect(parseTimecode(text, FPS_30), text).toBeNull();
     }
     expect(parseTimecode("1.2.3", FPS_30, { mode: "ms" })).toBeNull();
+  });
+});
+
+describe("seconds and frames", () => {
+  it("maps frames to wall-clock seconds and back to each second's first frame", () => {
+    expect(secondOfFrame(29, FPS_30)).toBe(0);
+    expect(secondOfFrame(30, FPS_30)).toBe(1);
+    expect(firstFrameOfSecond(2, FPS_30)).toBe(60);
+    // 29.97: second 1 starts at frame 30 (29.97 rounded up), second 10 at 300 (299.7 up).
+    expect(firstFrameOfSecond(1, NTSC)).toBe(30);
+    expect(firstFrameOfSecond(10, NTSC)).toBe(300);
+    for (let second = 0; second < 600; second++) {
+      const first = firstFrameOfSecond(second, NTSC);
+      expect(secondOfFrame(first, NTSC)).toBe(second);
+      expect(secondOfFrame(first - 1, NTSC)).toBe(second - 1);
+    }
+  });
+
+  it("counts the whole frames inside a media duration", () => {
+    expect(usToFrameFloor(1_000_000, FPS_30)).toBe(30);
+    expect(usToFrameFloor(999_999, FPS_30)).toBe(29);
+    // 2.002 s at 29.97 is exactly 60 frames; one microsecond less is 59.
+    expect(usToFrameFloor(2_002_000, NTSC)).toBe(60);
+    expect(usToFrameFloor(2_001_999, NTSC)).toBe(59);
+    for (let frame = 0; frame < 2000; frame++) expect(frameToUs(usToFrameFloor(frameToUs(frame, NTSC) + 5, NTSC), NTSC)).toBe(frameToUs(frame, NTSC));
+  });
+
+  it("rounds a duration in seconds to whole frames", () => {
+    expect(secondsToFrames(5, FPS_30)).toBe(150);
+    expect(secondsToFrames(2, NTSC)).toBe(60);
+    expect(secondsToFrames(5, FPS_24)).toBe(120);
+    expect(secondsToFrames(0.5, FPS_60)).toBe(30);
   });
 });
 

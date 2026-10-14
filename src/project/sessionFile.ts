@@ -61,7 +61,8 @@ function sanitizeState(value: unknown): SessionState {
     timeline: {
       pxPerFrame: pxPerFrame > 0 ? pxPerFrame : d.timeline.pxPerFrame,
       scrollFrame: Math.max(0, finite(timeline.scrollFrame, d.timeline.scrollFrame)),
-      scrollY: Math.max(0, finite(timeline.scrollY, d.timeline.scrollY)),
+      // Relative to the resting divider: negative when scrolled up to high video tracks.
+      scrollY: finite(timeline.scrollY, d.timeline.scrollY),
     },
     preview: {
       zoom,

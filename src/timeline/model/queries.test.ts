@@ -8,6 +8,8 @@ import {
   contentEnd,
   editPoints,
   gapAt,
+  markerFrames,
+  navigationPoints,
   neighbors,
   nextEditPoint,
   prevEditPoint,
@@ -103,6 +105,15 @@ describe("timeline model queries", () => {
     expect(prevEditPoint(points, 20)).toBe(10);
     expect(prevEditPoint(points, 21)).toBe(20);
     expect(prevEditPoint(points, 0)).toBeNull();
+  });
+
+  it("adds markers and in/out to the Up/Down stops and skips locked tracks", () => {
+    const withMarkers = structuredClone(project);
+    withMarkers.markers.push({ id: "m2", frame: 70, color: "red", label: "" }, { id: "m1", frame: 40, color: "red", label: "" }, { id: "m3", frame: 40, color: "red", label: "" });
+    expect(markerFrames(withMarkers)).toEqual([40, 70]);
+    expect(navigationPoints(withMarkers, [12, null])).toEqual([0, 5, 10, 12, 20, 30, 40, 50, 70, 150]);
+    withMarkers.tracks[0]!.locked = true;
+    expect(navigationPoints(withMarkers)).toEqual([0, 5, 40, 70]);
   });
 
   it("maintains the per-track index (max duration, end) per document version", () => {

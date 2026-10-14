@@ -1,16 +1,38 @@
+import { useEffect, useRef } from "react";
 import { CanvasHost } from "../app/CanvasHost.js";
 import { PanelFrame } from "../app/PanelFrame.js";
+import { timelineDev, timelineView } from "../app/timelineController.js";
+import { useStoreSelector } from "../core/store/useStoreSelector.js";
 import { TimelineToolbar } from "../timeline/toolbar/TimelineToolbar.js";
-import styles from "./Well.module.css";
-import { Placeholder } from "./Placeholder.js";
+import styles from "./TimelinePanel.module.css";
+import wellStyles from "./Well.module.css";
 
-// The toolbar strip is the panel's header. TODO(batch 07): the timeline canvases mount in the canvas host.
+const selectStats = (state: { stats: boolean }) => state.stats;
+
+/** Dev stats text, written by the timeline view after each draw. */
+function StatsOverlay() {
+  const ref = useRef<HTMLPreElement>(null);
+  useEffect(() => {
+    timelineView.attachStats(ref.current);
+    return () => timelineView.attachStats(null);
+  }, []);
+  return <pre ref={ref} className={styles.stats} aria-label="Timeline stats" />;
+}
+
+/** The toolbar strip is the panel's header; the two timeline canvases mount once in the canvas host. */
 export function TimelinePanel() {
+  const canvasRef = useRef<HTMLDivElement>(null);
+  const stats = useStoreSelector(timelineDev, selectStats);
+  useEffect(() => {
+    const host = canvasRef.current;
+    return host ? timelineView.mount(host) : undefined;
+  }, []);
   return (
     <PanelFrame id="timeline" header={<TimelineToolbar />}>
-      <div className={styles.well}>
+      <div className={wellStyles.well}>
         <CanvasHost panel="timeline">
-          <Placeholder name="Timeline" detail="Track headers, ruler, tracks" />
+          <div ref={canvasRef} className={styles.canvas} />
+          {stats && <StatsOverlay />}
         </CanvasHost>
       </div>
     </PanelFrame>

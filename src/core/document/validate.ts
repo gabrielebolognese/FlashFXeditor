@@ -53,13 +53,14 @@ function clipIssues(project: Project, clip: Clip): string[] {
   if (!Number.isInteger(clip.duration) || clip.duration < 1) issues.push(`${label}: duration ${clip.duration} must be an integer >= 1`);
   if (!isMediaClip(clip)) return issues;
 
-  // TODO(batch 34): image clips may need their own in/out rule (stills have no natural duration).
   if (!Number.isInteger(clip.in) || !Number.isInteger(clip.out)) issues.push(`${label}: in/out must be integer microseconds`);
   if (clip.in < 0) issues.push(`${label}: in ${clip.in} < 0`);
   if (clip.out <= clip.in) issues.push(`${label}: out ${clip.out} <= in ${clip.in}`);
   const media = project.media[clip.mediaId];
   if (!media) issues.push(`${label}: media ${clip.mediaId} does not exist`);
-  else if (clip.out > media.durationUs) issues.push(`${label}: out ${clip.out} > media duration ${media.durationUs}`);
+  // Image clips hold their picture for any length (a still has durationUs 0), so `out` is not bound
+  // by the media. TODO(batch 34): animated images (loop or hold past their own duration).
+  else if (clip.kind !== "image" && clip.out > media.durationUs) issues.push(`${label}: out ${clip.out} > media duration ${media.durationUs}`);
   if (!(clip.speed > 0)) {
     issues.push(`${label}: speed ${clip.speed} must be > 0`);
   } else {

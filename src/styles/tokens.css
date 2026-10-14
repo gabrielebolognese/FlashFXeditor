@@ -148,6 +148,38 @@
   /* Preview (gap): space kept around the letterboxed frame at Fit */
   --preview-margin: var(--space-5);
 
+  /* Timeline (gap: the DS has no timeline metrics; track heights are the spec §6.2 defaults) */
+  --timeline-header-width: 176px;
+  --timeline-ruler-height: var(--control-default);
+  --timeline-divider-height: var(--space-1);
+  --timeline-add-row-height: var(--control-compact);
+  --track-height-s: 32px;
+  --track-height-m: 56px;
+  --track-height-l: 88px;
+  --clip-label-height: 16px; /* spec §6.4: ~16px label bar at M/L */
+  --clip-inset: var(--space-0);
+  --selection-outline: 1.5px; /* spec §6.4 functional default */
+  --playhead-width: 1px;
+  --playhead-width-active: 2px;
+  --playhead-head-width: 11px;
+  --playhead-head-height: 10px;
+  --playhead: var(--live); /* DS: "scrub red, distinct from selection gold" */
+  --clip-hover-wash: rgba(255, 255, 255, 0.07); /* spec §6.4 "subtle lift"; the DS menu wash (4%) does not show on clip colors */
+
+  /* Clip bodies and label bars per kind (gap): washes of DS colors, never the gold */
+  --clip-video: rgba(76, 134, 214, 0.34); /* info */
+  --clip-video-label: rgba(76, 134, 214, 0.62);
+  --clip-audio: rgba(61, 190, 122, 0.26); /* success */
+  --clip-audio-label: rgba(61, 190, 122, 0.5);
+  --clip-image: rgba(148, 163, 184, 0.26); /* text-secondary */
+  --clip-image-label: rgba(148, 163, 184, 0.46);
+  --clip-text: rgba(230, 237, 246, 0.16); /* text-primary */
+  --clip-text-label: rgba(230, 237, 246, 0.3);
+  --clip-solid: var(--surface-4);
+  --clip-solid-label: var(--surface-5);
+  --clip-caption: rgba(100, 116, 139, 0.3); /* text-tertiary */
+  --clip-caption-label: rgba(100, 116, 139, 0.55);
+
   /* Elevation, floating only */
   --shadow-overlay: 0 8px 24px -4px rgba(0, 0, 0, 0.5), 0 2px 6px -2px rgba(0, 0, 0, 0.4);
   --shadow-modal: 0 16px 48px -8px rgba(0, 0, 0, 0.6), 0 4px 12px -4px rgba(0, 0, 0, 0.45);

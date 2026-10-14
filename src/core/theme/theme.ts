@@ -1,5 +1,8 @@
 // Theme bridge (spec §3.7): reads the design-system CSS custom properties into a typed object for
 // canvas renderers and other non-CSS consumers. Canvases never use color or size literals.
+import type { ClipKind, Track } from "../document/types.js";
+
+export type SpaceStep = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
 export type TypeStep = "overline" | "caption" | "body" | "body-strong" | "title" | "stat" | "display";
 
@@ -42,9 +45,33 @@ export interface Theme {
   radius: { sm: number; md: number; lg: number; xl: number; island: number; pill: number };
   control: { compact: number; default: number; comfortable: number };
   icon: { size: number; small: number };
+  /** The spacing scale `--space-0..6`. */
+  space: Record<SpaceStep, number>;
   layout: { appBarHeight: number; panelHeaderHeight: number; splitterLine: number; splitterHit: number; previewMargin: number };
   motion: { instant: number; micro: number; standard: number; large: number };
   tooltipDelay: number;
+  timeline: TimelineTheme;
+}
+
+/** Timeline canvas metrics (CSS px) and clip colors (spec §6.2, §6.4). */
+export interface TimelineTheme {
+  headerWidth: number;
+  rulerHeight: number;
+  dividerHeight: number;
+  addRowHeight: number;
+  trackHeight: Record<Track["height"], number>;
+  labelHeight: number;
+  clipInset: number;
+  selectionOutline: number;
+  playheadWidth: number;
+  playheadWidthActive: number;
+  playheadHeadWidth: number;
+  playheadHeadHeight: number;
+  playhead: string;
+  /** Hover wash over a clip. */
+  clipHover: string;
+  /** Body and label bar color per clip kind. */
+  clip: Record<ClipKind, { body: string; label: string }>;
 }
 
 /** Reads one custom property by name (e.g. `--accent`); returns "" when it is not defined. */
@@ -75,6 +102,8 @@ const COLOR_TOKENS: Record<keyof Theme["color"], string> = {
   info: "--info",
   live: "--live",
 };
+
+const CLIP_KINDS: readonly ClipKind[] = ["video", "audio", "image", "text", "solid", "caption"];
 
 const TYPE_STEPS: readonly TypeStep[] = ["overline", "caption", "body", "body-strong", "title", "stat", "display"];
 
@@ -111,6 +140,12 @@ export function readTheme(read: TokenReader, root?: Element): { theme: Theme; mi
     };
   }
 
+  const space = {} as Record<SpaceStep, number>;
+  for (const step of [0, 1, 2, 3, 4, 5, 6] as const) space[step] = num(`--space-${step}`);
+
+  const clip = {} as TimelineTheme["clip"];
+  for (const kind of CLIP_KINDS) clip[kind] = { body: str(`--clip-${kind}`), label: str(`--clip-${kind}-label`) };
+
   const theme: Theme = {
     name: root?.getAttribute("data-theme") ?? "dark",
     color,
@@ -130,6 +165,7 @@ export function readTheme(read: TokenReader, root?: Element): { theme: Theme; mi
       comfortable: num("--control-comfortable"),
     },
     icon: { size: num("--icon-size"), small: num("--icon-size-sm") },
+    space,
     layout: {
       appBarHeight: num("--appbar-height"),
       panelHeaderHeight: num("--panel-header-height"),
@@ -144,6 +180,23 @@ export function readTheme(read: TokenReader, root?: Element): { theme: Theme; mi
       large: num("--duration-large"),
     },
     tooltipDelay: num("--tooltip-delay"),
+    timeline: {
+      headerWidth: num("--timeline-header-width"),
+      rulerHeight: num("--timeline-ruler-height"),
+      dividerHeight: num("--timeline-divider-height"),
+      addRowHeight: num("--timeline-add-row-height"),
+      trackHeight: { S: num("--track-height-s"), M: num("--track-height-m"), L: num("--track-height-l") },
+      labelHeight: num("--clip-label-height"),
+      clipInset: num("--clip-inset"),
+      selectionOutline: num("--selection-outline"),
+      playheadWidth: num("--playhead-width"),
+      playheadWidthActive: num("--playhead-width-active"),
+      playheadHeadWidth: num("--playhead-head-width"),
+      playheadHeadHeight: num("--playhead-head-height"),
+      playhead: str("--playhead"),
+      clipHover: str("--clip-hover-wash"),
+      clip,
+    },
   };
   return { theme, missing };
 }

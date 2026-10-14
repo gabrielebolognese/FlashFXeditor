@@ -50,6 +50,11 @@ export function usToFrame(us: Us, fps: Rational): Frame {
   return roundDiv(us * fps.num, US_PER_SECOND * fps.den);
 }
 
+/** Whole frames that fit in `us` (rounded down): a clip of this many frames never runs past the media. */
+export function usToFrameFloor(us: Us, fps: Rational): Frame {
+  return floorDiv(us * fps.num, US_PER_SECOND * fps.den);
+}
+
 /** A count of `timescale` ticks per second (mp4 track times, audio samples) to the nearest microsecond. */
 export function ticksToUs(ticks: number, timescale: number): Us {
   return roundDiv(ticks * US_PER_SECOND, timescale);
@@ -60,12 +65,19 @@ export function ticksToUs(ticks: number, timescale: number): Us {
 
 export type TimecodeMode = "frames" | "ms";
 
-function secondOfFrame(frame: Frame, fps: Rational): number {
+/** The wall-clock second that `frame` falls in. */
+export function secondOfFrame(frame: Frame, fps: Rational): number {
   return floorDiv(frame * fps.den, fps.num);
 }
 
-function firstFrameOfSecond(second: number, fps: Rational): Frame {
+/** The first frame of wall-clock second `second` (the frame a `ss:00` timecode names). */
+export function firstFrameOfSecond(second: number, fps: Rational): Frame {
   return ceilDiv(second * fps.num, fps.den);
+}
+
+/** Nearest whole frame count to a duration in seconds. */
+export function secondsToFrames(seconds: number, fps: Rational): Frame {
+  return usToFrame(Math.round(seconds * US_PER_SECOND), fps);
 }
 
 const pad = (value: number, width = 2) => String(value).padStart(width, "0");

@@ -1,8 +1,9 @@
 // The single render loop (spec §3.4, P3). Views mark themselves dirty with `invalidate(flag)`; the
 // scheduler renders each dirty view at most once per animation frame. Nothing else draws canvases.
 
+// Document commands carry `affects` flags (timeline, clips, tracks, ...); each view maps the ones it
+// draws onto its own flags when it subscribes (e.g. TimelineView: document changes -> timelineContent).
 export type InvalidationFlag = "timelineContent" | "timelineOverlay" | "preview" | "previewOverlay" | "meters" | "mediaThumbs";
-// TODO(batch 02): map document command `affects` flags (timeline, clips, tracks, ...) onto view flags.
 
 export interface RenderView {
   render(time: number): void;

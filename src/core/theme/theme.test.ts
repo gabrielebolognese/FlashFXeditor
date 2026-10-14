@@ -25,6 +25,26 @@ describe("readTheme", () => {
     expect(theme.tooltipDelay).toBe(400);
   });
 
+  it("reads the timeline metrics, the spacing scale and a color pair per clip kind", () => {
+    const { theme, missing } = readTheme(
+      reader({
+        "--timeline-header-width": "176px",
+        "--track-height-s": "32px",
+        "--track-height-l": "88px",
+        "--selection-outline": "1.5px",
+        "--playhead": "red-ish",
+        "--clip-audio": "green-body",
+        "--clip-audio-label": "green-label",
+        "--space-3": "8px",
+      }),
+    );
+    expect(theme.timeline).toMatchObject({ headerWidth: 176, selectionOutline: 1.5, playhead: "red-ish", trackHeight: { S: 32, L: 88 } });
+    expect(theme.timeline.clip.audio).toEqual({ body: "green-body", label: "green-label" });
+    expect(theme.space[3]).toBe(8);
+    expect(missing).toContain("--clip-caption-label");
+    expect(missing).toContain("--track-height-m");
+  });
+
   it("reports missing tokens instead of throwing", () => {
     const { missing } = readTheme(reader({ "--accent": "accent-a" }));
     expect(missing).toContain("--bg");

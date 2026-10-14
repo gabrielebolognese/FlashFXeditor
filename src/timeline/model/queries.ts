@@ -160,3 +160,17 @@ export function nextEditPoint(points: readonly Frame[], frame: Frame): Frame | n
 export function prevEditPoint(points: readonly Frame[], frame: Frame): Frame | null {
   return points[countAtOrBelow(points, frame - 1) - 1] ?? null;
 }
+
+/** Sorted, unique marker frames (Shift+Up/Down stops). */
+export function markerFrames(project: Project): Frame[] {
+  return [...new Set(project.markers.map((marker) => marker.frame))].sort((a, b) => a - b);
+}
+
+/** Up/Down stops (spec §6.5): clip starts and ends on unlocked tracks, markers, and the in/out points given. */
+export function navigationPoints(project: Project, inOut: readonly (Frame | null)[] = []): Frame[] {
+  const unlocked = project.tracks.filter((track) => !track.locked).map((track) => track.id);
+  const points = new Set(editPoints(project, unlocked));
+  for (const marker of project.markers) points.add(marker.frame);
+  for (const frame of inOut) if (frame !== null) points.add(frame);
+  return [...points].sort((a, b) => a - b);
+}

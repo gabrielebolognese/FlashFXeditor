@@ -62,18 +62,17 @@ export function startGpu(adapter: GPUAdapter): void {
   void gpuDevice.start(adapter);
   if (import.meta.env.DEV) {
     // Console access for the acceptance checks, e.g. `__editor.device.destroy()`.
-    Object.assign(globalThis, {
-      __editor: {
-        gpu: gpuDevice,
-        get device() {
-          return gpuDevice.device;
-        },
-        renderer,
-        pool: texturePool,
-        preview: previewView,
-        frames: frameService,
+    const editor = ((globalThis as { __editor?: Record<string, unknown> }).__editor ??= {});
+    Object.defineProperties(editor, Object.getOwnPropertyDescriptors({
+      gpu: gpuDevice,
+      get device() {
+        return gpuDevice.device;
       },
-    });
+      renderer,
+      pool: texturePool,
+      preview: previewView,
+      frames: frameService,
+    }));
   }
 }
 

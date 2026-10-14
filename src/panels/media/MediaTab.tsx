@@ -2,6 +2,7 @@ import { ArrowDownWideNarrow, ArrowUpNarrowWide, AudioLines, ChevronDown, Chevro
 import { memo, useMemo, useRef, type DragEvent, type MouseEvent } from "react";
 import { clearMediaSelection, dropMedia, importFromPicker, mediaPanel, selectMedia } from "../../app/mediaController.js";
 import { documentStore, sessionStore } from "../../app/services.js";
+import { insertMediaAtPlayhead } from "../../app/timelineController.js";
 import { mediaUseCounts } from "../../core/commands/mediaCommands.js";
 import { formatDurationUs } from "../../core/document/time.js";
 import type { MediaId, MediaItem, Project } from "../../core/document/types.js";
@@ -177,6 +178,12 @@ export function MediaTab() {
     selectMedia(id, { toggle: event.ctrlKey || event.metaKey, range: event.shiftKey }, order);
   };
 
+  // Double-click inserts at the playhead (spec §6.14); the name keeps its own double-click (rename).
+  const onDoubleClick = (event: MouseEvent) => {
+    const id = (event.target as Element).closest<HTMLElement>("[data-media-id]")?.dataset.mediaId as MediaId | undefined;
+    if (id) insertMediaAtPlayhead(id);
+  };
+
   // Drop highlight through a data attribute: no React render while dragging.
   const setDropping = (on: boolean) => {
     const root = rootRef.current;
@@ -213,7 +220,7 @@ export function MediaTab() {
       {items.length === 0 ? (
         <EmptyState />
       ) : panel.view === "grid" ? (
-        <div className={styles.scroll} role="listbox" aria-label="Media" aria-multiselectable="true" onClick={onClick}>
+        <div className={styles.scroll} role="listbox" aria-label="Media" aria-multiselectable="true" onClick={onClick} onDoubleClick={onDoubleClick}>
           <div className={styles.grid}>
             {items.map((item) => (
               <MediaCard key={item.id} item={item} />
@@ -221,7 +228,7 @@ export function MediaTab() {
           </div>
         </div>
       ) : (
-        <div className={styles.scroll} role="listbox" aria-label="Media" aria-multiselectable="true" onClick={onClick}>
+        <div className={styles.scroll} role="listbox" aria-label="Media" aria-multiselectable="true" onClick={onClick} onDoubleClick={onDoubleClick}>
           <div className={styles.list}>
             <ListHeader sort={panel.sort} descending={panel.descending} />
             {items.map((item) => (

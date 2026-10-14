@@ -40,7 +40,15 @@ export function MediaName({ id, name }: { id: MediaId; name: string }) {
   const renaming = useStoreSelector(mediaPanel, (state) => state.renaming === id);
   if (renaming) return <RenameInput id={id} name={name} />;
   return (
-    <span className={styles.name} title={name} onDoubleClick={() => startRename(id)}>
+    <span
+      className={styles.name}
+      title={name}
+      onDoubleClick={(event) => {
+        // Rename, not insert: the card's double-click handler must not see this one.
+        event.stopPropagation();
+        startRename(id);
+      }}
+    >
       {name}
     </span>
   );

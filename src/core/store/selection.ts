@@ -40,3 +40,22 @@ export function filterSelection(snapshot: SelectionSnapshot, exists: (id: ClipId
   const kind = clipIds.length === 0 && snapshot.kind !== "track" ? "none" : snapshot.kind;
   return { clipIds, primary, kind };
 }
+
+/**
+ * Timeline click selection (spec §6.7, click and Shift+click): a click selects only `clipId`, a
+ * toggle click adds or removes it. An added clip becomes the primary; removing the primary passes
+ * it to the first remaining clip.
+ * TODO(batch 11): Mod/Alt variants, marquee, linked selection.
+ */
+export function clickClipSelection(selection: Selection, clipId: ClipId, toggle: boolean): Selection {
+  if (!toggle) return { clipIds: new Set([clipId]), primary: clipId, kind: "clips" };
+  const clipIds = new Set(selection.kind === "clips" ? selection.clipIds : []);
+  if (!clipIds.has(clipId)) {
+    clipIds.add(clipId);
+    return { clipIds, primary: clipId, kind: "clips" };
+  }
+  clipIds.delete(clipId);
+  if (clipIds.size === 0) return EMPTY_SELECTION;
+  const primary = selection.primary !== null && clipIds.has(selection.primary) ? selection.primary : ([...clipIds][0] ?? null);
+  return { clipIds, primary, kind: "clips" };
+}

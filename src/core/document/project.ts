@@ -18,8 +18,19 @@ export function createProject(options: { id: string; name: string; now: string; 
   };
 }
 
-function emptyTrack(id: string, kind: TrackKind, name: string): Track {
+/** An empty, targeted track at the default height. */
+export function emptyTrack(id: string, kind: TrackKind, name: string): Track {
   return { id, kind, name, clipIds: [], locked: false, muted: false, solo: false, hidden: false, targeted: true, height: "M" };
+}
+
+const TRACK_PREFIX: Record<TrackKind, string> = { video: "V", audio: "A", caption: "CC" };
+
+/** The next free default name for a track of `kind`: V1, V2... / A1... / CC1... */
+export function nextTrackName(tracks: readonly Pick<Track, "kind" | "name">[], kind: TrackKind): string {
+  const names = new Set(tracks.map((track) => track.name));
+  let n = tracks.filter((track) => track.kind === kind).length + 1;
+  while (names.has(`${TRACK_PREFIX[kind]}${n}`)) n += 1;
+  return `${TRACK_PREFIX[kind]}${n}`;
 }
 
 /** The tracks a project created from the start screen begins with: one video and one audio track. */

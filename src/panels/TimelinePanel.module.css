@@ -1,0 +1,23 @@
+.canvas {
+  position: absolute;
+  inset: 0;
+  /* Wheel and drags belong to the canvases (no page scroll or touch panning). */
+  touch-action: none;
+}
+
+/* Dev stats (gap: same chip as the preview's), bottom right so it never covers the ruler. */
+.stats {
+  position: absolute;
+  right: var(--space-3);
+  bottom: var(--space-3);
+  z-index: 1;
+  margin: 0;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+  background: var(--surface-3);
+  color: var(--text-secondary);
+  font: var(--type-mono);
+  white-space: pre;
+  pointer-events: none;
+}

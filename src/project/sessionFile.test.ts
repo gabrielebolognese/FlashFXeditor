@@ -11,7 +11,8 @@ describe("session file", () => {
         playhead: 120,
         inPoint: 10,
         outPoint: 200,
-        timeline: { pxPerFrame: 2.5, scrollFrame: 40, scrollY: 12 },
+        // scrollY is relative to the resting divider and may be negative (scrolled up).
+        timeline: { pxPerFrame: 2.5, scrollFrame: 40, scrollY: -36 },
         preview: { zoom: 1.5, panX: -20, panY: 4, quality: "half", safeZone: "tiktok" },
         activeTool: "razor",
         snap: false,

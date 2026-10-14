@@ -5,9 +5,8 @@ import styles from "./CanvasHost.module.css";
 import { layoutStore } from "./services.js";
 
 /**
- * Mount point for a framework-free canvas view. Sized from the layout store (not by CSS) so the views
- * of later batches drop in without layout changes.
- * TODO(batch 07): the timeline view mounts here and reallocates its backing stores at devicePixelRatio.
+ * Mount point for a framework-free canvas view (preview, timeline). Sized from the layout store (not
+ * by CSS); the views size their backing stores from the same store at devicePixelRatio.
  */
 export function CanvasHost({ panel, children }: { panel: PanelId; children?: ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
