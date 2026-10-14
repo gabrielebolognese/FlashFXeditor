@@ -95,6 +95,8 @@ export class TimelineView {
   /** Zoom shown while the toolbar slider is dragged; written to the session once on release. */
   private ephemeral: TimelineViewport | null = null;
   private gesture: Gesture | null = null;
+  /** Last pointer position over the overlay in CSS px, or null once it left. */
+  private pointer: { x: number; y: number } | null = null;
   private hover: HitResult | null = null;
   private cursor = "default";
   private statsElement: HTMLElement | null = null;
@@ -130,7 +132,10 @@ export class TimelineView {
     const onPointerDown = (event: PointerEvent) => this.onPointerDown(event);
     const onPointerMove = (event: PointerEvent) => this.onPointerMove(event);
     const onPointerUp = (event: PointerEvent) => this.endGesture(event.pointerId);
-    const onPointerLeave = () => this.setHover(null);
+    const onPointerLeave = () => {
+      this.pointer = null;
+      this.setHover(null);
+    };
     const onWheel = (event: WheelEvent) => this.onWheel(event);
     overlay.addEventListener("pointerdown", onPointerDown);
     overlay.addEventListener("pointermove", onPointerMove);
@@ -184,6 +189,7 @@ export class TimelineView {
     this.content = null;
     this.overlay = null;
     this.gesture = null;
+    this.pointer = null;
     this.hover = null;
     this.ephemeral = null;
     this.cachedGeometry = null;
@@ -291,6 +297,7 @@ export class TimelineView {
   // --- Input ----------------------------------------------------------------------------------
 
   private onPointerDown(event: PointerEvent): void {
+    this.pointer = { x: event.offsetX, y: event.offsetY };
     if (event.button !== 0 || this.gesture) return;
     const hit = this.hitTester.hit(event.offsetX, event.offsetY);
     switch (hit.type) {
@@ -318,10 +325,12 @@ export class TimelineView {
       default:
         break;
     }
-    this.updateCursor();
+    // "+ track" moves the rows under the pointer; a pen or touch down may come with no move before it.
+    if (this.refreshHover()) this.deps.scheduler.invalidate("timelineOverlay");
   }
 
   private onPointerMove(event: PointerEvent): void {
+    this.pointer = { x: event.offsetX, y: event.offsetY };
     if (this.gesture?.kind === "scrub") {
       if (event.pointerId === this.gesture.pointerId) this.scrubTo(this.geometry().xToFrame(event.offsetX));
       return;
@@ -336,8 +345,8 @@ export class TimelineView {
   private endGesture(pointerId: number): void {
     if (this.gesture?.pointerId !== pointerId) return;
     this.gesture = null;
+    this.refreshHover();
     this.deps.scheduler.invalidate("timelineOverlay");
-    this.updateCursor();
   }
 
   private setHover(hit: HitResult | null): void {
@@ -345,6 +354,18 @@ export class TimelineView {
     this.hover = hit;
     if (!sameHover(prev, hit)) this.deps.scheduler.invalidate("timelineOverlay");
     this.updateCursor();
+  }
+
+  /**
+   * Hit-tests again at the last pointer position, without a gesture: wheel zoom and scroll, document
+   * changes, playhead moves and the end of a scrub move the view under a pointer that stays still.
+   * Returns whether the hovered target changed; the overlay frame that runs it draws the new one.
+   */
+  private refreshHover(): boolean {
+    const prev = this.hover;
+    if (this.pointer && !this.gesture) this.hover = this.hitTester.hit(this.pointer.x, this.pointer.y);
+    this.updateCursor();
+    return !sameHover(prev, this.hover);
   }
 
   /** The cursor follows the hover hit; the style is written only when it changes. */
@@ -357,6 +378,8 @@ export class TimelineView {
 
   private onWheel(event: WheelEvent): void {
     event.preventDefault();
+    // A pointer that entered without moving is known from its first wheel.
+    this.pointer = { x: event.offsetX, y: event.offsetY };
     const geometry = this.geometry();
     const view = this.viewport();
     const context = this.zoomContext();
@@ -404,6 +427,9 @@ export class TimelineView {
     const layer = this.overlay;
     if (!layer || !this.prepare(layer)) return;
     const start = performance.now();
+    // Every change that moves what lies under the pointer redraws the overlay (spec §6.18: the
+    // cursor is set from the hover hit each overlay frame).
+    this.refreshHover();
     const project = this.deps.document.getState();
     const geometry = this.geometry();
     drawOverlay({

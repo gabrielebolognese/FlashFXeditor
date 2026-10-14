@@ -113,7 +113,8 @@ function drawClip(scene: ContentScene, clip: Clip, row: Row, track: Track, abuts
   const lod = clipLod(width);
 
   if (lod === "line") {
-    ctx.fillStyle = selected ? theme.color.accent : colors.label;
+    // Below 6 px only the body color shows (spec §6.4).
+    ctx.fillStyle = selected ? theme.color.accent : colors.body;
     ctx.fillRect(x, y, width, height);
     return;
   }

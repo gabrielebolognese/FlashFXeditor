@@ -1,14 +1,31 @@
 // The view's invalidation contract (P3): what redraws the content canvas and what only the overlay.
 // jsdom has no canvas, so a recording stand-in for the 2D context counts the draws.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { addClip, updateClip } from "../../core/commands/basicCommands.js";
+import { addClip, addTrack, removeClips, updateClip } from "../../core/commands/basicCommands.js";
 import { makeMedia, makeMediaClip, makeProject, makeTrack } from "../../core/document/fixtures.js";
+import type { TrackKind } from "../../core/document/types.js";
 import type { InvalidationFlag, RenderView } from "../../core/scheduler/FrameScheduler.js";
 import { DocumentStore } from "../../core/store/DocumentStore.js";
 import { createLayoutStore } from "../../core/store/layoutStore.js";
 import { createSessionStore, setPlayhead } from "../../core/store/sessionStore.js";
+import { drawOverlay } from "./drawOverlay.js";
 import { testTheme } from "./fixtures.js";
 import { TimelineView } from "./TimelineView.js";
+
+// The real overlay drawing, recorded so tests can read the hover it was given.
+vi.mock("./drawOverlay.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./drawOverlay.js")>();
+  return { ...actual, drawOverlay: vi.fn(actual.drawOverlay) };
+});
+
+/** The hover passed to the last overlay draw. */
+function lastHover() {
+  const scene = vi.mocked(drawOverlay).mock.lastCall?.[0];
+  return { clipId: scene?.hoverClip?.clip.id ?? null, addRow: scene?.hoverAddRow ?? null };
+}
+
+/** Every fillRect of every canvas: its fill style and width in CSS px. */
+const fills: { style: unknown; width: number }[] = [];
 
 /** A 2D context that accepts every call; text is 6 px per character. */
 function fakeContext(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
@@ -16,6 +33,7 @@ function fakeContext(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
     canvas,
     font: "",
     measureText: (text: string) => ({ width: text.length * 6 }),
+    fillRect: (_x: number, _y: number, width: number) => void fills.push({ style: state.fillStyle, width }),
   };
   return new Proxy(state, {
     get: (target, key) => (key in target ? target[key] : () => {}),
@@ -79,6 +97,7 @@ function setup(clipCount = 0) {
 
 describe("TimelineView", () => {
   beforeEach(() => {
+    fills.length = 0;
     vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation(function (this: HTMLCanvasElement) {
       return fakeContext(this);
     } as unknown as HTMLCanvasElement["getContext"]);
@@ -122,6 +141,9 @@ describe("TimelineView", () => {
     const { view, session, document, scheduler, pointer } = setup(5);
     view.zoomBy(2);
     expect(scheduler.flush()).toEqual(["timelineContent", "timelineOverlay"]);
+    // Hovered first: a pointer down where the pointer was not known yet also lights the hover.
+    pointer("pointermove", 176 + 15 * 8, 200);
+    scheduler.flush();
     pointer("pointerdown", 176 + 15 * 8, 200);
     expect(session.selection.getState().primary).toBe("c1");
     expect(scheduler.flush()).toEqual(["timelineContent"]);
@@ -198,6 +220,66 @@ describe("TimelineView", () => {
     overlay.dispatchEvent(new PointerEvent("pointerleave"));
     expect(scheduler.flush()).toEqual(["timelineOverlay"]);
     expect(overlay.style.cursor).toBe("default");
+  });
+
+  it("keeps the hover on what lies under a still pointer when the wheel scrolls the view", () => {
+    const { session, document, overlay, pointer, scheduler } = setup(50);
+    pointer("pointermove", 176 + 5 * 4, 200);
+    scheduler.flush();
+    expect(lastHover().clipId).toBe("c0");
+    // 40 px at 4 px/frame: frame 15 is under the pointer now, inside c1.
+    overlay.dispatchEvent(new WheelEvent("wheel", { clientX: 176 + 5 * 4, clientY: 200, deltaY: 40, shiftKey: true, cancelable: true }));
+    expect(session.state.getState().timeline.scrollFrame).toBe(10);
+    expect(scheduler.flush()).toEqual(["timelineContent", "timelineOverlay"]);
+    expect(lastHover().clipId).toBe("c1");
+    // A document change under the still pointer (a delete, an undo) too.
+    document.dispatch(removeClips(["c1"]));
+    scheduler.flush();
+    expect(lastHover().clipId).toBeNull();
+  });
+
+  it("drops the + row hover once a click on it adds the track that moves the row away", () => {
+    const { document, overlay, pointer, scheduler, onAddTrack } = setup(5);
+    onAddTrack.mockImplementation((kind: TrackKind) => document.dispatch(addTrack(makeTrack("v2", kind))));
+    pointer("pointermove", 20, 150);
+    scheduler.flush();
+    expect(overlay.style.cursor).toBe("pointer");
+    expect(lastHover().addRow).not.toBeNull();
+    pointer("pointerdown", 20, 150);
+    expect(document.getState().tracks).toHaveLength(3);
+    expect(overlay.style.cursor).toBe("default");
+    scheduler.flush();
+    expect(lastHover().addRow).toBeNull();
+    // V2 (56 px) sits between V1 and the + row now; the row lights up again where it went.
+    pointer("pointermove", 20, 150 - 56);
+    scheduler.flush();
+    expect(overlay.style.cursor).toBe("pointer");
+    expect(lastHover().addRow).not.toBeNull();
+  });
+
+  it("hit-tests again where a ruler scrub ends", () => {
+    const { overlay, pointer, scheduler } = setup(5);
+    pointer("pointerdown", 176 + 40, 10);
+    pointer("pointermove", 20, 150);
+    expect(overlay.style.cursor).toBe("ew-resize");
+    scheduler.flush();
+    expect(lastHover().addRow).toBeNull();
+    pointer("pointerup", 20, 150);
+    expect(overlay.style.cursor).toBe("pointer");
+    scheduler.flush();
+    expect(lastHover().addRow).not.toBeNull();
+  });
+
+  it("fills clips narrower than 6 px with their body color", () => {
+    const { view, scheduler } = setup(500);
+    const colors = testTheme().timeline.clip.video;
+    view.fit();
+    fills.length = 0;
+    scheduler.flush();
+    // Fit puts 5060 frames in 824 px: every 10-frame clip is under 2 px wide.
+    const clipFills = fills.filter((fill) => fill.style === colors.body || fill.style === colors.label);
+    expect(clipFills).toHaveLength(500);
+    expect(clipFills.every((fill) => fill.style === colors.body && fill.width < 6)).toBe(true);
   });
 
   it("stops drawing and listening once unmounted", () => {
