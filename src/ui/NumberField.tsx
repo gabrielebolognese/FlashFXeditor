@@ -1,5 +1,6 @@
-import { useState, type KeyboardEvent } from "react";
+import type { KeyboardEvent } from "react";
 import styles from "./NumberField.module.css";
+import { useDraft } from "./useDraft.js";
 
 // Static version: type a value, Enter or blur commits, Escape reverts.
 // TODO(batch 25): drag-to-scrub on the label, arrow-key stepping.
@@ -20,13 +21,13 @@ export interface NumberFieldProps {
 }
 
 export function NumberField({ value, onChange, label, unit, min, max, precision = 0, disabled, ariaLabel }: NumberFieldProps) {
-  const [draft, setDraft] = useState<string | null>(null);
+  const { draft, set: setDraft, take } = useDraft();
   const shown = draft ?? value.toFixed(precision);
 
   const commit = () => {
-    if (draft === null) return;
-    const parsed = Number.parseFloat(draft.replace(",", "."));
-    setDraft(null);
+    const text = take();
+    if (text === null) return;
+    const parsed = Number.parseFloat(text.replace(",", "."));
     if (!Number.isFinite(parsed)) return;
     const factor = 10 ** precision;
     const clamped = Math.min(max ?? Infinity, Math.max(min ?? -Infinity, Math.round(parsed * factor) / factor));

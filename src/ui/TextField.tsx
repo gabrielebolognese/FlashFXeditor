@@ -1,6 +1,7 @@
-import { useState, type KeyboardEvent } from "react";
+import type { KeyboardEvent } from "react";
 import { cx } from "./cx.js";
 import styles from "./NumberField.module.css";
+import { useDraft } from "./useDraft.js";
 
 // Two modes. Commit mode (no `onChange`): like NumberField, Enter or blur commits, Escape reverts.
 // Live mode (`onChange` given): controlled, every keystroke reported, Enter calls `onCommit`.
@@ -19,13 +20,13 @@ export interface TextFieldProps {
 }
 
 export function TextField({ value, onCommit, onChange, ariaLabel, mono, maxLength, placeholder, disabled, autoFocus }: TextFieldProps) {
-  const [draft, setDraft] = useState<string | null>(null);
+  const { draft, set: setDraft, take } = useDraft();
   const live = onChange !== undefined;
 
   const commit = () => {
-    if (live || draft === null) return;
-    setDraft(null);
-    if (draft !== value) onCommit?.(draft);
+    if (live) return;
+    const text = take();
+    if (text !== null && text !== value) onCommit?.(text);
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {

@@ -95,6 +95,8 @@ async function switchTo(opened: OpenedProject): Promise<void> {
 }
 
 async function openDir(dir: FsDir, retry = false): Promise<void> {
+  // Pending saves first: the folder may be the open project's, whose project.json is still stale.
+  await current?.flush();
   let opened: OpenedProject;
   try {
     opened = await openProjectFolder(dir, { retry });
