@@ -1035,3 +1035,29 @@ Why each dependency exists (Batch rule 8).
       4. P1: 1 commit at play, 0 in 30 s with the GPU stats on and 6 follow pages, 1 at pause. That run used the audio clock on the hot machine and dropped 19 of 907 frames; it measures commits, not drops.
       5. Follow playhead: the timeline code did not change. `zoom.test.ts` and `TimelineView.test.ts` pass, and the P1 run paged 6 times.
   - Pending manual checks 1-7 above still apply. Check 3 adds one step: after L four times, press K. Within a moment the preview shows the frame of the clip under the playhead. Compare with the clip under the playhead in the timeline and with the timecode.
+- review: accepted (re-review after the fixes, 2026-10-15)
+  - Evidence:
+    - `npm run check` is green: typecheck, lint, 598/598 unit tests in 77 files plus the perf test. Build: 385.33 kB JS (126.41 kB gzip), 36.70 kB CSS, decode.worker 205.92 kB. This matches the fix notes.
+    - I disabled the fix's invalidation in `PreviewView.ts` and kept the new test. "requests the playhead's frame when playback pauses on a held layer" then failed with the review's symptom (`expected [] to deeply equal ['preview']`). It passes on HEAD, and the source was restored to HEAD.
+    - Headless Chrome 155 (CDP, dev server restarted on HEAD, OPFS project `b09-a1`, real K key events): 13 stops at 8x, 4x, 2x and -1x, 13 of 13 on the exact frame after the pause. The 5 stops that paused on a held layer (4 at 8x, 1 at 4x) drew the exact frame 29.4-44.3 ms after K, with 1-2 renders each.
+    - Acceptance 1 re-run on HEAD (`b09-a1`, performance clock): cold and two warm passes, 0 / 1799 dropped each, no render without its exact frame, 2 React commits per pass (play and pause), no console errors or warnings.
+  - Review item 1 (stale frame after a pause) is resolved:
+    - `PreviewView` keeps the priority of its last render (`drawnPriority`, `src/render/preview/PreviewView.ts:92`, set at line 172). It subscribes through `watchPriority` (lines 127-129) and invalidates `preview` when `priority()` now differs.
+    - The app wires `watchPriority` to `playbackEngine.subscribe` (`src/app/previewController.ts:61`). `PlaybackEngine.pause` sets `velocity = 0` before it notifies (`src/playback/PlaybackEngine.ts:241`, `:249`), so the listener reads `idle` (or `scrub` when a ruler scrub paused it).
+    - The render after a pause therefore runs at `idle` priority, even with an unchanged playhead. `LayerTextures` then requests the playhead's frame.
+    - This covers K, Space, the button, a step clamped at frame 0, the end of the content and the end of a play-around. Dropped-frame notifications while playing find the priority unchanged and redraw nothing (checked by the test).
+  - The observation is resolved: the read-only footer timecode is a written deviation under this batch and in Global deviations, with a Batch 21 follow-up.
+  - Acceptance:
+    1. The engine tests, the CDP passes above and pending manual check 1.
+    2. Pending manual check 2, with the numbers recorded (fix run: 0.50-1.42%, 4 of 4 under 2% on a rested machine; 3-15% on a hot one). The shortfall on a hot machine is a logged deviation with a Batch 24 follow-up.
+    3. `PlaybackEngine.test.ts`, `transport.test.ts`, the CDP key-event runs and manual check 3, which now includes the K-after-8x step.
+    4. The CDP commit counts (2 per pass) and manual check 4. `Transport` reads only `playing`, and the fix adds no React state.
+    5. `zoom.test.ts` "pageToFrame" and `TimelineView.test.ts` "follows the playhead", plus manual check 5.
+    - Pending manual checks 1-7 have exact steps.
+  - Do not build yet: none of it was built. The AudioContext is only the clock, with no output nodes. There is no audio scrub. Proxy switching is only the `autoProxy` flag (`TODO(batch 24)`). The in/out loop and play in/out are `TODO(batch 19)`.
+  - Literals: the fix adds no CSS and no color, font or size literal. A grep of the batch diff finds none in TS/TSX, and the CSS uses tokens plus the DS 1px hairline.
+  - §3/§4:
+    - The engine is framework-free and runs as a `FrameScheduler` ticker. Playback writes only the session playhead.
+    - Frames and media times stay integers, and decoding stays in `decode.worker`.
+    - The preview redraws only through its `preview` flag: the new listener only invalidates. The `IdleQueue` is paused while playing.
+  - TODOs: every TODO in `src/` has a `(batch NN)` tag. The lowest is Batch 10.
