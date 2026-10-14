@@ -58,6 +58,7 @@ export const previewView: PreviewView = new PreviewView({
   images: imageService,
   pool: texturePool,
   priority: (): FramePriority => (playbackEngine.playing ? "playback" : timelineView.scrubbing ? "scrub" : "idle"),
+  watchPriority: (listener) => playbackEngine.subscribe(listener),
 });
 /** Plays the timeline through the preview (spec §8). */
 export const playbackEngine: PlaybackEngine = new PlaybackEngine({
