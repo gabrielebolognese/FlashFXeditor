@@ -79,6 +79,22 @@ describe("session file", () => {
     expect(state(30, 31)).toMatchObject({ inPoint: 30, outPoint: 31 });
   });
 
+  it("keeps valid source ranges (integer us, the out after the in, one end at least) and drops the rest", () => {
+    const sourceRanges = {
+      a: { inUs: 2_000_000, outUs: 5_000_000 },
+      b: { inUs: null, outUs: 1_000_000 },
+      c: { inUs: 3_000_000, outUs: null },
+      empty: { inUs: null, outUs: null },
+      reversed: { inUs: 5, outUs: 5 },
+      fractional: { inUs: 1.5, outUs: 10 },
+      zero: { inUs: null, outUs: 0 },
+      junk: 7,
+    };
+    const { state } = parseSessionFile(JSON.stringify({ version: 1, state: { sourceRanges } }));
+    expect(state.sourceRanges).toEqual({ a: sourceRanges.a, b: sourceRanges.b, c: sourceRanges.c, fractional: { inUs: null, outUs: 10 } });
+    expect(parseSessionFile(serializeSession({ ...defaultSessionFile(), state: { ...defaultSessionFile().state, sourceRanges: { a: sourceRanges.a } } })).state.sourceRanges).toEqual({ a: sourceRanges.a });
+  });
+
   it("turns a clips selection without ids into no selection", () => {
     const text = JSON.stringify({ version: 1, selection: { clipIds: [], primary: null, kind: "clips" } });
     expect(parseSessionFile(text).selection).toEqual({ clipIds: [], primary: null, kind: "none" });

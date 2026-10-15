@@ -41,6 +41,15 @@
   box-shadow: 0 0 0 1px var(--accent-wash);
 }
 
+/* Unused media (spec §12 "unused" dim state): the picture at the disabled opacity, full while scrubbed. */
+.card[data-unused] .poster[data-ready] {
+  opacity: var(--disabled-opacity);
+}
+
+.card[data-unused] .thumb[data-scrubbing] .poster[data-ready] {
+  opacity: 1;
+}
+
 .thumb {
   position: relative;
   display: grid;
@@ -74,11 +83,66 @@
   position: absolute;
   right: var(--space-1);
   bottom: var(--space-1);
+  z-index: 1;
   padding: 0 var(--space-1);
   border-radius: var(--radius-sm);
   background: var(--surface-3);
   color: var(--text-primary);
   font: var(--type-badge);
+}
+
+/* Hover-scrub (spec §12; the DS has no scrub visuals): the badge shows the scrub timecode instead of
+   the duration, a line in the timeline playhead's color and width marks the position. */
+.hoverTime,
+.thumb[data-scrubbing] .duration {
+  display: none;
+}
+
+.thumb[data-scrubbing] .hoverTime {
+  display: inline;
+}
+
+.progress {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 1;
+  display: none;
+  width: var(--playhead-width);
+  background: var(--playhead);
+  pointer-events: none;
+}
+
+.thumb[data-scrubbing] .progress,
+.rowThumb[data-scrubbing] .progress {
+  display: block;
+}
+
+/* Source range (spec §12 "a range bar on the card"): the range along the thumbnail's bottom edge. */
+.rangeBar {
+  position: absolute;
+  bottom: 0;
+  height: var(--space-0);
+  background: var(--accent);
+  pointer-events: none;
+}
+
+/* Usage count on hover (spec §12): a badge chip in the thumbnail's top-left corner. */
+.uses {
+  position: absolute;
+  top: var(--space-1);
+  left: var(--space-1);
+  display: none;
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-sm);
+  background: var(--surface-3);
+  color: var(--text-secondary);
+  font: var(--type-badge);
+}
+
+.card:hover .uses {
+  display: block;
 }
 
 .cardInfo {

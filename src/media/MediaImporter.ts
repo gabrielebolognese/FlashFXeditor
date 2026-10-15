@@ -86,6 +86,13 @@ export interface ImportOptions {
   signal?: AbortSignal;
   /** Called before copying with the total, then as bytes land. */
   onProgress?: (progress: ImportProgress) => void;
+  /**
+   * Places the new items (files dropped on the timeline, spec §6.14): called with them right after
+   * they are added, inside one transaction labeled `placeLabel`, so the import and its clips are one
+   * undo step. It reads the document from the store and dispatches its own commands.
+   */
+  place?: (items: readonly MediaItem[]) => void;
+  placeLabel?: string;
 }
 
 export interface MediaImporterDeps {
@@ -132,7 +139,7 @@ export class MediaImporter {
     return run;
   }
 
-  private async run(files: readonly File[], { signal, onProgress }: ImportOptions): Promise<ImportReport> {
+  private async run(files: readonly File[], { signal, onProgress, place, placeLabel }: ImportOptions): Promise<ImportReport> {
     const refused: Refusal[] = [];
     const accepted: { file: File; kind: FileKind }[] = [];
     for (const file of files) {
@@ -186,7 +193,15 @@ export class MediaImporter {
         sources.push(file);
       }
       signal?.throwIfAborted();
-      if (items.length > 0) this.deps.documentStore.dispatch(addMedia(items));
+      const { documentStore } = this.deps;
+      if (items.length > 0 && place) {
+        documentStore.transaction(placeLabel ?? "Import media", () => {
+          documentStore.dispatch(addMedia(items));
+          place(items);
+        });
+      } else if (items.length > 0) {
+        documentStore.dispatch(addMedia(items));
+      }
       items.forEach((item, i) => this.deps.onAdded?.(item, sources[i] as File));
     } catch (error) {
       await Promise.all(copied.map((relPath) => removeFileAt(dir, relPath).catch(() => undefined)));

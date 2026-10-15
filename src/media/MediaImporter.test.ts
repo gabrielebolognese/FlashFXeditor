@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { renameMedia } from "../core/commands/mediaCommands.js";
 import { makeProject } from "../core/document/fixtures.js";
 import { DocumentStore } from "../core/store/DocumentStore.js";
 import { createSessionStore } from "../core/store/sessionStore.js";
@@ -66,6 +67,25 @@ describe("MediaImporter", () => {
     expect(documentStore.history.getState().undoLabel).toBe("Import 4 media files");
     documentStore.undo();
     expect(documentStore.getState().media).toEqual({});
+  });
+
+  it("places the new items in the same undo step when asked (files dropped on the timeline, spec §6.14)", async () => {
+    const { documentStore, importer } = await setup();
+    const seen: string[][] = [];
+    await importer.importFiles([fileOf("a.mp4"), fileOf("b.png")], {
+      placeLabel: "Drop files",
+      place: (items) => {
+        seen.push(items.map((item) => item.name));
+        // The items are in the document already, inside the transaction.
+        documentStore.dispatch(renameMedia(items[0]!.id, "placed"));
+      },
+    });
+    expect(seen).toEqual([["a.mp4", "b.png"]]);
+    expect(documentStore.getState().media.m1?.name).toBe("placed");
+    expect(documentStore.history.getState().undoLabel).toBe("Drop files");
+    documentStore.undo();
+    expect(documentStore.getState().media).toEqual({});
+    expect(documentStore.history.getState().canUndo).toBe(false);
   });
 
   it("refuses unsupported files by name and creates nothing for them", async () => {

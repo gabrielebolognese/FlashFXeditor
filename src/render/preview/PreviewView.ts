@@ -292,6 +292,23 @@ export class PreviewView implements RenderView {
     this.textures.forget(mediaId);
   }
 
+  /** The canvas (the Media panel's drag reads its page rect once per drag), or null when unmounted. */
+  get element(): HTMLCanvasElement | null {
+    return this.canvas;
+  }
+
+  /**
+   * The project point (px from the frame's top-left) under canvas point (`x`, `y`) in CSS px, as the
+   * last single-frame render placed the frame (spec §6.14: media dropped on the canvas land there).
+   * Points outside the frame map outside it; null before the first render.
+   */
+  projectPoint(x: number, y: number): { x: number; y: number } | null {
+    const t = this.transform;
+    const dpr = this.stats.dpr;
+    if (!this.viewportDrawn || !(t[0] > 0) || !(t[3] > 0)) return null;
+    return { x: (x * dpr - t[4]) / t[0], y: (y * dpr - t[5]) / t[3] };
+  }
+
   unmount(): void {
     for (const stop of this.stops.splice(0)) stop();
     if (this.target) this.deps.renderer.releaseTarget(this.target);

@@ -10,6 +10,7 @@ import { trackIndex } from "../model/queries.js";
 import {
   applyMoveRequest,
   clampLaneDelta,
+  dropClips,
   laneTarget,
   mapLanes,
   moveClips,
@@ -497,5 +498,56 @@ describe("overwrittenSpans", () => {
       [40, 45],
     ]);
     expect(overwrittenSpans(index, 10, 20, null)).toEqual([]);
+  });
+});
+
+describe("dropClips", () => {
+  it("lands new clips with overwrite, on a track it creates, as one undo step", () => {
+    const p = project([clip("a", "v1", 0, 100, { linkGroup: "L" }), clip("b", "a1", 0, 100, { linkGroup: "L" })]);
+    const { doc } = setup(p);
+    const fresh = { ...makeTrack("v9"), name: "V3" };
+    const result = dropClips(p, [clip("n1", "v1", 40, 20), clip("n2", "v9", 40, 20)], "overwrite", { newTracks: [fresh], newId: counter("p"), label: "Add clips" });
+    apply(doc, result);
+    const state = doc.getState();
+    expect(validateProject(state)).toEqual([]);
+    expect(layout(state, "v1")).toEqual([
+      ["a", 0, 40],
+      ["n1", 40, 20],
+      ["p1", 60, 40],
+    ]);
+    // The right piece of a linked clip with no partner cut at the same frame is unlinked.
+    expect(state.clips.p1?.linkGroup).toBeUndefined();
+    expect(layout(state, "v9")).toEqual([["n2", 40, 20]]);
+    expect(state.tracks.map((t) => t.id)).toEqual(["v1", "v2", "v9", "a1", "a2"]);
+    expect(doc.history.getState().undoLabel).toBe("Add clips");
+    doc.undo();
+    expect(doc.getState()).toEqual(p);
+  });
+
+  it("inserts: every unlocked track opens the block's length at its start", () => {
+    const p = project([clip("a", "v1", 0, 100), clip("b", "a1", 50, 100), clip("c", "a2", 50, 100)]);
+    p.tracks[3]!.locked = true;
+    const result = dropClips(p, [clip("n", "v2", 60, 30)], "insert", { newId: counter(), label: "Insert clip" });
+    const { doc } = setup(p);
+    apply(doc, result);
+    const state = doc.getState();
+    expect(layout(state, "v1")).toEqual([
+      ["a", 0, 60],
+      ["n1", 90, 40],
+    ]);
+    expect(layout(state, "v2")).toEqual([["n", 60, 30]]);
+    expect(layout(state, "a1")).toEqual([
+      ["b", 50, 10],
+      ["n2", 90, 90],
+    ]);
+    expect(layout(state, "a2")).toEqual([["c", 50, 100]]);
+  });
+
+  it("refuses a locked target; rejects ids already in the document; nothing to drop is a no-op", () => {
+    const p = project([clip("a", "v1", 0, 10)]);
+    p.tracks[1]!.locked = true;
+    expect(dropClips(p, [clip("n", "v2", 0, 10)], "overwrite", { newId: counter(), label: "x" })).toEqual({ kind: "refused", refusal: { reason: "lockedTarget", trackId: "v2" } });
+    expect(() => dropClips(p, [clip("a", "v1", 20, 10)], "overwrite", { newId: counter(), label: "x" })).toThrow();
+    expect(dropClips(p, [], "overwrite", { newId: counter(), label: "x" })).toEqual({ kind: "noop" });
   });
 });

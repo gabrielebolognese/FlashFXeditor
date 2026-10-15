@@ -17,6 +17,7 @@ import type { ClipVisualsSource } from "./clipVisuals.js";
 import { trimCursors } from "./cursors.js";
 import { drawOverlay } from "./drawOverlay.js";
 import { testTheme } from "./fixtures.js";
+import { NO_MODIFIERS as NO_MODS } from "./gestures/moveClips.js";
 import { TimelineView } from "./TimelineView.js";
 
 // The real overlay drawing, recorded so tests can read the hover it was given.
@@ -120,6 +121,7 @@ function setup(clipCount = 0, theme: Theme = testTheme()) {
   const onSpaceTap = vi.fn();
   const onMoveMarker = vi.fn();
   const onEditMarker = vi.fn();
+  const onDropFiles = vi.fn();
   const idle = { pause: vi.fn(), resume: vi.fn() };
   const view = new TimelineView({
     scheduler,
@@ -139,6 +141,7 @@ function setup(clipCount = 0, theme: Theme = testTheme()) {
     onSpaceTap,
     onMoveMarker,
     onEditMarker,
+    onDropFiles,
     idle,
     platform: "other",
   });
@@ -152,7 +155,7 @@ function setup(clipCount = 0, theme: Theme = testTheme()) {
     overlay.dispatchEvent(new PointerEvent(type, { clientX: x, clientY: y, pointerId: 1, button: 0, bubbles: true, ...init }));
   /** A key event on the window (modifier changes during a drag). */
   const key = (type: "keydown" | "keyup", keyName: string, init: KeyboardEventInit = {}) => window.dispatchEvent(new KeyboardEvent(type, { key: keyName, bubbles: true, ...init }));
-  return { view, session, document, layout, scheduler, overlay, pointer, key, onAddTrack, onToggleTrack, onMoveClips, onTrimEdge, onTrimPreview, onRazor, onContextMenu, onReorderTrack, onRenameTrack, onSpaceTap, onMoveMarker, onEditMarker, idle, unmount };
+  return { view, session, document, layout, scheduler, overlay, pointer, key, onAddTrack, onToggleTrack, onMoveClips, onTrimEdge, onTrimPreview, onRazor, onContextMenu, onReorderTrack, onRenameTrack, onSpaceTap, onMoveMarker, onEditMarker, onDropFiles, idle, unmount };
 }
 
 describe("TimelineView", () => {
@@ -485,6 +488,61 @@ describe("TimelineView", () => {
     // V2 sits above V1: 116..172.
     pointer("pointermove", 236, 140);
     expect(view.dragging?.proposal?.refused).toEqual({ reason: "lockedTarget", trackId: "v2" });
+  });
+
+  it("shows media dragged in from the Media panel as ghosts (video on V2, its audio on a new A2) and gives one request at the drop", () => {
+    const { view, document, scheduler, idle } = setup(5);
+    document.dispatch(addTrack(makeTrack("v2"), 1));
+    scheduler.flush();
+    const before = document.getState();
+    const media = before.media.m!;
+    const range = { inUs: 0, outUs: 1_000_000 };
+    // Frame 60 (x 176 + 4 * 60), V2 (y 116..172).
+    view.dragMedia([{ media, range }], 416, 140, NO_MODS);
+    expect(idle.pause).toHaveBeenCalledWith("gesture");
+    const proposal = view.mediaDrop?.proposal;
+    expect(proposal?.ghosts.map((g) => [g.clip.kind, g.start, g.clip.duration, g.target.number, g.target.track?.id ?? null])).toEqual([
+      ["video", 60, 30, 1, "v2"],
+      ["audio", 60, 30, 1, null],
+    ]);
+    expect(proposal?.newLanes).toEqual([{ kind: "audio", lane: 1, name: "A2" }]);
+    expect(scheduler.flush()).toEqual(["timelineOverlay"]);
+    const scene = vi.mocked(drawOverlay).mock.lastCall?.[0];
+    expect(scene?.move?.proposal).toBe(proposal);
+    expect(scene?.tooltip?.text).toBe("00:02:00 · 00:01:00");
+    // Mod (held during the drag) inserts.
+    view.dragMedia([{ media, range }], 416, 140, { ...NO_MODS, mod: true });
+    expect(view.mediaDrop?.proposal?.insertFrame).toBe(60);
+    expect(view.endMediaDrag()).toEqual({ items: [{ mediaId: "m", range }], start: 60, lanes: { video: 1, audio: 1 }, mode: "insert" });
+    expect(view.mediaDrop).toBeNull();
+    expect(idle.resume).toHaveBeenCalledWith("gesture");
+    expect(document.getState()).toBe(before);
+    // Leaving the timeline drops the ghosts: nothing to drop then.
+    view.dragMedia([{ media, range }], 416, 140, NO_MODS);
+    view.leaveMediaDrag();
+    expect(view.endMediaDrag()).toBeNull();
+  });
+
+  it("takes files dropped from the OS: the drop frame follows the pointer, the controller gets the transfer and the request", () => {
+    const { view, overlay, onDropFiles } = setup(5);
+    const transfer = { types: ["Files"], dropEffect: "none" };
+    const drag = (type: string, x: number, y: number) => {
+      const event = new Event(type, { bubbles: true, cancelable: true });
+      Object.assign(event, { dataTransfer: transfer, offsetX: x, offsetY: y, shiftKey: false, altKey: false, ctrlKey: false, metaKey: false });
+      overlay.dispatchEvent(event);
+      return event;
+    };
+    expect(drag("dragenter", 300, 200).defaultPrevented).toBe(true);
+    drag("dragover", 316, 200);
+    expect(transfer.dropEffect).toBe("copy");
+    // Frame 35 (x 176 + 4 * 35): no snap target within 8 px.
+    expect([view.mediaDrop?.proposal?.ghosts.length, view.mediaDrop?.proposal?.insertFrame]).toEqual([0, 35]);
+    drag("dragleave", 316, 200);
+    expect(view.mediaDrop).toBeNull();
+    drag("dragover", 336, 200);
+    drag("drop", 336, 200);
+    expect(onDropFiles).toHaveBeenCalledWith(transfer, { items: [], start: 40, lanes: { video: 0, audio: 0 }, mode: "overwrite" });
+    expect(view.mediaDrop).toBeNull();
   });
 
   it("marquee: selects the clips it touches, drawn without touching the session until release", () => {

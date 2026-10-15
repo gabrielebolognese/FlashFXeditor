@@ -42,7 +42,7 @@ function fakePosters() {
 
 function fakeCanvas() {
   const drawImage = vi.fn();
-  const canvas = { width: 300, height: 150, dataset: {} as DOMStringMap, getContext: vi.fn(() => ({ drawImage })) };
+  const canvas = { width: 300, height: 150, dataset: {} as DOMStringMap, getContext: vi.fn(() => ({ drawImage, clearRect: vi.fn() })) };
   return { canvas: canvas as unknown as PosterTarget & { dataset: DOMStringMap }, drawImage };
 }
 
@@ -139,6 +139,28 @@ describe("PosterPainter", () => {
     expect(posters.observers(A)).toBe(0);
     frames.tick();
     expect(a.drawImage).not.toHaveBeenCalled();
+  });
+
+  it("shows hover-scrub frames until the scrub ends, then the latest poster (spec §12)", () => {
+    const { frames, painter, posters } = setup();
+    const a = fakeCanvas();
+    painter.attach(a.canvas, posters, A);
+    const sheet = bitmapOf(4 * 284, 640);
+    posters.emit(A, { bitmap: sheet, sx: 0, sy: 0, sw: 284, sh: 160 });
+    frames.tick();
+    painter.scrub(a.canvas, { bitmap: sheet, sx: 284, sy: 160, sw: 284, sh: 160 });
+    frames.tick();
+    expect(a.drawImage).toHaveBeenLastCalledWith(sheet, 284, 160, 284, 160, 0, 0, 284, 160);
+    // A poster arriving meanwhile waits for the end of the scrub.
+    const next = bitmapOf(4 * 284, 640);
+    posters.emit(A, { bitmap: next, sx: 0, sy: 0, sw: 284, sh: 160 });
+    frames.tick();
+    expect(a.drawImage).toHaveBeenCalledTimes(2);
+    painter.endScrub(a.canvas);
+    painter.endScrub(a.canvas);
+    frames.tick();
+    expect(a.drawImage).toHaveBeenCalledTimes(3);
+    expect(a.drawImage).toHaveBeenLastCalledWith(next, 0, 0, 284, 160, 0, 0, 284, 160);
   });
 
   it("dispose unregisters the view", () => {

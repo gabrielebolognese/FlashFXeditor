@@ -2,7 +2,8 @@
 // document's videos and owns, per video, its sheet layout and cache/thumbs/<id>/index.json. Work is
 // one job at a time, each started from an IdleQueue slice (none during playback or drags), in this
 // order:
-// 1. the sheets the timeline's last content pass wanted (`want`) and the media cards' first frames;
+// 1. the sheet a hover-scrubbed media card shows (`hover`, spec §12), the sheets the timeline's last
+//    content pass wanted (`want`) and the media cards' first frames;
 // 2. the eager levels (LOD0, then LOD1) of each video, after which its `analysis.thumbs` becomes
 //    "ready" with no undo step.
 // A job loads a sheet the index lists (decoded to an ImageBitmap in analysis.worker), or has the
@@ -128,6 +129,8 @@ export class ThumbnailStore {
   private bytes = 0;
   private visible: SheetKey[] = [];
   private visibleKeys = new Set<string>();
+  /** The sheet a hover-scrubbed media card shows, or null. */
+  private hovered: SheetKey | null = null;
   /** Videos whose eager levels are not all known to be written. */
   private readonly eager: MediaId[] = [];
   private readonly failed = new Set<string>();
@@ -182,6 +185,20 @@ export class ThumbnailStore {
       if (!resident) continue;
       this.sheets.delete(key);
       this.sheets.set(key, resident);
+    }
+    this.pump();
+  }
+
+  /**
+   * The sheet a hover-scrubbed media card shows (spec §12: scrubbing uses the sheets, no decoding), or
+   * null when the hover ends: kept in memory and loaded before anything else.
+   */
+  hover(key: SheetKey | null): void {
+    this.hovered = key ? { mediaId: key.mediaId, level: key.level, sheet: key.sheet } : null;
+    const resident = key ? this.sheets.get(keyString(key)) : undefined;
+    if (key && resident) {
+      this.sheets.delete(keyString(key));
+      this.sheets.set(keyString(key), resident);
     }
     this.pump();
   }
@@ -261,8 +278,9 @@ export class ThumbnailStore {
     for (const resolve of this.idleResolvers.splice(0)) resolve();
   }
 
-  /** A wanted sheet not in memory: the timeline's first, then the cards' first sheets. */
+  /** A wanted sheet not in memory: the hovered card's first, then the timeline's, then the cards' first sheets. */
   private nextWanted(): SheetKey | null {
+    if (this.hovered && this.needs(this.hovered)) return this.hovered;
     for (const key of this.visible) if (this.needs(key)) return key;
     for (const mediaId of this.cards.keys()) {
       const key: SheetKey = { mediaId, level: 0, sheet: 0 };
@@ -400,7 +418,8 @@ export class ThumbnailStore {
   }
 
   private wanted(key: SheetKey): boolean {
-    return this.visibleKeys.has(keyString(key)) || (key.level === 0 && key.sheet === 0 && this.cards.has(key.mediaId));
+    const k = keyString(key);
+    return this.visibleKeys.has(k) || (this.hovered !== null && keyString(this.hovered) === k) || (key.level === 0 && key.sheet === 0 && this.cards.has(key.mediaId));
   }
 
   /** A sheet arrived: into the LRU when it is shown, else closed (it is on disk). */

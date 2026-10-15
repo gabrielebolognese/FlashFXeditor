@@ -1,9 +1,10 @@
 // Media flows of the open project (spec §9.1, §12): import from the picker (button, Mod+I), drops and
 // pasted images; posters, thumbnail sheets and peaks per project (the media cards' pictures and the
-// timeline's clip visuals, `clipVisuals`); panel selection, inline rename and removal. Framework-free;
-// the media panel reads `mediaPanel` through narrow selectors.
+// timeline's clip visuals, `clipVisuals`; the hover-scrub's sheets, `scrubSheets`); panel selection,
+// inline rename, removal and the context menu; source ranges of removed media are dropped.
+// Framework-free; the media panel reads `mediaPanel` through narrow selectors.
 import { mediaUseCounts, removeMedia, renameMedia } from "../core/commands/mediaCommands.js";
-import type { MediaId } from "../core/document/types.js";
+import type { MediaId, MediaItem } from "../core/document/types.js";
 import { isEditableTarget } from "../core/keyboard/KeyDispatcher.js";
 import { createStore } from "../core/store/createStore.js";
 import { AnalysisScheduler } from "../media/AnalysisScheduler.js";
@@ -15,6 +16,7 @@ import { PosterStore } from "../media/PosterStore.js";
 import { svgPoster } from "../media/probe/svgProbe.js";
 import { ThumbnailStore, type ThumbFiles, type ThumbnailDeps } from "../media/ThumbnailStore.js";
 import { isAbortError } from "../media/workers/protocol.js";
+import type { ScrubSheets } from "../panels/media/hoverScrub.js";
 import { clickSelection, EMPTY_MEDIA_SELECTION, pruneSelection, type MediaSelection } from "../panels/media/mediaList.js";
 import { PosterPainter, wholeImage, type PosterSource } from "../panels/media/PosterPainter.js";
 import { errorMessage } from "../project/errorMessage.js";
@@ -23,7 +25,7 @@ import { resolveFile, sampleIndexPath, writeFileAt } from "../project/mediaFiles
 import type { ClipVisualsSource } from "../timeline/view/clipVisuals.js";
 import { dismissToast, showToast, updateToast } from "../ui/toasts.js";
 import { decodedAudio, peaksFiles } from "./audioController.js";
-import { actions, appSettings, documentStore, focusScopes, idleQueue, scheduler, workerPool } from "./services.js";
+import { actions, appSettings, documentStore, focusScopes, idleQueue, scheduler, sessionStore, workerPool } from "./services.js";
 
 export interface MediaPanelState {
   selection: MediaSelection;
@@ -34,6 +36,9 @@ export interface MediaPanelState {
 }
 
 export const mediaPanel = createStore<MediaPanelState>({ selection: EMPTY_MEDIA_SELECTION, renaming: null, removing: null });
+
+/** The media context menu (spec §12) open at a page point, or null. */
+export const mediaMenu = createStore<{ x: number; y: number } | null>(null);
 
 /**
  * The open project's card pictures: a video's first thumbnail (sheet LOD0), an image's poster. A store:
@@ -88,6 +93,17 @@ export const clipVisuals: ClipVisualsSource = {
     if (!open) return "";
     const s = open.thumbs.stats;
     return `thumbs ${s.cached} cached · ${s.decoded} decoded · ${s.resident} sheets ${(s.bytes / 1048576).toFixed(1)} MB · peaks ${open.peaks.loadedCount}`;
+  },
+};
+
+/** The hover-scrub's view of the thumbnail sheets (spec §12): the open project's, the hovered sheet loaded first. */
+export const scrubSheets: ScrubSheets = {
+  layout: (mediaId) => open?.thumbs.layout(mediaId) ?? null,
+  sheet: (mediaId, level, sheet) => open?.thumbs.sheet(mediaId, level, sheet) ?? null,
+  hover: (key) => open?.thumbs.hover(key),
+  subscribe: (listener) => {
+    arrivalListeners.add(listener);
+    return () => arrivalListeners.delete(listener);
   },
 };
 
@@ -150,6 +166,11 @@ export function attachMedia(dir: FsDir, isWritable: () => boolean, preview?: Thu
           const selection = pruneSelection(current.selection, exists);
           const renaming = current.renaming !== null && !exists(current.renaming) ? null : current.renaming;
           if (selection !== current.selection || renaming !== current.renaming) patch({ selection, renaming });
+          // Source ranges (session state) of media no longer in the project.
+          const ranges = sessionStore.state.getState().sourceRanges;
+          if (Object.keys(ranges).some((id) => !exists(id))) {
+            sessionStore.state.set((session) => ({ ...session, sourceRanges: Object.fromEntries(Object.entries(session.sourceRanges).filter(([id]) => exists(id))) }));
+          }
         },
         { affects: ["media"] },
       ),
@@ -175,6 +196,7 @@ export function detachMedia(): void {
   current.posters.dispose();
   current.analysis.dispose();
   mediaPanel.set({ selection: EMPTY_MEDIA_SELECTION, renaming: null, removing: null });
+  mediaMenu.set(null);
 }
 
 function refusalToast(refused: readonly Refusal[]): void {
@@ -188,8 +210,14 @@ function refusalToast(refused: readonly Refusal[]): void {
   );
 }
 
-/** Imports files into the open project, with refusal, progress and failure toasts. */
-export async function importMediaFiles(files: readonly File[]): Promise<void> {
+/** Placing imported items right away (files dropped on the timeline, spec §6.14): one undo step with the import. */
+export interface ImportPlacement {
+  place: (items: readonly MediaItem[]) => void;
+  label: string;
+}
+
+/** Imports files into the open project, with refusal, progress and failure toasts; `placement` adds their clips in the same undo step. */
+export async function importMediaFiles(files: readonly File[], placement?: ImportPlacement): Promise<void> {
   const current = open;
   if (!current || files.length === 0) return;
   if (!current.isWritable()) {
@@ -202,6 +230,7 @@ export async function importMediaFiles(files: readonly File[]): Promise<void> {
   try {
     const report = await current.importer.importFiles(files, {
       signal: current.controller.signal,
+      ...(placement && { place: placement.place, placeLabel: placement.label }),
       ...(totalBytes >= LARGE_IMPORT_BYTES && {
         onProgress: ({ index, count, name, copiedBytes, totalBytes: total }) => {
           const now = performance.now();
@@ -261,20 +290,25 @@ async function filesIn(handle: FileSystemHandle): Promise<File[]> {
   return files;
 }
 
-/** Files and folders dropped on the media panel. Reads the items synchronously, inside the event. */
-export function dropMedia(transfer: DataTransfer): void {
+/** The files and folders (their files, recursively) of a drop. Reads the items synchronously: call it inside the event. */
+export function filesFromTransfer(transfer: DataTransfer): Promise<File[]> {
   const items = [...transfer.items].filter((item) => item.kind === "file");
   const handles = items.map((item) => (item as unknown as HandleItem).getAsFileSystemHandle?.().catch(() => null) ?? Promise.resolve(null));
   const plain = items.map((item) => item.getAsFile());
-  void (async () => {
+  return (async () => {
     const files: File[] = [];
     for (const [i, pending] of handles.entries()) {
       const handle = await pending;
       if (handle) files.push(...(await filesIn(handle).catch(() => [])));
       else if (plain[i]) files.push(plain[i] as File);
     }
-    await importMediaFiles(files);
+    return files;
   })();
+}
+
+/** Files and folders dropped on the media panel. */
+export function dropMedia(transfer: DataTransfer): void {
+  void filesFromTransfer(transfer).then((files) => importMediaFiles(files));
 }
 
 export function selectMedia(id: MediaId, mods: { toggle: boolean; range: boolean }, order: readonly MediaId[]): void {
@@ -283,6 +317,25 @@ export function selectMedia(id: MediaId, mods: { toggle: boolean; range: boolean
 
 export function clearMediaSelection(): void {
   if (mediaPanel.getState().selection.ids.size > 0) patch({ selection: EMPTY_MEDIA_SELECTION });
+}
+
+/** The selected media in selection order (spec §6.14: multi-drops go back to back in that order). */
+export function selectedMedia(): MediaId[] {
+  const media = documentStore.getState().media;
+  return [...mediaPanel.getState().selection.ids].filter((id) => Object.hasOwn(media, id));
+}
+
+/** A right-click on a card (spec §12): it is selected (alone, unless already selected), then its menu opens. */
+export function openMediaMenu(id: MediaId, x: number, y: number): void {
+  if (!mediaPanel.getState().selection.ids.has(id)) patch({ selection: { ids: new Set([id]), anchor: id } });
+  mediaMenu.set({ x, y });
+}
+
+/** The menu closed: the keyboard goes back to the media panel (the menu owned it as a dialog). */
+export function closeMediaMenu(): void {
+  if (!mediaMenu.getState()) return;
+  mediaMenu.set(null);
+  focusScopes.set("media");
 }
 
 /** F2 / double-click: the given media, else the anchor of the selection. */

@@ -166,6 +166,22 @@ describe("ThumbnailStore", { timeout: 20_000 }, () => {
     expect(t.store.sheet("v", 1, 0)).toBeNull();
   });
 
+  it("loads a hover-scrubbed card's sheet first and keeps it in memory (spec §12)", async () => {
+    const t = setup();
+    t.documentStore.dispatch(addMedia([video("v")]));
+    t.store.hover({ mediaId: "v", level: 1, sheet: 1 });
+    await t.settle();
+    // LOD1 sheet 1 holds the thumbnails from 16 x 0.5 s on; it was made before the eager LOD0.
+    expect(t.made[0]?.times[0]).toBe(8_000_000);
+    expect(t.made).toHaveLength(3);
+    expect(t.store.sheet("v", 1, 1)).not.toBeNull();
+    // Eager sheets nobody shows are written and closed.
+    expect(t.store.sheet("v", 1, 0)).toBeNull();
+    t.store.hover(null);
+    t.store.want([]);
+    expect(t.store.sheet("v", 1, 1)).not.toBeNull();
+  });
+
   it("cancels the running sheet when the queue pauses and makes it again after", async () => {
     const t = setup();
     const release = t.holdSheets();

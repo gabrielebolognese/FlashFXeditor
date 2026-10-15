@@ -5,7 +5,8 @@
 // - insert (Mod on drop): every unlocked track opens a gap as long as the moved block at its start
 //   (clips crossing that frame are split), then the clips land in it. Locked tracks never move.
 // Moving clips off or onto a locked track is refused. Collision lookups are binary searches on the
-// per-track sorted arrays (O(log n + k) per clip).
+// per-track sorted arrays (O(log n + k) per clip). `dropClips` lands new clips (media drops, §6.14)
+// with the same rules.
 import type { Draft } from "immer";
 import { defaultTrackIndex } from "../../core/commands/basicCommands.js";
 import type { Affect, Command } from "../../core/commands/command.js";
@@ -325,18 +326,18 @@ class Edit {
     return lists;
   }
 
-  command(label: string, newTracks: readonly Track[], coalesceKey: string | undefined): Command {
+  command(id: string, label: string, newTracks: readonly Track[], coalesceKey: string | undefined): Command {
     const lists = this.trackLists();
     const changes = [...this.changes];
     const affects: Affect[] = newTracks.length > 0 ? ["clips", "timeline", "tracks"] : ["clips", "timeline"];
     return {
-      id: "clip.move",
+      id,
       label,
       affects,
       ...(coalesceKey !== undefined && { coalesceKey }),
       run(draft) {
         for (const track of newTracks) {
-          if (draft.tracks.some((t) => t.id === track.id)) throw new Error(`clip.move: track ${track.id} already exists`);
+          if (draft.tracks.some((t) => t.id === track.id)) throw new Error(`${id}: track ${track.id} already exists`);
           draft.tracks.splice(defaultTrackIndex(draft.tracks, track.kind), 0, structuredClone(track));
         }
         for (const [id, clip] of changes) {
@@ -345,7 +346,7 @@ class Edit {
         }
         for (const [trackId, ids] of lists) {
           const track = draft.tracks.find((t) => t.id === trackId);
-          if (!track) throw new Error(`clip.move: track ${trackId} does not exist`);
+          if (!track) throw new Error(`${id}: track ${trackId} does not exist`);
           track.clipIds = [...ids];
         }
       },
@@ -457,7 +458,7 @@ export function moveClips(project: Project, ids: Iterable<ClipId>, deltaFrames: 
   for (const clip of placed) edit.put(clip);
   edit.relinkPieces(newId);
   const label = options.label ?? moveLabel(moving.length, mode, duplicate);
-  return { kind: "ok", command: edit.command(label, options.newTracks ?? [], options.coalesceKey), placed: placedIds };
+  return { kind: "ok", command: edit.command("clip.move", label, options.newTracks ?? [], options.coalesceKey), placed: placedIds };
 }
 
 /** A finished clip drag as the edit: the lane delta becomes a track map (new tracks included), then `moveClips`. */
@@ -470,6 +471,38 @@ export function applyMoveRequest(project: Project, request: MoveRequest, newId: 
   const delta = clampLaneDelta(project.tracks, sources, request.laneDelta);
   const { trackMap, newTracks } = mapLanes(project.tracks, sources, delta, newId);
   return moveClips(project, request.clipIds, request.deltaFrames, trackMap, request.mode, { duplicate: request.duplicate, newTracks, newId });
+}
+
+export interface DropOptions {
+  /** Tracks to create first (the targets of clips not in the document yet), each at the default place for its kind. */
+  newTracks?: readonly Track[];
+  newId: () => string;
+  /** Undo label. */
+  label: string;
+  /** Command id (default `clip.add`). */
+  id?: string;
+}
+
+/**
+ * New clips (not in the document: media dropped or placed at the playhead, spec §6.14) landing with
+ * the drop rules of a move (§6.8): `overwrite` trims, removes or splits what they cover; `insert`
+ * opens a gap as long as their block at its start on every unlocked track (clips crossing it are
+ * split). A clip onto a locked track refuses the drop. One command; `placed` maps each id to itself.
+ */
+export function dropClips(project: Project, clips: readonly Clip[], mode: MoveMode, options: DropOptions): MoveResult {
+  if (clips.length === 0) return NOOP;
+  const tracks = new Map(project.tracks.map((track) => [track.id, track]));
+  for (const clip of clips) {
+    if (project.clips[clip.id]) throw new Error(`dropClips: clip ${clip.id} already exists`);
+    if (tracks.get(clip.trackId)?.locked) return { kind: "refused", refusal: { reason: "lockedTarget", trackId: clip.trackId } };
+  }
+  const edit = new Edit(project);
+  const stationary = () => true;
+  if (mode === "overwrite") overwrite(edit, clips, stationary, project.settings.fps, options.newId);
+  else insert(edit, clips, stationary, project.settings.fps, options.newId);
+  for (const clip of clips) edit.put(clip);
+  edit.relinkPieces(options.newId);
+  return { kind: "ok", command: edit.command(options.id ?? "clip.add", options.label, options.newTracks ?? [], undefined), placed: new Map(clips.map((clip) => [clip.id, clip.id])) };
 }
 
 /** `Alt+Left/Right`, `Alt+Shift+Left/Right` (spec §6.8): the clips move by `frames` on their tracks and overwrite what they land on. */

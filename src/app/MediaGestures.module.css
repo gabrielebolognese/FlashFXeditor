@@ -1,0 +1,26 @@
+/* The media drag chip (spec §6.14: "a small DOM element" while the drag is off the timeline; the DS
+   has no drag visuals, gap logged in Batch 20): the timeline drag tooltip's chip, floating (overlay
+   shadow), following the pointer. */
+.chip {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: var(--z-overlay);
+  max-width: calc(var(--control-default) * 7);
+  padding: var(--space-1) var(--space-2);
+  overflow: hidden;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+  background: var(--surface-4);
+  box-shadow: var(--shadow-overlay);
+  color: var(--text-primary);
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-track);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.chip[hidden] {
+  display: none;
+}
