@@ -26,8 +26,8 @@ When you create a project, the editor fills the folder you picked with these ite
 
 | Item | What it holds |
 | --- | --- |
-| `project.json` | The project itself: settings, tracks, clips and the list of media. |
-| `session.json` | Where you left off: playhead, zoom, panel sizes and similar view settings. If it is missing or damaged, the project still opens, with default view settings. |
+| `project.json` | The project itself: settings, tracks, clips, markers and the list of media. |
+| `session.json` | Where you left off: playhead, in and out points, zoom, panel sizes and similar view settings. If it is missing or damaged, the project still opens, with default view settings. |
 | `media` | Copies of the files you import. See [Importing media](importing-media.md). |
 | `cache` | Thumbnails, sound analysis and indexes the editor builds from your media. If you delete this folder while the project is closed, the editor builds what it needs again the next time (this takes a little longer). |
 | `history` | Automatic backups of `project.json`: the newest 20. See [Restore an older version](#restore-an-older-version). |
@@ -95,10 +95,12 @@ What you can undo:
 | Undoable (one step each) | Not undoable |
 | --- | --- |
 | Renaming the project | Moving the playhead and playing |
-| Changing the resolution, frame rate or background color | Selecting clips, tracks, a cut (edit point) or a gap |
+| Changing the resolution, frame rate or background color | Selecting clips, tracks, a cut (edit point), a gap or a marker |
 | Importing media, renaming media, removing media | Zooming, scrolling and panning the timeline (also with the scrollbars), zooming the preview |
 | Inserting a clip on the timeline | Panel sizes, panel tabs, the media view and sort order |
 | Moving, inserting, duplicating and nudging clips (a quick series of nudges is one step) | **Loop playback**, **Snap**, **Linked selection**, **Ripple mode**, the timecode format and the **Autosave** setting |
+| Adding, moving, renaming, recoloring and deleting markers | Setting, moving and clearing the in and out points |
+| **Lift** and **Extract** (one step each) | |
 | Trimming clips: each trim drag and each press of <kbd>Q</kbd>, <kbd>W</kbd> or <kbd>E</kbd> | Choosing a tool (**Select**, **Razor**, **Hand**, **Slip**, **Slide**, **Rate stretch**) |
 | Rolling a cut, slipping, sliding and rate stretching clips (one step per drag) | |
 | Splitting clips (each <kbd>Ctrl</kbd>+<kbd>K</kbd> and each **Razor** click), deleting and ripple deleting clips | |
@@ -113,6 +115,7 @@ What you can undo:
 When you open a project again, the editor restores your view from the last session:
 
 - the playhead position
+- the in and out points
 - the timeline zoom and scroll position, also after you pan or use the scrollbars
 - the timecode format: frames (**ff**) or milliseconds (**ms**)
 - the preview zoom
@@ -125,7 +128,7 @@ When you open a project again, the editor restores your view from the last sessi
 - the selected clips or tracks
 - the panel sizes
 
-The undo history, a selected cut (edit point) and a selected gap are not restored. Because the view is saved every 10 seconds, the last few seconds of view changes can be missing after a browser crash; your project changes are saved separately by autosave.
+The undo history, a selected cut (edit point), a selected gap and a selected marker are not restored. Markers are part of the project itself, so they are always there. Because the view is saved every 10 seconds, the last few seconds of view changes can be missing after a browser crash; your project changes are saved separately by autosave.
 
 ## Restore unsaved changes after a crash
 
@@ -210,9 +213,10 @@ Each change to **Name**, **Resolution**, **Size**, **Frame rate** or **Backgroun
 - [Timeline](timeline.md)
 - [Trimming clips](trimming.md)
 - [Splitting, deleting and closing gaps](splitting-and-deleting.md)
+- [Markers and in/out points](markers-and-in-out-points.md)
 - [Advanced trimming](advanced-trimming.md)
 - [Tracks](tracks.md)
 - [Linking and grouping clips](links-and-groups.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 18, 2026-10-15</sub>
+<sub>Last updated: Batch 19, 2026-10-15</sub>

@@ -1,6 +1,6 @@
 # Timeline
 
-The timeline is where your short takes shape: clips sit on tracks in time order, and the playhead marks the frame the preview shows. In this version you add clips by double-clicking media, select clips and arrange them by dragging (also onto other tracks), snap them to the edges of other clips and to the playhead, duplicate them, zoom, scroll and pan with the scrollbars, the **Hand** tool or the mouse, move the playhead with the mouse, the keyboard or a typed timecode, read times in frames or milliseconds, and rename clips or give them a label color. To shorten or lengthen clips, see [Trimming clips](trimming.md); to split and delete clips and close gaps, see [Splitting, deleting and closing gaps](splitting-and-deleting.md); to roll cuts, slip, slide or change a clip's speed, see [Advanced trimming](advanced-trimming.md). To add, lock, target or rearrange tracks, see [Tracks](tracks.md); to link, sync and group clips, see [Linking and grouping clips](links-and-groups.md). To read the thumbnails, waveforms and badges inside clips, see [Clip thumbnails, waveforms and badges](clip-thumbnails-and-waveforms.md).
+The timeline is where your short takes shape: clips sit on tracks in time order, and the playhead marks the frame the preview shows. In this version you add clips by double-clicking media, select clips and arrange them by dragging (also onto other tracks), snap them to the edges of other clips and to the playhead, duplicate them, zoom, scroll and pan with the scrollbars, the **Hand** tool or the mouse, move the playhead with the mouse, the keyboard or a typed timecode, read times in frames or milliseconds, and rename clips or give them a label color. To shorten or lengthen clips, see [Trimming clips](trimming.md); to split and delete clips and close gaps, see [Splitting, deleting and closing gaps](splitting-and-deleting.md); to roll cuts, slip, slide or change a clip's speed, see [Advanced trimming](advanced-trimming.md). To add, lock, target or rearrange tracks, see [Tracks](tracks.md); to link, sync and group clips, see [Linking and grouping clips](links-and-groups.md). To mark moments with markers, mark a range with in and out points, loop it or lift and extract it, see [Markers and in/out points](markers-and-in-out-points.md). To read the thumbnails, waveforms and badges inside clips, see [Clip thumbnails, waveforms and badges](clip-thumbnails-and-waveforms.md).
 
 > **Video placeholder: Timeline tour**
 > - File: `videos/timeline/timeline-overview.mp4` (not recorded yet)
@@ -36,6 +36,8 @@ The timeline is where your short takes shape: clips sit on tracks in time order,
 |---|---|---|
 | **Toolbar** | Top of the panel | The tools, the **Snap** and **Ripple mode** toggles, the edit buttons, zoom controls, and at the right end the playhead timecode and the total duration. |
 | **Ruler** | Above the tracks | Shows time. Click or drag in it to move the playhead. |
+| **Markers** | Colored triangles at the bottom of the ruler | Mark moments in your edit. See [Markers and in/out points](markers-and-in-out-points.md). |
+| **In/out range** | Shading over the ruler and tracks, with a bracket at each end in the ruler | The range between the in and out points, when you set them. See [Set in and out points](markers-and-in-out-points.md#set-in-and-out-points). |
 | **Track headers** | Left column | Each track's icon and name (V1, V2 for video; A1, A2 for audio) and its toggles (target, lock, mute, solo or hide, height), plus the **+ Video track** and **+ Audio track** rows. See [Tracks](tracks.md). |
 | **Tracks** | Main area | Video tracks above the divider, audio tracks below it. Each row holds that track's clips. |
 | **Playhead** | Red vertical line | Marks the current frame. Its head sits in the ruler. |
@@ -49,6 +51,8 @@ A project created from the start screen begins with one video track (V1) and one
 The ruler labels show time as `mm:ss:ff` (minutes, seconds, frames), with hours added in front when needed. For example, `00:06:15` is 6 seconds and 15 frames. When you show times in milliseconds, the labels read `mm:ss.mmm` instead, such as `00:06.500`, and the labels between two seconds show only the milliseconds, such as `.500`. See [Show times in milliseconds](#show-times-in-milliseconds).
 
 The spacing of the ticks follows the zoom. Zoomed out, labels can be minutes apart; zoomed in, they reach every second. Zoom in further and frame numbers appear between the second labels; zoom in all the way and every frame gets its full timecode. Labels never overlap.
+
+The ruler also holds your markers (small colored triangles along its bottom edge) and, when you set in and out points, a bracket at each end of the range. Pressing on a marker selects or moves it, and pressing on a bracket in the upper part of the ruler moves that point, instead of moving the playhead. Right-click the ruler for the ruler menu. See [Markers and in/out points](markers-and-in-out-points.md).
 
 ### Clips
 
@@ -69,10 +73,10 @@ In this version these parts of the toolbar work:
 
 - the **Select**, **Razor**, **Hand**, **Slip**, **Slide** and **Rate stretch** tools (see [Choose a tool](advanced-trimming.md#choose-a-tool), [Cut clips with the Razor tool](splitting-and-deleting.md#cut-clips-with-the-razor-tool) and [Pan the view](#pan-the-view));
 - the **Snap** toggle (see [Turn snapping on or off](#turn-snapping-on-or-off)), the **Linked selection** toggle (see [Turn Linked selection off](links-and-groups.md#turn-linked-selection-off)) and the **Ripple mode** toggle (see [Turn Ripple mode on or off](trimming.md#turn-ripple-mode-on-or-off));
-- the edit buttons **Split at playhead**, **Delete**, **Ripple delete**, **Close gap** and **Close all gaps (compact)** (see [Splitting, deleting and closing gaps](splitting-and-deleting.md));
+- the edit buttons **Split at playhead**, **Delete**, **Ripple delete**, **Close gap** and **Close all gaps (compact)** (see [Splitting, deleting and closing gaps](splitting-and-deleting.md)) and **Add marker** (see [Add markers](markers-and-in-out-points.md#add-markers));
 - the whole zoom group: **Zoom out**, the zoom slider, **Zoom in**, **Zoom to fit**, **Zoom to selection** (see [Zoom in and out](#zoom-in-and-out)), **Center playhead** (see [Scroll the timeline](#scroll-the-timeline)) and **Track height** (see [Change track height](tracks.md#change-track-height)), then the timecode field and the duration.
 
-The other buttons (the **Show clip keyframes** and **Audio scrub** toggles, edit actions such as **Add marker**, and add actions such as **Title**) are shown but disabled; they are available in a later version.
+The other buttons (the **Show clip keyframes** and **Audio scrub** toggles, the **Freeze frame** and **Punch zoom** edit buttons, and add actions such as **Title**) are shown but disabled; they are available in a later version.
 
 > **Note:** When the timeline panel is too narrow for the whole toolbar, the zoom group (with **Zoom to selection** and **Center playhead**) is the first to move into the **More tools** (…) menu, followed by the toggles with **Snap**, **Linked selection** and **Ripple mode**. Click **More tools** to reach them.
 
@@ -235,11 +239,11 @@ Panning moves the view with the pointer, as if you were dragging the timeline it
 
 ### With the mouse
 
-- Click anywhere in the ruler to move the playhead there.
+- Click anywhere in the ruler to move the playhead there. A click on a marker selects the marker, and a press on an in or out bracket in the upper part of the ruler grabs that point; click beside them to move the playhead.
 - Drag along the ruler to scrub: the playhead and the preview follow the pointer. The playhead line gets wider while you drag.
 - To scrub past the part of the timeline you can see, hold the pointer near the left or right edge of the tracks, or past it: the timeline scrolls. The further out you go, the faster it scrolls.
 - If the editor is playing, dragging in the ruler pauses it.
-- Hold <kbd>Shift</kbd> while you click or drag in the ruler to snap the playhead to the nearest clip start or end. See [Snap the playhead in the ruler](#snap-the-playhead-in-the-ruler).
+- Hold <kbd>Shift</kbd> while you click or drag in the ruler to snap the playhead to the nearest clip start or end, marker, or in or out point. See [Snap the playhead in the ruler](#snap-the-playhead-in-the-ruler).
 - If you scroll or zoom with the mouse wheel while you drag in the ruler, the playhead stays under the pointer.
 
 You can't drag the playhead line inside the tracks: that keeps you from moving it by accident while you work on clips. Use the ruler.
@@ -255,11 +259,13 @@ Click the timeline first so it has the keyboard. (While the preview has the keyb
 | Step 1 second | <kbd>Ctrl</kbd>+<kbd>Left</kbd> or <kbd>Ctrl</kbd>+<kbd>Right</kbd> |
 | Go to the start | <kbd>Home</kbd> |
 | Go to the end of the last clip | <kbd>End</kbd> |
-| Jump to the previous or next edit point: a clip start or end on any track | <kbd>Up</kbd> or <kbd>Down</kbd> |
+| Jump to the previous or next edit point: a clip start or end on any track, a marker, the in point or the out point | <kbd>Up</kbd> or <kbd>Down</kbd> |
+| Jump to the previous or next marker | <kbd>Shift</kbd>+<kbd>Up</kbd> or <kbd>Shift</kbd>+<kbd>Down</kbd> (also <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>M</kbd> and <kbd>Shift</kbd>+<kbd>M</kbd>) |
+| Go to the in point, or to the last frame of the range | <kbd>Shift</kbd>+<kbd>I</kbd> or <kbd>Shift</kbd>+<kbd>O</kbd> |
 
 - Hold a step key to keep stepping.
 - The step keys pause playback first.
-- <kbd>Up</kbd> and <kbd>Down</kbd> visit every clip start and end on all tracks in time order, also where only one track has a cut. When there is no edit point further in that direction, the playhead stays where it is.
+- <kbd>Up</kbd> and <kbd>Down</kbd> visit every clip start and end on all tracks in time order, also where only one track has a cut, and stop at markers and at the in and out points too. At the out point they stop on the frame just after the range. Clips on locked tracks are skipped. When there is no stop further in that direction, the playhead stays where it is.
 - When a key moves the playhead out of view, the timeline pages to show it.
 
 For playback keys such as <kbd>Space</kbd> and <kbd>J</kbd>/<kbd>K</kbd>/<kbd>L</kbd>, see [Preview and playback](preview-and-playback.md). All shortcuts are listed in [Keyboard shortcuts](keyboard-shortcuts.md).
@@ -449,7 +455,7 @@ Clips snap to the edges of other clips and to the playhead while you drag. See [
 
 ## Snap clips into place
 
-While you drag clips, they snap: when the start or the end of the moved clips comes within 8 pixels of the edge of another clip, the playhead or the start of the timeline, the clips jump onto it. This lines clips up end to end, with no gap and no overlap, at any zoom. Snapping is on in a new project.
+While you drag clips, they snap: when the start or the end of the moved clips comes within 8 pixels of the edge of another clip, the playhead, a marker, an in or out point or the start of the timeline, the clips jump onto it. This lines clips up end to end, with no gap and no overlap, at any zoom. Snapping is on in a new project.
 
 > **Video placeholder: Snap clips and the playhead**
 > - File: `videos/timeline/snapping.mp4` (not recorded yet)
@@ -466,15 +472,17 @@ What clips snap to:
 |---|---|
 | The start or end of any other clip, on any track | **Start of** *clip name* or **End of** *clip name* |
 | The playhead | **Playhead** |
+| A marker | **Marker:** and the marker's name, or **Marker** when it has none |
+| The in point, or the out point (the end of the range's last frame) | **In point** or **Out point** |
 | The start of the timeline (`00:00:00`) | **Timeline start** |
 
-Markers and in and out points become snap targets as well when they are available in a later version.
+Markers and the in and out points snap the same way when you drag them: see [Move a marker](markers-and-in-out-points.md#move-a-marker) and [Adjust the range in the ruler](markers-and-in-out-points.md#adjust-the-range-in-the-ruler).
 
 How snapping decides:
 
 - **Distance on screen.** The reach is 8 pixels at every zoom. Zoomed out, 8 pixels span more frames, so clips snap from further away in time; zoomed in, they snap only close to the edge.
 - **Both ends.** The start of the moved clips (of the earliest one) and their end (of the latest one) can both snap. Whichever is closer to a target lands on it.
-- **Closest target first.** When several targets are within reach, the closest one wins. When two are equally close, the playhead wins over a clip edge, and a clip edge over the start of the timeline.
+- **Closest target first.** When several targets are within reach, the closest one wins. When two are equally close, the playhead wins over a clip edge, a clip edge over a marker, a marker over an in or out point, and those over the start of the timeline.
 - **The moved clips are not targets,** and neither are the linked clips that move with them. When you duplicate with <kbd>Alt</kbd>, the originals stay in place and are targets, so a copy snaps to the end of its original.
 - **It holds.** Small pointer movements keep the clips on the edge. They let go once the edge is more than 8 pixels away.
 - Snapping changes the time only. Moving clips to another track works as without snapping, and clips still can't move before `00:00:00`.
@@ -500,10 +508,10 @@ Hold <kbd>S</kbd> while you drag to do the opposite of the setting: with snappin
 
 ### Snap the playhead in the ruler
 
-The playhead moves freely when you click or drag in the ruler. Hold <kbd>Shift</kbd> to snap it to the start or end of a clip, or to the start of the timeline.
+The playhead moves freely when you click or drag in the ruler. Hold <kbd>Shift</kbd> to snap it to the start or end of a clip, a marker, an in or out point, or the start of the timeline.
 
 1. Click or drag in the ruler, or drag the playhead's head, near a clip edge.
-2. Hold <kbd>Shift</kbd>. Within 8 pixels of an edge, the playhead jumps onto it. A gold line shows in the ruler, and the name of the edge, such as **Start of Beach**, appears next to the pointer.
+2. Hold <kbd>Shift</kbd>. Within 8 pixels of an edge or a marker, the playhead jumps onto it. A gold line shows in the ruler, and the name of the edge, such as **Start of Beach**, appears next to the pointer.
 3. Release <kbd>Shift</kbd> to move freely again, or release the mouse button to leave the playhead on the edge.
 
 - <kbd>Shift</kbd> snaps only while snapping is on. With snapping off, hold <kbd>Shift</kbd> and <kbd>S</kbd> together.
@@ -637,6 +645,7 @@ Label colors help you see at a glance which clips belong together, for example a
 - Each change is one step in the history, named **Label clip** or **Label clips**. Labels are saved with the project, and both parts of a split clip keep the label.
 
 ## Related pages
+- [Markers and in/out points](markers-and-in-out-points.md)
 - [Clip thumbnails, waveforms and badges](clip-thumbnails-and-waveforms.md)
 - [Tracks](tracks.md)
 - [Linking and grouping clips](links-and-groups.md)
@@ -652,4 +661,4 @@ Label colors help you see at a glance which clips belong together, for example a
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 18, 2026-10-15</sub>
+<sub>Last updated: Batch 19, 2026-10-15</sub>
