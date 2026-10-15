@@ -101,6 +101,7 @@ What to expect while you scrub:
 - When the playhead crosses a cut, the preview keeps the previous picture until the new clip's frame is ready. It never flashes black.
 - The editor prepares the first and last frames of the clips just before and after the playhead (up to 2 seconds away), so a cut usually shows the new clip at once.
 - Dragging in the ruler while the video plays pauses playback.
+- Hold <kbd>Shift</kbd> while you drag to snap the playhead to the nearest clip start or end, so it lands exactly on a cut. See [Snap the playhead in the ruler](timeline.md#snap-the-playhead-in-the-ruler).
 
 You can also move the playhead with the keyboard (see [Step through frames](#step-through-frames)) or type a time in the timecode field of the timeline toolbar (see [Timeline](timeline.md)).
 
@@ -267,4 +268,4 @@ If playback stutters, see [Troubleshooting](troubleshooting.md).
 - [Workspace](workspace.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 11, 2026-10-15</sub>
+<sub>Last updated: Batch 12, 2026-10-15</sub>

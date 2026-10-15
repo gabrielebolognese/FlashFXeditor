@@ -14,8 +14,9 @@ This page lists every keyboard shortcut that works in the current version of Sho
 >   6. Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd>: the **Loop playback** button turns on.
 >   7. Click a clip in the timeline and press <kbd>Alt</kbd>+<kbd>Right</kbd> three times: the clip moves 3 frames. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> once: it is back.
 >   8. Press <kbd>Ctrl</kbd>+<kbd>A</kbd> to select all clips, then <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd>.
->   9. Click a card in the Media panel, press <kbd>F2</kbd>, type a new name and press <kbd>Enter</kbd>.
->   10. Hover over **Play** to show the tooltip with its shortcut.
+>   9. Press <kbd>S</kbd>: the **Snap** magnet in the timeline toolbar turns off. Drag a clip and hold <kbd>S</kbd>: it snaps to the next clip edge. Release the mouse button, then press <kbd>S</kbd> to turn snapping back on.
+>   10. Click a card in the Media panel, press <kbd>F2</kbd>, type a new name and press <kbd>Enter</kbd>.
+>   11. Hover over **Play** to show the tooltip with its shortcut.
 
 ## In this page
 - [How shortcuts work](#how-shortcuts-work)
@@ -103,6 +104,19 @@ These shortcuts work only while the Timeline panel is active. See [Timeline](tim
 | Clear the selection | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd> | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>A</kbd> | Timeline, Preview |
 | Cancel a clip drag or a selection rectangle | <kbd>Escape</kbd> (before you release the mouse button) | <kbd>Esc</kbd> | All panels |
 
+### Snapping
+
+| Action | Windows | macOS | Works in |
+| --- | --- | --- | --- |
+| Turn snapping on or off (same as **Snap** in the timeline toolbar) | <kbd>S</kbd> | <kbd>S</kbd> | All panels |
+| Do the opposite of the snapping setting while you hold the key | Hold <kbd>S</kbd> during a clip drag or a drag in the ruler | Hold <kbd>S</kbd> during a clip drag or a drag in the ruler | Timeline |
+| Snap the playhead to clip edges | Hold <kbd>Shift</kbd> while you click or drag in the ruler | Hold <kbd>⇧</kbd> while you click or drag in the ruler | Timeline |
+
+- Press <kbd>S</kbd> after the drag has started to switch snapping for that drag only. Holding it does not change the setting or the **Snap** magnet.
+- During a drag, <kbd>S</kbd> never starts a shortcut, also together with <kbd>Shift</kbd>, <kbd>Ctrl</kbd> or <kbd>Alt</kbd>: <kbd>Ctrl</kbd>+<kbd>S</kbd> does not save until you release the mouse button. On a Mac, <kbd>⌥</kbd>+<kbd>S</kbd> during a duplicate drag switches snapping too.
+
+See [Snap clips into place](timeline.md#snap-clips-into-place).
+
 ## Audio
 
 The **Master volume** knob in the transport bar under the preview takes these keys while it has the keyboard focus. Clicking or dragging the knob does not focus it: press <kbd>Tab</kbd> until it is focused. While it has the focus, these keys change the listening volume instead of doing their usual action. See [Audio](audio.md#set-the-listening-volume).
@@ -171,8 +185,10 @@ These work over the timeline. See [Timeline](timeline.md).
 | Insert the clips, shifting later clips right | <kbd>Ctrl</kbd>+drag | <kbd>⌘</kbd>+drag |
 | Duplicate the clips | <kbd>Alt</kbd>+drag | <kbd>⌥</kbd>+drag |
 | Duplicate and insert | <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+drag | <kbd>⌘</kbd>+<kbd>⌥</kbd>+drag |
+| Switch snapping for this drag | Hold <kbd>S</kbd> while you drag | Hold <kbd>S</kbd> while you drag |
+| Snap the playhead to clip edges | <kbd>Shift</kbd>+click or <kbd>Shift</kbd>+drag in the ruler | <kbd>⇧</kbd>+click or <kbd>⇧</kbd>+drag in the ruler |
 
-While you drag clips, you can press and release <kbd>Shift</kbd>, <kbd>Ctrl</kbd> and <kbd>Alt</kbd>: the keys held when you release the mouse button decide the drop. See [Move clips](timeline.md#move-clips).
+While you drag clips, you can press and release <kbd>Shift</kbd>, <kbd>Ctrl</kbd>, <kbd>Alt</kbd> and <kbd>S</kbd>: the keys held when you release the mouse button decide the drop. See [Move clips](timeline.md#move-clips).
 
 Double-click a media item in the Media panel to insert it at the playhead. See [Importing media](importing-media.md).
 
@@ -208,4 +224,4 @@ Some buttons already show a shortcut in their tooltip although the button is dis
 - [Projects and saving](projects-and-saving.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 11, 2026-10-15</sub>
+<sub>Last updated: Batch 12, 2026-10-15</sub>

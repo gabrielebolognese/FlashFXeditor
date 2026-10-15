@@ -124,7 +124,7 @@ The toolbar is one row of button groups, from left to right:
 | Group | Buttons | What works now |
 | --- | --- | --- |
 | Tools | **Select**, **Razor**, **Hand**, **Slip**, **Slide**, **Rate stretch** | Available in a later version. |
-| Toggles | **Snap**, **Linked selection**, **Ripple mode**, **Show clip keyframes**, **Audio scrub** | Available in a later version. |
+| Toggles | **Snap**, **Linked selection**, **Ripple mode**, **Show clip keyframes**, **Audio scrub** | **Snap** works: it is gold while snapping is on. See [Snap clips into place](timeline.md#snap-clips-into-place). The others are available in a later version. |
 | Edit | **Split at playhead**, **Delete**, **Ripple delete**, **Close gap**, **Close all gaps (compact)**, **Add marker**, **Freeze frame**, **Punch zoom** | Available in a later version. |
 | Add | **Title**, **Subtitle**, **Add caption track**, **Add solid**, **Add image** | Available in a later version. |
 | Zoom | **Zoom out**, the zoom slider, **Zoom in**, **Zoom to fit**, **Zoom to selection**, **Track height** | **Zoom out**, the slider, **Zoom in** and **Zoom to fit** work. See [Timeline](timeline.md). |
@@ -195,4 +195,4 @@ To jump to a time, type it into the timecode field of the timeline toolbar. See 
 - [Audio](audio.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 11, 2026-10-15</sub>
+<sub>Last updated: Batch 12, 2026-10-15</sub>

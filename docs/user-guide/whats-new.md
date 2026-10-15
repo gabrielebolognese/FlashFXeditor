@@ -2,6 +2,11 @@
 
 Shorts Editor grows in steps called batches. This page lists what each batch added that you can see or use, newest first. Follow the links for the full instructions.
 
+> **Video placeholder: What's new in Batch 12**
+> - File: `videos/whats-new/batch-12.mp4` (not recorded yet)
+> - Length: about 40 seconds
+> - Shows: a timeline with two clips on V1 with a gap between them; drag the second clip toward the first: it jumps onto the end of the first clip, a thin gold line runs through the timeline and the tooltip names **End of** and the clip's name in gold; release: no gap; press <kbd>S</kbd>: the **Snap** magnet turns off; drag again and hold <kbd>S</kbd> near the edge: it snaps, release <kbd>S</kbd>: it moves freely; press <kbd>S</kbd> to turn snapping back on; drag in the ruler and hold <kbd>Shift</kbd> near a clip edge: the playhead jumps onto it.
+
 > **Video placeholder: What's new in Batch 11**
 > - File: `videos/whats-new/batch-11.mp4` (not recorded yet)
 > - Length: about 50 seconds
@@ -18,6 +23,7 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 > - Shows: open a project with three clips on the timeline; press <kbd>Space</kbd> to play and let the timeline page forward; press <kbd>L</kbd> three times to reach 8x, then <kbd>K</kbd>; hold <kbd>K</kbd> and tap <kbd>L</kbd> to step one frame; turn on **Loop playback**; point at the **Dropped** readout in the status strip.
 
 ## In this page
+- [Batch 12: Snapping](#batch-12-snapping)
 - [Batch 11: Select and move clips](#batch-11-select-and-move-clips)
 - [Batch 10: Sound](#batch-10-sound)
 - [Batch 09: Playback](#batch-09-playback)
@@ -29,6 +35,15 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 - [Batch 03: Projects, autosave and recovery](#batch-03-projects-autosave-and-recovery)
 - [Batch 02: Undo, redo and frame-exact time](#batch-02-undo-redo-and-frame-exact-time)
 - [Batch 01: The workspace](#batch-01-the-workspace)
+
+## Batch 12: Snapping
+- Dragged clips snap to the start and end of other clips, to the playhead and to the start of the timeline when they come within 8 pixels, at every zoom. A thin gold line marks the edge, and the drag tooltip names it in gold, for example **End of Intro**. Lining clips up end to end no longer needs a steady hand.
+- Turn snapping on or off with the **Snap** magnet in the timeline toolbar or with <kbd>S</kbd>. Each project remembers the setting; new projects start with snapping on.
+- Hold <kbd>S</kbd> during a drag to do the opposite of the setting for that drag only.
+- Hold <kbd>Shift</kbd> while you click or drag in the ruler to snap the playhead to clip edges.
+- Scrolling or zooming with the mouse wheel while you drag in the ruler keeps the playhead under the pointer.
+
+See [Snap clips into place](timeline.md#snap-clips-into-place) and [Keyboard shortcuts](keyboard-shortcuts.md#snapping).
 
 ## Batch 11: Select and move clips
 - Select clips with a click (a video and its linked sound together), <kbd>Shift</kbd>+click, <kbd>Ctrl</kbd>+click (that clip alone) and <kbd>Alt</kbd>+click (only that clip), or drag a rectangle on empty track space to select every clip it touches. <kbd>Ctrl</kbd>+<kbd>A</kbd> selects all clips and <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd> clears the selection.
@@ -116,4 +131,4 @@ See [The workspace](workspace.md) and [Getting started](getting-started.md).
 - [User guide home](README.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 11, 2026-10-15</sub>
+<sub>Last updated: Batch 12, 2026-10-15</sub>
