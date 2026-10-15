@@ -2,12 +2,18 @@
 
 Shorts Editor grows in steps called batches. This page lists what each batch added that you can see or use, newest first. Follow the links for the full instructions.
 
+> **Video placeholder: What's new in Batch 10**
+> - File: `videos/whats-new/batch-10.mp4` (not recorded yet)
+> - Length: about 45 seconds
+> - Shows: open a project with a video with sound on V1 and A1 and a music clip on A2; press <kbd>Space</kbd>: sound and picture play together and the meter at the right edge of the preview moves; drag the **Master volume** knob down, then click **Mute** and **Unmute**; click **S** in the A2 header to hear only the music, then click it off; click **M** in the A1 header and press <kbd>Ctrl</kbd>+<kbd>Z</kbd>; press <kbd>Home</kbd> while playing: the sound picks up at the start without a click.
+
 > **Video placeholder: What's new in Batch 09**
 > - File: `videos/whats-new/batch-09.mp4` (not recorded yet)
 > - Length: about 45 seconds
 > - Shows: open a project with three clips on the timeline; press <kbd>Space</kbd> to play and let the timeline page forward; press <kbd>L</kbd> three times to reach 8x, then <kbd>K</kbd>; hold <kbd>K</kbd> and tap <kbd>L</kbd> to step one frame; turn on **Loop playback**; point at the **Dropped** readout in the status strip.
 
 ## In this page
+- [Batch 10: Sound](#batch-10-sound)
 - [Batch 09: Playback](#batch-09-playback)
 - [Batch 08: Preview at the playhead](#batch-08-preview-at-the-playhead)
 - [Batch 07: Timeline](#batch-07-timeline)
@@ -17,6 +23,16 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 - [Batch 03: Projects, autosave and recovery](#batch-03-projects-autosave-and-recovery)
 - [Batch 02: Undo, redo and frame-exact time](#batch-02-undo-redo-and-frame-exact-time)
 - [Batch 01: The workspace](#batch-01-the-workspace)
+
+## Batch 10: Sound
+- Playback now plays the sound of your audio tracks, in sync with the picture (less than one frame apart, with no drift), also for phone videos. Sound plays at 1x forward, in play around and across loops; jumps and pauses are free of clicks.
+- **Mute** and a **Master volume** knob (-60.0 dB to 0.0 dB) in the transport bar set how loud you listen. They are remembered in this browser and do not change your project.
+- A stereo audio meter along the right edge of the preview shows the peak level of your edit, from -60 to +6 dBFS, with a peak hold and clip lights that stay red until you click them.
+- **M** (mute) and **S** (solo) toggles in each audio track header. Each click is one undo step and is heard at once, also while playing.
+- After import, the sound of each audio file and video with sound is analyzed in the background and kept in the project's `cache` folder, ready for the waveforms of a later version. Long MP4, MOV and M4A sound loads in pieces as you play.
+- Playback now starts a few hundredths of a second later than before after you press play, so that sound and picture start together.
+
+See [Audio](audio.md), [Preview and playback](preview-and-playback.md) and [Timeline](timeline.md).
 
 ## Batch 09: Playback
 - Play and pause with <kbd>Space</kbd>, shuttle with <kbd>J</kbd>, <kbd>K</kbd> and <kbd>L</kbd> up to 8x, hold <kbd>K</kbd> and tap <kbd>J</kbd> or <kbd>L</kbd> to step one frame, play around the playhead with <kbd>Shift</kbd>+<kbd>K</kbd>, step with the arrow keys (hold to repeat), jump with <kbd>Home</kbd> and <kbd>End</kbd>, and loop with <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd>.
@@ -85,4 +101,4 @@ See [The workspace](workspace.md) and [Getting started](getting-started.md).
 - [User guide home](README.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 09, 2026-10-15</sub>
+<sub>Last updated: Batch 10, 2026-10-15</sub>

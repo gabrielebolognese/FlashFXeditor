@@ -5,7 +5,7 @@ When a project is open, the editor shows one fixed layout: a slim app bar at the
 > **Video placeholder: Tour of the workspace**
 > - File: `videos/workspace/workspace-tour.mp4` (not recorded yet)
 > - Length: about 90 seconds
-> - Shows: with a project open at 1920×1080, point at the app bar from left to right (project name, save dot, **Undo**, **Redo**, the badge **1080×1920 · 30 fps**, **Export**, **Settings**); click the **Media**, **Presets** and **Captions** tabs, then back to **Media**; point at the **Edit Properties** panel showing the **Project** section; point at the **Preview** panel and the transport bar under the picture; point at the timeline toolbar groups from left to right and at the timecode field at the right end; hover **Split at playhead** until its tooltip shows "Ctrl+K"; drag the splitter left of the Preview to the right until the **More tools** button (…) appears; click it to show the hidden groups; press <kbd>Escape</kbd>.
+> - Shows: with a project open at 1920×1080, point at the app bar from left to right (project name, save dot, **Undo**, **Redo**, the badge **1080×1920 · 30 fps**, **Export**, **Settings**); click the **Media**, **Presets** and **Captions** tabs, then back to **Media**; point at the **Edit Properties** panel showing the **Project** section; point at the **Preview** panel, the transport bar under the picture and the audio meter along its right edge; point at the timeline toolbar groups from left to right and at the timecode field at the right end; hover **Split at playhead** until its tooltip shows "Ctrl+K"; drag the splitter left of the Preview to the right until the **More tools** button (…) appears; click it to show the hidden groups; press <kbd>Escape</kbd>.
 
 ## In this page
 - [The layout at a glance](#the-layout-at-a-glance)
@@ -79,7 +79,8 @@ To get back to the **Project** section, click an empty area of the timeline trac
 The right column. It shows the frame at the playhead.
 
 - The header has the **Zoom** menu and the **Export frame** button.
-- Under the picture, a bar shows the playhead timecode, the duration and the frame rate, the transport buttons (**Go to start**, **Previous frame**, **Play** / **Pause**, **Next frame**, **Go to end**), **Loop playback** and **Fit**. A status line underneath shows the preview quality and the dropped frames of the last playback.
+- Under the picture, a bar shows the playhead timecode, the duration and the frame rate, the transport buttons (**Go to start**, **Previous frame**, **Play** / **Pause**, **Next frame**, **Go to end**), **Mute**, the **Master volume** knob, **Loop playback** and **Fit**. A status line underneath shows the preview quality and the dropped frames of the last playback.
+- Along the right edge of the panel, a narrow strip holds the audio meter. See [Audio](audio.md).
 
 See [Preview and playback](preview-and-playback.md).
 
@@ -189,6 +190,7 @@ To jump to a time, type it into the timecode field of the timeline toolbar. See 
 - [Importing media](importing-media.md)
 - [Timeline](timeline.md)
 - [Preview and playback](preview-and-playback.md)
+- [Audio](audio.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 09, 2026-10-15</sub>
+<sub>Last updated: Batch 10, 2026-10-15</sub>

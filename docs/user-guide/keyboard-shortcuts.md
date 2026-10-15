@@ -19,6 +19,7 @@ This page lists every keyboard shortcut that works in the current version of Sho
 - [How shortcuts work](#how-shortcuts-work)
 - [Playback and navigation](#playback-and-navigation)
 - [Timeline](#timeline)
+- [Audio](#audio)
 - [Media panel](#media-panel)
 - [Project and history](#project-and-history)
 - [Text fields and dialogs](#text-fields-and-dialogs)
@@ -36,7 +37,7 @@ This page lists every keyboard shortcut that works in the current version of Sho
 
 **Typing comes first.** Shortcuts are off while you type in a text field (a name, the timecode field, a number), while a dropdown such as **Zoom** has focus, and while a dialog is open. Press <kbd>Enter</kbd> or <kbd>Escape</kbd> to leave a text field, or click the preview picture or the timeline to leave a dropdown.
 
-**Icon buttons keep your shortcuts.** Clicking an icon button, such as the transport buttons, **Loop playback** or **Fit**, does not take the keyboard focus, so <kbd>Space</kbd> still plays right after the click.
+**Icon buttons keep your shortcuts.** Clicking an icon button, such as the transport buttons, **Mute**, **Loop playback** or **Fit**, or dragging the **Master volume** knob, does not take the keyboard focus, so <kbd>Space</kbd> still plays right after.
 
 **Tooltips show shortcuts.** Hover over a button to see its name and shortcut. Tooltips write the arrow keys as Left, Right, Up and Down.
 
@@ -86,6 +87,20 @@ These shortcuts work only while the Timeline panel is active. See [Timeline](tim
 - Jumps scroll the timeline by a page when the playhead lands out of view.
 
 > **Note:** Adding markers is available in a later version, so the marker jumps have nothing to jump to yet.
+
+## Audio
+
+The **Master volume** knob in the transport bar under the preview takes these keys while it has the keyboard focus. Clicking or dragging the knob does not focus it: press <kbd>Tab</kbd> until it is focused. While it has the focus, these keys change the listening volume instead of doing their usual action. See [Audio](audio.md#set-the-listening-volume).
+
+| Action | Windows | macOS | Works in |
+| --- | --- | --- | --- |
+| 1 dB louder | <kbd>↑</kbd> or <kbd>→</kbd> | <kbd>↑</kbd> or <kbd>→</kbd> | **Master volume** knob, focused |
+| 1 dB quieter | <kbd>↓</kbd> or <kbd>←</kbd> | <kbd>↓</kbd> or <kbd>←</kbd> | **Master volume** knob, focused |
+| 10 dB louder or quieter | <kbd>Page Up</kbd> or <kbd>Page Down</kbd> | <kbd>Fn</kbd>+<kbd>↑</kbd> or <kbd>Fn</kbd>+<kbd>↓</kbd> | **Master volume** knob, focused |
+| Quietest (-60.0 dB) | <kbd>Home</kbd> | <kbd>Fn</kbd>+<kbd>←</kbd> | **Master volume** knob, focused |
+| Loudest (0.0 dB) | <kbd>End</kbd> | <kbd>Fn</kbd>+<kbd>→</kbd> | **Master volume** knob, focused |
+
+**Mute** and the **M** and **S** toggles of audio tracks have no keyboard shortcut: click them. Double-clicking the knob resets it to 0.0 dB.
 
 ## Media panel
 
@@ -161,8 +176,9 @@ Some buttons already show a shortcut in their tooltip although the button is dis
 ## Related pages
 - [Preview and playback](preview-and-playback.md)
 - [Timeline](timeline.md)
+- [Audio](audio.md)
 - [Importing media](importing-media.md)
 - [Projects and saving](projects-and-saving.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 09, 2026-10-15</sub>
+<sub>Last updated: Batch 10, 2026-10-15</sub>
