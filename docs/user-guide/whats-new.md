@@ -2,6 +2,11 @@
 
 Shorts Editor grows in steps called batches. This page lists what each batch added that you can see or use, newest first. Follow the links for the full instructions.
 
+> **Video placeholder: What's new in Batch 14**
+> - File: `videos/whats-new/batch-14.mp4` (not recorded yet)
+> - Length: about 60 seconds
+> - Shows: a timeline with three videos with sound end to end on V1 and A1; hold <kbd>Ctrl</kbd>+<kbd>Alt</kbd> over the first cut and drag it: the preview splits into the last frame before the cut and the first frame after it; release; press <kbd>Y</kbd> and drag the middle clip: it stays in place while its content moves; press <kbd>U</kbd> and drag it: its neighbors get longer and shorter; press <kbd>R</kbd> and drag the end of the last clip to twice its length: it shows a `0.5x` badge; press <kbd>V</kbd>; click right on a cut: red brackets mark it; click the timeline and press <kbd>Down</kbd> a few times to jump from cut to cut; press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>.</kbd> to center the view on the playhead.
+
 > **Video placeholder: What's new in Batch 13**
 > - File: `videos/whats-new/batch-13.mp4` (not recorded yet)
 > - Length: about 45 seconds
@@ -28,6 +33,7 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 > - Shows: open a project with three clips on the timeline; press <kbd>Space</kbd> to play and let the timeline page forward; press <kbd>L</kbd> three times to reach 8x, then <kbd>K</kbd>; hold <kbd>K</kbd> and tap <kbd>L</kbd> to step one frame; turn on **Loop playback**; point at the **Dropped** readout in the status strip.
 
 ## In this page
+- [Batch 14: Roll, slip, slide and rate stretch](#batch-14-roll-slip-slide-and-rate-stretch)
 - [Batch 13: Trimming](#batch-13-trimming)
 - [Batch 12: Snapping](#batch-12-snapping)
 - [Batch 11: Select and move clips](#batch-11-select-and-move-clips)
@@ -41,6 +47,17 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 - [Batch 03: Projects, autosave and recovery](#batch-03-projects-autosave-and-recovery)
 - [Batch 02: Undo, redo and frame-exact time](#batch-02-undo-redo-and-frame-exact-time)
 - [Batch 01: The workspace](#batch-01-the-workspace)
+
+## Batch 14: Roll, slip, slide and rate stretch
+- The tools in the timeline toolbar work: **Select** (<kbd>V</kbd>), **Slip** (<kbd>Y</kbd>), **Slide** (<kbd>U</kbd>) and **Rate stretch** (<kbd>R</kbd>). The active tool is gold, and each project remembers it.
+- Hold <kbd>Ctrl</kbd>+<kbd>Alt</kbd> over the cut between two touching clips and drag to roll the cut: one clip gets longer as the other gets shorter, and nothing else moves. The roll stops when either clip runs out of media, and that side of the cut turns red.
+- **Slip** changes which part of its media a clip shows without moving it. **Slide** moves a clip while its neighbors get longer and shorter.
+- While you roll, slip or slide, the preview shows two frames side by side, such as the last frame before a cut and the first frame after it.
+- **Rate stretch** changes a clip's speed by dragging its start or end, from 0.25x to 4x. The clip keeps the same part of its media, shows a speed badge such as `0.5x`, and its sound plays at the new speed with the pitch changed.
+- Click right on a cut to select it as an edit point: red brackets mark it; <kbd>Ctrl</kbd>+click selects one side, in gold.
+- <kbd>Up</kbd> and <kbd>Down</kbd> jump through every clip start and end on all tracks. <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>.</kbd> centers the timeline on the playhead.
+
+See [Advanced trimming](advanced-trimming.md), [Timeline](timeline.md#move-the-playhead) and [Keyboard shortcuts](keyboard-shortcuts.md#tools).
 
 ## Batch 13: Trimming
 - Drag the start or the end of a clip to trim it. The cursor turns into a `[` or `]` bracket over the outer 8 pixels of each end. While you drag, the clip changes live, the tooltip shows how far the edge moved and the clip's new length, and the preview shows the new first or last frame. Releasing makes the trim one undo step.
@@ -146,4 +163,4 @@ See [The workspace](workspace.md) and [Getting started](getting-started.md).
 - [User guide home](README.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 13, 2026-10-15</sub>
+<sub>Last updated: Batch 14, 2026-10-15</sub>

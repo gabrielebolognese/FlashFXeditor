@@ -123,7 +123,7 @@ The toolbar is one row of button groups, from left to right:
 
 | Group | Buttons | What works now |
 | --- | --- | --- |
-| Tools | **Select**, **Razor**, **Hand**, **Slip**, **Slide**, **Rate stretch** | Available in a later version. |
+| Tools | **Select**, **Razor**, **Hand**, **Slip**, **Slide**, **Rate stretch** | **Select** (<kbd>V</kbd>), **Slip** (<kbd>Y</kbd>), **Slide** (<kbd>U</kbd>) and **Rate stretch** (<kbd>R</kbd>) work: the active tool is gold. See [Choose a tool](advanced-trimming.md#choose-a-tool). **Razor** and **Hand** are available in a later version. |
 | Toggles | **Snap**, **Linked selection**, **Ripple mode**, **Show clip keyframes**, **Audio scrub** | **Snap** and **Ripple mode** work: each is gold while it is on. See [Snap clips into place](timeline.md#snap-clips-into-place) and [Turn Ripple mode on or off](trimming.md#turn-ripple-mode-on-or-off). The others are available in a later version. |
 | Edit | **Split at playhead**, **Delete**, **Ripple delete**, **Close gap**, **Close all gaps (compact)**, **Add marker**, **Freeze frame**, **Punch zoom** | Available in a later version. |
 | Add | **Title**, **Subtitle**, **Add caption track**, **Add solid**, **Add image** | Available in a later version. |
@@ -194,8 +194,9 @@ To jump to a time, type it into the timecode field of the timeline toolbar. See 
 - [Importing media](importing-media.md)
 - [Timeline](timeline.md)
 - [Trimming clips](trimming.md)
+- [Advanced trimming](advanced-trimming.md)
 - [Preview and playback](preview-and-playback.md)
 - [Audio](audio.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 13, 2026-10-15</sub>
+<sub>Last updated: Batch 14, 2026-10-15</sub>
