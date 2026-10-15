@@ -58,7 +58,7 @@ A video that your browser cannot decode (for example HEVC on a computer without 
 
 ## See how clips fit the frame
 
-When you insert a video or an image, the editor scales it to fit inside the project frame and centers it. The whole picture stays visible; nothing is cropped.
+When you add a video or an image to the timeline, the editor scales it to fit inside the project frame and centers it. The whole picture stays visible; nothing is cropped. To put a picture somewhere else in the frame, for example a logo in a corner, drag its card from the Media panel onto the preview: it is scaled the same way and centered where you release. See [Drop media on the preview](adding-media-to-the-timeline.md#drop-media-on-the-preview).
 
 | Media | In a 1080×1920 project |
 | --- | --- |
@@ -69,7 +69,7 @@ When you insert a video or an image, the editor scales it to fit inside the proj
 
 The bands show the project background color.
 
-> **Note:** The fit is set when you insert the clip. If you change the project resolution later, existing clips keep their size and stay centered. One-click Fill (no bands) is available in a later version.
+> **Note:** The fit is set when you add the clip. If you change the project resolution later, existing clips keep their size and position. One-click Fill (no bands) is available in a later version.
 
 ## Zoom the preview
 
@@ -296,8 +296,9 @@ If playback stutters, see [Troubleshooting](troubleshooting.md).
 - [Trimming clips](trimming.md)
 - [Advanced trimming](advanced-trimming.md)
 - [Importing media](importing-media.md)
+- [Adding media to the timeline](adding-media-to-the-timeline.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Workspace](workspace.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 19, 2026-10-15</sub>
+<sub>Last updated: Batch 20, 2026-10-15</sub>

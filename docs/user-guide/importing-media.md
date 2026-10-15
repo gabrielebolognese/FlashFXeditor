@@ -1,6 +1,6 @@
 # Importing media
 
-Import brings your video, audio and image files into the project so you can use them on the timeline. Shorts Editor copies each file into the project folder, reads its details (duration, size, frame rate, rotation) and shows it in the Media panel. There you can browse, sort, rename and remove your media.
+Import brings your video, audio and image files into the project so you can use them on the timeline. Shorts Editor copies each file into the project folder, reads its details (duration, size, frame rate, rotation) and shows it in the Media panel. There you can browse, skim, sort, rename and remove your media.
 
 > **Video placeholder: Import and organize media**
 > - File: `videos/importing-media/import-overview.mp4` (not recorded yet)
@@ -18,6 +18,7 @@ Import brings your video, audio and image files into the project so you can use 
 - [Select media](#select-media)
 - [Rename media](#rename-media)
 - [Remove media](#remove-media)
+- [Use the media menu](#use-the-media-menu)
 - [Fix import problems](#fix-import-problems)
 
 ## Import files
@@ -32,7 +33,7 @@ Import brings your video, audio and image files into the project so you can use 
 
 The imported items appear in the Media panel and are selected. A single import is one step in the history: <kbd>Ctrl</kbd>+<kbd>Z</kbd> removes all the items it added.
 
-> **Tip:** To add an imported item to the timeline, double-click its thumbnail. See [Add clips from the Media panel](timeline.md#add-clips-from-the-media-panel).
+> **Tip:** To add an imported item to the timeline, double-click its thumbnail or drag it onto a track. See [Adding media to the timeline](adding-media-to-the-timeline.md).
 
 > **Video placeholder: Drop a folder and paste an image**
 > - File: `videos/importing-media/drop-folder-and-paste.mp4` (not recorded yet)
@@ -47,7 +48,7 @@ The imported items appear in the Media panel and are selected. A single import i
 
 Folders are imported with everything inside them, subfolders included. Files of an unsupported type are skipped, and a message names them. The supported files from the same drop are still imported.
 
-> **Note:** Dropping files onto the timeline is available in a later version. Drop them on the Media panel.
+> **Tip:** Drop files on a track of the timeline instead to import them and place their clips in one step. See [Drop files from File Explorer onto the timeline](adding-media-to-the-timeline.md#drop-files-from-file-explorer-onto-the-timeline).
 
 ## Paste images
 
@@ -100,8 +101,8 @@ The **Media** tab has two views. Switch between them with the **Grid view** and 
 
 > **Video placeholder: Sort, rename and remove media**
 > - File: `videos/importing-media/organize-media.mp4` (not recorded yet)
-> - Length: about 45 seconds
-> - Shows: a Media panel with six items in grid view; choose **Duration** in the **Sort media by** list, then click the **Ascending** button so it becomes **Descending**; switch to **List view** and click the **Resolution** column twice; Shift+click to select three rows; double-click a name, type a new name and press <kbd>Enter</kbd>; select an item, press <kbd>Delete</kbd>, and click **Remove from project** in the **Remove media** dialog; press <kbd>Ctrl</kbd>+<kbd>Z</kbd> and the item comes back.
+> - Length: about 55 seconds
+> - Shows: a Media panel with six items in grid view; choose **Duration** in the **Sort media by** list, then click the **Ascending** button so it becomes **Descending**; switch to **List view** and click the **Resolution** column twice; Shift+click to select three rows; double-click a name, type a new name and press <kbd>Enter</kbd>; select an item, press <kbd>Delete</kbd>, and click **Remove from project** in the **Remove media** dialog; press <kbd>Ctrl</kbd>+<kbd>Z</kbd> and the item comes back; switch back to **Grid view**, point at a card to show its **Unused** chip, right-click it to show the media menu with **Insert at playhead**, **Overwrite at playhead**, **Add to canvas**, **Rename** and **Remove**, and press <kbd>Esc</kbd>.
 
 ### Grid view
 
@@ -118,6 +119,13 @@ Grid view is the default. Each card shows:
 | Audio | Audio format | AAC, MP3 |
 | Image | Image format and size | PNG · 640×480 |
 
+When you point at a card:
+
+- A chip in the top-left corner of the thumbnail reads **Unused**, or **Used 2×** with the number of clips on the timeline that use the item. A video with its sound counts as two clips.
+- Moving the pointer across the thumbnail of a video or audio item skims through it: a thin red line marks the position and the badge shows its time. See [Skim media in the Media panel](adding-media-to-the-timeline.md#skim-media-in-the-media-panel).
+
+The thumbnail of an item that no clip uses is dimmed. A gold bar along the bottom of a thumbnail marks the part of the item you marked with <kbd>I</kbd> and <kbd>O</kbd>. See [Use only part of a media item](adding-media-to-the-timeline.md#use-only-part-of-a-media-item).
+
 ### List view
 
 List view shows one row per item, with these columns:
@@ -133,6 +141,8 @@ List view shows one row per item, with these columns:
 | **Audio** | Audio format, or empty when there is no sound |
 | **Proxy** | Always **None** (proxies are available in a later version) |
 | **Used** | How many clips on the timeline use the item |
+
+The small thumbnail of a row skims too when you move the pointer across it.
 
 The tab, the view and the sort order you choose are saved with the project.
 
@@ -166,7 +176,7 @@ Names can be up to 255 characters. A blank name is ignored and the old name stay
 
 Renaming changes only the name shown in the editor. The file in the `media` folder keeps its name, and clips already on the timeline keep the name they had.
 
-> **Tip:** Double-clicking the name renames the item. Double-clicking anywhere else on the card or row adds the item to the timeline.
+> **Tip:** Double-clicking the name renames the item. Double-clicking anywhere else on the card or row inserts the item at the playhead. See [Insert at the playhead](adding-media-to-the-timeline.md#insert-at-the-playhead).
 
 ## Remove media
 
@@ -180,7 +190,19 @@ The items leave the project, but their files stay in the project's `media` folde
 
 > **Important:** You can't remove media that clips on the timeline use yet. The dialog then shows how many clips use it, and **Remove from project** is disabled. Removing used media, and the **Remove and delete clips** option, are available in a later version.
 
-The Media panel has no right-click menu yet.
+## Use the media menu
+
+Right-click a card or a row to open the media menu. The item you right-click is selected first, unless it is already part of the selection, and the rows act on every selected item.
+
+| Row | What it does |
+|---|---|
+| **Insert at playhead** (<kbd>,</kbd>) | Inserts the items at the playhead and pushes the later clips right. See [Insert at the playhead](adding-media-to-the-timeline.md#insert-at-the-playhead). |
+| **Overwrite at playhead** (<kbd>.</kbd>) | Puts the items at the playhead over what is there. See [Overwrite at the playhead](adding-media-to-the-timeline.md#overwrite-at-the-playhead). |
+| **Add to canvas** | Puts the items at the playhead on the top video track (or a new one), in the middle of the frame. See [Drop media on the preview](adding-media-to-the-timeline.md#drop-media-on-the-preview). |
+| **Rename** (<kbd>F2</kbd>) | Renames the item. See [Rename media](#rename-media). |
+| **Remove** (<kbd>Delete</kbd>) | Opens the **Remove media** dialog. See [Remove media](#remove-media). |
+
+Click a row to run it. Press <kbd>Esc</kbd> or click outside the menu to close it.
 
 ## Fix import problems
 
@@ -204,6 +226,7 @@ When a file is not imported, a message at the top of the window says why. It clo
 If a card keeps its kind icon instead of a thumbnail, Chrome could not decode that video, for example HEVC on a computer without a hardware HEVC decoder, and its clips on the timeline show no thumbnails either. The editor tries once per session. The item is still in the project.
 
 ## Related pages
+- [Adding media to the timeline](adding-media-to-the-timeline.md)
 - [Getting started](getting-started.md)
 - [Workspace](workspace.md)
 - [Projects and saving](projects-and-saving.md)
@@ -214,4 +237,4 @@ If a card keeps its kind icon instead of a thumbnail, Chrome could not decode th
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 17, 2026-10-15</sub>
+<sub>Last updated: Batch 20, 2026-10-15</sub>

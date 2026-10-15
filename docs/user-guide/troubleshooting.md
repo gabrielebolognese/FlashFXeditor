@@ -1,10 +1,10 @@
 # Troubleshooting
 
-This page helps you when something does not work as expected: the editor does not start in your browser, the preview stays empty, a folder or a file does not open, a clip drag, a trim, a split, a delete, a timeline tool, a typed timecode, a marker, an in/out range or **Lift** and **Extract** do something you did not expect, a clip shows no thumbnails, playback stutters, or you hear no sound. Each problem lists what you see, why it happens and what to do. The last section lists what the current version cannot do yet.
+This page helps you when something does not work as expected: the editor does not start in your browser, the preview stays empty, a folder or a file does not open, a clip drag, a trim, a split, a delete, a timeline tool, a typed timecode, a marker, an in/out range or **Lift** and **Extract** do something you did not expect, media from the Media panel lands somewhere you did not expect, a clip shows no thumbnails, playback stutters, or you hear no sound. Each problem lists what you see, why it happens and what to do. The last section lists what the current version cannot do yet.
 
 > **Video placeholder: Fix common problems**
 > - File: `videos/troubleshooting/overview.mp4` (not recorded yet)
-> - Length: about 140 seconds
+> - Length: about 160 seconds
 > - Shows:
 >   1. Open the editor in a browser without the required features: the screen "This browser cannot run Shorts Editor" lists what is missing.
 >   2. In Chrome, open `chrome://settings/system` and show **Use graphics acceleration when available** turned on.
@@ -25,6 +25,8 @@ This page helps you when something does not work as expected: the editor does no
 >   17. Click the timeline's timecode field, type `1:x5` and press <kbd>Enter</kbd>: the field gets a red border. Press <kbd>Esc</kbd>.
 >   18. Set an in point and an out point, turn on **Loop playback**, click in the ruler after the range and press <kbd>Space</kbd>: playback starts at the in point and repeats the range. Press <kbd>Space</kbd>, then <kbd>Alt</kbd>+<kbd>X</kbd>: the shading disappears.
 >   19. Click a marker in the ruler, click an empty part of a track and press <kbd>Delete</kbd>: the marker disappears, the clips stay. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>.
+>   20. Point at the picture of a video card in the Media panel and press <kbd>I</kbd>: a gold bar appears on the card, and the timeline's in point does not change. Press <kbd>Alt</kbd>+<kbd>X</kbd>: the bar disappears.
+>   21. Put the playhead in the middle of a clip and double-click a card: the clip splits and the later clips move right. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>, click the card and press <kbd>.</kbd>: the new clip covers what was there instead.
 
 ## In this page
 - [Browser and graphics](#browser-and-graphics)
@@ -83,6 +85,14 @@ This page helps you when something does not work as expected: the editor does no
 - [Importing](#importing)
   - [A file cannot be imported](#a-file-cannot-be-imported)
   - [A video imports but shows nothing](#a-video-imports-but-shows-nothing)
+- [Adding media to the timeline](#adding-media-to-the-timeline)
+  - [Double-clicking a card pushed other clips to the right](#double-clicking-a-card-pushed-other-clips-to-the-right)
+  - [I or O marks a media card instead of the timeline](#i-or-o-marks-a-media-card-instead-of-the-timeline)
+  - [A clip from the Media panel is shorter than its media](#a-clip-from-the-media-panel-is-shorter-than-its-media)
+  - [Dragged media landed on V2 and A2](#dragged-media-landed-on-v2-and-a2)
+  - [Media dropped on the preview went to a new track](#media-dropped-on-the-preview-went-to-a-new-track)
+  - [Dropped files were imported but not placed](#dropped-files-were-imported-but-not-placed)
+  - [Nothing is added when you drag or press , or .](#nothing-is-added-when-you-drag-or-press--or-)
 - [Playback and preview](#playback-and-preview)
   - [Playback stutters or drops frames](#playback-stutters-or-drops-frames)
   - [Playback repeats only part of the timeline](#playback-repeats-only-part-of-the-timeline)
@@ -384,7 +394,7 @@ When <kbd>Q</kbd>, <kbd>W</kbd> or <kbd>E</kbd> stops short, a message names the
 
 **Cause:** That track is locked. No clip can be moved onto it or off it.
 
-**Fix:** Unlock the track with the padlock in its header, or drop the clips on another track. See [Lock a track](tracks.md#lock-a-track).
+**Fix:** Unlock the track with the padlock in its header, or drop the clips on another track. See [Lock a track](tracks.md#lock-a-track). The same message appears when you drag media from the Media panel or files from File Explorer onto a locked track; see [Dropped files were imported but not placed](#dropped-files-were-imported-but-not-placed).
 
 ### A track can't be deleted
 
@@ -608,6 +618,68 @@ If a message "Import failed" appears instead, the whole import stopped; its deta
 2. Convert the video to MP4 with H.264 (on an iPhone, the **Most Compatible** camera format records H.264), then import the converted file.
 3. If the file was removed from the project's `media` folder, put it back with the same name.
 
+## Adding media to the timeline
+
+### Double-clicking a card pushed other clips to the right
+
+**Symptom:** You double-click a card, or press <kbd>,</kbd>, and the clips after the playhead move right. A clip under the playhead is split in two.
+
+**Cause:** A double-click and <kbd>,</kbd> insert: on every unlocked track, everything from the playhead on moves right to make room for the new clip, so nothing is covered. Earlier versions put the clip in the first free space after the playhead instead.
+
+**Fix:** Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>. To cover what is at the playhead instead, click the card and press <kbd>.</kbd> (overwrite). To add the clip after everything else, press <kbd>End</kbd> first. To put it in a free spot, drag the card there. See [Choose a way to add media](adding-media-to-the-timeline.md#choose-a-way-to-add-media).
+
+### I or O marks a media card instead of the timeline
+
+**Symptom:** You press <kbd>I</kbd> or <kbd>O</kbd>, the timeline's in and out points don't change, and a gold bar appears along the bottom of a card's picture in the Media panel.
+
+**Cause:** The pointer was over the picture of a video or audio card. There, <kbd>I</kbd>, <kbd>O</kbd> and <kbd>Alt</kbd>+<kbd>X</kbd> mark the part of that media item to use, whichever panel you clicked last.
+
+**Fix:** Move the pointer off the card and press the key again. To remove the gold bar, point at the card and press <kbd>Alt</kbd>+<kbd>X</kbd>. See [Use only part of a media item](adding-media-to-the-timeline.md#use-only-part-of-a-media-item).
+
+### A clip from the Media panel is shorter than its media
+
+**Symptom:** You add a video or audio item, and the clip covers only part of it.
+
+**Cause:** A part of the item is marked: its card shows a gold bar along the bottom of the picture. Every way of adding the item uses only that part.
+
+**Fix:** Point at the card and press <kbd>Alt</kbd>+<kbd>X</kbd> to clear the part, then add the item again. Or drag the clip's edges outward to get the rest back. See [Trimming clips](trimming.md).
+
+### Dragged media landed on V2 and A2
+
+**Symptom:** You drag a video with sound onto V2, and its sound lands on A2 (a new track when A2 didn't exist), not on A1.
+
+**Cause:** The picture and the sound go on the tracks with the same number as the track under the pointer: over V2 that is V2 and A2, over A3 it is V3 and A3.
+
+**Fix:** Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> and drop over V1 or A1. Or move only the sound: <kbd>Alt</kbd>+click the sound clip to select it alone, then drag it to A1. See [Drag media onto the timeline](adding-media-to-the-timeline.md#drag-media-onto-the-timeline).
+
+### Media dropped on the preview went to a new track
+
+**Symptom:** You drag a card onto the preview, and a new video track appears above the others with the clip in it.
+
+**Cause:** A drop on the preview never covers other clips. It uses the top video track only when that track is unlocked and empty at the playhead for the clip's whole length; otherwise it creates a new track. The same goes for **Add to canvas**.
+
+**Fix:** This is expected. To use an existing track instead, drag the clip there afterwards. See [Drop media on the preview](adding-media-to-the-timeline.md#drop-media-on-the-preview).
+
+### Dropped files were imported but not placed
+
+**Symptom:** You drag files from File Explorer onto the timeline. They appear in the Media panel, but no clips are added, and the message **Can't drop clips onto a locked track** names a track.
+
+**Cause:** The track under the pointer (or the track for the files' sound or picture) is locked. The import happens first, then the placement is refused.
+
+**Fix:** Unlock the track with the padlock in its header, then drag the new cards from the Media panel onto the timeline. If the message **This project is read-only** appears instead, nothing was imported: allow editing first. See [Work in read-only mode](projects-and-saving.md#work-in-read-only-mode).
+
+### Nothing is added when you drag or press , or .
+
+**Symptom:** You release a media drag, or press <kbd>,</kbd> or <kbd>.</kbd>, and no clip appears.
+
+**Cause:** One of these:
+- You released the drag outside the timeline and the preview, where the small label with the item's name follows the pointer. Releasing there adds nothing.
+- You pressed <kbd>Esc</kbd> during the drag, which cancels it.
+- The Media panel was not active and the pointer was not over a card's picture: <kbd>,</kbd> and <kbd>.</kbd> act on the selected media only while the Media panel is active.
+- No media item was selected.
+
+**Fix:** Drag again and release over a track or over the preview. Or click a card and press the key, or point at the card's picture and press it. See [Adding media to the timeline](adding-media-to-the-timeline.md).
+
 ## Playback and preview
 
 ### Playback stutters or drops frames
@@ -697,13 +769,12 @@ The current version cannot do these things yet. Each one is available in a later
 - **Sound:** no sound while you scrub, step frames, play backward or shuttle faster than 1x. Changing the volume of a clip, fades and audio effects are not available.
 - **Editing clips:** clips can't be cut, copied or pasted (the **Cut**, **Copy** and **Paste** rows of the clip menu are dimmed).
 - **Markers:** markers belong to the timeline; markers inside clips are not available. Markers and the in/out range don't show on the scrollbars.
-- **Menus:** only clips, gaps, track headers and the ruler have a right-click menu, with a first set of rows. Menu rows can't be chosen with the arrow keys.
+- **Menus:** only clips, gaps, track headers, the ruler and media cards have a right-click menu, with a first set of rows. Menu rows can't be chosen with the arrow keys.
 - **Speed and edit points:** a clip's speed changes only with **Rate stretch**; typing an exact speed is not available. A selected cut (edit point) only marks the cut; transitions are not available.
 - **Tracks:** track headers have room for names of about 9 characters; longer names are shortened. Groups are not marked on the timeline. In the **Track** section of **Edit Properties**, several selected tracks show the first track's settings, with no sign of mixed values.
 - **Preview:** no panning, no mouse-wheel zoom, and no <kbd>Ctrl</kbd>+<kbd>0</kbd>/<kbd>1</kbd>/<kbd>2</kbd>. The preview timecode is read-only; type times in the timeline toolbar. The quality is always **Auto: full**.
 - **Fit only:** inserted clips fit the frame with bands; one-click Fill is not available. Changing the project resolution does not refit existing clips.
 - **Animated GIF and WebP files** show as still images (their first frame), in the preview and in their clips' thumbnails.
-- **Media cards** show only the first frame of a video; pointing at a card does not play through its thumbnails.
 - **Media that cannot be decoded, or whose file is missing,** shows nothing in the preview, with no placeholder.
 - **Removing media** that a clip uses is not possible.
 - **Frame rate:** you cannot change it once the timeline has clips or markers.
@@ -723,7 +794,8 @@ The current version cannot do these things yet. Each one is available in a later
 - [Getting started](getting-started.md)
 - [Projects and saving](projects-and-saving.md)
 - [Importing media](importing-media.md)
+- [Adding media to the timeline](adding-media-to-the-timeline.md)
 - [Preview and playback](preview-and-playback.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 19, 2026-10-15</sub>
+<sub>Last updated: Batch 20, 2026-10-15</sub>

@@ -27,7 +27,7 @@ When you create a project, the editor fills the folder you picked with these ite
 | Item | What it holds |
 | --- | --- |
 | `project.json` | The project itself: settings, tracks, clips, markers and the list of media. |
-| `session.json` | Where you left off: playhead, in and out points, zoom, panel sizes and similar view settings. If it is missing or damaged, the project still opens, with default view settings. |
+| `session.json` | Where you left off: playhead, in and out points, the marked parts of media items, zoom, panel sizes and similar view settings. If it is missing or damaged, the project still opens, with default view settings. |
 | `media` | Copies of the files you import. See [Importing media](importing-media.md). |
 | `cache` | Thumbnails, sound analysis and indexes the editor builds from your media. If you delete this folder while the project is closed, the editor builds what it needs again the next time (this takes a little longer). |
 | `history` | Automatic backups of `project.json`: the newest 20. See [Restore an older version](#restore-an-older-version). |
@@ -97,9 +97,9 @@ What you can undo:
 | Renaming the project | Moving the playhead and playing |
 | Changing the resolution, frame rate or background color | Selecting clips, tracks, a cut (edit point), a gap or a marker |
 | Importing media, renaming media, removing media | Zooming, scrolling and panning the timeline (also with the scrollbars), zooming the preview |
-| Inserting a clip on the timeline | Panel sizes, panel tabs, the media view and sort order |
+| Adding media to the timeline: each insert, overwrite, drag, drop on the preview or **Add to canvas**; dropped files with their import are one step | Panel sizes, panel tabs, the media view and sort order, skimming media cards |
 | Moving, inserting, duplicating and nudging clips (a quick series of nudges is one step) | **Loop playback**, **Snap**, **Linked selection**, **Ripple mode**, the timecode format and the **Autosave** setting |
-| Adding, moving, renaming, recoloring and deleting markers | Setting, moving and clearing the in and out points |
+| Adding, moving, renaming, recoloring and deleting markers | Setting, moving and clearing the in and out points, and marking a part of a media item with <kbd>I</kbd> and <kbd>O</kbd> on its card |
 | **Lift** and **Extract** (one step each) | |
 | Trimming clips: each trim drag and each press of <kbd>Q</kbd>, <kbd>W</kbd> or <kbd>E</kbd> | Choosing a tool (**Select**, **Razor**, **Hand**, **Slip**, **Slide**, **Rate stretch**) |
 | Rolling a cut, slipping, sliding and rate stretching clips (one step per drag) | |
@@ -116,6 +116,7 @@ When you open a project again, the editor restores your view from the last sessi
 
 - the playhead position
 - the in and out points
+- the parts of media items you marked with <kbd>I</kbd> and <kbd>O</kbd> on their cards (see [Use only part of a media item](adding-media-to-the-timeline.md#use-only-part-of-a-media-item))
 - the timeline zoom and scroll position, also after you pan or use the scrollbars
 - the timecode format: frames (**ff**) or milliseconds (**ms**)
 - the preview zoom
@@ -210,6 +211,7 @@ Each change to **Name**, **Resolution**, **Size**, **Frame rate** or **Backgroun
 - [Getting started](getting-started.md)
 - [The workspace](workspace.md)
 - [Importing media](importing-media.md)
+- [Adding media to the timeline](adding-media-to-the-timeline.md)
 - [Timeline](timeline.md)
 - [Trimming clips](trimming.md)
 - [Splitting, deleting and closing gaps](splitting-and-deleting.md)
@@ -219,4 +221,4 @@ Each change to **Name**, **Resolution**, **Size**, **Frame rate** or **Backgroun
 - [Linking and grouping clips](links-and-groups.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 19, 2026-10-15</sub>
+<sub>Last updated: Batch 20, 2026-10-15</sub>

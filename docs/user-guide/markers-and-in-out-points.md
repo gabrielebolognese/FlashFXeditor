@@ -116,7 +116,7 @@ In and out points mark a range: the in point is its first frame, the out point i
 
 The range is shaded across the ruler and the tracks, with a bracket in the ruler at each end. The frame under the playhead when you press <kbd>O</kbd> is inside the range, so the out bracket stands just after it.
 
-- <kbd>I</kbd> and <kbd>O</kbd> work in every panel, also while the video plays.
+- <kbd>I</kbd> and <kbd>O</kbd> work in every panel, also while the video plays. While the pointer is over the picture of a video or audio card in the Media panel, they mark a part of that media item instead; see [Use only part of a media item](adding-media-to-the-timeline.md#use-only-part-of-a-media-item).
 - Press <kbd>I</kbd> or <kbd>O</kbd> again to move that point.
 - You can set just one of them. With only an in point, the range runs from it to the end of your content; with only an out point, from the start of the timeline to it.
 - If you set an in point after the out point, the out point is cleared, and the other way around.
@@ -258,6 +258,7 @@ While the timeline has markers, the project's frame rate is locked. See [Change 
 
 ## Related pages
 - [Timeline](timeline.md)
+- [Adding media to the timeline](adding-media-to-the-timeline.md)
 - [Preview and playback](preview-and-playback.md)
 - [Tracks](tracks.md)
 - [Splitting, deleting and closing gaps](splitting-and-deleting.md)
@@ -265,4 +266,4 @@ While the timeline has markers, the project's frame rate is locked. See [Change 
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 19, 2026-10-15</sub>
+<sub>Last updated: Batch 20, 2026-10-15</sub>

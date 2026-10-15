@@ -1,6 +1,6 @@
 # Timeline
 
-The timeline is where your short takes shape: clips sit on tracks in time order, and the playhead marks the frame the preview shows. In this version you add clips by double-clicking media, select clips and arrange them by dragging (also onto other tracks), snap them to the edges of other clips and to the playhead, duplicate them, zoom, scroll and pan with the scrollbars, the **Hand** tool or the mouse, move the playhead with the mouse, the keyboard or a typed timecode, read times in frames or milliseconds, and rename clips or give them a label color. To shorten or lengthen clips, see [Trimming clips](trimming.md); to split and delete clips and close gaps, see [Splitting, deleting and closing gaps](splitting-and-deleting.md); to roll cuts, slip, slide or change a clip's speed, see [Advanced trimming](advanced-trimming.md). To add, lock, target or rearrange tracks, see [Tracks](tracks.md); to link, sync and group clips, see [Linking and grouping clips](links-and-groups.md). To mark moments with markers, mark a range with in and out points, loop it or lift and extract it, see [Markers and in/out points](markers-and-in-out-points.md). To read the thumbnails, waveforms and badges inside clips, see [Clip thumbnails, waveforms and badges](clip-thumbnails-and-waveforms.md).
+The timeline is where your short takes shape: clips sit on tracks in time order, and the playhead marks the frame the preview shows. In this version you add clips by double-clicking or dragging media (see [Adding media to the timeline](adding-media-to-the-timeline.md)), select clips and arrange them by dragging (also onto other tracks), snap them to the edges of other clips and to the playhead, duplicate them, zoom, scroll and pan with the scrollbars, the **Hand** tool or the mouse, move the playhead with the mouse, the keyboard or a typed timecode, read times in frames or milliseconds, and rename clips or give them a label color. To shorten or lengthen clips, see [Trimming clips](trimming.md); to split and delete clips and close gaps, see [Splitting, deleting and closing gaps](splitting-and-deleting.md); to roll cuts, slip, slide or change a clip's speed, see [Advanced trimming](advanced-trimming.md). To add, lock, target or rearrange tracks, see [Tracks](tracks.md); to link, sync and group clips, see [Linking and grouping clips](links-and-groups.md). To mark moments with markers, mark a range with in and out points, loop it or lift and extract it, see [Markers and in/out points](markers-and-in-out-points.md). To read the thumbnails, waveforms and badges inside clips, see [Clip thumbnails, waveforms and badges](clip-thumbnails-and-waveforms.md).
 
 > **Video placeholder: Timeline tour**
 > - File: `videos/timeline/timeline-overview.mp4` (not recorded yet)
@@ -82,37 +82,19 @@ The other buttons (the **Show clip keyframes** and **Audio scrub** toggles, the 
 
 ## Add clips from the Media panel
 
-Double-clicking a media item adds it to the timeline at the playhead. This is the quickest way to assemble a short: put the playhead at the start, then double-click your clips in order.
+Bring media from the Media panel onto the timeline in any of these ways:
 
-> **Video placeholder: Build a sequence by double-clicking**
-> - File: `videos/timeline/add-clips-double-click.mp4` (not recorded yet)
-> - Length: about 40 seconds
-> - Shows: an empty timeline with the playhead at `00:00:00`; in the Media panel, double-click the thumbnail of a video with sound: a video clip appears on V1 and its audio on A1, and the playhead jumps to their end; double-click two more thumbnails: the clips line up end to end; double-click a PNG: a 5-second image clip is added on V1; press <kbd>Ctrl</kbd>+<kbd>Z</kbd> twice and the last two inserts disappear one at a time.
-
-1. Move the playhead to where the clip should start. See [Move the playhead](#move-the-playhead).
-2. In the Media panel, double-click the item's thumbnail in grid view, or its row in list view. Double-clicking the name renames the item instead.
-
-What you get:
-
-| Media | Result |
+| To | Do this |
 |---|---|
-| Video with sound | A video clip on the video track and an audio clip with its sound on the audio track, with the same start and length. The two clips are linked. |
-| Video without sound | A video clip on the video track. |
-| Audio | An audio clip on the audio track. |
-| Image (including GIF) | A 5-second image clip on the video track. |
+| Insert at the playhead, pushing later clips right | Double-click a card, or select cards and press <kbd>,</kbd> |
+| Overwrite at the playhead | Select cards and press <kbd>.</kbd> |
+| Place clips exactly | Drag cards onto a track. Hold <kbd>Ctrl</kbd> to insert. |
+| Place a picture where you want it in the frame | Drag a card onto the preview |
+| Import files and place them in one go | Drag files from File Explorer onto a track |
 
-- The clips go to the targeted video track and the targeted audio track nearest the divider: V1 and A1 in a new project. A locked track is never used. When no track of the kind is targeted, the unlocked track nearest the divider is used. See [Choose the tracks your edits use](tracks.md#choose-the-tracks-your-edits-use-target).
-- Video and audio clips use the whole media, in whole frames at the project frame rate.
-- If there is no unlocked video or audio track for the clip, one is created.
-- Nothing is ever overwritten. If a clip already occupies the spot at the playhead, the new clip goes to the first free space after the playhead where it fits (on both tracks, for a video with sound).
-- The picture is scaled to fit inside the frame and centered.
-- The playhead moves to the end of the new clip, so the next double-click adds the next clip right after it.
-- The new clip is not selected; the selection stays as it was.
-- Each insert is one step in the history. The **Undo** tooltip reads **Undo Insert clip**, and <kbd>Ctrl</kbd>+<kbd>Z</kbd> removes the whole insert (video and audio together).
+A video with sound becomes a video clip and a linked audio clip, and an image becomes a 5-second clip. The new clips are selected. Point at a card's picture to skim it, and press <kbd>I</kbd> and <kbd>O</kbd> there to use only part of it. Inserts and overwrites move the playhead to the end of the new clips, so you can build a sequence one clip after another.
 
-If an item has no usable duration, the message **Can't insert** *name*, **It has no duration.** appears and nothing is added.
-
-> **Note:** Dragging media onto the timeline is available in a later version.
+For every option and rule, see [Adding media to the timeline](adding-media-to-the-timeline.md).
 
 ## Add and manage tracks
 
@@ -488,6 +470,7 @@ How snapping decides:
 - Snapping changes the time only. Moving clips to another track works as without snapping, and clips still can't move before `00:00:00`.
 - Nudging with the keyboard never snaps: the clips move by exactly 1 or 5 frames.
 - A clip edge you drag to trim the clip snaps the same way. See [Snap the edge while you trim](trimming.md#snap-the-edge-while-you-trim).
+- Media you drag in from the Media panel snaps the same way, with the start or the end of the new clips. See [Drag media onto the timeline](adding-media-to-the-timeline.md#drag-media-onto-the-timeline).
 
 ### Turn snapping on or off
 
@@ -645,6 +628,7 @@ Label colors help you see at a glance which clips belong together, for example a
 - Each change is one step in the history, named **Label clip** or **Label clips**. Labels are saved with the project, and both parts of a split clip keep the label.
 
 ## Related pages
+- [Adding media to the timeline](adding-media-to-the-timeline.md)
 - [Markers and in/out points](markers-and-in-out-points.md)
 - [Clip thumbnails, waveforms and badges](clip-thumbnails-and-waveforms.md)
 - [Tracks](tracks.md)
@@ -661,4 +645,4 @@ Label colors help you see at a glance which clips belong together, for example a
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 19, 2026-10-15</sub>
+<sub>Last updated: Batch 20, 2026-10-15</sub>

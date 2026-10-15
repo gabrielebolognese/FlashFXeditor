@@ -23,7 +23,7 @@ This page lists every keyboard shortcut that works in the current version of Sho
 >   15. Zoom in, scroll the playhead out of view, and press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>.</kbd>: the view centers on the playhead.
 >   16. Click a video with sound and press <kbd>Ctrl</kbd>+<kbd>L</kbd> to unlink its sound, then <kbd>Ctrl</kbd>+<kbd>Z</kbd>. Press <kbd>Shift</kbd>+<kbd>S</kbd>: the **Linked selection** button turns off; press it again.
 >   17. Click the V1 track header and press <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>Up</kbd>: the row gets taller. Press <kbd>F2</kbd>, type a name and press <kbd>Enter</kbd>.
->   18. Click a card in the Media panel, press <kbd>F2</kbd>, type a new name and press <kbd>Enter</kbd>.
+>   18. Click a card in the Media panel, press <kbd>F2</kbd>, type a new name and press <kbd>Enter</kbd>. Point at the card's picture, skim to a moment and press <kbd>I</kbd>, skim on and press <kbd>O</kbd>: a gold bar marks the part. Press <kbd>,</kbd>: the part lands at the playhead and the playhead jumps to its end.
 >   19. Click the timeline. Press <kbd>M</kbd> at two places: green markers appear in the ruler. Press <kbd>Home</kbd>, then <kbd>Shift</kbd>+<kbd>Down</kbd> twice to jump from marker to marker.
 >   20. Press <kbd>I</kbd>, move the playhead one second on with <kbd>Ctrl</kbd>+<kbd>→</kbd> and press <kbd>O</kbd>: the range is shaded. Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Space</kbd>: the range plays once. Press <kbd>'</kbd>: the range is removed and the rest moves left. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>.
 >   21. Hover over **Play** to show the tooltip with its shortcut.
@@ -200,6 +200,7 @@ See [Markers and in/out points](markers-and-in-out-points.md).
 
 - Markers, **Lift** and **Extract** are steps in the history; setting and clearing in and out points is not.
 - <kbd>M</kbd>, <kbd>I</kbd> and <kbd>O</kbd> also work while the video plays.
+- While the pointer is over the picture of a video or audio card in the Media panel, <kbd>I</kbd>, <kbd>O</kbd> and <kbd>Alt</kbd>+<kbd>X</kbd> mark that card instead. See [While you point at a card](#while-you-point-at-a-card).
 - In the marker editor, <kbd>Enter</kbd> saves the name and <kbd>Esc</kbd> closes the editor without saving it.
 - While you drag a marker or an in or out bracket, hold <kbd>S</kbd> to do the opposite of the snapping setting, and press <kbd>Esc</kbd> to cancel the drag.
 
@@ -252,13 +253,44 @@ The **Master volume** knob in the transport bar under the preview takes these ke
 
 ## Media panel
 
-These shortcuts work only while the Media panel is active. See [Importing media](importing-media.md).
+These shortcuts work only while the Media panel is active. See [Importing media](importing-media.md) and [Adding media to the timeline](adding-media-to-the-timeline.md).
 
 | Action | Windows | macOS | Works in |
 | --- | --- | --- | --- |
+| Insert the selected media at the playhead (later clips move right) | <kbd>,</kbd> | <kbd>,</kbd> | Media panel |
+| Overwrite at the playhead with the selected media | <kbd>.</kbd> | <kbd>.</kbd> | Media panel |
 | Remove the selected media (asks first in the **Remove media** dialog) | <kbd>Delete</kbd> or <kbd>Backspace</kbd> | <kbd>Delete</kbd> (⌫) | Media panel |
 | Rename the selected media | <kbd>F2</kbd> | <kbd>F2</kbd> | Media panel |
 | Import images from the clipboard | <kbd>Ctrl</kbd>+<kbd>V</kbd> | <kbd>⌘</kbd>+<kbd>V</kbd> | Media panel, or no panel active |
+
+### While you point at a card
+
+These keys act on the card under the pointer, whichever panel is active. Point at the card's picture (or the small picture of a row in list view). See [Use only part of a media item](adding-media-to-the-timeline.md#use-only-part-of-a-media-item).
+
+| Action | Windows | macOS |
+| --- | --- | --- |
+| Start the part of the media to use at the skim position | <kbd>I</kbd> | <kbd>I</kbd> |
+| End the part of the media to use at the skim position | <kbd>O</kbd> | <kbd>O</kbd> |
+| Clear the marked part | <kbd>Alt</kbd>+<kbd>X</kbd> | <kbd>⌥</kbd>+<kbd>X</kbd> |
+| Insert this card at the playhead | <kbd>,</kbd> | <kbd>,</kbd> |
+| Overwrite at the playhead with this card | <kbd>.</kbd> | <kbd>.</kbd> |
+
+- Over a video or audio card, <kbd>I</kbd>, <kbd>O</kbd> and <kbd>Alt</kbd>+<kbd>X</kbd> mark the card instead of setting the timeline's in and out points. Over an image card, they work on the timeline as usual.
+- Marking a part is not a step in the history.
+
+### Media panel mouse actions
+
+| Action | Windows | macOS |
+| --- | --- | --- |
+| Insert a media item at the playhead | Double-click its card or row (not its name) | Same |
+| Skim a video or audio item | Move the pointer across its picture | Same |
+| Add media where you release | Drag cards onto a track of the timeline | Same |
+| Insert the dragged media, moving later clips right | Hold <kbd>Ctrl</kbd> when you release the drag on the timeline | Hold <kbd>⌘</kbd> |
+| Switch snapping for the drag | Hold <kbd>S</kbd> while you drag over the timeline | Same |
+| Place a picture at a point in the frame | Drag a card onto the preview | Same |
+| Import files and place their clips | Drag files from File Explorer onto a track of the timeline | Drag files from the Finder |
+| Cancel the drag | <kbd>Esc</kbd> before you release | <kbd>Esc</kbd> |
+| Open the media menu | Right-click a card or row | Right-click a card or row |
 
 ## Project and history
 
@@ -335,7 +367,7 @@ These work over the timeline. See [Timeline](timeline.md).
 
 While you drag clips or a clip edge, you can press and release <kbd>Shift</kbd>, <kbd>Ctrl</kbd>, <kbd>Alt</kbd> and <kbd>S</kbd>: the keys held when you release the mouse button decide the drop or the trim. A roll is the exception: hold <kbd>Ctrl</kbd>+<kbd>Alt</kbd> when you press on the cut; after that, the keys no longer matter. See [Move clips](timeline.md#move-clips) and [Trimming clips](trimming.md).
 
-Double-click a media item in the Media panel to insert it at the playhead. See [Importing media](importing-media.md).
+For double-clicking and dragging media from the Media panel, see [Media panel mouse actions](#media-panel-mouse-actions).
 
 ## Keys the browser keeps
 
@@ -375,7 +407,8 @@ Some buttons already show a shortcut in their tooltip although the button is dis
 - [Linking and grouping clips](links-and-groups.md)
 - [Audio](audio.md)
 - [Importing media](importing-media.md)
+- [Adding media to the timeline](adding-media-to-the-timeline.md)
 - [Projects and saving](projects-and-saving.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 19, 2026-10-15</sub>
+<sub>Last updated: Batch 20, 2026-10-15</sub>
