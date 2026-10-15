@@ -101,6 +101,7 @@ What to expect while you scrub:
 - When the playhead crosses a cut, the preview keeps the previous picture until the new clip's frame is ready. It never flashes black.
 - The editor prepares the first and last frames of the clips just before and after the playhead (up to 2 seconds away), so a cut usually shows the new clip at once.
 - Dragging in the ruler while the video plays pauses playback.
+- While you drag the edge of a clip to trim it, the preview shows the clip's new first or last frame instead of the frame at the playhead, and goes back to the playhead when you release. See [Trimming clips](trimming.md#trim-a-clip).
 - Hold <kbd>Shift</kbd> while you drag to snap the playhead to the nearest clip start or end, so it lands exactly on a cut. See [Snap the playhead in the ruler](timeline.md#snap-the-playhead-in-the-ruler).
 
 You can also move the playhead with the keyboard (see [Step through frames](#step-through-frames)) or type a time in the timecode field of the timeline toolbar (see [Timeline](timeline.md)).
@@ -127,6 +128,7 @@ How playback behaves:
 - At the end of the content, playback stops on the last frame, unless **Loop playback** is on (see [Loop playback](#loop-playback)).
 - The timeline follows the playhead by pages: when the playhead reaches the right edge, the view jumps ahead by most of its width. If you scroll the timeline sideways or zoom it with the mouse wheel during playback, it stops following until you start playback again. Scrolling up and down does not stop it.
 - <kbd>Home</kbd>, <kbd>End</kbd> and the timecode field of the timeline toolbar move the playhead without stopping playback: it plays on from the new position. The arrow keys pause first, then step.
+- <kbd>Q</kbd> and <kbd>W</kbd> trim the clip under the playhead while you play, and playback goes on. Dragging a clip edge pauses playback. See [Trim to the playhead with Q and W](trimming.md#trim-to-the-playhead-with-q-and-w).
 - Shortcuts work in every panel, except while you type in a text field, while a dropdown has focus, or while a dialog is open.
 
 ## Shuttle with J, K and L
@@ -263,9 +265,10 @@ If playback stutters, see [Troubleshooting](troubleshooting.md).
 ## Related pages
 - [Audio](audio.md)
 - [Timeline](timeline.md)
+- [Trimming clips](trimming.md)
 - [Importing media](importing-media.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Workspace](workspace.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 12, 2026-10-15</sub>
+<sub>Last updated: Batch 13, 2026-10-15</sub>

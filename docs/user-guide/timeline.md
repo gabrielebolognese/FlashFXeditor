@@ -1,6 +1,6 @@
 # Timeline
 
-The timeline is where your short takes shape: clips sit on tracks in time order, and the playhead marks the frame the preview shows. In this version you add clips by double-clicking media, select clips and arrange them by dragging (also onto other tracks), snap them to the edges of other clips and to the playhead, duplicate them, add tracks, zoom and scroll, and move the playhead with the mouse, the keyboard or a typed timecode. Trimming and splitting clips are available in a later version.
+The timeline is where your short takes shape: clips sit on tracks in time order, and the playhead marks the frame the preview shows. In this version you add clips by double-clicking media, select clips and arrange them by dragging (also onto other tracks), snap them to the edges of other clips and to the playhead, duplicate them, add tracks, zoom and scroll, and move the playhead with the mouse, the keyboard or a typed timecode. To shorten or lengthen clips, see [Trimming clips](trimming.md). Splitting and deleting clips are available in a later version.
 
 > **Video placeholder: Timeline tour**
 > - File: `videos/timeline/timeline-overview.mp4` (not recorded yet)
@@ -51,14 +51,16 @@ The spacing of the ticks follows the zoom. Zoomed out, labels can be minutes apa
 - A clip narrower than 24 pixels shows no icon or name. A clip narrower than 6 pixels shows only a thin strip of its color.
 - Clips that touch are separated by a thin line, so you can always see the cut.
 - A clip gets lighter while you point at it. A selected clip has a gold outline and tint (see [Select clips](#select-clips)).
+- The outer 8 pixels at each end of a clip are its trim zones: the cursor turns into a bracket there, and dragging trims the clip. See [Trimming clips](trimming.md).
+- A red number such as **+12** or **-12** at the right end of the label bar means the clip is that many frames out of step with its linked clip. See [Trim a video without its sound](trimming.md#trim-a-video-without-its-sound).
 
 Thumbnails and waveforms inside clips are available in a later version.
 
 ### Toolbar
 
-In this version the toolbar's **Snap** toggle (see [Turn snapping on or off](#turn-snapping-on-or-off)), the zoom group, the timecode field and the duration work. The other buttons (tools such as **Select** and **Razor**, toggles such as **Linked selection**, edit actions such as **Split at playhead**, and add actions such as **Title**) are shown but disabled; they are available in a later version.
+In this version the toolbar's **Snap** toggle (see [Turn snapping on or off](#turn-snapping-on-or-off)), the **Ripple mode** toggle (see [Turn Ripple mode on or off](trimming.md#turn-ripple-mode-on-or-off)), the zoom group, the timecode field and the duration work. The other buttons (tools such as **Select** and **Razor**, toggles such as **Linked selection**, edit actions such as **Split at playhead**, and add actions such as **Title**) are shown but disabled; they are available in a later version.
 
-> **Note:** When the timeline panel is too narrow for the whole toolbar, the zoom group is the first to move into the **More tools** (…) menu, followed by the toggles with **Snap**. Click **More tools** to reach them.
+> **Note:** When the timeline panel is too narrow for the whole toolbar, the zoom group is the first to move into the **More tools** (…) menu, followed by the toggles with **Snap** and **Ripple mode**. Click **More tools** to reach them.
 
 ## Add clips from the Media panel
 
@@ -232,7 +234,7 @@ While the editor plays, the timeline follows the playhead. When the playhead rea
 
 A selected clip has a gold outline and a gold tint. The clip you clicked last has a slightly thicker outline.
 
-- **Linked clips.** When you add a video with sound, its video clip and its sound clip are linked: a click selects both, and they move together. To work on one of them alone, <kbd>Alt</kbd>+click it. Linked selection is always on in this version; the **Linked selection** toggle in the toolbar is available in a later version.
+- **Linked clips.** When you add a video with sound, its video clip and its sound clip are linked: a click selects both, and they move and trim together. To work on one of them alone, <kbd>Alt</kbd>+click it. When you move one of them alone, both show a red number with the offset in frames; see [Trim a video without its sound](trimming.md#trim-a-video-without-its-sound). Linked selection is always on in this version; the **Linked selection** toggle in the toolbar is available in a later version.
 - **Clicking a selected clip.** When you press on a clip that is already selected, the editor waits to see what you do: if you drag, the whole selection moves; if you release without dragging, the click applies (a plain click then keeps only that clip and its linked clips).
 - <kbd>Ctrl</kbd>+<kbd>A</kbd> and <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd> work while the Timeline or the Preview panel is active. The other selection shortcuts are mouse actions in the timeline.
 - Selecting is not a step in the history, but undo brings back the selection you had before the change you undo. See [Undo and redo](projects-and-saving.md#undo-and-redo-changes).
@@ -258,7 +260,7 @@ Drag clips to move them in time, and up or down to other tracks. While you drag,
 > - Shows: a timeline with a 10-second clip on V1 and a 2-second clip on V2; drag the short clip to the right: its ghost follows and the tooltip reads `Δ +00:01:00` after one second; drag it down onto the middle of the long clip: the part it will cover is hatched; release: the long clip is now two clips around the short one; point at the **Undo** tooltip, which reads **Undo Move clip**; press <kbd>Ctrl</kbd>+<kbd>Z</kbd>: the long clip is whole again and the short clip is back on V2; select both clips and drag them right together.
 
 1. Select the clips you want to move. You can also skip this step and press directly on an unselected clip: it is selected at once and moves on its own (with its linked clips).
-2. Press on one of the selected clips and drag. The move starts once the pointer has moved 4 pixels, so a click never moves a clip by accident.
+2. Press on one of the selected clips, away from its ends, and drag. The move starts once the pointer has moved 4 pixels, so a click never moves a clip by accident. A press in the outer 8 pixels at either end of a clip trims it instead; see [Trimming clips](trimming.md).
 3. Watch the ghosts, the hatching and the tooltip, then release where you want the clips.
 
 All selected clips move together and keep their distances to each other.
@@ -342,6 +344,7 @@ How snapping decides:
 - **It holds.** Small pointer movements keep the clips on the edge. They let go once the edge is more than 8 pixels away.
 - Snapping changes the time only. Moving clips to another track works as without snapping, and clips still can't move before `00:00:00`.
 - Nudging with the keyboard never snaps: the clips move by exactly 1 or 5 frames.
+- A clip edge you drag to trim the clip snaps the same way. See [Snap the edge while you trim](trimming.md#snap-the-edge-while-you-trim).
 
 ### Turn snapping on or off
 
@@ -432,7 +435,7 @@ Hold <kbd>Alt</kbd> while you drag to copy clips instead of moving them.
 
 ## Cancel a drag
 
-Press <kbd>Esc</kbd> before you release the mouse button. The ghosts disappear, and releasing then changes nothing: no clip moves and no step is added to the history. <kbd>Esc</kbd> also cancels a selection rectangle.
+Press <kbd>Esc</kbd> before you release the mouse button. The ghosts disappear, and releasing then changes nothing: no clip moves and no step is added to the history. <kbd>Esc</kbd> also cancels a selection rectangle and a trim.
 
 An undo or redo during a drag (<kbd>Ctrl</kbd>+<kbd>Z</kbd>) also cancels the drag.
 
@@ -461,9 +464,10 @@ Click the timeline first, so it has the keyboard, and select the clips to move.
 
 > **Note:** <kbd>Alt</kbd>+<kbd>Left</kbd> is also the browser's Back key. The editor keeps it while the Timeline panel is active, also when no clip is selected. In the other panels, the browser gets it. See [Keys the browser keeps](keyboard-shortcuts.md#keys-the-browser-keeps).
 
-Trimming, splitting and deleting clips are available in a later version.
+To trim clips, see [Trimming clips](trimming.md). Splitting and deleting clips are available in a later version.
 
 ## Related pages
+- [Trimming clips](trimming.md)
 - [Audio](audio.md)
 - [Getting started](getting-started.md)
 - [Workspace](workspace.md)
@@ -473,4 +477,4 @@ Trimming, splitting and deleting clips are available in a later version.
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 12, 2026-10-15</sub>
+<sub>Last updated: Batch 13, 2026-10-15</sub>

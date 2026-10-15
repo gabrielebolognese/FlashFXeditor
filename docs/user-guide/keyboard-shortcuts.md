@@ -15,13 +15,16 @@ This page lists every keyboard shortcut that works in the current version of Sho
 >   7. Click a clip in the timeline and press <kbd>Alt</kbd>+<kbd>Right</kbd> three times: the clip moves 3 frames. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> once: it is back.
 >   8. Press <kbd>Ctrl</kbd>+<kbd>A</kbd> to select all clips, then <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd>.
 >   9. Press <kbd>S</kbd>: the **Snap** magnet in the timeline toolbar turns off. Drag a clip and hold <kbd>S</kbd>: it snaps to the next clip edge. Release the mouse button, then press <kbd>S</kbd> to turn snapping back on.
->   10. Click a card in the Media panel, press <kbd>F2</kbd>, type a new name and press <kbd>Enter</kbd>.
->   11. Hover over **Play** to show the tooltip with its shortcut.
+>   10. Press <kbd>Space</kbd> to play. In the middle of a clip, press <kbd>Q</kbd>: the clip loses its beginning up to the playhead and playback goes on. Press <kbd>W</kbd> a little later: the rest of the clip is removed. Press <kbd>Space</kbd> to pause.
+>   11. Click a clip, click in the ruler a little past its end, and press <kbd>E</kbd>: the clip's end moves to the playhead.
+>   12. Click a card in the Media panel, press <kbd>F2</kbd>, type a new name and press <kbd>Enter</kbd>.
+>   13. Hover over **Play** to show the tooltip with its shortcut.
 
 ## In this page
 - [How shortcuts work](#how-shortcuts-work)
 - [Playback and navigation](#playback-and-navigation)
 - [Timeline](#timeline)
+- [Trimming](#trimming)
 - [Audio](#audio)
 - [Media panel](#media-panel)
 - [Project and history](#project-and-history)
@@ -102,7 +105,7 @@ These shortcuts work only while the Timeline panel is active. See [Timeline](tim
 | --- | --- | --- | --- |
 | Select all clips | <kbd>Ctrl</kbd>+<kbd>A</kbd> | <kbd>⌘</kbd>+<kbd>A</kbd> | Timeline, Preview |
 | Clear the selection | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd> | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>A</kbd> | Timeline, Preview |
-| Cancel a clip drag or a selection rectangle | <kbd>Escape</kbd> (before you release the mouse button) | <kbd>Esc</kbd> | All panels |
+| Cancel a clip drag, a trim or a selection rectangle | <kbd>Escape</kbd> (before you release the mouse button) | <kbd>Esc</kbd> | All panels |
 
 ### Snapping
 
@@ -116,6 +119,22 @@ These shortcuts work only while the Timeline panel is active. See [Timeline](tim
 - During a drag, <kbd>S</kbd> never starts a shortcut, also together with <kbd>Shift</kbd>, <kbd>Ctrl</kbd> or <kbd>Alt</kbd>: <kbd>Ctrl</kbd>+<kbd>S</kbd> does not save until you release the mouse button. On a Mac, <kbd>⌥</kbd>+<kbd>S</kbd> during a duplicate drag switches snapping too.
 
 See [Snap clips into place](timeline.md#snap-clips-into-place).
+
+## Trimming
+
+See [Trimming clips](trimming.md).
+
+| Action | Windows | macOS | Works in |
+| --- | --- | --- | --- |
+| Ripple trim the start of the clip under the playhead to the playhead | <kbd>Q</kbd> | <kbd>Q</kbd> | All panels |
+| Ripple trim the end of the clip under the playhead to the playhead | <kbd>W</kbd> | <kbd>W</kbd> | All panels |
+| Extend edit: move the nearest edge of the selected clip to the playhead | <kbd>E</kbd> | <kbd>E</kbd> | Timeline |
+| Ripple the trim you are dragging | Hold <kbd>Ctrl</kbd> while you drag a clip edge | Hold <kbd>⌘</kbd> while you drag a clip edge | Timeline |
+| Trim only the clip you drag, without its linked clips | Hold <kbd>Alt</kbd> while you drag a clip edge | Hold <kbd>⌥</kbd> while you drag a clip edge | Timeline |
+
+- <kbd>Q</kbd> and <kbd>W</kbd> work while the video plays: playback goes on. Each press is one undo step.
+- When a limit stops <kbd>Q</kbd>, <kbd>W</kbd> or <kbd>E</kbd> short of the playhead, the clip is trimmed as far as it can go and a message says why.
+- **Ripple mode** in the timeline toolbar has no shortcut. While it is on, every edge drag ripples without <kbd>Ctrl</kbd>.
 
 ## Audio
 
@@ -185,10 +204,13 @@ These work over the timeline. See [Timeline](timeline.md).
 | Insert the clips, shifting later clips right | <kbd>Ctrl</kbd>+drag | <kbd>⌘</kbd>+drag |
 | Duplicate the clips | <kbd>Alt</kbd>+drag | <kbd>⌥</kbd>+drag |
 | Duplicate and insert | <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+drag | <kbd>⌘</kbd>+<kbd>⌥</kbd>+drag |
+| Trim a clip | Drag its start or end (the outer 8 pixels) | Drag its start or end (the outer 8 pixels) |
+| Ripple trim, moving the later clips with the edge | <kbd>Ctrl</kbd>+drag a clip edge | <kbd>⌘</kbd>+drag a clip edge |
+| Trim one side of a linked pair | <kbd>Alt</kbd>+drag a clip edge | <kbd>⌥</kbd>+drag a clip edge |
 | Switch snapping for this drag | Hold <kbd>S</kbd> while you drag | Hold <kbd>S</kbd> while you drag |
 | Snap the playhead to clip edges | <kbd>Shift</kbd>+click or <kbd>Shift</kbd>+drag in the ruler | <kbd>⇧</kbd>+click or <kbd>⇧</kbd>+drag in the ruler |
 
-While you drag clips, you can press and release <kbd>Shift</kbd>, <kbd>Ctrl</kbd>, <kbd>Alt</kbd> and <kbd>S</kbd>: the keys held when you release the mouse button decide the drop. See [Move clips](timeline.md#move-clips).
+While you drag clips or a clip edge, you can press and release <kbd>Shift</kbd>, <kbd>Ctrl</kbd>, <kbd>Alt</kbd> and <kbd>S</kbd>: the keys held when you release the mouse button decide the drop or the trim. See [Move clips](timeline.md#move-clips) and [Trimming clips](trimming.md).
 
 Double-click a media item in the Media panel to insert it at the playhead. See [Importing media](importing-media.md).
 
@@ -219,9 +241,10 @@ Some buttons already show a shortcut in their tooltip although the button is dis
 ## Related pages
 - [Preview and playback](preview-and-playback.md)
 - [Timeline](timeline.md)
+- [Trimming clips](trimming.md)
 - [Audio](audio.md)
 - [Importing media](importing-media.md)
 - [Projects and saving](projects-and-saving.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 12, 2026-10-15</sub>
+<sub>Last updated: Batch 13, 2026-10-15</sub>
