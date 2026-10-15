@@ -5,7 +5,7 @@
 import type { Clip, Project, Track } from "../../core/document/types.js";
 import type { Selection } from "../../core/store/selection.js";
 import type { Theme } from "../../core/theme/theme.js";
-import { clipsInRange, contentEnd } from "../model/queries.js";
+import { clipsInRange, contentEnd, linkOffset } from "../model/queries.js";
 import { clipLod, clipSpan, devicePx } from "./clipLayout.js";
 import type { Rect, Row, TimelineGeometry } from "./geometry.js";
 import { CLIP_GLYPHS, drawGlyph, TRACK_GLYPHS } from "./glyphs.js";
@@ -21,6 +21,9 @@ export interface ContentScene {
   theme: Theme;
   text: TextCache;
 }
+
+/** What drawing a clip needs (the overlay's trim preview draws clips too). */
+export type ClipScene = Pick<ContentScene, "ctx" | "dpr" | "geometry" | "theme" | "selection" | "text">;
 
 export interface ContentStats {
   /** Clips drawn in this pass (the visible ones). */
@@ -90,7 +93,7 @@ function drawClips(scene: ContentScene): number {
     const clips = clipsInRange(project, track.id, Math.floor(from), Math.ceil(to) + 1);
     clips.forEach((clip, i) => {
       const next = clips[i + 1];
-      drawClip(scene, clip, row, track, next !== undefined && next.start === clip.start + clip.duration);
+      drawClip(scene, clip, row, track, next !== undefined && next.start === clip.start + clip.duration, linkOffset(project, clip.id));
     });
     drawn += clips.length;
   }
@@ -98,8 +101,12 @@ function drawClips(scene: ContentScene): number {
   return drawn;
 }
 
-// TODO(batch 17): filmstrips and waveforms in the body, badges (speed, link, keyframes, fx), label colors.
-function drawClip(scene: ContentScene, clip: Clip, row: Row, track: Track, abutsNext: boolean): void {
+/**
+ * One clip in its row: body, label bar (kind glyph, name, sync badge), selection tint and outline.
+ * `syncOffset`: frames off its link partner (`linkOffset`), shown as a `+12` / `-12` badge.
+ * TODO(batch 17): filmstrips and waveforms in the body, badges (speed, link, keyframes, fx), label colors.
+ */
+export function drawClip(scene: ClipScene, clip: Clip, row: Row, track: Track, abutsNext: boolean, syncOffset = 0): void {
   const { ctx, dpr, geometry, theme, selection } = scene;
   const tl = theme.timeline;
   const colors = tl.clip[clip.kind];
@@ -134,7 +141,7 @@ function drawClip(scene: ContentScene, clip: Clip, row: Row, track: Track, abuts
     ctx.fillStyle = theme.color.accentWash;
     ctx.fillRect(x, y, width, height);
   }
-  if (lod === "full") drawLabel(scene, clip, x, y, width, labelHeight);
+  if (lod === "full") drawLabel(scene, clip, x, y, width, labelHeight, syncOffset);
   ctx.restore();
 
   if (selected) {
@@ -147,17 +154,18 @@ function drawClip(scene: ContentScene, clip: Clip, row: Row, track: Track, abuts
   }
 }
 
-function drawLabel(scene: ContentScene, clip: Clip, x: number, y: number, width: number, labelHeight: number): void {
+function drawLabel(scene: ClipScene, clip: Clip, x: number, y: number, width: number, labelHeight: number, syncOffset: number): void {
   const { ctx, theme, text } = scene;
   const pad = theme.space[1];
   const icon = theme.icon.small;
   // The label sticks to the left edge of the track area while the clip starts off screen.
   const left = Math.max(x, scene.geometry.area.x);
-  const right = x + width;
+  let right = x + width;
   if (right - left < pad + icon + pad) return;
   const centerY = y + labelHeight / 2;
   // With the label bar spanning an S clip, keep the icon and name on the first text line.
   const lineY = Math.min(centerY, y + theme.timeline.labelHeight / 2);
+  if (syncOffset !== 0) right = drawSyncBadge(scene, syncOffset, left + pad + icon + pad, right - theme.space[0], lineY);
   drawGlyph(ctx, CLIP_GLYPHS[clip.kind], left + pad, lineY - icon / 2, icon, theme.color.textPrimary);
   const textX = left + pad + icon + pad;
   ctx.font = fontOf(theme, "caption");
@@ -166,6 +174,30 @@ function drawLabel(scene: ContentScene, clip: Clip, x: number, y: number, width:
   ctx.fillStyle = theme.color.textPrimary;
   ctx.textBaseline = "middle";
   ctx.fillText(name, textX, lineY);
+}
+
+/**
+ * The sync badge (spec §6.12): `+12` / `-12` frames in a DS chip (`--surface-3`, radius-sm, badge
+ * type: 10 px mono) with the danger color, right-aligned in the label bar. Returns the x left of it
+ * (where the name must end), or `right` when there is no room for it.
+ */
+function drawSyncBadge(scene: ClipScene, offset: number, minX: number, right: number, centerY: number): number {
+  const { ctx, theme, text } = scene;
+  const { space, color } = theme;
+  const label = `${offset > 0 ? "+" : "-"}${Math.abs(offset)}`;
+  ctx.font = `${theme.type.caption.weight} ${theme.type.overline.size}px ${theme.font.mono}`;
+  const width = Math.ceil(text.width(ctx, label)) + 2 * space[1];
+  const height = theme.type.overline.line;
+  const x = right - width;
+  if (x < minX) return right;
+  ctx.fillStyle = color.surface3;
+  ctx.beginPath();
+  ctx.roundRect(x, centerY - height / 2, width, height, theme.radius.sm);
+  ctx.fill();
+  ctx.fillStyle = color.danger;
+  ctx.textBaseline = "middle";
+  ctx.fillText(label, x + space[1], centerY);
+  return x - space[0];
 }
 
 function drawContentEnd(scene: ContentScene): void {

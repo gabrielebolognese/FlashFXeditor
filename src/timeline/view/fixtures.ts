@@ -38,6 +38,8 @@ const TOKENS: Record<string, string> = {
   "--timeline-insert-arrow": "8px",
   "--timeline-snap-threshold": "8px",
   "--timeline-snap-line-width": "1px",
+  "--timeline-trim-zone": "8px",
+  "--timeline-trim-edge-width": "2px",
   "--type-caption-line": "14px",
 };
 

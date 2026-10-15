@@ -58,8 +58,10 @@ export const previewView: PreviewView = new PreviewView({
   frames: frameService,
   images: imageService,
   pool: texturePool,
-  priority: (): FramePriority => (playbackEngine.playing ? "playback" : timelineView.scrubbing ? "scrub" : "idle"),
+  priority: (): FramePriority => (playbackEngine.playing ? "playback" : timelineView.scrubbing || timelineView.trimming ? "scrub" : "idle"),
   watchPriority: (listener) => playbackEngine.subscribe(listener),
+  // A trim shows its new edge frame live (spec §6.10).
+  override: () => timelineView.trimPreview,
 });
 /** Plays the timeline through the preview (spec §8). */
 export const playbackEngine: PlaybackEngine = new PlaybackEngine({
@@ -71,7 +73,8 @@ export const playbackEngine: PlaybackEngine = new PlaybackEngine({
   images: imageService,
   pool: texturePool,
   preview: previewView,
-  scrubbing: () => timelineView.scrubbing,
+  // A ruler scrub or an edge trim pauses playback (the preview shows the scrubbed or trimmed frame).
+  scrubbing: () => timelineView.scrubbing || timelineView.trimming,
   idle: idleQueue,
   audio: audioScheduler,
 });

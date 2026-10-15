@@ -6,13 +6,15 @@ import { makeMedia, makeMediaClip, makeProject, makeTrack, withClips } from "../
 import type { InvalidationFlag, RenderView } from "../../core/scheduler/FrameScheduler.js";
 import { DocumentStore } from "../../core/store/DocumentStore.js";
 import { createLayoutStore } from "../../core/store/layoutStore.js";
+import { frameToUs } from "../../core/document/time.js";
+import type { Project } from "../../core/document/types.js";
 import { createSessionStore, setPlayhead } from "../../core/store/sessionStore.js";
 import { readTheme } from "../../core/theme/theme.js";
 import { TexturePool } from "../../media/cache/TexturePool.js";
 import type { FrameRequestOptions, FrameResult } from "../../media/decode/FrameService.js";
 import type { FramePriority, VideoInfo } from "../../media/workers/protocol.js";
 import type { Renderer, TextureHandle } from "../gpu/renderer.js";
-import { PreviewView } from "./PreviewView.js";
+import { PreviewView, type PreviewViewDeps } from "./PreviewView.js";
 
 class FakeScheduler {
   private readonly views = new Map<InvalidationFlag, Set<RenderView>>();
@@ -52,7 +54,7 @@ interface Request {
 const TIMES = Float64Array.from({ length: 300 }, (_, i) => Math.round((i * 1_000_000) / 30));
 const timeOf = (frame: number) => TIMES[frame] as number;
 
-function setup() {
+function setup(extra: Partial<PreviewViewDeps> = {}) {
   let doc = makeProject();
   doc.media.m = { ...makeMedia("m"), width: 1920, height: 1080 };
   doc.tracks = [makeTrack("v1")];
@@ -103,6 +105,7 @@ function setup() {
       engine.listeners.add(listener);
       return () => engine.listeners.delete(listener);
     },
+    ...extra,
   });
   const host = window.document.createElement("div");
   window.document.body.append(host);
@@ -114,12 +117,35 @@ function setup() {
     return tex;
   };
   const drawn = () => (renderer.draw as ReturnType<typeof vi.fn>).mock.lastCall?.[0].layers[0]?.texture as TextureHandle | undefined;
-  return { view, session, scheduler, engine, notify, frames, requests, cache, drawn };
+  return { view, session, document, scheduler, engine, notify, frames, requests, cache, drawn };
 }
 
 describe("PreviewView", () => {
   afterEach(() => {
     window.document.body.replaceChildren();
+  });
+
+  it("shows the override's document at its frame while there is one (a trim's new edge frame)", () => {
+    let override: { project: Project; frame: number } | null = null;
+    const { session, document, scheduler, frames, requests } = setup({ override: () => override, priority: () => (override ? "scrub" : "idle") });
+    setPlayhead(session, 200);
+    scheduler.flush();
+    expect(requests.at(-1)?.timeUs).toBe(timeOf(200));
+    // An in trim of 30 frames: c1 starts at 30 and shows its media from 1 s there.
+    const doc = document.getState();
+    const trimmed = { ...doc, clips: { ...doc.clips, c1: { ...doc.clips.c1!, start: 30, duration: 270, in: frameToUs(30, doc.settings.fps) } } } as Project;
+    override = { project: trimmed, frame: 30 };
+    scheduler.invalidate("preview");
+    scheduler.flush();
+    expect(requests.at(-1)?.timeUs).toBe(timeOf(30));
+    expect(requests.at(-1)?.options.priority).toBe("scrub");
+    // Without it, back to the playhead.
+    const count = frames.getFrame.mock.calls.length;
+    override = null;
+    scheduler.invalidate("preview");
+    scheduler.flush();
+    expect(frames.getFrame.mock.calls.length).toBeGreaterThanOrEqual(count);
+    expect(requests.at(-1)?.timeUs).toBe(timeOf(200));
   });
 
   it("requests the playhead's frame when playback pauses on a held layer", async () => {

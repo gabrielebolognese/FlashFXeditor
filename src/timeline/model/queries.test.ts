@@ -14,6 +14,7 @@ import {
   laneOf,
   laneTracks,
   linkedPartners,
+  linkOffset,
   markerFrames,
   navigationPoints,
   neighbors,
@@ -168,6 +169,19 @@ describe("selection queries", () => {
     expect(linkedPartners(project, "a")).toEqual([]);
     expect(isClipLocked(project, "lockedPartner")).toBe(true);
     expect(isClipLocked(project, "lv")).toBe(false);
+  });
+
+  it("gives linked clips a sync offset: start first, then end, against the other kind", () => {
+    const project = linked();
+    expect(linkOffset(project, "lv")).toBe(0);
+    expect(linkOffset(project, "a")).toBe(0);
+    const moved = { ...project, clips: { ...project.clips, la: { ...project.clips.la!, start: 212 } } };
+    expect(linkOffset(moved, "la")).toBe(12);
+    // The video's partner is the audio clip, not the other (locked) video.
+    expect(linkOffset(moved, "lv")).toBe(-12);
+    const shorter = { ...project, clips: { ...project.clips, la: { ...project.clips.la!, duration: 3 } } };
+    expect(linkOffset(shorter, "la")).toBe(-2);
+    expect(linkOffset(shorter, "lv")).toBe(2);
   });
 
   it("selects every clip on unlocked tracks", () => {

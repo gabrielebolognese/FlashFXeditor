@@ -4,10 +4,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { makeMedia, makeMediaClip, makeProject, makeTrack } from "../../core/document/fixtures.js";
 import type { Frame } from "../../core/document/types.js";
+import { EMPTY_SELECTION } from "../../core/store/selection.js";
 import { drawOverlay, type OverlayScene } from "./drawOverlay.js";
 import { METRICS, testTheme } from "./fixtures.js";
 import { TimelineGeometry } from "./geometry.js";
-import type { MoveProposal } from "./gestures/moveClips.js";
+import { NO_MODIFIERS, type MoveProposal } from "./gestures/moveClips.js";
+import { TrimGesture } from "./gestures/trimClip.js";
 import { TextCache } from "./textCache.js";
 
 /** The x of every `moveTo` (one per hatch line). */
@@ -64,6 +66,7 @@ function drawDrag(hatch: [Frame, Frame], pxPerFrame: number, scrollFrame: number
     hoverAddRow: null,
     hoverToggle: null,
     move: { proposal, newRowHeight: METRICS.trackHeight.M },
+    trim: null,
     marquee: null,
     text: new TextCache(),
     ...snap,
@@ -94,6 +97,78 @@ describe("drawOverlay: overwrite hatching", () => {
   it("draws nothing for a span outside the view", () => {
     drawDrag([0, 1_000], 400, 9_000);
     expect(moves).toEqual([]);
+  });
+});
+
+describe("drawOverlay: trims", () => {
+  const theme = testTheme();
+  beforeEach(() => {
+    rects.length = 0;
+    texts.length = 0;
+    vi.stubGlobal("Path2D", class {});
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  /** V1: a [0, 50) at its media start, b [50, 80); the trim gesture moved a's in point by `delta`. */
+  function drawTrim(delta: number, ripple = false) {
+    const project = makeProject();
+    project.media.m = makeMedia("m");
+    const v1 = makeTrack("v1", "video", ["a", "b"]);
+    project.tracks = [v1, makeTrack("a1", "audio")];
+    project.clips.a = makeMediaClip(project, { id: "a", trackId: "v1", start: 0, duration: 50, mediaId: "m" });
+    project.clips.b = makeMediaClip(project, { id: "b", trackId: "v1", start: 50, duration: 30, mediaId: "m" });
+    const trim = new TrimGesture(project, "a", "in", 0);
+    const proposal = trim.update(delta, NO_MODIFIERS, { ripple, linkedSelection: true });
+    const geometry = new TimelineGeometry({ width: 1000, height: 428, tracks: project.tracks, pxPerFrame: 4, scrollFrame: 0, scrollY: 0, metrics: METRICS });
+    drawOverlay({
+      ctx: fakeContext(),
+      dpr: 1,
+      geometry,
+      theme,
+      playhead: 0,
+      scrubbing: false,
+      hoverClip: null,
+      hoverAddRow: null,
+      hoverToggle: null,
+      snapFrame: null,
+      move: null,
+      trim: { proposal, selection: EMPTY_SELECTION },
+      marquee: null,
+      tooltip: { text: "Δ", target: null, alert: proposal.result.mediaBound ? "Media start" : null, x: 300, y: 200 },
+      text: new TextCache(),
+    });
+    return proposal;
+  }
+
+  it("redraws the trimmed row from the proposed document, then the ghost edge in the accent color", () => {
+    drawTrim(10);
+    // The V1 clip band (172 + 2 .. 228 - 2) is cleared over [0, 50): x 176..376.
+    const clear = rects.find((rect) => rect.style === theme.color.bg);
+    expect(clear).toMatchObject({ x: 176, y: 174, width: 200, height: 52 });
+    // The trimmed clip drawn at its new place (frame 10: x 216), then the 2 px edge at its new in point.
+    const body = rects.find((rect) => rect.style === theme.timeline.clip.video.body);
+    expect(body?.x).toBe(216);
+    const edge = rects.find((rect) => rect.style === theme.color.accent);
+    expect(edge).toMatchObject({ x: 216, width: 2, height: 52 });
+    expect(rects.indexOf(edge as (typeof rects)[number])).toBeGreaterThan(rects.indexOf(clear as (typeof rects)[number]));
+  });
+
+  it("draws the edge in the danger color at a media bound, with the alert last in the tooltip", () => {
+    const proposal = drawTrim(-10);
+    expect(proposal.result).toMatchObject({ delta: 0, mediaBound: "start" });
+    expect(rects.some((rect) => rect.style === theme.color.danger)).toBe(true);
+    expect(rects.some((rect) => rect.style === theme.color.accent)).toBe(false);
+    expect(texts.at(-1)).toMatchObject({ text: "Media start", style: theme.color.danger });
+  });
+
+  it("redraws the shifted clips of a ripple from where they start", () => {
+    const proposal = drawTrim(10, true);
+    expect(proposal.repaint.get("v1")).toEqual({ from: 0, to: Infinity });
+    expect(proposal.project.clips.b?.start).toBe(40);
+    // Cleared to the right end of the track area (and a frame past it, clipped).
+    const clear = rects.find((rect) => rect.style === theme.color.bg);
+    expect(clear?.x).toBe(176);
+    expect((clear?.x ?? 0) + (clear?.width ?? 0)).toBeGreaterThanOrEqual(1000);
   });
 });
 
