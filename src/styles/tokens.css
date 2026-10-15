@@ -171,6 +171,11 @@
   --gizmo-snap-width: var(--timeline-trim-edge-width); /* 2px: the 100% scale snap line */
   --gizmo-min-edge: var(--control-default); /* 28px: shorter sides show no edge handles */
   --canvas-drag-threshold: var(--timeline-drag-threshold); /* 4px dead zone, spec §6.8 */
+  /* Canvas snapping and smart guides (Batch 23, spec §7.4; the DS has none): 1px --accent lines, distance
+     spans with end caps, and distance chips in --accent with --on-accent mono caption text. */
+  --canvas-snap-threshold: 6px; /* spec §7.4: in screen space, the same at every zoom */
+  --canvas-guide-width: var(--gizmo-line-width);
+  --canvas-guide-cap: var(--space-2); /* 6px end caps across a distance span */
 
   /* Timeline (gap: the DS has no timeline metrics; track heights are the spec §6.2 defaults) */
   --timeline-header-width: 216px; /* Batch 16: five 16px header toggles beside the name (176px before) */

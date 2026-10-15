@@ -19,18 +19,23 @@ const TOKENS: Record<string, string> = {
   "--gizmo-snap-width": "2px",
   "--gizmo-min-edge": "28px",
   "--canvas-drag-threshold": "4px",
+  "--canvas-snap-threshold": "6px",
 };
 const theme = readTheme((name) => TOKENS[name] ?? name).theme;
 const detaches: (() => void)[] = [];
 
 const t = (fields: Partial<Transform> = {}): Transform => ({ ...IDENTITY_TRANSFORM, ...fields });
 
-/** V1..V3, a 100 x 100 solid on each, stacked at the frame center (540, 960) unless moved; A1 with a linked partner of s1. */
-function setup(transforms: Partial<Transform>[] = [{}, {}, {}]) {
+/**
+ * V1..V3, a 100 x 100 solid on each, stacked at the frame center (540, 960) unless moved; A1 with a
+ * linked partner of s1. Snapping is off unless `snap` (6 CSS px are 12 project px at this placement).
+ */
+function setup(transforms: Partial<Transform>[] = [{}, {}, {}], { snap = false } = {}) {
   const p = makeProject();
   p.tracks = [makeTrack("v1"), makeTrack("v2"), makeTrack("v3"), makeTrack("a1", "audio")];
   const clips: Clip[] = transforms.map((fields, i) => ({ ...makeSolidClip({ id: `s${i + 1}`, trackId: `v${i + 1}`, start: 0, duration: 30 }), transform: t(fields) }));
   const session = createSessionStore();
+  session.state.set((state) => ({ ...state, snap }));
   const doc = new DocumentStore(withClips(p, clips), { session, validate: true });
   const commits = vi.fn((command: Parameters<DocumentStore["dispatch"]>[0]) => doc.dispatch(command));
   const onDragStart = vi.fn();
@@ -189,5 +194,119 @@ describe("CanvasEditInput (spec §7.2, §7.3)", () => {
     s.pointer("pointerup", 260, 980);
     expect(s.transform("s1")).toMatchObject({ x: -280, y: 20 });
     expect(s.transform("s3")).toMatchObject({ x: 320, y: 20 });
+  });
+});
+
+describe("CanvasEditInput snapping and smart guides (spec §7.4)", () => {
+  afterEach(() => {
+    for (const detach of detaches.splice(0)) detach();
+    document.body.replaceChildren();
+  });
+
+  const key = (type: "keydown" | "keyup", init: KeyboardEventInit = {}) => {
+    const event = new KeyboardEvent(type, { bubbles: true, cancelable: true, ...init });
+    window.dispatchEvent(event);
+    return event;
+  };
+
+  it("snaps a moved layer to the frame center on both axes with crossing guides", () => {
+    const s = setup([{ x: -300 }, { y: 400 }, { x: 300 }], { snap: true });
+    s.pointer("pointerdown", 540, 1360);
+    s.pointer("pointermove", 545, 1100);
+    s.pointer("pointermove", 545, 963);
+    expect(s.input.transforms?.get("s2")).toMatchObject({ x: 0, y: 0 });
+    const lines = s.input.scene().guides?.lines;
+    expect(lines).toContainEqual({ vertical: true, at: 540, from: 0, to: 1920 });
+    expect(lines).toContainEqual({ vertical: false, at: 960, from: 0, to: 1080 });
+    s.pointer("pointerup", 545, 963);
+    expect(s.transform("s2")).toMatchObject({ x: 0, y: 0 });
+    expect(s.input.scene().guides).toBeNull();
+  });
+
+  it("snaps to another layer's edge and shows the distance between them", () => {
+    const s = setup([{ x: -300 }, { y: 400 }, { x: 300 }], { snap: true });
+    s.pointer("pointerdown", 540, 1360);
+    s.pointer("pointermove", 244, 1360);
+    expect(s.input.transforms?.get("s2")).toMatchObject({ x: -300, y: 400 });
+    const guides = s.input.scene().guides;
+    expect(guides?.lines).toContainEqual({ vertical: true, at: 190, from: 910, to: 1410 });
+    expect(guides?.spans).toEqual([{ vertical: true, at: 190, from: 1010, to: 1310, distance: 300 }]);
+  });
+
+  it("snaps the middle of three layers in a column to equal spacing", () => {
+    const s = setup([{ y: -400 }, { y: 200 }, { y: 340 }], { snap: true });
+    s.pointer("pointerdown", 540, 1160);
+    s.pointer("pointermove", 540, 935);
+    expect(s.input.transforms?.get("s2")).toMatchObject({ x: 0, y: -30 });
+    const spans = s.input.scene().guides?.spans;
+    expect(spans).toContainEqual({ vertical: true, at: 540, from: 610, to: 880, distance: 270 });
+    expect(spans).toContainEqual({ vertical: true, at: 540, from: 980, to: 1250, distance: 270 });
+  });
+
+  it("snaps the dragged edge of a scale", () => {
+    const s = setup([{ x: -300 }, {}, { x: 300 }], { snap: true });
+    s.click(540, 960);
+    expect(s.selected()).toEqual(["s2"]);
+    // The w handle at x 490 dragged to 296: the left edge snaps to s1's right edge (290).
+    s.pointer("pointerdown", 490, 960);
+    s.pointer("pointermove", 400, 960);
+    s.pointer("pointermove", 296, 960);
+    expect(s.input.scene().guides?.lines).toContainEqual({ vertical: true, at: 290, from: 910, to: 1010 });
+    s.pointer("pointerup", 296, 960);
+    expect(s.transform("s2").scale).toBeCloseTo(3, 9);
+    expect(s.transform("s2").x).toBeCloseTo(-100, 9);
+  });
+
+  it("inverts snapping while S is held during a drag, without toggling the setting", () => {
+    const s = setup([{ x: -300 }, { y: 400 }, { x: 300 }], { snap: true });
+    s.pointer("pointerdown", 540, 1360);
+    s.pointer("pointermove", 244, 1360);
+    expect(s.input.transforms?.get("s2")?.x).toBe(-300);
+    const down = key("keydown", { key: "s", code: "KeyS" });
+    expect(down.defaultPrevented).toBe(true);
+    expect(s.input.transforms?.get("s2")?.x).toBe(-296);
+    expect(s.input.scene().guides).toBeNull();
+    key("keyup", { key: "s", code: "KeyS" });
+    expect(s.input.transforms?.get("s2")?.x).toBe(-300);
+    expect(s.session.state.getState().snap).toBe(true);
+    // Snapping off: a held S turns it on.
+    s.pointer("pointerup", 244, 1360);
+    s.session.state.set((state) => ({ ...state, snap: false }));
+    s.pointer("pointerdown", 240, 1360);
+    s.pointer("pointermove", 236, 1300);
+    s.pointer("pointermove", 244, 1360);
+    expect(s.input.transforms?.get("s2")?.x).toBe(-296);
+    key("keydown", { key: "s", code: "KeyS" });
+    expect(s.input.transforms?.get("s2")?.x).toBe(-300);
+  });
+
+  it("shows the distances to the nearest layers and the frame edges with Alt (no drag)", () => {
+    const s = setup([{ x: -300 }, {}, { x: 300 }]);
+    setSelection(s.session, selectClips(["s2"]));
+    expect(s.input.scene().guides).toBeNull();
+    key("keydown", { key: "Alt", altKey: true });
+    expect(s.input.scene().guides?.spans).toEqual([
+      { vertical: false, at: 960, from: 290, to: 490, distance: 200 },
+      { vertical: false, at: 960, from: 590, to: 790, distance: 200 },
+      { vertical: true, at: 540, from: 0, to: 910, distance: 910 },
+      { vertical: true, at: 540, from: 1010, to: 1920, distance: 910 },
+    ]);
+    // Smart guides off: no measure mode.
+    s.session.state.set((state) => ({ ...state, preview: { ...state.preview, guides: false } }));
+    expect(s.input.scene().guides).toBeNull();
+    key("keyup", { key: "Alt" });
+  });
+
+  it("rebuilds the snap candidates only when the other layers change", () => {
+    const s = setup([{ x: -300 }, { y: 400 }, { x: 300 }], { snap: true });
+    s.drag([540, 1360], [600, 1300]);
+    expect(s.input.snapStats.rebuilds).toBe(1);
+    expect(s.input.snapStats.queries).toBe(4);
+    // The same layer again: the others did not change.
+    s.drag([600, 1300], [700, 1200]);
+    expect(s.input.snapStats.rebuilds).toBe(1);
+    // Another layer: s2 becomes a target, s1 is held.
+    s.drag([240, 960], [260, 1000]);
+    expect(s.input.snapStats.rebuilds).toBe(2);
   });
 });

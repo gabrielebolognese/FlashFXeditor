@@ -10,14 +10,19 @@
 // - Gizmo (gizmo.ts): handles scale, the zones outside the corners rotate, the anchor marker moves the
 //   anchor with Alt held; Shift and Alt change a running gesture at once. Drags start past the dead
 //   zone and pause playback; Esc cancels (`cancel`).
+// - Snapping (§7.4, snap.ts) while the session's snap toggle is on (held S inverts it during a drag,
+//   one snap state with the timeline): a move snaps the box's edges and center, a scale the dragged
+//   edge of an axis-aligned box; the candidates come from `CanvasSnapIndex` (rebuilt only when the
+//   other layers, the frame or the overlays shown change). Other layers and equal spacing count while
+//   smart guides are on (`preview.guides`), which also gives the Alt measure mode (no drag).
 // - Hover outlines the layer under the pointer; the cursor follows the gizmo zone.
 // - The canvas rect is read once per pointer enter and after a panel resize (P9).
-// TODO(batch 23): snapping and smart guides. TODO(batch 26): crop handles. TODO(batch 29): double-click
-// edits text inline. TODO(batch 35): the keyframe diamond on the box corner.
+// TODO(batch 26): crop handles. TODO(batch 29): double-click edits text inline. TODO(batch 35): the
+// keyframe diamond on the box corner.
 import type { Command } from "../../core/commands/command.js";
 import type { ClipId, Project, Transform } from "../../core/document/types.js";
 import { isEditableTarget } from "../../core/keyboard/KeyDispatcher.js";
-import type { Platform } from "../../core/keyboard/keys.js";
+import { isSnapKey, type Platform } from "../../core/keyboard/keys.js";
 import type { FrameScheduler } from "../../core/scheduler/FrameScheduler.js";
 import type { Store } from "../../core/store/createStore.js";
 import type { DocumentStore } from "../../core/store/DocumentStore.js";
@@ -27,13 +32,18 @@ import { setSelection, type SessionStore } from "../../core/store/sessionStore.j
 import type { Theme, ThemeBridge } from "../../core/theme/theme.js";
 import { setTransforms, type Point } from "../../timeline/edit/transform.js";
 import { selectionPartners } from "../../timeline/model/queries.js";
-import { canvasLayersAt, layersInRect, layersUnder, type CanvasLayer, type Quad, type Rect } from "./canvasLayers.js";
+import { canvasLayersAt, layersInRect, layersUnder, quadsBounds, type CanvasLayer, type Quad, type Rect } from "./canvasLayers.js";
 import { canvasCursors, type CanvasCursors } from "./canvasCursors.js";
 import {
   AngleTracker,
   anchorGesture,
+  boxPoint,
   gizmoBoxOf,
+  HANDLES,
+  handlePoint,
   hitGizmo,
+  isCorner,
+  moveDelta,
   moveGesture,
   resizeCursor,
   rotateGesture,
@@ -47,7 +57,10 @@ import {
   type HandleId,
   type Modifiers,
 } from "./gizmo.js";
+import { ACTION_SAFE, centeredRect, safeZoneOn, TITLE_SAFE } from "./overlays.js";
 import type { PreviewPlacement } from "./PreviewView.js";
+import type { ZoneRect } from "./safeZones.js";
+import { CanvasSnapIndex, handleGuides, isAxisAligned, measureGuides, moveGuides, snapHandle, snapMove, type CanvasSnapCandidates, type Guides } from "./snap.js";
 
 export interface CanvasEditDeps {
   document: Pick<DocumentStore, "getState" | "subscribe">;
@@ -84,6 +97,8 @@ export interface GizmoScene {
   snap: { handle: HandleId; x: boolean; y: boolean } | null;
   /** The numeric readout near the cursor (canvas CSS px). */
   readout: { text: string; x: number; y: number } | null;
+  /** Smart guides (§7.4): the snap lines and distances of a drag, or the Alt measure mode. */
+  guides: Guides | null;
 }
 
 type GestureKind = "move" | "scale" | "rotate" | "anchor";
@@ -105,11 +120,14 @@ interface Drag {
   kind: GestureKind;
   handle: HandleId | null;
   start: GestureStart;
+  /** The layers it holds (no snap targets). */
+  held: ReadonlySet<ClipId>;
   /** The document the gesture started from: another change under it cancels it. */
   project: Project;
   point: Point;
   tracker: AngleTracker | null;
   result: GestureResult | null;
+  guides: Guides | null;
 }
 
 interface Marquee {
@@ -144,6 +162,9 @@ export class CanvasEditInput {
   private theme: Theme;
   private cursors: CanvasCursors;
   private cache: { project: Project | null; frame: number; transforms: ReadonlyMap<ClipId, Transform> | null; layers: CanvasLayer[] } = { project: null, frame: -1, transforms: null, layers: [] };
+  /** S held during the current drag: snapping inverted (§7.4, §6.9). */
+  private snapHeld = false;
+  private readonly snapIndex = new CanvasSnapIndex();
   private readonly stops: (() => void)[] = [];
   /** Changes of what the overlay draws apart from the document, playhead and selection. */
   version = 0;
@@ -163,6 +184,16 @@ export class CanvasEditInput {
     return this.drag !== null || this.marquee !== null;
   }
 
+  /** The snap toggle, inverted while S is held during a drag (one snap state with the timeline). */
+  get snapping(): boolean {
+    return this.deps.session.state.getState().snap !== this.snapHeld;
+  }
+
+  /** Snap candidate rebuilds and queries so far (dev stats: rebuilds only when the candidates change). */
+  get snapStats(): { readonly rebuilds: number; readonly queries: number } {
+    return this.snapIndex;
+  }
+
   attach(element: HTMLElement): () => void {
     this.detach();
     this.element = element;
@@ -175,9 +206,12 @@ export class CanvasEditInput {
       this.over = true;
       this.rect = null;
       this.modifiers = this.modifiersOf(event);
+      // Alt held: the anchor marker and the measure mode show over the canvas only.
+      if (this.modifiers.alt) this.invalidate();
     });
     listen("pointerleave", () => {
       this.over = false;
+      if (this.modifiers.alt) this.invalidate();
       if (!this.press && !this.drag && !this.marquee) this.setPointer(null);
     });
     listen("pointerdown", (event) => this.onPointerDown(event));
@@ -234,6 +268,7 @@ export class CanvasEditInput {
     this.press = null;
     this.drag = null;
     this.marquee = null;
+    this.snapHeld = false;
     if (pointerId !== undefined && this.element?.hasPointerCapture?.(pointerId)) this.element.releasePointerCapture(pointerId);
     if (running) {
       this.deps.scheduler.invalidate("preview");
@@ -282,6 +317,9 @@ export class CanvasEditInput {
     const pointer = this.pointer;
     const result = drag?.result;
     const frame = this.deps.document.getState().settings;
+    // Measure mode (§7.4): Alt over the canvas with no drag shows the distances around the selection.
+    const measuring = !drag && !marquee && !this.press && this.modifiers.alt && this.over && box !== null && this.deps.session.state.getState().preview.guides;
+    const guides = drag ? drag.guides : measuring && box ? measureGuides(this.snapCandidates(new Set(selected.map((layer) => layer.clipId))), quadsBounds([box]) as Rect) : null;
     return {
       hover: hoverLayer?.quad ?? null,
       outlines,
@@ -291,6 +329,7 @@ export class CanvasEditInput {
       marquee: marquee ? { x0: marquee.from.x, y0: marquee.from.y, x1: marquee.to.x, y1: marquee.to.y } : null,
       snap: result && drag.handle && (result.snapX || result.snapY) ? { handle: drag.handle, x: result.snapX, y: result.snapY } : null,
       readout: result && pointer ? { text: result.readout, x: pointer.x, y: pointer.y } : null,
+      guides,
     };
   }
 
@@ -380,6 +419,7 @@ export class CanvasEditInput {
     this.press = null;
     this.drag = null;
     this.marquee = null;
+    this.snapHeld = false;
     if (this.element?.hasPointerCapture?.(event.pointerId)) this.element.releasePointerCapture(event.pointerId);
     if (press?.click) setSelection(this.deps.session, press.click);
     if (marquee) setSelection(this.deps.session, marquee.additive ? addToSelection(marquee.base, marquee.hits) : selectClips(marquee.hits));
@@ -434,10 +474,12 @@ export class CanvasEditInput {
       kind,
       handle: press.drag.handle ?? null,
       start,
+      held: new Set(held.map((layer) => layer.clipId)),
       project,
       point: press.point,
       tracker: kind === "rotate" ? new AngleTracker(rotationPivot(start), press.point) : null,
       result: null,
+      guides: null,
     };
     this.deps.onDragStart();
   }
@@ -448,15 +490,44 @@ export class CanvasEditInput {
     const pointer = this.pointer;
     if (!drag || !pointer) return;
     const point = this.projectPoint(pointer, placement);
-    if (!point) return;
+    if (!point || !placement) return;
     const mods: Modifiers = { shift: this.modifiers.shift, alt: this.modifiers.alt };
+    const snapping = this.snapping;
+    drag.guides = null;
     switch (drag.kind) {
-      case "move":
-        drag.result = moveGesture(drag.start, point.x - drag.point.x, point.y - drag.point.y, mods);
+      case "move": {
+        const dx = point.x - drag.point.x;
+        const dy = point.y - drag.point.y;
+        if (!snapping) {
+          drag.result = moveGesture(drag.start, dx, dy, mods);
+          break;
+        }
+        // The box's edges and center snap on the free axes (§7.4); the guides show what it meets.
+        const candidates = this.snapCandidates(drag.held);
+        const delta = moveDelta(dx, dy, mods.shift);
+        const box = quadsBounds([drag.start.box]) as Rect;
+        const moved = { x0: box.x0 + delta.x, y0: box.y0 + delta.y, x1: box.x1 + delta.x, y1: box.y1 + delta.y };
+        drag.result = moveGesture(drag.start, dx, dy, mods, snapMove(candidates, moved, this.snapReach(placement), delta.free));
+        drag.guides = moveGuides(candidates, quadsBounds([drag.result.box]) as Rect);
         break;
-      case "scale":
-        drag.result = scaleGesture(drag.start, drag.handle as HandleId, point, mods);
+      }
+      case "scale": {
+        const handle = drag.handle as HandleId;
+        let result = scaleGesture(drag.start, handle, point, mods, snapping);
+        // The dragged edge snaps (§7.4) while the box is axis-aligned: the gesture aims at the target.
+        if (snapping && isAxisAligned(drag.start.box)) {
+          const candidates = this.snapCandidates(drag.held);
+          const { u, v } = HANDLES[handle];
+          const fixed = boxPoint(drag.start.box, mods.alt ? 0.5 : 1 - u, mods.alt ? 0.5 : 1 - v);
+          const grab = handlePoint(drag.start.box, handle);
+          const free = { x: Math.abs(grab.x - fixed.x) > 1e-9, y: Math.abs(grab.y - fixed.y) > 1e-9 };
+          const aim = snapHandle(candidates, handlePoint(result.box, handle), fixed, free, isCorner(handle) && !mods.shift, this.snapReach(placement));
+          if (aim) result = scaleGesture(drag.start, handle, aim, mods, snapping);
+          drag.guides = handleGuides(candidates, quadsBounds([result.box]) as Rect, handlePoint(result.box, handle), free);
+        }
+        drag.result = result;
         break;
+      }
       case "rotate":
         drag.result = rotateGesture(drag.start, (drag.tracker as AngleTracker).update(point), mods);
         break;
@@ -493,13 +564,33 @@ export class CanvasEditInput {
 
   // --- Keys ----------------------------------------------------------------------------------------
 
-  /** Shift, Alt and Mod change a running gesture at once and show the anchor marker; the keys still reach the dispatcher. */
+  /**
+   * Shift, Alt and Mod change a running gesture at once and show the anchor marker (and the measure
+   * mode); the keys still reach the dispatcher. During a drag S is the hold-to-invert snapping modifier
+   * (§7.4, as on the timeline, §6.9), read here in the capture phase so it never reaches the shortcuts
+   * (S, Shift+S, Mod+S); its key-up goes on.
+   */
   private onModifierKey(event: KeyboardEvent): void {
+    let snapChanged = false;
+    if (this.drag && isSnapKey(event)) {
+      if (event.type === "keydown") {
+        event.preventDefault();
+        event.stopPropagation();
+        // A repeat comes from a press before the drag (that one toggled the setting): no hold.
+        if (!event.repeat && !this.snapHeld) {
+          this.snapHeld = true;
+          snapChanged = true;
+        }
+      } else if (this.snapHeld) {
+        this.snapHeld = false;
+        snapChanged = true;
+      }
+    }
     const next = this.modifiersOf(event);
     const busy = this.drag !== null || this.marquee !== null || this.press !== null;
     // A lone Alt press-and-release would move the focus to the browser menu (Windows).
     if (event.key === "Alt" && (this.over || busy) && !isEditableTarget(event.target)) event.preventDefault();
-    if (next.shift === this.modifiers.shift && next.alt === this.modifiers.alt && next.mod === this.modifiers.mod) return;
+    if (!snapChanged && next.shift === this.modifiers.shift && next.alt === this.modifiers.alt && next.mod === this.modifiers.mod) return;
     this.modifiers = next;
     if (this.drag) this.updateDrag();
     else if (this.over) {
@@ -526,6 +617,26 @@ export class CanvasEditInput {
 
   private modifiersOf(event: { shiftKey: boolean; altKey: boolean; ctrlKey: boolean; metaKey: boolean }) {
     return { shift: event.shiftKey, alt: event.altKey, mod: this.deps.platform === "mac" ? event.metaKey : event.ctrlKey };
+  }
+
+  /** The snap candidates without the layers in `exclude` (§7.4); the index rebuilds them only when they change. */
+  private snapCandidates(exclude: ReadonlySet<ClipId>): CanvasSnapCandidates {
+    const { width, height } = this.deps.document.getState().settings;
+    const frame = { width, height };
+    const preview = this.deps.session.state.getState().preview;
+    const safe: ZoneRect[] = [];
+    const zone = safeZoneOn(preview.safeZone, frame);
+    if (zone) safe.push(zone.safe);
+    if (preview.safeMargins) safe.push(centeredRect(frame, ACTION_SAFE), centeredRect(frame, TITLE_SAFE));
+    const layers: Rect[] = [];
+    // Other visible layers (smart guides on): muted ones are out of the picture.
+    if (preview.guides) for (const layer of this.layers()) if (!layer.muted && !exclude.has(layer.clipId)) layers.push(quadsBounds([layer.quad]) as Rect);
+    return this.snapIndex.get({ frame, thirds: preview.grid === "thirds", safe, layers });
+  }
+
+  /** The snap threshold (§7.4: CSS px on screen, zoom-independent) in project px. */
+  private snapReach(placement: PreviewPlacement): number {
+    return (this.theme.gizmo.snapThreshold * placement.dpr) / placement.transform[0];
   }
 
   private metrics(dpr: number) {

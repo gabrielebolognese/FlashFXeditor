@@ -33,7 +33,7 @@ export interface PreviewSession {
   rulers: boolean;
   /** Project pixel grid from 800% (§7.5). */
   pixelGrid: boolean;
-  /** Smart guides while moving layers on the canvas (§7.4, drawn from Batch 23). */
+  /** Smart guides on the canvas (§7.4): other layers and equal spacing as snap targets, the Alt measure mode. */
   guides: boolean;
 }
 

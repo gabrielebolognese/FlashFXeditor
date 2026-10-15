@@ -34,7 +34,7 @@ import type { Affect } from "../../core/commands/command.js";
 import { formatSpeed, formatTimecode, usToFrame } from "../../core/document/time.js";
 import { isMediaClip, type Clip, type ClipId, type Frame, type Project, type TrackId, type TrackKind } from "../../core/document/types.js";
 import { isEditableTarget } from "../../core/keyboard/KeyDispatcher.js";
-import type { Platform } from "../../core/keyboard/keys.js";
+import { isSnapKey, type Platform } from "../../core/keyboard/keys.js";
 import { watchDevicePixelRatio } from "../../core/scheduler/devicePixelRatio.js";
 import type { FrameScheduler, RenderView } from "../../core/scheduler/FrameScheduler.js";
 import type { IdleQueue } from "../../core/scheduler/IdleQueue.js";
@@ -2130,15 +2130,6 @@ function dropLanes(geometry: TimelineGeometry, y: number): DropLanes {
 /** What a drag of a clip body does with each tool (spec §6.18); the Razor cuts and the Hand pans on the press. */
 function bodyDrag(tool: Tool): BodyDrag {
   return tool === "select" ? "move" : tool === "slip" || tool === "slide" ? tool : null;
-}
-
-/**
- * The S key as the KeyDispatcher reads it: by the letter typed, or by the key position when no plain
- * letter comes (Option+S on macOS types "ß").
- */
-function isSnapKey(event: KeyboardEvent): boolean {
-  const key = event.key.toLowerCase();
-  return /^[a-z]$/.test(key) ? key === "s" : event.code === "KeyS";
 }
 
 /** The drag tooltip text (spec §6.8): `Δ +00:00:12`, frames moved as mm:ss:ff. */
