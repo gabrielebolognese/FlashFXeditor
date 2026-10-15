@@ -1,5 +1,7 @@
 // The single keyboard listener (spec §3.6). Resolves a key event against the keymap for the current
-// focus scope (scope bindings first, then global) and dispatches the command id.
+// focus scope (scope bindings first, then global) and dispatches the command id. A scope binding whose
+// command is not available yet (`isAvailable`: a later batch builds it) gives way to the global
+// binding of the same key, e.g. the preview's arrow keys step frames until the canvas nudges exist.
 import type { FocusScope } from "./focusScope.js";
 import type { KeyBinding } from "./keymap.js";
 import { eventChords, parseChord, type Platform } from "./keys.js";
@@ -18,6 +20,8 @@ export interface KeyDispatcherOptions {
   platform: Platform;
   getScope: () => FocusScope;
   onAction: ActionHandler;
+  /** False for a bound command nothing handles yet; a scope binding then falls through to the global one. */
+  isAvailable?: (id: string) => boolean;
 }
 
 /** Scopes that never fall through to global bindings: typing and dialogs own the keyboard. */
@@ -74,15 +78,22 @@ export class KeyDispatcher {
   resolve(event: KeyEventLike, scope: FocusScope): KeyBinding | undefined {
     const scopes: FocusScope[] = ISOLATED_SCOPES.has(scope) || scope === "global" ? [scope] : [scope, "global"];
     const chords = eventChords(event);
+    const available = this.options.isAvailable;
+    let unavailable: KeyBinding | undefined;
     for (const s of scopes) {
       const map = this.index.get(s);
       if (!map) continue;
       for (const chord of chords) {
         const binding = map.get(chord);
-        if (binding) return binding;
+        if (!binding) continue;
+        if (s !== "global" && available && !available(binding.id)) {
+          unavailable ??= binding;
+          continue;
+        }
+        return binding;
       }
     }
-    return undefined;
+    return unavailable;
   }
 
   handleKeyDown(event: KeyEventLike): void {

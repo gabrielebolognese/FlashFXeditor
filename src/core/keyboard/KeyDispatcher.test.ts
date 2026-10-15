@@ -4,7 +4,7 @@ import type { FocusScope } from "./focusScope.js";
 import { FocusScopeTracker, scopeOf } from "./focusScope.js";
 import { DEFAULT_KEYMAP } from "./keymap.js";
 
-function setup(initialScope: FocusScope = "global") {
+function setup(initialScope: FocusScope = "global", isAvailable?: (id: string) => boolean) {
   let scope = initialScope;
   const onAction = vi.fn();
   const dispatcher = new KeyDispatcher({
@@ -12,6 +12,7 @@ function setup(initialScope: FocusScope = "global") {
     platform: "other",
     getScope: () => scope,
     onAction,
+    ...(isAvailable && { isAvailable }),
   });
   return {
     dispatcher,
@@ -46,6 +47,20 @@ describe("KeyDispatcher", () => {
     t.setScope("timeline");
     t.down({ key: "ArrowLeft", code: "ArrowLeft" });
     expect(t.onAction).toHaveBeenLastCalledWith("transport.stepBack", expect.objectContaining({ scope: "timeline" }));
+  });
+
+  it("falls through to the global binding when the scope's command is not available yet", () => {
+    // The preview's arrows are canvas nudges (Batch 22); until then they step frames.
+    const t = setup("preview", (id) => !id.startsWith("canvas.nudge"));
+    t.down({ key: "ArrowRight", code: "ArrowRight" });
+    expect(t.onAction).toHaveBeenLastCalledWith("transport.stepForward", { scope: "preview", phase: "down", repeat: false });
+    t.up("ArrowRight");
+    // Available scope bindings still win; a key with no global binding keeps its scope binding.
+    t.down({ key: "0", code: "Digit0", ctrlKey: true });
+    expect(t.onAction).toHaveBeenLastCalledWith("canvas.zoomFit", expect.anything());
+    const none = setup("preview", () => false);
+    none.down({ key: "0", code: "Digit0", ctrlKey: true });
+    expect(none.onAction).toHaveBeenLastCalledWith("canvas.zoomFit", expect.anything());
   });
 
   it("ignores scope-only bindings outside their scope", () => {

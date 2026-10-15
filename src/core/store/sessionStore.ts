@@ -12,6 +12,37 @@ import { EMPTY_SELECTION, selectionEquals, type Selection } from "./selection.js
 export type Tool = "select" | "razor" | "hand" | "slip" | "slide" | "rateStretch";
 export type PreviewQuality = "auto" | "full" | "proxy" | "half" | "quarter";
 export type SafeZone = "none" | "reels" | "tiktok" | "shorts";
+/** Preview grid overlay (spec §7.6): rule of thirds, square cells a third of the width wide, or N x N cells. */
+export type PreviewGrid = "none" | "thirds" | "squares" | "custom";
+
+/** The preview monitor (spec §5.3, §7.1, §7.5, §7.6): view, quality and the overlays of the Overlays menu. */
+export interface PreviewSession {
+  zoom: number | "fit";
+  /** The frame point at the canvas center, in project px from the frame center (see render/preview/viewport.ts). */
+  panX: number;
+  panY: number;
+  quality: PreviewQuality;
+  safeZone: SafeZone;
+  grid: PreviewGrid;
+  /** Cells per side of the custom grid. */
+  gridDivisions: number;
+  centerCross: boolean;
+  /** Title-safe and action-safe rectangles (80% / 90%). */
+  safeMargins: boolean;
+  /** Pixel rulers along the canvas edges above 100% (§7.5). */
+  rulers: boolean;
+  /** Project pixel grid from 800% (§7.5). */
+  pixelGrid: boolean;
+  /** Smart guides while moving layers on the canvas (§7.4, drawn from Batch 23). */
+  guides: boolean;
+}
+
+/** Free preview zoom limits (the wheel): 5% to 3200% (the pixel grid shows from 800%, §7.5). */
+export const PREVIEW_MIN_ZOOM = 0.05;
+export const PREVIEW_MAX_ZOOM = 32;
+
+export const GRID_DIVISIONS_MIN = 2;
+export const GRID_DIVISIONS_MAX = 16;
 export type MediaTab = "media" | "presets" | "captions";
 /** Header sort choices (§12) plus the list-view columns. */
 export type MediaSort = "name" | "date" | "duration" | "kind" | "resolution" | "fps" | "codec" | "audio" | "used";
@@ -31,7 +62,7 @@ export interface SessionState {
   inPoint: Frame | null;
   outPoint: Frame | null;
   timeline: { pxPerFrame: number; scrollFrame: number; scrollY: number };
-  preview: { zoom: number | "fit"; panX: number; panY: number; quality: PreviewQuality; safeZone: SafeZone };
+  preview: PreviewSession;
   activeTool: Tool;
   snap: boolean;
   linkedSelection: boolean;
@@ -53,7 +84,20 @@ export const DEFAULT_SESSION: SessionState = {
   outPoint: null,
   // 4 px/frame = 120 px/s at 30 fps. scrollY is relative to the resting divider position (may be < 0).
   timeline: { pxPerFrame: 4, scrollFrame: 0, scrollY: 0 },
-  preview: { zoom: "fit", panX: 0, panY: 0, quality: "auto", safeZone: "none" },
+  preview: {
+    zoom: "fit",
+    panX: 0,
+    panY: 0,
+    quality: "auto",
+    safeZone: "none",
+    grid: "none",
+    gridDivisions: 4,
+    centerCross: false,
+    safeMargins: false,
+    rulers: false,
+    pixelGrid: true,
+    guides: true,
+  },
   activeTool: "select",
   snap: true,
   linkedSelection: true,

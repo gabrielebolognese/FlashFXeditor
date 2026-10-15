@@ -73,6 +73,7 @@ export function startServices(): () => void {
     keymap: DEFAULT_KEYMAP,
     platform: detectPlatform(),
     getScope: () => focusScopes.scope,
+    isAvailable: (id) => actions.has(id),
     onAction: (id, context) => {
       if (actions.has(id)) return actions.run(id, context);
       // Bound but not built yet (spec §18 is bound in full): keep consuming the key; dev builds say

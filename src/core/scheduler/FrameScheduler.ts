@@ -8,7 +8,8 @@
  * overlay, so an overlay registered on both flags (the preview stats) reports the render it follows.
  * The flag type is derived from it, so a new flag cannot be left out of the order.
  */
-const FLAG_ORDER = ["timelineContent", "timelineOverlay", "preview", "previewOverlay", "meters", "mediaThumbs"] as const;
+// `gizmo`: the 2D canvas over the preview (overlays, Batch 22's gizmo); `previewOverlay`: the preview's dev stats and status strip.
+const FLAG_ORDER = ["timelineContent", "timelineOverlay", "preview", "gizmo", "previewOverlay", "meters", "mediaThumbs"] as const;
 
 // Document commands carry `affects` flags (timeline, clips, tracks, ...); each view maps the ones it
 // draws onto its own flags when it subscribes (e.g. TimelineView: document changes -> timelineContent).

@@ -1,4 +1,4 @@
-import { useRef, type ReactNode } from "react";
+import { useRef, type ReactNode, type Ref } from "react";
 import type { PanelId } from "../core/store/layoutStore.js";
 import styles from "./PanelFrame.module.css";
 import { usePanelSize } from "./useWorkspaceLayout.js";
@@ -13,15 +13,17 @@ export interface PanelFrameProps {
   footer?: ReactNode;
   /** A column right of the body (the preview's audio meter); the body size excludes it. */
   aside?: ReactNode;
+  /** The panel's section element (the preview writes its fullscreen attributes on it). */
+  panelRef?: Ref<HTMLElement>;
   children: ReactNode;
 }
 
 /** A panel: header strip + body (+ aside column) (+ footer strip). The body size is reported to the layout store. */
-export function PanelFrame({ id, header, actions, footer, aside, children }: PanelFrameProps) {
+export function PanelFrame({ id, header, actions, footer, aside, panelRef, children }: PanelFrameProps) {
   const bodyRef = useRef<HTMLDivElement>(null);
   usePanelSize(id, bodyRef);
   return (
-    <section className={styles.panel} data-panel={id} data-scope={id}>
+    <section ref={panelRef} className={styles.panel} data-panel={id} data-scope={id}>
       <header className={styles.header}>
         <div className={styles.headerMain}>{header}</div>
         {actions && <div className={styles.actions}>{actions}</div>}

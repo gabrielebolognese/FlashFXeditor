@@ -147,6 +147,19 @@
 
   /* Preview (gap): space kept around the letterboxed frame at Fit */
   --preview-margin: var(--space-5);
+  /* Preview overlays (Batch 21, spec §7.5/§7.6; the DS has none): white-alpha lines ("lines are
+     white-alpha"), a sunken-navy scrim over the platform UI areas of a safe zone. */
+  --preview-mask: rgba(7, 15, 28, 0.55);
+  --preview-guide: rgba(255, 255, 255, 0.72); /* safe rectangles, center cross */
+  --preview-grid: rgba(255, 255, 255, 0.34); /* the overwrite hatch's white */
+  --preview-pixel-grid: rgba(255, 255, 255, 0.12);
+  --preview-dash: var(--space-1);
+  --preview-cross-size: var(--control-compact);
+  --preview-ruler-size: var(--space-5);
+  --preview-ruler-tick: var(--space-1); /* minor ticks; major ticks run the ruler's height */
+  /* Fullscreen preview (Batch 21): over the panels, under menus, toasts and dialogs; its chrome hides
+     after this long without pointer movement. */
+  --preview-chrome-hide-delay: 2000ms;
 
   /* Timeline (gap: the DS has no timeline metrics; track heights are the spec §6.2 defaults) */
   --timeline-header-width: 216px; /* Batch 16: five 16px header toggles beside the name (176px before) */
@@ -279,6 +292,7 @@
 
   /* Z-index ladder */
   --z-canvas-banner: 40;
+  --z-fullscreen: 80; /* gap: the fullscreen preview, under --z-overlay (menus and tooltips stay above it) */
   --z-overlay: 90;
   --z-island: 95;
   --z-modal: 100;

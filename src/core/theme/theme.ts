@@ -57,6 +57,8 @@ export interface Theme {
   timeline: TimelineTheme;
   /** The stereo peak meter (CSS px). */
   meter: { barWidth: number; barGap: number; ledHeight: number };
+  /** Preview overlays (CSS px) and the fullscreen chrome's hide delay (ms) (spec §7.5, §7.6, §7.8). */
+  preview: { mask: string; guide: string; grid: string; pixelGrid: string; dash: number; crossSize: number; rulerSize: number; rulerTick: number; chromeHideDelay: number };
 }
 
 /** Timeline canvas metrics (CSS px) and clip colors (spec §6.2, §6.4). */
@@ -279,6 +281,17 @@ export function readTheme(read: TokenReader, root?: Element): { theme: Theme; mi
       rangeHandleZone: num("--timeline-range-handle-zone"),
     },
     meter: { barWidth: num("--meter-bar-width"), barGap: num("--meter-bar-gap"), ledHeight: num("--meter-led-height") },
+    preview: {
+      mask: str("--preview-mask"),
+      guide: str("--preview-guide"),
+      grid: str("--preview-grid"),
+      pixelGrid: str("--preview-pixel-grid"),
+      dash: num("--preview-dash"),
+      crossSize: num("--preview-cross-size"),
+      rulerSize: num("--preview-ruler-size"),
+      rulerTick: num("--preview-ruler-tick"),
+      chromeHideDelay: num("--preview-chrome-hide-delay"),
+    },
   };
   return { theme, missing };
 }

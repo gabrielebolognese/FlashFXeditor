@@ -4,6 +4,7 @@ import { TexturePool } from "../cache/TexturePool.js";
 import type { DeliveredFrame, Method, VideoInfo } from "../workers/protocol.js";
 import type { RequestOptions } from "../workers/WorkerPool.js";
 import { FrameService, MAX_IN_FLIGHT_PER_MEDIA, UnsupportedCodecError, type FrameResult, type FrameSource } from "./FrameService.js";
+import { fitWithin } from "../../render/gpu/fitWithin.js";
 import { FakeFrame, frameCounter } from "./testDecoder.js";
 
 const FRAME = 33_333;
@@ -21,10 +22,10 @@ interface Call {
   reject(error: unknown): void;
 }
 
-function texture(): TextureHandle & { destroyed: boolean } {
+function texture(width = 4, height = 4): TextureHandle & { destroyed: boolean } {
   return {
-    width: 4,
-    height: 4,
+    width,
+    height,
     mipLevels: 1,
     bytes: 64,
     destroyed: false,
@@ -38,7 +39,7 @@ function texture(): TextureHandle & { destroyed: boolean } {
 }
 
 /** A FrameService over a scripted worker: openVideo answers at once, frame requests wait for `deliver`. */
-function setup(options: { info?: VideoInfo; cachedIndex?: boolean; ready?: boolean; uploadSize?: number } = {}) {
+function setup(options: { info?: VideoInfo; cachedIndex?: boolean; ready?: boolean; uploadSize?: number | (() => number) } = {}) {
   const calls: Call[] = [];
   const opens: unknown[] = [];
   const workers = {
@@ -59,11 +60,14 @@ function setup(options: { info?: VideoInfo; cachedIndex?: boolean; ready?: boole
   const uploadOptions: unknown[] = [];
   const renderer = {
     ready: options.ready ?? true,
-    uploadVideoFrame: (frame: VideoFrame, opts?: unknown) => {
+    uploadVideoFrame: (frame: VideoFrame, opts?: { maxSize?: number }) => {
       uploads.push(frame as unknown as FakeFrame);
       uploadOptions.push(opts);
       frame.close();
-      return texture();
+      // Sized frames (detail tests) give textures of the upload size.
+      if (!frame.displayWidth) return texture();
+      const size = fitWithin(frame.displayWidth, frame.displayHeight, opts?.maxSize);
+      return texture(size.width, size.height);
     },
   };
   const pool = new TexturePool(1024 * 1024);
@@ -76,7 +80,8 @@ function setup(options: { info?: VideoInfo; cachedIndex?: boolean; ready?: boole
     },
   };
   let clock = 0;
-  const frames = new FrameService({ workers: workers as never, renderer, pool, now: () => clock, ...(options.uploadSize && { uploadSize: () => options.uploadSize }) });
+  const { uploadSize } = options;
+  const frames = new FrameService({ workers: workers as never, renderer, pool, now: () => clock, ...(uploadSize && { uploadSize: typeof uploadSize === "function" ? uploadSize : () => uploadSize }) });
   const detach = frames.attach(source);
   const frameCalls = () => calls.filter((c) => c.method === "requestFrame" && !c.options.signal?.aborted);
   /** Answers a frame request with a frame at its requested time (or `timeUs`). */
@@ -198,6 +203,37 @@ describe("FrameService", () => {
     deliver(frameCalls()[0] as Call);
     await request;
     expect(uploadOptions[0]).toMatchObject({ maxSize: 1920 });
+  });
+
+  it("decodes a cached frame again for more detail and replaces the smaller texture (spec §7.1)", async () => {
+    let size = 1920;
+    const { frames, frameCalls, pool } = setup({ uploadSize: () => size });
+    const uhd = (call: Call) => {
+      const timeUs = call.params.timeUs as number;
+      call.resolve({ frame: Object.assign(new FakeFrame(timeUs), { displayWidth: 3840, displayHeight: 2160 }), timeUs, approximate: false });
+    };
+    const first = frames.getFrame("m1", 0, { priority: "idle" });
+    await settle();
+    uhd(frameCalls()[0] as Call);
+    const small = await first;
+    expect([small.texture.width, small.texture.height]).toEqual([1920, 1080]);
+    // At the same upload size a cached frame answers at once, even with a larger wish.
+    expect((await frames.getFrame("m1", 0, { priority: "idle" })).texture).toBe(small.texture);
+    size = 3840;
+    const refreshed = frames.getFrame("m1", 0, { priority: "idle", minLongEdge: 3840 });
+    await settle();
+    expect(frameCalls()).toHaveLength(2);
+    uhd(frameCalls()[1] as Call);
+    const big = await refreshed;
+    expect([big.texture.width, big.texture.height]).toEqual([3840, 2160]);
+    expect(pool.get(big.key)).toBe(big.texture);
+    expect(small.texture.valid).toBe(false);
+    // A smaller upload never replaces a bigger texture.
+    size = 1920;
+    const again = frames.getFrame("m1", 0, { priority: "idle", minLongEdge: 4000 });
+    await settle();
+    uhd(frameCalls()[2] as Call);
+    expect((await again).texture).toBe(big.texture);
   });
 
   it("maps media time to the nearest frame key of an opened video, media time 0 being the first frame", async () => {

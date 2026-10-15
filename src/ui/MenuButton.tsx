@@ -1,0 +1,70 @@
+import { ChevronDown, type LucideIcon } from "lucide-react";
+import { useCallback, useRef, useState, type MouseEvent, type ReactNode } from "react";
+import { ContextMenu, type ContextMenuEntry } from "./ContextMenu.js";
+import styles from "./MenuButton.module.css";
+import { shortcutLabel } from "./shortcutLabel.js";
+
+export interface MenuButtonProps {
+  /** Accessible name and tooltip text. */
+  label: string;
+  /** Command id whose shortcut the tooltip shows. */
+  commandId?: string | undefined;
+  icon?: LucideIcon | undefined;
+  /** The visible value (a zoom, a mode); written by its own subscription when it changes often (P1). */
+  children?: ReactNode;
+  /** The rows, read when the menu opens and on each render while it is open. */
+  entries: () => readonly ContextMenuEntry[];
+  onSelect: (id: string) => void;
+  /** The menu closed (the keyboard goes back to the panel). */
+  onClose?: () => void;
+  /** Some overlay of the menu is on: the icon in its active (gold) state. */
+  pressed?: boolean | undefined;
+}
+
+// Never takes focus on mouse down, so Space and other shortcuts keep working after a choice.
+const keepFocus = (event: MouseEvent) => event.preventDefault();
+
+/** A dropdown (spec §7.8 "single click opens, single click selects"): a compact button opening a menu under it. */
+export function MenuButton({ label, commandId, icon: Icon, children, entries, onSelect, onClose, pressed }: MenuButtonProps) {
+  const ref = useRef<HTMLButtonElement>(null);
+  const [anchor, setAnchor] = useState<{ x: number; y: number } | null>(null);
+  const close = useCallback(() => {
+    setAnchor(null);
+    onClose?.();
+  }, [onClose]);
+  const toggle = () => {
+    if (anchor) {
+      close();
+      return;
+    }
+    const button = ref.current;
+    if (!button) return;
+    // One rect read per open.
+    const rect = button.getBoundingClientRect();
+    setAnchor({ x: rect.left, y: rect.bottom + 2 });
+  };
+  return (
+    <>
+      <button
+        ref={ref}
+        type="button"
+        className={styles.button}
+        data-kind={children === undefined ? "icon" : "value"}
+        aria-label={label}
+        aria-haspopup="menu"
+        aria-expanded={anchor !== null}
+        aria-pressed={pressed}
+        data-tooltip={label}
+        data-shortcut={commandId ? shortcutLabel(commandId) : undefined}
+        data-command={commandId}
+        onMouseDown={keepFocus}
+        onClick={toggle}
+      >
+        {Icon && <Icon className={styles.icon} aria-hidden="true" />}
+        {children !== undefined && <span className={styles.text}>{children}</span>}
+        <ChevronDown className={styles.chevron} aria-hidden="true" />
+      </button>
+      {anchor && <ContextMenu x={anchor.x} y={anchor.y} entries={entries()} onSelect={onSelect} onClose={close} anchorRef={ref} />}
+    </>
+  );
+}
