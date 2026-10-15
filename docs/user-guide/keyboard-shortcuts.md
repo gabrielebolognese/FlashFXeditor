@@ -28,6 +28,7 @@ This page lists every keyboard shortcut that works in the current version of Sho
 >   20. Press <kbd>I</kbd>, move the playhead one second on with <kbd>Ctrl</kbd>+<kbd>→</kbd> and press <kbd>O</kbd>: the range is shaded. Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Space</kbd>: the range plays once. Press <kbd>'</kbd>: the range is removed and the rest moves left. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>.
 >   21. Hover over **Play** to show the tooltip with its shortcut.
 >   22. Click the preview picture and press <kbd>Ctrl</kbd>+<kbd>2</kbd>: the preview zooms to 200%. Press <kbd>Ctrl</kbd>+<kbd>0</kbd>: the whole frame is back. Press <kbd>F</kbd>: the preview fills the window; press <kbd>Esc</kbd> to return.
+>   23. Click a logo in the preview: it gets a gold box with handles. Quickly press <kbd>→</kbd> three times and <kbd>Shift</kbd>+<kbd>↑</kbd> once: it moves 3 pixels right and 10 pixels up. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> once: it is back. Click beside the frame in the preview and press <kbd>→</kbd>: the playhead steps one frame.
 
 ## In this page
 - [How shortcuts work](#how-shortcuts-work)
@@ -53,7 +54,7 @@ This page lists every keyboard shortcut that works in the current version of Sho
 
 - **All panels** shortcuts work wherever you are, also when no panel is active.
 - **Panel** shortcuts work only while that panel is active.
-- When a panel uses the same key as an all-panels shortcut, the panel wins. While the panel's own action belongs to a later feature, the all-panels shortcut works there. For example, the Preview panel reserves the arrow keys for moving items on the canvas, a later feature; until then <kbd>←</kbd> and <kbd>→</kbd> step frames in the Preview panel as everywhere else.
+- When a panel uses the same key as an all-panels shortcut, the panel wins. When the panel's own action has nothing to act on, or belongs to a later feature, the all-panels shortcut works there. For example, in the Preview panel the arrow keys move the selected layers; with no layer selected there, <kbd>←</kbd> and <kbd>→</kbd> step frames as everywhere else.
 
 **Typing comes first.** Shortcuts are off while you type in a text field (a name, a timecode field, a number), while a dropdown list such as **Sort media by** or **Resolution** has the keyboard focus, and while a dialog or a menu is open. Press <kbd>Enter</kbd> or <kbd>Escape</kbd> to leave a text field. A dropdown list gives the keyboard back as soon as you pick a value with the mouse; after you pick one with the keyboard, click the preview picture or the timeline.
 
@@ -77,8 +78,8 @@ These shortcuts work in all panels, except where noted. See [Preview and playbac
 | Pause | <kbd>K</kbd> | <kbd>K</kbd> | All panels |
 | Step one frame forward or back | Hold <kbd>K</kbd>, tap <kbd>L</kbd> or <kbd>J</kbd> | Hold <kbd>K</kbd>, tap <kbd>L</kbd> or <kbd>J</kbd> | All panels |
 | Play around the playhead (2 s before to 2 s after, then back) | <kbd>Shift</kbd>+<kbd>K</kbd> | <kbd>⇧</kbd>+<kbd>K</kbd> | All panels |
-| Previous or next frame (hold to repeat) | <kbd>←</kbd> or <kbd>→</kbd> | <kbd>←</kbd> or <kbd>→</kbd> | All panels |
-| 5 frames back or forward (hold to repeat) | <kbd>Shift</kbd>+<kbd>←</kbd> or <kbd>Shift</kbd>+<kbd>→</kbd> | <kbd>⇧</kbd>+<kbd>←</kbd> or <kbd>⇧</kbd>+<kbd>→</kbd> | All panels |
+| Previous or next frame (hold to repeat) | <kbd>←</kbd> or <kbd>→</kbd> | <kbd>←</kbd> or <kbd>→</kbd> | All panels (in the Preview panel, only while no selected layer is under the playhead) |
+| 5 frames back or forward (hold to repeat) | <kbd>Shift</kbd>+<kbd>←</kbd> or <kbd>Shift</kbd>+<kbd>→</kbd> | <kbd>⇧</kbd>+<kbd>←</kbd> or <kbd>⇧</kbd>+<kbd>→</kbd> | All panels (in the Preview panel, only while no selected layer is under the playhead) |
 | 1 second back or forward (hold to repeat) | <kbd>Ctrl</kbd>+<kbd>←</kbd> or <kbd>Ctrl</kbd>+<kbd>→</kbd> | <kbd>⌘</kbd>+<kbd>←</kbd> or <kbd>⌘</kbd>+<kbd>→</kbd> | All panels |
 | Go to the start | <kbd>Home</kbd> | <kbd>Home</kbd> | All panels |
 | Go to the end of the content | <kbd>End</kbd> | <kbd>End</kbd> | All panels |
@@ -87,7 +88,7 @@ These shortcuts work in all panels, except where noted. See [Preview and playbac
 
 ### Holding keys
 
-- **Arrow keys** (alone, with <kbd>Shift</kbd> or with <kbd>Ctrl</kbd>): one step when you press, then, after 0.3 seconds, about 30 steps per second until you release the key. Each step pauses playback first.
+- **Arrow keys** (alone, with <kbd>Shift</kbd> or with <kbd>Ctrl</kbd>): one step when you press, then, after 0.3 seconds, about 30 steps per second until you release the key. Each step pauses playback first. When the arrow keys move a selected layer in the Preview panel instead, holding them repeats at your keyboard's repeat rate.
 - **<kbd>J</kbd> and <kbd>L</kbd>**: holding them down does not repeat or speed up. Only presses count: press again to double the speed.
 - **<kbd>K</kbd>**: holding it keeps playback paused and turns <kbd>J</kbd> and <kbd>L</kbd> into one-frame steps.
 - **<kbd>Space</kbd> over empty track space or the zoomed preview**: while playback is stopped and the pointer rests on an empty part of a timeline track, or on the preview picture while it is zoomed in (not at **Fit**), holding <kbd>Space</kbd> lets you drag to pan the timeline or the picture. A short press there still plays, but playback starts when you release the key. Over a clip, anywhere else, and during playback, <kbd>Space</kbd> plays and pauses at once. See [Pan the view](timeline.md#pan-the-view) and [Pan the preview](preview-zoom-overlays-fullscreen.md#pan-the-preview).
@@ -95,10 +96,12 @@ These shortcuts work in all panels, except where noted. See [Preview and playbac
 
 ## Preview
 
-See [Preview zoom, overlays and fullscreen](preview-zoom-overlays-fullscreen.md) for details.
+See [Preview zoom, overlays and fullscreen](preview-zoom-overlays-fullscreen.md) and [Arranging layers in the preview](arranging-layers-in-the-preview.md) for details.
 
 | Action | Windows | macOS | Works in |
 | --- | --- | --- | --- |
+| Move the selected layers 1 pixel | <kbd>←</kbd>, <kbd>→</kbd>, <kbd>↑</kbd> or <kbd>↓</kbd> | <kbd>←</kbd>, <kbd>→</kbd>, <kbd>↑</kbd> or <kbd>↓</kbd> | Preview panel |
+| Move the selected layers 10 pixels | <kbd>Shift</kbd>+<kbd>←</kbd>, <kbd>Shift</kbd>+<kbd>→</kbd>, <kbd>Shift</kbd>+<kbd>↑</kbd> or <kbd>Shift</kbd>+<kbd>↓</kbd> | <kbd>⇧</kbd>+<kbd>←</kbd>, <kbd>⇧</kbd>+<kbd>→</kbd>, <kbd>⇧</kbd>+<kbd>↑</kbd> or <kbd>⇧</kbd>+<kbd>↓</kbd> | Preview panel |
 | Fit the whole frame in the panel (same as **Fit the frame in the panel**) | <kbd>Ctrl</kbd>+<kbd>0</kbd> | <kbd>⌘</kbd>+<kbd>0</kbd> | Preview panel |
 | Zoom the preview to 100% | <kbd>Ctrl</kbd>+<kbd>1</kbd> | <kbd>⌘</kbd>+<kbd>1</kbd> | Preview panel |
 | Zoom the preview to 200% | <kbd>Ctrl</kbd>+<kbd>2</kbd> | <kbd>⌘</kbd>+<kbd>2</kbd> | Preview panel |
@@ -106,8 +109,10 @@ See [Preview zoom, overlays and fullscreen](preview-zoom-overlays-fullscreen.md)
 | Leave the fullscreen preview | <kbd>Escape</kbd> | <kbd>Esc</kbd> | All panels |
 
 - <kbd>Ctrl</kbd>+<kbd>0</kbd>, <kbd>Ctrl</kbd>+<kbd>1</kbd> and <kbd>Ctrl</kbd>+<kbd>2</kbd> keep the point in the middle of the panel where it is; **Fit** centers the frame. Outside the Preview panel the browser gets these keys; see [Keys the browser keeps](#keys-the-browser-keeps).
-- <kbd>Escape</kbd> first cancels a drag in progress or closes an open menu; the next press leaves fullscreen.
-- In the Preview panel, <kbd>←</kbd> and <kbd>→</kbd> (with or without <kbd>Shift</kbd>) step frames as in the other panels. <kbd>↑</kbd> and <kbd>↓</kbd> do nothing there yet.
+- <kbd>Escape</kbd> first cancels a drag in progress (also a layer you move, resize or rotate in the preview) or closes an open menu; the next press leaves fullscreen.
+- The arrow keys move layers only while a selected layer is under the playhead. Otherwise <kbd>←</kbd> and <kbd>→</kbd> (with or without <kbd>Shift</kbd>) step frames in the Preview panel as in the other panels, and <kbd>↑</kbd> and <kbd>↓</kbd> do nothing there. <kbd>Ctrl</kbd>+<kbd>←</kbd> and <kbd>Ctrl</kbd>+<kbd>→</kbd> always step one second.
+- Arrow presses less than 0.3 seconds apart are one undo step, **Nudge layer**.
+- <kbd>Delete</kbd> also works in the Preview panel: it deletes the selected clips. See [Cutting and deleting](#cutting-and-deleting).
 
 ### Preview mouse and wheel
 
@@ -119,6 +124,24 @@ These work over the preview picture.
 | Pan up and down (zoomed in) | Wheel | Wheel |
 | Pan sideways (zoomed in) | <kbd>Shift</kbd>+wheel, or swipe sideways on a touchpad | <kbd>⇧</kbd>+wheel, or swipe sideways on a trackpad |
 | Pan in any direction (zoomed in) | Drag with the middle mouse button (any tool), drag with the **Hand** tool, or hold <kbd>Space</kbd> and drag (playback stopped) | Same |
+| Select a layer (with its linked sound and its group) | Click it | Click it |
+| Add a layer to the selection, or remove it | <kbd>Shift</kbd>+click (with its linked sound and group) or <kbd>Ctrl</kbd>+click (only that layer) | <kbd>⇧</kbd>+click or <kbd>⌘</kbd>+click |
+| Select the next layer down under the pointer | <kbd>Alt</kbd>+click | <kbd>⌥</kbd>+click |
+| Select the layers a rectangle touches (<kbd>Shift</kbd> or <kbd>Ctrl</kbd>: add them) | Drag from where no layer is (also beside the frame) | Same |
+| Clear the selection | Click where no layer is, for example beside the frame | Same |
+| Move the selected layers | Drag a layer, or inside the gold box | Same |
+| Move only horizontally or vertically | <kbd>Shift</kbd>+drag | <kbd>⇧</kbd>+drag |
+| Resize, keeping the shape | Drag a corner handle | Drag a corner handle |
+| Resize width and height separately | <kbd>Shift</kbd>+drag a corner handle | <kbd>⇧</kbd>+drag a corner handle |
+| Resize only the width or the height | Drag a side handle | Drag a side handle |
+| Resize around the center | <kbd>Alt</kbd>+drag a handle | <kbd>⌥</kbd>+drag a handle |
+| Rotate | Drag just outside a corner (curved arrow cursor) | Same |
+| Rotate in 45° steps | <kbd>Shift</kbd>+drag just outside a corner | <kbd>⇧</kbd>+drag just outside a corner |
+| Show and move the anchor point (one layer selected) | Hold <kbd>Alt</kbd>, then drag the ring marker | Hold <kbd>⌥</kbd>, then drag the ring marker |
+| Cancel the drag | <kbd>Esc</kbd> before you release | <kbd>Esc</kbd> |
+| Open the layer menu | Right-click a layer | Right-click a layer |
+
+With the **Hand** tool, or while you hold <kbd>Space</kbd> over a zoomed-in picture, a left drag pans and selects nothing. During a drag on a layer you can press and release <kbd>Shift</kbd> and <kbd>Alt</kbd>; the layer follows at once.
 
 ## Timeline
 
@@ -152,7 +175,7 @@ These shortcuts work only while the Timeline panel is active. See [Timeline](tim
 | --- | --- | --- | --- |
 | Select all clips | <kbd>Ctrl</kbd>+<kbd>A</kbd> | <kbd>⌘</kbd>+<kbd>A</kbd> | Timeline, Preview |
 | Clear the selection (also selected tracks, an edit point or a gap) | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd> | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>A</kbd> | Timeline, Preview |
-| Cancel a clip drag, a trim, a roll, slip, slide or rate stretch, a selection rectangle, or a marker or in/out drag | <kbd>Escape</kbd> (before you release the mouse button) | <kbd>Esc</kbd> | All panels |
+| Cancel a clip drag, a trim, a roll, slip, slide or rate stretch, a selection rectangle, a marker or in/out drag, or a move, resize, rotation or anchor drag in the preview | <kbd>Escape</kbd> (before you release the mouse button) | <kbd>Esc</kbd> | All panels |
 
 ### Snapping
 
@@ -424,12 +447,12 @@ While you type in a text field, or while a dialog is open, the editor leaves <kb
 Some buttons already show a shortcut in their tooltip although the button is disabled, for example **Freeze frame** in the timeline toolbar and **Export** in the app bar. These shortcuts start working when their feature is available in a later version; until then the keys do nothing. In the current version this also applies to:
 
 - <kbd>T</kbd> and <kbd>Shift</kbd>+<kbd>T</kbd> (titles and subtitles), <kbd>Shift</kbd>+<kbd>F</kbd> (freeze frame), <kbd>Shift</kbd>+<kbd>Z</kbd> (punch zoom), <kbd>Ctrl</kbd>+<kbd>D</kbd> (duplicate), <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd> (default transition), <kbd>Ctrl</kbd>+<kbd>E</kbd> (export) and <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> (command palette).
-- <kbd>Ctrl</kbd>+<kbd>X</kbd>, <kbd>Ctrl</kbd>+<kbd>C</kbd> and <kbd>Ctrl</kbd>+<kbd>V</kbd> in the Timeline and Preview panels (cutting, copying and pasting clips; the **Cut**, **Copy** and **Paste** rows of the clip menu are dimmed).
-- <kbd>↑</kbd> and <kbd>↓</kbd>, with or without <kbd>Shift</kbd>, in the Preview panel (moving items on the canvas). <kbd>←</kbd> and <kbd>→</kbd>, with or without <kbd>Shift</kbd>, step frames there until then.
+- <kbd>Ctrl</kbd>+<kbd>X</kbd>, <kbd>Ctrl</kbd>+<kbd>C</kbd> and <kbd>Ctrl</kbd>+<kbd>V</kbd> in the Timeline and Preview panels (cutting, copying and pasting clips; the **Cut**, **Copy** and **Paste** rows of the clip menu, and the **Copy**, **Paste** and **Duplicate** rows of the preview's layer menu, are dimmed).
 
 ## Related pages
 - [Preview and playback](preview-and-playback.md)
 - [Preview zoom, overlays and fullscreen](preview-zoom-overlays-fullscreen.md)
+- [Arranging layers in the preview](arranging-layers-in-the-preview.md)
 - [Timeline](timeline.md)
 - [Trimming clips](trimming.md)
 - [Splitting, deleting and closing gaps](splitting-and-deleting.md)
@@ -443,4 +466,4 @@ Some buttons already show a shortcut in their tooltip although the button is dis
 - [Projects and saving](projects-and-saving.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 21, 2026-10-15</sub>
+<sub>Last updated: Batch 22, 2026-10-16</sub>

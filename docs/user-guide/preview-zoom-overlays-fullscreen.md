@@ -76,7 +76,7 @@ When you zoom in, only part of the frame fits in the panel. Pan to see another p
 - If you tap <kbd>Space</kbd> over the zoomed picture without dragging, playback starts when you release the key, not when you press it. During playback, at **Fit**, and with the pointer away from the picture, <kbd>Space</kbd> plays and pauses at once as usual.
 - Panning is not a step in the history.
 
-> **Note:** With the **Select** tool, a left drag on the preview does nothing yet. Selecting and moving clips on the picture is available in a later version.
+> **Note:** With any tool other than **Hand**, a left click or drag on the picture selects, moves, resizes or rotates layers instead of panning, and a drag on an empty part of it draws a selection rectangle. To pan, hold <kbd>Space</kbd>, use the middle mouse button or the wheel, or choose the **Hand** tool. See [Arranging layers in the preview](arranging-layers-in-the-preview.md).
 
 ## See real detail when you zoom in
 
@@ -196,12 +196,12 @@ Under **Guides**, each row turns on or off with a click:
 | **Pixel grid from 800%** (on by default) | A thin line between every project pixel while you zoom to 800% or more. |
 | **Smart guides** (on by default) | The same setting as the **Smart guides** button in the header. Smart guides are available in a later version. |
 
-- Overlays are drawn on top of the picture and move with it when you zoom and pan.
+- Overlays are drawn on top of the picture and move with it when you zoom and pan. The outlines and handles of selected layers are drawn over them. See [Arranging layers in the preview](arranging-layers-in-the-preview.md).
 - While the preview shows two frames side by side (when you roll a cut, slip or slide a clip), the overlays are hidden. See [Read the split preview](advanced-trimming.md#read-the-split-preview).
 
 ### Snap and Smart guides in the header
 
-- **Snap** (the magnet) is the same snapping switch as in the timeline toolbar, with the same shortcut <kbd>S</kbd>. It is gold while snapping is on. See [Turn snapping on or off](timeline.md#turn-snapping-on-or-off).
+- **Snap** (the magnet) is the same snapping switch as in the timeline toolbar, with the same shortcut <kbd>S</kbd>. It is gold while snapping is on. See [Turn snapping on or off](timeline.md#turn-snapping-on-or-off). Layers you drag in the preview don't snap yet; that is available in a later version.
 - **Smart guides** turns smart guides on or off; it is gold while they are on. The guides themselves are available in a later version.
 
 ## Fill the window with the preview
@@ -220,11 +220,12 @@ Press <kbd>F</kbd>, or click **Fullscreen** in the Preview panel header. The pre
 - The header (with **Zoom**, **Fit the frame in the panel**, **Preview quality**, **Overlays**, **Snap**, **Smart guides**, **Exit fullscreen** and **Export frame**) floats at the top, and the transport bar with the status line at the bottom. The audio meter stays along the right edge.
 - After 2 seconds without moving the mouse, the header and the transport bar fade out, and the pointer disappears over the picture. Move the mouse to bring them back. While the pointer rests on the header or the transport bar, they stay.
 - The playback shortcuts keep working: play, shuttle and step through your edit as usual.
+- You can select, move, resize and rotate layers on the larger picture as in the panel. See [Arranging layers in the preview](arranging-layers-in-the-preview.md).
 - The zoom, the overlays and the quality stay as you set them; at **Fit** the frame fills the larger space.
 
 To go back, press <kbd>Esc</kbd> or <kbd>F</kbd>, or click **Exit fullscreen**. Every panel comes back at exactly the size and place it had.
 
-- <kbd>Esc</kbd> first cancels a drag in progress, and closes an open menu, before it leaves fullscreen.
+- <kbd>Esc</kbd> first cancels a drag in progress (also a layer you are moving, resizing or rotating), and closes an open menu, before it leaves fullscreen.
 - <kbd>F</kbd> does not work while you type in a text field.
 - The editor does not remember fullscreen: after a reload, the project opens in the normal panel layout.
 
@@ -242,6 +243,7 @@ None of these are steps in the history: <kbd>Ctrl</kbd>+<kbd>Z</kbd> does not un
 
 ## Related pages
 - [Preview and playback](preview-and-playback.md)
+- [Arranging layers in the preview](arranging-layers-in-the-preview.md)
 - [Adding media to the timeline](adding-media-to-the-timeline.md)
 - [Timeline](timeline.md)
 - [Advanced trimming](advanced-trimming.md)
@@ -250,4 +252,4 @@ None of these are steps in the history: <kbd>Ctrl</kbd>+<kbd>Z</kbd> does not un
 - [Projects and saving](projects-and-saving.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 21, 2026-10-15</sub>
+<sub>Last updated: Batch 22, 2026-10-16</sub>

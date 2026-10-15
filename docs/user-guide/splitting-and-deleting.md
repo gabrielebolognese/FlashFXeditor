@@ -68,8 +68,8 @@ To cut all tracks at once, hold <kbd>Shift</kbd>: the line runs over every clip 
 
 ## Delete clips
 
-1. Select the clips. See [Select clips](timeline.md#select-clips).
-2. Press <kbd>Delete</kbd> or <kbd>Backspace</kbd>, click **Delete** (the trash can) in the timeline toolbar, or right-click one of the clips and choose **Delete**.
+1. Select the clips, on the timeline or by clicking their pictures in the preview. See [Select clips](timeline.md#select-clips) and [Select layers in the preview](arranging-layers-in-the-preview.md#select-layers-in-the-preview).
+2. Press <kbd>Delete</kbd> or <kbd>Backspace</kbd>, click **Delete** (the trash can) in the timeline toolbar, or right-click one of the clips (or its picture in the preview) and choose **Delete**.
 
 - The clips are removed and their places stay empty: gaps open. To close them at the same time, use [Ripple delete](#ripple-delete-clips) instead.
 - Linked clips go too: deleting a video also deletes its sound, also when you selected only one of them with <kbd>Alt</kbd>+click. To delete one of them alone, turn off **Linked selection** (<kbd>Shift</kbd>+<kbd>S</kbd>) first, or unlink them. See [Linking and grouping clips](links-and-groups.md).
@@ -211,4 +211,4 @@ Right-click a clip or a gap to open its menu. Rows that have a keyboard shortcut
 - [Projects and saving](projects-and-saving.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 19, 2026-10-15</sub>
+<sub>Last updated: Batch 22, 2026-10-16</sub>

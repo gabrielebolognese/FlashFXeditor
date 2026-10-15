@@ -20,7 +20,7 @@ A video with sound arrives on the timeline as two linked clips: the picture on a
 
 When you add a video with sound to the timeline, its picture and its sound become linked clips. While **Linked selection** is on (it is in a new project):
 
-- A click on one selects both. A selection rectangle that touches one selects both.
+- A click on one selects both, also a click on the video's picture in the preview. A selection rectangle on the timeline that touches one selects both.
 - Trims, rolls, slips, slides and rate stretches change both. See [Trimming clips](trimming.md) and [Advanced trimming](advanced-trimming.md).
 - <kbd>Ctrl</kbd>+<kbd>K</kbd>, the **Razor**, <kbd>Q</kbd>, <kbd>W</kbd> and <kbd>E</kbd> cut or trim both. The two right parts of a split are linked to each other.
 - **Delete** and **Ripple delete** remove both.
@@ -107,9 +107,9 @@ Group clips that belong together, for example a title, the shot under it and its
 
 What a group does:
 
-- A click on any clip of the group selects the whole group, together with the linked clips of its members while **Linked selection** is on. A selection rectangle or a right-click does the same.
+- A click on any clip of the group selects the whole group, together with the linked clips of its members while **Linked selection** is on. A selection rectangle on the timeline or a right-click does the same, and so does a click or right-click on a member's picture in the preview.
 - <kbd>Alt</kbd>+click selects one clip of the group alone, and <kbd>Ctrl</kbd>+click adds or removes one clip.
-- Because the whole group is selected, a drag or a nudge moves the whole group.
+- Because the whole group is selected, a drag or a nudge moves the whole group. In the preview, the members under the playhead share one box: moving, resizing or rotating it changes them together. See [Transform several layers at once](arranging-layers-in-the-preview.md#transform-several-layers-at-once).
 - Deleting a clip of the group deletes the whole group, also when you selected only that clip.
 - Trims, rolls, slips, slides and rate stretches change only the clip you drag (and its linked clips), not the whole group.
 - When you split a grouped clip, both parts stay in the group.
@@ -135,7 +135,8 @@ What a group does:
 - [Trimming clips](trimming.md)
 - [Advanced trimming](advanced-trimming.md)
 - [Splitting, deleting and closing gaps](splitting-and-deleting.md)
+- [Arranging layers in the preview](arranging-layers-in-the-preview.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 17, 2026-10-15</sub>
+<sub>Last updated: Batch 22, 2026-10-16</sub>

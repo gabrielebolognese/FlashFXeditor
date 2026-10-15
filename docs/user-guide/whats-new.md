@@ -2,6 +2,11 @@
 
 Shorts Editor grows in steps called batches. This page lists what each batch added that you can see or use, newest first. Follow the links for the full instructions.
 
+> **Video placeholder: What's new in Batch 22**
+> - File: `videos/whats-new/batch-22.mp4` (not recorded yet)
+> - Length: about 60 seconds
+> - Shows: a 1080×1920 project with a video on V1 and A1 and a logo PNG on V2, the playhead over both; point at the logo in the preview: a thin outline appears; click it: a gold box with eight handles appears and its clip turns gold on the timeline; drag it to the top right; drag a corner handle inward: it gets smaller and the readout shows the scale; point just outside a corner and drag with <kbd>Shift</kbd> held: it turns in 45° steps; press <kbd>←</kbd> a few times: it moves pixel by pixel; <kbd>Alt</kbd>+click the logo: the video under it is selected; right-click the logo and choose **Bring forward**: a new track V3 appears with the logo on it; press <kbd>Ctrl</kbd>+<kbd>Z</kbd>; right-click it and choose **Reset transform**: it is back in the middle.
+
 > **Video placeholder: What's new in Batch 21**
 > - File: `videos/whats-new/batch-21.mp4` (not recorded yet)
 > - Length: about 60 seconds
@@ -68,6 +73,7 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 > - Shows: open a project with three clips on the timeline; press <kbd>Space</kbd> to play and let the timeline page forward; press <kbd>L</kbd> three times to reach 8x, then <kbd>K</kbd>; hold <kbd>K</kbd> and tap <kbd>L</kbd> to step one frame; turn on **Loop playback**; point at the **Dropped** readout in the status strip.
 
 ## In this page
+- [Batch 22: Arrange layers in the preview](#batch-22-arrange-layers-in-the-preview)
 - [Batch 21: Preview zoom, overlays and fullscreen](#batch-21-preview-zoom-overlays-and-fullscreen)
 - [Batch 20: Media to the timeline](#batch-20-media-to-the-timeline)
 - [Batch 19: Markers, in and out points](#batch-19-markers-in-and-out-points)
@@ -89,6 +95,19 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 - [Batch 03: Projects, autosave and recovery](#batch-03-projects-autosave-and-recovery)
 - [Batch 02: Undo, redo and frame-exact time](#batch-02-undo-redo-and-frame-exact-time)
 - [Batch 01: The workspace](#batch-01-the-workspace)
+
+## Batch 22: Arrange layers in the preview
+- Click a picture in the preview to select its clip. The selection is shared with the timeline: the clip turns gold there, and a clip you click on the timeline gets its box in the preview while it is under the playhead. Pointing at a picture outlines it.
+- <kbd>Shift</kbd>+click adds pictures (with their linked sound and group), <kbd>Ctrl</kbd>+click adds or removes one picture alone, and a drag on an empty part of the picture draws a selection rectangle. <kbd>Alt</kbd>+click reaches the picture under the top one; each further <kbd>Alt</kbd>+click goes one deeper.
+- Drag a picture to move it (<kbd>Shift</kbd>: only horizontally or vertically). Drag its corner handles to resize it and keep its shape, <kbd>Shift</kbd>+corner to change width and height separately, the side handles for one direction, and <kbd>Alt</kbd> to resize around the center. The size holds at 100% for a moment as you pass it.
+- Drag just outside a corner (the cursor becomes a curved arrow) to rotate; <kbd>Shift</kbd> stops at every 45°. Hold <kbd>Alt</kbd> and drag the ring marker to move the point a picture turns around.
+- A readout next to the pointer shows the position, the scale or the angle while you drag. Each drag is one undo step, and <kbd>Esc</kbd> cancels it.
+- In the Preview panel, the arrow keys move the selected pictures by 1 pixel, with <kbd>Shift</kbd> by 10. A quick series of presses is one undo step. With no picture selected there, <kbd>←</kbd> and <kbd>→</kbd> still step frames.
+- With several pictures selected, one box surrounds them: moving, resizing and rotating it changes them all, and their distances scale and turn with them.
+- Right-click a picture for the new layer menu: **Reset transform** (back to fitted and centered), **Bring forward** and **Send backward** (to the next video track up or down, or a new one), **Lock track** and **Delete**. **Copy**, **Paste** and **Duplicate** are there but dimmed until a later version.
+- Pictures on hidden and locked tracks can't be picked in the preview. Pictures on muted video tracks can, although they are not drawn.
+
+See [Arranging layers in the preview](arranging-layers-in-the-preview.md).
 
 ## Batch 21: Preview zoom, overlays and fullscreen
 - Zoom the preview at the pointer with <kbd>Ctrl</kbd>+wheel or <kbd>Alt</kbd>+wheel (or a touchpad pinch), from 5% to 3200%. The point under the pointer stays put. In the Preview panel, <kbd>Ctrl</kbd>+<kbd>0</kbd> fits the frame, and <kbd>Ctrl</kbd>+<kbd>1</kbd> and <kbd>Ctrl</kbd>+<kbd>2</kbd> zoom to 100% and 200%.
@@ -292,8 +311,9 @@ See [The workspace](workspace.md) and [Getting started](getting-started.md).
 
 ## Related pages
 - [User guide home](README.md)
+- [Arranging layers in the preview](arranging-layers-in-the-preview.md)
 - [Preview zoom, overlays and fullscreen](preview-zoom-overlays-fullscreen.md)
 - [Adding media to the timeline](adding-media-to-the-timeline.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 21, 2026-10-15</sub>
+<sub>Last updated: Batch 22, 2026-10-16</sub>

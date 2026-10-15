@@ -99,6 +99,7 @@ What you can undo:
 | Importing media, renaming media, removing media | Zooming, scrolling and panning the timeline (also with the scrollbars), zooming and panning the preview, the preview quality, overlays and fullscreen |
 | Adding media to the timeline: each insert, overwrite, drag, drop on the preview or **Add to canvas**; dropped files with their import are one step | Panel sizes, panel tabs, the media view and sort order, skimming media cards |
 | Moving, inserting, duplicating and nudging clips (a quick series of nudges is one step) | **Loop playback**, **Snap**, **Linked selection**, **Ripple mode**, the timecode format and the **Autosave** setting |
+| Moving, resizing and rotating layers in the preview and moving their anchor point (one step per drag), nudging them with the arrow keys (a quick series is one step), **Reset transform**, **Bring forward** and **Send backward** | |
 | Adding, moving, renaming, recoloring and deleting markers | Setting, moving and clearing the in and out points, and marking a part of a media item with <kbd>I</kbd> and <kbd>O</kbd> on its card |
 | **Lift** and **Extract** (one step each) | |
 | Trimming clips: each trim drag and each press of <kbd>Q</kbd>, <kbd>W</kbd> or <kbd>E</kbd> | Choosing a tool (**Select**, **Razor**, **Hand**, **Slip**, **Slide**, **Rate stretch**) |
@@ -219,6 +220,7 @@ Each change to **Name**, **Resolution**, **Size**, **Frame rate** or **Backgroun
 - [Advanced trimming](advanced-trimming.md)
 - [Tracks](tracks.md)
 - [Linking and grouping clips](links-and-groups.md)
+- [Arranging layers in the preview](arranging-layers-in-the-preview.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 21, 2026-10-15</sub>
+<sub>Last updated: Batch 22, 2026-10-16</sub>

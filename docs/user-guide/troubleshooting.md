@@ -1,6 +1,6 @@
 # Troubleshooting
 
-This page helps you when something does not work as expected: the editor does not start in your browser, the preview stays empty, a folder or a file does not open, a clip drag, a trim, a split, a delete, a timeline tool, a typed timecode, a marker, an in/out range or **Lift** and **Extract** do something you did not expect, media from the Media panel lands somewhere you did not expect, a clip shows no thumbnails, the preview zoom, overlays or fullscreen behave unexpectedly, playback stutters, or you hear no sound. Each problem lists what you see, why it happens and what to do. The last section lists what the current version cannot do yet.
+This page helps you when something does not work as expected: the editor does not start in your browser, the preview stays empty, a folder or a file does not open, a clip drag, a trim, a split, a delete, a timeline tool, a typed timecode, a marker, an in/out range or **Lift** and **Extract** do something you did not expect, media from the Media panel lands somewhere you did not expect, a clip shows no thumbnails, the preview zoom, overlays or fullscreen behave unexpectedly, a picture in the preview can't be selected or moves unexpectedly, playback stutters, or you hear no sound. Each problem lists what you see, why it happens and what to do. The last section lists what the current version cannot do yet.
 
 > **Video placeholder: Fix common problems**
 > - File: `videos/troubleshooting/overview.mp4` (not recorded yet)
@@ -28,6 +28,8 @@ This page helps you when something does not work as expected: the editor does no
 >   20. Point at the picture of a video card in the Media panel and press <kbd>I</kbd>: a gold bar appears on the card, and the timeline's in point does not change. Press <kbd>Alt</kbd>+<kbd>X</kbd>: the bar disappears.
 >   21. Put the playhead in the middle of a clip and double-click a card: the clip splits and the later clips move right. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>, click the card and press <kbd>.</kbd>: the new clip covers what was there instead.
 >   22. Choose **400%** in the preview **Zoom** menu with a 4K clip under the playhead and press <kbd>Space</kbd>: the status line reads **Auto: reduced** and the picture is soft. Press <kbd>Space</kbd> again: a moment later the picture sharpens and the status line reads **Auto: full**.
+>   23. Click a picture in the preview and press <kbd>→</kbd>: the picture moves 1 pixel and the playhead stays. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>, click the area around the frame and press <kbd>→</kbd>: the playhead steps one frame.
+>   24. With a logo on V2 over a video on V1, click the eye in the V2 header and click where the logo was: the video on V1 is selected. Click the eye again, click the logo, then <kbd>Alt</kbd>+click it: the video under it is selected.
 
 ## In this page
 - [Browser and graphics](#browser-and-graphics)
@@ -107,6 +109,14 @@ This page helps you when something does not work as expected: the editor does no
   - [The zoomed preview is not sharp](#the-zoomed-preview-is-not-sharp)
   - [The mouse wheel moves the picture or does nothing](#the-mouse-wheel-moves-the-picture-or-does-nothing)
   - [An overlay does not show](#an-overlay-does-not-show)
+- [Layers in the preview](#layers-in-the-preview)
+  - [The arrow keys move a picture instead of the playhead](#the-arrow-keys-move-a-picture-instead-of-the-playhead)
+  - [A picture in the preview can't be selected](#a-picture-in-the-preview-cant-be-selected)
+  - [A click in the preview selects the wrong picture](#a-click-in-the-preview-selects-the-wrong-picture)
+  - [A drag moves a picture other than the one under the pointer](#a-drag-moves-a-picture-other-than-the-one-under-the-pointer)
+  - [A resize stops at 100%](#a-resize-stops-at-100)
+  - [The side handles are missing](#the-side-handles-are-missing)
+  - [Bring forward or Send backward created a new track](#bring-forward-or-send-backward-created-a-new-track)
 - [Known limitations](#known-limitations)
 
 ## Browser and graphics
@@ -776,7 +786,7 @@ See [Audio](audio.md).
 
 **Cause:** Its track is muted (**M** is gold) or hidden (the eye is crossed out) in the track header.
 
-**Fix:** Click **M** or the eye to turn it off. If the clip is not faded, a clip on a higher video track covers it: drag its track header above the other video tracks. See [Mute, solo and hide tracks](tracks.md#mute-solo-and-hide-tracks) and [Reorder tracks](tracks.md#reorder-tracks).
+**Fix:** Click **M** or the eye to turn it off. If the clip is not faded, a clip on a higher video track covers it: drag its track header above the other video tracks, or <kbd>Alt</kbd>+click in the preview until the clip is selected, right-click inside its gold box and choose **Bring forward**. The clip may also sit outside the frame or be very small: select it on the timeline to see its box in the preview, then right-click inside the box and choose **Reset transform**. See [Mute, solo and hide tracks](tracks.md#mute-solo-and-hide-tracks) and [Reorder tracks](tracks.md#reorder-tracks).
 
 ### The other panels disappeared
 
@@ -822,18 +832,81 @@ See [Audio](audio.md).
 
 > **Note:** Overlays never appear in a frame you save with **Export frame**. That is intended.
 
+## Layers in the preview
+
+### The arrow keys move a picture instead of the playhead
+
+**Symptom:** You press <kbd>←</kbd> or <kbd>→</kbd> to step a frame, but the playhead stays and a picture in the preview moves. Or <kbd>↑</kbd> and <kbd>↓</kbd> move a picture instead of jumping between cuts.
+
+**Cause:** The Preview panel is active (you clicked in it last), and a selected clip is under the playhead. There the arrow keys move the selected layers by 1 pixel, or 10 pixels with <kbd>Shift</kbd>.
+
+**Fix:** Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> to undo the nudges (a quick series is one step). Then click the timeline before you use the arrow keys, or click the area around the frame to clear the selection. See [Nudge layers with the arrow keys](arranging-layers-in-the-preview.md#nudge-layers-with-the-arrow-keys).
+
+### A picture in the preview can't be selected
+
+**Symptom:** You click a picture in the preview, and it gets no gold box, or the click selects the picture below it.
+
+**Cause:** One of these:
+- Its track is hidden (the eye is crossed out) or locked (gold padlock). Layers of those tracks can't be picked in the preview.
+- The **Hand** tool is active, or you hold <kbd>Space</kbd> over a zoomed-in picture: a drag pans instead.
+- The playhead isn't over the clip, so what you see is another clip.
+
+**Fix:** Unlock or show the track, or press <kbd>V</kbd> for the **Select** tool. To reach a picture under another one, <kbd>Alt</kbd>+click it. You can also click the clip on the timeline: while it is under the playhead, its box appears in the preview. See [Select layers in the preview](arranging-layers-in-the-preview.md#select-layers-in-the-preview).
+
+### A click in the preview selects the wrong picture
+
+**Symptom:** A click selects a picture you didn't mean, or a gold box appears where nothing is visible.
+
+**Cause:** One of these:
+- A click always takes the topmost picture under the pointer, also where that picture is transparent, for example around a PNG logo: the picture counts as its whole rectangle.
+- The picture is on a muted video track (**M** is gold). It is not drawn, but you can still select and move it.
+
+**Fix:** <kbd>Alt</kbd>+click to go down to the next picture under the pointer; each further <kbd>Alt</kbd>+click goes one deeper. To keep a muted track's pictures from being picked, hide the track with the eye or lock it. See [Select a layer under another one](arranging-layers-in-the-preview.md#select-a-layer-under-another-one).
+
+### A drag moves a picture other than the one under the pointer
+
+**Symptom:** You press on a picture and drag, and another picture moves, or several move together.
+
+**Cause:** You pressed inside the gold box of the current selection. A drag there moves the selected pictures, also where another picture lies on top. With several selected, they all move.
+
+**Fix:** Press <kbd>Esc</kbd> before you release, or <kbd>Ctrl</kbd>+<kbd>Z</kbd> after. Click the picture you want first (a click without dragging selects the top picture at that spot), then drag it. See [Move a layer](arranging-layers-in-the-preview.md#move-a-layer).
+
+### A resize stops at 100%
+
+**Symptom:** While you drag a handle, the picture holds its size for a moment, the readout shows **100%**, and the sides of the box at the handle turn into a thicker gold line.
+
+**Cause:** The scale snaps to exactly 100% (the media's own size) when it passes within 2% of it.
+
+**Fix:** Keep dragging: the picture follows again below 98% and above 102%. See [Resize a layer](arranging-layers-in-the-preview.md#resize-a-layer).
+
+### The side handles are missing
+
+**Symptom:** A selected picture shows handles only at its corners, not in the middle of its sides.
+
+**Cause:** The picture is small on screen. Side handles show only on sides at least 28 pixels long on screen.
+
+**Fix:** Zoom the preview in, for example with <kbd>Ctrl</kbd>+wheel over the picture. The side handles come back. See [Zoom with the mouse wheel](preview-zoom-overlays-fullscreen.md#zoom-with-the-mouse-wheel).
+
+### Bring forward or Send backward created a new track
+
+**Symptom:** After **Bring forward** or **Send backward** in the preview's layer menu, a new video track such as **V4** appears, and the clip is on it.
+
+**Cause:** The neighboring video track couldn't take the clip: it is locked, hidden or muted, it has another clip during part of the clip's time, or there is no track in that direction. The editor then creates a track past it, so the picture still gets above or below that track.
+
+**Fix:** Nothing to fix. To use an existing track instead, press <kbd>Ctrl</kbd>+<kbd>Z</kbd> and drag the clip to that track on the timeline. See [Change which layer is on top](arranging-layers-in-the-preview.md#change-which-layer-is-on-top).
+
 ## Known limitations
 
 The current version cannot do these things yet. Each one is available in a later version.
 
 - **Sound:** no sound while you scrub, step frames, play backward or shuttle faster than 1x. Changing the volume of a clip, fades and audio effects are not available.
-- **Editing clips:** clips can't be cut, copied or pasted (the **Cut**, **Copy** and **Paste** rows of the clip menu are dimmed).
+- **Editing clips:** clips can't be cut, copied or pasted (the **Cut**, **Copy** and **Paste** rows of the clip menu, and the **Copy**, **Paste** and **Duplicate** rows of the preview's layer menu, are dimmed).
 - **Markers:** markers belong to the timeline; markers inside clips are not available. Markers and the in/out range don't show on the scrollbars.
-- **Menus:** only clips, gaps, track headers, the ruler and media cards have a right-click menu, with a first set of rows. Menu rows can't be chosen with the arrow keys.
+- **Menus:** only clips, gaps, track headers, the ruler, media cards and pictures in the preview have a right-click menu, with a first set of rows. Menu rows can't be chosen with the arrow keys.
 - **Speed and edit points:** a clip's speed changes only with **Rate stretch**; typing an exact speed is not available. A selected cut (edit point) only marks the cut; transitions are not available.
 - **Tracks:** track headers have room for names of about 9 characters; longer names are shortened. Groups are not marked on the timeline. In the **Track** section of **Edit Properties**, several selected tracks show the first track's settings, with no sign of mixed values.
-- **Preview:** clips can't be selected or moved on the picture, and smart guides are not drawn. The **Proxy** quality has no proxy copies to use and shows the project's resolution. An SVG image that covers the whole frame doesn't get sharper when you zoom in. The **Zoom**, **Preview quality** and **Overlays** menus can't be used with the arrow keys.
-- **Fit only:** inserted clips fit the frame with bands; one-click Fill is not available. Changing the project resolution does not refit existing clips.
+- **Preview:** pictures you drag don't snap to the frame or to each other, and smart guides are not drawn. Pictures can't be cropped, flipped or fitted with one click there, and position, scale and rotation can't be typed in. A change to a picture applies to the whole clip; changes over time (keyframes) are not available. The **Proxy** quality has no proxy copies to use and shows the project's resolution. An SVG image that covers the whole frame doesn't get sharper when you zoom in. The **Zoom**, **Preview quality** and **Overlays** menus can't be used with the arrow keys.
+- **Fit only:** inserted clips fit the frame with bands; one-click Fill is not available (drag a corner handle in the preview instead). Changing the project resolution does not refit existing clips; **Reset transform** in the preview's layer menu refits the selected ones.
 - **Animated GIF and WebP files** show as still images (their first frame), in the preview and in their clips' thumbnails.
 - **Media that cannot be decoded, or whose file is missing,** shows nothing in the preview, with no placeholder.
 - **Removing media** that a clip uses is not possible.
@@ -856,6 +929,7 @@ The current version cannot do these things yet. Each one is available in a later
 - [Importing media](importing-media.md)
 - [Adding media to the timeline](adding-media-to-the-timeline.md)
 - [Preview and playback](preview-and-playback.md)
+- [Arranging layers in the preview](arranging-layers-in-the-preview.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 21, 2026-10-15</sub>
+<sub>Last updated: Batch 22, 2026-10-16</sub>
