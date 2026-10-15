@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # Unattended batch runner. Usage: scripts/run-batches.sh [--until N] [--timeout DURATION] [--max-turns T]
-#   --timeout    wall-clock cap per Claude session (default 2h; e.g. 90m, 3h)
+#   --timeout    wall-clock cap per Claude session (default 6h; e.g. 90m, 3h)
 #   --max-turns  turn cap per session (default: none)
 set -uo pipefail
 cd "$(git rev-parse --show-toplevel)" || exit 2
 
-UNTIL=50; TIMEOUT=2h; MAX_TURNS=""
+UNTIL=50; TIMEOUT=6h; MAX_TURNS=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --until) UNTIL="$2"; shift 2;;
