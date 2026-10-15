@@ -12,8 +12,10 @@ This page lists every keyboard shortcut that works in the current version of Sho
 >   4. Press <kbd>↓</kbd> twice to jump to the next clip edges, then <kbd>Home</kbd> and <kbd>End</kbd>.
 >   5. Press <kbd>=</kbd> twice and <kbd>\</kbd> to zoom the timeline in and back to fit.
 >   6. Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd>: the **Loop playback** button turns on.
->   7. Click a card in the Media panel, press <kbd>F2</kbd>, type a new name and press <kbd>Enter</kbd>.
->   8. Hover over **Play** to show the tooltip with its shortcut.
+>   7. Click a clip in the timeline and press <kbd>Alt</kbd>+<kbd>Right</kbd> three times: the clip moves 3 frames. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> once: it is back.
+>   8. Press <kbd>Ctrl</kbd>+<kbd>A</kbd> to select all clips, then <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd>.
+>   9. Click a card in the Media panel, press <kbd>F2</kbd>, type a new name and press <kbd>Enter</kbd>.
+>   10. Hover over **Play** to show the tooltip with its shortcut.
 
 ## In this page
 - [How shortcuts work](#how-shortcuts-work)
@@ -82,11 +84,24 @@ These shortcuts work only while the Timeline panel is active. See [Timeline](tim
 | Zoom in | <kbd>=</kbd> | <kbd>=</kbd> |
 | Zoom out | <kbd>-</kbd> | <kbd>-</kbd> |
 | Zoom to fit the whole content | <kbd>\</kbd> | <kbd>\</kbd> |
+| Nudge the selected clips 1 frame left or right | <kbd>Alt</kbd>+<kbd>←</kbd> or <kbd>Alt</kbd>+<kbd>→</kbd> | <kbd>⌥</kbd>+<kbd>←</kbd> or <kbd>⌥</kbd>+<kbd>→</kbd> |
+| Nudge the selected clips 5 frames left or right | <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>←</kbd> or <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>→</kbd> | <kbd>⌥</kbd>+<kbd>⇧</kbd>+<kbd>←</kbd> or <kbd>⌥</kbd>+<kbd>⇧</kbd>+<kbd>→</kbd> |
+| Move the selected clips to the track above or below | <kbd>Alt</kbd>+<kbd>↑</kbd> or <kbd>Alt</kbd>+<kbd>↓</kbd> | <kbd>⌥</kbd>+<kbd>↑</kbd> or <kbd>⌥</kbd>+<kbd>↓</kbd> |
 
 - Zooming with the keys keeps the playhead in place when it is in view; otherwise it zooms around the middle of the view.
 - Jumps scroll the timeline by a page when the playhead lands out of view.
+- Nudged clips cover what they land on. Hold the keys to keep nudging; nudges less than 0.3 seconds apart are one undo step. See [Nudge clips with the keyboard](timeline.md#nudge-clips-with-the-keyboard).
+- <kbd>Alt</kbd>+<kbd>↑</kbd> and <kbd>Alt</kbd>+<kbd>↓</kbd> move clips only to an existing track with room for them; they never create a track.
 
 > **Note:** Adding markers is available in a later version, so the marker jumps have nothing to jump to yet.
+
+### Selecting clips
+
+| Action | Windows | macOS | Works in |
+| --- | --- | --- | --- |
+| Select all clips | <kbd>Ctrl</kbd>+<kbd>A</kbd> | <kbd>⌘</kbd>+<kbd>A</kbd> | Timeline, Preview |
+| Clear the selection | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd> | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>A</kbd> | Timeline, Preview |
+| Cancel a clip drag or a selection rectangle | <kbd>Escape</kbd> (before you release the mouse button) | <kbd>Esc</kbd> | All panels |
 
 ## Audio
 
@@ -146,7 +161,18 @@ These work over the timeline. See [Timeline](timeline.md).
 | Zoom at the pointer | <kbd>Ctrl</kbd>+wheel or <kbd>Alt</kbd>+wheel, or pinch on a touchpad | <kbd>⌘</kbd>+wheel or <kbd>⌥</kbd>+wheel, or pinch on a trackpad |
 | Scroll sideways | <kbd>Shift</kbd>+wheel, or swipe sideways on a touchpad | <kbd>⇧</kbd>+wheel, or swipe sideways on a trackpad |
 | Scroll the tracks up and down | Wheel | Wheel |
-| Add a clip to the selection, or remove it | <kbd>Shift</kbd>+click | <kbd>⇧</kbd>+click |
+| Select a clip with its linked clips | Click | Click |
+| Add a clip (with its linked clips) to the selection, or remove it | <kbd>Shift</kbd>+click | <kbd>⇧</kbd>+click |
+| Add or remove only that clip | <kbd>Ctrl</kbd>+click | <kbd>⌘</kbd>+click |
+| Select only that clip | <kbd>Alt</kbd>+click | <kbd>⌥</kbd>+click |
+| Select the clips a rectangle touches (<kbd>Shift</kbd>: add them) | Drag on empty track space | Drag on empty track space |
+| Move the selected clips | Drag a selected clip | Drag a selected clip |
+| Move in time only, keeping every clip on its track | <kbd>Shift</kbd>+drag | <kbd>⇧</kbd>+drag |
+| Insert the clips, shifting later clips right | <kbd>Ctrl</kbd>+drag | <kbd>⌘</kbd>+drag |
+| Duplicate the clips | <kbd>Alt</kbd>+drag | <kbd>⌥</kbd>+drag |
+| Duplicate and insert | <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+drag | <kbd>⌘</kbd>+<kbd>⌥</kbd>+drag |
+
+While you drag clips, you can press and release <kbd>Shift</kbd>, <kbd>Ctrl</kbd> and <kbd>Alt</kbd>: the keys held when you release the mouse button decide the drop. See [Move clips](timeline.md#move-clips).
 
 Double-click a media item in the Media panel to insert it at the playhead. See [Importing media](importing-media.md).
 
@@ -159,6 +185,7 @@ In a normal browser tab, the browser keeps some shortcuts for itself, and a web 
 | <kbd>Ctrl</kbd>+<kbd>N</kbd> (<kbd>⌘</kbd>+<kbd>N</kbd>) | Opens a new browser window. |
 | <kbd>Ctrl</kbd>+<kbd>T</kbd> (<kbd>⌘</kbd>+<kbd>T</kbd>) | Opens a new tab. |
 | <kbd>Ctrl</kbd>+<kbd>W</kbd> (<kbd>⌘</kbd>+<kbd>W</kbd>) | Closes the tab. |
+| <kbd>Alt</kbd>+<kbd>←</kbd> (Windows), outside the Timeline panel | Goes back to the previous page in the tab, if there is one. In the Timeline panel the editor keeps it for nudging clips. |
 
 Because of this, <kbd>Ctrl</kbd>+<kbd>N</kbd> opens a new browser window instead of a new project. To create a project, click **New project** on the start screen.
 
@@ -181,4 +208,4 @@ Some buttons already show a shortcut in their tooltip although the button is dis
 - [Projects and saving](projects-and-saving.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 10, 2026-10-15</sub>
+<sub>Last updated: Batch 11, 2026-10-15</sub>

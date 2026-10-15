@@ -98,7 +98,8 @@ What you can undo:
 | Changing the resolution, frame rate or background color | Selecting clips |
 | Importing media, renaming media, removing media | Zooming and scrolling the timeline, zooming the preview |
 | Inserting a clip on the timeline | Panel sizes, panel tabs, the media view and sort order |
-| Adding a track | **Loop playback** and the **Autosave** setting |
+| Moving, inserting, duplicating and nudging clips (a quick series of nudges is one step) | **Loop playback** and the **Autosave** setting |
+| Adding a track, muting or soloing an audio track | |
 
 ## Pick up where you left off
 
@@ -197,4 +198,4 @@ Each change to **Name**, **Resolution**, **Size**, **Frame rate** or **Backgroun
 - [Timeline](timeline.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 10, 2026-10-15</sub>
+<sub>Last updated: Batch 11, 2026-10-15</sub>

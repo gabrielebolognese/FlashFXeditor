@@ -171,6 +171,8 @@ Examples:
 | <kbd>=</kbd> / <kbd>-</kbd> | Zoom the timeline in / out | Nothing | Nothing |
 | <kbd>Left</kbd> / <kbd>Right</kbd> | One frame back / forward | Nothing: reserved for moving layers on the canvas, available in a later version | One frame back / forward |
 | <kbd>Up</kbd> / <kbd>Down</kbd> | Previous / next edit point | Nothing: reserved for moving layers on the canvas | Nothing |
+| <kbd>Ctrl</kbd>+<kbd>A</kbd> | Selects all clips | Selects all clips | Does not select clips |
+| <kbd>Alt</kbd>+<kbd>Left</kbd> / <kbd>Alt</kbd>+<kbd>Right</kbd> | Nudges the selected clips one frame | Nothing (the browser gets <kbd>Alt</kbd>+<kbd>Left</kbd>) | Nothing (the browser gets <kbd>Alt</kbd>+<kbd>Left</kbd>) |
 | <kbd>Delete</kbd> | Nothing: deleting clips is available in a later version | Nothing | Removes the selected media (asks first) |
 | <kbd>F2</kbd> | Nothing | Nothing | Renames the selected media |
 
@@ -193,4 +195,4 @@ To jump to a time, type it into the timecode field of the timeline toolbar. See 
 - [Audio](audio.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 10, 2026-10-15</sub>
+<sub>Last updated: Batch 11, 2026-10-15</sub>
