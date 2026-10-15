@@ -3,7 +3,6 @@
 // view (the composite at the playhead) and its dev stats, the playback engine that drives it (and the
 // audio scheduler, Batch 10), the preview chrome readouts and Export frame. Framework-free;
 // PreviewPanel only mounts the canvas host, the chrome bar, the meter and the stats element.
-import { formatTimecode } from "../core/document/time.js";
 import type { MediaId } from "../core/document/types.js";
 import { createStore } from "../core/store/createStore.js";
 import { DEFAULT_TEXTURE_BUDGET, TexturePool } from "../media/cache/TexturePool.js";
@@ -25,7 +24,7 @@ import { contentEnd } from "../timeline/model/queries.js";
 import { showToast } from "../ui/toasts.js";
 import { attachAudio, audioScheduler, detachAudio, meterView } from "./audioController.js";
 import { actions, audioClock, documentStore, idleQueue, layoutStore, scheduler, sessionStore, themeBridge, workerPool } from "./services.js";
-import { timelineView } from "./timelineController.js";
+import { formatFrame, timelineView } from "./timelineController.js";
 
 const MB = 1024 * 1024;
 
@@ -203,14 +202,18 @@ export function bindPreviewReadouts({ timecode, duration, fps }: PreviewReadouts
   const write = (element: HTMLElement, text: string) => {
     if (element.textContent !== text) element.textContent = text;
   };
-  const showTimecode = () => write(timecode, formatTimecode(sessionStore.state.getState().playhead, documentStore.getState().settings.fps));
+  const showTimecode = () => write(timecode, formatFrame(sessionStore.state.getState().playhead));
   const showDocument = () => {
     const project = documentStore.getState();
-    write(duration, formatTimecode(contentEnd(project), project.settings.fps));
+    write(duration, formatFrame(contentEnd(project), project));
     write(fps, `${formatFps(project.settings.fps)} fps`);
     showTimecode();
   };
-  const stops = [sessionStore.state.select((state) => state.playhead, showTimecode), documentStore.subscribe(showDocument, { affects: ["timeline", "clips", "settings"] })];
+  const stops = [
+    sessionStore.state.select((state) => state.playhead, showTimecode),
+    sessionStore.state.select((state) => state.timecodeFormat, showDocument),
+    documentStore.subscribe(showDocument, { affects: ["timeline", "clips", "settings"] }),
+  ];
   showDocument();
   return () => {
     for (const stop of stops) stop();

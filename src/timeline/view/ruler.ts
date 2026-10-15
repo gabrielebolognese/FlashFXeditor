@@ -3,8 +3,10 @@
 // frame ticks count from each second's first frame, so 29.97 never drifts from the timecodes.
 // Labels are laid out left to right and a label that would touch the previous one is skipped, so
 // they never overlap whatever the zoom; at frame-level zoom, frame numbers fill the space between
-// the second labels (whole timecodes once the ticks are far enough apart for them).
-import { firstFrameOfSecond, formatTimecode, secondOfFrame } from "../../core/document/time.js";
+// the second labels (whole timecodes once the ticks are far enough apart for them). Timecodes follow the
+// preview's format toggle (`mm:ss:ff` or `mm:ss.mmm`); in milliseconds the labels between seconds are
+// the millisecond part (`.500`).
+import { firstFrameOfSecond, formatTimecode, secondOfFrame, type TimecodeMode } from "../../core/document/time.js";
 import type { Rational } from "../../core/document/types.js";
 
 export interface RulerLevel {
@@ -27,6 +29,8 @@ export interface RulerInput {
   frameToX: (frame: number) => number;
   pxPerFrame: number;
   fps: Rational;
+  /** Timecode format of the labels (default `frames`). */
+  mode?: TimecodeMode;
   /** Width of a label in CSS px. */
   measure: (text: string) => number;
   /** Minimum free space between two labels. */
@@ -80,16 +84,18 @@ export function tickFrames(level: RulerLevel, from: number, to: number, fps: Rat
   return frames;
 }
 
-/** Frame number within its second, as shown between second labels. */
-function frameLabel(frame: number, fps: Rational): string {
+/** Between second labels: the frame number within its second, or in milliseconds the `.mmm` part. */
+function frameLabel(frame: number, fps: Rational, mode: TimecodeMode): string {
+  if (mode === "ms") return formatTimecode(frame, fps, "ms").slice(-4);
   return String(frame - firstFrameOfSecond(secondOfFrame(frame, fps), fps)).padStart(2, "0");
 }
 
 /** The major level: the finest whose labels fit (second labels at least every second, frame numbers between). */
-export function majorLevel(input: Pick<RulerInput, "to" | "pxPerFrame" | "fps" | "measure" | "labelGap">): RulerLevel {
+export function majorLevel(input: Pick<RulerInput, "to" | "pxPerFrame" | "fps" | "measure" | "labelGap" | "mode">): RulerLevel {
   const { pxPerFrame, fps, measure, labelGap } = input;
-  const secondLabel = measure(formatTimecode(Math.ceil(input.to), fps)) + labelGap;
-  const frameNumber = measure("00") + labelGap;
+  const mode = input.mode ?? "frames";
+  const secondLabel = measure(formatTimecode(Math.ceil(input.to), fps, mode)) + labelGap;
+  const frameNumber = measure(mode === "ms" ? ".000" : "00") + labelGap;
   const secondPx = Math.floor(fps.num / fps.den) * pxPerFrame;
   for (const level of RULER_LEVELS) {
     const spacing = minSpacingFrames(level, fps) * pxPerFrame;
@@ -111,6 +117,7 @@ export function minorLevel(major: RulerLevel, pxPerFrame: number, fps: Rational,
 
 export function layoutRuler(input: RulerInput): RulerLayout {
   const { from, to, frameToX, fps, measure, labelGap } = input;
+  const mode = input.mode ?? "frames";
   const level = majorLevel(input);
   const majorFrames = tickFrames(level, from, to, fps);
   const majors = majorFrames.map(frameToX);
@@ -126,7 +133,7 @@ export function layoutRuler(input: RulerInput): RulerLayout {
   for (const frame of majorFrames) {
     if (level.unit === "frames" && !isSecondStart(frame)) continue;
     const x = frameToX(frame);
-    const text = formatTimecode(frame, fps);
+    const text = formatTimecode(frame, fps, mode);
     if (x < lastEnd + labelGap) continue;
     seconds.push({ x, text, kind: "second" });
     lastEnd = x + measure(text);
@@ -135,7 +142,7 @@ export function layoutRuler(input: RulerInput): RulerLayout {
 
   // Zoomed in far enough for a whole timecode per tick: every tick says where it is, even when no
   // second boundary is in view.
-  const fullTimecodes = level.n * input.pxPerFrame >= measure(formatTimecode(Math.ceil(to), fps)) + labelGap;
+  const fullTimecodes = level.n * input.pxPerFrame >= measure(formatTimecode(Math.ceil(to), fps, mode)) + labelGap;
   const labels: RulerLabel[] = [];
   let previousEnd = -Infinity;
   let next = 0;
@@ -146,7 +153,7 @@ export function layoutRuler(input: RulerInput): RulerLayout {
       previousEnd = label.x + measure(label.text);
     }
     if (isSecondStart(frame)) continue;
-    const text = fullTimecodes ? formatTimecode(frame, fps) : frameLabel(frame, fps);
+    const text = fullTimecodes ? formatTimecode(frame, fps, mode) : frameLabel(frame, fps, mode);
     const end = x + measure(text);
     const following = seconds[next];
     if (x >= previousEnd + labelGap && (!following || end + labelGap <= following.x)) {

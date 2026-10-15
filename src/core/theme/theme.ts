@@ -1,6 +1,7 @@
 // Theme bridge (spec §3.7): reads the design-system CSS custom properties into a typed object for
 // canvas renderers and other non-CSS consumers. Canvases never use color or size literals.
 import { LABEL_COLORS, type ClipKind, type LabelColor, type Track } from "../document/types.js";
+import { parseCubicBezier, type CubicBezier } from "./easing.js";
 
 export type SpaceStep = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
@@ -50,6 +51,8 @@ export interface Theme {
   space: Record<SpaceStep, number>;
   layout: { appBarHeight: number; panelHeaderHeight: number; splitterLine: number; splitterHit: number; previewMargin: number };
   motion: { instant: number; micro: number; standard: number; large: number };
+  /** The DS easings as cubic-bezier control points (x1, y1, x2, y2). */
+  ease: { out: CubicBezier };
   tooltipDelay: number;
   timeline: TimelineTheme;
   /** The stereo peak meter (CSS px). */
@@ -107,6 +110,9 @@ export interface TimelineTheme {
   /** Clip bodies (spec §6.4): the waveform fill, the hatch over disabled or muted clips. */
   waveform: string;
   disabledHatch: string;
+  /** Scrollbars (spec §6.1): trough thickness, and the shortest thumb (the horizontal one holds two zoom handles). */
+  scrollbarSize: number;
+  scrollbarMinThumb: number;
 }
 
 /** Reads one custom property by name (e.g. `--accent`); returns "" when it is not defined. */
@@ -217,6 +223,7 @@ export function readTheme(read: TokenReader, root?: Element): { theme: Theme; mi
       standard: num("--duration-standard"),
       large: num("--duration-large"),
     },
+    ease: { out: parseCubicBezier(str("--ease-out")) },
     tooltipDelay: num("--tooltip-delay"),
     timeline: {
       headerWidth: num("--timeline-header-width"),
@@ -257,6 +264,8 @@ export function readTheme(read: TokenReader, root?: Element): { theme: Theme; mi
       labelBarAlpha: num("--clip-label-bar-alpha"),
       waveform: str("--clip-waveform"),
       disabledHatch: str("--clip-disabled-hatch"),
+      scrollbarSize: num("--timeline-scrollbar-size"),
+      scrollbarMinThumb: num("--timeline-scrollbar-min-thumb"),
     },
     meter: { barWidth: num("--meter-bar-width"), barGap: num("--meter-bar-gap"), ledHeight: num("--meter-led-height") },
   };

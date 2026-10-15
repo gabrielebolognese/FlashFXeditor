@@ -20,6 +20,7 @@ const ZOOM_OPTIONS = ZOOM_CHOICES.map((zoom) => ({ value: String(zoom), label: z
 const BUDGET_OPTIONS = POOL_BUDGETS.map((bytes) => ({ value: String(bytes), label: `Pool ${Math.round(bytes / (1024 * 1024))} MB` }));
 
 const selectZoom = (state: SessionState) => state.preview.zoom;
+const selectTimecodeFormat = (state: SessionState) => state.timecodeFormat;
 const selectLoop = (state: SessionState) => state.loop;
 const selectStats = (state: PreviewDevState) => state.stats;
 const selectBudget = (state: PreviewDevState) => state.budget;
@@ -68,6 +69,20 @@ function StatsOverlay() {
   return <pre ref={ref} className={styles.stats} aria-label="GPU stats" />;
 }
 
+/**
+ * The timecode format toggle (spec §5.1): `mm:ss:ff` or `mm:ss.mmm` for the readouts, the timeline's
+ * field and ruler. Renders on a toggle only.
+ */
+function TimecodeFormat() {
+  const format = useStoreSelector(sessionStore.state, selectTimecodeFormat);
+  const tooltip = format === "frames" ? "Timecode in frames (mm:ss:ff): click for milliseconds" : "Timecode in milliseconds (mm:ss.mmm): click for frames";
+  return (
+    <button type="button" className={styles.formatChip} aria-label={tooltip} data-tooltip={tooltip} data-command="view.toggleTimecodeFormat" onMouseDown={keepFocus} onClick={run("view.toggleTimecodeFormat")}>
+      {format === "frames" ? "ff" : "ms"}
+    </button>
+  );
+}
+
 /** Playhead timecode, duration and fps badge, written by subscriptions (no React render while they change, P1). */
 function Readouts() {
   const timecode = useRef<HTMLSpanElement>(null);
@@ -79,6 +94,8 @@ function Readouts() {
   }, []);
   return (
     <div className={styles.readouts}>
+      {/* First: it labels the timecode beside it, and a narrow panel clips the readouts from the right. */}
+      <TimecodeFormat />
       <span ref={timecode} className={styles.timecode} aria-label="Playhead timecode" />
       <span ref={duration} className={styles.duration} aria-label="Duration" data-tooltip="Duration" />
       <span ref={fps} className={styles.badge} data-tooltip="Project frame rate" />

@@ -71,6 +71,12 @@
   box-shadow: 0 0 0 1px var(--accent-wash);
 }
 
+/* Enter on text that is no timecode (gap: the DS has no invalid input; "semantic states use danger at low opacity"). */
+.timecode[aria-invalid="true"] {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 1px var(--danger-wash);
+}
+
 .duration {
   color: var(--text-tertiary);
   font: var(--type-mono);

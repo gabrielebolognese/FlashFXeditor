@@ -7,6 +7,7 @@ import {
   clipsAtFrame,
   clipsInRange,
   clipsOverlapping,
+  clipsSpan,
   contentEnd,
   editPoints,
   firstEndingAfter,
@@ -41,6 +42,13 @@ const ids = (clips: { id: string }[]) => clips.map((clip) => clip.id);
 
 describe("timeline model queries", () => {
   const project = fixture();
+
+  it("gives the span the given clips cover together (zoom to selection)", () => {
+    expect(clipsSpan(project, ["b", "d"])).toEqual({ start: 0, end: 30 });
+    expect(clipsSpan(project, new Set(["c"]))).toEqual({ start: 50, end: 150 });
+    expect(clipsSpan(project, ["gone", "a"])).toEqual({ start: 10, end: 20 });
+    expect(clipsSpan(project, [])).toBeNull();
+  });
 
   it("finds the clip at a frame per track (start inclusive, end exclusive)", () => {
     expect(clipAtFrame(project, "v1", 9)).toBeNull();

@@ -64,4 +64,6 @@ export const METRICS: TimelineMetrics = {
   headerLine: 32,
   toggleSize: 16,
   toggleGap: 4,
+  // Scrollbar tests set their own size; 0 keeps the older layouts.
+  scrollbarSize: 0,
 };

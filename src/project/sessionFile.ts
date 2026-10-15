@@ -1,5 +1,6 @@
 // session.json (spec §5.3): session state, the selection and the panel layout of one project. Harmless
 // to lose, so parsing never throws: every invalid or missing field falls back to its default.
+import type { TimecodeMode } from "../core/document/time.js";
 import type { LayoutRatios } from "../core/store/layoutStore.js";
 import { sanitizeRatios } from "../core/store/layoutStore.js";
 import type { SelectionKind, SelectionSnapshot } from "../core/store/selection.js";
@@ -32,6 +33,7 @@ const MEDIA_TABS: Record<MediaTab, true> = { media: true, presets: true, caption
 const MEDIA_SORTS: Record<MediaSort, true> = { name: true, date: true, duration: true, kind: true, resolution: true, fps: true, codec: true, audio: true, used: true };
 const MEDIA_VIEWS: Record<MediaView, true> = { grid: true, list: true };
 const SELECTION_KINDS: Record<SelectionKind, true> = { clips: true, track: true, cue: true, none: true };
+const TIMECODE_FORMATS: Record<TimecodeMode, true> = { frames: true, ms: true };
 
 type Raw = Record<string, unknown>;
 const obj = (value: unknown): Raw => (typeof value === "object" && value !== null && !Array.isArray(value) ? (value as Raw) : {});
@@ -77,6 +79,7 @@ function sanitizeState(value: unknown): SessionState {
     ripple: bool(raw.ripple, d.ripple),
     loop: bool(raw.loop, d.loop),
     audioScrub: bool(raw.audioScrub, d.audioScrub),
+    timecodeFormat: oneOf(TIMECODE_FORMATS, raw.timecodeFormat, d.timecodeFormat),
     mediaPanel: {
       tab: oneOf(MEDIA_TABS, mediaPanel.tab, d.mediaPanel.tab),
       view: oneOf(MEDIA_VIEWS, mediaPanel.view, d.mediaPanel.view),

@@ -1,7 +1,8 @@
 // Timeline wiring (spec §6): the timeline view, the zoom, center playhead and edit-point/marker
 // navigation actions (§6.2, §6.5, §6.6; the transport keys are in playbackController), the toolbar's
 // direct-DOM bindings (zoom slider, timecode field, duration: no React render while they change, P1),
-// insert at the playhead from the media panel (§6.14), the track header gestures (toggles, reorder,
+// the timecode format toggle shared with the preview (§5.1), insert at the playhead from the media
+// panel (§6.14), the track header gestures (toggles, reorder,
 // rename: handled by trackController, §6.12), clip moves (drops, nudges, Alt+Up/Down, §6.8), edits (trim, roll, slip, slide and rate
 // stretch drags, Q/W/E, Ripple mode, §6.10), the tools (§6.18), the snap toggle (§6.9), select all /
 // deselect (§6.7), Esc for gestures and the dev clip generator.
@@ -17,7 +18,7 @@ import { selectEditPoint, selectGap, setPlayhead, setSelection, type Tool } from
 import { insertCommands, planMediaInsert } from "../timeline/edit/insertMedia.js";
 import { applyMoveRequest, moveToAdjacentLane, nudgeClips, type MoveRefusal, type MoveRequest, type MoveResult } from "../timeline/edit/move.js";
 import { extendToPlayhead, planEdit, resolveTrim, trimToPlayhead, type TrimLimit, type TrimResult } from "../timeline/edit/trim.js";
-import { contentEnd, laneOf, markerFrames, navigationPoints, nextEditPoint, prevEditPoint, selectableClipIds } from "../timeline/model/queries.js";
+import { clipsSpan, contentEnd, laneOf, markerFrames, navigationPoints, nextEditPoint, prevEditPoint, selectableClipIds } from "../timeline/model/queries.js";
 import type { TrimRequest } from "../timeline/view/gestures/trimClip.js";
 import { TimelineView } from "../timeline/view/TimelineView.js";
 import { pxToSlider, sliderToPx, zoomLimits, ZOOM_IN_STEP, ZOOM_OUT_STEP, type ZoomContext } from "../timeline/view/zoom.js";
@@ -136,6 +137,8 @@ export const timelineView = new TimelineView({
   idle: idleQueue,
   visuals: clipVisuals,
   platform: detectPlatform(),
+  // Space armed for Space+drag and released without a drag: the play/pause it would have been (spec §6.6).
+  onSpaceTap: () => void actions.run("transport.playPause"),
 });
 
 /** The selected clip ids (none for a track or cue selection) and the primary. */
@@ -204,7 +207,8 @@ export function insertMediaAtPlayhead(mediaId: MediaId): void {
 
 /** Zoom limits from the stores (the view need not be mounted): track area width, content end, fps. */
 function zoomContext(project: Project = documentStore.getState()): ZoomContext {
-  const width = Math.max(0, layoutStore.getState().panels.timeline.width - themeBridge.theme.timeline.headerWidth);
+  const { headerWidth, scrollbarSize } = themeBridge.theme.timeline;
+  const width = Math.max(0, layoutStore.getState().panels.timeline.width - headerWidth - scrollbarSize);
   return { width, contentEnd: contentEnd(project), fps: project.settings.fps };
 }
 
@@ -248,35 +252,66 @@ export function bindZoomSlider(input: HTMLInputElement): () => void {
   };
 }
 
+/** The playhead or a duration as the timecode format toggle shows them (spec §5.1: `mm:ss:ff` or `mm:ss.mmm`). */
+export function formatFrame(frame: Frame, project: Project = documentStore.getState()): string {
+  return formatTimecode(frame, project.settings.fps, sessionStore.state.getState().timecodeFormat);
+}
+
 /**
- * The toolbar timecode field and total duration (spec §6.1, §6.5). The field shows the playhead
- * (direct DOM writes, skipped while it is being edited); Enter jumps to the typed timecode, including
- * the relative forms `+30`, `-15`, `+2.`; Escape cancels.
- * TODO(batch 18): the mm:ss.mmm format toggle shared with the preview, validation feedback.
+ * The toolbar timecode field and total duration (spec §6.1, §6.5), in the format of the preview's
+ * toggle. The field shows the playhead (direct DOM writes, skipped while it is being edited). Enter
+ * jumps to the typed timecode (absolute, or relative: `+30` / `-15` frames, `+2.` seconds); text that
+ * is no timecode keeps the field open, marked invalid (`aria-invalid`) until it is fixed. Escape and
+ * leaving the field put the playhead's timecode back.
  */
 export function bindTimecode(input: HTMLInputElement, duration: HTMLElement): () => void {
-  const fps = () => documentStore.getState().settings.fps;
+  const parse = () => parseTimecode(input.value, documentStore.getState().settings.fps, { current: playhead(), mode: sessionStore.state.getState().timecodeFormat });
+  const setInvalid = (invalid: boolean) => {
+    if (invalid) input.setAttribute("aria-invalid", "true");
+    else input.removeAttribute("aria-invalid");
+  };
   const show = () => {
-    if (input.ownerDocument.activeElement !== input) input.value = formatTimecode(playhead(), fps());
+    if (input.ownerDocument.activeElement !== input) input.value = formatFrame(playhead());
   };
   const showDuration = () => {
-    duration.textContent = formatTimecode(contentEnd(documentStore.getState()), fps());
+    duration.textContent = formatFrame(contentEnd(documentStore.getState()));
   };
   const onKeyDown = (event: KeyboardEvent) => {
     if (event.key === "Enter") {
-      const frame = parseTimecode(input.value, fps(), { current: playhead() });
-      if (frame !== null) movePlayhead(frame);
+      const frame = parse();
+      if (frame === null) {
+        setInvalid(true);
+        input.select();
+        return;
+      }
+      movePlayhead(frame);
       input.blur();
     } else if (event.key === "Escape") {
       input.blur();
     }
   };
+  // Once marked, the mark goes as soon as the text reads as a timecode again.
+  const onInput = () => {
+    if (input.hasAttribute("aria-invalid") && parse() !== null) setInvalid(false);
+  };
   const onFocus = () => input.select();
+  const onBlur = () => {
+    setInvalid(false);
+    show();
+  };
   input.addEventListener("keydown", onKeyDown);
+  input.addEventListener("input", onInput);
   input.addEventListener("focus", onFocus);
-  input.addEventListener("blur", show);
+  input.addEventListener("blur", onBlur);
   const stops = [
     sessionStore.state.select((state) => state.playhead, show),
+    sessionStore.state.select(
+      (state) => state.timecodeFormat,
+      () => {
+        show();
+        showDuration();
+      },
+    ),
     documentStore.subscribe(
       () => {
         show();
@@ -289,8 +324,9 @@ export function bindTimecode(input: HTMLInputElement, duration: HTMLElement): ()
   showDuration();
   return () => {
     input.removeEventListener("keydown", onKeyDown);
+    input.removeEventListener("input", onInput);
     input.removeEventListener("focus", onFocus);
-    input.removeEventListener("blur", show);
+    input.removeEventListener("blur", onBlur);
     for (const stop of stops) stop();
   };
 }
@@ -313,12 +349,41 @@ function inOut(): (Frame | null)[] {
   return [inPoint, outPoint];
 }
 
+/**
+ * Zoom to selection (spec §6.2, `Shift+\`): the selected clips (a track selection: the clips on those
+ * tracks), else the selected gap, else the clips of the selected edit point, framed with a 10% margin.
+ * Nothing selected: nothing happens.
+ */
+const zoomToSelection: ActionRun = () => {
+  const project = documentStore.getState();
+  const selection = sessionStore.selection.getState();
+  const gap = sessionStore.gap.getState();
+  const editPoint = sessionStore.editPoint.getState();
+  const tracks = selection.kind === "track" ? project.tracks.filter((track) => selection.trackIds?.has(track.id)) : [];
+  const span =
+    selection.kind === "clips"
+      ? clipsSpan(project, selection.clipIds)
+      : tracks.length > 0
+        ? clipsSpan(project, tracks.flatMap((track) => track.clipIds))
+        : gap
+          ? { start: gap.start, end: gap.end }
+          : editPoint
+            ? clipsSpan(project, [editPoint.left, editPoint.right])
+            : null;
+  if (span) timelineView.zoomToFrames(span.start, span.end);
+};
+
 /** Registers the timeline actions. Returns a stop function. */
 export function installTimelineController(): () => void {
   const stops = [
     actions.register("timeline.zoomIn", () => timelineView.zoomBy(ZOOM_IN_STEP)),
     actions.register("timeline.zoomOut", () => timelineView.zoomBy(ZOOM_OUT_STEP)),
     actions.register("timeline.zoomFit", () => timelineView.fit()),
+    actions.register("timeline.zoomToSelection", zoomToSelection),
+    // The preview's format toggle (spec §5.1); the timeline field, the durations and the ruler follow.
+    actions.register("view.toggleTimecodeFormat", () =>
+      sessionStore.state.set((state) => ({ ...state, timecodeFormat: state.timecodeFormat === "frames" ? "ms" : "frames" })),
+    ),
     actions.register("timeline.centerPlayhead", () => timelineView.centerPlayhead()),
     actions.register("timeline.prevEditPoint", jumpTo((project, frame) => prevEditPoint(navigationPoints(project, inOut()), frame))),
     actions.register("timeline.nextEditPoint", jumpTo((project, frame) => nextEditPoint(navigationPoints(project, inOut()), frame))),
@@ -343,8 +408,9 @@ export function installTimelineController(): () => void {
     actions.register("edit.rippleTrimNext", rippleTrimToPlayhead("end")),
     actions.register("edit.extendToPlayhead", extendEdit),
     actions.register("toggle.snap", toggleSnap),
-    // The Razor tool (C) is registered by cutController; TODO(batch 18): the Hand tool (H).
+    // The Razor tool (C) is registered by cutController.
     actions.register("tool.select", selectTool("select")),
+    actions.register("tool.hand", selectTool("hand")),
     actions.register("tool.slip", selectTool("slip")),
     actions.register("tool.slide", selectTool("slide")),
     actions.register("tool.rateStretch", selectTool("rateStretch")),

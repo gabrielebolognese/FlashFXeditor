@@ -56,6 +56,32 @@
   white-space: nowrap;
 }
 
+/* Timecode format toggle (§5.1, gap: the DS has none): the fps badge's chip as a button before the
+   timecode, showing the unit of its last field (ff / ms); hover raises it a surface step, the DS focus
+   ring on keyboard focus. */
+.formatChip {
+  flex: none;
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-sm);
+  background: var(--surface-3);
+  color: var(--text-tertiary);
+  font: var(--type-badge);
+  white-space: nowrap;
+  transition:
+    background-color var(--duration-micro) var(--ease-out),
+    color var(--duration-micro) var(--ease-out);
+}
+
+.formatChip:hover {
+  background: var(--surface-4);
+  color: var(--text-secondary);
+}
+
+.formatChip:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
 .transport {
   display: flex;
   align-items: center;

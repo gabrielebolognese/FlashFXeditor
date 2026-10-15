@@ -10,6 +10,7 @@ import { DocumentStore } from "../../core/store/DocumentStore.js";
 import { createLayoutStore } from "../../core/store/layoutStore.js";
 import { selectClips } from "../../core/store/selection.js";
 import { createSessionStore, setPlayhead } from "../../core/store/sessionStore.js";
+import type { Theme } from "../../core/theme/theme.js";
 import { thumbLayout, type ThumbLayout } from "../../media/cache/thumbSheets.js";
 import type { ClipVisualsSource } from "./clipVisuals.js";
 import { trimCursors } from "./cursors.js";
@@ -94,7 +95,7 @@ class FakeScheduler {
 /** Unmount functions of the views set up by the current test. */
 const mounted: (() => void)[] = [];
 
-function setup(clipCount = 0) {
+function setup(clipCount = 0, theme: Theme = testTheme()) {
   const project = makeProject();
   project.media.m = makeMedia("m");
   project.tracks.push(makeTrack("v1"), makeTrack("a1", "audio"));
@@ -115,13 +116,14 @@ function setup(clipCount = 0) {
   const onContextMenu = vi.fn();
   const onReorderTrack = vi.fn();
   const onRenameTrack = vi.fn();
+  const onSpaceTap = vi.fn();
   const idle = { pause: vi.fn(), resume: vi.fn() };
   const view = new TimelineView({
     scheduler,
     document,
     session,
     layout,
-    theme: { theme: testTheme(), subscribe: () => () => {} },
+    theme: { theme, subscribe: () => () => {} },
     onAddTrack,
     onToggleTrack,
     onMoveClips,
@@ -131,6 +133,7 @@ function setup(clipCount = 0) {
     onContextMenu,
     onReorderTrack,
     onRenameTrack,
+    onSpaceTap,
     idle,
     platform: "other",
   });
@@ -144,7 +147,7 @@ function setup(clipCount = 0) {
     overlay.dispatchEvent(new PointerEvent(type, { clientX: x, clientY: y, pointerId: 1, button: 0, bubbles: true, ...init }));
   /** A key event on the window (modifier changes during a drag). */
   const key = (type: "keydown" | "keyup", keyName: string, init: KeyboardEventInit = {}) => window.dispatchEvent(new KeyboardEvent(type, { key: keyName, bubbles: true, ...init }));
-  return { view, session, document, layout, scheduler, overlay, pointer, key, onAddTrack, onToggleTrack, onMoveClips, onTrimEdge, onTrimPreview, onRazor, onContextMenu, onReorderTrack, onRenameTrack, idle, unmount };
+  return { view, session, document, layout, scheduler, overlay, pointer, key, onAddTrack, onToggleTrack, onMoveClips, onTrimEdge, onTrimPreview, onRazor, onContextMenu, onReorderTrack, onRenameTrack, onSpaceTap, idle, unmount };
 }
 
 describe("TimelineView", () => {
@@ -851,6 +854,206 @@ describe("TimelineView", () => {
     setPlayhead(session, 10);
     view.centerPlayhead();
     expect(session.state.getState().timeline.scrollFrame).toBe(0);
+  });
+
+  describe("navigation (Batch 18)", () => {
+    /** The test theme with 12 px scrollbars (36 px shortest thumb) and the DS keyboard zoom easing. */
+    function navTheme(): Theme {
+      const theme = testTheme();
+      theme.timeline.scrollbarSize = 12;
+      theme.timeline.scrollbarMinThumb = 36;
+      theme.motion.micro = 120;
+      theme.ease.out = [0.2, 0, 0, 1];
+      return theme;
+    }
+    const timeline = (session: ReturnType<typeof setup>["session"]) => session.state.getState().timeline;
+
+    it("draws the scrollbars under and beside the track area, which ends where they begin", () => {
+      const { view, scheduler } = setup(500, navTheme());
+      fills.length = 0;
+      view.fit();
+      scheduler.flush();
+      // 1000 x 428 panel: track area 176..988 x 28..416.
+      expect(view.geometry().area).toEqual({ x: 176, y: 28, width: 812, height: 388 });
+      // The vertical trough (its thumb is a filled pill, not a rect).
+      expect(fills.some((fill) => fill.style === "--surface-1" && fill.width === 12)).toBe(true);
+      const layout = view.scrollbars();
+      expect(layout?.h.trough).toEqual({ x: 176, y: 416, width: 812, height: 12 });
+      // Two tracks fit in 388 px: no vertical thumb.
+      expect(layout?.v.thumb).toBeNull();
+    });
+
+    it("scrolls with a thumb drag; the right zoom handle zooms with the left edge fixed; the overlay lights the dragged part", () => {
+      const { view, session, scheduler, pointer, overlay } = setup(500, navTheme());
+      const thumb = () => view.scrollbars()?.h.thumb ?? { x: 0, y: 0, width: 0, height: 0 };
+      const start = thumb();
+      // 5000 frames of content at 4 px/frame.
+      pointer("pointermove", start.x + start.width / 2, 422);
+      scheduler.flush();
+      expect(overlay.style.cursor).not.toBe("ew-resize");
+      pointer("pointerdown", start.x + start.width / 2, 422);
+      pointer("pointermove", start.x + start.width / 2 + 100, 422);
+      scheduler.flush();
+      expect(thumb().x).toBeCloseTo(start.x + 100, 6);
+      expect(timeline(session).scrollFrame).toBeGreaterThan(0);
+      expect(timeline(session).pxPerFrame).toBe(4);
+      expect(vi.mocked(drawOverlay).mock.lastCall?.[0].scrollbar).toMatchObject({ hit: { axis: "x", part: "thumb" }, active: true });
+      pointer("pointerup", start.x + start.width / 2 + 100, 422);
+      scheduler.flush();
+
+      const scrolled = timeline(session).scrollFrame;
+      const end = thumb().x + thumb().width;
+      pointer("pointermove", end - 2, 422);
+      scheduler.flush();
+      expect(overlay.style.cursor).toBe("ew-resize");
+      pointer("pointerdown", end - 2, 422);
+      pointer("pointermove", end - 2 - 10, 422);
+      scheduler.flush();
+      // The thumb is at its 36 px minimum (203 of 5051 frames): its end moves by the pointer's travel.
+      expect(timeline(session).pxPerFrame).toBeGreaterThan(4);
+      expect(timeline(session).pxPerFrame).toBeLessThan(400);
+      expect(timeline(session).scrollFrame).toBe(scrolled);
+      pointer("pointermove", end - 2 + 300, 422);
+      expect(timeline(session).pxPerFrame).toBeLessThan(4);
+      expect(timeline(session).scrollFrame).toBe(scrolled);
+      pointer("pointerup", end - 2 + 300, 422);
+    });
+
+    it("jumps to a trough press (the thumb's middle under the pointer) and keeps dragging", () => {
+      const { view, session, pointer } = setup(500, navTheme());
+      pointer("pointerdown", 900, 422);
+      const thumb = view.scrollbars()?.h.thumb;
+      expect(timeline(session).scrollFrame).toBeGreaterThan(0);
+      expect((thumb?.x ?? 0) + (thumb?.width ?? 0) / 2).toBeCloseTo(900, 4);
+      pointer("pointermove", 800, 422);
+      expect(((view.scrollbars()?.h.thumb.x ?? 0) + (thumb?.width ?? 0) / 2)).toBeCloseTo(800, 4);
+      pointer("pointerup", 800, 422);
+    });
+
+    it("scrolls the tracks with the vertical thumb", () => {
+      const { view, session, document, pointer } = setup(0, navTheme());
+      for (let i = 2; i <= 9; i++) document.dispatch(addTrack(makeTrack(`v${i}`)));
+      const thumb = view.scrollbars()?.v.thumb;
+      expect(thumb).not.toBeNull();
+      const y = (thumb?.y ?? 0) + 5;
+      pointer("pointerdown", 994, y);
+      pointer("pointermove", 994, y - 60);
+      pointer("pointerup", 994, y - 60);
+      expect(timeline(session).scrollY).toBeLessThan(0);
+      expect(view.scrollbars()?.v.thumb?.y).toBeCloseTo((thumb?.y ?? 0) - 60, 4);
+    });
+
+    it("Hand tool: a press on a clip pans both ways instead of selecting it; the ruler still scrubs", () => {
+      const { view, session, document, pointer, overlay, onMoveClips } = setup(500);
+      for (let i = 2; i <= 9; i++) document.dispatch(addTrack(makeTrack(`v${i}`)));
+      session.state.set((state) => ({ ...state, activeTool: "hand" }));
+      const scrollY = timeline(session).scrollY;
+      pointer("pointermove", 176 + 15 * 8, 200);
+      expect(overlay.style.cursor).toBe("grab");
+      pointer("pointerdown", 176 + 15 * 8, 200);
+      expect(overlay.style.cursor).toBe("grabbing");
+      pointer("pointermove", 176 + 15 * 8 - 40, 230);
+      pointer("pointerup", 176 + 15 * 8 - 40, 230);
+      expect(timeline(session).scrollFrame).toBe(10);
+      expect(timeline(session).scrollY).toBe(scrollY - 30);
+      expect(session.selection.getState().kind).toBe("none");
+      expect(onMoveClips).not.toHaveBeenCalled();
+      pointer("pointerdown", 176 + 40, 10);
+      pointer("pointerup", 176 + 40, 10);
+      expect(session.state.getState().playhead).toBe(20);
+      expect(view.isFollowing).toBe(false);
+    });
+
+    it("middle drag pans with any tool, from the ruler too", () => {
+      const { session, pointer } = setup(500);
+      pointer("pointerdown", 400, 10, { button: 1 });
+      pointer("pointermove", 320, 10, { button: 1 });
+      pointer("pointerup", 320, 10, { button: 1 });
+      expect(timeline(session).scrollFrame).toBe(20);
+      expect(session.state.getState().playhead).toBe(0);
+    });
+
+    it("Space on empty track space arms a pan the shortcuts never see; released without a drag it plays", () => {
+      const { view, session, pointer, overlay, onSpaceTap } = setup(5);
+      const reached = vi.fn();
+      window.addEventListener("keydown", reached);
+      try {
+        const space = (type: "keydown" | "keyup") => window.dispatchEvent(new KeyboardEvent(type, { key: " ", code: "Space", bubbles: true, cancelable: true }));
+        // Over a1's empty row (no clip on it).
+        pointer("pointermove", 600, 260);
+        space("keydown");
+        expect(reached).not.toHaveBeenCalled();
+        expect(overlay.style.cursor).toBe("grab");
+        space("keyup");
+        expect(onSpaceTap).toHaveBeenCalledTimes(1);
+        expect(overlay.style.cursor).toBe("default");
+        // Held with a drag: a pan, and no play on release.
+        space("keydown");
+        pointer("pointerdown", 600, 260);
+        pointer("pointermove", 560, 260);
+        pointer("pointerup", 560, 260);
+        space("keyup");
+        expect(onSpaceTap).toHaveBeenCalledTimes(1);
+        expect(timeline(session).scrollFrame).toBe(0);
+        // Over a clip, or while playing: Space goes on to the shortcuts at once.
+        pointer("pointermove", 176 + 15 * 4, 200);
+        space("keydown");
+        space("keyup");
+        view.playing = true;
+        pointer("pointermove", 600, 260);
+        space("keydown");
+        space("keyup");
+        expect(reached).toHaveBeenCalledTimes(2);
+        expect(onSpaceTap).toHaveBeenCalledTimes(1);
+      } finally {
+        window.removeEventListener("keydown", reached);
+      }
+    });
+
+    it("Space+drag pans the view (scroll limits apply)", () => {
+      const { session, pointer } = setup(500);
+      pointer("pointermove", 600, 260);
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: " ", code: "Space", bubbles: true }));
+      pointer("pointerdown", 600, 260);
+      pointer("pointermove", 520, 260);
+      pointer("pointerup", 520, 260);
+      window.dispatchEvent(new KeyboardEvent("keyup", { key: " ", code: "Space", bubbles: true }));
+      expect(timeline(session).scrollFrame).toBe(20);
+    });
+
+    it("eases keyboard zoom steps over 120 ms with the playhead held in place; fast presses add up", () => {
+      const { view, session, scheduler } = setup(500, navTheme());
+      setPlayhead(session, 50);
+      view.zoomBy(1.25);
+      // Nothing moves before the first frame.
+      expect(timeline(session).pxPerFrame).toBe(4);
+      scheduler.flush();
+      const first = timeline(session).pxPerFrame;
+      expect(first).toBeGreaterThan(4);
+      expect(first).toBeLessThan(5);
+      // The playhead stays at x = 200 in the track area.
+      expect((50 - timeline(session).scrollFrame) * first).toBeCloseTo(200, 6);
+      view.zoomBy(1.25);
+      for (let i = 0; i < 10; i++) scheduler.flush();
+      expect(timeline(session).pxPerFrame).toBeCloseTo(6.25, 9);
+      expect(scheduler.tickers.size).toBe(0);
+      // A wheel zoom during a step ends the step where the wheel puts it.
+      view.zoomBy(0.8);
+      scheduler.flush();
+      view.fit();
+      const fitted = timeline(session).pxPerFrame;
+      scheduler.flush();
+      expect(timeline(session).pxPerFrame).toBe(fitted);
+      expect(scheduler.tickers.size).toBe(0);
+    });
+
+    it("zooms to a span with 10% of the view free on each side", () => {
+      const { view, session } = setup(500);
+      // 824 px of track area: 100 frames in 659.2 px, 82.4 px (12.5 frames) of margin each side.
+      view.zoomToFrames(100, 200);
+      expect(timeline(session).pxPerFrame).toBeCloseTo(6.592, 9);
+      expect(timeline(session).scrollFrame).toBeCloseTo(87.5, 9);
+    });
   });
 
   it("stops drawing and listening once unmounted", () => {
