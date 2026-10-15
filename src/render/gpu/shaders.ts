@@ -1,5 +1,6 @@
 // WGSL for the layer pipelines (spec §9.4). One vertex stage for every layer kind: the unit quad goes
-// through the layer matrix (unit quad -> project px) and the view matrix (project px -> clip space).
+// through the layer matrix (unit quad -> target px: the layer's transform with its pane's viewport
+// applied on the CPU) and the view matrix (target px -> clip space).
 // Fragment outputs are premultiplied; the pipelines blend with (one, one-minus-src-alpha).
 
 /** Per-layer uniforms: 6 vec4 (96 bytes), at a 256-byte dynamic offset. Packed by `layerUniforms.ts`. */

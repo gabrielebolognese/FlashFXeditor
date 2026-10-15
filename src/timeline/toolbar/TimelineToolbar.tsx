@@ -10,19 +10,24 @@ import { useDismiss } from "../../ui/useDismiss.js";
 import styles from "./TimelineToolbar.module.css";
 import { TOOLBAR_GROUPS, type ToolbarGroup, type ToolbarItem } from "./toolbarGroups.js";
 
-// Actions stay disabled until their batches wire them (tools: 14/15/18, toggles: 16/35/37, edits:
-// 15-19, add: 29/32/34, zoom to selection: 18, track height: 16).
+// Actions stay disabled until their batches wire them (tools: razor 15, hand 18; toggles: 16/35/37,
+// edits: 15-19, add: 29/32/34, zoom to selection: 18, track height: 16).
 const ENABLED: ReadonlySet<string> = new Set(["timeline.zoomOut", "timeline.zoomIn", "timeline.zoomFit"]);
 
 /**
- * Toggle buttons whose pressed state is session state. Each subscribes to its own flag only (spec
- * §6.17): toggling re-renders that button, nothing else, and no drag ever writes these flags (hold S
- * inverts snapping without touching the session).
+ * Toggle buttons whose pressed state is session state: the toggles and the active tool. Each
+ * subscribes to its own flag only (spec §6.17): toggling re-renders that button (a tool change, the
+ * two tool buttons), nothing else, and no drag ever writes these flags (hold S inverts snapping
+ * without touching the session).
  * TODO(batch 16): linked selection. TODO(batch 35): clip keyframes. TODO(batch 37): audio scrub.
  */
 const TOGGLE_STATE: Readonly<Record<string, (state: SessionState) => boolean>> = {
   "toggle.snap": (state) => state.snap,
   "toggle.rippleMode": (state) => state.ripple,
+  "tool.select": (state) => state.activeTool === "select",
+  "tool.slip": (state) => state.activeTool === "slip",
+  "tool.slide": (state) => state.activeTool === "slide",
+  "tool.rateStretch": (state) => state.activeTool === "rateStretch",
 };
 
 function SessionToggle({ item, pressedIn }: { item: Extract<ToolbarItem, { kind: "button" }>; pressedIn: (state: SessionState) => boolean }) {

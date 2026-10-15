@@ -291,3 +291,29 @@ describe("LayerTextures", () => {
     expect(textures.stats.warming).toBe(0);
   });
 });
+
+describe("LayerTextures: split panes (spec §6.10)", () => {
+  it("resolves two composites in one pass, one scrub request per media, each pane with its own slots", async () => {
+    const t = setup();
+    const left = composite(media({ trackId: "v1", mediaId: "a", timeUs: 1000 + 10 * FRAME }));
+    const right = composite(media({ trackId: "v1", mediaId: "a", timeUs: 1000 + 11 * FRAME }));
+    const [l, r] = t.textures.resolveSplit(left, right, "scrub");
+    // Same media in both panes: only the first request is a scrub, so they never supersede each other.
+    expect(t.requests.map((request) => [request.timeUs, request.options.priority])).toEqual([
+      [1000 + 10 * FRAME, "scrub"],
+      [1000 + 11 * FRAME, "idle"],
+    ]);
+    const leftTex = t.deliver(t.requests[0] as Request);
+    const rightTex = t.deliver(t.requests[1] as Request);
+    await t.flush();
+    const [l2, r2] = t.textures.resolveSplit(left, right, "scrub");
+    expect(l2).toBe(l);
+    expect(r2).toBe(r);
+    expect(textureOf(l2.layers[0])).toBe(leftTex);
+    expect(textureOf(r2.layers[0])).toBe(rightTex);
+    expect(t.textures.stats).toMatchObject({ layers: 2, exact: 2 });
+    // Back to one pane: the right pane's slot is released (its pin with it), the left one stays.
+    expect(textureOf(resolve(t.textures, "idle", media({ trackId: "v1", mediaId: "a", timeUs: 1000 + 10 * FRAME }))[0])).toBe(leftTex);
+    expect(t.pool.stats.pinned).toBe(1);
+  });
+});

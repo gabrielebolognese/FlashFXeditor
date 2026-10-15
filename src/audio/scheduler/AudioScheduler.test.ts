@@ -4,6 +4,7 @@ import type { MediaClip, Project } from "../../core/document/types.js";
 import { AudioMixer, audibleTracks, RAMP_SECONDS } from "../AudioMixer.js";
 import { segmentLayout, type SegmentLayout } from "../decode/segments.js";
 import { FakeContext, fakeBuffer, type FakeGain, type FakeSource } from "../testAudio.js";
+import { applyTrim, rateStretch } from "../../timeline/edit/trim.js";
 import { AHEAD_SECONDS, AudioScheduler, START_MARGIN_SECONDS, type AudioSchedulerDeps, type PlayMapping } from "./AudioScheduler.js";
 
 const FPS = { num: 30, den: 1 };
@@ -136,6 +137,27 @@ describe("AudioScheduler", () => {
     expect(source?.playbackRate.value).toBe(2);
     // 1 s into the clip at 2x: media second 1 + 2.
     expect(source?.started?.offset).toBeCloseTo(3, 9);
+  });
+
+  it("follows a rate stretch while playing: the voice restarts at the new speed (pitch follows) and plays to the new end", () => {
+    // 5 s of media on [0, 150); stretched to 300 frames it plays at 0.5x, its in and out unchanged.
+    const t = setup({ clips: (p) => [audioClip(p, "c1", 0, 150, { in: 0, out: 5_000_000 })] });
+    t.at(9.95);
+    t.scheduler.sync(t.mapping({ frame: 30, clock: 10 }));
+    expect(voiceSources(t.ctx)[0]?.playbackRate.value).toBe(1);
+    const stretch = rateStretch(t.project(), "c1", "out", 150);
+    expect(stretch.changes.get("c1")).toMatchObject({ duration: 300, speed: 0.5, in: 0, out: 5_000_000 });
+    t.edit((p) => applyTrim(p, stretch));
+    expect(t.scheduler.stats.stopped).toBe(1);
+    t.at(10.01);
+    t.scheduler.sync(t.mapping({ frame: 30, clock: 10 }));
+    const voice = voiceSources(t.ctx)[1];
+    expect(voice?.playbackRate.value).toBe(0.5);
+    // The clip now ends at frame 300 (10 s): 9 s after the anchor's frame 30.
+    expect(voice?.stoppedAt).toBeCloseTo(100 + 10 + 9, 6);
+    // Late by the restart: the media offset moves on at half the rate.
+    const late = (voice?.started?.when ?? 0) - 110;
+    expect(voice?.started?.offset).toBeCloseTo(0.5 + late * 0.5, 6);
   });
 
   it("is silent at other transport speeds", () => {

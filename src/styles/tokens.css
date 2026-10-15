@@ -181,6 +181,7 @@
   /* Trimming (Batch 13, gap: the DS has no trim visuals; the zone is the spec §6.4 default) */
   --timeline-trim-zone: 8px; /* spec §6.4: the outer 8px of each clip edge (inside the clip) */
   --timeline-trim-edge-width: 2px; /* the ghost edge: --accent, --danger at a media bound */
+  --timeline-junction-zone: 6px; /* spec §6.10: the band on the cut between abutting clips (roll zone, edit point clicks) */
 
   /* Audio (gap: the DS has no meter or knob). Stereo peak meter along the preview's right edge, master volume knob. */
   --meter-bar-width: var(--space-1);

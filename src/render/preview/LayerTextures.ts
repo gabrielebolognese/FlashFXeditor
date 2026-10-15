@@ -16,7 +16,10 @@
 // - What is drawn stays pinned in the pool. Late frames call `onChange` (the view redraws).
 // - `warm` prefetches the edge frames of the clips next to the playhead, so a scrub across a cut
 //   finds the new clip's frame cached.
-// The draw list, the slot structs and their keys are reused between passes: a pass allocates nothing
+// - `resolveSplit` resolves two composites in one pass (the trim preview's two frames side by side,
+//   spec §6.10), each pane with its own slots and draw list. The scrub rule spans both: a media shown
+//   in both panes gets one scrub request, so the two never supersede each other.
+// The draw lists, the slot structs and their keys are reused between passes: a pass allocates nothing
 // unless it requests or pins a new frame.
 import type { MediaId, TrackId } from "../../core/document/types.js";
 import { imageKey, type TextureKey, type TexturePool } from "../../media/cache/TexturePool.js";
@@ -88,9 +91,14 @@ function copyKey(out: TextureKey, key: TextureKey): TextureKey {
   return out;
 }
 
+type WritableList = DrawList & { layers: Layer[] };
+
+const newList = (): WritableList => ({ width: 0, height: 0, background: { r: 0, g: 0, b: 0, a: 1 }, layers: [] });
+
 export class LayerTextures {
-  private readonly slots = new Map<TrackId, Slot>();
-  private readonly list: DrawList & { layers: Layer[] } = { width: 0, height: 0, background: { r: 0, g: 0, b: 0, a: 1 }, layers: [] };
+  /** Per pane (0: the preview, 1: the right half of a split), one slot per video track. */
+  private readonly slots: [Map<TrackId, Slot>, Map<TrackId, Slot>] = [new Map(), new Map()];
+  private readonly lists: [WritableList, WritableList] = [newList(), newList()];
   private readonly scrubbed = new Set<MediaId>();
   private readonly active = new Set<MediaId>();
   private readonly opening = new Set<MediaId>();
@@ -107,11 +115,31 @@ export class LayerTextures {
 
   /** The draw list for `composite` with every media layer resolved to a texture (or held, or left out). */
   resolve(composite: Composite, priority: FramePriority): DrawList {
-    const list = this.list;
-    list.width = composite.width;
-    list.height = composite.height;
-    list.background = composite.background;
-    list.layers.length = 0;
+    this.begin();
+    try {
+      this.resolveInto(0, composite, priority);
+    } finally {
+      this.end();
+    }
+    return this.lists[0];
+  }
+
+  /**
+   * Two composites resolved in one pass, into two draw lists (the left and right panes of a split
+   * preview). Reused like `resolve`'s list: read both before resolving again.
+   */
+  resolveSplit(left: Composite, right: Composite, priority: FramePriority): readonly [DrawList, DrawList] {
+    this.begin();
+    try {
+      this.resolveInto(0, left, priority);
+      this.resolveInto(1, right, priority);
+    } finally {
+      this.end();
+    }
+    return this.lists;
+  }
+
+  private begin(): void {
     this.pass += 1;
     this.scrubbed.clear();
     this.active.clear();
@@ -122,31 +150,45 @@ export class LayerTextures {
     stats.held = 0;
     stats.missing = 0;
     this.resolving = true;
-    try {
-      for (const layer of composite.layers) {
-        if (layer.kind === "solid") {
-          list.layers.push(layer);
+  }
+
+  private resolveInto(pane: 0 | 1, composite: Composite, priority: FramePriority): void {
+    const list = this.lists[pane];
+    list.width = composite.width;
+    list.height = composite.height;
+    list.background = composite.background;
+    list.layers.length = 0;
+    const stats = this.stats;
+    for (const layer of composite.layers) {
+      if (layer.kind === "solid") {
+        list.layers.push(layer);
+        continue;
+      }
+      stats.layers += 1;
+      this.active.add(layer.mediaId);
+      const drawn = this.resolveMedia(this.slot(pane, layer.trackId), layer, priority);
+      if (drawn) list.layers.push(drawn);
+      else stats.missing += 1;
+    }
+  }
+
+  /** Releases the slots this pass did not use (a pane not resolved loses them all) and counts what is pending. */
+  private end(): void {
+    this.resolving = false;
+    const stats = this.stats;
+    stats.pending = 0;
+    for (const slots of this.slots) {
+      for (const [trackId, slot] of slots) {
+        if (slot.pass === this.pass) {
+          if (slot.pending) stats.pending += 1;
           continue;
         }
-        stats.layers += 1;
-        this.active.add(layer.mediaId);
-        const drawn = this.resolveMedia(this.slot(layer.trackId), layer, priority);
-        if (drawn) list.layers.push(drawn);
-        else stats.missing += 1;
+        this.release(slot);
+        slots.delete(trackId);
       }
-    } finally {
-      this.resolving = false;
     }
-    for (const [trackId, slot] of this.slots) {
-      if (slot.pass === this.pass) continue;
-      this.release(slot);
-      this.slots.delete(trackId);
-    }
-    stats.pending = 0;
-    for (const slot of this.slots.values()) if (slot.pending) stats.pending += 1;
     stats.warming = this.warming.size;
     stats.failed = this.failed.size;
-    return list;
   }
 
   /** Prefetches the neighbour frames that are not cached yet (media drawn by a layer are left alone). */
@@ -182,17 +224,19 @@ export class LayerTextures {
 
   /** Drops every slot, request and pin (project closed). */
   clear(): void {
-    for (const slot of this.slots.values()) this.release(slot);
-    this.slots.clear();
+    for (const slots of this.slots) {
+      for (const slot of slots.values()) this.release(slot);
+      slots.clear();
+    }
     this.failed.clear();
     this.opening.clear();
     this.loadingImages.clear();
-    this.list.layers.length = 0;
+    for (const list of this.lists) list.layers.length = 0;
   }
 
-  /** The last resolved draw list (Export frame draws it). */
+  /** The last resolved draw list (of a split, the left one; Export frame draws it). */
   get current(): DrawList {
-    return this.list;
+    return this.lists[0];
   }
 
   private resolveMedia(slot: Slot, layer: MediaLayer, priority: FramePriority): TextureLayer | null {
@@ -366,8 +410,9 @@ export class LayerTextures {
     return shown;
   }
 
-  private slot(trackId: TrackId): Slot {
-    let slot = this.slots.get(trackId);
+  private slot(pane: 0 | 1, trackId: TrackId): Slot {
+    const slots = this.slots[pane];
+    let slot = slots.get(trackId);
     if (!slot) {
       slot = {
         pending: null,
@@ -380,7 +425,7 @@ export class LayerTextures {
         unpin: null,
         pass: 0,
       };
-      this.slots.set(trackId, slot);
+      slots.set(trackId, slot);
     }
     slot.pass = this.pass;
     return slot;

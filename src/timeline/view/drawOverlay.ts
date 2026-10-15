@@ -1,11 +1,12 @@
-// The timeline overlay canvas (spec §6.17, P3): hover highlights, the trim preview (the rows a trim
-// changes, redrawn as the drop would leave them), the snap line, clip drag ghosts with the new track
-// rows, overwrite hatching and the insert line, the trim's ghost edge, the marquee, the playhead and
-// the drag tooltip with the snap target's name. It is redrawn for every interaction frame (scrubbing,
-// dragging, hover changes) while the content canvas stays untouched.
-import type { Clip, Frame, Track } from "../../core/document/types.js";
+// The timeline overlay canvas (spec §6.17, P3): hover highlights, the trim preview (the rows an edit
+// changes, redrawn as the drop would leave them), the selected edit point's brackets, the snap line,
+// clip drag ghosts with the new track rows, overwrite hatching and the insert line, the edit's ghost
+// edges, the marquee, the playhead and the drag tooltip with the snap target's name. It is redrawn for
+// every interaction frame (scrubbing, dragging, hover changes) while the content canvas stays untouched.
+import type { Clip, Frame, Track, TrackId } from "../../core/document/types.js";
 import type { Selection } from "../../core/store/selection.js";
 import type { Theme } from "../../core/theme/theme.js";
+import { edgeFrame, type TrimEdge } from "../edit/trim.js";
 import { clipsInRange, linkOffset } from "../model/queries.js";
 import { clipLod, clipSpan, devicePx, LOD_LABEL_PX } from "./clipLayout.js";
 import { drawClip, fontOf } from "./drawContent.js";
@@ -27,6 +28,16 @@ export interface TrimScene {
   selection: Selection;
 }
 
+/**
+ * A selected edit point on a track (spec §6.7): brackets on the cut at `frame`, on both sides for a
+ * roll (`--danger`), on one side for a ripple trim (`--accent`).
+ */
+export interface EditPointMark {
+  trackId: TrackId;
+  frame: Frame;
+  side: "both" | "left" | "right";
+}
+
 export interface OverlayScene {
   ctx: CanvasRenderingContext2D;
   dpr: number;
@@ -43,6 +54,8 @@ export interface OverlayScene {
   snapFrame: Frame | null;
   move: MoveScene | null;
   trim: TrimScene | null;
+  /** The selected edit point (and its linked partners' cuts). */
+  editPoints: readonly EditPointMark[];
   /** The marquee rectangle (view coordinates). */
   marquee: Rect | null;
   /** The drag tooltip near the pointer: `Δ +00:00:12` and/or the snap target's name. */
@@ -73,6 +86,7 @@ export function drawOverlay(scene: OverlayScene): void {
   drawHover(scene);
   // The trim preview stands in for the content under it, so everything else draws over it.
   if (scene.trim) drawTrimLayout(scene, scene.trim);
+  for (const mark of scene.editPoints) drawEditPoint(scene, mark);
   ctx.restore();
   // §6.17 order: hover, snap lines, ghosts and trim previews, insert/overwrite indicators, playhead, tooltip.
   if (scene.snapFrame !== null) drawSnapLine(scene, scene.snapFrame);
@@ -148,27 +162,62 @@ function drawTrimLayout(scene: OverlayScene, trim: TrimScene): void {
 }
 
 /**
- * The ghost edge (spec §6.10): a bar inside each trimmed clip at its moved edge, in the accent color,
- * or the danger color while the edge sits on a media bound.
+ * The ghost edges (spec §6.10): a bar inside each edited clip at each edge the edit moves (both edges
+ * of a slipped clip; none on a slid clip, whose neighbors' edges mark it), in the accent color, or the
+ * danger color while that side sits on its media bound.
  */
 function drawTrimEdges(scene: OverlayScene, trim: TrimScene): void {
   const { ctx, dpr, geometry, theme } = scene;
   const { proposal } = trim;
   const { result } = proposal;
-  const edge = result.plan.edge;
   const inset = theme.timeline.clipInset;
   const width = devicePx(theme.timeline.trimEdgeWidth, dpr) / dpr;
-  ctx.fillStyle = result.mediaBound ? theme.color.danger : theme.color.accent;
   for (const before of result.plan.trimmed) {
+    const move = result.plan.moves.get(before.id);
+    if (move === "move") continue;
     const clip = proposal.project.clips[before.id] ?? before;
     const row = geometry.rowOf(clip.trackId);
     if (!row || row.y + row.height <= geometry.area.y || row.y >= geometry.height) continue;
-    const frame = edge === "in" ? clip.start : clip.start + clip.duration;
-    if (!geometry.isFrameVisible(frame)) continue;
-    const x = snap(geometry.frameToX(frame), dpr);
+    const bound = result.bounds.get(clip.id) ?? null;
+    const edges: [TrimEdge, boolean][] =
+      move === "slip" ? [["in", bound === "start"], ["out", bound === "end"]] : [[move === "in" || move === "stretchIn" ? "in" : "out", bound !== null]];
     const y = snap(row.y + inset, dpr);
     const height = snap(row.y + row.height - inset, dpr) - y;
-    ctx.fillRect(edge === "in" ? x : x - width, y, width, height);
+    for (const [edge, red] of edges) {
+      const frame = edgeFrame(clip, edge);
+      if (!geometry.isFrameVisible(frame)) continue;
+      const x = snap(geometry.frameToX(frame), dpr);
+      ctx.fillStyle = red ? theme.color.danger : theme.color.accent;
+      ctx.fillRect(edge === "in" ? x : x - width, y, width, height);
+    }
+  }
+}
+
+/**
+ * A selected edit point (spec §6.7): a `]` closing the left clip and a `[` opening the right one on
+ * the cut (a roll, in the danger color), or the one of the rippled side (in the accent color). Ghost
+ * edge width strokes, `--space-1` serifs, over the clip band.
+ */
+function drawEditPoint(scene: OverlayScene, mark: EditPointMark): void {
+  const { ctx, dpr, geometry, theme } = scene;
+  const row = geometry.rowOf(mark.trackId);
+  if (!row || row.y + row.height <= geometry.area.y || row.y >= geometry.height || !geometry.isFrameVisible(mark.frame)) return;
+  const inset = theme.timeline.clipInset;
+  const width = devicePx(theme.timeline.trimEdgeWidth, dpr) / dpr;
+  const serif = theme.space[1];
+  const x = snap(geometry.frameToX(mark.frame), dpr);
+  const y = snap(row.y + inset, dpr);
+  const height = snap(row.y + row.height - inset, dpr) - y;
+  ctx.fillStyle = mark.side === "both" ? theme.color.danger : theme.color.accent;
+  if (mark.side !== "right") {
+    ctx.fillRect(x - width, y, width, height);
+    ctx.fillRect(x - width - serif, y, serif, width);
+    ctx.fillRect(x - width - serif, y + height - width, serif, width);
+  }
+  if (mark.side !== "left") {
+    ctx.fillRect(x, y, width, height);
+    ctx.fillRect(x + width, y, serif, width);
+    ctx.fillRect(x + width, y + height - width, serif, width);
   }
 }
 

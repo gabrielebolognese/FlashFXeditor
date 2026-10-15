@@ -3,13 +3,13 @@
 // the 2D context counts the hatch lines and keeps the filled rects and texts.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { makeMedia, makeMediaClip, makeProject, makeTrack } from "../../core/document/fixtures.js";
-import type { Frame } from "../../core/document/types.js";
+import type { Frame, Project } from "../../core/document/types.js";
 import { EMPTY_SELECTION } from "../../core/store/selection.js";
 import { drawOverlay, type OverlayScene } from "./drawOverlay.js";
 import { METRICS, testTheme } from "./fixtures.js";
 import { TimelineGeometry } from "./geometry.js";
 import { NO_MODIFIERS, type MoveProposal } from "./gestures/moveClips.js";
-import { TrimGesture } from "./gestures/trimClip.js";
+import { TrimGesture, type TrimProposal } from "./gestures/trimClip.js";
 import { TextCache } from "./textCache.js";
 
 /** The x of every `moveTo` (one per hatch line). */
@@ -67,6 +67,7 @@ function drawDrag(hatch: [Frame, Frame], pxPerFrame: number, scrollFrame: number
     hoverToggle: null,
     move: { proposal, newRowHeight: METRICS.trackHeight.M },
     trim: null,
+    editPoints: [],
     marquee: null,
     text: new TextCache(),
     ...snap,
@@ -117,8 +118,14 @@ describe("drawOverlay: trims", () => {
     project.tracks = [v1, makeTrack("a1", "audio")];
     project.clips.a = makeMediaClip(project, { id: "a", trackId: "v1", start: 0, duration: 50, mediaId: "m" });
     project.clips.b = makeMediaClip(project, { id: "b", trackId: "v1", start: 50, duration: 30, mediaId: "m" });
-    const trim = new TrimGesture(project, "a", "in", 0);
+    const trim = new TrimGesture(project, { kind: "trim", clipId: "a", edge: "in" }, 0);
     const proposal = trim.update(delta, NO_MODIFIERS, { ripple, linkedSelection: true });
+    drawScene(project, proposal, []);
+    return proposal;
+  }
+
+  /** Draws the trim layer of `proposal` and the edit point brackets over V1 at 4 px/frame. */
+  function drawScene(project: Project, proposal: TrimProposal | null, editPoints: OverlayScene["editPoints"]) {
     const geometry = new TimelineGeometry({ width: 1000, height: 428, tracks: project.tracks, pxPerFrame: 4, scrollFrame: 0, scrollY: 0, metrics: METRICS });
     drawOverlay({
       ctx: fakeContext(),
@@ -132,12 +139,22 @@ describe("drawOverlay: trims", () => {
       hoverToggle: null,
       snapFrame: null,
       move: null,
-      trim: { proposal, selection: EMPTY_SELECTION },
+      trim: proposal ? { proposal, selection: EMPTY_SELECTION } : null,
+      editPoints,
       marquee: null,
-      tooltip: { text: "Δ", target: null, alert: proposal.result.mediaBound ? "Media start" : null, x: 300, y: 200 },
+      tooltip: proposal ? { text: "Δ", target: null, alert: proposal.result.mediaBound ? "Media start" : null, x: 300, y: 200 } : null,
       text: new TextCache(),
     });
-    return proposal;
+  }
+
+  /** V1: a [0, 50) and b [50, 80), both at their media start. */
+  function cutProject(): Project {
+    const project = makeProject();
+    project.media.m = makeMedia("m");
+    project.tracks = [makeTrack("v1", "video", ["a", "b"]), makeTrack("a1", "audio")];
+    project.clips.a = makeMediaClip(project, { id: "a", trackId: "v1", start: 0, duration: 50, mediaId: "m" });
+    project.clips.b = makeMediaClip(project, { id: "b", trackId: "v1", start: 50, duration: 30, mediaId: "m" });
+    return project;
   }
 
   it("redraws the trimmed row from the proposed document, then the ghost edge in the accent color", () => {
@@ -159,6 +176,42 @@ describe("drawOverlay: trims", () => {
     expect(rects.some((rect) => rect.style === theme.color.danger)).toBe(true);
     expect(rects.some((rect) => rect.style === theme.color.accent)).toBe(false);
     expect(texts.at(-1)).toMatchObject({ text: "Media start", style: theme.color.danger });
+  });
+
+  it("draws both edges of a roll, red only on the side that sits on its media bound", () => {
+    const project = cutProject();
+    const roll = new TrimGesture(project, { kind: "roll", clipId: "a", edge: "out", rightId: "b" }, 50);
+    // b has no frames before its in point: the cut cannot move left.
+    const proposal = roll.update(40, NO_MODIFIERS, { ripple: false, linkedSelection: true });
+    expect(proposal.result).toMatchObject({ delta: 0, mediaBound: "start" });
+    expect(proposal.previewSplit).toEqual({ leftFrame: 49, rightFrame: 50 });
+    drawScene(project, proposal, []);
+    // The cut at x 376: a's out edge left of it in the accent color, b's in edge right of it in red.
+    expect(rects).toContainEqual({ style: theme.color.accent, x: 374, y: 174, width: 2, height: 52 });
+    expect(rects).toContainEqual({ style: theme.color.danger, x: 376, y: 174, width: 2, height: 52 });
+    // Moving right is free: both edges in the accent color at the new cut.
+    rects.length = 0;
+    const right = roll.update(60, NO_MODIFIERS, { ripple: false, linkedSelection: true });
+    expect(right.previewSplit).toEqual({ leftFrame: 59, rightFrame: 60 });
+    drawScene(project, right, []);
+    expect(rects.filter((rect) => rect.style === theme.color.danger)).toEqual([]);
+    expect(rects.filter((rect) => rect.style === theme.color.accent && rect.width === 2).map((rect) => rect.x)).toEqual([414, 416]);
+  });
+
+  it("draws a selected edit point's brackets: both sides in red for a roll, one side in the accent color", () => {
+    const project = cutProject();
+    drawScene(project, null, [{ trackId: "v1", frame: 50, side: "both" }]);
+    const red = rects.filter((rect) => rect.style === theme.color.danger);
+    // `]` (spine left of the cut, serifs pointing left) and `[` (spine right of it, serifs pointing right).
+    expect(red).toContainEqual({ style: theme.color.danger, x: 374, y: 174, width: 2, height: 52 });
+    expect(red).toContainEqual({ style: theme.color.danger, x: 370, y: 174, width: 4, height: 2 });
+    expect(red).toContainEqual({ style: theme.color.danger, x: 376, y: 174, width: 2, height: 52 });
+    expect(red).toContainEqual({ style: theme.color.danger, x: 378, y: 224, width: 4, height: 2 });
+    expect(red).toHaveLength(6);
+    rects.length = 0;
+    drawScene(project, null, [{ trackId: "v1", frame: 50, side: "right" }]);
+    const gold = rects.filter((rect) => rect.style === theme.color.accent);
+    expect(gold.map((rect) => rect.x)).toEqual([376, 378, 378]);
   });
 
   it("redraws the shifted clips of a ripple from where they start", () => {

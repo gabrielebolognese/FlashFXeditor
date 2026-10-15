@@ -2,6 +2,7 @@
 // ruler, the track header column, the divider and the "+ track" rows. Redrawn only when the
 // document, the selection, the zoom/scroll, the size or the theme change, never for the playhead.
 // Clips are virtualized per track (binary search on start with a longest-clip lookback, P10).
+import { formatSpeed } from "../../core/document/time.js";
 import type { Clip, Project, Track } from "../../core/document/types.js";
 import type { Selection } from "../../core/store/selection.js";
 import type { Theme } from "../../core/theme/theme.js";
@@ -102,9 +103,9 @@ function drawClips(scene: ContentScene): number {
 }
 
 /**
- * One clip in its row: body, label bar (kind glyph, name, sync badge), selection tint and outline.
- * `syncOffset`: frames off its link partner (`linkOffset`), shown as a `+12` / `-12` badge.
- * TODO(batch 17): filmstrips and waveforms in the body, badges (speed, link, keyframes, fx), label colors.
+ * One clip in its row: body, label bar (kind glyph, name, speed and sync badges), selection tint and
+ * outline. `syncOffset`: frames off its link partner (`linkOffset`), shown as a `+12` / `-12` badge.
+ * TODO(batch 17): filmstrips and waveforms in the body, badges (link, keyframes, fx), label colors.
  */
 export function drawClip(scene: ClipScene, clip: Clip, row: Row, track: Track, abutsNext: boolean, syncOffset = 0): void {
   const { ctx, dpr, geometry, theme, selection } = scene;
@@ -165,7 +166,14 @@ function drawLabel(scene: ClipScene, clip: Clip, x: number, y: number, width: nu
   const centerY = y + labelHeight / 2;
   // With the label bar spanning an S clip, keep the icon and name on the first text line.
   const lineY = Math.min(centerY, y + theme.timeline.labelHeight / 2);
-  if (syncOffset !== 0) right = drawSyncBadge(scene, syncOffset, left + pad + icon + pad, right - theme.space[0], lineY);
+  // Badges from the right end: the sync offset, then the speed (spec §6.4: `2x` when it is not 1;
+  // video and audio only, stills and graphics have no speed). The name ends before them.
+  const minX = left + pad + icon + pad;
+  const badgesEnd = right - theme.space[0];
+  let badgesStart = badgesEnd;
+  if (syncOffset !== 0) badgesStart = drawBadge(scene, `${syncOffset > 0 ? "+" : "-"}${Math.abs(syncOffset)}`, theme.color.danger, minX, badgesStart, lineY);
+  if ((clip.kind === "video" || clip.kind === "audio") && clip.speed !== 1) badgesStart = drawBadge(scene, formatSpeed(clip.speed), theme.color.textSecondary, minX, badgesStart, lineY);
+  if (badgesStart < badgesEnd) right = badgesStart;
   drawGlyph(ctx, CLIP_GLYPHS[clip.kind], left + pad, lineY - icon / 2, icon, theme.color.textPrimary);
   const textX = left + pad + icon + pad;
   ctx.font = fontOf(theme, "caption");
@@ -177,14 +185,14 @@ function drawLabel(scene: ClipScene, clip: Clip, x: number, y: number, width: nu
 }
 
 /**
- * The sync badge (spec §6.12): `+12` / `-12` frames in a DS chip (`--surface-3`, radius-sm, badge
- * type: 10 px mono) with the danger color, right-aligned in the label bar. Returns the x left of it
- * (where the name must end), or `right` when there is no room for it.
+ * A label bar badge in a DS chip (`--surface-3`, radius-sm, badge type: 10 px mono), ending at `right`:
+ * the sync badge (spec §6.12, `+12` / `-12` frames in the danger color) and the speed badge (§6.4,
+ * `0.5x` in the secondary text color). Returns the x left of it (where the next badge or the name must
+ * end), or `right` when there is no room for it.
  */
-function drawSyncBadge(scene: ClipScene, offset: number, minX: number, right: number, centerY: number): number {
+function drawBadge(scene: ClipScene, label: string, fill: string, minX: number, right: number, centerY: number): number {
   const { ctx, theme, text } = scene;
   const { space, color } = theme;
-  const label = `${offset > 0 ? "+" : "-"}${Math.abs(offset)}`;
   ctx.font = `${theme.type.caption.weight} ${theme.type.overline.size}px ${theme.font.mono}`;
   const width = Math.ceil(text.width(ctx, label)) + 2 * space[1];
   const height = theme.type.overline.line;
@@ -194,7 +202,7 @@ function drawSyncBadge(scene: ClipScene, offset: number, minX: number, right: nu
   ctx.beginPath();
   ctx.roundRect(x, centerY - height / 2, width, height, theme.radius.sm);
   ctx.fill();
-  ctx.fillStyle = color.danger;
+  ctx.fillStyle = fill;
   ctx.textBaseline = "middle";
   ctx.fillText(label, x + space[1], centerY);
   return x - space[0];

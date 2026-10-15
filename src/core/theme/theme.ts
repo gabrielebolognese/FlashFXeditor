@@ -89,9 +89,10 @@ export interface TimelineTheme {
   /** Snapping (spec §6.9): distance that snaps, in CSS px; width of the snap line. */
   snapThreshold: number;
   snapLineWidth: number;
-  /** Trimming (spec §6.4, §6.10): the edge zone that trims, the width of the ghost edge. */
+  /** Trimming (spec §6.4, §6.10): the edge zone that trims, the width of the ghost edge, the band on a cut (roll zone). */
   trimZone: number;
   trimEdgeWidth: number;
+  junctionZone: number;
 }
 
 /** Reads one custom property by name (e.g. `--accent`); returns "" when it is not defined. */
@@ -230,6 +231,7 @@ export function readTheme(read: TokenReader, root?: Element): { theme: Theme; mi
       snapLineWidth: num("--timeline-snap-line-width"),
       trimZone: num("--timeline-trim-zone"),
       trimEdgeWidth: num("--timeline-trim-edge-width"),
+      junctionZone: num("--timeline-junction-zone"),
     },
     meter: { barWidth: num("--meter-bar-width"), barGap: num("--meter-bar-gap"), ledHeight: num("--meter-led-height") },
   };

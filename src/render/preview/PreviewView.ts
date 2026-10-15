@@ -7,7 +7,9 @@
 // - Each render evaluates the document at the playhead (`Compositor`), resolves media layers to pool
 //   textures (`LayerTextures`: playback priority while playing, scrub while the ruler is dragged or an
 //   edge trimmed, idle otherwise), warms the cut neighbours (not while playing: the engine's lookahead
-//   does), and draws. While a trim runs, `override` gives the document and frame to show instead.
+//   does), and draws. While a trim runs, `override` gives the document and frame to show instead;
+//   with `previewSplit` (rolls, slips, slides, spec §6.10) it shows two frames side by side, each
+//   fitted (or at the zoom) in its half of the canvas: two evaluations, one texture pass, one draw.
 //   A pause leaves the playhead where it is, but playback may have held a track's previous layer
 //   there (shuttle speeds deliver every n-th frame): the render after it requests the exact frame.
 //   When the draw list and the viewport equal the last ones drawn, the GPU draw is skipped (§9.4).
@@ -27,10 +29,10 @@ import { Compositor } from "../compositor/Compositor.js";
 import type { DrawList } from "../compositor/drawList.js";
 import { DrawListSnapshot } from "../compositor/DrawListSnapshot.js";
 import type { FramePriority } from "../../media/workers/protocol.js";
-import type { CanvasTarget, Renderer, Viewport } from "../gpu/renderer.js";
+import type { CanvasTarget, Pane, Renderer, Viewport } from "../gpu/renderer.js";
 import { mutableIdentity, type Mat3, type MutableMat3 } from "../mat3.js";
 import { LayerTextures, type LayerTexturesDeps, type LayerTexturesStats } from "./LayerTextures.js";
-import { deviceSizeInto, frameTransformInto, type Size } from "./viewport.js";
+import { deviceSizeInto, frameTransformInto, type PreviewZoom, type Size } from "./viewport.js";
 
 const TRANSPARENT: RGBA = { r: 0, g: 0, b: 0, a: 0 };
 
@@ -47,10 +49,15 @@ export interface PreviewViewDeps extends Omit<LayerTexturesDeps, "onChange"> {
   watchPriority(listener: () => void): () => void;
   /**
    * What to show instead of the document at the playhead (a trim's proposed document at its new edge
-   * frame, spec §6.10), or null. The owner invalidates `preview` when it changes.
+   * frame, spec §6.10; with `previewSplit`, two frames side by side), or null. The owner invalidates
+   * `preview` when it changes.
    */
-  override?(): { project: Project; frame: Frame } | null;
+  override?(): { project: Project; frame: Frame; previewSplit?: { leftFrame: Frame; rightFrame: Frame } | null } | null;
 }
+
+type PaneViewport = Viewport & { transform: MutableMat3; border: { color: RGBA; width: number } };
+
+const newViewport = (): PaneViewport => ({ transform: mutableIdentity(), outside: TRANSPARENT, border: { color: TRANSPARENT, width: 1 } });
 
 /** What the first render of a playhead frame drew (later renders of the same frame do not change it). */
 export interface FirstShown {
@@ -92,8 +99,17 @@ export class PreviewView implements RenderView {
   private readonly compositor = new Compositor();
   private readonly textures: LayerTextures;
   private readonly snapshot = new DrawListSnapshot();
-  private readonly viewport: Viewport & { transform: MutableMat3 } = { transform: mutableIdentity(), outside: TRANSPARENT, border: { color: TRANSPARENT, width: 1 } };
+  private readonly viewport: PaneViewport = newViewport();
   private viewportDrawn = false;
+  // The split preview: the right frame's compositor and snapshot, the two panes, whether it is on screen.
+  private readonly rightCompositor = new Compositor();
+  private readonly rightSnapshot = new DrawListSnapshot();
+  private readonly panes: [Pane & { viewport: PaneViewport }, Pane & { viewport: PaneViewport }] = [
+    { list: EMPTY_LIST, viewport: newViewport(), bounds: { x: 0, y: 0, width: 0, height: 0 } },
+    { list: EMPTY_LIST, viewport: newViewport(), bounds: { x: 0, y: 0, width: 0, height: 0 } },
+  ];
+  private readonly paneTransform = mutableIdentity();
+  private splitDrawn = false;
   /** The priority of the last render. */
   private drawnPriority: FramePriority = "idle";
   private readonly stops: (() => void)[] = [];
@@ -178,6 +194,11 @@ export class PreviewView implements RenderView {
     const frame = override?.frame ?? playhead;
     const priority = this.deps.priority();
     this.drawnPriority = priority;
+    const split = override?.previewSplit ?? null;
+    if (split) {
+      this.renderSplit(doc, split.leftFrame, split.rightFrame, preview.zoom, priority, size, dpr, resized, started);
+      return;
+    }
     const list = this.textures.resolve(this.compositor.evaluate(doc, frame), priority);
     if (priority !== "playback") this.textures.warm(this.compositor.neighbors(doc, frame));
     const shown = this.firstShown;
@@ -187,9 +208,10 @@ export class PreviewView implements RenderView {
       shown.exact = this.textures.stats.exact;
     }
 
-    const viewChanged = this.updateViewport(frameTransformInto(this.transform, preview.zoom, list, size, this.chrome.margin * dpr), Math.max(1, Math.round(dpr)));
+    const viewChanged = this.updateViewport(this.viewport, frameTransformInto(this.transform, preview.zoom, list, size, this.chrome.margin * dpr), Math.max(1, Math.round(dpr))) || !this.viewportDrawn;
     const listChanged = this.snapshot.update(list);
-    if (!listChanged && !viewChanged && !resized) {
+    // Back from a split, the screen shows two frames whatever the snapshot holds.
+    if (!listChanged && !viewChanged && !resized && !this.splitDrawn) {
       this.stats.skipped += 1;
       this.stats.ms = performance.now() - started;
       return;
@@ -197,8 +219,49 @@ export class PreviewView implements RenderView {
     if (renderer.draw(list, target, this.viewport)) {
       this.stats.renders += 1;
       this.viewportDrawn = true;
+      this.splitDrawn = false;
     } else {
       this.snapshot.reset();
+    }
+    this.stats.ms = performance.now() - started;
+  }
+
+  /**
+   * The split preview (spec §6.10): `leftFrame` and `rightFrame` of `doc` side by side, each frame
+   * placed in its half of the canvas as the single view places it in the whole (Fit with the margin,
+   * or the zoom, centered), the border around each.
+   */
+  private renderSplit(doc: Project, leftFrame: Frame, rightFrame: Frame, zoom: PreviewZoom, priority: FramePriority, size: Size, dpr: number, resized: boolean, started: number): void {
+    const { renderer } = this.deps;
+    const target = this.target as CanvasTarget;
+    const lists = this.textures.resolveSplit(this.compositor.evaluate(doc, leftFrame), this.rightCompositor.evaluate(doc, rightFrame), priority);
+    const borderWidth = Math.max(1, Math.round(dpr));
+    const half = Math.floor(size.width / 2);
+    let changed = resized || !this.splitDrawn;
+    for (let i = 0; i < 2; i++) {
+      const pane = this.panes[i as 0 | 1];
+      const list = lists[i as 0 | 1];
+      pane.list = list;
+      pane.bounds.x = i === 0 ? 0 : half;
+      pane.bounds.width = i === 0 ? half : size.width - half;
+      pane.bounds.height = size.height;
+      const transform = frameTransformInto(this.paneTransform, zoom, list, pane.bounds, this.chrome.margin * dpr);
+      transform[4] += pane.bounds.x;
+      if (this.updateViewport(pane.viewport, transform, borderWidth)) changed = true;
+    }
+    if (this.snapshot.update(lists[0])) changed = true;
+    if (this.rightSnapshot.update(lists[1])) changed = true;
+    if (!changed) {
+      this.stats.skipped += 1;
+      this.stats.ms = performance.now() - started;
+      return;
+    }
+    if (renderer.drawPanes(this.panes, target)) {
+      this.stats.renders += 1;
+      this.splitDrawn = true;
+    } else {
+      this.snapshot.reset();
+      this.rightSnapshot.reset();
     }
     this.stats.ms = performance.now() - started;
   }
@@ -239,26 +302,27 @@ export class PreviewView implements RenderView {
     this.stats.height = 0;
     this.textures.clear();
     this.snapshot.reset();
+    this.rightSnapshot.reset();
     this.viewportDrawn = false;
+    this.splitDrawn = false;
   }
 
-  /** Writes the viewport of this render; true when it differs from the one drawn last. */
-  private updateViewport(transform: Mat3, borderWidth: number): boolean {
-    const view = this.viewport;
+  /** Writes a viewport of this render; true when it differs from what it held (the one drawn last). */
+  private updateViewport(view: PaneViewport, transform: Mat3, borderWidth: number): boolean {
     const { outside, border } = this.chrome;
-    let changed = !this.viewportDrawn || view.outside !== outside || view.border?.color !== border || view.border.width !== borderWidth;
+    let changed = view.outside !== outside || view.border.color !== border || view.border.width !== borderWidth;
     for (let i = 0; i < 6; i++) {
       if (view.transform[i] !== transform[i]) changed = true;
       view.transform[i] = transform[i] as number;
     }
     view.outside = outside;
-    if (view.border) {
-      view.border.color = border;
-      view.border.width = borderWidth;
-    }
+    view.border.color = border;
+    view.border.width = borderWidth;
     return changed;
   }
 }
+
+const EMPTY_LIST: DrawList = { width: 0, height: 0, background: TRANSPARENT, layers: [] };
 
 function chromeFromTheme(theme: Theme): Chrome {
   return {

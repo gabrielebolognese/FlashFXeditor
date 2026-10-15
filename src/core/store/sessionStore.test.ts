@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { EMPTY_SELECTION, filterSelection, fromSnapshot, selectionEquals, toSnapshot } from "./selection.js";
-import { createSessionStore, DEFAULT_SESSION, setPlayhead, setSelection } from "./sessionStore.js";
+import { EMPTY_SELECTION, filterSelection, fromSnapshot, selectClips, selectionEquals, toSnapshot } from "./selection.js";
+import { createSessionStore, DEFAULT_SESSION, selectEditPoint, setPlayhead, setSelection } from "./sessionStore.js";
 
 describe("SessionStore", () => {
   it("starts from the defaults, with overrides", () => {
@@ -63,5 +63,26 @@ describe("selection helpers", () => {
     expect(filterSelection(snapshot, exists(["a", "b", "c"]))).toBe(snapshot);
     expect(filterSelection(snapshot, exists(["c", "b"]))).toEqual({ clipIds: ["b", "c"], primary: "b", kind: "clips" });
     expect(filterSelection(snapshot, exists([]))).toEqual({ clipIds: [], primary: null, kind: "none" });
+  });
+});
+
+describe("edit point selection (spec §6.7)", () => {
+  it("is its own channel: selecting an edit point clears the clips, selecting clips clears the edit point", () => {
+    const session = createSessionStore();
+    const onEditPoint = vi.fn();
+    session.editPoint.subscribe(onEditPoint);
+    setSelection(session, selectClips(["a"]));
+    selectEditPoint(session, { left: "a", right: "b", side: "both" });
+    expect(session.selection.getState()).toBe(EMPTY_SELECTION);
+    expect(session.editPoint.getState()).toEqual({ left: "a", right: "b", side: "both" });
+    // The same point again: no notification.
+    selectEditPoint(session, { left: "a", right: "b", side: "both" });
+    expect(onEditPoint).toHaveBeenCalledTimes(1);
+    // Clearing the clip selection keeps it; selecting clips drops it.
+    setSelection(session, EMPTY_SELECTION);
+    expect(session.editPoint.getState()).not.toBeNull();
+    setSelection(session, selectClips(["c"]));
+    expect(session.editPoint.getState()).toBeNull();
+    expect(onEditPoint).toHaveBeenCalledTimes(2);
   });
 });
