@@ -1,6 +1,6 @@
 // Background work queue (spec §3.4): runs small tasks in requestIdleCallback slices with a deadline,
-// and pauses entirely while playing or dragging. The playback engine pauses it while playing.
-// TODO(batch 11): gestures pause it too (then count the pausers, so one resume does not undo another's pause).
+// and pauses entirely while playing or dragging. Each pauser names itself (the playback engine
+// "playback", timeline gestures "gesture"), so one resume never undoes another's pause.
 
 export type IdleTask = () => void;
 
@@ -17,7 +17,7 @@ const MIN_SLICE_MS = 1;
 export class IdleQueue {
   private readonly tasks: IdleTask[] = [];
   private handle: number | null = null;
-  private paused = false;
+  private readonly pausers = new Set<string>();
 
   constructor(
     private readonly requestIdle: RequestIdle = (cb) => requestIdleCallback(cb),
@@ -39,28 +39,29 @@ export class IdleQueue {
   }
 
   get isPaused(): boolean {
-    return this.paused;
+    return this.pausers.size > 0;
   }
 
-  pause(): void {
-    this.paused = true;
+  /** Stops running tasks until every owner that paused it has resumed it. */
+  pause(owner = "default"): void {
+    this.pausers.add(owner);
     if (this.handle !== null) this.cancelIdle(this.handle);
     this.handle = null;
   }
 
-  resume(): void {
-    this.paused = false;
+  resume(owner = "default"): void {
+    this.pausers.delete(owner);
     this.schedule();
   }
 
   private schedule(): void {
-    if (this.paused || this.handle !== null || this.tasks.length === 0) return;
+    if (this.isPaused || this.handle !== null || this.tasks.length === 0) return;
     this.handle = this.requestIdle(this.run);
   }
 
   private readonly run = (deadline: IdleDeadlineLike): void => {
     this.handle = null;
-    while (!this.paused && this.tasks.length > 0 && deadline.timeRemaining() > MIN_SLICE_MS) {
+    while (!this.isPaused && this.tasks.length > 0 && deadline.timeRemaining() > MIN_SLICE_MS) {
       const task = this.tasks.shift()!;
       try {
         task();

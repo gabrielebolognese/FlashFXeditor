@@ -8,6 +8,7 @@
 // moves the divider. `scrollY` shifts everything; 0 is the resting position and it may be negative
 // (scrolled up to see high video tracks).
 import type { Frame, Track, TrackId, TrackKind } from "../../core/document/types.js";
+import type { LaneKind } from "../model/queries.js";
 
 export interface TimelineMetrics {
   headerWidth: number;
@@ -37,6 +38,8 @@ export interface Row {
   kind: TrackKind;
   /** Index in `project.tracks`. */
   index: number;
+  /** Lane number within its kind (V1 = 0 upward, A1 = 0 downward; 0 for the caption track). */
+  lane: number;
   y: number;
   height: number;
 }
@@ -78,6 +81,8 @@ export class TimelineGeometry {
   readonly addAudio: Rect;
   /** Allowed `scrollY` values; 0 (the resting position) is always inside. */
   readonly scrollYRange: { min: number; max: number };
+  /** Video and audio rows in lane order (V1 first, A1 first). */
+  readonly laneRows: Readonly<Record<LaneKind, readonly Row[]>>;
   private readonly byTrack: ReadonlyMap<TrackId, Row>;
   private readonly metrics: TimelineMetrics;
 
@@ -104,19 +109,25 @@ export class TimelineGeometry {
     const below: Row[] = [];
     let top = origin;
     let bottom = origin + metrics.dividerHeight;
+    const laneRows: Record<LaneKind, Row[]> = { video: [], audio: [] };
     input.tracks.forEach((track, index) => {
       const height = rowHeight(track, metrics);
       if (track.kind === "audio") {
-        below.push({ trackId: track.id, kind: track.kind, index, y: bottom, height });
+        const row = { trackId: track.id, kind: track.kind, index, lane: laneRows.audio.length, y: bottom, height };
+        below.push(row);
+        laneRows.audio.push(row);
         bottom += height;
       } else {
         // Array order is bottom to top: each one goes above the previous.
         top -= height;
-        above.push({ trackId: track.id, kind: track.kind, index, y: top, height });
+        const row = { trackId: track.id, kind: track.kind, index, lane: track.kind === "video" ? laneRows.video.length : 0, y: top, height };
+        above.push(row);
+        if (track.kind === "video") laneRows.video.push(row);
       }
     });
     above.reverse();
     this.rows = [...above, ...below];
+    this.laneRows = laneRows;
     this.byTrack = new Map(this.rows.map((row) => [row.trackId, row]));
 
     this.divider = { x: 0, y: origin, width: input.width, height: metrics.dividerHeight };
@@ -161,6 +172,31 @@ export class TimelineGeometry {
     const solo = { x: this.headerWidth - headerPad - toggleSize, y, width: toggleSize, height: toggleSize };
     const mute = { x: solo.x - toggleGap - toggleSize, y, width: toggleSize, height: toggleSize };
     return { mute, solo };
+  }
+
+  /**
+   * The lane under view y for a clip of `kind` being dragged (spec §6.8): the row's lane over a row of
+   * that kind, one past the last lane beyond the outermost row (above the top video track, below the
+   * bottom audio track: a new track), lane 0 anywhere else (the other kind's side).
+   */
+  laneAt(kind: LaneKind, y: number): number {
+    const rows = this.laneRows[kind];
+    const outer = rows[rows.length - 1];
+    if (!outer) return 0;
+    if (kind === "video" ? y < outer.y : y >= outer.y + outer.height) return rows.length;
+    const row = this.rowAt(y);
+    return row && row.kind === kind ? row.lane : 0;
+  }
+
+  /** The vertical band of a lane: its row, or for a lane past the last one a row of `newHeight` stacked beyond it. */
+  laneBand(kind: LaneKind, lane: number, newHeight: number): { y: number; height: number } | null {
+    const rows = this.laneRows[kind];
+    const row = rows[lane];
+    if (row) return { y: row.y, height: row.height };
+    const outer = rows[rows.length - 1];
+    if (!outer || lane < 0) return null;
+    const beyond = lane - rows.length;
+    return kind === "video" ? { y: outer.y - (beyond + 1) * newHeight, height: newHeight } : { y: outer.y + outer.height + beyond * newHeight, height: newHeight };
   }
 
   rowOf(trackId: TrackId): Row | null {

@@ -5,14 +5,21 @@ import {
   clipAtFrame,
   clipsAtFrame,
   clipsInRange,
+  clipsOverlapping,
   contentEnd,
   editPoints,
+  firstEndingAfter,
   gapAt,
+  isClipLocked,
+  laneOf,
+  laneTracks,
+  linkedPartners,
   markerFrames,
   navigationPoints,
   neighbors,
   nextEditPoint,
   prevEditPoint,
+  selectableClipIds,
   trackEnd,
   trackGaps,
   trackIndex,
@@ -129,5 +136,54 @@ describe("timeline model queries", () => {
     expect(updated).not.toBe(index);
     expect(updated.maxDuration).toBe(40);
     expect(updated.end).toBe(90);
+  });
+});
+
+describe("overlap lookups on the sorted ends", () => {
+  it("finds the clips intersecting a range with a binary search on the ends", () => {
+    const project = fixture();
+    const index = trackIndex(project, project.tracks[0]!);
+    expect(index.ends).toEqual([20, 30, 150]);
+    expect(clipsOverlapping(index, 15, 51).map((c) => c.id)).toEqual(["a", "b", "c"]);
+    expect(clipsOverlapping(index, 20, 50).map((c) => c.id)).toEqual(["b"]);
+    expect(clipsOverlapping(index, 30, 50)).toEqual([]);
+    expect(clipsOverlapping(index, 40, 40)).toEqual([]);
+    expect(firstEndingAfter(index, 20)).toBe(1);
+    expect(firstEndingAfter(index, 200)).toBe(3);
+  });
+});
+
+describe("selection queries", () => {
+  function linked(): Project {
+    const project = fixture();
+    project.tracks[1]!.locked = true;
+    const clip = (id: string, trackId: string, start: number, linkGroup: string) => ({ ...makeMediaClip(project, { id, trackId, start, duration: 5, mediaId: "m1", kind: trackId === "a1" ? "audio" : "video" }), linkGroup });
+    return withClips(project, [clip("lv", "v1", 200, "L"), clip("la", "a1", 200, "L"), clip("lockedPartner", "v2", 200, "L")]);
+  }
+
+  it("lists linked partners on unlocked tracks only", () => {
+    const project = linked();
+    expect(linkedPartners(project, "lv")).toEqual(["la"]);
+    expect(linkedPartners(project, "la")).toEqual(["lv"]);
+    expect(linkedPartners(project, "a")).toEqual([]);
+    expect(isClipLocked(project, "lockedPartner")).toBe(true);
+    expect(isClipLocked(project, "lv")).toBe(false);
+  });
+
+  it("selects every clip on unlocked tracks", () => {
+    expect(selectableClipIds(linked())).toEqual(["a", "b", "c", "lv", "la"]);
+  });
+});
+
+describe("lanes", () => {
+  it("numbers video tracks upward and audio tracks downward from the divider, from 0", () => {
+    const project = makeProject();
+    project.tracks.push(makeTrack("v1"), makeTrack("v2"), makeTrack("cc", "caption"), makeTrack("a1", "audio"), makeTrack("a2", "audio"));
+    expect(laneOf(project.tracks, "v2")).toEqual({ kind: "video", number: 1 });
+    expect(laneOf(project.tracks, "a1")).toEqual({ kind: "audio", number: 0 });
+    expect(laneOf(project.tracks, "a2")).toEqual({ kind: "audio", number: 1 });
+    expect(laneOf(project.tracks, "cc")).toBeNull();
+    expect(laneOf(project.tracks, "nope")).toBeNull();
+    expect(laneTracks(project.tracks, "audio").map((t) => t.id)).toEqual(["a1", "a2"]);
   });
 });

@@ -41,20 +41,45 @@ export function filterSelection(snapshot: SelectionSnapshot, exists: (id: ClipId
   return { clipIds, primary, kind };
 }
 
+/** The modifier of a clip click (spec §6.7); when several are held, Alt wins over Mod, Mod over Shift. */
+export type ClickModifier = "none" | "shift" | "mod" | "alt";
+
+/** A clip selection of `ids` (empty: no selection). `primary` defaults to the first id. */
+export function selectClips(ids: Iterable<ClipId>, primary?: ClipId | null): Selection {
+  const clipIds = new Set(ids);
+  if (clipIds.size === 0) return EMPTY_SELECTION;
+  const first = clipIds.values().next().value as ClipId;
+  return { clipIds, primary: primary !== undefined && primary !== null && clipIds.has(primary) ? primary : first, kind: "clips" };
+}
+
+/** `base` (a clip selection, else nothing) plus `ids`; the primary stays, or goes to the first added id. */
+export function addToSelection(base: Selection, ids: Iterable<ClipId>): Selection {
+  const kept = base.kind === "clips" ? base.clipIds : [];
+  const added = [...ids];
+  const primary = base.kind === "clips" && base.primary !== null ? base.primary : (added[0] ?? null);
+  return selectClips([...kept, ...added], primary);
+}
+
 /**
- * Timeline click selection (spec §6.7, click and Shift+click): a click selects only `clipId`, a
- * toggle click adds or removes it. An added clip becomes the primary; removing the primary passes
- * it to the first remaining clip.
- * TODO(batch 11): Mod/Alt variants, marquee, linked selection.
+ * Timeline click selection (spec §6.7). `partners` are the clicked clip's linked partners, given when
+ * Linked selection is on (ignored for Mod and Alt).
+ * - plain click: the clip and its partners;
+ * - Shift: toggles the clip and its partners;
+ * - Mod: toggles the clip alone (adds it without its partner);
+ * - Alt: the clip alone, even with Linked selection on.
+ * An added clip becomes the primary; removing the primary passes it to the first remaining clip.
+ * TODO(batch 16): selecting a group member selects the group.
  */
-export function clickClipSelection(selection: Selection, clipId: ClipId, toggle: boolean): Selection {
-  if (!toggle) return { clipIds: new Set([clipId]), primary: clipId, kind: "clips" };
+export function clickSelection(selection: Selection, clipId: ClipId, modifier: ClickModifier, partners: readonly ClipId[] = []): Selection {
+  if (modifier === "none") return selectClips([clipId, ...partners], clipId);
+  if (modifier === "alt") return selectClips([clipId], clipId);
+  const toggled = modifier === "shift" ? [clipId, ...partners] : [clipId];
   const clipIds = new Set(selection.kind === "clips" ? selection.clipIds : []);
   if (!clipIds.has(clipId)) {
-    clipIds.add(clipId);
+    for (const id of toggled) clipIds.add(id);
     return { clipIds, primary: clipId, kind: "clips" };
   }
-  clipIds.delete(clipId);
+  for (const id of toggled) clipIds.delete(id);
   if (clipIds.size === 0) return EMPTY_SELECTION;
   const primary = selection.primary !== null && clipIds.has(selection.primary) ? selection.primary : ([...clipIds][0] ?? null);
   return { clipIds, primary, kind: "clips" };

@@ -15,7 +15,7 @@ type PatchOf<C> = C extends Clip ? FieldsPatch<C> : never;
 export type ClipPatch = PatchOf<Clip>;
 
 /** Video goes above the other video tracks, captions above all video, audio at the end. */
-function defaultTrackIndex(tracks: readonly Track[], kind: TrackKind): number {
+export function defaultTrackIndex(tracks: readonly Track[], kind: TrackKind): number {
   if (kind === "audio") return tracks.length;
   if (kind === "caption") {
     const firstAudio = tracks.findIndex((t) => t.kind === "audio");

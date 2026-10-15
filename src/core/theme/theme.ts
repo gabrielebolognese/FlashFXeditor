@@ -37,6 +37,7 @@ export interface Theme {
     textMuted: string;
     success: string;
     danger: string;
+    dangerWash: string;
     info: string;
     live: string;
   };
@@ -77,6 +78,14 @@ export interface TimelineTheme {
   clipHover: string;
   /** Body and label bar color per clip kind. */
   clip: Record<ClipKind, { body: string; label: string }>;
+  /** Clip drags (spec §6.6, §6.8): dead zone, auto-scroll edge band, ghosts, overwrite hatch, insert line. */
+  dragThreshold: number;
+  autoScrollZone: number;
+  ghostOpacity: number;
+  hatch: string;
+  hatchGap: number;
+  insertWidth: number;
+  insertArrow: number;
 }
 
 /** Reads one custom property by name (e.g. `--accent`); returns "" when it is not defined. */
@@ -104,6 +113,7 @@ const COLOR_TOKENS: Record<keyof Theme["color"], string> = {
   textMuted: "--text-muted",
   success: "--success",
   danger: "--danger",
+  dangerWash: "--danger-wash",
   info: "--info",
   live: "--live",
 };
@@ -203,6 +213,13 @@ export function readTheme(read: TokenReader, root?: Element): { theme: Theme; mi
       playhead: str("--playhead"),
       clipHover: str("--clip-hover-wash"),
       clip,
+      dragThreshold: num("--timeline-drag-threshold"),
+      autoScrollZone: num("--timeline-autoscroll-zone"),
+      ghostOpacity: num("--timeline-ghost-opacity"),
+      hatch: str("--timeline-hatch"),
+      hatchGap: num("--timeline-hatch-gap"),
+      insertWidth: num("--timeline-insert-width"),
+      insertArrow: num("--timeline-insert-arrow"),
     },
     meter: { barWidth: num("--meter-bar-width"), barGap: num("--meter-bar-gap"), ledHeight: num("--meter-led-height") },
   };
