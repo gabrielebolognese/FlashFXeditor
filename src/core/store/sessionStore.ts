@@ -1,9 +1,9 @@
 // Session state (spec §5.3): per project, not undoable. The selection has its own channel so a
 // selection change does not wake session subscribers and a playhead move does not wake selection
 // subscribers. Splitter positions stay in layoutStore and track heights in the document (Track.height).
-// A selected edit point and a selected gap (spec §6.7) have channels of their own too: they are not
-// clip selections (§3.3 fixes the selection kinds), they are never persisted, and selecting one of
-// the three clears the other two.
+// A selected edit point and a selected gap (spec §6.7) and a selected timeline marker (§6.3) have
+// channels of their own too: they are not clip selections (§3.3 fixes the selection kinds), they are
+// never persisted, and selecting one of the four clears the other three.
 import type { TimecodeMode } from "../document/time.js";
 import type { ClipId, Frame, TrackId } from "../document/types.js";
 import { createStore, type Store } from "./createStore.js";
@@ -79,6 +79,8 @@ export interface SessionStore {
   editPoint: Store<EditPoint | null>;
   /** The selected gap, or null. */
   gap: Store<GapSelection | null>;
+  /** The id of the selected timeline marker (spec §6.3: the properties panel shows it), or null. */
+  marker: Store<string | null>;
 }
 
 export function createSessionStore(initial: Partial<SessionState> = {}): SessionStore {
@@ -87,6 +89,7 @@ export function createSessionStore(initial: Partial<SessionState> = {}): Session
     selection: createStore<Selection>(EMPTY_SELECTION),
     editPoint: createStore<EditPoint | null>(null),
     gap: createStore<GapSelection | null>(null),
+    marker: createStore<string | null>(null),
   };
 }
 
@@ -96,11 +99,17 @@ export function setPlayhead(session: SessionStore, frame: Frame): void {
   session.state.set((state) => (state.playhead === next ? state : { ...state, playhead: next }));
 }
 
-/** Replaces the selection (selecting clips drops a selected edit point or gap). No notification when it is equal to the current one. */
+/** Sets the in/out range (spec §6.13; `outPoint` is the exclusive end). No notification when it does not change. */
+export function setInOut(session: SessionStore, inPoint: Frame | null, outPoint: Frame | null): void {
+  session.state.set((state) => (state.inPoint === inPoint && state.outPoint === outPoint ? state : { ...state, inPoint, outPoint }));
+}
+
+/** Replaces the selection (selecting clips drops a selected edit point, gap or marker). No notification when it is equal to the current one. */
 export function setSelection(session: SessionStore, next: Selection): void {
   if (next.kind !== "none") {
     selectEditPoint(session, null);
     selectGap(session, null);
+    selectMarker(session, null);
   }
   if (selectionEquals(session.selection.getState(), next)) return;
   session.selection.set(next);
@@ -113,6 +122,7 @@ export function selectEditPoint(session: SessionStore, point: EditPoint | null):
   if (point) {
     setSelection(session, EMPTY_SELECTION);
     selectGap(session, null);
+    selectMarker(session, null);
   }
   session.editPoint.set(point);
 }
@@ -124,6 +134,18 @@ export function selectGap(session: SessionStore, gap: GapSelection | null): void
   if (gap) {
     setSelection(session, EMPTY_SELECTION);
     selectEditPoint(session, null);
+    selectMarker(session, null);
   }
   session.gap.set(gap);
+}
+
+/** Selects a timeline marker by id (the clip selection, the edit point and the gap are cleared), or none. */
+export function selectMarker(session: SessionStore, markerId: string | null): void {
+  if (session.marker.getState() === markerId) return;
+  if (markerId !== null) {
+    setSelection(session, EMPTY_SELECTION);
+    selectEditPoint(session, null);
+    selectGap(session, null);
+  }
+  session.marker.set(markerId);
 }

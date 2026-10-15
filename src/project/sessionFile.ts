@@ -56,10 +56,13 @@ function sanitizeState(value: unknown): SessionState {
   for (const [key, collapsed] of Object.entries(obj(raw.collapsedSections))) {
     if (typeof collapsed === "boolean") collapsedSections[key] = collapsed;
   }
+  const inPoint = frameOrNull(raw.inPoint);
+  const outPoint = frameOrNull(raw.outPoint);
   return {
     playhead: frame(raw.playhead, d.playhead),
-    inPoint: frameOrNull(raw.inPoint),
-    outPoint: frameOrNull(raw.outPoint),
+    inPoint,
+    // The out point is the range's exclusive end: one at or before the in point is dropped.
+    outPoint: outPoint !== null && inPoint !== null && outPoint <= inPoint ? null : outPoint,
     timeline: {
       pxPerFrame: pxPerFrame > 0 ? pxPerFrame : d.timeline.pxPerFrame,
       scrollFrame: Math.max(0, finite(timeline.scrollFrame, d.timeline.scrollFrame)),

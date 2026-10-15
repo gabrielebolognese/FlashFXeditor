@@ -2,6 +2,7 @@
 // jsdom has no canvas, so a recording stand-in for the 2D context counts the draws.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { addClip, addTrack, removeClips, updateClip, updateTrack } from "../../core/commands/basicCommands.js";
+import { addMarker, removeMarker } from "../../core/commands/markerCommands.js";
 import { makeMedia, makeMediaClip, makeProject, makeTrack } from "../../core/document/fixtures.js";
 import { FPS_30, frameToUs } from "../../core/document/time.js";
 import type { TrackKind } from "../../core/document/types.js";
@@ -117,6 +118,8 @@ function setup(clipCount = 0, theme: Theme = testTheme()) {
   const onReorderTrack = vi.fn();
   const onRenameTrack = vi.fn();
   const onSpaceTap = vi.fn();
+  const onMoveMarker = vi.fn();
+  const onEditMarker = vi.fn();
   const idle = { pause: vi.fn(), resume: vi.fn() };
   const view = new TimelineView({
     scheduler,
@@ -134,6 +137,8 @@ function setup(clipCount = 0, theme: Theme = testTheme()) {
     onReorderTrack,
     onRenameTrack,
     onSpaceTap,
+    onMoveMarker,
+    onEditMarker,
     idle,
     platform: "other",
   });
@@ -147,7 +152,7 @@ function setup(clipCount = 0, theme: Theme = testTheme()) {
     overlay.dispatchEvent(new PointerEvent(type, { clientX: x, clientY: y, pointerId: 1, button: 0, bubbles: true, ...init }));
   /** A key event on the window (modifier changes during a drag). */
   const key = (type: "keydown" | "keyup", keyName: string, init: KeyboardEventInit = {}) => window.dispatchEvent(new KeyboardEvent(type, { key: keyName, bubbles: true, ...init }));
-  return { view, session, document, layout, scheduler, overlay, pointer, key, onAddTrack, onToggleTrack, onMoveClips, onTrimEdge, onTrimPreview, onRazor, onContextMenu, onReorderTrack, onRenameTrack, onSpaceTap, idle, unmount };
+  return { view, session, document, layout, scheduler, overlay, pointer, key, onAddTrack, onToggleTrack, onMoveClips, onTrimEdge, onTrimPreview, onRazor, onContextMenu, onReorderTrack, onRenameTrack, onSpaceTap, onMoveMarker, onEditMarker, idle, unmount };
 }
 
 describe("TimelineView", () => {
@@ -1053,6 +1058,125 @@ describe("TimelineView", () => {
       view.zoomToFrames(100, 200);
       expect(timeline(session).pxPerFrame).toBeCloseTo(6.592, 9);
       expect(timeline(session).scrollFrame).toBeCloseTo(87.5, 9);
+    });
+  });
+
+  describe("markers and the in/out range (Batch 19)", () => {
+    /** V1: a [0, 20) and b [100, 140); marker m at 50; 4 px/frame from x = 176 (ruler y < 28, markers at y >= 18). */
+    function markerSetup() {
+      const t = setup();
+      t.document.dispatch(addClip(makeMediaClip(t.document.getState(), { id: "a", trackId: "v1", start: 0, duration: 20, mediaId: "m" })));
+      t.document.dispatch(addClip(makeMediaClip(t.document.getState(), { id: "b", trackId: "v1", start: 100, duration: 40, mediaId: "m" })));
+      t.document.dispatch(addMarker({ id: "mk", frame: 50, color: "green", label: "Drop" }));
+      t.scheduler.flush();
+      return t;
+    }
+    const x = (frame: number) => 176 + frame * 4;
+    const scene = () => vi.mocked(drawOverlay).mock.lastCall?.[0];
+
+    it("selects a marker on the press; a drag moves it with snapping (its own frame excluded), one request on release", () => {
+      const { session, scheduler, pointer, onMoveMarker, view } = markerSetup();
+      pointer("pointerdown", x(50) + 1, 24);
+      expect(session.marker.getState()).toBe("mk");
+      pointer("pointermove", x(60) + 1, 24);
+      const contentDraws = view.stats.contentDraws;
+      scheduler.flush();
+      // The ruler redraws once without the dragged marker; the overlay draws it at its new frame.
+      expect(view.stats.contentDraws).toBe(contentDraws + 1);
+      expect(scene()?.markers?.dragged).toMatchObject({ frame: 60 });
+      // 2 frames (8 px) before b's start: snaps there, with the line and the name in the tooltip.
+      pointer("pointermove", x(98) + 1, 24);
+      scheduler.flush();
+      expect(scene()?.markers?.dragged?.frame).toBe(100);
+      expect(scene()?.snapFrame).toBe(100);
+      expect(scene()?.tooltip).toMatchObject({ name: "Drop", text: "00:03:10", target: "Start of b" });
+      pointer("pointermove", x(80), 24);
+      scheduler.flush();
+      expect(scene()?.snapFrame).toBeNull();
+      pointer("pointermove", x(98) + 1, 24);
+      pointer("pointerup", x(98) + 1, 24);
+      expect(onMoveMarker).toHaveBeenCalledTimes(1);
+      expect(onMoveMarker).toHaveBeenCalledWith("mk", 100);
+    });
+
+    it("a click selects without moving; Esc cancels a drag; a deleted marker ends its drag", () => {
+      const { document, session, scheduler, pointer, key, onMoveMarker } = markerSetup();
+      pointer("pointerdown", x(50), 24);
+      pointer("pointerup", x(50), 24);
+      expect(session.marker.getState()).toBe("mk");
+      expect(onMoveMarker).not.toHaveBeenCalled();
+      // Clips drop the marker selection.
+      pointer("pointerdown", x(10), 200);
+      pointer("pointerup", x(10), 200);
+      expect(session.marker.getState()).toBeNull();
+      pointer("pointerdown", x(50), 24);
+      pointer("pointermove", x(70), 24);
+      key("keydown", "Escape");
+      expect(document.getState().markers[0]?.frame).toBe(50);
+      pointer("pointermove", x(80), 24);
+      scheduler.flush();
+      document.dispatch(removeMarker("mk"));
+      pointer("pointerup", x(80), 24);
+      expect(onMoveMarker).not.toHaveBeenCalled();
+    });
+
+    it("asks for the inline editor on a double-click and for the ruler menu on a right-click", () => {
+      const { session, overlay, onEditMarker, onContextMenu } = markerSetup();
+      overlay.dispatchEvent(new MouseEvent("dblclick", { clientX: x(50), clientY: 24, bubbles: true }));
+      expect(onEditMarker).toHaveBeenCalledWith("mk");
+      overlay.dispatchEvent(new MouseEvent("contextmenu", { clientX: x(50), clientY: 24, button: 2, bubbles: true, cancelable: true }));
+      expect(session.marker.getState()).toBe("mk");
+      expect(onContextMenu).toHaveBeenLastCalledWith({ kind: "ruler", frame: 50, markerId: "mk", x: x(50), y: 24 });
+      overlay.dispatchEvent(new MouseEvent("contextmenu", { clientX: x(75), clientY: 10, button: 2, bubbles: true, cancelable: true }));
+      expect(onContextMenu).toHaveBeenLastCalledWith({ kind: "ruler", frame: 75, markerId: null, x: x(75), y: 10 });
+    });
+
+    it("shows a hovered marker's label and timecode, and its edge on the overlay", () => {
+      const { scheduler, pointer, overlay } = markerSetup();
+      pointer("pointermove", x(50), 24);
+      scheduler.flush();
+      expect(scene()?.markers?.hover?.id).toBe("mk");
+      expect(scene()?.tooltip).toMatchObject({ name: "Drop", text: "00:01:20" });
+      expect(overlay.style.cursor).toBe("pointer");
+      pointer("pointermove", x(75), 24);
+      scheduler.flush();
+      expect(scene()?.tooltip ?? null).toBeNull();
+    });
+
+    it("draws the range on the overlay; a handle drag snaps (not to its own point) and writes the session once on release", () => {
+      const { session, scheduler, pointer, overlay } = markerSetup();
+      session.state.set((state) => ({ ...state, inPoint: 30, outPoint: 60 }));
+      expect(scheduler.flush()).toEqual(["timelineOverlay"]);
+      expect(scene()?.range).toMatchObject({ inPoint: 30, outPoint: 60, active: null });
+      const writes = vi.fn();
+      session.state.select((state) => [state.inPoint, state.outPoint].join(), writes);
+      pointer("pointermove", x(30), 4);
+      scheduler.flush();
+      expect(overlay.style.cursor).toBe("ew-resize");
+      expect(scene()?.range?.active).toBe("in");
+      pointer("pointerdown", x(30), 4);
+      // 6 px right of a's end (20): snaps there.
+      pointer("pointermove", x(21) + 2, 6);
+      scheduler.flush();
+      expect(scene()?.range).toMatchObject({ inPoint: 20, active: "in" });
+      expect(scene()?.snapFrame).toBe(20);
+      expect(scene()?.tooltip?.text).toBe("In 00:00:20 · 00:01:10");
+      // Never past the out point: at least one frame stays.
+      pointer("pointermove", x(90), 6);
+      scheduler.flush();
+      expect(scene()?.range?.inPoint).toBe(59);
+      expect(writes).not.toHaveBeenCalled();
+      pointer("pointermove", x(21) + 2, 6);
+      pointer("pointerup", x(21) + 2, 6);
+      expect(writes).toHaveBeenCalledTimes(1);
+      expect(session.state.getState()).toMatchObject({ inPoint: 20, outPoint: 60 });
+      // The out handle: the tooltip names the last frame of the range.
+      pointer("pointerdown", x(60), 4);
+      pointer("pointermove", x(70), 4);
+      scheduler.flush();
+      expect(scene()?.tooltip?.text).toBe("Out 00:02:09 · 00:01:20");
+      pointer("pointerup", x(70), 4);
+      expect(session.state.getState()).toMatchObject({ inPoint: 20, outPoint: 70 });
     });
   });
 

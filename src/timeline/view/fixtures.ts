@@ -47,6 +47,10 @@ const TOKENS: Record<string, string> = {
   "--clip-label-body-alpha": "0.34",
   "--clip-label-bar-alpha": "0.62",
   "--type-caption-line": "14px",
+  "--timeline-marker-width": "9px",
+  "--timeline-marker-height": "8px",
+  "--timeline-range-handle-width": "2px",
+  "--timeline-range-handle-zone": "8px",
 };
 
 /** A Theme with the timeline metrics set; colors are their token names (canvases take any string). */

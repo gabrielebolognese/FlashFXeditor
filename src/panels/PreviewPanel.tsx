@@ -1,4 +1,4 @@
-import { Expand, Gauge, ImageDown, Pause, Play, Repeat, SkipBack, SkipForward, StepBack, StepForward, Volume2, VolumeX } from "lucide-react";
+import { Brackets, Expand, Gauge, ImageDown, Pause, Play, Repeat, SkipBack, SkipForward, StepBack, StepForward, Volume2, VolumeX } from "lucide-react";
 import { useEffect, useRef, useSyncExternalStore, type MouseEvent } from "react";
 import { commitMonitorVolume, meterView, previewMonitorVolume } from "../app/audioController.js";
 import { CanvasHost } from "../app/CanvasHost.js";
@@ -103,7 +103,7 @@ function Readouts() {
   );
 }
 
-/** Transport (spec §7.8). React renders it on play and pause only. TODO(batch 19): play in/out. */
+/** Transport (spec §7.8). React renders it on play and pause only. */
 function Transport() {
   const playing = useSyncExternalStore(subscribePlayback, isPlaying);
   return (
@@ -147,9 +147,15 @@ function MeterStrip() {
   );
 }
 
-function LoopToggle() {
+/** Loop (spec §6.13: the in/out range when set, else the whole timeline) and Play in/out (§8, §17), whose icon is the ruler's in/out brackets. */
+function LoopControls() {
   const loop = useStoreSelector(sessionStore.state, selectLoop);
-  return <IconButton icon={Repeat} label="Loop playback" commandId="transport.toggleLoop" pressed={loop} onClick={run("transport.toggleLoop")} />;
+  return (
+    <>
+      <IconButton icon={Repeat} label="Loop playback" commandId="transport.toggleLoop" pressed={loop} onClick={run("transport.toggleLoop")} />
+      <IconButton icon={Brackets} label="Play in to out" commandId="transport.playInToOut" onClick={run("transport.playInToOut")} />
+    </>
+  );
 }
 
 /**
@@ -175,7 +181,7 @@ function StatusStrip() {
   );
 }
 
-/** Preview chrome (spec §7.8, §13): readouts, transport, mute, master volume, loop and Fit, then the status strip. */
+/** Preview chrome (spec §7.8, §13): readouts, transport, mute, master volume, loop, play in/out and Fit, then the status strip. */
 function PreviewChrome() {
   return (
     <>
@@ -184,7 +190,7 @@ function PreviewChrome() {
         <Transport />
         <div className={styles.tools}>
           <MasterVolume />
-          <LoopToggle />
+          <LoopControls />
           <IconButton icon={Expand} label="Fit the frame in the panel" text="Fit" onClick={fit} />
         </div>
       </div>

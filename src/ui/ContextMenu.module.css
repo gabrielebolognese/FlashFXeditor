@@ -56,8 +56,8 @@
   background: var(--hairline);
 }
 
-/* Inline swatch row (gap: the DS has no swatch; spec §6.16 "8 swatches inline"): an item-height row,
-   the label then icon-size squares radius-sm with a hairline edge; the active one gets the gold ring. */
+/* Inline swatch row (spec §6.16 "8 swatches inline"): an item-height row, the label then the swatches
+   (ui/Swatches). */
 .swatchRow {
   display: flex;
   align-items: center;
@@ -67,26 +67,4 @@
   color: var(--text-secondary);
   font: var(--type-caption);
   letter-spacing: var(--type-caption-track);
-}
-
-.swatch {
-  flex: 0 0 auto;
-  width: var(--icon-size);
-  height: var(--icon-size);
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius-sm);
-  transition: transform var(--duration-instant) var(--ease-out);
-}
-
-.swatch:hover {
-  transform: scale(var(--swatch-hover-scale));
-}
-
-.swatch:focus-visible {
-  outline: none;
-  box-shadow: var(--focus-ring);
-}
-
-.swatchActive {
-  box-shadow: var(--swatch-active-ring);
 }

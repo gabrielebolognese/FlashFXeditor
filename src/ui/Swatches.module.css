@@ -1,0 +1,23 @@
+/* Swatch buttons (gap: the DS has no swatch; spec §6.16 "8 swatches inline"): icon-size squares, radius-sm,
+   a hairline edge, a small scale on hover; the active one gets the gold ring (gold = active state). */
+.swatch {
+  flex: 0 0 auto;
+  width: var(--icon-size);
+  height: var(--icon-size);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+  transition: transform var(--duration-instant) var(--ease-out);
+}
+
+.swatch:hover {
+  transform: scale(var(--swatch-hover-scale));
+}
+
+.swatch:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.active {
+  box-shadow: var(--swatch-active-ring);
+}

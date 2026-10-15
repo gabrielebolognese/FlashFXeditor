@@ -72,6 +72,13 @@ describe("session file", () => {
     expect(parseSessionFile(text({ clipIds: [], primary: null, kind: "track" })).selection).toEqual({ clipIds: [], primary: null, kind: "none" });
   });
 
+  it("drops an out point at or before the in point (the out point is the range's exclusive end)", () => {
+    const state = (inPoint: number, outPoint: number) => parseSessionFile(JSON.stringify({ version: 1, state: { inPoint, outPoint } })).state;
+    expect(state(30, 30)).toMatchObject({ inPoint: 30, outPoint: null });
+    expect(state(30, 10)).toMatchObject({ inPoint: 30, outPoint: null });
+    expect(state(30, 31)).toMatchObject({ inPoint: 30, outPoint: 31 });
+  });
+
   it("turns a clips selection without ids into no selection", () => {
     const text = JSON.stringify({ version: 1, selection: { clipIds: [], primary: null, kind: "clips" } });
     expect(parseSessionFile(text).selection).toEqual({ clipIds: [], primary: null, kind: "none" });
