@@ -1,5 +1,5 @@
 // The timeline content canvas (spec §6.17): track backgrounds, clips, the content end marker, the
-// ruler, the track header column (kind icon, name and toggles, spec §6.1), the divider and the
+// ruler with the timeline markers (spec §6.3: triangles in their label color), the track header column (kind icon, name and toggles, spec §6.1), the divider and the
 // "+ track" rows. Locked rows are hatched (§6.12); clips of tracks out of the composite or the mix
 // (muted, hidden, not soloed) are dimmed. Clip bodies (§6.4) at M/L heights: filmstrips of videos,
 // posters of images, waveforms of audio, the text of text and caption clips, a swatch for solids;
@@ -10,7 +10,7 @@
 import { audibleTracks } from "../../audio/AudioMixer.js";
 import { formatHexColor, isRgba } from "../../core/document/color.js";
 import { formatSpeed, usPerFrame, type TimecodeMode } from "../../core/document/time.js";
-import { isMediaClip, type Clip, type MediaClip, type Project, type SolidClip, type Track, type TrackId } from "../../core/document/types.js";
+import { isMediaClip, type Clip, type Frame, type Marker, type MediaClip, type Project, type SolidClip, type Track, type TrackId } from "../../core/document/types.js";
 import type { Selection } from "../../core/store/selection.js";
 import type { Theme } from "../../core/theme/theme.js";
 import { cellOrigin, type ThumbLevel } from "../../media/cache/thumbSheets.js";
@@ -40,6 +40,8 @@ export interface ContentScene {
   scrollbars?: ScrollbarLayout | null;
   /** Ruler labels in `mm:ss:ff` (default) or `mm:ss.mmm` (spec §6.3: the preview's format toggle). */
   timecodeFormat?: TimecodeMode;
+  /** A marker being dragged: the overlay draws it at its new frame, the ruler leaves it out. */
+  hiddenMarker?: string | null;
 }
 
 /** What drawing a clip needs (the overlay's trim preview draws clips too, from what is loaded). */
@@ -613,5 +615,40 @@ function drawRuler(scene: ContentScene): void {
   }
   const end = contentEnd(project);
   if (end > 0 && geometry.isFrameVisible(end)) vline(ctx, geometry.frameToX(end), 0, height, dpr, color.textTertiary);
+  drawMarkers(scene);
   ctx.restore();
+}
+
+/**
+ * Traces a marker's triangle (spec §6.3) at `frame`: its top edge `--timeline-marker-height` above the
+ * ruler's bottom, its apex on the bottom, centered on a device pixel column. False when it is off screen.
+ */
+export function traceMarker(ctx: CanvasRenderingContext2D, geometry: TimelineGeometry, dpr: number, theme: Theme, frame: Frame): boolean {
+  const { markerWidth, markerHeight } = theme.timeline;
+  const x = geometry.frameToX(frame);
+  const half = markerWidth / 2;
+  if (x + half < geometry.area.x || x - half > geometry.area.x + geometry.area.width) return false;
+  const center = (Math.floor(x * dpr) + 0.5) / dpr;
+  const bottom = geometry.rulerHeight;
+  const top = bottom - markerHeight;
+  ctx.beginPath();
+  ctx.moveTo(center - half, top);
+  ctx.lineTo(center + half, top);
+  ctx.lineTo(center, bottom);
+  ctx.closePath();
+  return true;
+}
+
+/** The visible markers in their label colors, in frame order (a later one on top); the dragged one is left out. */
+function drawMarkers(scene: ContentScene): void {
+  const { ctx, dpr, geometry, project, theme } = scene;
+  const reach = theme.timeline.markerWidth / 2 / geometry.pxPerFrame;
+  const { from, to } = geometry.visibleFrames;
+  for (const marker of project.markers as readonly Marker[]) {
+    if (marker.frame < from - reach) continue;
+    if (marker.frame > to + reach) break;
+    if (marker.id === scene.hiddenMarker || !traceMarker(ctx, geometry, dpr, theme, marker.frame)) continue;
+    ctx.fillStyle = theme.timeline.labels[marker.color];
+    ctx.fill();
+  }
 }

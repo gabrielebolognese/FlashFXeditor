@@ -1,29 +1,24 @@
 import { useCallback } from "react";
 import { closeContextMenu, setLabelColor, timelineMenu } from "../../app/cutController.js";
+import { addMarkerAt } from "../../app/markerController.js";
 import { actions, documentStore, sessionStore } from "../../app/services.js";
-import { LABEL_COLORS, type ClipId, type LabelColor, type Project, type Track } from "../../core/document/types.js";
+import type { ClipId, LabelColor, Project, Track } from "../../core/document/types.js";
 import { useStoreSelector } from "../../core/store/useStoreSelector.js";
 import { ContextMenu, type ContextMenuEntry } from "../../ui/ContextMenu.js";
+import { selectionSpan } from "../model/inOut.js";
 import { linkOffset } from "../model/queries.js";
+import type { ContextMenuRequest } from "../view/TimelineView.js";
+import { labelSwatches } from "./labelSwatches.js";
 
-// The timeline's right-click menus (spec §6.16): clip, gap and track header. Rows dispatch command ids
-// (the same as the keys and the toolbar); the label swatches set the selected clips' label color.
-// Rendered only while a menu is open (a right-click is not a P1 interaction).
-// TODO(batch 19): the ruler/marker menu; the other clip rows of §6.16 come with their batches
-// (Speed/Freeze 27, Duplicate 39, Enable/Disable and Reveal 41, Fades/Transitions 36...).
-
-const LABEL_NAMES: Record<LabelColor, string> = {
-  red: "Red",
-  orange: "Orange",
-  green: "Green",
-  teal: "Teal",
-  blue: "Blue",
-  violet: "Violet",
-  pink: "Pink",
-  grey: "Grey",
-};
+// The timeline's right-click menus (spec §6.16): clip, gap, track header and ruler/marker. Rows
+// dispatch command ids (the same as the keys and the toolbar); the label swatches set the selected
+// clips' label color. Rendered only while a menu is open (a right-click is not a P1 interaction).
+// TODO(batch 27): Speed and Freeze frame rows; TODO(batch 36): fades and transitions; TODO(batch 39):
+// Duplicate; TODO(batch 41): Enable/Disable and Reveal in media panel.
 
 const SWATCH_PREFIX = "label:";
+/** The ruler menu's Add marker: at the frame right-clicked (the `M` key adds at the playhead). */
+const ADD_MARKER_HERE = "marker.addHere";
 
 /** Link/Unlink, Group/Ungroup and Move into sync (spec §6.12, §6.16), labeled by what they would do to the selection. */
 function linkEntries(project: Project, clipId: ClipId): ContextMenuEntry[] {
@@ -53,18 +48,37 @@ function clipEntries(project: Project, clipId: ClipId, current: LabelColor | nul
     ...linkEntries(project, clipId),
     { kind: "separator" },
     { kind: "item", id: "edit.rename", label: "Rename", commandId: "edit.rename" },
-    {
-      kind: "swatches",
-      id: "labels",
-      label: "Label",
-      swatches: LABEL_COLORS.map((color) => ({
-        id: `${SWATCH_PREFIX}${color}`,
-        label: current === color ? `${LABEL_NAMES[color]} (click to remove)` : LABEL_NAMES[color],
-        color: `var(--label-${color})`,
-        active: current === color,
-      })),
-    },
+    { kind: "swatches", id: "labels", label: "Label", swatches: labelSwatches(current, { prefix: SWATCH_PREFIX, removable: true }) },
   ];
+}
+
+/** The ruler/marker menu (spec §6.16): add a marker where clicked, edit or delete the marker clicked, clear or set the in/out range. */
+function rulerEntries(project: Project, markerId: string | null): ContextMenuEntry[] {
+  const { inPoint, outPoint } = sessionStore.state.getState();
+  const span = selectionSpan(project, sessionStore.selection.getState(), sessionStore.gap.getState(), sessionStore.editPoint.getState());
+  return [
+    { kind: "item", id: ADD_MARKER_HERE, label: "Add marker" },
+    { kind: "item", id: "marker.edit", label: "Edit marker", disabled: markerId === null },
+    { kind: "item", id: "marker.delete", label: "Delete marker", disabled: markerId === null },
+    { kind: "separator" },
+    { kind: "item", id: "range.clearInOut", label: "Clear in/out", commandId: "range.clearInOut", disabled: inPoint === null && outPoint === null },
+    { kind: "item", id: "range.toSelection", label: "Set in/out to selection", disabled: span === null },
+  ];
+}
+
+function entriesOf(menu: ContextMenuRequest, project: Project): readonly ContextMenuEntry[] {
+  switch (menu.kind) {
+    case "clip":
+      return clipEntries(project, menu.clipId, project.clips[menu.clipId]?.color ?? null);
+    case "gap":
+      return GAP_ENTRIES;
+    case "track": {
+      const track = project.tracks.find((candidate) => candidate.id === menu.trackId);
+      return track ? trackEntries(project, track) : [];
+    }
+    case "ruler":
+      return rulerEntries(project, menu.markerId);
+  }
 }
 
 const GAP_ENTRIES: readonly ContextMenuEntry[] = [
@@ -119,6 +133,10 @@ export function TimelineContextMenu() {
   const menu = useStoreSelector(timelineMenu, (state) => state);
   const onSelect = useCallback(
     (id: string) => {
+      if (id === ADD_MARKER_HERE && menu?.kind === "ruler") {
+        addMarkerAt(menu.frame);
+        return;
+      }
       if (!id.startsWith(SWATCH_PREFIX)) {
         actions.run(id);
         return;
@@ -131,9 +149,5 @@ export function TimelineContextMenu() {
     [menu],
   );
   if (!menu) return null;
-  const project = documentStore.getState();
-  const track = menu.kind === "track" ? project.tracks.find((candidate) => candidate.id === menu.trackId) : undefined;
-  const entries =
-    menu.kind === "clip" ? clipEntries(project, menu.clipId, project.clips[menu.clipId]?.color ?? null) : menu.kind === "gap" ? GAP_ENTRIES : track ? trackEntries(project, track) : [];
-  return <ContextMenu x={menu.x} y={menu.y} entries={entries} onSelect={onSelect} onClose={closeContextMenu} />;
+  return <ContextMenu x={menu.x} y={menu.y} entries={entriesOf(menu, documentStore.getState())} onSelect={onSelect} onClose={closeContextMenu} />;
 }

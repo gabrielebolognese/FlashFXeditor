@@ -165,3 +165,58 @@ describe("HitTester", () => {
     expect(hits.hit(994, 10)).toMatchObject({ type: "empty" });
   });
 });
+
+describe("HitTester markers and in/out handles", () => {
+  function ruler(inOut = { inPoint: 20 as number | null, outPoint: 60 as number | null }, playhead = 20) {
+    const project = makeProject();
+    project.tracks.push(makeTrack("v1"));
+    project.markers = [
+      { id: "m1", frame: 30, color: "green", label: "" },
+      { id: "m2", frame: 31, color: "red", label: "" },
+      { id: "m3", frame: 80, color: "blue", label: "" },
+    ];
+    const geometry = new TimelineGeometry({ width: 1000, height: 428, tracks: project.tracks, pxPerFrame: 4, scrollFrame: 0, scrollY: 0, metrics: METRICS });
+    return new HitTester({
+      geometry: () => geometry,
+      project: () => project,
+      playhead: () => playhead,
+      playheadHeadWidth: 11,
+      trimZone: 8,
+      junctionZone: 6,
+      marker: { width: 9, height: 8 },
+      inOut: () => inOut,
+      handleZone: 8,
+    });
+  }
+
+  it("finds markers in the band at the ruler's bottom, the nearest one", () => {
+    const hits = ruler();
+    // The band: y >= 28 - 8 - 2 = 18; reach 4.5 + 2 px each side.
+    expect(hits.hit(x(80), 24)).toMatchObject({ type: "marker", markerId: "m3" });
+    expect(hits.hit(x(80) + 6.5, 20)).toMatchObject({ type: "marker", markerId: "m3" });
+    expect(hits.hit(x(80) + 6.6, 20).type).toBe("ruler");
+    expect(hits.hit(x(80), 17).type).toBe("ruler");
+    // Two markers 4 px apart: the nearer wins.
+    expect(hits.hit(x(30) + 1, 24).markerId).toBe("m1");
+    expect(hits.hit(x(31) - 1, 24).markerId).toBe("m2");
+  });
+
+  it("finds the in/out handles above the marker band, before the playhead head", () => {
+    const hits = ruler();
+    // The playhead stands on the in point: the upper part grabs the handle, the band below the head.
+    expect(hits.hit(x(20), 4).type).toBe("inHandle");
+    expect(hits.hit(x(20) + 3.9, 10).type).toBe("inHandle");
+    expect(hits.hit(x(20), 22).type).toBe("playheadHead");
+    expect(hits.hit(x(60) - 4, 4).type).toBe("outHandle");
+    expect(hits.hit(x(60) + 4.1, 4).type).toBe("ruler");
+    expect(hits.hit(x(40), 4).type).toBe("ruler");
+    // No points set: no handles.
+    expect(ruler({ inPoint: null, outPoint: null }, 0).hit(x(20), 4).type).toBe("ruler");
+  });
+
+  it("splits a one-frame range at low zoom between its handles by side", () => {
+    const hits = ruler({ inPoint: 20, outPoint: 21 }, 0);
+    expect(hits.hit(x(20) - 1, 4).type).toBe("inHandle");
+    expect(hits.hit(x(21) + 1, 4).type).toBe("outHandle");
+  });
+});

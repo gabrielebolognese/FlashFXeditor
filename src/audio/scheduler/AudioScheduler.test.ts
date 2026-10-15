@@ -77,7 +77,7 @@ function setup(options: Options = {}) {
       for (const listener of listeners) listener(project);
     },
     project: () => project,
-    mapping: (fields: Partial<PlayMapping> = {}): PlayMapping => ({ frame: 0, clock: 10, speed: 1, end: 300, loop: false, fps: FPS, ...fields }),
+    mapping: (fields: Partial<PlayMapping> = {}): PlayMapping => ({ frame: 0, clock: 10, speed: 1, start: 0, end: 300, loop: false, fps: FPS, ...fields }),
   };
 }
 
@@ -228,6 +228,23 @@ describe("AudioScheduler", () => {
     // The engine wraps: frame 0 at clock 11, the same mapping. Nothing restarts.
     t.at(11.01);
     t.scheduler.sync(t.mapping({ frame: 0, clock: 11, end: 90, loop: true }));
+    expect(t.scheduler.stats.stopped).toBe(0);
+    expect(voiceSources(t.ctx)).toHaveLength(2);
+  });
+
+  it("loops an in/out range: the next pass starts at the in point's media position when the out point is reached", () => {
+    const t = setup({ clips: (p) => [audioClip(p, "c1", 0, 90)] });
+    t.at(9.95);
+    // Loop [30, 90): frame 60 at clock 10, the out point comes at clock 11 and frame 30 plays from there.
+    t.scheduler.sync(t.mapping({ frame: 60, clock: 10, start: 30, end: 90, loop: true }));
+    t.at(10.9);
+    t.scheduler.sync(t.mapping({ frame: 60, clock: 10, start: 30, end: 90, loop: true }));
+    const sources = voiceSources(t.ctx);
+    expect(sources).toHaveLength(2);
+    expect(sources[1]?.started).toEqual({ when: expect.closeTo(111, 9), offset: expect.closeTo(1, 9) });
+    // The engine wraps to frame 30 at clock 11: the same pass, nothing restarts.
+    t.at(11.01);
+    t.scheduler.sync(t.mapping({ frame: 30, clock: 11, start: 30, end: 90, loop: true }));
     expect(t.scheduler.stats.stopped).toBe(0);
     expect(voiceSources(t.ctx)).toHaveLength(2);
   });

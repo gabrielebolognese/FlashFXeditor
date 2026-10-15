@@ -1,0 +1,52 @@
+/* Inline marker editor (gap: the DS has no popover; spec §6.13 "small popover"): a floating surface with
+   the menu material (glass, hairline, overlay shadow, radius-lg) under the marker's apex, hidden until
+   the view has placed it. The DS input for the label, then the label swatches and Delete. */
+.popover {
+  position: absolute;
+  visibility: hidden;
+  z-index: var(--z-overlay);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: var(--marker-popover-width);
+  padding: var(--space-2);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  background: var(--material-menu-bg);
+  backdrop-filter: var(--material-menu-filter);
+  box-shadow: var(--shadow-overlay);
+}
+
+.input {
+  height: var(--control-compact);
+  min-width: 0;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-1);
+  color: var(--text-primary);
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-track);
+  outline: none;
+  user-select: text;
+  transition: border-color var(--duration-micro) var(--ease-out);
+}
+
+.input::placeholder {
+  color: var(--text-muted);
+}
+
+.input:focus {
+  border-color: var(--accent-dim);
+  box-shadow: 0 0 0 1px var(--accent-wash);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.spacer {
+  flex: 1 1 auto;
+}

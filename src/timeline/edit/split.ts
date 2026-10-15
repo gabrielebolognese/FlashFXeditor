@@ -84,9 +84,9 @@ export function splitClips(project: Project, clipIds: readonly ClipId[], frame: 
 
 /**
  * Right pieces cut from one link group become a link group of their own (they all start at the
- * split frame); a lone right piece is unlinked. Left pieces keep their ids and links.
+ * split frame); a lone right piece is unlinked. Left pieces keep their ids and links. Rewrites `rights`.
  */
-function relink(rights: Clip[], newId: () => string): void {
+export function relink(rights: Clip[], newId: () => string): void {
   const byGroup = new Map<string, number[]>();
   rights.forEach((clip, i) => {
     if (clip.linkGroup === undefined) return;

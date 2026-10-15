@@ -193,6 +193,17 @@
      the horizontal thumb's ends are the zoom handles (one scrollbar size each), marked by dots. */
   --timeline-scrollbar-size: var(--space-4);
   --timeline-scrollbar-min-thumb: 36px; /* 3 x the scrollbar size: two zoom handles and the grip between (read by the canvas: no calc) */
+  /* Markers and the in/out range (Batch 19, gap: the DS has neither). Markers: down-pointing triangles in
+     their label color at the bottom of the ruler (spec §6.3), apex on the baseline; hovered: a
+     --text-primary edge, selected: an --accent edge. In/out: a white-alpha wash over the ruler and the
+     tracks between the points; the points are brackets in the ruler (--text-secondary, --text-primary
+     hovered or dragged), grabbed within the handle zone in the ruler's upper part. */
+  --timeline-marker-width: 9px; /* odd: the apex sits on one device column */
+  --timeline-marker-height: var(--space-3);
+  --timeline-range-wash: rgba(255, 255, 255, 0.06); /* DS: washes are white-alpha (menus 4%); a span, so a step more */
+  --timeline-range-handle-width: 2px;
+  --timeline-range-handle-zone: 8px; /* centered on the point: the trim zone's width */
+  --marker-popover-width: calc(var(--control-default) * 7); /* the label field over 8 swatches and Delete */
 
   /* Audio (gap: the DS has no meter or knob). Stereo peak meter along the preview's right edge, master volume knob. */
   --meter-bar-width: var(--space-1);

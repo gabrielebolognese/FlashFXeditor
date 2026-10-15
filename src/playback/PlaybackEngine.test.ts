@@ -372,6 +372,71 @@ describe("PlaybackEngine transport", () => {
     expect(t.playhead()).toBe(5);
   });
 
+  it("loops the in/out range frame-exactly: a play outside it starts at the in point, the out point wraps to it", async () => {
+    const t = setup(ONE_CLIP());
+    t.session.state.set((state) => ({ ...state, loop: true, inPoint: 30, outPoint: 60 }));
+    setPlayhead(t.session, 200);
+    await t.startPlaying();
+    expect(t.playhead()).toBe(30);
+    const shown: number[] = [];
+    for (let i = 0; i < 75; i++) {
+      t.advance(1 / 30);
+      t.frame();
+      shown.push(t.playhead());
+    }
+    expect(t.engine.playing).toBe(true);
+    // Every frame of the range once per pass, in order, the out point (60) never shown.
+    const expected = Array.from({ length: 75 }, (_, i) => 30 + ((i + 1) % 30));
+    expect(shown).toEqual(expected);
+  });
+
+  it("wraps backward from the in point to the last frame before the out point", async () => {
+    const t = setup(ONE_CLIP());
+    t.session.state.set((state) => ({ ...state, loop: true, inPoint: 30, outPoint: 60 }));
+    setPlayhead(t.session, 35);
+    await t.startPlaying(-1);
+    t.advance(5 / 30 + 0.001);
+    t.frame();
+    expect(t.playhead()).toBe(30);
+    t.advance(1 / 30);
+    t.frame();
+    expect(t.playhead()).toBe(59);
+  });
+
+  it("plays in to out once and stops on the last frame of the range; with loop on it loops the range", async () => {
+    const t = setup(ONE_CLIP());
+    t.session.state.set((state) => ({ ...state, inPoint: 30, outPoint: 60 }));
+    setPlayhead(t.session, 400);
+    t.engine.playInToOut();
+    expect(t.playhead()).toBe(30);
+    t.frame();
+    await t.deliverAll();
+    t.frame();
+    t.advance(29 / 30 + 0.001);
+    t.frame();
+    expect(t.playhead()).toBe(59);
+    t.advance(1 / 30);
+    t.frame();
+    expect(t.engine.playing).toBe(false);
+    expect(t.playhead()).toBe(59);
+
+    t.session.state.set((state) => ({ ...state, loop: true }));
+    t.engine.playInToOut();
+    t.frame();
+    await t.deliverAll();
+    t.frame();
+    t.advance(30 / 30 + 0.001);
+    t.frame();
+    expect(t.engine.playing).toBe(true);
+    expect(t.playhead()).toBe(30);
+    // Neither point set: the whole timeline.
+    t.engine.pause();
+    t.session.state.set((state) => ({ ...state, loop: false, inPoint: null, outPoint: null }));
+    setPlayhead(t.session, 500);
+    t.engine.playInToOut();
+    expect(t.playhead()).toBe(0);
+  });
+
   it("plays around the playhead (2 s before to 2 s after) and puts it back", async () => {
     const t = setup(ONE_CLIP());
     setPlayhead(t.session, 300);
@@ -670,6 +735,22 @@ describe("PlaybackEngine audio", () => {
     expect(after.frame).toBe(0);
     expect(after.clock).toBeCloseTo(before.clock + 10 / 30, 9);
     expect(t.playhead()).toBe(0);
+  });
+
+  it("hands the loop range to the audio and re-anchors on the in point at the wrap", async () => {
+    const a = fakeAudio(0);
+    a.setReady(true);
+    const t = setup(ONE_CLIP(), { audio: a.audio });
+    t.session.state.set((state) => ({ ...state, loop: true, inPoint: 30, outPoint: 60 }));
+    setPlayhead(t.session, 50);
+    await t.startPlaying();
+    const before = a.last() as PlayMapping;
+    expect(before).toMatchObject({ frame: 50, start: 30, end: 60, loop: true });
+    t.advance(10 / 30 + 0.02);
+    t.frame();
+    const after = a.last() as PlayMapping;
+    expect(after.frame).toBe(30);
+    expect(after.clock).toBeCloseTo(before.clock + 10 / 30, 9);
   });
 
   it("hands shuttle speeds over (the scheduler is silent at them) with no clock lead", async () => {

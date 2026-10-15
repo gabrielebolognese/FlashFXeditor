@@ -120,6 +120,25 @@ export function validateProject(project: Project): string[] {
     const track = project.tracks.find((t) => t.id === trackId);
     if (track?.kind !== "caption") issues.push(`captionTracks entry ${trackId} has no caption track`);
   }
+  issues.push(...markerIssues(project));
+  return issues;
+}
+
+/** Markers (spec §5.2, §6.13): unique ids, integer frames >= 0 in ascending order, a label string, one of the 8 label colors. */
+function markerIssues(project: Project): string[] {
+  const issues: string[] = [];
+  const ids = new Set<string>();
+  let prev = -Infinity;
+  for (const marker of project.markers) {
+    const label = `marker ${marker.id}`;
+    if (ids.has(marker.id)) issues.push(`${label}: listed more than once`);
+    ids.add(marker.id);
+    if (!Number.isInteger(marker.frame) || marker.frame < 0) issues.push(`${label}: frame ${marker.frame} must be an integer >= 0`);
+    else if (marker.frame < prev) issues.push(`${label}: at frame ${marker.frame}, listed after a marker at ${prev} (markers are sorted by frame); it belongs before`);
+    else prev = marker.frame;
+    if (typeof marker.label !== "string") issues.push(`${label}: label must be a string`);
+    if (!LABEL_SET.has(marker.color)) issues.push(`${label}: color ${String(marker.color)} is not a label color`);
+  }
   return issues;
 }
 

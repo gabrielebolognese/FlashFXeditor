@@ -4,6 +4,7 @@ import { PanelFrame } from "../app/PanelFrame.js";
 import { timelineDev, timelineView } from "../app/timelineController.js";
 import { useStoreSelector } from "../core/store/useStoreSelector.js";
 import { ClipRenameField } from "../timeline/menus/ClipRenameField.js";
+import { MarkerPopover } from "../timeline/menus/MarkerPopover.js";
 import { TimelineContextMenu } from "../timeline/menus/TimelineContextMenu.js";
 import { TrackRenameField } from "../timeline/menus/TrackRenameField.js";
 import { TimelineToolbar } from "../timeline/toolbar/TimelineToolbar.js";
@@ -24,7 +25,8 @@ function StatsOverlay() {
 
 /**
  * The toolbar strip is the panel's header; the two timeline canvases mount once in the canvas host,
- * with the inline clip and track rename fields over them; the context menus float above everything.
+ * with the inline clip and track rename fields and the marker editor over them; the context menus
+ * float above everything.
  */
 export function TimelinePanel() {
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -40,6 +42,7 @@ export function TimelinePanel() {
           <div ref={canvasRef} className={styles.canvas} />
           <ClipRenameField />
           <TrackRenameField />
+          <MarkerPopover />
           {stats && <StatsOverlay />}
         </CanvasHost>
       </div>

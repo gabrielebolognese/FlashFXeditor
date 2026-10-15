@@ -1,5 +1,5 @@
 // Transport wiring (spec §8, §6.2, §6.5, §7.8, §13): the transport actions (Space, J/K/L, K+J/K+L,
-// Shift+K, arrows, Home/End, loop), follow playhead during playback, the reveal of the playhead after
+// Shift+K, arrows, Home/End, loop, play in to out), follow playhead during playback, the reveal of the playhead after
 // keyboard moves, and the preview status strip (dropped frames of the last playback, texture pool
 // usage). Framework-free: React reads only the play/pause state (`playbackEngine.subscribe`).
 import type { ActionRun } from "../core/commands/ActionRegistry.js";
@@ -128,7 +128,8 @@ export function installPlaybackController(): () => void {
     }),
     actions.register("transport.playAround", () => playbackEngine.playAround()),
     actions.register("transport.toggleLoop", toggleLoop),
-    // TODO(batch 19): transport.playInToOut (Mod+Shift+Space) and the play in/out button.
+    // Mod+Shift+Space and the preview's Play in/out (spec §8): the in/out range, looping while loop is on.
+    actions.register("transport.playInToOut", () => playbackEngine.playInToOut()),
     actions.register("transport.stepBack", steppingAction(() => -1)),
     actions.register("transport.stepForward", steppingAction(() => 1)),
     actions.register("transport.stepBack5", steppingAction(() => -5)),

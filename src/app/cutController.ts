@@ -1,5 +1,5 @@
 // Cutting and cleanup (spec §6.11, §6.7, §6.16): Split at playhead and Split all tracks, the Razor
-// tool, Delete and Ripple delete (clips, or a selected gap), Close gap and Close all gaps (compact),
+// tool, Delete and Ripple delete (clips, a selected gap, or a selected marker), Close gap and Close all gaps (compact),
 // clip rename (F2), label colors, and the clip and gap context menus. Every edit is one command (one
 // undo step) built by the pure edits in `timeline/edit` (split, delete, gaps). Delete and F2 in the
 // media panel go to the media panel's own actions.
@@ -15,6 +15,7 @@ import { clipsToSplit, selectionAfterSplit, splitClips, type SplitScope } from "
 import { gapAt, isClipLocked } from "../timeline/model/queries.js";
 import type { ContextMenuRequest, RazorRequest } from "../timeline/view/TimelineView.js";
 import { showToast } from "../ui/toasts.js";
+import { deleteSelectedMarker } from "./markerController.js";
 import { requestRemove, startRename } from "./mediaController.js";
 import { actions, documentStore, focusScopes, sessionStore } from "./services.js";
 
@@ -112,6 +113,8 @@ function deleteSelection(ripple: boolean): void {
     closeGapAction(null);
     return;
   }
+  // A selected marker (spec §6.3) is deleted; it excludes a clip selection.
+  if (deleteSelectedMarker()) return;
   const { ids } = selectedClips();
   if (ids.length === 0) return;
   const project = documentStore.getState();
@@ -162,7 +165,7 @@ export function setLabelColor(color: LabelColor | null): void {
 /** The open timeline context menu (spec §6.16), or null. React renders it from this store. */
 export const timelineMenu = createStore<ContextMenuRequest | null>(null);
 
-/** A right-click on a clip or a gap (the view has selected it). */
+/** A right-click on a clip, a gap, a track header or the ruler (the view has selected what it names). */
 export function openContextMenu(request: ContextMenuRequest): void {
   timelineMenu.set(request);
 }

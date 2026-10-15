@@ -10,19 +10,6 @@ export interface PlannedCommand {
 }
 
 export const PLANNED_COMMANDS: Readonly<Record<string, PlannedCommand>> = {
-  // Batch 19: markers, in/out, play in to out, lift/extract.
-  "marker.add": { batch: 19, label: "Add marker" },
-  "range.markIn": { batch: 19, label: "Mark in" },
-  "range.markOut": { batch: 19, label: "Mark out" },
-  "range.clearIn": { batch: 19, label: "Clear in" },
-  "range.clearOut": { batch: 19, label: "Clear out" },
-  "range.clearInOut": { batch: 19, label: "Clear in and out" },
-  "range.goToIn": { batch: 19, label: "Go to in" },
-  "range.goToOut": { batch: 19, label: "Go to out" },
-  "range.markClip": { batch: 19, label: "Mark clip" },
-  "transport.playInToOut": { batch: 19, label: "Play in to out" },
-  "edit.lift": { batch: 19, label: "Lift" },
-  "edit.extract": { batch: 19, label: "Extract" },
   // Batch 21: preview viewport and fullscreen.
   "preview.toggleFullscreen": { batch: 21, label: "Fullscreen preview" },
   "canvas.zoomFit": { batch: 21, label: "Canvas zoom to fit" },
@@ -61,7 +48,7 @@ export const PLANNED_COMMANDS: Readonly<Record<string, PlannedCommand>> = {
   "app.export": { batch: 44, label: "Export" },
 };
 
-/** The dev toast for a bound key whose command is not built yet: `Add marker: coming in Batch 19`. */
+/** The dev toast for a bound key whose command is not built yet: `Fullscreen preview: coming in Batch 21`. */
 export function plannedMessage(id: string): string | null {
   const planned = PLANNED_COMMANDS[id];
   return planned ? `${planned.label}: coming in Batch ${planned.batch}` : null;

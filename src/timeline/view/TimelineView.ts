@@ -22,6 +22,10 @@
 // Navigation (spec §6.1, §6.2, §6.6): the scrollbars (a thumb drag scrolls, a zoom handle drag zooms
 // with the opposite edge fixed), panning in both axes (Hand tool, Space+drag on empty space, middle
 // drag), and keyboard zoom steps eased over `--duration-micro` (wheel zoom stays immediate).
+// Markers and the in/out range (spec §6.3, §6.13): a click on a marker selects it, a drag moves it
+// (snapping, one command on release through `onMoveMarker`), a double-click asks for its inline editor
+// (`onEditMarker`), hovering shows its label and timecode; the in and out handles drag with snapping and
+// write the session once on release; a right-click on the ruler asks for the ruler/marker menu.
 import type { Affect } from "../../core/commands/command.js";
 import { formatSpeed, formatTimecode, usToFrame } from "../../core/document/time.js";
 import { isMediaClip, type Clip, type ClipId, type Frame, type Project, type TrackId, type TrackKind } from "../../core/document/types.js";
@@ -34,18 +38,19 @@ import type { Store } from "../../core/store/createStore.js";
 import type { DocumentStore } from "../../core/store/DocumentStore.js";
 import type { LayoutState, Size } from "../../core/store/layoutStore.js";
 import { clickSelection, EMPTY_SELECTION, selectClips, selectedTrackIds, selectTracks, trackClickSelection, type ClickModifier, type Selection } from "../../core/store/selection.js";
-import { selectEditPoint, selectGap, setPlayhead, setSelection, type EditPoint, type SessionStore, type Tool } from "../../core/store/sessionStore.js";
+import { selectEditPoint, selectGap, selectMarker, setInOut, setPlayhead, setSelection, type EditPoint, type SessionStore, type Tool } from "../../core/store/sessionStore.js";
 import { ease } from "../../core/theme/easing.js";
 import type { Theme, ThemeBridge } from "../../core/theme/theme.js";
 import type { MoveRequest } from "../edit/move.js";
 import { clipsToSplit } from "../edit/split.js";
 import { MAX_SPEED, MIN_SPEED, type TrimEdge } from "../edit/trim.js";
+import { dragIn, dragOut, lastFrameOf, type InOut } from "../model/inOut.js";
 import { contentEnd, gapAt, isClipLocked, laneOf, linkedPartners, neighbors, selectionPartners, type Gap } from "../model/queries.js";
 import { resolveSnap, SnapIndex, snapLabel, type SnapCandidates, type SnapTarget } from "../snap/snapIndex.js";
 import { createWants, type ClipVisualsSource } from "./clipVisuals.js";
 import { trimCursor, trimCursors, type TrimCursors } from "./cursors.js";
 import { drawContent } from "./drawContent.js";
-import { drawOverlay, type EditPointMark, type RazorScene, type TrackDragScene } from "./drawOverlay.js";
+import { drawOverlay, type EditPointMark, type MarkerScene, type RangeScene, type RazorScene, type TrackDragScene } from "./drawOverlay.js";
 import { contains, TimelineGeometry, type HeaderToggle, type Rect, type TimelineMetrics } from "./geometry.js";
 import { edgeStep } from "./gestures/autoScroll.js";
 import { MarqueeGesture } from "./gestures/marquee.js";
@@ -97,8 +102,12 @@ export interface TimelineViewDeps {
   onTrimPreview?(): void;
   /** A Razor click (spec §6.11): the controller splits as one command. */
   onRazor?(request: RazorRequest): void;
-  /** A right-click on a clip, a gap or a track header (spec §6.16), already selected: the controller opens its menu. */
+  /** A right-click on a clip, a gap, a track header or the ruler (spec §6.16), already selected: the controller opens its menu. */
   onContextMenu?(request: ContextMenuRequest): void;
+  /** A marker was dragged to `frame` (spec §6.3): the controller moves it (one command). */
+  onMoveMarker?(markerId: string, frame: Frame): void;
+  /** A marker was double-clicked (spec §6.13): the controller opens its inline editor. */
+  onEditMarker?(markerId: string): void;
   /** Background work pauses while a gesture runs (spec §3.4); arrivals wait while it is paused. */
   idle?: Pick<IdleQueue, "pause" | "resume"> & Partial<Pick<IdleQueue, "isPaused" | "onPauseChange">>;
   /** Thumbnails, posters and peaks of the clip bodies (spec §6.4, §6.17). */
@@ -124,7 +133,9 @@ export interface RazorRequest {
 export type ContextMenuRequest =
   | { kind: "clip"; clipId: ClipId; x: number; y: number }
   | { kind: "gap"; gap: Gap; x: number; y: number }
-  | { kind: "track"; trackId: TrackId; x: number; y: number };
+  | { kind: "track"; trackId: TrackId; x: number; y: number }
+  /** The ruler (spec §6.16 Ruler/marker): the frame under the pointer, and the marker there (selected) or null. */
+  | { kind: "ruler"; frame: Frame; markerId: string | null; x: number; y: number };
 
 export interface TimelineStats {
   contentDraws: number;
@@ -176,7 +187,13 @@ type Gesture =
    * A scrollbar dragged (spec §6.1): the thumb scrolls, a zoom handle (`start`, `end`) zooms from `view`
    * (the view at the press). `grab`: the pointer's offset from the dragged end (from the thumb's start for a thumb).
    */
-  | { kind: "scrollbar"; pointerId: number; axis: ScrollbarAxis; part: "thumb" | "start" | "end"; grab: number; view: TimelineViewport };
+  | { kind: "scrollbar"; pointerId: number; axis: ScrollbarAxis; part: "thumb" | "start" | "end"; grab: number; view: TimelineViewport }
+  /** A press on a marker: a drag once it moves past the dead zone (`grab`: the pointer's frame offset from the marker), else a click selecting it. */
+  | { kind: "pressMarker"; pointerId: number; x: number; y: number; markerId: string; grab: number }
+  /** A marker dragged (spec §6.3): `frame` where it would land, snapped (spec §6.9). */
+  | { kind: "markerDrag"; pointerId: number; markerId: string; from: Frame; frame: Frame; grab: number; snap: SnapTarget | null }
+  /** An in or out handle dragged (spec §6.3): the range it would leave, snapped. */
+  | { kind: "rangeDrag"; pointerId: number; point: "in" | "out"; from: InOut; range: InOut; snap: SnapTarget | null };
 
 /** A keyboard zoom step on its way (spec §6.2): from `from` to `to` with `anchor` held; `start` is set by the first frame. */
 interface ZoomAnimation {
@@ -218,7 +235,8 @@ const sameHover = (a: HitResult | null, b: HitResult | null) =>
     a.junction?.frame === b.junction?.frame &&
     a.gap?.start === b.gap?.start &&
     a.scrollbar?.axis === b.scrollbar?.axis &&
-    a.scrollbar?.part === b.scrollbar?.part);
+    a.scrollbar?.part === b.scrollbar?.part &&
+    a.markerId === b.markerId);
 
 /** A hit on a track row's clip area: what the Razor can cut (and shows its cursor over). */
 function inTrackRow(hit: HitResult): boolean {
@@ -280,7 +298,7 @@ function editCursor(cursors: TrimCursors, target: EditTarget, ripple: boolean): 
 function cursorFor(hit: HitResult | null, gesture: Gesture | null, cursors: TrimCursors, context: CursorContext): string {
   if (gesture?.kind === "pan") return "grabbing";
   if (gesture?.kind === "scrollbar") return gesture.part === "thumb" ? "default" : "ew-resize";
-  if (gesture?.kind === "scrub") return "ew-resize";
+  if (gesture?.kind === "scrub" || gesture?.kind === "markerDrag" || gesture?.kind === "rangeDrag") return "ew-resize";
   if (gesture?.kind === "trackDrag") return "grabbing";
   if (gesture?.kind === "move") {
     const proposal = gesture.move.proposal;
@@ -296,7 +314,8 @@ function cursorFor(hit: HitResult | null, gesture: Gesture | null, cursors: Trim
   if (!hit) return "default";
   if (hit.type === "scrollbar") return hit.scrollbar?.part === "start" || hit.scrollbar?.part === "end" ? "ew-resize" : "default";
   if (context.pan) return "grab";
-  if (hit.type === "ruler" || hit.type === "playheadHead") return "ew-resize";
+  if (hit.type === "ruler" || hit.type === "playheadHead" || hit.type === "inHandle" || hit.type === "outHandle") return "ew-resize";
+  if (hit.type === "marker") return "pointer";
   if ((hit.type === "trackHeader" && hit.addTrack) || hit.type === "headerToggle") return "pointer";
   const edge = hitEdge(hit);
   const { tool } = context;
@@ -342,6 +361,8 @@ export class TimelineView {
   /** S held during the current drag: snapping inverted (spec §6.9). */
   private snapHeld = false;
   private readonly snapIndex = new SnapIndex();
+  /** Candidates of an in/out handle drag: built without the dragged point. */
+  private readonly rangeSnapIndex = new SnapIndex();
   /** While a gesture drags: stops its auto-scroll ticker and key listeners. */
   private stopDrag: (() => void) | null = null;
   private lastTick: number | null = null;
@@ -372,6 +393,14 @@ export class TimelineView {
         return deps.theme.theme.timeline.junctionZone;
       },
       scrollbars: () => this.scrollbars(),
+      get marker() {
+        const { markerWidth, markerHeight } = deps.theme.theme.timeline;
+        return { width: markerWidth, height: markerHeight };
+      },
+      inOut: () => this.deps.session.state.getState(),
+      get handleZone() {
+        return deps.theme.theme.timeline.rangeHandleZone;
+      },
     });
   }
 
@@ -475,11 +504,22 @@ export class TimelineView {
       session.selection.subscribe(() => scheduler.invalidate("timelineContent")),
       session.editPoint.subscribe(() => scheduler.invalidate("timelineOverlay")),
       session.gap.subscribe(() => scheduler.invalidate("timelineOverlay")),
+      session.marker.subscribe(() => scheduler.invalidate("timelineOverlay")),
+      // The in/out range is drawn on the overlay (spec §6.13).
+      session.state.select((state) => state.inPoint, () => scheduler.invalidate("timelineOverlay")),
+      session.state.select((state) => state.outPoint, () => scheduler.invalidate("timelineOverlay")),
       // The FrameScheduler flags of document changes (spec §3.4): every command carries `affects`.
       document.subscribe(both, { affects: CONTENT_AFFECTS }),
       // A drag or marquee holds clips of the document it started from: an edit under it (an undo
-      // key) cancels it.
+      // key) cancels it; a marker drag ends when its marker changes under it.
       document.subscribe(() => this.cancelGesture(), { affects: ["clips", "tracks"] }),
+      document.subscribe(
+        (state) => {
+          const gesture = this.gesture;
+          if ((gesture?.kind === "markerDrag" || gesture?.kind === "pressMarker") && !state.markers.some((marker) => marker.id === gesture.markerId)) this.cancelGesture();
+        },
+        { affects: ["markers"] },
+      ),
       theme.subscribe((next) => {
         this.metrics = metricsOf(next);
         this.cursors = trimCursors(next);
@@ -584,7 +624,7 @@ export class TimelineView {
     if (!gesture || gesture.kind === "scrub") return false;
     this.gesture = null;
     this.finishDrag();
-    if (gesture.kind === "marquee") this.deps.scheduler.invalidate("timelineContent");
+    if (gesture.kind === "marquee" || gesture.kind === "markerDrag") this.deps.scheduler.invalidate("timelineContent");
     if (gesture.kind === "move") this.settleScrollY();
     if (gesture.kind === "trim") this.deps.onTrimPreview?.();
     if (this.overlay?.canvas.hasPointerCapture?.(gesture.pointerId)) this.overlay.canvas.releasePointerCapture(gesture.pointerId);
@@ -858,6 +898,13 @@ export class TimelineView {
       return;
     }
     switch (hit.type) {
+      case "marker":
+        if (hit.markerId !== null) this.pressMarker(event, hit.markerId);
+        break;
+      case "inHandle":
+      case "outHandle":
+        this.startRangeDrag(event, hit.type === "inHandle" ? "in" : "out");
+        break;
       case "ruler":
       case "playheadHead": {
         this.capture(event.pointerId);
@@ -1100,11 +1147,93 @@ export class TimelineView {
     this.updateCursor();
   }
 
-  /** Double-click on a track header (spec §6.1): rename it inline. */
+  /**
+   * A press on a marker (spec §6.3) selects it at once (as a press on a clip does, so the properties
+   * panel changes before any drag, P1); a drag past the dead zone moves it.
+   */
+  private pressMarker(event: PointerEvent, markerId: string): void {
+    const marker = this.deps.document.getState().markers.find((candidate) => candidate.id === markerId);
+    if (!marker) return;
+    selectMarker(this.deps.session, markerId);
+    this.capture(event.pointerId);
+    const grab = this.geometry().xToFrame(event.offsetX) - marker.frame;
+    this.gesture = { kind: "pressMarker", pointerId: event.pointerId, x: event.offsetX, y: event.offsetY, markerId, grab };
+  }
+
+  private startMarkerDrag(press: Extract<Gesture, { kind: "pressMarker" }>): void {
+    const marker = this.deps.document.getState().markers.find((candidate) => candidate.id === press.markerId);
+    if (!marker) return;
+    this.gesture = { kind: "markerDrag", pointerId: press.pointerId, markerId: marker.id, from: marker.frame, frame: marker.frame, grab: press.grab, snap: null };
+    this.startDrag();
+    // The ruler leaves the dragged marker out; the overlay draws it where it goes.
+    this.deps.scheduler.invalidate("timelineContent");
+    this.followPointer();
+  }
+
+  /** A press on an in or out handle (spec §6.3): the point follows the pointer at once (a click leaves it). */
+  private startRangeDrag(event: PointerEvent, point: "in" | "out"): void {
+    const { inPoint, outPoint } = this.deps.session.state.getState();
+    const from = { inPoint, outPoint };
+    this.capture(event.pointerId);
+    this.gesture = { kind: "rangeDrag", pointerId: event.pointerId, point, from, range: from, snap: null };
+    this.startDrag();
+    this.updateCursor();
+    this.deps.scheduler.invalidate("timelineOverlay");
+  }
+
+  /** The dragged marker's frame for the pointer: its grab offset kept, snapped while snapping is on (itself excluded). */
+  private dragMarker(drag: Extract<Gesture, { kind: "markerDrag" }>, x: number): void {
+    const frame = this.geometry().xToFrame(x) - drag.grab;
+    const { playhead } = this.deps.session.state.getState();
+    const hit = this.snapping
+      ? resolveSnap(this.snapCandidates(), [frame], {
+          thresholdPx: this.deps.theme.theme.timeline.snapThreshold,
+          pxPerFrame: this.viewport().pxPerFrame,
+          playhead,
+          exclude: new Set([drag.markerId]),
+        })
+      : null;
+    drag.snap = hit?.target ?? null;
+    drag.frame = Math.max(0, hit ? hit.target.frame : Math.round(frame));
+  }
+
+  /** The dragged in or out point for the pointer, snapped to every candidate but itself (spec §6.9), at least a frame from the other. */
+  private dragRange(drag: Extract<Gesture, { kind: "rangeDrag" }>, x: number): void {
+    const frame = this.geometry().xToFrame(x);
+    const { from, point } = drag;
+    const project = this.deps.document.getState();
+    const candidates = this.rangeSnapIndex.get(project, point === "in" ? null : from.inPoint, point === "out" ? null : from.outPoint);
+    const hit = this.snapping
+      ? resolveSnap(candidates, [frame], {
+          thresholdPx: this.deps.theme.theme.timeline.snapThreshold,
+          pxPerFrame: this.viewport().pxPerFrame,
+          playhead: this.deps.session.state.getState().playhead,
+        })
+      : null;
+    drag.snap = hit?.target ?? null;
+    const target = hit ? hit.target.frame : frame;
+    drag.range = point === "in" ? dragIn(from, target) : dragOut(from, target);
+  }
+
+  /** Double-click on a track header (spec §6.1): rename it inline; on a marker (spec §6.13): edit it inline. */
   private onDoubleClick(event: MouseEvent): void {
     if (this.gesture) return;
     const hit = this.hitTester.hit(event.offsetX, event.offsetY);
     if (hit.type === "trackHeader" && hit.trackId) this.deps.onRenameTrack?.(hit.trackId);
+    else if (hit.type === "marker" && hit.markerId !== null) this.deps.onEditMarker?.(hit.markerId);
+  }
+
+  /**
+   * Where a marker's inline editor goes (view CSS px): under the marker's apex at the ruler's bottom.
+   * The view first pages to the marker when it is off screen. Null when there is no such marker.
+   */
+  markerAnchor(markerId: string): { x: number; y: number } | null {
+    if (!this.mounted) return null;
+    const marker = this.deps.document.getState().markers.find((candidate) => candidate.id === markerId);
+    if (!marker) return null;
+    this.reveal(marker.frame);
+    const geometry = this.geometry();
+    return { x: geometry.frameToX(marker.frame), y: geometry.rulerHeight };
   }
 
   /**
@@ -1199,6 +1328,10 @@ export class TimelineView {
       // The track menu acts on the selected tracks: the clicked one joins them, or replaces a selection without it.
       if (!selectedTrackIds(session.selection.getState()).includes(hit.trackId)) setSelection(session, selectTracks([hit.trackId]));
       this.deps.onContextMenu?.({ kind: "track", trackId: hit.trackId, x: event.clientX, y: event.clientY });
+    } else if (hit.type === "marker" || hit.type === "ruler" || hit.type === "playheadHead" || hit.type === "inHandle" || hit.type === "outHandle") {
+      // The ruler/marker menu (spec §6.16): a marker under the pointer is selected first.
+      if (hit.markerId !== null) selectMarker(session, hit.markerId);
+      this.deps.onContextMenu?.({ kind: "ruler", frame: Math.max(0, Math.round(hit.frame)), markerId: hit.markerId, x: event.clientX, y: event.clientY });
     }
   }
 
@@ -1243,10 +1376,15 @@ export class TimelineView {
       case "pressEdge":
         if (Math.hypot(event.offsetX - gesture.x, event.offsetY - gesture.y) > threshold) this.startEdit(gesture.pointerId, gesture.target, gesture.frame);
         break;
+      case "pressMarker":
+        if (Math.abs(event.offsetX - gesture.x) > threshold) this.startMarkerDrag(gesture);
+        break;
       case "move":
       case "trim":
       case "marquee":
       case "trackDrag":
+      case "markerDrag":
+      case "rangeDrag":
         this.followPointer();
         break;
     }
@@ -1314,6 +1452,12 @@ export class TimelineView {
       if (row && row.kind !== "caption") gesture.lane = geometry.reorderLane(row.kind, pointer.y);
       this.updateCursor();
       this.deps.scheduler.invalidate("timelineOverlay");
+    } else if (gesture.kind === "markerDrag") {
+      this.dragMarker(gesture, pointer.x);
+      this.deps.scheduler.invalidate("timelineOverlay");
+    } else if (gesture.kind === "rangeDrag") {
+      this.dragRange(gesture, pointer.x);
+      this.deps.scheduler.invalidate("timelineOverlay");
     }
   }
 
@@ -1343,7 +1487,7 @@ export class TimelineView {
       }
       this.modifiers = this.modifiersOf(event);
       const kind = this.gesture?.kind;
-      if (kind === "move" || kind === "trim" || kind === "scrub") this.followPointer();
+      if (kind === "move" || kind === "trim" || kind === "scrub" || kind === "markerDrag" || kind === "rangeDrag") this.followPointer();
     };
     win?.addEventListener("keydown", onKey, true);
     win?.addEventListener("keyup", onKey, true);
@@ -1367,15 +1511,16 @@ export class TimelineView {
     const pointer = this.pointer;
     const elapsed = this.lastTick === null ? FRAME_MS : Math.min(Math.max(time - this.lastTick, 0), 3 * FRAME_MS);
     this.lastTick = time;
-    if (!gesture || !pointer || (gesture.kind !== "scrub" && gesture.kind !== "move" && gesture.kind !== "trim" && gesture.kind !== "marquee" && gesture.kind !== "trackDrag")) return;
+    const kind = gesture?.kind;
+    if (!gesture || !pointer || (kind !== "scrub" && kind !== "move" && kind !== "trim" && kind !== "marquee" && kind !== "trackDrag" && kind !== "markerDrag" && kind !== "rangeDrag")) return;
     const geometry = this.geometry();
     const { area } = geometry;
     const zone = this.deps.theme.theme.timeline.autoScrollZone;
     const scale = elapsed / FRAME_MS;
     // A track drag is vertical.
     const dx = gesture.kind === "trackDrag" ? 0 : edgeStep(pointer.x, area.x, area.x + area.width, zone) * scale;
-    // Scrubs and trims are horizontal.
-    const dy = gesture.kind === "scrub" || gesture.kind === "trim" ? 0 : edgeStep(pointer.y, area.y, area.y + area.height, zone) * scale;
+    // Scrubs, trims, marker and handle drags are horizontal.
+    const dy = kind === "scrub" || kind === "trim" || kind === "markerDrag" || kind === "rangeDrag" ? 0 : edgeStep(pointer.y, area.y, area.y + area.height, zone) * scale;
     if (dx === 0 && dy === 0) return;
     if (dx !== 0) {
       const context = this.zoomContext();
@@ -1484,6 +1629,18 @@ export class TimelineView {
       case "pressHeader":
         if (commit) setSelection(session, gesture.click);
         break;
+      case "pressMarker":
+        // Selected on the press.
+        break;
+      case "markerDrag":
+        if (commit && gesture.frame !== gesture.from) this.deps.onMoveMarker?.(gesture.markerId, gesture.frame);
+        this.deps.scheduler.invalidate("timelineContent");
+        break;
+      case "rangeDrag": {
+        const { range, from } = gesture;
+        if (commit && (range.inPoint !== from.inPoint || range.outPoint !== from.outPoint)) setInOut(session, range.inPoint, range.outPoint);
+        break;
+      }
       case "trackDrag":
         if (commit && gesture.lane !== laneOf(this.deps.document.getState().tracks, gesture.trackId)?.number) this.deps.onReorderTrack?.(gesture.trackId, gesture.lane);
         break;
@@ -1590,6 +1747,7 @@ export class TimelineView {
       wants,
       scrollbars: this.scrollbars(),
       timecodeFormat: this.deps.session.state.getState().timecodeFormat,
+      hiddenMarker: this.gesture?.kind === "markerDrag" ? this.gesture.markerId : null,
     });
     if (wants) visuals?.want(wants);
     this.stats.contentDraws += 1;
@@ -1613,11 +1771,18 @@ export class TimelineView {
     const proposal = gesture?.kind === "move" ? gesture.move.proposal : null;
     const trim = gesture?.kind === "trim" ? gesture.trim.proposal : null;
     const razor = this.razorPreview(project);
-    const snap = proposal ? proposal.snap : trim ? trim.snap : gesture?.kind === "scrub" ? gesture.snap : (razor?.snap ?? null);
+    const snap = proposal
+      ? proposal.snap
+      : trim
+        ? trim.snap
+        : gesture?.kind === "scrub" || gesture?.kind === "markerDrag" || gesture?.kind === "rangeDrag"
+          ? gesture.snap
+          : (razor?.snap ?? null);
     // The brackets stand on the document's cut: not while a drag moves clips.
     const editPoints = proposal || gesture?.kind === "trim" ? [] : this.editPointMarks(project);
     // Hover highlights are for a pointer at rest: none while dragging.
-    const idle = gesture === null || gesture.kind === "scrub" || gesture.kind === "press" || gesture.kind === "pressEdge" || gesture.kind === "pressHeader";
+    const idle = gesture === null || gesture.kind === "scrub" || gesture.kind === "press" || gesture.kind === "pressEdge" || gesture.kind === "pressHeader" || gesture.kind === "pressMarker";
+    const markers = this.markerScene(project, idle);
     drawOverlay({
       ctx: layer.ctx,
       dpr: this.dpr(),
@@ -1638,14 +1803,55 @@ export class TimelineView {
       trim: trim ? { proposal: trim, selection: this.deps.session.selection.getState() } : null,
       editPoints,
       marquee: gesture?.kind === "marquee" ? (gesture.marquee.current?.rect ?? null) : null,
-      tooltip: this.pointer && (proposal || trim || snap) ? this.tooltip(project, proposal?.deltaFrames ?? null, trim, snap, this.pointer) : null,
+      tooltip: this.pointer ? (this.rulerTooltip(project, markers, snap, this.pointer) ?? (proposal || trim || snap ? this.tooltip(project, proposal?.deltaFrames ?? null, trim, snap, this.pointer) : null)) : null,
       text: this.text,
       visuals: this.deps.visuals ?? null,
       scrollbar: this.scrollbarState(idle),
+      range: this.rangeScene(project, idle),
+      markers,
     });
     this.stats.overlayDraws += 1;
     this.stats.overlayMs = performance.now() - start;
     this.writeStats();
+  }
+
+  /** The in/out range as drawn: a handle drag's proposal, else the session's; null when no point is set. */
+  private rangeScene(project: Project, idle: boolean): RangeScene | null {
+    const gesture = this.gesture;
+    const { inPoint, outPoint } = gesture?.kind === "rangeDrag" ? gesture.range : this.deps.session.state.getState();
+    if (inPoint === null && outPoint === null) return null;
+    const hovered = idle && this.hover?.type === "inHandle" ? "in" : idle && this.hover?.type === "outHandle" ? "out" : null;
+    return { inPoint, outPoint, end: contentEnd(project), active: gesture?.kind === "rangeDrag" ? gesture.point : hovered };
+  }
+
+  /** The selected marker, the one under a pointer at rest, and a dragged one (spec §6.3); null when there is none of them. */
+  private markerScene(project: Project, idle: boolean): MarkerScene | null {
+    const gesture = this.gesture;
+    const find = (id: string | null) => (id === null ? null : (project.markers.find((marker) => marker.id === id) ?? null));
+    const selected = find(this.deps.session.marker.getState());
+    const hover = idle && this.hover?.type === "marker" ? find(this.hover.markerId) : null;
+    const draggedMarker = gesture?.kind === "markerDrag" ? find(gesture.markerId) : null;
+    const dragged = draggedMarker && gesture?.kind === "markerDrag" ? { marker: draggedMarker, frame: gesture.frame } : null;
+    return selected || hover || dragged ? { selected, hover, dragged } : null;
+  }
+
+  /**
+   * The ruler's tooltips: a marker's label and timecode while it is hovered or dragged (spec §6.3: "hover
+   * shows label and timecode"), the dragged in or out point with the range's duration; null otherwise.
+   */
+  private rulerTooltip(project: Project, markers: MarkerScene | null, snap: SnapTarget | null, pointer: { x: number; y: number }) {
+    const gesture = this.gesture;
+    const { timecodeFormat } = this.deps.session.state.getState();
+    const fps = project.settings.fps;
+    const time = (frame: Frame) => formatTimecode(frame, fps, timecodeFormat);
+    const target = snap ? snapLabel(project, snap) : null;
+    const shown = markers?.dragged ? { marker: markers.dragged.marker, frame: markers.dragged.frame } : markers?.hover ? { marker: markers.hover, frame: markers.hover.frame } : null;
+    if (shown) return { name: shown.marker.label || "Marker", text: time(shown.frame), target, alert: null, x: pointer.x, y: pointer.y };
+    if (gesture?.kind !== "rangeDrag") return null;
+    const { inPoint, outPoint } = gesture.range;
+    const point = gesture.point === "in" ? `In ${time(inPoint ?? 0)}` : `Out ${time(lastFrameOf(outPoint ?? 1))}`;
+    const span = inPoint !== null && outPoint !== null ? ` · ${time(outPoint - inPoint)}` : "";
+    return { text: `${point}${span}`, target, alert: null, x: pointer.x, y: pointer.y };
   }
 
   /**

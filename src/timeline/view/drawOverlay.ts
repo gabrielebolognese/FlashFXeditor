@@ -3,17 +3,21 @@
 // the Razor's cut line, the trim preview (the rows an edit changes, redrawn as the drop would leave
 // them), the selected edit point's brackets, the snap line, clip drag ghosts with the new track rows,
 // overwrite hatching and the insert line, the edit's ghost edges, the marquee, the playhead and the
-// drag tooltip with the snap target's name, and the hovered or dragged scrollbar. It is redrawn for
-// every interaction frame (scrubbing, dragging, hover changes) while the content canvas stays untouched.
-// Nothing but the scrollbar state is drawn over the scrollbars.
-import type { Clip, Frame, Track, TrackId } from "../../core/document/types.js";
+// drag tooltip with the snap target's name, and the hovered or dragged scrollbar. The in/out range
+// (spec §6.13: a wash over the ruler and the tracks between the points, a bracket in the ruler at each
+// point) is drawn first, under everything; the selected, hovered and dragged markers (§6.3) over the
+// ruler, under the playhead. It is redrawn for every interaction frame (scrubbing, dragging, hover
+// changes) while the content canvas stays untouched. Nothing but the scrollbar state is drawn over the
+// scrollbars.
+import type { Clip, Frame, Marker, Track, TrackId } from "../../core/document/types.js";
 import type { Selection } from "../../core/store/selection.js";
 import type { Theme } from "../../core/theme/theme.js";
 import { edgeFrame, type TrimEdge } from "../edit/trim.js";
+import { markedRange } from "../model/inOut.js";
 import { clipsInRange, linkOffset, type Gap } from "../model/queries.js";
 import { clipLod, clipSpan, devicePx, LOD_LABEL_PX } from "./clipLayout.js";
 import type { ClipVisuals } from "./clipVisuals.js";
-import { drawClip, drawDiagonalHatch, drawHeader, fillClip, fontOf } from "./drawContent.js";
+import { drawClip, drawDiagonalHatch, drawHeader, fillClip, fontOf, traceMarker } from "./drawContent.js";
 import type { Rect, Row, TimelineGeometry } from "./geometry.js";
 import type { Ghost, MoveProposal, NewLane } from "./gestures/moveClips.js";
 import type { TrimProposal } from "./gestures/trimClip.js";
@@ -53,6 +57,21 @@ export interface TrackDragScene {
   height: number;
   y: number;
   insertY: number | null;
+}
+
+/** The in/out range (spec §6.13) as drawn: the points (null: not set), the content end (an open range runs to it), the point hovered or dragged. */
+export interface RangeScene {
+  inPoint: Frame | null;
+  outPoint: Frame | null;
+  end: Frame;
+  active: "in" | "out" | null;
+}
+
+/** Marker states (spec §6.3): the selected one and the one under the pointer get an edge; a dragged one is drawn at `dragged.frame`. */
+export interface MarkerScene {
+  selected: Marker | null;
+  hover: Marker | null;
+  dragged: { marker: Marker; frame: Frame } | null;
 }
 
 /** The Razor at the pointer (spec §6.11): a cut line at `frame` over each clip it would cut. */
@@ -95,9 +114,14 @@ export interface OverlayScene {
   visuals?: ClipVisuals | null;
   /** The scrollbar part under the pointer (or dragged: `active`), on the scrollbars as laid out. */
   scrollbar?: { layout: ScrollbarLayout; hit: ScrollbarHit; active: boolean } | null;
+  /** The in/out range, when a point is set. */
+  range?: RangeScene | null;
+  markers?: MarkerScene | null;
 }
 
 export interface Tooltip {
+  /** A name before the text (a marker's label), in the UI font. */
+  name?: string | null;
   text: string | null;
   /** The name of what the drag snapped to, after the text in the accent color. */
   target: string | null;
@@ -113,6 +137,7 @@ export function drawOverlay(scene: OverlayScene): void {
   ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
+  if (scene.range) drawRange(scene, scene.range);
   // Rows reach under the vertical scrollbar: clip at the track area's right edge.
   const right = geometry.area.x + geometry.area.width;
   ctx.save();
@@ -138,6 +163,7 @@ export function drawOverlay(scene: OverlayScene): void {
   if (scene.razor) drawRazor(scene, scene.razor);
   ctx.restore();
   if (scene.trackDrag) drawTrackDrag(scene, scene.trackDrag);
+  if (scene.markers) drawMarkerStates(scene, scene.markers);
   drawPlayhead(scene);
   if (scene.scrollbar) drawScrollbarState(ctx, scene.theme, scene.scrollbar.layout, scene.scrollbar.hit, scene.scrollbar.active);
   if (scene.tooltip) drawTooltip(scene, scene.tooltip);
@@ -478,11 +504,14 @@ function drawTooltip(scene: OverlayScene, tooltip: Tooltip): void {
   const alertWidth = alert ? Math.ceil(text.width(ctx, alert)) : 0;
   const gap = tooltip.text && tooltip.target ? space[2] : 0;
   const alertGap = alert && (tooltip.text || tooltip.target) ? space[2] : 0;
-  // A long clip name is ellipsized so the tooltip fits the view.
-  const target = tooltip.target ? text.fit(ctx, tooltip.target, geometry.width - textWidth - gap - alertGap - alertWidth - 2 * space[2]) : "";
+  // A long marker label is ellipsized to half the view, a long clip name so the tooltip fits it.
+  const name = tooltip.name ? text.fit(ctx, tooltip.name, geometry.width / 2) : "";
+  const nameWidth = name ? Math.ceil(text.width(ctx, name)) : 0;
+  const nameGap = name && (tooltip.text || tooltip.target || alert) ? space[2] : 0;
+  const target = tooltip.target ? text.fit(ctx, tooltip.target, geometry.width - nameWidth - nameGap - textWidth - gap - alertGap - alertWidth - 2 * space[2]) : "";
   const targetWidth = target ? Math.ceil(text.width(ctx, target)) : 0;
-  if (textWidth + targetWidth + alertWidth === 0) return;
-  const width = textWidth + gap + targetWidth + alertGap + alertWidth + 2 * space[2];
+  if (nameWidth + textWidth + targetWidth + alertWidth === 0) return;
+  const width = nameWidth + nameGap + textWidth + gap + targetWidth + alertGap + alertWidth + 2 * space[2];
   const height = theme.type.caption.line + 2 * space[1];
   const x = snap(Math.max(0, Math.min(tooltip.x + space[3], geometry.width - width)), dpr);
   let y = tooltip.y - space[3] - height;
@@ -497,21 +526,100 @@ function drawTooltip(scene: OverlayScene, tooltip: Tooltip): void {
   ctx.lineWidth = line;
   ctx.stroke();
   ctx.textBaseline = "middle";
+  let left = x + space[2];
+  if (name) {
+    ctx.font = ui;
+    ctx.fillStyle = color.textPrimary;
+    ctx.fillText(name, left, y + height / 2);
+    left += nameWidth + nameGap;
+  }
   if (tooltip.text) {
     ctx.font = mono;
-    ctx.fillStyle = color.textPrimary;
-    ctx.fillText(tooltip.text, x + space[2], y + height / 2);
+    ctx.fillStyle = name ? color.textSecondary : color.textPrimary;
+    ctx.fillText(tooltip.text, left, y + height / 2);
   }
   if (target) {
     ctx.font = ui;
     ctx.fillStyle = color.accent;
-    ctx.fillText(target, x + space[2] + textWidth + gap, y + height / 2);
+    ctx.fillText(target, left + textWidth + gap, y + height / 2);
   }
   if (alert) {
     ctx.font = ui;
     ctx.fillStyle = color.danger;
-    ctx.fillText(alert, x + space[2] + textWidth + gap + targetWidth + alertGap, y + height / 2);
+    ctx.fillText(alert, left + textWidth + gap + targetWidth + alertGap, y + height / 2);
   }
+}
+
+/**
+ * The in/out range (spec §6.3, §6.13): `--timeline-range-wash` over the ruler and the tracks between
+ * the points (an open range runs from 0 or to the content end), and a bracket opening into the range
+ * at each point set: a full-height bar in the ruler with a serif at its top, `--text-secondary`, or
+ * `--text-primary` while hovered or dragged.
+ */
+function drawRange(scene: OverlayScene, range: RangeScene): void {
+  const { ctx, dpr, geometry, theme } = scene;
+  const { area } = geometry;
+  const right = area.x + area.width;
+  const bottom = area.y + area.height;
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(area.x, 0, area.width, bottom);
+  ctx.clip();
+  const span = markedRange(range, range.end);
+  if (span) {
+    const x0 = Math.max(area.x, snap(geometry.frameToX(span.start), dpr));
+    const x1 = Math.min(right, snap(geometry.frameToX(span.end), dpr));
+    if (x1 > x0) {
+      ctx.fillStyle = theme.timeline.rangeWash;
+      ctx.fillRect(x0, 0, x1 - x0, bottom);
+    }
+  }
+  const width = devicePx(theme.timeline.rangeHandleWidth, dpr) / dpr;
+  const serif = theme.space[2];
+  for (const point of ["in", "out"] as const) {
+    const frame = point === "in" ? range.inPoint : range.outPoint;
+    if (frame === null) continue;
+    const x = snap(geometry.frameToX(frame), dpr);
+    if (x + serif < area.x || x - serif > right) continue;
+    ctx.fillStyle = range.active === point ? theme.color.textPrimary : theme.color.textSecondary;
+    ctx.fillRect(point === "in" ? x : x - width, 0, width, geometry.rulerHeight);
+    ctx.fillRect(point === "in" ? x : x - serif, 0, serif, width);
+  }
+  ctx.restore();
+}
+
+/**
+ * Marker states over the ruler (spec §6.3): a dragged marker at its new frame (its color, the selection
+ * edge), the selected one's `--accent` edge (`--selection-outline` wide), the hovered one's
+ * `--text-primary` edge (one device px).
+ */
+function drawMarkerStates(scene: OverlayScene, markers: MarkerScene): void {
+  const { ctx, dpr, geometry, theme } = scene;
+  const { area } = geometry;
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(area.x, 0, area.width, geometry.rulerHeight);
+  ctx.clip();
+  ctx.lineJoin = "round";
+  const { dragged, selected, hover } = markers;
+  if (dragged && traceMarker(ctx, geometry, dpr, theme, dragged.frame)) {
+    ctx.fillStyle = theme.timeline.labels[dragged.marker.color];
+    ctx.fill();
+    ctx.strokeStyle = theme.color.accent;
+    ctx.lineWidth = theme.timeline.selectionOutline;
+    ctx.stroke();
+  }
+  if (selected && selected.id !== dragged?.marker.id && traceMarker(ctx, geometry, dpr, theme, selected.frame)) {
+    ctx.strokeStyle = theme.color.accent;
+    ctx.lineWidth = theme.timeline.selectionOutline;
+    ctx.stroke();
+  }
+  if (!dragged && hover && hover.id !== selected?.id && traceMarker(ctx, geometry, dpr, theme, hover.frame)) {
+    ctx.strokeStyle = theme.color.textPrimary;
+    ctx.lineWidth = 1 / dpr;
+    ctx.stroke();
+  }
+  ctx.restore();
 }
 
 /** The dragged header at the pointer, at the ghost opacity, and the accent line where the track lands. */

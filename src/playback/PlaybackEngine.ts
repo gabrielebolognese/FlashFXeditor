@@ -32,8 +32,13 @@
 //   frames whose first preview render lacked the exact frame of a layer. A clip whose frame is late on
 //   more than BEHIND_FRAMES consecutive frames flags its media for proxy playback (`autoProxy`).
 // - Transport: play/pause/toggle, the J/L ladder (`shuttleSpeed`), K held (pause; J and L step), play
-//   around, steps, the end of the content (stop on the last frame, or wrap when loop is on), and
-//   playhead moves by others (Home, End, the timecode field: play on from there). A ruler scrub pauses.
+//   around, play in to out, steps, the end of the content (stop on the last frame, or wrap when loop is
+//   on), and playhead moves by others (Home, End, the timecode field: play on from there). A ruler
+//   scrub pauses. Loop (spec §6.13) wraps the in/out range when one is set (`markedRange`), else the
+//   whole timeline; a play that starts outside the loop range starts at its first frame (or, backward,
+//   its last). Play in to out (§8) plays the range once, stopping on its last frame, or loops it while
+//   loop is on. Every wrap is frame-exact: the last frame shown is the one before the out point, the
+//   next one the in point.
 // - Audio (spec §8, §14): the engine owns the audio scheduler. The preroll also waits for the decoded
 //   audio of the clips under the playhead; the clock starts (and re-anchors after a seek) `lead`
 //   seconds ahead, the time the render clock runs ahead of what is heard, so the first samples are
@@ -53,6 +58,7 @@ import type { ImageService } from "../media/decode/ImageService.js";
 import { nearestPosition } from "../media/demux/sampleIndex.js";
 import { isAbortError } from "../media/workers/protocol.js";
 import { sourceTimeUs } from "../render/compositor/Compositor.js";
+import { markedRange } from "../timeline/model/inOut.js";
 import { clipInIndex, contentEnd, lastClipStartingBy, trackIndex } from "../timeline/model/queries.js";
 import { shuttleSpeed } from "./transport.js";
 
@@ -125,10 +131,23 @@ export interface PlaybackEngineDeps {
   audio?: PlaybackAudio;
 }
 
-/** Play around: from `from` up to (not including) `to`, then back to `returnTo`. */
+/**
+ * A range played on its own: play around (from `from` up to, not including, `to`, then back to
+ * `returnTo`) or play in to out (`loops`: wraps from `to` to `from` while the loop toggle is on, else
+ * stops on the range's last frame).
+ */
 interface PlayRange {
+  from: Frame;
   to: Frame;
-  returnTo: Frame;
+  returnTo: Frame | null;
+  loops: boolean;
+}
+
+/** The frames the playhead runs through: [start, end), wrapping at the ends when `loop`. */
+interface Bounds {
+  start: Frame;
+  end: Frame;
+  loop: boolean;
 }
 
 /** The prefetch windows of one clip (under the playhead, or starting soon). */
@@ -181,7 +200,7 @@ export class PlaybackEngine {
   private readonly listeners = new Set<() => void>();
   private readonly key: TextureKey = { mediaId: "", lod: "full", timeUs: 0 };
   /** Handed to the audio scheduler every tick (it copies what changed). */
-  private readonly mapping: PlayMapping = { frame: 0, clock: 0, speed: 0, end: 0, loop: false, fps: { num: 30, den: 1 } };
+  private readonly mapping: PlayMapping = { frame: 0, clock: 0, speed: 0, start: 0, end: 0, loop: false, fps: { num: 30, den: 1 } };
 
   constructor(private readonly deps: PlaybackEngineDeps) {}
 
@@ -206,23 +225,44 @@ export class PlaybackEngine {
     else this.play(1);
   }
 
-  /** Plays at a signed speed from the playhead (from the start when it is at the end). */
+  /**
+   * Plays at a signed speed from the playhead: from the start when it is at the end; with loop on,
+   * from the loop range's first frame (backward: its last) when it is outside the range.
+   */
   play(speed = 1): void {
     if (speed === 0) {
       this.pause();
       return;
     }
-    const end = contentEnd(this.doc());
-    if (end <= 0) return;
+    if (contentEnd(this.doc()) <= 0) return;
+    if (this.playing) {
+      this.start(speed, this.written, null);
+      return;
+    }
+    const { start, end, loop } = this.bounds(this.doc());
+    if (end <= start) return;
     const playhead = this.playhead();
     let from = playhead;
-    if (this.playing) from = this.written;
-    else if (speed > 0 && playhead >= end - 1) from = 0;
-    else if (speed < 0 && playhead <= 0) {
-      if (!this.deps.session.state.getState().loop) return;
+    if (speed > 0) {
+      if (playhead >= end - 1 || (loop && playhead < start)) from = start;
+    } else if (playhead <= start) {
+      if (!loop) return;
       from = end - 1;
-    } else if (speed < 0 && playhead > end - 1) from = end - 1;
+    } else if (playhead > end - 1) {
+      from = end - 1;
+    }
     this.start(speed, from, null);
+  }
+
+  /**
+   * `Mod+Shift+Space`, the preview's Play in/out (spec §8): from the in point (0 when none) to the out
+   * point (the content end when none); it stops on the range's last frame, or loops it while loop is on.
+   */
+  playInToOut(): void {
+    const end = contentEnd(this.doc());
+    const span = markedRange(this.deps.session.state.getState(), end) ?? { start: 0, end };
+    if (span.end <= span.start) return;
+    this.start(1, span.start, { from: span.start, to: span.end, returnTo: null, loops: true });
   }
 
   /** J (-1) and L (+1): the speed ladder; while K is held, one frame step instead. */
@@ -248,7 +288,7 @@ export class PlaybackEngine {
     const from = Math.max(0, playhead - reach);
     const to = Math.min(playhead + reach, contentEnd(doc));
     if (to <= from) return;
-    this.start(1, from, { to, returnTo: playhead });
+    this.start(1, from, { from, to, returnTo: playhead, loops: false });
   }
 
   /** Arrows, K+J / K+L: pause and move the playhead by `frames`. */
@@ -309,7 +349,7 @@ export class PlaybackEngine {
       return;
     }
     const doc = this.doc();
-    const { playhead, loop } = this.deps.session.state.getState();
+    const { playhead } = this.deps.session.state.getState();
     const now = this.deps.clock.now();
     if (playhead !== this.written) {
       // Moved by someone else (Home, End, the timecode field): play on from there.
@@ -334,37 +374,39 @@ export class PlaybackEngine {
     const speed = Math.abs(this.velocity);
     const counting = speed === 1;
     const fps = doc.settings.fps;
-    const end = this.range ? this.range.to : contentEnd(doc);
+    const bounds = this.bounds(doc);
+    const { start, end, loop } = bounds;
     let frame = this.anchorFrame + direction * playedFrames(now - this.anchorTime, speed, fps);
     let natural = true;
     if (direction > 0 && frame >= end) {
-      if (this.range) {
-        this.finish(this.range.returnTo);
+      const returnTo = this.range?.returnTo ?? null;
+      if (returnTo !== null) {
+        this.finish(returnTo);
         return;
       }
-      if (!loop || end <= 0) {
+      if (!loop || end <= start) {
         this.write(Math.max(0, end - 1), false);
         this.pause();
         return;
       }
       // Wrap at the exact time the end frame would have started.
       this.anchorTime += (end - this.anchorFrame) / (fpsToNumber(fps) * speed);
-      this.anchorFrame = 0;
-      frame = Math.min(end - 1, playedFrames(now - this.anchorTime, speed, fps));
+      this.anchorFrame = start;
+      frame = Math.min(end - 1, start + playedFrames(now - this.anchorTime, speed, fps));
       natural = false;
-    } else if (direction < 0 && frame < 0) {
-      if (!loop || end <= 0) {
-        this.write(0, false);
+    } else if (direction < 0 && frame < start) {
+      if (!loop || end <= start) {
+        this.write(start, false);
         this.pause();
         return;
       }
-      // Frame -1 would have started at this time: the last frame shows from then on.
-      this.anchorTime += (this.anchorFrame + 1) / (fpsToNumber(fps) * speed);
+      // The frame before the start would have started at this time: the last frame shows from then on.
+      this.anchorTime += (this.anchorFrame - start + 1) / (fpsToNumber(fps) * speed);
       this.anchorFrame = end - 1;
-      frame = Math.max(0, end - 1 - playedFrames(now - this.anchorTime, speed, fps));
+      frame = Math.max(start, end - 1 - playedFrames(now - this.anchorTime, speed, fps));
       natural = false;
     }
-    this.syncAudio(end, !this.range && loop, fps);
+    this.syncAudio(bounds, fps);
     const advanced = frame !== this.written;
     if (advanced) {
       if (counting && natural) {
@@ -387,17 +429,31 @@ export class PlaybackEngine {
     return this.velocity === 1 ? (this.deps.audio?.lead() ?? 0) : 0;
   }
 
-  private syncAudio(end: Frame, loop: boolean, fps: Rational): void {
+  private syncAudio(bounds: Bounds, fps: Rational): void {
     const audio = this.deps.audio;
     if (!audio) return;
     const mapping = this.mapping;
     mapping.frame = this.anchorFrame;
     mapping.clock = this.anchorTime;
     mapping.speed = this.velocity;
-    mapping.end = end;
-    mapping.loop = loop;
+    mapping.start = bounds.start;
+    mapping.end = bounds.end;
+    mapping.loop = bounds.loop;
     mapping.fps = fps;
     audio.sync(mapping);
+  }
+
+  /**
+   * What the playhead runs through: a range played on its own (looping only while loop is on and it
+   * may); with loop on, the in/out range when one is set, else the whole timeline; else [0, content end).
+   */
+  private bounds(doc: Project): Bounds {
+    const session = this.deps.session.state.getState();
+    const range = this.range;
+    if (range) return { start: range.from, end: range.to, loop: range.loops && session.loop };
+    const end = contentEnd(doc);
+    const marked = session.loop ? markedRange(session, end) : null;
+    return marked ? { start: marked.start, end: marked.end, loop: true } : { start: 0, end, loop: session.loop };
   }
 
   /** Frame `frame` shows from clock time `now` on (see PHASE_SECONDS). */
@@ -462,8 +518,7 @@ export class PlaybackEngine {
     const reach = secondsToFrames(LOOKAHEAD_SECONDS, doc.settings.fps);
     const forward = this.velocity > 0;
     if (this.velocity === 1) this.deps.audio?.prefetch(doc, frame);
-    const end = this.range ? this.range.to : contentEnd(doc);
-    const loop = !this.range && this.deps.session.state.getState().loop;
+    const { start, end, loop } = this.bounds(doc);
     for (const track of doc.tracks) {
       if (track.kind !== "video" || track.hidden) continue;
       const index = trackIndex(doc, track);
@@ -474,10 +529,10 @@ export class PlaybackEngine {
           if (clip.start > frame + reach || clip.start >= end) break;
           this.warm(doc, clip, clip.start);
         }
-        // Loop: the start of the timeline comes next after the end.
+        // Loop: the start of the loop range comes next after its end.
         if (loop && end - frame <= reach) {
-          const first = clipInIndex(index, 0);
-          if (first) this.warm(doc, first, 0);
+          const first = clipInIndex(index, start);
+          if (first) this.warm(doc, first, start);
         }
       } else {
         for (let i = at; i >= 0; i--) {
@@ -487,7 +542,7 @@ export class PlaybackEngine {
           if (last < frame - reach) break;
           this.warm(doc, clip, last);
         }
-        if (loop && frame <= reach) {
+        if (loop && frame - start <= reach) {
           const lastClip = clipInIndex(index, end - 1);
           if (lastClip) this.warm(doc, lastClip, end - 1);
         }

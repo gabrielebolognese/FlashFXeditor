@@ -49,9 +49,11 @@ export interface PlayMapping {
   clock: number;
   /** Signed transport speed. */
   speed: number;
-  /** End of the play range (exclusive): the content end, or the play-around range. */
+  /** Start of the loop range (the in point, or 0): a wrap goes from `end` to it. */
+  start: Frame;
+  /** End of the play range (exclusive): the content end, the out point, or a range played on its own. */
   end: Frame;
-  /** Playback wraps from `end` to 0. */
+  /** Playback wraps from `end` to `start`. */
   loop: boolean;
   fps: Rational;
 }
@@ -94,7 +96,7 @@ function sameTiming(a: MediaClip, b: MediaClip): boolean {
 }
 
 const sameMapping = (a: PlayMapping, b: PlayMapping) =>
-  a.frame === b.frame && a.clock === b.clock && a.speed === b.speed && a.end === b.end && a.loop === b.loop && a.fps.num === b.fps.num && a.fps.den === b.fps.den;
+  a.frame === b.frame && a.clock === b.clock && a.speed === b.speed && a.start === b.start && a.end === b.end && a.loop === b.loop && a.fps.num === b.fps.num && a.fps.den === b.fps.den;
 
 const isAudioClip = (clip: Clip | null | undefined): clip is MediaClip => clip?.kind === "audio" && clip.enabled;
 
@@ -200,19 +202,21 @@ export class AudioScheduler {
     }
     const project = this.deps.document.getState();
     const fps = fpsToNumber(mapping.fps);
+    const start = mapping.start / fps;
     const end = mapping.end / fps;
+    const span = end - start;
     const w0 = now;
     const w1 = now + AHEAD_SECONDS;
-    // Pass 0 plays from the anchor to the end; with loop, passes of the whole range follow.
+    // Pass 0 plays from the anchor to the end; with loop, passes of the loop range [start, end) follow,
+    // pass p with its timeline 0 at `origin0 + p * span` (it reaches `start` when pass p - 1 ends).
     const origin0 = mapping.clock - mapping.frame / fps;
     this.schedulePass(project, mixer, origin0, mapping.frame / fps, end, w0, w1);
-    if (!mapping.loop || end <= 0) return;
+    if (!mapping.loop || span <= 0) return;
     const firstWrap = origin0 + end;
-    const first = Math.max(1, Math.floor((w0 - firstWrap) / end) + 1);
+    const first = Math.max(1, Math.floor((w0 - firstWrap) / span) + 1);
     for (let p = first; p < first + MAX_PASSES; p++) {
-      const origin = firstWrap + (p - 1) * end;
-      if (origin >= w1) break;
-      this.schedulePass(project, mixer, origin, 0, end, w0, w1);
+      if (firstWrap + (p - 1) * span >= w1) break;
+      this.schedulePass(project, mixer, origin0 + p * span, start, end, w0, w1);
     }
   }
 
@@ -312,11 +316,11 @@ export class AudioScheduler {
     const fps = fpsToNumber(mapping.fps);
     const origin0 = mapping.clock - mapping.frame / fps;
     if (Math.abs(origin - origin0) < ORIGIN_TOLERANCE) return true;
-    const end = mapping.end / fps;
-    if (!mapping.loop || end <= 0) return false;
+    const span = (mapping.end - mapping.start) / fps;
+    if (!mapping.loop || span <= 0) return false;
     // Any pass of the loop, the one before the anchor included (the engine re-anchors at each wrap).
-    const passes = (origin - origin0) / end;
-    return Math.abs(passes - Math.round(passes)) * end < ORIGIN_TOLERANCE;
+    const passes = (origin - origin0) / span;
+    return Math.abs(passes - Math.round(passes)) * span < ORIGIN_TOLERANCE;
   }
 
   /** True when the clip's media audio at media second `at` is in memory; asks for it otherwise. */

@@ -34,6 +34,14 @@
   letter-spacing: var(--type-caption-track);
 }
 
+/* A row of swatches (the Marker section's color). */
+.swatches {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: var(--control-compact);
+}
+
 .pair {
   display: grid;
   grid-template-columns: 1fr 1fr;

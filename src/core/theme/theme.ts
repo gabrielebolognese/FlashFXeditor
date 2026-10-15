@@ -113,6 +113,12 @@ export interface TimelineTheme {
   /** Scrollbars (spec §6.1): trough thickness, and the shortest thumb (the horizontal one holds two zoom handles). */
   scrollbarSize: number;
   scrollbarMinThumb: number;
+  /** Markers (spec §6.3): the triangle in the ruler. In/out (§6.13): the wash between the points, the bracket width, the zone that grabs a point. */
+  markerWidth: number;
+  markerHeight: number;
+  rangeWash: string;
+  rangeHandleWidth: number;
+  rangeHandleZone: number;
 }
 
 /** Reads one custom property by name (e.g. `--accent`); returns "" when it is not defined. */
@@ -266,6 +272,11 @@ export function readTheme(read: TokenReader, root?: Element): { theme: Theme; mi
       disabledHatch: str("--clip-disabled-hatch"),
       scrollbarSize: num("--timeline-scrollbar-size"),
       scrollbarMinThumb: num("--timeline-scrollbar-min-thumb"),
+      markerWidth: num("--timeline-marker-width"),
+      markerHeight: num("--timeline-marker-height"),
+      rangeWash: str("--timeline-range-wash"),
+      rangeHandleWidth: num("--timeline-range-handle-width"),
+      rangeHandleZone: num("--timeline-range-handle-zone"),
     },
     meter: { barWidth: num("--meter-bar-width"), barGap: num("--meter-bar-gap"), ledHeight: num("--meter-led-height") },
   };

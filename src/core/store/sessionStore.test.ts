@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { EMPTY_SELECTION, filterSelection, fromSnapshot, selectClips, selectionEquals, toSnapshot } from "./selection.js";
-import { createSessionStore, DEFAULT_SESSION, selectEditPoint, selectGap, setPlayhead, setSelection } from "./sessionStore.js";
+import { createSessionStore, DEFAULT_SESSION, selectEditPoint, selectGap, selectMarker, setInOut, setPlayhead, setSelection } from "./sessionStore.js";
 
 describe("SessionStore", () => {
   it("starts from the defaults, with overrides", () => {
@@ -110,5 +110,40 @@ describe("gap selection", () => {
     setSelection(session, selectClips(["c"]));
     expect(session.gap.getState()).toBeNull();
     expect(onGap).toHaveBeenCalledTimes(4);
+  });
+});
+
+describe("marker selection and the in/out range", () => {
+  it("is its own channel: a marker excludes clips, an edit point and a gap", () => {
+    const session = createSessionStore();
+    const onMarker = vi.fn();
+    session.marker.subscribe(onMarker);
+    setSelection(session, selectClips(["a"]));
+    selectMarker(session, "m1");
+    expect(session.selection.getState()).toBe(EMPTY_SELECTION);
+    expect(session.marker.getState()).toBe("m1");
+    selectMarker(session, "m1");
+    expect(onMarker).toHaveBeenCalledTimes(1);
+    selectGap(session, { trackId: "V1", start: 0, end: 5 });
+    expect(session.marker.getState()).toBeNull();
+    selectMarker(session, "m2");
+    expect(session.gap.getState()).toBeNull();
+    selectEditPoint(session, { left: "a", right: "b", side: "both" });
+    expect(session.marker.getState()).toBeNull();
+    selectMarker(session, "m3");
+    setSelection(session, selectClips(["c"]));
+    expect(session.marker.getState()).toBeNull();
+  });
+
+  it("sets in and out together, notifying only on a change", () => {
+    const session = createSessionStore();
+    const listener = vi.fn();
+    session.state.subscribe(listener);
+    setInOut(session, 10, 40);
+    setInOut(session, 10, 40);
+    expect(session.state.getState()).toMatchObject({ inPoint: 10, outPoint: 40 });
+    expect(listener).toHaveBeenCalledTimes(1);
+    setInOut(session, null, null);
+    expect(session.state.getState()).toMatchObject({ inPoint: null, outPoint: null });
   });
 });

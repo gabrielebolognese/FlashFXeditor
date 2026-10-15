@@ -41,8 +41,9 @@ export const DEFAULT_KEYMAP: readonly KeyBinding[] = [
   // Timeline navigation
   { id: "timeline.prevEditPoint", keys: ["Up"], scopes: TL },
   { id: "timeline.nextEditPoint", keys: ["Down"], scopes: TL },
-  { id: "timeline.prevMarker", keys: ["Shift+Up"], scopes: TL },
-  { id: "timeline.nextMarker", keys: ["Shift+Down"], scopes: TL },
+  // §18 Shift+Up/Down; §6.13 also names Mod+Shift+M / Shift+M.
+  { id: "timeline.prevMarker", keys: ["Shift+Up", "Mod+Shift+M"], scopes: TL },
+  { id: "timeline.nextMarker", keys: ["Shift+Down", "Shift+M"], scopes: TL },
   { id: "timeline.zoomIn", keys: ["="], scopes: TL },
   { id: "timeline.zoomOut", keys: ["-"], scopes: TL },
   { id: "timeline.zoomFit", keys: ["\\"], scopes: TL },

@@ -1,5 +1,6 @@
-// Timeline wiring (spec §6): the timeline view, the zoom, center playhead and edit-point/marker
-// navigation actions (§6.2, §6.5, §6.6; the transport keys are in playbackController), the toolbar's
+// Timeline wiring (spec §6): the timeline view, the zoom, center playhead, edit-point/marker and
+// in/out navigation actions (§6.2, §6.5, §6.6, §6.13; the transport keys are in playbackController,
+// the markers and the range in markerController), the toolbar's
 // direct-DOM bindings (zoom slider, timecode field, duration: no React render while they change, P1),
 // the timecode format toggle shared with the preview (§5.1), insert at the playhead from the media
 // panel (§6.14), the track header gestures (toggles, reorder,
@@ -18,12 +19,14 @@ import { selectEditPoint, selectGap, setPlayhead, setSelection, type Tool } from
 import { insertCommands, planMediaInsert } from "../timeline/edit/insertMedia.js";
 import { applyMoveRequest, moveToAdjacentLane, nudgeClips, type MoveRefusal, type MoveRequest, type MoveResult } from "../timeline/edit/move.js";
 import { extendToPlayhead, planEdit, resolveTrim, trimToPlayhead, type TrimLimit, type TrimResult } from "../timeline/edit/trim.js";
-import { clipsSpan, contentEnd, laneOf, markerFrames, navigationPoints, nextEditPoint, prevEditPoint, selectableClipIds } from "../timeline/model/queries.js";
+import { lastFrameOf, selectionSpan } from "../timeline/model/inOut.js";
+import { contentEnd, laneOf, markerFrames, navigationPoints, nextEditPoint, prevEditPoint, selectableClipIds } from "../timeline/model/queries.js";
 import type { TrimRequest } from "../timeline/view/gestures/trimClip.js";
 import { TimelineView } from "../timeline/view/TimelineView.js";
 import { pxToSlider, sliderToPx, zoomLimits, ZOOM_IN_STEP, ZOOM_OUT_STEP, type ZoomContext } from "../timeline/view/zoom.js";
 import { showToast } from "../ui/toasts.js";
 import { openContextMenu, razorCut } from "./cutController.js";
+import { moveMarker, openMarkerEditor } from "./markerController.js";
 import { clipVisuals } from "./mediaController.js";
 import { moveTrackTo, startTrackRename, toggleTrack } from "./trackController.js";
 import { generateCutTimeline, generateTestClips } from "./timelineDev.js";
@@ -134,6 +137,8 @@ export const timelineView = new TimelineView({
   onTrimPreview: () => scheduler.invalidate("preview"),
   onRazor: razorCut,
   onContextMenu: openContextMenu,
+  onMoveMarker: (markerId, frame) => moveMarker(markerId, frame),
+  onEditMarker: (markerId) => openMarkerEditor(markerId),
   idle: idleQueue,
   visuals: clipVisuals,
   platform: detectPlatform(),
@@ -355,21 +360,7 @@ function inOut(): (Frame | null)[] {
  * Nothing selected: nothing happens.
  */
 const zoomToSelection: ActionRun = () => {
-  const project = documentStore.getState();
-  const selection = sessionStore.selection.getState();
-  const gap = sessionStore.gap.getState();
-  const editPoint = sessionStore.editPoint.getState();
-  const tracks = selection.kind === "track" ? project.tracks.filter((track) => selection.trackIds?.has(track.id)) : [];
-  const span =
-    selection.kind === "clips"
-      ? clipsSpan(project, selection.clipIds)
-      : tracks.length > 0
-        ? clipsSpan(project, tracks.flatMap((track) => track.clipIds))
-        : gap
-          ? { start: gap.start, end: gap.end }
-          : editPoint
-            ? clipsSpan(project, [editPoint.left, editPoint.right])
-            : null;
+  const span = selectionSpan(documentStore.getState(), sessionStore.selection.getState(), sessionStore.gap.getState(), sessionStore.editPoint.getState());
   if (span) timelineView.zoomToFrames(span.start, span.end);
 };
 
@@ -389,6 +380,15 @@ export function installTimelineController(): () => void {
     actions.register("timeline.nextEditPoint", jumpTo((project, frame) => nextEditPoint(navigationPoints(project, inOut()), frame))),
     actions.register("timeline.prevMarker", jumpTo((project, frame) => prevEditPoint(markerFrames(project), frame))),
     actions.register("timeline.nextMarker", jumpTo((project, frame) => nextEditPoint(markerFrames(project), frame))),
+    // Shift+I / Shift+O (spec §6.13): the in point, the last frame of the range.
+    actions.register("range.goToIn", jumpTo(() => sessionStore.state.getState().inPoint)),
+    actions.register(
+      "range.goToOut",
+      jumpTo(() => {
+        const { outPoint } = sessionStore.state.getState();
+        return outPoint !== null ? lastFrameOf(outPoint) : null;
+      }),
+    ),
     actions.register("selection.selectAll", () => {
       const { primary } = selectedClips();
       setSelection(sessionStore, selectClips(selectableClipIds(documentStore.getState()), primary));
