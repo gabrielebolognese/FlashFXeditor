@@ -41,7 +41,7 @@ export function MenuButton({ label, commandId, icon: Icon, children, entries, on
     if (!button) return;
     // One rect read per open.
     const rect = button.getBoundingClientRect();
-    setAnchor({ x: rect.left, y: rect.bottom + 2 });
+    setAnchor({ x: rect.left, y: rect.bottom });
   };
   return (
     <>
