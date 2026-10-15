@@ -1,0 +1,19 @@
+/* Inline clip rename over the timeline canvases (gap: the DS input over a canvas): the DS input with
+   its focus state (--accent-dim border, --accent-wash ring), caption type. Hidden until the view has
+   placed it over the clip's label bar. */
+.input {
+  position: absolute;
+  visibility: hidden;
+  z-index: 1;
+  min-width: 0;
+  padding: 0 var(--space-1);
+  border: 1px solid var(--accent-dim);
+  border-radius: var(--radius-sm);
+  background: var(--surface-1);
+  box-shadow: 0 0 0 1px var(--accent-wash);
+  color: var(--text-primary);
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-track);
+  outline: none;
+  user-select: text;
+}

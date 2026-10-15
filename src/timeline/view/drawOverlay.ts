@@ -1,15 +1,16 @@
-// The timeline overlay canvas (spec §6.17, P3): hover highlights, the trim preview (the rows an edit
-// changes, redrawn as the drop would leave them), the selected edit point's brackets, the snap line,
-// clip drag ghosts with the new track rows, overwrite hatching and the insert line, the edit's ghost
-// edges, the marquee, the playhead and the drag tooltip with the snap target's name. It is redrawn for
-// every interaction frame (scrubbing, dragging, hover changes) while the content canvas stays untouched.
+// The timeline overlay canvas (spec §6.17, P3): hover highlights (a clip, a gap), the selected gap,
+// the Razor's cut line, the trim preview (the rows an edit changes, redrawn as the drop would leave
+// them), the selected edit point's brackets, the snap line, clip drag ghosts with the new track rows,
+// overwrite hatching and the insert line, the edit's ghost edges, the marquee, the playhead and the
+// drag tooltip with the snap target's name. It is redrawn for every interaction frame (scrubbing,
+// dragging, hover changes) while the content canvas stays untouched.
 import type { Clip, Frame, Track, TrackId } from "../../core/document/types.js";
 import type { Selection } from "../../core/store/selection.js";
 import type { Theme } from "../../core/theme/theme.js";
 import { edgeFrame, type TrimEdge } from "../edit/trim.js";
-import { clipsInRange, linkOffset } from "../model/queries.js";
+import { clipsInRange, linkOffset, type Gap } from "../model/queries.js";
 import { clipLod, clipSpan, devicePx, LOD_LABEL_PX } from "./clipLayout.js";
-import { drawClip, fontOf } from "./drawContent.js";
+import { drawClip, fillClip, fontOf } from "./drawContent.js";
 import type { Rect, Row, TimelineGeometry } from "./geometry.js";
 import type { Ghost, MoveProposal, NewLane } from "./gestures/moveClips.js";
 import type { TrimProposal } from "./gestures/trimClip.js";
@@ -38,6 +39,12 @@ export interface EditPointMark {
   side: "both" | "left" | "right";
 }
 
+/** The Razor at the pointer (spec §6.11): a cut line at `frame` over each clip it would cut. */
+export interface RazorScene {
+  frame: Frame;
+  clips: readonly Clip[];
+}
+
 export interface OverlayScene {
   ctx: CanvasRenderingContext2D;
   dpr: number;
@@ -50,6 +57,10 @@ export interface OverlayScene {
   hoverAddRow: Rect | null;
   /** A header toggle under the pointer. */
   hoverToggle: Rect | null;
+  /** The gap under the pointer, and the selected gap (spec §6.7: a dashed outline). */
+  hoverGap?: Gap | null;
+  gap?: Gap | null;
+  razor?: RazorScene | null;
   /** The frame a drag snapped to (spec §6.9: a line through the full height), or null. */
   snapFrame: Frame | null;
   move: MoveScene | null;
@@ -84,6 +95,7 @@ export function drawOverlay(scene: OverlayScene): void {
   ctx.rect(0, geometry.area.y, geometry.width, geometry.area.height);
   ctx.clip();
   drawHover(scene);
+  if (scene.hoverGap || scene.gap) drawGaps(scene);
   // The trim preview stands in for the content under it, so everything else draws over it.
   if (scene.trim) drawTrimLayout(scene, scene.trim);
   for (const mark of scene.editPoints) drawEditPoint(scene, mark);
@@ -97,6 +109,8 @@ export function drawOverlay(scene: OverlayScene): void {
   if (scene.move) drawMove(scene, scene.move);
   if (scene.trim) drawTrimEdges(scene, scene.trim);
   if (scene.marquee) drawMarquee(scene, scene.marquee);
+  // Over the snap line it may stand on: the clips the Razor would cut stay visible.
+  if (scene.razor) drawRazor(scene, scene.razor);
   ctx.restore();
   drawPlayhead(scene);
   if (scene.tooltip) drawTooltip(scene, scene.tooltip);
@@ -221,6 +235,63 @@ function drawEditPoint(scene: OverlayScene, mark: EditPointMark): void {
   }
 }
 
+/** The clip band of a track row over [from, to) (unclipped: the caller clips to the track area), or null when the row is off screen. */
+function band(scene: OverlayScene, trackId: string, from: Frame, to: Frame): Rect | null {
+  const { dpr, geometry, theme } = scene;
+  const row = geometry.rowOf(trackId);
+  if (!row || row.y + row.height <= geometry.area.y || row.y >= geometry.height) return null;
+  const inset = theme.timeline.clipInset;
+  const x = snap(geometry.frameToX(from), dpr);
+  const y = snap(row.y + inset, dpr);
+  return { x, y, width: snap(geometry.frameToX(to), dpr) - x, height: snap(row.y + row.height - inset, dpr) - y };
+}
+
+/**
+ * Gaps (spec §6.7): the hovered one gets the hover wash; the selected one the accent wash and a
+ * dashed accent outline (selection is gold), dashes of `--timeline-gap-dash`.
+ */
+function drawGaps(scene: OverlayScene): void {
+  const { ctx, dpr, geometry, theme } = scene;
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(geometry.area.x, geometry.area.y, geometry.area.width, geometry.area.height);
+  ctx.clip();
+  const hover = scene.hoverGap;
+  const selected = scene.gap;
+  const same = hover && selected && hover.trackId === selected.trackId && hover.start === selected.start;
+  const hovered = hover && !same ? band(scene, hover.trackId, hover.start, hover.end) : null;
+  if (hovered) {
+    ctx.fillStyle = theme.color.hoverWash;
+    ctx.fillRect(hovered.x, hovered.y, hovered.width, hovered.height);
+  }
+  const rect = selected ? band(scene, selected.trackId, selected.start, selected.end) : null;
+  if (rect && rect.width > 0) {
+    ctx.fillStyle = theme.color.accentWash;
+    ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
+    const line = devicePx(theme.timeline.selectionOutline, dpr) / dpr;
+    const dash = Math.max(theme.timeline.gapDash, 1);
+    ctx.strokeStyle = theme.color.accent;
+    ctx.lineWidth = line;
+    ctx.setLineDash([dash, dash]);
+    ctx.strokeRect(rect.x + line / 2, rect.y + line / 2, Math.max(0, rect.width - line), Math.max(0, rect.height - line));
+    ctx.setLineDash([]);
+  }
+  ctx.restore();
+}
+
+/** The Razor (spec §6.11): a `--timeline-cut-line-width` line in the primary text color across each clip it would cut. */
+function drawRazor(scene: OverlayScene, razor: RazorScene): void {
+  const { ctx, dpr, geometry, theme } = scene;
+  if (!geometry.isFrameVisible(razor.frame)) return;
+  const width = devicePx(theme.timeline.cutLineWidth, dpr) / dpr;
+  const left = Math.round(geometry.frameToX(razor.frame) * dpr - (width * dpr) / 2) / dpr;
+  ctx.fillStyle = theme.color.textPrimary;
+  for (const clip of razor.clips) {
+    const rect = band(scene, clip.trackId, razor.frame, razor.frame);
+    if (rect) ctx.fillRect(left, rect.y, width, rect.height);
+  }
+}
+
 /** The row of a track the drop would create (spec §6.8: the ghost shows the new track row). */
 function drawNewRow(scene: OverlayScene, move: MoveScene, lane: NewLane): void {
   const { ctx, dpr, geometry, theme, text } = scene;
@@ -257,7 +328,6 @@ function drawGhost(scene: OverlayScene, move: MoveScene, ghost: Ghost): void {
   const y = snap(band.y + tl.clipInset, dpr);
   const height = snap(band.y + band.height - tl.clipInset, dpr) - y;
   const refused = move.proposal.refused !== null;
-  const colors = tl.clip[clip.kind];
   const lod = clipLod(width);
   const radius = lod === "line" ? 0 : Math.min(theme.radius.sm, width / 2, height / 2);
   const small = target.track ? target.track.kind === "caption" || target.track.height === "S" : false;
@@ -268,11 +338,12 @@ function drawGhost(scene: OverlayScene, move: MoveScene, ghost: Ghost): void {
   ctx.roundRect(x, y, width, height, radius);
   ctx.clip();
   ctx.globalAlpha = tl.ghostOpacity;
-  ctx.fillStyle = refused ? theme.color.dangerWash : colors.body;
-  ctx.fillRect(x, y, width, height);
-  if (!refused) {
-    ctx.fillStyle = colors.label;
-    ctx.fillRect(x, y, width, labelHeight);
+  if (refused) {
+    ctx.fillStyle = theme.color.dangerWash;
+    ctx.fillRect(x, y, width, height);
+  } else {
+    fillClip(ctx, theme, clip, "body", x, y, width, height);
+    fillClip(ctx, theme, clip, "label", x, y, width, labelHeight);
   }
   ctx.globalAlpha = 1;
   for (const [from, to] of ghost.hatch) drawHatch(scene, geometry.frameToX(from), geometry.frameToX(to), y, height);

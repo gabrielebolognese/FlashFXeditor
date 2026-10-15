@@ -41,6 +41,10 @@ const TOKENS: Record<string, string> = {
   "--timeline-trim-zone": "8px",
   "--timeline-trim-edge-width": "2px",
   "--timeline-junction-zone": "6px",
+  "--timeline-cut-line-width": "1px",
+  "--timeline-gap-dash": "4px",
+  "--clip-label-body-alpha": "0.34",
+  "--clip-label-bar-alpha": "0.62",
   "--type-caption-line": "14px",
 };
 

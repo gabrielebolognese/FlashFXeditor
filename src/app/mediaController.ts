@@ -285,16 +285,7 @@ export function installMediaController(doc: Document = document): () => void {
   const stops = [
     () => doc.removeEventListener("paste", onPaste),
     actions.register("media.import", () => void importFromPicker()),
-    actions.register("edit.delete", (context) => {
-      if (context?.scope === "media") return requestRemove();
-      // TODO(batch 15): delete the selected clips (timeline, preview).
-      console.debug("[cmd]", "edit.delete", context);
-    }),
-    actions.register("edit.rename", (context) => {
-      if (context?.scope === "media") return startRename();
-      // TODO(batch 15): rename the selected clip; TODO(batch 16): rename the selected track.
-      console.debug("[cmd]", "edit.rename", context);
-    }),
+    // Delete and F2 in the media panel (`edit.delete`, `edit.rename`) are routed here by cutController.
     // The remove dialog owned the keyboard: give it back to the media panel.
     mediaPanel.select(
       (state) => state.removing,

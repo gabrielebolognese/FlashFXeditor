@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { EMPTY_SELECTION, filterSelection, fromSnapshot, selectClips, selectionEquals, toSnapshot } from "./selection.js";
-import { createSessionStore, DEFAULT_SESSION, selectEditPoint, setPlayhead, setSelection } from "./sessionStore.js";
+import { createSessionStore, DEFAULT_SESSION, selectEditPoint, selectGap, setPlayhead, setSelection } from "./sessionStore.js";
 
 describe("SessionStore", () => {
   it("starts from the defaults, with overrides", () => {
@@ -84,5 +84,31 @@ describe("edit point selection (spec §6.7)", () => {
     setSelection(session, selectClips(["c"]));
     expect(session.editPoint.getState()).toBeNull();
     expect(onEditPoint).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("gap selection", () => {
+  it("is its own channel: a gap, a clip selection and an edit point exclude each other", () => {
+    const session = createSessionStore();
+    const onGap = vi.fn();
+    session.gap.subscribe(onGap);
+    setSelection(session, selectClips(["a"]));
+    selectGap(session, { trackId: "V1", start: 10, end: 20 });
+    expect(session.selection.getState()).toBe(EMPTY_SELECTION);
+    expect(session.gap.getState()).toEqual({ trackId: "V1", start: 10, end: 20 });
+    // The same gap again: no notification.
+    selectGap(session, { trackId: "V1", start: 10, end: 20 });
+    expect(onGap).toHaveBeenCalledTimes(1);
+    // Clearing the clip selection keeps it; an edit point drops it.
+    setSelection(session, EMPTY_SELECTION);
+    expect(session.gap.getState()).not.toBeNull();
+    selectEditPoint(session, { left: "a", right: "b", side: "both" });
+    expect(session.gap.getState()).toBeNull();
+    // A gap drops the edit point; clips drop the gap.
+    selectGap(session, { trackId: "A1", start: 0, end: 5 });
+    expect(session.editPoint.getState()).toBeNull();
+    setSelection(session, selectClips(["c"]));
+    expect(session.gap.getState()).toBeNull();
+    expect(onGap).toHaveBeenCalledTimes(4);
   });
 });

@@ -5,6 +5,7 @@ import { createRoot } from "react-dom/client";
 import { App } from "./app/App.js";
 import { findMissingApis, GPU_ADAPTER_LABEL } from "./app/compat.js";
 import { installAudioController } from "./app/audioController.js";
+import { installCutController } from "./app/cutController.js";
 import { installMediaController } from "./app/mediaController.js";
 import { installPlaybackController } from "./app/playbackController.js";
 import { installPreviewController, startGpu } from "./app/previewController.js";
@@ -32,6 +33,7 @@ async function start(): Promise<void> {
   installMediaController();
   installPreviewController();
   installTimelineController();
+  installCutController();
   installPlaybackController();
   installAudioController();
   root.render(

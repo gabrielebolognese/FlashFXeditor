@@ -43,8 +43,8 @@ describe("HitTester", () => {
     expect(hits.hit(x(40) + 6.6, 200).type).toBe("clipEdgeIn");
     expect(hits.hit(x(42.5), 200)).toMatchObject({ type: "clip", clipId: "c2" });
     expect(hits.hit(x(45) - 6.6, 200)).toMatchObject({ type: "clipEdgeOut", clipId: "c2" });
-    // Outside a clip there is no zone.
-    expect(hits.hit(x(10) - 1, 200).type).toBe("empty");
+    // Outside a clip there is no zone (the gap before c1).
+    expect(hits.hit(x(10) - 1, 200).type).toBe("gap");
   });
 
   it("finds the junction: the 6 px band centered on a cut between abutting clips, the side under the pointer", () => {
@@ -72,9 +72,30 @@ describe("HitTester", () => {
     expect(hits.hit(x(10), (row?.y ?? 0) + 10)).toMatchObject({ type: "clip", clipId: "c1" });
   });
 
-  it("returns empty with the track for gaps and with no track outside rows", () => {
+  it("finds gaps: the empty span before a clip, from the previous clip or frame 0 (spec §6.7)", () => {
+    let project = makeProject();
+    project.media.m = makeMedia("m");
+    project.tracks.push(makeTrack("v1"), { ...makeTrack("v2"), locked: true });
+    project = withClips(project, [
+      makeMediaClip(project, { id: "a", trackId: "v1", start: 10, duration: 20, mediaId: "m" }),
+      makeMediaClip(project, { id: "b", trackId: "v1", start: 50, duration: 10, mediaId: "m" }),
+      makeMediaClip(project, { id: "c", trackId: "v2", start: 50, duration: 10, mediaId: "m" }),
+    ]);
+    const geometry = new TimelineGeometry({ width: 1000, height: 428, tracks: project.tracks, pxPerFrame: 4, scrollFrame: 0, scrollY: 0, metrics: METRICS });
+    const hits = new HitTester({ geometry: () => geometry, project: () => project, playhead: () => 0, playheadHeadWidth: 11, trimZone: 8, junctionZone: 6 });
+    const v1 = (geometry.rowOf("v1")?.y ?? 0) + 20;
+    const v2 = (geometry.rowOf("v2")?.y ?? 0) + 20;
+    expect(hits.hit(x(5), v1)).toMatchObject({ type: "gap", trackId: "v1", clipId: null, gap: { trackId: "v1", start: 0, end: 10 } });
+    expect(hits.hit(x(40), v1)).toMatchObject({ type: "gap", gap: { trackId: "v1", start: 30, end: 50 } });
+    // After the last clip there is no gap, only empty track space; locked tracks have none.
+    expect(hits.hit(x(70), v1)).toMatchObject({ type: "empty", trackId: "v1", gap: null });
+    expect(hits.hit(x(40), v2)).toMatchObject({ type: "empty", trackId: "v2", gap: null });
+  });
+
+  it("returns empty with the track after the last clip and with no track outside rows", () => {
     const hits = setup();
-    expect(hits.hit(x(5), 200)).toMatchObject({ type: "empty", trackId: "v1", clipId: null });
+    expect(hits.hit(x(5), 200)).toMatchObject({ type: "gap", trackId: "v1", clipId: null });
+    expect(hits.hit(x(60), 200)).toMatchObject({ type: "empty", trackId: "v1", clipId: null });
     expect(hits.hit(x(60), 260)).toMatchObject({ type: "empty", trackId: "a1" });
     expect(hits.hit(x(20), 230)).toMatchObject({ type: "empty", trackId: null }); // divider
     expect(hits.hit(x(20), 100)).toMatchObject({ type: "empty", trackId: null });

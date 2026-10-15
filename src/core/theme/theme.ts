@@ -1,6 +1,6 @@
 // Theme bridge (spec §3.7): reads the design-system CSS custom properties into a typed object for
 // canvas renderers and other non-CSS consumers. Canvases never use color or size literals.
-import type { ClipKind, Track } from "../document/types.js";
+import { LABEL_COLORS, type ClipKind, type LabelColor, type Track } from "../document/types.js";
 
 export type SpaceStep = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
@@ -93,6 +93,13 @@ export interface TimelineTheme {
   trimZone: number;
   trimEdgeWidth: number;
   junctionZone: number;
+  /** Cutting and gaps (spec §6.7, §6.11): the Razor's cut line, the dash of a selected gap's outline. */
+  cutLineWidth: number;
+  gapDash: number;
+  /** The 8 label colors (spec §6.4), and the alphas a labeled clip's body and label bar are drawn at. */
+  labels: Record<LabelColor, string>;
+  labelBodyAlpha: number;
+  labelBarAlpha: number;
 }
 
 /** Reads one custom property by name (e.g. `--accent`); returns "" when it is not defined. */
@@ -167,6 +174,8 @@ export function readTheme(read: TokenReader, root?: Element): { theme: Theme; mi
 
   const clip = {} as TimelineTheme["clip"];
   for (const kind of CLIP_KINDS) clip[kind] = { body: str(`--clip-${kind}`), label: str(`--clip-${kind}-label`) };
+  const labels = {} as TimelineTheme["labels"];
+  for (const name of LABEL_COLORS) labels[name] = str(`--label-${name}`);
 
   const theme: Theme = {
     name: root?.getAttribute("data-theme") ?? "dark",
@@ -232,6 +241,11 @@ export function readTheme(read: TokenReader, root?: Element): { theme: Theme; mi
       trimZone: num("--timeline-trim-zone"),
       trimEdgeWidth: num("--timeline-trim-edge-width"),
       junctionZone: num("--timeline-junction-zone"),
+      cutLineWidth: num("--timeline-cut-line-width"),
+      gapDash: num("--timeline-gap-dash"),
+      labels,
+      labelBodyAlpha: num("--clip-label-body-alpha"),
+      labelBarAlpha: num("--clip-label-bar-alpha"),
     },
     meter: { barWidth: num("--meter-bar-width"), barGap: num("--meter-bar-gap"), ledHeight: num("--meter-led-height") },
   };

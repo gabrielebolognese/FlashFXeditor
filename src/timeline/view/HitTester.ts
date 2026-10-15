@@ -1,10 +1,11 @@
 // Timeline hit testing (spec §6.18). `hit(x, y)` turns a view point into a typed target. Priority:
 // handles and diamonds > edges/junctions > transitions > clip body > gap > track. Real results so far:
 // the ruler, the playhead head, track headers (and the "+ track" rows), the junction band on a cut
-// between abutting clips, the trim zones of clip edges, clip bodies and empty space; the other types
-// are declared for the batches that draw them. The active tool decides what a hit does (the view).
+// between abutting clips, the trim zones of clip edges, clip bodies, gaps (the empty span before a
+// clip on an unlocked track) and empty space; the other types are declared for the batches that draw
+// them. The active tool decides what a hit does (the view).
 import type { ClipId, Frame, Project, TrackId, TrackKind } from "../../core/document/types.js";
-import { clipAtFrame, neighbors } from "../model/queries.js";
+import { clipAtFrame, gapAt, neighbors, type Gap } from "../model/queries.js";
 import { contains, type HeaderToggle, type TimelineGeometry } from "./geometry.js";
 
 export type HitType =
@@ -20,7 +21,6 @@ export type HitType =
   // TODO(batch 36): transition blocks.
   | "transition"
   | "transitionEdge"
-  // TODO(batch 15): gaps.
   | "gap"
   | "trackHeader"
   // Mute and solo of audio tracks; TODO(batch 16): the other header toggles.
@@ -45,6 +45,8 @@ export interface HitResult {
   toggle: HeaderToggle | null;
   /** `junction`: the cut and the clips on both sides; `clipId` is the one on the pointer's side. */
   junction: Junction | null;
+  /** `gap`: the empty span under the point (spec §6.7). */
+  gap: Gap | null;
 }
 
 /** A cut between two abutting clips on a track (spec §6.10: the roll zone). */
@@ -75,7 +77,7 @@ export class HitTester {
   hit(x: number, y: number): HitResult {
     const geometry = this.source.geometry();
     const frame = geometry.xToFrame(x);
-    const result: HitResult = { type: "empty", frame, trackId: null, clipId: null, addTrack: null, toggle: null, junction: null };
+    const result: HitResult = { type: "empty", frame, trackId: null, clipId: null, addTrack: null, toggle: null, junction: null, gap: null };
     if (x < 0 || y < 0 || x >= geometry.width || y >= geometry.height) return result;
 
     if (y < geometry.rulerHeight) {
@@ -108,7 +110,15 @@ export class HitTester {
     result.trackId = row.trackId;
     const project = this.source.project();
     const clip = clipAtFrame(project, row.trackId, Math.floor(frame));
-    if (!clip) return result;
+    if (!clip) {
+      // A gap: before a clip, after the previous one (or frame 0). Gaps on locked tracks take no edits.
+      const gap = project.tracks[row.index]?.locked ? null : gapAt(project, row.trackId, Math.floor(frame));
+      if (gap) {
+        result.type = "gap";
+        result.gap = gap;
+      }
+      return result;
+    }
     result.type = "clip";
     result.clipId = clip.id;
     // Trim zones (spec §6.4, §6.10): the outer 8 px inside each edge, so where two clips abut the

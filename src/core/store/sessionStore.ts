@@ -1,9 +1,10 @@
 // Session state (spec §5.3): per project, not undoable. The selection has its own channel so a
 // selection change does not wake session subscribers and a playhead move does not wake selection
 // subscribers. Splitter positions stay in layoutStore and track heights in the document (Track.height).
-// A selected edit point (spec §6.7) has a channel of its own too: it is not a clip selection (§3.3
-// fixes the selection kinds), it is never persisted, and selecting one clears the other.
-import type { ClipId, Frame } from "../document/types.js";
+// A selected edit point and a selected gap (spec §6.7) have channels of their own too: they are not
+// clip selections (§3.3 fixes the selection kinds), they are never persisted, and selecting one of
+// the three clears the other two.
+import type { ClipId, Frame, TrackId } from "../document/types.js";
 import { createStore, type Store } from "./createStore.js";
 import { EMPTY_SELECTION, selectionEquals, type Selection } from "./selection.js";
 
@@ -59,12 +60,21 @@ export interface EditPoint {
   side: "both" | "left" | "right";
 }
 
+/** A selected gap (spec §6.7): the empty span [start, end) before a clip of a track (after the previous clip, or frame 0). */
+export interface GapSelection {
+  trackId: TrackId;
+  start: Frame;
+  end: Frame;
+}
+
 export interface SessionStore {
   /** Everything in §5.3 except the selection. */
   state: Store<SessionState>;
   selection: Store<Selection>;
   /** The selected edit point, or null. */
   editPoint: Store<EditPoint | null>;
+  /** The selected gap, or null. */
+  gap: Store<GapSelection | null>;
 }
 
 export function createSessionStore(initial: Partial<SessionState> = {}): SessionStore {
@@ -72,6 +82,7 @@ export function createSessionStore(initial: Partial<SessionState> = {}): Session
     state: createStore<SessionState>({ ...DEFAULT_SESSION, ...initial }),
     selection: createStore<Selection>(EMPTY_SELECTION),
     editPoint: createStore<EditPoint | null>(null),
+    gap: createStore<GapSelection | null>(null),
   };
 }
 
@@ -81,9 +92,12 @@ export function setPlayhead(session: SessionStore, frame: Frame): void {
   session.state.set((state) => (state.playhead === next ? state : { ...state, playhead: next }));
 }
 
-/** Replaces the selection (selecting clips drops a selected edit point). No notification when it is equal to the current one. */
+/** Replaces the selection (selecting clips drops a selected edit point or gap). No notification when it is equal to the current one. */
 export function setSelection(session: SessionStore, next: Selection): void {
-  if (next.kind !== "none") selectEditPoint(session, null);
+  if (next.kind !== "none") {
+    selectEditPoint(session, null);
+    selectGap(session, null);
+  }
   if (selectionEquals(session.selection.getState(), next)) return;
   session.selection.set(next);
 }
@@ -92,6 +106,20 @@ export function setSelection(session: SessionStore, next: Selection): void {
 export function selectEditPoint(session: SessionStore, point: EditPoint | null): void {
   const current = session.editPoint.getState();
   if (current === point || (current && point && current.left === point.left && current.right === point.right && current.side === point.side)) return;
-  if (point) setSelection(session, EMPTY_SELECTION);
+  if (point) {
+    setSelection(session, EMPTY_SELECTION);
+    selectGap(session, null);
+  }
   session.editPoint.set(point);
+}
+
+/** Selects a gap (the clip selection and the edit point are cleared), or none. No notification when it does not change. */
+export function selectGap(session: SessionStore, gap: GapSelection | null): void {
+  const current = session.gap.getState();
+  if (current === gap || (current && gap && current.trackId === gap.trackId && current.start === gap.start && current.end === gap.end)) return;
+  if (gap) {
+    setSelection(session, EMPTY_SELECTION);
+    selectEditPoint(session, null);
+  }
+  session.gap.set(gap);
 }

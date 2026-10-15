@@ -13,7 +13,7 @@ import type { ClipId, Frame, MediaId, Project, TrackId, TrackKind } from "../cor
 import { detectPlatform } from "../core/keyboard/keys.js";
 import { createStore } from "../core/store/createStore.js";
 import { EMPTY_SELECTION, selectClips, toSnapshot } from "../core/store/selection.js";
-import { selectEditPoint, setPlayhead, setSelection, type Tool } from "../core/store/sessionStore.js";
+import { selectEditPoint, selectGap, setPlayhead, setSelection, type Tool } from "../core/store/sessionStore.js";
 import { insertCommands, planMediaInsert } from "../timeline/edit/insertMedia.js";
 import { applyMoveRequest, moveToAdjacentLane, nudgeClips, type MoveRefusal, type MoveRequest, type MoveResult } from "../timeline/edit/move.js";
 import { extendToPlayhead, planEdit, resolveTrim, trimToPlayhead, type TrimLimit, type TrimResult } from "../timeline/edit/trim.js";
@@ -23,6 +23,7 @@ import type { TrimRequest } from "../timeline/view/gestures/trimClip.js";
 import { TimelineView } from "../timeline/view/TimelineView.js";
 import { pxToSlider, sliderToPx, zoomLimits, ZOOM_IN_STEP, ZOOM_OUT_STEP, type ZoomContext } from "../timeline/view/zoom.js";
 import { showToast } from "../ui/toasts.js";
+import { openContextMenu, razorCut } from "./cutController.js";
 import { generateCutTimeline, generateTestClips } from "./timelineDev.js";
 import { actions, documentStore, idleQueue, layoutStore, scheduler, sessionStore, themeBridge } from "./services.js";
 
@@ -135,6 +136,8 @@ export const timelineView = new TimelineView({
   onTrimEdge: trimClip,
   // The preview shows the trim's new edge frame while the edge moves (spec §6.10).
   onTrimPreview: () => scheduler.invalidate("preview"),
+  onRazor: razorCut,
+  onContextMenu: openContextMenu,
   idle: idleQueue,
   platform: detectPlatform(),
 });
@@ -332,6 +335,7 @@ export function installTimelineController(): () => void {
     actions.register("selection.deselect", () => {
       setSelection(sessionStore, EMPTY_SELECTION);
       selectEditPoint(sessionStore, null);
+      selectGap(sessionStore, null);
     }),
     actions.register("edit.nudgeLeft", nudge(-1)),
     actions.register("edit.nudgeRight", nudge(1)),
@@ -343,7 +347,7 @@ export function installTimelineController(): () => void {
     actions.register("edit.rippleTrimNext", rippleTrimToPlayhead("end")),
     actions.register("edit.extendToPlayhead", extendEdit),
     actions.register("toggle.snap", toggleSnap),
-    // TODO(batch 15): the Razor tool (C); TODO(batch 18): the Hand tool (H).
+    // The Razor tool (C) is registered by cutController; TODO(batch 18): the Hand tool (H).
     actions.register("tool.select", selectTool("select")),
     actions.register("tool.slip", selectTool("slip")),
     actions.register("tool.slide", selectTool("slide")),
