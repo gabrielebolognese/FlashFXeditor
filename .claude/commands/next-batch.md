@@ -1,6 +1,6 @@
 ---
 description: Load the next implementation batch from docs/BATCHES.md into context, present a plan, and build it only after the user replies "Go".
-argument-hint: [batch number | status | plan | redo | skip | auto]
+argument-hint: [batch number | status | plan | redo | skip | auto | auto fix]
 ---
 
 You are running the batch workflow for the Shorts Editor. Follow these steps exactly and in order.
@@ -18,10 +18,13 @@ Interpret `$ARGUMENTS`:
 - `plan`: same as empty, but never build in this run, even if the user later says Go (plan-only mode).
 - `redo`: target the batch currently in progress, or `last` if none; treat the batch as a fresh implementation of its remaining acceptance items (do not revert finished work).
 - `skip`: ask the user for a one-line reason, record the target batch as skipped in PROGRESS.md (`skipped_batches` and a batch entry with status skipped), then stop.
-- `auto`: unattended run, used by scripts/run-batches.sh. First check the entry of `last_completed_batch` in PROGRESS.md: if it contains `review: rejected` and no `fix-attempt: done` line, target that batch again and fix every problem listed in the review (re-run its acceptance checks, add `fix-attempt: done` to the entry, commit `batch-NN: fixes`, end the run). Otherwise target `last + 1` (or resume `in_progress_batch`). In auto mode:
-  - Write the plan (Step 3) as text but do not stop; continue straight into Step 4.
+- `auto` / `auto fix`: unattended run started by scripts/run-batches.sh. The runner decides what each run does; never pick a different batch than the one below.
+  - `auto`: target `in_progress_batch` if it is a number (resume it), otherwise `last + 1`. Write the plan (Step 3) as text but do not stop; continue straight into Step 4.
+  - `auto fix`: target `last_completed_batch`. Fix every problem in the latest `review: rejected` list of its entry, re-run its acceptance checks, get `npm run check` green, add `- fix-attempt: done (<date>)` to the entry, commit `batch-NN: fixes`, and end the run. Do not start another batch.
+  - Before working, read the target batch's entry for `- check (...)` notes left by /check-batch and follow the directions in the latest one first.
   - Never ask a question. Any choice you would have asked about: decide it using the functional defaults in docs/EDITOR_SPEC.md and the Batch rules, log the decision under the batch entry's `deviations` (or `notes`), continue.
-  - Stop without building, writing `needs_human: <one-line reason>` as the top-level field in docs/PROGRESS.md, only when: DESIGN_SYSTEM.md is missing; the batch's Spec refs contradict the current code in a way the spec does not resolve; `npm run check` is still red after two fix attempts; the previous batch has a `pending manual checks` item marked `blocking`.
+  - Problems are solved, not escalated: when the spec and the current code disagree, follow the spec, adapt the code and log a deviation; when a measurement cannot reach its target on this machine, record the measured number as a deviation or a `pending manual checks` item and move on; a red `npm run check` is fixed until it is green; a blocking manual check from an earlier batch is noted and does not stop the build.
+  - Write `needs_human: <one-line reason>` (the top-level field in docs/PROGRESS.md) and stop only when the batch cannot be built at all without something only the user can provide: DESIGN_SYSTEM.md, docs/BATCHES.md or docs/EDITOR_SPEC.md is missing, or the batch needs an account, credential or hardware that is not available. Nothing else is a reason to stop.
   - Never mark a batch done with a red `npm run check`.
 
 Batch numbers are two-digit in headings (`## Batch 07:`); optional batches have a suffix (`## Batch 33 (optional):`).
