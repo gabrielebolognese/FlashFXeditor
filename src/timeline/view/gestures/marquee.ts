@@ -38,16 +38,30 @@ export class MarqueeGesture {
     const { area } = geometry;
     const x0 = geometry.frameToX(this.startFrame);
     const y0 = this.startContentY - geometry.scrollY;
-    const x1 = Math.min(Math.max(x, area.x), area.x + area.width);
-    const y1 = Math.min(Math.max(y, area.y), area.y + area.height);
-    const rect = { x: Math.min(x0, x1), y: Math.min(y0, y1), width: Math.abs(x1 - x0), height: Math.abs(y1 - y0) };
+    const x1 = clamp(x, area.x, area.x + area.width);
+    const y1 = clamp(y, area.y, area.y + area.height);
+    // The whole rectangle selects: once the view scrolls (auto-scroll, wheel), the anchored corner may
+    // lie outside the track area and the clips it covers there stay selected. Only the part inside the
+    // track area is drawn.
+    const left = Math.min(x0, x1);
+    const right = Math.max(x0, x1);
+    const top = Math.min(y0, y1);
+    const bottom = Math.max(y0, y1);
+    const visibleLeft = clamp(left, area.x, area.x + area.width);
+    const visibleTop = clamp(top, area.y, area.y + area.height);
+    const rect = {
+      x: visibleLeft,
+      y: visibleTop,
+      width: clamp(right, area.x, area.x + area.width) - visibleLeft,
+      height: clamp(bottom, area.y, area.y + area.height) - visibleTop,
+    };
 
-    const from = geometry.xToFrame(rect.x);
+    const from = geometry.xToFrame(left);
     // A zero-width marquee still touches the clips under its line.
-    const to = Math.max(geometry.xToFrame(rect.x + rect.width), from + 1e-6);
+    const to = Math.max(geometry.xToFrame(right), from + 1e-6);
     const hits: ClipId[] = [];
     for (const row of geometry.rows) {
-      if (row.y >= rect.y + rect.height || row.y + row.height <= rect.y) continue;
+      if (row.y >= bottom || row.y + row.height <= top) continue;
       const track = project.tracks[row.index] as Track;
       if (track.locked) continue;
       for (const clip of clipsOverlapping(trackIndex(project, track), from, to)) hits.push(clip.id, ...partners(clip.id));
@@ -58,3 +72,5 @@ export class MarqueeGesture {
     return changed;
   }
 }
+
+const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
