@@ -1,6 +1,6 @@
 # Splitting, deleting and closing gaps
 
-These are the everyday cleanup edits. You can split clips at the playhead or anywhere with the **Razor** tool, remove clips with or without leaving a gap, and close the gaps in your edit one at a time or all at once. Each edit is one undo step. When an edit moves clips, the other tracks move with them, so sound and titles stay in step with the picture.
+These are the everyday cleanup edits. You can split clips at the playhead or anywhere with the **Razor** tool, remove clips with or without leaving a gap, and close the gaps in your edit one at a time or all at once. Each edit is one undo step. When an edit moves clips, the other tracks move with them, so sound and titles stay in step with the picture. To remove a stretch of time on several tracks at once, mark it with in and out points and use **Lift** or **Extract**; see [Lift or extract a range](markers-and-in-out-points.md#lift-or-extract-a-range).
 
 > **Video placeholder: Split, delete and close gaps**
 > - File: `videos/splitting-and-deleting/overview.mp4` (not recorded yet)
@@ -78,6 +78,7 @@ To cut all tracks at once, hold <kbd>Shift</kbd>: the line runs over every clip 
 - The history step is named **Delete clip** or **Delete clips**. <kbd>Ctrl</kbd>+<kbd>Z</kbd> brings the clips back, selected as they were.
 - The keys work while the Timeline or the Preview panel is active. In the Media panel, <kbd>Delete</kbd> removes the selected media instead; see [Remove media](importing-media.md#remove-media).
 - While a gap is selected, <kbd>Delete</kbd> closes the gap. See [Close a gap](#close-a-gap).
+- While a marker is selected, <kbd>Delete</kbd>, <kbd>Shift</kbd>+<kbd>Delete</kbd> and the **Delete** and **Ripple delete** buttons delete the marker instead. See [Delete markers](markers-and-in-out-points.md#delete-markers).
 
 ## Ripple delete clips
 
@@ -143,7 +144,7 @@ Which tracks are compacted:
 
 ## How other tracks follow a ripple
 
-**Ripple delete**, **Close gap** and **Close all gaps** move the clips on the other tracks too, so a sound effect, a title or music that you placed on a cut stays on that cut. These rules decide how far each clip moves:
+**Ripple delete**, **Close gap**, **Close all gaps** and **Extract** move the clips on the other tracks too, so a sound effect, a title or music that you placed on a cut stays on that cut. These rules decide how far each clip moves:
 
 - **The track with the space.** On a track that closes a gap or the space of deleted clips, the clips after the space move left by its length.
 - **The other tracks.** A clip on another track moves left as far as the content next to it moved: by the most that any one track closed before the clip's start. Spaces at different times don't add up.
@@ -196,11 +197,12 @@ Right-click a clip or a gap to open its menu. Rows that have a keyboard shortcut
 
 - Click a row to run it. The menu closes, and the keyboard goes back to the timeline.
 - Press <kbd>Escape</kbd> or click outside the menu to close it without doing anything.
-- A track header has its own menu. See [Use the track menu](tracks.md#use-the-track-menu).
-- Right-clicking empty space after the last clip of a track or the ruler opens no menu yet. Choosing menu rows with the arrow keys is available in a later version.
+- A track header has its own menu. See [Use the track menu](tracks.md#use-the-track-menu). So has the ruler, for markers and the in and out points. See [Use the ruler menu](markers-and-in-out-points.md#use-the-ruler-menu).
+- Right-clicking empty space after the last clip of a track opens no menu yet. Choosing menu rows with the arrow keys is available in a later version.
 
 ## Related pages
 - [Timeline](timeline.md)
+- [Markers and in/out points](markers-and-in-out-points.md)
 - [Tracks](tracks.md)
 - [Linking and grouping clips](links-and-groups.md)
 - [Trimming clips](trimming.md)
@@ -209,4 +211,4 @@ Right-click a clip or a gap to open its menu. Rows that have a keyboard shortcut
 - [Projects and saving](projects-and-saving.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 16, 2026-10-15</sub>
+<sub>Last updated: Batch 19, 2026-10-15</sub>

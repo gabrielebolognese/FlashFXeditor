@@ -33,7 +33,8 @@ When you insert a video with sound, the picture goes on V1 and the sound becomes
 | --- | --- |
 | Play with <kbd>Space</kbd>, the **Play** button or <kbd>L</kbd> (1x) | Plays. |
 | Play around the playhead with <kbd>Shift</kbd>+<kbd>K</kbd> | Plays. |
-| Loop with **Loop playback** on | Plays, and continues across the jump back to the start. |
+| Loop with **Loop playback** on | Plays, and continues across the jump back to the start, or to the in point when you set in and out points. |
+| Play from in to out with <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Space</kbd> or **Play in to out** | Plays. |
 | Shuttle at 2x, 4x or 8x | Silent. |
 | Play backward with <kbd>J</kbd>, at any speed | Silent. |
 | Step frames, or drag in the ruler | Silent. |
@@ -200,6 +201,7 @@ After you import an audio file or a video with sound, the editor analyzes its so
 ## Related pages
 - [Clip thumbnails, waveforms and badges](clip-thumbnails-and-waveforms.md)
 - [Preview and playback](preview-and-playback.md)
+- [Markers and in/out points](markers-and-in-out-points.md)
 - [Timeline](timeline.md)
 - [Tracks](tracks.md)
 - [Advanced trimming](advanced-trimming.md)
@@ -207,4 +209,4 @@ After you import an audio file or a video with sound, the editor analyzes its so
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 17, 2026-10-15</sub>
+<sub>Last updated: Batch 19, 2026-10-15</sub>

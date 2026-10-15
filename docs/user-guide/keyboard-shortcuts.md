@@ -24,7 +24,9 @@ This page lists every keyboard shortcut that works in the current version of Sho
 >   16. Click a video with sound and press <kbd>Ctrl</kbd>+<kbd>L</kbd> to unlink its sound, then <kbd>Ctrl</kbd>+<kbd>Z</kbd>. Press <kbd>Shift</kbd>+<kbd>S</kbd>: the **Linked selection** button turns off; press it again.
 >   17. Click the V1 track header and press <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>Up</kbd>: the row gets taller. Press <kbd>F2</kbd>, type a name and press <kbd>Enter</kbd>.
 >   18. Click a card in the Media panel, press <kbd>F2</kbd>, type a new name and press <kbd>Enter</kbd>.
->   19. Hover over **Play** to show the tooltip with its shortcut.
+>   19. Click the timeline. Press <kbd>M</kbd> at two places: green markers appear in the ruler. Press <kbd>Home</kbd>, then <kbd>Shift</kbd>+<kbd>Down</kbd> twice to jump from marker to marker.
+>   20. Press <kbd>I</kbd>, move the playhead one second on with <kbd>Ctrl</kbd>+<kbd>→</kbd> and press <kbd>O</kbd>: the range is shaded. Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Space</kbd>: the range plays once. Press <kbd>'</kbd>: the range is removed and the rest moves left. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>.
+>   21. Hover over **Play** to show the tooltip with its shortcut.
 
 ## In this page
 - [How shortcuts work](#how-shortcuts-work)
@@ -32,6 +34,7 @@ This page lists every keyboard shortcut that works in the current version of Sho
 - [Timeline](#timeline)
 - [Trimming](#trimming)
 - [Cutting and deleting](#cutting-and-deleting)
+- [Markers and in/out points](#markers-and-inout-points)
 - [Tracks, links and groups](#tracks-links-and-groups)
 - [Tools](#tools)
 - [Audio](#audio)
@@ -78,6 +81,7 @@ These shortcuts work in all panels, except where noted. See [Preview and playbac
 | Go to the start | <kbd>Home</kbd> | <kbd>Home</kbd> | All panels |
 | Go to the end of the content | <kbd>End</kbd> | <kbd>End</kbd> | All panels |
 | Loop playback on or off | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd> | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>L</kbd> | All panels |
+| Play from the in point to the out point (same as **Play in to out**) | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Space</kbd> | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>Space</kbd> | All panels |
 
 ### Holding keys
 
@@ -93,8 +97,10 @@ These shortcuts work only while the Timeline panel is active. See [Timeline](tim
 
 | Action | Windows | macOS |
 | --- | --- | --- |
-| Jump to the previous or next edit point (a clip start or end on any track) | <kbd>↑</kbd> or <kbd>↓</kbd> | <kbd>↑</kbd> or <kbd>↓</kbd> |
+| Jump to the previous or next edit point (a clip start or end on any track, a marker, the in or out point) | <kbd>↑</kbd> or <kbd>↓</kbd> | <kbd>↑</kbd> or <kbd>↓</kbd> |
 | Jump to the previous or next marker | <kbd>Shift</kbd>+<kbd>↑</kbd> or <kbd>Shift</kbd>+<kbd>↓</kbd> | <kbd>⇧</kbd>+<kbd>↑</kbd> or <kbd>⇧</kbd>+<kbd>↓</kbd> |
+| Jump to the previous marker (second key) | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>M</kbd> | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>M</kbd> |
+| Jump to the next marker (second key) | <kbd>Shift</kbd>+<kbd>M</kbd> | <kbd>⇧</kbd>+<kbd>M</kbd> |
 | Zoom in | <kbd>=</kbd> | <kbd>=</kbd> |
 | Zoom out | <kbd>-</kbd> | <kbd>-</kbd> |
 | Zoom to fit the whole content | <kbd>\\</kbd> | <kbd>\\</kbd> |
@@ -110,7 +116,6 @@ These shortcuts work only while the Timeline panel is active. See [Timeline](tim
 - Nudged clips cover what they land on. Hold the keys to keep nudging; nudges less than 0.3 seconds apart are one undo step. See [Nudge clips with the keyboard](timeline.md#nudge-clips-with-the-keyboard).
 - <kbd>Alt</kbd>+<kbd>↑</kbd> and <kbd>Alt</kbd>+<kbd>↓</kbd> move clips only to an existing track with room for them; they never create a track.
 
-> **Note:** Adding markers is available in a later version, so the marker jumps have nothing to jump to yet.
 
 ### Selecting clips
 
@@ -118,15 +123,15 @@ These shortcuts work only while the Timeline panel is active. See [Timeline](tim
 | --- | --- | --- | --- |
 | Select all clips | <kbd>Ctrl</kbd>+<kbd>A</kbd> | <kbd>⌘</kbd>+<kbd>A</kbd> | Timeline, Preview |
 | Clear the selection (also selected tracks, an edit point or a gap) | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd> | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>A</kbd> | Timeline, Preview |
-| Cancel a clip drag, a trim, a roll, slip, slide or rate stretch, or a selection rectangle | <kbd>Escape</kbd> (before you release the mouse button) | <kbd>Esc</kbd> | All panels |
+| Cancel a clip drag, a trim, a roll, slip, slide or rate stretch, a selection rectangle, or a marker or in/out drag | <kbd>Escape</kbd> (before you release the mouse button) | <kbd>Esc</kbd> | All panels |
 
 ### Snapping
 
 | Action | Windows | macOS | Works in |
 | --- | --- | --- | --- |
 | Turn snapping on or off (same as **Snap** in the timeline toolbar) | <kbd>S</kbd> | <kbd>S</kbd> | All panels |
-| Do the opposite of the snapping setting while you hold the key | Hold <kbd>S</kbd> during a clip drag or a drag in the ruler | Hold <kbd>S</kbd> during a clip drag or a drag in the ruler | Timeline |
-| Snap the playhead to clip edges | Hold <kbd>Shift</kbd> while you click or drag in the ruler | Hold <kbd>⇧</kbd> while you click or drag in the ruler | Timeline |
+| Do the opposite of the snapping setting while you hold the key | Hold <kbd>S</kbd> during a clip, marker or in/out drag, or a drag in the ruler | Hold <kbd>S</kbd> during a clip, marker or in/out drag, or a drag in the ruler | Timeline |
+| Snap the playhead to clip edges, markers and the in and out points | Hold <kbd>Shift</kbd> while you click or drag in the ruler | Hold <kbd>⇧</kbd> while you click or drag in the ruler | Timeline |
 
 - Press <kbd>S</kbd> after the drag has started to switch snapping for that drag only. Holding it does not change the setting or the **Snap** magnet.
 - During a drag, <kbd>S</kbd> never starts a shortcut, also together with <kbd>Shift</kbd>, <kbd>Ctrl</kbd> or <kbd>Alt</kbd>: <kbd>Ctrl</kbd>+<kbd>S</kbd> does not save until you release the mouse button. On a Mac, <kbd>⌥</kbd>+<kbd>S</kbd> during a duplicate drag switches snapping too.
@@ -160,8 +165,8 @@ See [Splitting, deleting and closing gaps](splitting-and-deleting.md).
 | --- | --- | --- | --- |
 | Split at the playhead: the selected clips, or every clip under it when nothing is selected | <kbd>Ctrl</kbd>+<kbd>K</kbd> | <kbd>⌘</kbd>+<kbd>K</kbd> | All panels |
 | Split every clip under the playhead, on all tracks | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>K</kbd> | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>K</kbd> | All panels |
-| Delete the selected clips and leave gaps (with a gap selected: close it) | <kbd>Delete</kbd> or <kbd>Backspace</kbd> | <kbd>Delete</kbd> (⌫) | Timeline, Preview |
-| Ripple delete the selected clips (with a gap selected: close it) | <kbd>Shift</kbd>+<kbd>Delete</kbd> or <kbd>Shift</kbd>+<kbd>Backspace</kbd> | <kbd>⇧</kbd>+<kbd>Delete</kbd> (⌫) | Timeline, Preview |
+| Delete the selected clips and leave gaps (with a gap selected: close it; with a marker selected: delete it) | <kbd>Delete</kbd> or <kbd>Backspace</kbd> | <kbd>Delete</kbd> (⌫) | Timeline, Preview |
+| Ripple delete the selected clips (with a gap selected: close it; with a marker selected: delete it) | <kbd>Shift</kbd>+<kbd>Delete</kbd> or <kbd>Shift</kbd>+<kbd>Backspace</kbd> | <kbd>⇧</kbd>+<kbd>Delete</kbd> (⌫) | Timeline, Preview |
 | Close the selected gap, or the gap at the playhead | <kbd>G</kbd> | <kbd>G</kbd> | Timeline |
 | Close all gaps (compact) | <kbd>Shift</kbd>+<kbd>G</kbd> | <kbd>⇧</kbd>+<kbd>G</kbd> | Timeline |
 | Rename the selected clip or track | <kbd>F2</kbd> | <kbd>F2</kbd> | Timeline |
@@ -171,6 +176,32 @@ See [Splitting, deleting and closing gaps](splitting-and-deleting.md).
 - In the Media panel, <kbd>Delete</kbd>, <kbd>Backspace</kbd> and <kbd>F2</kbd> work on media instead. See [Media panel](#media-panel).
 - The clip and gap menus (right-click) show these shortcuts next to their rows. <kbd>Escape</kbd> closes a menu.
 - Clips on locked tracks are never split or deleted. <kbd>Ctrl</kbd>+<kbd>K</kbd> with nothing selected and <kbd>G</kbd> with no gap selected act on the targeted tracks; <kbd>Shift</kbd>+<kbd>G</kbd> acts on the selected tracks, or on the targeted tracks when no track is selected. See [Tracks](tracks.md).
+
+## Markers and in/out points
+
+See [Markers and in/out points](markers-and-in-out-points.md).
+
+| Action | Windows | macOS | Works in |
+| --- | --- | --- | --- |
+| Add a marker at the playhead (on a marker: open its editor) | <kbd>M</kbd> | <kbd>M</kbd> | All panels |
+| Set the in point at the playhead | <kbd>I</kbd> | <kbd>I</kbd> | All panels |
+| Set the out point at the playhead (the frame at the playhead is the last one in the range) | <kbd>O</kbd> | <kbd>O</kbd> | All panels |
+| Clear the in point | <kbd>Alt</kbd>+<kbd>I</kbd> | <kbd>⌥</kbd>+<kbd>I</kbd> | All panels |
+| Clear the out point | <kbd>Alt</kbd>+<kbd>O</kbd> | <kbd>⌥</kbd>+<kbd>O</kbd> | All panels |
+| Clear the in and out points | <kbd>Alt</kbd>+<kbd>X</kbd> | <kbd>⌥</kbd>+<kbd>X</kbd> | All panels |
+| Go to the in point | <kbd>Shift</kbd>+<kbd>I</kbd> | <kbd>⇧</kbd>+<kbd>I</kbd> | All panels |
+| Go to the last frame of the range | <kbd>Shift</kbd>+<kbd>O</kbd> | <kbd>⇧</kbd>+<kbd>O</kbd> | All panels |
+| Set the in and out points to the clip under the playhead | <kbd>X</kbd> | <kbd>X</kbd> | Timeline |
+| **Lift**: remove the range on the targeted tracks and leave a gap | <kbd>;</kbd> | <kbd>;</kbd> | Timeline |
+| **Extract**: remove the range on the targeted tracks and close it | <kbd>'</kbd> | <kbd>'</kbd> | Timeline |
+| Play from the in point to the out point | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Space</kbd> | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>Space</kbd> | All panels |
+| Jump to the previous or next marker | <kbd>Shift</kbd>+<kbd>↑</kbd> or <kbd>Shift</kbd>+<kbd>↓</kbd>; also <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>M</kbd> or <kbd>Shift</kbd>+<kbd>M</kbd> | <kbd>⇧</kbd>+<kbd>↑</kbd> or <kbd>⇧</kbd>+<kbd>↓</kbd>; also <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>M</kbd> or <kbd>⇧</kbd>+<kbd>M</kbd> | Timeline |
+| Delete the selected marker | <kbd>Delete</kbd> or <kbd>Backspace</kbd> | <kbd>Delete</kbd> (⌫) | Timeline, Preview |
+
+- Markers, **Lift** and **Extract** are steps in the history; setting and clearing in and out points is not.
+- <kbd>M</kbd>, <kbd>I</kbd> and <kbd>O</kbd> also work while the video plays.
+- In the marker editor, <kbd>Enter</kbd> saves the name and <kbd>Esc</kbd> closes the editor without saving it.
+- While you drag a marker or an in or out bracket, hold <kbd>S</kbd> to do the opposite of the snapping setting, and press <kbd>Esc</kbd> to cancel the drag.
 
 ## Tracks, links and groups
 
@@ -248,7 +279,7 @@ See [Projects and saving](projects-and-saving.md).
 
 | Action | Windows | macOS |
 | --- | --- | --- |
-| Confirm a field (project name, media name, clip name, timecode, numbers) | <kbd>Enter</kbd> | <kbd>Return</kbd> |
+| Confirm a field (project name, media name, clip name, marker name, timecode, numbers) | <kbd>Enter</kbd> | <kbd>Return</kbd> |
 | Cancel the change and leave the field | <kbd>Escape</kbd> | <kbd>Esc</kbd> |
 | Close a dialog or a menu | <kbd>Escape</kbd> | <kbd>Esc</kbd> |
 
@@ -289,13 +320,18 @@ These work over the timeline. See [Timeline](timeline.md).
 | Cut every track at that frame | With the **Razor** tool, <kbd>Shift</kbd>+click in the tracks | With the **Razor** tool, <kbd>⇧</kbd>+click in the tracks |
 | Select a gap | Click the empty space between two clips | Click the empty space between two clips |
 | Open the clip, gap or track menu | Right-click the clip, gap or track header | Right-click the clip, gap or track header |
+| Open the ruler menu (add, edit or delete markers; clear or set the in and out points) | Right-click the ruler | Right-click the ruler |
+| Select a marker | Click it in the ruler | Click it in the ruler |
+| Move a marker | Drag it along the ruler | Drag it along the ruler |
+| Name a marker and change its color | Double-click it | Double-click it |
+| Move the in or out point | Drag its bracket in the upper part of the ruler | Drag its bracket in the upper part of the ruler |
 | Select a track | Click its header | Click its header |
 | Add a track to the selection, or remove it | <kbd>Shift</kbd>+click or <kbd>Ctrl</kbd>+click its header | <kbd>⇧</kbd>+click or <kbd>⌘</kbd>+click its header |
 | Select all clips on a track | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+click its header | <kbd>⌘</kbd>+<kbd>⇧</kbd>+click its header |
 | Rename a track | Double-click its name | Double-click its name |
 | Reorder a track | Drag its header up or down | Drag its header up or down |
 | Switch snapping for this drag | Hold <kbd>S</kbd> while you drag | Hold <kbd>S</kbd> while you drag |
-| Snap the playhead to clip edges | <kbd>Shift</kbd>+click or <kbd>Shift</kbd>+drag in the ruler | <kbd>⇧</kbd>+click or <kbd>⇧</kbd>+drag in the ruler |
+| Snap the playhead to clip edges, markers and the in and out points | <kbd>Shift</kbd>+click or <kbd>Shift</kbd>+drag in the ruler | <kbd>⇧</kbd>+click or <kbd>⇧</kbd>+drag in the ruler |
 
 While you drag clips or a clip edge, you can press and release <kbd>Shift</kbd>, <kbd>Ctrl</kbd>, <kbd>Alt</kbd> and <kbd>S</kbd>: the keys held when you release the mouse button decide the drop or the trim. A roll is the exception: hold <kbd>Ctrl</kbd>+<kbd>Alt</kbd> when you press on the cut; after that, the keys no longer matter. See [Move clips](timeline.md#move-clips) and [Trimming clips](trimming.md).
 
@@ -322,9 +358,8 @@ While you type in a text field, or while a dialog is open, the editor leaves <kb
 
 ## Shortcuts for features not available yet
 
-Some buttons already show a shortcut in their tooltip although the button is disabled, for example **Add marker** in the timeline toolbar and **Export** in the app bar. These shortcuts start working when their feature is available in a later version; until then the keys do nothing. In the current version this also applies to:
+Some buttons already show a shortcut in their tooltip although the button is disabled, for example **Freeze frame** in the timeline toolbar and **Export** in the app bar. These shortcuts start working when their feature is available in a later version; until then the keys do nothing. In the current version this also applies to:
 
-- <kbd>M</kbd> (add a marker), <kbd>I</kbd> and <kbd>O</kbd> with or without <kbd>Shift</kbd> or <kbd>Alt</kbd>, and <kbd>Alt</kbd>+<kbd>X</kbd> (in and out points), <kbd>X</kbd> (mark a clip), <kbd>;</kbd> and <kbd>'</kbd> (lift and extract) and <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Space</kbd> (play from in to out).
 - <kbd>T</kbd> and <kbd>Shift</kbd>+<kbd>T</kbd> (titles and subtitles), <kbd>F</kbd> (full-screen preview), <kbd>Shift</kbd>+<kbd>F</kbd> (freeze frame), <kbd>Shift</kbd>+<kbd>Z</kbd> (punch zoom), <kbd>Ctrl</kbd>+<kbd>D</kbd> (duplicate), <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd> (default transition), <kbd>Ctrl</kbd>+<kbd>E</kbd> (export) and <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> (command palette).
 - <kbd>Ctrl</kbd>+<kbd>X</kbd>, <kbd>Ctrl</kbd>+<kbd>C</kbd> and <kbd>Ctrl</kbd>+<kbd>V</kbd> in the Timeline and Preview panels (cutting, copying and pasting clips; the **Cut**, **Copy** and **Paste** rows of the clip menu are dimmed).
 - The arrow keys and <kbd>Ctrl</kbd>+<kbd>0</kbd>, <kbd>Ctrl</kbd>+<kbd>1</kbd>, <kbd>Ctrl</kbd>+<kbd>2</kbd> in the Preview panel (moving items and zooming the preview). Use the **Zoom** dropdown and the **Fit** button instead.
@@ -334,6 +369,7 @@ Some buttons already show a shortcut in their tooltip although the button is dis
 - [Timeline](timeline.md)
 - [Trimming clips](trimming.md)
 - [Splitting, deleting and closing gaps](splitting-and-deleting.md)
+- [Markers and in/out points](markers-and-in-out-points.md)
 - [Advanced trimming](advanced-trimming.md)
 - [Tracks](tracks.md)
 - [Linking and grouping clips](links-and-groups.md)
@@ -342,4 +378,4 @@ Some buttons already show a shortcut in their tooltip although the button is dis
 - [Projects and saving](projects-and-saving.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 18, 2026-10-15</sub>
+<sub>Last updated: Batch 19, 2026-10-15</sub>

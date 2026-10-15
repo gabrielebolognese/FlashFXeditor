@@ -72,22 +72,23 @@ Top middle. It shows the settings of what is selected.
 - With nothing selected, it shows the **Project** section: name, resolution, frame rate, background and autosave. See [Change project settings](projects-and-saving.md#change-project-settings).
 - With clips selected, it shows a placeholder: clip properties are available in a later version.
 - With tracks selected (click a track header), it shows the **Track** section: name, kind, height and the **Target**, **Lock**, **Mute**, **Solo** or **Hide** switches. See [Change track settings in Edit Properties](tracks.md#change-track-settings-in-edit-properties).
+- With a marker selected (click it in the ruler), it shows the **Marker** section: label, color, time and **Delete marker**. See [Edit a marker in Edit Properties](markers-and-in-out-points.md#edit-a-marker-in-edit-properties).
 
-To get back to the **Project** section, click an empty area of the timeline tracks so that nothing is selected.
+To get back to the **Project** section, click an empty area of the timeline tracks so that nothing is selected. A selected marker stays selected when you do that: click a clip or a track header first, then the empty area.
 
 ### Preview panel
 
 The right column. It shows the frame at the playhead.
 
 - The header has the **Zoom** menu and the **Export frame** button.
-- Under the picture, a bar shows the timecode format chip (**ff** or **ms**), the playhead timecode, the duration and the frame rate, the transport buttons (**Go to start**, **Previous frame**, **Play** / **Pause**, **Next frame**, **Go to end**), **Mute**, the **Master volume** knob, **Loop playback** and **Fit**. A status line underneath shows the preview quality and the dropped frames of the last playback.
+- Under the picture, a bar shows the timecode format chip (**ff** or **ms**), the playhead timecode, the duration and the frame rate, the transport buttons (**Go to start**, **Previous frame**, **Play** / **Pause**, **Next frame**, **Go to end**), **Mute**, the **Master volume** knob, **Loop playback**, **Play in to out** and **Fit**. A status line underneath shows the preview quality and the dropped frames of the last playback.
 - Along the right edge of the panel, a narrow strip holds the audio meter. See [Audio](audio.md).
 
 See [Preview and playback](preview-and-playback.md).
 
 ### Timeline panel
 
-The bottom of the left side. Instead of a title, its header is the timeline toolbar (see [Use the timeline toolbar](#use-the-timeline-toolbar)). Below it are the track headers on the left, the time ruler and the tracks, where clips show their thumbnails and waveforms. See [Timeline](timeline.md) and [Clip thumbnails, waveforms and badges](clip-thumbnails-and-waveforms.md).
+The bottom of the left side. Instead of a title, its header is the timeline toolbar (see [Use the timeline toolbar](#use-the-timeline-toolbar)). Below it are the track headers on the left, the time ruler with your markers and in and out points, and the tracks, where clips show their thumbnails and waveforms. See [Timeline](timeline.md) and [Clip thumbnails, waveforms and badges](clip-thumbnails-and-waveforms.md).
 
 > **Note:** If you run the editor from its source folder with `npm run dev`, a few extra developer controls marked **(dev)** appear in the Preview and Timeline headers. You can ignore them.
 
@@ -126,7 +127,7 @@ The toolbar is one row of button groups, from left to right:
 | --- | --- | --- |
 | Tools | **Select**, **Razor**, **Hand**, **Slip**, **Slide**, **Rate stretch** | All work: **Select** (<kbd>V</kbd>), **Razor** (<kbd>C</kbd>), **Hand** (<kbd>H</kbd>), **Slip** (<kbd>Y</kbd>), **Slide** (<kbd>U</kbd>) and **Rate stretch** (<kbd>R</kbd>). The active tool is gold. See [Choose a tool](advanced-trimming.md#choose-a-tool) and [Pan the view](timeline.md#pan-the-view). |
 | Toggles | **Snap**, **Linked selection**, **Ripple mode**, **Show clip keyframes**, **Audio scrub** | **Snap** (<kbd>S</kbd>), **Linked selection** (<kbd>Shift</kbd>+<kbd>S</kbd>) and **Ripple mode** work: each is gold while it is on. See [Snap clips into place](timeline.md#snap-clips-into-place), [Turn Linked selection off](links-and-groups.md#turn-linked-selection-off) and [Turn Ripple mode on or off](trimming.md#turn-ripple-mode-on-or-off). The others are available in a later version. |
-| Edit | **Split at playhead**, **Delete**, **Ripple delete**, **Close gap**, **Close all gaps (compact)**, **Add marker**, **Freeze frame**, **Punch zoom** | **Split at playhead** (<kbd>Ctrl</kbd>+<kbd>K</kbd>), **Delete** (<kbd>Delete</kbd>), **Ripple delete** (<kbd>Shift</kbd>+<kbd>Delete</kbd>), **Close gap** (<kbd>G</kbd>) and **Close all gaps (compact)** (<kbd>Shift</kbd>+<kbd>G</kbd>) work. See [Splitting, deleting and closing gaps](splitting-and-deleting.md). The others are available in a later version. |
+| Edit | **Split at playhead**, **Delete**, **Ripple delete**, **Close gap**, **Close all gaps (compact)**, **Add marker**, **Freeze frame**, **Punch zoom** | **Split at playhead** (<kbd>Ctrl</kbd>+<kbd>K</kbd>), **Delete** (<kbd>Delete</kbd>), **Ripple delete** (<kbd>Shift</kbd>+<kbd>Delete</kbd>), **Close gap** (<kbd>G</kbd>), **Close all gaps (compact)** (<kbd>Shift</kbd>+<kbd>G</kbd>) and **Add marker** (<kbd>M</kbd>) work. See [Splitting, deleting and closing gaps](splitting-and-deleting.md) and [Add markers](markers-and-in-out-points.md#add-markers). **Freeze frame** and **Punch zoom** are available in a later version. |
 | Add | **Title**, **Subtitle**, **Add caption track**, **Add solid**, **Add image** | Available in a later version. |
 | Zoom | **Zoom out**, the zoom slider, **Zoom in**, **Zoom to fit**, **Zoom to selection**, **Center playhead**, **Track height** | All work. **Zoom to selection** (<kbd>Shift</kbd>+<kbd>\\</kbd>) fills the view with the selection, **Center playhead** (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>.</kbd>) scrolls the playhead to the middle of the view (see [Zoom in and out](timeline.md#zoom-in-and-out) and [Scroll the timeline](timeline.md#scroll-the-timeline)), and **Track height** changes the height of all tracks (see [Change track height](tracks.md#change-track-height)). |
 
@@ -134,7 +135,7 @@ At the right end, the playhead timecode field shows where the playhead is (you c
 
 Under the tracks and along their right side run the timeline's scrollbars. The bottom one also zooms: drag an end of its thumb. See [Use the scrollbars](timeline.md#use-the-scrollbars).
 
-Right-click a clip or a gap on the timeline for a menu with the most common edits for it. See [Use the clip and gap menus](splitting-and-deleting.md#use-the-clip-and-gap-menus). Right-click a track header for the track menu. See [Use the track menu](tracks.md#use-the-track-menu).
+Right-click a clip or a gap on the timeline for a menu with the most common edits for it. See [Use the clip and gap menus](splitting-and-deleting.md#use-the-clip-and-gap-menus). Right-click a track header for the track menu. See [Use the track menu](tracks.md#use-the-track-menu). Right-click the ruler for the ruler menu, with markers and the in and out points. See [Use the ruler menu](markers-and-in-out-points.md#use-the-ruler-menu).
 
 Buttons that are not available yet are dimmed. They still show their tooltip, but clicking them does nothing.
 
@@ -180,9 +181,11 @@ Examples:
 | <kbd>Alt</kbd>+<kbd>Left</kbd> / <kbd>Alt</kbd>+<kbd>Right</kbd> | Nudges the selected clips one frame | Nothing (the browser gets <kbd>Alt</kbd>+<kbd>Left</kbd>) | Nothing (the browser gets <kbd>Alt</kbd>+<kbd>Left</kbd>) |
 | <kbd>E</kbd> | Moves the nearest edge of the selected clip to the playhead | Nothing | Nothing |
 | <kbd>Q</kbd> / <kbd>W</kbd> | Trims the clip under the playhead to the playhead | Same | Same |
-| <kbd>Delete</kbd> | Deletes the selected clips, or closes the selected gap | Deletes the selected clips | Removes the selected media (asks first) |
+| <kbd>Delete</kbd> | Deletes the selected clips or marker, or closes the selected gap | Deletes the selected clips or marker | Removes the selected media (asks first) |
 | <kbd>F2</kbd> | Renames the selected clip or track | Nothing | Renames the selected media |
 | <kbd>G</kbd> | Closes the selected gap, or the gap at the playhead | Nothing | Nothing |
+| <kbd>M</kbd>, <kbd>I</kbd>, <kbd>O</kbd> | Adds a marker, sets the in point, sets the out point at the playhead | Same | Same |
+| <kbd>X</kbd>, <kbd>;</kbd>, <kbd>'</kbd> | Marks the clip under the playhead, **Lift**, **Extract** | Nothing | Nothing |
 | <kbd>Ctrl</kbd>+<kbd>L</kbd> / <kbd>Ctrl</kbd>+<kbd>G</kbd> | Links or unlinks / groups the selected clips | Nothing (the browser gets them) | Nothing (the browser gets them) |
 
 > **Tip:** If a shortcut seems to do nothing, click the panel it belongs to and try again. After clicking the Preview, click the timeline before you step through frames with the arrow keys.
@@ -204,6 +207,7 @@ To jump to a time, type it into the timecode field of the timeline toolbar. See 
 - [Timeline](timeline.md)
 - [Trimming clips](trimming.md)
 - [Splitting, deleting and closing gaps](splitting-and-deleting.md)
+- [Markers and in/out points](markers-and-in-out-points.md)
 - [Advanced trimming](advanced-trimming.md)
 - [Tracks](tracks.md)
 - [Linking and grouping clips](links-and-groups.md)
@@ -211,4 +215,4 @@ To jump to a time, type it into the timecode field of the timeline toolbar. See 
 - [Audio](audio.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 18, 2026-10-15</sub>
+<sub>Last updated: Batch 19, 2026-10-15</sub>

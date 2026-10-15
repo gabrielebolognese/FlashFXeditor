@@ -23,6 +23,7 @@ The Preview panel shows your video as it looks at the playhead: every video and 
 - [Step through frames](#step-through-frames)
 - [Play around the playhead](#play-around-the-playhead)
 - [Loop playback](#loop-playback)
+- [Play from the in point to the out point](#play-from-the-in-point-to-the-out-point)
 - [Read the transport bar and status strip](#read-the-transport-bar-and-status-strip)
 - [Export the current frame](#export-the-current-frame)
 - [Know what to expect from performance](#know-what-to-expect-from-performance)
@@ -126,7 +127,7 @@ You can also move the playhead with the keyboard (see [Step through frames](#ste
 
 How playback behaves:
 
-- Playback starts at the playhead. If the playhead is at the end of the content, playback starts again from the beginning.
+- Playback starts at the playhead. If the playhead is at the end of the content, playback starts again from the beginning. With **Loop playback** on and in and out points set, playback stays inside that range; see [Loop playback](#loop-playback).
 - Before the first frame moves, the editor may wait up to half a second while it decodes the frames and the sound ahead. This is normal.
 - You hear the sound of your audio tracks while you play at 1x. See [Audio](audio.md).
 - At the end of the content, playback stops on the last frame, unless **Loop playback** is on (see [Loop playback](#loop-playback)).
@@ -180,7 +181,7 @@ How playback behaves:
 - The playhead never goes before the first frame.
 - **Go to end** puts the playhead just after the last frame, where the frame is empty. Click **Previous frame** to see the last frame.
 - The timeline scrolls by a page when a step or jump moves the playhead out of view.
-- In the Timeline panel, <kbd>↑</kbd> and <kbd>↓</kbd> jump to the previous or next edit point (the start or end of a clip). See [Keyboard shortcuts](keyboard-shortcuts.md).
+- In the Timeline panel, <kbd>↑</kbd> and <kbd>↓</kbd> jump to the previous or next edit point (the start or end of a clip, a marker, the in or out point), and <kbd>Shift</kbd>+<kbd>↑</kbd> and <kbd>Shift</kbd>+<kbd>↓</kbd> to the previous or next marker. See [Keyboard shortcuts](keyboard-shortcuts.md).
 
 > **Note:** The arrow keys, with or without <kbd>Shift</kbd>, do not step when the Preview panel is the panel you clicked last: there they are reserved for moving items on the canvas, available in a later version. Click the timeline first. <kbd>Ctrl</kbd>+<kbd>←</kbd>, <kbd>Ctrl</kbd>+<kbd>→</kbd>, <kbd>Home</kbd>, <kbd>End</kbd> and the transport buttons work everywhere.
 
@@ -199,7 +200,22 @@ Press <kbd>Shift</kbd>+<kbd>K</kbd> to check the moment around the playhead. The
 2. Play. At the end of the content, playback continues from the start. Played backward, it continues from the end.
 3. Pause, or click **Loop playback** again to turn loop off.
 
-The loop covers the whole timeline. Looping between in and out points is available in a later version. The project remembers whether loop is on.
+What the loop covers:
+
+- **No in or out point set:** the whole timeline.
+- **In and out points set:** only the range between them. If the playhead is outside the range when you start playing, playback starts at the in point. After the last frame of the range, it continues at the in point; played backward, from the last frame of the range. With only an in point, the range runs to the end of your content; with only an out point, from the start of the timeline. See [Set in and out points](markers-and-in-out-points.md#set-in-and-out-points).
+
+Every jump back is frame-exact: the frame after the range never shows, and the sound stays in sync. The project remembers whether loop is on.
+
+## Play from the in point to the out point
+
+Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Space</kbd>, or click **Play in to out** (the brackets icon right of **Loop playback**).
+
+- Playback starts at the in point, wherever the playhead is, and ends with the last frame of the range.
+- With **Loop playback** off, it plays the range once and stops on its last frame. With **Loop playback** on, it repeats the range until you pause.
+- Without an in point it starts at the beginning of the timeline; without an out point it plays to the end of your content. With neither, it plays the whole timeline from the start.
+
+See [Play the range](markers-and-in-out-points.md#play-the-range).
 
 ## Read the transport bar and status strip
 
@@ -230,6 +246,7 @@ The format chip switches the timecodes everywhere: under the preview, in the tim
 | **Mute** / **Unmute** | | Silences the sound you hear, or brings it back. See [Audio](audio.md#set-the-listening-volume). |
 | **Master volume** (knob) | | Sets how loud you hear the sound, from -60.0 dB to 0.0 dB. See [Audio](audio.md#set-the-listening-volume). |
 | **Loop playback** | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd> | Turns looping on or off. |
+| **Play in to out** | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Space</kbd> | Plays from the in point to the out point. See [Play from the in point to the out point](#play-from-the-in-point-to-the-out-point). |
 | **Fit** | | Fits the whole frame in the panel. |
 
 ### Status strip
@@ -274,6 +291,7 @@ If playback stutters, see [Troubleshooting](troubleshooting.md).
 ## Related pages
 - [Audio](audio.md)
 - [Timeline](timeline.md)
+- [Markers and in/out points](markers-and-in-out-points.md)
 - [Tracks](tracks.md)
 - [Trimming clips](trimming.md)
 - [Advanced trimming](advanced-trimming.md)
@@ -282,4 +300,4 @@ If playback stutters, see [Troubleshooting](troubleshooting.md).
 - [Workspace](workspace.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 18, 2026-10-15</sub>
+<sub>Last updated: Batch 19, 2026-10-15</sub>

@@ -2,6 +2,11 @@
 
 Shorts Editor grows in steps called batches. This page lists what each batch added that you can see or use, newest first. Follow the links for the full instructions.
 
+> **Video placeholder: What's new in Batch 19**
+> - File: `videos/whats-new/batch-19.mp4` (not recorded yet)
+> - Length: about 60 seconds
+> - Shows: a video with sound on V1 and A1 and a title on V2; play and press <kbd>M</kbd> on two beats: green markers appear in the ruler; pause; double-click a marker, type "Drop", click the orange swatch and press <kbd>Enter</kbd>; drag the other marker onto the start of the title: it snaps; press <kbd>I</kbd>, move the playhead and press <kbd>O</kbd>: the range is shaded with brackets in the ruler; turn on **Loop playback** and click **Play in to out**: the range repeats; pause; click the timeline and press <kbd>'</kbd>: the range is gone and the rest moves left; press <kbd>Ctrl</kbd>+<kbd>Z</kbd>; put the playhead over the title and press <kbd>X</kbd>: the range now covers the title.
+
 > **Video placeholder: What's new in Batch 18**
 > - File: `videos/whats-new/batch-18.mp4` (not recorded yet)
 > - Length: about 60 seconds
@@ -53,6 +58,8 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 > - Shows: open a project with three clips on the timeline; press <kbd>Space</kbd> to play and let the timeline page forward; press <kbd>L</kbd> three times to reach 8x, then <kbd>K</kbd>; hold <kbd>K</kbd> and tap <kbd>L</kbd> to step one frame; turn on **Loop playback**; point at the **Dropped** readout in the status strip.
 
 ## In this page
+- [Batch 19: Markers, in and out points](#batch-19-markers-in-and-out-points)
+- [Batch 18: Timeline navigation](#batch-18-timeline-navigation)
 - [Batch 17: Thumbnails, waveforms and badges](#batch-17-thumbnails-waveforms-and-badges)
 - [Batch 16: Tracks, links and groups](#batch-16-tracks-links-and-groups)
 - [Batch 15: Split, delete and close gaps](#batch-15-split-delete-and-close-gaps)
@@ -70,6 +77,19 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 - [Batch 03: Projects, autosave and recovery](#batch-03-projects-autosave-and-recovery)
 - [Batch 02: Undo, redo and frame-exact time](#batch-02-undo-redo-and-frame-exact-time)
 - [Batch 01: The workspace](#batch-01-the-workspace)
+
+## Batch 19: Markers, in and out points
+- Press <kbd>M</kbd> (or click **Add marker** in the timeline toolbar) to add a marker at the playhead, also while the video plays. Markers are small triangles at the bottom of the ruler; point at one to see its name and time.
+- Double-click a marker to name it and give it one of eight colors, drag it to move it (it snaps to clip edges and the playhead), and press <kbd>Delete</kbd> to delete it. Click a marker to edit its label, color and exact time in the new **Marker** section of **Edit Properties**.
+- Jump between markers with <kbd>Shift</kbd>+<kbd>Up</kbd> and <kbd>Shift</kbd>+<kbd>Down</kbd> (or <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>M</kbd> and <kbd>Shift</kbd>+<kbd>M</kbd>). <kbd>Up</kbd> and <kbd>Down</kbd> now stop at markers and at the in and out points too.
+- Mark a range with <kbd>I</kbd> and <kbd>O</kbd>, or with <kbd>X</kbd> on the clip under the playhead. The range is shaded, and you can drag its brackets in the ruler. <kbd>Alt</kbd>+<kbd>I</kbd>, <kbd>Alt</kbd>+<kbd>O</kbd> and <kbd>Alt</kbd>+<kbd>X</kbd> clear the points; <kbd>Shift</kbd>+<kbd>I</kbd> and <kbd>Shift</kbd>+<kbd>O</kbd> jump to them.
+- **Play in to out** (the brackets button under the preview, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Space</kbd>) plays the range once, or repeats it while **Loop playback** is on. With a range set, **Loop playback** now loops just that range.
+- **Lift** (<kbd>;</kbd>) removes the range on the targeted tracks and leaves a gap; **Extract** (<kbd>'</kbd>) removes it and closes it. Each is one undo step.
+- Clips, clip edges and the playhead in the ruler now also snap to markers and to the in and out points.
+- Right-click the ruler for the new ruler menu: **Add marker**, **Edit marker**, **Delete marker**, **Clear in/out** and **Set in/out to selection**.
+- Markers are saved with the project; the in and out points come back when you reopen it.
+
+See [Markers and in/out points](markers-and-in-out-points.md) and [Loop playback](preview-and-playback.md#loop-playback).
 
 ## Batch 18: Timeline navigation
 - The timeline has scrollbars: one under the tracks, one at their right. Drag the middle of the bottom thumb to scroll, or drag one of its ends to zoom while the opposite edge of the view stays in place. Click the empty part of a bar to jump there.
@@ -234,4 +254,4 @@ See [The workspace](workspace.md) and [Getting started](getting-started.md).
 - [User guide home](README.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 18, 2026-10-15</sub>
+<sub>Last updated: Batch 19, 2026-10-15</sub>

@@ -1,6 +1,6 @@
 # Troubleshooting
 
-This page helps you when something does not work as expected: the editor does not start in your browser, the preview stays empty, a folder or a file does not open, a clip drag, a trim, a split, a delete, a timeline tool or a typed timecode does something you did not expect, a clip shows no thumbnails, playback stutters, or you hear no sound. Each problem lists what you see, why it happens and what to do. The last section lists what the current version cannot do yet.
+This page helps you when something does not work as expected: the editor does not start in your browser, the preview stays empty, a folder or a file does not open, a clip drag, a trim, a split, a delete, a timeline tool, a typed timecode, a marker, an in/out range or **Lift** and **Extract** do something you did not expect, a clip shows no thumbnails, playback stutters, or you hear no sound. Each problem lists what you see, why it happens and what to do. The last section lists what the current version cannot do yet.
 
 > **Video placeholder: Fix common problems**
 > - File: `videos/troubleshooting/overview.mp4` (not recorded yet)
@@ -23,6 +23,8 @@ This page helps you when something does not work as expected: the editor does no
 >   15. Press <kbd>H</kbd> and drag a clip: the view pans and the clip stays where it is. Press <kbd>V</kbd> and drag the clip again: it moves.
 >   16. With playback stopped, point at an empty part of a track and press <kbd>Space</kbd>: the cursor turns into a hand, and playback starts only when you release the key.
 >   17. Click the timeline's timecode field, type `1:x5` and press <kbd>Enter</kbd>: the field gets a red border. Press <kbd>Esc</kbd>.
+>   18. Set an in point and an out point, turn on **Loop playback**, click in the ruler after the range and press <kbd>Space</kbd>: playback starts at the in point and repeats the range. Press <kbd>Space</kbd>, then <kbd>Alt</kbd>+<kbd>X</kbd>: the shading disappears.
+>   19. Click a marker in the ruler, click an empty part of a track and press <kbd>Delete</kbd>: the marker disappears, the clips stay. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>.
 
 ## In this page
 - [Browser and graphics](#browser-and-graphics)
@@ -68,6 +70,11 @@ This page helps you when something does not work as expected: the editor does no
   - [Dragging a clip moves the view instead](#dragging-a-clip-moves-the-view-instead)
   - [The timecode field turns red or jumps somewhere unexpected](#the-timecode-field-turns-red-or-jumps-somewhere-unexpected)
   - [Timecodes show milliseconds instead of frames](#timecodes-show-milliseconds-instead-of-frames)
+  - [Clicking the ruler doesn't move the playhead](#clicking-the-ruler-doesnt-move-the-playhead)
+  - [M opens an editor instead of adding a marker](#m-opens-an-editor-instead-of-adding-a-marker)
+  - [Delete removed a marker, or Edit Properties keeps showing a marker](#delete-removed-a-marker-or-edit-properties-keeps-showing-a-marker)
+  - [The in or out point disappeared](#the-in-or-out-point-disappeared)
+  - [Lift or Extract does nothing or changes the wrong tracks](#lift-or-extract-does-nothing-or-changes-the-wrong-tracks)
 - [Folders and saving](#folders-and-saving)
   - [The browser asks for access to a folder](#the-browser-asks-for-access-to-a-folder)
   - [The project opens read-only](#the-project-opens-read-only)
@@ -78,6 +85,7 @@ This page helps you when something does not work as expected: the editor does no
   - [A video imports but shows nothing](#a-video-imports-but-shows-nothing)
 - [Playback and preview](#playback-and-preview)
   - [Playback stutters or drops frames](#playback-stutters-or-drops-frames)
+  - [Playback repeats only part of the timeline](#playback-repeats-only-part-of-the-timeline)
   - [The preview shows a nearby frame for a moment](#the-preview-shows-a-nearby-frame-for-a-moment)
   - [Playback has no sound](#playback-has-no-sound)
   - [Sound and picture are out of sync](#sound-and-picture-are-out-of-sync)
@@ -136,7 +144,7 @@ This page helps you when something does not work as expected: the editor does no
 - A text field has the keyboard focus (the project name, a media name, the timecode field, a number field). Typing always comes before shortcuts.
 - A dropdown has the focus, for example the preview **Zoom** dropdown after you chose a level.
 - A dialog is open.
-- The shortcut belongs to another panel. For example, <kbd>↑</kbd> and <kbd>↓</kbd> jump between clips only in the Timeline panel, and the arrow keys do not step frames when the Preview panel was the last panel you clicked.
+- The shortcut belongs to another panel. For example, <kbd>↑</kbd> and <kbd>↓</kbd> jump between clips, and <kbd>X</kbd>, <kbd>;</kbd> and <kbd>'</kbd> mark a clip, lift and extract, only in the Timeline panel, and the arrow keys do not step frames when the Preview panel was the last panel you clicked.
 - The shortcut belongs to a feature that is available in a later version.
 
 **Fix:** Press <kbd>Enter</kbd> or <kbd>Escape</kbd> to leave a text field, close the dialog, or click the timeline or the preview picture. Then try again. See [Keyboard shortcuts](keyboard-shortcuts.md) for the panel each shortcut needs.
@@ -467,6 +475,55 @@ When <kbd>Q</kbd>, <kbd>W</kbd> or <kbd>E</kbd> stops short, a message names the
 
 **Fix:** Click **ms** under the preview. It turns back into **ff** and every timecode shows frames again. See [Show times in milliseconds](timeline.md#show-times-in-milliseconds).
 
+### Clicking the ruler doesn't move the playhead
+
+**Symptom:** You click in the ruler, but the playhead stays where it is. A marker gets a gold outline instead, or a bracket of the in/out range lights up.
+
+**Cause:** Markers sit along the bottom of the ruler, and the in and out brackets take the upper part of the ruler within a few pixels of them. A click there selects the marker or grabs the bracket.
+
+**Fix:** Click a little to the side of the marker or the bracket. To put the playhead exactly on one, press <kbd>Shift</kbd>+<kbd>Down</kbd> or <kbd>Shift</kbd>+<kbd>Up</kbd> for markers, or <kbd>Shift</kbd>+<kbd>I</kbd> or <kbd>Shift</kbd>+<kbd>O</kbd> for the in and out points. See [Markers and in/out points](markers-and-in-out-points.md).
+
+### M opens an editor instead of adding a marker
+
+**Symptom:** You press <kbd>M</kbd> and a small editor with a name field opens under the ruler, but no new marker appears.
+
+**Cause:** A marker already sits at the playhead. <kbd>M</kbd> adds no second marker on that frame: it opens the marker's editor instead.
+
+**Fix:** Type a name and press <kbd>Enter</kbd>, or press <kbd>Esc</kbd> to close the editor. To add another marker, move the playhead to another frame first. See [Add markers](markers-and-in-out-points.md#add-markers).
+
+### Delete removed a marker, or Edit Properties keeps showing a marker
+
+**Symptom:** You press <kbd>Delete</kbd> and a marker disappears from the ruler while the clips stay. Or **Edit Properties** keeps showing the **Marker** section after you click an empty part of the tracks.
+
+**Cause:** A marker is selected (it has a gold outline). Clicking an empty part of the tracks doesn't deselect it, and while it is selected, <kbd>Delete</kbd> deletes the marker.
+
+**Fix:** Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> to bring the marker back. Click a clip, a gap or a track header to deselect the marker, then delete what you meant to delete. See [Delete markers](markers-and-in-out-points.md#delete-markers).
+
+### The in or out point disappeared
+
+**Symptom:** You set an in point and an out point, and later one of them, or the whole shaded range, is gone.
+
+**Cause:** One of these:
+- You set an in point after the out point, or an out point before the in point: the other point is cleared.
+- You used **Lift** or **Extract**: both points are cleared when the edit is done.
+- You pressed <kbd>Alt</kbd>+<kbd>I</kbd>, <kbd>Alt</kbd>+<kbd>O</kbd> or <kbd>Alt</kbd>+<kbd>X</kbd>.
+
+Undo doesn't bring in and out points back: they are not part of the history.
+
+**Fix:** Set them again with <kbd>I</kbd> and <kbd>O</kbd>, or with <kbd>X</kbd> on a clip. See [Set in and out points](markers-and-in-out-points.md#set-in-and-out-points).
+
+### Lift or Extract does nothing or changes the wrong tracks
+
+**Symptom:** You press <kbd>;</kbd> or <kbd>'</kbd> and nothing happens, a message appears, or a track you wanted to change stays as it is.
+
+**Cause:** One of these:
+- **Set an in or out point first:** no range is marked.
+- **No targeted track:** every track is untargeted or locked.
+- **Lift** and **Extract** change only targeted tracks that are not locked. They ignore the selected clips and **Linked selection**, so a video's sound on an untargeted track stays.
+- The Timeline panel is not active: <kbd>;</kbd> and <kbd>'</kbd> work only there.
+
+**Fix:** Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> if the wrong tracks changed. Set the range with <kbd>I</kbd> and <kbd>O</kbd>, turn on the crosshair of every track to change and turn it off on the others, click the timeline, then try again. See [Lift or extract a range](markers-and-in-out-points.md#lift-or-extract-a-range).
+
 ## Folders and saving
 
 ### The browser asks for access to a folder
@@ -573,6 +630,14 @@ If a message "Import failed" appears instead, the whole import stopped; its deta
 
 See [Preview and playback](preview-and-playback.md#know-what-to-expect-from-performance).
 
+### Playback repeats only part of the timeline
+
+**Symptom:** Playback jumps back to an earlier point again and again, or starts somewhere other than at the playhead.
+
+**Cause:** **Loop playback** is on and in and out points are set. Every playback then repeats the range between them, and starts at the in point when the playhead is outside the range.
+
+**Fix:** Click **Loop playback** to turn it off, or press <kbd>Alt</kbd>+<kbd>X</kbd> to clear the in and out points: the loop then covers the whole timeline again. See [Loop playback](preview-and-playback.md#loop-playback).
+
 ### The preview shows a nearby frame for a moment
 
 **Symptom:** While you scrub or after a jump, the preview first shows a nearby frame, then switches to the exact one. In 4K phone clips this can take about half a second.
@@ -630,8 +695,9 @@ See [Audio](audio.md).
 The current version cannot do these things yet. Each one is available in a later version.
 
 - **Sound:** no sound while you scrub, step frames, play backward or shuttle faster than 1x. Changing the volume of a clip, fades and audio effects are not available.
-- **Editing clips:** clips can't be cut, copied or pasted (the **Cut**, **Copy** and **Paste** rows of the clip menu are dimmed). Clips snap only to clip edges, the playhead and the start of the timeline, because markers and in and out points are not available yet.
-- **Menus:** only clips, gaps and track headers have a right-click menu, with a first set of rows. Menu rows can't be chosen with the arrow keys.
+- **Editing clips:** clips can't be cut, copied or pasted (the **Cut**, **Copy** and **Paste** rows of the clip menu are dimmed).
+- **Markers:** markers belong to the timeline; markers inside clips are not available. Markers and the in/out range don't show on the scrollbars.
+- **Menus:** only clips, gaps, track headers and the ruler have a right-click menu, with a first set of rows. Menu rows can't be chosen with the arrow keys.
 - **Speed and edit points:** a clip's speed changes only with **Rate stretch**; typing an exact speed is not available. A selected cut (edit point) only marks the cut; transitions are not available.
 - **Tracks:** track headers have room for names of about 9 characters; longer names are shortened. Groups are not marked on the timeline. In the **Track** section of **Edit Properties**, several selected tracks show the first track's settings, with no sign of mixed values.
 - **Preview:** no panning, no mouse-wheel zoom, and no <kbd>Ctrl</kbd>+<kbd>0</kbd>/<kbd>1</kbd>/<kbd>2</kbd>. The preview timecode is read-only; type times in the timeline toolbar. The quality is always **Auto: full**.
@@ -640,12 +706,13 @@ The current version cannot do these things yet. Each one is available in a later
 - **Media cards** show only the first frame of a video; pointing at a card does not play through its thumbnails.
 - **Media that cannot be decoded, or whose file is missing,** shows nothing in the preview, with no placeholder.
 - **Removing media** that a clip uses is not possible.
-- **Frame rate:** you cannot change it once the timeline has clips.
+- **Frame rate:** you cannot change it once the timeline has clips or markers.
 - **Export:** only **Export frame** (a PNG of the current frame) works. The **Export** button and the **Settings** button in the app bar are disabled.
 - **Shortcuts:** <kbd>Ctrl</kbd>+<kbd>N</kbd> cannot create a project in a browser tab, and many shortcuts in the keymap belong to features that are not available yet. See [Keyboard shortcuts](keyboard-shortcuts.md).
 - **Heavy footage:** 4K 60 fps HEVC at full quality can drop frames, and exact frames deep inside long phone clips take a moment to appear.
 
 ## Related pages
+- [Markers and in/out points](markers-and-in-out-points.md)
 - [Clip thumbnails, waveforms and badges](clip-thumbnails-and-waveforms.md)
 - [Tracks](tracks.md)
 - [Linking and grouping clips](links-and-groups.md)
@@ -659,4 +726,4 @@ The current version cannot do these things yet. Each one is available in a later
 - [Preview and playback](preview-and-playback.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 18, 2026-10-15</sub>
+<sub>Last updated: Batch 19, 2026-10-15</sub>
