@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { makeProject, makeSolidClip, makeTrack, withClips } from "../../core/document/fixtures.js";
-import type { Clip, SolidClip, Transform } from "../../core/document/types.js";
+import type { Clip, SolidClip, Track, Transform } from "../../core/document/types.js";
 import { FrameScheduler } from "../../core/scheduler/FrameScheduler.js";
 import { DocumentStore } from "../../core/store/DocumentStore.js";
 import { createLayoutStore } from "../../core/store/layoutStore.js";
@@ -28,11 +28,12 @@ const t = (fields: Partial<Transform> = {}): Transform => ({ ...IDENTITY_TRANSFO
 
 /**
  * V1..V3, a 100 x 100 solid on each, stacked at the frame center (540, 960) unless moved; A1 with a
- * linked partner of s1. Snapping is off unless `snap` (6 CSS px are 12 project px at this placement).
+ * linked partner of s1. Snapping is off unless `snap` (6 CSS px are 12 project px at this placement);
+ * `tracks` sets fields of V1..V3 (locked, muted).
  */
-function setup(transforms: Partial<Transform>[] = [{}, {}, {}], { snap = false } = {}) {
+function setup(transforms: Partial<Transform>[] = [{}, {}, {}], { snap = false, tracks = [] as Partial<Track>[] } = {}) {
   const p = makeProject();
-  p.tracks = [makeTrack("v1"), makeTrack("v2"), makeTrack("v3"), makeTrack("a1", "audio")];
+  p.tracks = [...["v1", "v2", "v3"].map((id, i) => ({ ...makeTrack(id), ...tracks[i] })), makeTrack("a1", "audio")];
   const clips: Clip[] = transforms.map((fields, i) => ({ ...makeSolidClip({ id: `s${i + 1}`, trackId: `v${i + 1}`, start: 0, duration: 30 }), transform: t(fields) }));
   const session = createSessionStore();
   session.state.set((state) => ({ ...state, snap }));
@@ -295,6 +296,32 @@ describe("CanvasEditInput snapping and smart guides (spec §7.4)", () => {
     s.session.state.set((state) => ({ ...state, preview: { ...state.preview, guides: false } }));
     expect(s.input.scene().guides).toBeNull();
     key("keyup", { key: "Alt" });
+  });
+
+  it("snaps to and measures layers on locked tracks (in the picture), not muted ones", () => {
+    // s1 on a locked V1: not selectable, still composited, so a snap target.
+    const s = setup([{ x: -300 }, { y: 400 }, { x: 300 }], { snap: true, tracks: [{ locked: true }] });
+    s.pointer("pointerdown", 540, 1360);
+    s.pointer("pointermove", 244, 1360);
+    expect(s.input.transforms?.get("s2")).toMatchObject({ x: -300, y: 400 });
+    const guides = s.input.scene().guides;
+    expect(guides?.lines).toContainEqual({ vertical: true, at: 190, from: 910, to: 1410 });
+    expect(guides?.spans).toEqual([{ vertical: true, at: 190, from: 1010, to: 1310, distance: 300 }]);
+    s.pointer("pointerup", 244, 1360);
+    expect(s.transform("s1")).toMatchObject({ x: -300, y: 0 });
+    // Alt measures to the locked layer too.
+    const m = setup([{ x: -300 }, {}, { x: 300 }], { tracks: [{ locked: true }] });
+    setSelection(m.session, selectClips(["s2"]));
+    key("keydown", { key: "Alt", altKey: true });
+    expect(m.input.scene().guides?.spans).toContainEqual({ vertical: false, at: 960, from: 290, to: 490, distance: 200 });
+    key("keyup", { key: "Alt" });
+    // A muted V1 is out of the picture: no snap.
+    const u = setup([{ x: -300 }, { y: 400 }, { x: 300 }], { snap: true, tracks: [{ muted: true }] });
+    u.pointer("pointerdown", 540, 1360);
+    u.pointer("pointermove", 244, 1360);
+    expect(u.input.transforms?.get("s2")).toMatchObject({ x: -296, y: 400 });
+    expect(u.input.scene().guides).toEqual({ lines: [], spans: [] });
+    u.pointer("pointerup", 244, 1360);
   });
 
   it("rebuilds the snap candidates only when the other layers change", () => {

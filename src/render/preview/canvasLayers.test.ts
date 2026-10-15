@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { makeMedia, makeMediaClip, makeProject, makeSolidClip, makeTrack, withClips } from "../../core/document/fixtures.js";
 import type { Clip, Project, Track, Transform } from "../../core/document/types.js";
 import { IDENTITY_TRANSFORM } from "../../timeline/edit/transform.js";
-import { canvasLayersAt, layersInRect, layersUnder, pointInQuad, quadIntersectsRect, quadsBounds, type Quad } from "./canvasLayers.js";
+import { canvasLayersAt, layersInRect, layersUnder, pictureLayersAt, pointInQuad, quadIntersectsRect, quadsBounds, type Quad } from "./canvasLayers.js";
 
 const t = (fields: Partial<Transform> = {}): Transform => ({ ...IDENTITY_TRANSFORM, ...fields });
 
@@ -34,6 +34,14 @@ describe("canvas layers (spec §7.2)", () => {
     const q = project([{}, {}, {}]);
     (q.clips.s2 as { enabled: boolean }).enabled = false;
     expect(canvasLayersAt(q, 0).map((layer) => layer.clipId)).toEqual(["s1", "s3"]);
+  });
+
+  it("lists the picture's layers as the compositor draws them: locked kept, hidden and muted skipped (§7.4)", () => {
+    const p = project([{ hidden: true }, { locked: true }, { muted: true }, {}]);
+    (p.clips.s4 as { enabled: boolean }).enabled = false;
+    const layers = pictureLayersAt(p, 0);
+    expect(layers.map((layer) => layer.clipId)).toEqual(["s2"]);
+    expect(layers[0]?.quad).toEqual(canvasLayersAt(project(), 0)[0]?.quad);
   });
 
   it("uses a gesture's transforms and the crop of media layers", () => {

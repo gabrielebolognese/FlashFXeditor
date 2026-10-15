@@ -14,7 +14,9 @@
 //   one snap state with the timeline): a move snaps the box's edges and center, a scale the dragged
 //   edge of an axis-aligned box; the candidates come from `CanvasSnapIndex` (rebuilt only when the
 //   other layers, the frame or the overlays shown change). Other layers and equal spacing count while
-//   smart guides are on (`preview.guides`), which also gives the Alt measure mode (no drag).
+//   smart guides are on (`preview.guides`), which also gives the Alt measure mode (no drag). The other
+//   layers are the picture's (`pictureLayersAt`: locked tracks included, muted ones out), not just the
+//   selectable ones.
 // - Hover outlines the layer under the pointer; the cursor follows the gizmo zone.
 // - The canvas rect is read once per pointer enter and after a panel resize (P9).
 // TODO(batch 26): crop handles. TODO(batch 29): double-click edits text inline. TODO(batch 35): the
@@ -32,7 +34,7 @@ import { setSelection, type SessionStore } from "../../core/store/sessionStore.j
 import type { Theme, ThemeBridge } from "../../core/theme/theme.js";
 import { setTransforms, type Point } from "../../timeline/edit/transform.js";
 import { selectionPartners } from "../../timeline/model/queries.js";
-import { canvasLayersAt, layersInRect, layersUnder, quadsBounds, type CanvasLayer, type Quad, type Rect } from "./canvasLayers.js";
+import { canvasLayersAt, layersInRect, layersUnder, pictureLayersAt, quadsBounds, type CanvasLayer, type Quad, type Rect } from "./canvasLayers.js";
 import { canvasCursors, type CanvasCursors } from "./canvasCursors.js";
 import {
   AngleTracker,
@@ -162,6 +164,8 @@ export class CanvasEditInput {
   private theme: Theme;
   private cursors: CanvasCursors;
   private cache: { project: Project | null; frame: number; transforms: ReadonlyMap<ClipId, Transform> | null; layers: CanvasLayer[] } = { project: null, frame: -1, transforms: null, layers: [] };
+  /** The picture layers at the playhead (the smart guides' other layers), with the document's transforms. */
+  private picture: { project: Project | null; frame: number; layers: CanvasLayer[] } = { project: null, frame: -1, layers: [] };
   /** S held during the current drag: snapping inverted (§7.4, §6.9). */
   private snapHeld = false;
   private readonly snapIndex = new CanvasSnapIndex();
@@ -291,6 +295,22 @@ export class CanvasEditInput {
       cache.layers = canvasLayersAt(project, frame, transforms);
     }
     return cache.layers;
+  }
+
+  /**
+   * The layers in the picture at the playhead (cached per document and frame): the snap targets and
+   * measure neighbours. The document's transforms are enough: a gesture's layers are held out.
+   */
+  private pictureLayers(): CanvasLayer[] {
+    const project = this.deps.document.getState();
+    const frame = this.deps.session.state.getState().playhead;
+    const picture = this.picture;
+    if (picture.project !== project || picture.frame !== frame) {
+      picture.project = project;
+      picture.frame = frame;
+      picture.layers = pictureLayersAt(project, frame);
+    }
+    return picture.layers;
   }
 
   /** The selected layers at the playhead, bottom first: what the gizmo holds. */
@@ -629,8 +649,8 @@ export class CanvasEditInput {
     if (zone) safe.push(zone.safe);
     if (preview.safeMargins) safe.push(centeredRect(frame, ACTION_SAFE), centeredRect(frame, TITLE_SAFE));
     const layers: Rect[] = [];
-    // Other visible layers (smart guides on): muted ones are out of the picture.
-    if (preview.guides) for (const layer of this.layers()) if (!layer.muted && !exclude.has(layer.clipId)) layers.push(quadsBounds([layer.quad]) as Rect);
+    // Other layers in the picture (smart guides on): locked tracks included, muted and hidden ones out.
+    if (preview.guides) for (const layer of this.pictureLayers()) if (!exclude.has(layer.clipId)) layers.push(quadsBounds([layer.quad]) as Rect);
     return this.snapIndex.get({ frame, thirds: preview.grid === "thirds", safe, layers });
   }
 
