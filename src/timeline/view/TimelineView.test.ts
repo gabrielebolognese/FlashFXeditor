@@ -84,7 +84,8 @@ function setup(clipCount = 0) {
   layout.setPanelSize("timeline", { width: 1000, height: 428 });
   const scheduler = new FakeScheduler();
   const onAddTrack = vi.fn();
-  const view = new TimelineView({ scheduler, document, session, layout, theme: { theme: testTheme(), subscribe: () => () => {} }, onAddTrack });
+  const onToggleTrack = vi.fn();
+  const view = new TimelineView({ scheduler, document, session, layout, theme: { theme: testTheme(), subscribe: () => () => {} }, onAddTrack, onToggleTrack });
   const host = window.document.createElement("div");
   window.document.body.append(host);
   const unmount = view.mount(host);
@@ -92,7 +93,7 @@ function setup(clipCount = 0) {
   const overlay = host.querySelectorAll("canvas")[1] as HTMLCanvasElement;
   const pointer = (type: string, x: number, y: number, init: PointerEventInit = {}) =>
     overlay.dispatchEvent(new PointerEvent(type, { clientX: x, clientY: y, pointerId: 1, button: 0, bubbles: true, ...init }));
-  return { view, session, document, layout, scheduler, overlay, pointer, onAddTrack, unmount };
+  return { view, session, document, layout, scheduler, overlay, pointer, onAddTrack, onToggleTrack, unmount };
 }
 
 describe("TimelineView", () => {
@@ -232,6 +233,19 @@ describe("TimelineView", () => {
     // The + video row sits right above V1 (172 - 24 = 148), in the header column.
     pointer("pointerdown", 20, 150);
     expect(onAddTrack).toHaveBeenCalledWith("video");
+  });
+
+  it("toggles mute and solo from the audio track header with a pointer cursor", () => {
+    const { overlay, pointer, onToggleTrack } = setup();
+    // A1 232..288: mute 132..148 x 240..256, solo 152..168.
+    pointer("pointermove", 140, 248);
+    expect(overlay.style.cursor).toBe("pointer");
+    pointer("pointerdown", 140, 248);
+    pointer("pointerdown", 160, 248);
+    expect(onToggleTrack.mock.calls).toEqual([
+      ["a1", "mute"],
+      ["a1", "solo"],
+    ]);
   });
 
   it("highlights hover on the overlay only when the hovered target changes", () => {

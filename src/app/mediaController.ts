@@ -6,6 +6,8 @@ import type { MediaId } from "../core/document/types.js";
 import { isEditableTarget } from "../core/keyboard/KeyDispatcher.js";
 import { createStore } from "../core/store/createStore.js";
 import { AnalysisScheduler } from "../media/AnalysisScheduler.js";
+import { PeaksJobs } from "../media/PeaksJobs.js";
+import { browserDecodeAudio } from "../media/probe/audioProbe.js";
 import { createProbeFile, MediaImporter, type Refusal } from "../media/MediaImporter.js";
 import { PICKER_TYPES } from "../media/mediaKinds.js";
 import { PosterStore } from "../media/PosterStore.js";
@@ -16,6 +18,7 @@ import { PosterPainter } from "../panels/media/PosterPainter.js";
 import { errorMessage } from "../project/errorMessage.js";
 import type { FsDir } from "../project/fs.js";
 import { dismissToast, showToast, updateToast } from "../ui/toasts.js";
+import { decodedAudio, peaksFiles } from "./audioController.js";
 import { actions, appSettings, documentStore, focusScopes, idleQueue, scheduler, workerPool } from "./services.js";
 
 export interface MediaPanelState {
@@ -55,8 +58,23 @@ const patch = (next: Partial<MediaPanelState>) => mediaPanel.set((state) => ({ .
 export function attachMedia(dir: FsDir, isWritable: () => boolean): void {
   detachMedia();
   const posters = new PosterStore({ dir, pool: workerPool, isWritable, svgPoster });
-  const analysis = new AnalysisScheduler(idleQueue);
-  const importer = new MediaImporter({ dir, documentStore, probe: createProbeFile(workerPool), importMode: () => appSettings.getState().importMode });
+  const peaks = new PeaksJobs({ idle: idleQueue, document: documentStore, audio: decodedAudio, workers: workerPool, ...peaksFiles(dir, isWritable) });
+  const analysis = new AnalysisScheduler(idleQueue, peaks);
+  // Audio files the probe decodes (decodeAudioData) are not decoded again for playback and peaks.
+  const decodedByFile = new WeakMap<File, AudioBuffer>();
+  const probe = createProbeFile(workerPool, browserDecodeAudio(), (file, decoded) => {
+    if (typeof AudioBuffer !== "undefined" && decoded instanceof AudioBuffer) decodedByFile.set(file, decoded);
+  });
+  const importer = new MediaImporter({
+    dir,
+    documentStore,
+    probe,
+    importMode: () => appSettings.getState().importMode,
+    onAdded: (item, file) => {
+      const decoded = decodedByFile.get(file);
+      if (decoded) decodedAudio.put(item.id, decoded);
+    },
+  });
   open = {
     importer,
     posters,

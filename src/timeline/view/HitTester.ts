@@ -4,7 +4,7 @@
 // and empty space; the other types are declared for the batches that draw them.
 import type { ClipId, Frame, Project, TrackId, TrackKind } from "../../core/document/types.js";
 import { clipAtFrame } from "../model/queries.js";
-import { contains, type TimelineGeometry } from "./geometry.js";
+import { contains, type HeaderToggle, type TimelineGeometry } from "./geometry.js";
 
 export type HitType =
   | "clip"
@@ -22,7 +22,7 @@ export type HitType =
   // TODO(batch 15): gaps.
   | "gap"
   | "trackHeader"
-  // TODO(batch 16): header toggles.
+  // Mute and solo of audio tracks; TODO(batch 16): the other header toggles.
   | "headerToggle"
   | "ruler"
   // TODO(batch 19): markers and in/out handles.
@@ -40,6 +40,8 @@ export interface HitResult {
   clipId: ClipId | null;
   /** `trackHeader` on a "+ track" row: the kind of track it adds. */
   addTrack: TrackKind | null;
+  /** `headerToggle`: which one. */
+  toggle: HeaderToggle | null;
 }
 
 export interface HitSource {
@@ -59,7 +61,7 @@ export class HitTester {
   hit(x: number, y: number): HitResult {
     const geometry = this.source.geometry();
     const frame = geometry.xToFrame(x);
-    const result: HitResult = { type: "empty", frame, trackId: null, clipId: null, addTrack: null };
+    const result: HitResult = { type: "empty", frame, trackId: null, clipId: null, addTrack: null, toggle: null };
     if (x < 0 || y < 0 || x >= geometry.width || y >= geometry.height) return result;
 
     if (y < geometry.rulerHeight) {
@@ -74,6 +76,13 @@ export class HitTester {
       if (row) {
         result.type = "trackHeader";
         result.trackId = row.trackId;
+        const toggles = geometry.headerToggles(row);
+        for (const toggle of ["mute", "solo"] as const) {
+          if (toggles && contains(toggles[toggle], x, y)) {
+            result.type = "headerToggle";
+            result.toggle = toggle;
+          }
+        }
       } else if (contains(geometry.addVideo, x, y) || contains(geometry.addAudio, x, y)) {
         result.type = "trackHeader";
         result.addTrack = contains(geometry.addVideo, x, y) ? "video" : "audio";

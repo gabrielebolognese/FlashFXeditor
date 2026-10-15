@@ -61,4 +61,15 @@ describe("HitTester", () => {
     // The + rows are buttons in the header column only.
     expect(hits.hit(x(20), 150).type).toBe("empty");
   });
+
+  it("finds the mute and solo toggles of audio track headers", () => {
+    const hits = setup();
+    // a1 232..288: first line 232..264, toggles 16 px centered on it (240..256), right-aligned 8 px in: solo 152..168, mute 132..148.
+    expect(hits.hit(160, 248)).toMatchObject({ type: "headerToggle", toggle: "solo", trackId: "a1" });
+    expect(hits.hit(140, 248)).toMatchObject({ type: "headerToggle", toggle: "mute", trackId: "a1" });
+    expect(hits.hit(150, 248)).toMatchObject({ type: "trackHeader", toggle: null, trackId: "a1" });
+    expect(hits.hit(160, 270)).toMatchObject({ type: "trackHeader", toggle: null });
+    // Video tracks have none yet (Batch 16).
+    expect(hits.hit(160, 188)).toMatchObject({ type: "trackHeader", toggle: null, trackId: "v1" });
+  });
 });

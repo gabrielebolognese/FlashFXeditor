@@ -211,6 +211,23 @@ export class DocumentStore {
   }
 
   /**
+   * Records derived state in the document with no undo step (the analysis status of a media item,
+   * spec §9.1: an import is one undo step, its peaks becoming ready later are not). Validated and
+   * notified like any change, so it is saved. Undo keeps working: the inverse patches of earlier
+   * steps never touch these fields, except a whole media item put back, which then starts pending
+   * again and is amended again.
+   */
+  amend(command: Command): void {
+    this.assertNoTransaction("amend");
+    const [next, patches] = produceWithPatches(this.state, (draft) => command.run(draft, this.context()));
+    if (patches.length === 0) return;
+    if (this.validate) assertValid(next, `after "${command.label}" (${command.id}, no undo step)`);
+    const prev = this.state;
+    this.state = next;
+    this.notify(prev, new Set(command.affects));
+  }
+
+  /**
    * Replaces the whole document (opening a project, restoring a recovery file): clears the undo
    * history and the selection, and notifies every subscriber with every flag.
    */

@@ -1,8 +1,8 @@
 // Preview wiring (spec §7.1, §8, §9.3, §9.4): the app's one GPU device, renderer and texture pool, the
 // frame service (video frames from decode.worker into the pool), still images, the preview canvas
-// view (the composite at the playhead) and its dev stats, the playback engine that drives it, the
-// preview chrome readouts and Export frame. Framework-free; PreviewPanel only mounts the canvas host,
-// the chrome bar and the stats element.
+// view (the composite at the playhead) and its dev stats, the playback engine that drives it (and the
+// audio scheduler, Batch 10), the preview chrome readouts and Export frame. Framework-free;
+// PreviewPanel only mounts the canvas host, the chrome bar, the meter and the stats element.
 import { formatTimecode } from "../core/document/time.js";
 import type { MediaId } from "../core/document/types.js";
 import { createStore } from "../core/store/createStore.js";
@@ -23,6 +23,7 @@ import { PreviewView } from "../render/preview/PreviewView.js";
 import type { PreviewZoom } from "../render/preview/viewport.js";
 import { contentEnd } from "../timeline/model/queries.js";
 import { showToast } from "../ui/toasts.js";
+import { attachAudio, audioScheduler, detachAudio, meterView } from "./audioController.js";
 import { actions, audioClock, documentStore, idleQueue, layoutStore, scheduler, sessionStore, themeBridge, workerPool } from "./services.js";
 import { timelineView } from "./timelineController.js";
 
@@ -72,6 +73,11 @@ export const playbackEngine: PlaybackEngine = new PlaybackEngine({
   preview: previewView,
   scrubbing: () => timelineView.scrubbing,
   idle: idleQueue,
+  audio: audioScheduler,
+});
+// The meter reads the mix from the first frame of a playback on.
+playbackEngine.subscribe(() => {
+  if (playbackEngine.playing) meterView.wake();
 });
 export const previewStats = new PreviewStatsOverlay({ scheduler, preview: previewView, pool: texturePool, gpu: gpuDevice, frames: frameService, playback: playbackEngine });
 
@@ -159,6 +165,7 @@ export function attachPreview(dir: FsDir, isWritable: () => boolean): void {
     releaseRemovedMedia(),
   ];
   previewView.resetFrames();
+  attachAudio(dir, isWritable);
   stopProject = () => {
     // The view lets go of its pins and requests first, then the services close the worker sessions.
     previewView.resetFrames();
@@ -172,6 +179,7 @@ export function detachPreview(): void {
   stopProject?.();
   stopProject = null;
   texturePool.clear();
+  detachAudio();
 }
 
 export function setPreviewZoom(zoom: PreviewZoom): void {

@@ -7,8 +7,9 @@ import { TexturePool, type TextureKey } from "../media/cache/TexturePool.js";
 import type { FrameResult, PrefetchOptions } from "../media/decode/FrameService.js";
 import { mediaTimePosition } from "../media/demux/sampleIndex.js";
 import type { VideoInfo } from "../media/workers/protocol.js";
+import type { PlayMapping } from "../audio/scheduler/AudioScheduler.js";
 import type { TextureHandle } from "../render/gpu/renderer.js";
-import { CHUNK_DECODES, LOOKAHEAD_SECONDS, PlaybackEngine, PREROLL_SECONDS, TARGET_READY, type ShownFrame } from "./PlaybackEngine.js";
+import { CHUNK_DECODES, LOOKAHEAD_SECONDS, PlaybackEngine, PREROLL_SECONDS, TARGET_READY, type PlaybackAudio, type ShownFrame } from "./PlaybackEngine.js";
 
 const US = 1_000_000;
 
@@ -67,7 +68,7 @@ function project(clips: { id: string; media: string; start: number; duration: nu
   return doc;
 }
 
-function setup(doc: Project, options: { infos?: Record<string, VideoInfo> } = {}) {
+function setup(doc: Project, options: { infos?: Record<string, VideoInfo>; audio?: PlaybackAudio } = {}) {
   let now = 100;
   const tickers = new Set<Ticker>();
   const scheduler = { addTicker: (ticker: Ticker) => (tickers.add(ticker), () => void tickers.delete(ticker)) };
@@ -114,6 +115,7 @@ function setup(doc: Project, options: { infos?: Record<string, VideoInfo> } = {}
     preview: { firstShown },
     scrubbing: () => scrubbing,
     idle,
+    ...(options.audio && { audio: options.audio }),
   });
   const flush = async () => {
     for (let i = 0; i < 5; i++) await Promise.resolve();
@@ -581,5 +583,104 @@ describe("PlaybackEngine dropped frames", () => {
     }
     expect(t.playhead()).toBe(18);
     expect(t.engine.autoProxy.has("a")).toBe(true);
+  });
+});
+
+/** An audio scheduler stand-in that records what the engine hands it. */
+function fakeAudio(lead = 0.05) {
+  let ready = false;
+  const mappings: PlayMapping[] = [];
+  const audio = {
+    lead: vi.fn(() => lead),
+    prepare: vi.fn(() => ready),
+    prefetch: vi.fn(),
+    sync: vi.fn((mapping: PlayMapping) => void mappings.push({ ...mapping })),
+    stop: vi.fn(),
+  };
+  return { audio, mappings, setReady: (value: boolean) => (ready = value), last: () => mappings.at(-1) };
+}
+
+describe("PlaybackEngine audio", () => {
+  it("waits in the preroll for the audio under the playhead, then starts the clock its lead ahead", async () => {
+    const a = fakeAudio(0.05);
+    const t = setup(ONE_CLIP(), { audio: a.audio });
+    setPlayhead(t.session, 30);
+    t.engine.play(1);
+    t.frame();
+    await t.deliverAll();
+    t.frame();
+    // The video is ready, the audio is not: still in the preroll.
+    expect(a.audio.sync).not.toHaveBeenCalled();
+    expect(a.audio.prepare).toHaveBeenLastCalledWith(expect.anything(), 30);
+    a.setReady(true);
+    t.frame();
+    const mapping = a.last();
+    expect(mapping).toMatchObject({ frame: 30, speed: 1, end: 900, loop: false });
+    // 100 is the clock: the lead, less half a display frame (frame boundaries between vsyncs).
+    expect(mapping?.clock).toBeCloseTo(100 + 0.05 - 0.5 / 60, 9);
+    // The playhead holds until the anchor, then runs from it.
+    t.advance(0.04);
+    t.frame();
+    expect(t.playhead()).toBe(30);
+    t.advance(1);
+    t.frame();
+    expect(t.playhead()).toBe(30 + Math.floor((0.04 + 1 - 0.05 + 0.5 / 60) * 30));
+  });
+
+  it("gives up waiting for audio after the preroll time", async () => {
+    const a = fakeAudio(0);
+    const t = setup(ONE_CLIP(), { audio: a.audio });
+    t.engine.play(1);
+    t.frame();
+    await t.deliverAll();
+    t.advance(PREROLL_SECONDS + 0.01);
+    t.frame();
+    expect(a.audio.sync).toHaveBeenCalled();
+  });
+
+  it("re-anchors a seek with the lead, loads audio ahead, and stops the audio on pause", async () => {
+    const a = fakeAudio(0.04);
+    a.setReady(true);
+    const t = setup(ONE_CLIP(), { audio: a.audio });
+    await t.startPlaying();
+    t.advance(1);
+    t.frame();
+    expect(a.audio.prefetch).toHaveBeenCalled();
+    setPlayhead(t.session, 600);
+    t.frame();
+    expect(a.last()).toMatchObject({ frame: 600 });
+    expect(a.last()?.clock).toBeCloseTo(101 + 0.04 - 0.5 / 60, 9);
+    t.engine.pause();
+    expect(a.audio.stop).toHaveBeenCalledTimes(1);
+  });
+
+  it("wraps a loop at the exact time the end frame would have started", async () => {
+    const a = fakeAudio(0);
+    a.setReady(true);
+    const t = setup(project([{ id: "c1", media: "a", start: 0, duration: 60 }]), { audio: a.audio });
+    t.session.state.set((state) => ({ ...state, loop: true }));
+    setPlayhead(t.session, 50);
+    await t.startPlaying();
+    const before = a.last() as PlayMapping;
+    expect(before).toMatchObject({ frame: 50, loop: true, end: 60 });
+    // The tick that sees the wrap comes 20 ms late.
+    t.advance(10 / 30 + 0.02);
+    t.frame();
+    const after = a.last() as PlayMapping;
+    expect(after.frame).toBe(0);
+    expect(after.clock).toBeCloseTo(before.clock + 10 / 30, 9);
+    expect(t.playhead()).toBe(0);
+  });
+
+  it("hands shuttle speeds over (the scheduler is silent at them) with no clock lead", async () => {
+    const a = fakeAudio(0.05);
+    a.setReady(true);
+    const t = setup(ONE_CLIP(), { audio: a.audio });
+    await t.startPlaying();
+    a.audio.lead.mockClear();
+    t.engine.play(2);
+    t.frame();
+    expect(a.last()).toMatchObject({ speed: 2 });
+    expect(a.audio.lead).not.toHaveBeenCalled();
   });
 });

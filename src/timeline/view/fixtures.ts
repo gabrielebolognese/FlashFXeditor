@@ -28,6 +28,8 @@ const TOKENS: Record<string, string> = {
   "--space-1": "4px",
   "--space-2": "6px",
   "--space-3": "8px",
+  "--track-toggle-size": "16px",
+  "--track-toggle-gap": "4px",
 };
 
 /** A Theme with the timeline metrics set; colors are their token names (canvases take any string). */
@@ -35,4 +37,14 @@ export function testTheme(): Theme {
   return readTheme((name) => TOKENS[name] ?? name).theme;
 }
 
-export const METRICS: TimelineMetrics = { headerWidth: 176, rulerHeight: 28, dividerHeight: 4, addRowHeight: 24, trackHeight: { S: 32, M: 56, L: 88 } };
+export const METRICS: TimelineMetrics = {
+  headerWidth: 176,
+  rulerHeight: 28,
+  dividerHeight: 4,
+  addRowHeight: 24,
+  trackHeight: { S: 32, M: 56, L: 88 },
+  headerPad: 8,
+  headerLine: 32,
+  toggleSize: 16,
+  toggleGap: 4,
+};

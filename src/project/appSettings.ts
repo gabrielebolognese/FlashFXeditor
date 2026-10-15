@@ -1,5 +1,6 @@
 // Global app settings (spec §3.1: persisted with idb-keyval). For now the autosave delay of the
-// Project section (§11) and the import mode (§9.1, no UI yet). TODO(batch 42): the settings panel.
+// Project section (§11), the import mode (§9.1, no UI yet) and the monitoring volume and mute of the
+// preview chrome (§14: monitoring only, never the export). TODO(batch 42): the settings panel.
 import { createStore, type Store } from "../core/store/createStore.js";
 import { AUTOSAVE_DELAY_MS } from "./Autosaver.js";
 import type { KeyValueStore } from "./kv.js";
@@ -11,10 +12,15 @@ export interface AppSettings {
   /** Debounce after the last change before autosaving. */
   autosaveDelayMs: number;
   importMode: ImportMode;
+  /** Master volume knob (dB, MONITOR_MIN_DB..MONITOR_MAX_DB) and mute: what is heard, never what is exported. */
+  monitorVolumeDb: number;
+  monitorMuted: boolean;
 }
 
 export const AUTOSAVE_DELAYS_MS = [1000, 2000, 5000, 10_000] as const;
-export const DEFAULT_APP_SETTINGS: AppSettings = { autosaveDelayMs: AUTOSAVE_DELAY_MS, importMode: "copy" };
+export const MONITOR_MIN_DB = -60;
+export const MONITOR_MAX_DB = 0;
+export const DEFAULT_APP_SETTINGS: AppSettings = { autosaveDelayMs: AUTOSAVE_DELAY_MS, importMode: "copy", monitorVolumeDb: 0, monitorMuted: false };
 
 const KEY = "settings.v1";
 
@@ -25,6 +31,9 @@ function sanitize(value: unknown, fallback: AppSettings = DEFAULT_APP_SETTINGS):
   return {
     autosaveDelayMs: AUTOSAVE_DELAYS_MS.some((ms) => ms === delay) ? (delay as number) : fallback.autosaveDelayMs,
     importMode: raw.importMode === "copy" || raw.importMode === "reference" ? raw.importMode : fallback.importMode,
+    monitorVolumeDb:
+      typeof raw.monitorVolumeDb === "number" && Number.isFinite(raw.monitorVolumeDb) ? Math.min(MONITOR_MAX_DB, Math.max(MONITOR_MIN_DB, raw.monitorVolumeDb)) : fallback.monitorVolumeDb,
+    monitorMuted: typeof raw.monitorMuted === "boolean" ? raw.monitorMuted : fallback.monitorMuted,
   };
 }
 

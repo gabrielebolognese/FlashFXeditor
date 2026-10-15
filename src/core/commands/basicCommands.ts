@@ -75,6 +75,21 @@ export function removeTrack(trackId: TrackId): Command {
   };
 }
 
+/** Track fields a raw update may set. */
+export type TrackPatch = Partial<Pick<Track, "name" | "locked" | "muted" | "solo" | "hidden" | "targeted" | "height">>;
+
+/** Sets track fields as given. Mute and solo also carry `audio` (the audio engine applies them). */
+export function updateTrack(trackId: TrackId, patch: TrackPatch, label = "Edit track"): Command {
+  return {
+    id: "track.update",
+    label,
+    affects: "muted" in patch || "solo" in patch ? ["tracks", "audio"] : ["tracks"],
+    run(draft) {
+      Object.assign(findTrack(draft, trackId, "track.update"), patch);
+    },
+  };
+}
+
 export function addClip(clip: Clip): Command {
   return {
     id: "clip.add",

@@ -15,7 +15,15 @@ export interface TimelineMetrics {
   dividerHeight: number;
   addRowHeight: number;
   trackHeight: Record<Track["height"], number>;
+  /** Header column padding, and the height of a header's first line (icon, name, toggles). */
+  headerPad: number;
+  headerLine: number;
+  toggleSize: number;
+  toggleGap: number;
 }
+
+/** The toggles of a track header (audio tracks: mute and solo; the rest come with Batch 16). */
+export type HeaderToggle = "mute" | "solo";
 
 export interface Rect {
   x: number;
@@ -71,9 +79,11 @@ export class TimelineGeometry {
   /** Allowed `scrollY` values; 0 (the resting position) is always inside. */
   readonly scrollYRange: { min: number; max: number };
   private readonly byTrack: ReadonlyMap<TrackId, Row>;
+  private readonly metrics: TimelineMetrics;
 
   constructor(input: GeometryInput) {
     const { metrics } = input;
+    this.metrics = metrics;
     this.width = input.width;
     this.height = input.height;
     this.headerWidth = Math.min(metrics.headerWidth, input.width);
@@ -138,6 +148,19 @@ export class TimelineGeometry {
   isFrameVisible(frame: Frame): boolean {
     const { from, to } = this.visibleFrames;
     return frame >= from && frame <= to;
+  }
+
+  /**
+   * The mute and solo toggles of an audio track's header, right-aligned on its first line; null for
+   * other tracks. TODO(batch 16): target, lock and hide toggles, video mute.
+   */
+  headerToggles(row: Row): Record<HeaderToggle, Rect> | null {
+    if (row.kind !== "audio") return null;
+    const { headerPad, headerLine, toggleSize, toggleGap } = this.metrics;
+    const y = row.y + (Math.min(row.height, headerLine) - toggleSize) / 2;
+    const solo = { x: this.headerWidth - headerPad - toggleSize, y, width: toggleSize, height: toggleSize };
+    const mute = { x: solo.x - toggleGap - toggleSize, y, width: toggleSize, height: toggleSize };
+    return { mute, solo };
   }
 
   rowOf(trackId: TrackId): Row | null {

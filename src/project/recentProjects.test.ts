@@ -83,7 +83,7 @@ describe("app settings", () => {
     await settings.load();
     expect(settings.getState()).toEqual(DEFAULT_APP_SETTINGS);
     await settings.update({ autosaveDelayMs: 5000 });
-    expect(kv.data.get("settings.v1")).toEqual({ autosaveDelayMs: 5000, importMode: "copy" });
+    expect(kv.data.get("settings.v1")).toEqual({ autosaveDelayMs: 5000, importMode: "copy", monitorVolumeDb: 0, monitorMuted: false });
     await settings.update({ autosaveDelayMs: 1234 });
     expect(settings.getState().autosaveDelayMs).toBe(5000);
 
@@ -101,5 +101,17 @@ describe("app settings", () => {
     expect(settings.getState().importMode).toBe("reference");
     await settings.update({ importMode: "link" as never });
     expect(settings.getState().importMode).toBe("reference");
+  });
+
+  it("keeps the monitoring volume in range and the mute flag", async () => {
+    const kv = memoryKeyValueStore();
+    kv.data.set("settings.v1", { monitorVolumeDb: -12.5, monitorMuted: true });
+    const settings = createAppSettings(kv);
+    await settings.load();
+    expect(settings.getState()).toMatchObject({ monitorVolumeDb: -12.5, monitorMuted: true });
+    await settings.update({ monitorVolumeDb: 20 });
+    expect(settings.getState().monitorVolumeDb).toBe(0);
+    await settings.update({ monitorVolumeDb: Number.NaN, monitorMuted: "yes" as never });
+    expect(settings.getState()).toMatchObject({ monitorVolumeDb: 0, monitorMuted: true });
   });
 });

@@ -13,6 +13,10 @@ interface FakeWorker extends WorkerLike {
   crash(message: string): void;
 }
 
+const noWorker = (): WorkerLike => {
+  throw new Error("no analysis worker in these tests");
+};
+
 /** A pool whose workers are in-process hosts; messages are delivered asynchronously, like postMessage. */
 function setup(handlers: Handlers, concurrency = 2, immediate: ReadonlySet<Method> = new Set()) {
   const workers: FakeWorker[] = [];
@@ -39,6 +43,7 @@ function setup(handlers: Handlers, concurrency = 2, immediate: ReadonlySet<Metho
       workers.push(worker);
       return worker;
     },
+    analysis: noWorker,
   });
   return { pool, workers };
 }
@@ -158,7 +163,7 @@ describe("WorkerPool + WorkerHost", () => {
         }) as WorkerLike["addEventListener"],
         terminate: () => undefined,
       };
-      const pool = new WorkerPool({ decode: () => worker });
+      const pool = new WorkerPool({ decode: () => worker, analysis: noWorker });
       const controller = new AbortController();
       const request = pool.request("poster", { file, kind: "image", maxSize: 320 }, { signal: controller.signal });
       const id = posted[0]?.id ?? -1;

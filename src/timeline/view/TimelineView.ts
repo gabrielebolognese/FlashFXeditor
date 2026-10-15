@@ -4,7 +4,7 @@
 // frame. Both draw only from the FrameScheduler. Zoom and scroll live in the session store; the view
 // subscribes to them directly and React never renders for them.
 import type { Affect } from "../../core/commands/command.js";
-import type { ClipId, Project, TrackKind } from "../../core/document/types.js";
+import type { ClipId, Project, TrackId, TrackKind } from "../../core/document/types.js";
 import { watchDevicePixelRatio } from "../../core/scheduler/devicePixelRatio.js";
 import type { FrameScheduler, RenderView } from "../../core/scheduler/FrameScheduler.js";
 import type { Store } from "../../core/store/createStore.js";
@@ -16,7 +16,7 @@ import type { Theme, ThemeBridge } from "../../core/theme/theme.js";
 import { contentEnd, neighbors } from "../model/queries.js";
 import { drawContent } from "./drawContent.js";
 import { drawOverlay } from "./drawOverlay.js";
-import { TimelineGeometry, type TimelineMetrics } from "./geometry.js";
+import { TimelineGeometry, type HeaderToggle, type TimelineMetrics } from "./geometry.js";
 import { HitTester, type HitResult } from "./HitTester.js";
 import { TextCache } from "./textCache.js";
 import {
@@ -43,6 +43,8 @@ export interface TimelineViewDeps {
   theme: Pick<ThemeBridge, "theme" | "subscribe">;
   /** A "+ track" row was clicked. */
   onAddTrack(kind: TrackKind): void;
+  /** A track header toggle (mute, solo) was clicked. */
+  onToggleTrack(trackId: TrackId, toggle: HeaderToggle): void;
 }
 
 export interface TimelineStats {
@@ -69,17 +71,27 @@ type Gesture = { kind: "scrub"; pointerId: number };
 
 function metricsOf(theme: Theme): TimelineMetrics {
   const tl = theme.timeline;
-  return { headerWidth: tl.headerWidth, rulerHeight: tl.rulerHeight, dividerHeight: tl.dividerHeight, addRowHeight: tl.addRowHeight, trackHeight: tl.trackHeight };
+  return {
+    headerWidth: tl.headerWidth,
+    rulerHeight: tl.rulerHeight,
+    dividerHeight: tl.dividerHeight,
+    addRowHeight: tl.addRowHeight,
+    trackHeight: tl.trackHeight,
+    headerPad: theme.space[3],
+    headerLine: theme.control.comfortable,
+    toggleSize: tl.toggleSize,
+    toggleGap: tl.toggleGap,
+  };
 }
 
 const sameHover = (a: HitResult | null, b: HitResult | null) =>
-  a === b || (a !== null && b !== null && a.type === b.type && a.clipId === b.clipId && a.addTrack === b.addTrack && a.trackId === b.trackId);
+  a === b || (a !== null && b !== null && a.type === b.type && a.clipId === b.clipId && a.addTrack === b.addTrack && a.trackId === b.trackId && a.toggle === b.toggle);
 
 function cursorFor(hit: HitResult | null, gesture: Gesture | null): string {
   if (gesture?.kind === "scrub") return "ew-resize";
   if (!hit) return "default";
   if (hit.type === "ruler" || hit.type === "playheadHead") return "ew-resize";
-  if (hit.type === "trackHeader" && hit.addTrack) return "pointer";
+  if ((hit.type === "trackHeader" && hit.addTrack) || hit.type === "headerToggle") return "pointer";
   return "default";
 }
 
@@ -345,8 +357,11 @@ export class TimelineView {
         break;
       }
       case "trackHeader":
-        // TODO(batch 16): track selection and header toggles.
+        // TODO(batch 16): track selection.
         if (hit.addTrack) this.deps.onAddTrack(hit.addTrack);
+        break;
+      case "headerToggle":
+        if (hit.trackId && hit.toggle) this.deps.onToggleTrack(hit.trackId, hit.toggle);
         break;
       case "empty":
         if (!event.shiftKey && event.offsetX >= this.geometry().headerWidth) setSelection(this.deps.session, EMPTY_SELECTION);
@@ -475,10 +490,18 @@ export class TimelineView {
       scrubbing: this.gesture?.kind === "scrub",
       hoverClip: this.hoverClip(project, geometry),
       hoverAddRow: this.hover?.addTrack ? (this.hover.addTrack === "video" ? geometry.addVideo : geometry.addAudio) : null,
+      hoverToggle: this.hoverToggle(geometry),
     });
     this.stats.overlayDraws += 1;
     this.stats.overlayMs = performance.now() - start;
     this.writeStats();
+  }
+
+  private hoverToggle(geometry: TimelineGeometry) {
+    const hover = this.hover;
+    if (hover?.type !== "headerToggle" || !hover.trackId || !hover.toggle) return null;
+    const row = geometry.rowOf(hover.trackId);
+    return row ? (geometry.headerToggles(row)?.[hover.toggle] ?? null) : null;
   }
 
   private hoverClip(project: Project, geometry: TimelineGeometry) {

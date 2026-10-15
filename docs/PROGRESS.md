@@ -1,6 +1,6 @@
 # Progress
 
-last_completed_batch: 09
+last_completed_batch: 10
 in_progress_batch: none
 skipped_batches: []
 needs_human: none
@@ -37,6 +37,9 @@ Items the design system did not define and the functional default that was used 
 - Preview chrome v1 (Batch 08): a footer strip under the preview canvas that mirrors the panel header (`--panel-header-height`, `--surface-1`, hairline top border, `--space-2`/`--space-3` padding; new `PanelFrame` `footer` slot, the DS has no panel footer). Timecode as `--type-mono` primary text with tabular figures; the static quality label "Auto: full" as a `--type-badge` chip on `--surface-3`, `--text-tertiary`, radius-sm (the §13 wording); Fit as a compact IconButton with the `Expand` icon (the timeline's Zoom to fit icon) and the text "Fit".
 - Timeline chrome (Batch 07): track header = 14px kind glyph in `--text-tertiary` + name in body type `--text-secondary`; "+ Video track" / "+ Audio track" rows in caption type `--text-tertiary` with a 12px plus glyph, hover `--hover-wash`. Toolbar timecode field reads as mono text, `--border` on hover and the DS input focus (`--accent-dim` border + `--accent-wash` ring) when edited, 80px wide (3 x `--space-6` + `--space-3`). Dev stats chip: the preview's chip, bottom right of the timeline.
 - Preview transport (Batch 09; the DS has no transport bar): the footer becomes a bar with the panel header's metrics (`--panel-header-height`, `--surface-1`, hairline top) in three columns. Readouts on the left: timecode in `--type-mono` primary, duration in `--type-mono` `--text-tertiary`, and the fps badge as a `--type-badge` chip on `--surface-3`. The transport is centered: compact IconButtons `--space-0` apart, with play/pause at the default 28px size (Lucide SkipBack, StepBack, Play/Pause, StepForward, SkipForward). Loop (Repeat, pressed state) and Fit sit on the right. Status strip under it (§13; the DS has none): `--control-compact` (24px) tall, hairline top, caption type in `--text-tertiary`, values in `--type-mono` with tabular figures, `--space-3` gaps; the quality chip moved here.
+- Audio meter strip (Batch 10; the DS has no meter): a column along the preview panel's right edge (new `PanelFrame` `aside` slot: `--surface-1`, hairline left edge), `--meter-width` 22px (two `--meter-bar-width` 4px bars = `--space-1`, `--meter-bar-gap` 2px = `--space-0`, `--space-2` each side). Bar track `--surface-3`; level `--success` up to 0 dBFS and `--danger` above (scale -60..+6 dBFS); hold tick `--text-primary` (`--danger` above 0 dBFS); 0 dBFS line `--border`; clip LEDs `--meter-led-height` 4px, `--surface-4` off and `--danger` latched, on a top row that is a button (hover wash) resetting them.
+- Master volume knob (Batch 10; the DS has no knob): a compact (24px) hit area holding a `--knob-size` 16px (`--space-5`) dial on `--surface-3` with a `--border` edge (`--surface-5` on hover), a 2x4px `--text-primary` tick turned over 270 degrees, hover wash, DS focus ring, `ns-resize` cursor; the tooltip shows the value in dB. Mute is a compact IconButton (Volume2, VolumeX pressed when muted) just before it.
+- Track header mute/solo (Batch 10, minimal until Batch 16): `--track-toggle-size` 16px (`--space-5`) squares `--track-toggle-gap` 4px apart, right-aligned on the header's first line at `--space-3` from the edge; radius-sm, hairline border, caption-type letter M / S in `--text-tertiary`; on: `--accent-wash` fill, `--accent-dim` border, `--accent` letter (gold marks the active state); hover wash drawn on the overlay.
 
 ## Global deviations
 Decisions that diverge from docs/EDITOR_SPEC.md, with the reason. Each one also appears under its batch.
@@ -58,6 +61,9 @@ Decisions that diverge from docs/EDITOR_SPEC.md, with the reason. Each one also 
 - Media time 0 is the first frame: the compositor asks for `firstCts + sourceTime` (edit lists are still not applied, Batch 06), and picks the frame time nearest to it (§5.1). (Batch 08)
 - The frame rate can change only while the project has no clips and no markers; resolution changes use "keep". Reason: the §15 conversions (fps ratio, "Scale layout") belong to Batch 42 (this batch's "Do not build yet"), and an unconverted fps change breaks the media-clip duration invariant. (Batch 03)
 - Video frames are uploaded at most at the project's long edge, scaled on the GPU while uploading (§9.3 names no upload size). Reason: the preview never draws more of a frame at Fit or 100%, and 4K HEVC decodes faster scaled on upload (70 frames/s, against 56 copied at 4K). Zoom above 100% gets larger uploads in Batch 21. (Batch 09)
+- MP4/MOV audio decodes with WebCodecs `AudioDecoder` in decode.worker, not `decodeAudioData` on the main thread (§14). Reason: `decodeAudioData` needs the whole file in memory (gigabytes for 4K phone video), cannot decode a range (so no 60 s segments past 10 min), and ignores the edit list (AAC priming: phone audio up to ~48 ms late). Other audio formats use `decodeAudioData`; past 10 minutes they still decode whole (Batch 45 follow-up). (Batch 10)
+- The audio scheduler starts one `AudioBufferSourceNode` per clip (per 60 s segment and loop pass) at most 200 ms ahead, in 50 ms steps, playing to the clip's end, instead of a source per 50 ms chunk (§8). Reason: chunk joins must be sample-exact and each risks a click; seeks, pauses and edits still stop a source with the 10 ms ramp. (Batch 10)
+- At 1x the playback clock starts (and re-anchors after a seek) the audio render lead + 20 ms ahead (~70 ms on the dev machine), so the first samples are heard together with the first frame. (Batch 10)
 - P6 pinning covers only the playback windows ahead of the playhead (up to 15 frames) and what the preview draws, not every frame within ±1 s. Reason: ±1 s at 60 fps is ~1 GB of 1080x1920 frames, over the 768 MB budget; frames just played stay in the LRU. (Batch 09)
 - The preview footer's timecode readout is read-only (§7.8: "Timecode readout (editable)"). Reason: the timeline toolbar's timecode field (Batch 07) is the editable playhead field, with the same parser and keyboard jumps; Batch 09's Spec refs take §7.8 for the transport buttons only. Batch 21, which builds the rest of §7.8, makes the readout editable with `bindTimecode`. (Batch 09)
 
@@ -79,7 +85,7 @@ Small things discovered during a batch that belong to a later batch. Format: `- 
 - [from Batch 03 -> Batch 40] Mod+S does nothing while a text input or a dialog has focus (inputs own their keys, the dialog scope is isolated), so Chrome's "Save page" dialog opens. Decide whether Mod+S is preventDefault-ed everywhere.
 - [from Batch 03 -> Batch 04] The 10,000-dispatch perf test (`src/core/store/DocumentStore.test.ts`, limit 300 ms) hit 332 ms best-of-3 in one full `npm run check` while 32 jsdom test files ran in parallel (56–90 ms alone). Run perf tests in their own sequential pass (or a separate Vitest project) so CPU contention cannot turn an unattended run red. (done in Batch 04: `*.perf.test.ts` run in the "perf" Vitest project after the unit tests)
 - [from Batch 04 -> Batch 06] The decode engine builds on `readMp4` (sample table, description, rotation) and `ByteSource`; persist the sample index in `cache/index/`; add cancellation by priority class (a scrub cancels pending prefetches of the same media) to `WorkerHost`/`WorkerPool` (only per-request cancellation exists). (done in Batch 06: `demux/sampleIndex*.ts` + `cache/index/<id>.bin`; the class cancellation lives in `FrameService`, which aborts the superseded scrub and the prefetches of the media through the existing per-request cancel messages)
-- [from Batch 04 -> Batch 10] The audio probe decodes whole non-MP4 files with `decodeAudioData` (resampled to 48 kHz, so the source rate is unknown; long files cost memory): reuse the decoded-audio cache / segmented decode. The peaks job replaces the `AnalysisScheduler` placeholder; decide how `analysis.peaks` becomes "ready" without an undo step per media.
+- [from Batch 04 -> Batch 10] The audio probe decodes whole non-MP4 files with `decodeAudioData` (resampled to 48 kHz, so the source rate is unknown; long files cost memory): reuse the decoded-audio cache / segmented decode. The peaks job replaces the `AnalysisScheduler` placeholder; decide how `analysis.peaks` becomes "ready" without an undo step per media. (done in Batch 10: the probe's buffer goes into the decoded-audio cache, so a file is decoded once; MP4 audio decodes by range in decode.worker; peaks jobs replace the placeholder and set "ready" through `DocumentStore.amend`, with no undo step. Non-MP4 audio over 10 minutes still decodes whole: Batch 45 follow-up)
 - [from Batch 04 -> Batch 15] `edit.delete` and `edit.rename` are registered in `app/mediaController.ts` and only log outside the media scope: route the timeline/preview scopes to clip delete/rename there (or split the handler by scope).
 - [from Batch 04 -> Batch 17] Card posters (first frame, `cache/thumbs/<id>.poster.webp`) give way to the sprite sheets; the analysis placeholder marks `analysis.thumbs`.
 - [from Batch 04 -> Batch 20] Media panel: hover scrub, drag to the timeline, "unused" dim state and usage count on hover; double-click on a card thumbnail inserts (the name keeps double-click rename). (double-click insert done in Batch 07, on cards and list rows)
@@ -116,12 +122,23 @@ Small things discovered during a batch that belong to a later batch. Format: `- 
 - [from Batch 08 -> Batch 41] Undecodable or missing media draw nothing (a console warning; `TODO(batch 41)` in `LayerTextures.fail`): the labeled gray offline slate.
 - [from Batch 08 -> Batch 44] Export frame (and later the export) draws the last resolved draw list, which may hold stand-ins while frames load: export must wait for exact frames.
 - [from Batch 08 -> Batch 09] Before the compositor runs per playback frame, remove the per-render allocations it still has: `sinCos` returns an array (`render/compositor/Compositor.ts:41-48`), `deviceSize`/`frameTransform` return new objects (`render/preview/viewport.ts`), and `keyId` builds strings (`render/preview/LayerTextures.ts:74`). Guard `FLAG_ORDER` in `core/scheduler/FrameScheduler.ts` so a new `InvalidationFlag` cannot be left out (it would never render). (found in the Batch 08 review) (done in Batch 09)
-- [from Batch 09 -> Batch 10] Audio runs on `audioClock.context` (`TODO(batch 10)` in `audio/AudioClock.ts`); mute and the master volume knob go next to the transport (`TODO(batch 10)` in `PreviewPanel.tsx`). The P1 milestone was checked here once (0 commits in 30 s of playback); re-check it with audio playing.
+- [from Batch 09 -> Batch 10] Audio runs on `audioClock.context` (`TODO(batch 10)` in `audio/AudioClock.ts`); mute and the master volume knob go next to the transport (`TODO(batch 10)` in `PreviewPanel.tsx`). The P1 milestone was checked here once (0 commits in 30 s of playback); re-check it with audio playing. (done in Batch 10: the audio graph and scheduler run on the clock's context; mute and the master volume knob sit before loop and Fit; P1 with audio playing: 0 commits in 330 s)
 - [from Batch 09 -> Batch 11] The `IdleQueue` has one pauser (the playback engine). Count pausers once gestures pause it too (`TODO(batch 11)` in `IdleQueue.ts`).
 - [from Batch 09 -> Batch 19] Play in/out (`transport.playInToOut`, Mod+Shift+Space, the transport button) and the in/out loop (`TODO(batch 19)` in `playbackController.ts` and `PreviewPanel.tsx`).
 - [from Batch 09 -> Batch 21] Video frames are uploaded at most at the project's long edge (`uploadSize` in `previewController.ts`, `TODO(batch 21)`). Zoom above 100% needs larger uploads.
 - [from Batch 09 -> Batch 21] The preview footer's timecode readout is a read-only `span` written by `bindPreviewReadouts` (`app/previewController.ts`). §7.8 wants it editable: make it an input bound with `bindTimecode` (`app/timelineController.ts`), as in the timeline toolbar. (found in the Batch 09 review)
 - [from Batch 09 -> Batch 24] Auto quality: `PlaybackEngine.autoProxy` flags media whose frames were late on more than 2 frames in a row (`TODO(batch 24)`). Switch those to proxies for the rest of the playback, and request the full-quality frame 300 ms after a pause (§8). 4K60 HEVC at Full is at the limit of the development machine: median 1.08% dropped when rested, 3-15% when hot.
+- [from Batch 09 -> Batch 21] While the Preview panel is active, the arrow keys (with or without Shift) and Ctrl+0/1/2 do nothing: they are bound to preview-scope actions (canvas nudge, preview zoom) that are not registered yet, and the dispatcher picks the scope binding before the global one (frame step). Let an unregistered scoped action fall through to the global binding until Batches 21/22 wire them. (found while writing the user guide)
+- [from Batch 09 -> Batch 21] After a level is picked in the preview **Zoom** dropdown (native select), the select keeps focus and every shortcut, Space included, is ignored until the user clicks elsewhere. Return focus to the panel after a choice. (found while writing the user guide)
+- [from Batch 09 -> Batch 18] **Go to end** / End moves to the content end, one frame after the last clip, so the preview shows only the background. Decide whether it should land on the last frame of content. (found while writing the user guide)
+- [from Batch 04 -> Batch 41] User-facing text mentions batch numbers: the Remove media dialog says "removing used media comes with Batch 41" and the disabled button tooltip says "Comes with the advanced media panel (Batch 41)". Use neutral wording. (found while writing the user guide)
+- [from Batch 10 -> Batch 16] Track headers draw only mute and solo, and only on audio tracks (`geometry.headerToggles`, `drawContent.ts`, `TODO(batch 16)`): video-track mute, target, lock and hide, and the full header UI. Mute/solo are `track.update` commands; give them their own command ids with the header actions.
+- [from Batch 10 -> Batch 17] Waveforms read the peaks files (`cache/peaks/<id>.bin`, `readPeaksFile` in `media/cache/peaks.ts`; `TODO(batch 17)` in `media/PeaksJobs.ts`). Level n covers 256 << n frames per bucket; pick the level closest to one bucket per CSS px.
+- [from Batch 10 -> Batch 37] Clip gain curves (fades, keyframes, rubber band) go on the clip GainNode per scheduled chunk with `setValueCurveAtTime` (`TODO(batch 37)` in `audio/scheduler/AudioScheduler.ts`). Every other gain change uses `ramp`/`rampTo` in `AudioMixer.ts`: a linear ramp needs an explicit start point (see the Batch 10 click fix). Audio scrub can play grains from `decodedAudio` segments.
+- [from Batch 10 -> Batch 38] Silence detection runs in analysis.worker from the peaks (`TODO(batch 38)` in `analysis.worker.ts`).
+- [from Batch 10 -> Batch 43] The export mixdown runs the same scheduling against an `OfflineAudioContext` (`TODO(batch 43)` in `AudioMixer.ts`); the monitor gain stays out of it.
+- [from Batch 10 -> Batch 45] Non-MP4 audio (mp3, aac, wav, ogg) over 10 minutes decodes whole with `decodeAudioData`: a 60 min stereo file is ~1.4 GB of PCM, over the 512 MB budget, and files over 1 GB are refused. Segment WAV by byte ranges and MP3/AAC by frames.
+- [from Batch 10 -> Batch 45] Audio is aligned with the frame's draw: video drew 0-17.5 ms after the audio was heard (mean 8.7 ms) in the clap test. The display's presentation delay (about one vsync) comes on top and was not measurable headless. Measure on a real display (slow-motion phone video of a clap test) and delay the audio if needed.
 
 ## Dependencies
 Why each dependency exists (Batch rule 8).
@@ -179,6 +196,7 @@ Why each dependency exists (Batch rule 8).
   2. React DevTools Profiler: record while dragging each splitter and while hovering the toolbar; expect zero commits. (Automated with a commit-counting hook, not the real Profiler.)
   3. DevTools console with the "Verbose" level enabled: on load `[theme]` is logged; click the timeline and press Ctrl+K → `[cmd] edit.split {scope: 'timeline', ...}`; click the preview and press Left → `canvas.nudgeLeft`; in `document.documentElement.setAttribute('data-theme','x')` → `[theme] changed`.
   4. Temporarily add `const x = "#ff0000";` to any `.ts` file under `src/`, run `npm run lint` (fails), remove it.
+- docs: README.md, workspace.md, getting-started.md, keyboard-shortcuts.md, troubleshooting.md, whats-new.md in docs/user-guide/ (initial user guide, 2026-10-15)
 
 ### Batch 02: Document model, time math, commands and undo
 - status: done
@@ -210,6 +228,7 @@ Why each dependency exists (Batch rule 8).
 - review: accepted
   - Evidence: `npm run check` green (typecheck, lint, 149/149 tests in 19 files, build 205.2 kB JS); full suite re-run green. Acceptance 1: `undoFuzz.test.ts` (3 seeds × 1,000 ops undone to `toStrictEqual(original)`, redone to final, plus 1,000 interleaved ops/undos/redos). Acceptance 2: `time.test.ts` round-trips every frame of 1 h at 30000/1001 (and 24/25/50/60). Acceptance 3: `DocumentStore.test.ts` perf test, measured alone 3 times at 58.7–90.8 ms per 10,000 dispatches with dev validation on (limit 300). Acceptance 4: `DocumentStore.test.ts` "does not notify a subscriber with affects ['markers'] for a clip update".
   - Scope: commands are raw (no overlap resolution, ripple or trim semantics); no disk serialization; nothing renders the document. No color, font or size literals in the changed files. Every TODO is tagged `(batch NN)` and points at the matching batch. §3.3/§3.4/§4: Immer `produceWithPatches`, commands get playhead/selection through `ctx` only, selection on its own channel, integer frames/µs enforced by `validate.ts`, only `AppBar` re-renders (on history availability/label changes).
+- docs: projects-and-saving.md, workspace.md, whats-new.md in docs/user-guide/ (initial user guide, 2026-10-15)
 
 ### Batch 03: Project folder, persistence, start screen
 - status: done
@@ -262,6 +281,7 @@ Why each dependency exists (Batch rule 8).
   - Evidence: `npm run check` green on the first run (typecheck, lint, 247/247 tests in 32 files, build 246.16 kB JS / 81.00 kB gzip). With the pre-fix `TextField.tsx`, `NumberField.tsx` and `projectController.ts` swapped back in, the new regression tests fail 6 of 11 (Enter commits twice, Escape commits, reopen loads "Reel"). With the fix they all pass. Review items 1-3 are resolved: `useDraft` (`src/ui/useDraft.ts:9-21`) gives at most one commit per Enter/blur and none on Escape, so one edit in the Project section is one command and one undo step (§4 P2); `openDir` flushes before reading (`src/app/projectController.ts:97-99`).
   - Acceptance: (1) folder layout `openProject.test.ts` "creates project.json, session.json and the §9.7 folders"; (2) `ProjectSession.test.ts` "rename: project.json is updated after 1 s and the recent entry follows" + manual check 2 (real permission prompt); (3) `openProject.test.ts` "crash recovery" (4 cases) + `ProjectSession.test.ts` restore/discard + manual check 5; (4) `Autosaver.test.ts` "twenty consecutive saves leave exactly 20 files in history/, and it stays at 20" + `history.test.ts`; (5) `openProject.test.ts` "opens read-only with zero writes" (`memoryFs` logs every write attempt before its permission check), `Autosaver.test.ts`/`ProjectSession.test.ts` read-only cases + manual check 3.
   - Scope: no media copying, templates, or fps/resolution conversion (`setFrameRate` refuses projects with clips or markers, `setResolution` is "keep"; both deviations are written down). Literals: the CSS modules hold only 1px hairline borders, the DS input ring (`0 0 0 1px var(--accent-wash)`) and 0/1 opacity toggles; `strokeWidth={2.5}` is only on hero/CTA icons (DS). Every TODO carries a `(batch NN)` tag. §3/§4: React only for chrome; the save dot and the drop highlight are written to the DOM; project edits are single commands; the session playhead and in/out are sanitized to integer frames; no media or canvas work.
+- docs: getting-started.md, projects-and-saving.md, troubleshooting.md, whats-new.md in docs/user-guide/ (initial user guide, 2026-10-15)
 
 ### Batch 04: Media import, probe, media panel basics, worker infrastructure
 - status: done
@@ -343,6 +363,7 @@ Why each dependency exists (Batch rule 8).
   - Literals: the fix adds no CSS. The batch CSS still holds only 1px hairlines, the DS input ring, 0/1 opacities and local z-index 1/2. The toast progress width is a computed percentage.
   - §3/§4: posters are now drawn in the scheduler loop (§3.4, P3). Late worker results are closed (P13). Import, rename and remove are one command each. Probe and poster decoding stay in `decode.worker` (SVG and decodeAudioData on the main thread are logged deviations), and poster arrival makes no React commit. Every TODO has a `(batch NN)` tag.
   - Observation (not blocking, older than this batch): `src/core/scheduler/FrameScheduler.ts:5` `TODO(batch 02): map document command affects flags ... onto view flags` points at a finished batch. It dates from Batch 01 (5ec980f), and Batch 02 did not do the mapping. Follow-up added to retarget it to Batch 07, the first view that subscribes to the document.
+- docs: importing-media.md, troubleshooting.md, whats-new.md in docs/user-guide/ (initial user guide, 2026-10-15)
 
 ### Batch 05: WebGPU renderer foundation
 - status: done
@@ -411,6 +432,7 @@ Why each dependency exists (Batch rule 8).
   - Observations (not blocking; follow-ups added):
     1. `src/render/preview/PreviewStatsOverlay.ts:28`: the comment says the overlay runs after the preview render it reports. But `FrameScheduler.frame` (`src/core/scheduler/FrameScheduler.ts:59-63`) orders views by the order their flags were invalidated. When a new image loads, `pool.put` (`src/render/preview/ImageHarness.ts:111`) invalidates `previewOverlay` before `draw` -> `setLayers` (line 90) invalidates `preview`. The overlay then writes the old `renders` count and stays one behind until the next invalidation. Dev only; the splitter-drag check is not affected, because only `preview` is dirty there.
     2. `src/render/gpu/WebGpuRenderer.ts:167-168` and `176-177`: when `copyExternalImageToTexture` throws (a closed `ImageBitmap` or `VideoFrame`), the texture just created is neither returned nor destroyed, so its GPU memory waits for garbage collection (P13). No caller can reach this today. `uploadVideoFrame` gets its first caller in Batch 06.
+- docs: preview-and-playback.md, troubleshooting.md, whats-new.md in docs/user-guide/ (initial user guide, 2026-10-15)
 
 ### Batch 06: Video decode engine and frame delivery
 - status: done
@@ -597,6 +619,7 @@ Why each dependency exists (Batch rule 8).
   - Literals: the fix adds no CSS and no color, font or size literal. The batch CSS still uses only tokens, the DS 1px hairline, a local z-index of 1 and `max-width: 50%`.
   - §3/§4: decoding stays in `decode.worker`. The harness writes the status to the DOM, with no React commit. Times stay integer microseconds, and dropped stale copies are closed at once (P13). Every TODO in `src/` has a `(batch NN)` tag: a grep finds none without one.
   - Observation (not blocking, not reproduced): `output` drops a leading picture of the current run only while its timestamp is still pending (`VideoDecodeSession.ts:487-497`). Suppose a superseded run outputs a frame whose timestamp is also pending in the new run. That output prunes every pending entry at or before it (line 489). A leading picture of the new run that comes out afterwards then lands in the ring as a valid frame. Two conditions make this possible: GOPs shorter than the 8-chunk in-flight window, or a re-seek to the same sync sample after a stall freed the ring. Decoders that output in POC order mostly emit the new run's earlier pictures first. Follow-up added for Batch 09.
+- docs: preview-and-playback.md, troubleshooting.md, whats-new.md in docs/user-guide/ (initial user guide, 2026-10-15)
 
 ### Batch 07: Timeline canvas foundation
 - status: done
@@ -753,6 +776,7 @@ Why each dependency exists (Batch rule 8).
   - Literals: the fix adds no CSS and no color, font or size literal. The canvas code still reads every color and metric from the `Theme`.
   - §3/§4: the hover is ephemeral state owned by the view (§3.3). The cursor is written only when it changes, from the hover hit each overlay frame (§6.18). The content canvas is not redrawn for hover or the playhead (P3). One hit test per overlay frame costs a few binary searches (P10). Gestures write session state only, and "+ track" is one command.
   - TODOs: every TODO in the batch's files has a `(batch NN)` tag. A grep finds none without one, and all of them point at Batch 08 or later.
+- docs: timeline.md, keyboard-shortcuts.md, whats-new.md in docs/user-guide/ (initial user guide, 2026-10-15)
 
 ### Batch 08: Compositor and preview at the playhead
 - status: done
@@ -885,6 +909,7 @@ Why each dependency exists (Batch rule 8).
        None of these is a closure, so the batch's implementation note is met. Batch 09 runs this path 60 times per second.
     2. Pending manual check 1 asks for `trackId: "<V2 id>"`, but `__editor.clips.list()` shows only V1's id. The track ids come from `__editor.timeline.view.geometry().rows` (`trackId` per row); the step should say so.
     3. `src/core/scheduler/FrameScheduler.ts:12`: `FLAG_ORDER` must list every `InvalidationFlag` (it does today). A flag added to the union later but not to the array would silently never render, and the type checker would not flag it. An exhaustiveness check (or a test that compares the array against the union) would guard it.
+- docs: preview-and-playback.md, whats-new.md in docs/user-guide/ (initial user guide, 2026-10-15)
 
 ### Batch 09: Playback engine (video)
 - status: done
@@ -1061,3 +1086,110 @@ Why each dependency exists (Batch rule 8).
     - Frames and media times stay integers, and decoding stays in `decode.worker`.
     - The preview redraws only through its `preview` flag: the new listener only invalidates. The `IdleQueue` is paused while playing.
   - TODOs: every TODO in `src/` has a `(batch NN)` tag. The lowest is Batch 10.
+- docs: preview-and-playback.md, timeline.md, keyboard-shortcuts.md, troubleshooting.md, whats-new.md in docs/user-guide/ (initial user guide, 2026-10-15)
+
+### Batch 10: Audio decoding, mixing and sync
+- status: done
+- date: 2026-10-15
+- notes:
+  - Resumed: the first session wrote every Build item and was cut off at ~01:25 by the Windows Update reboot, before any acceptance check. This session reviewed that code, ran the checks in Chrome and fixed what they found (the stop click, below).
+  - Decoded audio (`src/audio/decode/`):
+    - `DecodedAudio`: `AudioBuffer`s per media and segment, kept on the main thread in `AudioBufferCache` (512 MB LRU; the entry just stored is never evicted). Released when a media leaves the project, cleared when it closes (P13).
+    - MP4/MOV/M4A audio decodes in decode.worker with WebCodecs `AudioDecoder` (`openAudio`/`decodeAudio`/`closeAudio`; `media/decode/audioTrack.ts`, `AudioTracks.ts`). Only the audio samples are read, and any range decodes on its own (2 packets of preroll for the AAC overlap). Media over 10 minutes load in ~60 s segments on demand (`segments.ts`, boundaries on multiples of 1024 frames).
+    - Edit lists: `mp4Probe.ts` now reads the edit lists, the esds AudioSpecificConfig and the audio sample table. The AAC priming is skipped, a leading empty edit delays the audio, and media time 0 is the video's first frame (the Batch 08 convention). The decoder's real output rate (HE-AAC doubles it) comes from decoding the first packets.
+    - At most 2 channels: quad and 5.1 are mixed down with the Web Audio "speakers" rules, in the worker and for `decodeAudioData` output.
+    - Other files (mp3, aac, wav, ogg), and MP4 audio without a WebCodecs decoder, use `decodeAudioData` (OfflineAudioContext, 48 kHz) on the whole file. The import probe's buffer goes straight into the cache (`DecodedAudio.put`), so the file is decoded once (Batch 04 follow-up).
+    - Worker PCM is copied into the `AudioBuffer` in slices of 1M frames, yielding between them. The worker's arrays are then transferred on to analysis.worker, with no further copy.
+  - Peaks (§9.6):
+    - `media/cache/peaks.ts`: level 0 holds Int8 min/max per 256 frames per channel, halved level by level down to one bucket. `cache/peaks/<mediaId>.bin` carries a header stamped with the source's size and lastModified, so a replaced or damaged file reads as null and is rebuilt.
+    - `media/workers/analysis.worker.ts` (new): `peaksLevel0` per segment and `peaksFile` (pyramid + file bytes). It never decodes.
+    - `media/PeaksJobs.ts`: one job at a time, each started from an idle callback (none while playing). A job reuses a valid file; otherwise it decodes segment by segment through `DecodedAudio` (the buffers stay cached for playback), writes the file, and sets `analysis.peaks` to "ready".
+    - "ready" goes through the new `DocumentStore.amend`, a command (`media.analysis`, `setMediaAnalysis`) with no undo step (Batch 04 follow-up). `AnalysisScheduler` hands every audio-bearing media to the jobs; the files of media already "ready" are checked once per session (the cache is disposable).
+  - Graph (`src/audio/AudioMixer.ts`, §14):
+    - Per voice: source -> envelope GainNode (start/stop ramps) -> clip GainNode (gain dB, mute; `TODO(batch 37)` fades, keyframes) -> track GainNode (mute/solo, `audibleTracks`) -> bus (the master GainNode, stereo) -> monitor GainNode (master volume and mute, monitoring only) -> destination.
+    - The bus also feeds a splitter and one `AnalyserNode` per channel (2048 samples, no smoothing). The meters therefore read the mix before the monitor, which is what the export will contain.
+    - Every gain change is a 10 ms linear ramp from an explicit start point (`ramp`/`rampTo`; see the click fix below).
+  - Scheduler (`src/audio/scheduler/AudioScheduler.ts`, §8):
+    - Driven from the engine tick (`sync(mapping)`), in 50 ms steps, starting voices at most 200 ms ahead.
+    - The mapping is the engine's anchor, so audio and video read the same clock. Clock readings become context times through the new `AudioClock.contextTime`, `renderLead` and `epoch`.
+    - One source per (clip, segment, loop pass); `playbackRate` = the clip speed (0.25x..4x).
+    - A clip's start or a segment join starts exactly. Anything else (playback starting mid-clip, a seek, audio decoded late) starts with a 10 ms fade-in, its offset moved on by the delay.
+    - Pause, seek, edits and a clock re-base stop voices with a 10 ms ramp. Speeds other than 1x are silent.
+    - Edits while playing: mute/solo ramp the track gains, a clip gain or mute change ramps its voice, and a moved, trimmed or removed clip stops and is scheduled again.
+    - Loop: the passes after the wrap are scheduled ahead. The engine now wraps at the exact time the end frame would have started (not at the tick that sees it), so those voices are kept.
+  - Engine (`PlaybackEngine`):
+    - The preroll also waits for the decoded audio under the playhead (up to the 0.5 s preroll).
+    - At 1x, the clock starts, and re-anchors after a seek, `lead` = render lead + 20 ms ahead, so the first samples are heard on time.
+    - The 250 ms scan loads the audio of clips starting within 2 s. A pause stops the scheduler.
+  - Click fix (this session): a stop after a fade-in clicked. `cancelAndHoldAtTime` adds no hold point after a ramp that has ended (Web Audio spec; Chrome does the same). The 10 ms ramp-out therefore ran from the fade-in's end, seconds earlier, and the gain dropped to ~0 at once.
+    - Found in the seek recording: Home pressed after a mid-clip seek jumped 0.30 in one sample.
+    - `ramp` now sets an explicit start point at the exact current value (the last ramp of each param is kept in a WeakMap). The same bug had made mute/solo instant jumps.
+    - `FakeParam` (`audio/testAudio.ts`) now models the Web Audio automation rules. "ramps a voice that faded in out from full level when it stops (no click)" fails on the old code (it renders 0.005 at the stop).
+    - Also fixed: the `late` counter counted voices it then skipped.
+  - Preview chrome (§7.8):
+    - Mute (`audio.toggleMute`, Volume2/VolumeX, pressed when muted) and the master volume `Knob` (new `ui/Knob.tsx`), both before loop and Fit.
+    - Knob: drag up/down, 150 px across -60..0 dB (Shift 5x finer); arrows, Page Up/Down, Home/End when focused; double-click resets to 0 dB. While dragged it writes the DOM directly and drives the monitor gain (no React commit), and the value is stored on release.
+    - Both live in the app settings (`monitorVolumeDb`, `monitorMuted`).
+    - Meter: `MeterView` + `PeakMeter` (pure, tested), a canvas strip along the panel's right edge in a new `PanelFrame` `aside` slot. It redraws through the `meters` flag every frame while audio plays and until the bars and holds settle, then stops.
+    - Meter scale -60..+6 dBFS, green up to 0 dBFS and red above. The hold lasts 1.5 s, then falls at 24 dB/s. Each channel has a clip LED that latches on any sample above full scale; a click on the LED row resets it.
+  - Track headers (§6.12, minimal): M and S toggles on audio track headers, right-aligned on the first line (`geometry.headerToggles`, hit type `headerToggle`, accent when on, hover wash on the overlay). Each click is one `track.update` command (`updateTrack`, affects `tracks` + `audio`) and one undo step.
+  - Dev (`app/audioDev.ts`, dev builds only):
+    - `__editor.audio.clapTest({ seconds: 330, interval: 1 })`: a WAV of 10 ms ticks on a new audio track plus a 1-frame white solid on each tick's frame, the first one 1 s in.
+    - `.syncReport()`: video minus audio per clap, measured from the analyser on the bus and `getOutputTimestamp`. It is also logged and shown as a toast at each pause.
+    - `.toneTest({ gainDb: 6, levelDb: -3 })`; `.scheduler`, `.decoded`, `.meter`, `.mixer`.
+  - Measured:
+    - 664 unit tests in 85 files (+66 tests, +8 files: AudioScheduler, PeakMeter, AudioBufferCache, DecodedAudio, segments, PeaksJobs, peaks, audioTrack), plus the perf project.
+    - Build: 413.31 kB JS (136.09 kB gzip, +27.98 / +9.68 kB), 38.44 kB CSS (+1.74 kB), decode.worker 211.94 kB (+6.02 kB), analysis.worker 3.88 kB (new). The dev tooling is not in the build.
+    - Setup: headless Chrome 155 (CDP, dev server, OPFS projects), 48 kHz context: base latency 10.7 ms, output latency 40-48 ms, render lead 46-55 ms. Monitoring was muted, so nothing played aloud. The meters, the clap analyser and the AudioWorklet recorders all tap the bus, before the monitor.
+    - Acceptance 1 (`b10-clap`, 30 fps): 330 s, 329 claps 1 s apart, played from 0 once. Offset = video (render time of the flash frame) minus audio (tick onset found sample-exact by a worklet, mapped to its output time by `getOutputTimestamp`).
+      - First 10 s: 10.4-14.1 ms. After 5 min (30 claps): 1.4-12.3 ms. All claps: 0.4-17.5 ms, mean 8.7 ms. One frame is 33.3 ms. The dev report agreed within 2 ms.
+      - No drift beyond one vsync. One voice for the whole run, no clock re-base, 2 of 9899 frames dropped, 1 React commit (play), none during playback.
+      - The offset is positive (video after audio): a frame is drawn at the first vsync after its time (0-16.7 ms). The display's presentation delay comes on top and cannot be measured headless (follow-up).
+    - Acceptance 2 (`b10-seek`, a 440 Hz tone at 0.5, the bus recorded sample-exact): three seeks while playing, to 20 s (the timecode-field path), to 0 (a real Home key) and to 10.4 s.
+      - The old audio ramped to silence in 9.8 ms. New audio started 10.8-11.0 ms after the seek and reached full level at 11.2-21.0 ms (render clock). The device adds its output latency (46-53 ms here) to everything heard.
+      - The largest sample step around the seeks was 0.0288, the tone's own slope: no click. Before the fix, the Home seek jumped 0.30. WAVs: `%TEMP%/b10/seek-*.wav`.
+    - Acceptance 3: two tracks (A1 440 Hz, A2 660 Hz), each track's output recorded. The header toggles were clicked with real pointer events while playing: mute A1, unmute, solo A2, unsolo, solo A1, unsolo.
+      - Each change reached silence or full level 8.8-17.3 ms after the click (the 10 ms ramp), and the other track did not change. Playback went on, with one undo step per click.
+    - Acceptance 4 (`b10-peaks`): av.mp4 (H.264 + AAC, 12 s), voice.m4a (AAC, 8 s), tone.wav (PCM, 6 s).
+      - All three files were written and "ready" 442 ms after the import started, with one undo step ("Import 3 media files"). Worker calls: openAudio 2, decodeAudio 2, peaksLevel0 3, peaksFile 3; the WAV reused the probe's decode.
+      - The levels match the sources (top bucket +-64 / +-102 / +-32 for 0.5 / 0.8 / 0.25).
+      - Reopen: no audio decode, no peaks request, files unchanged.
+    - Acceptance 5 (`b10-meter`):
+      - A -12 dBFS tone shows -12 dB, no clip.
+      - A -3 dBFS tone with +6 dB clip gain shows +3 dBFS, and both clip LEDs latch. They are still latched 3 s after the pause (hold falling, -38.6 dB) and reset with one click (0 commits).
+      - The meter stops drawing once settled. Each play/pause pair costs 2 commits (the button).
+    - Knob and mute: the monitor output was recorded while a -12 dBFS tone played.
+      - Dragging 75 px went from 0 to -30 dB: 0 commits during the drag, 1 at release. The output followed: -26 dB mid-drag, then -30 dB.
+      - Mute gave silence, a double-click stored 0 dB (still muted), and unmute brought back 0 dB.
+    - P1 with audio (Batch 09 follow-up): 330 s of playback with audio and meters running: 1 commit at play, 0 during, 1 at the end.
+    - Regression:
+      - Batch 09 acceptance 1 (`b09-a1`, audio clock): cold 6 / 1799 dropped, warm 0 and 1 / 1799. Every render had its exact frame; 2 commits per pass.
+      - 4K60 HEVC (`b09-a2`): 72% and 22% right after the 1080p passes (a hot GPU, as in Batch 09). After a 5 min rest, interleaved, the audio scheduler detached from the engine gave 0.83% and 1.58%, attached 1.17% and 1.08%. Every render had its exact frame: no regression.
+      - Batch 08: a real ruler drag from frame 20 to 100 across the cuts gave 157 renders: 0 black, 0 missing, 0 content draws, 0 commits, and the last render exact. After `device.destroy()`, generation 2 came back with the exact frame.
+- deviations:
+  - MP4/MOV audio decodes with WebCodecs `AudioDecoder` in decode.worker, not with `decodeAudioData` on the main thread (§14). Reasons:
+    - `decodeAudioData` needs the whole file in memory (a 4K phone video is gigabytes) and cannot decode a range, so "files over 10 min decode in 60 s segments on demand" is impossible with it.
+    - It ignores the edit list: phone audio would play up to ~48 ms late (the AAC priming).
+    - The worker reads only the audio samples. Other formats still use `decodeAudioData`.
+  - Non-MP4 audio (mp3, aac, wav, ogg) over 10 minutes still decodes whole (`decodeAudioData` has no ranges), and files over 1 GB are refused for audio. Follow-up for Batch 45.
+  - The scheduler starts one `AudioBufferSourceNode` per clip (per segment and loop pass) at most 200 ms ahead, in 50 ms steps, and lets it play to the clip's end. §8 describes buffer sources in 50 ms chunks. Reasons:
+    - Back-to-back chunk sources must join sample-exactly, and every join risks a click (and 20 nodes/s).
+    - A source per clip is click-free, and seeks, pauses and edits still stop it with the 10 ms ramp.
+    - Nothing starts more than 200 ms ahead (the 400 ms limit of the implementation notes).
+    - The per-chunk gain curves of §14 come with fades and keyframes (Batch 37).
+  - At 1x the clock starts, and re-anchors after a seek, `lead` ahead: render lead + 20 ms, ~70 ms on this machine. Video and audio then start together and the first samples are not cut. Playback therefore begins ~70 ms later after a press than in Batch 09.
+  - "Seeking restarts audio within 50 ms" is measured on the render clock (10.8-11.0 ms here). The device's output latency (46-53 ms in headless Chrome on this machine) delays everything heard equally, the start of play included, and is not the app's to shorten.
+  - The peak meter scale (-60..+6 dBFS) and its release (24 dB/s) are not in the spec. The strip is a column right of the preview body, the full height between the panel header and the footer (§7.8: "vertical along the right edge of the preview panel").
+  - Master volume and monitoring mute are global app settings (IndexedDB `settings.v1`), not project data: they only concern what is heard (§14).
+  - `analysis.peaks` becomes "ready" through `DocumentStore.amend` (no undo step). An undo/redo that brings back a media record also brings back "pending", and the job marks it again (Batch 04 follow-up).
+- follow-ups: [from Batch 10 -> Batch 16] video-track mute and the full header toggles; [from Batch 10 -> Batch 17] load the peaks for the waveforms; [from Batch 10 -> Batch 37] clip gain curves per scheduled chunk, audio scrub from the decoded audio; [from Batch 10 -> Batch 38] silence detection in analysis.worker; [from Batch 10 -> Batch 43] the export mixdown on the same graph; [from Batch 10 -> Batch 45] long non-MP4 audio decodes whole, display latency
+- design gaps: audio meter strip, master volume knob, track header M/S toggles (details in Design system gaps)
+- pending manual checks:
+  1. Clap test with real output (acceptance 1): in a normal Chrome window with speakers or headphones, open a 30 fps project. In the console run `await __editor.audio.clapTest()`, then press Space. Each tick should come with a white flash. At the end (5.5 min) the toast reads "start max N ms · after 5 min max N ms · 1 frame = 33.3 ms": both maxima below 33.3. For the display's own delay, film the screen and speaker with a phone in slow motion: flash and tick within one frame.
+  2. Seeks (acceptance 2): import a music file (or a sustained tone) and insert it. While it plays, press Home, type timecodes in the toolbar field and press Up/Down. Audio resumes at once at the new place, with no click or pop.
+  3. Mute/solo (acceptance 3): two audio tracks with different sounds. While playing, click M and S in the A1/A2 headers: each change is heard at once, and Ctrl+Z undoes it.
+  4. Peaks (acceptance 4): import an MP4 with sound, an MP3 and a WAV. The project folder's `cache/peaks/` has one `.bin` per media. Close and reopen the project: the files keep their timestamps, and no new ones appear.
+  5. Meters (acceptance 5): run `await __editor.audio.toneTest({ gainDb: 6 })` and play. The meter goes red above 0 dBFS and both clip LEDs light; they stay lit after a pause. A click on the LEDs turns them off. A plain clip at moderate level moves the green bars only.
+  6. Master volume: while playing, drag the knob down (quieter at once) and click mute (silent). The meter keeps moving: it shows the mix, not the monitor. The knob and mute state survive a reload.
+  7. Phone footage: a video recorded on a phone (AAC with an edit list) plays with the lips in sync.
+  8. P1 with audio: React DevTools Profiler, 30 s of playback with sound: one commit at play, none during, one at pause.

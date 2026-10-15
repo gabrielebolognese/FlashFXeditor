@@ -1,7 +1,7 @@
 // Audio-only files that are not MP4 (mp3, aac, wav, ogg): duration through decodeAudioData on the
 // main thread (Batch 04 asks for exactly this; the browser decodes off-thread). An OfflineAudioContext
-// needs no user gesture. TODO(batch 10): the decoded-audio cache decodes once (segmented past 10 min)
-// and feeds peaks; this probe then reuses it instead of decoding twice.
+// needs no user gesture. The decoded audio goes to `onDecoded`, so the decoded-audio cache (playback,
+// peaks) keeps it instead of decoding the file a second time.
 import { ticksToUs } from "../../core/document/time.js";
 import { ProbeError, type ProbeResult } from "./types.js";
 
@@ -18,7 +18,7 @@ export function browserDecodeAudio(): DecodeAudio {
   return (data) => (context ??= new OfflineAudioContext(1, 1, 48_000)).decodeAudioData(data);
 }
 
-export async function probeAudioFile(file: Blob, audioCodec: string, decode: DecodeAudio): Promise<ProbeResult> {
+export async function probeAudioFile(file: Blob, audioCodec: string, decode: DecodeAudio, onDecoded?: (decoded: DecodedAudioInfo) => void): Promise<ProbeResult> {
   let decoded: DecodedAudioInfo;
   try {
     decoded = await decode(await file.arrayBuffer());
@@ -26,6 +26,7 @@ export async function probeAudioFile(file: Blob, audioCodec: string, decode: Dec
     throw new ProbeError(`The audio cannot be decoded (${error instanceof Error ? error.message : String(error)})`);
   }
   if (!(decoded.length > 0)) throw new ProbeError("The audio is empty");
+  onDecoded?.(decoded);
   return {
     kind: "audio",
     durationUs: ticksToUs(decoded.length, decoded.sampleRate),

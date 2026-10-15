@@ -4,6 +4,7 @@
 // request may also post `progress` values before its result (frames of a prefetch, the approximate
 // frame of a scrub).
 import type { Lod } from "../cache/TexturePool.js";
+import type { SourceStamp } from "../demux/sampleIndexFile.js";
 import type { ProbeResult } from "../probe/types.js";
 import type { Rotation } from "../probe/rotation.js";
 
@@ -12,8 +13,8 @@ export type Priority = "user" | "playback" | "prefetch" | "background";
 
 export const PRIORITY_RANK: Record<Priority, number> = { user: 0, playback: 1, prefetch: 2, background: 3 };
 
-// TODO(batch 10): "analysis" (peaks), TODO(batch 24): "proxy", TODO(batch 43): "export".
-export type WorkerKind = "decode";
+// TODO(batch 17): thumbnail sprites in "analysis". TODO(batch 24): "proxy", TODO(batch 43): "export".
+export type WorkerKind = "decode" | "analysis";
 
 export interface PosterResult {
   bitmap: ImageBitmap;
@@ -92,6 +93,24 @@ export interface PrefetchParams {
   stride?: number;
 }
 
+/** The audio track of an MP4/MOV opened for decoding (decode/audioTrack.ts). */
+export interface AudioInfo {
+  /** False when this browser has no AudioDecoder for the codec (decodeAudioData is the fallback). */
+  supported: boolean;
+  codec: string;
+  /** The decoder's output rate and channel count after the mixdown (1 or 2). */
+  sampleRate: number;
+  channels: number;
+  /** Sample frames from media time 0 to the end of the audio. */
+  frames: number;
+}
+
+/** Planar float PCM, one buffer per channel (transferred). */
+export interface PcmResult {
+  sampleRate: number;
+  channels: ArrayBuffer[];
+}
+
 export interface WorkerMethods {
   /** Metadata of a media file. */
   probe: { params: { file: Blob; container: WorkerContainer; type: string }; result: ProbeResult };
@@ -108,6 +127,16 @@ export interface WorkerMethods {
   /** Closes the sessions of a media (removed from the project, or the project closed). */
   closeVideo: { params: { mediaId: string }; result: null };
   decodeStats: { params: Record<string, never>; result: WorkerDecodeStats };
+  /** Parses the audio track of an MP4/MOV and finds the decoder's output format. */
+  openAudio: { params: { mediaId: string; file: File }; result: AudioInfo };
+  /** Decodes sample frames [from, to) of media time (at `AudioInfo.sampleRate`). */
+  decodeAudio: { params: { mediaId: string; file: File; from: number; to: number }; result: PcmResult };
+  /** Forgets the parsed audio track of a media. */
+  closeAudio: { params: { mediaId: string }; result: null };
+  /** Peaks level 0 (Int8 min/max per 256 frames per channel) of planar float channels. */
+  peaksLevel0: { params: { channels: ArrayBuffer[] }; result: ArrayBuffer };
+  /** The cache/peaks/ file of a whole level 0: the pyramid, stamped with the source file. */
+  peaksFile: { params: { level0: ArrayBuffer; sampleRate: number; frames: number; channels: number; stamp: SourceStamp }; result: ArrayBuffer };
 }
 
 export type Method = keyof WorkerMethods;
@@ -124,6 +153,11 @@ export const METHOD_WORKER: Record<Method, WorkerKind> = {
   prefetch: "decode",
   closeVideo: "decode",
   decodeStats: "decode",
+  openAudio: "decode",
+  decodeAudio: "decode",
+  closeAudio: "decode",
+  peaksLevel0: "analysis",
+  peaksFile: "analysis",
 };
 
 export type RequestMessage = { [M in Method]: { type: "request"; id: number; method: M; priority: Priority; params: Params<M> } }[Method];
@@ -171,11 +205,16 @@ function isTransferable(value: unknown): value is Transferable {
   );
 }
 
-/** Transferables in a result: the value itself or its direct properties. */
+/** Transferables in a result: the value itself, its direct properties, or the items of an array property (PCM channels). */
 export function transferablesOf(value: unknown): Transferable[] {
   if (isTransferable(value)) return [value];
   if (typeof value !== "object" || value === null) return [];
-  return Object.values(value).filter(isTransferable);
+  const found: Transferable[] = [];
+  for (const item of Object.values(value) as unknown[]) {
+    if (isTransferable(item)) found.push(item);
+    else if (Array.isArray(item)) for (const entry of item as unknown[]) if (isTransferable(entry)) found.push(entry);
+  }
+  return found;
 }
 
 /** Frees the bitmaps and frames of a result nobody will receive (spec P13). */

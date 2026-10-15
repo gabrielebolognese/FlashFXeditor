@@ -1,0 +1,51 @@
+/*
+ * Rotary control (gap: the DS has no knob). A compact-control hit area holding a --knob-size dial on
+ * the control surface with a hairline edge; the indicator is a primary-text tick turned by --knob-turn.
+ */
+.knob {
+  --knob-turn: 0deg;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--control-compact);
+  height: var(--control-compact);
+  border-radius: var(--radius-md);
+  cursor: ns-resize;
+  touch-action: none;
+  transition: background-color var(--duration-micro) var(--ease-out);
+}
+
+.knob:hover {
+  background: var(--hover-wash);
+}
+
+.knob:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.dial {
+  position: relative;
+  width: var(--knob-size);
+  height: var(--knob-size);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--surface-3);
+  transform: rotate(var(--knob-turn));
+}
+
+.knob:hover .dial {
+  border-color: var(--surface-5);
+}
+
+.indicator {
+  position: absolute;
+  top: var(--space-0);
+  left: 50%;
+  width: var(--space-0);
+  height: var(--space-1);
+  margin-left: calc(var(--space-0) / -2);
+  border-radius: var(--radius-pill);
+  background: var(--text-primary);
+}

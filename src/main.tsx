@@ -4,6 +4,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./app/App.js";
 import { findMissingApis, GPU_ADAPTER_LABEL } from "./app/compat.js";
+import { installAudioController } from "./app/audioController.js";
 import { installMediaController } from "./app/mediaController.js";
 import { installPlaybackController } from "./app/playbackController.js";
 import { installPreviewController, startGpu } from "./app/previewController.js";
@@ -32,6 +33,7 @@ async function start(): Promise<void> {
   installPreviewController();
   installTimelineController();
   installPlaybackController();
+  installAudioController();
   root.render(
     <StrictMode>
       <App />

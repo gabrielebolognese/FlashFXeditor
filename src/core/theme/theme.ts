@@ -51,6 +51,8 @@ export interface Theme {
   motion: { instant: number; micro: number; standard: number; large: number };
   tooltipDelay: number;
   timeline: TimelineTheme;
+  /** The stereo peak meter (CSS px). */
+  meter: { barWidth: number; barGap: number; ledHeight: number };
 }
 
 /** Timeline canvas metrics (CSS px) and clip colors (spec §6.2, §6.4). */
@@ -67,6 +69,9 @@ export interface TimelineTheme {
   playheadWidthActive: number;
   playheadHeadWidth: number;
   playheadHeadHeight: number;
+  /** Mute/solo toggles of audio track headers. */
+  toggleSize: number;
+  toggleGap: number;
   playhead: string;
   /** Hover wash over a clip. */
   clipHover: string;
@@ -193,10 +198,13 @@ export function readTheme(read: TokenReader, root?: Element): { theme: Theme; mi
       playheadWidthActive: num("--playhead-width-active"),
       playheadHeadWidth: num("--playhead-head-width"),
       playheadHeadHeight: num("--playhead-head-height"),
+      toggleSize: num("--track-toggle-size"),
+      toggleGap: num("--track-toggle-gap"),
       playhead: str("--playhead"),
       clipHover: str("--clip-hover-wash"),
       clip,
     },
+    meter: { barWidth: num("--meter-bar-width"), barGap: num("--meter-bar-gap"), ledHeight: num("--meter-led-height") },
   };
   return { theme, missing };
 }

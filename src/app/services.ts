@@ -49,6 +49,7 @@ export const appSettings = createAppSettings(keyValueStore);
 /** Media workers (spec §3.5), each created on its first request. */
 export const workerPool = new WorkerPool({
   decode: () => new Worker(new URL("../media/workers/decode.worker.ts", import.meta.url), { type: "module", name: "decode" }),
+  analysis: () => new Worker(new URL("../media/workers/analysis.worker.ts", import.meta.url), { type: "module", name: "analysis" }),
 });
 /** Save state of the open project, for the app bar dot and the read-only banner. */
 export const saveStatus = createStore<SaveStatus>(INITIAL_SAVE_STATUS);

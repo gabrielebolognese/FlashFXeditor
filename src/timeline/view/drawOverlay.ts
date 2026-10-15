@@ -16,6 +16,8 @@ export interface OverlayScene {
   scrubbing: boolean;
   hoverClip: { clip: Clip; row: Row; abutsNext: boolean } | null;
   hoverAddRow: Rect | null;
+  /** A header toggle under the pointer. */
+  hoverToggle: Rect | null;
 }
 
 export function drawOverlay(scene: OverlayScene): void {
@@ -39,6 +41,13 @@ function drawHover(scene: OverlayScene): void {
     const row = scene.hoverAddRow;
     ctx.fillStyle = theme.color.hoverWash;
     ctx.fillRect(0, row.y, geometry.headerWidth, row.height);
+  }
+  if (scene.hoverToggle) {
+    const rect = scene.hoverToggle;
+    ctx.fillStyle = theme.color.hoverWash;
+    ctx.beginPath();
+    ctx.roundRect(rect.x, rect.y, rect.width, rect.height, theme.radius.sm);
+    ctx.fill();
   }
   const hover = scene.hoverClip;
   if (!hover) return;

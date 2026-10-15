@@ -25,6 +25,8 @@ export interface TestTrack {
   description?: Uint8Array;
   channels?: number;
   sampleRate?: number;
+  /** An edit list: an optional empty edit (movie ticks), then media from `mediaTime` (track ticks) for `duration` movie ticks (0 = to the end). */
+  edit?: { empty?: number; mediaTime: number; duration?: number };
 }
 
 export interface TestMp4Options {
@@ -205,7 +207,16 @@ function trak(track: TestTrack, id: number, movieTimescale: number, chunkOffset:
   const mediaHeader = video ? fullBox("vmhd", 0, 1, new Writer().zeros(8).done()) : fullBox("smhd", 0, 0, new Writer().zeros(4).done());
   const dinf = box("dinf", fullBox("dref", 0, 0, concat([new Writer().u32(1).done(), fullBox("url ", 0, 1, new Uint8Array(0))])));
   const minf = box("minf", mediaHeader, dinf, stbl(track, chunkOffset));
-  return box("trak", tkhd, box("mdia", mdhd, hdlr, minf));
+  const parts = [tkhd];
+  if (track.edit) {
+    const entries: [number, number][] = [];
+    if (track.edit.empty) entries.push([track.edit.empty, -1]);
+    entries.push([track.edit.duration ?? 0, track.edit.mediaTime]);
+    const elst = new Writer().u32(entries.length);
+    for (const [duration, mediaTime] of entries) elst.u32(duration).u32(mediaTime >>> 0).u16(1).u16(0);
+    parts.push(box("edts", fullBox("elst", 0, 0, elst.done())));
+  }
+  return box("trak", ...parts, box("mdia", mdhd, hdlr, minf));
 }
 
 function moov(options: TestMp4Options, chunkOffsets: readonly number[]): Uint8Array {
