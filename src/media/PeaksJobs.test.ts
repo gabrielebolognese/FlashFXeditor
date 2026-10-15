@@ -55,7 +55,7 @@ function setup(options: { segments?: number; withPcm?: boolean } = {}) {
     yieldToMain: async () => undefined,
   };
   const jobs = new PeaksJobs(deps);
-  const scheduler = new AnalysisScheduler(idle, jobs);
+  const scheduler = new AnalysisScheduler({ peaks: jobs });
   scheduler.attach(documentStore);
   /** Runs idle slices and the async work they start until nothing is left. */
   const settle = async () => {
@@ -129,7 +129,34 @@ describe("PeaksJobs", () => {
     await t.settle();
     t.documentStore.undo();
     t.documentStore.redo();
+    // The undo forgot its peaks; the redo reads them back from the file, with no decode.
+    await t.settle();
     expect(t.documentStore.getState().media.a?.analysis.peaks).toBe("ready");
+    expect(t.jobs.get("a")).not.toBeNull();
     expect(t.audio.load).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the peaks it read or built in memory, tells when they arrive and forgets removed media", async () => {
+    const t = setup();
+    const loaded: string[] = [];
+    t.deps.onLoaded = (id) => loaded.push(id);
+    t.files.set("b", writePeaksFile(buildPeaks(peaksLevel0([new Float32Array(256)]), { sampleRate: 48_000, frames: 256, channels: 1 }), STAMP));
+    t.documentStore.dispatch(addMedia([pending("a"), pending("b")]));
+    expect(t.jobs.get("a")).toBeNull();
+    await t.settle();
+    expect(loaded).toEqual(["a", "b"]);
+    expect(t.jobs.get("a")?.frames).toBe(4096);
+    expect(t.jobs.get("b")?.frames).toBe(256);
+    expect(t.jobs.loadedCount).toBe(2);
+    t.documentStore.dispatch(removeMedia(["a"]));
+    expect(t.jobs.get("a")).toBeNull();
+    expect(t.jobs.done.has("a")).toBe(false);
+  });
+
+  it("moves the media the timeline shows to the front of the queue", () => {
+    const t = setup();
+    t.documentStore.dispatch(addMedia([pending("a"), pending("b"), pending("c")]));
+    t.jobs.prioritize(["c", "x"]);
+    expect(t.jobs.waiting).toEqual(["c", "a", "b"]);
   });
 });

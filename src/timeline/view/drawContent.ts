@@ -1,16 +1,22 @@
 // The timeline content canvas (spec §6.17): track backgrounds, clips, the content end marker, the
 // ruler, the track header column (kind icon, name and toggles, spec §6.1), the divider and the
 // "+ track" rows. Locked rows are hatched (§6.12); clips of tracks out of the composite or the mix
-// (muted, hidden, not soloed) are dimmed. Redrawn only when the document, the selection, the
-// zoom/scroll, the size or the theme change, never for the playhead. Clips are virtualized per track
-// (binary search on start with a longest-clip lookback, P10).
+// (muted, hidden, not soloed) are dimmed. Clip bodies (§6.4) at M/L heights: filmstrips of videos,
+// posters of images, waveforms of audio, the text of text and caption clips, a swatch for solids;
+// what is not loaded yet is the body color, and the pass records it in `wants` for the loaders.
+// Redrawn only when the document, the selection, the zoom/scroll, the size, the theme or the loaded
+// visuals change, never for the playhead. Clips are virtualized per track (binary search on start with
+// a longest-clip lookback, P10).
 import { audibleTracks } from "../../audio/AudioMixer.js";
-import { formatSpeed } from "../../core/document/time.js";
-import type { Clip, Project, Track, TrackId } from "../../core/document/types.js";
+import { formatHexColor, isRgba } from "../../core/document/color.js";
+import { formatSpeed, usPerFrame } from "../../core/document/time.js";
+import { isMediaClip, type Clip, type MediaClip, type Project, type SolidClip, type Track, type TrackId } from "../../core/document/types.js";
 import type { Selection } from "../../core/store/selection.js";
 import type { Theme } from "../../core/theme/theme.js";
+import { cellOrigin, type ThumbLevel } from "../../media/cache/thumbSheets.js";
 import { clipsInRange, contentEnd, linkOffset } from "../model/queries.js";
-import { clipLod, clipSpan, devicePx } from "./clipLayout.js";
+import { clipLod, clipSpan, devicePx, LOD_THUMBS_PX, type ClipLod } from "./clipLayout.js";
+import { columnPeaks, peaksLevel, planFilmstrip, tileThumb, wantPeaks, wantSheet, type ClipVisuals, type WantsCollector } from "./clipVisuals.js";
 import type { HeaderToggle, Rect, Row, TimelineGeometry } from "./geometry.js";
 import { CLIP_GLYPHS, drawGlyph, TRACK_GLYPHS, type GlyphName } from "./glyphs.js";
 import { layoutRuler } from "./ruler.js";
@@ -24,10 +30,14 @@ export interface ContentScene {
   selection: Selection;
   theme: Theme;
   text: TextCache;
+  /** Thumbnails, posters and peaks loaded so far (none: bodies stay their color). */
+  visuals?: ClipVisuals | null;
+  /** Collects what this pass wanted to draw (the content pass only). */
+  wants?: WantsCollector | null;
 }
 
-/** What drawing a clip needs (the overlay's trim preview draws clips too). */
-export type ClipScene = Pick<ContentScene, "ctx" | "dpr" | "geometry" | "theme" | "selection" | "text">;
+/** What drawing a clip needs (the overlay's trim preview draws clips too, from what is loaded). */
+export type ClipScene = Pick<ContentScene, "ctx" | "dpr" | "geometry" | "theme" | "selection" | "text" | "visuals" | "wants"> & { project: Pick<Project, "settings"> };
 
 export interface ContentStats {
   /** Clips drawn in this pass (the visible ones). */
@@ -42,8 +52,8 @@ const snap = (value: number, dpr: number) => Math.round(value * dpr) / dpr;
 
 /**
  * Fills a clip's body or label bar: in its label color (spec §6.4) at the label alphas, else in its
- * kind's color. Respects the current `globalAlpha` (drag ghosts).
- * TODO(batch 17): label colors with filmstrips and waveforms.
+ * kind's color. Respects the current `globalAlpha` (drag ghosts). The body fill is also the
+ * placeholder under a filmstrip still loading.
  */
 export function fillClip(ctx: CanvasRenderingContext2D, theme: Theme, clip: Clip, part: "body" | "label", x: number, y: number, width: number, height: number): void {
   const tl = theme.timeline;
@@ -74,6 +84,8 @@ export function drawContent(scene: ContentScene): ContentStats {
   const { ctx, dpr, geometry, theme } = scene;
   const { color } = theme;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "medium";
   ctx.fillStyle = color.bgSunken;
   ctx.fillRect(0, 0, geometry.width, geometry.height);
 
@@ -166,10 +178,10 @@ export function drawDiagonalHatch(ctx: CanvasRenderingContext2D, dpr: number, le
 }
 
 /**
- * One clip in its row: body, label bar (kind glyph, name, speed and sync badges), selection tint and
- * outline, in the clip's label color when it has one. `syncOffset`: frames off its link partner
- * (`linkOffset`), shown as a `+12` / `-12` badge.
- * TODO(batch 17): filmstrips and waveforms in the body, badges (link, keyframes, fx).
+ * One clip in its row: body (with its filmstrip, waveform, text or swatch at M/L heights), label bar
+ * (kind glyph, name, badges), selection tint and outline, in the clip's label color when it has one.
+ * A disabled or muted clip is dimmed and hatched (spec §6.4). `syncOffset`: frames off its link
+ * partner (`linkOffset`), shown as a `+12` / `-12` badge.
  */
 export function drawClip(scene: ClipScene, clip: Clip, row: Row, track: Track, abutsNext: boolean, syncOffset = 0): void {
   const { ctx, dpr, geometry, theme, selection } = scene;
@@ -195,14 +207,20 @@ export function drawClip(scene: ClipScene, clip: Clip, row: Row, track: Track, a
   }
 
   const radius = Math.min(theme.radius.sm, width / 2, height / 2);
+  const disabled = !clip.enabled || (isMediaClip(clip) && clip.volume.muted);
+  const alpha = ctx.globalAlpha;
   ctx.save();
   ctx.beginPath();
   ctx.roundRect(x, y, width, height, radius);
   ctx.clip();
+  if (disabled) ctx.globalAlpha = alpha * tl.inactiveOpacity;
   fillClip(ctx, theme, clip, "body", x, y, width, height);
-  // The label bar is the whole clip on S tracks (spec §6.4).
+  // The label bar is the whole clip on S tracks (spec §6.4): no body there.
   const labelHeight = track.kind === "caption" || track.height === "S" ? height : Math.min(height, tl.labelHeight);
+  if (labelHeight < height) drawBody(scene, clip, x, y + labelHeight, width, height - labelHeight, lod);
   fillClip(ctx, theme, clip, "label", x, y, width, labelHeight);
+  ctx.globalAlpha = alpha;
+  if (disabled) drawDiagonalHatch(ctx, dpr, x, x + width, y, height, tl.disabledHatch, tl.hatchGap);
   if (selected) {
     ctx.fillStyle = theme.color.accentWash;
     ctx.fillRect(x, y, width, height);
@@ -220,24 +238,174 @@ export function drawClip(scene: ClipScene, clip: Clip, row: Row, track: Track, a
   }
 }
 
+/** Peaks of the waveform columns being drawn (reused: no allocation per pass). */
+let columns = new Float32Array(1024);
+
+/** The body below the label bar: what the clip's kind shows (spec §6.4). Clipped to the clip. */
+function drawBody(scene: ClipScene, clip: Clip, x: number, y: number, width: number, height: number, lod: ClipLod): void {
+  const { geometry } = scene;
+  const left = Math.max(x, geometry.area.x);
+  const right = Math.min(x + width, geometry.area.x + geometry.area.width);
+  if (right <= left || height <= 0) return;
+  switch (clip.kind) {
+    case "video":
+      if (width >= LOD_THUMBS_PX) drawFilmstrip(scene, clip, y, height, left, right);
+      return;
+    case "image":
+      if (width >= LOD_THUMBS_PX) drawPosterTiles(scene, clip, y, height, left, right);
+      return;
+    case "audio":
+      drawWaveform(scene, clip, y, height, left, right);
+      return;
+    case "text":
+      // TODO(batch 28): the first line of the text content (`TextContent` is defined there).
+      if (lod === "full") drawBodyText(scene, clip.name, left, right, y, height);
+      return;
+    case "caption":
+      if (lod === "full") drawBodyText(scene, clip.text.split("\n")[0] ?? "", left, right, y, height);
+      return;
+    case "solid":
+      if (lod === "full") drawSwatch(scene, clip, left, y, height);
+      return;
+  }
+}
+
+/**
+ * Thumbnails tiled left to right from the clip's start, each the frame at its left edge's source time
+ * (in point, speed), from the sheet level that gives every tile its own frame (spec §6.4, §6.17). A
+ * tile whose sheet is not in memory shows another level's (coarser first) or stays the body color.
+ */
+function drawFilmstrip(scene: ClipScene, clip: MediaClip, y: number, height: number, left: number, right: number): void {
+  const { ctx, dpr, geometry, visuals, wants } = scene;
+  const layout = visuals?.thumbLayout(clip.mediaId);
+  if (!visuals || !layout) return;
+  const tileWidth = Math.max(1, (height * layout.width) / layout.height);
+  const clipX = geometry.frameToX(clip.start);
+  const usPerPx = (usPerFrame(scene.project.settings.fps) * clip.speed) / geometry.pxPerFrame;
+  const plan = planFilmstrip(layout, clipX, tileWidth, left, right, usPerPx);
+  for (let tile = plan.first; tile < plan.end; tile++) {
+    let thumb = tileThumb(layout, plan.level, clip.in, tile, plan.tileUs);
+    if (wants) wantSheet(wants, clip.mediaId, plan.level, Math.floor(thumb / layout.perSheet));
+    let bitmap: ImageBitmap | null = null;
+    for (const level of STAND_INS[plan.level]) {
+      thumb = tileThumb(layout, level, clip.in, tile, plan.tileUs);
+      bitmap = visuals.sheet(clip.mediaId, level, Math.floor(thumb / layout.perSheet));
+      if (bitmap) break;
+    }
+    if (!bitmap) continue;
+    const cell = cellOrigin(layout, thumb);
+    const x0 = snap(clipX + tile * tileWidth, dpr);
+    const x1 = snap(clipX + (tile + 1) * tileWidth, dpr);
+    ctx.drawImage(bitmap, cell.x, cell.y, layout.width, layout.height, x0, y, x1 - x0, height);
+  }
+}
+
+/** The levels a tile tries, in order: the one it wants, then coarser, then finer ones. */
+const STAND_INS: Record<ThumbLevel, readonly ThumbLevel[]> = { 0: [0, 1, 2], 1: [1, 0, 2], 2: [2, 1, 0] };
+
+/** An image clip: its poster tiled from the clip's start (a still has one picture). */
+function drawPosterTiles(scene: ClipScene, clip: MediaClip, y: number, height: number, left: number, right: number): void {
+  const { ctx, dpr, geometry } = scene;
+  const poster = scene.visuals?.poster(clip.mediaId);
+  if (!poster || poster.width === 0 || poster.height === 0) return;
+  const tileWidth = Math.max(1, (height * poster.width) / poster.height);
+  const clipX = geometry.frameToX(clip.start);
+  const first = Math.max(0, Math.floor((left - clipX) / tileWidth));
+  const end = Math.ceil((right - clipX) / tileWidth);
+  for (let tile = first; tile < end; tile++) {
+    const x0 = snap(clipX + tile * tileWidth, dpr);
+    const x1 = snap(clipX + (tile + 1) * tileWidth, dpr);
+    ctx.drawImage(poster, x0, y, x1 - x0, height);
+  }
+}
+
+/**
+ * The waveform (spec §6.4, §6.17): per device-pixel column, the peak of the source samples it covers
+ * from the pyramid level closest to one bucket per CSS px, mirrored around the body's center line.
+ * TODO(batch 37): the clip gain (and its keyframes) applied to the drawn level; 0 dB until then.
+ * TODO(batch 36): fade curves as transparent wedges.
+ */
+function drawWaveform(scene: ClipScene, clip: MediaClip, y: number, height: number, left: number, right: number): void {
+  const { ctx, dpr, geometry, theme, visuals, wants } = scene;
+  const peaks = visuals?.peaks(clip.mediaId);
+  if (!peaks) {
+    if (visuals && wants) wantPeaks(wants, clip.mediaId);
+    return;
+  }
+  const gain = 1;
+  const c0 = Math.round(left * dpr);
+  const count = Math.round(right * dpr) - c0;
+  if (count <= 0) return;
+  if (columns.length < count) columns = new Float32Array(Math.max(count, columns.length * 2));
+  const sourceUsPerFrame = usPerFrame(scene.project.settings.fps) * clip.speed;
+  const samplesPerUs = peaks.sampleRate / 1_000_000;
+  const samplesPerPx = (sourceUsPerFrame / geometry.pxPerFrame) * samplesPerUs;
+  const s0 = (clip.in + (geometry.xToFrame(c0 / dpr) - clip.start) * sourceUsPerFrame) * samplesPerUs;
+  columnPeaks(peaks, peaksLevel(peaks, samplesPerPx), s0, samplesPerPx / dpr, columns, count);
+  const mid = Math.round((y + height / 2) * dpr);
+  const half = Math.max(1, (height / 2 - theme.space[0]) * dpr);
+  ctx.fillStyle = theme.timeline.waveform;
+  ctx.beginPath();
+  for (let i = 0; i < count; i++) {
+    // Silence still draws the 1 device px center line.
+    const h = Math.max(1, Math.round(Math.min(1, (columns[i] as number) * gain) * half));
+    ctx.rect((c0 + i) / dpr, (mid - h) / dpr, 1 / dpr, (2 * h) / dpr);
+  }
+  ctx.fill();
+}
+
+/** One line of text in the body (text and caption clips), sticking to the track area's left edge. */
+function drawBodyText(scene: ClipScene, value: string, left: number, right: number, y: number, height: number): void {
+  const { ctx, theme, text } = scene;
+  const pad = theme.space[1];
+  ctx.font = fontOf(theme, "caption");
+  const line = text.fit(ctx, value, right - left - 2 * pad);
+  if (line === "") return;
+  ctx.fillStyle = theme.color.textPrimary;
+  ctx.textBaseline = "middle";
+  ctx.fillText(line, left + pad, y + height / 2);
+}
+
+/** A solid's color as a swatch at the start of the body. TODO(batch 34): gradient fills. */
+function drawSwatch(scene: ClipScene, clip: SolidClip, left: number, y: number, height: number): void {
+  const { ctx, dpr, theme } = scene;
+  const pad = theme.space[1];
+  const size = height - 2 * pad;
+  if (size < theme.icon.small || !isRgba(clip.fill)) return;
+  const x = snap(left + pad, dpr);
+  const top = snap(y + pad, dpr);
+  ctx.beginPath();
+  ctx.roundRect(x, top, size, size, theme.radius.sm);
+  ctx.fillStyle = formatHexColor(clip.fill);
+  ctx.fill();
+  ctx.strokeStyle = theme.color.hairline;
+  ctx.lineWidth = 1 / dpr;
+  ctx.stroke();
+}
+
 function drawLabel(scene: ClipScene, clip: Clip, x: number, y: number, width: number, labelHeight: number, syncOffset: number): void {
   const { ctx, theme, text } = scene;
   const pad = theme.space[1];
   const icon = theme.icon.small;
-  // The label sticks to the left edge of the track area while the clip starts off screen.
-  const left = Math.max(x, scene.geometry.area.x);
-  let right = x + width;
+  // The label sticks to the left edge of the track area while the clip starts off screen, and its
+  // badges to the right edge while it ends off screen.
+  const { area } = scene.geometry;
+  const left = Math.max(x, area.x);
+  let right = Math.min(x + width, area.x + area.width);
   if (right - left < pad + icon + pad) return;
   const centerY = y + labelHeight / 2;
   // With the label bar spanning an S clip, keep the icon and name on the first text line.
   const lineY = Math.min(centerY, y + theme.timeline.labelHeight / 2);
-  // Badges from the right end: the sync offset, then the speed (spec §6.4: `2x` when it is not 1;
-  // video and audio only, stills and graphics have no speed). The name ends before them.
+  // Badges from the right end (spec §6.4): the sync offset, the speed (`2x` when it is not 1; video
+  // and audio only, stills and graphics have no speed), the link and the keyframe icons. The name
+  // ends before them. TODO(batch 36): the `fx` badge when the clip has a transition.
   const minX = left + pad + icon + pad;
   const badgesEnd = right - theme.space[0];
   let badgesStart = badgesEnd;
   if (syncOffset !== 0) badgesStart = drawBadge(scene, `${syncOffset > 0 ? "+" : "-"}${Math.abs(syncOffset)}`, theme.color.danger, minX, badgesStart, lineY);
   if ((clip.kind === "video" || clip.kind === "audio") && clip.speed !== 1) badgesStart = drawBadge(scene, formatSpeed(clip.speed), theme.color.textSecondary, minX, badgesStart, lineY);
+  if (clip.linkGroup !== undefined) badgesStart = drawIconBadge(scene, "link", minX, badgesStart, lineY);
+  if (hasKeyframes(clip)) badgesStart = drawIconBadge(scene, "diamond", minX, badgesStart, lineY);
   if (badgesStart < badgesEnd) right = badgesStart;
   drawGlyph(ctx, CLIP_GLYPHS[clip.kind], left + pad, lineY - icon / 2, icon, theme.color.textPrimary);
   const textX = left + pad + icon + pad;
@@ -272,6 +440,18 @@ function drawBadge(scene: ClipScene, label: string, fill: string, minX: number, 
   ctx.fillText(label, x + space[1], centerY);
   return x - space[0];
 }
+
+/** A label bar icon badge (link, keyframes) in the secondary text color, ending at `right`; see `drawBadge`. */
+function drawIconBadge(scene: ClipScene, glyph: GlyphName, minX: number, right: number, centerY: number): number {
+  const { ctx, theme } = scene;
+  const size = theme.icon.small;
+  const x = right - size;
+  if (x < minX) return right;
+  drawGlyph(ctx, glyph, x, centerY - size / 2, size, theme.color.textSecondary);
+  return x - theme.space[0];
+}
+
+const hasKeyframes = (clip: Clip) => "keyframes" in clip && clip.keyframes !== undefined && Object.values(clip.keyframes).some((keys) => keys.length > 0);
 
 function drawContentEnd(scene: ContentScene): void {
   const { ctx, dpr, geometry, project, theme } = scene;

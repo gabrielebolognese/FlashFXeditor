@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import type { MediaId } from "../../core/document/types.js";
 import { FrameScheduler } from "../../core/scheduler/FrameScheduler.js";
-import type { PosterListener } from "../../media/PosterStore.js";
-import { PosterPainter, type PosterSource, type PosterTarget } from "./PosterPainter.js";
+import type { CardImage, CardListener } from "../../media/ThumbnailStore.js";
+import { PosterPainter, wholeImage, type PosterSource, type PosterTarget } from "./PosterPainter.js";
 
 function fakeFrames() {
   const queue: ((time: number) => void)[] = [];
@@ -16,11 +16,11 @@ function fakeFrames() {
   };
 }
 
-/** A poster source like PosterStore: replays the current bitmap on observe, then emits changes. */
+/** A picture source like the app's: replays the current picture on observe, then emits changes. */
 function fakePosters() {
-  const bitmaps = new Map<MediaId, ImageBitmap>();
-  const listeners = new Map<MediaId, Set<PosterListener>>();
-  const source: PosterSource & { emit(id: MediaId, bitmap: ImageBitmap | null): void; observers(id: MediaId): number } = {
+  const bitmaps = new Map<MediaId, CardImage>();
+  const listeners = new Map<MediaId, Set<CardListener>>();
+  const source: PosterSource & { emit(id: MediaId, bitmap: ImageBitmap | CardImage | null): void; observers(id: MediaId): number } = {
     observe(id, listener) {
       const set = listeners.get(id) ?? new Set();
       listeners.set(id, set);
@@ -29,10 +29,11 @@ function fakePosters() {
       if (bitmap) listener(bitmap);
       return () => set.delete(listener);
     },
-    emit(id, bitmap) {
-      if (bitmap) bitmaps.set(id, bitmap);
+    emit(id, picture) {
+      const image = picture && "bitmap" in picture ? picture : wholeImage(picture);
+      if (image) bitmaps.set(id, image);
       else bitmaps.delete(id);
-      for (const listener of listeners.get(id) ?? []) listener(bitmap);
+      for (const listener of listeners.get(id) ?? []) listener(image);
     },
     observers: (id) => listeners.get(id)?.size ?? 0,
   };
@@ -75,7 +76,7 @@ describe("PosterPainter", () => {
 
     frames.tick();
     expect(a.drawImage).toHaveBeenCalledTimes(1);
-    expect(a.drawImage).toHaveBeenCalledWith(latest, 0, 0);
+    expect(a.drawImage).toHaveBeenCalledWith(latest, 0, 0, 180, 320, 0, 0, 180, 320);
     expect(a.canvas.width).toBe(180);
     expect(a.canvas.height).toBe(320);
     expect(a.canvas.dataset.ready).toBe("");
@@ -95,7 +96,18 @@ describe("PosterPainter", () => {
     painter.attach(a.canvas, posters, A);
     expect(a.drawImage).not.toHaveBeenCalled();
     frames.tick();
-    expect(a.drawImage).toHaveBeenCalledWith(bitmap, 0, 0);
+    expect(a.drawImage).toHaveBeenCalledWith(bitmap, 0, 0, 320, 180, 0, 0, 320, 180);
+  });
+
+  it("draws a region of a sheet (a video's first thumbnail)", () => {
+    const { frames, painter, posters } = setup();
+    const sheet = bitmapOf(4 * 284, 640);
+    const a = fakeCanvas();
+    painter.attach(a.canvas, posters, A);
+    posters.emit(A, { bitmap: sheet, sx: 0, sy: 0, sw: 284, sh: 160 });
+    frames.tick();
+    expect(a.drawImage).toHaveBeenCalledWith(sheet, 0, 0, 284, 160, 0, 0, 284, 160);
+    expect([a.canvas.width, a.canvas.height]).toEqual([284, 160]);
   });
 
   it("hides the canvas when the poster goes away or its bitmap was closed", () => {

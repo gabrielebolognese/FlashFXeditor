@@ -11,6 +11,7 @@ import type { Theme } from "../../core/theme/theme.js";
 import { edgeFrame, type TrimEdge } from "../edit/trim.js";
 import { clipsInRange, linkOffset, type Gap } from "../model/queries.js";
 import { clipLod, clipSpan, devicePx, LOD_LABEL_PX } from "./clipLayout.js";
+import type { ClipVisuals } from "./clipVisuals.js";
 import { drawClip, drawDiagonalHatch, drawHeader, fillClip, fontOf } from "./drawContent.js";
 import type { Rect, Row, TimelineGeometry } from "./geometry.js";
 import type { Ghost, MoveProposal, NewLane } from "./gestures/moveClips.js";
@@ -87,6 +88,8 @@ export interface OverlayScene {
   /** The drag tooltip near the pointer: `Δ +00:00:12` and/or the snap target's name. */
   tooltip: Tooltip | null;
   text: TextCache;
+  /** Loaded thumbnails and peaks, for the clips the trim preview redraws. */
+  visuals?: ClipVisuals | null;
 }
 
 export interface Tooltip {
@@ -164,7 +167,7 @@ function drawTrimLayout(scene: OverlayScene, trim: TrimScene): void {
   const { project } = proposal;
   const inset = theme.timeline.clipInset;
   const visible = geometry.visibleFrames;
-  const clipScene = { ctx, dpr, geometry, theme, selection: trim.selection, text: scene.text };
+  const clipScene = { ctx, dpr, geometry, theme, selection: trim.selection, text: scene.text, project, visuals: scene.visuals ?? null };
   ctx.save();
   ctx.beginPath();
   ctx.rect(geometry.area.x, geometry.area.y, geometry.area.width, geometry.area.height);

@@ -23,6 +23,7 @@ import { TimelineView } from "../timeline/view/TimelineView.js";
 import { pxToSlider, sliderToPx, zoomLimits, ZOOM_IN_STEP, ZOOM_OUT_STEP, type ZoomContext } from "../timeline/view/zoom.js";
 import { showToast } from "../ui/toasts.js";
 import { openContextMenu, razorCut } from "./cutController.js";
+import { clipVisuals } from "./mediaController.js";
 import { moveTrackTo, startTrackRename, toggleTrack } from "./trackController.js";
 import { generateCutTimeline, generateTestClips } from "./timelineDev.js";
 import { actions, documentStore, idleQueue, layoutStore, scheduler, sessionStore, themeBridge } from "./services.js";
@@ -133,6 +134,7 @@ export const timelineView = new TimelineView({
   onRazor: razorCut,
   onContextMenu: openContextMenu,
   idle: idleQueue,
+  visuals: clipVisuals,
   platform: detectPlatform(),
 });
 

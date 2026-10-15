@@ -16,6 +16,9 @@
 // reorders the track among those of its kind (one command on release), a double-click renames it.
 // Snapping (spec §6.9): clip drags and edits snap while the toggle is on, ruler scrubs only with Shift
 // too, and holding S during a drag inverts the toggle until it is released.
+// Clip visuals (spec §6.17): each content pass draws the thumbnails and peaks loaded so far and hands
+// what it wanted to `visuals`, which loads it through the IdleQueue; arrivals redraw the content at
+// most ARRIVAL_INTERVAL_MS apart, and not while playing or dragging (P3: they wait for the resume).
 import type { Affect } from "../../core/commands/command.js";
 import { formatSpeed, formatTimecode, usToFrame } from "../../core/document/time.js";
 import { isMediaClip, type Clip, type ClipId, type Frame, type Project, type TrackId, type TrackKind } from "../../core/document/types.js";
@@ -34,6 +37,7 @@ import { clipsToSplit } from "../edit/split.js";
 import { MAX_SPEED, MIN_SPEED, type TrimEdge } from "../edit/trim.js";
 import { contentEnd, gapAt, isClipLocked, laneOf, linkedPartners, neighbors, selectionPartners, type Gap } from "../model/queries.js";
 import { resolveSnap, SnapIndex, snapLabel, type SnapCandidates, type SnapTarget } from "../snap/snapIndex.js";
+import { createWants, type ClipVisualsSource } from "./clipVisuals.js";
 import { trimCursor, trimCursors, type TrimCursors } from "./cursors.js";
 import { drawContent } from "./drawContent.js";
 import { drawOverlay, type EditPointMark, type RazorScene, type TrackDragScene } from "./drawOverlay.js";
@@ -60,6 +64,8 @@ import {
 
 /** Document changes that move or restyle what the content canvas shows. */
 const CONTENT_AFFECTS: readonly Affect[] = ["timeline", "clips", "tracks", "markers", "captions", "settings"];
+/** Thumbnail and peaks arrivals redraw the content at most this often (spec §6.17: 10 redraws/s). */
+export const ARRIVAL_INTERVAL_MS = 100;
 
 export interface TimelineViewDeps {
   scheduler: Pick<FrameScheduler, "register" | "invalidate" | "addTicker">;
@@ -85,8 +91,10 @@ export interface TimelineViewDeps {
   onRazor?(request: RazorRequest): void;
   /** A right-click on a clip, a gap or a track header (spec §6.16), already selected: the controller opens its menu. */
   onContextMenu?(request: ContextMenuRequest): void;
-  /** Background work pauses while a gesture runs (spec §3.4). */
-  idle?: Pick<IdleQueue, "pause" | "resume">;
+  /** Background work pauses while a gesture runs (spec §3.4); arrivals wait while it is paused. */
+  idle?: Pick<IdleQueue, "pause" | "resume"> & Partial<Pick<IdleQueue, "isPaused" | "onPauseChange">>;
+  /** Thumbnails, posters and peaks of the clip bodies (spec §6.4, §6.17). */
+  visuals?: ClipVisualsSource;
   /** Which key is Mod (Ctrl, or Cmd on macOS). */
   platform?: Platform;
 }
@@ -294,6 +302,10 @@ export class TimelineView {
   private lastTick: number | null = null;
   private statsElement: HTMLElement | null = null;
   private readonly stops: (() => void)[] = [];
+  /** Visuals arrived: the pending coalesced redraw, when the last one ran, and arrivals held while paused. */
+  private arrivalTimer: ReturnType<typeof setTimeout> | null = null;
+  private lastArrivalDraw = -Infinity;
+  private arrivalHeld = false;
 
   private readonly contentView: RenderView = { render: () => this.renderContent() };
   private readonly overlayView: RenderView = { render: () => this.renderOverlay() };
@@ -416,6 +428,17 @@ export class TimelineView {
         both();
       }),
       watchDevicePixelRatio(host.ownerDocument.defaultView, both),
+      this.deps.visuals?.subscribe(() => this.onArrival()) ?? (() => {}),
+      this.deps.idle?.onPauseChange?.((paused) => {
+        if (paused || !this.arrivalHeld) return;
+        this.arrivalHeld = false;
+        this.onArrival();
+      }) ?? (() => {}),
+      () => {
+        if (this.arrivalTimer !== null) clearTimeout(this.arrivalTimer);
+        this.arrivalTimer = null;
+        this.arrivalHeld = false;
+      },
       () => {
         overlay.removeEventListener("pointerdown", onPointerDown);
         overlay.removeEventListener("pointermove", onPointerMove);
@@ -1283,6 +1306,8 @@ export class TimelineView {
     if (!layer || !this.prepare(layer)) return;
     const start = performance.now();
     const project = this.deps.document.getState();
+    const { visuals } = this.deps;
+    const wants = visuals ? createWants() : null;
     const result = drawContent({
       ctx: layer.ctx,
       dpr: this.dpr(),
@@ -1291,7 +1316,10 @@ export class TimelineView {
       selection: this.gesture?.kind === "marquee" ? (this.gesture.marquee.current?.selection ?? this.deps.session.selection.getState()) : this.deps.session.selection.getState(),
       theme: this.deps.theme.theme,
       text: this.text,
+      visuals: visuals ?? null,
+      wants,
     });
+    if (wants) visuals?.want(wants);
     this.stats.contentDraws += 1;
     this.stats.clipsDrawn = result.clipsDrawn;
     this.stats.clipsTotal = Object.keys(project.clips).length;
@@ -1340,6 +1368,7 @@ export class TimelineView {
       marquee: gesture?.kind === "marquee" ? (gesture.marquee.current?.rect ?? null) : null,
       tooltip: this.pointer && (proposal || trim || snap) ? this.tooltip(project, proposal?.deltaFrames ?? null, trim, snap, this.pointer) : null,
       text: this.text,
+      visuals: this.deps.visuals ?? null,
     });
     this.stats.overlayDraws += 1;
     this.stats.overlayMs = performance.now() - start;
@@ -1432,6 +1461,33 @@ export class TimelineView {
     return { clip, row, abutsNext: next !== null && next.start === clip.start + clip.duration };
   }
 
+  /** Thumbnails or peaks arrived: one content redraw at most every ARRIVAL_INTERVAL_MS, held while the IdleQueue is paused. */
+  private onArrival(): void {
+    if (this.deps.idle?.isPaused) {
+      this.arrivalHeld = true;
+      return;
+    }
+    if (this.arrivalTimer !== null) return;
+    const wait = this.lastArrivalDraw + ARRIVAL_INTERVAL_MS - performance.now();
+    if (wait <= 0) {
+      this.drawArrivals();
+      return;
+    }
+    this.arrivalTimer = setTimeout(() => {
+      this.arrivalTimer = null;
+      this.drawArrivals();
+    }, wait);
+  }
+
+  private drawArrivals(): void {
+    if (this.deps.idle?.isPaused) {
+      this.arrivalHeld = true;
+      return;
+    }
+    this.lastArrivalDraw = performance.now();
+    this.deps.scheduler.invalidate("timelineContent");
+  }
+
   private dpr(): number {
     return this.content?.canvas.ownerDocument.defaultView?.devicePixelRatio ?? 1;
   }
@@ -1458,9 +1514,11 @@ export class TimelineView {
     if (!element) return;
     const s = this.stats;
     const view = this.viewport();
+    const visuals = this.deps.visuals?.stats?.();
     element.textContent =
       `content ${s.contentDraws} draws · ${s.clipsDrawn}/${s.clipsTotal} clips · ${s.contentMs.toFixed(1)} ms\n` +
-      `overlay ${s.overlayDraws} draws · ${s.overlayMs.toFixed(1)} ms · ${view.pxPerFrame.toFixed(3)} px/f`;
+      `overlay ${s.overlayDraws} draws · ${s.overlayMs.toFixed(1)} ms · ${view.pxPerFrame.toFixed(3)} px/f` +
+      (visuals ? `\n${visuals}` : "");
   }
 }
 

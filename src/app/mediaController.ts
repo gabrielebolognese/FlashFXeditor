@@ -1,6 +1,7 @@
 // Media flows of the open project (spec §9.1, §12): import from the picker (button, Mod+I), drops and
-// pasted images; posters and the analysis queue per project; panel selection, inline rename and
-// removal. Framework-free; the media panel reads `mediaPanel` through narrow selectors.
+// pasted images; posters, thumbnail sheets and peaks per project (the media cards' pictures and the
+// timeline's clip visuals, `clipVisuals`); panel selection, inline rename and removal. Framework-free;
+// the media panel reads `mediaPanel` through narrow selectors.
 import { mediaUseCounts, removeMedia, renameMedia } from "../core/commands/mediaCommands.js";
 import type { MediaId } from "../core/document/types.js";
 import { isEditableTarget } from "../core/keyboard/KeyDispatcher.js";
@@ -12,11 +13,14 @@ import { createProbeFile, MediaImporter, type Refusal } from "../media/MediaImpo
 import { PICKER_TYPES } from "../media/mediaKinds.js";
 import { PosterStore } from "../media/PosterStore.js";
 import { svgPoster } from "../media/probe/svgProbe.js";
+import { ThumbnailStore, type ThumbFiles, type ThumbnailDeps } from "../media/ThumbnailStore.js";
 import { isAbortError } from "../media/workers/protocol.js";
 import { clickSelection, EMPTY_MEDIA_SELECTION, pruneSelection, type MediaSelection } from "../panels/media/mediaList.js";
-import { PosterPainter } from "../panels/media/PosterPainter.js";
+import { PosterPainter, wholeImage, type PosterSource } from "../panels/media/PosterPainter.js";
 import { errorMessage } from "../project/errorMessage.js";
 import type { FsDir } from "../project/fs.js";
+import { resolveFile, sampleIndexPath, writeFileAt } from "../project/mediaFiles.js";
+import type { ClipVisualsSource } from "../timeline/view/clipVisuals.js";
 import { dismissToast, showToast, updateToast } from "../ui/toasts.js";
 import { decodedAudio, peaksFiles } from "./audioController.js";
 import { actions, appSettings, documentStore, focusScopes, idleQueue, scheduler, workerPool } from "./services.js";
@@ -31,9 +35,12 @@ export interface MediaPanelState {
 
 export const mediaPanel = createStore<MediaPanelState>({ selection: EMPTY_MEDIA_SELECTION, renaming: null, removing: null });
 
-/** The open project's posters. A store: reopening the same project keeps the cards mounted. */
-export const posterStore = createStore<PosterStore | null>(null);
-/** Draws the card posters in the FrameScheduler loop (the `mediaThumbs` view). */
+/**
+ * The open project's card pictures: a video's first thumbnail (sheet LOD0), an image's poster. A store:
+ * reopening the same project keeps the cards mounted.
+ */
+export const cardImages = createStore<PosterSource | null>(null);
+/** Draws the card pictures in the FrameScheduler loop (the `mediaThumbs` view). */
 export const posterPainter = new PosterPainter(scheduler);
 
 /** Imports at least this large show a progress toast (gap: the spec says "large copies"). */
@@ -43,6 +50,8 @@ const PROGRESS_INTERVAL_MS = 150;
 interface OpenMedia {
   importer: MediaImporter;
   posters: PosterStore;
+  thumbs: ThumbnailStore;
+  peaks: PeaksJobs;
   analysis: AnalysisScheduler;
   /** Aborted when the project closes: running imports stop and clean up. */
   controller: AbortController;
@@ -52,14 +61,62 @@ interface OpenMedia {
 
 let open: OpenMedia | null = null;
 
+const arrivalListeners = new Set<() => void>();
+const notifyArrival = () => {
+  for (const listener of arrivalListeners) listener();
+};
+
+/**
+ * What the timeline's clip bodies draw from (spec §6.17): the open project's thumbnail sheets, image
+ * posters and peaks, with the content pass's wants routed to their loaders and their arrivals to the
+ * view (which coalesces the redraws).
+ */
+export const clipVisuals: ClipVisualsSource = {
+  thumbLayout: (mediaId) => open?.thumbs.layout(mediaId) ?? null,
+  sheet: (mediaId, level, sheet) => open?.thumbs.sheet(mediaId, level, sheet) ?? null,
+  poster: (mediaId) => open?.posters.get(mediaId) ?? null,
+  peaks: (mediaId) => open?.peaks.get(mediaId) ?? null,
+  want: (wants) => {
+    open?.thumbs.want(wants.sheets);
+    open?.peaks.prioritize(wants.peaks);
+  },
+  subscribe: (listener) => {
+    arrivalListeners.add(listener);
+    return () => arrivalListeners.delete(listener);
+  },
+  stats: () => {
+    if (!open) return "";
+    const s = open.thumbs.stats;
+    return `thumbs ${s.cached} cached · ${s.decoded} decoded · ${s.resident} sheets ${(s.bytes / 1048576).toFixed(1)} MB · peaks ${open.peaks.loadedCount}`;
+  },
+};
+
+/** The project's files for the thumbnail sheets (cache/thumbs/, the sources, cache/index/). */
+function thumbFiles(dir: FsDir, isWritable: () => boolean): ThumbFiles {
+  return {
+    source: async (mediaId, lod) => {
+      // TODO(batch 24): proxy files; TODO(batch 41): media referenced by a file handle.
+      const item = documentStore.getState().media[mediaId];
+      if (lod !== "full" || !item || !("relPath" in item.file)) return null;
+      return resolveFile(dir, item.file.relPath);
+    },
+    sampleIndex: async (mediaId, lod) => (lod === "full" ? resolveFile(dir, sampleIndexPath(mediaId)) : null),
+    read: (relPath) => resolveFile(dir, relPath),
+    write: async (relPath, data) => {
+      if (isWritable()) await writeFileAt(dir, relPath, data);
+    },
+  };
+}
+
 const patch = (next: Partial<MediaPanelState>) => mediaPanel.set((state) => ({ ...state, ...next }));
 
-/** Wires media to a newly opened project (after its document is loaded). */
-export function attachMedia(dir: FsDir, isWritable: () => boolean): void {
+/** Wires media to a newly opened project (after its document is loaded); `preview` is the frame service thumbnail decodes yield to. */
+export function attachMedia(dir: FsDir, isWritable: () => boolean, preview?: ThumbnailDeps["preview"]): void {
   detachMedia();
-  const posters = new PosterStore({ dir, pool: workerPool, isWritable, svgPoster });
-  const peaks = new PeaksJobs({ idle: idleQueue, document: documentStore, audio: decodedAudio, workers: workerPool, ...peaksFiles(dir, isWritable) });
-  const analysis = new AnalysisScheduler(idleQueue, peaks);
+  const posters = new PosterStore({ dir, pool: workerPool, isWritable, svgPoster, onChange: notifyArrival });
+  const peaks = new PeaksJobs({ idle: idleQueue, document: documentStore, audio: decodedAudio, workers: workerPool, ...peaksFiles(dir, isWritable), onLoaded: notifyArrival });
+  const thumbs = new ThumbnailStore({ idle: idleQueue, document: documentStore, workers: workerPool, files: thumbFiles(dir, isWritable), onArrival: notifyArrival, ...(preview && { preview }) });
+  const analysis = new AnalysisScheduler({ peaks, thumbs });
   // Audio files the probe decodes (decodeAudioData) are not decoded again for playback and peaks.
   const decodedByFile = new WeakMap<File, AudioBuffer>();
   const probe = createProbeFile(workerPool, browserDecodeAudio(), (file, decoded) => {
@@ -78,6 +135,8 @@ export function attachMedia(dir: FsDir, isWritable: () => boolean): void {
   open = {
     importer,
     posters,
+    thumbs,
+    peaks,
     analysis,
     controller: new AbortController(),
     isWritable,
@@ -97,7 +156,12 @@ export function attachMedia(dir: FsDir, isWritable: () => boolean): void {
     ],
   };
   mediaPanel.set({ selection: EMPTY_MEDIA_SELECTION, renaming: null, removing: null });
-  posterStore.set(posters);
+  cardImages.set({
+    observe: (id, listener) =>
+      documentStore.getState().media[id]?.kind === "video" ? thumbs.observeCard(id, listener) : posters.observe(id, (bitmap) => listener(wholeImage(bitmap))),
+  });
+  if (import.meta.env.DEV) ((globalThis as { __editor?: Record<string, unknown> }).__editor ??= {}).thumbs = thumbs;
+  notifyArrival();
 }
 
 /** Before the project closes: stops imports, frees posters (P13), drops queued analysis. */
@@ -107,14 +171,10 @@ export function detachMedia(): void {
   if (!current) return;
   current.controller.abort();
   for (const stop of current.stops) stop();
-  posterStore.set(null);
+  cardImages.set(null);
   current.posters.dispose();
   current.analysis.dispose();
   mediaPanel.set({ selection: EMPTY_MEDIA_SELECTION, renaming: null, removing: null });
-}
-
-export function currentPosters(): PosterStore | null {
-  return posterStore.getState();
 }
 
 function refusalToast(refused: readonly Refusal[]): void {

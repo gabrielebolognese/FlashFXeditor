@@ -104,6 +104,9 @@ export interface TimelineTheme {
   labels: Record<LabelColor, string>;
   labelBodyAlpha: number;
   labelBarAlpha: number;
+  /** Clip bodies (spec §6.4): the waveform fill, the hatch over disabled or muted clips. */
+  waveform: string;
+  disabledHatch: string;
 }
 
 /** Reads one custom property by name (e.g. `--accent`); returns "" when it is not defined. */
@@ -252,6 +255,8 @@ export function readTheme(read: TokenReader, root?: Element): { theme: Theme; mi
       labels,
       labelBodyAlpha: num("--clip-label-body-alpha"),
       labelBarAlpha: num("--clip-label-bar-alpha"),
+      waveform: str("--clip-waveform"),
+      disabledHatch: str("--clip-disabled-hatch"),
     },
     meter: { barWidth: num("--meter-bar-width"), barGap: num("--meter-bar-gap"), ledHeight: num("--meter-led-height") },
   };

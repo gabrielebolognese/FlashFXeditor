@@ -3,14 +3,16 @@
 // audio segment by segment (the decoded buffers stay in the audio cache for playback), sends each
 // segment's PCM to analysis.worker for its level 0, has the worker build the pyramid file, and writes
 // it. The media's `analysis.peaks` then becomes "ready" with no undo step (`DocumentStore.amend`).
-// Jobs run one at a time, each started from an idle callback, so none starts during playback.
-// TODO(batch 17): load the peaks for the timeline waveforms.
+// Jobs run one at a time, each started from an idle callback, so none starts during playback. The
+// peaks a job reads or builds stay in memory for the timeline's waveforms (spec §6.17; a pyramid is
+// ~1.5 KB per second of stereo audio): `get`, with `onLoaded` when they arrive. Media the timeline
+// shows go to the front of the queue (`prioritize`).
 import { setMediaAnalysis } from "../core/commands/mediaCommands.js";
 import type { MediaId, MediaItem, Project } from "../core/document/types.js";
 import type { IdleQueue } from "../core/scheduler/IdleQueue.js";
 import type { Command } from "../core/commands/command.js";
 import type { DecodedAudio } from "../audio/decode/DecodedAudio.js";
-import { joinLevels, readPeaksFile } from "./cache/peaks.js";
+import { joinLevels, readPeaksFile, type Peaks } from "./cache/peaks.js";
 import type { SourceStamp } from "./demux/sampleIndexFile.js";
 import type { WorkerPool } from "./workers/WorkerPool.js";
 
@@ -31,11 +33,15 @@ export interface PeaksJobDeps {
   /** Writes cache/peaks/<id>.bin (nothing in a read-only project). */
   write(mediaId: MediaId, bytes: ArrayBuffer): Promise<void>;
   yieldToMain?: () => Promise<void>;
+  /** Peaks of a media are in memory (`get`). */
+  onLoaded?: (mediaId: MediaId) => void;
 }
 
 export class PeaksJobs {
   /** Media whose peaks file is known good in this session. */
   readonly done = new Set<MediaId>();
+  /** The peaks of the media in `done`. */
+  private readonly loaded = new Map<MediaId, Peaks>();
   private readonly queue: MediaId[] = [];
   /** The media of the job running. */
   private active: MediaId | null = null;
@@ -60,9 +66,36 @@ export class PeaksJobs {
     return this.queue;
   }
 
+  /** The peaks of a media, once its job read or built them. */
+  get(mediaId: MediaId): Peaks | null {
+    return this.loaded.get(mediaId) ?? null;
+  }
+
+  /** Media whose peaks are in memory (dev stats). */
+  get loadedCount(): number {
+    return this.loaded.size;
+  }
+
+  /** Moves queued media (those the timeline shows) to the front of the queue, in the given order. */
+  prioritize(mediaIds: readonly MediaId[]): void {
+    const wanted = mediaIds.filter((id) => this.queue.includes(id));
+    if (wanted.length === 0 || wanted.every((id, i) => this.queue[i] === id)) return;
+    const rest = this.queue.filter((id) => !wanted.includes(id));
+    this.queue.splice(0, this.queue.length, ...wanted, ...rest);
+  }
+
+  /** A media left the project: its peaks go, and a later return (undo) runs its job again. */
+  forget(mediaId: MediaId): void {
+    this.loaded.delete(mediaId);
+    this.done.delete(mediaId);
+    const at = this.queue.indexOf(mediaId);
+    if (at !== -1) this.queue.splice(at, 1);
+  }
+
   dispose(): void {
     this.disposed = true;
     this.queue.length = 0;
+    this.loaded.clear();
     this.cancelIdle?.();
     this.cancelIdle = null;
   }
@@ -98,9 +131,9 @@ export class PeaksJobs {
     const stamp = await deps.stamp(mediaId);
     if (!stamp) throw new Error("the media file is missing");
     const existing = await deps.read(mediaId);
-    if (existing && readPeaksFile(existing, stamp)) {
-      this.done.add(mediaId);
-      this.markReady(mediaId);
+    const cached = existing && readPeaksFile(existing, stamp);
+    if (cached) {
+      this.finish(mediaId, cached);
       return;
     }
     let count = (await deps.audio.open(mediaId)).count;
@@ -124,8 +157,16 @@ export class PeaksJobs {
     const file = await deps.workers.request("peaksFile", { level0: level0.buffer as ArrayBuffer, sampleRate, frames, channels, stamp }, { priority: "background", transfer: [level0.buffer as ArrayBuffer] });
     if (!this.exists(mediaId)) return;
     await deps.write(mediaId, file);
+    const peaks = readPeaksFile(file, stamp);
+    if (peaks) this.finish(mediaId, peaks);
+  }
+
+  private finish(mediaId: MediaId, peaks: Peaks): void {
+    if (!this.exists(mediaId)) return;
     this.done.add(mediaId);
+    this.loaded.set(mediaId, peaks);
     this.markReady(mediaId);
+    this.deps.onLoaded?.(mediaId);
   }
 
   /** A transferable copy of a buffer's channels, in slices (no long main-thread task). */

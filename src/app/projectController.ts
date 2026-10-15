@@ -8,7 +8,7 @@ import { ProjectSession } from "../project/ProjectSession.js";
 import type { RecentProject } from "../project/recentProjects.js";
 import type { Recovery } from "../project/recovery.js";
 import { attachMedia, detachMedia } from "./mediaController.js";
-import { attachPreview, detachPreview } from "./previewController.js";
+import { attachPreview, detachPreview, frameService } from "./previewController.js";
 import { actions, appSettings, appVersion, documentStore, focusScopes, layoutStore, recentProjects, saveStatus, sessionStore } from "./services.js";
 
 export type Dialog =
@@ -94,7 +94,8 @@ async function switchTo(opened: OpenedProject): Promise<void> {
     doc: document,
   });
   current = session;
-  attachMedia(session.dir, () => !session.readOnly);
+  // Thumbnail decodes yield to the preview's (one hardware decoder).
+  attachMedia(session.dir, () => !session.readOnly, frameService);
   attachPreview(session.dir, () => !session.readOnly);
   setView({
     project: { id: opened.project.id, folder: opened.dir.name },

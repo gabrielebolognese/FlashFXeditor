@@ -1,6 +1,8 @@
 // Background work queue (spec §3.4): runs small tasks in requestIdleCallback slices with a deadline,
 // and pauses entirely while playing or dragging. Each pauser names itself (the playback engine
-// "playback", timeline gestures "gesture"), so one resume never undoes another's pause.
+// "playback", timeline gestures "gesture"), so one resume never undoes another's pause. Listeners
+// hear when the queue becomes paused or runs again (work already started elsewhere, such as a worker
+// request, can then stop and yield to playback).
 
 export type IdleTask = () => void;
 
@@ -18,6 +20,7 @@ export class IdleQueue {
   private readonly tasks: IdleTask[] = [];
   private handle: number | null = null;
   private readonly pausers = new Set<string>();
+  private readonly pauseListeners = new Set<(paused: boolean) => void>();
 
   constructor(
     private readonly requestIdle: RequestIdle = (cb) => requestIdleCallback(cb),
@@ -44,14 +47,34 @@ export class IdleQueue {
 
   /** Stops running tasks until every owner that paused it has resumed it. */
   pause(owner = "default"): void {
+    const was = this.isPaused;
     this.pausers.add(owner);
     if (this.handle !== null) this.cancelIdle(this.handle);
     this.handle = null;
+    if (!was) this.emitPause(true);
   }
 
   resume(owner = "default"): void {
+    const was = this.isPaused;
     this.pausers.delete(owner);
+    if (was && !this.isPaused) this.emitPause(false);
     this.schedule();
+  }
+
+  /** Calls `listener` whenever the queue becomes paused (true) or runs again (false). */
+  onPauseChange(listener: (paused: boolean) => void): () => void {
+    this.pauseListeners.add(listener);
+    return () => this.pauseListeners.delete(listener);
+  }
+
+  private emitPause(paused: boolean): void {
+    for (const listener of [...this.pauseListeners]) {
+      try {
+        listener(paused);
+      } catch (error) {
+        console.error("[idle] pause listener failed", error);
+      }
+    }
   }
 
   private schedule(): void {
