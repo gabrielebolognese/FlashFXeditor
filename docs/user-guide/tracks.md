@@ -5,7 +5,7 @@ Tracks are the rows of the timeline: video tracks above the divider, audio track
 > **Video placeholder: Manage tracks**
 > - File: `videos/tracks/overview.mp4` (not recorded yet)
 > - Length: about 90 seconds
-> - Shows: a timeline with clips on V1, V2 and A1; point at the toggles in the V1 header in turn: the crosshair, the padlock, **M**, the eye and the rows icon; click the V2 header: it gets a lighter background, its icon turns gold and the **Edit Properties** panel shows the **Track** section; double-click the name V2, type "B-roll" and press <kbd>Enter</kbd>; click the padlock in the B-roll header: diagonal lines cover the row and its clips can no longer be clicked; click the padlock again; drag the V1 header up past B-roll: a gold line shows where it lands; release: the picture of V1 is now on top in the preview; click the rows icon in the A1 header twice: the row gets taller, then short; right-click the A1 header and choose **Add audio track below**; right-click the new track and choose **Delete track**.
+> - Shows: a timeline with clips on V1, V2 and A1; point at the toggles in the V1 header in turn: the crosshair, the padlock, **M**, the eye and the rows icon; click the V2 header: it gets a lighter background, its icon turns gold and the **Edit Properties** panel shows the **Track** section; double-click the name V2, type "B-roll" and press <kbd>Enter</kbd>; click the padlock in the B-roll header: diagonal lines cover the row and its clips can no longer be clicked; click the padlock again; drag the V1 header up past B-roll: a gold line shows where it lands; release: the picture of V1 is now on top in the preview; click the rows icon in the A1 header twice: the row gets taller with a taller waveform, then short with only the label bar; right-click the A1 header and choose **Add audio track below**; right-click the new track and choose **Delete track**.
 
 ## In this page
 - [Read a track header](#read-a-track-header)
@@ -170,7 +170,7 @@ Each track is Small (S, 32 pixels), Medium (M, 56 pixels) or Large (L, 88 pixels
 - **Track height** in the toolbar sets every track to the size after the tallest one: when the tallest track is S, all become M; when it is M, all become L; when it is L, all become S.
 - Changing a height is not a step in the history, and undo and redo leave heights as they are. Heights are saved with the project.
 
-Thumbnails and waveforms inside taller clips are available in a later version.
+On M and L tracks, clips show their thumbnails, waveforms or pictures below the label bar; on S tracks they show only the label bar. See [Show thumbnails and waveforms](clip-thumbnails-and-waveforms.md#show-thumbnails-and-waveforms).
 
 ## Delete tracks
 
@@ -218,6 +218,7 @@ Click a track header. The **Edit Properties** panel shows the **Track** section:
 With several tracks selected, the section is titled, for example, **2 tracks**, and has no **Name** row. It shows the settings of the first track you selected, and a change applies to every selected track as one step in the history (named, for example, **Mute tracks**).
 
 ## Related pages
+- [Clip thumbnails, waveforms and badges](clip-thumbnails-and-waveforms.md)
 - [Timeline](timeline.md)
 - [Linking and grouping clips](links-and-groups.md)
 - [Splitting, deleting and closing gaps](splitting-and-deleting.md)
@@ -228,4 +229,4 @@ With several tracks selected, the section is titled, for example, **2 tracks**, 
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 16, 2026-10-15</sub>
+<sub>Last updated: Batch 17, 2026-10-15</sub>

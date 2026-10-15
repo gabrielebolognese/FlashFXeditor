@@ -1,6 +1,6 @@
 # Troubleshooting
 
-This page helps you when something does not work as expected: the editor does not start in your browser, the preview stays empty, a folder or a file does not open, a clip drag, a trim, a split, a delete or a timeline tool does something you did not expect, playback stutters, or you hear no sound. Each problem lists what you see, why it happens and what to do. The last section lists what the current version cannot do yet.
+This page helps you when something does not work as expected: the editor does not start in your browser, the preview stays empty, a folder or a file does not open, a clip drag, a trim, a split, a delete or a timeline tool does something you did not expect, a clip shows no thumbnails, playback stutters, or you hear no sound. Each problem lists what you see, why it happens and what to do. The last section lists what the current version cannot do yet.
 
 > **Video placeholder: Fix common problems**
 > - File: `videos/troubleshooting/overview.mp4` (not recorded yet)
@@ -19,6 +19,7 @@ This page helps you when something does not work as expected: the editor does no
 >   11. Press <kbd>C</kbd> and click a clip: it splits in two. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>, then <kbd>V</kbd>.
 >   12. With three videos end to end on V1, put a music clip on A2 that runs under the second video and ends after it, and a short sound effect on A2 one second after the music. Select the second video and press <kbd>Shift</kbd>+<kbd>Delete</kbd>: the message **Ripple delete stopped short** names the sound effect, and the third video moves only one second to the left.
 >   13. Click the padlock in the V1 header: diagonal lines cover the row, and clicking its clips selects nothing. Click the padlock again: the clips can be selected.
+>   14. Click the height toggle in the V1 header until the track is S: its clips show only their label bar. Click it again: the thumbnails are back.
 
 ## In this page
 - [Browser and graphics](#browser-and-graphics)
@@ -30,14 +31,6 @@ This page helps you when something does not work as expected: the editor does no
   - [The new project shortcut opens a browser window](#the-new-project-shortcut-opens-a-browser-window)
   - [The save shortcut opens the browser's Save dialog](#the-save-shortcut-opens-the-browsers-save-dialog)
   - [Alt+Left leaves the editor](#altleft-leaves-the-editor)
-- [Folders and saving](#folders-and-saving)
-  - [The browser asks for access to a folder](#the-browser-asks-for-access-to-a-folder)
-  - [The project opens read-only](#the-project-opens-read-only)
-  - [A project folder does not open](#a-project-folder-does-not-open)
-  - [Changes are not saved](#changes-are-not-saved)
-- [Importing](#importing)
-  - [A file cannot be imported](#a-file-cannot-be-imported)
-  - [A video imports but shows nothing](#a-video-imports-but-shows-nothing)
 - [Timeline](#timeline)
   - [A drag copied clips or pushed other clips to the right](#a-drag-copied-clips-or-pushed-other-clips-to-the-right)
   - [A drag cut another clip short or split it](#a-drag-cut-another-clip-short-or-split-it)
@@ -65,6 +58,17 @@ This page helps you when something does not work as expected: the editor does no
   - [Clicking a clip selects other clips too](#clicking-a-clip-selects-other-clips-too)
   - [Clicking a video no longer selects its sound](#clicking-a-video-no-longer-selects-its-sound)
   - [Ctrl+L does not link the clips](#ctrll-does-not-link-the-clips)
+  - [A clip shows no thumbnails or waveform](#a-clip-shows-no-thumbnails-or-waveform)
+  - [Thumbnails repeat or show the wrong frames](#thumbnails-repeat-or-show-the-wrong-frames)
+  - [A clip shows a chain icon](#a-clip-shows-a-chain-icon)
+- [Folders and saving](#folders-and-saving)
+  - [The browser asks for access to a folder](#the-browser-asks-for-access-to-a-folder)
+  - [The project opens read-only](#the-project-opens-read-only)
+  - [A project folder does not open](#a-project-folder-does-not-open)
+  - [Changes are not saved](#changes-are-not-saved)
+- [Importing](#importing)
+  - [A file cannot be imported](#a-file-cannot-be-imported)
+  - [A video imports but shows nothing](#a-video-imports-but-shows-nothing)
 - [Playback and preview](#playback-and-preview)
   - [Playback stutters or drops frames](#playback-stutters-or-drops-frames)
   - [The preview shows a nearby frame for a moment](#the-preview-shows-a-nearby-frame-for-a-moment)
@@ -391,6 +395,36 @@ When <kbd>Q</kbd>, <kbd>W</kbd> or <kbd>E</kbd> stops short, a message names the
 
 **Fix:** Click the timeline, select one audio clip and one video or image clip on different tracks, and press <kbd>Ctrl</kbd>+<kbd>L</kbd> again. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> if the wrong clips were unlinked. See [Link clips](links-and-groups.md#link-clips).
 
+### A clip shows no thumbnails or waveform
+
+**Symptom:** A video, image or audio clip shows only its color below the label bar, or only a label bar.
+
+**Cause and fix:** Check these in order.
+
+| You see | Cause | Fix |
+| --- | --- | --- |
+| The clip is only a label bar, with no body below it. | Its track is set to height S. | Click the height toggle (three stacked rows) in the track header until the track is M or L. See [Show thumbnails and waveforms](clip-thumbnails-and-waveforms.md#show-thumbnails-and-waveforms). |
+| A video or image clip shows only its color, while wider clips show thumbnails. | The clip is narrower than 48 pixels on screen. | Zoom in. |
+| Thumbnails or waveforms are missing right after an import, or while you play. | The editor is still making them. It pauses while you play, scrub or drag. | Stop playback and wait a moment. See [Know when thumbnails and waveforms appear](clip-thumbnails-and-waveforms.md#know-when-thumbnails-and-waveforms-appear). |
+| A video clip never gets thumbnails, and the media card keeps the film icon. | Chrome can't decode the video on this computer, or its file is missing. | See [A video imports but shows nothing](#a-video-imports-but-shows-nothing). |
+| An audio clip never gets a waveform, and it plays no sound. | The sound can't be decoded, or its file is missing. | See [Playback has no sound](#playback-has-no-sound). |
+
+### Thumbnails repeat or show the wrong frames
+
+**Symptom:** After you zoom in, the same thumbnail appears several times in a row, or the thumbnails don't match the frames under them.
+
+**Cause:** The editor is making closer thumbnails for that part of the video. Meanwhile, the nearest thumbnails it already has stand in. While you play, scrub or drag, it waits.
+
+**Fix:** Wait. On an idle computer the right thumbnails usually appear within a second; during playback they fill in right after you stop. Zoomed in very far, neighboring thumbnails keep showing the same frame: the closest level has one thumbnail every 5 frames of the video. See [See more frames by zooming in](clip-thumbnails-and-waveforms.md#see-more-frames-by-zooming-in).
+
+### A clip shows a chain icon
+
+**Symptom:** A chain icon appears at the right end of a clip's label bar.
+
+**Cause:** The clip is linked, for example a video and its sound. If you deleted one of two linked clips on its own (with **Linked selection** off), the other one keeps the icon, although nothing is linked to it any more.
+
+**Fix:** Nothing to fix. To remove the link, click the clip and press <kbd>Ctrl</kbd>+<kbd>L</kbd>, or right-click it and choose **Unlink**. See [Unlink clips](links-and-groups.md#unlink-clips).
+
 ## Folders and saving
 
 ### The browser asks for access to a folder
@@ -466,7 +500,7 @@ If a message "Import failed" appears instead, the whole import stopped; its deta
 
 ### A video imports but shows nothing
 
-**Symptom:** The video appears in the Media panel, but its card keeps showing the plain film icon instead of a thumbnail. Its clip is on the timeline, but the preview shows only the background (or the tracks below) where the clip should be.
+**Symptom:** The video appears in the Media panel, but its card keeps showing the plain film icon instead of a thumbnail. Its clip is on the timeline, but it shows no thumbnails, and the preview shows only the background (or the tracks below) where the clip should be.
 
 **Cause:** Usually your browser cannot decode the video's codec on this computer. Importing reads only the file's structure, so the problem shows when the picture is needed. Common cases are HEVC (H.265) on a computer whose graphics hardware cannot decode it, and professional codecs such as ProRes. The same happens when the video's file was removed from the project's `media` folder.
 
@@ -553,14 +587,15 @@ See [Audio](audio.md).
 
 The current version cannot do these things yet. Each one is available in a later version.
 
-- **Sound:** no sound while you scrub, step frames, play backward or shuttle faster than 1x. Audio clips show no waveforms. Changing the volume of a clip, fades and audio effects are not available.
+- **Sound:** no sound while you scrub, step frames, play backward or shuttle faster than 1x. Changing the volume of a clip, fades and audio effects are not available.
 - **Editing clips:** the **Hand** tool is not available, and clips can't be cut, copied or pasted (the **Cut**, **Copy** and **Paste** rows of the clip menu are dimmed). Clips snap only to clip edges, the playhead and the start of the timeline, because markers and in and out points are not available yet.
 - **Menus:** only clips, gaps and track headers have a right-click menu, with a first set of rows. Menu rows can't be chosen with the arrow keys.
 - **Speed and edit points:** a clip's speed changes only with **Rate stretch**; typing an exact speed is not available. A selected cut (edit point) only marks the cut; transitions are not available.
-- **Tracks:** the timeline has no scrollbars (scroll with the mouse wheel). Track headers have room for names of about 9 characters; longer names are shortened. Taller tracks show no thumbnails or waveforms yet. Groups are not marked on the timeline, and a clip's link shows only through the red sync numbers. In the **Track** section of **Edit Properties**, several selected tracks show the first track's settings, with no sign of mixed values.
+- **Tracks:** the timeline has no scrollbars (scroll with the mouse wheel). Track headers have room for names of about 9 characters; longer names are shortened. Groups are not marked on the timeline. In the **Track** section of **Edit Properties**, several selected tracks show the first track's settings, with no sign of mixed values.
 - **Preview:** no panning, no mouse-wheel zoom, and no <kbd>Ctrl</kbd>+<kbd>0</kbd>/<kbd>1</kbd>/<kbd>2</kbd>. The preview timecode is read-only; type times in the timeline toolbar. The quality is always **Auto: full**.
 - **Fit only:** inserted clips fit the frame with bands; one-click Fill is not available. Changing the project resolution does not refit existing clips.
-- **Animated GIF and WebP files** show as still images (their first frame).
+- **Animated GIF and WebP files** show as still images (their first frame), in the preview and in their clips' thumbnails.
+- **Media cards** show only the first frame of a video; pointing at a card does not play through its thumbnails.
 - **Media that cannot be decoded, or whose file is missing,** shows nothing in the preview, with no placeholder.
 - **Removing media** that a clip uses is not possible.
 - **Frame rate:** you cannot change it once the timeline has clips.
@@ -569,6 +604,7 @@ The current version cannot do these things yet. Each one is available in a later
 - **Heavy footage:** 4K 60 fps HEVC at full quality can drop frames, and exact frames deep inside long phone clips take a moment to appear.
 
 ## Related pages
+- [Clip thumbnails, waveforms and badges](clip-thumbnails-and-waveforms.md)
 - [Tracks](tracks.md)
 - [Linking and grouping clips](links-and-groups.md)
 - [Audio](audio.md)
@@ -581,4 +617,4 @@ The current version cannot do these things yet. Each one is available in a later
 - [Preview and playback](preview-and-playback.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 16, 2026-10-15</sub>
+<sub>Last updated: Batch 17, 2026-10-15</sub>

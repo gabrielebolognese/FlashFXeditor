@@ -2,6 +2,11 @@
 
 Shorts Editor grows in steps called batches. This page lists what each batch added that you can see or use, newest first. Follow the links for the full instructions.
 
+> **Video placeholder: What's new in Batch 17**
+> - File: `videos/whats-new/batch-17.mp4` (not recorded yet)
+> - Length: about 45 seconds
+> - Shows: import a video with sound and a song; double-click both cards: the video clip fills with thumbnails, its sound and the song with waveforms; point at the chain icon in the label bars of the video and its sound; hold <kbd>Ctrl</kbd> and roll the wheel over the video clip: for a moment thumbnails repeat, then each shows its own frame; click the height toggle in the V1 header: the thumbnails get larger at L, then the track is S and shows only the label bar; right-click the song and click the violet swatch: the waveform sits on violet; close the tab, reopen the project: thumbnails and waveforms are there at once.
+
 > **Video placeholder: What's new in Batch 16**
 > - File: `videos/whats-new/batch-16.mp4` (not recorded yet)
 > - Length: about 60 seconds
@@ -43,6 +48,7 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 > - Shows: open a project with three clips on the timeline; press <kbd>Space</kbd> to play and let the timeline page forward; press <kbd>L</kbd> three times to reach 8x, then <kbd>K</kbd>; hold <kbd>K</kbd> and tap <kbd>L</kbd> to step one frame; turn on **Loop playback**; point at the **Dropped** readout in the status strip.
 
 ## In this page
+- [Batch 17: Thumbnails, waveforms and badges](#batch-17-thumbnails-waveforms-and-badges)
 - [Batch 16: Tracks, links and groups](#batch-16-tracks-links-and-groups)
 - [Batch 15: Split, delete and close gaps](#batch-15-split-delete-and-close-gaps)
 - [Batch 14: Roll, slip, slide and rate stretch](#batch-14-roll-slip-slide-and-rate-stretch)
@@ -59,6 +65,16 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 - [Batch 03: Projects, autosave and recovery](#batch-03-projects-autosave-and-recovery)
 - [Batch 02: Undo, redo and frame-exact time](#batch-02-undo-redo-and-frame-exact-time)
 - [Batch 01: The workspace](#batch-01-the-workspace)
+
+## Batch 17: Thumbnails, waveforms and badges
+- Video clips show a strip of thumbnails on M and L tracks. Zoom in and the thumbnails get closer together, down to one every 5 frames; while closer ones are made, the nearest ones stand in for a moment.
+- Audio clips show their waveform, sharp at every zoom: loud parts tall, silence a thin line. Image clips show their picture.
+- Linked clips show a chain icon in the label bar, next to the speed badge and the red sync number. Badges stay visible at the right edge of the tracks when a clip ends after the view.
+- Thumbnails and the sound analysis are made in the background, wait while you play, scrub or drag, and are saved in the project's `cache` folder, so they appear at once when you reopen the project.
+- Media cards of videos show the video's first frame from the same thumbnails.
+- Label colors show in the label bar above the thumbnails, and behind the waveform of audio clips.
+
+See [Clip thumbnails, waveforms and badges](clip-thumbnails-and-waveforms.md).
 
 ## Batch 16: Tracks, links and groups
 - Track headers have working toggles: **Target** (crosshair), **Lock** (padlock), **M** (mute), **S** (solo, audio tracks), **Hide** (eye, video tracks) and **Height**. Video tracks can now be muted and hidden: their clips leave the preview.
@@ -201,4 +217,4 @@ See [The workspace](workspace.md) and [Getting started](getting-started.md).
 - [User guide home](README.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 16, 2026-10-15</sub>
+<sub>Last updated: Batch 17, 2026-10-15</sub>

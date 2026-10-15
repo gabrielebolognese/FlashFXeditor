@@ -263,6 +263,7 @@ The preview draws with your graphics card (GPU) and decodes video with the brows
 - **4K 60 fps HEVC footage** (common on recent phones): at the limit of what a laptop GPU decodes at full quality. Expect a few dropped frames (about 1% on the development machine), and more when the computer runs hot. Lighter proxy copies are available in a later version.
 - **Scrubbing:** the exact frame usually follows within a fraction of a second. Video is stored in groups of frames that start with a keyframe, so the editor decodes from the previous keyframe to show a frame. Deep inside a 4K HEVC phone clip this can take about half a second; the preview shows the closest frame meanwhile.
 - **Backward playback and fast shuttle speeds** need more decoding work than 1x forward.
+- **Thumbnails:** the editor makes the timeline's thumbnails only while you don't play, scrub or drag, and lets the preview's frames go first, so they don't slow the preview down. See [Know when thumbnails and waveforms appear](clip-thumbnails-and-waveforms.md#know-when-thumbnails-and-waveforms-appear).
 
 If playback stutters, see [Troubleshooting](troubleshooting.md).
 
@@ -277,4 +278,4 @@ If playback stutters, see [Troubleshooting](troubleshooting.md).
 - [Workspace](workspace.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 16, 2026-10-15</sub>
+<sub>Last updated: Batch 17, 2026-10-15</sub>

@@ -156,7 +156,7 @@ What you see while you drag:
 After you release:
 
 - The clip plays the same part of its media, from the same first frame to the same last frame, only faster or slower.
-- Its label bar shows the speed in a badge, such as `0.5x`, `2x` or `1.33x` (up to two decimals), to the left of a red offset number if there is one. Clips at normal speed show no badge.
+- Its label bar shows the speed in a badge, such as `0.5x`, `2x` or `1.33x` (up to two decimals), to the left of a red offset number if there is one. Clips at normal speed show no badge. See [Read the badges in the label bar](clip-thumbnails-and-waveforms.md#read-the-badges-in-the-label-bar).
 - Its sound plays at the new speed, and the pitch changes with it: at 0.5x the sound is an octave lower, at 2x an octave higher. The editor does not keep the original pitch.
 - The history step is named **Rate stretch clip**, or **Rate stretch clips** when linked clips stretch with it.
 
@@ -215,4 +215,4 @@ The edit stops following the pointer at these limits:
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 16, 2026-10-15</sub>
+<sub>Last updated: Batch 17, 2026-10-15</sub>
