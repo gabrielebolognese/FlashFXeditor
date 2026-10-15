@@ -157,17 +157,22 @@ function drawGhost(scene: OverlayScene, move: MoveScene, ghost: Ghost): void {
 
 /** Diagonal hatching over [x0, x1) of a ghost: the region it would overwrite (spec §6.8). */
 function drawHatch(scene: OverlayScene, x0: number, x1: number, y: number, height: number): void {
-  const { ctx, dpr, theme } = scene;
+  const { ctx, dpr, geometry, theme } = scene;
+  // Only the part inside the track area: the line count follows the view width, not the zoom or
+  // the length of the overwritten span (spec §6.17: off-screen parts cost nothing).
+  const left = Math.max(x0, geometry.area.x);
+  const right = Math.min(x1, geometry.area.x + geometry.area.width);
+  if (right <= left) return;
   const gap = Math.max(theme.timeline.hatchGap, 1);
   ctx.save();
   ctx.beginPath();
-  ctx.rect(x0, y, x1 - x0, height);
+  ctx.rect(left, y, right - left, height);
   ctx.clip();
   ctx.strokeStyle = theme.timeline.hatch;
   ctx.lineWidth = 1 / dpr;
   ctx.beginPath();
   // Lines on a fixed grid (by x), so the pattern does not crawl while the ghost moves.
-  for (let x = Math.floor((x0 - height) / gap) * gap; x < x1; x += gap) {
+  for (let x = Math.floor((left - height) / gap) * gap; x < right; x += gap) {
     ctx.moveTo(x, y + height);
     ctx.lineTo(x + height, y);
   }

@@ -286,16 +286,17 @@ class Edit {
   }
 
   /**
-   * Split pieces of linked clips: pieces cut at the same frames from one link group are linked to
-   * each other under a new group (a linked video and audio split together stay a pair); a piece with
-   * no such partner is unlinked.
+   * Split pieces of linked clips: pieces of one link group that start at the same frame (cut at the
+   * same frame) are linked to each other under a new group, whatever their lengths (a linked video
+   * and a longer audio split together stay a pair); a piece with no such partner is unlinked. A clip
+   * gives at most one piece starting at a given frame, so two pieces of one clip are never linked.
    */
   relinkPieces(newId: () => string): void {
     const byKey = new Map<string, ClipId[]>();
     for (const { id, linkGroup } of this.pieces) {
       const clip = this.changes.get(id);
       if (!clip) continue;
-      const key = `${linkGroup}\u0000${clip.start}\u0000${clip.duration}`;
+      const key = `${linkGroup}\u0000${clip.start}`;
       const ids = byKey.get(key);
       if (ids) ids.push(id);
       else byKey.set(key, [id]);
