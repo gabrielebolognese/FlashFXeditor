@@ -21,8 +21,10 @@ This page lists every keyboard shortcut that works in the current version of Sho
 >   13. Click a clip, press <kbd>Delete</kbd>, click the gap it leaves and press <kbd>G</kbd>: the gap closes. Press <kbd>F2</kbd> on another clip, type a name and press <kbd>Enter</kbd>.
 >   14. Press <kbd>Y</kbd>: the **Slip** tool turns gold. Press <kbd>U</kbd> for **Slide**, <kbd>R</kbd> for **Rate stretch** and <kbd>C</kbd> for **Razor**, then <kbd>V</kbd> to go back to **Select**.
 >   15. Zoom in, scroll the playhead out of view, and press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>.</kbd>: the view centers on the playhead.
->   16. Click a card in the Media panel, press <kbd>F2</kbd>, type a new name and press <kbd>Enter</kbd>.
->   17. Hover over **Play** to show the tooltip with its shortcut.
+>   16. Click a video with sound and press <kbd>Ctrl</kbd>+<kbd>L</kbd> to unlink its sound, then <kbd>Ctrl</kbd>+<kbd>Z</kbd>. Press <kbd>Shift</kbd>+<kbd>S</kbd>: the **Linked selection** button turns off; press it again.
+>   17. Click the V1 track header and press <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>Up</kbd>: the row gets taller. Press <kbd>F2</kbd>, type a name and press <kbd>Enter</kbd>.
+>   18. Click a card in the Media panel, press <kbd>F2</kbd>, type a new name and press <kbd>Enter</kbd>.
+>   19. Hover over **Play** to show the tooltip with its shortcut.
 
 ## In this page
 - [How shortcuts work](#how-shortcuts-work)
@@ -30,6 +32,7 @@ This page lists every keyboard shortcut that works in the current version of Sho
 - [Timeline](#timeline)
 - [Trimming](#trimming)
 - [Cutting and deleting](#cutting-and-deleting)
+- [Tracks, links and groups](#tracks-links-and-groups)
 - [Tools](#tools)
 - [Audio](#audio)
 - [Media panel](#media-panel)
@@ -111,7 +114,7 @@ These shortcuts work only while the Timeline panel is active. See [Timeline](tim
 | Action | Windows | macOS | Works in |
 | --- | --- | --- | --- |
 | Select all clips | <kbd>Ctrl</kbd>+<kbd>A</kbd> | <kbd>⌘</kbd>+<kbd>A</kbd> | Timeline, Preview |
-| Clear the selection (also a selected edit point or gap) | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd> | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>A</kbd> | Timeline, Preview |
+| Clear the selection (also selected tracks, an edit point or a gap) | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd> | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>A</kbd> | Timeline, Preview |
 | Cancel a clip drag, a trim, a roll, slip, slide or rate stretch, or a selection rectangle | <kbd>Escape</kbd> (before you release the mouse button) | <kbd>Esc</kbd> | All panels |
 
 ### Snapping
@@ -158,12 +161,31 @@ See [Splitting, deleting and closing gaps](splitting-and-deleting.md).
 | Ripple delete the selected clips (with a gap selected: close it) | <kbd>Shift</kbd>+<kbd>Delete</kbd> or <kbd>Shift</kbd>+<kbd>Backspace</kbd> | <kbd>⇧</kbd>+<kbd>Delete</kbd> (⌫) | Timeline, Preview |
 | Close the selected gap, or the gap at the playhead | <kbd>G</kbd> | <kbd>G</kbd> | Timeline |
 | Close all gaps (compact) | <kbd>Shift</kbd>+<kbd>G</kbd> | <kbd>⇧</kbd>+<kbd>G</kbd> | Timeline |
-| Rename the selected clip | <kbd>F2</kbd> | <kbd>F2</kbd> | Timeline |
+| Rename the selected clip or track | <kbd>F2</kbd> | <kbd>F2</kbd> | Timeline |
 
 - Each of these edits is one undo step.
 - Deleting a clip also deletes its linked clips, for example a video's sound.
 - In the Media panel, <kbd>Delete</kbd>, <kbd>Backspace</kbd> and <kbd>F2</kbd> work on media instead. See [Media panel](#media-panel).
 - The clip and gap menus (right-click) show these shortcuts next to their rows. <kbd>Escape</kbd> closes a menu.
+- Clips on locked tracks are never split or deleted. <kbd>Ctrl</kbd>+<kbd>K</kbd> with nothing selected and <kbd>G</kbd> with no gap selected act on the targeted tracks; <kbd>Shift</kbd>+<kbd>G</kbd> acts on the selected tracks, or on the targeted tracks when no track is selected. See [Tracks](tracks.md).
+
+## Tracks, links and groups
+
+See [Tracks](tracks.md) and [Linking and grouping clips](links-and-groups.md).
+
+| Action | Windows | macOS | Works in |
+| --- | --- | --- | --- |
+| Turn **Linked selection** on or off | <kbd>Shift</kbd>+<kbd>S</kbd> | <kbd>⇧</kbd>+<kbd>S</kbd> | All panels |
+| Unlink the selected clips, or link them | <kbd>Ctrl</kbd>+<kbd>L</kbd> | <kbd>⌘</kbd>+<kbd>L</kbd> | Timeline |
+| Group the selected clips | <kbd>Ctrl</kbd>+<kbd>G</kbd> | <kbd>⌘</kbd>+<kbd>G</kbd> | Timeline |
+| Ungroup the selected clips | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>G</kbd> | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>G</kbd> | Timeline |
+| Make tracks one size taller (L wraps to S) | <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>↑</kbd> | <kbd>⌘</kbd>+<kbd>⌥</kbd>+<kbd>↑</kbd> | Timeline |
+| Make tracks one size shorter (S wraps to L) | <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>↓</kbd> | <kbd>⌘</kbd>+<kbd>⌥</kbd>+<kbd>↓</kbd> | Timeline |
+| Rename the selected track | <kbd>F2</kbd> | <kbd>F2</kbd> | Timeline |
+
+- Each link, unlink, group and ungroup is one undo step. Changing a track's height is not a step in the history.
+- <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>↑</kbd> and <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>↓</kbd> change the selected tracks; with no track selected, the tracks of the selected clips; with nothing selected, every track.
+- The track header toggles (target, lock, mute, solo, hide, height) and **Move into sync** have no keyboard shortcut: click them.
 
 ## Tools
 
@@ -191,7 +213,7 @@ The **Master volume** knob in the transport bar under the preview takes these ke
 | Quietest (-60.0 dB) | <kbd>Home</kbd> | <kbd>Fn</kbd>+<kbd>←</kbd> | **Master volume** knob, focused |
 | Loudest (0.0 dB) | <kbd>End</kbd> | <kbd>Fn</kbd>+<kbd>→</kbd> | **Master volume** knob, focused |
 
-**Mute** and the **M** and **S** toggles of audio tracks have no keyboard shortcut: click them. Double-clicking the knob resets it to 0.0 dB.
+**Mute** and the toggles in the track headers have no keyboard shortcut: click them. Double-clicking the knob resets it to 0.0 dB.
 
 ## Media panel
 
@@ -257,7 +279,12 @@ These work over the timeline. See [Timeline](timeline.md).
 | Cut a clip and its linked clips | With the **Razor** tool, click the clip | Same |
 | Cut every track at that frame | With the **Razor** tool, <kbd>Shift</kbd>+click in the tracks | With the **Razor** tool, <kbd>⇧</kbd>+click in the tracks |
 | Select a gap | Click the empty space between two clips | Click the empty space between two clips |
-| Open the clip or gap menu | Right-click the clip or gap | Right-click the clip or gap |
+| Open the clip, gap or track menu | Right-click the clip, gap or track header | Right-click the clip, gap or track header |
+| Select a track | Click its header | Click its header |
+| Add a track to the selection, or remove it | <kbd>Shift</kbd>+click or <kbd>Ctrl</kbd>+click its header | <kbd>⇧</kbd>+click or <kbd>⌘</kbd>+click its header |
+| Select all clips on a track | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+click its header | <kbd>⌘</kbd>+<kbd>⇧</kbd>+click its header |
+| Rename a track | Double-click its name | Double-click its name |
+| Reorder a track | Drag its header up or down | Drag its header up or down |
 | Switch snapping for this drag | Hold <kbd>S</kbd> while you drag | Hold <kbd>S</kbd> while you drag |
 | Snap the playhead to clip edges | <kbd>Shift</kbd>+click or <kbd>Shift</kbd>+drag in the ruler | <kbd>⇧</kbd>+click or <kbd>⇧</kbd>+drag in the ruler |
 
@@ -275,6 +302,8 @@ In a normal browser tab, the browser keeps some shortcuts for itself, and a web 
 | <kbd>Ctrl</kbd>+<kbd>T</kbd> (<kbd>⌘</kbd>+<kbd>T</kbd>) | Opens a new tab. |
 | <kbd>Ctrl</kbd>+<kbd>W</kbd> (<kbd>⌘</kbd>+<kbd>W</kbd>) | Closes the tab. |
 | <kbd>Alt</kbd>+<kbd>←</kbd> (Windows), outside the Timeline panel | Goes back to the previous page in the tab, if there is one. In the Timeline panel the editor keeps it for nudging clips. |
+| <kbd>Ctrl</kbd>+<kbd>L</kbd> (<kbd>⌘</kbd>+<kbd>L</kbd>), outside the Timeline panel | Moves the keyboard to the browser's address bar. In the Timeline panel the editor keeps it for linking clips. |
+| <kbd>Ctrl</kbd>+<kbd>G</kbd> and <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>G</kbd> (<kbd>⌘</kbd>+<kbd>G</kbd>, <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>G</kbd>), outside the Timeline panel | Search the page. In the Timeline panel the editor keeps them for grouping clips. |
 
 Because of this, <kbd>Ctrl</kbd>+<kbd>N</kbd> opens a new browser window instead of a new project. To create a project, click **New project** on the start screen.
 
@@ -296,9 +325,11 @@ Some buttons already show a shortcut in their tooltip although the button is dis
 - [Trimming clips](trimming.md)
 - [Splitting, deleting and closing gaps](splitting-and-deleting.md)
 - [Advanced trimming](advanced-trimming.md)
+- [Tracks](tracks.md)
+- [Linking and grouping clips](links-and-groups.md)
 - [Audio](audio.md)
 - [Importing media](importing-media.md)
 - [Projects and saving](projects-and-saving.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 15, 2026-10-15</sub>
+<sub>Last updated: Batch 16, 2026-10-15</sub>

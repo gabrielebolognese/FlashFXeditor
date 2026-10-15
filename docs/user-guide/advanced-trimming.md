@@ -34,7 +34,8 @@ The **Tools** group at the left end of the timeline toolbar decides what a drag 
 - The tool stays active until you choose another one. Each project remembers its tool. Changing the tool is not a step in the history.
 - Over a clip, the cursor shows the tool: two bars with a double arrow between them for **Slip**, two bars with arrows pointing out for **Slide**, at the start or end of a clip a bracket with a double arrowhead for **Rate stretch**, and over the tracks a vertical line with a small blade for **Razor**.
 - With every tool except **Razor**, a click on a clip selects it and a drag on empty track space draws a selection rectangle. With every tool, a click or drag in the ruler moves the playhead, and a right-click on a clip opens its menu.
-- **Slip**, **Slide** and **Rate stretch** change only the clip you drag and its linked clips, even when other clips are selected.
+- **Slip**, **Slide** and **Rate stretch** change only the clip you drag and its linked clips, even when other clips are selected. While **Linked selection** is off, they change only the clip you drag. See [Turn Linked selection off](links-and-groups.md#turn-linked-selection-off).
+- Clips on a locked track can't be rolled, slipped, slid or stretched. See [Lock a track](tracks.md#lock-a-track).
 - While you drag, hold the pointer near the left or right edge of the tracks to scroll the timeline.
 - **Hand** is in the toolbar but available in a later version.
 
@@ -67,7 +68,7 @@ More things to know:
 
 - Linked clips roll too. When the sounds of the two videos also meet at the cut, their cut moves with it. A linked clip with no clip right against it at that cut is trimmed by the same amount instead.
 - The cut snaps to clip edges, the playhead and the start of the timeline, like a trimmed edge. Hold <kbd>S</kbd> during the drag to do the opposite of the snapping setting.
-- <kbd>Ctrl</kbd> on its own and **Ripple mode** do not change a roll, and <kbd>Alt</kbd> does not separate linked clips during a roll.
+- <kbd>Ctrl</kbd> on its own and **Ripple mode** do not change a roll, and <kbd>Alt</kbd> does not separate linked clips during a roll. To roll the cut on one track only, turn off **Linked selection** first. See [Turn Linked selection off](links-and-groups.md#turn-linked-selection-off).
 - A drag near a cut without <kbd>Ctrl</kbd>+<kbd>Alt</kbd> trims the clip on the side you pressed. See [Find the edges of a clip](trimming.md#find-the-edges-of-a-clip).
 - The history step is named **Rolling edit**.
 
@@ -111,7 +112,7 @@ Slipping changes which part of its media a clip shows, without moving the clip o
 - Slip works on video and audio clips. An image has no other frames to show, so slipping it changes nothing.
 - The history step is named **Slip clip**, or **Slip clips** when linked clips slip with it.
 
-> **Important:** After you slip a video without its sound (<kbd>Alt</kbd>), the picture and the sound no longer match, and no red offset number warns you, because both clips stay in place. Undo the slip, or slip the other clip by the same amount.
+> **Important:** After you slip a video without its sound (<kbd>Alt</kbd>), the picture and the sound no longer match, although both clips stay in place. Both show a red offset number, such as **+10** and **-10**. Undo the slip, or slip the other clip by the same amount. See [Keep linked clips in sync](links-and-groups.md#keep-linked-clips-in-sync).
 
 ## Slide a clip between its neighbors
 
@@ -127,7 +128,7 @@ Sliding moves a clip along the track while its neighbors make room. The clip kee
 - Where one side has a gap instead of a touching clip, the gap gets shorter or longer instead. The slide then stops at the clip on the other side of the gap, or at `00:00:00`.
 - The slide stops when a neighbor reaches the first or the last frame of its media (its bar turns red, and the tooltip shows **Media start** or **Media end** in red) or would get shorter than 1 frame.
 - Both ends of the clip snap to clip edges, the playhead and the start of the timeline. Hold <kbd>S</kbd> during the drag to do the opposite of the snapping setting.
-- The clip's linked clips slide with it, and their neighbors change the same way. Hold <kbd>Alt</kbd> to slide only the clip you drag; the linked clips then show a red offset number. See [Trim a video without its sound](trimming.md#trim-a-video-without-its-sound).
+- The clip's linked clips slide with it, and their neighbors change the same way. Hold <kbd>Alt</kbd> to slide only the clip you drag; the linked clips then show a red offset number. See [Keep linked clips in sync](links-and-groups.md#keep-linked-clips-in-sync).
 - The history step is named **Slide clip**, or **Slide clips** when linked clips slide with it.
 
 ## Change a clip's speed with Rate stretch
@@ -207,10 +208,11 @@ The edit stops following the pointer at these limits:
 ## Related pages
 - [Trimming clips](trimming.md)
 - [Splitting, deleting and closing gaps](splitting-and-deleting.md)
+- [Linking and grouping clips](links-and-groups.md)
 - [Timeline](timeline.md)
 - [Preview and playback](preview-and-playback.md)
 - [Audio](audio.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 15, 2026-10-15</sub>
+<sub>Last updated: Batch 16, 2026-10-15</sub>

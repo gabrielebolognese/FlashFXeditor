@@ -1,16 +1,16 @@
 # Timeline
 
-The timeline is where your short takes shape: clips sit on tracks in time order, and the playhead marks the frame the preview shows. In this version you add clips by double-clicking media, select clips and arrange them by dragging (also onto other tracks), snap them to the edges of other clips and to the playhead, duplicate them, add tracks, zoom and scroll, move the playhead with the mouse, the keyboard or a typed timecode, and rename clips or give them a label color. To shorten or lengthen clips, see [Trimming clips](trimming.md); to split and delete clips and close gaps, see [Splitting, deleting and closing gaps](splitting-and-deleting.md); to roll cuts, slip, slide or change a clip's speed, see [Advanced trimming](advanced-trimming.md).
+The timeline is where your short takes shape: clips sit on tracks in time order, and the playhead marks the frame the preview shows. In this version you add clips by double-clicking media, select clips and arrange them by dragging (also onto other tracks), snap them to the edges of other clips and to the playhead, duplicate them, zoom and scroll, move the playhead with the mouse, the keyboard or a typed timecode, and rename clips or give them a label color. To shorten or lengthen clips, see [Trimming clips](trimming.md); to split and delete clips and close gaps, see [Splitting, deleting and closing gaps](splitting-and-deleting.md); to roll cuts, slip, slide or change a clip's speed, see [Advanced trimming](advanced-trimming.md). To add, lock, target or rearrange tracks, see [Tracks](tracks.md); to link, sync and group clips, see [Linking and grouping clips](links-and-groups.md).
 
 > **Video placeholder: Timeline tour**
 > - File: `videos/timeline/timeline-overview.mp4` (not recorded yet)
 > - Length: about 60 seconds
-> - Shows: a project with a few clips on V1 and A1; point in turn at the toolbar, the timecode and duration at its right end, the ruler, the track headers (V1, A1) and the **M** and **S** toggles on A1, the divider between video and audio tracks, a blue video clip, a green audio clip, and the thin line where the content ends; click the ruler to move the red playhead; press <kbd>\\</kbd> to fit everything; press <kbd>=</kbd> three times to zoom in, then <kbd>-</kbd> to zoom out; click a video clip: it and its sound on A1 turn gold; drag it to the right until its start comes near the end of another clip: it jumps onto the edge and a thin gold line runs through the timeline; release.
+> - Shows: a project with a few clips on V1 and A1; point in turn at the toolbar, the timecode and duration at its right end, the ruler, the track headers (V1, A1) and their toggles, the divider between video and audio tracks, a blue video clip, a green audio clip, and the thin line where the content ends; click the ruler to move the red playhead; press <kbd>\\</kbd> to fit everything; press <kbd>=</kbd> three times to zoom in, then <kbd>-</kbd> to zoom out; click a video clip: it and its sound on A1 turn gold; drag it to the right until its start comes near the end of another clip: it jumps onto the edge and a thin gold line runs through the timeline; release.
 
 ## In this page
 - [Find your way around the timeline](#find-your-way-around-the-timeline)
 - [Add clips from the Media panel](#add-clips-from-the-media-panel)
-- [Add tracks](#add-tracks)
+- [Add and manage tracks](#add-and-manage-tracks)
 - [Zoom in and out](#zoom-in-and-out)
 - [Scroll the timeline](#scroll-the-timeline)
 - [Move the playhead](#move-the-playhead)
@@ -33,7 +33,7 @@ The timeline is where your short takes shape: clips sit on tracks in time order,
 |---|---|---|
 | **Toolbar** | Top of the panel | The tools, the **Snap** and **Ripple mode** toggles, the edit buttons, zoom controls, and at the right end the playhead timecode and the total duration. |
 | **Ruler** | Above the tracks | Shows time. Click or drag in it to move the playhead. |
-| **Track headers** | Left column | Each track's icon and name (V1, V2 for video; A1, A2 for audio), the **M** (mute) and **S** (solo) toggles of audio tracks, plus the **+ Video track** and **+ Audio track** rows. |
+| **Track headers** | Left column | Each track's icon and name (V1, V2 for video; A1, A2 for audio) and its toggles (target, lock, mute, solo or hide, height), plus the **+ Video track** and **+ Audio track** rows. See [Tracks](tracks.md). |
 | **Tracks** | Main area | Video tracks above the divider, audio tracks below it. Each row holds that track's clips. |
 | **Playhead** | Red vertical line | Marks the current frame. Its head sits in the ruler. |
 | **Content end** | Thin vertical line | Marks the end of the last clip, in the ruler and across the tracks. |
@@ -55,7 +55,8 @@ The spacing of the ticks follows the zoom. Zoomed out, labels can be minutes apa
 - A clip gets lighter while you point at it. A selected clip has a gold outline and tint (see [Select clips](#select-clips)).
 - The outer 8 pixels at each end of a clip are its trim zones: the cursor turns into a bracket there, and dragging trims the clip. See [Trimming clips](trimming.md).
 - Where two clips touch, a click within 3 pixels of the cut selects the cut (red brackets `][` mark it), and <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+drag there rolls the cut. See [Advanced trimming](advanced-trimming.md#select-a-cut-edit-point).
-- A red number such as **+12** or **-12** at the right end of the label bar means the clip is that many frames out of step with its linked clip. See [Trim a video without its sound](trimming.md#trim-a-video-without-its-sound).
+- A red number such as **+12** or **-12** at the right end of the label bar means the clip is that many frames out of step with its linked clip. See [Keep linked clips in sync](links-and-groups.md#keep-linked-clips-in-sync).
+- Clips on a locked track are covered with diagonal lines, and clips of a track you don't see or hear (muted, hidden, or left out by a solo) are drawn faded. See [Tracks](tracks.md).
 - A badge such as `0.5x` or `2x` in the label bar, left of any red number, is the speed of a video or audio clip that does not play at normal speed. See [Change a clip's speed with Rate stretch](advanced-trimming.md#change-a-clips-speed-with-rate-stretch).
 
 Thumbnails and waveforms inside clips are available in a later version.
@@ -65,13 +66,13 @@ Thumbnails and waveforms inside clips are available in a later version.
 In this version these parts of the toolbar work:
 
 - the **Select**, **Razor**, **Slip**, **Slide** and **Rate stretch** tools (see [Choose a tool](advanced-trimming.md#choose-a-tool) and [Cut clips with the Razor tool](splitting-and-deleting.md#cut-clips-with-the-razor-tool));
-- the **Snap** toggle (see [Turn snapping on or off](#turn-snapping-on-or-off)) and the **Ripple mode** toggle (see [Turn Ripple mode on or off](trimming.md#turn-ripple-mode-on-or-off));
+- the **Snap** toggle (see [Turn snapping on or off](#turn-snapping-on-or-off)), the **Linked selection** toggle (see [Turn Linked selection off](links-and-groups.md#turn-linked-selection-off)) and the **Ripple mode** toggle (see [Turn Ripple mode on or off](trimming.md#turn-ripple-mode-on-or-off));
 - the edit buttons **Split at playhead**, **Delete**, **Ripple delete**, **Close gap** and **Close all gaps (compact)** (see [Splitting, deleting and closing gaps](splitting-and-deleting.md));
-- the zoom group, the timecode field and the duration.
+- the zoom group with **Track height** (see [Change track height](tracks.md#change-track-height)), the timecode field and the duration.
 
-The other buttons (the **Hand** tool, toggles such as **Linked selection**, edit actions such as **Add marker**, and add actions such as **Title**) are shown but disabled; they are available in a later version.
+The other buttons (the **Hand** tool, the **Show clip keyframes** and **Audio scrub** toggles, edit actions such as **Add marker**, add actions such as **Title**, and **Zoom to selection**) are shown but disabled; they are available in a later version.
 
-> **Note:** When the timeline panel is too narrow for the whole toolbar, the zoom group is the first to move into the **More tools** (…) menu, followed by the toggles with **Snap** and **Ripple mode**. Click **More tools** to reach them.
+> **Note:** When the timeline panel is too narrow for the whole toolbar, the zoom group is the first to move into the **More tools** (…) menu, followed by the toggles with **Snap**, **Linked selection** and **Ripple mode**. Click **More tools** to reach them.
 
 ## Add clips from the Media panel
 
@@ -89,13 +90,14 @@ What you get:
 
 | Media | Result |
 |---|---|
-| Video with sound | A video clip on the first video track (V1) and an audio clip with its sound on the first audio track (A1), with the same start and length. |
-| Video without sound | A video clip on V1. |
-| Audio | An audio clip on A1. |
-| Image (including GIF) | A 5-second image clip on V1. |
+| Video with sound | A video clip on the video track and an audio clip with its sound on the audio track, with the same start and length. The two clips are linked. |
+| Video without sound | A video clip on the video track. |
+| Audio | An audio clip on the audio track. |
+| Image (including GIF) | A 5-second image clip on the video track. |
 
+- The clips go to the targeted video track and the targeted audio track nearest the divider: V1 and A1 in a new project. A locked track is never used. When no track of the kind is targeted, the unlocked track nearest the divider is used. See [Choose the tracks your edits use](tracks.md#choose-the-tracks-your-edits-use-target).
 - Video and audio clips use the whole media, in whole frames at the project frame rate.
-- If V1 or A1 does not exist, it is created.
+- If there is no unlocked video or audio track for the clip, one is created.
 - Nothing is ever overwritten. If a clip already occupies the spot at the playhead, the new clip goes to the first free space after the playhead where it fits (on both tracks, for a video with sound).
 - The picture is scaled to fit inside the frame and centered.
 - The playhead moves to the end of the new clip, so the next double-click adds the next clip right after it.
@@ -106,18 +108,9 @@ If an item has no usable duration, the message **Can't insert** *name*, **It has
 
 > **Note:** Dragging media onto the timeline is available in a later version.
 
-## Add tracks
+## Add and manage tracks
 
-- To add a video track, click **+ Video track** in the track header column, just above the top video track. The new track (V2, V3, and so on) goes above the existing video tracks.
-- To add an audio track, click **+ Audio track** in the track header column, just below the bottom audio track. The new track (A2, A3, and so on) goes below the existing audio tracks.
-
-The divider between video and audio tracks stays where it is, so the tracks you are working on do not jump. Adding a track is one step in the history; <kbd>Ctrl</kbd>+<kbd>Z</kbd> removes it.
-
-### Mute and solo audio tracks
-
-Each audio track header has an **M** toggle that silences the track and an **S** toggle that plays only the soloed tracks. Each click is one step in the history, and you hear the change at once, also during playback. See [Mute and solo audio tracks](audio.md#mute-and-solo-audio-tracks).
-
-Other track controls (lock, hide, mute for video tracks), renaming tracks and track heights are available in a later version.
+Click **+ Video track** above the top video track, or **+ Audio track** below the bottom audio track, to add a track. Each track header also has toggles to target, lock, mute, solo or hide the track and to change its height; you can rename, reorder and delete tracks, and right-click a header for the track menu. See [Tracks](tracks.md).
 
 ## Zoom in and out
 
@@ -141,7 +134,7 @@ Other track controls (lock, hide, mute for video tracks), renaming tracks and tr
 
 The keyboard shortcuts work when the timeline has the keyboard: click in the timeline first.
 
-**Zoom to selection** and **Track height** are in the toolbar but disabled; they are available in a later version.
+**Zoom to selection** is in the toolbar but disabled; it is available in a later version. **Track height**, next to it, changes the height of the tracks; see [Change track height](tracks.md#change-track-height).
 
 Your zoom and scroll position are saved with the project and come back when you reopen it.
 
@@ -237,24 +230,28 @@ While the editor plays, the timeline follows the playhead. When the playhead rea
 
 | To | Do this |
 |---|---|
-| Select a clip (with its linked clips) | Click it |
-| Add a clip (with its linked clips) to the selection, or remove it | <kbd>Shift</kbd>+click it |
+| Select a clip (with its linked clips and its group) | Click it |
+| Add a clip (with its linked clips and its group) to the selection, or remove it | <kbd>Shift</kbd>+click it |
 | Add or remove only that clip, without its linked clips | <kbd>Ctrl</kbd>+click it |
 | Select only that clip, without its linked clips | <kbd>Alt</kbd>+click it |
 | Select every clip a rectangle touches | Drag on an empty part of the tracks |
 | Add the clips a rectangle touches to the selection | <kbd>Shift</kbd>+drag on an empty part of the tracks |
 | Select all clips | <kbd>Ctrl</kbd>+<kbd>A</kbd> |
+| Select all clips on one track | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+click its track header |
 | Clear the selection | Click an empty part of a track, or press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd> |
 | Select a cut between two clips instead | Click right on the cut. See [Select a cut (edit point)](advanced-trimming.md#select-a-cut-edit-point). |
 | Select a gap instead | Click the empty space between two clips. See [Select a gap](splitting-and-deleting.md#select-a-gap). |
+| Select a track instead | Click its header. See [Select tracks](tracks.md#select-tracks). |
 
 A selected clip has a gold outline and a gold tint. The clip you clicked last has a slightly thicker outline.
 
-- **Linked clips.** When you add a video with sound, its video clip and its sound clip are linked: a click selects both, and they move and trim together. To work on one of them alone, <kbd>Alt</kbd>+click it. When you move one of them alone, both show a red number with the offset in frames; see [Trim a video without its sound](trimming.md#trim-a-video-without-its-sound). Linked selection is always on in this version; the **Linked selection** toggle in the toolbar is available in a later version.
+- **Linked clips.** When you add a video with sound, its video clip and its sound clip are linked: a click selects both, and they move and trim together. To work on one of them alone, <kbd>Alt</kbd>+click it, or turn off **Linked selection** (<kbd>Shift</kbd>+<kbd>S</kbd>) in the toolbar. When you move one of them alone, both show a red number with the offset in frames. See [Linking and grouping clips](links-and-groups.md).
+- **Groups.** A click on a clip of a group selects the whole group. See [Group clips](links-and-groups.md#group-clips).
+- **Locked tracks.** Clips on a locked track can't be selected: a click on them works like a click on empty space, and <kbd>Ctrl</kbd>+<kbd>A</kbd> and rectangles skip them. See [Lock a track](tracks.md#lock-a-track).
 - **Clicking a selected clip.** When you press on a clip that is already selected, the editor waits to see what you do: if you drag, the whole selection moves; if you release without dragging, the click applies (a plain click then keeps only that clip and its linked clips).
 - <kbd>Ctrl</kbd>+<kbd>A</kbd> and <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd> work while the Timeline or the Preview panel is active. The other selection shortcuts are mouse actions in the timeline.
 - Selecting is not a step in the history, but undo brings back the selection you had before the change you undo. See [Undo and redo](projects-and-saving.md#undo-and-redo-changes).
-- While clips are selected, the **Edit Properties** panel shows a placeholder: clip properties are available in a later version.
+- While clips are selected, the **Edit Properties** panel shows a placeholder: clip properties are available in a later version. While tracks are selected, it shows their **Track** section; see [Change track settings in Edit Properties](tracks.md#change-track-settings-in-edit-properties).
 
 ### Select with a rectangle
 
@@ -317,6 +314,7 @@ A plain drop covers what the moved clips land on. The clip underneath gives up e
 - The moved clips never cover each other: they all leave their old places first.
 - The places the clips came from stay empty.
 - Clips can't move before `00:00:00`. When you drag further left, the earliest clip stops at the start.
+- Clips can't be dropped onto a locked track: the drop is refused, nothing changes, and the message **Can't drop clips onto a locked track** names the track. See [Lock a track](tracks.md#lock-a-track).
 
 ### After the drop
 
@@ -406,6 +404,7 @@ What an insert does:
 - A gold vertical line with an arrow shows the insert point: the start of the earliest moved clip.
 - On every track, everything from the insert point onward shifts right by the length of the moved clips (from the start of the earliest to the end of the latest).
 - A clip that runs across the insert point, on any track, is split there, and its second part shifts right with the rest. This keeps every track in step, so sound stays in sync with its picture.
+- Locked tracks don't take part: their clips neither shift nor split. See [Lock a track](tracks.md#lock-a-track).
 - The places the clips came from stay empty.
 - The history step is named **Insert clip** or **Insert clips**.
 
@@ -476,7 +475,7 @@ Click the timeline first, so it has the keyboard, and select the clips to move.
 - The clips move one track up or down on screen when that track exists and has room for them. The step is named **Move clip to track** or **Move clips to track**.
 - The clip you clicked last decides the direction. Linked clips of the other kind move by the same number of tracks, as in a drag: a video going from V1 to V2 takes its sound from A1 to A2. If its sound has no track to go to, it stays where it is.
 - These keys never create a track. On the top video track, <kbd>Alt</kbd>+<kbd>Up</kbd> does nothing (and the same for the bottom audio track and <kbd>Alt</kbd>+<kbd>Down</kbd>).
-- If a clip is in the way, nothing moves, and the message **No room on that track** names the track that already has a clip there.
+- If a clip is in the way, nothing moves, and the message **No room on that track** names the track that already has a clip there. If that track is locked, nothing moves either, and the message **Can't drop clips onto a locked track** names it.
 
 > **Note:** <kbd>Alt</kbd>+<kbd>Left</kbd> is also the browser's Back key. The editor keeps it while the Timeline panel is active, also when no clip is selected. In the other panels, the browser gets it. See [Keys the browser keeps](keyboard-shortcuts.md#keys-the-browser-keeps).
 
@@ -517,6 +516,8 @@ Label colors help you see at a glance which clips belong together, for example a
 - Each change is one step in the history, named **Label clip** or **Label clips**. Labels are saved with the project, and both parts of a split clip keep the label.
 
 ## Related pages
+- [Tracks](tracks.md)
+- [Linking and grouping clips](links-and-groups.md)
 - [Trimming clips](trimming.md)
 - [Splitting, deleting and closing gaps](splitting-and-deleting.md)
 - [Advanced trimming](advanced-trimming.md)
@@ -529,4 +530,4 @@ Label colors help you see at a glance which clips belong together, for example a
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 15, 2026-10-15</sub>
+<sub>Last updated: Batch 16, 2026-10-15</sub>

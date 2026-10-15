@@ -40,9 +40,12 @@ What you see in the Preview panel:
 
 ### Stacked tracks
 
-When several video tracks have a clip at the playhead, the preview draws **V1** at the bottom and each higher video track over the tracks below it. Audio tracks never show in the preview.
+When several video tracks have a clip at the playhead, the preview draws the bottom video track (the one next to the divider, **V1** in a new project) first, and each higher video track over the tracks below it. Audio tracks never show in the preview.
 
-> **Note:** Every clip you add by double-clicking goes to the first video track (**V1**). To stack clips, drag one up to **V2** or higher. See [Move clips to another track](timeline.md#move-clips-to-another-track).
+- To change which picture is on top, drag a track header up or down. See [Reorder tracks](tracks.md#reorder-tracks).
+- A video track that is muted (**M**) or hidden (the eye) is left out of the preview. See [Mute, solo and hide tracks](tracks.md#mute-solo-and-hide-tracks).
+
+> **Note:** Every clip you add by double-clicking goes to the targeted video track nearest the divider (**V1** in a new project). To stack clips, drag one up to **V2** or higher. See [Move clips to another track](timeline.md#move-clips-to-another-track).
 
 ### Sound
 
@@ -266,6 +269,7 @@ If playback stutters, see [Troubleshooting](troubleshooting.md).
 ## Related pages
 - [Audio](audio.md)
 - [Timeline](timeline.md)
+- [Tracks](tracks.md)
 - [Trimming clips](trimming.md)
 - [Advanced trimming](advanced-trimming.md)
 - [Importing media](importing-media.md)
@@ -273,4 +277,4 @@ If playback stutters, see [Troubleshooting](troubleshooting.md).
 - [Workspace](workspace.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 14, 2026-10-15</sub>
+<sub>Last updated: Batch 16, 2026-10-15</sub>
