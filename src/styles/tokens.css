@@ -223,6 +223,11 @@
   --label-grey: var(--text-secondary);
   --clip-label-body-alpha: 0.34;
   --clip-label-bar-alpha: 0.62;
+  /* Clip bodies (Batch 17, gap: the DS has no waveform or disabled look). Waveforms in white-alpha (DS:
+     lines adapt to any surface), so they read on every kind and label color; a disabled or muted clip
+     is dimmed (--timeline-inactive-opacity) under the overwrite hatch. */
+  --clip-waveform: rgba(230, 237, 246, 0.62); /* text-primary at 62% */
+  --clip-disabled-hatch: var(--timeline-hatch);
   /* Label swatches in the clip menu (gap): grow a little under the pointer; the current label gets a
      2px --accent ring set off the swatch by a 1px --bg-sunken gap. */
   --swatch-hover-scale: 1.15;

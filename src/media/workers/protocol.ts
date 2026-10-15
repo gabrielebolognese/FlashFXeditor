@@ -4,6 +4,7 @@
 // request may also post `progress` values before its result (frames of a prefetch, the approximate
 // frame of a scrub).
 import type { Lod } from "../cache/TexturePool.js";
+import type { ThumbSheetParams, ThumbSheetResult } from "../decode/thumbSheet.js";
 import type { SourceStamp } from "../demux/sampleIndexFile.js";
 import type { ProbeResult } from "../probe/types.js";
 import type { Rotation } from "../probe/rotation.js";
@@ -13,7 +14,7 @@ export type Priority = "user" | "playback" | "prefetch" | "background";
 
 export const PRIORITY_RANK: Record<Priority, number> = { user: 0, playback: 1, prefetch: 2, background: 3 };
 
-// TODO(batch 17): thumbnail sprites in "analysis". TODO(batch 24): "proxy", TODO(batch 43): "export".
+// TODO(batch 24): "proxy", TODO(batch 43): "export".
 export type WorkerKind = "decode" | "analysis";
 
 export interface PosterResult {
@@ -114,8 +115,8 @@ export interface PcmResult {
 export interface WorkerMethods {
   /** Metadata of a media file. */
   probe: { params: { file: Blob; container: WorkerContainer; type: string }; result: ProbeResult };
-  /** A poster frame: the first frame of a video, or the image itself, at most `maxSize` px. */
-  poster: { params: { file: Blob; kind: "video" | "image"; maxSize: number }; result: PosterResult };
+  /** An image's poster, at most `maxSize` px (videos show their thumbnail sheets). */
+  poster: { params: { file: Blob; kind: "image"; maxSize: number }; result: PosterResult };
   /** Decodes an image file (cached posters) into a bitmap of at most `maxSize` px. */
   decodeImage: { params: { blob: Blob; maxSize: number }; result: ImageBitmap };
   /** Loads (cachedIndex) or builds the sample index of a video and checks that it can be decoded. */
@@ -137,6 +138,12 @@ export interface WorkerMethods {
   peaksLevel0: { params: { channels: ArrayBuffer[] }; result: ArrayBuffer };
   /** The cache/peaks/ file of a whole level 0: the pyramid, stamped with the source file. */
   peaksFile: { params: { level0: ArrayBuffer; sampleRate: number; frames: number; channels: number; stamp: SourceStamp }; result: ArrayBuffer };
+  /** One thumbnail sprite sheet (spec §9.6), decoded by the analysis worker's own video sessions. */
+  thumbSheet: { params: ThumbSheetParams; result: ThumbSheetResult };
+  /** A cached sheet (cache/thumbs/) as a bitmap. */
+  decodeSheet: { params: { blob: Blob }; result: ImageBitmap };
+  /** Forgets the thumbnail sessions of a media. */
+  closeThumbs: { params: { mediaId: string }; result: null };
 }
 
 export type Method = keyof WorkerMethods;
@@ -158,6 +165,9 @@ export const METHOD_WORKER: Record<Method, WorkerKind> = {
   closeAudio: "decode",
   peaksLevel0: "analysis",
   peaksFile: "analysis",
+  thumbSheet: "analysis",
+  decodeSheet: "analysis",
+  closeThumbs: "analysis",
 };
 
 export type RequestMessage = { [M in Method]: { type: "request"; id: number; method: M; priority: Priority; params: Params<M> } }[Method];

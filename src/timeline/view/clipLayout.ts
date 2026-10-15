@@ -6,6 +6,8 @@
 export const LOD_BODY_PX = 6;
 /** Below this width the label bar has no icon or name. */
 export const LOD_LABEL_PX = 24;
+/** Below this width a clip shows no thumbnails (spec §6.4: at least 48 px, M/L tracks only). */
+export const LOD_THUMBS_PX = 48;
 
 export type ClipLod = "line" | "body" | "full";
 

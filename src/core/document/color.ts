@@ -1,6 +1,6 @@
 // Hex text <-> RGBA (channels 0..1) for color fields. `#RGB`, `#RRGGBB` and `#RRGGBBAA` are accepted,
 // with or without the leading `#`.
-import type { RGBA } from "./types.js";
+import type { RGBA, SolidClip } from "./types.js";
 
 const HEX_DIGITS = /^[0-9a-f]+$/i;
 
@@ -22,4 +22,9 @@ export function formatHexColor(color: RGBA): string {
       .padStart(2, "0");
   const alpha = Math.round(Math.min(1, Math.max(0, color.a)) * 255) === 255 ? "" : byte(color.a);
   return `#${byte(color.r)}${byte(color.g)}${byte(color.b)}${alpha}`;
+}
+
+/** A solid's fill when it is a plain color (gradients stay opaque JSON until Batch 34). */
+export function isRgba(fill: SolidClip["fill"]): fill is RGBA {
+  return typeof fill.r === "number" && typeof fill.g === "number" && typeof fill.b === "number" && typeof fill.a === "number";
 }

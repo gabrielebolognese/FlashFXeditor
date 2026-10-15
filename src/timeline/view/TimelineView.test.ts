@@ -10,6 +10,8 @@ import { DocumentStore } from "../../core/store/DocumentStore.js";
 import { createLayoutStore } from "../../core/store/layoutStore.js";
 import { selectClips } from "../../core/store/selection.js";
 import { createSessionStore, setPlayhead } from "../../core/store/sessionStore.js";
+import { thumbLayout, type ThumbLayout } from "../../media/cache/thumbSheets.js";
+import type { ClipVisualsSource } from "./clipVisuals.js";
 import { trimCursors } from "./cursors.js";
 import { drawOverlay } from "./drawOverlay.js";
 import { testTheme } from "./fixtures.js";
@@ -31,6 +33,8 @@ function lastHover() {
 const fills: { style: unknown; width: number }[] = [];
 /** Every fillText of every canvas, with its fill style. */
 const texts: { style: unknown; text: string }[] = [];
+/** Every drawImage of every canvas: the image and the destination x and width. */
+const images: { image: unknown; x: number; width: number }[] = [];
 
 /** A 2D context that accepts every call; text is 6 px per character. */
 function fakeContext(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
@@ -40,6 +44,7 @@ function fakeContext(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
     measureText: (text: string) => ({ width: text.length * 6 }),
     fillRect: (_x: number, _y: number, width: number) => void fills.push({ style: state.fillStyle, width }),
     fillText: (text: string) => void texts.push({ style: state.fillStyle, text }),
+    drawImage: (image: unknown, ...args: number[]) => void images.push({ image, x: args.at(-4) as number, width: args.at(-2) as number }),
   };
   return new Proxy(state, {
     get: (target, key) => (key in target ? target[key] : () => {}),
@@ -1266,5 +1271,132 @@ describe("TimelineView", () => {
       pointer("pointerup", 176 + 25 * 4, 200, { altKey: true });
       expect([...session.selection.getState().clipIds]).toEqual(["c2"]);
     });
+  });
+});
+
+describe("TimelineView clip visuals", () => {
+  beforeEach(() => {
+    images.length = 0;
+    vi.useFakeTimers();
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation(function (this: HTMLCanvasElement) {
+      return fakeContext(this);
+    } as unknown as HTMLCanvasElement["getContext"]);
+    vi.stubGlobal("Path2D", class {});
+  });
+  afterEach(() => {
+    for (const unmount of mounted.splice(0)) unmount();
+    window.document.body.replaceChildren();
+    vi.unstubAllGlobals();
+    vi.useRealTimers();
+  });
+
+  /** A 300-frame video clip on V1 (1080p 30 fps media) and an audio clip on A1, with a fake visuals source. */
+  function visualsSetup() {
+    const project = makeProject();
+    project.media.m = { ...makeMedia("m", "video", 60_000_000), width: 1920, height: 1080, fps: FPS_30 };
+    project.media.s = makeMedia("s", "audio", 60_000_000);
+    project.tracks.push(makeTrack("v1"), makeTrack("a1", "audio"));
+    const session = createSessionStore();
+    const document = new DocumentStore(project, { session, validate: false });
+    document.dispatch(addClip(makeMediaClip(document.getState(), { id: "v", trackId: "v1", start: 0, duration: 300, mediaId: "m" })));
+    document.dispatch(addClip(makeMediaClip(document.getState(), { id: "a", trackId: "a1", start: 0, duration: 300, mediaId: "s", kind: "audio" })));
+    const layoutStore = createLayoutStore(null);
+    layoutStore.setPanelSize("timeline", { width: 1000, height: 428 });
+    const scheduler = new FakeScheduler();
+    const thumbs = thumbLayout(document.getState().media.m as never) as ThumbLayout;
+    const sheets = new Map<string, ImageBitmap>();
+    const arrivals: (() => void)[] = [];
+    const want = vi.fn();
+    const visuals: ClipVisualsSource = {
+      thumbLayout: (id) => (id === "m" ? thumbs : null),
+      sheet: (id, level, sheet) => sheets.get(`${id}/${level}/${sheet}`) ?? null,
+      poster: () => null,
+      peaks: () => null,
+      want,
+      subscribe: (listener) => {
+        arrivals.push(listener);
+        return () => arrivals.splice(arrivals.indexOf(listener), 1);
+      },
+    };
+    const pauseListeners: ((paused: boolean) => void)[] = [];
+    const idle = {
+      pause: vi.fn(),
+      resume: vi.fn(),
+      isPaused: false,
+      onPauseChange: (listener: (paused: boolean) => void) => {
+        pauseListeners.push(listener);
+        return () => undefined;
+      },
+    };
+    const view = new TimelineView({
+      scheduler,
+      document,
+      session,
+      layout: layoutStore,
+      theme: { theme: testTheme(), subscribe: () => () => {} },
+      onAddTrack: vi.fn(),
+      onToggleTrack: vi.fn(),
+      onMoveClips: vi.fn(),
+      onTrimEdge: vi.fn(),
+      idle,
+      visuals,
+      platform: "other",
+    });
+    const host = window.document.createElement("div");
+    window.document.body.append(host);
+    mounted.push(view.mount(host));
+    scheduler.flush();
+    const arrive = () => arrivals.forEach((listener) => listener());
+    const setPaused = (paused: boolean) => {
+      idle.isPaused = paused;
+      pauseListeners.forEach((listener) => listener(paused));
+    };
+    return { view, scheduler, sheets, want, arrive, setPaused, session };
+  }
+
+  it("hands what each content pass wanted to the visuals, and draws the sheets in memory", () => {
+    const { scheduler, sheets, want, arrive } = visualsSetup();
+    const wants = want.mock.lastCall?.[0] as { sheets: { mediaId: string; level: number; sheet: number }[]; peaks: string[] };
+    expect(wants.peaks).toEqual(["s"]);
+    expect(wants.sheets.length).toBeGreaterThan(0);
+    expect(wants.sheets.every((key) => key.mediaId === "m")).toBe(true);
+    expect(images).toHaveLength(0);
+    const bitmap = { width: 4 * 284, height: 640 } as ImageBitmap;
+    for (const key of wants.sheets) sheets.set(`${key.mediaId}/${key.level}/${key.sheet}`, bitmap);
+    arrive();
+    expect(scheduler.flush()).toContain("timelineContent");
+    expect(images.length).toBeGreaterThan(0);
+    expect(images.every((call) => call.image === bitmap)).toBe(true);
+    // Tiles touch: each starts where the previous one ended.
+    for (let i = 1; i < images.length; i++) expect((images[i] as { x: number }).x).toBeCloseTo((images[i - 1] as { x: number; width: number }).x + (images[i - 1] as { width: number }).width, 5);
+  });
+
+  it("redraws for arrivals at most every 100 ms", () => {
+    const { scheduler, arrive } = visualsSetup();
+    arrive();
+    expect(scheduler.flush()).toEqual(["timelineContent"]);
+    arrive();
+    arrive();
+    expect(scheduler.flush()).toEqual([]);
+    vi.advanceTimersByTime(100);
+    expect(scheduler.flush()).toEqual(["timelineContent"]);
+  });
+
+  it("holds arrivals while playing or dragging and draws them on resume", () => {
+    const { scheduler, arrive, setPaused } = visualsSetup();
+    setPaused(true);
+    arrive();
+    vi.advanceTimersByTime(500);
+    expect(scheduler.flush()).toEqual([]);
+    setPaused(false);
+    expect(scheduler.flush()).toEqual(["timelineContent"]);
+  });
+
+  it("asks nothing for the playhead: moving it redraws the overlay only (P3)", () => {
+    const { scheduler, want, session } = visualsSetup();
+    const calls = want.mock.calls.length;
+    setPlayhead(session, 120);
+    expect(scheduler.flush()).toEqual(["timelineOverlay"]);
+    expect(want.mock.calls.length).toBe(calls);
   });
 });

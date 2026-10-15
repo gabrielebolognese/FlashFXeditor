@@ -1,69 +1,54 @@
 import { describe, expect, it, vi } from "vitest";
 import { addMedia, removeMedia } from "../core/commands/mediaCommands.js";
 import { makeMedia, makeProject } from "../core/document/fixtures.js";
-import type { MediaItem } from "../core/document/types.js";
-import { IdleQueue } from "../core/scheduler/IdleQueue.js";
+import type { MediaId, MediaItem } from "../core/document/types.js";
 import { DocumentStore } from "../core/store/DocumentStore.js";
 import { createSessionStore } from "../core/store/sessionStore.js";
 import { AnalysisScheduler } from "./AnalysisScheduler.js";
 
 const pending = (id: string, kind: MediaItem["kind"] = "video"): MediaItem => ({ ...makeMedia(id, kind), analysis: { thumbs: kind === "video" ? "pending" : "none", peaks: kind === "image" ? "none" : "pending" } });
 
-function setup() {
-  const slices: ((deadline: { timeRemaining(): number }) => void)[] = [];
-  const idle = new IdleQueue(
-    (cb) => slices.push(cb),
-    () => undefined,
-  );
-  const runIdle = () => slices.splice(0).forEach((cb) => cb({ timeRemaining: () => 50 }));
-  const documentStore = new DocumentStore(makeProject(), { session: createSessionStore(), validate: true });
-  const scheduler = new AnalysisScheduler(idle);
-  scheduler.attach(documentStore);
-  vi.spyOn(console, "debug").mockImplementation(() => undefined);
-  return { idle, runIdle, documentStore, scheduler };
+function setup(project = makeProject()) {
+  const documentStore = new DocumentStore(project, { session: createSessionStore(), validate: true });
+  const peaks = { request: vi.fn(), forget: vi.fn(), dispose: vi.fn() };
+  const thumbs = { sync: vi.fn(), dispose: vi.fn() };
+  const scheduler = new AnalysisScheduler({ peaks, thumbs });
+  const stop = scheduler.attach(documentStore);
+  return { documentStore, peaks, thumbs, scheduler, stop };
 }
 
 describe("AnalysisScheduler", () => {
-  it("queues one idle task per media with pending analysis", () => {
-    const { idle, runIdle, documentStore, scheduler } = setup();
-    documentStore.dispatch(addMedia([pending("v"), pending("a", "audio"), pending("i", "image")]));
-    expect(scheduler.waiting).toEqual(["v", "a"]);
-    expect(idle.size).toBe(2);
-    runIdle();
-    expect([...scheduler.reached]).toEqual(["v", "a"]);
-    expect(scheduler.waiting).toEqual([]);
+  it("hands every audio-bearing media to the peaks jobs and the media to the thumbnails", () => {
+    const { documentStore, peaks, thumbs } = setup();
+    documentStore.dispatch(addMedia([pending("v"), pending("a", "audio"), pending("i", "image"), { ...pending("s"), hasAudio: false, analysis: { thumbs: "pending", peaks: "none" } }]));
+    expect(peaks.request.mock.calls.map(([id]) => id)).toEqual(["v", "a"]);
+    const media = thumbs.sync.mock.lastCall?.[0] as Record<MediaId, MediaItem>;
+    expect(Object.keys(media)).toEqual(["v", "a", "i", "s"]);
   });
 
-  it("never queues the same media twice in a session", () => {
-    const { idle, runIdle, documentStore } = setup();
-    documentStore.dispatch(addMedia([pending("v")]));
-    runIdle();
-    documentStore.dispatch(addMedia([pending("w")]));
-    expect(idle.size).toBe(1);
-  });
-
-  it("cancels the task of media removed before it ran, and queues it again on undo", () => {
-    const { idle, documentStore, scheduler } = setup();
-    documentStore.dispatch(addMedia([pending("v")]));
-    documentStore.dispatch(removeMedia(["v"]));
-    expect(idle.size).toBe(0);
-    expect(scheduler.waiting).toEqual([]);
-    documentStore.undo();
-    expect(scheduler.waiting).toEqual(["v"]);
-  });
-
-  it("picks up pending media of an opened project and stops on dispose", () => {
+  it("checks media already marked ready once per session (the cache is disposable)", () => {
     const project = makeProject();
-    project.media.v = pending("v");
-    const documentStore = new DocumentStore(project, { session: createSessionStore(), validate: true });
-    const idle = new IdleQueue(
-      () => 1,
-      () => undefined,
-    );
-    const scheduler = new AnalysisScheduler(idle);
-    scheduler.attach(documentStore);
-    expect(scheduler.waiting).toEqual(["v"]);
+    project.media.a = { ...pending("a", "audio"), analysis: { thumbs: "none", peaks: "ready" } };
+    const { peaks, thumbs } = setup(project);
+    expect(peaks.request).toHaveBeenCalledWith("a");
+    expect(thumbs.sync).toHaveBeenCalledTimes(1);
+  });
+
+  it("forgets the peaks of media that leave the project, and asks again when an undo brings them back", () => {
+    const { documentStore, peaks } = setup();
+    documentStore.dispatch(addMedia([pending("a", "audio")]));
+    documentStore.dispatch(removeMedia(["a"]));
+    expect(peaks.forget).toHaveBeenCalledWith("a");
+    peaks.request.mockClear();
+    documentStore.undo();
+    expect(peaks.request).toHaveBeenCalledWith("a");
+  });
+
+  it("stops both jobs on dispose", () => {
+    const { scheduler, peaks, thumbs, stop } = setup();
+    stop();
     scheduler.dispose();
-    expect(idle.size).toBe(0);
+    expect(peaks.dispose).toHaveBeenCalled();
+    expect(thumbs.dispose).toHaveBeenCalled();
   });
 });

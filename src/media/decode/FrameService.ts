@@ -7,6 +7,8 @@
 // - Progressive scrub (P8): the nearest cached frame is shown at once, then the keyframe the worker
 //   decodes first when it is closer, then the exact frame.
 // - The project supplies the files and the cache/index/ files through a `FrameSource`.
+// - Frame requests that go to the decoder are announced (`onDecodeRequest`) and counted
+//   (`decodesInFlight`): background decoders (thumbnail sheets) yield to them.
 import type { MediaId } from "../../core/document/types.js";
 import type { Renderer, TextureHandle } from "../../render/gpu/renderer.js";
 import type { Lod, TextureKey, TexturePool } from "../cache/TexturePool.js";
@@ -125,6 +127,8 @@ export class FrameService {
   private readonly infos = new Map<string, VideoInfo>();
   private readonly lanes = new Map<string, Lane>();
   private readonly listeners = new Set<() => void>();
+  private readonly decodeListeners = new Set<() => void>();
+  private decoding = 0;
   private readonly approxSamples: number[] = [];
   private readonly exactSamples: number[] = [];
   private readonly counters = { requests: 0, poolHits: 0, workerRequests: 0, superseded: 0, failed: 0, framesReceived: 0, openFrames: 0, indexFromCache: 0, indexParsed: 0 };
@@ -303,6 +307,17 @@ export class FrameService {
     return () => this.listeners.delete(listener);
   }
 
+  /** Frame requests waiting for the decoder (not answered from the pool). */
+  get decodesInFlight(): number {
+    return this.decoding;
+  }
+
+  /** Calls `listener` when a frame request goes to the decoder. */
+  onDecodeRequest(listener: () => void): () => void {
+    this.decodeListeners.add(listener);
+    return () => this.decodeListeners.delete(listener);
+  }
+
   private detach(): void {
     const media = new Set([...this.videos.keys(), ...this.lanes.keys()].map((key) => key.slice(0, key.lastIndexOf("|"))));
     for (const mediaId of media) this.release(mediaId);
@@ -352,7 +367,14 @@ export class FrameService {
     if (near) show({ texture: near.texture, key: near.key, timeUs: near.key.timeUs, approximate: true });
 
     const lane = this.lane(mediaId, lod);
-    await this.acquire(lane, priority, signal);
+    this.decoding += 1;
+    for (const listener of [...this.decodeListeners]) listener();
+    try {
+      await this.acquire(lane, priority, signal);
+    } catch (error) {
+      this.decoding -= 1;
+      throw error;
+    }
     try {
       this.counters.workerRequests += 1;
       const delivered = await this.deps.workers.request(
@@ -374,6 +396,7 @@ export class FrameService {
       if (!result.approximate) this.recordExact(started);
       return result;
     } finally {
+      this.decoding -= 1;
       this.releaseSlot(lane);
     }
   }

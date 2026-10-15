@@ -12,6 +12,7 @@
 // TODO(batch 28): text layers. TODO(batch 32): the caption track's current cue. TODO(batch 34): solid
 // shapes other than rect, gradient fills, corner radius. TODO(batch 35): keyframes.
 // TODO(batch 36): transitions (two contributing clips and a mix amount).
+import { isRgba } from "../../core/document/color.js";
 import { framesToSourceUs, secondsToFrames } from "../../core/document/time.js";
 import type { Clip, Frame, MediaClip, MediaId, Project, RGBA, SolidClip, Transform } from "../../core/document/types.js";
 import { clipInIndex, lastClipStartingBy, trackIndex } from "../../timeline/model/queries.js";
@@ -253,6 +254,3 @@ function newSolidLayer(): WritableSolidLayer {
   return { kind: "solid", transform: mutableIdentity(), opacity: 1, color: { r: 0, g: 0, b: 0, a: 1 } };
 }
 
-function isRgba(fill: SolidClip["fill"]): fill is RGBA {
-  return typeof fill.r === "number" && typeof fill.g === "number" && typeof fill.b === "number" && typeof fill.a === "number";
-}

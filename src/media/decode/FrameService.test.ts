@@ -342,3 +342,31 @@ describe("FrameService", () => {
     expect(frameCounter.open).toBe(0);
   });
 });
+
+describe("FrameService decode activity", () => {
+  it("announces and counts the frame requests that go to the decoder, not pool hits", async () => {
+    const t = setup();
+    const announced = vi.fn();
+    t.frames.onDecodeRequest(announced);
+    const first = t.frames.getFrame("m", 10 * FRAME, { priority: "idle" });
+    await settle();
+    expect(announced).toHaveBeenCalledTimes(1);
+    expect(t.frames.decodesInFlight).toBe(1);
+    t.deliver(t.frameCalls()[0] as Call);
+    await first;
+    expect(t.frames.decodesInFlight).toBe(0);
+    await t.frames.getFrame("m", 10 * FRAME, { priority: "idle" });
+    expect(announced).toHaveBeenCalledTimes(1);
+    expect(t.frames.decodesInFlight).toBe(0);
+  });
+
+  it("stops counting a request cancelled before it reached the decoder", async () => {
+    const t = setup();
+    const controller = new AbortController();
+    const pending = t.frames.getFrame("m", 20 * FRAME, { priority: "idle", signal: controller.signal }).catch(() => "cancelled");
+    await settle();
+    controller.abort();
+    expect(await pending).toBe("cancelled");
+    expect(t.frames.decodesInFlight).toBe(0);
+  });
+});

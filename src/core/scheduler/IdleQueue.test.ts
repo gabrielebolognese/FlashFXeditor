@@ -84,4 +84,21 @@ describe("IdleQueue", () => {
     idle.slice(10);
     expect(after).toHaveBeenCalledTimes(1);
   });
+
+  it("tells listeners when it becomes paused and when it runs again, once per change", () => {
+    const idle = fakeIdle();
+    const queue = new IdleQueue(idle.request, idle.cancel);
+    const changes: boolean[] = [];
+    const stop = queue.onPauseChange((paused) => changes.push(paused));
+    queue.pause("playback");
+    queue.pause("gesture");
+    queue.resume("playback");
+    expect(changes).toEqual([true]);
+    queue.resume("gesture");
+    queue.resume("gesture");
+    expect(changes).toEqual([true, false]);
+    stop();
+    queue.pause("playback");
+    expect(changes).toEqual([true, false]);
+  });
 });

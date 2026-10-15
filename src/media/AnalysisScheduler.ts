@@ -1,25 +1,24 @@
-// The IdleQueue consumer for media analysis (spec §3.4, §9.1). Media are created with their analysis
-// "pending"; this picks them up and queues one idle task per media, cancelled if the media goes away.
-// Peaks (Batch 10) run as PeaksJobs: every audio-bearing media with peaks pending is analysed, and
-// those marked ready are checked once per session (the cache is disposable, spec §9.7).
-// TODO(batch 17): thumbnail sprite sheets (cache/thumbs/). TODO(batch 24): proxy jobs. Each marks its
-// part of `analysis` ready.
+// The media analysis of the open project (spec §3.4, §9.1, §9.6). Media are created with their
+// analysis "pending"; this follows the document's media and hands each to its jobs, which run from
+// the IdleQueue (never during playback or drags) and mark their part of `analysis` ready with no undo
+// step: waveform peaks (PeaksJobs, Batch 10) for every audio-bearing media, thumbnail sprite sheets
+// (ThumbnailStore, Batch 17) for every video. Media already marked ready are checked once per session
+// (the cache is disposable, spec §9.7); media that leave the project are forgotten.
+// TODO(batch 24): proxy jobs.
 import type { MediaId, MediaItem } from "../core/document/types.js";
 import type { DocumentStore } from "../core/store/DocumentStore.js";
-import type { IdleQueue } from "../core/scheduler/IdleQueue.js";
 import { hasAudio, type PeaksJobs } from "./PeaksJobs.js";
+import type { ThumbnailStore } from "./ThumbnailStore.js";
 
-const isPending = (item: MediaItem) => item.analysis.thumbs === "pending" || item.analysis.peaks === "pending";
+export interface AnalysisJobs {
+  peaks?: Pick<PeaksJobs, "request" | "forget" | "dispose"> | null;
+  thumbs?: Pick<ThumbnailStore, "sync" | "dispose"> | null;
+}
 
 export class AnalysisScheduler {
-  private readonly queued = new Map<MediaId, () => void>();
-  /** Media whose idle task ran this session (not queued again). */
-  readonly reached = new Set<MediaId>();
+  private media: Record<MediaId, MediaItem> = {};
 
-  constructor(
-    private readonly idle: Pick<IdleQueue, "enqueue">,
-    private readonly peaks: PeaksJobs | null = null,
-  ) {}
+  constructor(private readonly jobs: AnalysisJobs) {}
 
   attach(documentStore: Pick<DocumentStore, "getState" | "subscribe">): () => void {
     this.sync(documentStore.getState().media);
@@ -27,34 +26,16 @@ export class AnalysisScheduler {
   }
 
   sync(media: Record<MediaId, MediaItem>): void {
-    for (const [id, cancel] of this.queued) {
-      const item = media[id];
-      if (item && isPending(item)) continue;
-      cancel();
-      this.queued.delete(id);
-    }
-    for (const item of Object.values(media)) {
-      if (this.peaks && hasAudio(item) && item.analysis.peaks !== "none") this.peaks.request(item.id);
-      if (!isPending(item) || this.queued.has(item.id) || this.reached.has(item.id)) continue;
-      const { id } = item;
-      this.queued.set(
-        id,
-        this.idle.enqueue(() => {
-          this.queued.delete(id);
-          this.reached.add(id);
-        }),
-      );
-    }
-  }
-
-  /** Media waiting for their idle task (tests, diagnostics). */
-  get waiting(): MediaId[] {
-    return [...this.queued.keys()];
+    const { peaks, thumbs } = this.jobs;
+    for (const id of Object.keys(this.media)) if (!Object.hasOwn(media, id)) peaks?.forget(id);
+    this.media = media;
+    thumbs?.sync(media);
+    if (!peaks) return;
+    for (const item of Object.values(media)) if (hasAudio(item) && item.analysis.peaks !== "none") peaks.request(item.id);
   }
 
   dispose(): void {
-    for (const cancel of this.queued.values()) cancel();
-    this.queued.clear();
-    this.peaks?.dispose();
+    this.jobs.peaks?.dispose();
+    this.jobs.thumbs?.dispose();
   }
 }

@@ -1,7 +1,8 @@
 // Dev commands: fill the open project with generated clips for the timeline stress checks (spec
-// P14: 500 clips on 8 tracks; solid clips on new video tracks, and when the project has media with
-// sound, two of the tracks are audio tracks using it) and for the playback checks (a cut every
-// second on V1, Batch 09). One undo step each.
+// P14: 500 clips on 8 tracks; on new video tracks clips of the project's first video at spread in
+// points (filmstrips, Batch 17), else solid clips; when the project has media with sound, two of the
+// tracks are audio tracks using it) and for the playback checks (a cut every second on V1, Batch 09).
+// One undo step each.
 import { addTrack, removeClips } from "../core/commands/basicCommands.js";
 import type { Command } from "../core/commands/command.js";
 import { emptyTrack, nextTrackName } from "../core/document/project.js";
@@ -41,6 +42,7 @@ export function generateTestClips(store: DocumentStore, options: { clips?: numbe
   const project: Project = store.getState();
   const { fps } = project.settings;
   const sound = Object.values(project.media).find((media: MediaItem) => (media.kind === "audio" || (media.kind === "video" && media.hasAudio)) && media.durationUs > 0);
+  const picture = Object.values(project.media).find((media: MediaItem) => media.kind === "video" && usToFrameFloor(media.durationUs, fps) >= 1);
   const audioTracks = sound ? Math.min(2, trackCount - 1) : 0;
   const random = lcg(count * 31 + trackCount);
 
@@ -70,6 +72,24 @@ export function generateTestClips(store: DocumentStore, options: { clips?: numbe
         out: Math.min(sound.durationUs, frameToUs(duration, fps)),
         speed: 1,
         transform: IDENTITY,
+        opacity: 1,
+        crop: { left: 0, top: 0, right: 0, bottom: 0 },
+        volume: { gainDb: 0, muted: false },
+        fades: { in: 0, out: 0 },
+      });
+    } else if (picture) {
+      const frames = usToFrameFloor(picture.durationUs, fps);
+      duration = Math.min(duration, frames);
+      const from = Math.floor(random() * (frames - duration + 1));
+      clips.push({
+        ...base,
+        kind: "video",
+        duration,
+        mediaId: picture.id,
+        in: frameToUs(from, fps),
+        out: frameToUs(from + duration, fps),
+        speed: 1,
+        transform: defaultTransform(picture, project.settings),
         opacity: 1,
         crop: { left: 0, top: 0, right: 0, bottom: 0 },
         volume: { gainDb: 0, muted: false },
