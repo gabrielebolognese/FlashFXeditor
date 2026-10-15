@@ -5,6 +5,7 @@ import { createRoot } from "react-dom/client";
 import { App } from "./app/App.js";
 import { findMissingApis, GPU_ADAPTER_LABEL } from "./app/compat.js";
 import { installAudioController } from "./app/audioController.js";
+import { installCanvasController } from "./app/canvasController.js";
 import { installCutController } from "./app/cutController.js";
 import { installDropController } from "./app/dropController.js";
 import { installMarkerController } from "./app/markerController.js";
@@ -38,6 +39,7 @@ async function start(): Promise<void> {
   installPreviewController();
   installTimelineController();
   installCutController();
+  installCanvasController();
   installMarkerController();
   installTrackController();
   installPlaybackController();

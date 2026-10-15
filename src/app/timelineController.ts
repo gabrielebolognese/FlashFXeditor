@@ -26,7 +26,6 @@ import { pxToSlider, sliderToPx, zoomLimits, ZOOM_IN_STEP, ZOOM_OUT_STEP, type Z
 import { showToast } from "../ui/toasts.js";
 import { openContextMenu, razorCut } from "./cutController.js";
 import { dropFilesOnTimeline, insertMediaAtPlayhead } from "./dropController.js";
-import { exitFullscreen } from "./fullscreen.js";
 import { moveMarker, openMarkerEditor } from "./markerController.js";
 import { clipVisuals } from "./mediaController.js";
 import { moveTrackTo, startTrackRename, toggleTrack } from "./trackController.js";
@@ -400,9 +399,7 @@ export function installTimelineController(): () => void {
     actions.register("tool.rateStretch", selectTool("rateStretch")),
     // Ripple mode (spec §6.10): edge drags ripple without Mod. Session state, not undoable.
     actions.register("toggle.rippleMode", () => sessionStore.state.set((state) => ({ ...state, ripple: !state.ripple }))),
-    // Esc (spec §18 "Cancel gesture"): cancels a gesture, else leaves the fullscreen preview (§7.8);
-    // declined when neither, so popovers and the browser get it.
-    actions.register("app.cancel", () => timelineView.cancelGesture() || exitFullscreen()),
+    // Esc (app.cancel) is registered by canvasController: it cancels a timeline or canvas gesture.
   ];
   if (import.meta.env.DEV) {
     const generate = (clips?: number, tracks?: number) => generateTestClips(documentStore, { ...(clips !== undefined && { clips }), ...(tracks !== undefined && { tracks }) });

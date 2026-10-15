@@ -135,6 +135,22 @@ describe("Compositor.evaluate", () => {
     close(applyToPoint(m, 0, 1), { x: W / 2 + 50 - 300, y: H / 2 - 20 });
   });
 
+  it("uses a gesture's ephemeral transforms instead of the document's (spec P2)", () => {
+    let doc = project(["v1", "v2"], [video("m1", 200, 100)]);
+    doc = withClips(doc, [clip(doc, { id: "c", trackId: "v1", start: 0, duration: 30 }), { ...makeSolidClip({ id: "s", trackId: "v2", start: 0, duration: 30 }) }]);
+    const compositor = new Compositor();
+    const overrides = new Map([
+      ["c", transform({ x: 10, flipH: true })],
+      ["s", transform({ y: -40, scale: 2 })],
+    ]);
+    const [c, s] = compositor.evaluate(doc, 0, overrides).layers;
+    close(applyToPoint(media(c).transform, 1, 0), { x: W / 2 - 100 + 10, y: H / 2 - 50 });
+    close(applyToPoint((s as SolidLayer).transform, 0, 0), { x: W / 2 - 100, y: H / 2 - 100 - 40 });
+    // Without them, the document's.
+    const [plain] = compositor.evaluate(doc, 0).layers;
+    close(applyToPoint(media(plain).transform, 0, 0), { x: W / 2 - 100, y: H / 2 - 50 });
+  });
+
   it("crops the shown sides without moving the remaining pixels, for every rotation and flip", () => {
     const crop = { left: 0.1, top: 0.2, right: 0.3, bottom: 0.05 };
     for (const rotation of [0, 90, 180, 270] as const) {

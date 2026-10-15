@@ -1,10 +1,12 @@
-// Preview wiring (spec §7.1, §7.5, §7.6, §8, §9.3, §9.4): the app's one GPU device, renderer and
-// texture pool, the frame service (video frames from decode.worker into the pool), still images, the
-// preview canvas view (the composite at the playhead) with its overlay canvas and zoom/pan input, its
-// dev stats, the playback engine that drives it (and the audio scheduler, Batch 10), the preview
-// chrome readouts, the view and overlay settings, fullscreen and Export frame. Framework-free;
-// PreviewPanel only mounts the canvas host, the chrome, the meter and the stats element.
+// Preview wiring (spec §7.1-§7.6, §8, §9.3, §9.4): the app's one GPU device, renderer and texture
+// pool, the frame service (video frames from decode.worker into the pool), still images, the preview
+// canvas view (the composite at the playhead) with its overlay canvas, zoom/pan input and canvas
+// selection and gizmo input, its dev stats, the playback engine that drives it (and the audio
+// scheduler, Batch 10), the preview chrome readouts, the view and overlay settings, fullscreen and
+// Export frame. Framework-free; PreviewPanel only mounts the canvas host, the chrome, the meter, the
+// stats element and the canvas context menu (`canvasMenu`; its actions are in canvasController).
 import type { MediaId } from "../core/document/types.js";
+import { detectPlatform } from "../core/keyboard/keys.js";
 import { createStore } from "../core/store/createStore.js";
 import type { PreviewSession } from "../core/store/sessionStore.js";
 import { DEFAULT_TEXTURE_BUDGET, TexturePool } from "../media/cache/TexturePool.js";
@@ -19,6 +21,7 @@ import { resolveFile, safeFileName, sampleIndexPath, writeFileAt } from "../proj
 import { formatFps } from "../project/projectPresets.js";
 import { GpuDevice } from "../render/gpu/GpuDevice.js";
 import { WebGpuRenderer } from "../render/gpu/WebGpuRenderer.js";
+import { CanvasEditInput } from "../render/preview/CanvasEditInput.js";
 import { PreviewOverlayView } from "../render/preview/PreviewOverlayView.js";
 import { PreviewStatsOverlay } from "../render/preview/PreviewStatsOverlay.js";
 import { PreviewView } from "../render/preview/PreviewView.js";
@@ -61,6 +64,8 @@ export const previewView: PreviewView = new PreviewView({
   watchPriority: (listener) => playbackEngine.subscribe(listener),
   // A trim shows its new edge frame live (spec §6.10).
   override: () => timelineView.trimPreview,
+  // A canvas gesture shows its transforms live (spec §7.3, P2).
+  transforms: () => canvasInput.transforms,
 });
 /** Plays the timeline through the preview (spec §8). */
 export const playbackEngine: PlaybackEngine = new PlaybackEngine({
@@ -82,8 +87,25 @@ playbackEngine.subscribe(() => {
   if (playbackEngine.playing) meterView.wake();
 });
 export const previewStats = new PreviewStatsOverlay({ scheduler, preview: previewView, pool: texturePool, gpu: gpuDevice, frames: frameService, playback: playbackEngine });
-/** The 2D canvas over the preview: overlays (spec §7.6), the gizmo from Batch 22. */
-export const previewOverlay = new PreviewOverlayView({ scheduler, layout: layoutStore, session: sessionStore.state, document: documentStore, theme: themeBridge, preview: previewView });
+/** The open canvas context menu (spec §7.2) at client px, or null. React renders it from this store. */
+export const canvasMenu = createStore<{ x: number; y: number } | null>(null);
+/** Selection, hover, marquee and the transform gizmo on the preview canvas (spec §7.2, §7.3). */
+export const canvasInput: CanvasEditInput = new CanvasEditInput({
+  document: documentStore,
+  session: sessionStore,
+  scheduler,
+  theme: themeBridge,
+  layout: layoutStore,
+  platform: detectPlatform(),
+  placement: () => previewView.placement,
+  panning: () => viewportInput.panning,
+  commit: (command) => documentStore.dispatch(command),
+  // A drag on the canvas pauses playback (the gesture edits the frame on screen).
+  onDragStart: () => playbackEngine.pause(),
+  onContextMenu: (request) => canvasMenu.set(request),
+});
+/** The 2D canvas over the preview: overlays (spec §7.6), the selection and the gizmo (§7.3). */
+export const previewOverlay = new PreviewOverlayView({ scheduler, layout: layoutStore, session: sessionStore.state, document: documentStore, theme: themeBridge, preview: previewView, gizmo: canvasInput });
 
 /** The preview canvas in device px with the Fit margin, as last rendered. */
 function viewTarget(): { width: number; height: number; margin: number; dpr: number } {
@@ -99,6 +121,8 @@ export const viewportInput = new ViewportInput({
   target: viewTarget,
   playing: () => playbackEngine.playing,
   onSpaceTap: () => void actions.run("transport.playPause"),
+  // Out of a pan, the cursor of the gizmo zone under the pointer.
+  cursor: () => canvasInput.cursor(),
 });
 
 /** Pool budgets of the dev select: the P6 default and the Batch 05 test budget. */
@@ -138,6 +162,8 @@ export function startGpu(adapter: GPUAdapter): void {
       renderer,
       pool: texturePool,
       preview: previewView,
+      canvas: canvasInput,
+      overlay: previewOverlay,
       frames: frameService,
       images: imageService,
       playback: playbackEngine,

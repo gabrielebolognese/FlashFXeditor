@@ -160,6 +160,17 @@
   /* Fullscreen preview (Batch 21): over the panels, under menus, toasts and dialogs; its chrome hides
      after this long without pointer movement. */
   --preview-chrome-hide-delay: 2000ms;
+  /* Canvas selection and transform gizmo (Batch 22, spec §7.2/§7.3; the DS has none): gold marks the
+     selection (outline, handle edges, 100% scale snap line), --accent-dim the hover outline and the
+     marquee edge, handles filled --text-primary. Sizes in CSS px. */
+  --gizmo-line-width: 1px;
+  --gizmo-handle-size: var(--space-3); /* 8px squares */
+  --gizmo-handle-hit: var(--space-4); /* 12px hit square around each handle */
+  --gizmo-rotate-zone: var(--space-5); /* spec §7.3: 16px outside each corner */
+  --gizmo-anchor-size: var(--space-4); /* 12px anchor marker */
+  --gizmo-snap-width: var(--timeline-trim-edge-width); /* 2px: the 100% scale snap line */
+  --gizmo-min-edge: var(--control-default); /* 28px: shorter sides show no edge handles */
+  --canvas-drag-threshold: var(--timeline-drag-threshold); /* 4px dead zone, spec §6.8 */
 
   /* Timeline (gap: the DS has no timeline metrics; track heights are the spec §6.2 defaults) */
   --timeline-header-width: 216px; /* Batch 16: five 16px header toggles beside the name (176px before) */

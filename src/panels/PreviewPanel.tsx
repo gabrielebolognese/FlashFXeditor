@@ -8,6 +8,7 @@ import { bindPlaybackStatus } from "../app/playbackController.js";
 import {
   bindFpsBadge,
   bindQualityLabel,
+  canvasInput,
   exportFrame,
   playbackEngine,
   POOL_BUDGETS,
@@ -33,6 +34,7 @@ import { IconButton } from "../ui/IconButton.js";
 import { Knob } from "../ui/Knob.js";
 import { MenuButton } from "../ui/MenuButton.js";
 import { Select } from "../ui/Select.js";
+import { CanvasContextMenu } from "./CanvasContextMenu.js";
 import styles from "./PreviewPanel.module.css";
 import wellStyles from "./Well.module.css";
 
@@ -371,10 +373,11 @@ export function PreviewPanel() {
   useEffect(() => {
     const host = canvasRef.current;
     if (!host) return undefined;
-    // The GPU canvas first, the overlay canvas over it, its input on the overlay.
+    // The GPU canvas first, the overlay canvas over it, its input on the overlay: zoom and pan first,
+    // then selection and the gizmo (they skip presses a pan takes).
     const stops = [previewView.mount(host), previewOverlay.mount(host)];
     const overlay = previewOverlay.element;
-    if (overlay) stops.push(viewportInput.attach(overlay));
+    if (overlay) stops.push(viewportInput.attach(overlay), canvasInput.attach(overlay));
     return () => {
       for (const stop of stops.reverse()) stop();
     };
@@ -391,6 +394,7 @@ export function PreviewPanel() {
           {stats && <StatsOverlay />}
         </CanvasHost>
       </div>
+      <CanvasContextMenu />
     </PanelFrame>
   );
 }
