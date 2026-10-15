@@ -28,14 +28,15 @@ The **Tools** group at the left end of the timeline toolbar decides what a drag 
 | **Slip** | <kbd>Y</kbd> | Slips the clip. | Slips the clip. |
 | **Slide** | <kbd>U</kbd> | Slides the clip. | Slides the clip. |
 | **Rate stretch** | <kbd>R</kbd> | Nothing: a click selects the clip. | Stretches the clip and changes its speed. |
+| **Razor** | <kbd>C</kbd> | A click cuts the clip at the pointer. See [Cut clips with the Razor tool](splitting-and-deleting.md#cut-clips-with-the-razor-tool). | A click cuts the clip at the pointer. |
 
 - The tool keys work in every panel, except while you type in a text field.
 - The tool stays active until you choose another one. Each project remembers its tool. Changing the tool is not a step in the history.
-- Over a clip, the cursor shows the tool: two bars with a double arrow between them for **Slip**, two bars with arrows pointing out for **Slide**, and, at the start or end of a clip, a bracket with a double arrowhead for **Rate stretch**.
-- With every tool, a click on a clip selects it, a drag on empty track space draws a selection rectangle, and a click or drag in the ruler moves the playhead.
+- Over a clip, the cursor shows the tool: two bars with a double arrow between them for **Slip**, two bars with arrows pointing out for **Slide**, at the start or end of a clip a bracket with a double arrowhead for **Rate stretch**, and over the tracks a vertical line with a small blade for **Razor**.
+- With every tool except **Razor**, a click on a clip selects it and a drag on empty track space draws a selection rectangle. With every tool, a click or drag in the ruler moves the playhead, and a right-click on a clip opens its menu.
 - **Slip**, **Slide** and **Rate stretch** change only the clip you drag and its linked clips, even when other clips are selected.
 - While you drag, hold the pointer near the left or right edge of the tracks to scroll the timeline.
-- **Razor** and **Hand** are in the toolbar but available in a later version.
+- **Hand** is in the toolbar but available in a later version.
 
 ## Roll a cut between two clips
 
@@ -205,10 +206,11 @@ The edit stops following the pointer at these limits:
 
 ## Related pages
 - [Trimming clips](trimming.md)
+- [Splitting, deleting and closing gaps](splitting-and-deleting.md)
 - [Timeline](timeline.md)
 - [Preview and playback](preview-and-playback.md)
 - [Audio](audio.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 14, 2026-10-15</sub>
+<sub>Last updated: Batch 15, 2026-10-15</sub>

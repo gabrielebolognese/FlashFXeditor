@@ -1,6 +1,6 @@
 # Timeline
 
-The timeline is where your short takes shape: clips sit on tracks in time order, and the playhead marks the frame the preview shows. In this version you add clips by double-clicking media, select clips and arrange them by dragging (also onto other tracks), snap them to the edges of other clips and to the playhead, duplicate them, add tracks, zoom and scroll, and move the playhead with the mouse, the keyboard or a typed timecode. To shorten or lengthen clips, see [Trimming clips](trimming.md); to roll cuts, slip, slide or change a clip's speed, see [Advanced trimming](advanced-trimming.md). Splitting and deleting clips are available in a later version.
+The timeline is where your short takes shape: clips sit on tracks in time order, and the playhead marks the frame the preview shows. In this version you add clips by double-clicking media, select clips and arrange them by dragging (also onto other tracks), snap them to the edges of other clips and to the playhead, duplicate them, add tracks, zoom and scroll, move the playhead with the mouse, the keyboard or a typed timecode, and rename clips or give them a label color. To shorten or lengthen clips, see [Trimming clips](trimming.md); to split and delete clips and close gaps, see [Splitting, deleting and closing gaps](splitting-and-deleting.md); to roll cuts, slip, slide or change a clip's speed, see [Advanced trimming](advanced-trimming.md).
 
 > **Video placeholder: Timeline tour**
 > - File: `videos/timeline/timeline-overview.mp4` (not recorded yet)
@@ -24,12 +24,14 @@ The timeline is where your short takes shape: clips sit on tracks in time order,
 - [Duplicate clips](#duplicate-clips)
 - [Cancel a drag](#cancel-a-drag)
 - [Nudge clips with the keyboard](#nudge-clips-with-the-keyboard)
+- [Rename clips](#rename-clips)
+- [Give clips a label color](#give-clips-a-label-color)
 
 ## Find your way around the timeline
 
 | Part | Where | What it does |
 |---|---|---|
-| **Toolbar** | Top of the panel | The tools, the **Snap** and **Ripple mode** toggles, zoom controls, and at the right end the playhead timecode and the total duration. |
+| **Toolbar** | Top of the panel | The tools, the **Snap** and **Ripple mode** toggles, the edit buttons, zoom controls, and at the right end the playhead timecode and the total duration. |
 | **Ruler** | Above the tracks | Shows time. Click or drag in it to move the playhead. |
 | **Track headers** | Left column | Each track's icon and name (V1, V2 for video; A1, A2 for audio), the **M** (mute) and **S** (solo) toggles of audio tracks, plus the **+ Video track** and **+ Audio track** rows. |
 | **Tracks** | Main area | Video tracks above the divider, audio tracks below it. Each row holds that track's clips. |
@@ -46,7 +48,7 @@ The spacing of the ticks follows the zoom. Zoomed out, labels can be minutes apa
 
 ### Clips
 
-- A clip is a rounded block in the color of its kind: blue for video, green for audio, gray for images.
+- A clip is a rounded block in the color of its kind: blue for video, green for audio, gray for images. A clip with a label color is drawn in that color instead; see [Give clips a label color](#give-clips-a-label-color).
 - A label bar in a stronger shade at the top shows the kind icon and the clip's name. Long names are shortened with "…". When a clip starts to the left of the view, its label stays visible at the left edge.
 - A clip narrower than 24 pixels shows no icon or name. A clip narrower than 6 pixels shows only a thin strip of its color.
 - Clips that touch are separated by a thin line, so you can always see the cut.
@@ -62,11 +64,12 @@ Thumbnails and waveforms inside clips are available in a later version.
 
 In this version these parts of the toolbar work:
 
-- the **Select**, **Slip**, **Slide** and **Rate stretch** tools (see [Choose a tool](advanced-trimming.md#choose-a-tool));
+- the **Select**, **Razor**, **Slip**, **Slide** and **Rate stretch** tools (see [Choose a tool](advanced-trimming.md#choose-a-tool) and [Cut clips with the Razor tool](splitting-and-deleting.md#cut-clips-with-the-razor-tool));
 - the **Snap** toggle (see [Turn snapping on or off](#turn-snapping-on-or-off)) and the **Ripple mode** toggle (see [Turn Ripple mode on or off](trimming.md#turn-ripple-mode-on-or-off));
+- the edit buttons **Split at playhead**, **Delete**, **Ripple delete**, **Close gap** and **Close all gaps (compact)** (see [Splitting, deleting and closing gaps](splitting-and-deleting.md));
 - the zoom group, the timecode field and the duration.
 
-The other buttons (the **Razor** and **Hand** tools, toggles such as **Linked selection**, edit actions such as **Split at playhead**, and add actions such as **Title**) are shown but disabled; they are available in a later version.
+The other buttons (the **Hand** tool, toggles such as **Linked selection**, edit actions such as **Add marker**, and add actions such as **Title**) are shown but disabled; they are available in a later version.
 
 > **Note:** When the timeline panel is too narrow for the whole toolbar, the zoom group is the first to move into the **More tools** (…) menu, followed by the toggles with **Snap** and **Ripple mode**. Click **More tools** to reach them.
 
@@ -243,6 +246,7 @@ While the editor plays, the timeline follows the playhead. When the playhead rea
 | Select all clips | <kbd>Ctrl</kbd>+<kbd>A</kbd> |
 | Clear the selection | Click an empty part of a track, or press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd> |
 | Select a cut between two clips instead | Click right on the cut. See [Select a cut (edit point)](advanced-trimming.md#select-a-cut-edit-point). |
+| Select a gap instead | Click the empty space between two clips. See [Select a gap](splitting-and-deleting.md#select-a-gap). |
 
 A selected clip has a gold outline and a gold tint. The clip you clicked last has a slightly thicker outline.
 
@@ -476,10 +480,45 @@ Click the timeline first, so it has the keyboard, and select the clips to move.
 
 > **Note:** <kbd>Alt</kbd>+<kbd>Left</kbd> is also the browser's Back key. The editor keeps it while the Timeline panel is active, also when no clip is selected. In the other panels, the browser gets it. See [Keys the browser keeps](keyboard-shortcuts.md#keys-the-browser-keeps).
 
-To trim clips, see [Trimming clips](trimming.md) and [Advanced trimming](advanced-trimming.md). Splitting and deleting clips are available in a later version.
+To trim clips, see [Trimming clips](trimming.md) and [Advanced trimming](advanced-trimming.md). To split and delete clips, see [Splitting, deleting and closing gaps](splitting-and-deleting.md).
+
+## Rename clips
+
+A new clip takes the name of its media. Rename it to find it again quickly: the name shows in the clip's label bar, in the snapping tooltip (for example **End of Intro shot**) and in messages.
+
+> **Video placeholder: Rename and label clips**
+> - File: `videos/timeline/rename-and-label.mp4` (not recorded yet)
+> - Length: about 40 seconds
+> - Shows: click a video clip and press <kbd>F2</kbd>: a text field opens over its label bar with the name selected; type "Intro shot" and press <kbd>Enter</kbd>: the label bar shows the new name; hover **Undo**: it reads **Undo Rename clip**; right-click another clip and choose **Rename**, type a letter and press <kbd>Escape</kbd>: the name stays; right-click the first clip and click the orange swatch in the **Label** row: the video and its sound turn orange; right-click it again and click the orange swatch, which has a gold ring: the clips go back to blue and green.
+
+1. Select the clip and press <kbd>F2</kbd> (the Timeline panel must be active), or right-click the clip and choose **Rename**.
+2. A text field opens over the clip's label bar, with the name selected. If the clip is out of view, the timeline scrolls to it first.
+3. Type the new name and press <kbd>Enter</kbd>, or click elsewhere. Press <kbd>Escape</kbd> to keep the old name.
+
+- With several clips selected, <kbd>F2</kbd> renames the one with the thicker outline: the clip you clicked last.
+- Names can be up to 255 characters. Spaces at the start and end are removed, and a blank name is ignored.
+- Scrolling or zooming the timeline while the field is open keeps the name you typed and closes the field.
+- Renaming a clip changes neither its media nor its linked clip.
+- The history step is named **Rename clip**.
+
+In the Media panel, <kbd>F2</kbd> renames the selected media instead; see [Rename media](importing-media.md#rename-media).
+
+## Give clips a label color
+
+Label colors help you see at a glance which clips belong together, for example all the B-roll, or every clip of one scene.
+
+1. Select the clips, or skip this step to label one clip (and its linked clips).
+2. Right-click one of the clips.
+3. In the **Label** row of the menu, click a color: **Red**, **Orange**, **Green**, **Teal**, **Blue**, **Violet**, **Pink** or **Grey**. Point at a swatch to see its name.
+
+- Every selected clip takes the color. A right-click on a clip that is not selected selects it with its linked clips, so a video and its sound take the color together.
+- A labeled clip is drawn in its label color instead of the color of its kind. A selected clip keeps its gold outline.
+- In the menu, the current color of the clip you right-clicked has a gold ring, and its tooltip reads, for example, **Teal (click to remove)**. Click it to remove the label from the selected clips: they go back to the color of their kind.
+- Each change is one step in the history, named **Label clip** or **Label clips**. Labels are saved with the project, and both parts of a split clip keep the label.
 
 ## Related pages
 - [Trimming clips](trimming.md)
+- [Splitting, deleting and closing gaps](splitting-and-deleting.md)
 - [Advanced trimming](advanced-trimming.md)
 - [Audio](audio.md)
 - [Getting started](getting-started.md)
@@ -490,4 +529,4 @@ To trim clips, see [Trimming clips](trimming.md) and [Advanced trimming](advance
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 14, 2026-10-15</sub>
+<sub>Last updated: Batch 15, 2026-10-15</sub>

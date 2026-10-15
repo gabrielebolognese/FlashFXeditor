@@ -2,6 +2,11 @@
 
 Shorts Editor grows in steps called batches. This page lists what each batch added that you can see or use, newest first. Follow the links for the full instructions.
 
+> **Video placeholder: What's new in Batch 15**
+> - File: `videos/whats-new/batch-15.mp4` (not recorded yet)
+> - Length: about 60 seconds
+> - Shows: a timeline with three videos with sound end to end on V1 and A1; put the playhead in the first clip and press <kbd>Ctrl</kbd>+<kbd>K</kbd>: the video and its sound split; press <kbd>C</kbd>, point at the second clip (a white cut line follows the pointer) and click: it splits there; press <kbd>V</kbd>; click a piece and press <kbd>Delete</kbd>: a gap opens; click the gap (dashed gold outline) and press <kbd>G</kbd>: it closes; click another piece and press <kbd>Shift</kbd>+<kbd>Delete</kbd>: the rest moves up; delete two more pieces and press <kbd>Shift</kbd>+<kbd>G</kbd>: every gap closes at once; right-click a clip, click the teal swatch, then choose **Rename**, type a name and press <kbd>Enter</kbd>.
+
 > **Video placeholder: What's new in Batch 14**
 > - File: `videos/whats-new/batch-14.mp4` (not recorded yet)
 > - Length: about 60 seconds
@@ -33,6 +38,7 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 > - Shows: open a project with three clips on the timeline; press <kbd>Space</kbd> to play and let the timeline page forward; press <kbd>L</kbd> three times to reach 8x, then <kbd>K</kbd>; hold <kbd>K</kbd> and tap <kbd>L</kbd> to step one frame; turn on **Loop playback**; point at the **Dropped** readout in the status strip.
 
 ## In this page
+- [Batch 15: Split, delete and close gaps](#batch-15-split-delete-and-close-gaps)
 - [Batch 14: Roll, slip, slide and rate stretch](#batch-14-roll-slip-slide-and-rate-stretch)
 - [Batch 13: Trimming](#batch-13-trimming)
 - [Batch 12: Snapping](#batch-12-snapping)
@@ -47,6 +53,17 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 - [Batch 03: Projects, autosave and recovery](#batch-03-projects-autosave-and-recovery)
 - [Batch 02: Undo, redo and frame-exact time](#batch-02-undo-redo-and-frame-exact-time)
 - [Batch 01: The workspace](#batch-01-the-workspace)
+
+## Batch 15: Split, delete and close gaps
+- Press <kbd>Ctrl</kbd>+<kbd>K</kbd>, or click **Split at playhead**, to split clips at the playhead: the selected clips, or every clip under the playhead when nothing is selected. <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>K</kbd> splits every track. Both parts keep everything the clip had, and a video and its sound split together.
+- The **Razor** tool (<kbd>C</kbd>) cuts a clip where you click. A white line shows the cut and snaps to clip edges and the playhead. <kbd>Shift</kbd>+click cuts every track at once.
+- <kbd>Delete</kbd> removes the selected clips and leaves gaps. <kbd>Shift</kbd>+<kbd>Delete</kbd> (**Ripple delete**) also closes the space, each track by its own amount.
+- Click a gap to select it, then press <kbd>Delete</kbd> or <kbd>G</kbd> to close it. With no gap selected, <kbd>G</kbd> closes the gap at the playhead. <kbd>Shift</kbd>+<kbd>G</kbd> (**Close all gaps (compact)**) closes every gap in one step, instantly even with hundreds of clips.
+- When clips move to close a space, the other tracks move with them, so sound and titles stay on their cuts. Where a clip would overlap another, the ripple stops short and a message names the clip in the way.
+- Right-click a clip for **Split at playhead**, **Delete**, **Ripple delete**, **Rename** and eight label colors; right-click a gap for **Close gap** and **Close all gaps on track**.
+- Rename a clip with <kbd>F2</kbd>. Labeled clips are drawn in their label color.
+
+See [Splitting, deleting and closing gaps](splitting-and-deleting.md), [Rename clips](timeline.md#rename-clips), [Give clips a label color](timeline.md#give-clips-a-label-color) and [Keyboard shortcuts](keyboard-shortcuts.md#cutting-and-deleting).
 
 ## Batch 14: Roll, slip, slide and rate stretch
 - The tools in the timeline toolbar work: **Select** (<kbd>V</kbd>), **Slip** (<kbd>Y</kbd>), **Slide** (<kbd>U</kbd>) and **Rate stretch** (<kbd>R</kbd>). The active tool is gold, and each project remembers it.
@@ -163,4 +180,4 @@ See [The workspace](workspace.md) and [Getting started](getting-started.md).
 - [User guide home](README.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 14, 2026-10-15</sub>
+<sub>Last updated: Batch 15, 2026-10-15</sub>

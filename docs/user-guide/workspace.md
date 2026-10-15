@@ -123,13 +123,15 @@ The toolbar is one row of button groups, from left to right:
 
 | Group | Buttons | What works now |
 | --- | --- | --- |
-| Tools | **Select**, **Razor**, **Hand**, **Slip**, **Slide**, **Rate stretch** | **Select** (<kbd>V</kbd>), **Slip** (<kbd>Y</kbd>), **Slide** (<kbd>U</kbd>) and **Rate stretch** (<kbd>R</kbd>) work: the active tool is gold. See [Choose a tool](advanced-trimming.md#choose-a-tool). **Razor** and **Hand** are available in a later version. |
+| Tools | **Select**, **Razor**, **Hand**, **Slip**, **Slide**, **Rate stretch** | **Select** (<kbd>V</kbd>), **Razor** (<kbd>C</kbd>), **Slip** (<kbd>Y</kbd>), **Slide** (<kbd>U</kbd>) and **Rate stretch** (<kbd>R</kbd>) work: the active tool is gold. See [Choose a tool](advanced-trimming.md#choose-a-tool). **Hand** is available in a later version. |
 | Toggles | **Snap**, **Linked selection**, **Ripple mode**, **Show clip keyframes**, **Audio scrub** | **Snap** and **Ripple mode** work: each is gold while it is on. See [Snap clips into place](timeline.md#snap-clips-into-place) and [Turn Ripple mode on or off](trimming.md#turn-ripple-mode-on-or-off). The others are available in a later version. |
-| Edit | **Split at playhead**, **Delete**, **Ripple delete**, **Close gap**, **Close all gaps (compact)**, **Add marker**, **Freeze frame**, **Punch zoom** | Available in a later version. |
+| Edit | **Split at playhead**, **Delete**, **Ripple delete**, **Close gap**, **Close all gaps (compact)**, **Add marker**, **Freeze frame**, **Punch zoom** | **Split at playhead** (<kbd>Ctrl</kbd>+<kbd>K</kbd>), **Delete** (<kbd>Delete</kbd>), **Ripple delete** (<kbd>Shift</kbd>+<kbd>Delete</kbd>), **Close gap** (<kbd>G</kbd>) and **Close all gaps (compact)** (<kbd>Shift</kbd>+<kbd>G</kbd>) work. See [Splitting, deleting and closing gaps](splitting-and-deleting.md). The others are available in a later version. |
 | Add | **Title**, **Subtitle**, **Add caption track**, **Add solid**, **Add image** | Available in a later version. |
 | Zoom | **Zoom out**, the zoom slider, **Zoom in**, **Zoom to fit**, **Zoom to selection**, **Track height** | **Zoom out**, the slider, **Zoom in** and **Zoom to fit** work. See [Timeline](timeline.md). |
 
 At the right end, the playhead timecode field shows where the playhead is (you can type a time into it) and, next to it, the total duration of the timeline.
+
+Right-click a clip or a gap on the timeline for a menu with the most common edits for it. See [Use the clip and gap menus](splitting-and-deleting.md#use-the-clip-and-gap-menus).
 
 Buttons that are not available yet are dimmed. They still show their tooltip, but clicking them does nothing.
 
@@ -175,8 +177,9 @@ Examples:
 | <kbd>Alt</kbd>+<kbd>Left</kbd> / <kbd>Alt</kbd>+<kbd>Right</kbd> | Nudges the selected clips one frame | Nothing (the browser gets <kbd>Alt</kbd>+<kbd>Left</kbd>) | Nothing (the browser gets <kbd>Alt</kbd>+<kbd>Left</kbd>) |
 | <kbd>E</kbd> | Moves the nearest edge of the selected clip to the playhead | Nothing | Nothing |
 | <kbd>Q</kbd> / <kbd>W</kbd> | Trims the clip under the playhead to the playhead | Same | Same |
-| <kbd>Delete</kbd> | Nothing: deleting clips is available in a later version | Nothing | Removes the selected media (asks first) |
-| <kbd>F2</kbd> | Nothing | Nothing | Renames the selected media |
+| <kbd>Delete</kbd> | Deletes the selected clips, or closes the selected gap | Deletes the selected clips | Removes the selected media (asks first) |
+| <kbd>F2</kbd> | Renames the selected clip | Nothing | Renames the selected media |
+| <kbd>G</kbd> | Closes the selected gap, or the gap at the playhead | Nothing | Nothing |
 
 > **Tip:** If a shortcut seems to do nothing, click the panel it belongs to and try again. After clicking the Preview, click the timeline before you step through frames with the arrow keys.
 
@@ -194,9 +197,10 @@ To jump to a time, type it into the timecode field of the timeline toolbar. See 
 - [Importing media](importing-media.md)
 - [Timeline](timeline.md)
 - [Trimming clips](trimming.md)
+- [Splitting, deleting and closing gaps](splitting-and-deleting.md)
 - [Advanced trimming](advanced-trimming.md)
 - [Preview and playback](preview-and-playback.md)
 - [Audio](audio.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 14, 2026-10-15</sub>
+<sub>Last updated: Batch 15, 2026-10-15</sub>

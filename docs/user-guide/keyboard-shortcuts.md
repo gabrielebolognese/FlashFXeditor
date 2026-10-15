@@ -4,7 +4,7 @@ This page lists every keyboard shortcut that works in the current version of Sho
 
 > **Video placeholder: Keyboard shortcuts in action**
 > - File: `videos/keyboard-shortcuts/overview.mp4` (not recorded yet)
-> - Length: about 60 seconds
+> - Length: about 75 seconds
 > - Shows:
 >   1. Click the timeline. Press <kbd>Space</kbd> to play and again to pause.
 >   2. Press <kbd>L</kbd> twice (2x), then <kbd>K</kbd>.
@@ -17,16 +17,19 @@ This page lists every keyboard shortcut that works in the current version of Sho
 >   9. Press <kbd>S</kbd>: the **Snap** magnet in the timeline toolbar turns off. Drag a clip and hold <kbd>S</kbd>: it snaps to the next clip edge. Release the mouse button, then press <kbd>S</kbd> to turn snapping back on.
 >   10. Press <kbd>Space</kbd> to play. In the middle of a clip, press <kbd>Q</kbd>: the clip loses its beginning up to the playhead and playback goes on. Press <kbd>W</kbd> a little later: the rest of the clip is removed. Press <kbd>Space</kbd> to pause.
 >   11. Click a clip, click in the ruler a little past its end, and press <kbd>E</kbd>: the clip's end moves to the playhead.
->   12. Press <kbd>Y</kbd>: the **Slip** tool turns gold. Press <kbd>U</kbd> for **Slide** and <kbd>R</kbd> for **Rate stretch**, then <kbd>V</kbd> to go back to **Select**.
->   13. Zoom in, scroll the playhead out of view, and press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>.</kbd>: the view centers on the playhead.
->   14. Click a card in the Media panel, press <kbd>F2</kbd>, type a new name and press <kbd>Enter</kbd>.
->   15. Hover over **Play** to show the tooltip with its shortcut.
+>   12. Click in the ruler in the middle of a clip and press <kbd>Ctrl</kbd>+<kbd>K</kbd>: the clip splits at the playhead. Click the right part and press <kbd>Shift</kbd>+<kbd>Delete</kbd>: it disappears and the later clips move left. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> twice.
+>   13. Click a clip, press <kbd>Delete</kbd>, click the gap it leaves and press <kbd>G</kbd>: the gap closes. Press <kbd>F2</kbd> on another clip, type a name and press <kbd>Enter</kbd>.
+>   14. Press <kbd>Y</kbd>: the **Slip** tool turns gold. Press <kbd>U</kbd> for **Slide**, <kbd>R</kbd> for **Rate stretch** and <kbd>C</kbd> for **Razor**, then <kbd>V</kbd> to go back to **Select**.
+>   15. Zoom in, scroll the playhead out of view, and press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>.</kbd>: the view centers on the playhead.
+>   16. Click a card in the Media panel, press <kbd>F2</kbd>, type a new name and press <kbd>Enter</kbd>.
+>   17. Hover over **Play** to show the tooltip with its shortcut.
 
 ## In this page
 - [How shortcuts work](#how-shortcuts-work)
 - [Playback and navigation](#playback-and-navigation)
 - [Timeline](#timeline)
 - [Trimming](#trimming)
+- [Cutting and deleting](#cutting-and-deleting)
 - [Tools](#tools)
 - [Audio](#audio)
 - [Media panel](#media-panel)
@@ -108,7 +111,7 @@ These shortcuts work only while the Timeline panel is active. See [Timeline](tim
 | Action | Windows | macOS | Works in |
 | --- | --- | --- | --- |
 | Select all clips | <kbd>Ctrl</kbd>+<kbd>A</kbd> | <kbd>⌘</kbd>+<kbd>A</kbd> | Timeline, Preview |
-| Clear the selection (also a selected edit point) | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd> | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>A</kbd> | Timeline, Preview |
+| Clear the selection (also a selected edit point or gap) | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd> | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>A</kbd> | Timeline, Preview |
 | Cancel a clip drag, a trim, a roll, slip, slide or rate stretch, or a selection rectangle | <kbd>Escape</kbd> (before you release the mouse button) | <kbd>Esc</kbd> | All panels |
 
 ### Snapping
@@ -143,6 +146,25 @@ See [Trimming clips](trimming.md).
 - **Ripple mode** in the timeline toolbar has no shortcut. While it is on, every edge drag ripples without <kbd>Ctrl</kbd>.
 - Rolls, slips, slides and rate stretches never ripple. See [Advanced trimming](advanced-trimming.md).
 
+## Cutting and deleting
+
+See [Splitting, deleting and closing gaps](splitting-and-deleting.md).
+
+| Action | Windows | macOS | Works in |
+| --- | --- | --- | --- |
+| Split at the playhead: the selected clips, or every clip under it when nothing is selected | <kbd>Ctrl</kbd>+<kbd>K</kbd> | <kbd>⌘</kbd>+<kbd>K</kbd> | All panels |
+| Split every clip under the playhead, on all tracks | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>K</kbd> | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>K</kbd> | All panels |
+| Delete the selected clips and leave gaps (with a gap selected: close it) | <kbd>Delete</kbd> or <kbd>Backspace</kbd> | <kbd>Delete</kbd> (⌫) | Timeline, Preview |
+| Ripple delete the selected clips (with a gap selected: close it) | <kbd>Shift</kbd>+<kbd>Delete</kbd> or <kbd>Shift</kbd>+<kbd>Backspace</kbd> | <kbd>⇧</kbd>+<kbd>Delete</kbd> (⌫) | Timeline, Preview |
+| Close the selected gap, or the gap at the playhead | <kbd>G</kbd> | <kbd>G</kbd> | Timeline |
+| Close all gaps (compact) | <kbd>Shift</kbd>+<kbd>G</kbd> | <kbd>⇧</kbd>+<kbd>G</kbd> | Timeline |
+| Rename the selected clip | <kbd>F2</kbd> | <kbd>F2</kbd> | Timeline |
+
+- Each of these edits is one undo step.
+- Deleting a clip also deletes its linked clips, for example a video's sound.
+- In the Media panel, <kbd>Delete</kbd>, <kbd>Backspace</kbd> and <kbd>F2</kbd> work on media instead. See [Media panel](#media-panel).
+- The clip and gap menus (right-click) show these shortcuts next to their rows. <kbd>Escape</kbd> closes a menu.
+
 ## Tools
 
 The tool decides what a drag on a clip does. The active tool's button in the timeline toolbar is gold. See [Choose a tool](advanced-trimming.md#choose-a-tool).
@@ -153,6 +175,7 @@ The tool decides what a drag on a clip does. The active tool's button in the tim
 | **Slip** tool: change the part of the media a clip shows | <kbd>Y</kbd> | <kbd>Y</kbd> | All panels |
 | **Slide** tool: move a clip between its neighbors | <kbd>U</kbd> | <kbd>U</kbd> | All panels |
 | **Rate stretch** tool: change a clip's speed by dragging its edge | <kbd>R</kbd> | <kbd>R</kbd> | All panels |
+| **Razor** tool: cut clips where you click | <kbd>C</kbd> | <kbd>C</kbd> | All panels |
 
 The tool stays active until you choose another one, and each project remembers it.
 
@@ -199,7 +222,7 @@ See [Projects and saving](projects-and-saving.md).
 
 | Action | Windows | macOS |
 | --- | --- | --- |
-| Confirm a field (project name, media name, timecode, numbers) | <kbd>Enter</kbd> | <kbd>Return</kbd> |
+| Confirm a field (project name, media name, clip name, timecode, numbers) | <kbd>Enter</kbd> | <kbd>Return</kbd> |
 | Cancel the change and leave the field | <kbd>Escape</kbd> | <kbd>Esc</kbd> |
 | Close a dialog or a menu | <kbd>Escape</kbd> | <kbd>Esc</kbd> |
 
@@ -231,6 +254,10 @@ These work over the timeline. See [Timeline](timeline.md).
 | Select a cut (both sides) | Click right on the cut | Click right on the cut |
 | Select one side of a cut | <kbd>Ctrl</kbd>+click that side of the cut | <kbd>⌘</kbd>+click that side of the cut |
 | Slip, slide or rate stretch a clip | With the **Slip**, **Slide** or **Rate stretch** tool, drag the clip (rate stretch: its start or end) | Same |
+| Cut a clip and its linked clips | With the **Razor** tool, click the clip | Same |
+| Cut every track at that frame | With the **Razor** tool, <kbd>Shift</kbd>+click in the tracks | With the **Razor** tool, <kbd>⇧</kbd>+click in the tracks |
+| Select a gap | Click the empty space between two clips | Click the empty space between two clips |
+| Open the clip or gap menu | Right-click the clip or gap | Right-click the clip or gap |
 | Switch snapping for this drag | Hold <kbd>S</kbd> while you drag | Hold <kbd>S</kbd> while you drag |
 | Snap the playhead to clip edges | <kbd>Shift</kbd>+click or <kbd>Shift</kbd>+drag in the ruler | <kbd>⇧</kbd>+click or <kbd>⇧</kbd>+drag in the ruler |
 
@@ -257,20 +284,21 @@ While you type in a text field, or while a dialog is open, the editor leaves <kb
 
 ## Shortcuts for features not available yet
 
-Some buttons already show a shortcut in their tooltip although the button is disabled, for example **Split at playhead** in the timeline toolbar and **Export** in the app bar. These shortcuts start working when their feature is available in a later version; until then the keys do nothing. In the current version this also applies to:
+Some buttons already show a shortcut in their tooltip although the button is disabled, for example **Add marker** in the timeline toolbar and **Export** in the app bar. These shortcuts start working when their feature is available in a later version; until then the keys do nothing. In the current version this also applies to:
 
-- <kbd>Delete</kbd>, <kbd>Backspace</kbd> and <kbd>F2</kbd> in the Timeline and Preview panels (deleting and renaming clips).
-- <kbd>C</kbd> and <kbd>H</kbd> (the **Razor** and **Hand** tools).
+- <kbd>H</kbd> (the **Hand** tool).
+- <kbd>Ctrl</kbd>+<kbd>X</kbd>, <kbd>Ctrl</kbd>+<kbd>C</kbd> and <kbd>Ctrl</kbd>+<kbd>V</kbd> in the Timeline and Preview panels (cutting, copying and pasting clips; the **Cut**, **Copy** and **Paste** rows of the clip menu are dimmed).
 - The arrow keys and <kbd>Ctrl</kbd>+<kbd>0</kbd>, <kbd>Ctrl</kbd>+<kbd>1</kbd>, <kbd>Ctrl</kbd>+<kbd>2</kbd> in the Preview panel (moving items and zooming the preview). Use the **Zoom** dropdown and the **Fit** button instead.
 
 ## Related pages
 - [Preview and playback](preview-and-playback.md)
 - [Timeline](timeline.md)
 - [Trimming clips](trimming.md)
+- [Splitting, deleting and closing gaps](splitting-and-deleting.md)
 - [Advanced trimming](advanced-trimming.md)
 - [Audio](audio.md)
 - [Importing media](importing-media.md)
 - [Projects and saving](projects-and-saving.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 14, 2026-10-15</sub>
+<sub>Last updated: Batch 15, 2026-10-15</sub>

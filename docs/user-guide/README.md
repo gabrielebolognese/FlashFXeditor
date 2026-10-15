@@ -1,11 +1,11 @@
 # Shorts Editor user guide
 
-Shorts Editor is a video editor for short vertical videos (9:16 by default) that runs in your desktop browser. Your projects are folders on your own disk, and your media never leaves your computer. This guide shows you how to set up a project, bring in your media, arrange, trim and fine-tune it on the timeline and play it back with its sound.
+Shorts Editor is a video editor for short vertical videos (9:16 by default) that runs in your desktop browser. Your projects are folders on your own disk, and your media never leaves your computer. This guide shows you how to set up a project, bring in your media, arrange, trim, cut and fine-tune it on the timeline and play it back with its sound.
 
 > **Video placeholder: Shorts Editor in two minutes**
 > - File: `videos/home/overview.mp4` (not recorded yet)
 > - Length: about 120 seconds
-> - Shows: open Shorts Editor in Chrome; click **New project**, pick an empty folder, keep **9:16 · 1080×1920** and **30 fps**, click **Create project**; drop three phone clips on the Media panel and wait for the thumbnails; double-click each clip to build a sequence on the timeline; hold <kbd>Ctrl</kbd> and drag the end of the first clip to the left to tighten the cut; drag the last clip up to V2; press <kbd>\</kbd> to fit the timeline; press <kbd>Home</kbd>, then <kbd>Space</kbd> to play it back with sound while the audio meter moves; drag in the ruler to scrub; point at the green save dot.
+> - Shows: open Shorts Editor in Chrome; click **New project**, pick an empty folder, keep **9:16 · 1080×1920** and **30 fps**, click **Create project**; drop three phone clips on the Media panel and wait for the thumbnails; double-click each clip to build a sequence on the timeline; hold <kbd>Ctrl</kbd> and drag the end of the first clip to the left to tighten the cut; put the playhead in the middle of the second clip, press <kbd>Ctrl</kbd>+<kbd>K</kbd>, click the second half and press <kbd>Shift</kbd>+<kbd>Delete</kbd>; drag the last clip up to V2; press <kbd>\</kbd> to fit the timeline; press <kbd>Home</kbd>, then <kbd>Space</kbd> to play it back with sound while the audio meter moves; drag in the ruler to scrub; point at the green save dot.
 
 ## In this page
 - [Start here](#start-here)
@@ -19,20 +19,22 @@ Shorts Editor is a video editor for short vertical videos (9:16 by default) that
 3. [Importing media](importing-media.md): bring in your clips, sounds and images.
 4. [Timeline](timeline.md): put clips in order, select and move them, and move around your edit.
 5. [Trimming clips](trimming.md): shorten and lengthen clips, and cut them to the playhead.
-6. [Advanced trimming](advanced-trimming.md): roll cuts, slip and slide clips, and change their speed.
-7. [Preview and playback](preview-and-playback.md): watch and check your video.
-8. [Audio](audio.md): listen, set the volume and check your levels.
+6. [Splitting, deleting and closing gaps](splitting-and-deleting.md): cut clips in two, remove them and tidy up the gaps.
+7. [Advanced trimming](advanced-trimming.md): roll cuts, slip and slide clips, and change their speed.
+8. [Preview and playback](preview-and-playback.md): watch and check your video.
+9. [Audio](audio.md): listen, set the volume and check your levels.
 
 ## All pages
 
 | Page | What it covers |
 | --- | --- |
 | [Getting started](getting-started.md) | Browser requirements, the start screen, creating, opening and reopening projects, folder access |
-| [The workspace](workspace.md) | The app bar, the four panels, resizing panels, the timeline toolbar, tooltips, how shortcuts follow the panel you clicked |
+| [The workspace](workspace.md) | The app bar, the four panels, resizing panels, the timeline toolbar and right-click menus, tooltips, how shortcuts follow the panel you clicked |
 | [Projects and saving](projects-and-saving.md) | The project folder, autosave and the save dot, undo and redo, crash recovery, backups, read-only mode, project settings |
 | [Importing media](importing-media.md) | Importing, dropping and pasting files, supported types, the Media panel views, sorting, renaming and removing media |
-| [Timeline](timeline.md) | Ruler, tracks and clips, adding clips and tracks, muting and soloing audio tracks, zooming, scrolling and centering on the playhead, moving the playhead and jumping between edit points, timecodes, selecting, moving, inserting, duplicating and nudging clips, snapping |
+| [Timeline](timeline.md) | Ruler, tracks and clips, adding clips and tracks, muting and soloing audio tracks, zooming, scrolling and centering on the playhead, moving the playhead and jumping between edit points, timecodes, selecting, moving, inserting, duplicating and nudging clips, snapping, renaming clips, label colors |
 | [Trimming clips](trimming.md) | Trimming clip edges, ripple trims and **Ripple mode**, trimming one side of a linked clip, trim limits, trimming to the playhead with Q, W and E |
+| [Splitting, deleting and closing gaps](splitting-and-deleting.md) | Splitting at the playhead, the **Razor** tool, deleting and ripple deleting clips, selecting and closing gaps, closing all gaps, how other tracks follow a ripple, the clip and gap menus |
 | [Advanced trimming](advanced-trimming.md) | The **Select**, **Slip**, **Slide** and **Rate stretch** tools, rolling a cut, selecting an edit point, slipping and sliding clips, changing a clip's speed, the split preview |
 | [Preview and playback](preview-and-playback.md) | The preview frame, zoom, scrubbing, playing, shuttling, stepping, looping, the transport bar and status strip, exporting a frame |
 | [Audio](audio.md) | Hearing your edit in sync, sound of clips at another speed, the listening volume and mute, muting and soloing audio tracks, the audio meter, how sound loads |
@@ -48,10 +50,12 @@ Shorts Editor is a video editor for short vertical videos (9:16 by default) that
 - Snap clips to the edges of other clips and to the playhead as you drag, and snap the playhead to clip edges in the ruler.
 - Trim clips by dragging their edges while the preview shows the new first or last frame, ripple trims that close the gap on every track, and cut to the playhead with Q, W and E, also during playback.
 - Roll the cut between two clips, slip a clip's content, slide a clip between its neighbors with a side-by-side preview of both sides of the edit, and change a clip's speed from 0.25x to 4x by stretching it.
+- Split clips at the playhead or with the **Razor** tool, delete clips with or without closing the space, close one gap or all gaps at once while the other tracks stay in step, and use the right-click menus of clips and gaps.
+- Rename clips and give them one of eight label colors.
 - Play your edit back frame-accurately, shuttle with J, K and L, loop, and save any frame as a PNG.
 - Hear your edit in sync with the picture, set the listening volume, mute or solo audio tracks, and check your levels on the audio meter.
 
-More editing tools (splitting and deleting clips, the **Razor** and **Hand** tools), audio editing (clip volume, fades, waveforms), text and captions, effects and video export arrive in later versions. Their buttons are already visible but dimmed. [What's new](whats-new.md) tracks each addition.
+More editing tools (the **Hand** tool, copy and paste, markers, track controls), audio editing (clip volume, fades, waveforms), text and captions, effects and video export arrive in later versions. Their buttons are already visible but dimmed. [What's new](whats-new.md) tracks each addition.
 
 ## Conventions in this guide
 - **Bold text** is a label exactly as it appears on screen, such as **New project**.
@@ -60,4 +64,4 @@ More editing tools (splitting and deleting clips, the **Razor** and **Hand** too
 - Notes, tips and warnings appear as **Note**, **Tip** and **Important** boxes.
 - Each page starts with a **Video placeholder**: the planned walkthrough video for that page, with its file name, length and the steps it will show. The videos are not recorded yet; they will live in the `videos/` folder next to these pages.
 
-<sub>Last updated: Batch 14, 2026-10-15</sub>
+<sub>Last updated: Batch 15, 2026-10-15</sub>
