@@ -4,6 +4,7 @@
 import type { ClipKind, TrackKind } from "../../core/document/types.js";
 
 const ROUNDED_SQUARE = "M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z";
+const LOCK_BODY = "M5 11h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2z";
 
 const PATHS = {
   film: [ROUNDED_SQUARE, "M7 3v18", "M3 7.5h4", "M3 12h18", "M3 16.5h4", "M17 3v18", "M17 7.5h4", "M17 16.5h4"],
@@ -13,6 +14,18 @@ const PATHS = {
   square: [ROUNDED_SQUARE],
   captions: ["M5 5h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z", "M7 15h4M15 15h2M7 11h2M13 11h4"],
   plus: ["M5 12h14", "M12 5v14"],
+  // Track header toggles (Batch 16): target, lock, hide, height.
+  crosshair: ["M2 12a10 10 0 1 0 20 0a10 10 0 1 0-20 0", "M22 12h-4", "M6 12H2", "M12 6V2", "M12 22v-4"],
+  lock: [LOCK_BODY, "M7 11V7a5 5 0 0 1 10 0v4"],
+  lockOpen: [LOCK_BODY, "M7 11V7a5 5 0 0 1 9.9-1"],
+  eye: ["M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0", "M9 12a3 3 0 1 0 6 0a3 3 0 1 0-6 0"],
+  eyeOff: [
+    "M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49",
+    "M14.084 14.158a3 3 0 0 1-4.242-4.242",
+    "M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143",
+    "m2 2 20 20",
+  ],
+  rows3: [ROUNDED_SQUARE, "M21 9H3", "M21 15H3"],
 } as const;
 
 export type GlyphName = keyof typeof PATHS;

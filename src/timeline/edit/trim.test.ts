@@ -330,16 +330,17 @@ describe("trimEdge: linked clips (spec §6.10)", () => {
     expect(into.mediaBound).toBe("start");
   });
 
-  it("trims one side alone with linked: false (Alt), leaving a sync offset", () => {
+  it("trims one side alone with linked: false (Alt): a J or L cut keeps the pair in sync (Batch 16)", () => {
     const p = linked();
     const inTrim = commit(p, trimEdge(p, "v", "in", 12, { ripple: false, linked: false }));
     expect(span(inTrim, "v")).toEqual([112, 88]);
     expect(span(inTrim, "au")).toEqual([100, 100]);
-    expect(linkOffset(inTrim, "v")).toBe(12);
-    expect(linkOffset(inTrim, "au")).toBe(-12);
+    // The video's start and source in moved together: the same source time still plays at the same frame.
+    expect(linkOffset(inTrim, "v")).toBe(0);
+    expect(linkOffset(inTrim, "au")).toBe(0);
     const outTrim = commit(p, trimEdge(p, "au", "out", -8, { ripple: false, linked: false }));
-    expect(linkOffset(outTrim, "au")).toBe(-8);
-    expect(linkOffset(outTrim, "v")).toBe(8);
+    expect(span(outTrim, "au")).toEqual([100, 92]);
+    expect(linkOffset(outTrim, "au")).toBe(0);
   });
 
   it("ripples after both sides, each on its own track", () => {

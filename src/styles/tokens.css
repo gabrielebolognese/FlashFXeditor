@@ -149,7 +149,7 @@
   --preview-margin: var(--space-5);
 
   /* Timeline (gap: the DS has no timeline metrics; track heights are the spec §6.2 defaults) */
-  --timeline-header-width: 176px;
+  --timeline-header-width: 216px; /* Batch 16: five 16px header toggles beside the name (176px before) */
   --timeline-ruler-height: var(--control-default);
   --timeline-divider-height: var(--space-1);
   --timeline-add-row-height: var(--control-compact);
@@ -165,8 +165,11 @@
   --playhead-head-height: 10px;
   --playhead: var(--live); /* DS: "scrub red, distinct from selection gold" */
   --clip-hover-wash: rgba(255, 255, 255, 0.07); /* spec §6.4 "subtle lift"; the DS menu wash (4%) does not show on clip colors */
-  --track-toggle-size: var(--space-5); /* audio track header M/S toggles (Batch 10; full header UI in Batch 16) */
+  --track-toggle-size: var(--space-5); /* track header toggles: target, lock, mute, solo, hide, height (spec §6.1) */
   --track-toggle-gap: var(--space-1);
+  /* Track states (Batch 16, gap: the DS has none): locked rows hatched (spec §6.12), tracks out of the mix or composite dimmed */
+  --timeline-lock-hatch: var(--border);
+  --timeline-inactive-opacity: var(--disabled-opacity);
   /* Clip drags (Batch 11, gap: the DS has no drag visuals; distances are the spec §6.6/§6.8 defaults) */
   --timeline-drag-threshold: 4px; /* spec §6.8: dead zone before a move starts */
   --timeline-autoscroll-zone: 24px; /* spec §6.6: edge band that scrolls the view while dragging */

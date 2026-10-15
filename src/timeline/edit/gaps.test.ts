@@ -189,6 +189,17 @@ describe("compactGaps (spec §6.11 Close all gaps)", () => {
     expect(starts(next, "b", "b2", "d", "d2", "e")).toEqual([100, 200, 300, 400, 500]);
   });
 
+  it("treats every compacted track as closing its own gaps: one without gaps neither follows nor limits (Batch 16)", () => {
+    // The Batch 15 review's case: V2 has no gap, so it stays; V1 closes all of its 100 frames.
+    const p = project([clip("a", "v1", 0, 100), clip("b", "v1", 200, 100), clip("c", "v2", 0, 200), clip("d", "v2", 200, 200)], TRACKS(), ["a1", "a2"]);
+    const result = compactGaps(p);
+    expect(result.limit).toBeNull();
+    expect(starts(commit(p, result).next, "b", "c", "d")).toEqual([100, 0, 200]);
+    // Compact on V1 alone (the selected tracks): V2 follows the ripple and limits it.
+    const alone = compactGaps(p, ["v1"]);
+    expect(alone.limit).toMatchObject({ trackId: "v2", clipId: "d" });
+  });
+
   it("compacts the given tracks only; nothing to do gives no command", () => {
     const p = project([clip("a", "v1", 10, 40), clip("x", "a1", 20, 40)]);
     const { next } = commit(p, compactGaps(p, ["a1"], { label: "Close all gaps on track" }));

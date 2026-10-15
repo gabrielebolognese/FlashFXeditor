@@ -23,8 +23,18 @@ export interface TimelineMetrics {
   toggleGap: number;
 }
 
-/** The toggles of a track header (audio tracks: mute and solo; the rest come with Batch 16). */
-export type HeaderToggle = "mute" | "solo";
+/** The toggles of a track header (spec §6.1, §6.12): flags, and the height preset (a click cycles it). */
+export type HeaderToggle = "target" | "lock" | "mute" | "solo" | "hide" | "height";
+
+/**
+ * The toggles of a track header by kind, left to right (spec §6.1: target, lock, mute for audio and
+ * video, solo for audio, hide for video; then the height cycle). The caption track is always S.
+ */
+export const HEADER_TOGGLES: Readonly<Record<TrackKind, readonly HeaderToggle[]>> = {
+  video: ["target", "lock", "mute", "hide", "height"],
+  audio: ["target", "lock", "mute", "solo", "height"],
+  caption: ["target", "lock", "hide"],
+};
 
 export interface Rect {
   x: number;
@@ -161,17 +171,44 @@ export class TimelineGeometry {
     return frame >= from && frame <= to;
   }
 
-  /**
-   * The mute and solo toggles of an audio track's header, right-aligned on its first line; null for
-   * other tracks. TODO(batch 16): target, lock and hide toggles, video mute.
-   */
-  headerToggles(row: Row): Record<HeaderToggle, Rect> | null {
-    if (row.kind !== "audio") return null;
+  /** The toggles of a row's header (`HEADER_TOGGLES` of its kind), right-aligned on its first line, left to right. */
+  headerToggles(row: Row): { toggle: HeaderToggle; rect: Rect }[] {
     const { headerPad, headerLine, toggleSize, toggleGap } = this.metrics;
+    const toggles = HEADER_TOGGLES[row.kind];
     const y = row.y + (Math.min(row.height, headerLine) - toggleSize) / 2;
-    const solo = { x: this.headerWidth - headerPad - toggleSize, y, width: toggleSize, height: toggleSize };
-    const mute = { x: solo.x - toggleGap - toggleSize, y, width: toggleSize, height: toggleSize };
-    return { mute, solo };
+    const x0 = this.headerWidth - headerPad - toggles.length * toggleSize - (toggles.length - 1) * toggleGap;
+    return toggles.map((toggle, i) => ({ toggle, rect: { x: x0 + i * (toggleSize + toggleGap), y, width: toggleSize, height: toggleSize } }));
+  }
+
+  /** One toggle of a row's header, or null when its kind has none. */
+  headerToggle(row: Row, toggle: HeaderToggle): Rect | null {
+    return this.headerToggles(row).find((entry) => entry.toggle === toggle)?.rect ?? null;
+  }
+
+  /**
+   * The name of a row's header (spec §6.1: double-click renames): from after the kind icon to before the
+   * toggles, `headerLine` tall on the first line.
+   */
+  headerName(row: Row, iconSize: number, gap: number): Rect {
+    const { headerPad, headerLine, toggleSize, toggleGap } = this.metrics;
+    const count = HEADER_TOGGLES[row.kind].length;
+    const x = headerPad + iconSize + gap;
+    const right = this.headerWidth - headerPad - count * toggleSize - (count - 1) * toggleGap - gap;
+    return { x, y: row.y, width: Math.max(0, right - x), height: Math.min(row.height, headerLine) };
+  }
+
+  /**
+   * The lane a dragged track header lands on (spec §6.12: reorder by dragging the header vertically):
+   * the lane of its kind under view y, the outermost lane beyond the last row and lane 0 toward the
+   * divider (the other kind's side).
+   */
+  reorderLane(kind: LaneKind, y: number): number {
+    const rows = this.laneRows[kind];
+    const outer = rows[rows.length - 1];
+    if (!outer) return 0;
+    if (kind === "video" ? y < outer.y : y >= outer.y + outer.height) return rows.length - 1;
+    const row = this.rowAt(y);
+    return row && row.kind === kind ? row.lane : 0;
   }
 
   /**

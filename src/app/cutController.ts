@@ -7,7 +7,7 @@ import { updateClip } from "../core/commands/basicCommands.js";
 import type { ActionRun } from "../core/commands/ActionRegistry.js";
 import type { ClipId, LabelColor } from "../core/document/types.js";
 import { createStore } from "../core/store/createStore.js";
-import { EMPTY_SELECTION, toSnapshot } from "../core/store/selection.js";
+import { EMPTY_SELECTION, selectedTrackIds, toSnapshot } from "../core/store/selection.js";
 import { selectGap } from "../core/store/sessionStore.js";
 import { deleteClips, rippleDelete } from "../timeline/edit/delete.js";
 import { closeGap, compactGaps, gapAtPlayhead, type CloseResult } from "../timeline/edit/gaps.js";
@@ -89,9 +89,11 @@ const closeGapAction: ActionRun = () => {
   if (gap && commitClose(closeGap(project, gap), "gap")) selectGap(sessionStore, null);
 };
 
-/** `Shift+G`, toolbar Compact (spec §6.11): every gap on the targeted tracks, one undo step. */
+/** `Shift+G`, toolbar Compact (spec §6.11): every gap on the selected tracks, else on the targeted tracks, one undo step. */
 const compactAction: ActionRun = () => {
-  commitClose(compactGaps(documentStore.getState()), "compact");
+  const project = documentStore.getState();
+  const selected = selectedTrackIds(sessionStore.selection.getState()).filter((id) => project.tracks.some((track) => track.id === id && !track.locked));
+  commitClose(compactGaps(project, selected.length > 0 ? selected : undefined), "compact");
 };
 
 /** Gap menu "Close all gaps on track" (spec §6.16): the selected gap's track. */
@@ -189,7 +191,8 @@ export function installCutController(): () => void {
     actions.register("edit.closeAllGapsOnTrack", compactTrackAction),
     actions.register("edit.rename", (context) => {
       if (context?.scope === "media") return startRename();
-      // TODO(batch 16): rename the selected track.
+      // A selected track renames in its header (trackController).
+      if (sessionStore.selection.getState().kind === "track") return actions.run("track.rename");
       startClipRename();
     }),
     // A selected gap that an edit moved or closed is no longer selected.

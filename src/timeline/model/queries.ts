@@ -1,6 +1,7 @@
 // Timeline queries (spec §3.2, P10). Per-track indexes (start-sorted clips, their ends, longest clip,
 // track end) are built lazily and cached per document version, so lookups are binary searches.
-import type { Clip, ClipId, Frame, Project, Track, TrackId } from "../../core/document/types.js";
+import { usPerFrame } from "../../core/document/time.js";
+import { isMediaClip, type Clip, type ClipId, type Frame, type MediaClip, type Project, type Rational, type Track, type TrackId } from "../../core/document/types.js";
 
 export interface Gap {
   trackId: TrackId;
@@ -235,29 +236,96 @@ export function linkedPartners(project: Project, clipId: ClipId): ClipId[] {
   return (linkGroups(project).get(group) ?? []).filter((id) => id !== clipId && !isClipLocked(project, id));
 }
 
+/** The clip a linked clip's sync is measured against: the first clip of the other kind (video or audio) in its link group, else the first other clip; locked ones count. */
+function syncPartner(project: Project, clip: Clip): Clip | null {
+  if (clip.linkGroup === undefined) return null;
+  let partner: Clip | undefined;
+  for (const id of linkGroups(project).get(clip.linkGroup) ?? []) {
+    const other = id === clip.id ? undefined : project.clips[id];
+    if (!other) continue;
+    partner ??= other;
+    if ((other.kind === "audio") !== (clip.kind === "audio")) return other;
+  }
+  return partner ?? null;
+}
+
+/** The timeline frame (fractional) where a media clip's source time 0 would play. */
+function sourceOrigin(clip: MediaClip, fps: Rational): number {
+  return clip.start - clip.in / (usPerFrame(fps) * clip.speed);
+}
+
 /**
- * The sync badge of a linked clip (spec §6.12, §6.10: Alt-trimming one side of a link produces an
- * offset badge): how many frames its start lies after its partner's start or, when the starts match,
- * its end after the partner's end. 0 when aligned or unlinked. The partner is the first clip of the
- * other kind (video or audio) in the link group, else the first other clip; locked ones count.
- * TODO(batch 16): "Move into sync" and the offset it realigns by.
+ * The sync offset of a linked clip (spec §6.12 sync badge `+12` / `-12`): how many frames it plays
+ * after its partner. Clips of the same media (a video and its own audio) are in sync when the same
+ * source time plays at the same frame, so an Alt-trim of one side (a J or L cut) keeps them in sync and
+ * a move of one side does not; clips of different media are in sync when they start together (spec
+ * §5.2). Rounded to whole frames; 0 when aligned or unlinked.
  */
 export function linkOffset(project: Project, clipId: ClipId): Frame {
   const clip = project.clips[clipId];
-  if (!clip || clip.linkGroup === undefined) return 0;
-  let partner: Clip | undefined;
-  for (const id of linkGroups(project).get(clip.linkGroup) ?? []) {
-    const other = id === clipId ? undefined : project.clips[id];
-    if (!other) continue;
-    partner ??= other;
-    if ((other.kind === "audio") !== (clip.kind === "audio")) {
-      partner = other;
-      break;
+  const partner = clip ? syncPartner(project, clip) : null;
+  if (!clip || !partner) return 0;
+  if (isMediaClip(clip) && isMediaClip(partner) && clip.mediaId === partner.mediaId) {
+    const fps = project.settings.fps;
+    // `|| 0`: no -0.
+    return Math.round(sourceOrigin(clip, fps) - sourceOrigin(partner, fps)) || 0;
+  }
+  return clip.start - partner.start;
+}
+
+/**
+ * The clips selected together with `clipId` (spec §6.7, §6.12): its group (selecting any member selects
+ * the group) and, with `linked` (Linked selection on), its linked partners, and theirs, transitively.
+ * Clips on locked tracks are left out; `clipId` itself is not in the result.
+ */
+export function selectionPartners(project: Project, clipId: ClipId, linked: boolean): ClipId[] {
+  const start = project.clips[clipId];
+  if (!start) return [];
+  const groups = groupMembers(project);
+  const links = linkGroups(project);
+  const seen = new Set<ClipId>([clipId]);
+  const queue: Clip[] = [start];
+  for (let clip = queue.pop(); clip; clip = queue.pop()) {
+    const ids = [...(clip.group !== undefined ? (groups.get(clip.group) ?? []) : []), ...(linked && clip.linkGroup !== undefined ? (links.get(clip.linkGroup) ?? []) : [])];
+    for (const id of ids) {
+      const other = project.clips[id];
+      if (seen.has(id) || !other || isClipLocked(project, id)) continue;
+      seen.add(id);
+      queue.push(other);
     }
   }
-  if (!partner) return 0;
-  const start = clip.start - partner.start;
-  return start !== 0 ? start : clip.start + clip.duration - (partner.start + partner.duration);
+  seen.delete(clipId);
+  return [...seen];
+}
+
+// Groups (spec §6.12 `Mod+G`) by document version: the clip ids sharing each `group`.
+const groupCache = new WeakMap<Project["clips"], Map<string, ClipId[]>>();
+
+function groupMembers(project: Project): Map<string, ClipId[]> {
+  let groups = groupCache.get(project.clips);
+  if (!groups) {
+    groups = new Map();
+    for (const clip of Object.values(project.clips)) {
+      if (clip.group === undefined) continue;
+      const ids = groups.get(clip.group);
+      if (ids) ids.push(clip.id);
+      else groups.set(clip.group, [clip.id]);
+    }
+    groupCache.set(project.clips, groups);
+  }
+  return groups;
+}
+
+/** The members of the clip's group (the clip included), or just the clip when it has none. */
+export function groupOf(project: Project, clipId: ClipId): ClipId[] {
+  const group = project.clips[clipId]?.group;
+  return group === undefined ? [clipId] : (groupMembers(project).get(group) ?? [clipId]);
+}
+
+/** The members of the clip's link group (the clip included), or just the clip when it has none. */
+export function linkGroupOf(project: Project, clipId: ClipId): ClipId[] {
+  const group = project.clips[clipId]?.linkGroup;
+  return group === undefined ? [clipId] : (linkGroups(project).get(group) ?? [clipId]);
 }
 
 /** Every clip on an unlocked track (spec §6.7 `Mod+A`), track by track in start order. */

@@ -1,24 +1,24 @@
 // Deleting clips (spec §6.11, §6.19, P2): the pure edits behind Delete (`Delete`/`Backspace`: the clips
 // go, gaps stay) and Ripple delete (`Shift+Delete`/`Shift+Backspace`: the clips go and their spans
 // close with the ripple of `closeGaps`, each track's by its own length, limited by collisions on the
-// other tracks). Linked partners go with a clip unless Linked selection is off; clips on locked tracks
-// are never deleted. Each is one command (one undo step).
+// other tracks). The members of a deleted clip's group go with it (spec §6.12), and so do linked
+// partners unless Linked selection is off; clips on locked tracks are never deleted. Each is one
+// command (one undo step).
 // TODO(batch 36): a transition shared with a neighbor at a deleted clip's cut goes with the clip (the
 // clip's own `transitionIn`/`transitionOut` go with its record already).
-// TODO(batch 16): group members go with the clip.
 import { removeClips } from "../../core/commands/basicCommands.js";
 import type { Command } from "../../core/commands/command.js";
 import type { Clip, ClipId, Project } from "../../core/document/types.js";
-import { isClipLocked, linkedPartners, trackIndex, type Gap } from "../model/queries.js";
+import { isClipLocked, selectionPartners, trackIndex, type Gap } from "../model/queries.js";
 import { closeGaps, type CloseResult } from "./gaps.js";
 
-/** The clips a delete of `ids` removes: those that exist on unlocked tracks and, with `linked`, their partners. */
+/** The clips a delete of `ids` removes: those that exist on unlocked tracks, their groups and, with `linked`, their linked partners. */
 export function deletionSet(project: Project, ids: Iterable<ClipId>, options: { linked?: boolean } = {}): ClipId[] {
   const result = new Set<ClipId>();
   for (const id of ids) {
-    if (!project.clips[id] || isClipLocked(project, id)) continue;
+    if (!project.clips[id] || isClipLocked(project, id) || result.has(id)) continue;
     result.add(id);
-    if (options.linked !== false) for (const partner of linkedPartners(project, id)) result.add(partner);
+    for (const partner of selectionPartners(project, id, options.linked !== false)) result.add(partner);
   }
   return [...result];
 }

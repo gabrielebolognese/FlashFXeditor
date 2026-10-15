@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { makeMedia, makeMediaClip, makeProject, makeTrack, withClips } from "../../core/document/fixtures.js";
-import type { Project } from "../../core/document/types.js";
+import { frameToUs } from "../../core/document/time.js";
+import type { MediaClip, Project } from "../../core/document/types.js";
 import {
   clipAtFrame,
   clipsAtFrame,
@@ -171,7 +172,7 @@ describe("selection queries", () => {
     expect(isClipLocked(project, "lv")).toBe(false);
   });
 
-  it("gives linked clips a sync offset: start first, then end, against the other kind", () => {
+  it("gives linked clips of one media a sync offset by source, against the other kind", () => {
     const project = linked();
     expect(linkOffset(project, "lv")).toBe(0);
     expect(linkOffset(project, "a")).toBe(0);
@@ -179,9 +180,24 @@ describe("selection queries", () => {
     expect(linkOffset(moved, "la")).toBe(12);
     // The video's partner is the audio clip, not the other (locked) video.
     expect(linkOffset(moved, "lv")).toBe(-12);
+    // A shorter audio (an L cut) or one trimmed at its head (a J cut: start and source in move together) stays in sync.
     const shorter = { ...project, clips: { ...project.clips, la: { ...project.clips.la!, duration: 3 } } };
-    expect(linkOffset(shorter, "la")).toBe(-2);
-    expect(linkOffset(shorter, "lv")).toBe(2);
+    expect(linkOffset(shorter, "la")).toBe(0);
+    const la = project.clips.la as MediaClip;
+    const headTrimmed = { ...project, clips: { ...project.clips, la: { ...la, start: 202, duration: 3, in: la.in + 2 * frameToUs(1, project.settings.fps) } } };
+    expect(linkOffset(headTrimmed, "la")).toBe(0);
+    // Slipped by 5 frames of source: out of sync by 5 (the same source time plays 5 frames earlier).
+    const slipped = { ...project, clips: { ...project.clips, la: { ...la, in: la.in + 5 * frameToUs(1, project.settings.fps) } } };
+    expect(linkOffset(slipped, "la")).toBe(-5);
+  });
+
+  it("gives linked clips of different media a sync offset by start", () => {
+    const project = linked();
+    project.media.m2 = makeMedia("m2", "audio");
+    const la = project.clips.la as MediaClip;
+    const other = { ...project, clips: { ...project.clips, la: { ...la, mediaId: "m2", start: 190, in: 3_000_000 } } };
+    expect(linkOffset(other, "la")).toBe(-10);
+    expect(linkOffset(other, "lv")).toBe(10);
   });
 
   it("selects every clip on unlocked tracks", () => {

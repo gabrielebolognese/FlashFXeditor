@@ -247,6 +247,27 @@ describe("AudioScheduler", () => {
     expect(t.scheduler.stats.stopped).toBe(0);
   });
 
+  it("ramps a removed track out before disconnecting it (no click)", () => {
+    vi.useFakeTimers();
+    try {
+      const t = setup({ clips: (p) => [{ ...audioClip(p, "c2", 0, 300), trackId: "a2" }] });
+      t.at(9.95);
+      t.scheduler.sync(t.mapping({ frame: 0, clock: 10 }));
+      const a2 = t.mixer.trackInput("a2") as unknown as FakeGain;
+      expect(a2.outputs).toHaveLength(1);
+      t.edit((p) => ({ ...p, tracks: p.tracks.filter((track) => track.id !== "a2"), clips: {} }));
+      expect(a2.gain.events.at(-1)).toEqual(["ramp", 0, t.ctx.currentTime + RAMP_SECONDS]);
+      // Still connected while the ramp plays out; disconnected after it.
+      expect(a2.outputs).toHaveLength(1);
+      vi.advanceTimersByTime(RAMP_SECONDS * 1000 + 100);
+      expect(a2.outputs).toHaveLength(0);
+      // A track with that id added again gets a new node.
+      expect(t.mixer.trackInput("a2")).not.toBe(a2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("ramps a clip's gain change and restarts a clip that moved", () => {
     const t = setup();
     t.at(9.95);

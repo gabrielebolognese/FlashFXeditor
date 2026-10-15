@@ -44,6 +44,11 @@ export interface CloseOptions {
    * gaps given are their spans.
    */
   removed?: ReadonlySet<ClipId>;
+  /**
+   * More source tracks: tracks that close their own gaps only, so they never follow the ripple, even
+   * when they have no gap to close (Compact on the given tracks, spec §6.11).
+   */
+  sources?: readonly TrackId[];
   /** Command id and undo label. */
   id?: string;
   label?: string;
@@ -90,7 +95,7 @@ export function closeGaps(project: Project, gaps: readonly Gap[], options: Close
   });
   valid.sort((a, b) => a.gap.end - b.gap.end || a.gap.start - b.gap.start);
 
-  const sources = new Set(valid.map((entry) => entry.gap.trackId));
+  const sources = new Set([...valid.map((entry) => entry.gap.trackId), ...(options.sources ?? [])]);
   const lanes: Lane[] = project.tracks.filter((track) => !track.locked && !sources.has(track.id)).map((track) => ({ clips: kept(track.id), next: 0, shift: 0, end: 0 }));
   const starts = new Map<ClipId, Frame>();
   /** Moves a lane's clips starting before `frame` by `shift` (what was closed at or before their starts). */
@@ -202,13 +207,14 @@ export function gapAtPlayhead(project: Project, playhead: Frame): Gap | null {
 }
 
 /**
- * Close all gaps / Compact (spec §6.11, `Shift+G`): every gap on `trackIds` (default: the targeted
- * unlocked tracks), from frame 0 to each track's last clip, closed left to right in one command.
- * TODO(batch 16): the selected tracks first, once tracks can be selected.
+ * Close all gaps / Compact (spec §6.11, `Shift+G`): every gap on `trackIds` (the selected tracks; by
+ * default the targeted unlocked tracks), from frame 0 to each track's last clip, closed left to right in
+ * one command. Each of those tracks closes its own gaps: one with no gap stays as it is (it neither
+ * follows nor limits the others); the other unlocked tracks follow the ripple.
  */
 export function compactGaps(project: Project, trackIds?: readonly TrackId[], options: { label?: string } = {}): CloseResult {
   const ids = trackIds ?? project.tracks.filter((track) => track.targeted && !track.locked).map((track) => track.id);
   const gaps: Gap[] = [];
   for (const trackId of ids) gaps.push(...trackGaps(project, trackId));
-  return closeGaps(project, gaps, { id: "gap.closeAll", label: options.label ?? "Close all gaps" });
+  return closeGaps(project, gaps, { id: "gap.closeAll", label: options.label ?? "Close all gaps", sources: ids });
 }

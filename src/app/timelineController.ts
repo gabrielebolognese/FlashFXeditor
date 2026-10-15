@@ -1,15 +1,15 @@
 // Timeline wiring (spec §6): the timeline view, the zoom, center playhead and edit-point/marker
 // navigation actions (§6.2, §6.5, §6.6; the transport keys are in playbackController), the toolbar's
 // direct-DOM bindings (zoom slider, timecode field, duration: no React render while they change, P1),
-// insert at the playhead from the media panel (§6.14), the audio track header mute/solo toggles
-// (§6.12), clip moves (drops, nudges, Alt+Up/Down, §6.8), edits (trim, roll, slip, slide and rate
+// insert at the playhead from the media panel (§6.14), the track header gestures (toggles, reorder,
+// rename: handled by trackController, §6.12), clip moves (drops, nudges, Alt+Up/Down, §6.8), edits (trim, roll, slip, slide and rate
 // stretch drags, Q/W/E, Ripple mode, §6.10), the tools (§6.18), the snap toggle (§6.9), select all /
 // deselect (§6.7), Esc for gestures and the dev clip generator.
 import { addTrack, updateClip, updateTrack, type ClipPatch, type TrackPatch } from "../core/commands/basicCommands.js";
 import type { ActionRun } from "../core/commands/ActionRegistry.js";
 import { emptyTrack, nextTrackName } from "../core/document/project.js";
 import { formatTimecode, parseTimecode } from "../core/document/time.js";
-import type { ClipId, Frame, MediaId, Project, TrackId, TrackKind } from "../core/document/types.js";
+import type { ClipId, Frame, MediaId, Project, TrackKind } from "../core/document/types.js";
 import { detectPlatform } from "../core/keyboard/keys.js";
 import { createStore } from "../core/store/createStore.js";
 import { EMPTY_SELECTION, selectClips, toSnapshot } from "../core/store/selection.js";
@@ -18,12 +18,12 @@ import { insertCommands, planMediaInsert } from "../timeline/edit/insertMedia.js
 import { applyMoveRequest, moveToAdjacentLane, nudgeClips, type MoveRefusal, type MoveRequest, type MoveResult } from "../timeline/edit/move.js";
 import { extendToPlayhead, planEdit, resolveTrim, trimToPlayhead, type TrimLimit, type TrimResult } from "../timeline/edit/trim.js";
 import { contentEnd, laneOf, markerFrames, navigationPoints, nextEditPoint, prevEditPoint, selectableClipIds } from "../timeline/model/queries.js";
-import type { HeaderToggle } from "../timeline/view/geometry.js";
 import type { TrimRequest } from "../timeline/view/gestures/trimClip.js";
 import { TimelineView } from "../timeline/view/TimelineView.js";
 import { pxToSlider, sliderToPx, zoomLimits, ZOOM_IN_STEP, ZOOM_OUT_STEP, type ZoomContext } from "../timeline/view/zoom.js";
 import { showToast } from "../ui/toasts.js";
 import { openContextMenu, razorCut } from "./cutController.js";
+import { moveTrackTo, startTrackRename, toggleTrack } from "./trackController.js";
 import { generateCutTimeline, generateTestClips } from "./timelineDev.js";
 import { actions, documentStore, idleQueue, layoutStore, scheduler, sessionStore, themeBridge } from "./services.js";
 
@@ -33,14 +33,6 @@ const SLIDER_STEPS = 1000;
 function addTrackOfKind(kind: TrackKind): void {
   const { tracks } = documentStore.getState();
   documentStore.dispatch(addTrack(emptyTrack(crypto.randomUUID(), kind, nextTrackName(tracks, kind))));
-}
-
-/** Mute or solo of an audio track (one undo step; the audio engine applies it at once while playing). */
-export function toggleTrack(trackId: TrackId, toggle: HeaderToggle): void {
-  const track = documentStore.getState().tracks.find((candidate) => candidate.id === trackId);
-  if (!track) return;
-  if (toggle === "mute") documentStore.dispatch(updateTrack(trackId, { muted: !track.muted }, track.muted ? "Unmute track" : "Mute track"));
-  else documentStore.dispatch(updateTrack(trackId, { solo: !track.solo }, track.solo ? "Unsolo track" : "Solo track"));
 }
 
 const newId = () => crypto.randomUUID();
@@ -132,6 +124,8 @@ export const timelineView = new TimelineView({
   theme: themeBridge,
   onAddTrack: addTrackOfKind,
   onToggleTrack: toggleTrack,
+  onReorderTrack: moveTrackTo,
+  onRenameTrack: startTrackRename,
   onMoveClips: moveClips,
   onTrimEdge: trimClip,
   // The preview shows the trim's new edge frame while the edge moves (spec §6.10).
@@ -370,7 +364,7 @@ export function installTimelineController(): () => void {
       list: () => Object.values(documentStore.getState().clips),
       update: (clipId: string, patch: ClipPatch) => documentStore.dispatch(updateClip(clipId, patch)),
     };
-    // Track flags until the header buttons exist (Batch 16), e.g. `__editor.tracks.update("V2", { locked: true })`.
+    // Raw track flags for the acceptance checks, e.g. `__editor.tracks.update("V2", { locked: true })`.
     editor.tracks = {
       list: () => documentStore.getState().tracks.map(({ id, name, kind, locked }) => ({ id, name, kind, locked })),
       update: (nameOrId: string, patch: TrackPatch) => {

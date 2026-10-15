@@ -7,6 +7,8 @@ import type { Project, TrackId } from "../core/document/types.js";
 
 /** Ramp of every gain change, start and stop (spec §8: 10 ms). */
 export const RAMP_SECONDS = 0.01;
+/** Time after a removed track's ramp before its node is disconnected (timers are not sample-exact). */
+const DISCONNECT_MARGIN_MS = 50;
 /** Analyser window: longer than an animation frame, so peaks between two reads are not missed. */
 export const METER_FFT_SIZE = 2048;
 
@@ -107,15 +109,19 @@ export class AudioMixer {
     return node;
   }
 
-  /** Applies mute/solo from the document; tracks gone are disconnected. */
+  /**
+   * Applies mute/solo from the document. A track gone (deleted, or an undone insert that created it)
+   * ramps out and is disconnected once the ramp is over, so sound still playing on it never clicks.
+   */
   updateTracks(project: Pick<Project, "tracks">): void {
     const audible = audibleTracks(project);
     const at = this.ctx.currentTime;
     for (const [trackId, node] of this.tracks) {
       const heard = audible.get(trackId);
       if (heard === undefined) {
-        node.disconnect();
         this.tracks.delete(trackId);
+        rampTo(node.gain, 0, at);
+        setTimeout(() => node.disconnect(), RAMP_SECONDS * 1000 + DISCONNECT_MARGIN_MS);
       } else if (heard !== this.audible.get(trackId)) rampTo(node.gain, heard ? 1 : 0, at);
     }
     this.audible = audible;

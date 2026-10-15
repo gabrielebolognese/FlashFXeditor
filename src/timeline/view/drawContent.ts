@@ -1,15 +1,18 @@
 // The timeline content canvas (spec §6.17): track backgrounds, clips, the content end marker, the
-// ruler, the track header column, the divider and the "+ track" rows. Redrawn only when the
-// document, the selection, the zoom/scroll, the size or the theme change, never for the playhead.
-// Clips are virtualized per track (binary search on start with a longest-clip lookback, P10).
+// ruler, the track header column (kind icon, name and toggles, spec §6.1), the divider and the
+// "+ track" rows. Locked rows are hatched (§6.12); clips of tracks out of the composite or the mix
+// (muted, hidden, not soloed) are dimmed. Redrawn only when the document, the selection, the
+// zoom/scroll, the size or the theme change, never for the playhead. Clips are virtualized per track
+// (binary search on start with a longest-clip lookback, P10).
+import { audibleTracks } from "../../audio/AudioMixer.js";
 import { formatSpeed } from "../../core/document/time.js";
-import type { Clip, Project, Track } from "../../core/document/types.js";
+import type { Clip, Project, Track, TrackId } from "../../core/document/types.js";
 import type { Selection } from "../../core/store/selection.js";
 import type { Theme } from "../../core/theme/theme.js";
 import { clipsInRange, contentEnd, linkOffset } from "../model/queries.js";
 import { clipLod, clipSpan, devicePx } from "./clipLayout.js";
-import type { Rect, Row, TimelineGeometry } from "./geometry.js";
-import { CLIP_GLYPHS, drawGlyph, TRACK_GLYPHS } from "./glyphs.js";
+import type { HeaderToggle, Rect, Row, TimelineGeometry } from "./geometry.js";
+import { CLIP_GLYPHS, drawGlyph, TRACK_GLYPHS, type GlyphName } from "./glyphs.js";
 import { layoutRuler } from "./ruler.js";
 import type { TextCache } from "./textCache.js";
 
@@ -100,9 +103,23 @@ export function drawContent(scene: ContentScene): ContentStats {
   return { clipsDrawn };
 }
 
+/**
+ * Tracks whose clips are seen or heard (spec §6.12): video tracks neither muted nor hidden, audio
+ * tracks audible (not muted; soloed when any is), caption tracks not hidden.
+ */
+export function activeTracks(project: Project): ReadonlySet<TrackId> {
+  const audible = audibleTracks(project);
+  const active = new Set<TrackId>();
+  for (const track of project.tracks) {
+    if (track.kind === "audio" ? audible.get(track.id) : !track.hidden && !(track.kind === "video" && track.muted)) active.add(track.id);
+  }
+  return active;
+}
+
 function drawClips(scene: ContentScene): number {
-  const { ctx, geometry, project } = scene;
+  const { ctx, dpr, geometry, project, theme } = scene;
   const { from, to } = geometry.visibleFrames;
+  const active = activeTracks(project);
   ctx.save();
   ctx.beginPath();
   ctx.rect(geometry.area.x, geometry.area.y, geometry.area.width, geometry.area.height);
@@ -112,14 +129,40 @@ function drawClips(scene: ContentScene): number {
     if (row.y + row.height <= geometry.area.y || row.y >= geometry.height) continue;
     const track = project.tracks[row.index] as Track;
     const clips = clipsInRange(project, track.id, Math.floor(from), Math.ceil(to) + 1);
+    if (!active.has(track.id)) ctx.globalAlpha = theme.timeline.inactiveOpacity;
     clips.forEach((clip, i) => {
       const next = clips[i + 1];
       drawClip(scene, clip, row, track, next !== undefined && next.start === clip.start + clip.duration, linkOffset(project, clip.id));
     });
+    ctx.globalAlpha = 1;
+    // Locked: no edits, no selection (spec §6.12), drawn with a diagonal hatch over the row.
+    if (track.locked) drawDiagonalHatch(ctx, dpr, geometry.area.x, geometry.area.x + geometry.area.width, row.y, row.height - 1 / dpr, theme.timeline.lockHatch, theme.timeline.hatchGap);
     drawn += clips.length;
   }
   ctx.restore();
   return drawn;
+}
+
+/**
+ * Diagonal lines over [left, right) x [y, y + height), `gap` apart on a fixed grid (by x, so the
+ * pattern never crawls while what it covers moves), 1 device px wide.
+ */
+export function drawDiagonalHatch(ctx: CanvasRenderingContext2D, dpr: number, left: number, right: number, y: number, height: number, color: string, gap: number): void {
+  if (right <= left || height <= 0) return;
+  const step = Math.max(gap, 1);
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(left, y, right - left, height);
+  ctx.clip();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1 / dpr;
+  ctx.beginPath();
+  for (let x = Math.floor((left - height) / step) * step; x < right; x += step) {
+    ctx.moveTo(x, y + height);
+    ctx.lineTo(x + height, y);
+  }
+  ctx.stroke();
+  ctx.restore();
 }
 
 /**
@@ -238,55 +281,96 @@ function drawContentEnd(scene: ContentScene): void {
 }
 
 function drawHeaders(scene: ContentScene): void {
-  const { ctx, geometry, project, theme, text } = scene;
-  const pad = theme.space[3];
-  const icon = theme.icon.size;
-  ctx.font = fontOf(theme, "body");
-  ctx.textBaseline = "middle";
+  const { geometry, project, selection } = scene;
+  const selected = selection.kind === "track" ? selection.trackIds : undefined;
   for (const row of geometry.rows) {
     if (row.y + row.height <= geometry.area.y || row.y >= geometry.height) continue;
     const track = project.tracks[row.index] as Track;
-    // Icon, name and toggles on the first line, whatever the row height.
-    // TODO(batch 16): target, lock and hide toggles, video mute; double-click rename.
-    const centerY = row.y + Math.min(row.height, theme.control.comfortable) / 2;
-    drawGlyph(ctx, TRACK_GLYPHS[track.kind], pad, centerY - icon / 2, icon, theme.color.textTertiary);
-    const textX = pad + icon + theme.space[2];
-    const toggles = geometry.headerToggles(row);
-    const textRight = toggles ? toggles.mute.x - theme.space[2] : geometry.headerWidth - pad;
-    ctx.font = fontOf(theme, "body");
-    ctx.fillStyle = theme.color.textSecondary;
-    ctx.fillText(text.fit(ctx, track.name, textRight - textX), textX, centerY);
-    if (toggles) {
-      drawToggle(scene, toggles.mute, "M", track.muted);
-      drawToggle(scene, toggles.solo, "S", track.solo);
-    }
+    drawHeader(scene, row, track, selected?.has(track.id) === true);
   }
   drawAddRow(scene, geometry.addVideo, "Video track");
   drawAddRow(scene, geometry.addAudio, "Audio track");
 }
 
-/** A header toggle (mute, solo): a letter in a hairline square, accent when on (its hover wash is on the overlay). */
-function drawToggle(scene: ContentScene, rect: Rect, letter: string, on: boolean): void {
+/** What drawing a track header needs (the overlay draws the header of a dragged track too). */
+export type HeaderScene = Pick<ContentScene, "ctx" | "dpr" | "geometry" | "theme" | "text">;
+
+/**
+ * One track header (spec §6.1), on its first line whatever the row height: the kind icon, the name and
+ * the toggles. A selected track (the properties panel shows it) sits on a raised surface with its icon
+ * in the accent and its name in the primary text color.
+ */
+export function drawHeader(scene: HeaderScene, row: Row, track: Track, selected: boolean): void {
+  const { ctx, dpr, geometry, theme, text } = scene;
+  const { color } = theme;
+  if (selected) {
+    ctx.fillStyle = color.surface3;
+    ctx.fillRect(0, row.y, geometry.headerWidth, row.height - 1 / dpr);
+  }
+  const icon = theme.icon.size;
+  const name = geometry.headerName(row, icon, theme.space[2]);
+  const centerY = name.y + name.height / 2;
+  drawGlyph(ctx, TRACK_GLYPHS[track.kind], name.x - theme.space[2] - icon, centerY - icon / 2, icon, selected ? color.accent : color.textTertiary);
+  ctx.font = fontOf(theme, "body");
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = selected ? color.textPrimary : color.textSecondary;
+  ctx.fillText(text.fit(ctx, track.name, name.width), name.x, centerY);
+  for (const { toggle, rect } of geometry.headerToggles(row)) drawToggle(scene, rect, toggle, track);
+}
+
+/** How a header toggle looks: its glyph (or letter) and whether it is on. */
+function toggleLook(toggle: HeaderToggle, track: Track): { glyph: GlyphName | null; letter: string; on: boolean } {
+  switch (toggle) {
+    case "target":
+      return { glyph: "crosshair", letter: "", on: track.targeted };
+    case "lock":
+      return { glyph: track.locked ? "lock" : "lockOpen", letter: "", on: track.locked };
+    case "mute":
+      return { glyph: null, letter: "M", on: track.muted };
+    case "solo":
+      return { glyph: null, letter: "S", on: track.solo };
+    case "hide":
+      return { glyph: track.hidden ? "eyeOff" : "eye", letter: "", on: track.hidden };
+    case "height":
+      return { glyph: "rows3", letter: "", on: false };
+  }
+}
+
+/**
+ * A header toggle in a hairline square (its hover wash is on the overlay). Lock, mute, solo and hide
+ * are exceptions to the default, drawn in the accent when on (gold marks the active state). Every track
+ * starts targeted, so the target toggle's on state is neutral (a raised square, secondary glyph) and
+ * its off state dim: the column is not gold all over.
+ */
+function drawToggle(scene: HeaderScene, rect: Rect, toggle: HeaderToggle, track: Track): void {
   const { ctx, dpr, theme } = scene;
   const { color } = theme;
+  const look = toggleLook(toggle, track);
+  const target = toggle === "target";
   const line = 1 / dpr;
   const x = snap(rect.x, dpr) + line / 2;
   const y = snap(rect.y, dpr) + line / 2;
   const size = snap(rect.width, dpr) - line;
   ctx.beginPath();
   ctx.roundRect(x, y, size, size, theme.radius.sm);
-  if (on) {
-    ctx.fillStyle = color.accentWash;
+  if (look.on) {
+    ctx.fillStyle = target ? color.surface3 : color.accentWash;
     ctx.fill();
   }
-  ctx.strokeStyle = on ? color.accentDim : color.hairline;
+  ctx.strokeStyle = look.on ? (target ? color.border : color.accentDim) : color.hairline;
   ctx.lineWidth = line;
   ctx.stroke();
+  const ink = look.on ? (target ? color.textSecondary : color.accent) : target ? color.textMuted : color.textTertiary;
+  if (look.glyph) {
+    const glyph = theme.icon.small;
+    drawGlyph(ctx, look.glyph, rect.x + (rect.width - glyph) / 2, rect.y + (rect.height - glyph) / 2, glyph, ink);
+    return;
+  }
   ctx.font = fontOf(theme, "caption");
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillStyle = on ? color.accent : color.textTertiary;
-  ctx.fillText(letter, rect.x + rect.width / 2, rect.y + rect.height / 2);
+  ctx.fillStyle = ink;
+  ctx.fillText(look.letter, rect.x + rect.width / 2, rect.y + rect.height / 2);
   ctx.textAlign = "left";
 }
 

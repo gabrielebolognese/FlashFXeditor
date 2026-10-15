@@ -27,6 +27,13 @@
   letter-spacing: var(--type-caption-track);
 }
 
+/* A read-only value (the Track section's kind). */
+.value {
+  color: var(--text-primary);
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-track);
+}
+
 .pair {
   display: grid;
   grid-template-columns: 1fr 1fr;
