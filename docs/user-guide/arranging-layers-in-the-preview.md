@@ -1,6 +1,6 @@
 # Arranging layers in the preview
 
-Every video or image clip under the playhead is a layer of the picture. In the Preview panel you can work on those layers directly: click one to select it, drag it to a new place, resize and rotate it with its handles, and change which layer is on top. Use this to place a logo in a corner, enlarge a shot to cut away its edges, tilt a sticker, or build a picture-in-picture layout.
+Every video or image clip under the playhead is a layer of the picture. In the Preview panel you can work on those layers directly: click one to select it, drag it to a new place, resize and rotate it with its handles, and change which layer is on top. Use this to place a logo in a corner, enlarge a shot to cut away its edges, tilt a sticker, or build a picture-in-picture layout. Layers snap into line with the frame and with each other as you drag; see [Snapping and smart guides in the preview](snapping-and-smart-guides.md).
 
 > **Video placeholder: Arrange layers in the preview**
 > - File: `videos/arranging-layers-in-the-preview/overview.mp4` (not recorded yet)
@@ -112,12 +112,12 @@ When none of the layers at that spot is selected, the first <kbd>Alt</kbd>+click
 
 - The cursor shows four arrows over the selected layer.
 - Hold <kbd>Shift</kbd> to move only horizontally or only vertically: the direction you dragged further in. You can press and release <kbd>Shift</kbd> during the drag.
-- Layers move in whole pixels of the project frame.
+- Layers move in whole pixels of the project frame. With **Snap** on, a layer near the center or an edge of the frame, or near another layer, snaps onto it, and gold guides show what it lines up with. Hold <kbd>S</kbd> during the drag to move it freely. See [Snap a layer into place](snapping-and-smart-guides.md#snap-a-layer-into-place).
 - A press anywhere inside the gold box moves the whole selection, also where another layer lies on top of the selected one. If you release without dragging, the click selects the top layer at that spot.
 - A drag pauses playback.
 - Each drag is one step in the history, named **Move layer** (or **Move layers** for several).
 
-> **Tip:** Zoom the preview in to place a layer precisely, and turn on a safe zone to keep it clear of the platform's buttons. See [Preview zoom, overlays and fullscreen](preview-zoom-overlays-fullscreen.md).
+> **Tip:** Zoom the preview in to place a layer precisely, and turn on a safe zone to keep it clear of the platform's buttons: layers then also snap to the edges of its safe area. See [Preview zoom, overlays and fullscreen](preview-zoom-overlays-fullscreen.md).
 
 ## Resize a layer
 
@@ -142,7 +142,8 @@ Drag one of the eight handles of the selected layer:
 | Any handle, with <kbd>Alt</kbd> | As above, but around the center of the layer: both sides move. |
 
 - The cursor shows a two-headed arrow in the direction the handle moves.
-- **100% snap.** When the scale passes within 2% of 100%, it holds at exactly 100%, and the sides of the box at the dragged handle turn into a thicker gold line. 100% is the media's own size: one pixel of the video or image on one pixel of the project frame. Keep dragging to go past it.
+- **100% snap.** While snapping is on, the scale holds at exactly 100% when it passes within 2% of it, and the sides of the box at the dragged handle turn into a thicker gold line. 100% is the media's own size: one pixel of the video or image on one pixel of the project frame. Keep dragging to go past it, or hold <kbd>S</kbd> to pass it without stopping.
+- **Edge snap.** While snapping is on and the layer is upright, the edge you drag also snaps to the frame, the overlays shown and the other layers, with a gold guide. See [Snap an edge while you resize](snapping-and-smart-guides.md#snap-an-edge-while-you-resize).
 - A layer can't get smaller than 1%. Dragging a handle past the opposite side does not flip the layer.
 - When the layer is small on screen, the side handles hide (a side must be at least 28 pixels long on screen); the corner handles always show. Zoom the preview in to get the side handles back.
 - You can press and release <kbd>Shift</kbd> and <kbd>Alt</kbd> during the drag; the layer follows at once.
@@ -156,7 +157,7 @@ Drag one of the eight handles of the selected layer:
 2. Drag around the layer. It turns around its anchor point, which is the center of the layer unless you moved it (see [Move the anchor point](#move-the-anchor-point)).
 3. Release.
 
-- Without <kbd>Shift</kbd>, the angle changes freely in steps of 0.1°.
+- Without <kbd>Shift</kbd>, the angle changes freely in steps of 0.1°. The **Snap** switch does not affect rotation.
 - Hold <kbd>Shift</kbd> to stop at 0°, 45°, 90° and every other multiple of 45° when the angle is within 3° of it.
 - Positive angles turn clockwise. Keep dragging around to turn more than one full turn.
 - Each drag is one step in the history, named **Rotate layer** (or **Rotate layers**).
@@ -171,6 +172,8 @@ The anchor point is the point a layer turns around. It starts at the center of t
 4. Release. The layer stays where it is; only the point it turns around has moved.
 
 - The marker shows only when exactly one layer is selected.
+- With **Smart guides** on, holding <kbd>Alt</kbd> also shows the distances from the layer to its neighbors and to the frame edges. See [Measure distances with Alt](snapping-and-smart-guides.md#measure-distances-with-alt).
+- The anchor point does not snap.
 - <kbd>Alt</kbd>+click on the marker without dragging works like <kbd>Alt</kbd>+click elsewhere: it selects the next layer under the pointer.
 - **X** and **Y** in the move readout give the position of the anchor point. See [Read the numbers while you drag](#read-the-numbers-while-you-drag).
 - <kbd>Alt</kbd> on a resize handle still resizes around the center of the layer, not around the anchor point.
@@ -185,7 +188,7 @@ With one or more layers selected in the preview, and the Preview panel active (c
 | <kbd>←</kbd>, <kbd>→</kbd>, <kbd>↑</kbd>, <kbd>↓</kbd> | 1 pixel |
 | <kbd>Shift</kbd>+<kbd>←</kbd>, <kbd>Shift</kbd>+<kbd>→</kbd>, <kbd>Shift</kbd>+<kbd>↑</kbd>, <kbd>Shift</kbd>+<kbd>↓</kbd> | 10 pixels |
 
-- The pixels are pixels of the project frame, whatever the zoom of the preview.
+- The pixels are pixels of the project frame, whatever the zoom of the preview. Nudges never snap.
 - Hold a key to keep moving the layers.
 - Presses less than 0.3 seconds apart are one step in the history, named **Nudge layer** (or **Nudge layers**). One <kbd>Ctrl</kbd>+<kbd>Z</kbd> undoes the whole burst.
 - When no selected layer is under the playhead, <kbd>←</kbd> and <kbd>→</kbd> step frames as in the other panels (<kbd>Shift</kbd>: 5 frames), and <kbd>↑</kbd> and <kbd>↓</kbd> do nothing.
@@ -212,6 +215,7 @@ Select several layers with <kbd>Shift</kbd>+click, <kbd>Ctrl</kbd>+click or a re
 | Outside a corner | Every layer turns by the same angle around the center of the box, and their positions turn with it. With <kbd>Shift</kbd>, the angle goes in 45° steps. |
 
 - The box is upright around all the layers. While you rotate, it turns with them; after you release, it is upright again around their new places.
+- When you move or resize several layers, the box snaps as one, and the selected layers are not targets for each other. See [Snapping and smart guides in the preview](snapping-and-smart-guides.md).
 - Only the selected layers under the playhead change. Selected clips elsewhere on the timeline, and their sound, stay as they are.
 - The anchor marker is not available with several layers.
 - Each drag is one step in the history, for example **Move layers** or **Scale layers**.
@@ -227,7 +231,7 @@ While you drag, a readout next to the pointer shows the value you change:
 | Rotate | **45.0°**: the layer's angle | **Δ 30.0°**: the change from where you started |
 | Anchor point | **Anchor 50% · 50%**: where the anchor sits across the width and down the height of the layer | |
 
-A layer you just added, centered and fitted to the frame, reads **X 0 · Y 0**. Typing exact values is available in a later version.
+A layer you just added, centered and fitted to the frame, reads **X 0 · Y 0**. A snapped layer can land between two pixels; the readout then shows the nearest whole pixel. Typing exact values is available in a later version.
 
 ## Use the layer menu
 
@@ -280,7 +284,6 @@ See [Undo and redo changes](projects-and-saving.md#undo-and-redo-changes).
 
 These parts are available in a later version:
 
-- Layers don't snap to the frame edges, the center or each other, and smart guides are not drawn.
 - **Fit**, **Fill**, **Center** and flipping a layer with one click, and typing exact position, scale and rotation values in **Edit Properties**.
 - Cropping a layer with handles in the preview.
 - Text layers.
@@ -288,6 +291,7 @@ These parts are available in a later version:
 
 ## Related pages
 - [Preview and playback](preview-and-playback.md)
+- [Snapping and smart guides in the preview](snapping-and-smart-guides.md)
 - [Preview zoom, overlays and fullscreen](preview-zoom-overlays-fullscreen.md)
 - [Adding media to the timeline](adding-media-to-the-timeline.md)
 - [Timeline](timeline.md)
@@ -297,4 +301,4 @@ These parts are available in a later version:
 - [Projects and saving](projects-and-saving.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 22, 2026-10-16</sub>
+<sub>Last updated: Batch 23, 2026-10-16</sub>

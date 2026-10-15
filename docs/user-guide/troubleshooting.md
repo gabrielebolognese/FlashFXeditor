@@ -1,6 +1,6 @@
 # Troubleshooting
 
-This page helps you when something does not work as expected: the editor does not start in your browser, the preview stays empty, a folder or a file does not open, a clip drag, a trim, a split, a delete, a timeline tool, a typed timecode, a marker, an in/out range or **Lift** and **Extract** do something you did not expect, media from the Media panel lands somewhere you did not expect, a clip shows no thumbnails, the preview zoom, overlays or fullscreen behave unexpectedly, a picture in the preview can't be selected or moves unexpectedly, playback stutters, or you hear no sound. Each problem lists what you see, why it happens and what to do. The last section lists what the current version cannot do yet.
+This page helps you when something does not work as expected: the editor does not start in your browser, the preview stays empty, a folder or a file does not open, a clip drag, a trim, a split, a delete, a timeline tool, a typed timecode, a marker, an in/out range or **Lift** and **Extract** do something you did not expect, media from the Media panel lands somewhere you did not expect, a clip shows no thumbnails, the preview zoom, overlays or fullscreen behave unexpectedly, a picture in the preview can't be selected, moves unexpectedly or doesn't snap where you expect, playback stutters, or you hear no sound. Each problem lists what you see, why it happens and what to do. The last section lists what the current version cannot do yet.
 
 > **Video placeholder: Fix common problems**
 > - File: `videos/troubleshooting/overview.mp4` (not recorded yet)
@@ -30,6 +30,7 @@ This page helps you when something does not work as expected: the editor does no
 >   22. Choose **400%** in the preview **Zoom** menu with a 4K clip under the playhead and press <kbd>Space</kbd>: the status line reads **Auto: reduced** and the picture is soft. Press <kbd>Space</kbd> again: a moment later the picture sharpens and the status line reads **Auto: full**.
 >   23. Click a picture in the preview and press <kbd>→</kbd>: the picture moves 1 pixel and the playhead stays. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>, click the area around the frame and press <kbd>→</kbd>: the playhead steps one frame.
 >   24. With a logo on V2 over a video on V1, click the eye in the V2 header and click where the logo was: the video on V1 is selected. Click the eye again, click the logo, then <kbd>Alt</kbd>+click it: the video under it is selected.
+>   25. Drag the logo slowly toward the middle of the frame: it jumps to the center and gold lines cross the frame. Keep the mouse button down and hold <kbd>S</kbd>: it moves freely and the lines disappear. Release the mouse button, then click **Smart guides** in the preview header so it is no longer gold, and drag the logo next to another picture: it no longer snaps to it. Click **Smart guides** again.
 
 ## In this page
 - [Browser and graphics](#browser-and-graphics)
@@ -114,6 +115,9 @@ This page helps you when something does not work as expected: the editor does no
   - [A picture in the preview can't be selected](#a-picture-in-the-preview-cant-be-selected)
   - [A click in the preview selects the wrong picture](#a-click-in-the-preview-selects-the-wrong-picture)
   - [A drag moves a picture other than the one under the pointer](#a-drag-moves-a-picture-other-than-the-one-under-the-pointer)
+  - [A picture jumps while you drag it in the preview](#a-picture-jumps-while-you-drag-it-in-the-preview)
+  - [Pictures in the preview don't snap](#pictures-in-the-preview-dont-snap)
+  - [Gold lines and numbers appear when you hold Alt](#gold-lines-and-numbers-appear-when-you-hold-alt)
   - [A resize stops at 100%](#a-resize-stops-at-100)
   - [The side handles are missing](#the-side-handles-are-missing)
   - [Bring forward or Send backward created a new track](#bring-forward-or-send-backward-created-a-new-track)
@@ -824,7 +828,7 @@ See [Audio](audio.md).
 **Cause:** One of these:
 - **Rulers above 100%** shows only while you zoom in above 100%, and **Pixel grid from 800%** only at 800% or more.
 - **Cells per side** changes the grid only while **Custom** is chosen under **Grid**.
-- **Smart guides** has no visible effect yet: the guides are available in a later version.
+- **Smart guides** draws nothing by itself. Its gold guides show only while you drag a picture with snapping on, or while you hold <kbd>Alt</kbd> with a picture selected. See [Pictures in the preview don't snap](#pictures-in-the-preview-dont-snap).
 - The preview shows two frames side by side while you roll a cut, slip or slide a clip. The overlays come back when you release the mouse button.
 - A safe zone area is too small on screen for its name: the shading shows without the name. Zoom in to read it.
 
@@ -871,13 +875,44 @@ See [Audio](audio.md).
 
 **Fix:** Press <kbd>Esc</kbd> before you release, or <kbd>Ctrl</kbd>+<kbd>Z</kbd> after. Click the picture you want first (a click without dragging selects the top picture at that spot), then drag it. See [Move a layer](arranging-layers-in-the-preview.md#move-a-layer).
 
+### A picture jumps while you drag it in the preview
+
+**Symptom:** While you move a picture in the preview, it jumps a few pixels onto the center or an edge of the frame, or into line with another picture, and a thin gold line appears. You can't place it just next to that spot. Or, while you drag a handle, the edge stops at the frame edge or at another picture's edge.
+
+**Cause:** Snapping. When an edge or the center of the picture comes within 6 pixels on screen of the frame, an overlay that is shown (thirds, a safe area, title / action safe) or another picture, it jumps onto it, and holds there until the pointer moves more than 6 pixels past it.
+
+**Fix:** Hold <kbd>S</kbd> during the drag to place the picture freely. Zoom the preview in, so that 6 pixels cover less of the frame, or nudge the picture with the arrow keys: nudges never snap. To stop snapping to other pictures but keep the frame, turn **Smart guides** off; to stop all snapping, click **Snap** or press <kbd>S</kbd>. See [Place a layer without snapping](snapping-and-smart-guides.md#place-a-layer-without-snapping).
+
+### Pictures in the preview don't snap
+
+**Symptom:** A picture you drag in the preview doesn't snap, or doesn't snap to a particular target, and no gold guides appear.
+
+**Cause:** One of these:
+- **Snap** is off: the magnet in the Preview panel header and in the timeline toolbar is not gold. <kbd>S</kbd> turns it on or off in every panel, and an <kbd>S</kbd> pressed just before a drag counts too.
+- **Smart guides** is off: pictures then snap only to the frame and the overlays shown, not to each other, and equal spacing doesn't apply.
+- The target picture is on a hidden or muted video track. Only pictures that are drawn are targets.
+- The thirds snap only while **Grid** is **Thirds**, and a safe area only while its safe zone or **Title / action safe** shows. The **Squares** and **Custom** grids are not targets.
+- You rotate the picture or drag its anchor point. Rotation snaps only to 45° steps with <kbd>Shift</kbd>, and the anchor point never snaps.
+- You resize a rotated picture. Edges snap only while the box is upright (not rotated, or rotated by a multiple of 90°).
+- For equal spacing: the picture is not between two others in line with it, another picture sits between them, or it doesn't fit in the space.
+
+**Fix:** Turn on **Snap** and **Smart guides** so both are gold, show the overlay you want to snap to, and check the track of the target picture. See [Choose what layers snap to](snapping-and-smart-guides.md#choose-what-layers-snap-to) and [Space layers evenly](snapping-and-smart-guides.md#space-layers-evenly).
+
+### Gold lines and numbers appear when you hold Alt
+
+**Symptom:** With a picture selected, you hold <kbd>Alt</kbd> over the preview, and gold lines with numbers appear around the picture, or a ring marker appears on it.
+
+**Cause:** With **Smart guides** on, holding <kbd>Alt</kbd> over the preview measures the distance from the selected pictures to the nearest picture on each side, or to the frame edge. With one picture selected, <kbd>Alt</kbd> also shows its anchor marker.
+
+**Fix:** Nothing to fix: the lines disappear when you release <kbd>Alt</kbd>, and they are never part of your video. To stop the measurements, turn **Smart guides** off. See [Measure distances with Alt](snapping-and-smart-guides.md#measure-distances-with-alt).
+
 ### A resize stops at 100%
 
 **Symptom:** While you drag a handle, the picture holds its size for a moment, the readout shows **100%**, and the sides of the box at the handle turn into a thicker gold line.
 
-**Cause:** The scale snaps to exactly 100% (the media's own size) when it passes within 2% of it.
+**Cause:** While snapping is on, the scale snaps to exactly 100% (the media's own size) when it passes within 2% of it.
 
-**Fix:** Keep dragging: the picture follows again below 98% and above 102%. See [Resize a layer](arranging-layers-in-the-preview.md#resize-a-layer).
+**Fix:** Keep dragging: the picture follows again below 98% and above 102%. To pass 100% without stopping, hold <kbd>S</kbd> during the drag. See [Resize a layer](arranging-layers-in-the-preview.md#resize-a-layer).
 
 ### The side handles are missing
 
@@ -905,7 +940,7 @@ The current version cannot do these things yet. Each one is available in a later
 - **Menus:** only clips, gaps, track headers, the ruler, media cards and pictures in the preview have a right-click menu, with a first set of rows. Menu rows can't be chosen with the arrow keys.
 - **Speed and edit points:** a clip's speed changes only with **Rate stretch**; typing an exact speed is not available. A selected cut (edit point) only marks the cut; transitions are not available.
 - **Tracks:** track headers have room for names of about 9 characters; longer names are shortened. Groups are not marked on the timeline. In the **Track** section of **Edit Properties**, several selected tracks show the first track's settings, with no sign of mixed values.
-- **Preview:** pictures you drag don't snap to the frame or to each other, and smart guides are not drawn. Pictures can't be cropped, flipped or fitted with one click there, and position, scale and rotation can't be typed in. A change to a picture applies to the whole clip; changes over time (keyframes) are not available. The **Proxy** quality has no proxy copies to use and shows the project's resolution. An SVG image that covers the whole frame doesn't get sharper when you zoom in. The **Zoom**, **Preview quality** and **Overlays** menus can't be used with the arrow keys.
+- **Preview:** pictures can't be cropped, flipped or fitted with one click, and position, scale and rotation can't be typed in. A change to a picture applies to the whole clip; changes over time (keyframes) are not available. The **Proxy** quality has no proxy copies to use and shows the project's resolution. An SVG image that covers the whole frame doesn't get sharper when you zoom in. The **Zoom**, **Preview quality** and **Overlays** menus can't be used with the arrow keys.
 - **Fit only:** inserted clips fit the frame with bands; one-click Fill is not available (drag a corner handle in the preview instead). Changing the project resolution does not refit existing clips; **Reset transform** in the preview's layer menu refits the selected ones.
 - **Animated GIF and WebP files** show as still images (their first frame), in the preview and in their clips' thumbnails.
 - **Media that cannot be decoded, or whose file is missing,** shows nothing in the preview, with no placeholder.
@@ -930,6 +965,7 @@ The current version cannot do these things yet. Each one is available in a later
 - [Adding media to the timeline](adding-media-to-the-timeline.md)
 - [Preview and playback](preview-and-playback.md)
 - [Arranging layers in the preview](arranging-layers-in-the-preview.md)
+- [Snapping and smart guides in the preview](snapping-and-smart-guides.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 22, 2026-10-16</sub>
+<sub>Last updated: Batch 23, 2026-10-16</sub>

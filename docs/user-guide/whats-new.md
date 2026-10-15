@@ -2,6 +2,11 @@
 
 Shorts Editor grows in steps called batches. This page lists what each batch added that you can see or use, newest first. Follow the links for the full instructions.
 
+> **Video placeholder: What's new in Batch 23**
+> - File: `videos/whats-new/batch-23.mp4` (not recorded yet)
+> - Length: about 50 seconds
+> - Shows: a 1080×1920 project with a video on V1 and three stickers on V2, V3 and V4 in a column, the playhead over all of them; drag the top sticker toward the middle of the frame: it jumps to the center and two gold lines cross the whole frame; drag it under another sticker until their left edges almost line up: it jumps into line, a gold line joins them and a gold label shows the gap; drag the middle sticker of the column up and down: where both gaps are equal it holds and two gold spans show the same number; drag it again and hold <kbd>S</kbd>: it moves freely; open **Overlays** and choose **Reels**, then drag a sticker toward the top: it snaps to the edge of the safe area; select a sticker, rest the pointer on the preview and hold <kbd>Alt</kbd>: gold distances to the frame edges and the other stickers appear.
+
 > **Video placeholder: What's new in Batch 22**
 > - File: `videos/whats-new/batch-22.mp4` (not recorded yet)
 > - Length: about 60 seconds
@@ -73,6 +78,7 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 > - Shows: open a project with three clips on the timeline; press <kbd>Space</kbd> to play and let the timeline page forward; press <kbd>L</kbd> three times to reach 8x, then <kbd>K</kbd>; hold <kbd>K</kbd> and tap <kbd>L</kbd> to step one frame; turn on **Loop playback**; point at the **Dropped** readout in the status strip.
 
 ## In this page
+- [Batch 23: Snapping and smart guides in the preview](#batch-23-snapping-and-smart-guides-in-the-preview)
 - [Batch 22: Arrange layers in the preview](#batch-22-arrange-layers-in-the-preview)
 - [Batch 21: Preview zoom, overlays and fullscreen](#batch-21-preview-zoom-overlays-and-fullscreen)
 - [Batch 20: Media to the timeline](#batch-20-media-to-the-timeline)
@@ -95,6 +101,18 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 - [Batch 03: Projects, autosave and recovery](#batch-03-projects-autosave-and-recovery)
 - [Batch 02: Undo, redo and frame-exact time](#batch-02-undo-redo-and-frame-exact-time)
 - [Batch 01: The workspace](#batch-01-the-workspace)
+
+## Batch 23: Snapping and smart guides in the preview
+- Pictures you move in the preview now snap: their edges and center jump onto the center and edges of the frame, and onto the edges and centers of the other pictures, when they come within 6 pixels on screen, at every zoom. Gold guides show what they line up with, and gold labels show the gap to the pictures in line, in pixels.
+- With the **Thirds** grid, a safe zone or **Title / action safe** shown in the **Overlays** menu, pictures also snap to those lines.
+- Drag the middle one of three pictures in a row or a column: it snaps where the gaps on both sides are equal, and two gold spans show the same number.
+- When you resize a picture that is not tilted, the edge you drag snaps to the same lines.
+- **Snap** (or <kbd>S</kbd>) now switches snapping in the preview too, together with the timeline. Hold <kbd>S</kbd> during a move or resize to do the opposite of the setting for that drag. The 100% snap of a resize follows the switch as well.
+- **Smart guides** now works: with it off, pictures snap only to the frame and the overlays, not to each other.
+- Select a picture, rest the pointer on the preview and hold <kbd>Alt</kbd> to see the distances to the nearest picture or the frame edge on all four sides.
+- Pictures on locked tracks count as snap targets and in the measurements; pictures on hidden or muted tracks don't.
+
+See [Snapping and smart guides in the preview](snapping-and-smart-guides.md).
 
 ## Batch 22: Arrange layers in the preview
 - Click a picture in the preview to select its clip. The selection is shared with the timeline: the clip turns gold there, and a clip you click on the timeline gets its box in the preview while it is under the playhead. Pointing at a picture outlines it.
@@ -312,8 +330,9 @@ See [The workspace](workspace.md) and [Getting started](getting-started.md).
 ## Related pages
 - [User guide home](README.md)
 - [Arranging layers in the preview](arranging-layers-in-the-preview.md)
+- [Snapping and smart guides in the preview](snapping-and-smart-guides.md)
 - [Preview zoom, overlays and fullscreen](preview-zoom-overlays-fullscreen.md)
 - [Adding media to the timeline](adding-media-to-the-timeline.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 22, 2026-10-16</sub>
+<sub>Last updated: Batch 23, 2026-10-16</sub>

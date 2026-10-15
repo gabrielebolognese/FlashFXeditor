@@ -29,6 +29,7 @@ This page lists every keyboard shortcut that works in the current version of Sho
 >   21. Hover over **Play** to show the tooltip with its shortcut.
 >   22. Click the preview picture and press <kbd>Ctrl</kbd>+<kbd>2</kbd>: the preview zooms to 200%. Press <kbd>Ctrl</kbd>+<kbd>0</kbd>: the whole frame is back. Press <kbd>F</kbd>: the preview fills the window; press <kbd>Esc</kbd> to return.
 >   23. Click a logo in the preview: it gets a gold box with handles. Quickly press <kbd>→</kbd> three times and <kbd>Shift</kbd>+<kbd>↑</kbd> once: it moves 3 pixels right and 10 pixels up. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> once: it is back. Click beside the frame in the preview and press <kbd>→</kbd>: the playhead steps one frame.
+>   24. Drag the logo toward the middle of the frame: it snaps to the center with gold lines. Hold <kbd>S</kbd> while you keep dragging: it moves freely. Release the mouse button. Click the logo, rest the pointer on the preview and hold <kbd>Alt</kbd>: gold distances to the frame edges appear.
 
 ## In this page
 - [How shortcuts work](#how-shortcuts-work)
@@ -96,7 +97,7 @@ These shortcuts work in all panels, except where noted. See [Preview and playbac
 
 ## Preview
 
-See [Preview zoom, overlays and fullscreen](preview-zoom-overlays-fullscreen.md) and [Arranging layers in the preview](arranging-layers-in-the-preview.md) for details.
+See [Preview zoom, overlays and fullscreen](preview-zoom-overlays-fullscreen.md), [Arranging layers in the preview](arranging-layers-in-the-preview.md) and [Snapping and smart guides in the preview](snapping-and-smart-guides.md) for details.
 
 | Action | Windows | macOS | Works in |
 | --- | --- | --- | --- |
@@ -138,10 +139,12 @@ These work over the preview picture.
 | Rotate | Drag just outside a corner (curved arrow cursor) | Same |
 | Rotate in 45° steps | <kbd>Shift</kbd>+drag just outside a corner | <kbd>⇧</kbd>+drag just outside a corner |
 | Show and move the anchor point (one layer selected) | Hold <kbd>Alt</kbd>, then drag the ring marker | Hold <kbd>⌥</kbd>, then drag the ring marker |
+| Show the distances from the selected layers to their neighbors and the frame edges (**Smart guides** on) | Hold <kbd>Alt</kbd> with the pointer over the preview, without clicking | Hold <kbd>⌥</kbd> with the pointer over the preview, without clicking |
+| Move or resize without snapping (or with snapping, when **Snap** is off) | Hold <kbd>S</kbd> during the drag | Hold <kbd>S</kbd> during the drag |
 | Cancel the drag | <kbd>Esc</kbd> before you release | <kbd>Esc</kbd> |
 | Open the layer menu | Right-click a layer | Right-click a layer |
 
-With the **Hand** tool, or while you hold <kbd>Space</kbd> over a zoomed-in picture, a left drag pans and selects nothing. During a drag on a layer you can press and release <kbd>Shift</kbd> and <kbd>Alt</kbd>; the layer follows at once.
+With the **Hand** tool, or while you hold <kbd>Space</kbd> over a zoomed-in picture, a left drag pans and selects nothing. During a drag on a layer you can press and release <kbd>Shift</kbd>, <kbd>Alt</kbd> and <kbd>S</kbd>; the layer follows at once. See [Snapping and smart guides in the preview](snapping-and-smart-guides.md).
 
 ## Timeline
 
@@ -181,14 +184,15 @@ These shortcuts work only while the Timeline panel is active. See [Timeline](tim
 
 | Action | Windows | macOS | Works in |
 | --- | --- | --- | --- |
-| Turn snapping on or off (same as **Snap** in the timeline toolbar) | <kbd>S</kbd> | <kbd>S</kbd> | All panels |
+| Turn snapping on or off for the timeline and the preview (same as **Snap** in the timeline toolbar and the Preview panel header) | <kbd>S</kbd> | <kbd>S</kbd> | All panels |
 | Do the opposite of the snapping setting while you hold the key | Hold <kbd>S</kbd> during a clip, marker or in/out drag, or a drag in the ruler | Hold <kbd>S</kbd> during a clip, marker or in/out drag, or a drag in the ruler | Timeline |
+| Do the opposite of the snapping setting while you hold the key | Hold <kbd>S</kbd> while you move or resize a layer | Hold <kbd>S</kbd> while you move or resize a layer | Preview |
 | Snap the playhead to clip edges, markers and the in and out points | Hold <kbd>Shift</kbd> while you click or drag in the ruler | Hold <kbd>⇧</kbd> while you click or drag in the ruler | Timeline |
 
 - Press <kbd>S</kbd> after the drag has started to switch snapping for that drag only. Holding it does not change the setting or the **Snap** magnet.
 - During a drag, <kbd>S</kbd> never starts a shortcut, also together with <kbd>Shift</kbd>, <kbd>Ctrl</kbd> or <kbd>Alt</kbd>: <kbd>Ctrl</kbd>+<kbd>S</kbd> does not save until you release the mouse button. On a Mac, <kbd>⌥</kbd>+<kbd>S</kbd> during a duplicate drag switches snapping too.
 
-See [Snap clips into place](timeline.md#snap-clips-into-place).
+See [Snap clips into place](timeline.md#snap-clips-into-place) and [Snapping and smart guides in the preview](snapping-and-smart-guides.md).
 
 ## Trimming
 
@@ -453,6 +457,7 @@ Some buttons already show a shortcut in their tooltip although the button is dis
 - [Preview and playback](preview-and-playback.md)
 - [Preview zoom, overlays and fullscreen](preview-zoom-overlays-fullscreen.md)
 - [Arranging layers in the preview](arranging-layers-in-the-preview.md)
+- [Snapping and smart guides in the preview](snapping-and-smart-guides.md)
 - [Timeline](timeline.md)
 - [Trimming clips](trimming.md)
 - [Splitting, deleting and closing gaps](splitting-and-deleting.md)
@@ -466,4 +471,4 @@ Some buttons already show a shortcut in their tooltip although the button is dis
 - [Projects and saving](projects-and-saving.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 22, 2026-10-16</sub>
+<sub>Last updated: Batch 23, 2026-10-16</sub>

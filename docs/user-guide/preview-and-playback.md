@@ -85,8 +85,8 @@ The Preview panel header holds the controls that change how you look at the fram
 | **Fit the frame in the panel** | Shows the whole frame again, centered (<kbd>Ctrl</kbd>+<kbd>0</kbd> in the Preview panel). |
 | **Preview quality** | Shows the quality mode and opens the menu of modes: **Auto**, **Full**, **Proxy**, **1/2**, **1/4**. |
 | **Overlays** (grid icon) | Safe zones for Reels, TikTok and Shorts, grids, the center cross, title / action safe, rulers and the pixel grid. |
-| **Snap** (magnet) | Turns snapping on or off, as in the timeline toolbar (<kbd>S</kbd>). |
-| **Smart guides** | Turns smart guides on or off. The guides are available in a later version. |
+| **Snap** (magnet) | Turns snapping on or off, for clips on the timeline and layers in the preview (<kbd>S</kbd>). |
+| **Smart guides** | Turns smart guides on or off: layers you drag snap to each other and show gold guides with distances. See [Snapping and smart guides in the preview](snapping-and-smart-guides.md). |
 | **Fullscreen** | Fills the browser window with the preview (<kbd>F</kbd>); <kbd>Esc</kbd> returns. |
 | **Export frame** | Saves the current frame as a PNG. See [Export the current frame](#export-the-current-frame). |
 
@@ -299,6 +299,7 @@ The preview draws with your graphics card (GPU) and decodes video with the brows
 - **Backward playback and fast shuttle speeds** need more decoding work than 1x forward.
 - **Zoomed in above 100%:** with the default **Auto** quality, playback and scrubbing show the project's resolution, and the full detail of your media follows 0.3 seconds after you stop. **Full** keeps full detail while playing, which is heavier. **1/2** and **1/4** draw playback at half or a quarter of the resolution, which is lighter at every zoom. See [Choose the preview quality](preview-zoom-overlays-fullscreen.md#choose-the-preview-quality).
 - **Fullscreen:** on the development laptop, a 60 fps 1080×1920 project played in the fullscreen preview with at most about 0.5% dropped frames. The first playback after the page loads can drop many more frames while the editor warms up, especially with a large preview; the following playbacks are smoother.
+- **Dragging layers:** moving a layer in the preview follows the pointer at the full rate of a 60 Hz screen, also while it snaps and shows smart guides. On the development laptop, frames during a snapped drag took about 17 milliseconds on average. See [Snapping and smart guides in the preview](snapping-and-smart-guides.md).
 - **Thumbnails:** the editor makes the timeline's thumbnails only while you don't play, scrub or drag, and lets the preview's frames go first, so they don't slow the preview down. See [Know when thumbnails and waveforms appear](clip-thumbnails-and-waveforms.md#know-when-thumbnails-and-waveforms-appear).
 
 If playback stutters, see [Troubleshooting](troubleshooting.md).
@@ -306,6 +307,7 @@ If playback stutters, see [Troubleshooting](troubleshooting.md).
 ## Related pages
 - [Preview zoom, overlays and fullscreen](preview-zoom-overlays-fullscreen.md)
 - [Arranging layers in the preview](arranging-layers-in-the-preview.md)
+- [Snapping and smart guides in the preview](snapping-and-smart-guides.md)
 - [Audio](audio.md)
 - [Timeline](timeline.md)
 - [Markers and in/out points](markers-and-in-out-points.md)
@@ -318,4 +320,4 @@ If playback stutters, see [Troubleshooting](troubleshooting.md).
 - [Workspace](workspace.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 22, 2026-10-16</sub>
+<sub>Last updated: Batch 23, 2026-10-16</sub>

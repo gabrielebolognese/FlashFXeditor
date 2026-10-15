@@ -164,6 +164,7 @@ The areas on a 1080×1920 frame, in project pixels:
 - In a project of another size, the areas scale with the frame.
 - The platforms change their apps from time to time. Treat the zones as a guide and leave some extra room.
 - Only one safe zone shows at a time. You can combine it with a grid and the guides below.
+- While a safe zone shows, layers you drag also snap to the edges of its dashed safe area. See [Choose what layers snap to](snapping-and-smart-guides.md#choose-what-layers-snap-to).
 
 > **Important:** Overlays exist only on your screen. They never appear in a frame you save with **Export frame**.
 
@@ -184,6 +185,8 @@ Under **Grid**, choose one:
 
 **Cells per side** works only while **Custom** is chosen. Click **-** or **+** to change it; the grid follows at once.
 
+While **Thirds** shows, layers you drag also snap to its lines. The **Squares** and **Custom** grids are not snap targets.
+
 ### Guides
 
 Under **Guides**, each row turns on or off with a click:
@@ -191,18 +194,18 @@ Under **Guides**, each row turns on or off with a click:
 | Row | What it shows |
 | --- | --- |
 | **Center cross** | A small cross at the center of the frame. It keeps the same size on screen at every zoom. |
-| **Title / action safe** | Two dashed rectangles, centered: action-safe at 90% of the frame and title-safe, the inner one, at 80%. Keep important action inside the outer one and text inside the inner one. |
+| **Title / action safe** | Two dashed rectangles, centered: action-safe at 90% of the frame and title-safe, the inner one, at 80%. Keep important action inside the outer one and text inside the inner one. Layers you drag snap to their edges. |
 | **Rulers above 100%** | Pixel rulers along the top and left edges of the preview while you zoom in above 100%. Their numbers are project pixels, counted from the top-left corner of the frame. |
 | **Pixel grid from 800%** (on by default) | A thin line between every project pixel while you zoom to 800% or more. |
-| **Smart guides** (on by default) | The same setting as the **Smart guides** button in the header. Smart guides are available in a later version. |
+| **Smart guides** (on by default) | The same setting as the **Smart guides** button in the header: layers snap to the other layers and to equal spacing, and <kbd>Alt</kbd> shows distances. See [Snapping and smart guides in the preview](snapping-and-smart-guides.md). |
 
-- Overlays are drawn on top of the picture and move with it when you zoom and pan. The outlines and handles of selected layers are drawn over them. See [Arranging layers in the preview](arranging-layers-in-the-preview.md).
+- Overlays are drawn on top of the picture and move with it when you zoom and pan. The outlines and handles of selected layers, and the gold smart guides, are drawn over them. See [Arranging layers in the preview](arranging-layers-in-the-preview.md).
 - While the preview shows two frames side by side (when you roll a cut, slip or slide a clip), the overlays are hidden. See [Read the split preview](advanced-trimming.md#read-the-split-preview).
 
 ### Snap and Smart guides in the header
 
-- **Snap** (the magnet) is the same snapping switch as in the timeline toolbar, with the same shortcut <kbd>S</kbd>. It is gold while snapping is on. See [Turn snapping on or off](timeline.md#turn-snapping-on-or-off). Layers you drag in the preview don't snap yet; that is available in a later version.
-- **Smart guides** turns smart guides on or off; it is gold while they are on. The guides themselves are available in a later version.
+- **Snap** (the magnet) is the same snapping switch as in the timeline toolbar, with the same shortcut <kbd>S</kbd>. It is gold while snapping is on. Layers you move or resize in the preview snap to the frame, the overlays shown and, with **Smart guides** on, to each other. See [Snap a layer into place](snapping-and-smart-guides.md#snap-a-layer-into-place) and [Turn snapping on or off](timeline.md#turn-snapping-on-or-off).
+- **Smart guides** turns smart guides on or off; it is gold while they are on. With it on, layers also snap to the other layers and to equal spacing between them, and holding <kbd>Alt</kbd> over the preview shows the distances around the selection. See [Turn snapping and smart guides on or off](snapping-and-smart-guides.md#turn-snapping-and-smart-guides-on-or-off).
 
 ## Fill the window with the preview
 
@@ -220,7 +223,7 @@ Press <kbd>F</kbd>, or click **Fullscreen** in the Preview panel header. The pre
 - The header (with **Zoom**, **Fit the frame in the panel**, **Preview quality**, **Overlays**, **Snap**, **Smart guides**, **Exit fullscreen** and **Export frame**) floats at the top, and the transport bar with the status line at the bottom. The audio meter stays along the right edge.
 - After 2 seconds without moving the mouse, the header and the transport bar fade out, and the pointer disappears over the picture. Move the mouse to bring them back. While the pointer rests on the header or the transport bar, they stay.
 - The playback shortcuts keep working: play, shuttle and step through your edit as usual.
-- You can select, move, resize and rotate layers on the larger picture as in the panel. See [Arranging layers in the preview](arranging-layers-in-the-preview.md).
+- You can select, move, resize and rotate layers on the larger picture as in the panel, with snapping and smart guides. See [Arranging layers in the preview](arranging-layers-in-the-preview.md).
 - The zoom, the overlays and the quality stay as you set them; at **Fit** the frame fills the larger space.
 
 To go back, press <kbd>Esc</kbd> or <kbd>F</kbd>, or click **Exit fullscreen**. Every panel comes back at exactly the size and place it had.
@@ -244,6 +247,7 @@ None of these are steps in the history: <kbd>Ctrl</kbd>+<kbd>Z</kbd> does not un
 ## Related pages
 - [Preview and playback](preview-and-playback.md)
 - [Arranging layers in the preview](arranging-layers-in-the-preview.md)
+- [Snapping and smart guides in the preview](snapping-and-smart-guides.md)
 - [Adding media to the timeline](adding-media-to-the-timeline.md)
 - [Timeline](timeline.md)
 - [Advanced trimming](advanced-trimming.md)
@@ -252,4 +256,4 @@ None of these are steps in the history: <kbd>Ctrl</kbd>+<kbd>Z</kbd> does not un
 - [Projects and saving](projects-and-saving.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 22, 2026-10-16</sub>
+<sub>Last updated: Batch 23, 2026-10-16</sub>

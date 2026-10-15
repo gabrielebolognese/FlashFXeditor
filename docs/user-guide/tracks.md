@@ -127,7 +127,7 @@ Lock a track to protect it while you work on the others, for example a finished 
 While a track is locked:
 
 - Its clips can't be selected: a click on them works like a click on empty space, and <kbd>Ctrl</kbd>+<kbd>A</kbd> and selection rectangles skip them. In the preview, a click on their picture goes to the layer below. Locking a track removes its clips from the selection.
-- Its clips can't be moved, resized or rotated in the preview.
+- Its clips can't be moved, resized or rotated in the preview. Their pictures still count as targets when you snap other layers or measure with <kbd>Alt</kbd>, so a locked background or logo is a good reference to line up with. See [Choose what layers snap to](snapping-and-smart-guides.md#choose-what-layers-snap-to).
 - Its clips can't be moved, nudged, trimmed, rolled, slipped, slid, stretched, split (with <kbd>Ctrl</kbd>+<kbd>K</kbd>, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>K</kbd> or the **Razor**), deleted, renamed, linked or grouped.
 - No clip can be dropped, nudged or inserted onto it, also not media dragged from the Media panel or files dropped from File Explorer. The move is refused, and the message **Can't drop clips onto a locked track** names the track. Inserts and overwrites at the playhead pick another track, and a drop on the preview creates a new track instead of using a locked one. See [Adding media to the timeline](adding-media-to-the-timeline.md).
 - Ripples skip it: inserts, ripple trims, <kbd>Q</kbd> and <kbd>W</kbd>, ripple deletes, **Close gap**, **Close all gaps** and **Extract** leave its clips where they are, and its clips never stop a ripple on the other tracks. **Lift** and **Extract** remove nothing from it.
@@ -152,6 +152,7 @@ Click the padlock again to unlock the track. Each click is one step in the histo
 | **Hide** (eye) | The track's clips leave the preview. | Not available. |
 
 - On a video track, **M** and **Hide** both take the picture out of the preview. They differ in the preview's selection: you can still click and move the layer of a muted video track there (its outline shows where it is), while the layer of a hidden track can't be picked. See [Understand layers](arranging-layers-in-the-preview.md#understand-layers).
+- Pictures of muted and hidden video tracks are not snap targets in the preview, because they are not drawn.
 - Clips of a track you don't see or hear are drawn faded on the timeline. You can still select and edit them on the timeline.
 - To keep only one track of a kind, right-click its header and choose **Mute all others**: every other track of the same kind is muted, and this one is unmuted. It is one step in the history.
 - You see and hear each change at once, also during playback.
@@ -235,8 +236,9 @@ With several tracks selected, the section is titled, for example, **2 tracks**, 
 - [Audio](audio.md)
 - [Preview and playback](preview-and-playback.md)
 - [Arranging layers in the preview](arranging-layers-in-the-preview.md)
+- [Snapping and smart guides in the preview](snapping-and-smart-guides.md)
 - [The workspace](workspace.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 22, 2026-10-16</sub>
+<sub>Last updated: Batch 23, 2026-10-16</sub>

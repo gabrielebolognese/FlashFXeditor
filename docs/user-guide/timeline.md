@@ -476,6 +476,7 @@ How snapping decides:
 ### Turn snapping on or off
 
 - Click **Snap** (the magnet icon) in the timeline toolbar or in the Preview panel header, or press <kbd>S</kbd>. Both magnets are the same switch, gold while snapping is on.
+- The switch also decides whether layers you drag in the preview snap. See [Snapping and smart guides in the preview](snapping-and-smart-guides.md).
 - <kbd>S</kbd> works in every panel, except while you type in a text field.
 - Each project remembers whether snapping is on. Turning it on or off is not a step in the history.
 
@@ -488,6 +489,7 @@ Hold <kbd>S</kbd> while you drag to do the opposite of the setting: with snappin
 3. Release the mouse button while you still hold <kbd>S</kbd>.
 
 - Press <kbd>S</kbd> after the drag has started. An <kbd>S</kbd> pressed before you start dragging turns snapping on or off, as it does outside a drag.
+- Holding <kbd>S</kbd> works the same way while you move or resize a layer in the preview. See [Place a layer without snapping](snapping-and-smart-guides.md#place-a-layer-without-snapping).
 - You can hold <kbd>S</kbd> together with <kbd>Shift</kbd>, <kbd>Ctrl</kbd> or <kbd>Alt</kbd>. During a drag, <kbd>S</kbd> never starts a shortcut: <kbd>Ctrl</kbd>+<kbd>S</kbd> does not save until you release the mouse button.
 
 ### Snap the playhead in the ruler
@@ -643,8 +645,9 @@ Label colors help you see at a glance which clips belong together, for example a
 - [Importing media](importing-media.md)
 - [Preview and playback](preview-and-playback.md)
 - [Arranging layers in the preview](arranging-layers-in-the-preview.md)
+- [Snapping and smart guides in the preview](snapping-and-smart-guides.md)
 - [Projects and saving](projects-and-saving.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 22, 2026-10-16</sub>
+<sub>Last updated: Batch 23, 2026-10-16</sub>
