@@ -67,7 +67,7 @@ Only images are pasted this way. Paste imports only when the Media panel has the
 
 Extensions are not case-sensitive (.MOV works). Any other type, for example .webm, .mkv, .avi or .heic, is refused with a message that names the file.
 
-> **Note:** Thumbnails and playback of HEVC video need Chrome's hardware HEVC decoder. Without it, the item is still imported but its card shows the film icon instead of a thumbnail.
+> **Note:** Thumbnails and playback of HEVC video need Chrome's hardware HEVC decoder. Without it, the item is still imported but its card shows the film icon instead of a thumbnail, and its clips on the timeline show no thumbnails.
 
 ## What happens when you import
 
@@ -79,8 +79,8 @@ For each file, Shorts Editor:
    - If a file with the same name is already in `media`, the copy gets a number, for example `clip (2).mp4`.
    - Characters that are not allowed in file names are replaced with `_`.
 4. **Adds all the items to the project in one step**, so one Undo removes the whole import. Undo does not delete the copied files from the `media` folder.
-5. **Makes a thumbnail** from the first frame of each video, and from each image. Audio items show an audio icon. Thumbnails are saved in the project's `cache` folder, so they appear at once the next time you open the project. If that folder is deleted, the thumbnails are made again.
-6. **Analyzes the sound** of each audio file and each video with sound, in the background while you are not playing, and saves the result in the `cache` folder. Waveforms drawn from it are available in a later version. See [Know how sound is loaded](audio.md#know-how-sound-is-loaded).
+5. **Makes thumbnails** in the background. For each image, a thumbnail of the picture. For each video, first its card thumbnail (the first frame), then the thumbnails that its clips show on the timeline: one every 2 seconds and one every half second of the video. Video thumbnails wait while you play, scrub or drag. Audio items show an audio icon. Thumbnails are saved in the project's `cache` folder, so they appear at once the next time you open the project. If that folder is deleted, the thumbnails are made again. See [Clip thumbnails, waveforms and badges](clip-thumbnails-and-waveforms.md).
+6. **Analyzes the sound** of each audio file and each video with sound, in the background while you are not playing, and saves the result in the `cache` folder. Audio clips on the timeline draw their waveform from it. See [Know how sound is loaded](audio.md#know-how-sound-is-loaded).
 
 ### Progress of large imports
 
@@ -201,16 +201,17 @@ When a file is not imported, a message at the top of the window says why. It clo
 | **Import failed** | Something unexpected stopped the import. Nothing was added. | Try again. See [Troubleshooting](troubleshooting.md). |
 | **Could not open the file picker** | Chrome could not show the file picker. | Try again, or drop the files on the Media panel. |
 
-If a card keeps its kind icon instead of a thumbnail, Chrome could not decode the first frame of that video, for example HEVC on a computer without a hardware HEVC decoder. The editor tries once per session. The item is still in the project.
+If a card keeps its kind icon instead of a thumbnail, Chrome could not decode that video, for example HEVC on a computer without a hardware HEVC decoder, and its clips on the timeline show no thumbnails either. The editor tries once per session. The item is still in the project.
 
 ## Related pages
 - [Getting started](getting-started.md)
 - [Workspace](workspace.md)
 - [Projects and saving](projects-and-saving.md)
 - [Timeline](timeline.md)
+- [Clip thumbnails, waveforms and badges](clip-thumbnails-and-waveforms.md)
 - [Preview and playback](preview-and-playback.md)
 - [Audio](audio.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 10, 2026-10-15</sub>
+<sub>Last updated: Batch 17, 2026-10-15</sub>

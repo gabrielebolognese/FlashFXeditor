@@ -1,11 +1,11 @@
 # Timeline
 
-The timeline is where your short takes shape: clips sit on tracks in time order, and the playhead marks the frame the preview shows. In this version you add clips by double-clicking media, select clips and arrange them by dragging (also onto other tracks), snap them to the edges of other clips and to the playhead, duplicate them, zoom and scroll, move the playhead with the mouse, the keyboard or a typed timecode, and rename clips or give them a label color. To shorten or lengthen clips, see [Trimming clips](trimming.md); to split and delete clips and close gaps, see [Splitting, deleting and closing gaps](splitting-and-deleting.md); to roll cuts, slip, slide or change a clip's speed, see [Advanced trimming](advanced-trimming.md). To add, lock, target or rearrange tracks, see [Tracks](tracks.md); to link, sync and group clips, see [Linking and grouping clips](links-and-groups.md).
+The timeline is where your short takes shape: clips sit on tracks in time order, and the playhead marks the frame the preview shows. In this version you add clips by double-clicking media, select clips and arrange them by dragging (also onto other tracks), snap them to the edges of other clips and to the playhead, duplicate them, zoom and scroll, move the playhead with the mouse, the keyboard or a typed timecode, and rename clips or give them a label color. To shorten or lengthen clips, see [Trimming clips](trimming.md); to split and delete clips and close gaps, see [Splitting, deleting and closing gaps](splitting-and-deleting.md); to roll cuts, slip, slide or change a clip's speed, see [Advanced trimming](advanced-trimming.md). To add, lock, target or rearrange tracks, see [Tracks](tracks.md); to link, sync and group clips, see [Linking and grouping clips](links-and-groups.md). To read the thumbnails, waveforms and badges inside clips, see [Clip thumbnails, waveforms and badges](clip-thumbnails-and-waveforms.md).
 
 > **Video placeholder: Timeline tour**
 > - File: `videos/timeline/timeline-overview.mp4` (not recorded yet)
 > - Length: about 60 seconds
-> - Shows: a project with a few clips on V1 and A1; point in turn at the toolbar, the timecode and duration at its right end, the ruler, the track headers (V1, A1) and their toggles, the divider between video and audio tracks, a blue video clip, a green audio clip, and the thin line where the content ends; click the ruler to move the red playhead; press <kbd>\\</kbd> to fit everything; press <kbd>=</kbd> three times to zoom in, then <kbd>-</kbd> to zoom out; click a video clip: it and its sound on A1 turn gold; drag it to the right until its start comes near the end of another clip: it jumps onto the edge and a thin gold line runs through the timeline; release.
+> - Shows: a project with a few clips on V1 and A1; point in turn at the toolbar, the timecode and duration at its right end, the ruler, the track headers (V1, A1) and their toggles, the divider between video and audio tracks, a blue video clip with its thumbnails, a green audio clip with its waveform, and the thin line where the content ends; click the ruler to move the red playhead; press <kbd>\\</kbd> to fit everything; press <kbd>=</kbd> three times to zoom in, then <kbd>-</kbd> to zoom out; click a video clip: it and its sound on A1 turn gold; drag it to the right until its start comes near the end of another clip: it jumps onto the edge and a thin gold line runs through the timeline; release.
 
 ## In this page
 - [Find your way around the timeline](#find-your-way-around-the-timeline)
@@ -50,16 +50,14 @@ The spacing of the ticks follows the zoom. Zoomed out, labels can be minutes apa
 
 - A clip is a rounded block in the color of its kind: blue for video, green for audio, gray for images. A clip with a label color is drawn in that color instead; see [Give clips a label color](#give-clips-a-label-color).
 - A label bar in a stronger shade at the top shows the kind icon and the clip's name. Long names are shortened with "…". When a clip starts to the left of the view, its label stays visible at the left edge.
+- On M and L tracks, the body below the label bar shows the clip's content: thumbnails of a video, the waveform of a sound, or the picture of an image. Zoom in to see more frames. See [Clip thumbnails, waveforms and badges](clip-thumbnails-and-waveforms.md).
 - A clip narrower than 24 pixels shows no icon or name. A clip narrower than 6 pixels shows only a thin strip of its color.
 - Clips that touch are separated by a thin line, so you can always see the cut.
 - A clip gets lighter while you point at it. A selected clip has a gold outline and tint (see [Select clips](#select-clips)).
 - The outer 8 pixels at each end of a clip are its trim zones: the cursor turns into a bracket there, and dragging trims the clip. See [Trimming clips](trimming.md).
 - Where two clips touch, a click within 3 pixels of the cut selects the cut (red brackets `][` mark it), and <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+drag there rolls the cut. See [Advanced trimming](advanced-trimming.md#select-a-cut-edit-point).
-- A red number such as **+12** or **-12** at the right end of the label bar means the clip is that many frames out of step with its linked clip. See [Keep linked clips in sync](links-and-groups.md#keep-linked-clips-in-sync).
+- Badges at the right end of the label bar: a red number such as **+12** when the clip is out of step with its linked clip, a speed such as `2x` when it doesn't play at normal speed, and a chain icon when it is linked. They stay visible at the right edge of the tracks when the clip ends after the view. See [Read the badges in the label bar](clip-thumbnails-and-waveforms.md#read-the-badges-in-the-label-bar).
 - Clips on a locked track are covered with diagonal lines, and clips of a track you don't see or hear (muted, hidden, or left out by a solo) are drawn faded. See [Tracks](tracks.md).
-- A badge such as `0.5x` or `2x` in the label bar, left of any red number, is the speed of a video or audio clip that does not play at normal speed. See [Change a clip's speed with Rate stretch](advanced-trimming.md#change-a-clips-speed-with-rate-stretch).
-
-Thumbnails and waveforms inside clips are available in a later version.
 
 ### Toolbar
 
@@ -511,11 +509,12 @@ Label colors help you see at a glance which clips belong together, for example a
 3. In the **Label** row of the menu, click a color: **Red**, **Orange**, **Green**, **Teal**, **Blue**, **Violet**, **Pink** or **Grey**. Point at a swatch to see its name.
 
 - Every selected clip takes the color. A right-click on a clip that is not selected selects it with its linked clips, so a video and its sound take the color together.
-- A labeled clip is drawn in its label color instead of the color of its kind. A selected clip keeps its gold outline.
+- A labeled clip is drawn in its label color instead of the color of its kind. In a video clip, the color shows in the label bar above the thumbnails; in an audio clip, the waveform is drawn on it. A selected clip keeps its gold outline.
 - In the menu, the current color of the clip you right-clicked has a gold ring, and its tooltip reads, for example, **Teal (click to remove)**. Click it to remove the label from the selected clips: they go back to the color of their kind.
 - Each change is one step in the history, named **Label clip** or **Label clips**. Labels are saved with the project, and both parts of a split clip keep the label.
 
 ## Related pages
+- [Clip thumbnails, waveforms and badges](clip-thumbnails-and-waveforms.md)
 - [Tracks](tracks.md)
 - [Linking and grouping clips](links-and-groups.md)
 - [Trimming clips](trimming.md)
@@ -530,4 +529,4 @@ Label colors help you see at a glance which clips belong together, for example a
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 16, 2026-10-15</sub>
+<sub>Last updated: Batch 17, 2026-10-15</sub>

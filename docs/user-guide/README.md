@@ -1,11 +1,11 @@
 # Shorts Editor user guide
 
-Shorts Editor is a video editor for short vertical videos (9:16 by default) that runs in your desktop browser. Your projects are folders on your own disk, and your media never leaves your computer. This guide shows you how to set up a project, bring in your media, arrange, trim, cut and fine-tune it on the timeline, organize your tracks and play it back with its sound.
+Shorts Editor is a video editor for short vertical videos (9:16 by default) that runs in your desktop browser. Your projects are folders on your own disk, and your media never leaves your computer. This guide shows you how to set up a project, bring in your media, arrange, trim, cut and fine-tune it on the timeline with thumbnails and waveforms in every clip, organize your tracks and play it back with its sound.
 
 > **Video placeholder: Shorts Editor in two minutes**
 > - File: `videos/home/overview.mp4` (not recorded yet)
 > - Length: about 120 seconds
-> - Shows: open Shorts Editor in Chrome; click **New project**, pick an empty folder, keep **9:16 · 1080×1920** and **30 fps**, click **Create project**; drop three phone clips on the Media panel and wait for the thumbnails; double-click each clip to build a sequence on the timeline; hold <kbd>Ctrl</kbd> and drag the end of the first clip to the left to tighten the cut; put the playhead in the middle of the second clip, press <kbd>Ctrl</kbd>+<kbd>K</kbd>, click the second half and press <kbd>Shift</kbd>+<kbd>Delete</kbd>; drag the last clip up to V2; press <kbd>\</kbd> to fit the timeline; press <kbd>Home</kbd>, then <kbd>Space</kbd> to play it back with sound while the audio meter moves; drag in the ruler to scrub; point at the green save dot.
+> - Shows: open Shorts Editor in Chrome; click **New project**, pick an empty folder, keep **9:16 · 1080×1920** and **30 fps**, click **Create project**; drop three phone clips on the Media panel and wait for the thumbnails; double-click each clip to build a sequence on the timeline, with thumbnails in the video clips and waveforms in their sound; hold <kbd>Ctrl</kbd> and drag the end of the first clip to the left to tighten the cut; put the playhead in the middle of the second clip, press <kbd>Ctrl</kbd>+<kbd>K</kbd>, click the second half and press <kbd>Shift</kbd>+<kbd>Delete</kbd>; drag the last clip up to V2; press <kbd>\</kbd> to fit the timeline; press <kbd>Home</kbd>, then <kbd>Space</kbd> to play it back with sound while the audio meter moves; drag in the ruler to scrub; point at the green save dot.
 
 ## In this page
 - [Start here](#start-here)
@@ -23,8 +23,9 @@ Shorts Editor is a video editor for short vertical videos (9:16 by default) that
 7. [Advanced trimming](advanced-trimming.md): roll cuts, slip and slide clips, and change their speed.
 8. [Tracks](tracks.md): add, rename, reorder, lock, target, hide and resize tracks.
 9. [Linking and grouping clips](links-and-groups.md): keep a video and its sound together, put them back in sync, and group clips.
-10. [Preview and playback](preview-and-playback.md): watch and check your video.
-11. [Audio](audio.md): listen, set the volume and check your levels.
+10. [Clip thumbnails, waveforms and badges](clip-thumbnails-and-waveforms.md): read what each clip shows.
+11. [Preview and playback](preview-and-playback.md): watch and check your video.
+12. [Audio](audio.md): listen, set the volume and check your levels.
 
 ## All pages
 
@@ -40,10 +41,11 @@ Shorts Editor is a video editor for short vertical videos (9:16 by default) that
 | [Advanced trimming](advanced-trimming.md) | The **Select**, **Slip**, **Slide** and **Rate stretch** tools, rolling a cut, selecting an edit point, slipping and sliding clips, changing a clip's speed, the split preview |
 | [Tracks](tracks.md) | Track headers and their toggles, selecting, adding, renaming, reordering and deleting tracks, target tracks, locking, muting, soloing and hiding tracks, track heights, the track menu, the **Track** section of **Edit Properties** |
 | [Linking and grouping clips](links-and-groups.md) | How linked clips work, **Linked selection**, unlinking and linking clips, sync numbers and **Move into sync**, grouping and ungrouping clips |
+| [Clip thumbnails, waveforms and badges](clip-thumbnails-and-waveforms.md) | Thumbnails in video clips and how zoom changes them, waveforms in audio clips, image clips, which track heights and clip widths show them, the sync, speed and link badges, when thumbnails and waveforms appear, label colors with thumbnails |
 | [Preview and playback](preview-and-playback.md) | The preview frame, zoom, scrubbing, playing, shuttling, stepping, looping, the transport bar and status strip, exporting a frame |
 | [Audio](audio.md) | Hearing your edit in sync, sound of clips at another speed, the listening volume and mute, muting and soloing audio tracks, the audio meter, how sound loads |
 | [Keyboard shortcuts](keyboard-shortcuts.md) | Every working shortcut, with the panel it needs and the macOS keys |
-| [Troubleshooting](troubleshooting.md) | Problems with the browser, graphics, folders, saving, importing and playback, and known limitations |
+| [Troubleshooting](troubleshooting.md) | Problems with the browser, graphics, the timeline, folders, saving, importing and playback, and known limitations |
 | [What's new](whats-new.md) | What each batch added, newest first |
 
 ## What you can do in this version
@@ -55,13 +57,14 @@ Shorts Editor is a video editor for short vertical videos (9:16 by default) that
 - Trim clips by dragging their edges while the preview shows the new first or last frame, ripple trims that close the gap on every track, and cut to the playhead with Q, W and E, also during playback.
 - Roll the cut between two clips, slip a clip's content, slide a clip between its neighbors with a side-by-side preview of both sides of the edit, and change a clip's speed from 0.25x to 4x by stretching it.
 - Split clips at the playhead or with the **Razor** tool, delete clips with or without closing the space, close one gap or all gaps at once while the other tracks stay in step, and use the right-click menus of clips and gaps.
+- See thumbnails in video clips that get denser as you zoom in, waveforms in audio clips, and badges for speed, sync and links.
 - Rename clips and give them one of eight label colors.
 - Add, rename, reorder and delete tracks; choose the tracks your edits use; lock tracks to protect them; mute, solo or hide tracks; and make rows taller or shorter.
 - Link and unlink a video and its sound, turn **Linked selection** off to edit one side, move clips back into sync, and group clips that belong together.
 - Play your edit back frame-accurately, shuttle with J, K and L, loop, and save any frame as a PNG.
 - Hear your edit in sync with the picture, set the listening volume, mute or solo audio tracks, and check your levels on the audio meter.
 
-More editing tools (the **Hand** tool, copy and paste, markers), audio editing (clip volume, fades, waveforms), text and captions, effects and video export arrive in later versions. Their buttons are already visible but dimmed. [What's new](whats-new.md) tracks each addition.
+More editing tools (the **Hand** tool, copy and paste, markers), audio editing (clip volume, fades), text and captions, effects and video export arrive in later versions. Their buttons are already visible but dimmed. [What's new](whats-new.md) tracks each addition.
 
 ## Conventions in this guide
 - **Bold text** is a label exactly as it appears on screen, such as **New project**.
@@ -70,4 +73,4 @@ More editing tools (the **Hand** tool, copy and paste, markers), audio editing (
 - Notes, tips and warnings appear as **Note**, **Tip** and **Important** boxes.
 - Each page starts with a **Video placeholder**: the planned walkthrough video for that page, with its file name, length and the steps it will show. The videos are not recorded yet; they will live in the `videos/` folder next to these pages.
 
-<sub>Last updated: Batch 16, 2026-10-15</sub>
+<sub>Last updated: Batch 17, 2026-10-15</sub>

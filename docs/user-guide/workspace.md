@@ -87,7 +87,7 @@ See [Preview and playback](preview-and-playback.md).
 
 ### Timeline panel
 
-The bottom of the left side. Instead of a title, its header is the timeline toolbar (see [Use the timeline toolbar](#use-the-timeline-toolbar)). Below it are the track headers on the left, the time ruler and the tracks. See [Timeline](timeline.md).
+The bottom of the left side. Instead of a title, its header is the timeline toolbar (see [Use the timeline toolbar](#use-the-timeline-toolbar)). Below it are the track headers on the left, the time ruler and the tracks, where clips show their thumbnails and waveforms. See [Timeline](timeline.md) and [Clip thumbnails, waveforms and badges](clip-thumbnails-and-waveforms.md).
 
 > **Note:** If you run the editor from its source folder with `npm run dev`, a few extra developer controls marked **(dev)** appear in the Preview and Timeline headers. You can ignore them.
 
@@ -207,4 +207,4 @@ To jump to a time, type it into the timecode field of the timeline toolbar. See 
 - [Audio](audio.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 16, 2026-10-15</sub>
+<sub>Last updated: Batch 17, 2026-10-15</sub>

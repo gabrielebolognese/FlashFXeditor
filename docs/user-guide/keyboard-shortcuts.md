@@ -332,4 +332,4 @@ Some buttons already show a shortcut in their tooltip although the button is dis
 - [Projects and saving](projects-and-saving.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 16, 2026-10-15</sub>
+<sub>Last updated: Batch 17, 2026-10-15</sub>

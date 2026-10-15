@@ -1,6 +1,6 @@
 # Audio
 
-Shorts Editor plays the sound of your edit together with the picture. Use the **Mute** button and the **Master volume** knob under the preview to set how loud you listen, the **M** and **S** toggles in the audio track headers to leave a track out or hear it alone, and the meter at the right edge of the preview to check your levels.
+Shorts Editor plays the sound of your edit together with the picture. Use the **Mute** button and the **Master volume** knob under the preview to set how loud you listen, the **M** and **S** toggles in the audio track headers to leave a track out or hear it alone, and the meter at the right edge of the preview to check your levels. The waveform inside each audio clip shows where its sound is loud or quiet.
 
 > **Video placeholder: Audio overview**
 > - File: `videos/audio/overview.mp4` (not recorded yet)
@@ -25,7 +25,7 @@ Shorts Editor plays the sound of your edit together with the picture. Use the **
 
 Press <kbd>Space</kbd> to play. You hear every clip on the audio tracks (A1, A2 and so on) under the playhead, mixed together in stereo.
 
-When you insert a video with sound, the picture goes on V1 and the sound becomes a separate audio clip on A1, right under it (see [Add clips from the Media panel](timeline.md#add-clips-from-the-media-panel)). The sound you hear comes from that audio clip; the video clip itself carries only the picture.
+When you insert a video with sound, the picture goes on V1 and the sound becomes a separate audio clip on A1, right under it (see [Add clips from the Media panel](timeline.md#add-clips-from-the-media-panel)). The sound you hear comes from that audio clip; the video clip itself carries only the picture. The audio clip shows the sound's waveform on M and L tracks; see [Read a waveform](clip-thumbnails-and-waveforms.md#read-a-waveform).
 
 ### When you hear sound
 
@@ -181,7 +181,7 @@ The editor decodes sound before it plays it, and analyzes it once after import. 
 
 ### Analysis after import
 
-After you import an audio file or a video with sound, the editor analyzes its sound in the background, while you are not playing. It saves the result in the project's `cache` folder, so the next time you open the project the analysis is reused. If you delete the `cache` folder, or a media file changes, the editor analyzes the sound again. The waveforms drawn inside audio clips from this analysis are available in a later version.
+After you import an audio file or a video with sound, the editor analyzes its sound in the background, while you are not playing. It saves the result in the project's `cache` folder, so the next time you open the project the analysis is reused. If you delete the `cache` folder, or a media file changes, the editor analyzes the sound again. Audio clips draw their waveform from this analysis; until it is done, they show only their color. See [Read a waveform](clip-thumbnails-and-waveforms.md#read-a-waveform).
 
 ### Decoding for playback
 
@@ -198,6 +198,7 @@ After you import an audio file or a video with sound, the editor analyzes its so
 - If the sound of a file cannot be decoded, or its file is missing from the project's `media` folder, its clips play silently. See [Troubleshooting](troubleshooting.md#playback-has-no-sound).
 
 ## Related pages
+- [Clip thumbnails, waveforms and badges](clip-thumbnails-and-waveforms.md)
 - [Preview and playback](preview-and-playback.md)
 - [Timeline](timeline.md)
 - [Tracks](tracks.md)
@@ -206,4 +207,4 @@ After you import an audio file or a video with sound, the editor analyzes its so
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 16, 2026-10-15</sub>
+<sub>Last updated: Batch 17, 2026-10-15</sub>

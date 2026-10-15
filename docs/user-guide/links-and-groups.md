@@ -5,7 +5,7 @@ A video with sound arrives on the timeline as two linked clips: the picture on a
 > **Video placeholder: Link, sync and group clips**
 > - File: `videos/links-and-groups/overview.mp4` (not recorded yet)
 > - Length: about 75 seconds
-> - Shows: a video with sound on V1 and A1; click the video: both clips turn gold; press <kbd>Ctrl</kbd>+<kbd>L</kbd>: hover **Undo**, it reads **Undo Unlink clips**; click the sound: only the sound is selected; press <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>Right</kbd> twice and <kbd>Alt</kbd>+<kbd>Right</kbd> twice; <kbd>Shift</kbd>+click the video and press <kbd>Ctrl</kbd>+<kbd>L</kbd>: the sound shows a red **+12** and the video **-12**; right-click the sound and choose **Move into sync**: it jumps back under the video and the numbers disappear; press <kbd>Shift</kbd>+<kbd>S</kbd>: the **Linked selection** button in the toolbar turns off; click the video: only the video is selected; press <kbd>Shift</kbd>+<kbd>S</kbd> again; select a title image on V2 and the video, press <kbd>Ctrl</kbd>+<kbd>G</kbd>; click the title: the title, the video and its sound are selected; drag them to the right together.
+> - Shows: a video with sound on V1 and A1; point at the chain icon in both label bars; click the video: both clips turn gold; press <kbd>Ctrl</kbd>+<kbd>L</kbd>: the chain icons disappear; hover **Undo**, it reads **Undo Unlink clips**; click the sound: only the sound is selected; press <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>Right</kbd> twice and <kbd>Alt</kbd>+<kbd>Right</kbd> twice; <kbd>Shift</kbd>+click the video and press <kbd>Ctrl</kbd>+<kbd>L</kbd>: the sound shows a red **+12** and the video **-12**; right-click the sound and choose **Move into sync**: it jumps back under the video and the numbers disappear; press <kbd>Shift</kbd>+<kbd>S</kbd>: the **Linked selection** button in the toolbar turns off; click the video: only the video is selected; press <kbd>Shift</kbd>+<kbd>S</kbd> again; select a title image on V2 and the video, press <kbd>Ctrl</kbd>+<kbd>G</kbd>; click the title: the title, the video and its sound are selected; drag them to the right together.
 
 ## In this page
 - [How linked clips work](#how-linked-clips-work)
@@ -27,6 +27,8 @@ When you add a video with sound to the timeline, its picture and its sound becom
 - Moving one moves both, the same number of tracks away from the divider.
 
 To work on one of them once, <kbd>Alt</kbd>+click it to select it alone, or hold <kbd>Alt</kbd> while you drag its edge. To work on single clips for a while, turn **Linked selection** off.
+
+Linked clips show a chain icon at the right end of their label bar. See [Read the badges in the label bar](clip-thumbnails-and-waveforms.md#read-the-badges-in-the-label-bar).
 
 Linked clips and groups are different. Linking keeps a picture and its sound together through every edit. A group is a set of any clips that you select, move and delete together; each clip in it is still trimmed and cut on its own. See [Group clips](#group-clips).
 
@@ -51,7 +53,7 @@ Unlink a video and its sound to edit them separately for good, for example to re
 1. Click one of the linked clips. Both are selected.
 2. Press <kbd>Ctrl</kbd>+<kbd>L</kbd> (the Timeline panel must be active), or right-click one of them and choose **Unlink**.
 
-- Every clip linked to the selected clips is unlinked. The clips stay selected.
+- Every clip linked to the selected clips is unlinked, and the chain icon disappears from their label bars. The clips stay selected.
 - After that, a click selects one clip only, and edits change only that clip.
 - The history step is named **Unlink clips**.
 
@@ -62,7 +64,7 @@ Link clips to keep them together, for example a video you trimmed and its sound 
 1. Select the clips: at least one audio clip and at least one video or image clip, each on its own track. For example, click the video, then <kbd>Shift</kbd>+click the audio clip.
 2. Press <kbd>Ctrl</kbd>+<kbd>L</kbd>, or right-click one of them and choose **Link**.
 
-- All the selected clips are linked to each other. The history step is named **Link clips**.
+- All the selected clips are linked to each other, and each shows the chain icon. The history step is named **Link clips**.
 - The menu row reads **Link** when no selected clip is linked, and **Unlink** when one is. <kbd>Ctrl</kbd>+<kbd>L</kbd> does the same: when any selected clip is already linked, it unlinks.
 - If the selection has no audio clip, no video or image clip, or two clips on the same track, nothing is linked and the message **Select a video and an audio clip to link** appears.
 - Clips on a locked track can't be linked or unlinked.
@@ -127,6 +129,7 @@ What a group does:
 - The history step is named **Ungroup clips**.
 
 ## Related pages
+- [Clip thumbnails, waveforms and badges](clip-thumbnails-and-waveforms.md)
 - [Timeline](timeline.md)
 - [Tracks](tracks.md)
 - [Trimming clips](trimming.md)
@@ -135,4 +138,4 @@ What a group does:
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 16, 2026-10-15</sub>
+<sub>Last updated: Batch 17, 2026-10-15</sub>
