@@ -1,6 +1,6 @@
 # Troubleshooting
 
-This page helps you when something does not work as expected: the editor does not start in your browser, the preview stays empty, a folder or a file does not open, a clip drag, a trim, a split, a delete, a timeline tool, a typed timecode, a marker, an in/out range or **Lift** and **Extract** do something you did not expect, media from the Media panel lands somewhere you did not expect, a clip shows no thumbnails, playback stutters, or you hear no sound. Each problem lists what you see, why it happens and what to do. The last section lists what the current version cannot do yet.
+This page helps you when something does not work as expected: the editor does not start in your browser, the preview stays empty, a folder or a file does not open, a clip drag, a trim, a split, a delete, a timeline tool, a typed timecode, a marker, an in/out range or **Lift** and **Extract** do something you did not expect, media from the Media panel lands somewhere you did not expect, a clip shows no thumbnails, the preview zoom, overlays or fullscreen behave unexpectedly, playback stutters, or you hear no sound. Each problem lists what you see, why it happens and what to do. The last section lists what the current version cannot do yet.
 
 > **Video placeholder: Fix common problems**
 > - File: `videos/troubleshooting/overview.mp4` (not recorded yet)
@@ -10,7 +10,7 @@ This page helps you when something does not work as expected: the editor does no
 >   2. In Chrome, open `chrome://settings/system` and show **Use graphics acceleration when available** turned on.
 >   3. Open a project and allow only viewing when the browser asks: the read-only banner appears. Click **Allow editing**, allow editing, and the banner disappears.
 >   4. Import a `.webm` file: the message "Can't import ..." with "Unsupported file type" appears.
->   5. Pick a value in the preview **Zoom** dropdown and press <kbd>Space</kbd>: playback does not start. Click the preview picture and press <kbd>Space</kbd> again: playback starts.
+>   5. Press <kbd>F</kbd>: the preview fills the window and the other panels disappear. Press <kbd>Esc</kbd>: they are back at their sizes.
 >   6. Play a 4K clip and point at **Dropped** in the status strip under the preview.
 >   7. Play a clip with sound while **Mute** is on: nothing is heard, but the meter moves. Click **Unmute**: the sound is back.
 >   8. Drag a clip near the end of another clip: it jumps onto the edge with a gold line. Hold <kbd>S</kbd> and place it a few frames away instead.
@@ -27,6 +27,7 @@ This page helps you when something does not work as expected: the editor does no
 >   19. Click a marker in the ruler, click an empty part of a track and press <kbd>Delete</kbd>: the marker disappears, the clips stay. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>.
 >   20. Point at the picture of a video card in the Media panel and press <kbd>I</kbd>: a gold bar appears on the card, and the timeline's in point does not change. Press <kbd>Alt</kbd>+<kbd>X</kbd>: the bar disappears.
 >   21. Put the playhead in the middle of a clip and double-click a card: the clip splits and the later clips move right. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>, click the card and press <kbd>.</kbd>: the new clip covers what was there instead.
+>   22. Choose **400%** in the preview **Zoom** menu with a 4K clip under the playhead and press <kbd>Space</kbd>: the status line reads **Auto: reduced** and the picture is soft. Press <kbd>Space</kbd> again: a moment later the picture sharpens and the status line reads **Auto: full**.
 
 ## In this page
 - [Browser and graphics](#browser-and-graphics)
@@ -39,6 +40,7 @@ This page helps you when something does not work as expected: the editor does no
   - [The save shortcut opens the browser's Save dialog](#the-save-shortcut-opens-the-browsers-save-dialog)
   - [Alt+Left leaves the editor](#altleft-leaves-the-editor)
   - [Space starts playback only when you release it](#space-starts-playback-only-when-you-release-it)
+  - [Ctrl+1 or Ctrl+2 switched to another browser tab](#ctrl1-or-ctrl2-switched-to-another-browser-tab)
 - [Timeline](#timeline)
   - [A drag copied clips or pushed other clips to the right](#a-drag-copied-clips-or-pushed-other-clips-to-the-right)
   - [A drag cut another clip short or split it](#a-drag-cut-another-clip-short-or-split-it)
@@ -101,6 +103,10 @@ This page helps you when something does not work as expected: the editor does no
   - [Sound and picture are out of sync](#sound-and-picture-are-out-of-sync)
   - [The preview shows two pictures side by side](#the-preview-shows-two-pictures-side-by-side)
   - [A clip does not show in the preview](#a-clip-does-not-show-in-the-preview)
+  - [The other panels disappeared](#the-other-panels-disappeared)
+  - [The zoomed preview is not sharp](#the-zoomed-preview-is-not-sharp)
+  - [The mouse wheel moves the picture or does nothing](#the-mouse-wheel-moves-the-picture-or-does-nothing)
+  - [An overlay does not show](#an-overlay-does-not-show)
 - [Known limitations](#known-limitations)
 
 ## Browser and graphics
@@ -152,9 +158,9 @@ This page helps you when something does not work as expected: the editor does no
 
 **Cause:** One of these:
 - A text field has the keyboard focus (the project name, a media name, the timecode field, a number field). Typing always comes before shortcuts.
-- A dropdown has the focus, for example the preview **Zoom** dropdown after you chose a level.
-- A dialog is open.
-- The shortcut belongs to another panel. For example, <kbd>↑</kbd> and <kbd>↓</kbd> jump between clips, and <kbd>X</kbd>, <kbd>;</kbd> and <kbd>'</kbd> mark a clip, lift and extract, only in the Timeline panel, and the arrow keys do not step frames when the Preview panel was the last panel you clicked.
+- A dropdown list has the keyboard focus, for example **Sort media by** after you chose a value with the keyboard.
+- A dialog or a menu is open.
+- The shortcut belongs to another panel. For example, <kbd>↑</kbd> and <kbd>↓</kbd> jump between clips, and <kbd>X</kbd>, <kbd>;</kbd> and <kbd>'</kbd> mark a clip, lift and extract, only in the Timeline panel, and <kbd>Ctrl</kbd>+<kbd>0</kbd>, <kbd>Ctrl</kbd>+<kbd>1</kbd> and <kbd>Ctrl</kbd>+<kbd>2</kbd> zoom the preview only in the Preview panel.
 - The shortcut belongs to a feature that is available in a later version.
 
 **Fix:** Press <kbd>Enter</kbd> or <kbd>Escape</kbd> to leave a text field, close the dialog, or click the timeline or the preview picture. Then try again. See [Keyboard shortcuts](keyboard-shortcuts.md) for the panel each shortcut needs.
@@ -187,9 +193,17 @@ This page helps you when something does not work as expected: the editor does no
 
 **Symptom:** You press <kbd>Space</kbd> to play, the cursor turns into a hand, and playback starts only when you let go of the key.
 
-**Cause:** Playback was stopped and the pointer rested on an empty part of a timeline track. There, holding <kbd>Space</kbd> lets you drag to pan the view, so the editor waits for the release to know whether you wanted to pan or to play.
+**Cause:** Playback was stopped and the pointer rested on an empty part of a timeline track, or on the preview picture while it was zoomed in. There, holding <kbd>Space</kbd> lets you drag to pan the view, so the editor waits for the release to know whether you wanted to pan or to play.
 
-**Fix:** Nothing is wrong: a short press still plays. To start playback on the press, move the pointer away from the empty track space (over a clip or out of the timeline), or click **Play** under the preview. Pausing with <kbd>Space</kbd> during playback is never delayed. See [Pan the view](timeline.md#pan-the-view).
+**Fix:** Nothing is wrong: a short press still plays. To start playback on the press, move the pointer away from the empty track space or the zoomed picture (over a clip, or out of the timeline and the preview), or click **Play** under the preview. Pausing with <kbd>Space</kbd> during playback is never delayed. See [Pan the view](timeline.md#pan-the-view) and [Pan the preview](preview-zoom-overlays-fullscreen.md#pan-the-preview).
+
+### Ctrl+1 or Ctrl+2 switched to another browser tab
+
+**Symptom:** You pressed <kbd>Ctrl</kbd>+<kbd>1</kbd> or <kbd>Ctrl</kbd>+<kbd>2</kbd> to zoom the preview, and the browser switched to another tab. Or <kbd>Ctrl</kbd>+<kbd>0</kbd> changed the size of the whole page.
+
+**Cause:** These keys zoom the preview only while the Preview panel is active. In the other panels the browser gets them: <kbd>Ctrl</kbd>+<kbd>1</kbd> and <kbd>Ctrl</kbd>+<kbd>2</kbd> switch to the first and second tab, and <kbd>Ctrl</kbd>+<kbd>0</kbd> resets the browser's page zoom.
+
+**Fix:** Go back to the editor's tab. Click the preview picture, then press the key again. Or use the **Zoom** menu and **Fit the frame in the panel** in the preview header. See [Zoom the preview](preview-zoom-overlays-fullscreen.md#zoom-the-preview).
 
 ## Timeline
 
@@ -694,11 +708,13 @@ If a message "Import failed" appears instead, the whole import stopped; its deta
 - Close other tabs and apps that play video or use the graphics card (video calls, games).
 - Let a hot laptop cool down.
 - Where you can, use 1080p footage instead of 4K. Lighter proxy copies for 4K footage are available in a later version.
+- In the **Preview quality** menu of the preview header, choose **1/2** or **1/4**: playback draws at half or a quarter of the resolution, which is lighter. If you play zoomed in above 100%, also make sure the mode is not **Full**. See [Choose the preview quality](preview-zoom-overlays-fullscreen.md#choose-the-preview-quality).
 
 **Not a problem:**
 - Playback may wait up to half a second before it starts: the editor decodes the first frames.
 - At 2x to 8x, the preview skips frames on purpose. They are not counted as dropped.
 - Backward playback (<kbd>J</kbd>) needs more decoding than forward playback and can be less smooth with heavy footage.
+- The first playback after the page loads can drop more frames than the following ones, especially in the fullscreen preview.
 
 See [Preview and playback](preview-and-playback.md#know-what-to-expect-from-performance).
 
@@ -762,6 +778,50 @@ See [Audio](audio.md).
 
 **Fix:** Click **M** or the eye to turn it off. If the clip is not faded, a clip on a higher video track covers it: drag its track header above the other video tracks. See [Mute, solo and hide tracks](tracks.md#mute-solo-and-hide-tracks) and [Reorder tracks](tracks.md#reorder-tracks).
 
+### The other panels disappeared
+
+**Symptom:** The preview fills the whole browser window. The Media, Edit Properties and Timeline panels are gone, and the header and transport bar of the preview come and go when you move the mouse.
+
+**Cause:** The fullscreen preview is on. You pressed <kbd>F</kbd> or clicked **Fullscreen**.
+
+**Fix:** Press <kbd>Esc</kbd> or <kbd>F</kbd>, or move the mouse and click **Exit fullscreen** in the header. Every panel comes back at its size and place. If <kbd>Esc</kbd> does nothing the first time, it closed a menu or cancelled a drag: press it again. See [Fill the window with the preview](preview-zoom-overlays-fullscreen.md#fill-the-window-with-the-preview).
+
+### The zoomed preview is not sharp
+
+**Symptom:** You zoomed the preview in above 100%, and the picture looks soft or blocky.
+
+**Cause:** One of these:
+- The video is playing, or you scrub or trim. With the **Auto** quality, the preview then shows the project's resolution, and the status line reads **Auto: reduced**. The full detail follows 0.3 seconds after you stop.
+- You just zoomed in, and the editor is still decoding the frame at the larger size.
+- The quality is **Proxy**, or **1/2** or **1/4** while playing.
+- The source has no more detail: a 1080×1920 clip in a 1080×1920 project has none beyond 100%, and a 4K landscape clip fitted to the frame width has detail up to about 356%. Frames larger than 4096 pixels on their long side are shown at 4096.
+- The clip is an SVG image that covers the whole frame. In this version, such an SVG doesn't get sharper above 100%.
+
+**Fix:** Pause and wait a moment. If the status line doesn't read **full** at rest, choose **Auto** or **Full** in the **Preview quality** menu. See [See real detail when you zoom in](preview-zoom-overlays-fullscreen.md#see-real-detail-when-you-zoom-in).
+
+### The mouse wheel moves the picture or does nothing
+
+**Symptom:** Over the preview, the mouse wheel moves the picture up and down instead of zooming it, or it does nothing at all.
+
+**Cause:** The wheel alone pans the preview while it is zoomed in, and does nothing at **Fit**, where the whole frame is visible. Zooming needs <kbd>Ctrl</kbd> or <kbd>Alt</kbd>.
+
+**Fix:** Hold <kbd>Ctrl</kbd> (or <kbd>Alt</kbd>) while you roll the wheel, or pinch on a touchpad. See [Zoom with the mouse wheel](preview-zoom-overlays-fullscreen.md#zoom-with-the-mouse-wheel).
+
+### An overlay does not show
+
+**Symptom:** You turned on an overlay in the **Overlays** menu, but you don't see it on the preview.
+
+**Cause:** One of these:
+- **Rulers above 100%** shows only while you zoom in above 100%, and **Pixel grid from 800%** only at 800% or more.
+- **Cells per side** changes the grid only while **Custom** is chosen under **Grid**.
+- **Smart guides** has no visible effect yet: the guides are available in a later version.
+- The preview shows two frames side by side while you roll a cut, slip or slide a clip. The overlays come back when you release the mouse button.
+- A safe zone area is too small on screen for its name: the shading shows without the name. Zoom in to read it.
+
+**Fix:** Zoom in for the rulers and the pixel grid, and choose **Custom** for the cell count. See [Show grids, guides and rulers](preview-zoom-overlays-fullscreen.md#show-grids-guides-and-rulers).
+
+> **Note:** Overlays never appear in a frame you save with **Export frame**. That is intended.
+
 ## Known limitations
 
 The current version cannot do these things yet. Each one is available in a later version.
@@ -772,7 +832,7 @@ The current version cannot do these things yet. Each one is available in a later
 - **Menus:** only clips, gaps, track headers, the ruler and media cards have a right-click menu, with a first set of rows. Menu rows can't be chosen with the arrow keys.
 - **Speed and edit points:** a clip's speed changes only with **Rate stretch**; typing an exact speed is not available. A selected cut (edit point) only marks the cut; transitions are not available.
 - **Tracks:** track headers have room for names of about 9 characters; longer names are shortened. Groups are not marked on the timeline. In the **Track** section of **Edit Properties**, several selected tracks show the first track's settings, with no sign of mixed values.
-- **Preview:** no panning, no mouse-wheel zoom, and no <kbd>Ctrl</kbd>+<kbd>0</kbd>/<kbd>1</kbd>/<kbd>2</kbd>. The preview timecode is read-only; type times in the timeline toolbar. The quality is always **Auto: full**.
+- **Preview:** clips can't be selected or moved on the picture, and smart guides are not drawn. The **Proxy** quality has no proxy copies to use and shows the project's resolution. An SVG image that covers the whole frame doesn't get sharper when you zoom in. The **Zoom**, **Preview quality** and **Overlays** menus can't be used with the arrow keys.
 - **Fit only:** inserted clips fit the frame with bands; one-click Fill is not available. Changing the project resolution does not refit existing clips.
 - **Animated GIF and WebP files** show as still images (their first frame), in the preview and in their clips' thumbnails.
 - **Media that cannot be decoded, or whose file is missing,** shows nothing in the preview, with no placeholder.
@@ -798,4 +858,4 @@ The current version cannot do these things yet. Each one is available in a later
 - [Preview and playback](preview-and-playback.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 20, 2026-10-15</sub>
+<sub>Last updated: Batch 21, 2026-10-15</sub>

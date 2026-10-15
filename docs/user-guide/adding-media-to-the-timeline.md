@@ -209,7 +209,7 @@ Drag a card onto the preview to put its picture exactly where you want it in the
 3. Release where the center of the picture should be.
 
 - **Track.** The picture goes on the top video track when that track is unlocked and empty for the whole length of the new clip. Otherwise a new video track is created above it. A video's sound goes on the first audio track (counting from A1) that is unlocked and empty there, or on a new audio track.
-- **Position.** The picture is scaled to fit inside the frame, as any new clip, and its center sits where you released. You can release beside the frame too; the picture then sits partly outside it.
+- **Position.** The picture is scaled to fit inside the frame, as any new clip, and its center sits where you released, at any zoom level and pan of the preview. You can release beside the frame too; the picture then sits partly outside it. Zoom the preview in to place it precisely; see [Preview zoom, overlays and fullscreen](preview-zoom-overlays-fullscreen.md).
 - **Several items** go back to back from the playhead, each centered on the same point.
 - The playhead does not move. The new clips are selected. The step is named **Add to canvas** or **Add clips to canvas**.
 
@@ -265,4 +265,4 @@ Every way of adding media is one step in the history. Point at **Undo** in the a
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 20, 2026-10-15</sub>
+<sub>Last updated: Batch 21, 2026-10-15</sub>

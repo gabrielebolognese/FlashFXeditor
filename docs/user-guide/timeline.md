@@ -206,7 +206,7 @@ Panning moves the view with the pointer, as if you were dragging the timeline it
 - While you pan, the cursor is a closed hand. Panning is not a step in the history.
 - During playback, a pan to the left or right stops the view from following the playhead. See [Follow the playhead during playback](#follow-the-playhead-during-playback).
 
-**The Hand tool.** A drag on a clip pans instead of moving the clip, and a click selects nothing. The ruler, the track headers and the scrollbars work as usual, and a right-click on a clip still opens its menu. The tool stays active until you choose another one, and each project remembers it: press <kbd>V</kbd> to go back to **Select**.
+**The Hand tool.** A drag on a clip pans instead of moving the clip, and a click selects nothing. The ruler, the track headers and the scrollbars work as usual, and a right-click on a clip still opens its menu. The tool stays active until you choose another one, and each project remembers it: press <kbd>V</kbd> to go back to **Select**. The **Hand** tool also pans the preview picture while it is zoomed in; see [Pan the preview](preview-zoom-overlays-fullscreen.md#pan-the-preview).
 
 **The middle mouse button** never selects or moves anything, whatever the tool.
 
@@ -474,7 +474,7 @@ How snapping decides:
 
 ### Turn snapping on or off
 
-- Click **Snap** (the magnet icon) in the timeline toolbar, or press <kbd>S</kbd>. The magnet is gold while snapping is on.
+- Click **Snap** (the magnet icon) in the timeline toolbar or in the Preview panel header, or press <kbd>S</kbd>. Both magnets are the same switch, gold while snapping is on.
 - <kbd>S</kbd> works in every panel, except while you type in a text field.
 - Each project remembers whether snapping is on. Turning it on or off is not a step in the history.
 
@@ -645,4 +645,4 @@ Label colors help you see at a glance which clips belong together, for example a
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 20, 2026-10-15</sub>
+<sub>Last updated: Batch 21, 2026-10-15</sub>

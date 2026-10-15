@@ -27,7 +27,7 @@ When you create a project, the editor fills the folder you picked with these ite
 | Item | What it holds |
 | --- | --- |
 | `project.json` | The project itself: settings, tracks, clips, markers and the list of media. |
-| `session.json` | Where you left off: playhead, in and out points, the marked parts of media items, zoom, panel sizes and similar view settings. If it is missing or damaged, the project still opens, with default view settings. |
+| `session.json` | Where you left off: playhead, in and out points, the marked parts of media items, the timeline and preview zoom, the preview quality and overlays, panel sizes and similar view settings. If it is missing or damaged, the project still opens, with default view settings. |
 | `media` | Copies of the files you import. See [Importing media](importing-media.md). |
 | `cache` | Thumbnails, sound analysis and indexes the editor builds from your media. If you delete this folder while the project is closed, the editor builds what it needs again the next time (this takes a little longer). |
 | `history` | Automatic backups of `project.json`: the newest 20. See [Restore an older version](#restore-an-older-version). |
@@ -96,7 +96,7 @@ What you can undo:
 | --- | --- |
 | Renaming the project | Moving the playhead and playing |
 | Changing the resolution, frame rate or background color | Selecting clips, tracks, a cut (edit point), a gap or a marker |
-| Importing media, renaming media, removing media | Zooming, scrolling and panning the timeline (also with the scrollbars), zooming the preview |
+| Importing media, renaming media, removing media | Zooming, scrolling and panning the timeline (also with the scrollbars), zooming and panning the preview, the preview quality, overlays and fullscreen |
 | Adding media to the timeline: each insert, overwrite, drag, drop on the preview or **Add to canvas**; dropped files with their import are one step | Panel sizes, panel tabs, the media view and sort order, skimming media cards |
 | Moving, inserting, duplicating and nudging clips (a quick series of nudges is one step) | **Loop playback**, **Snap**, **Linked selection**, **Ripple mode**, the timecode format and the **Autosave** setting |
 | Adding, moving, renaming, recoloring and deleting markers | Setting, moving and clearing the in and out points, and marking a part of a media item with <kbd>I</kbd> and <kbd>O</kbd> on its card |
@@ -119,7 +119,7 @@ When you open a project again, the editor restores your view from the last sessi
 - the parts of media items you marked with <kbd>I</kbd> and <kbd>O</kbd> on their cards (see [Use only part of a media item](adding-media-to-the-timeline.md#use-only-part-of-a-media-item))
 - the timeline zoom and scroll position, also after you pan or use the scrollbars
 - the timecode format: frames (**ff**) or milliseconds (**ms**)
-- the preview zoom
+- the preview zoom and pan, the preview quality, and the safe zone, grid and guides of the **Overlays** menu (see [Preview zoom, overlays and fullscreen](preview-zoom-overlays-fullscreen.md))
 - the media panel tab, view (grid or list) and sort order
 - whether **Loop playback** is on
 - whether **Snap** is on
@@ -129,7 +129,7 @@ When you open a project again, the editor restores your view from the last sessi
 - the selected clips or tracks
 - the panel sizes
 
-The undo history, a selected cut (edit point), a selected gap and a selected marker are not restored. Markers are part of the project itself, so they are always there. Because the view is saved every 10 seconds, the last few seconds of view changes can be missing after a browser crash; your project changes are saved separately by autosave.
+The undo history, a selected cut (edit point), a selected gap, a selected marker and the fullscreen preview are not restored. Markers are part of the project itself, so they are always there. Because the view is saved every 10 seconds, the last few seconds of view changes can be missing after a browser crash; your project changes are saved separately by autosave.
 
 ## Restore unsaved changes after a crash
 
@@ -221,4 +221,4 @@ Each change to **Name**, **Resolution**, **Size**, **Frame rate** or **Backgroun
 - [Linking and grouping clips](links-and-groups.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 20, 2026-10-15</sub>
+<sub>Last updated: Batch 21, 2026-10-15</sub>

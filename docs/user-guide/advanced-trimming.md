@@ -181,7 +181,8 @@ While you roll, slip or slide, the preview shows two frames side by side instead
 | Slip | The clip's new first frame | The clip's new last frame |
 | Slide | The new last frame of the clip before the slid clip | The new first frame of the clip after it |
 
-- Each half shows the whole frame, fitted into its half.
+- At **Fit**, each half shows the whole frame, fitted into its half. When the preview is zoomed in, each half shows the same zoom and the same part of the frame. See [Zoom the preview](preview-zoom-overlays-fullscreen.md#zoom-the-preview).
+- Safe zones, grids and the other overlays are hidden while the split preview shows. See [Show a platform safe zone](preview-zoom-overlays-fullscreen.md#show-a-platform-safe-zone).
 - The frames follow your drag. When you release or cancel, the preview goes back to the frame at the playhead.
 - Trims and rate stretches show a single frame: the new first or last frame of the clip. See [Trim a clip](trimming.md#trim-a-clip).
 
@@ -215,4 +216,4 @@ The edit stops following the pointer at these limits:
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 18, 2026-10-15</sub>
+<sub>Last updated: Batch 21, 2026-10-15</sub>
