@@ -1,0 +1,264 @@
+# Preview and playback
+
+The Preview panel shows your video as it looks at the playhead: every video and image clip under the playhead, stacked track by track inside the project frame. Use it to check a frame while you scrub the timeline, to play your edit back, and to save a still of the current frame.
+
+> **Video placeholder: Preview and playback overview**
+> - File: `videos/preview-and-playback/overview.mp4` (not recorded yet)
+> - Length: about 75 seconds
+> - Shows:
+>   1. A 1080×1920 project with a vertical clip and a landscape clip on V1. The Preview panel shows the frame with a thin border; the landscape clip has black bands above and below.
+>   2. Drag the playhead across the timeline ruler. The preview follows and switches clips at the cut without going black.
+>   3. Press <kbd>Space</kbd> to play, then <kbd>Space</kbd> to pause. The **Play** button turns into **Pause** and back.
+>   4. Press <kbd>L</kbd> three times (1x, 2x, 4x), then <kbd>K</kbd> to stop.
+>   5. Hold <kbd>K</kbd> and tap <kbd>L</kbd> twice to step two frames.
+>   6. Point at the timecode, the duration, the fps badge and **Dropped 0** in the status strip.
+
+## In this page
+- [Read the preview](#read-the-preview)
+- [See how clips fit the frame](#see-how-clips-fit-the-frame)
+- [Zoom the preview](#zoom-the-preview)
+- [Scrub through the timeline](#scrub-through-the-timeline)
+- [Play and pause](#play-and-pause)
+- [Shuttle with J, K and L](#shuttle-with-j-k-and-l)
+- [Step through frames](#step-through-frames)
+- [Play around the playhead](#play-around-the-playhead)
+- [Loop playback](#loop-playback)
+- [Read the transport bar and status strip](#read-the-transport-bar-and-status-strip)
+- [Export the current frame](#export-the-current-frame)
+- [Know what to expect from performance](#know-what-to-expect-from-performance)
+
+## Read the preview
+
+The preview always shows the frame at the playhead, the red line in the timeline. It updates when you move the playhead, when you play, and when the project changes (for example when you insert a clip or press **Undo**).
+
+What you see in the Preview panel:
+
+- **The project frame.** It has the size of your project: 1080×1920 (9:16) by default, or the **Resolution** you chose in the **Project** section of the **Edit Properties** panel (shown when no clip is selected). A thin line marks its edge.
+- **The area around the frame.** It belongs to the panel, not to your video. It never appears in an exported frame.
+- **The background.** Wherever no clip covers the frame, you see the project background color: black by default. Change it in the **Background** field of the same **Project** section (a hex color such as `#000000`).
+- **Empty frames.** In a gap between clips, past the end of the last clip, or in a project with no clips, the frame shows only the background.
+
+### Stacked tracks
+
+When several video tracks have a clip at the playhead, the preview draws **V1** at the bottom and each higher video track over the tracks below it. Audio tracks never show in the preview.
+
+> **Note:** In this version, every clip you insert goes to the first video track (**V1**). Moving clips to other tracks is available in a later version.
+
+### Sound
+
+Playback is silent in this version. Audio clips appear on the timeline, but you do not hear them yet. Audio playback is available in a later version.
+
+### Media that cannot be shown
+
+A video that your browser cannot decode (for example HEVC on a computer without HEVC decoding) shows nothing in the preview: you see the background, or the tracks below it. See [Troubleshooting](troubleshooting.md).
+
+## See how clips fit the frame
+
+When you insert a video or an image, the editor scales it to fit inside the project frame and centers it. The whole picture stays visible; nothing is cropped.
+
+| Media | In a 1080×1920 project |
+| --- | --- |
+| Vertical 9:16 video or image, at any size (1080×1920, 2160×3840...) | Fills the frame exactly. |
+| Landscape 16:9 (1920×1080, 3840×2160...) | Fills the width, with bands above and below (letterbox). |
+| Square (1080×1080) or 4:5 | Fills the width, with bands above and below. |
+| Phone video recorded upright | Shown upright. The editor reads the rotation the phone stores in the file. |
+
+The bands show the project background color.
+
+> **Note:** The fit is set when you insert the clip. If you change the project resolution later, existing clips keep their size and stay centered. One-click Fill (no bands) is available in a later version.
+
+## Zoom the preview
+
+1. Open the **Zoom** dropdown in the Preview panel header.
+2. Choose a level:
+
+   | Level | What you see |
+   | --- | --- |
+   | **Fit** (default) | The whole frame, as large as the panel allows, with a small margin. |
+   | **25%**, **50%** | The frame smaller than actual size. |
+   | **100%** | Actual size: one pixel of your video on one pixel of your screen. |
+   | **200%**, **400%** | The center of the frame, enlarged. |
+
+3. To return to the whole frame, click **Fit** at the right of the transport bar.
+
+The frame stays centered at every zoom level. Panning and zooming with the mouse wheel are available in a later version. The project remembers the zoom level you chose.
+
+> **Note:** Video is prepared at the project's resolution, so at 200% and 400% video frames are enlarged, not sharper. More detail when zoomed in is available in a later version.
+
+> **Tip:** The **Zoom** dropdown keeps the keyboard focus after you choose a level, and shortcuts do not work while a dropdown has focus. Click the preview picture before you press <kbd>Space</kbd> or other shortcuts.
+
+## Scrub through the timeline
+
+Scrubbing means dragging the playhead to look for a frame.
+
+1. Click anywhere in the ruler at the top of the timeline. The playhead jumps there, and the preview shows that frame.
+2. Drag in the ruler, or drag the playhead's head in the ruler. The preview follows the playhead as you drag.
+3. Release the mouse button on the frame you want.
+
+What to expect while you scrub:
+
+- The preview first shows the closest frame it already has, then switches to the exact frame as soon as it is decoded. This usually takes a moment. Deep inside long phone clips it can take longer; see [Know what to expect from performance](#know-what-to-expect-from-performance).
+- When the playhead crosses a cut, the preview keeps the previous picture until the new clip's frame is ready. It never flashes black.
+- The editor prepares the first and last frames of the clips just before and after the playhead (up to 2 seconds away), so a cut usually shows the new clip at once.
+- Dragging in the ruler while the video plays pauses playback.
+
+You can also move the playhead with the keyboard (see [Step through frames](#step-through-frames)) or type a time in the timecode field of the timeline toolbar (see [Timeline](timeline.md)).
+
+> **Video placeholder: Scrub across cuts**
+> - File: `videos/preview-and-playback/scrub-across-cuts.mp4` (not recorded yet)
+> - Length: about 30 seconds
+> - Shows:
+>   1. A timeline with three clips in a row on V1.
+>   2. Click in the ruler over the second clip: the preview shows that frame.
+>   3. Drag slowly across the cut into the third clip: the picture changes at the cut with no black frame.
+>   4. Drag fast back to the start: the preview keeps up, then settles on the exact frame.
+
+## Play and pause
+
+1. Press <kbd>Space</kbd>, or click **Play** in the middle of the transport bar under the preview. The button turns into **Pause**.
+2. Press <kbd>Space</kbd> again, or click **Pause**, to stop.
+
+How playback behaves:
+
+- Playback starts at the playhead. If the playhead is at the end of the content, playback starts again from the beginning.
+- Before the first frame moves, the editor may wait up to half a second while it decodes the frames ahead. This is normal.
+- At the end of the content, playback stops on the last frame, unless **Loop playback** is on (see [Loop playback](#loop-playback)).
+- The timeline follows the playhead by pages: when the playhead reaches the right edge, the view jumps ahead by most of its width. If you scroll the timeline sideways or zoom it with the mouse wheel during playback, it stops following until you start playback again. Scrolling up and down does not stop it.
+- <kbd>Home</kbd>, <kbd>End</kbd> and the timecode field of the timeline toolbar move the playhead without stopping playback: it plays on from the new position. The arrow keys pause first, then step.
+- Shortcuts work in every panel, except while you type in a text field, while a dropdown has focus, or while a dialog is open.
+
+## Shuttle with J, K and L
+
+<kbd>J</kbd>, <kbd>K</kbd> and <kbd>L</kbd> let you search through your video at different speeds with one hand.
+
+| Key | What it does |
+| --- | --- |
+| <kbd>L</kbd> | Plays forward at 1x. Each further press doubles the speed: 2x, 4x, 8x. |
+| <kbd>J</kbd> | Plays backward at 1x. Each further press doubles the speed: 2x, 4x, 8x. |
+| <kbd>K</kbd> | Pauses at once. |
+| Hold <kbd>K</kbd>, tap <kbd>L</kbd> | Steps one frame forward per tap. |
+| Hold <kbd>K</kbd>, tap <kbd>J</kbd> | Steps one frame backward per tap. |
+
+- 8x is the fastest speed. Further presses keep 8x.
+- <kbd>J</kbd> while you play forward, or <kbd>L</kbd> while you play backward, switches direction at 1x.
+- Holding <kbd>J</kbd> or <kbd>L</kbd> down does not change the speed: only presses count.
+- At 2x and faster, the preview shows at most 60 pictures per second and skips the frames in between. These skipped frames are not counted as dropped.
+- Backward playback stops on the first frame, unless **Loop playback** is on. It needs more decoding work than forward playback, so heavy footage can play less smoothly backward.
+- When you pause, the preview shows the exact frame at the playhead.
+
+> **Video placeholder: Shuttle with J, K and L**
+> - File: `videos/preview-and-playback/jkl-shuttle.mp4` (not recorded yet)
+> - Length: about 45 seconds
+> - Shows:
+>   1. Press <kbd>L</kbd> four times: the playhead runs at 1x, 2x, 4x, then 8x.
+>   2. Press <kbd>K</kbd>: playback stops and the preview settles on the exact frame.
+>   3. Press <kbd>J</kbd> twice: the video plays backward at 2x.
+>   4. Press <kbd>K</kbd>, then hold <kbd>K</kbd> and tap <kbd>J</kbd> and <kbd>L</kbd> to step one frame at a time while the timecode changes by one frame.
+
+## Step through frames
+
+| Action | Keys | Button |
+| --- | --- | --- |
+| One frame back or forward | <kbd>←</kbd> or <kbd>→</kbd> | **Previous frame**, **Next frame** |
+| Five frames back or forward | <kbd>Shift</kbd>+<kbd>←</kbd> or <kbd>Shift</kbd>+<kbd>→</kbd> | |
+| One second back or forward | <kbd>Ctrl</kbd>+<kbd>←</kbd> or <kbd>Ctrl</kbd>+<kbd>→</kbd> | |
+| Go to the start | <kbd>Home</kbd> | **Go to start** |
+| Go to the end of the content | <kbd>End</kbd> | **Go to end** |
+
+- Hold an arrow key to keep stepping: after 0.3 seconds, it repeats about 30 times per second until you release the key.
+- Stepping pauses playback first.
+- The playhead never goes before the first frame.
+- **Go to end** puts the playhead just after the last frame, where the frame is empty. Click **Previous frame** to see the last frame.
+- The timeline scrolls by a page when a step or jump moves the playhead out of view.
+- In the Timeline panel, <kbd>↑</kbd> and <kbd>↓</kbd> jump to the previous or next edit point (the start or end of a clip). See [Keyboard shortcuts](keyboard-shortcuts.md).
+
+> **Note:** The arrow keys, with or without <kbd>Shift</kbd>, do not step when the Preview panel is the panel you clicked last: there they are reserved for moving items on the canvas, available in a later version. Click the timeline first. <kbd>Ctrl</kbd>+<kbd>←</kbd>, <kbd>Ctrl</kbd>+<kbd>→</kbd>, <kbd>Home</kbd>, <kbd>End</kbd> and the transport buttons work everywhere.
+
+## Play around the playhead
+
+Press <kbd>Shift</kbd>+<kbd>K</kbd> to check the moment around the playhead. The editor plays at 1x from 2 seconds before the playhead to 2 seconds after it, then puts the playhead back where it was.
+
+- Near the start or the end of the content, the range is shorter.
+- Press <kbd>K</kbd> or <kbd>Space</kbd> to stop early. The playhead then stays where you stopped.
+- Play around ignores **Loop playback**.
+
+## Loop playback
+
+1. Click **Loop playback** (the repeat icon at the right of the transport bar), or press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd>. The button looks pressed while loop is on.
+2. Play. At the end of the content, playback continues from the start. Played backward, it continues from the end.
+3. Pause, or click **Loop playback** again to turn loop off.
+
+The loop covers the whole timeline. Looping between in and out points is available in a later version. The project remembers whether loop is on.
+
+## Read the transport bar and status strip
+
+Under the preview sit the transport bar and, below it, a thin status strip. Hover over any control to see its name and shortcut.
+
+### Readouts
+
+| Readout | Meaning |
+| --- | --- |
+| Playhead timecode (left, bright) | The playhead position as minutes:seconds:frames, for example `00:12:15` is 12 seconds and 15 frames. Hours appear in front when needed. |
+| Duration (the dimmer timecode next to it) | The length of your content: the end of the last clip, in the same format. Its tooltip reads **Duration**. |
+| Frame rate badge, for example **30 fps** | The project frame rate. Its tooltip reads **Project frame rate**. |
+
+The preview timecode is read-only. To type a time, use the timecode field in the timeline toolbar. See [Timeline](timeline.md).
+
+### Transport buttons
+
+| Button | Shortcut | What it does |
+| --- | --- | --- |
+| **Go to start** | <kbd>Home</kbd> | Moves the playhead to the first frame. |
+| **Previous frame** | <kbd>←</kbd> | Steps one frame back. |
+| **Play** / **Pause** | <kbd>Space</kbd> | Starts or stops playback. |
+| **Next frame** | <kbd>→</kbd> | Steps one frame forward. |
+| **Go to end** | <kbd>End</kbd> | Moves the playhead to the end of the content. |
+| **Loop playback** | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd> | Turns looping on or off. |
+| **Fit** | | Fits the whole frame in the panel. |
+
+### Status strip
+
+| Item | Meaning |
+| --- | --- |
+| **Auto: full** | The preview quality. In this version the preview always uses your full-quality media. Lighter proxy copies for smoother playback are available in a later version. |
+| **Dropped** *N* | The frames dropped during the last playback. It resets to 0 each time you start playing. |
+
+A frame counts as dropped when the playback clock had to skip it, or when it was due before its exact picture was ready (the preview held the previous picture instead). Only playback at 1x counts, forward or backward, including play around. At 2x and faster, frames are skipped on purpose and not counted.
+
+## Export the current frame
+
+Save the frame at the playhead as a PNG image, for a thumbnail or a cover picture.
+
+1. Move the playhead to the frame you want.
+2. Wait until the preview has settled on the exact frame.
+3. Click **Export frame** (the picture icon in the Preview panel header).
+4. In the save dialog, choose a folder and a name. The editor suggests "*project name* frame.png".
+5. Click **Save**. A message confirms "Saved *file name*" with the image size, for example "1080×1920 PNG".
+
+The image has the project resolution and contains only the frame: no border and none of the panel around it. The zoom level does not matter.
+
+> **Note:** If you export while the preview still shows a nearby frame (during or right after scrubbing), the PNG contains that frame. Wait for the picture to settle first.
+
+If the file cannot be written, a message "Can't export the frame" gives the reason. Exporting the whole video is available in a later version.
+
+## Know what to expect from performance
+
+The preview draws with your graphics card (GPU) and decodes video with the browser's hardware video decoder. What you can expect:
+
+- **Starting playback:** up to half a second of waiting while the first frames are decoded.
+- **During playback:** each clip under the playhead is decoded up to 15 frames ahead, and never more than half a second ahead. Clips that start within the next 2 seconds are prepared before their cut, so cuts play smoothly.
+- **1080p footage:** plays smoothly, even with a cut every second. On the development machine, a one-minute timeline of one-second 1080p cuts from five different videos played with no dropped frames.
+- **4K 60 fps HEVC footage** (common on recent phones): at the limit of what a laptop GPU decodes at full quality. Expect a few dropped frames (about 1% on the development machine), and more when the computer runs hot. Lighter proxy copies are available in a later version.
+- **Scrubbing:** the exact frame usually follows within a fraction of a second. Video is stored in groups of frames that start with a keyframe, so the editor decodes from the previous keyframe to show a frame. Deep inside a 4K HEVC phone clip this can take about half a second; the preview shows the closest frame meanwhile.
+- **Backward playback and fast shuttle speeds** need more decoding work than 1x forward.
+
+If playback stutters, see [Troubleshooting](troubleshooting.md).
+
+## Related pages
+- [Timeline](timeline.md)
+- [Importing media](importing-media.md)
+- [Keyboard shortcuts](keyboard-shortcuts.md)
+- [Workspace](workspace.md)
+- [Troubleshooting](troubleshooting.md)
+
+<sub>Last updated: Batch 09, 2026-10-15</sub>
