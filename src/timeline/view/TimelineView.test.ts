@@ -9,6 +9,7 @@ import { DocumentStore } from "../../core/store/DocumentStore.js";
 import { createLayoutStore } from "../../core/store/layoutStore.js";
 import { selectClips } from "../../core/store/selection.js";
 import { createSessionStore, setPlayhead } from "../../core/store/sessionStore.js";
+import { trimCursors } from "./cursors.js";
 import { drawOverlay } from "./drawOverlay.js";
 import { testTheme } from "./fixtures.js";
 import { TimelineView } from "./TimelineView.js";
@@ -27,6 +28,8 @@ function lastHover() {
 
 /** Every fillRect of every canvas: its fill style and width in CSS px. */
 const fills: { style: unknown; width: number }[] = [];
+/** Every fillText of every canvas, with its fill style. */
+const texts: { style: unknown; text: string }[] = [];
 
 /** A 2D context that accepts every call; text is 6 px per character. */
 function fakeContext(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
@@ -35,6 +38,7 @@ function fakeContext(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
     font: "",
     measureText: (text: string) => ({ width: text.length * 6 }),
     fillRect: (_x: number, _y: number, width: number) => void fills.push({ style: state.fillStyle, width }),
+    fillText: (text: string) => void texts.push({ style: state.fillStyle, text }),
   };
   return new Proxy(state, {
     get: (target, key) => (key in target ? target[key] : () => {}),
@@ -99,8 +103,23 @@ function setup(clipCount = 0) {
   const onAddTrack = vi.fn();
   const onToggleTrack = vi.fn();
   const onMoveClips = vi.fn();
+  const onTrimEdge = vi.fn();
+  const onTrimPreview = vi.fn();
   const idle = { pause: vi.fn(), resume: vi.fn() };
-  const view = new TimelineView({ scheduler, document, session, layout, theme: { theme: testTheme(), subscribe: () => () => {} }, onAddTrack, onToggleTrack, onMoveClips, idle, platform: "other" });
+  const view = new TimelineView({
+    scheduler,
+    document,
+    session,
+    layout,
+    theme: { theme: testTheme(), subscribe: () => () => {} },
+    onAddTrack,
+    onToggleTrack,
+    onMoveClips,
+    onTrimEdge,
+    onTrimPreview,
+    idle,
+    platform: "other",
+  });
   const host = window.document.createElement("div");
   window.document.body.append(host);
   const unmount = view.mount(host);
@@ -111,7 +130,7 @@ function setup(clipCount = 0) {
     overlay.dispatchEvent(new PointerEvent(type, { clientX: x, clientY: y, pointerId: 1, button: 0, bubbles: true, ...init }));
   /** A key event on the window (modifier changes during a drag). */
   const key = (type: "keydown" | "keyup", keyName: string, init: KeyboardEventInit = {}) => window.dispatchEvent(new KeyboardEvent(type, { key: keyName, bubbles: true, ...init }));
-  return { view, session, document, layout, scheduler, overlay, pointer, key, onAddTrack, onToggleTrack, onMoveClips, idle, unmount };
+  return { view, session, document, layout, scheduler, overlay, pointer, key, onAddTrack, onToggleTrack, onMoveClips, onTrimEdge, onTrimPreview, idle, unmount };
 }
 
 describe("TimelineView", () => {
@@ -510,6 +529,160 @@ describe("TimelineView", () => {
     pointer("pointerdown", 180, 250);
     pointer("pointerup", 180, 250);
     expect(session.selection.getState().kind).toBe("none");
+  });
+
+  describe("trimming", () => {
+    /** V1: a [0, 20) linked to A1's au [0, 20), and b [100, 140); 4 px/frame from x = 176. V1 rows 172..228, A1 232..288. */
+    function trimSetup() {
+      const t = setup();
+      const add = (id: string, trackId: string, start: number, duration: number, extra: object = {}) =>
+        t.document.dispatch(addClip({ ...makeMediaClip(t.document.getState(), { id, trackId, start, duration, mediaId: "m", kind: trackId === "a1" ? "audio" : "video" }), ...extra }));
+      add("a", "v1", 0, 20, { linkGroup: "L", in: 1_000_000, out: 1_000_000 + 666_667 });
+      add("au", "a1", 0, 20, { linkGroup: "L", in: 1_000_000, out: 1_000_000 + 666_667 });
+      add("b", "v1", 100, 40);
+      t.scheduler.flush();
+      return t;
+    }
+    const x = (frame: number) => 176 + frame * 4;
+    const scene = () => vi.mocked(drawOverlay).mock.lastCall?.[0];
+    const cursors = trimCursors(testTheme());
+
+    it("shows the bracket cursors on edges, the ripple variant with Ripple mode on or Mod held", () => {
+      const { session, overlay, pointer, key } = trimSetup();
+      pointer("pointermove", x(140) - 2, 200);
+      expect(overlay.style.cursor).toBe(cursors.out);
+      pointer("pointermove", x(100) + 2, 200);
+      expect(overlay.style.cursor).toBe(cursors.in);
+      pointer("pointermove", x(120), 200);
+      expect(overlay.style.cursor).toBe("default");
+      pointer("pointermove", x(100) + 2, 200);
+      session.state.set((state) => ({ ...state, ripple: true }));
+      expect(overlay.style.cursor).toBe(cursors.rippleIn);
+      session.state.set((state) => ({ ...state, ripple: false }));
+      expect(overlay.style.cursor).toBe(cursors.in);
+      key("keydown", "Control", { ctrlKey: true });
+      expect(overlay.style.cursor).toBe(cursors.rippleIn);
+      key("keyup", "Control");
+      expect(overlay.style.cursor).toBe(cursors.in);
+    });
+
+    it("drags an out point: the overlay draws the trim, the preview gets the last included frame, one request at the release", () => {
+      const { view, document, scheduler, pointer, onTrimEdge, onTrimPreview, idle } = trimSetup();
+      const before = document.getState();
+      pointer("pointerdown", x(140) - 2, 200);
+      pointer("pointermove", x(140) - 4, 200);
+      expect(view.trimming).toBe(false);
+      scheduler.flush();
+      const contentDraws = view.stats.contentDraws;
+      pointer("pointermove", x(130) - 2, 200);
+      expect(view.trimming).toBe(true);
+      expect(idle.pause).toHaveBeenCalledWith("gesture");
+      expect(view.trim?.proposal?.result.delta).toBe(-10);
+      // The new edge frame: b now ends at 130, so 129 is its last frame.
+      expect(view.trimPreview?.frame).toBe(129);
+      expect(view.trimPreview?.project.clips.b).toMatchObject({ start: 100, duration: 30 });
+      expect(onTrimPreview).toHaveBeenCalled();
+      expect(scheduler.flush()).toEqual(["timelineOverlay"]);
+      expect(view.stats.contentDraws).toBe(contentDraws);
+      expect(scene()?.trim?.proposal.result.delta).toBe(-10);
+      expect(scene()?.tooltip).toMatchObject({ text: "Δ -00:00:10 · 00:01:00", alert: null });
+      expect(document.getState()).toBe(before);
+      onTrimPreview.mockClear();
+      pointer("pointerup", x(130) - 2, 200);
+      expect(onTrimEdge).toHaveBeenCalledTimes(1);
+      expect(onTrimEdge).toHaveBeenCalledWith({ clipId: "b", edge: "out", deltaFrames: -10, ripple: false, linked: true });
+      expect(view.trimming).toBe(false);
+      expect(view.trimPreview).toBeNull();
+      expect(onTrimPreview).toHaveBeenCalledTimes(1);
+      expect(idle.resume).toHaveBeenCalledWith("gesture");
+    });
+
+    it("ripples with Mod or Ripple mode, trims the clip alone with Alt", () => {
+      const { view, session, pointer, key, onTrimEdge } = trimSetup();
+      pointer("pointerdown", x(20) - 2, 200);
+      pointer("pointermove", x(30) - 2, 200, { ctrlKey: true });
+      expect(view.trim?.proposal).toMatchObject({ ripple: true, linked: true });
+      expect(view.trim?.proposal?.result.plan.trimmed.map((clip) => clip.id)).toEqual(["a", "au"]);
+      // The ripple pushes b: the overlay redraws V1 from the edit point on.
+      expect(view.trim?.proposal?.project.clips.b?.start).toBe(110);
+      expect(view.trim?.proposal?.repaint.get("v1")).toEqual({ from: 0, to: Infinity });
+      key("keydown", "Alt", { altKey: true, ctrlKey: true });
+      expect(view.trim?.proposal).toMatchObject({ ripple: true, linked: false });
+      key("keyup", "Control", { altKey: true });
+      expect(view.trim?.proposal).toMatchObject({ ripple: false, linked: false });
+      session.state.set((state) => ({ ...state, ripple: true }));
+      expect(view.trim?.proposal?.ripple).toBe(true);
+      pointer("pointerup", x(30) - 2, 200, { altKey: true });
+      expect(onTrimEdge).toHaveBeenCalledWith({ clipId: "a", edge: "out", deltaFrames: 10, ripple: true, linked: false });
+    });
+
+    it("turns the edge red at the media start, says so in the tooltip and clamps", () => {
+      const { view, scheduler, pointer } = trimSetup();
+      // a starts 30 frames into its media (in = 1 s): an in trim can extend it by 30, but frame 0 stops it first.
+      // b starts at its media start: the in point cannot move left at all.
+      pointer("pointerdown", x(100) + 2, 200);
+      pointer("pointermove", x(90) + 2, 200);
+      expect(view.trim?.proposal?.result).toMatchObject({ delta: 0, requested: -10, mediaBound: "start" });
+      fills.length = 0;
+      scheduler.flush();
+      expect(scene()?.tooltip).toMatchObject({ alert: "Media start" });
+      expect(fills.some((fill) => fill.style === testTheme().color.danger)).toBe(true);
+      // Back inside the media: no longer red.
+      pointer("pointermove", x(105) + 2, 200);
+      expect(view.trim?.proposal?.result).toMatchObject({ delta: 5, mediaBound: null });
+      scheduler.flush();
+      expect(scene()?.tooltip?.alert).toBeNull();
+      pointer("pointerup", x(105) + 2, 200);
+    });
+
+    it("snaps the dragged edge to the playhead, not to the clips it moves", () => {
+      const { view, session, pointer } = trimSetup();
+      setPlayhead(session, 131);
+      pointer("pointerdown", x(140) - 2, 200);
+      // The edge at 131.5 + 1 frame: within 8 px of the playhead.
+      pointer("pointermove", x(132.5) - 2, 200);
+      expect(view.trim?.proposal).toMatchObject({ snap: { kind: "playhead", frame: 131 } });
+      expect(view.trim?.proposal?.result.delta).toBe(-9);
+      pointer("pointerup", x(132.5) - 2, 200);
+      // a's in edge near its own out edge: the trimmed clip is no candidate.
+      pointer("pointerdown", x(0) + 2, 200);
+      pointer("pointermove", x(18) + 2, 200);
+      expect(view.trim?.proposal?.snap?.ref ?? null).not.toBe("a");
+      pointer("pointerup", x(18) + 2, 200);
+    });
+
+    it("cancels with Esc and on a document change; a click on an edge selects the clip", () => {
+      const { view, document, session, pointer, onTrimEdge, onTrimPreview } = trimSetup();
+      pointer("pointerdown", x(140) - 2, 200);
+      pointer("pointermove", x(130), 200);
+      onTrimPreview.mockClear();
+      expect(view.cancelGesture()).toBe(true);
+      expect(onTrimPreview).toHaveBeenCalledTimes(1);
+      pointer("pointerup", x(130), 200);
+      pointer("pointerdown", x(140) - 2, 200);
+      pointer("pointermove", x(130), 200);
+      document.dispatch(updateClip("b", { name: "renamed" }));
+      expect(view.trimming).toBe(false);
+      pointer("pointerup", x(130), 200);
+      expect(onTrimEdge).not.toHaveBeenCalled();
+      // A press and release on a's edge: a click, which selects a with its linked partner.
+      pointer("pointerdown", x(20) - 2, 200);
+      pointer("pointerup", x(20) - 2, 200);
+      const selection = session.selection.getState();
+      expect([...selection.clipIds].sort()).toEqual(["a", "au"]);
+      expect(onTrimEdge).not.toHaveBeenCalled();
+    });
+
+    it("draws the sync badge on an offset linked clip", () => {
+      const { document, scheduler } = trimSetup();
+      texts.length = 0;
+      scheduler.flush();
+      expect(texts.some((text) => text.style === testTheme().color.danger)).toBe(false);
+      document.dispatch(updateClip("au", { start: 3 }));
+      scheduler.flush();
+      expect(texts).toContainEqual({ style: testTheme().color.danger, text: "-3" });
+      expect(texts).toContainEqual({ style: testTheme().color.danger, text: "+3" });
+    });
   });
 
   it("stops drawing and listening once unmounted", () => {

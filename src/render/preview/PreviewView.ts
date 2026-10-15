@@ -5,15 +5,16 @@
 //   change the frame (timeline, clips, tracks, media, settings, composite), late frames, a resize, a
 //   zoom, the theme, the DPR, a new GPU device and a priority change (pause) invalidate it.
 // - Each render evaluates the document at the playhead (`Compositor`), resolves media layers to pool
-//   textures (`LayerTextures`: playback priority while playing, scrub while the ruler is dragged, idle
-//   otherwise), warms the cut neighbours (not while playing: the engine's lookahead does), and draws.
+//   textures (`LayerTextures`: playback priority while playing, scrub while the ruler is dragged or an
+//   edge trimmed, idle otherwise), warms the cut neighbours (not while playing: the engine's lookahead
+//   does), and draws. While a trim runs, `override` gives the document and frame to show instead.
 //   A pause leaves the playhead where it is, but playback may have held a track's previous layer
 //   there (shuttle speeds deliver every n-th frame): the render after it requests the exact frame.
 //   When the draw list and the viewport equal the last ones drawn, the GPU draw is skipped (§9.4).
 // - `firstShown` reports what the first render of each playhead frame drew, for the playback
 //   engine's dropped-frame count.
 // - The backing store is resized inside `render`, so a resize never shows a cleared canvas.
-import type { Frame, RGBA } from "../../core/document/types.js";
+import type { Frame, Project, RGBA } from "../../core/document/types.js";
 import { watchDevicePixelRatio } from "../../core/scheduler/devicePixelRatio.js";
 import type { FrameScheduler, RenderView } from "../../core/scheduler/FrameScheduler.js";
 import type { Store } from "../../core/store/createStore.js";
@@ -44,6 +45,11 @@ export interface PreviewViewDeps extends Omit<LayerTexturesDeps, "onChange"> {
   priority(): FramePriority;
   /** Calls `listener` when `priority()` may have changed to or from `playback` (play, pause). */
   watchPriority(listener: () => void): () => void;
+  /**
+   * What to show instead of the document at the playhead (a trim's proposed document at its new edge
+   * frame, spec §6.10), or null. The owner invalidates `preview` when it changes.
+   */
+  override?(): { project: Project; frame: Frame } | null;
 }
 
 /** What the first render of a playhead frame drew (later renders of the same frame do not change it). */
@@ -166,14 +172,16 @@ export class PreviewView implements RenderView {
       resized = true;
     }
 
-    const doc = document.getState();
+    const override = this.deps.override?.() ?? null;
+    const doc = override?.project ?? document.getState();
     const { playhead, preview } = session.getState();
+    const frame = override?.frame ?? playhead;
     const priority = this.deps.priority();
     this.drawnPriority = priority;
-    const list = this.textures.resolve(this.compositor.evaluate(doc, playhead), priority);
-    if (priority !== "playback") this.textures.warm(this.compositor.neighbors(doc, playhead));
+    const list = this.textures.resolve(this.compositor.evaluate(doc, frame), priority);
+    if (priority !== "playback") this.textures.warm(this.compositor.neighbors(doc, frame));
     const shown = this.firstShown;
-    if (shown.frame !== playhead) {
+    if (!override && shown.frame !== playhead) {
       shown.frame = playhead;
       shown.layers = this.textures.stats.layers;
       shown.exact = this.textures.stats.exact;

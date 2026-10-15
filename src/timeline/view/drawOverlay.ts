@@ -1,13 +1,17 @@
-// The timeline overlay canvas (spec §6.17, P3): hover highlights, the snap line, clip drag ghosts
-// with the new track rows, overwrite hatching and the insert line, the marquee, the playhead and the
-// drag tooltip with the snap target's name. It is redrawn for every interaction frame (scrubbing,
+// The timeline overlay canvas (spec §6.17, P3): hover highlights, the trim preview (the rows a trim
+// changes, redrawn as the drop would leave them), the snap line, clip drag ghosts with the new track
+// rows, overwrite hatching and the insert line, the trim's ghost edge, the marquee, the playhead and
+// the drag tooltip with the snap target's name. It is redrawn for every interaction frame (scrubbing,
 // dragging, hover changes) while the content canvas stays untouched.
-import type { Clip, Frame } from "../../core/document/types.js";
+import type { Clip, Frame, Track } from "../../core/document/types.js";
+import type { Selection } from "../../core/store/selection.js";
 import type { Theme } from "../../core/theme/theme.js";
+import { clipsInRange, linkOffset } from "../model/queries.js";
 import { clipLod, clipSpan, devicePx, LOD_LABEL_PX } from "./clipLayout.js";
-import { fontOf } from "./drawContent.js";
+import { drawClip, fontOf } from "./drawContent.js";
 import type { Rect, Row, TimelineGeometry } from "./geometry.js";
 import type { Ghost, MoveProposal, NewLane } from "./gestures/moveClips.js";
+import type { TrimProposal } from "./gestures/trimClip.js";
 import { CLIP_GLYPHS, drawGlyph, TRACK_GLYPHS } from "./glyphs.js";
 import type { TextCache } from "./textCache.js";
 
@@ -15,6 +19,12 @@ import type { TextCache } from "./textCache.js";
 export interface MoveScene {
   proposal: MoveProposal;
   newRowHeight: number;
+}
+
+/** A trim as drawn: the proposal and the session selection (redrawn clips look as on the content canvas). */
+export interface TrimScene {
+  proposal: TrimProposal;
+  selection: Selection;
 }
 
 export interface OverlayScene {
@@ -32,6 +42,7 @@ export interface OverlayScene {
   /** The frame a drag snapped to (spec §6.9: a line through the full height), or null. */
   snapFrame: Frame | null;
   move: MoveScene | null;
+  trim: TrimScene | null;
   /** The marquee rectangle (view coordinates). */
   marquee: Rect | null;
   /** The drag tooltip near the pointer: `Δ +00:00:12` and/or the snap target's name. */
@@ -43,6 +54,8 @@ export interface Tooltip {
   text: string | null;
   /** The name of what the drag snapped to, after the text in the accent color. */
   target: string | null;
+  /** A bound the drag hit (`Media start`), last, in the danger color. */
+  alert?: string | null;
   x: number;
   y: number;
 }
@@ -58,14 +71,17 @@ export function drawOverlay(scene: OverlayScene): void {
   ctx.rect(0, geometry.area.y, geometry.width, geometry.area.height);
   ctx.clip();
   drawHover(scene);
+  // The trim preview stands in for the content under it, so everything else draws over it.
+  if (scene.trim) drawTrimLayout(scene, scene.trim);
   ctx.restore();
-  // §6.17 order: hover, snap lines, ghosts, insert/overwrite indicators, playhead, tooltip.
+  // §6.17 order: hover, snap lines, ghosts and trim previews, insert/overwrite indicators, playhead, tooltip.
   if (scene.snapFrame !== null) drawSnapLine(scene, scene.snapFrame);
   ctx.save();
   ctx.beginPath();
   ctx.rect(0, geometry.area.y, geometry.width, geometry.area.height);
   ctx.clip();
   if (scene.move) drawMove(scene, scene.move);
+  if (scene.trim) drawTrimEdges(scene, scene.trim);
   if (scene.marquee) drawMarquee(scene, scene.marquee);
   ctx.restore();
   drawPlayhead(scene);
@@ -90,6 +106,70 @@ function drawMove(scene: OverlayScene, move: MoveScene): void {
   }
   if (proposal.insertFrame !== null && !proposal.refused) drawInsertLine(scene, proposal.insertFrame);
   ctx.restore();
+}
+
+/**
+ * The trim preview (spec §6.10): each row the trim changes is cleared over the changed frames (the
+ * clip band only, so the row hairlines stay) and its clips there are drawn from the proposed document,
+ * as the content canvas will after the drop. Only the visible part of each row is drawn (P10).
+ */
+function drawTrimLayout(scene: OverlayScene, trim: TrimScene): void {
+  const { ctx, dpr, geometry, theme } = scene;
+  const { proposal } = trim;
+  if (proposal.repaint.size === 0) return;
+  const { project } = proposal;
+  const inset = theme.timeline.clipInset;
+  const visible = geometry.visibleFrames;
+  const clipScene = { ctx, dpr, geometry, theme, selection: trim.selection, text: scene.text };
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(geometry.area.x, geometry.area.y, geometry.area.width, geometry.area.height);
+  ctx.clip();
+  for (const row of geometry.rows) {
+    const span = proposal.repaint.get(row.trackId);
+    if (!span || row.y + row.height <= geometry.area.y || row.y >= geometry.height) continue;
+    const from = Math.max(span.from, Math.floor(visible.from));
+    const to = Math.min(span.to, Math.ceil(visible.to) + 1);
+    if (to <= from) continue;
+    const y = snap(row.y + inset, dpr);
+    const height = snap(row.y + row.height - inset, dpr) - y;
+    const x0 = snap(geometry.frameToX(from), dpr);
+    const x1 = snap(geometry.frameToX(to), dpr);
+    ctx.fillStyle = theme.color.bg;
+    ctx.fillRect(x0, y, x1 - x0, height);
+    const track = project.tracks[row.index] as Track;
+    const clips = clipsInRange(project, row.trackId, from, to);
+    clips.forEach((clip, i) => {
+      const next = clips[i + 1];
+      drawClip(clipScene, clip, row, track, next !== undefined && next.start === clip.start + clip.duration, linkOffset(project, clip.id));
+    });
+  }
+  ctx.restore();
+}
+
+/**
+ * The ghost edge (spec §6.10): a bar inside each trimmed clip at its moved edge, in the accent color,
+ * or the danger color while the edge sits on a media bound.
+ */
+function drawTrimEdges(scene: OverlayScene, trim: TrimScene): void {
+  const { ctx, dpr, geometry, theme } = scene;
+  const { proposal } = trim;
+  const { result } = proposal;
+  const edge = result.plan.edge;
+  const inset = theme.timeline.clipInset;
+  const width = devicePx(theme.timeline.trimEdgeWidth, dpr) / dpr;
+  ctx.fillStyle = result.mediaBound ? theme.color.danger : theme.color.accent;
+  for (const before of result.plan.trimmed) {
+    const clip = proposal.project.clips[before.id] ?? before;
+    const row = geometry.rowOf(clip.trackId);
+    if (!row || row.y + row.height <= geometry.area.y || row.y >= geometry.height) continue;
+    const frame = edge === "in" ? clip.start : clip.start + clip.duration;
+    if (!geometry.isFrameVisible(frame)) continue;
+    const x = snap(geometry.frameToX(frame), dpr);
+    const y = snap(row.y + inset, dpr);
+    const height = snap(row.y + row.height - inset, dpr) - y;
+    ctx.fillRect(edge === "in" ? x : x - width, y, width, height);
+  }
 }
 
 /** The row of a track the drop would create (spec §6.8: the ghost shows the new track row). */
@@ -249,8 +329,9 @@ function drawSnapLine(scene: OverlayScene, frame: Frame): void {
 }
 
 /**
- * The drag tooltip: up and right of the pointer, kept inside the view (spec §6.8). The move's delta
- * in mono type, then the snap target's name (spec §6.9) in the accent color of the snap line.
+ * The drag tooltip: up and right of the pointer, kept inside the view (spec §6.8). The drag's delta
+ * in mono type, then the snap target's name (spec §6.9) in the accent color of the snap line, then a
+ * bound the drag hit (spec §6.10 `Media start`) in the danger color.
  */
 function drawTooltip(scene: OverlayScene, tooltip: Tooltip): void {
   const { ctx, dpr, geometry, theme, text } = scene;
@@ -259,13 +340,16 @@ function drawTooltip(scene: OverlayScene, tooltip: Tooltip): void {
   const ui = fontOf(theme, "caption");
   ctx.font = mono;
   const textWidth = tooltip.text ? Math.ceil(text.width(ctx, tooltip.text)) : 0;
-  const gap = tooltip.text && tooltip.target ? space[2] : 0;
   ctx.font = ui;
+  const alert = tooltip.alert ?? "";
+  const alertWidth = alert ? Math.ceil(text.width(ctx, alert)) : 0;
+  const gap = tooltip.text && tooltip.target ? space[2] : 0;
+  const alertGap = alert && (tooltip.text || tooltip.target) ? space[2] : 0;
   // A long clip name is ellipsized so the tooltip fits the view.
-  const target = tooltip.target ? text.fit(ctx, tooltip.target, geometry.width - textWidth - gap - 2 * space[2]) : "";
+  const target = tooltip.target ? text.fit(ctx, tooltip.target, geometry.width - textWidth - gap - alertGap - alertWidth - 2 * space[2]) : "";
   const targetWidth = target ? Math.ceil(text.width(ctx, target)) : 0;
-  if (textWidth + targetWidth === 0) return;
-  const width = textWidth + gap + targetWidth + 2 * space[2];
+  if (textWidth + targetWidth + alertWidth === 0) return;
+  const width = textWidth + gap + targetWidth + alertGap + alertWidth + 2 * space[2];
   const height = theme.type.caption.line + 2 * space[1];
   const x = snap(Math.max(0, Math.min(tooltip.x + space[3], geometry.width - width)), dpr);
   let y = tooltip.y - space[3] - height;
@@ -289,6 +373,11 @@ function drawTooltip(scene: OverlayScene, tooltip: Tooltip): void {
     ctx.font = ui;
     ctx.fillStyle = color.accent;
     ctx.fillText(target, x + space[2] + textWidth + gap, y + height / 2);
+  }
+  if (alert) {
+    ctx.font = ui;
+    ctx.fillStyle = color.danger;
+    ctx.fillText(alert, x + space[2] + textWidth + gap + targetWidth + alertGap, y + height / 2);
   }
 }
 

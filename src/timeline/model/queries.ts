@@ -235,6 +235,31 @@ export function linkedPartners(project: Project, clipId: ClipId): ClipId[] {
   return (linkGroups(project).get(group) ?? []).filter((id) => id !== clipId && !isClipLocked(project, id));
 }
 
+/**
+ * The sync badge of a linked clip (spec §6.12, §6.10: Alt-trimming one side of a link produces an
+ * offset badge): how many frames its start lies after its partner's start or, when the starts match,
+ * its end after the partner's end. 0 when aligned or unlinked. The partner is the first clip of the
+ * other kind (video or audio) in the link group, else the first other clip; locked ones count.
+ * TODO(batch 16): "Move into sync" and the offset it realigns by.
+ */
+export function linkOffset(project: Project, clipId: ClipId): Frame {
+  const clip = project.clips[clipId];
+  if (!clip || clip.linkGroup === undefined) return 0;
+  let partner: Clip | undefined;
+  for (const id of linkGroups(project).get(clip.linkGroup) ?? []) {
+    const other = id === clipId ? undefined : project.clips[id];
+    if (!other) continue;
+    partner ??= other;
+    if ((other.kind === "audio") !== (clip.kind === "audio")) {
+      partner = other;
+      break;
+    }
+  }
+  if (!partner) return 0;
+  const start = clip.start - partner.start;
+  return start !== 0 ? start : clip.start + clip.duration - (partner.start + partner.duration);
+}
+
 /** Every clip on an unlocked track (spec §6.7 `Mod+A`), track by track in start order. */
 export function selectableClipIds(project: Project): ClipId[] {
   const ids: ClipId[] = [];

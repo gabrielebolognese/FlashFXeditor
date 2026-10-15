@@ -2,8 +2,8 @@
 // (§6.2, §6.5; the transport keys are in playbackController), the toolbar's direct-DOM bindings (zoom
 // slider, timecode field, duration: no React render while they change, P1), insert at the playhead
 // from the media panel (§6.14), the audio track header mute/solo toggles (§6.12), clip moves (drops,
-// nudges, Alt+Up/Down, §6.8), the snap toggle (§6.9), select all / deselect (§6.7), Esc for gestures and
-// the dev clip generator.
+// nudges, Alt+Up/Down, §6.8), trims (edge drags, Q/W/E, Ripple mode, §6.10), the snap toggle (§6.9),
+// select all / deselect (§6.7), Esc for gestures and the dev clip generator.
 import { addTrack, updateClip, updateTrack, type ClipPatch, type TrackPatch } from "../core/commands/basicCommands.js";
 import type { ActionRun } from "../core/commands/ActionRegistry.js";
 import { emptyTrack, nextTrackName } from "../core/document/project.js";
@@ -15,8 +15,10 @@ import { EMPTY_SELECTION, selectClips, toSnapshot } from "../core/store/selectio
 import { setPlayhead, setSelection } from "../core/store/sessionStore.js";
 import { insertCommands, planMediaInsert } from "../timeline/edit/insertMedia.js";
 import { applyMoveRequest, moveToAdjacentLane, nudgeClips, type MoveRefusal, type MoveRequest, type MoveResult } from "../timeline/edit/move.js";
+import { extendToPlayhead, trimEdge, trimToPlayhead, type TrimLimit, type TrimResult } from "../timeline/edit/trim.js";
 import { contentEnd, laneOf, markerFrames, navigationPoints, nextEditPoint, prevEditPoint, selectableClipIds } from "../timeline/model/queries.js";
 import type { HeaderToggle } from "../timeline/view/geometry.js";
+import type { TrimRequest } from "../timeline/view/gestures/trimClip.js";
 import { TimelineView } from "../timeline/view/TimelineView.js";
 import { pxToSlider, sliderToPx, zoomLimits, ZOOM_IN_STEP, ZOOM_OUT_STEP, type ZoomContext } from "../timeline/view/zoom.js";
 import { showToast } from "../ui/toasts.js";
@@ -66,6 +68,58 @@ export function moveClips(request: MoveRequest): void {
   commitMove(applyMoveRequest(documentStore.getState(), request, newId), request.primary);
 }
 
+/** A trim drag was released (spec §6.10, P2): the one command of the gesture. The selection stays. */
+export function trimClip(request: TrimRequest): void {
+  const result = trimEdge(documentStore.getState(), request.clipId, request.edge, request.deltaFrames, { ripple: request.ripple, linked: request.linked });
+  if (result.command) documentStore.dispatch(result.command);
+}
+
+/** Why a keyboard trim (Q/W/E) stopped short of the playhead, as a toast. */
+function reportTrimLimit(limit: TrimLimit): void {
+  const project = documentStore.getState();
+  const clip = project.clips[limit.clipId]?.name ?? "The clip";
+  const track = project.tracks.find((candidate) => candidate.id === limit.trackId)?.name ?? "a track";
+  const toasts: Record<TrimLimit["reason"], { message: string; detail: string }> = {
+    mediaStart: { message: "Trim stopped at the media start", detail: `${clip} has no earlier frames.` },
+    mediaEnd: { message: "Trim stopped at the media end", detail: `${clip} has no later frames.` },
+    minDuration: { message: "Trim stopped at 1 frame", detail: "A clip is at least one frame long." },
+    neighbor: { message: "Trim stopped at the next clip", detail: `Clips on ${track} can't overlap.` },
+    ripple: { message: `Ripple stopped by ${track}`, detail: `Clips on ${track} can't move further without overlapping.` },
+    timelineStart: { message: "Trim stopped at the timeline start", detail: "Clips can't start before 0." },
+  };
+  showToast({ tone: "info", ...toasts[limit.reason] });
+}
+
+/** Dispatches a keyboard trim (one undo step); a limit that stopped it short gets a toast. */
+function commitKeyTrim(result: TrimResult): boolean {
+  if (result.limit) reportTrimLimit(result.limit);
+  if (!result.command) return false;
+  documentStore.dispatch(result.command);
+  return true;
+}
+
+/**
+ * Q / W (spec §6.10): ripple trim of the edit point nearest the playhead to the playhead, on targeted
+ * tracks. Pure over the document and instant (one command, no gesture); during playback the edit
+ * applies at the frame on screen and playback goes on. After Q the playhead moves to the edit point,
+ * where the frame it showed now is, so the picture continues.
+ */
+function rippleTrimToPlayhead(side: "start" | "end"): ActionRun {
+  return () => {
+    const trim = trimToPlayhead(documentStore.getState(), playhead(), side, { linked: sessionStore.state.getState().linkedSelection });
+    if (trim && commitKeyTrim(trim.result) && trim.playhead !== playhead()) movePlayhead(trim.playhead);
+  };
+}
+
+/** E (spec §6.10): the primary selected clip's nearest edge to the playhead (regular trim, with linked partners). */
+const extendEdit: ActionRun = () => {
+  const { ids, primary } = selectedClips();
+  const clipId = primary ?? ids[0];
+  if (clipId === undefined) return;
+  const result = extendToPlayhead(documentStore.getState(), clipId, playhead(), { linked: sessionStore.state.getState().linkedSelection });
+  if (result) commitKeyTrim(result);
+};
+
 export const timelineView = new TimelineView({
   scheduler,
   document: documentStore,
@@ -75,6 +129,9 @@ export const timelineView = new TimelineView({
   onAddTrack: addTrackOfKind,
   onToggleTrack: toggleTrack,
   onMoveClips: moveClips,
+  onTrimEdge: trimClip,
+  // The preview shows the trim's new edge frame while the edge moves (spec §6.10).
+  onTrimPreview: () => scheduler.invalidate("preview"),
   idle: idleQueue,
   platform: detectPlatform(),
 });
@@ -270,7 +327,12 @@ export function installTimelineController(): () => void {
     actions.register("edit.nudgeRight5", nudge(5)),
     actions.register("edit.moveToTrackAbove", moveToTrack("up")),
     actions.register("edit.moveToTrackBelow", moveToTrack("down")),
+    actions.register("edit.rippleTrimPrev", rippleTrimToPlayhead("start")),
+    actions.register("edit.rippleTrimNext", rippleTrimToPlayhead("end")),
+    actions.register("edit.extendToPlayhead", extendEdit),
     actions.register("toggle.snap", toggleSnap),
+    // Ripple mode (spec §6.10): edge drags ripple without Mod. Session state, not undoable.
+    actions.register("toggle.rippleMode", () => sessionStore.state.set((state) => ({ ...state, ripple: !state.ripple }))),
     // Esc (spec §18 "Cancel gesture"): declined when no gesture runs, so popovers and the browser get it.
     actions.register("app.cancel", () => timelineView.cancelGesture()),
   ];

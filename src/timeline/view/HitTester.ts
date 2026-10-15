@@ -1,14 +1,14 @@
 // Timeline hit testing (spec §6.18). `hit(x, y)` turns a view point into a typed target. Priority:
-// handles and diamonds > edges/junctions > transitions > clip body > gap > track. This batch gives
-// real results for the ruler, the playhead head, track headers (and the "+ track" rows), clip bodies
-// and empty space; the other types are declared for the batches that draw them.
+// handles and diamonds > edges/junctions > transitions > clip body > gap > track. Real results so far:
+// the ruler, the playhead head, track headers (and the "+ track" rows), the trim zones of clip edges,
+// clip bodies and empty space; the other types are declared for the batches that draw them.
 import type { ClipId, Frame, Project, TrackId, TrackKind } from "../../core/document/types.js";
 import { clipAtFrame } from "../model/queries.js";
 import { contains, type HeaderToggle, type TimelineGeometry } from "./geometry.js";
 
 export type HitType =
   | "clip"
-  // TODO(batch 13): trim edges and junctions.
+  // The trim zones (spec §6.4); TODO(batch 14): the roll zone on junctions.
   | "clipEdgeIn"
   | "clipEdgeOut"
   | "junction"
@@ -50,6 +50,8 @@ export interface HitSource {
   playhead(): Frame;
   /** Width of the playhead head in CSS px (its hit zone is a little wider). */
   playheadHeadWidth: number;
+  /** Width of the trim zone inside each clip edge, CSS px (spec §6.4: 8 px). */
+  trimZone: number;
 }
 
 /** Extra CSS px on each side of the playhead head that still grab it. */
@@ -92,11 +94,20 @@ export class HitTester {
 
     if (!row) return result;
     result.trackId = row.trackId;
-    const clip = clipAtFrame(this.source.project(), row.trackId, Math.floor(frame));
-    if (clip) {
-      result.type = "clip";
-      result.clipId = clip.id;
-    }
+    const project = this.source.project();
+    const clip = clipAtFrame(project, row.trackId, Math.floor(frame));
+    if (!clip) return result;
+    result.type = "clip";
+    result.clipId = clip.id;
+    // Trim zones (spec §6.4, §6.10): the outer 8 px inside each edge, so where two clips abut the
+    // left side of the junction is the left clip's out point and the right side the right clip's in
+    // point. A narrow clip keeps its middle third for moves. Clips on locked tracks take no edits.
+    if (project.tracks[row.index]?.locked) return result;
+    const x0 = geometry.frameToX(clip.start);
+    const x1 = geometry.frameToX(clip.start + clip.duration);
+    const zone = Math.min(this.source.trimZone, (x1 - x0) / 3);
+    if (x < x0 + zone) result.type = "clipEdgeIn";
+    else if (x >= x1 - zone) result.type = "clipEdgeOut";
     return result;
   }
 }

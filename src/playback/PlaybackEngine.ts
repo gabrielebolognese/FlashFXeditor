@@ -118,7 +118,7 @@ export interface PlaybackEngineDeps {
   images: Pick<ImageService, "get" | "load">;
   pool: Pick<TexturePool, "has" | "pin">;
   preview: { readonly firstShown: ShownFrame };
-  /** True while the playhead is dragged on the ruler: playback pauses. */
+  /** True while the playhead is dragged on the ruler or a clip edge is trimmed: playback pauses. */
   scrubbing(): boolean;
   /** Background work pauses while playing (spec §3.4). */
   idle: Pick<IdleQueue, "pause" | "resume">;
