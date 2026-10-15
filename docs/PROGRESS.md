@@ -2159,3 +2159,25 @@ Why each dependency exists (Batch rule 8).
   2. Menu offset: `MenuButton` anchors the menu at `rect.bottom` (no 2 px literal), as the timeline toolbar's overflow menu (`TimelineToolbar.tsx:180`). The "Menu buttons" design-gap entry says so.
   - Checks: `npm run check` green: 1067 unit tests in 111 files, 3 perf tests; build 608.56 kB JS (195.89 kB gzip), 50.29 kB CSS, workers 205.83 / 210.82 kB.
   - Browser (dev server restarted on the working tree, headless Chrome 155 over CDP, 1600 x 900 at dpr 1, project `b21-b` 1080 x 1920, `%TEMP%/b21/fixcheck.mjs`): rulers on at 125%, 150%, 200%, 300%, 400%, 600%, 800%, 1600% and 3200%: on both rulers the closest labels are 32-75 px apart against a widest label of 17.6-23.4 px + 8 px (PASS at every zoom; steps 50, 20, 10, 5, 2, 1 project px). Screenshot `fix-rulers-200.png`. The Zoom and Overlays menus open with their top edge at the button's bottom edge (67.5 = 67.5; the Overlays menu shifted left to stay in the window); one click picks 50% and the label reads 50%. No console errors.
+- review: accepted
+  - Earlier rejection, both items fixed:
+    1. `src/render/preview/PreviewOverlayView.ts:279`: `RULER_LABEL_GAP` is gone. Major ticks are now at least the measured width of the widest possible label (the frame's long edge, in the ruler font, set before measuring) plus `theme.space[3]` apart, all in device px. This is the timeline ruler's rule, and the "Preview rulers" design-gap entry says so.
+    2. `src/ui/MenuButton.tsx:44`: the menu anchors at `rect.bottom`, with no 2 px literal, as `TimelineToolbar.tsx:180` does. The "Menu buttons" design-gap entry says so.
+  - `npm run check` is green: typecheck, lint (ESLint and the CSS color check), 1067 unit tests in 111 files, 3 perf tests. Build: 608.56 kB JS (195.89 kB gzip), 50.29 kB CSS, workers 205.83 / 210.82 kB.
+  - Acceptance:
+    - 1: covered by `detail.test.ts`, `PreviewView.test.ts` ("renders detail on zoom"), `LayerTextures.test.ts` and `FrameService.test.ts`, plus the recorded CDP pixel run (177 of 178 crossings). Also pending manual check 1.
+    - 2: covered by `viewport.test.ts` (the anchor stays fixed from Fit and between zooms, Fit gives back the exact letterbox) and `ViewportInput.test.ts`, plus the CDP drift and Fit transform run. Also pending manual check 2.
+    - 3: covered by `overlays.test.ts` (Reels top bar, action column and caption area). The overlays live only on the separate 2D canvas, and `renderFrame` draws only the resolved texture list; the CDP PNG comparison agrees. Also pending manual check 3.
+    - 4: covered by the CDP fullscreen run (identical rects and ratios after Esc; warm 60 fps playback drops 0-0.51%). `bindFullscreen` writes data attributes only and never touches the layout store. Also pending manual check 4.
+  - Do not build yet: there is no canvas selection and no gizmo. `ViewportInput` only zooms and pans, and the gizmo is left as `TODO(batch 22)`.
+  - Literals:
+    - The new CSS uses only tokens, 1 px DS borders and the DS input ring; `z-index: 1` is a local stacking order.
+    - The overlay colors and metrics, the hide delay and `--z-fullscreen` are in `tokens.css`, read through `Theme.preview`, and logged as design gaps.
+    - The remaining TS numbers are behavior, not visuals: zoom limits, wheel rate and units, the 4096 cap, the 300 ms settle, and the 256 px offscreen allocation rounding.
+  - §3/§4:
+    - The zoom label, quality text, timecode and fps badge are written by subscriptions, so no React render runs on zoom, pan or playback.
+    - The view and overlay settings are session state, with no commands.
+    - The overlay is in the scheduler's per-frame view set after the preview view, so it draws with the same frame's placement and compares before drawing.
+    - Bigger decodes run in decode.worker; a replaced texture becomes invalid and is skipped until the next resolve.
+    - The canvas rect is read once per pointer enter or resize, and the menu anchor once per open.
+  - TODOs: every new TODO has a batch tag (22, 23, 24, 28).
