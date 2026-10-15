@@ -1,10 +1,10 @@
 # Troubleshooting
 
-This page helps you when something does not work as expected: the editor does not start in your browser, the preview stays empty, a folder or a file does not open, a clip drag does something you did not expect, playback stutters, or you hear no sound. Each problem lists what you see, why it happens and what to do. The last section lists what the current version cannot do yet.
+This page helps you when something does not work as expected: the editor does not start in your browser, the preview stays empty, a folder or a file does not open, a clip drag or a trim does something you did not expect, playback stutters, or you hear no sound. Each problem lists what you see, why it happens and what to do. The last section lists what the current version cannot do yet.
 
 > **Video placeholder: Fix common problems**
 > - File: `videos/troubleshooting/overview.mp4` (not recorded yet)
-> - Length: about 85 seconds
+> - Length: about 95 seconds
 > - Shows:
 >   1. Open the editor in a browser without the required features: the screen "This browser cannot run Shorts Editor" lists what is missing.
 >   2. In Chrome, open `chrome://settings/system` and show **Use graphics acceleration when available** turned on.
@@ -14,6 +14,7 @@ This page helps you when something does not work as expected: the editor does no
 >   6. Play a 4K clip and point at **Dropped** in the status strip under the preview.
 >   7. Play a clip with sound while **Mute** is on: nothing is heard, but the meter moves. Click **Unmute**: the sound is back.
 >   8. Drag a clip near the end of another clip: it jumps onto the edge with a gold line. Hold <kbd>S</kbd> and place it a few frames away instead.
+>   9. Click **Ripple mode** in the timeline toolbar so it is gold, and drag the end of a clip to the left: the later clips move too. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> and click **Ripple mode** again to turn it off.
 
 ## In this page
 - [Browser and graphics](#browser-and-graphics)
@@ -39,6 +40,11 @@ This page helps you when something does not work as expected: the editor does no
   - [A sound clip moved to another audio track](#a-sound-clip-moved-to-another-audio-track)
   - [A clip jumps to an edge while you drag it](#a-clip-jumps-to-an-edge-while-you-drag-it)
   - [Clips no longer snap](#clips-no-longer-snap)
+  - [A clip gets shorter when you try to move it](#a-clip-gets-shorter-when-you-try-to-move-it)
+  - [A trim moved other clips](#a-trim-moved-other-clips)
+  - [A clip edge stops before where you drag it](#a-clip-edge-stops-before-where-you-drag-it)
+  - [Linked clips show a red number](#linked-clips-show-a-red-number)
+  - [Q, W or E does nothing](#q-w-or-e-does-nothing)
 - [Playback and preview](#playback-and-preview)
   - [Playback stutters or drops frames](#playback-stutters-or-drops-frames)
   - [The preview shows a nearby frame for a moment](#the-preview-shows-a-nearby-frame-for-a-moment)
@@ -169,6 +175,58 @@ This page helps you when something does not work as expected: the editor does no
 **Fix:** Click **Snap** or press <kbd>S</kbd> so that the magnet is gold. To switch snapping for a single drag, press and hold <kbd>S</kbd> after the drag has started. See [Turn snapping on or off](timeline.md#turn-snapping-on-or-off).
 
 > **Note:** If you switch to another window while you hold <kbd>S</kbd> during a drag, the drag keeps the switched snapping until you release the mouse button.
+
+### A clip gets shorter when you try to move it
+
+**Symptom:** You press on a clip and drag, and instead of moving, the clip gets shorter or longer.
+
+**Cause:** You pressed in a trim zone: the outer 8 pixels at either end of a clip. There the cursor is a `[` or `]` bracket, and dragging trims the clip.
+
+**Fix:** Press <kbd>Esc</kbd> before you release, or <kbd>Ctrl</kbd>+<kbd>Z</kbd> after. Then press closer to the middle of the clip, where the cursor is an arrow. To move a short clip, zoom in first. See [Find the edges of a clip](trimming.md#find-the-edges-of-a-clip).
+
+### A trim moved other clips
+
+**Symptom:** You trimmed a clip, and the clips after it moved left or right, on several tracks. Or you dragged the start of a clip and it did not move, while everything after it did.
+
+**Cause:** The trim was a ripple trim. Either **Ripple mode** is on in the timeline toolbar (it is gold), or you held <kbd>Ctrl</kbd> when you released. A ripple trim moves every clip after the edit point, so no gap opens. <kbd>Q</kbd> and <kbd>W</kbd> always ripple.
+
+**Fix:** Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>. Click **Ripple mode** to turn it off, and trim again without <kbd>Ctrl</kbd>. See [Trim without leaving a gap (ripple trim)](trimming.md#trim-without-leaving-a-gap-ripple-trim).
+
+### A clip edge stops before where you drag it
+
+**Symptom:** While you trim, the edge stops following the pointer.
+
+**Cause:** The trim reached a limit. Check what you see:
+
+| You see | Limit | Fix |
+| --- | --- | --- |
+| The edge is red, and the tooltip shows **Media start** or **Media end** in red. | The clip starts at the first frame of its media, or ends at the last. | None: the file has no more frames. |
+| The clip touches the next or the previous clip. | In a regular trim, clips on a track can't overlap. | Hold <kbd>Ctrl</kbd> for a ripple trim, which moves the next clip along. |
+| The edge stopped although nothing is next to the clip. | Its linked clip (for example its sound) reached a limit, or a ripple trim would make clips on another track overlap. | Hold <kbd>Alt</kbd> to trim the clip without its linked clip, or move the clip that blocks the ripple. |
+| The clip is 1 frame long. | A clip is at least 1 frame long. | None. |
+| The clip starts at `00:00:00`. | Clips can't start before the start of the timeline. | None. |
+
+When <kbd>Q</kbd>, <kbd>W</kbd> or <kbd>E</kbd> stops short, a message names the limit. See [Know where a trim stops](trimming.md#know-where-a-trim-stops).
+
+### Linked clips show a red number
+
+**Symptom:** A video clip and its sound clip each show a red number, such as **-20** and **+20**, at the right end of their label bar.
+
+**Cause:** The two clips are out of step by that many frames. This happens when you trim one of them with <kbd>Alt</kbd> held, or move one of them on its own after you selected it with <kbd>Alt</kbd>+click.
+
+**Fix:** Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> until the numbers disappear, or trim or move the other clip by the same number of frames. A command that moves clips back into sync is available in a later version. See [Trim a video without its sound](trimming.md#trim-a-video-without-its-sound).
+
+### Q, W or E does nothing
+
+**Symptom:** You press <kbd>Q</kbd>, <kbd>W</kbd> or <kbd>E</kbd>, and no clip changes.
+
+**Cause:** One of these:
+- <kbd>Q</kbd> and <kbd>W</kbd>: no clip is under the playhead, or the clip under it starts exactly at the playhead, so there is nothing to trim.
+- <kbd>E</kbd>: no clip is selected, the playhead is already on the selected clip's start or end, or another panel than the Timeline is active.
+- The clip is already at a limit, for example its media start; a message then says so.
+- A text field has the keyboard focus.
+
+**Fix:** Move the playhead into the clip, select the clip for <kbd>E</kbd>, and click the timeline before you press the key. See [Trim to the playhead with Q and W](trimming.md#trim-to-the-playhead-with-q-and-w) and [Extend a clip to the playhead with E](trimming.md#extend-a-clip-to-the-playhead-with-e).
 
 ## Folders and saving
 
@@ -317,7 +375,8 @@ See [Audio](audio.md).
 The current version cannot do these things yet. Each one is available in a later version.
 
 - **Sound:** no sound while you scrub, step frames, play backward or shuttle faster than 1x. Audio clips show no waveforms. Changing the volume of a clip, fades and audio effects are not available, and video tracks have no mute toggle.
-- **Editing clips:** you can select, move, insert, duplicate and nudge clips, but not trim, split or delete them. Clips snap only to clip edges, the playhead and the start of the timeline, because markers and in and out points are not available yet. To remove a clip you just added, use **Undo** (<kbd>Ctrl</kbd>+<kbd>Z</kbd>).
+- **Editing clips:** you can select, move, insert, duplicate, nudge and trim clips, but not split or delete them, roll a cut between two clips, slip, slide or stretch them. Clips snap only to clip edges, the playhead and the start of the timeline, because markers and in and out points are not available yet. To remove a clip you just added, use **Undo** (<kbd>Ctrl</kbd>+<kbd>Z</kbd>).
+- **Trimming:** <kbd>Q</kbd> and <kbd>W</kbd> always look at every track; choosing the tracks they act on is not available yet. Linked clips that are out of step can't be moved back into sync with one command.
 - **Tracks:** double-clicked media always goes to the first video track (V1); drag clips to move them to other tracks. Tracks can't be locked, hidden, renamed or removed (**Undo** removes a track you just added). Clicking a track header does nothing yet (only the **+ Video track** and **+ Audio track** rows and the **M** and **S** toggles of audio tracks work), and the timeline has no scrollbars (scroll with the mouse wheel).
 - **Preview:** no panning, no mouse-wheel zoom, and no <kbd>Ctrl</kbd>+<kbd>0</kbd>/<kbd>1</kbd>/<kbd>2</kbd>. The preview timecode is read-only; type times in the timeline toolbar. The quality is always **Auto: full**.
 - **Fit only:** inserted clips fit the frame with bands; one-click Fill is not available. Changing the project resolution does not refit existing clips.
@@ -331,10 +390,11 @@ The current version cannot do these things yet. Each one is available in a later
 
 ## Related pages
 - [Audio](audio.md)
+- [Trimming clips](trimming.md)
 - [Getting started](getting-started.md)
 - [Projects and saving](projects-and-saving.md)
 - [Importing media](importing-media.md)
 - [Preview and playback](preview-and-playback.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 12, 2026-10-15</sub>
+<sub>Last updated: Batch 13, 2026-10-15</sub>

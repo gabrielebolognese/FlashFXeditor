@@ -2,6 +2,11 @@
 
 Shorts Editor grows in steps called batches. This page lists what each batch added that you can see or use, newest first. Follow the links for the full instructions.
 
+> **Video placeholder: What's new in Batch 13**
+> - File: `videos/whats-new/batch-13.mp4` (not recorded yet)
+> - Length: about 45 seconds
+> - Shows: a timeline with three videos with sound end to end on V1 and A1; point at the end of the first clip: the cursor becomes a `]` bracket; drag it left: the video and its sound get shorter, the tooltip shows the change and the new length, and the preview shows the clip's last frame; release; hold <kbd>Ctrl</kbd> and drag the same end further left: the later clips follow and no gap opens; play, and press <kbd>Q</kbd> in the middle of the second clip: its beginning is cut and playback goes on; select the third clip, click in the ruler past its end and press <kbd>E</kbd>: the clip's end moves to the playhead.
+
 > **Video placeholder: What's new in Batch 12**
 > - File: `videos/whats-new/batch-12.mp4` (not recorded yet)
 > - Length: about 40 seconds
@@ -23,6 +28,7 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 > - Shows: open a project with three clips on the timeline; press <kbd>Space</kbd> to play and let the timeline page forward; press <kbd>L</kbd> three times to reach 8x, then <kbd>K</kbd>; hold <kbd>K</kbd> and tap <kbd>L</kbd> to step one frame; turn on **Loop playback**; point at the **Dropped** readout in the status strip.
 
 ## In this page
+- [Batch 13: Trimming](#batch-13-trimming)
 - [Batch 12: Snapping](#batch-12-snapping)
 - [Batch 11: Select and move clips](#batch-11-select-and-move-clips)
 - [Batch 10: Sound](#batch-10-sound)
@@ -35,6 +41,15 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 - [Batch 03: Projects, autosave and recovery](#batch-03-projects-autosave-and-recovery)
 - [Batch 02: Undo, redo and frame-exact time](#batch-02-undo-redo-and-frame-exact-time)
 - [Batch 01: The workspace](#batch-01-the-workspace)
+
+## Batch 13: Trimming
+- Drag the start or the end of a clip to trim it. The cursor turns into a `[` or `]` bracket over the outer 8 pixels of each end. While you drag, the clip changes live, the tooltip shows how far the edge moved and the clip's new length, and the preview shows the new first or last frame. Releasing makes the trim one undo step.
+- Hold <kbd>Ctrl</kbd>, or turn on the new **Ripple mode** toggle in the timeline toolbar, for a ripple trim: the clips after the edit point move with it on every track, so no gap opens.
+- A video and its sound trim together. Hold <kbd>Alt</kbd> to trim one side only; linked clips that are out of step then show a red offset such as **-20**.
+- Trims stop at 1 frame, at the first and last frame of the media (the edge and **Media start** or **Media end** turn red), at the neighboring clip and at the start of the timeline. The dragged edge snaps like a moved clip.
+- Press <kbd>Q</kbd> or <kbd>W</kbd> to ripple trim the start or the end of the clip under the playhead to the playhead, also while the video plays. Press <kbd>E</kbd> to move the nearest edge of the selected clip to the playhead.
+
+See [Trimming clips](trimming.md) and [Keyboard shortcuts](keyboard-shortcuts.md#trimming).
 
 ## Batch 12: Snapping
 - Dragged clips snap to the start and end of other clips, to the playhead and to the start of the timeline when they come within 8 pixels, at every zoom. A thin gold line marks the edge, and the drag tooltip names it in gold, for example **End of Intro**. Lining clips up end to end no longer needs a steady hand.
@@ -131,4 +146,4 @@ See [The workspace](workspace.md) and [Getting started](getting-started.md).
 - [User guide home](README.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 12, 2026-10-15</sub>
+<sub>Last updated: Batch 13, 2026-10-15</sub>

@@ -124,7 +124,7 @@ The toolbar is one row of button groups, from left to right:
 | Group | Buttons | What works now |
 | --- | --- | --- |
 | Tools | **Select**, **Razor**, **Hand**, **Slip**, **Slide**, **Rate stretch** | Available in a later version. |
-| Toggles | **Snap**, **Linked selection**, **Ripple mode**, **Show clip keyframes**, **Audio scrub** | **Snap** works: it is gold while snapping is on. See [Snap clips into place](timeline.md#snap-clips-into-place). The others are available in a later version. |
+| Toggles | **Snap**, **Linked selection**, **Ripple mode**, **Show clip keyframes**, **Audio scrub** | **Snap** and **Ripple mode** work: each is gold while it is on. See [Snap clips into place](timeline.md#snap-clips-into-place) and [Turn Ripple mode on or off](trimming.md#turn-ripple-mode-on-or-off). The others are available in a later version. |
 | Edit | **Split at playhead**, **Delete**, **Ripple delete**, **Close gap**, **Close all gaps (compact)**, **Add marker**, **Freeze frame**, **Punch zoom** | Available in a later version. |
 | Add | **Title**, **Subtitle**, **Add caption track**, **Add solid**, **Add image** | Available in a later version. |
 | Zoom | **Zoom out**, the zoom slider, **Zoom in**, **Zoom to fit**, **Zoom to selection**, **Track height** | **Zoom out**, the slider, **Zoom in** and **Zoom to fit** work. See [Timeline](timeline.md). |
@@ -173,6 +173,8 @@ Examples:
 | <kbd>Up</kbd> / <kbd>Down</kbd> | Previous / next edit point | Nothing: reserved for moving layers on the canvas | Nothing |
 | <kbd>Ctrl</kbd>+<kbd>A</kbd> | Selects all clips | Selects all clips | Does not select clips |
 | <kbd>Alt</kbd>+<kbd>Left</kbd> / <kbd>Alt</kbd>+<kbd>Right</kbd> | Nudges the selected clips one frame | Nothing (the browser gets <kbd>Alt</kbd>+<kbd>Left</kbd>) | Nothing (the browser gets <kbd>Alt</kbd>+<kbd>Left</kbd>) |
+| <kbd>E</kbd> | Moves the nearest edge of the selected clip to the playhead | Nothing | Nothing |
+| <kbd>Q</kbd> / <kbd>W</kbd> | Trims the clip under the playhead to the playhead | Same | Same |
 | <kbd>Delete</kbd> | Nothing: deleting clips is available in a later version | Nothing | Removes the selected media (asks first) |
 | <kbd>F2</kbd> | Nothing | Nothing | Renames the selected media |
 
@@ -191,8 +193,9 @@ To jump to a time, type it into the timecode field of the timeline toolbar. See 
 - [Projects and saving](projects-and-saving.md)
 - [Importing media](importing-media.md)
 - [Timeline](timeline.md)
+- [Trimming clips](trimming.md)
 - [Preview and playback](preview-and-playback.md)
 - [Audio](audio.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 12, 2026-10-15</sub>
+<sub>Last updated: Batch 13, 2026-10-15</sub>
