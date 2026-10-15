@@ -1,8 +1,7 @@
-// The timeline overlay canvas (spec §6.17, P3): hover highlights, clip drag ghosts with the new
-// track rows, overwrite hatching and the insert line, the marquee, the playhead and the drag
-// tooltip. It is redrawn for every interaction frame (scrubbing, dragging, hover changes) while the
-// content canvas stays untouched.
-// TODO(batch 12): snap lines and the snap target label.
+// The timeline overlay canvas (spec §6.17, P3): hover highlights, the snap line, clip drag ghosts
+// with the new track rows, overwrite hatching and the insert line, the marquee, the playhead and the
+// drag tooltip with the snap target's name. It is redrawn for every interaction frame (scrubbing,
+// dragging, hover changes) while the content canvas stays untouched.
 import type { Clip, Frame } from "../../core/document/types.js";
 import type { Theme } from "../../core/theme/theme.js";
 import { clipLod, clipSpan, devicePx, LOD_LABEL_PX } from "./clipLayout.js";
@@ -30,12 +29,22 @@ export interface OverlayScene {
   hoverAddRow: Rect | null;
   /** A header toggle under the pointer. */
   hoverToggle: Rect | null;
+  /** The frame a drag snapped to (spec §6.9: a line through the full height), or null. */
+  snapFrame: Frame | null;
   move: MoveScene | null;
   /** The marquee rectangle (view coordinates). */
   marquee: Rect | null;
-  /** The drag tooltip near the pointer (`Δ +00:00:12`). */
-  tooltip: { text: string; x: number; y: number } | null;
+  /** The drag tooltip near the pointer: `Δ +00:00:12` and/or the snap target's name. */
+  tooltip: Tooltip | null;
   text: TextCache;
+}
+
+export interface Tooltip {
+  text: string | null;
+  /** The name of what the drag snapped to, after the text in the accent color. */
+  target: string | null;
+  x: number;
+  y: number;
 }
 
 export function drawOverlay(scene: OverlayScene): void {
@@ -49,6 +58,13 @@ export function drawOverlay(scene: OverlayScene): void {
   ctx.rect(0, geometry.area.y, geometry.width, geometry.area.height);
   ctx.clip();
   drawHover(scene);
+  ctx.restore();
+  // §6.17 order: hover, snap lines, ghosts, insert/overwrite indicators, playhead, tooltip.
+  if (scene.snapFrame !== null) drawSnapLine(scene, scene.snapFrame);
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, geometry.area.y, geometry.width, geometry.area.height);
+  ctx.clip();
   if (scene.move) drawMove(scene, scene.move);
   if (scene.marquee) drawMarquee(scene, scene.marquee);
   ctx.restore();
@@ -213,12 +229,43 @@ function drawMarquee(scene: OverlayScene, rect: Rect): void {
   ctx.strokeRect(x0 + line / 2, y0 + line / 2, Math.max(0, x1 - x0 - line), Math.max(0, y1 - y0 - line));
 }
 
-/** The drag tooltip: up and right of the pointer, kept inside the view (spec §6.8). */
-function drawTooltip(scene: OverlayScene, tooltip: { text: string; x: number; y: number }): void {
+/**
+ * The snap line (spec §6.9): the accent color through the full timeline height (ruler and tracks) at
+ * the snapped frame, over the track area only.
+ */
+function drawSnapLine(scene: OverlayScene, frame: Frame): void {
+  const { ctx, dpr, geometry, theme } = scene;
+  const x = geometry.frameToX(frame);
+  const width = devicePx(theme.timeline.snapLineWidth, dpr) / dpr;
+  const left = Math.round(x * dpr - (width * dpr) / 2) / dpr;
+  if (left + width <= geometry.headerWidth || left >= geometry.width) return;
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(geometry.headerWidth, 0, geometry.width - geometry.headerWidth, geometry.height);
+  ctx.clip();
+  ctx.fillStyle = theme.color.accent;
+  ctx.fillRect(left, 0, width, geometry.height);
+  ctx.restore();
+}
+
+/**
+ * The drag tooltip: up and right of the pointer, kept inside the view (spec §6.8). The move's delta
+ * in mono type, then the snap target's name (spec §6.9) in the accent color of the snap line.
+ */
+function drawTooltip(scene: OverlayScene, tooltip: Tooltip): void {
   const { ctx, dpr, geometry, theme, text } = scene;
   const { space, color } = theme;
-  ctx.font = fontOf(theme, "caption", true);
-  const width = Math.ceil(text.width(ctx, tooltip.text)) + 2 * space[2];
+  const mono = fontOf(theme, "caption", true);
+  const ui = fontOf(theme, "caption");
+  ctx.font = mono;
+  const textWidth = tooltip.text ? Math.ceil(text.width(ctx, tooltip.text)) : 0;
+  const gap = tooltip.text && tooltip.target ? space[2] : 0;
+  ctx.font = ui;
+  // A long clip name is ellipsized so the tooltip fits the view.
+  const target = tooltip.target ? text.fit(ctx, tooltip.target, geometry.width - textWidth - gap - 2 * space[2]) : "";
+  const targetWidth = target ? Math.ceil(text.width(ctx, target)) : 0;
+  if (textWidth + targetWidth === 0) return;
+  const width = textWidth + gap + targetWidth + 2 * space[2];
   const height = theme.type.caption.line + 2 * space[1];
   const x = snap(Math.max(0, Math.min(tooltip.x + space[3], geometry.width - width)), dpr);
   let y = tooltip.y - space[3] - height;
@@ -232,9 +279,17 @@ function drawTooltip(scene: OverlayScene, tooltip: { text: string; x: number; y:
   ctx.strokeStyle = color.hairline;
   ctx.lineWidth = line;
   ctx.stroke();
-  ctx.fillStyle = color.textPrimary;
   ctx.textBaseline = "middle";
-  ctx.fillText(tooltip.text, x + space[2], y + height / 2);
+  if (tooltip.text) {
+    ctx.font = mono;
+    ctx.fillStyle = color.textPrimary;
+    ctx.fillText(tooltip.text, x + space[2], y + height / 2);
+  }
+  if (target) {
+    ctx.font = ui;
+    ctx.fillStyle = color.accent;
+    ctx.fillText(target, x + space[2] + textWidth + gap, y + height / 2);
+  }
 }
 
 function drawHover(scene: OverlayScene): void {

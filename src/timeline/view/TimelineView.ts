@@ -5,6 +5,8 @@
 // the session store; the view subscribes to them directly and React never renders for them.
 // Gestures (scrub, clip drag, marquee) keep their state here, never in a store: a clip drag reaches
 // the document once, on drop, through `onMoveClips`; a marquee writes the selection once, on release.
+// Snapping (spec §6.9): clip drags snap while the toggle is on, ruler scrubs only with Shift too, and
+// holding S during a drag inverts the toggle until it is released.
 import type { Affect } from "../../core/commands/command.js";
 import { formatTimecode } from "../../core/document/time.js";
 import type { ClipId, Project, TrackId, TrackKind } from "../../core/document/types.js";
@@ -20,12 +22,13 @@ import { setPlayhead, setSelection, type SessionStore } from "../../core/store/s
 import type { Theme, ThemeBridge } from "../../core/theme/theme.js";
 import type { MoveRequest } from "../edit/move.js";
 import { contentEnd, isClipLocked, linkedPartners, neighbors } from "../model/queries.js";
+import { resolveSnap, SnapIndex, snapLabel, type SnapCandidates, type SnapTarget } from "../snap/snapIndex.js";
 import { drawContent } from "./drawContent.js";
 import { drawOverlay } from "./drawOverlay.js";
 import { TimelineGeometry, type HeaderToggle, type TimelineMetrics } from "./geometry.js";
 import { edgeStep } from "./gestures/autoScroll.js";
 import { MarqueeGesture } from "./gestures/marquee.js";
-import { MoveGesture, NO_MODIFIERS, type DragModifiers } from "./gestures/moveClips.js";
+import { MoveGesture, NO_MODIFIERS, type DragModifiers, type MoveSnap } from "./gestures/moveClips.js";
 import { HitTester, type HitResult } from "./HitTester.js";
 import { TextCache } from "./textCache.js";
 import {
@@ -84,7 +87,8 @@ interface Layer {
 
 /** Pointer gestures. `press` and `pendingMarquee` wait for the dead zone (spec §6.8) before dragging. */
 type Gesture =
-  | { kind: "scrub"; pointerId: number }
+  /** `snap`: what a Shift scrub snapped the playhead to (spec §6.3). */
+  | { kind: "scrub"; pointerId: number; snap: SnapTarget | null }
   /** A press on a clip. `click`: the selection a release without a drag sets (deferred on a selected clip, so a drag keeps the selection). */
   | { kind: "press"; pointerId: number; x: number; y: number; clipId: ClipId; frame: number; click: Selection | null; movable: boolean }
   | { kind: "move"; pointerId: number; move: MoveGesture }
@@ -146,6 +150,9 @@ export class TimelineView {
   private cursor = "default";
   /** Modifier keys as last seen on a pointer or key event. */
   private modifiers: DragModifiers = NO_MODIFIERS;
+  /** S held during the current drag: snapping inverted (spec §6.9). */
+  private snapHeld = false;
+  private readonly snapIndex = new SnapIndex();
   /** While a gesture drags: stops its auto-scroll ticker and key listeners. */
   private stopDrag: (() => void) | null = null;
   private lastTick: number | null = null;
@@ -209,7 +216,14 @@ export class TimelineView {
         { fireImmediately: true },
       ),
       session.state.select((state) => state.timeline, both),
-      session.state.select((state) => state.playhead, () => scheduler.invalidate("timelineOverlay")),
+      session.state.select(
+        (state) => state.playhead,
+        () => {
+          scheduler.invalidate("timelineOverlay");
+          // The playhead is a snap candidate: a drag while playing follows it.
+          if (this.gesture?.kind === "move") this.followPointer();
+        },
+      ),
       session.selection.subscribe(() => scheduler.invalidate("timelineContent")),
       // The FrameScheduler flags of document changes (spec §3.4): every command carries `affects`.
       document.subscribe(both, { affects: CONTENT_AFFECTS }),
@@ -432,11 +446,10 @@ export class TimelineView {
     switch (hit.type) {
       case "ruler":
       case "playheadHead": {
-        // TODO(batch 12): Shift snaps the playhead to edit points while snapping is on.
         this.capture(event.pointerId);
-        this.gesture = { kind: "scrub", pointerId: event.pointerId };
+        this.gesture = { kind: "scrub", pointerId: event.pointerId, snap: null };
         this.startDrag();
-        this.scrubTo(hit.frame);
+        this.scrubAt(event.offsetX);
         this.deps.scheduler.invalidate("timelineOverlay");
         break;
       }
@@ -505,7 +518,7 @@ export class TimelineView {
     const threshold = this.deps.theme.theme.timeline.dragThreshold;
     switch (gesture.kind) {
       case "scrub":
-        this.scrubTo(this.geometry().xToFrame(event.offsetX));
+        this.scrubAt(event.offsetX);
         break;
       case "press":
         if (gesture.movable && Math.hypot(event.offsetX - gesture.x, event.offsetY - gesture.y) > threshold) this.startMove(gesture);
@@ -541,18 +554,20 @@ export class TimelineView {
 
   /**
    * Brings the drag in step with the pointer, the modifiers and the view (pointer moves, modifier
-   * keys, wheel and auto-scroll): a clip drag recomputes its proposal, a marquee its rectangle and
-   * selection (the content canvas redraws only when the selection changes).
+   * keys, wheel and auto-scroll): a scrub moves the playhead, a clip drag recomputes its proposal, a
+   * marquee its rectangle and selection (the content canvas redraws only when the selection changes).
    */
   private followPointer(): void {
     const gesture = this.gesture;
     const pointer = this.pointer;
     if (!gesture || !pointer) return;
     const geometry = this.geometry();
-    if (gesture.kind === "move") {
+    if (gesture.kind === "scrub") {
+      this.scrubAt(pointer.x);
+    } else if (gesture.kind === "move") {
       const { move } = gesture;
       const lane = move.anchorLane ? geometry.laneAt(move.anchorLane.kind, pointer.y) : null;
-      move.update(geometry.xToFrame(pointer.x), lane, this.modifiers);
+      move.update(geometry.xToFrame(pointer.x), lane, this.modifiers, this.moveSnap());
       this.updateCursor();
       this.deps.scheduler.invalidate("timelineOverlay");
     } else if (gesture.kind === "marquee") {
@@ -570,18 +585,32 @@ export class TimelineView {
     this.lastTick = null;
     const stopTicker = scheduler.addTicker((time) => this.autoScroll(time));
     const win = this.overlay?.canvas.ownerDocument.defaultView ?? null;
+    // Capture phase, ahead of the KeyDispatcher: during a drag S is a modifier (hold to invert
+    // snapping, spec §6.9) whatever else is held, so it never reaches the shortcuts (Shift+S, Mod+S).
     const onKey = (event: KeyboardEvent) => {
       // A lone Alt press-and-release would move the focus to the browser menu (Windows).
       if (event.key === "Alt") event.preventDefault();
+      if (isSnapKey(event)) {
+        if (event.type === "keydown") {
+          event.preventDefault();
+          event.stopPropagation();
+          // A repeat comes from a press before the drag (that one toggled the setting): no hold.
+          if (!event.repeat) this.snapHeld = true;
+        } else {
+          // The key-up goes on: the dispatcher releases an S pressed before the drag.
+          this.snapHeld = false;
+        }
+      }
       this.modifiers = this.modifiersOf(event);
-      if (this.gesture?.kind === "move") this.followPointer();
+      if (this.gesture?.kind === "move" || this.gesture?.kind === "scrub") this.followPointer();
     };
-    win?.addEventListener("keydown", onKey);
-    win?.addEventListener("keyup", onKey);
+    win?.addEventListener("keydown", onKey, true);
+    win?.addEventListener("keyup", onKey, true);
     this.stopDrag = () => {
       stopTicker();
-      win?.removeEventListener("keydown", onKey);
-      win?.removeEventListener("keyup", onKey);
+      win?.removeEventListener("keydown", onKey, true);
+      win?.removeEventListener("keyup", onKey, true);
+      this.snapHeld = false;
       idle?.resume("gesture");
     };
   }
@@ -613,12 +642,50 @@ export class TimelineView {
       this.writeViewport(scrollBy(this.viewport(), dx, { ...context, contentEnd: end }));
     }
     if (dy !== 0) this.scrollVertically(dy);
-    if (gesture.kind === "scrub") this.scrubTo(this.geometry().xToFrame(pointer.x));
-    else this.followPointer();
+    this.followPointer();
   }
 
-  private scrubTo(frame: number): void {
-    setPlayhead(this.deps.session, Math.round(frame));
+  // --- Snapping (spec §6.9) -------------------------------------------------------------------
+
+  /** The snap toggle, inverted while S is held during a drag. */
+  get snapping(): boolean {
+    return this.deps.session.state.getState().snap !== this.snapHeld;
+  }
+
+  /** The candidates of the current document and in/out range (rebuilt on the first query after a change). */
+  snapCandidates(): SnapCandidates {
+    const { inPoint, outPoint } = this.deps.session.state.getState();
+    return this.snapIndex.get(this.deps.document.getState(), inPoint, outPoint);
+  }
+
+  private moveSnap(): MoveSnap | null {
+    if (!this.snapping) return null;
+    return {
+      candidates: this.snapCandidates(),
+      playhead: this.deps.session.state.getState().playhead,
+      thresholdPx: this.deps.theme.theme.timeline.snapThreshold,
+      pxPerFrame: this.viewport().pxPerFrame,
+    };
+  }
+
+  /**
+   * The ruler scrub (spec §6.3): the playhead under the pointer, snapped to the candidates (every one
+   * but the playhead itself) only while Shift is held and snapping is on.
+   */
+  private scrubAt(x: number): void {
+    const gesture = this.gesture;
+    if (gesture?.kind !== "scrub") return;
+    const frame = this.geometry().xToFrame(x);
+    const hit =
+      this.modifiers.shift && this.snapping
+        ? resolveSnap(this.snapCandidates(), [frame], { thresholdPx: this.deps.theme.theme.timeline.snapThreshold, pxPerFrame: this.viewport().pxPerFrame })
+        : null;
+    const snap = hit?.target ?? null;
+    if (snap?.frame !== gesture.snap?.frame || snap?.kind !== gesture.snap?.kind || snap?.ref !== gesture.snap?.ref) {
+      gesture.snap = snap;
+      this.deps.scheduler.invalidate("timelineOverlay");
+    }
+    setPlayhead(this.deps.session, snap ? snap.frame : Math.round(frame));
   }
 
   /** Pointer up (`commit`) or a lost pointer (cancel): ends the gesture. */
@@ -756,6 +823,7 @@ export class TimelineView {
     const theme = this.deps.theme.theme;
     const gesture = this.gesture;
     const proposal = gesture?.kind === "move" ? gesture.move.proposal : null;
+    const snap = proposal ? proposal.snap : gesture?.kind === "scrub" ? gesture.snap : null;
     // Hover highlights are for a pointer at rest: none while dragging.
     const idle = gesture === null || gesture.kind === "scrub" || gesture.kind === "press";
     drawOverlay({
@@ -768,9 +836,13 @@ export class TimelineView {
       hoverClip: idle ? this.hoverClip(project, geometry) : null,
       hoverAddRow: idle && this.hover?.addTrack ? (this.hover.addTrack === "video" ? geometry.addVideo : geometry.addAudio) : null,
       hoverToggle: idle ? this.hoverToggle(geometry) : null,
+      snapFrame: snap?.frame ?? null,
       move: proposal ? { proposal, newRowHeight: theme.timeline.trackHeight.M } : null,
       marquee: gesture?.kind === "marquee" ? (gesture.marquee.current?.rect ?? null) : null,
-      tooltip: proposal && this.pointer ? { text: deltaLabel(proposal.deltaFrames, project), x: this.pointer.x, y: this.pointer.y } : null,
+      tooltip:
+        this.pointer && (proposal || snap)
+          ? { text: proposal ? deltaLabel(proposal.deltaFrames, project) : null, target: snap ? snapLabel(project, snap) : null, x: this.pointer.x, y: this.pointer.y }
+          : null,
       text: this.text,
     });
     this.stats.overlayDraws += 1;
@@ -824,6 +896,15 @@ export class TimelineView {
       `content ${s.contentDraws} draws · ${s.clipsDrawn}/${s.clipsTotal} clips · ${s.contentMs.toFixed(1)} ms\n` +
       `overlay ${s.overlayDraws} draws · ${s.overlayMs.toFixed(1)} ms · ${view.pxPerFrame.toFixed(3)} px/f`;
   }
+}
+
+/**
+ * The S key as the KeyDispatcher reads it: by the letter typed, or by the key position when no plain
+ * letter comes (Option+S on macOS types "ß").
+ */
+function isSnapKey(event: KeyboardEvent): boolean {
+  const key = event.key.toLowerCase();
+  return /^[a-z]$/.test(key) ? key === "s" : event.code === "KeyS";
 }
 
 /** The drag tooltip text (spec §6.8): `Δ +00:00:12`, frames moved as mm:ss:ff. */

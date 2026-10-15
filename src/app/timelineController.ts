@@ -2,7 +2,8 @@
 // (§6.2, §6.5; the transport keys are in playbackController), the toolbar's direct-DOM bindings (zoom
 // slider, timecode field, duration: no React render while they change, P1), insert at the playhead
 // from the media panel (§6.14), the audio track header mute/solo toggles (§6.12), clip moves (drops,
-// nudges, Alt+Up/Down, §6.8), select all / deselect (§6.7), Esc for gestures and the dev clip generator.
+// nudges, Alt+Up/Down, §6.8), the snap toggle (§6.9), select all / deselect (§6.7), Esc for gestures and
+// the dev clip generator.
 import { addTrack, updateClip, updateTrack, type ClipPatch, type TrackPatch } from "../core/commands/basicCommands.js";
 import type { ActionRun } from "../core/commands/ActionRegistry.js";
 import { emptyTrack, nextTrackName } from "../core/document/project.js";
@@ -102,6 +103,16 @@ function moveToTrack(direction: "up" | "down"): ActionRun {
     if (ids.length > 0 && lane) commitMove(moveToAdjacentLane(project, ids, direction, lane.kind, newId), primary);
   };
 }
+
+/**
+ * S and the toolbar magnet (spec §6.9): a press outside a drag, or a click, toggles snapping (session
+ * state, not undoable). During a drag the timeline reads S itself as hold-to-invert, so it never gets
+ * here; the key-up of a held S does nothing.
+ */
+const toggleSnap: ActionRun = (context) => {
+  if (context?.phase === "up") return;
+  sessionStore.state.set((state) => ({ ...state, snap: !state.snap }));
+};
 
 /** Dev chrome of the timeline (not persisted). */
 export const timelineDev = createStore<{ stats: boolean }>({ stats: false });
@@ -259,6 +270,7 @@ export function installTimelineController(): () => void {
     actions.register("edit.nudgeRight5", nudge(5)),
     actions.register("edit.moveToTrackAbove", moveToTrack("up")),
     actions.register("edit.moveToTrackBelow", moveToTrack("down")),
+    actions.register("toggle.snap", toggleSnap),
     // Esc (spec §18 "Cancel gesture"): declined when no gesture runs, so popovers and the browser get it.
     actions.register("app.cancel", () => timelineView.cancelGesture()),
   ];

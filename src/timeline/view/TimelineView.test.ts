@@ -81,6 +81,9 @@ class FakeScheduler {
   }
 }
 
+/** Unmount functions of the views set up by the current test. */
+const mounted: (() => void)[] = [];
+
 function setup(clipCount = 0) {
   const project = makeProject();
   project.media.m = makeMedia("m");
@@ -101,6 +104,7 @@ function setup(clipCount = 0) {
   const host = window.document.createElement("div");
   window.document.body.append(host);
   const unmount = view.mount(host);
+  mounted.push(unmount);
   scheduler.flush();
   const overlay = host.querySelectorAll("canvas")[1] as HTMLCanvasElement;
   const pointer = (type: string, x: number, y: number, init: PointerEventInit = {}) =>
@@ -120,6 +124,8 @@ describe("TimelineView", () => {
     vi.stubGlobal("Path2D", class {});
   });
   afterEach(() => {
+    // A drag left open would keep its window key listeners into the next test.
+    for (const unmount of mounted.splice(0)) unmount();
     window.document.body.replaceChildren();
     vi.unstubAllGlobals();
   });
@@ -518,5 +524,188 @@ describe("TimelineView", () => {
     view.zoomBy(2);
     expect(scheduler.flush()).toEqual([]);
     expect(view.mounted).toBe(false);
+  });
+
+  describe("snapping (spec §6.9)", () => {
+    /** V1: a [0, 20) and b [100, 140), at 4 px/frame from x = 176. */
+    function snapSetup() {
+      const t = setup();
+      t.document.dispatch(addClip(makeMediaClip(t.document.getState(), { id: "a", trackId: "v1", start: 0, duration: 20, mediaId: "m" })));
+      t.document.dispatch(addClip(makeMediaClip(t.document.getState(), { id: "b", trackId: "v1", start: 100, duration: 40, mediaId: "m" })));
+      t.scheduler.flush();
+      return t;
+    }
+    const scene = () => vi.mocked(drawOverlay).mock.lastCall?.[0];
+    const zoom = (session: ReturnType<typeof setup>["session"], pxPerFrame: number) =>
+      session.state.set((state) => ({ ...state, timeline: { ...state.timeline, pxPerFrame, scrollFrame: 0 } }));
+    const sKey = (type: "keydown" | "keyup", init: KeyboardEventInit = {}) => window.dispatchEvent(new KeyboardEvent(type, { key: "s", code: "KeyS", bubbles: true, ...init }));
+
+    it("snaps a clip's edge to another clip's end within 8 px at any zoom, with the line and the name, and lets go beyond", () => {
+      const { view, session, scheduler, pointer } = snapSetup();
+      // 4 px/frame: b pressed at frame 120 (x 656). x 344 puts its start at 22, 8 px from a's end.
+      pointer("pointerdown", 656, 200);
+      pointer("pointermove", 344, 200);
+      expect(view.dragging?.proposal).toMatchObject({ deltaFrames: -80, snap: { frame: 20, kind: "clipEnd", ref: "a" } });
+      scheduler.flush();
+      expect(scene()?.snapFrame).toBe(20);
+      expect(scene()?.tooltip).toMatchObject({ text: "Δ -00:02:20", target: "End of a" });
+      // The ghost sticks: anywhere within the threshold gives the same drop.
+      pointer("pointermove", 340, 200);
+      expect(view.dragging?.proposal?.deltaFrames).toBe(-80);
+      // 9 px away: free, rounded to the frame under the pointer.
+      pointer("pointermove", 345, 200);
+      expect(view.dragging?.proposal).toMatchObject({ deltaFrames: -78, snap: null });
+      scheduler.flush();
+      expect(scene()?.snapFrame).toBeNull();
+      expect(scene()?.tooltip?.target).toBeNull();
+      pointer("pointerup", 345, 200);
+
+      // 1 px/frame: b at x 276..316; 8 px is now 8 frames.
+      zoom(session, 1);
+      scheduler.flush();
+      pointer("pointerdown", 296, 200);
+      pointer("pointermove", 224, 200);
+      expect(view.dragging?.proposal).toMatchObject({ deltaFrames: -80, snap: { frame: 20 } });
+      pointer("pointermove", 225, 200);
+      expect(view.dragging?.proposal).toMatchObject({ deltaFrames: -71, snap: null });
+      pointer("pointerup", 225, 200);
+    });
+
+    it("tests the trailing edge too, snaps to the playhead (following it while dragging), never to the dragged clip itself", () => {
+      const { view, session, pointer } = snapSetup();
+      setPlayhead(session, 300);
+      pointer("pointerdown", 656, 200);
+      // Start at 258, end at 298: the end is 2 frames from the playhead.
+      pointer("pointermove", 656 + 158 * 4, 200);
+      expect(view.dragging?.proposal).toMatchObject({ deltaFrames: 160, snap: { kind: "playhead", frame: 300 } });
+      // The playhead moves (playback) under a still pointer: the drag follows it.
+      setPlayhead(session, 400);
+      expect(view.dragging?.proposal).toMatchObject({ deltaFrames: 158, snap: null });
+      // b's own edges are no candidates: 1 frame left of where it started.
+      pointer("pointermove", 652, 200);
+      expect(view.dragging?.proposal).toMatchObject({ deltaFrames: -1, snap: null });
+      pointer("pointerup", 652, 200);
+    });
+
+    it("lets an Alt duplicate snap to its original", () => {
+      const { view, pointer, key } = snapSetup();
+      pointer("pointerdown", 656, 200);
+      // Start at 142: 2 frames past b's end.
+      pointer("pointermove", 656 + 42 * 4, 200);
+      expect(view.dragging?.proposal?.snap).toBeNull();
+      key("keydown", "Alt", { altKey: true });
+      expect(view.dragging?.proposal).toMatchObject({ duplicate: true, deltaFrames: 40, snap: { frame: 140, kind: "clipEnd", ref: "b" } });
+      key("keyup", "Alt");
+      pointer("pointerup", 656 + 42 * 4, 200);
+    });
+
+    it("with snapping off, holding S snaps for the drag and releasing it stops at once; S never reaches the shortcuts mid-drag", () => {
+      const { view, session, pointer } = snapSetup();
+      session.state.set((state) => ({ ...state, snap: false }));
+      const shortcuts = vi.fn();
+      window.addEventListener("keydown", shortcuts);
+      pointer("pointerdown", 656, 200);
+      pointer("pointermove", 344, 200);
+      expect(view.dragging?.proposal).toMatchObject({ deltaFrames: -78, snap: null });
+      sKey("keydown");
+      expect(view.snapping).toBe(true);
+      expect(view.dragging?.proposal).toMatchObject({ deltaFrames: -80, snap: { frame: 20 } });
+      sKey("keyup");
+      expect(view.dragging?.proposal).toMatchObject({ deltaFrames: -78, snap: null });
+      // With Shift held too (keep tracks), S still holds: it is not Shift+S.
+      sKey("keydown", { shiftKey: true });
+      expect(view.dragging?.proposal?.snap).not.toBeNull();
+      expect(shortcuts).not.toHaveBeenCalled();
+      pointer("pointerup", 344, 200, { shiftKey: true });
+      // The drop ends the hold; the setting never changed.
+      expect(view.snapping).toBe(false);
+      expect(session.state.getState().snap).toBe(false);
+      // Outside a drag S goes to the shortcuts (the toggle).
+      sKey("keydown");
+      expect(shortcuts).toHaveBeenCalledTimes(1);
+      window.removeEventListener("keydown", shortcuts);
+    });
+
+    it("reads S as the shortcuts do: by the letter, by the key position when Option gives another character", () => {
+      const { view, session, pointer } = snapSetup();
+      session.state.set((state) => ({ ...state, snap: false }));
+      pointer("pointerdown", 656, 200);
+      pointer("pointermove", 344, 200);
+      // A Dvorak layout types "o" on the S position: not S.
+      sKey("keydown", { key: "o" });
+      expect(view.dragging?.proposal?.snap).toBeNull();
+      sKey("keyup", { key: "o" });
+      // Option+S on macOS types "ß".
+      sKey("keydown", { key: "ß", altKey: true });
+      expect(view.dragging?.proposal?.snap).not.toBeNull();
+      sKey("keyup", { key: "ß", altKey: true });
+      expect(view.dragging?.proposal?.snap).toBeNull();
+      // "s" from another key position (Dvorak).
+      sKey("keydown", { key: "s", code: "Semicolon" });
+      expect(view.dragging?.proposal?.snap).not.toBeNull();
+      pointer("pointerup", 344, 200);
+    });
+
+    it("does not hold S for a press made before the drag (its repeats arrive during the drag)", () => {
+      const { view, session, pointer } = snapSetup();
+      session.state.set((state) => ({ ...state, snap: false }));
+      pointer("pointerdown", 656, 200);
+      pointer("pointermove", 344, 200);
+      sKey("keydown", { repeat: true });
+      expect(view.dragging?.proposal?.snap).toBeNull();
+      pointer("pointerup", 344, 200);
+    });
+
+    it("inverts the other way too: snapping on, holding S drags freely", () => {
+      const { view, pointer } = snapSetup();
+      pointer("pointerdown", 656, 200);
+      pointer("pointermove", 344, 200);
+      expect(view.dragging?.proposal?.deltaFrames).toBe(-80);
+      sKey("keydown");
+      expect(view.dragging?.proposal).toMatchObject({ deltaFrames: -78, snap: null });
+      sKey("keyup");
+      expect(view.dragging?.proposal?.deltaFrames).toBe(-80);
+      pointer("pointerup", 344, 200);
+    });
+
+    it("snaps a ruler scrub only while Shift is held, to every candidate but the playhead", () => {
+      const { session, scheduler, pointer, key } = snapSetup();
+      // Frame 98, 2 frames (8 px) before b's start.
+      pointer("pointerdown", 176 + 98 * 4, 10);
+      expect(session.state.getState().playhead).toBe(98);
+      scheduler.flush();
+      expect(scene()?.snapFrame).toBeNull();
+      expect(scene()?.tooltip).toBeNull();
+      pointer("pointermove", 176 + 98 * 4, 12, { shiftKey: true });
+      expect(session.state.getState().playhead).toBe(100);
+      scheduler.flush();
+      expect(scene()?.snapFrame).toBe(100);
+      expect(scene()?.tooltip).toMatchObject({ text: null, target: "Start of b" });
+      // Shift released mid-drag: free again at once.
+      key("keyup", "Shift");
+      expect(session.state.getState().playhead).toBe(98);
+      scheduler.flush();
+      expect(scene()?.snapFrame).toBeNull();
+      // Snapping off: Shift alone does nothing, Shift with S held snaps.
+      session.state.set((state) => ({ ...state, snap: false }));
+      key("keydown", "Shift", { shiftKey: true });
+      expect(session.state.getState().playhead).toBe(98);
+      sKey("keydown", { shiftKey: true });
+      expect(session.state.getState().playhead).toBe(100);
+      pointer("pointerup", 176 + 98 * 4, 12, { shiftKey: true });
+      expect(session.state.getState().playhead).toBe(100);
+    });
+
+    it("rebuilds the snap index only on the first query after the document changed", () => {
+      const { view, document, pointer } = snapSetup();
+      const first = view.snapCandidates();
+      pointer("pointerdown", 656, 200);
+      pointer("pointermove", 344, 200);
+      pointer("pointermove", 400, 200);
+      expect(view.snapCandidates()).toBe(first);
+      pointer("pointerup", 400, 200);
+      document.dispatch(updateClip("a", { name: "Intro" }));
+      expect(view.snapCandidates()).not.toBe(first);
+    });
   });
 });
