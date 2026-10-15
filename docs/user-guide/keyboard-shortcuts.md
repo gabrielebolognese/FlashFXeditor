@@ -4,13 +4,13 @@ This page lists every keyboard shortcut that works in the current version of Sho
 
 > **Video placeholder: Keyboard shortcuts in action**
 > - File: `videos/keyboard-shortcuts/overview.mp4` (not recorded yet)
-> - Length: about 75 seconds
+> - Length: about 90 seconds
 > - Shows:
 >   1. Click the timeline. Press <kbd>Space</kbd> to play and again to pause.
 >   2. Press <kbd>L</kbd> twice (2x), then <kbd>K</kbd>.
 >   3. Hold <kbd>→</kbd>: the playhead steps, then repeats quickly. Release it.
 >   4. Press <kbd>↓</kbd> twice to jump to the next clip edges, then <kbd>Home</kbd> and <kbd>End</kbd>.
->   5. Press <kbd>=</kbd> twice and <kbd>\</kbd> to zoom the timeline in and back to fit.
+>   5. Press <kbd>=</kbd> twice (the view glides in) and <kbd>\\</kbd> to zoom the timeline back to fit. Click two clips (the second with <kbd>Shift</kbd>) and press <kbd>Shift</kbd>+<kbd>\\</kbd>: they fill the view.
 >   6. Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd>: the **Loop playback** button turns on.
 >   7. Click a clip in the timeline and press <kbd>Alt</kbd>+<kbd>Right</kbd> three times: the clip moves 3 frames. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> once: it is back.
 >   8. Press <kbd>Ctrl</kbd>+<kbd>A</kbd> to select all clips, then <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd>.
@@ -19,7 +19,7 @@ This page lists every keyboard shortcut that works in the current version of Sho
 >   11. Click a clip, click in the ruler a little past its end, and press <kbd>E</kbd>: the clip's end moves to the playhead.
 >   12. Click in the ruler in the middle of a clip and press <kbd>Ctrl</kbd>+<kbd>K</kbd>: the clip splits at the playhead. Click the right part and press <kbd>Shift</kbd>+<kbd>Delete</kbd>: it disappears and the later clips move left. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> twice.
 >   13. Click a clip, press <kbd>Delete</kbd>, click the gap it leaves and press <kbd>G</kbd>: the gap closes. Press <kbd>F2</kbd> on another clip, type a name and press <kbd>Enter</kbd>.
->   14. Press <kbd>Y</kbd>: the **Slip** tool turns gold. Press <kbd>U</kbd> for **Slide**, <kbd>R</kbd> for **Rate stretch** and <kbd>C</kbd> for **Razor**, then <kbd>V</kbd> to go back to **Select**.
+>   14. Press <kbd>Y</kbd>: the **Slip** tool turns gold. Press <kbd>U</kbd> for **Slide**, <kbd>R</kbd> for **Rate stretch** and <kbd>C</kbd> for **Razor**. Press <kbd>H</kbd> for **Hand** and drag on the tracks: the view pans. Press <kbd>V</kbd> to go back to **Select**.
 >   15. Zoom in, scroll the playhead out of view, and press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>.</kbd>: the view centers on the playhead.
 >   16. Click a video with sound and press <kbd>Ctrl</kbd>+<kbd>L</kbd> to unlink its sound, then <kbd>Ctrl</kbd>+<kbd>Z</kbd>. Press <kbd>Shift</kbd>+<kbd>S</kbd>: the **Linked selection** button turns off; press it again.
 >   17. Click the V1 track header and press <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>Up</kbd>: the row gets taller. Press <kbd>F2</kbd>, type a name and press <kbd>Enter</kbd>.
@@ -58,7 +58,7 @@ This page lists every keyboard shortcut that works in the current version of Sho
 
 **macOS.** Where this page says <kbd>Ctrl</kbd>, press <kbd>⌘</kbd> (Command) on a Mac; <kbd>Shift</kbd> is <kbd>⇧</kbd>. On a Mac, tooltips show the symbols, for example ⌘⇧L. On a Mac keyboard without <kbd>Home</kbd> and <kbd>End</kbd> keys, press <kbd>Fn</kbd>+<kbd>←</kbd> and <kbd>Fn</kbd>+<kbd>→</kbd>.
 
-**Other keyboard layouts.** Symbol keys such as <kbd>=</kbd>, <kbd>-</kbd> and <kbd>\</kbd> also work through the key in the same position as on a US keyboard, so they work on layouts where the symbol sits elsewhere.
+**Other keyboard layouts.** Symbol keys such as <kbd>=</kbd>, <kbd>-</kbd> and <kbd>\\</kbd> also work through the key in the same position as on a US keyboard, so they work on layouts where the symbol sits elsewhere.
 
 ## Playback and navigation
 
@@ -84,6 +84,7 @@ These shortcuts work in all panels, except where noted. See [Preview and playbac
 - **Arrow keys** (alone, with <kbd>Shift</kbd> or with <kbd>Ctrl</kbd>): one step when you press, then, after 0.3 seconds, about 30 steps per second until you release the key. Each step pauses playback first.
 - **<kbd>J</kbd> and <kbd>L</kbd>**: holding them down does not repeat or speed up. Only presses count: press again to double the speed.
 - **<kbd>K</kbd>**: holding it keeps playback paused and turns <kbd>J</kbd> and <kbd>L</kbd> into one-frame steps.
+- **<kbd>Space</kbd> over empty track space**: while playback is stopped and the pointer rests on an empty part of a timeline track, holding <kbd>Space</kbd> lets you drag to pan the timeline. A short press there still plays, but playback starts when you release the key. Over a clip, anywhere else, and during playback, <kbd>Space</kbd> plays and pauses at once. See [Pan the view](timeline.md#pan-the-view).
 - If the browser window loses focus while you hold a key, the editor treats the key as released.
 
 ## Timeline
@@ -96,13 +97,15 @@ These shortcuts work only while the Timeline panel is active. See [Timeline](tim
 | Jump to the previous or next marker | <kbd>Shift</kbd>+<kbd>↑</kbd> or <kbd>Shift</kbd>+<kbd>↓</kbd> | <kbd>⇧</kbd>+<kbd>↑</kbd> or <kbd>⇧</kbd>+<kbd>↓</kbd> |
 | Zoom in | <kbd>=</kbd> | <kbd>=</kbd> |
 | Zoom out | <kbd>-</kbd> | <kbd>-</kbd> |
-| Zoom to fit the whole content | <kbd>\</kbd> | <kbd>\</kbd> |
-| Center the view on the playhead | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>.</kbd> | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>.</kbd> |
+| Zoom to fit the whole content | <kbd>\\</kbd> | <kbd>\\</kbd> |
+| Zoom to the selection (same as **Zoom to selection**) | <kbd>Shift</kbd>+<kbd>\\</kbd> | <kbd>⇧</kbd>+<kbd>\\</kbd> |
+| Center the view on the playhead (same as **Center playhead**) | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>.</kbd> | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>.</kbd> |
 | Nudge the selected clips 1 frame left or right | <kbd>Alt</kbd>+<kbd>←</kbd> or <kbd>Alt</kbd>+<kbd>→</kbd> | <kbd>⌥</kbd>+<kbd>←</kbd> or <kbd>⌥</kbd>+<kbd>→</kbd> |
 | Nudge the selected clips 5 frames left or right | <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>←</kbd> or <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>→</kbd> | <kbd>⌥</kbd>+<kbd>⇧</kbd>+<kbd>←</kbd> or <kbd>⌥</kbd>+<kbd>⇧</kbd>+<kbd>→</kbd> |
 | Move the selected clips to the track above or below | <kbd>Alt</kbd>+<kbd>↑</kbd> or <kbd>Alt</kbd>+<kbd>↓</kbd> | <kbd>⌥</kbd>+<kbd>↑</kbd> or <kbd>⌥</kbd>+<kbd>↓</kbd> |
 
-- Zooming with the keys keeps the playhead in place when it is in view; otherwise it zooms around the middle of the view.
+- Zooming with the keys keeps the playhead in place when it is in view; otherwise it zooms around the middle of the view. Each step glides to the new zoom in 120 milliseconds; quick presses add up.
+- <kbd>Shift</kbd>+<kbd>\\</kbd> fills the view with the selected clips (or the selected tracks' clips, gap or cut), leaving 10% free on each side. With nothing selected, it does nothing. See [Zoom to the selection](timeline.md#zoom-to-the-selection).
 - Jumps scroll the timeline by a page when the playhead lands out of view.
 - Nudged clips cover what they land on. Hold the keys to keep nudging; nudges less than 0.3 seconds apart are one undo step. See [Nudge clips with the keyboard](timeline.md#nudge-clips-with-the-keyboard).
 - <kbd>Alt</kbd>+<kbd>↑</kbd> and <kbd>Alt</kbd>+<kbd>↓</kbd> move clips only to an existing track with room for them; they never create a track.
@@ -198,8 +201,9 @@ The tool decides what a drag on a clip does. The active tool's button in the tim
 | **Slide** tool: move a clip between its neighbors | <kbd>U</kbd> | <kbd>U</kbd> | All panels |
 | **Rate stretch** tool: change a clip's speed by dragging its edge | <kbd>R</kbd> | <kbd>R</kbd> | All panels |
 | **Razor** tool: cut clips where you click | <kbd>C</kbd> | <kbd>C</kbd> | All panels |
+| **Hand** tool: drag to pan the timeline | <kbd>H</kbd> | <kbd>H</kbd> | All panels |
 
-The tool stays active until you choose another one, and each project remembers it.
+The tool stays active until you choose another one, and each project remembers it. See [Pan the view](timeline.md#pan-the-view) for the **Hand** tool.
 
 ## Audio
 
@@ -248,7 +252,7 @@ See [Projects and saving](projects-and-saving.md).
 | Cancel the change and leave the field | <kbd>Escape</kbd> | <kbd>Esc</kbd> |
 | Close a dialog or a menu | <kbd>Escape</kbd> | <kbd>Esc</kbd> |
 
-In the timecode field of the timeline toolbar, <kbd>Enter</kbd> moves the playhead to the time you typed. Besides a full timecode, the field accepts `+30` or `-15` to move by frames and `+2.` to move by seconds. See [Timeline](timeline.md).
+In the timecode field of the timeline toolbar, <kbd>Enter</kbd> moves the playhead to the time you typed. Besides a full timecode, the field accepts `+30` or `-15` to move by frames and `+2.` to move by seconds. If the editor can't read the text, the field gets a red border and stays open: correct it and press <kbd>Enter</kbd>, or press <kbd>Escape</kbd> to put the playhead's time back. See [Jump to a timecode](timeline.md#jump-to-a-timecode).
 
 ## Mouse and wheel
 
@@ -259,6 +263,11 @@ These work over the timeline. See [Timeline](timeline.md).
 | Zoom at the pointer | <kbd>Ctrl</kbd>+wheel or <kbd>Alt</kbd>+wheel, or pinch on a touchpad | <kbd>⌘</kbd>+wheel or <kbd>⌥</kbd>+wheel, or pinch on a trackpad |
 | Scroll sideways | <kbd>Shift</kbd>+wheel, or swipe sideways on a touchpad | <kbd>⇧</kbd>+wheel, or swipe sideways on a trackpad |
 | Scroll the tracks up and down | Wheel | Wheel |
+| Pan the view in any direction | Drag with the middle mouse button (any tool), drag with the **Hand** tool, or hold <kbd>Space</kbd> over empty track space and drag (playback stopped) | Same |
+| Scroll left or right | Drag the thumb of the scrollbar under the tracks | Same |
+| Zoom with the left or right edge of the view held in place | Drag the right or left end of the thumb in the scrollbar under the tracks | Same |
+| Jump to another part of the timeline | Click the empty part of the scrollbar under the tracks | Same |
+| Scroll the tracks up and down | Drag the thumb of the scrollbar at the right of the tracks | Same |
 | Select a clip with its linked clips | Click | Click |
 | Add a clip (with its linked clips) to the selection, or remove it | <kbd>Shift</kbd>+click | <kbd>⇧</kbd>+click |
 | Add or remove only that clip | <kbd>Ctrl</kbd>+click | <kbd>⌘</kbd>+click |
@@ -315,7 +324,8 @@ While you type in a text field, or while a dialog is open, the editor leaves <kb
 
 Some buttons already show a shortcut in their tooltip although the button is disabled, for example **Add marker** in the timeline toolbar and **Export** in the app bar. These shortcuts start working when their feature is available in a later version; until then the keys do nothing. In the current version this also applies to:
 
-- <kbd>H</kbd> (the **Hand** tool).
+- <kbd>M</kbd> (add a marker), <kbd>I</kbd> and <kbd>O</kbd> with or without <kbd>Shift</kbd> or <kbd>Alt</kbd>, and <kbd>Alt</kbd>+<kbd>X</kbd> (in and out points), <kbd>X</kbd> (mark a clip), <kbd>;</kbd> and <kbd>'</kbd> (lift and extract) and <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Space</kbd> (play from in to out).
+- <kbd>T</kbd> and <kbd>Shift</kbd>+<kbd>T</kbd> (titles and subtitles), <kbd>F</kbd> (full-screen preview), <kbd>Shift</kbd>+<kbd>F</kbd> (freeze frame), <kbd>Shift</kbd>+<kbd>Z</kbd> (punch zoom), <kbd>Ctrl</kbd>+<kbd>D</kbd> (duplicate), <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd> (default transition), <kbd>Ctrl</kbd>+<kbd>E</kbd> (export) and <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> (command palette).
 - <kbd>Ctrl</kbd>+<kbd>X</kbd>, <kbd>Ctrl</kbd>+<kbd>C</kbd> and <kbd>Ctrl</kbd>+<kbd>V</kbd> in the Timeline and Preview panels (cutting, copying and pasting clips; the **Cut**, **Copy** and **Paste** rows of the clip menu are dimmed).
 - The arrow keys and <kbd>Ctrl</kbd>+<kbd>0</kbd>, <kbd>Ctrl</kbd>+<kbd>1</kbd>, <kbd>Ctrl</kbd>+<kbd>2</kbd> in the Preview panel (moving items and zooming the preview). Use the **Zoom** dropdown and the **Fit** button instead.
 
@@ -332,4 +342,4 @@ Some buttons already show a shortcut in their tooltip although the button is dis
 - [Projects and saving](projects-and-saving.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 17, 2026-10-15</sub>
+<sub>Last updated: Batch 18, 2026-10-15</sub>

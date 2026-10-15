@@ -11,7 +11,7 @@ The Preview panel shows your video as it looks at the playhead: every video and 
 >   3. Press <kbd>Space</kbd> to play, then <kbd>Space</kbd> to pause. The **Play** button turns into **Pause** and back.
 >   4. Press <kbd>L</kbd> three times (1x, 2x, 4x), then <kbd>K</kbd> to stop.
 >   5. Hold <kbd>K</kbd> and tap <kbd>L</kbd> twice to step two frames.
->   6. Point at the timecode, the duration, the fps badge and **Dropped 0** in the status strip.
+>   6. Point at the timecode, the duration, the fps badge and **Dropped 0** in the status strip. Click the **ff** chip left of the timecode: the times switch to milliseconds; click **ms** to switch back.
 
 ## In this page
 - [Read the preview](#read-the-preview)
@@ -130,10 +130,11 @@ How playback behaves:
 - Before the first frame moves, the editor may wait up to half a second while it decodes the frames and the sound ahead. This is normal.
 - You hear the sound of your audio tracks while you play at 1x. See [Audio](audio.md).
 - At the end of the content, playback stops on the last frame, unless **Loop playback** is on (see [Loop playback](#loop-playback)).
-- The timeline follows the playhead by pages: when the playhead reaches the right edge, the view jumps ahead by most of its width. If you scroll the timeline sideways or zoom it with the mouse wheel during playback, it stops following until you start playback again. Scrolling up and down does not stop it.
+- The timeline follows the playhead by pages: when the playhead reaches the right edge, the view jumps ahead by most of its width. If you scroll or pan the timeline sideways, drag its bottom scrollbar, or zoom it with the mouse wheel during playback, it stops following until you start playback again. Scrolling up and down does not stop it.
 - <kbd>Home</kbd>, <kbd>End</kbd> and the timecode field of the timeline toolbar move the playhead without stopping playback: it plays on from the new position. The arrow keys pause first, then step.
 - <kbd>Q</kbd> and <kbd>W</kbd> trim the clip under the playhead while you play, and playback goes on. Dragging a clip edge, and rolling, slipping, sliding or stretching a clip, pauses playback. See [Trim to the playhead with Q and W](trimming.md#trim-to-the-playhead-with-q-and-w).
 - Shortcuts work in every panel, except while you type in a text field, while a dropdown has focus, or while a dialog is open.
+- While playback is stopped and the pointer rests on an empty part of a timeline track, <kbd>Space</kbd> starts playback when you release it rather than when you press it: holding it there lets you drag to pan the timeline. See [Pan the view](timeline.md#pan-the-view).
 
 ## Shuttle with J, K and L
 
@@ -208,11 +209,14 @@ Under the preview sit the transport bar and, below it, a thin status strip. Hove
 
 | Readout | Meaning |
 | --- | --- |
-| Playhead timecode (left, bright) | The playhead position as minutes:seconds:frames, for example `00:12:15` is 12 seconds and 15 frames. Hours appear in front when needed. |
+| Format chip **ff** or **ms** (far left) | The timecode format. Click it to switch between frames (**ff**) and milliseconds (**ms**). See [Show times in milliseconds](timeline.md#show-times-in-milliseconds). |
+| Playhead timecode (bright) | The playhead position as minutes:seconds:frames, for example `00:12:15` is 12 seconds and 15 frames; in milliseconds, as minutes:seconds.milliseconds, for example `00:12.500`. Hours appear in front when needed. |
 | Duration (the dimmer timecode next to it) | The length of your content: the end of the last clip, in the same format. Its tooltip reads **Duration**. |
 | Frame rate badge, for example **30 fps** | The project frame rate. Its tooltip reads **Project frame rate**. |
 
-The preview timecode is read-only. To type a time, use the timecode field in the timeline toolbar. See [Timeline](timeline.md).
+The preview timecode is read-only. To type a time, use the timecode field in the timeline toolbar. See [Jump to a timecode](timeline.md#jump-to-a-timecode).
+
+The format chip switches the timecodes everywhere: under the preview, in the timeline toolbar and in the ruler. Each project remembers it.
 
 ### Transport buttons
 
@@ -278,4 +282,4 @@ If playback stutters, see [Troubleshooting](troubleshooting.md).
 - [Workspace](workspace.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 17, 2026-10-15</sub>
+<sub>Last updated: Batch 18, 2026-10-15</sub>

@@ -172,6 +172,8 @@ Each track is Small (S, 32 pixels), Medium (M, 56 pixels) or Large (L, 88 pixels
 
 On M and L tracks, clips show their thumbnails, waveforms or pictures below the label bar; on S tracks they show only the label bar. See [Show thumbnails and waveforms](clip-thumbnails-and-waveforms.md#show-thumbnails-and-waveforms).
 
+When taller tracks no longer fit in the panel, scroll them up and down with the mouse wheel, by dragging the thumb of the scrollbar at the right of the tracks, or by panning. See [Use the scrollbars](timeline.md#use-the-scrollbars) and [Pan the view](timeline.md#pan-the-view).
+
 ## Delete tracks
 
 1. Right-click the track's header. To delete several tracks, select them first and right-click one of them.
@@ -229,4 +231,4 @@ With several tracks selected, the section is titled, for example, **2 tracks**, 
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 17, 2026-10-15</sub>
+<sub>Last updated: Batch 18, 2026-10-15</sub>

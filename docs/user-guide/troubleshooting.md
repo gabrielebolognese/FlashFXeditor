@@ -1,10 +1,10 @@
 # Troubleshooting
 
-This page helps you when something does not work as expected: the editor does not start in your browser, the preview stays empty, a folder or a file does not open, a clip drag, a trim, a split, a delete or a timeline tool does something you did not expect, a clip shows no thumbnails, playback stutters, or you hear no sound. Each problem lists what you see, why it happens and what to do. The last section lists what the current version cannot do yet.
+This page helps you when something does not work as expected: the editor does not start in your browser, the preview stays empty, a folder or a file does not open, a clip drag, a trim, a split, a delete, a timeline tool or a typed timecode does something you did not expect, a clip shows no thumbnails, playback stutters, or you hear no sound. Each problem lists what you see, why it happens and what to do. The last section lists what the current version cannot do yet.
 
 > **Video placeholder: Fix common problems**
 > - File: `videos/troubleshooting/overview.mp4` (not recorded yet)
-> - Length: about 120 seconds
+> - Length: about 140 seconds
 > - Shows:
 >   1. Open the editor in a browser without the required features: the screen "This browser cannot run Shorts Editor" lists what is missing.
 >   2. In Chrome, open `chrome://settings/system` and show **Use graphics acceleration when available** turned on.
@@ -20,6 +20,9 @@ This page helps you when something does not work as expected: the editor does no
 >   12. With three videos end to end on V1, put a music clip on A2 that runs under the second video and ends after it, and a short sound effect on A2 one second after the music. Select the second video and press <kbd>Shift</kbd>+<kbd>Delete</kbd>: the message **Ripple delete stopped short** names the sound effect, and the third video moves only one second to the left.
 >   13. Click the padlock in the V1 header: diagonal lines cover the row, and clicking its clips selects nothing. Click the padlock again: the clips can be selected.
 >   14. Click the height toggle in the V1 header until the track is S: its clips show only their label bar. Click it again: the thumbnails are back.
+>   15. Press <kbd>H</kbd> and drag a clip: the view pans and the clip stays where it is. Press <kbd>V</kbd> and drag the clip again: it moves.
+>   16. With playback stopped, point at an empty part of a track and press <kbd>Space</kbd>: the cursor turns into a hand, and playback starts only when you release the key.
+>   17. Click the timeline's timecode field, type `1:x5` and press <kbd>Enter</kbd>: the field gets a red border. Press <kbd>Esc</kbd>.
 
 ## In this page
 - [Browser and graphics](#browser-and-graphics)
@@ -31,6 +34,7 @@ This page helps you when something does not work as expected: the editor does no
   - [The new project shortcut opens a browser window](#the-new-project-shortcut-opens-a-browser-window)
   - [The save shortcut opens the browser's Save dialog](#the-save-shortcut-opens-the-browsers-save-dialog)
   - [Alt+Left leaves the editor](#altleft-leaves-the-editor)
+  - [Space starts playback only when you release it](#space-starts-playback-only-when-you-release-it)
 - [Timeline](#timeline)
   - [A drag copied clips or pushed other clips to the right](#a-drag-copied-clips-or-pushed-other-clips-to-the-right)
   - [A drag cut another clip short or split it](#a-drag-cut-another-clip-short-or-split-it)
@@ -61,6 +65,9 @@ This page helps you when something does not work as expected: the editor does no
   - [A clip shows no thumbnails or waveform](#a-clip-shows-no-thumbnails-or-waveform)
   - [Thumbnails repeat or show the wrong frames](#thumbnails-repeat-or-show-the-wrong-frames)
   - [A clip shows a chain icon](#a-clip-shows-a-chain-icon)
+  - [Dragging a clip moves the view instead](#dragging-a-clip-moves-the-view-instead)
+  - [The timecode field turns red or jumps somewhere unexpected](#the-timecode-field-turns-red-or-jumps-somewhere-unexpected)
+  - [Timecodes show milliseconds instead of frames](#timecodes-show-milliseconds-instead-of-frames)
 - [Folders and saving](#folders-and-saving)
   - [The browser asks for access to a folder](#the-browser-asks-for-access-to-a-folder)
   - [The project opens read-only](#the-project-opens-read-only)
@@ -157,6 +164,14 @@ This page helps you when something does not work as expected: the editor does no
 **Cause:** <kbd>Alt</kbd>+<kbd>←</kbd> is the browser's Back key on Windows. The editor uses it to nudge clips only while the Timeline panel is active. When another panel was the last one you clicked, the browser gets the key.
 
 **Fix:** Open the editor again and open your project from **Recent projects**. Your project saves automatically, 1 second after each change by default. Before you nudge clips, click the timeline. See [Nudge clips with the keyboard](timeline.md#nudge-clips-with-the-keyboard).
+
+### Space starts playback only when you release it
+
+**Symptom:** You press <kbd>Space</kbd> to play, the cursor turns into a hand, and playback starts only when you let go of the key.
+
+**Cause:** Playback was stopped and the pointer rested on an empty part of a timeline track. There, holding <kbd>Space</kbd> lets you drag to pan the view, so the editor waits for the release to know whether you wanted to pan or to play.
+
+**Fix:** Nothing is wrong: a short press still plays. To start playback on the press, move the pointer away from the empty track space (over a clip or out of the timeline), or click **Play** under the preview. Pausing with <kbd>Space</kbd> during playback is never delayed. See [Pan the view](timeline.md#pan-the-view).
 
 ## Timeline
 
@@ -425,6 +440,33 @@ When <kbd>Q</kbd>, <kbd>W</kbd> or <kbd>E</kbd> stops short, a message names the
 
 **Fix:** Nothing to fix. To remove the link, click the clip and press <kbd>Ctrl</kbd>+<kbd>L</kbd>, or right-click it and choose **Unlink**. See [Unlink clips](links-and-groups.md#unlink-clips).
 
+### Dragging a clip moves the view instead
+
+**Symptom:** You drag a clip, but the whole timeline moves with the pointer and the clip stays where it is. Clicking a clip selects nothing, and the cursor over the tracks is a hand.
+
+**Cause:** The **Hand** tool is active: its button in the timeline toolbar is gold. <kbd>H</kbd> chooses it in every panel, and each project remembers its tool. A drag with the middle mouse button also pans, whatever the tool.
+
+**Fix:** Press <kbd>V</kbd> or click **Select**, then drag the clip with the left mouse button. Panning changes nothing in your edit, so there is nothing to undo. See [Pan the view](timeline.md#pan-the-view).
+
+### The timecode field turns red or jumps somewhere unexpected
+
+**Symptom:** You type a time into the timecode field of the timeline toolbar and press <kbd>Enter</kbd>. The field gets a red border and the playhead does not move, or the playhead lands far from where you meant.
+
+**Cause:** One of these:
+- The text is not a time the editor can read, for example it contains a letter (`1:x5`) or more than four fields. The red border stays until the text reads as a time.
+- Times are shown in milliseconds (the chip under the preview reads **ms**). Then `:` separates minutes and seconds, so `5:00` means 5 minutes, not 5 seconds.
+- You typed a number on its own: it is always a frame number, so `120` is frame 120, not 120 seconds.
+
+**Fix:** Correct the text and press <kbd>Enter</kbd>, or press <kbd>Esc</kbd> to put the playhead's time back. For seconds, type a `.` after the number, for example `+2.` for 2 seconds later. See [Jump to a timecode](timeline.md#jump-to-a-timecode).
+
+### Timecodes show milliseconds instead of frames
+
+**Symptom:** The timecodes under the preview, in the timeline toolbar and in the ruler read like `00:12.500` instead of `00:12:15`.
+
+**Cause:** The timecode format is set to milliseconds: the chip left of the timecode under the preview reads **ms**. Each project remembers the format.
+
+**Fix:** Click **ms** under the preview. It turns back into **ff** and every timecode shows frames again. See [Show times in milliseconds](timeline.md#show-times-in-milliseconds).
+
 ## Folders and saving
 
 ### The browser asks for access to a folder
@@ -588,10 +630,10 @@ See [Audio](audio.md).
 The current version cannot do these things yet. Each one is available in a later version.
 
 - **Sound:** no sound while you scrub, step frames, play backward or shuttle faster than 1x. Changing the volume of a clip, fades and audio effects are not available.
-- **Editing clips:** the **Hand** tool is not available, and clips can't be cut, copied or pasted (the **Cut**, **Copy** and **Paste** rows of the clip menu are dimmed). Clips snap only to clip edges, the playhead and the start of the timeline, because markers and in and out points are not available yet.
+- **Editing clips:** clips can't be cut, copied or pasted (the **Cut**, **Copy** and **Paste** rows of the clip menu are dimmed). Clips snap only to clip edges, the playhead and the start of the timeline, because markers and in and out points are not available yet.
 - **Menus:** only clips, gaps and track headers have a right-click menu, with a first set of rows. Menu rows can't be chosen with the arrow keys.
 - **Speed and edit points:** a clip's speed changes only with **Rate stretch**; typing an exact speed is not available. A selected cut (edit point) only marks the cut; transitions are not available.
-- **Tracks:** the timeline has no scrollbars (scroll with the mouse wheel). Track headers have room for names of about 9 characters; longer names are shortened. Groups are not marked on the timeline. In the **Track** section of **Edit Properties**, several selected tracks show the first track's settings, with no sign of mixed values.
+- **Tracks:** track headers have room for names of about 9 characters; longer names are shortened. Groups are not marked on the timeline. In the **Track** section of **Edit Properties**, several selected tracks show the first track's settings, with no sign of mixed values.
 - **Preview:** no panning, no mouse-wheel zoom, and no <kbd>Ctrl</kbd>+<kbd>0</kbd>/<kbd>1</kbd>/<kbd>2</kbd>. The preview timecode is read-only; type times in the timeline toolbar. The quality is always **Auto: full**.
 - **Fit only:** inserted clips fit the frame with bands; one-click Fill is not available. Changing the project resolution does not refit existing clips.
 - **Animated GIF and WebP files** show as still images (their first frame), in the preview and in their clips' thumbnails.
@@ -617,4 +659,4 @@ The current version cannot do these things yet. Each one is available in a later
 - [Preview and playback](preview-and-playback.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 17, 2026-10-15</sub>
+<sub>Last updated: Batch 18, 2026-10-15</sub>

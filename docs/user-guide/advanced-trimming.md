@@ -29,15 +29,15 @@ The **Tools** group at the left end of the timeline toolbar decides what a drag 
 | **Slide** | <kbd>U</kbd> | Slides the clip. | Slides the clip. |
 | **Rate stretch** | <kbd>R</kbd> | Nothing: a click selects the clip. | Stretches the clip and changes its speed. |
 | **Razor** | <kbd>C</kbd> | A click cuts the clip at the pointer. See [Cut clips with the Razor tool](splitting-and-deleting.md#cut-clips-with-the-razor-tool). | A click cuts the clip at the pointer. |
+| **Hand** | <kbd>H</kbd> | Pans the view; the clip stays where it is. See [Pan the view](timeline.md#pan-the-view). | Pans the view. |
 
 - The tool keys work in every panel, except while you type in a text field.
 - The tool stays active until you choose another one. Each project remembers its tool. Changing the tool is not a step in the history.
-- Over a clip, the cursor shows the tool: two bars with a double arrow between them for **Slip**, two bars with arrows pointing out for **Slide**, at the start or end of a clip a bracket with a double arrowhead for **Rate stretch**, and over the tracks a vertical line with a small blade for **Razor**.
-- With every tool except **Razor**, a click on a clip selects it and a drag on empty track space draws a selection rectangle. With every tool, a click or drag in the ruler moves the playhead, and a right-click on a clip opens its menu.
+- Over a clip, the cursor shows the tool: two bars with a double arrow between them for **Slip**, two bars with arrows pointing out for **Slide**, at the start or end of a clip a bracket with a double arrowhead for **Rate stretch**, over the tracks a vertical line with a small blade for **Razor**, and over the tracks an open hand for **Hand**.
+- With every tool except **Razor** and **Hand**, a click on a clip selects it and a drag on empty track space draws a selection rectangle. With **Hand**, any drag on the tracks pans and a click selects nothing. With every tool, a click or drag in the ruler moves the playhead, and a right-click on a clip opens its menu.
 - **Slip**, **Slide** and **Rate stretch** change only the clip you drag and its linked clips, even when other clips are selected. While **Linked selection** is off, they change only the clip you drag. See [Turn Linked selection off](links-and-groups.md#turn-linked-selection-off).
 - Clips on a locked track can't be rolled, slipped, slid or stretched. See [Lock a track](tracks.md#lock-a-track).
 - While you drag, hold the pointer near the left or right edge of the tracks to scroll the timeline.
-- **Hand** is in the toolbar but available in a later version.
 
 ## Roll a cut between two clips
 
@@ -215,4 +215,4 @@ The edit stops following the pointer at these limits:
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 17, 2026-10-15</sub>
+<sub>Last updated: Batch 18, 2026-10-15</sub>
