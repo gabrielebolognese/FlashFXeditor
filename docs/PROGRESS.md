@@ -139,6 +139,8 @@ Small things discovered during a batch that belong to a later batch. Format: `- 
 - [from Batch 10 -> Batch 43] The export mixdown runs the same scheduling against an `OfflineAudioContext` (`TODO(batch 43)` in `AudioMixer.ts`); the monitor gain stays out of it.
 - [from Batch 10 -> Batch 45] Non-MP4 audio (mp3, aac, wav, ogg) over 10 minutes decodes whole with `decodeAudioData`: a 60 min stereo file is ~1.4 GB of PCM, over the 512 MB budget, and files over 1 GB are refused. Segment WAV by byte ranges and MP3/AAC by frames.
 - [from Batch 10 -> Batch 45] Audio is aligned with the frame's draw: video drew 0-17.5 ms after the audio was heard (mean 8.7 ms) in the clap test. The display's presentation delay (about one vsync) comes on top and was not measurable headless. Measure on a real display (slow-motion phone video of a clap test) and delay the audio if needed.
+- [from Batch 10 -> Batch 16] A track removed while its clips sound is cut off with no ramp. `AudioScheduler.onDocument` calls `mixer.updateTracks` first, and that disconnects the removed track's node at once (`audio/AudioMixer.ts`, `updateTracks`), before the voices ramp out. Undoing an insert that created the audio track while it plays stops the sound abruptly. Ramp the track (or its voices) out and disconnect after `RAMP_SECONDS`. (found in the Batch 10 review)
+- [from Batch 10 -> Batch 45] Closing a project sends no `closeAudio`: `DecodedAudio.reset()` keeps decode.worker's parsed audio tracks (up to 8, with their `File`s) of the closed project (P13). `DecodedAudio.atMostStereo` mixes `decodeAudioData` output with more than 2 channels down on the main thread in one pass; move it off the main thread or slice it. (found in the Batch 10 review)
 
 ## Dependencies
 Why each dependency exists (Batch rule 8).
@@ -1194,3 +1196,62 @@ Why each dependency exists (Batch rule 8).
   7. Phone footage: a video recorded on a phone (AAC with an edit list) plays with the lips in sync.
   8. P1 with audio: React DevTools Profiler, 30 s of playback with sound: one commit at play, none during, one at pause.
 - review request: docs/PROGRESS.md src/app/PanelFrame.module.css src/app/PanelFrame.tsx src/app/audioController.ts src/app/audioDev.ts src/app/mediaController.ts src/app/previewController.ts src/app/services.ts src/app/timelineController.ts src/audio/AudioClock.test.ts src/audio/AudioClock.ts src/audio/AudioMixer.ts src/audio/MeterView.ts src/audio/PeakMeter.test.ts src/audio/PeakMeter.ts src/audio/decode/AudioBufferCache.test.ts src/audio/decode/AudioBufferCache.ts src/audio/decode/DecodedAudio.test.ts src/audio/decode/DecodedAudio.ts src/audio/decode/segments.test.ts src/audio/decode/segments.ts src/audio/scheduler/AudioScheduler.test.ts src/audio/scheduler/AudioScheduler.ts src/audio/testAudio.ts src/core/commands/basicCommands.test.ts src/core/commands/basicCommands.ts src/core/commands/mediaCommands.ts src/core/store/DocumentStore.test.ts src/core/store/DocumentStore.ts src/core/theme/theme.ts src/main.tsx src/media/AnalysisScheduler.ts src/media/MediaImporter.ts src/media/PeaksJobs.test.ts src/media/PeaksJobs.ts src/media/cache/peaks.test.ts src/media/cache/peaks.ts src/media/decode/AudioTracks.ts src/media/decode/audioTrack.test.ts src/media/decode/audioTrack.ts src/media/probe/audioProbe.ts src/media/probe/mp4Probe.ts src/media/probe/testMp4.ts src/media/workers/WorkerPool.test.ts src/media/workers/analysis.worker.ts src/media/workers/decode.worker.ts src/media/workers/protocol.ts src/panels/PreviewPanel.module.css src/panels/PreviewPanel.tsx src/playback/PlaybackEngine.test.ts src/playback/PlaybackEngine.ts src/project/appSettings.ts src/project/mediaFiles.ts src/project/recentProjects.test.ts src/styles/tokens.css src/timeline/view/HitTester.test.ts src/timeline/view/HitTester.ts src/timeline/view/TimelineView.test.ts src/timeline/view/TimelineView.ts src/timeline/view/drawContent.ts src/timeline/view/drawOverlay.ts src/timeline/view/fixtures.ts src/timeline/view/geometry.ts src/ui/Knob.module.css src/ui/Knob.tsx
+- review: accepted (2026-10-15)
+  - Evidence: `npm run check` is green: typecheck, lint, 664/664 unit tests in 85 files plus 1 perf test, and the build (413.31 kB JS / 136.09 kB gzip, 38.44 kB CSS, decode.worker 211.94 kB, analysis.worker 3.88 kB). This matches the notes. `dist/` contains no `clapTest` or `syncReport`, so the dev tooling stays out of the build.
+  - Acceptance (each item also has a pending manual check with steps, and the CDP measurements are in the notes):
+    1. Clap test:
+       - Tests: `AudioScheduler.test.ts` "starts the clip under the playhead at the anchor...", "starts a clip exactly at its cut, only once it is within 200 ms" and "schedules the next loop pass ahead of the wrap...". `PlaybackEngine.test.ts` "waits in the preroll for the audio under the playhead, then starts the clock its lead ahead" and "wraps a loop at the exact time...". `AudioClock.test.ts` "maps clock readings to context time...".
+       - Audio and video share one mapping: a voice starts at `contextTime(origin + s)` (`src/audio/scheduler/AudioScheduler.ts:275`), and the frame shows at the same clock reading.
+       - CDP: offsets of 0.4-17.5 ms over 330 s, with no drift. The display's own delay is pending manual check 1 and a Batch 45 follow-up.
+    2. Seek:
+       - Tests: "restarts on a seek..." and "ramps a voice that faded in out from full level when it stops (no click)". `FakeParam` models the automation rules, and this test fails on the old `ramp`. Also `PlaybackEngine.test.ts` "re-anchors a seek with the lead...".
+       - CDP: the new audio started 10.8-11.0 ms after the seek on the render clock, and the largest sample step was 0.0288.
+       - Measuring on the render clock, with the device output latency on top, is a logged deviation with a sound reason.
+    3. Mute/solo:
+       - Tests: "applies mute and solo to the track gains with a ramp, at once", the `audibleTracks` test, `basicCommands.test.ts` "sets track flags as one undo step, mute and solo flagged for the audio engine", `HitTester.test.ts` "finds the mute and solo toggles..." and `TimelineView.test.ts` "toggles mute and solo from the audio track header...".
+       - CDP: each click took effect in 8.8-17.3 ms.
+    4. Peaks:
+       - Tests: `PeaksJobs.test.ts` "builds and writes the peaks of every audio-bearing media after import, then marks them ready with no undo step", "reuses a valid peaks file on reopen without decoding" and "rebuilds a missing file...". `peaks.test.ts` covers the pyramid, level 0 built in segments, and the source stamp check.
+       - Video files with sound are included (`hasAudio`).
+    5. Meters:
+       - Tests: `PeakMeter.test.ts` "latches the clip indicator above full scale until reset" and "holds the peak for 1.5 s...".
+       - The analysers tap the bus before the monitor gain (`src/audio/AudioMixer.ts:83-91`), so the +6 dB clip latches whatever the knob says.
+       - CDP: +3 dBFS shown, both LEDs latched, and one click reset them with 0 commits.
+  - Build list: everything is present.
+    - Decode:
+      - MP4/MOV audio decodes by range with the worker's `AudioDecoder`: edit lists, AAC priming, the real HE-AAC output rate and a preroll. Other files use `decodeAudioData`.
+      - Media over 10 minutes load in 60 s segments, the cache is a 512 MB LRU, and the probe's buffer is reused.
+      - Decoding in the worker instead of with `decodeAudioData` is a logged deviation with sound reasons (memory, ranges, edit lists).
+    - Scheduler:
+      - Voices start 200 ms ahead, in 50 ms steps. The chain is envelope -> clip gain (dB, mute) -> track gain -> bus -> monitor.
+      - Every gain change is a 10 ms ramp from an explicit start point. `playbackRate` is the clip speed, and every other transport speed is silent.
+      - One source per clip, instead of one per 50 ms chunk, is a logged deviation.
+    - Chrome:
+      - Mute and the knob sit before loop and Fit. While dragged, the knob writes the DOM, and it makes one settings update on release.
+      - The meter strip is in the new `aside` slot, and audio track headers have M/S toggles.
+    - Sync tooling: `__editor.audio.clapTest()`, `.syncReport()` and `.toneTest()`, in dev builds only.
+  - Do not build yet: nothing from it was built.
+    - No waveform drawing: the peaks are only written (`TODO(batch 17)` in `PeaksJobs.ts`).
+    - No rubber bands, fades, normalize or ducking (`TODO(batch 37)`). The envelope only does the 10 ms start and stop ramps.
+    - No audio scrub: the scheduler is silent at every speed but 1x, and nothing reads the session's `audioScrub` flag.
+  - Literals: none outside the tokens file.
+    - The new CSS uses tokens only, plus the DS 1px hairline borders. The new tokens (`--meter-*`, `--knob-size`, `--track-toggle-*`) are in `tokens.css`.
+    - The meter and the M/S toggles take their colors, sizes and fonts from `Theme` (`theme.meter`, `theme.timeline.toggleSize/toggleGap`, `fontOf`).
+    - The px values in `src/timeline/view/fixtures.ts` belong to a test fixture. The flash solid's `{r:1,g:1,b:1,a:1}` in `audioDev.ts` is document data in a dev tool. Lint passes.
+  - §3/§4:
+    - P1: React renders the mute button and the knob only when the settings change. A knob drag writes the DOM and the monitor gain directly.
+    - P3: the meter is a framework-free canvas on the scheduler's `meters` flag. It redraws only while audio plays or the bars settle. The track toggles are drawn on the content canvas, and their hover on the overlay.
+    - P2, §3.3: each M/S click is one `track.update` command. `analysis.peaks` becomes "ready" through `amend`, with no undo step. The knob lives in the app settings, not in the document.
+    - P4: the document gains no floats, only track booleans and the analysis enum. The scheduler's seconds exist only at runtime.
+    - P5: MP4 audio decodes in decode.worker, and the peaks are built in analysis.worker from transferred PCM. `decodeAudioData` on the main thread is what §14 prescribes.
+    - P13: decoded audio is released when its media leaves the project and cleared when the project closes. See observation 2.
+  - TODOs: every new TODO has a `(batch NN)` tag (16, 17, 19, 24, 37, 38, 41, 42, 43). No `TODO(batch 01..10)` is left in `src/`.
+  - Earlier rejections: none for this batch.
+  - Observations (not blocking; follow-ups added for 1-3):
+    1. A track removed while its clips sound is cut off with no ramp.
+       - `AudioScheduler.onDocument` (`src/audio/scheduler/AudioScheduler.ts:390`) calls `mixer.updateTracks` first. That disconnects the removed track's node at once (`src/audio/AudioMixer.ts:117`), before the voice loop ramps the voices out.
+       - Repro: insert an audio file into a project with no audio track (the insert creates A1), press play, then press Ctrl+Z while it sounds. The clip and A1 go in one undo step, and the sound stops abruptly.
+    2. Closing a project does not close the worker's audio tracks. `DecodedAudio.reset()` (`src/audio/decode/DecodedAudio.ts:153`) sends no `closeAudio`; only `release` does (`:145`). decode.worker therefore keeps up to `KEEP` = 8 parsed sample tables and `File` references of the closed project (`src/media/decode/AudioTracks.ts:10`). The amount is bounded, but P13 wants the release to be explicit.
+    3. `DecodedAudio.atMostStereo` (`src/audio/decode/DecodedAudio.ts:212`) mixes more than 2 channels down in one synchronous pass on the main thread. Only `decodeAudioData` output with more than 2 channels (5.1 WAV or OGG) goes through it, but a 10-minute file is ~29M sample frames in one long task.
+    4. The WebCodecs path keeps the source sample rate (`src/media/decode/AudioTracks.ts:83`, for example 44.1 kHz), where §14 says 48 kHz. Web Audio resamples on playback and the peaks file stores its rate, so nothing sounds or draws differently. The Batch 10 deviation could say so in one line.
+    5. `src/audio/index.ts:1` (a Batch 01 placeholder) still says "offline mixdown, scrub grains (Batch 10)". Those come with Batches 43 and 37.
