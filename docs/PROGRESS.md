@@ -2935,3 +2935,20 @@ Why each dependency exists (Batch rule 8).
     - Measured: 815 ms alone (was 868 ms). In a full parallel `npx vitest run --project unit` it took 3355 ms; the review saw 5607 and 8944 ms. The 30 s timeout leaves headroom for a loaded machine.
   - Checks: `npm run check` ran twice in a row, both green: typecheck, lint plus the CSS color check, 1307 unit tests in 132 files, 3 perf tests, build 721.05 kB JS (232.50 kB gzip), 58.14 kB CSS. The >500 kB chunk warning is the logged Batch 45 follow-up. A third full unit run (JSON reporter, for the timing above) also passed, 1307/1307.
   - Acceptance: only a test file changed, and no app code. The unit tests that cover acceptance 1-3 (`speed.test.ts`, `freeze.test.ts`, `PlaybackEngine.test.ts`, `AudioScheduler.test.ts`) passed in all three runs. The browser results from the previous fix-attempt (`%TEMP%/b27/acc.mjs` 33/34, `fix2.mjs` 15/15) still hold for the same app code. They were not re-run.
+- review: accepted
+  - Third review, problem 1 is fixed. `src/timeline/edit/speed.test.ts:333` gives the seeded random test's describe `{ timeout: 30_000 }`. A probe suite (`describe(..., { timeout: 50 })` around a 300 ms test, deleted afterwards) timed out at 50 ms, so vitest 5.0.4 applies the suite timeout to the tests inside it. Dropping the per-step `validateProject` loses no coverage. `DocumentStore` with `validate: true` runs `assertValid` (= `validateProject`) after every dispatch and every undo (`src/core/store/DocumentStore.ts:225`, `:253`, `:265`), and the test still checks `in`, `out`, start and the full undo per document.
+  - `npm run check` is green: typecheck, lint plus the CSS color check, 1307 unit tests in 132 files, 3 perf tests, and the build (721.05 kB JS / 232.50 kB gzip, 58.14 kB CSS; the >500 kB chunk warning is the logged Batch 45 follow-up). A second full unit run (`npx vitest run --project unit`, JSON reporter) also passed 1307/1307, and the random test took 3719 ms there, inside the 30 s timeout.
+  - Earlier problems stay fixed. In `retimeGroup` (`src/timeline/edit/speed.ts:110-174`), each member is retimed from its own `in`/`out`. A member with no room for one frame keeps its speed and reports `mediaEnd`. `duration <= room` holds, so `out = in + framesToSourceUs(duration, speed)` without a media clamp. The tests cover partners that differ, the media's last frames followed by rate stretches and Change duration, and the seeded random documents.
+  - 1. Every acceptance item is covered:
+    - Acceptance 1: `speed.test.ts:50`, `:63` and `AudioScheduler.test.ts:132` (`playbackRate` = speed), plus the builder's browser run (436 -> 879 Hz).
+    - Acceptance 2: `freeze.test.ts:47` and `PlaybackEngine.test.ts:831` (one single-frame request, 0 drops), plus the browser run (silent, 0 React commits).
+    - Acceptance 3: `freeze.test.ts:135` (x1.2 on the right piece, undo), plus the preview readback.
+    - Pending manual checks 1-4 give exact steps for all three.
+  - 2. Nothing from later batches was built. Batch 27 has no Do not build yet list, and the Build says Reverse gets no menu item: it has no row and no field. `punchZoomAnimated` is read by nothing, and there is no settings panel.
+  - 3. There are no color, font or size literals in the batch's CSS or TSX. `.withAction` uses `--space-1`, the snowflake is a lucide path in `glyphs.ts` drawn through `Theme`, and the design gaps are written up.
+  - 4. §3/§4 hold:
+    - React is used for panel chrome only. The speed field binds outside React (`speedBinding.ts`) and applies once on release.
+    - Each edit is one command, and time stays integer frames and microseconds.
+    - The badge is drawn in the timeline's content pass, and no media work was added on the main thread. The quick row follows the selection only (P1).
+  - 5. Every TODO in `src` has a `(batch NN)` tag, and no `TODO(batch 27)` is left.
+  - 6. Every problem in the three earlier `review: rejected` lists is fixed.
