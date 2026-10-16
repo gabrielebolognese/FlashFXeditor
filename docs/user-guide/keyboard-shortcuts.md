@@ -346,7 +346,7 @@ These keys act on the card under the pointer, whichever panel is active. Point a
 | Place a picture at a point in the frame | Drag a card onto the preview | Same |
 | Import files and place their clips | Drag files from File Explorer onto a track of the timeline | Drag files from the Finder |
 | Cancel the drag | <kbd>Esc</kbd> before you release | <kbd>Esc</kbd> |
-| Open the media menu | Right-click a card or row | Right-click a card or row |
+| Open the media menu (insert, overwrite, add to canvas, proxies, thumbnails, rename, remove) | Right-click a card or row | Right-click a card or row |
 
 ## Project and history
 
@@ -471,4 +471,4 @@ Some buttons already show a shortcut in their tooltip although the button is dis
 - [Projects and saving](projects-and-saving.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 23, 2026-10-16</sub>
+<sub>Last updated: Batch 24, 2026-10-16</sub>

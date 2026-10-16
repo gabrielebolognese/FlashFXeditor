@@ -29,7 +29,7 @@ When you create a project, the editor fills the folder you picked with these ite
 | `project.json` | The project itself: settings, tracks, clips, markers and the list of media. |
 | `session.json` | Where you left off: playhead, in and out points, the marked parts of media items, the timeline and preview zoom, the preview quality and overlays, panel sizes and similar view settings. If it is missing or damaged, the project still opens, with default view settings. |
 | `media` | Copies of the files you import. See [Importing media](importing-media.md). |
-| `cache` | Thumbnails, sound analysis and indexes the editor builds from your media. If you delete this folder while the project is closed, the editor builds what it needs again the next time (this takes a little longer). |
+| `cache` | Thumbnails, sound analysis and indexes the editor builds from your media, and the proxies of heavy videos in `cache/proxies` (see [Proxies](proxies.md)). If you delete this folder while the project is closed, the editor builds what it needs again the next time. This takes a little longer, and for proxies about as long as the videos themselves. |
 | `history` | Automatic backups of `project.json`: the newest 20. See [Restore an older version](#restore-an-older-version). |
 | `exports` | The default place for exported videos. Export is available in a later version. |
 | `presets/text` | Text presets saved with the project. Available in a later version. |
@@ -98,10 +98,10 @@ What you can undo:
 | Changing the resolution, frame rate or background color | Selecting clips, tracks, a cut (edit point), a gap or a marker |
 | Importing media, renaming media, removing media | Zooming, scrolling and panning the timeline (also with the scrollbars), zooming and panning the preview, the preview quality, overlays and fullscreen |
 | Adding media to the timeline: each insert, overwrite, drag, drop on the preview or **Add to canvas**; dropped files with their import are one step | Panel sizes, panel tabs, the media view and sort order, skimming media cards |
-| Moving, inserting, duplicating and nudging clips (a quick series of nudges is one step) | **Loop playback**, **Snap**, **Linked selection**, **Ripple mode**, the timecode format and the **Autosave** setting |
+| Moving, inserting, duplicating and nudging clips (a quick series of nudges is one step) | **Loop playback**, **Snap**, **Linked selection**, **Ripple mode**, the timecode format, the **Autosave** setting and the proxy settings |
 | Moving, resizing and rotating layers in the preview and moving their anchor point (one step per drag), nudging them with the arrow keys (a quick series is one step), **Reset transform**, **Bring forward** and **Send backward** | |
 | Adding, moving, renaming, recoloring and deleting markers | Setting, moving and clearing the in and out points, and marking a part of a media item with <kbd>I</kbd> and <kbd>O</kbd> on its card |
-| **Lift** and **Extract** (one step each) | |
+| **Lift** and **Extract** (one step each) | Proxies: **Generate proxy**, **Remove proxy**, a proxy being made or failing, and **Regenerate thumbnails** |
 | Trimming clips: each trim drag and each press of <kbd>Q</kbd>, <kbd>W</kbd> or <kbd>E</kbd> | Choosing a tool (**Select**, **Razor**, **Hand**, **Slip**, **Slide**, **Rate stretch**) |
 | Rolling a cut, slipping, sliding and rate stretching clips (one step per drag) | |
 | Splitting clips (each <kbd>Ctrl</kbd>+<kbd>K</kbd> and each **Razor** click), deleting and ripple deleting clips | |
@@ -181,7 +181,7 @@ A project opens read-only when the editor may read the project folder but not wr
 
 You then see a banner under the app bar: "Read-only: Shorts Editor has no permission to write to this folder, so changes are not saved." with an **Allow editing** button, and the save dot is grey.
 
-In read-only mode you can look at the project and even make changes, but nothing is written to the folder: no saves, no backups, and your view (playhead, zoom, panel sizes) is not saved with the project. Changes made in read-only mode are lost when you close the tab.
+In read-only mode you can look at the project and even make changes, but nothing is written to the folder: no saves, no backups, no new proxies, and your view (playhead, zoom, panel sizes) is not saved with the project. Changes made in read-only mode are lost when you close the tab. Proxies already in the folder are still used; **Generate proxy** and **Remove proxy** show the message **This project is read-only**.
 
 To start saving:
 
@@ -205,6 +205,9 @@ If you refuse again, the project stays read-only.
 | **Frame rate** | **23.976 fps** to **60 fps**, the same choices as for a new project. | Can only be changed while the timeline has no clips and no markers. Otherwise it is locked and the panel shows "Locked while the timeline has clips or markers." |
 | **Background** | The color of the frame where no clip covers it, as a hex code. | Accepts `#RGB`, `#RRGGBB` and `#RRGGBBAA`, with or without `#`. The default is `#000000` (black). Text that is not a valid color is ignored. |
 | **Autosave** | How long the editor waits after your last change before saving: **1 s after the last change**, **2 s after the last change**, **5 s after the last change** or **10 s after the last change**. | An app setting for every project in this browser, not part of the project. Not undoable. |
+| **Proxies** | Whether heavy videos get a proxy automatically. On by default. | An app setting, like **Autosave**. See [Change the proxy settings](proxies.md#change-the-proxy-settings). |
+| **Proxy for** | Which videos get one: **Above 1080p or 30 fps** (default), **Above 1080p** or **Every video**. | An app setting. Dimmed while **Proxies** is off. |
+| **Proxy size** | The short side of new proxies: **360p**, **540p** (default) or **720p**. | An app setting. Proxies already made keep their size. |
 
 Each change to **Name**, **Resolution**, **Size**, **Frame rate** or **Background** is one undo step. The project badge in the app bar always shows the current resolution and frame rate. Converting an existing timeline to another frame rate, and scaling the layout to a new resolution, are available in a later version.
 
@@ -221,6 +224,7 @@ Each change to **Name**, **Resolution**, **Size**, **Frame rate** or **Backgroun
 - [Tracks](tracks.md)
 - [Linking and grouping clips](links-and-groups.md)
 - [Arranging layers in the preview](arranging-layers-in-the-preview.md)
+- [Proxies](proxies.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 22, 2026-10-16</sub>
+<sub>Last updated: Batch 24, 2026-10-16</sub>

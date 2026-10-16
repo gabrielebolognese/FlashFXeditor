@@ -1,6 +1,6 @@
 # Troubleshooting
 
-This page helps you when something does not work as expected: the editor does not start in your browser, the preview stays empty, a folder or a file does not open, a clip drag, a trim, a split, a delete, a timeline tool, a typed timecode, a marker, an in/out range or **Lift** and **Extract** do something you did not expect, media from the Media panel lands somewhere you did not expect, a clip shows no thumbnails, the preview zoom, overlays or fullscreen behave unexpectedly, a picture in the preview can't be selected, moves unexpectedly or doesn't snap where you expect, playback stutters, or you hear no sound. Each problem lists what you see, why it happens and what to do. The last section lists what the current version cannot do yet.
+This page helps you when something does not work as expected: the editor does not start in your browser, the preview stays empty, a folder or a file does not open, a clip drag, a trim, a split, a delete, a timeline tool, a typed timecode, a marker, an in/out range or **Lift** and **Extract** do something you did not expect, media from the Media panel lands somewhere you did not expect, a clip shows no thumbnails, a video gets no proxy or its proxy fails, the preview zoom, overlays or fullscreen behave unexpectedly, a picture in the preview can't be selected, moves unexpectedly or doesn't snap where you expect, playback stutters, or you hear no sound. Each problem lists what you see, why it happens and what to do. The last section lists what the current version cannot do yet.
 
 > **Video placeholder: Fix common problems**
 > - File: `videos/troubleshooting/overview.mp4` (not recorded yet)
@@ -27,10 +27,11 @@ This page helps you when something does not work as expected: the editor does no
 >   19. Click a marker in the ruler, click an empty part of a track and press <kbd>Delete</kbd>: the marker disappears, the clips stay. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>.
 >   20. Point at the picture of a video card in the Media panel and press <kbd>I</kbd>: a gold bar appears on the card, and the timeline's in point does not change. Press <kbd>Alt</kbd>+<kbd>X</kbd>: the bar disappears.
 >   21. Put the playhead in the middle of a clip and double-click a card: the clip splits and the later clips move right. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>, click the card and press <kbd>.</kbd>: the new clip covers what was there instead.
->   22. Choose **400%** in the preview **Zoom** menu with a 4K clip under the playhead and press <kbd>Space</kbd>: the status line reads **Auto: reduced** and the picture is soft. Press <kbd>Space</kbd> again: a moment later the picture sharpens and the status line reads **Auto: full**.
+>   22. Choose **400%** in the preview **Zoom** menu with a 4K clip under the playhead and press <kbd>Space</kbd>: the status line reads **Auto: proxy** (**Auto: reduced** before the clip's proxy is ready) and the picture is soft. Press <kbd>Space</kbd> again: a moment later the picture sharpens and the status line reads **Auto: full**.
 >   23. Click a picture in the preview and press <kbd>→</kbd>: the picture moves 1 pixel and the playhead stays. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>, click the area around the frame and press <kbd>→</kbd>: the playhead steps one frame.
 >   24. With a logo on V2 over a video on V1, click the eye in the V2 header and click where the logo was: the video on V1 is selected. Click the eye again, click the logo, then <kbd>Alt</kbd>+click it: the video under it is selected.
 >   25. Drag the logo slowly toward the middle of the frame: it jumps to the center and gold lines cross the frame. Keep the mouse button down and hold <kbd>S</kbd>: it moves freely and the lines disappear. Release the mouse button, then click **Smart guides** in the preview header so it is no longer gold, and drag the logo next to another picture: it no longer snaps to it. Click **Smart guides** again.
+>   26. Import a 4K 60 fps clip: its card shows a grey **PX** chip that counts up. Press <kbd>Space</kbd>: the percentage stops while the timeline plays. Press <kbd>Space</kbd> again: it continues. Right-click a 1080p 30 fps card with no chip and choose **Generate proxy**: a grey chip appears.
 
 ## In this page
 - [Browser and graphics](#browser-and-graphics)
@@ -90,6 +91,11 @@ This page helps you when something does not work as expected: the editor does no
 - [Importing](#importing)
   - [A file cannot be imported](#a-file-cannot-be-imported)
   - [A video imports but shows nothing](#a-video-imports-but-shows-nothing)
+- [Proxies](#proxies)
+  - [A video gets no proxy](#a-video-gets-no-proxy)
+  - [A proxy chip is red](#a-proxy-chip-is-red)
+  - [A proxy stops counting or starts over](#a-proxy-stops-counting-or-starts-over)
+  - [The picture is softer while you play or scrub](#the-picture-is-softer-while-you-play-or-scrub)
 - [Adding media to the timeline](#adding-media-to-the-timeline)
   - [Double-clicking a card pushed other clips to the right](#double-clicking-a-card-pushed-other-clips-to-the-right)
   - [I or O marks a media card instead of the timeline](#i-or-o-marks-a-media-card-instead-of-the-timeline)
@@ -646,6 +652,58 @@ If a message "Import failed" appears instead, the whole import stopped; its deta
 2. Convert the video to MP4 with H.264 (on an iPhone, the **Most Compatible** camera format records H.264), then import the converted file.
 3. If the file was removed from the project's `media` folder, put it back with the same name.
 
+## Proxies
+
+### A video gets no proxy
+
+**Symptom:** A video's card in the Media panel shows no **PX** chip, and the **Proxy** column of **List view** reads **None**.
+
+**Cause and fix:** Check these in order.
+
+| Cause | Fix |
+| --- | --- |
+| The video is light enough for the **Proxy for** rule. By default, only videos above 1080p or above 30 fps get a proxy, so a 1080×1920 clip at 30 fps gets none. | Usually it plays smoothly without one. To make one anyway, right-click the card and choose **Generate proxy**, or choose **Every video** in **Proxy for**. |
+| **Proxies** is off in the **Project** section of **Edit Properties**. | Turn it on, or right-click the card and choose **Generate proxy**. See [Change the proxy settings](proxies.md#change-the-proxy-settings). |
+| You chose **Remove proxy** for this video before. Such a video never gets a proxy automatically again. | Right-click the card and choose **Generate proxy**. |
+| The project is read-only: the editor makes no proxies, and **Generate proxy** shows **This project is read-only**. | Click **Allow editing** in the banner. See [The project opens read-only](#the-project-opens-read-only). |
+| The item is an audio file or an image. | Nothing to fix: only videos get proxies. |
+
+### A proxy chip is red
+
+**Symptom:** A video's card shows a red **PX** chip, its tooltip reads **No proxy: it could not be made (Generate proxy tries again)**, and the **Proxy** column of **List view** reads **Failed**.
+
+**Cause:** The editor could not make the proxy. The original video can't be decoded on this computer (for example HEVC without a hardware decoder), its file is missing from the project's `media` folder, the browser has no H.264 encoder for its size, or the proxy could not be written to the project folder, for example because the disk is full. The editor does not try again by itself. Meanwhile the preview uses the original video.
+
+**Fix:**
+1. Check that the video shows in the preview. If it doesn't, see [A video imports but shows nothing](#a-video-imports-but-shows-nothing).
+2. Free some disk space if the disk is full.
+3. Right-click the card and choose **Generate proxy** to try again.
+
+To clear the red chip without making a proxy, right-click the card and choose **Remove proxy**. See [Proxies](proxies.md).
+
+### A proxy stops counting or starts over
+
+**Symptom:** The percentage of a **PX** chip stays the same for a while, a grey **PX** chip shows no percentage, or a chip starts again at 0%.
+
+**Cause:** One of these:
+- Proxies pause while you play, or drag on the timeline (moving clips, trimming, scrubbing in the ruler), so the preview gets all the decoding power. They continue when you stop.
+- Proxies are made one at a time, oldest import first. The others wait with a grey **PX** chip without a percentage (**Queued** in **List view**).
+- You closed the project or the browser tab, or reloaded the page, while the proxy was made. A proxy can't continue where it stopped: it starts over from 0% the next time you open the project.
+
+**Fix:** Nothing to fix. Stop playback to let the proxy continue. See [Follow a proxy while it is made](proxies.md#follow-a-proxy-while-it-is-made).
+
+### The picture is softer while you play or scrub
+
+**Symptom:** While you play or scrub, the picture looks a little softer, and the status line under the transport bar reads **Auto: proxy**. When you stop, it gets crisp again and reads **Auto: full**.
+
+**Cause:** The preview plays and scrubs on the video's proxy, a light copy that is 540 pixels on its short side by default. The difference shows most in a large preview or in the fullscreen preview.
+
+**Fix:** Usually nothing: the paused frame and **Export frame** always use the original video. For a sharper picture while you play:
+- Choose **720p** in **Proxy size**, then make the proxy again: right-click the card, choose **Remove proxy**, then **Generate proxy**.
+- Or choose **Full** in **Preview quality**, if your computer plays the original smoothly.
+
+If the picture stays soft after you stop and the status line reads **Proxy: proxy**, the **Preview quality** is **Proxy**: choose **Auto**. See [Edit with proxies in the preview](proxies.md#edit-with-proxies-in-the-preview).
+
 ## Adding media to the timeline
 
 ### Double-clicking a card pushed other clips to the right
@@ -714,21 +772,22 @@ If a message "Import failed" appears instead, the whole import stopped; its deta
 
 **Symptom:** Motion looks jerky, and **Dropped** in the status strip under the preview shows a number above 0 after you play. The number resets each time you start playing.
 
-**Cause:** The computer cannot decode and draw every frame in time. Heavy footage (4K, 60 fps, HEVC, high bitrate) is the most common reason: 4K 60 fps HEVC at full quality is at the limit of what a laptop graphics card can decode. Heat makes it worse: a laptop that has played 4K for a long time slows down.
+**Cause:** The computer cannot decode and draw every frame in time. Heavy footage (4K, 60 fps, HEVC, high bitrate) is the most common reason: 4K 60 fps HEVC at full quality is at the limit of what a laptop graphics card can decode. The editor makes [proxies](proxies.md) of such footage, but a video plays from the original while its proxy is not ready, and always in **Full** quality. Heat makes it worse: a laptop that has played 4K for a long time slows down.
 
 **Fix:**
 - Plug in your laptop and use a high-performance power mode.
 - On a laptop with two graphics cards, make Windows run the browser on the faster one: open **Settings** > **System** > **Display** > **Graphics**, select your browser and choose **High performance**. Then relaunch the browser.
 - Close other tabs and apps that play video or use the graphics card (video calls, games).
 - Let a hot laptop cool down.
-- Where you can, use 1080p footage instead of 4K. Lighter proxy copies for 4K footage are available in a later version.
-- In the **Preview quality** menu of the preview header, choose **1/2** or **1/4**: playback draws at half or a quarter of the resolution, which is lighter. If you play zoomed in above 100%, also make sure the mode is not **Full**. See [Choose the preview quality](preview-zoom-overlays-fullscreen.md#choose-the-preview-quality).
+- Check the cards of your heavy videos in the Media panel: wait until their **PX** chip is green, and keep **Preview quality** at **Auto** (or choose **Proxy**) so playback uses the proxies. If a card has no chip, right-click it and choose **Generate proxy**. See [Proxies](proxies.md).
+- Where you can, use 1080p footage instead of 4K.
+- In the **Preview quality** menu of the preview header, choose **1/2** or **1/4**: playback draws at half or a quarter of the resolution, which is lighter. Make sure the mode is not **Full**: it never uses proxies and keeps full detail when you play zoomed in above 100%. See [Choose the preview quality](preview-zoom-overlays-fullscreen.md#choose-the-preview-quality).
 
 **Not a problem:**
 - Playback may wait up to half a second before it starts: the editor decodes the first frames.
 - At 2x to 8x, the preview skips frames on purpose. They are not counted as dropped.
 - Backward playback (<kbd>J</kbd>) needs more decoding than forward playback and can be less smooth with heavy footage.
-- The first playback after the page loads can drop more frames than the following ones, especially in the fullscreen preview.
+- The first playback after the page loads, or right after a proxy is finished, can drop more frames than the following ones, especially in the fullscreen preview.
 
 See [Preview and playback](preview-and-playback.md#know-what-to-expect-from-performance).
 
@@ -742,11 +801,11 @@ See [Preview and playback](preview-and-playback.md#know-what-to-expect-from-perf
 
 ### The preview shows a nearby frame for a moment
 
-**Symptom:** While you scrub or after a jump, the preview first shows a nearby frame, then switches to the exact one. In 4K phone clips this can take about half a second.
+**Symptom:** While you scrub or after a jump, the preview first shows a nearby frame, then switches to the exact one. In 4K phone clips without a proxy this can take about half a second.
 
-**Cause:** Video is stored in groups of frames that each start with a keyframe. To show a frame from the middle of a group, the editor decodes from the keyframe before it. Meanwhile it shows the closest frame it has, so the picture never goes black.
+**Cause:** Video is stored in groups of frames that each start with a keyframe. To show a frame from the middle of a group, the editor decodes from the keyframe before it. Meanwhile it shows the closest frame it has, so the picture never goes black. A [proxy](proxies.md) has a keyframe every 15 frames, so a video with a ready proxy shows its exact frame almost at once while you scrub; when you stop, its original frame follows within about half a second at most.
 
-**Fix:** Nothing; the exact frame follows. Wait for the picture to settle before you click **Export frame**, or the PNG contains the nearby frame. Lighter proxy copies, which make this faster, are available in a later version.
+**Fix:** Nothing; the exact frame follows. For heavy footage, let its **PX** chip turn green to scrub on the proxy. **Export frame** always saves the exact frame at the playhead from the original media, even if you click it before the picture settles.
 
 ### Playback has no sound
 
@@ -805,9 +864,9 @@ See [Audio](audio.md).
 **Symptom:** You zoomed the preview in above 100%, and the picture looks soft or blocky.
 
 **Cause:** One of these:
-- The video is playing, or you scrub or trim. With the **Auto** quality, the preview then shows the project's resolution, and the status line reads **Auto: reduced**. The full detail follows 0.3 seconds after you stop.
+- The video is playing, or you scrub or trim. With the **Auto** quality, the preview then shows the project's resolution or the video's proxy, and the status line reads **Auto: reduced** or **Auto: proxy**. The full detail follows 0.3 seconds after you stop.
 - You just zoomed in, and the editor is still decoding the frame at the larger size.
-- The quality is **Proxy**, or **1/2** or **1/4** while playing.
+- The quality is **Proxy** (the preview shows the proxies of your videos), or **1/2** or **1/4** while playing.
 - The source has no more detail: a 1080×1920 clip in a 1080×1920 project has none beyond 100%, and a 4K landscape clip fitted to the frame width has detail up to about 356%. Frames larger than 4096 pixels on their long side are shown at 4096.
 - The clip is an SVG image that covers the whole frame. In this version, such an SVG doesn't get sharper above 100%.
 
@@ -940,7 +999,7 @@ The current version cannot do these things yet. Each one is available in a later
 - **Menus:** only clips, gaps, track headers, the ruler, media cards and pictures in the preview have a right-click menu, with a first set of rows. Menu rows can't be chosen with the arrow keys.
 - **Speed and edit points:** a clip's speed changes only with **Rate stretch**; typing an exact speed is not available. A selected cut (edit point) only marks the cut; transitions are not available.
 - **Tracks:** track headers have room for names of about 9 characters; longer names are shortened. Groups are not marked on the timeline. In the **Track** section of **Edit Properties**, several selected tracks show the first track's settings, with no sign of mixed values.
-- **Preview:** pictures can't be cropped, flipped or fitted with one click, and position, scale and rotation can't be typed in. A change to a picture applies to the whole clip; changes over time (keyframes) are not available. The **Proxy** quality has no proxy copies to use and shows the project's resolution. An SVG image that covers the whole frame doesn't get sharper when you zoom in. The **Zoom**, **Preview quality** and **Overlays** menus can't be used with the arrow keys.
+- **Preview:** pictures can't be cropped, flipped or fitted with one click, and position, scale and rotation can't be typed in. A change to a picture applies to the whole clip; changes over time (keyframes) are not available. An SVG image that covers the whole frame doesn't get sharper when you zoom in. The **Zoom**, **Preview quality** and **Overlays** menus can't be used with the arrow keys.
 - **Fit only:** inserted clips fit the frame with bands; one-click Fill is not available (drag a corner handle in the preview instead). Changing the project resolution does not refit existing clips; **Reset transform** in the preview's layer menu refits the selected ones.
 - **Animated GIF and WebP files** show as still images (their first frame), in the preview and in their clips' thumbnails.
 - **Media that cannot be decoded, or whose file is missing,** shows nothing in the preview, with no placeholder.
@@ -948,7 +1007,7 @@ The current version cannot do these things yet. Each one is available in a later
 - **Frame rate:** you cannot change it once the timeline has clips or markers.
 - **Export:** only **Export frame** (a PNG of the current frame) works. The **Export** button and the **Settings** button in the app bar are disabled.
 - **Shortcuts:** <kbd>Ctrl</kbd>+<kbd>N</kbd> cannot create a project in a browser tab, and many shortcuts in the keymap belong to features that are not available yet. See [Keyboard shortcuts](keyboard-shortcuts.md).
-- **Heavy footage:** 4K 60 fps HEVC at full quality can drop frames, and exact frames deep inside long phone clips take a moment to appear.
+- **Heavy footage:** 4K 60 fps HEVC played from the original (in **Full** quality, or before its proxy is ready) can drop frames, and the original frame deep inside long phone clips takes a moment to appear after you stop.
 
 ## Related pages
 - [Markers and in/out points](markers-and-in-out-points.md)
@@ -962,10 +1021,11 @@ The current version cannot do these things yet. Each one is available in a later
 - [Getting started](getting-started.md)
 - [Projects and saving](projects-and-saving.md)
 - [Importing media](importing-media.md)
+- [Proxies](proxies.md)
 - [Adding media to the timeline](adding-media-to-the-timeline.md)
 - [Preview and playback](preview-and-playback.md)
 - [Arranging layers in the preview](arranging-layers-in-the-preview.md)
 - [Snapping and smart guides in the preview](snapping-and-smart-guides.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 23, 2026-10-16</sub>
+<sub>Last updated: Batch 24, 2026-10-16</sub>

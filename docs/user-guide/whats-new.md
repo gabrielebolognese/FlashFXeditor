@@ -2,6 +2,11 @@
 
 Shorts Editor grows in steps called batches. This page lists what each batch added that you can see or use, newest first. Follow the links for the full instructions.
 
+> **Video placeholder: What's new in Batch 24**
+> - File: `videos/whats-new/batch-24.mp4` (not recorded yet)
+> - Length: about 50 seconds
+> - Shows: a 1080×1920 project at 60 fps; import a 4K 60 fps phone clip: its card shows a grey **PX** chip that counts up with a thin gold bar; double-click the card and move the playhead while it counts; the chip turns green; drag in the ruler across the clip: the picture keeps up and the status line reads **Auto: proxy**; release: the picture sharpens and the status line reads **Auto: full**; right-click the card to show **Generate proxy**, **Remove proxy** and **Regenerate thumbnails**; click an empty area of the timeline tracks and point at **Proxies**, **Proxy for** and **Proxy size** in the **Project** section; choose **Proxy** in **Preview quality**, then click **Export frame** and open the PNG: it is as sharp as the original.
+
 > **Video placeholder: What's new in Batch 23**
 > - File: `videos/whats-new/batch-23.mp4` (not recorded yet)
 > - Length: about 50 seconds
@@ -78,6 +83,7 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 > - Shows: open a project with three clips on the timeline; press <kbd>Space</kbd> to play and let the timeline page forward; press <kbd>L</kbd> three times to reach 8x, then <kbd>K</kbd>; hold <kbd>K</kbd> and tap <kbd>L</kbd> to step one frame; turn on **Loop playback**; point at the **Dropped** readout in the status strip.
 
 ## In this page
+- [Batch 24: Proxies](#batch-24-proxies)
 - [Batch 23: Snapping and smart guides in the preview](#batch-23-snapping-and-smart-guides-in-the-preview)
 - [Batch 22: Arrange layers in the preview](#batch-22-arrange-layers-in-the-preview)
 - [Batch 21: Preview zoom, overlays and fullscreen](#batch-21-preview-zoom-overlays-and-fullscreen)
@@ -101,6 +107,18 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 - [Batch 03: Projects, autosave and recovery](#batch-03-projects-autosave-and-recovery)
 - [Batch 02: Undo, redo and frame-exact time](#batch-02-undo-redo-and-frame-exact-time)
 - [Batch 01: The workspace](#batch-01-the-workspace)
+
+## Batch 24: Proxies
+- Heavy videos now get a proxy: a light copy, 540 pixels on its short side, that the editor makes in the background after import while you keep editing. By default, every video above 1080p or above 30 fps gets one, such as 4K or 60 fps phone clips. Projects from earlier versions get proxies for their heavy videos when you open them.
+- A **PX** chip on the video's card shows the proxy: grey with the percentage done and a thin gold bar while it is made, green when it is ready, red when it failed. The **Proxy** column of **List view** shows **Queued**, the percentage, the proxy's size or **Failed**.
+- Proxies are made one at a time and pause while you play or drag on the timeline. A proxy interrupted by closing the project starts over the next time you open it.
+- With the default **Auto** preview quality, heavy footage plays and scrubs on its proxy, smoothly and frame-exact, and the preview switches to the original as soon as you stop. The status line reads **Auto: proxy** or **Auto: full**. **Proxy** quality now always uses the proxies.
+- The media menu has three new rows: **Generate proxy**, **Remove proxy** (which also stops a proxy being made) and **Regenerate thumbnails**.
+- The **Project** section of **Edit Properties** has the new settings **Proxies** (on or off), **Proxy for** (**Above 1080p or 30 fps**, **Above 1080p**, **Every video**) and **Proxy size** (**360p**, **540p**, **720p**). They apply to every project in this browser.
+- Once a proxy is ready, the video's thumbnails are made again from it.
+- **Export frame** now always saves the exact frame at the playhead from your original media at full resolution, whatever the preview quality, also right after a scrub.
+
+See [Proxies](proxies.md).
 
 ## Batch 23: Snapping and smart guides in the preview
 - Pictures you move in the preview now snap: their edges and center jump onto the center and edges of the frame, and onto the edges and centers of the other pictures, when they come within 6 pixels on screen, at every zoom. Gold guides show what they line up with, and gold labels show the gap to the pictures in line, in pixels.
@@ -329,10 +347,11 @@ See [The workspace](workspace.md) and [Getting started](getting-started.md).
 
 ## Related pages
 - [User guide home](README.md)
+- [Proxies](proxies.md)
 - [Arranging layers in the preview](arranging-layers-in-the-preview.md)
 - [Snapping and smart guides in the preview](snapping-and-smart-guides.md)
 - [Preview zoom, overlays and fullscreen](preview-zoom-overlays-fullscreen.md)
 - [Adding media to the timeline](adding-media-to-the-timeline.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 23, 2026-10-16</sub>
+<sub>Last updated: Batch 24, 2026-10-16</sub>

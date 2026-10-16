@@ -60,7 +60,7 @@ When the editor cannot write to the project folder, a read-only banner appears u
 
 Top left. Its header has three tabs: **Media**, **Presets** and **Captions**.
 
-- **Media** shows the files you imported. Its header buttons sort the files (**Sort media by**, plus **Ascending** / **Descending**), switch between **Grid view** and **List view**, and import files (**Import media**, <kbd>Ctrl</kbd>+<kbd>I</kbd>). See [Importing media](importing-media.md). Point at a card to skim it, double-click it or press <kbd>,</kbd> to insert it at the playhead, and drag it onto the timeline or the preview. See [Adding media to the timeline](adding-media-to-the-timeline.md).
+- **Media** shows the files you imported. Its header buttons sort the files (**Sort media by**, plus **Ascending** / **Descending**), switch between **Grid view** and **List view**, and import files (**Import media**, <kbd>Ctrl</kbd>+<kbd>I</kbd>). See [Importing media](importing-media.md). Point at a card to skim it, double-click it or press <kbd>,</kbd> to insert it at the playhead, and drag it onto the timeline or the preview. See [Adding media to the timeline](adding-media-to-the-timeline.md). A **PX** chip on a video's card shows its proxy, the light copy the preview uses for heavy footage. See [Proxies](proxies.md).
 - **Presets** and **Captions** are available in a later version.
 
 The tab, view and sort order you choose are remembered with the project.
@@ -69,7 +69,7 @@ The tab, view and sort order you choose are remembered with the project.
 
 Top middle. It shows the settings of what is selected.
 
-- With nothing selected, it shows the **Project** section: name, resolution, frame rate, background and autosave. See [Change project settings](projects-and-saving.md#change-project-settings).
+- With nothing selected, it shows the **Project** section: name, resolution, frame rate, background, autosave and the proxy settings (**Proxies**, **Proxy for**, **Proxy size**). See [Change project settings](projects-and-saving.md#change-project-settings) and [Change the proxy settings](proxies.md#change-the-proxy-settings).
 - With clips selected, it shows a placeholder: clip properties are available in a later version.
 - With tracks selected (click a track header), it shows the **Track** section: name, kind, height and the **Target**, **Lock**, **Mute**, **Solo** or **Hide** switches. See [Change track settings in Edit Properties](tracks.md#change-track-settings-in-edit-properties).
 - With a marker selected (click it in the ruler), it shows the **Marker** section: label, color, time and **Delete marker**. See [Edit a marker in Edit Properties](markers-and-in-out-points.md#edit-a-marker-in-edit-properties).
@@ -138,7 +138,7 @@ At the right end, the playhead timecode field shows where the playhead is (you c
 
 Under the tracks and along their right side run the timeline's scrollbars. The bottom one also zooms: drag an end of its thumb. See [Use the scrollbars](timeline.md#use-the-scrollbars).
 
-Right-click a clip or a gap on the timeline for a menu with the most common edits for it. See [Use the clip and gap menus](splitting-and-deleting.md#use-the-clip-and-gap-menus). Right-click a track header for the track menu. See [Use the track menu](tracks.md#use-the-track-menu). Right-click the ruler for the ruler menu, with markers and the in and out points. See [Use the ruler menu](markers-and-in-out-points.md#use-the-ruler-menu). In the Media panel, right-click a card or a row for the media menu. See [Use the media menu](importing-media.md#use-the-media-menu). In the Preview panel, right-click a picture for the layer menu. See [Use the layer menu](arranging-layers-in-the-preview.md#use-the-layer-menu).
+Right-click a clip or a gap on the timeline for a menu with the most common edits for it. See [Use the clip and gap menus](splitting-and-deleting.md#use-the-clip-and-gap-menus). Right-click a track header for the track menu. See [Use the track menu](tracks.md#use-the-track-menu). Right-click the ruler for the ruler menu, with markers and the in and out points. See [Use the ruler menu](markers-and-in-out-points.md#use-the-ruler-menu). In the Media panel, right-click a card or a row for the media menu, which also makes and removes proxies and makes thumbnails again. See [Use the media menu](importing-media.md#use-the-media-menu). In the Preview panel, right-click a picture for the layer menu. See [Use the layer menu](arranging-layers-in-the-preview.md#use-the-layer-menu).
 
 Buttons that are not available yet are dimmed. They still show their tooltip, but clicking them does nothing.
 
@@ -223,7 +223,8 @@ To jump to a time, type it into the timecode field of the timeline toolbar, or c
 - [Preview zoom, overlays and fullscreen](preview-zoom-overlays-fullscreen.md)
 - [Arranging layers in the preview](arranging-layers-in-the-preview.md)
 - [Snapping and smart guides in the preview](snapping-and-smart-guides.md)
+- [Proxies](proxies.md)
 - [Audio](audio.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 23, 2026-10-16</sub>
+<sub>Last updated: Batch 24, 2026-10-16</sub>

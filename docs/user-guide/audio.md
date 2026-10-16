@@ -184,6 +184,8 @@ The editor decodes sound before it plays it, and analyzes it once after import. 
 
 After you import an audio file or a video with sound, the editor analyzes its sound in the background, while you are not playing. It saves the result in the project's `cache` folder, so the next time you open the project the analysis is reused. If you delete the `cache` folder, or a media file changes, the editor analyzes the sound again. Audio clips draw their waveform from this analysis; until it is done, they show only their color. See [Read a waveform](clip-thumbnails-and-waveforms.md#read-a-waveform).
 
+> **Note:** The [proxies](proxies.md) of heavy videos carry no sound. The sound you hear always comes from the original file, whatever the preview quality.
+
 ### Decoding for playback
 
 - The editor decodes the sound of the clips under the playhead, and of the clips that start in the next 2 seconds of playback, before they play.
@@ -207,7 +209,8 @@ After you import an audio file or a video with sound, the editor analyzes its so
 - [Advanced trimming](advanced-trimming.md)
 - [Importing media](importing-media.md)
 - [Adding media to the timeline](adding-media-to-the-timeline.md)
+- [Proxies](proxies.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 20, 2026-10-15</sub>
+<sub>Last updated: Batch 24, 2026-10-16</sub>

@@ -83,7 +83,7 @@ The Preview panel header holds the controls that change how you look at the fram
 | --- | --- |
 | **Zoom** | Shows the zoom level and opens the menu of levels: **Fit**, **25%**, **50%**, **100%**, **200%**, **400%**. |
 | **Fit the frame in the panel** | Shows the whole frame again, centered (<kbd>Ctrl</kbd>+<kbd>0</kbd> in the Preview panel). |
-| **Preview quality** | Shows the quality mode and opens the menu of modes: **Auto**, **Full**, **Proxy**, **1/2**, **1/4**. |
+| **Preview quality** | Shows the quality mode and opens the menu of modes: **Auto**, **Full**, **Proxy**, **1/2**, **1/4**. See [Choose the preview quality](preview-zoom-overlays-fullscreen.md#choose-the-preview-quality). |
 | **Overlays** (grid icon) | Safe zones for Reels, TikTok and Shorts, grids, the center cross, title / action safe, rulers and the pixel grid. |
 | **Snap** (magnet) | Turns snapping on or off, for clips on the timeline and layers in the preview (<kbd>S</kbd>). |
 | **Smart guides** | Turns smart guides on or off: layers you drag snap to each other and show gold guides with distances. See [Snapping and smart guides in the preview](snapping-and-smart-guides.md). |
@@ -103,6 +103,7 @@ Scrubbing means dragging the playhead to look for a frame.
 What to expect while you scrub:
 
 - The preview first shows the closest frame it already has, then switches to the exact frame as soon as it is decoded. This usually takes a moment. Deep inside long phone clips it can take longer; see [Know what to expect from performance](#know-what-to-expect-from-performance).
+- A video with a ready proxy (a green **PX** chip on its card) scrubs on its proxy, so the exact frame follows the pointer almost at once and the status line reads **Auto: proxy**. When you release the mouse button, or hold the pointer still for 0.3 seconds, the original frame replaces it. See [Edit with proxies in the preview](proxies.md#edit-with-proxies-in-the-preview).
 - When the playhead crosses a cut, the preview keeps the previous picture until the new clip's frame is ready. It never flashes black.
 - The editor prepares the first and last frames of the clips just before and after the playhead (up to 2 seconds away), so a cut usually shows the new clip at once.
 - Dragging in the ruler while the video plays pauses playback.
@@ -266,7 +267,7 @@ The zoom controls, including **Fit the frame in the panel**, are in the Preview 
 
 | Item | Meaning |
 | --- | --- |
-| Quality, for example **Auto: full** | The quality mode, then what the preview draws right now: **full** (all the detail it can show at this zoom), **reduced** (the project's resolution, for example while you play zoomed in), **half** or **quarter**. See [Read the quality in the status line](preview-zoom-overlays-fullscreen.md#read-the-quality-in-the-status-line). |
+| Quality, for example **Auto: full** | The quality mode, then what the preview draws right now: **proxy** (at least one picture comes from a [proxy](proxies.md)), **full** (all the detail it can show at this zoom), **reduced** (the project's resolution, for example while you play zoomed in), **half** or **quarter**. See [Read the quality in the status line](preview-zoom-overlays-fullscreen.md#read-the-quality-in-the-status-line). |
 | **Dropped** *N* | The frames dropped during the last playback. It resets to 0 each time you start playing. |
 
 A frame counts as dropped when the playback clock had to skip it, or when it was due before its exact picture was ready (the preview held the previous picture instead). Only playback at 1x counts, forward or backward, including play around. At 2x and faster, frames are skipped on purpose and not counted.
@@ -276,14 +277,13 @@ A frame counts as dropped when the playback clock had to skip it, or when it was
 Save the frame at the playhead as a PNG image, for a thumbnail or a cover picture.
 
 1. Move the playhead to the frame you want.
-2. Wait until the preview has settled on the exact frame.
-3. Click **Export frame** (the picture icon in the Preview panel header).
-4. In the save dialog, choose a folder and a name. The editor suggests "*project name* frame.png".
-5. Click **Save**. A message confirms "Saved *file name*" with the image size, for example "1080×1920 PNG".
+2. Click **Export frame** (the picture icon in the Preview panel header).
+3. In the save dialog, choose a folder and a name. The editor suggests "*project name* frame.png".
+4. Click **Save**. A message confirms "Saved *file name*" with the image size, for example "1080×1920 PNG".
 
 The image has the project resolution and contains only the frame: no border, none of the panel around it, none of the overlays (safe zones, grids, guides, rulers), and no selection outlines or handles. The zoom level, the pan and the quality mode do not matter.
 
-> **Note:** If you export while the preview still shows a nearby frame (during or right after scrubbing), the PNG contains that frame. Wait for the picture to settle first.
+The editor draws the PNG from the exact frame at the playhead of your original media, at full quality, whatever the preview shows at that moment: never from a [proxy](proxies.md), never at the lower resolution of **1/2** or **1/4**, and never a nearby frame the preview still shows after a scrub. Each video is read at full resolution (up to 4096 pixels on its long side), so fine lines and text in 4K footage stay as sharp as the project resolution allows. Saving can take a moment while that frame is decoded.
 
 If the file cannot be written, a message "Can't export the frame" gives the reason. Exporting the whole video is available in a later version.
 
@@ -294,13 +294,15 @@ The preview draws with your graphics card (GPU) and decodes video with the brows
 - **Starting playback:** up to half a second of waiting while the first frames and the sound under the playhead are decoded. Sound and picture then start together.
 - **During playback:** each clip under the playhead is decoded up to 15 frames ahead, and never more than half a second ahead. Clips that start within the next 2 seconds are prepared before their cut, so cuts play smoothly.
 - **1080p footage:** plays smoothly, even with a cut every second. On the development machine, a one-minute timeline of one-second 1080p cuts from five different videos played with no dropped frames.
-- **4K 60 fps HEVC footage** (common on recent phones): at the limit of what a laptop GPU decodes at full quality. Expect a few dropped frames (about 1% on the development machine), and more when the computer runs hot. Lighter proxy copies are available in a later version.
-- **Scrubbing:** the exact frame usually follows within a fraction of a second. Video is stored in groups of frames that start with a keyframe, so the editor decodes from the previous keyframe to show a frame. Deep inside a 4K HEVC phone clip this can take about half a second; the preview shows the closest frame meanwhile.
+- **4K 60 fps HEVC footage** (common on recent phones): at the limit of what a laptop GPU decodes at full quality. With the default **Auto** quality, the editor makes a [proxy](proxies.md) of such footage after import and plays it: on the development laptop, a 4K 60 fps clip played on its proxy with no or almost no dropped frames. Played in **Full** quality, or before its proxy is ready, expect dropped frames (about 1% on a rested development machine, many more when it runs hot).
+- **Scrubbing:** with a proxy, the exact frame follows within one or two screen refreshes (17 to 34 milliseconds on the development laptop). Without a proxy, it usually follows within a fraction of a second: video is stored in groups of frames that start with a keyframe, so the editor decodes from the previous keyframe to show a frame. Deep inside a 4K HEVC phone clip this can take about half a second; the preview shows the closest frame meanwhile.
+- **After you stop:** with **Auto**, the original frame replaces the proxy frame usually within a third of a second; deep inside a 4K 60 fps phone clip it can take up to about 0.4 seconds.
 - **Backward playback and fast shuttle speeds** need more decoding work than 1x forward.
-- **Zoomed in above 100%:** with the default **Auto** quality, playback and scrubbing show the project's resolution, and the full detail of your media follows 0.3 seconds after you stop. **Full** keeps full detail while playing, which is heavier. **1/2** and **1/4** draw playback at half or a quarter of the resolution, which is lighter at every zoom. See [Choose the preview quality](preview-zoom-overlays-fullscreen.md#choose-the-preview-quality).
+- **Zoomed in above 100%:** with the default **Auto** quality, playback and scrubbing show the project's resolution (or the proxy), and the full detail of your media follows 0.3 seconds after you stop. **Full** keeps full detail while playing, which is heavier. **1/2** and **1/4** draw playback at half or a quarter of the resolution, which is lighter at every zoom. See [Choose the preview quality](preview-zoom-overlays-fullscreen.md#choose-the-preview-quality).
 - **Fullscreen:** on the development laptop, a 60 fps 1080×1920 project played in the fullscreen preview with at most about 0.5% dropped frames. The first playback after the page loads can drop many more frames while the editor warms up, especially with a large preview; the following playbacks are smoother.
 - **Dragging layers:** moving a layer in the preview follows the pointer at the full rate of a 60 Hz screen, also while it snaps and shows smart guides. On the development laptop, frames during a snapped drag took about 17 milliseconds on average. See [Snapping and smart guides in the preview](snapping-and-smart-guides.md).
 - **Thumbnails:** the editor makes the timeline's thumbnails only while you don't play, scrub or drag, and lets the preview's frames go first, so they don't slow the preview down. See [Know when thumbnails and waveforms appear](clip-thumbnails-and-waveforms.md#know-when-thumbnails-and-waveforms-appear).
+- **Proxies:** proxies are made one at a time in the background and pause while you play or drag on the timeline, so they don't slow the preview down. On the development laptop, the editor kept drawing at the full rate of a 60 Hz screen while a proxy was being made. See [Follow a proxy while it is made](proxies.md#follow-a-proxy-while-it-is-made).
 
 If playback stutters, see [Troubleshooting](troubleshooting.md).
 
@@ -308,6 +310,7 @@ If playback stutters, see [Troubleshooting](troubleshooting.md).
 - [Preview zoom, overlays and fullscreen](preview-zoom-overlays-fullscreen.md)
 - [Arranging layers in the preview](arranging-layers-in-the-preview.md)
 - [Snapping and smart guides in the preview](snapping-and-smart-guides.md)
+- [Proxies](proxies.md)
 - [Audio](audio.md)
 - [Timeline](timeline.md)
 - [Markers and in/out points](markers-and-in-out-points.md)
@@ -320,4 +323,4 @@ If playback stutters, see [Troubleshooting](troubleshooting.md).
 - [Workspace](workspace.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 23, 2026-10-16</sub>
+<sub>Last updated: Batch 24, 2026-10-16</sub>

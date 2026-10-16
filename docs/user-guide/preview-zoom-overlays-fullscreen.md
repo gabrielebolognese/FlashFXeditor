@@ -8,7 +8,7 @@ The Preview panel works like a monitor you can inspect up close. Zoom in to chec
 > - Shows:
 >   1. A 1080×1920 project with a 4K landscape clip on V1. Point at the preview header from left to right: **Zoom** (reading **Fit**), **Fit the frame in the panel**, **Preview quality** (reading **Auto**), **Overlays**, **Snap**, **Smart guides**, **Fullscreen** and **Export frame**.
 >   2. Click **Zoom** and choose **400%**: the center of the frame fills the panel. After a moment, fine detail such as hair and small text gets sharp, and the status line under the transport bar reads **Auto: full**.
->   3. Press <kbd>Space</kbd>: while the video plays, the status line reads **Auto: reduced** and the picture is softer. Press <kbd>Space</kbd> again: the picture sharpens a moment later.
+>   3. Press <kbd>Space</kbd>: while the video plays, the status line reads **Auto: proxy** (the clip's proxy is ready) and the picture is softer. Press <kbd>Space</kbd> again: the picture sharpens a moment later and the status line reads **Auto: full**.
 >   4. Put the pointer on a face, hold <kbd>Ctrl</kbd> and roll the mouse wheel: the preview zooms in and out while the face stays under the pointer, and **Zoom** shows the free value, for example **137%**.
 >   5. Roll the wheel alone: the picture moves up and down. Hold <kbd>Shift</kbd> and roll: it moves sideways.
 >   6. Drag with the middle mouse button, then hold <kbd>Space</kbd> and drag with the left button: the picture follows the pointer.
@@ -94,26 +94,28 @@ How much detail you get depends on the source:
 - When several clips are stacked, the preview draws the visible part of the frame at the detail of the sharpest one.
 - The preview prepares video frames of at most 4096 pixels on their long side. Larger sources, such as 6K or 8K video, show the detail of a 4096-pixel frame.
 - After you zoom in, the picture can stay soft for a moment while the editor decodes the current frame at the larger size. Then it sharpens.
-- With the default **Auto** quality, the extra detail appears when the picture is still: while you play, scrub or trim, and for 0.3 seconds after, the preview shows the project's resolution. See [Choose the preview quality](#choose-the-preview-quality).
+- With the default **Auto** quality, the extra detail appears when the picture is still: while you play, scrub or trim, and for 0.3 seconds after, the preview shows the project's resolution, or the proxy of a video that has one. See [Choose the preview quality](#choose-the-preview-quality).
 - An SVG image that covers the whole frame doesn't get sharper above 100%; more detail for SVG images is available in a later version.
 
 > **Tip:** To compare with the source, zoom to the level where one source pixel is one screen pixel. For a 4K landscape clip fitted to a 1080-pixel-wide frame, that is about 356%.
 
 ## Choose the preview quality
 
-The quality decides how much detail the preview draws, and when. Click **Preview quality** in the Preview panel header (the button shows the current mode) and choose a mode:
+The quality decides how much detail the preview draws, and when, and whether it uses the [proxies](proxies.md) of heavy videos. Click **Preview quality** in the Preview panel header (the button shows the current mode) and choose a mode:
 
 | Mode | While the picture is still | While you play, scrub or trim |
 | --- | --- | --- |
-| **Auto** (default) | Full detail | The project's resolution, until 0.3 seconds after you stop |
-| **Full** | Full detail | Full detail, also while you play (heavier for your computer when zoomed in) |
-| **Proxy** | The project's resolution | The project's resolution |
-| **1/2** | Full detail | While playing, half the resolution of the view: lighter, but softer. While scrubbing or trimming, as **Auto**. |
-| **1/4** | Full detail | While playing, a quarter of the resolution of the view. While scrubbing or trimming, as **Auto**. |
+| **Auto** (default) | Full detail, from the original media | The proxy of each video that has one, and the project's resolution. When you stop, the original frame replaces the proxy as soon as it is decoded, and the full detail follows 0.3 seconds after you stop. |
+| **Full** | Full detail, from the original media | Full detail from the original media, also while you play (heavier for your computer, especially with 4K footage or when zoomed in) |
+| **Proxy** | The proxy of each video that has one, at the project's resolution | The same |
+| **1/2** | Full detail, from the original media | While playing, half the resolution of the view: lighter, but softer. A video that can't keep up switches to its proxy for the rest of that playback. While scrubbing or trimming, the original media at the project's resolution. |
+| **1/4** | Full detail, from the original media | While playing, a quarter of the resolution of the view, with the same switch to the proxy. While scrubbing or trimming, as **1/2**. |
 
-"Full detail" means the real detail of your media described in [See real detail when you zoom in](#see-real-detail-when-you-zoom-in). At **Fit** and at 100% or less, full detail and the project's resolution look the same, so **Auto**, **Full** and **Proxy** only differ when you zoom in above 100%. **1/2** and **1/4** make playback lighter at every zoom level.
+"Full detail" means the real detail of your media described in [See real detail when you zoom in](#see-real-detail-when-you-zoom-in). At **Fit** and at 100% or less, full detail and the project's resolution look the same, so there **Auto** and **Full** differ only in the proxies they use. **1/2** and **1/4** make playback lighter at every zoom level. Videos without a ready proxy (no green **PX** chip on their card) always show the original media.
 
-> **Note:** **Proxy** is meant for lighter proxy copies of your media, which are available in a later version. Until then it shows your media at the project's resolution.
+A scrub you hold still for 0.3 seconds counts as stopped: the original frame follows. See [Edit with proxies in the preview](proxies.md#edit-with-proxies-in-the-preview).
+
+> **Note:** **Export frame** always saves your original media at full quality, whatever the mode. See [Export the current frame](preview-and-playback.md#export-the-current-frame).
 
 ### Read the quality in the status line
 
@@ -121,10 +123,11 @@ The status line under the transport bar shows the mode, then what the preview dr
 
 | Text | Meaning |
 | --- | --- |
-| **Auto: full**, **1/2: full**, **1/4: full**, **Proxy: full** | The preview shows all the detail it can at this zoom. |
-| **Auto: reduced**, **1/2: reduced**, **1/4: reduced**, **Proxy: reduced** | The preview shows the project's resolution, less than the detail available at this zoom. |
+| **Auto: proxy**, **Proxy: proxy**, **1/2: proxy**, **1/4: proxy** | At least one picture in the frame comes from a proxy. |
+| **Auto: full**, **1/2: full**, **1/4: full**, **Proxy: full** | The preview shows all the detail it can at this zoom, from the original media. |
+| **Auto: reduced**, **1/2: reduced**, **1/4: reduced**, **Proxy: reduced** | The preview shows the original media at the project's resolution, less than the detail available at this zoom. |
 | **1/2: half**, **1/4: quarter** | Playback at half or a quarter of the resolution. |
-| **Full** | **Full** mode: always full detail. |
+| **Full** | **Full** mode: always full detail from the original media. |
 
 Each project remembers the quality mode. Changing it is not a step in the history.
 
@@ -254,6 +257,7 @@ None of these are steps in the history: <kbd>Ctrl</kbd>+<kbd>Z</kbd> does not un
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Workspace](workspace.md)
 - [Projects and saving](projects-and-saving.md)
+- [Proxies](proxies.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 23, 2026-10-16</sub>
+<sub>Last updated: Batch 24, 2026-10-16</sub>
