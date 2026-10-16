@@ -28,6 +28,17 @@ describe("canvas layers (spec §7.2)", () => {
     expect(canvasLayersAt(project(), 30)).toEqual([]);
   });
 
+  it("hits media on a gesture's ephemeral crop before their own (spec §7.2, Batch 26)", () => {
+    // The 200 x 100 media centered, its left half cropped away: 100 x 100 from x 540.
+    const p = project([{}], [{ ...makeMediaClip(makeProject(), { id: "m1", trackId: "v1", start: 40, duration: 10, mediaId: "m" }), crop: { left: 0.5, top: 0, right: 0, bottom: 0 } }]);
+    const [layer] = canvasLayersAt(p, 40);
+    expect(layer?.quad[0]).toEqual({ x: 540, y: 910 });
+    expect(layersUnder(canvasLayersAt(p, 40), 500, 960)).toEqual([]);
+    const live = canvasLayersAt(p, 40, null, new Map([["m1", { left: 0, top: 0, right: 0.5, bottom: 0 }]]));
+    expect(live[0]?.quad[0]).toEqual({ x: 440, y: 910 });
+    expect(layersUnder(live, 500, 960).map((hit) => hit.clipId)).toEqual(["m1"]);
+  });
+
   it("skips hidden and locked tracks and disabled clips; keeps muted ones", () => {
     const p = project([{ hidden: true }, { locked: true }, { muted: true }]);
     expect(canvasLayersAt(p, 0).map((layer) => layer.clipId)).toEqual(["s3"]);

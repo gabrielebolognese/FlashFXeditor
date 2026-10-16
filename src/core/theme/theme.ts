@@ -60,7 +60,22 @@ export interface Theme {
   /** Preview overlays (CSS px) and the fullscreen chrome's hide delay (ms) (spec §7.5, §7.6, §7.8). */
   preview: { mask: string; guide: string; grid: string; pixelGrid: string; dash: number; crossSize: number; rulerSize: number; rulerTick: number; chromeHideDelay: number };
   /** The canvas selection and transform gizmo, snapping and smart guides (CSS px, spec §7.2, §7.3, §7.4). */
-  gizmo: { lineWidth: number; handleSize: number; handleHit: number; rotateZone: number; anchorSize: number; snapWidth: number; minEdge: number; dragThreshold: number; snapThreshold: number; guideWidth: number; guideCap: number };
+  gizmo: {
+    lineWidth: number;
+    handleSize: number;
+    handleHit: number;
+    rotateZone: number;
+    anchorSize: number;
+    snapWidth: number;
+    minEdge: number;
+    dragThreshold: number;
+    snapThreshold: number;
+    guideWidth: number;
+    guideCap: number;
+    /** Crop mode (Batch 26): bracket arm / edge bar length and stroke width. */
+    cropHandleLength: number;
+    cropHandleWidth: number;
+  };
 }
 
 /** Timeline canvas metrics (CSS px) and clip colors (spec §6.2, §6.4). */
@@ -306,6 +321,8 @@ export function readTheme(read: TokenReader, root?: Element): { theme: Theme; mi
       snapThreshold: num("--canvas-snap-threshold"),
       guideWidth: num("--canvas-guide-width"),
       guideCap: num("--canvas-guide-cap"),
+      cropHandleLength: num("--crop-handle-length"),
+      cropHandleWidth: num("--crop-handle-width"),
     },
   };
   return { theme, missing };

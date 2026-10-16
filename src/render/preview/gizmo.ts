@@ -103,8 +103,12 @@ export function edgeHandlesShown(box: GizmoBox, screen: Mat3, minEdge: number): 
   return { horizontal: Math.hypot(tr.x - tl.x, tr.y - tl.y) >= minEdge, vertical: Math.hypot(bl.x - tl.x, bl.y - tl.y) >= minEdge };
 }
 
-/** What a press at screen point (`x`, `y`) takes: a handle (corners first), a rotate zone outside a corner, the body, or nothing. */
-export function hitGizmo(box: GizmoBox, screen: Mat3, x: number, y: number, metrics: GizmoMetrics): GizmoHit | null {
+/**
+ * What a press at screen point (`x`, `y`) takes: a handle (corners first), a rotate zone outside a
+ * corner, the body, or nothing. In crop mode (`crop`, Batch 26) the handles are crop handles and there
+ * is no rotate zone.
+ */
+export function hitGizmo(box: GizmoBox, screen: Mat3, x: number, y: number, metrics: GizmoMetrics, crop = false): GizmoHit | null {
   const half = metrics.handleHit / 2;
   const near = (p: Point) => Math.abs(p.x - x) <= half && Math.abs(p.y - y) <= half;
   for (const handle of CORNERS) if (near(toScreen(screen, handlePoint(box, handle)))) return { kind: "handle", handle };
@@ -115,6 +119,7 @@ export function hitGizmo(box: GizmoBox, screen: Mat3, x: number, y: number, metr
   }
   const corners = box.map((p) => toScreen(screen, p));
   if (insideScreenQuad(corners, x, y)) return { kind: "body" };
+  if (crop) return null;
   for (let i = 0; i < 4; i++) {
     const c = corners[i] as Point;
     if (Math.hypot(c.x - x, c.y - y) <= metrics.rotateZone) return { kind: "rotate", corner: CORNERS[i] as HandleId };

@@ -8,15 +8,16 @@
 // - Crop fractions apply to the media as shown (upright and flipped): `left` always cuts the visible
 //   left side.
 // - Media time 0 is the first frame: `timeUs` is relative to it, whatever cts the container starts at.
-// - Gesture-aware (spec P2): during a canvas gesture or a properties field scrub `transforms` (and
-//   `opacities`) give the clips' ephemeral values, used instead of the document's until it commits.
+// - Gesture-aware (spec P2): during a canvas gesture or a properties field scrub `transforms`,
+//   `opacities` and `crops` give the clips' ephemeral values, used instead of the document's until it
+//   commits.
 // Layer structs and arrays are reused between frames; evaluating allocates nothing once warm.
 // TODO(batch 28): text layers. TODO(batch 32): the caption track's current cue. TODO(batch 34): solid
 // shapes other than rect, gradient fills, corner radius. TODO(batch 35): keyframes.
 // TODO(batch 36): transitions (two contributing clips and a mix amount).
 import { isRgba } from "../../core/document/color.js";
 import { framesToSourceUs, secondsToFrames } from "../../core/document/time.js";
-import type { Clip, ClipId, Frame, MediaClip, MediaId, Project, RGBA, SolidClip, Transform } from "../../core/document/types.js";
+import type { Clip, ClipId, Crop, Frame, MediaClip, MediaId, Project, RGBA, SolidClip, Transform } from "../../core/document/types.js";
 import { clipInIndex, lastClipStartingBy, trackIndex } from "../../timeline/model/queries.js";
 import { multiplyInto, mutableIdentity, setMat, type MutableMat3 } from "../mat3.js";
 import type { Composite, CompositeLayer, MediaLayer, SolidLayer } from "./drawList.js";
@@ -100,10 +101,17 @@ export class Compositor {
 
   /**
    * The document at `frame`, bottom track first, with `transforms` (a canvas gesture's or a field
-   * scrub's) and `opacities` (a field scrub's) replacing the clips' own. The result and its layers are
-   * reused by the next call: read it before evaluating again.
+   * scrub's), `opacities` (a field scrub's) and `crops` (a crop handle drag's or a field scrub's)
+   * replacing the clips' own. The result and its layers are reused by the next call: read it before
+   * evaluating again.
    */
-  evaluate(doc: Project, frame: Frame, transforms: ReadonlyMap<ClipId, Transform> | null = null, opacities: ReadonlyMap<ClipId, number> | null = null): Composite {
+  evaluate(
+    doc: Project,
+    frame: Frame,
+    transforms: ReadonlyMap<ClipId, Transform> | null = null,
+    opacities: ReadonlyMap<ClipId, number> | null = null,
+    crops: ReadonlyMap<ClipId, Crop> | null = null,
+  ): Composite {
     const out = this.out;
     const { width, height, background } = doc.settings;
     out.width = width;
@@ -120,7 +128,7 @@ export class Compositor {
       if (!clip?.enabled) continue;
       if (clip.kind === "video" || clip.kind === "image") {
         const layer = (this.mediaPool[media] ??= newMediaLayer());
-        if (this.writeMedia(layer, doc, clip, frame, transforms?.get(clip.id) ?? clip.transform, opacities?.get(clip.id) ?? clip.opacity)) {
+        if (this.writeMedia(layer, doc, clip, frame, transforms?.get(clip.id) ?? clip.transform, opacities?.get(clip.id) ?? clip.opacity, crops?.get(clip.id) ?? clip.crop)) {
           out.layers.push(layer);
           media += 1;
         }
@@ -167,7 +175,7 @@ export class Compositor {
     list.push(neighbor);
   }
 
-  private writeMedia(layer: WritableMediaLayer, doc: Project, clip: MediaClip, frame: Frame, transform: Transform, opacity: number): boolean {
+  private writeMedia(layer: WritableMediaLayer, doc: Project, clip: MediaClip, frame: Frame, transform: Transform, opacity: number, shownCrop: Crop): boolean {
     const item = doc.media[clip.mediaId];
     if (!item?.width || !item.height) return false;
     const rotation = item.rotation ?? 0;
@@ -177,10 +185,10 @@ export class Compositor {
     const { flipH, flipV } = transform;
 
     // The visible part of the shown (upright, flipped) media, then where it lies in the texture.
-    const left = clamp01(clip.crop.left);
-    const right = 1 - clamp01(clip.crop.right);
-    const top = clamp01(clip.crop.top);
-    const bottom = 1 - clamp01(clip.crop.bottom);
+    const left = clamp01(shownCrop.left);
+    const right = 1 - clamp01(shownCrop.right);
+    const top = clamp01(shownCrop.top);
+    const bottom = 1 - clamp01(shownCrop.bottom);
     if (right <= left || bottom <= top) return false;
     const pl = flipH ? 1 - right : left;
     const ph = flipH ? 1 - left : right;

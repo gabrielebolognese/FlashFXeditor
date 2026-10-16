@@ -17,12 +17,19 @@
 //   smart guides are on (`preview.guides`), which also gives the Alt measure mode (no drag). The other
 //   layers are the picture's (`pictureLayersAt`: locked tracks included, muted ones out), not just the
 //   selectable ones.
+// - Crop mode (spec §7.3 "crop handles as a gizmo mode", §11 Crop; cropGizmo.ts): one video or image
+//   layer at a time (`cropMode`: entered by a double-click on the layer or from the Crop section).
+//   Its gizmo gets 8 crop handles instead of the scale handles and rotate zones; a handle drag writes
+//   the layer's ephemeral crop through `crops` (the compositor and the Crop fields read it) and
+//   commits one `clip.crop` command on release. Shift inverts the aspect lock, Alt crops around the
+//   center; crop edges snap to the frame edges, center and thirds while snapping is on and the layer
+//   is axis-aligned. A body drag still moves the layer. It ends on Esc, a double-click on the layer,
+//   or a selection that is no longer that layer alone.
 // - Hover outlines the layer under the pointer; the cursor follows the gizmo zone.
 // - The canvas rect is read once per pointer enter and after a panel resize (P9).
-// TODO(batch 26): crop handles. TODO(batch 29): double-click edits text inline. TODO(batch 35): the
-// keyframe diamond on the box corner.
+// TODO(batch 29): double-click edits text inline. TODO(batch 35): the keyframe diamond on the box corner.
 import type { Command } from "../../core/commands/command.js";
-import type { ClipId, Project, Transform } from "../../core/document/types.js";
+import type { ClipId, Crop, Project, Transform } from "../../core/document/types.js";
 import { isEditableTarget } from "../../core/keyboard/KeyDispatcher.js";
 import { isSnapKey, type Platform } from "../../core/keyboard/keys.js";
 import type { FrameScheduler } from "../../core/scheduler/FrameScheduler.js";
@@ -32,10 +39,12 @@ import type { LayoutState } from "../../core/store/layoutStore.js";
 import { addToSelection, clickSelection, EMPTY_SELECTION, selectClips, type ClickModifier, type Selection } from "../../core/store/selection.js";
 import { setSelection, type SessionStore } from "../../core/store/sessionStore.js";
 import type { Theme, ThemeBridge } from "../../core/theme/theme.js";
-import { setTransforms, type Point } from "../../timeline/edit/transform.js";
-import { selectionPartners } from "../../timeline/model/queries.js";
+import { isCropClip, setCrops } from "../../timeline/edit/crop.js";
+import { isLayerClip, layerCorners, setTransforms, type Point } from "../../timeline/edit/transform.js";
+import { isClipLocked, selectionPartners } from "../../timeline/model/queries.js";
 import { canvasLayersAt, layersInRect, layersUnder, pictureLayersAt, quadsBounds, type CanvasLayer, type Quad, type Rect } from "./canvasLayers.js";
 import { canvasCursors, type CanvasCursors } from "./canvasCursors.js";
+import { cropGesture, type CropModeState, type CropStart } from "./cropGizmo.js";
 import {
   AngleTracker,
   anchorGesture,
@@ -83,6 +92,13 @@ export interface CanvasEditDeps {
   onContextMenu(request: { x: number; y: number }): void;
   /** Ephemeral transforms written outside the canvas (a properties field scrub, spec §11, P2), or null; the gizmo follows them. */
   live?(): ReadonlyMap<ClipId, Transform> | null;
+  /**
+   * Ephemeral crops (P2): a Crop field scrub's (`read`), and this canvas's crop handle drags (`write`,
+   * null when the drag ends); the compositor and the Crop fields read the same values.
+   */
+  crops?: { read(): ReadonlyMap<ClipId, Crop> | null; write(crops: ReadonlyMap<ClipId, Crop> | null): void };
+  /** Crop mode (spec §7.3, §11), shared with the Crop section and the crop chip; without it there is no crop mode. */
+  cropMode?: Store<CropModeState>;
 }
 
 /** What the overlay draws for selection and the gizmo; null parts are not drawn. */
@@ -103,9 +119,11 @@ export interface GizmoScene {
   readout: { text: string; x: number; y: number } | null;
   /** Smart guides (§7.4): the snap lines and distances of a drag, or the Alt measure mode. */
   guides: Guides | null;
+  /** Crop mode (§7.3): the box holds crop handles, `media` is the whole media's quad (outlined dashed). */
+  crop: { media: Quad } | null;
 }
 
-type GestureKind = "move" | "scale" | "rotate" | "anchor";
+type GestureKind = "move" | "scale" | "rotate" | "anchor" | "crop";
 
 interface Press {
   pointerId: number;
@@ -132,6 +150,9 @@ interface Drag {
   tracker: AngleTracker | null;
   result: GestureResult | null;
   guides: Guides | null;
+  /** A crop handle drag: the layer it crops, and the crops it leaves (ephemeral until the release). */
+  crop: CropStart | null;
+  crops: ReadonlyMap<ClipId, Crop> | null;
 }
 
 interface Marquee {
@@ -150,6 +171,7 @@ const LABELS: Record<GestureKind, [string, string]> = {
   scale: ["Scale layer", "Scale layers"],
   rotate: ["Rotate layer", "Rotate layers"],
   anchor: ["Move anchor point", "Move anchor point"],
+  crop: ["Crop layer", "Crop layers"],
 };
 
 export class CanvasEditInput {
@@ -165,12 +187,20 @@ export class CanvasEditInput {
   private hover: ClipId | null = null;
   private theme: Theme;
   private cursors: CanvasCursors;
-  private cache: { project: Project | null; frame: number; transforms: ReadonlyMap<ClipId, Transform> | null; layers: CanvasLayer[] } = { project: null, frame: -1, transforms: null, layers: [] };
+  private cache: { project: Project | null; frame: number; transforms: ReadonlyMap<ClipId, Transform> | null; crops: ReadonlyMap<ClipId, Crop> | null; layers: CanvasLayer[] } = {
+    project: null,
+    frame: -1,
+    transforms: null,
+    crops: null,
+    layers: [],
+  };
   /** The picture layers at the playhead (the smart guides' other layers), with the document's transforms. */
   private picture: { project: Project | null; frame: number; layers: CanvasLayer[] } = { project: null, frame: -1, layers: [] };
   /** S held during the current drag: snapping inverted (§7.4, §6.9). */
   private snapHeld = false;
   private readonly snapIndex = new CanvasSnapIndex();
+  /** Crop edges snap to the frame alone: edges, center, thirds (Batch 26). */
+  private readonly cropSnapIndex = new CanvasSnapIndex();
   private readonly stops: (() => void)[] = [];
   /** Changes of what the overlay draws apart from the document, playhead and selection. */
   version = 0;
@@ -182,7 +212,35 @@ export class CanvasEditInput {
 
   /** A running gesture's (else a field scrub's) ephemeral transforms by clip id (the compositor reads them, P2), or null. */
   get transforms(): ReadonlyMap<ClipId, Transform> | null {
-    return this.drag?.result?.transforms ?? this.deps.live?.() ?? null;
+    const drag = this.drag;
+    return (drag?.kind !== "crop" ? drag?.result?.transforms : null) ?? this.deps.live?.() ?? null;
+  }
+
+  /** The clip in crop mode (spec §7.3), or null. */
+  get cropTarget(): ClipId | null {
+    return this.deps.cropMode?.getState().target ?? null;
+  }
+
+  /**
+   * Crop mode on a video or image clip (spec §7.3, §11): its gizmo gets crop handles while it is the
+   * selected layer. False (and no change) for other clips and clips on locked tracks.
+   */
+  enterCropMode(clipId: ClipId): boolean {
+    const store = this.deps.cropMode;
+    const project = this.deps.document.getState();
+    const clip = project.clips[clipId];
+    if (!store || !clip || !isCropClip(clip) || isClipLocked(project, clipId)) return false;
+    if (store.getState().target !== clipId) store.set({ ...store.getState(), target: clipId });
+    return true;
+  }
+
+  /** Leaves crop mode (a running crop drag is dropped); true when it was on (Esc, spec §18). */
+  exitCropMode(): boolean {
+    const store = this.deps.cropMode;
+    if (!store || store.getState().target === null) return false;
+    if (this.drag?.kind === "crop") this.cancel();
+    store.set({ ...store.getState(), target: null });
+    return true;
   }
 
   /** A gesture or marquee runs. */
@@ -227,6 +285,7 @@ export class CanvasEditInput {
       if (this.ownsPointer(event.pointerId)) this.cancel();
     });
     listen("contextmenu", (event) => this.onContextMenu(event));
+    listen("dblclick", (event) => this.onDoubleClick(event));
     const onKey = (event: KeyboardEvent) => this.onModifierKey(event);
     const onBlur = () => this.cancel();
     win?.addEventListener("keydown", onKey, true);
@@ -244,7 +303,10 @@ export class CanvasEditInput {
           this.rect = null;
         },
       ),
-      this.deps.session.selection.subscribe(() => this.invalidate()),
+      this.deps.session.selection.subscribe(() => {
+        this.checkCropMode();
+        this.invalidate();
+      }),
       this.deps.theme.subscribe((next) => {
         this.theme = next;
         this.cursors = canvasCursors(next);
@@ -253,8 +315,18 @@ export class CanvasEditInput {
       // An edit under a gesture (undo from the keyboard, an autosave reload) ends it with no change.
       this.deps.document.subscribe((state) => {
         if (this.drag && state !== this.drag.project) this.cancel();
+        this.checkCropMode();
       }),
     );
+    const cropMode = this.deps.cropMode;
+    if (cropMode) {
+      this.stops.push(
+        cropMode.subscribe(() => {
+          this.invalidate();
+          this.updateCursor();
+        }),
+      );
+    }
     return () => this.detach();
   }
 
@@ -271,6 +343,7 @@ export class CanvasEditInput {
   cancel(): boolean {
     const running = this.press !== null || this.drag !== null || this.marquee !== null;
     const pointerId = this.press?.pointerId ?? this.drag?.pointerId ?? this.marquee?.pointerId;
+    if (this.drag?.kind === "crop") this.deps.crops?.write(null);
     this.press = null;
     this.drag = null;
     this.marquee = null;
@@ -289,12 +362,14 @@ export class CanvasEditInput {
     const project = this.deps.document.getState();
     const frame = this.deps.session.state.getState().playhead;
     const transforms = this.transforms;
+    const crops = this.deps.crops?.read() ?? null;
     const cache = this.cache;
-    if (cache.project !== project || cache.frame !== frame || cache.transforms !== transforms) {
+    if (cache.project !== project || cache.frame !== frame || cache.transforms !== transforms || cache.crops !== crops) {
       cache.project = project;
       cache.frame = frame;
       cache.transforms = transforms;
-      cache.layers = canvasLayersAt(project, frame, transforms);
+      cache.crops = crops;
+      cache.layers = canvasLayersAt(project, frame, transforms, crops);
     }
     return cache.layers;
   }
@@ -322,6 +397,33 @@ export class CanvasEditInput {
     return this.layers().filter((layer) => selection.clipIds.has(layer.clipId));
   }
 
+  /** The layer crop mode works on now: the crop target when it is the one layer `held` (the selected ones at the playhead). */
+  private cropLayer(held: readonly CanvasLayer[]): CanvasLayer | null {
+    const target = this.cropTarget;
+    const only = held.length === 1 ? held[0] : undefined;
+    return target !== null && only?.clipId === target ? only : null;
+  }
+
+  /**
+   * Ends crop mode when its clip is gone, locked or no longer a video or image, or when the selection
+   * is not that layer alone any more (other clips may come with it: a linked audio partner).
+   */
+  private checkCropMode(): void {
+    const target = this.cropTarget;
+    if (target === null) return;
+    const project = this.deps.document.getState();
+    const clip = project.clips[target];
+    const selection = this.deps.session.selection.getState();
+    const alone =
+      selection.kind === "clips" &&
+      selection.clipIds.has(target) &&
+      ![...selection.clipIds].some((id) => {
+        const other = project.clips[id];
+        return id !== target && other !== undefined && isLayerClip(other);
+      });
+    if (!clip || !isCropClip(clip) || isClipLocked(project, target) || !alone) this.exitCropMode();
+  }
+
   /** What the overlay draws now. */
   scene(): GizmoScene {
     const layers = this.layers();
@@ -340,18 +442,20 @@ export class CanvasEditInput {
     const result = drag?.result;
     const frame = this.deps.document.getState().settings;
     // Measure mode (§7.4): Alt over the canvas with no drag shows the distances around the selection.
-    const measuring = !drag && !marquee && !this.press && this.modifiers.alt && this.over && box !== null && this.deps.session.state.getState().preview.guides;
+    const cropLayer = marquee ? null : this.cropLayer(selected);
+    const measuring = !drag && !marquee && !this.press && !cropLayer && this.modifiers.alt && this.over && box !== null && this.deps.session.state.getState().preview.guides;
     const guides = drag ? drag.guides : measuring && box ? measureGuides(this.snapCandidates(new Set(selected.map((layer) => layer.clipId))), quadsBounds([box]) as Rect) : null;
     return {
       hover: hoverLayer?.quad ?? null,
       outlines,
       box,
       group: (drag?.start.layers.length ?? selected.length) > 1,
-      anchor: showAnchor && single ? { x: frame.width / 2 + single.transform.x, y: frame.height / 2 + single.transform.y } : null,
+      anchor: showAnchor && single && !cropLayer ? { x: frame.width / 2 + single.transform.x, y: frame.height / 2 + single.transform.y } : null,
       marquee: marquee ? { x0: marquee.from.x, y0: marquee.from.y, x1: marquee.to.x, y1: marquee.to.y } : null,
       snap: result && drag.handle && (result.snapX || result.snapY) ? { handle: drag.handle, x: result.snapX, y: result.snapY } : null,
       readout: result && pointer ? { text: result.readout, x: pointer.x, y: pointer.y } : null,
       guides,
+      crop: cropLayer ? { media: layerCorners(cropLayer.transform, { ...cropLayer.box, left: 0, top: 0, right: cropLayer.box.width, bottom: cropLayer.box.height }, frame) } : null,
     };
   }
 
@@ -370,7 +474,8 @@ export class CanvasEditInput {
     const held = this.selectedLayers();
     const box = gizmoBoxOf(held.map((layer) => layer.quad));
     const mods = this.modifiers;
-    const hit = box ? this.hitBox(box, placement, event) : null;
+    const cropLayer = this.cropLayer(held);
+    const hit = box ? this.hitBox(box, placement, event, cropLayer !== null) : null;
     const under = layersUnder(this.layers(), point.x, point.y);
     const top = under[0];
     // Deep select (§7.2): the next layer under the pointer after the selected one, alone.
@@ -380,8 +485,10 @@ export class CanvasEditInput {
     };
     let press: Pick<Press, "drag" | "click"> | null = null;
     // Alt over the anchor marker drags the anchor; released without a drag it is the Alt+click.
-    if (box && mods.alt && held.length === 1 && this.overAnchor(held[0] as CanvasLayer, placement, event)) press = { drag: { kind: "anchor" }, click: top ? cycled() : null };
-    else if (hit?.kind === "handle") press = { drag: { kind: "scale", handle: hit.handle }, click: null };
+    if (box && mods.alt && held.length === 1 && !cropLayer && this.overAnchor(held[0] as CanvasLayer, placement, event)) press = { drag: { kind: "anchor" }, click: top ? cycled() : null };
+    else if (hit?.kind === "handle") press = { drag: { kind: cropLayer ? "crop" : "scale", handle: hit.handle }, click: null };
+    // In crop mode a click on its layer keeps the selection (a group would end crop mode).
+    else if (cropLayer && hit?.kind === "body" && !mods.alt && !mods.shift && !mods.mod && top?.clipId === cropLayer.clipId) press = { drag: { kind: "move" }, click: null };
     else if (hit?.kind === "rotate") press = { drag: { kind: "rotate", handle: hit.corner }, click: null };
     if (!press) {
       if (mods.alt && top) {
@@ -448,10 +555,13 @@ export class CanvasEditInput {
     if (drag?.result) {
       const count = drag.start.layers.length;
       const labels = LABELS[drag.kind];
-      const command = setTransforms(this.deps.document.getState(), drag.result.transforms, { label: count === 1 ? labels[0] : labels[1] });
-      // The document takes over from the ephemeral transforms in the same frame.
+      const label = count === 1 ? labels[0] : labels[1];
+      const project = this.deps.document.getState();
+      const command = drag.kind === "crop" ? (drag.crops ? setCrops(project, drag.crops, { label }) : null) : setTransforms(project, drag.result.transforms, { label });
+      // The document takes over from the ephemeral values in the same frame.
       this.deps.scheduler.invalidate("preview");
       if (command) this.deps.commit(command);
+      if (drag.kind === "crop") this.deps.crops?.write(null);
     }
     this.updateHover(event);
     this.invalidate();
@@ -477,6 +587,28 @@ export class CanvasEditInput {
     this.deps.onContextMenu({ x: event.clientX, y: event.clientY });
   }
 
+  /**
+   * A double-click on a video or image layer enters crop mode on it alone (spec §7.3, Batch 26); on the
+   * layer in crop mode it leaves crop mode.
+   */
+  private onDoubleClick(event: MouseEvent): void {
+    if (event.button !== 0 || this.drag || this.marquee || this.deps.panning() || this.deps.session.state.getState().activeTool === "hand") return;
+    const placement = this.deps.placement();
+    const point = this.projectPoint(event, placement);
+    if (!placement || !point) return;
+    const top = layersUnder(this.layers(), point.x, point.y)[0];
+    const target = this.cropTarget;
+    if (target !== null && top?.clipId === target) {
+      this.exitCropMode();
+      return;
+    }
+    // TODO(batch 29): a double-click on a text layer edits it inline.
+    const clip = top ? this.deps.document.getState().clips[top.clipId] : undefined;
+    if (!top || !clip || !isCropClip(clip)) return;
+    setSelection(this.deps.session, selectClips([top.clipId]));
+    this.enterCropMode(top.clipId);
+  }
+
   /** The press moved past the dead zone: its gesture or marquee starts. */
   private begin(press: Press): void {
     this.press = null;
@@ -491,6 +623,8 @@ export class CanvasEditInput {
     const project = this.deps.document.getState();
     const start: GestureStart = { layers: held.map((layer) => ({ clipId: layer.clipId, transform: layer.transform, box: layer.box })), box, frame: project.settings };
     const kind = press.drag.kind;
+    const cropLayer = kind === "crop" ? this.cropLayer(held) : null;
+    if (kind === "crop" && !cropLayer) return;
     this.drag = {
       pointerId: press.pointerId,
       kind,
@@ -502,6 +636,8 @@ export class CanvasEditInput {
       tracker: kind === "rotate" ? new AngleTracker(rotationPivot(start), press.point) : null,
       result: null,
       guides: null,
+      crop: cropLayer ? { clipId: cropLayer.clipId, transform: cropLayer.transform, box: cropLayer.box, frame: project.settings } : null,
+      crops: null,
     };
     this.deps.onDragStart();
   }
@@ -556,10 +692,38 @@ export class CanvasEditInput {
       case "anchor":
         drag.result = anchorGesture(drag.start, point);
         break;
+      case "crop":
+        this.updateCrop(drag, point, placement, mods, snapping);
+        break;
     }
     this.deps.scheduler.invalidate("preview");
     this.invalidate();
     this.updateCursor();
+  }
+
+  /** A crop handle drag step: the crop gesture, its edge snapped to the frame, the crop written live (P2). */
+  private updateCrop(drag: Drag, point: Point, placement: PreviewPlacement, mods: Modifiers, snapping: boolean): void {
+    const start = drag.crop;
+    const handle = drag.handle;
+    if (!start || !handle) return;
+    // Shift inverts the Crop section's aspect lock (as Shift inverts the corners' uniform scale, §7.3).
+    const lock = (this.deps.cropMode?.getState().aspectLock ?? false) !== mods.shift;
+    let result = cropGesture(start, handle, point, mods, lock);
+    // The dragged edge snaps to the frame's edges, center and thirds while the layer is axis-aligned.
+    if (snapping && isAxisAligned(drag.start.box)) {
+      const { width, height } = start.frame;
+      const candidates = this.cropSnapIndex.get({ frame: { width, height }, thirds: true, safe: [], layers: [] });
+      const { u, v } = HANDLES[handle];
+      const fixed = boxPoint(drag.start.box, mods.alt ? 0.5 : 1 - u, mods.alt ? 0.5 : 1 - v);
+      const grab = handlePoint(drag.start.box, handle);
+      const free = { x: Math.abs(grab.x - fixed.x) > 1e-9, y: Math.abs(grab.y - fixed.y) > 1e-9 };
+      const aim = snapHandle(candidates, handlePoint(result.box, handle), fixed, free, lock && isCorner(handle), this.snapReach(placement));
+      if (aim) result = cropGesture(start, handle, aim, mods, lock);
+      drag.guides = handleGuides(candidates, quadsBounds([result.box]) as Rect, handlePoint(result.box, handle), free);
+    }
+    drag.result = { transforms: new Map(), box: result.box, snapX: false, snapY: false, readout: result.readout };
+    drag.crops = new Map([[start.clipId, result.crop]]);
+    this.deps.crops?.write(drag.crops);
   }
 
   private updateMarquee(): void {
@@ -666,10 +830,10 @@ export class CanvasEditInput {
     return { handleHit: handleHit * dpr, rotateZone: rotateZone * dpr, minEdge: minEdge * dpr };
   }
 
-  /** The gizmo zone under the pointer (device px against the box on screen). */
-  private hitBox(box: GizmoBox, placement: PreviewPlacement, event: { clientX: number; clientY: number }): GizmoHit | null {
+  /** The gizmo zone under the pointer (device px against the box on screen); `crop`: crop handles, no rotate zones. */
+  private hitBox(box: GizmoBox, placement: PreviewPlacement, event: { clientX: number; clientY: number }, crop = false): GizmoHit | null {
     const device = this.devicePoint(event, placement.dpr);
-    return device ? hitGizmo(box, placement.transform, device.x, device.y, this.metrics(placement.dpr)) : null;
+    return device ? hitGizmo(box, placement.transform, device.x, device.y, this.metrics(placement.dpr), crop) : null;
   }
 
   private overAnchor(layer: CanvasLayer, placement: PreviewPlacement, event: { clientX: number; clientY: number }): boolean {
@@ -726,14 +890,16 @@ export class CanvasEditInput {
       if (drag.kind === "move") return "move";
       if (drag.kind === "rotate") return this.cursors.rotate;
       if (drag.kind === "anchor") return "crosshair";
+      // Scale and crop handles: the resize cursor of the handle's direction on screen.
       return placement && drag.result ? resizeCursor(drag.result.box, placement.transform, drag.handle as HandleId) : "";
     }
     if (this.marquee || this.press || !this.over || !this.pointer || !placement) return "";
     const held = this.selectedLayers();
     const box = gizmoBoxOf(held.map((layer) => layer.quad));
     if (!box) return "";
-    if (this.modifiers.alt && held.length === 1 && this.overAnchor(held[0] as CanvasLayer, placement, this.pointer)) return "crosshair";
-    const hit = this.hitBox(box, placement, this.pointer);
+    const cropping = this.cropLayer(held) !== null;
+    if (!cropping && this.modifiers.alt && held.length === 1 && this.overAnchor(held[0] as CanvasLayer, placement, this.pointer)) return "crosshair";
+    const hit = this.hitBox(box, placement, this.pointer, cropping);
     if (hit?.kind === "handle") return resizeCursor(box, placement.transform, hit.handle);
     if (hit?.kind === "rotate") return this.cursors.rotate;
     return hit?.kind === "body" ? "move" : "";

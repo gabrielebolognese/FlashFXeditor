@@ -1,0 +1,40 @@
+/* The crop tool chip (Batch 26; the DS has no tool chip): a floating strip in the menu material (glass,
+   hairline, overlay shadow, radius-lg) centered at the top of the preview canvas, --space-3 down; the
+   crop icon in --accent (the active tool), the title in caption type, a hairline rule, then compact
+   icon buttons (Reset, Done). */
+.chip {
+  position: absolute;
+  top: var(--space-3);
+  left: 50%;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-0) var(--space-0) var(--space-0) var(--space-2);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  background: var(--material-menu-bg);
+  box-shadow: var(--shadow-overlay);
+  transform: translateX(-50%);
+  backdrop-filter: var(--material-menu-filter);
+}
+
+.icon {
+  flex: none;
+  width: var(--icon-size);
+  height: var(--icon-size);
+  color: var(--accent);
+}
+
+.title {
+  color: var(--text-primary);
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-track);
+}
+
+.rule {
+  width: 1px;
+  height: var(--icon-size);
+  margin: 0 var(--space-1);
+  background: var(--hairline);
+}
