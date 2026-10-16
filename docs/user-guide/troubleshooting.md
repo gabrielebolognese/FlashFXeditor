@@ -1,6 +1,6 @@
 # Troubleshooting
 
-This page helps you when something does not work as expected: the editor does not start in your browser, the preview stays empty, a folder or a file does not open, a clip drag, a trim, a split, a delete, a timeline tool, a typed timecode, a marker, an in/out range or **Lift** and **Extract** do something you did not expect, media from the Media panel lands somewhere you did not expect, a clip shows no thumbnails, a video gets no proxy or its proxy fails, the preview zoom, overlays or fullscreen behave unexpectedly, a picture in the preview can't be selected, moves unexpectedly or doesn't snap where you expect, playback stutters, or you hear no sound. Each problem lists what you see, why it happens and what to do. The last section lists what the current version cannot do yet.
+This page helps you when something does not work as expected: the editor does not start in your browser, the preview stays empty, a folder or a file does not open, a clip drag, a trim, a split, a delete, a timeline tool, a typed timecode, a marker, an in/out range or **Lift** and **Extract** do something you did not expect, media from the Media panel lands somewhere you did not expect, a clip shows no thumbnails, a video gets no proxy or its proxy fails, the preview zoom, overlays or fullscreen behave unexpectedly, a picture in the preview can't be selected, moves unexpectedly or doesn't snap where you expect, a value in **Edit Properties** doesn't do what you expect, playback stutters, or you hear no sound. Each problem lists what you see, why it happens and what to do. The last section lists what the current version cannot do yet.
 
 > **Video placeholder: Fix common problems**
 > - File: `videos/troubleshooting/overview.mp4` (not recorded yet)
@@ -32,6 +32,8 @@ This page helps you when something does not work as expected: the editor does no
 >   24. With a logo on V2 over a video on V1, click the eye in the V2 header and click where the logo was: the video on V1 is selected. Click the eye again, click the logo, then <kbd>Alt</kbd>+click it: the video under it is selected.
 >   25. Drag the logo slowly toward the middle of the frame: it jumps to the center and gold lines cross the frame. Keep the mouse button down and hold <kbd>S</kbd>: it moves freely and the lines disappear. Release the mouse button, then click **Smart guides** in the preview header so it is no longer gold, and drag the logo next to another picture: it no longer snaps to it. Click **Smart guides** again.
 >   26. Import a 4K 60 fps clip: its card shows a grey **PX** chip that counts up. Press <kbd>Space</kbd>: the percentage stops while the timeline plays. Press <kbd>Space</kbd> again: it continues. Right-click a 1080p 30 fps card with no chip and choose **Generate proxy**: a grey chip appears.
+>   27. Click a clip on the timeline, click an empty part of the **Edit Properties** panel and press <kbd>Ctrl</kbd>+<kbd>D</kbd>: the browser offers to bookmark the page. Press <kbd>Esc</kbd>, click the clip on the timeline and press <kbd>Ctrl</kbd>+<kbd>D</kbd>: a copy appears right after it.
+>   28. Select three clips with different opacities: **Opacity** shows `--`. Right-click one of them and choose **Disable**: they turn faded with diagonal lines and leave the preview. Right-click again and choose **Enable**.
 
 ## In this page
 - [Browser and graphics](#browser-and-graphics)
@@ -45,6 +47,7 @@ This page helps you when something does not work as expected: the editor does no
   - [Alt+Left leaves the editor](#altleft-leaves-the-editor)
   - [Space starts playback only when you release it](#space-starts-playback-only-when-you-release-it)
   - [Ctrl+1 or Ctrl+2 switched to another browser tab](#ctrl1-or-ctrl2-switched-to-another-browser-tab)
+  - [Ctrl+D opens the browser's bookmark dialog](#ctrld-opens-the-browsers-bookmark-dialog)
 - [Timeline](#timeline)
   - [A drag copied clips or pushed other clips to the right](#a-drag-copied-clips-or-pushed-other-clips-to-the-right)
   - [A drag cut another clip short or split it](#a-drag-cut-another-clip-short-or-split-it)
@@ -127,6 +130,14 @@ This page helps you when something does not work as expected: the editor does no
   - [A resize stops at 100%](#a-resize-stops-at-100)
   - [The side handles are missing](#the-side-handles-are-missing)
   - [Bring forward or Send backward created a new track](#bring-forward-or-send-backward-created-a-new-track)
+- [Edit Properties](#edit-properties)
+  - [A field shows --](#a-field-shows---)
+  - [A typed clip time stops short or changes nothing](#a-typed-clip-time-stops-short-or-changes-nothing)
+  - [Quick actions are dimmed](#quick-actions-are-dimmed)
+  - [There is no Transform section](#there-is-no-transform-section)
+  - [Ctrl+D copied a video without its sound](#ctrld-copied-a-video-without-its-sound)
+  - [Pictures got smaller after a resolution change](#pictures-got-smaller-after-a-resolution-change)
+  - [The background went back to its old color](#the-background-went-back-to-its-old-color)
 - [Known limitations](#known-limitations)
 
 ## Browser and graphics
@@ -180,6 +191,7 @@ This page helps you when something does not work as expected: the editor does no
 - A text field has the keyboard focus (the project name, a media name, the timecode field, a number field). Typing always comes before shortcuts.
 - A dropdown list has the keyboard focus, for example **Sort media by** after you chose a value with the keyboard.
 - A dialog or a menu is open.
+- The **Edit Properties** panel was the last one you clicked. It has no shortcuts of its own: only the shortcuts for all panels work there, so <kbd>Delete</kbd>, for example, does nothing.
 - The shortcut belongs to another panel. For example, <kbd>↑</kbd> and <kbd>↓</kbd> jump between clips, and <kbd>X</kbd>, <kbd>;</kbd> and <kbd>'</kbd> mark a clip, lift and extract, only in the Timeline panel, and <kbd>Ctrl</kbd>+<kbd>0</kbd>, <kbd>Ctrl</kbd>+<kbd>1</kbd> and <kbd>Ctrl</kbd>+<kbd>2</kbd> zoom the preview only in the Preview panel.
 - The shortcut belongs to a feature that is available in a later version.
 
@@ -224,6 +236,14 @@ This page helps you when something does not work as expected: the editor does no
 **Cause:** These keys zoom the preview only while the Preview panel is active. In the other panels the browser gets them: <kbd>Ctrl</kbd>+<kbd>1</kbd> and <kbd>Ctrl</kbd>+<kbd>2</kbd> switch to the first and second tab, and <kbd>Ctrl</kbd>+<kbd>0</kbd> resets the browser's page zoom.
 
 **Fix:** Go back to the editor's tab. Click the preview picture, then press the key again. Or use the **Zoom** menu and **Fit the frame in the panel** in the preview header. See [Zoom the preview](preview-zoom-overlays-fullscreen.md#zoom-the-preview).
+
+### Ctrl+D opens the browser's bookmark dialog
+
+**Symptom:** You pressed <kbd>Ctrl</kbd>+<kbd>D</kbd> to duplicate a clip, and the browser offered to bookmark the page.
+
+**Cause:** The editor duplicates clips with <kbd>Ctrl</kbd>+<kbd>D</kbd> only while the Timeline or the Preview panel is active. In the other panels, Edit Properties included, the browser gets the key. Clicking **Duplicate** or a field in **Edit Properties** makes that panel the active one.
+
+**Fix:** Close the bookmark dialog with <kbd>Esc</kbd> (or remove the bookmark if the browser already added it). Click the clip on the timeline and press <kbd>Ctrl</kbd>+<kbd>D</kbd> again, or click **Duplicate** in the quick actions of **Edit Properties**. See [Duplicate a clip](editing-properties.md#duplicate-a-clip).
 
 ## Timeline
 
@@ -847,9 +867,9 @@ See [Audio](audio.md).
 
 **Symptom:** A video or image clip is under the playhead, but the preview shows the background or the tracks below it. On the timeline, the clip is drawn faded.
 
-**Cause:** Its track is muted (**M** is gold) or hidden (the eye is crossed out) in the track header.
+**Cause:** Its track is muted (**M** is gold) or hidden (the eye is crossed out) in the track header. Or the clip itself is turned off: then it is also covered with diagonal lines.
 
-**Fix:** Click **M** or the eye to turn it off. If the clip is not faded, a clip on a higher video track covers it: drag its track header above the other video tracks, or <kbd>Alt</kbd>+click in the preview until the clip is selected, right-click inside its gold box and choose **Bring forward**. The clip may also sit outside the frame or be very small: select it on the timeline to see its box in the preview, then right-click inside the box and choose **Reset transform**. See [Mute, solo and hide tracks](tracks.md#mute-solo-and-hide-tracks) and [Reorder tracks](tracks.md#reorder-tracks).
+**Fix:** Click **M** or the eye to turn it off. For a clip with diagonal lines, right-click it and choose **Enable**, or turn on **Enabled** in the **Clip** section of **Edit Properties**; see [Turn a clip off](editing-properties.md#turn-a-clip-off). If the clip is not faded, a clip on a higher video track covers it: drag its track header above the other video tracks, or <kbd>Alt</kbd>+click in the preview until the clip is selected, right-click inside its gold box and choose **Bring forward**. The clip may also sit outside the frame or be very small: select it on the timeline to see its box in the preview, then right-click inside the box and choose **Reset transform**. See [Mute, solo and hide tracks](tracks.md#mute-solo-and-hide-tracks) and [Reorder tracks](tracks.md#reorder-tracks).
 
 ### The other panels disappeared
 
@@ -911,6 +931,7 @@ See [Audio](audio.md).
 
 **Cause:** One of these:
 - Its track is hidden (the eye is crossed out) or locked (gold padlock). Layers of those tracks can't be picked in the preview.
+- The clip is turned off (**Disable**): on the timeline it is faded and covered with diagonal lines, and the preview doesn't draw it.
 - The **Hand** tool is active, or you hold <kbd>Space</kbd> over a zoomed-in picture: a drag pans instead.
 - The playhead isn't over the clip, so what you see is another clip.
 
@@ -989,18 +1010,83 @@ See [Audio](audio.md).
 
 **Fix:** Nothing to fix. To use an existing track instead, press <kbd>Ctrl</kbd>+<kbd>Z</kbd> and drag the clip to that track on the timeline. See [Change which layer is on top](arranging-layers-in-the-preview.md#change-which-layer-is-on-top).
 
+## Edit Properties
+
+### A field shows --
+
+**Symptom:** A field of **Edit Properties** shows `--` instead of a value, or a switch sits halfway.
+
+**Cause:** Several clips or tracks are selected, and their values differ. The panel header shows how many are selected, for example **3 clips**.
+
+**Fix:** Nothing is wrong. Type a value to give it to all of them, or drag the label to change each one by the same amount. Click a halfway switch to turn it on for all. To see one clip's values, click only that clip. See [Edit several clips at once](editing-properties.md#edit-several-clips-at-once).
+
+### A typed clip time stops short or changes nothing
+
+**Symptom:** You type a time into **Start**, **End**, **Duration**, **Source in** or **Source out**, and the clip ends up elsewhere than you typed, or doesn't change.
+
+**Cause:** One of these:
+- A limit stopped the trim: the first or last frame of the media, the next or previous clip on the track, the start of the timeline, or the 1-frame minimum. A message such as **Trim stopped at the media end** or **Trim stopped at the next clip** says which.
+- With **Linked selection** on, the linked clip reached a limit first, and both stopped.
+- The editor couldn't read the text as a time, so the field went back to the clip's time.
+- The clip is on a locked track.
+
+**Fix:** To make the clip longer than its neighbor allows, move or trim the neighbor first, or use a ripple trim on the timeline. Type times as `mm:ss:ff` (for example `0:03:10`), as a frame number, or as `+30`, `-15` or `+2.`. See [Type a clip time](editing-properties.md#type-a-clip-time) and [Know where a trim stops](trimming.md#know-where-a-trim-stops).
+
+### Quick actions are dimmed
+
+**Symptom:** Buttons at the top of **Edit Properties** are dimmed, and clicking them does nothing.
+
+**Cause:** One of these:
+- The button belongs to a feature of a later version: the fades, freeze frame, punch zoom, the speed buttons, mute, presets and transitions. Its tooltip names the feature.
+- No selected clip can take it: **Fit in frame**, **Fill frame**, **Center in frame**, the flips and **Reset transform** need a video or image clip, and an audio clip has no picture.
+- The clips are on a locked track.
+
+**Fix:** Select a video or image clip, or unlock its track. See [Use the quick actions](editing-properties.md#use-the-quick-actions).
+
+### There is no Transform section
+
+**Symptom:** **Edit Properties** shows the **Clip** section, but no **Transform** or **Opacity** section.
+
+**Cause:** Only audio clips are selected: they have no picture to place. <kbd>Alt</kbd>+click on the sound of a video, or a click on it with **Linked selection** off, selects the sound alone.
+
+**Fix:** Click the video clip, or its picture in the preview. If a section shows only its header, it is folded: click the header to open it. See [Find your way around the panel](editing-properties.md#find-your-way-around-the-panel).
+
+### Ctrl+D copied a video without its sound
+
+**Symptom:** After <kbd>Ctrl</kbd>+<kbd>D</kbd> or **Duplicate**, the copy of a video has no sound clip under it, or only one of several selected clips was copied.
+
+**Cause:** Duplicate copies one clip: the one you clicked last. Its linked sound and the other selected clips are not copied.
+
+**Fix:** Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>. Select the video with its sound (a plain click), hold <kbd>Alt</kbd> and drag it to where the copy should go: copies of linked clips are linked to each other. See [Duplicate clips](timeline.md#duplicate-clips).
+
+### Pictures got smaller after a resolution change
+
+**Symptom:** After you chose another **Resolution** in the **Project** section, the pictures are smaller (or larger), and bands of the background show around them.
+
+**Cause:** A new resolution scales the layout with the frame: each picture grows or shrinks by the smaller of the two size changes, so a picture that fit inside the old frame still fits inside the new one.
+
+**Fix:** Select the clips and click **Fill frame** to cover the new frame, or **Fit in frame** to fit it. To go back to the old resolution, press <kbd>Ctrl</kbd>+<kbd>Z</kbd>. See [What a new resolution does to your clips](projects-and-saving.md#what-a-new-resolution-does-to-your-clips).
+
+### The background went back to its old color
+
+**Symptom:** While you dragged in the color picker, the preview showed the new background, but then the old color came back and the picker closed.
+
+**Cause:** <kbd>Esc</kbd> was pressed before you released the mouse button. That cancels the drag.
+
+**Fix:** Open the picker again with the **Background** swatch and release the mouse button where you want the color. Each released drag is one step in the history. See [Pick a color](editing-properties.md#pick-a-color).
+
 ## Known limitations
 
 The current version cannot do these things yet. Each one is available in a later version.
 
 - **Sound:** no sound while you scrub, step frames, play backward or shuttle faster than 1x. Changing the volume of a clip, fades and audio effects are not available.
-- **Editing clips:** clips can't be cut, copied or pasted (the **Cut**, **Copy** and **Paste** rows of the clip menu, and the **Copy**, **Paste** and **Duplicate** rows of the preview's layer menu, are dimmed).
+- **Editing clips:** clips can't be cut, copied or pasted (the **Cut**, **Copy** and **Paste** rows of the clip menu, and the **Copy**, **Paste** and **Duplicate** rows of the preview's layer menu, are dimmed). <kbd>Ctrl</kbd>+<kbd>D</kbd> duplicates one clip at a time, without its linked sound.
 - **Markers:** markers belong to the timeline; markers inside clips are not available. Markers and the in/out range don't show on the scrollbars.
 - **Menus:** only clips, gaps, track headers, the ruler, media cards and pictures in the preview have a right-click menu, with a first set of rows. Menu rows can't be chosen with the arrow keys.
 - **Speed and edit points:** a clip's speed changes only with **Rate stretch**; typing an exact speed is not available. A selected cut (edit point) only marks the cut; transitions are not available.
-- **Tracks:** track headers have room for names of about 9 characters; longer names are shortened. Groups are not marked on the timeline. In the **Track** section of **Edit Properties**, several selected tracks show the first track's settings, with no sign of mixed values.
-- **Preview:** pictures can't be cropped, flipped or fitted with one click, and position, scale and rotation can't be typed in. A change to a picture applies to the whole clip; changes over time (keyframes) are not available. An SVG image that covers the whole frame doesn't get sharper when you zoom in. The **Zoom**, **Preview quality** and **Overlays** menus can't be used with the arrow keys.
-- **Fit only:** inserted clips fit the frame with bands; one-click Fill is not available (drag a corner handle in the preview instead). Changing the project resolution does not refit existing clips; **Reset transform** in the preview's layer menu refits the selected ones.
+- **Tracks:** track headers have room for names of about 9 characters; longer names are shortened. Groups are not marked on the timeline.
+- **Preview:** pictures can't be cropped. A change to a picture applies to the whole clip; changes over time (keyframes) are not available. An SVG image that covers the whole frame doesn't get sharper when you zoom in. The **Zoom**, **Preview quality** and **Overlays** menus can't be used with the arrow keys.
+- **Edit Properties:** the crop, speed, audio, text, animation and transition sections are not available, nor are the dimmed quick actions and the **Still duration**, **Transition** and **Cache** rows of the **Project** section. A new resolution always scales the layout; keeping the layout as it is, is not available.
 - **Animated GIF and WebP files** show as still images (their first frame), in the preview and in their clips' thumbnails.
 - **Media that cannot be decoded, or whose file is missing,** shows nothing in the preview, with no placeholder.
 - **Removing media** that a clip uses is not possible.
@@ -1026,6 +1112,7 @@ The current version cannot do these things yet. Each one is available in a later
 - [Preview and playback](preview-and-playback.md)
 - [Arranging layers in the preview](arranging-layers-in-the-preview.md)
 - [Snapping and smart guides in the preview](snapping-and-smart-guides.md)
+- [Editing properties](editing-properties.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 24, 2026-10-16</sub>
+<sub>Last updated: Batch 25, 2026-10-16</sub>

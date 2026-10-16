@@ -172,9 +172,12 @@ Good to know:
 - **Rotating** snaps only with <kbd>Shift</kbd>, to every multiple of 45° within 3° of it. See [Rotate a layer](arranging-layers-in-the-preview.md#rotate-a-layer).
 - **Dragging the anchor point** moves it freely.
 - **Arrow-key nudges** move by exactly 1 or 10 pixels.
+- **Values in Edit Properties**, typed or dragged on a field's label, land exactly where you set them. See [Place a picture with exact values](editing-properties.md#place-a-picture-with-exact-values).
+- **Fit**, **Fill** and **Center** place pictures relative to the frame; they don't line up with other pictures.
 
 ## Related pages
 - [Arranging layers in the preview](arranging-layers-in-the-preview.md)
+- [Editing properties](editing-properties.md)
 - [Preview zoom, overlays and fullscreen](preview-zoom-overlays-fullscreen.md)
 - [Preview and playback](preview-and-playback.md)
 - [Timeline](timeline.md)
@@ -182,4 +185,4 @@ Good to know:
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 23, 2026-10-16</sub>
+<sub>Last updated: Batch 25, 2026-10-16</sub>

@@ -31,7 +31,7 @@ A clip has two parts:
 
 A video with sound gives you both: thumbnails in its video clip and the waveform in its sound clip on the audio track.
 
-Clips of a track you don't see or hear (muted, hidden, or left out by a solo) are drawn faded, thumbnails and waveforms included. Clips on a locked track are covered with diagonal lines. See [Tracks](tracks.md).
+Clips of a track you don't see or hear (muted, hidden, or left out by a solo) are drawn faded, thumbnails and waveforms included. Clips on a locked track are covered with diagonal lines. See [Tracks](tracks.md). A clip you turned off with **Disable** is drawn faded and covered with diagonal lines; see [Turn a clip off](editing-properties.md#turn-a-clip-off).
 
 ## Show thumbnails and waveforms
 
@@ -125,4 +125,4 @@ A clip with a label color shows that color in its label bar above the thumbnails
 - [Proxies](proxies.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 24, 2026-10-16</sub>
+<sub>Last updated: Batch 25, 2026-10-16</sub>

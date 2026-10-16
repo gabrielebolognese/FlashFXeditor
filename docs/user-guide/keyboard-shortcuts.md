@@ -30,6 +30,7 @@ This page lists every keyboard shortcut that works in the current version of Sho
 >   22. Click the preview picture and press <kbd>Ctrl</kbd>+<kbd>2</kbd>: the preview zooms to 200%. Press <kbd>Ctrl</kbd>+<kbd>0</kbd>: the whole frame is back. Press <kbd>F</kbd>: the preview fills the window; press <kbd>Esc</kbd> to return.
 >   23. Click a logo in the preview: it gets a gold box with handles. Quickly press <kbd>→</kbd> three times and <kbd>Shift</kbd>+<kbd>↑</kbd> once: it moves 3 pixels right and 10 pixels up. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> once: it is back. Click beside the frame in the preview and press <kbd>→</kbd>: the playhead steps one frame.
 >   24. Drag the logo toward the middle of the frame: it snaps to the center with gold lines. Hold <kbd>S</kbd> while you keep dragging: it moves freely. Release the mouse button. Click the logo, rest the pointer on the preview and hold <kbd>Alt</kbd>: gold distances to the frame edges appear.
+>   25. With the logo selected, click in the **X** field of **Edit Properties** and press <kbd>↑</kbd> three times and <kbd>Shift</kbd>+<kbd>↑</kbd> once: the logo moves 13 pixels to the right. Press <kbd>Esc</kbd>, click the logo's clip on the timeline and press <kbd>Ctrl</kbd>+<kbd>D</kbd>: a copy appears right after it.
 
 ## In this page
 - [How shortcuts work](#how-shortcuts-work)
@@ -41,6 +42,7 @@ This page lists every keyboard shortcut that works in the current version of Sho
 - [Markers and in/out points](#markers-and-inout-points)
 - [Tracks, links and groups](#tracks-links-and-groups)
 - [Tools](#tools)
+- [Edit Properties](#edit-properties)
 - [Audio](#audio)
 - [Media panel](#media-panel)
 - [Project and history](#project-and-history)
@@ -293,6 +295,32 @@ The tool decides what a drag on a clip does. The active tool's button in the tim
 
 The tool stays active until you choose another one, and each project remembers it. See [Pan the view](timeline.md#pan-the-view) and [Pan the preview](preview-zoom-overlays-fullscreen.md#pan-the-preview) for the **Hand** tool.
 
+## Edit Properties
+
+See [Editing properties](editing-properties.md).
+
+| Action | Windows | macOS | Works in |
+| --- | --- | --- | --- |
+| Duplicate the clip you clicked last, right after itself on its track (same as **Duplicate** in the quick actions) | <kbd>Ctrl</kbd>+<kbd>D</kbd> | <kbd>⌘</kbd>+<kbd>D</kbd> | Timeline, Preview |
+| Add or subtract 1 | <kbd>↑</kbd> or <kbd>↓</kbd> | <kbd>↑</kbd> or <kbd>↓</kbd> | A number field |
+| Add or subtract 10 | <kbd>Shift</kbd>+<kbd>↑</kbd> or <kbd>Shift</kbd>+<kbd>↓</kbd> | <kbd>⇧</kbd>+<kbd>↑</kbd> or <kbd>⇧</kbd>+<kbd>↓</kbd> | A number field |
+| Apply what you typed | <kbd>Enter</kbd> | <kbd>Return</kbd> | A field |
+| Keep the old value and leave the field | <kbd>Escape</kbd> | <kbd>Esc</kbd> | A field |
+| Go to the next or previous field | <kbd>Tab</kbd> or <kbd>Shift</kbd>+<kbd>Tab</kbd> | <kbd>Tab</kbd> or <kbd>⇧</kbd>+<kbd>Tab</kbd> | Edit Properties |
+
+| Mouse action | Windows | macOS |
+| --- | --- | --- |
+| Change a value by dragging (1 per pixel; 2 in the project's **W** and **H**) | Drag the field's label (such as **X**) left or right | Same |
+| Change it 10 times faster | <kbd>Shift</kbd>+drag the label | <kbd>⇧</kbd>+drag the label |
+| Change it 10 times slower | <kbd>Alt</kbd>+drag the label | <kbd>⌥</kbd>+drag the label |
+| Cancel the drag | <kbd>Esc</kbd> before you release | <kbd>Esc</kbd> |
+| Type in the field | Click the field, or click its label without dragging | Same |
+| Fold or open a section | Click its header | Click its header |
+
+- <kbd>Ctrl</kbd>+<kbd>D</kbd> copies only one clip, without its linked sound. In the Preview panel the copy goes later on the timeline, not at the playhead. While the Edit Properties or Media panel is active, the browser gets the key; see [Keys the browser keeps](#keys-the-browser-keeps).
+- Hold <kbd>↑</kbd> or <kbd>↓</kbd> to keep going. In the **Transform** and **Opacity** sections, presses less than 0.3 seconds apart are one undo step.
+- Edit Properties has no other keys of its own. While it is active and no field has the keyboard, the all-panels shortcuts work there, for example <kbd>Space</kbd> to play.
+
 ## Audio
 
 The **Master volume** knob in the transport bar under the preview takes these keys while it has the keyboard focus. Clicking or dragging the knob does not focus it: press <kbd>Tab</kbd> until it is focused. While it has the focus, these keys change the listening volume instead of doing their usual action. See [Audio](audio.md#set-the-listening-volume).
@@ -367,7 +395,7 @@ See [Projects and saving](projects-and-saving.md).
 
 | Action | Windows | macOS |
 | --- | --- | --- |
-| Confirm a field (project name, media name, clip name, marker name, timecode, numbers) | <kbd>Enter</kbd> | <kbd>Return</kbd> |
+| Confirm a field (project name, media name, clip name, marker name, timecode, clip times, numbers, hex colors) | <kbd>Enter</kbd> | <kbd>Return</kbd> |
 | Cancel the change and leave the field | <kbd>Escape</kbd> | <kbd>Esc</kbd> |
 | Close a dialog or a menu | <kbd>Escape</kbd> | <kbd>Esc</kbd> |
 
@@ -439,6 +467,7 @@ In a normal browser tab, the browser keeps some shortcuts for itself, and a web 
 | <kbd>Ctrl</kbd>+<kbd>G</kbd> and <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>G</kbd> (<kbd>⌘</kbd>+<kbd>G</kbd>, <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>G</kbd>), outside the Timeline panel | Search the page. In the Timeline panel the editor keeps them for grouping clips. |
 | <kbd>Ctrl</kbd>+<kbd>0</kbd> (<kbd>⌘</kbd>+<kbd>0</kbd>), outside the Preview panel | Resets the browser's page zoom. In the Preview panel the editor keeps it for **Fit**. |
 | <kbd>Ctrl</kbd>+<kbd>1</kbd> and <kbd>Ctrl</kbd>+<kbd>2</kbd> (<kbd>⌘</kbd>+<kbd>1</kbd>, <kbd>⌘</kbd>+<kbd>2</kbd>), outside the Preview panel | Switch to your first or second browser tab. In the Preview panel the editor keeps them for zooming the preview to 100% and 200%. |
+| <kbd>Ctrl</kbd>+<kbd>D</kbd> (<kbd>⌘</kbd>+<kbd>D</kbd>), outside the Timeline and Preview panels | Bookmarks the page. In the Timeline and Preview panels the editor keeps it for **Duplicate**. |
 
 Because of this, <kbd>Ctrl</kbd>+<kbd>N</kbd> opens a new browser window instead of a new project. To create a project, click **New project** on the start screen.
 
@@ -450,7 +479,7 @@ While you type in a text field, or while a dialog is open, the editor leaves <kb
 
 Some buttons already show a shortcut in their tooltip although the button is disabled, for example **Freeze frame** in the timeline toolbar and **Export** in the app bar. These shortcuts start working when their feature is available in a later version; until then the keys do nothing. In the current version this also applies to:
 
-- <kbd>T</kbd> and <kbd>Shift</kbd>+<kbd>T</kbd> (titles and subtitles), <kbd>Shift</kbd>+<kbd>F</kbd> (freeze frame), <kbd>Shift</kbd>+<kbd>Z</kbd> (punch zoom), <kbd>Ctrl</kbd>+<kbd>D</kbd> (duplicate), <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd> (default transition), <kbd>Ctrl</kbd>+<kbd>E</kbd> (export) and <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> (command palette).
+- <kbd>T</kbd> and <kbd>Shift</kbd>+<kbd>T</kbd> (titles and subtitles), <kbd>Shift</kbd>+<kbd>F</kbd> (freeze frame), <kbd>Shift</kbd>+<kbd>Z</kbd> (punch zoom), <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd> (default transition), <kbd>Ctrl</kbd>+<kbd>E</kbd> (export) and <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> (command palette).
 - <kbd>Ctrl</kbd>+<kbd>X</kbd>, <kbd>Ctrl</kbd>+<kbd>C</kbd> and <kbd>Ctrl</kbd>+<kbd>V</kbd> in the Timeline and Preview panels (cutting, copying and pasting clips; the **Cut**, **Copy** and **Paste** rows of the clip menu, and the **Copy**, **Paste** and **Duplicate** rows of the preview's layer menu, are dimmed).
 
 ## Related pages
@@ -458,6 +487,7 @@ Some buttons already show a shortcut in their tooltip although the button is dis
 - [Preview zoom, overlays and fullscreen](preview-zoom-overlays-fullscreen.md)
 - [Arranging layers in the preview](arranging-layers-in-the-preview.md)
 - [Snapping and smart guides in the preview](snapping-and-smart-guides.md)
+- [Editing properties](editing-properties.md)
 - [Timeline](timeline.md)
 - [Trimming clips](trimming.md)
 - [Splitting, deleting and closing gaps](splitting-and-deleting.md)
@@ -471,4 +501,4 @@ Some buttons already show a shortcut in their tooltip although the button is dis
 - [Projects and saving](projects-and-saving.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 24, 2026-10-16</sub>
+<sub>Last updated: Batch 25, 2026-10-16</sub>

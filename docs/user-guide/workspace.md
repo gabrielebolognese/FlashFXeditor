@@ -67,12 +67,14 @@ The tab, view and sort order you choose are remembered with the project.
 
 ### Edit Properties panel
 
-Top middle. It shows the settings of what is selected.
+Top middle. It shows the settings of what is selected, and lets you type or drag exact values. See [Editing properties](editing-properties.md).
 
 - With nothing selected, it shows the **Project** section: name, resolution, frame rate, background, autosave and the proxy settings (**Proxies**, **Proxy for**, **Proxy size**). See [Change project settings](projects-and-saving.md#change-project-settings) and [Change the proxy settings](proxies.md#change-the-proxy-settings).
-- With clips selected, it shows a placeholder: clip properties are available in a later version.
+- With clips selected, it shows a row of quick actions (**Fit in frame**, **Fill frame**, **Center in frame**, **Flip horizontal**, **Flip vertical**, **Reset transform**, **Duplicate** and **Delete**, plus dimmed buttons of later versions) and the **Clip** section: name, color, enabled, start, end, duration, source in and out. For video and image clips it adds **Transform** (position, scale, rotation, anchor, flip) and **Opacity**. See [Editing properties](editing-properties.md).
 - With tracks selected (click a track header), it shows the **Track** section: name, kind, height and the **Target**, **Lock**, **Mute**, **Solo** or **Hide** switches. See [Change track settings in Edit Properties](tracks.md#change-track-settings-in-edit-properties).
 - With a marker selected (click it in the ruler), it shows the **Marker** section: label, color, time and **Delete marker**. See [Edit a marker in Edit Properties](markers-and-in-out-points.md#edit-a-marker-in-edit-properties).
+
+With several clips or tracks selected, the panel header shows how many, for example **3 clips**, and a field whose values differ shows `--`. Click a section header to fold the section away; the project remembers folded sections.
 
 To get back to the **Project** section, click an empty area of the timeline tracks, or the preview beside the frame where no layer is, so that nothing is selected. A selected marker stays selected when you do that: click a clip or a track header first, then the empty area.
 
@@ -192,6 +194,9 @@ Examples:
 | <kbd>,</kbd> / <kbd>.</kbd> | Nothing | Nothing | Inserts / overwrites the selected media at the playhead |
 | <kbd>X</kbd>, <kbd>;</kbd>, <kbd>'</kbd> | Marks the clip under the playhead, **Lift**, **Extract** | Nothing | Nothing |
 | <kbd>Ctrl</kbd>+<kbd>L</kbd> / <kbd>Ctrl</kbd>+<kbd>G</kbd> | Links or unlinks / groups the selected clips | Nothing (the browser gets them) | Nothing (the browser gets them) |
+| <kbd>Ctrl</kbd>+<kbd>D</kbd> | Duplicates the clip you clicked last, right after itself | Same | The browser gets it (bookmark) |
+
+With **Edit Properties** clicked last, only the shortcuts for the whole editor work, and the browser gets <kbd>Ctrl</kbd>+<kbd>D</kbd> as in the Media panel. While a field there has the keyboard, the keys go to the field: <kbd>↑</kbd> and <kbd>↓</kbd> change a number. See [Type a value](editing-properties.md#type-a-value).
 
 The pointer can take a few keys away from the panel you clicked: while it is over the picture of a media card, <kbd>,</kbd> and <kbd>.</kbd> place that card, and over a video or audio card <kbd>I</kbd>, <kbd>O</kbd> and <kbd>Alt</kbd>+<kbd>X</kbd> mark a part of it instead of the timeline. See [Use only part of a media item](adding-media-to-the-timeline.md#use-only-part-of-a-media-item).
 
@@ -223,8 +228,9 @@ To jump to a time, type it into the timecode field of the timeline toolbar, or c
 - [Preview zoom, overlays and fullscreen](preview-zoom-overlays-fullscreen.md)
 - [Arranging layers in the preview](arranging-layers-in-the-preview.md)
 - [Snapping and smart guides in the preview](snapping-and-smart-guides.md)
+- [Editing properties](editing-properties.md)
 - [Proxies](proxies.md)
 - [Audio](audio.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 24, 2026-10-16</sub>
+<sub>Last updated: Batch 25, 2026-10-16</sub>

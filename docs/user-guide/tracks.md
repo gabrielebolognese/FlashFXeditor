@@ -223,7 +223,14 @@ Click a track header. The **Edit Properties** panel shows the **Track** section:
 | **Solo** (audio tracks) | The same as **S** in the header. |
 | **Hide** (video tracks) | The same as the eye in the header. |
 
-With several tracks selected, the section is titled, for example, **2 tracks**, and has no **Name** row. It shows the settings of the first track you selected, and a change applies to every selected track as one step in the history (named, for example, **Mute tracks**).
+With several tracks selected, the panel header shows how many, for example **2 tracks**, and the section has no **Name** row.
+
+- A setting the tracks don't share shows `--`: **Kind** reads `--` for a mix of video and audio tracks, and **Height** shows `--` until you pick a height for all of them.
+- A switch the tracks don't share sits halfway. Click it to turn it on for every selected track.
+- **Solo** changes the selected audio tracks, and **Hide** the selected video tracks.
+- A change applies to every selected track as one step in the history (named, for example, **Mute tracks**). Height changes are not steps in the history.
+
+See [Edit several clips at once](editing-properties.md#edit-several-clips-at-once) for how fields work with several items selected.
 
 ## Related pages
 - [Clip thumbnails, waveforms and badges](clip-thumbnails-and-waveforms.md)
@@ -237,8 +244,9 @@ With several tracks selected, the section is titled, for example, **2 tracks**, 
 - [Preview and playback](preview-and-playback.md)
 - [Arranging layers in the preview](arranging-layers-in-the-preview.md)
 - [Snapping and smart guides in the preview](snapping-and-smart-guides.md)
+- [Editing properties](editing-properties.md)
 - [The workspace](workspace.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 23, 2026-10-16</sub>
+<sub>Last updated: Batch 25, 2026-10-16</sub>

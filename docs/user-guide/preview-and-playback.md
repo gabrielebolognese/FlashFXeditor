@@ -37,7 +37,7 @@ What you see in the Preview panel:
 
 - **The project frame.** It has the size of your project: 1080×1920 (9:16) by default, or the **Resolution** you chose in the **Project** section of the **Edit Properties** panel (shown when no clip is selected). A thin line marks its edge.
 - **The area around the frame.** It belongs to the panel, not to your video. It never appears in an exported frame.
-- **The background.** Wherever no clip covers the frame, you see the project background color: black by default. Change it in the **Background** field of the same **Project** section (a hex color such as `#000000`).
+- **The background.** Wherever no clip covers the frame, you see the project background color: black by default. Change it in the **Background** field of the same **Project** section: type a hex color such as `#000000`, or click its swatch to pick a color. See [Pick a color](editing-properties.md#pick-a-color).
 - **Empty frames.** In a gap between clips, past the end of the last clip, or in a project with no clips, the frame shows only the background.
 - **Outlines and handles.** A selected clip under the playhead has a gold outline with eight handles in the preview, and the picture under the pointer gets a thin, darker gold outline. They are only on your screen, never in an exported frame. See [Arranging layers in the preview](arranging-layers-in-the-preview.md).
 
@@ -47,6 +47,7 @@ When several video tracks have a clip at the playhead, the preview draws the bot
 
 - To change which picture is on top, drag a track header up or down. See [Reorder tracks](tracks.md#reorder-tracks). To move one clip above or below the others, right-click its picture in the preview and choose **Bring forward** or **Send backward**. See [Change which layer is on top](arranging-layers-in-the-preview.md#change-which-layer-is-on-top).
 - A video track that is muted (**M**) or hidden (the eye) is left out of the preview. See [Mute, solo and hide tracks](tracks.md#mute-solo-and-hide-tracks).
+- A clip you turned off with **Disable** is left out too. See [Turn a clip off](editing-properties.md#turn-a-clip-off).
 
 > **Note:** Every clip you add by double-clicking goes to the targeted video track nearest the divider (**V1** in a new project). To stack clips, drag one up to **V2** or higher. See [Move clips to another track](timeline.md#move-clips-to-another-track).
 
@@ -71,9 +72,9 @@ When you add a video or an image to the timeline, the editor scales it to fit in
 
 The bands show the project background color.
 
-To change the fit afterwards, click the picture in the preview and drag it, or drag its handles to resize it. To fill the frame without bands, drag a corner handle until the picture covers the frame. See [Arranging layers in the preview](arranging-layers-in-the-preview.md).
+To change the fit afterwards, click the picture in the preview and drag it, or drag its handles to resize it. See [Arranging layers in the preview](arranging-layers-in-the-preview.md). To fill the frame without bands, select the clip and click **Fill frame** in the quick actions of **Edit Properties**, or right-click the picture and choose **Fill**. To type an exact position and size, use the **Transform** section. See [Fit, fill or center a picture](editing-properties.md#fit-fill-or-center-a-picture).
 
-> **Note:** The fit is set when you add the clip. If you change the project resolution later, existing clips keep their size and position. To fit a clip to the new frame, right-click its picture in the preview and choose **Reset transform**. One-click Fill (no bands) is available in a later version.
+> **Note:** The fit is set when you add the clip. If you change the project resolution later, the pictures scale with the frame: a picture that fit inside the old frame fits inside the new one. See [What a new resolution does to your clips](projects-and-saving.md#what-a-new-resolution-does-to-your-clips).
 
 ## Zoom in, add overlays and go fullscreen
 
@@ -301,6 +302,7 @@ The preview draws with your graphics card (GPU) and decodes video with the brows
 - **Zoomed in above 100%:** with the default **Auto** quality, playback and scrubbing show the project's resolution (or the proxy), and the full detail of your media follows 0.3 seconds after you stop. **Full** keeps full detail while playing, which is heavier. **1/2** and **1/4** draw playback at half or a quarter of the resolution, which is lighter at every zoom. See [Choose the preview quality](preview-zoom-overlays-fullscreen.md#choose-the-preview-quality).
 - **Fullscreen:** on the development laptop, a 60 fps 1080×1920 project played in the fullscreen preview with at most about 0.5% dropped frames. The first playback after the page loads can drop many more frames while the editor warms up, especially with a large preview; the following playbacks are smoother.
 - **Dragging layers:** moving a layer in the preview follows the pointer at the full rate of a 60 Hz screen, also while it snaps and shows smart guides. On the development laptop, frames during a snapped drag took about 17 milliseconds on average. See [Snapping and smart guides in the preview](snapping-and-smart-guides.md).
+- **Dragging a value in Edit Properties:** when you drag the label of a field such as **X** or **Opacity**, the preview follows at the full rate of a 60 Hz screen. On the development laptop, frames took about 17 milliseconds on average during such a drag, with none over 20 milliseconds. See [Drag a value](editing-properties.md#drag-a-value).
 - **Thumbnails:** the editor makes the timeline's thumbnails only while you don't play, scrub or drag, and lets the preview's frames go first, so they don't slow the preview down. See [Know when thumbnails and waveforms appear](clip-thumbnails-and-waveforms.md#know-when-thumbnails-and-waveforms-appear).
 - **Proxies:** proxies are made one at a time in the background and pause while you play or drag on the timeline, so they don't slow the preview down. On the development laptop, the editor kept drawing at the full rate of a 60 Hz screen while a proxy was being made. See [Follow a proxy while it is made](proxies.md#follow-a-proxy-while-it-is-made).
 
@@ -310,6 +312,7 @@ If playback stutters, see [Troubleshooting](troubleshooting.md).
 - [Preview zoom, overlays and fullscreen](preview-zoom-overlays-fullscreen.md)
 - [Arranging layers in the preview](arranging-layers-in-the-preview.md)
 - [Snapping and smart guides in the preview](snapping-and-smart-guides.md)
+- [Editing properties](editing-properties.md)
 - [Proxies](proxies.md)
 - [Audio](audio.md)
 - [Timeline](timeline.md)
@@ -323,4 +326,4 @@ If playback stutters, see [Troubleshooting](troubleshooting.md).
 - [Workspace](workspace.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 24, 2026-10-16</sub>
+<sub>Last updated: Batch 25, 2026-10-16</sub>

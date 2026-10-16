@@ -138,6 +138,7 @@ Each audio track header has, among its toggles at the right of the track name, *
 - Mute and solo are saved with the project.
 - The meter follows them: a track you do not hear is not counted in the meter.
 - Clips on a track you do not hear are drawn faded on the timeline.
+- A single clip you turned off with **Disable** is silent too, and drawn faded with diagonal lines. See [Turn a clip off](editing-properties.md#turn-a-clip-off).
 - To hear only one track, you can also right-click its header and choose **Mute all others**: the other audio tracks are muted and this one is unmuted, in one step.
 - The **Mute** and **Solo** switches in the **Track** section of **Edit Properties** do the same for every selected track. See [Change track settings in Edit Properties](tracks.md#change-track-settings-in-edit-properties).
 
@@ -213,4 +214,4 @@ After you import an audio file or a video with sound, the editor analyzes its so
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 24, 2026-10-16</sub>
+<sub>Last updated: Batch 25, 2026-10-16</sub>
