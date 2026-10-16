@@ -178,6 +178,26 @@ describe("ProxyJobs", () => {
     expect(t.jobs).toHaveLength(2);
   });
 
+  it("Generate proxy leaves a ready proxy alone and makes the others", async () => {
+    const t = setup({ media: [video("a", { addedAt: "2026-01-01T00:00:01.000Z" }), video("b", { addedAt: "2026-01-01T00:00:02.000Z" })], settings: { auto: false } });
+    await t.flush();
+    t.proxies.generate(["a"]);
+    await t.flush();
+    t.jobs[0]?.finish();
+    await t.flush();
+    expect(t.proxy("a")?.status).toBe("ready");
+    t.store.amend(setMediaProxy("b", { relPath: "cache/proxies/b.mp4", width: 960, height: 540, status: "none" }));
+    expect(t.proxies.generate(["a", "b"])).toBe(true);
+    expect(t.proxy("a")?.status).toBe("ready");
+    expect(t.proxy("b")?.status).toBe("pending");
+    await t.flush();
+    expect(t.jobs.map((job) => job.params.mediaId)).toEqual(["a", "b"]);
+    t.jobs[1]?.finish();
+    await t.flush();
+    expect(t.proxy("b")?.status).toBe("ready");
+    expect(t.jobs).toHaveLength(2);
+  });
+
   it("removes a ready proxy's file", async () => {
     const t = setup({ media: [video("a")] });
     await t.flush();
