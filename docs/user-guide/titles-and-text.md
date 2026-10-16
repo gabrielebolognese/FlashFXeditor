@@ -1,6 +1,6 @@
 # Titles and text
 
-Text clips put words on your video: a hook at the start, a title over a shot, a subtitle in the lower third. Press <kbd>T</kbd> and type: the title appears at the playhead and you write it right in the preview. Then style it in the **Text** section of **Edit Properties**, with a font that comes with the editor or one from your computer, an outline, a shadow and a background box.
+Text clips put words on your video: a hook at the start, a title over a shot, a subtitle in the lower third. Press <kbd>T</kbd> and type: the title appears at the playhead and you write it right in the preview. Then style it in the **Text** section of **Edit Properties**, with a font that comes with the editor or one from your computer, an outline, a shadow and a background box. To reuse a style, save it as a preset; see [Text presets](text-presets.md).
 
 > **Video placeholder: Titles and text in one minute**
 > - File: `videos/titles-and-text/overview.mp4` (not recorded yet)
@@ -38,7 +38,7 @@ Text clips put words on your video: a hook at the start, a title over a shot, a 
 3. The word "Title" appears in the middle of the preview, selected (a gold highlight behind the letters). Type your text: it replaces the selection.
 4. Press <kbd>Esc</kbd> or <kbd>Ctrl</kbd>+<kbd>Enter</kbd> to finish.
 
-That is the whole workflow: one key, your words, one key. The new title is white Inter ExtraBold at 120 pixels, centered, with a soft shadow. It lasts 3 seconds, or until the end of the video clip under the playhead; see [Where a new title goes](#where-a-new-title-goes).
+That is the whole workflow: one key, your words, one key. The new title has the look of the default title preset: at first the **Title** preset, white Inter ExtraBold at 120 pixels, centered, with a soft shadow. To start your titles in another look, choose another default; see [Choose the presets for T and Shift+T](text-presets.md#choose-the-presets-for-t-and-shiftt). The title lasts 3 seconds, or until the end of the video clip under the playhead; see [Where a new title goes](#where-a-new-title-goes).
 
 - <kbd>T</kbd> works in every panel, except while you type in a text field, while a dialog is open, and while you edit a text (there it types a "t").
 - If the video is playing, it pauses, so the playhead stays on the new title while you type.
@@ -53,13 +53,13 @@ That is the whole workflow: one key, your words, one key. The new title is white
 3. The word "Subtitle" appears in the lower third of the preview, selected. Type your text.
 4. Press <kbd>Esc</kbd> or <kbd>Ctrl</kbd>+<kbd>Enter</kbd> to finish.
 
-A subtitle is made to be read over the picture:
+A subtitle is made to be read over the picture. It has the look of the default subtitle preset, at first the **Subtitle** preset:
 
 - White Inter SemiBold at 56 pixels, with a dark rounded box behind each line.
-- A fixed width of 900 pixels (in a 1080-pixel-wide frame): long sentences wrap onto more lines.
+- A fixed width of 900 pixels (in a 1080×1920 frame): long sentences wrap onto more lines.
 - Its bottom edge sits at 78% of the frame height, and it is anchored at the bottom: more lines grow upwards, and the last line stays in place.
 
-A subtitle always goes to the lower third, also when another text clip is selected.
+A subtitle always goes to the lower third, also when another text clip is selected, unless its preset places text itself (**Apply position**; see [Place text with a preset (Apply position)](text-presets.md#place-text-with-a-preset-apply-position)).
 
 > **Tip:** On a 9:16 video, the app buttons and the caption of Reels, TikTok and Shorts cover part of the lower third. Open **Overlays** in the preview header and pick your platform to see that area, then drag the subtitle up if it is covered. See [Show a platform safe zone](preview-zoom-overlays-fullscreen.md#show-a-platform-safe-zone).
 
@@ -72,10 +72,10 @@ Titles and subtitles follow the same rules:
 | Start | At the playhead. |
 | Length | Until the end of the video clip under the playhead, so the text covers the rest of that shot. When no video clip is under the playhead, 3 seconds. The video clip counted is the one on the highest shown video track that has a video (not an image or a text) at the playhead. |
 | Track | The top video track, when it is free for the whole length, unlocked and shown. Otherwise a new video track at the top, so the text stays above the picture. |
-| Place in the frame | A title: in the middle of the frame, or 40 pixels below the selected text clip. A subtitle: its bottom edge at 78% of the frame height, centered. |
+| Place in the frame | A title: in the middle of the frame, or 40 pixels below the selected text clip. A subtitle: its bottom edge at 78% of the frame height, centered. When the default preset has **Apply position** on: the preset's position. |
 | Name | The clip is named after the first line of its text. See [Text clips on the timeline](#text-clips-on-the-timeline). |
 
-- In a project of another size, the font size and the other pixel values of a new title scale with the frame. For example, in a 720×1280 project a title starts at 80 pixels and a subtitle at about 37 pixels, with a 600-pixel box.
+- In a project of another size, the font size and the other pixel values of a new title scale with the shorter side of the frame. For example, in a 720×1280 project a title starts at 80 pixels and a subtitle at about 37 pixels, with a 600-pixel box; a 1920×1080 project uses the same sizes as 1080×1920. See [Presets in projects of other sizes](text-presets.md#presets-in-projects-of-other-sizes).
 - After that, a text clip is like any other clip: move it, trim it, split it or delete it on the timeline. It has no media behind it, so you can make it as long as you like. See [Trim a clip](trimming.md#trim-a-clip).
 - Adding a title is one step in the history (**Add title** or **Add subtitle**), and the text you type is a second one (**Edit text**).
 
@@ -243,6 +243,7 @@ The number fields work like the others in the panel: type a value, or drag the f
 | **Width** | The width of a fixed box. Dimmed while **Box** is **Auto**. | 10 to 8000 px |
 
 - Turning a switch off keeps its values: turn it on again to get the same outline, shadow or box back.
+- To give other texts the same style in one click, save it as a preset with **Save as preset** in the quick actions. See [Save a text style as a preset](text-presets.md#save-a-text-style-as-a-preset).
 - The background box casts no shadow.
 - A font without a real italic, such as Oswald, gets slanted letters when you click **Italic**.
 - Changing the font, the size or another value that changes the size of the text keeps the text's anchor point where it is on the frame.
@@ -385,6 +386,7 @@ Every text change is one step in the history. Hover **Undo** in the app bar to s
 | **Add background**, **Remove background**, **Change background** | **Background** and its values |
 | **Change alignment**, **Change anchor**, **Change letter spacing**, **Change line height**, **Change case** | **Align**, **Anchor**, **Spacing**, **Line height** and **Case** |
 | **Fixed text box**, **Auto size text box**, **Change box width** | **Box** and **Width** |
+| **Save preset "Name"**, **Apply "Name"**, **Add "Name"** | Saving, applying and adding text presets. See [Undo and presets](text-presets.md#undo-and-presets). |
 
 Pressing <kbd>↑</kbd> or <kbd>↓</kbd> in a number field of the **Text** section several times in a row, less than 0.3 seconds apart, is one step.
 
@@ -392,7 +394,6 @@ Pressing <kbd>↑</kbd> or <kbd>↓</kbd> in a number field of the **Text** sect
 
 These parts are available in a later version:
 
-- Text presets: saving a style and applying it in one click, and the **Save as preset** and **Update preset** quick actions (dimmed). The default Title and Subtitle are fixed for now.
 - A setting to always make new titles 3 seconds long, instead of matching the video clip under the playhead.
 - Text animations and captions (the **Captions** tab and **Add caption track**).
 - Snapping while you drag a text's handles.
@@ -400,6 +401,7 @@ These parts are available in a later version:
 - Exporting the video with its text. **Export frame** already includes text; see [Export the current frame](preview-and-playback.md#export-the-current-frame).
 
 ## Related pages
+- [Text presets](text-presets.md)
 - [Editing properties](editing-properties.md)
 - [Arranging layers in the preview](arranging-layers-in-the-preview.md)
 - [Snapping and smart guides in the preview](snapping-and-smart-guides.md)
@@ -409,4 +411,4 @@ These parts are available in a later version:
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 29, 2026-10-16</sub>
+<sub>Last updated: Batch 30, 2026-10-16</sub>

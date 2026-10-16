@@ -33,7 +33,7 @@ When you create a project, the editor fills the folder you picked with these ite
 | `history` | Automatic backups of `project.json`: the newest 20. See [Restore an older version](#restore-an-older-version). |
 | `fonts` | Copies of the fonts from your computer that your text clips use, and `fonts.json`, the list of those copies. Created the first time a text uses a font from your computer. The editor uses these copies when it opens the project, so the text looks the same on a computer without those fonts. See [Fonts travel with the project](titles-and-text.md#fonts-travel-with-the-project). |
 | `exports` | The default place for exported videos. Export is available in a later version. |
-| `presets/text` | Text presets saved with the project. Available in a later version. |
+| `presets/text` | The project's own text presets, one `.json` file per preset: the **Project** list of the **Presets** tab. See [Keep presets for all projects or for one](text-presets.md#keep-presets-for-all-projects-or-for-one). |
 | `project.json.tmp` | Exists only for a moment during each save. If one is left over after a crash, the editor offers to restore it. See [Restore unsaved changes after a crash](#restore-unsaved-changes-after-a-crash). |
 
 > **Important:** Keep the project folder together. Do not rename, move or delete files inside `media` or `fonts`: the project refers to them by name. To move a project, move the whole folder, then open it with **Open project**.
@@ -104,6 +104,7 @@ What you can undo:
 | Values typed or dragged in **Edit Properties**: position, scale, rotation, anchor, crop, opacity and the clip times (one step per value, per drag, or per quick series of arrow presses) | Turning crop mode on or off, the crop units (**px** or **%**) and the crop **Aspect** lock |
 | **Crop to frame** and resetting a crop | |
 | Duplicating a clip with <kbd>Ctrl</kbd>+<kbd>D</kbd> or **Duplicate**, turning clips off and on (**Disable**, **Enable**) | |
+| Applying a text preset, adding a text from a preset, and linking a text to the preset you save it as | Text presets themselves: saving, updating, renaming, duplicating, deleting, importing and syncing presets, favorites, **Apply position** and the default title and subtitle |
 | Adding, moving, renaming, recoloring and deleting markers | Setting, moving and clearing the in and out points, and marking a part of a media item with <kbd>I</kbd> and <kbd>O</kbd> on its card |
 | **Lift** and **Extract** (one step each) | Proxies: **Generate proxy**, **Remove proxy**, a proxy being made or failing, and **Regenerate thumbnails** |
 | Trimming clips: each trim drag and each press of <kbd>Q</kbd>, <kbd>W</kbd> or <kbd>E</kbd> | Choosing a tool (**Select**, **Razor**, **Hand**, **Slip**, **Slide**, **Rate stretch**) |
@@ -125,7 +126,7 @@ When you open a project again, the editor restores your view from the last sessi
 - the timeline zoom and scroll position, also after you pan or use the scrollbars
 - the timecode format: frames (**ff**) or milliseconds (**ms**)
 - the preview zoom and pan, the preview quality, and the safe zone, grid and guides of the **Overlays** menu (see [Preview zoom, overlays and fullscreen](preview-zoom-overlays-fullscreen.md))
-- the media panel tab, view (grid or list) and sort order
+- the media panel tab, view (grid or list) and sort order, and the **Global** or **Project** list of the **Presets** tab
 - whether **Loop playback** is on
 - whether **Snap** is on
 - whether **Linked selection** is on
@@ -186,7 +187,7 @@ A project opens read-only when the editor may read the project folder but not wr
 
 You then see a banner under the app bar: "Read-only: Shorts Editor has no permission to write to this folder, so changes are not saved." with an **Allow editing** button, and the save dot is grey.
 
-In read-only mode you can look at the project and even make changes, but nothing is written to the folder: no saves, no backups, no new proxies, no copies of the fonts your text uses, and your view (playhead, zoom, panel sizes) is not saved with the project. Changes made in read-only mode are lost when you close the tab. Proxies already in the folder are still used; **Generate proxy** and **Remove proxy** show the message **This project is read-only**.
+In read-only mode you can look at the project and even make changes, but nothing is written to the folder: no saves, no backups, no new proxies, no copies of the fonts your text uses, no changes to the project's text presets (new presets go into the **Global** list), and your view (playhead, zoom, panel sizes) is not saved with the project. Changes made in read-only mode are lost when you close the tab. Proxies already in the folder are still used; **Generate proxy** and **Remove proxy** show the message **This project is read-only**.
 
 To start saving:
 
@@ -248,4 +249,4 @@ Choosing to keep the layout as it is when you change the resolution is available
 - [Titles and text](titles-and-text.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 29, 2026-10-16</sub>
+<sub>Last updated: Batch 30, 2026-10-16</sub>

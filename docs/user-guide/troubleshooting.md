@@ -1,6 +1,6 @@
 # Troubleshooting
 
-This page helps you when something does not work as expected: the editor does not start in your browser, the preview stays empty, a folder or a file does not open, a clip drag, a trim, a split, a delete, a timeline tool, a typed timecode, a marker, an in/out range or **Lift** and **Extract** do something you did not expect, media from the Media panel lands somewhere you did not expect, a clip shows no thumbnails, a video gets no proxy or its proxy fails, the preview zoom, overlays or fullscreen behave unexpectedly, a picture in the preview can't be selected, moves unexpectedly, doesn't snap where you expect or gets cropped instead of resized, a value or a crop in **Edit Properties** doesn't do what you expect, a speed change, a freeze frame or a punch zoom does something you did not expect, a title lands somewhere you did not expect, the keys type into a text, a font is missing, playback stutters, or you hear no sound. Each problem lists what you see, why it happens and what to do. The last section lists what the current version cannot do yet.
+This page helps you when something does not work as expected: the editor does not start in your browser, the preview stays empty, a folder or a file does not open, a clip drag, a trim, a split, a delete, a timeline tool, a typed timecode, a marker, an in/out range or **Lift** and **Extract** do something you did not expect, media from the Media panel lands somewhere you did not expect, a clip shows no thumbnails, a video gets no proxy or its proxy fails, the preview zoom, overlays or fullscreen behave unexpectedly, a picture in the preview can't be selected, moves unexpectedly, doesn't snap where you expect or gets cropped instead of resized, a value or a crop in **Edit Properties** doesn't do what you expect, a speed change, a freeze frame or a punch zoom does something you did not expect, a title lands somewhere you did not expect, the keys type into a text, a font is missing, a text preset doesn't apply, update or sync as you expect, playback stutters, or you hear no sound. Each problem lists what you see, why it happens and what to do. The last section lists what the current version cannot do yet.
 
 > **Video placeholder: Fix common problems**
 > - File: `videos/troubleshooting/overview.mp4` (not recorded yet)
@@ -41,6 +41,8 @@ This page helps you when something does not work as expected: the editor does no
 >   33. Press <kbd>T</kbd> and press <kbd>Space</kbd>: a space is typed instead of playing. Press <kbd>Esc</kbd>, then <kbd>Space</kbd>: playback starts. Pause.
 >   34. Click beside a short line of a two-line title, where no letter is: the video behind it is selected. Click a letter: the title is selected.
 >   35. Open a project made on another computer with a font this one doesn't have: the **Font** field shows **Missing** and the clip shows a red triangle. Pick **Inter** in the font picker: both disappear.
+>   36. Click an empty area of the timeline tracks so nothing is selected, then click the **Breaking** card in the **Presets** tab: a new title appears instead of a changed one. Press <kbd>Esc</kbd>, then <kbd>Ctrl</kbd>+<kbd>Z</kbd>. Select the first title and click the card: it takes the red box.
+>   37. Select a title made with a preset and hover **Update preset** in the quick actions: it is dimmed while the title still has the preset's style. Change its color: the button comes alive.
 
 ## In this page
 - [Browser and graphics](#browser-and-graphics)
@@ -171,6 +173,17 @@ This page helps you when something does not work as expected: the editor does no
   - [Show system fonts lists nothing](#show-system-fonts-lists-nothing)
   - [A font from your computer was not copied into the project](#a-font-from-your-computer-was-not-copied-into-the-project)
   - [Letters of some languages look different](#letters-of-some-languages-look-different)
+- [Text presets](#text-presets)
+  - [Clicking a preset adds a new title instead of changing the selected one](#clicking-a-preset-adds-a-new-title-instead-of-changing-the-selected-one)
+  - [Update preset is dimmed](#update-preset-is-dimmed)
+  - [Other titles did not change after Update preset](#other-titles-did-not-change-after-update-preset)
+  - [T or Shift+T makes a different look than expected](#t-or-shiftt-makes-a-different-look-than-expected)
+  - [A favorite chip is missing from the toolbar](#a-favorite-chip-is-missing-from-the-toolbar)
+  - [Presets in the Project list can't be changed](#presets-in-the-project-list-cant-be-changed)
+  - [A preset looks larger or smaller in another project](#a-preset-looks-larger-or-smaller-in-another-project)
+  - [Import says No presets imported or Couldn't import the presets](#import-says-no-presets-imported-or-couldnt-import-the-presets)
+  - [The library folder strip asks you to click Sync](#the-library-folder-strip-asks-you-to-click-sync)
+  - [A deleted preset came back](#a-deleted-preset-came-back)
 - [Known limitations](#known-limitations)
 
 ## Browser and graphics
@@ -1325,6 +1338,96 @@ See [Audio](audio.md).
 
 **Fix:** Pick a font from your computer that has those letters. See [Use fonts from your computer](titles-and-text.md#use-fonts-from-your-computer).
 
+## Text presets
+
+### Clicking a preset adds a new title instead of changing the selected one
+
+**Symptom:** You click a card in the **Presets** tab, and a new title appears at the playhead, while the title you meant stays as it was.
+
+**Cause:** A click applies the preset to the selected text clips. When no text clip is selected (for example only a video is selected), or the selected texts are on a locked track, the click adds a new text instead.
+
+**Fix:** Press <kbd>Esc</kbd>, then <kbd>Ctrl</kbd>+<kbd>Z</kbd> to remove the new title. Select the title on the timeline or in the preview (unlock its track if needed) and click the card again. See [Apply a preset to text](text-presets.md#apply-a-preset-to-text).
+
+### Update preset is dimmed
+
+**Symptom:** **Update preset** in the quick actions is dimmed, and its tooltip reads **Update preset: the selected text has no preset, or already has its style**.
+
+**Cause:** One of these:
+- The selected text clip uses no preset, for example because it was made with the built-in look.
+- Its preset was deleted.
+- Its style is still the preset's: there is nothing to write.
+- The preset belongs to a read-only project, or the clip is on a locked track.
+
+**Fix:** Change the text's style first, or save it as a new preset with **Save as preset**. To link a text to an existing preset, click that preset's card with the text selected, then change the style. See [Update a preset](text-presets.md#update-a-preset).
+
+### Other titles did not change after Update preset
+
+**Symptom:** You updated a preset, but other titles made with it keep their old look.
+
+**Cause:** **Update preset** changes the preset, not the titles that use it. Each title keeps its own style until you apply the preset to it again.
+
+**Fix:** Select the other titles (<kbd>Shift</kbd>+click them on the timeline) and click the preset's card: they all take the new look in one step. See [Update a preset](text-presets.md#update-a-preset).
+
+### T or Shift+T makes a different look than expected
+
+**Symptom:** A new title or subtitle doesn't look like before.
+
+**Cause:** <kbd>T</kbd> and <kbd>Shift</kbd>+<kbd>T</kbd> use the default title and subtitle presets. Another preset was chosen as default, or the default preset was updated. When the default preset was deleted, or it is a project preset and another project is open, they use the built-in look.
+
+**Fix:** In the **Presets** tab, look for the card with the title or subtitle badge in its top-left corner. Right-click the card you want and choose **Use as default title** or **Use as default subtitle**. Choose the highlighted row again to go back to the built-in look. See [Choose the presets for T and Shift+T](text-presets.md#choose-the-presets-for-t-and-shiftt).
+
+### A favorite chip is missing from the toolbar
+
+**Symptom:** A preset has a star, but no chip in the timeline toolbar.
+
+**Cause:** One of these:
+- More than 8 presets are favorites. The toolbar shows the first 8: the **Global** favorites first, then the project's.
+- The Timeline panel is narrow, and the **Add** group with the chips moved into the **More tools** (…) menu.
+
+**Fix:** Turn off the favorites you need less, click **More tools**, or widen the Timeline panel. See [Put favorite presets in the timeline toolbar](text-presets.md#put-favorite-presets-in-the-timeline-toolbar).
+
+### Presets in the Project list can't be changed
+
+**Symptom:** In the **Project** list, **Favorite**, **Apply position**, **Rename**, **Duplicate** and **Delete** are dimmed, the tab reads **This project is read-only: its presets cannot change.**, and new presets go into **Global**.
+
+**Cause:** The project opened read-only: the editor can't write to its `presets/text` folder.
+
+**Fix:** Click **Allow editing** in the read-only banner and allow editing. See [Work in read-only mode](projects-and-saving.md#work-in-read-only-mode).
+
+### A preset looks larger or smaller in another project
+
+**Symptom:** A preset's font size or box width in **Edit Properties** is not the number you saved.
+
+**Cause:** Presets scale with the shorter side of the frame, so they look the same in projects of every size. A 120-pixel preset gives an 80-pixel text in a 720×1280 project and a 240-pixel text in a 4K project.
+
+**Fix:** Nothing is wrong: the text has the same size relative to the frame. See [Presets in projects of other sizes](text-presets.md#presets-in-projects-of-other-sizes).
+
+### Import says No presets imported or Couldn't import the presets
+
+**Symptom:** After **Import presets from a JSON file**, a message says **No presets imported** or **Couldn't import the presets**.
+
+**Cause:** The file is not a presets file (not JSON, or JSON of something else, such as `project.json`), none of its entries is a text preset, or it comes from a newer version of the editor. The second line of the message says which.
+
+**Fix:** Pick a file made with **Export the presets shown to a JSON file** or **Export…**, or a preset file from a library folder or a project's `presets/text` folder. For a file from a newer version, update the editor first. See [Export and import presets](text-presets.md#export-and-import-presets).
+
+### The library folder strip asks you to click Sync
+
+**Symptom:** At the bottom of the **Global** list, the strip reads, for a folder named "My presets", **Library folder: My presets. Click Sync to allow access.**
+
+**Cause:** Chrome no longer lets the editor use the folder without asking, for example after you restarted the browser.
+
+**Fix:** Click **Sync the global presets with the library folder** (the button next to the text) and allow access when Chrome asks. See [Sync your presets with a folder](text-presets.md#sync-your-presets-with-a-folder).
+
+### A deleted preset came back
+
+**Symptom:** A preset you deleted is in the list again.
+
+**Cause:** One of these:
+- A sync with the library folder brought it back: another computer that syncs with the same folder still had it and wrote it there. A sync merges and never deletes.
+- You imported a file that holds it.
+
+**Fix:** Delete it again on every computer that syncs with the folder. See [Sync your presets with a folder](text-presets.md#sync-your-presets-with-a-folder).
+
 ## Known limitations
 
 The current version cannot do these things yet. Each one is available in a later version.
@@ -1337,7 +1440,7 @@ The current version cannot do these things yet. Each one is available in a later
 - **Tracks:** track headers have room for names of about 9 characters; longer names are shortened. Groups are not marked on the timeline.
 - **Preview:** a change to a picture, its crop included, applies to the whole clip; changes over time (keyframes) are not available. An SVG image that covers the whole frame doesn't get sharper when you zoom in. The **Zoom**, **Preview quality** and **Overlays** menus can't be used with the arrow keys.
 - **Edit Properties:** the audio, animation and transition sections are not available, nor are the dimmed quick actions and the **Still duration**, **Transition** and **Cache** rows of the **Project** section. A new resolution always scales the layout; keeping the layout as it is, is not available.
-- **Text:** text presets, text animations and captions are not available, nor is a setting to always make new titles 3 seconds long. A text's handles don't snap, and fonts can't be chosen with the arrow keys in the font picker.
+- **Text:** text animations and captions are not available, nor is a setting to always make new titles 3 seconds long. A text's handles don't snap, and fonts can't be chosen with the arrow keys in the font picker. Presets don't carry animations and can't be applied to captions, and deleted starter presets can't be restored.
 - **Animated GIF and WebP files** show as still images (their first frame), in the preview and in their clips' thumbnails.
 - **Media that cannot be decoded, or whose file is missing,** shows nothing in the preview, with no placeholder.
 - **Removing media** that a clip uses is not possible.
@@ -1367,6 +1470,7 @@ The current version cannot do these things yet. Each one is available in a later
 - [Editing properties](editing-properties.md)
 - [Cropping and reframing](cropping-and-reframing.md)
 - [Titles and text](titles-and-text.md)
+- [Text presets](text-presets.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 29, 2026-10-16</sub>
+<sub>Last updated: Batch 30, 2026-10-16</sub>

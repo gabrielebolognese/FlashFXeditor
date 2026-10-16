@@ -2,6 +2,11 @@
 
 Shorts Editor grows in steps called batches. This page lists what each batch added that you can see or use, newest first. Follow the links for the full instructions.
 
+> **Video placeholder: What's new in Batch 30**
+> - File: `videos/whats-new/batch-30.mp4` (not recorded yet)
+> - Length: about 60 seconds
+> - Shows: a 1080×1920 project with a talking-head video on V1 and A1; press <kbd>T</kbd>, type `PROMO` and press <kbd>Esc</kbd>; click the **Presets** tab of the Media panel: 12 starter cards, each name drawn in its own look; point at **Neon glow**, then **Breaking**: the title in the preview changes look and goes back when the pointer leaves; click **Breaking**: the title gets the red box; change its color to yellow in the **Text** section, click **Save as preset** in the quick actions, type `Yellow promo` and press <kbd>Enter</kbd>: a new card appears; right-click it and choose **Favorite: chip in the timeline toolbar**: a chip appears after **Add image**; move the playhead and click the chip: a new title in that look, ready for typing; right-click **Highlight** and choose **Use as default subtitle**, then press <kbd>Shift</kbd>+<kbd>T</kbd>: the subtitle has the yellow marker look; click **Export the presets shown to a JSON file** in the Presets header and save the file.
+
 > **Video placeholder: What's new in Batch 29**
 > - File: `videos/whats-new/batch-29.mp4` (not recorded yet)
 > - Length: about 60 seconds
@@ -103,6 +108,7 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 > - Shows: open a project with three clips on the timeline; press <kbd>Space</kbd> to play and let the timeline page forward; press <kbd>L</kbd> three times to reach 8x, then <kbd>K</kbd>; hold <kbd>K</kbd> and tap <kbd>L</kbd> to step one frame; turn on **Loop playback**; point at the **Dropped** readout in the status strip.
 
 ## In this page
+- [Batch 30: Text presets](#batch-30-text-presets)
 - [Batch 29: Titles and text](#batch-29-titles-and-text)
 - [Batch 28: Groundwork for text](#batch-28-groundwork-for-text)
 - [Batch 27: Speed, freeze frames and punch zoom](#batch-27-speed-freeze-frames-and-punch-zoom)
@@ -132,6 +138,18 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 - [Batch 03: Projects, autosave and recovery](#batch-03-projects-autosave-and-recovery)
 - [Batch 02: Undo, redo and frame-exact time](#batch-02-undo-redo-and-frame-exact-time)
 - [Batch 01: The workspace](#batch-01-the-workspace)
+
+## Batch 30: Text presets
+- Save a text style once and reuse it: select a title, click **Save as preset** in the quick actions of **Edit Properties**, type a name and press <kbd>Enter</kbd>. The preset keeps the whole look (font, size, colors, outline, shadow, background box, alignment and box width), not the words. See [Save a text style as a preset](text-presets.md#save-a-text-style-as-a-preset).
+- The **Presets** tab of the Media panel now works. Each card draws its name in its own look. Point at a card to see it on the selected titles, click it to apply it (one undo step), or click it with no text selected to add a new title in that look at the playhead. Drag a card onto the timeline or the preview to add a text there. See [Apply a preset to text](text-presets.md#apply-a-preset-to-text).
+- 12 starter presets come with the editor: **Title**, **Subtitle**, **Bold outline**, **Lower third**, **Caption bold**, **Highlight**, **Minimal mono**, **Big number**, **Elegant serif**, **Handwritten**, **Neon glow** and **Breaking**. See [Start with the starter presets](text-presets.md#start-with-the-starter-presets).
+- **Update preset** in the quick actions writes a title's new style into its preset. Other titles that use the preset keep their style until you apply it to them again, as its tooltip says. See [Update a preset](text-presets.md#update-a-preset).
+- Choose the presets <kbd>T</kbd> and <kbd>Shift</kbd>+<kbd>T</kbd> use: right-click a card and choose **Use as default title** or **Use as default subtitle**. See [Choose the presets for T and Shift+T](text-presets.md#choose-the-presets-for-t-and-shiftt).
+- Mark a preset as a favorite, and a chip with its name appears in the timeline toolbar: one click adds a title in that look at the playhead (up to 8 chips). See [Put favorite presets in the timeline toolbar](text-presets.md#put-favorite-presets-in-the-timeline-toolbar).
+- **Apply position** makes a preset place text too, for example a name in the lower left of the frame. See [Place text with a preset (Apply position)](text-presets.md#place-text-with-a-preset-apply-position).
+- Keep presets for every project (**Global**) or inside one project's folder (**Project**, in `presets/text`). Search, rename, duplicate and delete them from the card menu, export and import them as JSON files, and keep your global presets in a library folder, for example on a synced drive. See [Keep presets for all projects or for one](text-presets.md#keep-presets-for-all-projects-or-for-one), [Export and import presets](text-presets.md#export-and-import-presets) and [Sync your presets with a folder](text-presets.md#sync-your-presets-with-a-folder).
+- Presets look the same in projects of every size: their sizes follow the shorter side of the frame. The default subtitle of a landscape 1920×1080 project is now 900 pixels wide, as in a vertical one.
+- New pages: [Text presets](text-presets.md). No new shortcuts: <kbd>T</kbd> and <kbd>Shift</kbd>+<kbd>T</kbd> now use the default presets; see [Keyboard shortcuts](keyboard-shortcuts.md#text-presets).
 
 ## Batch 29: Titles and text
 - Add a title with one key: press <kbd>T</kbd> (or click **Title** in the timeline toolbar), type, and press <kbd>Esc</kbd>. The title appears in the middle of the frame at the playhead, on the top video track or a new one above it, and lasts until the end of the video clip under the playhead (3 seconds when there is none). See [Add a title](titles-and-text.md#add-a-title).
@@ -422,6 +440,7 @@ See [Projects and saving](projects-and-saving.md).
 See [The workspace](workspace.md) and [Getting started](getting-started.md).
 
 ## Related pages
+- [Text presets](text-presets.md)
 - [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md)
 - [User guide home](README.md)
 - [Cropping and reframing](cropping-and-reframing.md)
@@ -433,4 +452,4 @@ See [The workspace](workspace.md) and [Getting started](getting-started.md).
 - [Adding media to the timeline](adding-media-to-the-timeline.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 29, 2026-10-16</sub>
+<sub>Last updated: Batch 30, 2026-10-16</sub>

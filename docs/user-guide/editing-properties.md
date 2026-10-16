@@ -1,6 +1,6 @@
 # Editing properties
 
-The **Edit Properties** panel shows the settings of what you selected: a clip, a track, a marker, or the project itself when nothing is selected. Use it to type exact values, such as a position in pixels or the end time of a clip, to drag a value while you watch the preview, to fit or fill the frame with one click, to crop a picture, to change a clip's speed, to style text, and to change several clips at once.
+The **Edit Properties** panel shows the settings of what you selected: a clip, a track, a marker, or the project itself when nothing is selected. Use it to type exact values, such as a position in pixels or the end time of a clip, to drag a value while you watch the preview, to fit or fill the frame with one click, to crop a picture, to change a clip's speed, to style text and save it as a preset, and to change several clips at once.
 
 > **Video placeholder: Edit Properties in action**
 > - File: `videos/editing-properties/overview.mp4` (not recorded yet)
@@ -102,7 +102,7 @@ Select several clips, on the timeline or in the preview (see [Select clips](time
 
 ## Use the quick actions
 
-With clips selected, a row of one-click buttons sits at the top of the panel. Point at a button to see its name; **Freeze frame**, **Punch zoom**, **Duplicate** and **Delete** also show their shortcut. When the panel is narrow, the row continues on a second line.
+With clips selected, a row of one-click buttons sits at the top of the panel. Point at a button to see its name; **Freeze frame**, **Punch zoom**, **Duplicate** and **Delete** also show their shortcut, and **Update preset** names the preset it writes into. When the panel is narrow, the row continues on a second line.
 
 | Button | What it does |
 | --- | --- |
@@ -114,12 +114,14 @@ With clips selected, a row of one-click buttons sits at the top of the panel. Po
 | **Freeze frame** | Holds the frame at the playhead for 2 seconds (<kbd>Shift</kbd>+<kbd>F</kbd>). See [Hold a frame (freeze frame)](speed-freeze-frames-and-punch-zoom.md#hold-a-frame-freeze-frame). |
 | **Punch zoom** | Cuts the clip at the playhead and makes the part after the cut 20% larger (<kbd>Shift</kbd>+<kbd>Z</kbd>). See [Punch in at a cut (punch zoom)](speed-freeze-frames-and-punch-zoom.md#punch-in-at-a-cut-punch-zoom). |
 | **0.5x**, **1x**, **1.5x**, **2x** | Set the speed of the selected video and audio clips. See [Change a clip's speed with one click](speed-freeze-frames-and-punch-zoom.md#change-a-clips-speed-with-one-click). |
+| **Save as preset** (a bookmark with a plus) | Opens a name field under the row: press <kbd>Enter</kbd> to save the selected text's style as a new text preset. See [Save a text style as a preset](text-presets.md#save-a-text-style-as-a-preset). |
+| **Update preset** (a bookmark with a check mark) | Writes the selected text's style into the preset it uses. Other texts that use the preset keep their style until you apply it to them again. See [Update a preset](text-presets.md#update-a-preset). |
 | **Duplicate** | Copies the clip you clicked last right after itself (<kbd>Ctrl</kbd>+<kbd>D</kbd>). See [Duplicate a clip](#duplicate-a-clip). |
 | **Delete** | Deletes the selected clips and leaves gaps, like the <kbd>Delete</kbd> key. See [Delete clips](splitting-and-deleting.md#delete-clips). |
 
-- A button is dimmed when none of the selected clips can take it. The picture buttons and **Punch zoom** need a video, image or text clip; an audio clip has no picture. On a text clip, the picture buttons use the box of its text. **Freeze frame** needs a video clip, and the speed buttons a video or audio clip that is not a freeze frame. Clips on locked tracks are skipped.
+- A button is dimmed when none of the selected clips can take it. The picture buttons and **Punch zoom** need a video, image or text clip; an audio clip has no picture. On a text clip, the picture buttons use the box of its text. **Freeze frame** needs a video clip, and the speed buttons a video or audio clip that is not a freeze frame. **Save as preset** needs a text clip. **Update preset** needs a text clip whose style differs from the preset it uses. Clips on locked tracks are skipped.
 - Whether a button is dimmed depends on the selection only, not on the playhead. **Freeze frame** and **Punch zoom** act at the playhead: when it is not over the selected clip, a message says so.
-- The other buttons of the row (fades, mute, presets and transitions) are dimmed: they are available in a later version.
+- The other buttons of the row (fades, mute and transitions) are dimmed: they are available in a later version.
 - The buttons don't take the keyboard focus, but a click in the panel makes **Edit Properties** the active panel. See [How shortcuts work](keyboard-shortcuts.md#how-shortcuts-work).
 
 ## Fit, fill or center a picture
@@ -342,6 +344,7 @@ A color field is a swatch with the color's hex code next to it. In this version 
 | **Trim clip**, **Trim clips** | **Start**, **End**, **Duration**, **Source in**, **Source out** |
 | **Duplicate clip** | **Duplicate** or <kbd>Ctrl</kbd>+<kbd>D</kbd> |
 | **Change speed** | A speed button, **Speed**, or a quick series of <kbd>↑</kbd> and <kbd>↓</kbd> presses in it |
+| **Save preset "Name"** | **Save as preset**: the text starts to use the new preset. **Update preset** is not a step in the history. See [Undo and presets](text-presets.md#undo-and-presets). |
 | **Change duration** | **Duration** in the **Speed** section |
 | **Freeze frame**, **Freeze frames**, **Punch zoom** | **Freeze frame** and **Punch zoom**. See [Undo a pacing change](speed-freeze-frames-and-punch-zoom.md#undo-a-pacing-change). |
 | **Change background color** | **Background** in the **Project** section |
@@ -353,7 +356,7 @@ See [Undo and redo changes](projects-and-saving.md#undo-and-redo-changes).
 These parts are available in a later version:
 
 - More sections for clips: audio (volume and fades), animation and transitions.
-- The dimmed quick actions: fades, mute, presets and transitions.
+- The dimmed quick actions: fades, mute and transitions.
 - Values that change over time (keyframes): every value applies to the whole clip.
 - Duplicating several clips, or a clip with its linked sound, with <kbd>Ctrl</kbd>+<kbd>D</kbd>, and the **Duplicate** row of the layer menu.
 - The dimmed rows of the **Project** section: **Still duration**, **Transition** and **Cache** with **Clear cache**.
@@ -362,6 +365,7 @@ These parts are available in a later version:
 - [Cropping and reframing](cropping-and-reframing.md)
 - [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md)
 - [Titles and text](titles-and-text.md)
+- [Text presets](text-presets.md)
 - [Arranging layers in the preview](arranging-layers-in-the-preview.md)
 - [Snapping and smart guides in the preview](snapping-and-smart-guides.md)
 - [Timeline](timeline.md)
@@ -374,4 +378,4 @@ These parts are available in a later version:
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 29, 2026-10-16</sub>
+<sub>Last updated: Batch 30, 2026-10-16</sub>

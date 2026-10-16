@@ -34,6 +34,7 @@ This page lists every keyboard shortcut that works in the current version of Sho
 >   26. Double-click the video under the logo in the preview: white brackets and bars appear on it, with the **Crop** chip at the top of the preview. Hold <kbd>Alt</kbd> and drag the left bar inward: the left and right sides are cut together. Press <kbd>Esc</kbd>: the chip disappears and the usual handles are back.
 >   27. Click the timeline, put the playhead inside a video and press <kbd>Shift</kbd>+<kbd>F</kbd>: a 2-second clip with a snowflake appears at the playhead, and the later clips move right. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>, then <kbd>Shift</kbd>+<kbd>Z</kbd>: the clip is cut and the picture after the cut is 20% closer. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>.
 >   28. Press <kbd>T</kbd>: "Title" appears in the preview, selected. Type `hi`, press <kbd>Enter</kbd> and type `there`: a second line. Press <kbd>↑</kbd>, then <kbd>Shift</kbd>+<kbd>End</kbd>: "hi" is highlighted. Press <kbd>Esc</kbd>. Press <kbd>Enter</kbd>: the whole text is selected again. Press <kbd>Ctrl</kbd>+<kbd>Enter</kbd>. Press <kbd>Shift</kbd>+<kbd>T</kbd>: a subtitle appears in the lower third.
+>   29. Open the **Presets** tab of the Media panel and right-click the **Breaking** card: the **Use as default title** row shows <kbd>T</kbd>. Choose it, click the timeline and press <kbd>T</kbd>: the new title has the red **Breaking** box. Right-click the card again and choose **Use as default title** once more to go back to the usual title.
 
 ## In this page
 - [How shortcuts work](#how-shortcuts-work)
@@ -327,12 +328,30 @@ See [Titles and text](titles-and-text.md).
 
 | Action | Windows | macOS | Works in |
 | --- | --- | --- | --- |
-| Add a title at the playhead and type it (same as **Title**) | <kbd>T</kbd> | <kbd>T</kbd> | All panels |
-| Add a subtitle at the playhead and type it (same as **Subtitle**) | <kbd>Shift</kbd>+<kbd>T</kbd> | <kbd>⇧</kbd>+<kbd>T</kbd> | All panels |
+| Add a title at the playhead in the default title preset's look and type it (same as **Title**) | <kbd>T</kbd> | <kbd>T</kbd> | All panels |
+| Add a subtitle at the playhead in the default subtitle preset's look and type it (same as **Subtitle**) | <kbd>Shift</kbd>+<kbd>T</kbd> | <kbd>⇧</kbd>+<kbd>T</kbd> | All panels |
 | Edit the selected text clip in the preview, with all its text selected | <kbd>Enter</kbd> | <kbd>Return</kbd> | Timeline or Preview panel |
 
 - <kbd>T</kbd> and <kbd>Shift</kbd>+<kbd>T</kbd> pause playback, finish a text you are editing, and start editing the new one with its text selected.
 - With no text clip selected, <kbd>Enter</kbd> does nothing. When the playhead is not over the selected text clip, it jumps to the clip's start first.
+- Choose the presets <kbd>T</kbd> and <kbd>Shift</kbd>+<kbd>T</kbd> use with **Use as default title** and **Use as default subtitle** in a preset card's menu. See [Choose the presets for T and Shift+T](text-presets.md#choose-the-presets-for-t-and-shiftt).
+
+### Text presets
+
+Text presets have no keys of their own: you use them with the mouse in the **Presets** tab of the Media panel and the timeline toolbar. See [Text presets](text-presets.md).
+
+| Action | Windows | macOS |
+| --- | --- | --- |
+| See a preset on the selected texts, without changing them | Point at its card | Same |
+| Apply a preset to the selected texts, or add a new text with it at the playhead when no text is selected | Click its card | Same |
+| Add a text clip with a preset where you release | Drag its card onto a track of the timeline | Same |
+| Insert it, moving later clips right | Hold <kbd>Ctrl</kbd> when you release the drag on the timeline | Hold <kbd>⌘</kbd> |
+| Add a text with a preset at a point in the frame | Drag its card onto the preview | Same |
+| Cancel the drag | <kbd>Esc</kbd> before you release | <kbd>Esc</kbd> |
+| Open the preset menu (default title or subtitle, favorite, **Apply position**, rename, duplicate, export, delete) | Right-click its card | Right-click its card |
+| Add a text with a favorite preset at the playhead | Click its chip in the timeline toolbar | Same |
+| Save the name of a new preset (after **Save as preset**) or a renamed one | <kbd>Enter</kbd> | <kbd>Return</kbd> |
+| Close the name field without saving | <kbd>Esc</kbd> | <kbd>Esc</kbd> |
 
 ### While you edit text
 
@@ -455,7 +474,7 @@ See [Projects and saving](projects-and-saving.md).
 
 | Action | Windows | macOS |
 | --- | --- | --- |
-| Confirm a field (project name, media name, clip name, marker name, timecode, clip times, numbers, hex colors) | <kbd>Enter</kbd> | <kbd>Return</kbd> |
+| Confirm a field (project name, media name, clip name, marker name, preset name, timecode, clip times, numbers, hex colors) | <kbd>Enter</kbd> | <kbd>Return</kbd> |
 | Cancel the change and leave the field | <kbd>Escape</kbd> | <kbd>Esc</kbd> |
 | Close a dialog or a menu | <kbd>Escape</kbd> | <kbd>Esc</kbd> |
 
@@ -556,6 +575,7 @@ Some buttons already show a shortcut in their tooltip although the button is dis
 - [Advanced trimming](advanced-trimming.md)
 - [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md)
 - [Titles and text](titles-and-text.md)
+- [Text presets](text-presets.md)
 - [Tracks](tracks.md)
 - [Linking and grouping clips](links-and-groups.md)
 - [Audio](audio.md)
@@ -564,4 +584,4 @@ Some buttons already show a shortcut in their tooltip although the button is dis
 - [Projects and saving](projects-and-saving.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 29, 2026-10-16</sub>
+<sub>Last updated: Batch 30, 2026-10-16</sub>
