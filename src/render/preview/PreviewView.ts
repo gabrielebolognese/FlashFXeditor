@@ -11,8 +11,8 @@
 //   does), and draws. While a trim runs, `override` gives the document and frame to show instead;
 //   with `previewSplit` (rolls, slips, slides, spec §6.10) it shows two frames side by side, each
 //   fitted (or at the zoom) in its half of the canvas: two evaluations, one texture pass, one draw.
-//   While a canvas gesture or a properties field scrub runs (spec §7.3, §11, P2), `transforms` and
-//   `opacities` give the layers' ephemeral values.
+//   While a canvas gesture or a properties field scrub runs (spec §7.3, §11, P2), `transforms`,
+//   `opacities` and `crops` give the layers' ephemeral values.
 //   A pause leaves the playhead where it is, but playback may have held a track's previous layer
 //   there (shuttle speeds deliver every n-th frame): the render after it requests the exact frame.
 //   When the draw list, the viewport and the render scale equal the last ones drawn, the GPU draw is
@@ -36,7 +36,7 @@
 // - `renderFrame` (Export frame) draws the frame at the playhead from exact full-resolution frames at
 //   project size, whatever the quality mode and whatever is on screen.
 // - The backing store is resized inside `render`, so a resize never shows a cleared canvas.
-import type { ClipId, Frame, Project, RGBA, Transform } from "../../core/document/types.js";
+import type { ClipId, Crop, Frame, Project, RGBA, Transform } from "../../core/document/types.js";
 import { watchDevicePixelRatio } from "../../core/scheduler/devicePixelRatio.js";
 import type { FrameScheduler, RenderView } from "../../core/scheduler/FrameScheduler.js";
 import { createStore, type Store } from "../../core/store/createStore.js";
@@ -78,6 +78,8 @@ export interface PreviewViewDeps extends Omit<LayerTexturesDeps, "onChange" | "w
   transforms?(): ReadonlyMap<ClipId, Transform> | null;
   /** A properties field scrub's ephemeral opacities by clip id (§11), or null. The owner invalidates `preview` when they change. */
   opacities?(): ReadonlyMap<ClipId, number> | null;
+  /** Ephemeral crops by clip id (a crop handle drag, §7.3; a Crop field scrub, §11), or null. The owner invalidates `preview` when they change. */
+  crops?(): ReadonlyMap<ClipId, Crop> | null;
   /** The project background while the color picker is dragged (§11), or null. The owner invalidates `preview` when it changes. */
   background?(): RGBA | null;
   /** True when playback fell behind on the media this playback (1/2 and 1/4 then play its proxy). */
@@ -314,7 +316,13 @@ export class PreviewView implements RenderView {
       this.renderSplit(doc, split.leftFrame, split.rightFrame, preview, priority, size, dpr, resized, started);
       return;
     }
-    const composite = this.compositor.evaluate(doc, frame, override ? null : (this.deps.transforms?.() ?? null), override ? null : (this.deps.opacities?.() ?? null));
+    const composite = this.compositor.evaluate(
+      doc,
+      frame,
+      override ? null : (this.deps.transforms?.() ?? null),
+      override ? null : (this.deps.opacities?.() ?? null),
+      override ? null : (this.deps.crops?.() ?? null),
+    );
     const background = override ? null : (this.deps.background?.() ?? null);
     if (background) composite.background = background;
     const transform = frameTransformInto(this.transform, preview.zoom, composite, size, this.chrome.margin * dpr, preview.panX, preview.panY);

@@ -7,7 +7,7 @@ import { createSessionStore } from "../../core/store/sessionStore.js";
 import { layerPoint } from "../../timeline/edit/transform.js";
 import { NO_LIVE_EDIT, type LiveEdit } from "../../app/liveEdit.js";
 import { layerBinding } from "./bindings.js";
-import { ANCHOR_X, OPACITY, POSITION_X, scaleProp } from "./layerProps.js";
+import { ANCHOR_X, cropProp, OPACITY, POSITION_X, scaleProp } from "./layerProps.js";
 
 function project(): Project {
   const p = makeProject();
@@ -132,5 +132,49 @@ describe("layer bindings (spec §11 fields, P2)", () => {
     const box = { width: 1920, height: 1080 };
     expect(layerPoint(after, box, frame, 0, 0).x).toBeCloseTo(layerPoint(before, box, frame, 0, 0).x, 9);
     expect(after.x).toBe(-960);
+  });
+
+  it("binds a crop edge in media px or %, skipping clips with no crop (Batch 26)", () => {
+    const p = project();
+    p.clips.s = { ...makeSolidClip({ id: "s", trackId: "v1", start: 40, duration: 10 }) } as SolidClip;
+    p.tracks.find((track) => track.id === "v1")?.clipIds.push("s");
+    const { deps, document, clip } = setup(p);
+    const px = layerBinding(deps, cropProp("left", "px", false), ["a", "s"]);
+    const percent = layerBinding(deps, cropProp("left", "%", false), ["a", "s"]);
+    expect(px.read()).toBe(0);
+    px.set(480);
+    expect(clip("a").crop).toEqual({ left: 0.25, top: 0, right: 0, bottom: 0 });
+    expect(percent.read()).toBe(25);
+    expect(document.history.getState().undoLabel).toBe("Change crop");
+    // Past the opposite edge: one media px stays visible.
+    layerBinding(deps, cropProp("right", "%", false), ["a"]).set(100);
+    expect((1 - clip("a").crop.left - clip("a").crop.right) * 1920).toBeCloseTo(1, 9);
+  });
+
+  it("keeps the crop's aspect with the lock: the other axis follows around its center", () => {
+    const { deps, clip } = setup();
+    layerBinding(deps, cropProp("left", "px", true), ["a"]).set(480);
+    expect(clip("a").crop.left).toBeCloseTo(0.25, 9);
+    expect(clip("a").crop.top).toBeCloseTo(0.125, 9);
+    expect(clip("a").crop.bottom).toBeCloseTo(0.125, 9);
+  });
+
+  it("scrubs a crop live (fields and preview read it), then one step on release; mixed values show --", () => {
+    const { deps, document, live, clip } = setup();
+    const left = layerBinding(deps, cropProp("left", "px", false), ["a", "b"]);
+    left.change(100, "scrub");
+    expect(live.getState().crops?.get("a")?.left).toBeCloseTo(100 / 1920, 9);
+    expect(left.read()).toBe(100);
+    expect(clip("a").crop.left).toBe(0);
+    left.change(120, "commit");
+    expect(live.getState()).toBe(NO_LIVE_EDIT);
+    expect(clip("a").crop.left).toBeCloseTo(120 / 1920, 9);
+    expect(clip("b").crop.left).toBeCloseTo(120 / 1920, 9);
+    document.undo();
+    expect(clip("a").crop.left).toBe(0);
+    // A crop handle drag on the canvas writes live crops: the field follows it.
+    live.set({ ...NO_LIVE_EDIT, crops: new Map([["a", { left: 0.5, top: 0, right: 0, bottom: 0 }]]) });
+    expect(left.read()).toBeNull();
+    expect(layerBinding(deps, cropProp("left", "px", false), ["a"]).read()).toBe(960);
   });
 });

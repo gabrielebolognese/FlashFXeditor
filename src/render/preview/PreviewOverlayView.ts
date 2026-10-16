@@ -9,7 +9,8 @@
 //   layer, --accent outlines on the selected ones, the gizmo box with its 8 handles (edge handles only
 //   on sides long enough on screen; a group box around several layers), the anchor marker while Alt is
 //   held, the marquee, the 100% scale snap line on the dragged handle's sides, and the numeric readout
-//   near the cursor (the timeline's drag tooltip style).
+//   near the cursor (the timeline's drag tooltip style). In crop mode (Batch 26) the box gets crop
+//   handles (corner brackets and edge bars inside it) and the whole media's box is outlined dashed.
 // - Smart guides (§7.4, the scene's `guides`): 1 px --accent lines (across the frame for the frame and
 //   safe-zone targets, from the dragged box to the layer for a layer), distance spans with end caps
 //   and their distance chips (--accent, --on-accent mono caption), equal-spacing gaps, measure mode.
@@ -185,7 +186,9 @@ export class PreviewOverlayView implements RenderView {
         out.push(1, scene.guides.lines.length, scene.guides.spans.length);
         for (const line of scene.guides.lines) out.push(line.vertical ? 1 : 0, line.at, line.from, line.to);
         for (const span of scene.guides.spans) out.push(span.vertical ? 1 : 0, span.at, span.from, span.to, span.distance);
-      } else out.push(0);
+      }
+      out.push(scene.crop ? 1 : 0);
+      if (scene.crop) quad(scene.crop.media); else out.push(0);
     } else out.push(-1);
     const previous = this.sceneNumbers;
     let changed = text !== this.sceneText || previous.length !== out.length;
@@ -237,7 +240,8 @@ export class PreviewOverlayView implements RenderView {
     }
     if (scene.guides) this.drawGuides(ctx, t, dpr, scene.guides);
     const box = scene.box;
-    if (box) {
+    if (box && scene.crop) this.drawCrop(ctx, t, dpr, box, scene.crop.media);
+    else if (box) {
       if (scene.group) {
         path(box);
         ctx.stroke();
@@ -336,6 +340,93 @@ export class PreviewOverlayView implements RenderView {
       ctx.fillStyle = color.onAccent;
       ctx.fillText(text, x + w / 2, y + h / 2);
     }
+    ctx.restore();
+  }
+
+  /**
+   * Crop mode (Batch 26): the whole media's box dashed in --accent-dim, then the crop handles inside the
+   * visible box: L brackets on the corners and bars on the edge midpoints (edges only on sides long
+   * enough), a --text-primary stroke over a --bg-sunken outline, turned with the layer.
+   */
+  private drawCrop(ctx: CanvasRenderingContext2D, t: Mat3, dpr: number, box: Quad, media: Quad): void {
+    const { color, gizmo, preview } = this.theme;
+    const line = Math.max(1, Math.round(gizmo.lineWidth * dpr));
+    const s = box.map((p) => toScreen(t, p)) as [Point, Point, Point, Point];
+    ctx.save();
+    ctx.lineWidth = line;
+    ctx.strokeStyle = color.accentDim;
+    ctx.setLineDash([preview.dash * dpr, preview.dash * dpr]);
+    ctx.beginPath();
+    media.forEach((p, i) => {
+      const m = toScreen(t, p);
+      if (i === 0) ctx.moveTo(m.x, m.y);
+      else ctx.lineTo(m.x, m.y);
+    });
+    ctx.closePath();
+    ctx.stroke();
+    ctx.setLineDash([]);
+    // Unit vectors along the box sides on screen (top: tl -> tr, left: tl -> bl).
+    const unit = (a: Point, b: Point) => {
+      const length = Math.hypot(b.x - a.x, b.y - a.y);
+      return length > 0 ? { x: (b.x - a.x) / length, y: (b.y - a.y) / length, length } : { x: 0, y: 0, length: 0 };
+    };
+    const across = unit(s[0], s[1]);
+    const down = unit(s[0], s[3]);
+    const width = Math.max(1, Math.round(gizmo.cropHandleWidth * dpr));
+    // Arms stay within a third of the side on screen, so the handles never meet.
+    const armX = Math.min(gizmo.cropHandleLength * dpr, across.length / 3);
+    const armY = Math.min(gizmo.cropHandleLength * dpr, down.length / 3);
+    const shown = edgeHandlesShown(box, t, gizmo.minEdge * dpr);
+    const inset = width / 2;
+    const paths: Point[][] = [];
+    // Corners: from the box corner along both sides into the box; signs point inward.
+    const corners: [Point, number, number][] = [
+      [s[0], 1, 1],
+      [s[1], -1, 1],
+      [s[2], -1, -1],
+      [s[3], 1, -1],
+    ];
+    for (const [p, sx, sy] of corners) {
+      const o = { x: p.x + (across.x * sx + down.x * sy) * inset, y: p.y + (across.y * sx + down.y * sy) * inset };
+      paths.push([
+        { x: o.x + across.x * sx * armX, y: o.y + across.y * sx * armX },
+        o,
+        { x: o.x + down.x * sy * armY, y: o.y + down.y * sy * armY },
+      ]);
+    }
+    const mid = (a: Point, b: Point) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+    // Edge bars: centered on the side's midpoint, inset into the box.
+    const bar = (m: Point, along: { x: number; y: number }, inward: { x: number; y: number }, arm: number) => {
+      const o = { x: m.x + inward.x * inset, y: m.y + inward.y * inset };
+      paths.push([
+        { x: o.x - (along.x * arm) / 2, y: o.y - (along.y * arm) / 2 },
+        { x: o.x + (along.x * arm) / 2, y: o.y + (along.y * arm) / 2 },
+      ]);
+    };
+    if (shown.horizontal) {
+      bar(mid(s[0], s[1]), across, down, armX);
+      bar(mid(s[3], s[2]), across, { x: -down.x, y: -down.y }, armX);
+    }
+    if (shown.vertical) {
+      bar(mid(s[0], s[3]), down, across, armY);
+      bar(mid(s[1], s[2]), down, { x: -across.x, y: -across.y }, armY);
+    }
+    const stroke = (lineWidth: number, style: string) => {
+      ctx.lineWidth = lineWidth;
+      ctx.strokeStyle = style;
+      ctx.lineCap = "square";
+      ctx.lineJoin = "miter";
+      ctx.beginPath();
+      for (const path of paths) {
+        path.forEach((p, i) => {
+          if (i === 0) ctx.moveTo(p.x, p.y);
+          else ctx.lineTo(p.x, p.y);
+        });
+      }
+      ctx.stroke();
+    };
+    stroke(width + 2 * line, color.bgSunken);
+    stroke(width, color.textPrimary);
     ctx.restore();
   }
 

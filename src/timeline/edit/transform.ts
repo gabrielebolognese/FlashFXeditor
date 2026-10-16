@@ -12,7 +12,7 @@
 //   applies one to the selected layers as one command. `withAnchor` moves the anchor, not the picture.
 import type { Draft } from "immer";
 import type { Command } from "../../core/commands/command.js";
-import type { Clip, ClipId, MediaClip, Project, SolidClip, TextClip, Transform } from "../../core/document/types.js";
+import type { Clip, ClipId, Crop, MediaClip, Project, SolidClip, TextClip, Transform } from "../../core/document/types.js";
 import { isRgba } from "../../core/document/color.js";
 import { displaySize } from "../../media/probe/rotation.js";
 import { isClipLocked } from "../model/queries.js";
@@ -52,17 +52,19 @@ const clamp01 = (value: number) => (Number.isFinite(value) ? Math.min(1, Math.ma
 
 /**
  * The content box of a layer, or null when the compositor draws nothing for it (media without a
- * size, everything cropped away, solid shapes it cannot draw yet, text before Batch 28).
+ * size, everything cropped away, solid shapes it cannot draw yet, text before Batch 28). `crop`
+ * replaces a media clip's own (a crop handle drag's or a crop field scrub's ephemeral crop, P2).
  */
-export function layerContent(project: Project, clip: Clip): ContentBox | null {
+export function layerContent(project: Project, clip: Clip, crop?: Crop): ContentBox | null {
   if (clip.kind === "video" || clip.kind === "image") {
     const item = project.media[clip.mediaId];
     if (!item?.width || !item.height) return null;
     const { width, height } = displaySize(item.width, item.height, item.rotation);
-    const left = clamp01(clip.crop.left) * width;
-    const right = (1 - clamp01(clip.crop.right)) * width;
-    const top = clamp01(clip.crop.top) * height;
-    const bottom = (1 - clamp01(clip.crop.bottom)) * height;
+    const shown = crop ?? clip.crop;
+    const left = clamp01(shown.left) * width;
+    const right = (1 - clamp01(shown.right)) * width;
+    const top = clamp01(shown.top) * height;
+    const bottom = (1 - clamp01(shown.bottom)) * height;
     return right > left && bottom > top ? { width, height, left, top, right, bottom } : null;
   }
   if (clip.kind === "solid") {

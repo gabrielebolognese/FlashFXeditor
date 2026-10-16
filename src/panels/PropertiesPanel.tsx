@@ -4,6 +4,7 @@ import { documentStore, sessionStore } from "../app/services.js";
 import type { Selection } from "../core/store/selection.js";
 import { useStoreSelector } from "../core/store/useStoreSelector.js";
 import { ClipSection } from "./properties/ClipSection.js";
+import { CropModeToggle, CropSection } from "./properties/CropSection.js";
 import { contextKey, propertiesContext, sectionIds, type PropertiesContext, type SectionId } from "./properties/context.js";
 import { MarkerSection } from "./properties/MarkerSection.js";
 import { ProjectSection } from "./properties/ProjectSection.js";
@@ -22,6 +23,7 @@ import styles from "./PropertiesPanel.module.css";
 const SECTION_TITLES: Record<SectionId, string> = {
   clip: "Clip",
   transform: "Transform",
+  crop: "Crop",
   opacity: "Opacity",
   track: "Track",
   marker: "Marker",
@@ -34,6 +36,8 @@ function sectionBody(id: SectionId, context: PropertiesContext): ReactNode {
       return context.kind === "clips" ? <ClipSection ids={context.clipIds} /> : null;
     case "transform":
       return context.kind === "clips" ? <TransformSection ids={context.layerIds} /> : null;
+    case "crop":
+      return context.kind === "clips" ? <CropSection ids={context.mediaIds} /> : null;
     case "opacity":
       return context.kind === "clips" ? <OpacitySection ids={context.layerIds} /> : null;
     case "track":
@@ -43,6 +47,12 @@ function sectionBody(id: SectionId, context: PropertiesContext): ReactNode {
     case "project":
       return <ProjectSection />;
   }
+}
+
+/** Header actions of a section: the Crop section's crop mode toggle (one video or image layer selected). */
+function sectionActions(id: SectionId, context: PropertiesContext): ReactNode {
+  if (id !== "crop" || context.kind !== "clips") return null;
+  return <CropModeToggle ids={context.mediaIds} single={context.layerIds.length === 1 && context.mediaIds.length === 1} />;
 }
 
 const selectKey = (selection: Selection) => contextKey(selection, null);
@@ -62,7 +72,7 @@ export function PropertiesPanel() {
         {/* Keyed by the context: a new selection mounts fresh sections (their bindings follow it). */}
         <div key={key} className={styles.scroll}>
           {sectionIds(context).map((id) => (
-            <Section key={id} id={id} title={SECTION_TITLES[id]}>
+            <Section key={id} id={id} title={SECTION_TITLES[id]} actions={sectionActions(id, context)}>
               {sectionBody(id, context)}
             </Section>
           ))}

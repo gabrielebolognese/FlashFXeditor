@@ -171,6 +171,11 @@
   --gizmo-snap-width: var(--timeline-trim-edge-width); /* 2px: the 100% scale snap line */
   --gizmo-min-edge: var(--control-default); /* 28px: shorter sides show no edge handles */
   --canvas-drag-threshold: var(--timeline-drag-threshold); /* 4px dead zone, spec §6.8 */
+  /* Crop handles (Batch 26, spec §7.3 crop mode; the DS has none): corner brackets and edge bars inside
+     the visible box, a --text-primary stroke over a --bg-sunken outline (the canvas cursors' look); the
+     whole media's box dashed in --accent-dim (--preview-dash dashes). */
+  --crop-handle-length: var(--space-5); /* 16px bracket arms and edge bars */
+  --crop-handle-width: var(--space-0); /* 2px stroke, outlined 1px each side */
   /* Canvas snapping and smart guides (Batch 23, spec §7.4; the DS has none): 1px --accent lines, distance
      spans with end caps, and distance chips in --accent with --on-accent mono caption text. */
   --canvas-snap-threshold: 6px; /* spec §7.4: in screen space, the same at every zoom */

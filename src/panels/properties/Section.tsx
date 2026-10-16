@@ -7,13 +7,14 @@ import type { SectionId } from "./context.js";
 import styles from "./Section.module.css";
 
 // A properties panel section (spec §11 "collapsible, state persisted"): a header button (chevron and
-// overline title; Tab reaches it in visual order) and the label / control grid. The collapsed state is
-// session state (`collapsedSections`, kept in session.json).
+// overline title; Tab reaches it in visual order), optional header actions on its right (the Crop
+// section's crop mode toggle), and the label / control grid. The collapsed state is session state
+// (`collapsedSections`, kept in session.json).
 // TODO(batch 35): the stopwatch toggle and keyframe navigator of animatable sections in the header.
 
 const keepFocus = (event: MouseEvent) => event.preventDefault();
 
-export function Section({ id, title, children }: { id: SectionId; title: string; children: ReactNode }) {
+export function Section({ id, title, actions, children }: { id: SectionId; title: string; actions?: ReactNode; children: ReactNode }) {
   const collapsed = useStoreSelector(sessionStore.state, (state: SessionState) => state.collapsedSections[id] === true);
   const bodyId = `properties-section-${id}`;
   return (
@@ -30,6 +31,7 @@ export function Section({ id, title, children }: { id: SectionId; title: string;
           <ChevronDown className={styles.chevron} aria-hidden="true" />
           {title}
         </button>
+        {actions && <span className={styles.headerActions}>{actions}</span>}
       </h3>
       {!collapsed && (
         <div id={bodyId} className={styles.grid}>

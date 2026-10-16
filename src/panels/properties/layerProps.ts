@@ -1,22 +1,27 @@
-// The number properties of the Transform and Opacity sections (spec §11), in field units: position in
-// project px from the frame center (the document's own numbers), scale and anchor in %, rotation in
-// degrees, opacity in %. Each reads one property path of a layer clip and writes it back as a new
-// transform or opacity; the scale pair keeps its aspect while locked; the anchor moves without moving
-// the picture (the gizmo's Alt anchor drag, §7.3). Pure: the bindings (bindings.ts) apply them.
-import type { Project, Transform } from "../../core/document/types.js";
+// The number properties of the Transform, Crop and Opacity sections (spec §11), in field units:
+// position in project px from the frame center (the document's own numbers), scale and anchor in %,
+// rotation in degrees, crop edges in media px or % of the media, opacity in %. Each reads one property
+// path of a layer clip and writes it back as a new transform, crop or opacity; the scale pair keeps its
+// aspect while locked, a crop edge keeps the visible aspect with the crop lock; the anchor moves
+// without moving the picture (the gizmo's Alt anchor drag, §7.3). Pure: the bindings (bindings.ts)
+// apply them.
+import type { Crop, Project, Transform } from "../../core/document/types.js";
+import { cropSize, isCropClip, withCropEdge, type CropEdge } from "../../timeline/edit/crop.js";
 import { layerContent, scaleYOf, withAnchor, type LayerClip } from "../../timeline/edit/transform.js";
 
-export type LayerChange = { kind: "transform"; transform: Transform } | { kind: "opacity"; opacity: number };
+export type LayerChange = { kind: "transform"; transform: Transform } | { kind: "opacity"; opacity: number } | { kind: "crop"; crop: Crop };
 
 export interface LayerNumberProp {
   /** Stable id (the coalesce key of arrow steps). */
-  id: "x" | "y" | "scaleX" | "scaleY" | "rotation" | "anchorX" | "anchorY" | "opacity";
+  id: "x" | "y" | "scaleX" | "scaleY" | "rotation" | "anchorX" | "anchorY" | "opacity" | `crop.${CropEdge}`;
   /** Undo history label. */
   label: string;
   precision: number;
   min?: number;
   max?: number;
-  read(clip: LayerClip): number;
+  /** Whether the property exists on `clip` (others among the targets are left out); all layers when absent. */
+  applies?(clip: LayerClip): boolean;
+  read(clip: LayerClip, project: Project): number;
   /** The clip's change for `value` (field units). */
   write(clip: LayerClip, value: number, project: Project): LayerChange;
 }
@@ -96,6 +101,36 @@ export const ANCHOR_Y: LayerNumberProp = {
   read: (clip) => clip.transform.anchor.y * 100,
   write: (clip, value, project) => transform(withAnchor(clip.transform, contentSize(project, clip), { x: clip.transform.anchor.x, y: value / 100 })),
 };
+
+/** The units of the crop fields: media px (of the media as shown) or % of its side. */
+export type CropUnit = "px" | "%";
+
+/** The media side a crop edge measures: the width for left / right, the height for top / bottom. */
+function cropSide(project: Project, clip: LayerClip, edge: CropEdge): number {
+  const size = cropSize(project, clip);
+  if (!size) return 0;
+  return edge === "left" || edge === "right" ? size.width : size.height;
+}
+
+/** One crop edge in `unit`; with `lock` the visible aspect stays (the other axis follows, `withCropEdge`). */
+export function cropProp(edge: CropEdge, unit: CropUnit, lock: boolean): LayerNumberProp {
+  const scale = (clip: LayerClip, project: Project) => (unit === "%" ? 100 : cropSide(project, clip, edge));
+  return {
+    id: `crop.${edge}`,
+    label: "Change crop",
+    precision: unit === "%" ? 1 : 0,
+    min: 0,
+    ...(unit === "%" && { max: 100 }),
+    applies: isCropClip,
+    read: (clip, project) => (isCropClip(clip) ? clip.crop[edge] * scale(clip, project) : 0),
+    write(clip, value, project) {
+      const size = cropSize(project, clip);
+      if (!isCropClip(clip) || !size) return { kind: "crop", crop: { left: 0, top: 0, right: 0, bottom: 0 } };
+      const side = scale(clip, project);
+      return { kind: "crop", crop: withCropEdge(clip.crop, size, edge, side > 0 ? value / side : 0, lock) };
+    },
+  };
+}
 
 export const OPACITY: LayerNumberProp = {
   id: "opacity",

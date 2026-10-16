@@ -6,14 +6,17 @@
 }
 
 .heading {
+  display: flex;
+  align-items: center;
   margin: 0;
 }
 
 .header {
   display: flex;
+  flex: 1;
   align-items: center;
   gap: var(--space-1);
-  width: 100%;
+  min-width: 0;
   height: var(--properties-section-header);
   padding: 0 var(--space-4) 0 var(--space-3);
   color: var(--text-tertiary);
@@ -29,6 +32,13 @@
 .header:hover {
   background: var(--hover-wash);
   color: var(--text-secondary);
+}
+
+/* Header actions (the Crop section's crop mode toggle): compact icon buttons at the right edge. */
+.headerActions {
+  display: flex;
+  align-items: center;
+  padding-right: var(--space-2);
 }
 
 .chevron {
@@ -101,6 +111,14 @@
   display: flex;
   align-items: center;
   gap: var(--space-0);
+}
+
+/* A row of text buttons (Crop to frame, Reset). */
+.textButtons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
 }
 
 .hint {

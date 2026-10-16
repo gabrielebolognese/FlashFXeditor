@@ -25,6 +25,7 @@ import { formatFps } from "../project/projectPresets.js";
 import { GpuDevice } from "../render/gpu/GpuDevice.js";
 import { WebGpuRenderer } from "../render/gpu/WebGpuRenderer.js";
 import { CanvasEditInput } from "../render/preview/CanvasEditInput.js";
+import { NO_CROP_MODE, type CropModeState } from "../render/preview/cropGizmo.js";
 import { PreviewOverlayView } from "../render/preview/PreviewOverlayView.js";
 import { PreviewStatsOverlay } from "../render/preview/PreviewStatsOverlay.js";
 import { PreviewView } from "../render/preview/PreviewView.js";
@@ -33,7 +34,7 @@ import { zoomAround, type PreviewZoom } from "../render/preview/viewport.js";
 import { showToast } from "../ui/toasts.js";
 import { attachAudio, audioScheduler, detachAudio, meterView } from "./audioController.js";
 import { toggleFullscreen } from "./fullscreen.js";
-import { liveEdit } from "./liveEdit.js";
+import { liveEdit, setLiveCrops } from "./liveEdit.js";
 import { requestProxyIfUndecided } from "./mediaController.js";
 import { actions, audioClock, documentStore, idleQueue, layoutStore, scheduler, sessionStore, themeBridge, workerPool } from "./services.js";
 import { timelineView } from "./timelineController.js";
@@ -80,6 +81,7 @@ export const previewView: PreviewView = new PreviewView({
   // A canvas gesture (spec §7.3) or a properties field scrub (§11) shows its values live (P2).
   transforms: () => canvasInput.transforms,
   opacities: () => liveEdit.getState().opacities,
+  crops: () => liveEdit.getState().crops,
   background: () => liveEdit.getState().background,
   behind: (mediaId) => playbackEngine.playing && playbackEngine.autoProxy.has(mediaId),
 });
@@ -107,6 +109,11 @@ playbackEngine.subscribe(() => {
 });
 /** The open canvas context menu (spec §7.2) at client px, or null. React renders it from this store. */
 export const canvasMenu = createStore<{ x: number; y: number } | null>(null);
+/**
+ * Crop mode on the canvas (spec §7.3, §11, Batch 26): the layer it crops and the aspect lock. The Crop
+ * section's header toggle and the crop chip over the canvas render from it (when it changes only).
+ */
+export const cropMode = createStore<CropModeState>(NO_CROP_MODE);
 /** Selection, hover, marquee and the transform gizmo on the preview canvas (spec §7.2, §7.3). */
 export const canvasInput: CanvasEditInput = new CanvasEditInput({
   document: documentStore,
@@ -123,6 +130,9 @@ export const canvasInput: CanvasEditInput = new CanvasEditInput({
   onContextMenu: (request) => canvasMenu.set(request),
   // A properties field scrub moves the gizmo with the layer (spec §11).
   live: () => liveEdit.getState().transforms,
+  // Crop handle drags and Crop field scrubs share the live crops (the Crop fields follow a drag).
+  crops: { read: () => liveEdit.getState().crops, write: setLiveCrops },
+  cropMode,
 });
 export const previewStats = new PreviewStatsOverlay({ scheduler, preview: previewView, pool: texturePool, gpu: gpuDevice, frames: frameService, playback: playbackEngine, canvas: canvasInput });
 /** The 2D canvas over the preview: overlays (spec §7.6), the selection and the gizmo (§7.3). */

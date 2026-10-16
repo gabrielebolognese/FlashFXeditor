@@ -8,9 +8,9 @@
 //   tracks skipped, locked ones kept. They are the smart guides' other layers (§7.4 "other visible
 //   layers at the playhead"): a locked background or logo is still an alignment reference.
 // - Each layer's quad is its visible box after crop and transform, in project px from the frame's
-//   top-left (`layerCorners`), with a gesture's ephemeral transform when one is given.
+//   top-left (`layerCorners`), with a gesture's ephemeral transform and crop when one is given.
 // - Hit testing goes top layer first (§7.2); a marquee takes the layers whose quad intersects it.
-import type { ClipId, Frame, Project, Track, TrackId, Transform } from "../../core/document/types.js";
+import type { ClipId, Crop, Frame, Project, Track, TrackId, Transform } from "../../core/document/types.js";
 import { clipInIndex, trackIndex } from "../../timeline/model/queries.js";
 import { isLayerClip, layerContent, layerCorners, type ContentBox, type Point } from "../../timeline/edit/transform.js";
 
@@ -35,22 +35,28 @@ export interface Rect {
 }
 
 /** The canvas layers of `project` at `frame`, bottom first: what selection and the gizmo act on. */
-export function canvasLayersAt(project: Project, frame: Frame, transforms: ReadonlyMap<ClipId, Transform> | null = null): CanvasLayer[] {
-  return layersAt(project, frame, transforms, (track) => !track.hidden && !track.locked);
+export function canvasLayersAt(project: Project, frame: Frame, transforms: ReadonlyMap<ClipId, Transform> | null = null, crops: ReadonlyMap<ClipId, Crop> | null = null): CanvasLayer[] {
+  return layersAt(project, frame, transforms, crops, (track) => !track.hidden && !track.locked);
 }
 
 /** The layers in the picture at `frame`, bottom first: the compositor's tracks (locked included, §6.12). */
 export function pictureLayersAt(project: Project, frame: Frame, transforms: ReadonlyMap<ClipId, Transform> | null = null): CanvasLayer[] {
-  return layersAt(project, frame, transforms, (track) => !track.hidden && !track.muted);
+  return layersAt(project, frame, transforms, null, (track) => !track.hidden && !track.muted);
 }
 
-function layersAt(project: Project, frame: Frame, transforms: ReadonlyMap<ClipId, Transform> | null, include: (track: Track) => boolean): CanvasLayer[] {
+function layersAt(
+  project: Project,
+  frame: Frame,
+  transforms: ReadonlyMap<ClipId, Transform> | null,
+  crops: ReadonlyMap<ClipId, Crop> | null,
+  include: (track: Track) => boolean,
+): CanvasLayer[] {
   const layers: CanvasLayer[] = [];
   for (const track of project.tracks) {
     if (track.kind !== "video" || !include(track)) continue;
     const clip = clipInIndex(trackIndex(project, track), frame);
     if (!clip?.enabled || !isLayerClip(clip)) continue;
-    const box = layerContent(project, clip);
+    const box = layerContent(project, clip, crops?.get(clip.id));
     if (!box) continue;
     const transform = transforms?.get(clip.id) ?? clip.transform;
     layers.push({ clipId: clip.id, trackId: track.id, transform, box, quad: layerCorners(transform, box, project.settings) });

@@ -3,7 +3,8 @@ import { makeMedia, makeMediaClip, makeProject, makeSolidClip, makeTrack, withCl
 import { frameToUs } from "../../core/document/time.js";
 import type { Clip, MediaClip, MediaItem, Project, Transform } from "../../core/document/types.js";
 import type { TextureHandle } from "../gpu/renderer.js";
-import { applyToPoint, type Mat3 } from "../mat3.js";
+import { layerPoint } from "../../timeline/edit/transform.js";
+import { applyToPoint, invert, type Mat3 } from "../mat3.js";
 import { Compositor, fadeFactor, NEIGHBOR_SECONDS, sourceTimeUs } from "./Compositor.js";
 import type { DrawList, MediaLayer, SolidLayer } from "./drawList.js";
 import { DrawListSnapshot } from "./DrawListSnapshot.js";
@@ -184,6 +185,64 @@ describe("Compositor.evaluate", () => {
         }
       }
     }
+  });
+
+  it("samples cropped, turned and flipped media like a reference image built pixel by pixel (Batch 26 acceptance 3)", () => {
+    // A coded 8 x 6 texture whose pixels are numbered; the reference turns it upright (the metadata,
+    // clockwise), mirrors it (the flips), cuts the crop off the shown sides, and places each remaining
+    // pixel's center with the clip transform (here a quarter turn too). The compositor's layer must
+    // sample the same coded pixel there (the matrix to the unit quad, then the crop's UV rectangle).
+    const CW = 8;
+    const CH = 6;
+    const coded = (x: number, y: number) => y * CW + x;
+    const crop = { left: 2 / 6, top: 1 / 8, right: 1 / 6, bottom: 2 / 8 };
+    for (const rotation of [0, 90, 180, 270] as const) {
+      const quarter = rotation === 90 || rotation === 270;
+      const SW = quarter ? CH : CW;
+      const SH = quarter ? CW : CH;
+      // Upright pixel (x, y) from the coded one (spec §9.3: the texture stays as coded).
+      const upright = (x: number, y: number) =>
+        rotation === 90 ? coded(y, CH - 1 - x) : rotation === 180 ? coded(CW - 1 - x, CH - 1 - y) : rotation === 270 ? coded(CW - 1 - y, x) : coded(x, y);
+      for (const flipH of [false, true]) {
+        for (const flipV of [false, true]) {
+          for (const turn of [0, 90]) {
+            const t = transform({ flipH, flipV, rotation: turn, scale: 40, x: 25, y: -60 });
+            let doc = project(["v1"], [video("m1", CW, CH, rotation)]);
+            const cropped = { ...crop, left: crop.left * (6 / SW), right: crop.right * (6 / SW), top: crop.top * (8 / SH), bottom: crop.bottom * (8 / SH) };
+            doc = withClips(doc, [clip(doc, { id: "c", trackId: "v1", start: 0, duration: 10, transform: t, crop: cropped })]);
+            const layer = media(new Compositor().evaluate(doc, 0).layers[0]);
+            const toQuad = invert(layer.transform) as Mat3;
+            const x0 = Math.round(cropped.left * SW);
+            const x1 = Math.round((1 - cropped.right) * SW);
+            const y0 = Math.round(cropped.top * SH);
+            const y1 = Math.round((1 - cropped.bottom) * SH);
+            for (let y = y0; y < y1; y++) {
+              for (let x = x0; x < x1; x++) {
+                // The shown (flipped) picture at content pixel (x, y), and where its center lands.
+                const expected = upright(flipH ? SW - 1 - x : x, flipV ? SH - 1 - y : y);
+                const p = layerPoint(t, { width: SW, height: SH }, { width: W, height: H }, x + 0.5, y + 0.5);
+                const q = applyToPoint(toQuad, p.x, p.y);
+                expect(q.x).toBeGreaterThan(0);
+                expect(q.x).toBeLessThan(1);
+                expect(q.y).toBeGreaterThan(0);
+                expect(q.y).toBeLessThan(1);
+                const u = layer.crop.u0 + q.x * (layer.crop.u1 - layer.crop.u0);
+                const v = layer.crop.v0 + q.y * (layer.crop.v1 - layer.crop.v0);
+                expect(coded(Math.floor(u * CW), Math.floor(v * CH))).toBe(expected);
+              }
+            }
+          }
+        }
+      }
+    }
+  });
+
+  it("uses a gesture's ephemeral crops instead of the document's (spec P2)", () => {
+    let doc = project(["v1"]);
+    doc = withClips(doc, [clip(doc, { id: "c", trackId: "v1", start: 0, duration: 30 })]);
+    const compositor = new Compositor();
+    expect(media(compositor.evaluate(doc, 0, null, null, new Map([["c", { left: 0.25, top: 0, right: 0, bottom: 0.5 }]])).layers[0]).crop).toEqual({ u0: 0.25, v0: 0, u1: 1, v1: 0.5 });
+    expect(media(compositor.evaluate(doc, 0).layers[0]).crop).toEqual({ u0: 0, v0: 0, u1: 1, v1: 1 });
   });
 
   it("drops a layer cropped away entirely", () => {

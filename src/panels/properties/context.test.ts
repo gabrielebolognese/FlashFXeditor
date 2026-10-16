@@ -27,14 +27,17 @@ describe("properties context (spec §11)", () => {
     expect(propertiesContext(selectTracks(["gone"]), null, p)).toEqual({ kind: "none" });
   });
 
-  it("lists the clips with their primary and the layers among them; layers add Transform and Opacity", () => {
+  it("lists the clips with their primary and the layers among them; layers add Transform and Opacity, media layers Crop", () => {
     const p = project();
     const linked = propertiesContext(selectClips(["a", "v"], "a"), null, p);
-    expect(linked).toEqual({ kind: "clips", clipIds: ["a", "v"], primary: "a", layerIds: ["v"], layerPrimary: "v" });
-    expect(sectionIds(linked)).toEqual(["clip", "transform", "opacity"]);
+    expect(linked).toEqual({ kind: "clips", clipIds: ["a", "v"], primary: "a", layerIds: ["v"], layerPrimary: "v", mediaIds: ["v"] });
+    expect(sectionIds(linked)).toEqual(["clip", "transform", "crop", "opacity"]);
     const audio = propertiesContext(selectClips(["a"]), null, p);
     expect(sectionIds(audio)).toEqual(["clip"]);
-    expect(propertiesContext(selectClips(["gone", "s"], "gone"), null, p)).toMatchObject({ clipIds: ["s"], primary: "s", layerPrimary: "s" });
+    const solid = propertiesContext(selectClips(["gone", "s"], "gone"), null, p);
+    expect(solid).toMatchObject({ clipIds: ["s"], primary: "s", layerPrimary: "s", mediaIds: [] });
+    expect(sectionIds(solid)).toEqual(["clip", "transform", "opacity"]);
+    expect(propertiesContext(selectClips(["s", "v"]), null, p)).toMatchObject({ layerIds: ["s", "v"], mediaIds: ["v"] });
     expect(propertiesContext(selectClips(["gone"]), null, p)).toEqual({ kind: "none" });
   });
 
