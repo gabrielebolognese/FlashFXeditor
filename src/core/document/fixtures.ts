@@ -1,8 +1,9 @@
 // Small document builders for unit tests. Not imported by app code.
 import { createProject } from "./project.js";
 import { frameToUs } from "./time.js";
+import { defaultCaptionStyle } from "../../text/captions.js";
 import { DEFAULT_TEXT_STYLE, textContent } from "../../text/style.js";
-import type { Clip, MediaClip, MediaItem, Project, SolidClip, TextClip, Track, TrackKind } from "./types.js";
+import type { CaptionClip, CaptionWord, Clip, MediaClip, MediaItem, Project, SolidClip, TextClip, Track, TrackKind } from "./types.js";
 
 export function makeProject(): Project {
   return createProject({ id: "project-1", name: "Test", now: "2026-01-01T00:00:00.000Z", appVersion: "test" });
@@ -73,6 +74,20 @@ export function makeTextClip(fields: { id: string; trackId: string; start: numbe
     fades: { in: 0, out: 0 },
     ...rest,
   };
+}
+
+export function makeCaptionClip(fields: { id: string; trackId: string; start: number; duration: number; text?: string; words?: CaptionWord[] }): CaptionClip {
+  const { text = "Caption", ...rest } = fields;
+  return { kind: "caption", name: rest.id, enabled: true, text, ...rest };
+}
+
+/** A caption track `id` with the default style, above the video tracks (spec §10.5). */
+export function addCaptionTrack(project: Project, id = "cc"): Project {
+  const next = structuredClone(project);
+  const at = next.tracks.findLastIndex((track) => track.kind === "video") + 1;
+  next.tracks.splice(at, 0, { ...makeTrack(id, "caption"), name: "CC", height: "S" });
+  next.captionTracks[id] = { style: defaultCaptionStyle(next.settings) };
+  return next;
 }
 
 /** Puts clips into the project and onto their tracks (sorted), without validation. */

@@ -1,7 +1,7 @@
 // Document invariants (spec §5.2). The DocumentStore runs `assertValid` after every command in dev
 // builds; messages name the track and clip so a broken command is found at once.
 import { usPerFrame } from "./time.js";
-import { isFreeze, isMediaClip, LABEL_COLORS, type Clip, type ClipId, type ClipKind, type MediaItem, type Project, type TextClip, type Track, type TrackId, type TrackKind } from "./types.js";
+import { CAPTION_HIGHLIGHTS, isFreeze, isMediaClip, LABEL_COLORS, type CaptionClip, type CaptionStyle, type Clip, type ClipId, type ClipKind, type MediaItem, type Project, type TextClip, type TextStyle, type Track, type TrackId, type TrackKind } from "./types.js";
 
 export class DocumentInvariantError extends Error {
   readonly issues: readonly string[];
@@ -60,6 +60,7 @@ function clipIssues(project: Project, clip: Clip): string[] {
   if (!Number.isInteger(clip.duration) || clip.duration < 1) issues.push(`${label}: duration ${clip.duration} must be an integer >= 1`);
   if (clip.color !== undefined && !LABEL_SET.has(clip.color)) issues.push(`${label}: color "${clip.color}" is not a label color`);
   if (clip.kind === "text") issues.push(...textIssues(clip, label));
+  if (clip.kind === "caption") issues.push(...cueIssues(clip, label));
   if (!isMediaClip(clip)) return issues;
 
   if (!Number.isInteger(clip.in) || !Number.isInteger(clip.out)) issues.push(`${label}: in/out must be integer microseconds`);
@@ -86,17 +87,54 @@ function clipIssues(project: Project, clip: Clip): string[] {
 
 const isPositive = (value: unknown) => typeof value === "number" && Number.isFinite(value) && value > 0;
 
-/** A text clip's content and style (spec §10.1): a string, a box with a positive width, a size, weight and line height the layout can use. */
-function textIssues(clip: TextClip, label: string): string[] {
+/** A text style the layout can use: a family name, a size, weight and line height. */
+function styleIssues(style: TextStyle | undefined, label: string): string[] {
   const issues: string[] = [];
-  const { text, style } = clip;
-  if (typeof text?.value !== "string") issues.push(`${label}: text value must be a string`);
-  if (text?.box?.mode !== "auto" && text?.box?.mode !== "fixed") issues.push(`${label}: text box mode must be auto or fixed`);
-  if (!isPositive(text?.box?.width)) issues.push(`${label}: text box width ${String(text?.box?.width)} must be > 0`);
   if (typeof style?.fontFamily !== "string" || style.fontFamily === "") issues.push(`${label}: font family must be a name`);
   if (!isPositive(style?.fontSize)) issues.push(`${label}: font size ${String(style?.fontSize)} must be > 0`);
   if (!isPositive(style?.lineHeight)) issues.push(`${label}: line height ${String(style?.lineHeight)} must be > 0`);
-  if (!(isPositive(style?.fontWeight) && style.fontWeight <= 1000)) issues.push(`${label}: font weight ${String(style?.fontWeight)} must be in 1..1000`);
+  if (!(isPositive(style?.fontWeight) && (style?.fontWeight ?? 0) <= 1000)) issues.push(`${label}: font weight ${String(style?.fontWeight)} must be in 1..1000`);
+  return issues;
+}
+
+/** A text clip's content and style (spec §10.1): a string, a box with a positive width, and a style the layout can use. */
+function textIssues(clip: TextClip, label: string): string[] {
+  const issues: string[] = [];
+  const { text } = clip;
+  if (typeof text?.value !== "string") issues.push(`${label}: text value must be a string`);
+  if (text?.box?.mode !== "auto" && text?.box?.mode !== "fixed") issues.push(`${label}: text box mode must be auto or fixed`);
+  if (!isPositive(text?.box?.width)) issues.push(`${label}: text box width ${String(text?.box?.width)} must be > 0`);
+  issues.push(...styleIssues(clip.style, label));
+  return issues;
+}
+
+/** A cue (spec §10.5): a text string and word timings in integer frames, each ending after it starts. */
+function cueIssues(clip: CaptionClip, label: string): string[] {
+  const issues: string[] = [];
+  if (typeof clip.text !== "string") issues.push(`${label}: cue text must be a string`);
+  if (clip.words === undefined) return issues;
+  if (!Array.isArray(clip.words)) return [...issues, `${label}: words must be a list`];
+  clip.words.forEach((word, i) => {
+    if (typeof word?.text !== "string") issues.push(`${label}: word ${i} text must be a string`);
+    if (!Number.isInteger(word?.start) || !Number.isInteger(word?.end) || word.end <= word.start) issues.push(`${label}: word ${i} must have integer frames start < end (${String(word?.start)}, ${String(word?.end)})`);
+  });
+  return issues;
+}
+
+const CAPTION_POSITIONS: ReadonlySet<string> = new Set(["bottom", "center", "top", "custom"]);
+const HIGHLIGHT_MODES: ReadonlySet<string> = new Set(CAPTION_HIGHLIGHTS);
+const isColor = (value: unknown) => typeof value === "object" && value !== null && ["r", "g", "b", "a"].every((key) => typeof (value as Record<string, unknown>)[key] === "number");
+
+/** A caption track's style (spec §10.5): a text style, a position preset, a positive width and line count, a highlight. */
+function captionStyleIssues(style: CaptionStyle | undefined, label: string): string[] {
+  if (typeof style !== "object" || style === null) return [`${label}: style must be an object`];
+  const issues = styleIssues(style.text, label);
+  if (!CAPTION_POSITIONS.has(style.position)) issues.push(`${label}: position "${String(style.position)}" is not bottom, center, top or custom`);
+  if (typeof style.y !== "number" || !Number.isFinite(style.y)) issues.push(`${label}: y ${String(style.y)} must be a number`);
+  if (!isPositive(style.maxWidth)) issues.push(`${label}: max width ${String(style.maxWidth)} must be > 0`);
+  if (!isPositiveInteger(style.maxLines)) issues.push(`${label}: max lines ${String(style.maxLines)} must be a positive integer`);
+  if (!HIGHLIGHT_MODES.has(style.highlight?.mode)) issues.push(`${label}: highlight mode "${String(style.highlight?.mode)}" is not ${CAPTION_HIGHLIGHTS.join(", ")}`);
+  if (!isColor(style.highlight?.color) || !isColor(style.highlight?.inactiveColor)) issues.push(`${label}: highlight colors must be RGBA`);
   return issues;
 }
 
@@ -141,9 +179,15 @@ export function validateProject(project: Project): string[] {
     if (!placed.has(clip.id)) issues.push(`${clipLabel(clip)}: not listed on any track (trackId ${clip.trackId})`);
   }
   for (const [key, media] of Object.entries(project.media)) issues.push(...mediaIssues(key, media));
-  for (const trackId of Object.keys(project.captionTracks)) {
+  // One caption track at most (spec §6.12), above every video track (§10.5): after the last video track.
+  const captions = project.tracks.filter((track) => track.kind === "caption");
+  if (captions.length > 1) issues.push(`${captions.length} caption tracks: a project has one at most`);
+  const lastVideo = project.tracks.findLastIndex((track) => track.kind === "video");
+  for (const track of captions) if (project.tracks.indexOf(track) < lastVideo) issues.push(`${trackLabel(track)}: the caption track must be above every video track`);
+  for (const [trackId, data] of Object.entries(project.captionTracks)) {
     const track = project.tracks.find((t) => t.id === trackId);
     if (track?.kind !== "caption") issues.push(`captionTracks entry ${trackId} has no caption track`);
+    issues.push(...captionStyleIssues(data?.style, `captionTracks entry ${trackId}`));
   }
   issues.push(...markerIssues(project));
   return issues;

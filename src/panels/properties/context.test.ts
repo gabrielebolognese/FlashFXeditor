@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { makeMedia, makeMediaClip, makeProject, makeSolidClip, makeTextClip, makeTrack, withClips } from "../../core/document/fixtures.js";
+import { addCaptionTrack, makeCaptionClip, makeMedia, makeMediaClip, makeProject, makeSolidClip, makeTextClip, makeTrack, withClips } from "../../core/document/fixtures.js";
 import type { Clip, Project } from "../../core/document/types.js";
 import { EMPTY_SELECTION, selectClips, selectTracks } from "../../core/store/selection.js";
 import { contextKey, propertiesContext, sectionIds, shared } from "./context.js";
@@ -23,7 +23,7 @@ describe("properties context (spec §11)", () => {
     expect(sectionIds(propertiesContext(EMPTY_SELECTION, null, p))).toEqual(["project"]);
     expect(propertiesContext(selectClips(["v"]), "mk", p)).toEqual({ kind: "marker", markerId: "mk" });
     expect(sectionIds(propertiesContext(EMPTY_SELECTION, "mk", p))).toEqual(["marker"]);
-    expect(propertiesContext(selectTracks(["v2", "gone", "v1"]), null, p)).toEqual({ kind: "track", trackIds: ["v2", "v1"] });
+    expect(propertiesContext(selectTracks(["v2", "gone", "v1"]), null, p)).toEqual({ kind: "track", trackIds: ["v2", "v1"], captionTrackId: null });
     expect(sectionIds(propertiesContext(selectTracks(["v1"]), null, p))).toEqual(["track"]);
     expect(propertiesContext(selectTracks(["gone"]), null, p)).toEqual({ kind: "none" });
   });
@@ -31,7 +31,7 @@ describe("properties context (spec §11)", () => {
   it("lists the clips with their primary and the layers among them; layers add Transform and Opacity, media layers Crop, video and audio Speed", () => {
     const p = project();
     const linked = propertiesContext(selectClips(["a", "v"], "a"), null, p);
-    expect(linked).toEqual({ kind: "clips", clipIds: ["a", "v"], primary: "a", layerIds: ["v"], layerPrimary: "v", mediaIds: ["v"], speedIds: ["a", "v"], textIds: [] });
+    expect(linked).toEqual({ kind: "clips", clipIds: ["a", "v"], primary: "a", layerIds: ["v"], layerPrimary: "v", mediaIds: ["v"], speedIds: ["a", "v"], textIds: [], captionTrackId: null });
     expect(sectionIds(linked)).toEqual(["clip", "transform", "crop", "opacity", "speed"]);
     const audio = propertiesContext(selectClips(["a"]), null, p);
     expect(sectionIds(audio)).toEqual(["clip", "speed"]);
@@ -47,6 +47,18 @@ describe("properties context (spec §11)", () => {
     const text = propertiesContext(selectClips(["t", "s"]), null, p);
     expect(text).toMatchObject({ layerIds: ["t", "s"], textIds: ["t"], mediaIds: [] });
     expect(sectionIds(text)).toEqual(["clip", "text", "animation", "transform", "opacity"]);
+  });
+
+  it("adds Caption style for cues and for the caption track (Batch 32)", () => {
+    const base = addCaptionTrack(project());
+    const p = withClips(base, [makeCaptionClip({ id: "q", trackId: "cc", start: 0, duration: 30 })]);
+    const cue = propertiesContext(selectClips(["q"]), null, p);
+    expect(cue).toMatchObject({ kind: "clips", captionTrackId: "cc", layerIds: [], textIds: [] });
+    expect(sectionIds(cue)).toEqual(["clip", "captionStyle"]);
+    expect(sectionIds(propertiesContext(selectClips(["q", "t"]), null, p))).toEqual(["clip", "text", "animation", "captionStyle", "transform", "opacity"]);
+    const track = propertiesContext(selectTracks(["cc"]), null, p);
+    expect(track).toEqual({ kind: "track", trackIds: ["cc"], captionTrackId: "cc" });
+    expect(sectionIds(track)).toEqual(["track", "captionStyle"]);
   });
 
   it("keys the context by kind, primary, ids and marker (React renders the panel when it changes)", () => {

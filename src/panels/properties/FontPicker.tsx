@@ -8,7 +8,7 @@ import type { Project } from "../../core/document/types.js";
 import { useStoreSelector } from "../../core/store/useStoreSelector.js";
 import { toggleFavoriteFont, type AppSettings } from "../../project/appSettings.js";
 import { BUNDLED_FONTS, bundledFont } from "../../render/text/bundledFonts.js";
-import { quoteFamily, usedFamilies } from "../../text/fonts.js";
+import { projectTextStyles, quoteFamily, usedFamilies } from "../../text/fonts.js";
 import { useDismiss } from "../../ui/useDismiss.js";
 import styles from "./TextSection.module.css";
 import { MIXED, NONE, type Shared } from "./useShared.js";
@@ -24,7 +24,7 @@ import { MIXED, NONE, type Shared } from "./useShared.js";
 //   settings). System fonts are listed on request (the Local Font Access permission asks once).
 // TODO(batch 40): arrow-key navigation in the list (the shared menus' keyboard TODO).
 
-const selectUsed = (project: Project) => usedFamilies(Object.values(project.clips)).join("\n");
+const selectUsed = (project: Project) => usedFamilies(projectTextStyles(project).map((style) => ({ kind: "text", style }))).join("\n");
 const selectFavorites = (settings: AppSettings) => settings.favoriteFonts;
 const selectSystem = (state: SystemFonts) => state;
 const selectVersion = (version: number) => version;

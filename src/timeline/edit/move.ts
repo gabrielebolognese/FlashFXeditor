@@ -4,6 +4,7 @@
 //   split in two when covered in the middle;
 // - insert (Mod on drop): every unlocked track opens a gap as long as the moved block at its start
 //   (clips crossing that frame are split), then the clips land in it. Locked tracks never move.
+// Cues never overwrite: an overwrite move of cues stops at the cues that stay (spec §10.5, captions.ts).
 // Moving clips off or onto a locked track is refused. Collision lookups are binary searches on the
 // per-track sorted arrays (O(log n + k) per clip). `dropClips` lands new clips (media drops, §6.14)
 // with the same rules.
@@ -13,7 +14,9 @@ import type { Affect, Command } from "../../core/commands/command.js";
 import { emptyTrack, nextTrackName } from "../../core/document/project.js";
 import { framesToSourceUs } from "../../core/document/time.js";
 import { isFreeze, isMediaClip, type Clip, type ClipId, type Frame, type Keyframes, type Project, type Rational, type Track, type TrackId } from "../../core/document/types.js";
+import { cueSlice } from "../../text/captions.js";
 import { clipsOverlapping, firstEndingAfter, laneOf, laneTracks, trackIndex, type LaneKind, type TrackIndex } from "../model/queries.js";
+import { clampCueDelta } from "./captions.js";
 
 export type MoveMode = "overwrite" | "insert";
 
@@ -149,8 +152,8 @@ function partitionKeyframes(keyframes: Keyframes, shift: Frame, lower: number, u
  * source in/out by the frames cut at the clip's speed. Keyframes (relative to the clip start) are
  * partitioned by frame and re-based; an edge that did not move keeps the keyframes past it. A new
  * edge drops the fade and transition (and the text animation) of that side.
+ * A cue keeps the part of its text and the word timings of its span (text/captions.ts `cueSlice`).
  * TODO(batch 35): a keyframe at each new edge with the eased value, so the kept part looks unchanged.
- * TODO(batch 32): partition caption words.
  */
 export function sliceClip(clip: Clip, from: Frame, to: Frame, fps: Rational): Clip {
   const end = clip.start + clip.duration;
@@ -174,6 +177,12 @@ export function sliceClip(clip: Clip, from: Frame, to: Frame, fps: Rational): Cl
   if ("fades" in clip) {
     const duration = to - from;
     piece.fades = { in: newIn ? 0 : Math.min(clip.fades.in, duration), out: newOut ? 0 : Math.min(clip.fades.out, duration) };
+  }
+  if (clip.kind === "caption") {
+    const { text, words } = cueSlice(clip, from, to);
+    piece.text = text;
+    if (words) piece.words = words;
+    else delete piece.words;
   }
   if (newIn) {
     delete piece.transitionIn;
@@ -429,7 +438,13 @@ export function moveClips(project: Project, ids: Iterable<ClipId>, deltaFrames: 
   if (moving.length === 0) return NOOP;
   const { newId } = options;
   const duplicate = options.duplicate === true;
-  const delta = Math.max(Math.round(deltaFrames), -minStart);
+  let delta = Math.max(Math.round(deltaFrames), -minStart);
+  // Cues never overwrite one another (spec §10.5): an overwrite move stops at the cues that stay.
+  if (mode === "overwrite") {
+    const clamped = clampCueDelta(project, moving.map((clip) => clip.id), delta, duplicate);
+    if (clamped === null) return NOOP;
+    delta = clamped;
+  }
   const destination = (clip: Clip) => trackMap.get(clip.trackId) ?? clip.trackId;
   if (!duplicate && delta === 0 && moving.every((clip) => destination(clip) === clip.trackId)) return NOOP;
 

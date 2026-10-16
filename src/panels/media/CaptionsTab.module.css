@@ -1,0 +1,196 @@
+/* The Captions tab (spec §10.5, §12; gap: the DS has no cue list). A tool row (search and the cue
+   count), then the virtualized cue list: rows of --cue-row-height with the in / out timecodes (mono,
+   tertiary), the text as a borderless field that takes the DS input look on hover and focus, and the
+   word count chip. Hover = the menu wash, selected = --accent-wash (as the media list), the cue under
+   the playhead = a --playhead bar on the row's left edge (the scrub red). */
+.root {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.tools {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.search {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.search > label {
+  width: 100%;
+  height: var(--control-compact);
+}
+
+.total {
+  flex: none;
+  color: var(--text-tertiary);
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-track);
+  font-variant-numeric: tabular-nums;
+}
+
+.scroll {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.spacer {
+  position: relative;
+  width: 100%;
+}
+
+.row {
+  position: absolute;
+  right: 0;
+  left: 0;
+  display: grid;
+  grid-template-columns: var(--cue-time-width) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-2);
+  height: var(--cue-row-height);
+  padding: 0 var(--space-3);
+  border-bottom: 1px solid var(--hairline);
+  cursor: pointer;
+  outline: none;
+  transition: background-color var(--duration-micro) var(--ease-out);
+}
+
+.row:hover {
+  background: var(--hover-wash);
+}
+
+.row[aria-selected="true"] {
+  background: var(--accent-wash);
+}
+
+.row:focus-visible {
+  box-shadow: inset 0 0 0 1px var(--accent-dim);
+}
+
+.row[data-playing]::before {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: var(--space-0);
+  background: var(--playhead);
+  content: "";
+}
+
+.times {
+  display: flex;
+  flex-direction: column;
+  color: var(--text-tertiary);
+  font: var(--type-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.row[aria-selected="true"] .times {
+  color: var(--text-secondary);
+}
+
+.text {
+  box-sizing: border-box;
+  width: 100%;
+  height: calc(2 * var(--type-body-line) + 2 * var(--space-0) + 2px);
+  padding: var(--space-0) var(--space-2);
+  overflow-y: auto;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-primary);
+  font: var(--type-body);
+  letter-spacing: var(--type-body-track);
+  resize: none;
+  transition:
+    border-color var(--duration-micro) var(--ease-out),
+    background-color var(--duration-micro) var(--ease-out);
+}
+
+.text::placeholder {
+  color: var(--text-muted);
+}
+
+.text:hover {
+  border-color: var(--border);
+}
+
+.text:focus {
+  border-color: var(--accent-dim);
+  outline: none;
+  background: var(--surface-1);
+  box-shadow: 0 0 0 1px var(--accent-wash);
+  cursor: text;
+}
+
+.count {
+  min-width: var(--space-5);
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-sm);
+  background: var(--surface-3);
+  color: var(--text-tertiary);
+  font: var(--type-badge);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.note {
+  margin: 0;
+  padding: var(--space-5);
+  color: var(--text-tertiary);
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-track);
+  text-align: center;
+}
+
+/* Empty state: the Media tab's (muted icon, title type, caption hint, actions). */
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  height: 100%;
+  padding: var(--space-5);
+  text-align: center;
+}
+
+.emptyIcon {
+  width: var(--control-default);
+  height: var(--control-default);
+  color: var(--text-muted);
+}
+
+.emptyTitle {
+  margin: 0;
+  color: var(--text-primary);
+  font: var(--type-title);
+  letter-spacing: var(--type-title-track);
+}
+
+.emptyText {
+  margin: 0 0 var(--space-2);
+  color: var(--text-tertiary);
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-track);
+}
+
+.emptyActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-2);
+}

@@ -238,7 +238,11 @@ export class TimelineGeometry {
     return row && row.kind === kind ? row.lane : 0;
   }
 
-  /** The vertical band of a lane: its row, or for a lane past the last one a row of `newHeight` stacked beyond it. */
+  /**
+   * The vertical band of a lane: its row, or for a lane past the last one a row of `newHeight` stacked
+   * beyond it (new video lanes above the caption row, which they would otherwise cover; the new track
+   * itself goes under it).
+   */
   laneBand(kind: LaneKind, lane: number, newHeight: number): { y: number; height: number } | null {
     const rows = this.laneRows[kind];
     const row = rows[lane];
@@ -246,7 +250,9 @@ export class TimelineGeometry {
     const outer = rows[rows.length - 1];
     if (!outer || lane < 0) return null;
     const beyond = lane - rows.length;
-    return kind === "video" ? { y: outer.y - (beyond + 1) * newHeight, height: newHeight } : { y: outer.y + outer.height + beyond * newHeight, height: newHeight };
+    if (kind === "audio") return { y: outer.y + outer.height + beyond * newHeight, height: newHeight };
+    const caption = this.rows.find((candidate) => candidate.kind === "caption");
+    return { y: Math.min(outer.y, caption?.y ?? outer.y) - (beyond + 1) * newHeight, height: newHeight };
   }
 
   rowOf(trackId: TrackId): Row | null {

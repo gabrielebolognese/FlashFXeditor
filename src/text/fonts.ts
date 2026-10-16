@@ -2,7 +2,7 @@
 // names of system fonts (`queryLocalFonts` gives "Bold Italic", "Semibold"...) as weight and italic,
 // CSS font matching among a family's faces, and the manifest of the font files a project carries in
 // `<project>/fonts/` (system fonts copied when used, so the project renders the same elsewhere). Pure.
-import type { TextStyle } from "../core/document/types.js";
+import type { Project, TextStyle } from "../core/document/types.js";
 
 /** The project folder's font files and their manifest (spec §10.1). */
 export const FONTS_DIR = "fonts";
@@ -135,6 +135,14 @@ export function fontExtension(header: Uint8Array): string {
   if (tag === "wOF2") return ".woff2";
   if (tag === "wOFF") return ".woff";
   return ".ttf";
+}
+
+/** Every text style a document draws with: its text clips' and its caption tracks' (spec §10.1, §10.5). */
+export function projectTextStyles(project: Pick<Project, "clips" | "captionTracks">): TextStyle[] {
+  const styles: TextStyle[] = [];
+  for (const clip of Object.values(project.clips)) if (clip.kind === "text") styles.push(clip.style);
+  for (const data of Object.values(project.captionTracks)) if (data?.style?.text) styles.push(data.style.text);
+  return styles;
 }
 
 /** The families used by the text clips of a document's clip list, sorted. */

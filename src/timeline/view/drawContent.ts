@@ -15,6 +15,7 @@ import type { Selection } from "../../core/store/selection.js";
 import type { Theme } from "../../core/theme/theme.js";
 import { cellOrigin, type ThumbLevel } from "../../media/cache/thumbSheets.js";
 import { isPlayable } from "../../text/anim.js";
+import { cueLine } from "../../text/captions.js";
 import { firstLine } from "../../text/style.js";
 import { clipsInRange, contentEnd, linkOffset } from "../model/queries.js";
 import { clipLod, clipSpan, devicePx, LOD_THUMBS_PX, type ClipLod } from "./clipLayout.js";
@@ -278,7 +279,7 @@ function drawBody(scene: ClipScene, clip: Clip, x: number, y: number, width: num
       if (lod === "full") drawBodyText(scene, firstLine(clip.text, clip.style), left, right, y, height);
       return;
     case "caption":
-      if (lod === "full") drawBodyText(scene, clip.text.split("\n")[0] ?? "", left, right, y, height);
+      if (lod === "full") drawBodyText(scene, cueLine(clip.text), left, right, y, height);
       return;
     case "solid":
       if (lod === "full") drawSwatch(scene, clip, left, y, height);
@@ -431,7 +432,8 @@ function drawLabel(scene: ClipScene, clip: Clip, x: number, y: number, width: nu
   drawGlyph(ctx, CLIP_GLYPHS[clip.kind], left + pad, lineY - icon / 2, icon, theme.color.textPrimary);
   const textX = left + pad + icon + pad;
   ctx.font = fontOf(theme, "caption");
-  const name = text.fit(ctx, clip.name, right - pad - textX);
+  // A cue shows its text (spec §6.4), other clips their name.
+  const name = text.fit(ctx, clip.kind === "caption" ? cueLine(clip.text) : clip.name, right - pad - textX);
   if (name === "") return;
   ctx.fillStyle = theme.color.textPrimary;
   ctx.textBaseline = "middle";

@@ -82,8 +82,27 @@ export interface TextAnimFrame {
 }
 
 /**
- * A text clip at the frame (spec §10.1), not rasterized yet: the preview resolves it to a raster of
- * the text cache at its render scale, drawn over the raster's rect (`model` x the rect).
+ * A cue's word highlight at its frame (spec §10.5): the cue's words are drawn from its word atlas (the
+ * layer's style: the inactive words' look) except units [from, to), the active word, which come from
+ * the atlas of `style` (its slot keyed `clipId + HIGHLIGHT_SLOT`), grown by `scale` about (ox, oy)
+ * over a `box` in its color when the mode has one.
+ */
+export interface CaptionHighlightFrame {
+  style: TextStyle;
+  from: number;
+  to: number;
+  scale: number;
+  ox: number;
+  oy: number;
+  box: { rect: { x: number; y: number; width: number; height: number }; color: RGBA } | null;
+}
+
+/** The raster cache slot suffix of a cue's active-word atlas. */
+export const HIGHLIGHT_SLOT = "#highlight";
+
+/**
+ * A text clip (or a cue) at the frame (spec §10.1), not rasterized yet: the preview resolves it to a
+ * raster of the text cache at its render scale, drawn over the raster's rect (`model` x the rect).
  */
 export interface TextCompositeLayer {
   kind: "text";
@@ -102,6 +121,8 @@ export interface TextCompositeLayer {
   highlight: TextHighlight | null;
   /** Its animation at the frame; null at rest. */
   anim: TextAnimFrame | null;
+  /** A cue's word highlight at the frame; null for text clips and cues with no active word. */
+  karaoke: CaptionHighlightFrame | null;
 }
 
 export type CompositeLayer = MediaLayer | SolidLayer | TextCompositeLayer;

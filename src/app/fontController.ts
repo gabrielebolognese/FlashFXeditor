@@ -7,12 +7,11 @@
 //   a machine without the font. Copies run after document changes, one at a time, and only in a
 //   writable project.
 import { createStore } from "../core/store/createStore.js";
-import type { TextClip } from "../core/document/types.js";
 import type { FsDir } from "../project/fs.js";
 import { safeFileName, takenNames, uniqueName } from "../project/mediaFiles.js";
 import type { ProjectFace } from "../render/text/FontLibrary.js";
 import type { LocalFace } from "../render/text/localFonts.js";
-import { fontExtension, FONT_MANIFEST, FONTS_DIR, formatFontManifest, nearestFace, parseFontManifest, type ProjectFontFace } from "../text/fonts.js";
+import { fontExtension, FONT_MANIFEST, FONTS_DIR, formatFontManifest, nearestFace, parseFontManifest, projectTextStyles, type ProjectFontFace } from "../text/fonts.js";
 import { documentStore, fontLibrary } from "./services.js";
 
 export type SystemFontsStatus = "idle" | "loading" | "ready" | "denied" | "unsupported";
@@ -66,7 +65,7 @@ export function attachFonts(dir: FsDir, isWritable: () => boolean): void {
   detachFonts();
   const state: OpenFonts = { dir, isWritable, faces: [], data: new Map(), stop: () => undefined, closed: false };
   open = state;
-  state.stop = documentStore.subscribe(() => scheduleCopy(), { affects: ["text", "clips"] });
+  state.stop = documentStore.subscribe(() => scheduleCopy(), { affects: ["text", "clips", "captions"] });
   queue = queue.then(async () => {
     if (state.closed) return;
     try {
@@ -118,12 +117,10 @@ function scheduleCopy(): void {
   });
 }
 
-/** The installed face each text clip's font picks, for families the project does not carry yet in that face. */
+/** The installed face each text style (text clips, the caption track) picks, for families the project does not carry yet in that face. */
 function wantedFaces(state: OpenFonts): LocalFace[] {
   const wanted = new Map<string, LocalFace>();
-  for (const clip of Object.values(documentStore.getState().clips)) {
-    if (clip.kind !== "text") continue;
-    const { fontFamily, fontWeight, italic } = (clip as TextClip).style;
+  for (const { fontFamily, fontWeight, italic } of projectTextStyles(documentStore.getState())) {
     const faces = localFaces.get(fontFamily);
     if (!faces || fontLibrary.source(fontFamily) === "bundled") continue;
     const face = nearestFace(faces, fontWeight, italic);

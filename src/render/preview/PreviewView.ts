@@ -49,7 +49,7 @@ import type { PreviewQuality, PreviewSession, SessionState } from "../../core/st
 import { cssColorToRgba } from "../../core/theme/cssColor.js";
 import type { Theme, ThemeBridge } from "../../core/theme/theme.js";
 import { secondsToFrames } from "../../core/document/time.js";
-import { Compositor, type LiveAnims, type LiveText } from "../compositor/Compositor.js";
+import { Compositor, type LiveAnims, type LiveCaptions, type LiveText } from "../compositor/Compositor.js";
 import type { Composite, DrawList, Layer, TextureLayer } from "../compositor/drawList.js";
 import { DrawListSnapshot } from "../compositor/DrawListSnapshot.js";
 import type { FramePriority } from "../../media/workers/protocol.js";
@@ -92,6 +92,8 @@ export interface PreviewViewDeps extends Omit<LayerTexturesDeps, "onChange" | "w
   texts?(): ReadonlyMap<ClipId, LiveText> | null;
   /** An Animation field scrub's ephemeral text animations by clip id (§10.4), or null. The owner invalidates `preview` when they change. */
   anims?(): ReadonlyMap<ClipId, LiveAnims> | null;
+  /** The cue list's live cue texts and a Caption style scrub's live style (§10.5), or null. The owner invalidates `preview` when they change. */
+  captions?(): LiveCaptions | null;
   /** Loads the fonts of `style` for `text` (Export frame); resolves true when it had to wait for them. */
   loadFonts?(style: TextStyle, text: string): Promise<boolean>;
   /** True when playback fell behind on the media this playback (1/2 and 1/4 then play its proxy). */
@@ -273,7 +275,7 @@ export class PreviewView implements RenderView {
       this.deps.watchPriority(() => {
         if (this.deps.priority() !== this.drawnPriority) invalidate();
       }),
-      document.subscribe(invalidate, { affects: ["timeline", "clips", "tracks", "media", "settings", "composite"] }),
+      document.subscribe(invalidate, { affects: ["timeline", "clips", "tracks", "media", "settings", "composite", "captions"] }),
       theme.subscribe((next) => {
         this.chrome = chromeFromTheme(next);
         invalidate();
@@ -339,6 +341,7 @@ export class PreviewView implements RenderView {
       override ? null : (this.deps.crops?.() ?? null),
       override ? null : (this.deps.texts?.() ?? null),
       override ? null : (this.deps.anims?.() ?? null),
+      override ? null : (this.deps.captions?.() ?? null),
     );
     const background = override ? null : (this.deps.background?.() ?? null);
     if (background) composite.background = background;

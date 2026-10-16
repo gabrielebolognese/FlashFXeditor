@@ -27,7 +27,7 @@ import { formatFps } from "../project/projectPresets.js";
 import { GpuDevice } from "../render/gpu/GpuDevice.js";
 import { WebGpuRenderer } from "../render/gpu/WebGpuRenderer.js";
 import { CanvasEditInput } from "../render/preview/CanvasEditInput.js";
-import type { LiveText } from "../render/compositor/Compositor.js";
+import type { LiveCaptions, LiveText } from "../render/compositor/Compositor.js";
 import { InlineTextEditor, type DraftText } from "../render/preview/InlineTextEditor.js";
 import { NO_CROP_MODE, type CropModeState } from "../render/preview/cropGizmo.js";
 import { PreviewOverlayView } from "../render/preview/PreviewOverlayView.js";
@@ -39,7 +39,7 @@ import { TextRasterCache } from "../render/text/TextRasterCache.js";
 import { showToast } from "../ui/toasts.js";
 import { attachAudio, audioScheduler, detachAudio, meterView } from "./audioController.js";
 import { toggleFullscreen } from "./fullscreen.js";
-import { liveEdit, setLiveCrops } from "./liveEdit.js";
+import { liveEdit, setLiveCrops, type LiveEdit } from "./liveEdit.js";
 import { requestProxyIfUndecided } from "./mediaController.js";
 import { actions, audioClock, documentStore, focusScopes, fontLibrary, idleQueue, layoutStore, scheduler, sessionStore, themeBridge, workerPool } from "./services.js";
 import { timelineView } from "./timelineController.js";
@@ -97,6 +97,7 @@ export const previewView: PreviewView = new PreviewView({
   background: () => liveEdit.getState().background,
   texts: () => liveTexts(),
   anims: () => liveEdit.getState().anims,
+  captions: () => liveCaptions(),
   // Export frame waits for the fonts of its text layers.
   loadFonts: async (style, text) => {
     if (fontLibrary.ready(style, text)) return false;
@@ -204,6 +205,16 @@ export const textEditor: InlineTextEditor = new InlineTextEditor({
 
 let textsMemo: { base: ReadonlyMap<ClipId, LiveText> | null; draft: DraftText | null; value: ReadonlyMap<ClipId, LiveText> | null } = { base: null, draft: null, value: null };
 let transformsMemo: { base: ReadonlyMap<ClipId, Transform> | null; draft: DraftText | null; value: ReadonlyMap<ClipId, Transform> | null } = { base: null, draft: null, value: null };
+
+let captionsMemo: { cues: ReadonlyMap<ClipId, string> | null; styles: LiveEdit["captionStyles"]; value: LiveCaptions | null } = { cues: null, styles: null, value: null };
+
+/** The cue list's live text and a Caption style scrub's style (the same object while nothing changed). */
+function liveCaptions(): LiveCaptions | null {
+  const { cues, captionStyles } = liveEdit.getState();
+  if (cues === null && captionStyles === null) return null;
+  if (captionsMemo.cues !== cues || captionsMemo.styles !== captionStyles) captionsMemo = { cues, styles: captionStyles, value: { texts: cues, styles: captionStyles } };
+  return captionsMemo.value;
+}
 
 /** The live texts: a canvas text handle drag's or a Text field scrub's, with the inline draft over them (the same map while nothing changed). */
 function liveTexts(): ReadonlyMap<ClipId, LiveText> | null {

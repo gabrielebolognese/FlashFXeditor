@@ -6,6 +6,7 @@ import { App } from "./app/App.js";
 import { findMissingApis, GPU_ADAPTER_LABEL } from "./app/compat.js";
 import { installAudioController } from "./app/audioController.js";
 import { installCanvasController } from "./app/canvasController.js";
+import { installCaptionController } from "./app/captionController.js";
 import { installCutController } from "./app/cutController.js";
 import { installDropController } from "./app/dropController.js";
 import { installMarkerController } from "./app/markerController.js";
@@ -48,6 +49,7 @@ async function start(): Promise<void> {
   installSpeedController();
   installTextController();
   installPresetController();
+  installCaptionController();
   installMarkerController();
   installTrackController();
   installPlaybackController();

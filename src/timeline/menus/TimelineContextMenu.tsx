@@ -6,7 +6,7 @@ import type { ClipId, LabelColor, Project, Track } from "../../core/document/typ
 import { useStoreSelector } from "../../core/store/useStoreSelector.js";
 import { ContextMenu, type ContextMenuEntry } from "../../ui/ContextMenu.js";
 import { selectionSpan } from "../model/inOut.js";
-import { linkOffset } from "../model/queries.js";
+import { linkOffset, neighbors } from "../model/queries.js";
 import type { ContextMenuRequest } from "../view/TimelineView.js";
 import { labelSwatches } from "./labelSwatches.js";
 
@@ -54,6 +54,11 @@ function speedEntries(project: Project, clipId: ClipId): ContextMenuEntry[] {
   ];
 }
 
+/** A cue's own rows (spec §10.5): merge it into the cue before it. */
+function cueEntries(project: Project, clipId: ClipId): ContextMenuEntry[] {
+  return [{ kind: "item", id: "caption.mergePrevious", label: "Merge with previous cue", disabled: neighbors(project, clipId).prev === null }];
+}
+
 function clipEntries(project: Project, clipId: ClipId, current: LabelColor | null): ContextMenuEntry[] {
   return [
     // TODO(batch 39): clipboard.
@@ -71,7 +76,7 @@ function clipEntries(project: Project, clipId: ClipId, current: LabelColor | nul
     { kind: "item", id: "edit.rename", label: "Rename", commandId: "edit.rename" },
     { kind: "swatches", id: "labels", label: "Label", swatches: labelSwatches(current, { prefix: SWATCH_PREFIX, removable: true }) },
     { kind: "separator" },
-    ...speedEntries(project, clipId),
+    ...(project.clips[clipId]?.kind === "caption" ? cueEntries(project, clipId) : speedEntries(project, clipId)),
   ];
 }
 

@@ -11,9 +11,12 @@
 //   the preset, edited inline at once, like `+ Title`), rename, duplicate, delete, favorite, apply
 //   position, default Title / Subtitle (T / Shift+T use them), import and export JSON.
 // - Hover: a card hovered with text clips selected shows the preset on them, live only (P2).
+// - Captions (spec §10.5): with cues or the caption track selected (and no text clip), Apply sets the
+//   caption track's text style from the preset (position, width, lines and highlight stay); hovering
+//   shows it live.
 // - Drags: a card dragged onto the timeline (or the canvas) adds a text clip with the preset there.
 // - Thumbnails: the Presets tab's cards are drawn by `presetThumbs` in the FrameScheduler loop.
-import type { ClipId, Project, TextClip, TextPreset, Transform } from "../core/document/types.js";
+import type { ClipId, Project, TextClip, TextPreset, TrackId, Transform } from "../core/document/types.js";
 import { usToFrame } from "../core/document/time.js";
 import { createStore } from "../core/store/createStore.js";
 import type { PresetScope } from "../core/store/sessionStore.js";
@@ -42,10 +45,12 @@ import {
 import { starterPresets, upgradeStarters } from "../text/starterPresets.js";
 import type { TitleKind } from "../text/style.js";
 import type { DropItem } from "../timeline/edit/dropMedia.js";
+import { captionStyleOf, captionTrackOf, setCaptionStyle } from "../timeline/edit/captions.js";
 import { applyPreset, linkPreset, titleDuration, type TitleLook } from "../timeline/edit/text.js";
 import { IDENTITY_TRANSFORM } from "../timeline/edit/transform.js";
 import { isClipLocked } from "../timeline/model/queries.js";
 import { showToast } from "../ui/toasts.js";
+import { pickFile, saveFile, type PickerType } from "./filePickers.js";
 import { patchLiveEdit } from "./liveEdit.js";
 import type { CardDragSource } from "./mediaGestures.js";
 import { addTitleClip, fontsVersion, selectedTextClip, setDefaultTitleLook } from "./textController.js";
@@ -318,6 +323,22 @@ function selectedTextIds(project: Project = documentStore.getState()): ClipId[] 
   return [...selection.clipIds].filter((id) => project.clips[id]?.kind === "text" && !isClipLocked(project, id));
 }
 
+/** The caption track a preset applies to: selected cues' or the selected caption track, when no text clip is selected. */
+function captionTarget(project: Project = documentStore.getState()): TrackId | null {
+  if (selectedTextIds(project).length > 0) return null;
+  const track = captionTrackOf(project);
+  if (!track || track.locked) return null;
+  const selection = sessionStore.selection.getState();
+  if (selection.kind === "track") return selection.trackIds?.has(track.id) ? track.id : null;
+  if (selection.kind === "clips") return [...selection.clipIds].some((id) => project.clips[id]?.kind === "caption") ? track.id : null;
+  return null;
+}
+
+/** Whether Apply (a card click) would set the caption track's style (the card menu names it). */
+export function appliesToCaptions(): boolean {
+  return captionTarget() !== null;
+}
+
 /** The text clip Save as preset and Update preset read: the primary selected one, else the first. */
 export function presetSourceClip(project: Project = documentStore.getState()): TextClip | null {
   const id = selectedTextClip(project, sessionStore.selection.getState());
@@ -446,6 +467,13 @@ export function applyPresetById(id: string): void {
   endHover();
   const project = documentStore.getState();
   const ids = selectedTextIds(project);
+  const captions = captionTarget(project);
+  if (captions) {
+    const style = { ...captionStyleOf(project, captions), text: presetLook(found.preset, project.settings).style };
+    const command = setCaptionStyle(project, captions, style, { label: `Apply "${found.preset.name}" to captions` });
+    if (command) documentStore.dispatch(command);
+    return;
+  }
   if (ids.length === 0) {
     addPresetClip(id);
     return;
@@ -469,6 +497,13 @@ export function hoverPreset(id: string | null): void {
   const found = findPreset(id);
   const project = documentStore.getState();
   const ids = found ? selectedTextIds(project) : [];
+  const captions = found ? captionTarget(project) : null;
+  if (found && captions) {
+    hovered = id;
+    const style = { ...captionStyleOf(project, captions), text: presetLook(found.preset, project.settings).style };
+    patchLiveEdit({ captionStyles: new Map([[captions, style]]) });
+    return;
+  }
   if (!found || ids.length === 0) {
     endHover();
     return;
@@ -488,7 +523,7 @@ export function hoverPreset(id: string | null): void {
 function endHover(): void {
   if (hovered === null) return;
   hovered = null;
-  patchLiveEdit({ texts: null, transforms: null });
+  patchLiveEdit({ texts: null, transforms: null, captionStyles: null });
 }
 
 // Drags (spec §10.3: "drag a card onto the timeline to create a clip with it").
@@ -520,62 +555,12 @@ export function presetDragSource(id: string): CardDragSource {
 
 // Files (spec §10.3: "exported/imported as a JSON file").
 
-interface FilePickerWindow {
-  showOpenFilePicker?(options: { types: { description: string; accept: Record<string, string[]> }[]; multiple?: boolean }): Promise<FileSystemFileHandle[]>;
-  showSaveFilePicker?(options: { suggestedName: string; types: { description: string; accept: Record<string, string[]> }[] }): Promise<FileSystemFileHandle>;
-}
-
-const JSON_TYPES = [{ description: "Text presets", accept: { "application/json": [".json"] } }];
-const isAbort = (error: unknown) => error instanceof DOMException && error.name === "AbortError";
-
-async function pickJsonFile(): Promise<File | null> {
-  const picker = window as unknown as FilePickerWindow;
-  if (picker.showOpenFilePicker) {
-    try {
-      const [handle] = await picker.showOpenFilePicker({ types: JSON_TYPES });
-      return handle ? await handle.getFile() : null;
-    } catch (error) {
-      if (isAbort(error)) return null;
-      throw error;
-    }
-  }
-  return new Promise((resolve) => {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = ".json,application/json";
-    input.addEventListener("change", () => resolve(input.files?.[0] ?? null), { once: true });
-    input.addEventListener("cancel", () => resolve(null), { once: true });
-    input.click();
-  });
-}
-
-async function saveJsonFile(name: string, text: string): Promise<boolean> {
-  const picker = window as unknown as FilePickerWindow;
-  if (picker.showSaveFilePicker) {
-    try {
-      const handle = await picker.showSaveFilePicker({ suggestedName: name, types: JSON_TYPES });
-      const stream = await handle.createWritable();
-      await stream.write(text);
-      await stream.close();
-      return true;
-    } catch (error) {
-      if (isAbort(error)) return false;
-      throw error;
-    }
-  }
-  const url = URL.createObjectURL(new Blob([text], { type: "application/json" }));
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = name;
-  link.click();
-  setTimeout(() => URL.revokeObjectURL(url), 0);
-  return true;
-}
+const JSON_TYPES: readonly PickerType[] = [{ description: "Text presets", accept: { "application/json": [".json"] } }];
 
 /** Import (spec §10.3): presets from a JSON file into the shown scope; a preset with a known id replaces it. */
 export async function importPresets(): Promise<void> {
   try {
-    const file = await pickJsonFile();
+    const file = await pickFile(JSON_TYPES);
     if (!file) return;
     const { presets, skipped } = parsePresetsFile(await file.text(), now());
     const scope = targetScope();
@@ -602,7 +587,8 @@ export async function exportPresets(id: string | null = null): Promise<void> {
   const presets = one ? [one] : list(sessionStore.state.getState().mediaPanel.presetScope);
   if (presets.length === 0) return;
   try {
-    const saved = await saveJsonFile(exportFileName(one ? one.name : null), formatPresetsFile(presets));
+    const text = formatPresetsFile(presets);
+    const saved = (await saveFile(exportFileName(one ? one.name : null), JSON_TYPES, () => text)) !== null;
     if (saved) showToast({ tone: "success", message: `Exported ${presets.length} preset${presets.length === 1 ? "" : "s"}` });
   } catch (error) {
     showToast({ tone: "error", message: "Couldn't export the presets", detail: errorMessage(error) });

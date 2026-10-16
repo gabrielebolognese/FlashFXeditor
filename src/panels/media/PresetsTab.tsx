@@ -2,6 +2,7 @@ import { BookmarkPlus, FileDown, FileUp, FolderOpen, FolderSync, FolderX, Star, 
 import { memo, useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent, type PointerEvent } from "react";
 import { draggingMedia, pressDragCard, takeClickAfterDrag } from "../../app/mediaGestures.js";
 import {
+  appliesToCaptions,
   applyPresetById,
   canWrite,
   chooseLibraryFolder,
@@ -167,7 +168,7 @@ const MENU = {
 /** The card menu (spec §10.3 "Right-click card"). */
 function menuEntries(preset: TextPreset, writable: boolean, defaults: { title: string | null; subtitle: string | null }): ContextMenuEntry[] {
   return [
-    { kind: "item", id: MENU.apply, label: presetSourceClip() ? "Apply to selected text" : "Add at playhead" },
+    { kind: "item", id: MENU.apply, label: presetSourceClip() ? "Apply to selected text" : appliesToCaptions() ? "Apply to captions" : "Add at playhead" },
     { kind: "separator" },
     { kind: "item", id: MENU.defaultTitle, label: "Use as default title", commandId: "add.title", active: defaults.title === preset.id },
     { kind: "item", id: MENU.defaultSubtitle, label: "Use as default subtitle", commandId: "add.subtitle", active: defaults.subtitle === preset.id },

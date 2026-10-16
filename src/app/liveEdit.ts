@@ -3,9 +3,10 @@
 // background, a text color), the new values live here, not in the document; the preview and the
 // canvas gizmo draw them (previewController invalidates both on every change), and the release
 // commits one command. A crop handle drag on the canvas (§7.3) writes its crops here too, so the Crop
-// fields follow it live. An Animation field scrub (§10.4) gives the text clips' animations.
-import type { ClipId, Crop, RGBA, Transform } from "../core/document/types.js";
-import { createStore } from "../core/store/createStore.js";
+// fields follow it live. An Animation field scrub (§10.4) gives the text clips' animations. The cue list
+// (§10.5) gives the text of the cue being typed, a Caption style field scrub the caption track's style.
+import type { CaptionStyle, ClipId, Crop, RGBA, TrackId, Transform } from "../core/document/types.js";
+import { createStore, type Store } from "../core/store/createStore.js";
 import type { LiveAnims, LiveText } from "../render/compositor/Compositor.js";
 
 export interface LiveEdit {
@@ -16,19 +17,28 @@ export interface LiveEdit {
   texts: ReadonlyMap<ClipId, LiveText> | null;
   /** Text clips' animations (an Animation field scrub). */
   anims: ReadonlyMap<ClipId, LiveAnims> | null;
+  /** Cue texts being typed in the cue list. */
+  cues: ReadonlyMap<ClipId, string> | null;
+  /** Caption track styles (a Caption style field scrub, a color dragged, a preset hovered). */
+  captionStyles: ReadonlyMap<TrackId, CaptionStyle> | null;
   background: RGBA | null;
 }
 
-export const NO_LIVE_EDIT: LiveEdit = { transforms: null, opacities: null, crops: null, texts: null, anims: null, background: null };
+export const NO_LIVE_EDIT: LiveEdit = { transforms: null, opacities: null, crops: null, texts: null, anims: null, cues: null, captionStyles: null, background: null };
 
 export const liveEdit = createStore<LiveEdit>(NO_LIVE_EDIT);
 
-/** `patch` over the live values; NO_LIVE_EDIT once nothing is live. */
-export function patchLiveEdit(patch: Partial<LiveEdit>): void {
-  const current = liveEdit.getState();
+/** `patch` over the live values of `store`; NO_LIVE_EDIT once nothing is live. */
+export function patchLive(store: Store<LiveEdit>, patch: Partial<LiveEdit>): void {
+  const current = store.getState();
   const next = { ...current, ...patch };
   if (Object.keys(patch).every((key) => current[key as keyof LiveEdit] === next[key as keyof LiveEdit])) return;
-  liveEdit.set(next.transforms === null && next.opacities === null && next.crops === null && next.texts === null && next.anims === null && next.background === null ? NO_LIVE_EDIT : next);
+  store.set(Object.values(next).every((value) => value === null) ? NO_LIVE_EDIT : next);
+}
+
+/** `patch` over the live values; NO_LIVE_EDIT once nothing is live. */
+export function patchLiveEdit(patch: Partial<LiveEdit>): void {
+  patchLive(liveEdit, patch);
 }
 
 /** Sets or clears (null) the live crops, keeping the other live values; NO_LIVE_EDIT once nothing is live. */
