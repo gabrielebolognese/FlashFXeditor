@@ -231,7 +231,7 @@ Press <kbd>F</kbd>, or click **Fullscreen** in the Preview panel header. The pre
 
 To go back, press <kbd>Esc</kbd> or <kbd>F</kbd>, or click **Exit fullscreen**. Every panel comes back at exactly the size and place it had.
 
-- <kbd>Esc</kbd> first cancels a drag in progress (also a layer you are moving, resizing or rotating), and closes an open menu, before it leaves fullscreen.
+- <kbd>Esc</kbd> first cancels a drag in progress (also a layer you are moving, resizing, rotating or cropping), closes an open menu, and leaves crop mode, before it leaves fullscreen. See [Crop with handles in the preview](cropping-and-reframing.md#crop-with-handles-in-the-preview).
 - <kbd>F</kbd> does not work while you type in a text field.
 - The editor does not remember fullscreen: after a reload, the project opens in the normal panel layout.
 
@@ -251,6 +251,7 @@ None of these are steps in the history: <kbd>Ctrl</kbd>+<kbd>Z</kbd> does not un
 - [Preview and playback](preview-and-playback.md)
 - [Arranging layers in the preview](arranging-layers-in-the-preview.md)
 - [Snapping and smart guides in the preview](snapping-and-smart-guides.md)
+- [Cropping and reframing](cropping-and-reframing.md)
 - [Adding media to the timeline](adding-media-to-the-timeline.md)
 - [Timeline](timeline.md)
 - [Advanced trimming](advanced-trimming.md)
@@ -260,4 +261,4 @@ None of these are steps in the history: <kbd>Ctrl</kbd>+<kbd>Z</kbd> does not un
 - [Proxies](proxies.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 24, 2026-10-16</sub>
+<sub>Last updated: Batch 26, 2026-10-16</sub>

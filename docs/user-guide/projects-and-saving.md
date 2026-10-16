@@ -99,8 +99,9 @@ What you can undo:
 | Importing media, renaming media, removing media | Zooming, scrolling and panning the timeline (also with the scrollbars), zooming and panning the preview, the preview quality, overlays and fullscreen |
 | Adding media to the timeline: each insert, overwrite, drag, drop on the preview or **Add to canvas**; dropped files with their import are one step | Panel sizes, panel tabs, the media view and sort order, skimming media cards |
 | Moving, inserting, duplicating and nudging clips (a quick series of nudges is one step) | **Loop playback**, **Snap**, **Linked selection**, **Ripple mode**, the timecode format, the **Autosave** setting and the proxy settings |
-| Moving, resizing and rotating layers in the preview and moving their anchor point (one step per drag), nudging them with the arrow keys (a quick series is one step), **Fit**, **Fill**, **Center**, the flips, **Reset transform**, **Bring forward** and **Send backward** | Folding and opening the sections of **Edit Properties**, the scale lock in the **Transform** section, and the recent colors of the color picker |
-| Values typed or dragged in **Edit Properties**: position, scale, rotation, anchor, opacity and the clip times (one step per value, per drag, or per quick series of arrow presses) | |
+| Moving, resizing, rotating and cropping layers in the preview and moving their anchor point (one step per drag), nudging them with the arrow keys (a quick series is one step), **Fit**, **Fill**, **Center**, the flips, **Reset transform**, **Bring forward** and **Send backward** | Folding and opening the sections of **Edit Properties**, the scale lock in the **Transform** section, and the recent colors of the color picker |
+| Values typed or dragged in **Edit Properties**: position, scale, rotation, anchor, crop, opacity and the clip times (one step per value, per drag, or per quick series of arrow presses) | Turning crop mode on or off, the crop units (**px** or **%**) and the crop **Aspect** lock |
+| **Crop to frame** and resetting a crop | |
 | Duplicating a clip with <kbd>Ctrl</kbd>+<kbd>D</kbd> or **Duplicate**, turning clips off and on (**Disable**, **Enable**) | |
 | Adding, moving, renaming, recoloring and deleting markers | Setting, moving and clearing the in and out points, and marking a part of a media item with <kbd>I</kbd> and <kbd>O</kbd> on its card |
 | **Lift** and **Extract** (one step each) | Proxies: **Generate proxy**, **Remove proxy**, a proxy being made or failing, and **Regenerate thumbnails** |
@@ -133,7 +134,7 @@ When you open a project again, the editor restores your view from the last sessi
 - the sections you folded in **Edit Properties**
 - the panel sizes
 
-The undo history, a selected cut (edit point), a selected gap, a selected marker and the fullscreen preview are not restored. Markers are part of the project itself, so they are always there. Because the view is saved every 10 seconds, the last few seconds of view changes can be missing after a browser crash; your project changes are saved separately by autosave.
+The undo history, a selected cut (edit point), a selected gap, a selected marker, crop mode and the fullscreen preview are not restored. Markers are part of the project itself, so they are always there. Because the view is saved every 10 seconds, the last few seconds of view changes can be missing after a browser crash; your project changes are saved separately by autosave.
 
 ## Restore unsaved changes after a crash
 
@@ -245,4 +246,4 @@ Choosing to keep the layout as it is when you change the resolution is available
 - [Editing properties](editing-properties.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 25, 2026-10-16</sub>
+<sub>Last updated: Batch 26, 2026-10-16</sub>

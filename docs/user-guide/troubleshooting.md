@@ -1,6 +1,6 @@
 # Troubleshooting
 
-This page helps you when something does not work as expected: the editor does not start in your browser, the preview stays empty, a folder or a file does not open, a clip drag, a trim, a split, a delete, a timeline tool, a typed timecode, a marker, an in/out range or **Lift** and **Extract** do something you did not expect, media from the Media panel lands somewhere you did not expect, a clip shows no thumbnails, a video gets no proxy or its proxy fails, the preview zoom, overlays or fullscreen behave unexpectedly, a picture in the preview can't be selected, moves unexpectedly or doesn't snap where you expect, a value in **Edit Properties** doesn't do what you expect, playback stutters, or you hear no sound. Each problem lists what you see, why it happens and what to do. The last section lists what the current version cannot do yet.
+This page helps you when something does not work as expected: the editor does not start in your browser, the preview stays empty, a folder or a file does not open, a clip drag, a trim, a split, a delete, a timeline tool, a typed timecode, a marker, an in/out range or **Lift** and **Extract** do something you did not expect, media from the Media panel lands somewhere you did not expect, a clip shows no thumbnails, a video gets no proxy or its proxy fails, the preview zoom, overlays or fullscreen behave unexpectedly, a picture in the preview can't be selected, moves unexpectedly, doesn't snap where you expect or gets cropped instead of resized, a value or a crop in **Edit Properties** doesn't do what you expect, playback stutters, or you hear no sound. Each problem lists what you see, why it happens and what to do. The last section lists what the current version cannot do yet.
 
 > **Video placeholder: Fix common problems**
 > - File: `videos/troubleshooting/overview.mp4` (not recorded yet)
@@ -34,6 +34,8 @@ This page helps you when something does not work as expected: the editor does no
 >   26. Import a 4K 60 fps clip: its card shows a grey **PX** chip that counts up. Press <kbd>Space</kbd>: the percentage stops while the timeline plays. Press <kbd>Space</kbd> again: it continues. Right-click a 1080p 30 fps card with no chip and choose **Generate proxy**: a grey chip appears.
 >   27. Click a clip on the timeline, click an empty part of the **Edit Properties** panel and press <kbd>Ctrl</kbd>+<kbd>D</kbd>: the browser offers to bookmark the page. Press <kbd>Esc</kbd>, click the clip on the timeline and press <kbd>Ctrl</kbd>+<kbd>D</kbd>: a copy appears right after it.
 >   28. Select three clips with different opacities: **Opacity** shows `--`. Right-click one of them and choose **Disable**: they turn faded with diagonal lines and leave the preview. Right-click again and choose **Enable**.
+>   29. Double-click a picture in the preview: white brackets and bars replace its handles, and the **Crop** chip appears at the top of the preview. Drag a corner bracket inward: the picture is cut, not resized. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>, then <kbd>Esc</kbd>: the usual handles are back.
+>   30. In the **Crop** section, click the chain button in the **Aspect** row so it is lit, and type `200` in **T**: **L** and **R** change too. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> and click the chain button again to unlock it.
 
 ## In this page
 - [Browser and graphics](#browser-and-graphics)
@@ -130,6 +132,7 @@ This page helps you when something does not work as expected: the editor does no
   - [A resize stops at 100%](#a-resize-stops-at-100)
   - [The side handles are missing](#the-side-handles-are-missing)
   - [Bring forward or Send backward created a new track](#bring-forward-or-send-backward-created-a-new-track)
+  - [White brackets replace the handles of a picture](#white-brackets-replace-the-handles-of-a-picture)
 - [Edit Properties](#edit-properties)
   - [A field shows --](#a-field-shows---)
   - [A typed clip time stops short or changes nothing](#a-typed-clip-time-stops-short-or-changes-nothing)
@@ -138,6 +141,10 @@ This page helps you when something does not work as expected: the editor does no
   - [Ctrl+D copied a video without its sound](#ctrld-copied-a-video-without-its-sound)
   - [Pictures got smaller after a resolution change](#pictures-got-smaller-after-a-resolution-change)
   - [The background went back to its old color](#the-background-went-back-to-its-old-color)
+  - [Crop to frame does nothing or keeps less than expected](#crop-to-frame-does-nothing-or-keeps-less-than-expected)
+  - [Changing one crop side changes the others](#changing-one-crop-side-changes-the-others)
+  - [The crop button in the Crop section is dimmed](#the-crop-button-in-the-crop-section-is-dimmed)
+  - [A picture is still cropped after Reset transform](#a-picture-is-still-cropped-after-reset-transform)
 - [Known limitations](#known-limitations)
 
 ## Browser and graphics
@@ -877,7 +884,7 @@ See [Audio](audio.md).
 
 **Cause:** The fullscreen preview is on. You pressed <kbd>F</kbd> or clicked **Fullscreen**.
 
-**Fix:** Press <kbd>Esc</kbd> or <kbd>F</kbd>, or move the mouse and click **Exit fullscreen** in the header. Every panel comes back at its size and place. If <kbd>Esc</kbd> does nothing the first time, it closed a menu or cancelled a drag: press it again. See [Fill the window with the preview](preview-zoom-overlays-fullscreen.md#fill-the-window-with-the-preview).
+**Fix:** Press <kbd>Esc</kbd> or <kbd>F</kbd>, or move the mouse and click **Exit fullscreen** in the header. Every panel comes back at its size and place. If <kbd>Esc</kbd> does nothing the first time, it closed a menu, cancelled a drag or left crop mode: press it again. See [Fill the window with the preview](preview-zoom-overlays-fullscreen.md#fill-the-window-with-the-preview).
 
 ### The zoomed preview is not sharp
 
@@ -934,6 +941,7 @@ See [Audio](audio.md).
 - The clip is turned off (**Disable**): on the timeline it is faded and covered with diagonal lines, and the preview doesn't draw it.
 - The **Hand** tool is active, or you hold <kbd>Space</kbd> over a zoomed-in picture: a drag pans instead.
 - The playhead isn't over the clip, so what you see is another clip.
+- You clicked a part of the picture that is cropped away. A cropped picture is only the part left after the crop.
 
 **Fix:** Unlock or show the track, or press <kbd>V</kbd> for the **Select** tool. To reach a picture under another one, <kbd>Alt</kbd>+click it. You can also click the clip on the timeline: while it is under the playhead, its box appears in the preview. See [Select layers in the preview](arranging-layers-in-the-preview.md#select-layers-in-the-preview).
 
@@ -957,9 +965,9 @@ See [Audio](audio.md).
 
 ### A picture jumps while you drag it in the preview
 
-**Symptom:** While you move a picture in the preview, it jumps a few pixels onto the center or an edge of the frame, or into line with another picture, and a thin gold line appears. You can't place it just next to that spot. Or, while you drag a handle, the edge stops at the frame edge or at another picture's edge.
+**Symptom:** While you move a picture in the preview, it jumps a few pixels onto the center or an edge of the frame, or into line with another picture, and a thin gold line appears. You can't place it just next to that spot. Or, while you drag a handle, the edge stops at the frame edge or at another picture's edge. Or, in crop mode, a side you crop stops at the edge, the middle or a third of the frame.
 
-**Cause:** Snapping. When an edge or the center of the picture comes within 6 pixels on screen of the frame, an overlay that is shown (thirds, a safe area, title / action safe) or another picture, it jumps onto it, and holds there until the pointer moves more than 6 pixels past it.
+**Cause:** Snapping. When an edge or the center of the picture comes within 6 pixels on screen of the frame, an overlay that is shown (thirds, a safe area, title / action safe) or another picture, it jumps onto it, and holds there until the pointer moves more than 6 pixels past it. A side you crop snaps the same way to the frame's edges, center lines and thirds.
 
 **Fix:** Hold <kbd>S</kbd> during the drag to place the picture freely. Zoom the preview in, so that 6 pixels cover less of the frame, or nudge the picture with the arrow keys: nudges never snap. To stop snapping to other pictures but keep the frame, turn **Smart guides** off; to stop all snapping, click **Snap** or press <kbd>S</kbd>. See [Place a layer without snapping](snapping-and-smart-guides.md#place-a-layer-without-snapping).
 
@@ -974,6 +982,7 @@ See [Audio](audio.md).
 - The thirds snap only while **Grid** is **Thirds**, and a safe area only while its safe zone or **Title / action safe** shows. The **Squares** and **Custom** grids are not targets.
 - You rotate the picture or drag its anchor point. Rotation snaps only to 45° steps with <kbd>Shift</kbd>, and the anchor point never snaps.
 - You resize a rotated picture. Edges snap only while the box is upright (not rotated, or rotated by a multiple of 90°).
+- You crop in crop mode. Crop sides snap only to the frame (its edges, center lines and thirds), and only while the picture is upright. See [Snap crop edges to the frame](cropping-and-reframing.md#snap-crop-edges-to-the-frame).
 - For equal spacing: the picture is not between two others in line with it, another picture sits between them, or it doesn't fit in the space.
 
 **Fix:** Turn on **Snap** and **Smart guides** so both are gold, show the overlay you want to snap to, and check the track of the target picture. See [Choose what layers snap to](snapping-and-smart-guides.md#choose-what-layers-snap-to) and [Space layers evenly](snapping-and-smart-guides.md#space-layers-evenly).
@@ -1010,6 +1019,14 @@ See [Audio](audio.md).
 
 **Fix:** Nothing to fix. To use an existing track instead, press <kbd>Ctrl</kbd>+<kbd>Z</kbd> and drag the clip to that track on the timeline. See [Change which layer is on top](arranging-layers-in-the-preview.md#change-which-layer-is-on-top).
 
+### White brackets replace the handles of a picture
+
+**Symptom:** A picture in the preview shows white brackets at its corners and white bars on its sides instead of square handles, with a dashed outline around it and a **Crop** chip at the top of the preview. Dragging a handle cuts the picture instead of resizing it, and the picture can't be rotated.
+
+**Cause:** Crop mode is on. A double-click on a video or image in the preview, or the crop button in the header of the **Crop** section, turns it on.
+
+**Fix:** Click **Done** in the chip, press <kbd>Esc</kbd> (twice during a drag), or double-click the picture again. If you cropped by mistake, press <kbd>Ctrl</kbd>+<kbd>Z</kbd>, or click **Reset crop** in the chip. See [Crop with handles in the preview](cropping-and-reframing.md#crop-with-handles-in-the-preview).
+
 ## Edit Properties
 
 ### A field shows --
@@ -1045,7 +1062,7 @@ See [Audio](audio.md).
 
 ### There is no Transform section
 
-**Symptom:** **Edit Properties** shows the **Clip** section, but no **Transform** or **Opacity** section.
+**Symptom:** **Edit Properties** shows the **Clip** section, but no **Transform**, **Crop** or **Opacity** section.
 
 **Cause:** Only audio clips are selected: they have no picture to place. <kbd>Alt</kbd>+click on the sound of a video, or a click on it with **Linked selection** off, selects the sound alone.
 
@@ -1075,18 +1092,55 @@ See [Audio](audio.md).
 
 **Fix:** Open the picker again with the **Background** swatch and release the mouse button where you want the color. Each released drag is one step in the history. See [Pick a color](editing-properties.md#pick-a-color).
 
+### Crop to frame does nothing or keeps less than expected
+
+**Symptom:** You click **Crop to frame**, and the picture doesn't change, or only a slice of it stays.
+
+**Cause:** One of these:
+- The picture lies entirely outside the frame: there is nothing to keep, so the crop stays as it is.
+- The crop already matches the frame.
+- The clip is on a locked track.
+- The picture doesn't cover the whole frame, for example a landscape video fitted with bands. **Crop to frame** then keeps the largest area with the frame's shape from the middle of what the picture covers: a vertical slice of a landscape video. That is intended.
+- The picture is turned: the area it keeps has the frame's shape, turns with the picture and stays inside both the frame and the picture.
+
+**Fix:** For a fitted landscape video, click **Fill frame** after **Crop to frame**: the slice then fills the frame exactly. To keep another part, press <kbd>Ctrl</kbd>+<kbd>Z</kbd>, click **Fill frame**, drag the picture sideways until the part you want is in the frame, then click **Crop to frame**. See [Reframe a landscape video for a vertical frame](cropping-and-reframing.md#reframe-a-landscape-video-for-a-vertical-frame).
+
+### Changing one crop side changes the others
+
+**Symptom:** You type a value in **T** (or drag a crop bar), and **L** and **R** change too, or a side stops before the value you typed.
+
+**Cause:** The **Aspect** lock of the **Crop** section is on (its chain button is lit), so the visible part keeps its shape: the other sides follow, and a side stops where the others reach the edge of the picture. In crop mode, <kbd>Shift</kbd> also does the opposite of the lock while you drag.
+
+**Fix:** Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>, click the chain button in the **Aspect** row to unlock it, and set the side again. See [Keep the shape of the crop](cropping-and-reframing.md#keep-the-shape-of-the-crop).
+
+### The crop button in the Crop section is dimmed
+
+**Symptom:** The crop button in the header of the **Crop** section is dimmed, and its tooltip reads **Crop on the canvas: select one layer**.
+
+**Cause:** Crop mode works on one picture at a time, and several video or image clips are selected.
+
+**Fix:** Click only the picture you want to crop, or double-click it in the preview: that selects it alone and turns on crop mode. The fields of the **Crop** section still work for several pictures at once. See [Crop with handles in the preview](cropping-and-reframing.md#crop-with-handles-in-the-preview).
+
+### A picture is still cropped after Reset transform
+
+**Symptom:** After **Reset transform**, part of the picture is still cut away, or the visible part sits off center.
+
+**Cause:** **Reset transform** resets the position, size, angle, flips and anchor point, not the crop. It places the picture as if it were not cropped, so an uneven crop leaves the visible part off center.
+
+**Fix:** Click **Reset** in the **Crop** section to remove the crop, or click **Fit in frame** or **Center in frame** to fit or center the part that is left. See [Remove a crop](cropping-and-reframing.md#remove-a-crop).
+
 ## Known limitations
 
 The current version cannot do these things yet. Each one is available in a later version.
 
 - **Sound:** no sound while you scrub, step frames, play backward or shuttle faster than 1x. Changing the volume of a clip, fades and audio effects are not available.
-- **Editing clips:** clips can't be cut, copied or pasted (the **Cut**, **Copy** and **Paste** rows of the clip menu, and the **Copy**, **Paste** and **Duplicate** rows of the preview's layer menu, are dimmed). <kbd>Ctrl</kbd>+<kbd>D</kbd> duplicates one clip at a time, without its linked sound.
+- **Editing clips:** clips can't be cut, copied or pasted (the **Cut**, **Copy** and **Paste** rows of the clip menu, and the **Copy**, **Paste** and **Duplicate** rows of the preview's layer menu, are dimmed). <kbd>Ctrl</kbd>+<kbd>D</kbd> duplicates one clip at a time, without its linked sound. The crop of a clip can't be copied to other clips.
 - **Markers:** markers belong to the timeline; markers inside clips are not available. Markers and the in/out range don't show on the scrollbars.
 - **Menus:** only clips, gaps, track headers, the ruler, media cards and pictures in the preview have a right-click menu, with a first set of rows. Menu rows can't be chosen with the arrow keys.
 - **Speed and edit points:** a clip's speed changes only with **Rate stretch**; typing an exact speed is not available. A selected cut (edit point) only marks the cut; transitions are not available.
 - **Tracks:** track headers have room for names of about 9 characters; longer names are shortened. Groups are not marked on the timeline.
-- **Preview:** pictures can't be cropped. A change to a picture applies to the whole clip; changes over time (keyframes) are not available. An SVG image that covers the whole frame doesn't get sharper when you zoom in. The **Zoom**, **Preview quality** and **Overlays** menus can't be used with the arrow keys.
-- **Edit Properties:** the crop, speed, audio, text, animation and transition sections are not available, nor are the dimmed quick actions and the **Still duration**, **Transition** and **Cache** rows of the **Project** section. A new resolution always scales the layout; keeping the layout as it is, is not available.
+- **Preview:** a change to a picture, its crop included, applies to the whole clip; changes over time (keyframes) are not available. An SVG image that covers the whole frame doesn't get sharper when you zoom in. The **Zoom**, **Preview quality** and **Overlays** menus can't be used with the arrow keys.
+- **Edit Properties:** the speed, audio, text, animation and transition sections are not available, nor are the dimmed quick actions and the **Still duration**, **Transition** and **Cache** rows of the **Project** section. A new resolution always scales the layout; keeping the layout as it is, is not available.
 - **Animated GIF and WebP files** show as still images (their first frame), in the preview and in their clips' thumbnails.
 - **Media that cannot be decoded, or whose file is missing,** shows nothing in the preview, with no placeholder.
 - **Removing media** that a clip uses is not possible.
@@ -1113,6 +1167,7 @@ The current version cannot do these things yet. Each one is available in a later
 - [Arranging layers in the preview](arranging-layers-in-the-preview.md)
 - [Snapping and smart guides in the preview](snapping-and-smart-guides.md)
 - [Editing properties](editing-properties.md)
+- [Cropping and reframing](cropping-and-reframing.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 25, 2026-10-16</sub>
+<sub>Last updated: Batch 26, 2026-10-16</sub>

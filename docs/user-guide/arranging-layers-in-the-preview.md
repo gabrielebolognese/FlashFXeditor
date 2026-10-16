@@ -1,6 +1,6 @@
 # Arranging layers in the preview
 
-Every video or image clip under the playhead is a layer of the picture. In the Preview panel you can work on those layers directly: click one to select it, drag it to a new place, resize and rotate it with its handles, and change which layer is on top. Use this to place a logo in a corner, enlarge a shot to cut away its edges, tilt a sticker, or build a picture-in-picture layout. Layers snap into line with the frame and with each other as you drag; see [Snapping and smart guides in the preview](snapping-and-smart-guides.md). To type exact values, or to fit, fill or center a picture with one click, see [Editing properties](editing-properties.md).
+Every video or image clip under the playhead is a layer of the picture. In the Preview panel you can work on those layers directly: click one to select it, drag it to a new place, resize and rotate it with its handles, and change which layer is on top. Use this to place a logo in a corner, enlarge a shot to cut away its edges, tilt a sticker, or build a picture-in-picture layout. Layers snap into line with the frame and with each other as you drag; see [Snapping and smart guides in the preview](snapping-and-smart-guides.md). To type exact values, or to fit, fill or center a picture with one click, see [Editing properties](editing-properties.md). To cut away the sides of a picture, see [Cropping and reframing](cropping-and-reframing.md).
 
 > **Video placeholder: Arrange layers in the preview**
 > - File: `videos/arranging-layers-in-the-preview/overview.mp4` (not recorded yet)
@@ -69,6 +69,7 @@ See [Lock a track](tracks.md#lock-a-track) and [Mute, solo and hide tracks](trac
 | Add a layer (with its linked sound and its group) to the selection, or remove it | <kbd>Shift</kbd>+click it |
 | Add or remove only that layer | <kbd>Ctrl</kbd>+click it |
 | Select the next layer under the pointer, alone | <kbd>Alt</kbd>+click. See [Select a layer under another one](#select-a-layer-under-another-one). |
+| Select a video or image layer alone and crop it with handles | Double-click it. See [Crop with handles in the preview](cropping-and-reframing.md#crop-with-handles-in-the-preview). |
 | Select every layer a rectangle touches | Press where no layer is (also beside the frame) and drag |
 | Add the layers a rectangle touches to the selection | <kbd>Shift</kbd>+drag or <kbd>Ctrl</kbd>+drag from where no layer is |
 | Select all clips | <kbd>Ctrl</kbd>+<kbd>A</kbd> (Preview or Timeline panel) |
@@ -83,7 +84,7 @@ What you see:
 
 Good to know:
 
-- The topmost layer under the pointer gets the click. Where the picture is transparent (for example around a PNG logo), the click still counts: the layer is its whole rectangle.
+- The topmost layer under the pointer gets the click. Where the picture is transparent (for example around a PNG logo), the click still counts: the layer is its whole rectangle. A cropped layer is only the part left after the crop: a click on a cropped-away area goes to the layer below.
 - The box and the handles also show where a layer reaches past the edge of the frame. You can grab the layer and its handles there, although the part outside the frame is not drawn.
 - With **Linked selection** on, a click on a video selects its sound too, so **Delete** removes both. A rectangle selects only the layers it touches, without their sound or the rest of their group. See [How linked clips work](links-and-groups.md#how-linked-clips-work) and [Group clips](links-and-groups.md#group-clips).
 - A press that moves less than 4 pixels counts as a click.
@@ -146,6 +147,7 @@ Drag one of the eight handles of the selected layer:
 - **Edge snap.** While snapping is on and the layer is upright, the edge you drag also snaps to the frame, the overlays shown and the other layers, with a gold guide. See [Snap an edge while you resize](snapping-and-smart-guides.md#snap-an-edge-while-you-resize).
 - A layer can't get smaller than 1%. Dragging a handle past the opposite side does not flip the layer.
 - When the layer is small on screen, the side handles hide (a side must be at least 28 pixels long on screen); the corner handles always show. Zoom the preview in to get the side handles back.
+- In crop mode, the handles crop the picture instead of resizing it: white brackets at the corners and bars on the sides. See [Crop with handles in the preview](cropping-and-reframing.md#crop-with-handles-in-the-preview).
 - You can press and release <kbd>Shift</kbd> and <kbd>Alt</kbd> during the drag; the layer follows at once.
 - Each drag is one step in the history, named **Scale layer** (or **Scale layers**).
 
@@ -161,6 +163,7 @@ Drag one of the eight handles of the selected layer:
 - Hold <kbd>Shift</kbd> to stop at 0°, 45°, 90° and every other multiple of 45° when the angle is within 3° of it.
 - Positive angles turn clockwise. Keep dragging around to turn more than one full turn.
 - Each drag is one step in the history, named **Rotate layer** (or **Rotate layers**).
+- In crop mode, a layer can't be rotated in the preview. Leave crop mode first, or type an angle in **Rotation**.
 
 ## Move the anchor point
 
@@ -252,7 +255,8 @@ Right-click a layer in the preview. A layer that is not selected is selected fir
 
 - Click outside the menu or press <kbd>Esc</kbd> to close it.
 - **Fit**, **Fill**, **Center**, the flips and **Reset transform** act on every selected layer, also on selected clips that are not under the playhead. The same actions are buttons in the quick actions of **Edit Properties**.
-- **Reset transform** fits the picture to the current project frame. If you changed the project resolution after adding the clip, it refits the picture to the new size.
+- **Reset transform** fits the picture to the current project frame. If you changed the project resolution after adding the clip, it refits the picture to the new size. It leaves the crop as it is; see [Remove a crop](cropping-and-reframing.md#remove-a-crop).
+- On a cropped layer, **Fit**, **Fill** and **Center** size and center the part left after the crop.
 
 ## Change which layer is on top
 
@@ -269,7 +273,7 @@ To change the order of whole tracks instead, drag a track header up or down. See
 
 ## Cancel and undo
 
-- Press <kbd>Esc</kbd> before you release the mouse button to cancel a move, resize, rotation, anchor drag or selection rectangle. The layers go back to where they were, and nothing is added to the history.
+- Press <kbd>Esc</kbd> before you release the mouse button to cancel a move, resize, rotation, crop, anchor drag or selection rectangle. The layers go back to where they were, and nothing is added to the history.
 - A drag is also cancelled when the browser window loses focus, or when you undo during the drag.
 - Every drag is one step in the history, whatever you did while dragging. Hover **Undo** in the app bar to see its name.
 
@@ -283,6 +287,7 @@ To change the order of whole tracks instead, drag a track header up or down. See
 | **Fit layer**, **Fit layers**, **Fill frame**, **Center layer**, **Center layers**, **Flip horizontal**, **Flip vertical** | **Fit**, **Fill**, **Center**, **Flip horizontal** and **Flip vertical** in the layer menu |
 | **Reset transform**, **Reset transforms** | **Reset transform** in the layer menu |
 | **Bring layer forward**, **Send layer backward** (and the plural names) | **Bring forward** and **Send backward** in the layer menu |
+| **Crop layer** | Dragging a crop bracket or bar in crop mode. See [Cropping and reframing](cropping-and-reframing.md#undo-and-cancel). |
 
 See [Undo and redo changes](projects-and-saving.md#undo-and-redo-changes).
 
@@ -290,7 +295,6 @@ See [Undo and redo changes](projects-and-saving.md#undo-and-redo-changes).
 
 These parts are available in a later version:
 
-- Cropping a layer with handles in the preview.
 - Text layers.
 - Changes that differ over time (keyframes): a change always applies to the whole clip.
 
@@ -298,6 +302,7 @@ These parts are available in a later version:
 - [Preview and playback](preview-and-playback.md)
 - [Snapping and smart guides in the preview](snapping-and-smart-guides.md)
 - [Editing properties](editing-properties.md)
+- [Cropping and reframing](cropping-and-reframing.md)
 - [Preview zoom, overlays and fullscreen](preview-zoom-overlays-fullscreen.md)
 - [Adding media to the timeline](adding-media-to-the-timeline.md)
 - [Timeline](timeline.md)
@@ -307,4 +312,4 @@ These parts are available in a later version:
 - [Projects and saving](projects-and-saving.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 25, 2026-10-16</sub>
+<sub>Last updated: Batch 26, 2026-10-16</sub>
