@@ -1,10 +1,10 @@
 # Troubleshooting
 
-This page helps you when something does not work as expected: the editor does not start in your browser, the preview stays empty, a folder or a file does not open, a clip drag, a trim, a split, a delete, a timeline tool, a typed timecode, a marker, an in/out range or **Lift** and **Extract** do something you did not expect, media from the Media panel lands somewhere you did not expect, a clip shows no thumbnails, a video gets no proxy or its proxy fails, the preview zoom, overlays or fullscreen behave unexpectedly, a picture in the preview can't be selected, moves unexpectedly, doesn't snap where you expect or gets cropped instead of resized, a value or a crop in **Edit Properties** doesn't do what you expect, playback stutters, or you hear no sound. Each problem lists what you see, why it happens and what to do. The last section lists what the current version cannot do yet.
+This page helps you when something does not work as expected: the editor does not start in your browser, the preview stays empty, a folder or a file does not open, a clip drag, a trim, a split, a delete, a timeline tool, a typed timecode, a marker, an in/out range or **Lift** and **Extract** do something you did not expect, media from the Media panel lands somewhere you did not expect, a clip shows no thumbnails, a video gets no proxy or its proxy fails, the preview zoom, overlays or fullscreen behave unexpectedly, a picture in the preview can't be selected, moves unexpectedly, doesn't snap where you expect or gets cropped instead of resized, a value or a crop in **Edit Properties** doesn't do what you expect, a speed change, a freeze frame or a punch zoom does something you did not expect, playback stutters, or you hear no sound. Each problem lists what you see, why it happens and what to do. The last section lists what the current version cannot do yet.
 
 > **Video placeholder: Fix common problems**
 > - File: `videos/troubleshooting/overview.mp4` (not recorded yet)
-> - Length: about 160 seconds
+> - Length: about 175 seconds
 > - Shows:
 >   1. Open the editor in a browser without the required features: the screen "This browser cannot run Shorts Editor" lists what is missing.
 >   2. In Chrome, open `chrome://settings/system` and show **Use graphics acceleration when available** turned on.
@@ -36,6 +36,8 @@ This page helps you when something does not work as expected: the editor does no
 >   28. Select three clips with different opacities: **Opacity** shows `--`. Right-click one of them and choose **Disable**: they turn faded with diagonal lines and leave the preview. Right-click again and choose **Enable**.
 >   29. Double-click a picture in the preview: white brackets and bars replace its handles, and the **Crop** chip appears at the top of the preview. Drag a corner bracket inward: the picture is cut, not resized. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>, then <kbd>Esc</kbd>: the usual handles are back.
 >   30. In the **Crop** section, click the chain button in the **Aspect** row so it is lit, and type `200` in **T**: **L** and **R** change too. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> and click the chain button again to unlock it.
+>   31. Select a video with a clip right after it. In the **Speed** section, turn **Ripple** off and type `50` in **Speed**: the clip stops at the next one, and the message **Shortened at the next clip** appears. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> and turn **Ripple** on again.
+>   32. Select a video, move the playhead outside it and press <kbd>Shift</kbd>+<kbd>F</kbd>: the message **The playhead is not over the selected clip** appears.
 
 ## In this page
 - [Browser and graphics](#browser-and-graphics)
@@ -145,6 +147,15 @@ This page helps you when something does not work as expected: the editor does no
   - [Changing one crop side changes the others](#changing-one-crop-side-changes-the-others)
   - [The crop button in the Crop section is dimmed](#the-crop-button-in-the-crop-section-is-dimmed)
   - [A picture is still cropped after Reset transform](#a-picture-is-still-cropped-after-reset-transform)
+- [Speed, freeze frames and punch zoom](#speed-freeze-frames-and-punch-zoom)
+  - [A speed change moved other clips or left a gap](#a-speed-change-moved-other-clips-or-left-a-gap)
+  - [A ripple after a speed change stopped short](#a-ripple-after-a-speed-change-stopped-short)
+  - [A clip kept its length when its speed changed](#a-clip-kept-its-length-when-its-speed-changed)
+  - [A clip keeps its speed with Limited by the media end](#a-clip-keeps-its-speed-with-limited-by-the-media-end)
+  - [A video and its sound got different speeds or show a red number](#a-video-and-its-sound-got-different-speeds-or-show-a-red-number)
+  - [Freeze frame or punch zoom does nothing](#freeze-frame-or-punch-zoom-does-nothing)
+  - [A freeze frame moved clips on every track](#a-freeze-frame-moved-clips-on-every-track)
+  - [The Speed field is dimmed at 0.0](#the-speed-field-is-dimmed-at-00)
 - [Known limitations](#known-limitations)
 
 ## Browser and graphics
@@ -384,9 +395,9 @@ When <kbd>Q</kbd>, <kbd>W</kbd> or <kbd>E</kbd> stops short, a message names the
 
 **Symptom:** A clip shows a badge such as `0.5x`, `2x` or `1x` in its label bar, and plays faster or slower than its media.
 
-**Cause:** The clip was stretched with **Rate stretch**, which changes its speed. A `1x` badge means the clip was stretched and then dragged back to its old length in a separate drag: its speed is a tiny bit off normal speed. The difference is too small to see or hear.
+**Cause:** The clip's speed was changed, with a speed button, the **Speed** section or **Rate stretch**. A `1x` badge means the clip was stretched and then dragged back to its old length in a separate drag: its speed is a tiny bit off normal speed. The difference is too small to see or hear.
 
-**Fix:** Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> until the badge disappears; each stretch is one step. Typing an exact speed is available in a later version. See [Change a clip's speed with Rate stretch](advanced-trimming.md#change-a-clips-speed-with-rate-stretch).
+**Fix:** Select the clip and click **1x** in the quick actions of **Edit Properties**, or type `100` in **Speed**: the badge disappears. You can also press <kbd>Ctrl</kbd>+<kbd>Z</kbd> until it disappears. See [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md) and [Change a clip's speed with Rate stretch](advanced-trimming.md#change-a-clips-speed-with-rate-stretch).
 
 ### Clicking a clip cuts it
 
@@ -1054,8 +1065,8 @@ See [Audio](audio.md).
 **Symptom:** Buttons at the top of **Edit Properties** are dimmed, and clicking them does nothing.
 
 **Cause:** One of these:
-- The button belongs to a feature of a later version: the fades, freeze frame, punch zoom, the speed buttons, mute, presets and transitions. Its tooltip names the feature.
-- No selected clip can take it: **Fit in frame**, **Fill frame**, **Center in frame**, the flips and **Reset transform** need a video or image clip, and an audio clip has no picture.
+- The button belongs to a feature of a later version: the fades, mute, presets and transitions. Its tooltip names the feature.
+- No selected clip can take it: **Fit in frame**, **Fill frame**, **Center in frame**, the flips, **Reset transform** and **Punch zoom** need a video or image clip, and an audio clip has no picture. **Freeze frame** needs a video clip. The speed buttons need a video or audio clip that is not a freeze frame.
 - The clips are on a locked track.
 
 **Fix:** Select a video or image clip, or unlock its track. See [Use the quick actions](editing-properties.md#use-the-quick-actions).
@@ -1129,6 +1140,77 @@ See [Audio](audio.md).
 
 **Fix:** Click **Reset** in the **Crop** section to remove the crop, or click **Fit in frame** or **Center in frame** to fit or center the part that is left. See [Remove a crop](cropping-and-reframing.md#remove-a-crop).
 
+## Speed, freeze frames and punch zoom
+
+### A speed change moved other clips or left a gap
+
+**Symptom:** After you changed a clip's speed or its **Duration** in the **Speed** section, the clips after it moved, on several tracks. Or a gap opened after a faster clip, or a slower clip ended early with the message **Shortened at the next clip**.
+
+**Cause:** The **Ripple** switch of the **Speed** section decides. On (the default), every clip after the clip's end, on every unlocked track, moves by the change of length. Off, nothing else moves: a faster clip leaves a gap, and a slower clip stops at the next clip, so it plays less of its media. The speed buttons in the quick actions follow the same switch.
+
+**Fix:** Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>, set **Ripple** the way you want and change the speed again. See [Move later clips with the change (Ripple)](speed-freeze-frames-and-punch-zoom.md#move-later-clips-with-the-change-ripple).
+
+### A ripple after a speed change stopped short
+
+**Symptom:** You made a clip faster with **Ripple** on, a gap stays after it, and the message **Ripple stopped by** followed by a track name appears.
+
+**Cause:** Moving the later clips further to the left would make clips on that track overlap, for example a sound that starts before the clip ends. The clips moved as far as they could.
+
+**Fix:** Close the gap with <kbd>G</kbd> or the gap menu, or first move the clip that blocks. See [Close a gap](splitting-and-deleting.md#close-a-gap).
+
+### A clip kept its length when its speed changed
+
+**Symptom:** You set a new speed, the clip kept its length, and it now shows a different part of its media. Or the message **Limited by the media end** appears and the clip got shorter.
+
+**Cause:** The chain button next to **Speed** is off (not gold). The clip then keeps its length and plays more or less of its media, and a faster clip that runs out of media ends at the media's last frame.
+
+**Fix:** Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>, click the chain button so it is gold, and set the speed again. See [Keep the length or the media part](speed-freeze-frames-and-punch-zoom.md#keep-the-length-or-the-media-part).
+
+### A clip keeps its speed with Limited by the media end
+
+**Symptom:** You set a new speed, the clip doesn't change, and the message **Limited by the media end** appears. Its linked sound may have changed.
+
+**Cause:** The clip starts on the last frames of its media, so not even one frame fits at the new speed. The clip keeps its speed; its linked clips still change.
+
+**Fix:** Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> if the sound changed. Trim the clip to start earlier in its media, or choose a slower speed. See [Know where a speed change stops](speed-freeze-frames-and-punch-zoom.md#know-where-a-speed-change-stops).
+
+### A video and its sound got different speeds or show a red number
+
+**Symptom:** After a speed change, the video and its sound have different speeds or lengths, or they show red sync numbers.
+
+**Cause:** One of these:
+- **Linked selection** was off, or you selected only one of them with <kbd>Alt</kbd>+click, so only that clip changed.
+- The video and its sound started at different times. Each keeps its start, so after the change they are out of step.
+
+**Fix:** Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>, click the video with **Linked selection** on and set the speed again. For red numbers, right-click the clip and choose **Move into sync**. See [Change the speed of a video and its sound](speed-freeze-frames-and-punch-zoom.md#change-the-speed-of-a-video-and-its-sound).
+
+### Freeze frame or punch zoom does nothing
+
+**Symptom:** You press <kbd>Shift</kbd>+<kbd>F</kbd> or <kbd>Shift</kbd>+<kbd>Z</kbd>, or click **Freeze frame** or **Punch zoom**, and nothing changes. A message may appear.
+
+**Cause:** One of these:
+- **No video under the playhead** or **No picture under the playhead**: no video (for a freeze frame), or no video or image (for a punch zoom), is under the playhead on a targeted, unlocked and visible track.
+- **The playhead is not over the selected clip**: the selected clips are elsewhere. The editor acts on the selected clips first and doesn't pick another clip instead.
+- A text field has the keyboard focus.
+
+**Fix:** Move the playhead into the clip, select the clip, or clear the selection with <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd> so the top picture is used. Check that its track is targeted and unlocked. See [Know which clip a freeze or punch zoom uses](speed-freeze-frames-and-punch-zoom.md#know-which-clip-a-freeze-or-punch-zoom-uses).
+
+### A freeze frame moved clips on every track
+
+**Symptom:** After a freeze frame, clips on other tracks moved 2 seconds later, while a music clip or a title across the playhead stayed where it was and plays on under the hold.
+
+**Cause:** That is how a freeze frame works: every clip from the playhead on, on every unlocked track, moves 2 seconds later, so the edit stays in step. Clips that run across the playhead on other tracks are not cut, so they stay. The **Ripple** switch doesn't change this.
+
+**Fix:** To keep a track in place, lock it before you freeze. To make a title cover the hold, drag it afterwards. See [Hold a frame (freeze frame)](speed-freeze-frames-and-punch-zoom.md#hold-a-frame-freeze-frame).
+
+### The Speed field is dimmed at 0.0
+
+**Symptom:** The **Speed** field is dimmed and reads **0.0**, with the hint **Freeze frame: one picture held**, and the speed buttons are dimmed.
+
+**Cause:** The selected clip is a freeze frame. It holds one frame, so it has no speed.
+
+**Fix:** Nothing is wrong. Change its length with **Duration** or by dragging its edges. See [Change a freeze frame](speed-freeze-frames-and-punch-zoom.md#change-a-freeze-frame).
+
 ## Known limitations
 
 The current version cannot do these things yet. Each one is available in a later version.
@@ -1137,10 +1219,10 @@ The current version cannot do these things yet. Each one is available in a later
 - **Editing clips:** clips can't be cut, copied or pasted (the **Cut**, **Copy** and **Paste** rows of the clip menu, and the **Copy**, **Paste** and **Duplicate** rows of the preview's layer menu, are dimmed). <kbd>Ctrl</kbd>+<kbd>D</kbd> duplicates one clip at a time, without its linked sound. The crop of a clip can't be copied to other clips.
 - **Markers:** markers belong to the timeline; markers inside clips are not available. Markers and the in/out range don't show on the scrollbars.
 - **Menus:** only clips, gaps, track headers, the ruler, media cards and pictures in the preview have a right-click menu, with a first set of rows. Menu rows can't be chosen with the arrow keys.
-- **Speed and edit points:** a clip's speed changes only with **Rate stretch**; typing an exact speed is not available. A selected cut (edit point) only marks the cut; transitions are not available.
+- **Speed and edit points:** a speed applies to the whole clip, and sound at another speed always changes pitch. Playing a clip backward is not available. A punch zoom happens at once, at the cut; a zoom that grows over a few frames is not available. The length of a new freeze frame (2 seconds) and the size of a punch zoom (20%) can't be changed. A selected cut (edit point) only marks the cut; transitions are not available.
 - **Tracks:** track headers have room for names of about 9 characters; longer names are shortened. Groups are not marked on the timeline.
 - **Preview:** a change to a picture, its crop included, applies to the whole clip; changes over time (keyframes) are not available. An SVG image that covers the whole frame doesn't get sharper when you zoom in. The **Zoom**, **Preview quality** and **Overlays** menus can't be used with the arrow keys.
-- **Edit Properties:** the speed, audio, text, animation and transition sections are not available, nor are the dimmed quick actions and the **Still duration**, **Transition** and **Cache** rows of the **Project** section. A new resolution always scales the layout; keeping the layout as it is, is not available.
+- **Edit Properties:** the audio, text, animation and transition sections are not available, nor are the dimmed quick actions and the **Still duration**, **Transition** and **Cache** rows of the **Project** section. A new resolution always scales the layout; keeping the layout as it is, is not available.
 - **Animated GIF and WebP files** show as still images (their first frame), in the preview and in their clips' thumbnails.
 - **Media that cannot be decoded, or whose file is missing,** shows nothing in the preview, with no placeholder.
 - **Removing media** that a clip uses is not possible.
@@ -1158,6 +1240,7 @@ The current version cannot do these things yet. Each one is available in a later
 - [Trimming clips](trimming.md)
 - [Splitting, deleting and closing gaps](splitting-and-deleting.md)
 - [Advanced trimming](advanced-trimming.md)
+- [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md)
 - [Getting started](getting-started.md)
 - [Projects and saving](projects-and-saving.md)
 - [Importing media](importing-media.md)
@@ -1170,4 +1253,4 @@ The current version cannot do these things yet. Each one is available in a later
 - [Cropping and reframing](cropping-and-reframing.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 26, 2026-10-16</sub>
+<sub>Last updated: Batch 27, 2026-10-16</sub>

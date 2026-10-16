@@ -171,7 +171,7 @@ Right-click a clip or a gap to open its menu. Rows that have a keyboard shortcut
 > **Video placeholder: The clip and gap menus**
 > - File: `videos/splitting-and-deleting/menus.mp4` (not recorded yet)
 > - Length: about 40 seconds
-> - Shows: right-click a video clip: it and its sound are selected and the menu opens with **Cut**, **Copy** and **Paste** dimmed, then **Split at playhead**, **Delete**, **Ripple delete**, **Disable**, **Unlink**, **Group**, **Ungroup** (dimmed), **Move into sync** (dimmed), **Rename** and the **Label** row of eight colors; point at the teal swatch: its tooltip reads **Teal**; click it: the video and its sound turn teal; right-click the clip again: the teal swatch has a gold ring; press <kbd>Escape</kbd>; right-click a gap: **Close gap** and **Close all gaps on track**; click **Close gap**.
+> - Shows: right-click a video clip: it and its sound are selected and the menu opens with **Cut**, **Copy** and **Paste** dimmed, then **Split at playhead**, **Delete**, **Ripple delete**, **Disable**, **Unlink**, **Group**, **Ungroup** (dimmed), **Move into sync** (dimmed), **Rename**, the **Label** row of eight colors, **Speed...** and **Freeze frame at playhead**; point at the teal swatch: its tooltip reads **Teal**; click it: the video and its sound turn teal; right-click the clip again: the teal swatch has a gold ring; press <kbd>Escape</kbd>; right-click a gap: **Close gap** and **Close all gaps on track**; click **Close gap**.
 
 **Right-click a clip.** If the clip is not selected, it is selected first, with its linked clips and its group. If it is already part of the selection, the selection stays, and the menu acts on all the selected clips. Clips on a locked track have no menu.
 
@@ -188,6 +188,8 @@ Right-click a clip or a gap to open its menu. Rows that have a keyboard shortcut
 | **Move into sync** | Moves this clip back into sync with its linked clip. Dimmed when it is in sync. See [Keep linked clips in sync](links-and-groups.md#keep-linked-clips-in-sync). |
 | **Rename** | Opens a name field over the clip. See [Rename clips](timeline.md#rename-clips). |
 | **Label**, with eight color swatches | Gives the selected clips a label color, or removes it. See [Give clips a label color](timeline.md#give-clips-a-label-color). |
+| **Speed...** | Opens the **Speed** section of **Edit Properties** with **Speed** ready for typing. Dimmed for image clips. See [Type an exact speed](speed-freeze-frames-and-punch-zoom.md#type-an-exact-speed). |
+| **Freeze frame at playhead** | Holds the frame at the playhead for 2 seconds (<kbd>Shift</kbd>+<kbd>F</kbd>). Dimmed unless the clip is a video under the playhead. See [Hold a frame (freeze frame)](speed-freeze-frames-and-punch-zoom.md#hold-a-frame-freeze-frame). |
 
 **Right-click a gap.** The gap is selected first.
 
@@ -209,8 +211,9 @@ Right-click a clip or a gap to open its menu. Rows that have a keyboard shortcut
 - [Trimming clips](trimming.md)
 - [Advanced trimming](advanced-trimming.md)
 - [Editing properties](editing-properties.md)
+- [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Projects and saving](projects-and-saving.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 25, 2026-10-16</sub>
+<sub>Last updated: Batch 27, 2026-10-16</sub>

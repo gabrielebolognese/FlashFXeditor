@@ -32,6 +32,7 @@ This page lists every keyboard shortcut that works in the current version of Sho
 >   24. Drag the logo toward the middle of the frame: it snaps to the center with gold lines. Hold <kbd>S</kbd> while you keep dragging: it moves freely. Release the mouse button. Click the logo, rest the pointer on the preview and hold <kbd>Alt</kbd>: gold distances to the frame edges appear.
 >   25. With the logo selected, click in the **X** field of **Edit Properties** and press <kbd>↑</kbd> three times and <kbd>Shift</kbd>+<kbd>↑</kbd> once: the logo moves 13 pixels to the right. Press <kbd>Esc</kbd>, click the logo's clip on the timeline and press <kbd>Ctrl</kbd>+<kbd>D</kbd>: a copy appears right after it.
 >   26. Double-click the video under the logo in the preview: white brackets and bars appear on it, with the **Crop** chip at the top of the preview. Hold <kbd>Alt</kbd> and drag the left bar inward: the left and right sides are cut together. Press <kbd>Esc</kbd>: the chip disappears and the usual handles are back.
+>   27. Click the timeline, put the playhead inside a video and press <kbd>Shift</kbd>+<kbd>F</kbd>: a 2-second clip with a snowflake appears at the playhead, and the later clips move right. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>, then <kbd>Shift</kbd>+<kbd>Z</kbd>: the clip is cut and the picture after the cut is 20% closer. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>.
 
 ## In this page
 - [How shortcuts work](#how-shortcuts-work)
@@ -40,6 +41,7 @@ This page lists every keyboard shortcut that works in the current version of Sho
 - [Timeline](#timeline)
 - [Trimming](#trimming)
 - [Cutting and deleting](#cutting-and-deleting)
+- [Speed, freeze frames and punch zoom](#speed-freeze-frames-and-punch-zoom)
 - [Markers and in/out points](#markers-and-inout-points)
 - [Tracks, links and groups](#tracks-links-and-groups)
 - [Tools](#tools)
@@ -241,6 +243,20 @@ See [Splitting, deleting and closing gaps](splitting-and-deleting.md).
 - The clip and gap menus (right-click) show these shortcuts next to their rows. <kbd>Escape</kbd> closes a menu.
 - Clips on locked tracks are never split or deleted. <kbd>Ctrl</kbd>+<kbd>K</kbd> with nothing selected and <kbd>G</kbd> with no gap selected act on the targeted tracks; <kbd>Shift</kbd>+<kbd>G</kbd> acts on the selected tracks, or on the targeted tracks when no track is selected. See [Tracks](tracks.md).
 
+## Speed, freeze frames and punch zoom
+
+See [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md).
+
+| Action | Windows | macOS | Works in |
+| --- | --- | --- | --- |
+| Freeze frame: hold the frame at the playhead for 2 seconds (same as **Freeze frame**) | <kbd>Shift</kbd>+<kbd>F</kbd> | <kbd>⇧</kbd>+<kbd>F</kbd> | All panels |
+| Punch zoom: cut at the playhead and make the part after the cut 20% larger (same as **Punch zoom**) | <kbd>Shift</kbd>+<kbd>Z</kbd> | <kbd>⇧</kbd>+<kbd>Z</kbd> | All panels |
+| Raise or lower the speed by 1% | <kbd>↑</kbd> or <kbd>↓</kbd> | <kbd>↑</kbd> or <kbd>↓</kbd> | The **Speed** field |
+| Raise or lower the speed by 10% | <kbd>Shift</kbd>+<kbd>↑</kbd> or <kbd>Shift</kbd>+<kbd>↓</kbd> | <kbd>⇧</kbd>+<kbd>↑</kbd> or <kbd>⇧</kbd>+<kbd>↓</kbd> | The **Speed** field |
+
+- Both act on the selected clips under the playhead, or on the top picture under it when none is selected. Each is one undo step.
+- The speed buttons **0.5x**, **1x**, **1.5x** and **2x** in the quick actions and **Speed...** in the clip menu have no shortcut.
+
 ## Markers and in/out points
 
 See [Markers and in/out points](markers-and-in-out-points.md).
@@ -324,7 +340,7 @@ See [Editing properties](editing-properties.md).
 | Fold or open a section | Click its header | Click its header |
 
 - <kbd>Ctrl</kbd>+<kbd>D</kbd> copies only one clip, without its linked sound. In the Preview panel the copy goes later on the timeline, not at the playhead. While the Edit Properties or Media panel is active, the browser gets the key; see [Keys the browser keeps](#keys-the-browser-keeps).
-- Hold <kbd>↑</kbd> or <kbd>↓</kbd> to keep going. In the **Transform**, **Crop** and **Opacity** sections, presses less than 0.3 seconds apart are one undo step.
+- Hold <kbd>↑</kbd> or <kbd>↓</kbd> to keep going. In the **Transform**, **Crop**, **Opacity** and **Speed** sections, presses less than 0.3 seconds apart are one undo step.
 - Edit Properties has no other keys of its own. While it is active and no field has the keyboard, the all-panels shortcuts work there, for example <kbd>Space</kbd> to play.
 
 ## Audio
@@ -483,9 +499,9 @@ While you type in a text field, or while a dialog is open, the editor leaves <kb
 
 ## Shortcuts for features not available yet
 
-Some buttons already show a shortcut in their tooltip although the button is disabled, for example **Freeze frame** in the timeline toolbar and **Export** in the app bar. These shortcuts start working when their feature is available in a later version; until then the keys do nothing. In the current version this also applies to:
+Some buttons already show a shortcut in their tooltip although the button is disabled, for example **Title** in the timeline toolbar and **Export** in the app bar. These shortcuts start working when their feature is available in a later version; until then the keys do nothing. In the current version this also applies to:
 
-- <kbd>T</kbd> and <kbd>Shift</kbd>+<kbd>T</kbd> (titles and subtitles), <kbd>Shift</kbd>+<kbd>F</kbd> (freeze frame), <kbd>Shift</kbd>+<kbd>Z</kbd> (punch zoom), <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd> (default transition), <kbd>Ctrl</kbd>+<kbd>E</kbd> (export) and <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> (command palette).
+- <kbd>T</kbd> and <kbd>Shift</kbd>+<kbd>T</kbd> (titles and subtitles), <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd> (default transition), <kbd>Ctrl</kbd>+<kbd>E</kbd> (export) and <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> (command palette).
 - <kbd>Ctrl</kbd>+<kbd>X</kbd>, <kbd>Ctrl</kbd>+<kbd>C</kbd> and <kbd>Ctrl</kbd>+<kbd>V</kbd> in the Timeline and Preview panels (cutting, copying and pasting clips; the **Cut**, **Copy** and **Paste** rows of the clip menu, and the **Copy**, **Paste** and **Duplicate** rows of the preview's layer menu, are dimmed).
 
 ## Related pages
@@ -500,6 +516,7 @@ Some buttons already show a shortcut in their tooltip although the button is dis
 - [Splitting, deleting and closing gaps](splitting-and-deleting.md)
 - [Markers and in/out points](markers-and-in-out-points.md)
 - [Advanced trimming](advanced-trimming.md)
+- [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md)
 - [Tracks](tracks.md)
 - [Linking and grouping clips](links-and-groups.md)
 - [Audio](audio.md)
@@ -508,4 +525,4 @@ Some buttons already show a shortcut in their tooltip although the button is dis
 - [Projects and saving](projects-and-saving.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 26, 2026-10-16</sub>
+<sub>Last updated: Batch 27, 2026-10-16</sub>

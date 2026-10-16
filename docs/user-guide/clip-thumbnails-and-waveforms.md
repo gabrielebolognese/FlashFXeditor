@@ -1,6 +1,6 @@
 # Clip thumbnails, waveforms and badges
 
-Clips on the timeline show what is in them: video clips show a strip of thumbnails, audio clips show their waveform, and image clips show their picture. Small badges in each clip's label bar tell you about its speed, its link and its sync. Use them to find a shot, a cut point or a loud moment without playing the timeline.
+Clips on the timeline show what is in them: video clips show a strip of thumbnails, audio clips show their waveform, and image clips show their picture. Small badges in each clip's label bar tell you about its speed, its link and its sync, and mark freeze frames. Use them to find a shot, a cut point or a loud moment without playing the timeline.
 
 > **Video placeholder: Thumbnails, waveforms and badges**
 > - File: `videos/clip-thumbnails-and-waveforms/overview.mp4` (not recorded yet)
@@ -26,6 +26,7 @@ A clip has two parts:
 | Clip | The body shows |
 |---|---|
 | Video | A strip of thumbnails: frames of the video, side by side. |
+| Freeze frame | The same picture in every thumbnail: it holds one frame. |
 | Audio | The waveform of its sound. See [Read a waveform](#read-a-waveform). |
 | Image | The picture, repeated across the clip. An animated GIF or WebP shows its first frame. |
 
@@ -59,7 +60,7 @@ The thumbnails start at the left end of the clip and sit side by side up to its 
 > - Length: about 40 seconds
 > - Shows: a 20-second video clip on V1 at height L; press <kbd>\\</kbd> to fit; hold <kbd>Ctrl</kbd> and roll the wheel over the middle of the clip: for a moment the same thumbnail repeats a few times, then each thumbnail shows its own frame; zoom in further until single frames are wide; drag the start of the clip to the right to trim it: the first thumbnail now shows the clip's new first frame; press <kbd>Space</kbd>, zoom into a part of the clip you have not looked at: the thumbnails stay coarse while it plays; press <kbd>Space</kbd> again: they fill in right away.
 
-- The thumbnails follow the clip's content: a clip that starts later in its video starts with that later frame, and a clip at another speed (see [Change a clip's speed with Rate stretch](advanced-trimming.md#change-a-clips-speed-with-rate-stretch)) shows the frames it plays at that speed.
+- The thumbnails follow the clip's content: a clip that starts later in its video starts with that later frame, and a clip at another speed (see [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md)) shows the frames it plays at that speed.
 - Each thumbnail has the shape of the video, upright: narrow for a portrait phone video, wide for a landscape one. A taller track gives larger thumbnails.
 - The editor keeps thumbnails at three levels of detail: one every 2 seconds of the video, one every half second, and one every 5 frames. It uses the level that gives each thumbnail on screen its own frame. Zoomed in so far that a thumbnail covers less than 5 frames, neighboring thumbnails show the same frame.
 - The first two levels are made right after import. Thumbnails every 5 frames are made only for the parts of a video you zoom into.
@@ -87,7 +88,8 @@ Badges sit at the right end of a clip's label bar, from right to left in this or
 | Badge | Looks like | What it means |
 |---|---|---|
 | Sync number | A red number such as **+12** or **-12** | The clip is that many frames out of step with its linked clip. See [Keep linked clips in sync](links-and-groups.md#keep-linked-clips-in-sync). |
-| Speed | `0.5x`, `2x` or `1.33x` | The video or audio clip plays faster or slower than its media. See [Change a clip's speed with Rate stretch](advanced-trimming.md#change-a-clips-speed-with-rate-stretch). |
+| Speed | `0.5x`, `2x` or `1.33x` | The video or audio clip plays faster or slower than its media. See [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md) and [Change a clip's speed with Rate stretch](advanced-trimming.md#change-a-clips-speed-with-rate-stretch). |
+| Freeze frame | A snowflake, in the place of the speed | The clip holds one frame of its video. See [Hold a frame (freeze frame)](speed-freeze-frames-and-punch-zoom.md#hold-a-frame-freeze-frame). |
 | Link | A chain icon | The clip is linked to another clip, for example a video and its sound. See [Linking and grouping clips](links-and-groups.md). |
 
 - A clip at normal speed shows no speed badge, and a clip in sync shows no number.
@@ -120,9 +122,10 @@ A clip with a label color shows that color in its label bar above the thumbnails
 - [Tracks](tracks.md)
 - [Linking and grouping clips](links-and-groups.md)
 - [Advanced trimming](advanced-trimming.md)
+- [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md)
 - [Audio](audio.md)
 - [Importing media](importing-media.md)
 - [Proxies](proxies.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 25, 2026-10-16</sub>
+<sub>Last updated: Batch 27, 2026-10-16</sub>

@@ -70,7 +70,7 @@ The tab, view and sort order you choose are remembered with the project.
 Top middle. It shows the settings of what is selected, and lets you type or drag exact values. See [Editing properties](editing-properties.md).
 
 - With nothing selected, it shows the **Project** section: name, resolution, frame rate, background, autosave and the proxy settings (**Proxies**, **Proxy for**, **Proxy size**). See [Change project settings](projects-and-saving.md#change-project-settings) and [Change the proxy settings](proxies.md#change-the-proxy-settings).
-- With clips selected, it shows a row of quick actions (**Fit in frame**, **Fill frame**, **Center in frame**, **Flip horizontal**, **Flip vertical**, **Reset transform**, **Duplicate** and **Delete**, plus dimmed buttons of later versions) and the **Clip** section: name, color, enabled, start, end, duration, source in and out. For video and image clips it adds **Transform** (position, scale, rotation, anchor, flip), **Crop** (see [Cropping and reframing](cropping-and-reframing.md)) and **Opacity**. See [Editing properties](editing-properties.md).
+- With clips selected, it shows a row of quick actions (**Fit in frame**, **Fill frame**, **Center in frame**, **Flip horizontal**, **Flip vertical**, **Reset transform**, **Freeze frame**, **Punch zoom**, the speeds **0.5x**, **1x**, **1.5x** and **2x**, **Duplicate** and **Delete**, plus dimmed buttons of later versions) and the **Clip** section: name, color, enabled, start, end, duration, source in and out. For video and image clips it adds **Transform** (position, scale, rotation, anchor, flip), **Crop** (see [Cropping and reframing](cropping-and-reframing.md)) and **Opacity**. For video and audio clips it adds **Speed** (speed, duration, ripple, freeze frame; see [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md)). See [Editing properties](editing-properties.md).
 - With tracks selected (click a track header), it shows the **Track** section: name, kind, height and the **Target**, **Lock**, **Mute**, **Solo** or **Hide** switches. See [Change track settings in Edit Properties](tracks.md#change-track-settings-in-edit-properties).
 - With a marker selected (click it in the ruler), it shows the **Marker** section: label, color, time and **Delete marker**. See [Edit a marker in Edit Properties](markers-and-in-out-points.md#edit-a-marker-in-edit-properties).
 
@@ -132,7 +132,7 @@ The toolbar is one row of button groups, from left to right:
 | --- | --- | --- |
 | Tools | **Select**, **Razor**, **Hand**, **Slip**, **Slide**, **Rate stretch** | All work: **Select** (<kbd>V</kbd>), **Razor** (<kbd>C</kbd>), **Hand** (<kbd>H</kbd>), **Slip** (<kbd>Y</kbd>), **Slide** (<kbd>U</kbd>) and **Rate stretch** (<kbd>R</kbd>). The active tool is gold. See [Choose a tool](advanced-trimming.md#choose-a-tool) and [Pan the view](timeline.md#pan-the-view). |
 | Toggles | **Snap**, **Linked selection**, **Ripple mode**, **Show clip keyframes**, **Audio scrub** | **Snap** (<kbd>S</kbd>), **Linked selection** (<kbd>Shift</kbd>+<kbd>S</kbd>) and **Ripple mode** work: each is gold while it is on. See [Snap clips into place](timeline.md#snap-clips-into-place), [Turn Linked selection off](links-and-groups.md#turn-linked-selection-off) and [Turn Ripple mode on or off](trimming.md#turn-ripple-mode-on-or-off). The others are available in a later version. |
-| Edit | **Split at playhead**, **Delete**, **Ripple delete**, **Close gap**, **Close all gaps (compact)**, **Add marker**, **Freeze frame**, **Punch zoom** | **Split at playhead** (<kbd>Ctrl</kbd>+<kbd>K</kbd>), **Delete** (<kbd>Delete</kbd>), **Ripple delete** (<kbd>Shift</kbd>+<kbd>Delete</kbd>), **Close gap** (<kbd>G</kbd>), **Close all gaps (compact)** (<kbd>Shift</kbd>+<kbd>G</kbd>) and **Add marker** (<kbd>M</kbd>) work. See [Splitting, deleting and closing gaps](splitting-and-deleting.md) and [Add markers](markers-and-in-out-points.md#add-markers). **Freeze frame** and **Punch zoom** are available in a later version. |
+| Edit | **Split at playhead**, **Delete**, **Ripple delete**, **Close gap**, **Close all gaps (compact)**, **Add marker**, **Freeze frame**, **Punch zoom** | All work: **Split at playhead** (<kbd>Ctrl</kbd>+<kbd>K</kbd>), **Delete** (<kbd>Delete</kbd>), **Ripple delete** (<kbd>Shift</kbd>+<kbd>Delete</kbd>), **Close gap** (<kbd>G</kbd>), **Close all gaps (compact)** (<kbd>Shift</kbd>+<kbd>G</kbd>), **Add marker** (<kbd>M</kbd>), **Freeze frame** (<kbd>Shift</kbd>+<kbd>F</kbd>) and **Punch zoom** (<kbd>Shift</kbd>+<kbd>Z</kbd>). See [Splitting, deleting and closing gaps](splitting-and-deleting.md), [Add markers](markers-and-in-out-points.md#add-markers) and [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md). |
 | Add | **Title**, **Subtitle**, **Add caption track**, **Add solid**, **Add image** | Available in a later version. |
 | Zoom | **Zoom out**, the zoom slider, **Zoom in**, **Zoom to fit**, **Zoom to selection**, **Center playhead**, **Track height** | All work. **Zoom to selection** (<kbd>Shift</kbd>+<kbd>\\</kbd>) fills the view with the selection, **Center playhead** (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>.</kbd>) scrolls the playhead to the middle of the view (see [Zoom in and out](timeline.md#zoom-in-and-out) and [Scroll the timeline](timeline.md#scroll-the-timeline)), and **Track height** changes the height of all tracks (see [Change track height](tracks.md#change-track-height)). |
 
@@ -222,6 +222,7 @@ To jump to a time, type it into the timecode field of the timeline toolbar, or c
 - [Splitting, deleting and closing gaps](splitting-and-deleting.md)
 - [Markers and in/out points](markers-and-in-out-points.md)
 - [Advanced trimming](advanced-trimming.md)
+- [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md)
 - [Tracks](tracks.md)
 - [Linking and grouping clips](links-and-groups.md)
 - [Preview and playback](preview-and-playback.md)
@@ -233,4 +234,4 @@ To jump to a time, type it into the timecode field of the timeline toolbar, or c
 - [Audio](audio.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 26, 2026-10-16</sub>
+<sub>Last updated: Batch 27, 2026-10-16</sub>

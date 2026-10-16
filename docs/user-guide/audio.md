@@ -52,7 +52,9 @@ Sound and picture run on the same clock, so they stay together for the whole len
 
 ### Clips at another speed
 
-A clip you stretched with **Rate stretch** plays its sound at the clip's speed, and the pitch changes with the speed: at 0.5x the sound is an octave lower and lasts twice as long, at 2x it is an octave higher. The editor does not keep the original pitch. A video and its sound stretch together, so they stay in sync. See [Change a clip's speed with Rate stretch](advanced-trimming.md#change-a-clips-speed-with-rate-stretch).
+A clip at another speed, set with the speed buttons, the **Speed** section or **Rate stretch**, plays its sound at the clip's speed, and the pitch changes with the speed: at 0.5x the sound is an octave lower and lasts twice as long, at 2x it is an octave higher. The editor does not keep the original pitch. With **Linked selection** on, a video and its sound change speed together, so they stay in sync. See [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md) and [Change a clip's speed with Rate stretch](advanced-trimming.md#change-a-clips-speed-with-rate-stretch).
+
+A freeze frame has no sound: the video's own sound pauses for the hold and goes on after it, while other audio tracks, such as music, keep playing. See [Hold a frame (freeze frame)](speed-freeze-frames-and-punch-zoom.md#hold-a-frame-freeze-frame).
 
 ### Jump, pause and change things while you listen
 
@@ -208,10 +210,11 @@ After you import an audio file or a video with sound, the editor analyzes its so
 - [Timeline](timeline.md)
 - [Tracks](tracks.md)
 - [Advanced trimming](advanced-trimming.md)
+- [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md)
 - [Importing media](importing-media.md)
 - [Adding media to the timeline](adding-media-to-the-timeline.md)
 - [Proxies](proxies.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 25, 2026-10-16</sub>
+<sub>Last updated: Batch 27, 2026-10-16</sub>
