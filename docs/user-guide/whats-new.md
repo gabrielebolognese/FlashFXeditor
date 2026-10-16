@@ -98,6 +98,7 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 > - Shows: open a project with three clips on the timeline; press <kbd>Space</kbd> to play and let the timeline page forward; press <kbd>L</kbd> three times to reach 8x, then <kbd>K</kbd>; hold <kbd>K</kbd> and tap <kbd>L</kbd> to step one frame; turn on **Loop playback**; point at the **Dropped** readout in the status strip.
 
 ## In this page
+- [Batch 28: Groundwork for text](#batch-28-groundwork-for-text)
 - [Batch 27: Speed, freeze frames and punch zoom](#batch-27-speed-freeze-frames-and-punch-zoom)
 - [Batch 26: Cropping and reframing](#batch-26-cropping-and-reframing)
 - [Batch 25: Edit Properties for clips](#batch-25-edit-properties-for-clips)
@@ -125,6 +126,10 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 - [Batch 03: Projects, autosave and recovery](#batch-03-projects-autosave-and-recovery)
 - [Batch 02: Undo, redo and frame-exact time](#batch-02-undo-redo-and-frame-exact-time)
 - [Batch 01: The workspace](#batch-01-the-workspace)
+
+## Batch 28: Groundwork for text
+- Nothing changes on screen in this version. This batch builds the text engine that titles, subtitles and captions use. Adding text to your project, with the dimmed **Title** and **Subtitle** buttons of the timeline toolbar, is available in a later version.
+- The engine already has what those features need: text that stays sharp at every preview zoom, eight font families that come with the editor (Inter, Montserrat, Nunito, Oswald, Unbounded, Playfair Display, Caveat and JetBrains Mono), fonts installed on your computer, copied into the project folder so the project looks the same on another computer, and a warning when a project uses a font this computer doesn't have.
 
 ## Batch 27: Speed, freeze frames and punch zoom
 - Change a clip's speed with one click: the quick actions of **Edit Properties** now have **0.5x**, **1x**, **1.5x** and **2x**. A 10-second clip at 2x lasts 5 seconds, its linked sound follows with a higher pitch, and the clips after it move up.
@@ -410,4 +415,4 @@ See [The workspace](workspace.md) and [Getting started](getting-started.md).
 - [Adding media to the timeline](adding-media-to-the-timeline.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 27, 2026-10-16</sub>
+<sub>Last updated: Batch 28, 2026-10-16</sub>
