@@ -1,6 +1,6 @@
 # Editing properties
 
-The **Edit Properties** panel shows the settings of what you selected: a clip, a track, a marker, or the project itself when nothing is selected. Use it to type exact values, such as a position in pixels or the end time of a clip, to drag a value while you watch the preview, to fit or fill the frame with one click, to crop a picture, to change a clip's speed, and to change several clips at once.
+The **Edit Properties** panel shows the settings of what you selected: a clip, a track, a marker, or the project itself when nothing is selected. Use it to type exact values, such as a position in pixels or the end time of a clip, to drag a value while you watch the preview, to fit or fill the frame with one click, to crop a picture, to change a clip's speed, to style text, and to change several clips at once.
 
 > **Video placeholder: Edit Properties in action**
 > - File: `videos/editing-properties/overview.mp4` (not recorded yet)
@@ -41,7 +41,7 @@ The **Edit Properties** panel sits at the top of the left side, next to the Medi
 | You selected | The panel shows | See |
 | --- | --- | --- |
 | Nothing (click an empty area of the timeline tracks) | The **Project** section | [Change project settings](projects-and-saving.md#change-project-settings) |
-| One or more clips | The quick actions, then the **Clip** section. When a video or image clip is among them, also **Transform**, **Crop** and **Opacity**. When a video or audio clip is among them, also **Speed**, as the last section. | This page, [Cropping and reframing](cropping-and-reframing.md) for **Crop**, and [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md) for **Speed** |
+| One or more clips | The quick actions, then the **Clip** section. When a text clip is among them, **Text** comes right after **Clip**. When a video, image or text clip is among them, also **Transform** and **Opacity**, with **Crop** between them for video and image clips. When a video or audio clip is among them, also **Speed**, as the last section. | This page, [Titles and text](titles-and-text.md#style-text-in-the-text-section) for **Text**, [Cropping and reframing](cropping-and-reframing.md) for **Crop**, and [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md) for **Speed** |
 | One or more track headers | The **Track** section | [Change track settings in Edit Properties](tracks.md#change-track-settings-in-edit-properties) |
 | A marker in the ruler | The **Marker** section | [Edit a marker in Edit Properties](markers-and-in-out-points.md#edit-a-marker-in-edit-properties) |
 
@@ -117,14 +117,14 @@ With clips selected, a row of one-click buttons sits at the top of the panel. Po
 | **Duplicate** | Copies the clip you clicked last right after itself (<kbd>Ctrl</kbd>+<kbd>D</kbd>). See [Duplicate a clip](#duplicate-a-clip). |
 | **Delete** | Deletes the selected clips and leaves gaps, like the <kbd>Delete</kbd> key. See [Delete clips](splitting-and-deleting.md#delete-clips). |
 
-- A button is dimmed when none of the selected clips can take it. The picture buttons and **Punch zoom** need a video or image clip; an audio clip has no picture. **Freeze frame** needs a video clip, and the speed buttons a video or audio clip that is not a freeze frame. Clips on locked tracks are skipped.
+- A button is dimmed when none of the selected clips can take it. The picture buttons and **Punch zoom** need a video, image or text clip; an audio clip has no picture. On a text clip, the picture buttons use the box of its text. **Freeze frame** needs a video clip, and the speed buttons a video or audio clip that is not a freeze frame. Clips on locked tracks are skipped.
 - Whether a button is dimmed depends on the selection only, not on the playhead. **Freeze frame** and **Punch zoom** act at the playhead: when it is not over the selected clip, a message says so.
 - The other buttons of the row (fades, mute, presets and transitions) are dimmed: they are available in a later version.
 - The buttons don't take the keyboard focus, but a click in the panel makes **Edit Properties** the active panel. See [How shortcuts work](keyboard-shortcuts.md#how-shortcuts-work).
 
 ## Fit, fill or center a picture
 
-Select one or more video or image clips, then click a button in the quick actions. You find the same actions in the layer menu of the preview: right-click a picture and choose **Fit**, **Fill**, **Center**, **Flip horizontal**, **Flip vertical** or **Reset transform**. See [Use the layer menu](arranging-layers-in-the-preview.md#use-the-layer-menu).
+Select one or more video, image or text clips, then click a button in the quick actions. For a text clip, the buttons use the box of its text. You find the same actions in the layer menu of the preview: right-click a picture and choose **Fit**, **Fill**, **Center**, **Flip horizontal**, **Flip vertical** or **Reset transform**. See [Use the layer menu](arranging-layers-in-the-preview.md#use-the-layer-menu).
 
 > **Video placeholder: Fit, fill and center**
 > - File: `videos/editing-properties/fit-fill-center.mp4` (not recorded yet)
@@ -237,7 +237,7 @@ To turn it back on, right-click it and choose **Enable**, or turn **Enabled** on
 
 ## Place a picture with exact values
 
-Select a video or image clip. The **Transform** and **Opacity** sections set where its picture sits in the frame, how big it is, its angle and how see-through it is. They hold the same values you change by dragging in the preview (see [Arranging layers in the preview](arranging-layers-in-the-preview.md)).
+Select a video, image or text clip. The **Transform** and **Opacity** sections set where its picture sits in the frame, how big it is, its angle and how see-through it is. They hold the same values you change by dragging in the preview (see [Arranging layers in the preview](arranging-layers-in-the-preview.md)).
 
 > **Video placeholder: Exact position, scale and opacity**
 > - File: `videos/editing-properties/transform-section.mp4` (not recorded yet)
@@ -352,7 +352,7 @@ See [Undo and redo changes](projects-and-saving.md#undo-and-redo-changes).
 
 These parts are available in a later version:
 
-- More sections for clips: audio (volume and fades), text, animation and transitions.
+- More sections for clips: audio (volume and fades), animation and transitions.
 - The dimmed quick actions: fades, mute, presets and transitions.
 - Values that change over time (keyframes): every value applies to the whole clip.
 - Duplicating several clips, or a clip with its linked sound, with <kbd>Ctrl</kbd>+<kbd>D</kbd>, and the **Duplicate** row of the layer menu.
@@ -361,6 +361,7 @@ These parts are available in a later version:
 ## Related pages
 - [Cropping and reframing](cropping-and-reframing.md)
 - [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md)
+- [Titles and text](titles-and-text.md)
 - [Arranging layers in the preview](arranging-layers-in-the-preview.md)
 - [Snapping and smart guides in the preview](snapping-and-smart-guides.md)
 - [Timeline](timeline.md)
@@ -373,4 +374,4 @@ These parts are available in a later version:
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 27, 2026-10-16</sub>
+<sub>Last updated: Batch 29, 2026-10-16</sub>

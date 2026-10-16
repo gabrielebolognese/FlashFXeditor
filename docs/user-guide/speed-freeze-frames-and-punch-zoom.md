@@ -225,7 +225,7 @@ What happens:
 - Punch again further on for another step closer: a second punch zoom gives 144%.
 - The step is named **Punch zoom**. <kbd>Ctrl</kbd>+<kbd>Z</kbd> gives you back one clip at its first size.
 
-Punch zoom works on video and image clips. The zoom happens at once, at the cut; a zoom that grows smoothly over a few frames is available in a later version.
+Punch zoom works on video and image clips, and on a text clip you selected. The zoom happens at once, at the cut; a zoom that grows smoothly over a few frames is available in a later version.
 
 ## Know which clip a freeze or punch zoom uses
 
@@ -275,4 +275,4 @@ See [Undo and redo changes](projects-and-saving.md#undo-and-redo-changes).
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 27, 2026-10-16</sub>
+<sub>Last updated: Batch 29, 2026-10-16</sub>

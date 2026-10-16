@@ -1,10 +1,10 @@
 # Troubleshooting
 
-This page helps you when something does not work as expected: the editor does not start in your browser, the preview stays empty, a folder or a file does not open, a clip drag, a trim, a split, a delete, a timeline tool, a typed timecode, a marker, an in/out range or **Lift** and **Extract** do something you did not expect, media from the Media panel lands somewhere you did not expect, a clip shows no thumbnails, a video gets no proxy or its proxy fails, the preview zoom, overlays or fullscreen behave unexpectedly, a picture in the preview can't be selected, moves unexpectedly, doesn't snap where you expect or gets cropped instead of resized, a value or a crop in **Edit Properties** doesn't do what you expect, a speed change, a freeze frame or a punch zoom does something you did not expect, playback stutters, or you hear no sound. Each problem lists what you see, why it happens and what to do. The last section lists what the current version cannot do yet.
+This page helps you when something does not work as expected: the editor does not start in your browser, the preview stays empty, a folder or a file does not open, a clip drag, a trim, a split, a delete, a timeline tool, a typed timecode, a marker, an in/out range or **Lift** and **Extract** do something you did not expect, media from the Media panel lands somewhere you did not expect, a clip shows no thumbnails, a video gets no proxy or its proxy fails, the preview zoom, overlays or fullscreen behave unexpectedly, a picture in the preview can't be selected, moves unexpectedly, doesn't snap where you expect or gets cropped instead of resized, a value or a crop in **Edit Properties** doesn't do what you expect, a speed change, a freeze frame or a punch zoom does something you did not expect, a title lands somewhere you did not expect, the keys type into a text, a font is missing, playback stutters, or you hear no sound. Each problem lists what you see, why it happens and what to do. The last section lists what the current version cannot do yet.
 
 > **Video placeholder: Fix common problems**
 > - File: `videos/troubleshooting/overview.mp4` (not recorded yet)
-> - Length: about 175 seconds
+> - Length: about 190 seconds
 > - Shows:
 >   1. Open the editor in a browser without the required features: the screen "This browser cannot run Shorts Editor" lists what is missing.
 >   2. In Chrome, open `chrome://settings/system` and show **Use graphics acceleration when available** turned on.
@@ -38,6 +38,9 @@ This page helps you when something does not work as expected: the editor does no
 >   30. In the **Crop** section, click the chain button in the **Aspect** row so it is lit, and type `200` in **T**: **L** and **R** change too. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> and click the chain button again to unlock it.
 >   31. Select a video with a clip right after it. In the **Speed** section, turn **Ripple** off and type `50` in **Speed**: the clip stops at the next one, and the message **Shortened at the next clip** appears. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> and turn **Ripple** on again.
 >   32. Select a video, move the playhead outside it and press <kbd>Shift</kbd>+<kbd>F</kbd>: the message **The playhead is not over the selected clip** appears.
+>   33. Press <kbd>T</kbd> and press <kbd>Space</kbd>: a space is typed instead of playing. Press <kbd>Esc</kbd>, then <kbd>Space</kbd>: playback starts. Pause.
+>   34. Click beside a short line of a two-line title, where no letter is: the video behind it is selected. Click a letter: the title is selected.
+>   35. Open a project made on another computer with a font this one doesn't have: the **Font** field shows **Missing** and the clip shows a red triangle. Pick **Inter** in the font picker: both disappear.
 
 ## In this page
 - [Browser and graphics](#browser-and-graphics)
@@ -156,6 +159,18 @@ This page helps you when something does not work as expected: the editor does no
   - [Freeze frame or punch zoom does nothing](#freeze-frame-or-punch-zoom-does-nothing)
   - [A freeze frame moved clips on every track](#a-freeze-frame-moved-clips-on-every-track)
   - [The Speed field is dimmed at 0.0](#the-speed-field-is-dimmed-at-00)
+- [Titles and text](#titles-and-text)
+  - [T or Shift+T does nothing](#t-or-shiftt-does-nothing)
+  - [A new title went onto a new track](#a-new-title-went-onto-a-new-track)
+  - [A new title is not 3 seconds long](#a-new-title-is-not-3-seconds-long)
+  - [Keys type into the text instead of working](#keys-type-into-the-text-instead-of-working)
+  - [Typed text disappeared](#typed-text-disappeared)
+  - [A click on a text selects the picture behind it](#a-click-on-a-text-selects-the-picture-behind-it)
+  - [Dragging a corner of a text changes its font size](#dragging-a-corner-of-a-text-changes-its-font-size)
+  - [A text shows Missing or a red triangle](#a-text-shows-missing-or-a-red-triangle)
+  - [Show system fonts lists nothing](#show-system-fonts-lists-nothing)
+  - [A font from your computer was not copied into the project](#a-font-from-your-computer-was-not-copied-into-the-project)
+  - [Letters of some languages look different](#letters-of-some-languages-look-different)
 - [Known limitations](#known-limitations)
 
 ## Browser and graphics
@@ -207,6 +222,7 @@ This page helps you when something does not work as expected: the editor does no
 
 **Cause:** One of these:
 - A text field has the keyboard focus (the project name, a media name, the timecode field, a number field). Typing always comes before shortcuts.
+- You are editing a text in the preview (a gold outline and a caret): the keys type into it. Press <kbd>Esc</kbd> to finish.
 - A dropdown list has the keyboard focus, for example **Sort media by** after you chose a value with the keyboard.
 - A dialog or a menu is open.
 - The **Edit Properties** panel was the last one you clicked. It has no shortcuts of its own: only the shortcuts for all panels work there, so <kbd>Delete</kbd>, for example, does nothing.
@@ -953,6 +969,7 @@ See [Audio](audio.md).
 - The **Hand** tool is active, or you hold <kbd>Space</kbd> over a zoomed-in picture: a drag pans instead.
 - The playhead isn't over the clip, so what you see is another clip.
 - You clicked a part of the picture that is cropped away. A cropped picture is only the part left after the crop.
+- You clicked an empty part of a text's box. A text is only its letters and its background box; see [A click on a text selects the picture behind it](#a-click-on-a-text-selects-the-picture-behind-it).
 
 **Fix:** Unlock or show the track, or press <kbd>V</kbd> for the **Select** tool. To reach a picture under another one, <kbd>Alt</kbd>+click it. You can also click the clip on the timeline: while it is under the playhead, its box appears in the preview. See [Select layers in the preview](arranging-layers-in-the-preview.md#select-layers-in-the-preview).
 
@@ -1066,10 +1083,10 @@ See [Audio](audio.md).
 
 **Cause:** One of these:
 - The button belongs to a feature of a later version: the fades, mute, presets and transitions. Its tooltip names the feature.
-- No selected clip can take it: **Fit in frame**, **Fill frame**, **Center in frame**, the flips, **Reset transform** and **Punch zoom** need a video or image clip, and an audio clip has no picture. **Freeze frame** needs a video clip. The speed buttons need a video or audio clip that is not a freeze frame.
+- No selected clip can take it: **Fit in frame**, **Fill frame**, **Center in frame**, the flips, **Reset transform** and **Punch zoom** need a video, image or text clip, and an audio clip has no picture. **Freeze frame** needs a video clip. The speed buttons need a video or audio clip that is not a freeze frame.
 - The clips are on a locked track.
 
-**Fix:** Select a video or image clip, or unlock its track. See [Use the quick actions](editing-properties.md#use-the-quick-actions).
+**Fix:** Select a video, image or text clip, or unlock its track. See [Use the quick actions](editing-properties.md#use-the-quick-actions).
 
 ### There is no Transform section
 
@@ -1211,6 +1228,103 @@ See [Audio](audio.md).
 
 **Fix:** Nothing is wrong. Change its length with **Duration** or by dragging its edges. See [Change a freeze frame](speed-freeze-frames-and-punch-zoom.md#change-a-freeze-frame).
 
+## Titles and text
+
+### T or Shift+T does nothing
+
+**Symptom:** You press <kbd>T</kbd> or <kbd>Shift</kbd>+<kbd>T</kbd> and no title appears.
+
+**Cause:** One of these:
+- A text field has the keyboard focus, or a dialog or a menu is open.
+- You are editing a text in the preview: there <kbd>T</kbd> types a "t".
+
+**Fix:** Press <kbd>Esc</kbd> to finish the text or leave the field, or click the timeline. Then press <kbd>T</kbd> again, or click **Title** in the timeline toolbar. See [Add a title](titles-and-text.md#add-a-title).
+
+### A new title went onto a new track
+
+**Symptom:** <kbd>T</kbd> or <kbd>Shift</kbd>+<kbd>T</kbd> created a new video track at the top, although a lower track has room.
+
+**Cause:** A new title goes onto the top video track only when that track is free for the whole length of the title, unlocked and shown. Otherwise it gets a new track at the top, so the text stays above the picture.
+
+**Fix:** Nothing is wrong. Drag the clip to another track if you like, or delete the empty track. See [Where a new title goes](titles-and-text.md#where-a-new-title-goes).
+
+### A new title is not 3 seconds long
+
+**Symptom:** A new title or subtitle is longer or shorter than 3 seconds.
+
+**Cause:** When the playhead is over a video clip, a new title lasts until the end of that clip. A setting to turn this off is available in a later version.
+
+**Fix:** Trim the title's edges on the timeline, or type a **Duration** in the **Clip** section. See [Change a clip's name, color and times](editing-properties.md#change-a-clips-name-color-and-times).
+
+### Keys type into the text instead of working
+
+**Symptom:** <kbd>Space</kbd> types a space instead of playing, <kbd>Delete</kbd> deletes a letter instead of the clip, or other shortcuts do nothing.
+
+**Cause:** You are editing a text in the preview: it has a gold outline and a caret. While you edit, the keys type.
+
+**Fix:** Press <kbd>Esc</kbd> or <kbd>Ctrl</kbd>+<kbd>Enter</kbd> to finish editing. See [Finish editing](titles-and-text.md#finish-editing).
+
+### Typed text disappeared
+
+**Symptom:** After you finish editing, the text is back to what it was before, or the clip is empty.
+
+**Cause:** One of these:
+- The text clip was deleted or its track was locked while you edited it. What you typed then is not kept.
+- You pressed <kbd>Ctrl</kbd>+<kbd>Z</kbd> after you finished: it takes back the whole edit (**Edit text**).
+- You deleted all the text. An empty text clip stays on the timeline, named "Text".
+
+**Fix:** Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd> to redo an edit you undid. Delete an empty text clip with <kbd>Delete</kbd>. See [Edit text in the preview](titles-and-text.md#edit-text-in-the-preview).
+
+### A click on a text selects the picture behind it
+
+**Symptom:** You click a text in the preview, and the video or image under it is selected instead.
+
+**Cause:** A text counts only on its letters (with a 4-pixel margin) and on its background box. The empty parts of its box, for example beside a short line or between two lines, belong to the layer below.
+
+**Fix:** Click right on a letter, or click the text clip on the timeline. See [Select and move text in the preview](titles-and-text.md#select-and-move-text-in-the-preview).
+
+### Dragging a corner of a text changes its font size
+
+**Symptom:** You drag a corner of a text, and **Size** changes instead of **Scale**. Or you drag a side, and **Box** switches to **Fixed** and the words wrap. A text has no top and bottom handles.
+
+**Cause:** A text's handles change the text itself: the corners its font size, the sides the width of its box.
+
+**Fix:** Nothing is wrong. To scale a text like a picture, type a value in **Scale** in the **Transform** section. To go back to a box that fits the lines, click **Auto** in **Box**. See [Resize text with its handles](titles-and-text.md#resize-text-with-its-handles).
+
+### A text shows Missing or a red triangle
+
+**Symptom:** The **Font** field of the **Text** section shows a red **Missing** chip, the text clip shows a red warning triangle on the timeline, and the text looks different.
+
+**Cause:** The text uses a font that is not on this computer and not in the project's `fonts` folder, for example a project made on another computer that couldn't copy the font. The text is drawn with a fallback font.
+
+**Fix:** Pick another font, or install the font and reload the page. See [Fix a missing font](titles-and-text.md#fix-a-missing-font).
+
+### Show system fonts lists nothing
+
+**Symptom:** After you click **Show system fonts**, the **System** section reads **Font access was not allowed** or **This browser cannot list system fonts**.
+
+**Cause:** You refused the permission to use the fonts on your computer, Chrome blocked it for the site, or the browser has no access to installed fonts.
+
+**Fix:** Allow the **Fonts** permission for the site in Chrome's site settings (click the icon left of the address), reload the page and click **Show system fonts** again. Or use one of the eight fonts that come with the editor. See [Use fonts from your computer](titles-and-text.md#use-fonts-from-your-computer).
+
+### A font from your computer was not copied into the project
+
+**Symptom:** The project's `fonts` folder doesn't have a font your text uses, and the text shows **Missing** on another computer.
+
+**Cause:** One of these:
+- The project was open in read-only mode.
+- The list of system fonts wasn't loaded in that session: you changed the weight or **Italic** of a computer font without clicking **Show system fonts** first.
+
+**Fix:** On the computer that has the font, open the project with editing allowed, open the font picker of any text and click **Show system fonts**: the editor copies the fonts the project uses. See [Fonts travel with the project](titles-and-text.md#fonts-travel-with-the-project).
+
+### Letters of some languages look different
+
+**Symptom:** Greek, Cyrillic, Arabic, Hebrew, Chinese, Japanese, Korean or other letters don't match the font you picked.
+
+**Cause:** The fonts that come with the editor cover the Latin alphabet only. Other letters are drawn with a fallback font of your system.
+
+**Fix:** Pick a font from your computer that has those letters. See [Use fonts from your computer](titles-and-text.md#use-fonts-from-your-computer).
+
 ## Known limitations
 
 The current version cannot do these things yet. Each one is available in a later version.
@@ -1222,7 +1336,8 @@ The current version cannot do these things yet. Each one is available in a later
 - **Speed and edit points:** a speed applies to the whole clip, and sound at another speed always changes pitch. Playing a clip backward is not available. A punch zoom happens at once, at the cut; a zoom that grows over a few frames is not available. The length of a new freeze frame (2 seconds) and the size of a punch zoom (20%) can't be changed. A selected cut (edit point) only marks the cut; transitions are not available.
 - **Tracks:** track headers have room for names of about 9 characters; longer names are shortened. Groups are not marked on the timeline.
 - **Preview:** a change to a picture, its crop included, applies to the whole clip; changes over time (keyframes) are not available. An SVG image that covers the whole frame doesn't get sharper when you zoom in. The **Zoom**, **Preview quality** and **Overlays** menus can't be used with the arrow keys.
-- **Edit Properties:** the audio, text, animation and transition sections are not available, nor are the dimmed quick actions and the **Still duration**, **Transition** and **Cache** rows of the **Project** section. A new resolution always scales the layout; keeping the layout as it is, is not available.
+- **Edit Properties:** the audio, animation and transition sections are not available, nor are the dimmed quick actions and the **Still duration**, **Transition** and **Cache** rows of the **Project** section. A new resolution always scales the layout; keeping the layout as it is, is not available.
+- **Text:** text presets, text animations and captions are not available, nor is a setting to always make new titles 3 seconds long. A text's handles don't snap, and fonts can't be chosen with the arrow keys in the font picker.
 - **Animated GIF and WebP files** show as still images (their first frame), in the preview and in their clips' thumbnails.
 - **Media that cannot be decoded, or whose file is missing,** shows nothing in the preview, with no placeholder.
 - **Removing media** that a clip uses is not possible.
@@ -1251,6 +1366,7 @@ The current version cannot do these things yet. Each one is available in a later
 - [Snapping and smart guides in the preview](snapping-and-smart-guides.md)
 - [Editing properties](editing-properties.md)
 - [Cropping and reframing](cropping-and-reframing.md)
+- [Titles and text](titles-and-text.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 27, 2026-10-16</sub>
+<sub>Last updated: Batch 29, 2026-10-16</sub>

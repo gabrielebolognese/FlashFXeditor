@@ -154,6 +154,7 @@ Good to know:
 
 - Crop mode works on one picture at a time. With several pictures selected, the crop button in the section header is dimmed (tooltip **Crop on the canvas: select one layer**). A double-click selects the picture alone, without its linked sound or its group.
 - A double-click on another picture moves crop mode to that picture.
+- Text can't be cropped: a text clip has no **Crop** section, and a double-click on a text edits it instead. See [Edit text in the preview](titles-and-text.md#edit-text-in-the-preview).
 - Pictures on locked tracks can't be cropped.
 - <kbd>Esc</kbd> works in every panel. During a drag, the first press cancels the drag and the next leaves crop mode. In the fullscreen preview, the press after that leaves fullscreen.
 - Crop mode is not a step in the history and is not saved: a project always opens without it.
@@ -231,4 +232,4 @@ These parts are available in a later version:
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 26, 2026-10-16</sub>
+<sub>Last updated: Batch 29, 2026-10-16</sub>

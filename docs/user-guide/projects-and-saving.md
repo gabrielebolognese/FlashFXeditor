@@ -31,11 +31,12 @@ When you create a project, the editor fills the folder you picked with these ite
 | `media` | Copies of the files you import. See [Importing media](importing-media.md). |
 | `cache` | Thumbnails, sound analysis and indexes the editor builds from your media, and the proxies of heavy videos in `cache/proxies` (see [Proxies](proxies.md)). If you delete this folder while the project is closed, the editor builds what it needs again the next time. This takes a little longer, and for proxies about as long as the videos themselves. |
 | `history` | Automatic backups of `project.json`: the newest 20. See [Restore an older version](#restore-an-older-version). |
+| `fonts` | Copies of the fonts from your computer that your text clips use, and `fonts.json`, the list of those copies. Created the first time a text uses a font from your computer. The editor uses these copies when it opens the project, so the text looks the same on a computer without those fonts. See [Fonts travel with the project](titles-and-text.md#fonts-travel-with-the-project). |
 | `exports` | The default place for exported videos. Export is available in a later version. |
 | `presets/text` | Text presets saved with the project. Available in a later version. |
 | `project.json.tmp` | Exists only for a moment during each save. If one is left over after a crash, the editor offers to restore it. See [Restore unsaved changes after a crash](#restore-unsaved-changes-after-a-crash). |
 
-> **Important:** Keep the project folder together. Do not rename, move or delete files inside `media`: the project refers to them by name. To move a project, move the whole folder, then open it with **Open project**.
+> **Important:** Keep the project folder together. Do not rename, move or delete files inside `media` or `fonts`: the project refers to them by name. To move a project, move the whole folder, then open it with **Open project**.
 
 > **Note:** Do not edit `project.json` while the project is open in the editor. The next save replaces it.
 
@@ -185,7 +186,7 @@ A project opens read-only when the editor may read the project folder but not wr
 
 You then see a banner under the app bar: "Read-only: Shorts Editor has no permission to write to this folder, so changes are not saved." with an **Allow editing** button, and the save dot is grey.
 
-In read-only mode you can look at the project and even make changes, but nothing is written to the folder: no saves, no backups, no new proxies, and your view (playhead, zoom, panel sizes) is not saved with the project. Changes made in read-only mode are lost when you close the tab. Proxies already in the folder are still used; **Generate proxy** and **Remove proxy** show the message **This project is read-only**.
+In read-only mode you can look at the project and even make changes, but nothing is written to the folder: no saves, no backups, no new proxies, no copies of the fonts your text uses, and your view (playhead, zoom, panel sizes) is not saved with the project. Changes made in read-only mode are lost when you close the tab. Proxies already in the folder are still used; **Generate proxy** and **Remove proxy** show the message **This project is read-only**.
 
 To start saving:
 
@@ -244,6 +245,7 @@ Choosing to keep the layout as it is when you change the resolution is available
 - [Arranging layers in the preview](arranging-layers-in-the-preview.md)
 - [Proxies](proxies.md)
 - [Editing properties](editing-properties.md)
+- [Titles and text](titles-and-text.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 26, 2026-10-16</sub>
+<sub>Last updated: Batch 29, 2026-10-16</sub>

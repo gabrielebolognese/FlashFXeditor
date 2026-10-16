@@ -176,6 +176,7 @@ Good to know:
 - **Arrow-key nudges** move by exactly 1 or 10 pixels.
 - **Values in Edit Properties**, typed or dragged on a field's label, land exactly where you set them, also in the **Crop** section. See [Place a picture with exact values](editing-properties.md#place-a-picture-with-exact-values).
 - **Fit**, **Fill** and **Center** place pictures relative to the frame; they don't line up with other pictures.
+- **The handles of a text** (font size and box width) don't snap. Moving a text snaps its box like a picture. See [Resize text with its handles](titles-and-text.md#resize-text-with-its-handles).
 
 ## Related pages
 - [Arranging layers in the preview](arranging-layers-in-the-preview.md)
@@ -188,4 +189,4 @@ Good to know:
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 26, 2026-10-16</sub>
+<sub>Last updated: Batch 29, 2026-10-16</sub>
