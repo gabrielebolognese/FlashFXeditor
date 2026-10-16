@@ -1,6 +1,6 @@
 # Troubleshooting
 
-This page helps you when something does not work as expected: the editor does not start in your browser, the preview stays empty, a folder or a file does not open, a clip drag, a trim, a split, a delete, a timeline tool, a typed timecode, a marker, an in/out range or **Lift** and **Extract** do something you did not expect, media from the Media panel lands somewhere you did not expect, a clip shows no thumbnails, a video gets no proxy or its proxy fails, the preview zoom, overlays or fullscreen behave unexpectedly, a picture in the preview can't be selected, moves unexpectedly, doesn't snap where you expect or gets cropped instead of resized, a value or a crop in **Edit Properties** doesn't do what you expect, a speed change, a freeze frame or a punch zoom does something you did not expect, a title lands somewhere you did not expect, the keys type into a text, a font is missing, a text preset doesn't apply, update or sync as you expect, playback stutters, or you hear no sound. Each problem lists what you see, why it happens and what to do. The last section lists what the current version cannot do yet.
+This page helps you when something does not work as expected: the editor does not start in your browser, the preview stays empty, a folder or a file does not open, a clip drag, a trim, a split, a delete, a timeline tool, a typed timecode, a marker, an in/out range or **Lift** and **Extract** do something you did not expect, media from the Media panel lands somewhere you did not expect, a clip shows no thumbnails, a video gets no proxy or its proxy fails, the preview zoom, overlays or fullscreen behave unexpectedly, a picture in the preview can't be selected, moves unexpectedly, doesn't snap where you expect or gets cropped instead of resized, a value or a crop in **Edit Properties** doesn't do what you expect, a speed change, a freeze frame or a punch zoom does something you did not expect, a title lands somewhere you did not expect, the keys type into a text, a font is missing, a text preset doesn't apply, update or sync as you expect, a text animation plays shorter or differently than you expect, playback stutters, or you hear no sound. Each problem lists what you see, why it happens and what to do. The last section lists what the current version cannot do yet.
 
 > **Video placeholder: Fix common problems**
 > - File: `videos/troubleshooting/overview.mp4` (not recorded yet)
@@ -43,6 +43,7 @@ This page helps you when something does not work as expected: the editor does no
 >   35. Open a project made on another computer with a font this one doesn't have: the **Font** field shows **Missing** and the clip shows a red triangle. Pick **Inter** in the font picker: both disappear.
 >   36. Click an empty area of the timeline tracks so nothing is selected, then click the **Breaking** card in the **Presets** tab: a new title appears instead of a changed one. Press <kbd>Esc</kbd>, then <kbd>Ctrl</kbd>+<kbd>Z</kbd>. Select the first title and click the card: it takes the red box.
 >   37. Select a title made with a preset and hover **Update preset** in the quick actions: it is dimmed while the title still has the preset's style. Change its color: the button comes alive.
+>   38. Give a 4-second title **Word pop** in the **Animation** section and type `3` in its **Duration**: the hint **Plays in 2.00 s: half the clip** appears under the field. Click the **Title** preset card: the animation is gone. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>: it is back.
 
 ## In this page
 - [Browser and graphics](#browser-and-graphics)
@@ -184,6 +185,16 @@ This page helps you when something does not work as expected: the editor does no
   - [Import says No presets imported or Couldn't import the presets](#import-says-no-presets-imported-or-couldnt-import-the-presets)
   - [The library folder strip asks you to click Sync](#the-library-folder-strip-asks-you-to-click-sync)
   - [A deleted preset came back](#a-deleted-preset-came-back)
+- [Text animations](#text-animations)
+  - [An animation plays shorter than its Duration](#an-animation-plays-shorter-than-its-duration)
+  - [The Stagger field is dimmed](#the-stagger-field-is-dimmed)
+  - [Easing changes nothing on a typewriter](#easing-changes-nothing-on-a-typewriter)
+  - [The preview plays and the playhead jumps back when you click a chip](#the-preview-plays-and-the-playhead-jumps-back-when-you-click-a-chip)
+  - [A text doesn't animate while you edit it](#a-text-doesnt-animate-while-you-edit-it)
+  - [A chip changes nothing on some of the selected texts](#a-chip-changes-nothing-on-some-of-the-selected-texts)
+  - [Applying a preset removed a text's animations](#applying-a-preset-removed-a-texts-animations)
+  - [Pointing at a preset card doesn't show its animation](#pointing-at-a-preset-card-doesnt-show-its-animation)
+  - [A starter preset has no animation](#a-starter-preset-has-no-animation)
 - [Known limitations](#known-limitations)
 
 ## Browser and graphics
@@ -1428,6 +1439,80 @@ See [Audio](audio.md).
 
 **Fix:** Delete it again on every computer that syncs with the folder. See [Sync your presets with a folder](text-presets.md#sync-your-presets-with-a-folder).
 
+## Text animations
+
+### An animation plays shorter than its Duration
+
+**Symptom:** A text's animation is quicker than the **Duration** you typed, and a hint under the field reads, for example, **Plays in 2.00 s: half the clip**.
+
+**Cause:** Each animation plays over at most half the clip, so the in and out animations never overlap. The duration you typed is kept for when the clip gets longer. On a clip shorter than 2 frames, no animation plays and the hint reads **The clip is too short to play it**.
+
+**Fix:** Make the text clip longer on the timeline, or type a shorter **Duration**. See [When an animation plays](text-animations.md#when-an-animation-plays).
+
+### The Stagger field is dimmed
+
+**Symptom:** You can't type in **Stagger**.
+
+**Cause:** **Stagger** sets the delay between words or lines, so it works only with **Word pop**, **Word fade** and **Line reveal**. The other animations move the whole text at once, and **Typewriter** types at an even pace over its **Duration**.
+
+**Fix:** Choose **Word pop**, **Word fade** or **Line reveal**, or change the **Duration** instead. See [Make words follow one another (Stagger)](text-animations.md#make-words-follow-one-another-stagger).
+
+### Easing changes nothing on a typewriter
+
+**Symptom:** You choose another **Easing**, but the typewriter types the same way.
+
+**Cause:** **Typewriter** always types at an even pace.
+
+**Fix:** Change its **Duration** to type faster or slower. See [Choose the easing](text-animations.md#choose-the-easing).
+
+### The preview plays and the playhead jumps back when you click a chip
+
+**Symptom:** A click on an animation chip, or a new **Duration**, **Stagger** or **Easing**, plays part of the clip and then puts the playhead back.
+
+**Cause:** This is the preview of the animation: it plays the start of the clip for an in animation, or its end for an out animation, then returns the playhead to where it was.
+
+**Fix:** Nothing is wrong. To watch it again, click the highlighted chip. See [Preview an animation](text-animations.md#preview-an-animation).
+
+### A text doesn't animate while you edit it
+
+**Symptom:** You double-click an animated text to type in it, and it shows at rest, even on a frame where it should be coming in.
+
+**Cause:** A text you are editing always shows at rest, so you can see what you type.
+
+**Fix:** Press <kbd>Esc</kbd> to finish editing: the animation plays again. See [When an animation plays](text-animations.md#when-an-animation-plays).
+
+### A chip changes nothing on some of the selected texts
+
+**Symptom:** You click a chip with several clips selected, and some of the texts don't get the animation.
+
+**Cause:** Animations apply to text clips only, and text clips on locked tracks are left alone.
+
+**Fix:** Unlock the track (click the padlock in its header) and click the chip again. See [Animate several texts at once](text-animations.md#animate-several-texts-at-once).
+
+### Applying a preset removed a text's animations
+
+**Symptom:** After you click a preset card, the text has no animation any more, and its sparkles icon is gone from the timeline.
+
+**Cause:** A preset gives the text its animations along with its style. A preset without animations removes the text's animations.
+
+**Fix:** Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> to undo the apply. To keep both, apply the preset, set the animations again, then click **Update preset** to store them in the preset. See [Animations in presets](text-presets.md#animations-in-presets).
+
+### Pointing at a preset card doesn't show its animation
+
+**Symptom:** While the pointer is on a preset card, the selected title takes the preset's look but doesn't move.
+
+**Cause:** The live look while you point shows the style, box and position only.
+
+**Fix:** Click the card to apply the preset. Then click the highlighted chip in the **Animation** section to watch the animation. See [Apply a preset to text](text-presets.md#apply-a-preset-to-text).
+
+### A starter preset has no animation
+
+**Symptom:** **Lower third**, **Caption bold**, **Neon glow** or **Breaking** adds or applies text without an animation.
+
+**Cause:** Your starter presets were added by an earlier version, and you changed this one since. A changed starter keeps its look as it is.
+
+**Fix:** Select a text, click the starter's card, choose the animations in the **Animation** section and click **Update preset**. See [Start with the starter presets](text-presets.md#start-with-the-starter-presets).
+
 ## Known limitations
 
 The current version cannot do these things yet. Each one is available in a later version.
@@ -1439,8 +1524,8 @@ The current version cannot do these things yet. Each one is available in a later
 - **Speed and edit points:** a speed applies to the whole clip, and sound at another speed always changes pitch. Playing a clip backward is not available. A punch zoom happens at once, at the cut; a zoom that grows over a few frames is not available. The length of a new freeze frame (2 seconds) and the size of a punch zoom (20%) can't be changed. A selected cut (edit point) only marks the cut; transitions are not available.
 - **Tracks:** track headers have room for names of about 9 characters; longer names are shortened. Groups are not marked on the timeline.
 - **Preview:** a change to a picture, its crop included, applies to the whole clip; changes over time (keyframes) are not available. An SVG image that covers the whole frame doesn't get sharper when you zoom in. The **Zoom**, **Preview quality** and **Overlays** menus can't be used with the arrow keys.
-- **Edit Properties:** the audio, animation and transition sections are not available, nor are the dimmed quick actions and the **Still duration**, **Transition** and **Cache** rows of the **Project** section. A new resolution always scales the layout; keeping the layout as it is, is not available.
-- **Text:** text animations and captions are not available, nor is a setting to always make new titles 3 seconds long. A text's handles don't snap, and fonts can't be chosen with the arrow keys in the font picker. Presets don't carry animations and can't be applied to captions, and deleted starter presets can't be restored.
+- **Edit Properties:** the audio and transition sections are not available, nor are the dimmed quick actions and the **Still duration**, **Transition** and **Cache** rows of the **Project** section. A new resolution always scales the layout; keeping the layout as it is, is not available.
+- **Text:** captions are not available, nor is a setting to always make new titles 3 seconds long. A text's handles don't snap, and fonts can't be chosen with the arrow keys in the font picker. Presets can't be applied to captions, and deleted starter presets can't be restored. Text animations play in the preview and in **Export frame**; moving text over time with keyframes is not available.
 - **Animated GIF and WebP files** show as still images (their first frame), in the preview and in their clips' thumbnails.
 - **Media that cannot be decoded, or whose file is missing,** shows nothing in the preview, with no placeholder.
 - **Removing media** that a clip uses is not possible.
@@ -1471,6 +1556,7 @@ The current version cannot do these things yet. Each one is available in a later
 - [Cropping and reframing](cropping-and-reframing.md)
 - [Titles and text](titles-and-text.md)
 - [Text presets](text-presets.md)
+- [Text animations](text-animations.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 30, 2026-10-16</sub>
+<sub>Last updated: Batch 31, 2026-10-16</sub>

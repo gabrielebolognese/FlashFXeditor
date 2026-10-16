@@ -2,6 +2,11 @@
 
 Shorts Editor grows in steps called batches. This page lists what each batch added that you can see or use, newest first. Follow the links for the full instructions.
 
+> **Video placeholder: What's new in Batch 31**
+> - File: `videos/whats-new/batch-31.mp4` (not recorded yet)
+> - Length: about 50 seconds
+> - Shows: a 1080×1920 project with a talking-head video on V1 and A1; press <kbd>T</kbd>, type `THREE THINGS NOBODY TELLS YOU` and press <kbd>Esc</kbd>; scroll **Edit Properties** to the new **Animation** section; click **Word pop** in the **In** row: the words pop in one after another and the playhead comes back; a sparkles icon appears on the clip; click **Fade** in the **Out** row: the end plays and the title fades away; click **Typewriter**, **Line reveal** and **Blur** in turn; type `1.5` in **Duration** under **In** and press <kbd>Enter</kbd>: it plays again, slower; click **Save as preset**, type `Pop title` and press <kbd>Enter</kbd>; move the playhead, click an empty part of the tracks and click the **Pop title** card: a new title pops in at the playhead.
+
 > **Video placeholder: What's new in Batch 30**
 > - File: `videos/whats-new/batch-30.mp4` (not recorded yet)
 > - Length: about 60 seconds
@@ -108,6 +113,7 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 > - Shows: open a project with three clips on the timeline; press <kbd>Space</kbd> to play and let the timeline page forward; press <kbd>L</kbd> three times to reach 8x, then <kbd>K</kbd>; hold <kbd>K</kbd> and tap <kbd>L</kbd> to step one frame; turn on **Loop playback**; point at the **Dropped** readout in the status strip.
 
 ## In this page
+- [Batch 31: Text animations](#batch-31-text-animations)
 - [Batch 30: Text presets](#batch-30-text-presets)
 - [Batch 29: Titles and text](#batch-29-titles-and-text)
 - [Batch 28: Groundwork for text](#batch-28-groundwork-for-text)
@@ -138,6 +144,15 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 - [Batch 03: Projects, autosave and recovery](#batch-03-projects-autosave-and-recovery)
 - [Batch 02: Undo, redo and frame-exact time](#batch-02-undo-redo-and-frame-exact-time)
 - [Batch 01: The workspace](#batch-01-the-workspace)
+
+## Batch 31: Text animations
+- Make titles move: the new **Animation** section of **Edit Properties**, under **Text**, has a row of chips for the in animation and one for the out animation. Click a chip and the preview plays it once, then puts the playhead back. See [Add an in or out animation](text-animations.md#add-an-in-or-out-animation).
+- 12 animations: **Fade**, **Slide up**, **Slide down**, **Slide left**, **Slide right**, **Pop**, **Typewriter**, **Word pop**, **Word fade**, **Line reveal**, **Blur** and **Bounce**. Out animations leave the other way: the last word goes first and a typewriter erases from the end. See [The 12 animations](text-animations.md#the-12-animations).
+- Set each animation's **Duration**, the **Stagger** between words or lines, and the **Easing**. A typed value plays the animation again; dragging the field's icon updates the preview at the playhead as you drag. An animation plays over at most half the clip, and a hint says when it is shortened. See [Set how long an animation plays](text-animations.md#set-how-long-an-animation-plays).
+- Animations play smoothly, even with many words: the editor prepares the text near the playhead before you play. **Export frame** saves the text partway through its animation.
+- Text presets now keep animations. Applying a preset gives its animations to the selected texts, and new texts from it start with them. **Lower third**, **Caption bold**, **Neon glow** and **Breaking** now come with animations; **Title** and **Subtitle** stay still. See [Animations in presets](text-presets.md#animations-in-presets).
+- Animated text clips show a sparkles icon in their label bar on the timeline. See [Read the badges in the label bar](clip-thumbnails-and-waveforms.md#read-the-badges-in-the-label-bar).
+- New pages: [Text animations](text-animations.md). No new shortcuts: the arrow keys in **Duration** and **Stagger** step one frame; see [Keyboard shortcuts](keyboard-shortcuts.md#text-animations).
 
 ## Batch 30: Text presets
 - Save a text style once and reuse it: select a title, click **Save as preset** in the quick actions of **Edit Properties**, type a name and press <kbd>Enter</kbd>. The preset keeps the whole look (font, size, colors, outline, shadow, background box, alignment and box width), not the words. See [Save a text style as a preset](text-presets.md#save-a-text-style-as-a-preset).

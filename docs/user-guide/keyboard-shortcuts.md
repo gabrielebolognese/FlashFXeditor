@@ -35,6 +35,7 @@ This page lists every keyboard shortcut that works in the current version of Sho
 >   27. Click the timeline, put the playhead inside a video and press <kbd>Shift</kbd>+<kbd>F</kbd>: a 2-second clip with a snowflake appears at the playhead, and the later clips move right. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>, then <kbd>Shift</kbd>+<kbd>Z</kbd>: the clip is cut and the picture after the cut is 20% closer. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>.
 >   28. Press <kbd>T</kbd>: "Title" appears in the preview, selected. Type `hi`, press <kbd>Enter</kbd> and type `there`: a second line. Press <kbd>↑</kbd>, then <kbd>Shift</kbd>+<kbd>End</kbd>: "hi" is highlighted. Press <kbd>Esc</kbd>. Press <kbd>Enter</kbd>: the whole text is selected again. Press <kbd>Ctrl</kbd>+<kbd>Enter</kbd>. Press <kbd>Shift</kbd>+<kbd>T</kbd>: a subtitle appears in the lower third.
 >   29. Open the **Presets** tab of the Media panel and right-click the **Breaking** card: the **Use as default title** row shows <kbd>T</kbd>. Choose it, click the timeline and press <kbd>T</kbd>: the new title has the red **Breaking** box. Right-click the card again and choose **Use as default title** once more to go back to the usual title.
+>   30. With a title selected, click **Word pop** in the **In** row of the **Animation** section in **Edit Properties**: the words pop in once in the preview. Click in the **Duration** field under **In** and press <kbd>Shift</kbd>+<kbd>↑</kbd>: the animation gets 10 frames longer and plays again.
 
 ## In this page
 - [How shortcuts work](#how-shortcuts-work)
@@ -353,6 +354,19 @@ Text presets have no keys of their own: you use them with the mouse in the **Pre
 | Save the name of a new preset (after **Save as preset**) or a renamed one | <kbd>Enter</kbd> | <kbd>Return</kbd> |
 | Close the name field without saving | <kbd>Esc</kbd> | <kbd>Esc</kbd> |
 
+### Text animations
+
+Text animations have no keys of their own: you set them with the mouse in the **Animation** section of **Edit Properties**, and the number keys of its fields work as in every number field. See [Text animations](text-animations.md).
+
+| Action | Windows | macOS |
+| --- | --- | --- |
+| Set an in or out animation on the selected texts, and play it once | Click its chip in the **In** or **Out** row | Same |
+| Play the animation again without changing it | Click its highlighted chip | Same |
+| Remove the animation | Click **None** | Same |
+| Make **Duration** or **Stagger** 1 frame longer or shorter | <kbd>↑</kbd> or <kbd>↓</kbd> in the field | <kbd>↑</kbd> or <kbd>↓</kbd> |
+| Make it 10 frames longer or shorter | <kbd>Shift</kbd>+<kbd>↑</kbd> or <kbd>Shift</kbd>+<kbd>↓</kbd> | <kbd>⇧</kbd>+<kbd>↑</kbd> or <kbd>⇧</kbd>+<kbd>↓</kbd> |
+| Change **Duration** or **Stagger** while the preview at the playhead follows (1 frame per pixel) | Drag the field's icon left or right | Same |
+
 ### While you edit text
 
 While you edit a text in the preview, every other shortcut is off and the keys type: <kbd>Space</kbd> types a space, <kbd>T</kbd> types a "t", <kbd>Delete</kbd> deletes a letter.
@@ -396,7 +410,8 @@ See [Editing properties](editing-properties.md).
 | Fold or open a section | Click its header | Click its header |
 
 - <kbd>Ctrl</kbd>+<kbd>D</kbd> copies only one clip, without its linked sound. In the Preview panel the copy goes later on the timeline, not at the playhead. While the Edit Properties or Media panel is active, the browser gets the key; see [Keys the browser keeps](#keys-the-browser-keeps).
-- Hold <kbd>↑</kbd> or <kbd>↓</kbd> to keep going. In the **Text**, **Transform**, **Crop**, **Opacity** and **Speed** sections, presses less than 0.3 seconds apart are one undo step.
+- Hold <kbd>↑</kbd> or <kbd>↓</kbd> to keep going. In the **Text**, **Animation**, **Transform**, **Crop**, **Opacity** and **Speed** sections, presses less than 0.3 seconds apart are one undo step.
+- In the **Duration** and **Stagger** fields of the **Animation** section, the arrow keys and label drags count in frames: <kbd>↑</kbd> adds 1 frame, <kbd>Shift</kbd>+<kbd>↑</kbd> 10 frames.
 - In the **Text** field of the **Text** section, <kbd>Enter</kbd> starts a new line. In the font picker, <kbd>Enter</kbd> in **Search fonts** picks the first font that matches, and <kbd>Esc</kbd> closes the picker.
 - Edit Properties has no other keys of its own. While it is active and no field has the keyboard, the all-panels shortcuts work there, for example <kbd>Space</kbd> to play.
 
@@ -576,6 +591,7 @@ Some buttons already show a shortcut in their tooltip although the button is dis
 - [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md)
 - [Titles and text](titles-and-text.md)
 - [Text presets](text-presets.md)
+- [Text animations](text-animations.md)
 - [Tracks](tracks.md)
 - [Linking and grouping clips](links-and-groups.md)
 - [Audio](audio.md)
@@ -584,4 +600,4 @@ Some buttons already show a shortcut in their tooltip although the button is dis
 - [Projects and saving](projects-and-saving.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 30, 2026-10-16</sub>
+<sub>Last updated: Batch 31, 2026-10-16</sub>
