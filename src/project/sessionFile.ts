@@ -4,7 +4,7 @@ import type { TimecodeMode } from "../core/document/time.js";
 import type { LayoutRatios } from "../core/store/layoutStore.js";
 import { sanitizeRatios } from "../core/store/layoutStore.js";
 import type { SelectionKind, SelectionSnapshot } from "../core/store/selection.js";
-import { DEFAULT_SESSION, GRID_DIVISIONS_MAX, GRID_DIVISIONS_MIN, PREVIEW_MAX_ZOOM, PREVIEW_MIN_ZOOM, type MediaSort, type MediaTab, type MediaView, type PreviewGrid, type PreviewQuality, type SafeZone, type SessionState, type SourceRange, type Tool } from "../core/store/sessionStore.js";
+import { DEFAULT_SESSION, GRID_DIVISIONS_MAX, GRID_DIVISIONS_MIN, PREVIEW_MAX_ZOOM, PREVIEW_MIN_ZOOM, type MediaSort, type MediaTab, type MediaView, type PresetScope, type PreviewGrid, type PreviewQuality, type SafeZone, type SessionState, type SourceRange, type Tool } from "../core/store/sessionStore.js";
 
 export const SESSION_FILE_VERSION = 1;
 
@@ -33,6 +33,7 @@ const GRIDS: Record<PreviewGrid, true> = { none: true, thirds: true, squares: tr
 const MEDIA_TABS: Record<MediaTab, true> = { media: true, presets: true, captions: true };
 const MEDIA_SORTS: Record<MediaSort, true> = { name: true, date: true, duration: true, kind: true, resolution: true, fps: true, codec: true, audio: true, used: true };
 const MEDIA_VIEWS: Record<MediaView, true> = { grid: true, list: true };
+const PRESET_SCOPES: Record<PresetScope, true> = { global: true, project: true };
 const SELECTION_KINDS: Record<SelectionKind, true> = { clips: true, track: true, cue: true, none: true };
 const TIMECODE_FORMATS: Record<TimecodeMode, true> = { frames: true, ms: true };
 
@@ -111,6 +112,7 @@ function sanitizeState(value: unknown): SessionState {
       view: oneOf(MEDIA_VIEWS, mediaPanel.view, d.mediaPanel.view),
       sort: oneOf(MEDIA_SORTS, mediaPanel.sort, d.mediaPanel.sort),
       descending: bool(mediaPanel.descending, d.mediaPanel.descending),
+      presetScope: oneOf(PRESET_SCOPES, mediaPanel.presetScope, d.mediaPanel.presetScope),
     },
     sourceRanges: sanitizeRanges(raw.sourceRanges),
     collapsedSections,

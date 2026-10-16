@@ -6,7 +6,7 @@ import { DocumentStore } from "../../core/store/DocumentStore.js";
 import { createSessionStore } from "../../core/store/sessionStore.js";
 import { approximateMeasurer, setTextMeasurer } from "../../render/text/layoutCache.js";
 import { DEFAULT_TEXT_STYLE, DEFAULT_TITLE_STYLE, textContent, titleDefaults } from "../../text/style.js";
-import { addTextClip, addTitle, keepAnchored, newTextClip, setTexts, SUBTITLE_BOTTOM, textClipName, titleDuration } from "./text.js";
+import { addTextClip, addTitle, applyPreset, keepAnchored, linkPreset, newTextClip, setTexts, SUBTITLE_BOTTOM, textClipName, titleDuration } from "./text.js";
 import { IDENTITY_TRANSFORM, layerContent, layerPoint } from "./transform.js";
 
 // The approximate measurer: 55 px per character at 100 px, lines 120 px tall at line height 1.2.
@@ -237,5 +237,69 @@ describe("addTitle stacking", () => {
     const clip = store.getState().clips[result.clipId] as TextClip;
     const box = layerContent(store.getState(), clip) as NonNullable<ReturnType<typeof layerContent>>;
     expect(layerPoint(clip.transform, box, frame, 0, box.height).y).toBeCloseTo(SUBTITLE_BOTTOM * frame.height, 0);
+  });
+});
+
+describe("text presets on clips", () => {
+  const look = { presetId: "p1", style: style({ fontFamily: "Oswald", fontSize: 80, textCase: "upper" as const }), box: { mode: "fixed" as const, width: 600 }, position: null };
+
+  it("adds a title with a preset's look, preset id, label and length", () => {
+    const p = project();
+    const result = addTitle(p, { kind: "title", playhead: 10, matchClip: true, look: { ...look, duration: 45 }, label: 'Add "Bold"' }, () => crypto.randomUUID());
+    expect(result.command.label).toBe('Add "Bold"');
+    const store = new DocumentStore(p, { session: createSessionStore(), validate: true });
+    store.dispatch(result.command);
+    const clip = store.getState().clips[result.clipId] as TextClip;
+    expect(clip).toMatchObject({ start: 10, duration: 45, presetId: "p1", text: { value: "Title", box: { mode: "fixed", width: 600 } }, transform: IDENTITY_TRANSFORM });
+    expect(clip.style).toEqual(look.style);
+    // A preset that applies its position puts the clip there.
+    const placed = addTitle(store.getState(), { kind: "subtitle", playhead: 10, matchClip: true, look: { ...look, position: { x: -100, y: 400 } } }, () => crypto.randomUUID());
+    store.dispatch(placed.command);
+    expect((store.getState().clips[placed.clipId] as TextClip).transform).toMatchObject({ x: -100, y: 400 });
+    expect(validateProject(store.getState())).toEqual([]);
+  });
+
+  it("applies a preset's style and box to the selected text clips, keeping content, timing and position", () => {
+    const p = withClips(project({ name: "ab", transform: { ...IDENTITY_TRANSFORM, x: 30, y: 40 } }), [newTextClip({ id: "u", trackId: "v2", start: 0, duration: 30, value: "cd" }), makeSolidClip({ id: "s", trackId: "v2", start: 40, duration: 10 })]);
+    const command = applyPreset(p, ["t", "u", "s", "gone"], look, 'Apply "Bold"');
+    expect(command).toMatchObject({ id: "clip.applyPreset", label: 'Apply "Bold"' });
+    const store = new DocumentStore(p, { session: createSessionStore(), validate: true });
+    store.dispatch(command as NonNullable<typeof command>);
+    const t = store.getState().clips.t as TextClip;
+    expect(t).toMatchObject({ start: 0, duration: 90, presetId: "p1", text: { value: "ab", box: { mode: "fixed", width: 600 } }, transform: { x: 30, y: 40 } });
+    expect(t.style).toEqual(look.style);
+    // A clip still named after its text follows its new case.
+    expect(t.name).toBe("AB");
+    expect((store.getState().clips.u as TextClip).presetId).toBe("p1");
+    // Nothing left to change: no command.
+    expect(applyPreset(store.getState(), ["t", "u"], look, "Apply")).toBeNull();
+    // With the position: moved there; one undo step takes it all back.
+    store.dispatch(applyPreset(store.getState(), ["t"], { ...look, position: { x: 0, y: 500 } }, "Apply") as NonNullable<ReturnType<typeof applyPreset>>);
+    expect((store.getState().clips.t as TextClip).transform).toMatchObject({ x: 0, y: 500 });
+    store.undo();
+    store.undo();
+    expect(store.getState()).toEqual(p);
+  });
+
+  it("skips locked clips and replaces the animations", () => {
+    const p = project({ animIn: { id: "fade" } });
+    p.tracks[0]!.locked = true;
+    expect(applyPreset(p, ["t"], look, "Apply")).toBeNull();
+    p.tracks[0]!.locked = false;
+    const store = new DocumentStore(p, { session: createSessionStore(), validate: true });
+    store.dispatch(applyPreset(p, ["t"], { ...look, animOut: { id: "pop" } }, "Apply") as NonNullable<ReturnType<typeof applyPreset>>);
+    expect(store.getState().clips.t).toMatchObject({ animOut: { id: "pop" } });
+    expect((store.getState().clips.t as TextClip).animIn).toBeUndefined();
+  });
+
+  it("links a clip to the preset it was saved as", () => {
+    const p = project();
+    const command = linkPreset(p, "t", "p1", 'Save preset "Bold"');
+    expect(command).toMatchObject({ id: "clip.linkPreset", label: 'Save preset "Bold"' });
+    const store = new DocumentStore(p, { session: createSessionStore(), validate: true });
+    store.dispatch(command as NonNullable<typeof command>);
+    expect((store.getState().clips.t as TextClip).presetId).toBe("p1");
+    expect(linkPreset(store.getState(), "t", "p1", "x")).toBeNull();
+    expect(linkPreset(store.getState(), "gone", "p1", "x")).toBeNull();
   });
 });

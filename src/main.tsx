@@ -11,6 +11,7 @@ import { installDropController } from "./app/dropController.js";
 import { installMarkerController } from "./app/markerController.js";
 import { installMediaController } from "./app/mediaController.js";
 import { installPlaybackController } from "./app/playbackController.js";
+import { installPresetController } from "./app/presetController.js";
 import { installPreviewController, startGpu } from "./app/previewController.js";
 import { installProjectController } from "./app/projectController.js";
 import { installPropertiesController } from "./app/propertiesController.js";
@@ -46,6 +47,7 @@ async function start(): Promise<void> {
   installPropertiesController();
   installSpeedController();
   installTextController();
+  installPresetController();
   installMarkerController();
   installTrackController();
   installPlaybackController();

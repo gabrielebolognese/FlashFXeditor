@@ -5,18 +5,26 @@
 // anywhere else a small DOM chip follows the pointer (no React state, P1). Released over the timeline
 // it drops there (one command), over the preview canvas it places the media at the playhead at that
 // point (§7.2 drop target), elsewhere it does nothing; Esc cancels. The panels' page rects are read
-// once, when the drag starts (P9). Several selected items drag together, in selection order.
+// once, when the drag starts (P9). Several selected items drag together, in selection order. Preset
+// cards (spec §10.3) drag the same way through `pressDragCard`: their item is a text clip.
 import type { MediaId } from "../core/document/types.js";
 import { detectPlatform } from "../core/keyboard/keys.js";
 import { HoverScrub } from "../panels/media/hoverScrub.js";
-import type { DropItem } from "../timeline/edit/dropMedia.js";
+import { isTextDrop, type DropItem } from "../timeline/edit/dropMedia.js";
 import type { DragModifiers } from "../timeline/view/gestures/moveClips.js";
-import { dropMediaOnCanvas, dropMediaOnTimeline, placeAtPlayhead, setMediaRange } from "./dropController.js";
+import { dropMediaOnCanvas, dropMediaOnTimeline, itemsOf, placeAtPlayhead, setMediaRange } from "./dropController.js";
 import styles from "./MediaGestures.module.css";
 import { posterPainter, scrubSheets, selectedMedia } from "./mediaController.js";
 import { previewView } from "./previewController.js";
 import { documentStore, sessionStore, themeBridge } from "./services.js";
 import { timelineView } from "./timelineController.js";
+
+/** What a card drag carries: its items (read when the drag starts) and what a drop on the preview canvas does. */
+export interface CardDragSource {
+  items(): DropItem[];
+  /** Released over the preview canvas at `point` (project px from the frame's top-left). */
+  dropOnCanvas(point: { x: number; y: number } | null): void;
+}
 
 interface Press {
   kind: "press";
@@ -24,14 +32,14 @@ interface Press {
   x: number;
   y: number;
   element: HTMLElement;
-  ids: MediaId[];
+  source: CardDragSource;
 }
 
 interface Drag {
   kind: "drag";
   pointerId: number;
   element: HTMLElement;
-  ids: MediaId[];
+  source: CardDragSource;
   items: DropItem[];
   /** Page rects of the timeline overlay and the preview canvas at the start. */
   timeline: DOMRect | null;
@@ -72,9 +80,15 @@ const inside = (rect: DOMRect | null, x: number, y: number): rect is DOMRect => 
  * dead zone is a click (the list's click handler selects).
  */
 export function pressMediaCard(event: PointerEvent, element: HTMLElement, id: MediaId): void {
-  finish(false);
   const selected = selectedMedia();
-  gesture = { kind: "press", pointerId: event.pointerId, x: event.clientX, y: event.clientY, element, ids: selected.includes(id) ? selected : [id] };
+  const ids = selected.includes(id) ? selected : [id];
+  pressDragCard(event, element, { items: () => itemsOf(documentStore.getState(), ids), dropOnCanvas: (point) => dropMediaOnCanvas(ids, point) });
+}
+
+/** A press on a card that drags `source`'s items past the dead zone (`element` captures the pointer then). */
+export function pressDragCard(event: PointerEvent, element: HTMLElement, source: CardDragSource): void {
+  finish(false);
+  gesture = { kind: "press", pointerId: event.pointerId, x: event.clientX, y: event.clientY, element, source };
   const win = element.ownerDocument.defaultView;
   win?.addEventListener("pointermove", onMove, true);
   win?.addEventListener("pointerup", onUp, true);
@@ -94,14 +108,10 @@ export function draggingMedia(): boolean {
   return gesture?.kind === "drag";
 }
 
+const itemName = (item: DropItem) => (isTextDrop(item) ? item.text.name : item.media.name);
+
 function start(press: Press, event: PointerEvent): void {
-  const project = documentStore.getState();
-  const ranges = sessionStore.state.getState().sourceRanges;
-  const items: DropItem[] = [];
-  for (const id of press.ids) {
-    const media = project.media[id];
-    if (media) items.push({ media, range: ranges[id] ?? null });
-  }
+  const items = press.source.items();
   if (items.length === 0) {
     finish(false);
     return;
@@ -118,10 +128,10 @@ function start(press: Press, event: PointerEvent): void {
   }
   const chip = element.ownerDocument.createElement("div");
   chip.className = styles.chip ?? "";
-  chip.textContent = items.length === 1 ? (items[0] as DropItem).media.name : `${items.length} items`;
+  chip.textContent = items.length === 1 ? itemName(items[0] as DropItem) : `${items.length} items`;
   chip.hidden = true;
   element.ownerDocument.body.append(chip);
-  gesture = { kind: "drag", pointerId: press.pointerId, element, ids: items.map((item) => item.media.id), items, timeline, preview, chip, over: null, x: event.clientX, y: event.clientY };
+  gesture = { kind: "drag", pointerId: press.pointerId, element, source: press.source, items, timeline, preview, chip, over: null, x: event.clientX, y: event.clientY };
 }
 
 /** The drag follows the pointer: ghosts on the timeline, else the chip. */
@@ -195,6 +205,6 @@ function finish(commit: boolean): void {
     const request = timelineView.endMediaDrag();
     if (commit && request) dropMediaOnTimeline(request);
   } else if (commit && current.over === "preview" && current.preview) {
-    dropMediaOnCanvas(current.ids, previewView.projectPoint(current.x - current.preview.left, current.y - current.preview.top));
+    current.source.dropOnCanvas(previewView.projectPoint(current.x - current.preview.left, current.y - current.preview.top));
   }
 }

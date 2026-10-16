@@ -1,11 +1,13 @@
 // Global app settings (spec §3.1: persisted with idb-keyval). For now the autosave delay and the proxy
 // settings of the Project section (§11, §9.5), the import mode (§9.1, no UI yet), the monitoring
 // volume and mute of the preview chrome (§14: monitoring only, never the export), the color picker's
-// recent colors (§11), the punch zoom (Batch 27) and the font picker's favorites (§11, Batch 28).
+// recent colors (§11), the punch zoom (Batch 27), the font picker's favorites (§11, Batch 28) and the
+// default Title and Subtitle presets (§10.2, Batch 30).
 // TODO(batch 42): the settings panel.
 import { createStore, type Store } from "../core/store/createStore.js";
 import { DEFAULT_PROXY_SHORT_EDGE, PROXY_RULES, PROXY_SHORT_EDGES, type ProxyRule, type ProxySettings, type ProxyShortEdge } from "../media/proxy/proxyFormat.js";
 import { AUTOSAVE_DELAY_MS } from "./Autosaver.js";
+import { STARTER_SUBTITLE_ID, STARTER_TITLE_ID } from "../text/starterPresets.js";
 import type { KeyValueStore } from "./kv.js";
 
 /** copy: into media/ (default). reference: file handles in IndexedDB. TODO(batch 41): reference mode. */
@@ -39,6 +41,13 @@ export interface AppSettings {
    * "match clip under playhead", on by default), else 3 s. TODO(batch 42): the switch in the settings panel.
    */
   matchClipUnderPlayhead: boolean;
+  /**
+   * The presets `+ Title` (T) and `+ Subtitle` (Shift+T) use (spec §10.2, chosen in the Presets tab), by
+   * id; a preset that no longer exists (or a project preset of a closed project) falls back to the
+   * built-in Title or Subtitle.
+   */
+  defaultTitlePreset: string | null;
+  defaultSubtitlePreset: string | null;
 }
 
 export const AUTOSAVE_DELAYS_MS = [1000, 2000, 5000, 10_000] as const;
@@ -59,6 +68,8 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   punchZoomAnimated: false,
   favoriteFonts: [],
   matchClipUnderPlayhead: true,
+  defaultTitlePreset: STARTER_TITLE_ID,
+  defaultSubtitlePreset: STARTER_SUBTITLE_ID,
 };
 
 /** The favorites kept by the font picker. */
@@ -86,6 +97,8 @@ export function proxySettings(settings: AppSettings): ProxySettings {
 
 const KEY = "settings.v1";
 
+const presetIdOr = (value: unknown, fallback: string | null): string | null => (value === null || (typeof value === "string" && value !== "") ? value : fallback);
+
 /** Invalid or missing fields fall back to `fallback`. */
 function sanitize(value: unknown, fallback: AppSettings = DEFAULT_APP_SETTINGS): AppSettings {
   const raw = (typeof value === "object" && value !== null ? value : {}) as Partial<Record<keyof AppSettings, unknown>>;
@@ -109,6 +122,8 @@ function sanitize(value: unknown, fallback: AppSettings = DEFAULT_APP_SETTINGS):
       ? [...new Set(raw.favoriteFonts.filter((name): name is string => typeof name === "string" && name !== ""))].slice(-MAX_FAVORITE_FONTS)
       : fallback.favoriteFonts,
     matchClipUnderPlayhead: typeof raw.matchClipUnderPlayhead === "boolean" ? raw.matchClipUnderPlayhead : fallback.matchClipUnderPlayhead,
+    defaultTitlePreset: presetIdOr(raw.defaultTitlePreset, fallback.defaultTitlePreset),
+    defaultSubtitlePreset: presetIdOr(raw.defaultSubtitlePreset, fallback.defaultSubtitlePreset),
   };
 }
 

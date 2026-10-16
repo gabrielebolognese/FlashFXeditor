@@ -36,8 +36,8 @@ export function textContent(value: string, box: TextBox = DEFAULT_TEXT_BOX): Tex
 export const TEXT_REFERENCE_SIDE = 1080;
 
 /**
- * The default Title (spec §10.2 "default Title preset"; hardcoded until the presets, Batch 30): heavy
- * white Inter at 120 px, centered, a soft shadow.
+ * The default Title (spec §10.2): heavy white Inter at 120 px, centered, a soft shadow. The starter
+ * preset `Title` (starterPresets.ts), and what T uses when the default Title preset is gone.
  */
 export const DEFAULT_TITLE_STYLE: TextStyle = {
   ...DEFAULT_TEXT_STYLE,
@@ -67,7 +67,8 @@ export type TitleKind = "title" | "subtitle";
 
 /**
  * Content, style and box of a new Title or Subtitle on a `frame`-sized project (sizes scaled from
- * TEXT_REFERENCE_SIDE). TODO(batch 30): the default Title and Subtitle presets chosen in the Presets tab.
+ * TEXT_REFERENCE_SIDE): the built-in looks, used when the default Title or Subtitle preset chosen in the
+ * Presets tab (spec §10.2) no longer exists.
  */
 export function titleDefaults(kind: TitleKind, frame: { width: number; height: number }): { value: string; style: TextStyle; box: TextBox } {
   const k = Math.min(frame.width, frame.height) / TEXT_REFERENCE_SIDE;

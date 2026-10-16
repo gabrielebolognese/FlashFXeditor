@@ -5,7 +5,7 @@ import { validateProject } from "../../core/document/validate.js";
 import { DocumentStore } from "../../core/store/DocumentStore.js";
 import { selectClips, toSnapshot } from "../../core/store/selection.js";
 import { createSessionStore, setPlayhead } from "../../core/store/sessionStore.js";
-import { applyMediaDrop, blockLength, commitPlan, dropLabel, planAtPlayhead, planCanvasDrop, requestItems, stageDrop, type DropItem, type DropPlan } from "./dropMedia.js";
+import { applyMediaDrop, blockLength, commitPlan, dropLabel, planAtPlayhead, planCanvasDrop, requestItems, stageDrop, type DropPlan, type MediaDropItem, type TextDropItem } from "./dropMedia.js";
 import type { MoveMode, MoveResult } from "./move.js";
 
 function counter(prefix = "n"): () => string {
@@ -22,7 +22,7 @@ function withMedia(project: Project = makeProject()): Project {
   return project;
 }
 
-const item = (project: Project, id: string, range: DropItem["range"] = null): DropItem => ({ media: project.media[id]!, range });
+const item = (project: Project, id: string, range: MediaDropItem["range"] = null): MediaDropItem => ({ media: project.media[id]!, range });
 
 /** Clips of a track as [mediaId or id, start, duration]. */
 function layout(project: Project, name: string): [string, number, number][] {
@@ -148,7 +148,7 @@ describe("applyMediaDrop", () => {
     project.tracks[1]!.locked = true;
     const { result } = applyMediaDrop(project, { items: [{ mediaId: "vid", range: null }], start: 0, lanes: { video: 1, audio: 0 }, mode: "overwrite" }, counter());
     expect(result).toEqual({ kind: "refused", refusal: { reason: "lockedTarget", trackId: "v2" } });
-    expect(requestItems(project, { items: [{ mediaId: "gone", range: null }, { mediaId: "song", range: null }] }).map((i) => i.media.id)).toEqual(["song"]);
+    expect(requestItems(project, { items: [{ mediaId: "gone", range: null }, { mediaId: "song", range: null }] }).map((i) => (i as MediaDropItem).media.id)).toEqual(["song"]);
   });
 });
 
@@ -246,8 +246,8 @@ describe("planCanvasDrop (drop on the preview, Add to canvas)", () => {
     const plan = planCanvasDrop(project, [item(project, "still")], 30, { x: 900, y: 300 }, counter());
     expect(plan.clips.map((c) => [c.kind, c.trackId, c.start, c.duration])).toEqual([["image", "v2", 30, 150]]);
     // Positions count from the frame center (1080 x 1920): (900 - 540, 300 - 960).
-    expect(plan.clips[0]!.transform).toMatchObject({ x: 360, y: -660, scale: 2.7, anchor: { x: 0.5, y: 0.5 } });
-    expect(planCanvasDrop(project, [item(project, "still")], 0, null, counter()).clips[0]!.transform).toMatchObject({ x: 0, y: 0 });
+    expect((plan.clips[0] as MediaClip).transform).toMatchObject({ x: 360, y: -660, scale: 2.7, anchor: { x: 0.5, y: 0.5 } });
+    expect((planCanvasDrop(project, [item(project, "still")], 0, null, counter()).clips[0] as MediaClip).transform).toMatchObject({ x: 0, y: 0 });
   });
 
   it("makes a new top track when the top one is taken or locked; never overwrites; sound on the first free audio track", () => {
@@ -273,5 +273,39 @@ describe("planCanvasDrop (drop on the preview, Add to canvas)", () => {
     delete locked.clips.t;
     locked.tracks[1]!.locked = true;
     expect(planCanvasDrop(locked, [item(locked, "still")], 0, null, counter()).newTracks.map((t) => t.name)).toEqual(["V3"]);
+  });
+});
+
+describe("text preset drops", () => {
+  const textItem = (duration = 90): TextDropItem => ({ text: { name: "Bold", duration, fields: { value: "Title", presetId: "p1", box: { mode: "fixed", width: 600 } } } });
+
+  it("lays a text clip on the video lane, after the media before it", () => {
+    const project = withMedia();
+    project.tracks.push(makeTrack("v1"), makeTrack("a1", "audio"));
+    const items = [item(project, "song"), textItem(30)];
+    expect(blockLength(items, project)).toBe(75 + 30);
+    const staged = stageDrop(project, items, 10, { video: 1, audio: 0 }, counter());
+    expect(staged.newTracks.map((t) => [t.kind, t.name])).toEqual([["video", "V2"]]);
+    const text = staged.clips[1] as Clip;
+    expect(text).toMatchObject({ kind: "text", start: 85, duration: 30, trackId: staged.newTracks[0]!.id, presetId: "p1", text: { value: "Title", box: { mode: "fixed", width: 600 } } });
+    expect(staged.end).toBe(115);
+  });
+
+  it("drops through a request: one command, overwriting what is under it", () => {
+    let project = withMedia();
+    project.tracks.push(makeTrack("v1"));
+    project = withClips(project, [makeMediaClip(project, { id: "c", trackId: "v1", mediaId: "mute", start: 0, duration: 120 })]);
+    const request = { items: [textItem(60)], start: 30, lanes: { video: 0, audio: 0 }, mode: "overwrite" as const };
+    expect(requestItems(project, request)).toEqual([textItem(60)]);
+    const { result, plan } = applyMediaDrop(project, request, counter());
+    expect(plan.clips.map((c) => [c.kind, c.trackId, c.start, c.duration])).toEqual([["text", "v1", 30, 60]]);
+    const store = new DocumentStore(project, { session: createSessionStore(), validate: true });
+    store.dispatch((result as Extract<MoveResult, { kind: "ok" }>).command);
+    expect(validateProject(store.getState())).toEqual([]);
+    expect(layout(store.getState(), "V1").map(([, start, duration]) => [start, duration])).toEqual([
+      [0, 30],
+      [30, 60],
+      [90, 30],
+    ]);
   });
 });

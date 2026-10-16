@@ -9,6 +9,7 @@ import type { RecentProject } from "../project/recentProjects.js";
 import type { Recovery } from "../project/recovery.js";
 import { attachFonts, detachFonts } from "./fontController.js";
 import { attachMedia, detachMedia } from "./mediaController.js";
+import { attachPresets, detachPresets } from "./presetController.js";
 import { attachPreview, detachPreview, frameService } from "./previewController.js";
 import { actions, appSettings, appVersion, documentStore, focusScopes, layoutStore, recentProjects, saveStatus, sessionStore } from "./services.js";
 
@@ -79,6 +80,7 @@ async function closeCurrent(): Promise<void> {
   detachPreview();
   detachMedia();
   detachFonts();
+  detachPresets();
   await session.close();
 }
 
@@ -100,6 +102,7 @@ async function switchTo(opened: OpenedProject): Promise<void> {
   attachMedia(session.dir, () => !session.readOnly, frameService);
   attachPreview(session.dir, () => !session.readOnly);
   attachFonts(session.dir, () => !session.readOnly);
+  attachPresets(session.dir, () => !session.readOnly);
   setView({
     project: { id: opened.project.id, folder: opened.dir.name },
     dialog: opened.recovery ? { kind: "recovery", recovery: opened.recovery } : null,

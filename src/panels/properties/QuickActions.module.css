@@ -19,3 +19,17 @@
   margin: 0 var(--space-1);
   background: var(--hairline);
 }
+
+/* Save as preset's name field (spec §10.3 "a name field appears inline"): a row under the buttons. */
+.nameRow {
+  display: flex;
+  flex: none;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--hairline);
+  background: var(--surface-1);
+}
+
+.nameRow > label {
+  flex: 1 1 auto;
+  height: var(--control-compact);
+}

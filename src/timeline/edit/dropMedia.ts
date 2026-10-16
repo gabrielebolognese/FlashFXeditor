@@ -1,18 +1,39 @@
 // Placing media items on the timeline (spec §6.14): the clips that a drag from the Media panel, an
 // insert or overwrite at the playhead (double-click, `,`, `.`) and a drop on the preview canvas add.
 // Several items go back to back in the given order; each lands as one command through `dropClips`
-// (the move's overwrite/insert rules, §6.8). Missing tracks are created. Pure.
+// (the move's overwrite/insert rules, §6.8). Missing tracks are created. A text preset dragged from the
+// Presets tab (spec §10.3) is an item too: one text clip on the video lane. Pure.
 import { emptyTrack, nextTrackName } from "../../core/document/project.js";
-import type { Frame, MediaClip, MediaId, MediaItem, Project, Track, TrackId, Transform } from "../../core/document/types.js";
+import type { Clip, Frame, MediaClip, MediaId, MediaItem, Project, Track, TrackId, Transform } from "../../core/document/types.js";
 import { clipsInRange, laneOf, laneTracks, type LaneKind } from "../model/queries.js";
 import { defaultTransform, mediaClips, mediaLanes, naturalDuration, type ClipTracks, type SourceRange } from "./insertMedia.js";
 import { dropClips, type LaneTarget, type MoveMode, type MoveResult } from "./move.js";
+import { newTextClip, type TextClipFields } from "./text.js";
 
 /** One media item to place, with its source range (spec §12) or null for all of it. */
-export interface DropItem {
+export interface MediaDropItem {
   media: MediaItem;
   range: SourceRange | null;
 }
+
+/** A text clip to place: a text preset dragged from the Presets tab (spec §10.3). */
+export interface TextDropTemplate {
+  /** What the drag chip says. */
+  name: string;
+  duration: Frame;
+  fields: TextClipFields;
+}
+
+export interface TextDropItem {
+  text: TextDropTemplate;
+}
+
+export type DropItem = MediaDropItem | TextDropItem;
+
+export const isTextDrop = (item: DropItem | DropRequestItem): item is TextDropItem => "text" in item;
+
+/** A dropped item as the request names it: media by id, a text clip by its template. */
+export type DropRequestItem = { mediaId: MediaId; range: SourceRange | null } | TextDropItem;
 
 /** The lane of each kind a drag lands on (0 = V1 / A1, counted away from the divider). */
 export interface DropLanes {
@@ -22,7 +43,7 @@ export interface DropLanes {
 
 /** A media drag released over the timeline (spec §6.14): what the controller applies. */
 export interface MediaDropRequest {
-  items: readonly { mediaId: MediaId; range: SourceRange | null }[];
+  items: readonly DropRequestItem[];
   /** First frame of the block (snapped). */
   start: Frame;
   lanes: DropLanes;
@@ -31,7 +52,7 @@ export interface MediaDropRequest {
 
 /** The clips to add (back to back from `start` to `end`) and the tracks to create for them. */
 export interface DropPlan {
-  clips: MediaClip[];
+  clips: Clip[];
   newTracks: Track[];
   start: Frame;
   end: Frame;
@@ -42,9 +63,14 @@ export interface StagedDrop extends DropPlan {
   targets: LaneTarget[];
 }
 
+/** An item's length on the timeline, or null when it has none (a media item without a duration). */
+function itemLength(item: DropItem, project: Project): Frame | null {
+  return isTextDrop(item) ? Math.max(1, Math.round(item.text.duration)) : naturalDuration(item.media, project.settings.fps, item.range);
+}
+
 /** Timeline length of the items back to back (items without a duration count 0). */
 export function blockLength(items: readonly DropItem[], project: Project): Frame {
-  return items.reduce((sum, item) => sum + (naturalDuration(item.media, project.settings.fps, item.range) ?? 0), 0);
+  return items.reduce((sum, item) => sum + (itemLength(item, project) ?? 0), 0);
 }
 
 /** Tracks by lane, creating the ones past the last of a kind (named V3, A4..., stacked in lane order). */
@@ -89,10 +115,16 @@ function targetOf(tracks: readonly Track[], trackId: TrackId, created: readonly 
 }
 
 /** Lays the items out back to back from `start`, each on the tracks `pick` gives for the kinds it needs. */
-function layout(project: Project, items: readonly DropItem[], start: Frame, pick: (kind: LaneKind) => TrackId, newId: () => string, transform?: (item: DropItem) => Transform): DropPlan {
-  const clips: MediaClip[] = [];
+function layout(project: Project, items: readonly DropItem[], start: Frame, pick: (kind: LaneKind) => TrackId, newId: () => string, transform?: (item: MediaDropItem) => Transform): DropPlan {
+  const clips: Clip[] = [];
   let at = Math.max(0, start);
   for (const item of items) {
+    if (isTextDrop(item)) {
+      const duration = itemLength(item, project) as Frame;
+      clips.push(newTextClip({ ...item.text.fields, id: newId(), trackId: pick("video"), start: at, duration }));
+      at += duration;
+      continue;
+    }
     const lanes = mediaLanes(item.media);
     if (naturalDuration(item.media, project.settings.fps, item.range) === null) continue;
     const tracks: ClipTracks = { video: lanes.video ? pick("video") : null, audio: lanes.audio ? pick("audio") : null };
@@ -168,7 +200,7 @@ export function planCanvasDrop(project: Project, items: readonly DropItem[], pla
   const { width, height } = project.settings;
   const at = point ?? { x: width / 2, y: height / 2 };
   // The anchor (the media center) at the point: positions count from the frame center.
-  const placed = (item: DropItem) => ({ ...defaultTransform(item.media, project.settings), x: Math.round(at.x - width / 2), y: Math.round(at.y - height / 2) });
+  const placed = (item: MediaDropItem) => ({ ...defaultTransform(item.media, project.settings), x: Math.round(at.x - width / 2), y: Math.round(at.y - height / 2) });
   return { ...layout(project, items, start, pick, newId, placed), newTracks: tracks.created };
 }
 
@@ -185,11 +217,20 @@ export function dropLabel(verb: "Add" | "Insert" | "Overwrite", items: number): 
 /** The items of a request, from the document (media no longer there are skipped). */
 export function requestItems(project: Project, request: Pick<MediaDropRequest, "items">): DropItem[] {
   const items: DropItem[] = [];
-  for (const { mediaId, range } of request.items) {
-    const media = project.media[mediaId];
-    if (media) items.push({ media, range });
+  for (const item of request.items) {
+    if (isTextDrop(item)) {
+      items.push(item);
+      continue;
+    }
+    const media = project.media[item.mediaId];
+    if (media) items.push({ media, range: item.range });
   }
   return items;
+}
+
+/** The request's name of a dropped item. */
+export function requestItem(item: DropItem): DropRequestItem {
+  return isTextDrop(item) ? item : { mediaId: item.media.id, range: item.range };
 }
 
 /** A released media drag as the edit (one command), with the plan it applied. */

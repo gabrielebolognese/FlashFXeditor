@@ -14,14 +14,20 @@
 //   Title centered, or, created while a text clip is selected, 40 px below that one instead (stacked
 //   titles do not overlap); the Subtitle's bottom edge always in the lower third (T, then Shift+T with
 //   the title still selected, gives a subtitle under it in the lower third).
+//   A text preset's look (spec §10.3) can replace the built-in one: its style, box and animations, and
+//   its position when it applies one.
 // - `addTextClip` puts a new text clip at a frame on the topmost video track free there, or on a new
 //   video track above the others (the dev command).
+// - `applyPreset` (spec §10.3 Apply): a preset's style, box and animations on the selected text clips,
+//   their content, duration and position kept (the position taken too when the preset applies it);
+//   one command `clip.applyPreset`. `linkPreset` records the preset a clip was saved as (`presetId`:
+//   what `Update preset` writes into).
 import type { Draft } from "immer";
 import { addTrack } from "../../core/commands/basicCommands.js";
 import type { Command } from "../../core/commands/command.js";
 import { emptyTrack, nextTrackName } from "../../core/document/project.js";
 import { secondsToFrames } from "../../core/document/time.js";
-import type { ClipId, Frame, Project, TextBox, TextClip, TextContent, TextStyle, Track, Transform } from "../../core/document/types.js";
+import type { ClipId, Frame, Project, TextAnim, TextBox, TextClip, TextContent, TextStyle, Track, Transform } from "../../core/document/types.js";
 import { textLayout } from "../../render/text/layoutCache.js";
 import { DEFAULT_TEXT_BOX, DEFAULT_TEXT_STYLE, firstLine, textContent, titleDefaults, type TitleKind } from "../../text/style.js";
 import { clipAtFrame, clipsInRange, isClipLocked } from "../model/queries.js";
@@ -110,7 +116,18 @@ export function textClipName(text: TextContent, style: Pick<TextStyle, "textCase
   return line === "" ? "Text" : line.length > 40 ? `${line.slice(0, 39)}…` : line;
 }
 
-export function newTextClip(fields: { id: ClipId; trackId: string; start: Frame; duration: Frame; value: string; style?: TextStyle; box?: TextBox; transform?: Transform }): TextClip {
+/** What a new text clip may take besides its place: content, look, transform and the preset it came from. */
+export interface TextClipFields {
+  value: string;
+  style?: TextStyle;
+  box?: TextBox;
+  transform?: Transform;
+  animIn?: TextAnim;
+  animOut?: TextAnim;
+  presetId?: string;
+}
+
+export function newTextClip(fields: TextClipFields & { id: ClipId; trackId: string; start: Frame; duration: Frame }): TextClip {
   const text = textContent(fields.value, fields.box ?? DEFAULT_TEXT_BOX);
   const style = structuredClone(fields.style ?? DEFAULT_TEXT_STYLE);
   return {
@@ -126,6 +143,9 @@ export function newTextClip(fields: { id: ClipId; trackId: string; start: Frame;
     transform: structuredClone(fields.transform ?? IDENTITY_TRANSFORM),
     opacity: 1,
     fades: { in: 0, out: 0 },
+    ...(fields.animIn && { animIn: structuredClone(fields.animIn) }),
+    ...(fields.animOut && { animOut: structuredClone(fields.animOut) }),
+    ...(fields.presetId !== undefined && { presetId: fields.presetId }),
   };
 }
 
@@ -133,7 +153,7 @@ export function newTextClip(fields: { id: ClipId; trackId: string; start: Frame;
  * A new text clip of `duration` frames at `frame`: on the topmost unlocked video track free over that
  * span, else on a new video track above the others. One command ("Add text"); the new clip's id.
  */
-export function addTextClip(project: Project, frame: Frame, duration: Frame, newId: () => string, fields: { value: string; style?: TextStyle; box?: TextBox; transform?: Transform }): { command: Command; clipId: ClipId } {
+export function addTextClip(project: Project, frame: Frame, duration: Frame, newId: () => string, fields: TextClipFields): { command: Command; clipId: ClipId } {
   const start = Math.max(0, Math.round(frame));
   const length = Math.max(1, Math.round(duration));
   const videos = project.tracks.filter((track) => track.kind === "video");
@@ -155,6 +175,23 @@ export interface TitleOptions {
   matchClip: boolean;
   /** A selected text clip: a new Title goes TITLE_STACK_GAP px below it. */
   below?: ClipId | null;
+  /** A preset's look (spec §10.2 default Title / Subtitle presets, the favorite chips) instead of the built-in one. */
+  look?: TitleLook | null;
+  /** The undo label (default: "Add title" / "Add subtitle"). */
+  label?: string;
+}
+
+/** A text preset's look scaled to the project (text/presets.ts `presetLook`) and the preset it is. */
+export interface TitleLook {
+  style: TextStyle;
+  box: TextBox;
+  /** The preset's position (it applies one), else null: the Title or Subtitle placement. */
+  position: { x: number; y: number } | null;
+  animIn?: TextAnim;
+  animOut?: TextAnim;
+  presetId?: string;
+  /** The clip's length (the preset's default duration), else the title length. */
+  duration?: Frame;
 }
 
 /** The topmost video clip under `frame` on a shown video track, or null. */
@@ -198,18 +235,96 @@ function titleTransform(project: Project, kind: TitleKind, box: Size, below: Cli
  */
 export function addTitle(project: Project, options: TitleOptions, newId: () => string): { command: Command; clipId: ClipId } {
   const start = Math.max(0, Math.round(options.playhead));
-  const length = titleDuration(project, start, options.matchClip);
-  const defaults = titleDefaults(options.kind, project.settings);
+  const look = options.look ?? null;
+  const length = look?.duration !== undefined ? Math.max(1, Math.round(look.duration)) : titleDuration(project, start, options.matchClip);
+  const builtIn = titleDefaults(options.kind, project.settings);
+  const fields: TextClipFields = look
+    ? {
+        value: builtIn.value,
+        style: look.style,
+        box: look.box,
+        ...(look.animIn && { animIn: look.animIn }),
+        ...(look.animOut && { animOut: look.animOut }),
+        ...(look.presetId !== undefined && { presetId: look.presetId }),
+      }
+    : builtIn;
   const videos = project.tracks.filter((track) => track.kind === "video");
   const top = videos.at(-1);
   const free = top && !top.locked && !top.hidden && clipsInRange(project, top.id, start, start + length).length === 0 ? top : null;
-  const box = textLayout(textContent(defaults.value, defaults.box), defaults.style);
-  const transform = titleTransform(project, options.kind, box, options.below);
-  return insertTextClip(project, free, start, length, newId, { ...defaults, transform }, options.kind === "title" ? "Add title" : "Add subtitle");
+  const box = textLayout(textContent(fields.value, fields.box ?? DEFAULT_TEXT_BOX), fields.style ?? DEFAULT_TEXT_STYLE);
+  const transform = look?.position ? { ...IDENTITY_TRANSFORM, x: look.position.x, y: look.position.y } : titleTransform(project, options.kind, box, options.below);
+  return insertTextClip(project, free, start, length, newId, { ...fields, transform }, options.label ?? (options.kind === "title" ? "Add title" : "Add subtitle"));
+}
+
+/** A preset to apply (spec §10.3): its look scaled to the project, and its id. */
+export interface PresetApply {
+  presetId: string;
+  style: TextStyle;
+  box: TextBox;
+  /** Taken when the preset applies its position, else null (the clips keep theirs). */
+  position: { x: number; y: number } | null;
+  animIn?: TextAnim;
+  animOut?: TextAnim;
+}
+
+/**
+ * A preset applied to the text clips among `ids` (spec §10.3 Apply): its style, box and animations
+ * replace theirs, content and duration stay, the position too unless the preset applies its own. One
+ * command `clip.applyPreset`, or null when no unlocked text clip would change.
+ */
+export function applyPreset(project: Project, ids: readonly ClipId[], preset: PresetApply, label: string): Command | null {
+  const targets: ClipId[] = [];
+  for (const id of ids) {
+    const clip = project.clips[id];
+    if (clip?.kind !== "text" || isClipLocked(project, id) || targets.includes(id)) continue;
+    const moved = preset.position !== null && (clip.transform.x !== preset.position.x || clip.transform.y !== preset.position.y);
+    const same = sameJson(clip.style, preset.style) && sameJson(clip.text.box, preset.box) && sameJson(clip.animIn, preset.animIn) && sameJson(clip.animOut, preset.animOut);
+    if (same && !moved && clip.presetId === preset.presetId) continue;
+    targets.push(id);
+  }
+  if (targets.length === 0) return null;
+  return {
+    id: "clip.applyPreset",
+    label,
+    affects: ["composite", "text", "clips"],
+    run(draft) {
+      for (const id of targets) {
+        const clip = draft.clips[id] as Draft<TextClip>;
+        const named = clip.name === textClipName(clip.text, clip.style);
+        clip.style = structuredClone(preset.style);
+        clip.text.box = { ...preset.box };
+        if (preset.animIn) clip.animIn = structuredClone(preset.animIn);
+        else delete clip.animIn;
+        if (preset.animOut) clip.animOut = structuredClone(preset.animOut);
+        else delete clip.animOut;
+        if (preset.position) {
+          clip.transform.x = preset.position.x;
+          clip.transform.y = preset.position.y;
+        }
+        clip.presetId = preset.presetId;
+        // Another text case changes the first line a clip named after its text shows.
+        if (named) clip.name = textClipName(clip.text, clip.style);
+      }
+    },
+  };
+}
+
+/** `clipId` records `presetId` as its preset (Save as preset); null when it already does or cannot. */
+export function linkPreset(project: Project, clipId: ClipId, presetId: string, label: string): Command | null {
+  const clip = project.clips[clipId];
+  if (clip?.kind !== "text" || isClipLocked(project, clipId) || clip.presetId === presetId) return null;
+  return {
+    id: "clip.linkPreset",
+    label,
+    affects: ["text"],
+    run(draft) {
+      (draft.clips[clipId] as Draft<TextClip>).presetId = presetId;
+    },
+  };
 }
 
 /** The command adding a text clip on `track`, or on a new video track above the others when null. */
-function insertTextClip(project: Project, track: Track | null, start: Frame, length: Frame, newId: () => string, fields: { value: string; style?: TextStyle; box?: TextBox; transform?: Transform }, label: string): { command: Command; clipId: ClipId } {
+function insertTextClip(project: Project, track: Track | null, start: Frame, length: Frame, newId: () => string, fields: TextClipFields, label: string): { command: Command; clipId: ClipId } {
   const newTrack = track ? null : emptyTrack(newId(), "video", nextTrackName(project.tracks, "video"));
   const trackId = track?.id ?? (newTrack as NonNullable<typeof newTrack>).id;
   const clip = newTextClip({ id: newId(), trackId, start, duration: length, ...fields });

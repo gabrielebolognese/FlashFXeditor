@@ -8,7 +8,8 @@
 //   in place (timeline/edit/text.ts).
 // - One-click text (spec §10.2, §18): `add.title` (T) and `add.subtitle` (Shift+T) add the default
 //   Title or Subtitle at the playhead (placement in timeline/edit/text.ts `addTitle`), select it and
-//   edit it inline at once with its content selected: one key, then type. `text.edit` (Enter) edits
+//   edit it inline at once with its content selected: one key, then type. Their look is the default
+//   Title or Subtitle preset (presetController sets `defaultTitleLook`), else the built-in one. `text.edit` (Enter) edits
 //   the selected text clip (the playhead goes onto it when it is elsewhere); `text.commit` (Mod+Enter)
 //   and `text.cancel` (Esc) commit and exit (§7.7: Esc keeps what was typed).
 // - Dev builds: `dev.addText` adds a plain text clip at the playhead, and `__editor.text` exposes the
@@ -21,7 +22,7 @@ import { setPlayhead } from "../core/store/sessionStore.js";
 import type { LiveText } from "../render/compositor/Compositor.js";
 import { invalidateTextLayouts, onTextLayoutsChanged, setTextFallback, textLayout } from "../render/text/layoutCache.js";
 import { DEFAULT_TEXT_STYLE, type TitleKind } from "../text/style.js";
-import { addTextClip, addTitle, setTexts, textEdit, type TextEdit } from "../timeline/edit/text.js";
+import { addTextClip, addTitle, setTexts, textEdit, type TextEdit, type TitleLook } from "../timeline/edit/text.js";
 import { isClipLocked } from "../timeline/model/queries.js";
 import { patchLiveEdit } from "./liveEdit.js";
 import { playbackEngine, textEditor, textRasters } from "./previewController.js";
@@ -90,23 +91,40 @@ function addDevText(options: { value?: string; style?: Partial<TextClip["style"]
 }
 
 /** The selected text clip a new title stacks under, or a text clip Enter edits: the primary one, else the first. */
-function selectedTextClip(project: Project, selection: Selection): ClipId | null {
+export function selectedTextClip(project: Project, selection: Selection): ClipId | null {
   if (selection.kind !== "clips") return null;
   const ids = selection.primary !== null ? [selection.primary, ...selection.clipIds] : [...selection.clipIds];
   return ids.find((id) => project.clips[id]?.kind === "text") ?? null;
 }
 
+/** The look of the default Title or Subtitle preset (spec §10.2), or null for the built-in one. */
+let defaultLook: (kind: TitleKind) => TitleLook | null = () => null;
+
+/** Where `+ Title` / `+ Subtitle` take their look from (the presets, once loaded). */
+export function setDefaultTitleLook(resolve: (kind: TitleKind) => TitleLook | null): void {
+  defaultLook = resolve;
+}
+
 /**
  * `+ Title` / `+ Subtitle` (spec §10.2): the default Title or Subtitle at the playhead (40 px under
  * a selected text clip), selected, edited inline at once with its content selected (typing replaces it).
+ * A preset's chip (`look`, `label`) adds its look the same way.
  */
-export function addTitleClip(kind: TitleKind): ClipId {
+export function addTitleClip(kind: TitleKind, preset: { look: TitleLook; label: string } | null = null): ClipId {
   textEditor.end(true);
   // Typing while playing would move the playhead off the new clip.
   playbackEngine.pause();
   const project = documentStore.getState();
   const below = selectedTextClip(project, sessionStore.selection.getState());
-  const options = { kind, playhead: sessionStore.state.getState().playhead, matchClip: appSettings.getState().matchClipUnderPlayhead, below };
+  const look = preset ? preset.look : defaultLook(kind);
+  const options = {
+    kind,
+    playhead: sessionStore.state.getState().playhead,
+    matchClip: appSettings.getState().matchClipUnderPlayhead,
+    below,
+    look,
+    ...(preset && { label: preset.label }),
+  };
   const result = addTitle(project, options, () => crypto.randomUUID());
   documentStore.dispatch(result.command, { selection: toSnapshot(selectClips([result.clipId])) });
   textEditor.begin(result.clipId, "all");

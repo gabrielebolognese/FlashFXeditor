@@ -46,7 +46,8 @@ export const documentStore = new DocumentStore(
 export const actions = new ActionRegistry();
 /** The master clock of playback: an AudioContext created on the first pointer or key press (spec §8). */
 export const audioClock = new AudioClock();
-const keyValueStore = idbKeyValueStore();
+/** IndexedDB key-value store of global things: recent projects, settings, global text presets (spec §3.1). */
+export const keyValueStore = idbKeyValueStore();
 export const recentProjects = new RecentProjects(keyValueStore);
 export const appSettings = createAppSettings(keyValueStore);
 /** Media workers (spec §3.5), each created on its first request. */

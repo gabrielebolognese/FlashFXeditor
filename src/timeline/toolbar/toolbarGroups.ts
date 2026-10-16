@@ -35,7 +35,9 @@ import {
 
 export type ToolbarItem =
   | { kind: "button"; id: string; label: string; icon: LucideIcon; text?: string; toggle?: true }
-  | { kind: "zoomSlider" };
+  | { kind: "zoomSlider" }
+  /** The favorite text presets as chips (spec §6.1: up to 8, from the Presets tab). */
+  | { kind: "presetChips" };
 
 export interface ToolbarGroup {
   id: string;
@@ -90,13 +92,13 @@ export const TOOLBAR_GROUPS: readonly ToolbarGroup[] = [
     id: "add",
     label: "Add",
     priority: 3,
-    // TODO(batch 30): favorite text presets as chips (up to 8) after these buttons.
     items: [
       { kind: "button", id: "add.title", label: "Add title", icon: Type, text: "Title" },
       { kind: "button", id: "add.subtitle", label: "Add subtitle", icon: Subtitles, text: "Subtitle" },
       { kind: "button", id: "add.captionTrack", label: "Add caption track", icon: Captions },
       { kind: "button", id: "add.solid", label: "Add solid", icon: Square },
       { kind: "button", id: "add.image", label: "Add image", icon: ImagePlus },
+      { kind: "presetChips" },
     ],
   },
   {
