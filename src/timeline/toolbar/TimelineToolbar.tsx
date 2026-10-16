@@ -10,8 +10,7 @@ import { useDismiss } from "../../ui/useDismiss.js";
 import styles from "./TimelineToolbar.module.css";
 import { TOOLBAR_GROUPS, type ToolbarGroup, type ToolbarItem } from "./toolbarGroups.js";
 
-// Actions stay disabled until their batches wire them (toggles: 35/37, edits: freeze frame and punch
-// zoom 27, add: 29/32/34).
+// Actions stay disabled until their batches wire them (toggles: 35/37, add: 29/32/34).
 const ENABLED: ReadonlySet<string> = new Set([
   "timeline.zoomOut",
   "timeline.zoomIn",
@@ -24,6 +23,8 @@ const ENABLED: ReadonlySet<string> = new Set([
   "edit.closeGap",
   "edit.closeAllGaps",
   "marker.add",
+  "edit.freezeFrame",
+  "edit.punchZoom",
   "timeline.trackHeightCycle",
 ]);
 

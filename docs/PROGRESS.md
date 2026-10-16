@@ -1,6 +1,6 @@
 # Progress
 
-last_completed_batch: 26
+last_completed_batch: 27
 in_progress_batch: none
 skipped_batches: []
 needs_human: none
@@ -91,6 +91,8 @@ Items the design system did not define and the functional default that was used 
 - Crop handles (Batch 26, spec §7.3 crop mode; the DS has no crop visuals): corner brackets and edge bars inside the visible box, arms `--crop-handle-length` 16 px (`--space-5`; at most a third of the side on screen), a `--crop-handle-width` 2 px (`--space-0`) `--text-primary` stroke over a `--bg-sunken` outline 1 px wider on each side (the canvas cursors' look), turned with the layer; edge bars only on sides at least `--gizmo-min-edge` long on screen; the scale handles' hit squares and resize cursors; no rotate zones. The whole media's box: a 1 px `--accent-dim` dashed outline (`--preview-dash` dashes); the visible box keeps the `--accent` selection outline. The readout uses the gizmo readout's chip: `L 480 · 1440 × 1080` (the crop of the moved edges and the visible size, media px).
 - Crop tool chip (Batch 26; the DS has no tool chip): the menu material (glass, hairline, overlay shadow, radius-lg) centered `--space-3` below the canvas top; lucide `Crop` in `--accent` (the active tool), "Crop" in caption type `--text-primary`, a 1 px `--hairline` rule `--icon-size` tall, then compact IconButtons Reset (RotateCcw) and Done (Check with its text).
 - Crop section (Batch 26): Left / Right and Top / Bottom field pairs (inner labels L R T B, unit px or %), Units as two text chips (pressed gold), Aspect as the scale lock's Link2 / Unlink2 button, then compact secondary buttons Crop to frame (lucide `Frame`) and Reset (RotateCcw) `--space-2` apart; the crop mode toggle (lucide `Crop`, a compact IconButton, pressed gold) at the right end of the section header, `--space-2` from the edge.
+- Speed section (Batch 27; the DS has no speed control): the Speed % field with a 12 px lucide `Gauge` scrub label, and the duration link after it as the scale lock's Link2 / Unlink2 IconButton (pressed gold), `--space-1` apart (`.withAction`). Duration is the Clip section's mono timecode field. Ripple is the DS switch (the Batch 01 toggle) for the Build's "ripple checkbox" (the DS has no checkbox). A freeze frame's speed field is disabled, with a caption hint in `--text-muted` under it (`.hint`). Freeze frame is a compact secondary button (lucide `Snowflake`).
+- Freeze frame badge (Batch 27, spec §6.4 label bar badges): lucide `snowflake` at `--icon-size-sm` in `--text-secondary`, the link and keyframe icon badges' look, in place of the speed chip on a freeze frame's label bar.
 
 ## Global deviations
 Decisions that diverge from docs/EDITOR_SPEC.md, with the reason. Each one also appears under its batch.
@@ -217,6 +219,9 @@ Decisions that diverge from docs/EDITOR_SPEC.md, with the reason. Each one also 
 - The crop aspect lock is the Crop section's toggle, shared with the canvas handles; Shift inverts it during a handle drag. It keeps the current visible aspect in media px (an edge moves the other axis around its center, a corner scales from the opposite corner or, with Alt, the center). (Batch 26)
 - Crop edges snap to the frame's edges, center and thirds (thirds always, not only while the Thirds grid shows), while snapping is on and the layer is axis-aligned; no other layers or safe zones. (Batch 26)
 - Crop units are media px of the media as shown or % of its side (px by default, per session, not persisted); a crop always leaves at least 1 media px on each axis. A crop handle drag writes `liveEdit.crops` like a Crop field scrub, so the fields follow it live. (Batch 26)
+- Clip speed (§11, §14): kept exactly as asked (0.25x..4x). Linked (default), `in`/`out` stay and the duration follows, rounded. Unlinked, the duration stays and `out` follows; media shorter than that is clamped with a toast (§6.19). Without ripple, a slower clip stops at the next clip with its out point brought in (the speed stays). Ripple shifts what follows as a ripple trim of the out point does (a left shift stops at the first overlap, leaving a gap). The Speed section's link and Ripple are per session, both on by default; Ripple is the DS switch. Speed field scrubs apply once on release (no live retiming, P1/P2). The section's Duration is a rate stretch when linked, a trim otherwise. "Speed..." (§6.16) opens the section on its field. (Batch 27)
+- Freeze frames (Batch 27 Build) are video clips with `speed = 0`: `in` is the frozen source time, `out` one project frame later; only video clips may have speed 0. Freeze frame always splits the clip's linked partners and ripples every unlocked track by 2 s from the playhead (clips spanning it stay). It acts on the selected video under the playhead, else the topmost targeted visible one. Freezes trim like images, never slip, stretch as a trim, and split into two holds. (Batch 27)
+- Punch zoom multiplies the right pieces' `scale` / `scaleY` by the app setting `punchZoomScale` (1.2, 1.05..3) around their anchor. It splits linked partners while Linked selection is on, and acts on the selected layers under the playhead, else the topmost video or image. A clip starting at the playhead is zoomed whole. `punchZoomAnimated` is reserved (false) until Batch 35. (Batch 27)
 
 ## Follow-ups
 Small things discovered during a batch that belong to a later batch. Format: `- [from Batch NN -> Batch MM] description`.
@@ -311,7 +316,7 @@ Small things discovered during a batch that belong to a later batch. Format: `- 
 - [from Batch 13 -> Batch 46] The trim tooltip covers the header column when the pointer is left of the track area (an in point pulled to frame 0). The trim preview clears the clip band of the rows it redraws, so the content-end line is hidden there during the drag.
 - [from Batch 14 -> Batch 15] The Razor tool (C) is not registered and its body press does nothing (`TODO(batch 15)` in `TimelineView` `bodyDrag` / `pressEdgeHit` and `timelineController`). (done in Batch 15: `tool.razor`, `TimelineView.pressRazor`, the cut line on the overlay)
 - [from Batch 14 -> Batch 18] The Hand tool (H) is not registered (`TODO(batch 18)`); `Mod+Shift+.` centers the view since Batch 14 (`TimelineView.centerPlayhead`), the toolbar's Center playhead button does not exist yet (`TODO(batch 18)` in `toolbarGroups.ts`). (done in Batch 18: Hand tool, Center playhead button)
-- [from Batch 14 -> Batch 27] Speed changes from the properties panel (duration link, "media shorter than the requested duration after speed change: clamp, warn", §6.19) reuse `MIN_SPEED`/`MAX_SPEED` and the stretch math (`speed * oldDuration / newDuration`) in `timeline/edit/trim.ts`.
+- [from Batch 14 -> Batch 27] Speed changes from the properties panel (duration link, "media shorter than the requested duration after speed change: clamp, warn", §6.19) reuse `MIN_SPEED`/`MAX_SPEED` and the stretch math (`speed * oldDuration / newDuration`) in `timeline/edit/trim.ts`. (done in Batch 27: `timeline/edit/speed.ts` reuses `MIN_SPEED` / `MAX_SPEED`, `maxDurationFrames`, `planStretch` and the ripple trim plan; media short of an unlinked speed is clamped with a toast)
 - [from Batch 14 -> Batch 35] Rate stretches scale keyframe frames proportionally and round them (`TODO(batch 35)` in `stretchedClip`): two keys can land on one frame when a clip is sped up; keyframe-aware stretching (eases, holds, merging) belongs to the keyframe batch.
 - [from Batch 14 -> Batch 36] Reuse `previewSplit` (`TrimProposal.previewSplit`, `PreviewView` override, `LayerTextures.resolveSplit`, `Renderer.drawPanes`) for the transition alignment previews; the selected edit point (`SessionStore.editPoint`) is where `Mod+Shift+D` (default transition) applies.
 - [from Batch 14 -> Batch 46] The edit tooltip can cover the label of the clip right of the cut during a roll (it sits up and right of the pointer); the roll, slip, slide and stretch cursors are SVG data URLs like the trim brackets (check them on macOS and on high-DPI screens).
@@ -380,7 +385,7 @@ Small things discovered during a batch that belong to a later batch. Format: `- 
 - [from Batch 24 -> Batch 44] P14's 20-minute 4K60 source on proxy: a proxy takes about its own duration for 4K60 HEVC here (10 s in 10.4 s), so a 20-minute source needs ~20 minutes in the background before its scrubbing is light; measure it and the 4K full-frame latency after a pause (up to 414 ms deep in 1 s GOPs).
 - [from Batch 24 -> Batch 46] Review on a real screen: the PX chip (tertiary while pending with its percentage and the 2 px gold bar, green when ready, red when failed), the list's Proxy column, the proxy settings rows in the Project section, and the Auto switch from the proxy frame to the full one after a scrub.
 - [from Batch 25 -> Batch 26] The Crop section and the crop gizmo mode: `sectionIds` in `panels/properties/context.ts`, crop fields as `layerProps.ts` properties with a crop `LayerChange` and a `liveEdit` crop map read by the compositor; the Fill quick action exists (`transform.fill`). (done in Batch 26: `CropSection`, `cropProp`, `liveEdit.crops`)
-- [from Batch 25 -> Batch 27] The Speed section and the speed chips, Freeze frame and Punch zoom chips (`panels/properties/QuickActions.tsx` planned entries).
+- [from Batch 25 -> Batch 27] The Speed section and the speed chips, Freeze frame and Punch zoom chips (`panels/properties/QuickActions.tsx` planned entries). (done in Batch 27: `SpeedSection`, live quick-row chips)
 - [from Batch 25 -> Batch 35] The stopwatch toggle and keyframe navigator in the section header (`TODO(batch 35)` in `panels/properties/Section.tsx`); with it on, the bindings write the keyframe at the playhead (`setTransforms` / `setOpacities` TODOs) and the fields re-read at playhead changes through a narrow subscription (P1).
 - [from Batch 25 -> Batch 39] Duplicate of several clips with their links and groups (`timeline/edit/duplicate.ts`), the canvas menu's Duplicate (+20 px).
 - [from Batch 25 -> Batch 42] The Scale layout / Keep dialog and the fps conversion behind `changeResolution` / `changeFrameRate` (`app/propertiesController.ts`); the disabled Project rows (Still duration, Transition, Cache / Clear cache).
@@ -388,6 +393,13 @@ Small things discovered during a batch that belong to a later batch. Format: `- 
 - [from Batch 26 -> Batch 29] A double-click on a text layer edits it inline (`TODO(batch 29)` in `CanvasEditInput.onDoubleClick`; video and image layers enter crop mode there).
 - [from Batch 26 -> Batch 39] Paste attributes' crop item: `setCrops` in `timeline/edit/crop.ts`.
 - [from Batch 26 -> Batch 46] Review on a real screen: the crop brackets and bars (16 px, 2 px stroke with its dark outline), the dashed media box, the crop chip over the frame's top edge, the Crop section rows (Units chips, the lone aspect lock), the header toggle; consider dragging the media inside a fixed crop window as crop mode's body drag.
+- [from Batch 27 -> Batch 35] Keyframe-aware speed changes (`speed.ts` scales the keys like the rate stretch, `TODO(batch 35)`); the animated punch zoom behind `punchZoomAnimated` (scale keyframes; `TODO(batch 35)` in `timeline/edit/freeze.ts`, `app/speedController.ts`, `project/appSettings.ts`).
+- [from Batch 27 -> Batch 36] Speed changes shorten transitions to the handles left (`TODO(batch 36)` in `speed.ts`).
+- [from Batch 27 -> Batch 39] Paste attributes' speed item: `setSpeeds` in `timeline/edit/speed.ts`.
+- [from Batch 27 -> Batch 42] Settings panel rows for the punch zoom scale (`punchZoomScale`) and the freeze length (`FREEZE_SECONDS`).
+- [from Batch 27 -> Batch 43] Export renders freeze frames as one-frame requests (the compositor's `sourceTimeUs` holds `in`) and clip speeds through the audio scheduling code (`playbackRate`; speed-0 clips are never scheduled).
+- [from Batch 27 -> Batch 46] Review on a real screen: the Speed section (Gauge label, link button, Ripple switch, freeze hint), the snowflake badge; icon overlap: the toolbar's Punch zoom uses `Focus` (the quick row's Center in frame) and the quick row's Punch zoom `ZoomIn` (the toolbar's Zoom in).
+- [from Batch 27 -> Batch 47] A frame request in flight when a project closes logs `[preview] cannot show media <id>: No project is open` (`LayerTextures.fail`). It appears when the Batch 26 and 27 scripts switch OPFS projects; treat it as an abort.
 
 ## Dependencies
 Why each dependency exists (Batch rule 8).
@@ -2704,3 +2716,125 @@ Why each dependency exists (Batch rule 8).
 - review request: docs/PROGRESS.md src/app/canvasController.ts src/app/liveEdit.ts src/app/previewController.ts src/app/propertiesController.ts src/core/theme/theme.ts src/panels/CropChip.module.css src/panels/CropChip.tsx src/panels/PreviewPanel.tsx src/panels/PropertiesPanel.tsx src/panels/properties/CropSection.tsx src/panels/properties/Section.module.css src/panels/properties/Section.tsx src/panels/properties/bindings.test.ts src/panels/properties/bindings.ts src/panels/properties/context.test.ts src/panels/properties/context.ts src/panels/properties/layerProps.ts src/render/compositor/Compositor.test.ts src/render/compositor/Compositor.ts src/render/preview/CanvasEditInput.crop.test.ts src/render/preview/CanvasEditInput.ts src/render/preview/PreviewOverlayView.ts src/render/preview/PreviewView.ts src/render/preview/canvasLayers.test.ts src/render/preview/canvasLayers.ts src/render/preview/cropGizmo.test.ts src/render/preview/cropGizmo.ts src/render/preview/gizmo.ts src/styles/tokens.css src/timeline/edit/crop.test.ts src/timeline/edit/crop.ts src/timeline/edit/transform.ts
 - review: accepted (2026-10-16; `npm run check` green: 1277 unit tests in 129 files + 3 perf tests, build 710.00 kB JS / 228.82 kB gzip, 58.02 kB CSS; the >500 kB chunk warning is the logged Batch 45 follow-up). Acceptance 1 is covered by `crop.test.ts` "reframes landscape footage in two clicks": Crop to frame, then Fill, puts the visible quad exactly on the frame's corners. `cropToFrame` (`src/timeline/edit/crop.ts:152`) inverts `layerPoint` correctly, and the cut stays inside the turned frame and the media (`c·w + s·h ≤ W`, `s·w + c·h ≤ H`, then clipped to the content and re-centered). Also covered by `acc.mjs` and manual check 1. Acceptance 2 is covered by `CanvasEditInput.crop.test.ts`: the west handle drag writes `liveEdit.crops` while the document stays unchanged, the release commits one `clip.crop` "Crop layer" step, one undo restores it, and Esc drops the drag with no commit. `bindings.test.ts` shows the Crop fields reading the live crops, and the canvas drag writes the same store. Also covered by `acc.mjs` (0 React commits during the drag, the field equal to the live crop on every frame) and manual check 2. Acceptance 3 is covered by `Compositor.test.ts` "samples cropped, turned and flipped media like a reference image": every metadata rotation × flip H/V × a 0/90 clip turn. The test's sampling model matches the shader (`out.uv = mix(uv.xy, uv.zw, t)`, `src/render/gpu/shaders.ts:47`; media layers carry their flips in the matrix, not in `flipX`). Also covered by `acc.mjs` and manual check 3. The batch has no `Do not build yet` list, and nothing from later batches was built: text double-click stays `TODO(batch 29)`, Paste attributes is a Batch 39 follow-up, and dragging the media inside the crop window is a Batch 46 follow-up. No color, font or size literals: the new CSS uses tokens only (`1px` hairline borders as everywhere), and the overlay reads `--crop-handle-length` / `--crop-handle-width`, `accentDim`, `textPrimary` and `bgSunken` through the Theme bridge. The `px` strings in the diff are token stubs in the test file. §3/§4: crop mode is session-level state (`cropMode` store), and the drag is ephemeral with one command on release (P2). The CropChip and the header toggle render only when crop mode starts or ends, and the fields update outside React (P1). The overlay draws through the scheduler and its scene comparison now includes crop mode (P3). No time or media work changed (P4, P5). Every TODO in the diff is tagged, and no `TODO(batch ≤26)` is left in `src`. There were no earlier rejections. Non-blocking notes: while the crop target is off the playhead or on a hidden track, crop mode stays on (the chip shows, with no handles), and it ends at the next selection change. `cropProp.write` falls back to a no-crop change for media without a size, which `setCrops` then skips.
 - docs: cropping-and-reframing.md (new: how cropping works (the visible part stays in place, video and image clips only, the whole clip, split halves and copies keep it, media px or % of the media, at least 1 px left, the visible part is the layer for the box, clicks and Fit/Fill/Center, Export frame, one undo step); reframing a landscape video in two clicks with the 1920x1080-in-1080x1920 numbers (656 px / 34.2%, 607.5 x 1080 slice, Fill 177.8%) and keeping another part with Fill, Shift drag and Crop to frame; Crop to frame per case (covers the frame, fitted, turned, outside) with the tooltip, selected clips off the playhead, locked skipped, no-op; the Crop section rows (L/R, T/B, Units with tooltips, Aspect, Crop to frame, Reset, header button), field rules (whole px, one decimal %, max 100, 1 px stop, Change crop, coalesced arrows, fields follow handle drags, several clips with px vs %, units kept until reload); crop mode with the double-click and the header button and its tooltips, what you see (brackets, bars, dashed outline, the Crop chip with Reset crop and Done), the drag table (bar, bracket, Shift, Alt), the readout, body drags move, no rotate zones or Alt marker and distances, bars hidden under 28 px, playback pause, handles only under the playhead, when crop mode ends, one picture at a time with the dimmed tooltip, locked tracks, the Esc order, not saved; the Aspect lock with its tooltips; snapping crop edges to the frame edges, center lines and thirds within 6 px (S, upright only, no layers or safe areas, Smart guides irrelevant); removing a crop (Reset, the chip, 0, Reset transform keeps it); turned, mirrored and phone videos; undo names and cancel; not available: keyframes, copying a crop), editing-properties.md (summary, In this page, panel table, one-decimal note with whole crop px, coalescing, live drags and several clips include Crop, Fit/Fill/Center on the visible part and Reset transform keeps the crop, new Crop a picture section, undo table row, crop removed from not available, overview video step 2), arranging-layers-in-the-preview.md (summary, double-click row, cropped click rule, crop handles note in Resize, no rotation in crop mode, Reset transform and Fit/Fill/Center notes in the layer menu, Esc cancels a crop, Crop layer undo row, crop removed from not available), snapping-and-smart-guides.md (crop edges note, Crop fields don't snap), preview-and-playback.md (nothing is cut off, Crop to frame + Fill pointer, cropping performance bullet), preview-zoom-overlays-fullscreen.md (Esc leaves crop mode before fullscreen), projects-and-saving.md (undo table rows for cropping, crop mode, units and Aspect lock not undoable, crop mode not restored), workspace.md (Crop section, double-click and the Crop chip), timeline.md (Crop in the clip sections), keyboard-shortcuts.md (Leave crop mode row and Esc order, preview mouse rows for crop mode, Shift/Alt/S, cancel row, Crop coalescing, video step 26), troubleshooting.md (summary, video steps 29-30, cropped-away clicks, crop edge snapping in two entries, Esc in fullscreen, new entries White brackets replace the handles of a picture, Crop to frame does nothing or keeps less than expected, Changing one crop side changes the others, The crop button in the Crop section is dimmed, A picture is still cropped after Reset transform; Crop in There is no Transform section; limitations updated), README.md (new page in Start here and All pages, summary, What you can do, troubleshooting row), whats-new.md (Batch 26 entry and video) in docs/user-guide/ (2026-10-16)
+
+### Batch 27: Speed, duration, freeze frame, punch zoom
+- status: done
+- date: 2026-10-16
+- notes:
+  - Engine (unit tested):
+    - `core/document/types.ts`: `isFreeze(clip)`, a video clip with `speed = 0`. `validate.ts` allows speed 0 only on video clips and skips the duration x speed invariant for them (`out > in`, `out <= media` still hold).
+    - New `timeline/edit/speed.ts` (`speed.test.ts`, 10 tests):
+      - `setSpeeds(project, ids, speed | (clip) => speed, { link, ripple, linked })` is one `clip.speed` command ("Change speed").
+      - The speed stays exactly as asked, clamped to 0.25x..4x. Linked (the default), `in`/`out` stay and the duration follows, rounded to whole frames; keyframes scale with the duration and fades are clamped. Unlinked, the duration stays and `out` follows from `in`. When the media runs out first, the clip is shortened and the result reports `mediaEnd` (§6.19 "clamp, warn").
+      - A clip and its partners (with Linked selection, or when both are selected) change together, once. Groups are processed latest end first.
+      - Ripple reuses the ripple trim's out-point plan (`planTrim(..., { ripple: true })`): what follows each member on its track, and what follows the clip's end on every other unlocked track. A shift to the left stops where a track would overlap (a gap stays, `ripple`). Without ripple, a slower clip stops at the next clip: the speed stays and the out point comes in (`neighbor`).
+      - `setSpeedDurations(...)` ("Change duration") serves the Speed section's duration. Linked, it is a rate stretch of the out point; `planStretch` takes a `ripple` option (the Rate stretch tool still never ripples). Unlinked, and for freeze frames, it is a trim of the out point. Both ripple with the option.
+      - Helpers: `clampSpeed`, `hasSpeed`.
+    - New `timeline/edit/freeze.ts` (`freeze.test.ts`, 7 tests):
+      - `freezeFrame(project, frame, selection, newId)` (`clip.freezeFrame`, "Freeze frame"):
+        - Targets the selected video clips under the playhead, else the topmost enabled video under it on a targeted, unlocked, visible track.
+        - Splits each target there together with its linked partners (always, so the sound stays in sync).
+        - Inserts a `FREEZE_SECONDS` (2 s) clip between the halves: speed 0, `in` = the source time shown at the playhead, `out` = one project frame later. The freeze keeps the clip's look (name, label color, transform, crop, opacity) and drops the time-based parts (fades, keyframes, transitions, link, group).
+        - Ripple: every clip from the playhead on, on every unlocked track, shifts right by 2 s. A clip spanning the playhead without being split (a music bed) stays where it is.
+        - When the playhead is at a clip's start, nothing is split and the freeze goes before the clip.
+        - A miss returns "none" or "notUnderPlayhead" (selected, but not under the playhead).
+      - `punchZoom(project, frame, selection, factor, newId, { linked })` (`clip.punchZoom`, "Punch zoom"):
+        - Targets the selected layers under the playhead, else the topmost video or image.
+        - Splits them there (linked partners with them while Linked selection is on, as Split at playhead) and multiplies the right pieces' `scale` (and `scaleY`) by the factor around their anchor.
+        - A clip that starts at the playhead is zoomed whole.
+    - Freeze frames elsewhere:
+      - `trim.ts` `hasSource` is false for them, so they have no media bounds; slip skips them; Rate stretch trims their edge; an in-point trim keeps `in`/`out`. Also exported here: `scaleKeyframes`, `editCommand`.
+      - `move.ts` `sliceClip`: both pieces of a split freeze keep `in`/`out`.
+      - `queries.ts` `linkOffset`: a freeze is in sync when it starts with its partner.
+      - `clipProps.ts` `hasSourceRange`: no Source in/out rows for a freeze.
+      - `AudioScheduler` never schedules a speed-0 clip.
+      - The timeline's stretch tooltip shows 1x for clips without speed.
+    - `PlaybackEngine`: no change needed. A freeze's source time is constant, so its prefetch window is one frame. The new test (`PlaybackEngine.test.ts`, +1) plays 80 frames through a freeze: one window `[2 s, 2 s]`, no drops.
+    - `project/appSettings.ts` (+1 test in `recentProjects.test.ts`): `punchZoomScale` (1.2, kept in 1.05..3) and the reserved `punchZoomAnimated` (false, `TODO(batch 35)`).
+  - UI:
+    - New `app/speedController.ts`:
+      - Registers `edit.freezeFrame` (Shift+F), `edit.punchZoom` (Shift+Z), `clip.speed.50/100/150/200` (the quick row's chips) and `clip.speedPanel` ("Speed...").
+      - Holds the Speed section's options store `speedOptions` (link on, ripple on; per session) and `speedFocus`.
+      - Speed-limit toasts: "Shortened to the media end", "Shortened at the next clip", "Ripple stopped by V2". The duration's limits use the trim toasts.
+      - One-click misses get toasts: "No video under the playhead", "No picture under the playhead", "The playhead is not over the selected clip".
+      - New freezes and zoomed pieces are selected.
+      - Installed in `main.tsx`.
+    - New `panels/properties/SpeedSection.tsx`:
+      - Speed % field (25..400, one decimal, lucide `Gauge` scrub label) with the duration link button (Link2 / Unlink2, pressed gold).
+      - A "Freeze frame: one picture held" hint for freezes, whose speed field is disabled at 0.0.
+      - Duration as a timecode (the Clip section's field), the Ripple switch, and a Freeze frame button.
+      - The "Speed..." focus request is handled.
+    - New `speedBinding.ts` (`speedBinding.test.ts`, 3 tests):
+      - The field reads the shared speed % (freezes read 0; `--` when mixed). A typed value sets every clip.
+      - Arrow steps add to each clip's own speed and coalesce (`properties.speed`).
+      - A label scrub only moves the number; its release applies once.
+    - `context.ts` (+speedIds): Speed shows after Opacity for video and audio clips (an audio clip alone: Clip, Speed). `PropertiesPanel.tsx` gets the section, and `Section.module.css` gets `.withAction`.
+    - `QuickActions.tsx`: Freeze frame (needs a video), Punch zoom (a layer) and the 0.5x / 1x / 1.5x / 2x chips (a video or audio clip with a speed) are live. Their state follows the selection only, never the playhead (P1).
+    - Timeline:
+      - The toolbar's Freeze frame and Punch zoom are enabled.
+      - The clip menu gets "Speed..." (video and audio) and "Freeze frame at playhead" (a video under the playhead) after the label row; Reverse has no row.
+      - `planned.ts` loses both keys.
+      - A freeze frame's label bar shows a lucide `snowflake` icon badge in place of the speed chip (`glyphs.ts`, `drawContent.ts`).
+  - Measured:
+    - `npm run check` green: 1299 unit tests in 132 files (+22 tests, +3 files) and 3 perf tests. Build 721.13 kB JS (232.49 kB gzip; was 710.00 / 228.82, see the Batch 45 size follow-up), 58.14 kB CSS; workers unchanged.
+    - Browser: headless Chrome 155 over CDP on the dev server, 1600 x 900 at dpr 1. Scripts in `%TEMP%/b27/`: `acc.mjs` (33/34; the one failure is a pre-existing project-switch warning, see follow-ups), `shot.mjs`, `page.js` (`__b27`), `setup.mjs`. Test media: a 10 s 360x640 H.264 clip with stripe-coded frames and a 440 Hz AAC tone, imported as a linked video/audio pair. Projects `b27-a`, `b27-b`, `b27-c`, `b27-shot`.
+      - Acceptance 1 (project `b27-a`, A at 0-300 and B at 300-600 on V1/A1):
+        - A real click on the quick row's 2x chip gave A and its sound 150 frames at exactly 2x, with `in`/`out` kept (0 / 10 000 000 µs). B and its sound rippled to 150. One step, "Change speed"; the field read 200.0 and the duration 00:05:00.
+        - The bus frequency was 437 Hz at 1x and 875 Hz at 2x; the voice's playbackRate was 2.
+        - Undo restored the clip.
+        - With Ripple off, 2x left B at 300. Typing 50% then stopped A at B: 300 frames at 0.5x, with the "Shortened at the next clip" toast.
+        - With Ripple on, 50% gave A 600 frames and pushed B and b to 600.
+        - Duration 00:04:00 (linked) gave 120 frames at 2.5x, with B at 120. Unlinked, 200% kept 120 frames at 2x.
+        - The timeline drew the `2x` badge.
+      - Menu and buttons:
+        - The clip menu lists "Speed..." and "Freeze frame at playhead" with no Reverse row. "Speed..." expanded the collapsed section and focused the speed field.
+        - The toolbar and quick row Freeze frame / Punch zoom buttons are enabled, with Shift+F / Shift+Z in their tooltips.
+      - Acceptance 2 (project `b27-b`, clip selected, playhead 100, a real Shift+F):
+        - V1 read A 0+100, a freeze 100+60 (speed 0, frame 100), A 160+200 (in 100). A1 read 0+100 and 160+200.
+        - The freeze was selected (the speed field disabled at 0.0, duration 00:02:00), and the step was "Freeze frame".
+        - Played from 70 for 4.2 s: every rendered playhead from 70 to 191 showed the expected source frame (frame 100 from 100 to 159, then playhead - 60), with 0 dropped frames.
+        - The bus peak was 0 over playheads 106-154 (98 samples) and at least 0.2 over 76-95 and 168-185.
+        - 0 React commits while playing.
+      - Acceptance 3 (project `b27-c`, playhead 150, a real Shift+Z):
+        - V1 read A 0+150 at scale 3 and A 150+150 at scale 3.6; the audio was split too.
+        - Preview readback (the stripe band at x 45): 240 px at 149 and 95 px at 150, so the cut is visible.
+        - "Punch zoom" was one step. Ctrl+Z gave one clip at 3x again, with the 240 px band at 150.
+      - Screenshots: `speed-section.png` (A at 2x selected: the Speed section, 2x badges), `speed-freeze.png` (a freeze selected: the disabled field and hint, the snowflake badge).
+    - Regression:
+      - Batch 26: `acc.mjs` 8/8, `extra.mjs` 12/12.
+      - Batch 25: `extra.mjs` 12/12. `acc.mjs` gave 9/10 on its first run (one 50 ms frame in the A1 scrub, 0 commits), then 10/10 twice (max 17.6 / 18.3 ms).
+- deviations:
+  - Speed (§11, §14):
+    - The speed is kept exactly as asked. Linked, the duration rounds; it is never derived back from a rounded duration.
+    - Without ripple, a slower clip stops at the next clip and its out point comes in (Premiere's behavior), with a toast; a faster clip leaves a gap.
+    - Ripple moves what follows as a ripple trim of the out point does. A shift to the left stops at the first overlap, and a gap stays.
+    - The Speed section's options are per session (not persisted): duration link on, Ripple on by default, so a speed-up closes up on a short's timeline.
+    - The Build's "ripple checkbox" is the DS switch.
+  - Speed field scrubs show the value in the field and apply once on release. There is no live retiming of the timeline or the preview during the scrub (P1/P2); the Rate stretch tool is the live way.
+  - The Speed section's Duration is a rate stretch of the out point when linked, and a trim of the out point when unlinked or for a freeze. Both ripple with the option. The Clip section's Duration stays a regular trim.
+  - Freeze frame (Build "media clip with speed = 0"):
+    - `out` is one project frame after `in`. Linked partners are always split, so the sound stays in sync even with Linked selection off.
+    - The ripple covers every unlocked track from the playhead on.
+    - The target is the selected video under the playhead, else the topmost targeted visible video. Selected clips that are not under the playhead get a toast instead of another clip being frozen.
+    - Freeze frames trim like images (no media bounds), never slip, and stretch as a trim. A split gives two holds of the same frame.
+  - Punch zoom:
+    - The factor is the app setting `punchZoomScale` (1.2; 1.05..3), applied to `scale` and `scaleY` around the anchor.
+    - Linked partners are split while Linked selection is on (as Split at playhead).
+    - The target is the selected layers under the playhead, else the topmost video or image. A clip starting at the playhead is zoomed whole.
+    - `punchZoomAnimated` is a reserved app setting (false, read by nothing).
+  - "Speed..." in the clip menu opens the Speed section with its speed field focused (no dialog).
+- follow-ups:
+  - [from Batch 14 -> Batch 27] done (speed.ts reuses `MIN_SPEED` / `MAX_SPEED`, `maxDurationFrames`, `planStretch` and the ripple trim plan); [from Batch 25 -> Batch 27] done
+  - [from Batch 27 -> Batch 35] Keyframe-aware speed changes (`speed.ts` scales the keys like the rate stretch, `TODO(batch 35)`); the animated punch zoom behind `punchZoomAnimated` (scale keyframes; `TODO(batch 35)` in `timeline/edit/freeze.ts`, `app/speedController.ts`, `project/appSettings.ts`).
+  - [from Batch 27 -> Batch 36] Speed changes shorten transitions to the handles left (`TODO(batch 36)` in `speed.ts`).
+  - [from Batch 27 -> Batch 39] Paste attributes' speed item: `setSpeeds` in `timeline/edit/speed.ts`.
+  - [from Batch 27 -> Batch 42] Settings panel rows for the punch zoom scale (`punchZoomScale`) and the freeze length (`FREEZE_SECONDS`).
+  - [from Batch 27 -> Batch 43] Export renders freeze frames as one-frame requests (the compositor's `sourceTimeUs` holds `in`) and clip speeds through the audio scheduling code (`playbackRate`; speed-0 clips are never scheduled).
+  - [from Batch 27 -> Batch 46] Review on a real screen: the Speed section (Gauge label, link button, Ripple switch, freeze hint), the snowflake badge; icon overlap: the toolbar's Punch zoom uses `Focus` (the quick row's Center in frame) and the quick row's Punch zoom `ZoomIn` (the toolbar's Zoom in).
+  - [from Batch 27 -> Batch 47] A frame request in flight when a project closes logs `[preview] cannot show media <id>: No project is open` (`LayerTextures.fail`). It appears when the Batch 26 and 27 scripts switch OPFS projects; treat it as an abort.
+- design gaps: the Speed section rows, the freeze frame badge (details in Design system gaps)
+- pending manual checks:
+  1. Speed (acceptance 1): import a 10 s video with sound, put it on the timeline with another clip right after it, select it, and click 2x in the quick row. Expected: the clip and its sound get half as long, both show `2x`, the next clip moves up against it, and playback sounds an octave higher. Ctrl+Z restores. Switch Ripple off in Edit Properties > Speed and click 2x again: a gap stays. Type 50 into Speed: the clip stops at the next one, with a toast.
+  2. Freeze frame (acceptance 2): put the playhead on a frame inside a video clip and press Shift+F. Expected: a 2 s clip with a snowflake appears at the playhead, and everything after it moves 2 s later. Play over it: the picture holds that frame for 2 s with no sound, then continues from the same frame with its sound. In Edit Properties > Speed, type a longer Duration: the hold gets longer.
+  3. Punch zoom (acceptance 3): put the playhead on a frame inside a clip and press Shift+Z. Expected: the clip is cut there, and the picture after the cut is 20% closer. Ctrl+Z restores one clip.
+  4. Right-click a clip and choose "Speed...". Expected: the Speed section opens with its speed field ready for typing. Check "Freeze frame at playhead" in the same menu, and the Freeze frame / Punch zoom buttons in the timeline toolbar.

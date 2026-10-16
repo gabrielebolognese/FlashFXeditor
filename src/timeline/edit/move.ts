@@ -12,7 +12,7 @@ import { defaultTrackIndex } from "../../core/commands/basicCommands.js";
 import type { Affect, Command } from "../../core/commands/command.js";
 import { emptyTrack, nextTrackName } from "../../core/document/project.js";
 import { framesToSourceUs } from "../../core/document/time.js";
-import { isMediaClip, type Clip, type ClipId, type Frame, type Keyframes, type Project, type Rational, type Track, type TrackId } from "../../core/document/types.js";
+import { isFreeze, isMediaClip, type Clip, type ClipId, type Frame, type Keyframes, type Project, type Rational, type Track, type TrackId } from "../../core/document/types.js";
 import { clipsOverlapping, firstEndingAfter, laneOf, laneTracks, trackIndex, type LaneKind, type TrackIndex } from "../model/queries.js";
 
 export type MoveMode = "overwrite" | "insert";
@@ -159,7 +159,8 @@ export function sliceClip(clip: Clip, from: Frame, to: Frame, fps: Rational): Cl
   const newIn = from > clip.start;
   const newOut = to < end;
   const piece = { ...clip, start: from, duration: to - from } as Clip & Record<string, unknown>;
-  if (isMediaClip(clip)) {
+  // A freeze frame's pieces hold the same source time (Batch 27).
+  if (isMediaClip(clip) && !isFreeze(clip)) {
     const media = piece as Clip & { in: number; out: number };
     if (newIn) media.in = clip.in + framesToSourceUs(from - clip.start, clip.speed, fps);
     if (newOut) media.out = Math.min(clip.out, clip.in + framesToSourceUs(to - clip.start, clip.speed, fps));

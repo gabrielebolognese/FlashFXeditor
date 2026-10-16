@@ -22,7 +22,7 @@
 import type { Draft } from "immer";
 import type { Command } from "../../core/commands/command.js";
 import { framesToSourceUs, usPerFrame } from "../../core/document/time.js";
-import { isMediaClip, type Clip, type ClipId, type Frame, type Keyframes, type MediaClip, type Project, type Rational, type TrackId } from "../../core/document/types.js";
+import { isFreeze, isMediaClip, type Clip, type ClipId, type Frame, type Keyframes, type MediaClip, type Project, type Rational, type TrackId } from "../../core/document/types.js";
 import { clipInIndex, isClipLocked, lastClipStartingBy, linkedPartners, trackIndex } from "../model/queries.js";
 
 export type TrimEdge = "in" | "out";
@@ -122,9 +122,12 @@ export function edgeFrame(clip: Clip, edge: TrimEdge): Frame {
   return edge === "in" ? clip.start : clip.start + clip.duration;
 }
 
-/** Video and audio clips play a source that moves under them: media bounds, slips, speed, keyframes follow it. */
+/**
+ * Video and audio clips play a source that moves under them: media bounds, slips, speed, keyframes
+ * follow it. A freeze frame holds one source time (Batch 27): its edges trim like an image's.
+ */
 export function hasSource(clip: Clip): clip is MediaClip {
-  return clip.kind === "video" || clip.kind === "audio";
+  return (clip.kind === "video" || clip.kind === "audio") && !isFreeze(clip);
 }
 
 /** Frames of source before `in`: the most an in point can extend (largest k with in - k frames >= 0). */
@@ -374,9 +377,10 @@ export function planSlide(project: Project, clipId: ClipId, options: { linked?: 
 /**
  * A rate stretch of `edge` (spec §6.10): the edge moves like a trim and the clip's speed changes so the
  * same `in`/`out` range fills the new duration (0.25x..4x); its partners stretch with it. Images, text,
- * solids and captions have no speed: their edge trims.
+ * solids, captions and freeze frames have no speed: their edge trims. The Rate stretch tool never
+ * ripples; the Speed section's duration (Batch 27) does with its Ripple option.
  */
-export function planStretch(project: Project, clipId: ClipId, edge: TrimEdge, options: { linked?: boolean } = {}): TrimPlan {
+export function planStretch(project: Project, clipId: ClipId, edge: TrimEdge, options: { linked?: boolean; ripple?: boolean } = {}): TrimPlan {
   const moves = new Map<ClipId, ClipMove>();
   const stretch = (id: ClipId) => {
     const clip = project.clips[id];
@@ -384,7 +388,7 @@ export function planStretch(project: Project, clipId: ClipId, edge: TrimEdge, op
   };
   stretch(clipId);
   if (options.linked !== false) for (const id of [...moves.keys()]) for (const partner of linkedPartners(project, id)) stretch(partner);
-  return buildPlan(project, "stretch", clipId, edge, moves, false);
+  return buildPlan(project, "stretch", clipId, edge, moves, options.ripple ?? false);
 }
 
 /** An edit as a gesture describes it (and the controller replays it on the current document). */
@@ -422,8 +426,8 @@ function shiftKeyframes(keyframes: Keyframes, frames: number): Keyframes {
   return result;
 }
 
-/** Keyframe frames scaled by `ratio` (a rate stretch: proportional only, spec Batch 14). */
-function scaleKeyframes(keyframes: Keyframes, ratio: number): Keyframes {
+/** Keyframe frames scaled by `ratio` (a rate stretch or a speed change: proportional only, spec Batch 14). */
+export function scaleKeyframes(keyframes: Keyframes, ratio: number): Keyframes {
   const result: Keyframes = {};
   for (const [prop, list] of Object.entries(keyframes)) result[prop] = list.map((key) => ({ ...key, frame: Math.round(key.frame * ratio) }));
   return result;
@@ -450,6 +454,8 @@ function trimmedClip(clip: Clip, edge: TrimEdge, delta: number, ripple: boolean,
       // A still holds its picture: its source range is just the duration (no media bounds).
       // TODO(batch 34): animated images (loop or hold).
       media.out = clip.in + framesToSourceUs(media.duration, clip.speed, fps);
+    } else if (isFreeze(clip)) {
+      // A freeze frame holds its source time for any duration: `in` and `out` stay.
     } else if (edge === "in") {
       media.in = clip.in + framesToSourceUs(delta, clip.speed, fps);
       // Keyframes follow the source (spec §6.10, "keyframes follow source" on for media clips):
@@ -556,7 +562,7 @@ export function resolveTrim(plan: TrimPlan, deltaFrames: number, options: { labe
 }
 
 /** Edits never reorder a track (shifts keep the order, limits keep every gap >= 0): only clips change. */
-function editCommand(id: string, label: string, changes: ReadonlyMap<ClipId, Clip>): Command {
+export function editCommand(id: string, label: string, changes: ReadonlyMap<ClipId, Clip>): Command {
   const entries = [...changes];
   return {
     id,

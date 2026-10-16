@@ -1,7 +1,7 @@
 // Document invariants (spec §5.2). The DocumentStore runs `assertValid` after every command in dev
 // builds; messages name the track and clip so a broken command is found at once.
 import { usPerFrame } from "./time.js";
-import { isMediaClip, LABEL_COLORS, type Clip, type ClipId, type ClipKind, type MediaItem, type Project, type Track, type TrackId, type TrackKind } from "./types.js";
+import { isFreeze, isMediaClip, LABEL_COLORS, type Clip, type ClipId, type ClipKind, type MediaItem, type Project, type Track, type TrackId, type TrackKind } from "./types.js";
 
 export class DocumentInvariantError extends Error {
   readonly issues: readonly string[];
@@ -69,8 +69,10 @@ function clipIssues(project: Project, clip: Clip): string[] {
   // Image clips hold their picture for any length (a still has durationUs 0), so `out` is not bound
   // by the media. TODO(batch 34): animated images (loop or hold past their own duration).
   else if (clip.kind !== "image" && clip.out > media.durationUs) issues.push(`${label}: out ${clip.out} > media duration ${media.durationUs}`);
-  if (!(clip.speed > 0)) {
-    issues.push(`${label}: speed ${clip.speed} must be > 0`);
+  if (isFreeze(clip)) {
+    // A freeze frame holds `in` for any duration (Batch 27): no duration * speed invariant.
+  } else if (!(clip.speed > 0)) {
+    issues.push(`${label}: speed ${clip.speed} must be > 0 (0 only for a video freeze frame)`);
   } else {
     const sourceFrameUs = usPerFrame(project.settings.fps) * clip.speed;
     const expected = clip.duration * sourceFrameUs;

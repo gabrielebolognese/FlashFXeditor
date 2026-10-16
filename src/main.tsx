@@ -15,6 +15,7 @@ import { installPreviewController, startGpu } from "./app/previewController.js";
 import { installProjectController } from "./app/projectController.js";
 import { installPropertiesController } from "./app/propertiesController.js";
 import { startServices } from "./app/services.js";
+import { installSpeedController } from "./app/speedController.js";
 import { installTimelineController } from "./app/timelineController.js";
 import { installTrackController } from "./app/trackController.js";
 import { UnsupportedScreen } from "./app/UnsupportedScreen.js";
@@ -42,6 +43,7 @@ async function start(): Promise<void> {
   installCutController();
   installCanvasController();
   installPropertiesController();
+  installSpeedController();
   installMarkerController();
   installTrackController();
   installPlaybackController();

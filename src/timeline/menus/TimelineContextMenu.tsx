@@ -13,8 +13,8 @@ import { labelSwatches } from "./labelSwatches.js";
 // The timeline's right-click menus (spec §6.16): clip, gap, track header and ruler/marker. Rows
 // dispatch command ids (the same as the keys and the toolbar); the label swatches set the selected
 // clips' label color. Rendered only while a menu is open (a right-click is not a P1 interaction).
-// TODO(batch 27): Speed and Freeze frame rows; TODO(batch 36): fades and transitions; TODO(batch 39):
-// Duplicate; TODO(batch 41): Reveal in media panel.
+// "Speed..." opens the Speed section on its field; Reverse is not built, so it has no row (Batch 27).
+// TODO(batch 36): fades and transitions; TODO(batch 39): Duplicate; TODO(batch 41): Reveal in media panel.
 
 const SWATCH_PREFIX = "label:";
 /** The ruler menu's Add marker: at the frame right-clicked (the `M` key adds at the playhead). */
@@ -42,6 +42,18 @@ function enableEntry(project: Project, clipId: ClipId): ContextMenuEntry {
   return { kind: "item", id: "clip.toggleEnabled", label: anyEnabled ? "Disable" : "Enable", commandId: "clip.toggleEnabled" };
 }
 
+/** Speed... (video and audio clips) and Freeze frame at playhead (a video clip under the playhead). */
+function speedEntries(project: Project, clipId: ClipId): ContextMenuEntry[] {
+  const clip = project.clips[clipId];
+  const playhead = sessionStore.state.getState().playhead;
+  const timed = clip?.kind === "video" || clip?.kind === "audio";
+  const freezable = clip?.kind === "video" && clip.start <= playhead && playhead < clip.start + clip.duration;
+  return [
+    { kind: "item", id: "clip.speedPanel", label: "Speed...", disabled: !timed },
+    { kind: "item", id: "edit.freezeFrame", label: "Freeze frame at playhead", commandId: "edit.freezeFrame", disabled: !freezable },
+  ];
+}
+
 function clipEntries(project: Project, clipId: ClipId, current: LabelColor | null): ContextMenuEntry[] {
   return [
     // TODO(batch 39): clipboard.
@@ -58,6 +70,8 @@ function clipEntries(project: Project, clipId: ClipId, current: LabelColor | nul
     { kind: "separator" },
     { kind: "item", id: "edit.rename", label: "Rename", commandId: "edit.rename" },
     { kind: "swatches", id: "labels", label: "Label", swatches: labelSwatches(current, { prefix: SWATCH_PREFIX, removable: true }) },
+    { kind: "separator" },
+    ...speedEntries(project, clipId),
   ];
 }
 

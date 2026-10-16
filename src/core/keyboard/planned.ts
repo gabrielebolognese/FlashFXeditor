@@ -10,9 +10,6 @@ export interface PlannedCommand {
 }
 
 export const PLANNED_COMMANDS: Readonly<Record<string, PlannedCommand>> = {
-  // Batch 27: freeze frame, punch zoom.
-  "edit.freezeFrame": { batch: 27, label: "Freeze frame" },
-  "edit.punchZoom": { batch: 27, label: "Punch zoom" },
   // Batch 29: titles, subtitles, inline text editing.
   "add.title": { batch: 29, label: "Add title" },
   "add.subtitle": { batch: 29, label: "Add subtitle" },
@@ -33,7 +30,7 @@ export const PLANNED_COMMANDS: Readonly<Record<string, PlannedCommand>> = {
   "app.export": { batch: 44, label: "Export" },
 };
 
-/** The dev toast for a bound key whose command is not built yet: `Freeze frame: coming in Batch 27`. */
+/** The dev toast for a bound key whose command is not built yet: `Add title: coming in Batch 29`. */
 export function plannedMessage(id: string): string | null {
   const planned = PLANNED_COMMANDS[id];
   return planned ? `${planned.label}: coming in Batch ${planned.batch}` : null;

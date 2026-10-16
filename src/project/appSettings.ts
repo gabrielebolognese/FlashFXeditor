@@ -1,7 +1,7 @@
 // Global app settings (spec §3.1: persisted with idb-keyval). For now the autosave delay and the proxy
 // settings of the Project section (§11, §9.5), the import mode (§9.1, no UI yet), the monitoring
-// volume and mute of the preview chrome (§14: monitoring only, never the export) and the color
-// picker's recent colors (§11). TODO(batch 42): the settings panel.
+// volume and mute of the preview chrome (§14: monitoring only, never the export), the color picker's
+// recent colors (§11) and the punch zoom (Batch 27). TODO(batch 42): the settings panel.
 import { createStore, type Store } from "../core/store/createStore.js";
 import { DEFAULT_PROXY_SHORT_EDGE, PROXY_RULES, PROXY_SHORT_EDGES, type ProxyRule, type ProxySettings, type ProxyShortEdge } from "../media/proxy/proxyFormat.js";
 import { AUTOSAVE_DELAY_MS } from "./Autosaver.js";
@@ -24,11 +24,20 @@ export interface AppSettings {
   proxyShortEdge: ProxyShortEdge;
   /** The color picker's recent colors (`#rrggbb` / `#rrggbbaa`), newest first. */
   recentColors: readonly string[];
+  /** Punch zoom (Shift+Z): the scale factor of the right piece (PUNCH_ZOOM_MIN..PUNCH_ZOOM_MAX). */
+  punchZoomScale: number;
+  /**
+   * Reserved: punch zoom as an animated zoom (scale keyframes) instead of a cut-in. Off, and read by
+   * nothing until keyframes exist. TODO(batch 35): the animated punch zoom.
+   */
+  punchZoomAnimated: boolean;
 }
 
 export const AUTOSAVE_DELAYS_MS = [1000, 2000, 5000, 10_000] as const;
 export const MONITOR_MIN_DB = -60;
 export const MONITOR_MAX_DB = 0;
+export const PUNCH_ZOOM_MIN = 1.05;
+export const PUNCH_ZOOM_MAX = 3;
 export const DEFAULT_APP_SETTINGS: AppSettings = {
   autosaveDelayMs: AUTOSAVE_DELAY_MS,
   importMode: "copy",
@@ -38,6 +47,8 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   proxyRule: "heavy",
   proxyShortEdge: DEFAULT_PROXY_SHORT_EDGE,
   recentColors: [],
+  punchZoomScale: 1.2,
+  punchZoomAnimated: false,
 };
 
 const HEX_COLOR = /^#[0-9a-f]{6}([0-9a-f]{2})?$/;
@@ -73,6 +84,9 @@ function sanitize(value: unknown, fallback: AppSettings = DEFAULT_APP_SETTINGS):
     recentColors: Array.isArray(raw.recentColors)
       ? raw.recentColors.filter((color): color is string => typeof color === "string" && HEX_COLOR.test(color)).slice(0, MAX_RECENT_COLORS)
       : fallback.recentColors,
+    punchZoomScale:
+      typeof raw.punchZoomScale === "number" && Number.isFinite(raw.punchZoomScale) ? Math.min(PUNCH_ZOOM_MAX, Math.max(PUNCH_ZOOM_MIN, raw.punchZoomScale)) : fallback.punchZoomScale,
+    punchZoomAnimated: typeof raw.punchZoomAnimated === "boolean" ? raw.punchZoomAnimated : fallback.punchZoomAnimated,
   };
 }
 
