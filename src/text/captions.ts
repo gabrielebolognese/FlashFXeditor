@@ -26,9 +26,9 @@ export const CAPTION_LIMITS = {
   y: { min: -4000, max: 4000 },
 } as const;
 
-const WHITE: RGBA = { r: 1, g: 1, b: 1, a: 1 };
-/** The default highlight: a warm yellow (content color, not UI). */
-const HIGHLIGHT: RGBA = { r: 1, g: 0.84, b: 0.04, a: 1 };
+/** The default highlight: a warm yellow, the other words white (content colors, not UI). */
+export const DEFAULT_HIGHLIGHT_COLOR: Readonly<RGBA> = { r: 1, g: 0.84, b: 0.04, a: 1 };
+export const DEFAULT_INACTIVE_COLOR: Readonly<RGBA> = { r: 1, g: 1, b: 1, a: 1 };
 
 /** The caption text at the reference size: heavy white Inter at 64 px with a black outline and a soft shadow. */
 export const DEFAULT_CAPTION_TEXT: TextStyle = {
@@ -53,7 +53,7 @@ export function defaultCaptionStyle(frame: { width: number; height: number }): C
     y: 0,
     maxWidth: Math.max(CAPTION_LIMITS.maxWidth.min, Math.round((frame.width * DEFAULT_MAX_WIDTH) / TEXT_REFERENCE_SIDE)),
     maxLines: 2,
-    highlight: { mode: "color", color: { ...HIGHLIGHT }, inactiveColor: { ...WHITE } },
+    highlight: { mode: "color", color: { ...DEFAULT_HIGHLIGHT_COLOR }, inactiveColor: { ...DEFAULT_INACTIVE_COLOR } },
   };
 }
 

@@ -7,7 +7,7 @@ import { formatHexColor } from "../../core/document/color.js";
 import type { CaptionHighlightMode, CaptionPosition, CaptionStyle, Project, RGBA, TextStyle, TrackId } from "../../core/document/types.js";
 import { useStoreSelector } from "../../core/store/useStoreSelector.js";
 import type { AppSettings } from "../../project/appSettings.js";
-import { captionMiddleY } from "../../text/captions.js";
+import { captionMiddleY, DEFAULT_HIGHLIGHT_COLOR, DEFAULT_INACTIVE_COLOR } from "../../text/captions.js";
 import { captionStyleOf, setCaptionStyle } from "../../timeline/edit/captions.js";
 import { ColorField } from "../../ui/ColorField.js";
 import { NumberField } from "../../ui/NumberField.js";
@@ -93,8 +93,6 @@ const getPosition = (style: CaptionStyle) => style.position;
 const getMode = (style: CaptionStyle) => style.highlight.mode;
 const getColor = (style: CaptionStyle) => formatHexColor(style.highlight.color);
 const getInactive = (style: CaptionStyle) => formatHexColor(style.highlight.inactiveColor);
-const YELLOW: RGBA = { r: 1, g: 0.84, b: 0.04, a: 1 };
-const WHITE: RGBA = { r: 1, g: 1, b: 1, a: 1 };
 
 export function CaptionStyleSection({ trackId }: { trackId: TrackId }) {
   const target = useMemo(() => captionStyleTarget(trackId), [trackId]);
@@ -137,10 +135,10 @@ export function CaptionStyleSection({ trackId }: { trackId: TrackId }) {
       </Row>
       <span className={styles.hint}>{mode === "none" ? "Off: cues show in the text color." : "Shows on cues with word timings (VTT karaoke, transcription)."}</span>
       <Row label="Active">
-        <ColorField value={colorOf(color, YELLOW)} recent={recent} ariaLabel="Highlight color" {...highlight("Change highlight color", (style, c) => ({ ...style, highlight: { ...style.highlight, color: c } }))} />
+        <ColorField value={colorOf(color, DEFAULT_HIGHLIGHT_COLOR)} recent={recent} ariaLabel="Highlight color" {...highlight("Change highlight color", (style, c) => ({ ...style, highlight: { ...style.highlight, color: c } }))} />
       </Row>
       <Row label="Other words">
-        <ColorField value={colorOf(inactive, WHITE)} recent={recent} ariaLabel="Other words color" {...highlight("Change highlight color", (style, c) => ({ ...style, highlight: { ...style.highlight, inactiveColor: c } }))} />
+        <ColorField value={colorOf(inactive, DEFAULT_INACTIVE_COLOR)} recent={recent} ariaLabel="Other words color" {...highlight("Change highlight color", (style, c) => ({ ...style, highlight: { ...style.highlight, inactiveColor: c } }))} />
       </Row>
       <StyleFields target={target} anchor={false} />
     </>

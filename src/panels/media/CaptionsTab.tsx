@@ -1,5 +1,5 @@
 import { Captions, Eraser, FileDown, FileUp, Mic, Paintbrush, Plus } from "lucide-react";
-import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent, type UIEvent } from "react";
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type FocusEvent, type KeyboardEvent, type MouseEvent, type UIEvent } from "react";
 import { commitCue, cueFocus, draftCue, mergeCueIntoPrevious, selectCue, splitCueAtCaret, type CueFocus } from "../../app/captionController.js";
 import { actions, documentStore, sessionStore } from "../../app/services.js";
 import { formatTimecode, type TimecodeMode } from "../../core/document/time.js";
@@ -21,8 +21,9 @@ import styles from "./CaptionsTab.module.css";
 // splits the cue at the caret (Shift+Enter: a line break), Mod+Backspace at its start merges it into
 // the previous cue, Tab / Shift+Tab go to the next / previous cue, Esc puts the text back. Delete
 // deletes the selected cues (cutController). The list is virtualized: only the rows in view (and a
-// block around them) exist, re-rendered when the view crosses a block of rows, not on every scroll
-// step; the cue under the playhead is marked through the DOM (no React render while playing, P1).
+// block around them, and the row being edited) exist, re-rendered when the view crosses a block of
+// rows, not on every scroll step; the cue under the playhead is marked through the DOM (no React
+// render while playing, P1). A row that goes away while its text is edited commits the text.
 
 /** Rows rendered beyond the view, and the scroll step that re-renders the list. */
 const BLOCK = 16;
@@ -70,6 +71,19 @@ const CueRow = memo(function CueRow({ id, index, top, selected, mode, order }: R
   const [draft, setDraft] = useState<string | null>(null);
   // Set once an edit was handled (split, merge, Tab, Esc): the blur that follows commits nothing.
   const handled = useRef(false);
+  // The typed text not committed yet (null: none). When the field goes away while it is edited (the
+  // row unmounted by the Media panel's tab switch, or its cue removed), no blur reaches it: the text is
+  // committed here, so the canvas never keeps a draft the document lacks.
+  const pending = useRef<string | null>(null);
+  const present = cue !== undefined;
+  useEffect(
+    () => () => {
+      const text = pending.current;
+      pending.current = null;
+      if (text !== null) commitCue(id, text);
+    },
+    [id, present],
+  );
 
   useEffect(() => {
     const element = field.current;
@@ -84,6 +98,7 @@ const CueRow = memo(function CueRow({ id, index, top, selected, mode, order }: R
   const text = draft ?? cue.text;
   const end = () => {
     handled.current = true;
+    pending.current = null;
     setDraft(null);
   };
   const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -127,16 +142,19 @@ const CueRow = memo(function CueRow({ id, index, top, selected, mode, order }: R
         placeholder="Caption"
         onFocus={() => {
           handled.current = false;
+          pending.current = null;
           selectCue(id);
           setDraft(cue.text);
         }}
         onChange={(event) => {
+          pending.current = event.target.value;
           setDraft(event.target.value);
           draftCue(id, event.target.value);
         }}
         onBlur={(event) => {
           if (!handled.current) commitCue(id, event.currentTarget.value);
           handled.current = false;
+          pending.current = null;
           setDraft(null);
         }}
         onKeyDown={onKeyDown}
@@ -173,6 +191,9 @@ export function CaptionsTab() {
   const scroller = useRef<HTMLDivElement>(null);
   const [rowHeight, setRowHeight] = useState(0);
   const [view, setView] = useState({ block: 0, rows: BLOCK });
+  // The cue whose text field has the focus: its row stays rendered while the list scrolls away from
+  // it, so the field keeps the focus and the draft.
+  const [editing, setEditing] = useState<ClipId | null>(null);
 
   // The row height (a design token) and the view's height in rows, from a ResizeObserver (P9).
   useLayoutEffect(() => {
@@ -243,6 +264,12 @@ export function CaptionsTab() {
     selectCue(row.dataset.cueId as string);
     row.focus();
   };
+  const onFocus = (event: FocusEvent) => {
+    if (event.target instanceof HTMLTextAreaElement) setEditing(event.target.closest<HTMLElement>("[data-cue-id]")?.dataset.cueId ?? null);
+  };
+  const onBlur = (event: FocusEvent) => {
+    if (event.target instanceof HTMLTextAreaElement) setEditing(null);
+  };
 
   if (!hasTrack) {
     return (
@@ -264,7 +291,11 @@ export function CaptionsTab() {
 
   const first = Math.max(0, (view.block - 1) * BLOCK);
   const last = Math.min(shown.length, (view.block + 1) * BLOCK + view.rows + BLOCK);
-  const rows: ClipId[] = shown.slice(first, last) as ClipId[];
+  const rows: { id: ClipId; index: number }[] = [];
+  // The edited row outside the slice goes first: React then never moves its node (a move would blur it).
+  const kept = editing === null ? -1 : shown.indexOf(editing);
+  if (editing !== null && kept >= 0 && (kept < first || kept >= last)) rows.push({ id: editing, index: kept });
+  for (let index = first; index < last; index++) rows.push({ id: shown[index] as ClipId, index });
   return (
     <div className={styles.root}>
       <div className={styles.tools}>
@@ -273,13 +304,13 @@ export function CaptionsTab() {
         </div>
         <span className={styles.total}>{query.trim() === "" ? `${total} cue${total === 1 ? "" : "s"}` : `${shown.length} of ${total}`}</span>
       </div>
-      <div ref={scroller} className={styles.scroll} role="listbox" aria-label="Cues" onScroll={onScroll} onClick={onClick}>
+      <div ref={scroller} className={styles.scroll} role="listbox" aria-label="Cues" onScroll={onScroll} onClick={onClick} onFocus={onFocus} onBlur={onBlur}>
         {shown.length === 0 ? (
           <p className={styles.note}>{total === 0 ? "No cues yet. Click + to add one at the playhead." : "No cue matches the search."}</p>
         ) : (
           <div className={styles.spacer} style={{ height: shown.length * rowHeight }}>
-            {rows.map((id, i) => (
-              <CueRow key={id} id={id} index={first + i} top={(first + i) * rowHeight} selected={selected.has(id)} mode={mode} order={shown} />
+            {rows.map(({ id, index }) => (
+              <CueRow key={id} id={id} index={index} top={index * rowHeight} selected={selected.has(id)} mode={mode} order={shown} />
             ))}
           </div>
         )}
