@@ -206,6 +206,8 @@ export class PreviewView implements RenderView {
   private readonly viewListeners = new Set<() => void>();
   private readonly stops: (() => void)[] = [];
   readonly stats: PreviewStats;
+  /** Device px per project px text was rasterized at in the last render (inline editing measures carets at it). */
+  textRenderScale = 1;
   readonly firstShown: FirstShown = { frame: -1, layers: 0, exact: 0 };
   /** The status strip's quality text (§13), changed only when it reads differently. */
   readonly quality: Store<string> = createStore("Auto: full");
@@ -335,7 +337,8 @@ export class PreviewView implements RenderView {
     if (background) composite.background = background;
     const transform = frameTransformInto(this.transform, preview.zoom, composite, size, this.chrome.margin * dpr, preview.panX, preview.panY);
     const scale = this.detailOf(doc, composite, transform[0], preview, activity);
-    const list = this.textures.resolve(composite, priority, this.stats.detail.upload, this.textScale(composite, transform, size, scale));
+    this.textRenderScale = this.textScale(composite, transform, size, scale);
+    const list = this.textures.resolve(composite, priority, this.stats.detail.upload, this.textRenderScale);
     this.showQuality(preview.quality);
     if (priority !== "playback") this.textures.warm(this.compositor.neighbors(doc, frame));
     const shown = this.firstShown;

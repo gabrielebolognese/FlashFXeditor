@@ -1,6 +1,6 @@
 # Progress
 
-last_completed_batch: 28
+last_completed_batch: 29
 in_progress_batch: none
 skipped_batches: []
 needs_human: none
@@ -96,7 +96,14 @@ Items the design system did not define and the functional default that was used 
 - Text section (Batch 28; the DS has no text controls): rows of the properties grid. The content field is the DS input as a multi-line area (`--surface-1`, `--border`, radius-sm, body type, `--text-content-height` = 4 body lines plus padding, resizable, the DS input focus). The font field takes the Select's look with the family name drawn in its own font. Weight is a Select with the Italic IconButton after it (`.withAction`). Fill, background mode, case and box mode are text-chip IconButtons (pressed gold, the speed chips' look); alignment and vertical anchor are icon IconButtons (lucide TextAlignStart / Center / End, AlignVerticalJustifyStart / Center / End). Stroke, shadow and background are DS switches that reveal their rows. Number fields scrub on icon labels (ALargeSmall size, Droplets blur, SquareRoundCorner radius, MoveHorizontal spacing, MoveVertical line height) or letters (W, X, Y).
 - Font picker (Batch 28, spec §11 "searchable list with live previews and sections"): the menu material (glass, hairline, overlay shadow, radius-lg), `--font-picker-width` (10 x `--control-default`, 280 px), under the field like the color picker. A DS search input (`--control-default`, lucide Search) over the list (at most `--font-picker-list-height`, 12 rows, hairline top). Section headings in overline type `--text-tertiary`; rows `--control-default` tall, the family at the stat size in weight 450 in its own font, hover `--hover-wash`, the current family as the DS active row (accent text on `--accent-wash`); a star button per row (`--text-muted`, shown on hover, `--accent` filled for a favorite); notes in caption type `--text-tertiary`; "Show system fonts" as a caption action row (lucide MonitorDown).
 - Missing font (Batch 28, spec §10.1 "missing font badge"): in the Text section a chip after the font field (`--danger-wash` fill, `--danger` text, lucide TriangleAlert at `--icon-size-sm`, `--type-badge`, radius-sm, `--control-compact` tall); on the timeline a label bar icon badge, lucide `triangle-alert` at `--icon-size-sm` in `--danger`.
-- Dev text button (Batch 28): a compact IconButton (lucide TextCursorInput) before the timeline toolbar's dev stats toggle, dev builds only.
+- Dev text button (Batch 28): a compact IconButton (lucide TextCursorInput) before the timeline toolbar's dev stats toggle, dev builds only. Removed in Batch 29 (`+ Title` / `+ Subtitle` are enabled).
+- Inline text editing (Batch 29; the DS has no caret, text selection or editor):
+  - Caret: a `--text-caret-width` (2px = `--space-0`) `--accent` bar as tall as the font's em box, on the overlay canvas; it blinks every `--text-caret-blink` (530 ms) while the editor has the focus, stays steady without it, and hides while text is selected.
+  - Selection highlight: `--text-selection` (the accent at 40%) behind the glyphs and over a background box, in the text's raster.
+  - IME composition: underlined 1 device px in `--accent` along each line's em box bottom.
+  - The edited box keeps its `--accent` outline, without handles or hover; the cursor is `text` over it.
+  - The editing textarea is transparent, with no selection color and no focus ring (`PreviewPanel.module.css` `.inlineText`).
+  - Text box gizmo: corner handles and the left and right side handles only (the handle look of Batch 22).
 
 ## Global deviations
 Decisions that diverge from docs/EDITOR_SPEC.md, with the reason. Each one also appears under its batch.
@@ -227,6 +234,7 @@ Decisions that diverge from docs/EDITOR_SPEC.md, with the reason. Each one also 
 - Freeze frames (Batch 27 Build) are video clips with `speed = 0`: `in` is the frozen source time, `out` one project frame later; only video clips may have speed 0. Freeze frame always splits the clip's linked partners and ripples every unlocked track by 2 s from the playhead (clips spanning it stay). It acts on the selected video under the playhead, else the topmost targeted visible one. Freezes trim like images, never slip, stretch as a trim, and split into two holds. (Batch 27)
 - Punch zoom multiplies the right pieces' `scale` / `scaleY` by the app setting `punchZoomScale` (1.2, 1.05..3) around their anchor. It splits linked partners while Linked selection is on, and acts on the selected layers under the playhead, else the topmost video or image. A clip starting at the playhead is zoomed whole. `punchZoomAnimated` is reserved (false) until Batch 35. (Batch 27)
 - Text (Batch 28): the box lives in `TextContent` (`{ value, box }`); `Gradient` (`{ from, to }`, vertical) is defined for text fills. The vertical anchor (and the alignment) name the edge that stays in place when a text's box changes size: text edits move the position to keep it. Rasters are drawn at the render scale times the layer's own scale, rounded up to 2^(1/8) steps, clamped to 0.25..4, at most 4096 px. Glyph hit areas are padded by 4 project px and include the background boxes; text snaps with its content box. The Text section follows Clip. Rasterization runs on the main thread in the preview render. System fonts are listed on a click; only the faces used are copied into `fonts/` (with `fonts.json`). Bundled fonts carry latin and latin-ext only. Details under the batch. (Batch 28)
+- Text UX (Batch 29): `+ Title` / `+ Subtitle` go on the topmost video track when it is free there, else on a new top track; a Title made with a text clip selected sits 40 px under it, a Subtitle always in the lower third (bottom edge at 78%). Inline editing draws the caret on the overlay from the rasterizer's geometry and the selection highlight in the raster; Esc commits like Mod+Enter; one "Edit text" step; the properties panel and popovers keep an edit open. Text box corners size the font (and every px value), sides set a fixed box width; no top or bottom handles. Details under the batch. (Batch 29)
 
 ## Follow-ups
 Small things discovered during a batch that belong to a later batch. Format: `- [from Batch NN -> Batch MM] description`.
@@ -377,7 +385,7 @@ Small things discovered during a batch that belong to a later batch. Format: `- 
 - [from Batch 22 -> Batch 25] Fit, Fill, Center, Flip H / V in the canvas menu and the properties quick row: `fitTransform`, `fillTransform`, `centerTransform`, `flipTransform` in `timeline/edit/transform.ts` (through `setTransforms`); the properties transform fields write `setTransforms` with a coalesce key for field scrubs. (done in Batch 25: `transform.*` actions in the quick row and the canvas menu through `quickTransforms`; field scrubs write `liveEdit` and commit one `setTransforms`, arrow steps coalesce)
 - [from Batch 22 -> Batch 26] Crop handles on the gizmo: the box is the cropped quad (`layerContent`), `HANDLES` / `hitGizmo` take a crop mode. (done in Batch 26: crop mode in `CanvasEditInput`, `hitGizmo(..., crop)`, `render/preview/cropGizmo.ts`)
 - [from Batch 22 -> Batch 28] Text layers on the canvas: `layerContent` returns null for text (`TODO(batch 28)`); hit on the glyph bounds padded by 4 px (§7.2). (done in Batch 28: the layout box; glyph bounds padded by 4 project px and the background boxes)
-- [from Batch 22 -> Batch 29] Double-click a text layer on the canvas to edit it inline (`CanvasEditInput`, `TODO(batch 29)`).
+- [from Batch 22 -> Batch 29] Double-click a text layer on the canvas to edit it inline (`CanvasEditInput`, `TODO(batch 29)`). (done in Batch 29: `InlineTextEditor`, the caret at the click)
 - [from Batch 22 -> Batch 35] Keyframe-aware transforms: `setTransforms` updates or creates the keyframe at the playhead for keyframed properties; the diamond on the gizmo corner.
 - [from Batch 22 -> Batch 39] Copy, Paste and Duplicate in the canvas menu (`panels/CanvasContextMenu.tsx`, disabled rows).
 - [from Batch 22 -> Batch 46] Review the gizmo visuals (handle size and fill, anchor marker, readout placement, hover color).
@@ -395,7 +403,7 @@ Small things discovered during a batch that belong to a later batch. Format: `- 
 - [from Batch 25 -> Batch 39] Duplicate of several clips with their links and groups (`timeline/edit/duplicate.ts`), the canvas menu's Duplicate (+20 px).
 - [from Batch 25 -> Batch 42] The Scale layout / Keep dialog and the fps conversion behind `changeResolution` / `changeFrameRate` (`app/propertiesController.ts`); the disabled Project rows (Still duration, Transition, Cache / Clear cache).
 - [from Batch 25 -> Batch 46] Review on a real screen: the quick row (two lines at the default panel width, group rules, planned chips), the section headers and the label / control grid, the scrub label (gold while scrubbing, ew-resize), the `--` placeholder and the mixed switch, the color picker (square, strips, thumbs, channel fields, recent row).
-- [from Batch 26 -> Batch 29] A double-click on a text layer edits it inline (`TODO(batch 29)` in `CanvasEditInput.onDoubleClick`; video and image layers enter crop mode there).
+- [from Batch 26 -> Batch 29] A double-click on a text layer edits it inline (`TODO(batch 29)` in `CanvasEditInput.onDoubleClick`; video and image layers enter crop mode there). (done in Batch 29)
 - [from Batch 26 -> Batch 39] Paste attributes' crop item: `setCrops` in `timeline/edit/crop.ts`.
 - [from Batch 26 -> Batch 46] Review on a real screen: the crop brackets and bars (16 px, 2 px stroke with its dark outline), the dashed media box, the crop chip over the frame's top edge, the Crop section rows (Units chips, the lone aspect lock), the header toggle; consider dragging the media inside a fixed crop window as crop mode's body drag.
 - [from Batch 27 -> Batch 35] Keyframe-aware speed changes (`speed.ts` scales the keys like the rate stretch, `TODO(batch 35)`); the animated punch zoom behind `punchZoomAnimated` (scale keyframes; `TODO(batch 35)` in `timeline/edit/freeze.ts`, `app/speedController.ts`, `project/appSettings.ts`).
@@ -405,7 +413,7 @@ Small things discovered during a batch that belong to a later batch. Format: `- 
 - [from Batch 27 -> Batch 43] Export renders freeze frames as one-frame requests (the compositor's `sourceTimeUs` holds `in`) and clip speeds through the audio scheduling code (`playbackRate`; speed-0 clips are never scheduled).
 - [from Batch 27 -> Batch 46] Review on a real screen: the Speed section (Gauge label, link button, Ripple switch, freeze hint), the snowflake badge; icon overlap: the toolbar's Punch zoom uses `Focus` (the quick row's Center in frame) and the quick row's Punch zoom `ZoomIn` (the toolbar's Zoom in).
 - [from Batch 27 -> Batch 47] A frame request in flight when a project closes logs `[preview] cannot show media <id>: No project is open` (`LayerTextures.fail`). It appears when the Batch 26 and 27 scripts switch OPFS projects; treat it as an abort.
-- [from Batch 28 -> Batch 29] Inline editing (caret and selection drawn by the rasterizer), the text gizmo rules (corner handles = font size for auto boxes, side handles = box width when fixed, `keepAnchored` for live typing), `+ Title` / `+ Subtitle` placement (`addTextClip` is the dev placement), default Title and Subtitle styles.
+- [from Batch 28 -> Batch 29] Inline editing (caret and selection drawn by the rasterizer), the text gizmo rules (corner handles = font size for auto boxes, side handles = box width when fixed, `keepAnchored` for live typing), `+ Title` / `+ Subtitle` placement (`addTextClip` is the dev placement), default Title and Subtitle styles. (done in Batch 29: inline editing, `textGizmo.ts`, `addTitle`, `titleDefaults`)
 - [from Batch 28 -> Batch 30] Presets store `style` and `box` (`TextContent.box`); preset thumbnails can rasterize with `rasterizeText`.
 - [from Batch 28 -> Batch 31] Text animations draw from `buildTextAtlas` (words or lines, shadows per unit); the raster cache then needs atlas entries (its entries are whole-layer rasters).
 - [from Batch 28 -> Batch 32] Captions render through the same layout and raster cache (per cue + style).
@@ -414,6 +422,10 @@ Small things discovered during a batch that belong to a later batch. Format: `- 
 - [from Batch 28 -> Batch 43] Export rasterizes text with `TextRasterCache.exact` at the export scale (the Export frame path).
 - [from Batch 28 -> Batch 45] Bundle size: the main chunk grew by 52 kB (text engine, Text section, font picker); the section and picker could load on first use.
 - [from Batch 28 -> Batch 46] Review on a real screen: the Text section (row order, icon scrub labels, chips), the font picker (sizes, previews, stars), the Missing chip and the timeline badge; text snapping on glyph bounds and baselines (Batch 23 note).
+- [from Batch 29 -> Batch 30] The default Title and Subtitle (`titleDefaults`, `DEFAULT_TITLE_STYLE`, `DEFAULT_SUBTITLE_STYLE`, `DEFAULT_SUBTITLE_BOX`; `TODO(batch 30)` in `text/style.ts`) become the Presets tab's default presets; the favorite preset chips call `addTitle` with a preset's style and box.
+- [from Batch 29 -> Batch 42] The "match clip under playhead" switch (app setting `matchClipUnderPlayhead`, `TODO(batch 42)` in `appSettings.ts`).
+- [from Batch 29 -> Batch 45] Bundle size: +25 kB (inline editor, caret engine, text handles).
+- [from Batch 29 -> Batch 46] Text box handle drags snap (§7.4). Review on a real screen: the caret (width, blink), the gold highlight over video, the IME candidate window's place, the caret against the box outline at the line end, the subtitle's 78% height against the platforms' safe zones.
 
 ## Dependencies
 Why each dependency exists (Batch rule 8).
@@ -3097,3 +3109,123 @@ Why each dependency exists (Batch rule 8).
     - A font load bumps `fontsVersion`, which re-renders the mounted font field. That can happen once during playback, when a text whose font is not loaded yet first appears.
     - Raster keys do not include the fallback stack. This is moot while the theme is dark only.
 - docs: whats-new.md in docs/user-guide/ (Batch 28 entry only: the text clip comes from the dev-only toolbar button and `dev.addText`, so the release build shows nothing new; the Text section only appears for text clips, no `fonts/` folder is created without one, and no shortcut changed). The text page (Text section with fill / stroke / shadow / background / box, the font picker with Favorites, Used in project, Bundled and System, Show system fonts, project `fonts/` + `fonts.json`, the Missing chip and the timeline badge, latin-only bundled fonts) is left to the Batch 29 docs run, when `+ Title` / `+ Subtitle` make text clips reachable (2026-10-16)
+
+### Batch 29: Text UX: one-click titles and subtitles, inline editing, text tool
+- status: done
+- date: 2026-10-16
+- notes:
+  - Engine (unit tested):
+    - `render/text/layout.ts`: each `TextLine` has `start` / `end`, its place in the text as drawn (case applied, line breaks included); the spaces a wrap drops sit after `end`.
+    - New `render/text/caret.ts` (`caret.test.ts`, 15 tests):
+      - Caret stops are grapheme boundaries (`Intl.Segmenter`), measured the way the rasterizer draws: at the raster scale (font size times the scale, divided back), each line aligned by its width at that size as `raster.ts` aligns its runs.
+      - A stop's x is where the next grapheme's advance starts, measured with the pair before it so kerning counts, less half the letter spacing.
+      - Also: `caseMap` (source and display indices, grapheme by grapheme when a case changes lengths, "ß" upper is "SS"), `caretAt` (downstream at a wrap unless `upstream`), `selectionRects` (line slots, a sliver past a break), `indexAtPoint`, `verticalMove` (goal x), `lineEdge` (Home / End), `wordAt`.
+    - `raster.ts`: `TextHighlight` (rects in content px, a CSS color) is drawn between the background boxes and the text; `rasterRect` grows the raster over it.
+    - `TextRasterCache.resolve(..., highlight)`: a highlighted raster is the slot's own (no key, never shared, destroyed when the slot draws something else or ends). +1 test.
+    - `TextCompositeLayer.highlight` and `LiveText.highlight` carry it through `Compositor.writeText` and `LayerTextures`. +1 test.
+    - `PreviewView.textRenderScale`: the device px per project px the last render rasterized text at.
+    - `text/style.ts` (`style.test.ts`, +3 tests):
+      - `DEFAULT_TITLE_STYLE`: Inter 800, 120 px, line height 1.1, a soft shadow.
+      - `DEFAULT_SUBTITLE_STYLE`: Inter 600, 56 px, line height 1.3, a 70% black box per line (padding 24 / 10, radius 14), bottom anchor; `DEFAULT_SUBTITLE_BOX` is fixed at 900 px.
+      - `titleDefaults(kind, frame)` scales them by min(width, height) / 1080, with `TODO(batch 30)` presets.
+      - `scaleTextStyle(style, k)` scales the font size (0.1 px steps, within the limits) and every px value with it.
+    - `timeline/edit/text.ts` (`text.test.ts`, +9 tests):
+      - `addTitle(project, { kind, playhead, matchClip, below })` gives one `clip.addText` command, "Add title" / "Add subtitle".
+      - Track: the topmost video track when it is unlocked, shown and free over the span, else a new top track.
+      - `titleDuration`: 3 s, or the rest of the topmost video clip under the playhead.
+      - Position: the Title centered, or 40 px under a selected text clip (centered under it); the Subtitle's bottom edge at 78% of the frame height.
+      - `setTexts` takes an edit's own transform (`TextEditInput`). A clip still named after its text keeps being named after it ("Title" becomes "hello"; a name the user gave stays; the Batch 28 review note).
+    - New `render/preview/textGizmo.ts` (`textGizmo.test.ts`, 6 tests):
+      - `textSizeGesture`: a corner sizes the font and every px value; a fixed box's width scales too; the opposite corner (Alt: the center) stays.
+      - `textWidthGesture`: a side sets a fixed box width, the text reflows; the opposite side (Alt: the center) stays, at the height the vertical anchor names.
+  - Inline editing: new `render/preview/InlineTextEditor.ts` (`InlineTextEditor.test.ts`, 11 tests, jsdom).
+    - The textarea:
+      - A transparent `<textarea data-scope="textEditing">` in the preview host, placed over the text block by a CSS matrix (content px to canvas CSS px, flips and turns included). It has the layout's font shorthand, line height, letter spacing, alignment and `pre` / `pre-wrap`.
+      - It takes no pointer input and draws nothing (no text, caret, selection color or focus ring). It provides keys, IME, the clipboard and undo of the typing.
+      - A capture scroll guard puts back the panels the browser scrolls to show its caret.
+    - Draft and display:
+      - The draft, selection and composition are the editor's. `live()` gives the draft over the clip's shown text (a field scrub's live values included), its box moved by `keepAnchored` and the selection highlight. It is memoized, so the preview and the canvas caches see stable objects.
+      - The caret (blinking `--text-caret-blink` while focused, steady otherwise, hidden with a selection) and the IME underline are a `scene()` for the overlay, computed by `caret.ts`.
+    - Keys: Up / Down / Home / End (Shift extends) follow the drawn lines through `caret.ts`, keeping a goal x and the end-of-wrapped-line affinity. Everything else is the textarea's own; `keyup`, `select` and `selectionchange` sync the selection.
+    - Pointer: `press` places the caret (Shift extends; a second press within 500 ms and 4 CSS px selects the word, a third everything), `drag` selects, `release`.
+    - Ending: `end(commit)` makes one "Edit text" `clip.text` command when the draft differs. A press or focus outside the textarea and the kept areas commits.
+    - It also ends when the clip leaves the selection, the playhead leaves the clip or its track hides (committed), and when the clip goes or locks (no command).
+  - Canvas (`CanvasEditInput`, `gizmo.ts`, `PreviewOverlayView`; `CanvasEditInput.text.test.ts`, 5 tests):
+    - One selected text layer's gizmo has corner and side handles only (`hitGizmo(..., text)`, `scene.textBox`). Corner drags are `textSize` and side drags `textWidth`: live through `CanvasEditInput.texts` and the gesture transforms, then one `clip.text` command ("Resize text" / "Change text box width"). Multi-selections scale as before.
+    - A double-click on a text layer selects it alone and edits it with the caret at the click. While editing, a press on the edited box (grown by half a handle hit) goes to the editor; a press elsewhere commits first, then acts. The cursor is `text` over the box.
+    - The scene while editing: the edited box outlined in `--accent` (no handles, no hover) plus the caret and underline. The overlay draws the caret (`--text-caret-width`) and underline in `--accent`.
+  - App:
+    - `previewController`: `textEditor` (deps: the placement, the text render scale, the clip as shown with `liveEdit`, the commit).
+      - Kept areas: the overlay canvas, `[data-scope="properties"]` and dialogs, menus and listboxes (the font picker, color picker and canvas menu).
+      - `onEditing` gives the keyboard to `textEditing` (also after a press on the text, which the preview scope took first) and back to the preview.
+      - `liveTexts()` / `liveTransforms()` merge a canvas text handle drag or a field scrub with the draft, memoized; the preview and the canvas read them.
+    - `textController`:
+      - `add.title` (T) and `add.subtitle` (Shift+T) commit an open edit, pause playback, call `addTitle` (`below`: the selected text clip, primary first; `matchClip`: the new app setting `matchClipUnderPlayhead`, true) and select the clip. Then they edit it with everything selected.
+      - `text.edit` (Enter, timeline and preview): the selected text clip, the playhead moved onto it when elsewhere; declined without one.
+      - `text.commit` (Mod+Enter) and `text.cancel` (Esc) both commit and exit.
+      - The five ids are out of `planned.ts`.
+    - `canvasController`: Esc (`app.cancel`) also ends inline editing, after a running gesture (with the focus in the properties panel).
+    - Timeline toolbar: `+ Title` and `+ Subtitle` are enabled; the dev text button is gone (`dev.addText` and `__editor.text.add` stay for scripts).
+    - Text section: the content area shows the draft while its clip is edited on the canvas; focusing it commits that editing first.
+    - Theme bridge `gizmo.caretWidth`, `caretBlink` and `textSelection`; tokens `--text-caret-width`, `--text-caret-blink` and `--text-selection`.
+  - Measured:
+    - `npm run check` green: 1424 unit tests in 144 files (+52 tests, +4 files), 3 perf tests. Build 797.95 kB JS (257.74 kB gzip; was 772.98 / 249.59), 63.93 kB CSS.
+    - Browser: headless Chrome 155 over CDP on the dev server, 1600 x 900 at dpr 1. Scripts in `%TEMP%/b29/`: `acc.mjs` 23/23, `extra.mjs` 15/15, `shot.mjs`, `smoke.mjs`, `page.js` (`__b29`), `setup.mjs`.
+    - Acceptance 1 (project `b29-a1`):
+      - T at frame 45: editing in 31-34 ms, "Title" selected, scope `textEditing`.
+      - Typing "hello" then Esc gives a 90-frame title "hello" (named "hello") at 45, centered (box center 540, 960) on V1, the empty track.
+      - 7 keys, 238-285 ms of app time from T to the committed text.
+      - Undo: "Edit text", then "Add title". A second T over the first goes onto a new V2.
+    - Acceptance 2 (project `b29-a2`; the composite screenshot with the overlay hidden, ink edges at half coverage, against the overlay's caret):
+      - "IIIII" (symmetric glyphs): each interior caret within 0.10 px of the middle of the gap between the stems drawn, at Fit (view scale 0.385) and at 200% (view panned).
+      - "hello" (kerning, unequal sidebearings): every caret inside its gap at Fit and 200% (offsets from the gap middle ≤ 0.6 px at Fit, ±2.8 px at 200%: the letters' own sidebearings).
+    - Acceptance 3 (project `b29-a3`):
+      - "hello" typed, caret at 3. A real click into Font size, 150, Enter: still editing, draft "hello", caret 3, the caret 27% taller; the document has 150 and still "Title".
+      - A click on the text gives the keyboard back, and the carets sit inside the gaps at 150 px. Esc commits "hello" at 150.
+    - Acceptance 4 (project `b29-a4`): Shift+T edits "Subtitle", all selected. A two-line subtitle sits at y 1331.8..1497.4 (the lower third from 1280; bottom at 78%), with a box per line, a fixed 900 px box and the bottom anchor. Screenshots: `a4-subtitle.png`, `s3-subtitle.png`.
+    - Extra (`extra.mjs`):
+      - Keys and presses: Mod+Enter commits. Enter edits the selected clip, all selected. A title made with a text clip selected sits 40 px under it. A double-click edits with the caret at the click, and a double press selects the word, the scope staying `textEditing`. Enter inserts a line break; Up, End and Shift+Down follow the lines.
+      - The highlight is in the composite (9351 gold pixels with the overlay hidden). IME through `Input.imeSetComposition`: one underline segment, then the committed characters replace the composition. A press on the timeline commits.
+      - Handles: a corner drag gives 140.9 px at scale 1, "Resize text", with the top-left fixed; a side drag gives fixed 500 px, "Change text box width"; no top or bottom handles.
+      - A title over a 150-frame video at 40 lasts 110 frames on a new V2.
+      - Typing 10 keys on the canvas: 10 React commits, the content field showing the draft.
+    - The browser checks found three bugs, fixed before this commit:
+      - The global `:focus-visible` ring drew a box around the transparent textarea.
+      - A press on the edited text left the keyboard scope on the preview (Esc and Mod+Enter would not have reached the editor).
+      - T, then Shift+T, stacked the subtitle under the title.
+    - Regression: Batch 28 `acc.mjs` 16/16. Its `extra.mjs` used the dev button this batch removes: the copy `%TEMP%/b28/reg_b29.mjs` uses `+ Title` (size 120), 6/6. Batch 27 `acc.mjs` 33/34 (the known project-switch warning, [from Batch 27 -> Batch 47]).
+- deviations:
+  - The caret is drawn on the overlay canvas from the rasterizer's own geometry, not in the raster: a blink would re-rasterize the layer twice a second (P11). The selection highlight is in the raster (§7.7), as the clip's own raster.
+  - Esc (`text.cancel`, §18 "cancel") commits and exits like Mod+Enter, as §7.7 and §10.2 say ("Esc keeps the clip with the typed content"). Undo takes an edit back.
+  - An inline edit is one undo step ("Edit text"), apart from "Add title" / "Add subtitle".
+  - Text box handles (§7.3):
+    - Corners size the font and every px value of the style with it, and a fixed box's width ("keeping layout": the same look, larger).
+    - Side handles set the box width; an auto box becomes fixed at that width, Figma style.
+    - No top or bottom handles. Shift does nothing, Alt works from the center, and the drags do not snap (§7.4): see [from Batch 29 -> Batch 46].
+    - With several layers selected, the group scales as before.
+  - The 40 px stacking applies to Titles (the Build's "instead of at the center"). A Subtitle always goes to the lower third, so T then Shift+T, with the title still selected, gives a subtitle under it in the lower third.
+  - Title placement (§10.2 "topmost video track, new track if the spot is occupied"): the topmost video track when it is unlocked, shown and free over the title's span, else a new top track, even when a lower track is free (the title stays on top of the picture).
+  - The Subtitle's bottom edge sits at 78% of the frame height (the lower third, §10.2), anchored at the bottom so more lines grow upwards, in a fixed 900 px box (5/6 of the frame width). On 9:16 the platforms' safe zones end at about 65% (Batch 21's overlay); the spec asks for the lower third.
+  - Default sizes scale with the project frame: min(width, height) / 1080.
+  - "Match clip under playhead" counts the topmost video clip (kind video) on a shown video track. The app setting `matchClipUnderPlayhead` (on) has no switch until Batch 42.
+  - Click-away (§7.7 "clicking elsewhere commits"): presses and focus in the properties panel, the popovers, menus and dialogs keep the edit ("the properties panel text fields stay live"). Focusing the Text section's content field commits the inline edit first (one editor of the content at a time); anything else commits.
+  - Enter (`text.edit`) with a selected text clip off the playhead moves the playhead onto the clip, so the canvas shows it, and selects all its text.
+  - While a text is edited on the canvas, the Text section's content area shows the draft: one React render of that field per key (typing is not in P1's list; the canvas renders no React).
+  - A text clip still named after its text follows its text when edited (the Batch 28 review note); a name the user gave stays.
+- follow-ups:
+  - [from Batch 22 -> Batch 29] done; [from Batch 26 -> Batch 29] done; [from Batch 28 -> Batch 29] done (the corner and side rules apply to auto and fixed boxes: see deviations)
+  - [from Batch 29 -> Batch 30] The default Title and Subtitle (`titleDefaults`, `DEFAULT_TITLE_STYLE`, `DEFAULT_SUBTITLE_STYLE`, `DEFAULT_SUBTITLE_BOX`; `TODO(batch 30)` in `text/style.ts`) become the Presets tab's default presets. The favorite preset chips call `addTitle` with a preset's style and box.
+  - [from Batch 29 -> Batch 42] The "match clip under playhead" switch (app setting `matchClipUnderPlayhead`, `TODO(batch 42)` in `appSettings.ts`).
+  - [from Batch 29 -> Batch 45] Bundle size: +25 kB (inline editor, caret engine, text handles).
+  - [from Batch 29 -> Batch 46] Text box handle drags snap (§7.4: the dragged edge or corner). Review on a real screen: the caret (width, blink), the gold highlight over video, the IME candidate window's place, the caret against the box outline at the line end, and the subtitle's 78% height against the platforms' safe zones.
+- design gaps: the caret, the selection highlight, the IME underline, the editing outline, text box handles (details in Design system gaps)
+- pending manual checks (`npm run dev`, or the 5300 preview build):
+  1. One key (acceptance 1): open a project, press T, type hello, press Esc. Expected: "hello" centered in the preview for 3 s from the playhead, on the top video track; the timeline clip is named "hello".
+  2. Caret (acceptance 2): press T and type; move with the arrows, Shift+arrows, Up / Down on two lines, Home / End; click between letters. Expected: the gold caret sits between the letters drawn, and a selection shows gold behind the letters. Repeat at 200% (preview Zoom menu).
+  3. Font size while editing (acceptance 3): while typing, click Edit Properties > Text > Size, type 150, press Enter. Expected: the text grows, the typed text stays and the caret stays in the same place in it. Click the text again and keep typing.
+  4. Subtitle (acceptance 4): press Shift+T over a video and type a long line. Expected: a subtitle in the lower third with a dark box behind each line; it wraps and grows upwards.
+  5. IME: type with a Japanese or Chinese input method. Expected: the candidate window opens next to the caret; the text being composed is underlined, then replaced by the chosen characters.
+  6. Handles: select a title, drag a corner. Expected: the Size field changes (not Scale), and the text keeps its look. Drag a side handle: the box turns Fixed and the text wraps.
+  7. Double-click a text on the canvas. Expected: editing with the caret where you clicked. Double-click a word while editing: it is selected.
+- docs: the Batch 29 docs run also writes the text page for Batch 28's Text section, font picker and `fonts/` folder (see the Batch 28 docs line).
+- other: `docs/BATCHES.md` (Batches 51-53) and `docs/EDITOR_SPEC.md` (§20) were edited outside this run (10:01) and are left out of this batch's commit.

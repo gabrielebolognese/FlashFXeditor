@@ -3,7 +3,7 @@ import type { TextContent, TextStyle } from "../../core/document/types.js";
 import { DEFAULT_TEXT_STYLE, textContent } from "../../text/style.js";
 import type { TextureHandle } from "../gpu/renderer.js";
 import type { TextLayout } from "./layout.js";
-import type { TextRaster } from "./raster.js";
+import type { TextHighlight, TextRaster } from "./raster.js";
 import { TextRasterCache, textScaleBucket } from "./TextRasterCache.js";
 
 interface FakeTexture extends TextureHandle {
@@ -63,10 +63,10 @@ function setup(options: { budget?: number } = {}) {
 
 const style = (patch: Partial<TextStyle> = {}): TextStyle => ({ ...structuredClone(DEFAULT_TEXT_STYLE), ...patch });
 
-/** One preview pass drawing `layers` (clip id, content, style, scale). */
-function pass(cache: TextRasterCache, layers: [string, TextContent, TextStyle, number][]) {
+/** One preview pass drawing `layers` (clip id, content, style, scale, highlight). */
+function pass(cache: TextRasterCache, layers: [string, TextContent, TextStyle, number, TextHighlight?][]) {
   cache.begin();
-  const out = layers.map(([id, text, s, scale]) => cache.resolve(id, text, s, scale));
+  const out = layers.map(([id, text, s, scale, highlight]) => cache.resolve(id, text, s, scale, highlight ?? null));
   cache.end();
   return out;
 }
@@ -213,5 +213,37 @@ describe("TextRasterCache", () => {
     expect(cache.stats.rasters).toBe(0);
     exact?.release();
     expect(exact?.texture.valid).toBe(false);
+  });
+
+  it("draws an inline edit's selection highlight in the clip's own raster, never shared (Batch 29)", () => {
+    const { cache, rasters, uploads } = setup();
+    const text = textContent("Same");
+    const s = style();
+    const highlight = { rects: [{ x: 0, y: 0, width: 40, height: 50 }], color: "gold" };
+    pass(cache, [
+      ["a", text, s, 1],
+      ["b", text, s, 1],
+    ]);
+    expect(rasters).toHaveLength(1);
+    // The edited clip gets its own raster; the other keeps the shared one.
+    const [a, b] = pass(cache, [
+      ["a", text, s, 1, highlight],
+      ["b", text, s, 1],
+    ]);
+    expect(rasters).toHaveLength(2);
+    expect(a?.texture).not.toBe(b?.texture);
+    expect(cache.stats.lastRasterized).toEqual(["a"]);
+    expect(cache.stats.rasters).toBe(1);
+    // The same highlight object: nothing to do; a new selection: a new raster, the old one destroyed.
+    pass(cache, [["a", text, s, 1, highlight]]);
+    expect(rasters).toHaveLength(2);
+    pass(cache, [["a", text, s, 1, { ...highlight, rects: [{ x: 0, y: 0, width: 60, height: 50 }] }]]);
+    expect(rasters).toHaveLength(3);
+    expect(uploads[1]?.destroyed).toBe(true);
+    // Editing ends: back to the shared raster, the highlighted one destroyed.
+    const [back] = pass(cache, [["a", text, s, 1]]);
+    expect(rasters).toHaveLength(3);
+    expect(back?.texture).toBe(uploads[0]);
+    expect(uploads[2]?.destroyed).toBe(true);
   });
 });

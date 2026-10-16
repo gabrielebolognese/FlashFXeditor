@@ -10,7 +10,9 @@
 //   on sides long enough on screen; a group box around several layers), the anchor marker while Alt is
 //   held, the marquee, the 100% scale snap line on the dragged handle's sides, and the numeric readout
 //   near the cursor (the timeline's drag tooltip style). In crop mode (Batch 26) the box gets crop
-//   handles (corner brackets and edge bars inside it) and the whole media's box is outlined dashed.
+//   handles (corner brackets and edge bars inside it) and the whole media's box is outlined dashed. A
+//   text box (Batch 29) has no top and bottom handles; inline text editing draws the edited box's
+//   outline, the caret (--text-caret-width, --accent) and the IME composition underline.
 // - Smart guides (§7.4, the scene's `guides`): 1 px --accent lines (across the frame for the frame and
 //   safe-zone targets, from the dragged box to the layer for a layer), distance spans with end caps
 //   and their distance chips (--accent, --on-accent mono caption), equal-spacing gaps, measure mode.
@@ -189,6 +191,15 @@ export class PreviewOverlayView implements RenderView {
       }
       out.push(scene.crop ? 1 : 0);
       if (scene.crop) quad(scene.crop.media); else out.push(0);
+      out.push(scene.textBox ? 1 : 0);
+      const editing = scene.text;
+      if (editing) {
+        out.push(1);
+        if (editing.caret) out.push(1, editing.caret[0].x, editing.caret[0].y, editing.caret[1].x, editing.caret[1].y);
+        else out.push(0);
+        out.push(editing.underline.length);
+        for (const [a, b] of editing.underline) out.push(a.x, a.y, b.x, b.y);
+      } else out.push(0);
     } else out.push(-1);
     const previous = this.sceneNumbers;
     let changed = text !== this.sceneText || previous.length !== out.length;
@@ -250,7 +261,7 @@ export class PreviewOverlayView implements RenderView {
       // Square handles on screen: the corners always, the edge handles on sides long enough.
       const shown = edgeHandlesShown(box, t, gizmo.minEdge * dpr);
       const size = Math.round(gizmo.handleSize * dpr);
-      const handles: HandleId[] = [...CORNERS, ...EDGES.filter((h) => (h === "n" || h === "s" ? shown.horizontal : shown.vertical))];
+      const handles: HandleId[] = [...CORNERS, ...EDGES.filter((h) => (h === "n" || h === "s" ? shown.horizontal && !scene.textBox : shown.vertical))];
       ctx.fillStyle = color.textPrimary;
       ctx.strokeStyle = color.accent;
       for (const handle of handles) {
@@ -262,6 +273,30 @@ export class PreviewOverlayView implements RenderView {
       }
     }
     if (scene.anchor) this.drawAnchor(ctx, at(scene.anchor), dpr, line);
+    if (scene.text) {
+      // Inline text editing (§7.7): the caret and the IME composition underline, in --accent.
+      ctx.strokeStyle = color.accent;
+      ctx.lineCap = "butt";
+      if (scene.text.caret) {
+        ctx.lineWidth = Math.max(1, Math.round(gizmo.caretWidth * dpr));
+        const [a, b] = scene.text.caret;
+        const p = at(a);
+        const q = at(b);
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+        ctx.lineTo(q.x, q.y);
+        ctx.stroke();
+      }
+      ctx.lineWidth = line;
+      for (const [a, b] of scene.text.underline) {
+        const p = at(a);
+        const q = at(b);
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+        ctx.lineTo(q.x, q.y);
+        ctx.stroke();
+      }
+    }
     ctx.restore();
     if (scene.guides && scene.guides.spans.length > 0) this.drawDistances(ctx, placement, scene.guides.spans);
     if (scene.readout) this.drawReadout(ctx, placement, scene.readout);

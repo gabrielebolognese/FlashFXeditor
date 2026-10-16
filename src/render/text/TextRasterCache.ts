@@ -7,6 +7,8 @@
 //   is a few identity checks (P11: editing one layer re-rasterizes only that layer).
 // - A text whose fonts are still loading keeps drawing its previous raster (or nothing yet); the font
 //   load redraws the preview.
+// - A clip edited inline (spec §7.7) draws its selection highlight in its raster: such a raster is the
+//   slot's own (never shared, destroyed when the slot draws something else).
 // - Entries in use by a slot of this or the last pass are kept; the others are evicted least recently
 //   used first once the byte budget is exceeded. A lost device's textures are rasterized again.
 // - Stats: entries, bytes, rasterizations (total), the clips rasterized in the last pass and the time
@@ -17,7 +19,7 @@ import type { UvRect } from "../compositor/drawList.js";
 import type { TextureHandle } from "../gpu/renderer.js";
 import { layoutText, type Rect, type TextLayout } from "./layout.js";
 import { currentMeasurer, textFallback, textLayout } from "./layoutCache.js";
-import { rasterizeText, type TextRaster } from "./raster.js";
+import { rasterizeText, type TextHighlight, type TextRaster } from "./raster.js";
 
 /** Raster scale limits (spec §10.1 "clamped 0.25..4"). */
 export const MIN_TEXT_SCALE = 0.25;
@@ -41,7 +43,7 @@ export interface TextRasterDeps {
   fontsReady(style: TextStyle, text: string): boolean;
   /** Waits for the fonts of `style` for `text` (Export frame). */
   loadFonts(style: TextStyle, text: string): Promise<void>;
-  rasterize?(layout: TextLayout, style: TextStyle, scale: number): TextRaster | null;
+  rasterize?(layout: TextLayout, style: TextStyle, scale: number, highlight?: TextHighlight | null): TextRaster | null;
   /** The cached layout (`textLayout`). */
   layout?(content: TextContent, style: TextStyle): TextLayout;
   /**
@@ -80,11 +82,14 @@ interface Entry extends ResolvedText {
   /** Slots drawing it. */
   refs: number;
   lastPass: number;
+  /** A highlighted raster: its slot's own, not in the cache. */
+  own: boolean;
 }
 
 interface Slot {
   text: TextContent;
   style: TextStyle;
+  highlight: TextHighlight | null;
   bucket: number;
   entry: Entry | null;
   pass: number;
@@ -112,27 +117,29 @@ export class TextRasterCache {
   }
 
   /**
-   * The raster of clip `clipId` showing `text` in `style` at `scale` px per content px (bucketed), or
-   * null when it draws nothing (empty) or nothing yet (its fonts are loading).
+   * The raster of clip `clipId` showing `text` in `style` at `scale` px per content px (bucketed), with
+   * the selection `highlight` while it is edited inline, or null when it draws nothing (empty) or
+   * nothing yet (its fonts are loading).
    */
-  resolve(clipId: ClipId, text: TextContent, style: TextStyle, scale: number): ResolvedText | null {
+  resolve(clipId: ClipId, text: TextContent, style: TextStyle, scale: number, highlight: TextHighlight | null = null): ResolvedText | null {
     this.stats.layers += 1;
     const bucket = textScaleBucket(scale);
     const slot = this.slots.get(clipId);
     if (slot) slot.pass = this.pass;
     const held = slot?.entry && slot.entry.texture.valid ? slot.entry : null;
-    if (slot && held && slot.text === text && slot.style === style && slot.bucket === bucket) {
+    if (slot && held && slot.text === text && slot.style === style && slot.highlight === highlight && slot.bucket === bucket) {
       held.lastPass = this.pass;
       return held;
     }
     const layout = (this.deps.layout ?? textLayout)(text, style);
     if (!layout.raster) {
-      this.setSlot(clipId, text, style, bucket, null);
+      this.setSlot(clipId, text, style, highlight, bucket, null);
       return null;
     }
     const mipmaps = bucket > scale * 1.5;
-    const key = `${contentKey(text)}|${styleKey(style)}|${bucket}${mipmaps ? "m" : ""}`;
-    let entry = this.entries.get(key);
+    // A highlighted raster is never shared: no key.
+    const key = highlight ? "" : `${contentKey(text)}|${styleKey(style)}|${bucket}${mipmaps ? "m" : ""}`;
+    let entry = key === "" ? undefined : this.entries.get(key);
     if (entry && !entry.texture.valid) {
       this.remove(entry);
       entry = undefined;
@@ -145,17 +152,17 @@ export class TextRasterCache {
         return held;
       }
       const started = performance.now();
-      entry = this.rasterize(key, this.fresh(text, style), style, bucket, mipmaps) ?? undefined;
+      entry = this.rasterize(key, this.fresh(text, style), style, bucket, mipmaps, highlight) ?? undefined;
       this.stats.lastMs += performance.now() - started;
       if (!entry) {
-        this.setSlot(clipId, text, style, bucket, null);
+        this.setSlot(clipId, text, style, highlight, bucket, null);
         return null;
       }
       this.stats.rasterizations += 1;
       this.stats.lastRasterized.push(clipId);
     }
     entry.lastPass = this.pass;
-    this.setSlot(clipId, text, style, bucket, entry);
+    this.setSlot(clipId, text, style, highlight, bucket, entry);
     return entry;
   }
 
@@ -163,7 +170,7 @@ export class TextRasterCache {
   end(): void {
     for (const [clipId, slot] of this.slots) {
       if (slot.pass === this.pass) continue;
-      if (slot.entry) slot.entry.refs -= 1;
+      if (slot.entry) this.release(slot.entry);
       this.slots.delete(clipId);
     }
     this.evict();
@@ -179,7 +186,7 @@ export class TextRasterCache {
     await this.deps.loadFonts(style, applyTextCase(text.value, style.textCase));
     const layout = this.fresh(text, style);
     if (!layout.raster) return null;
-    const entry = this.rasterize("", layout, style, Math.min(MAX_TEXT_SCALE, Math.max(MIN_TEXT_SCALE, scale)), false);
+    const entry = this.rasterize("", layout, style, Math.min(MAX_TEXT_SCALE, Math.max(MIN_TEXT_SCALE, scale)), false, null);
     if (!entry) return null;
     return { texture: entry.texture, crop: entry.crop, rect: entry.rect, release: () => entry.texture.destroy() };
   }
@@ -187,14 +194,21 @@ export class TextRasterCache {
   /** Drops the rasters of `family` (all when absent; any case): its fonts changed. */
   dropFamily(family?: string): void {
     const name = family?.toLowerCase();
-    for (const entry of [...this.entries.values()]) if (name === undefined || entry.family.toLowerCase() === name) this.remove(entry);
-    for (const slot of this.slots.values()) if (slot.entry && !this.entries.has(slot.entry.key)) slot.entry = null;
+    const dropped = (entry: Entry) => name === undefined || entry.family.toLowerCase() === name;
+    for (const entry of [...this.entries.values()]) if (dropped(entry)) this.remove(entry);
+    for (const slot of this.slots.values()) {
+      const entry = slot.entry;
+      if (!entry || (entry.own ? !dropped(entry) : this.entries.has(entry.key))) continue;
+      if (entry.own) entry.texture.destroy();
+      slot.entry = null;
+    }
     this.stats.rasters = this.entries.size;
     this.stats.bytes = this.bytes;
   }
 
   /** Drops everything (project closed, device lost). */
   clear(): void {
+    for (const slot of this.slots.values()) if (slot.entry?.own) slot.entry.texture.destroy();
     this.slots.clear();
     for (const entry of [...this.entries.values()]) this.remove(entry);
     this.stats.rasters = 0;
@@ -212,8 +226,8 @@ export class TextRasterCache {
     return layoutText(text, style, currentMeasurer(), textFallback());
   }
 
-  private rasterize(key: string, layout: TextLayout, style: TextStyle, scale: number, mipmaps: boolean): Entry | null {
-    const raster = (this.deps.rasterize ?? rasterizeText)(layout, style, scale);
+  private rasterize(key: string, layout: TextLayout, style: TextStyle, scale: number, mipmaps: boolean, highlight: TextHighlight | null): Entry | null {
+    const raster = (this.deps.rasterize ?? rasterizeText)(layout, style, scale, highlight);
     if (!raster) return null;
     const texture = this.deps.upload(raster.canvas, { mipmaps, label: "text" });
     const entry: Entry = {
@@ -225,6 +239,7 @@ export class TextRasterCache {
       bytes: texture.bytes,
       refs: 0,
       lastPass: this.pass,
+      own: highlight !== null,
     };
     if (key !== "") {
       this.entries.set(key, entry);
@@ -233,21 +248,28 @@ export class TextRasterCache {
     return entry;
   }
 
-  private setSlot(clipId: ClipId, text: TextContent, style: TextStyle, bucket: number, entry: Entry | null): void {
+  private setSlot(clipId: ClipId, text: TextContent, style: TextStyle, highlight: TextHighlight | null, bucket: number, entry: Entry | null): void {
     let slot = this.slots.get(clipId);
     if (!slot) {
-      slot = { text, style, bucket, entry: null, pass: this.pass };
+      slot = { text, style, highlight, bucket, entry: null, pass: this.pass };
       this.slots.set(clipId, slot);
     }
     if (slot.entry !== entry) {
-      if (slot.entry) slot.entry.refs -= 1;
+      if (slot.entry) this.release(slot.entry);
       if (entry) entry.refs += 1;
     }
     slot.text = text;
     slot.style = style;
+    slot.highlight = highlight;
     slot.bucket = bucket;
     slot.entry = entry;
     slot.pass = this.pass;
+  }
+
+  /** A slot stops drawing `entry`: one ref less; a highlighted raster goes. */
+  private release(entry: Entry): void {
+    entry.refs -= 1;
+    if (entry.own) entry.texture.destroy();
   }
 
   private remove(entry: Entry): void {

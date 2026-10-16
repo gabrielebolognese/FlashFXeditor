@@ -75,6 +75,10 @@ export interface Theme {
     /** Crop mode (Batch 26): bracket arm / edge bar length and stroke width. */
     cropHandleLength: number;
     cropHandleWidth: number;
+    /** Inline text editing (Batch 29): the caret's width (CSS px) and blink half-period (ms), the selection highlight color. */
+    caretWidth: number;
+    caretBlink: number;
+    textSelection: string;
   };
 }
 
@@ -323,6 +327,9 @@ export function readTheme(read: TokenReader, root?: Element): { theme: Theme; mi
       guideCap: num("--canvas-guide-cap"),
       cropHandleLength: num("--crop-handle-length"),
       cropHandleWidth: num("--crop-handle-width"),
+      caretWidth: num("--text-caret-width"),
+      caretBlink: num("--text-caret-blink"),
+      textSelection: str("--text-selection"),
     },
   };
   return { theme, missing };

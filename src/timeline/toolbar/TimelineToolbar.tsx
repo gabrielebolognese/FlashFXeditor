@@ -1,4 +1,4 @@
-import { Ellipsis, Gauge, TextCursorInput } from "lucide-react";
+import { Ellipsis, Gauge } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { actions, sessionStore } from "../../app/services.js";
@@ -10,7 +10,7 @@ import { useDismiss } from "../../ui/useDismiss.js";
 import styles from "./TimelineToolbar.module.css";
 import { TOOLBAR_GROUPS, type ToolbarGroup, type ToolbarItem } from "./toolbarGroups.js";
 
-// Actions stay disabled until their batches wire them (toggles: 35/37, add: 29/32/34).
+// Actions stay disabled until their batches wire them (toggles: 35/37, add: 32/34).
 const ENABLED: ReadonlySet<string> = new Set([
   "timeline.zoomOut",
   "timeline.zoomIn",
@@ -25,6 +25,8 @@ const ENABLED: ReadonlySet<string> = new Set([
   "marker.add",
   "edit.freezeFrame",
   "edit.punchZoom",
+  "add.title",
+  "add.subtitle",
   "timeline.trackHeightCycle",
 ]);
 
@@ -193,7 +195,6 @@ export function TimelineToolbar() {
         <IconButton icon={Ellipsis} label="More tools" pressed={overflow !== null} onClick={overflow ? closeOverflow : openOverflow} />
       </div>
       <div className={styles.end} data-end="">
-        {import.meta.env.DEV && <IconButton icon={TextCursorInput} label="Add a text clip (dev)" onClick={() => void actions.run("dev.addText")} />}
         {import.meta.env.DEV && <DevStatsToggle />}
         <Timecode />
       </div>

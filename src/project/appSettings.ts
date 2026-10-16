@@ -34,6 +34,11 @@ export interface AppSettings {
   punchZoomAnimated: boolean;
   /** The font picker's Favorites section (spec §11): family names, in the order starred. */
   favoriteFonts: readonly string[];
+  /**
+   * `+ Title` / `+ Subtitle` last as long as the rest of the video clip under the playhead (spec §10.2
+   * "match clip under playhead", on by default), else 3 s. TODO(batch 42): the switch in the settings panel.
+   */
+  matchClipUnderPlayhead: boolean;
 }
 
 export const AUTOSAVE_DELAYS_MS = [1000, 2000, 5000, 10_000] as const;
@@ -53,6 +58,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   punchZoomScale: 1.2,
   punchZoomAnimated: false,
   favoriteFonts: [],
+  matchClipUnderPlayhead: true,
 };
 
 /** The favorites kept by the font picker. */
@@ -102,6 +108,7 @@ function sanitize(value: unknown, fallback: AppSettings = DEFAULT_APP_SETTINGS):
     favoriteFonts: Array.isArray(raw.favoriteFonts)
       ? [...new Set(raw.favoriteFonts.filter((name): name is string => typeof name === "string" && name !== ""))].slice(-MAX_FAVORITE_FONTS)
       : fallback.favoriteFonts,
+    matchClipUnderPlayhead: typeof raw.matchClipUnderPlayhead === "boolean" ? raw.matchClipUnderPlayhead : fallback.matchClipUnderPlayhead,
   };
 }
 

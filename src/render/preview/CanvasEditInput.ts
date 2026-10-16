@@ -25,11 +25,18 @@
 //   center; crop edges snap to the frame edges, center and thirds while snapping is on and the layer
 //   is axis-aligned. A body drag still moves the layer. It ends on Esc, a double-click on the layer,
 //   or a selection that is no longer that layer alone.
+// - Text layers (spec §7.3, §7.7; textGizmo.ts, InlineTextEditor.ts): one selected text layer's gizmo has
+//   corner handles that size its font (keeping the layout) and side handles (left, right) that set
+//   its box width (the text reflows); a drag shows its text live (`texts`) and commits one `clip.text`
+//   command. A double-click on a text layer edits it inline with the caret there. While a text is
+//   edited, a press on its box places the caret (Shift extends, a double press selects a word) and a
+//   drag selects; a press anywhere else commits the edit first, then does what it does. The edited
+//   box keeps its outline, without handles, and the overlay draws the caret.
 // - Hover outlines the layer under the pointer; the cursor follows the gizmo zone.
 // - The canvas rect is read once per pointer enter and after a panel resize (P9).
-// TODO(batch 29): double-click edits text inline. TODO(batch 35): the keyframe diamond on the box corner.
+// TODO(batch 35): the keyframe diamond on the box corner.
 import type { Command } from "../../core/commands/command.js";
-import type { ClipId, Crop, Project, Transform } from "../../core/document/types.js";
+import type { ClipId, Crop, Project, TextContent, TextStyle, Transform } from "../../core/document/types.js";
 import { isEditableTarget } from "../../core/keyboard/KeyDispatcher.js";
 import { isSnapKey, type Platform } from "../../core/keyboard/keys.js";
 import type { FrameScheduler } from "../../core/scheduler/FrameScheduler.js";
@@ -40,6 +47,7 @@ import { addToSelection, clickSelection, EMPTY_SELECTION, selectClips, type Clic
 import { setSelection, type SessionStore } from "../../core/store/sessionStore.js";
 import type { Theme, ThemeBridge } from "../../core/theme/theme.js";
 import { isCropClip, setCrops } from "../../timeline/edit/crop.js";
+import { setTexts } from "../../timeline/edit/text.js";
 import { isLayerClip, layerCorners, setTransforms, type Point } from "../../timeline/edit/transform.js";
 import { isClipLocked, selectionPartners } from "../../timeline/model/queries.js";
 import type { LiveText } from "../compositor/Compositor.js";
@@ -70,10 +78,28 @@ import {
   type HandleId,
   type Modifiers,
 } from "./gizmo.js";
+import type { TextEditScene } from "./InlineTextEditor.js";
 import { ACTION_SAFE, centeredRect, safeZoneOn, TITLE_SAFE } from "./overlays.js";
 import type { PreviewPlacement } from "./PreviewView.js";
 import type { ZoneRect } from "./safeZones.js";
 import { CanvasSnapIndex, handleGuides, isAxisAligned, measureGuides, moveGuides, snapHandle, snapMove, type CanvasSnapCandidates, type Guides } from "./snap.js";
+import { textHandleKind, textSizeGesture, textWidthGesture, type TextGestureStart } from "./textGizmo.js";
+
+/** Inline text editing as the canvas drives it (InlineTextEditor, spec §7.7). */
+export interface CanvasTextEditing {
+  /** The clip edited inline, or null. */
+  readonly editing: ClipId | null;
+  /** Edits a text clip with the caret at a project point. */
+  begin(clipId: ClipId, at: Point): boolean;
+  /** Commits and ends editing; false when nothing was edited. */
+  end(commit?: boolean): boolean;
+  /** Whether a project point is on the edited box (grown by `reach` project px). */
+  contains(point: Point, reach?: number): boolean;
+  press(point: Point, shift: boolean): void;
+  drag(point: Point): void;
+  release(): void;
+  scene(): TextEditScene | null;
+}
 
 export interface CanvasEditDeps {
   document: Pick<DocumentStore, "getState" | "subscribe">;
@@ -103,6 +129,8 @@ export interface CanvasEditDeps {
   texts?(): ReadonlyMap<ClipId, LiveText> | null;
   /** Crop mode (spec §7.3, §11), shared with the Crop section and the crop chip; without it there is no crop mode. */
   cropMode?: Store<CropModeState>;
+  /** Inline text editing (spec §7.7); without it a double-click on text does nothing. */
+  textEditor?: CanvasTextEditing;
 }
 
 /** What the overlay draws for selection and the gizmo; null parts are not drawn. */
@@ -125,9 +153,13 @@ export interface GizmoScene {
   guides: Guides | null;
   /** Crop mode (§7.3): the box holds crop handles, `media` is the whole media's quad (outlined dashed). */
   crop: { media: Quad } | null;
+  /** The box is one text layer's: corner and side handles only (§7.3). */
+  textBox: boolean;
+  /** Inline text editing (§7.7): the caret and the composition underline. */
+  text: TextEditScene | null;
 }
 
-type GestureKind = "move" | "scale" | "rotate" | "anchor" | "crop";
+type GestureKind = "move" | "scale" | "rotate" | "anchor" | "crop" | "textSize" | "textWidth";
 
 interface Press {
   pointerId: number;
@@ -157,6 +189,9 @@ interface Drag {
   /** A crop handle drag: the layer it crops, and the crops it leaves (ephemeral until the release). */
   crop: CropStart | null;
   crops: ReadonlyMap<ClipId, Crop> | null;
+  /** A text handle drag: the text layer, and its text and style as the drag leaves them (ephemeral until the release). */
+  text: TextGestureStart | null;
+  texts: ReadonlyMap<ClipId, { text: TextContent; style: TextStyle }> | null;
 }
 
 interface Marquee {
@@ -176,6 +211,8 @@ const LABELS: Record<GestureKind, [string, string]> = {
   rotate: ["Rotate layer", "Rotate layers"],
   anchor: ["Move anchor point", "Move anchor point"],
   crop: ["Crop layer", "Crop layers"],
+  textSize: ["Resize text", "Resize text"],
+  textWidth: ["Change text box width", "Change text box width"],
 };
 
 export class CanvasEditInput {
@@ -186,6 +223,8 @@ export class CanvasEditInput {
   private press: Press | null = null;
   private drag: Drag | null = null;
   private marquee: Marquee | null = null;
+  /** A press placing the caret or selecting in the text edited inline. */
+  private textPress: number | null = null;
   /** The pointer: client px, and canvas CSS px for the readout. */
   private pointer: { clientX: number; clientY: number; x: number; y: number } | null = null;
   private hover: ClipId | null = null;
@@ -231,6 +270,11 @@ export class CanvasEditInput {
     return (drag?.kind !== "crop" ? drag?.result?.transforms : null) ?? this.deps.live?.() ?? null;
   }
 
+  /** A text handle drag's ephemeral texts and styles (the compositor reads them, P2), or null. */
+  get texts(): ReadonlyMap<ClipId, { text: TextContent; style: TextStyle }> | null {
+    return this.drag?.texts ?? null;
+  }
+
   /** The clip in crop mode (spec §7.3), or null. */
   get cropTarget(): ClipId | null {
     return this.deps.cropMode?.getState().target ?? null;
@@ -260,7 +304,7 @@ export class CanvasEditInput {
 
   /** A gesture or marquee runs. */
   get active(): boolean {
-    return this.drag !== null || this.marquee !== null;
+    return this.drag !== null || this.marquee !== null || this.textPress !== null;
   }
 
   /** The snap toggle, inverted while S is held during a drag (one snap state with the timeline). */
@@ -359,11 +403,13 @@ export class CanvasEditInput {
   /** Esc (spec §6.8 for drags): drops a gesture or marquee with no document change; true when one ran. */
   cancel(): boolean {
     const running = this.press !== null || this.drag !== null || this.marquee !== null;
-    const pointerId = this.press?.pointerId ?? this.drag?.pointerId ?? this.marquee?.pointerId;
+    const pointerId = this.press?.pointerId ?? this.drag?.pointerId ?? this.marquee?.pointerId ?? this.textPress ?? undefined;
     if (this.drag?.kind === "crop") this.deps.crops?.write(null);
+    if (this.textPress !== null) this.deps.textEditor?.release();
     this.press = null;
     this.drag = null;
     this.marquee = null;
+    this.textPress = null;
     this.snapHeld = false;
     if (pointerId !== undefined && this.element?.hasPointerCapture?.(pointerId)) this.element.releasePointerCapture(pointerId);
     if (running) {
@@ -450,6 +496,12 @@ export class CanvasEditInput {
   /** What the overlay draws now. */
   scene(): GizmoScene {
     const layers = this.layers();
+    const editing = this.deps.textEditor?.editing ?? null;
+    if (editing !== null) {
+      // Inline editing (§7.7): the edited box outlined, no handles, the caret.
+      const edited = layers.find((layer) => layer.clipId === editing);
+      return { hover: null, outlines: edited ? [edited.quad] : [], box: null, group: false, anchor: null, marquee: null, snap: null, readout: null, guides: null, crop: null, textBox: false, text: this.deps.textEditor?.scene() ?? null };
+    }
     const selection = this.deps.session.selection.getState();
     const selected = selection.kind === "clips" ? layers.filter((layer) => selection.clipIds.has(layer.clipId)) : [];
     const drag = this.drag;
@@ -479,26 +531,48 @@ export class CanvasEditInput {
       readout: result && pointer ? { text: result.readout, x: pointer.x, y: pointer.y } : null,
       guides,
       crop: cropLayer ? { media: layerCorners(cropLayer.transform, { ...cropLayer.box, left: 0, top: 0, right: cropLayer.box.width, bottom: cropLayer.box.height }, frame) } : null,
+      textBox: !marquee && !cropLayer && this.textLayer(drag ? drag.start.layers.length : selected.length, single) !== null,
+      text: null,
     };
+  }
+
+  /** The text clip of the one layer a gizmo holds (`count` layers, `single` the one), or null. */
+  private textLayer(count: number, single: { clipId: ClipId } | undefined): ClipId | null {
+    if (count !== 1 || !single) return null;
+    return this.deps.document.getState().clips[single.clipId]?.kind === "text" ? single.clipId : null;
   }
 
   // --- Pointer -----------------------------------------------------------------------------------
 
   private onPointerDown(event: PointerEvent): void {
-    if (event.button !== 0 || this.press || this.drag || this.marquee) return;
+    if (event.button !== 0 || this.press || this.drag || this.marquee || this.textPress !== null) return;
     if (this.deps.panning() || this.deps.session.state.getState().activeTool === "hand") return;
     const placement = this.deps.placement();
     const point = this.projectPoint(event, placement);
     if (!placement || !point) return;
     this.modifiers = this.modifiersOf(event);
     this.setPointer(event);
+    const editor = this.deps.textEditor;
+    if (editor?.editing) {
+      // On the edited text a press places the caret (§7.7); elsewhere it commits the edit, then acts.
+      if (editor.contains(point, (this.theme.gizmo.handleHit * placement.dpr) / 2 / placement.transform[0])) {
+        event.preventDefault();
+        editor.press(point, this.modifiers.shift);
+        this.textPress = event.pointerId;
+        this.element?.setPointerCapture?.(event.pointerId);
+        this.updateCursor();
+        return;
+      }
+      editor.end(true);
+    }
     const { session } = this.deps;
     const selection = session.selection.getState();
     const held = this.selectedLayers();
     const box = gizmoBoxOf(held.map((layer) => layer.quad));
     const mods = this.modifiers;
     const cropLayer = this.cropLayer(held);
-    const hit = box ? this.hitBox(box, placement, event, cropLayer !== null) : null;
+    const textLayer = cropLayer ? null : this.textLayer(held.length, held[0]);
+    const hit = box ? this.hitBox(box, placement, event, cropLayer !== null, textLayer !== null) : null;
     const under = layersUnder(this.layers(), point.x, point.y);
     const top = under[0];
     // Deep select (§7.2): the next layer under the pointer after the selected one, alone.
@@ -509,7 +583,7 @@ export class CanvasEditInput {
     let press: Pick<Press, "drag" | "click"> | null = null;
     // Alt over the anchor marker drags the anchor; released without a drag it is the Alt+click.
     if (box && mods.alt && held.length === 1 && !cropLayer && this.overAnchor(held[0] as CanvasLayer, placement, event)) press = { drag: { kind: "anchor" }, click: top ? cycled() : null };
-    else if (hit?.kind === "handle") press = { drag: { kind: cropLayer ? "crop" : "scale", handle: hit.handle }, click: null };
+    else if (hit?.kind === "handle") press = { drag: { kind: cropLayer ? "crop" : textLayer ? textHandleKind(hit.handle) : "scale", handle: hit.handle }, click: null };
     // In crop mode a click on its layer keeps the selection (a group would end crop mode).
     else if (cropLayer && hit?.kind === "body" && !mods.alt && !mods.shift && !mods.mod && top?.clipId === cropLayer.clipId) press = { drag: { kind: "move" }, click: null };
     else if (hit?.kind === "rotate") press = { drag: { kind: "rotate", handle: hit.corner }, click: null };
@@ -542,6 +616,11 @@ export class CanvasEditInput {
 
   private onPointerMove(event: PointerEvent): void {
     this.setPointer(event);
+    if (this.textPress === event.pointerId) {
+      const point = this.projectPoint(event, this.deps.placement());
+      if (point) this.deps.textEditor?.drag(point);
+      return;
+    }
     // The modifiers ride on pointer events too (a key pressed while the window had no focus).
     const mods = this.modifiersOf(event);
     if (mods.shift !== this.modifiers.shift || mods.alt !== this.modifiers.alt || mods.mod !== this.modifiers.mod) {
@@ -566,6 +645,13 @@ export class CanvasEditInput {
   }
 
   private onPointerUp(event: PointerEvent): void {
+    if (this.textPress === event.pointerId) {
+      this.textPress = null;
+      this.deps.textEditor?.release();
+      if (this.element?.hasPointerCapture?.(event.pointerId)) this.element.releasePointerCapture(event.pointerId);
+      this.updateCursor();
+      return;
+    }
     if (!this.ownsPointer(event.pointerId)) return;
     const { press, drag, marquee } = this;
     this.press = null;
@@ -580,7 +666,14 @@ export class CanvasEditInput {
       const labels = LABELS[drag.kind];
       const label = count === 1 ? labels[0] : labels[1];
       const project = this.deps.document.getState();
-      const command = drag.kind === "crop" ? (drag.crops ? setCrops(project, drag.crops, { label }) : null) : setTransforms(project, drag.result.transforms, { label });
+      const command =
+        drag.kind === "crop"
+          ? drag.crops
+            ? setCrops(project, drag.crops, { label })
+            : null
+          : drag.texts
+            ? setTexts(project, new Map([...drag.texts].map(([id, text]) => [id, { ...text, transform: drag.result?.transforms.get(id) as Transform }])), { label })
+            : setTransforms(project, drag.result.transforms, { label });
       // The document takes over from the ephemeral values in the same frame.
       this.deps.scheduler.invalidate("preview");
       if (command) this.deps.commit(command);
@@ -612,10 +705,13 @@ export class CanvasEditInput {
 
   /**
    * A double-click on a video or image layer enters crop mode on it alone (spec §7.3, Batch 26); on the
-   * layer in crop mode it leaves crop mode.
+   * layer in crop mode it leaves crop mode. On a text layer it edits the text inline with the caret
+   * there (§7.7); while editing, presses count clicks themselves (a word, everything).
    */
   private onDoubleClick(event: MouseEvent): void {
     if (event.button !== 0 || this.drag || this.marquee || this.deps.panning() || this.deps.session.state.getState().activeTool === "hand") return;
+    const editor = this.deps.textEditor;
+    if (editor?.editing) return;
     const placement = this.deps.placement();
     const point = this.projectPoint(event, placement);
     if (!placement || !point) return;
@@ -625,8 +721,15 @@ export class CanvasEditInput {
       this.exitCropMode();
       return;
     }
-    // TODO(batch 29): a double-click on a text layer edits it inline.
     const clip = top ? this.deps.document.getState().clips[top.clipId] : undefined;
+    if (top && clip?.kind === "text" && editor) {
+      this.cancel();
+      setSelection(this.deps.session, selectClips([top.clipId]));
+      editor.begin(top.clipId, point);
+      this.invalidate();
+      this.updateCursor();
+      return;
+    }
     if (!top || !clip || !isCropClip(clip)) return;
     setSelection(this.deps.session, selectClips([top.clipId]));
     this.enterCropMode(top.clipId);
@@ -661,7 +764,13 @@ export class CanvasEditInput {
       guides: null,
       crop: cropLayer ? { clipId: cropLayer.clipId, transform: cropLayer.transform, box: cropLayer.box, frame: project.settings } : null,
       crops: null,
+      text: kind === "textSize" || kind === "textWidth" ? this.textStart(held[0] as CanvasLayer, project) : null,
+      texts: null,
     };
+    if ((kind === "textSize" || kind === "textWidth") && !this.drag.text) {
+      this.drag = null;
+      return;
+    }
     this.deps.onDragStart();
   }
 
@@ -718,10 +827,27 @@ export class CanvasEditInput {
       case "crop":
         this.updateCrop(drag, point, placement, mods, snapping);
         break;
+      case "textSize":
+      case "textWidth": {
+        const start = drag.text as TextGestureStart;
+        const handle = drag.handle as HandleId;
+        const result = drag.kind === "textSize" ? textSizeGesture(start, handle, point, mods) : textWidthGesture(start, handle, point, mods);
+        drag.result = { transforms: new Map([[start.clipId, result.transform]]), box: result.box, snapX: false, snapY: false, readout: result.readout };
+        drag.texts = new Map([[start.clipId, { text: result.text, style: result.style }]]);
+        break;
+      }
     }
     this.deps.scheduler.invalidate("preview");
     this.invalidate();
     this.updateCursor();
+  }
+
+  /** A text layer as a text handle drag starts from it: its shown text and style (a field scrub's live ones), its transform. */
+  private textStart(layer: CanvasLayer, project: Project): TextGestureStart | null {
+    const clip = project.clips[layer.clipId];
+    if (clip?.kind !== "text") return null;
+    const live = this.deps.texts?.()?.get(layer.clipId);
+    return { clipId: layer.clipId, text: live?.text ?? clip.text, style: live?.style ?? clip.style, transform: layer.transform, frame: project.settings };
   }
 
   /** A crop handle drag step: the crop gesture, its edge snapped to the frame, the crop written live (P2). */
@@ -853,10 +979,10 @@ export class CanvasEditInput {
     return { handleHit: handleHit * dpr, rotateZone: rotateZone * dpr, minEdge: minEdge * dpr };
   }
 
-  /** The gizmo zone under the pointer (device px against the box on screen); `crop`: crop handles, no rotate zones. */
-  private hitBox(box: GizmoBox, placement: PreviewPlacement, event: { clientX: number; clientY: number }, crop = false): GizmoHit | null {
+  /** The gizmo zone under the pointer (device px against the box on screen); `crop`: crop handles, no rotate zones; `text`: no top and bottom handles. */
+  private hitBox(box: GizmoBox, placement: PreviewPlacement, event: { clientX: number; clientY: number }, crop = false, text = false): GizmoHit | null {
     const device = this.devicePoint(event, placement.dpr);
-    return device ? hitGizmo(box, placement.transform, device.x, device.y, this.metrics(placement.dpr), crop) : null;
+    return device ? hitGizmo(box, placement.transform, device.x, device.y, this.metrics(placement.dpr), crop, text) : null;
   }
 
   private overAnchor(layer: CanvasLayer, placement: PreviewPlacement, event: { clientX: number; clientY: number }): boolean {
@@ -916,13 +1042,19 @@ export class CanvasEditInput {
       // Scale and crop handles: the resize cursor of the handle's direction on screen.
       return placement && drag.result ? resizeCursor(drag.result.box, placement.transform, drag.handle as HandleId) : "";
     }
+    if (this.textPress !== null) return "text";
     if (this.marquee || this.press || !this.over || !this.pointer || !placement) return "";
+    const editor = this.deps.textEditor;
+    if (editor?.editing) {
+      const point = this.projectPoint(this.pointer, placement);
+      return point && editor.contains(point, (this.theme.gizmo.handleHit * placement.dpr) / 2 / placement.transform[0]) ? "text" : "";
+    }
     const held = this.selectedLayers();
     const box = gizmoBoxOf(held.map((layer) => layer.quad));
     if (!box) return "";
     const cropping = this.cropLayer(held) !== null;
     if (!cropping && this.modifiers.alt && held.length === 1 && this.overAnchor(held[0] as CanvasLayer, placement, this.pointer)) return "crosshair";
-    const hit = this.hitBox(box, placement, this.pointer, cropping);
+    const hit = this.hitBox(box, placement, this.pointer, cropping, !cropping && this.textLayer(held.length, held[0]) !== null);
     if (hit?.kind === "handle") return resizeCursor(box, placement.transform, hit.handle);
     if (hit?.kind === "rotate") return this.cursors.rotate;
     return hit?.kind === "body" ? "move" : "";

@@ -6,20 +6,26 @@
 // - The Text section's edits: `editTexts` (one command over the selected text clips), and
 //   `previewTexts` (a color dragged in the picker: ephemeral, P2). Both keep each box's anchored point
 //   in place (timeline/edit/text.ts).
-// - Dev builds: `dev.addText` adds a text clip at the playhead (the one-click Title and Subtitle are
-//   Batch 29), and `__editor.text` exposes the engine to the acceptance scripts.
-import type { ClipId, TextClip, Transform } from "../core/document/types.js";
+// - One-click text (spec §10.2, §18): `add.title` (T) and `add.subtitle` (Shift+T) add the default
+//   Title or Subtitle at the playhead (placement in timeline/edit/text.ts `addTitle`), select it and
+//   edit it inline at once with its content selected: one key, then type. `text.edit` (Enter) edits
+//   the selected text clip (the playhead goes onto it when it is elsewhere); `text.commit` (Mod+Enter)
+//   and `text.cancel` (Esc) commit and exit (§7.7: Esc keeps what was typed).
+// - Dev builds: `dev.addText` adds a plain text clip at the playhead, and `__editor.text` exposes the
+//   engine to the acceptance scripts.
+import type { ClipId, Project, TextClip, Transform } from "../core/document/types.js";
 import { secondsToFrames } from "../core/document/time.js";
 import { createStore } from "../core/store/createStore.js";
-import { selectClips, toSnapshot } from "../core/store/selection.js";
+import { selectClips, toSnapshot, type Selection } from "../core/store/selection.js";
+import { setPlayhead } from "../core/store/sessionStore.js";
 import type { LiveText } from "../render/compositor/Compositor.js";
 import { invalidateTextLayouts, onTextLayoutsChanged, setTextFallback, textLayout } from "../render/text/layoutCache.js";
-import { DEFAULT_TEXT_STYLE } from "../text/style.js";
-import { addTextClip, setTexts, textEdit, type TextEdit } from "../timeline/edit/text.js";
+import { DEFAULT_TEXT_STYLE, type TitleKind } from "../text/style.js";
+import { addTextClip, addTitle, setTexts, textEdit, type TextEdit } from "../timeline/edit/text.js";
 import { isClipLocked } from "../timeline/model/queries.js";
 import { patchLiveEdit } from "./liveEdit.js";
-import { textRasters } from "./previewController.js";
-import { actions, documentStore, fontLibrary, scheduler, sessionStore, themeBridge } from "./services.js";
+import { playbackEngine, textEditor, textRasters } from "./previewController.js";
+import { actions, appSettings, documentStore, fontLibrary, scheduler, sessionStore, themeBridge } from "./services.js";
 
 /** Changes when fonts load or project fonts change: React reads font sources again (missing badges). */
 export const fontsVersion = createStore(0);
@@ -83,6 +89,43 @@ function addDevText(options: { value?: string; style?: Partial<TextClip["style"]
   return result.clipId;
 }
 
+/** The selected text clip a new title stacks under, or a text clip Enter edits: the primary one, else the first. */
+function selectedTextClip(project: Project, selection: Selection): ClipId | null {
+  if (selection.kind !== "clips") return null;
+  const ids = selection.primary !== null ? [selection.primary, ...selection.clipIds] : [...selection.clipIds];
+  return ids.find((id) => project.clips[id]?.kind === "text") ?? null;
+}
+
+/**
+ * `+ Title` / `+ Subtitle` (spec §10.2): the default Title or Subtitle at the playhead (40 px under
+ * a selected text clip), selected, edited inline at once with its content selected (typing replaces it).
+ */
+export function addTitleClip(kind: TitleKind): ClipId {
+  textEditor.end(true);
+  // Typing while playing would move the playhead off the new clip.
+  playbackEngine.pause();
+  const project = documentStore.getState();
+  const below = selectedTextClip(project, sessionStore.selection.getState());
+  const options = { kind, playhead: sessionStore.state.getState().playhead, matchClip: appSettings.getState().matchClipUnderPlayhead, below };
+  const result = addTitle(project, options, () => crypto.randomUUID());
+  documentStore.dispatch(result.command, { selection: toSnapshot(selectClips([result.clipId])) });
+  textEditor.begin(result.clipId, "all");
+  return result.clipId;
+}
+
+/** Enter (spec §7.7, §18): edits the selected text clip inline, all of it selected; declined without one. */
+function editSelectedText(): boolean {
+  const project = documentStore.getState();
+  const id = selectedTextClip(project, sessionStore.selection.getState());
+  const clip = id ? project.clips[id] : undefined;
+  if (!id || !clip || isClipLocked(project, id)) return false;
+  playbackEngine.pause();
+  // The canvas shows the clip at the playhead: bring the playhead onto it.
+  const playhead = sessionStore.state.getState().playhead;
+  if (playhead < clip.start || playhead >= clip.start + clip.duration) setPlayhead(sessionStore, clip.start);
+  return textEditor.begin(id, "all");
+}
+
 /** Starts the text engine's app wiring. Returns a stop function. */
 export function installTextController(): () => void {
   setTextFallback(themeBridge.theme.font.ui);
@@ -101,6 +144,12 @@ export function installTextController(): () => void {
       scheduler.invalidate("preview");
       scheduler.invalidate("gizmo");
     }),
+    actions.register("add.title", () => void addTitleClip("title")),
+    actions.register("add.subtitle", () => void addTitleClip("subtitle")),
+    actions.register("text.edit", editSelectedText),
+    // Esc and Mod+Enter both commit and exit (spec §7.7); declined (the key goes on) when not editing.
+    actions.register("text.commit", () => textEditor.end(true)),
+    actions.register("text.cancel", () => textEditor.end(true)),
   ];
   if (import.meta.env.DEV) {
     stops.push(actions.register("dev.addText", () => void addDevText()));

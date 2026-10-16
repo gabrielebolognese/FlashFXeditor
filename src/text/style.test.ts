@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyTextCase, contentKey, DEFAULT_TEXT_STYLE, fillColor, firstLine, isGradient, styleKey, textContent } from "./style.js";
+import { applyTextCase, contentKey, DEFAULT_SUBTITLE_STYLE, DEFAULT_TEXT_STYLE, DEFAULT_TITLE_STYLE, fillColor, firstLine, isGradient, scaleTextStyle, styleKey, textContent, TEXT_LIMITS } from "./style.js";
 
 describe("applyTextCase", () => {
   it("keeps, uppers and lowers the text", () => {
@@ -46,5 +46,31 @@ describe("cache keys", () => {
   it("memoizes per object", () => {
     const style = structuredClone(DEFAULT_TEXT_STYLE);
     expect(styleKey(style)).toBe(styleKey(style));
+  });
+});
+
+describe("scaleTextStyle", () => {
+  it("scales the font size and every px value with it", () => {
+    const style = { ...structuredClone(DEFAULT_SUBTITLE_STYLE), letterSpacing: 2, stroke: { enabled: true, width: 3, color: { r: 0, g: 0, b: 0, a: 1 } } };
+    const next = scaleTextStyle(style, 2);
+    expect(next.fontSize).toBe(112);
+    expect(next.letterSpacing).toBe(4);
+    expect(next.stroke.width).toBe(6);
+    expect(next.shadow).toMatchObject({ x: 0, y: 12, blur: 32 });
+    expect(next.background).toMatchObject({ paddingX: 48, paddingY: 20, radius: 28, mode: "line", enabled: true });
+    expect(next.lineHeight).toBe(style.lineHeight);
+    expect(style.fontSize).toBe(56);
+  });
+
+  it("keeps the font size within its limits, the other values in step", () => {
+    const next = scaleTextStyle({ ...structuredClone(DEFAULT_TEXT_STYLE), fontSize: 1000 }, 10);
+    expect(next.fontSize).toBe(TEXT_LIMITS.fontSize.max);
+    expect(next.shadow.y).toBe(12);
+  });
+
+  it("gives the Title and Subtitle defaults their looks", () => {
+    expect(DEFAULT_TITLE_STYLE.fontSize).toBeGreaterThan(DEFAULT_SUBTITLE_STYLE.fontSize);
+    expect(DEFAULT_TITLE_STYLE.shadow.enabled).toBe(true);
+    expect(DEFAULT_SUBTITLE_STYLE.background.enabled).toBe(true);
   });
 });

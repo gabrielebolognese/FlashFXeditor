@@ -9,6 +9,8 @@
 //   translucent fill; then the fill (solid, or the vertical gradient over the text block). With a
 //   stroke or a shadow the text goes through a scratch canvas: the shadow is one pass of the whole
 //   text (fill and stroke together), and the stroke's cut never reaches the background boxes.
+// - While a text is edited inline (spec §7.7) its selection highlight is drawn between the background
+//   boxes and the text, so the composite shows it as the glyphs see it (WYSIWYG).
 // - At most TEXT_RASTER_MAX px on the long side: the scale is lowered to fit (implementation notes).
 // Browser only (OffscreenCanvas); the geometry it draws is layout.ts's and atlas.ts's.
 import { formatHexColor } from "../../core/document/color.js";
@@ -21,6 +23,30 @@ import { currentMeasurer, textFallback } from "./layoutCache.js";
 
 /** Long-side cap of a text raster (implementation notes: "cap at 4096 px"). */
 export const TEXT_RASTER_MAX = 4096;
+
+/**
+ * A selection highlight drawn in the raster (inline editing, spec §7.7): over the background boxes,
+ * under the glyphs. Rects in content px, a CSS color.
+ */
+export interface TextHighlight {
+  rects: readonly Rect[];
+  color: string;
+}
+
+/** The content px a raster of `layout` covers: its raster rect, grown to whole px over the highlight's rects. */
+export function rasterRect(layout: TextLayout, highlight?: TextHighlight | null): Rect | null {
+  let rect = layout.raster;
+  for (const box of highlight?.rects ?? []) {
+    if (!rect) {
+      rect = box;
+      continue;
+    }
+    const x = Math.min(rect.x, Math.floor(box.x));
+    const y = Math.min(rect.y, Math.floor(box.y));
+    rect = { x, y, width: Math.max(rect.x + rect.width, Math.ceil(box.x + box.width)) - x, height: Math.max(rect.y + rect.height, Math.ceil(box.y + box.height)) - y };
+  }
+  return rect;
+}
 
 export interface TextRaster {
   canvas: OffscreenCanvas;
@@ -133,9 +159,9 @@ function lineRuns(ctx: Ctx, layout: TextLayout, style: TextStyle, scale: number,
   return runs;
 }
 
-/** `layout` in `style` at `scale` px per content px, or null when nothing is drawn. */
-export function rasterizeText(layout: TextLayout, style: TextStyle, scale: number): TextRaster | null {
-  const rect = layout.raster;
+/** `layout` in `style` at `scale` px per content px (with a selection `highlight`), or null when nothing is drawn. */
+export function rasterizeText(layout: TextLayout, style: TextStyle, scale: number, highlight?: TextHighlight | null): TextRaster | null {
+  const rect = rasterRect(layout, highlight);
   if (!rect || typeof OffscreenCanvas === "undefined") return null;
   const s = cappedScale(rect, scale);
   const width = Math.max(1, Math.ceil(rect.width * s));
@@ -155,6 +181,10 @@ export function rasterizeText(layout: TextLayout, style: TextStyle, scale: numbe
       ctx.roundRect(box.x * s + ox, box.y * s + oy, w, h, Math.max(0, Math.min(bg.radius * s, w / 2, h / 2)));
     }
     ctx.fill();
+  }
+  if (highlight && highlight.rects.length > 0) {
+    ctx.fillStyle = highlight.color;
+    for (const box of highlight.rects) ctx.fillRect(box.x * s + ox, box.y * s + oy, box.width * s, box.height * s);
   }
   if (layout.glyphs.length > 0) {
     const top = layout.block.y * s + oy;

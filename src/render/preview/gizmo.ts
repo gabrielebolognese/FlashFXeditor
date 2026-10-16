@@ -106,14 +106,15 @@ export function edgeHandlesShown(box: GizmoBox, screen: Mat3, minEdge: number): 
 /**
  * What a press at screen point (`x`, `y`) takes: a handle (corners first), a rotate zone outside a
  * corner, the body, or nothing. In crop mode (`crop`, Batch 26) the handles are crop handles and there
- * is no rotate zone.
+ * is no rotate zone. A text box (`text`, Batch 29) has no top and bottom handles.
  */
-export function hitGizmo(box: GizmoBox, screen: Mat3, x: number, y: number, metrics: GizmoMetrics, crop = false): GizmoHit | null {
+export function hitGizmo(box: GizmoBox, screen: Mat3, x: number, y: number, metrics: GizmoMetrics, crop = false, text = false): GizmoHit | null {
   const half = metrics.handleHit / 2;
   const near = (p: Point) => Math.abs(p.x - x) <= half && Math.abs(p.y - y) <= half;
   for (const handle of CORNERS) if (near(toScreen(screen, handlePoint(box, handle)))) return { kind: "handle", handle };
   const shown = edgeHandlesShown(box, screen, metrics.minEdge);
   for (const handle of EDGES) {
+    if (text && (handle === "n" || handle === "s")) continue;
     if (!((handle === "n" || handle === "s") ? shown.horizontal : shown.vertical)) continue;
     if (near(toScreen(screen, handlePoint(box, handle)))) return { kind: "handle", handle };
   }

@@ -26,7 +26,7 @@ import { clipInIndex, lastClipStartingBy, trackIndex } from "../../timeline/mode
 import { multiplyInto, mutableIdentity, setMat, type MutableMat3 } from "../mat3.js";
 import { DEFAULT_TEXT_STYLE, textContent } from "../../text/style.js";
 import { textLayout } from "../text/layoutCache.js";
-import { TEXT_RASTER_MAX } from "../text/raster.js";
+import { TEXT_RASTER_MAX, type TextHighlight } from "../text/raster.js";
 import { MAX_TEXT_SCALE } from "../text/TextRasterCache.js";
 import type { Composite, CompositeLayer, MediaLayer, SolidLayer, TextCompositeLayer } from "./drawList.js";
 
@@ -37,10 +37,12 @@ type WritableMediaLayer = Omit<MediaLayer, "transform"> & { transform: MutableMa
 type WritableSolidLayer = Omit<SolidLayer, "transform" | "color"> & { transform: MutableMat3; color: RGBA };
 type WritableTextLayer = Omit<TextCompositeLayer, "model"> & { model: MutableMat3 };
 
-/** A text clip's ephemeral content and style (a Text field scrub, spec §11, P2). */
+/** A text clip's ephemeral content and style (a Text field scrub, spec §11, P2; inline editing, §7.7). */
 export interface LiveText {
   text: TextContent;
   style: TextStyle;
+  /** The selection highlight of inline editing, drawn in the raster. */
+  highlight?: TextHighlight | null;
 }
 
 /** A frame of a clip next to the playhead (the one a cut would show first). */
@@ -277,6 +279,7 @@ export class Compositor {
     layer.clipId = clip.id;
     layer.text = shown.text;
     layer.style = shown.style;
+    layer.highlight = shown.highlight ?? null;
     layer.scale = scale;
     layer.detail = scale > 0 ? Math.min(MAX_TEXT_SCALE, TEXT_RASTER_MAX / Math.max(raster.width, raster.height)) / scale : 0;
     layer.opacity = clamp01(opacity) * fadeFactor(clip, frame);
@@ -303,7 +306,7 @@ function newMediaLayer(): WritableMediaLayer {
 }
 
 function newTextLayer(): WritableTextLayer {
-  return { kind: "text", trackId: "", clipId: "", model: mutableIdentity(), opacity: 1, text: textContent(""), style: DEFAULT_TEXT_STYLE, scale: 1, detail: 1 };
+  return { kind: "text", trackId: "", clipId: "", model: mutableIdentity(), opacity: 1, text: textContent(""), style: DEFAULT_TEXT_STYLE, scale: 1, detail: 1, highlight: null };
 }
 
 function newSolidLayer(): WritableSolidLayer {

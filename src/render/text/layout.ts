@@ -46,6 +46,12 @@ export interface Rect {
 export interface TextLine {
   /** The line as drawn (case applied, wrap spaces dropped). */
   text: string;
+  /**
+   * Where it sits in the whole text as drawn (case applied, line breaks included): `text` is
+   * `shown.slice(start, end)`; the spaces a wrap dropped come right after `end` (inline editing).
+   */
+  start: number;
+  end: number;
   /** Left edge of its advance box and its baseline, in content px. */
   x: number;
   baseline: number;
@@ -140,9 +146,24 @@ export function layoutText(content: TextContent, style: TextStyle, measurer: Tex
   const fixed = content.box.mode === "fixed";
   const wrapWidth = Math.max(MIN_SIDE, content.box.width);
   const texts: string[] = [];
+  const starts: number[] = [];
+  let offset = 0;
   for (const paragraph of value.split("\n")) {
-    if (fixed) texts.push(...wrapParagraph(paragraph, wrapWidth, measureWidth));
-    else texts.push(paragraph);
+    if (fixed) {
+      // Wrapped lines are the paragraph's pieces in order, only the spaces at a wrap left out.
+      let at = 0;
+      for (const line of wrapParagraph(paragraph, wrapWidth, measureWidth)) {
+        const found = paragraph.indexOf(line, at);
+        const start = found === -1 ? at : found;
+        texts.push(line);
+        starts.push(offset + start);
+        at = start + line.length;
+      }
+    } else {
+      texts.push(paragraph);
+      starts.push(offset);
+    }
+    offset += paragraph.length + 1;
   }
 
   const metrics = texts.map((text) => (text === "" ? null : measurer.measure(text, font, size, spacing)));
@@ -172,7 +193,8 @@ export function layoutText(content: TextContent, style: TextStyle, measurer: Tex
       glyphs.push(ink);
       inkBounds = union(inkBounds, ink);
     }
-    lines.push({ text, x, baseline, width, top, ink });
+    const start = starts[i] as number;
+    lines.push({ text, start, end: start + text.length, x, baseline, width, top, ink });
   }
 
   const backgrounds: Rect[] = [];

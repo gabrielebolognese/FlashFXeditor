@@ -3,6 +3,37 @@
   inset: 0;
 }
 
+/* The inline text editor's textarea (Batch 29, spec §7.7): placed over the edited text by an inline
+   transform, transparent. It only takes keys, IME and the clipboard; the canvases draw the text, the
+   caret and the selection. */
+.inlineText {
+  position: absolute;
+  left: 0;
+  top: 0;
+  box-sizing: content-box;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  outline: none;
+  resize: none;
+  overflow: hidden;
+  transform-origin: 0 0;
+  background: transparent;
+  color: transparent;
+  caret-color: transparent;
+  box-shadow: none;
+  pointer-events: none;
+}
+
+.inlineText:focus-visible {
+  box-shadow: none;
+}
+
+.inlineText::selection {
+  background: transparent;
+  color: transparent;
+}
+
 /* Dev stats (gap: no DS pattern for debug readouts): a small mono chip over the canvas. */
 .stats {
   position: absolute;
