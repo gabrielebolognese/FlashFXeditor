@@ -8,8 +8,8 @@
 // - Crop fractions apply to the media as shown (upright and flipped): `left` always cuts the visible
 //   left side.
 // - Media time 0 is the first frame: `timeUs` is relative to it, whatever cts the container starts at.
-// - Gesture-aware (spec P2): during a canvas gesture `transforms` gives the clips' ephemeral
-//   transforms, used instead of the document's until the gesture commits.
+// - Gesture-aware (spec P2): during a canvas gesture or a properties field scrub `transforms` (and
+//   `opacities`) give the clips' ephemeral values, used instead of the document's until it commits.
 // Layer structs and arrays are reused between frames; evaluating allocates nothing once warm.
 // TODO(batch 28): text layers. TODO(batch 32): the caption track's current cue. TODO(batch 34): solid
 // shapes other than rect, gradient fills, corner radius. TODO(batch 35): keyframes.
@@ -99,10 +99,11 @@ export class Compositor {
   private readonly step = mutableIdentity();
 
   /**
-   * The document at `frame`, bottom track first, with `transforms` (a canvas gesture's) replacing the
-   * clips' own. The result and its layers are reused by the next call: read it before evaluating again.
+   * The document at `frame`, bottom track first, with `transforms` (a canvas gesture's or a field
+   * scrub's) and `opacities` (a field scrub's) replacing the clips' own. The result and its layers are
+   * reused by the next call: read it before evaluating again.
    */
-  evaluate(doc: Project, frame: Frame, transforms: ReadonlyMap<ClipId, Transform> | null = null): Composite {
+  evaluate(doc: Project, frame: Frame, transforms: ReadonlyMap<ClipId, Transform> | null = null, opacities: ReadonlyMap<ClipId, number> | null = null): Composite {
     const out = this.out;
     const { width, height, background } = doc.settings;
     out.width = width;
@@ -119,13 +120,13 @@ export class Compositor {
       if (!clip?.enabled) continue;
       if (clip.kind === "video" || clip.kind === "image") {
         const layer = (this.mediaPool[media] ??= newMediaLayer());
-        if (this.writeMedia(layer, doc, clip, frame, transforms?.get(clip.id) ?? clip.transform)) {
+        if (this.writeMedia(layer, doc, clip, frame, transforms?.get(clip.id) ?? clip.transform, opacities?.get(clip.id) ?? clip.opacity)) {
           out.layers.push(layer);
           media += 1;
         }
       } else if (clip.kind === "solid") {
         const layer = (this.solidPool[solids] ??= newSolidLayer());
-        if (this.writeSolid(layer, doc, clip, transforms?.get(clip.id) ?? clip.transform)) {
+        if (this.writeSolid(layer, doc, clip, transforms?.get(clip.id) ?? clip.transform, opacities?.get(clip.id) ?? clip.opacity)) {
           out.layers.push(layer);
           solids += 1;
         }
@@ -166,7 +167,7 @@ export class Compositor {
     list.push(neighbor);
   }
 
-  private writeMedia(layer: WritableMediaLayer, doc: Project, clip: MediaClip, frame: Frame, transform: Transform): boolean {
+  private writeMedia(layer: WritableMediaLayer, doc: Project, clip: MediaClip, frame: Frame, transform: Transform, opacity: number): boolean {
     const item = doc.media[clip.mediaId];
     if (!item?.width || !item.height) return false;
     const rotation = item.rotation ?? 0;
@@ -229,11 +230,11 @@ export class Compositor {
     layer.mediaId = clip.mediaId;
     layer.still = clip.kind === "image";
     layer.timeUs = layer.still ? 0 : sourceTimeUs(clip, frame, doc.settings.fps);
-    layer.opacity = clamp01(clip.opacity) * fadeFactor(clip, frame);
+    layer.opacity = clamp01(opacity) * fadeFactor(clip, frame);
     return true;
   }
 
-  private writeSolid(layer: WritableSolidLayer, doc: Project, clip: SolidClip, transform: Transform): boolean {
+  private writeSolid(layer: WritableSolidLayer, doc: Project, clip: SolidClip, transform: Transform, opacity: number): boolean {
     const fill = clip.fill;
     // TODO(batch 34): rounded rects, ellipses, lines and gradient fills.
     if (clip.shape !== "rect" || !isRgba(fill) || clip.size.w <= 0 || clip.size.h <= 0) return false;
@@ -243,7 +244,7 @@ export class Compositor {
     layer.color.g = fill.g;
     layer.color.b = fill.b;
     layer.color.a = fill.a;
-    layer.opacity = clamp01(clip.opacity);
+    layer.opacity = clamp01(opacity);
     return true;
   }
 }

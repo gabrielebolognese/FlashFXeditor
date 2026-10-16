@@ -33,6 +33,7 @@ import { zoomAround, type PreviewZoom } from "../render/preview/viewport.js";
 import { showToast } from "../ui/toasts.js";
 import { attachAudio, audioScheduler, detachAudio, meterView } from "./audioController.js";
 import { toggleFullscreen } from "./fullscreen.js";
+import { liveEdit } from "./liveEdit.js";
 import { requestProxyIfUndecided } from "./mediaController.js";
 import { actions, audioClock, documentStore, idleQueue, layoutStore, scheduler, sessionStore, themeBridge, workerPool } from "./services.js";
 import { timelineView } from "./timelineController.js";
@@ -76,8 +77,10 @@ export const previewView: PreviewView = new PreviewView({
   },
   // A trim shows its new edge frame live (spec §6.10).
   override: () => timelineView.trimPreview,
-  // A canvas gesture shows its transforms live (spec §7.3, P2).
+  // A canvas gesture (spec §7.3) or a properties field scrub (§11) shows its values live (P2).
   transforms: () => canvasInput.transforms,
+  opacities: () => liveEdit.getState().opacities,
+  background: () => liveEdit.getState().background,
   behind: (mediaId) => playbackEngine.playing && playbackEngine.autoProxy.has(mediaId),
 });
 /** Plays the timeline through the preview (spec §8). */
@@ -118,6 +121,8 @@ export const canvasInput: CanvasEditInput = new CanvasEditInput({
   // A drag on the canvas pauses playback (the gesture edits the frame on screen).
   onDragStart: () => playbackEngine.pause(),
   onContextMenu: (request) => canvasMenu.set(request),
+  // A properties field scrub moves the gizmo with the layer (spec §11).
+  live: () => liveEdit.getState().transforms,
 });
 export const previewStats = new PreviewStatsOverlay({ scheduler, preview: previewView, pool: texturePool, gpu: gpuDevice, frames: frameService, playback: playbackEngine, canvas: canvasInput });
 /** The 2D canvas over the preview: overlays (spec §7.6), the selection and the gizmo (§7.3). */
@@ -343,6 +348,11 @@ export function installPreviewController(): () => void {
     actions.register("preview.toggleFullscreen", toggleFullscreen),
     // Smart guides on the canvas (spec §7.4, §13 "Guides toggle"): other layers and equal spacing as snap targets, and the Alt measure mode.
     actions.register("preview.toggleGuides", () => setPreviewOptions({ guides: !sessionStore.state.getState().preview.guides })),
+    // A properties field scrub (spec §11, P2): the picture and the gizmo follow its ephemeral values.
+    liveEdit.subscribe(() => {
+      scheduler.invalidate("preview");
+      scheduler.invalidate("gizmo");
+    }),
   ];
   return () => {
     for (const stop of stops) stop();

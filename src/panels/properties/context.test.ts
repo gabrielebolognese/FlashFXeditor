@@ -1,0 +1,54 @@
+import { describe, expect, it } from "vitest";
+import { makeMedia, makeMediaClip, makeProject, makeSolidClip, makeTrack, withClips } from "../../core/document/fixtures.js";
+import type { Clip, Project } from "../../core/document/types.js";
+import { EMPTY_SELECTION, selectClips, selectTracks } from "../../core/store/selection.js";
+import { contextKey, propertiesContext, sectionIds, shared } from "./context.js";
+
+function project(): Project {
+  const p = makeProject();
+  p.media.m = makeMedia("m");
+  p.tracks.push(makeTrack("v1"), makeTrack("v2"), makeTrack("a1", "audio"));
+  const clips: Clip[] = [
+    makeMediaClip(p, { id: "v", trackId: "v1", start: 0, duration: 30, mediaId: "m" }),
+    makeMediaClip(p, { id: "a", trackId: "a1", start: 0, duration: 30, mediaId: "m", kind: "audio" }),
+    makeSolidClip({ id: "s", trackId: "v2", start: 0, duration: 30 }),
+  ];
+  return withClips(p, clips);
+}
+
+describe("properties context (spec §11)", () => {
+  it("shows the project with nothing selected, a marker before anything, tracks for a track selection", () => {
+    const p = project();
+    expect(sectionIds(propertiesContext(EMPTY_SELECTION, null, p))).toEqual(["project"]);
+    expect(propertiesContext(selectClips(["v"]), "mk", p)).toEqual({ kind: "marker", markerId: "mk" });
+    expect(sectionIds(propertiesContext(EMPTY_SELECTION, "mk", p))).toEqual(["marker"]);
+    expect(propertiesContext(selectTracks(["v2", "gone", "v1"]), null, p)).toEqual({ kind: "track", trackIds: ["v2", "v1"] });
+    expect(sectionIds(propertiesContext(selectTracks(["v1"]), null, p))).toEqual(["track"]);
+    expect(propertiesContext(selectTracks(["gone"]), null, p)).toEqual({ kind: "none" });
+  });
+
+  it("lists the clips with their primary and the layers among them; layers add Transform and Opacity", () => {
+    const p = project();
+    const linked = propertiesContext(selectClips(["a", "v"], "a"), null, p);
+    expect(linked).toEqual({ kind: "clips", clipIds: ["a", "v"], primary: "a", layerIds: ["v"], layerPrimary: "v" });
+    expect(sectionIds(linked)).toEqual(["clip", "transform", "opacity"]);
+    const audio = propertiesContext(selectClips(["a"]), null, p);
+    expect(sectionIds(audio)).toEqual(["clip"]);
+    expect(propertiesContext(selectClips(["gone", "s"], "gone"), null, p)).toMatchObject({ clipIds: ["s"], primary: "s", layerPrimary: "s" });
+    expect(propertiesContext(selectClips(["gone"]), null, p)).toEqual({ kind: "none" });
+  });
+
+  it("keys the context by kind, primary, ids and marker (React renders the panel when it changes)", () => {
+    expect(contextKey(selectClips(["a", "v"], "v"), null)).toBe("clips:v:a,v");
+    expect(contextKey(selectClips(["a", "v"], "a"), null)).not.toBe(contextKey(selectClips(["a", "v"], "v"), null));
+    expect(contextKey(selectTracks(["v1", "v2"]), null)).toBe("track::v1,v2");
+    expect(contextKey(EMPTY_SELECTION, "m1")).toBe("marker:m1");
+  });
+
+  it("finds the shared value or a mix", () => {
+    expect(shared([], (n: number) => n)).toBeNull();
+    expect(shared([0.5, 0.5], (n) => n)).toEqual({ value: 0.5, mixed: false });
+    expect(shared([0.5, 0.25, 1], (n) => n)).toEqual({ value: 0.5, mixed: true });
+    expect(shared(["a", "A"], (s) => s, (x, y) => x.toLowerCase() === y.toLowerCase())).toEqual({ value: "a", mixed: false });
+  });
+});

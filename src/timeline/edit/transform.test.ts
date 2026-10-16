@@ -17,8 +17,10 @@ import {
   layerPoint,
   normalizeTransform,
   nudgeLayers,
+  quickTransforms,
   resetTransform,
   setTransforms,
+  withAnchor,
   type ContentBox,
 } from "./transform.js";
 
@@ -171,5 +173,74 @@ describe("one-click transforms (spec §7.2, §11)", () => {
     expect(resetTransform(p, p.clips.a as MediaClip)).toEqual(t({ scale: 1080 / 1920 }));
     expect(resetTransform(p, p.clips.s as SolidClip)).toEqual(IDENTITY_TRANSFORM);
     expect(normalizeTransform(t({ scale: 2, scaleY: 1 }))).toEqual(t({ scale: 2, scaleY: 1 }));
+  });
+});
+
+describe("quick row transforms and the anchor field (spec §11, §17)", () => {
+  it("Fit and Fill a 16:9 clip in the 9:16 frame: contained (1080 x 607.5) or covering (3413.3 x 1920), centered; one undo step", () => {
+    const p = project([video("a", { transform: t({ x: 120, y: -300, rotation: 0, scale: 0.3 }) })]);
+    const s = store(p);
+    s.dispatch(quickTransforms(s.getState(), ["a"], "fit")!);
+    const fit = (s.getState().clips.a as MediaClip).transform;
+    expect(fit.scale).toBeCloseTo(0.5625, 12);
+    expect(1920 * fit.scale).toBeCloseTo(1080, 9);
+    expect(1080 * fit.scale).toBeCloseTo(607.5, 9);
+    expect([fit.x, fit.y].map((v) => Math.abs(v) < 1e-9)).toEqual([true, true]);
+    s.dispatch(quickTransforms(s.getState(), ["a"], "fill")!);
+    const fill = (s.getState().clips.a as MediaClip).transform;
+    expect(fill.scale).toBeCloseTo(1920 / 1080, 12);
+    expect(1920 * fill.scale).toBeCloseTo(3413.33, 1);
+    expect(s.history.getState().undoLabel).toBe("Fill frame");
+    s.undo();
+    expect((s.getState().clips.a as MediaClip).transform.scale).toBeCloseTo(0.5625, 12);
+  });
+
+  it("Reset restores the default transform; flips toggle; Center moves only the position", () => {
+    const p = project([video("a", { transform: t({ x: 40, y: 50, scale: 2, rotation: 30, flipH: true, anchor: { x: 0, y: 0 } }) }), makeSolidClip({ id: "s", trackId: "v2", start: 0, duration: 30 })]);
+    const s = store(p);
+    s.dispatch(quickTransforms(s.getState(), ["a", "s"], "flipV")!);
+    expect((s.getState().clips.a as MediaClip).transform).toMatchObject({ flipH: true, flipV: true });
+    expect((s.getState().clips.s as SolidClip).transform.flipV).toBe(true);
+    s.dispatch(quickTransforms(s.getState(), ["a"], "center")!);
+    const centered = (s.getState().clips.a as MediaClip).transform;
+    expect(centered).toMatchObject({ scale: 2, rotation: 30 });
+    const middle = layerPoint(centered, box(1920, 1080), FRAME, 960, 540);
+    expect(middle.x).toBeCloseTo(540, 9);
+    expect(middle.y).toBeCloseTo(960, 9);
+    s.dispatch(quickTransforms(s.getState(), ["a", "s"], "reset")!);
+    expect((s.getState().clips.a as MediaClip).transform).toEqual(t({ scale: 1080 / 1920 }));
+    expect((s.getState().clips.s as SolidClip).transform).toEqual(IDENTITY_TRANSFORM);
+    expect(s.history.getState().undoLabel).toBe("Reset transforms");
+  });
+
+  it("skips what it cannot apply to: audio clips, layers with nothing drawn (Fit), locked tracks; null when nothing changes", () => {
+    const p = project([video("a"), video("b", { trackId: "a1", kind: "audio" }), video("c", { trackId: "v2", crop: { left: 0.6, top: 0, right: 0.5, bottom: 0 } })]);
+    expect(quickTransforms(p, ["b", "c"], "fit")).toBeNull();
+    const locked = structuredClone(p);
+    (locked.tracks[0] as { locked: boolean }).locked = true;
+    expect(quickTransforms(locked, ["a"], "flipH")).toBeNull();
+    const centered = project([video("a", { transform: t({ scale: 1080 / 1920 }) })]);
+    expect(quickTransforms(centered, ["a"], "reset")).toBeNull();
+  });
+
+  it("moves the anchor and keeps the picture in place (turned and scaled)", () => {
+    const from = t({ x: 30, y: -20, scale: 2, scaleY: 0.5, rotation: 37 });
+    const size = box(200, 100);
+    const moved = withAnchor(from, size, { x: 0.1, y: 0.9 });
+    expect(moved.anchor).toEqual({ x: 0.1, y: 0.9 });
+    for (const [qx, qy] of [
+      [0, 0],
+      [200, 100],
+      [37, 81],
+    ] as const) {
+      const before = layerPoint(from, size, FRAME, qx, qy);
+      const after = layerPoint(moved, size, FRAME, qx, qy);
+      expect(after.x).toBeCloseTo(before.x, 9);
+      expect(after.y).toBeCloseTo(before.y, 9);
+    }
+    // The new anchor sits at the position.
+    const anchorAt = layerPoint(moved, size, FRAME, 20, 90);
+    expect(anchorAt.x).toBeCloseTo(540 + moved.x, 9);
+    expect(anchorAt.y).toBeCloseTo(960 + moved.y, 9);
   });
 });

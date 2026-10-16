@@ -8,7 +8,8 @@
 //   Flips mirror the picture inside its box and move no point of it.
 // - Commands: `setTransforms` writes new transforms (one undo step for a whole gesture, spec P2);
 //   `nudgeLayers` moves by whole px and coalesces consecutive nudges (§7.3 arrow keys).
-// - Fit / Fill / Center / Flip / Reset (§7.2 menu, §11 quick row in Batch 25) are pure functions.
+// - Fit / Fill / Center / Flip / Reset (§7.2 menu, §11 quick row) are pure functions; `quickTransforms`
+//   applies one to the selected layers as one command. `withAnchor` moves the anchor, not the picture.
 import type { Draft } from "immer";
 import type { Command } from "../../core/commands/command.js";
 import type { Clip, ClipId, MediaClip, Project, SolidClip, TextClip, Transform } from "../../core/document/types.js";
@@ -202,4 +203,51 @@ export function resetTransform(project: Project, clip: LayerClip): Transform {
     if (item) return defaultTransform(item, project.settings);
   }
   return structuredClone(IDENTITY_TRANSFORM);
+}
+
+/**
+ * `transform` with its anchor (fractions of the `size` content) at `anchor`, the position moved so
+ * the picture stays where it is (the gizmo's Alt anchor drag, §7.3; the properties Anchor fields, §11).
+ */
+export function withAnchor(transform: Transform, size: Size, anchor: Point): Transform {
+  const { sin, cos } = rotationTrig(transform.rotation);
+  const dx = (anchor.x - transform.anchor.x) * size.width * transform.scale;
+  const dy = (anchor.y - transform.anchor.y) * size.height * scaleYOf(transform);
+  return { ...transform, anchor: { x: anchor.x, y: anchor.y }, x: transform.x + cos * dx - sin * dy, y: transform.y + sin * dx + cos * dy };
+}
+
+/** The one-click transforms of the canvas menu and the properties quick row (spec §7.2, §11, §17). */
+export type QuickTransform = "fit" | "fill" | "center" | "flipH" | "flipV" | "reset";
+
+const QUICK_LABELS: Record<QuickTransform, readonly [one: string, many: string]> = {
+  fit: ["Fit layer", "Fit layers"],
+  fill: ["Fill frame", "Fill frame"],
+  center: ["Center layer", "Center layers"],
+  flipH: ["Flip horizontal", "Flip horizontal"],
+  flipV: ["Flip vertical", "Flip vertical"],
+  reset: ["Reset transform", "Reset transforms"],
+};
+
+/**
+ * `action` on the layer clips among `ids` as one command `clip.transform` (one undo step), or null when
+ * nothing changes. Fit, Fill and Center skip layers with no content box (nothing drawn to fit); locked
+ * clips are skipped by `setTransforms`.
+ */
+export function quickTransforms(project: Project, ids: Iterable<ClipId>, action: QuickTransform): Command | null {
+  const frame = project.settings;
+  const changes = new Map<ClipId, Transform>();
+  for (const id of ids) {
+    const clip = project.clips[id];
+    if (!clip || !isLayerClip(clip)) continue;
+    const transform = clip.transform;
+    if (action === "flipH" || action === "flipV") changes.set(id, flipTransform(transform, action === "flipH" ? "h" : "v"));
+    else if (action === "reset") changes.set(id, resetTransform(project, clip));
+    else {
+      const box = layerContent(project, clip);
+      if (!box) continue;
+      changes.set(id, action === "fit" ? fitTransform(transform, box, frame) : action === "fill" ? fillTransform(transform, box, frame) : centerTransform(transform, box, frame));
+    }
+  }
+  const [one, many] = QUICK_LABELS[action];
+  return setTransforms(project, changes, { label: changes.size === 1 ? one : many });
 }

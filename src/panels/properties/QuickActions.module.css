@@ -1,0 +1,21 @@
+/* The quick-action row (spec §11, §17; gap: the DS has no inspector toolbar): compact icon buttons
+   (and text chips) wrapping over as many lines as the panel width needs, groups set apart by a
+   hairline; on --surface-1 under the panel header, above the scrolling sections, hairline below. */
+.row {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-0);
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--hairline);
+  background: var(--surface-1);
+}
+
+.gap {
+  flex: none;
+  width: 1px;
+  height: var(--icon-size);
+  margin: 0 var(--space-1);
+  background: var(--hairline);
+}

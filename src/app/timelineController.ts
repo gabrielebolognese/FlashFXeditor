@@ -73,8 +73,8 @@ export function trimClip(request: TrimRequest): void {
   if (result.command) documentStore.dispatch(result.command);
 }
 
-/** Why a keyboard trim (Q/W/E) stopped short of the playhead, as a toast. */
-function reportTrimLimit(limit: TrimLimit): void {
+/** Why a keyboard trim (Q/W/E) or a typed clip time (the properties Clip section) stopped short, as a toast. */
+export function reportTrimLimit(limit: TrimLimit): void {
   const project = documentStore.getState();
   const clip = project.clips[limit.clipId]?.name ?? "The clip";
   const track = project.tracks.find((candidate) => candidate.id === limit.trackId)?.name ?? "a track";
