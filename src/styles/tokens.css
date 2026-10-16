@@ -288,6 +288,8 @@
   --picker-square-height: calc(5 * var(--control-default));
   --picker-strip-height: var(--space-4);
   --picker-thumb-size: var(--space-4);
+  /* The thumbs' --text-primary ring: --space-0 (2px) thick, so it reads over any color under it. */
+  --picker-thumb-ring: var(--space-0);
   --picker-light: #fff;
   --picker-dark: #000;
   --picker-hue: linear-gradient(to right, #f00 0%, #ff0 16.67%, #0f0 33.33%, #0ff 50%, #00f 66.67%, #f0f 83.33%, #f00 100%);

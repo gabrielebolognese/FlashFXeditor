@@ -15,8 +15,9 @@ import { useDismiss } from "./useDismiss.js";
 // Color fields (spec §11): a swatch and the hex text; the swatch opens a popover picker with a
 // saturation/value square, hue and alpha strips, hex and R G B A fields, the recent colors and, where
 // the browser has the EyeDropper API, an eyedropper. Every finished pick (a drag released, a value
-// typed, a recent color, the eyedropper) is one `onChange` (one command); while a strip or the square
-// is dragged the picker paints itself by direct DOM writes (P1) and reports `onPreview` (ephemeral, P2).
+// typed, a recent color, the eyedropper) is one `onChange` (one command); while the square, a strip or
+// a channel label is dragged the picker paints itself by direct DOM writes (P1) and reports `onPreview`
+// (ephemeral, P2). A drag that ends without a release (Esc, the picker closed) only ends the preview.
 
 export interface ColorFieldProps {
   value: RGBA;
@@ -80,6 +81,7 @@ type PickPhase = "preview" | "commit" | "cancel";
 /** The picker's color with the callbacks of its owner (kept current by an effect: no refs read in render). */
 interface PickerState {
   color: PickerColor;
+  /** A drag (the square, a strip, a channel label) is showing a preview: the picker renders nothing until it ends. */
   dragging: boolean;
   onChange: (color: RGBA) => void;
   onPreview: ((color: RGBA | null) => void) | undefined;
@@ -87,7 +89,7 @@ interface PickerState {
 
 /** One pick: shown at once; committed (one command), shown live (a drag) or reverted (the preview ends). */
 function pick(store: Store<PickerState>, color: PickerColor, phase: PickPhase): void {
-  store.set((state) => ({ ...state, color }));
+  store.set((state) => ({ ...state, color, dragging: phase === "preview" }));
   const { onChange, onPreview } = store.getState();
   if (phase === "preview") onPreview?.(rgbaOf(color));
   else {
@@ -196,13 +198,20 @@ function ColorPicker({ anchor, initial, recent, onChange, onPreview, onClose }: 
   }, [anchor, store]);
 
   useDismiss([panel], onClose);
+  // Closed or unmounted mid-drag (Esc, the selection changed): the preview ends, nothing is committed (P2).
+  useLayoutEffect(
+    () => () => {
+      const { dragging, onPreview } = store.getState();
+      if (dragging) onPreview?.(null);
+    },
+    [store],
+  );
 
   const onAreaDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (event.button !== 0) return;
     event.preventDefault();
     const element = event.currentTarget;
     element.setPointerCapture?.(event.pointerId);
-    store.set((state) => ({ ...state, dragging: true }));
     pick(store, colorAt(store.getState().color, element.dataset.part as Area, element, event.clientX, event.clientY), "preview");
   };
   const onAreaMove = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -211,9 +220,7 @@ function ColorPicker({ anchor, initial, recent, onChange, onPreview, onClose }: 
     pick(store, colorAt(store.getState().color, element.dataset.part as Area, element, event.clientX, event.clientY), "preview");
   };
   const onAreaUp = () => {
-    if (!store.getState().dragging) return;
-    store.set((state) => ({ ...state, dragging: false }));
-    pick(store, store.getState().color, "commit");
+    if (store.getState().dragging) pick(store, store.getState().color, "commit");
   };
   const area = { onPointerDown: onAreaDown, onPointerMove: onAreaMove, onPointerUp: onAreaUp, onPointerCancel: onAreaUp };
 

@@ -96,7 +96,7 @@
   position: absolute;
   width: var(--picker-thumb-size);
   height: var(--picker-thumb-size);
-  border: 2px solid var(--text-primary);
+  border: var(--picker-thumb-ring) solid var(--text-primary);
   border-radius: var(--radius-pill);
   box-shadow: 0 0 0 1px var(--bg-sunken);
   transform: translate(-50%, -50%);
