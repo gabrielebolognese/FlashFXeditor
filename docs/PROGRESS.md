@@ -3772,3 +3772,19 @@ Why each dependency exists (Batch rule 8).
         - Undo puts the imported text back.
       - `fix_css.mjs`: the cue field is 38px high (border-box), as before.
       - Regression: `acc1.mjs` 13/13 (40 rows in the DOM, 24 at the end), `acc2.mjs` 11/11. `p1.mjs`: 601 frames, mean 16.66 ms, p95 17.1 ms, max 17.9 ms, none over 20 ms, 0 React commits, the playing bar over 8 rows.
+- review: accepted
+  - Earlier rejection, problem 1 (a draft lost when its row unmounts): fixed.
+    - `CueRow` (`src/panels/media/CaptionsTab.tsx`) keeps the uncommitted text in `pending` and commits it in an effect cleanup keyed on `[id, present]`. `commitCue` (`src/app/captionController.ts:83-89`) clears `liveEdit.cues` even when the cue is gone and no command is made.
+    - The list keeps the edited row rendered outside the slice (`editing`).
+    - `CaptionsTab.test.ts` covers scrolling 100 rows away, unmounting, a cue removed while it is typed into, and Esc then unmount.
+    - I re-ran the first review's probes on the 5181 dev server (the current modules, `same: true`). `rev_unmount2.mjs` and `rev_tab.mjs` now end with `liveEdit.cues` empty. The document and the preview slot both hold the typed text, and the last step is "Edit caption".
+    - New probe `%TEMP%/b32/rev2_scroll.mjs`. It edits cue 61, scrolls the list up to the top in 8-row steps (the row leaves the slice), then back down in 8-row steps (the row comes back into the slice from below, so React moves its node). The field kept the focus and the draft at every step, and typing went on. A click on the timeline then committed one "Edit caption" step with `liveEdit.cues` empty. React puts the focus and selection back after a commit that moves the focused node, so neither scroll direction loses the field.
+  - Earlier rejection, problem 2 (`+ 2px` in a CSS module): fixed. `--cue-text-height` is now in `src/styles/tokens.css:151`, and `CaptionsTab.module.css:108` uses it. The only px values left in CSS modules are 1px hairlines and comments.
+  - The non-blocking item is done too: `DEFAULT_HIGHLIGHT_COLOR` and `DEFAULT_INACTIVE_COLOR` are exported from `src/text/captions.ts` and used by `CaptionStyleSection.tsx`.
+  - Checked again:
+    - `npm run check` is green on my run: typecheck, lint plus the CSS color check, 1560 unit tests in 157 files, 3 perf tests, and a build of 897.39 kB JS (290.69 kB gzip) and 71.09 kB CSS. The >500 kB chunk warning is the logged Batch 45 follow-up.
+    - Acceptance 1-4: covered as the first review found, by the unit tests listed there and pending manual checks 1-4. Check 2 now includes the scroll and tab-switch steps.
+    - Nothing from later batches: Transcribe is still disabled (`TODO(batch 33)`), and the fix adds no feature.
+    - No new color or size literals.
+    - §3/§4: the fix adds React state only on a cue field's focus and blur. Scrolling still renders only on block crossings, and the fixer's `p1.mjs` rerun shows 0 commits over 10 s of playback.
+    - Every TODO in `src` has a `(batch NN)` tag, and no `TODO(batch 32)` is left.
