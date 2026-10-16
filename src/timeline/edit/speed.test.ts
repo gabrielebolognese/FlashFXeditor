@@ -1,14 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { makeMedia, makeMediaClip, makeProject, makeTrack, withClips } from "../../core/document/fixtures.js";
-import { framesToSourceUs, frameToUs } from "../../core/document/time.js";
-import type { Clip, MediaClip, Project, Track } from "../../core/document/types.js";
+import { framesToSourceUs, frameToUs, usPerFrame } from "../../core/document/time.js";
+import { isMediaClip, type Clip, type MediaClip, type Project, type Track } from "../../core/document/types.js";
+import { validateProject } from "../../core/document/validate.js";
 import { DocumentStore } from "../../core/store/DocumentStore.js";
 import { createSessionStore } from "../../core/store/sessionStore.js";
+import { linkOffset } from "../model/queries.js";
 import { setSpeedDurations, setSpeeds, type SpeedOptions, type SpeedResult } from "./speed.js";
 
 const fps = makeProject().settings.fps;
 /** 20 s of media at 30 fps: 600 frames. */
 const MEDIA_US = 20_000_000;
+/** 10 s of media: 300 frames, so a clip from 0 at 1x lasting 300 frames ends on the media end. */
+const SHORT_US = 10_000_000;
 
 function clip(id: string, trackId: string, start: number, duration: number, inFrames = 0, extra: Partial<MediaClip> = {}): MediaClip {
   const base = makeMediaClip(makeProject(), { id, trackId, start, duration, mediaId: "m", kind: trackId.startsWith("a") ? "audio" : "video" });
@@ -20,6 +24,10 @@ function project(clips: Clip[], tracks: Track[] = [makeTrack("v1"), makeTrack("v
   p.media.m = makeMedia("m", "video", MEDIA_US);
   p.tracks.push(...tracks);
   return withClips(p, clips);
+}
+
+function shortMedia(p: Project): Project {
+  return { ...p, media: { ...p.media, m: makeMedia("m", "video", SHORT_US) } };
 }
 
 const LINKED: SpeedOptions = { link: true, ripple: true, linked: true };
@@ -135,6 +143,172 @@ describe("setSpeeds", () => {
     // Linked selection off and the sound not selected: the video changes alone.
     const alone = commit(p, setSpeeds(p, ["v"], 2, options)).next;
     expect([get(alone, "v").speed, get(alone, "a").speed]).toEqual([2, 1]);
+  });
+});
+
+describe("setSpeeds with partners that differ", () => {
+  it("a speed set with Linked selection off, then changed with it on: each partner keeps its own source range (on the media end)", () => {
+    const p = shortMedia(project([clip("v", "v1", 0, 300, 0, { linkGroup: "g" }), clip("a", "a1", 0, 300, 0, { linkGroup: "g" })]));
+    const alone = commit(p, setSpeeds(p, ["v"], 2, { link: true, ripple: true, linked: false })).next;
+    expect([span(alone, "v"), span(alone, "a")]).toEqual([
+      [0, 150],
+      [0, 300],
+    ]);
+    const result = setSpeeds(alone, ["v"], 4, LINKED);
+    expect(result.limit).toBeNull();
+    const next = commit(alone, result).next;
+    expect(validateProject(next)).toEqual([]);
+    for (const id of ["v", "a"]) {
+      expect(span(next, id)).toEqual([0, 75]);
+      expect(get(next, id).speed).toBe(4);
+      expect([get(next, id).in, get(next, id).out]).toEqual([0, SHORT_US]);
+    }
+  });
+
+  it("an L cut: each side keeps its source range, and what follows moves up by the smaller shortening, in sync", () => {
+    // A's picture plays 0-8 s; its sound runs on to the media end (10 s) under B, whose sound starts at 300.
+    const p = shortMedia(
+      project([clip("A", "v1", 0, 240, 0, { linkGroup: "g" }), clip("a", "a1", 0, 300, 0, { linkGroup: "g" }), clip("B", "v1", 240, 60, 0, { linkGroup: "h" }), clip("b", "a1", 300, 60, 60, { linkGroup: "h" })]),
+    );
+    const result = setSpeeds(p, ["A"], 2, LINKED);
+    expect(result.limit).toBeNull();
+    const next = commit(p, result).next;
+    expect(validateProject(next)).toEqual([]);
+    expect([span(next, "A"), get(next, "A").in, get(next, "A").out]).toEqual([[0, 120], 0, frameToUs(240, fps)]);
+    expect([span(next, "a"), get(next, "a").in, get(next, "a").out]).toEqual([[0, 150], 0, SHORT_US]);
+    // The L cut lasts 30 frames at 2x; B and its sound move up 120 frames together.
+    expect([span(next, "B"), span(next, "b")]).toEqual([
+      [120, 60],
+      [180, 60],
+    ]);
+    for (const id of ["A", "B"]) expect(linkOffset(next, id)).toBe(0);
+  });
+
+  it("a J cut: each side keeps its start and source range, so the pair shows a sync offset", () => {
+    // The sound leads the picture by 30 frames (1 s of source).
+    const p = project([clip("A", "v1", 30, 300, 30, { linkGroup: "g" }), clip("a", "a1", 0, 330, 0, { linkGroup: "g" })]);
+    expect(linkOffset(p, "A")).toBe(0);
+    const next = commit(p, setSpeeds(p, ["A"], 2, LINKED)).next;
+    expect(validateProject(next)).toEqual([]);
+    expect([span(next, "A"), get(next, "A").in, get(next, "A").out]).toEqual([[30, 150], frameToUs(30, fps), frameToUs(330, fps)]);
+    expect([span(next, "a"), get(next, "a").in, get(next, "a").out]).toEqual([[0, 165], 0, frameToUs(330, fps)]);
+    expect(linkOffset(next, "A")).toBe(15);
+  });
+
+  it("unlinked: each partner keeps its duration within its own media; one that runs out is clamped and warned (spec §6.19)", () => {
+    const options: SpeedOptions = { link: false, ripple: true, linked: true };
+    // The video already plays 10 s at 2x in 150 frames (Linked selection was off); its sound plays them at 1x.
+    const p = project([clip("v", "v1", 0, 150, 0, { linkGroup: "g", speed: 2, out: frameToUs(300, fps) }), clip("a", "a1", 0, 300, 0, { linkGroup: "g" }), clip("c", "a1", 300, 30)]);
+    const result = setSpeeds(p, ["v"], 3, options);
+    expect(result.limit).toMatchObject({ reason: "mediaEnd", clipId: "a" });
+    const next = commit(p, result).next;
+    expect(validateProject(next)).toEqual([]);
+    expect([span(next, "v"), get(next, "v").out]).toEqual([[0, 150], frameToUs(450, fps)]);
+    // 20 s of media hold 200 frames at 3x.
+    expect([span(next, "a"), get(next, "a").out]).toEqual([[0, 200], MEDIA_US]);
+    // The video kept its duration, so nothing moves up.
+    expect(span(next, "c")).toEqual([300, 30]);
+  });
+});
+
+/** Deterministic PRNG (mulberry32), as in undoFuzz.test.ts. */
+function random(seed: number) {
+  let state = seed;
+  const next = () => {
+    state = (state + 1831565813) | 0;
+    let t = Math.imul(state ^ (state >>> 15), 1 | state);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  const int = (min: number, max: number) => min + Math.floor(next() * (max - min + 1));
+  const pick = <T>(items: readonly T[]): T => items[int(0, items.length - 1)] as T;
+  return { next, int, pick };
+}
+
+type Rng = ReturnType<typeof random>;
+
+/**
+ * Two video and two audio tracks (one maybe locked) of clips at various speeds, sources and gaps over
+ * 10 s of media, a few freeze frames, and link groups of a video clip with one or two sounds that start,
+ * end and play at their own speed: partners that differ.
+ */
+function randomProject(rng: Rng): Project {
+  const tracks = [makeTrack("v1"), makeTrack("v2"), makeTrack("a1", "audio"), makeTrack("a2", "audio")];
+  if (rng.next() < 0.2) (tracks[rng.int(0, 3)] as Track).locked = true;
+  const clips: MediaClip[] = [];
+  for (const track of tracks) {
+    let cursor = rng.int(0, 30);
+    for (let k = rng.int(1, 4); k > 0; k--) {
+      const id = `${track.id}-${k}`;
+      const inFrames = rng.int(0, 250);
+      let next: MediaClip;
+      if (track.kind === "video" && rng.next() < 0.15) {
+        next = clip(id, track.id, cursor, rng.int(1, 90), inFrames, { speed: 0, out: frameToUs(inFrames + 1, fps) });
+      } else {
+        const speed = rng.pick([0.5, 1, 1, 1, 1.5, 2, 3]);
+        const duration = rng.int(1, Math.max(1, Math.floor((300 - inFrames) / speed)));
+        next = clip(id, track.id, cursor, duration, inFrames, { speed, out: Math.min(SHORT_US, frameToUs(inFrames, fps) + framesToSourceUs(duration, speed, fps)) });
+      }
+      clips.push(next);
+      cursor += next.duration + rng.pick([0, 0, rng.int(1, 40)]);
+    }
+  }
+  const linked = new Set<string>();
+  for (const video of clips.filter((c) => c.kind === "video" && c.speed > 0)) {
+    if (rng.next() < 0.4) continue;
+    for (const trackId of ["a1", "a2"]) {
+      const sounds = clips.filter((c) => c.trackId === trackId && !linked.has(c.id));
+      if (sounds.length === 0 || (trackId === "a2" && rng.next() < 0.7)) continue;
+      const sound = rng.pick(sounds);
+      linked.add(sound.id);
+      linked.add(video.id);
+      sound.linkGroup = video.linkGroup = `g-${video.id}`;
+    }
+  }
+  return shortMedia(project(clips, tracks));
+}
+
+describe("speed changes on random documents", () => {
+  it("leave a valid document; retimed clips keep `in` (linked with ripple, `out` too) and their start; undo restores", () => {
+    const rng = random(27);
+    let commands = 0;
+    for (let round = 0; round < 300; round++) {
+      const p = randomProject(rng);
+      expect(validateProject(p)).toEqual([]);
+      const ids = Object.keys(p.clips);
+      // A validating store: an invalid document throws on dispatch.
+      const doc = new DocumentStore(p, { session: createSessionStore(), validate: true });
+      for (let step = 0; step < 12; step++) {
+        const before = doc.getState();
+        const picked = rng.next() < 0.3 ? [rng.pick(ids), rng.pick(ids)] : [rng.pick(ids)];
+        const options: SpeedOptions = { link: rng.next() < 0.7, ripple: rng.next() < 0.6, linked: rng.next() < 0.7 };
+        const speeds = rng.next() < 0.75;
+        const arrow = rng.pick([-0.1, 0.1]);
+        const value = rng.pick([0.25, 0.5, 0.75, 1, 1.5, 2, 3, 4, 8]);
+        const result = speeds
+          ? setSpeeds(before, picked, rng.next() < 0.8 ? value : (c) => c.speed + arrow, options)
+          : setSpeedDurations(before, picked, rng.int(1, 400), options);
+        if (!result.command) continue;
+        doc.dispatch(result.command);
+        commands++;
+        const after = doc.getState();
+        expect(validateProject(after)).toEqual([]);
+        if (!speeds) continue;
+        for (const id of ids) {
+          const was = before.clips[id] as Clip;
+          const now = after.clips[id] as Clip;
+          if (!isMediaClip(was) || !isMediaClip(now) || was.speed === now.speed) continue;
+          expect(now.in).toBe(was.in);
+          // Linked with ripple, the source range stays: `out` moves by less than one source frame (the rounding).
+          if (options.link && options.ripple) expect(Math.abs(now.out - was.out)).toBeLessThanOrEqual(usPerFrame(fps) * now.speed);
+          // With two groups, the earlier one's ripple moves the later one.
+          if (picked.length === 1) expect(now.start).toBe(was.start);
+        }
+      }
+      while (doc.undo());
+      expect(doc.getState()).toEqual(p);
+    }
+    expect(commands).toBeGreaterThan(2000);
   });
 });
 
