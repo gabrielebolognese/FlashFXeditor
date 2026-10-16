@@ -295,12 +295,12 @@ describe("Compositor.evaluate", () => {
     const compositor = new Compositor();
     const first = compositor.evaluate(doc, 0);
     const [l0, l1] = first.layers;
-    const t0 = l0?.transform;
+    const t0 = (l0 as MediaLayer).transform;
     const second = compositor.evaluate(doc, 20);
     expect(second).toBe(first);
     expect(second.layers[0]).toBe(l0);
     expect(second.layers[1]).toBe(l1);
-    expect(second.layers[0]?.transform).toBe(t0);
+    expect((second.layers[0] as MediaLayer).transform).toBe(t0);
   });
 });
 

@@ -1,9 +1,10 @@
 // The draw list (spec §9.4): what `Renderer.draw` draws for one frame. Layers are in project pixel
 // space, bottom to top. Backend-neutral: textures are opaque `TextureHandle`s.
 // `Compositor.evaluate` produces a `Composite`: the same list with media layers still naming their
-// frame (media and time) instead of a texture. The preview resolves them to pool textures, and skips
-// the redraw when the resolved list equals the one it drew last (`DrawListSnapshot`).
-import type { ClipId, MediaId, RGBA, TrackId } from "../../core/document/types.js";
+// frame (media and time) and text layers their text instead of a texture. The preview resolves them
+// to pool textures and text rasters, and skips the redraw when the resolved list equals the one it
+// drew last (`DrawListSnapshot`).
+import type { ClipId, MediaId, RGBA, TextContent, TextStyle, TrackId } from "../../core/document/types.js";
 import type { Mat3 } from "../mat3.js";
 import type { TextureHandle } from "../gpu/renderer.js";
 
@@ -64,7 +65,26 @@ export interface MediaLayer extends LayerBase {
   crop: UvRect;
 }
 
-export type CompositeLayer = MediaLayer | SolidLayer;
+/**
+ * A text clip at the frame (spec §10.1), not rasterized yet: the preview resolves it to a raster of
+ * the text cache at its render scale, drawn over the raster's rect (`model` x the rect).
+ */
+export interface TextCompositeLayer {
+  kind: "text";
+  trackId: TrackId;
+  clipId: ClipId;
+  /** Maps the layer's content px (its layout box, flips included) into project pixels. */
+  model: Mat3;
+  opacity: number;
+  text: TextContent;
+  style: TextStyle;
+  /** The layer's own scale (its larger axis): rasters are drawn at the render scale times it. */
+  scale: number;
+  /** Raster px per project px it can show at most (the raster scale cap over `scale`): its "source detail" (§7.1). */
+  detail: number;
+}
+
+export type CompositeLayer = MediaLayer | SolidLayer | TextCompositeLayer;
 
 /** The document evaluated at a frame (`Compositor.evaluate`), before texture resolution. */
 export interface Composite {

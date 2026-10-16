@@ -225,7 +225,7 @@ export class WebGpuRenderer implements Renderer {
     return this.newTexture(this.require(), width, height, options);
   }
 
-  uploadImageBitmap(bitmap: ImageBitmap, options: TextureOptions = {}): TextureHandle {
+  uploadImageBitmap(bitmap: ImageBitmap | OffscreenCanvas, options: TextureOptions = {}): TextureHandle {
     const res = this.require();
     return this.copyIn(res, bitmap, bitmap.width, bitmap.height, { mipmaps: true, ...options });
   }
@@ -252,7 +252,7 @@ export class WebGpuRenderer implements Renderer {
    * A texture holding `source`: `into` (a recycled one) or a new one. A failed copy (a closed source)
    * destroys the texture before rethrowing (P13).
    */
-  private copyIn(res: DeviceResources, source: ImageBitmap | VideoFrame, width: number, height: number, options: TextureOptions, into: GpuTexture | null = null, recycle: Recycle | null = null): GpuTexture {
+  private copyIn(res: DeviceResources, source: ImageBitmap | OffscreenCanvas | VideoFrame, width: number, height: number, options: TextureOptions, into: GpuTexture | null = null, recycle: Recycle | null = null): GpuTexture {
     const texture = into ?? this.newTexture(res, width, height, options, recycle);
     try {
       res.device.queue.copyExternalImageToTexture({ source }, { texture: texture.texture, premultipliedAlpha: true }, [width, height]);

@@ -4,7 +4,8 @@
 // and the decode engine: latencies to the first and to the exact frame, seeks, live decoders, frames
 // held on each side (the main thread's must stay 0, P13), sample index cache hits, and playback
 // (speed, dropped frames against frames played, prefetch windows, media flagged for proxy), and the
-// canvas snap candidates (rebuilds against queries, §7.4). Plain text
+// canvas snap candidates (rebuilds against queries, §7.4), and the text rasters (cached, bytes,
+// rasterizations, the clips rasterized by the last render and its raster time, §10.1). Plain text
 // written in the scheduler loop; the worker's counters are polled while the overlay is shown. React
 // only mounts the element.
 import type { FrameScheduler, RenderView } from "../../core/scheduler/FrameScheduler.js";
@@ -13,6 +14,7 @@ import type { FrameService } from "../../media/decode/FrameService.js";
 import type { WorkerDecodeStats } from "../../media/workers/protocol.js";
 import type { PlaybackEngine } from "../../playback/PlaybackEngine.js";
 import type { GpuDevice } from "../gpu/GpuDevice.js";
+import type { TextRasterStats } from "../text/TextRasterCache.js";
 import type { PreviewStats } from "./PreviewView.js";
 
 /** How often the worker's decode counters are fetched while the overlay is shown. */
@@ -27,9 +29,16 @@ export interface PreviewStatsDeps {
   playback?: Pick<PlaybackEngine, "stats" | "speed" | "autoProxy" | "subscribe">;
   /** Canvas snapping: candidate rebuilds (only when the layers or overlays change) and queries. */
   canvas?: { readonly snapStats: { readonly rebuilds: number; readonly queries: number } };
+  /** Text rasters (spec §10.1, P11). */
+  text?: { readonly stats: TextRasterStats };
 }
 
 const mb = (bytes: number) => (bytes / (1024 * 1024)).toFixed(1);
+
+function textLine(t: TextRasterStats, drawn: number): string {
+  const last = t.lastRasterized.length > 0 ? ` (${t.lastRasterized.length}, ${t.lastMs.toFixed(1)} ms)` : "";
+  return `text ${drawn}/${t.layers} drawn · waiting ${t.waiting} · rasters ${t.rasters} · ${mb(t.bytes)} MB · rasterized ${t.rasterizations}${last}`;
+}
 const ms = (value: number | null) => (value === null ? "-" : String(Math.round(value)));
 
 function playbackLine(playback: NonNullable<PreviewStatsDeps["playback"]>): string {
@@ -80,7 +89,7 @@ export class PreviewStatsOverlay implements RenderView {
 
   render(): void {
     if (!this.element) return;
-    const { preview, pool, gpu, frames, playback, canvas } = this.deps;
+    const { preview, pool, gpu, frames, playback, canvas, text } = this.deps;
     const p = preview.stats;
     const s = pool.stats;
     const f = frames.stats;
@@ -99,6 +108,7 @@ export class PreviewStatsOverlay implements RenderView {
       `open VideoFrames: main ${f.openFrames} · worker ${w ? w.openFrames : 0}`,
       ...(playback ? [playbackLine(playback)] : []),
       ...(canvas ? [`canvas snap: candidates rebuilt ${canvas.snapStats.rebuilds} · queries ${canvas.snapStats.queries}`] : []),
+      ...(text ? [textLine(text.stats, p.textures.texts)] : []),
     ].join("\n");
   }
 }

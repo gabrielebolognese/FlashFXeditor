@@ -31,12 +31,13 @@ import { PreviewStatsOverlay } from "../render/preview/PreviewStatsOverlay.js";
 import { PreviewView } from "../render/preview/PreviewView.js";
 import { ViewportInput } from "../render/preview/ViewportInput.js";
 import { zoomAround, type PreviewZoom } from "../render/preview/viewport.js";
+import { TextRasterCache } from "../render/text/TextRasterCache.js";
 import { showToast } from "../ui/toasts.js";
 import { attachAudio, audioScheduler, detachAudio, meterView } from "./audioController.js";
 import { toggleFullscreen } from "./fullscreen.js";
 import { liveEdit, setLiveCrops } from "./liveEdit.js";
 import { requestProxyIfUndecided } from "./mediaController.js";
-import { actions, audioClock, documentStore, idleQueue, layoutStore, scheduler, sessionStore, themeBridge, workerPool } from "./services.js";
+import { actions, audioClock, documentStore, fontLibrary, idleQueue, layoutStore, scheduler, sessionStore, themeBridge, workerPool } from "./services.js";
 import { timelineView } from "./timelineController.js";
 
 const MB = 1024 * 1024;
@@ -57,6 +58,12 @@ export const frameService = new FrameService({
 });
 /** Still image textures. */
 export const imageService = new ImageService({ workers: workerPool, renderer, pool: texturePool, document: documentStore, svgBitmap: svgPoster });
+/** Text rasters as GPU textures (spec §10.1, P11). */
+export const textRasters = new TextRasterCache({
+  upload: (canvas, options) => renderer.uploadImageBitmap(canvas, options),
+  fontsReady: (style, text) => fontLibrary.ready(style, text),
+  loadFonts: (style, text) => fontLibrary.load(style, text),
+});
 export const previewView: PreviewView = new PreviewView({
   renderer,
   scheduler,
@@ -67,6 +74,7 @@ export const previewView: PreviewView = new PreviewView({
   frames: frameService,
   images: imageService,
   pool: texturePool,
+  text: textRasters,
   priority: (): FramePriority => (playbackEngine.playing ? "playback" : timelineView.scrubbing || timelineView.trimming ? "scrub" : "idle"),
   // Play and pause, and the end of a ruler scrub or an edge trim (timeline gestures pause the IdleQueue
   // until they end): Auto asks for full frames at once (spec §7.5, §9.5).
@@ -83,6 +91,13 @@ export const previewView: PreviewView = new PreviewView({
   opacities: () => liveEdit.getState().opacities,
   crops: () => liveEdit.getState().crops,
   background: () => liveEdit.getState().background,
+  texts: () => liveEdit.getState().texts,
+  // Export frame waits for the fonts of its text layers.
+  loadFonts: async (style, text) => {
+    if (fontLibrary.ready(style, text)) return false;
+    await fontLibrary.load(style, text);
+    return true;
+  },
   behind: (mediaId) => playbackEngine.playing && playbackEngine.autoProxy.has(mediaId),
 });
 /** Plays the timeline through the preview (spec §8). */
@@ -132,9 +147,11 @@ export const canvasInput: CanvasEditInput = new CanvasEditInput({
   live: () => liveEdit.getState().transforms,
   // Crop handle drags and Crop field scrubs share the live crops (the Crop fields follow a drag).
   crops: { read: () => liveEdit.getState().crops, write: setLiveCrops },
+  // A Text field scrub resizes text boxes live.
+  texts: () => liveEdit.getState().texts,
   cropMode,
 });
-export const previewStats = new PreviewStatsOverlay({ scheduler, preview: previewView, pool: texturePool, gpu: gpuDevice, frames: frameService, playback: playbackEngine, canvas: canvasInput });
+export const previewStats = new PreviewStatsOverlay({ scheduler, preview: previewView, pool: texturePool, gpu: gpuDevice, frames: frameService, playback: playbackEngine, canvas: canvasInput, text: textRasters });
 /** The 2D canvas over the preview: overlays (spec §7.6), the selection and the gizmo (§7.3). */
 export const previewOverlay = new PreviewOverlayView({ scheduler, layout: layoutStore, session: sessionStore.state, document: documentStore, theme: themeBridge, preview: previewView, gizmo: canvasInput });
 
@@ -174,7 +191,10 @@ previewDev.select(
 
 // Textures of a lost device are dead: empty the pool; owners upload again on "ready".
 renderer.subscribe((event) => {
-  if (event === "lost") texturePool.clear();
+  if (event === "lost") {
+    texturePool.clear();
+    textRasters.clear();
+  }
 });
 
 let stopProject: (() => void) | null = null;
@@ -266,6 +286,7 @@ export function detachPreview(): void {
   stopProject?.();
   stopProject = null;
   texturePool.clear();
+  textRasters.clear();
   detachAudio();
 }
 

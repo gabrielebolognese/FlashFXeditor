@@ -24,7 +24,8 @@ export function formatHexColor(color: RGBA): string {
   return `#${byte(color.r)}${byte(color.g)}${byte(color.b)}${alpha}`;
 }
 
-/** A solid's fill when it is a plain color (gradients stay opaque JSON until Batch 34). */
+/** A fill that is a plain color, not a gradient (solids draw gradients from Batch 34). */
 export function isRgba(fill: SolidClip["fill"]): fill is RGBA {
-  return typeof fill.r === "number" && typeof fill.g === "number" && typeof fill.b === "number" && typeof fill.a === "number";
+  const color = fill as Partial<RGBA>;
+  return typeof color.r === "number" && typeof color.g === "number" && typeof color.b === "number" && typeof color.a === "number";
 }

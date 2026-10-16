@@ -8,25 +8,40 @@
 // - Crop fractions apply to the media as shown (upright and flipped): `left` always cuts the visible
 //   left side.
 // - Media time 0 is the first frame: `timeUs` is relative to it, whatever cts the container starts at.
+// - Text layers (spec §10.1) carry their text and style and the matrix of their layout box (anchor,
+//   scale, rotation, position; flips mirror the text inside its box); the preview draws them from the
+//   text raster cache at its render scale. Their detail (raster px per project px they can show) lets
+//   a zoom re-rasterize them (§7.1).
 // - Gesture-aware (spec P2): during a canvas gesture or a properties field scrub `transforms`,
-//   `opacities` and `crops` give the clips' ephemeral values, used instead of the document's until it
-//   commits.
+//   `opacities`, `crops` and `texts` give the clips' ephemeral values, used instead of the document's
+//   until it commits.
 // Layer structs and arrays are reused between frames; evaluating allocates nothing once warm.
-// TODO(batch 28): text layers. TODO(batch 32): the caption track's current cue. TODO(batch 34): solid
-// shapes other than rect, gradient fills, corner radius. TODO(batch 35): keyframes.
+// TODO(batch 32): the caption track's current cue. TODO(batch 34): solid shapes other than rect,
+// gradient fills, corner radius. TODO(batch 35): keyframes. TODO(batch 31): text animations.
 // TODO(batch 36): transitions (two contributing clips and a mix amount).
 import { isRgba } from "../../core/document/color.js";
 import { framesToSourceUs, secondsToFrames } from "../../core/document/time.js";
-import type { Clip, ClipId, Crop, Frame, MediaClip, MediaId, Project, RGBA, SolidClip, Transform } from "../../core/document/types.js";
+import type { Clip, ClipId, Crop, Frame, MediaClip, MediaId, Project, RGBA, SolidClip, TextClip, TextContent, TextStyle, Transform } from "../../core/document/types.js";
 import { clipInIndex, lastClipStartingBy, trackIndex } from "../../timeline/model/queries.js";
 import { multiplyInto, mutableIdentity, setMat, type MutableMat3 } from "../mat3.js";
-import type { Composite, CompositeLayer, MediaLayer, SolidLayer } from "./drawList.js";
+import { DEFAULT_TEXT_STYLE, textContent } from "../../text/style.js";
+import { textLayout } from "../text/layoutCache.js";
+import { TEXT_RASTER_MAX } from "../text/raster.js";
+import { MAX_TEXT_SCALE } from "../text/TextRasterCache.js";
+import type { Composite, CompositeLayer, MediaLayer, SolidLayer, TextCompositeLayer } from "./drawList.js";
 
 /** How far from the playhead the clips next to it count as cut neighbours (seconds). */
 export const NEIGHBOR_SECONDS = 2;
 
 type WritableMediaLayer = Omit<MediaLayer, "transform"> & { transform: MutableMat3 };
 type WritableSolidLayer = Omit<SolidLayer, "transform" | "color"> & { transform: MutableMat3; color: RGBA };
+type WritableTextLayer = Omit<TextCompositeLayer, "model"> & { model: MutableMat3 };
+
+/** A text clip's ephemeral content and style (a Text field scrub, spec §11, P2). */
+export interface LiveText {
+  text: TextContent;
+  style: TextStyle;
+}
 
 /** A frame of a clip next to the playhead (the one a cut would show first). */
 export interface NeighborFrame {
@@ -95,15 +110,16 @@ export class Compositor {
   private readonly out: WritableComposite = { width: 0, height: 0, background: { r: 0, g: 0, b: 0, a: 1 }, layers: [] };
   private readonly mediaPool: WritableMediaLayer[] = [];
   private readonly solidPool: WritableSolidLayer[] = [];
+  private readonly textPool: WritableTextLayer[] = [];
   private readonly neighborPool: NeighborFrame[] = [];
   private readonly neighborList: NeighborFrame[] = [];
   private readonly step = mutableIdentity();
 
   /**
    * The document at `frame`, bottom track first, with `transforms` (a canvas gesture's or a field
-   * scrub's), `opacities` (a field scrub's) and `crops` (a crop handle drag's or a field scrub's)
-   * replacing the clips' own. The result and its layers are reused by the next call: read it before
-   * evaluating again.
+   * scrub's), `opacities` (a field scrub's), `crops` (a crop handle drag's or a field scrub's) and
+   * `texts` (a Text field scrub's) replacing the clips' own. The result and its layers are reused by
+   * the next call: read it before evaluating again.
    */
   evaluate(
     doc: Project,
@@ -111,6 +127,7 @@ export class Compositor {
     transforms: ReadonlyMap<ClipId, Transform> | null = null,
     opacities: ReadonlyMap<ClipId, number> | null = null,
     crops: ReadonlyMap<ClipId, Crop> | null = null,
+    texts: ReadonlyMap<ClipId, LiveText> | null = null,
   ): Composite {
     const out = this.out;
     const { width, height, background } = doc.settings;
@@ -120,6 +137,7 @@ export class Compositor {
     out.layers.length = 0;
     let media = 0;
     let solids = 0;
+    let textLayers = 0;
     for (const track of doc.tracks) {
       // TODO(batch 32): caption tracks draw their cue above the video tracks.
       // Muted and hidden video tracks are not in the composite (spec §6.12).
@@ -138,8 +156,13 @@ export class Compositor {
           out.layers.push(layer);
           solids += 1;
         }
+      } else if (clip.kind === "text") {
+        const layer = (this.textPool[textLayers] ??= newTextLayer());
+        if (this.writeText(layer, doc, clip, frame, transforms?.get(clip.id) ?? clip.transform, opacities?.get(clip.id) ?? clip.opacity, texts?.get(clip.id) ?? clip)) {
+          out.layers.push(layer);
+          textLayers += 1;
+        }
       }
-      // TODO(batch 28): text clips resolve to raster textures (§10.1).
     }
     return out;
   }
@@ -242,6 +265,24 @@ export class Compositor {
     return true;
   }
 
+  private writeText(layer: WritableTextLayer, doc: Project, clip: TextClip, frame: Frame, transform: Transform, opacity: number, shown: LiveText): boolean {
+    const layout = textLayout(shown.text, shown.style);
+    const raster = layout.raster;
+    if (!raster) return false;
+    const m = writeModel(layer.model, transform, layout.width, layout.height, doc.settings.width, doc.settings.height);
+    // Flips mirror the text inside its box.
+    if (transform.flipH || transform.flipV) multiplyInto(m, m, setMat(this.step, transform.flipH ? -1 : 1, 0, 0, transform.flipV ? -1 : 1, transform.flipH ? layout.width : 0, transform.flipV ? layout.height : 0));
+    const scale = Math.max(Math.abs(transform.scale), Math.abs(transform.scaleY ?? transform.scale));
+    layer.trackId = clip.trackId;
+    layer.clipId = clip.id;
+    layer.text = shown.text;
+    layer.style = shown.style;
+    layer.scale = scale;
+    layer.detail = scale > 0 ? Math.min(MAX_TEXT_SCALE, TEXT_RASTER_MAX / Math.max(raster.width, raster.height)) / scale : 0;
+    layer.opacity = clamp01(opacity) * fadeFactor(clip, frame);
+    return scale > 0;
+  }
+
   private writeSolid(layer: WritableSolidLayer, doc: Project, clip: SolidClip, transform: Transform, opacity: number): boolean {
     const fill = clip.fill;
     // TODO(batch 34): rounded rects, ellipses, lines and gradient fills.
@@ -259,6 +300,10 @@ export class Compositor {
 
 function newMediaLayer(): WritableMediaLayer {
   return { kind: "media", trackId: "", clipId: "", mediaId: "", still: false, timeUs: 0, transform: mutableIdentity(), opacity: 1, crop: { u0: 0, v0: 0, u1: 1, v1: 1 } };
+}
+
+function newTextLayer(): WritableTextLayer {
+  return { kind: "text", trackId: "", clipId: "", model: mutableIdentity(), opacity: 1, text: textContent(""), style: DEFAULT_TEXT_STYLE, scale: 1, detail: 1 };
 }
 
 function newSolidLayer(): WritableSolidLayer {

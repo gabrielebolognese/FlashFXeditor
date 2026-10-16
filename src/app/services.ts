@@ -3,6 +3,7 @@ import { version as appVersion } from "../../package.json";
 import { AudioClock } from "../audio/AudioClock.js";
 import { ActionRegistry } from "../core/commands/ActionRegistry.js";
 import { createProject } from "../core/document/project.js";
+import { FontLibrary } from "../render/text/FontLibrary.js";
 import { KeyDispatcher } from "../core/keyboard/KeyDispatcher.js";
 import { FocusScopeTracker } from "../core/keyboard/focusScope.js";
 import { DEFAULT_KEYMAP } from "../core/keyboard/keymap.js";
@@ -54,6 +55,8 @@ export const workerPool = new WorkerPool({
   analysis: () => new Worker(new URL("../media/workers/analysis.worker.ts", import.meta.url), { type: "module", name: "analysis" }),
   proxy: () => new Worker(new URL("../media/workers/proxy.worker.ts", import.meta.url), { type: "module", name: "proxy" }),
 });
+/** The fonts text can use: bundled, the open project's, installed (spec §10.1). */
+export const fontLibrary = new FontLibrary(typeof document === "undefined" ? null : document.fonts);
 /** Save state of the open project, for the app bar dot and the read-only banner. */
 export const saveStatus = createStore<SaveStatus>(INITIAL_SAVE_STATUS);
 export { appVersion };

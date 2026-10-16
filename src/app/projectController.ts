@@ -7,6 +7,7 @@ import { createProject, openProjectFolder, ProjectOpenError, type NewProjectSett
 import { ProjectSession } from "../project/ProjectSession.js";
 import type { RecentProject } from "../project/recentProjects.js";
 import type { Recovery } from "../project/recovery.js";
+import { attachFonts, detachFonts } from "./fontController.js";
 import { attachMedia, detachMedia } from "./mediaController.js";
 import { attachPreview, detachPreview, frameService } from "./previewController.js";
 import { actions, appSettings, appVersion, documentStore, focusScopes, layoutStore, recentProjects, saveStatus, sessionStore } from "./services.js";
@@ -77,6 +78,7 @@ async function closeCurrent(): Promise<void> {
   if (!session) return;
   detachPreview();
   detachMedia();
+  detachFonts();
   await session.close();
 }
 
@@ -97,6 +99,7 @@ async function switchTo(opened: OpenedProject): Promise<void> {
   // Thumbnail decodes yield to the preview's (one hardware decoder).
   attachMedia(session.dir, () => !session.readOnly, frameService);
   attachPreview(session.dir, () => !session.readOnly);
+  attachFonts(session.dir, () => !session.readOnly);
   setView({
     project: { id: opened.project.id, folder: opened.dir.name },
     dialog: opened.recovery ? { kind: "recovery", recovery: opened.recovery } : null,

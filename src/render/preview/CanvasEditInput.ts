@@ -42,6 +42,8 @@ import type { Theme, ThemeBridge } from "../../core/theme/theme.js";
 import { isCropClip, setCrops } from "../../timeline/edit/crop.js";
 import { isLayerClip, layerCorners, setTransforms, type Point } from "../../timeline/edit/transform.js";
 import { isClipLocked, selectionPartners } from "../../timeline/model/queries.js";
+import type { LiveText } from "../compositor/Compositor.js";
+import { onTextLayoutsChanged, textLayoutVersion } from "../text/layoutCache.js";
 import { canvasLayersAt, layersInRect, layersUnder, pictureLayersAt, quadsBounds, type CanvasLayer, type Quad, type Rect } from "./canvasLayers.js";
 import { canvasCursors, type CanvasCursors } from "./canvasCursors.js";
 import { cropGesture, type CropModeState, type CropStart } from "./cropGizmo.js";
@@ -97,6 +99,8 @@ export interface CanvasEditDeps {
    * null when the drag ends); the compositor and the Crop fields read the same values.
    */
   crops?: { read(): ReadonlyMap<ClipId, Crop> | null; write(crops: ReadonlyMap<ClipId, Crop> | null): void };
+  /** Ephemeral texts and styles (a Text field scrub, spec §11, P2), or null: text boxes follow them. */
+  texts?(): ReadonlyMap<ClipId, LiveText> | null;
   /** Crop mode (spec §7.3, §11), shared with the Crop section and the crop chip; without it there is no crop mode. */
   cropMode?: Store<CropModeState>;
 }
@@ -187,15 +191,26 @@ export class CanvasEditInput {
   private hover: ClipId | null = null;
   private theme: Theme;
   private cursors: CanvasCursors;
-  private cache: { project: Project | null; frame: number; transforms: ReadonlyMap<ClipId, Transform> | null; crops: ReadonlyMap<ClipId, Crop> | null; layers: CanvasLayer[] } = {
+  /** The canvas layers, per document, frame, gesture values and text layouts (fonts that load move text boxes). */
+  private cache: {
+    project: Project | null;
+    frame: number;
+    transforms: ReadonlyMap<ClipId, Transform> | null;
+    crops: ReadonlyMap<ClipId, Crop> | null;
+    texts: ReadonlyMap<ClipId, LiveText> | null;
+    version: number;
+    layers: CanvasLayer[];
+  } = {
     project: null,
     frame: -1,
     transforms: null,
     crops: null,
+    texts: null,
+    version: -1,
     layers: [],
   };
   /** The picture layers at the playhead (the smart guides' other layers), with the document's transforms. */
-  private picture: { project: Project | null; frame: number; layers: CanvasLayer[] } = { project: null, frame: -1, layers: [] };
+  private picture: { project: Project | null; frame: number; version: number; layers: CanvasLayer[] } = { project: null, frame: -1, version: -1, layers: [] };
   /** S held during the current drag: snapping inverted (§7.4, §6.9). */
   private snapHeld = false;
   private readonly snapIndex = new CanvasSnapIndex();
@@ -317,6 +332,8 @@ export class CanvasEditInput {
         if (this.drag && state !== this.drag.project) this.cancel();
         this.checkCropMode();
       }),
+      // A font that loads moves text boxes and glyph bounds.
+      onTextLayoutsChanged(() => this.invalidate()),
     );
     const cropMode = this.deps.cropMode;
     if (cropMode) {
@@ -363,13 +380,17 @@ export class CanvasEditInput {
     const frame = this.deps.session.state.getState().playhead;
     const transforms = this.transforms;
     const crops = this.deps.crops?.read() ?? null;
+    const texts = this.deps.texts?.() ?? null;
+    const version = textLayoutVersion();
     const cache = this.cache;
-    if (cache.project !== project || cache.frame !== frame || cache.transforms !== transforms || cache.crops !== crops) {
+    if (cache.project !== project || cache.frame !== frame || cache.transforms !== transforms || cache.crops !== crops || cache.texts !== texts || cache.version !== version) {
       cache.project = project;
       cache.frame = frame;
       cache.transforms = transforms;
       cache.crops = crops;
-      cache.layers = canvasLayersAt(project, frame, transforms, crops);
+      cache.texts = texts;
+      cache.version = version;
+      cache.layers = canvasLayersAt(project, frame, transforms, crops, texts);
     }
     return cache.layers;
   }
@@ -382,9 +403,11 @@ export class CanvasEditInput {
     const project = this.deps.document.getState();
     const frame = this.deps.session.state.getState().playhead;
     const picture = this.picture;
-    if (picture.project !== project || picture.frame !== frame) {
+    const version = textLayoutVersion();
+    if (picture.project !== project || picture.frame !== frame || picture.version !== version) {
       picture.project = project;
       picture.frame = frame;
+      picture.version = version;
       picture.layers = pictureLayersAt(project, frame);
     }
     return picture.layers;

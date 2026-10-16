@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createAppSettings, DEFAULT_APP_SETTINGS, proxySettings } from "./appSettings.js";
+import { createAppSettings, DEFAULT_APP_SETTINGS, proxySettings, toggleFavoriteFont } from "./appSettings.js";
 import { memoryKeyValueStore } from "./kv.js";
 import { RECENT_LIMIT, RecentProjects, type RecentProject } from "./recentProjects.js";
 
@@ -83,7 +83,7 @@ describe("app settings", () => {
     await settings.load();
     expect(settings.getState()).toEqual(DEFAULT_APP_SETTINGS);
     await settings.update({ autosaveDelayMs: 5000 });
-    expect(kv.data.get("settings.v1")).toEqual({ autosaveDelayMs: 5000, importMode: "copy", monitorVolumeDb: 0, monitorMuted: false, proxyAuto: true, proxyRule: "heavy", proxyShortEdge: 540, recentColors: [], punchZoomScale: 1.2, punchZoomAnimated: false });
+    expect(kv.data.get("settings.v1")).toEqual({ autosaveDelayMs: 5000, importMode: "copy", monitorVolumeDb: 0, monitorMuted: false, proxyAuto: true, proxyRule: "heavy", proxyShortEdge: 540, recentColors: [], punchZoomScale: 1.2, punchZoomAnimated: false, favoriteFonts: [] });
     await settings.update({ autosaveDelayMs: 1234 });
     expect(settings.getState().autosaveDelayMs).toBe(5000);
 
@@ -149,5 +149,15 @@ describe("app settings", () => {
     await settings.update({ punchZoomScale: Number.NaN });
     expect(settings.getState().punchZoomScale).toBe(1.5);
     expect(DEFAULT_APP_SETTINGS).toMatchObject({ punchZoomScale: 1.2, punchZoomAnimated: false });
+  });
+
+  it("keeps the favorite fonts: names once, in order, at most 50 (Batch 28)", async () => {
+    const kv = memoryKeyValueStore();
+    kv.data.set("settings.v1", { favoriteFonts: ["Inter", 3, "", "Oswald", "Inter"] });
+    const settings = createAppSettings(kv);
+    await settings.load();
+    expect(settings.getState().favoriteFonts).toEqual(["Inter", "Oswald"]);
+    expect(toggleFavoriteFont(["Inter", "Oswald"], "Inter")).toEqual(["Oswald"]);
+    expect(toggleFavoriteFont(["Inter"], "Caveat")).toEqual(["Inter", "Caveat"]);
   });
 });

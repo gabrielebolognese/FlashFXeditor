@@ -1,8 +1,9 @@
 // Layer transforms (spec §5.2 `Transform`, §7.2, §7.3): the content box a clip's transform applies to,
 // points of it in project px, the transform commands of the canvas gizmo and the one-click transforms.
 // - The content box is what the compositor draws a layer from: the media as shown (rotation metadata
-//   applied, `width` x `height` px) or the solid's size, and the visible part of it after the crop
-//   (crop fractions cut the shown media: `left` always cuts the visible left side).
+//   applied, `width` x `height` px), the solid's size or the text's layout box (render/text, spec
+//   §10.1), and the visible part of it after the crop (crop fractions cut the shown media: `left`
+//   always cuts the visible left side).
 // - `layerPoint` is the compositor's model (`writeModel`): the anchor (fractions of the content) goes
 //   to the frame center plus (x, y), scaled (`scaleY` for the vertical axis) and rotated clockwise.
 //   Flips mirror the picture inside its box and move no point of it.
@@ -15,6 +16,7 @@ import type { Command } from "../../core/commands/command.js";
 import type { Clip, ClipId, Crop, MediaClip, Project, SolidClip, TextClip, Transform } from "../../core/document/types.js";
 import { isRgba } from "../../core/document/color.js";
 import { displaySize } from "../../media/probe/rotation.js";
+import { textLayout } from "../../render/text/layoutCache.js";
 import { isClipLocked } from "../model/queries.js";
 import { defaultTransform } from "./insertMedia.js";
 
@@ -52,8 +54,9 @@ const clamp01 = (value: number) => (Number.isFinite(value) ? Math.min(1, Math.ma
 
 /**
  * The content box of a layer, or null when the compositor draws nothing for it (media without a
- * size, everything cropped away, solid shapes it cannot draw yet, text before Batch 28). `crop`
- * replaces a media clip's own (a crop handle drag's or a crop field scrub's ephemeral crop, P2).
+ * size, everything cropped away, solid shapes it cannot draw yet). A text's box is its layout box
+ * (an empty text keeps one). `crop` replaces a media clip's own (a crop handle drag's or a crop field
+ * scrub's ephemeral crop, P2).
  */
 export function layerContent(project: Project, clip: Clip, crop?: Crop): ContentBox | null {
   if (clip.kind === "video" || clip.kind === "image") {
@@ -73,7 +76,10 @@ export function layerContent(project: Project, clip: Clip, crop?: Crop): Content
     if (clip.shape !== "rect" || !isRgba(clip.fill) || !(w > 0) || !(h > 0)) return null;
     return { width: w, height: h, left: 0, top: 0, right: w, bottom: h };
   }
-  // TODO(batch 28): text layers hit on their glyph bounds padded by 4 px (§7.2).
+  if (clip.kind === "text") {
+    const { width, height } = textLayout(clip.text, clip.style);
+    return { width, height, left: 0, top: 0, right: width, bottom: height };
+  }
   return null;
 }
 

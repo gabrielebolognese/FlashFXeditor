@@ -1,7 +1,7 @@
 // Document invariants (spec §5.2). The DocumentStore runs `assertValid` after every command in dev
 // builds; messages name the track and clip so a broken command is found at once.
 import { usPerFrame } from "./time.js";
-import { isFreeze, isMediaClip, LABEL_COLORS, type Clip, type ClipId, type ClipKind, type MediaItem, type Project, type Track, type TrackId, type TrackKind } from "./types.js";
+import { isFreeze, isMediaClip, LABEL_COLORS, type Clip, type ClipId, type ClipKind, type MediaItem, type Project, type TextClip, type Track, type TrackId, type TrackKind } from "./types.js";
 
 export class DocumentInvariantError extends Error {
   readonly issues: readonly string[];
@@ -59,6 +59,7 @@ function clipIssues(project: Project, clip: Clip): string[] {
   if (!Number.isInteger(clip.start) || clip.start < 0) issues.push(`${label}: start ${clip.start} must be an integer frame >= 0`);
   if (!Number.isInteger(clip.duration) || clip.duration < 1) issues.push(`${label}: duration ${clip.duration} must be an integer >= 1`);
   if (clip.color !== undefined && !LABEL_SET.has(clip.color)) issues.push(`${label}: color "${clip.color}" is not a label color`);
+  if (clip.kind === "text") issues.push(...textIssues(clip, label));
   if (!isMediaClip(clip)) return issues;
 
   if (!Number.isInteger(clip.in) || !Number.isInteger(clip.out)) issues.push(`${label}: in/out must be integer microseconds`);
@@ -80,6 +81,22 @@ function clipIssues(project: Project, clip: Clip): string[] {
       issues.push(`${label}: out - in = ${clip.out - clip.in} us, expected duration * speed = ${Math.round(expected)} us (within 1 frame)`);
     }
   }
+  return issues;
+}
+
+const isPositive = (value: unknown) => typeof value === "number" && Number.isFinite(value) && value > 0;
+
+/** A text clip's content and style (spec §10.1): a string, a box with a positive width, a size, weight and line height the layout can use. */
+function textIssues(clip: TextClip, label: string): string[] {
+  const issues: string[] = [];
+  const { text, style } = clip;
+  if (typeof text?.value !== "string") issues.push(`${label}: text value must be a string`);
+  if (text?.box?.mode !== "auto" && text?.box?.mode !== "fixed") issues.push(`${label}: text box mode must be auto or fixed`);
+  if (!isPositive(text?.box?.width)) issues.push(`${label}: text box width ${String(text?.box?.width)} must be > 0`);
+  if (typeof style?.fontFamily !== "string" || style.fontFamily === "") issues.push(`${label}: font family must be a name`);
+  if (!isPositive(style?.fontSize)) issues.push(`${label}: font size ${String(style?.fontSize)} must be > 0`);
+  if (!isPositive(style?.lineHeight)) issues.push(`${label}: line height ${String(style?.lineHeight)} must be > 0`);
+  if (!(isPositive(style?.fontWeight) && style.fontWeight <= 1000)) issues.push(`${label}: font weight ${String(style?.fontWeight)} must be in 1..1000`);
   return issues;
 }
 

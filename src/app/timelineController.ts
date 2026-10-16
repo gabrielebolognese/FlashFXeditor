@@ -30,7 +30,7 @@ import { moveMarker, openMarkerEditor } from "./markerController.js";
 import { clipVisuals } from "./mediaController.js";
 import { moveTrackTo, startTrackRename, toggleTrack } from "./trackController.js";
 import { generateCutTimeline, generateTestClips } from "./timelineDev.js";
-import { actions, documentStore, idleQueue, layoutStore, scheduler, sessionStore, themeBridge } from "./services.js";
+import { actions, documentStore, fontLibrary, idleQueue, layoutStore, scheduler, sessionStore, themeBridge } from "./services.js";
 
 /** Zoom slider resolution (positions per full range). */
 const SLIDER_STEPS = 1000;
@@ -141,6 +141,8 @@ export const timelineView = new TimelineView({
   onEditMarker: (markerId) => openMarkerEditor(markerId),
   idle: idleQueue,
   visuals: clipVisuals,
+  // Text clips whose font is not available get a badge (spec §10.1); textController redraws on font changes.
+  fonts: { missing: (family) => fontLibrary.source(family) === "missing" },
   platform: detectPlatform(),
   // Space armed for Space+drag and released without a drag: the play/pause it would have been (spec §6.6).
   onSpaceTap: () => void actions.run("transport.playPause"),
