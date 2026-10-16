@@ -49,7 +49,8 @@ function reportSpeedLimit(limit: TrimLimit): void {
   const track = project.tracks.find((candidate) => candidate.id === limit.trackId)?.name ?? "a track";
   switch (limit.reason) {
     case "mediaEnd":
-      showToast({ tone: "info", message: "Shortened to the media end", detail: `${clip} has no more frames at this speed.` });
+      // Shortened to the media end, or, with less than one frame left, the speed kept.
+      showToast({ tone: "info", message: "Limited by the media end", detail: `${clip} has no more frames at this speed.` });
       return;
     case "neighbor":
       showToast({ tone: "info", message: "Shortened at the next clip", detail: `${clip} stops where the next clip on ${track} starts. Turn on Ripple to move later clips.` });
