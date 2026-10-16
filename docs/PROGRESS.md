@@ -3230,3 +3230,42 @@ Why each dependency exists (Batch rule 8).
 - docs note: the Batch 29 docs run also writes the text page for Batch 28's Text section, font picker and `fonts/` folder (see the Batch 28 docs line).
 - other: `docs/BATCHES.md` (Batches 51-53) and `docs/EDITOR_SPEC.md` (§20) were edited outside this run (10:01) and are left out of this batch's commit.
 - review request: docs/PROGRESS.md src/app/canvasController.ts src/app/previewController.ts src/app/textController.ts src/core/keyboard/keymap.ts src/core/keyboard/planned.test.ts src/core/keyboard/planned.ts src/core/theme/theme.ts src/panels/PreviewPanel.module.css src/panels/PreviewPanel.tsx src/panels/properties/TextSection.tsx src/project/appSettings.ts src/project/recentProjects.test.ts src/render/compositor/Compositor.ts src/render/compositor/drawList.ts src/render/preview/CanvasEditInput.text.test.ts src/render/preview/CanvasEditInput.ts src/render/preview/InlineTextEditor.test.ts src/render/preview/InlineTextEditor.ts src/render/preview/LayerTextures.ts src/render/preview/PreviewOverlayView.ts src/render/preview/PreviewView.ts src/render/preview/gizmo.ts src/render/preview/textGizmo.test.ts src/render/preview/textGizmo.ts src/render/text/TextRasterCache.test.ts src/render/text/TextRasterCache.ts src/render/text/caret.test.ts src/render/text/caret.ts src/render/text/layout.ts src/render/text/raster.ts src/render/text/textLayers.test.ts src/styles/tokens.css src/text/style.test.ts src/text/style.ts src/timeline/edit/text.test.ts src/timeline/edit/text.ts src/timeline/toolbar/TimelineToolbar.tsx
+- review: accepted
+  - `npm run check` is green: typecheck, lint plus the CSS color check, 1424 unit tests in 144 files, 3 perf tests, and the build (797.95 kB JS / 257.74 kB gzip, 63.93 kB CSS; the >500 kB chunk warning is the logged Batch 45 follow-up).
+  - Browser checks ran on a freshly restarted 5181 dev server (headless Chrome 155 over CDP; port 5300 was not touched). `%TEMP%/b29/acc.mjs` passed 23/23 and `extra.mjs` passed 15/15.
+  - 1. Every acceptance item is covered:
+    - Acceptance 1 (T, hello, Esc):
+      - Tests: `text.test.ts:124` (a 3 s Title centered at the playhead on the topmost video track, "Add title") and `:138` (a new track when the spot is taken). `InlineTextEditor.test.ts:72` (editing starts with everything selected, scope `textEditing`) and `:90` (one "Edit text" command at the end).
+      - Browser run: T to editing in 60 ms. "hello" sits at frame 45 for 90 frames on V1, centered at (540, 960), named "hello". The 7 keys took 320 ms of app time.
+      - Pending manual check 1.
+    - Acceptance 2 (the caret on the glyphs at Fit and 200%):
+      - Tests: `caret.test.ts:18`, `:28` (measured at the raster scale), `:34` and `:42`.
+      - Browser run: the "IIIII" carets sit within 0.1 px of the gap middles at Fit and 200%. The "hello" carets sit inside every gap at both zooms.
+      - Pending manual check 2.
+    - Acceptance 3 (font size in the panel while editing):
+      - No unit test drives a panel edit during an inline session.
+      - Browser run: a click into Size, 150, Enter keeps the edit on, with the draft "hello" and the caret at index 3. The caret is redrawn taller and sits inside the gaps at 150 px. Esc commits "hello" at 150.
+      - Pending manual check 3.
+    - Acceptance 4 (Shift+T subtitle):
+      - Tests: `text.test.ts:170` (lower third, a box per line, bottom anchor) and `:232`.
+      - Browser run: the subtitle spans y 1331.8..1497.4 (the lower third starts at 1280), with a fixed 900 px box in `line` mode.
+      - Pending manual check 4.
+  - 2. Nothing from a later batch was built. The entry has no `Do not build yet` list.
+    - There is no text tool and no click-to-create, as the Build says.
+    - The Batch 30 presets and chips, the Batch 42 switch and the Batch 46 handle snapping are hooks only: `TODO(batch 30)` in `text/style.ts`, `TODO(batch 42)` in `appSettings.ts`, and the Batch 46 follow-up.
+  - 3. There is no color, font or size literal outside the tokens file.
+    - The caret width, the blink and the selection color are tokens (`--text-caret-width`, `--text-caret-blink`, `--text-selection`), read through the Theme bridge.
+    - `.inlineText` uses only `transparent` and `none`.
+    - The Title and Subtitle sizes and colors in `text/style.ts` are document content, not UI.
+  - 4. EDITOR_SPEC §3 and §4 hold:
+    - React is chrome only. `InlineTextEditor`, `textGizmo` and `caret.ts` are framework-free.
+    - Typing on the canvas renders only the Text section's content field, once per key: a logged deviation, and typing is not on P1's list. `extra.mjs` x14 counted 10 commits for 10 keys.
+    - One command per gesture. An inline edit is one "Edit text" command at its end. A handle drag shows live through `CanvasEditInput.texts`, then commits one `clip.text` on release.
+    - Time stays in integer frames: `titleDuration` uses `secondsToFrames`. The batch adds no media work.
+    - The canvases draw through the scheduler. The caret blink only invalidates `gizmo` and never re-rasterizes (P11). A highlighted raster belongs to its slot and is destroyed when the slot changes.
+  - 5. Every TODO in `src/` has a `(batch NN)` tag (a grep over `src/` found none untagged).
+  - 6. This entry has no earlier `review: rejected` list.
+  - Notes (not blocking):
+    - `src/render/preview/InlineTextEditor.ts:102-103`: the double-press slop (4 CSS px, 500 ms) is a constant in code. The drag, snap and scrub thresholds live in `tokens.css`; the timeline's `HEAD_SLOP` is a constant in code too.
+    - `InlineTextEditor.ts:239` and `:545`: if the editor unmounts or the clip leaves the document mid-edit (for example a project switch), editing ends with no command. An uncommitted draft is dropped.
+    - `InlineTextEditor.ts:568-573`: `rasterScale` caps with `rasterRect(layout)`, without the highlight, but the raster grows over the highlight (`raster.ts` `rasterRect`). At the 4096 px raster cap, the caret can be measured at a slightly different scale from the one drawn.
