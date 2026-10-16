@@ -2617,3 +2617,18 @@ Why each dependency exists (Batch rule 8).
     - The thumb ring computes to 2px.
     - No console errors.
   - Regression: `acc.mjs` 10/10 (A1 scrub: 58 live values, rAF mean 16.66 ms, p95 17.1, 0 commits) and `extra.mjs` 12/12 (including the square drag: 0 commits, one step).
+- review: accepted (re-review after the fixes, 2026-10-16; `npm run check` green: 1241 unit tests in 126 files + 3 perf tests, build 695.25 kB JS / 223.91 kB gzip, 56.99 kB CSS; the >500 kB chunk warning is the logged Batch 45 follow-up). All three rejection items are fixed:
+  1. A channel scrub no longer renders React. `pick` (`src/ui/ColorField.tsx:91-99`) sets `dragging` from the phase, so `paint` skips `setHex` during any preview (`:194`). `ColorField.test.ts` "scrubbing a channel label previews live with 0 React commits, then one onChange on release" covers it: 10 moves, 0 commits under a `Profiler`, then one `onChange` and a null preview.
+  2. A drag closed or unmounted before its release ends the live preview. The new layout-effect cleanup (`src/ui/ColorField.tsx:202-208`) sends `onPreview(null)` while `dragging`, and `previewBackground` then clears `liveEdit.background`. Tests cover Esc during a square drag, Esc during a G scrub and an unmount during a hue drag: each ends with a null preview and no `onChange`.
+  3. The thumb ring is `--picker-thumb-ring` (= `--space-0`) in `src/styles/tokens.css`, used at `src/ui/ColorField.module.css:99`, and named in the design-gap entry.
+  - Re-checked independently:
+    - Acceptance: 1 is covered by `NumberField.test.ts` (scrub with DOM writes only, one commit) and `bindings.test.ts` (live values only, one command; typing 100 sets exactly 100). 2 by `bindings.test.ts` and `NumberField.test.ts` (`--` for mixed values, one step for all three). 3 by `transform.test.ts` (Fit / Fill of a 16:9 clip in the 9:16 frame; Reset). 4 by `clipProps.test.ts` (End clamped by the next clip and the media end). All four also have recorded CDP runs and manual checks with reproduction steps.
+    - Do not build yet: no Crop, Speed, Audio, Text, Animation, Keyframes, Transition or Caption style section. Later quick-row chips and the Project rows of Batch 42 are disabled. The clip menu's Enable/Disable is a logged deviation.
+    - Literals: the new CSS uses tokens apart from 1 px hairlines, 0 and layout fractions. No size, color or font literal in the new TS/TSX.
+    - §3/§4:
+      - Nothing in React subscribes to `liveEdit`; only the preview and gizmo invalidations and the field bindings' DOM writes do.
+      - The panel renders on `contextKey`. Number fields write the DOM from their binding.
+      - Scrubs commit one command on release, and the preview's draw-list snapshot compares the live background.
+      - Retimes round to integer frames. No media work was added.
+      - P1 playback was re-verified for the every-5-batches rule (Batch 22 `play.mjs`: commits only at play and pause).
+    - TODOs: none without a `(batch NN)` tag in `src/`.
