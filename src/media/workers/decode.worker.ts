@@ -34,8 +34,8 @@ new WorkerHost(
     openVideo: (params, signal) => videos.open(params, signal),
     requestFrame: (params, signal, emit) => videos.requestFrame(params, signal, emit),
     prefetch: (params, signal, emit) => videos.prefetch(params, signal, emit),
-    closeVideo: async ({ mediaId }) => {
-      videos.close(mediaId);
+    closeVideo: async ({ mediaId, lod }) => {
+      videos.close(mediaId, lod);
       return null;
     },
     decodeStats: async () => videos.stats(),

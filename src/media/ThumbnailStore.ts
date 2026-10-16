@@ -13,6 +13,10 @@
 // made again later, and a sheet starts only once the preview has had no decode for PREVIEW_QUIET_MS. Bitmaps live in an LRU of
 // MAX_SHEETS / MAX_BYTES that closes what it evicts, never the sheets on screen or a card's first
 // sheet. Eager sheets nobody shows are written and closed at once.
+// Sheets are decoded from the video's proxy once it is ready (spec §9.6), else from the source (also
+// when the proxy file is missing). When a video's source changes, the sheets in memory keep showing,
+// its index starts over for the new source, and LOD0 and LOD1 are made again after the other eager
+// work (others when shown). `regenerate` (Regenerate thumbnails) does the same without the cache.
 import { setMediaAnalysis } from "../core/commands/mediaCommands.js";
 import type { Command } from "../core/commands/command.js";
 import type { MediaId, MediaItem, Project } from "../core/document/types.js";
@@ -105,10 +109,14 @@ export interface ThumbnailStats {
 
 interface MediaEntry {
   layout: ThumbLayout;
+  /** The file the sheets come from: the proxy once it is ready. */
+  source: Lod;
   index: ThumbIndex | null;
   file: File | null;
   /** No sheet can be made this session (missing file, no decoder). */
   broken: boolean;
+  /** The next index starts empty instead of reading cache/thumbs/ (Regenerate thumbnails). */
+  fresh: boolean;
 }
 
 interface Resident {
@@ -119,8 +127,8 @@ interface Resident {
 
 const keyOf = (mediaId: MediaId, level: ThumbLevel, sheet: number) => `${mediaId}/${level}/${sheet}`;
 const keyString = (key: SheetKey) => keyOf(key.mediaId, key.level, key.sheet);
-/** The source the thumbnails are made from. TODO(batch 24): the proxy when it exists. */
-const SOURCE: Lod = "full";
+/** The file a video's thumbnails are made from (spec §9.6: the proxy when present). */
+const sourceOf = (item: MediaItem): Lod => (item.proxy?.status === "ready" ? "proxy" : "full");
 
 export class ThumbnailStore {
   private readonly entries = new Map<MediaId, MediaEntry>();
@@ -224,11 +232,27 @@ export class ThumbnailStore {
       const layout = thumbLayout(item);
       if (!layout) continue;
       const entry = this.entries.get(item.id);
-      if (entry && sameLayout(entry.layout, layout)) continue;
+      const source = sourceOf(item);
+      if (entry && sameLayout(entry.layout, layout)) {
+        if (entry.source !== source) {
+          entry.source = source;
+          this.restart(item.id, entry, false);
+        }
+        continue;
+      }
       if (entry) this.drop(item.id);
-      this.entries.set(item.id, { layout, index: null, file: null, broken: false });
+      this.entries.set(item.id, { layout, source, index: null, file: null, broken: false, fresh: false });
       this.eager.push(item.id);
     }
+    this.pump();
+  }
+
+  /** Makes a video's sheets again (Regenerate thumbnails), ignoring cache/thumbs/: what shows stays until replaced. */
+  regenerate(mediaId: MediaId): void {
+    const entry = this.entries.get(mediaId);
+    if (!entry) return;
+    entry.fresh = true;
+    this.restart(mediaId, entry, true);
     this.pump();
   }
 
@@ -340,19 +364,41 @@ export class ThumbnailStore {
 
   private async ensureIndex(mediaId: MediaId, entry: MediaEntry, signal: AbortSignal): Promise<ThumbIndex> {
     if (entry.index && entry.file) return entry.index;
-    const file = await this.deps.files.source(mediaId, SOURCE);
+    let source = entry.source;
+    let file = await this.deps.files.source(mediaId, source);
+    // A proxy whose file is gone: the source file.
+    if (!file && source === "proxy") file = await this.deps.files.source(mediaId, (source = "full"));
     signal.throwIfAborted();
     if (!file) {
       entry.broken = true;
       throw new Error("the media file is missing");
     }
     const stamp = { size: file.size, lastModified: file.lastModified };
-    const blob = await this.deps.files.read(thumbIndexPath(mediaId)).catch(() => null);
+    const blob = entry.fresh ? null : await this.deps.files.read(thumbIndexPath(mediaId)).catch(() => null);
     const text = blob ? await blob.text().catch(() => null) : null;
     signal.throwIfAborted();
     entry.file = file;
-    entry.index = (text && readThumbIndex(text, entry.layout, SOURCE, stamp)) || emptyThumbIndex(entry.layout, SOURCE, stamp);
+    entry.fresh = false;
+    entry.index = (text && readThumbIndex(text, entry.layout, source, stamp)) || emptyThumbIndex(entry.layout, source, stamp);
     return entry.index;
+  }
+
+  /**
+   * A video's sheets start over (a new source, or Regenerate thumbnails): a new index, the eager
+   * levels made again (first, or after the other videos), the running job cancelled (it is made again
+   * if still wanted). Sheets in memory keep showing until their new ones arrive.
+   */
+  private restart(mediaId: MediaId, entry: MediaEntry, first: boolean): void {
+    entry.index = null;
+    entry.file = null;
+    entry.broken = false;
+    for (const k of [...this.failed]) if (k.startsWith(`${mediaId}/`)) this.failed.delete(k);
+    const at = this.eager.indexOf(mediaId);
+    if (at !== -1) this.eager.splice(at, 1);
+    if (first) this.eager.unshift(mediaId);
+    else this.eager.push(mediaId);
+    this.active?.abort();
+    this.deps.workers.request("closeThumbs", { mediaId }).catch(() => undefined);
   }
 
   /** A sheet the index lists, from cache/thumbs/; null when its file is gone or damaged. */

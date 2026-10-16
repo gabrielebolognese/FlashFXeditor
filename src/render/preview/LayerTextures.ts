@@ -22,10 +22,17 @@
 // - `resolveSplit` resolves two composites in one pass (the trim preview's two frames side by side,
 //   spec §6.10), each pane with its own slots and draw list. The scrub rule spans both: a media shown
 //   in both panes gets one scrub request, so the two never supersede each other.
+// - Proxies (spec §9.5): each media's frames come from the lod `wantedLod` asks for, routed by the
+//   frame service (the proxy only when the media has one ready). The other lod's frame at the same
+//   time stands in when it is cached: a proxy frame shows while the full one decodes (Auto after a
+//   pause or a scrub), and a cached full frame at least as big as the proxy is drawn as exact where
+//   the proxy is wanted (a smaller one, e.g. from a 1/4 playback, only stands in). Detail refreshes
+//   are for full frames only. `resolveExact` resolves a composite to exact full frames at their own
+//   size (Export frame at full resolution, whatever the quality mode).
 // The draw lists, the slot structs and their keys are reused between passes: a pass allocates nothing
 // unless it requests or pins a new frame.
 import type { MediaId, TrackId } from "../../core/document/types.js";
-import { imageKey, type TextureKey, type TexturePool } from "../../media/cache/TexturePool.js";
+import { imageKey, type Lod, type TextureKey, type TexturePool } from "../../media/cache/TexturePool.js";
 import type { FrameResult, FrameService } from "../../media/decode/FrameService.js";
 import type { ImageService } from "../../media/decode/ImageService.js";
 import { mediaTimePosition } from "../../media/demux/sampleIndex.js";
@@ -34,13 +41,16 @@ import type { NeighborFrame } from "../compositor/Compositor.js";
 import type { Composite, DrawList, Layer, MediaLayer, TextureLayer } from "../compositor/drawList.js";
 import type { TextureHandle } from "../gpu/renderer.js";
 import { mutableIdentity, type MutableMat3 } from "../mat3.js";
+import { exportLongEdge, layerDetail } from "./detail.js";
 
 export interface LayerTexturesDeps {
-  frames: Pick<FrameService, "info" | "video" | "getFrame" | "prefetch">;
+  frames: Pick<FrameService, "info" | "video" | "getFrame" | "prefetch" | "lodFor">;
   images: Pick<ImageService, "get" | "load">;
   pool: Pick<TexturePool, "get" | "has" | "pin">;
   /** A frame arrived after the pass that wanted it: draw again. */
   onChange(): void;
+  /** The lod this pass asks a media's frames for (the quality mode's rule); full when absent. */
+  wantedLod?(mediaId: MediaId): Lod;
 }
 
 export interface LayerTexturesStats {
@@ -58,6 +68,8 @@ export interface LayerTexturesStats {
   warming: number;
   /** Media this browser cannot show (unsupported codec, missing file). */
   failed: number;
+  /** Media layers drawn with a proxy frame. */
+  proxy: number;
 }
 
 type WritableTextureLayer = Omit<TextureLayer, "transform"> & { transform: MutableMat3 };
@@ -92,6 +104,7 @@ interface Slot {
 }
 
 const keyId = (key: TextureKey) => `${key.mediaId}|${key.lod}|${key.timeUs}`;
+const otherLod = (lod: Lod): Lod => (lod === "full" ? "proxy" : "full");
 const sameKey = (a: TextureKey, b: TextureKey) => a.timeUs === b.timeUs && a.mediaId === b.mediaId && a.lod === b.lod;
 const newKey = (): TextureKey => ({ mediaId: "", lod: "full", timeUs: 0 });
 
@@ -112,15 +125,17 @@ export class LayerTextures {
   private readonly lists: [WritableList, WritableList] = [newList(), newList()];
   private readonly scrubbed = new Set<MediaId>();
   private readonly active = new Set<MediaId>();
-  private readonly opening = new Set<MediaId>();
+  /** Videos opening, as `mediaId|lod`. */
+  private readonly opening = new Set<string>();
   private readonly loadingImages = new Set<MediaId>();
   private readonly warming = new Set<string>();
   private readonly failed = new Set<MediaId>();
   private pass = 0;
   private resolving = false;
-  /** Scratch key of the frame a layer wants (copied when it is kept). */
+  /** Scratch keys of the frame a layer wants and of the other lod's frame at that time (copied when kept). */
   private readonly wanted = newKey();
-  readonly stats: LayerTexturesStats = { layers: 0, exact: 0, standIns: 0, held: 0, missing: 0, pending: 0, warming: 0, failed: 0 };
+  private readonly alternate = newKey();
+  readonly stats: LayerTexturesStats = { layers: 0, exact: 0, standIns: 0, held: 0, missing: 0, pending: 0, warming: 0, failed: 0, proxy: 0 };
 
   constructor(private readonly deps: LayerTexturesDeps) {}
 
@@ -167,6 +182,7 @@ export class LayerTextures {
     stats.standIns = 0;
     stats.held = 0;
     stats.missing = 0;
+    stats.proxy = 0;
     this.resolving = true;
   }
 
@@ -184,9 +200,12 @@ export class LayerTextures {
       }
       stats.layers += 1;
       this.active.add(layer.mediaId);
-      const drawn = this.resolveMedia(this.slot(pane, layer.trackId), layer, priority);
-      if (drawn) list.layers.push(drawn);
-      else stats.missing += 1;
+      const slot = this.slot(pane, layer.trackId);
+      const drawn = this.resolveMedia(slot, layer, priority);
+      if (drawn) {
+        list.layers.push(drawn);
+        if (slot.pinnedKey.lod === "proxy" && !layer.still) stats.proxy += 1;
+      } else stats.missing += 1;
     }
   }
 
@@ -218,14 +237,15 @@ export class LayerTextures {
         if (!this.deps.images.get(mediaId)) this.loadImage(mediaId);
         continue;
       }
-      const key = this.videoKey(mediaId, neighbor.timeUs);
+      const lod = this.lodOf(mediaId);
+      const key = this.videoKey(mediaId, neighbor.timeUs, lod);
       if (!key || this.deps.pool.has(key)) continue;
       const id = keyId(key);
       if (this.warming.has(id)) continue;
       this.warming.add(id);
       const timeUs = key.timeUs;
       this.deps.frames
-        .prefetch(mediaId, timeUs, timeUs)
+        .prefetch(mediaId, timeUs, timeUs, { lod })
         .catch(() => undefined)
         .finally(() => {
           this.warming.delete(id);
@@ -252,9 +272,59 @@ export class LayerTextures {
     for (const list of this.lists) list.layers.length = 0;
   }
 
-  /** The last resolved draw list (of a split, the left one; Export frame draws it). */
+  /** The last resolved draw list (of a split, the left one). */
   get current(): DrawList {
     return this.lists[0];
+  }
+
+  /**
+   * `composite` with every media layer at its exact full-resolution frame, uploaded at the video's own
+   * size, or twice its size on the frame when drawn smaller (`exportLongEdge`, at most `maxLongEdge`):
+   * Export frame, whatever the quality mode and whatever the pool holds (spec §9.5). Waits for the
+   * frames; `release` lets go of their pins. Media that cannot be shown are left out.
+   */
+  async resolveExact(composite: Composite, maxLongEdge: number): Promise<{ list: DrawList; release: () => void }> {
+    const unpins: (() => void)[] = [];
+    const release = () => {
+      for (const unpin of unpins.splice(0)) unpin();
+    };
+    const layers: Layer[] = [];
+    try {
+      for (const layer of composite.layers) {
+        if (layer.kind === "solid") {
+          layers.push(layer);
+          continue;
+        }
+        const { mediaId } = layer;
+        let key: TextureKey;
+        let texture: TextureHandle | null;
+        if (layer.still) {
+          key = imageKey(mediaId);
+          texture = this.deps.images.get(mediaId) ?? (await this.deps.images.load(mediaId).catch(() => null));
+        } else {
+          const info = this.deps.frames.info(mediaId) ?? (await this.deps.frames.video(mediaId).catch(() => null));
+          if (!info?.decodable || info.frameTimesUs.length === 0) continue;
+          const timeUs = info.frameTimesUs[mediaTimePosition(info.frameTimesUs, layer.timeUs)] as number;
+          const longEdge = exportLongEdge(Math.max(info.codedWidth, info.codedHeight), layerDetail(layer, info.codedWidth, info.codedHeight), maxLongEdge);
+          const result = await this.deps.frames.getFrame(mediaId, timeUs, { lod: "full", priority: "playback", minLongEdge: Math.floor(longEdge * DETAIL_TOLERANCE), uploadAtLeast: longEdge });
+          key = result.key;
+          texture = result.texture;
+        }
+        if (!texture?.valid) continue;
+        unpins.push(this.deps.pool.pin(key));
+        layers.push({ kind: "texture", texture, transform: layer.transform, opacity: layer.opacity, crop: layer.crop, flipX: false, flipY: false });
+      }
+    } catch (error) {
+      release();
+      throw error;
+    }
+    return { list: { width: composite.width, height: composite.height, background: composite.background, layers }, release };
+  }
+
+  /** The lod a media's frames come from in this pass. */
+  private lodOf(mediaId: MediaId): Lod {
+    const wanted = this.deps.wantedLod?.(mediaId) ?? "full";
+    return wanted === "full" ? "full" : this.deps.frames.lodFor(mediaId, wanted);
   }
 
   private resolveMedia(slot: Slot, layer: MediaLayer, priority: FramePriority): TextureLayer | null {
@@ -263,16 +333,29 @@ export class LayerTextures {
     if (this.failed.has(mediaId)) return null;
     let key: TextureKey | null;
     let texture: TextureHandle | null;
+    /** The other lod's frame at the same time, when it is cached. */
+    let other: TextureHandle | null = null;
+    const lod = layer.still ? "full" : this.lodOf(mediaId);
     if (layer.still) {
       key = imageKey(mediaId);
       texture = this.deps.images.get(mediaId);
       if (!texture) this.loadImage(mediaId);
     } else {
-      key = this.videoKey(mediaId, layer.timeUs);
+      key = this.videoKey(mediaId, layer.timeUs, lod);
       texture = key ? this.deps.pool.get(key) : null;
+      if (!texture) {
+        const alternate = this.alternateKey(mediaId, layer.timeUs, otherLod(lod));
+        other = alternate ? this.deps.pool.get(alternate) : null;
+        // A cached full frame where the proxy is wanted: as good or better, and nothing to decode.
+        if (other && lod === "proxy" && Math.max(other.width, other.height) >= this.proxyLongEdge(mediaId)) {
+          key = alternate;
+          texture = other;
+          other = null;
+        }
+      }
     }
     if (texture && key) {
-      if (!layer.still && this.wantsDetail(slot, texture, mediaId, key)) {
+      if (!layer.still && key.lod === "full" && lod === "full" && this.wantsDetail(slot, texture, mediaId, key)) {
         // The exact frame at less detail: shown while it is decoded again at the wanted size.
         copyKey(slot.refreshKey, key);
         slot.refreshedTo = this.detailLongEdge;
@@ -290,6 +373,11 @@ export class LayerTextures {
       if (slot.pending && !(key && sameKey(slot.pending.key, key))) this.cancel(slot);
       slot.standIn = null;
     } else if (key && !layer.still) this.request(slot, key, priority);
+    // The proxy frame at this very time while the full one decodes.
+    if (other && this.alternate.mediaId === mediaId) {
+      this.stats.standIns += 1;
+      return this.show(slot, layer, other, this.alternate);
+    }
     const standIn = slot.standIn;
     if (standIn && standIn.key.mediaId === mediaId && standIn.texture.valid) {
       this.stats.standIns += 1;
@@ -303,23 +391,42 @@ export class LayerTextures {
   }
 
   /**
-   * The pool key of the video frame nearest to media time `timeUs` (media time 0 is the first frame),
+   * The pool key of the `lod` frame nearest to media time `timeUs` (media time 0 is the first frame),
    * in a scratch key valid until the next call; null until the video is open.
    */
-  private videoKey(mediaId: MediaId, timeUs: number): TextureKey | null {
-    const info = this.deps.frames.info(mediaId);
+  private videoKey(mediaId: MediaId, timeUs: number, lod: Lod): TextureKey | null {
+    const info = this.deps.frames.info(mediaId, lod);
     if (!info) {
-      this.open(mediaId);
+      this.open(mediaId, lod);
       return null;
     }
     const times = info.frameTimesUs;
     if (!info.decodable || times.length === 0) {
-      this.fail(mediaId, `this browser cannot decode ${info.codec}`);
+      // A proxy that cannot be decoded is the frame service's to drop (the next pass asks for full).
+      if (lod === "full") this.fail(mediaId, `this browser cannot decode ${info.codec}`);
       return null;
     }
     const key = this.wanted;
     key.mediaId = mediaId;
-    key.lod = "full";
+    key.lod = lod;
+    key.timeUs = times[mediaTimePosition(times, timeUs)] as number;
+    return key;
+  }
+
+  /** The long edge of a media's proxy frames (0 before the proxy is open). */
+  private proxyLongEdge(mediaId: MediaId): number {
+    const info = this.deps.frames.info(mediaId, "proxy");
+    return info ? Math.max(info.codedWidth, info.codedHeight) : 0;
+  }
+
+  /** Like `videoKey` for the other lod, in its own scratch key, without opening anything. */
+  private alternateKey(mediaId: MediaId, timeUs: number, lod: Lod): TextureKey | null {
+    const info = this.deps.frames.info(mediaId, lod);
+    const times = info?.frameTimesUs;
+    if (!info?.decodable || !times || times.length === 0) return null;
+    const key = this.alternate;
+    key.mediaId = mediaId;
+    key.lod = lod;
     key.timeUs = times[mediaTimePosition(times, timeUs)] as number;
     return key;
   }
@@ -360,7 +467,7 @@ export class LayerTextures {
       if (!this.resolving) this.deps.onChange();
     };
     this.deps.frames
-      .getFrame(key.mediaId, key.timeUs, { priority: wanted, signal: pending.controller.signal, ...(refresh ? { minLongEdge } : { onApproximate }) })
+      .getFrame(key.mediaId, key.timeUs, { lod: key.lod, priority: wanted, signal: pending.controller.signal, ...(refresh ? { minLongEdge } : { onApproximate }) })
       .then(
         (result) => {
           if (slot.pending !== pending) return;
@@ -390,17 +497,21 @@ export class LayerTextures {
       );
   }
 
-  private open(mediaId: MediaId): void {
-    if (this.opening.has(mediaId)) return;
-    this.opening.add(mediaId);
-    this.deps.frames.video(mediaId).then(
+  private open(mediaId: MediaId, lod: Lod): void {
+    const id = `${mediaId}|${lod}`;
+    if (this.opening.has(id)) return;
+    this.opening.add(id);
+    this.deps.frames.video(mediaId, lod).then(
       () => {
-        this.opening.delete(mediaId);
+        this.opening.delete(id);
         this.deps.onChange();
       },
       (error: unknown) => {
-        this.opening.delete(mediaId);
-        if (!isAbortError(error)) this.fail(mediaId, error instanceof Error ? error.message : String(error));
+        this.opening.delete(id);
+        if (isAbortError(error)) return;
+        // A proxy that does not open: the frame service routes the media to its full file.
+        if (lod === "proxy") this.deps.onChange();
+        else this.fail(mediaId, error instanceof Error ? error.message : String(error));
       },
     );
   }

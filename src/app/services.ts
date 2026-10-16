@@ -52,6 +52,7 @@ export const appSettings = createAppSettings(keyValueStore);
 export const workerPool = new WorkerPool({
   decode: () => new Worker(new URL("../media/workers/decode.worker.ts", import.meta.url), { type: "module", name: "decode" }),
   analysis: () => new Worker(new URL("../media/workers/analysis.worker.ts", import.meta.url), { type: "module", name: "analysis" }),
+  proxy: () => new Worker(new URL("../media/workers/proxy.worker.ts", import.meta.url), { type: "module", name: "proxy" }),
 });
 /** Save state of the open project, for the app bar dot and the read-only banner. */
 export const saveStatus = createStore<SaveStatus>(INITIAL_SAVE_STATUS);

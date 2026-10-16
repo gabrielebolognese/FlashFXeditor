@@ -1,7 +1,7 @@
 // In-memory FsDir for the project tests. Logs every write attempt (before checking permission, so
 // "no writes attempted" is testable), can fail chosen operations, and stamps files with a
 // monotonic clock so "newer" comparisons are deterministic. Not imported by app code.
-import type { FsDir, FsEntry, FsFile, PermissionMode, PermissionStatus, WriteFileOptions } from "./fs.js";
+import type { FsDir, FsEntry, FsFile, FsWritable, PermissionMode, PermissionStatus, WriteFileOptions } from "./fs.js";
 
 export type MemoryOp = "write" | "remove" | "mkdir";
 
@@ -85,6 +85,60 @@ export class MemoryDir implements FsDir {
     this.files.delete(name);
     this.blobs.set(name, { data, lastModified: ++this.fs.clock });
     options.onProgress?.(data.size);
+  }
+
+  /** Files opened with `openWritable` and not closed or aborted yet. */
+  readonly writing = new Set<string>();
+
+  async openWritable(name: string): Promise<FsWritable> {
+    this.fs.attempt("write", this.child(name));
+    // The browser creates the (empty) file at once and keeps the data in a swap file until `close`.
+    if (!this.blobs.has(name)) this.blobs.set(name, { data: new Blob([]), lastModified: ++this.fs.clock });
+    this.writing.add(name);
+    let bytes = new Uint8Array(0);
+    let length = 0;
+    let open = true;
+    const check = () => {
+      if (!open) throw new DOMException("The stream is closed", "InvalidStateError");
+    };
+    return {
+      write: async (data, position) => {
+        check();
+        this.fs.attempt("write", this.child(name));
+        const end = position + data.byteLength;
+        if (end > bytes.byteLength) {
+          const grown = new Uint8Array(Math.max(end, bytes.byteLength * 2));
+          grown.set(bytes.subarray(0, length));
+          bytes = grown;
+        }
+        bytes.set(data, position);
+        length = Math.max(length, end);
+      },
+      close: async () => {
+        check();
+        open = false;
+        this.writing.delete(name);
+        this.files.delete(name);
+        this.blobs.set(name, { data: new Blob([bytes.slice(0, length)]), lastModified: ++this.fs.clock });
+      },
+      abort: async () => {
+        open = false;
+        this.writing.delete(name);
+      },
+    };
+  }
+
+  async rename(from: string, to: string): Promise<void> {
+    this.fs.attempt("write", this.child(to));
+    const blob = this.blobs.get(from);
+    const file = this.files.get(from);
+    if (!blob && !file) throw new DOMException(`${from} does not exist`, "NotFoundError");
+    this.files.delete(to);
+    this.blobs.delete(to);
+    if (blob) this.blobs.set(to, blob);
+    if (file) this.files.set(to, file);
+    this.files.delete(from);
+    this.blobs.delete(from);
   }
 
   async remove(name: string): Promise<void> {

@@ -147,6 +147,7 @@ describe("media items", () => {
     const project = makeProject();
     project.media.v = { ...makeMedia("v"), width: 1920, height: 1080, rotation: 90, fps: { num: 30000, den: 1001 }, codec: "hvc1.1.6.L153.90" };
     project.media.still = { ...makeMedia("still", "image", 0), width: 640, height: 480 };
+    project.media.px = { ...makeMedia("px"), width: 3840, height: 2160, proxy: { relPath: "cache/proxies/px.mp4", width: 960, height: 540, status: "ready" } };
     expect(validateProject(project)).toEqual([]);
   });
 
@@ -167,6 +168,8 @@ describe("media items", () => {
     project.media.d = { ...makeMedia("d"), fps: { num: 30, den: 0 } };
     project.media.e = { ...makeMedia("e"), file: { relPath: "../outside.mp4" } };
     project.media.f = { ...makeMedia("f"), file: { relPath: "/abs.mp4" } };
+    project.media.g = { ...makeMedia("g"), proxy: { relPath: "cache/proxies/g.mp4", width: 960, height: 0, status: "done" as "ready" } };
+    project.media.h = { ...makeMedia("h"), proxy: { relPath: "../h.mp4", width: 960, height: 540, status: "pending" } };
     project.media.key = makeMedia("other");
     const issues = validateProject(project);
     expect(issues).toEqual([
@@ -177,6 +180,9 @@ describe("media items", () => {
       expect.stringContaining("fps 30/0"),
       expect.stringContaining('relPath "../outside.mp4"'),
       expect.stringContaining('relPath "/abs.mp4"'),
+      expect.stringContaining('proxy status "done"'),
+      expect.stringContaining("proxy size 960x0"),
+      expect.stringContaining('proxy relPath "../h.mp4"'),
       expect.stringContaining("stored under key key"),
     ]);
   });

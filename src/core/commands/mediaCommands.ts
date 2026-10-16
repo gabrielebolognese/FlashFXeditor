@@ -65,6 +65,23 @@ export function renameMedia(id: MediaId, name: string): Command {
   };
 }
 
+/**
+ * A media item's proxy (spec §9.5): pending (queued or being made, with the size it will have), ready
+ * (with its size), failed, or none (removed: never made again on its own). Dispatched through
+ * `DocumentStore.amend`: no undo step, like the analysis status.
+ */
+export function setMediaProxy(id: MediaId, proxy: NonNullable<MediaItem["proxy"]>): Command {
+  return {
+    id: "media.proxy",
+    label: "Media proxy",
+    affects: ["media"],
+    run(draft) {
+      const media = draft.media[id];
+      if (media) media.proxy = { ...proxy };
+    },
+  };
+}
+
 /** Analysis status of a media item (peaks, thumbnails). Dispatched through `DocumentStore.amend`: no undo step. */
 export function setMediaAnalysis(id: MediaId, analysis: Partial<MediaItem["analysis"]>): Command {
   return {

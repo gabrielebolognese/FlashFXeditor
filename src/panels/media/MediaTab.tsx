@@ -16,6 +16,7 @@ import { Select } from "../../ui/Select.js";
 import { rangeFractions } from "./hoverScrub.js";
 import { MediaContextMenu } from "./MediaContextMenu.js";
 import { MediaName } from "./MediaName.js";
+import { ProxyBadge, ProxyCell } from "./ProxyBadge.js";
 import { audioLabel, codecLabel, durationBadge, fpsLabel, metaLabel, resolutionLabel, sortMedia } from "./mediaList.js";
 import styles from "./MediaTab.module.css";
 import { PosterCanvas } from "./PosterCanvas.js";
@@ -107,6 +108,7 @@ const MediaCard = memo(function MediaCard({ item, uses }: { item: MediaItem; use
           </span>
         )}
         <span className={styles.uses}>{uses === 0 ? "Unused" : `Used ${uses}×`}</span>
+        {item.kind === "video" && item.proxy && <ProxyBadge id={item.id} status={item.proxy.status} />}
       </div>
       <div className={styles.cardInfo}>
         <Icon className={styles.kindIcon} aria-label={item.kind} />
@@ -136,8 +138,7 @@ const MediaRow = memo(function MediaRow({ item, uses }: { item: MediaItem; uses:
       <span className={styles.mono}>{fpsLabel(item)}</span>
       <span>{codecLabel(item.codec)}</span>
       <span>{audioLabel(item)}</span>
-      {/* TODO(batch 24): proxy status. */}
-      <span className={styles.muted}>None</span>
+      <ProxyCell item={item} />
       <span className={styles.mono}>{uses}</span>
     </div>
   );

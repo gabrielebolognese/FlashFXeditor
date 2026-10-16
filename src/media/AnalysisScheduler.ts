@@ -3,8 +3,8 @@
 // the IdleQueue (never during playback or drags) and mark their part of `analysis` ready with no undo
 // step: waveform peaks (PeaksJobs, Batch 10) for every audio-bearing media, thumbnail sprite sheets
 // (ThumbnailStore, Batch 17) for every video. Media already marked ready are checked once per session
-// (the cache is disposable, spec §9.7); media that leave the project are forgotten.
-// TODO(batch 24): proxy jobs.
+// (the cache is disposable, spec §9.7); media that leave the project are forgotten. Proxies have their
+// own queue (ProxyJobs, Batch 24), which follows the document's proxy status.
 import type { MediaId, MediaItem } from "../core/document/types.js";
 import type { DocumentStore } from "../core/store/DocumentStore.js";
 import { hasAudio, type PeaksJobs } from "./PeaksJobs.js";

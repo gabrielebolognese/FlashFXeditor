@@ -120,6 +120,10 @@ describe("TexturePool", () => {
     pool.put(frame("m1", 33_333), textures[1]!);
     pool.put(frame("m2", 0), textures[2]!);
     pool.put(imageKey("m3"), textures[3]!);
+    const proxyTexture = texture(MB);
+    pool.put({ mediaId: "m1", lod: "proxy", timeUs: 0 }, proxyTexture);
+    expect(pool.deleteMedia("m1", "proxy")).toBe(1);
+    expect(proxyTexture.destroyed).toBe(1);
     expect(pool.delete(frame("m2", 0))).toBe(true);
     expect(pool.delete(frame("m2", 0))).toBe(false);
     expect(pool.deleteMedia("m1")).toBe(2);

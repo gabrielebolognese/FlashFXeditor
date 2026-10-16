@@ -105,11 +105,11 @@ export class TexturePool {
     return true;
   }
 
-  /** Drops every texture of a media (removed from the project). Returns how many went. */
-  deleteMedia(mediaId: MediaId): number {
+  /** Drops every texture of a media (removed from the project), or those of one lod (its proxy removed). Returns how many went. */
+  deleteMedia(mediaId: MediaId, lod?: Lod): number {
     let count = 0;
     for (const [id, entry] of [...this.entries]) {
-      if (entry.key.mediaId !== mediaId) continue;
+      if (entry.key.mediaId !== mediaId || (lod !== undefined && entry.key.lod !== lod)) continue;
       this.remove(id, entry);
       count += 1;
     }

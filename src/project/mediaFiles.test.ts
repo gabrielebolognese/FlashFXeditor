@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ensureFolderLayout } from "./layout.js";
-import { copyIntoMedia, posterPath, removeFileAt, resolveFile, safeFileName, takenNames, uniqueName, writeFileAt } from "./mediaFiles.js";
+import { copyIntoMedia, openWritableAt, posterPath, proxyPartPath, proxyPath, removeFileAt, renameFileAt, resolveFile, safeFileName, sampleIndexPath, takenNames, uniqueName, writeFileAt } from "./mediaFiles.js";
 import { createMemoryDir } from "./memoryFs.js";
 
 describe("safeFileName", () => {
@@ -73,5 +73,39 @@ describe("relative paths", () => {
     expect(await resolveFile(root, "missing.mp4")).toBeNull();
     await removeFileAt(root, "cache/thumbs/m1.poster.webp");
     expect(await resolveFile(root, "cache/thumbs/m1.poster.webp")).toBeNull();
+  });
+});
+
+describe("proxy files", () => {
+  it("names the proxy, its part file and its own sample index", () => {
+    expect(proxyPath("m1")).toBe("cache/proxies/m1.mp4");
+    expect(proxyPartPath("m1")).toBe("cache/proxies/m1.mp4.part");
+    expect(sampleIndexPath("m1")).toBe("cache/index/m1.bin");
+    expect(sampleIndexPath("m1", "proxy")).toBe("cache/index/m1.proxy.bin");
+  });
+
+  it("writes at positions, commits on close and renames the part file", async () => {
+    const root = createMemoryDir();
+    const writable = await openWritableAt(root, proxyPartPath("m1"));
+    expect(root.tree()).toContain("cache/proxies/m1.mp4.part");
+    await writable.write(new Uint8Array([1, 2, 3, 4]), 0);
+    await writable.write(new Uint8Array([9]), 1);
+    await writable.write(new Uint8Array([7, 7]), 6);
+    expect((await resolveFile(root, proxyPartPath("m1")))?.size).toBe(0);
+    await writable.close();
+    const bytes = new Uint8Array(await ((await resolveFile(root, proxyPartPath("m1"))) as File).arrayBuffer());
+    expect([...bytes]).toEqual([1, 9, 3, 4, 0, 0, 7, 7]);
+    await renameFileAt(root, proxyPartPath("m1"), proxyPath("m1"));
+    expect(root.tree()).toEqual(["cache/", "cache/proxies/", "cache/proxies/m1.mp4"]);
+    await expect(renameFileAt(root, proxyPath("m1"), "media/m1.mp4")).rejects.toThrow("not the same folder");
+  });
+
+  it("discards an aborted write", async () => {
+    const root = createMemoryDir();
+    const writable = await openWritableAt(root, proxyPartPath("m1"));
+    await writable.write(new Uint8Array([1, 2]), 0);
+    await writable.abort();
+    await expect(writable.write(new Uint8Array([3]), 2)).rejects.toMatchObject({ name: "InvalidStateError" });
+    expect((await resolveFile(root, proxyPartPath("m1")))?.size).toBe(0);
   });
 });

@@ -2,9 +2,10 @@
 // and cancellation. The main thread talks to workers only through WorkerPool; workers serve requests
 // through WorkerHost. Results carry transferables (ImageBitmap, VideoFrame, ArrayBuffer) only. A
 // request may also post `progress` values before its result (frames of a prefetch, the approximate
-// frame of a scrub).
+// frame of a scrub, the bytes and progress of a proxy).
 import type { Lod } from "../cache/TexturePool.js";
 import type { ThumbSheetParams, ThumbSheetResult } from "../decode/thumbSheet.js";
+import type { MakeProxyParams, MakeProxyResult, ProxyProgress } from "../proxy/ProxyMaker.js";
 import type { SourceStamp } from "../demux/sampleIndexFile.js";
 import type { ProbeResult } from "../probe/types.js";
 import type { Rotation } from "../probe/rotation.js";
@@ -14,8 +15,8 @@ export type Priority = "user" | "playback" | "prefetch" | "background";
 
 export const PRIORITY_RANK: Record<Priority, number> = { user: 0, playback: 1, prefetch: 2, background: 3 };
 
-// TODO(batch 24): "proxy", TODO(batch 43): "export".
-export type WorkerKind = "decode" | "analysis";
+// TODO(batch 43): "export".
+export type WorkerKind = "decode" | "analysis" | "proxy";
 
 export interface PosterResult {
   bitmap: ImageBitmap;
@@ -125,8 +126,8 @@ export interface WorkerMethods {
   requestFrame: { params: { mediaId: string; lod: Lod; timeUs: number; priority: FramePriority }; result: DeliveredFrame; progress: DeliveredFrame };
   /** Decodes the frames shown in [fromUs, toUs] and posts each one (every `stride`-th) as progress. */
   prefetch: { params: PrefetchParams; result: { frames: number }; progress: DeliveredFrame };
-  /** Closes the sessions of a media (removed from the project, or the project closed). */
-  closeVideo: { params: { mediaId: string }; result: null };
+  /** Closes the sessions of a media (removed from the project, or the project closed), or only those of one lod (a proxy removed). */
+  closeVideo: { params: { mediaId: string; lod?: Lod }; result: null };
   decodeStats: { params: Record<string, never>; result: WorkerDecodeStats };
   /** Parses the audio track of an MP4/MOV and finds the decoder's output format. */
   openAudio: { params: { mediaId: string; file: File }; result: AudioInfo };
@@ -144,6 +145,10 @@ export interface WorkerMethods {
   decodeSheet: { params: { blob: Blob }; result: ImageBitmap };
   /** Forgets the thumbnail sessions of a media. */
   closeThumbs: { params: { mediaId: string }; result: null };
+  /** Makes a video's proxy (spec §9.5): the file's bytes and the frames done come as progress. */
+  makeProxy: { params: MakeProxyParams; result: MakeProxyResult; progress: ProxyProgress };
+  /** Pauses or resumes the running proxy (playback, drags, export). */
+  pauseProxy: { params: { paused: boolean }; result: null };
 }
 
 export type Method = keyof WorkerMethods;
@@ -168,6 +173,8 @@ export const METHOD_WORKER: Record<Method, WorkerKind> = {
   thumbSheet: "analysis",
   decodeSheet: "analysis",
   closeThumbs: "analysis",
+  makeProxy: "proxy",
+  pauseProxy: "proxy",
 };
 
 export type RequestMessage = { [M in Method]: { type: "request"; id: number; method: M; priority: Priority; params: Params<M> } }[Method];

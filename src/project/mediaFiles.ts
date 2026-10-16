@@ -1,13 +1,14 @@
 // Media files inside the project folder (spec §9.1 copy mode, §9.7): sources are copied into media/
 // under names that never overwrite another file; posters and thumbnail sheets live in cache/thumbs/,
-// video sample indexes in cache/index/ and waveform peaks in cache/peaks/.
-import type { FsDir, WriteFileOptions } from "./fs.js";
+// video sample indexes in cache/index/, waveform peaks in cache/peaks/ and proxies in cache/proxies/.
+import type { FsDir, FsWritable, WriteFileOptions } from "./fs.js";
 import { subdir } from "./layout.js";
 
 export const MEDIA_DIR = "media";
 export const THUMBS_DIR = "cache/thumbs";
 export const INDEX_DIR = "cache/index";
 export const PEAKS_DIR = "cache/peaks";
+export const PROXIES_DIR = "cache/proxies";
 
 const MAX_NAME_LENGTH = 180;
 // Characters Windows, macOS or the File System Access API refuse in names, and control characters.
@@ -78,6 +79,22 @@ export async function removeFileAt(root: FsDir, relPath: string): Promise<void> 
   if (found) await found[0].remove(found[1]);
 }
 
+/** Opens a file at a project-relative path for positional writes, creating folders on the way. */
+export async function openWritableAt(root: FsDir, relPath: string): Promise<FsWritable> {
+  const found = await locate(root, relPath, true);
+  if (!found) throw new Error(`Could not create ${relPath}`);
+  return found[0].openWritable(found[1]);
+}
+
+/** Renames a file within its folder (`from` and `to` are project-relative paths in the same folder). */
+export async function renameFileAt(root: FsDir, from: string, to: string): Promise<void> {
+  const folder = (path: string) => path.slice(0, path.lastIndexOf("/") + 1);
+  if (folder(from) !== folder(to)) throw new Error(`Cannot rename ${from} to ${to}: not the same folder`);
+  const found = await locate(root, from, false);
+  if (!found) throw new DOMException(`${from} does not exist`, "NotFoundError");
+  await found[0].rename(found[1], to.slice(folder(to).length));
+}
+
 /**
  * Copies `file` into media/ under a safe, unique version of `name` (adding it to `taken`).
  * Returns the project-relative path. A failed or aborted copy leaves no file behind.
@@ -109,9 +126,19 @@ export function thumbIndexPath(mediaId: string): string {
   return `${THUMBS_DIR}/${mediaId}/index.json`;
 }
 
-/** Where a video's sample index is cached (disposable, spec §9.2). */
-export function sampleIndexPath(mediaId: string): string {
-  return `${INDEX_DIR}/${mediaId}.bin`;
+/** Where a video's sample index is cached (disposable, spec §9.2); its proxy's has its own name. */
+export function sampleIndexPath(mediaId: string, lod: "full" | "proxy" = "full"): string {
+  return lod === "full" ? `${INDEX_DIR}/${mediaId}.bin` : `${INDEX_DIR}/${mediaId}.proxy.bin`;
+}
+
+/** Where a video's proxy is (spec §9.5; disposable). */
+export function proxyPath(mediaId: string): string {
+  return `${PROXIES_DIR}/${mediaId}.mp4`;
+}
+
+/** The proxy while it is written; renamed to `proxyPath` once complete. */
+export function proxyPartPath(mediaId: string): string {
+  return `${proxyPath(mediaId)}.part`;
 }
 
 /** Where a media item's waveform peaks are cached (disposable, spec §9.6). */
