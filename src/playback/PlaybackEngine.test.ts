@@ -463,6 +463,27 @@ describe("PlaybackEngine transport", () => {
     expect(t.playhead()).toBe(300);
   });
 
+  it("plays a range once and puts the playhead back (a text animation's preview)", async () => {
+    const t = setup(ONE_CLIP());
+    setPlayhead(t.session, 500);
+    t.engine.playRange(60, 90, 500);
+    expect(t.playhead()).toBe(60);
+    t.frame();
+    await t.deliverAll();
+    t.frame();
+    t.advance(0.5);
+    t.frame();
+    expect(t.playhead()).toBe(75);
+    expect(t.engine.playing).toBe(true);
+    t.advance(1);
+    t.frame();
+    expect(t.engine.playing).toBe(false);
+    expect(t.playhead()).toBe(500);
+    // An empty range plays nothing.
+    t.engine.playRange(90, 90, 10);
+    expect(t.engine.playing).toBe(false);
+  });
+
   it("plays on from where someone else puts the playhead, and pauses for a ruler scrub", async () => {
     const t = setup(ONE_CLIP());
     await t.startPlaying();

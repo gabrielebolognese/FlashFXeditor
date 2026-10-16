@@ -12,30 +12,40 @@
 //   scale, rotation, position; flips mirror the text inside its box); the preview draws them from the
 //   text raster cache at its render scale. Their detail (raster px per project px they can show) lets
 //   a zoom re-rasterize them (§7.1).
+// - Text animations (spec §10.4, text/anim.ts): a text layer at a frame of its in or out animation
+//   carries what the animation does there (`TextAnimFrame`): one state for the whole text, or one per
+//   character, word or line (the units the atlas cuts, render/text/animUnits.ts). A typewriter cuts
+//   its characters out of the drawn lines. A text edited inline shows at rest. `upcomingTexts` lists
+//   the text clips about to show and the parts they will draw, so the preview rasterizes them ahead.
 // - Gesture-aware (spec P2): during a canvas gesture or a properties field scrub `transforms`,
-//   `opacities`, `crops` and `texts` give the clips' ephemeral values, used instead of the document's
-//   until it commits.
+//   `opacities`, `crops`, `texts` and `anims` give the clips' ephemeral values, used instead of the
+//   document's until it commits.
 // Layer structs and arrays are reused between frames; evaluating allocates nothing once warm.
 // TODO(batch 32): the caption track's current cue. TODO(batch 34): solid shapes other than rect,
-// gradient fills, corner radius. TODO(batch 35): keyframes. TODO(batch 31): text animations.
+// gradient fills, corner radius. TODO(batch 35): keyframes.
 // TODO(batch 36): transitions (two contributing clips and a mix amount).
 import { isRgba } from "../../core/document/color.js";
 import { framesToSourceUs, secondsToFrames } from "../../core/document/time.js";
-import type { Clip, ClipId, Crop, Frame, MediaClip, MediaId, Project, RGBA, SolidClip, TextClip, TextContent, TextStyle, Transform } from "../../core/document/types.js";
+import type { Clip, ClipId, Crop, Frame, MediaClip, MediaId, Project, RGBA, SolidClip, TextAnim, TextClip, TextContent, TextStyle, Transform } from "../../core/document/types.js";
+import { activeAnim, animUnit, isPlayable, newUnitState, presence, resetUnitState, typedCount, unitProgress, writeUnitShape, type ActiveAnim, type UnitState } from "../../text/anim.js";
 import { clipInIndex, lastClipStartingBy, trackIndex } from "../../timeline/model/queries.js";
 import { multiplyInto, mutableIdentity, setMat, type MutableMat3 } from "../mat3.js";
 import { DEFAULT_TEXT_STYLE, textContent } from "../../text/style.js";
+import type { AtlasUnitKind } from "../text/atlas.js";
+import { layoutStops, layoutUnits } from "../text/animUnits.js";
+import type { TextLayout } from "../text/layout.js";
 import { textLayout } from "../text/layoutCache.js";
 import { TEXT_RASTER_MAX, type TextHighlight } from "../text/raster.js";
-import { MAX_TEXT_SCALE } from "../text/TextRasterCache.js";
-import type { Composite, CompositeLayer, MediaLayer, SolidLayer, TextCompositeLayer } from "./drawList.js";
+import { MAX_TEXT_SCALE, type TextPart } from "../text/TextRasterCache.js";
+import type { Composite, CompositeLayer, MediaLayer, SolidLayer, TextAnimFrame, TextCompositeLayer } from "./drawList.js";
 
 /** How far from the playhead the clips next to it count as cut neighbours (seconds). */
 export const NEIGHBOR_SECONDS = 2;
 
 type WritableMediaLayer = Omit<MediaLayer, "transform"> & { transform: MutableMat3 };
 type WritableSolidLayer = Omit<SolidLayer, "transform" | "color"> & { transform: MutableMat3; color: RGBA };
-type WritableTextLayer = Omit<TextCompositeLayer, "model"> & { model: MutableMat3 };
+type WritableAnimFrame = { atlas: TextAnimFrame["atlas"]; units: UnitState[]; background: number };
+type WritableTextLayer = Omit<TextCompositeLayer, "model" | "anim"> & { model: MutableMat3; anim: TextAnimFrame | null; animFrame: WritableAnimFrame };
 
 /** A text clip's ephemeral content and style (a Text field scrub, spec §11, P2; inline editing, §7.7). */
 export interface LiveText {
@@ -43,6 +53,24 @@ export interface LiveText {
   style: TextStyle;
   /** The selection highlight of inline editing, drawn in the raster. */
   highlight?: TextHighlight | null;
+  /** Edited inline: shown at rest (no animation). */
+  editing?: boolean;
+}
+
+/** A text clip's ephemeral animations (an Animation field scrub, spec §10.4). */
+export interface LiveAnims {
+  animIn?: TextAnim | undefined;
+  animOut?: TextAnim | undefined;
+}
+
+/** A text clip about to show and what it will draw (`upcomingTexts`). */
+export interface UpcomingText {
+  clipId: ClipId;
+  text: TextContent;
+  style: TextStyle;
+  /** The layer's own scale (as `TextCompositeLayer.scale`). */
+  scale: number;
+  parts: TextPart[];
 }
 
 /** A frame of a clip next to the playhead (the one a cut would show first). */
@@ -115,13 +143,16 @@ export class Compositor {
   private readonly textPool: WritableTextLayer[] = [];
   private readonly neighborPool: NeighborFrame[] = [];
   private readonly neighborList: NeighborFrame[] = [];
+  private readonly upcomingPool: UpcomingText[] = [];
+  private readonly upcomingList: UpcomingText[] = [];
   private readonly step = mutableIdentity();
+  private readonly active: ActiveAnim = { anim: { id: "fade", duration: 1 }, phase: "in", progress: 0, length: 0 };
 
   /**
    * The document at `frame`, bottom track first, with `transforms` (a canvas gesture's or a field
-   * scrub's), `opacities` (a field scrub's), `crops` (a crop handle drag's or a field scrub's) and
-   * `texts` (a Text field scrub's) replacing the clips' own. The result and its layers are reused by
-   * the next call: read it before evaluating again.
+   * scrub's), `opacities` (a field scrub's), `crops` (a crop handle drag's or a field scrub's), `texts`
+   * (a Text field scrub's) and `anims` (an Animation field scrub's) replacing the clips' own. The result
+   * and its layers are reused by the next call: read it before evaluating again.
    */
   evaluate(
     doc: Project,
@@ -130,6 +161,7 @@ export class Compositor {
     opacities: ReadonlyMap<ClipId, number> | null = null,
     crops: ReadonlyMap<ClipId, Crop> | null = null,
     texts: ReadonlyMap<ClipId, LiveText> | null = null,
+    anims: ReadonlyMap<ClipId, LiveAnims> | null = null,
   ): Composite {
     const out = this.out;
     const { width, height, background } = doc.settings;
@@ -160,7 +192,7 @@ export class Compositor {
         }
       } else if (clip.kind === "text") {
         const layer = (this.textPool[textLayers] ??= newTextLayer());
-        if (this.writeText(layer, doc, clip, frame, transforms?.get(clip.id) ?? clip.transform, opacities?.get(clip.id) ?? clip.opacity, texts?.get(clip.id) ?? clip)) {
+        if (this.writeText(layer, doc, clip, frame, transforms?.get(clip.id) ?? clip.transform, opacities?.get(clip.id) ?? clip.opacity, texts?.get(clip.id) ?? clip, anims?.get(clip.id) ?? clip)) {
           out.layers.push(layer);
           textLayers += 1;
         }
@@ -188,6 +220,39 @@ export class Compositor {
       if (next) this.addNeighbor(doc, next, next.start, frame, reach);
     }
     return this.neighborList;
+  }
+
+  /**
+   * The text clips on visible video tracks showing in [`frame`, `frame` + `reach`) and the parts they
+   * draw there (the layer raster, the atlas and background boxes of their animations): what the
+   * preview rasterizes ahead of time (spec §10.4, P11). Reused like `evaluate`.
+   */
+  upcomingTexts(doc: Project, frame: Frame, reach: Frame): readonly UpcomingText[] {
+    const list = this.upcomingList;
+    list.length = 0;
+    for (const track of doc.tracks) {
+      if (track.kind !== "video" || track.hidden || track.muted) continue;
+      const index = trackIndex(doc, track);
+      for (let at = lastClipStartingBy(index, frame + reach - 1); at >= 0; at--) {
+        const clip = index.clips[at] as Clip;
+        if (clip.start + clip.duration <= frame) break;
+        if (clip.kind !== "text" || !clip.enabled) continue;
+        const scale = Math.max(Math.abs(clip.transform.scale), Math.abs(clip.transform.scaleY ?? clip.transform.scale));
+        if (!(scale > 0)) continue;
+        const item = (this.upcomingPool[list.length] ??= { clipId: "", text: clip.text, style: clip.style, scale: 1, parts: [] });
+        item.clipId = clip.id;
+        item.text = clip.text;
+        item.style = clip.style;
+        item.scale = scale;
+        item.parts.length = 0;
+        item.parts.push("all");
+        addAnimParts(item.parts, clip.animIn);
+        addAnimParts(item.parts, clip.animOut);
+        if (item.parts.length > 1 && clip.style.background.enabled) item.parts.push("backgrounds");
+        list.push(item);
+      }
+    }
+    return list;
   }
 
   private addNeighbor(doc: Project, clip: Clip, at: Frame, frame: Frame, reach: Frame): void {
@@ -267,7 +332,7 @@ export class Compositor {
     return true;
   }
 
-  private writeText(layer: WritableTextLayer, doc: Project, clip: TextClip, frame: Frame, transform: Transform, opacity: number, shown: LiveText): boolean {
+  private writeText(layer: WritableTextLayer, doc: Project, clip: TextClip, frame: Frame, transform: Transform, opacity: number, shown: LiveText, anims: LiveAnims): boolean {
     const layout = textLayout(shown.text, shown.style);
     const raster = layout.raster;
     if (!raster) return false;
@@ -283,6 +348,8 @@ export class Compositor {
     layer.scale = scale;
     layer.detail = scale > 0 ? Math.min(MAX_TEXT_SCALE, TEXT_RASTER_MAX / Math.max(raster.width, raster.height)) / scale : 0;
     layer.opacity = clamp01(opacity) * fadeFactor(clip, frame);
+    const active = shown.editing ? null : activeAnim({ duration: clip.duration, animIn: anims.animIn, animOut: anims.animOut }, frame - clip.start, this.active);
+    layer.anim = active ? writeAnimFrame(layer.animFrame, active, layout, shown.style) : null;
     return scale > 0;
   }
 
@@ -306,7 +373,82 @@ function newMediaLayer(): WritableMediaLayer {
 }
 
 function newTextLayer(): WritableTextLayer {
-  return { kind: "text", trackId: "", clipId: "", model: mutableIdentity(), opacity: 1, text: textContent(""), style: DEFAULT_TEXT_STYLE, scale: 1, detail: 1, highlight: null };
+  return { kind: "text", trackId: "", clipId: "", model: mutableIdentity(), opacity: 1, text: textContent(""), style: DEFAULT_TEXT_STYLE, scale: 1, detail: 1, highlight: null, anim: null, animFrame: { atlas: "block", units: [], background: 1 } };
+}
+
+/** The atlas an animation draws from: none for the whole text, lines for a typewriter's characters. */
+export function animAtlas(anim: TextAnim): "block" | AtlasUnitKind {
+  const unit = animUnit(anim);
+  return anim.id === "typewriter" && unit === "char" ? "line" : unit;
+}
+
+function addAnimParts(parts: TextPart[], anim: TextAnim | undefined): void {
+  if (!isPlayable(anim)) return;
+  const atlas = animAtlas(anim);
+  if (atlas !== "block" && !parts.includes(atlas)) parts.push(atlas);
+}
+
+/** `out`'s states, `count` of them (made once, reused). */
+function unitStates(out: WritableAnimFrame, count: number): UnitState[] {
+  const units = out.units;
+  while (units.length < count) units.push(newUnitState());
+  units.length = count;
+  return units;
+}
+
+/** What `active` does to a text laid out as `layout` (spec §10.4), into `out`. */
+function writeAnimFrame(out: WritableAnimFrame, active: ActiveAnim, layout: TextLayout, style: TextStyle): TextAnimFrame {
+  const { anim, phase, progress, length } = active;
+  const em = style.fontSize;
+  const atlas = animAtlas(anim);
+  out.atlas = atlas;
+  out.background = 1;
+  if (atlas === "block") {
+    const state = unitStates(out, 1)[0] as UnitState;
+    writeUnitShape(state, anim.id, phase, presence(anim, phase, progress), em, layout.block.height);
+    state.ox = layout.block.x + layout.block.width / 2;
+    state.oy = layout.block.y + layout.block.height / 2;
+    state.cut = Infinity;
+    return out;
+  }
+  const units = layoutUnits(layout, style, atlas);
+  const states = unitStates(out, units.length);
+  if (anim.id === "typewriter" && animUnit(anim) === "char") {
+    // Characters typed by count, cut out of their lines.
+    const { stops, before, total } = layoutStops(layout, style);
+    const typed = typedCount(phase, progress, total);
+    for (let i = 0; i < units.length; i++) {
+      const unit = units[i] as (typeof units)[number];
+      const state = resetUnitState(states[i] as UnitState);
+      const lineStops = stops[unit.line] ?? [];
+      const graphemes = lineStops.length - 1;
+      const revealed = Math.min(graphemes, Math.max(0, typed - (before[unit.line] ?? 0)));
+      state.opacity = revealed > 0 ? 1 : 0;
+      state.cut = revealed >= graphemes ? Infinity : (lineStops[revealed] as number);
+      state.ox = unit.originX;
+      state.oy = unit.originY;
+    }
+    out.background = typed > 0 ? 1 : 0;
+    return out;
+  }
+  const typed = anim.id === "typewriter" ? typedCount(phase, progress, units.length) : 0;
+  let shown = 0;
+  for (let i = 0; i < units.length; i++) {
+    const unit = units[i] as (typeof units)[number];
+    const state = states[i] as UnitState;
+    if (anim.id === "typewriter") {
+      resetUnitState(state);
+      state.opacity = i < typed ? 1 : 0;
+    } else {
+      writeUnitShape(state, anim.id, phase, presence(anim, phase, unitProgress(anim, phase, progress, i, units.length, length)), em, unit.rect.height);
+      state.cut = Infinity;
+    }
+    state.ox = unit.originX;
+    state.oy = unit.originY;
+    shown = Math.max(shown, state.opacity);
+  }
+  out.background = shown;
+  return out;
 }
 
 function newSolidLayer(): WritableSolidLayer {

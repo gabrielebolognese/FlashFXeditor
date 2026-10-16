@@ -3,7 +3,8 @@
 // selection lists the clips that exist, its primary, the layer clips among them (video, image, solid,
 // text: the ones with a picture to transform), the media layers (video, image: the ones with a crop),
 // the timed media (video, audio: the ones with a speed; freeze frames have a duration there) and the
-// text clips (the Text section, Batch 28: right after Clip, the section a text clip is edited in).
+// text clips (the Text section, Batch 28: right after Clip, the section a text clip is edited in;
+// then their Animation section, Batch 31).
 // React renders the panel only when this context changes (`contextKey`), never on value changes
 // (spec §11 implementation note, P1).
 import type { Clip, ClipId, Project, TrackId } from "../../core/document/types.js";
@@ -12,7 +13,7 @@ import { isCropClip } from "../../timeline/edit/crop.js";
 import { isLayerClip } from "../../timeline/edit/transform.js";
 
 /** The registered sections, top to bottom in their order of appearance. */
-export type SectionId = "clip" | "text" | "transform" | "crop" | "opacity" | "speed" | "track" | "marker" | "project";
+export type SectionId = "clip" | "text" | "animation" | "transform" | "crop" | "opacity" | "speed" | "track" | "marker" | "project";
 
 export type PropertiesContext =
   | { kind: "none" }
@@ -80,7 +81,6 @@ export function contextKey(selection: Selection, markerId: string | null): strin
 
 /**
  * The sections of a context, top to bottom (the section registry keyed by selection kind).
- * TODO(batch 31): Animation.
  * TODO(batch 36): Transition. TODO(batch 37): Audio. TODO(batch 32): Caption style for cues.
  */
 export function sectionIds(context: PropertiesContext): SectionId[] {
@@ -95,7 +95,7 @@ export function sectionIds(context: PropertiesContext): SectionId[] {
       return [];
     case "clips": {
       const ids: SectionId[] = ["clip"];
-      if (context.textIds.length > 0) ids.push("text");
+      if (context.textIds.length > 0) ids.push("text", "animation");
       if (context.layerIds.length > 0) ids.push("transform");
       if (context.mediaIds.length > 0) ids.push("crop");
       if (context.layerIds.length > 0) ids.push("opacity");

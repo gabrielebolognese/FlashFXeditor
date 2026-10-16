@@ -42,11 +42,11 @@ describe("properties context (spec §11)", () => {
     expect(propertiesContext(selectClips(["gone"]), null, p)).toEqual({ kind: "none" });
   });
 
-  it("adds Text right after Clip for text clips (Batch 28)", () => {
+  it("adds Text right after Clip for text clips (Batch 28), then Animation (Batch 31)", () => {
     const p = project();
     const text = propertiesContext(selectClips(["t", "s"]), null, p);
     expect(text).toMatchObject({ layerIds: ["t", "s"], textIds: ["t"], mediaIds: [] });
-    expect(sectionIds(text)).toEqual(["clip", "text", "transform", "opacity"]);
+    expect(sectionIds(text)).toEqual(["clip", "text", "animation", "transform", "opacity"]);
   });
 
   it("keys the context by kind, primary, ids and marker (React renders the panel when it changes)", () => {

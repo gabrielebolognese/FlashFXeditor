@@ -1,6 +1,6 @@
 # Progress
 
-last_completed_batch: 30
+last_completed_batch: 31
 in_progress_batch: none
 skipped_batches: []
 needs_human: none
@@ -111,6 +111,10 @@ Items the design system did not define and the functional default that was used 
   - Library folder strip at the bottom of the Global scope: `--surface-1`, a top hairline, a FolderOpen icon, caption text in `--text-secondary` (`--danger` on an error), compact icon buttons (FolderSync, FolderX) or a compact secondary `Library folder` button.
   - Save as preset's name field: the DS input at `--control-compact` height in a row under the quick row (or under the Presets tool row), `--surface-1`, a bottom hairline.
   - Favorite chips in the timeline toolbar: the text chips of IconButton on `--surface-3`, at most `--preset-chip-max-width` (96px) wide with an ellipsis, `--space-1` after the add buttons.
+- Text animations (Batch 31; the DS has no animation controls):
+  - Animation section (after Text): an In and an Out row of text chips (None and the 12 animations), the IconButton text chips (caption type, pressed gold) wrapping `--space-0` apart (`.chips`); Duration and Stagger number fields in seconds (unit `s`, two decimals) scrubbing on lucide Timer / ChevronsRight labels; Easing as the DS Select (Auto (the animation's own), Linear, Ease in, Ease out, Ease in-out). A duration longer than half the clip gets the caption hint (`.hint`, `--text-muted`): "Plays in 2.00 s: half the clip". Fields of a row without an animation are dimmed (`--disabled-opacity`).
+  - Timeline badge: lucide `sparkles` at `--icon-size-sm` in `--text-secondary` on the label bar of a text clip with an in or out animation (the link and keyframe badges' look).
+  - The blur of `blurIn` is content, not UI: a Gaussian sigma of 0.2 font sizes at the start, capped at 16 texture px in the renderer (spec §10.4 "cap the blur radius").
 
 ## Global deviations
 Decisions that diverge from docs/EDITOR_SPEC.md, with the reason. Each one also appears under its batch.
@@ -244,6 +248,7 @@ Decisions that diverge from docs/EDITOR_SPEC.md, with the reason. Each one also 
 - Text UX (Batch 29): `+ Title` / `+ Subtitle` go on the topmost video track when it is free there, else on a new top track; a Title made with a text clip selected sits 40 px under it, a Subtitle always in the lower third (bottom edge at 78%). Inline editing draws the caret on the overlay from the rasterizer's geometry and the selection highlight in the raster; Esc commits like Mod+Enter; one "Edit text" step; the properties panel and popovers keep an edit open. Text box corners size the font (and every px value), sides set a fixed box width; no top or bottom handles. Details under the batch. (Batch 29)
 
 - Text presets (Batch 30): project presets are files in `presets/text/<id>.json` (spec §9.7 and the batch), not `Project.textPresetsLocal` (§5.2: kept, always empty); preset changes are not undoable (only Save as preset's link and Apply are commands). Sizes are stored for a 1080 px short side and scale with the project. `TextPreset` adds `applyPosition` and `updatedAt`; applying replaces style, box and animations and keeps content, duration and position (unless Apply position). The library folder sync is a union (the newer copy wins). The Presets header keeps New from selection, Import and Export; the Global / Project toggle and the search sit in a tool row under it. Details under the batch. (Batch 30)
+- Text animations (Batch 31): an animation's `duration` is the whole animation, every unit's delay included; without a `stagger` the units overlap (each takes 2.5 delays). Each plays over at most half the clip (in and out never overlap); the stored value stays as typed. Out animations play the units last first and keep the direction their name says (slideUp out moves up). Whole-text animations move the layer raster; per-unit ones draw an atlas cell per unit over a raster of the background boxes alone (at the leading unit's opacity); a typewriter reveals graphemes by count, cut out of its line atlas cells. Eases: linear, easeIn, easeOut, easeInOut (absent: the animation's own). Presets store animations in milliseconds. Text clips within 5 s of the playhead are rasterized ahead. A text edited inline shows at rest; the gizmo and hit testing use the text at rest. Details under the batch. (Batch 31)
 
 ## Follow-ups
 Small things discovered during a batch that belong to a later batch. Format: `- [from Batch NN -> Batch MM] description`.
@@ -441,6 +446,11 @@ Small things discovered during a batch that belong to a later batch. Format: `- 
 - [from Batch 30 -> Batch 42] The settings panel's library folder (the Presets tab's strip does it now: choose, sync, stop); templates (§15) carry the project's `presets/text/` presets; a way to restore deleted starter presets (they are seeded once, on the first start).
 - [from Batch 30 -> Batch 45] Bundle size: +33.5 kB (presets model, Presets tab, controller, starters).
 - [from Batch 30 -> Batch 46] Review on a real screen: the Presets tab (card size, thumbnails at dpr 2, badges, the tool row and folder strip), the name row under the quick row, the toolbar chips' look and ellipsis, the menu wording.
+- [from Batch 31 -> Batch 32] Caption word highlight (karaoke) can use the word atlas (`buildTextAtlas` "word", `layoutUnits`) and per-unit states (`TextAnimFrame`) the text animations draw from.
+- [from Batch 31 -> Batch 35] Text animation eases (`TEXT_EASES` in `text/anim.ts`) and the keyframe easings share one list; `EaseId` is still a plain string.
+- [from Batch 31 -> Batch 43] Export renders text animations through the compositor (`TextAnimFrame`): the export worker needs the atlas and background rasters (`TextRasterCache` parts) and the renderer's blur passes (`WebGpuRenderer.blurRecords`).
+- [from Batch 31 -> Batch 45] Bundle size: +24.5 kB (animation model, Animation section, atlas parts, blur pipeline).
+- [from Batch 31 -> Batch 46] Review on a real screen: the Animation section (two 13-chip rows wrapping in the panel width, Timer / ChevronsRight labels, the hint), the sparkles badge, the animation shapes (slide distance 0.6 em, pop from 0.4 with an overshoot, bounce, blur 0.2 em, line reveal masks), word animations over boxes per line.
 
 ## Dependencies
 Why each dependency exists (Batch rule 8).
@@ -3449,3 +3459,134 @@ Why each dependency exists (Batch rule 8).
   - 5. Every TODO in `src/` has a `(batch NN)` tag (a grep over `src/` found none untagged).
   - Note (not blocking): the painter reads `devicePixelRatio` at draw time, but nothing redraws the cards when only the ratio changes (browser zoom, or moving the window to another screen) while their CSS size stays the same. The thumbnails then stay at the old resolution until the next preset, size or font change. The draw before the fix behaved the same way. This fits the Batch 46 real-screen review (thumbnails at dpr 2).
 - docs: text-presets.md (new: what a preset keeps and what stays the clip's own, the clip's link to its preset; the Presets tab (header buttons New preset from the selected text / Import / Export, the Global / Project switch and Search presets, cards drawing the name in its look or Aa over 12 characters, oldest first, the gold favorite / default title / default subtitle badges, the card tooltip, the five list messages); the 12 starter presets with their looks (seeded once per browser, no restore); Save as preset from the quick row or the header (the name field prefilled with font + size, Enter / Esc / blur, 60 characters, empty = font + size, "Name 2", the shown scope or Global when read-only, the link, the clip clicked last, dimmed rules); Apply (live look while pointing, one step Apply "Name", content / timing / position kept, locked and non-text clips skipped, Case renames, when the live look ends, a click with no unlocked text adds a title); adding texts from a card, Add at playhead, a chip, a canvas drop or T / Shift+T (typing at once, T's length and track rules, Apply position, Add "Name"); dragging onto the timeline (3 s, the video lane, media drag rules, centered or the preset position, selected but not edited, Add clip / Insert clip) and the preview (centered on the point, edited); Update preset (the exact tooltip, the toast, other clips keep their style, what is written and kept, the dimmed cases and tooltip, not undoable); default title / subtitle (menu rows with T / Shift+T, gold row, badges, placement and "Title" / "Subtitle", choosing again = built-in, per browser, fallbacks); favorite chips (after Add image, 8 max global first, ellipsis, live, 40 px under a selected text, More tools); Apply position (gold row, Apply moves X / Y only, new texts placed, canvas drop exception, starter positions); search by name / font / keywords, the card menu table, Rename in place, Duplicate "... copy", Export..., Delete without asking and its effects, read-only dimming, no double-click rename; Global vs Project lists with tooltips, presets/text, scope remembered, written at once; export (whole list whatever the search, one preset by name, toast) and import (accepted files, same-id replace, badges / chips / links back, skipped entries, the four error messages); the library folder strip (Library folder button and tooltip, merge both ways, writes and removals, the Sync permission state, newer copy wins, never deletes, skipped files, Stop syncing, Syncing / error texts); sizes for a 1080 px shorter side with the 720x1280 / 4K table; undo step names and what is not undoable; not available: animations, captions, restoring starters, the Settings folder choice), titles-and-text.md (summary, T and Shift+T use the default presets, subtitle box in a 1080x1920 frame, Apply position in the subtitle rule and the placement table, sizes scale with the shorter side, Save as preset bullet in the Text section, preset step names in the undo table, presets removed from not available, related page), editing-properties.md (summary, Save as preset and Update preset rows and their dimmed rules, Update preset tooltip note, presets removed from the dimmed and not-available lists, Save preset undo row, related page), workspace.md (the Presets tab bullet, Global / Project remembered, the quick actions list, preset chips in the Add group and its overflow), timeline.md (toolbar chips bullet), adding-media-to-the-timeline.md (tip: preset cards drag the same way), projects-and-saving.md (presets/text folder row, the Presets list restored, undo table row for preset steps vs the preset library, read-only makes no project preset changes), keyboard-shortcuts.md (T / Shift+T rows use the default presets, default pointer, new Text presets mouse table with the name field keys, preset name in Text fields, video step 29, related page), troubleshooting.md (intro, video steps 36-37, new Text presets group with ten entries: a click adds a new title, Update preset is dimmed, other titles did not change, T or Shift+T look, a missing chip, read-only Project list, sizes in another project, import errors, the Sync strip, a deleted preset came back; Text limitations updated, related page), README.md (summary, reading order 20 with renumbering, page table row, Editing properties and Troubleshooting rows, feature bullet, presets removed from later versions), whats-new.md (Batch 30 entry and video, related page) in docs/user-guide/ (2026-10-16)
+
+### Batch 31: Text animations
+- status: done
+- date: 2026-10-16
+- notes:
+  - Model (unit tested):
+    - `TextAnim` in `core/document/types.ts`: `id` (the 12 of §10.4, `TEXT_ANIM_IDS`), `duration` (frames), `perUnit` (char / word / line), `stagger` (frames), `ease`. `PresetTextAnim`: the same in milliseconds, for presets.
+    - New `text/anim.ts` (`anim.test.ts`, 15 tests):
+      - Per animation: chip label, unit (block, char, word, line), own ease, first length (`TEXT_ANIMS`). Eases `TEXT_EASES`: linear, easeIn, easeOut, easeInOut. An out animation's own ease out becomes ease in.
+      - `activeAnim`: the in animation from the clip's first frame (progress 0: nothing shown yet, as fades) and the out one to its last (progress 1). `animLength` caps each at half the clip, so they never overlap; under 2 frames nothing plays. Animations the engine cannot play (no id, no whole-frame duration) are ignored (`isPlayable`).
+      - Units: the duration is the whole animation. Unit i starts `stagger` frames after unit i - 1 and plays `D - (n - 1) * stagger`. A stagger over D / n is cut to it; none gives D / (n + 1.5) (each unit overlaps 1.5 others). Out animations play the units last first. A typewriter types by count (`typedCount`) and erases from the end.
+      - Shapes (`writeUnitShape`) from the eased presence `a` (1 = at rest):
+        - fade and wordFade: opacity.
+        - Slides: 0.6 em of travel. In comes from the far side, out leaves in the named direction (slideUp out moves up).
+        - pop and wordPop: a back-out scale from 0.4, opacity reaching 1 by a third of the way.
+        - scaleBounce: from 0 with two damped bounces.
+        - lineReveal: slides a line's height inside its place (masked).
+        - blurIn: a Gaussian blur of 0.2 em at the start, and the opacity.
+      - `newTextAnim` keeps the previous animation's duration, stagger and ease. Also `sanitizeTextAnim` / `sanitizePresetAnim`, `toPresetAnim` / `fromPresetAnim` (ms <-> frames through `time.ts`; 29.97 rounds back to the same frames) and `sameAnim`.
+    - New `timeline/edit/textAnim.ts` (`textAnim.test.ts`, 3 tests): `setTextAnims` (`clip.animation`, one undo step, coalescing key; null removes; locked, non-text and unchanged clips skipped; affects `clips` for the badge) and `animEdits` (per clip from its own animation).
+    - `text/presets.ts` (+2 tests): presets store animations in ms (`presetFromClip`, `presetUpdatedFromClip`); `presetLook` gives them in the project's frames; `presetDiffers` compares in frames; `sanitizePreset` checks them. The frame argument now carries the fps.
+    - `text/starterPresets.ts` (+1 test): Lower third (slide right in, fade out), Caption bold (word pop), Neon glow (blur in) and Breaking (slide up) have animations; Title and Subtitle none, so T and Shift+T stay still. `upgradeStarters` gives the animations to starters stored before this batch and never changed since (`updatedAt` still the bundled one). The preset controller applies it once when the library loads.
+    - `timeline/edit/text.test.ts` (+1 test): a preset's animations reach a selected clip (Apply) and a new clip (`addTitle` with its look), in the project's frames (a 60 fps project gets 30 frames for 500 ms).
+  - Rendering:
+    - `render/text/atlas.ts` (+2 tests): `char` units (graphemes, spaces left out), each unit's `offset` in its line and its middle (`originX/Y`, what a pop scales about); `lineStops` (each line's grapheme boundaries in content px).
+    - `raster.ts`:
+      - `rasterizeText(..., part)`: `backgrounds` draws the background boxes alone over the same rect.
+      - `buildTextAtlas` draws each unit where the layer raster draws it: its line aligned at the raster size, its prefix measured at it. A text at rest looks the same from either.
+    - New `render/text/animUnits.ts`: the units and stops cached per layout object (the compositor allocates nothing per frame).
+    - `TextRasterCache` (+4 tests):
+      - Parts besides the raster: `resolveAtlas` (a cell crop and rect per unit) and `resolveBackground`, keyed apart. `ResolvedText` gives `scale` (texture px per content px) and `units`.
+      - `warm(clipId, part, ...)` makes a part ahead of time; its slot keeps it while passes warm it.
+      - `exact(..., part)` for Export frame.
+      - A clip's own raster slot is still keyed by the clip id alone.
+    - `Compositor`:
+      - Text layers carry `anim: TextAnimFrame | null`: `block` (one state moving the layer raster), or an atlas kind with one state per unit and the background opacity (the leading unit's).
+      - A typewriter's characters use the line atlas, cut at the last typed grapheme (`cut`), so the glyphs are the static text's exactly.
+      - A text edited inline (`LiveText.editing`) shows at rest. `evaluate(..., anims)` takes live animations (a field scrub).
+      - `upcomingTexts(doc, frame, reach)` lists the text clips showing in the window and the parts they draw.
+    - `LayerTextures`: a block animation draws the raster moved (scale about the block's middle, offset, opacity, blur in texture px); a per-unit one draws the background raster, then a pooled texture layer per cell. A masked line is cropped to its place; a cut line is cropped at its x. Export frame does the same with exact rasters. `resolve(..., upcoming)` warms the window's parts: all while idle, one per pass while playing or scrubbing (then it asks for another pass).
+    - `TextureLayer.blur` (sigma, texture px); `DrawListSnapshot` compares it.
+    - `WebGpuRenderer`: a blurred record is blurred first, in the draw's command encoder. Two passes of a separable Gaussian (`BLUR_WGSL`): horizontal into a pooled texture, then vertical into another; sigma is capped at 16 texture px (`MAX_BLUR_SIGMA`, 3 sigma reach). It is then drawn from the second texture with its quad grown by the reach. Pooled textures go in 64 px steps and are freed after 120 unused draws; the uniforms use their own 256-byte-slot buffer.
+    - `PreviewView`: `anims` dep (live animations); text clips within `TEXT_LOOKAHEAD_SECONDS` (5 s) of the playhead are warmed.
+    - Tests in `render/text/textLayers.test.ts` (+7):
+      - Evaluation at the frame: units in, at rest, a block out, at rest while edited inline.
+      - Slide offset and opacity, blur in texture px.
+      - Units over the boxes, a pop scaled about its middle.
+      - A typewriter's cut, a line reveal's crop.
+      - Upcoming parts warmed (all idle, one per pass playing).
+      - Export frame units.
+    - `PlaybackEngine.playRange(from, to, returnTo)` (+1 test): plays a range once, then puts the playhead back (Play around's mechanism).
+  - App and UI:
+    - New `app/textAnimController.ts`:
+      - `chooseTextAnim`: a chip sets the animation on the selected text clips, one step "In animation: Word pop" / "Remove out animation". Choosing a clip's own animation again only previews it.
+      - `previewTextAnim` (spec §10.4 "preview on click"): inline editing commits first. An in animation plays from the clip's start for its length + 10 frames (`PREVIEW_TAIL_FRAMES`, within the clip); an out one from 10 frames before it to the clip's end. Then the playhead returns.
+    - New `panels/properties/AnimationSection.tsx`, after Text:
+      - The In row and the Out row: None + 12 text chips (tooltip "In: Word pop. Click to preview").
+      - Duration and Stagger in seconds (two decimals, one frame per arrow press and per px of scrub). Stagger is disabled for whole-text animations and the typewriter.
+      - Easing (Auto with the animation's own named, then the four eases).
+      - The half-clip hint.
+      - Duration, stagger and easing commits replay the animation.
+    - New `panels/properties/animBinding.ts` (`animBinding.test.ts`, 3 tests): the field bindings, bound outside React. A label scrub writes `liveEdit.anims`, so the preview at the playhead follows with no React render; then one command on release. Only clips with that animation take part. An automatic stagger reads as the delay it plays with (`shownStagger`).
+    - `liveEdit.anims`; `previewController` passes them to the preview and marks the inline draft `editing`.
+    - Timeline: the `sparkles` badge on a text clip with an animation (`glyphs.ts`, `drawContent.ts`).
+  - Measured:
+    - `npm run check` green: 1497 unit tests in 151 files (+38 tests, +3 files), 3 perf tests. Build 857.10 kB JS (277.00 kB gzip; was 832.56 / 268.88), 68.15 kB CSS.
+    - Browser: headless Chrome 155 over CDP on the dev server (5181), 1600 x 900 at dpr 1. Scripts in `%TEMP%/b31/`: `acc1.mjs` 9/9, `acc2.mjs` 17/17, `extra.mjs` 8/8, `gap.mjs`, `page.js` (`__b31`), `setup.mjs`.
+    - Acceptance 1 (project `b31-acc1`):
+      - The title: 12 words, Montserrat 800 84 px with a 6 px stroke and a shadow, a fixed 900 px box (4 lines), frames 30..149, word pop in 0.8 s, fade out 0.5 s, over a full-frame solid.
+      - At frame 0 (idle) the raster and the word atlas were warmed (2 rasterizations). Moving the playhead into the animation rasterized nothing.
+      - Frame 40: 7 words drawn; frame 53: all 12 word quads.
+      - Two 6 s playbacks from frame 0 through the title: 361 frames each, rAF mean 16.66 ms, p95 17.2 / 16.9 ms, max 18.3 / 17.6 ms, none over 20 ms. 0 text rasterizations (cache stats constant: 2 rasters, 2 rasterizations), 0 React commits between the Play and Pause clicks.
+      - During the in animation 0..12 word quads; during the fade out one quad. The preview drew 39 times (24 in-frames + 15 out-frames); every frame at rest was skipped by the snapshot.
+      - The first run had one 333 ms frame around the Play click (frames were logged across it); six more passes (`gap.mjs`, with and without the title) had none.
+      - Screenshots `a1-frame32/38/46/60/140/147.png`: words popping with their overshoot, the fade.
+    - Acceptance 2 (project `b31-acc2`, "Hello animated world", word pop 0.8 s, frames 30..149):
+      - The section read In: Word pop, Out: None, 0.80 s, automatic stagger 0.18 s (3 words), Auto (Linear).
+      - Typing 2 into In duration: 60 frames, one step "Change in animation duration". The preview replayed 30..99 and the playhead came back to 40; at 40 fewer words are in ([1, 0.9] against [1, 1, 1] before).
+      - A label scrub 30 px left: live 34 frames (the 3 px dead zone), the document unchanged, the preview at the playhead following, 0 React commits. On release one command at 34 frames, replayed 30..73.
+      - Typing 3 on the 4 s clip: stored 90 frames, hint "Plays in 2.00 s: half the clip". Word quads at frame 89, the one raster at 90.
+      - The Out Fade chip: one step "Out animation: Fade", previewed 125..149, then back to 100. With a 3 s out too, frame 90 is the out animation's first frame.
+      - Easing select: `easeInOut`. None: "Remove out animation", no preview.
+    - Acceptance 3:
+      - Save as preset stored word pop 800 ms and slide up 400 ms.
+      - Apply on a plain selected clip: word pop 24 and slide up 12 frames, one step "Apply "Anim pop"". A new clip from the preset had both.
+      - Update preset followed a change to a typewriter (1000 ms).
+      - The starters seeded in Batch 30 got their animations on load (Caption bold, Neon glow, Lower third). Breaking had been edited by the Batch 30 checks, so it kept none.
+    - Extra (`extra.mjs`, screenshots `x-*.png`):
+      - Blur in at 30%: one quad, sigma 5.4 texture px, opacity 0.3; none at rest (`x-blur-mid.png` blurred).
+      - Typewriter at frame 12/25: line 1 whole, line 2 cut after "let".
+      - Line reveal (boxes per line): lines cropped to their places over the boxes.
+      - Bounce scaled past its size. Word fade over a box: the box at the leading word's opacity.
+      - Export frame mid-typewriter: 24 354 white pixels against 44 342 at rest.
+      - Inline editing on an animated frame drew the text at rest (opacity 1, its place). The timeline badges (`x-timeline.png`) and the section (`x-section.png`) were checked by eye.
+    - Regression: Batch 30 `acc.mjs` 32/32, `extra.mjs` 23/23; Batch 29 `acc.mjs` 23/23, `extra.mjs` 15/15.
+- deviations:
+  - Duration semantics (§10.4 `duration`, `stagger`): the duration is the whole animation, the units' delays included, so the field reads what plays. Without a stagger the units spread over it (each overlapping 1.5 others); a longer stagger than duration / units is cut.
+  - "Clamped to half the clip duration when needed": each animation plays over at most half the clip (in and out never overlap), at playback. The stored duration stays as typed (a later trim or extend needs no rewrite), and the section shows a hint.
+  - Out animations play the units last first (a typewriter erases from the end) and keep their names' direction (§10.4: slideUp out moves up and fades). Their default ease is the mirror of the in one (ease out -> ease in).
+  - Easing ids are `linear`, `easeIn`, `easeOut`, `easeInOut`. An animation without one uses its own (Auto in the section); `EaseId` stays a string until Batch 35.
+  - Whole-text animations (fade, slides, pop, blurIn, scaleBounce) move the layer raster, backgrounds included; the per-word and per-line ones use the atlas (§10.1).
+    - Under per-unit animations the background boxes are a raster of their own, at the leading unit's opacity, not moved (the atlas leaves backgrounds out, §10.1). Shadows are per unit, so overlapping shadows of neighboring words darken a little while they animate.
+    - A typewriter reveals graphemes by count, spaces included, with no fade. Its characters are cut out of the line atlas cells, so the glyphs (kerning, strokes) are exactly the static text's; per-char atlas cells would let a thick stroke overlap the previous letter.
+    - `perUnit: "char"` on other animations uses character cells (model only: the section does not choose units; the word and line variants are their own chips).
+  - Shapes: slides travel 0.6 font sizes; pop goes from 0.4 with an overshoot; bounce from 0 with two damped bounces. The blur starts at 0.2 font sizes, capped at 16 texture px in the renderer (§10.4 "cap the blur radius").
+  - Presets store animation times in milliseconds (`PresetTextAnim`), as `defaultDuration` does; they come back in the project's frames.
+  - Starter animations (Lower third, Caption bold, Neon glow, Breaking). Starters stored before this batch and never changed take them on load (`upgradeStarters`, date kept).
+  - Preview on click: an out animation plays from 10 frames before it to the clip's end (§10.4 names the in case). Choosing the active chip again previews without a command; None removes without a preview.
+    - Duration, stagger and easing commits replay the animation, so a change shows at once even with the playhead off the clip. A label scrub shows live at the playhead.
+    - A chip or field during inline editing commits the edit first.
+  - Durations are shown in seconds (two decimals, a frame per step) and stored in frames.
+  - Pre-rasterization (P11 "pre-rasterizes per word/line once"): text clips within 5 s of the playhead get their raster, atlas and background parts ahead: all at once while idle, one per pass while playing or scrubbing. So playing into an animation rasterizes nothing; a clip more than 5 s ahead of where playback started is rasterized during playback, before it shows.
+  - A text edited inline shows at rest; the gizmo, canvas hit testing and snapping use the text at rest.
+  - Animations that cannot play (from older builds or files) are ignored at evaluation rather than reported by `validateProject`; preset files are sanitized.
+  - The Animation section follows Text (§11 lists it after Text).
+- follow-ups:
+  - [from Batch 28 -> Batch 31] done (atlas entries in the raster cache, per-unit quads); [from Batch 30 -> Batch 31] done (presets carry `PresetTextAnim`, Apply / Update / chips with animations)
+  - [from Batch 31 -> Batch 32] Caption word highlight (karaoke) can use the word atlas (`buildTextAtlas` "word", `layoutUnits`) and per-unit states (`TextAnimFrame`) the text animations draw from.
+  - [from Batch 31 -> Batch 35] Text animation eases (`TEXT_EASES` in `text/anim.ts`) and the keyframe easings share one list; `EaseId` is still a plain string.
+  - [from Batch 31 -> Batch 43] Export renders text animations through the compositor (`TextAnimFrame`): the export worker needs the atlas and background rasters (`TextRasterCache` parts) and the renderer's blur passes (`WebGpuRenderer.blurRecords`).
+  - [from Batch 31 -> Batch 45] Bundle size: +24.5 kB (animation model, Animation section, atlas parts, blur pipeline).
+  - [from Batch 31 -> Batch 46] Review on a real screen: the Animation section (two 13-chip rows wrapping in the panel width, Timer / ChevronsRight labels, the hint), the sparkles badge, the animation shapes (slide distance 0.6 em, pop from 0.4 with an overshoot, bounce, blur 0.2 em, line reveal masks), word animations over boxes per line.
+- design gaps: the Animation section (chip rows, seconds fields with icon labels, easing select, hint), the sparkles timeline badge, the blur cap (details in Design system gaps)
+- pending manual checks (`npm run dev`, or the 5300 preview build):
+  1. Word pop at 60 fps (acceptance 1): press T and type a long title (12 words), Esc. In Edit Properties > Animation click In: Word pop and Out: Fade. Expected: each click plays the animation once and puts the playhead back. Move the playhead before the title and press Space. Expected: the words pop in one after another, the title fades out at its end, with no stutter (the dev stats chip shows no new text rasterizations during playback).
+  2. Duration (acceptance 2): with the title selected, type 2 in the In Duration field and press Enter. Expected: the animation replays at once, slower. Drag the Duration field's timer icon left and right. Expected: the preview at the playhead follows while you drag. Type 9 on a 4 s clip. Expected: the hint "Plays in 2.00 s: half the clip", and the animation ends half way through the clip.
+  3. Presets (acceptance 3): with the animated title selected, click Save as preset and name it. Add a plain title (T, type, Esc), keep it selected and click the new card in Media > Presets. Expected: it gets the same animations (the Animation section shows them, the clip shows the sparkles badge). Click the card with nothing selected. Expected: the new title animates too.
+  4. Each animation: try every chip on a two-line title with a background box (Per line). Expected: typewriter types letters, line reveal slides each line up inside its place, blur goes from blurred to sharp, bounce wobbles, slides come from the named side and leave towards it.
+  5. Export frame in the middle of an animation. Expected: the PNG shows the same partial animation as the preview.
+- docs note: starters seeded before this version get their animations only if they were never changed (Lower third, Caption bold, Neon glow, Breaking); T and Shift+T (Title, Subtitle) stay still.
+- other: `docs/BATCHES.md` (Batches 51-53) and `docs/EDITOR_SPEC.md` (§20), edited outside the batch runs, are left out of this batch's commit (as in Batches 29 and 30).

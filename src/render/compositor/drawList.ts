@@ -5,8 +5,10 @@
 // to pool textures and text rasters, and skips the redraw when the resolved list equals the one it
 // drew last (`DrawListSnapshot`).
 import type { ClipId, MediaId, RGBA, TextContent, TextStyle, TrackId } from "../../core/document/types.js";
+import type { UnitState } from "../../text/anim.js";
 import type { Mat3 } from "../mat3.js";
 import type { TextureHandle } from "../gpu/renderer.js";
+import type { AtlasUnitKind } from "../text/atlas.js";
 import type { TextHighlight } from "../text/raster.js";
 
 /** A region of a texture in UV space (0..1), left/top to right/bottom. */
@@ -33,6 +35,8 @@ export interface TextureLayer extends LayerBase {
   crop: UvRect;
   flipX: boolean;
   flipY: boolean;
+  /** Gaussian blur (sigma) in texture px, the quad grown to hold it (a text blur, spec §10.4); 0 or absent: none. */
+  blur?: number;
 }
 
 /** Two textures mixed by `mix` (0 = from, 1 = to): the dissolve transition (Batch 36). */
@@ -67,6 +71,17 @@ export interface MediaLayer extends LayerBase {
 }
 
 /**
+ * A text layer's animation at its frame (spec §10.4). `block`: `units[0]` moves the layer raster.
+ * Otherwise each unit of the `atlas` (the text's characters, words or lines, in reading order) is drawn
+ * with its own state, over the background boxes at `background` opacity.
+ */
+export interface TextAnimFrame {
+  atlas: "block" | AtlasUnitKind;
+  units: readonly UnitState[];
+  background: number;
+}
+
+/**
  * A text clip at the frame (spec §10.1), not rasterized yet: the preview resolves it to a raster of
  * the text cache at its render scale, drawn over the raster's rect (`model` x the rect).
  */
@@ -85,6 +100,8 @@ export interface TextCompositeLayer {
   detail: number;
   /** The selection highlight while it is edited inline (spec §7.7), drawn in its raster; else null. */
   highlight: TextHighlight | null;
+  /** Its animation at the frame; null at rest. */
+  anim: TextAnimFrame | null;
 }
 
 export type CompositeLayer = MediaLayer | SolidLayer | TextCompositeLayer;

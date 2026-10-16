@@ -6,10 +6,13 @@
 // - A preset is the look of a text clip: its style, its box (auto or a fixed wrap width), its
 //   animations and, used only when `applyPosition` is on, its position. Applying it keeps the
 //   clip's content and duration (timeline/edit/text.ts `applyPreset`).
+// - Animations are stored in milliseconds (presets cross frame rates, as `defaultDuration` does) and
+//   come back in the project's frames (`presetLook`).
 // - Files: one preset per JSON object; an export is `{ format, version, presets: [...] }`. Everything
 //   read from a file goes through `sanitizePreset` (bad values fall back to the defaults, a preset
 //   without an id or a style is skipped).
-import type { Gradient, RGBA, TextAnim, TextBox, TextClip, TextPreset, TextStyle } from "../core/document/types.js";
+import type { Gradient, PresetTextAnim, Rational, RGBA, TextAnim, TextBox, TextClip, TextPreset, TextStyle } from "../core/document/types.js";
+import { fromPresetAnim, isPlayable, sameAnim, sanitizePresetAnim, toPresetAnim } from "./anim.js";
 import { DEFAULT_TEXT_BOX, DEFAULT_TEXT_STYLE, isGradient, scaleTextStyle, styleKey, TEXT_LIMITS, TEXT_REFERENCE_SIDE } from "./style.js";
 
 /** The `format` of an exported presets file. */
@@ -21,10 +24,11 @@ export const MAX_FAVORITE_CHIPS = 8;
 /** A card's thumbnail shows the preset's name up to this many characters, else `Aa` (spec §10.3). */
 export const THUMBNAIL_NAME_MAX = 12;
 
-type Frame = { width: number; height: number };
+/** A project's frame (its sizes scale presets) and frame rate (its animations' frames). */
+type Frame = { width: number; height: number; fps: Rational };
 
 /** The factor from preset sizes (1080 px short side) to a `frame`-sized project. */
-export function presetScale(frame: Frame): number {
+export function presetScale(frame: { width: number; height: number }): number {
   const k = Math.min(frame.width, frame.height) / TEXT_REFERENCE_SIDE;
   return Number.isFinite(k) && k > 0 ? k : 1;
 }
@@ -49,16 +53,21 @@ export interface PresetLook {
   animOut?: TextAnim;
 }
 
-/** `preset` scaled to a `frame`-sized project. */
+/** `preset` scaled to a `frame`-sized project, its animations in the project's frames. */
 export function presetLook(preset: TextPreset, frame: Frame): PresetLook {
   const k = presetScale(frame);
   return {
     style: scaleStyle(preset.style, k),
     box: scaleBox(preset.box, k),
     position: preset.applyPosition && preset.position ? scalePoint(preset.position, k) : null,
-    ...(preset.animIn && { animIn: structuredClone(preset.animIn) }),
-    ...(preset.animOut && { animOut: structuredClone(preset.animOut) }),
+    ...(preset.animIn && { animIn: fromPresetAnim(preset.animIn, frame.fps) }),
+    ...(preset.animOut && { animOut: fromPresetAnim(preset.animOut, frame.fps) }),
   };
+}
+
+/** A clip's animation as a preset stores it; none when it does not play. */
+function storedAnim(anim: TextAnim | undefined, fps: Rational): PresetTextAnim | undefined {
+  return isPlayable(anim) ? toPresetAnim(anim, fps) : undefined;
 }
 
 /** A clip's look in preset sizes (the inverse of `presetLook`). */
@@ -70,13 +79,15 @@ function normalizedLook(clip: TextClip, frame: Frame): { style: TextStyle; box: 
 /** A new preset with `clip`'s look (spec §10.3 "Save as preset"). */
 export function presetFromClip(clip: TextClip, frame: Frame, fields: { id: string; name: string; now: string }): TextPreset {
   const look = normalizedLook(clip, frame);
+  const animIn = storedAnim(clip.animIn, frame.fps);
+  const animOut = storedAnim(clip.animOut, frame.fps);
   return {
     id: fields.id,
     name: cleanPresetName(fields.name) || defaultPresetName(clip.style),
     style: look.style,
     box: look.box,
-    ...(clip.animIn && { animIn: structuredClone(clip.animIn) }),
-    ...(clip.animOut && { animOut: structuredClone(clip.animOut) }),
+    ...(animIn && { animIn }),
+    ...(animOut && { animOut }),
     position: look.position,
     applyPosition: false,
     tags: [],
@@ -92,18 +103,27 @@ export function presetUpdatedFromClip(preset: TextPreset, clip: TextClip, frame:
   const next: TextPreset = { ...preset, style: look.style, box: look.box, position: look.position, updatedAt: now };
   delete next.animIn;
   delete next.animOut;
-  if (clip.animIn) next.animIn = structuredClone(clip.animIn);
-  if (clip.animOut) next.animOut = structuredClone(clip.animOut);
+  const animIn = storedAnim(clip.animIn, frame.fps);
+  const animOut = storedAnim(clip.animOut, frame.fps);
+  if (animIn) next.animIn = animIn;
+  if (animOut) next.animOut = animOut;
   return next;
 }
 
 const sameBox = (a: TextBox, b: TextBox) => a.mode === b.mode && (a.mode === "auto" || a.width === b.width);
-const sameJson = (a: unknown, b: unknown) => a === b || JSON.stringify(a) === JSON.stringify(b);
 
 /** Whether `clip`'s look (style, box, animations) is not `preset`'s: `Update preset` has something to write. */
 export function presetDiffers(preset: TextPreset, clip: TextClip, frame: Frame): boolean {
   const look = normalizedLook(clip, frame);
-  return styleKey(look.style) !== styleKey(preset.style) || !sameBox(look.box, preset.box) || !sameJson(clip.animIn, preset.animIn) || !sameJson(clip.animOut, preset.animOut);
+  // Animations compare in the project's frames (milliseconds round).
+  const shownAnim = (anim: PresetTextAnim | undefined) => (anim ? fromPresetAnim(anim, frame.fps) : undefined);
+  const own = (anim: TextAnim | undefined) => (isPlayable(anim) ? anim : undefined);
+  return (
+    styleKey(look.style) !== styleKey(preset.style) ||
+    !sameBox(look.box, preset.box) ||
+    !sameAnim(own(clip.animIn), shownAnim(preset.animIn)) ||
+    !sameAnim(own(clip.animOut), shownAnim(preset.animOut))
+  );
 }
 
 /** A name field's start (spec §10.3: "prefilled with the font + size"): `Inter 120`. */
@@ -243,13 +263,15 @@ export function sanitizePreset(value: unknown, now: string): TextPreset | null {
   const position = obj(raw.position);
   const createdAt = isoTime(raw.createdAt, now);
   const duration = num(raw.defaultDuration, NaN, 1, 3_600_000);
+  const animIn = sanitizePresetAnim(raw.animIn);
+  const animOut = sanitizePresetAnim(raw.animOut);
   return {
     id: raw.id,
     name: (typeof raw.name === "string" && cleanPresetName(raw.name)) || defaultPresetName(style),
     style,
     box: { mode: oneOf(["auto", "fixed"], box.mode, DEFAULT_TEXT_BOX.mode), width: num(box.width, DEFAULT_TEXT_BOX.width, TEXT_LIMITS.boxWidth.min, TEXT_LIMITS.boxWidth.max) },
-    ...(obj(raw.animIn) && { animIn: structuredClone(raw.animIn) as TextAnim }),
-    ...(obj(raw.animOut) && { animOut: structuredClone(raw.animOut) as TextAnim }),
+    ...(animIn && { animIn }),
+    ...(animOut && { animOut }),
     ...(Number.isFinite(duration) && { defaultDuration: Math.round(duration) }),
     ...(position && { position: { x: Math.round(num(position.x, 0, -100_000, 100_000)), y: Math.round(num(position.y, 0, -100_000, 100_000)) } }),
     applyPosition: bool(raw.applyPosition, false),

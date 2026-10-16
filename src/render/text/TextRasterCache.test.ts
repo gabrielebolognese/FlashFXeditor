@@ -3,7 +3,7 @@ import type { TextContent, TextStyle } from "../../core/document/types.js";
 import { DEFAULT_TEXT_STYLE, textContent } from "../../text/style.js";
 import type { TextureHandle } from "../gpu/renderer.js";
 import type { TextLayout } from "./layout.js";
-import type { TextHighlight, TextRaster } from "./raster.js";
+import type { RasterPart, TextAtlas, TextHighlight, TextRaster } from "./raster.js";
 import { TextRasterCache, textScaleBucket } from "./TextRasterCache.js";
 
 interface FakeTexture extends TextureHandle {
@@ -13,7 +13,7 @@ interface FakeTexture extends TextureHandle {
 
 function setup(options: { budget?: number } = {}) {
   const uploads: FakeTexture[] = [];
-  const rasters: { text: string; size: number; scale: number }[] = [];
+  const rasters: { text: string; size: number; scale: number; part?: string }[] = [];
   let ready = true;
   const loads: string[] = [];
   const cache = new TextRasterCache({
@@ -43,10 +43,18 @@ function setup(options: { budget?: number } = {}) {
     },
     // A layout whose raster is 100 x 50 content px per line of text (empty text: nothing drawn).
     layout: (content: TextContent, style: TextStyle) => ({ raster: content.value === "" ? null : { x: -2, y: -1, width: 100, height: 50 }, family: style.fontFamily }) as unknown as TextLayout,
-    rasterize(layout, style, scale): TextRaster {
-      rasters.push({ text: "", size: style.fontSize, scale });
+    rasterize(layout, style, scale, _highlight, part: RasterPart = "all"): TextRaster | null {
+      // A style without a background has no backgrounds part.
+      if (part === "backgrounds" && !style.background.enabled) return null;
+      rasters.push({ text: "", size: style.fontSize, scale, part });
       const rect = layout.raster as NonNullable<TextLayout["raster"]>;
       return { canvas: { width: Math.ceil(rect.width * scale), height: Math.ceil(rect.height * scale) } as OffscreenCanvas, width: 0, height: 0, scale, rect };
+    },
+    // Two units side by side in a 64 x 32 atlas.
+    atlas(_layout, style, scale, kind): TextAtlas {
+      rasters.push({ text: "", size: style.fontSize, scale, part: kind });
+      const unit = (index: number) => ({ kind, line: 0, index, text: "w", offset: 0, x: 0, baseline: 0, rect: { x: index * 50, y: 0, width: 50, height: 50 }, originX: 0, originY: 0, cell: { x: index * 32, y: 0, width: 32, height: 32 } });
+      return { canvas: { width: 64, height: 32 } as OffscreenCanvas, width: 64, height: 32, scale, units: [unit(0), unit(1)] };
     },
     ...(options.budget !== undefined && { budget: options.budget }),
   });
@@ -245,5 +253,89 @@ describe("TextRasterCache", () => {
     expect(rasters).toHaveLength(3);
     expect(back?.texture).toBe(uploads[0]);
     expect(uploads[2]?.destroyed).toBe(true);
+  });
+});
+
+describe("animated text parts (Batch 31)", () => {
+  it("caches a clip's atlas and its background boxes apart from its raster, with their cells", () => {
+    const { cache, rasters } = setup();
+    const text = textContent("Two words");
+    const s = style({ background: { ...DEFAULT_TEXT_STYLE.background, enabled: true } });
+    cache.begin();
+    const raster = cache.resolve("a", text, s, 1);
+    const atlas = cache.resolveAtlas("a", text, s, 1, "word");
+    const boxes = cache.resolveBackground("a", text, s, 1);
+    cache.end();
+    expect(rasters.map((r) => r.part)).toEqual(["all", "word", "backgrounds"]);
+    expect(raster?.units).toBeNull();
+    expect(atlas?.units).toEqual([
+      { rect: { x: 0, y: 0, width: 50, height: 50 }, crop: { u0: 0, v0: 0, u1: 0.5, v1: 1 } },
+      { rect: { x: 50, y: 0, width: 50, height: 50 }, crop: { u0: 0.5, v0: 0, u1: 1, v1: 1 } },
+    ]);
+    expect(boxes?.texture).not.toBe(raster?.texture);
+    expect(cache.stats.rasters).toBe(3);
+    // Unchanged: no rasterization; a line atlas is another entry.
+    cache.begin();
+    expect(cache.resolveAtlas("a", text, s, 1, "word")).toBe(atlas);
+    cache.resolveAtlas("a", text, s, 1, "line");
+    cache.end();
+    expect(rasters).toHaveLength(4);
+    // No background: no backgrounds part.
+    cache.begin();
+    expect(cache.resolveBackground("b", text, style(), 1)).toBeNull();
+    cache.end();
+    expect(rasters).toHaveLength(4);
+  });
+
+  it("warms parts ahead of time, so drawing them later rasterizes nothing", () => {
+    const { cache, rasters, setReady } = setup();
+    const text = textContent("Later");
+    const s = style();
+    cache.begin();
+    expect(cache.warm("a", "word", text, s, 1)).toBe(true);
+    expect(cache.warm("a", "all", text, s, 1)).toBe(true);
+    cache.end();
+    const count = cache.stats.rasterizations;
+    // Warmed again: nothing new.
+    cache.begin();
+    expect(cache.warm("a", "word", text, s, 1)).toBe(false);
+    cache.end();
+    cache.begin();
+    expect(cache.resolve("a", text, s, 1)).not.toBeNull();
+    expect(cache.resolveAtlas("a", text, s, 1, "word")?.units).toHaveLength(2);
+    cache.end();
+    expect(cache.stats.rasterizations).toBe(count);
+    expect(rasters).toHaveLength(2);
+    // Fonts loading: nothing warmed.
+    setReady(false);
+    cache.begin();
+    expect(cache.warm("b", "word", textContent("Other"), s, 1)).toBe(false);
+    cache.end();
+    expect(cache.stats.waiting).toBe(1);
+  });
+
+  it("keeps warmed parts out of eviction while they are warmed, and lets them go after", () => {
+    // Budget: one 100 x 50 raster.
+    const { cache, uploads } = setup({ budget: 100 * 50 * 4 });
+    const s = style();
+    cache.begin();
+    cache.warm("a", "all", textContent("A"), s, 1);
+    cache.warm("b", "all", textContent("B"), s, 1);
+    cache.end();
+    for (let i = 0; i < 3; i++) {
+      cache.begin();
+      cache.warm("a", "all", textContent("A"), s, 1);
+      cache.end();
+    }
+    expect(uploads[0]?.destroyed).toBe(false);
+    expect(uploads[1]?.destroyed).toBe(true);
+  });
+
+  it("gives Export frame an exact atlas", async () => {
+    const { cache, rasters } = setup();
+    const exact = await cache.exact(textContent("Words"), style(), 1.3, "word");
+    expect(rasters.at(-1)).toMatchObject({ part: "word", scale: 1.3 });
+    expect(exact?.units).toHaveLength(2);
+    exact?.release();
   });
 });

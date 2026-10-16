@@ -107,6 +107,50 @@ fn fs(in: VertexOut) -> @location(0) vec4f {
 }
 `;
 
+/**
+ * One pass of a separable Gaussian blur (spec §10.4 blurIn): each target px sums the source texels
+ * along `dir` within `radius`, weighted by `sigma`. The source region starts `pad` target px in, and
+ * texels outside it count as transparent, so the blur spreads into the padding. Premultiplied in and out.
+ */
+export const BLUR_WGSL = /* wgsl */ `
+struct Blur {
+  // origin x, y and size w, h of the source region, in texels
+  region: vec4f,
+  // dirX, dirY, sigma, radius
+  params: vec4f,
+  // padding x, y in target px before the region
+  pad: vec4f,
+};
+
+@group(0) @binding(0) var<uniform> blur: Blur;
+@group(1) @binding(0) var sourceSampler: sampler;
+@group(1) @binding(1) var source: texture_2d<f32>;
+
+@vertex
+fn vs(@builtin(vertex_index) index: u32) -> @builtin(position) vec4f {
+  var points = array<vec2f, 3>(vec2f(-1.0, -1.0), vec2f(3.0, -1.0), vec2f(-1.0, 3.0));
+  return vec4f(points[index], 0.0, 1.0);
+}
+
+@fragment
+fn fs(@builtin(position) position: vec4f) -> @location(0) vec4f {
+  let p = floor(position.xy) - blur.pad.xy;
+  let sigma = max(blur.params.z, 0.0001);
+  let radius = i32(blur.params.w);
+  var sum = vec4f(0.0);
+  var total = 0.0;
+  for (var k = -radius; k <= radius; k++) {
+    let weight = exp(-f32(k * k) / (2.0 * sigma * sigma));
+    total += weight;
+    let q = p + f32(k) * blur.params.xy;
+    if (q.x >= 0.0 && q.y >= 0.0 && q.x < blur.region.z && q.y < blur.region.w) {
+      sum += weight * textureLoad(source, vec2i(blur.region.xy + q), 0);
+    }
+  }
+  return sum / total;
+}
+`;
+
 /** Mip generation: a full-screen triangle sampling the previous level with linear filtering. */
 export const MIPMAP_WGSL = /* wgsl */ `
 @group(0) @binding(0) var sourceSampler: sampler;

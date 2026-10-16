@@ -18,7 +18,7 @@ import type { TextStyle } from "../../core/document/types.js";
 import { fontShorthand } from "../../text/fonts.js";
 import { isGradient } from "../../text/style.js";
 import { atlasUnits, packShelves, type AtlasUnit, type AtlasUnitKind } from "./atlas.js";
-import type { Rect, TextLayout } from "./layout.js";
+import type { Rect, TextLayout, TextLine } from "./layout.js";
 import { currentMeasurer, textFallback } from "./layoutCache.js";
 
 /** Long-side cap of a text raster (implementation notes: "cap at 4096 px"). */
@@ -145,24 +145,40 @@ function paintText(ctx: Ctx, width: number, height: number, style: TextStyle, sc
   ctx.restore();
 }
 
+/** Where `line` starts at `scale` (canvas px, the raster's origin at content 0): aligned by its width measured at that size. `ctx` has the font. */
+function lineRunX(ctx: Ctx, line: TextLine, style: TextStyle, scale: number): number {
+  const width = Math.max(0, ctx.measureText(line.text).width - style.letterSpacing * scale);
+  const left = line.x * scale;
+  return style.align === "left" ? left : style.align === "right" ? (line.x + line.width) * scale - width : (line.x + line.width / 2) * scale - width / 2;
+}
+
 /** The runs of `layout`'s lines at `scale`, offset by (`ox`, `oy`) canvas px; each line aligned by its width measured at that size. */
 function lineRuns(ctx: Ctx, layout: TextLayout, style: TextStyle, scale: number, ox: number, oy: number): Run[] {
   applyFont(ctx, style, scale);
   const runs: Run[] = [];
   for (const line of layout.lines) {
     if (line.text === "") continue;
-    const width = Math.max(0, ctx.measureText(line.text).width - style.letterSpacing * scale);
-    const left = line.x * scale;
-    const x = style.align === "left" ? left : style.align === "right" ? (line.x + line.width) * scale - width : (line.x + line.width / 2) * scale - width / 2;
-    runs.push({ text: line.text, x: x + ox, y: line.baseline * scale + oy });
+    runs.push({ text: line.text, x: lineRunX(ctx, line, style, scale) + ox, y: line.baseline * scale + oy });
   }
   return runs;
 }
 
-/** `layout` in `style` at `scale` px per content px (with a selection `highlight`), or null when nothing is drawn. */
-export function rasterizeText(layout: TextLayout, style: TextStyle, scale: number, highlight?: TextHighlight | null): TextRaster | null {
+/** What a raster holds: everything, or the background boxes alone (drawn under the units of an animated text, spec §10.4). */
+export type RasterPart = "all" | "backgrounds";
+
+/** Whether `layout` in `style` draws background boxes. */
+export function hasBackgrounds(layout: TextLayout, style: TextStyle): boolean {
+  return style.background.enabled && style.background.color.a > 0 && layout.backgrounds.length > 0;
+}
+
+/**
+ * `layout` in `style` at `scale` px per content px (with a selection `highlight`), or null when nothing
+ * is drawn. The `backgrounds` part covers the same rect as the whole raster (its quad is the same).
+ */
+export function rasterizeText(layout: TextLayout, style: TextStyle, scale: number, highlight?: TextHighlight | null, part: RasterPart = "all"): TextRaster | null {
   const rect = rasterRect(layout, highlight);
   if (!rect || typeof OffscreenCanvas === "undefined") return null;
+  if (part === "backgrounds" && !hasBackgrounds(layout, style)) return null;
   const s = cappedScale(rect, scale);
   const width = Math.max(1, Math.ceil(rect.width * s));
   const height = Math.max(1, Math.ceil(rect.height * s));
@@ -172,7 +188,7 @@ export function rasterizeText(layout: TextLayout, style: TextStyle, scale: numbe
   const ox = -rect.x * s;
   const oy = -rect.y * s;
   const bg = style.background;
-  if (bg.enabled && bg.color.a > 0 && layout.backgrounds.length > 0) {
+  if (hasBackgrounds(layout, style)) {
     ctx.fillStyle = formatHexColor(bg.color);
     ctx.beginPath();
     for (const box of layout.backgrounds) {
@@ -182,6 +198,7 @@ export function rasterizeText(layout: TextLayout, style: TextStyle, scale: numbe
     }
     ctx.fill();
   }
+  if (part === "backgrounds") return { canvas, width, height, scale: s, rect };
   if (highlight && highlight.rects.length > 0) {
     ctx.fillStyle = highlight.color;
     for (const box of highlight.rects) ctx.fillRect(box.x * s + ox, box.y * s + oy, box.width * s, box.height * s);
@@ -203,10 +220,11 @@ export interface TextAtlas {
 }
 
 /**
- * The per-unit atlas of `layout` (spec §10.1): each word (or line) drawn on its own in a packed cell,
- * stroke, fill and shadow included, at `scale` (lowered so the atlas stays within TEXT_RASTER_MAX).
- * Backgrounds stay in the layer raster. Null when there is nothing to draw.
- * TODO(batch 31): the compositor draws text animations from it (per-unit quads).
+ * The per-unit atlas of `layout` (spec §10.1, §10.4): each character, word or line drawn on its own in
+ * a packed cell, stroke, fill and shadow included, at `scale` (lowered so the atlas stays within
+ * TEXT_RASTER_MAX). A unit is drawn where the layer raster draws it (its line aligned at that size, its
+ * prefix measured at it), so a text at rest looks the same from either. Backgrounds have their own
+ * raster (`rasterizeText` part `backgrounds`). Null when there is nothing to draw.
  */
 export function buildTextAtlas(layout: TextLayout, style: TextStyle, scale: number, kind: AtlasUnitKind): TextAtlas | null {
   if (typeof OffscreenCanvas === "undefined") return null;
@@ -229,15 +247,19 @@ export function buildTextAtlas(layout: TextLayout, style: TextStyle, scale: numb
   });
   paintText(ctx, canvas.width, canvas.height, style, s, (target) => {
     applyFont(target, style, s);
+    const starts = layout.lines.map((line) => (line.text === "" ? 0 : lineRunX(target, line, style, s)));
     for (const unit of cells) {
-      // The unit at its layout position, moved into its cell and clipped to it.
+      // The unit where the layer raster draws it, moved into its cell and clipped to it.
+      const line = layout.lines[unit.line];
+      const prefix = line && unit.offset > 0 ? target.measureText(line.text.slice(0, unit.offset)).width : 0;
+      const x = (starts[unit.line] ?? unit.x * s) + prefix;
       const dx = unit.cell.x - unit.rect.x * s;
       const dy = unit.cell.y - unit.rect.y * s;
       target.save();
       target.beginPath();
       target.rect(unit.cell.x, unit.cell.y, unit.cell.width, unit.cell.height);
       target.clip();
-      drawRuns(target, [{ text: unit.text, x: unit.x * s + dx, y: unit.baseline * s + dy }], style, s, top + dy, bottom + dy);
+      drawRuns(target, [{ text: unit.text, x: x + dx, y: unit.baseline * s + dy }], style, s, top + dy, bottom + dy);
       target.restore();
     }
   });

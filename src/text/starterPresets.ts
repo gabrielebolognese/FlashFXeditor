@@ -2,7 +2,7 @@
 // first start, then the user's to rename, change or delete. Sizes are for a 1080 px short side
 // (presets.ts). Their colors are content colors, not UI colors: the design system governs the UI only.
 // `Title` and `Subtitle` are the default Title (T) and Subtitle (Shift+T) until others are chosen.
-import type { RGBA, TextPreset, TextStyle } from "../core/document/types.js";
+import type { PresetTextAnim, RGBA, TextPreset, TextStyle } from "../core/document/types.js";
 import { DEFAULT_SUBTITLE_BOX, DEFAULT_SUBTITLE_STYLE, DEFAULT_TEXT_BOX, DEFAULT_TEXT_STYLE, DEFAULT_TITLE_STYLE } from "./style.js";
 
 export const STARTER_TITLE_ID = "starter-title";
@@ -24,6 +24,9 @@ interface Starter {
   position?: { x: number; y: number };
   /** Apply position on from the start. */
   applyPosition?: boolean;
+  /** Animations (Batch 31; the Title and Subtitle defaults have none, so T and Shift+T stay still). */
+  animIn?: PresetTextAnim;
+  animOut?: PresetTextAnim;
   tags: string[];
 }
 
@@ -51,6 +54,8 @@ const STARTERS: readonly Starter[] = [
     }),
     position: { x: -180, y: 560 },
     applyPosition: true,
+    animIn: { id: "slideRight", durationMs: 500 },
+    animOut: { id: "fade", durationMs: 400 },
     tags: ["lower third", "name", "box"],
   },
   {
@@ -58,6 +63,7 @@ const STARTERS: readonly Starter[] = [
     name: "Caption bold",
     style: style({ fontFamily: "Montserrat", fontWeight: 800, fontSize: 76, textCase: "upper", lineHeight: 1.15, stroke: { enabled: true, width: 8, color: BLACK }, shadow: { enabled: true, x: 0, y: 4, blur: 10, color: rgb(0, 0, 0, 0.55) } }),
     box: { mode: "fixed", width: 900 },
+    animIn: { id: "wordPop", durationMs: 800 },
     tags: ["caption", "karaoke", "outline"],
   },
   {
@@ -102,6 +108,7 @@ const STARTERS: readonly Starter[] = [
     id: "starter-neon",
     name: "Neon glow",
     style: style({ fontFamily: "Montserrat", fontWeight: 700, fontSize: 100, fill: rgb(1, 0.92, 0.98), ...off, shadow: { enabled: true, x: 0, y: 0, blur: 28, color: rgb(1, 0.18, 0.78) } }),
+    animIn: { id: "blurIn", durationMs: 600 },
     tags: ["neon", "glow", "title"],
   },
   {
@@ -116,9 +123,27 @@ const STARTERS: readonly Starter[] = [
       ...off,
       background: { enabled: true, color: rgb(0.86, 0.1, 0.16), paddingX: 28, paddingY: 10, radius: 4, mode: "block" },
     }),
+    animIn: { id: "slideUp", durationMs: 400 },
     tags: ["news", "box", "condensed"],
   },
 ];
+
+/**
+ * Starters stored before they had animations (Batch 30 seeded them once): the ones never changed since
+ * (their `updatedAt` is still the bundled one) take the bundled animations; their date stays, so they
+ * still count as untouched. Null when none changes.
+ */
+export function upgradeStarters(stored: readonly TextPreset[]): TextPreset[] | null {
+  const bundled = new Map(starterPresets().map((preset) => [preset.id, preset]));
+  let changed = false;
+  const next = stored.map((preset) => {
+    const starter = bundled.get(preset.id);
+    if (!starter || preset.updatedAt !== starter.updatedAt || preset.animIn || preset.animOut || (!starter.animIn && !starter.animOut)) return preset;
+    changed = true;
+    return { ...preset, ...(starter.animIn && { animIn: { ...starter.animIn } }), ...(starter.animOut && { animOut: { ...starter.animOut } }) };
+  });
+  return changed ? next : null;
+}
 
 /** The starter presets, dated in card order (a minute apart from the same time). */
 export function starterPresets(): TextPreset[] {
@@ -132,6 +157,8 @@ export function starterPresets(): TextPreset[] {
       box: { ...(starter.box ?? DEFAULT_TEXT_BOX) },
       position: { ...(starter.position ?? { x: 0, y: 0 }) },
       applyPosition: starter.applyPosition ?? false,
+      ...(starter.animIn && { animIn: { ...starter.animIn } }),
+      ...(starter.animOut && { animOut: { ...starter.animOut } }),
       tags: [...starter.tags],
       favorite: false,
       createdAt: at,

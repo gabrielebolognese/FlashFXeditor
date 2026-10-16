@@ -112,12 +112,39 @@ export interface TextStyle {
 }
 
 // Types owned by later batches. They stay opaque JSON until their batch defines them.
-/** TODO(batch 35): easing ids. */
+/** Easing ids: text animations use `text/anim.ts` TEXT_EASES. TODO(batch 35): the keyframe easings. */
 export type EaseId = string;
 /** TODO(batch 36): transition kind, duration, alignment. */
 export type Transition = JsonObject;
-/** TODO(batch 31): text animation (§10.4). */
-export type TextAnim = JsonObject;
+
+/** The text animations (spec §10.4), in the order of the properties panel's chips. */
+export const TEXT_ANIM_IDS = ["fade", "slideUp", "slideDown", "slideLeft", "slideRight", "pop", "typewriter", "wordPop", "wordFade", "lineReveal", "blurIn", "scaleBounce"] as const;
+export type TextAnimId = (typeof TEXT_ANIM_IDS)[number];
+/** What a text animation moves one by one: characters (graphemes), words or lines; none = the whole text. */
+export type TextAnimUnit = "char" | "word" | "line";
+
+/**
+ * A text clip's in or out animation (spec §10.4). `duration` is the whole animation, every unit's
+ * delay included; `perUnit` replaces the animation's own unit; `stagger` is the delay between two
+ * units (spread over the duration when absent); `ease` the timing curve (the animation's own when
+ * absent). Played at most over half the clip (`text/anim.ts`).
+ */
+export interface TextAnim {
+  id: TextAnimId;
+  duration: Frame;
+  perUnit?: TextAnimUnit;
+  stagger?: Frame;
+  ease?: EaseId;
+}
+
+/** A preset's animation (spec §10.3): a `TextAnim` timed in milliseconds, as presets cross frame rates. */
+export interface PresetTextAnim {
+  id: TextAnimId;
+  durationMs: number;
+  perUnit?: TextAnimUnit;
+  staggerMs?: number;
+  ease?: EaseId;
+}
 /**
  * A text preset (spec §10.3): a look to apply to text clips. Sizes (font size, every px value of the
  * style, the box width, the position) are given for a frame whose short side is 1080 px
@@ -128,8 +155,8 @@ export interface TextPreset {
   name: string;
   style: TextStyle;
   box: TextBox;
-  animIn?: TextAnim;
-  animOut?: TextAnim;
+  animIn?: PresetTextAnim;
+  animOut?: PresetTextAnim;
   /** The length of a clip made from the preset, in whole milliseconds (else the title length). */
   defaultDuration?: number;
   /** Where the clip sits (project px from the frame center), taken when `applyPosition` is on. */
