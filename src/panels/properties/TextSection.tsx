@@ -46,7 +46,7 @@ import { MIXED, NONE, SKIP, useClipsShared, type Shared } from "./useShared.js";
 // text clips; mixed values show `--`. Number fields are bound outside React (textBinding.ts): a label
 // scrub shows live and re-rasterizes only those layers (P1, P2, P11). Content typing coalesces into
 // one step per burst; while the text is edited on the canvas (spec §7.7) the content shows the draft,
-// and focusing it ends that editing first (committed). TODO(batch 30): Save as preset.
+// and focusing it ends that editing first (committed).
 
 const DEPS: TextBindingDeps = { document: documentStore, live: liveEdit };
 

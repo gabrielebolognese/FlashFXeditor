@@ -12,6 +12,7 @@
 //   position, default Title / Subtitle (T / Shift+T use them), import and export JSON.
 // - Hover: a card hovered with text clips selected shows the preset on them, live only (P2).
 // - Drags: a card dragged onto the timeline (or the canvas) adds a text clip with the preset there.
+// - Thumbnails: the Presets tab's cards are drawn by `presetThumbs` in the FrameScheduler loop.
 import type { ClipId, Project, TextClip, TextPreset, Transform } from "../core/document/types.js";
 import { usToFrame } from "../core/document/time.js";
 import { createStore } from "../core/store/createStore.js";
@@ -19,7 +20,9 @@ import type { PresetScope } from "../core/store/sessionStore.js";
 import { errorMessage } from "../project/errorMessage.js";
 import { fromHandle, isDirectoryHandle, type FsDir } from "../project/fs.js";
 import { PresetFolderWriter, projectPresetsDir, readPresetFolder } from "../project/presetFiles.js";
+import { PresetThumbPainter } from "../panels/media/PresetThumbPainter.js";
 import type { LiveText } from "../render/compositor/Compositor.js";
+import { drawPresetThumbnail } from "../render/text/presetThumbnails.js";
 import {
   cleanPresetName,
   defaultPresetName,
@@ -45,8 +48,8 @@ import { isClipLocked } from "../timeline/model/queries.js";
 import { showToast } from "../ui/toasts.js";
 import { patchLiveEdit } from "./liveEdit.js";
 import type { CardDragSource } from "./mediaGestures.js";
-import { addTitleClip, selectedTextClip, setDefaultTitleLook } from "./textController.js";
-import { actions, appSettings, documentStore, keyValueStore, saveStatus, sessionStore } from "./services.js";
+import { addTitleClip, fontsVersion, selectedTextClip, setDefaultTitleLook } from "./textController.js";
+import { actions, appSettings, documentStore, fontLibrary, keyValueStore, saveStatus, scheduler, sessionStore, themeBridge } from "./services.js";
 
 export interface LibraryFolder {
   name: string;
@@ -70,6 +73,11 @@ export const presetLibrary = createStore<PresetLibrary>({ loaded: false, global:
 
 /** Where Save as preset's name field is open: the quick row (properties) or the Presets tab; null when closed. */
 export const presetNaming = createStore<"quick" | "tab" | null>(null);
+
+/** The Presets tab's card thumbnails (spec §3.4, P3: drawn in the FrameScheduler loop, at the device pixel ratio of the frame). */
+export const presetThumbs = new PresetThumbPainter(scheduler, (canvas, preset, width, height) => {
+  drawPresetThumbnail(canvas, preset, width, height, window.devicePixelRatio || 1, themeBridge.theme.space[2], fontLibrary);
+});
 
 const GLOBAL_KEY = "textPresets.v1";
 const FOLDER_KEY = "presetLibraryFolder.v1";
@@ -113,7 +121,11 @@ function folderFailed(error: unknown): void {
   if (current) setLibrary({ folder: { ...current, status: "error", message: errorMessage(error) } });
 }
 
-/** `presets` become the scope's list: shown, then stored (IndexedDB and the library folder, or the project's folder). */
+/**
+ * `presets` become the scope's list: shown, then stored (IndexedDB and the library folder, or the project's folder).
+ * A project write runs after the read of `presets/text/` (`attachPresets`) and writes the list as it is then, so
+ * a preset added while the folder was read joins the presets read instead of replacing their files.
+ */
 function commit(scope: PresetScope, presets: readonly TextPreset[]): void {
   const sorted = sortPresets(presets);
   setLibrary(scope === "global" ? { global: sorted } : { project: sorted });
@@ -132,7 +144,7 @@ function commit(scope: PresetScope, presets: readonly TextPreset[]): void {
         if (!dir) return;
         state.writer = new PresetFolderWriter(dir);
       }
-      await state.writer.write(sorted);
+      if (!state.closed) await state.writer.write(list("project"));
     })
     .catch((error: unknown) => {
       console.warn("[presets] cannot write the project presets", error);
@@ -277,7 +289,8 @@ export function attachPresets(root: FsDir, isWritable: () => boolean): void {
       if (state.closed) return;
       state.writer = new PresetFolderWriter(dir);
       state.writer.know(presets);
-      setLibrary({ project: sortPresets(presets) });
+      // Presets saved or imported while the folder was read stay (the newer copy of an id wins).
+      setLibrary({ project: sortPresets(mergePresets(presets, list("project"))) });
     } catch (error) {
       console.warn("[presets] cannot read the project presets", error);
     }
@@ -606,6 +619,8 @@ export function installPresetController(): () => void {
     ),
     // The hover preview follows the selection it was made for.
     sessionStore.selection.subscribe(() => endHover()),
+    // A font loaded (or the system fonts came): the card thumbnails draw again (at the next frame).
+    fontsVersion.subscribe(() => presetThumbs.redrawAll()),
     // The quick row's Save as preset (opens its name field) and Update preset (spec §11, §17).
     actions.register("preset.save", () => {
       if (!presetSourceClip()) return false;

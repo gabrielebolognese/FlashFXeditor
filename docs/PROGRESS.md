@@ -3382,3 +3382,32 @@ Why each dependency exists (Batch rule 8).
       - The toolbar chips select a string, so the toolbar renders only when the chips change.
       - `defaultDuration` becomes whole frames through `usToFrame`.
     - Every new TODO has a batch tag. This entry had no earlier rejection.
+- fix-attempt: done (2026-10-16)
+  1. Preset card thumbnails draw in the FrameScheduler loop (spec §3.4, P3):
+    - New `src/panels/media/PresetThumbPainter.ts`, framework-free like `PosterPainter`, registered on `mediaThumbs`. `show(canvas, preset)`, `resize(canvas, w, h)` and `redrawAll()` (fonts) only record the card and call `scheduler.invalidate("mediaThumbs")`. `render()` draws each dirty card once, at its latest preset and size. A card with no size yet (or a hidden one, 0 x 0) is not drawn. `detach(canvas)` drops a card and its pending draw.
+    - The instance is `presetThumbs` in `presetController.ts`. Its draw function calls `drawPresetThumbnail` with the device pixel ratio and margin read at draw time. A `fontsVersion` change calls `presetThumbs.redrawAll()` (subscribed in `installPresetController`).
+    - `PresetThumb` (`PresetsTab.tsx`) draws nothing itself. Its ResizeObserver hands the size to `presetThumbs.resize`, an effect hands the preset to `presetThumbs.show`, and unmounting detaches the canvas. It no longer subscribes to `fontsVersion`, so a font load no longer re-renders every card through React.
+    - New `PresetThumbPainter.test.ts` (5 tests), in the style of `PosterPainter.test.ts`:
+      - A burst of sizes on two cards draws nothing outside the frame, then once each at the last size.
+      - Nothing is drawn until both the preset and a size are known, and a hidden card is skipped.
+      - A changed preset draws again, and `redrawAll` draws every card once.
+      - A detached card is not drawn, even with a draw pending.
+      - `dispose` unregisters.
+  2. `src/panels/properties/TextSection.tsx`: the stale `TODO(batch 30): Save as preset.` is removed. No `TODO(batch 30)` is left in `src`.
+  3. (non-blocking item) The project preset race in `presetController.ts`:
+    - The read in `attachPresets` now merges what it found with the presets already in the list (`mergePresets`, the newer copy of an id wins). A preset saved or imported during the read stays in the tab.
+    - The queued project write (`commit`) writes the list as it is when the write runs (`list("project")`), not the snapshot taken at commit time. The write after the read therefore holds the files just read and adds the new one, instead of deleting the others.
+    - New `src/app/presetController.test.ts`, with the services mock of `projectController.test.ts`. It gates the project root's folder lookups so the read is pending, imports a preset into the Project scope, then opens the gate. The tab and `presets/text/` must end with all three presets. The test fails on the old code (the tab shows `[a, b]`) and passes with the fix.
+  - Checks:
+    - `npm run check` green: typecheck, lint plus the CSS color check, 1459 unit tests in 148 files (+6 tests, +2 files), 3 perf tests. Build 832.56 kB JS (268.88 kB gzip), 68.06 kB CSS.
+    - Browser (headless Chrome 155 over CDP, dev server 5181 restarted after the edits, 1600 x 900 at dpr 1):
+      - New `%TEMP%/b30/fixthumbs.mjs`, 7/7. It wraps the painter's draw and the scheduler's frame page-side:
+        - Opening the Presets tab drew the 13 cards only inside scheduler frames, at most 13 draws per frame, over 3 frames (show, size, font load).
+        - 10 size reports per card in one task drew nothing synchronously, then 13 draws in one frame.
+        - Narrowing the grid 6 px per frame for 20 frames (a splitter drag) gave 260 draws in 20 frames, never more than one per card per frame, and none outside a frame. The canvases ended at their CSS size (118 x 66).
+        - A font change with the tab closed drew nothing. With the tab open it redrew the 13 cards once, in one frame.
+      - Regression:
+        - `acc.mjs` 32/32, including 1f (red and black thumbnail pixels, centered), 2g (the thumbnail follows Update) and 4f (identical thumbnails after export / import).
+        - `extra.mjs` 23/23 (incl. the project preset written to `presets/text/` and read back after reopening), `smoke.mjs` (13 thumbnails drawn, no console errors).
+        - `p1.mjs`: 613 frames, mean 16.66 ms, p95 17.1, none over 20 ms, 0 text rasterizations, 2 React commits. A clip drag: 0 commits until the release.
+    - The first `acc.mjs` run failed 1h-1k because an earlier `p1.mjs` run had left the starter "Big number" favorited (two chips). `acc.mjs` now turns favorites off at its start. It then passed 32/32 right after a `p1.mjs` run.
