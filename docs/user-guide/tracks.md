@@ -115,6 +115,7 @@ The **Target** toggle (the crosshair) decides which tracks take part in edits th
 | <kbd>G</kbd> with no gap selected | The gap at the playhead on targeted tracks. See [Close a gap](splitting-and-deleting.md#close-a-gap). |
 | <kbd>Shift</kbd>+<kbd>G</kbd> or **Close all gaps (compact)** with no track selected | The gaps on targeted tracks. See [Close all gaps (compact)](splitting-and-deleting.md#close-all-gaps-compact). |
 | Inserting or overwriting media at the playhead (double-click, <kbd>,</kbd>, <kbd>.</kbd>, **Insert at playhead**, **Overwrite at playhead**) | The targeted video track and audio track nearest the divider. Media you drag onto the timeline goes to the track under the pointer instead. See [Insert at the playhead](adding-media-to-the-timeline.md#insert-at-the-playhead). |
+| Pasting clips (<kbd>Ctrl</kbd>+<kbd>V</kbd>, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>V</kbd>, **Paste**, **Paste insert**) | The copied clips start on the targeted video track and the targeted audio track with the lowest numbers. **Paste insert** makes room on every unlocked track. See [Choose the tracks pasted clips go to](copy-and-paste.md#choose-the-tracks-pasted-clips-go-to). |
 | **Lift** (<kbd>;</kbd>) and **Extract** (<kbd>'</kbd>) | The in/out range on targeted tracks, whatever is selected. With **Extract**, the other tracks follow the ripple. See [Lift or extract a range](markers-and-in-out-points.md#lift-or-extract-a-range). |
 | <kbd>X</kbd> with no clip selected under the playhead | The topmost clip under the playhead on a targeted track comes first. See [Mark a clip or the selection](markers-and-in-out-points.md#mark-a-clip-or-the-selection). |
 
@@ -268,4 +269,4 @@ See [Captions](captions.md).
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 37, 2026-10-17</sub>
+<sub>Last updated: Batch 39, 2026-10-18</sub>

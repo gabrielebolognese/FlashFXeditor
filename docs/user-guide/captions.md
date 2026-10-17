@@ -213,6 +213,7 @@ Because cues must not overlap, some edits work differently on the **CC** track:
 | --- | --- |
 | Drag a cue | It stops against the cues before and after it, instead of covering them. |
 | <kbd>Alt</kbd>+drag a copy | The copy goes to the free spot nearest the pointer, no farther away than its own length. With no room there, the ghost turns red and the drop does nothing. |
+| Copy and paste (<kbd>Ctrl</kbd>+<kbd>C</kbd>, <kbd>Ctrl</kbd>+<kbd>V</kbd>) | Pasted cues always go to the **CC** track. With **Paste**, they move to the nearest spot near the playhead where they don't overlap other cues; with no room there, nothing is pasted and the message **No room for the captions** appears. **Paste insert** makes room for them. Pasting cues into a project without captions adds the caption track with the copied style. See [Paste caption cues](copy-and-paste.md#paste-caption-cues). |
 | Nudge with <kbd>Alt</kbd>+<kbd>←</kbd> or <kbd>Alt</kbd>+<kbd>→</kbd> | The cue stops at its neighbors. |
 | Trim an edge | The edge stops at the next cue and never pushes it, even with **Ripple mode** on or <kbd>Ctrl</kbd> held. |
 | Split with <kbd>Ctrl</kbd>+<kbd>K</kbd> or the **Razor** | The text is cut too: where the first word after the cut is spoken (with word timings), or else at the space nearest the cut's share of the cue. A one-word cue keeps its word on both sides. |
@@ -353,7 +354,7 @@ Every caption change is one step in the history. Hover **Undo** in the app bar t
 | **Word highlight**, **Change highlight color** | **Highlight**, **Active** and **Other words** |
 | **Change font size**, **Add stroke** and the other text style steps | The text style rows, as in [Undo text changes](titles-and-text.md#undo-text-changes) |
 | **Apply "Neon glow" to captions** (with the preset's name) | A preset card with the captions selected |
-| **Move clip**, **Trim clip**, **Split clip**, **Delete clip** and the other clip steps | Edits of cues on the timeline |
+| **Move clip**, **Trim clip**, **Split clip**, **Delete clip**, **Paste**, **Cut** and the other clip steps | Edits of cues on the timeline |
 
 ## What is not available yet
 
@@ -361,10 +362,11 @@ These parts are available in a later version:
 
 - A style for a single cue, and moving or styling captions in the preview.
 - Exporting the video with its captions, and exporting caption files from the export settings. **Export frame** already includes the captions, and **Export SRT or VTT** saves the cues.
-- Pasting cues.
+- **Paste attributes** for cues.
 
 ## Related pages
 - [Transcription](transcription.md)
+- [Copying, pasting and duplicating clips](copy-and-paste.md)
 - [Titles and text](titles-and-text.md)
 - [Text presets](text-presets.md)
 - [Tracks](tracks.md)
@@ -375,4 +377,4 @@ These parts are available in a later version:
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 34, 2026-10-17</sub>
+<sub>Last updated: Batch 39, 2026-10-18</sub>

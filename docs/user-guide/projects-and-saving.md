@@ -108,7 +108,8 @@ What you can undo:
 | Fades (each fade handle drag, **Fade in 0.5 s**, **Fade out 0.5 s** and each fade length in the clip menu), and adding, changing and deleting transitions | Selecting a transition |
 | Audio changes: a clip's volume (each typed value, rubber band drag or quick series of arrow presses), volume keyframes, muting and unmuting clips, **Normalize**, **Auto-duck music** and **Detach audio** | The listening volume and the **Mute** button under the preview |
 | Adding a solid with **Add solid**, and adding images with **Add image** (the import and the clips are one step) | |
-| Duplicating a clip with <kbd>Ctrl</kbd>+<kbd>D</kbd> or **Duplicate**, turning clips off and on (**Disable**, **Enable**) | |
+| Duplicating clips with <kbd>Ctrl</kbd>+<kbd>D</kbd> or **Duplicate**, turning clips off and on (**Disable**, **Enable**) | |
+| **Cut**, **Paste**, **Paste insert**, pasting keyframes and **Paste attributes** (one step each) | Copying clips or keyframes |
 | Applying a text preset, adding a text from a preset, and linking a text to the preset you save it as | Text presets themselves: saving, updating, renaming, duplicating, deleting, importing and syncing presets, favorites, **Apply position** and the default title and subtitle |
 | Adding, moving, renaming, recoloring and deleting markers | Setting, moving and clearing the in and out points, and marking a part of a media item with <kbd>I</kbd> and <kbd>O</kbd> on its card |
 | **Lift** and **Extract** (one step each) | Proxies: **Generate proxy**, **Remove proxy**, a proxy being made or failing, and **Regenerate thumbnails** |
@@ -257,4 +258,4 @@ Choosing to keep the layout as it is when you change the resolution is available
 - [Titles and text](titles-and-text.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 37, 2026-10-17</sub>
+<sub>Last updated: Batch 39, 2026-10-18</sub>

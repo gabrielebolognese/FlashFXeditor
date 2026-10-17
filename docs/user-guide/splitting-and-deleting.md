@@ -177,13 +177,18 @@ Right-click a clip or a gap to open its menu. Rows that have a keyboard shortcut
 > **Video placeholder: The clip and gap menus**
 > - File: `videos/splitting-and-deleting/menus.mp4` (not recorded yet)
 > - Length: about 40 seconds
-> - Shows: right-click a video clip: it and its sound are selected and the menu opens with **Cut**, **Copy** and **Paste** dimmed, then **Split at playhead**, **Delete**, **Ripple delete**, **Disable**, **Unlink**, **Group**, **Ungroup** (dimmed), **Move into sync** (dimmed), **Rename**, the **Label** row of eight colors, **Speed...**, **Freeze frame at playhead**, **Mute**, **Normalize**, **Auto-duck music**, **Detach audio**, and the **Fade in**, **Fade out** and **Transition** rows with their choices; point at the teal swatch: its tooltip reads **Teal**; click it: the video and its sound turn teal; right-click the clip again: the teal swatch has a gold ring; press <kbd>Escape</kbd>; right-click a gap: **Close gap** and **Close all gaps on track**; click **Close gap**.
+> - Shows: right-click a video clip: it and its sound are selected and the menu opens with **Cut**, **Copy**, **Paste**, **Paste insert** and **Paste attributes...** (the three paste rows dimmed until you copy clips) and **Duplicate**, then **Split at playhead**, **Delete**, **Ripple delete**, **Disable**, **Unlink**, **Group**, **Ungroup** (dimmed), **Move into sync** (dimmed), **Rename**, the **Label** row of eight colors, **Speed...**, **Freeze frame at playhead**, **Mute**, **Normalize**, **Auto-duck music**, **Detach audio**, and the **Fade in**, **Fade out** and **Transition** rows with their choices; point at the teal swatch: its tooltip reads **Teal**; click it: the video and its sound turn teal; right-click the clip again: the teal swatch has a gold ring; press <kbd>Escape</kbd>; right-click a gap: **Close gap** and **Close all gaps on track**; click **Close gap**.
 
 **Right-click a clip.** If the clip is not selected, it is selected first, with its linked clips and its group. If it is already part of the selection, the selection stays, and the menu acts on all the selected clips. Clips on a locked track have no menu.
 
 | Row | What it does |
 | --- | --- |
-| **Cut**, **Copy**, **Paste** | Dimmed: available in a later version. |
+| **Cut** | Copies the selected clips and deletes them, leaving gaps (<kbd>Ctrl</kbd>+<kbd>X</kbd>). See [Copy and cut clips](copy-and-paste.md#copy-and-cut-clips). |
+| **Copy** | Copies the selected clips (<kbd>Ctrl</kbd>+<kbd>C</kbd>). |
+| **Paste** | Pastes the copied clips at the playhead on the targeted tracks, covering what is there (<kbd>Ctrl</kbd>+<kbd>V</kbd>). Dimmed until you copy clips. See [Paste clips at the playhead](copy-and-paste.md#paste-clips-at-the-playhead). |
+| **Paste insert** | Opens a gap at the playhead on every unlocked track and pastes the copied clips there (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>V</kbd>). Dimmed until you copy clips. See [Paste and make room (Paste insert)](copy-and-paste.md#paste-and-make-room-paste-insert). |
+| **Paste attributes...** | Opens a checklist, where you right-clicked, to give the selected clips settings of the copied clip (<kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>V</kbd>). Dimmed until you copy clips. See [Give clips the look of another clip (Paste attributes)](copy-and-paste.md#give-clips-the-look-of-another-clip-paste-attributes). |
+| **Duplicate** | Copies the selected clips right after them (<kbd>Ctrl</kbd>+<kbd>D</kbd>). See [Duplicate clips on the timeline](copy-and-paste.md#duplicate-clips-on-the-timeline). |
 | **Split at playhead** | Splits the selected clips at the playhead, if it crosses them. See [Split clips at the playhead](#split-clips-at-the-playhead). |
 | **Delete** | Deletes the selected clips and leaves gaps. See [Delete clips](#delete-clips). |
 | **Ripple delete** | Deletes the selected clips and closes the space. See [Ripple delete clips](#ripple-delete-clips). |
@@ -235,4 +240,4 @@ The **Mute**, **Normalize**, **Auto-duck music** and **Detach audio** rows show 
 - [Projects and saving](projects-and-saving.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 38, 2026-10-17</sub>
+<sub>Last updated: Batch 39, 2026-10-18</sub>

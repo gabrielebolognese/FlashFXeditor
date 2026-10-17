@@ -14,7 +14,7 @@ The **Edit Properties** panel shows the settings of what you selected: a clip, a
 >   6. Click in the **Opacity** field, type `50` and press <kbd>Enter</kbd>: the logo becomes see-through. Hover **Undo** in the app bar: it reads **Undo Change opacity**.
 >   7. Click the **Transform** header: the section folds away. Click it again.
 >   8. Click the video on the timeline. In the **Clip** section, click in **End**, type a time one second earlier and press <kbd>Enter</kbd>: the video and its sound get shorter.
->   9. Click **Duplicate** in the quick actions: a copy of the video appears right after it on V1, selected.
+>   9. Click **Duplicate** in the quick actions: a copy of the video and its sound appears right after them on V1 and A1, selected.
 
 ## In this page
 - [Find your way around the panel](#find-your-way-around-the-panel)
@@ -125,7 +125,7 @@ With clips selected, a row of one-click buttons sits at the top of the panel. Po
 | **Add dissolve**, **Add dip to black**, **Add dip to white** | Add a 15-frame transition at the selected cut, or at the selected clip's start or end nearest the playhead. Drag one onto a cut on the timeline to add it there. See [Add a transition](fades-and-transitions.md#add-a-transition). |
 | **Mute** (a crossed-out speaker) | Mutes the selected audio clips and the sound of the selected videos. It looks pressed and reads **Unmute** while all of it is muted: click again to hear it. See [Mute a clip](audio-editing.md#mute-a-clip). |
 | **Remove silence** (dashed scissors) | Opens the **Remove silence** row under the quick actions: red stripes mark the pauses in the selected sound, and **Apply** cuts them out and closes the gaps. It looks pressed while the row is open: click again to close it. See [Removing silence](removing-silence.md). |
-| **Duplicate** | Copies the clip you clicked last right after itself (<kbd>Ctrl</kbd>+<kbd>D</kbd>). See [Duplicate a clip](#duplicate-a-clip). |
+| **Duplicate** | Copies the selected clips, with their linked sound and their groups, right after them (<kbd>Ctrl</kbd>+<kbd>D</kbd>). See [Duplicate a clip](#duplicate-a-clip). |
 | **Delete** | Deletes the selected clips and leaves gaps, like the <kbd>Delete</kbd> key. See [Delete clips](splitting-and-deleting.md#delete-clips). |
 
 - A button is dimmed when none of the selected clips can take it. The picture buttons and **Punch zoom** need a video, image, solid or text clip; an audio clip has no picture. On a text clip, the picture buttons use the box of its text, and on a solid the box of its shape. **Freeze frame** needs a video clip, and the speed buttons a video or audio clip that is not a freeze frame. **Save as preset** needs a text clip. **Update preset** needs a text clip whose style differs from the preset it uses. The fade buttons need a clip that is not a caption cue. **Mute** and **Remove silence** need an audio clip, or a video whose sound is a linked audio clip, and **Remove silence** also needs the video and its sound on unlocked tracks. The transition buttons are never dimmed. Clips on locked tracks are skipped.
@@ -166,19 +166,11 @@ Select one or more video, image, solid or text clips, then click a button in the
 
 ## Duplicate a clip
 
-1. Select the clip, on the timeline or in the preview.
-2. Press <kbd>Ctrl</kbd>+<kbd>D</kbd> while the Timeline or the Preview panel is active, or click **Duplicate** in the quick actions.
+Select the clips and click **Duplicate** in the quick actions: a copy of the selected clips, with their linked sound and their groups, appears right after them on the same tracks, selected. No other clip moves, and the step is named **Duplicate clip** or **Duplicate clips**. **Duplicate** is dimmed when every selected clip is on a locked track.
 
-The copy is selected, and the original stays where it is.
+<kbd>Ctrl</kbd>+<kbd>D</kbd> does the same while the Timeline panel is active; while **Edit Properties** is active, the browser gets the key, so click the timeline first. In the Preview panel, <kbd>Ctrl</kbd>+<kbd>D</kbd> copies the selected pictures 20 pixels down and to the right instead. See [Duplicate clips on the timeline](copy-and-paste.md#duplicate-clips-on-the-timeline) and [Duplicate a picture in the preview](copy-and-paste.md#duplicate-a-picture-in-the-preview).
 
-- **Where the copy goes.** On the same track, in the first free space after the original that is long enough for it: right after the original when there is room. Otherwise after the last clip of the track. No other clip moves.
-- **One clip.** Only the clip you clicked last (the one with the thicker outline) is copied. Its linked sound and the other selected clips are not, and the copy is neither linked nor grouped. To copy a video together with its sound, or several clips at once, hold <kbd>Alt</kbd> and drag them. See [Duplicate clips](timeline.md#duplicate-clips).
-- **What the copy keeps.** Everything else: the trimmed part of the media, the speed, the position, size, angle and opacity of the picture, the name and the label color.
-- A clip on a locked track is not copied, and **Duplicate** is dimmed.
-- In the Preview panel, <kbd>Ctrl</kbd>+<kbd>D</kbd> puts the copy later on the timeline, not at the playhead, so the preview keeps showing the original. The **Duplicate** row of the layer menu stays dimmed: it is available in a later version.
-- The step is named **Duplicate clip**.
-
-> **Note:** While the Edit Properties or Media panel is active, the browser gets <kbd>Ctrl</kbd>+<kbd>D</kbd> and offers to bookmark the page. Click the timeline first, or use **Duplicate** in the quick actions. See [Keys the browser keeps](keyboard-shortcuts.md#keys-the-browser-keeps).
+> **Tip:** To give other clips this clip's transform, opacity, crop, speed, text style, animations, volume or fades, copy it and use **Paste attributes** (<kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>V</kbd>). See [Give clips the look of another clip (Paste attributes)](copy-and-paste.md#give-clips-the-look-of-another-clip-paste-attributes).
 
 ## Change a clip's name, color and times
 
@@ -380,7 +372,7 @@ A color field is a swatch with the color's hex code next to it. The **Background
 | **Label clip**, **Label clips** | **Color** |
 | **Disable clip**, **Enable clip** (and the plural names) | **Enabled**, and **Disable** or **Enable** in the clip menu |
 | **Trim clip**, **Trim clips** | **Start**, **End**, **Duration**, **Source in**, **Source out** |
-| **Duplicate clip** | **Duplicate** or <kbd>Ctrl</kbd>+<kbd>D</kbd> |
+| **Duplicate clip**, **Duplicate clips** | **Duplicate** or <kbd>Ctrl</kbd>+<kbd>D</kbd>. See [Undo a paste or a duplicate](copy-and-paste.md#undo-a-paste-or-a-duplicate). |
 | **Change speed** | A speed button, **Speed**, or a quick series of <kbd>↑</kbd> and <kbd>↓</kbd> presses in it |
 | **Save preset "Name"** | **Save as preset**: the text starts to use the new preset. **Update preset** is not a step in the history. See [Undo and presets](text-presets.md#undo-and-presets). |
 | **Change duration** | **Duration** in the **Speed** section |
@@ -400,10 +392,10 @@ See [Undo and redo changes](projects-and-saving.md#undo-and-redo-changes).
 
 These parts are available in a later version:
 
-- Duplicating several clips, or a clip with its linked sound, with <kbd>Ctrl</kbd>+<kbd>D</kbd>, and the **Duplicate** row of the layer menu.
 - The dimmed rows of the **Project** section: **Still duration**, **Transition** and **Cache** with **Clear cache**.
 
 ## Related pages
+- [Copying, pasting and duplicating clips](copy-and-paste.md)
 - [Keyframes](keyframes.md)
 - [Fades and transitions](fades-and-transitions.md)
 - [Editing audio](audio-editing.md)
@@ -427,4 +419,4 @@ These parts are available in a later version:
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 38, 2026-10-17</sub>
+<sub>Last updated: Batch 39, 2026-10-18</sub>

@@ -245,7 +245,9 @@ Right-click a layer in the preview. A layer that is not selected is selected fir
 
 | Row | What it does |
 | --- | --- |
-| **Copy**, **Paste**, **Duplicate** | Dimmed: available in a later version. To duplicate a clip now, press <kbd>Ctrl</kbd>+<kbd>D</kbd>; see [Duplicate a clip](editing-properties.md#duplicate-a-clip). |
+| **Copy** | Copies the selected clips, with their linked sound and their group (<kbd>Ctrl</kbd>+<kbd>C</kbd>). See [Copy and cut clips](copy-and-paste.md#copy-and-cut-clips). |
+| **Paste** | Pastes the copied clips at the playhead on the targeted tracks (<kbd>Ctrl</kbd>+<kbd>V</kbd>). Dimmed until you copy clips. See [Paste clips at the playhead](copy-and-paste.md#paste-clips-at-the-playhead). |
+| **Duplicate** | Puts a copy of the selected layers 20 pixels down and to the right, on the video track above (<kbd>Ctrl</kbd>+<kbd>D</kbd>). A video's sound is not copied. One step, **Duplicate layer** (or **Duplicate layers**). See [Duplicate a picture in the preview](copy-and-paste.md#duplicate-a-picture-in-the-preview). |
 | **Fit** | Sizes the selected layers to fit inside the frame, and centers them. One step, **Fit layer** (or **Fit layers**). See [Fit, fill or center a picture](editing-properties.md#fit-fill-or-center-a-picture). |
 | **Fill** | Sizes the selected layers to cover the whole frame, and centers them; what reaches past the frame is cut off. One step, **Fill frame**. |
 | **Center** | Moves the selected layers to the middle of the frame without changing their size. One step, **Center layer** (or **Center layers**). |
@@ -324,4 +326,4 @@ While the layer is animated:
 - [Projects and saving](projects-and-saving.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 35, 2026-10-17</sub>
+<sub>Last updated: Batch 39, 2026-10-18</sub>

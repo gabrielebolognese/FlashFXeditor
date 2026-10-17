@@ -26,7 +26,7 @@ Cropping cuts away the sides of a video or image, so only the part you want stay
 - [Remove a crop](#remove-a-crop)
 - [Crop turned, mirrored and phone videos](#crop-turned-mirrored-and-phone-videos)
 - [Undo and cancel](#undo-and-cancel)
-- [What is not available yet](#what-is-not-available-yet)
+- [Copy a crop to other clips](#copy-a-crop-to-other-clips)
 - [Related pages](#related-pages)
 
 ## How cropping works
@@ -216,11 +216,13 @@ The four sides are the sides of the picture itself, as it looks before you turn 
 
 See [Undo and redo changes](projects-and-saving.md#undo-and-redo-changes).
 
-## What is not available yet
+## Copy a crop to other clips
 
-These parts are available in a later version:
+1. Select the cropped clip and press <kbd>Ctrl</kbd>+<kbd>C</kbd>.
+2. Select the video and image clips that should get the same crop.
+3. Press <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>V</kbd>, leave only **Crop** checked, and click **Paste**.
 
-- Copying the crop of one clip to other clips.
+Each clip gets the same crop, fitted to its own picture, in one step named **Paste attributes**. See [Give clips the look of another clip (Paste attributes)](copy-and-paste.md#give-clips-the-look-of-another-clip-paste-attributes).
 
 ## Related pages
 - [Editing properties](editing-properties.md)
@@ -231,4 +233,4 @@ These parts are available in a later version:
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 35, 2026-10-17</sub>
+<sub>Last updated: Batch 39, 2026-10-18</sub>
