@@ -479,6 +479,7 @@ Small things discovered during a batch that belong to a later batch. Format: `- 
 - [from Batch 33 -> Batch 45] Bundle: +19.4 kB main JS, the 580.90 kB transformers.js worker chunk and the 26.86 MB ONNX Runtime WASM asset (dynamic, not at startup). Transcription speed: ONNX Runtime WebGPU decoding about 100 ms per token; cross-origin isolation (COOP/COEP) would give WASM threads.
 - [from Batch 33 -> Batch 46] Review on a real screen: the Transcribe dialog (model rows, range chips), the review list, the toast's Cancel, the pressed mic button.
 - [from Batch 33 -> Batch 53] Transcribed cues carry no per-cue style override (§20.3): `replaceCuesInRange` places them like an import.
+- [from Batch 33 -> Batch 47] The Captions tab's word count (`wordCount` in `src/text/captions.ts`, runs of non-space) counts a Chinese or Japanese line as one word; it could count the cue's word timings when it has them.
 
 ## Dependencies
 Why each dependency exists (Batch rule 8).
@@ -3841,6 +3842,8 @@ Why each dependency exists (Batch rule 8).
   - The ONNX Runtime WASM (26.9 MB, asyncify build) is bundled as a hashed asset instead of transformers.js's default jsDelivr URL: no third-party CDN at run time, and the app works offline once a model is cached.
   - Speed (P14 has no transcription budget): Base on WebGPU transcribes 59 s in about 30 s on this laptop (~0.5 x realtime), Tiny in ~20 s. ONNX Runtime's WebGPU decoding costs about 65-100 ms per token here (fp32 and q4 decoders alike, warm or cold); WASM runs single-threaded (the app is not cross-origin isolated), Tiny in ~16 s.
   - The progress toast is not updated while playback runs (P1: no React commits while playing); it catches up when playback stops.
+  - (fix-attempt) Line widths are counted in columns, a wide character (Chinese, Japanese, Korean) as two (§10.6 "max ~32 chars per line" counts Latin characters): about 16 CJK characters per line, which fits the caption box like 32 Latin ones. Whisper's pieces in Chinese, Japanese, Thai, Lao and Burmese are joined without spaces.
+  - (fix-attempt) A cue that would be on screen for less than 0.2 s joins the next cue when they fit together in max lines (a zero-length "Yes." before "Okay let's go."), and transcribed cues that still land on one frame are placed one frame apart instead of joined (the SRT/VTT import still joins cues on one start frame, §10.5).
 - follow-ups:
   - [from Batch 32 -> Batch 33] done (the Transcribe button, transcription into the caption track replacing the range's cues after the review, `maxLines` / ~32 characters, word timings relative to each cue)
   - [from Batch 33 -> Batch 40] Palette entry for `captions.transcribe`.
@@ -3857,7 +3860,7 @@ Why each dependency exists (Batch rule 8).
   4. Other languages: transcribe non-English speech with "Detect automatically" (only English synthesizer voices were available here), then with the language chosen.
   5. Playback while transcribing on a real screen: the preview stays smooth (the GPU is shared with Whisper).
   6. Remove model in the dialog: the model shows its size again, and the next run downloads it.
-- docs note: transcription is a new user guide topic (Captions tab Transcribe, the dialog's models, sizes and Remove model, language, range, the progress toast and Cancel, the review, word highlight on transcribed cues, offline once downloaded, accuracy and speed expectations).
+- docs note: transcription is a new user guide topic (Captions tab Transcribe, the dialog's models, sizes and Remove model, language, range, the progress toast and Cancel, the review, word highlight on transcribed cues, offline once downloaded, accuracy and speed expectations). Worth a line: Whisper on the GPU is not exactly the same on every run, and on some runs the highlight can trail the voice by about 0.2 s; Chinese, Japanese, Thai, Lao and Burmese captions are written without spaces, about 16 Chinese or Japanese characters per line.
 - other: `docs/BATCHES.md` (Batches 51-53) and `docs/EDITOR_SPEC.md` (§20), edited outside the batch runs, are left out of this batch's commit (as in Batches 29-32).
 - review request: docs/PROGRESS.md package-lock.json package.json src/app/DialogHost.tsx src/app/ToastHost.module.css src/app/ToastHost.tsx src/app/captionController.ts src/app/services.ts src/app/transcribeController.ts src/app/transcription.test.ts src/app/transcription.ts src/audio/mixdown.test.ts src/audio/mixdown.ts src/main.tsx src/media/transcribe/languages.ts src/media/transcribe/models.ts src/media/transcribe/resample.test.ts src/media/transcribe/resample.ts src/media/workers/WorkerPool.test.ts src/media/workers/WorkerPool.ts src/media/workers/protocol.ts src/media/workers/transcribe.worker.ts src/panels/media/CaptionsTab.tsx src/panels/media/TranscribeDialog.module.css src/panels/media/TranscribeDialog.tsx src/project/appSettings.ts src/project/recentProjects.test.ts src/text/transcript.test.ts src/text/transcript.ts src/timeline/edit/captions.test.ts src/timeline/edit/captions.ts src/ui/toasts.ts vite.config.ts
 - review: rejected
@@ -3892,3 +3895,26 @@ Why each dependency exists (Batch rule 8).
     - TODOs: the only new one is `TODO(batch 43)` (`src/audio/mixdown.ts:4`). No TODO in `src` is untagged, and Batch 32's `TODO(batch 33)` is gone.
     - The `@huggingface/transformers` dependency (named by §10.6) is listed in Dependencies.
     - There are no earlier rejections to check.
+- fix-attempt: done (2026-10-17)
+  1. Chinese, Japanese, Thai, Lao and Burmese captions no longer get a space between every piece (`src/text/transcript.ts`):
+    - `wordsFromChunks` keeps on each timed word whether its chunk began with whitespace: a chunk without a leading space is `attached: true` to the word before it (`TimedWord` now extends `SubtitleWord` with the optional flag; English chunks, which all start with a space, give no flag).
+    - `lineBreaks`, `phraseCues` and `cueText` take words with that flag (`CueWord`). They put a space before a word only when it is not attached and count line widths the same way (`widthOf`, `joinWords`). A space Whisper did write stays ("これは iPhoneです。").
+    - Line widths are in columns: a wide character (Han, kana, Hangul, CJK punctuation, full-width forms) counts two, so a line holds about 16 Chinese or Japanese characters instead of 32 (32 would be twice as wide as an English line, past the caption box's 900 px wrap width at the default 64 px size).
+    - The cue words stored in the document are plain `{ text, startUs, endUs }` (the flag stays in the transcript). `wordRanges` finds pieces with no spaces between them, so the highlight works.
+    - Tests (`transcript.test.ts`, +6): the review's ja/zh/en chunk shapes ("今日はいい天気ですね。", "パスタを作りましょう。", "我们今天做意大利面。", "Welcome to the editor."), the attached flags, the column widths (16 wide characters per line, "abcd ef"), a long Japanese sentence in two cues of lines of at most 16 characters, every piece found by `wordRanges`.
+  2. Transcribed cues no longer share a frame, so no cue is merged and no word timing is lost:
+    - `cuesFromWords` (`src/text/transcript.ts`): a cue the next one would leave on screen for less than `MIN_ALONE_US` (0.2 s) joins the next one when they fit together in the style's max lines. The review's " Yes." [1.0, 1.0] + " Okay let's go." now gives one cue "Yes. Okay let's go." with its 4 word timings. 0.2 s is too short to read, and it is at least 4 frames at 23.976 fps, so cues further apart never round to one frame.
+    - `transcribedCues` (`src/timeline/edit/captions.ts`): when cues still land on one frame (a short cue that does not fit with the next one), the later cue moves to the frame after the one before it, with its words (relative to its new start), instead of going through the import's merge in `cuesFromSubtitles`. The import keeps its rule (two SRT cues on one start frame become one).
+    - Tests: `transcript.test.ts` (the zero-length words joined; a pair that does not fit one line stays apart), `captions.test.ts` (+1: two cues on frame 30 placed at 30 and 31 with all their word timings; three on one frame at 30, 31, 32; Whisper's chunks end to end).
+  3. (non-blocking item) `startTranscription` stops the transcribe worker on its early returns too (a locked caption track, an empty timeline), so the worker the dialog's status request started does not stay alive with transformers.js loaded (P13).
+  4. (non-blocking item) Whisper Base on WebGPU is not deterministic here (on one of the reviewer's nine runs the word starts trailed by about 0.2 s): added to the docs note.
+  - With the pre-fix `transcript.ts` and `captions.ts`, 9 of the 45 tests in the two files fail (the new ones and the ones calling the new word shape); with the fix all pass.
+  - Checks:
+    - `npm run check` green: typecheck, lint plus the CSS color check, 1602 unit tests in 161 files (+6), 3 perf tests. Build: main JS 916.97 kB (297.85 kB gzip; was 916.36), transcribe.worker 7.03 kB (was 6.99).
+    - Browser: headless Chrome 155 over CDP, dev server 5181 restarted after the edits (fresh module instance).
+      - The review's probes: `%TEMP%/b33/rev_cjk.mjs` gives ja "今日はいい天気ですね。", "パスタを作りましょう。", zh "我们今天做意大利面。", en "Welcome to the editor.". `rev_merge.mjs` gives one cue "Yes. Okay let's go." placed at frame 26 for 36 frames with 4 word timings ("Yes." 0-1, "Okay" 0-9, "let's" 9-15, "go." 15-27).
+      - Acceptance 1 (`acc1.mjs`) 21/21: the review after 37.8 s, 18 cues, 156 words (154 right), median word lag 0.029 s (p10 -0.049, p90 0.157, mean error 0.074 s), every word found in its cue text, at most 2 lines of 32 characters, one undo step "Transcribe captions", 13 word quads and 2032 yellow pixels in Export frame, the worker stopped.
+      - Acceptance 2 (`acc2.mjs`) 22/22: cancel from the toast at 20%, from the pressed mic while loading, during the Small download (Small still not cached), Discard and Esc on the review ("Replace 1 cue"): the document, its undo and redo unchanged each time, the worker stopped.
+      - New `fix_early.mjs` 4/4: with the dialog's worker running, Transcribe on an empty timeline ("Nothing to transcribe") and on a locked caption track ("The caption track is locked") leaves the state idle and the worker stopped.
+- follow-ups (fix-attempt):
+  - [from Batch 33 -> Batch 47] The Captions tab's word count (`wordCount` in `src/text/captions.ts`, runs of non-space) counts a Chinese or Japanese line as one word; it could count the cue's word timings when it has them.

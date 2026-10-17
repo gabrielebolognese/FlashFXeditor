@@ -340,10 +340,23 @@ function shiftCues(cues: readonly SubtitleCue[], offsetUs: number): SubtitleCue[
 /**
  * Transcribed cues (spec §10.6) of frames [start, end): `cues` are in µs from the range's start, with
  * their words. On the frame grid as an import's, kept inside the range (a cue running past its end is
- * cut there, with its words). Exported for the review step, which shows them before they are placed.
+ * cut there, with its words), but never two on one frame: an import joins those and keeps only the
+ * first one's word timings, so a cue starting on or before the frame of the one before it moves to
+ * the frame after it. Exported for the review step, which shows them before they are placed.
  */
 export function transcribedCues(cues: readonly SubtitleCue[], range: { start: Frame; end: Frame }, fps: Project["settings"]["fps"]): ImportedCue[] {
-  const framed = cuesFromSubtitles(shiftCues(cues, frameToUs(range.start, fps)), fps).cues;
+  let last = -1;
+  const apart = shiftCues(cues, frameToUs(range.start, fps))
+    .sort((a, b) => a.startUs - b.startUs)
+    .map((cue) => {
+      const frame = Math.max(0, usToFrame(cue.startUs, fps));
+      const start = Math.max(frame, last + 1);
+      last = start;
+      if (start === frame) return cue;
+      const startUs = frameToUs(start, fps);
+      return { ...cue, startUs, endUs: Math.max(cue.endUs, startUs) };
+    });
+  const framed = cuesFromSubtitles(apart, fps).cues;
   const inside: ImportedCue[] = [];
   for (const cue of framed) {
     if (cue.start < range.start || cue.start >= range.end) continue;

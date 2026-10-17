@@ -5,7 +5,7 @@ import type { Command as Cmd } from "../../core/commands/command.js";
 import { DocumentStore } from "../../core/store/DocumentStore.js";
 import { createSessionStore } from "../../core/store/sessionStore.js";
 import { defaultCaptionStyle, evenWords, wordRanges } from "../../text/captions.js";
-import { cuesFromWords, type TimedWord } from "../../text/transcript.js";
+import { cuesFromWords, wordsFromChunks, type TimedWord } from "../../text/transcript.js";
 import { formatSubtitles, parseSrt } from "../../text/subtitles.js";
 import {
   addCaptionTrack,
@@ -253,6 +253,34 @@ describe("transcription", () => {
       // Cut at the range end with its words (the last word starts after the cut).
       { start: 84, duration: 16, text: "past the end", words: [{ text: "past", start: 0, end: 12 }, { text: "the", start: 12, end: 16 }] },
     ]);
+  });
+
+  it("never puts two transcribed cues on one frame: the later one moves to the next frame with its words", () => {
+    const cues = [
+      { startUs: 1_000_000, endUs: 1_000_001, text: "Yes.", words: words([["Yes.", 1, 1.1]]) },
+      { startUs: 1_000_000, endUs: 2_000_000, text: "Okay let's go", words: words([["Okay", 1, 1.3], ["let's", 1.3, 1.5], ["go", 1.5, 2]]) },
+    ];
+    expect(transcribedCues(cues, { start: 0, end: 300 }, FPS30)).toEqual([
+      { start: 30, duration: 1, text: "Yes.", words: [{ text: "Yes.", start: 0, end: 1 }] },
+      { start: 31, duration: 29, text: "Okay let's go", words: [{ text: "Okay", start: 0, end: 8 }, { text: "let's", start: 8, end: 14 }, { text: "go", start: 14, end: 29 }] },
+    ]);
+    // Three on one frame: one frame apart.
+    const same = [0, 1, 2].map((i) => ({ startUs: 1_000_000, endUs: 1_000_000 + i, text: `c${i}` }));
+    expect(transcribedCues(same, { start: 0, end: 300 }, FPS30).map((cue) => [cue.start, cue.duration, cue.text])).toEqual([
+      [30, 1, "c0"],
+      [31, 1, "c1"],
+      [32, 1, "c2"],
+    ]);
+    // From Whisper's chunks: "Yes." of zero length joins the next cue, every word keeps its timing.
+    const chunks = [
+      { text: " Yes.", timestamp: [1, 1] as const },
+      { text: " Okay", timestamp: [1, 1.3] as const },
+      { text: " let's", timestamp: [1.3, 1.5] as const },
+      { text: " go.", timestamp: [1.5, 1.9] as const },
+    ];
+    const placed = transcribedCues(cuesFromWords(wordsFromChunks(chunks, 10e6), { maxLines: 2, durationUs: 10e6 }), { start: 0, end: 300 }, FPS30);
+    expect(placed.map((cue) => cue.text)).toEqual(["Yes. Okay let's go."]);
+    expect(placed[0]?.words?.map((word) => word.text)).toEqual(["Yes.", "Okay", "let's", "go."]);
   });
 
   it("creates the caption track when missing, in one undo step", () => {
