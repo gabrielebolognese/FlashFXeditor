@@ -159,6 +159,10 @@ export interface TimelineTheme {
   rubberBandOutline: string;
   rubberBandWidth: number;
   rubberBandZone: number;
+  /** Remove silence's preview (Batch 38): the wash, stripes and end lines of each cut. */
+  silenceFill: string;
+  silenceHatch: string;
+  silenceEdge: string;
 }
 
 /** Reads one custom property by name (e.g. `--accent`); returns "" when it is not defined. */
@@ -327,6 +331,9 @@ export function readTheme(read: TokenReader, root?: Element): { theme: Theme; mi
       rubberBandOutline: str("--timeline-rubber-band-outline"),
       rubberBandWidth: num("--timeline-rubber-band-width"),
       rubberBandZone: num("--timeline-rubber-band-zone"),
+      silenceFill: str("--timeline-silence-fill"),
+      silenceHatch: str("--timeline-silence-hatch"),
+      silenceEdge: str("--timeline-silence-edge"),
       rangeWash: str("--timeline-range-wash"),
       rangeHandleWidth: num("--timeline-range-handle-width"),
       rangeHandleZone: num("--timeline-range-handle-zone"),

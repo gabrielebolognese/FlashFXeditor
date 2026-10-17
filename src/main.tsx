@@ -21,6 +21,7 @@ import { installPreviewController, startGpu } from "./app/previewController.js";
 import { installProjectController } from "./app/projectController.js";
 import { installPropertiesController } from "./app/propertiesController.js";
 import { startServices } from "./app/services.js";
+import { installSilenceController } from "./app/silenceController.js";
 import { installSpeedController } from "./app/speedController.js";
 import { installTextController } from "./app/textController.js";
 import { installTimelineController } from "./app/timelineController.js";
@@ -64,6 +65,7 @@ async function start(): Promise<void> {
   installPlaybackController();
   installAudioController();
   installAudioEditController();
+  installSilenceController();
   root.render(
     <StrictMode>
       <App />

@@ -11,11 +11,12 @@
 // changes) while the content canvas stays untouched. Nothing but the scrollbar state is drawn over the
 // scrollbars. Fades and transitions (Batch 36): the hovered clip's fade handles, a fade being dragged
 // (its clip redrawn with the new fade), the hovered or dragged transition block (a drag redraws its two
-// clips under the block as it would be) and the cut a dragged transition chip would land on.
+// clips under the block as it would be) and the cut a dragged transition chip would land on. Remove
+// silence's preview (Batch 38): the cuts its Apply would make, hatched red over the clip bodies.
 import { DEFAULT_TRANSITION_FRAMES } from "../../core/document/transitions.js";
 import { isMediaClip, type Clip, type Frame, type Marker, type MediaClip, type Project, type Track, type TrackId, type Transition } from "../../core/document/types.js";
 import { EMPTY_SELECTION, type Selection } from "../../core/store/selection.js";
-import type { TransitionSelection } from "../../core/store/sessionStore.js";
+import type { SilencePreview, TransitionSelection } from "../../core/store/sessionStore.js";
 import type { Theme } from "../../core/theme/theme.js";
 import { edgeFrame, type TrimEdge } from "../edit/trim.js";
 import { markedRange } from "../model/inOut.js";
@@ -154,6 +155,8 @@ export interface OverlayScene {
   blocks?: BlockScene | null;
   /** The hovered or dragged rubber band (Batch 37). */
   band?: BandScene | null;
+  /** Remove silence's cuts (Batch 38), or null. */
+  silence?: SilencePreview | null;
   project?: Project | null;
   selection?: Selection | null;
   transition?: TransitionSelection | null;
@@ -186,6 +189,7 @@ export function drawOverlay(scene: OverlayScene): void {
   ctx.clip();
   drawHover(scene);
   if (scene.hoverGap || scene.gap) drawGaps(scene);
+  if (scene.silence) drawSilence(scene, scene.silence);
   // The trim preview stands in for the content under it, so everything else draws over it.
   if (scene.trim) drawTrimLayout(scene, scene.trim);
   if (scene.keyDrag) drawKeyDrag(scene, scene.keyDrag);
@@ -214,6 +218,37 @@ export function drawOverlay(scene: OverlayScene): void {
 
 /** Snaps a CSS coordinate to the device pixel grid. */
 const snap = (value: number, dpr: number) => Math.round(value * dpr) / dpr;
+
+/**
+ * Remove silence's preview (spec §14 "red hatched segments on the clip"): each cut a wash and red
+ * stripes over the clip band of its track, with a line at both ends; only the visible parts (P10).
+ */
+function drawSilence(scene: OverlayScene, preview: SilencePreview): void {
+  const { ctx, dpr, geometry, theme } = scene;
+  const tl = theme.timeline;
+  const { from, to } = geometry.visibleFrames;
+  const left = geometry.area.x;
+  const right = left + geometry.area.width;
+  const line = 1 / dpr;
+  for (const segment of preview.segments) {
+    if (segment.end < from || segment.start > to) continue;
+    const row = geometry.rowOf(segment.trackId);
+    if (!row) continue;
+    const y = snap(row.y + tl.clipInset, dpr);
+    const height = snap(row.y + row.height - tl.clipInset, dpr) - y;
+    const x0 = snap(geometry.frameToX(segment.start), dpr);
+    const x1 = snap(geometry.frameToX(segment.end), dpr);
+    const a = Math.max(x0, left);
+    const b = Math.min(x1, right);
+    if (b <= a || height <= 0) continue;
+    ctx.fillStyle = tl.silenceFill;
+    ctx.fillRect(a, y, b - a, height);
+    drawDiagonalHatch(ctx, dpr, a, b, y, height, tl.silenceHatch, tl.hatchGap);
+    ctx.fillStyle = tl.silenceEdge;
+    if (x0 >= left) ctx.fillRect(x0, y, line, height);
+    if (x1 <= right) ctx.fillRect(Math.max(x0, x1 - line), y, line, height);
+  }
+}
 
 /** A keyframe lane being dragged: redrawn (opaque) over the content's, inside the clip's rounded body. */
 function drawKeyDrag(scene: OverlayScene, drag: NonNullable<OverlayScene["keyDrag"]>): void {

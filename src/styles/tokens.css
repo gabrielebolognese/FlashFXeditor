@@ -283,6 +283,12 @@
   --timeline-rubber-band-outline: rgba(7, 15, 28, 0.7); /* bg-sunken at 70% */
   --timeline-rubber-band-width: 1.5px; /* the selection outline's width */
   --timeline-rubber-band-zone: var(--space-1); /* 4px above and below the line */
+  /* Remove silence's preview (Batch 38, spec §14 "red hatched segments on the clip"; gap: the DS has
+     none): each cut a --danger wash over the clip band, the transition warning's red stripes at the
+     overwrite hatch's spacing, and a 1 device px --danger line at both ends (where the cuts fall). */
+  --timeline-silence-fill: var(--danger-wash);
+  --timeline-silence-hatch: var(--timeline-transition-warning);
+  --timeline-silence-edge: var(--danger);
   --marker-popover-width: calc(var(--control-default) * 7); /* the label field over 8 swatches and Delete */
 
   /* Audio (gap: the DS has no meter or knob). Stereo peak meter along the preview's right edge, master volume knob. */
@@ -333,6 +339,9 @@
      a number field's label scrubs after a small dead zone (a click without movement focuses the field). */
   --properties-section-header: var(--control-default);
   --field-scrub-threshold: 3px;
+  /* Remove silence's parameter row (Batch 38; gap: the DS has no inline parameter row): the threshold's
+     dB readout keeps "-60 dB" in mono without the slider moving as the value changes. */
+  --silence-readout-width: calc(var(--space-6) + var(--space-5));
   /* Color picker popover (gap: the DS has none): a saturation/value square, hue and alpha strips, an
      8 x --control-default wide panel in the menu material. The gradients are the picker's own colors. */
   --picker-width: calc(8 * var(--control-default));
