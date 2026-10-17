@@ -34,8 +34,8 @@ export const LABEL_COLORS = ["red", "orange", "green", "teal", "blue", "violet",
 export type LabelColor = (typeof LABEL_COLORS)[number];
 
 /**
- * A vertical two-stop gradient, `from` at the top to `to` at the bottom (spec §10.1 text fill). Text
- * fills use it since Batch 28. TODO(batch 34): solid fills.
+ * A vertical two-stop gradient, `from` at the top to `to` at the bottom of the box it fills: a text's
+ * block (spec §10.1, Batch 28) or a solid's size (Batch 34), turning with the layer.
  */
 export interface Gradient {
   from: RGBA;
@@ -311,10 +311,19 @@ export interface TextClip extends ClipBase {
   fades: { in: Frame; out: Frame };
 }
 
+/** The shapes of a solid (spec §5.2), in the order of the Solid section's chips. */
+export const SOLID_SHAPE_IDS = ["rect", "roundedRect", "ellipse", "line"] as const;
+export type SolidShape = (typeof SOLID_SHAPE_IDS)[number];
+
+/**
+ * A solid or shape layer (spec §5.2, Batch 34): `size` project px at scale 1. A rect, a rect with
+ * rounded corners (`cornerRadius` px, at most half the shorter side), an ellipse filling the size, or a
+ * horizontal line `size.w` long and `size.h` thick whose ends are rounded by `cornerRadius`.
+ */
 export interface SolidClip extends ClipBase {
   kind: "solid";
   fill: RGBA | Gradient;
-  shape: "rect" | "roundedRect" | "ellipse" | "line";
+  shape: SolidShape;
   size: { w: number; h: number };
   cornerRadius: number;
   transform: Transform;

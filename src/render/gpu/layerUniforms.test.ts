@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { FULL_UV } from "../compositor/drawList.js";
 import { applyToPoint, multiply, mutableIdentity, rectTransform } from "../mat3.js";
-import { layerFloats, LAYER_SIZE, LAYER_STRIDE, packLayer, packMat3, pixelsToClip, pixelsToClipInto } from "./layerUniforms.js";
+import { layerFloats, LAYER_SIZE, LAYER_STRIDE, packLayer, packMat3, pixelsToClip, pixelsToClipInto, SHAPE_CODE } from "./layerUniforms.js";
 
 describe("layer uniforms", () => {
   it("fits one layer in the dynamic-offset stride", () => {
@@ -22,19 +22,22 @@ describe("layer uniforms", () => {
       transform: rectTransform(10, 20, 30, 40),
       uv: { u0: 0.1, v0: 0.2, u1: 0.9, v1: 0.8 },
       color: { r: 1, g: 0.5, b: 0.25, a: 0.5 },
+      to: { r: 0, g: 0.25, b: 1, a: 1 },
+      shape: { width: 120, height: 60, radius: 12, code: SHAPE_CODE.ellipse },
       opacity: 0.75,
       flipX: true,
       flipY: false,
       mix: 0.3,
     });
-    const slot = [...out.slice(64, 64 + 24)].map((v) => Math.round(v * 1000) / 1000);
-    expect(slot).toEqual([30, 0, 0, 0, 0, 40, 0, 0, 10, 20, 1, 0, 0.1, 0.2, 0.9, 0.8, 1, 0.5, 0.25, 0.5, 0.75, 1, 0, 0.3]);
+    const slot = [...out.slice(64, 64 + 32)].map((v) => Math.round(v * 1000) / 1000);
+    expect(slot).toEqual([30, 0, 0, 0, 0, 40, 0, 0, 10, 20, 1, 0, 0.1, 0.2, 0.9, 0.8, 1, 0.5, 0.25, 0.5, 0.75, 1, 0, 0.3, 0, 0.25, 1, 1, 120, 60, 12, 2]);
     expect([...out.slice(0, 64)].every((v) => v === 0)).toBe(true);
   });
 
   it("clamps opacity and mix to 0..1", () => {
     const out = new Float32Array(layerFloats(1));
-    packLayer(out, 0, { transform: rectTransform(0, 0, 1, 1), uv: FULL_UV, color: { r: 0, g: 0, b: 0, a: 1 }, opacity: 2, flipX: false, flipY: true, mix: Number.NaN });
+    const black = { r: 0, g: 0, b: 0, a: 1 };
+    packLayer(out, 0, { transform: rectTransform(0, 0, 1, 1), uv: FULL_UV, color: black, to: black, shape: { width: 0, height: 0, radius: 0, code: SHAPE_CODE.quad }, opacity: 2, flipX: false, flipY: true, mix: Number.NaN });
     expect([...out.slice(20, 24)]).toEqual([1, 0, 1, 0]);
   });
 

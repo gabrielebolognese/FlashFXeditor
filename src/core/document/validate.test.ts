@@ -33,6 +33,19 @@ describe("validateProject", () => {
     expect(validateProject(valid())).toEqual([]);
   });
 
+  it("checks solids: a known shape, a positive size, a radius >= 0, a color or a two-stop gradient", () => {
+    const solid = makeSolidClip({ id: "s1", trackId: "v1", start: 60, duration: 30 });
+    const gradient = { ...makeSolidClip({ id: "s2", trackId: "v1", start: 90, duration: 30 }), shape: "ellipse" as const, fill: { from: { r: 1, g: 0, b: 0, a: 1 }, to: { r: 0, g: 0, b: 1, a: 0.5 } } };
+    expect(validateProject(withClips(valid(), [solid, gradient]))).toEqual([]);
+    const broken = { ...solid, shape: "star" as "rect", size: { w: 0, h: Number.NaN }, cornerRadius: -1, fill: { from: { r: 1, g: 0, b: 0, a: 1 } } as never };
+    expect(validateProject(withClips(valid(), [broken]))).toEqual([
+      expect.stringContaining('shape "star"'),
+      expect.stringContaining("size 0xNaN"),
+      expect.stringContaining("corner radius -1"),
+      expect.stringContaining("fill must be RGBA or a gradient"),
+    ]);
+  });
+
   it("checks text clips: a string, a box width, a size, weight and line height the layout can use", () => {
     const text = makeTextClip({ id: "t1", trackId: "v1", start: 60, duration: 30, value: "Hi" });
     expect(validateProject(withClips(valid(), [text]))).toEqual([]);

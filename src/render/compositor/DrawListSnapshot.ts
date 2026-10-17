@@ -42,9 +42,16 @@ export class DrawListSnapshot {
           this.uv(layer.crop);
           this.push(layer.mix);
           break;
-        case "solid":
+        case "solid": {
           this.color(layer.color);
+          this.color(layer.to ?? layer.color);
+          const shape = layer.shape;
+          this.push(shape ? (shape.kind === "ellipse" ? 2 : 1) : 0);
+          this.push(shape?.width ?? 0);
+          this.push(shape?.height ?? 0);
+          this.push(shape?.radius ?? 0);
           break;
+        }
       }
     }
     const changed = !this.same();

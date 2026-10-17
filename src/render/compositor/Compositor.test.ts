@@ -265,19 +265,56 @@ describe("Compositor.evaluate", () => {
     expect(fadeFactor({ start: 0, duration: 10, fades: { in: 0, out: 0 } }, 3)).toBe(1);
   });
 
-  it("draws rect solids with a flat fill and skips the shapes of later batches", () => {
-    let doc = project(["v1", "v2"]);
+  it("draws solids as their shape over their size's box, flat or as a vertical gradient (Batch 34)", () => {
+    let doc = project(["v1", "v2", "v3"]);
     const rect = { ...makeSolidClip({ id: "s1", trackId: "v1", start: 0, duration: 10 }), fill: { r: 1, g: 0, b: 0, a: 0.5 }, opacity: 0.8, transform: transform({ x: 10 }) };
-    const ellipse = { ...makeSolidClip({ id: "s2", trackId: "v2", start: 0, duration: 10 }), shape: "ellipse" as const };
-    doc = withClips(doc, [rect, ellipse] as Clip[]);
-    const layers = new Compositor().evaluate(doc, 0).layers;
-    expect(layers).toHaveLength(1);
-    const layer = layers[0] as SolidLayer;
-    expect(layer.kind).toBe("solid");
-    expect(layer.color).toEqual({ r: 1, g: 0, b: 0, a: 0.5 });
-    expect(layer.opacity).toBe(0.8);
-    close(applyToPoint(layer.transform, 0, 0), { x: W / 2 + 10 - 50, y: H / 2 - 50 });
-    close(applyToPoint(layer.transform, 1, 1), { x: W / 2 + 10 + 50, y: H / 2 + 50 });
+    const red = { r: 1, g: 0, b: 0, a: 1 };
+    const blue = { r: 0, g: 0, b: 1, a: 0.5 };
+    const ellipse = { ...makeSolidClip({ id: "s2", trackId: "v2", start: 0, duration: 10 }), shape: "ellipse" as const, size: { w: 300, h: 200 }, cornerRadius: 40, fill: { from: red, to: blue } };
+    const rounded = { ...makeSolidClip({ id: "s3", trackId: "v3", start: 0, duration: 10 }), shape: "roundedRect" as const, size: { w: 200, h: 60 }, cornerRadius: 500 };
+    doc = withClips(doc, [rect, ellipse, rounded] as Clip[]);
+    const layers = new Compositor().evaluate(doc, 0).layers as SolidLayer[];
+    expect(layers).toHaveLength(3);
+    const [a, b, c] = layers as [SolidLayer, SolidLayer, SolidLayer];
+    expect(a.kind).toBe("solid");
+    expect(a.color).toEqual({ r: 1, g: 0, b: 0, a: 0.5 });
+    expect(a.to).toBeNull();
+    expect(a.shape).toEqual({ kind: "box", width: 100, height: 100, radius: 0 });
+    expect(a.opacity).toBe(0.8);
+    close(applyToPoint(a.transform, 0, 0), { x: W / 2 + 10 - 50, y: H / 2 - 50 });
+    close(applyToPoint(a.transform, 1, 1), { x: W / 2 + 10 + 50, y: H / 2 + 50 });
+    expect(b.color).toEqual(red);
+    expect(b.to).toEqual(blue);
+    expect(b.shape).toEqual({ kind: "ellipse", width: 300, height: 200, radius: 0 });
+    close(applyToPoint(b.transform, 0, 0), { x: W / 2 - 150, y: H / 2 - 100 });
+    // A radius past half the shorter side is drawn as half of it (a pill).
+    expect(c.shape).toEqual({ kind: "box", width: 200, height: 60, radius: 30 });
+  });
+
+  it("mirrors a solid's fill inside its box on flips and draws live looks (a field scrub, a size drag)", () => {
+    let doc = project(["v1"]);
+    doc = withClips(doc, [{ ...makeSolidClip({ id: "s", trackId: "v1", start: 0, duration: 10 }), transform: transform({ flipV: true }) }] as Clip[]);
+    const compositor = new Compositor();
+    const flipped = compositor.evaluate(doc, 0).layers[0] as SolidLayer;
+    // The quad's top edge (where the gradient starts) is the box's bottom.
+    close(applyToPoint(flipped.transform, 0, 0), { x: W / 2 - 50, y: H / 2 + 50 });
+    const live = new Map([["s", { shape: "line" as const, fill: { r: 0, g: 1, b: 0, a: 1 }, size: { w: 400, h: 8 }, cornerRadius: 4 }]]);
+    const layer = compositor.evaluate(doc, 0, null, null, null, null, null, null, live).layers[0] as SolidLayer;
+    expect(layer.shape).toEqual({ kind: "box", width: 400, height: 8, radius: 4 });
+    expect(layer.color).toEqual({ r: 0, g: 1, b: 0, a: 1 });
+    close(applyToPoint(layer.transform, 1, 0), { x: W / 2 + 200, y: H / 2 + 4 });
+  });
+
+  it("plays an animated image from its in point and loops it", () => {
+    let doc = project(["v1"], [{ ...makeMedia("gif", "image", 1_000_000), width: 400, height: 300, codec: "gif" }]);
+    doc = withClips(doc, [clip(doc, { id: "c", trackId: "v1", start: 30, duration: 150, mediaId: "gif", kind: "image", in: 500_000, out: 500_000 + frameToUs(150, doc.settings.fps) })]);
+    const compositor = new Compositor();
+    const at = (frame: number) => media(compositor.evaluate(doc, frame).layers[0]).timeUs;
+    expect(at(30)).toBe(500_000);
+    expect(at(36)).toBe(700_000);
+    expect(at(45)).toBe(0);
+    expect(at(75)).toBe(0);
+    expect(media(compositor.evaluate(doc, 46).layers[0]).still).toBe(true);
   });
 
   it("gives images one still texture", () => {
@@ -352,6 +389,20 @@ describe("DrawListSnapshot", () => {
     expect(snapshot.update(shorter)).toBe(false);
     snapshot.reset();
     expect(snapshot.update(shorter)).toBe(true);
+  });
+
+  it("sees a solid's gradient and shape change (Batch 34)", () => {
+    const snapshot = new DrawListSnapshot();
+    const solid = (fields: Partial<SolidLayer>): DrawList => ({ width: W, height: H, background: { r: 0, g: 0, b: 0, a: 1 }, layers: [{ kind: "solid", transform: [2, 0, 0, 2, 5, 5], opacity: 1, color: { r: 1, g: 1, b: 1, a: 1 }, ...fields }] });
+    const box = { kind: "box" as const, width: 100, height: 50, radius: 10 };
+    expect(snapshot.update(solid({ shape: box }))).toBe(true);
+    expect(snapshot.update(solid({ shape: { ...box } }))).toBe(false);
+    expect(snapshot.update(solid({ shape: { ...box, radius: 12 } }))).toBe(true);
+    expect(snapshot.update(solid({ shape: { ...box, radius: 12, kind: "ellipse" } }))).toBe(true);
+    expect(snapshot.update(solid({ shape: { ...box, radius: 12, kind: "ellipse" }, to: { r: 0, g: 0, b: 0, a: 1 } }))).toBe(true);
+    expect(snapshot.update(solid({ shape: null }))).toBe(true);
+    // A flat fill without `to` draws what one with `to` = its color draws.
+    expect(snapshot.update(solid({ shape: null, to: { r: 1, g: 1, b: 1, a: 1 } }))).toBe(false);
   });
 
   it("treats a destroyed texture as a change", () => {

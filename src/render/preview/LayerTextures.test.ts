@@ -78,7 +78,13 @@ function setup(options: { wantedLod?: (mediaId: string) => Lod; proxies?: Set<st
       return 1;
     }),
   };
-  const images = { get: (mediaId: string) => pool.get(imageKey(mediaId)), load: vi.fn(() => new Promise<TextureHandle | null>(() => undefined)) };
+  const images = {
+    get: (mediaId: string) => pool.get(imageKey(mediaId)),
+    load: vi.fn(() => new Promise<TextureHandle | null>(() => undefined)),
+    frameKey: ((mediaId: string) => imageKey(mediaId)) as (mediaId: string, timeUs: number) => TextureKey | null,
+    vectorSize: (() => null) as (mediaId: string) => { width: number; height: number } | null,
+    refine: vi.fn(async (): Promise<TextureHandle | null> => null),
+  };
   const onChange = vi.fn();
   const textures = new LayerTextures({ frames, images, pool, onChange, ...(options.wantedLod && { wantedLod: options.wantedLod }) });
   /** Uploads a frame into the pool, as the frame service does on delivery. */
@@ -309,6 +315,50 @@ describe("LayerTextures", () => {
     expect(layers[0]).toBe(solid);
     expect(textureOf(layers[1])).toBe(tex);
     expect(pool.isPinned(imageKey("img"))).toBe(true);
+  });
+
+  it("draws an animated image's frame at the layer's time, holding the last one while a frame loads (Batch 34)", () => {
+    const { textures, images, pool } = setup();
+    const starts = [0, 100_000, 200_000];
+    images.frameKey = (mediaId: string, timeUs: number): TextureKey => ({ mediaId, lod: "full", timeUs: starts.filter((s) => s <= timeUs).at(-1) ?? 0 });
+    const frame0 = texture();
+    const frame2 = texture();
+    pool.put({ mediaId: "gif", lod: "full", timeUs: 0 }, frame0);
+    pool.put({ mediaId: "gif", lod: "full", timeUs: 200_000 }, frame2);
+    const at = (timeUs: number) => textureOf(resolve(textures, "playback", media({ trackId: "v1", mediaId: "gif", still: true, timeUs }))[0]);
+    expect(at(50_000)).toBe(frame0);
+    expect(at(250_000)).toBe(frame2);
+    expect(pool.isPinned({ mediaId: "gif", lod: "full", timeUs: 200_000 })).toBe(true);
+    // Frame 1 is not uploaded: the track holds frame 2 and the animation loads.
+    expect(at(150_000)).toBe(frame2);
+    expect(images.load).toHaveBeenCalledWith("gif");
+  });
+
+  it("rasterizes an SVG again at rest when it is drawn bigger than its raster, or much smaller (spec §7.1)", async () => {
+    const { textures, images, pool, flush, onChange } = setup();
+    images.vectorSize = (mediaId: string) => (mediaId === "svg" ? { width: 100, height: 50 } : null);
+    const sharp = texture(4096, 2048);
+    images.refine.mockImplementation(async () => sharp);
+    pool.put(imageKey("svg"), texture(1920, 960));
+    // Drawn 1000 x 500 project px.
+    const layer = media({ trackId: "v1", mediaId: "svg", still: true, transform: [1000, 0, 0, 500, 0, 0] });
+    const pass = (priority: FramePriority, scale: number) => textures.resolve(composite(layer), priority, 0, scale);
+    pass("idle", 1);
+    pass("playback", 4);
+    expect(images.refine).not.toHaveBeenCalled();
+    pass("idle", 4);
+    // 4000 px wanted: the next half-octave step, 4096 at most.
+    expect(images.refine).toHaveBeenCalledWith("svg", 4096);
+    pass("idle", 4);
+    expect(images.refine).toHaveBeenCalledTimes(1);
+    await flush();
+    expect(onChange).toHaveBeenCalled();
+    // Drawn at 0.25: 250 px wanted (256), the 4096 px raster is far too big.
+    pool.put(imageKey("svg"), sharp);
+    pass("idle", 1.5);
+    expect(images.refine).toHaveBeenCalledTimes(1);
+    pass("idle", 0.25);
+    expect(images.refine).toHaveBeenLastCalledWith("svg", 256);
   });
 
   it("warms the cut neighbours that are not cached, once, leaving the media being drawn alone", async () => {

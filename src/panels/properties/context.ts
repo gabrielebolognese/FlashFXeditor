@@ -4,8 +4,9 @@
 // text: the ones with a picture to transform), the media layers (video, image: the ones with a crop),
 // the timed media (video, audio: the ones with a speed; freeze frames have a duration there) and the
 // text clips (the Text section, Batch 28: right after Clip, the section a text clip is edited in;
-// then their Animation section, Batch 31). Cues are selected as clips; a selection with cues, or with
-// the caption track, shows the Caption style section (Batch 32: the track's style, spec §10.5).
+// then their Animation section, Batch 31) and the solids (the Solid section, Batch 34: after the text
+// ones). Cues are selected as clips; a selection with cues, or with the caption track, shows the
+// Caption style section (Batch 32: the track's style, spec §10.5).
 // React renders the panel only when this context changes (`contextKey`), never on value changes
 // (spec §11 implementation note, P1).
 import type { Clip, ClipId, Project, TrackId } from "../../core/document/types.js";
@@ -14,7 +15,7 @@ import { isCropClip } from "../../timeline/edit/crop.js";
 import { isLayerClip } from "../../timeline/edit/transform.js";
 
 /** The registered sections, top to bottom in their order of appearance. */
-export type SectionId = "clip" | "text" | "animation" | "captionStyle" | "transform" | "crop" | "opacity" | "speed" | "track" | "marker" | "project";
+export type SectionId = "clip" | "text" | "animation" | "solid" | "captionStyle" | "transform" | "crop" | "opacity" | "speed" | "track" | "marker" | "project";
 
 export type PropertiesContext =
   | { kind: "none" }
@@ -40,6 +41,8 @@ export type PropertiesContext =
       speedIds: readonly ClipId[];
       /** The text clips: what Text edits. */
       textIds: readonly ClipId[];
+      /** The solids: what Solid edits. */
+      solidIds: readonly ClipId[];
       /** The caption track when cues are among them (the Caption style section). */
       captionTrackId: TrackId | null;
     }
@@ -76,8 +79,9 @@ export function propertiesContext(selection: Selection, markerId: string | null,
         return kind === "video" || kind === "audio";
       });
       const textIds = clipIds.filter((id) => project.clips[id]?.kind === "text");
+      const solidIds = clipIds.filter((id) => project.clips[id]?.kind === "solid");
       const cue = clipIds.map((id) => project.clips[id]).find((clip) => clip?.kind === "caption");
-      return { kind: "clips", clipIds, primary, layerIds, layerPrimary, mediaIds, speedIds, textIds, captionTrackId: cue?.trackId ?? null };
+      return { kind: "clips", clipIds, primary, layerIds, layerPrimary, mediaIds, speedIds, textIds, solidIds, captionTrackId: cue?.trackId ?? null };
     }
   }
 }
@@ -106,6 +110,7 @@ export function sectionIds(context: PropertiesContext): SectionId[] {
     case "clips": {
       const ids: SectionId[] = ["clip"];
       if (context.textIds.length > 0) ids.push("text", "animation");
+      if (context.solidIds.length > 0) ids.push("solid");
       if (context.captionTrackId) ids.push("captionStyle");
       if (context.layerIds.length > 0) ids.push("transform");
       if (context.mediaIds.length > 0) ids.push("crop");

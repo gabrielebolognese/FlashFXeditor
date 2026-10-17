@@ -53,9 +53,11 @@ import { Compositor, type LiveAnims, type LiveCaptions, type LiveText } from "..
 import type { Composite, DrawList, Layer, TextureLayer } from "../compositor/drawList.js";
 import { DrawListSnapshot } from "../compositor/DrawListSnapshot.js";
 import type { FramePriority } from "../../media/workers/protocol.js";
+import { isSvgImage } from "../../media/mediaKinds.js";
+import type { SolidLook } from "../../timeline/edit/solid.js";
 import type { CanvasTarget, OffscreenTarget, Pane, Renderer, TextureHandle, Viewport } from "../gpu/renderer.js";
 import { mutableIdentity, setMat, type Mat3, type MutableMat3 } from "../mat3.js";
-import { AUTO_SETTLE_MS, DETAIL_MAX_SIZE, fullScale, qualityLabel, renderScale, sourceDetail, uploadLongEdge, wantedLod, type PreviewActivity } from "./detail.js";
+import { AUTO_SETTLE_MS, DETAIL_MAX_SIZE, fullScale, qualityLabel, renderScale, sourceDetail, uploadLongEdge, vectorDetailSize, wantedLod, type PreviewActivity } from "./detail.js";
 import { LayerTextures, type LayerTexturesDeps, type LayerTexturesStats } from "./LayerTextures.js";
 import { deviceSizeInto, frameTransformInto, type Size } from "./viewport.js";
 
@@ -94,6 +96,8 @@ export interface PreviewViewDeps extends Omit<LayerTexturesDeps, "onChange" | "w
   anims?(): ReadonlyMap<ClipId, LiveAnims> | null;
   /** The cue list's live cue texts and a Caption style scrub's live style (§10.5), or null. The owner invalidates `preview` when they change. */
   captions?(): LiveCaptions | null;
+  /** Ephemeral solid looks by clip id (a Solid field scrub, a color dragged, a size handle drag, Batch 34), or null. The owner invalidates `preview` when they change. */
+  solids?(): ReadonlyMap<ClipId, SolidLook> | null;
   /** Loads the fonts of `style` for `text` (Export frame); resolves true when it had to wait for them. */
   loadFonts?(style: TextStyle, text: string): Promise<boolean>;
   /** True when playback fell behind on the media this playback (1/2 and 1/4 then play its proxy). */
@@ -342,6 +346,7 @@ export class PreviewView implements RenderView {
       override ? null : (this.deps.texts?.() ?? null),
       override ? null : (this.deps.anims?.() ?? null),
       override ? null : (this.deps.captions?.() ?? null),
+      override ? null : (this.deps.solids?.() ?? null),
     );
     const background = override ? null : (this.deps.background?.() ?? null);
     if (background) composite.background = background;
@@ -521,7 +526,9 @@ export class PreviewView implements RenderView {
     const detail = this.stats.detail;
     const source = sourceDetail(composite, (mediaId) => {
       const item = doc.media[mediaId];
-      return item?.width && item.height ? { width: item.width, height: item.height } : null;
+      if (!item?.width || !item.height) return null;
+      // An SVG is vector: a zoom renders it finer (it is rasterized again at that detail).
+      return isSvgImage(item) ? vectorDetailSize(item.width, item.height) : { width: item.width, height: item.height };
     });
     const full = fullScale(view, source);
     const render = renderScale(preview.quality, activity, full);

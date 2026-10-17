@@ -151,6 +151,23 @@ export interface TranscribeResult {
   words: TimedWord[];
 }
 
+/**
+ * What `decodeAnimation` posts (Batch 34): first the kept frames (their start times in media us, the
+ * animation's length and the frames' size), then each kept frame (its position in that list) as a bitmap.
+ */
+export type AnimationProgress =
+  | { kind: "frames"; startsUs: number[]; durationUs: number; width: number; height: number }
+  | { kind: "frame"; index: number; bitmap: ImageBitmap };
+
+/** An animation's filmstrip (Batch 34): cells side by side in one bitmap, each starting at `startsUs[i]`. */
+export interface AnimationStrip {
+  bitmap: ImageBitmap;
+  cellWidth: number;
+  cellHeight: number;
+  startsUs: number[];
+  durationUs: number;
+}
+
 export interface WorkerMethods {
   /** Metadata of a media file. */
   probe: { params: { file: Blob; container: WorkerContainer; type: string }; result: ProbeResult };
@@ -158,6 +175,10 @@ export interface WorkerMethods {
   poster: { params: { file: Blob; kind: "image"; maxSize: number }; result: PosterResult };
   /** Decodes an image file (cached posters) into a bitmap of at most `maxSize` px. */
   decodeImage: { params: { blob: Blob; maxSize: number }; result: ImageBitmap };
+  /** The frames of an animated GIF or WebP as bitmaps of at most `maxSize` px within `budgetBytes` of textures (`only`: some of them). */
+  decodeAnimation: { params: { blob: Blob; type: string; maxSize: number; budgetBytes: number; only: number[] | null }; result: { frames: number }; progress: AnimationProgress };
+  /** The filmstrip of an animated image for the timeline. */
+  animationStrip: { params: { blob: Blob; type: string; cellHeight: number; maxCells: number }; result: AnimationStrip };
   /** Loads (cachedIndex) or builds the sample index of a video and checks that it can be decoded. */
   openVideo: { params: { mediaId: string; lod: Lod; file: File; cachedIndex: Blob | null }; result: OpenVideoResult };
   /** The frame shown at `timeUs`. Scrubs far from a keyframe post the keyframe first as progress. */
@@ -204,6 +225,8 @@ export const METHOD_WORKER: Record<Method, WorkerKind> = {
   probe: "decode",
   poster: "decode",
   decodeImage: "decode",
+  decodeAnimation: "decode",
+  animationStrip: "decode",
   openVideo: "decode",
   requestFrame: "decode",
   prefetch: "decode",

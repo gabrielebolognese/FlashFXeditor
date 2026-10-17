@@ -26,12 +26,17 @@
 //   cue has word timings and the style a highlight, the layer carries the active word
 //   (`CaptionHighlightFrame`). `captions` gives the cue list's live text and a style field scrub's
 //   live style. Cues about to show are listed by `upcomingTexts` too.
+// - Solids (spec §5.2, Batch 34) resolve to geometry: their size's box drawn as its shape (a box with
+//   the drawn corner radius, or an ellipse) in their color or vertical gradient; flips mirror the
+//   fill inside the box. `solids` gives a Solid field scrub's or a size handle drag's looks.
+// - Images: a still's one texture; an animated image's media time plays from its in point and loops
+//   (media/decode/animation.ts `imageTimeUs`).
 // Layer structs and arrays are reused between frames; evaluating allocates nothing once warm.
-// TODO(batch 34): solid shapes other than rect, gradient fills, corner radius. TODO(batch 35): keyframes.
+// TODO(batch 35): keyframes.
 // TODO(batch 36): transitions (two contributing clips and a mix amount).
 import { isRgba } from "../../core/document/color.js";
 import { framesToSourceUs, secondsToFrames } from "../../core/document/time.js";
-import type { CaptionClip, CaptionStyle, Clip, ClipId, Crop, Frame, MediaClip, MediaId, Project, RGBA, SolidClip, TextAnim, TextClip, TextContent, TextStyle, Track, TrackId, Transform } from "../../core/document/types.js";
+import type { CaptionClip, CaptionStyle, Clip, ClipId, Crop, Frame, MediaClip, MediaId, Project, RGBA, TextAnim, TextClip, TextContent, TextStyle, Track, TrackId, Transform } from "../../core/document/types.js";
 import { activeWordIndex, captionPlace, defaultCaptionStyle } from "../../text/captions.js";
 import { activeAnim, animUnit, isPlayable, newUnitState, presence, resetUnitState, typedCount, unitProgress, writeUnitShape, type ActiveAnim, type UnitState } from "../../text/anim.js";
 import { clipInIndex, lastClipStartingBy, trackIndex } from "../../timeline/model/queries.js";
@@ -44,13 +49,15 @@ import { textLayout } from "../text/layoutCache.js";
 import { captionLook, HIGHLIGHT_SCALE, highlightUnits, type CaptionLook } from "../text/captionLayout.js";
 import { TEXT_RASTER_MAX, type TextHighlight } from "../text/raster.js";
 import { MAX_TEXT_SCALE, type TextPart } from "../text/TextRasterCache.js";
-import { HIGHLIGHT_SLOT, type CaptionHighlightFrame, type Composite, type CompositeLayer, type MediaLayer, type SolidLayer, type TextAnimFrame, type TextCompositeLayer } from "./drawList.js";
+import { imageTimeUs } from "../../media/decode/animation.js";
+import { drawnRadius, type SolidLook } from "../../timeline/edit/solid.js";
+import { HIGHLIGHT_SLOT, type CaptionHighlightFrame, type Composite, type CompositeLayer, type MediaLayer, type SolidGeometry, type SolidLayer, type TextAnimFrame, type TextCompositeLayer } from "./drawList.js";
 
 /** How far from the playhead the clips next to it count as cut neighbours (seconds). */
 export const NEIGHBOR_SECONDS = 2;
 
 type WritableMediaLayer = Omit<MediaLayer, "transform"> & { transform: MutableMat3 };
-type WritableSolidLayer = Omit<SolidLayer, "transform" | "color"> & { transform: MutableMat3; color: RGBA };
+type WritableSolidLayer = Omit<SolidLayer, "transform" | "color" | "to" | "shape"> & { transform: MutableMat3; color: RGBA; to: RGBA | null; toValue: RGBA; shape: SolidGeometry };
 type WritableAnimFrame = { atlas: TextAnimFrame["atlas"]; units: UnitState[]; background: number };
 type WritableKaraoke = Omit<CaptionHighlightFrame, "box"> & { box: CaptionHighlightFrame["box"]; boxValue: NonNullable<CaptionHighlightFrame["box"]> };
 type WritableTextLayer = Omit<TextCompositeLayer, "model" | "anim" | "karaoke"> & {
@@ -172,9 +179,10 @@ export class Compositor {
   /**
    * The document at `frame`, bottom track first, with `transforms` (a canvas gesture's or a field
    * scrub's), `opacities` (a field scrub's), `crops` (a crop handle drag's or a field scrub's), `texts`
-   * (a Text field scrub's), `anims` (an Animation field scrub's) and `captions` (the cue list's text,
-   * a Caption style scrub's style) replacing the clips' own. The result and its layers are reused by
-   * the next call: read it before evaluating again.
+   * (a Text field scrub's), `anims` (an Animation field scrub's), `captions` (the cue list's text,
+   * a Caption style scrub's style) and `solids` (a Solid field scrub's or a size handle drag's looks)
+   * replacing the clips' own. The result and its layers are reused by the next call: read it before
+   * evaluating again.
    */
   evaluate(
     doc: Project,
@@ -185,6 +193,7 @@ export class Compositor {
     texts: ReadonlyMap<ClipId, LiveText> | null = null,
     anims: ReadonlyMap<ClipId, LiveAnims> | null = null,
     captions: LiveCaptions | null = null,
+    solids: ReadonlyMap<ClipId, SolidLook> | null = null,
   ): Composite {
     const out = this.out;
     const { width, height, background } = doc.settings;
@@ -193,7 +202,7 @@ export class Compositor {
     out.background = background;
     out.layers.length = 0;
     let media = 0;
-    let solids = 0;
+    let solidLayers = 0;
     let textLayers = 0;
     for (const track of doc.tracks) {
       // The caption track's cue (spec §10.5), unless the track is hidden.
@@ -216,10 +225,10 @@ export class Compositor {
           media += 1;
         }
       } else if (clip.kind === "solid") {
-        const layer = (this.solidPool[solids] ??= newSolidLayer());
-        if (this.writeSolid(layer, doc, clip, transforms?.get(clip.id) ?? clip.transform, opacities?.get(clip.id) ?? clip.opacity)) {
+        const layer = (this.solidPool[solidLayers] ??= newSolidLayer());
+        if (this.writeSolid(layer, doc, solids?.get(clip.id) ?? clip, transforms?.get(clip.id) ?? clip.transform, opacities?.get(clip.id) ?? clip.opacity)) {
           out.layers.push(layer);
-          solids += 1;
+          solidLayers += 1;
         }
       } else if (clip.kind === "text") {
         const layer = (this.textPool[textLayers] ??= newTextLayer());
@@ -393,7 +402,8 @@ export class Compositor {
     layer.clipId = clip.id;
     layer.mediaId = clip.mediaId;
     layer.still = clip.kind === "image";
-    layer.timeUs = layer.still ? 0 : sourceTimeUs(clip, frame, doc.settings.fps);
+    // An animated image loops from its in point (a still has no duration: time 0).
+    layer.timeUs = layer.still ? imageTimeUs(clip, frame, doc.settings.fps, item.durationUs) : sourceTimeUs(clip, frame, doc.settings.fps);
     layer.opacity = clamp01(opacity) * fadeFactor(clip, frame);
     return true;
   }
@@ -456,16 +466,21 @@ export class Compositor {
     return true;
   }
 
-  private writeSolid(layer: WritableSolidLayer, doc: Project, clip: SolidClip, transform: Transform, opacity: number): boolean {
-    const fill = clip.fill;
-    // TODO(batch 34): rounded rects, ellipses, lines and gradient fills.
-    if (clip.shape !== "rect" || !isRgba(fill) || clip.size.w <= 0 || clip.size.h <= 0) return false;
-    const m = writeModel(layer.transform, transform, clip.size.w, clip.size.h, doc.settings.width, doc.settings.height);
-    multiplyInto(m, m, setMat(this.step, clip.size.w, 0, 0, clip.size.h, 0, 0));
-    layer.color.r = fill.r;
-    layer.color.g = fill.g;
-    layer.color.b = fill.b;
-    layer.color.a = fill.a;
+  /** A solid in `look` (its own, or a live one): its size's box as its shape, in its color or gradient. */
+  private writeSolid(layer: WritableSolidLayer, doc: Project, look: SolidLook, transform: Transform, opacity: number): boolean {
+    const { fill, size } = look;
+    if (!(size.w > 0) || !(size.h > 0)) return false;
+    const m = writeModel(layer.transform, transform, size.w, size.h, doc.settings.width, doc.settings.height);
+    multiplyInto(m, m, setMat(this.step, size.w, 0, 0, size.h, 0, 0));
+    // Flips mirror the fill inside the box (a gradient turns upside down).
+    if (transform.flipH || transform.flipV) multiplyInto(m, m, setMat(this.step, transform.flipH ? -1 : 1, 0, 0, transform.flipV ? -1 : 1, transform.flipH ? 1 : 0, transform.flipV ? 1 : 0));
+    copyColor(layer.color, isRgba(fill) ? fill : fill.from);
+    layer.to = isRgba(fill) ? null : copyColor(layer.toValue, fill.to);
+    const shape = layer.shape;
+    shape.kind = look.shape === "ellipse" ? "ellipse" : "box";
+    shape.width = size.w;
+    shape.height = size.h;
+    shape.radius = drawnRadius(look);
     layer.opacity = clamp01(opacity);
     return true;
   }
@@ -490,7 +505,7 @@ function newTextLayer(): WritableTextLayer {
     anim: null,
     animFrame: { atlas: "block", units: [], background: 1 },
     karaoke: null,
-    karaokeFrame: { style: DEFAULT_TEXT_STYLE, from: 0, to: 0, scale: 1, ox: 0, oy: 0, box: null, boxValue: { rect: { x: 0, y: 0, width: 0, height: 0 }, color: { r: 0, g: 0, b: 0, a: 0 } } },
+    karaokeFrame: { style: DEFAULT_TEXT_STYLE, from: 0, to: 0, scale: 1, ox: 0, oy: 0, box: null, boxValue: { rect: { x: 0, y: 0, width: 0, height: 0 }, color: { r: 0, g: 0, b: 0, a: 0 }, radius: 0 } },
   };
 }
 
@@ -526,6 +541,8 @@ function writeKaraoke(out: WritableKaraoke, look: CaptionLook, layout: TextLayou
     const box = out.boxValue;
     box.rect = unit.box;
     box.color = style.highlight.color;
+    // A pill behind the word.
+    box.radius = unit.box.height / 2;
     out.box = box;
   } else out.box = null;
   return out;
@@ -607,6 +624,14 @@ function writeAnimFrame(out: WritableAnimFrame, active: ActiveAnim, layout: Text
 }
 
 function newSolidLayer(): WritableSolidLayer {
-  return { kind: "solid", transform: mutableIdentity(), opacity: 1, color: { r: 0, g: 0, b: 0, a: 1 } };
+  return { kind: "solid", transform: mutableIdentity(), opacity: 1, color: { r: 0, g: 0, b: 0, a: 1 }, to: null, toValue: { r: 0, g: 0, b: 0, a: 1 }, shape: { kind: "box", width: 0, height: 0, radius: 0 } };
+}
+
+function copyColor(out: RGBA, color: RGBA): RGBA {
+  out.r = color.r;
+  out.g = color.g;
+  out.b = color.b;
+  out.a = color.a;
+  return out;
 }
 

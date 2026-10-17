@@ -18,7 +18,7 @@ export interface ProbeResult {
   audioCodec?: string;
   /** sampleRate is 0 when the container does not say (decodeAudioData resamples). */
   audio?: { channels: number; sampleRate: number };
-  /** Animated images: frame durations in us. Not persisted; images are decoded by Batch 34. */
+  /** Animated images: frame durations in us. Not persisted: the preview decodes the frames again (ImageService, Batch 34). */
   frameDurationsUs?: number[];
 }
 

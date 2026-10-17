@@ -32,6 +32,9 @@
 //   edited, a press on its box places the caret (Shift extends, a double press selects a word) and a
 //   drag selects; a press anywhere else commits the edit first, then does what it does. The edited
 //   box keeps its outline, without handles, and the overlay draws the caret.
+// - Solids (Batch 34; solidGizmo.ts): one selected solid's scale handles change its size, not its
+//   scale (the scale gesture's box, snapping included, taken as a new size); the drag shows its look
+//   live (`solids`) and commits one `clip.solid` command.
 // - Hover outlines the layer under the pointer; the cursor follows the gizmo zone.
 // - The canvas rect is read once per pointer enter and after a panel resize (P9).
 // TODO(batch 35): the keyframe diamond on the box corner.
@@ -84,6 +87,8 @@ import type { PreviewPlacement } from "./PreviewView.js";
 import type { ZoneRect } from "./safeZones.js";
 import { CanvasSnapIndex, handleGuides, isAxisAligned, measureGuides, moveGuides, snapHandle, snapMove, type CanvasSnapCandidates, type Guides } from "./snap.js";
 import { textHandleKind, textSizeGesture, textWidthGesture, type TextGestureStart } from "./textGizmo.js";
+import { solidSizeGesture, type SolidGestureStart } from "./solidGizmo.js";
+import { setSolids, solidLook, type SolidLook } from "../../timeline/edit/solid.js";
 
 /** Inline text editing as the canvas drives it (InlineTextEditor, spec §7.7). */
 export interface CanvasTextEditing {
@@ -127,6 +132,8 @@ export interface CanvasEditDeps {
   crops?: { read(): ReadonlyMap<ClipId, Crop> | null; write(crops: ReadonlyMap<ClipId, Crop> | null): void };
   /** Ephemeral texts and styles (a Text field scrub, spec §11, P2), or null: text boxes follow them. */
   texts?(): ReadonlyMap<ClipId, LiveText> | null;
+  /** Ephemeral solid looks (a Solid field scrub, Batch 34), or null: solid boxes follow them. */
+  solids?(): ReadonlyMap<ClipId, SolidLook> | null;
   /** Crop mode (spec §7.3, §11), shared with the Crop section and the crop chip; without it there is no crop mode. */
   cropMode?: Store<CropModeState>;
   /** Inline text editing (spec §7.7); without it a double-click on text does nothing. */
@@ -192,6 +199,9 @@ interface Drag {
   /** A text handle drag: the text layer, and its text and style as the drag leaves them (ephemeral until the release). */
   text: TextGestureStart | null;
   texts: ReadonlyMap<ClipId, { text: TextContent; style: TextStyle }> | null;
+  /** A size handle drag of one solid: the solid, and its look as the drag leaves it (ephemeral until the release). */
+  solid: SolidGestureStart | null;
+  solids: ReadonlyMap<ClipId, SolidLook> | null;
 }
 
 interface Marquee {
@@ -237,6 +247,7 @@ export class CanvasEditInput {
     transforms: ReadonlyMap<ClipId, Transform> | null;
     crops: ReadonlyMap<ClipId, Crop> | null;
     texts: ReadonlyMap<ClipId, LiveText> | null;
+    solids: ReadonlyMap<ClipId, SolidLook> | null;
     version: number;
     layers: CanvasLayer[];
   } = {
@@ -245,6 +256,7 @@ export class CanvasEditInput {
     transforms: null,
     crops: null,
     texts: null,
+    solids: null,
     version: -1,
     layers: [],
   };
@@ -273,6 +285,11 @@ export class CanvasEditInput {
   /** A text handle drag's ephemeral texts and styles (the compositor reads them, P2), or null. */
   get texts(): ReadonlyMap<ClipId, { text: TextContent; style: TextStyle }> | null {
     return this.drag?.texts ?? null;
+  }
+
+  /** A solid size handle drag's ephemeral looks (the compositor reads them, P2), or null. */
+  get solids(): ReadonlyMap<ClipId, SolidLook> | null {
+    return this.drag?.solids ?? null;
   }
 
   /** The clip in crop mode (spec §7.3), or null. */
@@ -427,16 +444,18 @@ export class CanvasEditInput {
     const transforms = this.transforms;
     const crops = this.deps.crops?.read() ?? null;
     const texts = this.deps.texts?.() ?? null;
+    const solids = this.solids ?? this.deps.solids?.() ?? null;
     const version = textLayoutVersion();
     const cache = this.cache;
-    if (cache.project !== project || cache.frame !== frame || cache.transforms !== transforms || cache.crops !== crops || cache.texts !== texts || cache.version !== version) {
+    if (cache.project !== project || cache.frame !== frame || cache.transforms !== transforms || cache.crops !== crops || cache.texts !== texts || cache.solids !== solids || cache.version !== version) {
       cache.project = project;
       cache.frame = frame;
       cache.transforms = transforms;
       cache.crops = crops;
       cache.texts = texts;
+      cache.solids = solids;
       cache.version = version;
-      cache.layers = canvasLayersAt(project, frame, transforms, crops, texts);
+      cache.layers = canvasLayersAt(project, frame, transforms, crops, texts, solids);
     }
     return cache.layers;
   }
@@ -673,7 +692,9 @@ export class CanvasEditInput {
             : null
           : drag.texts
             ? setTexts(project, new Map([...drag.texts].map(([id, text]) => [id, { ...text, transform: drag.result?.transforms.get(id) as Transform }])), { label })
-            : setTransforms(project, drag.result.transforms, { label });
+            : drag.solids
+              ? setSolids(project, new Map([...drag.solids].map(([id, look]) => [id, { ...look, transform: drag.result?.transforms.get(id) as Transform }])), { label: "Resize shape" })
+              : setTransforms(project, drag.result.transforms, { label });
       // The document takes over from the ephemeral values in the same frame.
       this.deps.scheduler.invalidate("preview");
       if (command) this.deps.commit(command);
@@ -766,6 +787,8 @@ export class CanvasEditInput {
       crops: null,
       text: kind === "textSize" || kind === "textWidth" ? this.textStart(held[0] as CanvasLayer, project) : null,
       texts: null,
+      solid: kind === "scale" && held.length === 1 ? this.solidStart(held[0] as CanvasLayer, project) : null,
+      solids: null,
     };
     if ((kind === "textSize" || kind === "textWidth") && !this.drag.text) {
       this.drag = null;
@@ -803,7 +826,9 @@ export class CanvasEditInput {
       }
       case "scale": {
         const handle = drag.handle as HandleId;
-        let result = scaleGesture(drag.start, handle, point, mods, snapping);
+        // A solid's handles size it: no 100% scale snap (its size is what changes).
+        const hundred = snapping && !drag.solid;
+        let result = this.sizedSolid(drag, scaleGesture(drag.start, handle, point, mods, hundred), handle, mods);
         // The dragged edge snaps (§7.4) while the box is axis-aligned: the gesture aims at the target.
         if (snapping && isAxisAligned(drag.start.box)) {
           const candidates = this.snapCandidates(drag.held);
@@ -812,7 +837,7 @@ export class CanvasEditInput {
           const grab = handlePoint(drag.start.box, handle);
           const free = { x: Math.abs(grab.x - fixed.x) > 1e-9, y: Math.abs(grab.y - fixed.y) > 1e-9 };
           const aim = snapHandle(candidates, handlePoint(result.box, handle), fixed, free, isCorner(handle) && !mods.shift, this.snapReach(placement));
-          if (aim) result = scaleGesture(drag.start, handle, aim, mods, snapping);
+          if (aim) result = this.sizedSolid(drag, scaleGesture(drag.start, handle, aim, mods, hundred), handle, mods);
           drag.guides = handleGuides(candidates, quadsBounds([result.box]) as Rect, handlePoint(result.box, handle), free);
         }
         drag.result = result;
@@ -840,6 +865,23 @@ export class CanvasEditInput {
     this.deps.scheduler.invalidate("preview");
     this.invalidate();
     this.updateCursor();
+  }
+
+  /** The scale gesture's `result` as a solid's new size (a solid size drag, solidGizmo.ts), its look written live; else `result`. */
+  private sizedSolid(drag: Drag, result: GestureResult, handle: HandleId, mods: Modifiers): GestureResult {
+    const start = drag.solid;
+    const scaled = start ? result.transforms.get(start.clipId) : undefined;
+    if (!start || !scaled) return result;
+    const sized = solidSizeGesture(start, scaled, handle, mods);
+    drag.solids = new Map([[start.clipId, sized.look]]);
+    return { transforms: new Map([[start.clipId, sized.transform]]), box: sized.box, snapX: false, snapY: false, readout: sized.readout };
+  }
+
+  /** A solid layer as a size handle drag starts from it: its shown look (a field scrub's live one), its transform; null for other layers. */
+  private solidStart(layer: CanvasLayer, project: Project): SolidGestureStart | null {
+    const clip = project.clips[layer.clipId];
+    if (clip?.kind !== "solid") return null;
+    return { clipId: layer.clipId, look: this.deps.solids?.()?.get(layer.clipId) ?? solidLook(clip), transform: layer.transform, frame: project.settings };
   }
 
   /** A text layer as a text handle drag starts from it: its shown text and style (a field scrub's live ones), its transform. */

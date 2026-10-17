@@ -1696,6 +1696,7 @@ describe("TimelineView clip visuals", () => {
       thumbLayout: (id) => (id === "m" ? thumbs : null),
       sheet: (id, level, sheet) => sheets.get(`${id}/${level}/${sheet}`) ?? null,
       poster: () => null,
+      strip: () => null,
       peaks: () => null,
       want,
       subscribe: (listener) => {

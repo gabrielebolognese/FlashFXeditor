@@ -1,6 +1,7 @@
 // Accepted import types (spec §9.1). The extension decides; files without one (pasted images) fall
 // back to their MIME type. WebM waits for the optional WebM batch (49) and is refused like any other
 // unknown type.
+import type { MediaItem } from "../core/document/types.js";
 
 /** How a file is probed: mp4box in the worker, decodeAudioData, the worker image probe, or SVG. */
 export type Container = "mp4" | "audio" | "image" | "svg";
@@ -54,6 +55,15 @@ export const PICKER_TYPES = [
   { description: "Audio", accept: { "audio/*": [".mp3", ".m4a", ".aac", ".wav", ".ogg"] } },
   { description: "Images", accept: { "image/*": [".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg"] } },
 ];
+
+/** `+ Image`'s picker types (spec §6.1): images only. */
+export const IMAGE_PICKER_TYPES = PICKER_TYPES.filter((type) => type.description === "Images");
+
+/** An SVG: vector, rasterized at the detail it is shown at (Batch 34). */
+export const isSvgImage = (item: Pick<MediaItem, "kind" | "codec">): boolean => item.kind === "image" && item.codec === "svg";
+
+/** An animated GIF or WebP (Batch 34): an image with a duration (a still has none). */
+export const isAnimatedImage = (item: Pick<MediaItem, "kind" | "durationUs">): boolean => item.kind === "image" && item.durationUs > 0;
 
 const CODEC_NAMES: [prefix: string, label: string][] = [
   ["avc1", "H.264"],

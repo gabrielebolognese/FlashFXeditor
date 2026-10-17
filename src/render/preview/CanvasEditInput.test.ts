@@ -131,18 +131,37 @@ describe("CanvasEditInput (spec §7.2, §7.3)", () => {
     expect(s.transform("s2").x).toBe(0);
   });
 
-  it("scales from a corner keeping the aspect, and per axis with Shift", () => {
+  it("sizes a solid from a corner keeping the aspect, and per axis with Shift (its size, not its scale)", () => {
     const s = setup([{}, { x: -300 }, { x: 300 }]);
+    const size = (id: string) => (s.doc.getState().clips[id] as SolidClip).size;
     s.click(540, 960);
     expect(s.selected()).toEqual(["s1"]);
-    // The se handle at (590, 1010) dragged to (640, 1060): twice the size from the nw corner.
-    s.drag([590, 1010], [640, 1060]);
-    expect(s.transform("s1").scale).toBeCloseTo(1.5, 9);
-    expect(s.transform("s1").scaleY).toBeUndefined();
+    // The se handle at (590, 1010) dragged to (640, 1060): 1.5 times the size from the nw corner.
+    s.pointer("pointerdown", 590, 1010);
+    s.pointer("pointermove", 615, 1035);
+    s.pointer("pointermove", 640, 1060);
+    expect(s.input.solids?.get("s1")?.size).toEqual({ w: 150, h: 150 });
+    expect(s.input.scene().readout?.text).toBe("150 × 150 px");
+    s.pointer("pointerup", 640, 1060);
+    expect(size("s1")).toEqual({ w: 150, h: 150 });
+    expect(s.transform("s1")).toEqual(t({ x: 25, y: 25 }));
+    expect(s.doc.history.getState().undoLabel).toBe("Resize shape");
     s.drag([640, 1060], [740, 1060], { shiftKey: true });
-    expect(s.transform("s1").scale).toBeCloseTo(2.5, 9);
-    expect(s.transform("s1").scaleY).toBeCloseTo(1.5, 9);
+    expect(size("s1")).toEqual({ w: 250, h: 150 });
+    expect(s.transform("s1")).toEqual(t({ x: 75, y: 25 }));
     expect(s.commits).toHaveBeenCalledTimes(2);
+    expect(s.input.solids).toBeNull();
+  });
+
+  it("scales several layers as a group (solids too)", () => {
+    const s = setup([{}, { x: -300 }, { x: 300 }]);
+    s.click(540, 960);
+    s.click(240, 960, { shiftKey: true });
+    expect(s.selected()).toEqual(["s1", "s2"]);
+    // The group box (190..590 x 910..1010): its se handle dragged 50 px right and down, projected on the diagonal.
+    s.drag([590, 1010], [640, 1060]);
+    expect(s.transform("s1").scale).toBeCloseTo(195 / 170, 9);
+    expect((s.doc.getState().clips.s1 as SolidClip).size).toEqual({ w: 100, h: 100 });
   });
 
   it("selects the layers a marquee intersects, once on release", () => {
@@ -254,7 +273,8 @@ describe("CanvasEditInput snapping and smart guides (spec §7.4)", () => {
     s.pointer("pointermove", 296, 960);
     expect(s.input.scene().guides?.lines).toContainEqual({ vertical: true, at: 290, from: 910, to: 1010 });
     s.pointer("pointerup", 296, 960);
-    expect(s.transform("s2").scale).toBeCloseTo(3, 9);
+    expect((s.doc.getState().clips.s2 as SolidClip).size).toEqual({ w: 300, h: 100 });
+    expect(s.transform("s2").scale).toBe(1);
     expect(s.transform("s2").x).toBeCloseTo(-100, 9);
   });
 

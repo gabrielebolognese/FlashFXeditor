@@ -103,6 +103,7 @@ export const clipVisuals: ClipVisualsSource = {
   thumbLayout: (mediaId) => open?.thumbs.layout(mediaId) ?? null,
   sheet: (mediaId, level, sheet) => open?.thumbs.sheet(mediaId, level, sheet) ?? null,
   poster: (mediaId) => open?.posters.get(mediaId) ?? null,
+  strip: (mediaId) => open?.posters.strip(mediaId) ?? null,
   peaks: (mediaId) => open?.peaks.get(mediaId) ?? null,
   want: (wants) => {
     open?.thumbs.want(wants.sheets);
@@ -327,18 +328,21 @@ interface FilePickerWindow {
   showOpenFilePicker(options: { multiple?: boolean; id?: string; types?: typeof PICKER_TYPES; excludeAcceptAllOption?: boolean }): Promise<FileSystemFileHandle[]>;
 }
 
-/** The Import button and Mod+I. Must run inside a user gesture. */
-export async function importFromPicker(): Promise<void> {
+/**
+ * The Import button and Mod+I (every media type), or `+ Image` (Batch 34: `types` images only, its
+ * `placement` adding the clips in the import's undo step). Must run inside a user gesture.
+ */
+export async function importFromPicker(options: { types?: typeof PICKER_TYPES; id?: string; placement?: ImportPlacement } = {}): Promise<void> {
   if (!open) return;
   let handles: FileSystemFileHandle[];
   try {
-    handles = await (window as unknown as FilePickerWindow).showOpenFilePicker({ multiple: true, id: "shorts-editor-media", types: PICKER_TYPES, excludeAcceptAllOption: false });
+    handles = await (window as unknown as FilePickerWindow).showOpenFilePicker({ multiple: true, id: options.id ?? "shorts-editor-media", types: options.types ?? PICKER_TYPES, excludeAcceptAllOption: false });
   } catch (error) {
     if (isAbortError(error)) return;
     showToast({ tone: "error", message: "Could not open the file picker", detail: errorMessage(error) });
     return;
   }
-  await importMediaFiles(await Promise.all(handles.map((handle) => handle.getFile())));
+  await importMediaFiles(await Promise.all(handles.map((handle) => handle.getFile())), options.placement);
 }
 
 interface HandleItem {

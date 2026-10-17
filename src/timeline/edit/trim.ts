@@ -24,6 +24,7 @@ import type { Draft } from "immer";
 import type { Command } from "../../core/commands/command.js";
 import { framesToSourceUs, usPerFrame } from "../../core/document/time.js";
 import { isFreeze, isMediaClip, type CaptionClip, type Clip, type ClipId, type Frame, type Keyframes, type MediaClip, type Project, type Rational, type TrackId } from "../../core/document/types.js";
+import { loopTimeUs } from "../../media/decode/animation.js";
 import { clipInIndex, isClipLocked, lastClipStartingBy, linkedPartners, trackIndex } from "../model/queries.js";
 
 export type TrimEdge = "in" | "out";
@@ -454,9 +455,12 @@ function trimmedClip(clip: Clip, edge: TrimEdge, delta: number, ripple: boolean,
   if (isMediaClip(clip)) {
     const media = next as MediaClip;
     if (clip.kind === "image") {
-      // A still holds its picture: its source range is just the duration (no media bounds).
-      // TODO(batch 34): animated images (loop or hold).
-      media.out = clip.in + framesToSourceUs(media.duration, clip.speed, fps);
+      // An image has no media bounds: its source range is just the duration. A still holds its picture;
+      // an animated one loops (Batch 34), so an in trim moves `in` with the edge (the frames left in
+      // place keep playing as they did), wrapped into one loop.
+      const loopUs = project.media[clip.mediaId]?.durationUs ?? 0;
+      if (edge === "in" && loopUs > 0) media.in = loopTimeUs(clip.in + framesToSourceUs(delta, clip.speed, fps), loopUs);
+      media.out = media.in + framesToSourceUs(media.duration, clip.speed, fps);
     } else if (isFreeze(clip)) {
       // A freeze frame holds its source time for any duration: `in` and `out` stay.
     } else if (edge === "in") {

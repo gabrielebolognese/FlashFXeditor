@@ -3,17 +3,23 @@
 // spec §9.6). Follows the document: images that appear (import, project open, undo of a removal) get
 // a poster, read from cache/thumbs/ when present and otherwise made by the decode worker and written
 // back; images that go away have their bitmap closed (P13). Cards observe one media id through
-// `PosterPainter`, which draws the bitmaps in the FrameScheduler loop (no React state).
+// `PosterPainter`, which draws the bitmaps in the FrameScheduler loop (no React state). An animated
+// image also gets its filmstrip (`strip`, Batch 34: up to STRIP_CELLS frames spread over it, made by
+// the decode worker each session) for the timeline's clip bodies.
 import type { MediaId, MediaItem } from "../core/document/types.js";
 import type { DocumentStore } from "../core/store/DocumentStore.js";
 import { errorMessage } from "../project/errorMessage.js";
 import type { FsDir } from "../project/fs.js";
 import { posterPath, resolveFile, writeFileAt } from "../project/mediaFiles.js";
-import { isAbortError } from "./workers/protocol.js";
+import { isAnimatedImage } from "./mediaKinds.js";
+import { isAbortError, type AnimationStrip } from "./workers/protocol.js";
 import type { WorkerPool } from "./workers/WorkerPool.js";
 
 /** Longest side of a poster in px (cards are ~110-200 css px wide; 2x for HiDPI). */
 export const POSTER_SIZE = 320;
+/** An animation strip's cell height in px (an L track's body, 2x for HiDPI) and its most cells. */
+export const STRIP_HEIGHT = 144;
+export const STRIP_CELLS = 48;
 const CONCURRENCY = 2;
 
 export type PosterListener = (bitmap: ImageBitmap | null) => void;
@@ -32,6 +38,7 @@ const isSvg = (item: MediaItem) => item.codec === "svg";
 
 export class PosterStore {
   private readonly bitmaps = new Map<MediaId, ImageBitmap>();
+  private readonly strips = new Map<MediaId, AnimationStrip>();
   private readonly listeners = new Map<MediaId, Set<PosterListener>>();
   /** Media that are queued, loading, done or failed: each is attempted once per session. */
   private readonly attempted = new Set<MediaId>();
@@ -51,6 +58,11 @@ export class PosterStore {
 
   get(id: MediaId): ImageBitmap | null {
     return this.bitmaps.get(id) ?? null;
+  }
+
+  /** The filmstrip of an animated image, or null (a still, or not made yet). */
+  strip(id: MediaId): AnimationStrip | null {
+    return this.strips.get(id) ?? null;
   }
 
   /** Calls `listener` now if the poster exists, and whenever it appears or goes away. */
@@ -80,6 +92,11 @@ export class PosterStore {
       this.bitmaps.delete(id);
       this.emit(id, null);
     }
+    for (const id of [...this.strips.keys()]) {
+      if (media[id]) continue;
+      this.strips.get(id)?.bitmap.close();
+      this.strips.delete(id);
+    }
     for (const id of [...this.attempted]) if (!media[id] && !this.waiting.some((m) => m.id === id)) this.attempted.delete(id);
     for (const item of Object.values(media)) {
       if (item.kind !== "image" || this.attempted.has(item.id)) continue;
@@ -94,6 +111,8 @@ export class PosterStore {
     this.waiting.length = 0;
     for (const bitmap of this.bitmaps.values()) bitmap.close();
     this.bitmaps.clear();
+    for (const strip of this.strips.values()) strip.bitmap.close();
+    this.strips.clear();
     this.listeners.clear();
   }
 
@@ -119,10 +138,29 @@ export class PosterStore {
     try {
       const bitmap = (await this.fromCache(item, signal)) ?? (await this.generate(item, signal));
       if (bitmap) this.set(item.id, bitmap);
+      if (isAnimatedImage(item)) {
+        await this.loadStrip(item, signal).catch((error: unknown) => {
+          if (!isAbortError(error)) console.warn(`[media] no filmstrip for "${item.name}": ${errorMessage(error)}`);
+        });
+      }
     } catch (error) {
       if (isAbortError(error) || signal.aborted) return;
       console.warn(`[media] no poster for "${item.name}": ${errorMessage(error)}`);
     }
+  }
+
+  private async loadStrip(item: MediaItem, signal: AbortSignal): Promise<void> {
+    if (!("relPath" in item.file)) return;
+    const source = await resolveFile(this.deps.dir, item.file.relPath);
+    if (!source) return;
+    const strip = await this.deps.pool.request("animationStrip", { blob: source, type: `image/${item.codec ?? "gif"}`, cellHeight: STRIP_HEIGHT, maxCells: STRIP_CELLS }, { signal });
+    if (signal.aborted || !this.present[item.id]) {
+      strip.bitmap.close();
+      return;
+    }
+    this.strips.get(item.id)?.bitmap.close();
+    this.strips.set(item.id, strip);
+    this.deps.onChange?.(item.id);
   }
 
   private async fromCache(item: MediaItem, signal: AbortSignal): Promise<ImageBitmap | null> {

@@ -120,6 +120,8 @@ describe("word highlight (karaoke)", () => {
     // Around "ab" (110 px), padded by 0.12 em.
     expect(box.box?.rect.x).toBeCloseTo(-12);
     expect(box.box?.rect.width).toBeCloseTo(134);
+    // A pill (Batch 34): its corners round by half its height.
+    expect(box.box?.radius).toBeCloseTo((box.box?.rect.height ?? 0) / 2);
   });
 
   it("is off without word timings or with the mode none", () => {
@@ -162,7 +164,7 @@ describe("highlighted cues in the preview's textures", () => {
     };
     const textures = new LayerTextures({
       frames: { info: () => null, video: () => new Promise(() => undefined), getFrame: () => new Promise(() => undefined), prefetch: async () => 0, lodFor: () => "full" },
-      images: { get: () => null, load: async () => null },
+      images: { get: () => null, load: async () => null, frameKey: () => null, vectorSize: () => null, refine: async () => null },
       pool: new TexturePool(),
       onChange: () => undefined,
       text,
@@ -188,6 +190,9 @@ describe("highlighted cues in the preview's textures", () => {
     const composite = new Compositor().evaluate(project("ab cd", captionStyle({}, "background"), WORDS), 3);
     const list = textures.resolve(composite, "idle", 0, 1);
     expect(list.layers.map((layer) => layer.kind)).toEqual(["solid", "texture", "solid", "texture"]);
-    expect((list.layers[2] as SolidLayer).color).toEqual(YELLOW);
+    const box = list.layers[2] as SolidLayer;
+    expect(box.color).toEqual(YELLOW);
+    expect(box.shape?.kind).toBe("box");
+    expect(box.shape?.radius).toBeCloseTo((box.shape?.height ?? 0) / 2);
   });
 });

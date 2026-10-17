@@ -52,11 +52,13 @@ describe("layer geometry (spec §5.2 Transform, §7.3)", () => {
     expect(layerContent(p, p.clips.b as Clip)).toMatchObject({ width: 1080, height: 1920 });
   });
 
-  it("has no content box for audio, text, cropped-away media and shapes the compositor cannot draw", () => {
+  it("has no content box for audio, cropped-away media and solids without a size; every shape has its size's box", () => {
     const p = project([video("a", { crop: { left: 0.6, top: 0, right: 0.5, bottom: 0 } }), makeSolidClip({ id: "s", trackId: "v2", start: 0, duration: 10 })]);
     expect(layerContent(p, p.clips.a as Clip)).toBeNull();
     expect(layerContent(p, p.clips.s as Clip)).toEqual(box(100, 100));
-    expect(layerContent(p, { ...(p.clips.s as Clip), shape: "ellipse" } as Clip)).toBeNull();
+    expect(layerContent(p, { ...(p.clips.s as Clip), shape: "ellipse", fill: { from: { r: 1, g: 0, b: 0, a: 1 }, to: { r: 0, g: 0, b: 0, a: 1 } } } as Clip)).toEqual(box(100, 100));
+    expect(layerContent(p, { ...(p.clips.s as Clip), shape: "line", size: { w: 300, h: 8 } } as Clip)).toEqual(box(300, 8));
+    expect(layerContent(p, { ...(p.clips.s as Clip), size: { w: 0, h: 8 } } as Clip)).toBeNull();
     expect(isLayerClip(video("x", { kind: "audio" }))).toBe(false);
   });
 

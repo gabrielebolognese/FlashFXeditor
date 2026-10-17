@@ -1,7 +1,7 @@
 // Document invariants (spec §5.2). The DocumentStore runs `assertValid` after every command in dev
 // builds; messages name the track and clip so a broken command is found at once.
 import { usPerFrame } from "./time.js";
-import { CAPTION_HIGHLIGHTS, isFreeze, isMediaClip, LABEL_COLORS, type CaptionClip, type CaptionStyle, type Clip, type ClipId, type ClipKind, type MediaItem, type Project, type TextClip, type TextStyle, type Track, type TrackId, type TrackKind } from "./types.js";
+import { CAPTION_HIGHLIGHTS, isFreeze, isMediaClip, LABEL_COLORS, SOLID_SHAPE_IDS, type CaptionClip, type CaptionStyle, type Clip, type ClipId, type ClipKind, type MediaItem, type Project, type SolidClip, type TextClip, type TextStyle, type Track, type TrackId, type TrackKind } from "./types.js";
 
 export class DocumentInvariantError extends Error {
   readonly issues: readonly string[];
@@ -61,6 +61,7 @@ function clipIssues(project: Project, clip: Clip): string[] {
   if (clip.color !== undefined && !LABEL_SET.has(clip.color)) issues.push(`${label}: color "${clip.color}" is not a label color`);
   if (clip.kind === "text") issues.push(...textIssues(clip, label));
   if (clip.kind === "caption") issues.push(...cueIssues(clip, label));
+  if (clip.kind === "solid") issues.push(...solidIssues(clip, label));
   if (!isMediaClip(clip)) return issues;
 
   if (!Number.isInteger(clip.in) || !Number.isInteger(clip.out)) issues.push(`${label}: in/out must be integer microseconds`);
@@ -68,8 +69,8 @@ function clipIssues(project: Project, clip: Clip): string[] {
   if (clip.out <= clip.in) issues.push(`${label}: out ${clip.out} <= in ${clip.in}`);
   const media = project.media[clip.mediaId];
   if (!media) issues.push(`${label}: media ${clip.mediaId} does not exist`);
-  // Image clips hold their picture for any length (a still has durationUs 0), so `out` is not bound
-  // by the media. TODO(batch 34): animated images (loop or hold past their own duration).
+  // Image clips show their picture for any length: a still holds it (durationUs 0), an animated image
+  // loops (Batch 34), so `out` is not bound by the media.
   else if (clip.kind !== "image" && clip.out > media.durationUs) issues.push(`${label}: out ${clip.out} > media duration ${media.durationUs}`);
   if (isFreeze(clip)) {
     // A freeze frame holds `in` for any duration (Batch 27): no duration * speed invariant.
@@ -123,7 +124,19 @@ function cueIssues(clip: CaptionClip, label: string): string[] {
 
 const CAPTION_POSITIONS: ReadonlySet<string> = new Set(["bottom", "center", "top", "custom"]);
 const HIGHLIGHT_MODES: ReadonlySet<string> = new Set(CAPTION_HIGHLIGHTS);
-const isColor = (value: unknown) => typeof value === "object" && value !== null && ["r", "g", "b", "a"].every((key) => typeof (value as Record<string, unknown>)[key] === "number");
+const isColor = (value: unknown) => typeof value === "object" && value !== null && ["r", "g", "b", "a"].every((key) => Number.isFinite((value as Record<string, unknown>)[key]));
+const SOLID_SHAPES: ReadonlySet<string> = new Set(SOLID_SHAPE_IDS);
+
+/** A solid (spec §5.2): one of the shapes, a positive size, a radius >= 0, a color or a two-stop gradient. */
+function solidIssues(clip: SolidClip, label: string): string[] {
+  const issues: string[] = [];
+  if (!SOLID_SHAPES.has(clip.shape)) issues.push(`${label}: shape "${String(clip.shape)}" is not ${SOLID_SHAPE_IDS.join(", ")}`);
+  if (!isPositive(clip.size?.w) || !isPositive(clip.size?.h)) issues.push(`${label}: size ${String(clip.size?.w)}x${String(clip.size?.h)} must be > 0`);
+  if (!(Number.isFinite(clip.cornerRadius) && clip.cornerRadius >= 0)) issues.push(`${label}: corner radius ${String(clip.cornerRadius)} must be >= 0`);
+  const fill = clip.fill as unknown as Record<string, unknown> | undefined;
+  if (!isColor(fill) && !(isColor(fill?.from) && isColor(fill?.to))) issues.push(`${label}: fill must be RGBA or a gradient { from, to }`);
+  return issues;
+}
 
 /** A caption track's style (spec §10.5): a text style, a position preset, a positive width and line count, a highlight. */
 function captionStyleIssues(style: CaptionStyle | undefined, label: string): string[] {

@@ -91,7 +91,7 @@ describe("text layers in the preview's textures", () => {
     const pool = new TexturePool();
     const textures = new LayerTextures({
       frames: { info: () => null, video: () => new Promise(() => undefined), getFrame: () => new Promise(() => undefined), prefetch: async () => 0, lodFor: () => "full" },
-      images: { get: () => null, load: async () => null },
+      images: { get: () => null, load: async () => null, frameKey: () => null, vectorSize: () => null, refine: async () => null },
       pool,
       onChange: () => undefined,
       text,
@@ -148,7 +148,7 @@ describe("animated text layers (spec §10.4, Batch 31)", () => {
     const onChange = vi.fn();
     const textures = new LayerTextures({
       frames: { info: () => null, video: () => new Promise(() => undefined), getFrame: () => new Promise(() => undefined), prefetch: async () => 0, lodFor: () => "full" },
-      images: { get: () => null, load: async () => null },
+      images: { get: () => null, load: async () => null, frameKey: () => null, vectorSize: () => null, refine: async () => null },
       pool: new TexturePool(),
       onChange,
       text,

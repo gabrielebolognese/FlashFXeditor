@@ -1,6 +1,7 @@
 // SVG on the main thread: workers have no DOM to parse or rasterize SVG (createImageBitmap refuses
-// SVG blobs). The size comes from the width/height attributes, else the viewBox; the poster is the
-// image rasterized small through an <img>. TODO(batch 34): sharp rasterization at the needed scale.
+// SVG blobs). The size comes from the width/height attributes, else the viewBox; `svgPoster` draws the
+// image at any size through an <img>: the card poster, and the preview's rasters at the size they are
+// drawn at (ImageService `refine`, Batch 34).
 import { ProbeError, type ProbeResult } from "./types.js";
 
 /** Plain numbers or px; relative units (%, em) are not intrinsic sizes. */
