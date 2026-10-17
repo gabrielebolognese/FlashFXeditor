@@ -10,12 +10,14 @@
 // encoder: two passes of a separable Gaussian (horizontal into one pooled texture, vertical into
 // another, the radius capped at MAX_BLUR_SIGMA), then drawn from the second with its quad grown by
 // the blur's reach. The pooled textures are reused from draw to draw (text rasters are small).
+// A shaped solid (a box with rounded corners or an ellipse, Batch 34) has its quad grown by one target
+// px on each side, its UV past 0..1 with it, so the shader's anti-aliased edge is drawn whole.
 import type { RGBA } from "../../core/document/types.js";
 import type { DrawList, Layer, UvRect } from "../compositor/drawList.js";
 import { IDENTITY, invertInto, multiplyInto, mutableIdentity, setMat, type Mat3, type MutableMat3 } from "../mat3.js";
 import { fitWithin } from "./fitWithin.js";
 import type { GpuDevice } from "./GpuDevice.js";
-import { layerFloats, LAYER_SIZE, LAYER_STRIDE, packLayer, packMat3, pixelsToClipInto, VIEW_SIZE } from "./layerUniforms.js";
+import { layerFloats, LAYER_SIZE, LAYER_STRIDE, packLayer, packMat3, pixelsToClipInto, SHAPE_CODE, VIEW_SIZE, type LayerUniform } from "./layerUniforms.js";
 import { generateMipmaps, mipLevelCount, textureBytes, type MipGenerator } from "./mipmaps.js";
 import { paddedBytesPerRow, unpadAndUnpremultiply } from "./readback.js";
 import type { CanvasTarget, DeviceEvent, OffscreenTarget, Pane, Renderer, RenderTarget, TextureHandle, TextureOptions, Viewport } from "./renderer.js";
@@ -34,6 +36,8 @@ const BLUR_SIZE = 48;
 const BLUR_STEP = 64;
 /** Draws a pooled blur texture stays unused before it is freed. */
 const BLUR_KEEP_DRAWS = 120;
+/** Target px a shaped solid's quad grows by on each side: its anti-aliased edge reaches half a px out. */
+const SHAPE_MARGIN = 1;
 
 type PipelineKind = "textured" | "dissolve" | "solid";
 
@@ -157,7 +161,7 @@ class GpuOffscreenTarget implements OffscreenTarget {
 /** One quad of a draw. Records are pooled and rewritten every draw (no allocation once warm). */
 interface DrawRecord {
   kind: PipelineKind;
-  uniform: { transform: MutableMat3; uv: UvRect; color: RGBA; opacity: number; flipX: boolean; flipY: boolean; mix: number };
+  uniform: Omit<LayerUniform, "transform"> & { transform: MutableMat3 };
   /** Bound at groups 1 and 2 (none for solids, one for textured layers, two for dissolves). */
   texture0: GpuTexture | null;
   texture1: GpuTexture | null;
@@ -176,7 +180,17 @@ interface Rect {
 
 const newRecord = (): DrawRecord => ({
   kind: "solid",
-  uniform: { transform: mutableIdentity(), uv: { u0: 0, v0: 0, u1: 1, v1: 1 }, color: { r: 0, g: 0, b: 0, a: 0 }, opacity: 1, flipX: false, flipY: false, mix: 0 },
+  uniform: {
+    transform: mutableIdentity(),
+    uv: { u0: 0, v0: 0, u1: 1, v1: 1 },
+    color: { r: 0, g: 0, b: 0, a: 0 },
+    to: { r: 0, g: 0, b: 0, a: 0 },
+    shape: { width: 0, height: 0, radius: 0, code: SHAPE_CODE.quad },
+    opacity: 1,
+    flipX: false,
+    flipY: false,
+    mix: 0,
+  },
   texture0: null,
   texture1: null,
   blur: 0,
@@ -664,12 +678,16 @@ export class WebGpuRenderer implements Renderer {
     u.mix = 0;
     setUv(u.uv, 0, 0, 1, 1);
     setColor(u.color, TRANSPARENT);
+    setColor(u.to, TRANSPARENT);
+    u.shape.code = SHAPE_CODE.quad;
     return record;
   }
 
+  /** A flat color quad. */
   private solidRecord(color: RGBA, scissor: Rect): DrawRecord {
     const record = this.nextRecord("solid", scissor);
     setColor(record.uniform.color, color);
+    setColor(record.uniform.to, color);
     return record;
   }
 
@@ -702,9 +720,21 @@ export class WebGpuRenderer implements Renderer {
         record.uniform.mix = layer.mix;
         return;
       }
-      case "solid":
-        copyLayer(this.solidRecord(layer.color, scissor), view, layer.transform, layer.opacity);
+      case "solid": {
+        const record = this.solidRecord(layer.color, scissor);
+        copyLayer(record, view, layer.transform, layer.opacity);
+        const u = record.uniform;
+        if (layer.to) setColor(u.to, layer.to);
+        const shape = layer.shape;
+        if (shape && shape.width > 0 && shape.height > 0) {
+          u.shape.width = shape.width;
+          u.shape.height = shape.height;
+          u.shape.radius = shape.radius;
+          u.shape.code = shape.kind === "ellipse" ? SHAPE_CODE.ellipse : SHAPE_CODE.box;
+          growQuad(u.transform, u.uv, SHAPE_MARGIN);
+        }
         return;
+      }
     }
   }
 
@@ -875,6 +905,23 @@ function groupBindGroup(res: Pick<DeviceResources, "device" | "groupLayout" | "v
       { binding: 1, resource: { buffer: res.layerBuffer, size: LAYER_SIZE } },
     ],
   });
+}
+
+/** Grows the unit quad of `m` (unit quad -> target px) by `margin` target px on each side, the UV past 0..1 with it. */
+function growQuad(m: MutableMat3, uv: UvRect, margin: number): void {
+  const width = Math.hypot(m[0], m[1]);
+  const height = Math.hypot(m[2], m[3]);
+  if (!(width > 1e-6) || !(height > 1e-6)) return;
+  const ex = margin / width;
+  const ey = margin / height;
+  // m * [1 + 2ex, 0; 0, 1 + 2ey] with the quad moved by (-ex, -ey).
+  m[4] -= m[0] * ex + m[2] * ey;
+  m[5] -= m[1] * ex + m[3] * ey;
+  m[0] *= 1 + 2 * ex;
+  m[1] *= 1 + 2 * ex;
+  m[2] *= 1 + 2 * ey;
+  m[3] *= 1 + 2 * ey;
+  setUv(uv, -ex, -ey, 1 + ex, 1 + ey);
 }
 
 /** The layer's matrix in target px (`view * transform`) and its opacity. */

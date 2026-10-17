@@ -76,7 +76,7 @@ function setup(extra: Partial<PreviewViewDeps> = {}, tweak: (doc: Project) => Pr
     }),
     prefetch: vi.fn(async () => 0),
   };
-  const images = { get: () => null, load: vi.fn(() => new Promise<TextureHandle | null>(() => undefined)) };
+  const images = { get: () => null, load: vi.fn(() => new Promise<TextureHandle | null>(() => undefined)), frameKey: () => null, vectorSize: () => null, refine: async () => null };
   const renderer = {
     maxTextureSize: 8192,
     ready: true,

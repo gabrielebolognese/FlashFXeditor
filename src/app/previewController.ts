@@ -61,7 +61,15 @@ export const frameService = new FrameService({
   proxyReady: (mediaId) => documentStore.getState().media[mediaId]?.proxy?.status === "ready",
 });
 /** Still image textures. */
-export const imageService = new ImageService({ workers: workerPool, renderer, pool: texturePool, document: documentStore, svgBitmap: svgPoster });
+export const imageService = new ImageService({
+  workers: workerPool,
+  renderer,
+  pool: texturePool,
+  document: documentStore,
+  svgBitmap: svgPoster,
+  // Animation frames as they arrive, a sharper SVG raster.
+  onChange: () => scheduler.invalidate("preview"),
+});
 /** Text rasters as GPU textures (spec §10.1, P11). */
 export const textRasters = new TextRasterCache({
   upload: (canvas, options) => renderer.uploadImageBitmap(canvas, options),
@@ -98,6 +106,8 @@ export const previewView: PreviewView = new PreviewView({
   texts: () => liveTexts(),
   anims: () => liveEdit.getState().anims,
   captions: () => liveCaptions(),
+  // A size handle drag on a solid (spec §7.3), else a Solid field scrub (Batch 34).
+  solids: () => canvasInput.solids ?? liveEdit.getState().solids,
   // Export frame waits for the fonts of its text layers.
   loadFonts: async (style, text) => {
     if (fontLibrary.ready(style, text)) return false;
@@ -155,6 +165,8 @@ export const canvasInput: CanvasEditInput = new CanvasEditInput({
   crops: { read: () => liveEdit.getState().crops, write: setLiveCrops },
   // A Text field scrub resizes text boxes live, as the draft of inline editing does.
   texts: () => liveTexts(),
+  // A Solid field scrub resizes the solid's box live.
+  solids: () => liveEdit.getState().solids,
   cropMode,
   textEditor: {
     get editing() {
@@ -339,7 +351,11 @@ function releaseRemovedMedia(): () => void {
   let media = documentStore.getState().media;
   return documentStore.subscribe(
     (state) => {
-      for (const id of Object.keys(media) as MediaId[]) if (!Object.hasOwn(state.media, id)) frameService.release(id);
+      for (const id of Object.keys(media) as MediaId[]) {
+        if (Object.hasOwn(state.media, id)) continue;
+        frameService.release(id);
+        imageService.release(id);
+      }
       for (const id of Object.keys(state.media) as MediaId[]) {
         const before = media[id];
         const now = state.media[id];

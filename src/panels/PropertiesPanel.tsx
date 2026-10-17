@@ -13,6 +13,7 @@ import { MarkerSection } from "./properties/MarkerSection.js";
 import { ProjectSection } from "./properties/ProjectSection.js";
 import { QuickActions } from "./properties/QuickActions.js";
 import { Section } from "./properties/Section.js";
+import { SolidSection } from "./properties/SolidSection.js";
 import { SpeedSection } from "./properties/SpeedSection.js";
 import { TextSection } from "./properties/TextSection.js";
 import { TrackSection } from "./properties/TrackSection.js";
@@ -30,6 +31,7 @@ const SECTION_TITLES: Record<SectionId, string> = {
   clip: "Clip",
   text: "Text",
   animation: "Animation",
+  solid: "Solid",
   captionStyle: "Caption style",
   transform: "Transform",
   crop: "Crop",
@@ -48,6 +50,8 @@ function sectionBody(id: SectionId, context: PropertiesContext): ReactNode {
       return context.kind === "clips" ? <TextSection ids={context.textIds} /> : null;
     case "animation":
       return context.kind === "clips" ? <AnimationSection ids={context.textIds} primary={context.primary} /> : null;
+    case "solid":
+      return context.kind === "clips" ? <SolidSection ids={context.solidIds} /> : null;
     case "captionStyle":
       return (context.kind === "clips" || context.kind === "track") && context.captionTrackId ? <CaptionStyleSection trackId={context.captionTrackId} /> : null;
     case "transform":

@@ -2,7 +2,8 @@
 // ruler with the timeline markers (spec §6.3: triangles in their label color), the track header column (kind icon, name and toggles, spec §6.1), the divider and the
 // "+ track" rows. Locked rows are hatched (§6.12); clips of tracks out of the composite or the mix
 // (muted, hidden, not soloed) are dimmed. Clip bodies (§6.4) at M/L heights: filmstrips of videos,
-// posters of images, waveforms of audio, the text of text and caption clips, a swatch for solids;
+// posters of images (an animation's frames, Batch 34), waveforms of audio, the text of text and caption
+// clips, a swatch of the shape and fill for solids;
 // what is not loaded yet is the body color, and the pass records it in `wants` for the loaders.
 // Redrawn only when the document, the selection, the zoom/scroll, the size, the theme or the loaded
 // visuals change, never for the playhead. Clips are virtualized per track (binary search on start with
@@ -14,12 +15,13 @@ import { isFreeze, isMediaClip, type Clip, type Frame, type Marker, type MediaCl
 import type { Selection } from "../../core/store/selection.js";
 import type { Theme } from "../../core/theme/theme.js";
 import { cellOrigin, type ThumbLevel } from "../../media/cache/thumbSheets.js";
+import { frameAt, loopTimeUs } from "../../media/decode/animation.js";
 import { isPlayable } from "../../text/anim.js";
 import { cueLine } from "../../text/captions.js";
 import { firstLine } from "../../text/style.js";
 import { clipsInRange, contentEnd, linkOffset } from "../model/queries.js";
 import { clipLod, clipSpan, devicePx, LOD_THUMBS_PX, type ClipLod } from "./clipLayout.js";
-import { columnPeaks, peaksLevel, planFilmstrip, tileThumb, wantPeaks, wantSheet, type ClipVisuals, type WantsCollector } from "./clipVisuals.js";
+import { columnPeaks, peaksLevel, planFilmstrip, tileThumb, wantPeaks, wantSheet, type AnimationStripView, type ClipVisuals, type WantsCollector } from "./clipVisuals.js";
 import type { HeaderToggle, Rect, Row, TimelineGeometry } from "./geometry.js";
 import { CLIP_GLYPHS, drawGlyph, TRACK_GLYPHS, type GlyphName } from "./glyphs.js";
 import { drawScrollbars } from "./drawScrollbars.js";
@@ -320,9 +322,18 @@ function drawFilmstrip(scene: ClipScene, clip: MediaClip, y: number, height: num
 /** The levels a tile tries, in order: the one it wants, then coarser, then finer ones. */
 const STAND_INS: Record<ThumbLevel, readonly ThumbLevel[]> = { 0: [0, 1, 2], 1: [1, 0, 2], 2: [2, 1, 0] };
 
-/** An image clip: its poster tiled from the clip's start (a still has one picture). */
+/**
+ * An image clip: its poster tiled from the clip's start (a still has one picture). An animated image
+ * (Batch 34) tiles its strip instead: each tile the frame at its left edge's time, from the clip's in
+ * point and looped, as the preview plays it.
+ */
 function drawPosterTiles(scene: ClipScene, clip: MediaClip, y: number, height: number, left: number, right: number): void {
   const { ctx, dpr, geometry } = scene;
+  const strip = scene.visuals?.strip(clip.mediaId);
+  if (strip && strip.startsUs.length > 0) {
+    drawStripTiles(scene, clip, strip, y, height, left, right);
+    return;
+  }
   const poster = scene.visuals?.poster(clip.mediaId);
   if (!poster || poster.width === 0 || poster.height === 0) return;
   const tileWidth = Math.max(1, (height * poster.width) / poster.height);
@@ -333,6 +344,22 @@ function drawPosterTiles(scene: ClipScene, clip: MediaClip, y: number, height: n
     const x0 = snap(clipX + tile * tileWidth, dpr);
     const x1 = snap(clipX + (tile + 1) * tileWidth, dpr);
     ctx.drawImage(poster, x0, y, x1 - x0, height);
+  }
+}
+
+/** An animated image's tiles: each the strip cell showing at the tile's left edge (its in point, looped). */
+function drawStripTiles(scene: ClipScene, clip: MediaClip, strip: AnimationStripView, y: number, height: number, left: number, right: number): void {
+  const { ctx, dpr, geometry } = scene;
+  const tileWidth = Math.max(1, (height * strip.cellWidth) / strip.cellHeight);
+  const clipX = geometry.frameToX(clip.start);
+  const usPerPx = usPerFrame(scene.project.settings.fps) / geometry.pxPerFrame;
+  const first = Math.max(0, Math.floor((left - clipX) / tileWidth));
+  const end = Math.ceil((right - clipX) / tileWidth);
+  for (let tile = first; tile < end; tile++) {
+    const cell = frameAt(strip.startsUs, loopTimeUs(clip.in + tile * tileWidth * usPerPx, strip.durationUs));
+    const x0 = snap(clipX + tile * tileWidth, dpr);
+    const x1 = snap(clipX + (tile + 1) * tileWidth, dpr);
+    ctx.drawImage(strip.bitmap, cell * strip.cellWidth, 0, strip.cellWidth, strip.cellHeight, x0, y, x1 - x0, height);
   }
 }
 
@@ -383,17 +410,31 @@ function drawBodyText(scene: ClipScene, value: string, left: number, right: numb
   ctx.fillText(line, left + pad, y + height / 2);
 }
 
-/** A solid's color as a swatch at the start of the body. TODO(batch 34): gradient fills. */
+/**
+ * A solid as a swatch at the start of the body (Batch 34): its shape in its fill (color or vertical
+ * gradient) with a hairline edge, in a body-height square: a rounded rect with the DS small radius
+ * (`rect` square), an ellipse as a circle, a line as a bar across the square.
+ */
 function drawSwatch(scene: ClipScene, clip: SolidClip, left: number, y: number, height: number): void {
   const { ctx, dpr, theme } = scene;
   const pad = theme.space[1];
   const size = height - 2 * pad;
-  if (size < theme.icon.small || !isRgba(clip.fill)) return;
+  if (size < theme.icon.small) return;
   const x = snap(left + pad, dpr);
   const top = snap(y + pad, dpr);
   ctx.beginPath();
-  ctx.roundRect(x, top, size, size, theme.radius.sm);
-  ctx.fillStyle = formatHexColor(clip.fill);
+  if (clip.shape === "ellipse") ctx.ellipse(x + size / 2, top + size / 2, size / 2, size / 2, 0, 0, 2 * Math.PI);
+  else if (clip.shape === "line") {
+    const bar = Math.max(theme.space[0], snap(size / 4, dpr));
+    ctx.roundRect(x, snap(top + (size - bar) / 2, dpr), size, bar, bar / 2);
+  } else ctx.roundRect(x, top, size, size, clip.shape === "roundedRect" ? theme.radius.sm : 0);
+  if (isRgba(clip.fill)) ctx.fillStyle = formatHexColor(clip.fill);
+  else {
+    const gradient = ctx.createLinearGradient(0, top, 0, top + size);
+    gradient.addColorStop(0, formatHexColor(clip.fill.from));
+    gradient.addColorStop(1, formatHexColor(clip.fill.to));
+    ctx.fillStyle = gradient;
+  }
   ctx.fill();
   ctx.strokeStyle = theme.color.hairline;
   ctx.lineWidth = 1 / dpr;

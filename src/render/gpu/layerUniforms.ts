@@ -6,16 +6,23 @@ import type { Mat3, MutableMat3 } from "../mat3.js";
 
 /** Bytes between layers: WebGPU's default minUniformBufferOffsetAlignment. */
 export const LAYER_STRIDE = 256;
-/** Bytes the shader reads per layer (6 vec4). */
-export const LAYER_SIZE = 96;
+/** Bytes the shader reads per layer (8 vec4). */
+export const LAYER_SIZE = 128;
 export const VIEW_SIZE = 48;
 const STRIDE_FLOATS = LAYER_STRIDE / 4;
+
+/** How a solid is cut (shaders.ts SOLID_WGSL): the hard quad, a box with rounded corners, or an ellipse. */
+export const SHAPE_CODE = { quad: 0, box: 1, ellipse: 2 } as const;
 
 export interface LayerUniform {
   transform: Mat3;
   uv: UvRect;
-  /** Straight alpha (solids); ignored by textured layers. */
+  /** Straight alpha (solids; a gradient's top); ignored by textured layers. */
   color: RGBA;
+  /** A solid gradient's bottom color (straight alpha; `color` again for a flat fill). */
+  to: RGBA;
+  /** A solid's shape: its size in its own px, corner radius, and SHAPE_CODE. */
+  shape: { width: number; height: number; radius: number; code: number };
   opacity: number;
   flipX: boolean;
   flipY: boolean;
@@ -36,6 +43,8 @@ export function packLayer(out: Float32Array, index: number, layer: LayerUniform)
   write4(out, o + 12, layer.uv.u0, layer.uv.v0, layer.uv.u1, layer.uv.v1);
   write4(out, o + 16, layer.color.r, layer.color.g, layer.color.b, layer.color.a);
   write4(out, o + 20, clamp01(layer.opacity), layer.flipX ? 1 : 0, layer.flipY ? 1 : 0, clamp01(layer.mix));
+  write4(out, o + 24, layer.to.r, layer.to.g, layer.to.b, layer.to.a);
+  write4(out, o + 28, layer.shape.width, layer.shape.height, layer.shape.radius, layer.shape.code);
 }
 
 function write4(out: Float32Array, offset: number, x: number, y: number, z: number, w: number): void {

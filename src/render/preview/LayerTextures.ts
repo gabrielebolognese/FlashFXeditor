@@ -18,7 +18,12 @@
 //   finds the new clip's frame cached.
 // - Detail on zoom (spec §7.1): at rest (`idle` priority) a pass can name the long edge frames should
 //   have (`detailLongEdge`). A cached frame well under it (and under the video's own size) is drawn
-//   at once and decoded again once at that size; the bigger texture replaces it in the pool.
+//   at once and decoded again once at that size; the bigger texture replaces it in the pool. An SVG is
+//   rasterized again at the size it is drawn at (`vectorLongEdge`) when its raster is under it, or more
+//   than twice as big (sampled down, a big raster blurs), at rest too.
+// - Images (Batch 34): a still's one texture, or an animation's frame at the layer's media time
+//   (ImageService `frameKey`); a frame not uploaded yet holds the track's previous layer while the
+//   animation loads.
 // - `resolveSplit` resolves two composites in one pass (the trim preview's two frames side by side,
 //   spec §6.10), each pane with its own slots and draw list. The scrub rule spans both: a media shown
 //   in both panes gets one scrub request, so the two never supersede each other.
@@ -49,16 +54,16 @@ import { mediaTimePosition } from "../../media/demux/sampleIndex.js";
 import { isAbortError, type FramePriority } from "../../media/workers/protocol.js";
 import { newUnitState, type UnitState } from "../../text/anim.js";
 import type { NeighborFrame, UpcomingText } from "../compositor/Compositor.js";
-import { HIGHLIGHT_SLOT, type CaptionHighlightFrame, type Composite, type DrawList, type Layer, type MediaLayer, type SolidLayer, type TextAnimFrame, type TextCompositeLayer, type TextureLayer, type UvRect } from "../compositor/drawList.js";
+import { HIGHLIGHT_SLOT, type CaptionHighlightFrame, type Composite, type DrawList, type Layer, type MediaLayer, type SolidGeometry, type SolidLayer, type TextAnimFrame, type TextCompositeLayer, type TextureLayer, type UvRect } from "../compositor/drawList.js";
 import type { TextureHandle } from "../gpu/renderer.js";
 import { multiplyInto, mutableIdentity, setMat, type Mat3, type MutableMat3 } from "../mat3.js";
 import type { Rect } from "../text/layout.js";
 import type { ResolvedText, ResolvedUnit, TextRasterCache } from "../text/TextRasterCache.js";
-import { exportLongEdge, layerDetail } from "./detail.js";
+import { exportLongEdge, layerDetail, vectorLongEdge } from "./detail.js";
 
 export interface LayerTexturesDeps {
   frames: Pick<FrameService, "info" | "video" | "getFrame" | "prefetch" | "lodFor">;
-  images: Pick<ImageService, "get" | "load">;
+  images: Pick<ImageService, "get" | "load" | "frameKey" | "vectorSize" | "refine">;
   pool: Pick<TexturePool, "get" | "has" | "pin">;
   /** A frame arrived after the pass that wanted it: draw again. */
   onChange(): void;
@@ -100,6 +105,8 @@ interface Pending {
 
 /** A cached frame is decoded again for detail when its long edge is under this share of the wanted one (coded sizes pad, e.g. 1088 for 1080). */
 const DETAIL_TOLERANCE = 0.9;
+/** An SVG raster more than this many times the size it is drawn at is made again smaller. */
+const VECTOR_OVERSIZE = 2;
 
 interface Slot {
   pending: Pending | null;
@@ -155,6 +162,8 @@ export class LayerTextures {
   /** Videos opening, as `mediaId|lod`. */
   private readonly opening = new Set<string>();
   private readonly loadingImages = new Set<MediaId>();
+  /** SVGs being rasterized again for detail. */
+  private readonly refining = new Set<MediaId>();
   private readonly warming = new Set<string>();
   private readonly failed = new Set<MediaId>();
   private pass = 0;
@@ -299,7 +308,7 @@ export class LayerTextures {
     }
     const hot = active?.units;
     if (!active || !hot) return true;
-    if (karaoke.box) this.pushBox(pane, layers, layer.model, karaoke.box.rect, karaoke.box.color, layer.opacity);
+    if (karaoke.box) this.pushBox(pane, layers, layer.model, karaoke.box.rect, karaoke.box.color, karaoke.box.radius, layer.opacity);
     const state = highlightMove(this.highlightState, karaoke);
     for (let i = karaoke.from; i < Math.min(karaoke.to, hot.length); i++) {
       const cell = hot[i] as ResolvedUnit;
@@ -308,13 +317,11 @@ export class LayerTextures {
     return true;
   }
 
-  /** Adds a pooled solid layer filling `rect` (content px of `model`) with `color`. */
-  private pushBox(pane: 0 | 1, layers: Layer[], model: Mat3, rect: Rect, color: SolidLayer["color"], opacity: number): void {
+  /** Adds a pooled solid layer filling `rect` (content px of `model`) with `color`, its corners rounded by `radius`. */
+  private pushBox(pane: 0 | 1, layers: Layer[], model: Mat3, rect: Rect, color: SolidLayer["color"], radius: number, opacity: number): void {
     const out = (this.boxLayers[pane][this.boxCount] ??= newSolidLayer());
     this.boxCount += 1;
-    multiplyInto(out.transform, model, setMat(out.transform, rect.width, 0, 0, rect.height, rect.x, rect.y));
-    out.color = color;
-    out.opacity = opacity;
+    writeBox(out, model, rect, color, radius, opacity);
     layers.push(out);
   }
 
@@ -403,6 +410,7 @@ export class LayerTextures {
     this.failed.clear();
     this.opening.clear();
     this.loadingImages.clear();
+    this.refining.clear();
     for (const list of this.lists) list.layers.length = 0;
   }
 
@@ -437,8 +445,15 @@ export class LayerTextures {
         let key: TextureKey;
         let texture: TextureHandle | null;
         if (layer.still) {
-          key = imageKey(mediaId);
-          texture = this.deps.images.get(mediaId) ?? (await this.deps.images.load(mediaId).catch(() => null));
+          // The frame at its time (an animation's frames all loaded), an SVG as sharp as the frame shows it.
+          await this.deps.images.load(mediaId).catch(() => null);
+          const vector = this.deps.images.vectorSize(mediaId);
+          const want = vector ? vectorLongEdge(layer, vector.width, vector.height, 1) : 0;
+          const shown = this.deps.images.get(mediaId);
+          if (vector && (!shown || Math.max(shown.width, shown.height) < want * DETAIL_TOLERANCE)) await this.deps.images.refine(mediaId, want).catch(() => null);
+          const found = this.deps.images.frameKey(mediaId, layer.timeUs);
+          key = found ? { ...found } : imageKey(mediaId);
+          texture = found ? this.deps.pool.get(found) : null;
         } else {
           const info = this.deps.frames.info(mediaId) ?? (await this.deps.frames.video(mediaId).catch(() => null));
           if (!info?.decodable || info.frameTimesUs.length === 0) continue;
@@ -473,7 +488,7 @@ export class LayerTextures {
       if (writeTextQuad(out, model, resolved.texture, crop, rect, resolved.scale, state, alpha)) layers.push(out);
     };
     if (layer.karaoke) {
-      const karaoke = { ...layer.karaoke, box: layer.karaoke.box && { rect: { ...layer.karaoke.box.rect }, color: { ...layer.karaoke.box.color } } };
+      const karaoke = { ...layer.karaoke, box: layer.karaoke.box && { rect: { ...layer.karaoke.box.rect }, color: { ...layer.karaoke.box.color }, radius: layer.karaoke.box.radius } };
       if (style.background.enabled) {
         const boxes = await text.exact(content, style, scale, "backgrounds");
         if (boxes) {
@@ -490,9 +505,7 @@ export class LayerTextures {
       });
       if (karaoke.box) {
         const box = newSolidLayer();
-        multiplyInto(box.transform, model, setMat(box.transform, karaoke.box.rect.width, 0, 0, karaoke.box.rect.height, karaoke.box.rect.x, karaoke.box.rect.y));
-        box.color = karaoke.box.color;
-        box.opacity = opacity;
+        writeBox(box, model, karaoke.box.rect, karaoke.box.color, karaoke.box.radius, opacity);
         layers.push(box);
       }
       const state = highlightMove(newUnitState(), karaoke);
@@ -543,9 +556,10 @@ export class LayerTextures {
     let other: TextureHandle | null = null;
     const lod = layer.still ? "full" : this.lodOf(mediaId);
     if (layer.still) {
-      key = imageKey(mediaId);
-      texture = this.deps.images.get(mediaId);
+      key = this.deps.images.frameKey(mediaId, layer.timeUs);
+      texture = key ? this.deps.pool.get(key) : null;
       if (!texture) this.loadImage(mediaId);
+      else if (priority === "idle") this.refineVector(layer, texture, this.textScale);
     } else {
       key = this.videoKey(mediaId, layer.timeUs, lod);
       texture = key ? this.deps.pool.get(key) : null;
@@ -722,6 +736,27 @@ export class LayerTextures {
     );
   }
 
+  /**
+   * An SVG drawn bigger than its raster holds (spec §7.1), or much smaller: rasterized again at the size
+   * it is drawn at render scale `scale`.
+   */
+  private refineVector(layer: MediaLayer, texture: TextureHandle, scale: number): void {
+    const { mediaId } = layer;
+    const size = this.deps.images.vectorSize(mediaId);
+    if (!size || this.refining.has(mediaId)) return;
+    const want = vectorLongEdge(layer, size.width, size.height, scale);
+    const have = Math.max(texture.width, texture.height);
+    if (have >= want * DETAIL_TOLERANCE && have <= want * VECTOR_OVERSIZE) return;
+    this.refining.add(mediaId);
+    this.deps.images.refine(mediaId, want).then(
+      (refined) => {
+        this.refining.delete(mediaId);
+        if (refined && refined !== texture) this.deps.onChange();
+      },
+      () => this.refining.delete(mediaId),
+    );
+  }
+
   private loadImage(mediaId: MediaId): void {
     if (this.loadingImages.has(mediaId)) return;
     this.loadingImages.add(mediaId);
@@ -807,10 +842,20 @@ function newTextureLayer(): WritableTextureLayer {
   return { kind: "texture", texture: NO_TEXTURE, transform: mutableIdentity(), opacity: 1, crop: { u0: 0, v0: 0, u1: 1, v1: 1 }, flipX: false, flipY: false, blur: 0 };
 }
 
-type WritableSolidLayer = Omit<SolidLayer, "transform"> & { transform: MutableMat3 };
+type WritableSolidLayer = Omit<SolidLayer, "transform" | "shape"> & { transform: MutableMat3; shape: SolidGeometry };
 
 function newSolidLayer(): WritableSolidLayer {
-  return { kind: "solid", transform: mutableIdentity(), opacity: 1, color: { r: 0, g: 0, b: 0, a: 0 } };
+  return { kind: "solid", transform: mutableIdentity(), opacity: 1, color: { r: 0, g: 0, b: 0, a: 0 }, shape: { kind: "box", width: 0, height: 0, radius: 0 } };
+}
+
+/** `out` as a box over `rect` (content px of `model`) in `color`, its corners rounded by `radius` (anti-aliased). */
+function writeBox(out: WritableSolidLayer, model: Mat3, rect: Rect, color: SolidLayer["color"], radius: number, opacity: number): void {
+  multiplyInto(out.transform, model, setMat(out.transform, rect.width, 0, 0, rect.height, rect.x, rect.y));
+  out.color = color;
+  out.opacity = opacity;
+  out.shape.width = rect.width;
+  out.shape.height = rect.height;
+  out.shape.radius = radius;
 }
 
 /** `out` as the active word's move: grown by the highlight's scale about its middle. */

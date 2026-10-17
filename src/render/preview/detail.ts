@@ -70,6 +70,32 @@ export function layerDetail(layer: Pick<MediaLayer, "transform" | "crop">, width
 }
 
 /**
+ * The size an SVG (`width` x `height`) counts with for the source detail: vector, it holds as much as
+ * its raster can (DETAIL_MAX_SIZE on the long edge), so a zoom renders it finer (Batch 34).
+ */
+export function vectorDetailSize(width: number, height: number): { width: number; height: number } {
+  const scale = DETAIL_MAX_SIZE / Math.max(width, height, 1);
+  return { width: width * scale, height: height * scale };
+}
+
+/**
+ * The long edge to rasterize an SVG (`width` x `height`) at so that `layer` shows it sharp at render
+ * scale `scale` (device px per project px): its size on the render, rounded up to a step of a half
+ * octave (so a zoom does not rasterize it at every step), at most DETAIL_MAX_SIZE.
+ */
+export function vectorLongEdge(layer: Pick<MediaLayer, "transform" | "crop">, width: number, height: number, scale: number): number {
+  if (width <= 0 || height <= 0) return 1;
+  const t = layer.transform;
+  // The whole image's sides in project px (the quad shows its crop).
+  const shownWidth = Math.hypot(t[0], t[1]) / Math.max(1e-9, Math.abs(layer.crop.u1 - layer.crop.u0));
+  const shownHeight = Math.hypot(t[2], t[3]) / Math.max(1e-9, Math.abs(layer.crop.v1 - layer.crop.v0));
+  const long = Math.max(width, height);
+  const need = scale * Math.max((shownWidth * long) / width, (shownHeight * long) / height);
+  if (!(need > 1)) return 1;
+  return Math.min(DETAIL_MAX_SIZE, Math.ceil(2 ** (Math.ceil(2 * Math.log2(need)) / 2)));
+}
+
+/**
  * The long edge Export frame uploads a video at (spec §9.5 "full resolution"): its own size, or twice
  * its size on the frame when it is drawn smaller than half its size (the upload and the draw filter
  * bilinearly, without mipmaps: a 2x step each keeps the lines of the source without aliasing), at most

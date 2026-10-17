@@ -14,7 +14,6 @@
 import type { Draft } from "immer";
 import type { Command } from "../../core/commands/command.js";
 import type { Clip, ClipId, Crop, MediaClip, Project, SolidClip, TextClip, Transform } from "../../core/document/types.js";
-import { isRgba } from "../../core/document/color.js";
 import { displaySize } from "../../media/probe/rotation.js";
 import { textLayout } from "../../render/text/layoutCache.js";
 import { isClipLocked } from "../model/queries.js";
@@ -54,7 +53,7 @@ const clamp01 = (value: number) => (Number.isFinite(value) ? Math.min(1, Math.ma
 
 /**
  * The content box of a layer, or null when the compositor draws nothing for it (media without a
- * size, everything cropped away, solid shapes it cannot draw yet). A text's box is its layout box
+ * size, everything cropped away, a solid without a size). A text's box is its layout box
  * (an empty text keeps one). `crop` replaces a media clip's own (a crop handle drag's or a crop field
  * scrub's ephemeral crop, P2).
  */
@@ -71,9 +70,9 @@ export function layerContent(project: Project, clip: Clip, crop?: Crop): Content
     return right > left && bottom > top ? { width, height, left, top, right, bottom } : null;
   }
   if (clip.kind === "solid") {
-    // TODO(batch 34): rounded rects, ellipses, lines and gradients (the compositor draws rects only).
+    // Every shape is drawn in its size's box (an ellipse inscribed, a line `h` thick).
     const { w, h } = clip.size;
-    if (clip.shape !== "rect" || !isRgba(clip.fill) || !(w > 0) || !(h > 0)) return null;
+    if (!(w > 0) || !(h > 0)) return null;
     return { width: w, height: h, left: 0, top: 0, right: w, bottom: h };
   }
   if (clip.kind === "text") {

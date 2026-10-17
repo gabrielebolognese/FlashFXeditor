@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Composite, MediaLayer } from "../compositor/drawList.js";
-import { DETAIL_MAX_SIZE, exportLongEdge, fullScale, layerDetail, qualityLabel, renderScale, sourceDetail, uploadLongEdge, wantedLod } from "./detail.js";
+import { DETAIL_MAX_SIZE, exportLongEdge, fullScale, layerDetail, qualityLabel, renderScale, sourceDetail, uploadLongEdge, vectorDetailSize, vectorLongEdge, wantedLod } from "./detail.js";
 
 function mediaLayer(mediaId: string, transform: MediaLayer["transform"], crop = { u0: 0, v0: 0, u1: 1, v1: 1 }): MediaLayer {
   return { kind: "media", trackId: "v1", clipId: "c", mediaId, still: false, timeUs: 0, transform, opacity: 1, crop };
@@ -121,5 +121,28 @@ describe("exportLongEdge (Export frame at full resolution)", () => {
     expect(layerDetail(layer, 3840, 2160)).toBeCloseTo(3840 / 1080, 6);
     expect(layerDetail({ ...layer, crop: { u0: 0, v0: 0, u1: 0.5, v1: 1 } }, 3840, 2160)).toBeCloseTo(Math.sqrt(0.5) * (3840 / 1080), 6);
     expect(layerDetail(layer, 0, 2160)).toBe(0);
+  });
+});
+
+describe("SVG detail (Batch 34)", () => {
+  const full = { u0: 0, v0: 0, u1: 1, v1: 1 };
+
+  it("counts an SVG as vector: as much detail as its raster can hold", () => {
+    expect(vectorDetailSize(300, 150)).toEqual({ width: DETAIL_MAX_SIZE, height: DETAIL_MAX_SIZE / 2 });
+    // A 300 px logo shown 300 project px wide can be zoomed to 4096 / 300 before its raster runs out.
+    const layer = { transform: [300, 0, 0, 150, 0, 0] as const, crop: full };
+    const { width, height } = vectorDetailSize(300, 150);
+    expect(layerDetail(layer, width, height)).toBeCloseTo(DETAIL_MAX_SIZE / 300, 6);
+  });
+
+  it("rasterizes at the size it is drawn at the render scale, in half-octave steps, at most 4096", () => {
+    const layer = { transform: [300, 0, 0, 150, 0, 0] as const, crop: full };
+    expect(vectorLongEdge(layer, 300, 150, 1)).toBe(363);
+    expect(vectorLongEdge(layer, 300, 150, 4)).toBe(1449);
+    expect(vectorLongEdge(layer, 300, 150, 40)).toBe(DETAIL_MAX_SIZE);
+    expect(vectorLongEdge(layer, 300, 150, 0.001)).toBe(1);
+    // Turned 90° and cropped to its left half: the whole image is 600 px wide on the frame.
+    const turned = { transform: [0, 300, -150, 0, 0, 0] as const, crop: { u0: 0, v0: 0, u1: 0.5, v1: 1 } };
+    expect(vectorLongEdge(turned, 300, 150, 1)).toBe(725);
   });
 });

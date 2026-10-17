@@ -10,6 +10,15 @@ import { PEAKS_BUCKET } from "../../media/cache/peaks.js";
 import { chooseLevel, thumbIndex, type ThumbLayout, type ThumbLevel } from "../../media/cache/thumbSheets.js";
 import type { SheetKey } from "../../media/ThumbnailStore.js";
 
+/** An animated image's frames side by side in one bitmap, each cell starting at `startsUs[i]` (media us). */
+export interface AnimationStripView {
+  bitmap: ImageBitmap;
+  cellWidth: number;
+  cellHeight: number;
+  startsUs: readonly number[];
+  durationUs: number;
+}
+
 export interface ClipVisuals {
   /** The sheet layout of a video, or null (not a video, unknown size). */
   thumbLayout(mediaId: MediaId): ThumbLayout | null;
@@ -17,6 +26,8 @@ export interface ClipVisuals {
   sheet(mediaId: MediaId, level: ThumbLevel, sheet: number): ImageBitmap | null;
   /** The poster of an image, or null. */
   poster(mediaId: MediaId): ImageBitmap | null;
+  /** The filmstrip of an animated image (Batch 34), or null (a still, or not made yet). */
+  strip(mediaId: MediaId): AnimationStripView | null;
   /** The peaks of an audio-bearing media, or null. */
   peaks(mediaId: MediaId): Peaks | null;
 }

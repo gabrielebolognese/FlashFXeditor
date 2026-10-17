@@ -13,7 +13,7 @@ import { useDismiss } from "../../ui/useDismiss.js";
 import styles from "./TimelineToolbar.module.css";
 import { TOOLBAR_GROUPS, type ToolbarGroup, type ToolbarItem } from "./toolbarGroups.js";
 
-// Actions stay disabled until their batches wire them (toggles: 35/37, add: 34).
+// Actions stay disabled until their batches wire them (toggles: 35/37).
 const ENABLED: ReadonlySet<string> = new Set([
   "timeline.zoomOut",
   "timeline.zoomIn",
@@ -30,6 +30,8 @@ const ENABLED: ReadonlySet<string> = new Set([
   "edit.punchZoom",
   "add.title",
   "add.subtitle",
+  "add.solid",
+  "add.image",
   "timeline.trackHeightCycle",
 ]);
 

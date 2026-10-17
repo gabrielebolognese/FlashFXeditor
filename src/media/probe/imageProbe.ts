@@ -1,11 +1,8 @@
 // Image probe (spec §9.1), run in decode.worker. GIF and WebP go through ImageDecoder to find
 // animations (frame list and total duration); other images, and browsers without ImageDecoder, use
 // createImageBitmap (which applies EXIF orientation) for their size. Stills have no duration.
+import { frameDurationUs } from "../decode/animation.js";
 import { ProbeError, type ProbeResult } from "./types.js";
-
-/** Browsers show frames shorter than 20 ms for 100 ms (GIF convention); so do we. */
-const MIN_FRAME_US = 20_000;
-const DEFAULT_FRAME_US = 100_000;
 
 const ANIMATABLE = new Set(["image/gif", "image/webp"]);
 
@@ -29,8 +26,7 @@ async function animatedProbe(blob: Blob, type: string, signal: AbortSignal | und
       signal?.throwIfAborted();
       const { image } = await decoder.decode({ frameIndex });
       if (frameIndex === 0) [width, height] = [image.displayWidth, image.displayHeight];
-      const duration = image.duration ?? 0;
-      frames.push(duration < MIN_FRAME_US ? DEFAULT_FRAME_US : Math.round(duration));
+      frames.push(frameDurationUs(image.duration));
       image.close();
     }
     const durationUs = frames.reduce((sum, us) => sum + us, 0);

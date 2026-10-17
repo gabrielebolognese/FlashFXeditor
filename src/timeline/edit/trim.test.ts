@@ -193,6 +193,21 @@ describe("trimEdge: media bounds (spec §6.10)", () => {
     const long = commit(p, trimEdge(p, "s", "out", 10_000, { ripple: false }));
     expect(span(long, "s")).toEqual([100, 10_050]);
   });
+
+  it("keeps an animated image's frames in place on an in trim: `in` moves with the edge, wrapped into one loop (Batch 34)", () => {
+    const gif = { ...clip("g", "v1", 100, 150), kind: "image" as const, mediaId: "gif", in: 0, out: frameToUs(150, fps) };
+    const p = project([gif]);
+    p.media.gif = makeMedia("gif", "image", 1_000_000);
+    const later = commit(p, trimEdge(p, "g", "in", 45, { ripple: false }));
+    // 45 frames = 1.5 s into a 1 s loop: 0.5 s.
+    expect(span(later, "g")).toEqual([145, 105]);
+    expect(source(later, "g")).toEqual([500_000, 500_000 + frameToUs(105, fps)]);
+    const earlier = commit(p, trimEdge(p, "g", "in", -15, { ripple: false }));
+    expect(source(earlier, "g")).toEqual([500_000, 500_000 + frameToUs(165, fps)]);
+    expect(validateProject(earlier)).toEqual([]);
+    // The out edge leaves `in` alone.
+    expect(source(commit(p, trimEdge(p, "g", "out", 300, { ripple: false })), "g")).toEqual([0, frameToUs(450, fps)]);
+  });
 });
 
 describe("trimEdge: keyframes, fades", () => {

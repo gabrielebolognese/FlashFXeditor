@@ -48,10 +48,28 @@ export interface DissolveLayer extends LayerBase {
   crop: UvRect;
 }
 
-/** A flat color quad (solids, dip to color). `color` has straight alpha. */
+/**
+ * The shape a solid layer is drawn as (spec §5.2 solids, Batch 34): a box with rounded corners or an
+ * ellipse filling the unit quad, `width` x `height` px of the layer's own space (the anti-aliased edge
+ * is found in those px), `radius` px corners (boxes; at most half the shorter side).
+ */
+export interface SolidGeometry {
+  kind: "box" | "ellipse";
+  width: number;
+  height: number;
+  radius: number;
+}
+
+/**
+ * A color quad (solids, dip to color, highlight boxes). `color` has straight alpha; with `to` it is
+ * the top of a vertical gradient that ends in `to` at the bottom of the quad. With `shape` the quad is
+ * drawn as that shape with an anti-aliased edge; without, as the hard quad.
+ */
 export interface SolidLayer extends LayerBase {
   kind: "solid";
   color: RGBA;
+  to?: RGBA | null;
+  shape?: SolidGeometry | null;
 }
 
 export type Layer = TextureLayer | DissolveLayer | SolidLayer;
@@ -94,7 +112,8 @@ export interface CaptionHighlightFrame {
   scale: number;
   ox: number;
   oy: number;
-  box: { rect: { x: number; y: number; width: number; height: number }; color: RGBA } | null;
+  /** The background mode's box: a pill (`radius` half its height) behind the active word. */
+  box: { rect: { x: number; y: number; width: number; height: number }; color: RGBA; radius: number } | null;
 }
 
 /** The raster cache slot suffix of a cue's active-word atlas. */

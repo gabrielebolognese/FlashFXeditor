@@ -31,13 +31,14 @@ describe("properties context (spec §11)", () => {
   it("lists the clips with their primary and the layers among them; layers add Transform and Opacity, media layers Crop, video and audio Speed", () => {
     const p = project();
     const linked = propertiesContext(selectClips(["a", "v"], "a"), null, p);
-    expect(linked).toEqual({ kind: "clips", clipIds: ["a", "v"], primary: "a", layerIds: ["v"], layerPrimary: "v", mediaIds: ["v"], speedIds: ["a", "v"], textIds: [], captionTrackId: null });
+    expect(linked).toEqual({ kind: "clips", clipIds: ["a", "v"], primary: "a", layerIds: ["v"], layerPrimary: "v", mediaIds: ["v"], speedIds: ["a", "v"], textIds: [], solidIds: [], captionTrackId: null });
     expect(sectionIds(linked)).toEqual(["clip", "transform", "crop", "opacity", "speed"]);
     const audio = propertiesContext(selectClips(["a"]), null, p);
     expect(sectionIds(audio)).toEqual(["clip", "speed"]);
     const solid = propertiesContext(selectClips(["gone", "s"], "gone"), null, p);
     expect(solid).toMatchObject({ clipIds: ["s"], primary: "s", layerPrimary: "s", mediaIds: [], speedIds: [] });
-    expect(sectionIds(solid)).toEqual(["clip", "transform", "opacity"]);
+    expect(sectionIds(solid)).toEqual(["clip", "solid", "transform", "opacity"]);
+    expect(solid).toMatchObject({ solidIds: ["s"] });
     expect(propertiesContext(selectClips(["s", "v"]), null, p)).toMatchObject({ layerIds: ["s", "v"], mediaIds: ["v"] });
     expect(propertiesContext(selectClips(["gone"]), null, p)).toEqual({ kind: "none" });
   });
@@ -45,8 +46,8 @@ describe("properties context (spec §11)", () => {
   it("adds Text right after Clip for text clips (Batch 28), then Animation (Batch 31)", () => {
     const p = project();
     const text = propertiesContext(selectClips(["t", "s"]), null, p);
-    expect(text).toMatchObject({ layerIds: ["t", "s"], textIds: ["t"], mediaIds: [] });
-    expect(sectionIds(text)).toEqual(["clip", "text", "animation", "transform", "opacity"]);
+    expect(text).toMatchObject({ layerIds: ["t", "s"], textIds: ["t"], solidIds: ["s"], mediaIds: [] });
+    expect(sectionIds(text)).toEqual(["clip", "text", "animation", "solid", "transform", "opacity"]);
   });
 
   it("adds Caption style for cues and for the caption track (Batch 32)", () => {

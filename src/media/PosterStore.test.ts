@@ -19,6 +19,10 @@ const asBitmap = (b: FakeBitmap) => b as unknown as ImageBitmap;
 function fakePool() {
   const calls: string[] = [];
   const request = vi.fn(async (method: string, params: { blob?: Blob; file?: Blob }) => {
+    if (method === "animationStrip") {
+      calls.push(`strip ${(params.blob as File).name}`);
+      return { bitmap: asBitmap(bitmap("strip")), cellWidth: 160, cellHeight: 144, startsUs: [0, 100_000], durationUs: 200_000 };
+    }
     if (method === "decodeImage") {
       const text = await (params.blob as Blob).text();
       calls.push(`decodeImage ${text}`);
@@ -123,5 +127,22 @@ describe("PosterStore", () => {
     store.dispose();
     for (const b of bitmaps) expect(b.close).toHaveBeenCalled();
     expect(store.get("a")).toBeNull();
+  });
+});
+
+describe("PosterStore animation strips (Batch 34)", () => {
+  it("makes the timeline filmstrip of an animated image after its poster, and closes it when the media goes", async () => {
+    const changed: string[] = [];
+    const gif: MediaItem = { ...makeMedia("g", "image", 200_000), codec: "gif", file: { relPath: "media/g.gif" } };
+    const { store, pool, documentStore } = await setup([gif, still("i")], { onChange: (id) => changed.push(id) });
+    await store.whenIdle();
+    expect(pool.calls).toEqual(["poster g.gif", "poster i.png", "strip g.gif"]);
+    const strip = store.strip("g");
+    expect(strip).toMatchObject({ cellWidth: 160, cellHeight: 144, startsUs: [0, 100_000], durationUs: 200_000 });
+    expect(store.strip("i")).toBeNull();
+    expect(changed.filter((id) => id === "g")).toEqual(["g", "g"]);
+    documentStore.dispatch(removeMedia(["g"]));
+    expect(store.strip("g")).toBeNull();
+    expect((strip?.bitmap as unknown as FakeBitmap).close).toHaveBeenCalled();
   });
 });
