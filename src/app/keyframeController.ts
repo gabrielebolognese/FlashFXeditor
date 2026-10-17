@@ -13,6 +13,7 @@
 // - Volume (Batch 37): the Audio section's stopwatch keys the audio clips the section edits (the selected
 //   ones and those linked to selected video clips); its keys show on the clips' rubber bands, not on a
 //   lane (audio tracks have none).
+import type { Command } from "../core/commands/command.js";
 import { KEYFRAME_SECTIONS, type KeyframeSection } from "../core/document/keyframes.js";
 import { EASE_IDS, type ClipId, type EaseId } from "../core/document/types.js";
 import { createStore } from "../core/store/createStore.js";
@@ -107,12 +108,16 @@ export function copySelectedKeys(): KeyframeClipboard | null {
   return copied;
 }
 
-/** Pastes `clipboard` (the copied keys by default) on the selected clips from the playhead; false when nothing changes. */
-export function pasteKeyframes(clipboard = keyframeClipboard.getState()): boolean {
+/**
+ * Pastes `clipboard` (the copied keys by default) on the selected clips from the playhead; false when
+ * none of them takes the keys. `accept` sees the command first and can turn it down (Batch 39: keys
+ * from the system clipboard are checked against the document's invariants before they land).
+ */
+export function pasteKeyframes(clipboard = keyframeClipboard.getState(), accept: (command: Command) => boolean = () => true): boolean {
   if (!clipboard) return false;
   keyframeClipboard.set(clipboard);
   const command = pasteKeys(documentStore.getState(), targets(clipboard.section), clipboard, playhead());
-  if (command) documentStore.dispatch(command);
+  if (command && accept(command)) documentStore.dispatch(command);
   return command !== null;
 }
 

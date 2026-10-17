@@ -14,11 +14,13 @@
 //   ids; clips that shared a link group or a group share a new one; a transition pair gets a new id.
 // - Media: in the project they were copied from, clips keep their media; in another one, each media is
 //   found by name (or file name) and kind when its duration holds every pasted clip's source range,
-//   else the copied record is added as an offline item (the clip keeps its source range; TODO(batch 41):
+//   else the copied record is added as an offline item (a file reference that resolves nowhere, the
+//   copied path kept as its hint; the clip keeps its source range; TODO(batch 41):
 //   missing media detection, the offline slate and Relink). Frames are not converted between frame
 //   rates (TODO(batch 42): the fps conversion of §15): such a paste is refused.
 // One command, one undo step ("Paste" / "Paste insert"), media records included.
 import type { Command } from "../../core/commands/command.js";
+import { isEaseId, isKeyframeSection, SECTION_PROPS } from "../../core/document/keyframes.js";
 import type { CaptionStyle, Clip, ClipId, Frame, MediaId, MediaItem, Project, Rational, Track, TrackId } from "../../core/document/types.js";
 import { isMediaClip } from "../../core/document/types.js";
 import type { KeyframeClipboard } from "./keyframes.js";
@@ -162,6 +164,19 @@ function isCopiedClip(value: unknown): value is CopiedClip {
 }
 
 /**
+ * Copied keys' shape, as strict as the document's keyframe invariants (`keyframeIssues`): a known
+ * section, only its properties, whole-frame offsets from 0, finite values, known eases. Keys go
+ * straight into the clips, so a broken list from elsewhere would save a project that cannot open.
+ */
+function isKeyframeClipboard(value: unknown): value is KeyframeClipboard {
+  if (!isRecord(value) || !isKeyframeSection(value.section) || !isRecord(value.keys)) return false;
+  const props: readonly string[] = SECTION_PROPS[value.section];
+  const lists = Object.entries(value.keys);
+  const isKey = (key: unknown) => isRecord(key) && isInt(key.offset) && key.offset >= 0 && Number.isFinite(key.value) && isEaseId(key.ease);
+  return lists.length > 0 && lists.every(([prop, keys]) => props.includes(prop) && Array.isArray(keys) && keys.length > 0 && keys.every(isKey));
+}
+
+/**
  * The payload in a system clipboard text, or null when the text is not one (other text, another
  * format or version, a broken shape).
  */
@@ -174,10 +189,7 @@ export function parseClipboard(text: string): ClipboardPayload | null {
     return null;
   }
   if (!isRecord(value) || value.format !== CLIPBOARD_FORMAT || value.version !== CLIPBOARD_VERSION) return null;
-  if (value.kind === "keys") {
-    const keys = value.keys;
-    return isRecord(keys) && typeof keys.section === "string" && isRecord(keys.keys) ? (value as unknown as KeysPayload) : null;
-  }
+  if (value.kind === "keys") return isKeyframeClipboard(value.keys) ? (value as unknown as KeysPayload) : null;
   if (value.kind !== "clips") return null;
   const fps = value.fps;
   if (typeof value.projectId !== "string" || !isRecord(fps) || !isInt(fps.num) || !isInt(fps.den)) return null;
@@ -224,7 +236,10 @@ export function resolveMedia(project: Project, payload: ClipsPayload, newId: () 
       ids.set(item.id, found.id);
       continue;
     }
-    const offline: MediaItem = { ...structuredClone(item), id: newId(), analysis: { thumbs: "none", peaks: "none" } };
+    // The copied path belongs to the other project: the same `media/<name>` here can be another file.
+    // An empty handle key resolves nowhere, so the item stays offline; the hint keeps the path for Relink.
+    const pathHint = "relPath" in item.file ? item.file.relPath : item.file.pathHint;
+    const offline: MediaItem = { ...structuredClone(item), id: newId(), file: { handleKey: "", pathHint }, analysis: { thumbs: "none", peaks: "none" } };
     delete offline.proxy;
     delete offline.binId;
     added.push(offline);

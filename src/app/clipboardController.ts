@@ -154,10 +154,19 @@ function reportOffline(offline: readonly MediaItem[]): void {
   showToast({ tone: "info", message: offline.length === 1 ? "Pasted with offline media" : `Pasted with ${offline.length} offline media`, detail: `${list} ${offline.length === 1 ? "is" : "are"} not in this project; the clips stay offline until the media is relinked.` });
 }
 
+/** Whether `command` makes a valid document; a toast and false when not (`what`: "clips" or "keyframes"). */
+function acceptPaste(command: Command, what: string): boolean {
+  const issues = issuesAfter(command);
+  if (issues.length === 0) return true;
+  console.warn("[clipboard] paste refused:", issues);
+  showToast({ tone: "error", message: `Can't paste these ${what}`, detail: `The clipboard holds ${what} this project can't take.` });
+  return false;
+}
+
 /** Pastes `payload` at the playhead (`insert`: Paste insert): clips, or keys on the selected clips. */
 function paste(payload: ClipboardPayload, mode: MoveMode): void {
   if (payload.kind === "keys") {
-    if (!pasteKeyframes(payload.keys)) showToast({ tone: "info", message: "Select a clip to paste keyframes on", detail: "Keyframes paste from the playhead on onto the selected clips." });
+    if (!pasteKeyframes(payload.keys, (command) => acceptPaste(command, "keyframes"))) showToast({ tone: "info", message: "Select a clip to paste keyframes on", detail: "Keyframes paste from the playhead on onto the selected clips." });
     return;
   }
   const playhead = sessionStore.state.getState().playhead;
@@ -166,12 +175,7 @@ function paste(payload: ClipboardPayload, mode: MoveMode): void {
     reportRefusal(result, payload);
     return;
   }
-  const issues = issuesAfter(result.command);
-  if (issues.length > 0) {
-    console.warn("[clipboard] paste refused:", issues);
-    showToast({ tone: "error", message: "Can't paste these clips", detail: "The clipboard holds clips this project can't take." });
-    return;
-  }
+  if (!acceptPaste(result.command, "clips")) return;
   documentStore.dispatch(result.command, { selection: toSnapshot(selectClips(result.placed, result.primary)) });
   setPlayhead(sessionStore, result.end);
   reportOffline(result.offline);
