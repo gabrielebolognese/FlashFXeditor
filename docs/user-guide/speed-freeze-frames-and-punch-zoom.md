@@ -1,6 +1,6 @@
 # Speed, freeze frames and punch zoom
 
-These tools set the pace of your short. Speed a clip up or slow it down with one click or an exact percentage, hold a frame for two seconds to let a moment land, and punch in on a shot with a cut that jumps 20% closer. Each one is a single step that you undo with <kbd>Ctrl</kbd>+<kbd>Z</kbd>.
+These tools set the pace of your short. Speed a clip up or slow it down with one click or an exact percentage, hold a frame for two seconds to let a moment land, and punch in on a shot with a cut that zooms 20% closer in a fraction of a second. Each one is a single step that you undo with <kbd>Ctrl</kbd>+<kbd>Z</kbd>.
 
 > **Video placeholder: Pacing tools in one minute**
 > - File: `videos/speed-freeze-frames-and-punch-zoom/overview.mp4` (not recorded yet)
@@ -10,7 +10,7 @@ These tools set the pace of your short. Speed a clip up or slow it down with one
 >   2. Click clip A. In the quick actions at the top of **Edit Properties**, click **2x**: A and its sound get half as long and both show a `2x` badge, and B moves up against A. Press <kbd>Home</kbd> and <kbd>Space</kbd>: the voice plays fast and an octave higher. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>.
 >   3. Scroll down to the **Speed** section, click in **Speed**, type `75` and press <kbd>Enter</kbd>: A gets longer and B moves later.
 >   4. Put the playhead on a strong expression in A and press <kbd>Shift</kbd>+<kbd>F</kbd>: a 2-second clip with a snowflake badge appears at the playhead, and everything after it moves 2 seconds later. Play over it: the picture holds and the sound stops for 2 seconds, then both go on.
->   5. Move the playhead to the middle of a sentence in A and press <kbd>Shift</kbd>+<kbd>Z</kbd>: A is cut there, and after the cut the face is 20% closer in the preview.
+>   5. Move the playhead to the middle of a sentence in A and press <kbd>Shift</kbd>+<kbd>Z</kbd>: A is cut there. Play over the cut: right after it, the face zooms 20% closer in a fraction of a second.
 
 ## In this page
 - [Find the pacing tools](#find-the-pacing-tools)
@@ -106,6 +106,7 @@ A new speed changes either the clip's length or the part of the media it plays. 
 | Gold (on, the default) | The part of the media it plays, from the same first frame to the same last frame | Its length, rounded to whole frames | It lasts 5 seconds and plays the same 10 seconds of media. |
 | Not gold (off) | Its length | How much of the media it plays, from the same first frame | It still lasts 10 seconds and plays 20 seconds of media, if the media is that long. |
 
+- A clip animated with keyframes keeps its motion in step: the keyframes stretch or squeeze with the new length, so at 2x the motion takes half as long. See [Keyframes](keyframes.md#know-what-happens-to-keyframes-when-you-edit-clips).
 - With the chain button off, a faster clip can run out of media. It then ends at the last frame of its media, and the message **Limited by the media end** appears.
 - The chain button and **Ripple** stay as you set them while the editor is open, for every project and every clip, and are on again when you reload the page. They are not part of the undo history.
 
@@ -180,7 +181,7 @@ What happens:
 - Every clip from the playhead on, on every unlocked track, moves 2 seconds later. This doesn't depend on the **Ripple** switch.
 - The video's linked sound is cut too, also with **Linked selection** off, and its second part moves with the video. So the clip's own sound is silent during the hold, and picture and sound go on in sync after it.
 - Clips on other tracks that run across the playhead, such as a music bed or a title, are not cut and stay where they are: the music keeps playing under the hold.
-- The freeze frame gets the video's name, label color, position, size, angle, crop and opacity. It is not linked to any sound and not in a group.
+- The freeze frame gets the video's name, label color, position, size, angle, crop and opacity. For a video animated with keyframes, it holds the look the video has at the playhead, without keyframes. It is not linked to any sound and not in a group.
 - The freeze frame is selected afterwards, so you can change its length right away.
 - When the playhead is exactly at the start of a video, nothing is cut: the freeze frame goes right before the video and holds its first frame.
 - The hold is 2 seconds at every frame rate: 60 frames at 30 fps.
@@ -200,32 +201,35 @@ A freeze frame is a video clip that shows one frame for as long as it lasts. You
 
 ## Punch in at a cut (punch zoom)
 
-A punch zoom cuts a clip at the playhead and enlarges the part after the cut, so the shot jumps closer. It is a quick way to add energy to a talking-head short or to stress a word.
+A punch zoom cuts a clip at the playhead and enlarges the part after the cut in a quick zoom, so the shot comes closer. It is a quick way to add energy to a talking-head short or to stress a word.
 
 > **Video placeholder: Punch zoom**
 > - File: `videos/speed-freeze-frames-and-punch-zoom/punch-zoom.mp4` (not recorded yet)
 > - Length: about 35 seconds
 > - Shows:
 >   1. A 1080×1920 project with a vertical talking-head video with sound on V1 and A1, filling the frame.
->   2. Put the playhead on the first word of a punchline and press <kbd>Shift</kbd>+<kbd>Z</kbd>: the video and its sound are cut at the playhead, and the second part is selected. In **Transform**, **Scale** reads **120.0**.
->   3. Play over the cut: the face jumps closer at the punchline, and the sound plays on without a break.
->   4. Drag the picture down a little in the preview so the face sits in the frame.
+>   2. Put the playhead on the first word of a punchline and press <kbd>Shift</kbd>+<kbd>Z</kbd>: the video and its sound are cut at the playhead, and the second part is selected. The **Transform** stopwatch is gold with the count **2**, and **Scale** reads **100.0**.
+>   3. In the timeline, press <kbd>→</kbd> six times: **Scale** grows to **120.0**, in big steps first and small ones at the end.
+>   4. Press <kbd>Ctrl</kbd>+<kbd>←</kbd> and <kbd>Space</kbd>: at the punchline the face zooms closer in a fraction of a second and lands softly, and the sound plays on without a break.
 >   5. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> twice: the video is one clip again, at its first size.
 
-1. Move the playhead to the moment the shot should jump closer.
+1. Move the playhead to the moment the shot should come closer.
 2. Press <kbd>Shift</kbd>+<kbd>Z</kbd>, or click **Punch zoom** in the timeline toolbar or the quick actions.
 
 What happens:
 
-- The clip is cut at the playhead, and the part after the cut gets 20% larger: its scale is multiplied by 1.2, so 100% becomes 120%, and a landscape video fitted at 56.3% becomes 67.5%.
+- The clip is cut at the playhead, and the part after the cut zooms in until it is 20% larger: its scale is multiplied by 1.2, so 100% becomes 120%, and a landscape video fitted at 56.3% becomes 67.5%.
+- The zoom takes 6 frames, at any frame rate (0.2 seconds at 30 fps), with **Ease out**: fast at first, then landing softly. Over those frames a 100% picture shows 100%, 108.4%, 114.1%, 117.5%, 119.3%, 119.9% and 120%. A part shorter than 7 frames reaches 120% on its last frame.
+- The zoom is made of two **Transform** keyframes on the part after the cut: one on its first frame, at its own size, and one on its seventh frame, 20% larger. Change them like other keyframes, for example drag the second one further along the clip for a slower zoom, or delete the first one to jump closer at once, right at the cut. See [Keyframes](keyframes.md).
+- A part that is already animated with **Transform** keyframes gets 20% larger at once, at every keyframe; its own motion stays.
 - The picture grows around its anchor point, the middle of the picture unless you moved it. See [Move the anchor point](arranging-layers-in-the-preview.md#move-the-anchor-point).
 - With **Linked selection** on, the linked sound is cut at the same place, like **Split at playhead**. The sound itself doesn't change, and no clip moves.
-- The enlarged part is selected afterwards, so you can drag it to frame the shot.
-- A clip that starts exactly at the playhead is not cut: all of it is enlarged.
-- Punch again further on for another step closer: a second punch zoom gives 144%.
+- The enlarged part is selected afterwards, so you can frame the shot. Because the zoom is animated, a drag in the preview changes the keyframe at the playhead, or adds one: to move the whole shot, drag it on both keyframes, at the cut and 6 frames later (**Next keyframe** in the **Transform** header takes you there). See [Change an animated picture](keyframes.md#change-an-animated-picture).
+- A clip that starts exactly at the playhead is not cut: all of it zooms in, from its first frame.
+- Punch again further on for another step closer: a second punch zoom gives 144%. The part after the first punch already has keyframes, so the second punch makes it larger at once, without the 6-frame zoom.
 - The step is named **Punch zoom**. <kbd>Ctrl</kbd>+<kbd>Z</kbd> gives you back one clip at its first size.
 
-Punch zoom works on video and image clips, and on a text clip you selected. The zoom happens at once, at the cut; a zoom that grows smoothly over a few frames is available in a later version.
+Punch zoom works on video and image clips, and on a text clip you selected.
 
 ## Know which clip a freeze or punch zoom uses
 
@@ -258,13 +262,13 @@ See [Undo and redo changes](projects-and-saving.md#undo-and-redo-changes).
 
 ## What is not available yet
 
-- A punch zoom that grows smoothly instead of at the cut, and speed changes that follow animated values (keyframes), are available in a later version.
-- Settings for the length of a new freeze frame (2 seconds) and the size of a punch zoom (20%) are available in a later version.
+- Settings for the length of a new freeze frame (2 seconds), the size of a punch zoom (20%), and a punch zoom that jumps at once instead of zooming over 6 frames are available in a later version.
 - Playing a clip backward (reverse) is not available, and the clip menu has no row for it.
 - Sound at another speed always changes pitch; keeping the original pitch is not available.
 
 ## Related pages
 - [Editing properties](editing-properties.md)
+- [Keyframes](keyframes.md)
 - [Advanced trimming](advanced-trimming.md)
 - [Trimming clips](trimming.md)
 - [Splitting, deleting and closing gaps](splitting-and-deleting.md)
@@ -275,4 +279,4 @@ See [Undo and redo changes](projects-and-saving.md#undo-and-redo-changes).
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 29, 2026-10-16</sub>
+<sub>Last updated: Batch 35, 2026-10-17</sub>

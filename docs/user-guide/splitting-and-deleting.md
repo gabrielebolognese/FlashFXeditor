@@ -37,6 +37,7 @@ What you get:
 - The frame shown in the preview becomes the first frame of the right part. The left part ends on the frame before it.
 - Both parts keep everything the clip had: its media, name, label color, speed and place in the frame. Played one after the other, they show and sound exactly like the clip did.
 - A video and its sound split together, and their right parts are linked to each other, like the left parts.
+- A clip animated with keyframes keeps its motion: each part gets its share of the keyframes, and played one after the other they move exactly as the clip did, also when you cut in the middle of an eased move. See [Know what happens to keyframes when you edit clips](keyframes.md#know-what-happens-to-keyframes-when-you-edit-clips).
 - A caption cue on the **CC** track splits its text too: each part keeps the words on its side of the cut. See [Edit cues on the timeline](captions.md#edit-cues-on-the-timeline).
 - Selected clips stay selected: both parts of each one. The right part of the clip you clicked last gets the thicker outline. With nothing selected, nothing is selected afterwards.
 - The history step is named **Split clip** or **Split clips**. <kbd>Ctrl</kbd>+<kbd>Z</kbd> puts each clip back together in one step.
@@ -80,6 +81,7 @@ To cut all tracks at once, hold <kbd>Shift</kbd>: the line runs over every clip 
 - The keys work while the Timeline or the Preview panel is active. In the Media panel, <kbd>Delete</kbd> removes the selected media instead; see [Remove media](importing-media.md#remove-media). On its **Captions** tab, <kbd>Delete</kbd> deletes the selected caption cues; see [Find, select and delete cues](captions.md#find-select-and-delete-cues).
 - While a gap is selected, <kbd>Delete</kbd> closes the gap. See [Close a gap](#close-a-gap).
 - While a marker is selected, <kbd>Delete</kbd>, <kbd>Shift</kbd>+<kbd>Delete</kbd> and the **Delete** and **Ripple delete** buttons delete the marker instead. See [Delete markers](markers-and-in-out-points.md#delete-markers).
+- While keyframes are selected on a clip's keyframe lane, <kbd>Delete</kbd>, <kbd>Shift</kbd>+<kbd>Delete</kbd> and the **Delete** and **Ripple delete** buttons delete only those keyframes, and the clip stays. A click on the clip body deselects the keyframes. See [Select, move and delete keyframes on the timeline](keyframes.md#select-move-and-delete-keyframes-on-the-timeline).
 
 ## Ripple delete clips
 
@@ -214,8 +216,9 @@ Right-click a clip or a gap to open its menu. Rows that have a keyboard shortcut
 - [Captions](captions.md)
 - [Editing properties](editing-properties.md)
 - [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md)
+- [Keyframes](keyframes.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Projects and saving](projects-and-saving.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 32, 2026-10-17</sub>
+<sub>Last updated: Batch 35, 2026-10-17</sub>

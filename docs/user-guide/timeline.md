@@ -64,7 +64,8 @@ The ruler also holds your markers (small colored triangles along its bottom edge
 - A clip gets lighter while you point at it. A selected clip has a gold outline and tint (see [Select clips](#select-clips)).
 - The outer 8 pixels at each end of a clip are its trim zones: the cursor turns into a bracket there, and dragging trims the clip. See [Trimming clips](trimming.md).
 - Where two clips touch, a click within 3 pixels of the cut selects the cut (red brackets `][` mark it), and <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+drag there rolls the cut. See [Advanced trimming](advanced-trimming.md#select-a-cut-edit-point).
-- Badges at the right end of the label bar: a red number such as **+12** when the clip is out of step with its linked clip, a speed such as `2x` when it doesn't play at normal speed (a snowflake for a freeze frame), a chain icon when it is linked, and a red warning triangle on a text clip whose font is missing. They stay visible at the right edge of the tracks when the clip ends after the view. See [Read the badges in the label bar](clip-thumbnails-and-waveforms.md#read-the-badges-in-the-label-bar).
+- Badges at the right end of the label bar: a red number such as **+12** when the clip is out of step with its linked clip, a speed such as `2x` when it doesn't play at normal speed (a snowflake for a freeze frame), a chain icon when it is linked, a diamond when it has keyframes, sparkles on an animated text, and a red warning triangle on a text clip whose font is missing. They stay visible at the right edge of the tracks when the clip ends after the view. See [Read the badges in the label bar](clip-thumbnails-and-waveforms.md#read-the-badges-in-the-label-bar).
+- With **Show clip keyframes** on, a dark lane along the bottom of the selected clips (and of every clip on an L track) shows their keyframes as diamonds. See [Show keyframes on the timeline](keyframes.md#show-keyframes-on-the-timeline).
 - Clips on a locked track are covered with diagonal lines, and clips of a track you don't see or hear (muted, hidden, or left out by a solo) are drawn faded. See [Tracks](tracks.md). A clip you turned off with **Disable** is drawn faded and covered with diagonal lines; see [Turn a clip off](editing-properties.md#turn-a-clip-off).
 
 ### Toolbar
@@ -72,12 +73,12 @@ The ruler also holds your markers (small colored triangles along its bottom edge
 In this version these parts of the toolbar work:
 
 - the **Select**, **Razor**, **Hand**, **Slip**, **Slide** and **Rate stretch** tools (see [Choose a tool](advanced-trimming.md#choose-a-tool), [Cut clips with the Razor tool](splitting-and-deleting.md#cut-clips-with-the-razor-tool) and [Pan the view](#pan-the-view));
-- the **Snap** toggle (see [Turn snapping on or off](#turn-snapping-on-or-off)), the **Linked selection** toggle (see [Turn Linked selection off](links-and-groups.md#turn-linked-selection-off)) and the **Ripple mode** toggle (see [Turn Ripple mode on or off](trimming.md#turn-ripple-mode-on-or-off));
+- the **Snap** toggle (see [Turn snapping on or off](#turn-snapping-on-or-off)), the **Linked selection** toggle (see [Turn Linked selection off](links-and-groups.md#turn-linked-selection-off)), the **Ripple mode** toggle (see [Turn Ripple mode on or off](trimming.md#turn-ripple-mode-on-or-off)) and the **Show clip keyframes** toggle (see [Show keyframes on the timeline](keyframes.md#show-keyframes-on-the-timeline));
 - the edit buttons **Split at playhead**, **Delete**, **Ripple delete**, **Close gap** and **Close all gaps (compact)** (see [Splitting, deleting and closing gaps](splitting-and-deleting.md)), **Add marker** (see [Add markers](markers-and-in-out-points.md#add-markers)), and **Freeze frame** and **Punch zoom** (see [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md));
 - the add buttons **Title** and **Subtitle** (see [Titles and text](titles-and-text.md)), **Add caption track** (see [Add the caption track](captions.md#add-the-caption-track)), **Add solid** and **Add image** (see [Shapes and images](shapes-and-images.md)), and after them the chips of your favorite text presets, which add a text in that look at the playhead (see [Put favorite presets in the timeline toolbar](text-presets.md#put-favorite-presets-in-the-timeline-toolbar));
 - the whole zoom group: **Zoom out**, the zoom slider, **Zoom in**, **Zoom to fit**, **Zoom to selection** (see [Zoom in and out](#zoom-in-and-out)), **Center playhead** (see [Scroll the timeline](#scroll-the-timeline)) and **Track height** (see [Change track height](tracks.md#change-track-height)), then the timecode field and the duration.
 
-The other buttons (the **Show clip keyframes** and **Audio scrub** toggles) are shown but disabled; they are available in a later version.
+The **Audio scrub** toggle is shown but disabled; it is available in a later version.
 
 > **Note:** When the timeline panel is too narrow for the whole toolbar, the zoom group (with **Zoom to selection** and **Center playhead**) is the first to move into the **More tools** (…) menu, followed by the toggles with **Snap**, **Linked selection** and **Ripple mode**. Click **More tools** to reach them.
 
@@ -474,6 +475,7 @@ How snapping decides:
 - Nudging with the keyboard never snaps: the clips move by exactly 1 or 5 frames.
 - A clip edge you drag to trim the clip snaps the same way. See [Snap the edge while you trim](trimming.md#snap-the-edge-while-you-trim).
 - Media you drag in from the Media panel snaps the same way, with the start or the end of the new clips. See [Drag media onto the timeline](adding-media-to-the-timeline.md#drag-media-onto-the-timeline).
+- With **Show clip keyframes** on, the keyframes on the lane of the clip you drag snap too, like its start and end: a keyframe can land on the playhead, a marker or another clip's edge. Keyframes you drag along a lane snap to the lane's other keyframes, the playhead and the clip's ends. See [Select, move and delete keyframes on the timeline](keyframes.md#select-move-and-delete-keyframes-on-the-timeline).
 
 ### Turn snapping on or off
 
@@ -639,6 +641,7 @@ Label colors help you see at a glance which clips belong together, for example a
 
 ## Related pages
 - [Adding media to the timeline](adding-media-to-the-timeline.md)
+- [Keyframes](keyframes.md)
 - [Markers and in/out points](markers-and-in-out-points.md)
 - [Clip thumbnails, waveforms and badges](clip-thumbnails-and-waveforms.md)
 - [Tracks](tracks.md)
@@ -661,4 +664,4 @@ Label colors help you see at a glance which clips belong together, for example a
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 34, 2026-10-17</sub>
+<sub>Last updated: Batch 35, 2026-10-17</sub>

@@ -32,7 +32,7 @@ This page lists every keyboard shortcut that works in the current version of Sho
 >   24. Drag the logo toward the middle of the frame: it snaps to the center with gold lines. Hold <kbd>S</kbd> while you keep dragging: it moves freely. Release the mouse button. Click the logo, rest the pointer on the preview and hold <kbd>Alt</kbd>: gold distances to the frame edges appear.
 >   25. With the logo selected, click in the **X** field of **Edit Properties** and press <kbd>↑</kbd> three times and <kbd>Shift</kbd>+<kbd>↑</kbd> once: the logo moves 13 pixels to the right. Press <kbd>Esc</kbd>, click the logo's clip on the timeline and press <kbd>Ctrl</kbd>+<kbd>D</kbd>: a copy appears right after it.
 >   26. Double-click the video under the logo in the preview: white brackets and bars appear on it, with the **Crop** chip at the top of the preview. Hold <kbd>Alt</kbd> and drag the left bar inward: the left and right sides are cut together. Press <kbd>Esc</kbd>: the chip disappears and the usual handles are back.
->   27. Click the timeline, put the playhead inside a video and press <kbd>Shift</kbd>+<kbd>F</kbd>: a 2-second clip with a snowflake appears at the playhead, and the later clips move right. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>, then <kbd>Shift</kbd>+<kbd>Z</kbd>: the clip is cut and the picture after the cut is 20% closer. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>.
+>   27. Click the timeline, put the playhead inside a video and press <kbd>Shift</kbd>+<kbd>F</kbd>: a 2-second clip with a snowflake appears at the playhead, and the later clips move right. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>, then <kbd>Shift</kbd>+<kbd>Z</kbd>: the clip is cut and the picture after the cut zooms 20% closer within 6 frames. Click **Show clip keyframes** in the timeline toolbar: two diamonds sit at the start of the second part. Click the second diamond, then press <kbd>Delete</kbd>: the zoom is gone and the clip stays. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> twice.
 >   28. Press <kbd>T</kbd>: "Title" appears in the preview, selected. Type `hi`, press <kbd>Enter</kbd> and type `there`: a second line. Press <kbd>↑</kbd>, then <kbd>Shift</kbd>+<kbd>End</kbd>: "hi" is highlighted. Press <kbd>Esc</kbd>. Press <kbd>Enter</kbd>: the whole text is selected again. Press <kbd>Ctrl</kbd>+<kbd>Enter</kbd>. Press <kbd>Shift</kbd>+<kbd>T</kbd>: a subtitle appears in the lower third.
 >   29. Open the **Presets** tab of the Media panel and right-click the **Breaking** card: the **Use as default title** row shows <kbd>T</kbd>. Choose it, click the timeline and press <kbd>T</kbd>: the new title has the red **Breaking** box. Right-click the card again and choose **Use as default title** once more to go back to the usual title.
 >   30. With a title selected, click **Word pop** in the **In** row of the **Animation** section in **Edit Properties**: the words pop in once in the preview. Click in the **Duration** field under **In** and press <kbd>Shift</kbd>+<kbd>↑</kbd>: the animation gets 10 frames longer and plays again.
@@ -47,6 +47,7 @@ This page lists every keyboard shortcut that works in the current version of Sho
 - [Trimming](#trimming)
 - [Cutting and deleting](#cutting-and-deleting)
 - [Speed, freeze frames and punch zoom](#speed-freeze-frames-and-punch-zoom)
+- [Keyframes](#keyframes)
 - [Markers and in/out points](#markers-and-inout-points)
 - [Tracks, links and groups](#tracks-links-and-groups)
 - [Tools](#tools)
@@ -242,8 +243,8 @@ See [Splitting, deleting and closing gaps](splitting-and-deleting.md).
 | --- | --- | --- | --- |
 | Split at the playhead: the selected clips, or every clip under it when nothing is selected | <kbd>Ctrl</kbd>+<kbd>K</kbd> | <kbd>⌘</kbd>+<kbd>K</kbd> | All panels |
 | Split every clip under the playhead, on all tracks | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>K</kbd> | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>K</kbd> | All panels |
-| Delete the selected clips and leave gaps (with a gap selected: close it; with a marker selected: delete it) | <kbd>Delete</kbd> or <kbd>Backspace</kbd> | <kbd>Delete</kbd> (⌫) | Timeline, Preview |
-| Ripple delete the selected clips (with a gap selected: close it; with a marker selected: delete it) | <kbd>Shift</kbd>+<kbd>Delete</kbd> or <kbd>Shift</kbd>+<kbd>Backspace</kbd> | <kbd>⇧</kbd>+<kbd>Delete</kbd> (⌫) | Timeline, Preview |
+| Delete the selected clips and leave gaps (with keyframes selected on a keyframe lane: delete only them; with a gap selected: close it; with a marker selected: delete it) | <kbd>Delete</kbd> or <kbd>Backspace</kbd> | <kbd>Delete</kbd> (⌫) | Timeline, Preview |
+| Ripple delete the selected clips (with keyframes selected: delete only them; with a gap selected: close it; with a marker selected: delete it) | <kbd>Shift</kbd>+<kbd>Delete</kbd> or <kbd>Shift</kbd>+<kbd>Backspace</kbd> | <kbd>⇧</kbd>+<kbd>Delete</kbd> (⌫) | Timeline, Preview |
 | Close the selected gap, or the gap at the playhead | <kbd>G</kbd> | <kbd>G</kbd> | Timeline |
 | Close all gaps (compact) | <kbd>Shift</kbd>+<kbd>G</kbd> | <kbd>⇧</kbd>+<kbd>G</kbd> | Timeline |
 | Rename the selected clip or track | <kbd>F2</kbd> | <kbd>F2</kbd> | Timeline |
@@ -267,6 +268,29 @@ See [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md)
 
 - Both act on the selected clips under the playhead, or on the top picture under it when none is selected. Each is one undo step.
 - The speed buttons **0.5x**, **1x**, **1.5x** and **2x** in the quick actions and **Speed...** in the clip menu have no shortcut.
+
+## Keyframes
+
+The stopwatch, **Previous keyframe**, **Add keyframe**, **Next keyframe** and **Ease** in **Edit Properties** have no keys of their own: click them. **Show clip keyframes** in the timeline toolbar has none either. See [Keyframes](keyframes.md).
+
+| Action | Windows | macOS | Works in |
+| --- | --- | --- | --- |
+| Delete the selected keyframes (the clip stays) | <kbd>Delete</kbd> or <kbd>Backspace</kbd> | <kbd>Delete</kbd> (⌫) | Timeline |
+| Cancel a keyframe drag | <kbd>Esc</kbd> before you release | <kbd>Esc</kbd> | Timeline |
+
+| Mouse action on a keyframe lane | Windows | macOS |
+| --- | --- | --- |
+| Select a keyframe and move the playhead to it | Click its diamond | Click its diamond |
+| Add a keyframe to the selection, or remove it | <kbd>Shift</kbd>+click its diamond | <kbd>⇧</kbd>+click its diamond |
+| Move the selected keyframes | Drag a selected diamond | Drag a selected diamond |
+| Move them in whole seconds | <kbd>Shift</kbd>+drag | <kbd>⇧</kbd>+drag |
+| Switch snapping for this drag | Hold <kbd>S</kbd> while you drag | Hold <kbd>S</kbd> while you drag |
+| Add a keyframe at that frame | <kbd>Alt</kbd>+click the lane | <kbd>⌥</kbd>+click the lane |
+| Open the keyframe menu (easing, delete, copy, paste) | Right-click a diamond | Right-click a diamond |
+
+- The lane shows along the bottom of the selected clips, and of every clip on an L track, while **Show clip keyframes** is on. The mouse actions work with the **Select** tool.
+- With keyframes selected, <kbd>Shift</kbd>+<kbd>Delete</kbd>, the **Delete** button of the timeline toolbar and **Delete keyframes** in the keyframe menu delete them too. A click anywhere else on the timeline or in the preview deselects them.
+- In the preview, the usual keys and drags write keyframes while the **Transform** stopwatch is on: the arrow keys nudge the picture and add or update a keyframe at the playhead. See [Change an animated picture](keyframes.md#change-an-animated-picture).
 
 ## Markers and in/out points
 
@@ -623,7 +647,7 @@ While you type in a text field, or while a dialog is open, the editor leaves <kb
 Some buttons already show a shortcut in their tooltip although the button is disabled, for example **Export** in the app bar. These shortcuts start working when their feature is available in a later version; until then the keys do nothing. In the current version this also applies to:
 
 - <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd> (default transition), <kbd>Ctrl</kbd>+<kbd>E</kbd> (export) and <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> (command palette).
-- <kbd>Ctrl</kbd>+<kbd>X</kbd>, <kbd>Ctrl</kbd>+<kbd>C</kbd> and <kbd>Ctrl</kbd>+<kbd>V</kbd> in the Timeline and Preview panels (cutting, copying and pasting clips; the **Cut**, **Copy** and **Paste** rows of the clip menu, and the **Copy**, **Paste** and **Duplicate** rows of the preview's layer menu, are dimmed).
+- <kbd>Ctrl</kbd>+<kbd>X</kbd>, <kbd>Ctrl</kbd>+<kbd>C</kbd> and <kbd>Ctrl</kbd>+<kbd>V</kbd> in the Timeline and Preview panels (cutting, copying and pasting clips; the **Cut**, **Copy** and **Paste** rows of the clip menu, and the **Copy**, **Paste** and **Duplicate** rows of the preview's layer menu, are dimmed). They don't copy or paste keyframes either: use **Copy keyframes** and **Paste keyframes** in the keyframe menu.
 
 ## Related pages
 - [Preview and playback](preview-and-playback.md)
@@ -640,6 +664,7 @@ Some buttons already show a shortcut in their tooltip although the button is dis
 - [Markers and in/out points](markers-and-in-out-points.md)
 - [Advanced trimming](advanced-trimming.md)
 - [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md)
+- [Keyframes](keyframes.md)
 - [Titles and text](titles-and-text.md)
 - [Text presets](text-presets.md)
 - [Text animations](text-animations.md)
@@ -651,4 +676,4 @@ Some buttons already show a shortcut in their tooltip although the button is dis
 - [Projects and saving](projects-and-saving.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 34, 2026-10-17</sub>
+<sub>Last updated: Batch 35, 2026-10-17</sub>
