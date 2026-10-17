@@ -11,6 +11,8 @@
 // - Import replaces every cue of the track with the file's (overlaps resolved: a cue starting inside
 //   the previous one cuts it there; two starting on the same frame become one); export writes the
 //   cues in order with their frames as times (word timings are not exported).
+// - A transcription (spec §10.6) replaces the cues overlapping its range with its own, placed inside
+//   the range on the frame grid as an import's.
 import type { Draft } from "immer";
 import type { Command } from "../../core/commands/command.js";
 import { defaultTrackIndex } from "../../core/commands/basicCommands.js";
@@ -315,6 +317,80 @@ export function importCues(project: Project, subtitles: readonly SubtitleCue[], 
         for (const id of replaced) delete draft.clips[id];
         for (const cue of placed) draft.clips[cue.id] = structuredClone(cue) as Draft<Clip>;
         (draft.tracks.find((t) => t.id === track.id) as Draft<Track>).clipIds = placed.map((cue) => cue.id);
+      },
+    },
+  };
+}
+
+/** The cues overlapping frames [start, end): the ones a transcription of that range replaces. */
+export function cuesInRange(project: Project, range: { start: Frame; end: Frame }): readonly CaptionClip[] {
+  return cuesOf(project).filter((cue) => cue.start < range.end && cue.start + cue.duration > range.start);
+}
+
+/** `cues` (µs from `offsetUs`) moved to µs from the timeline's start. */
+function shiftCues(cues: readonly SubtitleCue[], offsetUs: number): SubtitleCue[] {
+  return cues.map((cue) => ({
+    ...cue,
+    startUs: cue.startUs + offsetUs,
+    endUs: cue.endUs + offsetUs,
+    ...(cue.words && { words: cue.words.map((word) => ({ ...word, startUs: word.startUs + offsetUs, endUs: word.endUs + offsetUs })) }),
+  }));
+}
+
+/**
+ * Transcribed cues (spec §10.6) of frames [start, end): `cues` are in µs from the range's start, with
+ * their words. On the frame grid as an import's, kept inside the range (a cue running past its end is
+ * cut there, with its words). Exported for the review step, which shows them before they are placed.
+ */
+export function transcribedCues(cues: readonly SubtitleCue[], range: { start: Frame; end: Frame }, fps: Project["settings"]["fps"]): ImportedCue[] {
+  const framed = cuesFromSubtitles(shiftCues(cues, frameToUs(range.start, fps)), fps).cues;
+  const inside: ImportedCue[] = [];
+  for (const cue of framed) {
+    if (cue.start < range.start || cue.start >= range.end) continue;
+    const duration = Math.min(cue.duration, range.end - cue.start);
+    const words = cue.words?.filter((word) => word.start < duration).map((word) => ({ ...word, end: Math.min(word.end, duration) }));
+    inside.push({ start: cue.start, duration, text: cue.text, ...(words && words.length > 0 && { words }) });
+  }
+  return inside;
+}
+
+export interface TranscribeCuesResult {
+  command: Command;
+  trackId: TrackId;
+  /** Cues placed, and the cues of the range they replaced. */
+  count: number;
+  replaced: number;
+}
+
+/**
+ * A transcription's cues (`transcribedCues`) into the caption track (spec §10.6), replacing the cues
+ * that overlap the range (the user confirmed it in the review), the track created with the default
+ * style when missing. One undo step "Transcribe captions". Null when the track is locked or there is
+ * no cue to place.
+ */
+export function replaceCuesInRange(project: Project, range: { start: Frame; end: Frame }, cues: readonly ImportedCue[], newId: () => string): TranscribeCuesResult | null {
+  const existing = captionTrackOf(project);
+  if (existing?.locked || cues.length === 0) return null;
+  const track = existing ?? newCaptionTrack(newId());
+  const style = existing ? null : defaultCaptionStyle(project.settings);
+  const placed = cues.map((cue) => newCue(newId(), track.id, cue.start, cue.duration, cue.text, cue.words));
+  const replaced = new Set(cuesInRange(project, range).map((cue) => cue.id));
+  const kept = existing ? existing.clipIds.filter((id) => !replaced.has(id)) : [];
+  const starts = new Map<ClipId, Frame>([...kept.map((id) => [id, project.clips[id]?.start ?? 0] as const), ...placed.map((cue) => [cue.id, cue.start] as const)]);
+  const order = [...kept, ...placed.map((cue) => cue.id)].sort((a, b) => (starts.get(a) ?? 0) - (starts.get(b) ?? 0));
+  return {
+    trackId: track.id,
+    count: placed.length,
+    replaced: replaced.size,
+    command: {
+      id: "caption.transcribe",
+      label: "Transcribe captions",
+      affects: ["tracks", "clips", "timeline", "captions"],
+      run(draft) {
+        if (style) insertCaptionTrack(draft, track, style);
+        for (const id of replaced) delete draft.clips[id];
+        for (const cue of placed) draft.clips[cue.id] = structuredClone(cue) as Draft<Clip>;
+        (draft.tracks.find((t) => t.id === track.id) as Draft<Track>).clipIds = order;
       },
     },
   };

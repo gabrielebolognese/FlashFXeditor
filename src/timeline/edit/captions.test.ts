@@ -4,7 +4,8 @@ import type { CaptionClip, Clip, Project } from "../../core/document/types.js";
 import type { Command as Cmd } from "../../core/commands/command.js";
 import { DocumentStore } from "../../core/store/DocumentStore.js";
 import { createSessionStore } from "../../core/store/sessionStore.js";
-import { defaultCaptionStyle, evenWords } from "../../text/captions.js";
+import { defaultCaptionStyle, evenWords, wordRanges } from "../../text/captions.js";
+import { cuesFromWords, type TimedWord } from "../../text/transcript.js";
 import { formatSubtitles, parseSrt } from "../../text/subtitles.js";
 import {
   addCaptionTrack,
@@ -14,13 +15,16 @@ import {
   clearCues,
   cueMoveRange,
   cuesFromSubtitles,
+  cuesInRange,
   cuesOf,
   exportCues,
   importCues,
   mergeWithPrevious,
+  replaceCuesInRange,
   setCaptionStyle,
   setCueText,
   splitCue,
+  transcribedCues,
 } from "./captions.js";
 import { moveClips, nudgeClips, sliceClip } from "./move.js";
 import { splitClips } from "./split.js";
@@ -230,6 +234,71 @@ describe("import and export", () => {
     const again = importCues(next, parsed.cues.slice(0, 2), ids());
     expect(again).toMatchObject({ count: 2, replaced: 200 });
     expect(cuesOf(run(next, again?.command))).toHaveLength(2);
+  });
+});
+
+describe("transcription", () => {
+  const FPS30 = { num: 30, den: 1 };
+  const words = (list: [string, number, number][]) => list.map(([text, s0, s1]) => ({ text, startUs: s0 * 1e6, endUs: s1 * 1e6 }));
+
+  it("puts transcribed cues (µs from the range start) on the frame grid inside the range", () => {
+    const cues = [
+      { startUs: 500_000, endUs: 1_500_000, text: "Hello world", words: words([["Hello", 0.5, 0.9], ["world", 0.9, 1.5]]) },
+      { startUs: 1_800_000, endUs: 3_000_000, text: "past the end", words: words([["past", 1.8, 2.2], ["the", 2.2, 2.4], ["end", 2.6, 3]]) },
+      { startUs: 4_000_000, endUs: 4_500_000, text: "after" },
+    ];
+    // The range is frames [30, 100): 1 s to 3.33 s.
+    expect(transcribedCues(cues, { start: 30, end: 100 }, FPS30)).toEqual([
+      { start: 45, duration: 30, text: "Hello world", words: [{ text: "Hello", start: 0, end: 12 }, { text: "world", start: 12, end: 30 }] },
+      // Cut at the range end with its words (the last word starts after the cut).
+      { start: 84, duration: 16, text: "past the end", words: [{ text: "past", start: 0, end: 12 }, { text: "the", start: 12, end: 16 }] },
+    ]);
+  });
+
+  it("creates the caption track when missing, in one undo step", () => {
+    const p = makeProject();
+    p.tracks.push(makeTrack("v1"), makeTrack("a1", "audio"));
+    const result = replaceCuesInRange(p, { start: 0, end: 300 }, [{ start: 10, duration: 20, text: "One" }, { start: 40, duration: 20, text: "Two" }], ids());
+    expect(result).toMatchObject({ count: 2, replaced: 0 });
+    const after = run(p, result?.command);
+    // Above the video tracks (the array runs bottom video track first).
+    expect(after.tracks.map((t) => t.kind)).toEqual(["video", "caption", "audio"]);
+    expect(spans(after)).toEqual([[10, 20, "One"], [40, 20, "Two"]]);
+    expect(after.captionTracks[captionTrackOf(after)?.id ?? ""]?.style).toEqual(defaultCaptionStyle(p.settings));
+  });
+
+  it("replaces only the cues overlapping the range and keeps the track in time order", () => {
+    const p = project([[0, 20, "before"], [40, 30, "inside"], [85, 10, "edge"], [100, 20, "after"]]);
+    expect(cuesInRange(p, { start: 30, end: 90 }).map((c) => c.text)).toEqual(["inside", "edge"]);
+    const result = replaceCuesInRange(p, { start: 30, end: 90 }, [{ start: 30, duration: 25, text: "new one" }, { start: 60, duration: 30, text: "new two" }], ids());
+    expect(result).toMatchObject({ count: 2, replaced: 2 });
+    const after = run(p, result?.command);
+    expect(spans(after)).toEqual([[0, 20, "before"], [30, 25, "new one"], [60, 30, "new two"], [100, 20, "after"]]);
+    expect(after.tracks.find((t) => t.kind === "caption")?.clipIds).toEqual(cuesOf(after).map((c) => c.id));
+  });
+
+  it("does nothing on a locked track or without cues", () => {
+    const p = project([[0, 20]]);
+    expect(replaceCuesInRange(p, { start: 0, end: 90 }, [], ids())).toBeNull();
+    const locked = { ...p, tracks: p.tracks.map((t) => (t.kind === "caption" ? { ...t, locked: true } : t)) };
+    expect(replaceCuesInRange(locked, { start: 0, end: 90 }, [{ start: 0, duration: 10, text: "x" }], ids())).toBeNull();
+  });
+
+  it("gives every placed cue word timings its words can be found by (the highlight draws each of them)", () => {
+    const text = "Welcome to the editor. Today we are going to make a short video about cooking pasta at home, with a generous pinch of salt and some fresh parsley.";
+    const spoken: TimedWord[] = text.split(" ").map((word, i) => ({ text: word, startUs: 300_000 + i * 350_000, endUs: 300_000 + (i + 1) * 350_000 }));
+    const range = { start: 60, end: 60 + 30 * 20 };
+    const cues = transcribedCues(cuesFromWords(spoken, { maxLines: 2, durationUs: 20e6 }), range, FPS30);
+    const after = run(project(), replaceCuesInRange(project(), range, cues, ids())?.command);
+    const placed = cuesOf(after);
+    expect(placed.length).toBeGreaterThan(2);
+    expect(placed.flatMap((c) => c.words ?? []).map((w) => w.text)).toEqual(text.split(" "));
+    for (const c of placed) {
+      expect(c.start).toBeGreaterThanOrEqual(range.start);
+      expect(c.start + c.duration).toBeLessThanOrEqual(range.end);
+      expect(wordRanges(c.text, c.words ?? []).every((r) => r !== null)).toBe(true);
+      for (const w of c.words ?? []) expect(Number.isInteger(w.start) && Number.isInteger(w.end) && w.start < w.end && w.end <= c.duration).toBe(true);
+    }
   });
 });
 

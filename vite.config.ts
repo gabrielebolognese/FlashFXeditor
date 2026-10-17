@@ -6,4 +6,6 @@ export default defineConfig({
   build: { target: "es2022" },
   // Workers are module workers in dev and build alike.
   worker: { format: "es" },
+  // Only transcribe.worker imports it: pre-bundled up front, so its first use does not reload the page.
+  optimizeDeps: { include: ["@huggingface/transformers"] },
 });

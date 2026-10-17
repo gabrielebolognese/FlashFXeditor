@@ -50,11 +50,12 @@ export const audioClock = new AudioClock();
 export const keyValueStore = idbKeyValueStore();
 export const recentProjects = new RecentProjects(keyValueStore);
 export const appSettings = createAppSettings(keyValueStore);
-/** Media workers (spec §3.5), each created on its first request. */
+/** Media workers (spec §3.5), each created on its first request (transcribe: Batch 33, the Transcribe dialog). */
 export const workerPool = new WorkerPool({
   decode: () => new Worker(new URL("../media/workers/decode.worker.ts", import.meta.url), { type: "module", name: "decode" }),
   analysis: () => new Worker(new URL("../media/workers/analysis.worker.ts", import.meta.url), { type: "module", name: "analysis" }),
   proxy: () => new Worker(new URL("../media/workers/proxy.worker.ts", import.meta.url), { type: "module", name: "proxy" }),
+  transcribe: () => new Worker(new URL("../media/workers/transcribe.worker.ts", import.meta.url), { type: "module", name: "transcribe" }),
 });
 /** The fonts text can use: bundled, the open project's, installed (spec §10.1). */
 export const fontLibrary = new FontLibrary(typeof document === "undefined" ? null : document.fonts);

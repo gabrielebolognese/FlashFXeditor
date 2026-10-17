@@ -9,6 +9,8 @@ import type { MakeProxyParams, MakeProxyResult, ProxyProgress } from "../proxy/P
 import type { SourceStamp } from "../demux/sampleIndexFile.js";
 import type { ProbeResult } from "../probe/types.js";
 import type { Rotation } from "../probe/rotation.js";
+import type { TranscribeDevice, WhisperModelId } from "../transcribe/models.js";
+import type { TimedWord } from "../../text/transcript.js";
 
 /** Scheduling classes, most urgent first. A worker starts queued requests in this order. */
 export type Priority = "user" | "playback" | "prefetch" | "background";
@@ -16,7 +18,7 @@ export type Priority = "user" | "playback" | "prefetch" | "background";
 export const PRIORITY_RANK: Record<Priority, number> = { user: 0, playback: 1, prefetch: 2, background: 3 };
 
 // TODO(batch 43): "export".
-export type WorkerKind = "decode" | "analysis" | "proxy";
+export type WorkerKind = "decode" | "analysis" | "proxy" | "transcribe";
 
 export interface PosterResult {
   bitmap: ImageBitmap;
@@ -113,6 +115,42 @@ export interface PcmResult {
   channels: ArrayBuffer[];
 }
 
+/** The transcription worker's device and the models in the browser's cache. */
+export interface TranscribeStatus {
+  device: TranscribeDevice;
+  cached: Record<WhisperModelId, boolean>;
+}
+
+export interface TranscribeParams {
+  model: WhisperModelId;
+  /** Float PCM, mono (transferred), at `sampleRate`: the worker resamples it to Whisper's 16 kHz. */
+  audio: ArrayBuffer;
+  sampleRate: number;
+  /** A Whisper language code (`en`), or null: detected from the first 30 s. */
+  language: string | null;
+}
+
+export type TranscribePhase = "download" | "load" | "detect" | "transcribe";
+
+export interface TranscribeProgress {
+  phase: TranscribePhase;
+  /** 0..1 of the phase. */
+  fraction: number;
+  /** Bytes of the download so far and in all (download phase). */
+  loaded?: number;
+  total?: number;
+  /** The language once it is known. */
+  language?: string;
+}
+
+export interface TranscribeResult {
+  /** The language code transcribed. */
+  language: string;
+  device: TranscribeDevice;
+  /** The words in order, in µs from the start of the audio. */
+  words: TimedWord[];
+}
+
 export interface WorkerMethods {
   /** Metadata of a media file. */
   probe: { params: { file: Blob; container: WorkerContainer; type: string }; result: ProbeResult };
@@ -149,6 +187,12 @@ export interface WorkerMethods {
   makeProxy: { params: MakeProxyParams; result: MakeProxyResult; progress: ProxyProgress };
   /** Pauses or resumes the running proxy (playback, drags, export). */
   pauseProxy: { params: { paused: boolean }; result: null };
+  /** The device transcription runs on and which Whisper models are downloaded (spec §10.6). */
+  transcribeStatus: { params: Record<string, never>; result: TranscribeStatus };
+  /** Deletes a model's files from the browser's cache. */
+  transcribeRemove: { params: { model: WhisperModelId }; result: null };
+  /** Speech to timed words (downloading the model first when needed); the phases come as progress. */
+  transcribe: { params: TranscribeParams; result: TranscribeResult; progress: TranscribeProgress };
 }
 
 export type Method = keyof WorkerMethods;
@@ -175,6 +219,9 @@ export const METHOD_WORKER: Record<Method, WorkerKind> = {
   closeThumbs: "analysis",
   makeProxy: "proxy",
   pauseProxy: "proxy",
+  transcribeStatus: "transcribe",
+  transcribeRemove: "transcribe",
+  transcribe: "transcribe",
 };
 
 export type RequestMessage = { [M in Method]: { type: "request"; id: number; method: M; priority: Priority; params: Params<M> } }[Method];

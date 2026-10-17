@@ -83,7 +83,7 @@ describe("app settings", () => {
     await settings.load();
     expect(settings.getState()).toEqual(DEFAULT_APP_SETTINGS);
     await settings.update({ autosaveDelayMs: 5000 });
-    expect(kv.data.get("settings.v1")).toEqual({ autosaveDelayMs: 5000, importMode: "copy", monitorVolumeDb: 0, monitorMuted: false, proxyAuto: true, proxyRule: "heavy", proxyShortEdge: 540, recentColors: [], punchZoomScale: 1.2, punchZoomAnimated: false, favoriteFonts: [], matchClipUnderPlayhead: true, defaultTitlePreset: "starter-title", defaultSubtitlePreset: "starter-subtitle" });
+    expect(kv.data.get("settings.v1")).toEqual({ autosaveDelayMs: 5000, importMode: "copy", monitorVolumeDb: 0, monitorMuted: false, proxyAuto: true, proxyRule: "heavy", proxyShortEdge: 540, recentColors: [], punchZoomScale: 1.2, punchZoomAnimated: false, favoriteFonts: [], matchClipUnderPlayhead: true, defaultTitlePreset: "starter-title", defaultSubtitlePreset: "starter-subtitle", transcribeModel: "base", transcribeLanguage: null });
     await settings.update({ autosaveDelayMs: 1234 });
     expect(settings.getState().autosaveDelayMs).toBe(5000);
 
@@ -91,6 +91,20 @@ describe("app settings", () => {
     const reloaded = createAppSettings(kv);
     await reloaded.load();
     expect(reloaded.getState().autosaveDelayMs).toBe(10_000);
+  });
+
+  it("keeps the Transcribe dialog's model and language, rejecting unknown ones", async () => {
+    const kv = memoryKeyValueStore();
+    kv.data.set("settings.v1", { transcribeModel: "small", transcribeLanguage: "it" });
+    const settings = createAppSettings(kv);
+    await settings.load();
+    expect(settings.getState()).toMatchObject({ transcribeModel: "small", transcribeLanguage: "it" });
+    await settings.update({ transcribeLanguage: null });
+    expect(settings.getState().transcribeLanguage).toBeNull();
+    kv.data.set("settings.v1", { transcribeModel: "large", transcribeLanguage: "klingon" });
+    const reloaded = createAppSettings(kv);
+    await reloaded.load();
+    expect(reloaded.getState()).toMatchObject({ transcribeModel: "base", transcribeLanguage: null });
   });
 
   it("keeps the import mode setting (reference mode is stubbed until Batch 41)", async () => {

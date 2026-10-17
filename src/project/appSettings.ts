@@ -1,13 +1,16 @@
 // Global app settings (spec §3.1: persisted with idb-keyval). For now the autosave delay and the proxy
 // settings of the Project section (§11, §9.5), the import mode (§9.1, no UI yet), the monitoring
 // volume and mute of the preview chrome (§14: monitoring only, never the export), the color picker's
-// recent colors (§11), the punch zoom (Batch 27), the font picker's favorites (§11, Batch 28) and the
-// default Title and Subtitle presets (§10.2, Batch 30).
+// recent colors (§11), the punch zoom (Batch 27), the font picker's favorites (§11, Batch 28), the
+// default Title and Subtitle presets (§10.2, Batch 30) and the Transcribe dialog's model and language
+// (§10.6, Batch 33).
 // TODO(batch 42): the settings panel.
 import { createStore, type Store } from "../core/store/createStore.js";
 import { DEFAULT_PROXY_SHORT_EDGE, PROXY_RULES, PROXY_SHORT_EDGES, type ProxyRule, type ProxySettings, type ProxyShortEdge } from "../media/proxy/proxyFormat.js";
 import { AUTOSAVE_DELAY_MS } from "./Autosaver.js";
 import { STARTER_SUBTITLE_ID, STARTER_TITLE_ID } from "../text/starterPresets.js";
+import { isWhisperLanguage } from "../media/transcribe/languages.js";
+import { DEFAULT_WHISPER_MODEL, isWhisperModel, type WhisperModelId } from "../media/transcribe/models.js";
 import type { KeyValueStore } from "./kv.js";
 
 /** copy: into media/ (default). reference: file handles in IndexedDB. TODO(batch 41): reference mode. */
@@ -48,6 +51,9 @@ export interface AppSettings {
    */
   defaultTitlePreset: string | null;
   defaultSubtitlePreset: string | null;
+  /** The Whisper model of the Transcribe dialog (spec §10.6), and its language (a Whisper code; null: detected). */
+  transcribeModel: WhisperModelId;
+  transcribeLanguage: string | null;
 }
 
 export const AUTOSAVE_DELAYS_MS = [1000, 2000, 5000, 10_000] as const;
@@ -70,6 +76,8 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   matchClipUnderPlayhead: true,
   defaultTitlePreset: STARTER_TITLE_ID,
   defaultSubtitlePreset: STARTER_SUBTITLE_ID,
+  transcribeModel: DEFAULT_WHISPER_MODEL,
+  transcribeLanguage: null,
 };
 
 /** The favorites kept by the font picker. */
@@ -124,6 +132,8 @@ function sanitize(value: unknown, fallback: AppSettings = DEFAULT_APP_SETTINGS):
     matchClipUnderPlayhead: typeof raw.matchClipUnderPlayhead === "boolean" ? raw.matchClipUnderPlayhead : fallback.matchClipUnderPlayhead,
     defaultTitlePreset: presetIdOr(raw.defaultTitlePreset, fallback.defaultTitlePreset),
     defaultSubtitlePreset: presetIdOr(raw.defaultSubtitlePreset, fallback.defaultSubtitlePreset),
+    transcribeModel: isWhisperModel(raw.transcribeModel) ? raw.transcribeModel : fallback.transcribeModel,
+    transcribeLanguage: raw.transcribeLanguage === null || isWhisperLanguage(raw.transcribeLanguage) ? (raw.transcribeLanguage ?? null) : fallback.transcribeLanguage,
   };
 }
 

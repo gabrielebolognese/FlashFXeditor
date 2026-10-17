@@ -1,7 +1,7 @@
 // Main-thread side of the protocol (spec §3.5): one worker per kind, created on the first request.
 // `request` resolves with the typed result; aborting its signal cancels it in the worker and rejects
 // at once with an AbortError. A crashed worker rejects everything it had and is recreated on the next
-// request.
+// request; `stop` ends one on purpose the same way (with AbortErrors).
 import { abortError, closeTransferables, fromErrorInfo, METHOD_WORKER, type FromWorker, type Method, type Params, type Priority, type Progress, type Result, type ToWorker, type WorkerKind } from "./protocol.js";
 
 export interface WorkerLike {
@@ -68,6 +68,15 @@ export class WorkerPool {
 
   terminate(): void {
     for (const [kind, worker] of this.workers) this.fail(kind, new Error(`The ${kind} worker was stopped`), worker);
+  }
+
+  /**
+   * Terminates the worker of `kind` (if it runs), freeing its memory at once; its requests reject with
+   * an AbortError. The next request starts a new one (transcription: a cancel, or done with the model).
+   */
+  stop(kind: WorkerKind): void {
+    const worker = this.workers.get(kind);
+    if (worker) this.fail(kind, abortError(), worker);
   }
 
   private worker(kind: WorkerKind): WorkerLike {

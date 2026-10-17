@@ -45,6 +45,7 @@ function setup(handlers: Handlers, concurrency = 2, immediate: ReadonlySet<Metho
     },
     analysis: noWorker,
     proxy: noWorker,
+    transcribe: noWorker,
   });
   return { pool, workers };
 }
@@ -164,7 +165,7 @@ describe("WorkerPool + WorkerHost", () => {
         }) as WorkerLike["addEventListener"],
         terminate: () => undefined,
       };
-      const pool = new WorkerPool({ decode: () => worker, analysis: noWorker, proxy: noWorker });
+      const pool = new WorkerPool({ decode: () => worker, analysis: noWorker, proxy: noWorker, transcribe: noWorker });
       const controller = new AbortController();
       const request = pool.request("poster", { file, kind: "image", maxSize: 320 }, { signal: controller.signal });
       const id = posted[0]?.id ?? -1;
@@ -290,6 +291,26 @@ describe("WorkerPool + WorkerHost", () => {
     await expect(b).rejects.toThrow(/crashed/);
     expect(workers[0]?.terminated).toBe(true);
     expect(errors).toHaveBeenCalled();
+    await expect(pool.request("probe", { file, container: "mp4", type: "ok" })).resolves.toEqual(AUDIO);
+    expect(workers).toHaveLength(2);
+  });
+
+  it("stops a worker on purpose: its requests reject with AbortErrors, the next request starts a new one", async () => {
+    const gate = deferred<void>();
+    const { pool, workers } = setup({
+      probe: async ({ type }) => {
+        if (type === "hang") await gate.promise;
+        return AUDIO;
+      },
+    });
+    pool.stop("decode");
+    expect(workers).toHaveLength(0);
+    const a = pool.request("probe", { file, container: "mp4", type: "hang" });
+    await flush();
+    pool.stop("decode");
+    await expect(a).rejects.toMatchObject({ name: "AbortError" });
+    expect(workers[0]?.terminated).toBe(true);
+    expect(pool.inFlight).toBe(0);
     await expect(pool.request("probe", { file, container: "mp4", type: "ok" })).resolves.toEqual(AUDIO);
     expect(workers).toHaveLength(2);
   });
