@@ -149,11 +149,14 @@ export async function startTranscription(options: TranscribeOptions): Promise<vo
   const range = transcribeRange(project, sessionStore.state.getState(), options.range);
   transcribeDialog.set(null);
   void appSettings.update({ transcribeModel: options.model, transcribeLanguage: options.language });
+  // Not started: the worker the dialog's status request started goes too (P13).
   if (captionTrackOf(project)?.locked) {
+    workerPool.stop("transcribe");
     lockedToast();
     return;
   }
   if (!range) {
+    workerPool.stop("transcribe");
     showToast({ tone: "info", message: "Nothing to transcribe", detail: "The timeline is empty." });
     return;
   }
