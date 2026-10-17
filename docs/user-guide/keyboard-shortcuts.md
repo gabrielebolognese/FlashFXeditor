@@ -37,6 +37,7 @@ This page lists every keyboard shortcut that works in the current version of Sho
 >   29. Open the **Presets** tab of the Media panel and right-click the **Breaking** card: the **Use as default title** row shows <kbd>T</kbd>. Choose it, click the timeline and press <kbd>T</kbd>: the new title has the red **Breaking** box. Right-click the card again and choose **Use as default title** once more to go back to the usual title.
 >   30. With a title selected, click **Word pop** in the **In** row of the **Animation** section in **Edit Properties**: the words pop in once in the preview. Click in the **Duration** field under **In** and press <kbd>Shift</kbd>+<kbd>↑</kbd>: the animation gets 10 frames longer and plays again.
 >   31. Open the **Captions** tab of the Media panel and click into a cue's text. Put the caret in the middle and press <kbd>Enter</kbd>: the cue splits in two. Press <kbd>Ctrl</kbd>+<kbd>Backspace</kbd>: it is one cue again. Press <kbd>Tab</kbd>: the next cue's text is selected. Press <kbd>Esc</kbd>, then <kbd>Delete</kbd>: the cue is deleted.
+>   32. Click the microphone in the **Captions** header: the **Transcribe captions** dialog opens with **Transcribe** highlighted. Press <kbd>Enter</kbd>. When **Review the transcript** opens, press <kbd>Esc</kbd>: the transcript is dropped and nothing changes.
 
 ## In this page
 - [How shortcuts work](#how-shortcuts-work)
@@ -410,6 +411,18 @@ These keys work in a cue's text in the **Captions** tab of the Media panel. See 
 - While you type in a cue, the other shortcuts are off: <kbd>Space</kbd> types a space. Clicking anywhere else also saves the text.
 - The header buttons of the **Captions** tab and the **Caption style** section have no keys of their own: click them.
 
+In the transcription dialogs (see [Transcription](transcription.md)):
+
+| Action | Windows | macOS | Works in |
+| --- | --- | --- | --- |
+| Start the transcription with the choices shown | <kbd>Enter</kbd> | <kbd>Return</kbd> | **Transcribe captions**, right after it opens (**Transcribe** has the focus) |
+| Close the dialog without transcribing | <kbd>Esc</kbd> | <kbd>Esc</kbd> | **Transcribe captions** |
+| Add the cues (**Add N captions** or **Replace N cues**) | <kbd>Enter</kbd> | <kbd>Return</kbd> | **Review the transcript**, right after it opens |
+| Discard the transcript | <kbd>Esc</kbd> | <kbd>Esc</kbd> | **Review the transcript** |
+
+- After you click a model row or another control, <kbd>Enter</kbd> works on that control: click **Transcribe** to start.
+- A running transcription has no key: click **Cancel** in its message, or the pressed microphone.
+
 ## Edit Properties
 
 See [Editing properties](editing-properties.md).
@@ -607,6 +620,7 @@ Some buttons already show a shortcut in their tooltip although the button is dis
 - [Editing properties](editing-properties.md)
 - [Cropping and reframing](cropping-and-reframing.md)
 - [Captions](captions.md)
+- [Transcription](transcription.md)
 - [Timeline](timeline.md)
 - [Trimming clips](trimming.md)
 - [Splitting, deleting and closing gaps](splitting-and-deleting.md)
@@ -624,4 +638,4 @@ Some buttons already show a shortcut in their tooltip although the button is dis
 - [Projects and saving](projects-and-saving.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 32, 2026-10-17</sub>
+<sub>Last updated: Batch 33, 2026-10-17</sub>

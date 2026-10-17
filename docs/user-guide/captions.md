@@ -1,6 +1,6 @@
 # Captions
 
-Captions are the subtitles that run along with the speech of your video. They live on their own caption track, **CC**, above every video track, as short pieces of text called cues. You write and fix them in the **Captions** tab of the Media panel, bring them in from SRT or VTT subtitle files, and give all of them one look in the **Caption style** section of **Edit Properties**. When a cue has word timings, the spoken word lights up as it plays.
+Captions are the subtitles that run along with the speech of your video. They live on their own caption track, **CC**, above every video track, as short pieces of text called cues. You let the editor transcribe them from the speech, write and fix them in the **Captions** tab of the Media panel, bring them in from SRT or VTT subtitle files, and give all of them one look in the **Caption style** section of **Edit Properties**. When a cue has word timings, the spoken word lights up as it plays.
 
 > **Video placeholder: Captions in one minute**
 > - File: `videos/captions/overview.mp4` (not recorded yet)
@@ -40,7 +40,7 @@ Captions are the subtitles that run along with the speech of your video. They li
 - The track holds cues. A cue is a piece of text with a start and an end. Cues never overlap: at any frame, at most one cue shows.
 - The look of the captions belongs to the track: every cue shows in the same font, colors and position. You set it once in the **Caption style** section. See [Style your captions](#style-your-captions).
 - Captions are drawn by the same text engine as titles, so they stay sharp at every preview zoom and show in **Export frame**. See [Export the current frame](preview-and-playback.md#export-the-current-frame).
-- A cue can carry word timings: when each word is spoken. With them, the editor highlights the spoken word. See [Highlight the spoken word](#highlight-the-spoken-word).
+- A cue can carry word timings: when each word is spoken. With them, the editor highlights the spoken word. Transcribed cues always have them. See [Highlight the spoken word](#highlight-the-spoken-word).
 
 > **Note:** Captions are not titles. You can't click them in the preview, drag them there, or type in them there; a click on a caption selects the picture under it. Edit their text in the **Captions** tab and their place in **Caption style**. For text you place by hand, use a title or a subtitle; see [Titles and text](titles-and-text.md).
 
@@ -52,7 +52,7 @@ Click **Add caption track** in the timeline toolbar. It is the captions icon in 
 - The button turns dim, because a project has only one caption track. Its tooltip then reads **Caption track: the project has one (Media > Captions)**.
 - The step in the history is **Add caption track**.
 
-You don't have to add the track first: adding a cue or importing a subtitle file in the **Captions** tab creates it when the project has none.
+You don't have to add the track first: adding a cue, importing a subtitle file or adding a transcription in the **Captions** tab creates it when the project has none.
 
 The default caption style on a 1080×1920 project:
 
@@ -71,7 +71,7 @@ On a project of another size, the sizes follow the shorter side of the frame, as
 
 Click **Captions** in the header of the Media panel. The editor remembers the open tab with the project.
 
-Before the project has a caption track, the tab reads **No captions yet**, with two buttons: **Cue at playhead** and **Import SRT/VTT**.
+Before the project has a caption track, the tab reads **No captions yet** ("Transcribe the timeline's audio, add a cue at the playhead, or import an SRT or VTT file."), with three buttons: **Transcribe**, **Cue at playhead** and **Import SRT/VTT**. **Transcribe** is dimmed until the timeline has an audio clip (tooltip **No audio on the timeline**); see [Transcription](transcription.md).
 
 Once there is a track, the tab shows a search field, the number of cues (for example **200 cues**) and the cue list. Each row shows:
 
@@ -92,7 +92,7 @@ The header of the tab has these buttons, from left to right:
 | **Import SRT or VTT (replaces the cues)** | Imports a subtitle file. See [Import an SRT or VTT file](#import-an-srt-or-vtt-file). |
 | **Export SRT or VTT** | Saves the cues as a subtitle file. Dimmed while there are no cues. See [Export an SRT or VTT file](#export-an-srt-or-vtt-file). |
 | **Caption style (in Edit Properties)** (brush) | Selects the **CC** track (unless cues are selected), and opens, scrolls to and focuses the **Caption style** section of **Edit Properties**. Dimmed without a caption track. |
-| **Transcribe: coming in Batch 33** (microphone) | Dimmed: transcribing speech into cues is available in a later version. |
+| **Transcribe the timeline's audio into cues (on this computer)** (microphone) | Opens the **Transcribe captions** dialog. Dimmed until the timeline has an audio clip (tooltip **Transcribe: no audio on the timeline**). While a transcription runs, it looks pressed and cancels it (tooltip **Cancel the transcription**). See [Transcription](transcription.md). |
 | **Clear all cues** (eraser) | Removes every cue at once. Dimmed while there are no cues. See [Find, select and delete cues](#find-select-and-delete-cues). |
 
 ## Add a cue at the playhead
@@ -279,7 +279,7 @@ Captions are always centered across the frame. To check that the platforms' butt
 >   3. Select the **CC** track. In **Caption style**, click **Box**: a yellow box sits behind the spoken word. Click **Scale**: the spoken word grows. Click **Both**: it is yellow and larger.
 >   4. Click the **Active** swatch and pick a green: the highlight turns green.
 
-When a cue has word timings, the caption highlights the word being spoken. Word timings come from VTT files with karaoke times inside the cues; see [Import an SRT or VTT file](#import-an-srt-or-vtt-file).
+When a cue has word timings, the caption highlights the word being spoken. Word timings come from a transcription (see [Transcription](transcription.md)) and from VTT files with karaoke times inside the cues (see [Import an SRT or VTT file](#import-an-srt-or-vtt-file)).
 
 Choose the look in the **Highlight** row of **Caption style**:
 
@@ -345,6 +345,7 @@ Every caption change is one step in the history. Hover **Undo** in the app bar t
 | **Add caption track** | **Add caption track** in the timeline toolbar |
 | **Add cue** | **Add a 2 s cue at the playhead** or **Cue at playhead** |
 | **Import captions** | An import (it also adds the track when there was none) |
+| **Transcribe captions** | **Add N captions** or **Replace N cues** in the review of a transcription (it also adds the track when there was none) |
 | **Edit caption** | Typing in a cue, from the first key to leaving the field |
 | **Split cue**, **Merge cues** | <kbd>Enter</kbd>, <kbd>Ctrl</kbd>+<kbd>Backspace</kbd> and **Merge with previous cue** |
 | **Clear captions** | **Clear all cues** |
@@ -358,13 +359,13 @@ Every caption change is one step in the history. Hover **Undo** in the app bar t
 
 These parts are available in a later version:
 
-- **Transcribe**: turning the speech of your video into cues with word timings.
 - A style for a single cue, and moving or styling captions in the preview.
 - Exporting the video with its captions, and exporting caption files from the export settings. **Export frame** already includes the captions, and **Export SRT or VTT** saves the cues.
 - Rounded corners for the highlight box.
 - Pasting cues.
 
 ## Related pages
+- [Transcription](transcription.md)
 - [Titles and text](titles-and-text.md)
 - [Text presets](text-presets.md)
 - [Tracks](tracks.md)
@@ -375,4 +376,4 @@ These parts are available in a later version:
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 32, 2026-10-17</sub>
+<sub>Last updated: Batch 33, 2026-10-17</sub>

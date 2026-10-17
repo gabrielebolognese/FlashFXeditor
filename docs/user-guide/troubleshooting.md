@@ -1,6 +1,6 @@
 # Troubleshooting
 
-This page helps you when something does not work as expected: the editor does not start in your browser, the preview stays empty, a folder or a file does not open, a clip drag, a trim, a split, a delete, a timeline tool, a typed timecode, a marker, an in/out range or **Lift** and **Extract** do something you did not expect, media from the Media panel lands somewhere you did not expect, a clip shows no thumbnails, a video gets no proxy or its proxy fails, the preview zoom, overlays or fullscreen behave unexpectedly, a picture in the preview can't be selected, moves unexpectedly, doesn't snap where you expect or gets cropped instead of resized, a value or a crop in **Edit Properties** doesn't do what you expect, a speed change, a freeze frame or a punch zoom does something you did not expect, a title lands somewhere you did not expect, the keys type into a text, a font is missing, a text preset doesn't apply, update or sync as you expect, a text animation plays shorter or differently than you expect, a caption cue doesn't import, move, show or highlight as you expect, playback stutters, or you hear no sound. Each problem lists what you see, why it happens and what to do. The last section lists what the current version cannot do yet.
+This page helps you when something does not work as expected: the editor does not start in your browser, the preview stays empty, a folder or a file does not open, a clip drag, a trim, a split, a delete, a timeline tool, a typed timecode, a marker, an in/out range or **Lift** and **Extract** do something you did not expect, media from the Media panel lands somewhere you did not expect, a clip shows no thumbnails, a video gets no proxy or its proxy fails, the preview zoom, overlays or fullscreen behave unexpectedly, a picture in the preview can't be selected, moves unexpectedly, doesn't snap where you expect or gets cropped instead of resized, a value or a crop in **Edit Properties** doesn't do what you expect, a speed change, a freeze frame or a punch zoom does something you did not expect, a title lands somewhere you did not expect, the keys type into a text, a font is missing, a text preset doesn't apply, update or sync as you expect, a text animation plays shorter or differently than you expect, a caption cue doesn't import, move, show or highlight as you expect, a transcription doesn't start, is slow or gets words wrong, playback stutters, or you hear no sound. Each problem lists what you see, why it happens and what to do. The last section lists what the current version cannot do yet.
 
 > **Video placeholder: Fix common problems**
 > - File: `videos/troubleshooting/overview.mp4` (not recorded yet)
@@ -45,6 +45,7 @@ This page helps you when something does not work as expected: the editor does no
 >   37. Select a title made with a preset and hover **Update preset** in the quick actions: it is dimmed while the title still has the preset's style. Change its color: the button comes alive.
 >   38. Give a 4-second title **Word pop** in the **Animation** section and type `3` in its **Duration**: the hint **Plays in 2.00 s: half the clip** appears under the field. Click the **Title** preset card: the animation is gone. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>: it is back.
 >   39. Open the **Captions** tab of a project with cues, click into a cue's text and press <kbd>Delete</kbd>: a letter disappears. Press <kbd>Esc</kbd>, then <kbd>Delete</kbd>: the cue is deleted. On the **CC** row, drag a cue into the next one: it stops against it.
+>   40. Click **M** in the header of the audio track with the voice, click the microphone in the **Captions** header, then **Transcribe**: the message **No audio to transcribe** appears. Click **M** again, set an in and an out point that cut through two cues, and transcribe **In to out**: the review offers **Replace 2 cues**. Press <kbd>Esc</kbd>: the transcript is gone and nothing changed.
 
 ## In this page
 - [Browser and graphics](#browser-and-graphics)
@@ -212,6 +213,19 @@ This page helps you when something does not work as expected: the editor does no
   - [A long cue looks smaller than the others](#a-long-cue-looks-smaller-than-the-others)
   - [A preset card added a title instead of styling the captions](#a-preset-card-added-a-title-instead-of-styling-the-captions)
   - [Export SRT or VTT is dimmed](#export-srt-or-vtt-is-dimmed)
+- [Transcription](#transcription)
+  - [Transcribe is dimmed](#transcribe-is-dimmed)
+  - [A transcription says No audio to transcribe or No speech found](#a-transcription-says-no-audio-to-transcribe-or-no-speech-found)
+  - [The model download fails](#the-model-download-fails)
+  - [A downloaded model shows its size again](#a-downloaded-model-shows-its-size-again)
+  - [The transcription is slow](#the-transcription-is-slow)
+  - [The captions are in the wrong language](#the-captions-are-in-the-wrong-language)
+  - [Some words are wrong](#some-words-are-wrong)
+  - [The highlight comes late](#the-highlight-comes-late)
+  - [A word you fixed is no longer highlighted](#a-word-you-fixed-is-no-longer-highlighted)
+  - [A transcription replaced cues outside the in/out range](#a-transcription-replaced-cues-outside-the-inout-range)
+  - [The transcript disappeared before you added it](#the-transcript-disappeared-before-you-added-it)
+  - [Chinese or Japanese captions have no spaces or a low word count](#chinese-or-japanese-captions-have-no-spaces-or-a-low-word-count)
 - [Known limitations](#known-limitations)
 
 ## Browser and graphics
@@ -1558,7 +1572,7 @@ See [Audio](audio.md).
 
 ### The caption track is locked
 
-**Symptom:** Adding a cue or importing a subtitle file shows the message **The caption track is locked**. Or text you type in a cue goes back to the old text when you leave the field, <kbd>Enter</kbd> shows **Can't split this cue**, and **Clear all cues** does nothing.
+**Symptom:** Adding a cue, importing a subtitle file or transcribing shows the message **The caption track is locked**. Or text you type in a cue goes back to the old text when you leave the field, <kbd>Enter</kbd> shows **Can't split this cue**, and **Clear all cues** does nothing.
 
 **Cause:** The **CC** track is locked: its padlock is closed and gold.
 
@@ -1626,7 +1640,7 @@ See [Audio](audio.md).
 
 **Cause:** The cues have no word timings. SRT files never have them, VTT files only when the cues hold karaoke times, and cues you add at the playhead have none. Between two words nothing is highlighted, and a cue you are typing in pauses its highlight.
 
-**Fix:** Import a VTT file whose cues have karaoke times, such as `Never <00:00:00.700>drink <00:00:01.200>liquid nitrogen`. See [Highlight the spoken word](captions.md#highlight-the-spoken-word).
+**Fix:** Transcribe the speech: transcribed cues always have word timings. See [Transcription](transcription.md). Or import a VTT file whose cues have karaoke times, such as `Never <00:00:00.700>drink <00:00:01.200>liquid nitrogen`. See [Highlight the spoken word](captions.md#highlight-the-spoken-word).
 
 ### A long cue looks smaller than the others
 
@@ -1650,7 +1664,105 @@ See [Audio](audio.md).
 
 **Cause:** The caption track has no cues.
 
-**Fix:** Add a cue with **Add a 2 s cue at the playhead** (+), or import a subtitle file. See [Add a cue at the playhead](captions.md#add-a-cue-at-the-playhead).
+**Fix:** Add a cue with **Add a 2 s cue at the playhead** (+), import a subtitle file, or transcribe the speech. See [Add a cue at the playhead](captions.md#add-a-cue-at-the-playhead) and [Transcription](transcription.md).
+
+## Transcription
+
+### Transcribe is dimmed
+
+**Symptom:** The microphone in the **Captions** header, or **Transcribe** in an empty **Captions** tab, is dimmed. Its tooltip reads **Transcribe: no audio on the timeline** or **No audio on the timeline**.
+
+**Cause:** The timeline has no audio clip. The editor transcribes the sound of the timeline, not the media in the Media panel. A video placed without its sound has nothing to transcribe.
+
+**Fix:** Put the video with its sound on the timeline, or add the audio file that holds the speech. See [Before you start](transcription.md#before-you-start).
+
+### A transcription says No audio to transcribe or No speech found
+
+**Symptom:** After you click **Transcribe**, the message **No audio to transcribe** or **No speech found** appears, and no review opens.
+
+**Cause:** **No audio to transcribe**: no sound plays in the range, because its audio tracks are muted, another track is soloed, its clips are turned off, or the range has no audio clip. **No speech found**: the range holds sound, but Whisper heard no words in it: music, silence, or speech that is very quiet.
+
+**Fix:** Play the range and listen: what you hear is what the editor transcribes. Unmute the voice track or check the **S** toggles, turn clips back on with **Enable**, or choose **Whole timeline** in the dialog. For quiet or noisy speech, try **Small**. See [If a transcription doesn't start](transcription.md#if-a-transcription-doesnt-start).
+
+### The model download fails
+
+**Symptom:** The message **Couldn't transcribe** appears with **The model could not be downloaded. Check the connection and try again.**
+
+**Cause:** The first transcription with a model downloads it from Hugging Face, and the connection failed or was blocked.
+
+**Fix:** Check your internet connection, and that your network allows downloads from Hugging Face, then transcribe again. To download less, choose **Tiny**. Once a model shows **Downloaded**, it works offline. See [Choose a model](transcription.md#choose-a-model).
+
+### A downloaded model shows its size again
+
+**Symptom:** A model that showed **Downloaded** before shows its download size in the **Transcribe captions** dialog, and the next transcription downloads it again.
+
+**Cause:** Models are kept by the browser, not in the project folder. They are gone after **Remove model** or after the browser's data for the editor is cleared. Another browser or browser profile has its own copy. A model downloaded while transcription ran on the graphics card doesn't count when it runs on the processor, and the other way around.
+
+**Fix:** Download it once more. See [Manage downloaded models](transcription.md#manage-downloaded-models).
+
+### The transcription is slow
+
+**Symptom:** The **Transcribing** percentage climbs slowly, or the review says **on WebAssembly**.
+
+**Cause:** Larger models take longer: **Base** needs about half the length of the audio on a laptop graphics card, **Small** more. On the processor (WebAssembly), larger models are slower still. While the timeline plays, the percentage holds still.
+
+**Fix:** Choose **Tiny** for a quick draft, or transcribe only the part you need with an in/out range. Stop playback to see the percentage move again. See [Speed and accuracy](transcription.md#speed-and-accuracy).
+
+### The captions are in the wrong language
+
+**Symptom:** The review names another language than the one spoken, or its cues are garbled.
+
+**Cause:** **Detect automatically** listens only to the first 30 seconds of the range. Music, silence or another language at the start can mislead it.
+
+**Fix:** Click **Discard**, open the dialog again and choose the language under **Language**. See [Choose the language](transcription.md#choose-the-language).
+
+### Some words are wrong
+
+**Symptom:** The captions have misheard words, misspelled names, numbers written as digits, or song lyrics.
+
+**Cause:** Whisper guesses from the sound. Music, noise, overlapping voices, accents and names make mistakes more likely, and the smaller models make more of them.
+
+**Fix:** Fix the words in the **Captions** tab. Before transcribing again, solo the voice track (**S**) so music is left out, and choose **Small**. To redo only a bad passage, mark it with <kbd>I</kbd> and <kbd>O</kbd> and transcribe **In to out**. See [Fix the captions](transcription.md#fix-the-captions).
+
+### The highlight comes late
+
+**Symptom:** On transcribed captions, each word lights up a moment after it is spoken.
+
+**Cause:** With **Tiny**, the word timings can trail the voice by about 0.2 seconds.
+
+**Fix:** Transcribe with **Base** or **Small**. See [Choose a model](transcription.md#choose-a-model).
+
+### A word you fixed is no longer highlighted
+
+**Symptom:** After you change a word in a transcribed cue, that word stays in the text color while the others light up.
+
+**Cause:** The highlight looks for each timed word in the cue's text. A word you replace with a different word, or a word you add, has no timing.
+
+**Fix:** This is expected for the words you changed. To get timings for a whole passage again, transcribe its range again. See [Fix the captions](transcription.md#fix-the-captions).
+
+### A transcription replaced cues outside the in/out range
+
+**Symptom:** After **Replace N cues**, a cue that started before the in point or ended after the out point is gone, or the review counts more cues than you expected.
+
+**Cause:** Every cue that touches the range is replaced, also a cue that crosses its edge.
+
+**Fix:** Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>: the old cues come back. Set the in and out points between cues, then transcribe again. See [Transcribe part of the timeline](transcription.md#transcribe-part-of-the-timeline).
+
+### The transcript disappeared before you added it
+
+**Symptom:** The **Review the transcript** dialog closed, and no cues were added.
+
+**Cause:** <kbd>Esc</kbd>, the close button, a click outside the dialog and **Discard** all drop the result. Opening another project does too.
+
+**Fix:** Transcribe again. The model is already downloaded, so it is quicker. See [Review the transcript](transcription.md#review-the-transcript).
+
+### Chinese or Japanese captions have no spaces or a low word count
+
+**Symptom:** Transcribed Chinese, Japanese, Thai, Lao or Burmese captions have no spaces between words, Chinese and Japanese lines are short, and the **Captions** tab counts each line of a Chinese or Japanese cue as 1 word.
+
+**Cause:** These languages are written without spaces, and their wide characters fill a line twice as fast, so a line holds about 16 of them. The word count counts the pieces of text between spaces.
+
+**Fix:** Nothing to fix: the captions are written as the language is. The word highlight still finds each word. See [How the speech becomes cues](transcription.md#how-the-speech-becomes-cues).
 
 ## Known limitations
 
@@ -1665,7 +1777,8 @@ The current version cannot do these things yet. Each one is available in a later
 - **Preview:** a change to a picture, its crop included, applies to the whole clip; changes over time (keyframes) are not available. An SVG image that covers the whole frame doesn't get sharper when you zoom in. The **Zoom**, **Preview quality** and **Overlays** menus can't be used with the arrow keys.
 - **Edit Properties:** the audio and transition sections are not available, nor are the dimmed quick actions and the **Still duration**, **Transition** and **Cache** rows of the **Project** section. A new resolution always scales the layout; keeping the layout as it is, is not available.
 - **Text:** a setting to always make new titles 3 seconds long is not available. A text's handles don't snap, and fonts can't be chosen with the arrow keys in the font picker. Deleted starter presets can't be restored. Text animations play in the preview and in **Export frame**; moving text over time with keyframes is not available.
-- **Captions:** speech can't be transcribed into cues yet (the **Transcribe** button is dimmed). All cues share one style; a style for a single cue is not available. Captions can't be selected, moved or styled in the preview. The highlight box has square corners, and cues can't be pasted.
+- **Captions:** all cues share one style; a style for a single cue is not available. Captions can't be selected, moved or styled in the preview. The highlight box has square corners, and cues can't be pasted.
+- **Transcription:** the cues can't be edited in the review; fix them in the **Captions** tab after adding them. The default model and language are set in the **Transcribe captions** dialog only.
 - **Animated GIF and WebP files** show as still images (their first frame), in the preview and in their clips' thumbnails.
 - **Media that cannot be decoded, or whose file is missing,** shows nothing in the preview, with no placeholder.
 - **Removing media** that a clip uses is not possible.
@@ -1698,6 +1811,7 @@ The current version cannot do these things yet. Each one is available in a later
 - [Text presets](text-presets.md)
 - [Text animations](text-animations.md)
 - [Captions](captions.md)
+- [Transcription](transcription.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 32, 2026-10-17</sub>
+<sub>Last updated: Batch 33, 2026-10-17</sub>

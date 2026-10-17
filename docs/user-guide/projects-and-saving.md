@@ -36,6 +36,8 @@ When you create a project, the editor fills the folder you picked with these ite
 | `presets/text` | The project's own text presets, one `.json` file per preset: the **Project** list of the **Presets** tab. See [Keep presets for all projects or for one](text-presets.md#keep-presets-for-all-projects-or-for-one). |
 | `project.json.tmp` | Exists only for a moment during each save. If one is left over after a crash, the editor offers to restore it. See [Restore unsaved changes after a crash](#restore-unsaved-changes-after-a-crash). |
 
+> **Note:** Transcription models are not in the project folder: your browser keeps them for all your projects. See [Manage downloaded models](transcription.md#manage-downloaded-models).
+
 > **Important:** Keep the project folder together. Do not rename, move or delete files inside `media` or `fonts`: the project refers to them by name. To move a project, move the whole folder, then open it with **Open project**.
 
 > **Note:** Do not edit `project.json` while the project is open in the editor. The next save replaces it.
@@ -115,6 +117,7 @@ What you can undo:
 | Linking, unlinking, grouping and ungrouping clips, **Move into sync** | |
 | Adding, deleting, renaming and reordering tracks | |
 | Targeting, locking, muting, soloing and hiding tracks (also **Lock all tracks** and **Mute all others**) | |
+| Caption changes: adding, importing, editing, splitting, merging and clearing cues, the caption style, and adding a transcription (**Transcribe captions**) | Starting, cancelling and discarding a transcription, downloading and removing transcription models, and the model and language you choose |
 
 ## Pick up where you left off
 
@@ -249,4 +252,4 @@ Choosing to keep the layout as it is when you change the resolution is available
 - [Titles and text](titles-and-text.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 30, 2026-10-16</sub>
+<sub>Last updated: Batch 33, 2026-10-17</sub>

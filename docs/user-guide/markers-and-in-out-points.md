@@ -121,6 +121,7 @@ The range is shaded across the ruler and the tracks, with a bracket in the ruler
 - You can set just one of them. With only an in point, the range runs from it to the end of your content; with only an out point, from the start of the timeline to it.
 - If you set an in point after the out point, the out point is cleared, and the other way around.
 - Press <kbd>Shift</kbd>+<kbd>I</kbd> to move the playhead to the in point, and <kbd>Shift</kbd>+<kbd>O</kbd> to move it to the last frame of the range.
+- **Transcribe** in the **Captions** tab offers to transcribe just the range (**In to out**). See [Transcribe part of the timeline](transcription.md#transcribe-part-of-the-timeline).
 
 ## Mark a clip or the selection
 
@@ -263,7 +264,8 @@ While the timeline has markers, the project's frame rate is locked. See [Change 
 - [Tracks](tracks.md)
 - [Splitting, deleting and closing gaps](splitting-and-deleting.md)
 - [Projects and saving](projects-and-saving.md)
+- [Transcription](transcription.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 20, 2026-10-15</sub>
+<sub>Last updated: Batch 33, 2026-10-17</sub>

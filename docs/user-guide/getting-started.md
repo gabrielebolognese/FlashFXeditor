@@ -27,6 +27,7 @@ Shorts Editor is a video editor for short vertical videos that runs in your brow
 | Graphics | A GPU that supports WebGPU, with hardware acceleration turned on in the browser. |
 | Screen | At least 1600×900. The editor is designed for 1920×1080 and larger. |
 | Disk | One folder per project, on a drive the browser can write to. There is no server and no account. |
+| Internet | Not needed to edit. Transcription downloads its speech model once, 44 MB to 589 MB; see [Transcription](transcription.md). |
 
 When the editor starts, it checks that the browser has every feature it needs. If one is missing, you see a single full-screen message instead of the editor: **This browser cannot run Shorts Editor**, with the text "Open it in the current stable version of Chrome or Edge on desktop. These required features are missing:" and a list of what is missing. There is no reduced mode.
 
@@ -153,4 +154,4 @@ For other problems, see [Troubleshooting](troubleshooting.md).
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 25, 2026-10-16</sub>
+<sub>Last updated: Batch 33, 2026-10-17</sub>

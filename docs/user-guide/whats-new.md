@@ -2,6 +2,11 @@
 
 Shorts Editor grows in steps called batches. This page lists what each batch added that you can see or use, newest first. Follow the links for the full instructions.
 
+> **Video placeholder: What's new in Batch 33**
+> - File: `videos/whats-new/batch-33.mp4` (not recorded yet)
+> - Length: about 60 seconds
+> - Shows: a 1080×1920 project with a one-minute talking-head video on V1 and A1 and no captions; open the **Captions** tab: **No captions yet** with **Transcribe** first; click **Transcribe**: the **Transcribe captions** dialog lists **Tiny**, **Base** and **Small** with their sizes, **Detect automatically** and the range; click **Download 209 MB and transcribe**: the message at the top counts the download, then reads **Detecting the language** and **Transcribing** with a percentage; press <kbd>Space</kbd> while it runs: playback stays smooth; **Review the transcript** lists 18 cues in English; click **Add 18 captions**: the cues fill **CC** and the list; press <kbd>Home</kbd> and <kbd>Space</kbd>: each word turns yellow as it is spoken; set an in and an out point around one sentence, click the microphone, choose **Small** and transcribe **In to out**: the review offers **Replace 2 cues**; click it, then hover **Undo**: **Undo Transcribe captions**.
+
 > **Video placeholder: What's new in Batch 32**
 > - File: `videos/whats-new/batch-32.mp4` (not recorded yet)
 > - Length: about 60 seconds
@@ -118,6 +123,7 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 > - Shows: open a project with three clips on the timeline; press <kbd>Space</kbd> to play and let the timeline page forward; press <kbd>L</kbd> three times to reach 8x, then <kbd>K</kbd>; hold <kbd>K</kbd> and tap <kbd>L</kbd> to step one frame; turn on **Loop playback**; point at the **Dropped** readout in the status strip.
 
 ## In this page
+- [Batch 33: Transcription](#batch-33-transcription)
 - [Batch 32: Captions](#batch-32-captions)
 - [Batch 31: Text animations](#batch-31-text-animations)
 - [Batch 30: Text presets](#batch-30-text-presets)
@@ -150,6 +156,16 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 - [Batch 03: Projects, autosave and recovery](#batch-03-projects-autosave-and-recovery)
 - [Batch 02: Undo, redo and frame-exact time](#batch-02-undo-redo-and-frame-exact-time)
 - [Batch 01: The workspace](#batch-01-the-workspace)
+
+## Batch 33: Transcription
+- Turn the speech of your edit into captions: click **Transcribe** in the **Captions** tab (the microphone in its header, or the first button of an empty tab). The editor listens to the timeline's sound, writes the cues on the **CC** track and times every word, so the spoken word is highlighted out of the box. See [Transcription](transcription.md).
+- It runs on your own computer, on the graphics card or the processor: your audio never leaves it. Choose **Tiny**, **Base** (the default) or **Small**; each model downloads once (44 MB to 589 MB), stays in your browser, and then works offline. **Remove model** frees the space. See [Choose a model](transcription.md#choose-a-model) and [Manage downloaded models](transcription.md#manage-downloaded-models).
+- Let the editor detect the language, or choose one of 99. Chinese, Japanese, Thai, Lao and Burmese captions are written without spaces. See [Choose the language](transcription.md#choose-the-language).
+- Transcribe the whole timeline or just the in/out range. Cues already in the range are replaced, after a warning. See [Transcribe part of the timeline](transcription.md#transcribe-part-of-the-timeline).
+- A message follows the download and the transcription with a percentage and a **Cancel** button; the pressed microphone cancels too. Cancelling leaves your project exactly as it was. You can keep playing and editing meanwhile. See [Follow the progress or cancel](transcription.md#follow-the-progress-or-cancel).
+- Read the result in **Review the transcript** before it goes in: **Add N captions** (or **Replace N cues**) adds it in one undo step, **Transcribe captions**; **Discard** or <kbd>Esc</kbd> drops it. See [Review the transcript](transcription.md#review-the-transcript).
+- The cues follow subtitle rules: cut at sentence ends and pauses, up to **Max lines** of the caption style with about 32 characters per line, timed to the words, with sounds such as `[Music]` left out. See [How the speech becomes cues](transcription.md#how-the-speech-becomes-cues).
+- New page: [Transcription](transcription.md). New keys in the transcription dialogs: <kbd>Enter</kbd> starts or adds, <kbd>Esc</kbd> closes or discards; see [Keyboard shortcuts](keyboard-shortcuts.md#captions). New troubleshooting group: [Transcription](troubleshooting.md#transcription).
 
 ## Batch 32: Captions
 - Caption your video on its own track: **Add caption track** in the timeline toolbar adds the **CC** track above every video track and opens the **Captions** tab of the Media panel. A project has one caption track. See [Add the caption track](captions.md#add-the-caption-track).
@@ -476,6 +492,7 @@ See [The workspace](workspace.md) and [Getting started](getting-started.md).
 
 ## Related pages
 - [Captions](captions.md)
+- [Transcription](transcription.md)
 - [Text animations](text-animations.md)
 - [Text presets](text-presets.md)
 - [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md)
@@ -489,4 +506,4 @@ See [The workspace](workspace.md) and [Getting started](getting-started.md).
 - [Adding media to the timeline](adding-media-to-the-timeline.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 32, 2026-10-17</sub>
+<sub>Last updated: Batch 33, 2026-10-17</sub>
