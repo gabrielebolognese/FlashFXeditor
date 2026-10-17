@@ -108,6 +108,7 @@ What to expect while you scrub:
 - When the playhead crosses a cut, the preview keeps the previous picture until the new clip's frame is ready. It never flashes black.
 - The editor prepares the first and last frames of the clips just before and after the playhead (up to 2 seconds away), so a cut usually shows the new clip at once.
 - Dragging in the ruler while the video plays pauses playback.
+- Scrubbing is silent, unless **Audio scrub** is on in the timeline toolbar: then you hear a short bit of the sound at each frame the playhead shows, so you can find a cut or a word by ear. See [Hear cuts while you scrub](audio-editing.md#hear-cuts-while-you-scrub).
 - While you drag the edge of a clip to trim or stretch it, the preview shows the clip's new first or last frame instead of the frame at the playhead, and goes back to the playhead when you release. See [Trimming clips](trimming.md#trim-a-clip).
 - While you roll a cut, slip or slide a clip, the preview splits into two halves that show the frames on both sides of the edit, for example the last frame before a cut and the first frame after it. See [Read the split preview](advanced-trimming.md#read-the-split-preview).
 - Hold <kbd>Shift</kbd> while you drag to snap the playhead to the nearest clip start or end, so it lands exactly on a cut. See [Snap the playhead in the ruler](timeline.md#snap-the-playhead-in-the-ruler).
@@ -181,7 +182,7 @@ How playback behaves:
 | Go to the end of the content | <kbd>End</kbd> | **Go to end** |
 
 - Hold an arrow key to keep stepping: after 0.3 seconds, it repeats about 30 times per second until you release the key.
-- Stepping pauses playback first. Steps are silent.
+- Stepping pauses playback first. Steps are silent, unless **Audio scrub** is on in the timeline toolbar: then each step plays a short bit of the sound at the new frame. See [Hear cuts while you scrub](audio-editing.md#hear-cuts-while-you-scrub).
 - The playhead never goes before the first frame.
 - **Go to end** puts the playhead just after the last frame, where the frame is empty. Click **Previous frame** to see the last frame.
 - The timeline scrolls by a page when a step or jump moves the playhead out of view.
@@ -311,6 +312,7 @@ The preview draws with your graphics card (GPU) and decodes video with the brows
 If playback stutters, see [Troubleshooting](troubleshooting.md).
 
 ## Related pages
+- [Editing audio](audio-editing.md)
 - [Preview zoom, overlays and fullscreen](preview-zoom-overlays-fullscreen.md)
 - [Arranging layers in the preview](arranging-layers-in-the-preview.md)
 - [Snapping and smart guides in the preview](snapping-and-smart-guides.md)
@@ -330,4 +332,4 @@ If playback stutters, see [Troubleshooting](troubleshooting.md).
 - [Workspace](workspace.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 32, 2026-10-17</sub>
+<sub>Last updated: Batch 37, 2026-10-17</sub>

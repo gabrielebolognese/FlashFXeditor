@@ -101,11 +101,12 @@ What you can undo:
 | Changing the resolution, frame rate or background color | Selecting clips, tracks, a cut (edit point), a gap or a marker |
 | Importing media, renaming media, removing media | Zooming, scrolling and panning the timeline (also with the scrollbars), zooming and panning the preview, the preview quality, overlays and fullscreen |
 | Adding media to the timeline: each insert, overwrite, drag, drop on the preview or **Add to canvas**; dropped files with their import are one step | Panel sizes, panel tabs, the media view and sort order, skimming media cards |
-| Moving, inserting, duplicating and nudging clips (a quick series of nudges is one step) | **Loop playback**, **Snap**, **Linked selection**, **Ripple mode**, the timecode format, the **Autosave** setting and the proxy settings |
+| Moving, inserting, duplicating and nudging clips (a quick series of nudges is one step) | **Loop playback**, **Snap**, **Linked selection**, **Ripple mode**, **Audio scrub**, the timecode format, the **Autosave** setting and the proxy settings |
 | Moving, resizing, rotating and cropping layers in the preview and moving their anchor point (one step per drag), nudging them with the arrow keys (a quick series is one step), **Fit**, **Fill**, **Center**, the flips, **Reset transform**, **Bring forward** and **Send backward** | Folding and opening the sections of **Edit Properties**, the scale lock in the **Transform** section, and the recent colors of the color picker |
 | Values typed or dragged in **Edit Properties**: position, scale, rotation, anchor, crop, opacity, the clip times, and the shape, fill, size and corner radius of a solid (one step per value, per drag, or per quick series of arrow presses) | Turning crop mode on or off, the crop units (**px** or **%**) and the crop **Aspect** lock |
 | **Crop to frame** and resetting a crop | |
 | Fades (each fade handle drag, **Fade in 0.5 s**, **Fade out 0.5 s** and each fade length in the clip menu), and adding, changing and deleting transitions | Selecting a transition |
+| Audio changes: a clip's volume (each typed value, rubber band drag or quick series of arrow presses), volume keyframes, muting and unmuting clips, **Normalize**, **Auto-duck music** and **Detach audio** | The listening volume and the **Mute** button under the preview |
 | Adding a solid with **Add solid**, and adding images with **Add image** (the import and the clips are one step) | |
 | Duplicating a clip with <kbd>Ctrl</kbd>+<kbd>D</kbd> or **Duplicate**, turning clips off and on (**Disable**, **Enable**) | |
 | Applying a text preset, adding a text from a preset, and linking a text to the preset you save it as | Text presets themselves: saving, updating, renaming, duplicating, deleting, importing and syncing presets, favorites, **Apply position** and the default title and subtitle |
@@ -136,6 +137,7 @@ When you open a project again, the editor restores your view from the last sessi
 - whether **Snap** is on
 - whether **Linked selection** is on
 - whether **Ripple mode** is on
+- whether **Audio scrub** is on
 - the active tool (**Select**, **Razor**, **Hand**, **Slip**, **Slide** or **Rate stretch**)
 - the selected clips or tracks
 - the sections you folded in **Edit Properties**
@@ -255,4 +257,4 @@ Choosing to keep the layout as it is when you change the resolution is available
 - [Titles and text](titles-and-text.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 36, 2026-10-17</sub>
+<sub>Last updated: Batch 37, 2026-10-17</sub>

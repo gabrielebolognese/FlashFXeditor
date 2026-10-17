@@ -74,12 +74,10 @@ The ruler also holds your markers (small colored triangles along its bottom edge
 In this version these parts of the toolbar work:
 
 - the **Select**, **Razor**, **Hand**, **Slip**, **Slide** and **Rate stretch** tools (see [Choose a tool](advanced-trimming.md#choose-a-tool), [Cut clips with the Razor tool](splitting-and-deleting.md#cut-clips-with-the-razor-tool) and [Pan the view](#pan-the-view));
-- the **Snap** toggle (see [Turn snapping on or off](#turn-snapping-on-or-off)), the **Linked selection** toggle (see [Turn Linked selection off](links-and-groups.md#turn-linked-selection-off)), the **Ripple mode** toggle (see [Turn Ripple mode on or off](trimming.md#turn-ripple-mode-on-or-off)) and the **Show clip keyframes** toggle (see [Show keyframes on the timeline](keyframes.md#show-keyframes-on-the-timeline));
+- the **Snap** toggle (see [Turn snapping on or off](#turn-snapping-on-or-off)), the **Linked selection** toggle (see [Turn Linked selection off](links-and-groups.md#turn-linked-selection-off)), the **Ripple mode** toggle (see [Turn Ripple mode on or off](trimming.md#turn-ripple-mode-on-or-off)), the **Show clip keyframes** toggle (see [Show keyframes on the timeline](keyframes.md#show-keyframes-on-the-timeline)) and the **Audio scrub** toggle (see [Hear cuts while you scrub](audio-editing.md#hear-cuts-while-you-scrub));
 - the edit buttons **Split at playhead**, **Delete**, **Ripple delete**, **Close gap** and **Close all gaps (compact)** (see [Splitting, deleting and closing gaps](splitting-and-deleting.md)), **Add marker** (see [Add markers](markers-and-in-out-points.md#add-markers)), and **Freeze frame** and **Punch zoom** (see [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md));
 - the add buttons **Title** and **Subtitle** (see [Titles and text](titles-and-text.md)), **Add caption track** (see [Add the caption track](captions.md#add-the-caption-track)), **Add solid** and **Add image** (see [Shapes and images](shapes-and-images.md)), and after them the chips of your favorite text presets, which add a text in that look at the playhead (see [Put favorite presets in the timeline toolbar](text-presets.md#put-favorite-presets-in-the-timeline-toolbar));
 - the whole zoom group: **Zoom out**, the zoom slider, **Zoom in**, **Zoom to fit**, **Zoom to selection** (see [Zoom in and out](#zoom-in-and-out)), **Center playhead** (see [Scroll the timeline](#scroll-the-timeline)) and **Track height** (see [Change track height](tracks.md#change-track-height)), then the timecode field and the duration.
-
-The **Audio scrub** toggle is shown but disabled; it is available in a later version.
 
 > **Note:** When the timeline panel is too narrow for the whole toolbar, the zoom group (with **Zoom to selection** and **Center playhead**) is the first to move into the **More tools** (…) menu, followed by the toggles with **Snap**, **Linked selection** and **Ripple mode**. Click **More tools** to reach them.
 
@@ -228,6 +226,7 @@ Panning moves the view with the pointer, as if you were dragging the timeline it
 - Drag along the ruler to scrub: the playhead and the preview follow the pointer. The playhead line gets wider while you drag.
 - To scrub past the part of the timeline you can see, hold the pointer near the left or right edge of the tracks, or past it: the timeline scrolls. The further out you go, the faster it scrolls.
 - If the editor is playing, dragging in the ruler pauses it.
+- With **Audio scrub** on in the toolbar, you hear a short bit of the sound at each frame the playhead passes. See [Hear cuts while you scrub](audio-editing.md#hear-cuts-while-you-scrub).
 - Hold <kbd>Shift</kbd> while you click or drag in the ruler to snap the playhead to the nearest clip start or end, marker, or in or out point. See [Snap the playhead in the ruler](#snap-the-playhead-in-the-ruler).
 - If you scroll or zoom with the mouse wheel while you drag in the ruler, the playhead stays under the pointer.
 
@@ -643,6 +642,7 @@ Label colors help you see at a glance which clips belong together, for example a
 - The **Color** row of the **Clip** section in **Edit Properties** has the same eight swatches, for the selected clips.
 
 ## Related pages
+- [Editing audio](audio-editing.md)
 - [Adding media to the timeline](adding-media-to-the-timeline.md)
 - [Keyframes](keyframes.md)
 - [Fades and transitions](fades-and-transitions.md)
@@ -668,4 +668,4 @@ Label colors help you see at a glance which clips belong together, for example a
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 36, 2026-10-17</sub>
+<sub>Last updated: Batch 37, 2026-10-17</sub>

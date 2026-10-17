@@ -39,6 +39,7 @@ This page lists every keyboard shortcut that works in the current version of Sho
 >   31. Open the **Captions** tab of the Media panel and click into a cue's text. Put the caret in the middle and press <kbd>Enter</kbd>: the cue splits in two. Press <kbd>Ctrl</kbd>+<kbd>Backspace</kbd>: it is one cue again. Press <kbd>Tab</kbd>: the next cue's text is selected. Press <kbd>Esc</kbd>, then <kbd>Delete</kbd>: the cue is deleted.
 >   32. Click the microphone in the **Captions** header: the **Transcribe captions** dialog opens with **Transcribe** highlighted. Press <kbd>Enter</kbd>. When **Review the transcript** opens, press <kbd>Esc</kbd>: the transcript is dropped and nothing changes.
 >   33. Click right on a cut between two clips on the timeline: red brackets mark it. Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd>: a cross dissolve block appears over the cut. Hold <kbd>Alt</kbd> and drag its right end: only that end moves. Click the block and press <kbd>Delete</kbd>: it is gone.
+>   34. Click **Audio scrub** in the timeline toolbar and press <kbd>→</kbd> a few times: each step plays a short bit of sound. Hold <kbd>Ctrl</kbd> and click the white line across an audio clip: a diamond appears on it. Press <kbd>Delete</kbd>: the diamond is gone and the clip stays.
 
 ## In this page
 - [How shortcuts work](#how-shortcuts-work)
@@ -95,7 +96,7 @@ These shortcuts work in all panels, except where noted. See [Preview and playbac
 | Pause | <kbd>K</kbd> | <kbd>K</kbd> | All panels |
 | Step one frame forward or back | Hold <kbd>K</kbd>, tap <kbd>L</kbd> or <kbd>J</kbd> | Hold <kbd>K</kbd>, tap <kbd>L</kbd> or <kbd>J</kbd> | All panels |
 | Play around the playhead (2 s before to 2 s after, then back) | <kbd>Shift</kbd>+<kbd>K</kbd> | <kbd>⇧</kbd>+<kbd>K</kbd> | All panels |
-| Previous or next frame (hold to repeat) | <kbd>←</kbd> or <kbd>→</kbd> | <kbd>←</kbd> or <kbd>→</kbd> | All panels (in the Preview panel, only while no selected layer is under the playhead) |
+| Previous or next frame (hold to repeat; with **Audio scrub** on, each step plays a short bit of sound) | <kbd>←</kbd> or <kbd>→</kbd> | <kbd>←</kbd> or <kbd>→</kbd> | All panels (in the Preview panel, only while no selected layer is under the playhead) |
 | 5 frames back or forward (hold to repeat) | <kbd>Shift</kbd>+<kbd>←</kbd> or <kbd>Shift</kbd>+<kbd>→</kbd> | <kbd>⇧</kbd>+<kbd>←</kbd> or <kbd>⇧</kbd>+<kbd>→</kbd> | All panels (in the Preview panel, only while no selected layer is under the playhead) |
 | 1 second back or forward (hold to repeat) | <kbd>Ctrl</kbd>+<kbd>←</kbd> or <kbd>Ctrl</kbd>+<kbd>→</kbd> | <kbd>⌘</kbd>+<kbd>←</kbd> or <kbd>⌘</kbd>+<kbd>→</kbd> | All panels |
 | Go to the start | <kbd>Home</kbd> | <kbd>Home</kbd> | All panels |
@@ -292,6 +293,7 @@ The stopwatch, **Previous keyframe**, **Add keyframe**, **Next keyframe** and **
 
 - The lane shows along the bottom of the selected clips, and of every clip on an L track, while **Show clip keyframes** is on. The mouse actions work with the **Select** tool.
 - With keyframes selected, <kbd>Shift</kbd>+<kbd>Delete</kbd>, the **Delete** button of the timeline toolbar and **Delete keyframes** in the keyframe menu delete them too. A click anywhere else on the timeline or in the preview deselects them.
+- Volume keyframes sit on the rubber band of audio clips, with their own mouse actions; <kbd>Delete</kbd> deletes the selected ones too. See [Rubber band on audio clips](#rubber-band-on-audio-clips).
 - In the preview, the usual keys and drags write keyframes while the **Transform** stopwatch is on: the arrow keys nudge the picture and add or update a keyframe at the playhead. See [Change an animated picture](keyframes.md#change-an-animated-picture).
 
 ## Fades and transitions
@@ -516,6 +518,10 @@ See [Editing properties](editing-properties.md).
 
 ## Audio
 
+**Mute**, **Normalize**, **Auto-duck**, **Detach audio**, the **Volume** stopwatch and the **Audio scrub** toggle have no keyboard shortcut: click them. With **Audio scrub** on, the frame-stepping keys (<kbd>←</kbd> and <kbd>→</kbd>, also with <kbd>Shift</kbd> or <kbd>Ctrl</kbd>, and <kbd>K</kbd>+<kbd>J</kbd> or <kbd>K</kbd>+<kbd>L</kbd>) play a short bit of sound at each step. See [Editing audio](audio-editing.md).
+
+### Master volume knob
+
 The **Master volume** knob in the transport bar under the preview takes these keys while it has the keyboard focus. Clicking or dragging the knob does not focus it: press <kbd>Tab</kbd> until it is focused. While it has the focus, these keys change the listening volume instead of doing their usual action. See [Audio](audio.md#set-the-listening-volume).
 
 | Action | Windows | macOS | Works in |
@@ -526,7 +532,27 @@ The **Master volume** knob in the transport bar under the preview takes these ke
 | Quietest (-60.0 dB) | <kbd>Home</kbd> | <kbd>Fn</kbd>+<kbd>←</kbd> | **Master volume** knob, focused |
 | Loudest (0.0 dB) | <kbd>End</kbd> | <kbd>Fn</kbd>+<kbd>→</kbd> | **Master volume** knob, focused |
 
-**Mute** and the toggles in the track headers have no keyboard shortcut: click them. Double-clicking the knob resets it to 0.0 dB.
+The **Mute** button under the preview and the toggles in the track headers have no keyboard shortcut: click them. Double-clicking the knob resets it to 0.0 dB.
+
+### Rubber band on audio clips
+
+The white line across an audio clip on an M or L track shows its volume, and its diamonds are the clip's volume keyframes. These work with the **Select** tool, on unlocked tracks. See [Edit volume keyframes on the rubber band](audio-editing.md#edit-volume-keyframes-on-the-rubber-band).
+
+| Action | Windows | macOS | Works in |
+| --- | --- | --- | --- |
+| Delete the selected volume keyframes (the clip stays) | <kbd>Delete</kbd> or <kbd>Backspace</kbd> | <kbd>Delete</kbd> (⌫) | Timeline |
+| Cancel a rubber band drag | <kbd>Esc</kbd> before you release | <kbd>Esc</kbd> | Timeline |
+
+| Mouse action on the rubber band | Windows | macOS |
+| --- | --- | --- |
+| Change the volume of a clip without keyframes | Drag the line up or down | Drag the line up or down |
+| Add a volume keyframe | <kbd>Ctrl</kbd>+click the line | <kbd>⌘</kbd>+click the line |
+| Select a keyframe and move the playhead to it | Click its diamond | Click its diamond |
+| Add a keyframe to the selection, or remove it | <kbd>Shift</kbd>+click its diamond | <kbd>⇧</kbd>+click its diamond |
+| Move a keyframe in time and volume | Drag its diamond | Drag its diamond |
+| Change only its volume, keeping its frame | Hold <kbd>Shift</kbd> while you drag | Hold <kbd>⇧</kbd> while you drag |
+| Move the two keyframes around the pointer up or down | Drag the line between them | Drag the line between them |
+| Open the keyframe menu (easing, delete, copy, paste) | Right-click a diamond | Right-click a diamond |
 
 ## Media panel
 
@@ -644,7 +670,7 @@ These work over the timeline. See [Timeline](timeline.md).
 
 While you drag clips or a clip edge, you can press and release <kbd>Shift</kbd>, <kbd>Ctrl</kbd>, <kbd>Alt</kbd> and <kbd>S</kbd>: the keys held when you release the mouse button decide the drop or the trim. A roll is the exception: hold <kbd>Ctrl</kbd>+<kbd>Alt</kbd> when you press on the cut; after that, the keys no longer matter. See [Move clips](timeline.md#move-clips) and [Trimming clips](trimming.md).
 
-For double-clicking and dragging media from the Media panel, see [Media panel mouse actions](#media-panel-mouse-actions).
+For keyframe lanes, see [Keyframes](#keyframes); for the rubber band on audio clips, see [Rubber band on audio clips](#rubber-band-on-audio-clips). For double-clicking and dragging media from the Media panel, see [Media panel mouse actions](#media-panel-mouse-actions).
 
 ## Keys the browser keeps
 
@@ -677,6 +703,7 @@ Some buttons already show a shortcut in their tooltip although the button is dis
 - <kbd>Ctrl</kbd>+<kbd>X</kbd>, <kbd>Ctrl</kbd>+<kbd>C</kbd> and <kbd>Ctrl</kbd>+<kbd>V</kbd> in the Timeline and Preview panels (cutting, copying and pasting clips; the **Cut**, **Copy** and **Paste** rows of the clip menu, and the **Copy**, **Paste** and **Duplicate** rows of the preview's layer menu, are dimmed). They don't copy or paste keyframes either: use **Copy keyframes** and **Paste keyframes** in the keyframe menu.
 
 ## Related pages
+- [Editing audio](audio-editing.md)
 - [Preview and playback](preview-and-playback.md)
 - [Preview zoom, overlays and fullscreen](preview-zoom-overlays-fullscreen.md)
 - [Arranging layers in the preview](arranging-layers-in-the-preview.md)
@@ -703,4 +730,4 @@ Some buttons already show a shortcut in their tooltip although the button is dis
 - [Projects and saving](projects-and-saving.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 36, 2026-10-17</sub>
+<sub>Last updated: Batch 37, 2026-10-17</sub>
