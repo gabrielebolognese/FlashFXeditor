@@ -62,7 +62,7 @@ Top left. Its header has three tabs: **Media**, **Presets** and **Captions**.
 
 - **Media** shows the files you imported. Its header buttons sort the files (**Sort media by**, plus **Ascending** / **Descending**), switch between **Grid view** and **List view**, and import files (**Import media**, <kbd>Ctrl</kbd>+<kbd>I</kbd>). See [Importing media](importing-media.md). Point at a card to skim it, double-click it or press <kbd>,</kbd> to insert it at the playhead, and drag it onto the timeline or the preview. See [Adding media to the timeline](adding-media-to-the-timeline.md). A **PX** chip on a video's card shows its proxy, the light copy the preview uses for heavy footage. See [Proxies](proxies.md).
 - **Presets** holds your text presets: saved looks for titles. Click a card to apply it to the selected text, or to add a new text at the playhead; point at it to see it on the selected text first; drag it onto the timeline or the preview; right-click it for its menu. The header buttons save the selected text as a preset (**New preset from the selected text**), import and export presets. See [Text presets](text-presets.md).
-- **Captions** lists the cues of the caption track: type in a cue to change its text while the preview follows, split and merge cues with the keyboard, and search them. The header buttons add a cue at the playhead, import and export SRT and VTT files, open the **Caption style** section and clear all cues. See [Captions](captions.md).
+- **Captions** lists the cues of the caption track: type in a cue to change its text while the preview follows, split and merge cues with the keyboard, and search them. The header buttons add a cue at the playhead, import and export SRT and VTT files, open the **Caption style** section, transcribe the timeline's speech into cues and clear all cues. See [Captions](captions.md) and [Transcription](transcription.md).
 
 The tab, view and sort order you choose, and the **Global** or **Project** list of the **Presets** tab, are remembered with the project.
 
@@ -237,4 +237,4 @@ To jump to a time, type it into the timecode field of the timeline toolbar, or c
 - [Audio](audio.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 32, 2026-10-17</sub>
+<sub>Last updated: Batch 33, 2026-10-17</sub>

@@ -239,7 +239,7 @@ See [Edit several clips at once](editing-properties.md#edit-several-clips-at-onc
 
 The caption track holds the captions of your video, as cues. A project has at most one. Its header reads **CC**, with a captions icon.
 
-- **Add it:** click **Add caption track** in the timeline toolbar. Adding a cue or importing an SRT or VTT file in the **Captions** tab also adds it. The button is dimmed while the project has one.
+- **Add it:** click **Add caption track** in the timeline toolbar. Adding a cue, importing an SRT or VTT file or adding a transcription in the **Captions** tab also adds it. The button is dimmed while the project has one.
 - **Where it sits:** always above every video track, so captions show on top of every picture. A video track you add later goes below it.
 - **Its header:** **Target**, **Lock** and **Hide**. There is no **M**, **S** or height toggle, and the row is always S.
 - **Hide it** to take the captions out of the preview. **Lock it** to protect the cues and their style from changes, and to keep them in place during inserts and ripples on other tracks.
@@ -266,4 +266,4 @@ See [Captions](captions.md).
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 32, 2026-10-17</sub>
+<sub>Last updated: Batch 33, 2026-10-17</sub>

@@ -139,6 +139,7 @@ Each audio track header has, among its toggles at the right of the track name, *
 - Each click is one step in the history. The **Undo** tooltip names it: **Undo Mute track**, **Undo Unmute track**, **Undo Solo track** or **Undo Unsolo track**.
 - Mute and solo are saved with the project.
 - The meter follows them: a track you do not hear is not counted in the meter.
+- Transcription follows them too: it listens to the tracks you hear. Solo the voice track before you transcribe to leave music out. See [Before you start](transcription.md#before-you-start).
 - Clips on a track you do not hear are drawn faded on the timeline.
 - A single clip you turned off with **Disable** is silent too, and drawn faded with diagonal lines. See [Turn a clip off](editing-properties.md#turn-a-clip-off).
 - To hear only one track, you can also right-click its header and choose **Mute all others**: the other audio tracks are muted and this one is unmuted, in one step.
@@ -214,7 +215,8 @@ After you import an audio file or a video with sound, the editor analyzes its so
 - [Importing media](importing-media.md)
 - [Adding media to the timeline](adding-media-to-the-timeline.md)
 - [Proxies](proxies.md)
+- [Transcription](transcription.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 27, 2026-10-16</sub>
+<sub>Last updated: Batch 33, 2026-10-17</sub>
