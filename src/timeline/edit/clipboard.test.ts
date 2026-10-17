@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { addCaptionTrack, makeCaptionClip, makeMedia, makeMediaClip, makeProject, makeTrack, withClips } from "../../core/document/fixtures.js";
-import type { CaptionClip, Clip, MediaClip, Project } from "../../core/document/types.js";
+import type { CaptionClip, Clip, MediaClip, MediaItem, Project } from "../../core/document/types.js";
 import { DocumentStore } from "../../core/store/DocumentStore.js";
 import { createSessionStore } from "../../core/store/sessionStore.js";
 import { CLIPBOARD_FORMAT, copyClips, keysPayload, parseClipboard, pasteClips, serializeClipboard, type ClipsPayload, type PasteResult } from "./clipboard.js";
@@ -82,6 +82,25 @@ describe("serializeClipboard / parseClipboard (the system clipboard mirror)", ()
     expect(parseClipboard(JSON.stringify({ ...payload, format: "other", note: CLIPBOARD_FORMAT }))).toBeNull();
     expect(parseClipboard(JSON.stringify({ ...payload, clips: [] }))).toBeNull();
     expect(parseClipboard(JSON.stringify({ ...payload, clips: [{ clip: { id: "x", kind: "video", start: -1, duration: 5 }, lane: { kind: "video", number: 0 } }] }))).toBeNull();
+  });
+
+  it("refuses keys that would break the document's keyframe invariants (pasted straight into clips)", () => {
+    const key = { offset: 2, value: 0.5, ease: "linear" };
+    const text = (keys: unknown) => JSON.stringify({ format: CLIPBOARD_FORMAT, version: 1, kind: "keys", keys });
+    expect(parseClipboard(text({ section: "opacity", keys: { opacity: [key] } }))).not.toBeNull();
+    // The review's case: a key at frame 2.5 would save a project that cannot be opened.
+    expect(parseClipboard(text({ section: "opacity", keys: { opacity: [{ ...key, offset: 2.5 }] } }))).toBeNull();
+    expect(parseClipboard(text({ section: "opacity", keys: { opacity: [{ ...key, offset: -1 }] } }))).toBeNull();
+    expect(parseClipboard(text({ section: "opacity", keys: { opacity: [{ ...key, value: null }] } }))).toBeNull();
+    expect(parseClipboard(text({ section: "opacity", keys: { opacity: [{ ...key, value: "1" }] } }))).toBeNull();
+    expect(parseClipboard(text({ section: "opacity", keys: { opacity: [{ ...key, ease: "bounce" }] } }))).toBeNull();
+    expect(parseClipboard(text({ section: "opacity", keys: { opacity: [] } }))).toBeNull();
+    expect(parseClipboard(text({ section: "opacity", keys: { opacity: key } }))).toBeNull();
+    expect(parseClipboard(text({ section: "opacity", keys: {} }))).toBeNull();
+    // An unknown section, and a property of another section (or none at all).
+    expect(parseClipboard(text({ section: "color", keys: { opacity: [key] } }))).toBeNull();
+    expect(parseClipboard(text({ section: "opacity", keys: { "transform.x": [key] } }))).toBeNull();
+    expect(parseClipboard(text({ section: "transform", keys: { "transform.x": [key], "transform.skew": [key] } }))).toBeNull();
   });
 });
 
@@ -180,6 +199,22 @@ describe("pasteClips into another project (the system clipboard JSON)", () => {
     expect(doc.getState().media[offline?.id as string]).toEqual(offline);
     doc.undo();
     expect(Object.keys(doc.getState().media)).toEqual(["short"]);
+  });
+
+  it("never points an offline item at a file of this project (both imported Interview.mp4 as media/Interview.mp4)", () => {
+    const from = source();
+    from.media.m = { ...(from.media.m as MediaItem), file: { relPath: "media/Interview.mp4" } };
+    const target = project([], { id: "target" });
+    // This project's Interview.mp4 is too short for the clips' 2..3 s source range.
+    target.media = { short: { ...makeMedia("short", "video", 1_000_000), name: "Interview.mp4", file: { relPath: "media/Interview.mp4" } } };
+    const { doc, result } = paste(target, parseClipboard(serializeClipboard(copied(from, ["v", "a"]))) as ClipsPayload, 0);
+    const offline = result.offline[0] as MediaItem;
+    // A handle key that resolves nowhere; the copied path stays as the hint for Relink.
+    expect(offline.file).toEqual({ handleKey: "", pathHint: "media/Interview.mp4" });
+    expect(Object.values(doc.getState().media).filter((item) => "relPath" in item.file && item.file.relPath === "media/Interview.mp4").map((item) => item.id)).toEqual(["short"]);
+    // A second paste of the same clips finds the offline item by name instead of adding another.
+    const again = pasteClips(doc.getState(), copied(from, ["v", "a"]), { at: 100, mode: "overwrite", newId });
+    expect(again).toMatchObject({ kind: "ok", offline: [] });
   });
 
   it("moves pasted cues to the nearest free spot, and creates the caption track with the copied style when there is none", () => {
