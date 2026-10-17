@@ -201,7 +201,7 @@ function remainder(start: Frame, end: Frame, spans: readonly (readonly [Frame, F
 }
 
 /** The clip with `field` set, or removed when `value` is undefined (no undefined-valued keys in the document). */
-function withField(clip: Clip, field: "linkGroup" | "group", value: string | undefined): Clip {
+export function withField(clip: Clip, field: "linkGroup" | "group", value: string | undefined): Clip {
   const next = { ...clip };
   if (value === undefined) delete next[field];
   else next[field] = value;
@@ -209,7 +209,7 @@ function withField(clip: Clip, field: "linkGroup" | "group", value: string | und
 }
 
 /** New values for the link groups (or groups) shared by copies: a fresh id when two or more copies share one, none for a lone copy. */
-function regroup(clips: readonly Clip[], field: "linkGroup" | "group", newId: () => string): Map<string, string | undefined> {
+export function regroup(clips: readonly Clip[], field: "linkGroup" | "group", newId: () => string): Map<string, string | undefined> {
   const counts = new Map<string, number>();
   for (const clip of clips) {
     const value = clip[field];

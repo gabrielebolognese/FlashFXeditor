@@ -1,4 +1,5 @@
 import { useCallback } from "react";
+import { canPaste } from "../../app/clipboardController.js";
 import { closeContextMenu, setLabelColor, timelineMenu } from "../../app/cutController.js";
 import { addMarkerAt } from "../../app/markerController.js";
 import { keyframeClipboard, LANE_SECTIONS } from "../../app/keyframeController.js";
@@ -27,8 +28,9 @@ import { labelSwatches } from "./labelSwatches.js";
 // and Fade out presets (0.25 s, 0.5 s, 1 s) and Add transition (the 3 kinds) are inline choice rows
 // (Batch 36: the transition at the cut the quick row's chips use, `chipCut`). Audio clips and video
 // clips with sound get Mute, Normalize, Auto-duck music and Detach audio (Batch 37); an audio track's
-// menu gets Auto-duck music for its clips.
-// TODO(batch 39): Duplicate; TODO(batch 41): Reveal in media panel.
+// menu gets Auto-duck music for its clips. Cut, Copy, Paste (at the playhead), Paste insert, Paste
+// attributes... (its checklist popover) and Duplicate (after the selection) since Batch 39.
+// TODO(batch 41): Reveal in media panel.
 
 const SWATCH_PREFIX = "label:";
 /** The ruler menu's Add marker: at the frame right-clicked (the `M` key adds at the playhead). */
@@ -139,10 +141,12 @@ function keyframeEntries(project: Project, clipId: ClipId, section: KeyframeSect
 
 function clipEntries(project: Project, clipId: ClipId, current: LabelColor | null): ContextMenuEntry[] {
   return [
-    // TODO(batch 39): clipboard.
-    { kind: "item", id: "clipboard.cut", label: "Cut", commandId: "clipboard.cut", disabled: true },
-    { kind: "item", id: "clipboard.copy", label: "Copy", commandId: "clipboard.copy", disabled: true },
-    { kind: "item", id: "clipboard.paste", label: "Paste", commandId: "clipboard.paste", disabled: true },
+    { kind: "item", id: "clipboard.cut", label: "Cut", commandId: "clipboard.cut" },
+    { kind: "item", id: "clipboard.copy", label: "Copy", commandId: "clipboard.copy" },
+    { kind: "item", id: "clipboard.paste", label: "Paste", commandId: "clipboard.paste", disabled: !canPaste() },
+    { kind: "item", id: "clipboard.pasteInsert", label: "Paste insert", commandId: "clipboard.pasteInsert", disabled: !canPaste() },
+    { kind: "item", id: "clipboard.pasteAttributes", label: "Paste attributes...", commandId: "clipboard.pasteAttributes", disabled: !canPaste() },
+    { kind: "item", id: "edit.duplicate", label: "Duplicate", commandId: "edit.duplicate" },
     { kind: "separator" },
     { kind: "item", id: "edit.split", label: "Split at playhead", commandId: "edit.split" },
     { kind: "item", id: "edit.delete", label: "Delete", commandId: "edit.delete" },

@@ -8,7 +8,8 @@
 //   Turning a stopwatch on also turns Show clip keyframes on, so the new key shows on the lane.
 // - Selected keys (the lane, `session.keyframes`) belong to one clip and one section; copy keeps them
 //   in `keyframeClipboard` (in memory) and paste writes them on the selected clips from the playhead.
-//   TODO(batch 39): Mod+C / Mod+V route to these while keys are selected.
+//   Mod+C / Mod+X with keys selected copy them through the clipboard (Batch 39, clipboardController),
+//   and Mod+V pastes them while they are what was copied last.
 // - Volume (Batch 37): the Audio section's stopwatch keys the audio clips the section edits (the selected
 //   ones and those linked to selected video clips); its keys show on the clips' rubber bands, not on a
 //   lane (audio tracks have none).
@@ -96,19 +97,23 @@ export function deleteSelectedKeys(): boolean {
   return true;
 }
 
-function copySelected(): void {
+/** Copies the selected keys (null when none are selected); the clipboard mirrors them (Batch 39). */
+export function copySelectedKeys(): KeyframeClipboard | null {
   const keys = sessionStore.keyframes.getState();
   const clip = keys ? documentStore.getState().clips[keys.clipId] : undefined;
-  if (!keys || !clip) return;
+  if (!keys || !clip) return null;
   const copied = copyKeys(clip, keys.section, keys.frames);
   if (copied) keyframeClipboard.set(copied);
+  return copied;
 }
 
-function paste(): void {
-  const clipboard = keyframeClipboard.getState();
-  if (!clipboard) return;
+/** Pastes `clipboard` (the copied keys by default) on the selected clips from the playhead; false when nothing changes. */
+export function pasteKeyframes(clipboard = keyframeClipboard.getState()): boolean {
+  if (!clipboard) return false;
+  keyframeClipboard.set(clipboard);
   const command = pasteKeys(documentStore.getState(), targets(clipboard.section), clipboard, playhead());
   if (command) documentStore.dispatch(command);
+  return command !== null;
 }
 
 /** The lane of the selected clips shows `section` (clip menu "Show keyframes for", spec §6.4). */
@@ -140,8 +145,8 @@ export function installKeyframeController(): () => void {
     ...KEYFRAME_SECTIONS.filter((section) => LANE_SECTIONS.includes(section)).map((section) => actions.register(`keyframes.lane.${section}`, () => showLane(section))),
     ...EASE_IDS.map((ease) => actions.register(`keyframe.ease.${ease}`, () => easeSelected(ease))),
     actions.register("keyframe.delete", () => void deleteSelectedKeys()),
-    actions.register("keyframe.copy", copySelected),
-    actions.register("keyframe.paste", paste),
+    actions.register("keyframe.copy", () => void copySelectedKeys()),
+    actions.register("keyframe.paste", () => void pasteKeyframes()),
   ];
   return () => {
     for (const stop of stops) stop();

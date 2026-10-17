@@ -21,7 +21,7 @@ import { frameToUs, secondsToFrames, usToFrame } from "../../core/document/time.
 import type { CaptionClip, CaptionStyle, CaptionWord, Clip, ClipId, Frame, Project, Track, TrackId } from "../../core/document/types.js";
 import { CAPTION_TRACK_NAME, CUE_SECONDS, defaultCaptionStyle, mergeCues, NEW_CUE_TEXT, splitCueAt } from "../../text/captions.js";
 import type { SubtitleCue } from "../../text/subtitles.js";
-import { clipInIndex, clipsOverlapping, lastClipStartingBy, trackIndex } from "../model/queries.js";
+import { clipInIndex, clipsOverlapping, lastClipStartingBy, trackIndex, type TrackIndex } from "../model/queries.js";
 
 /** The name every cue gets (the cue list and the timeline show its text). */
 export const CUE_NAME = "Caption";
@@ -435,7 +435,7 @@ export function setCaptionStyle(project: Project, trackId: TrackId, style: Capti
 // --- Moving cues -----------------------------------------------------------------------------------
 
 /** The moved cues among `ids`, in track order, and the caption track's index. */
-function movedCues(project: Project, ids: Iterable<ClipId>): { cues: CaptionClip[]; index: ReturnType<typeof trackIndex> } | null {
+function movedCues(project: Project, ids: Iterable<ClipId>): { cues: CaptionClip[]; index: TrackIndex } | null {
   const track = captionTrackOf(project);
   if (!track) return null;
   const moving = new Set(ids);
@@ -475,7 +475,7 @@ export function cueMoveRange(project: Project, ids: Iterable<ClipId>): { lo: num
 }
 
 /** Whether copies of `cues` moved by `delta` fit between the cues of `index` (the originals stay). */
-function fits(cues: readonly CaptionClip[], index: ReturnType<typeof trackIndex>, delta: number): boolean {
+function fits(cues: readonly Pick<Clip, "start" | "duration">[], index: TrackIndex, delta: number): boolean {
   for (const cue of cues) {
     const start = cue.start + delta;
     if (start < 0 || clipsOverlapping(index, start, start + cue.duration).length > 0) return false;
@@ -496,14 +496,22 @@ export function clampCueDelta(project: Project, ids: Iterable<ClipId>, delta: nu
     return range ? Math.min(range.hi, Math.max(range.lo, delta)) : delta;
   }
   const found = movedCues(project, list);
-  if (!found) return delta;
-  const { cues, index } = found;
-  if (fits(cues, index, delta)) return delta;
+  return found ? freeCueDelta(found.cues, found.index, delta) : delta;
+}
+
+/**
+ * The delta nearest `delta` at which copies of `cues` (the originals stay; or cues not in the document
+ * yet: a paste, Batch 39) fit between the cues of `index`, at most the copied block's length from it and
+ * not below `min` (what moves with them stays at frame 0 or later); null when there is none.
+ */
+export function freeCueDelta(cues: readonly Pick<Clip, "start" | "duration">[], index: TrackIndex, delta: number, min = -Infinity): number | null {
+  if (cues.length === 0) return delta;
+  if (delta >= min && fits(cues, index, delta)) return delta;
   // Candidates: deltas that put a copy against a cue's edge, tried nearest first, at most the copied
   // block's length away from the drop (a copy never lands far from the pointer).
   const span = Math.max(...cues.map((cue) => cue.start + cue.duration)) - Math.min(...cues.map((cue) => cue.start));
   const candidates: number[] = [];
   for (const cue of cues) for (const other of index.clips) candidates.push(other.start + other.duration - cue.start, other.start - (cue.start + cue.duration));
   candidates.sort((a, b) => Math.abs(a - delta) - Math.abs(b - delta) || a - b);
-  return candidates.find((candidate) => Math.abs(candidate - delta) <= span && fits(cues, index, candidate)) ?? null;
+  return candidates.find((candidate) => candidate >= min && Math.abs(candidate - delta) <= span && fits(cues, index, candidate)) ?? null;
 }

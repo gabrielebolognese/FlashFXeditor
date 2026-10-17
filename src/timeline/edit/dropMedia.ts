@@ -74,7 +74,7 @@ export function blockLength(items: readonly DropItem[], project: Project): Frame
 }
 
 /** Tracks by lane, creating the ones past the last of a kind (named V3, A4..., stacked in lane order). */
-class LaneTracks {
+export class LaneTracks {
   readonly created: Track[] = [];
   private readonly known: Track[];
 

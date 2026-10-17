@@ -1,18 +1,16 @@
-// Properties panel actions (spec §11, §17 quick row; §7.2 canvas menu; §6.16 clip menu; §18 Mod+D):
-// the one-click transforms of the selected layers (Fit, Fill, Center, Flip H / V, Reset), Duplicate
-// (one clip, Batch 25; Batch 39 extends it), Enable/Disable, the Clip section's edits (time fields as
-// trims without ripple, the enabled switch, the name), and the Crop section's (Batch 26): Crop to frame,
-// Reset crop, the crop mode toggle and the aspect lock. Each edit is one command. The number fields'
-// bindings (panels/properties/bindings.ts) write through `liveEdit` and the document store.
+// Properties panel actions (spec §11, §17 quick row; §7.2 canvas menu; §6.16 clip menu): the one-click
+// transforms of the selected layers (Fit, Fill, Center, Flip H / V, Reset), Enable/Disable, the Clip
+// section's edits (time fields as trims without ripple, the enabled switch, the name), and the Crop
+// section's (Batch 26): Crop to frame, Reset crop, the crop mode toggle and the aspect lock. Each edit
+// is one command. The number fields' bindings (panels/properties/bindings.ts) write through `liveEdit`
+// and the document store. Duplicate (the quick row, Mod+D) is the clipboard controller's (Batch 39).
 import { updateClip } from "../core/commands/basicCommands.js";
 import { canChangeFrameRate, setBackground, setFrameRate, setResolution } from "../core/commands/projectCommands.js";
 import { formatHexColor } from "../core/document/color.js";
 import type { ClipId, Rational, RGBA } from "../core/document/types.js";
 import { pushRecentColor } from "../project/appSettings.js";
-import { selectClips, toSnapshot } from "../core/store/selection.js";
 import { retimeClips, setEnabled, type ClipTimeField } from "../timeline/edit/clipProps.js";
 import { isCropClip, quickCrops, type QuickCrop } from "../timeline/edit/crop.js";
-import { duplicateClip } from "../timeline/edit/duplicate.js";
 import { isLayerClip, quickTransforms, type QuickTransform } from "../timeline/edit/transform.js";
 import { isClipLocked } from "../timeline/model/queries.js";
 import { MAX_CLIP_NAME } from "./cutController.js";
@@ -20,8 +18,6 @@ import { patchLiveEdit } from "./liveEdit.js";
 import { canvasInput, cropMode } from "./previewController.js";
 import { actions, appSettings, documentStore, sessionStore } from "./services.js";
 import { reportTrimLimit } from "./timelineController.js";
-
-const newId = () => crypto.randomUUID();
 
 /** The selected clips and the primary one (a clip selection; otherwise none). */
 function selectedClips(): { ids: ClipId[]; primary: ClipId | null } {
@@ -59,15 +55,6 @@ function toggleCropMode(): void {
 /** The Crop section's aspect lock (the canvas crop handles use it too; Shift inverts it there). */
 export function toggleCropLock(): void {
   cropMode.set((state) => ({ ...state, aspectLock: !state.aspectLock }));
-}
-
-/** Duplicate (spec §11, §18 Mod+D): the primary clip copied into the next free spot after it on its track; the copy is selected. */
-function duplicate(): void {
-  const { ids, primary } = selectedClips();
-  const clipId = primary ?? ids[0];
-  if (clipId === undefined) return;
-  const result = duplicateClip(documentStore.getState(), clipId, newId);
-  if (result) documentStore.dispatch(result.command, { selection: toSnapshot(selectClips([result.clipId])) });
 }
 
 /** Enables or disables clips (the Clip section's switch): one undo step. */
@@ -150,7 +137,6 @@ export function installPropertiesController(): () => void {
     actions.register("transform.flipH", () => quickTransform("flipH")),
     actions.register("transform.flipV", () => quickTransform("flipV")),
     actions.register("transform.reset", () => quickTransform("reset")),
-    actions.register("edit.duplicate", duplicate),
     actions.register("clip.toggleEnabled", toggleEnabled),
     actions.register("crop.toFrame", () => quickCrop("frame")),
     actions.register("crop.reset", () => quickCrop("reset")),

@@ -8,6 +8,7 @@ import { installAudioController } from "./app/audioController.js";
 import { installAudioEditController } from "./app/audioEditController.js";
 import { installCanvasController } from "./app/canvasController.js";
 import { installCaptionController } from "./app/captionController.js";
+import { installClipboardController } from "./app/clipboardController.js";
 import { installTranscribeController } from "./app/transcribeController.js";
 import { installCutController } from "./app/cutController.js";
 import { installDropController } from "./app/dropController.js";
@@ -66,6 +67,7 @@ async function start(): Promise<void> {
   installAudioController();
   installAudioEditController();
   installSilenceController();
+  installClipboardController();
   root.render(
     <StrictMode>
       <App />

@@ -5,8 +5,7 @@
 // (`transform.*`, propertiesController); Delete is `edit.delete`. Esc cancels a canvas or timeline
 // gesture, else ends inline text editing (committed: focus in the properties panel while editing),
 // else leaves crop mode, else the fullscreen preview. Each edit is one command (nudges coalesce,
-// spec §7.3).
-// TODO(batch 39): Duplicate at +20 px, Copy, Paste.
+// spec §7.3). Copy, Paste and Duplicate (+20 px) are the clipboard controller's (Batch 39).
 import type { ActionRun } from "../core/commands/ActionRegistry.js";
 import type { ClipId } from "../core/document/types.js";
 import { arrangeLayers, type ArrangeDirection } from "../timeline/edit/arrange.js";
