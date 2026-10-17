@@ -2,6 +2,11 @@
 
 Shorts Editor grows in steps called batches. This page lists what each batch added that you can see or use, newest first. Follow the links for the full instructions.
 
+> **Video placeholder: What's new in Batch 34**
+> - File: `videos/whats-new/batch-34.mp4` (not recorded yet)
+> - Length: about 60 seconds
+> - Shows: a 1080×1920 project with a talking-head video on V1 and A1; click **Add solid** in the timeline toolbar: a white rounded rectangle appears in the middle of the frame on V2 and **Edit Properties** shows the **Solid** section; drag the **Radius** label: the corners round while you drag; click **Gradient** and pick a blue for **Top**: the shape fades from blue to black; drag its corner handle: the readout shows the size in px and **Scale** stays at 100%; click **Ellipse**, then **Line**; click **Add image** and pick a sticker GIF: it lands in the middle of the frame and its clip shows its frames; press <kbd>Space</kbd>: the sticker plays at its own speed and loops; click **Add image** again, pick an SVG logo and choose **400%** in the **Zoom** menu: after a moment, its edges are crisp.
+
 > **Video placeholder: What's new in Batch 33**
 > - File: `videos/whats-new/batch-33.mp4` (not recorded yet)
 > - Length: about 60 seconds
@@ -123,6 +128,7 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 > - Shows: open a project with three clips on the timeline; press <kbd>Space</kbd> to play and let the timeline page forward; press <kbd>L</kbd> three times to reach 8x, then <kbd>K</kbd>; hold <kbd>K</kbd> and tap <kbd>L</kbd> to step one frame; turn on **Loop playback**; point at the **Dropped** readout in the status strip.
 
 ## In this page
+- [Batch 34: Shapes and images](#batch-34-shapes-and-images)
 - [Batch 33: Transcription](#batch-33-transcription)
 - [Batch 32: Captions](#batch-32-captions)
 - [Batch 31: Text animations](#batch-31-text-animations)
@@ -156,6 +162,17 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 - [Batch 03: Projects, autosave and recovery](#batch-03-projects-autosave-and-recovery)
 - [Batch 02: Undo, redo and frame-exact time](#batch-02-undo-redo-and-frame-exact-time)
 - [Batch 01: The workspace](#batch-01-the-workspace)
+
+## Batch 34: Shapes and images
+- Click **Add solid** in the timeline toolbar to add a shape at the playhead: a white rounded rectangle in the middle of the frame, 5 seconds long. Use it as a color background, a bar behind a title or a frame. See [Add a shape](shapes-and-images.md#add-a-shape).
+- The new **Solid** section of **Edit Properties** sets the shape (**Rectangle**, **Rounded rectangle**, **Ellipse** or **Line**), the fill (one color, or a vertical **Gradient** from a **Top** to a **Bottom** color), the size in pixels and the corner **Radius**. Label drags and color picker drags show live in the preview. See [Choose the shape](shapes-and-images.md#choose-the-shape) and [Fill a shape with a color or a gradient](shapes-and-images.md#fill-a-shape-with-a-color-or-a-gradient).
+- The handles of a selected shape in the preview change its size, not its scale, so the corners and the thickness of a line stay as you set them. See [Resize a shape in the preview](shapes-and-images.md#resize-a-shape-in-the-preview).
+- Click **Add image** to pick images and place them at the playhead, fitted and centered, in one undo step with the import. See [Add an image](shapes-and-images.md#add-an-image).
+- Animated GIF and WebP images now play: at their own frame timing, in step with the timeline, looping for as long as the clip lasts. A trim keeps the frames in place, and very large animations keep fewer frames to save memory. On the timeline, their clips show their frames. See [Use animated GIF and WebP images](shapes-and-images.md#use-animated-gif-and-webp-images).
+- SVG logos stay sharp when you zoom the preview in or make them larger: the editor draws them again at the size you see, up to 4096 pixels. See [Keep SVG images sharp](shapes-and-images.md#keep-svg-images-sharp).
+- Solid clips show a swatch of their shape and color on the timeline. See [Clip thumbnails, waveforms and badges](clip-thumbnails-and-waveforms.md#read-a-clip).
+- The box behind the spoken word of a caption (**Box** highlight) now has rounded ends. See [Highlight the spoken word](captions.md#highlight-the-spoken-word).
+- New page: [Shapes and images](shapes-and-images.md). New troubleshooting group: [Shapes and images](troubleshooting.md#shapes-and-images). New shortcuts section: [Shapes and images](keyboard-shortcuts.md#shapes-and-images).
 
 ## Batch 33: Transcription
 - Turn the speech of your edit into captions: click **Transcribe** in the **Captions** tab (the microphone in its header, or the first button of an empty tab). The editor listens to the timeline's sound, writes the cues on the **CC** track and times every word, so the spoken word is highlighted out of the box. See [Transcription](transcription.md).
@@ -491,6 +508,7 @@ See [Projects and saving](projects-and-saving.md).
 See [The workspace](workspace.md) and [Getting started](getting-started.md).
 
 ## Related pages
+- [Shapes and images](shapes-and-images.md)
 - [Captions](captions.md)
 - [Transcription](transcription.md)
 - [Text animations](text-animations.md)
@@ -506,4 +524,4 @@ See [The workspace](workspace.md) and [Getting started](getting-started.md).
 - [Adding media to the timeline](adding-media-to-the-timeline.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 33, 2026-10-17</sub>
+<sub>Last updated: Batch 34, 2026-10-17</sub>

@@ -1,6 +1,6 @@
 # Arranging layers in the preview
 
-Every video, image or text clip under the playhead is a layer of the picture. In the Preview panel you can work on those layers directly: click one to select it, drag it to a new place, resize and rotate it with its handles, and change which layer is on top. Use this to place a logo in a corner, enlarge a shot to cut away its edges, tilt a sticker, or build a picture-in-picture layout. Layers snap into line with the frame and with each other as you drag; see [Snapping and smart guides in the preview](snapping-and-smart-guides.md). To type exact values, or to fit, fill or center a picture with one click, see [Editing properties](editing-properties.md). To cut away the sides of a picture, see [Cropping and reframing](cropping-and-reframing.md). For what is different with text, see [Select and move text in the preview](titles-and-text.md#select-and-move-text-in-the-preview).
+Every video, image, solid or text clip under the playhead is a layer of the picture. In the Preview panel you can work on those layers directly: click one to select it, drag it to a new place, resize and rotate it with its handles, and change which layer is on top. Use this to place a logo in a corner, enlarge a shot to cut away its edges, tilt a sticker, or build a picture-in-picture layout. Layers snap into line with the frame and with each other as you drag; see [Snapping and smart guides in the preview](snapping-and-smart-guides.md). To type exact values, or to fit, fill or center a picture with one click, see [Editing properties](editing-properties.md). To cut away the sides of a picture, see [Cropping and reframing](cropping-and-reframing.md). For what is different with text, see [Select and move text in the preview](titles-and-text.md#select-and-move-text-in-the-preview); for shapes, see [Resize a shape in the preview](shapes-and-images.md#resize-a-shape-in-the-preview).
 
 > **Video placeholder: Arrange layers in the preview**
 > - File: `videos/arranging-layers-in-the-preview/overview.mp4` (not recorded yet)
@@ -150,6 +150,7 @@ Drag one of the eight handles of the selected layer:
 - When the layer is small on screen, the side handles hide (a side must be at least 28 pixels long on screen); the corner handles always show. Zoom the preview in to get the side handles back.
 - In crop mode, the handles crop the picture instead of resizing it: white brackets at the corners and bars on the sides. See [Crop with handles in the preview](cropping-and-reframing.md#crop-with-handles-in-the-preview).
 - One selected text layer has six handles instead of eight: its corners change the font size and its sides the width of the text box. See [Resize text with its handles](titles-and-text.md#resize-text-with-its-handles).
+- On one selected solid, the handles change the size of the shape (its **W** and **H** in pixels) instead of its scale, with no 100% snap, and the readout shows the size, for example **812 × 406 px**. See [Resize a shape in the preview](shapes-and-images.md#resize-a-shape-in-the-preview).
 - You can press and release <kbd>Shift</kbd> and <kbd>Alt</kbd> during the drag; the layer follows at once.
 - Each drag is one step in the history, named **Scale layer** (or **Scale layers**).
 
@@ -232,7 +233,7 @@ While you drag, a readout next to the pointer shows the value you change:
 | Drag | One layer | Several layers |
 | --- | --- | --- |
 | Move | **X 120 · Y -176**: the position of the layer's anchor point, in pixels from the center of the frame (X to the right, Y down) | **ΔX +78 · ΔY +78**: how far the layers moved |
-| Resize | **134.6%**, or **151.9% × 117.3%** when width and height differ: the layer's scale | **120%**, or **120% × 110%**: the change from where you started |
+| Resize | **134.6%**, or **151.9% × 117.3%** when width and height differ: the layer's scale. On a solid: its size, such as **812 × 406 px** | **120%**, or **120% × 110%**: the change from where you started |
 | Rotate | **45.0°**: the layer's angle | **Δ 30.0°**: the change from where you started |
 | Anchor point | **Anchor 50% · 50%**: where the anchor sits across the width and down the height of the layer | |
 
@@ -291,6 +292,7 @@ To change the order of whole tracks instead, drag a track header up or down. See
 | **Bring layer forward**, **Send layer backward** (and the plural names) | **Bring forward** and **Send backward** in the layer menu |
 | **Crop layer** | Dragging a crop bracket or bar in crop mode. See [Cropping and reframing](cropping-and-reframing.md#undo-and-cancel). |
 | **Resize text**, **Change text box width** | Dragging a corner or a side handle of one selected text. See [Resize text with its handles](titles-and-text.md#resize-text-with-its-handles). |
+| **Resize shape** | Dragging a handle of one selected solid. See [Resize a shape in the preview](shapes-and-images.md#resize-a-shape-in-the-preview). |
 
 See [Undo and redo changes](projects-and-saving.md#undo-and-redo-changes).
 
@@ -302,6 +304,7 @@ These parts are available in a later version:
 
 ## Related pages
 - [Preview and playback](preview-and-playback.md)
+- [Shapes and images](shapes-and-images.md)
 - [Snapping and smart guides in the preview](snapping-and-smart-guides.md)
 - [Editing properties](editing-properties.md)
 - [Cropping and reframing](cropping-and-reframing.md)
@@ -315,4 +318,4 @@ These parts are available in a later version:
 - [Projects and saving](projects-and-saving.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 29, 2026-10-16</sub>
+<sub>Last updated: Batch 34, 2026-10-17</sub>

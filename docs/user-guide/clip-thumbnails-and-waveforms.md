@@ -1,6 +1,6 @@
 # Clip thumbnails, waveforms and badges
 
-Clips on the timeline show what is in them: video clips show a strip of thumbnails, audio clips show their waveform, image clips show their picture, and text clips show their text. Small badges in each clip's label bar tell you about its speed, its link and its sync, mark freeze frames and animated text, and warn about missing fonts. Use them to find a shot, a cut point or a loud moment without playing the timeline.
+Clips on the timeline show what is in them: video clips show a strip of thumbnails, audio clips show their waveform, image clips show their picture (or the frames of an animation), solids show a swatch of their shape and color, and text clips show their text. Small badges in each clip's label bar tell you about its speed, its link and its sync, mark freeze frames and animated text, and warn about missing fonts. Use them to find a shot, a cut point or a loud moment without playing the timeline.
 
 > **Video placeholder: Thumbnails, waveforms and badges**
 > - File: `videos/clip-thumbnails-and-waveforms/overview.mp4` (not recorded yet)
@@ -28,7 +28,9 @@ A clip has two parts:
 | Video | A strip of thumbnails: frames of the video, side by side. |
 | Freeze frame | The same picture in every thumbnail: it holds one frame. |
 | Audio | The waveform of its sound. See [Read a waveform](#read-a-waveform). |
-| Image | The picture, repeated across the clip. An animated GIF or WebP shows its first frame. |
+| Image | The picture, repeated across the clip. |
+| Animated GIF or WebP | The frames of the animation side by side: each shows the frame that plays at that moment of the clip, as the animation loops. |
+| Solid | A small swatch at the start of the body: the shape (a square, a rounded square, a circle or a bar) in its color or gradient. See [Shapes and images on the timeline](shapes-and-images.md#shapes-and-images-on-the-timeline). |
 | Text | The first line of its text, as the picture shows it (in capitals when its **Case** is **AA**). See [Text clips on the timeline](titles-and-text.md#text-clips-on-the-timeline). |
 | Caption cue | No body: the **CC** caption track is always S. The label bar shows the cue's text on one line instead of a name. See [Edit cues on the timeline](captions.md#edit-cues-on-the-timeline). |
 
@@ -51,6 +53,7 @@ To make a track taller, click the height toggle (three stacked rows) in its head
 The width of a clip on screen matters too:
 
 - Video and image clips narrower than 48 pixels show no thumbnails, only their color. Zoom in to see them.
+- Solid clips narrower than 24 pixels show no swatch.
 - Audio clips show their waveform at any width, down to 6 pixels. A clip narrower than 6 pixels shows only a thin strip of its color.
 
 ## See more frames by zooming in
@@ -135,4 +138,4 @@ A clip with a label color shows that color in its label bar above the thumbnails
 - [Proxies](proxies.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 32, 2026-10-17</sub>
+<sub>Last updated: Batch 34, 2026-10-17</sub>
