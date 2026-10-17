@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import { closeContextMenu, setLabelColor, timelineMenu } from "../../app/cutController.js";
 import { addMarkerAt } from "../../app/markerController.js";
-import { keyframeClipboard, PANEL_SECTIONS } from "../../app/keyframeController.js";
+import { keyframeClipboard, LANE_SECTIONS } from "../../app/keyframeController.js";
 import { chipCut, fadePresetId } from "../../app/transitionController.js";
 import { TRANSITION_LABELS } from "../../core/document/transitions.js";
 import { canFade, FADE_PRESET_SECONDS } from "../edit/fades.js";
@@ -9,6 +9,7 @@ import { actions, documentStore, sessionStore } from "../../app/services.js";
 import { EASE_LABELS, SECTION_LABELS, sectionEaseAt, type KeyframeSection } from "../../core/document/keyframes.js";
 import { laneSection } from "../../core/store/sessionStore.js";
 import { keyable } from "../edit/keyframes.js";
+import { allMuted, audioTargets, canDetach } from "../edit/volume.js";
 import { EASE_IDS, TRANSITION_KINDS, type ClipId, type Frame, type LabelColor, type Project, type Track } from "../../core/document/types.js";
 import { useStoreSelector } from "../../core/store/useStoreSelector.js";
 import { ContextMenu, type ContextMenuEntry } from "../../ui/ContextMenu.js";
@@ -24,7 +25,9 @@ import { labelSwatches } from "./labelSwatches.js";
 // its field; Reverse is not built, so it has no row (Batch 27). "Show keyframes for" lists the
 // sections a clip's lane can show (the menu has no submenus: a heading and one row per section). Fade in
 // and Fade out presets (0.25 s, 0.5 s, 1 s) and Add transition (the 3 kinds) are inline choice rows
-// (Batch 36: the transition at the cut the quick row's chips use, `chipCut`).
+// (Batch 36: the transition at the cut the quick row's chips use, `chipCut`). Audio clips and video
+// clips with sound get Mute, Normalize, Auto-duck music and Detach audio (Batch 37); an audio track's
+// menu gets Auto-duck music for its clips.
 // TODO(batch 39): Duplicate; TODO(batch 41): Reveal in media panel.
 
 const SWATCH_PREFIX = "label:";
@@ -65,6 +68,22 @@ function speedEntries(project: Project, clipId: ClipId): ContextMenuEntry[] {
   ];
 }
 
+/** The audio rows (Batch 37) of an audio clip, or of a video clip with linked audio or sound to detach. */
+function audioEntries(project: Project, clipId: ClipId): ContextMenuEntry[] {
+  const selection = sessionStore.selection.getState();
+  const ids = selection.kind === "clips" && selection.clipIds.has(clipId) ? [...selection.clipIds] : [clipId];
+  const audio = audioTargets(project, ids);
+  const detach = ids.some((id) => canDetach(project, id));
+  if (audio.length === 0 && !detach) return [];
+  return [
+    { kind: "separator" },
+    { kind: "item", id: "clip.mute", label: allMuted(project, audio) ? "Unmute" : "Mute", disabled: audio.length === 0 },
+    { kind: "item", id: "audio.normalize", label: "Normalize", disabled: audio.length === 0 },
+    { kind: "item", id: "audio.autoDuck", label: "Auto-duck music", disabled: audio.length === 0 },
+    { kind: "item", id: "audio.detach", label: "Detach audio", disabled: !detach },
+  ];
+}
+
 /** Fade presets and Add transition (spec §6.16, Batch 36): inline choice rows. */
 function fadeEntries(project: Project, clipId: ClipId): ContextMenuEntry[] {
   const clip = project.clips[clipId];
@@ -99,7 +118,7 @@ function laneEntries(project: Project, clipId: ClipId): ContextMenuEntry[] {
   return [
     { kind: "separator" },
     { kind: "heading", label: "Show keyframes for" },
-    ...PANEL_SECTIONS.map((section) => ({ kind: "item" as const, id: `keyframes.lane.${section}`, label: SECTION_LABELS[section], active: shown === section })),
+    ...LANE_SECTIONS.map((section) => ({ kind: "item" as const, id: `keyframes.lane.${section}`, label: SECTION_LABELS[section], active: shown === section })),
   ];
 }
 
@@ -136,6 +155,7 @@ function clipEntries(project: Project, clipId: ClipId, current: LabelColor | nul
     { kind: "swatches", id: "labels", label: "Label", swatches: labelSwatches(current, { prefix: SWATCH_PREFIX, removable: true }) },
     { kind: "separator" },
     ...(project.clips[clipId]?.kind === "caption" ? cueEntries(project, clipId) : speedEntries(project, clipId)),
+    ...audioEntries(project, clipId),
     ...fadeEntries(project, clipId),
     ...laneEntries(project, clipId),
   ];
@@ -217,6 +237,7 @@ function trackEntries(project: Project, track: Track): ContextMenuEntry[] {
     { kind: "item", id: "track.selectClips", label: "Select all clips on track", disabled: track.locked || track.clipIds.length === 0 },
     { kind: "item", id: "track.lockAll", label: allLocked ? "Unlock all tracks" : "Lock all tracks" },
     ...(track.kind === "caption" ? [] : [{ kind: "item", id: "track.muteOthers", label: "Mute all others" } as const]),
+    ...(track.kind === "audio" ? [{ kind: "item", id: "audio.autoDuck", label: "Auto-duck music", disabled: track.locked || track.clipIds.length === 0 } as const] : []),
   ];
 }
 

@@ -1,7 +1,8 @@
 // Keyframe commands (spec §6.4 keyframe row, §6.15, §11 stopwatch and navigator; Batch 35). Pure
 // `(doc, params) -> Command` functions over core/document/keyframes.ts, one undo step each.
-// - What can be keyed: Transform and Opacity on layer clips (video, image, text, solid), Volume on video
-//   and audio clips (model only until Batch 37). Locked clips are skipped.
+// - What can be keyed: Transform and Opacity on layer clips (video, image, text, solid), Volume on audio
+//   clips (Batch 37: a video's sound plays through its linked audio clip, spec §14, so its own gain is
+//   never heard). Locked clips are skipped.
 // - A section's keys share their frames (core/document/keyframes.ts): every command here writes,
 //   moves, eases or removes the keys of all the section's properties at a frame together.
 // - Stopwatch on: a key at the playhead with the values shown there. Off: every key of the section
@@ -39,9 +40,9 @@ import { isLayerClip, normalizeTransform } from "./transform.js";
 /** Clips that carry keyframes (spec §5.2): media, text and solid clips. */
 export type KeyedClip = MediaClip | TextClip | SolidClip;
 
-/** Whether `clip` can be keyed in `section`: Transform and Opacity on layers, Volume on video and audio clips. */
+/** Whether `clip` can be keyed in `section`: Transform and Opacity on layers, Volume on audio clips. */
 export function keyable(clip: Clip, section: KeyframeSection): clip is KeyedClip {
-  return section === "volume" ? clip.kind === "video" || clip.kind === "audio" : isLayerClip(clip);
+  return section === "volume" ? clip.kind === "audio" : isLayerClip(clip);
 }
 
 /** The unlocked clips among `ids` that can be keyed in `section`. */

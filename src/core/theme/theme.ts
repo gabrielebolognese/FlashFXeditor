@@ -154,6 +154,11 @@ export interface TimelineTheme {
   transitionEdgeWidth: number;
   transitionEdgeZone: number;
   transitionWarning: string;
+  /** The rubber band (spec §6.4, Batch 37): the gain line, its outline, its width, the zone above and below it that grabs it. */
+  rubberBand: string;
+  rubberBandOutline: string;
+  rubberBandWidth: number;
+  rubberBandZone: number;
 }
 
 /** Reads one custom property by name (e.g. `--accent`); returns "" when it is not defined. */
@@ -318,6 +323,10 @@ export function readTheme(read: TokenReader, root?: Element): { theme: Theme; mi
       transitionEdgeWidth: num("--timeline-transition-edge-width"),
       transitionEdgeZone: num("--timeline-transition-edge-zone"),
       transitionWarning: str("--timeline-transition-warning"),
+      rubberBand: str("--timeline-rubber-band"),
+      rubberBandOutline: str("--timeline-rubber-band-outline"),
+      rubberBandWidth: num("--timeline-rubber-band-width"),
+      rubberBandZone: num("--timeline-rubber-band-zone"),
       rangeWash: str("--timeline-range-wash"),
       rangeHandleWidth: num("--timeline-range-handle-width"),
       rangeHandleZone: num("--timeline-range-handle-zone"),

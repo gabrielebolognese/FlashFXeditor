@@ -9,26 +9,34 @@
 // - Selected keys (the lane, `session.keyframes`) belong to one clip and one section; copy keeps them
 //   in `keyframeClipboard` (in memory) and paste writes them on the selected clips from the playhead.
 //   TODO(batch 39): Mod+C / Mod+V route to these while keys are selected.
+// - Volume (Batch 37): the Audio section's stopwatch keys the audio clips the section edits (the selected
+//   ones and those linked to selected video clips); its keys show on the clips' rubber bands, not on a
+//   lane (audio tracks have none).
 import { KEYFRAME_SECTIONS, type KeyframeSection } from "../core/document/keyframes.js";
 import { EASE_IDS, type ClipId, type EaseId } from "../core/document/types.js";
 import { createStore } from "../core/store/createStore.js";
 import { selectKeyframes, setPlayhead } from "../core/store/sessionStore.js";
 import { adjacentKey, copyKeys, deleteKeys, pasteKeys, setKeysEase, setStopwatch, stopwatchOn, toggleKeyAt, type KeyframeClipboard } from "../timeline/edit/keyframes.js";
 import { keyableIds } from "../panels/properties/keyframeBinding.js";
+import { audioTargets } from "../timeline/edit/volume.js";
 import { actions, documentStore, sessionStore } from "./services.js";
 
-/** The sections with a stopwatch in the panel this batch (Volume's UI is Batch 37). */
-export const PANEL_SECTIONS: readonly KeyframeSection[] = ["transform", "opacity"];
+/** The sections with a stopwatch in the panel (Volume: the Audio section, Batch 37). */
+export const PANEL_SECTIONS: readonly KeyframeSection[] = ["transform", "opacity", "volume"];
+/** The sections a clip's keyframe lane can show (clip menu "Show keyframes for"): Volume keys are on the rubber band. */
+export const LANE_SECTIONS: readonly KeyframeSection[] = ["transform", "opacity"];
 
 /** Copied keys (spec §6.15 copy/paste keyframes), or null. */
 export const keyframeClipboard = createStore<KeyframeClipboard | null>(null);
 
 const playhead = () => sessionStore.state.getState().playhead;
 
-/** The selected clips `section` can key. */
+/** The selected clips `section` can key (Volume: the audio clips the Audio section edits). */
 function targets(section: KeyframeSection): ClipId[] {
   const selection = sessionStore.selection.getState();
-  return selection.kind === "clips" ? keyableIds(documentStore.getState(), selection.clipIds, section) : [];
+  if (selection.kind !== "clips") return [];
+  const project = documentStore.getState();
+  return section === "volume" ? audioTargets(project, selection.clipIds) : keyableIds(project, selection.clipIds, section);
 }
 
 /** The stopwatch of `section` on the selected clips: on unless every one is animated already. */
@@ -129,7 +137,7 @@ export function installKeyframeController(): () => void {
       actions.register(`keyframes.prev.${section}`, () => jumpToKey(section, -1)),
       actions.register(`keyframes.next.${section}`, () => jumpToKey(section, 1)),
     ]),
-    ...KEYFRAME_SECTIONS.filter((section) => PANEL_SECTIONS.includes(section)).map((section) => actions.register(`keyframes.lane.${section}`, () => showLane(section))),
+    ...KEYFRAME_SECTIONS.filter((section) => LANE_SECTIONS.includes(section)).map((section) => actions.register(`keyframes.lane.${section}`, () => showLane(section))),
     ...EASE_IDS.map((ease) => actions.register(`keyframe.ease.${ease}`, () => easeSelected(ease))),
     actions.register("keyframe.delete", () => void deleteSelectedKeys()),
     actions.register("keyframe.copy", copySelected),

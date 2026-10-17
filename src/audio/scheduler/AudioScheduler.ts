@@ -7,10 +7,16 @@
 //   become context times through `AudioClock.contextTime`.
 // - Voices: one AudioBufferSourceNode per (clip, segment, loop pass), started when its start comes
 //   within AHEAD_SECONDS (checked every STEP_SECONDS) and stopped at the clip's end: source -> envelope
-//   GainNode (start/stop ramps) -> fade GainNode (the clip's fades and crossfades, envelope.ts, as
-//   curves per voice, Batch 36) -> clip GainNode (gain dB, mute; TODO(batch 37): keyframes (the keyed
-//   gain is `gainDbAt` in core/document/keyframes.ts, Batch 35) and rubber bands as gain curves per
-//   scheduled chunk) -> track GainNode (mute/solo) -> mix bus.
+//   GainNode (start/stop ramps) -> fade GainNode (the automation: the clip's fades and crossfades,
+//   Batch 36, times its keyed gain, the Volume keyframes of the rubber band, Batch 37; envelope.ts)
+//   -> clip GainNode (the gain in dB of a clip without volume keys, and mute) -> track GainNode
+//   (mute/solo) -> mix bus.
+// - Automation per scheduled chunk (spec §14): each step writes the next part of every voice's
+//   automation, up to AUTOMATION_AHEAD_SECONDS ahead (further than the sources: a main-thread stall
+//   shorter than that never leaves a chunk to start in the past, which would jump), as
+//   `setValueCurveAtTime` curves (CURVE_RATE points per second) over the parts where the factor
+//   moves; elsewhere it holds. A curve may not start on another event, so a chunk continuing the
+//   previous one starts one sample after it.
 // - Crossfades (spec §6.15, Batch 36): a clip under a transition plays past its edge into its handle
 //   (the outgoing one after its end, the incoming one before its start), within its media; its fade
 //   node takes it in or out with equal power.
@@ -24,13 +30,14 @@
 //   same mapping) keeps every voice, while a seek (another mapping) restarts them.
 // - Silent at transport speeds other than 1x (spec §8; Batch 10: "silence at other shuttle speeds").
 // - Document changes while playing: mute/solo ramp the track gains, a clip whose gain or mute changed
-//   ramps its voice, a clip moved, trimmed or removed stops its voice and is scheduled again.
+//   ramps its voice, a clip moved, trimmed, faded, re-keyed or removed stops its voice and is
+//   scheduled again.
 import type { PlaybackClock } from "../AudioClock.js";
 import { fpsToNumber } from "../../core/document/time.js";
 import { extendedEnd, extendedStart, sameTransition } from "../../core/document/transitions.js";
 import { isMediaClip, type Clip, type ClipId, type Frame, type MediaClip, type Project, type Rational } from "../../core/document/types.js";
 import { clipsInRange, lastClipStartingBy, trackIndex } from "../../timeline/model/queries.js";
-import { envelopeAt, envelopeCurve, envelopeRegions, type AudioLimits } from "./envelope.js";
+import { automationAt, automationCurve, automationRegions, keyedGain, type AudioLimits } from "./envelope.js";
 import { dbToGain, ramp, rampTo, RAMP_SECONDS, type AudioMixer } from "../AudioMixer.js";
 import type { DecodedAudio } from "../decode/DecodedAudio.js";
 import { segmentAt, segmentStartSeconds } from "../decode/segments.js";
@@ -39,6 +46,8 @@ import { segmentAt, segmentStartSeconds } from "../decode/segments.js";
 export const AHEAD_SECONDS = 0.2;
 /** Scheduling steps (spec §8: 50 ms). */
 export const STEP_SECONDS = 0.05;
+/** Voices' automation is written this far ahead of the clock (per step: the next chunk). */
+export const AUTOMATION_AHEAD_SECONDS = 1;
 /** A voice starts at least this far ahead of the render clock. */
 const MIN_AHEAD_SECONDS = 0.005;
 /** Added to the render lead when playback starts or seeks, so the first samples are scheduled in time. */
@@ -91,35 +100,56 @@ interface Voice {
   end: number;
   source: AudioBufferSourceNode;
   envelope: GainNode;
-  /** The clip's fades and crossfades (Batch 36). */
+  /** The automation: fades and crossfades (Batch 36) times the keyed gain (Batch 37). */
   fade: GainNode;
   gain: GainNode;
+  /** How the automation is written: the timeline second `spanStart` sounds at context time `nominal`; the clip's audio limits. */
+  auto: { nominal: number; spanStart: number; fps: number; limits: AudioLimits; sampleRate: number };
+  /** Context time the automation is written up to. */
+  automated: number;
+  /** Context time of the last automation event (the start's set, a curve's end): the next curve starts after it. */
+  lastEvent: number;
 }
 
-/** Clip gain: volume in dB, 0 when muted. */
-export const clipGain = (clip: MediaClip) => (clip.volume.muted ? 0 : dbToGain(clip.volume.gainDb));
+/**
+ * The clip GainNode's value: the gain in dB of a clip without volume keys (a keyed gain rides on the
+ * automation, Batch 37), 0 when muted.
+ */
+export const clipGain = (clip: MediaClip) => (clip.volume.muted ? 0 : keyedGain(clip) ? 1 : dbToGain(clip.volume.gainDb));
+
+/** The volume keys of two clips are the same (an edit of them restarts the voice: its automation changes). */
+function sameVolumeKeys(a: MediaClip, b: MediaClip): boolean {
+  const x = a.keyframes?.["volume.gainDb"] ?? [];
+  const y = b.keyframes?.["volume.gainDb"] ?? [];
+  if (x === y) return true;
+  if (x.length !== y.length) return false;
+  return x.every((key, i) => {
+    const other = y[i];
+    return other !== undefined && key.frame === other.frame && key.value === other.value && key.ease === other.ease;
+  });
+}
 
 /**
- * Writes a voice's fades and crossfades (envelope.ts) on `param`: its value at the voice's start, then
- * one curve per region where the factor moves. `spanStart` is the timeline second sounding at context
- * time `nominal`; the voice sounds from `start` to `end` (context times); `limits`: where the clip's
- * audio exists (its crossfade ramps fit in it).
+ * Writes the next chunk of a voice's automation (envelope.ts: fades, crossfades, keyed gain) on its
+ * fade node, from where it was written up to context time `until`: one curve over each part of a
+ * region where the factor moves; it holds elsewhere. A curve never starts on the previous event's time
+ * (the start's set, the last curve's end), so a chunk continuing a curve starts one sample after it.
  */
-function automateFades(param: AudioParam, clip: MediaClip, fps: number, limits: AudioLimits, spanStart: number, nominal: number, start: number, end: number): void {
+function automate(voice: Voice, until: number): void {
+  const a = voice.automated;
+  const b = Math.min(voice.end, until);
+  if (b - a <= 1e-6) return;
+  voice.automated = b;
+  const { nominal, spanStart, fps, limits, sampleRate } = voice.auto;
   const toTimeline = (t: number) => spanStart + (t - nominal);
   const toContext = (s: number) => nominal + (s - spanStart);
-  const from = toTimeline(start);
-  const to = toTimeline(end);
-  const regions = envelopeRegions(clip, fps, limits).filter((region) => region.end > from && region.start < to);
-  const first = regions[0];
-  // A curve may not share its start with another event: no set when the first one starts with the voice.
-  if (!first || first.start > from) param.setValueAtTime(envelopeAt(clip, fps, from, limits), start);
-  else param.value = envelopeAt(clip, fps, from, limits);
-  for (const region of regions) {
-    const a = Math.max(region.start, from);
-    const b = Math.min(region.end, to);
-    if (b - a <= 1e-6) continue;
-    param.setValueCurveAtTime(envelopeCurve(clip, fps, a, b, limits), toContext(a), b - a);
+  const param = voice.fade.gain;
+  for (const region of automationRegions(voice.clip, fps, limits)) {
+    const from = Math.max(toContext(region.start), a, voice.lastEvent + 1 / sampleRate);
+    const to = Math.min(toContext(region.end), b);
+    if (to - from <= 1e-6) continue;
+    param.setValueCurveAtTime(automationCurve(voice.clip, fps, toTimeline(from), toTimeline(to), limits), from, to - from);
+    voice.lastEvent = to;
   }
 }
 
@@ -138,7 +168,8 @@ function sameTiming(a: MediaClip, b: MediaClip): boolean {
     a.fades.in === b.fades.in &&
     a.fades.out === b.fades.out &&
     sameTransition(a.transitionIn, b.transitionIn) &&
-    sameTransition(a.transitionOut, b.transitionOut)
+    sameTransition(a.transitionOut, b.transitionOut) &&
+    sameVolumeKeys(a, b)
   );
 }
 
@@ -152,7 +183,7 @@ const isAudioClip = (clip: Clip | null | undefined): clip is MediaClip => clip?.
 const mediaSeconds = (clip: MediaClip, clipStart: number, s: number) => clip.in / 1e6 + (s - clipStart) * clip.speed;
 
 /** The timeline seconds a clip's audio exists in: from its media's start to its end, at its speed. */
-function audioLimits(clip: MediaClip, fps: number, durationUs: number): AudioLimits {
+export function audioLimits(clip: MediaClip, fps: number, durationUs: number): AudioLimits {
   const clipStart = clip.start / fps;
   return { start: clipStart - clip.in / 1e6 / clip.speed, end: clipStart + (durationUs - clip.in) / 1e6 / clip.speed };
 }
@@ -296,13 +327,17 @@ export class AudioScheduler {
     // pass p with its timeline 0 at `origin0 + p * span` (it reaches `start` when pass p - 1 ends).
     const origin0 = mapping.clock - mapping.frame / fps;
     this.schedulePass(project, mixer, origin0, mapping.frame / fps, end, w0, w1);
-    if (!mapping.loop || span <= 0) return;
-    const firstWrap = origin0 + end;
-    const first = Math.max(1, Math.floor((w0 - firstWrap) / span) + 1);
-    for (let p = first; p < first + MAX_PASSES; p++) {
-      if (firstWrap + (p - 1) * span >= w1) break;
-      this.schedulePass(project, mixer, origin0 + p * span, start, end, w0, w1);
+    if (mapping.loop && span > 0) {
+      const firstWrap = origin0 + end;
+      const first = Math.max(1, Math.floor((w0 - firstWrap) / span) + 1);
+      for (let p = first; p < first + MAX_PASSES; p++) {
+        if (firstWrap + (p - 1) * span >= w1) break;
+        this.schedulePass(project, mixer, origin0 + p * span, start, end, w0, w1);
+      }
     }
+    // The next chunk of every voice's automation (spec §14).
+    const until = this.deps.clock.contextTime(w0 + AUTOMATION_AHEAD_SECONDS);
+    if (until !== null) for (const voice of this.voices) automate(voice, until);
   }
 
   /** Voices of the timeline range [from, to) (seconds) of the pass whose timeline 0 is at clock `origin`, starting before `w1`. */
@@ -348,6 +383,7 @@ export class AudioScheduler {
         clipStart,
         start: sStart,
         end: sEnd,
+        until: w0 + AUTOMATION_AHEAD_SECONDS,
         segStart,
         // A clip's own start and a segment continuing the previous one start exactly; anything else joins mid-sound.
         natural: Math.abs(sStart - clipStart) < 1e-9 || (segment > first && Math.abs(sStart - spanStart) > 1e-9),
@@ -357,7 +393,14 @@ export class AudioScheduler {
     }
   }
 
-  private startVoice(clip: MediaClip, segment: number, mixer: AudioMixer, origin: number, span: { clipStart: number; start: number; end: number; segStart: number; natural: boolean; fps: number; limits: AudioLimits }): void {
+  /** `span.until`: the clock time the first chunk of the voice's automation is written up to (the step's window end). */
+  private startVoice(
+    clip: MediaClip,
+    segment: number,
+    mixer: AudioMixer,
+    origin: number,
+    span: { clipStart: number; start: number; end: number; until: number; segStart: number; natural: boolean; fps: number; limits: AudioLimits },
+  ): void {
     const buffer = this.deps.audio.segment(clip.mediaId, segment);
     if (!buffer) {
       this.deps.audio.request(clip.mediaId, segment, "playback");
@@ -388,14 +431,31 @@ export class AudioScheduler {
     const fade = ctx.createGain();
     const gain = ctx.createGain();
     gain.gain.value = clipGain(clip);
-    if (fadeIn) ramp(envelope.gain, 0, 1, start);
-    // Timeline second `s` of the span sounds at context time `nominal + s - span.start` (a late voice skips its head).
-    automateFades(fade.gain, clip, span.fps, span.limits, span.start, nominal, start, end);
+    // The nodes start at their first values (a source starting a fraction of a sample before its first
+    // event would play that sample at a GainNode's default 1: a one-sample spike).
+    if (fadeIn) {
+      envelope.gain.value = 0;
+      ramp(envelope.gain, 0, 1, start);
+    }
+    // Timeline second `s` of the span sounds at context time `nominal + s - span.start` (a late voice
+    // skips its head). The automation starts at its value there (no set when a curve starts with the voice).
+    const auto = { nominal, spanStart: span.start, fps: span.fps, limits: span.limits, sampleRate: ctx.sampleRate };
+    const from = span.start + (start - nominal);
+    const first = automationRegions(clip, span.fps, span.limits).find((region) => region.end > from);
+    let lastEvent = -Infinity;
+    const initial = automationAt(clip, span.fps, from, span.limits);
+    fade.gain.value = initial;
+    if (!first || first.start > from) {
+      fade.gain.setValueAtTime(initial, start);
+      lastEvent = start;
+    }
     source.connect(envelope);
     envelope.connect(fade);
     fade.connect(gain);
     gain.connect(mixer.trackInput(clip.trackId));
-    const voice: Voice = { clip, segment, origin, start, end, source, envelope, fade, gain };
+    const voice: Voice = { clip, segment, origin, start, end, source, envelope, fade, gain, auto, automated: start, lastEvent };
+    const until = clock.contextTime(span.until);
+    if (until !== null) automate(voice, until);
     source.onended = () => this.forget(voice, 0);
     source.start(start, Math.max(0, offset));
     source.stop(end);

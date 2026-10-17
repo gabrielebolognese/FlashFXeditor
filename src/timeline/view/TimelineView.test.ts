@@ -5,7 +5,7 @@ import { addClip, addTrack, removeClips, updateClip, updateTrack } from "../../c
 import { addMarker, removeMarker } from "../../core/commands/markerCommands.js";
 import { makeMedia, makeMediaClip, makeProject, makeTrack } from "../../core/document/fixtures.js";
 import { FPS_30, frameToUs } from "../../core/document/time.js";
-import type { TrackKind } from "../../core/document/types.js";
+import type { MediaClip, TrackKind } from "../../core/document/types.js";
 import type { InvalidationFlag, RenderView } from "../../core/scheduler/FrameScheduler.js";
 import { DocumentStore } from "../../core/store/DocumentStore.js";
 import { createLayoutStore } from "../../core/store/layoutStore.js";
@@ -18,6 +18,7 @@ import { trimCursors } from "./cursors.js";
 import { drawOverlay } from "./drawOverlay.js";
 import { testTheme } from "./fixtures.js";
 import { NO_MODIFIERS as NO_MODS } from "./gestures/moveClips.js";
+import { gainY, yGain } from "./rubberBand.js";
 import { TimelineView } from "./TimelineView.js";
 
 // The real overlay drawing, recorded so tests can read the hover it was given.
@@ -125,6 +126,9 @@ function setup(clipCount = 0, theme: Theme = testTheme()) {
   const onSetFade = vi.fn();
   const onTransitionEdge = vi.fn();
   const onOpenTransition = vi.fn();
+  const onBandEdit = vi.fn();
+  const onAddKeyframe = vi.fn();
+  const onScrub = vi.fn();
   const idle = { pause: vi.fn(), resume: vi.fn() };
   const view = new TimelineView({
     scheduler,
@@ -148,6 +152,9 @@ function setup(clipCount = 0, theme: Theme = testTheme()) {
     onSetFade,
     onTransitionEdge,
     onOpenTransition,
+    onBandEdit,
+    onAddKeyframe,
+    onScrub,
     idle,
     platform: "other",
   });
@@ -186,6 +193,9 @@ function setup(clipCount = 0, theme: Theme = testTheme()) {
     onSetFade,
     onTransitionEdge,
     onOpenTransition,
+    onBandEdit,
+    onAddKeyframe,
+    onScrub,
     idle,
     unmount,
   };
@@ -1891,5 +1901,79 @@ describe("TimelineView fades and transitions (Batch 36)", () => {
     pointer("pointermove", x(38), 186, { altKey: true });
     pointer("pointerup", x(38), 186, { altKey: true });
     expect(onTransitionEdge).toHaveBeenLastCalledWith({ left: "a", right: "b" }, 4, 8);
+  });
+
+  describe("rubber band (Batch 37)", () => {
+    // a1: row 232..288; its band from 252 (+12 dB) to 284 (-60 dB).
+    const box = { top: 252, bottom: 284 };
+    const withAudio = (fields: Partial<MediaClip> = {}) => {
+      const t = setup();
+      t.document.dispatch(addClip({ ...makeMediaClip(t.document.getState(), { id: "s", trackId: "a1", start: 10, duration: 40, mediaId: "m", kind: "audio" }), ...fields }));
+      t.scheduler.flush();
+      return t;
+    };
+
+    it("drags the gain line on the overlay only and sets the gain once on release", () => {
+      const { view, scheduler, pointer, onBandEdit, session } = withAudio();
+      const y0 = gainY(box, 0);
+      pointer("pointermove", x(30), y0);
+      scheduler.flush();
+      const contentDraws = view.stats.contentDraws;
+      pointer("pointerdown", x(30), y0);
+      // The press selects the clip (one content redraw), then only the overlay follows.
+      scheduler.flush();
+      const afterPress = view.stats.contentDraws;
+      expect(session.selection.getState().clipIds.has("s")).toBe(true);
+      for (const dy of [-6, -9, -12]) {
+        pointer("pointermove", x(30), y0 + dy);
+        expect(scheduler.flush()).toEqual(["timelineOverlay"]);
+      }
+      expect(view.stats.contentDraws).toBe(afterPress);
+      pointer("pointerup", x(30), y0 - 12);
+      expect(onBandEdit).toHaveBeenCalledTimes(1);
+      expect(onBandEdit).toHaveBeenCalledWith("s", { kind: "gain", gainDb: Math.round(yGain(box, y0 - 12) * 10) / 10 });
+      expect(contentDraws).toBeLessThanOrEqual(afterPress);
+    });
+
+    it("moves the keys around the pointer in value, a pressed key also in time", () => {
+      const keys = [
+        { frame: 5, value: 0, ease: "linear" as const },
+        { frame: 25, value: 0, ease: "linear" as const },
+        { frame: 35, value: -12, ease: "linear" as const },
+      ];
+      const { pointer, onBandEdit, session } = withAudio({ keyframes: { "volume.gainDb": keys } });
+      // Between keys 5 and 25 (frame 20 of the timeline = clip frame 10).
+      pointer("pointerdown", x(20), gainY(box, 0));
+      pointer("pointermove", x(20), gainY(box, 0) + 8);
+      pointer("pointerup", x(20), gainY(box, 0) + 8);
+      const segment = onBandEdit.mock.calls[0]?.[1];
+      expect(segment).toMatchObject({ kind: "keys", frames: [5, 25], deltaFrames: 0 });
+      expect(segment.deltaDb).toBeLessThan(0);
+      // The key at clip frame 25 (timeline 35): selected on the press; dragged 2 frames right.
+      const kx = x(35) + 0.5;
+      pointer("pointerdown", kx, gainY(box, 0));
+      expect(session.keyframes.getState()).toEqual({ clipId: "s", section: "volume", frames: [25] });
+      pointer("pointermove", kx + 8, gainY(box, 0));
+      pointer("pointerup", kx + 8, gainY(box, 0));
+      expect(onBandEdit).toHaveBeenLastCalledWith("s", { kind: "keys", frames: [25], deltaDb: 0, deltaFrames: 2 });
+      expect(session.keyframes.getState()).toEqual({ clipId: "s", section: "volume", frames: [27] });
+    });
+
+    it("adds a volume key with Mod+click on the line", () => {
+      const { pointer, onAddKeyframe, onBandEdit } = withAudio();
+      pointer("pointerdown", x(30), gainY(box, 0), { ctrlKey: true });
+      pointer("pointerup", x(30), gainY(box, 0), { ctrlKey: true });
+      expect(onAddKeyframe).toHaveBeenCalledWith("s", "volume", 20);
+      expect(onBandEdit).not.toHaveBeenCalled();
+    });
+  });
+
+  it("reports each frame a ruler scrub shows (audio scrub, Batch 37)", () => {
+    const { pointer, onScrub } = setup(3);
+    pointer("pointerdown", x(5), 10);
+    pointer("pointermove", x(5) + 1, 10);
+    pointer("pointermove", x(8), 10);
+    pointer("pointerup", x(8), 10);
+    expect(onScrub.mock.calls.map((call) => call[0])).toEqual([5, 8]);
   });
 });

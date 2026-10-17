@@ -83,7 +83,7 @@ describe("app settings", () => {
     await settings.load();
     expect(settings.getState()).toEqual(DEFAULT_APP_SETTINGS);
     await settings.update({ autosaveDelayMs: 5000 });
-    expect(kv.data.get("settings.v1")).toEqual({ autosaveDelayMs: 5000, importMode: "copy", monitorVolumeDb: 0, monitorMuted: false, proxyAuto: true, proxyRule: "heavy", proxyShortEdge: 540, recentColors: [], punchZoomScale: 1.2, punchZoomAnimate: true, favoriteFonts: [], matchClipUnderPlayhead: true, defaultTitlePreset: "starter-title", defaultSubtitlePreset: "starter-subtitle", transcribeModel: "base", transcribeLanguage: null });
+    expect(kv.data.get("settings.v1")).toEqual({ autosaveDelayMs: 5000, importMode: "copy", monitorVolumeDb: 0, monitorMuted: false, proxyAuto: true, proxyRule: "heavy", proxyShortEdge: 540, recentColors: [], punchZoomScale: 1.2, punchZoomAnimate: true, favoriteFonts: [], matchClipUnderPlayhead: true, defaultTitlePreset: "starter-title", defaultSubtitlePreset: "starter-subtitle", transcribeModel: "base", transcribeLanguage: null, duckDepthDb: 12, duckRampFrames: 10 });
     await settings.update({ autosaveDelayMs: 1234 });
     expect(settings.getState().autosaveDelayMs).toBe(5000);
 

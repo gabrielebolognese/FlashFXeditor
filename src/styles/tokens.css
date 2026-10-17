@@ -274,6 +274,15 @@
   --timeline-transition-edge-width: var(--timeline-trim-edge-width); /* 2px */
   --timeline-transition-edge-zone: var(--timeline-junction-zone); /* 6px at each block end: its edge drags */
   --timeline-transition-warning: rgba(229, 84, 90, 0.7); /* danger at 70%: "striped warning" (spec §6.15) */
+  /* Rubber band (Batch 37, spec §6.4 "a horizontal gain line across the clip"; gap: the DS has none).
+     On M/L audio tracks a --text-primary line over a --bg-sunken outline (it reads over the waveform and
+     every clip color) at the clip gain, on a cube-root amplitude scale from -60 dB (bottom of the body)
+     to +12 dB (top; 0 dB at about 60%), through its volume keys (the keyframe diamond's look). The
+     hovered or dragged line is --accent. A press within the zone of the line grabs it. */
+  --timeline-rubber-band: var(--text-primary);
+  --timeline-rubber-band-outline: rgba(7, 15, 28, 0.7); /* bg-sunken at 70% */
+  --timeline-rubber-band-width: 1.5px; /* the selection outline's width */
+  --timeline-rubber-band-zone: var(--space-1); /* 4px above and below the line */
   --marker-popover-width: calc(var(--control-default) * 7); /* the label field over 8 swatches and Delete */
 
   /* Audio (gap: the DS has no meter or knob). Stereo peak meter along the preview's right edge, master volume knob. */

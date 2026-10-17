@@ -7,8 +7,9 @@
 // unlocked track), the scrollbars (their thumbs, zoom handles and troughs), the diamonds of a clip's
 // keyframe lane (Batch 35: before the trim zones; a point elsewhere in the lane band is a clip hit with
 // its `lane` set, for Alt+click), fade handles (Batch 36: a square at each fade's end on the clip's top
-// edge), transition blocks and their ends (Batch 36) and empty space; the rubber band is declared for
-// Batch 37. The active tool decides what a hit does (the view).
+// edge), transition blocks and their ends (Batch 36), the rubber band of audio clips (Batch 37: its keys
+// before the trim zones, its line after the junctions, blocks and trim zones) and empty space. The
+// active tool decides what a hit does (the view).
 import type { KeyframeSection } from "../../core/document/keyframes.js";
 import { isMediaClip, type Clip, type ClipId, type Frame, type Marker, type Project, type Track, type TrackId, type TrackKind } from "../../core/document/types.js";
 import type { FadeEdge } from "../edit/fades.js";
@@ -18,6 +19,7 @@ import type { InOut } from "../model/inOut.js";
 import { clipAtFrame, gapAt, neighbors, type Gap } from "../model/queries.js";
 import { contains, type HeaderToggle, type Row, type TimelineGeometry } from "./geometry.js";
 import { diamondAt, laneFrames, shownLane, type LaneScene } from "./keyframeLane.js";
+import type { BandHit } from "./rubberBand.js";
 import { scrollbarAt, type ScrollbarHit, type ScrollbarLayout } from "./scrollbars.js";
 
 export type HitType =
@@ -26,7 +28,7 @@ export type HitType =
   | "clipEdgeIn"
   | "clipEdgeOut"
   | "junction"
-  // Fade handles (Batch 36); keyframe lane diamonds (Batch 35); TODO(batch 37): rubber band.
+  // Fade handles (Batch 36); keyframe lane diamonds (Batch 35); the rubber band's keys and line (Batch 37).
   | "fadeHandle"
   | "keyframe"
   | "rubberBand"
@@ -73,6 +75,8 @@ export interface HitResult {
   fade: FadeEdge | null;
   /** `transition` / `transitionEdge`: the cut's clips and, on an end, which one; `clipId` is the clip under the point. */
   transition: { left: ClipId; right: ClipId; edge: TransitionEdge | null } | null;
+  /** `rubberBand`: a volume key of `clipId` (its frame relative to the clip), or its line (`key` null). */
+  band: BandHit | null;
 }
 
 /** A cut between two abutting clips on a track (spec §6.10: the roll zone). */
@@ -105,6 +109,8 @@ export interface HitSource {
   fades?: { size: number; inset: number };
   /** Transition blocks (Batch 36): the band a block covers in a row, the width of the zone on each end (none: no block hits). */
   transitions?: { band(row: Row, track: Track): { y: number; height: number }; edgeZone: number };
+  /** The rubber band of an audio clip in its row (Batch 37: rubberBand.ts `bandAt`), or null (none: no band hits). */
+  rubberBand?(clip: Clip, row: Row, track: Track, x: number, y: number): BandHit | null;
 }
 
 /** Extra CSS px on each side of the playhead head (and around a marker) that still grab it. */
@@ -128,7 +134,7 @@ export class HitTester {
   hit(x: number, y: number): HitResult {
     const geometry = this.source.geometry();
     const frame = geometry.xToFrame(x);
-    const result: HitResult = { type: "empty", frame, trackId: null, clipId: null, addTrack: null, toggle: null, junction: null, gap: null, scrollbar: null, markerId: null, keyframe: null, lane: null, fade: null, transition: null };
+    const result: HitResult = { type: "empty", frame, trackId: null, clipId: null, addTrack: null, toggle: null, junction: null, gap: null, scrollbar: null, markerId: null, keyframe: null, lane: null, fade: null, transition: null, band: null };
     if (x < 0 || y < 0 || x >= geometry.width || y >= geometry.height) return result;
 
     const { area } = geometry;
@@ -195,7 +201,20 @@ export class HitTester {
     result.clipId = clip.id;
     if (this.fadeAt(result, project, clip, row, geometry, x, y)) return result;
     if (this.laneAt(result, project, row, geometry, x, y)) return result;
-    return this.clipZones(result, project, row, geometry, x, y);
+    // The rubber band (Batch 37): a key before the trim zones; the line where the clip has no other zone.
+    const track = project.tracks[row.index];
+    const band = track && !track.locked && clip.kind === "audio" ? (this.source.rubberBand?.(clip, row, track, x, y) ?? null) : null;
+    if (band && band.key !== null) {
+      result.type = "rubberBand";
+      result.band = band;
+      return result;
+    }
+    this.clipZones(result, project, row, geometry, x, y);
+    if (band && result.type === "clip") {
+      result.type = "rubberBand";
+      result.band = band;
+    }
+    return result;
   }
 
   /** A fade handle of the clip under the point (unlocked tracks): the nearer one when both are in reach. */
