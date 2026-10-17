@@ -102,6 +102,24 @@ describe("serializeClipboard / parseClipboard (the system clipboard mirror)", ()
     expect(parseClipboard(text({ section: "opacity", keys: { "transform.x": [key] } }))).toBeNull();
     expect(parseClipboard(text({ section: "transform", keys: { "transform.x": [key], "transform.skew": [key] } }))).toBeNull();
   });
+
+  it("refuses media records the paste could not read (no file reference, an unknown kind, a broken duration)", () => {
+    const payload = copied(project([video("v", "v1", 0, 30)]), ["v"]);
+    const item = payload.media[0] as MediaItem;
+    const text = (media: unknown) => JSON.stringify({ ...payload, media: [media] });
+    expect(parseClipboard(text(item))).not.toBeNull();
+    expect(parseClipboard(text({ ...item, file: { handleKey: "", pathHint: "media/x.mp4" } }))).not.toBeNull();
+    // The review's case: a record without `file` made Ctrl+V throw a TypeError instead of showing a toast.
+    expect(parseClipboard(text({ ...item, file: undefined }))).toBeNull();
+    expect(parseClipboard(text({ ...item, file: "media/x.mp4" }))).toBeNull();
+    expect(parseClipboard(text({ ...item, file: { relPath: 5 } }))).toBeNull();
+    expect(parseClipboard(text({ ...item, file: { handleKey: "k" } }))).toBeNull();
+    expect(parseClipboard(text({ ...item, kind: "gif" }))).toBeNull();
+    expect(parseClipboard(text({ ...item, durationUs: 1.5 }))).toBeNull();
+    expect(parseClipboard(text({ ...item, durationUs: -1 }))).toBeNull();
+    expect(parseClipboard(text({ ...item, durationUs: undefined }))).toBeNull();
+    expect(parseClipboard(text({ ...item, id: 7 }))).toBeNull();
+  });
 });
 
 describe("pasteClips (spec §18 Paste / Paste insert, §6.8, §6.12 Target)", () => {

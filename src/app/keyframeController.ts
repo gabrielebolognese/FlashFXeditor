@@ -111,14 +111,17 @@ export function copySelectedKeys(): KeyframeClipboard | null {
 /**
  * Pastes `clipboard` (the copied keys by default) on the selected clips from the playhead; false when
  * none of them takes the keys. `accept` sees the command first and can turn it down (Batch 39: keys
- * from the system clipboard are checked against the document's invariants before they land).
+ * from the system clipboard are checked against the document's invariants before they land); keys
+ * become the copied keys only once they are pasted.
  */
 export function pasteKeyframes(clipboard = keyframeClipboard.getState(), accept: (command: Command) => boolean = () => true): boolean {
   if (!clipboard) return false;
-  keyframeClipboard.set(clipboard);
   const command = pasteKeys(documentStore.getState(), targets(clipboard.section), clipboard, playhead());
-  if (command && accept(command)) documentStore.dispatch(command);
-  return command !== null;
+  if (!command) return false;
+  if (!accept(command)) return true;
+  keyframeClipboard.set(clipboard);
+  documentStore.dispatch(command);
+  return true;
 }
 
 /** The lane of the selected clips shows `section` (clip menu "Show keyframes for", spec §6.4). */

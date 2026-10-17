@@ -155,7 +155,7 @@ export function serializeClipboard(payload: ClipboardPayload): string {
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null && !Array.isArray(value);
 const isInt = (value: unknown): value is number => Number.isInteger(value);
 
-/** A copied clip's shape (the pasted document is validated again before it is committed). */
+/** A copied clip's shape (every paste, Paste attributes too, validates the document it makes before it is committed). */
 function isCopiedClip(value: unknown): value is CopiedClip {
   if (!isRecord(value) || !isRecord(value.clip) || !isRecord(value.lane)) return false;
   const { clip, lane } = value;
@@ -177,6 +177,17 @@ function isKeyframeClipboard(value: unknown): value is KeyframeClipboard {
 }
 
 /**
+ * A copied media record's shape: what the paste reads before the document is validated (its kind,
+ * duration and file reference, matched against this project's media or added as an offline item).
+ */
+function isMediaRecord(value: unknown): value is MediaItem {
+  if (!isRecord(value) || typeof value.id !== "string" || typeof value.name !== "string" || !isRecord(value.file)) return false;
+  const { file } = value;
+  const fileOk = typeof file.relPath === "string" || (typeof file.handleKey === "string" && typeof file.pathHint === "string");
+  return fileOk && (value.kind === "video" || value.kind === "audio" || value.kind === "image") && isInt(value.durationUs) && value.durationUs >= 0;
+}
+
+/**
  * The payload in a system clipboard text, or null when the text is not one (other text, another
  * format or version, a broken shape).
  */
@@ -194,7 +205,7 @@ export function parseClipboard(text: string): ClipboardPayload | null {
   const fps = value.fps;
   if (typeof value.projectId !== "string" || !isRecord(fps) || !isInt(fps.num) || !isInt(fps.den)) return null;
   if (!Array.isArray(value.clips) || value.clips.length === 0 || !value.clips.every(isCopiedClip) || !Array.isArray(value.media)) return null;
-  if (!value.media.every((item) => isRecord(item) && typeof item.id === "string" && typeof item.name === "string")) return null;
+  if (!value.media.every(isMediaRecord)) return null;
   return value as unknown as ClipsPayload;
 }
 
