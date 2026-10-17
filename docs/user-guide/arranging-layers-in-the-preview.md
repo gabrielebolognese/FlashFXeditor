@@ -29,13 +29,13 @@ Every video, image, solid or text clip under the playhead is a layer of the pict
 - [Use the layer menu](#use-the-layer-menu)
 - [Change which layer is on top](#change-which-layer-is-on-top)
 - [Cancel and undo](#cancel-and-undo)
-- [What is not available yet](#what-is-not-available-yet)
+- [Animate a layer](#animate-a-layer)
 
 ## Understand layers
 
 The preview draws the clip of each video track at the playhead, from the bottom video track up: a higher track covers the tracks below it. Each of those clips is a layer you can select, move, resize and rotate in the preview.
 
-- A change to a layer applies to the whole clip, on every frame of it, not only to the frame at the playhead.
+- A change to a layer applies to the whole clip, on every frame of it, not only to the frame at the playhead. The exception is a layer animated with keyframes: there, a change writes a keyframe at the playhead. See [Animate a layer](#animate-a-layer).
 - You only see a layer's box and handles while the playhead is over its clip. Move the playhead into a clip to work on it in the preview.
 - Selecting in the preview is the same selection as on the timeline. A layer you click in the preview gets the gold outline on the timeline, and a clip you click on the timeline gets its box in the preview when it is under the playhead.
 - Audio clips have no picture and are never layers.
@@ -296,13 +296,19 @@ To change the order of whole tracks instead, drag a track header up or down. See
 
 See [Undo and redo changes](projects-and-saving.md#undo-and-redo-changes).
 
-## What is not available yet
+## Animate a layer
 
-These parts are available in a later version:
+To make a layer move, grow or turn while it plays, turn on the stopwatch of the **Transform** section in **Edit Properties**, then move, resize or rotate the layer at two or more moments. See [Animate a picture](keyframes.md#animate-a-picture).
 
-- Changes that differ over time (keyframes): a change always applies to the whole clip.
+While the layer is animated:
+
+- Moving, resizing, rotating and nudging it changes its look at the playhead only: on a keyframe, the change updates that keyframe; between keyframes, it adds one. The steps keep their usual names, such as **Move layer** and **Nudge layer**.
+- A small gold diamond sits up and to the right of the top-right handle of its box. It is filled when the playhead is on a keyframe, and outlined between keyframes. See [See keyframes in the preview](keyframes.md#see-keyframes-in-the-preview).
+- **Fit**, **Fill**, **Center** and **Reset transform** in the layer menu act on its look at the playhead, and the flips mirror every frame.
+- A new anchor point keeps the layer where it is at the playhead, and the whole motion moves along with it.
 
 ## Related pages
+- [Keyframes](keyframes.md)
 - [Preview and playback](preview-and-playback.md)
 - [Shapes and images](shapes-and-images.md)
 - [Snapping and smart guides in the preview](snapping-and-smart-guides.md)
@@ -318,4 +324,4 @@ These parts are available in a later version:
 - [Projects and saving](projects-and-saving.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 34, 2026-10-17</sub>
+<sub>Last updated: Batch 35, 2026-10-17</sub>

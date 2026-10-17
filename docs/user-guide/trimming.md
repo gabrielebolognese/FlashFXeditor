@@ -72,6 +72,7 @@ More things to know:
 - If the editor is playing, dragging an edge pauses playback.
 - Hold the pointer near the left or right edge of the tracks, or past it, to scroll the timeline while you trim. The further out you go, the faster it scrolls.
 - Image clips have no media start or end: drag their edges to make them as long as you need.
+- Keyframes that a trim leaves outside the clip are kept, hidden, and come back when you lengthen the clip again. When you trim the start of a video, its keyframes stay on the same frames of the video, so the motion stays in step with the picture; on images, solids and texts they stay at the same distance from the clip's start. See [Know what happens to keyframes when you edit clips](keyframes.md#know-what-happens-to-keyframes-when-you-edit-clips).
 
 ### Snap the edge while you trim
 
@@ -213,4 +214,4 @@ To move a cut between two clips without changing their total length, to change t
 - [Projects and saving](projects-and-saving.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 32, 2026-10-17</sub>
+<sub>Last updated: Batch 35, 2026-10-17</sub>

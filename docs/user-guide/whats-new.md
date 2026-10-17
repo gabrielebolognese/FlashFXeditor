@@ -2,6 +2,11 @@
 
 Shorts Editor grows in steps called batches. This page lists what each batch added that you can see or use, newest first. Follow the links for the full instructions.
 
+> **Video placeholder: What's new in Batch 35**
+> - File: `videos/whats-new/batch-35.mp4` (not recorded yet)
+> - Length: about 60 seconds
+> - Shows: a 1080×1920 project with a talking-head video on V1 and A1 and a logo PNG on V2; click the logo and press <kbd>Home</kbd>; click the stopwatch at the right of the **Transform** header in **Edit Properties**: it turns gold and a diamond appears on a dark lane at the bottom of the logo's clip; drag the logo past the left edge of the frame; press <kbd>Ctrl</kbd>+<kbd>→</kbd> and drag it into the top right corner: a second diamond appears; press <kbd>Home</kbd> and <kbd>Space</kbd>: the logo slides in; click the first diamond, open **Ease** and choose **Overshoot**: the logo slides past the corner and settles back; drag the second diamond to the right: the slide gets slower; put the playhead on a punchline in the video and press <kbd>Shift</kbd>+<kbd>Z</kbd>: playing over the cut, the face zooms in smoothly instead of jumping.
+
 > **Video placeholder: What's new in Batch 34**
 > - File: `videos/whats-new/batch-34.mp4` (not recorded yet)
 > - Length: about 60 seconds
@@ -128,6 +133,7 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 > - Shows: open a project with three clips on the timeline; press <kbd>Space</kbd> to play and let the timeline page forward; press <kbd>L</kbd> three times to reach 8x, then <kbd>K</kbd>; hold <kbd>K</kbd> and tap <kbd>L</kbd> to step one frame; turn on **Loop playback**; point at the **Dropped** readout in the status strip.
 
 ## In this page
+- [Batch 35: Keyframes](#batch-35-keyframes)
 - [Batch 34: Shapes and images](#batch-34-shapes-and-images)
 - [Batch 33: Transcription](#batch-33-transcription)
 - [Batch 32: Captions](#batch-32-captions)
@@ -162,6 +168,16 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 - [Batch 03: Projects, autosave and recovery](#batch-03-projects-autosave-and-recovery)
 - [Batch 02: Undo, redo and frame-exact time](#batch-02-undo-redo-and-frame-exact-time)
 - [Batch 01: The workspace](#batch-01-the-workspace)
+
+## Batch 35: Keyframes
+- Animate pictures with keyframes: click the stopwatch in the **Transform** or **Opacity** header of **Edit Properties**, then change the picture at another moment. It slides, grows, turns or fades between the looks you set. Works on video, image, solid and text clips. See [Animate a picture](keyframes.md#animate-a-picture) and [Fade a picture in or out](keyframes.md#fade-a-picture-in-or-out).
+- While the stopwatch is on, every change at the playhead writes a keyframe: dragging in the preview, the arrow keys, the **Position**, **Scale**, **Rotation** and **Opacity** fields, and **Fit**, **Fill**, **Center** and **Reset transform**. The fields follow the playhead as you play. See [Change an animated picture](keyframes.md#change-an-animated-picture).
+- Next to the stopwatch, **Previous keyframe**, **Add keyframe** / **Remove keyframe** and **Next keyframe**, with the number of keyframes. A new **Ease** row offers eight easings: **Linear**, **Ease in**, **Ease out**, **Ease in-out**, **Hold**, **Smooth**, **Snap** and **Overshoot**. See [Move between keyframes](keyframes.md#move-between-keyframes) and [Choose the easing](keyframes.md#choose-the-easing).
+- **Show clip keyframes** in the timeline toolbar now works: selected clips, and every clip on an L track, show their keyframes as diamonds on a lane along their bottom. Click a diamond to jump to it, drag it to retime the motion (with snapping, <kbd>Shift</kbd> for whole seconds), <kbd>Alt</kbd>+click the lane to add one, press <kbd>Delete</kbd> to delete the selected ones, and right-click for the keyframe menu with the easings, **Copy** and **Paste**. **Show keyframes for** in the clip menu switches the lane to **Opacity**. See [Show keyframes on the timeline](keyframes.md#show-keyframes-on-the-timeline) and [Select, move and delete keyframes on the timeline](keyframes.md#select-move-and-delete-keyframes-on-the-timeline).
+- A gold diamond on the box of a selected picture in the preview tells you whether the playhead is on a keyframe. Clips with keyframes show a diamond badge in their label bar. See [See keyframes in the preview](keyframes.md#see-keyframes-in-the-preview).
+- Splits, trims, speed changes, rate stretches, freeze frames and a new resolution keep the motion right: a clip split in the middle of a move plays exactly as before. See [Know what happens to keyframes when you edit clips](keyframes.md#know-what-happens-to-keyframes-when-you-edit-clips).
+- **Punch zoom** (<kbd>Shift</kbd>+<kbd>Z</kbd>) now zooms in smoothly over 6 frames with **Ease out** instead of jumping at the cut. See [Punch in at a cut (punch zoom)](speed-freeze-frames-and-punch-zoom.md#punch-in-at-a-cut-punch-zoom).
+- New page: [Keyframes](keyframes.md). New shortcuts section: [Keyframes](keyboard-shortcuts.md#keyframes). New troubleshooting group: [Keyframes](troubleshooting.md#keyframes).
 
 ## Batch 34: Shapes and images
 - Click **Add solid** in the timeline toolbar to add a shape at the playhead: a white rounded rectangle in the middle of the frame, 5 seconds long. Use it as a color background, a bar behind a title or a frame. See [Add a shape](shapes-and-images.md#add-a-shape).
@@ -524,4 +540,4 @@ See [The workspace](workspace.md) and [Getting started](getting-started.md).
 - [Adding media to the timeline](adding-media-to-the-timeline.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 34, 2026-10-17</sub>
+<sub>Last updated: Batch 35, 2026-10-17</sub>

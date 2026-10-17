@@ -1,6 +1,6 @@
 # Editing properties
 
-The **Edit Properties** panel shows the settings of what you selected: a clip, a track, a marker, or the project itself when nothing is selected. Use it to type exact values, such as a position in pixels or the end time of a clip, to drag a value while you watch the preview, to fit or fill the frame with one click, to crop a picture, to change a clip's speed, to shape and color solids, to style text and save it as a preset, to give your captions their look and place, and to change several clips at once.
+The **Edit Properties** panel shows the settings of what you selected: a clip, a track, a marker, or the project itself when nothing is selected. Use it to type exact values, such as a position in pixels or the end time of a clip, to drag a value while you watch the preview, to fit or fill the frame with one click, to animate a picture with keyframes, to crop a picture, to change a clip's speed, to shape and color solids, to style text and save it as a preset, to give your captions their look and place, and to change several clips at once.
 
 > **Video placeholder: Edit Properties in action**
 > - File: `videos/editing-properties/overview.mp4` (not recorded yet)
@@ -27,6 +27,7 @@ The **Edit Properties** panel shows the settings of what you selected: a clip, a
 - [Change a clip's name, color and times](#change-a-clips-name-color-and-times)
 - [Turn a clip off](#turn-a-clip-off)
 - [Place a picture with exact values](#place-a-picture-with-exact-values)
+- [Animate values with keyframes](#animate-values-with-keyframes)
 - [Crop a picture](#crop-a-picture)
 - [Change a clip's speed](#change-a-clips-speed)
 - [Pick a color](#pick-a-color)
@@ -46,7 +47,7 @@ The **Edit Properties** panel sits at the top of the left side, next to the Medi
 | A marker in the ruler | The **Marker** section | [Edit a marker in Edit Properties](markers-and-in-out-points.md#edit-a-marker-in-edit-properties) |
 
 - With several clips or tracks selected, the right end of the panel header shows how many, for example **3 clips** or **2 tracks**.
-- Each section starts with a header: an arrow and the section name. Click the header to fold the section away, and click it again to open it. A folded section stays folded for every selection (fold **Transform** once, and it stays folded for every clip you select), and the project remembers it when you open it again.
+- Each section starts with a header: an arrow and the section name. The **Transform** and **Opacity** headers also hold a stopwatch at their right end, for keyframes; see [Animate values with keyframes](#animate-values-with-keyframes). Click the header to fold the section away, and click it again to open it. A folded section stays folded for every selection (fold **Transform** once, and it stays folded for every clip you select), and the project remembers it when you open it again.
 - The quick actions stay at the top of the panel while the sections scroll under them.
 - Press <kbd>Tab</kbd> to move to the next field and <kbd>Shift</kbd>+<kbd>Tab</kbd> to the previous one.
 - The panel follows the selection, on the timeline and in the preview. When you move, resize or rotate a picture in the preview, the fields show the new values as soon as you release the mouse button. They also follow **Undo** and **Redo**.
@@ -112,7 +113,7 @@ With clips selected, a row of one-click buttons sits at the top of the panel. Po
 | **Flip horizontal**, **Flip vertical** | Mirror the selected pictures left to right, or upside down. Click again to mirror them back. |
 | **Reset transform** | Puts the selected pictures back to how a new clip is placed. |
 | **Freeze frame** | Holds the frame at the playhead for 2 seconds (<kbd>Shift</kbd>+<kbd>F</kbd>). See [Hold a frame (freeze frame)](speed-freeze-frames-and-punch-zoom.md#hold-a-frame-freeze-frame). |
-| **Punch zoom** | Cuts the clip at the playhead and makes the part after the cut 20% larger (<kbd>Shift</kbd>+<kbd>Z</kbd>). See [Punch in at a cut (punch zoom)](speed-freeze-frames-and-punch-zoom.md#punch-in-at-a-cut-punch-zoom). |
+| **Punch zoom** | Cuts the clip at the playhead and zooms the part after the cut 20% larger within 6 frames (<kbd>Shift</kbd>+<kbd>Z</kbd>). See [Punch in at a cut (punch zoom)](speed-freeze-frames-and-punch-zoom.md#punch-in-at-a-cut-punch-zoom). |
 | **0.5x**, **1x**, **1.5x**, **2x** | Set the speed of the selected video and audio clips. See [Change a clip's speed with one click](speed-freeze-frames-and-punch-zoom.md#change-a-clips-speed-with-one-click). |
 | **Save as preset** (a bookmark with a plus) | Opens a name field under the row: press <kbd>Enter</kbd> to save the selected text's style as a new text preset. See [Save a text style as a preset](text-presets.md#save-a-text-style-as-a-preset). |
 | **Update preset** (a bookmark with a check mark) | Writes the selected text's style into the preset it uses. Other texts that use the preset keep their style until you apply it to them again. See [Update a preset](text-presets.md#update-a-preset). |
@@ -148,6 +149,7 @@ Select one or more video, image, solid or text clips, then click a button in the
 | **Reset transform** | The picture goes back to how a new clip is placed: fitted to the frame and centered, upright, not mirrored, with the anchor point in the middle. Its crop stays. | Same as **Fit** |
 
 - These act on every selected picture, also those that are not under the playhead.
+- On a picture animated with keyframes, **Fit**, **Fill**, **Center** and **Reset transform** act on its look at the playhead and write a keyframe there; the flips mirror every frame. See [Change an animated picture](keyframes.md#change-an-animated-picture).
 - On a solid, **Fit** and **Fill** change its **Scale**, not its size, and **Reset transform** centers it at 100%. See [Move, turn and fade shapes](shapes-and-images.md#move-turn-and-fade-shapes).
 - On a cropped picture, **Fit**, **Fill** and **Center** size and center the part left after the crop. **Reset transform** leaves the crop as it is. See [Cropping and reframing](cropping-and-reframing.md).
 - A tilted picture keeps its angle. **Fit** and **Fill** size the upright box around the tilted picture: with **Fit** the whole tilted picture stays inside the frame; with **Fill** that box covers the frame, so small empty corners can remain where the tilted edges cross the frame.
@@ -267,9 +269,22 @@ Select a video, image, solid or text clip. The **Transform** and **Opacity** sec
 
 - A new scale or angle keeps the anchor point where it is: the picture grows, shrinks or turns around it.
 - A new anchor point does not move the picture: **Position** changes instead, so the picture stays in place. This is the same as dragging the anchor marker with <kbd>Alt</kbd> in the preview; see [Move the anchor point](arranging-layers-in-the-preview.md#move-the-anchor-point).
-- Every value applies to the whole clip, on every frame of it.
+- Every value applies to the whole clip, on every frame of it, until you turn on the section's stopwatch. Then the fields show the values at the playhead, and a change writes a keyframe there. See [Animate values with keyframes](#animate-values-with-keyframes).
 - Typed and dragged values don't snap. Snapping works only while you drag a picture in the preview.
 - The steps are named **Change position**, **Change scale**, **Change rotation**, **Change anchor** and **Change opacity**; the flip buttons make **Flip horizontal** and **Flip vertical**.
+
+## Animate values with keyframes
+
+The **Transform** and **Opacity** sections can change over time. Click the stopwatch at the right of the section header (tooltip **Animate transform** or **Animate opacity**): it turns gold and stores the picture's look at the playhead as a first keyframe. Then move the playhead and change the values: each change writes a keyframe at the playhead, and the picture moves, grows, turns or fades between them.
+
+While the stopwatch is on:
+
+- The header shows **Previous keyframe**, **Add keyframe** (or **Remove keyframe** on a keyframe), **Next keyframe** and the number of keyframes, left of the stopwatch.
+- An **Ease** row, the first row of the section, sets how the values travel from the keyframe at the playhead to the next one: **Linear**, **Ease in**, **Ease out**, **Ease in-out**, **Hold**, **Smooth**, **Snap** or **Overshoot**. It reads `--` off the keyframes.
+- **Position**, **Scale**, **Rotation** and **Opacity** show the values at the playhead and follow it while you play or scrub. **Anchor** and **Flip** are not animated.
+- Clicking the gold stopwatch removes the section's keyframes, and the picture keeps its look at the playhead.
+
+See [Keyframes](keyframes.md).
 
 ## Crop a picture
 
@@ -352,6 +367,7 @@ A color field is a swatch with the color's hex code next to it. The **Background
 | **Caption position**, **Move captions**, **Change caption width**, **Word highlight** and the other caption steps | The **Caption style** section. See [Undo caption changes](captions.md#undo-caption-changes). |
 | **Change shape**, **Change fill**, **Change size**, **Change corner radius** | The **Solid** section. See [Undo shape and image changes](shapes-and-images.md#undo-shape-and-image-changes). |
 | **Change background color** | **Background** in the **Project** section |
+| **Animate transform**, **Remove opacity keyframes**, **Add keyframe**, **Change keyframe easing** and the other keyframe steps | The stopwatches, the keyframe buttons and **Ease**. See [Undo keyframe changes](keyframes.md#undo-keyframe-changes). |
 
 See [Undo and redo changes](projects-and-saving.md#undo-and-redo-changes).
 
@@ -361,11 +377,11 @@ These parts are available in a later version:
 
 - More sections for clips: audio (volume and fades) and transitions.
 - The dimmed quick actions: fades, mute and transitions.
-- Values that change over time (keyframes): every value applies to the whole clip.
 - Duplicating several clips, or a clip with its linked sound, with <kbd>Ctrl</kbd>+<kbd>D</kbd>, and the **Duplicate** row of the layer menu.
 - The dimmed rows of the **Project** section: **Still duration**, **Transition** and **Cache** with **Clear cache**.
 
 ## Related pages
+- [Keyframes](keyframes.md)
 - [Shapes and images](shapes-and-images.md)
 - [Cropping and reframing](cropping-and-reframing.md)
 - [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md)
@@ -385,4 +401,4 @@ These parts are available in a later version:
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 34, 2026-10-17</sub>
+<sub>Last updated: Batch 35, 2026-10-17</sub>

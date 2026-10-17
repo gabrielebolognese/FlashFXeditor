@@ -1,6 +1,6 @@
 # Text animations
 
-Text animations make titles and subtitles move as they appear and leave: a fade, a slide, a pop, words popping in one after another, a typewriter. Give a text clip an in animation, an out animation or both in the **Animation** section of **Edit Properties**. Each click plays the animation in the preview, so you see the result right away. No keyframes needed.
+Text animations make titles and subtitles move as they appear and leave: a fade, a slide, a pop, words popping in one after another, a typewriter. Give a text clip an in animation, an out animation or both in the **Animation** section of **Edit Properties**. Each click plays the animation in the preview, so you see the result right away. No keyframes needed; to move, scale or turn a whole title over time on top of its animation, use [keyframes](keyframes.md).
 
 > **Video placeholder: Text animations in one minute**
 > - File: `videos/text-animations/overview.mp4` (not recorded yet)
@@ -208,10 +208,10 @@ Every animation change is one step in the history. Hover **Undo** in the app bar
 These parts are available in a later version:
 
 - Exporting the video with its animations. **Export frame** already includes them.
-- Moving, scaling or turning a text over time with keyframes.
 
 ## Related pages
 - [Titles and text](titles-and-text.md)
+- [Keyframes](keyframes.md)
 - [Text presets](text-presets.md)
 - [Captions](captions.md)
 - [Editing properties](editing-properties.md)
@@ -220,4 +220,4 @@ These parts are available in a later version:
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 32, 2026-10-17</sub>
+<sub>Last updated: Batch 35, 2026-10-17</sub>

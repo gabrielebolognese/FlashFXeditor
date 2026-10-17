@@ -34,7 +34,7 @@ Cropping cuts away the sides of a video or image, so only the part you want stay
 A crop cuts away part of the left, right, top and bottom sides of a picture. The part that is left, the visible part, stays exactly where it was in the frame: cropping doesn't move or resize the picture.
 
 - **Video and image clips** can be cropped. Audio clips have no picture.
-- **The whole clip.** A crop applies to every frame of the clip. Both halves of a split clip keep it, and so does a copy.
+- **The whole clip.** A crop applies to every frame of the clip. Both halves of a split clip keep it, and so does a copy. Keyframes don't animate the crop: to reveal a picture over time, animate its position, scale or opacity instead; see [Keyframes](keyframes.md).
 - **Media pixels.** A crop is measured in pixels of the media itself, not of the project frame. Cropping 100 px from the left of a 1920×1080 video removes 100 of its 1920 columns, however large the picture is shown. You can also crop in percent of the media's width (left and right) or height (top and bottom).
 - **Something always stays.** A crop always leaves at least 1 pixel of the media visible across and down.
 - **The visible part is the layer.** In the preview, the gold outline, the box and its handles go around the visible part. A click on a cropped-away area selects the picture below it, or nothing. **Fit in frame**, **Fill frame** and **Center in frame** size and center the visible part.
@@ -220,7 +220,6 @@ See [Undo and redo changes](projects-and-saving.md#undo-and-redo-changes).
 
 These parts are available in a later version:
 
-- Crops that change over time (keyframes): a crop applies to the whole clip.
 - Copying the crop of one clip to other clips.
 
 ## Related pages
@@ -232,4 +231,4 @@ These parts are available in a later version:
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 29, 2026-10-16</sub>
+<sub>Last updated: Batch 35, 2026-10-17</sub>

@@ -1,10 +1,10 @@
 # Troubleshooting
 
-This page helps you when something does not work as expected: the editor does not start in your browser, the preview stays empty, a folder or a file does not open, a clip drag, a trim, a split, a delete, a timeline tool, a typed timecode, a marker, an in/out range or **Lift** and **Extract** do something you did not expect, media from the Media panel lands somewhere you did not expect, a clip shows no thumbnails, a video gets no proxy or its proxy fails, the preview zoom, overlays or fullscreen behave unexpectedly, a picture in the preview can't be selected, moves unexpectedly, doesn't snap where you expect or gets cropped instead of resized, a value or a crop in **Edit Properties** doesn't do what you expect, a speed change, a freeze frame or a punch zoom does something you did not expect, a shape or an image doesn't look or play as you expect, a title lands somewhere you did not expect, the keys type into a text, a font is missing, a text preset doesn't apply, update or sync as you expect, a text animation plays shorter or differently than you expect, a caption cue doesn't import, move, show or highlight as you expect, a transcription doesn't start, is slow or gets words wrong, playback stutters, or you hear no sound. Each problem lists what you see, why it happens and what to do. The last section lists what the current version cannot do yet.
+This page helps you when something does not work as expected: the editor does not start in your browser, the preview stays empty, a folder or a file does not open, a clip drag, a trim, a split, a delete, a timeline tool, a typed timecode, a marker, an in/out range or **Lift** and **Extract** do something you did not expect, media from the Media panel lands somewhere you did not expect, a clip shows no thumbnails, a video gets no proxy or its proxy fails, the preview zoom, overlays or fullscreen behave unexpectedly, a picture in the preview can't be selected, moves unexpectedly, doesn't snap where you expect or gets cropped instead of resized, a value or a crop in **Edit Properties** doesn't do what you expect, a speed change, a freeze frame or a punch zoom does something you did not expect, a keyframe animation or a keyframe lane doesn't behave as you expect, a shape or an image doesn't look or play as you expect, a title lands somewhere you did not expect, the keys type into a text, a font is missing, a text preset doesn't apply, update or sync as you expect, a text animation plays shorter or differently than you expect, a caption cue doesn't import, move, show or highlight as you expect, a transcription doesn't start, is slow or gets words wrong, playback stutters, or you hear no sound. Each problem lists what you see, why it happens and what to do. The last section lists what the current version cannot do yet.
 
 > **Video placeholder: Fix common problems**
 > - File: `videos/troubleshooting/overview.mp4` (not recorded yet)
-> - Length: about 200 seconds
+> - Length: about 210 seconds
 > - Shows:
 >   1. Open the editor in a browser without the required features: the screen "This browser cannot run Shorts Editor" lists what is missing.
 >   2. In Chrome, open `chrome://settings/system` and show **Use graphics acceleration when available** turned on.
@@ -47,6 +47,7 @@ This page helps you when something does not work as expected: the editor does no
 >   39. Open the **Captions** tab of a project with cues, click into a cue's text and press <kbd>Delete</kbd>: a letter disappears. Press <kbd>Esc</kbd>, then <kbd>Delete</kbd>: the cue is deleted. On the **CC** row, drag a cue into the next one: it stops against it.
 >   40. Click **M** in the header of the audio track with the voice, click the microphone in the **Captions** header, then **Transcribe**: the message **No audio to transcribe** appears. Click **M** again, set an in and an out point that cut through two cues, and transcribe **In to out**: the review offers **Replace 2 cues**. Press <kbd>Esc</kbd>: the transcript is gone and nothing changed.
 >   41. Click **Add solid**, then click **Ellipse** in the **Solid** section: the **Radius** field is dimmed. Click **Rounded rectangle**, type `500` in **Radius**: the ends are half circles and grow no rounder. Drag a corner handle of the shape: **Scale** in **Transform** stays at 100% while **W** and **H** change.
+>   42. Select a logo whose **Transform** stopwatch is on, with **Show clip keyframes** on. Click a diamond on its lane and press <kbd>Delete</kbd>: only that keyframe disappears and the **Undo** tooltip reads **Undo Delete keyframe**. Click the clip's body and press <kbd>Delete</kbd>: now the clip goes. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> twice.
 
 ## In this page
 - [Browser and graphics](#browser-and-graphics)
@@ -165,6 +166,16 @@ This page helps you when something does not work as expected: the editor does no
   - [Freeze frame or punch zoom does nothing](#freeze-frame-or-punch-zoom-does-nothing)
   - [A freeze frame moved clips on every track](#a-freeze-frame-moved-clips-on-every-track)
   - [The Speed field is dimmed at 0.0](#the-speed-field-is-dimmed-at-00)
+- [Keyframes](#keyframes)
+  - [A picture slides between two places after you moved it](#a-picture-slides-between-two-places-after-you-moved-it)
+  - [The keyframe lane doesn't show on a clip](#the-keyframe-lane-doesnt-show-on-a-clip)
+  - [The stopwatch is on but the count shows 0](#the-stopwatch-is-on-but-the-count-shows-0)
+  - [Delete removed keyframes instead of the clip](#delete-removed-keyframes-instead-of-the-clip)
+  - [A keyframe stops before where you drag it](#a-keyframe-stops-before-where-you-drag-it)
+  - [The Ease row shows -- or its choices are dimmed](#the-ease-row-shows----or-its-choices-are-dimmed)
+  - [Paste keyframes is dimmed or Ctrl+V doesn't paste keyframes](#paste-keyframes-is-dimmed-or-ctrlv-doesnt-paste-keyframes)
+  - [Punch zoom no longer jumps at the cut](#punch-zoom-no-longer-jumps-at-the-cut)
+  - [A change to the anchor, crop or size applies to every frame](#a-change-to-the-anchor-crop-or-size-applies-to-every-frame)
 - [Shapes and images](#shapes-and-images)
   - [Add solid put the shape on a new track](#add-solid-put-the-shape-on-a-new-track)
   - [The Radius field is dimmed](#the-radius-field-is-dimmed)
@@ -1295,6 +1306,88 @@ See [Audio](audio.md).
 
 **Fix:** Nothing is wrong. Change its length with **Duration** or by dragging its edges. See [Change a freeze frame](speed-freeze-frames-and-punch-zoom.md#change-a-freeze-frame).
 
+## Keyframes
+
+### A picture slides between two places after you moved it
+
+**Symptom:** You drag a picture or type a new position, and when you play, it glides from its old place to the new one instead of moving everywhere. Or the change shows only around the playhead.
+
+**Cause:** The picture's **Transform** stopwatch is on (gold). While it is on, every change writes a keyframe at the playhead, and the picture moves between its keyframes. A **Punch zoom** turns it on for the part after the cut.
+
+**Fix:** To move the whole motion, make the same change at each keyframe: use **Previous keyframe** and **Next keyframe** in the **Transform** header to get there. To give up the animation, click the gold stopwatch: the keyframes go, and the picture keeps its look at the playhead. See [Change an animated picture](keyframes.md#change-an-animated-picture).
+
+### The keyframe lane doesn't show on a clip
+
+**Symptom:** A clip has keyframes, but no lane with diamonds appears along its bottom on the timeline.
+
+**Cause:** One of these:
+- **Show clip keyframes** in the timeline toolbar is off.
+- The clip is not selected, and its track is not L. Lanes show on selected clips, and on every clip of an L track.
+- The track is S: its clips are only a label bar. Audio tracks and the **CC** caption track have no lanes.
+- The lane shows the other section: the clip menu's **Show keyframes for** is set to **Opacity** while the keyframes are in **Transform**, or the other way around.
+- The keyframes lie outside the clip after a trim.
+
+**Fix:** Turn on **Show clip keyframes**, select the clip, make its track M or L, and check **Show keyframes for** in the clip menu. Lengthen the clip to see keyframes beyond its ends. See [Show keyframes on the timeline](keyframes.md#show-keyframes-on-the-timeline).
+
+### The stopwatch is on but the count shows 0
+
+**Symptom:** The **Transform** or **Opacity** stopwatch is gold, but the count next to it reads **0**, the lane shows no diamonds, and **Previous keyframe** and **Next keyframe** do nothing.
+
+**Cause:** The clip still has keyframes, but they lie outside its ends: a trim or a split left them there. They are kept so a longer clip shows them again, and they still shape the motion inside the clip.
+
+**Fix:** Lengthen the clip to bring them back, or click the gold stopwatch to remove them; the picture keeps its look at the playhead. See [Know what happens to keyframes when you edit clips](keyframes.md#know-what-happens-to-keyframes-when-you-edit-clips).
+
+### Delete removed keyframes instead of the clip
+
+**Symptom:** You press <kbd>Delete</kbd> to delete a clip, and only some diamonds disappear from its lane. The **Undo** tooltip reads **Undo Delete keyframes**.
+
+**Cause:** Keyframes were selected (gold diamonds). While keyframes are selected, <kbd>Delete</kbd>, <kbd>Shift</kbd>+<kbd>Delete</kbd> and the **Delete** buttons delete only them.
+
+**Fix:** Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>, click the clip's body (not a diamond) to deselect the keyframes, and press <kbd>Delete</kbd> again.
+
+### A keyframe stops before where you drag it
+
+**Symptom:** While you drag a diamond along the lane, it stops at a place and goes no further.
+
+**Cause:** Keyframes stay inside their clip: the drag stops when a dragged keyframe reaches the clip's first or last frame. With several keyframes selected, the first or the last of them stops the drag.
+
+**Fix:** Lengthen the clip first, or select fewer keyframes. See [Select, move and delete keyframes on the timeline](keyframes.md#select-move-and-delete-keyframes-on-the-timeline).
+
+### The Ease row shows -- or its choices are dimmed
+
+**Symptom:** The **Ease** row of **Transform** or **Opacity** reads `--`, and the easings in its list are dimmed, or a new easing changes nothing you can see.
+
+**Cause:** One of these:
+- The playhead is not on a keyframe. **Ease** sets the easing of the keyframe at the playhead.
+- Several clips are selected and their keyframes at the playhead have different easings. The choices still work and set them all.
+- The keyframe is the last one: its easing only matters once a keyframe follows it.
+
+**Fix:** Move the playhead onto the keyframe with **Previous keyframe** or **Next keyframe**, or click its diamond on the timeline. See [Choose the easing](keyframes.md#choose-the-easing).
+
+### Paste keyframes is dimmed or Ctrl+V doesn't paste keyframes
+
+**Symptom:** In the keyframe menu, **Paste keyframes** is dimmed, or <kbd>Ctrl</kbd>+<kbd>V</kbd> pastes nothing.
+
+**Cause:** **Paste keyframes** works after **Copy keyframes**, and only on a lane of the same section: keyframes copied from a **Transform** lane paste on **Transform** lanes, those from an **Opacity** lane on **Opacity** lanes. <kbd>Ctrl</kbd>+<kbd>C</kbd> and <kbd>Ctrl</kbd>+<kbd>V</kbd> don't copy or paste keyframes in this version.
+
+**Fix:** Copy the keyframes from the keyframe menu, switch the target clip's lane with **Show keyframes for** in the clip menu if needed, and right-click one of its diamonds. A clip without keyframes has no diamond: turn its stopwatch on first. See [Copy keyframes to another clip](keyframes.md#copy-keyframes-to-another-clip).
+
+### Punch zoom no longer jumps at the cut
+
+**Symptom:** After <kbd>Shift</kbd>+<kbd>Z</kbd>, the shot zooms in over a few frames instead of jumping closer right at the cut, and the **Transform** stopwatch of the part after the cut is gold.
+
+**Cause:** Punch zoom now zooms in over 6 frames with **Ease out**, using two keyframes. A setting to switch back to the jump is not available yet.
+
+**Fix:** To jump at once, select the part after the cut, show its keyframes and delete the first keyframe (on its first frame): the part then shows 120% from the cut on. See [Punch in at a cut (punch zoom)](speed-freeze-frames-and-punch-zoom.md#punch-in-at-a-cut-punch-zoom).
+
+### A change to the anchor, crop or size applies to every frame
+
+**Symptom:** With the stopwatch on, you change **Anchor**, a flip, the crop, a shape's **W** or **H**, or a text's size or style, and the whole clip changes, not only the frame at the playhead.
+
+**Cause:** Keyframes animate only **Position**, **Scale**, **Rotation** and **Opacity**. The other settings are not animated.
+
+**Fix:** Animate **Scale** or **Position** instead, for example to make a picture grow or slide in. See [How keyframes work](keyframes.md#how-keyframes-work).
+
 ## Shapes and images
 
 ### Add solid put the shape on a new track
@@ -1875,11 +1968,12 @@ The current version cannot do these things yet. Each one is available in a later
 - **Editing clips:** clips can't be cut, copied or pasted (the **Cut**, **Copy** and **Paste** rows of the clip menu, and the **Copy**, **Paste** and **Duplicate** rows of the preview's layer menu, are dimmed). <kbd>Ctrl</kbd>+<kbd>D</kbd> duplicates one clip at a time, without its linked sound. The crop of a clip can't be copied to other clips.
 - **Markers:** markers belong to the timeline; markers inside clips are not available. Markers and the in/out range don't show on the scrollbars.
 - **Menus:** only clips, gaps, track headers, the ruler, media cards and pictures in the preview have a right-click menu, with a first set of rows. Menu rows can't be chosen with the arrow keys.
-- **Speed and edit points:** a speed applies to the whole clip, and sound at another speed always changes pitch. Playing a clip backward is not available. A punch zoom happens at once, at the cut; a zoom that grows over a few frames is not available. The length of a new freeze frame (2 seconds) and the size of a punch zoom (20%) can't be changed. A selected cut (edit point) only marks the cut; transitions are not available.
+- **Speed and edit points:** a speed applies to the whole clip, and sound at another speed always changes pitch. Playing a clip backward is not available. The length of a new freeze frame (2 seconds), the size of a punch zoom (20%) and its 6-frame zoom can't be changed. A selected cut (edit point) only marks the cut; transitions are not available.
 - **Tracks:** track headers have room for names of about 9 characters; longer names are shortened. Groups are not marked on the timeline.
-- **Preview:** a change to a picture, its crop included, applies to the whole clip; changes over time (keyframes) are not available. The **Zoom**, **Preview quality** and **Overlays** menus can't be used with the arrow keys.
+- **Keyframes:** keyframes animate position, scale, rotation and opacity; a clip's volume can't change over time. Keyframes can't be copied or pasted with <kbd>Ctrl</kbd>+<kbd>C</kbd> and <kbd>Ctrl</kbd>+<kbd>V</kbd>; use the keyframe menu.
+- **Preview:** the **Zoom**, **Preview quality** and **Overlays** menus can't be used with the arrow keys.
 - **Edit Properties:** the audio and transition sections are not available, nor are the dimmed quick actions and the **Still duration**, **Transition** and **Cache** rows of the **Project** section. A new resolution always scales the layout; keeping the layout as it is, is not available.
-- **Text:** a setting to always make new titles 3 seconds long is not available. A text's handles don't snap, and fonts can't be chosen with the arrow keys in the font picker. Deleted starter presets can't be restored. Text animations play in the preview and in **Export frame**; moving text over time with keyframes is not available.
+- **Text:** a setting to always make new titles 3 seconds long is not available. A text's handles don't snap, and fonts can't be chosen with the arrow keys in the font picker. Deleted starter presets can't be restored. Text animations play in the preview and in **Export frame**.
 - **Captions:** all cues share one style; a style for a single cue is not available. Captions can't be selected, moved or styled in the preview, and cues can't be pasted.
 - **Transcription:** the cues can't be edited in the review; fix them in the **Captions** tab after adding them. The default model and language are set in the **Transcribe captions** dialog only.
 - **Media that cannot be decoded, or whose file is missing,** shows nothing in the preview, with no placeholder.
@@ -1899,6 +1993,7 @@ The current version cannot do these things yet. Each one is available in a later
 - [Splitting, deleting and closing gaps](splitting-and-deleting.md)
 - [Advanced trimming](advanced-trimming.md)
 - [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md)
+- [Keyframes](keyframes.md)
 - [Shapes and images](shapes-and-images.md)
 - [Getting started](getting-started.md)
 - [Projects and saving](projects-and-saving.md)
@@ -1917,4 +2012,4 @@ The current version cannot do these things yet. Each one is available in a later
 - [Transcription](transcription.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 34, 2026-10-17</sub>
+<sub>Last updated: Batch 35, 2026-10-17</sub>

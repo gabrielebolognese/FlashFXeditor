@@ -229,6 +229,7 @@ When you choose another resolution, or type another size, the layout of your pic
 
 - Each picture keeps its place relative to the frame: its position moves in proportion to the new width and height.
 - Each picture grows or shrinks by the smaller of the two size changes, so a picture that fit inside the old frame fits inside the new one. Angles and flips stay.
+- Keyframes follow: the positions and scales stored in them change the same way, so animated pictures keep their motion in the new frame. See [Keyframes](keyframes.md).
 - Pictures on locked tracks are scaled too.
 
 For example, going from **9:16 · 1080×1920** to **4:5 · 1080×1350** makes every picture about 70% of its size: a full-frame vertical video now fits the height of the new frame, with bands at the sides. To cover the new frame, select the clips and click **Fill frame** in **Edit Properties**; to refit a picture to the frame, click **Fit in frame** or **Reset transform**. See [Fit, fill or center a picture](editing-properties.md#fit-fill-or-center-a-picture).
@@ -253,4 +254,4 @@ Choosing to keep the layout as it is when you change the resolution is available
 - [Titles and text](titles-and-text.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 34, 2026-10-17</sub>
+<sub>Last updated: Batch 35, 2026-10-17</sub>
