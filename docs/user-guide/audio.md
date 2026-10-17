@@ -196,7 +196,7 @@ The editor decodes sound before it plays it, and analyzes it once after import. 
 
 ### Analysis after import
 
-After you import an audio file or a video with sound, the editor analyzes its sound in the background, while you are not playing. It saves the result in the project's `cache` folder, so the next time you open the project the analysis is reused. If you delete the `cache` folder, or a media file changes, the editor analyzes the sound again. Audio clips draw their waveform from this analysis; until it is done, they show only their color. See [Read a waveform](clip-thumbnails-and-waveforms.md#read-a-waveform).
+After you import an audio file or a video with sound, the editor analyzes its sound in the background, while you are not playing. It saves the result in the project's `cache` folder, so the next time you open the project the analysis is reused. If you delete the `cache` folder, or a media file changes, the editor analyzes the sound again. Audio clips draw their waveform from this analysis; until it is done, they show only their color. **Normalize** and **Remove silence** work from it too (see [Normalize a clip](audio-editing.md#normalize-a-clip) and [Removing silence](removing-silence.md)). See [Read a waveform](clip-thumbnails-and-waveforms.md#read-a-waveform).
 
 > **Note:** The [proxies](proxies.md) of heavy videos carry no sound. The sound you hear always comes from the original file, whatever the preview quality.
 
@@ -216,6 +216,7 @@ After you import an audio file or a video with sound, the editor analyzes its so
 
 ## Related pages
 - [Editing audio](audio-editing.md)
+- [Removing silence](removing-silence.md)
 - [Clip thumbnails, waveforms and badges](clip-thumbnails-and-waveforms.md)
 - [Preview and playback](preview-and-playback.md)
 - [Markers and in/out points](markers-and-in-out-points.md)
@@ -231,4 +232,4 @@ After you import an audio file or a video with sound, the editor analyzes its so
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 37, 2026-10-17</sub>
+<sub>Last updated: Batch 38, 2026-10-17</sub>

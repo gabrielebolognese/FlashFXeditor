@@ -1,6 +1,6 @@
 # Troubleshooting
 
-This page helps you when something does not work as expected: the editor does not start in your browser, the preview stays empty, a folder or a file does not open, a clip drag, a trim, a split, a delete, a timeline tool, a typed timecode, a marker, an in/out range or **Lift** and **Extract** do something you did not expect, media from the Media panel lands somewhere you did not expect, a clip shows no thumbnails, a video gets no proxy or its proxy fails, the preview zoom, overlays or fullscreen behave unexpectedly, a picture in the preview can't be selected, moves unexpectedly, doesn't snap where you expect or gets cropped instead of resized, a value or a crop in **Edit Properties** doesn't do what you expect, a speed change, a freeze frame or a punch zoom does something you did not expect, a keyframe animation or a keyframe lane doesn't behave as you expect, a fade or a transition doesn't go where you expect, gets shorter or shows red stripes, the rubber band, **Normalize**, **Auto-duck**, **Detach audio** or **Audio scrub** doesn't do what you expect, a shape or an image doesn't look or play as you expect, a title lands somewhere you did not expect, the keys type into a text, a font is missing, a text preset doesn't apply, update or sync as you expect, a text animation plays shorter or differently than you expect, a caption cue doesn't import, move, show or highlight as you expect, a transcription doesn't start, is slow or gets words wrong, playback stutters, or you hear no sound. Each problem lists what you see, why it happens and what to do. The last section lists what the current version cannot do yet.
+This page helps you when something does not work as expected: the editor does not start in your browser, the preview stays empty, a folder or a file does not open, a clip drag, a trim, a split, a delete, a timeline tool, a typed timecode, a marker, an in/out range or **Lift** and **Extract** do something you did not expect, media from the Media panel lands somewhere you did not expect, a clip shows no thumbnails, a video gets no proxy or its proxy fails, the preview zoom, overlays or fullscreen behave unexpectedly, a picture in the preview can't be selected, moves unexpectedly, doesn't snap where you expect or gets cropped instead of resized, a value or a crop in **Edit Properties** doesn't do what you expect, a speed change, a freeze frame or a punch zoom does something you did not expect, a keyframe animation or a keyframe lane doesn't behave as you expect, a fade or a transition doesn't go where you expect, gets shorter or shows red stripes, the rubber band, **Normalize**, **Auto-duck**, **Detach audio** or **Audio scrub** doesn't do what you expect, **Remove silence** cuts too much, too little or nothing, a shape or an image doesn't look or play as you expect, a title lands somewhere you did not expect, the keys type into a text, a font is missing, a text preset doesn't apply, update or sync as you expect, a text animation plays shorter or differently than you expect, a caption cue doesn't import, move, show or highlight as you expect, a transcription doesn't start, is slow or gets words wrong, playback stutters, or you hear no sound. Each problem lists what you see, why it happens and what to do. The last section lists what the current version cannot do yet.
 
 > **Video placeholder: Fix common problems**
 > - File: `videos/troubleshooting/overview.mp4` (not recorded yet)
@@ -50,6 +50,7 @@ This page helps you when something does not work as expected: the editor does no
 >   42. Select a logo whose **Transform** stopwatch is on, with **Show clip keyframes** on. Click a diamond on its lane and press <kbd>Delete</kbd>: only that keyframe disappears and the **Undo** tooltip reads **Undo Delete keyframe**. Click the clip's body and press <kbd>Delete</kbd>: now the clip goes. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> twice.
 >   43. Put two videos that each use their whole file end to end on V1, click right on the cut between them and press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd>: the block is striped red and the message **Not enough media for the transition** appears. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>. Select the first video and click **Fade in 0.5 s** twice: the second click removes the fade, and the **Undo** tooltip reads **Undo Remove fade in**.
 >   44. Put a music clip on A1 and a voice clip on A2 under it, select the music and click **Auto-duck** in the **Audio** section: the message **No voice to duck under** appears. Drag the A2 header above A1 and click **Auto-duck** again: the music's line dips under the voice. Click **Auto-duck** once more: the dip gets twice as deep; press <kbd>Ctrl</kbd>+<kbd>Z</kbd>.
+>   45. Select a title and point at **Remove silence** in the quick actions: it is dimmed. Select a talking-head video recorded in a noisy room and click **Remove silence**: the row reads **No silence found**. Drag the **Threshold** slider to `-30 dB`: red stripes cover the pauses. Click **Cancel**.
 
 ## In this page
 - [Browser and graphics](#browser-and-graphics)
@@ -205,6 +206,16 @@ This page helps you when something does not work as expected: the editor does no
   - [Detach audio is missing or dimmed](#detach-audio-is-missing-or-dimmed)
   - [Audio scrub plays no sound](#audio-scrub-plays-no-sound)
   - [An audio clip is faded, has diagonal lines and plays no sound](#an-audio-clip-is-faded-has-diagonal-lines-and-plays-no-sound)
+- [Removing silence](#removing-silence)
+  - [Remove silence is dimmed](#remove-silence-is-dimmed)
+  - [Remove silence shows no stripes](#remove-silence-shows-no-stripes)
+  - [The stripes cover soft words or breaths](#the-stripes-cover-soft-words-or-breaths)
+  - [Apply says Still analysing](#apply-says-still-analysing)
+  - [Remove silence says Some gaps stayed open](#remove-silence-says-some-gaps-stayed-open)
+  - [Titles, captions or music are out of step after Remove silence](#titles-captions-or-music-are-out-of-step-after-remove-silence)
+  - [Remove silence left a silence before or after the video](#remove-silence-left-a-silence-before-or-after-the-video)
+  - [Remove silence cut a second sound clip](#remove-silence-cut-a-second-sound-clip)
+  - [The arrow keys change the threshold instead of the playhead](#the-arrow-keys-change-the-threshold-instead-of-the-playhead)
 - [Shapes and images](#shapes-and-images)
   - [Add solid put the shape on a new track](#add-solid-put-the-shape-on-a-new-track)
   - [The Radius field is dimmed](#the-radius-field-is-dimmed)
@@ -1199,7 +1210,7 @@ See [Audio](audio.md).
 **Symptom:** Buttons at the top of **Edit Properties** are dimmed, and clicking them does nothing.
 
 **Cause:** One of these:
-- No selected clip can take it: **Fit in frame**, **Fill frame**, **Center in frame**, the flips, **Reset transform** and **Punch zoom** need a video, image or text clip, and an audio clip has no picture. **Freeze frame** needs a video clip. The speed buttons need a video or audio clip that is not a freeze frame. **Fade in 0.5 s** and **Fade out 0.5 s** need a clip that is not a caption cue. **Mute** needs an audio clip, or a video whose sound is a linked audio clip. The transition buttons are never dimmed.
+- No selected clip can take it: **Fit in frame**, **Fill frame**, **Center in frame**, the flips, **Reset transform** and **Punch zoom** need a video, image or text clip, and an audio clip has no picture. **Freeze frame** needs a video clip. The speed buttons need a video or audio clip that is not a freeze frame. **Fade in 0.5 s** and **Fade out 0.5 s** need a clip that is not a caption cue. **Mute** needs an audio clip, or a video whose sound is a linked audio clip. **Remove silence** needs the same, with the video and its sound on unlocked tracks. The transition buttons are never dimmed.
 - The clips are on a locked track.
 
 **Fix:** Select a video, image or text clip, or unlock its track. See [Use the quick actions](editing-properties.md#use-the-quick-actions).
@@ -1637,6 +1648,83 @@ See [Audio](audio.md).
 **Cause:** The clip is muted, or turned off with **Disable**.
 
 **Fix:** Select the clip and click **Unmute** in the quick actions, or turn off the **Mute** switch in the **Audio** section. For a turned-off clip, right-click it and choose **Enable**. See [Mute a clip](audio-editing.md#mute-a-clip).
+
+## Removing silence
+
+### Remove silence is dimmed
+
+**Symptom:** **Remove silence** in the quick actions is dimmed, and its tooltip reads **Remove silence: select a clip with sound**.
+
+**Cause:** No selected clip has sound that **Remove silence** can cut. For example:
+- You selected a title, an image, a solid or a caption cue.
+- The video has no sound, or its sound is no longer linked to it, after **Unlink** or **Detach audio**.
+- The clip, or the video or sound linked to it, is on a locked track. Cutting only one of them would break sync.
+
+**Fix:** Select the audio clip, or a video with its linked sound, and unlock their tracks. See [Remove the pauses from a clip](removing-silence.md#remove-the-pauses-from-a-clip).
+
+### Remove silence shows no stripes
+
+**Symptom:** The **Remove silence** row is open, but no red stripes appear, and the count reads **No silence found** or **Reading the waveform…**. **Apply** shows the message **No silence to remove**.
+
+**Cause:** One of these:
+- **Reading the waveform…**: the clip's waveform is not ready yet, for example right after import. The stripes appear as soon as it is.
+- The pauses are noisier than the **Threshold**: wind, traffic, music or room noise in the background.
+- The threshold is below -42 dB: then only complete digital silence counts, and room noise, however quiet, counts as sound.
+- The pauses are shorter than **Min**, or not longer than twice **Pad**.
+
+**Fix:** Raise the **Threshold**, for example to -30 dB, lower **Min**, or lower **Pad**. See [Choose a threshold for your recording](removing-silence.md#choose-a-threshold-for-your-recording).
+
+### The stripes cover soft words or breaths
+
+**Symptom:** Red stripes cover the start or end of words, a whisper or a breath you want to keep, or **Apply** cut into the speech.
+
+**Cause:** The soft sound is quieter than the **Threshold**, so it counts as silence.
+
+**Fix:** Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> if you already applied it. Lower the **Threshold** a few dB, or raise **Pad** to keep more around the speech, until the stripes leave the words alone. Then click **Apply**.
+
+### Apply says Still analysing
+
+**Symptom:** You click **Apply**, the message **Still analysing** appears, and nothing is cut.
+
+**Cause:** The editor is still reading the waveform of some of the selected clips. The count reads **Reading the waveform…**, or ends with **reading…**.
+
+**Fix:** Wait a moment until the count shows only the silences, then click **Apply** again.
+
+### Remove silence says Some gaps stayed open
+
+**Symptom:** After **Apply**, the message **Some gaps stayed open** names a clip and a track, for example "The silences are cut out, but Music on A2 can't move further left without overlapping." Some gaps are still there.
+
+**Cause:** The clips on the other tracks move along with the cuts. The clip in the message can't move that far without running into the clip before it on its track.
+
+**Fix:** Move, trim or delete the clip in the message, or the clip before it, so it has room. Then close the gaps that are left with **Close gap** or **Close all gaps**. Or press <kbd>Ctrl</kbd>+<kbd>Z</kbd>, lock that track, and click **Apply** again: locked tracks never move. See [How other tracks follow a ripple](splitting-and-deleting.md#how-other-tracks-follow-a-ripple).
+
+### Titles, captions or music are out of step after Remove silence
+
+**Symptom:** After **Apply**, a title or a caption shows over the wrong words, or the music ends long after the video.
+
+**Cause:** A clip that runs across a silence keeps its place and its length: only the clips after a cut move left. A caption cue or a title over a pause, or a music clip under the whole video, stays where it was while the speech moves up.
+
+**Fix:** Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>, remove the silence first, then add titles, captions and music. To caption the result, transcribe after you remove the silence. See [Know what Apply changes](removing-silence.md#know-what-apply-changes).
+
+### Remove silence left a silence before or after the video
+
+**Not a problem:** Where a video's sound starts before the picture or runs on after it (a J or L cut), that part is never cut, so the video and its sound stay in sync. Only the frames that the video and its sound share are cut. Trim that part by hand if you don't need it. See [Remove silence from a video and its sound](removing-silence.md#remove-silence-from-a-video-and-its-sound).
+
+### Remove silence cut a second sound clip
+
+**Symptom:** A video has two linked sound clips, for example its own sound and a second microphone. You selected only one of them, and the other one was cut too.
+
+**Cause:** The video and every sound clip linked to it are cut together, so they stay in sync. Only the sound you selected was read, so the cuts follow its silences.
+
+**Fix:** Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>. Select the video instead: both sound clips are read, and the cuts fall only where both are silent. Or unlink the second sound clip first. See [Unlink clips](links-and-groups.md#unlink-clips).
+
+### The arrow keys change the threshold instead of the playhead
+
+**Symptom:** You press <kbd>←</kbd> or <kbd>→</kbd>, and the **Threshold** of the **Remove silence** row changes instead of the playhead.
+
+**Cause:** You clicked or dragged the **Threshold** slider, so it has the keyboard.
+
+**Fix:** Click the timeline, then press the arrow keys. See [Remove silence row](keyboard-shortcuts.md#remove-silence-row).
 
 ## Shapes and images
 
@@ -2214,7 +2302,7 @@ See [Audio](audio.md).
 
 The current version cannot do these things yet. Each one is available in a later version.
 
-- **Sound:** no sound while you play backward or shuttle faster than 1x; while you scrub or step frames, only with **Audio scrub** on. How far **Auto-duck** lowers the music (12 dB) and its slopes (10 frames) can't be changed, and **Audio scrub** has no keyboard shortcut. Audio effects are not available.
+- **Sound:** no sound while you play backward or shuttle faster than 1x; while you scrub or step frames, only with **Audio scrub** on. How far **Auto-duck** lowers the music (12 dB) and its slopes (10 frames) can't be changed, and **Audio scrub** and **Remove silence** have no keyboard shortcut. Audio effects are not available.
 - **Editing clips:** clips can't be cut, copied or pasted (the **Cut**, **Copy** and **Paste** rows of the clip menu, and the **Copy**, **Paste** and **Duplicate** rows of the preview's layer menu, are dimmed). <kbd>Ctrl</kbd>+<kbd>D</kbd> duplicates one clip at a time, without its linked sound. The crop of a clip can't be copied to other clips.
 - **Markers:** markers belong to the timeline; markers inside clips are not available. Markers and the in/out range don't show on the scrollbars.
 - **Menus:** only clips, gaps, track headers, the ruler, media cards and pictures in the preview have a right-click menu, with a first set of rows. Menu rows can't be chosen with the arrow keys.
@@ -2240,6 +2328,7 @@ The current version cannot do these things yet. Each one is available in a later
 - [Linking and grouping clips](links-and-groups.md)
 - [Audio](audio.md)
 - [Editing audio](audio-editing.md)
+- [Removing silence](removing-silence.md)
 - [Trimming clips](trimming.md)
 - [Splitting, deleting and closing gaps](splitting-and-deleting.md)
 - [Advanced trimming](advanced-trimming.md)
@@ -2264,4 +2353,4 @@ The current version cannot do these things yet. Each one is available in a later
 - [Transcription](transcription.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 37, 2026-10-17</sub>
+<sub>Last updated: Batch 38, 2026-10-17</sub>

@@ -150,7 +150,7 @@ Which tracks are compacted:
 
 ## How other tracks follow a ripple
 
-**Ripple delete**, **Close gap**, **Close all gaps** and **Extract** move the clips on the other tracks too, so a sound effect, a title or music that you placed on a cut stays on that cut. These rules decide how far each clip moves:
+**Ripple delete**, **Close gap**, **Close all gaps**, **Extract** and **Remove silence** move the clips on the other tracks too, so a sound effect, a title or music that you placed on a cut stays on that cut. These rules decide how far each clip moves:
 
 - **The track with the space.** On a track that closes a gap or the space of deleted clips, the clips after the space move left by its length.
 - **The other tracks.** A clip on another track moves left as far as the content next to it moved: by the most that any one track closed before the clip's start. Spaces at different times don't add up.
@@ -166,7 +166,7 @@ For example, you select a 4-second clip on V1 and a 2-second clip on V2 at the s
 | **Deleted without closing the gap** | The clips were deleted, but nothing could move. |
 | **Gap closed partly** | **Close gap** closed only part of the gap. |
 | **Can't close the gap** | **Close gap** could not move anything. Nothing changed. |
-| **Some gaps stayed open** | **Close all gaps** closed some gaps only partly or not at all. |
+| **Some gaps stayed open** | **Close all gaps** closed some gaps only partly or not at all, or **Remove silence** cut the silences out but could not close all of their gaps. See [Removing silence](removing-silence.md#know-what-apply-changes). |
 
 To close the rest, move or trim the clip the message names so it has room, then close the gap again.
 
@@ -219,6 +219,7 @@ The **Mute**, **Normalize**, **Auto-duck music** and **Detach audio** rows show 
 
 ## Related pages
 - [Editing audio](audio-editing.md)
+- [Removing silence](removing-silence.md)
 - [Timeline](timeline.md)
 - [Markers and in/out points](markers-and-in-out-points.md)
 - [Tracks](tracks.md)
@@ -234,4 +235,4 @@ The **Mute**, **Normalize**, **Auto-duck music** and **Detach audio** rows show 
 - [Projects and saving](projects-and-saving.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 37, 2026-10-17</sub>
+<sub>Last updated: Batch 38, 2026-10-17</sub>

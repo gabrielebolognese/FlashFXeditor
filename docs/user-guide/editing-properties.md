@@ -1,6 +1,6 @@
 # Editing properties
 
-The **Edit Properties** panel shows the settings of what you selected: a clip, a track, a marker, or the project itself when nothing is selected. Use it to type exact values, such as a position in pixels or the end time of a clip, to drag a value while you watch the preview, to fit or fill the frame with one click, to animate a picture with keyframes, to crop a picture, to change a clip's speed, to set the volume of a clip's sound, normalize it or duck music under a voice, to fade clips and set up transitions, to shape and color solids, to style text and save it as a preset, to give your captions their look and place, and to change several clips at once.
+The **Edit Properties** panel shows the settings of what you selected: a clip, a track, a marker, or the project itself when nothing is selected. Use it to type exact values, such as a position in pixels or the end time of a clip, to drag a value while you watch the preview, to fit or fill the frame with one click, to animate a picture with keyframes, to crop a picture, to change a clip's speed, to set the volume of a clip's sound, normalize it, duck music under a voice or cut out its pauses, to fade clips and set up transitions, to shape and color solids, to style text and save it as a preset, to give your captions their look and place, and to change several clips at once.
 
 > **Video placeholder: Edit Properties in action**
 > - File: `videos/editing-properties/overview.mp4` (not recorded yet)
@@ -124,10 +124,11 @@ With clips selected, a row of one-click buttons sits at the top of the panel. Po
 | **Update preset** (a bookmark with a check mark) | Writes the selected text's style into the preset it uses. Other texts that use the preset keep their style until you apply it to them again. See [Update a preset](text-presets.md#update-a-preset). |
 | **Add dissolve**, **Add dip to black**, **Add dip to white** | Add a 15-frame transition at the selected cut, or at the selected clip's start or end nearest the playhead. Drag one onto a cut on the timeline to add it there. See [Add a transition](fades-and-transitions.md#add-a-transition). |
 | **Mute** (a crossed-out speaker) | Mutes the selected audio clips and the sound of the selected videos. It looks pressed and reads **Unmute** while all of it is muted: click again to hear it. See [Mute a clip](audio-editing.md#mute-a-clip). |
+| **Remove silence** (dashed scissors) | Opens the **Remove silence** row under the quick actions: red stripes mark the pauses in the selected sound, and **Apply** cuts them out and closes the gaps. It looks pressed while the row is open: click again to close it. See [Removing silence](removing-silence.md). |
 | **Duplicate** | Copies the clip you clicked last right after itself (<kbd>Ctrl</kbd>+<kbd>D</kbd>). See [Duplicate a clip](#duplicate-a-clip). |
 | **Delete** | Deletes the selected clips and leaves gaps, like the <kbd>Delete</kbd> key. See [Delete clips](splitting-and-deleting.md#delete-clips). |
 
-- A button is dimmed when none of the selected clips can take it. The picture buttons and **Punch zoom** need a video, image, solid or text clip; an audio clip has no picture. On a text clip, the picture buttons use the box of its text, and on a solid the box of its shape. **Freeze frame** needs a video clip, and the speed buttons a video or audio clip that is not a freeze frame. **Save as preset** needs a text clip. **Update preset** needs a text clip whose style differs from the preset it uses. The fade buttons need a clip that is not a caption cue. **Mute** needs an audio clip, or a video whose sound is a linked audio clip. The transition buttons are never dimmed. Clips on locked tracks are skipped.
+- A button is dimmed when none of the selected clips can take it. The picture buttons and **Punch zoom** need a video, image, solid or text clip; an audio clip has no picture. On a text clip, the picture buttons use the box of its text, and on a solid the box of its shape. **Freeze frame** needs a video clip, and the speed buttons a video or audio clip that is not a freeze frame. **Save as preset** needs a text clip. **Update preset** needs a text clip whose style differs from the preset it uses. The fade buttons need a clip that is not a caption cue. **Mute** and **Remove silence** need an audio clip, or a video whose sound is a linked audio clip, and **Remove silence** also needs the video and its sound on unlocked tracks. The transition buttons are never dimmed. Clips on locked tracks are skipped.
 - Whether a button is dimmed depends on the selection only, not on the playhead. **Freeze frame** and **Punch zoom** act at the playhead: when it is not over the selected clip, a message says so.
 - The buttons don't take the keyboard focus, but a click in the panel makes **Edit Properties** the active panel. See [How shortcuts work](keyboard-shortcuts.md#how-shortcuts-work).
 
@@ -328,7 +329,7 @@ Select an audio clip, or a video with sound. The **Audio** section, the last one
 - **Auto-duck** lowers a music clip by 12 dB wherever audio plays on the tracks above it.
 - **Detach audio** gives a video's sound a clip of its own.
 
-See [Editing audio](audio-editing.md).
+See [Editing audio](audio-editing.md). To cut the pauses out of the sound, click **Remove silence** in the quick actions: see [Removing silence](removing-silence.md).
 
 ## Pick a color
 
@@ -391,6 +392,7 @@ A color field is a swatch with the color's hex code next to it. The **Background
 | **Animate transform**, **Remove opacity keyframes**, **Add keyframe**, **Change keyframe easing** and the other keyframe steps | The stopwatches, the keyframe buttons and **Ease**. See [Undo keyframe changes](keyframes.md#undo-keyframe-changes). |
 | **Fade in**, **Remove fade out**, **Add cross dissolve**, **Change transition duration**, **Align transition** and the other fade and transition steps | The fade and transition buttons and the **Transition** section. See [Undo fades and transitions](fades-and-transitions.md#undo-fades-and-transitions). |
 | **Change volume**, **Mute clip**, **Normalize clip**, **Auto-duck music**, **Detach audio**, **Animate volume** and the other audio steps | The **Audio** section and the **Mute** quick action. See [Undo audio changes](audio-editing.md#undo-audio-changes). |
+| **Remove silence** | **Apply** in the **Remove silence** row. See [Undo Remove silence](removing-silence.md#undo-remove-silence). |
 
 See [Undo and redo changes](projects-and-saving.md#undo-and-redo-changes).
 
@@ -405,6 +407,7 @@ These parts are available in a later version:
 - [Keyframes](keyframes.md)
 - [Fades and transitions](fades-and-transitions.md)
 - [Editing audio](audio-editing.md)
+- [Removing silence](removing-silence.md)
 - [Shapes and images](shapes-and-images.md)
 - [Cropping and reframing](cropping-and-reframing.md)
 - [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md)
@@ -424,4 +427,4 @@ These parts are available in a later version:
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 37, 2026-10-17</sub>
+<sub>Last updated: Batch 38, 2026-10-17</sub>

@@ -2,6 +2,11 @@
 
 Shorts Editor grows in steps called batches. This page lists what each batch added that you can see or use, newest first. Follow the links for the full instructions.
 
+> **Video placeholder: What's new in Batch 38**
+> - File: `videos/whats-new/batch-38.mp4` (not recorded yet)
+> - Length: about 45 seconds
+> - Shows: a 1080×1920 project with a 30-second talking-head video on V1 and its sound on A1, with several pauses between sentences; click the video and click **Remove silence** (the dashed scissors) in the quick actions of **Edit Properties**: the **Remove silence** row opens under the buttons and red stripes cover the pauses on V1 and A1; the row reads `8 silences · 10.7 s`; drag the **Threshold** slider to `-30 dB` and back to `-40 dB` while the stripes follow; drag the **Min** label to the right: the stripes over the short pauses disappear; type `500` in **Min** and press <kbd>Enter</kbd>; click **Apply**: the pauses are gone, the pieces close up and **Removed 8 silences** appears; press <kbd>Home</kbd> and <kbd>Space</kbd>: the speech plays without dead air; press <kbd>Ctrl</kbd>+<kbd>Z</kbd>: the single video and its sound are back.
+
 > **Video placeholder: What's new in Batch 37**
 > - File: `videos/whats-new/batch-37.mp4` (not recorded yet)
 > - Length: about 60 seconds
@@ -143,6 +148,7 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 > - Shows: open a project with three clips on the timeline; press <kbd>Space</kbd> to play and let the timeline page forward; press <kbd>L</kbd> three times to reach 8x, then <kbd>K</kbd>; hold <kbd>K</kbd> and tap <kbd>L</kbd> to step one frame; turn on **Loop playback**; point at the **Dropped** readout in the status strip.
 
 ## In this page
+- [Batch 38: Remove silence](#batch-38-remove-silence)
 - [Batch 37: Audio editing](#batch-37-audio-editing)
 - [Batch 36: Fades and transitions](#batch-36-fades-and-transitions)
 - [Batch 35: Keyframes](#batch-35-keyframes)
@@ -180,6 +186,13 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 - [Batch 03: Projects, autosave and recovery](#batch-03-projects-autosave-and-recovery)
 - [Batch 02: Undo, redo and frame-exact time](#batch-02-undo-redo-and-frame-exact-time)
 - [Batch 01: The workspace](#batch-01-the-workspace)
+
+## Batch 38: Remove silence
+- **Remove silence** cuts the pauses out of a talking clip. Select an audio clip or a video with its sound, and click **Remove silence** (the dashed scissors, after **Mute**) in the quick actions of **Edit Properties**: the **Remove silence** row opens, red stripes cover every pause it would cut on the video and its sound, and the row counts them, for example `8 silences · 10.7 s`. See [Remove the pauses from a clip](removing-silence.md#remove-the-pauses-from-a-clip).
+- Tune it while the stripes follow: **Threshold** (-60 to -10 dB, default -40 dB) sets how quiet counts as silence, **Min** (100 to 5000 ms, default 500 ms) the shortest pause that is cut, and **Pad** (0 to 1000 ms, default 150 ms) the breath kept before and after the speech. The editor remembers your values. See [Set the threshold, minimum silence and padding](removing-silence.md#set-the-threshold-minimum-silence-and-padding).
+- **Apply** cuts the striped parts out and closes the gaps like **Ripple delete**, in one undo step named **Remove silence**. The video and its sound are cut at the same frames, so they stay in sync. See [Know what Apply changes](removing-silence.md#know-what-apply-changes).
+- **Cancel**, <kbd>Esc</kbd> or the button again close the row without changing anything.
+- New page: [Removing silence](removing-silence.md). New shortcuts section: [Remove silence row](keyboard-shortcuts.md#remove-silence-row). New troubleshooting group: [Removing silence](troubleshooting.md#removing-silence).
 
 ## Batch 37: Audio editing
 - Every audio clip now has its own volume, from -60 to +12 dB. Type it in **Volume** in the new **Audio** section of **Edit Properties**, or drag the white line across the clip on the timeline (the rubber band, on M and L tracks); the tooltip shows the dB, and the waveform grows or shrinks with the volume. Select a video to edit its sound. See [Change a clip's volume](audio-editing.md#change-a-clips-volume).
@@ -576,4 +589,4 @@ See [The workspace](workspace.md) and [Getting started](getting-started.md).
 - [Adding media to the timeline](adding-media-to-the-timeline.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 37, 2026-10-17</sub>
+<sub>Last updated: Batch 38, 2026-10-17</sub>
