@@ -31,7 +31,7 @@ import type { ClipId, Frame, Project, TextAnim, TextBox, TextClip, TextContent, 
 import { textLayout } from "../../render/text/layoutCache.js";
 import { DEFAULT_TEXT_BOX, DEFAULT_TEXT_STYLE, firstLine, textContent, titleDefaults, type TitleKind } from "../../text/style.js";
 import { clipAtFrame, clipsInRange, isClipLocked } from "../model/queries.js";
-import { IDENTITY_TRANSFORM, layerContent, layerCorners, layerPoint, type Size } from "./transform.js";
+import { applyTransformWrite, editedTransform, IDENTITY_TRANSFORM, layerContent, layerCorners, layerPoint, shiftedWrite, transformWrite, type Size, type TransformWrite } from "./transform.js";
 
 export interface TextEdit {
   text: TextContent;
@@ -79,18 +79,22 @@ const sameJson = (a: unknown, b: unknown) => a === b || JSON.stringify(a) === JS
 
 /**
  * `edits` (new content and/or style by clip id) as one command `clip.text`, or null when nothing
- * changes. Clips that are gone, locked or not text are skipped.
+ * changes. Clips that are gone, locked or not text are skipped. A keyed text (Batch 35) is edited as it
+ * shows at `at` (the playhead): a transform given with the edit (a box handle drag) goes to its keys
+ * there; the move that keeps its anchored point shifts every position key (a layout change).
  */
-export function setTexts(project: Project, edits: ReadonlyMap<ClipId, TextEditInput>, options: { label: string; coalesceKey?: string }): Command | null {
-  const writes: [ClipId, TextEdit & { transform: Transform }][] = [];
+export function setTexts(project: Project, edits: ReadonlyMap<ClipId, TextEditInput>, options: { label: string; coalesceKey?: string; at?: Frame }): Command | null {
+  const writes: [ClipId, TextEdit, TransformWrite | null][] = [];
   let timeline = false;
   for (const [id, edit] of edits) {
     const clip = project.clips[id];
     if (clip?.kind !== "text" || isClipLocked(project, id)) continue;
-    const next = textEdit(project, clip, edit);
-    if (sameJson(clip.text, next.text) && sameJson(clip.style, next.style) && sameJson(clip.transform, next.transform)) continue;
-    if (showsOnTimeline(clip, next)) timeline = true;
-    writes.push([id, next]);
+    const shown = editedTransform(clip, options.at);
+    const next = textEdit(project, clip, edit, shown);
+    const write = edit.transform ? transformWrite(clip, edit.transform, options.at) : shiftedWrite(clip, next.transform.x - shown.x, next.transform.y - shown.y);
+    if (sameJson(clip.text, next.text) && sameJson(clip.style, next.style) && !write) continue;
+    if (showsOnTimeline(clip, next) || (write && "keyframes" in write)) timeline = true;
+    writes.push([id, { text: next.text, style: next.style }, write]);
   }
   if (writes.length === 0) return null;
   return {
@@ -99,12 +103,12 @@ export function setTexts(project: Project, edits: ReadonlyMap<ClipId, TextEditIn
     ...(options.coalesceKey !== undefined && { coalesceKey: options.coalesceKey }),
     affects: timeline ? ["composite", "text", "clips"] : ["composite", "text"],
     run(draft) {
-      for (const [id, next] of writes) {
+      for (const [id, next, write] of writes) {
         const clip = draft.clips[id] as Draft<TextClip>;
         if (clip.name === textClipName(clip.text, clip.style)) clip.name = textClipName(next.text, next.style);
         clip.text = structuredClone(next.text);
         clip.style = structuredClone(next.style);
-        clip.transform = structuredClone(next.transform);
+        if (write) applyTransformWrite(clip, write);
       }
     },
   };

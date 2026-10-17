@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { makeMedia, makeMediaClip, makeProject, makeTrack, withClips } from "../../core/document/fixtures.js";
+import { animatedOpacity, animatedTransform } from "../../core/document/keyframes.js";
 import { framesToSourceUs, frameToUs } from "../../core/document/time.js";
 import type { Clip, MediaClip, Project, Track } from "../../core/document/types.js";
 import { DocumentStore } from "../../core/store/DocumentStore.js";
@@ -81,7 +82,31 @@ describe("splitClips", () => {
     expect((next.clips.n1 as MediaClip).speed).toBe(2);
   });
 
-  it("partitions keyframes and fades, and drops the transitions at the cut", () => {
+  it("keeps a keyed clip's motion on both halves (eased keys too); undo merges them back (Batch 35)", () => {
+    const keyframes = {
+      "transform.x": [
+        { frame: 0, value: 0, ease: "easeInOut" as const },
+        { frame: 60, value: 600, ease: "hold" as const },
+        { frame: 80, value: 100, ease: "linear" as const },
+      ],
+      opacity: [{ frame: 10, value: 1, ease: "linear" as const }, { frame: 90, value: 0, ease: "linear" as const }],
+    };
+    const p = project([clip("a", "v1", 0, 100, { keyframes })]);
+    for (const cut of [25, 70]) {
+      const { doc, next } = commit(p, splitClips(p, ["a"], cut, ids()));
+      const left = next.clips.a as MediaClip;
+      const right = next.clips.n1 as MediaClip;
+      for (let f = 0; f < 100; f++) {
+        const piece = f < cut ? left : right;
+        expect(animatedTransform(piece, f - piece.start).x).toBeCloseTo(animatedTransform({ transform: left.transform, keyframes }, f).x, 9);
+        expect(animatedOpacity(piece, f - piece.start)).toBeCloseTo(animatedOpacity({ opacity: 1, keyframes }, f), 9);
+      }
+      doc.undo();
+      expect(doc.getState()).toEqual(p);
+    }
+  });
+
+  it("partitions keyframes (the motion kept) and fades, and drops the transitions at the cut", () => {
     const p = project([
       clip("a", "v1", 0, 100, {
         keyframes: { opacity: [{ frame: 0, value: 0, ease: "linear" }, { frame: 20, value: 1, ease: "linear" }, { frame: 80, value: 0.5, ease: "linear" }] },
@@ -93,8 +118,16 @@ describe("splitClips", () => {
     const { next } = commit(p, splitClips(p, ["a"], 50, ids()));
     const left = next.clips.a as MediaClip;
     const right = next.clips.n1 as MediaClip;
-    expect(left.keyframes).toEqual({ opacity: [{ frame: 0, value: 0, ease: "linear" }, { frame: 20, value: 1, ease: "linear" }] });
-    expect(right.keyframes).toEqual({ opacity: [{ frame: 30, value: 0.5, ease: "linear" }] });
+    // A key at each new edge with the value there (the segment 20 -> 80 is linear).
+    expect(left.keyframes?.opacity?.map((key) => [key.frame, key.value])).toEqual([
+      [0, 0],
+      [20, 1],
+      [49, 1 - (0.5 * 29) / 60],
+    ]);
+    expect(right.keyframes?.opacity?.map((key) => [key.frame, key.value])).toEqual([
+      [0, 0.75],
+      [30, 0.5],
+    ]);
     expect(left.fades).toEqual({ in: 10, out: 0 });
     expect(right.fades).toEqual({ in: 0, out: 15 });
     expect(left.transitionIn).toEqual({ kind: "dissolve" });

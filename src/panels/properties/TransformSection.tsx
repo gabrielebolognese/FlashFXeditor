@@ -1,12 +1,13 @@
 import { Droplet, FlipHorizontal2, FlipVertical2, Link2, RotateCw, Unlink2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { liveEdit } from "../../app/liveEdit.js";
-import { actions, documentStore } from "../../app/services.js";
+import { actions, documentStore, sessionStore } from "../../app/services.js";
 import type { Clip, ClipId } from "../../core/document/types.js";
 import { isLayerClip, scaleYOf } from "../../timeline/edit/transform.js";
 import { IconButton } from "../../ui/IconButton.js";
 import { NumberField } from "../../ui/NumberField.js";
 import { layerBinding, type BindingDeps } from "./bindings.js";
+import { EaseRow } from "./KeyframeControls.js";
 import { ANCHOR_X, ANCHOR_Y, MAX_SCALE_PERCENT, MIN_SCALE_PERCENT, OPACITY, POSITION_X, POSITION_Y, ROTATION, scaleProp } from "./layerProps.js";
 import { Row } from "./Section.js";
 import styles from "./Section.module.css";
@@ -18,8 +19,15 @@ import { SKIP, useClipsShared } from "./useShared.js";
 // selected layers outside React (bindings.ts): a label scrub moves the layers live with no React render
 // and commits one undo step on release; arrow steps coalesce; with several layers selected a field
 // whose values differ shows `--`, typing sets them all and a scrub or a step moves each from its own.
+// With the section's stopwatch on (Batch 35) the fields show and key the values at the playhead, and
+// an Ease row comes first (the keyframe controls are in the header, KeyframeControls.tsx).
 
-const DEPS: BindingDeps = { document: documentStore, live: liveEdit };
+// Keyed clips show and take their values at the playhead (spec §11 stopwatch, Batch 35).
+const DEPS: BindingDeps = {
+  document: documentStore,
+  live: liveEdit,
+  playhead: { get: () => sessionStore.state.getState().playhead, subscribe: (listener) => sessionStore.state.select((state) => state.playhead, listener) },
+};
 
 const getFlipH = (clip: Clip) => (isLayerClip(clip) ? clip.transform.flipH : SKIP);
 const getFlipV = (clip: Clip) => (isLayerClip(clip) ? clip.transform.flipV : SKIP);
@@ -50,6 +58,7 @@ export function TransformSection({ ids }: { ids: readonly ClipId[] }) {
   const flipV = useClipsShared(ids, getFlipV);
   return (
     <>
+      <EaseRow ids={ids} section="transform" />
       <Row label="Position">
         <div className={styles.pair}>
           <NumberField label="X" unit="px" binding={bindings.x} precision={1} ariaLabel="Position X" />
@@ -85,8 +94,11 @@ export function TransformSection({ ids }: { ids: readonly ClipId[] }) {
 export function OpacitySection({ ids }: { ids: readonly ClipId[] }) {
   const binding = useMemo(() => layerBinding(DEPS, OPACITY, ids), [ids]);
   return (
-    <Row label="Opacity">
-      <NumberField label={<Droplet aria-hidden="true" />} unit="%" binding={binding} precision={1} min={0} max={100} ariaLabel="Opacity" />
-    </Row>
+    <>
+      <EaseRow ids={ids} section="opacity" />
+      <Row label="Opacity">
+        <NumberField label={<Droplet aria-hidden="true" />} unit="%" binding={binding} precision={1} min={0} max={100} ariaLabel="Opacity" />
+      </Row>
+    </>
   );
 }

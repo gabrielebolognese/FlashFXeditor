@@ -1,6 +1,6 @@
 import { useMemo, useState, type ChangeEvent } from "react";
 import { liveEdit } from "../../app/liveEdit.js";
-import { documentStore } from "../../app/services.js";
+import { documentStore, sessionStore } from "../../app/services.js";
 import { textEditor } from "../../app/previewController.js";
 import { editTexts, previewTexts, type TextChange } from "../../app/textController.js";
 import type { Clip, ClipId, TextClip, TextStyle } from "../../core/document/types.js";
@@ -21,7 +21,7 @@ import { MIXED, SKIP, useClipsShared } from "./useShared.js";
 // P11). Content typing coalesces into one step per burst; while the text is edited on the canvas (spec
 // §7.7) the content shows the draft, and focusing it ends that editing first (committed).
 
-const DEPS: TextBindingDeps = { document: documentStore, live: liveEdit };
+const DEPS: TextBindingDeps = { document: documentStore, live: liveEdit, playhead: () => sessionStore.state.getState().playhead };
 
 const getValue = (clip: Clip) => (clip.kind === "text" ? clip.text.value : SKIP);
 const getBoxMode = (clip: Clip) => (clip.kind === "text" ? clip.text.box.mode : SKIP);

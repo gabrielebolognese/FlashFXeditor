@@ -23,6 +23,7 @@ import type { LiveText } from "../render/compositor/Compositor.js";
 import { invalidateTextLayouts, onTextLayoutsChanged, setTextFallback, textLayout } from "../render/text/layoutCache.js";
 import { DEFAULT_TEXT_STYLE, type TitleKind } from "../text/style.js";
 import { addTextClip, addTitle, setTexts, textEdit, type TextEdit, type TitleLook } from "../timeline/edit/text.js";
+import { editedTransform } from "../timeline/edit/transform.js";
 import { isClipLocked } from "../timeline/model/queries.js";
 import { patchLiveEdit } from "./liveEdit.js";
 import { playbackEngine, textEditor, textRasters } from "./previewController.js";
@@ -52,7 +53,8 @@ export function editTexts(ids: readonly ClipId[], change: TextChange, label: str
     const edit = change(clip);
     if (edit) edits.set(clip.id, edit);
   }
-  const command = setTexts(documentStore.getState(), edits, { label, ...(coalesceKey !== undefined && { coalesceKey }) });
+  const at = sessionStore.state.getState().playhead;
+  const command = setTexts(documentStore.getState(), edits, { label, at, ...(coalesceKey !== undefined && { coalesceKey }) });
   if (command) documentStore.dispatch(command);
 }
 
@@ -68,9 +70,11 @@ export function previewTexts(ids: readonly ClipId[], change: TextChange | null):
   for (const clip of textClips(ids)) {
     const edit = change(clip);
     if (!edit) continue;
-    const next = textEdit(project, clip, edit);
+    // A keyed text shows (and moves) as it is at the playhead (Batch 35).
+    const shown = editedTransform(clip, sessionStore.state.getState().playhead);
+    const next = textEdit(project, clip, edit, shown);
     texts.set(clip.id, { text: next.text, style: next.style });
-    if (next.transform !== clip.transform) transforms.set(clip.id, next.transform);
+    if (next.transform !== shown) transforms.set(clip.id, next.transform);
   }
   patchLiveEdit({ texts: texts.size > 0 ? texts : null, transforms: transforms.size > 0 ? transforms : null });
 }

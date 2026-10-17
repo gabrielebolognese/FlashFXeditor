@@ -9,6 +9,7 @@ import { CaptionStyleSection } from "./properties/CaptionStyleSection.js";
 import { ClipSection } from "./properties/ClipSection.js";
 import { CropModeToggle, CropSection } from "./properties/CropSection.js";
 import { contextKey, propertiesContext, sectionIds, type PropertiesContext, type SectionId } from "./properties/context.js";
+import { KeyframeControls } from "./properties/KeyframeControls.js";
 import { MarkerSection } from "./properties/MarkerSection.js";
 import { ProjectSection } from "./properties/ProjectSection.js";
 import { QuickActions } from "./properties/QuickActions.js";
@@ -71,9 +72,14 @@ function sectionBody(id: SectionId, context: PropertiesContext): ReactNode {
   }
 }
 
-/** Header actions of a section: the Crop section's crop mode toggle (one video or image layer selected). */
+/**
+ * Header actions of a section: the Crop section's crop mode toggle (one video or image layer selected);
+ * the stopwatch and keyframe navigator of Transform and Opacity (spec §11, Batch 35).
+ */
 function sectionActions(id: SectionId, context: PropertiesContext): ReactNode {
-  if (id !== "crop" || context.kind !== "clips") return null;
+  if (context.kind !== "clips") return null;
+  if (id === "transform" || id === "opacity") return <KeyframeControls ids={context.layerIds} section={id} />;
+  if (id !== "crop") return null;
   return <CropModeToggle ids={context.mediaIds} single={context.layerIds.length === 1 && context.mediaIds.length === 1} />;
 }
 

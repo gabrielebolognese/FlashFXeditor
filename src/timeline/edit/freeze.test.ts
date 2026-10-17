@@ -1,12 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { makeMedia, makeMediaClip, makeProject, makeSolidClip, makeTrack, withClips } from "../../core/document/fixtures.js";
+import { animatedTransform } from "../../core/document/keyframes.js";
 import { framesToSourceUs, frameToUs } from "../../core/document/time.js";
 import type { Clip, MediaClip, Project, Track } from "../../core/document/types.js";
 import { validateProject } from "../../core/document/validate.js";
 import { DocumentStore } from "../../core/store/DocumentStore.js";
 import { createSessionStore } from "../../core/store/sessionStore.js";
 import { sourceTimeUs } from "../../render/compositor/Compositor.js";
-import { FREEZE_SECONDS, freezeFrame, punchZoom, type FreezeResult, type PunchZoomResult } from "./freeze.js";
+import { FREEZE_SECONDS, freezeFrame, punchZoom, PUNCH_ZOOM_FRAMES, type FreezeResult, type PunchZoomResult } from "./freeze.js";
 import { splitClips } from "./split.js";
 import { planSlip, planStretch, planTrim, resolveTrim } from "./trim.js";
 
@@ -157,5 +158,33 @@ describe("punchZoom", () => {
     expect(get(whole.next, "v").duration).toBe(300);
     expect(punchZoom(p, 200, ["s"], 1.2, newId, { linked: true })).toBe("notUnderPlayhead");
     expect(punchZoom(p, 400, [], 1.2, newId, { linked: true })).toBe("none");
+  });
+
+  it("animated (Batch 35): the right piece zooms from its scale to 1.2x over 6 frames with ease out", () => {
+    const p = project([clip("v", "v1", 0, 300, 0, { transform: { x: 40, y: 0, scale: 0.5, rotation: 0, anchor: { x: 0.5, y: 0.5 }, flipH: false, flipV: false } })]);
+    const { next, doc, result } = run(p, punchZoom(p, 120, [], 1.2, newId, { linked: true, animated: true }));
+    const zoomed = get(next, result.zoomedIds[0] as string);
+    expect(zoomed.transform.scale).toBe(0.5);
+    expect(zoomed.keyframes?.["transform.scale"]).toEqual([
+      { frame: 0, value: 0.5, ease: "easeOut" },
+      { frame: PUNCH_ZOOM_FRAMES, value: 0.6, ease: "linear" },
+    ]);
+    const scales = [0, 1, 3, 6, 100].map((rel) => animatedTransform(zoomed, rel).scale);
+    expect(scales[0]).toBe(0.5);
+    expect(scales[1]).toBeGreaterThan(0.5 + 0.1 / 6);
+    expect(scales[3]).toBeCloseTo(0.6);
+    expect(scales[4]).toBeCloseTo(0.6);
+    expect(animatedTransform(zoomed, 3).x).toBe(40);
+    // The left piece is untouched; undo restores.
+    expect(get(next, "v").keyframes).toBeUndefined();
+    doc.undo();
+    expect(doc.getState()).toEqual(p);
+    // A piece with Transform keys gets the cut-in zoom on its scale keys.
+    const keyed = project([clip("k", "v1", 0, 300, 0, { keyframes: { "transform.scale": [{ frame: 0, value: 1, ease: "linear" }, { frame: 200, value: 2, ease: "linear" }] } })]);
+    const cut = run(keyed, punchZoom(keyed, 100, [], 1.2, newId, { linked: true, animated: true }));
+    const values = get(cut.next, cut.result.zoomedIds[0] as string).keyframes?.["transform.scale"]?.map((key) => key.value) ?? [];
+    expect(values).toHaveLength(2);
+    expect(values[0]).toBeCloseTo(1.8, 10);
+    expect(values[1]).toBeCloseTo(2.4, 10);
   });
 });

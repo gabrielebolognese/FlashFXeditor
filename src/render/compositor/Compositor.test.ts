@@ -152,6 +152,36 @@ describe("Compositor.evaluate", () => {
     close(applyToPoint(media(plain).transform, 0, 0), { x: W / 2 - 100, y: H / 2 - 50 });
   });
 
+  it("evaluates keyed transforms and opacities at the frame; live values still win (Batch 35)", () => {
+    let doc = project(["v1", "v2"], [video("m1", 200, 100)]);
+    const keyframes = {
+      "transform.x": [
+        { frame: 0, value: 0, ease: "linear" as const },
+        { frame: 20, value: 200, ease: "hold" as const },
+        { frame: 30, value: -100, ease: "linear" as const },
+      ],
+      opacity: [{ frame: 0, value: 0, ease: "linear" as const }, { frame: 10, value: 1, ease: "linear" as const }],
+    };
+    doc = withClips(doc, [clip(doc, { id: "c", trackId: "v1", start: 10, duration: 40, keyframes }), { ...makeSolidClip({ id: "s", trackId: "v2", start: 0, duration: 60 }), keyframes: { "transform.scale": [{ frame: 0, value: 1, ease: "linear" as const }, { frame: 10, value: 3, ease: "linear" as const }] } }]);
+    const compositor = new Compositor();
+    const at = (frame: number) => compositor.evaluate(doc, frame).layers;
+    const left = (frame: number) => applyToPoint(media(at(frame)[0]).transform, 0, 0).x;
+    expect(left(10)).toBeCloseTo(W / 2 - 100);
+    expect(left(20)).toBeCloseTo(W / 2 - 100 + 100);
+    // Hold: stays at 200 until the next key, then jumps.
+    expect(left(39)).toBeCloseTo(W / 2 - 100 + 200);
+    expect(left(40)).toBeCloseTo(W / 2 - 100 - 100);
+    expect(media(at(15)[0]).opacity).toBeCloseTo(0.5);
+    // The solid's scale at frame 5: 2 (its 100 px box drawn 200 px wide).
+    expect(corners((at(5)[0] as SolidLayer).transform).right - corners((at(5)[0] as SolidLayer).transform).left).toBeCloseTo(2 * makeSolidClip({ id: "x", trackId: "v2", start: 0, duration: 1 }).size.w);
+    // A gesture's live transform and a scrub's opacity replace the keyed values.
+    const live = compositor.evaluate(doc, 20, new Map([["c", transform({ x: 5 })]]), new Map([["c", 0.25]])).layers;
+    expect(applyToPoint(media(live[0]).transform, 0, 0).x).toBeCloseTo(W / 2 - 100 + 5);
+    expect(media(live[0]).opacity).toBe(0.25);
+    // The document's transform object is not written.
+    expect((doc.clips.c as MediaClip).transform.x).toBe(0);
+  });
+
   it("crops the shown sides without moving the remaining pixels, for every rotation and flip", () => {
     const crop = { left: 0.1, top: 0.2, right: 0.3, bottom: 0.05 };
     for (const rotation of [0, 90, 180, 270] as const) {

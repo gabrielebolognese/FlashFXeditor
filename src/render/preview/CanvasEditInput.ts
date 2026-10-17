@@ -37,7 +37,9 @@
 //   live (`solids`) and commits one `clip.solid` command.
 // - Hover outlines the layer under the pointer; the cursor follows the gizmo zone.
 // - The canvas rect is read once per pointer enter and after a panel resize (P9).
-// TODO(batch 35): the keyframe diamond on the box corner.
+// - Keyframes (spec §7.3, Batch 35): a held layer with Transform keys is shown, moved and keyed at the
+//   playhead (`canvasLayersAt` evaluates the keys; the commit writes keys there); the gizmo box gets a
+//   diamond at its top-right corner, filled while the playhead is on a key.
 import type { Command } from "../../core/commands/command.js";
 import type { ClipId, Crop, Project, TextContent, TextStyle, Transform } from "../../core/document/types.js";
 import { isEditableTarget } from "../../core/keyboard/KeyDispatcher.js";
@@ -47,11 +49,12 @@ import type { Store } from "../../core/store/createStore.js";
 import type { DocumentStore } from "../../core/store/DocumentStore.js";
 import type { LayoutState } from "../../core/store/layoutStore.js";
 import { addToSelection, clickSelection, EMPTY_SELECTION, selectClips, type ClickModifier, type Selection } from "../../core/store/selection.js";
-import { setSelection, type SessionStore } from "../../core/store/sessionStore.js";
+import { selectKeyframes, setSelection, type SessionStore } from "../../core/store/sessionStore.js";
 import type { Theme, ThemeBridge } from "../../core/theme/theme.js";
 import { isCropClip, setCrops } from "../../timeline/edit/crop.js";
 import { setTexts } from "../../timeline/edit/text.js";
 import { isLayerClip, layerCorners, setTransforms, type Point } from "../../timeline/edit/transform.js";
+import { keyAt, stopwatchOn } from "../../timeline/edit/keyframes.js";
 import { isClipLocked, selectionPartners } from "../../timeline/model/queries.js";
 import type { LiveText } from "../compositor/Compositor.js";
 import { onTextLayoutsChanged, textLayoutVersion } from "../text/layoutCache.js";
@@ -164,6 +167,8 @@ export interface GizmoScene {
   textBox: boolean;
   /** Inline text editing (§7.7): the caret and the composition underline. */
   text: TextEditScene | null;
+  /** The keyframe diamond (§7.3): a held layer's transform is keyed; `on` while every keyed one has a key at the playhead. */
+  keyframe?: { on: boolean } | null;
 }
 
 type GestureKind = "move" | "scale" | "rotate" | "anchor" | "crop" | "textSize" | "textWidth";
@@ -552,7 +557,23 @@ export class CanvasEditInput {
       crop: cropLayer ? { media: layerCorners(cropLayer.transform, { ...cropLayer.box, left: 0, top: 0, right: cropLayer.box.width, bottom: cropLayer.box.height }, frame) } : null,
       textBox: !marquee && !cropLayer && this.textLayer(drag ? drag.start.layers.length : selected.length, single) !== null,
       text: null,
+      keyframe: box && !marquee && !cropLayer ? this.keyframeMark(selected) : null,
     };
+  }
+
+  /** The gizmo's keyframe diamond for the held layers (§7.3), or null when none is keyed. */
+  private keyframeMark(held: readonly CanvasLayer[]): { on: boolean } | null {
+    const project = this.deps.document.getState();
+    const playhead = this.deps.session.state.getState().playhead;
+    let keyed = false;
+    let on = true;
+    for (const layer of held) {
+      const clip = project.clips[layer.clipId];
+      if (!clip || !stopwatchOn(clip, "transform")) continue;
+      keyed = true;
+      if (!keyAt(clip, "transform", playhead)) on = false;
+    }
+    return keyed ? { on } : null;
   }
 
   /** The text clip of the one layer a gizmo holds (`count` layers, `single` the one), or null. */
@@ -571,6 +592,8 @@ export class CanvasEditInput {
     if (!placement || !point) return;
     this.modifiers = this.modifiersOf(event);
     this.setPointer(event);
+    // A press on the canvas leaves the keys selected on a timeline lane (Delete acts on layers again).
+    selectKeyframes(this.deps.session, null);
     const editor = this.deps.textEditor;
     if (editor?.editing) {
       // On the edited text a press places the caret (§7.7); elsewhere it commits the edit, then acts.
@@ -685,16 +708,18 @@ export class CanvasEditInput {
       const labels = LABELS[drag.kind];
       const label = count === 1 ? labels[0] : labels[1];
       const project = this.deps.document.getState();
+      // Keyed layers take keys at the playhead (spec §7.3, Batch 35).
+      const at = this.deps.session.state.getState().playhead;
       const command =
         drag.kind === "crop"
           ? drag.crops
             ? setCrops(project, drag.crops, { label })
             : null
           : drag.texts
-            ? setTexts(project, new Map([...drag.texts].map(([id, text]) => [id, { ...text, transform: drag.result?.transforms.get(id) as Transform }])), { label })
+            ? setTexts(project, new Map([...drag.texts].map(([id, text]) => [id, { ...text, transform: drag.result?.transforms.get(id) as Transform }])), { label, at })
             : drag.solids
-              ? setSolids(project, new Map([...drag.solids].map(([id, look]) => [id, { ...look, transform: drag.result?.transforms.get(id) as Transform }])), { label: "Resize shape" })
-              : setTransforms(project, drag.result.transforms, { label });
+              ? setSolids(project, new Map([...drag.solids].map(([id, look]) => [id, { ...look, transform: drag.result?.transforms.get(id) as Transform }])), { label: "Resize shape", at })
+              : setTransforms(project, drag.result.transforms, { label, at });
       // The document takes over from the ephemeral values in the same frame.
       this.deps.scheduler.invalidate("preview");
       if (command) this.deps.commit(command);

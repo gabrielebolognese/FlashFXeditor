@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { makeMedia, makeMediaClip, makeProject, makeTrack, withClips } from "../../core/document/fixtures.js";
 import type { Clip, Marker, Project } from "../../core/document/types.js";
-import { buildSnapCandidates, resolveSnap, SNAP_KINDS, SnapIndex, snapLabel, type SnapCandidates } from "./snapIndex.js";
+import { buildSnapCandidates, resolveSnap, snapCandidatesOf, SNAP_KINDS, SnapIndex, snapLabel, type SnapCandidates } from "./snapIndex.js";
 
 const marker = (id: string, frame: number, label = ""): Marker => ({ id, frame, color: "red", label });
 
@@ -163,5 +163,21 @@ describe("snapLabel", () => {
     expect(snapLabel(p, { frame: 3, kind: "in", ref: null })).toBe("In point");
     expect(snapLabel(p, { frame: 9, kind: "out", ref: null })).toBe("Out point");
     expect(snapLabel(p, { frame: 0, kind: "zero", ref: null })).toBe("Timeline start");
+  });
+});
+
+describe("snapCandidatesOf (Batch 35: keyframe drags)", () => {
+  it("sorts a short list by frame, then priority, and resolves against it", () => {
+    const candidates = snapCandidatesOf([
+      { frame: 40, kind: "keyframe", ref: null },
+      { frame: 10, kind: "clipEnd", ref: "c" },
+      { frame: 10, kind: "keyframe", ref: null },
+      { frame: 0, kind: "clipStart", ref: "c" },
+    ]);
+    expect([...candidates.frames]).toEqual([0, 10, 10, 40]);
+    expect([...candidates.kinds].map((kind) => SNAP_KINDS[kind])).toEqual(["clipStart", "clipEnd", "keyframe", "keyframe"]);
+    const hit = resolveSnap(candidates, [38.5], { thresholdPx: 8, pxPerFrame: 4, playhead: 30 });
+    expect(hit?.target).toEqual({ frame: 40, kind: "keyframe", ref: null });
+    expect(snapLabel(makeProject(), { frame: 40, kind: "keyframe", ref: null })).toBe("Keyframe");
   });
 });

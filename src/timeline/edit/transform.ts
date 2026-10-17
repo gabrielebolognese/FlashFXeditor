@@ -7,13 +7,15 @@
 // - `layerPoint` is the compositor's model (`writeModel`): the anchor (fractions of the content) goes
 //   to the frame center plus (x, y), scaled (`scaleY` for the vertical axis) and rotated clockwise.
 //   Flips mirror the picture inside its box and move no point of it.
-// - Commands: `setTransforms` writes new transforms (one undo step for a whole gesture, spec P2);
+// - Commands: `setTransforms` writes new transforms (one undo step for a whole gesture, spec P2), or
+//   with the stopwatch on (keys in the Transform section) keys at the playhead (Batch 35, §7.3, §11);
 //   `nudgeLayers` moves by whole px and coalesces consecutive nudges (§7.3 arrow keys).
 // - Fit / Fill / Center / Flip / Reset (§7.2 menu, §11 quick row) are pure functions; `quickTransforms`
 //   applies one to the selected layers as one command. `withAnchor` moves the anchor, not the picture.
 import type { Draft } from "immer";
 import type { Command } from "../../core/commands/command.js";
-import type { Clip, ClipId, Crop, MediaClip, Project, SolidClip, TextClip, Transform } from "../../core/document/types.js";
+import { animatedTransform, clipRel, hasSectionKeys, mapKeyValues, transformValues, writeKeys } from "../../core/document/keyframes.js";
+import type { Clip, ClipId, Crop, Frame, Keyframes, MediaClip, Project, SolidClip, TextClip, Transform } from "../../core/document/types.js";
 import { displaySize } from "../../media/probe/rotation.js";
 import { textLayout } from "../../render/text/layoutCache.js";
 import { isClipLocked } from "../model/queries.js";
@@ -135,39 +137,111 @@ export function sameTransform(a: Transform, b: Transform): boolean {
 
 const finite = (t: Transform) => [t.x, t.y, t.scale, scaleYOf(t), t.rotation, t.anchor.x, t.anchor.y].every(Number.isFinite);
 
+/** Where a transform edit writes: the playhead (Batch 35) when the clip's Transform section is keyed. */
+export interface TransformEditOptions {
+  label: string;
+  coalesceKey?: string;
+  /**
+   * The playhead (spec §7.3, §11 stopwatch): a clip whose Transform section has keys gets its keys at
+   * this frame (inside the clip) set to the new values, and `changes` are compared with the transform
+   * shown there. Absent: the clips' own transforms (keys untouched).
+   */
+  at?: Frame;
+}
+
+/** How a clip takes a new transform: its own transform and, when keyed, its new keys (the anchor and flips still go on its transform). */
+export interface TransformWrite {
+  transform: Transform;
+  keyframes?: Keyframes | undefined;
+}
+
+/** The transform `clip` shows where an edit at `at` writes (its own when unkeyed or `at` is absent). */
+export function editedTransform(clip: LayerClip, at: Frame | undefined): Transform {
+  return at !== undefined ? animatedTransform(clip, clipRel(clip, at)) : clip.transform;
+}
+
 /**
  * Writes `changes` (new transforms by clip id) as one command `clip.transform` (one undo step: a whole
  * gizmo gesture, spec P2). Clips that are gone, locked, not layers, unchanged or given a non-finite
- * transform are skipped; null when nothing changes. Affects only the composite (§3.4).
+ * transform are skipped; null when nothing changes. With `at`, a keyed clip gets keys there instead
+ * (spec §7.3, §11): every Transform property at that frame (a section's keys share their frames); an
+ * anchor moved there shifts every position key by the same amount, so the picture stays put at every
+ * key (exact when scale and rotation are not keyed). Affects the composite (§3.4), and the timeline
+ * when keys change (the lane's diamonds).
  */
-export function setTransforms(project: Project, changes: ReadonlyMap<ClipId, Transform>, options: { label: string; coalesceKey?: string }): Command | null {
-  const writes: [ClipId, Transform][] = [];
+export function setTransforms(project: Project, changes: ReadonlyMap<ClipId, Transform>, options: TransformEditOptions): Command | null {
+  const writes: (TransformWrite & { id: ClipId })[] = [];
+  let keyed = false;
   for (const [id, transform] of changes) {
     const clip = project.clips[id];
-    if (!clip || !isLayerClip(clip) || isClipLocked(project, id) || !finite(transform) || sameTransform(clip.transform, transform)) continue;
-    writes.push([id, normalizeTransform(transform)]);
+    if (!clip || !isLayerClip(clip) || isClipLocked(project, id) || !finite(transform)) continue;
+    const write = transformWrite(clip, transform, options.at);
+    if (!write) continue;
+    writes.push({ id, ...write });
+    if ("keyframes" in write) keyed = true;
   }
   if (writes.length === 0) return null;
   return {
     id: "clip.transform",
     label: options.label,
     ...(options.coalesceKey !== undefined && { coalesceKey: options.coalesceKey }),
-    affects: ["composite"],
+    affects: keyed ? ["composite", "clips"] : ["composite"],
     run(draft) {
-      // TODO(batch 35): a property with keyframes gets its keyframe at the playhead updated or created instead (§7.3, §11).
-      for (const [id, transform] of writes) (draft.clips[id] as Draft<LayerClip>).transform = structuredClone(transform);
+      for (const { id, ...write } of writes) applyTransformWrite(draft.clips[id] as Draft<LayerClip>, write);
     },
   };
 }
 
-/** Arrow keys on the canvas (spec §7.3): the layers move by (`dx`, `dy`) project px; consecutive nudges are one undo step. */
-export function nudgeLayers(project: Project, ids: readonly ClipId[], dx: number, dy: number): Command | null {
+/**
+ * How `clip` takes `transform` set at `at` (see `setTransforms`), or null when it shows that already:
+ * unkeyed (or no `at`) its own transform; keyed, keys at `at` for every Transform property (an anchor
+ * moved there shifts every position key by the same amount) and the anchor and flips on its transform.
+ */
+export function transformWrite(clip: LayerClip, transform: Transform, at: Frame | undefined): TransformWrite | null {
+  const keyed = at !== undefined && hasSectionKeys(clip.keyframes, "transform");
+  const shown = keyed ? editedTransform(clip, at) : clip.transform;
+  if (sameTransform(shown, transform)) return null;
+  const next = normalizeTransform(transform);
+  if (!keyed || at === undefined) return { transform: next };
+  let keyframes = clip.keyframes;
+  if (keyframes && (shown.anchor.x !== next.anchor.x || shown.anchor.y !== next.anchor.y)) {
+    const dx = next.x - shown.x;
+    const dy = next.y - shown.y;
+    keyframes = mapKeyValues(keyframes, { "transform.x": (x) => x + dx, "transform.y": (y) => y + dy });
+  }
+  keyframes = writeKeys(keyframes, clipRel(clip, at), transformValues(next));
+  return { transform: { ...clip.transform, anchor: { x: next.anchor.x, y: next.anchor.y }, flipH: next.flipH, flipV: next.flipV }, keyframes };
+}
+
+/**
+ * `clip` moved by (`dx`, `dy`) project px at every frame: its transform and, when keyed, every position
+ * key (a layout change, e.g. a text growing around its anchored point, Batch 35); null for no move.
+ */
+export function shiftedWrite(clip: LayerClip, dx: number, dy: number): TransformWrite | null {
+  if ((dx === 0 && dy === 0) || !Number.isFinite(dx) || !Number.isFinite(dy)) return null;
+  const transform = { ...clip.transform, x: clip.transform.x + dx, y: clip.transform.y + dy };
+  if (!hasSectionKeys(clip.keyframes, "transform") || !clip.keyframes) return { transform };
+  return { transform, keyframes: mapKeyValues(clip.keyframes, { "transform.x": (x) => x + dx, "transform.y": (y) => y + dy }) };
+}
+
+/** Writes `write` into a drafted clip. */
+export function applyTransformWrite(clip: Draft<LayerClip>, write: TransformWrite): void {
+  clip.transform = structuredClone(write.transform);
+  if (!("keyframes" in write)) return;
+  if (write.keyframes) clip.keyframes = structuredClone(write.keyframes);
+  else delete clip.keyframes;
+}
+
+/** Arrow keys on the canvas (spec §7.3): the layers move by (`dx`, `dy`) project px; consecutive nudges are one undo step. `at`: the playhead (keyed layers move there). */
+export function nudgeLayers(project: Project, ids: readonly ClipId[], dx: number, dy: number, at?: Frame): Command | null {
   const changes = new Map<ClipId, Transform>();
   for (const id of ids) {
     const clip = project.clips[id];
-    if (clip && isLayerClip(clip)) changes.set(id, { ...clip.transform, x: clip.transform.x + dx, y: clip.transform.y + dy });
+    if (!clip || !isLayerClip(clip)) continue;
+    const shown = editedTransform(clip, at);
+    changes.set(id, { ...shown, x: shown.x + dx, y: shown.y + dy });
   }
-  return setTransforms(project, changes, { label: changes.size === 1 ? "Nudge layer" : "Nudge layers", coalesceKey: "canvas.nudge" });
+  return setTransforms(project, changes, { label: changes.size === 1 ? "Nudge layer" : "Nudge layers", coalesceKey: "canvas.nudge", ...(at !== undefined && { at }) });
 }
 
 /** The visible box's size at scale 1 when turned by `rotation` (its axis-aligned extent). */
@@ -238,15 +312,16 @@ const QUICK_LABELS: Record<QuickTransform, readonly [one: string, many: string]>
 /**
  * `action` on the layer clips among `ids` as one command `clip.transform` (one undo step), or null when
  * nothing changes. Fit, Fill and Center skip layers with no content box (nothing drawn to fit); locked
- * clips are skipped by `setTransforms`.
+ * clips are skipped by `setTransforms`. `at`: the playhead (keyed layers act on, and key, the
+ * transform there).
  */
-export function quickTransforms(project: Project, ids: Iterable<ClipId>, action: QuickTransform): Command | null {
+export function quickTransforms(project: Project, ids: Iterable<ClipId>, action: QuickTransform, at?: Frame): Command | null {
   const frame = project.settings;
   const changes = new Map<ClipId, Transform>();
   for (const id of ids) {
     const clip = project.clips[id];
     if (!clip || !isLayerClip(clip)) continue;
-    const transform = clip.transform;
+    const transform = editedTransform(clip, at);
     if (action === "flipH" || action === "flipV") changes.set(id, flipTransform(transform, action === "flipH" ? "h" : "v"));
     else if (action === "reset") changes.set(id, resetTransform(project, clip));
     else {
@@ -256,5 +331,5 @@ export function quickTransforms(project: Project, ids: Iterable<ClipId>, action:
     }
   }
   const [one, many] = QUICK_LABELS[action];
-  return setTransforms(project, changes, { label: changes.size === 1 ? one : many });
+  return setTransforms(project, changes, { label: changes.size === 1 ? one : many, ...(at !== undefined && { at }) });
 }

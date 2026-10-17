@@ -22,8 +22,9 @@ import { MIXED, useClipsShared } from "./useShared.js";
 // unlinked, the duration stays and the source range follows), the duration as a timecode (linked, a
 // rate stretch; unlinked or for a freeze frame, a trim of the out point), Ripple (later clips move with
 // the change of duration; the options are for the session) and Freeze frame. The speed field is bound
-// outside React (speedBinding.ts); a label scrub applies once on release. TODO(batch 35): keyframe
-// timing follows a speed change by scaling (speed.ts). Reverse is not built (spec §11 "if available").
+// outside React (speedBinding.ts); a label scrub applies once on release. Keyframe timing follows a
+// speed change (speed.ts: frames scaled, keys on one frame merged, Batch 35). Reverse is not built
+// (spec §11 "if available").
 
 const DEPS: SpeedBindingDeps = { document: documentStore, apply: applySpeed };
 

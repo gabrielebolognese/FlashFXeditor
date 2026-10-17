@@ -7,8 +7,12 @@
 // Fields re-read on document changes and on live edits (another field's scrub can move this value:
 // a locked scale pair, the anchor and the position, a locked crop; a crop handle drag on the canvas
 // writes its live crops there too, so the Crop fields follow it).
+// Keyframes (spec §11 stopwatch, Batch 35): a keyed clip shows, and is edited at, its value at the
+// playhead; the field re-reads when the playhead moves (DOM writes only, P1) while a target is keyed,
+// and commits write the key there (`at`).
 import type { Command } from "../../core/commands/command.js";
-import type { ClipId, Crop, Project, Transform } from "../../core/document/types.js";
+import { clipAt, hasAnyKeys } from "../../core/document/keyframes.js";
+import type { ClipId, Crop, Frame, Project, Transform } from "../../core/document/types.js";
 import type { Store } from "../../core/store/createStore.js";
 import type { DocumentStore } from "../../core/store/DocumentStore.js";
 import { setOpacities } from "../../timeline/edit/clipProps.js";
@@ -23,6 +27,8 @@ import type { LayerChange, LayerNumberProp } from "./layerProps.js";
 export interface BindingDeps {
   document: Pick<DocumentStore, "getState" | "subscribe" | "dispatch">;
   live: Store<LiveEdit>;
+  /** The playhead (keyed clips are shown and edited there); without it, the clips' own values. */
+  playhead?: { get(): Frame; subscribe(listener: () => void): () => void };
 }
 
 /** The layer clips among `ids` that have `prop` (in order). */
@@ -35,13 +41,17 @@ function layers(project: Project, ids: readonly ClipId[], prop: LayerNumberProp)
   return out;
 }
 
-/** `clip` as a live edit shows it. */
-function shownClip(clip: LayerClip, live: LiveEdit): LayerClip {
+/** `clip` at the playhead `at` (its keyed values there; itself when unkeyed or `at` is null). */
+const atFrame = (clip: LayerClip, at: Frame | null): LayerClip => (at === null ? clip : clipAt(clip, at));
+
+/** `clip` as a live edit shows it (at the playhead `at` when keyed). */
+function shownClip(clip: LayerClip, live: LiveEdit, at: Frame | null): LayerClip {
+  const base = atFrame(clip, at);
   const transform = live.transforms?.get(clip.id);
   const opacity = live.opacities?.get(clip.id);
   const crop = isCropClip(clip) ? live.crops?.get(clip.id) : undefined;
-  if (transform === undefined && opacity === undefined && crop === undefined) return clip;
-  const shown = { ...clip, transform: transform ?? clip.transform, opacity: opacity ?? clip.opacity };
+  if (transform === undefined && opacity === undefined && crop === undefined) return base;
+  const shown = { ...base, transform: transform ?? base.transform, opacity: opacity ?? base.opacity };
   return crop !== undefined ? ({ ...shown, crop } as LayerClip) : shown;
 }
 
@@ -55,10 +65,15 @@ interface Changes {
 export function layerBinding(deps: BindingDeps, prop: LayerNumberProp, ids: readonly ClipId[]): NumberBinding {
   const clamp = (value: number) => roundTo(Math.min(prop.max ?? Infinity, Math.max(prop.min ?? -Infinity, value)), prop.precision);
 
+  const playhead = (): Frame | null => deps.playhead?.get() ?? null;
+
+  /** `valueOf` gets each clip as it is at the playhead (keyed values there). */
   const changesOf = (project: Project, valueOf: (clip: LayerClip) => number): Changes => {
     const changes: Changes = { transforms: new Map(), opacities: new Map(), crops: new Map() };
-    for (const clip of layers(project, ids, prop)) {
-      if (isClipLocked(project, clip.id)) continue;
+    const at = playhead();
+    for (const raw of layers(project, ids, prop)) {
+      if (isClipLocked(project, raw.id)) continue;
+      const clip = atFrame(raw, at);
       const change: LayerChange = prop.write(clip, valueOf(clip), project);
       if (change.kind === "transform") changes.transforms.set(clip.id, change.transform);
       else if (change.kind === "crop") changes.crops.set(clip.id, change.crop);
@@ -70,7 +85,8 @@ export function layerBinding(deps: BindingDeps, prop: LayerNumberProp, ids: read
   const commit = (valueOf: (clip: LayerClip) => number, coalesceKey?: string) => {
     const project = deps.document.getState();
     const changes = changesOf(project, valueOf);
-    const options = { label: prop.label, ...(coalesceKey !== undefined && { coalesceKey }) };
+    const at = playhead();
+    const options = { label: prop.label, ...(coalesceKey !== undefined && { coalesceKey }), ...(at !== null && { at }) };
     const command: Command | null =
       changes.transforms.size > 0 ? setTransforms(project, changes.transforms, options) : changes.crops.size > 0 ? setCrops(project, changes.crops, options) : setOpacities(project, changes.opacities, options);
     if (command) deps.document.dispatch(command);
@@ -84,12 +100,22 @@ export function layerBinding(deps: BindingDeps, prop: LayerNumberProp, ids: read
     read() {
       const live = deps.live.getState();
       const project = deps.document.getState();
-      const values = layers(project, ids, prop).map((clip) => roundTo(prop.read(shownClip(clip, live), project), prop.precision));
+      const at = playhead();
+      const values = layers(project, ids, prop).map((clip) => roundTo(prop.read(shownClip(clip, live, at), project), prop.precision));
       const value = shared(values, (v) => v);
       return value && !value.mixed ? value.value : null;
     },
     subscribe(listener) {
       const stops = [deps.document.subscribe(() => listener(), { affects: ["composite", "clips", "settings"] }), deps.live.subscribe(() => listener())];
+      // A keyed value changes along the timeline: re-read when the playhead moves (DOM only, P1).
+      const keyed = () => {
+        const project = deps.document.getState();
+        return ids.some((id) => {
+          const clip = project.clips[id];
+          return clip !== undefined && "keyframes" in clip && hasAnyKeys(clip.keyframes);
+        });
+      };
+      if (deps.playhead) stops.push(deps.playhead.subscribe(() => keyed() && listener()));
       return () => {
         for (const stop of stops) stop();
       };

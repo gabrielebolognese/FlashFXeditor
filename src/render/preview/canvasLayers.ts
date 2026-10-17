@@ -9,10 +9,11 @@
 //   layers at the playhead"): a locked background or logo is still an alignment reference.
 // - Each layer's quad is its visible box after crop and transform, in project px from the frame's
 //   top-left (`layerCorners`), with a gesture's ephemeral transform, crop, text and solid look when one
-//   is given.
+//   is given; a keyed transform is the one at the frame (Batch 35).
 // - Hit testing goes top layer first (§7.2); a marquee takes the layers whose quad intersects it. Text
 //   layers are hit on their glyph bounds padded by TEXT_HIT_PADDING project px and on their
 //   background boxes (`hits`), not on the empty corners of their box.
+import { animatedTransform } from "../../core/document/keyframes.js";
 import type { ClipId, Crop, Frame, Project, TextClip, Track, TrackId, Transform } from "../../core/document/types.js";
 import { clipInIndex, trackIndex } from "../../timeline/model/queries.js";
 import { isLayerClip, layerContent, layerCorners, layerPoint, scaleYOf, type ContentBox, type Point, type Size } from "../../timeline/edit/transform.js";
@@ -82,7 +83,8 @@ function layersAt(
     const clip = live && found.kind === "text" ? { ...found, text: live.text, style: live.style } : look && found.kind === "solid" ? { ...found, ...look } : found;
     const box = layerContent(project, clip, crops?.get(clip.id));
     if (!box) continue;
-    const transform = transforms?.get(clip.id) ?? clip.transform;
+    // A keyed transform as it is at the frame (spec §7.3: the gizmo edits the keyframe there).
+    const transform = transforms?.get(clip.id) ?? animatedTransform(clip, frame - clip.start);
     const layer: CanvasLayer = { clipId: clip.id, trackId: track.id, transform, box, quad: layerCorners(transform, box, project.settings) };
     if (clip.kind === "text") layer.hits = textHits(clip, transform, box, project.settings);
     layers.push(layer);

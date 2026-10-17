@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { makeMedia, makeMediaClip, makeProject, makeSolidClip, makeTrack, withClips } from "../../core/document/fixtures.js";
 import { framesToSourceUs, frameToUs } from "../../core/document/time.js";
-import type { CaptionClip, Clip, MediaClip, Project, Track } from "../../core/document/types.js";
+import type { CaptionClip, Clip, Keyframes, MediaClip, Project, Track } from "../../core/document/types.js";
 import { validateProject } from "../../core/document/validate.js";
 import { DocumentStore } from "../../core/store/DocumentStore.js";
 import { createSessionStore } from "../../core/store/sessionStore.js";
@@ -212,7 +212,7 @@ describe("trimEdge: media bounds (spec §6.10)", () => {
 
 describe("trimEdge: keyframes, fades", () => {
   it("in trims keep media keyframes on their source frame, text and solid keyframes on the clip start", () => {
-    const keyframes = { "transform.scale": [{ frame: 10, value: 1, ease: "linear" }, { frame: 40, value: 2, ease: "linear" }] };
+    const keyframes: Keyframes = { "transform.scale": [{ frame: 10, value: 1, ease: "linear" }, { frame: 40, value: 2, ease: "linear" }] };
     const solid = { ...makeSolidClip({ id: "s", trackId: "v2", start: 100, duration: 50 }), keyframes };
     const p = project([at("a", "v1", 100, 50, 100, { keyframes }), solid]);
     const media = commit(p, trimEdge(p, "a", "in", 20, { ripple: false }));

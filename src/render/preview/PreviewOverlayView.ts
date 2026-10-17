@@ -12,7 +12,8 @@
 //   near the cursor (the timeline's drag tooltip style). In crop mode (Batch 26) the box gets crop
 //   handles (corner brackets and edge bars inside it) and the whole media's box is outlined dashed. A
 //   text box (Batch 29) has no top and bottom handles; inline text editing draws the edited box's
-//   outline, the caret (--text-caret-width, --accent) and the IME composition underline.
+//   outline, the caret (--text-caret-width, --accent) and the IME composition underline. A box holding
+//   a keyframed layer gets the keyframe diamond up and right of its top-right handle (Batch 35).
 // - Smart guides (§7.4, the scene's `guides`): 1 px --accent lines (across the frame for the frame and
 //   safe-zone targets, from the dragged box to the layer for a layer), distance spans with end caps
 //   and their distance chips (--accent, --on-accent mono caption), equal-spacing gaps, measure mode.
@@ -192,6 +193,7 @@ export class PreviewOverlayView implements RenderView {
       out.push(scene.crop ? 1 : 0);
       if (scene.crop) quad(scene.crop.media); else out.push(0);
       out.push(scene.textBox ? 1 : 0);
+      out.push(scene.keyframe ? (scene.keyframe.on ? 2 : 1) : 0);
       const editing = scene.text;
       if (editing) {
         out.push(1);
@@ -271,6 +273,7 @@ export class PreviewOverlayView implements RenderView {
         ctx.fillRect(x, y, size, size);
         ctx.strokeRect(x + line / 2, y + line / 2, size - line, size - line);
       }
+      if (scene.keyframe) this.drawKeyframeMark(ctx, at(handlePoint(box, "ne")), scene.keyframe.on, line, dpr);
     }
     if (scene.anchor) this.drawAnchor(ctx, at(scene.anchor), dpr, line);
     if (scene.text) {
@@ -300,6 +303,31 @@ export class PreviewOverlayView implements RenderView {
     ctx.restore();
     if (scene.guides && scene.guides.spans.length > 0) this.drawDistances(ctx, placement, scene.guides.spans);
     if (scene.readout) this.drawReadout(ctx, placement, scene.readout);
+  }
+
+  /**
+   * The keyframe diamond (spec §7.3, Batch 35) up and right of the box's top-right handle: --accent,
+   * filled on a key at the playhead, outlined otherwise (the lane's diamond size).
+   */
+  private drawKeyframeMark(ctx: CanvasRenderingContext2D, corner: Point, on: boolean, line: number, dpr: number): void {
+    const { color, gizmo, timeline } = this.theme;
+    const half = Math.round((timeline.keyframeSize * dpr) / 2);
+    const offset = Math.round(gizmo.handleSize * dpr) + half;
+    const cx = Math.round(corner.x + offset);
+    const cy = Math.round(corner.y - offset);
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - half);
+    ctx.lineTo(cx + half, cy);
+    ctx.lineTo(cx, cy + half);
+    ctx.lineTo(cx - half, cy);
+    ctx.closePath();
+    ctx.lineWidth = line;
+    ctx.strokeStyle = color.accent;
+    if (on) {
+      ctx.fillStyle = color.accent;
+      ctx.fill();
+    }
+    ctx.stroke();
   }
 
   /** Smart guides (§7.4) in device px: --accent lines, and distance spans with end caps across them. */

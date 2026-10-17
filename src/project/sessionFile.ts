@@ -1,5 +1,6 @@
 // session.json (spec §5.3): session state, the selection and the panel layout of one project. Harmless
 // to lose, so parsing never throws: every invalid or missing field falls back to its default.
+import { isKeyframeSection, type KeyframeSection } from "../core/document/keyframes.js";
 import type { TimecodeMode } from "../core/document/time.js";
 import type { LayoutRatios } from "../core/store/layoutStore.js";
 import { sanitizeRatios } from "../core/store/layoutStore.js";
@@ -59,6 +60,13 @@ function sanitizeRanges(value: unknown): Record<string, SourceRange> {
   return ranges;
 }
 
+/** Keyframe lane choices by clip id (Batch 35): known sections only. */
+function sanitizeLanes(value: unknown): Record<string, KeyframeSection> {
+  const lanes: Record<string, KeyframeSection> = {};
+  for (const [id, section] of Object.entries(obj(value))) if (isKeyframeSection(section)) lanes[id] = section;
+  return lanes;
+}
+
 function sanitizeState(value: unknown): SessionState {
   const raw = obj(value);
   const d = DEFAULT_SESSION;
@@ -116,6 +124,8 @@ function sanitizeState(value: unknown): SessionState {
     },
     sourceRanges: sanitizeRanges(raw.sourceRanges),
     collapsedSections,
+    clipKeyframes: bool(raw.clipKeyframes, d.clipKeyframes),
+    keyframeLanes: sanitizeLanes(raw.keyframeLanes),
   };
 }
 

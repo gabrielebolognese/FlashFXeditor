@@ -83,7 +83,7 @@ describe("app settings", () => {
     await settings.load();
     expect(settings.getState()).toEqual(DEFAULT_APP_SETTINGS);
     await settings.update({ autosaveDelayMs: 5000 });
-    expect(kv.data.get("settings.v1")).toEqual({ autosaveDelayMs: 5000, importMode: "copy", monitorVolumeDb: 0, monitorMuted: false, proxyAuto: true, proxyRule: "heavy", proxyShortEdge: 540, recentColors: [], punchZoomScale: 1.2, punchZoomAnimated: false, favoriteFonts: [], matchClipUnderPlayhead: true, defaultTitlePreset: "starter-title", defaultSubtitlePreset: "starter-subtitle", transcribeModel: "base", transcribeLanguage: null });
+    expect(kv.data.get("settings.v1")).toEqual({ autosaveDelayMs: 5000, importMode: "copy", monitorVolumeDb: 0, monitorMuted: false, proxyAuto: true, proxyRule: "heavy", proxyShortEdge: 540, recentColors: [], punchZoomScale: 1.2, punchZoomAnimate: true, favoriteFonts: [], matchClipUnderPlayhead: true, defaultTitlePreset: "starter-title", defaultSubtitlePreset: "starter-subtitle", transcribeModel: "base", transcribeLanguage: null });
     await settings.update({ autosaveDelayMs: 1234 });
     expect(settings.getState().autosaveDelayMs).toBe(5000);
 
@@ -152,17 +152,19 @@ describe("app settings", () => {
     expect(settings.getState().recentColors).toHaveLength(8);
   });
 
-  it("keeps the punch zoom scale in range and the reserved animated flag (Batch 27)", async () => {
+  it("keeps the punch zoom scale in range and the animated flag, on by default (Batches 27, 35)", async () => {
     const kv = memoryKeyValueStore();
-    kv.data.set("settings.v1", { punchZoomScale: 9, punchZoomAnimated: "yes" });
+    // The reserved `punchZoomAnimated: false` stored before Batch 35 is dropped: the animated zoom is on.
+    kv.data.set("settings.v1", { punchZoomScale: 9, punchZoomAnimated: false, punchZoomAnimate: "yes" });
     const settings = createAppSettings(kv);
     await settings.load();
-    expect(settings.getState()).toMatchObject({ punchZoomScale: 3, punchZoomAnimated: false });
-    await settings.update({ punchZoomScale: 1.5, punchZoomAnimated: true });
-    expect(settings.getState()).toMatchObject({ punchZoomScale: 1.5, punchZoomAnimated: true });
+    expect(settings.getState()).toMatchObject({ punchZoomScale: 3, punchZoomAnimate: true });
+    expect(settings.getState()).not.toHaveProperty("punchZoomAnimated");
+    await settings.update({ punchZoomScale: 1.5, punchZoomAnimate: false });
+    expect(settings.getState()).toMatchObject({ punchZoomScale: 1.5, punchZoomAnimate: false });
     await settings.update({ punchZoomScale: Number.NaN });
     expect(settings.getState().punchZoomScale).toBe(1.5);
-    expect(DEFAULT_APP_SETTINGS).toMatchObject({ punchZoomScale: 1.2, punchZoomAnimated: false });
+    expect(DEFAULT_APP_SETTINGS).toMatchObject({ punchZoomScale: 1.2, punchZoomAnimate: true });
   });
 
   it("keeps the favorite fonts: names once, in order, at most 50 (Batch 28)", async () => {

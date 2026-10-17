@@ -24,6 +24,8 @@ export interface MoveSnap {
   playhead: Frame;
   thresholdPx: number;
   pxPerFrame: number;
+  /** The keys on the dragged clip's keyframe lane (timeline frames, Batch 35): they snap like its edges. */
+  keyFrames?: readonly Frame[];
 }
 
 export interface Ghost {
@@ -112,7 +114,7 @@ export class MoveGesture {
   update(pointerFrame: number, pointerLane: number | null, modifiers: DragModifiers, snap: MoveSnap | null = null): MoveProposal {
     const raw = pointerFrame - this.startFrame;
     let hit = snap
-      ? resolveSnap(snap.candidates, [this.minStart + raw, this.maxEnd + raw], {
+      ? resolveSnap(snap.candidates, [this.minStart + raw, this.maxEnd + raw, ...(snap.keyFrames ?? []).map((frame) => frame + raw)], {
           thresholdPx: snap.thresholdPx,
           pxPerFrame: snap.pxPerFrame,
           playhead: snap.playhead,

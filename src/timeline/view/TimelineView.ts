@@ -30,8 +30,16 @@
 // `leaveMediaDrag`, `endMediaDrag`: the pointer is captured by the panel it started in) and shows its
 // ghosts like a clip drag; files dragged from the OS (native drag and drop on the overlay) show where
 // they will start and reach the controller through `onDropFiles`.
+// Keyframe lanes (spec §6.4, §6.15, Batch 35; keyframeLane.ts): with Show clip keyframes on, a press on
+// a diamond selects it (Shift adds or removes it; the clip joins the selection) and a click without a
+// drag moves the playhead to it, so the properties panel shows its values; a drag retimes the selected
+// keys of the lane (kept inside the clip; snapping to the lane's other keys, the playhead and the clip's
+// edges, Shift to whole seconds), one command on release through `onMoveKeyframes`; Alt+click on a lane
+// adds a key there (`onAddKeyframe`); a right-click opens the keyframe menu. A clip drag snaps the keys
+// on its lane too.
 import type { Affect } from "../../core/commands/command.js";
-import { formatSpeed, formatTimecode, usToFrame } from "../../core/document/time.js";
+import type { KeyframeSection } from "../../core/document/keyframes.js";
+import { firstFrameOfSecond, formatSpeed, formatTimecode, secondOfFrame, usToFrame } from "../../core/document/time.js";
 import { isMediaClip, type Clip, type ClipId, type Frame, type Project, type TrackId, type TrackKind } from "../../core/document/types.js";
 import { isEditableTarget } from "../../core/keyboard/KeyDispatcher.js";
 import { isSnapKey, type Platform } from "../../core/keyboard/keys.js";
@@ -42,16 +50,17 @@ import type { Store } from "../../core/store/createStore.js";
 import type { DocumentStore } from "../../core/store/DocumentStore.js";
 import type { LayoutState, Size } from "../../core/store/layoutStore.js";
 import { clickSelection, EMPTY_SELECTION, selectClips, selectedTrackIds, selectTracks, trackClickSelection, type ClickModifier, type Selection } from "../../core/store/selection.js";
-import { selectEditPoint, selectGap, selectMarker, setInOut, setPlayhead, setSelection, type EditPoint, type SessionStore, type Tool } from "../../core/store/sessionStore.js";
+import { selectEditPoint, selectGap, selectKeyframes, selectMarker, setInOut, setPlayhead, setSelection, type EditPoint, type KeyframeSelection, type SessionState, type SessionStore, type Tool } from "../../core/store/sessionStore.js";
 import { ease } from "../../core/theme/easing.js";
 import type { Theme, ThemeBridge } from "../../core/theme/theme.js";
 import type { DropItem, DropLanes, MediaDropRequest } from "../edit/dropMedia.js";
 import type { MoveRequest } from "../edit/move.js";
+import { clampKeyDelta } from "../edit/keyframes.js";
 import { clipsToSplit } from "../edit/split.js";
 import { hasSource, MAX_SPEED, MIN_SPEED, type TrimEdge } from "../edit/trim.js";
 import { dragIn, dragOut, lastFrameOf, type InOut } from "../model/inOut.js";
 import { contentEnd, gapAt, isClipLocked, laneOf, linkedPartners, neighbors, selectionPartners, type Gap } from "../model/queries.js";
-import { resolveSnap, SnapIndex, snapLabel, type SnapCandidates, type SnapTarget } from "../snap/snapIndex.js";
+import { resolveSnap, snapCandidatesOf, SnapIndex, snapLabel, type SnapCandidates, type SnapKind, type SnapTarget } from "../snap/snapIndex.js";
 import { createWants, type ClipVisualsSource } from "./clipVisuals.js";
 import { trimCursor, trimCursors, type TrimCursors } from "./cursors.js";
 import { drawContent, type TimelineFonts } from "./drawContent.js";
@@ -63,6 +72,7 @@ import { MarqueeGesture } from "./gestures/marquee.js";
 import { MoveGesture, NO_MODIFIERS, type DragModifiers, type MoveSnap } from "./gestures/moveClips.js";
 import { TrimGesture, type EditTarget, type PreviewSplit, type TrimRequest } from "./gestures/trimClip.js";
 import { HitTester, type HitResult } from "./HitTester.js";
+import { diamondInset, laneBand, laneFrames, shownLane, type LaneScene } from "./keyframeLane.js";
 import { handleEdge, layoutScrollbars, scrollForThumb, scrollYForThumb, zoomHandleView, type ScrollbarAxis, type ScrollbarHit, type ScrollbarLayout } from "./scrollbars.js";
 import { TextCache } from "./textCache.js";
 import {
@@ -114,6 +124,10 @@ export interface TimelineViewDeps {
   onMoveMarker?(markerId: string, frame: Frame): void;
   /** A marker was double-clicked (spec §6.13): the controller opens its inline editor. */
   onEditMarker?(markerId: string): void;
+  /** Keys dragged on a keyframe lane were released (spec §6.15): the controller retimes them by `delta` frames (one command). */
+  onMoveKeyframes?(clipId: ClipId, section: KeyframeSection, frames: readonly Frame[], delta: number): void;
+  /** Alt+click on a keyframe lane (spec §6.4): the controller adds a key at `frame` (relative to the clip; one command). */
+  onAddKeyframe?(clipId: ClipId, section: KeyframeSection, frame: Frame): void;
   /** Background work pauses while a gesture runs (spec §3.4); arrivals wait while it is paused. */
   idle?: Pick<IdleQueue, "pause" | "resume"> & Partial<Pick<IdleQueue, "isPaused" | "onPauseChange">>;
   /** Thumbnails, posters and peaks of the clip bodies (spec §6.4, §6.17). */
@@ -148,7 +162,9 @@ export type ContextMenuRequest =
   | { kind: "gap"; gap: Gap; x: number; y: number }
   | { kind: "track"; trackId: TrackId; x: number; y: number }
   /** The ruler (spec §6.16 Ruler/marker): the frame under the pointer, and the marker there (selected) or null. */
-  | { kind: "ruler"; frame: Frame; markerId: string | null; x: number; y: number };
+  | { kind: "ruler"; frame: Frame; markerId: string | null; x: number; y: number }
+  /** A keyframe diamond (spec §6.15 keyframe menu), selected: its clip, lane section and frame (relative to the clip). */
+  | { kind: "keyframe"; clipId: ClipId; section: KeyframeSection; frame: Frame; x: number; y: number };
 
 export interface TimelineStats {
   contentDraws: number;
@@ -208,7 +224,11 @@ type Gesture =
   /** An in or out handle dragged (spec §6.3): the range it would leave, snapped. */
   | { kind: "rangeDrag"; pointerId: number; point: "in" | "out"; from: InOut; range: InOut; snap: SnapTarget | null }
   /** Media dragged in from the Media panel or files from the OS (spec §6.14); no pointer of its own (-1). */
-  | { kind: "mediaDrop"; pointerId: number; drop: MediaDropGesture };
+  | { kind: "mediaDrop"; pointerId: number; drop: MediaDropGesture }
+  /** A press on a keyframe diamond (spec §6.15): a retime drag of `frames` once it moves past the dead zone, else a click (the playhead goes to `grab`). */
+  | { kind: "pressKey"; pointerId: number; x: number; y: number; clipId: ClipId; section: KeyframeSection; frames: readonly Frame[]; grab: Frame }
+  /** Keys dragged on their lane: `delta` frames (kept inside the clip), snapped. */
+  | { kind: "keyDrag"; pointerId: number; clipId: ClipId; section: KeyframeSection; frames: readonly Frame[]; grab: Frame; delta: number; snap: SnapTarget | null };
 
 /** A keyboard zoom step on its way (spec §6.2): from `from` to `to` with `anchor` held; `start` is set by the first frame. */
 interface ZoomAnimation {
@@ -251,7 +271,9 @@ const sameHover = (a: HitResult | null, b: HitResult | null) =>
     a.gap?.start === b.gap?.start &&
     a.scrollbar?.axis === b.scrollbar?.axis &&
     a.scrollbar?.part === b.scrollbar?.part &&
-    a.markerId === b.markerId);
+    a.markerId === b.markerId &&
+    a.keyframe?.frame === b.keyframe?.frame &&
+    a.lane === b.lane);
 
 /** A hit on a track row's clip area: what the Razor can cut (and shows its cursor over). */
 function inTrackRow(hit: HitResult): boolean {
@@ -261,6 +283,7 @@ function inTrackRow(hit: HitResult): boolean {
     case "clipEdgeOut":
     case "junction":
     case "gap":
+    case "keyframe":
       return true;
     case "empty":
       return hit.trackId !== null;
@@ -271,7 +294,7 @@ function inTrackRow(hit: HitResult): boolean {
 
 /** The clip a hit on a body, trim zone or cut is on, else null. */
 function hitClip(hit: HitResult): ClipId | null {
-  return hit.type === "clip" || hit.type === "clipEdgeIn" || hit.type === "clipEdgeOut" || hit.type === "junction" ? hit.clipId : null;
+  return hit.type === "clip" || hit.type === "clipEdgeIn" || hit.type === "clipEdgeOut" || hit.type === "junction" || hit.type === "keyframe" ? hit.clipId : null;
 }
 
 /** The edge a hit on a trim zone or a cut is on (a cut: the side under the pointer), or null. */
@@ -315,6 +338,8 @@ function cursorFor(hit: HitResult | null, gesture: Gesture | null, cursors: Trim
   if (gesture?.kind === "scrollbar") return gesture.part === "thumb" ? "default" : "ew-resize";
   if (gesture?.kind === "scrub" || gesture?.kind === "markerDrag" || gesture?.kind === "rangeDrag") return "ew-resize";
   if (gesture?.kind === "trackDrag") return "grabbing";
+  if (gesture?.kind === "keyDrag") return "ew-resize";
+  if (gesture?.kind === "pressKey") return "pointer";
   if (gesture?.kind === "move") {
     const proposal = gesture.move.proposal;
     return proposal?.refused ? "not-allowed" : proposal?.duplicate ? "copy" : "grabbing";
@@ -330,7 +355,7 @@ function cursorFor(hit: HitResult | null, gesture: Gesture | null, cursors: Trim
   if (hit.type === "scrollbar") return hit.scrollbar?.part === "start" || hit.scrollbar?.part === "end" ? "ew-resize" : "default";
   if (context.pan) return "grab";
   if (hit.type === "ruler" || hit.type === "playheadHead" || hit.type === "inHandle" || hit.type === "outHandle") return "ew-resize";
-  if (hit.type === "marker") return "pointer";
+  if (hit.type === "marker" || (hit.type === "keyframe" && context.tool === "select")) return "pointer";
   if ((hit.type === "trackHeader" && hit.addTrack) || hit.type === "headerToggle") return "pointer";
   const edge = hitEdge(hit);
   const { tool } = context;
@@ -358,6 +383,7 @@ export class TimelineView {
   private readonly text = new TextCache();
   private cachedGeometry: { key: readonly unknown[]; geometry: TimelineGeometry } | null = null;
   private cachedScrollbars: { geometry: TimelineGeometry; project: Project; minThumb: number; layout: ScrollbarLayout } | null = null;
+  private cachedLanes: { show: boolean; lanes: SessionState["keyframeLanes"]; keys: KeyframeSelection | null; scene: LaneScene } | null = null;
   /** A keyboard zoom step being eased in (spec §6.2), or null. */
   private zoomAnimation: ZoomAnimation | null = null;
   /** Space held for Space+drag (spec §6.6); `panned` once a pan started (the release then plays nothing). */
@@ -416,7 +442,33 @@ export class TimelineView {
       get handleZone() {
         return deps.theme.theme.timeline.rangeHandleZone;
       },
+      keyframes: {
+        scene: () => this.laneScene(),
+        selected: (clipId) => {
+          const selection = this.deps.session.selection.getState();
+          return selection.kind === "clips" && selection.clipIds.has(clipId);
+        },
+        band: (row) => laneBand(row, deps.theme.theme),
+        get size() {
+          return deps.theme.theme.timeline.keyframeSize;
+        },
+        get inset() {
+          return diamondInset(deps.theme.theme);
+        },
+      },
     });
+  }
+
+  /** The keyframe lanes as the session sets them (one object while nothing they depend on changes). */
+  private laneScene(): LaneScene {
+    const state = this.deps.session.state.getState();
+    const keys = this.deps.session.keyframes.getState();
+    const cached = this.cachedLanes;
+    if (cached && cached.show === state.clipKeyframes && cached.lanes === state.keyframeLanes && cached.keys === keys) return cached.scene;
+    const lanes = state.keyframeLanes;
+    const scene: LaneScene = { show: state.clipKeyframes, section: (clipId) => lanes[clipId] ?? "transform", selected: keys };
+    this.cachedLanes = { show: state.clipKeyframes, lanes, keys, scene };
+    return scene;
   }
 
   /** Creates both canvases inside `host` and starts following the stores. */
@@ -525,6 +577,10 @@ export class TimelineView {
         },
       ),
       session.selection.subscribe(() => scheduler.invalidate("timelineContent")),
+      // Keyframe lanes (Batch 35): the toggle, the lanes' sections and the selected keys.
+      session.state.select((state) => state.clipKeyframes, both),
+      session.state.select((state) => state.keyframeLanes, both),
+      session.keyframes.subscribe(() => scheduler.invalidate("timelineContent")),
       session.editPoint.subscribe(() => scheduler.invalidate("timelineOverlay")),
       session.gap.subscribe(() => scheduler.invalidate("timelineOverlay")),
       session.marker.subscribe(() => scheduler.invalidate("timelineOverlay")),
@@ -957,6 +1013,8 @@ export class TimelineView {
       this.pressScrollbar(event, hit.scrollbar);
       return;
     }
+    // Selected keys stay only while their diamonds are pressed (Delete then acts on clips again).
+    if (hit.type !== "keyframe") selectKeyframes(this.deps.session, null);
     const tool = this.deps.session.state.getState().activeTool;
     // The Hand tool pans from anywhere in the track area, clips included; the ruler still scrubs.
     if (tool === "hand" && contains(this.geometry().area, event.offsetX, event.offsetY)) {
@@ -987,6 +1045,11 @@ export class TimelineView {
       case "clip":
         // Clips on locked tracks take no selection (spec §6.12): the press acts as on empty space.
         if (isClipLocked(this.deps.document.getState(), hit.clipId as ClipId)) this.pressEmpty(event);
+        else if (hit.lane && event.altKey && tool === "select") this.addKeyHere(hit.clipId as ClipId, hit.lane, hit.frame);
+        else this.pressClip(event, hit.clipId as ClipId, hit.frame, bodyDrag(tool));
+        break;
+      case "keyframe":
+        if (hit.keyframe && tool === "select") this.pressKey(event, hit.clipId as ClipId, hit.keyframe.section, hit.keyframe.frame);
         else this.pressClip(event, hit.clipId as ClipId, hit.frame, bodyDrag(tool));
         break;
       case "clipEdgeIn":
@@ -1031,6 +1094,77 @@ export class TimelineView {
     this.capture(event.pointerId);
     this.gesture = { kind: "press", pointerId: event.pointerId, x: event.offsetX, y: event.offsetY, clipId, frame, click: selected ? next : null, drag };
     this.updateCursor();
+  }
+
+  /**
+   * A press on a keyframe diamond (spec §6.4, §6.15): the clip joins the selection (alone when it was
+   * not in it); the key is selected (Shift adds or removes it; a press on a key of the selection keeps
+   * it, so several keys drag together). A drag retimes them, a click moves the playhead to the key.
+   */
+  private pressKey(event: PointerEvent, clipId: ClipId, section: KeyframeSection, frame: Frame): void {
+    const { session } = this.deps;
+    const selection = session.selection.getState();
+    if (!(selection.kind === "clips" && selection.clipIds.has(clipId))) setSelection(session, selectClips([clipId], clipId));
+    const current = session.keyframes.getState();
+    const same = current !== null && current.clipId === clipId && current.section === section;
+    let frames: Frame[];
+    if (event.shiftKey && same) frames = current.frames.includes(frame) ? current.frames.filter((other) => other !== frame) : [...current.frames, frame];
+    else if (same && current.frames.includes(frame)) frames = [...current.frames];
+    else frames = [frame];
+    selectKeyframes(session, frames.length > 0 ? { clipId, section, frames } : null);
+    this.capture(event.pointerId);
+    this.gesture = { kind: "pressKey", pointerId: event.pointerId, x: event.offsetX, y: event.offsetY, clipId, section, frames: frames.includes(frame) ? frames : [], grab: frame };
+    this.updateCursor();
+  }
+
+  /** Alt+click on a keyframe lane (spec §6.4): a key at the frame under the pointer, selected; the playhead goes there. */
+  private addKeyHere(clipId: ClipId, section: KeyframeSection, frame: number): void {
+    const clip = this.deps.document.getState().clips[clipId];
+    if (!clip) return;
+    const rel = Math.min(clip.duration - 1, Math.max(0, Math.floor(frame) - clip.start));
+    const { session } = this.deps;
+    const selection = session.selection.getState();
+    if (!(selection.kind === "clips" && selection.clipIds.has(clipId))) setSelection(session, selectClips([clipId], clipId));
+    this.deps.onAddKeyframe?.(clipId, section, rel);
+    selectKeyframes(session, { clipId, section, frames: [rel] });
+    setPlayhead(session, clip.start + rel);
+  }
+
+  /** The dragged keys of `gesture` follow the pointer: whole frames, snapped (Shift: whole seconds), kept inside the clip. */
+  private dragKeys(gesture: Extract<Gesture, { kind: "keyDrag" }>, x: number): void {
+    const project = this.deps.document.getState();
+    const clip = project.clips[gesture.clipId];
+    if (!clip) return;
+    const grabbed = clip.start + gesture.grab;
+    const raw = this.geometry().xToFrame(x) - grabbed;
+    let delta = Math.round(raw);
+    let snap: SnapTarget | null = null;
+    if (this.modifiers.shift) {
+      // Whole seconds (spec §6.15): the nearer second boundary of the timeline.
+      const fps = project.settings.fps;
+      const second = secondOfFrame(Math.round(grabbed + raw), fps);
+      const before = firstFrameOfSecond(second, fps);
+      const after = firstFrameOfSecond(second + 1, fps);
+      delta = (Math.abs(after - grabbed - raw) < Math.abs(before - grabbed - raw) ? after : before) - grabbed;
+    } else if (this.snapping) {
+      const moving = new Set(gesture.frames);
+      const entries: { frame: Frame; kind: SnapKind; ref: string | null }[] = laneFrames(clip, gesture.section)
+        .filter((frame) => !moving.has(frame))
+        .map((frame) => ({ frame: clip.start + frame, kind: "keyframe", ref: null }));
+      entries.push({ frame: clip.start, kind: "clipStart", ref: clip.id }, { frame: clip.start + clip.duration - 1, kind: "clipEnd", ref: clip.id });
+      const hit = resolveSnap(
+        snapCandidatesOf(entries),
+        gesture.frames.map((frame) => clip.start + frame + raw),
+        { thresholdPx: this.deps.theme.theme.timeline.snapThreshold, pxPerFrame: this.viewport().pxPerFrame, playhead: this.deps.session.state.getState().playhead },
+      );
+      if (hit) {
+        delta = Math.round(raw + hit.offset);
+        snap = hit.target;
+      }
+    }
+    const clamped = clampKeyDelta(clip, gesture.frames, delta);
+    gesture.delta = clamped;
+    gesture.snap = clamped === delta ? snap : null;
   }
 
   /**
@@ -1387,7 +1521,15 @@ export class TimelineView {
     const hit = this.hitTester.hit(event.offsetX, event.offsetY);
     const { session } = this.deps;
     const clipId = hitClip(hit);
-    if (clipId !== null && !isClipLocked(this.deps.document.getState(), clipId)) {
+    if (hit.type === "keyframe" && hit.keyframe && clipId !== null) {
+      // The keyframe menu (spec §6.15) acts on the selected keys: the clicked one joins them, or replaces a selection without it.
+      const { section, frame } = hit.keyframe;
+      const selection = session.selection.getState();
+      if (!(selection.kind === "clips" && selection.clipIds.has(clipId))) setSelection(session, selectClips([clipId], clipId));
+      const keys = session.keyframes.getState();
+      if (!(keys && keys.clipId === clipId && keys.section === section && keys.frames.includes(frame))) selectKeyframes(session, { clipId, section, frames: [frame] });
+      this.deps.onContextMenu?.({ kind: "keyframe", clipId, section, frame, x: event.clientX, y: event.clientY });
+    } else if (clipId !== null && !isClipLocked(this.deps.document.getState(), clipId)) {
       const selection = session.selection.getState();
       if (!(selection.kind === "clips" && selection.clipIds.has(clipId))) setSelection(session, clickSelection(selection, clipId, "none", this.partners(clipId)));
       this.deps.onContextMenu?.({ kind: "clip", clipId, x: event.clientX, y: event.clientY });
@@ -1449,6 +1591,14 @@ export class TimelineView {
       case "pressMarker":
         if (Math.abs(event.offsetX - gesture.x) > threshold) this.startMarkerDrag(gesture);
         break;
+      case "pressKey":
+        if (gesture.frames.length > 0 && Math.abs(event.offsetX - gesture.x) > threshold) {
+          this.gesture = { kind: "keyDrag", pointerId: gesture.pointerId, clipId: gesture.clipId, section: gesture.section, frames: gesture.frames, grab: gesture.grab, delta: 0, snap: null };
+          this.startDrag();
+          this.followPointer();
+        }
+        break;
+      case "keyDrag":
       case "move":
       case "trim":
       case "marquee":
@@ -1531,6 +1681,9 @@ export class TimelineView {
     } else if (gesture.kind === "rangeDrag") {
       this.dragRange(gesture, pointer.x);
       this.deps.scheduler.invalidate("timelineOverlay");
+    } else if (gesture.kind === "keyDrag") {
+      this.dragKeys(gesture, pointer.x);
+      this.deps.scheduler.invalidate("timelineOverlay");
     }
   }
 
@@ -1560,7 +1713,7 @@ export class TimelineView {
       }
       this.modifiers = this.modifiersOf(event);
       const kind = this.gesture?.kind;
-      if (kind === "move" || kind === "trim" || kind === "scrub" || kind === "markerDrag" || kind === "rangeDrag" || kind === "mediaDrop") this.followPointer();
+      if (kind === "move" || kind === "trim" || kind === "scrub" || kind === "markerDrag" || kind === "rangeDrag" || kind === "mediaDrop" || kind === "keyDrag") this.followPointer();
     };
     win?.addEventListener("keydown", onKey, true);
     win?.addEventListener("keyup", onKey, true);
@@ -1632,7 +1785,18 @@ export class TimelineView {
       playhead: this.deps.session.state.getState().playhead,
       thresholdPx: this.deps.theme.theme.timeline.snapThreshold,
       pxPerFrame: this.viewport().pxPerFrame,
+      keyFrames: this.movedKeyFrames(),
     };
+  }
+
+  /** A clip drag's keys that snap (Batch 35): those on the dragged clip's keyframe lane, as timeline frames. */
+  private movedKeyFrames(): Frame[] {
+    const gesture = this.gesture;
+    if (gesture?.kind !== "move") return [];
+    const clip = gesture.move.anchor;
+    const track = gesture.move.project.tracks.find((candidate) => candidate.id === clip.trackId);
+    const section = track ? shownLane(this.laneScene(), clip, track, true) : null;
+    return section ? laneFrames(clip, section).map((frame) => clip.start + frame) : [];
   }
 
   /**
@@ -1704,6 +1868,18 @@ export class TimelineView {
         break;
       case "pressMarker":
         // Selected on the press.
+        break;
+      case "pressKey": {
+        // A click on a key: the playhead goes to it (the properties panel shows its values).
+        const clip = this.deps.document.getState().clips[gesture.clipId];
+        if (commit && clip && gesture.frames.includes(gesture.grab)) setPlayhead(session, clip.start + gesture.grab);
+        break;
+      }
+      case "keyDrag":
+        if (commit && gesture.delta !== 0) {
+          this.deps.onMoveKeyframes?.(gesture.clipId, gesture.section, gesture.frames, gesture.delta);
+          selectKeyframes(session, { clipId: gesture.clipId, section: gesture.section, frames: gesture.frames.map((frame) => frame + gesture.delta) });
+        }
         break;
       case "markerDrag":
         if (commit && gesture.frame !== gesture.from) this.deps.onMoveMarker?.(gesture.markerId, gesture.frame);
@@ -1844,6 +2020,7 @@ export class TimelineView {
       scrollbars: this.scrollbars(),
       timecodeFormat: this.deps.session.state.getState().timecodeFormat,
       hiddenMarker: this.gesture?.kind === "markerDrag" ? this.gesture.markerId : null,
+      lanes: this.laneScene(),
     });
     if (wants) visuals?.want(wants);
     this.stats.contentDraws += 1;
@@ -1871,13 +2048,13 @@ export class TimelineView {
       ? proposal.snap
       : trim
         ? trim.snap
-        : gesture?.kind === "scrub" || gesture?.kind === "markerDrag" || gesture?.kind === "rangeDrag"
+        : gesture?.kind === "scrub" || gesture?.kind === "markerDrag" || gesture?.kind === "rangeDrag" || gesture?.kind === "keyDrag"
           ? gesture.snap
           : (razor?.snap ?? null);
     // The brackets stand on the document's cut: not while a drag moves clips.
     const editPoints = proposal || gesture?.kind === "trim" ? [] : this.editPointMarks(project);
     // Hover highlights are for a pointer at rest: none while dragging.
-    const idle = gesture === null || gesture.kind === "scrub" || gesture.kind === "press" || gesture.kind === "pressEdge" || gesture.kind === "pressHeader" || gesture.kind === "pressMarker";
+    const idle = gesture === null || gesture.kind === "scrub" || gesture.kind === "press" || gesture.kind === "pressEdge" || gesture.kind === "pressHeader" || gesture.kind === "pressMarker" || gesture.kind === "pressKey";
     const markers = this.markerScene(project, idle);
     drawOverlay({
       ctx: layer.ctx,
@@ -1901,7 +2078,11 @@ export class TimelineView {
       marquee: gesture?.kind === "marquee" ? (gesture.marquee.current?.rect ?? null) : null,
       tooltip: this.pointer
         ? (this.rulerTooltip(project, markers, snap, this.pointer) ??
-          (gesture?.kind === "mediaDrop" ? this.dropTooltip(project, gesture.drop, snap, this.pointer) : proposal || trim || snap ? this.tooltip(project, proposal?.deltaFrames ?? null, trim, snap, this.pointer) : null))
+          (gesture?.kind === "mediaDrop"
+            ? this.dropTooltip(project, gesture.drop, snap, this.pointer)
+            : proposal || trim || snap || gesture?.kind === "keyDrag"
+              ? this.tooltip(project, proposal?.deltaFrames ?? (gesture?.kind === "keyDrag" ? gesture.delta : null), trim, snap, this.pointer)
+              : null))
         : null,
       text: this.text,
       visuals: this.deps.visuals ?? null,
@@ -1909,10 +2090,23 @@ export class TimelineView {
       scrollbar: this.scrollbarState(idle),
       range: this.rangeScene(project, idle),
       markers,
+      keyDrag: gesture?.kind === "keyDrag" ? this.keyDragScene(project, geometry, gesture) : null,
     });
     this.stats.overlayDraws += 1;
     this.stats.overlayMs = performance.now() - start;
     this.writeStats();
+  }
+
+  /** A keyframe drag as drawn: the lane's keys with the dragged ones moved (a key they land on gives way). */
+  private keyDragScene(project: Project, geometry: TimelineGeometry, gesture: Extract<Gesture, { kind: "keyDrag" }>) {
+    const clip = project.clips[gesture.clipId];
+    const row = clip ? geometry.rowOf(clip.trackId) : undefined;
+    if (!clip || !row) return null;
+    const moving = new Set(gesture.frames);
+    const moved = gesture.frames.map((frame) => frame + gesture.delta);
+    const landed = new Set(moved);
+    const frames = [...laneFrames(clip, gesture.section).filter((frame) => !moving.has(frame) && !landed.has(frame)), ...moved];
+    return { clip, row, draw: { frames, selected: landed, dragged: landed } };
   }
 
   /** The in/out range as drawn: a handle drag's proposal, else the session's; null when no point is set. */

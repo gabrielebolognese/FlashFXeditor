@@ -142,7 +142,7 @@ describe("moveClips: overwrite", () => {
     ]);
   });
 
-  it("partitions keyframes between the halves of a split, re-based to each half", () => {
+  it("partitions keyframes between the halves of a split, re-based to each half, the motion kept", () => {
     const keyed = clip("long", "v1", 0, 100, {
       keyframes: {
         opacity: [
@@ -151,7 +151,7 @@ describe("moveClips: overwrite", () => {
           { frame: 70, value: 1, ease: "linear" },
           { frame: 99, value: 0.2, ease: "linear" },
         ],
-        scale: [{ frame: 5, value: 2, ease: "linear" }],
+        "transform.scale": [{ frame: 5, value: 2, ease: "linear" }],
       },
     });
     const p = project([keyed, clip("short", "v2", 0, 20)]);
@@ -159,14 +159,20 @@ describe("moveClips: overwrite", () => {
     apply(doc, moveClips(p, ["short"], 40, new Map([["v2", "v1"]]), "overwrite", { newId: counter() }));
     const left = doc.getState().clips.long as MediaClip;
     const right = doc.getState().clips.n1 as MediaClip;
-    expect(left.keyframes).toEqual({ opacity: [{ frame: 0, value: 0, ease: "linear" }], scale: [{ frame: 5, value: 2, ease: "linear" }] });
-    // [60, 100) of the original: 70 -> 10, 99 -> 39; the keyframe at 45 was overwritten.
-    expect(right.keyframes).toEqual({
-      opacity: [
-        { frame: 10, value: 1, ease: "linear" },
-        { frame: 39, value: 0.2, ease: "linear" },
-      ],
-    });
+    // [0, 40): a key at the new edge (39) with the value there (linear), so the half looks the same.
+    expect(left.keyframes?.opacity?.map((key) => [key.frame, key.value])).toEqual([
+      [0, 0],
+      [39, (0.5 * 39) / 45],
+    ]);
+    expect(left.keyframes?.["transform.scale"]).toEqual([{ frame: 5, value: 2, ease: "linear" }]);
+    // [60, 100) of the original: the value at 60 (0.8) at its start, 70 -> 10, 99 -> 39; the keyframe
+    // at 45 was overwritten. The scale past its last key holds its value.
+    expect(right.keyframes?.opacity?.map((key) => [key.frame, key.value])).toEqual([
+      [0, 0.8],
+      [10, 1],
+      [39, 0.2],
+    ]);
+    expect(right.keyframes?.["transform.scale"]).toEqual([{ frame: 0, value: 2, ease: "linear" }]);
   });
 
   it("links the pieces of a linked pair split at the same frames, and unlinks a lone piece", () => {

@@ -11,6 +11,7 @@ import { installTranscribeController } from "./app/transcribeController.js";
 import { installCutController } from "./app/cutController.js";
 import { installDropController } from "./app/dropController.js";
 import { installGraphicsController } from "./app/graphicsController.js";
+import { installKeyframeController } from "./app/keyframeController.js";
 import { installMarkerController } from "./app/markerController.js";
 import { installMediaController } from "./app/mediaController.js";
 import { installPlaybackController } from "./app/playbackController.js";
@@ -49,6 +50,7 @@ async function start(): Promise<void> {
   installCanvasController();
   installPropertiesController();
   installSpeedController();
+  installKeyframeController();
   installTextController();
   installGraphicsController();
   installPresetController();

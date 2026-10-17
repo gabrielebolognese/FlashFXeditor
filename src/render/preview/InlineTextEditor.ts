@@ -279,7 +279,7 @@ export class InlineTextEditor implements RenderView {
       const project = this.deps.document.getState();
       const clip = project.clips[s.clipId];
       if (clip?.kind === "text" && clip.text.value !== s.value) {
-        const command = setTexts(project, new Map([[s.clipId, { text: { ...clip.text, value: s.value } }]]), { label: "Edit text" });
+        const command = setTexts(project, new Map([[s.clipId, { text: { ...clip.text, value: s.value } }]]), { label: "Edit text", at: this.deps.session.state.getState().playhead });
         if (command) this.deps.commit(command);
       }
     }

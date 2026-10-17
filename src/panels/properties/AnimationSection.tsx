@@ -83,7 +83,7 @@ function AnimationRows({ ids, primary, side }: { ids: readonly ClipId[]; primary
       if (!isPlayable(current)) return undefined;
       const rest = { ...current };
       delete rest.ease;
-      return next === "auto" ? rest : { ...rest, ease: next };
+      return next === "auto" ? rest : { ...rest, ease: next as TextEase };
     });
     const command = setTextAnims(project, edits, { label: `Change ${sideName} animation easing` });
     if (!command) return;

@@ -1,0 +1,31 @@
+/* Keyframe controls of an animatable section (spec §11, Batch 35; gap: the DS has no keyframe UI).
+   Header: compact icon buttons --space-0 apart, the stopwatch last (gold while animated, the IconButton
+   pressed state); the key count as a DS badge (--type-badge on --surface-3, radius-sm, tertiary text).
+   Body: the Ease dropdown in the compact value look; `--` (no key at the playhead) in muted text. */
+.controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-0);
+}
+
+.count {
+  min-width: var(--space-5);
+  margin: 0 var(--space-1);
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-sm);
+  background: var(--surface-3);
+  color: var(--text-tertiary);
+  font: var(--type-badge);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.easeCell {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.ease[data-dim="true"] {
+  color: var(--text-muted);
+}

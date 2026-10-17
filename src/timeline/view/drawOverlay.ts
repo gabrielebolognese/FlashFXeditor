@@ -1,7 +1,8 @@
 // The timeline overlay canvas (spec §6.17, P3): hover highlights (a clip, a gap, a track header and
 // its toggles), a dragged track header with the line where it lands (spec §6.12), the selected gap,
 // the Razor's cut line, the trim preview (the rows an edit changes, redrawn as the drop would leave
-// them), the selected edit point's brackets, the snap line, clip drag ghosts with the new track rows,
+// them), a keyframe lane being dragged (Batch 35: redrawn over the content's with the keys where they
+// would land), the selected edit point's brackets, the snap line, clip drag ghosts with the new track rows,
 // overwrite hatching and the insert line, the edit's ghost edges, the marquee, the playhead and the
 // drag tooltip with the snap target's name, and the hovered or dragged scrollbar. The in/out range
 // (spec §6.13: a wash over the ruler and the tracks between the points, a bracket in the ruler at each
@@ -17,6 +18,7 @@ import { markedRange } from "../model/inOut.js";
 import { clipsInRange, linkOffset, type Gap } from "../model/queries.js";
 import { clipLod, clipSpan, devicePx, LOD_LABEL_PX } from "./clipLayout.js";
 import type { ClipVisuals } from "./clipVisuals.js";
+import { drawLane, type LaneDraw } from "./keyframeLane.js";
 import { drawClip, drawDiagonalHatch, drawHeader, fillClip, fontOf, traceMarker, type TimelineFonts } from "./drawContent.js";
 import type { Rect, Row, TimelineGeometry } from "./geometry.js";
 import type { Ghost, MoveProposal, NewLane } from "./gestures/moveClips.js";
@@ -119,6 +121,8 @@ export interface OverlayScene {
   /** The in/out range, when a point is set. */
   range?: RangeScene | null;
   markers?: MarkerScene | null;
+  /** Keys being dragged on a clip's keyframe lane (spec §6.15): the lane as it would be. */
+  keyDrag?: { clip: Clip; row: Row; draw: LaneDraw } | null;
 }
 
 export interface Tooltip {
@@ -150,6 +154,7 @@ export function drawOverlay(scene: OverlayScene): void {
   if (scene.hoverGap || scene.gap) drawGaps(scene);
   // The trim preview stands in for the content under it, so everything else draws over it.
   if (scene.trim) drawTrimLayout(scene, scene.trim);
+  if (scene.keyDrag) drawKeyDrag(scene, scene.keyDrag);
   for (const mark of scene.editPoints) drawEditPoint(scene, mark);
   ctx.restore();
   // §6.17 order: hover, snap lines, ghosts and trim previews, insert/overwrite indicators, playhead, tooltip.
@@ -173,6 +178,23 @@ export function drawOverlay(scene: OverlayScene): void {
 
 /** Snaps a CSS coordinate to the device pixel grid. */
 const snap = (value: number, dpr: number) => Math.round(value * dpr) / dpr;
+
+/** A keyframe lane being dragged: redrawn (opaque) over the content's, inside the clip's rounded body. */
+function drawKeyDrag(scene: OverlayScene, drag: NonNullable<OverlayScene["keyDrag"]>): void {
+  const { ctx, dpr, geometry, theme } = scene;
+  const { clip, row } = drag;
+  const span = clipSpan(geometry.frameToX(clip.start), geometry.frameToX(clip.start + clip.duration), false, dpr);
+  const x = span.x0 / dpr;
+  const width = (span.x1 - span.x0) / dpr;
+  const y = snap(row.y + theme.timeline.clipInset, dpr);
+  const height = snap(row.y + row.height - theme.timeline.clipInset, dpr) - y;
+  ctx.save();
+  ctx.beginPath();
+  ctx.roundRect(x, y, width, height, Math.min(theme.radius.sm, width / 2, height / 2));
+  ctx.clip();
+  drawLane(ctx, dpr, geometry, theme, clip, row, Math.max(x, geometry.area.x), Math.min(x + width, geometry.area.x + geometry.area.width), drag.draw);
+  ctx.restore();
+}
 
 function drawMove(scene: OverlayScene, move: MoveScene): void {
   const { ctx, geometry } = scene;

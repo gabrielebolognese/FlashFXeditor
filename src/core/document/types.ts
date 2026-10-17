@@ -111,9 +111,16 @@ export interface TextStyle {
   verticalAnchor: TextAnchor;
 }
 
+/**
+ * The easing curves (spec §6.15, Batch 35), shared by keyframes and text animations (which offer the
+ * first four, `text/anim.ts` TEXT_EASES): linear, the cubic ease in / out / in-out, hold (the value
+ * jumps at the next key) and three cubic-bezier presets (smooth = CSS `ease`, snap = the DS `out`
+ * curve, overshoot = a back-out). Curves live in `core/document/keyframes.ts`.
+ */
+export const EASE_IDS = ["linear", "easeIn", "easeOut", "easeInOut", "hold", "smooth", "snap", "overshoot"] as const;
+export type EaseId = (typeof EASE_IDS)[number];
+
 // Types owned by later batches. They stay opaque JSON until their batch defines them.
-/** Easing ids: text animations use `text/anim.ts` TEXT_EASES. TODO(batch 35): the keyframe easings. */
-export type EaseId = string;
 /** TODO(batch 36): transition kind, duration, alignment. */
 export type Transition = JsonObject;
 
@@ -372,7 +379,11 @@ export interface Volume {
   muted: boolean;
 }
 
-/** Keyframe frames are relative to the clip start. */
+/**
+ * Keyframe frames are relative to the clip start; each list is sorted by frame (one key per frame).
+ * A key's `ease` shapes the segment from it to the next key. Property ids and evaluation:
+ * `core/document/keyframes.ts` (Batch 35).
+ */
 export interface Keyframes {
   [prop: string]: { frame: Frame; value: number; ease: EaseId }[];
 }

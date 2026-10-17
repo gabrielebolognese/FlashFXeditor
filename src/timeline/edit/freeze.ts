@@ -11,23 +11,29 @@
 //   opacity) and nothing time-based (fades, keyframes, transitions, link, group).
 // - Punch zoom: the clips are split at the playhead (linked partners with them while Linked selection
 //   is on, as Split at playhead does) and the right pieces scaled by the punch zoom setting (1.2x)
-//   around their anchor, so the cut punches in. TODO(batch 35): the `punchZoomAnimated` setting makes
-//   it an animated zoom (scale keyframes) instead.
+//   around their anchor, so the cut punches in. Animated (the app setting `punchZoomAnimate`, on by
+//   default, Batch 35): the right pieces zoom from their scale to the zoomed one over PUNCH_ZOOM_FRAMES
+//   frames with ease out instead (Transform keys at their frames 0 and 6; a piece shorter than that
+//   reaches the zoom on its last frame). A piece that already has Transform keys gets the cut-in zoom
+//   on its scale keys (its own motion stays).
 // The targets: the selected clips under the playhead (videos for a freeze, any layer for a punch
 // zoom); with none of those selected, the topmost clip under the playhead (a video; a video or image
 // for a punch zoom) on a targeted, unlocked, visible video track. A clip starting at the playhead is
 // not split: the freeze goes before it, the punch zoom scales all of it. Clips on locked tracks never
 // change. One command each (one undo step).
-import type { Draft } from "immer";
+import { current, isDraft, type Draft } from "immer";
 import type { Command } from "../../core/commands/command.js";
 import { framesToSourceUs, frameToUs, secondsToFrames } from "../../core/document/time.js";
-import type { Clip, ClipId, Frame, MediaClip, Project, Transform } from "../../core/document/types.js";
+import { clipAt, hasSectionKeys, mapKeyValues, transformValues, writeKeys } from "../../core/document/keyframes.js";
+import type { Clip, ClipId, Frame, Keyframes, MediaClip, Project, Transform } from "../../core/document/types.js";
 import { clipInIndex, isClipLocked, linkedPartners, trackIndex } from "../model/queries.js";
 import { splitClips, splitsAt } from "./split.js";
-import { isLayerClip } from "./transform.js";
+import { isLayerClip, normalizeTransform } from "./transform.js";
 
 /** How long a new freeze frame holds (Batch 27: "a 2 s frozen clip"). */
 export const FREEZE_SECONDS = 2;
+/** The animated punch zoom's length (Batch 35: "from 1.0 to 1.2 over 6 frames with ease out"). */
+export const PUNCH_ZOOM_FRAMES = 6;
 
 /** Why nothing could be frozen or zoomed: nothing fits under the playhead, or the selected clips are not under it. */
 export type OneClickMiss = "none" | "notUnderPlayhead";
@@ -86,7 +92,9 @@ function freezeOf(project: Project, clip: MediaClip, frame: Frame, duration: Fra
   // The source time the clip shows at the frame (§5.1; a freeze frame's own `in`).
   const time = Math.min(clip.out - 1, clip.in + framesToSourceUs(frame - clip.start, clip.speed, fps));
   const durationUs = project.media[clip.mediaId]?.durationUs ?? clip.out;
-  const freeze: MediaClip = { ...clip, id, start: frame, duration, speed: 0, in: time, out: Math.min(durationUs, time + frameToUs(1, fps)), fades: { in: 0, out: 0 } };
+  // A keyed clip's look is the one at the frame (Batch 35): the freeze holds it, unkeyed.
+  const look = clipAt(clip, frame);
+  const freeze: MediaClip = { ...look, transform: normalizeTransform(look.transform), id, start: frame, duration, speed: 0, in: time, out: Math.min(durationUs, time + frameToUs(1, fps)), fades: { in: 0, out: 0 } };
   delete freeze.linkGroup;
   delete freeze.group;
   delete freeze.keyframes;
@@ -144,7 +152,7 @@ function zoomed(transform: Transform, factor: number): Transform {
  * Punch zoom at `frame` (see the header): the layers `selection` gives (or the topmost video or image),
  * split there, the right pieces scaled by `factor`. A miss when there is nothing to zoom.
  */
-export function punchZoom(project: Project, frame: Frame, selection: readonly ClipId[], factor: number, newId: () => string, options: { linked: boolean }): PunchZoomResult | OneClickMiss {
+export function punchZoom(project: Project, frame: Frame, selection: readonly ClipId[], factor: number, newId: () => string, options: { linked: boolean; animated?: boolean }): PunchZoomResult | OneClickMiss {
   const targets = targetsAt(project, frame, selection, isLayerClip, (clip) => clip.kind === "video" || clip.kind === "image");
   if (!Array.isArray(targets)) return targets;
   const split = splitClips(project, splitSet(project, targets, frame, options.linked), frame, newId);
@@ -158,7 +166,18 @@ export function punchZoom(project: Project, frame: Frame, selection: readonly Cl
       for (const id of zoomedIds) {
         const clip = draft.clips[id];
         if (!clip || !("transform" in clip)) throw new Error(`clip.punchZoom: clip ${id} is not a layer`);
-        clip.transform = zoomed(clip.transform as Transform, factor) as Draft<Transform>;
+        // A new right piece is a plain object in the draft, a clip zoomed whole a draft.
+        const piece = (isDraft(clip) ? current(clip) : clip) as { transform: Transform; keyframes?: Keyframes; duration: Frame };
+        if (hasSectionKeys(piece.keyframes, "transform") && piece.keyframes) {
+          // Already animated: the cut-in zoom on its scale keys too.
+          const scale = (value: number) => value * factor;
+          clip.keyframes = mapKeyValues(piece.keyframes, { "transform.scale": scale, "transform.scaleY": scale }) as Draft<Keyframes>;
+          clip.transform = zoomed(piece.transform, factor) as Draft<Transform>;
+        } else if (options.animated && piece.duration > 1) {
+          const end = Math.min(PUNCH_ZOOM_FRAMES, piece.duration - 1);
+          const from = writeKeys(piece.keyframes, 0, transformValues(piece.transform), "easeOut");
+          clip.keyframes = writeKeys(from, end, transformValues(zoomed(piece.transform, factor)), "linear") as Draft<Keyframes>;
+        } else clip.transform = zoomed(piece.transform, factor) as Draft<Transform>;
       }
     },
   };

@@ -4,16 +4,18 @@
 // pointer move. A query is a binary search per dragged edge. The playhead is passed in at query time
 // because it moves during playback, which would otherwise mean a rebuild per frame. Every gesture that
 // snaps (clip moves and the Shift ruler scrub; trims from Batch 13) goes through `resolveSnap`.
-// TODO(batch 35): keyframes of the dragged clip's visible property when Show clip keyframes is on.
+// Keyframes (Batch 35): a clip drag also tests the keys on the dragged clip's lane (MoveGesture), and
+// a keyframe drag snaps to the other keys of its lane, the playhead and its clip's edges through
+// candidates of its own (`snapCandidatesOf`).
 // TODO(batch 36): transition edges.
 import type { ClipId, Frame, Marker, Project } from "../../core/document/types.js";
 
 /** Candidate kinds in the §6.9 priority order: a tie in distance goes to the earlier kind. */
-export const SNAP_KINDS = ["playhead", "clipStart", "clipEnd", "marker", "in", "out", "zero"] as const;
+export const SNAP_KINDS = ["playhead", "clipStart", "clipEnd", "marker", "in", "out", "zero", "keyframe"] as const;
 export type SnapKind = (typeof SNAP_KINDS)[number];
 
-/** Priority rank per kind index (lower wins): clip starts and ends share one, as do in and out. */
-const RANK: readonly number[] = [0, 1, 1, 2, 3, 3, 4];
+/** Priority rank per kind index (lower wins): clip starts and ends share one, as do in and out; keyframes rank with markers. */
+const RANK: readonly number[] = [0, 1, 1, 2, 3, 3, 4, 2];
 const PLAYHEAD = 0;
 const CLIP_START = 1;
 const CLIP_END = 2;
@@ -79,6 +81,17 @@ export function buildSnapCandidates(project: Project, inPoint: Frame | null, out
     refs[i] = entries[entry] ?? null;
   }
   return { length: n, frames, kinds, refs };
+}
+
+/** Candidates from a short list (a keyframe drag's: the lane's other keys, the clip's edges), sorted by frame then priority. */
+export function snapCandidatesOf(entries: readonly { frame: Frame; kind: SnapKind; ref: string | null }[]): SnapCandidates {
+  const sorted = [...entries].sort((a, b) => a.frame - b.frame || (RANK[SNAP_KINDS.indexOf(a.kind)] as number) - (RANK[SNAP_KINDS.indexOf(b.kind)] as number));
+  return {
+    length: sorted.length,
+    frames: Float64Array.from(sorted, (entry) => entry.frame),
+    kinds: Uint8Array.from(sorted, (entry) => SNAP_KINDS.indexOf(entry.kind)),
+    refs: sorted.map((entry) => entry.ref),
+  };
 }
 
 /** The candidates of the current document and in/out range, rebuilt only after they changed. */
@@ -203,5 +216,7 @@ export function snapLabel(project: Project, target: SnapTarget): string {
       return "Out point";
     case "zero":
       return "Timeline start";
+    case "keyframe":
+      return "Keyframe";
   }
 }

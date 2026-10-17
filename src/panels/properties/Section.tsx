@@ -8,9 +8,9 @@ import styles from "./Section.module.css";
 
 // A properties panel section (spec §11 "collapsible, state persisted"): a header button (chevron and
 // overline title; Tab reaches it in visual order), optional header actions on its right (the Crop
-// section's crop mode toggle), and the label / control grid. The collapsed state is session state
+// section's crop mode toggle; the stopwatch and keyframe navigator of Transform and Opacity, Batch 35,
+// KeyframeControls.tsx), and the label / control grid. The collapsed state is session state
 // (`collapsedSections`, kept in session.json).
-// TODO(batch 35): the stopwatch toggle and keyframe navigator of animatable sections in the header.
 
 const keepFocus = (event: MouseEvent) => event.preventDefault();
 

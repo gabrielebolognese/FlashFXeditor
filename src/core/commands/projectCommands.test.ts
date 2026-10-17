@@ -67,6 +67,24 @@ describe("project commands", () => {
     expect(scaledTransform(solid("c", {}).transform, { width: 1080, height: 1920 }, { width: 1080, height: 1920 })).toEqual(solid("c", {}).transform);
   });
 
+  it("scales position and scale keys with the layout (Batch 35)", () => {
+    const keyed: SolidClip = {
+      ...makeSolidClip({ id: "k", trackId: "v1", start: 0, duration: 10 }),
+      keyframes: {
+        "transform.x": [{ frame: 0, value: 10, ease: "linear" }],
+        "transform.y": [{ frame: 0, value: -20, ease: "linear" }],
+        "transform.scale": [{ frame: 0, value: 1, ease: "linear" }],
+        opacity: [{ frame: 0, value: 0.5, ease: "linear" }],
+      },
+    };
+    const p = makeProject();
+    p.tracks.push(makeTrack("v1"));
+    const store = storeFor(withClips(p, [keyed]));
+    store.dispatch(setResolution(2160, 3840, { scaleLayout: true }));
+    const keys = (store.getState().clips.k as SolidClip).keyframes;
+    expect([keys?.["transform.x"]?.[0]?.value, keys?.["transform.y"]?.[0]?.value, keys?.["transform.scale"]?.[0]?.value, keys?.opacity?.[0]?.value]).toEqual([20, -40, 2, 0.5]);
+  });
+
   it("changes the frame rate of an empty project", () => {
     const store = storeFor();
     store.dispatch(setFrameRate({ num: 30000, den: 1001 }));

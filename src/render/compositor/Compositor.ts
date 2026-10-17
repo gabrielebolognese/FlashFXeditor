@@ -31,10 +31,14 @@
 //   fill inside the box. `solids` gives a Solid field scrub's or a size handle drag's looks.
 // - Images: a still's one texture; an animated image's media time plays from its in point and loops
 //   (media/decode/animation.ts `imageTimeUs`).
+// - Keyframes (spec §5.2, Batch 35; core/document/keyframes.ts): a clip's keyed transform and opacity
+//   are evaluated at the frame (a gesture's or a field scrub's live values, given at the playhead,
+//   still win). A text layer's raster scale is the largest scale its keys reach, so an animated zoom
+//   never re-rasterizes while it plays (P11).
 // Layer structs and arrays are reused between frames; evaluating allocates nothing once warm.
-// TODO(batch 35): keyframes.
 // TODO(batch 36): transitions (two contributing clips and a mix amount).
 import { isRgba } from "../../core/document/color.js";
+import { animatedOpacity, animatedTransform, maxKeyedScale } from "../../core/document/keyframes.js";
 import { framesToSourceUs, secondsToFrames } from "../../core/document/time.js";
 import type { CaptionClip, CaptionStyle, Clip, ClipId, Crop, Frame, MediaClip, MediaId, Project, RGBA, TextAnim, TextClip, TextContent, TextStyle, Track, TrackId, Transform } from "../../core/document/types.js";
 import { activeWordIndex, captionPlace, defaultCaptionStyle } from "../../text/captions.js";
@@ -175,6 +179,8 @@ export class Compositor {
   private readonly step = mutableIdentity();
   private readonly active: ActiveAnim = { anim: { id: "fade", duration: 1 }, phase: "in", progress: 0, length: 0 };
   private readonly captionTransform: Transform = { x: 0, y: 0, scale: 1, rotation: 0, anchor: { x: 0.5, y: 0.5 }, flipH: false, flipV: false };
+  /** A keyed clip's transform at the frame (read before the next layer). */
+  private readonly animated: Transform = { x: 0, y: 0, scale: 1, rotation: 0, anchor: { x: 0.5, y: 0.5 }, flipH: false, flipV: false };
 
   /**
    * The document at `frame`, bottom track first, with `transforms` (a canvas gesture's or a field
@@ -217,22 +223,28 @@ export class Compositor {
       // Muted and hidden video tracks are not in the composite (spec §6.12).
       if (track.kind !== "video" || track.hidden || track.muted) continue;
       const clip = clipInIndex(trackIndex(doc, track), frame);
-      if (!clip?.enabled) continue;
+      if (!clip?.enabled || clip.kind === "audio" || clip.kind === "caption") continue;
+      // The keyed values at the frame (the clip's own when unkeyed; `animated` is reused per layer).
+      const rel = frame - clip.start;
+      const transform = transforms?.get(clip.id) ?? animatedTransform(clip, rel, this.animated);
+      const opacity = opacities?.get(clip.id) ?? animatedOpacity(clip, rel);
       if (clip.kind === "video" || clip.kind === "image") {
         const layer = (this.mediaPool[media] ??= newMediaLayer());
-        if (this.writeMedia(layer, doc, clip, frame, transforms?.get(clip.id) ?? clip.transform, opacities?.get(clip.id) ?? clip.opacity, crops?.get(clip.id) ?? clip.crop)) {
+        if (this.writeMedia(layer, doc, clip, frame, transform, opacity, crops?.get(clip.id) ?? clip.crop)) {
           out.layers.push(layer);
           media += 1;
         }
       } else if (clip.kind === "solid") {
         const layer = (this.solidPool[solidLayers] ??= newSolidLayer());
-        if (this.writeSolid(layer, doc, solids?.get(clip.id) ?? clip, transforms?.get(clip.id) ?? clip.transform, opacities?.get(clip.id) ?? clip.opacity)) {
+        if (this.writeSolid(layer, doc, solids?.get(clip.id) ?? clip, transform, opacity)) {
           out.layers.push(layer);
           solidLayers += 1;
         }
       } else if (clip.kind === "text") {
         const layer = (this.textPool[textLayers] ??= newTextLayer());
-        if (this.writeText(layer, doc, clip, frame, transforms?.get(clip.id) ?? clip.transform, opacities?.get(clip.id) ?? clip.opacity, texts?.get(clip.id) ?? clip, anims?.get(clip.id) ?? clip)) {
+        // Live transforms (a gesture) raster at their own scale; keyed ones at the largest they reach.
+        const rasterScale = transforms?.has(clip.id) ? null : maxKeyedScale(clip.keyframes, clip.transform);
+        if (this.writeText(layer, doc, clip, frame, transform, opacity, texts?.get(clip.id) ?? clip, anims?.get(clip.id) ?? clip, rasterScale)) {
           out.layers.push(layer);
           textLayers += 1;
         }
@@ -277,7 +289,7 @@ export class Compositor {
         const clip = index.clips[at] as Clip;
         if (clip.start + clip.duration <= frame) break;
         if (clip.kind !== "text" || !clip.enabled) continue;
-        const scale = Math.max(Math.abs(clip.transform.scale), Math.abs(clip.transform.scaleY ?? clip.transform.scale));
+        const scale = maxKeyedScale(clip.keyframes, clip.transform);
         if (!(scale > 0)) continue;
         const item = (this.upcomingPool[list.length] ??= { clipId: "", text: clip.text, style: clip.style, scale: 1, parts: [] });
         item.clipId = clip.id;
@@ -408,14 +420,18 @@ export class Compositor {
     return true;
   }
 
-  private writeText(layer: WritableTextLayer, doc: Project, clip: TextClip, frame: Frame, transform: Transform, opacity: number, shown: LiveText, anims: LiveAnims): boolean {
+  /** `rasterScale`: the scale the raster is made at (the largest keyed scale), null for the transform's own. */
+  private writeText(layer: WritableTextLayer, doc: Project, clip: TextClip, frame: Frame, transform: Transform, opacity: number, shown: LiveText, anims: LiveAnims, rasterScale: number | null = null): boolean {
     const layout = textLayout(shown.text, shown.style);
     const raster = layout.raster;
     if (!raster) return false;
     const m = writeModel(layer.model, transform, layout.width, layout.height, doc.settings.width, doc.settings.height);
     // Flips mirror the text inside its box.
     if (transform.flipH || transform.flipV) multiplyInto(m, m, setMat(this.step, transform.flipH ? -1 : 1, 0, 0, transform.flipV ? -1 : 1, transform.flipH ? layout.width : 0, transform.flipV ? layout.height : 0));
-    const scale = Math.max(Math.abs(transform.scale), Math.abs(transform.scaleY ?? transform.scale));
+    const own = Math.max(Math.abs(transform.scale), Math.abs(transform.scaleY ?? transform.scale));
+    // A layer scaled to 0 at this frame draws nothing; a keyed one keeps its raster's scale.
+    if (!(own > 0)) return false;
+    const scale = rasterScale !== null ? Math.max(own, rasterScale) : own;
     layer.trackId = clip.trackId;
     layer.clipId = clip.id;
     layer.text = shown.text;

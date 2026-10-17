@@ -251,6 +251,13 @@
   --timeline-range-wash: rgba(255, 255, 255, 0.06); /* DS: washes are white-alpha (menus 4%); a span, so a step more */
   --timeline-range-handle-width: 2px;
   --timeline-range-handle-zone: 8px; /* centered on the point: the trim zone's width */
+  /* Keyframe lane (Batch 35, spec §6.4 "a thin lane at the bottom of the clip"; gap: the DS has no
+     keyframe visuals). An opaque --bg-sunken strip with a hairline top across the bottom of the clip
+     body (M/L tracks), diamonds on the key frames: --text-primary with a --bg-sunken edge, --accent
+     when selected (gold = selection), --accent-hover while dragged. The gizmo's keyframe diamond
+     (spec §7.3) has the same size: --accent, filled on a key at the playhead, outlined otherwise. */
+  --timeline-keyframe-lane-height: var(--space-4); /* 12px */
+  --timeline-keyframe-size: var(--space-3); /* 8px: the diamond's width and height */
   --marker-popover-width: calc(var(--control-default) * 7); /* the label field over 8 swatches and Delete */
 
   /* Audio (gap: the DS has no meter or knob). Stereo peak meter along the preview's right edge, master volume knob. */

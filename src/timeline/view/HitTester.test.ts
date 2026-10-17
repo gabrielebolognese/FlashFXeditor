@@ -62,6 +62,45 @@ describe("HitTester", () => {
     expect(hits.hit(x(40) - 1, 260)).toMatchObject({ type: "clipEdgeOut", clipId: "c3", junction: null });
   });
 
+  it("finds keyframe diamonds on a shown lane before the trim zones; elsewhere in the band a clip hit with its lane (Batch 35)", () => {
+    let project = makeProject();
+    project.media.m = makeMedia("m");
+    project.tracks.push(makeTrack("v1"), makeTrack("v2"));
+    const keyframes = { "transform.x": [{ frame: 0, value: 0, ease: "linear" as const }, { frame: 15, value: 1, ease: "linear" as const }] };
+    project = withClips(project, [
+      { ...makeMediaClip(project, { id: "c1", trackId: "v1", start: 10, duration: 30, mediaId: "m" }), keyframes },
+      { ...makeMediaClip(project, { id: "c2", trackId: "v2", start: 10, duration: 30, mediaId: "m" }), keyframes },
+    ]);
+    const geometry = new TimelineGeometry({ width: 1000, height: 428, tracks: project.tracks, pxPerFrame: 4, scrollFrame: 0, scrollY: 0, metrics: METRICS });
+    let show = true;
+    const scene = () => ({ show, section: () => "transform" as const, selected: null });
+    const band = (row: { y: number; height: number }) => ({ y: row.y + row.height - 14, height: 12 });
+    const hits = new HitTester({
+      geometry: () => geometry,
+      project: () => project,
+      playhead: () => 0,
+      playheadHeadWidth: 11,
+      trimZone: 8,
+      junctionZone: 6,
+      keyframes: { scene, selected: (id) => id === "c1", band, size: 8, inset: 7 },
+    });
+    const row = geometry.rowOf("v1");
+    if (!row) throw new Error("no row");
+    const laneY = row.y + row.height - 8;
+    // The key at the clip's first frame is drawn 7 px inside its in edge: the diamond wins over the trim zone.
+    expect(hits.hit(x(10) + 7, laneY)).toMatchObject({ type: "keyframe", clipId: "c1", keyframe: { section: "transform", frame: 0 } });
+    expect(hits.hit(x(10) + 2, laneY)).toMatchObject({ type: "keyframe", keyframe: { frame: 0 } });
+    expect(hits.hit(x(25) - 5, laneY)).toMatchObject({ type: "keyframe", keyframe: { frame: 15 } });
+    expect(hits.hit(x(20), laneY)).toMatchObject({ type: "clip", clipId: "c1", lane: "transform", keyframe: null });
+    // Above the band: the body (and the edge zones) as before.
+    expect(hits.hit(x(10) + 2, row.y + 20)).toMatchObject({ type: "clipEdgeIn", lane: null });
+    // An unselected clip on an M track has no lane; nor any clip with the toggle off.
+    const other = geometry.rowOf("v2");
+    expect(hits.hit(x(25), (other?.y ?? 0) + (other?.height ?? 0) - 8)).toMatchObject({ type: "clip", clipId: "c2", lane: null });
+    show = false;
+    expect(hits.hit(x(25), laneY)).toMatchObject({ type: "clip", lane: null });
+  });
+
   it("gives clips on locked tracks no trim zones", () => {
     let project = makeProject();
     project.media.m = makeMedia("m");
