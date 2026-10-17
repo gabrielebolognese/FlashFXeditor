@@ -83,13 +83,13 @@ function TranscribeSettingsDialog({ state }: { state: TranscribeDialogState }) {
         <>
           {cached && (
             <span className={styles.footerStart}>
-              <Button icon={Trash2} disabled={state.removing !== null} tooltip="Delete this model's files from the browser (it downloads again next time)" onClick={() => void removeModel(model)}>
+              <Button control icon={Trash2} disabled={state.removing !== null} tooltip="Delete this model's files from the browser (it downloads again next time)" onClick={() => void removeModel(model)}>
                 {state.removing === model ? "Removing…" : "Remove model"}
               </Button>
             </span>
           )}
-          <Button onClick={closeTranscribeDialog}>Cancel</Button>
-          <Button variant="primary" icon={cached === false ? Download : undefined} disabled={!frames} autoFocus onClick={start}>
+          <Button control onClick={closeTranscribeDialog}>Cancel</Button>
+          <Button control variant="primary" icon={cached === false ? Download : undefined} disabled={!frames} autoFocus onClick={start}>
             {cached === false ? `Download ${whisperModel(model).sizeMb[device]} MB and transcribe` : "Transcribe"}
           </Button>
         </>
@@ -108,8 +108,8 @@ function TranscribeSettingsDialog({ state }: { state: TranscribeDialogState }) {
         <div className={styles.range}>
           {inOutKey !== "" && (
             <div className={styles.chips}>
-              <IconButton text="In to out" label="Transcribe the in/out range" pressed={range === "inOut"} onClick={() => setRange("inOut")} />
-              <IconButton text="Whole timeline" label="Transcribe the whole timeline" pressed={range === "all"} onClick={() => setRange("all")} />
+              <IconButton control text="In to out" label="Transcribe the in/out range" pressed={range === "inOut"} onClick={() => setRange("inOut")} />
+              <IconButton control text="Whole timeline" label="Transcribe the whole timeline" pressed={range === "all"} onClick={() => setRange("all")} />
             </div>
           )}
           <span className={styles.mono}>{frames ? span(project, frames) : "The timeline is empty"}</span>
@@ -145,8 +145,8 @@ function ReviewDialog({ review }: { review: TranscriptReview }) {
       onClose={discardTranscript}
       footer={
         <>
-          <Button onClick={discardTranscript}>Discard</Button>
-          <Button variant="primary" autoFocus onClick={add}>
+          <Button control onClick={discardTranscript}>Discard</Button>
+          <Button control variant="primary" autoFocus onClick={add}>
             {review.replaced > 0 ? `Replace ${review.replaced} cue${review.replaced === 1 ? "" : "s"}` : `Add ${count} caption${count === 1 ? "" : "s"}`}
           </Button>
         </>

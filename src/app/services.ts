@@ -1,12 +1,13 @@
 // App-wide singletons. Created once; React components and canvas views import them directly.
 import { version as appVersion } from "../../package.json";
 import { AudioClock } from "../audio/AudioClock.js";
-import { ActionRegistry } from "../core/commands/ActionRegistry.js";
+import { CommandRegistry } from "../core/commands/CommandRegistry.js";
+import { commandScopes } from "./commandCatalog.js";
 import { createProject } from "../core/document/project.js";
 import { FontLibrary } from "../render/text/FontLibrary.js";
 import { KeyDispatcher } from "../core/keyboard/KeyDispatcher.js";
 import { FocusScopeTracker } from "../core/keyboard/focusScope.js";
-import { DEFAULT_KEYMAP } from "../core/keyboard/keymap.js";
+import { keymap } from "../core/keyboard/keymap.js";
 import { detectPlatform } from "../core/keyboard/keys.js";
 import { plannedMessage } from "../core/keyboard/planned.js";
 import { FrameScheduler } from "../core/scheduler/FrameScheduler.js";
@@ -22,6 +23,7 @@ import { INITIAL_SAVE_STATUS, type SaveStatus } from "../project/Autosaver.js";
 import { idbKeyValueStore } from "../project/kv.js";
 import { RecentProjects } from "../project/recentProjects.js";
 import { showToast } from "../ui/toasts.js";
+import { shortcutLabel } from "../ui/shortcutLabel.js";
 import { installTooltips } from "../ui/tooltipController.js";
 
 function localStorageOrNull(): Storage | null {
@@ -43,7 +45,10 @@ export const documentStore = new DocumentStore(
   createProject({ id: crypto.randomUUID(), name: "Untitled project", now: new Date().toISOString(), appVersion }),
   { session: sessionStore },
 );
-export const actions = new ActionRegistry();
+/** Every command id and its handler (spec §3.6); labels and icons are in app/commandCatalog.ts. */
+export const actions = new CommandRegistry();
+// Commands the shortcut editor binds that have no default key act in their catalog scopes.
+keymap.setScopeResolver(commandScopes);
 /** The master clock of playback: an AudioContext created on the first pointer or key press (spec §8). */
 export const audioClock = new AudioClock();
 /** IndexedDB key-value store of global things: recent projects, settings, global text presets (spec §3.1). */
@@ -63,12 +68,20 @@ export const fontLibrary = new FontLibrary(typeof document === "undefined" ? nul
 export const saveStatus = createStore<SaveStatus>(INITIAL_SAVE_STATUS);
 export { appVersion };
 
-actions.register("history.undo", () => {
-  documentStore.undo();
-});
-actions.register("history.redo", () => {
-  documentStore.redo();
-});
+actions.register(
+  "history.undo",
+  () => {
+    documentStore.undo();
+  },
+  { enabled: () => documentStore.history.getState().canUndo },
+);
+actions.register(
+  "history.redo",
+  () => {
+    documentStore.redo();
+  },
+  { enabled: () => documentStore.history.getState().canRedo },
+);
 
 /** Starts the global listeners (keyboard, focus scopes, theme, tooltips). Returns a stop function. */
 export function startServices(): () => void {
@@ -76,7 +89,7 @@ export function startServices(): () => void {
   console.debug("[theme]", theme);
 
   const keyDispatcher = new KeyDispatcher({
-    keymap: DEFAULT_KEYMAP,
+    keymap: keymap.bindings(),
     platform: detectPlatform(),
     getScope: () => focusScopes.scope,
     isAvailable: (id) => actions.has(id),
@@ -97,7 +110,10 @@ export function startServices(): () => void {
     // Before the key dispatcher: the first key press creates the AudioContext, then plays.
     audioClock.attach(window),
     keyDispatcher.attach(window),
-    installTooltips(document, theme.tooltipDelay),
+    // Rebinding (the shortcut editor) takes effect at once.
+    keymap.subscribe(() => keyDispatcher.setBindings(keymap.bindings())),
+    // Tooltips read a button's shortcut from its command when they show, so they follow rebinding.
+    installTooltips(document, theme.tooltipDelay, shortcutLabel),
   ];
   return () => {
     for (const stop of stops) stop();

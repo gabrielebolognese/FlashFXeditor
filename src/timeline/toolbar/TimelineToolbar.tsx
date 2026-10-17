@@ -1,7 +1,7 @@
-import { Ellipsis, Gauge } from "lucide-react";
+import { Ellipsis } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { addPresetClip, presetLibrary, type PresetLibrary } from "../../app/presetController.js";
+import { presetLibrary, type PresetLibrary } from "../../app/presetController.js";
 import { actions, documentStore, sessionStore } from "../../app/services.js";
 import { bindTimecode, bindZoomSlider, timelineDev } from "../../app/timelineController.js";
 import type { Project } from "../../core/document/types.js";
@@ -13,28 +13,6 @@ import { useDismiss } from "../../ui/useDismiss.js";
 import styles from "./TimelineToolbar.module.css";
 import { TOOLBAR_GROUPS, type ToolbarGroup, type ToolbarItem } from "./toolbarGroups.js";
 
-// Actions stay disabled until their batches wire them; the session toggles (TOGGLE_STATE) are always live.
-const ENABLED: ReadonlySet<string> = new Set([
-  "timeline.zoomOut",
-  "timeline.zoomIn",
-  "timeline.zoomFit",
-  "timeline.zoomToSelection",
-  "timeline.centerPlayhead",
-  "edit.split",
-  "edit.delete",
-  "edit.rippleDelete",
-  "edit.closeGap",
-  "edit.closeAllGaps",
-  "marker.add",
-  "edit.freezeFrame",
-  "edit.punchZoom",
-  "toggle.clipKeyframes",
-  "add.title",
-  "add.subtitle",
-  "add.solid",
-  "add.image",
-  "timeline.trackHeightCycle",
-]);
 
 /**
  * Toggle buttons whose pressed state is session state: the toggles and the active tool. Each
@@ -58,7 +36,7 @@ const TOGGLE_STATE: Readonly<Record<string, (state: SessionState) => boolean>> =
 
 function SessionToggle({ item, pressedIn }: { item: Extract<ToolbarItem, { kind: "button" }>; pressedIn: (state: SessionState) => boolean }) {
   const pressed = useStoreSelector(sessionStore.state, pressedIn);
-  return <IconButton icon={item.icon} label={item.label} commandId={item.id} pressed={pressed} onClick={() => actions.run(item.id)} />;
+  return <IconButton label={item.label} commandId={item.id} pressed={pressed} />;
 }
 
 /** Rendered once; its value follows the zoom through direct DOM writes (no React render, P1). */
@@ -94,11 +72,10 @@ function Timecode() {
 }
 
 const selectStats = (state: { stats: boolean }) => state.stats;
-const toggleStats = () => timelineDev.set((state) => ({ stats: !state.stats }));
 
 function DevStatsToggle() {
   const stats = useStoreSelector(timelineDev, selectStats);
-  return <IconButton icon={Gauge} label="Timeline stats (dev)" pressed={stats} onClick={toggleStats} />;
+  return <IconButton commandId="dev.toggleTimelineStats" label="Timeline stats (dev)" pressed={stats} />;
 }
 
 /** The favorite chips as `id name` lines: a string, so the toolbar renders only when they change. */
@@ -118,7 +95,7 @@ function FavoriteChips() {
     <span className={styles.chips}>
       {chips.split("\n").map((line) => {
         const [id = "", name = ""] = line.split("\t");
-        return <IconButton key={id} text={name} label={`Add "${name}" at the playhead`} onClick={() => void addPresetClip(id)} />;
+        return <IconButton key={id} text={name} label={`Add "${name}" at the playhead`} commandId="preset.addAtPlayhead" arg={id} />;
       })}
     </span>
   );
@@ -129,7 +106,7 @@ const selectHasCaptions = (project: Project) => project.tracks.some((track) => t
 /** `+ Caption track` (spec §17): disabled once the project has its one caption track (never hidden). */
 function CaptionTrackButton({ item }: { item: Extract<ToolbarItem, { kind: "button" }> }) {
   const has = useStoreSelector(documentStore, selectHasCaptions);
-  return <IconButton icon={item.icon} label={has ? "Caption track: the project has one (Media > Captions)" : item.label} commandId={item.id} disabled={has} onClick={() => actions.run(item.id)} />;
+  return <IconButton label={has ? "Caption track: the project has one (Media > Captions)" : item.label} commandId={item.id} disabled={has} />;
 }
 
 function renderItem(item: ToolbarItem) {
@@ -138,19 +115,8 @@ function renderItem(item: ToolbarItem) {
   if (item.id === "add.captionTrack") return <CaptionTrackButton key={item.id} item={item} />;
   const pressedIn = TOGGLE_STATE[item.id];
   if (pressedIn) return <SessionToggle key={item.id} item={item} pressedIn={pressedIn} />;
-  const enabled = ENABLED.has(item.id);
-  return (
-    <IconButton
-      key={item.id}
-      icon={item.icon}
-      label={item.label}
-      commandId={item.id}
-      text={item.text}
-      pressed={item.toggle ? false : undefined}
-      disabled={!enabled}
-      onClick={enabled ? () => actions.run(item.id) : undefined}
-    />
-  );
+  // A command a later batch builds stays disabled (never hidden: the row never shifts).
+  return <IconButton key={item.id} label={item.label} commandId={item.id} text={item.text} pressed={item.toggle ? false : undefined} disabled={!actions.has(item.id)} />;
 }
 
 function Group({ group }: { group: ToolbarGroup }) {
@@ -234,7 +200,7 @@ export function TimelineToolbar() {
         <Group key={group.id} group={group} />
       ))}
       <div ref={moreRef} className={styles.more}>
-        <IconButton icon={Ellipsis} label="More tools" pressed={overflow !== null} onClick={overflow ? closeOverflow : openOverflow} />
+        <IconButton icon={Ellipsis} label="More tools" control pressed={overflow !== null} onClick={overflow ? closeOverflow : openOverflow} />
       </div>
       <div className={styles.end} data-end="">
         {import.meta.env.DEV && <DevStatsToggle />}

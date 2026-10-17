@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { deleteMarker, moveMarker, setMarkerFields } from "../../app/markerController.js";
+import { moveMarker, setMarkerFields } from "../../app/markerController.js";
 import { documentStore, sessionStore } from "../../app/services.js";
 import { MAX_MARKER_LABEL } from "../../core/commands/markerCommands.js";
 import { formatTimecode, parseTimecode } from "../../core/document/time.js";
@@ -46,7 +46,7 @@ export function MarkerSection({ markerId }: { markerId: string }) {
       </Row>
       <span />
       <span>
-        <Button size="compact" onClick={() => deleteMarker(marker.id)}>
+        <Button size="compact" commandId="marker.delete">
           Delete marker
         </Button>
       </span>

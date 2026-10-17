@@ -1,6 +1,5 @@
 import { useLayoutEffect, useMemo, useRef } from "react";
 import { bindSilenceStatus, bindThresholdSlider, SILENCE_FIELDS, silenceFieldBinding } from "../../app/silenceController.js";
-import { actions } from "../../app/services.js";
 import { Button } from "../../ui/Button.js";
 import { NumberField } from "../../ui/NumberField.js";
 import styles from "./SilenceRow.module.css";
@@ -10,7 +9,6 @@ import styles from "./SilenceRow.module.css";
 // silences found, Cancel and Apply. Rendered once when it opens: the slider, the fields and the count
 // are bound outside React (silenceController.ts), so dragging and scrubbing them render nothing (P1).
 
-const run = (id: string) => void actions.run(id);
 
 export function SilenceRow() {
   const slider = useRef<HTMLInputElement>(null);
@@ -43,10 +41,10 @@ export function SilenceRow() {
       </div>
       <div className={styles.footer}>
         <span ref={count} className={styles.count} aria-live="polite" />
-        <Button size="compact" onClick={() => run("audio.removeSilence.cancel")}>
+        <Button size="compact" commandId="audio.removeSilence.cancel">
           Cancel
         </Button>
-        <Button size="compact" variant="primary" tooltip="Cut the hatched silences out and close the gaps (one undo step)" onClick={() => run("audio.removeSilence.apply")}>
+        <Button size="compact" variant="primary" tooltip="Cut the hatched silences out and close the gaps (one undo step)" commandId="audio.removeSilence.apply">
           Apply
         </Button>
       </div>

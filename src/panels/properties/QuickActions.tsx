@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import { useCallback } from "react";
 import { presetLibrary, presetNaming, presetSourceClip, updatablePreset, type PresetLibrary } from "../../app/presetController.js";
-import { actions, documentStore } from "../../app/services.js";
+import { documentStore } from "../../app/services.js";
 import { silenceRow } from "../../app/silenceController.js";
 import { clickTransitionChip, pressTransitionChip } from "../../app/transitionController.js";
 import { secondsToFrames } from "../../core/document/time.js";
@@ -58,6 +58,7 @@ import styles from "./QuickActions.module.css";
 // is enabled when the selected text clip's preset exists and its look differs, its tooltip naming the
 // preset and saying what happens to the other clips that use it.
 
+/** A plain command chip: `id` is its command id (the tooltip shows its key). */
 interface Live {
   kind: "live";
   id: string;
@@ -65,8 +66,6 @@ interface Live {
   icon?: LucideIcon;
   /** A text chip (the speed chips). */
   text?: string;
-  /** Shown in the tooltip with its key. */
-  commandId?: string;
   needs: (typeof NEEDS)[number];
 }
 
@@ -112,8 +111,8 @@ const ENTRIES: readonly Entry[] = [
   { kind: "gap" },
   { kind: "fade", id: "clip.fadeIn", label: "Fade in 0.5 s", icon: TrendingUp },
   { kind: "fade", id: "clip.fadeOut", label: "Fade out 0.5 s", icon: TrendingDown },
-  { kind: "live", id: "edit.freezeFrame", label: "Freeze frame", icon: Snowflake, commandId: "edit.freezeFrame", needs: "video" },
-  { kind: "live", id: "edit.punchZoom", label: "Punch zoom", icon: ZoomIn, commandId: "edit.punchZoom", needs: "layer" },
+  { kind: "live", id: "edit.freezeFrame", label: "Freeze frame", icon: Snowflake, needs: "video" },
+  { kind: "live", id: "edit.punchZoom", label: "Punch zoom", icon: ZoomIn, needs: "layer" },
   { kind: "gap" },
   { kind: "live", id: "clip.speed.50", label: "Speed 0.5x", text: "0.5x", needs: "speed" },
   { kind: "live", id: "clip.speed.100", label: "Speed 1x", text: "1x", needs: "speed" },
@@ -129,8 +128,8 @@ const ENTRIES: readonly Entry[] = [
   { kind: "transition", transition: "dipToBlack", label: "Add dip to black", icon: Moon },
   { kind: "transition", transition: "dipToWhite", label: "Add dip to white", icon: Sun },
   { kind: "gap" },
-  { kind: "live", id: "edit.duplicate", label: "Duplicate", icon: CopyPlus, commandId: "edit.duplicate", needs: "clips" },
-  { kind: "live", id: "edit.delete", label: "Delete", icon: Trash2, commandId: "edit.delete", needs: "clips" },
+  { kind: "live", id: "edit.duplicate", label: "Duplicate", icon: CopyPlus, needs: "clips" },
+  { kind: "live", id: "edit.delete", label: "Delete", icon: Trash2, needs: "clips" },
 ];
 
 const NEEDS = ["content", "layer", "primary", "clips", "video", "speed", "text", "fade", "fadeIn", "fadeOut", "cut", "audio", "muted", "silence"] as const;
@@ -170,8 +169,6 @@ function abilities(project: Project, ids: readonly ClipId[], primary: ClipId, ed
   return bits;
 }
 
-const run = (id: string) => void actions.run(id);
-
 const selectLibrary = (library: PresetLibrary) => library;
 
 /** The name of the preset Update preset would write into, or null (re-read when the document or the presets change). */
@@ -187,7 +184,7 @@ function UpdatePresetButton() {
   const label = name
     ? `Update "${name}": saves this clip's style into the preset. Other clips that use "${name}" keep their own style until you apply the preset to them again.`
     : "Update preset: the selected text has no preset, or already has its style";
-  return <IconButton icon={BookmarkCheck} label={label} commandId="preset.update" disabled={name === null} onClick={() => run("preset.update")} />;
+  return <IconButton icon={BookmarkCheck} label={label} commandId="preset.update" disabled={name === null} />;
 }
 
 export function QuickActions({ ids, primary, editPoint = false }: { ids: readonly ClipId[]; primary: ClipId; editPoint?: boolean }) {
@@ -203,16 +200,16 @@ export function QuickActions({ ids, primary, editPoint = false }: { ids: readonl
           if (entry.kind === "updatePreset") return <UpdatePresetButton key="update-preset" />;
           if (entry.kind === "mute") {
             const on = (bits & bit("muted")) !== 0;
-            return <IconButton key="mute" icon={entry.icon} label={on ? "Unmute" : "Mute"} pressed={on} disabled={(bits & bit("audio")) === 0} onClick={() => run("clip.mute")} />;
+            return <IconButton key="mute" icon={entry.icon} label={on ? "Unmute" : "Mute"} commandId="clip.mute" pressed={on} disabled={(bits & bit("audio")) === 0} />;
           }
           if (entry.kind === "silence") {
             const enabled = (bits & bit("silence")) !== 0;
             const label = silence ? "Remove silence: close the parameter row" : enabled ? "Remove silence: find the pauses and cut them out" : "Remove silence: select a clip with sound";
-            return <IconButton key="silence" icon={entry.icon} label={label} pressed={silence} disabled={!enabled && !silence} onClick={() => run("audio.removeSilence")} />;
+            return <IconButton key="silence" icon={entry.icon} label={label} commandId="audio.removeSilence" pressed={silence} disabled={!enabled && !silence} />;
           }
           if (entry.kind === "fade") {
             const on = (bits & bit(entry.id === "clip.fadeIn" ? "fadeIn" : "fadeOut")) !== 0;
-            return <IconButton key={entry.id} icon={entry.icon} label={on ? `${entry.label}: on (click to remove)` : entry.label} pressed={on} disabled={(bits & bit("fade")) === 0} onClick={() => run(entry.id)} />;
+            return <IconButton key={entry.id} icon={entry.icon} label={on ? `${entry.label}: on (click to remove)` : entry.label} commandId={entry.id} pressed={on} disabled={(bits & bit("fade")) === 0} />;
           }
           if (entry.kind === "transition") {
             // Always enabled: a chip can be dragged onto any cut.
@@ -223,13 +220,14 @@ export function QuickActions({ ids, primary, editPoint = false }: { ids: readonl
                 key={transition}
                 icon={entry.icon}
                 label={`${entry.label} (${TRANSITION_LABELS[transition].toLowerCase()}, 15 frames): ${where}`}
+                commandId={`transition.add.${transition}`}
                 onPointerDown={(event) => pressTransitionChip(event, transition, event.currentTarget)}
                 onClick={() => clickTransitionChip(transition)}
               />
             );
           }
           const enabled = (bits & (1 << NEEDS.indexOf(entry.needs))) !== 0;
-          return <IconButton key={entry.id} icon={entry.icon} text={entry.text} label={entry.label} commandId={entry.commandId} disabled={!enabled} onClick={() => run(entry.id)} />;
+          return <IconButton key={entry.id} icon={entry.icon} text={entry.text} label={entry.label} commandId={entry.id} disabled={!enabled} />;
         })}
       </div>
       {naming && (

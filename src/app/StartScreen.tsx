@@ -4,7 +4,7 @@ import { useStoreSelector } from "../core/store/useStoreSelector.js";
 import type { RecentProject } from "../project/recentProjects.js";
 import { Button } from "../ui/Button.js";
 import { IconButton } from "../ui/IconButton.js";
-import { appView, newProject, openDropped, openProject, openRecent } from "./projectController.js";
+import { appView, openDropped, openRecent } from "./projectController.js";
 import { recentProjects } from "./services.js";
 import styles from "./StartScreen.module.css";
 
@@ -22,7 +22,7 @@ function RecentRow({ entry, disabled }: { entry: RecentProject; disabled: boolea
   };
   return (
     <li className={styles.recent}>
-      <button type="button" className={styles.recentOpen} aria-disabled={disabled || undefined} onClick={open}>
+      <button type="button" className={styles.recentOpen} data-control="" aria-disabled={disabled || undefined} onClick={open}>
         <span className={styles.thumb} aria-hidden="true">
           <Film className={styles.thumbIcon} />
         </span>
@@ -34,7 +34,7 @@ function RecentRow({ entry, disabled }: { entry: RecentProject; disabled: boolea
         </span>
       </button>
       <span className={styles.remove}>
-        <IconButton icon={X} label="Remove from recent projects" onClick={() => void recentProjects.remove(entry.id)} />
+        <IconButton control icon={X} label="Remove from recent projects" onClick={() => void recentProjects.remove(entry.id)} />
       </span>
     </li>
   );
@@ -96,10 +96,10 @@ export function StartScreen() {
         </header>
 
         <div className={styles.actions}>
-          <Button variant="hero" size="comfortable" icon={Plus} commandId="project.new" tooltip="New project" disabled={busy} onClick={() => void newProject()}>
+          <Button variant="hero" size="comfortable" icon={Plus} commandId="project.new" tooltip="New project" disabled={busy}>
             New project
           </Button>
-          <Button size="comfortable" icon={FolderOpen} commandId="project.open" tooltip="Open a project folder" disabled={busy} onClick={() => void openProject()}>
+          <Button size="comfortable" icon={FolderOpen} commandId="project.open" tooltip="Open a project folder" disabled={busy}>
             Open project
           </Button>
         </div>

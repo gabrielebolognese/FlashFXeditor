@@ -23,6 +23,7 @@ export function Section({ id, title, actions, children }: { id: SectionId; title
         <button
           type="button"
           className={styles.header}
+          data-control=""
           aria-expanded={!collapsed}
           aria-controls={bodyId}
           onMouseDown={keepFocus}

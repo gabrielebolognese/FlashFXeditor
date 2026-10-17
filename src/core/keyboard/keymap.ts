@@ -1,5 +1,7 @@
 // Default keymap (spec §18, BINDING): the single source of shortcut data. Shortcuts dispatch command
-// ids; buttons, context menus and the command palette use the same ids.
+// ids; buttons, context menus and the command palette use the same ids. The shortcut editor (Batch 40)
+// rebinds any command: `keymap` is the live map (these defaults plus the user's overrides, kept in the
+// app settings); the KeyDispatcher, tooltips, menus, the palette and the cheat sheet all read it.
 import type { FocusScope } from "./focusScope.js";
 
 export interface KeyBinding {
@@ -13,6 +15,11 @@ export interface KeyBinding {
    * dispatched with phase "up" so the handler can run its own repeat/acceleration (spec §3.6, §8).
    */
   hold?: true;
+  /**
+   * Also runs while a text input or a dialog owns the keyboard (Mod+S: saving is always safe, and
+   * otherwise the browser's "Save page" dialog opens over the editor).
+   */
+  everywhere?: true;
 }
 
 const G: readonly FocusScope[] = ["global"];
@@ -94,6 +101,8 @@ export const DEFAULT_KEYMAP: readonly KeyBinding[] = [
   // Toggles and tools
   { id: "toggle.snap", keys: ["S"], scopes: G, hold: true },
   { id: "toggle.linkedSelection", keys: ["Shift+S"], scopes: G },
+  // Not in §18 (Batch 37 follow-up): Premiere's Shift+S is Linked selection here.
+  { id: "toggle.audioScrub", keys: ["Alt+S"], scopes: G },
   { id: "tool.select", keys: ["V"], scopes: G },
   { id: "tool.razor", keys: ["C"], scopes: G },
   { id: "tool.hand", keys: ["H"], scopes: G },
@@ -147,14 +156,138 @@ export const DEFAULT_KEYMAP: readonly KeyBinding[] = [
   { id: "media.import", keys: ["Mod+I"], scopes: G },
   { id: "project.new", keys: ["Mod+N"], scopes: G },
   { id: "project.open", keys: ["Mod+O"], scopes: G },
-  { id: "project.save", keys: ["Mod+S"], scopes: G },
+  { id: "project.save", keys: ["Mod+S"], scopes: G, everywhere: true },
   { id: "app.export", keys: ["Mod+E"], scopes: G },
   { id: "app.commandPalette", keys: ["Mod+Shift+P"], scopes: G },
+  // The cheat sheet (Batch 40): "?" on any layout, Shift+/ by key position.
+  { id: "app.shortcuts", keys: ["Shift+/", "?"], scopes: G },
   { id: "app.cancel", keys: ["Escape"], scopes: G },
 ];
 
-const BY_ID = new Map(DEFAULT_KEYMAP.map((binding) => [binding.id, binding]));
+/** User keys per command id (only those that differ from the defaults; `[]` unbinds a command). */
+export type KeymapOverrides = Readonly<Record<string, readonly string[]>>;
 
+const sameKeys = (a: readonly string[], b: readonly string[]) => a.length === b.length && a.every((keys, i) => keys === b[i]);
+
+/**
+ * The live keymap: the defaults with the user's overrides. Commands without a default binding get
+ * their scopes from `scopesOf` (the command catalog). Listeners run after every change.
+ */
+export class Keymap {
+  private overrides: KeymapOverrides = {};
+  private effective: readonly KeyBinding[] = [];
+  private readonly byId = new Map<string, KeyBinding>();
+  private readonly defaultsById: ReadonlyMap<string, KeyBinding>;
+  private readonly listeners = new Set<() => void>();
+  private scopesOf: (id: string) => readonly FocusScope[] = () => G;
+
+  constructor(private readonly defaults: readonly KeyBinding[]) {
+    this.defaultsById = new Map(defaults.map((binding) => [binding.id, binding]));
+    this.rebuild();
+  }
+
+  /** Scopes for commands the defaults do not bind (they are global otherwise). */
+  setScopeResolver(scopesOf: (id: string) => readonly FocusScope[]): void {
+    this.scopesOf = scopesOf;
+    this.rebuild();
+  }
+
+  /**
+   * The bindings with keys, the customized ones last: when two share a chord in a scope, the one the
+   * user set wins (the dispatcher keeps the last one it indexes).
+   */
+  bindings(): readonly KeyBinding[] {
+    return this.effective;
+  }
+
+  /** The effective binding of `id` (its keys may be empty when the user unbound it). */
+  binding(id: string): KeyBinding | undefined {
+    return this.byId.get(id);
+  }
+
+  keysFor(id: string): readonly string[] {
+    return this.byId.get(id)?.keys ?? [];
+  }
+
+  defaultKeysFor(id: string): readonly string[] {
+    return this.defaultsById.get(id)?.keys ?? [];
+  }
+
+  /** The scopes the command's keys act in (its default binding's, else the catalog's). */
+  scopesFor(id: string): readonly FocusScope[] {
+    return this.defaultsById.get(id)?.scopes ?? this.scopesOf(id);
+  }
+
+  isCustom(id: string): boolean {
+    return id in this.overrides;
+  }
+
+  getOverrides(): KeymapOverrides {
+    return this.overrides;
+  }
+
+  /** Replaces every override; entries equal to the defaults are dropped. */
+  setOverrides(overrides: KeymapOverrides): void {
+    const next: Record<string, readonly string[]> = {};
+    for (const [id, keys] of Object.entries(overrides)) {
+      if (!sameKeys(keys, this.defaultKeysFor(id))) next[id] = [...keys];
+    }
+    if (sameOverrides(next, this.overrides)) return;
+    this.overrides = next;
+    this.rebuild();
+    for (const listener of [...this.listeners]) listener();
+  }
+
+  setKeys(id: string, keys: readonly string[]): void {
+    this.setOverrides({ ...this.overrides, [id]: keys });
+  }
+
+  reset(id: string): void {
+    const next = { ...this.overrides };
+    delete next[id];
+    this.setOverrides(next);
+  }
+
+  resetAll(): void {
+    this.setOverrides({});
+  }
+
+  subscribe(listener: () => void): () => void {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
+  }
+
+  private rebuild(): void {
+    this.byId.clear();
+    const plain: KeyBinding[] = [];
+    const custom: KeyBinding[] = [];
+    for (const binding of this.defaults) {
+      const keys = this.overrides[binding.id];
+      const effective = keys ? { ...binding, keys } : binding;
+      this.byId.set(binding.id, effective);
+      if (effective.keys.length > 0) (keys ? custom : plain).push(effective);
+    }
+    for (const [id, keys] of Object.entries(this.overrides)) {
+      if (this.defaultsById.has(id)) continue;
+      const binding: KeyBinding = { id, keys, scopes: this.scopesOf(id) };
+      this.byId.set(id, binding);
+      if (keys.length > 0) custom.push(binding);
+    }
+    this.effective = [...plain, ...custom];
+  }
+}
+
+function sameOverrides(a: KeymapOverrides, b: KeymapOverrides): boolean {
+  const ids = Object.keys(a);
+  return ids.length === Object.keys(b).length && ids.every((id) => b[id] !== undefined && sameKeys(a[id] ?? [], b[id] ?? []));
+}
+
+/** The live keymap of the app (defaults + the user's overrides). */
+export const keymap = new Keymap(DEFAULT_KEYMAP);
+
+/** The effective binding of a command id (live: follows rebinding). */
 export function bindingFor(id: string): KeyBinding | undefined {
-  return BY_ID.get(id);
+  return keymap.binding(id);
 }

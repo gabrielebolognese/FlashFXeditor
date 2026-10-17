@@ -1,9 +1,12 @@
 import { useRef } from "react";
 import { useStoreSelector } from "../core/store/useStoreSelector.js";
+import { CommandPalette } from "../panels/CommandPalette.js";
 import { MediaPanel } from "../panels/MediaPanel.js";
 import { PasteAttributesPopover } from "../panels/PasteAttributesPopover.js";
 import { PreviewPanel } from "../panels/PreviewPanel.js";
 import { PropertiesPanel } from "../panels/PropertiesPanel.js";
+import { SettingsDialog } from "../panels/SettingsDialog.js";
+import { ShortcutSheet } from "../panels/ShortcutSheet.js";
 import { TimelinePanel } from "../panels/TimelinePanel.js";
 import styles from "./App.module.css";
 import { AppBar } from "./AppBar.js";
@@ -44,13 +47,19 @@ function Editor() {
   );
 }
 
-/** The start screen until a project is open (spec §15), then the editor. Dialogs float over both. */
+/**
+ * The start screen until a project is open (spec §15), then the editor. Dialogs float over both, as do
+ * the command palette, the cheat sheet and the settings (Batch 40).
+ */
 export function App() {
   const projectId = useStoreSelector(appView, selectProjectId);
   return (
     <>
       {projectId === null ? <StartScreen /> : <Editor key={projectId} />}
       <DialogHost />
+      <SettingsDialog />
+      <ShortcutSheet />
+      <CommandPalette />
       <ToastHost />
     </>
   );

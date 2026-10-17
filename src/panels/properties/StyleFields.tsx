@@ -96,7 +96,7 @@ export function Choice<T extends string>({ value, options, onChange, disabled }:
   return (
     <div className={styles.buttons}>
       {options.map((option) => (
-        <IconButton key={option.value} icon={option.icon} text={option.text} label={option.label} pressed={value === option.value} disabled={disabled} onClick={() => onChange(option.value)} />
+        <IconButton control key={option.value} icon={option.icon} text={option.text} label={option.label} pressed={value === option.value} disabled={disabled} onClick={() => onChange(option.value)} />
       ))}
     </div>
   );
@@ -192,7 +192,7 @@ export function StyleFields({ target, anchor }: { target: StyleTarget; anchor: b
             options={weight === MIXED ? [{ value: "", label: "--" }, ...weightOptions(familyName, null)] : weightOptions(familyName, weightValue)}
             onChange={(next) => next !== "" && edit("Change font weight", () => ({ fontWeight: Number(next) }))}
           />
-          <IconButton icon={Italic} label="Italic" pressed={italic === true} onClick={() => edit("Change italic", () => ({ italic: italic !== true }))} />
+          <IconButton control icon={Italic} label="Italic" pressed={italic === true} onClick={() => edit("Change italic", () => ({ italic: italic !== true }))} />
         </div>
       </Row>
       <Row label="Size">

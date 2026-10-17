@@ -9,6 +9,8 @@ import { installAudioEditController } from "./app/audioEditController.js";
 import { installCanvasController } from "./app/canvasController.js";
 import { installCaptionController } from "./app/captionController.js";
 import { installClipboardController } from "./app/clipboardController.js";
+import { installCommandAudit } from "./app/commandAudit.js";
+import { installCommandController } from "./app/commandController.js";
 import { installTranscribeController } from "./app/transcribeController.js";
 import { installCutController } from "./app/cutController.js";
 import { installDropController } from "./app/dropController.js";
@@ -44,6 +46,7 @@ async function start(): Promise<void> {
     return;
   }
   startServices();
+  installCommandController();
   startGpu(adapter);
   installProjectController();
   installMediaController();
@@ -73,6 +76,8 @@ async function start(): Promise<void> {
       <App />
     </StrictMode>,
   );
+  // Every controller has registered its commands: the dev assertion (and the watch over buttons).
+  if (import.meta.env.DEV) installCommandAudit();
 }
 
 void start();

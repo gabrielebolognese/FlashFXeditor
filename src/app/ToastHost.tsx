@@ -15,11 +15,11 @@ function ToastItem({ toast }: { toast: Toast }) {
         {toast.detail && <span className={styles.detail}>{toast.detail}</span>}
       </div>
       {toast.action && (
-        <button type="button" className={styles.action} onMouseDown={(event) => event.preventDefault()} onClick={toast.action.run}>
+        <button type="button" className={styles.action} data-control="" onMouseDown={(event) => event.preventDefault()} onClick={toast.action.run}>
           {toast.action.label}
         </button>
       )}
-      <button type="button" className={styles.close} aria-label="Dismiss" onMouseDown={(event) => event.preventDefault()} onClick={() => dismissToast(toast.id)}>
+      <button type="button" className={styles.close} aria-label="Dismiss" data-control="" onMouseDown={(event) => event.preventDefault()} onClick={() => dismissToast(toast.id)}>
         <X className={styles.closeIcon} aria-hidden="true" />
       </button>
       {toast.progress !== undefined && (

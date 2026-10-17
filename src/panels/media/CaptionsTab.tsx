@@ -12,6 +12,7 @@ import { cueMatches, wordCount } from "../../text/captions.js";
 import { captionTrackOf } from "../../timeline/edit/captions.js";
 import { clipAtFrame } from "../../timeline/model/queries.js";
 import { Button } from "../../ui/Button.js";
+import { ContextMenu, type ContextMenuEntry } from "../../ui/ContextMenu.js";
 import { IconButton } from "../../ui/IconButton.js";
 import { TextField } from "../../ui/TextField.js";
 import styles from "./CaptionsTab.module.css";
@@ -62,6 +63,29 @@ export function CaptionsActions() {
       <IconButton icon={Eraser} label="Clear all cues" commandId="captions.clear" disabled={count === 0} onClick={() => actions.run("captions.clear")} />
     </>
   );
+}
+
+/** The rows run as the Captions tab's keys would (Delete deletes the selected cues there). */
+const MEDIA_CONTEXT = { scope: "media", phase: "down", repeat: false } as const;
+
+/** A cue row's menu (Batch 40): the selected cue's edit, clipboard, split / merge and delete, then the track's. */
+function cueMenuEntries(project: Project, cueId: ClipId): ContextMenuEntry[] {
+  const track = captionTrackOf(project);
+  const index = track ? track.clipIds.indexOf(cueId) : -1;
+  return [
+    { kind: "item", id: "caption.editText", label: "Edit text" },
+    { kind: "separator" },
+    { kind: "item", id: "clipboard.cut", label: "Cut" },
+    { kind: "item", id: "clipboard.copy", label: "Copy" },
+    { kind: "item", id: "clipboard.paste", label: "Paste at playhead", disabled: !actions.isEnabled("clipboard.paste") },
+    { kind: "separator" },
+    { kind: "item", id: "edit.split", label: "Split at playhead" },
+    { kind: "item", id: "caption.mergePrevious", label: "Merge with previous cue", disabled: index <= 0 },
+    { kind: "item", id: "edit.delete", label: "Delete" },
+    { kind: "separator" },
+    { kind: "item", id: "captions.addCue", label: "Add cue at playhead" },
+    { kind: "item", id: "captions.style", label: "Caption style" },
+  ];
 }
 
 interface RowProps {
@@ -270,6 +294,18 @@ export function CaptionsTab() {
     };
   }, [view, shown]);
 
+  // A right-click on a row (not in its text, which keeps the browser's text menu) selects the cue and opens its menu.
+  const [menu, setMenu] = useState<{ cueId: ClipId; x: number; y: number } | null>(null);
+  const onContextMenu = (event: MouseEvent) => {
+    const row = event.target instanceof Element ? event.target.closest<HTMLElement>("[data-cue-id]") : null;
+    if (!row || event.target instanceof HTMLTextAreaElement) return;
+    event.preventDefault();
+    const cueId = row.dataset.cueId as ClipId;
+    selectCue(cueId);
+    setMenu({ cueId, x: event.clientX, y: event.clientY });
+  };
+  const closeMenu = useCallback(() => setMenu(null), []);
+
   // A click on a row (not in its text) selects the cue and moves the playhead to it.
   const onClick = (event: MouseEvent) => {
     const row = event.target instanceof Element ? event.target.closest<HTMLElement>("[data-cue-id]") : null;
@@ -320,7 +356,7 @@ export function CaptionsTab() {
         </div>
         <span className={styles.total}>{query.trim() === "" ? `${total} cue${total === 1 ? "" : "s"}` : `${shown.length} of ${total}`}</span>
       </div>
-      <div ref={scroller} className={styles.scroll} role="listbox" aria-label="Cues" onScroll={onScroll} onClick={onClick} onFocus={onFocus} onBlur={onBlur}>
+      <div ref={scroller} className={styles.scroll} role="listbox" aria-label="Cues" onScroll={onScroll} onClick={onClick} onFocus={onFocus} onBlur={onBlur} onContextMenu={onContextMenu}>
         {shown.length === 0 ? (
           <p className={styles.note}>{total === 0 ? "No cues yet. Click + to add one at the playhead." : "No cue matches the search."}</p>
         ) : (
@@ -331,6 +367,7 @@ export function CaptionsTab() {
           </div>
         )}
       </div>
+      {menu && <ContextMenu x={menu.x} y={menu.y} entries={cueMenuEntries(documentStore.getState(), menu.cueId)} onSelect={(id) => void actions.run(id, MEDIA_CONTEXT)} onClose={closeMenu} />}
     </div>
   );
 }

@@ -13,7 +13,8 @@ import styles from "./PasteAttributesPopover.module.css";
 // clip can give the selected clips, at the menu row that opened it or over the focused panel. Every
 // group starts checked except those unchecked earlier this session; Keyframes (how the animatable
 // groups arrive) is dimmed while none of them is checked. Enter or Paste applies (one undo step),
-// Escape, Cancel or a press outside close it. Rendered only while open (a dialog, not a P1 path).
+// Escape, Cancel or a press outside close it; Up / Down move between the rows and buttons, Space
+// toggles a row (Batch 40). Rendered only while open (a dialog, not a P1 path).
 
 const ANIMATED: ReadonlySet<AttributeGroup> = new Set(["transform", "opacity", "audio"]);
 
@@ -44,6 +45,15 @@ function Popover({ menu }: { menu: PasteAttributesMenu }) {
     });
   const apply = useCallback(() => applyPasteAttributes(checked), [checked]);
   const onKeyDown = (event: KeyboardEvent) => {
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      const buttons = [...(ref.current?.querySelectorAll<HTMLButtonElement>("button:not([aria-disabled])") ?? [])];
+      const at = buttons.indexOf(document.activeElement as HTMLButtonElement);
+      const down = event.key === "ArrowDown";
+      const count = buttons.length;
+      buttons[at < 0 ? (down ? 0 : count - 1) : (at + (down ? 1 : count - 1)) % count]?.focus();
+      return;
+    }
     if (event.key !== "Enter") return;
     event.preventDefault();
     // Closing hands the keyboard back to the panel: the key dispatcher (on window) must not see this
@@ -82,10 +92,10 @@ function Popover({ menu }: { menu: PasteAttributesMenu }) {
         })}
       </div>
       <div className={styles.footer}>
-        <Button size="compact" onClick={closePasteAttributes}>
+        <Button control size="compact" onClick={closePasteAttributes}>
           Cancel
         </Button>
-        <Button size="compact" variant="primary" disabled={nothing} autoFocus onClick={apply}>
+        <Button control size="compact" variant="primary" disabled={nothing} autoFocus onClick={apply}>
           Paste
         </Button>
       </div>

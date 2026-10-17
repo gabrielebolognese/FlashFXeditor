@@ -58,17 +58,17 @@ export function AudioSection({ ids, detach }: { ids: readonly ClipId[]; detach: 
       <Row label="Actions">
         <div className={styles.textButtons}>
           {audio && (
-            <Button size="compact" icon={AudioLines} tooltip="Normalize: set the gain so the clip's loudest point is -1 dBFS" onClick={() => run("audio.normalize")}>
+            <Button size="compact" icon={AudioLines} tooltip="Normalize: set the gain so the clip's loudest point is -1 dBFS" commandId="audio.normalize">
               Normalize
             </Button>
           )}
           {audio && (
-            <Button size="compact" icon={ChevronsDown} tooltip="Auto-duck music: lower this clip by 12 dB wherever audio plays on the tracks above it" onClick={() => run("audio.autoDuck")}>
+            <Button size="compact" icon={ChevronsDown} tooltip="Auto-duck music: lower this clip by 12 dB wherever audio plays on the tracks above it" commandId="audio.autoDuck">
               Auto-duck
             </Button>
           )}
           {detach.length > 0 && (
-            <Button size="compact" icon={Unlink2} tooltip="Detach audio: the video's sound becomes a clip of its own" onClick={() => run("audio.detach")}>
+            <Button size="compact" icon={Unlink2} tooltip="Detach audio: the video's sound becomes a clip of its own" commandId="audio.detach">
               Detach audio
             </Button>
           )}

@@ -8,7 +8,7 @@ import { documentStore } from "./services.js";
 
 // The real services open IndexedDB at import time, which jsdom lacks: same singletons, memory-backed.
 vi.mock("./services.js", async () => {
-  const { ActionRegistry } = await import("../core/commands/ActionRegistry.js");
+  const { CommandRegistry } = await import("../core/commands/CommandRegistry.js");
   const { createProject: createDocument } = await import("../core/document/project.js");
   const { FocusScopeTracker } = await import("../core/keyboard/focusScope.js");
   const { createStore } = await import("../core/store/createStore.js");
@@ -26,7 +26,7 @@ vi.mock("./services.js", async () => {
   const { FontLibrary } = await import("../render/text/FontLibrary.js");
   const sessionStore = createSessionStore();
   return {
-    actions: new ActionRegistry(),
+    actions: new CommandRegistry(),
     appSettings: createAppSettings(memoryKeyValueStore()),
     appVersion: "test",
     audioClock: new AudioClock(),

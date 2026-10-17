@@ -147,7 +147,7 @@ export function ProjectSection() {
       </Row>
       <span className={styles.hint}>New proxies use these; Generate or Remove proxy in the media menu.</span>
       <Planned label="Cache">
-        <Button size="compact" disabled>
+        <Button control size="compact" disabled>
           Clear cache
         </Button>
       </Planned>

@@ -1,4 +1,4 @@
-// Keyframe actions (spec §6.4, §6.15, §11; Batch 35), registered in the ActionRegistry (the command
+// Keyframe actions (spec §6.4, §6.15, §11; Batch 35), registered in the CommandRegistry (the command
 // palette lists them from Batch 40): the timeline's Show clip keyframes toggle, the properties panel's
 // stopwatch and navigator per section (`keyframes.<action>.<section>`), the Ease of the keys at the
 // playhead, the lane's section per clip (clip menu "Show keyframes for"), and the selected keys'
@@ -21,12 +21,13 @@ import { selectKeyframes, setPlayhead } from "../core/store/sessionStore.js";
 import { adjacentKey, copyKeys, deleteKeys, pasteKeys, setKeysEase, setStopwatch, stopwatchOn, toggleKeyAt, type KeyframeClipboard } from "../timeline/edit/keyframes.js";
 import { keyableIds } from "../panels/properties/keyframeBinding.js";
 import { audioTargets } from "../timeline/edit/volume.js";
+import { LANE_SECTIONS, PANEL_SECTIONS } from "./commandCatalog.js";
 import { actions, documentStore, sessionStore } from "./services.js";
 
-/** The sections with a stopwatch in the panel (Volume: the Audio section, Batch 37). */
-export const PANEL_SECTIONS: readonly KeyframeSection[] = ["transform", "opacity", "volume"];
-/** The sections a clip's keyframe lane can show (clip menu "Show keyframes for"): Volume keys are on the rubber band. */
-export const LANE_SECTIONS: readonly KeyframeSection[] = ["transform", "opacity"];
+// The sections with a stopwatch in the panel (Volume: the Audio section, Batch 37) and those a clip's
+// keyframe lane can show (clip menu "Show keyframes for": Volume keys are on the rubber band) are in
+// the command catalog, which names their commands.
+export { LANE_SECTIONS, PANEL_SECTIONS };
 
 /** Copied keys (spec §6.15 copy/paste keyframes), or null. */
 export const keyframeClipboard = createStore<KeyframeClipboard | null>(null);

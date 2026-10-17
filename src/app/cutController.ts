@@ -4,8 +4,8 @@
 // undo step) built by the pure edits in `timeline/edit` (split, delete, gaps). Delete and F2 in the
 // media panel go to the media panel's own actions; on its Captions tab Delete deletes the selected cues.
 import { updateClip } from "../core/commands/basicCommands.js";
-import type { ActionRun } from "../core/commands/ActionRegistry.js";
-import type { ClipId, LabelColor } from "../core/document/types.js";
+import type { CommandRun } from "../core/commands/CommandRegistry.js";
+import { LABEL_COLORS, type ClipId, type LabelColor } from "../core/document/types.js";
 import { createStore } from "../core/store/createStore.js";
 import { EMPTY_SELECTION, selectedTrackIds, toSnapshot } from "../core/store/selection.js";
 import { selectGap } from "../core/store/sessionStore.js";
@@ -49,7 +49,7 @@ function splitAt(frame: number, scope: SplitScope): void {
  * `Mod+K` (spec §6.11): the selected clips under the playhead, or with nothing selected every clip
  * under it on targeted tracks; `Mod+Shift+K` (`all`): every unlocked track.
  */
-function splitAtPlayhead(all: boolean): ActionRun {
+function splitAtPlayhead(all: boolean): CommandRun {
   return () => {
     const { ids } = selectedClips();
     splitAt(playhead(), all ? { kind: "all" } : ids.length > 0 ? { kind: "clips", clipIds: ids } : { kind: "targeted" });
@@ -85,7 +85,7 @@ function commitClose(result: CloseResult, kind: "gap" | "compact"): boolean {
 }
 
 /** `G` (spec §6.11): the selected gap, else the gap at the playhead on targeted tracks (ripple). */
-const closeGapAction: ActionRun = () => {
+const closeGapAction: CommandRun = () => {
   const project = documentStore.getState();
   const selected = sessionStore.gap.getState();
   const gap = selected ?? gapAtPlayhead(project, playhead());
@@ -93,14 +93,14 @@ const closeGapAction: ActionRun = () => {
 };
 
 /** `Shift+G`, toolbar Compact (spec §6.11): every gap on the selected tracks, else on the targeted tracks, one undo step. */
-const compactAction: ActionRun = () => {
+const compactAction: CommandRun = () => {
   const project = documentStore.getState();
   const selected = selectedTrackIds(sessionStore.selection.getState()).filter((id) => project.tracks.some((track) => track.id === id && !track.locked));
   commitClose(compactGaps(project, selected.length > 0 ? selected : undefined), "compact");
 };
 
 /** Gap menu "Close all gaps on track" (spec §6.16): the selected gap's track. */
-const compactTrackAction: ActionRun = () => {
+const compactTrackAction: CommandRun = () => {
   const gap = sessionStore.gap.getState();
   if (gap && commitClose(compactGaps(documentStore.getState(), [gap.trackId], { label: "Close all gaps on track" }), "compact")) selectGap(sessionStore, null);
 };
@@ -167,6 +167,8 @@ export function setLabelColor(color: LabelColor | null): void {
 
 // --- Context menus -------------------------------------------------------------------------------
 
+const hasClips = () => sessionStore.selection.getState().kind === "clips";
+
 /** The open timeline context menu (spec §6.16), or null. React renders it from this store. */
 export const timelineMenu = createStore<ContextMenuRequest | null>(null);
 
@@ -198,6 +200,15 @@ export function installCutController(): () => void {
     actions.register("edit.closeGap", closeGapAction),
     actions.register("edit.closeAllGaps", compactAction),
     actions.register("edit.closeAllGapsOnTrack", compactTrackAction),
+    // The clip menu's label swatches (spec §6.16): a color the selection already has all over comes off again.
+    ...LABEL_COLORS.map((color) =>
+      actions.register(`clip.label.${color}`, () => {
+        const project = documentStore.getState();
+        const ids = selectedClips().ids;
+        setLabelColor(ids.length > 0 && ids.every((id) => project.clips[id]?.color === color) ? null : color);
+      }, { enabled: hasClips }),
+    ),
+    actions.register("clip.label.none", () => setLabelColor(null), { enabled: hasClips }),
     actions.register("edit.rename", (context) => {
       if (context?.scope === "media") return startRename();
       // A selected track renames in its header (trackController).

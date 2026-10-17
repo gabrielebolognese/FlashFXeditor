@@ -6,7 +6,7 @@ import styles from "./Modal.module.css";
 export interface ModalProps {
   title: string;
   icon?: LucideIcon | undefined;
-  size?: "sm" | "md" | "lg" | undefined;
+  size?: "sm" | "md" | "lg" | "xl" | undefined;
   /** Escape, the scrim and the close button. */
   onClose: () => void;
   children: ReactNode;
@@ -55,7 +55,7 @@ export function Modal({ title, icon: Icon, size = "md", onClose, children, foote
           <h2 id={titleId} className={styles.title}>
             {title}
           </h2>
-          <IconButton icon={X} label="Close" onClick={onClose} />
+          <IconButton control icon={X} label="Close" onClick={onClose} />
         </header>
         <div className={styles.body}>{children}</div>
         {footer && <footer className={styles.footer}>{footer}</footer>}

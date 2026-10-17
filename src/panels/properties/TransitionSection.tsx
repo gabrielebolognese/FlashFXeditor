@@ -79,9 +79,9 @@ export function TransitionSection({ cut }: { cut: Cut }) {
       <Row label="Kind">
         <div className={styles.chips} role="group" aria-label="Transition kind">
           {audio ? (
-            <IconButton icon={Blend} text="Crossfade" label="Audio crossfade (equal power)" pressed />
+            <IconButton control icon={Blend} text="Crossfade" label="Audio crossfade (equal power)" pressed />
           ) : (
-            TRANSITION_KINDS.map((kind) => <IconButton key={kind} icon={KIND_ICONS[kind]} text={TRANSITION_LABELS[kind]} label={TRANSITION_LABELS[kind]} pressed={transition.kind === kind} onClick={() => setKind(kind)} />)
+            TRANSITION_KINDS.map((kind) => <IconButton control key={kind} icon={KIND_ICONS[kind]} text={TRANSITION_LABELS[kind]} label={TRANSITION_LABELS[kind]} pressed={transition.kind === kind} onClick={() => setKind(kind)} />)
           )}
         </div>
       </Row>
@@ -92,7 +92,7 @@ export function TransitionSection({ cut }: { cut: Cut }) {
       <Row label="Alignment">
         <div className={styles.chips} role="group" aria-label="Transition alignment">
           {ALIGNMENTS.map((entry) => (
-            <IconButton key={entry.id} text={entry.label} label={entry.tooltip} pressed={alignment === entry.id} onClick={() => align(entry.id)} />
+            <IconButton control key={entry.id} text={entry.label} label={entry.tooltip} pressed={alignment === entry.id} onClick={() => align(entry.id)} />
           ))}
         </div>
       </Row>

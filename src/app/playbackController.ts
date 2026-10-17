@@ -2,7 +2,7 @@
 // Shift+K, arrows, Home/End, loop, play in to out), follow playhead during playback, the reveal of the playhead after
 // keyboard moves, and the preview status strip (dropped frames of the last playback, texture pool
 // usage). Framework-free: React reads only the play/pause state (`playbackEngine.subscribe`).
-import type { ActionRun } from "../core/commands/ActionRegistry.js";
+import type { CommandRun } from "../core/commands/CommandRegistry.js";
 import { secondsToFrames } from "../core/document/time.js";
 import type { Frame } from "../core/document/types.js";
 import type { RenderView } from "../core/scheduler/FrameScheduler.js";
@@ -20,7 +20,7 @@ const MB = 1024 * 1024;
 const playhead = () => sessionStore.state.getState().playhead;
 
 /** A frame-stepping action: pauses, steps once on key down (or click), then repeats while the key is held. */
-function steppingAction(frames: () => Frame): ActionRun {
+function steppingAction(frames: () => Frame): CommandRun {
   let delay: ReturnType<typeof setTimeout> | null = null;
   let repeat: ReturnType<typeof setInterval> | null = null;
   const stop = () => {
@@ -49,7 +49,7 @@ function steppingAction(frames: () => Frame): ActionRun {
 }
 
 /** J and L (held keys: only the press counts, spec §8 "pressing L repeatedly"). */
-function shuttleAction(direction: 1 | -1): ActionRun {
+function shuttleAction(direction: 1 | -1): CommandRun {
   return (context) => {
     if (context?.phase !== "up") playbackEngine.shuttle(direction);
   };

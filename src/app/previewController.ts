@@ -14,7 +14,8 @@ import { animatedTransform } from "../core/document/keyframes.js";
 import type { ClipId, Frame, MediaId, TextClip, Transform } from "../core/document/types.js";
 import { detectPlatform } from "../core/keyboard/keys.js";
 import { createStore } from "../core/store/createStore.js";
-import type { PreviewSession } from "../core/store/sessionStore.js";
+import { GRID_DIVISIONS_MAX, GRID_DIVISIONS_MIN, type PreviewSession } from "../core/store/sessionStore.js";
+import { GRID_IDS, PREVIEW_QUALITIES, SAFE_ZONE_IDS } from "./commandCatalog.js";
 import { DEFAULT_TEXTURE_BUDGET, TexturePool } from "../media/cache/TexturePool.js";
 import { FrameService, type FrameSource } from "../media/decode/FrameService.js";
 import { ImageService } from "../media/decode/ImageService.js";
@@ -490,6 +491,8 @@ export async function exportFrame(): Promise<void> {
   }
 }
 
+const previewOptions = () => sessionStore.state.getState().preview;
+
 /** Registers the preview actions. Returns a stop function. */
 export function installPreviewController(): () => void {
   const stops = [
@@ -498,6 +501,23 @@ export function installPreviewController(): () => void {
     actions.register("canvas.zoomFit", () => setPreviewZoom("fit")),
     actions.register("canvas.zoom100", () => setPreviewZoom(1)),
     actions.register("canvas.zoom200", () => setPreviewZoom(2)),
+    // The Zoom menu's other levels (§7.5), and the Quality and Overlays menus' choices (§7.5, §7.6, Batch 40: commands for the palette).
+    actions.register("canvas.zoom25", () => setPreviewZoom(0.25)),
+    actions.register("canvas.zoom50", () => setPreviewZoom(0.5)),
+    actions.register("canvas.zoom400", () => setPreviewZoom(4)),
+    ...PREVIEW_QUALITIES.map((quality) => actions.register(`preview.quality.${quality}`, () => setPreviewOptions({ quality }))),
+    ...SAFE_ZONE_IDS.map((safeZone) => actions.register(`preview.safeZone.${safeZone}`, () => setPreviewOptions({ safeZone }))),
+    ...GRID_IDS.map((grid) => actions.register(`preview.grid.${grid}`, () => setPreviewOptions({ grid }))),
+    actions.register("preview.gridCellsFewer", () => setPreviewOptions({ gridDivisions: Math.max(GRID_DIVISIONS_MIN, previewOptions().gridDivisions - 1) }), {
+      enabled: () => previewOptions().grid === "custom" && previewOptions().gridDivisions > GRID_DIVISIONS_MIN,
+    }),
+    actions.register("preview.gridCellsMore", () => setPreviewOptions({ gridDivisions: Math.min(GRID_DIVISIONS_MAX, previewOptions().gridDivisions + 1) }), {
+      enabled: () => previewOptions().grid === "custom" && previewOptions().gridDivisions < GRID_DIVISIONS_MAX,
+    }),
+    actions.register("preview.toggleCenterCross", () => setPreviewOptions({ centerCross: !previewOptions().centerCross })),
+    actions.register("preview.toggleSafeMargins", () => setPreviewOptions({ safeMargins: !previewOptions().safeMargins })),
+    actions.register("preview.toggleRulers", () => setPreviewOptions({ rulers: !previewOptions().rulers })),
+    actions.register("preview.togglePixelGrid", () => setPreviewOptions({ pixelGrid: !previewOptions().pixelGrid })),
     actions.register("preview.toggleFullscreen", toggleFullscreen),
     // Smart guides on the canvas (spec §7.4, §13 "Guides toggle"): other layers and equal spacing as snap targets, and the Alt measure mode.
     actions.register("preview.toggleGuides", () => setPreviewOptions({ guides: !sessionStore.state.getState().preview.guides })),
@@ -507,6 +527,7 @@ export function installPreviewController(): () => void {
       scheduler.invalidate("gizmo");
     }),
   ];
+  if (import.meta.env.DEV) stops.push(actions.register("dev.toggleGpuStats", () => previewDev.set((state) => ({ ...state, stats: !state.stats }))));
   return () => {
     for (const stop of stops) stop();
   };

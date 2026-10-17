@@ -19,11 +19,15 @@ export interface SwatchesProps {
   onPick: (id: string) => void;
   /** `menuitemradio` inside a menu, `radio` elsewhere. */
   role?: "menuitemradio" | "radio";
+  /** In a menu: the row number its keyboard navigation uses. */
+  row?: number;
+  /** The swatch ids are command ids (the clip menu's `clip.label.<color>`); otherwise they are a field's values. */
+  commands?: boolean;
 }
 
 const keepFocus = (event: MouseEvent) => event.preventDefault();
 
-export function Swatches({ swatches, onPick, role = "radio" }: SwatchesProps) {
+export function Swatches({ swatches, onPick, role = "radio", row, commands = false }: SwatchesProps) {
   return (
     <>
       {swatches.map((swatch) => (
@@ -34,6 +38,9 @@ export function Swatches({ swatches, onPick, role = "radio" }: SwatchesProps) {
           aria-checked={swatch.active ?? false}
           aria-label={swatch.label}
           data-tooltip={swatch.label}
+          data-row={row}
+          data-command={commands ? swatch.id : undefined}
+          data-control={commands ? undefined : ""}
           className={cx(styles.swatch, swatch.active && styles.active)}
           style={{ background: swatch.color }}
           onMouseDown={keepFocus}

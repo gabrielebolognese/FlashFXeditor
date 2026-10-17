@@ -7,7 +7,7 @@
 //   blur, Tab, Enter (split), Mod+Backspace (merge) commit it. Selecting a cue moves the playhead to
 //   its start. After a split or a merge the list focuses the cue named by `cueFocus`.
 // - Dev builds: `__editor.captions` for the acceptance checks.
-import type { ClipId, Project } from "../core/document/types.js";
+import type { CaptionClip, ClipId, Project } from "../core/document/types.js";
 import { createStore } from "../core/store/createStore.js";
 import { selectClips, selectTracks, toSnapshot } from "../core/store/selection.js";
 import { setSectionCollapsed } from "../core/store/sessionStore.js";
@@ -119,6 +119,22 @@ function mergeSelected(): void {
   if (id && documentStore.getState().clips[id]?.kind === "caption") mergeCueIntoPrevious(id);
 }
 
+const hasCues = () => (captionTrackOf(documentStore.getState())?.clipIds.length ?? 0) > 0;
+
+/** The primary selected cue, or null. */
+function selectedCue(): CaptionClip | null {
+  const selection = sessionStore.selection.getState();
+  const clip = selection.kind === "clips" && selection.primary !== null ? documentStore.getState().clips[selection.primary] : undefined;
+  return clip?.kind === "caption" ? clip : null;
+}
+
+function editSelectedCue(): void {
+  const cue = selectedCue();
+  if (!cue) return;
+  showCaptionsTab();
+  cueFocus.set({ cueId: cue.id, caret: cue.text.length });
+}
+
 /** Clear all (spec §10.5): every cue goes in one undo step (no confirmation: Undo brings them back). */
 function clearAll(): void {
   const command = clearCues(documentStore.getState());
@@ -203,13 +219,15 @@ function focusStyle(): void {
 /** Registers the caption actions. Returns a stop function. */
 export function installCaptionController(): () => void {
   const stops = [
-    actions.register("add.captionTrack", addTrack),
+    actions.register("add.captionTrack", addTrack, { enabled: () => captionTrackOf(documentStore.getState()) === null }),
     actions.register("captions.addCue", () => void addCue()),
     actions.register("captions.import", () => void importSubtitles()),
-    actions.register("captions.export", () => void exportSubtitles()),
+    actions.register("captions.export", () => void exportSubtitles(), { enabled: hasCues }),
     actions.register("captions.style", focusStyle),
-    actions.register("captions.clear", clearAll),
+    actions.register("captions.clear", clearAll, { enabled: hasCues }),
     actions.register("caption.mergePrevious", mergeSelected),
+    // The cue menu's Edit text (Batch 40): the selected cue's text field on the Captions tab, caret at the end.
+    actions.register("caption.editText", editSelectedCue, { enabled: () => selectedCue() !== null }),
   ];
   if (import.meta.env.DEV) {
     // Console access for the acceptance checks, e.g. `__editor.captions.karaoke(id)` (word timings

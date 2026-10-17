@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import { liveEdit } from "../../app/liveEdit.js";
 import { cropMode } from "../../app/previewController.js";
 import { toggleCropLock } from "../../app/propertiesController.js";
-import { actions, documentStore } from "../../app/services.js";
+import { documentStore } from "../../app/services.js";
 import type { ClipId } from "../../core/document/types.js";
 import { createStore } from "../../core/store/createStore.js";
 import { useStoreSelector } from "../../core/store/useStoreSelector.js";
@@ -62,21 +62,21 @@ export function CropSection({ ids }: { ids: readonly ClipId[] }) {
       </Row>
       <Row label="Units">
         <div className={styles.buttons}>
-          <IconButton text="px" label="Crop in media pixels" pressed={unit === "px"} onClick={() => cropUnits.set("px")} />
-          <IconButton text="%" label="Crop in percent of the media" pressed={unit === "%"} onClick={() => cropUnits.set("%")} />
+          <IconButton control text="px" label="Crop in media pixels" pressed={unit === "px"} onClick={() => cropUnits.set("px")} />
+          <IconButton control text="%" label="Crop in percent of the media" pressed={unit === "%"} onClick={() => cropUnits.set("%")} />
         </div>
       </Row>
       <Row label="Aspect">
         <div className={styles.buttons}>
-          <IconButton icon={lock ? Link2 : Unlink2} label={lock ? "Unlock the crop aspect" : "Lock the crop aspect"} pressed={lock} onClick={toggleCropLock} />
+          <IconButton control icon={lock ? Link2 : Unlink2} label={lock ? "Unlock the crop aspect" : "Lock the crop aspect"} pressed={lock} onClick={toggleCropLock} />
         </div>
       </Row>
       <Row label="">
         <div className={styles.textButtons}>
-          <Button size="compact" icon={Frame} tooltip="Crop to the frame at the current transform" onClick={() => void actions.run("crop.toFrame")}>
+          <Button size="compact" icon={Frame} tooltip="Crop to the frame at the current transform" commandId="crop.toFrame">
             Crop to frame
           </Button>
-          <Button size="compact" icon={RotateCcw} tooltip="Reset crop" onClick={() => void actions.run("crop.reset")}>
+          <Button size="compact" icon={RotateCcw} tooltip="Reset crop" commandId="crop.reset">
             Reset
           </Button>
         </div>
@@ -93,9 +93,9 @@ export function CropModeToggle({ ids, single }: { ids: readonly ClipId[]; single
     <IconButton
       icon={CropIcon}
       label={single ? (on ? "Leave crop mode (Esc)" : "Crop on the canvas (or double-click the layer)") : "Crop on the canvas: select one layer"}
+      commandId="crop.toggleMode"
       pressed={on}
       disabled={!single}
-      onClick={() => void actions.run("crop.toggleMode")}
     />
   );
 }

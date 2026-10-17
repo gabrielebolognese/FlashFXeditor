@@ -384,9 +384,10 @@ export function installClipboardController(): () => void {
   const stops = [
     actions.register("clipboard.copy", () => void copy(false)),
     actions.register("clipboard.cut", () => void copy(true)),
-    actions.register("clipboard.paste", pasteAction("overwrite")),
-    actions.register("clipboard.pasteInsert", pasteAction("insert")),
-    actions.register("clipboard.pasteAttributes", pasteAttributesAction),
+    // The palette dims them while the tab has no copy (the keys still read the system clipboard).
+    actions.register("clipboard.paste", pasteAction("overwrite"), { enabled: canPaste }),
+    actions.register("clipboard.pasteInsert", pasteAction("insert"), { enabled: canPaste }),
+    actions.register("clipboard.pasteAttributes", pasteAttributesAction, { enabled: canPaste }),
     actions.register("edit.duplicate", (context) => (context?.scope === "preview" ? duplicateOnCanvas() : duplicateOnTimeline())),
     actions.register("canvas.duplicate", duplicateOnCanvas),
     // Keys copied from the keyframe menu become the clipboard too.

@@ -6,7 +6,7 @@
 // the ruler, Set in/out to selection. Lift (`;`) and Extract (`'`) remove the marked range on the
 // targeted tracks, each one undo step (a transaction); then the range is cleared and the playhead goes to
 // where it started. Go to in/out (Shift+I/O) are in timelineController with the other playhead jumps.
-import type { ActionRun } from "../core/commands/ActionRegistry.js";
+import type { CommandRun } from "../core/commands/CommandRegistry.js";
 import { addMarker, MAX_MARKER_LABEL, removeMarker, updateMarker, type MarkerPatch } from "../core/commands/markerCommands.js";
 import type { Frame, LabelColor, Marker } from "../core/document/types.js";
 import { createStore } from "../core/store/createStore.js";
@@ -42,7 +42,7 @@ export function addMarkerAt(frame: Frame): string {
 }
 
 /** `M` (spec §6.13): a marker at the playhead; on a marker already there, its inline editor. */
-const addMarkerAction: ActionRun = () => {
+const addMarkerAction: CommandRun = () => {
   const frame = playhead();
   const existing = documentStore.getState().markers.find((marker) => marker.frame === frame);
   if (existing) openMarkerEditor(existing.id);
@@ -104,7 +104,7 @@ function setRange(range: { inPoint: Frame | null; outPoint: Frame | null }): voi
 }
 
 /** `X` (spec §6.13): the range becomes the bounds of the clip under the playhead (a selected one first, then targeted tracks). */
-const markClip: ActionRun = () => {
+const markClip: CommandRun = () => {
   const selection = sessionStore.selection.getState();
   const clip = clipToMark(documentStore.getState(), playhead(), selection.kind === "clips" ? selection.clipIds : undefined, selection.kind === "clips" ? selection.primary : null);
   if (!clip) {
@@ -115,7 +115,7 @@ const markClip: ActionRun = () => {
 };
 
 /** Ruler menu Set in/out to selection (spec §6.16): the selected clips, gap or edit point. */
-const rangeToSelection: ActionRun = () => {
+const rangeToSelection: CommandRun = () => {
   const span = selectionSpan(documentStore.getState(), sessionStore.selection.getState(), sessionStore.gap.getState(), sessionStore.editPoint.getState());
   if (span) setRange({ inPoint: span.start, outPoint: span.end });
 };
@@ -135,7 +135,7 @@ function reportExtractLimit(limit: GapLimit, none: boolean): void {
  * the out point to the content end) on the targeted, unlocked tracks, as one undo step. Afterwards the
  * range is cleared and the playhead stands where it started; removed clips leave the selection.
  */
-function liftOrExtract(extract: boolean): ActionRun {
+function liftOrExtract(extract: boolean): CommandRun {
   return () => {
     const project = documentStore.getState();
     const range = markedRange(sessionStore.state.getState(), contentEnd(project));
@@ -171,12 +171,18 @@ function liftOrExtract(extract: boolean): ActionRun {
 export function installMarkerController(): () => void {
   const stops = [
     actions.register("marker.add", addMarkerAction),
+    // The ruler menu's Add marker: at the frame right-clicked (its argument), else at the playhead.
+    actions.register("marker.addHere", (_context, frame) => void addMarkerAt(frame !== undefined && Number.isFinite(Number(frame)) ? Number(frame) : playhead())),
     // The ruler menu acts on the marker it selected.
-    actions.register("marker.edit", () => {
-      const markerId = sessionStore.marker.getState();
-      if (markerId !== null) openMarkerEditor(markerId);
-    }),
-    actions.register("marker.delete", () => void deleteSelectedMarker()),
+    actions.register(
+      "marker.edit",
+      () => {
+        const markerId = sessionStore.marker.getState();
+        if (markerId !== null) openMarkerEditor(markerId);
+      },
+      { enabled: () => sessionStore.marker.getState() !== null },
+    ),
+    actions.register("marker.delete", () => void deleteSelectedMarker(), { enabled: () => sessionStore.marker.getState() !== null }),
     actions.register("range.markIn", () => setRange(markIn(sessionStore.state.getState(), playhead()))),
     actions.register("range.markOut", () => setRange(markOut(sessionStore.state.getState(), playhead()))),
     actions.register("range.clearIn", () => setRange({ ...sessionStore.state.getState(), inPoint: null })),

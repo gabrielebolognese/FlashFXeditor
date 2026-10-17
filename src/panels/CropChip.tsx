@@ -1,6 +1,5 @@
 import { Check, Crop, RotateCcw } from "lucide-react";
 import { cropMode } from "../app/previewController.js";
-import { actions } from "../app/services.js";
 import { useStoreSelector } from "../core/store/useStoreSelector.js";
 import type { CropModeState } from "../render/preview/cropGizmo.js";
 import { IconButton } from "../ui/IconButton.js";
@@ -21,8 +20,8 @@ export function CropChip() {
       <Crop className={styles.icon} aria-hidden="true" />
       <span className={styles.title}>Crop</span>
       <span className={styles.rule} aria-hidden="true" />
-      <IconButton icon={RotateCcw} label="Reset crop" onClick={() => void actions.run("crop.reset")} />
-      <IconButton icon={Check} text="Done" label="Leave crop mode (Esc)" onClick={() => void actions.run("crop.toggleMode")} />
+      <IconButton icon={RotateCcw} label="Reset crop" commandId="crop.reset" />
+      <IconButton icon={Check} text="Done" label="Leave crop mode (Esc)" commandId="crop.toggleMode" />
     </div>
   );
 }

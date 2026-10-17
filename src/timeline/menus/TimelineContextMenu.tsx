@@ -1,7 +1,6 @@
 import { useCallback } from "react";
 import { canPaste } from "../../app/clipboardController.js";
-import { closeContextMenu, setLabelColor, timelineMenu } from "../../app/cutController.js";
-import { addMarkerAt } from "../../app/markerController.js";
+import { closeContextMenu, timelineMenu } from "../../app/cutController.js";
 import { keyframeClipboard, LANE_SECTIONS } from "../../app/keyframeController.js";
 import { chipCut, fadePresetId } from "../../app/transitionController.js";
 import { TRANSITION_LABELS } from "../../core/document/transitions.js";
@@ -10,6 +9,7 @@ import { actions, documentStore, sessionStore } from "../../app/services.js";
 import { EASE_LABELS, SECTION_LABELS, sectionEaseAt, type KeyframeSection } from "../../core/document/keyframes.js";
 import { laneSection } from "../../core/store/sessionStore.js";
 import { keyable } from "../edit/keyframes.js";
+import { isLayerClip, layerContent } from "../edit/transform.js";
 import { allMuted, audioTargets, canDetach } from "../edit/volume.js";
 import { EASE_IDS, TRANSITION_KINDS, type ClipId, type Frame, type LabelColor, type Project, type Track } from "../../core/document/types.js";
 import { useStoreSelector } from "../../core/store/useStoreSelector.js";
@@ -29,10 +29,11 @@ import { labelSwatches } from "./labelSwatches.js";
 // (Batch 36: the transition at the cut the quick row's chips use, `chipCut`). Audio clips and video
 // clips with sound get Mute, Normalize, Auto-duck music and Detach audio (Batch 37); an audio track's
 // menu gets Auto-duck music for its clips. Cut, Copy, Paste (at the playhead), Paste insert, Paste
-// attributes... (its checklist popover) and Duplicate (after the selection) since Batch 39.
-// TODO(batch 41): Reveal in media panel.
+// attributes... (its checklist popover) and Duplicate (after the selection) since Batch 39. Since Batch
+// 40 every row is a registered command: the label swatches are `clip.label.<color>`, Reveal in media
+// panel (`clip.revealMedia`) and Match project size (Fit / Fill: `transform.fit` / `transform.fill`)
+// complete the §6.16 list, and the ruler's Add marker is `marker.addHere` with the right-clicked frame.
 
-const SWATCH_PREFIX = "label:";
 /** The ruler menu's Add marker: at the frame right-clicked (the `M` key adds at the playhead). */
 const ADD_MARKER_HERE = "marker.addHere";
 
@@ -83,6 +84,29 @@ function audioEntries(project: Project, clipId: ClipId): ContextMenuEntry[] {
     { kind: "item", id: "audio.normalize", label: "Normalize", disabled: audio.length === 0 },
     { kind: "item", id: "audio.autoDuck", label: "Auto-duck music", disabled: audio.length === 0 },
     { kind: "item", id: "audio.detach", label: "Detach audio", disabled: !detach },
+  ];
+}
+
+/** Reveal in media panel (spec §6.16): clips that play a media item. */
+function revealEntries(project: Project, clipId: ClipId): ContextMenuEntry[] {
+  const clip = project.clips[clipId];
+  return clip && "mediaId" in clip ? [{ kind: "item", id: "clip.revealMedia", label: "Reveal in media panel" }] : [];
+}
+
+/** Match project size (spec §6.16 "Fit / Fill"): layers with a content size, as the quick row's Fit and Fill. */
+function matchEntries(project: Project, clipId: ClipId): ContextMenuEntry[] {
+  const clip = project.clips[clipId];
+  if (!clip || !isLayerClip(clip) || !layerContent(project, clip)) return [];
+  return [
+    {
+      kind: "choices",
+      id: "matchSize",
+      label: "Match project size",
+      choices: [
+        { id: "transform.fit", label: "Fit", tooltip: "Fit in frame" },
+        { id: "transform.fill", label: "Fill", tooltip: "Fill frame" },
+      ],
+    },
   ];
 }
 
@@ -156,11 +180,13 @@ function clipEntries(project: Project, clipId: ClipId, current: LabelColor | nul
     ...linkEntries(project, clipId),
     { kind: "separator" },
     { kind: "item", id: "edit.rename", label: "Rename", commandId: "edit.rename" },
-    { kind: "swatches", id: "labels", label: "Label", swatches: labelSwatches(current, { prefix: SWATCH_PREFIX, removable: true }) },
+    { kind: "swatches", id: "labels", label: "Label", swatches: labelSwatches(current, { prefix: "clip.label.", removable: true }) },
     { kind: "separator" },
     ...(project.clips[clipId]?.kind === "caption" ? cueEntries(project, clipId) : speedEntries(project, clipId)),
+    ...revealEntries(project, clipId),
     ...audioEntries(project, clipId),
     ...fadeEntries(project, clipId),
+    ...matchEntries(project, clipId),
     ...laneEntries(project, clipId),
   ];
 }
@@ -249,18 +275,8 @@ export function TimelineContextMenu() {
   const menu = useStoreSelector(timelineMenu, (state) => state);
   const onSelect = useCallback(
     (id: string) => {
-      if (id === ADD_MARKER_HERE && menu?.kind === "ruler") {
-        addMarkerAt(menu.frame);
-        return;
-      }
-      if (!id.startsWith(SWATCH_PREFIX)) {
-        actions.run(id);
-        return;
-      }
-      const color = id.slice(SWATCH_PREFIX.length) as LabelColor;
-      const clip = menu?.kind === "clip" ? documentStore.getState().clips[menu.clipId] : undefined;
-      // The active swatch again removes the label.
-      setLabelColor(clip?.color === color ? null : color);
+      if (id === ADD_MARKER_HERE && menu?.kind === "ruler") actions.run(id, null, String(menu.frame));
+      else actions.run(id);
     },
     [menu],
   );

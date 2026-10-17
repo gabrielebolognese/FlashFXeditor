@@ -8,6 +8,7 @@ import { mediaUseCounts, removeMedia, renameMedia } from "../core/commands/media
 import type { MediaId, MediaItem } from "../core/document/types.js";
 import { isEditableTarget } from "../core/keyboard/KeyDispatcher.js";
 import { createStore } from "../core/store/createStore.js";
+import type { SessionState } from "../core/store/sessionStore.js";
 import { AnalysisScheduler } from "../media/AnalysisScheduler.js";
 import { PeaksJobs } from "../media/PeaksJobs.js";
 import { browserDecodeAudio } from "../media/probe/audioProbe.js";
@@ -486,6 +487,36 @@ function onPaste(event: ClipboardEvent): void {
   void importMediaFiles(images);
 }
 
+type MediaPanelSession = SessionState["mediaPanel"];
+
+function setPanelSession(patch: Partial<MediaPanelSession>): void {
+  sessionStore.state.set((state) => ({ ...state, mediaPanel: { ...state.mediaPanel, ...patch } }));
+}
+
+/** A Media panel tab (the tab strip's buttons, the palette). */
+function showTab(tab: MediaPanelSession["tab"]): void {
+  setPanelSession({ tab });
+  focusScopes.set("media");
+}
+
+/** The media of the primary selected clip (a video, audio or image clip), or null. */
+function selectedClipMedia(): MediaId | null {
+  const selection = sessionStore.selection.getState();
+  if (selection.kind !== "clips" || selection.primary === null) return null;
+  const clip = documentStore.getState().clips[selection.primary];
+  return clip && "mediaId" in clip && documentStore.getState().media[clip.mediaId] ? clip.mediaId : null;
+}
+
+/** Reveal in media panel (spec §6.16): the Media tab, the clip's media selected and scrolled into view. */
+function revealSelectedMedia(): void {
+  const id = selectedClipMedia();
+  if (id === null) return;
+  showTab("media");
+  mediaPanel.set((state) => ({ ...state, selection: { ids: new Set([id]), anchor: id } }));
+  // After the tab renders its cards.
+  requestAnimationFrame(() => document.querySelector(`[data-media-id="${CSS.escape(id)}"]`)?.scrollIntoView({ block: "nearest" }));
+}
+
 /** Registers the media actions and the paste listener. Returns a stop function. */
 export function installMediaController(doc: Document = document): () => void {
   doc.addEventListener("paste", onPaste);
@@ -495,6 +526,13 @@ export function installMediaController(doc: Document = document): () => void {
     actions.register("media.generateProxy", generateProxies),
     actions.register("media.removeProxy", removeProxies),
     actions.register("media.regenerateThumbnails", regenerateThumbnails),
+    actions.register("media.viewGrid", () => setPanelSession({ view: "grid" })),
+    actions.register("media.viewList", () => setPanelSession({ view: "list" })),
+    actions.register("media.toggleSortDirection", () => setPanelSession({ descending: !sessionStore.state.getState().mediaPanel.descending })),
+    actions.register("panel.media", () => showTab("media")),
+    actions.register("panel.presets", () => showTab("presets")),
+    actions.register("panel.captions", () => showTab("captions")),
+    actions.register("clip.revealMedia", revealSelectedMedia, { enabled: () => selectedClipMedia() !== null }),
     // Delete and F2 in the media panel (`edit.delete`, `edit.rename`) are routed here by cutController.
     // The remove dialog owned the keyboard: give it back to the media panel.
     mediaPanel.select(

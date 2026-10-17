@@ -16,14 +16,14 @@ import { actions, documentStore, sessionStore } from "./services.js";
 // The real services open IndexedDB at import time, which jsdom lacks. The store does not validate, as
 // in production: only the controller's own check keeps a broken clipboard out of the document.
 vi.mock("./services.js", async () => {
-  const { ActionRegistry } = await import("../core/commands/ActionRegistry.js");
+  const { CommandRegistry } = await import("../core/commands/CommandRegistry.js");
   const { createProject } = await import("../core/document/project.js");
   const { FocusScopeTracker } = await import("../core/keyboard/focusScope.js");
   const { DocumentStore } = await import("../core/store/DocumentStore.js");
   const { createSessionStore } = await import("../core/store/sessionStore.js");
   const sessionStore = createSessionStore();
   return {
-    actions: new ActionRegistry(),
+    actions: new CommandRegistry(),
     documentStore: new DocumentStore(createProject({ id: "placeholder", name: "Placeholder", now: "x", appVersion: "x" }), { session: sessionStore, validate: false }),
     focusScopes: new FocusScopeTracker(),
     sessionStore,
