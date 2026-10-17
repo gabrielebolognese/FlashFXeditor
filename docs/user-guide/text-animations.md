@@ -183,6 +183,8 @@ Animations play on the text exactly as you styled it, with its font, fill, outli
 
 A text preset keeps the in and out animations of the text you save it from, with their **Duration**, **Stagger** and **Easing**. Applying the preset gives them to the selected texts, and new texts from the preset start with them. Four starter presets come with animations: **Lower third**, **Caption bold**, **Neon glow** and **Breaking**. See [Animations in presets](text-presets.md#animations-in-presets).
 
+Captions on the caption track don't animate: a preset applied to them gives them its style only. Captions can highlight each word as it is spoken instead; see [Highlight the spoken word](captions.md#highlight-the-spoken-word).
+
 ## Find animated clips on the timeline
 
 A text clip with an in or out animation shows a sparkles icon in its label bar on the timeline. See [Read the badges in the label bar](clip-thumbnails-and-waveforms.md#read-the-badges-in-the-label-bar).
@@ -207,15 +209,15 @@ These parts are available in a later version:
 
 - Exporting the video with its animations. **Export frame** already includes them.
 - Moving, scaling or turning a text over time with keyframes.
-- Highlighting caption words as they are spoken.
 
 ## Related pages
 - [Titles and text](titles-and-text.md)
 - [Text presets](text-presets.md)
+- [Captions](captions.md)
 - [Editing properties](editing-properties.md)
 - [Preview and playback](preview-and-playback.md)
 - [Clip thumbnails, waveforms and badges](clip-thumbnails-and-waveforms.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 31, 2026-10-16</sub>
+<sub>Last updated: Batch 32, 2026-10-17</sub>

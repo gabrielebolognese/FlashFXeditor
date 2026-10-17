@@ -100,6 +100,7 @@ What a ripple trim does:
 - **The start of a clip:** the clip stays where it starts. Instead, frames are removed from its beginning (drag right) or added to it from its media (drag left), and its end moves. Every clip that starts at or after the clip's start, on every track, moves by the same number of frames. Watch the preview for the clip's new first frame.
 - **Clips that run across the edit point** on other tracks, such as a music clip under several shots, do not move.
 - **Locked tracks** do not move. See [Lock a track](tracks.md#lock-a-track).
+- **Caption cues** on the **CC** track move along like other clips, so your captions stay in sync. Lock the **CC** track to keep them in place.
 - **Where a ripple stops:** when you shorten a clip, the later clips move left until one of them would run into a clip that does not move, for example a music clip that runs across the edit point, or would move before `00:00:00`. The trim stops there. When you lengthen a clip, the later clips make room, so they never stop it.
 
 The history step is named **Ripple trim**.
@@ -133,6 +134,7 @@ The edge stops following the pointer at these limits, and the clip never goes pa
 | 1 frame | A clip is always at least 1 frame long. Drag one edge past the other and the clip stays 1 frame long. |
 | Media start and media end | A video or audio clip can't show frames before the first frame or after the last frame of its file. The edge and **Media start** or **Media end** in the tooltip turn red. |
 | The next or previous clip | In a regular trim, a clip can't grow over its neighbor on the same track. Use a ripple trim to push the neighbor along. |
+| The next or previous caption cue | On the **CC** caption track, a cue's edge always stops at the neighboring cue, even with <kbd>Ctrl</kbd> held or **Ripple mode** on: the trim is a regular one and pushes nothing. See [Edit cues on the timeline](captions.md#edit-cues-on-the-timeline). |
 | The start of the timeline | A clip can't start before `00:00:00`. |
 | Clips on other tracks | A ripple trim stops when a clip that moves would run into a clip that does not move. Clips on locked tracks never move and never stop a ripple. |
 | The linked clip | When the linked clip reaches one of these limits first, both stop. Hold <kbd>Alt</kbd> to trim one side only. |
@@ -204,10 +206,11 @@ To move a cut between two clips without changing their total length, to change t
 - [Splitting, deleting and closing gaps](splitting-and-deleting.md)
 - [Linking and grouping clips](links-and-groups.md)
 - [Tracks](tracks.md)
+- [Captions](captions.md)
 - [Timeline](timeline.md)
 - [Preview and playback](preview-and-playback.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Projects and saving](projects-and-saving.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 16, 2026-10-15</sub>
+<sub>Last updated: Batch 32, 2026-10-17</sub>

@@ -30,6 +30,7 @@ A clip has two parts:
 | Audio | The waveform of its sound. See [Read a waveform](#read-a-waveform). |
 | Image | The picture, repeated across the clip. An animated GIF or WebP shows its first frame. |
 | Text | The first line of its text, as the picture shows it (in capitals when its **Case** is **AA**). See [Text clips on the timeline](titles-and-text.md#text-clips-on-the-timeline). |
+| Caption cue | No body: the **CC** caption track is always S. The label bar shows the cue's text on one line instead of a name. See [Edit cues on the timeline](captions.md#edit-cues-on-the-timeline). |
 
 A video with sound gives you both: thumbnails in its video clip and the waveform in its sound clip on the audio track.
 
@@ -128,9 +129,10 @@ A clip with a label color shows that color in its label bar above the thumbnails
 - [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md)
 - [Titles and text](titles-and-text.md)
 - [Text animations](text-animations.md)
+- [Captions](captions.md)
 - [Audio](audio.md)
 - [Importing media](importing-media.md)
 - [Proxies](proxies.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 31, 2026-10-16</sub>
+<sub>Last updated: Batch 32, 2026-10-17</sub>

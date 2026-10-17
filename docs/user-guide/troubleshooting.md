@@ -1,10 +1,10 @@
 # Troubleshooting
 
-This page helps you when something does not work as expected: the editor does not start in your browser, the preview stays empty, a folder or a file does not open, a clip drag, a trim, a split, a delete, a timeline tool, a typed timecode, a marker, an in/out range or **Lift** and **Extract** do something you did not expect, media from the Media panel lands somewhere you did not expect, a clip shows no thumbnails, a video gets no proxy or its proxy fails, the preview zoom, overlays or fullscreen behave unexpectedly, a picture in the preview can't be selected, moves unexpectedly, doesn't snap where you expect or gets cropped instead of resized, a value or a crop in **Edit Properties** doesn't do what you expect, a speed change, a freeze frame or a punch zoom does something you did not expect, a title lands somewhere you did not expect, the keys type into a text, a font is missing, a text preset doesn't apply, update or sync as you expect, a text animation plays shorter or differently than you expect, playback stutters, or you hear no sound. Each problem lists what you see, why it happens and what to do. The last section lists what the current version cannot do yet.
+This page helps you when something does not work as expected: the editor does not start in your browser, the preview stays empty, a folder or a file does not open, a clip drag, a trim, a split, a delete, a timeline tool, a typed timecode, a marker, an in/out range or **Lift** and **Extract** do something you did not expect, media from the Media panel lands somewhere you did not expect, a clip shows no thumbnails, a video gets no proxy or its proxy fails, the preview zoom, overlays or fullscreen behave unexpectedly, a picture in the preview can't be selected, moves unexpectedly, doesn't snap where you expect or gets cropped instead of resized, a value or a crop in **Edit Properties** doesn't do what you expect, a speed change, a freeze frame or a punch zoom does something you did not expect, a title lands somewhere you did not expect, the keys type into a text, a font is missing, a text preset doesn't apply, update or sync as you expect, a text animation plays shorter or differently than you expect, a caption cue doesn't import, move, show or highlight as you expect, playback stutters, or you hear no sound. Each problem lists what you see, why it happens and what to do. The last section lists what the current version cannot do yet.
 
 > **Video placeholder: Fix common problems**
 > - File: `videos/troubleshooting/overview.mp4` (not recorded yet)
-> - Length: about 190 seconds
+> - Length: about 200 seconds
 > - Shows:
 >   1. Open the editor in a browser without the required features: the screen "This browser cannot run Shorts Editor" lists what is missing.
 >   2. In Chrome, open `chrome://settings/system` and show **Use graphics acceleration when available** turned on.
@@ -44,6 +44,7 @@ This page helps you when something does not work as expected: the editor does no
 >   36. Click an empty area of the timeline tracks so nothing is selected, then click the **Breaking** card in the **Presets** tab: a new title appears instead of a changed one. Press <kbd>Esc</kbd>, then <kbd>Ctrl</kbd>+<kbd>Z</kbd>. Select the first title and click the card: it takes the red box.
 >   37. Select a title made with a preset and hover **Update preset** in the quick actions: it is dimmed while the title still has the preset's style. Change its color: the button comes alive.
 >   38. Give a 4-second title **Word pop** in the **Animation** section and type `3` in its **Duration**: the hint **Plays in 2.00 s: half the clip** appears under the field. Click the **Title** preset card: the animation is gone. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>: it is back.
+>   39. Open the **Captions** tab of a project with cues, click into a cue's text and press <kbd>Delete</kbd>: a letter disappears. Press <kbd>Esc</kbd>, then <kbd>Delete</kbd>: the cue is deleted. On the **CC** row, drag a cue into the next one: it stops against it.
 
 ## In this page
 - [Browser and graphics](#browser-and-graphics)
@@ -195,6 +196,22 @@ This page helps you when something does not work as expected: the editor does no
   - [Applying a preset removed a text's animations](#applying-a-preset-removed-a-texts-animations)
   - [Pointing at a preset card doesn't show its animation](#pointing-at-a-preset-card-doesnt-show-its-animation)
   - [A starter preset has no animation](#a-starter-preset-has-no-animation)
+- [Captions](#captions)
+  - [Add caption track is dimmed](#add-caption-track-is-dimmed)
+  - [Import says No captions imported](#import-says-no-captions-imported)
+  - [An import replaced your cues](#an-import-replaced-your-cues)
+  - [The caption track is locked](#the-caption-track-is-locked)
+  - [Enter splits the cue instead of starting a new line](#enter-splits-the-cue-instead-of-starting-a-new-line)
+  - [Ctrl+Backspace deletes a word instead of merging cues](#ctrlbackspace-deletes-a-word-instead-of-merging-cues)
+  - [Delete removes letters instead of the cue](#delete-removes-letters-instead-of-the-cue)
+  - [A cue stops before where you drag it](#a-cue-stops-before-where-you-drag-it)
+  - [Captions moved after an edit on another track](#captions-moved-after-an-edit-on-another-track)
+  - [A caption doesn't show in the preview](#a-caption-doesnt-show-in-the-preview)
+  - [Clicking a caption in the preview selects the video](#clicking-a-caption-in-the-preview-selects-the-video)
+  - [The spoken word isn't highlighted](#the-spoken-word-isnt-highlighted)
+  - [A long cue looks smaller than the others](#a-long-cue-looks-smaller-than-the-others)
+  - [A preset card added a title instead of styling the captions](#a-preset-card-added-a-title-instead-of-styling-the-captions)
+  - [Export SRT or VTT is dimmed](#export-srt-or-vtt-is-dimmed)
 - [Known limitations](#known-limitations)
 
 ## Browser and graphics
@@ -1513,6 +1530,128 @@ See [Audio](audio.md).
 
 **Fix:** Select a text, click the starter's card, choose the animations in the **Animation** section and click **Update preset**. See [Start with the starter presets](text-presets.md#start-with-the-starter-presets).
 
+## Captions
+
+### Add caption track is dimmed
+
+**Symptom:** The **Add caption track** button in the timeline toolbar is dimmed, and its tooltip reads **Caption track: the project has one (Media > Captions)**.
+
+**Cause:** A project has only one caption track, and this project has it. Adding a cue or importing a subtitle file in the **Captions** tab adds it too when it is missing.
+
+**Fix:** Use the **CC** track that is already there, at the top of the tracks. Open the **Captions** tab to see its cues. See [Add the caption track](captions.md#add-the-caption-track).
+
+### Import says No captions imported
+
+**Symptom:** After you pick a subtitle file, the message **No captions imported** appears and nothing changes.
+
+**Cause:** The file holds no cue the editor can read: no time line such as `00:00:01,000 --> 00:00:03,500`.
+
+**Fix:** Open the file in a text editor and check that it is an SRT or VTT file with time lines. See [Import an SRT or VTT file](captions.md#import-an-srt-or-vtt-file).
+
+### An import replaced your cues
+
+**Symptom:** After an import, the cues you had are gone, and the message says, for example, **Replaced 12 cues.**
+
+**Cause:** An import replaces all the cues on the caption track.
+
+**Fix:** Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>: the old cues come back, in one step. To combine two files, join them in a text editor first and import the result. See [Import an SRT or VTT file](captions.md#import-an-srt-or-vtt-file).
+
+### The caption track is locked
+
+**Symptom:** Adding a cue or importing a subtitle file shows the message **The caption track is locked**. Or text you type in a cue goes back to the old text when you leave the field, <kbd>Enter</kbd> shows **Can't split this cue**, and **Clear all cues** does nothing.
+
+**Cause:** The **CC** track is locked: its padlock is closed and gold.
+
+**Fix:** Click the padlock in the **CC** header to unlock the track, then try again. See [Hide, lock or remove the captions](captions.md#hide-lock-or-remove-the-captions).
+
+### Enter splits the cue instead of starting a new line
+
+**Symptom:** You press <kbd>Enter</kbd> in a cue's text to start a new line, and the cue becomes two cues.
+
+**Cause:** In a cue's text, <kbd>Enter</kbd> splits the cue at the caret.
+
+**Fix:** Press <kbd>Ctrl</kbd>+<kbd>Backspace</kbd> right away: the caret is at the start of the second cue, so the two cues become one again. Then press <kbd>Shift</kbd>+<kbd>Enter</kbd> for a new line. See [Split and merge cues](captions.md#split-and-merge-cues).
+
+### Ctrl+Backspace deletes a word instead of merging cues
+
+**Symptom:** <kbd>Ctrl</kbd>+<kbd>Backspace</kbd> in a cue's text deletes the word before the caret, or does nothing.
+
+**Cause:** It merges the cue into the cue before it only when the caret is at the very start of the text and no letters are selected. Anywhere else, it deletes the word before the caret, as in any text field. On the first cue it does nothing: there is no cue before it.
+
+**Fix:** Press <kbd>Ctrl</kbd>+<kbd>Home</kbd> to put the caret at the start, then press <kbd>Ctrl</kbd>+<kbd>Backspace</kbd>. Or right-click the cue on the timeline and choose **Merge with previous cue**. See [Split and merge cues](captions.md#split-and-merge-cues).
+
+### Delete removes letters instead of the cue
+
+**Symptom:** In the **Captions** tab, <kbd>Delete</kbd> removes letters from a cue instead of deleting it.
+
+**Cause:** You are typing in the cue's text, so the keys type there.
+
+**Fix:** Press <kbd>Esc</kbd>: the text goes back to how it was and the row stays focused. Then press <kbd>Delete</kbd>. Or select the cue on the timeline and press <kbd>Delete</kbd>. See [Find, select and delete cues](captions.md#find-select-and-delete-cues).
+
+### A cue stops before where you drag it
+
+**Symptom:** A cue you drag, nudge or trim on the **CC** row stops against the cue before or after it, even with **Ripple mode** on. Or an <kbd>Alt</kbd>+drag copy of a cue shows a red ghost and the drop adds nothing.
+
+**Cause:** Cues never overlap, and a cue never pushes another cue. A copy needs a free spot near the pointer that is at least as long as the cue.
+
+**Fix:** Make room first: trim, move or delete the neighboring cue, then drag again. For a copy, drop it on a gap that is long enough. See [Edit cues on the timeline](captions.md#edit-cues-on-the-timeline).
+
+### Captions moved after an edit on another track
+
+**Symptom:** After an insert or a ripple edit on a video or audio track, the cues moved too, or a cue was split in two.
+
+**Cause:** Inserts and ripple edits move the cues along with the picture, so the captions stay in sync with the speech. A cue that crosses the point where time is inserted is split there.
+
+**Fix:** This keeps your captions in sync, so it is usually what you want. To keep the captions where they are, press <kbd>Ctrl</kbd>+<kbd>Z</kbd>, lock the **CC** track and make the edit again. See [Edit cues on the timeline](captions.md#edit-cues-on-the-timeline).
+
+### A caption doesn't show in the preview
+
+**Symptom:** The playhead is over a cue on the **CC** row, but the preview shows no caption.
+
+**Cause:** The **CC** track is hidden (its eye is crossed out), the cue is turned off (it looks faded, with diagonal lines), or the cue has no text.
+
+**Fix:** Click the eye in the **CC** header, right-click the cue and choose **Enable**, or type the cue's text in the **Captions** tab. See [Hide, lock or remove the captions](captions.md#hide-lock-or-remove-the-captions).
+
+### Clicking a caption in the preview selects the video
+
+**Symptom:** You click a caption in the preview, and the picture under it is selected instead, with its handles.
+
+**Cause:** Captions can't be selected, moved or edited in the preview in this version.
+
+**Fix:** Edit the text in the **Captions** tab, and place the captions with **Position** in the **Caption style** section. See [Choose where captions sit](captions.md#choose-where-captions-sit).
+
+### The spoken word isn't highlighted
+
+**Symptom:** The captions play in one color, although **Highlight** in **Caption style** is set to **Color**, **Box**, **Scale** or **Both**.
+
+**Cause:** The cues have no word timings. SRT files never have them, VTT files only when the cues hold karaoke times, and cues you add at the playhead have none. Between two words nothing is highlighted, and a cue you are typing in pauses its highlight.
+
+**Fix:** Import a VTT file whose cues have karaoke times, such as `Never <00:00:00.700>drink <00:00:01.200>liquid nitrogen`. See [Highlight the spoken word](captions.md#highlight-the-spoken-word).
+
+### A long cue looks smaller than the others
+
+**Symptom:** Some captions are drawn in a smaller size than the rest.
+
+**Cause:** The cue needs more lines than **Max lines** at the **Max width**, so it is drawn smaller to fit, in steps of 10%, down to half its size.
+
+**Fix:** Raise **Max lines** or **Max width** in **Caption style**, or split the cue in two with <kbd>Enter</kbd> in its text. See [Style your captions](captions.md#style-your-captions).
+
+### A preset card added a title instead of styling the captions
+
+**Symptom:** With your captions in mind, you click a card in the **Presets** tab, and a new text clip appears at the playhead.
+
+**Cause:** Neither the **CC** track nor a cue was selected, or the **CC** track is locked. Only then does a card add a new text.
+
+**Fix:** Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> to remove the new text. Unlock the **CC** track if needed, click its header or a cue, and click the card again. When the card's right-click menu shows **Apply to captions**, a click styles the captions. See [Give captions the look of a preset](captions.md#give-captions-the-look-of-a-preset).
+
+### Export SRT or VTT is dimmed
+
+**Symptom:** In the **Captions** tab header, **Export SRT or VTT** and **Clear all cues** are dimmed.
+
+**Cause:** The caption track has no cues.
+
+**Fix:** Add a cue with **Add a 2 s cue at the playhead** (+), or import a subtitle file. See [Add a cue at the playhead](captions.md#add-a-cue-at-the-playhead).
+
 ## Known limitations
 
 The current version cannot do these things yet. Each one is available in a later version.
@@ -1525,12 +1664,13 @@ The current version cannot do these things yet. Each one is available in a later
 - **Tracks:** track headers have room for names of about 9 characters; longer names are shortened. Groups are not marked on the timeline.
 - **Preview:** a change to a picture, its crop included, applies to the whole clip; changes over time (keyframes) are not available. An SVG image that covers the whole frame doesn't get sharper when you zoom in. The **Zoom**, **Preview quality** and **Overlays** menus can't be used with the arrow keys.
 - **Edit Properties:** the audio and transition sections are not available, nor are the dimmed quick actions and the **Still duration**, **Transition** and **Cache** rows of the **Project** section. A new resolution always scales the layout; keeping the layout as it is, is not available.
-- **Text:** captions are not available, nor is a setting to always make new titles 3 seconds long. A text's handles don't snap, and fonts can't be chosen with the arrow keys in the font picker. Presets can't be applied to captions, and deleted starter presets can't be restored. Text animations play in the preview and in **Export frame**; moving text over time with keyframes is not available.
+- **Text:** a setting to always make new titles 3 seconds long is not available. A text's handles don't snap, and fonts can't be chosen with the arrow keys in the font picker. Deleted starter presets can't be restored. Text animations play in the preview and in **Export frame**; moving text over time with keyframes is not available.
+- **Captions:** speech can't be transcribed into cues yet (the **Transcribe** button is dimmed). All cues share one style; a style for a single cue is not available. Captions can't be selected, moved or styled in the preview. The highlight box has square corners, and cues can't be pasted.
 - **Animated GIF and WebP files** show as still images (their first frame), in the preview and in their clips' thumbnails.
 - **Media that cannot be decoded, or whose file is missing,** shows nothing in the preview, with no placeholder.
 - **Removing media** that a clip uses is not possible.
 - **Frame rate:** you cannot change it once the timeline has clips or markers.
-- **Export:** only **Export frame** (a PNG of the current frame) works. The **Export** button and the **Settings** button in the app bar are disabled.
+- **Export:** only **Export frame** (a PNG of the current frame) and **Export SRT or VTT** (the captions as a subtitle file) work. The **Export** button and the **Settings** button in the app bar are disabled.
 - **Shortcuts:** <kbd>Ctrl</kbd>+<kbd>N</kbd> cannot create a project in a browser tab, and many shortcuts in the keymap belong to features that are not available yet. See [Keyboard shortcuts](keyboard-shortcuts.md).
 - **Heavy footage:** 4K 60 fps HEVC played from the original (in **Full** quality, or before its proxy is ready) can drop frames, and the original frame deep inside long phone clips takes a moment to appear after you stop.
 
@@ -1557,6 +1697,7 @@ The current version cannot do these things yet. Each one is available in a later
 - [Titles and text](titles-and-text.md)
 - [Text presets](text-presets.md)
 - [Text animations](text-animations.md)
+- [Captions](captions.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 31, 2026-10-16</sub>
+<sub>Last updated: Batch 32, 2026-10-17</sub>

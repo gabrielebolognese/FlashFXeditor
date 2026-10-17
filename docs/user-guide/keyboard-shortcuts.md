@@ -36,6 +36,7 @@ This page lists every keyboard shortcut that works in the current version of Sho
 >   28. Press <kbd>T</kbd>: "Title" appears in the preview, selected. Type `hi`, press <kbd>Enter</kbd> and type `there`: a second line. Press <kbd>↑</kbd>, then <kbd>Shift</kbd>+<kbd>End</kbd>: "hi" is highlighted. Press <kbd>Esc</kbd>. Press <kbd>Enter</kbd>: the whole text is selected again. Press <kbd>Ctrl</kbd>+<kbd>Enter</kbd>. Press <kbd>Shift</kbd>+<kbd>T</kbd>: a subtitle appears in the lower third.
 >   29. Open the **Presets** tab of the Media panel and right-click the **Breaking** card: the **Use as default title** row shows <kbd>T</kbd>. Choose it, click the timeline and press <kbd>T</kbd>: the new title has the red **Breaking** box. Right-click the card again and choose **Use as default title** once more to go back to the usual title.
 >   30. With a title selected, click **Word pop** in the **In** row of the **Animation** section in **Edit Properties**: the words pop in once in the preview. Click in the **Duration** field under **In** and press <kbd>Shift</kbd>+<kbd>↑</kbd>: the animation gets 10 frames longer and plays again.
+>   31. Open the **Captions** tab of the Media panel and click into a cue's text. Put the caret in the middle and press <kbd>Enter</kbd>: the cue splits in two. Press <kbd>Ctrl</kbd>+<kbd>Backspace</kbd>: it is one cue again. Press <kbd>Tab</kbd>: the next cue's text is selected. Press <kbd>Esc</kbd>, then <kbd>Delete</kbd>: the cue is deleted.
 
 ## In this page
 - [How shortcuts work](#how-shortcuts-work)
@@ -49,6 +50,7 @@ This page lists every keyboard shortcut that works in the current version of Sho
 - [Tracks, links and groups](#tracks-links-and-groups)
 - [Tools](#tools)
 - [Text](#text)
+- [Captions](#captions)
 - [Edit Properties](#edit-properties)
 - [Audio](#audio)
 - [Media panel](#media-panel)
@@ -387,6 +389,27 @@ While you edit a text in the preview, every other shortcut is off and the keys t
 
 Clicking anywhere outside the text, except in **Edit Properties** and its pickers, also finishes editing. After you finish, <kbd>Ctrl</kbd>+<kbd>Z</kbd> takes back the whole edit at once (**Edit text**). See [Edit text in the preview](titles-and-text.md#edit-text-in-the-preview).
 
+## Captions
+
+These keys work in a cue's text in the **Captions** tab of the Media panel. See [Captions](captions.md).
+
+| Action | Windows | macOS |
+| --- | --- | --- |
+| Split the cue at the caret (the time is shared by the letters on each side) | <kbd>Enter</kbd> | <kbd>Return</kbd> |
+| Start a new line in the cue | <kbd>Shift</kbd>+<kbd>Enter</kbd> | <kbd>⇧</kbd>+<kbd>Return</kbd> |
+| Merge the cue into the cue before it (with the caret at the very start of its text) | <kbd>Ctrl</kbd>+<kbd>Backspace</kbd> | <kbd>⌘</kbd>+<kbd>Delete</kbd> (⌫) |
+| Save the text and go to the next or the previous cue, its text selected | <kbd>Tab</kbd> or <kbd>Shift</kbd>+<kbd>Tab</kbd> | <kbd>Tab</kbd> or <kbd>⇧</kbd>+<kbd>Tab</kbd> |
+| Put the text back as it was and leave the field | <kbd>Esc</kbd> | <kbd>Esc</kbd> |
+
+| Action | Windows | macOS | Works in |
+| --- | --- | --- | --- |
+| Delete the selected cues | <kbd>Delete</kbd> or <kbd>Backspace</kbd> | <kbd>Delete</kbd> (⌫) | **Captions** tab (not while you type in a cue), Timeline |
+| Split the selected cues at the playhead, their text included | <kbd>Ctrl</kbd>+<kbd>K</kbd> | <kbd>⌘</kbd>+<kbd>K</kbd> | All panels (not while you type in a cue) |
+| Move a cue one frame (it stops at its neighbors) | <kbd>Alt</kbd>+<kbd>←</kbd> or <kbd>Alt</kbd>+<kbd>→</kbd> | <kbd>⌥</kbd>+<kbd>←</kbd> or <kbd>⌥</kbd>+<kbd>→</kbd> | Timeline |
+
+- While you type in a cue, the other shortcuts are off: <kbd>Space</kbd> types a space. Clicking anywhere else also saves the text.
+- The header buttons of the **Captions** tab and the **Caption style** section have no keys of their own: click them.
+
 ## Edit Properties
 
 See [Editing properties](editing-properties.md).
@@ -437,7 +460,7 @@ These shortcuts work only while the Media panel is active. See [Importing media]
 | --- | --- | --- | --- |
 | Insert the selected media at the playhead (later clips move right) | <kbd>,</kbd> | <kbd>,</kbd> | Media panel |
 | Overwrite at the playhead with the selected media | <kbd>.</kbd> | <kbd>.</kbd> | Media panel |
-| Remove the selected media (asks first in the **Remove media** dialog) | <kbd>Delete</kbd> or <kbd>Backspace</kbd> | <kbd>Delete</kbd> (⌫) | Media panel |
+| Remove the selected media (asks first in the **Remove media** dialog); on the **Captions** tab, delete the selected cues | <kbd>Delete</kbd> or <kbd>Backspace</kbd> | <kbd>Delete</kbd> (⌫) | Media panel |
 | Rename the selected media | <kbd>F2</kbd> | <kbd>F2</kbd> | Media panel |
 | Import images from the clipboard | <kbd>Ctrl</kbd>+<kbd>V</kbd> | <kbd>⌘</kbd>+<kbd>V</kbd> | Media panel, or no panel active |
 
@@ -583,6 +606,7 @@ Some buttons already show a shortcut in their tooltip although the button is dis
 - [Snapping and smart guides in the preview](snapping-and-smart-guides.md)
 - [Editing properties](editing-properties.md)
 - [Cropping and reframing](cropping-and-reframing.md)
+- [Captions](captions.md)
 - [Timeline](timeline.md)
 - [Trimming clips](trimming.md)
 - [Splitting, deleting and closing gaps](splitting-and-deleting.md)
@@ -600,4 +624,4 @@ Some buttons already show a shortcut in their tooltip although the button is dis
 - [Projects and saving](projects-and-saving.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 31, 2026-10-16</sub>
+<sub>Last updated: Batch 32, 2026-10-17</sub>

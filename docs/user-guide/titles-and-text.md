@@ -1,6 +1,6 @@
 # Titles and text
 
-Text clips put words on your video: a hook at the start, a title over a shot, a subtitle in the lower third. Press <kbd>T</kbd> and type: the title appears at the playhead and you write it right in the preview. Then style it in the **Text** section of **Edit Properties**, with a font that comes with the editor or one from your computer, an outline, a shadow and a background box. To make it move as it appears and leaves, give it an animation; see [Text animations](text-animations.md). To reuse a style, save it as a preset; see [Text presets](text-presets.md).
+Text clips put words on your video: a hook at the start, a title over a shot, a subtitle in the lower third. Press <kbd>T</kbd> and type: the title appears at the playhead and you write it right in the preview. Then style it in the **Text** section of **Edit Properties**, with a font that comes with the editor or one from your computer, an outline, a shadow and a background box. To make it move as it appears and leaves, give it an animation; see [Text animations](text-animations.md). To reuse a style, save it as a preset; see [Text presets](text-presets.md). To caption the speech of a whole video, use the caption track instead; see [Captions](captions.md).
 
 > **Video placeholder: Titles and text in one minute**
 > - File: `videos/titles-and-text/overview.mp4` (not recorded yet)
@@ -62,6 +62,8 @@ A subtitle is made to be read over the picture. It has the look of the default s
 A subtitle always goes to the lower third, also when another text clip is selected, unless its preset places text itself (**Apply position**; see [Place text with a preset (Apply position)](text-presets.md#place-text-with-a-preset-apply-position)).
 
 > **Tip:** On a 9:16 video, the app buttons and the caption of Reels, TikTok and Shorts cover part of the lower third. Open **Overlays** in the preview header and pick your platform to see that area, then drag the subtitle up if it is covered. See [Show a platform safe zone](preview-zoom-overlays-fullscreen.md#show-a-platform-safe-zone).
+
+> **Tip:** A subtitle is a single text clip that you place and time by hand. For captions that run along with the whole video, cue after cue, use the **CC** caption track: you can import an SRT or VTT file and style all the cues at once. See [Captions](captions.md).
 
 ## Where a new title goes
 
@@ -398,7 +400,6 @@ Pressing <kbd>↑</kbd> or <kbd>↓</kbd> in a number field of the **Text** sect
 These parts are available in a later version:
 
 - A setting to always make new titles 3 seconds long, instead of matching the video clip under the playhead.
-- Captions (the **Captions** tab and **Add caption track**).
 - Snapping while you drag a text's handles.
 - Choosing a font in the font picker with the arrow keys.
 - Exporting the video with its text. **Export frame** already includes text and its animations; see [Export the current frame](preview-and-playback.md#export-the-current-frame).
@@ -406,6 +407,7 @@ These parts are available in a later version:
 ## Related pages
 - [Text animations](text-animations.md)
 - [Text presets](text-presets.md)
+- [Captions](captions.md)
 - [Editing properties](editing-properties.md)
 - [Arranging layers in the preview](arranging-layers-in-the-preview.md)
 - [Snapping and smart guides in the preview](snapping-and-smart-guides.md)
@@ -415,4 +417,4 @@ These parts are available in a later version:
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 31, 2026-10-16</sub>
+<sub>Last updated: Batch 32, 2026-10-17</sub>

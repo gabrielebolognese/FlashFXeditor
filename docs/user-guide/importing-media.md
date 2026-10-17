@@ -66,7 +66,7 @@ Only images are pasted this way. Paste imports only when the Media panel has the
 | Audio | .mp3, .m4a, .aac, .wav, .ogg | |
 | Images | .png, .jpg, .jpeg, .webp, .gif, .svg | Animated GIF and WebP files keep their animation length as their duration. An SVG needs a width and height, or a viewBox. |
 
-Extensions are not case-sensitive (.MOV works). Any other type, for example .webm, .mkv, .avi or .heic, is refused with a message that names the file.
+Extensions are not case-sensitive (.MOV works). Any other type, for example .webm, .mkv, .avi or .heic, is refused with a message that names the file. Subtitle files (.srt, .vtt) are refused here too: import them in the **Captions** tab; see [Import an SRT or VTT file](captions.md#import-an-srt-or-vtt-file).
 
 > **Note:** Thumbnails and playback of HEVC video need Chrome's hardware HEVC decoder. Without it, the item is still imported but its card shows the film icon instead of a thumbnail, and its clips on the timeline show no thumbnails.
 
@@ -96,7 +96,7 @@ You can keep working while files copy. If you start another import before the fi
 
 ## Browse your media
 
-The Media panel has three tabs: **Media**, **Presets** and **Captions**. The **Presets** and **Captions** tabs are available in a later version.
+The Media panel has three tabs: **Media**, **Presets** and **Captions**. This page is about the **Media** tab. The **Presets** tab holds your text presets (see [Text presets](text-presets.md)), and the **Captions** tab the cues of your captions (see [Captions](captions.md)). Subtitle files (SRT and VTT) are imported from the **Captions** tab, not as media; see [Import an SRT or VTT file](captions.md#import-an-srt-or-vtt-file).
 
 The **Media** tab has two views. Switch between them with the **Grid view** and **List view** buttons in the panel header.
 
@@ -241,7 +241,8 @@ If a card keeps its kind icon instead of a thumbnail, Chrome could not decode th
 - [Preview and playback](preview-and-playback.md)
 - [Audio](audio.md)
 - [Proxies](proxies.md)
+- [Captions](captions.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 24, 2026-10-16</sub>
+<sub>Last updated: Batch 32, 2026-10-17</sub>

@@ -2,6 +2,11 @@
 
 Shorts Editor grows in steps called batches. This page lists what each batch added that you can see or use, newest first. Follow the links for the full instructions.
 
+> **Video placeholder: What's new in Batch 32**
+> - File: `videos/whats-new/batch-32.mp4` (not recorded yet)
+> - Length: about 60 seconds
+> - Shows: a 1080×1920 project with a talking-head video on V1 and A1; click **Add caption track** in the timeline toolbar: a **CC** row appears above V1 and the **Captions** tab opens; click **Import SRT or VTT (replaces the cues)** and pick `talk.srt`: grey cues fill the CC row and the list reads **48 cues**; press <kbd>Space</kbd>: white captions play in the lower third while a red bar moves down the list; click into a cue's text, fix a word and watch the preview follow; press <kbd>Enter</kbd> in the middle of the text: the cue splits in two; drag a cue on the CC row into its neighbor: it stops against it; click **Caption style (in Edit Properties)** and click **Top**; click the **Neon glow** card in the **Presets** tab: the captions take its look; import a VTT file with karaoke times and play: each word turns yellow as it is spoken; click **Export SRT or VTT** and save `talk.vtt`.
+
 > **Video placeholder: What's new in Batch 31**
 > - File: `videos/whats-new/batch-31.mp4` (not recorded yet)
 > - Length: about 50 seconds
@@ -113,6 +118,7 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 > - Shows: open a project with three clips on the timeline; press <kbd>Space</kbd> to play and let the timeline page forward; press <kbd>L</kbd> three times to reach 8x, then <kbd>K</kbd>; hold <kbd>K</kbd> and tap <kbd>L</kbd> to step one frame; turn on **Loop playback**; point at the **Dropped** readout in the status strip.
 
 ## In this page
+- [Batch 32: Captions](#batch-32-captions)
 - [Batch 31: Text animations](#batch-31-text-animations)
 - [Batch 30: Text presets](#batch-30-text-presets)
 - [Batch 29: Titles and text](#batch-29-titles-and-text)
@@ -144,6 +150,20 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 - [Batch 03: Projects, autosave and recovery](#batch-03-projects-autosave-and-recovery)
 - [Batch 02: Undo, redo and frame-exact time](#batch-02-undo-redo-and-frame-exact-time)
 - [Batch 01: The workspace](#batch-01-the-workspace)
+
+## Batch 32: Captions
+- Caption your video on its own track: **Add caption track** in the timeline toolbar adds the **CC** track above every video track and opens the **Captions** tab of the Media panel. A project has one caption track. See [Add the caption track](captions.md#add-the-caption-track).
+- The **Captions** tab now works: a list of every cue with its start and end, its text and its word count, a search field, and a red bar on the cue that is playing. Click a cue to jump to it. See [Open the Captions tab](captions.md#open-the-captions-tab).
+- Add a 2-second cue at the playhead with one click, and type its text right away. See [Add a cue at the playhead](captions.md#add-a-cue-at-the-playhead).
+- Import SRT and VTT subtitle files: the cues land on the frame grid, overlaps are fixed, and formatting is left out. The import replaces the track's cues in one undo step. See [Import an SRT or VTT file](captions.md#import-an-srt-or-vtt-file).
+- Type in a cue and the preview follows at once. <kbd>Enter</kbd> splits a cue at the caret with its time shared by the letters on each side, <kbd>Ctrl</kbd>+<kbd>Backspace</kbd> merges it into the cue before, and <kbd>Tab</kbd> goes to the next cue. See [Edit a cue's text](captions.md#edit-a-cues-text) and [Split and merge cues](captions.md#split-and-merge-cues).
+- Cues never overlap: on the timeline a dragged, nudged or trimmed cue stops against its neighbors, and a split cuts the cue's text too. Inserts and ripples on other tracks still move the captions along, so they stay in sync. The cue menu has **Merge with previous cue**. See [Edit cues on the timeline](captions.md#edit-cues-on-the-timeline).
+- The new **Caption style** section of **Edit Properties** gives all captions one look and place: **Bottom**, **Center**, **Top** or **Custom**, a max width and a max number of lines (longer cues are drawn smaller), and the font, colors, outline, shadow and box of the **Text** section. See [Style your captions](captions.md#style-your-captions).
+- Highlight the spoken word in a color, on a box, larger, or both. It shows on cues with word timings, which come from VTT files with karaoke times. See [Highlight the spoken word](captions.md#highlight-the-spoken-word).
+- Text presets now apply to captions: select the **CC** track or a cue and click a card. The captions keep their position, size limits and highlight. See [Give captions the look of a preset](captions.md#give-captions-the-look-of-a-preset).
+- Export the cues as an SRT or VTT file. See [Export an SRT or VTT file](captions.md#export-an-srt-or-vtt-file).
+- **Export frame** includes the captions with their highlight. Transcribing speech into cues is available in a later version (the **Transcribe** button is dimmed).
+- New pages: [Captions](captions.md). New keys in a cue's text in the **Captions** tab: <kbd>Enter</kbd>, <kbd>Shift</kbd>+<kbd>Enter</kbd>, <kbd>Ctrl</kbd>+<kbd>Backspace</kbd>, <kbd>Tab</kbd>, <kbd>Shift</kbd>+<kbd>Tab</kbd> and <kbd>Esc</kbd>; <kbd>Delete</kbd> deletes the selected cues; see [Keyboard shortcuts](keyboard-shortcuts.md#captions).
 
 ## Batch 31: Text animations
 - Make titles move: the new **Animation** section of **Edit Properties**, under **Text**, has a row of chips for the in animation and one for the out animation. Click a chip and the preview plays it once, then puts the playhead back. See [Add an in or out animation](text-animations.md#add-an-in-or-out-animation).
@@ -455,6 +475,8 @@ See [Projects and saving](projects-and-saving.md).
 See [The workspace](workspace.md) and [Getting started](getting-started.md).
 
 ## Related pages
+- [Captions](captions.md)
+- [Text animations](text-animations.md)
 - [Text presets](text-presets.md)
 - [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md)
 - [User guide home](README.md)
@@ -467,4 +489,4 @@ See [The workspace](workspace.md) and [Getting started](getting-started.md).
 - [Adding media to the timeline](adding-media-to-the-timeline.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 30, 2026-10-16</sub>
+<sub>Last updated: Batch 32, 2026-10-17</sub>

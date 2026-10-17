@@ -20,6 +20,7 @@ A text preset is a saved look for text: the font, size, colors, outline, shadow,
 - [Start with the starter presets](#start-with-the-starter-presets)
 - [Save a text style as a preset](#save-a-text-style-as-a-preset)
 - [Apply a preset to text](#apply-a-preset-to-text)
+- [Apply a preset to captions](#apply-a-preset-to-captions)
 - [Add a new text with a preset](#add-a-new-text-with-a-preset)
 - [Drag a preset onto the timeline or the preview](#drag-a-preset-onto-the-timeline-or-the-preview)
 - [Update a preset](#update-a-preset)
@@ -137,7 +138,17 @@ What happens:
 
 The live look while you point shows the preset's style, box and position, not its animations: they play once you click. It ends when the pointer leaves the cards, when you scroll the list, start a drag, change the selection or click.
 
-> **Note:** When no text clip is selected, or only text clips on locked tracks, a click on a card adds a new text instead. See [Add a new text with a preset](#add-a-new-text-with-a-preset). Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> to remove it.
+> **Note:** When no text clip is selected, or only text clips on locked tracks, a click on a card adds a new text instead, unless the caption track or a cue is selected (see [Apply a preset to captions](#apply-a-preset-to-captions)). See [Add a new text with a preset](#add-a-new-text-with-a-preset). Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> to remove it.
+
+## Apply a preset to captions
+
+Captions take a preset's look too.
+
+1. Select the **CC** caption track (click its header) or a cue, and no text clip.
+2. Point at the cards: the captions in the preview show each look while the pointer is on its card.
+3. Click a card, or right-click it and choose **Apply to captions**.
+
+The captions take the preset's style: font, size, colors, outline, shadow and background box. They keep their position, max width, max lines and word highlight; the preset's box width, **Apply position** and animations are not used. The step is named, for example, **Apply "Neon glow" to captions**. See [Give captions the look of a preset](captions.md#give-captions-the-look-of-a-preset).
 
 ## Add a new text with a preset
 
@@ -145,7 +156,7 @@ There are four ways to add a new text clip in a preset's look:
 
 | Do this | Where the text goes |
 | --- | --- |
-| Click a card with no text clip selected, or right-click it and choose **Add at playhead** | At the playhead, in the middle of the frame |
+| Click a card with no text clip, caption track or cue selected, or right-click it and choose **Add at playhead** | At the playhead, in the middle of the frame |
 | Click the preset's chip in the timeline toolbar | At the playhead, in the middle of the frame, or 40 pixels below the selected text clip. See [Put favorite presets in the timeline toolbar](#put-favorite-presets-in-the-timeline-toolbar). |
 | Drag the card onto the preview | At the playhead, centered where you release. See [Drag a preset onto the timeline or the preview](#drag-a-preset-onto-the-timeline-or-the-preview). |
 | Press <kbd>T</kbd> or <kbd>Shift</kbd>+<kbd>T</kbd> | With the default title or subtitle preset. See [Choose the presets for T and Shift+T](#choose-the-presets-for-t-and-shiftt). |
@@ -260,7 +271,7 @@ The **Lower third** starter has **Apply position** on. The **Subtitle** starter'
 
 | Row | What it does |
 | --- | --- |
-| **Apply to selected text** (or **Add at playhead** when no text clip is selected) | The same as a click on the card. |
+| **Apply to selected text** (**Apply to captions** with the caption track or a cue selected, or **Add at playhead** when neither text nor captions are selected) | The same as a click on the card. |
 | **Use as default title**, **Use as default subtitle** | See [Choose the presets for T and Shift+T](#choose-the-presets-for-t-and-shiftt). |
 | **Favorite: chip in the timeline toolbar** | Turns the chip and the star on or off. See [Put favorite presets in the timeline toolbar](#put-favorite-presets-in-the-timeline-toolbar). |
 | **Apply position** | Turns placing on or off. See [Place text with a preset (Apply position)](#place-text-with-a-preset-apply-position). |
@@ -366,7 +377,8 @@ Changes to your text clips are steps in the history. Hover **Undo** in the app b
 | --- | --- |
 | **Save preset "Red promo"** | **Save as preset**: the clip starts to use the new preset. Undoing it leaves the preset in the list. |
 | **Apply "Red promo"** | A click on a card, or **Apply to selected text**, with text clips selected |
-| **Add "Red promo"** | A click on a card with no text clip selected, **Add at playhead**, a toolbar chip, or a drop on the preview |
+| **Apply "Red promo" to captions** | A click on a card, or **Apply to captions**, with the caption track or a cue selected |
+| **Add "Red promo"** | A click on a card with no text clip, caption track or cue selected, **Add at playhead**, a toolbar chip, or a drop on the preview |
 | **Add clip**, **Insert clip** | A drop on the timeline |
 | **Add title**, **Add subtitle** | <kbd>T</kbd> and <kbd>Shift</kbd>+<kbd>T</kbd>, also with a default preset |
 
@@ -376,13 +388,13 @@ Changes to the presets themselves are not steps in the history and can't be undo
 
 These parts are available in a later version:
 
-- Applying a preset to captions.
 - Restoring the starter presets after you delete or change them.
 - Choosing the library folder in the editor's **Settings**: for now, the strip at the bottom of the **Global** list does it.
 
 ## Related pages
 - [Titles and text](titles-and-text.md)
 - [Text animations](text-animations.md)
+- [Captions](captions.md)
 - [Editing properties](editing-properties.md)
 - [Adding media to the timeline](adding-media-to-the-timeline.md)
 - [The workspace](workspace.md)
@@ -390,4 +402,4 @@ These parts are available in a later version:
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 31, 2026-10-16</sub>
+<sub>Last updated: Batch 32, 2026-10-17</sub>
