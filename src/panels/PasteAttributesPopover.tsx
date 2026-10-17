@@ -46,6 +46,9 @@ function Popover({ menu }: { menu: PasteAttributesMenu }) {
   const onKeyDown = (event: KeyboardEvent) => {
     if (event.key !== "Enter") return;
     event.preventDefault();
+    // Closing hands the keyboard back to the panel: the key dispatcher (on window) must not see this
+    // Enter there too, or a lone selected title would start inline editing.
+    event.stopPropagation();
     apply();
   };
   const animated = menu.groups.some((group) => ANIMATED.has(group) && checked.has(group));

@@ -4,9 +4,11 @@
 // - The clipboard is this tab's last copy (`clipboard`, kept across project switches) mirrored on the
 //   system clipboard as JSON text, so another tab or window can paste it into another project.
 // - Mod+V and Mod+Shift+V decline their key (KeyDispatcher), so the browser's own paste event brings the
-//   system clipboard's text with no permission prompt: a payload there is pasted (and becomes this
-//   tab's clipboard), anything else pastes this tab's own copy. A menu row (no key) pastes this tab's
-//   copy, or reads the system clipboard (the browser may ask once) when it has none.
+//   system clipboard's text with no permission prompt: a payload there is pasted (and, once pasted,
+//   becomes this tab's clipboard), anything else pastes this tab's own copy. A menu row (no key)
+//   pastes this tab's copy, or reads the system clipboard (the browser may ask once) when it has none.
+// - A clipboard from elsewhere can hold anything: every paste (Paste attributes too) checks the
+//   document it would make (`validateProject`) and leaves it untouched, with a toast, when it breaks.
 // - Mod+D in the timeline (and the quick row) duplicates the selection after it; in the preview (and
 //   the canvas menu) it duplicates the selected layers at +20 px (duplicate.ts), or the selection as
 //   in the timeline when no layer is selected.
@@ -24,6 +26,7 @@ import { isEditableTarget, type ActionContext } from "../core/keyboard/KeyDispat
 import { createStore } from "../core/store/createStore.js";
 import { EMPTY_SELECTION, selectClips, toSnapshot } from "../core/store/selection.js";
 import { setPlayhead } from "../core/store/sessionStore.js";
+import { errorMessage } from "../project/errorMessage.js";
 import { copyClips, copySet, keysPayload, parseClipboard, pasteClips, serializeClipboard, type ClipboardPayload, type ClipsPayload, type PasteResult } from "../timeline/edit/clipboard.js";
 import { deleteClips } from "../timeline/edit/delete.js";
 import { duplicateClips, duplicateLayers } from "../timeline/edit/duplicate.js";
@@ -53,6 +56,8 @@ export interface PasteAttributesMenu {
   groups: AttributeGroup[];
   /** The panel the keyboard goes back to when it closes. */
   scope: FocusScope;
+  /** The payload was read from the system clipboard: it becomes this tab's clipboard once pasted. */
+  fromSystem: boolean;
 }
 
 export const pasteAttributesMenu = createStore<PasteAttributesMenu | null>(null);
@@ -143,8 +148,14 @@ function issuesAfter(command: Command): string[] {
       }),
     );
   } catch (error) {
-    return [error instanceof Error ? error.message : String(error)];
+    return [errorMessage(error)];
   }
+}
+
+/** A paste turned down because the clipboard would break the document (`what`: "clips", "keyframes", "attributes"). */
+function reportBroken(what: string, issues: readonly string[]): void {
+  console.warn("[clipboard] paste refused:", issues);
+  showToast({ tone: "error", message: `Can't paste these ${what}`, detail: `The clipboard holds ${what} this project can't take.` });
 }
 
 function reportOffline(offline: readonly MediaItem[]): void {
@@ -158,24 +169,39 @@ function reportOffline(offline: readonly MediaItem[]): void {
 function acceptPaste(command: Command, what: string): boolean {
   const issues = issuesAfter(command);
   if (issues.length === 0) return true;
-  console.warn("[clipboard] paste refused:", issues);
-  showToast({ tone: "error", message: `Can't paste these ${what}`, detail: `The clipboard holds ${what} this project can't take.` });
+  reportBroken(what, issues);
   return false;
 }
 
-/** Pastes `payload` at the playhead (`insert`: Paste insert): clips, or keys on the selected clips. */
-function paste(payload: ClipboardPayload, mode: MoveMode): void {
+/**
+ * Pastes `payload` at the playhead (`insert`: Paste insert): clips, or keys on the selected clips.
+ * `adopt`: the payload comes from the system clipboard and becomes this tab's clipboard once it is
+ * pasted (one this project can't take is never kept, so Paste attributes does not meet it either).
+ */
+function paste(payload: ClipboardPayload, mode: MoveMode, adopt: boolean): void {
+  const accept = (command: Command, what: string): boolean => {
+    if (!acceptPaste(command, what)) return false;
+    if (adopt) clipboard.set(payload);
+    return true;
+  };
   if (payload.kind === "keys") {
-    if (!pasteKeyframes(payload.keys, (command) => acceptPaste(command, "keyframes"))) showToast({ tone: "info", message: "Select a clip to paste keyframes on", detail: "Keyframes paste from the playhead on onto the selected clips." });
+    if (!pasteKeyframes(payload.keys, (command) => accept(command, "keyframes"))) showToast({ tone: "info", message: "Select a clip to paste keyframes on", detail: "Keyframes paste from the playhead on onto the selected clips." });
     return;
   }
   const playhead = sessionStore.state.getState().playhead;
-  const result = pasteClips(documentStore.getState(), payload, { at: playhead, mode, newId });
+  let result: PasteResult;
+  try {
+    result = pasteClips(documentStore.getState(), payload, { at: playhead, mode, newId });
+  } catch (error) {
+    // A payload from elsewhere can pass the shape check and still break the edit.
+    reportBroken("clips", [errorMessage(error)]);
+    return;
+  }
   if (result.kind === "refused") {
     reportRefusal(result, payload);
     return;
   }
-  if (!acceptPaste(result.command, "clips")) return;
+  if (!accept(result.command, "clips")) return;
   documentStore.dispatch(result.command, { selection: toSnapshot(selectClips(result.placed, result.primary)) });
   setPlayhead(sessionStore, result.end);
   reportOffline(result.offline);
@@ -190,9 +216,8 @@ function finishKeyPaste(fromSystem: ClipboardPayload | null): void {
   clearTimeout(pending.timer);
   const { mode } = pending;
   pending = null;
-  if (fromSystem) clipboard.set(fromSystem);
   const payload = fromSystem ?? clipboard.getState();
-  if (payload) paste(payload, mode);
+  if (payload) paste(payload, mode, fromSystem !== null);
 }
 
 /** The browser's paste event after a declined Mod+V. */
@@ -213,8 +238,8 @@ function pasteAction(mode: MoveMode) {
       return false;
     }
     const payload = clipboard.getState();
-    if (payload) paste(payload, mode);
-    else void readSystem().then((found) => found && (clipboard.set(found), paste(found, mode)));
+    if (payload) paste(payload, mode, false);
+    else void readSystem().then((found) => found && paste(found, mode, true));
     return true;
   };
 }
@@ -233,7 +258,7 @@ function popoverPlace(): { x: number; y: number; scope: FocusScope } {
 }
 
 /** Opens the popover for the copied clips and the selection (a toast when there is nothing to paste or onto). */
-function openPasteAttributes(payload: ClipboardPayload | null): void {
+function openPasteAttributes(payload: ClipboardPayload | null, fromSystem: boolean): void {
   const { ids } = selectedClips();
   if (!payload || payload.kind !== "clips") {
     showToast({ tone: "info", message: "Copy a clip first", detail: "Paste attributes gives the selected clips the look of the copied one." });
@@ -244,16 +269,51 @@ function openPasteAttributes(payload: ClipboardPayload | null): void {
     showToast({ tone: "info", message: "Nothing to paste onto", detail: ids.length === 0 ? "Select the clips that should take the copied clip's look." : "The selected clips take none of the copied clip's attributes." });
     return;
   }
-  pasteAttributesMenu.set({ ...popoverPlace(), payload, ids, groups });
+  pasteAttributesMenu.set({ ...popoverPlace(), payload, ids, groups, fromSystem });
 }
 
 function pasteAttributesAction(): void {
   const payload = clipboard.getState();
-  if (payload) openPasteAttributes(payload);
-  else void readSystem().then((found) => (found && clipboard.set(found), openPasteAttributes(found)));
+  if (payload) openPasteAttributes(payload, false);
+  else void readSystem().then((found) => openPasteAttributes(found, true));
 }
 
-/** The popover's Paste: the checked `groups` onto its clips, one undo step "Paste attributes". */
+/** Turns down a Paste attributes whose document breaks (thrown inside its transaction: nothing is committed). */
+class BrokenPaste extends Error {
+  constructor(readonly issues: string[]) {
+    super(issues.join("; "));
+  }
+}
+
+/** Paste attributes' edits, inside its transaction; the speed limit they hit, or null. Throws `BrokenPaste` when the document they make breaks. */
+function pasteAttributeEdits(menu: PasteAttributesMenu, groups: ReadonlySet<AttributeGroup>): TrimLimit | null {
+  let limit: TrimLimit | null = null;
+  let issues: string[];
+  try {
+    const command = pasteAttributes(documentStore.getState(), menu.payload, menu.ids, groups);
+    if (command) documentStore.dispatch(command);
+    const speed = pastedSpeed(menu.payload, groups);
+    if (speed !== null) {
+      const project = documentStore.getState();
+      const { link, ripple } = speedOptions.getState();
+      const result = setSpeeds(project, attributeTargets(project, menu.ids, "speed"), speed, { link, ripple, linked: linked() });
+      if (result.command) documentStore.dispatch(result.command);
+      limit = result.limit;
+    }
+    issues = validateProject(documentStore.getState());
+  } catch (error) {
+    // A copied clip from elsewhere can have the right shape at the top and still break an edit.
+    issues = [errorMessage(error)];
+  }
+  if (issues.length > 0) throw new BrokenPaste(issues);
+  return limit;
+}
+
+/**
+ * The popover's Paste: the checked `groups` onto its clips, one undo step "Paste attributes". The
+ * document it makes is validated before the transaction commits (a copied clip from elsewhere can
+ * carry fractional fades or keys, a broken style); when it breaks, nothing changes and a toast says so.
+ */
 export function applyPasteAttributes(groups: ReadonlySet<AttributeGroup>): void {
   const menu = pasteAttributesMenu.getState();
   closePasteAttributes();
@@ -267,17 +327,16 @@ export function applyPasteAttributes(groups: ReadonlySet<AttributeGroup>): void 
     }
     return next;
   });
-  const speed = pastedSpeed(menu.payload, groups);
-  const limit = documentStore.transaction("Paste attributes", (): TrimLimit | null => {
-    const command = pasteAttributes(documentStore.getState(), menu.payload, menu.ids, groups);
-    if (command) documentStore.dispatch(command);
-    if (speed === null) return null;
-    const project = documentStore.getState();
-    const { link, ripple } = speedOptions.getState();
-    const result = setSpeeds(project, attributeTargets(project, menu.ids, "speed"), speed, { link, ripple, linked: linked() });
-    if (result.command) documentStore.dispatch(result.command);
-    return result.limit;
-  });
+  let limit: TrimLimit | null;
+  try {
+    limit = documentStore.transaction("Paste attributes", () => pasteAttributeEdits(menu, groups));
+  } catch (error) {
+    if (!(error instanceof BrokenPaste)) throw error;
+    // The transaction has left the document as it was.
+    reportBroken("attributes", error.issues);
+    return;
+  }
+  if (menu.fromSystem) clipboard.set(menu.payload);
   if (limit) reportSpeedLimit(limit);
 }
 
