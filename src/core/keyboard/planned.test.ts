@@ -20,7 +20,8 @@ describe("planned commands", () => {
     expect(plannedMessage("add.title")).toBeNull();
     expect(plannedMessage("text.edit")).toBeNull();
     expect(plannedMessage("marker.add")).toBeNull();
-    expect(plannedMessage("clipboard.paste")).toBe("Paste: coming in Batch 39");
+    expect(plannedMessage("clipboard.paste")).toBeNull();
+    expect(plannedMessage("app.commandPalette")).toBe("Command palette: coming in Batch 40");
     expect(plannedMessage("timeline.zoomToSelection")).toBeNull();
     expect(plannedMessage("edit.duplicate")).toBeNull();
   });

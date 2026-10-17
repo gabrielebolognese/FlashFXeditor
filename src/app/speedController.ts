@@ -43,7 +43,7 @@ function selectedIds(): ClipId[] {
 }
 
 /** Why a speed change stopped a clip short, as a toast (the duration field's limits are trims: `reportTrimLimit`). */
-function reportSpeedLimit(limit: TrimLimit): void {
+export function reportSpeedLimit(limit: TrimLimit): void {
   const project = documentStore.getState();
   const clip = project.clips[limit.clipId]?.name ?? "The clip";
   const track = project.tracks.find((candidate) => candidate.id === limit.trackId)?.name ?? "a track";

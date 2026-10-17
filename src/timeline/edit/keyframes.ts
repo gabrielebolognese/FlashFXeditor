@@ -10,8 +10,8 @@
 // - Frames are relative to the clip start; an edit at a playhead outside the clip writes at the
 //   clip's nearest frame (`clipRel`). Lane edits keep keys inside the clip.
 // - Copy / paste (spec §6.15): `copyKeys` takes a section's keys at some frames, timed from the first;
-//   `pasteKeys` writes them from the playhead on. TODO(batch 39): Mod+C / Mod+V route here while keys
-//   are selected.
+//   `pasteKeys` writes them from the playhead on. Mod+C / Mod+V route here while keys are selected
+//   (Batch 39, app/clipboardController.ts).
 import type { Draft } from "immer";
 import type { Affect, Command } from "../../core/commands/command.js";
 import {

@@ -1,6 +1,7 @@
 import { closeCanvasMenu } from "../app/canvasController.js";
+import { canPaste } from "../app/clipboardController.js";
 import { canvasMenu } from "../app/previewController.js";
-import { actions } from "../app/services.js";
+import { actions, sessionStore } from "../app/services.js";
 import { useStoreSelector } from "../core/store/useStoreSelector.js";
 import { ContextMenu, type ContextMenuEntry } from "../ui/ContextMenu.js";
 
@@ -8,12 +9,20 @@ import { ContextMenu, type ContextMenuEntry } from "../ui/ContextMenu.js";
 // Flip H / V and Reset transform (the properties quick row's `transform.*` actions), the layer order
 // (the clip to the adjacent video track), locking the layer's track and Delete. Rows dispatch command
 // ids; the canvas selected the layer under the pointer first. Rendered only while open (a right-click
-// is not a P1 interaction). TODO(batch 39): Copy, Paste and Duplicate (+20 px on the canvas).
+// is not a P1 interaction). Copy, Paste (at the playhead, as in the timeline) and Duplicate (the
+// selected layers at +20 px on the track above, `canvas.duplicate`) since Batch 39.
+
+/** The clipboard rows: Copy and Duplicate need a selected layer, Paste something copied. */
+function clipboardEntries(): ContextMenuEntry[] {
+  const none = sessionStore.selection.getState().kind !== "clips";
+  return [
+    { kind: "item", id: "clipboard.copy", label: "Copy", commandId: "clipboard.copy", disabled: none },
+    { kind: "item", id: "clipboard.paste", label: "Paste", commandId: "clipboard.paste", disabled: !canPaste() },
+    { kind: "item", id: "canvas.duplicate", label: "Duplicate", commandId: "edit.duplicate", disabled: none },
+  ];
+}
 
 const ENTRIES: readonly ContextMenuEntry[] = [
-  { kind: "item", id: "clipboard.copy", label: "Copy", commandId: "clipboard.copy", disabled: true },
-  { kind: "item", id: "clipboard.paste", label: "Paste", commandId: "clipboard.paste", disabled: true },
-  { kind: "item", id: "edit.duplicate", label: "Duplicate", commandId: "edit.duplicate", disabled: true },
   { kind: "separator" },
   { kind: "item", id: "transform.fit", label: "Fit" },
   { kind: "item", id: "transform.fill", label: "Fill" },
@@ -34,5 +43,5 @@ const run = (id: string) => void actions.run(id);
 export function CanvasContextMenu() {
   const menu = useStoreSelector(canvasMenu, (state) => state);
   if (!menu) return null;
-  return <ContextMenu x={menu.x} y={menu.y} entries={ENTRIES} onSelect={run} onClose={closeCanvasMenu} />;
+  return <ContextMenu x={menu.x} y={menu.y} entries={[...clipboardEntries(), ...ENTRIES]} onSelect={run} onClose={closeCanvasMenu} />;
 }

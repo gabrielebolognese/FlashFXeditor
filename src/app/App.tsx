@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import { useStoreSelector } from "../core/store/useStoreSelector.js";
 import { MediaPanel } from "../panels/MediaPanel.js";
+import { PasteAttributesPopover } from "../panels/PasteAttributesPopover.js";
 import { PreviewPanel } from "../panels/PreviewPanel.js";
 import { PropertiesPanel } from "../panels/PropertiesPanel.js";
 import { TimelinePanel } from "../panels/TimelinePanel.js";
@@ -38,6 +39,7 @@ function Editor() {
         <PreviewPanel />
         <Splitter id="left" axis="x" />
       </main>
+      <PasteAttributesPopover />
     </div>
   );
 }

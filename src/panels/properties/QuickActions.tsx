@@ -129,7 +129,7 @@ const ENTRIES: readonly Entry[] = [
   { kind: "transition", transition: "dipToBlack", label: "Add dip to black", icon: Moon },
   { kind: "transition", transition: "dipToWhite", label: "Add dip to white", icon: Sun },
   { kind: "gap" },
-  { kind: "live", id: "edit.duplicate", label: "Duplicate", icon: CopyPlus, commandId: "edit.duplicate", needs: "primary" },
+  { kind: "live", id: "edit.duplicate", label: "Duplicate", icon: CopyPlus, commandId: "edit.duplicate", needs: "clips" },
   { kind: "live", id: "edit.delete", label: "Delete", icon: Trash2, commandId: "edit.delete", needs: "clips" },
 ];
 
