@@ -1,6 +1,7 @@
 // Clip property edits of the properties panel (spec §11): the Opacity section, the Clip section's
 // enabled switch (also the clip menu's Enable/Disable, §6.16) and its timecodes. Each is one command.
 // - Opacity (0..1) affects only the composite (§3.4); clips that are gone, locked or not layers are skipped.
+//   With the Opacity stopwatch on (keys), an edit at the playhead writes the key there (Batch 35).
 // - The timecodes are trims without ripple (§6.10 regular trim; Batch 25 Build): Start moves the in
 //   point (the end stays), End and Duration move the out point (the start stays), Source in / out move
 //   the in / out point by the source time asked for (at the clip's speed). Linked partners take the
@@ -8,32 +9,42 @@
 import type { Draft } from "immer";
 import type { Command } from "../../core/commands/command.js";
 import { usPerFrame } from "../../core/document/time.js";
-import { isFreeze, isMediaClip, type Clip, type ClipId, type Frame, type MediaClip, type Project, type Rational, type Us } from "../../core/document/types.js";
+import { animatedOpacity, clipRel, hasSectionKeys, writeKeys } from "../../core/document/keyframes.js";
+import { isFreeze, isMediaClip, type Clip, type ClipId, type Frame, type Keyframes, type MediaClip, type Project, type Rational, type Us } from "../../core/document/types.js";
 import { isClipLocked } from "../model/queries.js";
 import { isLayerClip, type LayerClip } from "./transform.js";
 import { applyTrim, trimEdge, type TrimEdge, type TrimLimit } from "./trim.js";
 
 /**
  * Writes `changes` (opacity 0..1 by clip id) as one command `clip.opacity`, or null when nothing
- * changes. Values are clamped to 0..1; non-finite ones are skipped.
+ * changes. Values are clamped to 0..1; non-finite ones are skipped. With `at` (the playhead, Batch 35)
+ * a clip whose opacity is keyed (the Opacity stopwatch on, §11) gets its key there instead.
  */
-export function setOpacities(project: Project, changes: ReadonlyMap<ClipId, number>, options: { label: string; coalesceKey?: string }): Command | null {
-  const writes: [ClipId, number][] = [];
+export function setOpacities(project: Project, changes: ReadonlyMap<ClipId, number>, options: { label: string; coalesceKey?: string; at?: Frame }): Command | null {
+  const writes: { id: ClipId; opacity: number; keyframes?: Keyframes | undefined }[] = [];
   for (const [id, value] of changes) {
     const clip = project.clips[id];
     if (!clip || !isLayerClip(clip) || isClipLocked(project, id) || !Number.isFinite(value)) continue;
     const opacity = Math.min(1, Math.max(0, value));
-    if (opacity !== clip.opacity) writes.push([id, opacity]);
+    if (options.at === undefined || !hasSectionKeys(clip.keyframes, "opacity")) {
+      if (opacity !== clip.opacity) writes.push({ id, opacity });
+      continue;
+    }
+    const rel = clipRel(clip, options.at);
+    if (opacity !== animatedOpacity(clip, rel)) writes.push({ id, opacity: clip.opacity, keyframes: writeKeys(clip.keyframes, rel, { opacity }) });
   }
   if (writes.length === 0) return null;
   return {
     id: "clip.opacity",
     label: options.label,
     ...(options.coalesceKey !== undefined && { coalesceKey: options.coalesceKey }),
-    affects: ["composite"],
+    affects: writes.some((write) => "keyframes" in write) ? ["composite", "clips"] : ["composite"],
     run(draft) {
-      // TODO(batch 35): with the Opacity stopwatch on, the keyframe at the playhead instead (§11).
-      for (const [id, opacity] of writes) (draft.clips[id] as Draft<LayerClip>).opacity = opacity;
+      for (const write of writes) {
+        const clip = draft.clips[write.id] as Draft<LayerClip>;
+        if (!("keyframes" in write)) clip.opacity = write.opacity;
+        else if (write.keyframes) clip.keyframes = structuredClone(write.keyframes);
+      }
     },
   };
 }

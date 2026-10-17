@@ -17,6 +17,7 @@ import { createStore } from "../core/store/createStore.js";
 import { EMPTY_SELECTION, selectClips, toSnapshot } from "../core/store/selection.js";
 import { selectEditPoint, selectGap, setPlayhead, setSelection, type Tool } from "../core/store/sessionStore.js";
 import { applyMoveRequest, moveToAdjacentLane, nudgeClips, type MoveRefusal, type MoveRequest, type MoveResult } from "../timeline/edit/move.js";
+import { addKeyAt, moveKeys } from "../timeline/edit/keyframes.js";
 import { extendToPlayhead, planEdit, resolveTrim, trimToPlayhead, type TrimLimit, type TrimResult } from "../timeline/edit/trim.js";
 import { lastFrameOf, selectionSpan } from "../timeline/model/inOut.js";
 import { contentEnd, laneOf, markerFrames, navigationPoints, nextEditPoint, prevEditPoint, selectableClipIds } from "../timeline/model/queries.js";
@@ -139,6 +140,15 @@ export const timelineView = new TimelineView({
   onContextMenu: openContextMenu,
   onMoveMarker: (markerId, frame) => moveMarker(markerId, frame),
   onEditMarker: (markerId) => openMarkerEditor(markerId),
+  // Keyframe lanes (Batch 35, spec §6.4, §6.15): one command each.
+  onMoveKeyframes: (clipId, section, frames, delta) => {
+    const command = moveKeys(documentStore.getState(), clipId, section, frames, delta);
+    if (command) documentStore.dispatch(command);
+  },
+  onAddKeyframe: (clipId, section, frame) => {
+    const command = addKeyAt(documentStore.getState(), clipId, section, frame);
+    if (command) documentStore.dispatch(command);
+  },
   idle: idleQueue,
   visuals: clipVisuals,
   // Text clips whose font is not available get a badge (spec §10.1); textController redraws on font changes.

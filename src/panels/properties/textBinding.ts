@@ -4,11 +4,12 @@
 // (`liveEdit.texts`, and the moved boxes in `liveEdit.transforms`: each box keeps its anchored point),
 // so the preview re-rasterizes only the scrubbed layers and no React component renders, then one
 // command on release.
-import type { ClipId, Project, TextClip, Transform } from "../../core/document/types.js";
+import type { ClipId, Frame, Project, TextClip, Transform } from "../../core/document/types.js";
 import type { Store } from "../../core/store/createStore.js";
 import type { DocumentStore } from "../../core/store/DocumentStore.js";
 import type { LiveText } from "../../render/compositor/Compositor.js";
 import { setTexts, textEdit, type TextEdit } from "../../timeline/edit/text.js";
+import { editedTransform } from "../../timeline/edit/transform.js";
 import { isClipLocked } from "../../timeline/model/queries.js";
 import { roundTo, type NumberBinding } from "../../ui/NumberField.js";
 import { NO_LIVE_EDIT, type LiveEdit } from "../../app/liveEdit.js";
@@ -18,6 +19,8 @@ import type { TextNumberProp } from "./textProps.js";
 export interface TextBindingDeps {
   document: Pick<DocumentStore, "getState" | "subscribe" | "dispatch">;
   live: Store<LiveEdit>;
+  /** The playhead: a keyed text is edited as it shows there (Batch 35). */
+  playhead?: () => Frame;
 }
 
 /** The text clips among `ids` (in order). */
@@ -47,7 +50,8 @@ export function textBinding(deps: TextBindingDeps, prop: TextNumberProp, ids: re
 
   const commit = (valueOf: (clip: TextClip) => number, coalesceKey?: string) => {
     const project = deps.document.getState();
-    const command = setTexts(project, editsOf(project, valueOf), { label: prop.label, ...(coalesceKey !== undefined && { coalesceKey }) });
+    const at = deps.playhead?.();
+    const command = setTexts(project, editsOf(project, valueOf), { label: prop.label, ...(coalesceKey !== undefined && { coalesceKey }), ...(at !== undefined && { at }) });
     if (command) deps.document.dispatch(command);
   };
 
@@ -80,9 +84,10 @@ export function textBinding(deps: TextBindingDeps, prop: TextNumberProp, ids: re
           const transforms = new Map<ClipId, Transform>();
           for (const [id, edit] of editsOf(project, valueOf)) {
             const clip = project.clips[id] as TextClip;
-            const next = textEdit(project, clip, edit);
+            const shown = editedTransform(clip, deps.playhead?.());
+            const next = textEdit(project, clip, edit, shown);
             texts.set(id, { text: next.text, style: next.style });
-            if (next.transform !== clip.transform) transforms.set(id, next.transform);
+            if (next.transform !== shown) transforms.set(id, next.transform);
           }
           deps.live.set({ ...NO_LIVE_EDIT, texts: texts.size > 0 ? texts : null, transforms: transforms.size > 0 ? transforms : null });
           return;

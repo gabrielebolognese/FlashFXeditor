@@ -34,6 +34,49 @@ function setup(p = project()) {
 }
 
 describe("layer bindings (spec §11 fields, P2)", () => {
+  it("show and key a keyed clip's value at the playhead, re-reading as it moves (Batch 35)", () => {
+    const p = project();
+    (p.clips.a as MediaClip).keyframes = {
+      "transform.x": [
+        { frame: 0, value: 0, ease: "linear" },
+        { frame: 20, value: 100, ease: "linear" },
+      ],
+      opacity: [{ frame: 0, value: 0.2, ease: "linear" }],
+    };
+    const { document, live, clip } = setup(p);
+    const playhead = createStore(10);
+    const deps = { document, live, playhead: { get: () => playhead.getState(), subscribe: (listener: () => void) => playhead.subscribe(() => listener()) } };
+    const x = layerBinding(deps, POSITION_X, ["a"]);
+    const opacity = layerBinding(deps, OPACITY, ["a"]);
+    expect(x.read()).toBe(50);
+    expect(opacity.read()).toBe(20);
+    const notified = vi.fn();
+    const stop = x.subscribe(notified);
+    playhead.set(20);
+    expect(notified).toHaveBeenCalled();
+    expect(x.read()).toBe(100);
+    // A step at frame 20 updates the key there; the clip's own x stays.
+    x.change(5, "step");
+    expect(clip("a").keyframes?.["transform.x"]?.map((key) => [key.frame, key.value])).toEqual([
+      [0, 0],
+      [20, 105],
+    ]);
+    expect(clip("a").transform.x).toBe(0);
+    // A typed value at frame 15 adds a key there (every Transform property).
+    playhead.set(15);
+    x.set(10);
+    expect(clip("a").keyframes?.["transform.x"]?.map((key) => key.frame)).toEqual([0, 15, 20]);
+    expect(clip("a").keyframes?.["transform.scale"]?.map((key) => key.frame)).toEqual([15, 20]);
+    // An unkeyed clip does not re-read on playhead moves.
+    const other = layerBinding(deps, POSITION_X, ["b"]);
+    const quiet = vi.fn();
+    const stopOther = other.subscribe(quiet);
+    playhead.set(3);
+    expect(quiet).not.toHaveBeenCalled();
+    stop();
+    stopOther();
+  });
+
   it("shows -- for different opacities; a typed value applies to all three in one undo step", () => {
     const { deps, document, clip } = setup();
     const opacity = layerBinding(deps, OPACITY, ["a", "b", "c", "x"]);

@@ -104,10 +104,10 @@ function freezeAtPlayhead(): void {
   documentStore.dispatch(result.command, { selection: toSnapshot(selectClips(result.freezeIds, result.freezeIds[0] ?? null)) });
 }
 
-/** Punch zoom (Shift+Z): the zoomed pieces are selected. TODO(batch 35): `punchZoomAnimated`. */
+/** Punch zoom (Shift+Z): the zoomed pieces are selected; animated (a zoom over 6 frames) unless the setting is off. */
 function punchZoomAtPlayhead(): void {
-  const factor = appSettings.getState().punchZoomScale;
-  const result = punchZoom(documentStore.getState(), playhead(), selectedIds(), factor, newId, { linked: sessionStore.state.getState().linkedSelection });
+  const { punchZoomScale: factor, punchZoomAnimate: animated } = appSettings.getState();
+  const result = punchZoom(documentStore.getState(), playhead(), selectedIds(), factor, newId, { linked: sessionStore.state.getState().linkedSelection, animated });
   if (typeof result === "string") return reportMiss(result, "zoom");
   documentStore.dispatch(result.command, { selection: toSnapshot(selectClips(result.zoomedIds, result.zoomedIds[0] ?? null)) });
 }

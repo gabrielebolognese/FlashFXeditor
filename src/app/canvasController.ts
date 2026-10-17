@@ -13,7 +13,7 @@ import { arrangeLayers, type ArrangeDirection } from "../timeline/edit/arrange.j
 import { nudgeLayers } from "../timeline/edit/transform.js";
 import { exitFullscreen } from "./fullscreen.js";
 import { canvasInput, canvasMenu, textEditor } from "./previewController.js";
-import { actions, documentStore, focusScopes } from "./services.js";
+import { actions, documentStore, focusScopes, sessionStore } from "./services.js";
 import { timelineView } from "./timelineController.js";
 import { setTracksFlag } from "./trackController.js";
 
@@ -30,7 +30,7 @@ function nudge(dx: number, dy: number): ActionRun {
     if (canvasInput.active) return true;
     const ids = selectedLayerIds();
     if (ids.length === 0) return false;
-    const command = nudgeLayers(documentStore.getState(), ids, dx, dy);
+    const command = nudgeLayers(documentStore.getState(), ids, dx, dy, sessionStore.state.getState().playhead);
     if (command) documentStore.dispatch(command);
     return true;
   };

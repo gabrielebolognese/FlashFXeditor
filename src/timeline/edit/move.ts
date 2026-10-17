@@ -13,7 +13,8 @@ import { defaultTrackIndex } from "../../core/commands/basicCommands.js";
 import type { Affect, Command } from "../../core/commands/command.js";
 import { emptyTrack, nextTrackName } from "../../core/document/project.js";
 import { framesToSourceUs } from "../../core/document/time.js";
-import { isFreeze, isMediaClip, type Clip, type ClipId, type Frame, type Keyframes, type Project, type Rational, type Track, type TrackId } from "../../core/document/types.js";
+import { sliceKeyframes } from "../../core/document/keyframes.js";
+import { isFreeze, isMediaClip, type Clip, type ClipId, type Frame, type Project, type Rational, type Track, type TrackId } from "../../core/document/types.js";
 import { cueSlice } from "../../text/captions.js";
 import { clipsOverlapping, firstEndingAfter, laneOf, laneTracks, trackIndex, type LaneKind, type TrackIndex } from "../model/queries.js";
 import { clampCueDelta } from "./captions.js";
@@ -138,22 +139,14 @@ export function mapLanes(tracks: readonly Track[], sourceTrackIds: Iterable<Trac
 
 // --- Clip pieces ---------------------------------------------------------------------------------
 
-function partitionKeyframes(keyframes: Keyframes, shift: Frame, lower: number, upper: number): Keyframes | undefined {
-  const result: Keyframes = {};
-  for (const [prop, list] of Object.entries(keyframes)) {
-    const kept = list.filter((key) => key.frame >= lower && key.frame < upper).map((key) => ({ ...key, frame: key.frame - shift }));
-    if (kept.length > 0) result[prop] = kept;
-  }
-  return Object.keys(result).length > 0 ? result : undefined;
-}
-
 /**
  * The part [from, to) of a clip, keeping its id (start <= from < to <= end). Media clips move their
  * source in/out by the frames cut at the clip's speed. Keyframes (relative to the clip start) are
- * partitioned by frame and re-based; an edge that did not move keeps the keyframes past it. A new
- * edge drops the fade and transition (and the text animation) of that side.
+ * partitioned and re-based so the part animates exactly as before (core/document/keyframes.ts
+ * `sliceKeyframes`: a key with the value at a new edge, or the key beyond it inside an eased
+ * segment); an edge that did not move keeps the keyframes past it. A new edge drops the fade and
+ * transition (and the text animation) of that side.
  * A cue keeps the part of its text and the word timings of its span (text/captions.ts `cueSlice`).
- * TODO(batch 35): a keyframe at each new edge with the eased value, so the kept part looks unchanged.
  */
 export function sliceClip(clip: Clip, from: Frame, to: Frame, fps: Rational): Clip {
   const end = clip.start + clip.duration;
@@ -169,8 +162,7 @@ export function sliceClip(clip: Clip, from: Frame, to: Frame, fps: Rational): Cl
     if (newOut) media.out = Math.min(clip.out, clip.in + framesToSourceUs(to - clip.start, clip.speed, fps));
   }
   if ("keyframes" in clip && clip.keyframes) {
-    const shift = from - clip.start;
-    const keyframes = partitionKeyframes(clip.keyframes, shift, newIn ? shift : -Infinity, newOut ? to - clip.start : Infinity);
+    const keyframes = sliceKeyframes(clip.keyframes, from - clip.start, to - clip.start, newIn, newOut);
     if (keyframes) piece.keyframes = keyframes;
     else delete piece.keyframes;
   }

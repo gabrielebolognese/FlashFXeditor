@@ -13,7 +13,7 @@ import { useDismiss } from "../../ui/useDismiss.js";
 import styles from "./TimelineToolbar.module.css";
 import { TOOLBAR_GROUPS, type ToolbarGroup, type ToolbarItem } from "./toolbarGroups.js";
 
-// Actions stay disabled until their batches wire them (toggles: 35/37).
+// Actions stay disabled until their batches wire them (the audio scrub toggle: 37).
 const ENABLED: ReadonlySet<string> = new Set([
   "timeline.zoomOut",
   "timeline.zoomIn",
@@ -28,6 +28,7 @@ const ENABLED: ReadonlySet<string> = new Set([
   "marker.add",
   "edit.freezeFrame",
   "edit.punchZoom",
+  "toggle.clipKeyframes",
   "add.title",
   "add.subtitle",
   "add.solid",
@@ -40,12 +41,13 @@ const ENABLED: ReadonlySet<string> = new Set([
  * subscribes to its own flag only (spec §6.17): toggling re-renders that button (a tool change, the
  * two tool buttons), nothing else, and no drag ever writes these flags (hold S inverts snapping
  * without touching the session).
- * TODO(batch 35): clip keyframes. TODO(batch 37): audio scrub.
+ * TODO(batch 37): audio scrub.
  */
 const TOGGLE_STATE: Readonly<Record<string, (state: SessionState) => boolean>> = {
   "toggle.snap": (state) => state.snap,
   "toggle.linkedSelection": (state) => state.linkedSelection,
   "toggle.rippleMode": (state) => state.ripple,
+  "toggle.clipKeyframes": (state) => state.clipKeyframes,
   "tool.select": (state) => state.activeTool === "select",
   "tool.razor": (state) => state.activeTool === "razor",
   "tool.hand": (state) => state.activeTool === "hand",

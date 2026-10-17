@@ -1,5 +1,6 @@
 // Document invariants (spec §5.2). The DocumentStore runs `assertValid` after every command in dev
 // builds; messages name the track and clip so a broken command is found at once.
+import { keyframeIssues } from "./keyframes.js";
 import { usPerFrame } from "./time.js";
 import { CAPTION_HIGHLIGHTS, isFreeze, isMediaClip, LABEL_COLORS, SOLID_SHAPE_IDS, type CaptionClip, type CaptionStyle, type Clip, type ClipId, type ClipKind, type MediaItem, type Project, type SolidClip, type TextClip, type TextStyle, type Track, type TrackId, type TrackKind } from "./types.js";
 
@@ -62,6 +63,8 @@ function clipIssues(project: Project, clip: Clip): string[] {
   if (clip.kind === "text") issues.push(...textIssues(clip, label));
   if (clip.kind === "caption") issues.push(...cueIssues(clip, label));
   if (clip.kind === "solid") issues.push(...solidIssues(clip, label));
+  // Keyframes (Batch 35): known properties, one key per integer frame in order, finite values, known eases.
+  if ("keyframes" in clip && clip.keyframes !== undefined) issues.push(...keyframeIssues(clip.keyframes).map((issue) => `${label}: ${issue}`));
   if (!isMediaClip(clip)) return issues;
 
   if (!Number.isInteger(clip.in) || !Number.isInteger(clip.out)) issues.push(`${label}: in/out must be integer microseconds`);

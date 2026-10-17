@@ -10,7 +10,8 @@
 // a media whose playback falls behind gets a proxy queued when it has no proxy decision yet.
 // Inline text editing (spec §7.7, `textEditor`): its textarea sits over the canvases; the preview and
 // the canvas show its draft over the other live values (`liveTexts`, `liveTransforms`).
-import type { ClipId, MediaId, Transform } from "../core/document/types.js";
+import { animatedTransform } from "../core/document/keyframes.js";
+import type { ClipId, Frame, MediaId, TextClip, Transform } from "../core/document/types.js";
 import { detectPlatform } from "../core/keyboard/keys.js";
 import { createStore } from "../core/store/createStore.js";
 import type { PreviewSession } from "../core/store/sessionStore.js";
@@ -42,6 +43,17 @@ import { toggleFullscreen } from "./fullscreen.js";
 import { liveEdit, setLiveCrops, type LiveEdit } from "./liveEdit.js";
 import { requestProxyIfUndecided } from "./mediaController.js";
 import { actions, audioClock, documentStore, focusScopes, fontLibrary, idleQueue, layoutStore, scheduler, sessionStore, themeBridge, workerPool } from "./services.js";
+
+/** The last keyed text transform made for the inline editor (one object per clip and frame: its draft memo keys on it). */
+let keyedMemo: { clip: TextClip; frame: Frame; transform: Transform } | null = null;
+
+/** `clip`'s transform at timeline `frame` (its own when unkeyed). */
+function keyedTransformAt(clip: TextClip, frame: Frame): Transform {
+  if (keyedMemo?.clip === clip && keyedMemo.frame === frame) return keyedMemo.transform;
+  const transform = animatedTransform(clip, frame - clip.start);
+  if (transform !== clip.transform) keyedMemo = { clip, frame, transform };
+  return transform;
+}
 import { timelineView } from "./timelineController.js";
 
 const MB = 1024 * 1024;
@@ -197,13 +209,13 @@ export const textEditor: InlineTextEditor = new InlineTextEditor({
   platform: detectPlatform(),
   placement: () => previewView.placement,
   textScale: () => previewView.textRenderScale,
-  // The clip as a Text field scrub shows it (the draft goes over it).
+  // The clip as a Text field scrub shows it (the draft goes over it), keyed at the playhead.
   shown: (clipId) => {
     const clip = documentStore.getState().clips[clipId];
     if (clip?.kind !== "text") return null;
     const live = liveEdit.getState();
     const text = live.texts?.get(clipId);
-    return { text: text?.text ?? clip.text, style: text?.style ?? clip.style, transform: live.transforms?.get(clipId) ?? clip.transform };
+    return { text: text?.text ?? clip.text, style: text?.style ?? clip.style, transform: live.transforms?.get(clipId) ?? keyedTransformAt(clip, sessionStore.state.getState().playhead) };
   },
   commit: (command) => documentStore.dispatch(command),
   keeps: keepsTextEditing,

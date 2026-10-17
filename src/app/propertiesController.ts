@@ -31,7 +31,7 @@ function selectedClips(): { ids: ClipId[]; primary: ClipId | null } {
 
 /** Fit, Fill, Center, Flip H / V or Reset on the selected layers (spec §7.2, §11): one undo step. */
 export function quickTransform(action: QuickTransform): void {
-  const command = quickTransforms(documentStore.getState(), selectedClips().ids, action);
+  const command = quickTransforms(documentStore.getState(), selectedClips().ids, action, sessionStore.state.getState().playhead);
   if (command) documentStore.dispatch(command);
 }
 

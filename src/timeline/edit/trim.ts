@@ -23,7 +23,8 @@
 import type { Draft } from "immer";
 import type { Command } from "../../core/commands/command.js";
 import { framesToSourceUs, usPerFrame } from "../../core/document/time.js";
-import { isFreeze, isMediaClip, type CaptionClip, type Clip, type ClipId, type Frame, type Keyframes, type MediaClip, type Project, type Rational, type TrackId } from "../../core/document/types.js";
+import { retimeKeyframes, shiftKeyframes } from "../../core/document/keyframes.js";
+import { isFreeze, isMediaClip, type CaptionClip, type Clip, type ClipId, type Frame, type MediaClip, type Project, type Rational, type TrackId } from "../../core/document/types.js";
 import { loopTimeUs } from "../../media/decode/animation.js";
 import { clipInIndex, isClipLocked, lastClipStartingBy, linkedPartners, trackIndex } from "../model/queries.js";
 
@@ -423,20 +424,6 @@ export function planEdit(project: Project, spec: EditSpec): TrimPlan {
   }
 }
 
-/** Keyframes (relative to the clip start) moved by `frames`; out-of-range keys are kept for a later trim back. */
-function shiftKeyframes(keyframes: Keyframes, frames: number): Keyframes {
-  const result: Keyframes = {};
-  for (const [prop, list] of Object.entries(keyframes)) result[prop] = list.map((key) => ({ ...key, frame: key.frame - frames }));
-  return result;
-}
-
-/** Keyframe frames scaled by `ratio` (a rate stretch or a speed change: proportional only, spec Batch 14). */
-export function scaleKeyframes(keyframes: Keyframes, ratio: number): Keyframes {
-  const result: Keyframes = {};
-  for (const [prop, list] of Object.entries(keyframes)) result[prop] = list.map((key) => ({ ...key, frame: Math.round(key.frame * ratio) }));
-  return result;
-}
-
 /** Fades never outlast the clip. */
 function clampFades(next: Clip & Record<string, unknown>, clip: Clip): void {
   if ("fades" in clip) next.fades = { in: Math.min(clip.fades.in, next.duration), out: Math.min(clip.fades.out, next.duration) };
@@ -507,8 +494,8 @@ function stretchedClip(clip: MediaClip, move: "stretchIn" | "stretchOut", delta:
   next.duration = duration;
   // The source frames played stay duration * speed: 100 frames at 1x stretched to 200 play at 0.5x.
   next.speed = (clip.speed * clip.duration) / duration;
-  // TODO(batch 35): keyframe-aware stretching (eases, holds); keys scale proportionally for now.
-  if (clip.keyframes) next.keyframes = scaleKeyframes(clip.keyframes, duration / clip.duration);
+  // Keys scale with the duration; keys landing on one frame merge, eases and holds stay (Batch 35).
+  if (clip.keyframes) next.keyframes = retimeKeyframes(clip.keyframes, duration / clip.duration);
   clampFades(next, clip);
   return next;
 }

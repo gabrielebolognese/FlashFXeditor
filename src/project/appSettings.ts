@@ -33,10 +33,11 @@ export interface AppSettings {
   /** Punch zoom (Shift+Z): the scale factor of the right piece (PUNCH_ZOOM_MIN..PUNCH_ZOOM_MAX). */
   punchZoomScale: number;
   /**
-   * Reserved: punch zoom as an animated zoom (scale keyframes) instead of a cut-in. Off, and read by
-   * nothing until keyframes exist. TODO(batch 35): the animated punch zoom.
+   * Punch zoom as an animated zoom (Batch 35: scale keyframes over 6 frames with ease out) instead of
+   * a cut-in; on by default. Named `punchZoomAnimated` (reserved, off) before Batch 35: that stored
+   * value is dropped, so the new default applies. TODO(batch 42): the switch in the settings panel.
    */
-  punchZoomAnimated: boolean;
+  punchZoomAnimate: boolean;
   /** The font picker's Favorites section (spec §11): family names, in the order starred. */
   favoriteFonts: readonly string[];
   /**
@@ -71,7 +72,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   proxyShortEdge: DEFAULT_PROXY_SHORT_EDGE,
   recentColors: [],
   punchZoomScale: 1.2,
-  punchZoomAnimated: false,
+  punchZoomAnimate: true,
   favoriteFonts: [],
   matchClipUnderPlayhead: true,
   defaultTitlePreset: STARTER_TITLE_ID,
@@ -125,7 +126,7 @@ function sanitize(value: unknown, fallback: AppSettings = DEFAULT_APP_SETTINGS):
       : fallback.recentColors,
     punchZoomScale:
       typeof raw.punchZoomScale === "number" && Number.isFinite(raw.punchZoomScale) ? Math.min(PUNCH_ZOOM_MAX, Math.max(PUNCH_ZOOM_MIN, raw.punchZoomScale)) : fallback.punchZoomScale,
-    punchZoomAnimated: typeof raw.punchZoomAnimated === "boolean" ? raw.punchZoomAnimated : fallback.punchZoomAnimated,
+    punchZoomAnimate: typeof raw.punchZoomAnimate === "boolean" ? raw.punchZoomAnimate : fallback.punchZoomAnimate,
     favoriteFonts: Array.isArray(raw.favoriteFonts)
       ? [...new Set(raw.favoriteFonts.filter((name): name is string => typeof name === "string" && name !== ""))].slice(-MAX_FAVORITE_FONTS)
       : fallback.favoriteFonts,

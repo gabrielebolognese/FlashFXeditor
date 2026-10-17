@@ -24,10 +24,11 @@
 // Freeze frames, images, text, solids and captions have no speed. Locked clips never change. Each call
 // is one command (one undo step).
 import type { Command } from "../../core/commands/command.js";
+import { retimeKeyframes } from "../../core/document/keyframes.js";
 import { framesToSourceUs, usPerFrame } from "../../core/document/time.js";
 import { isMediaClip, type Clip, type ClipId, type MediaClip, type Project } from "../../core/document/types.js";
 import { isClipLocked, lastClipStartingBy, linkedPartners, trackIndex, trackOf } from "../model/queries.js";
-import { applyTrim, editCommand, hasSource, maxDurationFrames, MAX_SPEED, MIN_SPEED, planStretch, planTrim, resolveTrim, scaleKeyframes, type TrimLimit } from "./trim.js";
+import { applyTrim, editCommand, hasSource, maxDurationFrames, MAX_SPEED, MIN_SPEED, planStretch, planTrim, resolveTrim, type TrimLimit } from "./trim.js";
 
 export interface SpeedOptions {
   /** The duration follows the speed (spec §11 "duration link"); off, the duration stays and the source range follows. */
@@ -155,8 +156,8 @@ function retimeGroup(project: Project, group: readonly MediaClip[], speed: numbe
     // keeps it within the media.
     const out = clip.in + framesToSourceUs(duration, speed, fps);
     const next: MediaClip = { ...clip, speed, duration, out };
-    // TODO(batch 35): keyframe-aware retiming (eases, holds); keys scale with the duration for now.
-    if (clip.keyframes && duration !== clip.duration) next.keyframes = scaleKeyframes(clip.keyframes, duration / clip.duration);
+    // Keys scale with the duration; keys landing on one frame merge, eases and holds stay (Batch 35).
+    if (clip.keyframes && duration !== clip.duration) next.keyframes = retimeKeyframes(clip.keyframes, duration / clip.duration);
     next.fades = { in: Math.min(clip.fades.in, duration), out: Math.min(clip.fades.out, duration) };
     // TODO(batch 36): shorten the transitions to the handles left.
     changes.set(clip.id, next);

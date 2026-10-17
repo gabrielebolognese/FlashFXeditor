@@ -1,5 +1,7 @@
 // Project settings commands (spec §11 Project section). Undoable like any other document change.
-import type { Clip, Project, Rational, RGBA, Transform } from "../document/types.js";
+import { current, type Draft } from "immer";
+import { mapKeyValues } from "../document/keyframes.js";
+import type { Clip, Keyframes, Project, Rational, RGBA, Transform } from "../document/types.js";
 import type { Command } from "./command.js";
 
 export const MAX_PROJECT_NAME = 120;
@@ -52,8 +54,9 @@ export function scaledTransform(transform: Transform, from: { width: number; hei
 
 /**
  * New frame size, even and in range. With `scaleLayout` the clips' transforms follow the frame
- * (`scaledTransform`; locked tracks too: the frame changes under them), else they are kept.
- * TODO(batch 42): the "Scale layout" / "Keep" choice of §15. TODO(batch 35): position and scale keyframes.
+ * (`scaledTransform`; locked tracks too: the frame changes under them), their position and scale keys
+ * too (Batch 35), else they are kept.
+ * TODO(batch 42): the "Scale layout" / "Keep" choice of §15.
  */
 export function setResolution(width: number, height: number, options: { scaleLayout?: boolean } = {}): Command {
   const w = clampDimension(width);
@@ -68,7 +71,14 @@ export function setResolution(width: number, height: number, options: { scaleLay
       draft.settings.height = h;
       if (!options.scaleLayout || (from.width === w && from.height === h)) return;
       for (const clip of Object.values(draft.clips)) {
-        if (hasLayout(clip)) clip.transform = scaledTransform(clip.transform, from, { width: w, height: h });
+        if (!hasLayout(clip)) continue;
+        clip.transform = scaledTransform(clip.transform, from, { width: w, height: h });
+        if ("keyframes" in clip && clip.keyframes) {
+          const kx = w / from.width;
+          const ky = h / from.height;
+          const k = Math.min(kx, ky);
+          clip.keyframes = mapKeyValues(current(clip.keyframes) as Keyframes, { "transform.x": (x) => x * kx, "transform.y": (y) => y * ky, "transform.scale": (s) => s * k, "transform.scaleY": (s) => s * k }) as Draft<Keyframes>;
+        }
       }
     },
   };

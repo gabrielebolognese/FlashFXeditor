@@ -3,8 +3,11 @@
 // subscribers. Splitter positions stay in layoutStore and track heights in the document (Track.height).
 // A selected edit point and a selected gap (spec §6.7) and a selected timeline marker (§6.3) have
 // channels of their own too: they are not clip selections (§3.3 fixes the selection kinds), they are
-// never persisted, and selecting one of the four clears the other three.
+// never persisted, and selecting one of the four clears the other three. Selected keyframes (spec
+// §6.4, Batch 35) have a channel too: they belong to one selected clip and go when it leaves the
+// clip selection.
 import type { TimecodeMode } from "../document/time.js";
+import type { KeyframeSection } from "../document/keyframes.js";
 import type { ClipId, Frame, MediaId, TrackId, Us } from "../document/types.js";
 import { createStore, type Store } from "./createStore.js";
 import { EMPTY_SELECTION, selectionEquals, type Selection } from "./selection.js";
@@ -78,6 +81,10 @@ export interface SessionState {
   sourceRanges: Readonly<Record<MediaId, SourceRange>>;
   /** Properties panel sections by id; true = collapsed. */
   collapsedSections: Record<string, boolean>;
+  /** Show clip keyframes (spec §6.4, toolbar toggle): the keyframe lane on selected clips and on L tracks. */
+  clipKeyframes: boolean;
+  /** The section each clip's lane shows (spec §6.4 "chosen property", clip menu); Transform when absent. */
+  keyframeLanes: Readonly<Record<ClipId, KeyframeSection>>;
 }
 
 export const DEFAULT_SESSION: SessionState = {
@@ -110,6 +117,8 @@ export const DEFAULT_SESSION: SessionState = {
   mediaPanel: { tab: "media", view: "grid", sort: "date", descending: false, presetScope: "global" },
   sourceRanges: {},
   collapsedSections: {},
+  clipKeyframes: false,
+  keyframeLanes: {},
 };
 
 /**
@@ -129,6 +138,13 @@ export interface GapSelection {
   end: Frame;
 }
 
+/** Selected keyframes (spec §6.4): frames (relative to the clip start) of one section of one clip's lane. */
+export interface KeyframeSelection {
+  clipId: ClipId;
+  section: KeyframeSection;
+  frames: readonly Frame[];
+}
+
 export interface SessionStore {
   /** Everything in §5.3 except the selection. */
   state: Store<SessionState>;
@@ -139,6 +155,8 @@ export interface SessionStore {
   gap: Store<GapSelection | null>;
   /** The id of the selected timeline marker (spec §6.3: the properties panel shows it), or null. */
   marker: Store<string | null>;
+  /** The selected keyframes (Batch 35), or null. */
+  keyframes: Store<KeyframeSelection | null>;
 }
 
 export function createSessionStore(initial: Partial<SessionState> = {}): SessionStore {
@@ -148,6 +166,7 @@ export function createSessionStore(initial: Partial<SessionState> = {}): Session
     editPoint: createStore<EditPoint | null>(null),
     gap: createStore<GapSelection | null>(null),
     marker: createStore<string | null>(null),
+    keyframes: createStore<KeyframeSelection | null>(null),
   };
 }
 
@@ -174,13 +193,18 @@ export function setSourceRange(session: SessionStore, mediaId: MediaId, range: S
   });
 }
 
-/** Replaces the selection (selecting clips drops a selected edit point, gap or marker). No notification when it is equal to the current one. */
+/**
+ * Replaces the selection (selecting clips drops a selected edit point, gap or marker; selected
+ * keyframes go with their clip). No notification when it is equal to the current one.
+ */
 export function setSelection(session: SessionStore, next: Selection): void {
   if (next.kind !== "none") {
     selectEditPoint(session, null);
     selectGap(session, null);
     selectMarker(session, null);
   }
+  const keys = session.keyframes.getState();
+  if (keys && (next.kind !== "clips" || !next.clipIds.has(keys.clipId))) session.keyframes.set(null);
   if (selectionEquals(session.selection.getState(), next)) return;
   session.selection.set(next);
 }
@@ -218,6 +242,19 @@ export function selectMarker(session: SessionStore, markerId: string | null): vo
     selectGap(session, null);
   }
   session.marker.set(markerId);
+}
+
+/** Selects keyframes of one clip's lane (null: none). No notification when it does not change. */
+export function selectKeyframes(session: SessionStore, next: KeyframeSelection | null): void {
+  const current = session.keyframes.getState();
+  if (current === next) return;
+  if (current && next && current.clipId === next.clipId && current.section === next.section && current.frames.length === next.frames.length && current.frames.every((frame, i) => frame === next.frames[i])) return;
+  session.keyframes.set(next ? { clipId: next.clipId, section: next.section, frames: [...next.frames].sort((a, b) => a - b) } : null);
+}
+
+/** The section `clipId`'s keyframe lane shows (Transform unless chosen). */
+export function laneSection(state: Pick<SessionState, "keyframeLanes">, clipId: ClipId): KeyframeSection {
+  return state.keyframeLanes[clipId] ?? "transform";
 }
 
 /** Collapses or expands a properties panel section (spec §11: "collapsible, state persisted"). No notification when it does not change. */

@@ -1,8 +1,12 @@
 import { useCallback } from "react";
 import { closeContextMenu, setLabelColor, timelineMenu } from "../../app/cutController.js";
 import { addMarkerAt } from "../../app/markerController.js";
+import { keyframeClipboard, PANEL_SECTIONS } from "../../app/keyframeController.js";
 import { actions, documentStore, sessionStore } from "../../app/services.js";
-import type { ClipId, LabelColor, Project, Track } from "../../core/document/types.js";
+import { EASE_LABELS, SECTION_LABELS, sectionEaseAt, type KeyframeSection } from "../../core/document/keyframes.js";
+import { laneSection } from "../../core/store/sessionStore.js";
+import { keyable } from "../edit/keyframes.js";
+import { EASE_IDS, type ClipId, type Frame, type LabelColor, type Project, type Track } from "../../core/document/types.js";
 import { useStoreSelector } from "../../core/store/useStoreSelector.js";
 import { ContextMenu, type ContextMenuEntry } from "../../ui/ContextMenu.js";
 import { selectionSpan } from "../model/inOut.js";
@@ -10,10 +14,12 @@ import { linkOffset, neighbors } from "../model/queries.js";
 import type { ContextMenuRequest } from "../view/TimelineView.js";
 import { labelSwatches } from "./labelSwatches.js";
 
-// The timeline's right-click menus (spec §6.16): clip, gap, track header and ruler/marker. Rows
-// dispatch command ids (the same as the keys and the toolbar); the label swatches set the selected
-// clips' label color. Rendered only while a menu is open (a right-click is not a P1 interaction).
-// "Speed..." opens the Speed section on its field; Reverse is not built, so it has no row (Batch 27).
+// The timeline's right-click menus (spec §6.16): clip, gap, track header, ruler/marker and keyframe
+// (spec §6.15, Batch 35: easing, delete, copy/paste keyframes). Rows dispatch command ids (the same as
+// the keys and the toolbar); the label swatches set the selected clips' label color. Rendered only
+// while a menu is open (a right-click is not a P1 interaction). "Speed..." opens the Speed section on
+// its field; Reverse is not built, so it has no row (Batch 27). "Show keyframes for" lists the
+// sections a clip's lane can show (the menu has no submenus: a heading and one row per section).
 // TODO(batch 36): fades and transitions; TODO(batch 39): Duplicate; TODO(batch 41): Reveal in media panel.
 
 const SWATCH_PREFIX = "label:";
@@ -59,6 +65,33 @@ function cueEntries(project: Project, clipId: ClipId): ContextMenuEntry[] {
   return [{ kind: "item", id: "caption.mergePrevious", label: "Merge with previous cue", disabled: neighbors(project, clipId).prev === null }];
 }
 
+/** "Show keyframes for" (spec §6.16, §6.4): the section the clip's lane shows, for clips with a lane (layers). */
+function laneEntries(project: Project, clipId: ClipId): ContextMenuEntry[] {
+  const clip = project.clips[clipId];
+  if (!clip || !keyable(clip, "transform")) return [];
+  const shown = laneSection(sessionStore.state.getState(), clipId);
+  return [
+    { kind: "separator" },
+    { kind: "heading", label: "Show keyframes for" },
+    ...PANEL_SECTIONS.map((section) => ({ kind: "item" as const, id: `keyframes.lane.${section}`, label: SECTION_LABELS[section], active: shown === section })),
+  ];
+}
+
+/** The keyframe menu (spec §6.15): easing of the selected keys (the clicked one's checked), delete, copy, paste. */
+function keyframeEntries(project: Project, clipId: ClipId, section: KeyframeSection, frame: Frame): ContextMenuEntry[] {
+  const clip = project.clips[clipId];
+  const current = clip && "keyframes" in clip ? sectionEaseAt(clip.keyframes, section, frame) : null;
+  const count = sessionStore.keyframes.getState()?.frames.length ?? 1;
+  return [
+    { kind: "heading", label: "Easing" },
+    ...EASE_IDS.map((ease) => ({ kind: "item" as const, id: `keyframe.ease.${ease}`, label: EASE_LABELS[ease], active: current === ease })),
+    { kind: "separator" },
+    { kind: "item", id: "keyframe.delete", label: count === 1 ? "Delete keyframe" : "Delete keyframes", commandId: "edit.delete" },
+    { kind: "item", id: "keyframe.copy", label: count === 1 ? "Copy keyframe" : "Copy keyframes" },
+    { kind: "item", id: "keyframe.paste", label: "Paste keyframes", disabled: keyframeClipboard.getState()?.section !== section },
+  ];
+}
+
 function clipEntries(project: Project, clipId: ClipId, current: LabelColor | null): ContextMenuEntry[] {
   return [
     // TODO(batch 39): clipboard.
@@ -77,6 +110,7 @@ function clipEntries(project: Project, clipId: ClipId, current: LabelColor | nul
     { kind: "swatches", id: "labels", label: "Label", swatches: labelSwatches(current, { prefix: SWATCH_PREFIX, removable: true }) },
     { kind: "separator" },
     ...(project.clips[clipId]?.kind === "caption" ? cueEntries(project, clipId) : speedEntries(project, clipId)),
+    ...laneEntries(project, clipId),
   ];
 }
 
@@ -106,6 +140,8 @@ function entriesOf(menu: ContextMenuRequest, project: Project): readonly Context
     }
     case "ruler":
       return rulerEntries(project, menu.markerId);
+    case "keyframe":
+      return keyframeEntries(project, menu.clipId, menu.section, menu.frame);
   }
 }
 

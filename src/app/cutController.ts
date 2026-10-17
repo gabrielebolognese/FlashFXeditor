@@ -15,6 +15,7 @@ import { clipsToSplit, selectionAfterSplit, splitClips, type SplitScope } from "
 import { gapAt, isClipLocked } from "../timeline/model/queries.js";
 import type { ContextMenuRequest, RazorRequest } from "../timeline/view/TimelineView.js";
 import { showToast } from "../ui/toasts.js";
+import { deleteSelectedKeys } from "./keyframeController.js";
 import { deleteSelectedMarker } from "./markerController.js";
 import { requestRemove, startRename } from "./mediaController.js";
 import { actions, documentStore, focusScopes, sessionStore } from "./services.js";
@@ -105,10 +106,11 @@ const compactTrackAction: ActionRun = () => {
 
 /**
  * `Delete` / `Backspace` and `Shift+Delete` (spec §6.11): the selected clips and their linked
- * partners go, leaving gaps or (ripple) closing them; a selected gap closes (spec §6.7).
- * TODO(batch 35): with keyframes selected, delete only the keyframes.
+ * partners go, leaving gaps or (ripple) closing them; a selected gap closes (spec §6.7). With keys
+ * selected on a keyframe lane, only those keys go (Batch 35).
  */
 function deleteSelection(ripple: boolean): void {
+  if (deleteSelectedKeys()) return;
   if (sessionStore.gap.getState()) {
     closeGapAction(null);
     return;

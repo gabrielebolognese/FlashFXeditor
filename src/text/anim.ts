@@ -15,12 +15,17 @@
 //   (render/text/animUnits.ts), so the glyphs stay exactly the static text's.
 // - Presets store animations in milliseconds (`PresetTextAnim`: presets cross frame rates); clips in
 //   frames.
+import { ease, EASE_LABELS } from "../core/document/keyframes.js";
 import { frameToUs, usToFrame } from "../core/document/time.js";
-import { TEXT_ANIM_IDS, type Frame, type PresetTextAnim, type Rational, type TextAnim, type TextAnimId, type TextAnimUnit } from "../core/document/types.js";
+import { TEXT_ANIM_IDS, type EaseId, type Frame, type PresetTextAnim, type Rational, type TextAnim, type TextAnimId, type TextAnimUnit } from "../core/document/types.js";
 
-/** The easing curves of text animations (spec §10.4 `ease`). TODO(batch 35): shared with keyframes. */
-export const TEXT_EASES = ["linear", "easeIn", "easeOut", "easeInOut"] as const;
+/**
+ * The easing curves text animations offer (spec §10.4 `ease`): the first four of the shared list
+ * (`EASE_IDS`, curves in core/document/keyframes.ts `ease`, Batch 35).
+ */
+export const TEXT_EASES = ["linear", "easeIn", "easeOut", "easeInOut"] as const satisfies readonly EaseId[];
 export type TextEase = (typeof TEXT_EASES)[number];
+export { ease, EASE_LABELS };
 
 export type AnimUnitKind = "block" | TextAnimUnit;
 export type AnimPhase = "in" | "out";
@@ -50,7 +55,6 @@ export const TEXT_ANIMS: Record<TextAnimId, AnimInfo> = {
   scaleBounce: { label: "Bounce", unit: "block", ease: "linear", seconds: 0.8 },
 };
 
-export const EASE_LABELS: Record<TextEase, string> = { linear: "Linear", easeIn: "Ease in", easeOut: "Ease out", easeInOut: "Ease in-out" };
 
 /** Longest animation and stagger a field takes (seconds). */
 export const MAX_ANIM_SECONDS = 10;
@@ -95,20 +99,6 @@ export function animEase(anim: Pick<TextAnim, "id" | "ease">, phase: AnimPhase):
   if (isEase(anim.ease)) return anim.ease;
   const own = TEXT_ANIMS[anim.id].ease;
   return phase === "out" && own === "easeOut" ? "easeIn" : own;
-}
-
-export function ease(curve: TextEase, t: number): number {
-  const x = clamp01(t);
-  switch (curve) {
-    case "linear":
-      return x;
-    case "easeIn":
-      return x * x * x;
-    case "easeOut":
-      return 1 - (1 - x) ** 3;
-    case "easeInOut":
-      return x < 0.5 ? 4 * x * x * x : 1 - (-2 * x + 2) ** 3 / 2;
-  }
 }
 
 /** Frames `anim` plays over in a clip of `clipDuration` frames: at most half the clip; 0 when it cannot play. */

@@ -18,7 +18,7 @@ import { emptyTrack, nextTrackName } from "../../core/document/project.js";
 import { secondsToFrames } from "../../core/document/time.js";
 import type { ClipId, Frame, Project, SolidClip, SolidShape, Track, Transform } from "../../core/document/types.js";
 import { clipsInRange, isClipLocked } from "../model/queries.js";
-import { IDENTITY_TRANSFORM, normalizeTransform, sameTransform } from "./transform.js";
+import { applyTransformWrite, IDENTITY_TRANSFORM, transformWrite, type TransformWrite } from "./transform.js";
 
 /** The length of a new solid (spec §6.14 gives images 5 s; solids take the same). */
 export const SOLID_SECONDS = 5;
@@ -146,10 +146,11 @@ function cleanLook(look: SolidLook): SolidLook {
 
 /**
  * `edits` (new looks and transforms by clip id) as one command `clip.solid`, or null when nothing
- * changes. Sizes and the radius are whole px within SOLID_LIMITS.
+ * changes. Sizes and the radius are whole px within SOLID_LIMITS. A transform given with `at` (the
+ * playhead) goes to the keys there when the solid's Transform section is keyed (Batch 35).
  */
-export function setSolids(project: Project, edits: ReadonlyMap<ClipId, SolidEdit>, options: { label: string; coalesceKey?: string }): Command | null {
-  const writes: [ClipId, SolidLook, Transform][] = [];
+export function setSolids(project: Project, edits: ReadonlyMap<ClipId, SolidEdit>, options: { label: string; coalesceKey?: string; at?: Frame }): Command | null {
+  const writes: [ClipId, SolidLook, TransformWrite | null][] = [];
   let timeline = false;
   for (const [id, edit] of edits) {
     const clip = project.clips[id];
@@ -158,11 +159,11 @@ export function setSolids(project: Project, edits: ReadonlyMap<ClipId, SolidEdit
     const merged = { ...solidLook(clip), ...patch };
     if (!validSize(merged.size) || !Number.isFinite(merged.cornerRadius)) continue;
     const look = cleanLook(merged);
-    const transform = moved ? normalizeTransform(moved) : clip.transform;
-    if (sameJson(solidLook(clip), look) && sameTransform(clip.transform, transform)) continue;
-    // The timeline's swatch shows the shape and the fill.
-    if (look.shape !== clip.shape || !sameJson(look.fill, clip.fill)) timeline = true;
-    writes.push([id, look, transform]);
+    const write = moved ? transformWrite(clip, moved, options.at) : null;
+    if (sameJson(solidLook(clip), look) && !write) continue;
+    // The timeline's swatch shows the shape and the fill (and the lane its keys).
+    if (look.shape !== clip.shape || !sameJson(look.fill, clip.fill) || (write && "keyframes" in write)) timeline = true;
+    writes.push([id, look, write]);
   }
   if (writes.length === 0) return null;
   return {
@@ -171,13 +172,13 @@ export function setSolids(project: Project, edits: ReadonlyMap<ClipId, SolidEdit
     ...(options.coalesceKey !== undefined && { coalesceKey: options.coalesceKey }),
     affects: timeline ? ["composite", "clips"] : ["composite"],
     run(draft) {
-      for (const [id, look, transform] of writes) {
+      for (const [id, look, write] of writes) {
         const clip = draft.clips[id] as Draft<SolidClip>;
         clip.shape = look.shape;
         clip.fill = structuredClone(look.fill);
         clip.size = { ...look.size };
         clip.cornerRadius = look.cornerRadius;
-        clip.transform = structuredClone(transform);
+        if (write) applyTransformWrite(clip, write);
       }
     },
   };

@@ -3,12 +3,16 @@
 // the ruler with its markers (the triangles at its bottom), the in/out handles (in its upper part) and
 // the playhead head, track headers (and the "+ track" rows), the junction band on a cut between
 // abutting clips, the trim zones of clip edges, clip bodies, gaps (the empty span before a clip on an
-// unlocked track), the scrollbars (their thumbs, zoom handles and troughs) and empty space; the other
-// types are declared for the batches that draw them. The active tool decides what a hit does (the view).
+// unlocked track), the scrollbars (their thumbs, zoom handles and troughs), the diamonds of a clip's
+// keyframe lane (Batch 35: before the trim zones; a point elsewhere in the lane band is a clip hit with
+// its `lane` set, for Alt+click) and empty space; the other types are declared for the batches that
+// draw them. The active tool decides what a hit does (the view).
+import type { KeyframeSection } from "../../core/document/keyframes.js";
 import type { ClipId, Frame, Marker, Project, TrackId, TrackKind } from "../../core/document/types.js";
 import type { InOut } from "../model/inOut.js";
 import { clipAtFrame, gapAt, neighbors, type Gap } from "../model/queries.js";
-import { contains, type HeaderToggle, type TimelineGeometry } from "./geometry.js";
+import { contains, type HeaderToggle, type Row, type TimelineGeometry } from "./geometry.js";
+import { diamondAt, laneFrames, shownLane, type LaneScene } from "./keyframeLane.js";
 import { scrollbarAt, type ScrollbarHit, type ScrollbarLayout } from "./scrollbars.js";
 
 export type HitType =
@@ -17,7 +21,7 @@ export type HitType =
   | "clipEdgeIn"
   | "clipEdgeOut"
   | "junction"
-  // TODO(batch 36): fade handles; TODO(batch 35): keyframes; TODO(batch 37): rubber band.
+  // TODO(batch 36): fade handles; keyframe lane diamonds (Batch 35); TODO(batch 37): rubber band.
   | "fadeHandle"
   | "keyframe"
   | "rubberBand"
@@ -56,6 +60,10 @@ export interface HitResult {
   scrollbar: ScrollbarHit | null;
   /** `marker`: the marker's id. */
   markerId: string | null;
+  /** `keyframe`: the key under the point (its frame relative to the clip). */
+  keyframe: { section: KeyframeSection; frame: Frame } | null;
+  /** A clip hit inside the band of the clip's keyframe lane: the lane's section (Alt+click adds a key). */
+  lane: KeyframeSection | null;
 }
 
 /** A cut between two abutting clips on a track (spec §6.10: the roll zone). */
@@ -82,6 +90,8 @@ export interface HitSource {
   /** The in/out range, and the width of the zone centered on a point that grabs it (none: no handle hits). */
   inOut?(): InOut;
   handleZone?: number;
+  /** Keyframe lanes (Batch 35): what they show, whether a clip is selected, a row's lane band, the diamond's size (none: no lane hits). */
+  keyframes?: { scene(): LaneScene | null; selected(clipId: ClipId): boolean; band(row: Row): { y: number; height: number }; size: number; inset: number };
 }
 
 /** Extra CSS px on each side of the playhead head (and around a marker) that still grab it. */
@@ -105,7 +115,7 @@ export class HitTester {
   hit(x: number, y: number): HitResult {
     const geometry = this.source.geometry();
     const frame = geometry.xToFrame(x);
-    const result: HitResult = { type: "empty", frame, trackId: null, clipId: null, addTrack: null, toggle: null, junction: null, gap: null, scrollbar: null, markerId: null };
+    const result: HitResult = { type: "empty", frame, trackId: null, clipId: null, addTrack: null, toggle: null, junction: null, gap: null, scrollbar: null, markerId: null, keyframe: null, lane: null };
     if (x < 0 || y < 0 || x >= geometry.width || y >= geometry.height) return result;
 
     const { area } = geometry;
@@ -170,7 +180,26 @@ export class HitTester {
     }
     result.type = "clip";
     result.clipId = clip.id;
+    if (this.laneAt(result, project, row, geometry, x, y)) return result;
     return this.clipZones(result, project, row.index, geometry, x);
+  }
+
+  /** A point in the clip's keyframe lane band: a diamond (true: the hit is final), else the lane noted on the clip hit. Unlocked tracks only. */
+  private laneAt(result: HitResult, project: Project, row: Row, geometry: TimelineGeometry, x: number, y: number): boolean {
+    const lanes = this.source.keyframes;
+    const clip = project.clips[result.clipId as ClipId];
+    const track = project.tracks[row.index];
+    if (!lanes || !clip || !track || track.locked) return false;
+    const section = shownLane(lanes.scene(), clip, track, lanes.selected(clip.id));
+    if (!section) return false;
+    const band = lanes.band(row);
+    if (y < band.y || y >= band.y + band.height) return false;
+    result.lane = section;
+    const frame = diamondAt(geometry, clip, laneFrames(clip, section), x, lanes.size, HEAD_SLOP, lanes.inset);
+    if (frame === null) return false;
+    result.type = "keyframe";
+    result.keyframe = { section, frame };
+    return true;
   }
 
   /** The marker under a ruler point: within its triangle's width (and the slop) in the band at the ruler's bottom; the nearest, the later one on a tie (drawn on top). */

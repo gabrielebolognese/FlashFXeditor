@@ -108,6 +108,14 @@ describe("session file", () => {
     expect(parseSessionFile(serializeSession({ ...defaultSessionFile(), state: { ...defaultSessionFile().state, sourceRanges: { a: sourceRanges.a } } })).state.sourceRanges).toEqual({ a: sourceRanges.a });
   });
 
+  it("keeps Show clip keyframes and the known keyframe lane sections (Batch 35)", () => {
+    const keyframeLanes = { a: "opacity", b: "transform", c: "scale", d: 3 };
+    const { state } = parseSessionFile(JSON.stringify({ version: 1, state: { clipKeyframes: true, keyframeLanes } }));
+    expect(state.clipKeyframes).toBe(true);
+    expect(state.keyframeLanes).toEqual({ a: "opacity", b: "transform" });
+    expect(parseSessionFile(JSON.stringify({ version: 1, state: { clipKeyframes: "yes" } })).state).toMatchObject({ clipKeyframes: false, keyframeLanes: {} });
+  });
+
   it("turns a clips selection without ids into no selection", () => {
     const text = JSON.stringify({ version: 1, selection: { clipIds: [], primary: null, kind: "clips" } });
     expect(parseSessionFile(text).selection).toEqual({ clipIds: [], primary: null, kind: "none" });

@@ -4,7 +4,8 @@
 // (muted, hidden, not soloed) are dimmed. Clip bodies (§6.4) at M/L heights: filmstrips of videos,
 // posters of images (an animation's frames, Batch 34), waveforms of audio, the text of text and caption
 // clips, a swatch of the shape and fill for solids;
-// what is not loaded yet is the body color, and the pass records it in `wants` for the loaders.
+// what is not loaded yet is the body color, and the pass records it in `wants` for the loaders. With
+// Show clip keyframes on, keyframe lanes cross the bottom of the bodies (keyframeLane.ts, Batch 35).
 // Redrawn only when the document, the selection, the zoom/scroll, the size, the theme or the loaded
 // visuals change, never for the playhead. Clips are virtualized per track (binary search on start with
 // a longest-clip lookback, P10). The scrollbars (spec §6.1) close the bottom and right edges.
@@ -25,6 +26,7 @@ import { columnPeaks, peaksLevel, planFilmstrip, tileThumb, wantPeaks, wantSheet
 import type { HeaderToggle, Rect, Row, TimelineGeometry } from "./geometry.js";
 import { CLIP_GLYPHS, drawGlyph, TRACK_GLYPHS, type GlyphName } from "./glyphs.js";
 import { drawScrollbars } from "./drawScrollbars.js";
+import { drawLane, laneFrames, shownLane, type LaneScene } from "./keyframeLane.js";
 import { layoutRuler } from "./ruler.js";
 import type { ScrollbarLayout } from "./scrollbars.js";
 import type { TextCache } from "./textCache.js";
@@ -49,6 +51,8 @@ export interface ContentScene {
   hiddenMarker?: string | null;
   /** Which font families are missing (text clips get a badge, spec §10.1). */
   fonts?: TimelineFonts | null;
+  /** Keyframe lanes (spec §6.4, Batch 35): shown, their sections and the selected keys; none: no lanes. */
+  lanes?: LaneScene | null;
 }
 
 export interface TimelineFonts {
@@ -56,7 +60,7 @@ export interface TimelineFonts {
 }
 
 /** What drawing a clip needs (the overlay's trim preview draws clips too, from what is loaded). */
-export type ClipScene = Pick<ContentScene, "ctx" | "dpr" | "geometry" | "theme" | "selection" | "text" | "visuals" | "wants" | "fonts"> & { project: Pick<Project, "settings"> };
+export type ClipScene = Pick<ContentScene, "ctx" | "dpr" | "geometry" | "theme" | "selection" | "text" | "visuals" | "wants" | "fonts" | "lanes"> & { project: Pick<Project, "settings"> };
 
 export interface ContentStats {
   /** Clips drawn in this pass (the visible ones). */
@@ -246,6 +250,13 @@ export function drawClip(scene: ClipScene, clip: Clip, row: Row, track: Track, a
     ctx.fillRect(x, y, width, height);
   }
   if (lod === "full") drawLabel(scene, clip, x, y, width, labelHeight, syncOffset);
+  // The keyframe lane (spec §6.4) across the bottom of the body, its selected keys in the accent.
+  const lane = labelHeight < height ? shownLane(scene.lanes, clip, track, selected) : null;
+  if (lane) {
+    const keys = scene.lanes?.selected;
+    const chosen = keys && keys.clipId === clip.id && keys.section === lane ? new Set(keys.frames) : NO_FRAMES;
+    drawLane(ctx, dpr, geometry, theme, clip, row, Math.max(x, geometry.area.x), Math.min(x + width, geometry.area.x + geometry.area.width), { frames: laneFrames(clip, lane), selected: chosen });
+  }
   ctx.restore();
 
   if (selected) {
@@ -257,6 +268,8 @@ export function drawClip(scene: ClipScene, clip: Clip, row: Row, track: Track, a
     ctx.stroke();
   }
 }
+
+const NO_FRAMES: ReadonlySet<Frame> = new Set();
 
 /** Peaks of the waveform columns being drawn (reused: no allocation per pass). */
 let columns = new Float32Array(1024);

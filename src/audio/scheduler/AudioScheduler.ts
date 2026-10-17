@@ -7,8 +7,9 @@
 //   become context times through `AudioClock.contextTime`.
 // - Voices: one AudioBufferSourceNode per (clip, segment, loop pass), started when its start comes
 //   within AHEAD_SECONDS (checked every STEP_SECONDS) and stopped at the clip's end: source -> envelope
-//   GainNode (start/stop ramps) -> clip GainNode (gain dB, mute; TODO(batch 37): fades, keyframes and
-//   rubber bands as gain curves per scheduled chunk) -> track GainNode (mute/solo) -> mix bus.
+//   GainNode (start/stop ramps) -> clip GainNode (gain dB, mute; TODO(batch 37): fades, keyframes (the
+//   keyed gain is `gainDbAt` in core/document/keyframes.ts, Batch 35) and rubber bands as gain curves
+//   per scheduled chunk) -> track GainNode (mute/solo) -> mix bus.
 //   `playbackRate` = the clip speed (0.25x..4x, pitch follows, spec §14).
 // - A voice whose start time has passed (playback starting mid-clip, a seek, audio decoded late)
 //   starts as soon as the render clock allows, with its offset moved on by the delay and a 10 ms

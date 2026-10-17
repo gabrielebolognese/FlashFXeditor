@@ -142,6 +142,9 @@ export interface TimelineTheme {
   rangeWash: string;
   rangeHandleWidth: number;
   rangeHandleZone: number;
+  /** Keyframes (spec §6.4, Batch 35): the lane's height at the bottom of the clip body, the diamond's size. */
+  keyframeLaneHeight: number;
+  keyframeSize: number;
 }
 
 /** Reads one custom property by name (e.g. `--accent`); returns "" when it is not defined. */
@@ -297,6 +300,8 @@ export function readTheme(read: TokenReader, root?: Element): { theme: Theme; mi
       scrollbarMinThumb: num("--timeline-scrollbar-min-thumb"),
       markerWidth: num("--timeline-marker-width"),
       markerHeight: num("--timeline-marker-height"),
+      keyframeLaneHeight: num("--timeline-keyframe-lane-height"),
+      keyframeSize: num("--timeline-keyframe-size"),
       rangeWash: str("--timeline-range-wash"),
       rangeHandleWidth: num("--timeline-range-handle-width"),
       rangeHandleZone: num("--timeline-range-handle-zone"),

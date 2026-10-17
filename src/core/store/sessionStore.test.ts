@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { EMPTY_SELECTION, filterSelection, fromSnapshot, selectClips, selectionEquals, toSnapshot } from "./selection.js";
-import { createSessionStore, DEFAULT_SESSION, selectEditPoint, selectGap, selectMarker, setInOut, setPlayhead, setSectionCollapsed, setSelection, setSourceRange } from "./sessionStore.js";
+import { createSessionStore, DEFAULT_SESSION, laneSection, selectEditPoint, selectGap, selectKeyframes, selectMarker, setInOut, setPlayhead, setSectionCollapsed, setSelection, setSourceRange } from "./sessionStore.js";
 
 describe("SessionStore", () => {
   it("starts from the defaults, with overrides", () => {
@@ -178,5 +178,25 @@ describe("properties sections (spec §11)", () => {
     setSectionCollapsed(session, "clip", false);
     expect(session.state.getState().collapsedSections).toEqual({});
     expect(listener).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("keyframe selection (Batch 35)", () => {
+  it("holds sorted frames of one clip's lane and goes when its clip leaves the selection", () => {
+    const session = createSessionStore();
+    setSelection(session, selectClips(["a", "b"]));
+    const listener = vi.fn();
+    session.keyframes.subscribe(listener);
+    selectKeyframes(session, { clipId: "a", section: "transform", frames: [30, 0] });
+    expect(session.keyframes.getState()).toEqual({ clipId: "a", section: "transform", frames: [0, 30] });
+    selectKeyframes(session, { clipId: "a", section: "transform", frames: [0, 30] });
+    expect(listener).toHaveBeenCalledTimes(1);
+    // Still selected: kept.
+    setSelection(session, selectClips(["a"]));
+    expect(session.keyframes.getState()?.clipId).toBe("a");
+    setSelection(session, selectClips(["b"]));
+    expect(session.keyframes.getState()).toBeNull();
+    expect(laneSection(session.state.getState(), "a")).toBe("transform");
+    expect(laneSection({ keyframeLanes: { a: "opacity" } }, "a")).toBe("opacity");
   });
 });
