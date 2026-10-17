@@ -5,6 +5,7 @@ import { createRoot } from "react-dom/client";
 import { App } from "./app/App.js";
 import { findMissingApis, GPU_ADAPTER_LABEL } from "./app/compat.js";
 import { installAudioController } from "./app/audioController.js";
+import { installAudioEditController } from "./app/audioEditController.js";
 import { installCanvasController } from "./app/canvasController.js";
 import { installCaptionController } from "./app/captionController.js";
 import { installTranscribeController } from "./app/transcribeController.js";
@@ -62,6 +63,7 @@ async function start(): Promise<void> {
   installTrackController();
   installPlaybackController();
   installAudioController();
+  installAudioEditController();
   root.render(
     <StrictMode>
       <App />

@@ -7,6 +7,7 @@ import type { Selection } from "../core/store/selection.js";
 import { transitionAt } from "../timeline/edit/transitions.js";
 import { useStoreSelector } from "../core/store/useStoreSelector.js";
 import { AnimationSection } from "./properties/AnimationSection.js";
+import { AudioSection } from "./properties/AudioSection.js";
 import { CaptionStyleSection } from "./properties/CaptionStyleSection.js";
 import { ClipSection } from "./properties/ClipSection.js";
 import { CropModeToggle, CropSection } from "./properties/CropSection.js";
@@ -41,6 +42,7 @@ const SECTION_TITLES: Record<SectionId, string> = {
   crop: "Crop",
   opacity: "Opacity",
   speed: "Speed",
+  audio: "Audio",
   transition: "Transition",
   track: "Track",
   marker: "Marker",
@@ -67,6 +69,8 @@ function sectionBody(id: SectionId, context: PropertiesContext): ReactNode {
       return context.kind === "clips" ? <OpacitySection ids={context.layerIds} /> : null;
     case "speed":
       return context.kind === "clips" ? <SpeedSection ids={context.speedIds} /> : null;
+    case "audio":
+      return context.kind === "clips" ? <AudioSection ids={context.audioIds} detach={context.detachIds} /> : null;
     case "transition":
       return context.kind === "transition" || context.kind === "editPoint" ? <TransitionSection cut={context.cut} /> : null;
     case "track":
@@ -80,11 +84,13 @@ function sectionBody(id: SectionId, context: PropertiesContext): ReactNode {
 
 /**
  * Header actions of a section: the Crop section's crop mode toggle (one video or image layer selected);
- * the stopwatch and keyframe navigator of Transform and Opacity (spec §11, Batch 35).
+ * the stopwatch and keyframe navigator of Transform and Opacity (spec §11, Batch 35) and of Audio (its
+ * Volume keys, Batch 37).
  */
 function sectionActions(id: SectionId, context: PropertiesContext): ReactNode {
   if (context.kind !== "clips") return null;
   if (id === "transform" || id === "opacity") return <KeyframeControls ids={context.layerIds} section={id} />;
+  if (id === "audio") return context.audioIds.length > 0 ? <KeyframeControls ids={context.audioIds} section="volume" /> : null;
   if (id !== "crop") return null;
   return <CropModeToggle ids={context.mediaIds} single={context.layerIds.length === 1 && context.mediaIds.length === 1} />;
 }

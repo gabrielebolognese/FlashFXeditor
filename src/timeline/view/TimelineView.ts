@@ -44,6 +44,12 @@
 // one; snapping), one command on release through `onTransitionEdge`. A transition chip dragged from the
 // properties panel is fed in from outside (`dragTransition`, `endTransitionDrag`): the cut under the
 // pointer is lit.
+// Rubber bands (spec §6.4, Batch 37; rubberBand.ts): on M/L audio tracks a press on the gain line drags
+// the clip gain (a clip without volume keys) or the keys around the pointer (in value), a press on a
+// key selects it (Shift adds or removes it) and drags it in time and value (Shift: value only), a click
+// on a key moves the playhead to it; Mod+click on the line adds a key there (`onAddKeyframe`). The
+// line follows the pointer on the overlay with the gain in a tooltip, one command on release through
+// `onBandEdit`. A ruler scrub reports each frame it shows (`onScrub`: audio scrub grains).
 import type { Affect } from "../../core/commands/command.js";
 import type { KeyframeSection } from "../../core/document/keyframes.js";
 import { firstFrameOfSecond, formatSpeed, formatTimecode, secondOfFrame, usToFrame } from "../../core/document/time.js";
@@ -64,6 +70,8 @@ import type { DropItem, DropLanes, MediaDropRequest } from "../edit/dropMedia.js
 import type { MoveRequest } from "../edit/move.js";
 import { clampKeyDelta } from "../edit/keyframes.js";
 import { clampFade, fadesOf, type FadeEdge } from "../edit/fades.js";
+import { bandEditedClip, clampKeyShift, segmentKeys, volumeKeys, type BandEdit } from "../edit/volume.js";
+import { gainDbAt } from "../../core/document/keyframes.js";
 import { cutNear, dragTransitionEdge, transitionAt, type Cut, type TransitionDrag, type TransitionEdge } from "../edit/transitions.js";
 import { clipsToSplit } from "../edit/split.js";
 import { hasSource, MAX_SPEED, MIN_SPEED, type TrimEdge } from "../edit/trim.js";
@@ -73,7 +81,7 @@ import { resolveSnap, snapCandidatesOf, SnapIndex, snapLabel, type SnapCandidate
 import { createWants, type ClipVisualsSource } from "./clipVisuals.js";
 import { trimCursor, trimCursors, type TrimCursors } from "./cursors.js";
 import { drawContent, type TimelineFonts } from "./drawContent.js";
-import { drawOverlay, type BlockScene, type EditPointMark, type MarkerScene, type RangeScene, type RazorScene, type TrackDragScene } from "./drawOverlay.js";
+import { drawOverlay, type BandScene, type BlockScene, type EditPointMark, type MarkerScene, type RangeScene, type RazorScene, type TrackDragScene } from "./drawOverlay.js";
 import { blockBand } from "./fadesAndTransitions.js";
 import { contains, TimelineGeometry, type HeaderToggle, type Rect, type TimelineMetrics } from "./geometry.js";
 import { edgeStep } from "./gestures/autoScroll.js";
@@ -83,6 +91,7 @@ import { MoveGesture, NO_MODIFIERS, type DragModifiers, type MoveSnap } from "./
 import { TrimGesture, type EditTarget, type PreviewSplit, type TrimRequest } from "./gestures/trimClip.js";
 import { HitTester, type HitResult } from "./HitTester.js";
 import { diamondInset, laneBand, laneFrames, shownLane, type LaneScene } from "./keyframeLane.js";
+import { bandAt, bandBox, gainY, yGain } from "./rubberBand.js";
 import { handleEdge, layoutScrollbars, scrollForThumb, scrollYForThumb, zoomHandleView, type ScrollbarAxis, type ScrollbarHit, type ScrollbarLayout } from "./scrollbars.js";
 import { TextCache } from "./textCache.js";
 import {
@@ -144,6 +153,10 @@ export interface TimelineViewDeps {
   onTransitionEdge?(cut: Cut, before: Frame, after: Frame): void;
   /** A transition block was double-clicked (spec §6.4): the controller opens its Transition section. */
   onOpenTransition?(cut: Cut): void;
+  /** A rubber band drag was released (spec §6.4, Batch 37): the controller applies it (one command). */
+  onBandEdit?(clipId: ClipId, edit: BandEdit): void;
+  /** A ruler scrub showed `frame` (Batch 37: the audio scrub plays a grain there). */
+  onScrub?(frame: Frame): void;
   /** Background work pauses while a gesture runs (spec §3.4); arrivals wait while it is paused. */
   idle?: Pick<IdleQueue, "pause" | "resume"> & Partial<Pick<IdleQueue, "isPaused" | "onPauseChange">>;
   /** Thumbnails, posters and peaks of the clip bodies (spec §6.4, §6.17). */
@@ -208,7 +221,7 @@ type BodyDrag = "move" | "slip" | "slide" | null;
 /** Pointer gestures. `press` and `pendingMarquee` wait for the dead zone (spec §6.8) before dragging. */
 type Gesture =
   /** `snap`: what a Shift scrub snapped the playhead to (spec §6.3). */
-  | { kind: "scrub"; pointerId: number; snap: SnapTarget | null }
+  | { kind: "scrub"; pointerId: number; snap: SnapTarget | null; heard: boolean }
   /** A press on a clip. `click`: the selection a release without a drag sets (deferred on a selected clip, so a drag keeps the selection). */
   | { kind: "press"; pointerId: number; x: number; y: number; clipId: ClipId; frame: number; click: Selection | null; drag: BodyDrag }
   | { kind: "move"; pointerId: number; move: MoveGesture }
@@ -250,7 +263,17 @@ type Gesture =
   /** A press on a transition block (Batch 36): a drag of its `edge` once it moves past the dead zone, else a click selecting it. */
   | { kind: "pressTransition"; pointerId: number; x: number; y: number; cut: Cut; edge: TransitionEdge | null; grab: number }
   /** A transition block's end dragged (Batch 36): the sides it would have (`drag`), snapped. */
-  | { kind: "transitionDrag"; pointerId: number; cut: Cut; edge: TransitionEdge; grab: number; drag: TransitionDrag | null; snap: SnapTarget | null };
+  | { kind: "transitionDrag"; pointerId: number; cut: Cut; edge: TransitionEdge; grab: number; drag: TransitionDrag | null; snap: SnapTarget | null }
+  /**
+   * A press on an audio clip's rubber band (Batch 37): a band drag once it moves past the dead zone, else
+   * a click (`click`: the clip selection a click on the line sets; on a key, the playhead goes to it).
+   */
+  | { kind: "pressBand"; pointerId: number; x: number; y: number; clipId: ClipId; key: Frame | null; click: Selection | null }
+  /**
+   * The rubber band dragged (Batch 37): the clip gain (`gain`), or volume keys (`keys`: their values by
+   * `deltaDb`, a lone key also by `deltaFrames`). `startDb`: the gain under the press.
+   */
+  | { kind: "bandDrag"; pointerId: number; clipId: ClipId; mode: "gain" | "keys"; frames: readonly Frame[]; grabX: number; grabY: number; startDb: number; deltaDb: number; deltaFrames: number };
 
 /** A keyboard zoom step on its way (spec §6.2): from `from` to `to` with `anchor` held; `start` is set by the first frame. */
 interface ZoomAnimation {
@@ -298,7 +321,8 @@ const sameHover = (a: HitResult | null, b: HitResult | null) =>
     a.lane === b.lane &&
     a.fade === b.fade &&
     a.transition?.left === b.transition?.left &&
-    a.transition?.edge === b.transition?.edge);
+    a.transition?.edge === b.transition?.edge &&
+    a.band?.key === b.band?.key);
 
 /** A hit on a track row's clip area: what the Razor can cut (and shows its cursor over). */
 function inTrackRow(hit: HitResult): boolean {
@@ -312,6 +336,7 @@ function inTrackRow(hit: HitResult): boolean {
     case "fadeHandle":
     case "transition":
     case "transitionEdge":
+    case "rubberBand":
       return true;
     case "empty":
       return hit.trackId !== null;
@@ -322,7 +347,15 @@ function inTrackRow(hit: HitResult): boolean {
 
 /** The clip a hit on a body, trim zone or cut is on, else null. */
 function hitClip(hit: HitResult): ClipId | null {
-  return hit.type === "clip" || hit.type === "clipEdgeIn" || hit.type === "clipEdgeOut" || hit.type === "junction" || hit.type === "keyframe" || hit.type === "fadeHandle" || hit.type === "transition" || hit.type === "transitionEdge"
+  return hit.type === "clip" ||
+    hit.type === "clipEdgeIn" ||
+    hit.type === "clipEdgeOut" ||
+    hit.type === "junction" ||
+    hit.type === "keyframe" ||
+    hit.type === "fadeHandle" ||
+    hit.type === "transition" ||
+    hit.type === "transitionEdge" ||
+    hit.type === "rubberBand"
     ? hit.clipId
     : null;
 }
@@ -344,6 +377,8 @@ interface CursorContext {
   roll: boolean;
   /** A press here would pan: Space armed, or the Hand tool over the track area (spec §6.6). */
   pan: boolean;
+  /** Mod held: a click on the rubber band's line adds a key (Batch 37). */
+  mod: boolean;
 }
 
 /** The cursor of an edit (a drag, or a press that may become one). */
@@ -371,6 +406,8 @@ function cursorFor(hit: HitResult | null, gesture: Gesture | null, cursors: Trim
   if (gesture?.kind === "keyDrag" || gesture?.kind === "fadeDrag" || gesture?.kind === "transitionDrag") return "ew-resize";
   if (gesture?.kind === "pressKey") return "pointer";
   if (gesture?.kind === "pressTransition") return gesture.edge ? "ew-resize" : "pointer";
+  if (gesture?.kind === "bandDrag") return gesture.mode === "keys" && gesture.frames.length === 1 && gesture.deltaFrames !== 0 ? "move" : "ns-resize";
+  if (gesture?.kind === "pressBand") return gesture.key !== null ? "pointer" : "ns-resize";
   if (gesture?.kind === "move") {
     const proposal = gesture.move.proposal;
     return proposal?.refused ? "not-allowed" : proposal?.duplicate ? "copy" : "grabbing";
@@ -389,6 +426,7 @@ function cursorFor(hit: HitResult | null, gesture: Gesture | null, cursors: Trim
   if (hit.type === "marker" || (hit.type === "keyframe" && context.tool === "select")) return "pointer";
   if (context.tool === "select" && (hit.type === "fadeHandle" || hit.type === "transitionEdge")) return "ew-resize";
   if (context.tool === "select" && hit.type === "transition") return "pointer";
+  if (context.tool === "select" && hit.type === "rubberBand") return hit.band?.key !== null ? "pointer" : context.mod ? "copy" : "ns-resize";
   if ((hit.type === "trackHeader" && hit.addTrack) || hit.type === "headerToggle") return "pointer";
   const edge = hitEdge(hit);
   const { tool } = context;
@@ -502,6 +540,11 @@ export class TimelineView {
         get edgeZone() {
           return deps.theme.theme.timeline.transitionEdgeZone;
         },
+      },
+      rubberBand: (clip, row, track, x, y) => {
+        const theme = deps.theme.theme;
+        const box = bandBox(row, track, theme);
+        return box && clip.kind === "audio" ? bandAt(this.geometry(), theme, clip, box, x, y) : null;
       },
     });
   }
@@ -1089,8 +1132,8 @@ export class TimelineView {
       this.pressScrollbar(event, hit.scrollbar);
       return;
     }
-    // Selected keys stay only while their diamonds are pressed (Delete then acts on clips again).
-    if (hit.type !== "keyframe") selectKeyframes(this.deps.session, null);
+    // Selected keys stay only while their diamonds (or the rubber band's keys) are pressed (Delete then acts on clips again).
+    if (hit.type !== "keyframe" && !(hit.type === "rubberBand" && hit.band?.key !== null)) selectKeyframes(this.deps.session, null);
     const tool = this.deps.session.state.getState().activeTool;
     // The Hand tool pans from anywhere in the track area, clips included; the ruler still scrubs.
     if (tool === "hand" && contains(this.geometry().area, event.offsetX, event.offsetY)) {
@@ -1112,7 +1155,7 @@ export class TimelineView {
       case "ruler":
       case "playheadHead": {
         this.capture(event.pointerId);
-        this.gesture = { kind: "scrub", pointerId: event.pointerId, snap: null };
+        this.gesture = { kind: "scrub", pointerId: event.pointerId, snap: null, heard: false };
         this.startDrag();
         this.scrubAt(event.offsetX);
         this.deps.scheduler.invalidate("timelineOverlay");
@@ -1130,6 +1173,10 @@ export class TimelineView {
         break;
       case "fadeHandle":
         if (hit.fade && tool === "select") this.pressFade(event, hit.clipId as ClipId, hit.fade);
+        else this.pressClip(event, hit.clipId as ClipId, hit.frame, bodyDrag(tool));
+        break;
+      case "rubberBand":
+        if (hit.band && tool === "select") this.pressBand(event, hit.clipId as ClipId, hit.band.key, hit.frame);
         else this.pressClip(event, hit.clipId as ClipId, hit.frame, bodyDrag(tool));
         break;
       case "transition":
@@ -1265,6 +1312,88 @@ export class TimelineView {
     this.gesture = { kind: "fadeDrag", pointerId: event.pointerId, clipId, edge, from, frames: from, snap: null };
     this.startDrag();
     this.followPointer();
+  }
+
+  /**
+   * A press on the rubber band (Batch 37). Mod on the line adds a key under the pointer. On a key: the
+   * clip joins the selection and the key is selected (Shift adds or removes it). On the line: the click
+   * selection of a clip body applies (at once on an unselected clip, on release on a selected one).
+   */
+  private pressBand(event: PointerEvent, clipId: ClipId, key: Frame | null, frame: number): void {
+    const { session } = this.deps;
+    if (key === null && this.modifiers.mod) {
+      this.addKeyHere(clipId, "volume", frame);
+      return;
+    }
+    const selection = session.selection.getState();
+    const selected = selection.kind === "clips" && selection.clipIds.has(clipId);
+    let click: Selection | null = null;
+    if (key !== null) {
+      if (!selected) setSelection(session, selectClips([clipId], clipId));
+      const current = session.keyframes.getState();
+      const same = current !== null && current.clipId === clipId && current.section === "volume";
+      let frames: Frame[];
+      if (event.shiftKey && same) frames = current.frames.includes(key) ? current.frames.filter((other) => other !== key) : [...current.frames, key];
+      else if (same && current.frames.includes(key)) frames = [...current.frames];
+      else frames = [key];
+      selectKeyframes(session, frames.length > 0 ? { clipId, section: "volume", frames } : null);
+    } else {
+      const modifier: ClickModifier = event.altKey ? "alt" : event.shiftKey ? "shift" : "none";
+      const next = clickSelection(selection, clipId, modifier, modifier === "alt" ? [] : this.partners(clipId));
+      if (!selected) setSelection(session, next);
+      else click = next;
+    }
+    this.capture(event.pointerId);
+    this.gesture = { kind: "pressBand", pointerId: event.pointerId, x: event.offsetX, y: event.offsetY, clipId, key, click };
+    this.updateCursor();
+  }
+
+  /** The press on the rubber band became a drag: of the gain, of the keys around the pointer, or of the pressed key (and the other selected ones). */
+  private startBandDrag(press: Extract<Gesture, { kind: "pressBand" }>): void {
+    const clip = this.deps.document.getState().clips[press.clipId];
+    if (!clip || clip.kind !== "audio") return;
+    const keys = volumeKeys(clip);
+    let mode: "gain" | "keys" = "keys";
+    let frames: Frame[];
+    let startDb: number;
+    if (press.key !== null) {
+      const chosen = this.deps.session.keyframes.getState();
+      frames = chosen && chosen.clipId === clip.id && chosen.section === "volume" && chosen.frames.includes(press.key) ? [...chosen.frames] : [press.key];
+      startDb = keys.find((key) => key.frame === press.key)?.value ?? clip.volume.gainDb;
+    } else if (keys.length === 0) {
+      mode = "gain";
+      frames = [];
+      startDb = clip.volume.gainDb;
+    } else {
+      const rel = this.geometry().xToFrame(press.x) - clip.start;
+      frames = segmentKeys(keys, rel);
+      startDb = gainDbAt(clip, rel);
+    }
+    this.gesture = { kind: "bandDrag", pointerId: press.pointerId, clipId: clip.id, mode, frames, grabX: press.x, grabY: press.y, startDb, deltaDb: 0, deltaFrames: 0 };
+    this.startDrag();
+    this.followPointer();
+  }
+
+  /** The dragged rubber band follows the pointer: the gain under it in 0.1 dB steps; a lone key also in whole frames (Shift: value only). */
+  private dragBand(gesture: Extract<Gesture, { kind: "bandDrag" }>, x: number, y: number): void {
+    const project = this.deps.document.getState();
+    const clip = project.clips[gesture.clipId];
+    const geometry = this.geometry();
+    const row = clip ? geometry.rowOf(clip.trackId) : null;
+    const track = row ? project.tracks[row.index] : undefined;
+    const box = row && track ? bandBox(row, track, this.deps.theme.theme) : null;
+    if (!clip || clip.kind !== "audio" || !box) return;
+    const db = yGain(box, gainY(box, gesture.startDb) + (y - gesture.grabY));
+    // The gain lands on 0.1 dB steps; keys move by 0.1 dB steps (`|| 0`: no -0).
+    gesture.deltaDb = (gesture.mode === "gain" ? Math.round(db * 10) / 10 - gesture.startDb : Math.round((db - gesture.startDb) * 10) / 10) || 0;
+    const lone = gesture.mode === "keys" && gesture.frames.length === 1 && !this.modifiers.shift;
+    gesture.deltaFrames = lone ? clampKeyShift(clip, volumeKeys(clip), gesture.frames[0] as Frame, geometry.xToFrame(x) - geometry.xToFrame(gesture.grabX)) : 0;
+    this.updateCursor();
+  }
+
+  /** The edit a band drag makes. */
+  private bandEditOf(gesture: Extract<Gesture, { kind: "bandDrag" }>): BandEdit {
+    return gesture.mode === "gain" ? { kind: "gain", gainDb: gesture.startDb + gesture.deltaDb } : { kind: "keys", frames: gesture.frames, deltaDb: gesture.deltaDb, deltaFrames: gesture.deltaFrames };
   }
 
   /** The dragged fade follows the pointer: whole frames from the clip's edge to the pointer, snapped, within the clip. */
@@ -1679,9 +1808,10 @@ export class TimelineView {
     const hit = this.hitTester.hit(event.offsetX, event.offsetY);
     const { session } = this.deps;
     const clipId = hitClip(hit);
-    if (hit.type === "keyframe" && hit.keyframe && clipId !== null) {
-      // The keyframe menu (spec §6.15) acts on the selected keys: the clicked one joins them, or replaces a selection without it.
-      const { section, frame } = hit.keyframe;
+    const key = hit.type === "keyframe" && hit.keyframe ? hit.keyframe : hit.type === "rubberBand" && hit.band?.key != null ? { section: "volume" as const, frame: hit.band.key } : null;
+    if (key && clipId !== null) {
+      // The keyframe menu (spec §6.15) acts on the selected keys (a lane's or a rubber band's): the clicked one joins them, or replaces a selection without it.
+      const { section, frame } = key;
       const selection = session.selection.getState();
       if (!(selection.kind === "clips" && selection.clipIds.has(clipId))) setSelection(session, selectClips([clipId], clipId));
       const keys = session.keyframes.getState();
@@ -1756,6 +1886,12 @@ export class TimelineView {
           this.startDrag();
           this.followPointer();
         }
+        break;
+      case "pressBand":
+        if (Math.hypot(event.offsetX - gesture.x, event.offsetY - gesture.y) > threshold) this.startBandDrag(gesture);
+        break;
+      case "bandDrag":
+        this.followPointer();
         break;
       case "pressKey":
         if (gesture.frames.length > 0 && Math.abs(event.offsetX - gesture.x) > threshold) {
@@ -1855,6 +1991,9 @@ export class TimelineView {
     } else if (gesture.kind === "fadeDrag") {
       this.dragFade(gesture, pointer.x);
       this.deps.scheduler.invalidate("timelineOverlay");
+    } else if (gesture.kind === "bandDrag") {
+      this.dragBand(gesture, pointer.x, pointer.y);
+      this.deps.scheduler.invalidate("timelineOverlay");
     } else if (gesture.kind === "transitionDrag") {
       this.dragTransitionEdge(gesture, pointer.x);
       this.deps.scheduler.invalidate("timelineOverlay");
@@ -1887,7 +2026,19 @@ export class TimelineView {
       }
       this.modifiers = this.modifiersOf(event);
       const kind = this.gesture?.kind;
-      if (kind === "move" || kind === "trim" || kind === "scrub" || kind === "markerDrag" || kind === "rangeDrag" || kind === "mediaDrop" || kind === "keyDrag" || kind === "fadeDrag" || kind === "transitionDrag") this.followPointer();
+      if (
+        kind === "move" ||
+        kind === "trim" ||
+        kind === "scrub" ||
+        kind === "markerDrag" ||
+        kind === "rangeDrag" ||
+        kind === "mediaDrop" ||
+        kind === "keyDrag" ||
+        kind === "fadeDrag" ||
+        kind === "transitionDrag" ||
+        kind === "bandDrag"
+      )
+        this.followPointer();
     };
     win?.addEventListener("keydown", onKey, true);
     win?.addEventListener("keyup", onKey, true);
@@ -1995,7 +2146,15 @@ export class TimelineView {
       gesture.snap = snap;
       this.deps.scheduler.invalidate("timelineOverlay");
     }
-    setPlayhead(this.deps.session, snap ? snap.frame : Math.round(frame));
+    const shown = snap ? snap.frame : Math.round(frame);
+    const before = this.deps.session.state.getState().playhead;
+    setPlayhead(this.deps.session, shown);
+    const after = this.deps.session.state.getState().playhead;
+    // The press itself is heard too (a click on the ruler), then each frame the scrub moves to.
+    if (after !== before || !gesture.heard) {
+      gesture.heard = true;
+      this.deps.onScrub?.(after);
+    }
   }
 
   /** Pointer up (`commit`) or a lost pointer (cancel): ends the gesture. */
@@ -2021,6 +2180,19 @@ export class TimelineView {
         break;
       case "fadeDrag":
         if (commit && gesture.frames !== gesture.from) this.deps.onSetFade?.(gesture.clipId, gesture.edge, gesture.frames);
+        break;
+      case "pressBand": {
+        // A click on the line: the clip's selection; on a key: the playhead goes to it.
+        const clip = this.deps.document.getState().clips[gesture.clipId];
+        if (commit && gesture.click) setSelection(session, gesture.click);
+        if (commit && clip && gesture.key !== null) setPlayhead(session, clip.start + gesture.key);
+        break;
+      }
+      case "bandDrag":
+        if (commit && (gesture.deltaDb !== 0 || gesture.deltaFrames !== 0)) {
+          this.deps.onBandEdit?.(gesture.clipId, this.bandEditOf(gesture));
+          if (gesture.mode === "keys" && gesture.deltaFrames !== 0) selectKeyframes(session, { clipId: gesture.clipId, section: "volume", frames: gesture.frames.map((frame) => frame + gesture.deltaFrames) });
+        }
         break;
       case "pressTransition":
         // A click on a block selects its transition (spec §6.4: its Transition section).
@@ -2134,7 +2306,7 @@ export class TimelineView {
     const hover = this.hover?.type === "clip" && isClipLocked(this.deps.document.getState(), this.hover.clipId as ClipId) ? null : this.hover;
     const pointer = this.pointer;
     const pan = this.space !== null || (activeTool === "hand" && pointer !== null && contains(this.geometry().area, pointer.x, pointer.y));
-    const cursor = cursorFor(hover, this.gesture, this.cursors, { tool: activeTool, ripple: ripple || mod, roll: mod && alt, pan });
+    const cursor = cursorFor(hover, this.gesture, this.cursors, { tool: activeTool, ripple: ripple || mod, roll: mod && alt, pan, mod });
     if (cursor === this.cursor || !this.overlay) return;
     this.cursor = cursor;
     this.overlay.canvas.style.cursor = cursor;
@@ -2249,7 +2421,15 @@ export class TimelineView {
     const editPoints = proposal || gesture?.kind === "trim" ? [] : this.editPointMarks(project);
     // Hover highlights are for a pointer at rest: none while dragging.
     const idle =
-      gesture === null || gesture.kind === "scrub" || gesture.kind === "press" || gesture.kind === "pressEdge" || gesture.kind === "pressHeader" || gesture.kind === "pressMarker" || gesture.kind === "pressKey" || gesture.kind === "pressTransition";
+      gesture === null ||
+      gesture.kind === "scrub" ||
+      gesture.kind === "press" ||
+      gesture.kind === "pressEdge" ||
+      gesture.kind === "pressHeader" ||
+      gesture.kind === "pressMarker" ||
+      gesture.kind === "pressKey" ||
+      gesture.kind === "pressTransition" ||
+      gesture.kind === "pressBand";
     const markers = this.markerScene(project, idle);
     drawOverlay({
       ctx: layer.ctx,
@@ -2273,6 +2453,7 @@ export class TimelineView {
       marquee: gesture?.kind === "marquee" ? (gesture.marquee.current?.rect ?? null) : null,
       tooltip: this.pointer
         ? (this.rulerTooltip(project, markers, snap, this.pointer) ??
+          this.bandTooltip(project, this.pointer) ??
           this.blockTooltip(project, snap, this.pointer) ??
           (gesture?.kind === "mediaDrop"
             ? this.dropTooltip(project, gesture.drop, snap, this.pointer)
@@ -2288,6 +2469,7 @@ export class TimelineView {
       markers,
       keyDrag: gesture?.kind === "keyDrag" ? this.keyDragScene(project, geometry, gesture) : null,
       blocks: this.blockScene(project, geometry, idle),
+      band: this.bandScene(project, geometry, idle),
       project,
       selection: this.deps.session.selection.getState(),
       transition: this.deps.session.transition.getState(),
@@ -2310,7 +2492,7 @@ export class TimelineView {
       const clip = project.clips[gesture.clipId];
       const row = clip ? geometry.rowOf(clip.trackId) : null;
       if (clip && row) fades = { clip, row, fades: { ...fadesOf(clip), [gesture.edge]: gesture.frames }, active: gesture.edge, dragged: true };
-    } else if (hover && (hover.type === "clip" || hover.type === "clipEdgeIn" || hover.type === "clipEdgeOut" || hover.type === "fadeHandle" || hover.type === "keyframe" || hover.type === "transition" || hover.type === "transitionEdge")) {
+    } else if (hover && (hover.type === "clip" || hover.type === "clipEdgeIn" || hover.type === "clipEdgeOut" || hover.type === "fadeHandle" || hover.type === "keyframe" || hover.type === "transition" || hover.type === "transitionEdge" || hover.type === "rubberBand")) {
       const clip = hover.clipId !== null ? project.clips[hover.clipId] : undefined;
       const row = clip ? geometry.rowOf(clip.trackId) : null;
       const track = clip ? project.tracks[row?.index ?? -1] : undefined;
@@ -2352,6 +2534,39 @@ export class TimelineView {
   }
 
   /** The tooltip of a fade drag (`Fade in · 00:00:15`) or a block end drag (`Δ +00:00:04 · 00:00:19`, `Media start` at a handle). */
+  /**
+   * The rubber band on the overlay (Batch 37): the hovered band lit, or the dragged one with its clip
+   * redrawn as the drag would leave it.
+   */
+  private bandScene(project: Project, geometry: TimelineGeometry, idle: boolean): BandScene | null {
+    const gesture = this.gesture;
+    const hover = idle ? this.hover : null;
+    const clipId = gesture?.kind === "bandDrag" || gesture?.kind === "pressBand" ? gesture.clipId : hover?.type === "rubberBand" ? hover.clipId : null;
+    const clip = clipId !== null ? project.clips[clipId] : undefined;
+    const row = clip ? geometry.rowOf(clip.trackId) : null;
+    const track = row ? project.tracks[row.index] : undefined;
+    const box = row && track ? bandBox(row, track, this.deps.theme.theme) : null;
+    if (!clip || clip.kind !== "audio" || !row || !track || !box) return null;
+    const keys = this.deps.session.keyframes.getState();
+    const selected = keys && keys.clipId === clip.id && keys.section === "volume" ? new Set(keys.frames) : new Set<Frame>();
+    if (gesture?.kind !== "bandDrag") return { clip, row, track, box, draw: { hot: true, selected }, redraw: false };
+    const edited = bandEditedClip(clip, this.bandEditOf(gesture));
+    const dragged = new Set(gesture.mode === "keys" ? gesture.frames.map((frame) => frame + gesture.deltaFrames) : []);
+    return { clip: edited, row, track, box, draw: { hot: true, selected: dragged, dragged }, redraw: true };
+  }
+
+  /** A rubber band drag's tooltip: the gain under the pointer (a moved key: and its timecode). */
+  private bandTooltip(project: Project, pointer: { x: number; y: number }) {
+    const gesture = this.gesture;
+    if (gesture?.kind !== "bandDrag") return null;
+    const db = gesture.startDb + gesture.deltaDb;
+    const text = `${db > 0 ? "+" : db < 0 ? "-" : ""}${Math.abs(db).toFixed(1)} dB`;
+    const clip = project.clips[gesture.clipId];
+    const lone = gesture.mode === "keys" && gesture.frames.length === 1 && clip;
+    const at = lone ? ` · ${formatTimecode(clip.start + (gesture.frames[0] as Frame) + gesture.deltaFrames, project.settings.fps)}` : "";
+    return { text: `${text}${at}`, target: null, alert: null, x: pointer.x, y: pointer.y };
+  }
+
   private blockTooltip(project: Project, snap: SnapTarget | null, pointer: { x: number; y: number }) {
     const gesture = this.gesture;
     const fps = project.settings.fps;

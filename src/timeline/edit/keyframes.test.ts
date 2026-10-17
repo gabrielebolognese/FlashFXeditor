@@ -21,11 +21,11 @@ const store = (p: Project) => new DocumentStore(p, { session: createSessionStore
 const get = <C extends Clip>(s: DocumentStore, id: string) => s.getState().clips[id] as C;
 
 describe("keyable", () => {
-  it("keys transform and opacity on layers, volume on video and audio", () => {
+  it("keys transform and opacity on layers, volume on audio clips (Batch 37: a video sounds through its audio clip)", () => {
     const p = makeProject();
     const video = makeMediaClip(p, { id: "v", trackId: "v1", start: 0, duration: 10, mediaId: "m" });
     const audio = { ...video, id: "a", kind: "audio" as const };
-    expect(keyable(video, "transform") && keyable(video, "volume")).toBe(true);
+    expect(keyable(video, "transform") && !keyable(video, "volume")).toBe(true);
     expect(keyable(audio, "transform")).toBe(false);
     expect(keyable(audio, "volume")).toBe(true);
     expect(keyable(makeTextClip({ id: "t", trackId: "v1", start: 0, duration: 10 }), "opacity")).toBe(true);
@@ -163,9 +163,9 @@ describe("navigator, lane and menu edits", () => {
     expect(copyKeys(get(s, "s"), "opacity", [7])).toBeNull();
   });
 
-  it("works on media clips (volume model)", () => {
+  it("works on audio clips (volume)", () => {
     const p = project([]);
-    const clip: MediaClip = { ...makeMediaClip(p, { id: "v", trackId: "v1", start: 0, duration: 30, mediaId: "m" }) };
+    const clip: MediaClip = { ...makeMediaClip(p, { id: "v", trackId: "a1", start: 0, duration: 30, mediaId: "a", kind: "audio" }) };
     const s = store(withClips(p, [clip]));
     s.dispatch(setStopwatch(s.getState(), ["v"], "volume", true, 5)!);
     expect(get<MediaClip>(s, "v").keyframes?.["volume.gainDb"]).toEqual([{ frame: 5, value: 0, ease: "linear" }]);

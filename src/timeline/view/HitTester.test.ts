@@ -297,4 +297,30 @@ describe("HitTester markers and in/out handles", () => {
     expect(hits.hit(x(20) - 1, 4).type).toBe("inHandle");
     expect(hits.hit(x(21) + 1, 4).type).toBe("outHandle");
   });
+
+  it("finds the rubber band of audio clips: keys before the trim zones, the line after them (Batch 37)", () => {
+    let project = makeProject();
+    project.media.m = makeMedia("m");
+    project.tracks.push(makeTrack("v1"), makeTrack("a1", "audio"));
+    project = withClips(project, [makeMediaClip(project, { id: "c3", trackId: "a1", start: 10, duration: 30, mediaId: "m", kind: "audio" })]);
+    const geometry = new TimelineGeometry({ width: 1000, height: 428, tracks: project.tracks, pxPerFrame: 4, scrollFrame: 0, scrollY: 0, metrics: METRICS });
+    // A stand-in band: a key at the clip's first frame at y 250, the line at y 260 elsewhere.
+    const hits = new HitTester({
+      geometry: () => geometry,
+      project: () => project,
+      playhead: () => 0,
+      playheadHeadWidth: 11,
+      trimZone: 8,
+      junctionZone: 6,
+      rubberBand: (_clip, _row, _track, px, py) => (Math.abs(py - 250) <= 3 && px < x(11) ? { key: 0 } : Math.abs(py - 260) <= 3 ? { key: null } : null),
+    });
+    expect(hits.hit(x(10) + 2, 250)).toMatchObject({ type: "rubberBand", clipId: "c3", band: { key: 0 } });
+    // The line inside a trim zone is the trim zone; in the body, the line.
+    expect(hits.hit(x(10) + 2, 260).type).toBe("clipEdgeIn");
+    expect(hits.hit(x(20), 260)).toMatchObject({ type: "rubberBand", band: { key: null } });
+    expect(hits.hit(x(20), 270).type).toBe("clip");
+    // Locked tracks take no band edits.
+    project = { ...project, tracks: project.tracks.map((track) => (track.id === "a1" ? { ...track, locked: true } : track)) };
+    expect(hits.hit(x(20), 260).type).toBe("clip");
+  });
 });

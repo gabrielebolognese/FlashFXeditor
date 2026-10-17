@@ -18,6 +18,8 @@ import { EMPTY_SELECTION, selectClips, toSnapshot } from "../core/store/selectio
 import { selectEditPoint, selectGap, setPlayhead, setSelection, type Tool } from "../core/store/sessionStore.js";
 import { applyMoveRequest, moveToAdjacentLane, nudgeClips, type MoveRefusal, type MoveRequest, type MoveResult } from "../timeline/edit/move.js";
 import { addKeyAt, moveKeys } from "../timeline/edit/keyframes.js";
+import { bandEdit } from "../timeline/edit/volume.js";
+import { scrubGrain } from "./audioController.js";
 import { extendToPlayhead, planEdit, resolveTrim, trimToPlayhead, type TrimLimit, type TrimResult } from "../timeline/edit/trim.js";
 import { lastFrameOf, selectionSpan } from "../timeline/model/inOut.js";
 import { contentEnd, laneOf, markerFrames, navigationPoints, nextEditPoint, prevEditPoint, selectableClipIds } from "../timeline/model/queries.js";
@@ -154,6 +156,13 @@ export const timelineView = new TimelineView({
     const command = addKeyAt(documentStore.getState(), clipId, section, frame);
     if (command) documentStore.dispatch(command);
   },
+  // Rubber bands (Batch 37, spec §6.4): one command each.
+  onBandEdit: (clipId, edit) => {
+    const command = bandEdit(documentStore.getState(), clipId, edit);
+    if (command) documentStore.dispatch(command);
+  },
+  // The audio scrub (Batch 37, spec §8): a grain for each frame a ruler scrub shows.
+  onScrub: (frame) => scrubGrain(frame),
   idle: idleQueue,
   visuals: clipVisuals,
   // Text clips whose font is not available get a badge (spec §10.1); textController redraws on font changes.

@@ -32,6 +32,8 @@ import { drawScrollbars } from "./drawScrollbars.js";
 import { drawFades, drawTransitionBlock } from "./fadesAndTransitions.js";
 import { drawDiagonalHatch } from "./hatch.js";
 import { drawLane, laneFrames, shownLane, type LaneScene } from "./keyframeLane.js";
+import { bandBox, drawBand } from "./rubberBand.js";
+import { gainDbAt, hasSectionKeys } from "../../core/document/keyframes.js";
 import { layoutRuler } from "./ruler.js";
 import type { ScrollbarLayout } from "./scrollbars.js";
 import type { TextCache } from "./textCache.js";
@@ -266,6 +268,13 @@ export function drawClip(scene: ClipScene, clip: Clip, row: Row, track: Track, a
     const chosen = keys && keys.clipId === clip.id && keys.section === lane ? new Set(keys.frames) : NO_FRAMES;
     drawLane(ctx, dpr, geometry, theme, clip, row, Math.max(x, geometry.area.x), Math.min(x + width, geometry.area.x + geometry.area.width), { frames: laneFrames(clip, lane), selected: chosen });
   }
+  // The rubber band (spec §6.4, Batch 37) on M/L audio tracks; its keys at the full LOD, selected ones in the accent.
+  const box = clip.kind === "audio" && labelHeight < height ? bandBox(row, track, theme) : null;
+  if (box) {
+    const keys = scene.lanes?.selected;
+    const chosen = keys && keys.clipId === clip.id && keys.section === "volume" ? new Set(keys.frames) : NO_FRAMES;
+    drawBand(ctx, dpr, geometry, theme, clip, box, Math.max(x, geometry.area.x), Math.min(x + width, geometry.area.x + geometry.area.width), { hot: false, selected: chosen }, lod === "full");
+  }
   ctx.restore();
 
   if (selected) {
@@ -387,8 +396,8 @@ function drawStripTiles(scene: ClipScene, clip: MediaClip, strip: AnimationStrip
 
 /**
  * The waveform (spec §6.4, §6.17): per device-pixel column, the peak of the source samples it covers
- * from the pyramid level closest to one bucket per CSS px, mirrored around the body's center line.
- * TODO(batch 37): the clip gain (and its keyframes) applied to the drawn level; 0 dB until then.
+ * from the pyramid level closest to one bucket per CSS px, mirrored around the body's center line, at
+ * the clip gain (Batch 37: its volume keys at the column's frame when keyed; full scale at most).
  * The fades darken it under their wedges (drawFades, Batch 36).
  */
 function drawWaveform(scene: ClipScene, clip: MediaClip, y: number, height: number, left: number, right: number): void {
@@ -398,7 +407,8 @@ function drawWaveform(scene: ClipScene, clip: MediaClip, y: number, height: numb
     if (visuals && wants) wantPeaks(wants, clip.mediaId);
     return;
   }
-  const gain = 1;
+  const keyed = hasSectionKeys(clip.keyframes, "volume");
+  const gain = 10 ** (clip.volume.gainDb / 20);
   const c0 = Math.round(left * dpr);
   const count = Math.round(right * dpr) - c0;
   if (count <= 0) return;
@@ -413,8 +423,9 @@ function drawWaveform(scene: ClipScene, clip: MediaClip, y: number, height: numb
   ctx.fillStyle = theme.timeline.waveform;
   ctx.beginPath();
   for (let i = 0; i < count; i++) {
+    const g = keyed ? 10 ** (gainDbAt(clip, geometry.xToFrame((c0 + i + 0.5) / dpr) - clip.start) / 20) : gain;
     // Silence still draws the 1 device px center line.
-    const h = Math.max(1, Math.round(Math.min(1, (columns[i] as number) * gain) * half));
+    const h = Math.max(1, Math.round(Math.min(1, (columns[i] as number) * g) * half));
     ctx.rect((c0 + i) / dpr, (mid - h) / dpr, 1 / dpr, (2 * h) / dpr);
   }
   ctx.fill();

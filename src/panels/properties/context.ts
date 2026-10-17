@@ -8,7 +8,9 @@
 // ones). Cues are selected as clips; a selection with cues, or with the caption track, shows the
 // Caption style section (Batch 32: the track's style, spec §10.5). A selected transition (Batch 36) shows
 // its Transition section; a selected edit point shows the quick row's transition chips (and the
-// Transition section of the transition on that cut, if any).
+// Transition section of the transition on that cut, if any). The Audio section (Batch 37) edits the
+// audio clips among the clips and those linked to the video clips among them; a video with sound to
+// detach shows it too (its Detach audio button).
 // React renders the panel only when this context changes (`contextKey`), never on value changes
 // (spec §11 implementation note, P1).
 import type { Clip, ClipId, Project, TrackId } from "../../core/document/types.js";
@@ -16,9 +18,10 @@ import { selectedTrackIds, type Selection } from "../../core/store/selection.js"
 import { transitionAt, type Cut } from "../../timeline/edit/transitions.js";
 import { isCropClip } from "../../timeline/edit/crop.js";
 import { isLayerClip } from "../../timeline/edit/transform.js";
+import { audioTargets, canDetach } from "../../timeline/edit/volume.js";
 
 /** The registered sections, top to bottom in their order of appearance. */
-export type SectionId = "clip" | "text" | "animation" | "solid" | "captionStyle" | "transform" | "crop" | "opacity" | "speed" | "transition" | "track" | "marker" | "project";
+export type SectionId = "clip" | "text" | "animation" | "solid" | "captionStyle" | "transform" | "crop" | "opacity" | "speed" | "audio" | "transition" | "track" | "marker" | "project";
 
 export type PropertiesContext =
   | { kind: "none" }
@@ -50,6 +53,10 @@ export type PropertiesContext =
       textIds: readonly ClipId[];
       /** The solids: what Solid edits. */
       solidIds: readonly ClipId[];
+      /** The audio clips among them and those linked to the video clips among them: what Audio edits (Batch 37). */
+      audioIds: readonly ClipId[];
+      /** The video clips whose sound Detach audio can detach. */
+      detachIds: readonly ClipId[];
       /** The caption track when cues are among them (the Caption style section). */
       captionTrackId: TrackId | null;
     }
@@ -98,7 +105,9 @@ export function propertiesContext(selection: Selection, markerId: string | null,
       const textIds = clipIds.filter((id) => project.clips[id]?.kind === "text");
       const solidIds = clipIds.filter((id) => project.clips[id]?.kind === "solid");
       const cue = clipIds.map((id) => project.clips[id]).find((clip) => clip?.kind === "caption");
-      return { kind: "clips", clipIds, primary, layerIds, layerPrimary, mediaIds, speedIds, textIds, solidIds, captionTrackId: cue?.trackId ?? null };
+      const audioIds = audioTargets(project, clipIds);
+      const detachIds = clipIds.filter((id) => canDetach(project, id));
+      return { kind: "clips", clipIds, primary, layerIds, layerPrimary, mediaIds, speedIds, textIds, solidIds, audioIds, detachIds, captionTrackId: cue?.trackId ?? null };
     }
   }
 }
@@ -112,10 +121,7 @@ export function contextKey(selection: Selection, markerId: string | null, cuts: 
   return `${selection.kind}:${selection.primary ?? ""}:${ids.join(",")}`;
 }
 
-/**
- * The sections of a context, top to bottom (the section registry keyed by selection kind).
- * TODO(batch 37): Audio.
- */
+/** The sections of a context, top to bottom (the section registry keyed by selection kind). */
 export function sectionIds(context: PropertiesContext): SectionId[] {
   switch (context.kind) {
     case "none":
@@ -139,6 +145,7 @@ export function sectionIds(context: PropertiesContext): SectionId[] {
       if (context.mediaIds.length > 0) ids.push("crop");
       if (context.layerIds.length > 0) ids.push("opacity");
       if (context.speedIds.length > 0) ids.push("speed");
+      if (context.audioIds.length > 0 || context.detachIds.length > 0) ids.push("audio");
       return ids;
     }
   }

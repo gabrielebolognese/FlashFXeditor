@@ -30,6 +30,7 @@ import { fadeTargets, hasFade, QUICK_FADE_SECONDS } from "../../timeline/edit/fa
 import { clipCut } from "../../timeline/edit/transitions.js";
 import { useStoreSelector } from "../../core/store/useStoreSelector.js";
 import { hasSpeed } from "../../timeline/edit/speed.js";
+import { allMuted, audioTargets } from "../../timeline/edit/volume.js";
 import { isLayerClip, layerContent } from "../../timeline/edit/transform.js";
 import { isClipLocked } from "../../timeline/model/queries.js";
 import { IconButton } from "../../ui/IconButton.js";
@@ -43,8 +44,9 @@ import styles from "./QuickActions.module.css";
 // black or white at the selected edit point, else at the primary clip's cut nearest the playhead; a
 // chip dragged onto the timeline adds it at the cut it lands on. Fit, Fill, Center, Flip H / V, Reset, Freeze frame, Punch zoom, the speed chips
 // (0.5x, 1x, 1.5x, 2x: the Speed section's options apply), Duplicate and Delete run their command ids;
-// the chips of later batches are present and disabled (never hidden, so the row never shifts), their
-// tooltip naming the batch in dev builds. A button is disabled when nothing selected can take it (its
+// Mute (Batch 37) mutes the selected audio clips and the audio linked to selected video clips, pressed
+// while they all are muted (every chip is live since Batch 37). A button is disabled (never hidden, so
+// the row never shifts) when nothing selected can take it (its
 // state follows the selection, never the playhead: Freeze frame and Punch zoom report a playhead that
 // is not over the clip). Save as preset (spec §10.3) opens a name field under the row; Update preset
 // is enabled when the selected text clip's preset exists and its look differs, its tooltip naming the
@@ -70,6 +72,13 @@ interface Fade {
   icon: LucideIcon;
 }
 
+/** The Mute toggle (Batch 37): live with audio to mute, pressed while it all is muted. */
+interface Mute {
+  kind: "mute";
+  label: string;
+  icon: LucideIcon;
+}
+
 /** A transition chip (Batch 36): click or drag onto a cut. */
 interface TransitionChip {
   kind: "transition";
@@ -78,15 +87,7 @@ interface TransitionChip {
   icon: LucideIcon;
 }
 
-interface Planned {
-  kind: "planned";
-  label: string;
-  icon?: LucideIcon;
-  text?: string;
-  batch: number;
-}
-
-type Entry = Live | Fade | TransitionChip | Planned | { kind: "gap" } | { kind: "updatePreset" };
+type Entry = Live | Fade | Mute | TransitionChip | { kind: "gap" } | { kind: "updatePreset" };
 
 const ENTRIES: readonly Entry[] = [
   { kind: "live", id: "transform.fit", label: "Fit in frame", icon: Shrink, needs: "content" },
@@ -106,7 +107,7 @@ const ENTRIES: readonly Entry[] = [
   { kind: "live", id: "clip.speed.150", label: "Speed 1.5x", text: "1.5x", needs: "speed" },
   { kind: "live", id: "clip.speed.200", label: "Speed 2x", text: "2x", needs: "speed" },
   { kind: "gap" },
-  { kind: "planned", label: "Mute", icon: VolumeX, batch: 37 },
+  { kind: "mute", label: "Mute", icon: VolumeX },
   { kind: "live", id: "preset.save", label: "Save as preset", icon: BookmarkPlus, needs: "text" },
   { kind: "updatePreset" },
   { kind: "gap" },
@@ -118,7 +119,7 @@ const ENTRIES: readonly Entry[] = [
   { kind: "live", id: "edit.delete", label: "Delete", icon: Trash2, commandId: "edit.delete", needs: "clips" },
 ];
 
-const NEEDS = ["content", "layer", "primary", "clips", "video", "speed", "text", "fade", "fadeIn", "fadeOut", "cut"] as const;
+const NEEDS = ["content", "layer", "primary", "clips", "video", "speed", "text", "fade", "fadeIn", "fadeOut", "cut", "audio", "muted"] as const;
 
 const bit = (need: (typeof NEEDS)[number]) => 1 << NEEDS.indexOf(need);
 
@@ -134,6 +135,10 @@ function abilities(project: Project, ids: readonly ClipId[], primary: ClipId, ed
     if (hasFade(project, fading, "out", frames)) bits |= bit("fadeOut");
   }
   if (project.clips[primary] && clipCut(project, primary, 0)) bits |= bit("cut");
+  // Mute (Batch 37): the audio the Audio section edits; pressed when it all is muted.
+  const audio = audioTargets(project, ids);
+  if (audio.length > 0) bits |= bit("audio");
+  if (allMuted(project, audio)) bits |= bit("muted");
   for (const id of ids) {
     const clip = project.clips[id];
     if (!clip || isClipLocked(project, id)) continue;
@@ -149,7 +154,6 @@ function abilities(project: Project, ids: readonly ClipId[], primary: ClipId, ed
   return bits;
 }
 
-const plannedTooltip = (entry: Planned) => (import.meta.env.DEV ? `${entry.label}: coming in Batch ${entry.batch}` : entry.label);
 const run = (id: string) => void actions.run(id);
 
 const selectLibrary = (library: PresetLibrary) => library;
@@ -180,7 +184,10 @@ export function QuickActions({ ids, primary, editPoint = false }: { ids: readonl
         {ENTRIES.map((entry, index) => {
           if (entry.kind === "gap") return <span key={`gap-${index}`} className={styles.gap} aria-hidden="true" />;
           if (entry.kind === "updatePreset") return <UpdatePresetButton key="update-preset" />;
-          if (entry.kind === "planned") return <IconButton key={entry.label} icon={entry.icon} text={entry.text} label={plannedTooltip(entry)} disabled />;
+          if (entry.kind === "mute") {
+            const on = (bits & bit("muted")) !== 0;
+            return <IconButton key="mute" icon={entry.icon} label={on ? "Unmute" : "Mute"} pressed={on} disabled={(bits & bit("audio")) === 0} onClick={() => run("clip.mute")} />;
+          }
           if (entry.kind === "fade") {
             const on = (bits & bit(entry.id === "clip.fadeIn" ? "fadeIn" : "fadeOut")) !== 0;
             return <IconButton key={entry.id} icon={entry.icon} label={on ? `${entry.label}: on (click to remove)` : entry.label} pressed={on} disabled={(bits & bit("fade")) === 0} onClick={() => run(entry.id)} />;

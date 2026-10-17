@@ -38,7 +38,7 @@ import { ViewportInput } from "../render/preview/ViewportInput.js";
 import { zoomAround, type PreviewZoom } from "../render/preview/viewport.js";
 import { TextRasterCache } from "../render/text/TextRasterCache.js";
 import { showToast } from "../ui/toasts.js";
-import { attachAudio, audioScheduler, detachAudio, meterView } from "./audioController.js";
+import { attachAudio, audioScheduler, detachAudio, meterView, scrubGrain } from "./audioController.js";
 import { toggleFullscreen } from "./fullscreen.js";
 import { liveEdit, setLiveCrops, type LiveEdit } from "./liveEdit.js";
 import { requestProxyIfUndecided } from "./mediaController.js";
@@ -145,6 +145,8 @@ export const playbackEngine: PlaybackEngine = new PlaybackEngine({
   quality: () => sessionStore.state.getState().preview.quality,
   // Auto quality: a media too heavy to play at full gets a proxy, unless one was decided against.
   onBehind: (mediaId) => requestProxyIfUndecided(mediaId),
+  // Keyboard stepping plays a grain with the audio scrub on (Batch 37).
+  onStep: (frame) => scrubGrain(frame),
 });
 // The meter reads the mix from the first frame of a playback on.
 playbackEngine.subscribe(() => {

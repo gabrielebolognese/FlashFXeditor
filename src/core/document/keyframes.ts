@@ -2,7 +2,7 @@
 // key list edits the commands are made of. Pure and framework-free; sampling allocates nothing (the
 // compositor runs it every playback frame).
 // - Properties: the transform's x, y, scale, scaleY and rotation, the opacity and the clip gain in dB
-//   (`volume.gainDb`: model only until Batch 37's rubber band). A clip's `keyframes` holds a list per
+//   (`volume.gainDb`: the rubber band's keys, Batch 37). A clip's `keyframes` holds a list per
 //   property it animates; a property without keys keeps the clip's own (base) value.
 // - Sections (spec §11 "stopwatch per animatable section"): transform, opacity, volume. A section's
 //   keys share their frames: the stopwatch and every edit write a key for each property of the
@@ -183,8 +183,8 @@ export function animatedOpacity(clip: { opacity: number; keyframes?: Keyframes |
 }
 
 /**
- * The clip gain in dB at `rel` (spec §14; the audio scheduler's hook: TODO(batch 37) applies the
- * keyed gain as a curve on the clip's GainNode, with fades and the rubber band).
+ * The clip gain in dB at `rel` (spec §14; fractional frames allowed): the audio scheduler's keyed gain
+ * curves (audio/scheduler/envelope.ts), the rubber band, the waveform and the Audio section read it.
  */
 export function gainDbAt(clip: { volume: { gainDb: number }; keyframes?: Keyframes | undefined }, rel: number): number {
   return propValue(clip.keyframes, "volume.gainDb", rel, clip.volume.gainDb);

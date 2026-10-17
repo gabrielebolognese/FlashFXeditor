@@ -143,6 +143,8 @@ export interface PlaybackEngineDeps {
   quality?(): PreviewQuality;
   /** Playback fell behind on a media (Auto quality: a proxy is worth making). */
   onBehind?(mediaId: MediaId): void;
+  /** A frame step put the playhead on `frame` (Batch 37: the audio scrub plays a grain there). */
+  onStep?(frame: Frame): void;
 }
 
 /**
@@ -325,6 +327,7 @@ export class PlaybackEngine {
   step(frames: Frame): void {
     this.pause();
     setPlayhead(this.deps.session, this.playhead() + frames);
+    this.deps.onStep?.(this.playhead());
   }
 
   pause(): void {

@@ -9,7 +9,11 @@
 // clip's audio exists), a crossfade's ramp is fitted into the audio there is (the outgoing clip is
 // silent by its media end, the incoming one starts from silence at its media start), at least
 // MIN_RAMP_SECONDS long, so a voice never stops or starts mid-ramp.
-// TODO(batch 37): the clip's keyed gain (`gainDbAt`) and the rubber band join these curves.
+// The clip's keyed gain (Batch 37: the Volume keyframes, set on the rubber band or with the Audio
+// section's stopwatch) joins these curves as a factor (`automationAt`): the gain in dB at the
+// fractional frame, as an amplitude. A clip without volume keys has its gain on its clip GainNode
+// instead (a constant, ramped when it changes), so its factor is the envelope alone.
+import { gainDbAt, hasSectionKeys } from "../../core/document/keyframes.js";
 import type { MediaClip } from "../../core/document/types.js";
 
 /** Curve points per second (Web Audio interpolates linearly between them). */
@@ -92,5 +96,61 @@ export function envelopeCurve(clip: Enveloped, fps: number, from: number, to: nu
   const count = Math.max(2, Math.ceil((to - from) * CURVE_RATE) + 1);
   const curve = new Float32Array(count);
   for (let i = 0; i < count; i++) curve[i] = envelopeAt(clip, fps, from + ((to - from) * i) / (count - 1), limits);
+  return curve;
+}
+
+// --- The keyed gain (Batch 37) ------------------------------------------------------------------
+
+type Gained = Enveloped & Pick<MediaClip, "volume" | "keyframes">;
+
+const dbToGain = (db: number) => 10 ** (db / 20);
+
+/** Whether the clip's gain is keyed (the Volume keyframes): then it rides on the automation, not on the clip GainNode. */
+export function keyedGain(clip: Pick<MediaClip, "keyframes">): boolean {
+  return hasSectionKeys(clip.keyframes, "volume");
+}
+
+/** The keyed gain's factor at timeline second `s` (1 without volume keys): the gain in dB between the keys, as an amplitude. */
+export function keyedGainAt(clip: Gained, fps: number, s: number): number {
+  if (!keyedGain(clip)) return 1;
+  return dbToGain(gainDbAt(clip, (s - clip.start / fps) * fps));
+}
+
+/** The timeline seconds where the keyed gain moves (between its first and last key, when they differ); null when it holds. */
+function keyedRegion(clip: Gained, fps: number): EnvelopeRegion | null {
+  const keys = clip.keyframes?.["volume.gainDb"];
+  if (!keys || keys.length < 2) return null;
+  const first = keys[0] as { frame: number; value: number };
+  const last = keys[keys.length - 1] as { frame: number; value: number };
+  if (keys.every((key) => key.value === first.value)) return null;
+  const start = clip.start / fps;
+  return { start: start + first.frame / fps, end: start + last.frame / fps };
+}
+
+/** The factor the scheduler writes on a voice's fade node at timeline second `s`: the envelope times the keyed gain. */
+export function automationAt(clip: Gained, fps: number, s: number, limits: AudioLimits = NO_LIMITS): number {
+  return envelopeAt(clip, fps, s, limits) * keyedGainAt(clip, fps, s);
+}
+
+/** Where the automation moves: the envelope's regions and the keyed gain's, merged and in order. */
+export function automationRegions(clip: Gained, fps: number, limits: AudioLimits = NO_LIMITS): EnvelopeRegion[] {
+  const keyed = keyedRegion(clip, fps);
+  const regions = envelopeRegions(clip, fps, limits);
+  if (!keyed) return regions;
+  const all = [...regions, keyed].sort((a, b) => a.start - b.start);
+  const merged: EnvelopeRegion[] = [];
+  for (const region of all) {
+    const last = merged[merged.length - 1];
+    if (last && region.start <= last.end) last.end = Math.max(last.end, region.end);
+    else merged.push({ ...region });
+  }
+  return merged;
+}
+
+/** The automation sampled over [from, to] (timeline seconds), both ends included, at CURVE_RATE (2 points at least). */
+export function automationCurve(clip: Gained, fps: number, from: number, to: number, limits: AudioLimits = NO_LIMITS): Float32Array {
+  const count = Math.max(2, Math.ceil((to - from) * CURVE_RATE) + 1);
+  const curve = new Float32Array(count);
+  for (let i = 0; i < count; i++) curve[i] = automationAt(clip, fps, from + ((to - from) * i) / (count - 1), limits);
   return curve;
 }

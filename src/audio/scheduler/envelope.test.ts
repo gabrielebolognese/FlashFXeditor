@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { envelopeAt, envelopeCurve, envelopeRegions, MIN_RAMP_SECONDS } from "./envelope.js";
+import { automationAt, automationCurve, automationRegions, envelopeAt, envelopeCurve, envelopeRegions, keyedGainAt, MIN_RAMP_SECONDS } from "./envelope.js";
 
 const FPS = 30;
 const t = (before: number, after: number) => ({ id: "t", kind: "crossDissolve" as const, before, after });
@@ -41,5 +41,36 @@ describe("audio envelope (Batch 36)", () => {
     // A transition all after a cut with no audio past it: a minimal ramp ends on the media end.
     const late = { start: 0, duration: 60, fades: NONE, transitionOut: t(0, 8) };
     expect(envelopeRegions(late, FPS, { start: 0, end: 2 })).toEqual([{ start: 2 - MIN_RAMP_SECONDS, end: 2 }]);
+  });
+});
+
+describe("keyed gain automation (Batch 37)", () => {
+  const keys = [
+    { frame: 30, value: 0, ease: "linear" as const },
+    { frame: 60, value: -20, ease: "linear" as const },
+  ];
+  const clip = { start: 30, duration: 90, fades: { in: 15, out: 0 }, volume: { gainDb: -6, muted: false }, keyframes: { "volume.gainDb": keys } };
+
+  it("multiplies the envelope by the keyed gain, interpolated in dB between whole-frame keys", () => {
+    // Clip second 1 (frame 30) holds 0 dB before it; frame 45 is -10 dB; after frame 60, -20 dB.
+    expect(keyedGainAt(clip, FPS, 1.5)).toBeCloseTo(1, 9);
+    expect(keyedGainAt(clip, FPS, 2.5)).toBeCloseTo(10 ** (-10 / 20), 9);
+    expect(keyedGainAt(clip, FPS, 3.5)).toBeCloseTo(0.1, 9);
+    expect(automationAt(clip, FPS, 1.25)).toBeCloseTo(Math.SQRT1_2, 9);
+    expect(automationAt(clip, FPS, 2.5)).toBeCloseTo(10 ** (-10 / 20), 9);
+    // The base gain (-6 dB) is not part of it: it is the clip gain node's when no keys exist.
+    expect(keyedGainAt({ ...clip, keyframes: {} }, FPS, 2.5)).toBe(1);
+  });
+
+  it("moves between the first and last key, merged with the fade regions", () => {
+    expect(automationRegions(clip, FPS)).toEqual([
+      { start: 1, end: 1.5 },
+      { start: 2, end: 3 },
+    ]);
+    const flat = { ...clip, keyframes: { "volume.gainDb": keys.map((key) => ({ ...key, value: -3 })) } };
+    expect(automationRegions(flat, FPS)).toEqual([{ start: 1, end: 1.5 }]);
+    const curve = automationCurve(clip, FPS, 2, 3);
+    expect(curve).toHaveLength(201);
+    expect(curve[100]).toBeCloseTo(10 ** (-10 / 20), 6);
   });
 });

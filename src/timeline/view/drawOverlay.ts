@@ -23,6 +23,7 @@ import { clipsInRange, linkOffset, neighbors, type Gap } from "../model/queries.
 import { clipLod, clipSpan, devicePx, LOD_LABEL_PX } from "./clipLayout.js";
 import type { ClipVisuals } from "./clipVisuals.js";
 import { drawLane, type LaneDraw } from "./keyframeLane.js";
+import { drawBand, type BandBox, type BandDraw } from "./rubberBand.js";
 import { drawBlocks, drawClip, drawDiagonalHatch, drawHeader, fillClip, fontOf, traceMarker, type TimelineFonts } from "./drawContent.js";
 import { blockBand, clipTop, drawFadeHandle, drawTransitionBlock, fadeHandleX, hasFadeHandles, type BlockState } from "./fadesAndTransitions.js";
 import type { FadeEdge } from "../edit/fades.js";
@@ -98,6 +99,16 @@ export interface BlockScene {
   drop: { frame: Frame; row: Row; track: Track } | null;
 }
 
+/** The rubber band on the overlay (Batch 37): a hovered band lit, or a dragged one over its clip redrawn as the drag leaves it (`clip`). */
+export interface BandScene {
+  clip: Clip;
+  row: Row;
+  track: Track;
+  box: BandBox;
+  draw: BandDraw;
+  redraw: boolean;
+}
+
 export interface OverlayScene {
   ctx: CanvasRenderingContext2D;
   dpr: number;
@@ -141,6 +152,8 @@ export interface OverlayScene {
   keyDrag?: { clip: Clip; row: Row; draw: LaneDraw } | null;
   /** Fades and transitions (Batch 36), with the document and selection their redrawn clips need. */
   blocks?: BlockScene | null;
+  /** The hovered or dragged rubber band (Batch 37). */
+  band?: BandScene | null;
   project?: Project | null;
   selection?: Selection | null;
   transition?: TransitionSelection | null;
@@ -177,6 +190,7 @@ export function drawOverlay(scene: OverlayScene): void {
   if (scene.trim) drawTrimLayout(scene, scene.trim);
   if (scene.keyDrag) drawKeyDrag(scene, scene.keyDrag);
   if (scene.blocks && scene.project) drawBlockScene(scene, scene.blocks, scene.project);
+  if (scene.band && scene.project) drawBandScene(scene, scene.band, scene.project);
   for (const mark of scene.editPoints) drawEditPoint(scene, mark);
   ctx.restore();
   // §6.17 order: hover, snap lines, ghosts and trim previews, insert/overwrite indicators, playhead, tooltip.
@@ -273,6 +287,33 @@ function drawTrimLayout(scene: OverlayScene, trim: TrimScene): void {
     // The transitions as the edit leaves them (shortened or gone, Batch 36).
     drawBlocks({ ctx, dpr, geometry, theme, project, transition: scene.transition ?? null }, row, track, clips);
   }
+  ctx.restore();
+}
+
+/** The rubber band on the overlay (Batch 37; see `BandScene`), inside its clip. */
+function drawBandScene(scene: OverlayScene, band: BandScene, project: Project): void {
+  const { ctx, dpr, geometry, theme } = scene;
+  const { clip, row, track } = band;
+  const inset = theme.timeline.clipInset;
+  const y = snap(row.y + inset, dpr);
+  const height = snap(row.y + row.height - inset, dpr) - y;
+  const x0 = snap(geometry.frameToX(clip.start), dpr);
+  const x1 = snap(geometry.frameToX(clip.start + clip.duration), dpr);
+  const left = Math.max(x0, geometry.area.x);
+  const right = Math.min(x1, geometry.area.x + geometry.area.width);
+  if (right <= left) return;
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(left, y, right - left, height);
+  ctx.clip();
+  if (band.redraw) {
+    ctx.fillStyle = theme.color.bg;
+    ctx.fillRect(x0, y, x1 - x0, height);
+    const clipScene = { ctx, dpr, geometry, theme, selection: scene.selection ?? EMPTY_SELECTION, text: scene.text, project, visuals: scene.visuals ?? null, fonts: scene.fonts ?? null };
+    const next = neighbors(project, clip.id).next;
+    drawClip(clipScene, clip, row, track, next !== null && next.start === clip.start + clip.duration, linkOffset(project, clip.id));
+  }
+  drawBand(ctx, dpr, geometry, theme, clip, band.box, left, right, band.draw, clipLod(x1 - x0) === "full");
   ctx.restore();
 }
 

@@ -31,10 +31,23 @@ describe("properties context (spec §11)", () => {
   it("lists the clips with their primary and the layers among them; layers add Transform and Opacity, media layers Crop, video and audio Speed", () => {
     const p = project();
     const linked = propertiesContext(selectClips(["a", "v"], "a"), null, p);
-    expect(linked).toEqual({ kind: "clips", clipIds: ["a", "v"], primary: "a", layerIds: ["v"], layerPrimary: "v", mediaIds: ["v"], speedIds: ["a", "v"], textIds: [], solidIds: [], captionTrackId: null });
-    expect(sectionIds(linked)).toEqual(["clip", "transform", "crop", "opacity", "speed"]);
+    expect(linked).toEqual({
+      kind: "clips",
+      clipIds: ["a", "v"],
+      primary: "a",
+      layerIds: ["v"],
+      layerPrimary: "v",
+      mediaIds: ["v"],
+      speedIds: ["a", "v"],
+      textIds: [],
+      solidIds: [],
+      audioIds: ["a"],
+      detachIds: ["v"],
+      captionTrackId: null,
+    });
+    expect(sectionIds(linked)).toEqual(["clip", "transform", "crop", "opacity", "speed", "audio"]);
     const audio = propertiesContext(selectClips(["a"]), null, p);
-    expect(sectionIds(audio)).toEqual(["clip", "speed"]);
+    expect(sectionIds(audio)).toEqual(["clip", "speed", "audio"]);
     const solid = propertiesContext(selectClips(["gone", "s"], "gone"), null, p);
     expect(solid).toMatchObject({ clipIds: ["s"], primary: "s", layerPrimary: "s", mediaIds: [], speedIds: [] });
     expect(sectionIds(solid)).toEqual(["clip", "solid", "transform", "opacity"]);

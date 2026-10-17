@@ -120,6 +120,12 @@ export const clipVisuals: ClipVisualsSource = {
   },
 };
 
+/** Loads the peaks of media first (Normalize needs them, Batch 37); idempotent. */
+export function loadPeaks(mediaIds: readonly MediaId[]): void {
+  for (const id of mediaIds) open?.peaks.request(id);
+  open?.peaks.prioritize(mediaIds);
+}
+
 /** The hover-scrub's view of the thumbnail sheets (spec §12): the open project's, the hovered sheet loaded first. */
 export const scrubSheets: ScrubSheets = {
   layout: (mediaId) => open?.thumbs.layout(mediaId) ?? null,

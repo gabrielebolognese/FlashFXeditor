@@ -2,16 +2,19 @@
 // AudioContext once it runs), the audio scheduler the playback engine drives, the master meter view,
 // the monitoring volume and mute (app settings, never the export), the media files of the open
 // project, and the cleanup of media that leave it. Framework-free; the preview chrome only mounts
-// the meter and calls the volume functions.
+// the meter and calls the volume functions. The audio scrub (Batch 37, spec §8): with the toolbar's
+// Audio scrub on, each frame a ruler scrub or a frame step shows plays a grain (`scrubGrain`), at most
+// one per animation frame, never while playing.
 import { AudioMixer, type AudioGraphContext } from "../audio/AudioMixer.js";
 import { DecodedAudio } from "../audio/decode/DecodedAudio.js";
 import { MeterView } from "../audio/MeterView.js";
 import { AudioScheduler } from "../audio/scheduler/AudioScheduler.js";
-import type { MediaId } from "../core/document/types.js";
+import { AudioScrubber } from "../audio/scrub/AudioScrubber.js";
+import type { Frame, MediaId } from "../core/document/types.js";
 import type { FsDir } from "../project/fs.js";
 import { peaksPath, resolveFile, writeFileAt } from "../project/mediaFiles.js";
 import type { PeaksJobDeps } from "../media/PeaksJobs.js";
-import { actions, appSettings, audioClock, documentStore, scheduler, themeBridge, workerPool } from "./services.js";
+import { actions, appSettings, audioClock, documentStore, scheduler, sessionStore, themeBridge, workerPool } from "./services.js";
 
 interface OpenProject {
   dir: FsDir;
@@ -56,6 +59,32 @@ function currentMixer(): AudioMixer | null {
 
 /** Plays the timeline's audio clips; driven by the playback engine (spec §8). */
 export const audioScheduler = new AudioScheduler({ clock: audioClock, mixer: currentMixer, document: documentStore, audio: decodedAudio });
+
+/** The audio scrub's grains (spec §8, Batch 37), on the same graph. */
+export const audioScrubber = new AudioScrubber({ mixer: currentMixer, audio: decodedAudio });
+
+let grainFrame: Frame | null = null;
+let grainRequest = 0;
+
+/**
+ * A grain of the timeline's audio at `frame` while Audio scrub is on and nothing plays: the latest
+ * frame of an animation frame is heard (scrubs coalesce).
+ */
+export function scrubGrain(frame: Frame): void {
+  if (!sessionStore.state.getState().audioScrub || audioScheduler.active) return;
+  grainFrame = frame;
+  if (grainRequest !== 0) return;
+  grainRequest = requestAnimationFrame(() => {
+    grainRequest = 0;
+    const at = grainFrame;
+    grainFrame = null;
+    if (at !== null && !audioScheduler.active) audioScrubber.grain(documentStore.getState(), at);
+  });
+}
+
+function toggleAudioScrub(): void {
+  sessionStore.state.set((state) => ({ ...state, audioScrub: !state.audioScrub }));
+}
 
 /** The stereo peak meter of the preview panel. */
 export const meterView = new MeterView({
@@ -123,6 +152,7 @@ export function attachAudio(dir: FsDir, isWritable: () => boolean): void {
 /** Before the project closes: silence and free the decoded audio (P13). */
 export function detachAudio(): void {
   audioScheduler.stop();
+  audioScrubber.stop();
   stopProject?.();
   stopProject = null;
   open = null;
@@ -131,11 +161,12 @@ export function detachAudio(): void {
 
 /** Registers the audio actions (and the dev console access). Returns a stop function. */
 export function installAudioController(): () => void {
-  const stops = [actions.register("audio.toggleMute", toggleMonitorMute)];
+  const stops = [actions.register("audio.toggleMute", toggleMonitorMute), actions.register("toggle.audioScrub", toggleAudioScrub)];
   if (import.meta.env.DEV) {
     const editor = ((globalThis as { __editor?: Record<string, unknown> }).__editor ??= {});
     const audio: Record<string, unknown> = {
       scheduler: audioScheduler,
+      scrubber: audioScrubber,
       decoded: decodedAudio,
       meter: meterView,
       get mixer() {

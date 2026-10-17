@@ -96,7 +96,8 @@ describe("AudioScheduler", () => {
     expect(source?.stoppedAt).toBeCloseTo(110 + 8, 9);
     expect(source?.playbackRate.value).toBe(1);
     expect(envelopeOf(source as FakeSource).gain.events).toEqual([
-      ["cancel", 1, 110],
+      // The envelope starts silent (its value 0 before the first event, no one-sample spike).
+      ["cancel", 0, 110],
       ["set", 0, 110],
       ["ramp", 1, 110 + RAMP_SECONDS],
     ]);
@@ -122,8 +123,11 @@ describe("AudioScheduler", () => {
 
   it("fades a clip in and out with equal power on its fade node (Batch 36)", () => {
     const t = setup({ clips: (p) => [audioClip(p, "c1", 0, 90, { fades: { in: 30, out: 15 } })] });
-    t.at(9.95);
-    t.scheduler.sync(t.mapping({ frame: 0, clock: 10 }));
+    // The automation is written chunk by chunk as the clock moves (Batch 37).
+    for (let clock = 9.95; clock < 12.9; clock += 0.05) {
+      t.at(clock);
+      t.scheduler.sync(t.mapping({ frame: 0, clock: 10 }));
+    }
     const fade = fadeOf(voiceSources(t.ctx)[0] as FakeSource).gain;
     // Timeline second s sounds at context time 110 + s.
     expect(fade.valueAt(110)).toBeCloseTo(0, 6);
@@ -160,6 +164,73 @@ describe("AudioScheduler", () => {
     for (let s = 111.8; s <= 112.2; s += 0.01) expect(a.valueAt(s) ** 2 + b.valueAt(s) ** 2).toBeCloseTo(1, 2);
     expect(a.valueAt(112.2)).toBeCloseTo(0, 6);
     expect(b.valueAt(112.2)).toBeCloseTo(1, 6);
+  });
+
+  it("writes the automation per chunk, AUTOMATION_AHEAD_SECONDS ahead, never overlapping (Batch 37)", () => {
+    const t = setup({ clips: (p) => [audioClip(p, "c1", 0, 90, { fades: { in: 60, out: 0 } })] });
+    t.at(9.95);
+    t.scheduler.sync(t.mapping({ frame: 0, clock: 10 }));
+    const fade = fadeOf(voiceSources(t.ctx)[0] as FakeSource).gain;
+    const curves = () => fade.events.filter(([kind]) => kind === "curve");
+    // The first chunk reaches clock 9.95 + 1 s (context 110.95), not the fade's end (112).
+    expect(curves()).toHaveLength(1);
+    expect(fade.valueAt(110.5)).toBeCloseTo(Math.sin((Math.PI / 2) * (0.5 / 2)), 3);
+    expect(fade.valueAt(111.5)).toBeCloseTo(fade.valueAt(110.95), 9);
+    // Each step adds the next chunk (FakeParam refuses overlapping curves, as browsers do).
+    for (let clock = 10; clock < 12.2; clock += 0.05) {
+      t.at(clock);
+      t.scheduler.sync(t.mapping({ frame: 0, clock: 10 }));
+    }
+    expect(curves().length).toBeGreaterThan(20);
+    for (const s of [0.5, 1, 1.5, 1.99]) expect(fade.valueAt(110 + s)).toBeCloseTo(Math.sin((Math.PI / 2) * (s / 2)), 3);
+    expect(fade.valueAt(112.5)).toBeCloseTo(1, 4);
+  });
+
+  it("rides a keyed gain (the rubber band's volume keys) on the fade node; the clip gain node stays at 1 (Batch 37)", () => {
+    const keys = [
+      { frame: 0, value: 0, ease: "linear" as const },
+      { frame: 30, value: -12, ease: "linear" as const },
+      { frame: 60, value: 6, ease: "linear" as const },
+    ];
+    const t = setup({ clips: (p) => [audioClip(p, "c1", 0, 90, { volume: { gainDb: -3, muted: false }, keyframes: { "volume.gainDb": keys } })] });
+    for (let clock = 9.95; clock < 12.9; clock += 0.05) {
+      t.at(clock);
+      t.scheduler.sync(t.mapping({ frame: 0, clock: 10 }));
+    }
+    const source = voiceSources(t.ctx)[0] as FakeSource;
+    const fade = fadeOf(source).gain;
+    const gainNode = fadeOf(source).outputs[0] as FakeGain;
+    expect(gainNode.gain.value).toBe(1);
+    const db = (s: number) => 20 * Math.log10(fade.valueAt(110 + s));
+    expect(db(0.01)).toBeCloseTo(-0.12, 1);
+    expect(db(0.5)).toBeCloseTo(-6, 1);
+    expect(db(1)).toBeCloseTo(-12, 1);
+    expect(db(1.5)).toBeCloseTo(-3, 1);
+    expect(db(2)).toBeCloseTo(6, 1);
+    // After the last key it holds its value.
+    expect(db(2.8)).toBeCloseTo(6, 1);
+  });
+
+  it("restarts a voice whose volume keys change while playing; a plain gain change only ramps (Batch 37)", () => {
+    const keys = [
+      { frame: 0, value: 0, ease: "linear" as const },
+      { frame: 60, value: -12, ease: "linear" as const },
+    ];
+    const t = setup({ clips: (p) => [audioClip(p, "c1", 0, 300, { keyframes: { "volume.gainDb": keys } })] });
+    const play = t.mapping({ frame: 0, clock: 10 });
+    t.at(9.95);
+    t.scheduler.sync(play);
+    t.at(10.5);
+    t.scheduler.sync(play);
+    expect(voiceSources(t.ctx)).toHaveLength(1);
+    t.edit((p) => ({ ...p, clips: { ...p.clips, c1: { ...(p.clips.c1 as MediaClip), keyframes: { "volume.gainDb": [keys[0] as (typeof keys)[number], { ...(keys[1] as (typeof keys)[number]), value: -24 }] } } } }));
+    t.scheduler.sync(play);
+    const sources = voiceSources(t.ctx);
+    expect(sources).toHaveLength(2);
+    expect(sources[0]?.stoppedAt).toBeCloseTo(t.ctx.currentTime + RAMP_SECONDS, 9);
+    const fade = fadeOf(sources[1] as FakeSource).gain;
+    // Frame 30 of the new keys: -12 dB (it was -6).
+    expect(20 * Math.log10(fade.valueAt(fade.events[0]?.[2] ?? 0))).toBeLessThan(-6);
   });
 
   it("moves a late start on by the delay, with a fade-in", () => {
