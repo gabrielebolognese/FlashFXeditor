@@ -5,7 +5,8 @@
 // channels of their own too: they are not clip selections (§3.3 fixes the selection kinds), they are
 // never persisted, and selecting one of the four clears the other three. Selected keyframes (spec
 // §6.4, Batch 35) have a channel too: they belong to one selected clip and go when it leaves the
-// clip selection.
+// clip selection. Remove silence's preview (Batch 38: the cuts Apply would make) has one as well; it is
+// never persisted either.
 import type { TimecodeMode } from "../document/time.js";
 import type { KeyframeSection } from "../document/keyframes.js";
 import type { ClipId, Frame, MediaId, TrackId, Us } from "../document/types.js";
@@ -168,6 +169,13 @@ export interface SessionStore {
   keyframes: Store<KeyframeSelection | null>;
   /** The selected transition (Batch 36), or null. */
   transition: Store<TransitionSelection | null>;
+  /** Remove silence's preview (Batch 38): the ranges its Apply would cut, per track; null when it is closed. */
+  silence: Store<SilencePreview | null>;
+}
+
+/** The cuts Remove silence would make (spec §14 "preview overlay"), drawn hatched on the timeline. */
+export interface SilencePreview {
+  segments: readonly { trackId: TrackId; start: Frame; end: Frame }[];
 }
 
 export function createSessionStore(initial: Partial<SessionState> = {}): SessionStore {
@@ -179,6 +187,7 @@ export function createSessionStore(initial: Partial<SessionState> = {}): Session
     marker: createStore<string | null>(null),
     keyframes: createStore<KeyframeSelection | null>(null),
     transition: createStore<TransitionSelection | null>(null),
+    silence: createStore<SilencePreview | null>(null),
   };
 }
 

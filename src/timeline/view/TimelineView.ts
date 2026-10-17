@@ -676,6 +676,8 @@ export class TimelineView {
       session.transition.subscribe(() => scheduler.invalidate("timelineContent")),
       session.gap.subscribe(() => scheduler.invalidate("timelineOverlay")),
       session.marker.subscribe(() => scheduler.invalidate("timelineOverlay")),
+      // Remove silence's hatched segments (Batch 38).
+      session.silence.subscribe(() => scheduler.invalidate("timelineOverlay")),
       // The in/out range is drawn on the overlay (spec §6.13).
       session.state.select((state) => state.inPoint, () => scheduler.invalidate("timelineOverlay")),
       session.state.select((state) => state.outPoint, () => scheduler.invalidate("timelineOverlay")),
@@ -2470,6 +2472,7 @@ export class TimelineView {
       keyDrag: gesture?.kind === "keyDrag" ? this.keyDragScene(project, geometry, gesture) : null,
       blocks: this.blockScene(project, geometry, idle),
       band: this.bandScene(project, geometry, idle),
+      silence: this.deps.session.silence.getState(),
       project,
       selection: this.deps.session.selection.getState(),
       transition: this.deps.session.transition.getState(),

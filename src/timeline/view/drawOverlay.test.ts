@@ -277,7 +277,7 @@ describe("drawOverlay: gaps and the Razor (Batch 15)", () => {
   afterEach(() => vi.unstubAllGlobals());
 
   /** Draws an idle overlay (4 px/frame from x = 176) with the gap and Razor fields given. */
-  function draw(fields: Pick<OverlayScene, "hoverGap" | "gap" | "razor">, scrollFrame = 0): TimelineGeometry {
+  function draw(fields: Pick<OverlayScene, "hoverGap" | "gap" | "razor" | "silence">, scrollFrame = 0): TimelineGeometry {
     const ctx = fakeContext();
     let dash: number[] = [];
     Object.assign(ctx, {
@@ -315,6 +315,25 @@ describe("drawOverlay: gaps and the Razor (Batch 15)", () => {
     expect(rects).toContainEqual({ style: theme.color.accentWash, x: 176, y: a1.y + 2, width: 80, height: a1.height - 4 });
     const dash = theme.timeline.gapDash;
     expect(strokes).toEqual([{ style: theme.color.accent, dash: [dash, dash], x: 176 + 1, width: 78 }]);
+  });
+
+  it("hatches Remove silence's cuts in red over the clip band, a line at each end, visible parts only (Batch 38)", () => {
+    const geometry = draw({
+      silence: {
+        segments: [
+          { trackId: "a1", start: 10, end: 30 },
+          { trackId: "v1", start: 500, end: 600 },
+        ],
+      },
+    });
+    const a1 = geometry.rowOf("a1") as { y: number; height: number };
+    const fills = rects.filter((rect) => rect.style === theme.timeline.silenceFill);
+    expect(fills).toEqual([{ style: theme.timeline.silenceFill, x: 176 + 40, y: a1.y + 2, width: 80, height: a1.height - 4 }]);
+    const edges = rects.filter((rect) => rect.style === theme.timeline.silenceEdge);
+    expect(edges.map((rect) => [rect.x, rect.width])).toEqual([
+      [216, 1],
+      [295, 1],
+    ]);
   });
 
   it("does not light the selected gap with the hover wash too", () => {

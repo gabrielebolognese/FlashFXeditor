@@ -1,0 +1,83 @@
+/* Remove silence's parameter row (spec §14, Batch 38; gap: the DS has no inline parameter row). Under the
+   quick actions like Save as preset's name row (--surface-1, hairline below): an overline title, then
+   the section grid's label / control columns (caption labels in secondary text), and a footer with the
+   count (caption, tertiary; secondary once silences are found) and the compact Cancel and Apply
+   buttons (Apply is the gold primary: the row's one action). */
+.row {
+  display: grid;
+  flex: none;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+  padding: var(--space-2) var(--space-3) var(--space-3);
+  border-bottom: 1px solid var(--hairline);
+  background: var(--surface-1);
+}
+
+.title {
+  grid-column: 1 / -1;
+  color: var(--text-tertiary);
+  font: var(--type-overline);
+  letter-spacing: var(--type-overline-track);
+  text-transform: uppercase;
+}
+
+.label {
+  color: var(--text-secondary);
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-track);
+  white-space: nowrap;
+}
+
+/* The slider fills the column; the readout keeps its width so the slider never moves. */
+.threshold {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--silence-readout-width);
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.slider {
+  width: 100%;
+  min-width: 0;
+  height: var(--control-compact);
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.readout {
+  color: var(--text-primary);
+  font: var(--type-mono);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space-2);
+}
+
+.footer {
+  display: flex;
+  grid-column: 1 / -1;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.count {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-tertiary);
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-track);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.count[data-found="true"] {
+  color: var(--text-secondary);
+}

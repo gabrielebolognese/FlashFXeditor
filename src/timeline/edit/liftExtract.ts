@@ -53,11 +53,14 @@ export function liftRange(project: Project, range: FrameRange, newId: () => stri
   if (changes.size === 0) return null;
   relink(rights, newId);
   for (const right of rights) changes.set(right.id, right);
-  return rangeCommand(project, changes);
+  return replaceClipsCommand(project, changes);
 }
 
-/** One `edit.lift` command: the clips changed, removed and added, and the id lists of their tracks. */
-function rangeCommand(project: Project, changes: ReadonlyMap<ClipId, Clip | null>): Command {
+/**
+ * One command (`edit.lift` by default) writing `changes` (null removes a clip; a new id adds one on its
+ * track) and the id lists of the tracks they touch, sorted by start. Remove silence (Batch 38) uses it too.
+ */
+export function replaceClipsCommand(project: Project, changes: ReadonlyMap<ClipId, Clip | null>, commandId = "edit.lift", label = "Lift"): Command {
   const lists = new Map<TrackId, ClipId[]>();
   const final = (id: ClipId) => (changes.has(id) ? changes.get(id) : project.clips[id]);
   for (const track of project.tracks) {
@@ -77,8 +80,8 @@ function rangeCommand(project: Project, changes: ReadonlyMap<ClipId, Clip | null
   }
   const entries = [...changes];
   return {
-    id: "edit.lift",
-    label: "Lift",
+    id: commandId,
+    label,
     affects: ["clips", "timeline"],
     run(draft) {
       for (const [id, clip] of entries) {
@@ -87,7 +90,7 @@ function rangeCommand(project: Project, changes: ReadonlyMap<ClipId, Clip | null
       }
       for (const [trackId, ids] of lists) {
         const track = draft.tracks.find((candidate) => candidate.id === trackId);
-        if (!track) throw new Error(`edit.lift: track ${trackId} does not exist`);
+        if (!track) throw new Error(`${commandId}: track ${trackId} does not exist`);
         track.clipIds = [...ids];
       }
     },

@@ -83,7 +83,7 @@ describe("app settings", () => {
     await settings.load();
     expect(settings.getState()).toEqual(DEFAULT_APP_SETTINGS);
     await settings.update({ autosaveDelayMs: 5000 });
-    expect(kv.data.get("settings.v1")).toEqual({ autosaveDelayMs: 5000, importMode: "copy", monitorVolumeDb: 0, monitorMuted: false, proxyAuto: true, proxyRule: "heavy", proxyShortEdge: 540, recentColors: [], punchZoomScale: 1.2, punchZoomAnimate: true, favoriteFonts: [], matchClipUnderPlayhead: true, defaultTitlePreset: "starter-title", defaultSubtitlePreset: "starter-subtitle", transcribeModel: "base", transcribeLanguage: null, duckDepthDb: 12, duckRampFrames: 10 });
+    expect(kv.data.get("settings.v1")).toEqual({ autosaveDelayMs: 5000, importMode: "copy", monitorVolumeDb: 0, monitorMuted: false, proxyAuto: true, proxyRule: "heavy", proxyShortEdge: 540, recentColors: [], punchZoomScale: 1.2, punchZoomAnimate: true, favoriteFonts: [], matchClipUnderPlayhead: true, defaultTitlePreset: "starter-title", defaultSubtitlePreset: "starter-subtitle", transcribeModel: "base", transcribeLanguage: null, duckDepthDb: 12, duckRampFrames: 10, silenceThresholdDb: -40, silenceMinMs: 500, silencePaddingMs: 150 });
     await settings.update({ autosaveDelayMs: 1234 });
     expect(settings.getState().autosaveDelayMs).toBe(5000);
 
@@ -115,6 +115,18 @@ describe("app settings", () => {
     expect(settings.getState().importMode).toBe("reference");
     await settings.update({ importMode: "link" as never });
     expect(settings.getState().importMode).toBe("reference");
+  });
+
+  it("keeps Remove silence's parameters in range and in whole units (Batch 38)", async () => {
+    const kv = memoryKeyValueStore();
+    kv.data.set("settings.v1", { silenceThresholdDb: -35.4, silenceMinMs: 20, silencePaddingMs: "a lot" });
+    const settings = createAppSettings(kv);
+    await settings.load();
+    expect(settings.getState()).toMatchObject({ silenceThresholdDb: -35, silenceMinMs: 100, silencePaddingMs: 150 });
+    await settings.update({ silenceThresholdDb: -90, silenceMinMs: 9000, silencePaddingMs: 250 });
+    expect(settings.getState()).toMatchObject({ silenceThresholdDb: -60, silenceMinMs: 5000, silencePaddingMs: 250 });
+    await settings.update({ silenceThresholdDb: Number.NaN });
+    expect(settings.getState().silenceThresholdDb).toBe(-60);
   });
 
   it("keeps the monitoring volume in range and the mute flag", async () => {

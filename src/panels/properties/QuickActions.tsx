@@ -9,6 +9,7 @@ import {
   Maximize2,
   Moon,
   RotateCcw,
+  ScissorsLineDashed,
   Shrink,
   Snowflake,
   Sun,
@@ -22,6 +23,7 @@ import {
 import { useCallback } from "react";
 import { presetLibrary, presetNaming, presetSourceClip, updatablePreset, type PresetLibrary } from "../../app/presetController.js";
 import { actions, documentStore } from "../../app/services.js";
+import { silenceRow } from "../../app/silenceController.js";
 import { clickTransitionChip, pressTransitionChip } from "../../app/transitionController.js";
 import { secondsToFrames } from "../../core/document/time.js";
 import { TRANSITION_LABELS } from "../../core/document/transitions.js";
@@ -29,12 +31,14 @@ import type { ClipId, Project, TransitionKind } from "../../core/document/types.
 import { fadeTargets, hasFade, QUICK_FADE_SECONDS } from "../../timeline/edit/fades.js";
 import { clipCut } from "../../timeline/edit/transitions.js";
 import { useStoreSelector } from "../../core/store/useStoreSelector.js";
+import { silenceTargets } from "../../timeline/edit/silence.js";
 import { hasSpeed } from "../../timeline/edit/speed.js";
 import { allMuted, audioTargets } from "../../timeline/edit/volume.js";
 import { isLayerClip, layerContent } from "../../timeline/edit/transform.js";
 import { isClipLocked } from "../../timeline/model/queries.js";
 import { IconButton } from "../../ui/IconButton.js";
 import { PresetNameField } from "../media/PresetNameField.js";
+import { SilenceRow } from "./SilenceRow.js";
 import styles from "./QuickActions.module.css";
 
 // The quick-action row (spec §11, §17): one click each, at the top of the panel for a clip selection
@@ -45,7 +49,9 @@ import styles from "./QuickActions.module.css";
 // chip dragged onto the timeline adds it at the cut it lands on. Fit, Fill, Center, Flip H / V, Reset, Freeze frame, Punch zoom, the speed chips
 // (0.5x, 1x, 1.5x, 2x: the Speed section's options apply), Duplicate and Delete run their command ids;
 // Mute (Batch 37) mutes the selected audio clips and the audio linked to selected video clips, pressed
-// while they all are muted (every chip is live since Batch 37). A button is disabled (never hidden, so
+// while they all are muted (every chip is live since Batch 37). Remove silence (Batch 38) opens its
+// parameter row under the buttons (pressed while it is open) for the audio the Audio section edits. A
+// button is disabled (never hidden, so
 // the row never shifts) when nothing selected can take it (its
 // state follows the selection, never the playhead: Freeze frame and Punch zoom report a playhead that
 // is not over the clip). Save as preset (spec §10.3) opens a name field under the row; Update preset
@@ -72,6 +78,13 @@ interface Fade {
   icon: LucideIcon;
 }
 
+/** Remove silence (Batch 38): opens the parameter row, pressed while it is open. */
+interface Silence {
+  kind: "silence";
+  label: string;
+  icon: LucideIcon;
+}
+
 /** The Mute toggle (Batch 37): live with audio to mute, pressed while it all is muted. */
 interface Mute {
   kind: "mute";
@@ -87,7 +100,7 @@ interface TransitionChip {
   icon: LucideIcon;
 }
 
-type Entry = Live | Fade | Mute | TransitionChip | { kind: "gap" } | { kind: "updatePreset" };
+type Entry = Live | Fade | Mute | Silence | TransitionChip | { kind: "gap" } | { kind: "updatePreset" };
 
 const ENTRIES: readonly Entry[] = [
   { kind: "live", id: "transform.fit", label: "Fit in frame", icon: Shrink, needs: "content" },
@@ -108,6 +121,7 @@ const ENTRIES: readonly Entry[] = [
   { kind: "live", id: "clip.speed.200", label: "Speed 2x", text: "2x", needs: "speed" },
   { kind: "gap" },
   { kind: "mute", label: "Mute", icon: VolumeX },
+  { kind: "silence", label: "Remove silence", icon: ScissorsLineDashed },
   { kind: "live", id: "preset.save", label: "Save as preset", icon: BookmarkPlus, needs: "text" },
   { kind: "updatePreset" },
   { kind: "gap" },
@@ -119,7 +133,7 @@ const ENTRIES: readonly Entry[] = [
   { kind: "live", id: "edit.delete", label: "Delete", icon: Trash2, commandId: "edit.delete", needs: "clips" },
 ];
 
-const NEEDS = ["content", "layer", "primary", "clips", "video", "speed", "text", "fade", "fadeIn", "fadeOut", "cut", "audio", "muted"] as const;
+const NEEDS = ["content", "layer", "primary", "clips", "video", "speed", "text", "fade", "fadeIn", "fadeOut", "cut", "audio", "muted", "silence"] as const;
 
 const bit = (need: (typeof NEEDS)[number]) => 1 << NEEDS.indexOf(need);
 
@@ -139,6 +153,8 @@ function abilities(project: Project, ids: readonly ClipId[], primary: ClipId, ed
   const audio = audioTargets(project, ids);
   if (audio.length > 0) bits |= bit("audio");
   if (allMuted(project, audio)) bits |= bit("muted");
+  // Remove silence (Batch 38): that audio, playing, with no linked member locked.
+  if (audio.length > 0 && silenceTargets(project, ids).length > 0) bits |= bit("silence");
   for (const id of ids) {
     const clip = project.clips[id];
     if (!clip || isClipLocked(project, id)) continue;
@@ -178,6 +194,7 @@ export function QuickActions({ ids, primary, editPoint = false }: { ids: readonl
   const select = useCallback((project: Project) => abilities(project, ids, primary, editPoint), [ids, primary, editPoint]);
   const bits = useStoreSelector(documentStore, select);
   const naming = useStoreSelector(presetNaming, (where) => where === "quick");
+  const silence = useStoreSelector(silenceRow, (open) => open);
   return (
     <>
       <div className={styles.row} role="toolbar" aria-label="Quick actions">
@@ -187,6 +204,11 @@ export function QuickActions({ ids, primary, editPoint = false }: { ids: readonl
           if (entry.kind === "mute") {
             const on = (bits & bit("muted")) !== 0;
             return <IconButton key="mute" icon={entry.icon} label={on ? "Unmute" : "Mute"} pressed={on} disabled={(bits & bit("audio")) === 0} onClick={() => run("clip.mute")} />;
+          }
+          if (entry.kind === "silence") {
+            const enabled = (bits & bit("silence")) !== 0;
+            const label = silence ? "Remove silence: close the parameter row" : enabled ? "Remove silence: find the pauses and cut them out" : "Remove silence: select a clip with sound";
+            return <IconButton key="silence" icon={entry.icon} label={label} pressed={silence} disabled={!enabled && !silence} onClick={() => run("audio.removeSilence")} />;
           }
           if (entry.kind === "fade") {
             const on = (bits & bit(entry.id === "clip.fadeIn" ? "fadeIn" : "fadeOut")) !== 0;
@@ -215,6 +237,7 @@ export function QuickActions({ ids, primary, editPoint = false }: { ids: readonl
           <PresetNameField />
         </div>
       )}
+      {silence && <SilenceRow />}
     </>
   );
 }

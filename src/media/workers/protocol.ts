@@ -7,6 +7,7 @@ import type { Lod } from "../cache/TexturePool.js";
 import type { ThumbSheetParams, ThumbSheetResult } from "../decode/thumbSheet.js";
 import type { MakeProxyParams, MakeProxyResult, ProxyProgress } from "../proxy/ProxyMaker.js";
 import type { SourceStamp } from "../demux/sampleIndexFile.js";
+import type { SilenceParams, SourceRange } from "../analysis/silence.js";
 import type { ProbeResult } from "../probe/types.js";
 import type { Rotation } from "../probe/rotation.js";
 import type { TranscribeDevice, WhisperModelId } from "../transcribe/models.js";
@@ -198,6 +199,8 @@ export interface WorkerMethods {
   peaksLevel0: { params: { channels: ArrayBuffer[] }; result: ArrayBuffer };
   /** The cache/peaks/ file of a whole level 0: the pyramid, stamped with the source file. */
   peaksFile: { params: { level0: ArrayBuffer; sampleRate: number; frames: number; channels: number; stamp: SourceStamp }; result: ArrayBuffer };
+  /** Silence detection (spec §14) over a media's peaks level 0: the silent spans (media µs, flat pairs) of each source range. */
+  detectSilence: { params: SilenceParams & { level0: ArrayBuffer; sampleRate: number; frames: number; channels: number; ranges: SourceRange[] }; result: { spans: number[][] } };
   /** One thumbnail sprite sheet (spec §9.6), decoded by the analysis worker's own video sessions. */
   thumbSheet: { params: ThumbSheetParams; result: ThumbSheetResult };
   /** A cached sheet (cache/thumbs/) as a bitmap. */
@@ -237,6 +240,7 @@ export const METHOD_WORKER: Record<Method, WorkerKind> = {
   closeAudio: "decode",
   peaksLevel0: "analysis",
   peaksFile: "analysis",
+  detectSilence: "analysis",
   thumbSheet: "analysis",
   decodeSheet: "analysis",
   closeThumbs: "analysis",

@@ -3,7 +3,8 @@
 // volume and mute of the preview chrome (§14: monitoring only, never the export), the color picker's
 // recent colors (§11), the punch zoom (Batch 27), the font picker's favorites (§11, Batch 28), the
 // default Title and Subtitle presets (§10.2, Batch 30), the Transcribe dialog's model and language
-// (§10.6, Batch 33) and Auto-duck music's depth and ramps (§14, Batch 37).
+// (§10.6, Batch 33), Auto-duck music's depth and ramps (§14, Batch 37) and Remove silence's parameters
+// (§14, Batch 38).
 // TODO(batch 42): the settings panel.
 import { createStore, type Store } from "../core/store/createStore.js";
 import { DEFAULT_PROXY_SHORT_EDGE, PROXY_RULES, PROXY_SHORT_EDGES, type ProxyRule, type ProxySettings, type ProxyShortEdge } from "../media/proxy/proxyFormat.js";
@@ -13,6 +14,7 @@ import { isWhisperLanguage } from "../media/transcribe/languages.js";
 import { DEFAULT_WHISPER_MODEL, isWhisperModel, type WhisperModelId } from "../media/transcribe/models.js";
 import type { KeyValueStore } from "./kv.js";
 import { DUCK_DEPTH_DB, DUCK_RAMP_FRAMES } from "../timeline/edit/volume.js";
+import { clampSilenceParam, SILENCE_MIN_MS, SILENCE_PADDING_MS, SILENCE_THRESHOLD } from "../timeline/edit/silence.js";
 
 /** copy: into media/ (default). reference: file handles in IndexedDB. TODO(batch 41): reference mode. */
 export type ImportMode = "copy" | "reference";
@@ -62,6 +64,13 @@ export interface AppSettings {
    */
   duckDepthDb: number;
   duckRampFrames: number;
+  /**
+   * Remove silence (spec §14): the threshold (dBFS), the minimum silence and the padding (ms), as last
+   * set in its parameter row (SILENCE_THRESHOLD, SILENCE_MIN_MS, SILENCE_PADDING_MS ranges).
+   */
+  silenceThresholdDb: number;
+  silenceMinMs: number;
+  silencePaddingMs: number;
 }
 
 export const AUTOSAVE_DELAYS_MS = [1000, 2000, 5000, 10_000] as const;
@@ -91,6 +100,9 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   transcribeLanguage: null,
   duckDepthDb: DUCK_DEPTH_DB,
   duckRampFrames: DUCK_RAMP_FRAMES,
+  silenceThresholdDb: SILENCE_THRESHOLD.default,
+  silenceMinMs: SILENCE_MIN_MS.default,
+  silencePaddingMs: SILENCE_PADDING_MS.default,
 };
 
 /** The favorites kept by the font picker. */
@@ -149,6 +161,9 @@ function sanitize(value: unknown, fallback: AppSettings = DEFAULT_APP_SETTINGS):
     transcribeLanguage: raw.transcribeLanguage === null || isWhisperLanguage(raw.transcribeLanguage) ? (raw.transcribeLanguage ?? null) : fallback.transcribeLanguage,
     duckDepthDb: typeof raw.duckDepthDb === "number" && Number.isFinite(raw.duckDepthDb) ? Math.min(DUCK_DEPTH_MAX, Math.max(DUCK_DEPTH_MIN, raw.duckDepthDb)) : fallback.duckDepthDb,
     duckRampFrames: Number.isInteger(raw.duckRampFrames) ? Math.min(DUCK_RAMP_MAX, Math.max(0, raw.duckRampFrames as number)) : fallback.duckRampFrames,
+    silenceThresholdDb: clampSilenceParam({ ...SILENCE_THRESHOLD, default: fallback.silenceThresholdDb }, raw.silenceThresholdDb),
+    silenceMinMs: clampSilenceParam({ ...SILENCE_MIN_MS, default: fallback.silenceMinMs }, raw.silenceMinMs),
+    silencePaddingMs: clampSilenceParam({ ...SILENCE_PADDING_MS, default: fallback.silencePaddingMs }, raw.silencePaddingMs),
   };
 }
 
