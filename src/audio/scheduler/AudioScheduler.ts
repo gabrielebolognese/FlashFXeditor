@@ -7,9 +7,13 @@
 //   become context times through `AudioClock.contextTime`.
 // - Voices: one AudioBufferSourceNode per (clip, segment, loop pass), started when its start comes
 //   within AHEAD_SECONDS (checked every STEP_SECONDS) and stopped at the clip's end: source -> envelope
-//   GainNode (start/stop ramps) -> clip GainNode (gain dB, mute; TODO(batch 37): fades, keyframes (the
-//   keyed gain is `gainDbAt` in core/document/keyframes.ts, Batch 35) and rubber bands as gain curves
-//   per scheduled chunk) -> track GainNode (mute/solo) -> mix bus.
+//   GainNode (start/stop ramps) -> fade GainNode (the clip's fades and crossfades, envelope.ts, as
+//   curves per voice, Batch 36) -> clip GainNode (gain dB, mute; TODO(batch 37): keyframes (the keyed
+//   gain is `gainDbAt` in core/document/keyframes.ts, Batch 35) and rubber bands as gain curves per
+//   scheduled chunk) -> track GainNode (mute/solo) -> mix bus.
+// - Crossfades (spec §6.15, Batch 36): a clip under a transition plays past its edge into its handle
+//   (the outgoing one after its end, the incoming one before its start), within its media; its fade
+//   node takes it in or out with equal power.
 //   `playbackRate` = the clip speed (0.25x..4x, pitch follows, spec §14).
 // - A voice whose start time has passed (playback starting mid-clip, a seek, audio decoded late)
 //   starts as soon as the render clock allows, with its offset moved on by the delay and a 10 ms
@@ -23,8 +27,10 @@
 //   ramps its voice, a clip moved, trimmed or removed stops its voice and is scheduled again.
 import type { PlaybackClock } from "../AudioClock.js";
 import { fpsToNumber } from "../../core/document/time.js";
-import type { Clip, ClipId, Frame, MediaClip, Project, Rational } from "../../core/document/types.js";
-import { clipInIndex, clipsInRange, trackIndex } from "../../timeline/model/queries.js";
+import { extendedEnd, extendedStart, sameTransition } from "../../core/document/transitions.js";
+import { isMediaClip, type Clip, type ClipId, type Frame, type MediaClip, type Project, type Rational } from "../../core/document/types.js";
+import { clipsInRange, lastClipStartingBy, trackIndex } from "../../timeline/model/queries.js";
+import { envelopeAt, envelopeCurve, envelopeRegions, type AudioLimits } from "./envelope.js";
 import { dbToGain, ramp, rampTo, RAMP_SECONDS, type AudioMixer } from "../AudioMixer.js";
 import type { DecodedAudio } from "../decode/DecodedAudio.js";
 import { segmentAt, segmentStartSeconds } from "../decode/segments.js";
@@ -85,15 +91,55 @@ interface Voice {
   end: number;
   source: AudioBufferSourceNode;
   envelope: GainNode;
+  /** The clip's fades and crossfades (Batch 36). */
+  fade: GainNode;
   gain: GainNode;
 }
 
 /** Clip gain: volume in dB, 0 when muted. */
 export const clipGain = (clip: MediaClip) => (clip.volume.muted ? 0 : dbToGain(clip.volume.gainDb));
 
-/** Same audio at the same times (a gain or mute change keeps the voice). */
+/**
+ * Writes a voice's fades and crossfades (envelope.ts) on `param`: its value at the voice's start, then
+ * one curve per region where the factor moves. `spanStart` is the timeline second sounding at context
+ * time `nominal`; the voice sounds from `start` to `end` (context times); `limits`: where the clip's
+ * audio exists (its crossfade ramps fit in it).
+ */
+function automateFades(param: AudioParam, clip: MediaClip, fps: number, limits: AudioLimits, spanStart: number, nominal: number, start: number, end: number): void {
+  const toTimeline = (t: number) => spanStart + (t - nominal);
+  const toContext = (s: number) => nominal + (s - spanStart);
+  const from = toTimeline(start);
+  const to = toTimeline(end);
+  const regions = envelopeRegions(clip, fps, limits).filter((region) => region.end > from && region.start < to);
+  const first = regions[0];
+  // A curve may not share its start with another event: no set when the first one starts with the voice.
+  if (!first || first.start > from) param.setValueAtTime(envelopeAt(clip, fps, from, limits), start);
+  else param.value = envelopeAt(clip, fps, from, limits);
+  for (const region of regions) {
+    const a = Math.max(region.start, from);
+    const b = Math.min(region.end, to);
+    if (b - a <= 1e-6) continue;
+    param.setValueCurveAtTime(envelopeCurve(clip, fps, a, b, limits), toContext(a), b - a);
+  }
+}
+
+/** Same audio at the same times, faded the same way (a gain or mute change keeps the voice). */
 function sameTiming(a: MediaClip, b: MediaClip): boolean {
-  return a.trackId === b.trackId && a.start === b.start && a.duration === b.duration && a.in === b.in && a.out === b.out && a.speed === b.speed && a.mediaId === b.mediaId && a.enabled === b.enabled && a.kind === b.kind;
+  return (
+    a.trackId === b.trackId &&
+    a.start === b.start &&
+    a.duration === b.duration &&
+    a.in === b.in &&
+    a.out === b.out &&
+    a.speed === b.speed &&
+    a.mediaId === b.mediaId &&
+    a.enabled === b.enabled &&
+    a.kind === b.kind &&
+    a.fades.in === b.fades.in &&
+    a.fades.out === b.fades.out &&
+    sameTransition(a.transitionIn, b.transitionIn) &&
+    sameTransition(a.transitionOut, b.transitionOut)
+  );
 }
 
 const sameMapping = (a: PlayMapping, b: PlayMapping) =>
@@ -104,6 +150,42 @@ const isAudioClip = (clip: Clip | null | undefined): clip is MediaClip => clip?.
 
 /** Media seconds of a clip at timeline second `s`. */
 const mediaSeconds = (clip: MediaClip, clipStart: number, s: number) => clip.in / 1e6 + (s - clipStart) * clip.speed;
+
+/** The timeline seconds a clip's audio exists in: from its media's start to its end, at its speed. */
+function audioLimits(clip: MediaClip, fps: number, durationUs: number): AudioLimits {
+  const clipStart = clip.start / fps;
+  return { start: clipStart - clip.in / 1e6 / clip.speed, end: clipStart + (durationUs - clip.in) / 1e6 / clip.speed };
+}
+
+/**
+ * The timeline seconds a clip plays (its span, or past its edges under its transitions: Batch 36),
+ * within its audio (`limits`).
+ */
+function playedSpan(clip: MediaClip, fps: number, limits: AudioLimits): { start: number; end: number } {
+  const start = Math.max(extendedStart(clip) / fps, limits.start);
+  const end = Math.min(extendedEnd(clip) / fps, limits.end);
+  return { start, end: Math.max(start, Math.max(end, (clip.start + clip.duration) / fps)) };
+}
+
+/** The clips of a track playing in the frames [from, to): those over them and their transitions' partners (Batch 36). */
+export function playingClips(project: Project, track: Project["tracks"][number], from: Frame, to: Frame): MediaClip[] {
+  const clips = clipsInRange(project, track.id, from, to);
+  const result: MediaClip[] = [];
+  const index = clips.length > 0 && clips.some((clip) => isMediaClip(clip) && (clip.transitionIn || clip.transitionOut)) ? trackIndex(project, track) : null;
+  for (const clip of clips) {
+    if (!isMediaClip(clip)) continue;
+    if (index && clip.transitionIn && clip === clips[0]) {
+      const prev = index.clips[lastClipStartingBy(index, clip.start) - 1];
+      if (prev && isMediaClip(prev) && prev.transitionOut?.id === clip.transitionIn.id) result.push(prev);
+    }
+    result.push(clip);
+    if (index && clip.transitionOut && clip === clips[clips.length - 1]) {
+      const next = index.clips[lastClipStartingBy(index, clip.start) + 1];
+      if (next && isMediaClip(next) && next.transitionIn?.id === clip.transitionOut.id) result.push(next);
+    }
+  }
+  return result;
+}
 
 export class AudioScheduler {
   readonly stats: AudioSchedulerStats = { voices: 0, started: 0, late: 0, stopped: 0 };
@@ -138,9 +220,10 @@ export class AudioScheduler {
     const fps = fpsToNumber(project.settings.fps);
     for (const track of project.tracks) {
       if (track.kind !== "audio") continue;
-      const clip = clipInIndex(trackIndex(project, track), frame);
-      if (!isAudioClip(clip)) continue;
-      if (!this.ensure(clip, mediaSeconds(clip, clip.start / fps, frame / fps))) ready = false;
+      for (const clip of playingClips(project, track, frame, frame + 1)) {
+        if (!isAudioClip(clip) || frame < extendedStart(clip) || frame >= extendedEnd(clip)) continue;
+        if (!this.ensure(clip, Math.max(0, mediaSeconds(clip, clip.start / fps, frame / fps)))) ready = false;
+      }
     }
     return ready;
   }
@@ -151,10 +234,10 @@ export class AudioScheduler {
     const to = frame + Math.ceil(LOAD_AHEAD_SECONDS * fps);
     for (const track of project.tracks) {
       if (track.kind !== "audio") continue;
-      for (const clip of clipsInRange(project, track.id, frame, to)) {
+      for (const clip of playingClips(project, track, frame, to)) {
         if (!isAudioClip(clip)) continue;
-        const s = Math.max(frame, clip.start) / fps;
-        this.ensure(clip, mediaSeconds(clip, clip.start / fps, s));
+        const s = Math.max(frame, extendedStart(clip)) / fps;
+        this.ensure(clip, Math.max(0, mediaSeconds(clip, clip.start / fps, s)));
       }
     }
   }
@@ -230,26 +313,28 @@ export class AudioScheduler {
     const fps = fpsToNumber(project.settings.fps);
     for (const track of project.tracks) {
       if (track.kind !== "audio") continue;
-      for (const clip of clipsInRange(project, track.id, Math.floor(a * fps), Math.ceil(b * fps) + 1)) {
+      for (const clip of playingClips(project, track, Math.floor(a * fps), Math.ceil(b * fps) + 1)) {
         if (!isAudioClip(clip)) continue;
         const clipStart = clip.start / fps;
-        const clipEnd = (clip.start + clip.duration) / fps;
-        const spanStart = Math.max(clipStart, from);
-        const spanEnd = Math.min(clipEnd, to);
+        // Past its edges under a transition (Batch 36), within its media.
+        const limits = audioLimits(clip, fps, project.media[clip.mediaId]?.durationUs ?? clip.out);
+        const played = playedSpan(clip, fps, limits);
+        const spanStart = Math.max(played.start, from);
+        const spanEnd = Math.min(played.end, to);
         if (spanEnd <= spanStart || origin + spanEnd <= w0 || origin + spanStart >= w1) continue;
-        this.scheduleClip(clip, mixer, origin, clipStart, spanStart, spanEnd, w0, w1);
+        this.scheduleClip(clip, mixer, origin, clipStart, spanStart, spanEnd, w0, w1, fps, limits);
       }
     }
   }
 
-  private scheduleClip(clip: MediaClip, mixer: AudioMixer, origin: number, clipStart: number, spanStart: number, spanEnd: number, w0: number, w1: number): void {
+  private scheduleClip(clip: MediaClip, mixer: AudioMixer, origin: number, clipStart: number, spanStart: number, spanEnd: number, w0: number, w1: number, fps: number, limits: AudioLimits): void {
     const layout = this.deps.audio.layout(clip.mediaId);
     if (!layout) {
       this.ensure(clip, mediaSeconds(clip, clipStart, Math.max(spanStart, w0 - origin)));
       return;
     }
     // The segments the span plays, each from its timeline start to its timeline end.
-    const first = segmentAt(layout, mediaSeconds(clip, clipStart, Math.max(spanStart, w0 - origin)));
+    const first = segmentAt(layout, Math.max(0, mediaSeconds(clip, clipStart, Math.max(spanStart, w0 - origin))));
     for (let segment = first; segment < layout.count; segment++) {
       const segStart = segmentStartSeconds(layout, segment);
       const segEnd = segment + 1 < layout.count ? segmentStartSeconds(layout, segment + 1) : Infinity;
@@ -266,11 +351,13 @@ export class AudioScheduler {
         segStart,
         // A clip's own start and a segment continuing the previous one start exactly; anything else joins mid-sound.
         natural: Math.abs(sStart - clipStart) < 1e-9 || (segment > first && Math.abs(sStart - spanStart) > 1e-9),
+        fps,
+        limits,
       });
     }
   }
 
-  private startVoice(clip: MediaClip, segment: number, mixer: AudioMixer, origin: number, span: { clipStart: number; start: number; end: number; segStart: number; natural: boolean }): void {
+  private startVoice(clip: MediaClip, segment: number, mixer: AudioMixer, origin: number, span: { clipStart: number; start: number; end: number; segStart: number; natural: boolean; fps: number; limits: AudioLimits }): void {
     const buffer = this.deps.audio.segment(clip.mediaId, segment);
     if (!buffer) {
       this.deps.audio.request(clip.mediaId, segment, "playback");
@@ -281,6 +368,8 @@ export class AudioScheduler {
     let start = clock.contextTime(origin + span.start);
     const end = clock.contextTime(origin + span.end);
     if (start === null || end === null) return;
+    // Where the span's start sounds, before a late start moves `start` on.
+    const nominal = start;
     let offset = mediaSeconds(clip, span.clipStart, span.start) - span.segStart;
     const earliest = ctx.currentTime + MIN_AHEAD_SECONDS;
     const late = start < earliest;
@@ -296,13 +385,17 @@ export class AudioScheduler {
     source.buffer = buffer;
     source.playbackRate.value = clip.speed;
     const envelope = ctx.createGain();
+    const fade = ctx.createGain();
     const gain = ctx.createGain();
     gain.gain.value = clipGain(clip);
     if (fadeIn) ramp(envelope.gain, 0, 1, start);
+    // Timeline second `s` of the span sounds at context time `nominal + s - span.start` (a late voice skips its head).
+    automateFades(fade.gain, clip, span.fps, span.limits, span.start, nominal, start, end);
     source.connect(envelope);
-    envelope.connect(gain);
+    envelope.connect(fade);
+    fade.connect(gain);
     gain.connect(mixer.trackInput(clip.trackId));
-    const voice: Voice = { clip, segment, origin, start, end, source, envelope, gain };
+    const voice: Voice = { clip, segment, origin, start, end, source, envelope, fade, gain };
     source.onended = () => this.forget(voice, 0);
     source.start(start, Math.max(0, offset));
     source.stop(end);
@@ -384,6 +477,7 @@ export class AudioScheduler {
     const disconnect = () => {
       voice.source.disconnect();
       voice.envelope.disconnect();
+      voice.fade.disconnect();
       voice.gain.disconnect();
     };
     if (afterSeconds > 0) setTimeout(disconnect, afterSeconds * 1000 + 50);

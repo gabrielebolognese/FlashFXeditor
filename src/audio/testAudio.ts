@@ -25,7 +25,7 @@ export class FakeAudioBuffer {
 
 export const fakeBuffer = (seconds: number, sampleRate = 48_000, channels = 2) => new FakeAudioBuffer({ length: Math.round(seconds * sampleRate), numberOfChannels: channels, sampleRate }) as unknown as AudioBuffer;
 
-export type ParamEvent = [kind: "set" | "ramp" | "hold" | "cancel", value: number, time: number];
+export type ParamEvent = [kind: "set" | "ramp" | "hold" | "cancel" | "curve", value: number, time: number];
 
 /** An automation event on the param's timeline. */
 interface TimelineEvent {
@@ -55,6 +55,15 @@ export class FakeParam {
   linearRampToValueAtTime(value: number, time: number) {
     this.events.push(["ramp", value, time]);
     this.insert({ kind: "ramp", value, time });
+    return this;
+  }
+  /** A curve is a set at its start and linear ramps through its points (the spec's interpolation); it must not overlap another event, as in browsers. */
+  setValueCurveAtTime(values: ArrayLike<number>, startTime: number, duration: number) {
+    if (values.length < 2 || !(duration > 0)) throw new Error("setValueCurveAtTime: needs 2 values and a duration");
+    if (this.timeline.some((event) => event.time >= startTime && event.time < startTime + duration)) throw new Error("setValueCurveAtTime: overlaps another automation event");
+    this.events.push(["curve", values[values.length - 1] as number, startTime]);
+    this.insert({ kind: "set", value: values[0] as number, time: startTime });
+    for (let i = 1; i < values.length; i++) this.insert({ kind: "ramp", value: values[i] as number, time: startTime + (duration * i) / (values.length - 1) });
     return this;
   }
   cancelAndHoldAtTime(time: number) {
@@ -96,7 +105,7 @@ export class FakeParam {
   get target(): number {
     for (let i = this.events.length - 1; i >= 0; i--) {
       const [kind, value] = this.events[i] as ParamEvent;
-      if (kind === "set" || kind === "ramp") return value;
+      if (kind === "set" || kind === "ramp" || kind === "curve") return value;
     }
     return this.value;
   }

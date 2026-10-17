@@ -2,13 +2,15 @@ import { useEffect, useMemo, useRef, type ReactNode } from "react";
 import { revealSection } from "../app/captionController.js";
 import { PanelFrame, PanelTitle } from "../app/PanelFrame.js";
 import { documentStore, sessionStore } from "../app/services.js";
+import type { Project } from "../core/document/types.js";
 import type { Selection } from "../core/store/selection.js";
+import { transitionAt } from "../timeline/edit/transitions.js";
 import { useStoreSelector } from "../core/store/useStoreSelector.js";
 import { AnimationSection } from "./properties/AnimationSection.js";
 import { CaptionStyleSection } from "./properties/CaptionStyleSection.js";
 import { ClipSection } from "./properties/ClipSection.js";
 import { CropModeToggle, CropSection } from "./properties/CropSection.js";
-import { contextKey, propertiesContext, sectionIds, type PropertiesContext, type SectionId } from "./properties/context.js";
+import { contextKey, propertiesContext, sectionIds, type PropertiesContext, type SectionId, type SelectedCuts } from "./properties/context.js";
 import { KeyframeControls } from "./properties/KeyframeControls.js";
 import { MarkerSection } from "./properties/MarkerSection.js";
 import { ProjectSection } from "./properties/ProjectSection.js";
@@ -18,6 +20,7 @@ import { SolidSection } from "./properties/SolidSection.js";
 import { SpeedSection } from "./properties/SpeedSection.js";
 import { TextSection } from "./properties/TextSection.js";
 import { TrackSection } from "./properties/TrackSection.js";
+import { TransitionSection } from "./properties/TransitionSection.js";
 import { OpacitySection, TransformSection } from "./properties/TransformSection.js";
 import styles from "./PropertiesPanel.module.css";
 
@@ -38,6 +41,7 @@ const SECTION_TITLES: Record<SectionId, string> = {
   crop: "Crop",
   opacity: "Opacity",
   speed: "Speed",
+  transition: "Transition",
   track: "Track",
   marker: "Marker",
   project: "Project",
@@ -63,6 +67,8 @@ function sectionBody(id: SectionId, context: PropertiesContext): ReactNode {
       return context.kind === "clips" ? <OpacitySection ids={context.layerIds} /> : null;
     case "speed":
       return context.kind === "clips" ? <SpeedSection ids={context.speedIds} /> : null;
+    case "transition":
+      return context.kind === "transition" || context.kind === "editPoint" ? <TransitionSection cut={context.cut} /> : null;
     case "track":
       return context.kind === "track" ? <TrackSection ids={context.trackIds} /> : null;
     case "marker":
@@ -84,14 +90,31 @@ function sectionActions(id: SectionId, context: PropertiesContext): ReactNode {
 }
 
 const selectKey = (selection: Selection) => contextKey(selection, null);
+const NO_IDS: readonly string[] = [];
+const cutKey = (cut: { left: string; right: string } | null) => (cut ? `${cut.left}|${cut.right}` : "");
+/** The selected transition and edit point (Batch 36), as the session holds them. */
+const selectedCuts = (): SelectedCuts => {
+  const point = sessionStore.editPoint.getState();
+  return { transition: sessionStore.transition.getState(), editPoint: point ? { left: point.left, right: point.right } : null };
+};
 
 export function PropertiesPanel() {
   const selectionKey = useStoreSelector(sessionStore.selection, selectKey);
   const markerId = useStoreSelector(sessionStore.marker, (id) => id);
+  const transitionKey = useStoreSelector(sessionStore.transition, cutKey);
+  const editPointKey = useStoreSelector(sessionStore.editPoint, cutKey);
+  // Whether the selected edit point's cut has a transition (its section shows then).
+  const editPointTransition = useStoreSelector(documentStore, (project: Project) => {
+    const point = sessionStore.editPoint.getState();
+    return point !== null && transitionAt(project, point) !== null;
+  });
   // The key changes with every selection change the context depends on; the document is read once.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const context = useMemo(() => propertiesContext(sessionStore.selection.getState(), markerId, documentStore.getState()), [selectionKey, markerId]);
-  const key = contextKey(sessionStore.selection.getState(), markerId);
+  const context = useMemo(
+    () => propertiesContext(sessionStore.selection.getState(), markerId, documentStore.getState(), selectedCuts()),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [selectionKey, markerId, transitionKey, editPointKey, editPointTransition],
+  );
+  const key = `${contextKey(sessionStore.selection.getState(), markerId, selectedCuts())}:${editPointTransition}`;
   const body = useRef<HTMLDivElement>(null);
   const reveal = useStoreSelector(revealSection, (id) => id);
   useEffect(() => {
@@ -107,6 +130,7 @@ export function PropertiesPanel() {
     <PanelFrame id="properties" header={<PanelTitle>Edit Properties</PanelTitle>} actions={title && <span className={styles.count}>{title}</span>}>
       <div ref={body} className={styles.body}>
         {context.kind === "clips" && <QuickActions ids={context.clipIds} primary={context.primary} />}
+        {context.kind === "editPoint" && <QuickActions ids={NO_IDS} primary="" editPoint />}
         {/* Keyed by the context: a new selection mounts fresh sections (their bindings follow it). */}
         <div key={key} className={styles.scroll}>
           {sectionIds(context).map((id) => (

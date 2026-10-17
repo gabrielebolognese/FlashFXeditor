@@ -78,8 +78,8 @@ describe("renderMixdown", () => {
     const muted = setup(both, { tracks });
     expect(heardClips(muted.project, 0, 30).map((clip) => clip.id)).toEqual(["c2", "c3"]);
     await renderMixdown(muted.project, { start: 0, end: 30 }, { sampleRate: RATE, channels: 2 }, muted.deps);
-    // Every voice goes source -> envelope -> clip gain -> track gain: the muted track's is 0 (playback's mixer).
-    const trackGain = (source: FakeNode) => ((source.outputs[0]?.outputs[0]?.outputs[0] as FakeGain | undefined)?.gain.value ?? NaN);
+    // Every voice goes source -> envelope -> fade -> clip gain -> track gain: the muted track's is 0 (playback's mixer).
+    const trackGain = (source: FakeNode) => ((source.outputs[0]?.outputs[0]?.outputs[0]?.outputs[0] as FakeGain | undefined)?.gain.value ?? NaN);
     expect(muted.contexts[0]?.sources.map(trackGain)).toEqual([0, 1, 1]);
     const solo = setup(both, { tracks: tracks.map((track) => (track.id === "a3" ? { ...track, solo: true } : track)) });
     expect(heardClips(solo.project, 0, 30).map((clip) => clip.id)).toEqual(["c3"]);

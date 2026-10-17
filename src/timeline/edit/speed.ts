@@ -153,13 +153,13 @@ function retimeGroup(project: Project, group: readonly MediaClip[], speed: numbe
     limit ??= clipLimit;
     delta = Math.max(delta, duration - clip.duration);
     // `out` follows `in` exactly (so a later rate stretch keeps the §5.2 invariant); `duration <= room`
-    // keeps it within the media.
-    const out = clip.in + framesToSourceUs(duration, speed, fps);
+    // keeps it within the media, up to its rounding slack (BOUND_SLACK_US), clamped off here.
+    const out = Math.min(media?.durationUs ?? Infinity, clip.in + framesToSourceUs(duration, speed, fps));
     const next: MediaClip = { ...clip, speed, duration, out };
     // Keys scale with the duration; keys landing on one frame merge, eases and holds stay (Batch 35).
     if (clip.keyframes && duration !== clip.duration) next.keyframes = retimeKeyframes(clip.keyframes, duration / clip.duration);
     next.fades = { in: Math.min(clip.fades.in, duration), out: Math.min(clip.fades.out, duration) };
-    // TODO(batch 36): shorten the transitions to the handles left.
+    // Transitions are shortened to the handles left (or removed) by `reconcileTransitions` after the command.
     changes.set(clip.id, next);
   }
 

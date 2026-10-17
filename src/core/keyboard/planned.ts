@@ -10,8 +10,6 @@ export interface PlannedCommand {
 }
 
 export const PLANNED_COMMANDS: Readonly<Record<string, PlannedCommand>> = {
-  // Batch 36: transitions.
-  "edit.defaultTransition": { batch: 36, label: "Default transition" },
   // Batch 39: clipboard (Duplicate, Mod+D, is registered since Batch 25).
   "clipboard.cut": { batch: 39, label: "Cut" },
   "clipboard.copy": { batch: 39, label: "Copy" },

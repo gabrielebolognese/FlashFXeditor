@@ -131,6 +131,15 @@ export interface EditPoint {
   side: "both" | "left" | "right";
 }
 
+/**
+ * A selected transition (spec §6.4, §11, Batch 36): the cut it sits on, named by its two clips (the
+ * properties panel shows its Transition section; Delete removes it).
+ */
+export interface TransitionSelection {
+  left: ClipId;
+  right: ClipId;
+}
+
 /** A selected gap (spec §6.7): the empty span [start, end) before a clip of a track (after the previous clip, or frame 0). */
 export interface GapSelection {
   trackId: TrackId;
@@ -157,6 +166,8 @@ export interface SessionStore {
   marker: Store<string | null>;
   /** The selected keyframes (Batch 35), or null. */
   keyframes: Store<KeyframeSelection | null>;
+  /** The selected transition (Batch 36), or null. */
+  transition: Store<TransitionSelection | null>;
 }
 
 export function createSessionStore(initial: Partial<SessionState> = {}): SessionStore {
@@ -167,6 +178,7 @@ export function createSessionStore(initial: Partial<SessionState> = {}): Session
     gap: createStore<GapSelection | null>(null),
     marker: createStore<string | null>(null),
     keyframes: createStore<KeyframeSelection | null>(null),
+    transition: createStore<TransitionSelection | null>(null),
   };
 }
 
@@ -202,6 +214,7 @@ export function setSelection(session: SessionStore, next: Selection): void {
     selectEditPoint(session, null);
     selectGap(session, null);
     selectMarker(session, null);
+    selectTransition(session, null);
   }
   const keys = session.keyframes.getState();
   if (keys && (next.kind !== "clips" || !next.clipIds.has(keys.clipId))) session.keyframes.set(null);
@@ -217,6 +230,7 @@ export function selectEditPoint(session: SessionStore, point: EditPoint | null):
     setSelection(session, EMPTY_SELECTION);
     selectGap(session, null);
     selectMarker(session, null);
+    selectTransition(session, null);
   }
   session.editPoint.set(point);
 }
@@ -229,6 +243,7 @@ export function selectGap(session: SessionStore, gap: GapSelection | null): void
     setSelection(session, EMPTY_SELECTION);
     selectEditPoint(session, null);
     selectMarker(session, null);
+    selectTransition(session, null);
   }
   session.gap.set(gap);
 }
@@ -240,8 +255,22 @@ export function selectMarker(session: SessionStore, markerId: string | null): vo
     setSelection(session, EMPTY_SELECTION);
     selectEditPoint(session, null);
     selectGap(session, null);
+    selectTransition(session, null);
   }
   session.marker.set(markerId);
+}
+
+/** Selects a transition (the clip selection, the edit point, the gap and the marker are cleared), or none. No notification when it does not change. */
+export function selectTransition(session: SessionStore, transition: TransitionSelection | null): void {
+  const current = session.transition.getState();
+  if (current === transition || (current && transition && current.left === transition.left && current.right === transition.right)) return;
+  if (transition) {
+    setSelection(session, EMPTY_SELECTION);
+    selectEditPoint(session, null);
+    selectGap(session, null);
+    selectMarker(session, null);
+  }
+  session.transition.set(transition);
 }
 
 /** Selects keyframes of one clip's lane (null: none). No notification when it does not change. */

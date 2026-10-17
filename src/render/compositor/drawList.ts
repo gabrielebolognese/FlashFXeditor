@@ -39,13 +39,26 @@ export interface TextureLayer extends LayerBase {
   blur?: number;
 }
 
-/** Two textures mixed by `mix` (0 = from, 1 = to): the dissolve transition (Batch 36). */
+/** One picture of a dissolve: a texture with the quad, crop and opacity it would be drawn with alone (a `TextureLayer`'s). */
+export interface DissolveSide {
+  texture: TextureHandle;
+  /** Maps the unit quad (0..1, 0..1) into project pixels. */
+  transform: Mat3;
+  crop: UvRect;
+  opacity: number;
+}
+
+/**
+ * Two pictures mixed by `mix` (0 = from, 1 = to) over the quad `transform` (the frame): the cross
+ * dissolve (spec §9.4, Batch 36). Each side keeps its own geometry: a point shows `from` weighted by
+ * 1 - mix plus `to` weighted by mix, each where it covers the point, so two clips of different sizes
+ * dissolve as they would draw.
+ */
 export interface DissolveLayer extends LayerBase {
   kind: "dissolve";
-  from: TextureHandle;
-  to: TextureHandle;
+  from: DissolveSide;
+  to: DissolveSide;
   mix: number;
-  crop: UvRect;
 }
 
 /**
@@ -144,7 +157,23 @@ export interface TextCompositeLayer {
   karaoke: CaptionHighlightFrame | null;
 }
 
-export type CompositeLayer = MediaLayer | SolidLayer | TextCompositeLayer;
+/**
+ * A cross dissolve at its frame (spec §9.4, Batch 36): the outgoing and the incoming clip's media
+ * layers (the incoming one on its own slot, `trackId + TRANSITION_SLOT`) and how much of the incoming
+ * one shows. A dip to a color is no layer of its own: the clip shown and a solid in its quad.
+ */
+export interface TransitionCompositeLayer {
+  kind: "dissolve";
+  trackId: TrackId;
+  from: MediaLayer;
+  to: MediaLayer;
+  mix: number;
+}
+
+/** The texture slot suffix of a transition's incoming clip (one slot per picture of a track). */
+export const TRANSITION_SLOT = "#in";
+
+export type CompositeLayer = MediaLayer | SolidLayer | TextCompositeLayer | TransitionCompositeLayer;
 
 /** The document evaluated at a frame (`Compositor.evaluate`), before texture resolution. */
 export interface Composite {

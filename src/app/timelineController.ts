@@ -31,6 +31,7 @@ import { moveMarker, openMarkerEditor } from "./markerController.js";
 import { clipVisuals } from "./mediaController.js";
 import { moveTrackTo, startTrackRename, toggleTrack } from "./trackController.js";
 import { generateCutTimeline, generateTestClips } from "./timelineDev.js";
+import { openTransition, setFade, setTransitionSides } from "./transitionController.js";
 import { actions, documentStore, fontLibrary, idleQueue, layoutStore, scheduler, sessionStore, themeBridge } from "./services.js";
 
 /** Zoom slider resolution (positions per full range). */
@@ -145,6 +146,10 @@ export const timelineView = new TimelineView({
     const command = moveKeys(documentStore.getState(), clipId, section, frames, delta);
     if (command) documentStore.dispatch(command);
   },
+  // Fades and transitions (Batch 36, spec §6.4, §6.15): one command each.
+  onSetFade: (clipId, edge, frames) => setFade(clipId, edge, frames),
+  onTransitionEdge: (cut, before, after) => setTransitionSides(cut, before, after),
+  onOpenTransition: (cut) => openTransition(cut),
   onAddKeyframe: (clipId, section, frame) => {
     const command = addKeyAt(documentStore.getState(), clipId, section, frame);
     if (command) documentStore.dispatch(command);

@@ -3,8 +3,8 @@
 // applied on the CPU) and the view matrix (target px -> clip space).
 // Fragment outputs are premultiplied; the pipelines blend with (one, one-minus-src-alpha).
 
-/** Per-layer uniforms: 8 vec4 (128 bytes), at a 256-byte dynamic offset. Packed by `layerUniforms.ts`. */
-const COMMON = /* wgsl */ `
+/** Per-layer uniforms: 13 vec4 (208 bytes), at a 256-byte dynamic offset. Packed by `layerUniforms.ts`. */
+const DECLARATIONS = /* wgsl */ `
 struct View {
   c0: vec4f,
   c1: vec4f,
@@ -25,11 +25,21 @@ struct Layer {
   color2: vec4f,
   // solids: width, height (px of the layer's own space), corner radius, shape (0 quad, 1 box, 2 ellipse)
   shape: vec4f,
+  // dissolves: the second picture's crop (u0, v0, u1, v1)
+  uv2: vec4f,
+  // dissolves: the unit quad -> each picture's unit quad (a, b, c, d of each; tx, ty of both in mapT)
+  mapA: vec4f,
+  mapB: vec4f,
+  mapT: vec4f,
+  // dissolves: each picture's own opacity
+  sides: vec4f,
 };
 
 @group(0) @binding(0) var<uniform> view: View;
 @group(0) @binding(1) var<uniform> layer: Layer;
+`;
 
+const COMMON = /* wgsl */ `${DECLARATIONS}
 struct VertexOut {
   @builtin(position) position: vec4f,
   @location(0) uv: vec2f,
@@ -63,16 +73,45 @@ fn fs(in: VertexOut) -> @location(0) vec4f {
 }
 `;
 
-export const DISSOLVE_WGSL = /* wgsl */ `${COMMON}
+/**
+ * The cross dissolve (spec §9.4, Batch 36): one quad over the frame; each picture is sampled where its
+ * own quad covers the point (its map takes the point onto its unit quad, then its crop) and counts
+ * nothing outside it, so the two mix as each would draw alone: from x (1 - mix) + to x mix.
+ */
+export const DISSOLVE_WGSL = /* wgsl */ `${DECLARATIONS}
 @group(1) @binding(0) var fromSampler: sampler;
 @group(1) @binding(1) var fromTexture: texture_2d<f32>;
 @group(2) @binding(0) var toSampler: sampler;
 @group(2) @binding(1) var toTexture: texture_2d<f32>;
 
+struct DissolveOut {
+  @builtin(position) position: vec4f,
+  @location(0) a: vec2f,
+  @location(1) b: vec2f,
+};
+
+@vertex
+fn vs(@builtin(vertex_index) index: u32) -> DissolveOut {
+  var corners = array<vec2f, 4>(vec2f(0.0, 0.0), vec2f(1.0, 0.0), vec2f(0.0, 1.0), vec2f(1.0, 1.0));
+  let corner = corners[index];
+  let model = mat3x3f(layer.c0.xyz, layer.c1.xyz, layer.c2.xyz);
+  let toClip = mat3x3f(view.c0.xyz, view.c1.xyz, view.c2.xyz);
+  let position = toClip * model * vec3f(corner, 1.0);
+  var out: DissolveOut;
+  out.position = vec4f(position.xy, 0.0, 1.0);
+  out.a = vec2f(layer.mapA.x * corner.x + layer.mapA.z * corner.y + layer.mapT.x, layer.mapA.y * corner.x + layer.mapA.w * corner.y + layer.mapT.y);
+  out.b = vec2f(layer.mapB.x * corner.x + layer.mapB.z * corner.y + layer.mapT.z, layer.mapB.y * corner.x + layer.mapB.w * corner.y + layer.mapT.w);
+  return out;
+}
+
+fn inside(t: vec2f) -> f32 {
+  return select(0.0, 1.0, all(t >= vec2f(0.0)) && all(t <= vec2f(1.0)));
+}
+
 @fragment
-fn fs(in: VertexOut) -> @location(0) vec4f {
-  let a = textureSample(fromTexture, fromSampler, in.uv);
-  let b = textureSample(toTexture, toSampler, in.uv);
+fn fs(in: DissolveOut) -> @location(0) vec4f {
+  let a = textureSample(fromTexture, fromSampler, mix(layer.uv.xy, layer.uv.zw, in.a)) * (layer.sides.x * inside(in.a));
+  let b = textureSample(toTexture, toSampler, mix(layer.uv2.xy, layer.uv2.zw, in.b)) * (layer.sides.y * inside(in.b));
   return mix(a, b, layer.params.w) * layer.params.x;
 }
 `;

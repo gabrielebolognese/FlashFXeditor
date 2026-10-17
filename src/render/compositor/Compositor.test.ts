@@ -295,6 +295,61 @@ describe("Compositor.evaluate", () => {
     expect(fadeFactor({ start: 0, duration: 10, fades: { in: 0, out: 0 } }, 3)).toBe(1);
   });
 
+  it("fades a solid's opacity when it has fades (Batch 36)", () => {
+    let doc = project(["v1"]);
+    doc = withClips(doc, [{ ...makeSolidClip({ id: "s", trackId: "v1", start: 0, duration: 21 }), fades: { in: 10, out: 0 } }]);
+    const compositor = new Compositor();
+    expect((compositor.evaluate(doc, 5).layers[0] as SolidLayer).opacity).toBeCloseTo(0.5, 9);
+    expect((compositor.evaluate(doc, 15).layers[0] as SolidLayer).opacity).toBe(1);
+  });
+
+  it("dissolves the two clips of a transition, each playing into its handle (Batch 36)", () => {
+    let doc = project(["v1"], [video("m1", 1920, 1080), video("m2", 1080, 1920)]);
+    const t = { id: "t", kind: "crossDissolve" as const, before: 2, after: 2 };
+    doc = withClips(doc, [
+      clip(doc, { id: "a", trackId: "v1", start: 0, duration: 30, in: frameToUs(30, doc.settings.fps), out: frameToUs(60, doc.settings.fps), transitionOut: t, fades: { in: 0, out: 10 } }),
+      clip(doc, { id: "b", trackId: "v1", start: 30, duration: 30, mediaId: "m2", in: frameToUs(90, doc.settings.fps), out: frameToUs(120, doc.settings.fps), transitionIn: t }),
+    ]);
+    const compositor = new Compositor();
+    const fps = doc.settings.fps;
+    const at = (frame: number) => compositor.evaluate(doc, frame).layers[0] as unknown as { kind: string; mix: number; from: MediaLayer; to: MediaLayer };
+    expect((compositor.evaluate(doc, 27).layers[0] as MediaLayer).kind).toBe("media");
+    const first = at(28);
+    expect(first.kind).toBe("dissolve");
+    expect(first.mix).toBeCloseTo(0.2, 9);
+    expect(first.from.clipId).toBe("a");
+    expect(first.to.clipId).toBe("b");
+    // B shows its source 2 frames before its in point, on its own texture slot.
+    expect(first.to.timeUs).toBe(frameToUs(88, fps));
+    expect(first.to.trackId).toBe("v1#in");
+    expect(first.from.trackId).toBe("v1");
+    const late = at(31);
+    expect(late.mix).toBeCloseTo(0.8, 9);
+    // A plays one frame past its out point, faded as on its last frame.
+    expect(late.from.timeUs).toBe(frameToUs(61, fps));
+    expect(late.from.opacity).toBe(0);
+    expect((compositor.evaluate(doc, 32).layers[0] as MediaLayer).clipId).toBe("b");
+  });
+
+  it("dips to a color in the clip's own quad: out of the first clip, into the second (Batch 36)", () => {
+    let doc = project(["v1"]);
+    const t = { id: "t", kind: "dipToWhite" as const, before: 2, after: 2 };
+    doc = withClips(doc, [
+      clip(doc, { id: "a", trackId: "v1", start: 0, duration: 30, out: frameToUs(30, doc.settings.fps), transitionOut: t, transform: transform({ scale: 0.5 }) }),
+      clip(doc, { id: "b", trackId: "v1", start: 30, duration: 30, in: frameToUs(60, doc.settings.fps), out: frameToUs(90, doc.settings.fps), transitionIn: t }),
+    ]);
+    const compositor = new Compositor();
+    const at = (frame: number) => compositor.evaluate(doc, frame).layers;
+    const [pictureA, dipA] = at(29) as [MediaLayer, SolidLayer];
+    expect(pictureA.clipId).toBe("a");
+    expect(dipA.color).toEqual({ r: 1, g: 1, b: 1, a: 1 });
+    expect(dipA.opacity).toBeCloseTo(0.8, 9);
+    expect([...dipA.transform]).toEqual([...pictureA.transform]);
+    const [pictureB, dipB] = at(30) as [MediaLayer, SolidLayer];
+    expect(pictureB.clipId).toBe("b");
+    expect(dipB.opacity).toBeCloseTo(0.8, 9);
+  });
+
   it("draws solids as their shape over their size's box, flat or as a vertical gradient (Batch 34)", () => {
     let doc = project(["v1", "v2", "v3"]);
     const rect = { ...makeSolidClip({ id: "s1", trackId: "v1", start: 0, duration: 10 }), fill: { r: 1, g: 0, b: 0, a: 0.5 }, opacity: 0.8, transform: transform({ x: 10 }) };
@@ -433,6 +488,18 @@ describe("DrawListSnapshot", () => {
     expect(snapshot.update(solid({ shape: null }))).toBe(true);
     // A flat fill without `to` draws what one with `to` = its color draws.
     expect(snapshot.update(solid({ shape: null, to: { r: 1, g: 1, b: 1, a: 1 } }))).toBe(false);
+  });
+
+  it("sees a dissolve's sides and mix change (Batch 36)", () => {
+    const snapshot = new DrawListSnapshot();
+    const a = texture();
+    const b = texture();
+    const side = (tex: TextureHandle, opacity = 1) => ({ texture: tex, transform: [10, 0, 0, 10, 0, 0] as Mat3, crop: { u0: 0, v0: 0, u1: 1, v1: 1 }, opacity });
+    const dissolve = (mix: number, opacity = 1): DrawList => ({ width: W, height: H, background: { r: 0, g: 0, b: 0, a: 1 }, layers: [{ kind: "dissolve", transform: [W, 0, 0, H, 0, 0], opacity: 1, from: side(a, opacity), to: side(b), mix }] });
+    expect(snapshot.update(dissolve(0.5))).toBe(true);
+    expect(snapshot.update(dissolve(0.5))).toBe(false);
+    expect(snapshot.update(dissolve(0.6))).toBe(true);
+    expect(snapshot.update(dissolve(0.6, 0.5))).toBe(true);
   });
 
   it("treats a destroyed texture as a change", () => {

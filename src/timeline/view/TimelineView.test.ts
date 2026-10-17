@@ -122,6 +122,9 @@ function setup(clipCount = 0, theme: Theme = testTheme()) {
   const onMoveMarker = vi.fn();
   const onEditMarker = vi.fn();
   const onDropFiles = vi.fn();
+  const onSetFade = vi.fn();
+  const onTransitionEdge = vi.fn();
+  const onOpenTransition = vi.fn();
   const idle = { pause: vi.fn(), resume: vi.fn() };
   const view = new TimelineView({
     scheduler,
@@ -142,6 +145,9 @@ function setup(clipCount = 0, theme: Theme = testTheme()) {
     onMoveMarker,
     onEditMarker,
     onDropFiles,
+    onSetFade,
+    onTransitionEdge,
+    onOpenTransition,
     idle,
     platform: "other",
   });
@@ -155,7 +161,34 @@ function setup(clipCount = 0, theme: Theme = testTheme()) {
     overlay.dispatchEvent(new PointerEvent(type, { clientX: x, clientY: y, pointerId: 1, button: 0, bubbles: true, ...init }));
   /** A key event on the window (modifier changes during a drag). */
   const key = (type: "keydown" | "keyup", keyName: string, init: KeyboardEventInit = {}) => window.dispatchEvent(new KeyboardEvent(type, { key: keyName, bubbles: true, ...init }));
-  return { view, session, document, layout, scheduler, overlay, pointer, key, onAddTrack, onToggleTrack, onMoveClips, onTrimEdge, onTrimPreview, onRazor, onContextMenu, onReorderTrack, onRenameTrack, onSpaceTap, onMoveMarker, onEditMarker, onDropFiles, idle, unmount };
+  return {
+    view,
+    session,
+    document,
+    layout,
+    scheduler,
+    overlay,
+    pointer,
+    key,
+    onAddTrack,
+    onToggleTrack,
+    onMoveClips,
+    onTrimEdge,
+    onTrimPreview,
+    onRazor,
+    onContextMenu,
+    onReorderTrack,
+    onRenameTrack,
+    onSpaceTap,
+    onMoveMarker,
+    onEditMarker,
+    onDropFiles,
+    onSetFade,
+    onTransitionEdge,
+    onOpenTransition,
+    idle,
+    unmount,
+  };
 }
 
 describe("TimelineView", () => {
@@ -1784,5 +1817,79 @@ describe("TimelineView clip visuals", () => {
     setPlayhead(session, 120);
     expect(scheduler.flush()).toEqual(["timelineOverlay"]);
     expect(want.mock.calls.length).toBe(calls);
+  });
+});
+
+describe("TimelineView fades and transitions (Batch 36)", () => {
+  beforeEach(() => {
+    fills.length = 0;
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation(function (this: HTMLCanvasElement) {
+      return fakeContext(this);
+    } as unknown as HTMLCanvasElement["getContext"]);
+    HTMLCanvasElement.prototype.setPointerCapture = () => {};
+    vi.stubGlobal("Path2D", class {});
+  });
+  afterEach(() => {
+    for (const unmount of mounted.splice(0)) unmount();
+    window.document.body.replaceChildren();
+    vi.unstubAllGlobals();
+  });
+
+  // 4 px/frame from x = 176; V1's clips span y 174..226 (the label bar 174..190).
+  const x = (frame: number) => 176 + frame * 4;
+
+  /** A [0, 30) and B [30, 60) on V1 with a transition 4 frames before the cut and 6 after. */
+  function withTransition() {
+    const t = setup();
+    const transition = { id: "t", kind: "crossDissolve" as const, before: 4, after: 6 };
+    t.document.dispatch(addClip({ ...makeMediaClip(t.document.getState(), { id: "a", trackId: "v1", start: 0, duration: 30, mediaId: "m" }), transitionOut: transition }));
+    t.document.dispatch(addClip({ ...makeMediaClip(t.document.getState(), { id: "b", trackId: "v1", start: 30, duration: 30, mediaId: "m" }), in: frameToUs(300, FPS_30), out: frameToUs(330, FPS_30), transitionIn: transition }));
+    t.scheduler.flush();
+    return t;
+  }
+
+  it("drags a fade handle on the overlay only and sets the fade once on release", () => {
+    const { view, document, scheduler, pointer, onSetFade } = setup();
+    document.dispatch(addClip(makeMediaClip(document.getState(), { id: "f", trackId: "v1", start: 10, duration: 40, mediaId: "m" })));
+    scheduler.flush();
+    const contentDraws = view.stats.contentDraws;
+    // No fade: the handle sits in the clip's top-left corner (x(10) + 4).
+    pointer("pointermove", x(10) + 4, 178);
+    scheduler.flush();
+    pointer("pointerdown", x(10) + 4, 178);
+    for (let frame = 12; frame <= 20; frame += 2) {
+      pointer("pointermove", x(frame), 178);
+      expect(scheduler.flush()).toEqual(["timelineOverlay"]);
+    }
+    pointer("pointerup", x(20), 178);
+    expect(onSetFade).toHaveBeenCalledWith("f", "in", 10);
+    expect(view.stats.contentDraws).toBe(contentDraws);
+  });
+
+  it("selects a transition with a click on its block and opens its section on a double-click", () => {
+    const { session, overlay, pointer, onOpenTransition } = withTransition();
+    pointer("pointerdown", x(33), 180);
+    pointer("pointerup", x(33), 180);
+    expect(session.transition.getState()).toEqual({ left: "a", right: "b" });
+    expect(session.selection.getState().kind).toBe("none");
+    overlay.dispatchEvent(new MouseEvent("dblclick", { clientX: x(28), clientY: 186, bubbles: true }));
+    expect(onOpenTransition).toHaveBeenCalledWith({ left: "a", right: "b" });
+  });
+
+  it("drags a block end: both sides grow, or only the dragged one with Alt", () => {
+    const { scheduler, pointer, onTransitionEdge } = withTransition();
+    // The block ends at x(36); below the fade handles' band (y 186).
+    pointer("pointerdown", x(36), 186);
+    pointer("pointermove", x(38), 186);
+    // The drag selects the transition (one content redraw); then only the overlay follows it.
+    scheduler.flush();
+    pointer("pointermove", x(38) + 1, 186);
+    expect(scheduler.flush()).toEqual(["timelineOverlay"]);
+    pointer("pointerup", x(38), 186);
+    expect(onTransitionEdge).toHaveBeenLastCalledWith({ left: "a", right: "b" }, 6, 8);
+    pointer("pointerdown", x(36), 186, { altKey: true });
+    pointer("pointermove", x(38), 186, { altKey: true });
+    pointer("pointerup", x(38), 186, { altKey: true });
+    expect(onTransitionEdge).toHaveBeenLastCalledWith({ left: "a", right: "b" }, 4, 8);
   });
 });

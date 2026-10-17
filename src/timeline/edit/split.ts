@@ -3,12 +3,13 @@
 // with the same properties: the left piece keeps the clip's id, the right piece gets a new one.
 // `sliceClip` moves the source in/out, partitions keyframes and drops what belongs to the cut side
 // (the left piece's fade out, transition out and text animation out, the right piece's in side): the
-// transitions at the cut go with it. Linked clips split together: the right pieces of one link group
+// transitions at the cut go with it, and a cut through a transition's frames removes it (Batch 36).
+// Linked clips split together: the right pieces of one link group
 // are linked to each other under a new group, a right piece with no partner split with it is unlinked.
 // Clips on locked tracks never split; a frame on a clip's start or end splits nothing.
 import type { Draft } from "immer";
 import type { Command } from "../../core/commands/command.js";
-import type { Clip, ClipId, Frame, Project } from "../../core/document/types.js";
+import { isMediaClip, type Clip, type ClipId, type Frame, type MediaClip, type Project } from "../../core/document/types.js";
 import { selectClips, type Selection } from "../../core/store/selection.js";
 import { clipInIndex, isClipLocked, linkedPartners, trackIndex } from "../model/queries.js";
 import { sliceClip } from "./move.js";
@@ -72,7 +73,14 @@ export function splitClips(project: Project, clipIds: readonly ClipId[], frame: 
     if (!clip || !splitsAt(clip, frame) || isClipLocked(project, id)) continue;
     const end = clip.start + clip.duration;
     const right = { ...sliceClip(clip, frame, end, fps), id: newId() } as Clip;
-    lefts.push(sliceClip(clip, clip.start, frame, fps));
+    const left = sliceClip(clip, clip.start, frame, fps);
+    // A cut through a transition's frames takes the transition away (Batch 36: its other half goes
+    // with `reconcileTransitions` after the command).
+    if (isMediaClip(clip)) {
+      if (clip.transitionOut && frame > end - clip.transitionOut.before) delete (right as MediaClip).transitionOut;
+      if (clip.transitionIn && frame < clip.start + clip.transitionIn.after) delete (left as MediaClip).transitionIn;
+    }
+    lefts.push(left);
     rights.push(right);
     pieces.set(id, right.id);
   }

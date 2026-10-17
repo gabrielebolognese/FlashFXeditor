@@ -22,6 +22,23 @@ function project(markers: Marker[] = []): Project {
 const list = (c: SnapCandidates) => Array.from({ length: c.length }, (_, i) => [c.frames[i], SNAP_KINDS[c.kinds[i] as number], c.refs[i]]);
 
 describe("buildSnapCandidates", () => {
+  it("lists the start and end of each transition, named Transition (Batch 36)", () => {
+    let p = makeProject();
+    p.media.m = makeMedia("m");
+    p.tracks.push(makeTrack("v1"));
+    const t = { id: "t", kind: "crossDissolve" as const, before: 4, after: 6 };
+    p = withClips(p, [
+      { ...makeMediaClip(p, { id: "a", trackId: "v1", start: 0, duration: 20, mediaId: "m" }), transitionOut: t },
+      { ...makeMediaClip(p, { id: "b", trackId: "v1", start: 20, duration: 20, mediaId: "m" }), transitionIn: t },
+    ]);
+    const entries = list(buildSnapCandidates(p, null, null)).filter(([, kind]) => kind === "transition");
+    expect(entries).toEqual([
+      [16, "transition", "a"],
+      [26, "transition", "a"],
+    ]);
+    expect(snapLabel(p, { frame: 16, kind: "transition", ref: "a" })).toBe("Transition");
+  });
+
   it("lists clip edges on every track (locked included), markers, in/out and frame 0, sorted by frame then priority", () => {
     const c = buildSnapCandidates(project([marker("m1", 50, "Drop"), marker("m2", 5)]), 30, 200);
     expect(list(c)).toEqual([

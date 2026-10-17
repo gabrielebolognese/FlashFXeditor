@@ -174,6 +174,19 @@ describe("trimEdge: media bounds (spec §6.10)", () => {
     expect(trimEdge(trimmed, "a", "in", -5, { ripple: false }).delta).toBe(-1);
   });
 
+  it("counts a head a microsecond off the frame grid and trims it to the media start (Batch 36)", () => {
+    // In at frame 13 (433333 us), trimmed 8 frames earlier: 433333 - 266667 = 166666 us, a microsecond
+    // before frame 5's time (166667). Its 5 frames of head are all there.
+    const p = project([at("a", "v1", 100, 50, 13)]);
+    const trimmed = commit(p, trimEdge(p, "a", "in", -8, { ripple: false }));
+    expect(source(trimmed, "a")[0]).toBe(166_666);
+    expect(headFrames(trimmed.clips.a as MediaClip, fps)).toBe(5);
+    const result = trimEdge(trimmed, "a", "in", -9, { ripple: false });
+    expect(result.delta).toBe(-5);
+    expect(result.mediaBound).toBe("start");
+    expect(source(commit(trimmed, result), "a")[0]).toBe(0);
+  });
+
   it("keeps a clip that ends at an off-grid media end within it", () => {
     const p = project([clip("a", "v1", 0, 300)]);
     p.media.m = { ...(p.media.m as NonNullable<Project["media"][string]>), durationUs: 10_010_000 };

@@ -161,7 +161,7 @@ class GpuOffscreenTarget implements OffscreenTarget {
 /** One quad of a draw. Records are pooled and rewritten every draw (no allocation once warm). */
 interface DrawRecord {
   kind: PipelineKind;
-  uniform: Omit<LayerUniform, "transform"> & { transform: MutableMat3 };
+  uniform: Omit<LayerUniform, "transform" | "mapA" | "mapB"> & { transform: MutableMat3; mapA: MutableMat3; mapB: MutableMat3 };
   /** Bound at groups 1 and 2 (none for solids, one for textured layers, two for dissolves). */
   texture0: GpuTexture | null;
   texture1: GpuTexture | null;
@@ -190,6 +190,10 @@ const newRecord = (): DrawRecord => ({
     flipX: false,
     flipY: false,
     mix: 0,
+    uv2: { u0: 0, v0: 0, u1: 1, v1: 1 },
+    mapA: mutableIdentity(),
+    mapB: mutableIdentity(),
+    sides: { from: 1, to: 1 },
   },
   texture0: null,
   texture1: null,
@@ -711,13 +715,23 @@ export class WebGpuRenderer implements Renderer {
         return;
       }
       case "dissolve": {
-        if (!(layer.from instanceof GpuTexture) || !(layer.to instanceof GpuTexture) || !layer.from.valid || !layer.to.valid) return;
+        const { from, to } = layer;
+        if (!(from.texture instanceof GpuTexture) || !(to.texture instanceof GpuTexture) || !from.texture.valid || !to.texture.valid) return;
+        // A picture whose quad covers nothing draws nothing.
+        if (!covers(from.transform) || !covers(to.transform)) return;
         const record = this.nextRecord("dissolve", scissor);
-        record.texture0 = layer.from;
-        record.texture1 = layer.to;
+        const u = record.uniform;
+        // Each picture's quad as seen from the layer's: the layer's unit quad onto the picture's (no view: both are in project px).
+        sideMap(u.mapA, from.transform, layer.transform);
+        sideMap(u.mapB, to.transform, layer.transform);
+        record.texture0 = from.texture;
+        record.texture1 = to.texture;
         copyLayer(record, view, layer.transform, layer.opacity);
-        setUv(record.uniform.uv, layer.crop.u0, layer.crop.v0, layer.crop.u1, layer.crop.v1);
-        record.uniform.mix = layer.mix;
+        setUv(u.uv, from.crop.u0, from.crop.v0, from.crop.u1, from.crop.v1);
+        setUv(u.uv2, to.crop.u0, to.crop.v0, to.crop.u1, to.crop.v1);
+        u.sides.from = from.opacity;
+        u.sides.to = to.opacity;
+        u.mix = layer.mix;
         return;
       }
       case "solid": {
@@ -925,6 +939,17 @@ function growQuad(m: MutableMat3, uv: UvRect, margin: number): void {
 }
 
 /** The layer's matrix in target px (`view * transform`) and its opacity. */
+/** A quad with an area (an inverse). */
+const covers = (m: Mat3) => {
+  const det = m[0] * m[3] - m[1] * m[2];
+  return det !== 0 && Number.isFinite(det);
+};
+
+/** `out` = inverse(`side`) x `quad`: where a point of the unit quad drawn by `quad` lies on the unit quad of `side` (which `covers`). */
+function sideMap(out: MutableMat3, side: Mat3, quad: Mat3): void {
+  if (invertInto(out, side)) multiplyInto(out, out, quad);
+}
+
 function copyLayer(record: DrawRecord, view: Mat3, transform: Mat3, opacity: number): void {
   multiplyInto(record.uniform.transform, view, transform);
   record.uniform.opacity = opacity;

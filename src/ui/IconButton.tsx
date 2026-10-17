@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import type { MouseEvent } from "react";
+import type { MouseEvent, PointerEvent } from "react";
 import { cx } from "./cx.js";
 import styles from "./IconButton.module.css";
 import { shortcutLabel } from "./shortcutLabel.js";
@@ -18,12 +18,14 @@ export interface IconButtonProps {
   disabled?: boolean | undefined;
   size?: "compact" | "default" | undefined;
   onClick?: ((event: MouseEvent<HTMLButtonElement>) => void) | undefined;
+  /** A press that may become a drag (the transition chips, Batch 36). */
+  onPointerDown?: ((event: PointerEvent<HTMLButtonElement>) => void) | undefined;
 }
 
 // Buttons never take focus on mouse down, so Space and other shortcuts keep working after a click.
 const keepFocus = (event: MouseEvent) => event.preventDefault();
 
-export function IconButton({ icon: Icon, label, commandId, text, pressed, disabled, size = "compact", onClick }: IconButtonProps) {
+export function IconButton({ icon: Icon, label, commandId, text, pressed, disabled, size = "compact", onClick, onPointerDown }: IconButtonProps) {
   return (
     <button
       type="button"
@@ -38,6 +40,7 @@ export function IconButton({ icon: Icon, label, commandId, text, pressed, disabl
       data-command={commandId}
       onMouseDown={keepFocus}
       onClick={disabled ? undefined : onClick}
+      onPointerDown={disabled ? undefined : onPointerDown}
     >
       {Icon && <Icon className={styles.icon} aria-hidden="true" />}
       {text && <span className={styles.text}>{text}</span>}

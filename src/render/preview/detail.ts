@@ -50,13 +50,20 @@ export function sourceDetail(composite: Composite, size: (mediaId: string) => { 
       if (layer.detail > detail) detail = layer.detail;
       continue;
     }
+    if (layer.kind === "dissolve") {
+      detail = Math.max(detail, mediaDetail(layer.from, size), mediaDetail(layer.to, size));
+      continue;
+    }
     if (layer.kind !== "media") continue;
-    const media = size(layer.mediaId);
-    if (!media) continue;
-    const ratio = layerDetail(layer, media.width, media.height);
-    if (ratio > detail) detail = ratio;
+    detail = Math.max(detail, mediaDetail(layer, size));
   }
   return detail;
+}
+
+/** Source px per project px of a media layer (0 when its media's size is not known). */
+function mediaDetail(layer: MediaLayer, size: (mediaId: string) => { width: number; height: number } | null): number {
+  const media = size(layer.mediaId);
+  return media ? layerDetail(layer, media.width, media.height) : 0;
 }
 
 /** Source px per project px of one media layer whose source is `width` x `height` (0 when it covers nothing). */

@@ -62,6 +62,28 @@ describe("properties context (spec §11)", () => {
     expect(sectionIds(track)).toEqual(["track", "captionStyle"]);
   });
 
+  it("shows a selected transition's section, and a selected edit point's when its cut has one (Batch 36)", () => {
+    let p = makeProject();
+    p.media.m = makeMedia("m");
+    p.tracks.push(makeTrack("v1"));
+    const t = { id: "t", kind: "crossDissolve" as const, before: 2, after: 2 };
+    p = withClips(p, [
+      { ...makeMediaClip(p, { id: "x", trackId: "v1", start: 0, duration: 30, mediaId: "m" }), transitionOut: t },
+      { ...makeMediaClip(p, { id: "y", trackId: "v1", start: 30, duration: 30, mediaId: "m" }), transitionIn: t },
+      makeMediaClip(p, { id: "z", trackId: "v1", start: 60, duration: 30, mediaId: "m" }),
+    ]);
+    const cut = { left: "x", right: "y" };
+    expect(propertiesContext(EMPTY_SELECTION, null, p, { transition: cut, editPoint: null })).toEqual({ kind: "transition", cut });
+    expect(sectionIds(propertiesContext(EMPTY_SELECTION, null, p, { transition: cut, editPoint: null }))).toEqual(["transition"]);
+    expect(sectionIds(propertiesContext(EMPTY_SELECTION, null, p, { transition: null, editPoint: cut }))).toEqual(["transition"]);
+    const bare = propertiesContext(EMPTY_SELECTION, null, p, { transition: null, editPoint: { left: "y", right: "z" } });
+    expect(bare).toEqual({ kind: "editPoint", cut: { left: "y", right: "z" }, transition: false });
+    expect(sectionIds(bare)).toEqual([]);
+    // A transition that is gone shows nothing of it.
+    expect(propertiesContext(EMPTY_SELECTION, null, p, { transition: { left: "y", right: "z" }, editPoint: null })).toEqual({ kind: "none" });
+    expect(contextKey(EMPTY_SELECTION, null, { transition: cut, editPoint: null })).toBe("transition:x|y");
+  });
+
   it("keys the context by kind, primary, ids and marker (React renders the panel when it changes)", () => {
     expect(contextKey(selectClips(["a", "v"], "v"), null)).toBe("clips:v:a,v");
     expect(contextKey(selectClips(["a", "v"], "a"), null)).not.toBe(contextKey(selectClips(["a", "v"], "v"), null));

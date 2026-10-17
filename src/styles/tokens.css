@@ -258,6 +258,22 @@
      (spec §7.3) has the same size: --accent, filled on a key at the playhead, outlined otherwise. */
   --timeline-keyframe-lane-height: var(--space-4); /* 12px */
   --timeline-keyframe-size: var(--space-3); /* 8px: the diamond's width and height */
+  /* Fades and transitions (Batch 36, gap: the DS has no fade or transition visuals). A fade darkens the
+     faded part of the clip body under a wedge (the opacity line, or an audio clip's equal-power curve)
+     with a 1 device px line along it; its handle is a square on the clip's top edge at the fade's end
+     (the keyframe diamond's look: --text-primary with a --bg-sunken edge, --accent hovered or dragged),
+     shown on the hovered clip. A transition is a chip over the top of its two clips from its first frame
+     to its last (--timeline-transition-fill, hairline edge, radius-sm), bracket bars at its ends
+     (--text-secondary, --text-primary hovered, --accent dragged) and its kind's glyph in the middle; a
+     selected one gets the --accent outline over --accent-wash; frames that repeat an edge frame (a
+     handle too short) are striped in --timeline-transition-warning. */
+  --timeline-fade-handle-size: var(--space-3); /* 8px */
+  --timeline-fade-wash: rgba(7, 15, 28, 0.55); /* bg-sunken at 55%: the faded-out part */
+  --timeline-fade-line: var(--text-primary);
+  --timeline-transition-fill: var(--surface-4);
+  --timeline-transition-edge-width: var(--timeline-trim-edge-width); /* 2px */
+  --timeline-transition-edge-zone: var(--timeline-junction-zone); /* 6px at each block end: its edge drags */
+  --timeline-transition-warning: rgba(229, 84, 90, 0.7); /* danger at 70%: "striped warning" (spec §6.15) */
   --marker-popover-width: calc(var(--control-default) * 7); /* the label field over 8 swatches and Delete */
 
   /* Audio (gap: the DS has no meter or knob). Stereo peak meter along the preview's right edge, master volume knob. */

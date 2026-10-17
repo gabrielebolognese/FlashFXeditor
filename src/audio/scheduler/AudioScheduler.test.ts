@@ -83,6 +83,8 @@ function setup(options: Options = {}) {
 
 const voiceSources = (ctx: FakeContext) => ctx.sources.filter((source) => source.started !== null);
 const envelopeOf = (source: FakeSource) => source.outputs[0] as FakeGain;
+/** The fade node after the envelope (Batch 36: fades and crossfades). */
+const fadeOf = (source: FakeSource) => envelopeOf(source).outputs[0] as FakeGain;
 
 describe("AudioScheduler", () => {
   it("starts the clip under the playhead at the anchor, from its media position, with a fade-in", () => {
@@ -116,6 +118,48 @@ describe("AudioScheduler", () => {
     expect(sources[1]?.started).toEqual({ when: expect.closeTo(111.2, 9), offset: 0 });
     expect(envelopeOf(sources[1] as FakeSource).gain.events).toEqual([]);
     expect((sources[1]?.started?.when ?? 0) - t.ctx.currentTime).toBeLessThanOrEqual(0.4);
+  });
+
+  it("fades a clip in and out with equal power on its fade node (Batch 36)", () => {
+    const t = setup({ clips: (p) => [audioClip(p, "c1", 0, 90, { fades: { in: 30, out: 15 } })] });
+    t.at(9.95);
+    t.scheduler.sync(t.mapping({ frame: 0, clock: 10 }));
+    const fade = fadeOf(voiceSources(t.ctx)[0] as FakeSource).gain;
+    // Timeline second s sounds at context time 110 + s.
+    expect(fade.valueAt(110)).toBeCloseTo(0, 6);
+    expect(fade.valueAt(110.5)).toBeCloseTo(Math.SQRT1_2, 3);
+    expect(fade.valueAt(111)).toBeCloseTo(1, 6);
+    expect(fade.valueAt(112)).toBeCloseTo(1, 6);
+    expect(fade.valueAt(112.5)).toBeCloseTo(1, 6);
+    expect(fade.valueAt(112.75)).toBeCloseTo(Math.SQRT1_2, 3);
+    expect(fade.valueAt(112.999)).toBeCloseTo(0, 2);
+  });
+
+  it("crossfades the clips of a transition: each plays into its handle, their powers sum to 1 (Batch 36)", () => {
+    const t6 = { id: "t", kind: "crossDissolve" as const, before: 6, after: 6 };
+    const t = setup({
+      clips: (p) => [audioClip(p, "c1", 0, 60, { transitionOut: t6 }), audioClip(p, "c2", 60, 60, { in: 10_000_000, out: 12_000_000, transitionIn: t6 })],
+    });
+    const play = t.mapping({ frame: 0, clock: 10 });
+    // Up to just before c1's voice ends (its nodes are let go then).
+    for (let clock = 9.95; clock < 12.05; clock += 0.05) {
+      t.at(clock);
+      t.scheduler.sync(play);
+    }
+    const sources = voiceSources(t.ctx);
+    expect(sources).toHaveLength(2);
+    const [one, two] = sources as [FakeSource, FakeSource];
+    // c1 plays to 2.2 s (6 frames past its end), c2 from 1.8 s at media 10 - 0.2 s.
+    expect(one.stoppedAt).toBeCloseTo(112.2, 9);
+    expect(two.started?.when).toBeCloseTo(111.8, 9);
+    expect(two.started?.offset).toBeCloseTo(9.8, 9);
+    const a = fadeOf(one).gain;
+    const b = fadeOf(two).gain;
+    expect(a.valueAt(111.8)).toBeCloseTo(1, 6);
+    expect(b.valueAt(111.8)).toBeCloseTo(0, 6);
+    for (let s = 111.8; s <= 112.2; s += 0.01) expect(a.valueAt(s) ** 2 + b.valueAt(s) ** 2).toBeCloseTo(1, 2);
+    expect(a.valueAt(112.2)).toBeCloseTo(0, 6);
+    expect(b.valueAt(112.2)).toBeCloseTo(1, 6);
   });
 
   it("moves a late start on by the delay, with a fade-in", () => {
@@ -290,7 +334,7 @@ describe("AudioScheduler", () => {
     t.at(9.95);
     t.scheduler.sync(t.mapping({ frame: 0, clock: 10 }));
     const [first] = voiceSources(t.ctx);
-    const clipGainNode = envelopeOf(first as FakeSource).outputs[0] as FakeGain;
+    const clipGainNode = fadeOf(first as FakeSource).outputs[0] as FakeGain;
     t.edit((p) => ({ ...p, clips: { ...p.clips, c1: { ...(p.clips.c1 as MediaClip), volume: { gainDb: 6, muted: false } } } }));
     expect(clipGainNode.gain.target).toBeCloseTo(10 ** (6 / 20), 9);
     expect(t.scheduler.stats.stopped).toBe(0);

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { FULL_UV } from "../compositor/drawList.js";
-import { applyToPoint, multiply, mutableIdentity, rectTransform } from "../mat3.js";
+import { applyToPoint, IDENTITY, multiply, mutableIdentity, rectTransform } from "../mat3.js";
 import { layerFloats, LAYER_SIZE, LAYER_STRIDE, packLayer, packMat3, pixelsToClip, pixelsToClipInto, SHAPE_CODE } from "./layerUniforms.js";
 
 describe("layer uniforms", () => {
@@ -28,16 +28,36 @@ describe("layer uniforms", () => {
       flipX: true,
       flipY: false,
       mix: 0.3,
+      uv2: { u0: 0.2, v0: 0.3, u1: 0.7, v1: 0.6 },
+      mapA: [1, 2, 3, 4, 5, 6],
+      mapB: [7, 8, 9, 10, 11, 12],
+      sides: { from: 0.5, to: 2 },
     });
-    const slot = [...out.slice(64, 64 + 32)].map((v) => Math.round(v * 1000) / 1000);
-    expect(slot).toEqual([30, 0, 0, 0, 0, 40, 0, 0, 10, 20, 1, 0, 0.1, 0.2, 0.9, 0.8, 1, 0.5, 0.25, 0.5, 0.75, 1, 0, 0.3, 0, 0.25, 1, 1, 120, 60, 12, 2]);
+    const slot = [...out.slice(64, 64 + 52)].map((v) => Math.round(v * 1000) / 1000);
+    expect(slot).toEqual([
+      30, 0, 0, 0, 0, 40, 0, 0, 10, 20, 1, 0, 0.1, 0.2, 0.9, 0.8, 1, 0.5, 0.25, 0.5, 0.75, 1, 0, 0.3, 0, 0.25, 1, 1, 120, 60, 12, 2, 0.2, 0.3, 0.7, 0.6, 1, 2, 3, 4, 7, 8, 9, 10, 5, 6, 11, 12, 0.5, 1, 0, 0,
+    ]);
     expect([...out.slice(0, 64)].every((v) => v === 0)).toBe(true);
   });
 
   it("clamps opacity and mix to 0..1", () => {
     const out = new Float32Array(layerFloats(1));
     const black = { r: 0, g: 0, b: 0, a: 1 };
-    packLayer(out, 0, { transform: rectTransform(0, 0, 1, 1), uv: FULL_UV, color: black, to: black, shape: { width: 0, height: 0, radius: 0, code: SHAPE_CODE.quad }, opacity: 2, flipX: false, flipY: true, mix: Number.NaN });
+    packLayer(out, 0, {
+      transform: rectTransform(0, 0, 1, 1),
+      uv: FULL_UV,
+      color: black,
+      to: black,
+      shape: { width: 0, height: 0, radius: 0, code: SHAPE_CODE.quad },
+      opacity: 2,
+      flipX: false,
+      flipY: true,
+      mix: Number.NaN,
+      uv2: FULL_UV,
+      mapA: IDENTITY,
+      mapB: IDENTITY,
+      sides: { from: 1, to: 1 },
+    });
     expect([...out.slice(20, 24)]).toEqual([1, 0, 1, 0]);
   });
 

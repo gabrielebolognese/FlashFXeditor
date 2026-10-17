@@ -43,6 +43,9 @@
 //   its last). Play in to out (§8) plays the range once, stopping on its last frame, or loops it while
 //   loop is on. Every wrap is frame-exact: the last frame shown is the one before the out point, the
 //   next one the in point.
+// - Transitions (Batch 36): over a transition's frames both of its clips are under the playhead (the
+//   incoming one before its start, the outgoing one past its end, each in its handle); their windows
+//   and the lookahead cover the frames each clip shows (`extendedStart` / `extendedEnd`).
 // - Audio (spec §8, §14): the engine owns the audio scheduler. The preroll also waits for the decoded
 //   audio of the clips under the playhead; the clock starts (and re-anchors after a seek) `lead`
 //   seconds ahead, the time the render clock runs ahead of what is heard, so the first samples are
@@ -51,7 +54,7 @@
 import type { PlaybackClock } from "../audio/AudioClock.js";
 import type { PlayMapping } from "../audio/scheduler/AudioScheduler.js";
 import { fpsToNumber, playedFrames, secondsToFrames, usPerFrame } from "../core/document/time.js";
-import type { Clip, ClipId, Frame, MediaClip, MediaId, Project, Rational } from "../core/document/types.js";
+import { isMediaClip, type Clip, type ClipId, type Frame, type MediaClip, type MediaId, type Project, type Rational } from "../core/document/types.js";
 import type { FrameScheduler } from "../core/scheduler/FrameScheduler.js";
 import type { IdleQueue } from "../core/scheduler/IdleQueue.js";
 import type { DocumentStore } from "../core/store/DocumentStore.js";
@@ -63,9 +66,10 @@ import type { ImageService } from "../media/decode/ImageService.js";
 import { nearestPosition } from "../media/demux/sampleIndex.js";
 import { isAbortError } from "../media/workers/protocol.js";
 import { sourceTimeUs } from "../render/compositor/Compositor.js";
+import { extendedEnd, extendedStart, handleTimeUs } from "../core/document/transitions.js";
 import { wantedLod } from "../render/preview/detail.js";
 import { markedRange } from "../timeline/model/inOut.js";
-import { clipInIndex, contentEnd, lastClipStartingBy, trackIndex } from "../timeline/model/queries.js";
+import { clipInIndex, contentEnd, lastClipStartingBy, trackIndex, type TrackIndex } from "../timeline/model/queries.js";
 import { shuttleSpeed } from "./transport.js";
 
 /** How far ahead of the playhead each clip's media is decoded (spec §8). */
@@ -164,6 +168,8 @@ interface Bounds {
 interface Stream {
   /** The clip as it was; an edit (a new object) starts the stream over. */
   clip: MediaClip;
+  /** Its media's duration: a transition plays the clip past its edges, up to the media's. */
+  durationUs: number;
   /** The file its frames come from; a change starts the stream over. */
   lod: Lod;
   /** Media frame duration (us) and frame times of the open video. */
@@ -520,18 +526,27 @@ export class PlaybackEngine {
     this.waiting = false;
     for (const track of doc.tracks) {
       if (track.kind !== "video" || track.hidden) continue;
-      const clip = clipInIndex(trackIndex(doc, track), frame);
-      if (!clip?.enabled || clip.kind !== "video") continue;
-      const stream = this.stream(clip);
-      if (!stream) {
-        this.waiting = true;
-        continue;
-      }
-      stream.pass = this.pass;
-      const need = this.position(stream, frame, doc.settings.fps);
-      if (advanced && this.prerollUntil === null) this.checkLate(stream, need);
-      this.fill(stream, doc, frame, need, "playback");
+      const index = trackIndex(doc, track);
+      const clip = clipInIndex(index, frame);
+      if (!clip?.enabled) continue;
+      this.feedClip(doc, clip, frame, advanced);
+      // A transition's other clip plays too (Batch 36).
+      const partner = transitionPartner(index, clip, frame);
+      if (partner) this.feedClip(doc, partner, frame, advanced);
     }
+  }
+
+  private feedClip(doc: Project, clip: Clip, frame: Frame, advanced: boolean): void {
+    if (!clip.enabled || clip.kind !== "video") return;
+    const stream = this.stream(clip);
+    if (!stream) {
+      this.waiting = true;
+      return;
+    }
+    stream.pass = this.pass;
+    const need = this.position(stream, frame, doc.settings.fps);
+    if (advanced && this.prerollUntil === null) this.checkLate(stream, need);
+    this.fill(stream, doc, frame, need, "playback");
   }
 
   /** Every SCAN_INTERVAL_SECONDS: warms the clips starting within LOOKAHEAD_SECONDS (P7). */
@@ -551,7 +566,8 @@ export class PlaybackEngine {
         for (let i = at + 1; i < index.clips.length; i++) {
           const clip = index.clips[i] as Clip;
           if (clip.start > frame + reach || clip.start >= end) break;
-          this.warm(doc, clip, clip.start);
+          // From its first frame (under a transition in, before its start).
+          this.warm(doc, clip, Math.max(frame, extendedStart(clip)));
         }
         // Loop: the start of the loop range comes next after its end.
         if (loop && end - frame <= reach) {
@@ -561,7 +577,7 @@ export class PlaybackEngine {
       } else {
         for (let i = at; i >= 0; i--) {
           const clip = index.clips[i] as Clip;
-          const last = clip.start + clip.duration - 1;
+          const last = extendedEnd(clip) - 1;
           if (last >= frame) continue;
           if (last < frame - reach) break;
           this.warm(doc, clip, last);
@@ -597,8 +613,8 @@ export class PlaybackEngine {
     const { clip } = stream;
     const fps = doc.settings.fps;
     const stride = strideFor(stream, Math.abs(this.velocity), fps);
-    const last = clip.start + clip.duration - 1;
-    const horizon = Math.min(last, Math.max(clip.start, cursor + direction * secondsToFrames(PREFETCH_SECONDS, fps)));
+    const last = extendedEnd(clip) - 1;
+    const horizon = Math.min(last, Math.max(extendedStart(clip), cursor + direction * secondsToFrames(PREFETCH_SECONDS, fps)));
     let goal = this.position(stream, horizon, fps);
     goal = forward ? Math.min(goal, need + (TARGET_READY - 1) * stride) : Math.max(goal, need - (TARGET_READY - 1) * stride);
     const { requested } = stream;
@@ -657,7 +673,7 @@ export class PlaybackEngine {
     if (!this.playing || stream.pass !== this.pass || this.streams.get(stream.clip.id) !== stream) return;
     const { clip } = stream;
     const frame = this.written;
-    if (frame < clip.start || frame >= clip.start + clip.duration) return;
+    if (frame < extendedStart(clip) || frame >= extendedEnd(clip)) return;
     const doc = this.doc();
     this.fill(stream, doc, frame, this.position(stream, frame, doc.settings.fps), "playback");
   }
@@ -706,7 +722,7 @@ export class PlaybackEngine {
       const { clip } = stream;
       for (let k = 0; k < frames; k++) {
         const at = frame + direction * k;
-        if (at < clip.start || at >= clip.start + clip.duration) break;
+        if (at < extendedStart(clip) || at >= extendedEnd(clip)) break;
         if (!this.hasFrame(stream, this.position(stream, at, fps))) return false;
       }
     }
@@ -723,7 +739,10 @@ export class PlaybackEngine {
 
   /** Display position of the media frame `clip` shows at timeline `frame`; -1 when the video is not open. */
   private position(stream: Stream, frame: Frame, fps: Rational): number {
-    return this.deps.frames.frameKeyInto(this.key, stream.clip.mediaId, sourceTimeUs(stream.clip, frame, fps), stream.lod);
+    const { clip } = stream;
+    // Outside its span (a transition): its media past its in or out point.
+    const timeUs = frame >= clip.start && frame < clip.start + clip.duration ? sourceTimeUs(clip, frame, fps) : handleTimeUs(clip, frame, fps, stream.durationUs);
+    return this.deps.frames.frameKeyInto(this.key, clip.mediaId, timeUs, stream.lod);
   }
 
   /** The lod a media plays from now. */
@@ -751,7 +770,8 @@ export class PlaybackEngine {
     }
     if (!stream) {
       const frameUs = times.length > 1 ? ((times[times.length - 1] as number) - (times[0] as number)) / (times.length - 1) : 0;
-      stream = { clip, lod, frameUs, times, requested: null, inFlight: null, failed: false, pins: new Map(), late: 0, pass: 0, scan: 0 };
+      const durationUs = this.doc().media[clip.mediaId]?.durationUs ?? clip.out;
+      stream = { clip, durationUs, lod, frameUs, times, requested: null, inFlight: null, failed: false, pins: new Map(), late: 0, pass: 0, scan: 0 };
       this.streams.set(clip.id, stream);
     }
     return stream;
@@ -794,6 +814,24 @@ export class PlaybackEngine {
   private notify(): void {
     for (const listener of [...this.listeners]) listener();
   }
+}
+
+/**
+ * The other clip of the transition `clip` is part of at `frame` (Batch 36): the one before it over its
+ * transition in, the one after it over its transition out; null outside a transition.
+ */
+function transitionPartner(index: TrackIndex, clip: Clip, frame: Frame): Clip | null {
+  if (!isMediaClip(clip)) return null;
+  const at = lastClipStartingBy(index, frame);
+  if (clip.transitionIn && frame < clip.start + clip.transitionIn.after) {
+    const prev = index.clips[at - 1];
+    return prev && isMediaClip(prev) && prev.transitionOut?.id === clip.transitionIn.id ? prev : null;
+  }
+  if (clip.transitionOut && frame >= clip.start + clip.duration - clip.transitionOut.before) {
+    const next = index.clips[at + 1];
+    return next && isMediaClip(next) && next.transitionIn?.id === clip.transitionOut.id ? next : null;
+  }
+  return null;
 }
 
 /**

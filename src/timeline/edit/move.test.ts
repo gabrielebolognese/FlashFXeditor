@@ -468,7 +468,7 @@ describe("moveToAdjacentLane", () => {
 
 describe("sliceClip", () => {
   it("moves source in/out by the cut frames at the clip speed and drops fades and transitions on new edges", () => {
-    const fast = clip("f", "v1", 10, 40, { speed: 2, in: 1_000_000, out: 1_000_000 + framesToSourceUs(40, 2, fps), fades: { in: 5, out: 6 }, transitionIn: { kind: "x" }, transitionOut: { kind: "y" } });
+    const fast = clip("f", "v1", 10, 40, { speed: 2, in: 1_000_000, out: 1_000_000 + framesToSourceUs(40, 2, fps), fades: { in: 5, out: 6 }, transitionIn: { id: "x", kind: "crossDissolve", before: 2, after: 3 }, transitionOut: { id: "y", kind: "dipToBlack", before: 4, after: 1 } });
     const middle = sliceClip(fast, 20, 30, fps) as MediaClip;
     expect(middle).toMatchObject({ start: 20, duration: 10, fades: { in: 0, out: 0 } });
     expect(middle.in).toBe(1_000_000 + framesToSourceUs(10, 2, fps));
@@ -476,7 +476,7 @@ describe("sliceClip", () => {
     expect(middle.transitionIn).toBeUndefined();
     expect(middle.transitionOut).toBeUndefined();
     const head = sliceClip(fast, 10, 20, fps) as MediaClip;
-    expect(head).toMatchObject({ in: 1_000_000, fades: { in: 5, out: 0 }, transitionIn: { kind: "x" } });
+    expect(head).toMatchObject({ in: 1_000_000, fades: { in: 5, out: 0 }, transitionIn: { id: "x" } });
     expect(sliceClip(fast, 10, 50, fps)).toBe(fast);
   });
 

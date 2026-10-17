@@ -23,6 +23,7 @@ import { startServices } from "./app/services.js";
 import { installSpeedController } from "./app/speedController.js";
 import { installTextController } from "./app/textController.js";
 import { installTimelineController } from "./app/timelineController.js";
+import { installTransitionController } from "./app/transitionController.js";
 import { installTrackController } from "./app/trackController.js";
 import { UnsupportedScreen } from "./app/UnsupportedScreen.js";
 import { requestGpuAdapter } from "./render/gpu/GpuDevice.js";
@@ -51,6 +52,7 @@ async function start(): Promise<void> {
   installPropertiesController();
   installSpeedController();
   installKeyframeController();
+  installTransitionController();
   installTextController();
   installGraphicsController();
   installPresetController();

@@ -9,17 +9,23 @@
 // point) is drawn first, under everything; the selected, hovered and dragged markers (§6.3) over the
 // ruler, under the playhead. It is redrawn for every interaction frame (scrubbing, dragging, hover
 // changes) while the content canvas stays untouched. Nothing but the scrollbar state is drawn over the
-// scrollbars.
-import type { Clip, Frame, Marker, Track, TrackId } from "../../core/document/types.js";
-import type { Selection } from "../../core/store/selection.js";
+// scrollbars. Fades and transitions (Batch 36): the hovered clip's fade handles, a fade being dragged
+// (its clip redrawn with the new fade), the hovered or dragged transition block (a drag redraws its two
+// clips under the block as it would be) and the cut a dragged transition chip would land on.
+import { DEFAULT_TRANSITION_FRAMES } from "../../core/document/transitions.js";
+import { isMediaClip, type Clip, type Frame, type Marker, type MediaClip, type Project, type Track, type TrackId, type Transition } from "../../core/document/types.js";
+import { EMPTY_SELECTION, type Selection } from "../../core/store/selection.js";
+import type { TransitionSelection } from "../../core/store/sessionStore.js";
 import type { Theme } from "../../core/theme/theme.js";
 import { edgeFrame, type TrimEdge } from "../edit/trim.js";
 import { markedRange } from "../model/inOut.js";
-import { clipsInRange, linkOffset, type Gap } from "../model/queries.js";
+import { clipsInRange, linkOffset, neighbors, type Gap } from "../model/queries.js";
 import { clipLod, clipSpan, devicePx, LOD_LABEL_PX } from "./clipLayout.js";
 import type { ClipVisuals } from "./clipVisuals.js";
 import { drawLane, type LaneDraw } from "./keyframeLane.js";
-import { drawClip, drawDiagonalHatch, drawHeader, fillClip, fontOf, traceMarker, type TimelineFonts } from "./drawContent.js";
+import { drawBlocks, drawClip, drawDiagonalHatch, drawHeader, fillClip, fontOf, traceMarker, type TimelineFonts } from "./drawContent.js";
+import { blockBand, clipTop, drawFadeHandle, drawTransitionBlock, fadeHandleX, hasFadeHandles, type BlockState } from "./fadesAndTransitions.js";
+import type { FadeEdge } from "../edit/fades.js";
 import type { Rect, Row, TimelineGeometry } from "./geometry.js";
 import type { Ghost, MoveProposal, NewLane } from "./gestures/moveClips.js";
 import type { TrimProposal } from "./gestures/trimClip.js";
@@ -82,6 +88,16 @@ export interface RazorScene {
   clips: readonly Clip[];
 }
 
+/** Fades and transitions on the overlay (Batch 36). */
+export interface BlockScene {
+  /** The hovered clip's fade handles (`active`: the one under the pointer), or the dragged fade (`fades` as it would be, the clip redrawn). */
+  fades: { clip: Clip; row: Row; fades: { in: Frame; out: Frame }; active: FadeEdge | null; dragged: boolean } | null;
+  /** The hovered or dragged block (`transition` as it would be); `redraw`: its clips are redrawn under it. */
+  block: { left: MediaClip; right: MediaClip; row: Row; track: Track; transition: Transition; state: BlockState; redraw: boolean; bound: "mediaStart" | "mediaEnd" | null } | null;
+  /** The cut a dragged transition chip would land on. */
+  drop: { frame: Frame; row: Row; track: Track } | null;
+}
+
 export interface OverlayScene {
   ctx: CanvasRenderingContext2D;
   dpr: number;
@@ -123,6 +139,11 @@ export interface OverlayScene {
   markers?: MarkerScene | null;
   /** Keys being dragged on a clip's keyframe lane (spec §6.15): the lane as it would be. */
   keyDrag?: { clip: Clip; row: Row; draw: LaneDraw } | null;
+  /** Fades and transitions (Batch 36), with the document and selection their redrawn clips need. */
+  blocks?: BlockScene | null;
+  project?: Project | null;
+  selection?: Selection | null;
+  transition?: TransitionSelection | null;
 }
 
 export interface Tooltip {
@@ -155,6 +176,7 @@ export function drawOverlay(scene: OverlayScene): void {
   // The trim preview stands in for the content under it, so everything else draws over it.
   if (scene.trim) drawTrimLayout(scene, scene.trim);
   if (scene.keyDrag) drawKeyDrag(scene, scene.keyDrag);
+  if (scene.blocks && scene.project) drawBlockScene(scene, scene.blocks, scene.project);
   for (const mark of scene.editPoints) drawEditPoint(scene, mark);
   ctx.restore();
   // §6.17 order: hover, snap lines, ghosts and trim previews, insert/overwrite indicators, playhead, tooltip.
@@ -248,6 +270,80 @@ function drawTrimLayout(scene: OverlayScene, trim: TrimScene): void {
       const next = clips[i + 1];
       drawClip(clipScene, clip, row, track, next !== undefined && next.start === clip.start + clip.duration, linkOffset(project, clip.id));
     });
+    // The transitions as the edit leaves them (shortened or gone, Batch 36).
+    drawBlocks({ ctx, dpr, geometry, theme, project, transition: scene.transition ?? null }, row, track, clips);
+  }
+  ctx.restore();
+}
+
+/** Fades and transitions on the overlay (Batch 36; see `BlockScene`). */
+function drawBlockScene(scene: OverlayScene, blocks: BlockScene, project: Project): void {
+  const { ctx, dpr, geometry, theme } = scene;
+  const size = theme.timeline.fadeHandleSize;
+  const clipScene = { ctx, dpr, geometry, theme, selection: scene.selection ?? EMPTY_SELECTION, text: scene.text, project, visuals: scene.visuals ?? null, fonts: scene.fonts ?? null };
+  // A clip cleared to its row's background and drawn again (as `clip` says: a proposal).
+  const redraw = (clip: Clip, row: Row, track: Track) => {
+    const inset = theme.timeline.clipInset;
+    const y = snap(row.y + inset, dpr);
+    const height = snap(row.y + row.height - inset, dpr) - y;
+    const x0 = snap(geometry.frameToX(clip.start), dpr);
+    const x1 = snap(geometry.frameToX(clip.start + clip.duration), dpr);
+    ctx.fillStyle = theme.color.bg;
+    ctx.fillRect(x0, y, x1 - x0, height);
+    const next = neighbors(project, clip.id).next;
+    drawClip(clipScene, clip, row, track, next !== null && next.start === clip.start + clip.duration, linkOffset(project, clip.id));
+  };
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(geometry.area.x, geometry.area.y, geometry.area.width, geometry.area.height);
+  ctx.clip();
+  const { block, fades } = blocks;
+  if (block?.redraw) {
+    redraw(block.left, block.row, block.track);
+    redraw(block.right, block.row, block.track);
+    // The clips' other transitions, as they are.
+    const before = neighbors(project, block.left.id).prev;
+    if (before && isMediaClip(before) && before.transitionOut && block.left.transitionIn) drawTransitionBlock(ctx, dpr, geometry, theme, project, block.row, block.track, before, block.left, before.transitionOut);
+    const after = neighbors(project, block.right.id).next;
+    if (after && isMediaClip(after) && after.transitionIn && block.right.transitionOut) drawTransitionBlock(ctx, dpr, geometry, theme, project, block.row, block.track, block.right, after, block.right.transitionOut);
+  }
+  if (fades?.dragged) {
+    const track = project.tracks[fades.row.index] as Track;
+    const clip = { ...fades.clip, fades: fades.fades } as Clip;
+    redraw(clip, fades.row, track);
+    drawBlocks({ ctx, dpr, geometry, theme, project, transition: scene.transition ?? null }, fades.row, track, [fades.clip]);
+  }
+  if (block) {
+    drawTransitionBlock(ctx, dpr, geometry, theme, project, block.row, block.track, block.left, block.right, block.transition, block.state);
+    // The dragged end stopped at its handle: a danger bar on it (the trim's media bound look).
+    if (block.bound) {
+      const frame = block.bound === "mediaStart" ? block.right.start - block.transition.before : block.right.start + block.transition.after;
+      const band = blockBand(block.row, block.track, theme);
+      const width = Math.max(1 / dpr, snap(theme.timeline.transitionEdgeWidth, dpr));
+      const x = snap(geometry.frameToX(frame), dpr);
+      ctx.fillStyle = theme.color.danger;
+      ctx.fillRect(block.bound === "mediaStart" ? x : x - width, snap(band.y, dpr), width, snap(band.height, dpr));
+    }
+  }
+  if (fades && hasFadeHandles(geometry, fades.clip)) {
+    const top = clipTop(fades.row, theme);
+    for (const edge of ["in", "out"] as const) drawFadeHandle(ctx, dpr, theme, fadeHandleX(geometry, fades.clip, edge, size, fades.fades[edge]), top, fades.active === edge);
+  }
+  if (blocks.drop) {
+    // Where a dropped chip puts its transition: the default frames centered on the cut.
+    const { frame, row, track } = blocks.drop;
+    const band = blockBand(row, track, theme);
+    const half = Math.floor(DEFAULT_TRANSITION_FRAMES / 2);
+    const x0 = snap(geometry.frameToX(frame - half), dpr);
+    const x1 = snap(geometry.frameToX(frame - half + DEFAULT_TRANSITION_FRAMES), dpr);
+    const line = Math.max(1 / dpr, snap(theme.timeline.transitionEdgeWidth, dpr));
+    ctx.beginPath();
+    ctx.roundRect(x0, snap(band.y, dpr), x1 - x0, snap(band.height, dpr), theme.radius.sm);
+    ctx.fillStyle = theme.color.accentWash;
+    ctx.fill();
+    ctx.lineWidth = line;
+    ctx.strokeStyle = theme.color.accent;
+    ctx.stroke();
   }
   ctx.restore();
 }

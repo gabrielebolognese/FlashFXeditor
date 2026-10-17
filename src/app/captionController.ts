@@ -33,7 +33,7 @@ export interface CueFocus {
 export const cueFocus = createStore<CueFocus | null>(null);
 
 /** A properties section to scroll to and focus (the Captions header's Style), consumed by the panel. */
-export const revealSection = createStore<"captionStyle" | null>(null);
+export const revealSection = createStore<"captionStyle" | "transition" | null>(null);
 
 /** Opens the Media panel's Captions tab. */
 export function showCaptionsTab(): void {

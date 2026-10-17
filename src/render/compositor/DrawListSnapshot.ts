@@ -2,7 +2,7 @@
 // draws exactly the same thing (same textures, transforms, opacities, crops, colors), the view skips
 // the GPU redraw. Comparing allocates nothing once the buffers are big enough.
 import type { TextureHandle } from "../gpu/renderer.js";
-import type { DrawList } from "./drawList.js";
+import type { DissolveSide, DrawList } from "./drawList.js";
 
 const KIND_CODE = { texture: 1, dissolve: 2, solid: 3 } as const;
 
@@ -37,9 +37,8 @@ export class DrawListSnapshot {
           this.push(layer.blur ?? 0);
           break;
         case "dissolve":
-          this.ref(layer.from);
-          this.ref(layer.to);
-          this.uv(layer.crop);
+          this.side(layer.from);
+          this.side(layer.to);
           this.push(layer.mix);
           break;
         case "solid": {
@@ -91,6 +90,14 @@ export class DrawListSnapshot {
     this.nextRefs[this.refCount++] = texture;
     // A texture destroyed since (evicted, device lost) must not count as the same picture.
     this.push(texture.valid ? 1 : 0);
+  }
+
+  /** A dissolve's picture: its texture, quad, crop and opacity. */
+  private side(side: DissolveSide): void {
+    this.ref(side.texture);
+    for (let i = 0; i < 6; i++) this.push(side.transform[i] as number);
+    this.uv(side.crop);
+    this.push(side.opacity);
   }
 
   private uv(rect: { u0: number; v0: number; u1: number; v1: number }): void {

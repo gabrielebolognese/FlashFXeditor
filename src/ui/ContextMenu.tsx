@@ -8,7 +8,9 @@ import { Swatches, type Swatch } from "./Swatches.js";
 import { useDismiss } from "./useDismiss.js";
 
 // Shell: floating menu with rows, shortcuts, separators, section headings, inline swatch rows (§6.16
-// label colors) and steppers (a number with - / +); closes on outside press and Escape. Rows with
+// label colors), steppers (a number with - / +) and inline choice rows (a label, then a few text
+// chips: §6.16 fade presets and the 3 transition kinds, Batch 36); closes on outside press and
+// Escape. Rows with
 // `keepOpen` (toggles) and steppers leave it open. Dropdowns (`MenuButton`) pass their button as
 // `anchorRef`, so pressing it again closes instead of reopening.
 // TODO(batch 40): keyboard navigation and the command-id driven item lists of §6.16.
@@ -22,6 +24,8 @@ export type ContextMenuEntry =
   /** `onSelect` gets `<id>:dec` / `<id>:inc`; the ends of the range disable their button. */
   | { kind: "stepper"; id: string; label: string; value: number; min: number; max: number; disabled?: boolean }
   | { kind: "heading"; label: string }
+  /** A label, then text chips side by side; a pick sends the chip's id and closes the menu. */
+  | { kind: "choices"; id: string; label: string; choices: readonly { id: string; label: string; tooltip?: string; disabled?: boolean }[] }
   | { kind: "separator" };
 
 export interface ContextMenuProps {
@@ -69,6 +73,31 @@ export function ContextMenu({ x, y, entries, onSelect, onClose, anchorRef }: Con
             <button type="button" className={styles.step} aria-label={`${entry.label}: more`} aria-disabled={entry.disabled || entry.value >= entry.max || undefined} onMouseDown={keepFocus} onClick={entry.disabled || entry.value >= entry.max ? undefined : () => onSelect(`${entry.id}:inc`)}>
               <Plus className={styles.stepIcon} aria-hidden="true" />
             </button>
+          </div>
+        ) : entry.kind === "choices" ? (
+          <div key={entry.id} className={styles.choices} role="group" aria-label={entry.label}>
+            <span className={styles.label}>{entry.label}</span>
+            {entry.choices.map((choice) => (
+              <button
+                key={choice.id}
+                type="button"
+                role="menuitem"
+                className={styles.choice}
+                aria-label={choice.tooltip ?? `${entry.label} ${choice.label}`}
+                aria-disabled={choice.disabled || undefined}
+                onMouseDown={keepFocus}
+                onClick={
+                  choice.disabled
+                    ? undefined
+                    : () => {
+                        onSelect(choice.id);
+                        onClose();
+                      }
+                }
+              >
+                {choice.label}
+              </button>
+            ))}
           </div>
         ) : entry.kind === "swatches" ? (
           <div key={entry.id} className={styles.swatchRow} role="group" aria-label={entry.label}>

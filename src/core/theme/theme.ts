@@ -145,6 +145,15 @@ export interface TimelineTheme {
   /** Keyframes (spec §6.4, Batch 35): the lane's height at the bottom of the clip body, the diamond's size. */
   keyframeLaneHeight: number;
   keyframeSize: number;
+  /** Fades (spec §6.4, Batch 36): the handle's size, the wash over the faded part, the curve. */
+  fadeHandleSize: number;
+  fadeWash: string;
+  fadeLine: string;
+  /** Transition blocks (spec §6.4, Batch 36): the chip fill, the end bars' width, the band at each end that drags it, the repeated-frames stripes. */
+  transitionFill: string;
+  transitionEdgeWidth: number;
+  transitionEdgeZone: number;
+  transitionWarning: string;
 }
 
 /** Reads one custom property by name (e.g. `--accent`); returns "" when it is not defined. */
@@ -302,6 +311,13 @@ export function readTheme(read: TokenReader, root?: Element): { theme: Theme; mi
       markerHeight: num("--timeline-marker-height"),
       keyframeLaneHeight: num("--timeline-keyframe-lane-height"),
       keyframeSize: num("--timeline-keyframe-size"),
+      fadeHandleSize: num("--timeline-fade-handle-size"),
+      fadeWash: str("--timeline-fade-wash"),
+      fadeLine: str("--timeline-fade-line"),
+      transitionFill: str("--timeline-transition-fill"),
+      transitionEdgeWidth: num("--timeline-transition-edge-width"),
+      transitionEdgeZone: num("--timeline-transition-edge-zone"),
+      transitionWarning: str("--timeline-transition-warning"),
       rangeWash: str("--timeline-range-wash"),
       rangeHandleWidth: num("--timeline-range-handle-width"),
       rangeHandleZone: num("--timeline-range-handle-zone"),

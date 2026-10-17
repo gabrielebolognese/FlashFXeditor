@@ -35,15 +35,22 @@
 //   are evaluated at the frame (a gesture's or a field scrub's live values, given at the playhead,
 //   still win). A text layer's raster scale is the largest scale its keys reach, so an animated zoom
 //   never re-rasterizes while it plays (P11).
+// - Transitions (spec §9.4, Batch 36; core/document/transitions.ts): at a frame of a transition the
+//   track's two clips both play, each past its edge into its handle (an edge frame repeats where the
+//   handle runs out), keeping its look at its edge frame (fades, keyframes). A cross dissolve is one
+//   `dissolve` layer with both media layers and the mix; a dip to black or white draws the clip of its
+//   half (the outgoing one, then the incoming one) under a solid of the color in the clip's own quad,
+//   at twice the mix (up to the middle, then down).
+// - Fades: video, image, text and solid clips fade their opacity (`fadeFactor`).
 // Layer structs and arrays are reused between frames; evaluating allocates nothing once warm.
-// TODO(batch 36): transitions (two contributing clips and a mix amount).
 import { isRgba } from "../../core/document/color.js";
 import { animatedOpacity, animatedTransform, maxKeyedScale } from "../../core/document/keyframes.js";
 import { framesToSourceUs, secondsToFrames } from "../../core/document/time.js";
+import { handleTimeUs, transitionMix } from "../../core/document/transitions.js";
 import type { CaptionClip, CaptionStyle, Clip, ClipId, Crop, Frame, MediaClip, MediaId, Project, RGBA, TextAnim, TextClip, TextContent, TextStyle, Track, TrackId, Transform } from "../../core/document/types.js";
 import { activeWordIndex, captionPlace, defaultCaptionStyle } from "../../text/captions.js";
 import { activeAnim, animUnit, isPlayable, newUnitState, presence, resetUnitState, typedCount, unitProgress, writeUnitShape, type ActiveAnim, type UnitState } from "../../text/anim.js";
-import { clipInIndex, lastClipStartingBy, trackIndex } from "../../timeline/model/queries.js";
+import { clipInIndex, lastClipStartingBy, trackIndex, type TrackIndex } from "../../timeline/model/queries.js";
 import { multiplyInto, mutableIdentity, setMat, type MutableMat3 } from "../mat3.js";
 import { DEFAULT_TEXT_STYLE, textContent } from "../../text/style.js";
 import type { AtlasUnitKind } from "../text/atlas.js";
@@ -55,13 +62,14 @@ import { TEXT_RASTER_MAX, type TextHighlight } from "../text/raster.js";
 import { MAX_TEXT_SCALE, type TextPart } from "../text/TextRasterCache.js";
 import { imageTimeUs } from "../../media/decode/animation.js";
 import { drawnRadius, type SolidLook } from "../../timeline/edit/solid.js";
-import { HIGHLIGHT_SLOT, type CaptionHighlightFrame, type Composite, type CompositeLayer, type MediaLayer, type SolidGeometry, type SolidLayer, type TextAnimFrame, type TextCompositeLayer } from "./drawList.js";
+import { HIGHLIGHT_SLOT, TRANSITION_SLOT, type CaptionHighlightFrame, type Composite, type CompositeLayer, type MediaLayer, type SolidGeometry, type SolidLayer, type TextAnimFrame, type TextCompositeLayer, type TransitionCompositeLayer } from "./drawList.js";
 
 /** How far from the playhead the clips next to it count as cut neighbours (seconds). */
 export const NEIGHBOR_SECONDS = 2;
 
 type WritableMediaLayer = Omit<MediaLayer, "transform"> & { transform: MutableMat3 };
-type WritableSolidLayer = Omit<SolidLayer, "transform" | "color" | "to" | "shape"> & { transform: MutableMat3; color: RGBA; to: RGBA | null; toValue: RGBA; shape: SolidGeometry };
+type WritableSolidLayer = Omit<SolidLayer, "transform" | "color" | "to" | "shape"> & { transform: MutableMat3; color: RGBA; to: RGBA | null; toValue: RGBA; shape: SolidGeometry | null; shapeValue: SolidGeometry };
+type WritableTransitionLayer = Omit<TransitionCompositeLayer, "from" | "to"> & { from: WritableMediaLayer; to: WritableMediaLayer };
 type WritableAnimFrame = { atlas: TextAnimFrame["atlas"]; units: UnitState[]; background: number };
 type WritableKaraoke = Omit<CaptionHighlightFrame, "box"> & { box: CaptionHighlightFrame["box"]; boxValue: NonNullable<CaptionHighlightFrame["box"]> };
 type WritableTextLayer = Omit<TextCompositeLayer, "model" | "anim" | "karaoke"> & {
@@ -135,12 +143,17 @@ function sinCos(degrees: number): Readonly<typeof trig> {
 
 const clamp01 = (value: number) => (Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : 0);
 
-/** Opacity factor of the clip's fades at `frame`: 0 on the first frame of a fade-in and the last of a fade-out. */
-export function fadeFactor(clip: Pick<MediaClip, "start" | "duration" | "fades">, frame: Frame): number {
-  const k = frame - clip.start;
+/**
+ * Opacity factor of the clip's fades at `frame`: 0 on the first frame of a fade-in and the last of a
+ * fade-out, linear in between. Frames outside the clip (a transition's handle) take its edge frame's.
+ */
+export function fadeFactor(clip: { start: Frame; duration: Frame; fades?: { in: Frame; out: Frame } | undefined }, frame: Frame): number {
+  const fades = clip.fades;
+  if (!fades) return 1;
+  const k = Math.min(clip.duration - 1, Math.max(0, frame - clip.start));
   let factor = 1;
-  if (clip.fades.in > 0) factor = Math.min(factor, k / clip.fades.in);
-  if (clip.fades.out > 0) factor = Math.min(factor, (clip.duration - 1 - k) / clip.fades.out);
+  if (fades.in > 0) factor = Math.min(factor, k / fades.in);
+  if (fades.out > 0) factor = Math.min(factor, (clip.duration - 1 - k) / fades.out);
   return clamp01(factor);
 }
 
@@ -171,6 +184,7 @@ export class Compositor {
   private readonly out: WritableComposite = { width: 0, height: 0, background: { r: 0, g: 0, b: 0, a: 1 }, layers: [] };
   private readonly mediaPool: WritableMediaLayer[] = [];
   private readonly solidPool: WritableSolidLayer[] = [];
+  private readonly transitionPool: WritableTransitionLayer[] = [];
   private readonly textPool: WritableTextLayer[] = [];
   private readonly neighborPool: NeighborFrame[] = [];
   private readonly neighborList: NeighborFrame[] = [];
@@ -210,6 +224,7 @@ export class Compositor {
     let media = 0;
     let solidLayers = 0;
     let textLayers = 0;
+    let transitions = 0;
     for (const track of doc.tracks) {
       // The caption track's cue (spec §10.5), unless the track is hidden.
       if (track.kind === "caption") {
@@ -222,8 +237,51 @@ export class Compositor {
       }
       // Muted and hidden video tracks are not in the composite (spec §6.12).
       if (track.kind !== "video" || track.hidden || track.muted) continue;
-      const clip = clipInIndex(trackIndex(doc, track), frame);
+      const index = trackIndex(doc, track);
+      const clip = clipInIndex(index, frame);
       if (!clip?.enabled || clip.kind === "audio" || clip.kind === "caption") continue;
+      // A frame of a transition (Batch 36): the track's two clips.
+      const pair = (clip.kind === "video" || clip.kind === "image") && (clip.transitionIn || clip.transitionOut) ? transitionPair(index, clip, frame) : null;
+      if (pair) {
+        const { left, right } = pair;
+        const transition = right.transitionIn as NonNullable<MediaClip["transitionIn"]>;
+        const mix = transitionMix(transition, right.start, frame);
+        if (transition.kind === "crossDissolve") {
+          const layer = (this.transitionPool[transitions] ??= newTransitionLayer());
+          const from = this.writeMediaAt(layer.from, doc, left, frame, track.id, transforms, opacities, crops);
+          const to = this.writeMediaAt(layer.to, doc, right, frame, track.id + TRANSITION_SLOT, transforms, opacities, crops);
+          if (from && to) {
+            layer.trackId = track.id;
+            layer.mix = mix;
+            out.layers.push(layer);
+            transitions += 1;
+          } else if (from || to) {
+            // A side with no picture (its media has no size yet): the other one alone.
+            const single = (this.mediaPool[media] ??= newMediaLayer());
+            copyMediaLayer(single, from ? layer.from : layer.to);
+            out.layers.push(single);
+            media += 1;
+          }
+        } else {
+          // A dip (spec §9.4 "dip-to-color via opacity to a solid"): the outgoing clip up to the middle, then the incoming one.
+          const shown = mix < 0.5 ? left : right;
+          const amount = mix < 0.5 ? 2 * mix : 2 * (1 - mix);
+          const layer = (this.mediaPool[media] ??= newMediaLayer());
+          if (this.writeMediaAt(layer, doc, shown, frame, track.id, transforms, opacities, crops)) {
+            out.layers.push(layer);
+            media += 1;
+            const dip = (this.solidPool[solidLayers] ??= newSolidLayer());
+            for (let i = 0; i < 6; i++) dip.transform[i] = layer.transform[i] as number;
+            copyColor(dip.color, transition.kind === "dipToWhite" ? WHITE : BLACK);
+            dip.to = null;
+            dip.shape = null;
+            dip.opacity = clamp01(amount) * layer.opacity;
+            out.layers.push(dip);
+            solidLayers += 1;
+          }
+        }
+        continue;
+      }
       // The keyed values at the frame (the clip's own when unkeyed; `animated` is reused per layer).
       const rel = frame - clip.start;
       const transform = transforms?.get(clip.id) ?? animatedTransform(clip, rel, this.animated);
@@ -236,7 +294,7 @@ export class Compositor {
         }
       } else if (clip.kind === "solid") {
         const layer = (this.solidPool[solidLayers] ??= newSolidLayer());
-        if (this.writeSolid(layer, doc, solids?.get(clip.id) ?? clip, transform, opacity)) {
+        if (this.writeSolid(layer, doc, solids?.get(clip.id) ?? clip, transform, opacity * fadeFactor(clip, frame))) {
           out.layers.push(layer);
           solidLayers += 1;
         }
@@ -352,7 +410,30 @@ export class Compositor {
     list.push(neighbor);
   }
 
-  private writeMedia(layer: WritableMediaLayer, doc: Project, clip: MediaClip, frame: Frame, transform: Transform, opacity: number, shownCrop: Crop): boolean {
+  /**
+   * A transition's clip at `frame` (inside its span or in its handle) on texture slot `slot`: its look at
+   * its nearest own frame (keyed values, fades, live values of a gesture), its media past its edges.
+   */
+  private writeMediaAt(
+    layer: WritableMediaLayer,
+    doc: Project,
+    clip: MediaClip,
+    frame: Frame,
+    slot: TrackId,
+    transforms: ReadonlyMap<ClipId, Transform> | null,
+    opacities: ReadonlyMap<ClipId, number> | null,
+    crops: ReadonlyMap<ClipId, Crop> | null,
+  ): boolean {
+    const rel = Math.min(clip.duration - 1, Math.max(0, frame - clip.start));
+    const transform = transforms?.get(clip.id) ?? animatedTransform(clip, rel, this.animated);
+    const opacity = opacities?.get(clip.id) ?? animatedOpacity(clip, rel);
+    if (!this.writeMedia(layer, doc, clip, frame, transform, opacity, crops?.get(clip.id) ?? clip.crop, true)) return false;
+    layer.trackId = slot;
+    return true;
+  }
+
+  /** `handles`: `frame` may be outside the clip (a transition): its media plays on past its in or out point. */
+  private writeMedia(layer: WritableMediaLayer, doc: Project, clip: MediaClip, frame: Frame, transform: Transform, opacity: number, shownCrop: Crop, handles = false): boolean {
     const item = doc.media[clip.mediaId];
     if (!item?.width || !item.height) return false;
     const rotation = item.rotation ?? 0;
@@ -415,7 +496,8 @@ export class Compositor {
     layer.mediaId = clip.mediaId;
     layer.still = clip.kind === "image";
     // An animated image loops from its in point (a still has no duration: time 0).
-    layer.timeUs = layer.still ? imageTimeUs(clip, frame, doc.settings.fps, item.durationUs) : sourceTimeUs(clip, frame, doc.settings.fps);
+    const fps = doc.settings.fps;
+    layer.timeUs = layer.still ? imageTimeUs(clip, frame, fps, item.durationUs) : handles ? handleTimeUs(clip, frame, fps, item.durationUs) : sourceTimeUs(clip, frame, fps);
     layer.opacity = clamp01(opacity) * fadeFactor(clip, frame);
     return true;
   }
@@ -492,7 +574,7 @@ export class Compositor {
     if (transform.flipH || transform.flipV) multiplyInto(m, m, setMat(this.step, transform.flipH ? -1 : 1, 0, 0, transform.flipV ? -1 : 1, transform.flipH ? 1 : 0, transform.flipV ? 1 : 0));
     copyColor(layer.color, isRgba(fill) ? fill : fill.from);
     layer.to = isRgba(fill) ? null : copyColor(layer.toValue, fill.to);
-    const shape = layer.shape;
+    const shape = (layer.shape = layer.shapeValue);
     shape.kind = look.shape === "ellipse" ? "ellipse" : "box";
     shape.width = size.w;
     shape.height = size.h;
@@ -640,7 +722,49 @@ function writeAnimFrame(out: WritableAnimFrame, active: ActiveAnim, layout: Text
 }
 
 function newSolidLayer(): WritableSolidLayer {
-  return { kind: "solid", transform: mutableIdentity(), opacity: 1, color: { r: 0, g: 0, b: 0, a: 1 }, to: null, toValue: { r: 0, g: 0, b: 0, a: 1 }, shape: { kind: "box", width: 0, height: 0, radius: 0 } };
+  const shapeValue: SolidGeometry = { kind: "box", width: 0, height: 0, radius: 0 };
+  return { kind: "solid", transform: mutableIdentity(), opacity: 1, color: { r: 0, g: 0, b: 0, a: 1 }, to: null, toValue: { r: 0, g: 0, b: 0, a: 1 }, shape: shapeValue, shapeValue };
+}
+
+function newTransitionLayer(): WritableTransitionLayer {
+  return { kind: "dissolve", trackId: "", from: newMediaLayer(), to: newMediaLayer(), mix: 0 };
+}
+
+const BLACK: RGBA = { r: 0, g: 0, b: 0, a: 1 };
+const WHITE: RGBA = { r: 1, g: 1, b: 1, a: 1 };
+
+function copyMediaLayer(out: WritableMediaLayer, from: MediaLayer): void {
+  out.trackId = from.trackId;
+  out.clipId = from.clipId;
+  out.mediaId = from.mediaId;
+  out.still = from.still;
+  out.timeUs = from.timeUs;
+  for (let i = 0; i < 6; i++) out.transform[i] = from.transform[i] as number;
+  out.opacity = from.opacity;
+  out.crop.u0 = from.crop.u0;
+  out.crop.v0 = from.crop.v0;
+  out.crop.u1 = from.crop.u1;
+  out.crop.v1 = from.crop.v1;
+}
+
+/**
+ * The two clips of the transition `clip` is part of at `frame` (its transition in over its first frames,
+ * its transition out over its last ones): both picture clips, enabled, abutting, with matching halves.
+ */
+function transitionPair(index: TrackIndex, clip: MediaClip, frame: Frame): { left: MediaClip; right: MediaClip } | null {
+  const at = lastClipStartingBy(index, frame);
+  let left: Clip | undefined;
+  let right: Clip | undefined;
+  if (clip.transitionIn && frame < clip.start + clip.transitionIn.after) {
+    left = index.clips[at - 1];
+    right = clip;
+  } else if (clip.transitionOut && frame >= clip.start + clip.duration - clip.transitionOut.before) {
+    left = clip;
+    right = index.clips[at + 1];
+  }
+  if (!left || !right || (left.kind !== "video" && left.kind !== "image") || (right.kind !== "video" && right.kind !== "image")) return null;
+  if (!left.enabled || !right.enabled || left.start + left.duration !== right.start || left.transitionOut?.id !== right.transitionIn?.id) return null;
+  return { left, right };
 }
 
 function copyColor(out: RGBA, color: RGBA): RGBA {

@@ -5,6 +5,7 @@ import { applyPatches, enablePatches, freeze, produceWithPatches, type Patch } f
 import type { Affect, Command, CommandContext } from "../commands/command.js";
 import { UndoStack, type UndoEntry } from "../commands/UndoStack.js";
 import { carryTrackHeights } from "../document/project.js";
+import { hasTransitions, reconcileTransitions } from "../document/transitions.js";
 import type { Project } from "../document/types.js";
 import { assertValid } from "../document/validate.js";
 import { createStore, shallowEqual, type Store } from "./createStore.js";
@@ -93,7 +94,13 @@ export class DocumentStore {
 
   dispatch(command: Command, options: DispatchOptions = {}): void {
     const ctx = this.context();
-    const [next, patches, inversePatches] = produceWithPatches(this.state, (draft) => command.run(draft, ctx));
+    const base = this.state;
+    // Transitions stay valid after any edit of the clips, in the command's own undo step (Batch 36).
+    const reconcile = hasTransitions(base) && (command.affects.includes("clips") || command.affects.includes("timeline"));
+    const [next, patches, inversePatches] = produceWithPatches(base, (draft) => {
+      command.run(draft, ctx);
+      if (reconcile) reconcileTransitions(base, draft, this.newId);
+    });
     const tx = this.transactionState;
     if (tx) {
       if (options.selection) tx.selectionAfter = options.selection;

@@ -6,8 +6,8 @@ import type { Mat3, MutableMat3 } from "../mat3.js";
 
 /** Bytes between layers: WebGPU's default minUniformBufferOffsetAlignment. */
 export const LAYER_STRIDE = 256;
-/** Bytes the shader reads per layer (8 vec4). */
-export const LAYER_SIZE = 128;
+/** Bytes the shader reads per layer (13 vec4). */
+export const LAYER_SIZE = 208;
 export const VIEW_SIZE = 48;
 const STRIDE_FLOATS = LAYER_STRIDE / 4;
 
@@ -28,6 +28,15 @@ export interface LayerUniform {
   flipY: boolean;
   /** Dissolve amount, 0 = from, 1 = to. */
   mix: number;
+  /**
+   * A dissolve's two pictures (Batch 36): `uv` is the first one's crop, `uv2` the second one's; `mapA` /
+   * `mapB` map the layer's unit quad onto each picture's unit quad (a point outside 0..1 is not on it);
+   * `sides` are their own opacities. Other layers leave them at rest.
+   */
+  uv2: UvRect;
+  mapA: Mat3;
+  mapB: Mat3;
+  sides: { from: number; to: number };
 }
 
 /** Writes `m` as three vec4 columns (WGSL mat3x3 padding) at `offset` (in floats). Allocates nothing. */
@@ -45,6 +54,13 @@ export function packLayer(out: Float32Array, index: number, layer: LayerUniform)
   write4(out, o + 20, clamp01(layer.opacity), layer.flipX ? 1 : 0, layer.flipY ? 1 : 0, clamp01(layer.mix));
   write4(out, o + 24, layer.to.r, layer.to.g, layer.to.b, layer.to.a);
   write4(out, o + 28, layer.shape.width, layer.shape.height, layer.shape.radius, layer.shape.code);
+  write4(out, o + 32, layer.uv2.u0, layer.uv2.v0, layer.uv2.u1, layer.uv2.v1);
+  const a = layer.mapA;
+  const b = layer.mapB;
+  write4(out, o + 36, a[0], a[1], a[2], a[3]);
+  write4(out, o + 40, b[0], b[1], b[2], b[3]);
+  write4(out, o + 44, a[4], a[5], b[4], b[5]);
+  write4(out, o + 48, clamp01(layer.sides.from), clamp01(layer.sides.to), 0, 0);
 }
 
 function write4(out: Float32Array, offset: number, x: number, y: number, z: number, w: number): void {

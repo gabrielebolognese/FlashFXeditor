@@ -128,3 +128,39 @@
   font-variant-numeric: tabular-nums;
   text-align: center;
 }
+
+/* Inline choice row (Batch 36, spec §6.16 "Fade in / Fade out presets", "Add transition (3 kinds
+   inline)"; gap: the DS has no inline menu choices): an item-height row, the label then text chips in
+   the menu row's hover look (hover wash, primary text), radius-sm, caption type. */
+.choices {
+  display: flex;
+  align-items: center;
+  gap: var(--space-0);
+  height: var(--control-compact);
+  padding: 0 var(--space-1) 0 var(--space-2);
+  color: var(--text-secondary);
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-track);
+}
+
+.choice {
+  height: var(--space-5);
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-sm);
+  color: var(--text-tertiary);
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-track);
+  white-space: nowrap;
+  transition:
+    background-color var(--duration-instant) var(--ease-out),
+    color var(--duration-instant) var(--ease-out);
+}
+
+.choice:not([aria-disabled]):hover {
+  background: var(--hover-wash);
+  color: var(--text-primary);
+}
+
+.choice[aria-disabled] {
+  opacity: var(--disabled-opacity);
+}
