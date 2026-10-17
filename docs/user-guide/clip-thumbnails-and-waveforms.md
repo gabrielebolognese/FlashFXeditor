@@ -1,6 +1,6 @@
 # Clip thumbnails, waveforms and badges
 
-Clips on the timeline show what is in them: video clips show a strip of thumbnails, audio clips show their waveform, image clips show their picture (or the frames of an animation), solids show a swatch of their shape and color, and text clips show their text. Small badges in each clip's label bar tell you about its speed, its link and its sync, mark freeze frames, keyframes and animated text, and warn about missing fonts. Use them to find a shot, a cut point or a loud moment without playing the timeline.
+Clips on the timeline show what is in them: video clips show a strip of thumbnails, audio clips show their waveform, image clips show their picture (or the frames of an animation), solids show a swatch of their shape and color, and text clips show their text. Small badges in each clip's label bar tell you about its speed, its link and its sync, mark freeze frames, keyframes, animated text and transitions, and warn about missing fonts. Use them to find a shot, a cut point or a loud moment without playing the timeline.
 
 > **Video placeholder: Thumbnails, waveforms and badges**
 > - File: `videos/clip-thumbnails-and-waveforms/overview.mp4` (not recorded yet)
@@ -13,6 +13,7 @@ Clips on the timeline show what is in them: video clips show a strip of thumbnai
 - [See more frames by zooming in](#see-more-frames-by-zooming-in)
 - [Read a waveform](#read-a-waveform)
 - [Read the badges in the label bar](#read-the-badges-in-the-label-bar)
+- [See fades and transitions](#see-fades-and-transitions)
 - [Know when thumbnails and waveforms appear](#know-when-thumbnails-and-waveforms-appear)
 - [Combine label colors with thumbnails](#combine-label-colors-with-thumbnails)
 
@@ -101,11 +102,20 @@ Badges sit at the right end of a clip's label bar, from right to left in this or
 | Keyframes | A diamond | The clip has keyframes: its position, scale, rotation or opacity changes over time. See [Keyframes](keyframes.md). |
 | Text animation | A sparkles icon | The text clip has an in or out animation. See [Text animations](text-animations.md). |
 | Missing font | A red warning triangle | The text clip uses a font this computer doesn't have, so it is drawn with a fallback font. See [Fix a missing font](titles-and-text.md#fix-a-missing-font). |
+| Transition | `fx` | The clip has a transition at its start or end. See [Fades and transitions](fades-and-transitions.md). |
 
 - A clip at normal speed shows no speed badge, and a clip in sync shows no number.
 - The clip's name ends before the badges, shortened with "…" when needed. In a short clip, badges that don't fit are left out.
 - When a clip runs past the right edge of the view, its badges stay visible at the right edge of the tracks, just as its icon and name stay at the left edge when it starts before the view.
 - Groups have no badge: click a clip to see which clips light up with it. See [Group clips](links-and-groups.md#group-clips).
+
+## See fades and transitions
+
+- **Fades.** A fade in or out is a dark wedge over the start or end of the clip, bounded by a thin line: straight on a picture clip, rounded on an audio clip (the shape of the volume curve). On M and L tracks it covers the body under the label bar, where the thumbnails or the waveform stay visible through it; on S tracks it covers the whole clip. The waveform itself doesn't change with the fade.
+- **Fade handles.** Pointing at a clip shows a small square on its top edge in each corner, or at the end of each fade. Drag them to fade the clip.
+- **Transitions.** A transition is a block across the cut between two clips, over their label bars (over the whole clip on S tracks), with an icon of its kind. Frames that repeat an edge frame are striped red.
+
+See [Fades and transitions](fades-and-transitions.md).
 
 ## Know when thumbnails and waveforms appear
 
@@ -136,10 +146,11 @@ A clip with a label color shows that color in its label bar above the thumbnails
 - [Titles and text](titles-and-text.md)
 - [Text animations](text-animations.md)
 - [Keyframes](keyframes.md)
+- [Fades and transitions](fades-and-transitions.md)
 - [Captions](captions.md)
 - [Audio](audio.md)
 - [Importing media](importing-media.md)
 - [Proxies](proxies.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 35, 2026-10-17</sub>
+<sub>Last updated: Batch 36, 2026-10-17</sub>

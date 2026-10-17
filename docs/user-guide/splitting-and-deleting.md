@@ -38,6 +38,7 @@ What you get:
 - Both parts keep everything the clip had: its media, name, label color, speed and place in the frame. Played one after the other, they show and sound exactly like the clip did.
 - A video and its sound split together, and their right parts are linked to each other, like the left parts.
 - A clip animated with keyframes keeps its motion: each part gets its share of the keyframes, and played one after the other they move exactly as the clip did, also when you cut in the middle of an eased move. See [Know what happens to keyframes when you edit clips](keyframes.md#know-what-happens-to-keyframes-when-you-edit-clips).
+- Fades stay at the clip's outer ends: the left part keeps the fade in, the right part keeps the fade out. A transition at the clip's start or end stays on its cut, but a split inside a transition's frames removes that transition. See [Know what edits do to fades and transitions](fades-and-transitions.md#know-what-edits-do-to-fades-and-transitions).
 - A caption cue on the **CC** track splits its text too: each part keeps the words on its side of the cut. See [Edit cues on the timeline](captions.md#edit-cues-on-the-timeline).
 - Selected clips stay selected: both parts of each one. The right part of the clip you clicked last gets the thicker outline. With nothing selected, nothing is selected afterwards.
 - The history step is named **Split clip** or **Split clips**. <kbd>Ctrl</kbd>+<kbd>Z</kbd> puts each clip back together in one step.
@@ -82,6 +83,8 @@ To cut all tracks at once, hold <kbd>Shift</kbd>: the line runs over every clip 
 - While a gap is selected, <kbd>Delete</kbd> closes the gap. See [Close a gap](#close-a-gap).
 - While a marker is selected, <kbd>Delete</kbd>, <kbd>Shift</kbd>+<kbd>Delete</kbd> and the **Delete** and **Ripple delete** buttons delete the marker instead. See [Delete markers](markers-and-in-out-points.md#delete-markers).
 - While keyframes are selected on a clip's keyframe lane, <kbd>Delete</kbd>, <kbd>Shift</kbd>+<kbd>Delete</kbd> and the **Delete** and **Ripple delete** buttons delete only those keyframes, and the clip stays. A click on the clip body deselects the keyframes. See [Select, move and delete keyframes on the timeline](keyframes.md#select-move-and-delete-keyframes-on-the-timeline).
+- While a transition is selected (click its block on the timeline), <kbd>Delete</kbd> and <kbd>Shift</kbd>+<kbd>Delete</kbd> delete only the transition, and the clips stay. See [Select or delete a transition](fades-and-transitions.md#select-or-delete-a-transition).
+- Deleting a clip also removes the transitions at its start and end.
 
 ## Ripple delete clips
 
@@ -174,7 +177,7 @@ Right-click a clip or a gap to open its menu. Rows that have a keyboard shortcut
 > **Video placeholder: The clip and gap menus**
 > - File: `videos/splitting-and-deleting/menus.mp4` (not recorded yet)
 > - Length: about 40 seconds
-> - Shows: right-click a video clip: it and its sound are selected and the menu opens with **Cut**, **Copy** and **Paste** dimmed, then **Split at playhead**, **Delete**, **Ripple delete**, **Disable**, **Unlink**, **Group**, **Ungroup** (dimmed), **Move into sync** (dimmed), **Rename**, the **Label** row of eight colors, **Speed...** and **Freeze frame at playhead**; point at the teal swatch: its tooltip reads **Teal**; click it: the video and its sound turn teal; right-click the clip again: the teal swatch has a gold ring; press <kbd>Escape</kbd>; right-click a gap: **Close gap** and **Close all gaps on track**; click **Close gap**.
+> - Shows: right-click a video clip: it and its sound are selected and the menu opens with **Cut**, **Copy** and **Paste** dimmed, then **Split at playhead**, **Delete**, **Ripple delete**, **Disable**, **Unlink**, **Group**, **Ungroup** (dimmed), **Move into sync** (dimmed), **Rename**, the **Label** row of eight colors, **Speed...**, **Freeze frame at playhead**, and the **Fade in**, **Fade out** and **Transition** rows with their choices; point at the teal swatch: its tooltip reads **Teal**; click it: the video and its sound turn teal; right-click the clip again: the teal swatch has a gold ring; press <kbd>Escape</kbd>; right-click a gap: **Close gap** and **Close all gaps on track**; click **Close gap**.
 
 **Right-click a clip.** If the clip is not selected, it is selected first, with its linked clips and its group. If it is already part of the selection, the selection stays, and the menu acts on all the selected clips. Clips on a locked track have no menu.
 
@@ -193,6 +196,8 @@ Right-click a clip or a gap to open its menu. Rows that have a keyboard shortcut
 | **Label**, with eight color swatches | Gives the selected clips a label color, or removes it. See [Give clips a label color](timeline.md#give-clips-a-label-color). |
 | **Speed...** | Opens the **Speed** section of **Edit Properties** with **Speed** ready for typing. Dimmed for image clips. See [Type an exact speed](speed-freeze-frames-and-punch-zoom.md#type-an-exact-speed). |
 | **Freeze frame at playhead** | Holds the frame at the playhead for 2 seconds (<kbd>Shift</kbd>+<kbd>F</kbd>). Dimmed unless the clip is a video under the playhead. See [Hold a frame (freeze frame)](speed-freeze-frames-and-punch-zoom.md#hold-a-frame-freeze-frame). |
+| **Fade in**, **Fade out**, with **0.25 s**, **0.5 s** and **1 s** | Give the selected clips a fade in or out of that length. Not shown for caption cues. See [Use the fade lengths in the clip menu](fades-and-transitions.md#use-the-fade-lengths-in-the-clip-menu). |
+| **Transition**, with **Dissolve**, **Black** and **White** | Adds a cross dissolve, a dip to black or a dip to white at the clip's start or end, whichever is nearer the playhead. Dimmed when the clip touches no other clip. See [Add a transition with the quick actions or the clip menu](fades-and-transitions.md#add-a-transition-with-the-quick-actions-or-the-clip-menu). |
 
 **Right-click a gap.** The gap is selected first.
 
@@ -204,7 +209,7 @@ Right-click a clip or a gap to open its menu. Rows that have a keyboard shortcut
 - Click a row to run it. The menu closes, and the keyboard goes back to the timeline.
 - Press <kbd>Escape</kbd> or click outside the menu to close it without doing anything.
 - A track header has its own menu. See [Use the track menu](tracks.md#use-the-track-menu). So has the ruler, for markers and the in and out points. See [Use the ruler menu](markers-and-in-out-points.md#use-the-ruler-menu).
-- Right-clicking empty space after the last clip of a track opens no menu yet. Choosing menu rows with the arrow keys is available in a later version.
+- Right-clicking empty space after the last clip of a track opens no menu yet. Choosing menu rows and the choices in a row with the arrow keys is available in a later version.
 
 ## Related pages
 - [Timeline](timeline.md)
@@ -217,8 +222,9 @@ Right-click a clip or a gap to open its menu. Rows that have a keyboard shortcut
 - [Editing properties](editing-properties.md)
 - [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md)
 - [Keyframes](keyframes.md)
+- [Fades and transitions](fades-and-transitions.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Projects and saving](projects-and-saving.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 35, 2026-10-17</sub>
+<sub>Last updated: Batch 36, 2026-10-17</sub>

@@ -38,6 +38,7 @@ This page lists every keyboard shortcut that works in the current version of Sho
 >   30. With a title selected, click **Word pop** in the **In** row of the **Animation** section in **Edit Properties**: the words pop in once in the preview. Click in the **Duration** field under **In** and press <kbd>Shift</kbd>+<kbd>↑</kbd>: the animation gets 10 frames longer and plays again.
 >   31. Open the **Captions** tab of the Media panel and click into a cue's text. Put the caret in the middle and press <kbd>Enter</kbd>: the cue splits in two. Press <kbd>Ctrl</kbd>+<kbd>Backspace</kbd>: it is one cue again. Press <kbd>Tab</kbd>: the next cue's text is selected. Press <kbd>Esc</kbd>, then <kbd>Delete</kbd>: the cue is deleted.
 >   32. Click the microphone in the **Captions** header: the **Transcribe captions** dialog opens with **Transcribe** highlighted. Press <kbd>Enter</kbd>. When **Review the transcript** opens, press <kbd>Esc</kbd>: the transcript is dropped and nothing changes.
+>   33. Click right on a cut between two clips on the timeline: red brackets mark it. Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd>: a cross dissolve block appears over the cut. Hold <kbd>Alt</kbd> and drag its right end: only that end moves. Click the block and press <kbd>Delete</kbd>: it is gone.
 
 ## In this page
 - [How shortcuts work](#how-shortcuts-work)
@@ -48,6 +49,7 @@ This page lists every keyboard shortcut that works in the current version of Sho
 - [Cutting and deleting](#cutting-and-deleting)
 - [Speed, freeze frames and punch zoom](#speed-freeze-frames-and-punch-zoom)
 - [Keyframes](#keyframes)
+- [Fades and transitions](#fades-and-transitions)
 - [Markers and in/out points](#markers-and-inout-points)
 - [Tracks, links and groups](#tracks-links-and-groups)
 - [Tools](#tools)
@@ -243,8 +245,8 @@ See [Splitting, deleting and closing gaps](splitting-and-deleting.md).
 | --- | --- | --- | --- |
 | Split at the playhead: the selected clips, or every clip under it when nothing is selected | <kbd>Ctrl</kbd>+<kbd>K</kbd> | <kbd>⌘</kbd>+<kbd>K</kbd> | All panels |
 | Split every clip under the playhead, on all tracks | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>K</kbd> | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>K</kbd> | All panels |
-| Delete the selected clips and leave gaps (with keyframes selected on a keyframe lane: delete only them; with a gap selected: close it; with a marker selected: delete it) | <kbd>Delete</kbd> or <kbd>Backspace</kbd> | <kbd>Delete</kbd> (⌫) | Timeline, Preview |
-| Ripple delete the selected clips (with keyframes selected: delete only them; with a gap selected: close it; with a marker selected: delete it) | <kbd>Shift</kbd>+<kbd>Delete</kbd> or <kbd>Shift</kbd>+<kbd>Backspace</kbd> | <kbd>⇧</kbd>+<kbd>Delete</kbd> (⌫) | Timeline, Preview |
+| Delete the selected clips and leave gaps (with keyframes selected on a keyframe lane: delete only them; with a transition selected: delete it; with a gap selected: close it; with a marker selected: delete it) | <kbd>Delete</kbd> or <kbd>Backspace</kbd> | <kbd>Delete</kbd> (⌫) | Timeline, Preview |
+| Ripple delete the selected clips (with keyframes selected: delete only them; with a transition selected: delete it; with a gap selected: close it; with a marker selected: delete it) | <kbd>Shift</kbd>+<kbd>Delete</kbd> or <kbd>Shift</kbd>+<kbd>Backspace</kbd> | <kbd>⇧</kbd>+<kbd>Delete</kbd> (⌫) | Timeline, Preview |
 | Close the selected gap, or the gap at the playhead | <kbd>G</kbd> | <kbd>G</kbd> | Timeline |
 | Close all gaps (compact) | <kbd>Shift</kbd>+<kbd>G</kbd> | <kbd>⇧</kbd>+<kbd>G</kbd> | Timeline |
 | Rename the selected clip or track | <kbd>F2</kbd> | <kbd>F2</kbd> | Timeline |
@@ -291,6 +293,30 @@ The stopwatch, **Previous keyframe**, **Add keyframe**, **Next keyframe** and **
 - The lane shows along the bottom of the selected clips, and of every clip on an L track, while **Show clip keyframes** is on. The mouse actions work with the **Select** tool.
 - With keyframes selected, <kbd>Shift</kbd>+<kbd>Delete</kbd>, the **Delete** button of the timeline toolbar and **Delete keyframes** in the keyframe menu delete them too. A click anywhere else on the timeline or in the preview deselects them.
 - In the preview, the usual keys and drags write keyframes while the **Transform** stopwatch is on: the arrow keys nudge the picture and add or update a keyframe at the playhead. See [Change an animated picture](keyframes.md#change-an-animated-picture).
+
+## Fades and transitions
+
+See [Fades and transitions](fades-and-transitions.md).
+
+| Action | Windows | macOS | Works in |
+| --- | --- | --- | --- |
+| Add the default transition (a 15-frame **Cross dissolve**) at the selected cut, or at the cut nearest the playhead on the targeted tracks | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd> | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>D</kbd> | Timeline |
+| Delete the selected transition (and its linked crossfade) | <kbd>Delete</kbd>, <kbd>Backspace</kbd>, <kbd>Shift</kbd>+<kbd>Delete</kbd> or <kbd>Shift</kbd>+<kbd>Backspace</kbd> | <kbd>Delete</kbd> (⌫) or <kbd>⇧</kbd>+<kbd>Delete</kbd> (⌫) | Timeline, Preview |
+| Cancel a fade, transition end or transition button drag | <kbd>Esc</kbd> before you release | <kbd>Esc</kbd> | Timeline |
+
+| Mouse action | Windows | macOS |
+| --- | --- | --- |
+| Fade a clip in or out | Drag the square in its top left or top right corner | Same |
+| Select a transition | Click its block | Click its block |
+| Open the **Transition** section | Double-click the block | Double-click the block |
+| Lengthen or shorten a transition on both sides of the cut | Drag an end of its block | Drag an end of its block |
+| Move only one end | <kbd>Alt</kbd>+drag an end of the block | <kbd>⌥</kbd>+drag an end of the block |
+| Add a transition at a cut | Drag **Add dissolve**, **Add dip to black** or **Add dip to white** from the quick actions onto the cut | Same |
+| Switch snapping for a fade or transition drag | Hold <kbd>S</kbd> while you drag | Hold <kbd>S</kbd> while you drag |
+
+- **Fade in 0.5 s**, **Fade out 0.5 s**, the three transition buttons in the quick actions and the **Fade in**, **Fade out** and **Transition** rows of the clip menu have no shortcut.
+- The fade handles and transition blocks work with the **Select** tool. A click within 3 pixels of a cut selects the cut, not the transition.
+- In the other panels, the browser keeps <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd>. See [Keys the browser keeps](#keys-the-browser-keeps).
 
 ## Markers and in/out points
 
@@ -614,7 +640,7 @@ These work over the timeline. See [Timeline](timeline.md).
 | Rename a track | Double-click its name | Double-click its name |
 | Reorder a track | Drag its header up or down | Drag its header up or down |
 | Switch snapping for this drag | Hold <kbd>S</kbd> while you drag | Hold <kbd>S</kbd> while you drag |
-| Snap the playhead to clip edges, markers and the in and out points | <kbd>Shift</kbd>+click or <kbd>Shift</kbd>+drag in the ruler | <kbd>⇧</kbd>+click or <kbd>⇧</kbd>+drag in the ruler |
+| Snap the playhead to clip edges, transition ends, markers and the in and out points | <kbd>Shift</kbd>+click or <kbd>Shift</kbd>+drag in the ruler | <kbd>⇧</kbd>+click or <kbd>⇧</kbd>+drag in the ruler |
 
 While you drag clips or a clip edge, you can press and release <kbd>Shift</kbd>, <kbd>Ctrl</kbd>, <kbd>Alt</kbd> and <kbd>S</kbd>: the keys held when you release the mouse button decide the drop or the trim. A roll is the exception: hold <kbd>Ctrl</kbd>+<kbd>Alt</kbd> when you press on the cut; after that, the keys no longer matter. See [Move clips](timeline.md#move-clips) and [Trimming clips](trimming.md).
 
@@ -635,6 +661,7 @@ In a normal browser tab, the browser keeps some shortcuts for itself, and a web 
 | <kbd>Ctrl</kbd>+<kbd>0</kbd> (<kbd>⌘</kbd>+<kbd>0</kbd>), outside the Preview panel | Resets the browser's page zoom. In the Preview panel the editor keeps it for **Fit**. |
 | <kbd>Ctrl</kbd>+<kbd>1</kbd> and <kbd>Ctrl</kbd>+<kbd>2</kbd> (<kbd>⌘</kbd>+<kbd>1</kbd>, <kbd>⌘</kbd>+<kbd>2</kbd>), outside the Preview panel | Switch to your first or second browser tab. In the Preview panel the editor keeps them for zooming the preview to 100% and 200%. |
 | <kbd>Ctrl</kbd>+<kbd>D</kbd> (<kbd>⌘</kbd>+<kbd>D</kbd>), outside the Timeline and Preview panels | Bookmarks the page. In the Timeline and Preview panels the editor keeps it for **Duplicate**. |
+| <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd> (<kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>D</kbd>), outside the Timeline panel | Bookmarks all open tabs. In the Timeline panel the editor keeps it for the default transition. |
 
 Because of this, <kbd>Ctrl</kbd>+<kbd>N</kbd> opens a new browser window instead of a new project. To create a project, click **New project** on the start screen.
 
@@ -646,7 +673,7 @@ While you type in a text field, or while a dialog is open, the editor leaves <kb
 
 Some buttons already show a shortcut in their tooltip although the button is disabled, for example **Export** in the app bar. These shortcuts start working when their feature is available in a later version; until then the keys do nothing. In the current version this also applies to:
 
-- <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd> (default transition), <kbd>Ctrl</kbd>+<kbd>E</kbd> (export) and <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> (command palette).
+- <kbd>Ctrl</kbd>+<kbd>E</kbd> (export) and <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> (command palette).
 - <kbd>Ctrl</kbd>+<kbd>X</kbd>, <kbd>Ctrl</kbd>+<kbd>C</kbd> and <kbd>Ctrl</kbd>+<kbd>V</kbd> in the Timeline and Preview panels (cutting, copying and pasting clips; the **Cut**, **Copy** and **Paste** rows of the clip menu, and the **Copy**, **Paste** and **Duplicate** rows of the preview's layer menu, are dimmed). They don't copy or paste keyframes either: use **Copy keyframes** and **Paste keyframes** in the keyframe menu.
 
 ## Related pages
@@ -676,4 +703,4 @@ Some buttons already show a shortcut in their tooltip although the button is dis
 - [Projects and saving](projects-and-saving.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 35, 2026-10-17</sub>
+<sub>Last updated: Batch 36, 2026-10-17</sub>

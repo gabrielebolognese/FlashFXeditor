@@ -88,7 +88,8 @@ A click right on a cut, without dragging, selects the cut itself instead of a cl
 - Brackets also appear on the cut between the linked clips at the same time, for example between the sounds on A1 under a cut on V1.
 - The brackets hide while you drag clips or an edge, and show only while the two clips touch.
 - Selecting a cut is not a step in the history, and it is not saved with the project.
-- In this version, the selected edit point only marks the cut. Adding a transition at the selected edit point is available in a later version.
+- A selected edit point is where a new transition goes: press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd>, or click **Add dissolve**, **Add dip to black** or **Add dip to white** in the quick actions of **Edit Properties**, which shows them while the cut is selected. See [Add a transition](fades-and-transitions.md#add-a-transition).
+- On a cut that has a transition, a click within 3 pixels of the cut still selects the edit point; a click elsewhere on the transition's block selects the transition.
 
 ## Slip a clip
 
@@ -213,10 +214,11 @@ The edit stops following the pointer at these limits:
 - [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md)
 - [Splitting, deleting and closing gaps](splitting-and-deleting.md)
 - [Linking and grouping clips](links-and-groups.md)
+- [Fades and transitions](fades-and-transitions.md)
 - [Timeline](timeline.md)
 - [Preview and playback](preview-and-playback.md)
 - [Audio](audio.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 35, 2026-10-17</sub>
+<sub>Last updated: Batch 36, 2026-10-17</sub>

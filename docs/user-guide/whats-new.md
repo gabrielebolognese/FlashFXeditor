@@ -2,6 +2,11 @@
 
 Shorts Editor grows in steps called batches. This page lists what each batch added that you can see or use, newest first. Follow the links for the full instructions.
 
+> **Video placeholder: What's new in Batch 36**
+> - File: `videos/whats-new/batch-36.mp4` (not recorded yet)
+> - Length: about 60 seconds
+> - Shows: a 1080×1920 project with two videos with sound end to end on V1 and A1, both cut from longer recordings; point at the first video: small squares appear at its top corners; drag the left one to the right until the tooltip reads `Fade in · 00:00:15`: a dark wedge covers the start; press <kbd>Home</kbd> and <kbd>Space</kbd>: the picture rises from black; click the second video and click **Fade out 0.5 s** in the quick actions: the video and its sound fade out; click right on the cut and press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd>: a block appears over the cut on V1 and A1 and the **Transition** section opens; play through the cut: the shots dissolve and the sound crossfades without a click; click **Dip to black**, then drag the block's right end outward; drag the **Add dip to white** button from the quick actions onto another cut: it lights up and gets a block with a sun.
+
 > **Video placeholder: What's new in Batch 35**
 > - File: `videos/whats-new/batch-35.mp4` (not recorded yet)
 > - Length: about 60 seconds
@@ -133,6 +138,7 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 > - Shows: open a project with three clips on the timeline; press <kbd>Space</kbd> to play and let the timeline page forward; press <kbd>L</kbd> three times to reach 8x, then <kbd>K</kbd>; hold <kbd>K</kbd> and tap <kbd>L</kbd> to step one frame; turn on **Loop playback**; point at the **Dropped** readout in the status strip.
 
 ## In this page
+- [Batch 36: Fades and transitions](#batch-36-fades-and-transitions)
 - [Batch 35: Keyframes](#batch-35-keyframes)
 - [Batch 34: Shapes and images](#batch-34-shapes-and-images)
 - [Batch 33: Transcription](#batch-33-transcription)
@@ -168,6 +174,17 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 - [Batch 03: Projects, autosave and recovery](#batch-03-projects-autosave-and-recovery)
 - [Batch 02: Undo, redo and frame-exact time](#batch-02-undo-redo-and-frame-exact-time)
 - [Batch 01: The workspace](#batch-01-the-workspace)
+
+## Batch 36: Fades and transitions
+- Fade clips in and out: point at a clip on the timeline and drag the small square in its top left or top right corner. A dark wedge shows the fade, with a rounded curve on audio clips. Pictures fade their opacity, sound fades its volume. Works on video, image, audio, solid and text clips. See [Fade a clip with the fade handles](fades-and-transitions.md#fade-a-clip-with-the-fade-handles).
+- **Fade in 0.5 s** and **Fade out 0.5 s** in the quick actions now work: one click fades the selected clips and their linked sound, and a second click removes the fade. The clip menu gets **Fade in** and **Fade out** rows with **0.25 s**, **0.5 s** and **1 s**. See [Fade a clip and its sound with one click](fades-and-transitions.md#fade-a-clip-and-its-sound-with-one-click).
+- Add transitions at cuts: **Cross dissolve**, **Dip to black** and **Dip to white**, 15 frames centered on the cut. Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd> in the Timeline panel for a dissolve at the selected cut or the cut nearest the playhead, click or drag **Add dissolve**, **Add dip to black** or **Add dip to white** from the quick actions, or use the **Transition** row of the clip menu. See [Add a transition](fades-and-transitions.md#add-a-transition).
+- A transition uses the media beyond the clips' edges. When there is none, the edge frames repeat, the block is striped red and a message tells you. See [Know how much media a transition needs](fades-and-transitions.md#know-how-much-media-a-transition-needs).
+- Transitions show as blocks over the cut, and their clips get an `fx` badge. Click a block to select it, press <kbd>Delete</kbd> to remove it, drag its ends to change its length (<kbd>Alt</kbd>: one end only), and double-click it for the new **Transition** section with **Kind**, **Duration** and **Alignment**. See [Change a transition in Edit Properties](fades-and-transitions.md#change-a-transition-in-edit-properties).
+- With **Linked selection** on, the sound under a picture transition crossfades with it automatically, with no click at the cut. See [Crossfade the sound](fades-and-transitions.md#crossfade-the-sound).
+- Trims, rolls, slips, speed changes, splits, moves and deletes keep transitions valid: a transition gets shorter as its media runs out, and goes when none is left or its clips no longer touch. See [Know what edits do to fades and transitions](fades-and-transitions.md#know-what-edits-do-to-fades-and-transitions).
+- A selected cut (edit point) now has a use: transitions go there. Clip moves, trims and fades snap to the ends of transitions too.
+- New page: [Fades and transitions](fades-and-transitions.md). New shortcuts section: [Fades and transitions](keyboard-shortcuts.md#fades-and-transitions). New troubleshooting group: [Fades and transitions](troubleshooting.md#fades-and-transitions).
 
 ## Batch 35: Keyframes
 - Animate pictures with keyframes: click the stopwatch in the **Transform** or **Opacity** header of **Edit Properties**, then change the picture at another moment. It slides, grows, turns or fades between the looks you set. Works on video, image, solid and text clips. See [Animate a picture](keyframes.md#animate-a-picture) and [Fade a picture in or out](keyframes.md#fade-a-picture-in-or-out).
@@ -540,4 +557,4 @@ See [The workspace](workspace.md) and [Getting started](getting-started.md).
 - [Adding media to the timeline](adding-media-to-the-timeline.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 35, 2026-10-17</sub>
+<sub>Last updated: Batch 36, 2026-10-17</sub>

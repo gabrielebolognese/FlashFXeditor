@@ -1,6 +1,6 @@
 # Editing properties
 
-The **Edit Properties** panel shows the settings of what you selected: a clip, a track, a marker, or the project itself when nothing is selected. Use it to type exact values, such as a position in pixels or the end time of a clip, to drag a value while you watch the preview, to fit or fill the frame with one click, to animate a picture with keyframes, to crop a picture, to change a clip's speed, to shape and color solids, to style text and save it as a preset, to give your captions their look and place, and to change several clips at once.
+The **Edit Properties** panel shows the settings of what you selected: a clip, a track, a marker, or the project itself when nothing is selected. Use it to type exact values, such as a position in pixels or the end time of a clip, to drag a value while you watch the preview, to fit or fill the frame with one click, to animate a picture with keyframes, to crop a picture, to change a clip's speed, to fade clips and set up transitions, to shape and color solids, to style text and save it as a preset, to give your captions their look and place, and to change several clips at once.
 
 > **Video placeholder: Edit Properties in action**
 > - File: `videos/editing-properties/overview.mp4` (not recorded yet)
@@ -45,6 +45,8 @@ The **Edit Properties** panel sits at the top of the left side, next to the Medi
 | One or more clips | The quick actions, then the **Clip** section. When a text clip is among them, **Text** and **Animation** come right after **Clip**. When a solid is among them, **Solid** comes next. When a caption cue is among them, **Caption style** comes next. When a video, image, solid or text clip is among them, also **Transform** and **Opacity**, with **Crop** between them for video and image clips. When a video or audio clip is among them, also **Speed**, as the last section. | This page, [Titles and text](titles-and-text.md#style-text-in-the-text-section) for **Text**, [Text animations](text-animations.md) for **Animation**, [Shapes and images](shapes-and-images.md#choose-the-shape) for **Solid**, [Style your captions](captions.md#style-your-captions) for **Caption style**, [Cropping and reframing](cropping-and-reframing.md) for **Crop**, and [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md) for **Speed** |
 | One or more track headers | The **Track** section, and the **Caption style** section when the **CC** caption track is among them | [Change track settings in Edit Properties](tracks.md#change-track-settings-in-edit-properties), [Style your captions](captions.md#style-your-captions) |
 | A marker in the ruler | The **Marker** section | [Edit a marker in Edit Properties](markers-and-in-out-points.md#edit-a-marker-in-edit-properties) |
+| A transition (click its block on the timeline) | The **Transition** section | [Change a transition in Edit Properties](fades-and-transitions.md#change-a-transition-in-edit-properties) |
+| A cut between two clips (an edit point) | The quick actions, with only the three transition buttons alive, and the **Transition** section when the cut has a transition | [Add a transition with the quick actions or the clip menu](fades-and-transitions.md#add-a-transition-with-the-quick-actions-or-the-clip-menu) |
 
 - With several clips or tracks selected, the right end of the panel header shows how many, for example **3 clips** or **2 tracks**.
 - Each section starts with a header: an arrow and the section name. The **Transform** and **Opacity** headers also hold a stopwatch at their right end, for keyframes; see [Animate values with keyframes](#animate-values-with-keyframes). Click the header to fold the section away, and click it again to open it. A folded section stays folded for every selection (fold **Transform** once, and it stays folded for every clip you select), and the project remembers it when you open it again.
@@ -103,7 +105,7 @@ Select several clips, on the timeline or in the preview (see [Select clips](time
 
 ## Use the quick actions
 
-With clips selected, a row of one-click buttons sits at the top of the panel. Point at a button to see its name; **Freeze frame**, **Punch zoom**, **Duplicate** and **Delete** also show their shortcut, and **Update preset** names the preset it writes into. When the panel is narrow, the row continues on a second line.
+With clips selected, a row of one-click buttons sits at the top of the panel. Point at a button to see its name; **Freeze frame**, **Punch zoom**, **Duplicate** and **Delete** also show their shortcut, **Update preset** names the preset it writes into, and the transition buttons name their kind and length. When the panel is narrow, the row continues on a second line.
 
 | Button | What it does |
 | --- | --- |
@@ -112,17 +114,19 @@ With clips selected, a row of one-click buttons sits at the top of the panel. Po
 | **Center in frame** | Centers the selected pictures without changing their size. |
 | **Flip horizontal**, **Flip vertical** | Mirror the selected pictures left to right, or upside down. Click again to mirror them back. |
 | **Reset transform** | Puts the selected pictures back to how a new clip is placed. |
+| **Fade in 0.5 s**, **Fade out 0.5 s** | Fade the selected clips and their linked clips in or out over half a second. Lit when they all have that fade: click again to remove it. See [Fade a clip and its sound with one click](fades-and-transitions.md#fade-a-clip-and-its-sound-with-one-click). |
 | **Freeze frame** | Holds the frame at the playhead for 2 seconds (<kbd>Shift</kbd>+<kbd>F</kbd>). See [Hold a frame (freeze frame)](speed-freeze-frames-and-punch-zoom.md#hold-a-frame-freeze-frame). |
 | **Punch zoom** | Cuts the clip at the playhead and zooms the part after the cut 20% larger within 6 frames (<kbd>Shift</kbd>+<kbd>Z</kbd>). See [Punch in at a cut (punch zoom)](speed-freeze-frames-and-punch-zoom.md#punch-in-at-a-cut-punch-zoom). |
 | **0.5x**, **1x**, **1.5x**, **2x** | Set the speed of the selected video and audio clips. See [Change a clip's speed with one click](speed-freeze-frames-and-punch-zoom.md#change-a-clips-speed-with-one-click). |
 | **Save as preset** (a bookmark with a plus) | Opens a name field under the row: press <kbd>Enter</kbd> to save the selected text's style as a new text preset. See [Save a text style as a preset](text-presets.md#save-a-text-style-as-a-preset). |
 | **Update preset** (a bookmark with a check mark) | Writes the selected text's style into the preset it uses. Other texts that use the preset keep their style until you apply it to them again. See [Update a preset](text-presets.md#update-a-preset). |
+| **Add dissolve**, **Add dip to black**, **Add dip to white** | Add a 15-frame transition at the selected cut, or at the selected clip's start or end nearest the playhead. Drag one onto a cut on the timeline to add it there. See [Add a transition](fades-and-transitions.md#add-a-transition). |
 | **Duplicate** | Copies the clip you clicked last right after itself (<kbd>Ctrl</kbd>+<kbd>D</kbd>). See [Duplicate a clip](#duplicate-a-clip). |
 | **Delete** | Deletes the selected clips and leaves gaps, like the <kbd>Delete</kbd> key. See [Delete clips](splitting-and-deleting.md#delete-clips). |
 
-- A button is dimmed when none of the selected clips can take it. The picture buttons and **Punch zoom** need a video, image, solid or text clip; an audio clip has no picture. On a text clip, the picture buttons use the box of its text, and on a solid the box of its shape. **Freeze frame** needs a video clip, and the speed buttons a video or audio clip that is not a freeze frame. **Save as preset** needs a text clip. **Update preset** needs a text clip whose style differs from the preset it uses. Clips on locked tracks are skipped.
+- A button is dimmed when none of the selected clips can take it. The picture buttons and **Punch zoom** need a video, image, solid or text clip; an audio clip has no picture. On a text clip, the picture buttons use the box of its text, and on a solid the box of its shape. **Freeze frame** needs a video clip, and the speed buttons a video or audio clip that is not a freeze frame. **Save as preset** needs a text clip. **Update preset** needs a text clip whose style differs from the preset it uses. The fade buttons need a clip that is not a caption cue. The transition buttons are never dimmed. Clips on locked tracks are skipped.
 - Whether a button is dimmed depends on the selection only, not on the playhead. **Freeze frame** and **Punch zoom** act at the playhead: when it is not over the selected clip, a message says so.
-- The other buttons of the row (fades, mute and transitions) are dimmed: they are available in a later version.
+- The **Mute** button is dimmed: it is available in a later version.
 - The buttons don't take the keyboard focus, but a click in the panel makes **Edit Properties** the active panel. See [How shortcuts work](keyboard-shortcuts.md#how-shortcuts-work).
 
 ## Fit, fill or center a picture
@@ -368,6 +372,7 @@ A color field is a swatch with the color's hex code next to it. The **Background
 | **Change shape**, **Change fill**, **Change size**, **Change corner radius** | The **Solid** section. See [Undo shape and image changes](shapes-and-images.md#undo-shape-and-image-changes). |
 | **Change background color** | **Background** in the **Project** section |
 | **Animate transform**, **Remove opacity keyframes**, **Add keyframe**, **Change keyframe easing** and the other keyframe steps | The stopwatches, the keyframe buttons and **Ease**. See [Undo keyframe changes](keyframes.md#undo-keyframe-changes). |
+| **Fade in**, **Remove fade out**, **Add cross dissolve**, **Change transition duration**, **Align transition** and the other fade and transition steps | The fade and transition buttons and the **Transition** section. See [Undo fades and transitions](fades-and-transitions.md#undo-fades-and-transitions). |
 
 See [Undo and redo changes](projects-and-saving.md#undo-and-redo-changes).
 
@@ -375,13 +380,14 @@ See [Undo and redo changes](projects-and-saving.md#undo-and-redo-changes).
 
 These parts are available in a later version:
 
-- More sections for clips: audio (volume and fades) and transitions.
-- The dimmed quick actions: fades, mute and transitions.
+- More sections for clips: audio (volume and fades).
+- The dimmed **Mute** quick action.
 - Duplicating several clips, or a clip with its linked sound, with <kbd>Ctrl</kbd>+<kbd>D</kbd>, and the **Duplicate** row of the layer menu.
 - The dimmed rows of the **Project** section: **Still duration**, **Transition** and **Cache** with **Clear cache**.
 
 ## Related pages
 - [Keyframes](keyframes.md)
+- [Fades and transitions](fades-and-transitions.md)
 - [Shapes and images](shapes-and-images.md)
 - [Cropping and reframing](cropping-and-reframing.md)
 - [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md)
@@ -401,4 +407,4 @@ These parts are available in a later version:
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 35, 2026-10-17</sub>
+<sub>Last updated: Batch 36, 2026-10-17</sub>

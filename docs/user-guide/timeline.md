@@ -64,8 +64,9 @@ The ruler also holds your markers (small colored triangles along its bottom edge
 - A clip gets lighter while you point at it. A selected clip has a gold outline and tint (see [Select clips](#select-clips)).
 - The outer 8 pixels at each end of a clip are its trim zones: the cursor turns into a bracket there, and dragging trims the clip. See [Trimming clips](trimming.md).
 - Where two clips touch, a click within 3 pixels of the cut selects the cut (red brackets `][` mark it), and <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+drag there rolls the cut. See [Advanced trimming](advanced-trimming.md#select-a-cut-edit-point).
-- Badges at the right end of the label bar: a red number such as **+12** when the clip is out of step with its linked clip, a speed such as `2x` when it doesn't play at normal speed (a snowflake for a freeze frame), a chain icon when it is linked, a diamond when it has keyframes, sparkles on an animated text, and a red warning triangle on a text clip whose font is missing. They stay visible at the right edge of the tracks when the clip ends after the view. See [Read the badges in the label bar](clip-thumbnails-and-waveforms.md#read-the-badges-in-the-label-bar).
+- Badges at the right end of the label bar: a red number such as **+12** when the clip is out of step with its linked clip, a speed such as `2x` when it doesn't play at normal speed (a snowflake for a freeze frame), a chain icon when it is linked, a diamond when it has keyframes, sparkles on an animated text, a red warning triangle on a text clip whose font is missing, and `fx` when it has a transition. They stay visible at the right edge of the tracks when the clip ends after the view. See [Read the badges in the label bar](clip-thumbnails-and-waveforms.md#read-the-badges-in-the-label-bar).
 - With **Show clip keyframes** on, a dark lane along the bottom of the selected clips (and of every clip on an L track) shows their keyframes as diamonds. See [Show keyframes on the timeline](keyframes.md#show-keyframes-on-the-timeline).
+- A fade is a dark wedge over the start or end of a clip. Pointing at a clip shows a small square in each top corner: drag it to fade the clip in or out. A transition is a block across a cut, over the top of its two clips. See [Fades and transitions](fades-and-transitions.md).
 - Clips on a locked track are covered with diagonal lines, and clips of a track you don't see or hear (muted, hidden, or left out by a solo) are drawn faded. See [Tracks](tracks.md). A clip you turned off with **Disable** is drawn faded and covered with diagonal lines; see [Turn a clip off](editing-properties.md#turn-a-clip-off).
 
 ### Toolbar
@@ -461,6 +462,7 @@ What clips snap to:
 | A marker | **Marker:** and the marker's name, or **Marker** when it has none |
 | The in point, or the out point (the end of the range's last frame) | **In point** or **Out point** |
 | The start of the timeline (`00:00:00`) | **Timeline start** |
+| The start or end of a transition | **Transition** |
 
 Markers and the in and out points snap the same way when you drag them: see [Move a marker](markers-and-in-out-points.md#move-a-marker) and [Adjust the range in the ruler](markers-and-in-out-points.md#adjust-the-range-in-the-ruler).
 
@@ -474,6 +476,7 @@ How snapping decides:
 - Snapping changes the time only. Moving clips to another track works as without snapping, and clips still can't move before `00:00:00`.
 - Nudging with the keyboard never snaps: the clips move by exactly 1 or 5 frames.
 - A clip edge you drag to trim the clip snaps the same way. See [Snap the edge while you trim](trimming.md#snap-the-edge-while-you-trim).
+- So do fade handles and the ends of transition blocks you drag. See [Fades and transitions](fades-and-transitions.md).
 - Media you drag in from the Media panel snaps the same way, with the start or the end of the new clips. See [Drag media onto the timeline](adding-media-to-the-timeline.md#drag-media-onto-the-timeline).
 - With **Show clip keyframes** on, the keyframes on the lane of the clip you drag snap too, like its start and end: a keyframe can land on the playhead, a marker or another clip's edge. Keyframes you drag along a lane snap to the lane's other keyframes, the playhead and the clip's ends. See [Select, move and delete keyframes on the timeline](keyframes.md#select-move-and-delete-keyframes-on-the-timeline).
 
@@ -642,6 +645,7 @@ Label colors help you see at a glance which clips belong together, for example a
 ## Related pages
 - [Adding media to the timeline](adding-media-to-the-timeline.md)
 - [Keyframes](keyframes.md)
+- [Fades and transitions](fades-and-transitions.md)
 - [Markers and in/out points](markers-and-in-out-points.md)
 - [Clip thumbnails, waveforms and badges](clip-thumbnails-and-waveforms.md)
 - [Tracks](tracks.md)
@@ -664,4 +668,4 @@ Label colors help you see at a glance which clips belong together, for example a
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 35, 2026-10-17</sub>
+<sub>Last updated: Batch 36, 2026-10-17</sub>
