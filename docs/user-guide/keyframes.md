@@ -224,7 +224,7 @@ Right-click a diamond on a keyframe lane, or on the rubber band of an audio clip
 | --- | --- |
 | **Easing**: **Linear**, **Ease in**, **Ease out**, **Ease in-out**, **Hold**, **Smooth**, **Snap**, **Overshoot** | Sets the easing of the selected keyframes. The easing of the keyframe you right-clicked is gold. See [Choose the easing](#choose-the-easing). |
 | **Delete keyframe** or **Delete keyframes** | Deletes the selected keyframes, like <kbd>Delete</kbd>. |
-| **Copy keyframe** or **Copy keyframes** | Copies the selected keyframes. |
+| **Copy keyframe** or **Copy keyframes** | Copies the selected keyframes, like <kbd>Ctrl</kbd>+<kbd>C</kbd>. |
 | **Paste keyframes** | Pastes the copied keyframes on the selected clips, from the playhead on. Dimmed until you copy keyframes of the same section as this lane (**Transform** or **Opacity**), or volume keyframes for a rubber band. |
 
 <kbd>Esc</kbd> closes the menu.
@@ -233,15 +233,18 @@ Right-click a diamond on a keyframe lane, or on the rubber band of an audio clip
 
 Give several clips the same motion, for example the same slide-in for three stickers.
 
-1. On a clip's keyframe lane, select the keyframes to copy (<kbd>Shift</kbd>+click for several). Right-click one of them and choose **Copy keyframes**.
-2. Select the clip to paste onto, and move the playhead to where the first copied keyframe should go.
-3. Right-click a diamond on that clip's lane and choose **Paste keyframes**.
+1. On a clip's keyframe lane, select the keyframes to copy (<kbd>Shift</kbd>+click for several). Press <kbd>Ctrl</kbd>+<kbd>C</kbd>, or right-click one of them and choose **Copy keyframes**.
+2. Select the clips to paste onto, and move the playhead to where the first copied keyframe should go.
+3. Press <kbd>Ctrl</kbd>+<kbd>V</kbd>, or right-click a diamond on a selected clip's lane and choose **Paste keyframes**.
 
 - The pasted keyframes keep their spacing, values and easings. The first one lands at the playhead; one that would land after the end of the clip is left out.
 - A pasted keyframe replaces a keyframe on the same frame.
-- The clip you paste onto needs a diamond to right-click: when it has no keyframes yet, click its stopwatch first.
-- The copied keyframes stay ready to paste until you copy others or reload the page.
-- The step is named **Paste keyframes**.
+- They land on every selected clip that can take them. With <kbd>Ctrl</kbd>+<kbd>V</kbd>, the clips don't need keyframes of their own yet. **Paste keyframes** in the menu needs a diamond to right-click: when the clip has no keyframes yet, click its stopwatch first.
+- <kbd>Ctrl</kbd>+<kbd>X</kbd> copies the selected keyframes and deletes them.
+- **Paste keyframes** in the menu pastes the keyframes you copied last until you reload the page. <kbd>Ctrl</kbd>+<kbd>V</kbd> pastes them while keyframes are the last thing you copied: after you copy clips, it pastes the clips.
+- The step is named **Paste keyframes**. See [Copy and paste keyframes](copy-and-paste.md#copy-and-paste-keyframes).
+
+> **Tip:** To give clips the whole animation of another clip at once, copy that clip and use **Paste attributes** with **Transform**, **Opacity** and **Keyframes** checked. See [Give clips the look of another clip (Paste attributes)](copy-and-paste.md#give-clips-the-look-of-another-clip-paste-attributes).
 
 ## See keyframes in the preview
 
@@ -275,7 +278,8 @@ Select several clips to work on their keyframes together:
 | Slip a video or audio clip | Keyframes stay on the same frames of the video or the same moments of the sound, so the motion or the volume change moves with them. |
 | Change the speed, or **Rate stretch** | Keyframes stretch or squeeze with the clip's new length: at 2x, the motion takes half as long. Keyframes that land on the same frame become one. |
 | Freeze frame | The frozen clip holds the look the picture has at the playhead, without keyframes. The parts before and after it keep their motion. |
-| Duplicate (<kbd>Ctrl</kbd>+<kbd>D</kbd>, <kbd>Alt</kbd>+drag) | The copy gets the same keyframes. |
+| Duplicate (<kbd>Ctrl</kbd>+<kbd>D</kbd>, <kbd>Alt</kbd>+drag), copy and paste | The copy gets the same keyframes. A copy made in the preview with <kbd>Ctrl</kbd>+<kbd>D</kbd> keeps the motion 20 pixels down and to the right. |
+| **Paste attributes** | With **Keyframes** checked, each pasted **Transform**, **Opacity** or **Audio gain** group replaces the clip's keyframes in that section with the copied clip's; unchecked, it removes them. See [Give clips the look of another clip (Paste attributes)](copy-and-paste.md#give-clips-the-look-of-another-clip-paste-attributes). |
 | A new project resolution | Position and scale keyframes scale with the layout, like the pictures. See [What a new resolution does to your clips](projects-and-saving.md#what-a-new-resolution-does-to-your-clips). |
 
 ## Zoom in smoothly with punch zoom
@@ -296,7 +300,7 @@ Each change is one step in the history. Hover over **Undo** in the app bar to se
 | **Move keyframe**, **Move keyframes** | Dragging diamonds on a keyframe lane |
 | **Move volume keyframe**, **Move volume keyframes** | Dragging diamonds, or the line between them, on a rubber band |
 | **Change keyframe easing** | **Ease**, or an easing in the keyframe menu |
-| **Paste keyframes** | **Paste keyframes** in the keyframe menu |
+| **Paste keyframes** | <kbd>Ctrl</kbd>+<kbd>V</kbd> with keyframes copied, or **Paste keyframes** in the keyframe menu |
 | **Move layer**, **Change position**, **Change opacity** and the other change names | A change at the playhead while the stopwatch is on |
 
 See [Undo and redo changes](projects-and-saving.md#undo-and-redo-changes).
@@ -305,11 +309,11 @@ See [Undo and redo changes](projects-and-saving.md#undo-and-redo-changes).
 
 These parts are available in a later version:
 
-- Copying and pasting keyframes with <kbd>Ctrl</kbd>+<kbd>C</kbd> and <kbd>Ctrl</kbd>+<kbd>V</kbd>: use the keyframe menu.
 - Choosing keyframe menu rows with the arrow keys.
 - Settings for the punch zoom (to cut in at once, without the 6-frame zoom) and for whether keyframes follow the video when you trim its start.
 
 ## Related pages
+- [Copying, pasting and duplicating clips](copy-and-paste.md)
 - [Editing properties](editing-properties.md)
 - [Arranging layers in the preview](arranging-layers-in-the-preview.md)
 - [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md)
@@ -324,4 +328,4 @@ These parts are available in a later version:
 - [Keyboard shortcuts](keyboard-shortcuts.md#keyframes)
 - [Troubleshooting](troubleshooting.md#keyframes)
 
-<sub>Last updated: Batch 37, 2026-10-17</sub>
+<sub>Last updated: Batch 39, 2026-10-18</sub>

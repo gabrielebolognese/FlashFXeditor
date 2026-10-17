@@ -58,7 +58,7 @@ Folders are imported with everything inside them, subfolders included. Files of 
 2. Click an empty area of the Media panel.
 3. Press <kbd>Ctrl</kbd>+<kbd>V</kbd>.
 
-Only images are pasted this way. Paste imports only when the Media panel has the keyboard (the panel you clicked last has it), and not while you are typing in a text field.
+Only images are pasted this way. Paste imports only when the Media panel has the keyboard (the panel you clicked last has it), and not while you are typing in a text field. In the Timeline and Preview panels, <kbd>Ctrl</kbd>+<kbd>V</kbd> pastes copied clips instead; see [Paste clips at the playhead](copy-and-paste.md#paste-clips-at-the-playhead).
 
 ## Supported file types
 
@@ -247,4 +247,4 @@ If a card keeps its kind icon instead of a thumbnail, Chrome could not decode th
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 34, 2026-10-17</sub>
+<sub>Last updated: Batch 39, 2026-10-18</sub>

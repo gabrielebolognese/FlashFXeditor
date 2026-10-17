@@ -258,7 +258,8 @@ See [Audio](audio.md).
 | Trim, roll, slip, slide, rate stretch, speed change | Each fade keeps its length. A fade longer than the clip becomes as long as the clip. | A side that used part of a handle gets shorter when the edit uses up that part of the handle, and the transition goes when its handle is used up. Each side also stays within its clip. During a trim drag, the block already shows its new length. |
 | Split | The left piece keeps the fade in, the right piece keeps the fade out. | A split inside the transition's frames removes it. A split elsewhere in the clip keeps the transition on its cut. |
 | Move one of the clips away, delete one of them, ripple delete | Unchanged. | The transition goes when its two clips no longer touch. |
-| Duplicate | The copy keeps the fades. | The copy has no transitions. |
+| Duplicate, copy and paste | The copy keeps the fades. | A transition comes along when both of its clips are copied; otherwise the copy has none at that cut. A copy made in the preview with <kbd>Ctrl</kbd>+<kbd>D</kbd> has no transitions. |
+| **Paste attributes** with **Fades** | The clips get the copied clip's fade lengths, shortened to fit a shorter clip. | Unchanged. |
 
 - A side that already repeats edge frames keeps its length when you trim.
 - These changes are part of the edit itself: one <kbd>Ctrl</kbd>+<kbd>Z</kbd> brings back the clips and the transition together.
@@ -303,4 +304,4 @@ These parts are available in a later version:
 - [Keyboard shortcuts](keyboard-shortcuts.md#fades-and-transitions)
 - [Troubleshooting](troubleshooting.md#fades-and-transitions)
 
-<sub>Last updated: Batch 37, 2026-10-17</sub>
+<sub>Last updated: Batch 39, 2026-10-18</sub>

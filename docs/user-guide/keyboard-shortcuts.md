@@ -40,6 +40,7 @@ This page lists every keyboard shortcut that works in the current version of Sho
 >   32. Click the microphone in the **Captions** header: the **Transcribe captions** dialog opens with **Transcribe** highlighted. Press <kbd>Enter</kbd>. When **Review the transcript** opens, press <kbd>Esc</kbd>: the transcript is dropped and nothing changes.
 >   33. Click right on a cut between two clips on the timeline: red brackets mark it. Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd>: a cross dissolve block appears over the cut. Hold <kbd>Alt</kbd> and drag its right end: only that end moves. Click the block and press <kbd>Delete</kbd>: it is gone.
 >   34. Click **Audio scrub** in the timeline toolbar and press <kbd>→</kbd> a few times: each step plays a short bit of sound. Hold <kbd>Ctrl</kbd> and click the white line across an audio clip: a diamond appears on it. Press <kbd>Delete</kbd>: the diamond is gone and the clip stays.
+>   35. Click a video with sound and press <kbd>Ctrl</kbd>+<kbd>C</kbd>. Click in the ruler at an empty spot and press <kbd>Ctrl</kbd>+<kbd>V</kbd>: the video and its sound land at the playhead. Put the playhead in the middle of another clip and press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>V</kbd>: the clip splits and the copy goes in between. Click a title, press <kbd>Ctrl</kbd>+<kbd>C</kbd>, click another title and press <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>V</kbd>: the **Paste attributes** checklist opens; press <kbd>Enter</kbd>: the second title takes the look of the first.
 
 ## In this page
 - [How shortcuts work](#how-shortcuts-work)
@@ -48,6 +49,7 @@ This page lists every keyboard shortcut that works in the current version of Sho
 - [Timeline](#timeline)
 - [Trimming](#trimming)
 - [Cutting and deleting](#cutting-and-deleting)
+- [Clipboard and duplicate](#clipboard-and-duplicate)
 - [Speed, freeze frames and punch zoom](#speed-freeze-frames-and-punch-zoom)
 - [Keyframes](#keyframes)
 - [Fades and transitions](#fades-and-transitions)
@@ -258,6 +260,27 @@ See [Splitting, deleting and closing gaps](splitting-and-deleting.md).
 - The clip and gap menus (right-click) show these shortcuts next to their rows. <kbd>Escape</kbd> closes a menu.
 - Clips on locked tracks are never split or deleted. <kbd>Ctrl</kbd>+<kbd>K</kbd> with nothing selected and <kbd>G</kbd> with no gap selected act on the targeted tracks; <kbd>Shift</kbd>+<kbd>G</kbd> acts on the selected tracks, or on the targeted tracks when no track is selected. See [Tracks](tracks.md).
 
+## Clipboard and duplicate
+
+See [Copying, pasting and duplicating clips](copy-and-paste.md).
+
+| Action | Windows | macOS | Works in |
+| --- | --- | --- | --- |
+| Copy the selected clips, with their linked clips and groups (with keyframes selected: copy the keyframes) | <kbd>Ctrl</kbd>+<kbd>C</kbd> | <kbd>⌘</kbd>+<kbd>C</kbd> | Timeline, Preview |
+| Cut: copy the selected clips and delete them, leaving gaps (with keyframes selected: copy and delete the keyframes) | <kbd>Ctrl</kbd>+<kbd>X</kbd> | <kbd>⌘</kbd>+<kbd>X</kbd> | Timeline, Preview |
+| Paste at the playhead on the targeted tracks, covering what is there (copied keyframes: onto the selected clips from the playhead on) | <kbd>Ctrl</kbd>+<kbd>V</kbd> | <kbd>⌘</kbd>+<kbd>V</kbd> | Timeline, Preview |
+| Paste insert: open a gap at the playhead on every unlocked track and paste there | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>V</kbd> | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>V</kbd> | Timeline, Preview |
+| Paste attributes: open the checklist that gives the selected clips settings of the copied clip | <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>V</kbd> | <kbd>⌘</kbd>+<kbd>⌥</kbd>+<kbd>V</kbd> | Timeline, Preview |
+| Duplicate the selected clips, with their linked clips and groups, right after them (same as **Duplicate** in the quick actions and the clip menu) | <kbd>Ctrl</kbd>+<kbd>D</kbd> | <kbd>⌘</kbd>+<kbd>D</kbd> | Timeline |
+| Duplicate the selected pictures 20 pixels down and to the right, on the track above (same as **Duplicate** in the layer menu) | <kbd>Ctrl</kbd>+<kbd>D</kbd> | <kbd>⌘</kbd>+<kbd>D</kbd> | Preview |
+| Paste the checked groups (same as **Paste**) | <kbd>Enter</kbd> | <kbd>Return</kbd> | **Paste attributes** checklist |
+| Close the checklist without pasting (same as **Cancel**) | <kbd>Esc</kbd> | <kbd>Esc</kbd> | **Paste attributes** checklist |
+
+- <kbd>Ctrl</kbd>+<kbd>V</kbd> and <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>V</kbd> paste the clips on your computer's clipboard, so also clips copied in another tab of the editor. When the clipboard holds something else, they paste the clips you copied last in this tab. See [Paste clips into another project](copy-and-paste.md#paste-clips-into-another-project).
+- Each cut, paste and duplicate is one undo step; a copy is not a step.
+- In the Media panel, <kbd>Ctrl</kbd>+<kbd>V</kbd> imports images instead (see [Media panel](#media-panel)). While you type in a field or edit a text, the keys cut, copy and paste text.
+- In the Preview panel with no picture selected, <kbd>Ctrl</kbd>+<kbd>D</kbd> duplicates as in the Timeline panel. While the Edit Properties or Media panel is active, the browser gets <kbd>Ctrl</kbd>+<kbd>D</kbd>; see [Keys the browser keeps](#keys-the-browser-keeps).
+
 ## Speed, freeze frames and punch zoom
 
 See [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md).
@@ -279,6 +302,9 @@ The stopwatch, **Previous keyframe**, **Add keyframe**, **Next keyframe** and **
 | Action | Windows | macOS | Works in |
 | --- | --- | --- | --- |
 | Delete the selected keyframes (the clip stays) | <kbd>Delete</kbd> or <kbd>Backspace</kbd> | <kbd>Delete</kbd> (⌫) | Timeline |
+| Copy the selected keyframes | <kbd>Ctrl</kbd>+<kbd>C</kbd> | <kbd>⌘</kbd>+<kbd>C</kbd> | Timeline, Preview |
+| Copy the selected keyframes and delete them (the clip stays) | <kbd>Ctrl</kbd>+<kbd>X</kbd> | <kbd>⌘</kbd>+<kbd>X</kbd> | Timeline, Preview |
+| Paste the copied keyframes onto the selected clips, the first one at the playhead | <kbd>Ctrl</kbd>+<kbd>V</kbd> | <kbd>⌘</kbd>+<kbd>V</kbd> | Timeline, Preview |
 | Cancel a keyframe drag | <kbd>Esc</kbd> before you release | <kbd>Esc</kbd> | Timeline |
 
 | Mouse action on a keyframe lane | Windows | macOS |
@@ -293,7 +319,8 @@ The stopwatch, **Previous keyframe**, **Add keyframe**, **Next keyframe** and **
 
 - The lane shows along the bottom of the selected clips, and of every clip on an L track, while **Show clip keyframes** is on. The mouse actions work with the **Select** tool.
 - With keyframes selected, <kbd>Shift</kbd>+<kbd>Delete</kbd>, the **Delete** button of the timeline toolbar and **Delete keyframes** in the keyframe menu delete them too. A click anywhere else on the timeline or in the preview deselects them.
-- Volume keyframes sit on the rubber band of audio clips, with their own mouse actions; <kbd>Delete</kbd> deletes the selected ones too. See [Rubber band on audio clips](#rubber-band-on-audio-clips).
+- <kbd>Ctrl</kbd>+<kbd>V</kbd> pastes keyframes while keyframes are the last thing you copied; after you copy clips, it pastes the clips. See [Copy and paste keyframes](copy-and-paste.md#copy-and-paste-keyframes).
+- Volume keyframes sit on the rubber band of audio clips, with their own mouse actions; <kbd>Delete</kbd>, <kbd>Ctrl</kbd>+<kbd>C</kbd>, <kbd>Ctrl</kbd>+<kbd>X</kbd> and <kbd>Ctrl</kbd>+<kbd>V</kbd> work on them too. See [Rubber band on audio clips](#rubber-band-on-audio-clips).
 - In the preview, the usual keys and drags write keyframes while the **Transform** stopwatch is on: the arrow keys nudge the picture and add or update a keyframe at the playhead. See [Change an animated picture](keyframes.md#change-an-animated-picture).
 
 ## Fades and transitions
@@ -494,7 +521,6 @@ See [Editing properties](editing-properties.md).
 
 | Action | Windows | macOS | Works in |
 | --- | --- | --- | --- |
-| Duplicate the clip you clicked last, right after itself on its track (same as **Duplicate** in the quick actions) | <kbd>Ctrl</kbd>+<kbd>D</kbd> | <kbd>⌘</kbd>+<kbd>D</kbd> | Timeline, Preview |
 | Add or subtract 1 | <kbd>↑</kbd> or <kbd>↓</kbd> | <kbd>↑</kbd> or <kbd>↓</kbd> | A number field |
 | Add or subtract 10 | <kbd>Shift</kbd>+<kbd>↑</kbd> or <kbd>Shift</kbd>+<kbd>↓</kbd> | <kbd>⇧</kbd>+<kbd>↑</kbd> or <kbd>⇧</kbd>+<kbd>↓</kbd> | A number field |
 | Apply what you typed | <kbd>Enter</kbd> | <kbd>Return</kbd> | A field |
@@ -510,7 +536,7 @@ See [Editing properties](editing-properties.md).
 | Type in the field | Click the field, or click its label without dragging | Same |
 | Fold or open a section | Click its header | Click its header |
 
-- <kbd>Ctrl</kbd>+<kbd>D</kbd> copies only one clip, without its linked sound. In the Preview panel the copy goes later on the timeline, not at the playhead. While the Edit Properties or Media panel is active, the browser gets the key; see [Keys the browser keeps](#keys-the-browser-keeps).
+- **Duplicate** in the quick actions does what <kbd>Ctrl</kbd>+<kbd>D</kbd> does in the Timeline panel. See [Clipboard and duplicate](#clipboard-and-duplicate).
 - Hold <kbd>↑</kbd> or <kbd>↓</kbd> to keep going. In the **Text**, **Animation**, **Transform**, **Crop**, **Opacity** and **Speed** sections, presses less than 0.3 seconds apart are one undo step.
 - In the **Duration** and **Stagger** fields of the **Animation** section, the arrow keys and label drags count in frames: <kbd>↑</kbd> adds 1 frame, <kbd>Shift</kbd>+<kbd>↑</kbd> 10 frames.
 - In the **Text** field of the **Text** section, <kbd>Enter</kbd> starts a new line. In the font picker, <kbd>Enter</kbd> in **Search fonts** picks the first font that matches, and <kbd>Esc</kbd> closes the picker.
@@ -559,6 +585,7 @@ The white line across an audio clip on an M or L track shows its volume, and its
 | Action | Windows | macOS | Works in |
 | --- | --- | --- | --- |
 | Delete the selected volume keyframes (the clip stays) | <kbd>Delete</kbd> or <kbd>Backspace</kbd> | <kbd>Delete</kbd> (⌫) | Timeline |
+| Copy, cut or paste volume keyframes (see [Keyframes](#keyframes)) | <kbd>Ctrl</kbd>+<kbd>C</kbd>, <kbd>Ctrl</kbd>+<kbd>X</kbd>, <kbd>Ctrl</kbd>+<kbd>V</kbd> | <kbd>⌘</kbd>+<kbd>C</kbd>, <kbd>⌘</kbd>+<kbd>X</kbd>, <kbd>⌘</kbd>+<kbd>V</kbd> | Timeline, Preview |
 | Cancel a rubber band drag | <kbd>Esc</kbd> before you release | <kbd>Esc</kbd> | Timeline |
 
 | Mouse action on the rubber band | Windows | macOS |
@@ -718,9 +745,9 @@ While you type in a text field, or while a dialog is open, the editor leaves <kb
 Some buttons already show a shortcut in their tooltip although the button is disabled, for example **Export** in the app bar. These shortcuts start working when their feature is available in a later version; until then the keys do nothing. In the current version this also applies to:
 
 - <kbd>Ctrl</kbd>+<kbd>E</kbd> (export) and <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> (command palette).
-- <kbd>Ctrl</kbd>+<kbd>X</kbd>, <kbd>Ctrl</kbd>+<kbd>C</kbd> and <kbd>Ctrl</kbd>+<kbd>V</kbd> in the Timeline and Preview panels (cutting, copying and pasting clips; the **Cut**, **Copy** and **Paste** rows of the clip menu, and the **Copy**, **Paste** and **Duplicate** rows of the preview's layer menu, are dimmed). They don't copy or paste keyframes either: use **Copy keyframes** and **Paste keyframes** in the keyframe menu.
 
 ## Related pages
+- [Copying, pasting and duplicating clips](copy-and-paste.md)
 - [Editing audio](audio-editing.md)
 - [Removing silence](removing-silence.md)
 - [Preview and playback](preview-and-playback.md)
@@ -749,4 +776,4 @@ Some buttons already show a shortcut in their tooltip although the button is dis
 - [Projects and saving](projects-and-saving.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 38, 2026-10-17</sub>
+<sub>Last updated: Batch 39, 2026-10-18</sub>

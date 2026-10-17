@@ -25,6 +25,7 @@ When you add a video with sound to the timeline, its picture and its sound becom
 - <kbd>Ctrl</kbd>+<kbd>K</kbd>, the **Razor**, <kbd>Q</kbd>, <kbd>W</kbd> and <kbd>E</kbd> cut or trim both. The two right parts of a split are linked to each other.
 - **Delete** and **Ripple delete** remove both.
 - Moving one moves both, the same number of tracks away from the divider.
+- Copying, cutting or duplicating one on the timeline takes both. The copies are linked to each other, not to the originals. See [Copying, pasting and duplicating clips](copy-and-paste.md).
 
 To work on one of them once, <kbd>Alt</kbd>+click it to select it alone, or hold <kbd>Alt</kbd> while you drag its edge. To work on single clips for a while, turn **Linked selection** off.
 
@@ -116,6 +117,7 @@ What a group does:
 - Deleting a clip of the group deletes the whole group, also when you selected only that clip.
 - Trims, rolls, slips, slides and rate stretches change only the clip you drag (and its linked clips), not the whole group.
 - When you split a grouped clip, both parts stay in the group.
+- Copying or duplicating a clip of the group copies the whole group. The copies form a new group of their own.
 - Grouping a clip that is already in a group puts its whole old group in the new one.
 - Groups are not marked on the timeline: click a clip to see which clips light up with it.
 - **Group** is dimmed in the menu when fewer than two clips are selected.
@@ -132,6 +134,7 @@ What a group does:
 - The history step is named **Ungroup clips**.
 
 ## Related pages
+- [Copying, pasting and duplicating clips](copy-and-paste.md)
 - [Editing audio](audio-editing.md)
 - [Clip thumbnails, waveforms and badges](clip-thumbnails-and-waveforms.md)
 - [Timeline](timeline.md)
@@ -144,4 +147,4 @@ What a group does:
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 37, 2026-10-17</sub>
+<sub>Last updated: Batch 39, 2026-10-18</sub>

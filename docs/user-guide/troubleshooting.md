@@ -1,6 +1,6 @@
 # Troubleshooting
 
-This page helps you when something does not work as expected: the editor does not start in your browser, the preview stays empty, a folder or a file does not open, a clip drag, a trim, a split, a delete, a timeline tool, a typed timecode, a marker, an in/out range or **Lift** and **Extract** do something you did not expect, media from the Media panel lands somewhere you did not expect, a clip shows no thumbnails, a video gets no proxy or its proxy fails, the preview zoom, overlays or fullscreen behave unexpectedly, a picture in the preview can't be selected, moves unexpectedly, doesn't snap where you expect or gets cropped instead of resized, a value or a crop in **Edit Properties** doesn't do what you expect, a speed change, a freeze frame or a punch zoom does something you did not expect, a keyframe animation or a keyframe lane doesn't behave as you expect, a fade or a transition doesn't go where you expect, gets shorter or shows red stripes, the rubber band, **Normalize**, **Auto-duck**, **Detach audio** or **Audio scrub** doesn't do what you expect, **Remove silence** cuts too much, too little or nothing, a shape or an image doesn't look or play as you expect, a title lands somewhere you did not expect, the keys type into a text, a font is missing, a text preset doesn't apply, update or sync as you expect, a text animation plays shorter or differently than you expect, a caption cue doesn't import, move, show or highlight as you expect, a transcription doesn't start, is slow or gets words wrong, playback stutters, or you hear no sound. Each problem lists what you see, why it happens and what to do. The last section lists what the current version cannot do yet.
+This page helps you when something does not work as expected: the editor does not start in your browser, the preview stays empty, a folder or a file does not open, a clip drag, a trim, a split, a delete, a timeline tool, a typed timecode, a marker, an in/out range or **Lift** and **Extract** do something you did not expect, media from the Media panel lands somewhere you did not expect, a clip shows no thumbnails, a video gets no proxy or its proxy fails, the preview zoom, overlays or fullscreen behave unexpectedly, a picture in the preview can't be selected, moves unexpectedly, doesn't snap where you expect or gets cropped instead of resized, a value or a crop in **Edit Properties** doesn't do what you expect, a paste or a duplicate lands somewhere you did not expect or is refused, a speed change, a freeze frame or a punch zoom does something you did not expect, a keyframe animation or a keyframe lane doesn't behave as you expect, a fade or a transition doesn't go where you expect, gets shorter or shows red stripes, the rubber band, **Normalize**, **Auto-duck**, **Detach audio** or **Audio scrub** doesn't do what you expect, **Remove silence** cuts too much, too little or nothing, a shape or an image doesn't look or play as you expect, a title lands somewhere you did not expect, the keys type into a text, a font is missing, a text preset doesn't apply, update or sync as you expect, a text animation plays shorter or differently than you expect, a caption cue doesn't import, move, show or highlight as you expect, a transcription doesn't start, is slow or gets words wrong, playback stutters, or you hear no sound. Each problem lists what you see, why it happens and what to do. The last section lists what the current version cannot do yet.
 
 > **Video placeholder: Fix common problems**
 > - File: `videos/troubleshooting/overview.mp4` (not recorded yet)
@@ -51,6 +51,7 @@ This page helps you when something does not work as expected: the editor does no
 >   43. Put two videos that each use their whole file end to end on V1, click right on the cut between them and press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd>: the block is striped red and the message **Not enough media for the transition** appears. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>. Select the first video and click **Fade in 0.5 s** twice: the second click removes the fade, and the **Undo** tooltip reads **Undo Remove fade in**.
 >   44. Put a music clip on A1 and a voice clip on A2 under it, select the music and click **Auto-duck** in the **Audio** section: the message **No voice to duck under** appears. Drag the A2 header above A1 and click **Auto-duck** again: the music's line dips under the voice. Click **Auto-duck** once more: the dip gets twice as deep; press <kbd>Ctrl</kbd>+<kbd>Z</kbd>.
 >   45. Select a title and point at **Remove silence** in the quick actions: it is dimmed. Select a talking-head video recorded in a noisy room and click **Remove silence**: the row reads **No silence found**. Drag the **Threshold** slider to `-30 dB`: red stripes cover the pauses. Click **Cancel**.
+>   46. Click the padlock in the V2 header. Select a clip on V1 and a clip on V2 above it, press <kbd>Ctrl</kbd>+<kbd>C</kbd>, click in the ruler at an empty spot and press <kbd>Ctrl</kbd>+<kbd>V</kbd>: the message **Can't paste onto a locked track** names V2. Click the padlock again and press <kbd>Ctrl</kbd>+<kbd>V</kbd>: the clips land at the playhead on V1 and V2. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>, put the playhead over another clip and press <kbd>Ctrl</kbd>+<kbd>V</kbd>: the clip under the copies is cut away. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> and press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>V</kbd>: the clips make room instead.
 
 ## In this page
 - [Browser and graphics](#browser-and-graphics)
@@ -154,13 +155,23 @@ This page helps you when something does not work as expected: the editor does no
   - [A typed clip time stops short or changes nothing](#a-typed-clip-time-stops-short-or-changes-nothing)
   - [Quick actions are dimmed](#quick-actions-are-dimmed)
   - [There is no Transform section](#there-is-no-transform-section)
-  - [Ctrl+D copied a video without its sound](#ctrld-copied-a-video-without-its-sound)
   - [Pictures got smaller after a resolution change](#pictures-got-smaller-after-a-resolution-change)
   - [The background went back to its old color](#the-background-went-back-to-its-old-color)
   - [Crop to frame does nothing or keeps less than expected](#crop-to-frame-does-nothing-or-keeps-less-than-expected)
   - [Changing one crop side changes the others](#changing-one-crop-side-changes-the-others)
   - [The crop button in the Crop section is dimmed](#the-crop-button-in-the-crop-section-is-dimmed)
   - [A picture is still cropped after Reset transform](#a-picture-is-still-cropped-after-reset-transform)
+- [Copy, paste and duplicate](#copy-paste-and-duplicate)
+  - [Ctrl+C or Ctrl+V does nothing](#ctrlc-or-ctrlv-does-nothing)
+  - [Pasted clips landed on the wrong tracks](#pasted-clips-landed-on-the-wrong-tracks)
+  - [A paste covered clips you wanted to keep](#a-paste-covered-clips-you-wanted-to-keep)
+  - [Ctrl+V pasted other clips than the ones you copied](#ctrlv-pasted-other-clips-than-the-ones-you-copied)
+  - [Pasted clips show no picture or sound](#pasted-clips-show-no-picture-or-sound)
+  - [A paste is refused](#a-paste-is-refused)
+  - [Paste attributes doesn't offer a group](#paste-attributes-doesnt-offer-a-group)
+  - [Clips moved or lost their keyframes after Paste attributes](#clips-moved-or-lost-their-keyframes-after-paste-attributes)
+  - [Ctrl+D copied a video without its sound](#ctrld-copied-a-video-without-its-sound)
+  - [Duplicate in the preview added a track](#duplicate-in-the-preview-added-a-track)
 - [Speed, freeze frames and punch zoom](#speed-freeze-frames-and-punch-zoom)
   - [A speed change moved other clips or left a gap](#a-speed-change-moved-other-clips-or-left-a-gap)
   - [A ripple after a speed change stopped short](#a-ripple-after-a-speed-change-stopped-short)
@@ -1223,14 +1234,6 @@ See [Audio](audio.md).
 
 **Fix:** Click the video clip, or its picture in the preview. If a section shows only its header, it is folded: click the header to open it. See [Find your way around the panel](editing-properties.md#find-your-way-around-the-panel).
 
-### Ctrl+D copied a video without its sound
-
-**Symptom:** After <kbd>Ctrl</kbd>+<kbd>D</kbd> or **Duplicate**, the copy of a video has no sound clip under it, or only one of several selected clips was copied.
-
-**Cause:** Duplicate copies one clip: the one you clicked last. Its linked sound and the other selected clips are not copied.
-
-**Fix:** Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>. Select the video with its sound (a plain click), hold <kbd>Alt</kbd> and drag it to where the copy should go: copies of linked clips are linked to each other. See [Duplicate clips](timeline.md#duplicate-clips).
-
 ### Pictures got smaller after a resolution change
 
 **Symptom:** After you chose another **Resolution** in the **Project** section, the pictures are smaller (or larger), and bands of the background show around them.
@@ -1283,6 +1286,99 @@ See [Audio](audio.md).
 **Cause:** **Reset transform** resets the position, size, angle, flips and anchor point, not the crop. It places the picture as if it were not cropped, so an uneven crop leaves the visible part off center.
 
 **Fix:** Click **Reset** in the **Crop** section to remove the crop, or click **Fit in frame** or **Center in frame** to fit or center the part that is left. See [Remove a crop](cropping-and-reframing.md#remove-a-crop).
+
+## Copy, paste and duplicate
+
+### Ctrl+C or Ctrl+V does nothing
+
+**Symptom:** You pressed <kbd>Ctrl</kbd>+<kbd>C</kbd> and <kbd>Ctrl</kbd>+<kbd>V</kbd>, and no clips were pasted.
+
+**Cause:** One of these:
+- The Timeline or the Preview panel is not active: the keys copy and paste clips only there. In the Media panel, <kbd>Ctrl</kbd>+<kbd>V</kbd> imports images from the clipboard; in **Edit Properties**, the keys do nothing.
+- A text field has the keyboard, or you are editing a text in the preview: the keys copy and paste text.
+- No clip was selected when you pressed <kbd>Ctrl</kbd>+<kbd>C</kbd>, so nothing was copied.
+- Keyframes were the last thing you copied: <kbd>Ctrl</kbd>+<kbd>V</kbd> pastes them onto the selected clips, or shows **Select a clip to paste keyframes on**.
+
+**Fix:** Click the clip on the timeline and press <kbd>Ctrl</kbd>+<kbd>C</kbd>. Click in the ruler where the copy should go and press <kbd>Ctrl</kbd>+<kbd>V</kbd>. See [Paste clips at the playhead](copy-and-paste.md#paste-clips-at-the-playhead).
+
+### Pasted clips landed on the wrong tracks
+
+**Symptom:** A pasted clip is on V1 although you copied it from V3, or clips copied from V1 and V2 landed on V2 and V3.
+
+**Cause:** Pasted clips go to the targeted tracks: the lowest track you copied from lands on the targeted track with the lowest number, and the others follow above it. With every track targeted, the clips start on V1 and A1.
+
+**Fix:** Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>. Click the crosshairs in the headers of the tracks below the one the clips should start on, so they dim, and paste again. See [Choose the tracks pasted clips go to](copy-and-paste.md#choose-the-tracks-pasted-clips-go-to).
+
+### A paste covered clips you wanted to keep
+
+**Symptom:** After <kbd>Ctrl</kbd>+<kbd>V</kbd>, clips that were at the playhead are shorter, split or gone.
+
+**Cause:** **Paste** overwrites: the pasted clips cover what lies under them.
+
+**Fix:** Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>, then <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>V</kbd>: **Paste insert** makes room at the playhead. Or move the playhead to an empty spot first. See [Paste and make room (Paste insert)](copy-and-paste.md#paste-and-make-room-paste-insert).
+
+### Ctrl+V pasted other clips than the ones you copied
+
+**Symptom:** <kbd>Ctrl</kbd>+<kbd>V</kbd> pasted clips you copied earlier, or clips you copied in another tab.
+
+**Cause:** <kbd>Ctrl</kbd>+<kbd>V</kbd> pastes the clips on your computer's clipboard: the latest copy from any Shorts Editor tab. When the clipboard holds something else, such as text you copied in another app since, it pastes the clips you copied last in this tab. The **Paste** rows of the menus always paste this tab's last copy.
+
+**Fix:** Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>, copy the clips again and paste them right away. See [Paste clips into another project](copy-and-paste.md#paste-clips-into-another-project).
+
+### Pasted clips show no picture or sound
+
+**Symptom:** After you pasted clips from another project, the message **Pasted with offline media** appeared, and some of the pasted clips show nothing in the preview and play no sound.
+
+**Cause:** The project you pasted into has no media item of the same type with the same name (or file name) that is long enough for those clips. The editor added the copied media item without a file. Relinking it to a file is available in a later version.
+
+**Fix:** Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>: the clips and the offline item go. Import the media file into this project and paste again: the clips find it by name. If the file has another name in this project, rename its media item to the name in the message first. See [Paste clips into another project](copy-and-paste.md#paste-clips-into-another-project).
+
+### A paste is refused
+
+**Symptom:** Nothing is pasted, and a message appears.
+
+**Cause and fix:**
+
+| Message | Cause | Fix |
+| --- | --- | --- |
+| **Can't paste onto a locked track** | A pasted clip would land on the locked track the message names. | Click the padlock in that track's header, or target other tracks. |
+| **Can't paste across frame rates** | The clips come from a project with another frame rate. | Paste them into a project with the same frame rate. Pasting between frame rates is available in a later version. |
+| **No room for the captions** | Pasted cues would overlap the cues near the playhead. | Move the playhead to where the **CC** track has room, or press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>V</kbd>. |
+| **Can't paste these clips**, **Can't paste these keyframes**, **Can't paste these attributes** | The clipboard holds text that looks like copied clips or keyframes but is damaged, for example edited by hand. | Copy the clips again in the editor. |
+
+See [Messages when you paste](copy-and-paste.md#messages-when-you-paste).
+
+### Paste attributes doesn't offer a group
+
+**Symptom:** The **Paste attributes** checklist doesn't list the group you want, the message **Nothing to paste onto** or **Copy a clip first** appears, or **Paste attributes...** is dimmed in the clip menu.
+
+**Cause:** The checklist lists a group only when one of the copied clips has it and one of the selected clips can take it, on an unlocked track. For example, **Text style** needs a copied text and selected texts, and **Crop** video or image clips on both sides. **Audio gain** needs a copied audio clip: a video copied with **Linked selection** off has no sound clip with it. **Copy a clip first** means the last copy was keyframes, or nothing. The menu row is dimmed until you copy clips in this tab.
+
+**Fix:** Copy the clip again (a video with its sound, for **Audio gain**), select the clips to change, and press <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>V</kbd>. See [Give clips the look of another clip (Paste attributes)](copy-and-paste.md#give-clips-the-look-of-another-clip-paste-attributes).
+
+### Clips moved or lost their keyframes after Paste attributes
+
+**Symptom:** After **Paste attributes**, the clips jumped to the copied clip's place in the frame, or their motion, fade or volume keyframes are gone.
+
+**Cause:** **Transform** pastes the copied clip's position, size and angle. **Transform**, **Opacity** and **Audio gain** also replace the clips' keyframes in their section: with **Keyframes** checked, by the copied clip's keyframes, or by none when it has none; with **Keyframes** unchecked, by none.
+
+**Fix:** Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>, press <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>V</kbd> again, and uncheck the groups whose values the clips should keep, such as **Transform** to keep each clip's place. See [Give clips the look of another clip (Paste attributes)](copy-and-paste.md#give-clips-the-look-of-another-clip-paste-attributes).
+
+### Ctrl+D copied a video without its sound
+
+**Symptom:** After <kbd>Ctrl</kbd>+<kbd>D</kbd> or **Duplicate**, the copy of a video has no sound clip under it.
+
+**Cause:** In the Preview panel, <kbd>Ctrl</kbd>+<kbd>D</kbd> and **Duplicate** in the layer menu copy only the picture, on the track above, so the sound is not doubled. On the timeline, the sound is copied with the video only while **Linked selection** is on.
+
+**Fix:** Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>. Turn **Linked selection** on (<kbd>Shift</kbd>+<kbd>S</kbd>) if it is off, click the video on the timeline and press <kbd>Ctrl</kbd>+<kbd>D</kbd>. See [Duplicate clips on the timeline](copy-and-paste.md#duplicate-clips-on-the-timeline).
+
+### Duplicate in the preview added a track
+
+**Symptom:** After <kbd>Ctrl</kbd>+<kbd>D</kbd> in the Preview panel, or **Duplicate** in the layer menu, a new video track appears.
+
+**Cause:** The copy goes on the video track right above its original, so it is drawn on top. When that track is locked, muted or hidden, or has a clip at that time, a new track is added right above the original's track.
+
+**Fix:** Nothing to fix: <kbd>Ctrl</kbd>+<kbd>Z</kbd> removes the copy and the track. To put the copy on the same track instead, right after the original, press <kbd>Ctrl</kbd>+<kbd>D</kbd> in the Timeline panel. See [Duplicate a picture in the preview](copy-and-paste.md#duplicate-a-picture-in-the-preview).
 
 ## Speed, freeze frames and punch zoom
 
@@ -1415,11 +1511,14 @@ See [Audio](audio.md).
 
 ### Paste keyframes is dimmed or Ctrl+V doesn't paste keyframes
 
-**Symptom:** In the keyframe menu, **Paste keyframes** is dimmed, or <kbd>Ctrl</kbd>+<kbd>V</kbd> pastes nothing.
+**Symptom:** In the keyframe menu, **Paste keyframes** is dimmed, or <kbd>Ctrl</kbd>+<kbd>V</kbd> pastes clips, or nothing, instead of the keyframes.
 
-**Cause:** **Paste keyframes** works after **Copy keyframes**, and only on a lane of the same section: keyframes copied from a **Transform** lane paste on **Transform** lanes, those from an **Opacity** lane on **Opacity** lanes. <kbd>Ctrl</kbd>+<kbd>C</kbd> and <kbd>Ctrl</kbd>+<kbd>V</kbd> don't copy or paste keyframes in this version.
+**Cause:** One of these:
+- **Paste keyframes** in the menu works after you copy keyframes, and only on a lane of the same section: keyframes copied from a **Transform** lane paste on **Transform** lanes, those from an **Opacity** lane on **Opacity** lanes, and volume keyframes on rubber bands.
+- <kbd>Ctrl</kbd>+<kbd>V</kbd> pastes keyframes only while keyframes are the last thing you copied. After you copy clips, it pastes the clips.
+- No selected clip can take the keyframes, for example opacity keyframes with only an audio clip selected: the message **Select a clip to paste keyframes on** appears.
 
-**Fix:** Copy the keyframes from the keyframe menu, switch the target clip's lane with **Show keyframes for** in the clip menu if needed, and right-click one of its diamonds. A clip without keyframes has no diamond: turn its stopwatch on first. See [Copy keyframes to another clip](keyframes.md#copy-keyframes-to-another-clip).
+**Fix:** Select the keyframes again and press <kbd>Ctrl</kbd>+<kbd>C</kbd>. Select the clips to paste onto, move the playhead to where the first keyframe should go, and press <kbd>Ctrl</kbd>+<kbd>V</kbd>. In the menu, switch the target clip's lane with **Show keyframes for** in the clip menu if needed, and right-click one of its diamonds; a clip without keyframes has no diamond, so turn its stopwatch on first. See [Copy and paste keyframes](copy-and-paste.md#copy-and-paste-keyframes).
 
 ### Punch zoom no longer jumps at the cut
 
@@ -2303,16 +2402,16 @@ See [Audio](audio.md).
 The current version cannot do these things yet. Each one is available in a later version.
 
 - **Sound:** no sound while you play backward or shuttle faster than 1x; while you scrub or step frames, only with **Audio scrub** on. How far **Auto-duck** lowers the music (12 dB) and its slopes (10 frames) can't be changed, and **Audio scrub** and **Remove silence** have no keyboard shortcut. Audio effects are not available.
-- **Editing clips:** clips can't be cut, copied or pasted (the **Cut**, **Copy** and **Paste** rows of the clip menu, and the **Copy**, **Paste** and **Duplicate** rows of the preview's layer menu, are dimmed). <kbd>Ctrl</kbd>+<kbd>D</kbd> duplicates one clip at a time, without its linked sound. The crop of a clip can't be copied to other clips.
+- **Copy and paste:** clips copied in a project with another frame rate can't be pasted. Media pasted from another project that this one doesn't have stays offline: relinking it to a file is not available. The rows of the **Paste attributes** checklist can't be chosen with the arrow keys, and caption cues can't take **Paste attributes**.
 - **Markers:** markers belong to the timeline; markers inside clips are not available. Markers and the in/out range don't show on the scrollbars.
 - **Menus:** only clips, gaps, track headers, the ruler, media cards and pictures in the preview have a right-click menu, with a first set of rows. Menu rows can't be chosen with the arrow keys.
 - **Speed and edit points:** a speed applies to the whole clip, and sound at another speed always changes pitch. Playing a clip backward is not available. The length of a new freeze frame (2 seconds), the size of a punch zoom (20%) and its 6-frame zoom can't be changed. The default transition is always a 15-frame cross dissolve.
 - **Tracks:** track headers have room for names of about 9 characters; longer names are shortened. Groups are not marked on the timeline.
-- **Keyframes:** keyframes animate position, scale, rotation, opacity and the volume of audio clips. Keyframes can't be copied or pasted with <kbd>Ctrl</kbd>+<kbd>C</kbd> and <kbd>Ctrl</kbd>+<kbd>V</kbd>; use the keyframe menu.
+- **Keyframes:** keyframes animate position, scale, rotation, opacity and the volume of audio clips.
 - **Preview:** the **Zoom**, **Preview quality** and **Overlays** menus can't be used with the arrow keys.
 - **Edit Properties:** the dimmed **Still duration**, **Transition** and **Cache** rows of the **Project** section are not available. A new resolution always scales the layout; keeping the layout as it is, is not available.
 - **Text:** a setting to always make new titles 3 seconds long is not available. A text's handles don't snap, and fonts can't be chosen with the arrow keys in the font picker. Deleted starter presets can't be restored. Text animations play in the preview and in **Export frame**.
-- **Captions:** all cues share one style; a style for a single cue is not available. Captions can't be selected, moved or styled in the preview, and cues can't be pasted.
+- **Captions:** all cues share one style; a style for a single cue is not available. Captions can't be selected, moved or styled in the preview.
 - **Transcription:** the cues can't be edited in the review; fix them in the **Captions** tab after adding them. The default model and language are set in the **Transcribe captions** dialog only.
 - **Media that cannot be decoded, or whose file is missing,** shows nothing in the preview, with no placeholder.
 - **Removing media** that a clip uses is not possible.
@@ -2322,6 +2421,7 @@ The current version cannot do these things yet. Each one is available in a later
 - **Heavy footage:** 4K 60 fps HEVC played from the original (in **Full** quality, or before its proxy is ready) can drop frames, and the original frame deep inside long phone clips takes a moment to appear after you stop.
 
 ## Related pages
+- [Copying, pasting and duplicating clips](copy-and-paste.md)
 - [Markers and in/out points](markers-and-in-out-points.md)
 - [Clip thumbnails, waveforms and badges](clip-thumbnails-and-waveforms.md)
 - [Tracks](tracks.md)
@@ -2353,4 +2453,4 @@ The current version cannot do these things yet. Each one is available in a later
 - [Transcription](transcription.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 38, 2026-10-17</sub>
+<sub>Last updated: Batch 39, 2026-10-18</sub>

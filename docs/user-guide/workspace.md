@@ -195,7 +195,8 @@ Examples:
 | <kbd>,</kbd> / <kbd>.</kbd> | Nothing | Nothing | Inserts / overwrites the selected media at the playhead |
 | <kbd>X</kbd>, <kbd>;</kbd>, <kbd>'</kbd> | Marks the clip under the playhead, **Lift**, **Extract** | Nothing | Nothing |
 | <kbd>Ctrl</kbd>+<kbd>L</kbd> / <kbd>Ctrl</kbd>+<kbd>G</kbd> | Links or unlinks / groups the selected clips | Nothing (the browser gets them) | Nothing (the browser gets them) |
-| <kbd>Ctrl</kbd>+<kbd>D</kbd> | Duplicates the clip you clicked last, right after itself | Same | The browser gets it (bookmark) |
+| <kbd>Ctrl</kbd>+<kbd>C</kbd> / <kbd>Ctrl</kbd>+<kbd>X</kbd> / <kbd>Ctrl</kbd>+<kbd>V</kbd> | Copies / cuts / pastes clips | Same | <kbd>Ctrl</kbd>+<kbd>V</kbd> imports images; the others do nothing |
+| <kbd>Ctrl</kbd>+<kbd>D</kbd> | Duplicates the selected clips right after them | Duplicates the selected pictures 20 pixels down and to the right, on the track above | The browser gets it (bookmark) |
 
 With **Edit Properties** clicked last, only the shortcuts for the whole editor work, and the browser gets <kbd>Ctrl</kbd>+<kbd>D</kbd> as in the Media panel. While a field there has the keyboard, the keys go to the field: <kbd>↑</kbd> and <kbd>↓</kbd> change a number. See [Type a value](editing-properties.md#type-a-value).
 
@@ -237,4 +238,4 @@ To jump to a time, type it into the timecode field of the timeline toolbar, or c
 - [Audio](audio.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 38, 2026-10-17</sub>
+<sub>Last updated: Batch 39, 2026-10-18</sub>

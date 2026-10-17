@@ -2,6 +2,11 @@
 
 Shorts Editor grows in steps called batches. This page lists what each batch added that you can see or use, newest first. Follow the links for the full instructions.
 
+> **Video placeholder: What's new in Batch 39**
+> - File: `videos/whats-new/batch-39.mp4` (not recorded yet)
+> - Length: about 60 seconds
+> - Shows: a 1080×1920 project with a phone video with sound on V1 and A1, a styled title (yellow Oswald with an outline and the **Pop** in animation) and four plain titles on V2; click the video and press <kbd>Ctrl</kbd>+<kbd>C</kbd>; click in the ruler at an empty spot and press <kbd>Ctrl</kbd>+<kbd>V</kbd>: the video and its sound land at the playhead, linked, and the playhead jumps to their end; put the playhead in the middle of the original and press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>V</kbd>: the clips split and the later ones move right to make room; click the styled title and press <kbd>Ctrl</kbd>+<kbd>C</kbd>, select the four plain titles and press <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>V</kbd>: the **Paste attributes** checklist opens; uncheck **Transform** and click **Paste**: the four titles turn yellow and pop in, each at its own place; click a sticker in the preview and press <kbd>Ctrl</kbd>+<kbd>D</kbd>: a copy appears 20 pixels down and to the right; open another project in a second tab and press <kbd>Ctrl</kbd>+<kbd>V</kbd>: the copied clips arrive there too.
+
 > **Video placeholder: What's new in Batch 38**
 > - File: `videos/whats-new/batch-38.mp4` (not recorded yet)
 > - Length: about 45 seconds
@@ -148,6 +153,7 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 > - Shows: open a project with three clips on the timeline; press <kbd>Space</kbd> to play and let the timeline page forward; press <kbd>L</kbd> three times to reach 8x, then <kbd>K</kbd>; hold <kbd>K</kbd> and tap <kbd>L</kbd> to step one frame; turn on **Loop playback**; point at the **Dropped** readout in the status strip.
 
 ## In this page
+- [Batch 39: Copy, paste and duplicate](#batch-39-copy-paste-and-duplicate)
 - [Batch 38: Remove silence](#batch-38-remove-silence)
 - [Batch 37: Audio editing](#batch-37-audio-editing)
 - [Batch 36: Fades and transitions](#batch-36-fades-and-transitions)
@@ -186,6 +192,17 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 - [Batch 03: Projects, autosave and recovery](#batch-03-projects-autosave-and-recovery)
 - [Batch 02: Undo, redo and frame-exact time](#batch-02-undo-redo-and-frame-exact-time)
 - [Batch 01: The workspace](#batch-01-the-workspace)
+
+## Batch 39: Copy, paste and duplicate
+- Copy, cut and paste clips: <kbd>Ctrl</kbd>+<kbd>C</kbd> copies the selected clips with their linked sound and groups, <kbd>Ctrl</kbd>+<kbd>X</kbd> cuts them and leaves a gap, and <kbd>Ctrl</kbd>+<kbd>V</kbd> pastes them at the playhead on the targeted tracks, keeping their spacing. The pasted clips are selected and the playhead jumps to their end, so the next paste goes right after them. See [Paste clips at the playhead](copy-and-paste.md#paste-clips-at-the-playhead) and [Choose the tracks pasted clips go to](copy-and-paste.md#choose-the-tracks-pasted-clips-go-to).
+- <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>V</kbd> (**Paste insert**) makes room at the playhead on every unlocked track instead of covering what is there. See [Paste and make room (Paste insert)](copy-and-paste.md#paste-and-make-room-paste-insert).
+- Pasted clips keep everything: links, groups, keyframes, fades, labels, and the transitions between two copied clips. Pasted caption cues move to the nearest free spot on the **CC** track. See [Know what pasted clips keep](copy-and-paste.md#know-what-pasted-clips-keep).
+- Paste clips into another project: copies also go on your computer's clipboard, so <kbd>Ctrl</kbd>+<kbd>V</kbd> works in another tab. The clips use the media of the same name there; missing media comes in offline, named in a message. See [Paste clips into another project](copy-and-paste.md#paste-clips-into-another-project).
+- **Paste attributes** (<kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>V</kbd>, or the clip menu) gives the selected clips chosen settings of a copied clip: **Transform**, **Opacity**, **Crop**, **Speed**, **Text style**, **Text animations**, **Audio gain**, **Fades** and **Keyframes**, in one undo step. See [Give clips the look of another clip (Paste attributes)](copy-and-paste.md#give-clips-the-look-of-another-clip-paste-attributes).
+- With keyframes selected, <kbd>Ctrl</kbd>+<kbd>C</kbd>, <kbd>Ctrl</kbd>+<kbd>X</kbd> and <kbd>Ctrl</kbd>+<kbd>V</kbd> copy, cut and paste the keyframes, also volume keyframes, onto every selected clip from the playhead on. See [Copy and paste keyframes](copy-and-paste.md#copy-and-paste-keyframes).
+- <kbd>Ctrl</kbd>+<kbd>D</kbd> and **Duplicate** now copy the whole selection, with linked sound, groups and transitions, right after it. In the preview, <kbd>Ctrl</kbd>+<kbd>D</kbd> and the layer menu's **Duplicate** put a copy of the picture 20 pixels down and to the right, on the track above. See [Duplicate clips on the timeline](copy-and-paste.md#duplicate-clips-on-the-timeline) and [Duplicate a picture in the preview](copy-and-paste.md#duplicate-a-picture-in-the-preview).
+- The clip menu's **Cut**, **Copy**, **Paste**, **Paste insert**, **Paste attributes...** and **Duplicate** rows and the layer menu's **Copy**, **Paste** and **Duplicate** rows now work. See [Use the clip and gap menus](splitting-and-deleting.md#use-the-clip-and-gap-menus) and [Use the layer menu](arranging-layers-in-the-preview.md#use-the-layer-menu).
+- New page: [Copying, pasting and duplicating clips](copy-and-paste.md). New shortcuts section: [Clipboard and duplicate](keyboard-shortcuts.md#clipboard-and-duplicate). New troubleshooting group: [Copy, paste and duplicate](troubleshooting.md#copy-paste-and-duplicate).
 
 ## Batch 38: Remove silence
 - **Remove silence** cuts the pauses out of a talking clip. Select an audio clip or a video with its sound, and click **Remove silence** (the dashed scissors, after **Mute**) in the quick actions of **Edit Properties**: the **Remove silence** row opens, red stripes cover every pause it would cut on the video and its sound, and the row counts them, for example `8 silences · 10.7 s`. See [Remove the pauses from a clip](removing-silence.md#remove-the-pauses-from-a-clip).
@@ -573,6 +590,7 @@ See [Projects and saving](projects-and-saving.md).
 See [The workspace](workspace.md) and [Getting started](getting-started.md).
 
 ## Related pages
+- [Copying, pasting and duplicating clips](copy-and-paste.md)
 - [Shapes and images](shapes-and-images.md)
 - [Captions](captions.md)
 - [Transcription](transcription.md)
@@ -589,4 +607,4 @@ See [The workspace](workspace.md) and [Getting started](getting-started.md).
 - [Adding media to the timeline](adding-media-to-the-timeline.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 38, 2026-10-17</sub>
+<sub>Last updated: Batch 39, 2026-10-18</sub>

@@ -160,7 +160,7 @@ These work with the **Select** tool, on audio clips of M and L tracks:
 
 **The keyframe menu** of a diamond has the same rows as on a keyframe lane: **Easing** with the eight easings (the right-clicked keyframe's easing is gold), **Delete keyframe** or **Delete keyframes**, **Copy keyframe** or **Copy keyframes**, and **Paste keyframes**. When the diamond is selected, the menu acts on all the selected keyframes. See [Use the keyframe menu](keyframes.md#use-the-keyframe-menu).
 
-**Copy a volume shape to another clip:** select the diamonds, right-click one and choose **Copy keyframes**. Select the other audio clip, put the playhead where the first keyframe should go, right-click a diamond on its rubber band and choose **Paste keyframes**. The clip needs a diamond to right-click: <kbd>Ctrl</kbd>+click its line first. **Paste keyframes** is dimmed until you copy volume keyframes. See [Copy keyframes to another clip](keyframes.md#copy-keyframes-to-another-clip).
+**Copy a volume shape to another clip:** select the diamonds and press <kbd>Ctrl</kbd>+<kbd>C</kbd>, or right-click one and choose **Copy keyframes**. Select the other audio clip, put the playhead where the first keyframe should go, and press <kbd>Ctrl</kbd>+<kbd>V</kbd>. Or right-click a diamond on its rubber band and choose **Paste keyframes**; the menu needs a diamond to right-click, so <kbd>Ctrl</kbd>+click the line first. **Paste keyframes** is dimmed until you copy volume keyframes. See [Copy keyframes to another clip](keyframes.md#copy-keyframes-to-another-clip).
 
 The steps are named **Add keyframe**, **Move volume keyframe** or **Move volume keyframes**, and **Delete keyframe** or **Delete keyframes**.
 
@@ -307,7 +307,8 @@ The volume, **Mute** and the volume keyframes belong to the clip:
 | Trim the start, or slip the clip | Keyframes stay on the same moment of the sound, so a dip stays under the word it was made for. |
 | Trim the end | Keyframes after the new end stay with the clip, hidden, and come back when you lengthen it. |
 | Change the speed, or **Rate stretch** | Keyframes stretch or squeeze with the clip's new length. |
-| Duplicate the clip | The copy gets the same volume, **Mute** and keyframes. |
+| Duplicate, or copy and paste the clip | The copy gets the same volume, **Mute** and keyframes. |
+| **Paste attributes** with **Audio gain** | The clip gets the copied clip's volume and **Mute**, with its volume keyframes while **Keyframes** is checked. See [Give clips the look of another clip (Paste attributes)](copy-and-paste.md#give-clips-the-look-of-another-clip-paste-attributes). |
 | **Detach audio** | The audio clip keeps its volume and keyframes. |
 
 See [Know what happens to keyframes when you edit clips](keyframes.md#know-what-happens-to-keyframes-when-you-edit-clips).
@@ -328,7 +329,7 @@ Each change is one step in the history. Hover over **Undo** in the app bar to se
 | **Add keyframe**, **Remove keyframe** | <kbd>Ctrl</kbd>+click on the line, or **Add keyframe** and **Remove keyframe** in the **Audio** header |
 | **Move volume keyframe**, **Move volume keyframes** | Dragging diamonds, or the line between them |
 | **Delete keyframe**, **Delete keyframes** | <kbd>Delete</kbd> with keyframes selected, or the keyframe menu |
-| **Change keyframe easing**, **Paste keyframes** | **Ease**, or the keyframe menu |
+| **Change keyframe easing**, **Paste keyframes** | **Ease**, the keyframe menu, or <kbd>Ctrl</kbd>+<kbd>V</kbd> with volume keyframes copied |
 
 See [Undo and redo changes](projects-and-saving.md#undo-and-redo-changes).
 
@@ -338,7 +339,6 @@ These parts are available in a later version:
 
 - Settings for **Auto-duck**: how far it lowers the music (12 dB) and the length of its slopes (10 frames).
 - A keyboard shortcut for **Audio scrub**.
-- Copying and pasting volume keyframes with <kbd>Ctrl</kbd>+<kbd>C</kbd> and <kbd>Ctrl</kbd>+<kbd>V</kbd>, and pasting a clip's volume, mute and fades onto other clips: use the keyframe menu for keyframes.
 - Exporting your video with its sound: only **Export frame** works.
 - Audio effects.
 
@@ -355,4 +355,4 @@ These parts are available in a later version:
 - [Keyboard shortcuts](keyboard-shortcuts.md#audio)
 - [Troubleshooting](troubleshooting.md#audio-editing)
 
-<sub>Last updated: Batch 38, 2026-10-17</sub>
+<sub>Last updated: Batch 39, 2026-10-18</sub>
