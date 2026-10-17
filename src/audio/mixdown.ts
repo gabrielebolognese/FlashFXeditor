@@ -11,11 +11,11 @@
 // - The master volume knob is monitoring only (spec §14): the monitor gain stays at 1.
 import { fpsToNumber } from "../core/document/time.js";
 import type { Clip, Frame, MediaClip, Project } from "../core/document/types.js";
-import { clipsInRange } from "../timeline/model/queries.js";
 import { AudioMixer, audibleTracks, type AudioGraphContext } from "./AudioMixer.js";
 import type { DecodedAudio } from "./decode/DecodedAudio.js";
 import { segmentsIn } from "./decode/segments.js";
-import { AudioScheduler, STEP_SECONDS, type PlayMapping } from "./scheduler/AudioScheduler.js";
+import { AudioScheduler, playingClips, STEP_SECONDS, type PlayMapping } from "./scheduler/AudioScheduler.js";
+import { extendedEnd, extendedStart } from "../core/document/transitions.js";
 
 /** Context time ahead of the stand-in clock (s). */
 const LEAD = 0.05;
@@ -45,13 +45,13 @@ export interface Mixdown {
 // As the scheduler: speed 0 is a video freeze frame only (Batch 27).
 const isHeard = (clip: Clip): clip is MediaClip => clip.kind === "audio" && clip.enabled && clip.speed > 0;
 
-/** The audio clips heard in [start, end): enabled, on audible tracks (mute, solo). */
+/** The audio clips heard in [start, end): enabled, on audible tracks (mute, solo), with the partners of their crossfades (Batch 36). */
 export function heardClips(project: Project, start: Frame, end: Frame): MediaClip[] {
   const audible = audibleTracks(project);
   const clips: MediaClip[] = [];
   for (const track of project.tracks) {
     if (track.kind !== "audio" || audible.get(track.id) !== true) continue;
-    for (const clip of clipsInRange(project, track.id, start, end)) if (isHeard(clip)) clips.push(clip);
+    for (const clip of playingClips(project, track, start, end)) if (isHeard(clip) && extendedEnd(clip) > start && extendedStart(clip) < end) clips.push(clip);
   }
   return clips;
 }
@@ -77,8 +77,9 @@ export async function renderMixdown(project: Project, range: { start: Frame; end
       continue;
     }
     const clipStart = clip.start / fps;
-    const from = clip.in / 1e6 + (Math.max(clip.start, range.start) / fps - clipStart) * clip.speed;
-    const to = clip.in / 1e6 + (Math.min(clip.start + clip.duration, range.end) / fps - clipStart) * clip.speed;
+    // Past its edges under a crossfade (its handles).
+    const from = Math.max(0, clip.in / 1e6 + (Math.max(extendedStart(clip), range.start) / fps - clipStart) * clip.speed);
+    const to = clip.in / 1e6 + (Math.min(extendedEnd(clip), range.end) / fps - clipStart) * clip.speed;
     for (const segment of segmentsIn(layout, from, to)) {
       if (held.has(keyOf(clip.mediaId, segment))) continue;
       try {

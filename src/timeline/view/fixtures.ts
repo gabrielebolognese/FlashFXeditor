@@ -51,6 +51,9 @@ const TOKENS: Record<string, string> = {
   "--timeline-marker-height": "8px",
   "--timeline-range-handle-width": "2px",
   "--timeline-range-handle-zone": "8px",
+  "--timeline-fade-handle-size": "8px",
+  "--timeline-transition-edge-width": "2px",
+  "--timeline-transition-edge-zone": "6px",
 };
 
 /** A Theme with the timeline metrics set; colors are their token names (canvases take any string). */

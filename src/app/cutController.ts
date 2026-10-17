@@ -19,6 +19,7 @@ import { deleteSelectedKeys } from "./keyframeController.js";
 import { deleteSelectedMarker } from "./markerController.js";
 import { requestRemove, startRename } from "./mediaController.js";
 import { actions, documentStore, focusScopes, sessionStore } from "./services.js";
+import { deleteSelectedTransition } from "./transitionController.js";
 
 /** Longest clip name kept by a rename (as for media names). */
 export const MAX_CLIP_NAME = 255;
@@ -107,10 +108,12 @@ const compactTrackAction: ActionRun = () => {
 /**
  * `Delete` / `Backspace` and `Shift+Delete` (spec §6.11): the selected clips and their linked
  * partners go, leaving gaps or (ripple) closing them; a selected gap closes (spec §6.7). With keys
- * selected on a keyframe lane, only those keys go (Batch 35).
+ * selected on a keyframe lane, only those keys go (Batch 35); a selected transition goes alone (Batch 36).
  */
 function deleteSelection(ripple: boolean): void {
   if (deleteSelectedKeys()) return;
+  // A selected transition (Batch 36) goes with its linked crossfade.
+  if (deleteSelectedTransition()) return;
   if (sessionStore.gap.getState()) {
     closeGapAction(null);
     return;

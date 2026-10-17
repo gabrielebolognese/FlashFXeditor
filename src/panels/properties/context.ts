@@ -6,20 +6,27 @@
 // text clips (the Text section, Batch 28: right after Clip, the section a text clip is edited in;
 // then their Animation section, Batch 31) and the solids (the Solid section, Batch 34: after the text
 // ones). Cues are selected as clips; a selection with cues, or with the caption track, shows the
-// Caption style section (Batch 32: the track's style, spec §10.5).
+// Caption style section (Batch 32: the track's style, spec §10.5). A selected transition (Batch 36) shows
+// its Transition section; a selected edit point shows the quick row's transition chips (and the
+// Transition section of the transition on that cut, if any).
 // React renders the panel only when this context changes (`contextKey`), never on value changes
 // (spec §11 implementation note, P1).
 import type { Clip, ClipId, Project, TrackId } from "../../core/document/types.js";
 import { selectedTrackIds, type Selection } from "../../core/store/selection.js";
+import { transitionAt, type Cut } from "../../timeline/edit/transitions.js";
 import { isCropClip } from "../../timeline/edit/crop.js";
 import { isLayerClip } from "../../timeline/edit/transform.js";
 
 /** The registered sections, top to bottom in their order of appearance. */
-export type SectionId = "clip" | "text" | "animation" | "solid" | "captionStyle" | "transform" | "crop" | "opacity" | "speed" | "track" | "marker" | "project";
+export type SectionId = "clip" | "text" | "animation" | "solid" | "captionStyle" | "transform" | "crop" | "opacity" | "speed" | "transition" | "track" | "marker" | "project";
 
 export type PropertiesContext =
   | { kind: "none" }
   | { kind: "marker"; markerId: string }
+  /** A selected transition (Batch 36): its cut. */
+  | { kind: "transition"; cut: Cut }
+  /** A selected edit point (Batch 36: the quick row's transition chips apply there); `transition`: the cut has one. */
+  | { kind: "editPoint"; cut: Cut; transition: boolean }
   | {
       kind: "track";
       trackIds: readonly TrackId[];
@@ -51,8 +58,18 @@ export type PropertiesContext =
 
 const NONE: PropertiesContext = { kind: "none" };
 
-export function propertiesContext(selection: Selection, markerId: string | null, project: Project): PropertiesContext {
+/** The session's other selection channels the panel follows (Batch 36): the selected transition and edit point. */
+export interface SelectedCuts {
+  transition: Cut | null;
+  editPoint: Cut | null;
+}
+
+const NO_CUTS: SelectedCuts = { transition: null, editPoint: null };
+
+export function propertiesContext(selection: Selection, markerId: string | null, project: Project, cuts: SelectedCuts = NO_CUTS): PropertiesContext {
   if (markerId !== null) return { kind: "marker", markerId };
+  if (cuts.transition && transitionAt(project, cuts.transition)) return { kind: "transition", cut: cuts.transition };
+  if (cuts.editPoint && selection.kind === "none") return { kind: "editPoint", cut: cuts.editPoint, transition: transitionAt(project, cuts.editPoint) !== null };
   switch (selection.kind) {
     case "none":
       return NONE;
@@ -86,16 +103,18 @@ export function propertiesContext(selection: Selection, markerId: string | null,
   }
 }
 
-/** A string that changes exactly when the context may change: the selection kind, ids, primary and the marker. */
-export function contextKey(selection: Selection, markerId: string | null): string {
+/** A string that changes exactly when the context may change: the selection kind, ids, primary, the marker, the transition and the edit point. */
+export function contextKey(selection: Selection, markerId: string | null, cuts: SelectedCuts = NO_CUTS): string {
   if (markerId !== null) return `marker:${markerId}`;
+  if (cuts.transition) return `transition:${cuts.transition.left}|${cuts.transition.right}`;
+  if (cuts.editPoint && selection.kind === "none") return `editPoint:${cuts.editPoint.left}|${cuts.editPoint.right}`;
   const ids = selection.kind === "track" ? selectedTrackIds(selection) : [...selection.clipIds];
   return `${selection.kind}:${selection.primary ?? ""}:${ids.join(",")}`;
 }
 
 /**
  * The sections of a context, top to bottom (the section registry keyed by selection kind).
- * TODO(batch 36): Transition. TODO(batch 37): Audio.
+ * TODO(batch 37): Audio.
  */
 export function sectionIds(context: PropertiesContext): SectionId[] {
   switch (context.kind) {
@@ -103,6 +122,10 @@ export function sectionIds(context: PropertiesContext): SectionId[] {
       return ["project"];
     case "marker":
       return ["marker"];
+    case "transition":
+      return ["transition"];
+    case "editPoint":
+      return context.transition ? ["transition"] : [];
     case "track":
       return context.captionTrackId ? ["track", "captionStyle"] : ["track"];
     case "cue":

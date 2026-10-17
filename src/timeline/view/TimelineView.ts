@@ -37,6 +37,13 @@
 // edges, Shift to whole seconds), one command on release through `onMoveKeyframes`; Alt+click on a lane
 // adds a key there (`onAddKeyframe`); a right-click opens the keyframe menu. A clip drag snaps the keys
 // on its lane too.
+// Fades and transitions (spec §6.4, §6.15, Batch 36; fadesAndTransitions.ts): the hovered clip shows
+// its fade handles; a handle drag sets that fade in whole frames (snapping), one command on release
+// through `onSetFade`. A click on a transition block selects it, a double-click opens its Transition
+// section (`onOpenTransition`); a drag of a block end changes its frames (both sides, Alt: the dragged
+// one; snapping), one command on release through `onTransitionEdge`. A transition chip dragged from the
+// properties panel is fed in from outside (`dragTransition`, `endTransitionDrag`): the cut under the
+// pointer is lit.
 import type { Affect } from "../../core/commands/command.js";
 import type { KeyframeSection } from "../../core/document/keyframes.js";
 import { firstFrameOfSecond, formatSpeed, formatTimecode, secondOfFrame, usToFrame } from "../../core/document/time.js";
@@ -50,12 +57,14 @@ import type { Store } from "../../core/store/createStore.js";
 import type { DocumentStore } from "../../core/store/DocumentStore.js";
 import type { LayoutState, Size } from "../../core/store/layoutStore.js";
 import { clickSelection, EMPTY_SELECTION, selectClips, selectedTrackIds, selectTracks, trackClickSelection, type ClickModifier, type Selection } from "../../core/store/selection.js";
-import { selectEditPoint, selectGap, selectKeyframes, selectMarker, setInOut, setPlayhead, setSelection, type EditPoint, type KeyframeSelection, type SessionState, type SessionStore, type Tool } from "../../core/store/sessionStore.js";
+import { selectEditPoint, selectGap, selectKeyframes, selectMarker, selectTransition, setInOut, setPlayhead, setSelection, type EditPoint, type KeyframeSelection, type SessionState, type SessionStore, type Tool } from "../../core/store/sessionStore.js";
 import { ease } from "../../core/theme/easing.js";
 import type { Theme, ThemeBridge } from "../../core/theme/theme.js";
 import type { DropItem, DropLanes, MediaDropRequest } from "../edit/dropMedia.js";
 import type { MoveRequest } from "../edit/move.js";
 import { clampKeyDelta } from "../edit/keyframes.js";
+import { clampFade, fadesOf, type FadeEdge } from "../edit/fades.js";
+import { cutNear, dragTransitionEdge, transitionAt, type Cut, type TransitionDrag, type TransitionEdge } from "../edit/transitions.js";
 import { clipsToSplit } from "../edit/split.js";
 import { hasSource, MAX_SPEED, MIN_SPEED, type TrimEdge } from "../edit/trim.js";
 import { dragIn, dragOut, lastFrameOf, type InOut } from "../model/inOut.js";
@@ -64,7 +73,8 @@ import { resolveSnap, snapCandidatesOf, SnapIndex, snapLabel, type SnapCandidate
 import { createWants, type ClipVisualsSource } from "./clipVisuals.js";
 import { trimCursor, trimCursors, type TrimCursors } from "./cursors.js";
 import { drawContent, type TimelineFonts } from "./drawContent.js";
-import { drawOverlay, type EditPointMark, type MarkerScene, type RangeScene, type RazorScene, type TrackDragScene } from "./drawOverlay.js";
+import { drawOverlay, type BlockScene, type EditPointMark, type MarkerScene, type RangeScene, type RazorScene, type TrackDragScene } from "./drawOverlay.js";
+import { blockBand } from "./fadesAndTransitions.js";
 import { contains, TimelineGeometry, type HeaderToggle, type Rect, type TimelineMetrics } from "./geometry.js";
 import { edgeStep } from "./gestures/autoScroll.js";
 import { MediaDropGesture } from "./gestures/dropMedia.js";
@@ -128,6 +138,12 @@ export interface TimelineViewDeps {
   onMoveKeyframes?(clipId: ClipId, section: KeyframeSection, frames: readonly Frame[], delta: number): void;
   /** Alt+click on a keyframe lane (spec §6.4): the controller adds a key at `frame` (relative to the clip; one command). */
   onAddKeyframe?(clipId: ClipId, section: KeyframeSection, frame: Frame): void;
+  /** A fade handle was dragged (spec §6.4, Batch 36): the controller sets the clip's `edge` fade to `frames` (one command). */
+  onSetFade?(clipId: ClipId, edge: FadeEdge, frames: Frame): void;
+  /** A transition block's end was dragged (spec §6.15, Batch 36): the controller sets its sides (one command). */
+  onTransitionEdge?(cut: Cut, before: Frame, after: Frame): void;
+  /** A transition block was double-clicked (spec §6.4): the controller opens its Transition section. */
+  onOpenTransition?(cut: Cut): void;
   /** Background work pauses while a gesture runs (spec §3.4); arrivals wait while it is paused. */
   idle?: Pick<IdleQueue, "pause" | "resume"> & Partial<Pick<IdleQueue, "isPaused" | "onPauseChange">>;
   /** Thumbnails, posters and peaks of the clip bodies (spec §6.4, §6.17). */
@@ -228,7 +244,13 @@ type Gesture =
   /** A press on a keyframe diamond (spec §6.15): a retime drag of `frames` once it moves past the dead zone, else a click (the playhead goes to `grab`). */
   | { kind: "pressKey"; pointerId: number; x: number; y: number; clipId: ClipId; section: KeyframeSection; frames: readonly Frame[]; grab: Frame }
   /** Keys dragged on their lane: `delta` frames (kept inside the clip), snapped. */
-  | { kind: "keyDrag"; pointerId: number; clipId: ClipId; section: KeyframeSection; frames: readonly Frame[]; grab: Frame; delta: number; snap: SnapTarget | null };
+  | { kind: "keyDrag"; pointerId: number; clipId: ClipId; section: KeyframeSection; frames: readonly Frame[]; grab: Frame; delta: number; snap: SnapTarget | null }
+  /** A fade handle dragged (Batch 36): the `edge` fade of the clip as it would be, from `from`, snapped. */
+  | { kind: "fadeDrag"; pointerId: number; clipId: ClipId; edge: FadeEdge; from: Frame; frames: Frame; snap: SnapTarget | null }
+  /** A press on a transition block (Batch 36): a drag of its `edge` once it moves past the dead zone, else a click selecting it. */
+  | { kind: "pressTransition"; pointerId: number; x: number; y: number; cut: Cut; edge: TransitionEdge | null; grab: number }
+  /** A transition block's end dragged (Batch 36): the sides it would have (`drag`), snapped. */
+  | { kind: "transitionDrag"; pointerId: number; cut: Cut; edge: TransitionEdge; grab: number; drag: TransitionDrag | null; snap: SnapTarget | null };
 
 /** A keyboard zoom step on its way (spec §6.2): from `from` to `to` with `anchor` held; `start` is set by the first frame. */
 interface ZoomAnimation {
@@ -273,7 +295,10 @@ const sameHover = (a: HitResult | null, b: HitResult | null) =>
     a.scrollbar?.part === b.scrollbar?.part &&
     a.markerId === b.markerId &&
     a.keyframe?.frame === b.keyframe?.frame &&
-    a.lane === b.lane);
+    a.lane === b.lane &&
+    a.fade === b.fade &&
+    a.transition?.left === b.transition?.left &&
+    a.transition?.edge === b.transition?.edge);
 
 /** A hit on a track row's clip area: what the Razor can cut (and shows its cursor over). */
 function inTrackRow(hit: HitResult): boolean {
@@ -284,6 +309,9 @@ function inTrackRow(hit: HitResult): boolean {
     case "junction":
     case "gap":
     case "keyframe":
+    case "fadeHandle":
+    case "transition":
+    case "transitionEdge":
       return true;
     case "empty":
       return hit.trackId !== null;
@@ -294,7 +322,9 @@ function inTrackRow(hit: HitResult): boolean {
 
 /** The clip a hit on a body, trim zone or cut is on, else null. */
 function hitClip(hit: HitResult): ClipId | null {
-  return hit.type === "clip" || hit.type === "clipEdgeIn" || hit.type === "clipEdgeOut" || hit.type === "junction" || hit.type === "keyframe" ? hit.clipId : null;
+  return hit.type === "clip" || hit.type === "clipEdgeIn" || hit.type === "clipEdgeOut" || hit.type === "junction" || hit.type === "keyframe" || hit.type === "fadeHandle" || hit.type === "transition" || hit.type === "transitionEdge"
+    ? hit.clipId
+    : null;
 }
 
 /** The edge a hit on a trim zone or a cut is on (a cut: the side under the pointer), or null. */
@@ -338,8 +368,9 @@ function cursorFor(hit: HitResult | null, gesture: Gesture | null, cursors: Trim
   if (gesture?.kind === "scrollbar") return gesture.part === "thumb" ? "default" : "ew-resize";
   if (gesture?.kind === "scrub" || gesture?.kind === "markerDrag" || gesture?.kind === "rangeDrag") return "ew-resize";
   if (gesture?.kind === "trackDrag") return "grabbing";
-  if (gesture?.kind === "keyDrag") return "ew-resize";
+  if (gesture?.kind === "keyDrag" || gesture?.kind === "fadeDrag" || gesture?.kind === "transitionDrag") return "ew-resize";
   if (gesture?.kind === "pressKey") return "pointer";
+  if (gesture?.kind === "pressTransition") return gesture.edge ? "ew-resize" : "pointer";
   if (gesture?.kind === "move") {
     const proposal = gesture.move.proposal;
     return proposal?.refused ? "not-allowed" : proposal?.duplicate ? "copy" : "grabbing";
@@ -356,6 +387,8 @@ function cursorFor(hit: HitResult | null, gesture: Gesture | null, cursors: Trim
   if (context.pan) return "grab";
   if (hit.type === "ruler" || hit.type === "playheadHead" || hit.type === "inHandle" || hit.type === "outHandle") return "ew-resize";
   if (hit.type === "marker" || (hit.type === "keyframe" && context.tool === "select")) return "pointer";
+  if (context.tool === "select" && (hit.type === "fadeHandle" || hit.type === "transitionEdge")) return "ew-resize";
+  if (context.tool === "select" && hit.type === "transition") return "pointer";
   if ((hit.type === "trackHeader" && hit.addTrack) || hit.type === "headerToggle") return "pointer";
   const edge = hitEdge(hit);
   const { tool } = context;
@@ -454,6 +487,20 @@ export class TimelineView {
         },
         get inset() {
           return diamondInset(deps.theme.theme);
+        },
+      },
+      fades: {
+        get size() {
+          return deps.theme.theme.timeline.fadeHandleSize;
+        },
+        get inset() {
+          return deps.theme.theme.timeline.clipInset;
+        },
+      },
+      transitions: {
+        band: (row, track) => blockBand(row, track, deps.theme.theme),
+        get edgeZone() {
+          return deps.theme.theme.timeline.transitionEdgeZone;
         },
       },
     });
@@ -582,6 +629,8 @@ export class TimelineView {
       session.state.select((state) => state.keyframeLanes, both),
       session.keyframes.subscribe(() => scheduler.invalidate("timelineContent")),
       session.editPoint.subscribe(() => scheduler.invalidate("timelineOverlay")),
+      // The selected transition's block (Batch 36).
+      session.transition.subscribe(() => scheduler.invalidate("timelineContent")),
       session.gap.subscribe(() => scheduler.invalidate("timelineOverlay")),
       session.marker.subscribe(() => scheduler.invalidate("timelineOverlay")),
       // The in/out range is drawn on the overlay (spec §6.13).
@@ -722,6 +771,33 @@ export class TimelineView {
   }
 
   /** True while an edit drags (the preview then asks frames with scrub priority, P8, and playback pauses). */
+  /** The cut a transition chip dragged over the timeline would land on (Batch 36), or null. */
+  private transitionDrop: Cut | null = null;
+
+  /**
+   * A transition chip dragged from the properties panel (spec §6.15) is over view point (x, y): the cut
+   * nearest the pointer on the row under it (within the snap distance) is lit. Returns it, or null.
+   */
+  dragTransition(x: number, y: number): Cut | null {
+    const geometry = this.geometry();
+    const row = x >= geometry.headerWidth ? geometry.rowAt(y) : null;
+    const reach = this.deps.theme.theme.timeline.snapThreshold / Math.max(geometry.pxPerFrame, 1e-9);
+    const cut = row ? cutNear(this.deps.document.getState(), row.trackId, geometry.xToFrame(x), Math.max(reach, 0.5)) : null;
+    if (cut?.left !== this.transitionDrop?.left || cut?.right !== this.transitionDrop?.right) {
+      this.transitionDrop = cut;
+      this.deps.scheduler.invalidate("timelineOverlay");
+    }
+    return cut;
+  }
+
+  /** The chip drag left the timeline or ended: the lit cut goes; returns it (where a release lands). */
+  endTransitionDrag(): Cut | null {
+    const cut = this.transitionDrop;
+    this.transitionDrop = null;
+    if (cut) this.deps.scheduler.invalidate("timelineOverlay");
+    return cut;
+  }
+
   get trimming(): boolean {
     return this.gesture?.kind === "trim";
   }
@@ -1052,6 +1128,19 @@ export class TimelineView {
         if (hit.keyframe && tool === "select") this.pressKey(event, hit.clipId as ClipId, hit.keyframe.section, hit.keyframe.frame);
         else this.pressClip(event, hit.clipId as ClipId, hit.frame, bodyDrag(tool));
         break;
+      case "fadeHandle":
+        if (hit.fade && tool === "select") this.pressFade(event, hit.clipId as ClipId, hit.fade);
+        else this.pressClip(event, hit.clipId as ClipId, hit.frame, bodyDrag(tool));
+        break;
+      case "transition":
+      case "transitionEdge":
+        if (hit.transition && tool === "select") {
+          this.capture(event.pointerId);
+          const { left, right, edge } = hit.transition;
+          this.gesture = { kind: "pressTransition", pointerId: event.pointerId, x: event.offsetX, y: event.offsetY, cut: { left, right }, edge, grab: hit.frame };
+          this.updateCursor();
+        } else this.pressClip(event, hit.clipId as ClipId, hit.frame, bodyDrag(tool));
+        break;
       case "clipEdgeIn":
       case "clipEdgeOut":
       case "junction":
@@ -1165,6 +1254,70 @@ export class TimelineView {
     const clamped = clampKeyDelta(clip, gesture.frames, delta);
     gesture.delta = clamped;
     gesture.snap = clamped === delta ? snap : null;
+  }
+
+  /** A press on a fade handle (Batch 36): the fade follows the pointer from the press; the selection stays. */
+  private pressFade(event: PointerEvent, clipId: ClipId, edge: FadeEdge): void {
+    const clip = this.deps.document.getState().clips[clipId];
+    if (!clip) return;
+    const from = fadesOf(clip)[edge];
+    this.capture(event.pointerId);
+    this.gesture = { kind: "fadeDrag", pointerId: event.pointerId, clipId, edge, from, frames: from, snap: null };
+    this.startDrag();
+    this.followPointer();
+  }
+
+  /** The dragged fade follows the pointer: whole frames from the clip's edge to the pointer, snapped, within the clip. */
+  private dragFade(gesture: Extract<Gesture, { kind: "fadeDrag" }>, x: number): void {
+    const project = this.deps.document.getState();
+    const clip = project.clips[gesture.clipId];
+    if (!clip) return;
+    const end = clip.start + clip.duration;
+    let at = this.geometry().xToFrame(x);
+    let snap: SnapTarget | null = null;
+    if (this.snapping) {
+      const hit = resolveSnap(this.snapCandidates(), [at], {
+        thresholdPx: this.deps.theme.theme.timeline.snapThreshold,
+        pxPerFrame: this.viewport().pxPerFrame,
+        playhead: this.deps.session.state.getState().playhead,
+        exclude: new Set([clip.id]),
+      });
+      if (hit && hit.target.frame > clip.start && hit.target.frame < end) {
+        at = hit.target.frame;
+        snap = hit.target;
+      }
+    }
+    const frames = clampFade(clip, gesture.edge, gesture.edge === "in" ? at - clip.start : end - at);
+    gesture.frames = frames;
+    gesture.snap = snap && (gesture.edge === "in" ? clip.start + frames : end - frames) === snap.frame ? snap : null;
+  }
+
+  /** The press on a block end became a drag: its sides follow the pointer. */
+  private dragTransitionEdge(gesture: Extract<Gesture, { kind: "transitionDrag" }>, x: number): void {
+    const project = this.deps.document.getState();
+    const current = transitionAt(project, gesture.cut);
+    const right = project.clips[gesture.cut.right];
+    if (!current || !right) return;
+    const edgeFrame = gesture.edge === "start" ? right.start - current.before : right.start + current.after;
+    const raw = this.geometry().xToFrame(x) - gesture.grab;
+    let delta = Math.round(raw);
+    let snap: SnapTarget | null = null;
+    if (this.snapping) {
+      const hit = resolveSnap(this.snapCandidates(), [edgeFrame + raw], {
+        thresholdPx: this.deps.theme.theme.timeline.snapThreshold,
+        pxPerFrame: this.viewport().pxPerFrame,
+        playhead: this.deps.session.state.getState().playhead,
+        exclude: new Set([gesture.cut.left, gesture.cut.right]),
+      });
+      if (hit) {
+        delta = Math.round(raw + hit.offset);
+        snap = hit.target;
+      }
+    }
+    const drag = dragTransitionEdge(project, gesture.cut, gesture.edge, delta, this.modifiers.alt);
+    gesture.drag = drag;
+    const landed = drag ? (gesture.edge === "start" ? right.start - drag.before : right.start + drag.after) : null;
+    gesture.snap = snap && landed === snap.frame ? snap : null;
   }
 
   /**
@@ -1425,6 +1578,11 @@ export class TimelineView {
     const hit = this.hitTester.hit(event.offsetX, event.offsetY);
     if (hit.type === "trackHeader" && hit.trackId) this.deps.onRenameTrack?.(hit.trackId);
     else if (hit.type === "marker" && hit.markerId !== null) this.deps.onEditMarker?.(hit.markerId);
+    else if ((hit.type === "transition" || hit.type === "transitionEdge") && hit.transition) {
+      const cut = { left: hit.transition.left, right: hit.transition.right };
+      selectTransition(this.deps.session, cut);
+      this.deps.onOpenTransition?.(cut);
+    }
   }
 
   /**
@@ -1591,6 +1749,14 @@ export class TimelineView {
       case "pressMarker":
         if (Math.abs(event.offsetX - gesture.x) > threshold) this.startMarkerDrag(gesture);
         break;
+      case "pressTransition":
+        if (gesture.edge && Math.abs(event.offsetX - gesture.x) > threshold) {
+          this.gesture = { kind: "transitionDrag", pointerId: gesture.pointerId, cut: gesture.cut, edge: gesture.edge, grab: gesture.grab, drag: null, snap: null };
+          selectTransition(this.deps.session, gesture.cut);
+          this.startDrag();
+          this.followPointer();
+        }
+        break;
       case "pressKey":
         if (gesture.frames.length > 0 && Math.abs(event.offsetX - gesture.x) > threshold) {
           this.gesture = { kind: "keyDrag", pointerId: gesture.pointerId, clipId: gesture.clipId, section: gesture.section, frames: gesture.frames, grab: gesture.grab, delta: 0, snap: null };
@@ -1605,6 +1771,8 @@ export class TimelineView {
       case "trackDrag":
       case "markerDrag":
       case "rangeDrag":
+      case "fadeDrag":
+      case "transitionDrag":
         this.followPointer();
         break;
     }
@@ -1684,6 +1852,12 @@ export class TimelineView {
     } else if (gesture.kind === "keyDrag") {
       this.dragKeys(gesture, pointer.x);
       this.deps.scheduler.invalidate("timelineOverlay");
+    } else if (gesture.kind === "fadeDrag") {
+      this.dragFade(gesture, pointer.x);
+      this.deps.scheduler.invalidate("timelineOverlay");
+    } else if (gesture.kind === "transitionDrag") {
+      this.dragTransitionEdge(gesture, pointer.x);
+      this.deps.scheduler.invalidate("timelineOverlay");
     }
   }
 
@@ -1713,7 +1887,7 @@ export class TimelineView {
       }
       this.modifiers = this.modifiersOf(event);
       const kind = this.gesture?.kind;
-      if (kind === "move" || kind === "trim" || kind === "scrub" || kind === "markerDrag" || kind === "rangeDrag" || kind === "mediaDrop" || kind === "keyDrag") this.followPointer();
+      if (kind === "move" || kind === "trim" || kind === "scrub" || kind === "markerDrag" || kind === "rangeDrag" || kind === "mediaDrop" || kind === "keyDrag" || kind === "fadeDrag" || kind === "transitionDrag") this.followPointer();
     };
     win?.addEventListener("keydown", onKey, true);
     win?.addEventListener("keyup", onKey, true);
@@ -1738,7 +1912,12 @@ export class TimelineView {
     const elapsed = this.lastTick === null ? FRAME_MS : Math.min(Math.max(time - this.lastTick, 0), 3 * FRAME_MS);
     this.lastTick = time;
     const kind = gesture?.kind;
-    if (!gesture || !pointer || (kind !== "scrub" && kind !== "move" && kind !== "trim" && kind !== "marquee" && kind !== "trackDrag" && kind !== "markerDrag" && kind !== "rangeDrag" && kind !== "mediaDrop")) return;
+    if (
+      !gesture ||
+      !pointer ||
+      (kind !== "scrub" && kind !== "move" && kind !== "trim" && kind !== "marquee" && kind !== "trackDrag" && kind !== "markerDrag" && kind !== "rangeDrag" && kind !== "mediaDrop" && kind !== "fadeDrag" && kind !== "transitionDrag")
+    )
+      return;
     const geometry = this.geometry();
     const { area } = geometry;
     const zone = this.deps.theme.theme.timeline.autoScrollZone;
@@ -1746,7 +1925,7 @@ export class TimelineView {
     // A track drag is vertical.
     const dx = gesture.kind === "trackDrag" ? 0 : edgeStep(pointer.x, area.x, area.x + area.width, zone) * scale;
     // Scrubs, trims, marker and handle drags are horizontal.
-    const dy = kind === "scrub" || kind === "trim" || kind === "markerDrag" || kind === "rangeDrag" ? 0 : edgeStep(pointer.y, area.y, area.y + area.height, zone) * scale;
+    const dy = kind === "scrub" || kind === "trim" || kind === "markerDrag" || kind === "rangeDrag" || kind === "fadeDrag" || kind === "transitionDrag" ? 0 : edgeStep(pointer.y, area.y, area.y + area.height, zone) * scale;
     if (dx === 0 && dy === 0) return;
     if (dx !== 0) {
       const context = this.zoomContext();
@@ -1837,8 +2016,22 @@ export class TimelineView {
           setSelection(session, EMPTY_SELECTION);
           selectEditPoint(session, null);
           selectGap(session, null);
+          selectTransition(session, null);
         }
         break;
+      case "fadeDrag":
+        if (commit && gesture.frames !== gesture.from) this.deps.onSetFade?.(gesture.clipId, gesture.edge, gesture.frames);
+        break;
+      case "pressTransition":
+        // A click on a block selects its transition (spec §6.4: its Transition section).
+        if (commit) selectTransition(session, gesture.cut);
+        break;
+      case "transitionDrag": {
+        const current = transitionAt(this.deps.document.getState(), gesture.cut);
+        const { drag } = gesture;
+        if (commit && current && drag && (drag.before !== current.before || drag.after !== current.after)) this.deps.onTransitionEdge?.(gesture.cut, drag.before, drag.after);
+        break;
+      }
       case "marquee": {
         const selection = gesture.marquee.current?.selection;
         if (commit && selection) setSelection(session, selection);
@@ -2021,6 +2214,7 @@ export class TimelineView {
       timecodeFormat: this.deps.session.state.getState().timecodeFormat,
       hiddenMarker: this.gesture?.kind === "markerDrag" ? this.gesture.markerId : null,
       lanes: this.laneScene(),
+      transition: this.deps.session.transition.getState(),
     });
     if (wants) visuals?.want(wants);
     this.stats.contentDraws += 1;
@@ -2048,13 +2242,14 @@ export class TimelineView {
       ? proposal.snap
       : trim
         ? trim.snap
-        : gesture?.kind === "scrub" || gesture?.kind === "markerDrag" || gesture?.kind === "rangeDrag" || gesture?.kind === "keyDrag"
+        : gesture?.kind === "scrub" || gesture?.kind === "markerDrag" || gesture?.kind === "rangeDrag" || gesture?.kind === "keyDrag" || gesture?.kind === "fadeDrag" || gesture?.kind === "transitionDrag"
           ? gesture.snap
           : (razor?.snap ?? null);
     // The brackets stand on the document's cut: not while a drag moves clips.
     const editPoints = proposal || gesture?.kind === "trim" ? [] : this.editPointMarks(project);
     // Hover highlights are for a pointer at rest: none while dragging.
-    const idle = gesture === null || gesture.kind === "scrub" || gesture.kind === "press" || gesture.kind === "pressEdge" || gesture.kind === "pressHeader" || gesture.kind === "pressMarker" || gesture.kind === "pressKey";
+    const idle =
+      gesture === null || gesture.kind === "scrub" || gesture.kind === "press" || gesture.kind === "pressEdge" || gesture.kind === "pressHeader" || gesture.kind === "pressMarker" || gesture.kind === "pressKey" || gesture.kind === "pressTransition";
     const markers = this.markerScene(project, idle);
     drawOverlay({
       ctx: layer.ctx,
@@ -2078,6 +2273,7 @@ export class TimelineView {
       marquee: gesture?.kind === "marquee" ? (gesture.marquee.current?.rect ?? null) : null,
       tooltip: this.pointer
         ? (this.rulerTooltip(project, markers, snap, this.pointer) ??
+          this.blockTooltip(project, snap, this.pointer) ??
           (gesture?.kind === "mediaDrop"
             ? this.dropTooltip(project, gesture.drop, snap, this.pointer)
             : proposal || trim || snap || gesture?.kind === "keyDrag"
@@ -2091,10 +2287,83 @@ export class TimelineView {
       range: this.rangeScene(project, idle),
       markers,
       keyDrag: gesture?.kind === "keyDrag" ? this.keyDragScene(project, geometry, gesture) : null,
+      blocks: this.blockScene(project, geometry, idle),
+      project,
+      selection: this.deps.session.selection.getState(),
+      transition: this.deps.session.transition.getState(),
     });
     this.stats.overlayDraws += 1;
     this.stats.overlayMs = performance.now() - start;
     this.writeStats();
+  }
+
+  /**
+   * Fades and transitions on the overlay (Batch 36): the hovered clip's fade handles (or the dragged
+   * fade with the clip redrawn as it would be), the hovered or dragged block, and the cut a dragged
+   * transition chip would land on.
+   */
+  private blockScene(project: Project, geometry: TimelineGeometry, idle: boolean): BlockScene | null {
+    const gesture = this.gesture;
+    const hover = idle ? this.hover : null;
+    let fades: BlockScene["fades"] = null;
+    if (gesture?.kind === "fadeDrag") {
+      const clip = project.clips[gesture.clipId];
+      const row = clip ? geometry.rowOf(clip.trackId) : null;
+      if (clip && row) fades = { clip, row, fades: { ...fadesOf(clip), [gesture.edge]: gesture.frames }, active: gesture.edge, dragged: true };
+    } else if (hover && (hover.type === "clip" || hover.type === "clipEdgeIn" || hover.type === "clipEdgeOut" || hover.type === "fadeHandle" || hover.type === "keyframe" || hover.type === "transition" || hover.type === "transitionEdge")) {
+      const clip = hover.clipId !== null ? project.clips[hover.clipId] : undefined;
+      const row = clip ? geometry.rowOf(clip.trackId) : null;
+      const track = clip ? project.tracks[row?.index ?? -1] : undefined;
+      if (clip && row && track && !track.locked) fades = { clip, row, fades: fadesOf(clip), active: hover.type === "fadeHandle" ? hover.fade : null, dragged: false };
+    }
+    let block: BlockScene["block"] = null;
+    const pair = gesture?.kind === "transitionDrag" ? gesture.cut : hover?.transition ? { left: hover.transition.left, right: hover.transition.right } : null;
+    if (pair) {
+      const left = project.clips[pair.left];
+      const right = project.clips[pair.right];
+      const current = transitionAt(project, pair);
+      const row = right ? geometry.rowOf(right.trackId) : null;
+      const track = row ? project.tracks[row.index] : undefined;
+      if (left && right && current && row && track && isMediaClip(left) && isMediaClip(right)) {
+        const dragging = gesture?.kind === "transitionDrag";
+        const sides = dragging && gesture.drag ? { before: gesture.drag.before, after: gesture.drag.after } : current;
+        const selected = this.deps.session.transition.getState();
+        block = {
+          left,
+          right,
+          row,
+          track,
+          transition: { ...current, ...sides },
+          state: { selected: selected?.left === pair.left && selected.right === pair.right, hot: dragging ? gesture.edge : (hover?.transition?.edge ?? "body"), dragged: dragging },
+          redraw: dragging,
+          bound: dragging ? (gesture.drag?.bound ?? null) : null,
+        };
+      }
+    }
+    const drop = this.transitionDrop;
+    let target: BlockScene["drop"] = null;
+    if (drop) {
+      const right = project.clips[drop.right];
+      const row = right ? geometry.rowOf(right.trackId) : null;
+      const track = row ? project.tracks[row.index] : undefined;
+      if (right && row && track) target = { frame: right.start, row, track };
+    }
+    return fades || block || target ? { fades, block, drop: target } : null;
+  }
+
+  /** The tooltip of a fade drag (`Fade in · 00:00:15`) or a block end drag (`Δ +00:00:04 · 00:00:19`, `Media start` at a handle). */
+  private blockTooltip(project: Project, snap: SnapTarget | null, pointer: { x: number; y: number }) {
+    const gesture = this.gesture;
+    const fps = project.settings.fps;
+    const target = snap ? snapLabel(project, snap) : null;
+    if (gesture?.kind === "fadeDrag") return { text: `${gesture.edge === "in" ? "Fade in" : "Fade out"} · ${formatTimecode(gesture.frames, fps)}`, target, alert: null, x: pointer.x, y: pointer.y };
+    if (gesture?.kind !== "transitionDrag" || !gesture.drag) return null;
+    const current = transitionAt(project, gesture.cut);
+    if (!current) return null;
+    const length = gesture.drag.before + gesture.drag.after;
+    const text = `${deltaLabel(length - current.before - current.after, project)} · ${formatTimecode(length, fps)}`;
+    const alert = gesture.drag.bound === "mediaStart" ? "Media start" : gesture.drag.bound === "mediaEnd" ? "Media end" : null;
+    return { text, target, alert, x: pointer.x, y: pointer.y };
   }
 
   /** A keyframe drag as drawn: the lane's keys with the dragged ones moved (a key they land on gives way). */
@@ -2245,7 +2514,7 @@ export class TimelineView {
   private hoverClip(project: Project, geometry: TimelineGeometry) {
     const type = this.hover?.type;
     // The trim zones and its side of a cut are part of the clip: it stays lit while the cursor shows the bracket.
-    const id = type === "clip" || type === "clipEdgeIn" || type === "clipEdgeOut" || type === "junction" ? (this.hover?.clipId ?? null) : null;
+    const id = type === "clip" || type === "clipEdgeIn" || type === "clipEdgeOut" || type === "junction" || type === "fadeHandle" || type === "transition" || type === "transitionEdge" ? (this.hover?.clipId ?? null) : null;
     const clip = id !== null ? project.clips[id] : undefined;
     const row = clip ? geometry.rowOf(clip.trackId) : null;
     if (!clip || !row) return null;

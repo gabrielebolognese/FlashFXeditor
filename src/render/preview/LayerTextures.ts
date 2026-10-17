@@ -44,6 +44,9 @@
 // - A cue's word highlight (spec §10.5): the background boxes, then each word from the cue's word atlas
 //   (the inactive look) but the active one, then the highlight box (a solid quad, background mode) and
 //   the active word from the atlas in the highlight look, grown about its middle (scale modes).
+// - A cross dissolve (Batch 36) resolves its two media layers on their own slots (the incoming clip's
+//   is `trackId + TRANSITION_SLOT`) into one `dissolve` layer over the frame; with one side not drawable
+//   yet, the other is drawn alone. Export frame resolves both sides exactly.
 // The draw lists, the slot structs and their keys are reused between passes: a pass allocates nothing
 // unless it requests or pins a new frame (or rasterizes a text).
 import type { MediaId, TrackId } from "../../core/document/types.js";
@@ -54,7 +57,7 @@ import { mediaTimePosition } from "../../media/demux/sampleIndex.js";
 import { isAbortError, type FramePriority } from "../../media/workers/protocol.js";
 import { newUnitState, type UnitState } from "../../text/anim.js";
 import type { NeighborFrame, UpcomingText } from "../compositor/Compositor.js";
-import { HIGHLIGHT_SLOT, type CaptionHighlightFrame, type Composite, type DrawList, type Layer, type MediaLayer, type SolidGeometry, type SolidLayer, type TextAnimFrame, type TextCompositeLayer, type TextureLayer, type UvRect } from "../compositor/drawList.js";
+import { HIGHLIGHT_SLOT, type CaptionHighlightFrame, type Composite, type DissolveLayer, type DrawList, type Layer, type MediaLayer, type SolidGeometry, type SolidLayer, type TextAnimFrame, type TextCompositeLayer, type TextureLayer, type TransitionCompositeLayer, type UvRect } from "../compositor/drawList.js";
 import type { TextureHandle } from "../gpu/renderer.js";
 import { multiplyInto, mutableIdentity, setMat, type Mat3, type MutableMat3 } from "../mat3.js";
 import type { Rect } from "../text/layout.js";
@@ -153,6 +156,9 @@ export class LayerTextures {
   /** Per pane, the highlight boxes of a pass (reused in order). */
   private readonly boxLayers: [WritableSolidLayer[], WritableSolidLayer[]] = [[], []];
   private boxCount = 0;
+  /** Per pane, the dissolves of a pass (reused in order). */
+  private readonly dissolveLayers: [WritableDissolveLayer[], WritableDissolveLayer[]] = [[], []];
+  private dissolveCount = 0;
   /** The active word's move (a scale highlight). */
   private readonly highlightState = newUnitState();
   /** Device px per project px of this pass (text rasters follow it). */
@@ -236,6 +242,7 @@ export class LayerTextures {
     list.layers.length = 0;
     this.textCount = 0;
     this.boxCount = 0;
+    this.dissolveCount = 0;
     const stats = this.stats;
     for (const layer of composite.layers) {
       if (layer.kind === "solid") {
@@ -246,14 +253,39 @@ export class LayerTextures {
         if (this.resolveText(pane, list.layers, layer)) stats.texts += 1;
         continue;
       }
-      stats.layers += 1;
-      this.active.add(layer.mediaId);
-      const slot = this.slot(pane, layer.trackId);
-      const drawn = this.resolveMedia(slot, layer, priority);
-      if (drawn) {
-        list.layers.push(drawn);
-        if (slot.pinnedKey.lod === "proxy" && !layer.still) stats.proxy += 1;
-      } else stats.missing += 1;
+      if (layer.kind === "dissolve") {
+        this.resolveDissolve(pane, list, layer, composite, priority);
+        continue;
+      }
+      const drawn = this.resolveLayer(pane, layer, priority);
+      if (drawn) list.layers.push(drawn);
+    }
+  }
+
+  /** One media layer on its track's slot (counted in the stats), or null when nothing of it can be drawn. */
+  private resolveLayer(pane: 0 | 1, layer: MediaLayer, priority: FramePriority): TextureLayer | null {
+    const stats = this.stats;
+    stats.layers += 1;
+    this.active.add(layer.mediaId);
+    const slot = this.slot(pane, layer.trackId);
+    const drawn = this.resolveMedia(slot, layer, priority);
+    if (drawn) {
+      if (slot.pinnedKey.lod === "proxy" && !layer.still) stats.proxy += 1;
+    } else stats.missing += 1;
+    return drawn;
+  }
+
+  /** A cross dissolve (Batch 36): both clips on their slots mixed over the frame, or the one that can be drawn. */
+  private resolveDissolve(pane: 0 | 1, list: WritableList, layer: TransitionCompositeLayer, composite: Composite, priority: FramePriority): void {
+    const from = this.resolveLayer(pane, layer.from, priority);
+    const to = this.resolveLayer(pane, layer.to, priority);
+    if (from && to) {
+      const pool = this.dissolveLayers[pane];
+      const dissolve = (pool[this.dissolveCount] ??= newDissolveLayer());
+      this.dissolveCount += 1;
+      list.layers.push(writeDissolve(dissolve, from, to, layer.mix, composite.width, composite.height));
+    } else if (from || to) {
+      list.layers.push((from ?? to) as TextureLayer);
     }
   }
 
@@ -441,37 +473,51 @@ export class LayerTextures {
           await this.exactText(layer, layers, unpins);
           continue;
         }
-        const { mediaId } = layer;
-        let key: TextureKey;
-        let texture: TextureHandle | null;
-        if (layer.still) {
-          // The frame at its time (an animation's frames all loaded), an SVG as sharp as the frame shows it.
-          await this.deps.images.load(mediaId).catch(() => null);
-          const vector = this.deps.images.vectorSize(mediaId);
-          const want = vector ? vectorLongEdge(layer, vector.width, vector.height, 1) : 0;
-          const shown = this.deps.images.get(mediaId);
-          if (vector && (!shown || Math.max(shown.width, shown.height) < want * DETAIL_TOLERANCE)) await this.deps.images.refine(mediaId, want).catch(() => null);
-          const found = this.deps.images.frameKey(mediaId, layer.timeUs);
-          key = found ? { ...found } : imageKey(mediaId);
-          texture = found ? this.deps.pool.get(found) : null;
-        } else {
-          const info = this.deps.frames.info(mediaId) ?? (await this.deps.frames.video(mediaId).catch(() => null));
-          if (!info?.decodable || info.frameTimesUs.length === 0) continue;
-          const timeUs = info.frameTimesUs[mediaTimePosition(info.frameTimesUs, layer.timeUs)] as number;
-          const longEdge = exportLongEdge(Math.max(info.codedWidth, info.codedHeight), layerDetail(layer, info.codedWidth, info.codedHeight), maxLongEdge);
-          const result = await this.deps.frames.getFrame(mediaId, timeUs, { lod: "full", priority: "playback", minLongEdge: Math.floor(longEdge * DETAIL_TOLERANCE), uploadAtLeast: longEdge });
-          key = result.key;
-          texture = result.texture;
+        if (layer.kind === "dissolve") {
+          const from = await this.exactMedia(layer.from, maxLongEdge, unpins);
+          const to = await this.exactMedia(layer.to, maxLongEdge, unpins);
+          if (from && to) layers.push(writeDissolve(newDissolveLayer(), from, to, layer.mix, composite.width, composite.height));
+          else if (from || to) layers.push((from ?? to) as TextureLayer);
+          continue;
         }
-        if (!texture?.valid) continue;
-        unpins.push(this.deps.pool.pin(key));
-        layers.push({ kind: "texture", texture, transform: layer.transform, opacity: layer.opacity, crop: layer.crop, flipX: false, flipY: false });
+        const drawn = await this.exactMedia(layer, maxLongEdge, unpins);
+        if (drawn) layers.push(drawn);
       }
     } catch (error) {
       release();
       throw error;
     }
     return { list: { width: composite.width, height: composite.height, background: composite.background, layers }, release };
+  }
+
+  /** A media layer at its exact full-resolution frame (Export frame, see `resolveExact`), pinned until `unpins` run; null when it cannot be shown. */
+  private async exactMedia(layer: MediaLayer, maxLongEdge: number, unpins: (() => void)[]): Promise<TextureLayer | null> {
+    const { mediaId } = layer;
+    let key: TextureKey;
+    let texture: TextureHandle | null;
+    if (layer.still) {
+      // The frame at its time (an animation's frames all loaded), an SVG as sharp as the frame shows it.
+      await this.deps.images.load(mediaId).catch(() => null);
+      const vector = this.deps.images.vectorSize(mediaId);
+      const want = vector ? vectorLongEdge(layer, vector.width, vector.height, 1) : 0;
+      const shown = this.deps.images.get(mediaId);
+      if (vector && (!shown || Math.max(shown.width, shown.height) < want * DETAIL_TOLERANCE)) await this.deps.images.refine(mediaId, want).catch(() => null);
+      const found = this.deps.images.frameKey(mediaId, layer.timeUs);
+      key = found ? { ...found } : imageKey(mediaId);
+      texture = found ? this.deps.pool.get(found) : null;
+    } else {
+      const info = this.deps.frames.info(mediaId) ?? (await this.deps.frames.video(mediaId).catch(() => null));
+      if (!info?.decodable || info.frameTimesUs.length === 0) return null;
+      const timeUs = info.frameTimesUs[mediaTimePosition(info.frameTimesUs, layer.timeUs)] as number;
+      const longEdge = exportLongEdge(Math.max(info.codedWidth, info.codedHeight), layerDetail(layer, info.codedWidth, info.codedHeight), maxLongEdge);
+      const result = await this.deps.frames.getFrame(mediaId, timeUs, { lod: "full", priority: "playback", minLongEdge: Math.floor(longEdge * DETAIL_TOLERANCE), uploadAtLeast: longEdge });
+      key = result.key;
+      texture = result.texture;
+    }
+    if (!texture?.valid) return null;
+    unpins.push(this.deps.pool.pin(key));
+    // Copied: the composite's layers are reused by its next evaluation.
+    return { kind: "texture", texture, transform: [...layer.transform] as unknown as Mat3, opacity: layer.opacity, crop: { ...layer.crop }, flipX: false, flipY: false };
   }
 
   /** Text `layer` at its exact scale (Export frame), animated as the preview draws it. */
@@ -843,6 +889,22 @@ function newTextureLayer(): WritableTextureLayer {
 }
 
 type WritableSolidLayer = Omit<SolidLayer, "transform" | "shape"> & { transform: MutableMat3; shape: SolidGeometry };
+
+type WritableDissolveLayer = Omit<DissolveLayer, "transform"> & { transform: MutableMat3 };
+
+function newDissolveLayer(): WritableDissolveLayer {
+  return { kind: "dissolve", transform: mutableIdentity(), opacity: 1, from: newTextureLayer(), to: newTextureLayer(), mix: 0 };
+}
+
+/** `out` mixing `from` and `to` (as each would draw alone) by `mix`, over the `width` x `height` frame. */
+function writeDissolve(out: WritableDissolveLayer, from: TextureLayer, to: TextureLayer, mix: number, width: number, height: number): DissolveLayer {
+  setMat(out.transform, width, 0, 0, height, 0, 0);
+  out.opacity = 1;
+  out.from = from;
+  out.to = to;
+  out.mix = mix;
+  return out;
+}
 
 function newSolidLayer(): WritableSolidLayer {
   return { kind: "solid", transform: mutableIdentity(), opacity: 1, color: { r: 0, g: 0, b: 0, a: 0 }, shape: { kind: "box", width: 0, height: 0, radius: 0 } };

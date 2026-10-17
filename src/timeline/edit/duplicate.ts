@@ -2,10 +2,10 @@
 // at or after the clip's end that holds it (after the track's last clip when none does), without ripple.
 // The copy keeps every field (source, transform, keyframes, label) but is neither linked nor grouped:
 // its partners are not copied with it. TODO(batch 39): selections of several clips with their links,
-// groups and transitions; the canvas duplicate at +20 px.
+// groups and transitions (a copy has none: they belong to cuts); the canvas duplicate at +20 px.
 import { addClip } from "../../core/commands/basicCommands.js";
 import type { Command } from "../../core/commands/command.js";
-import type { Clip, ClipId, Frame, Project } from "../../core/document/types.js";
+import { isMediaClip, type Clip, type ClipId, type Frame, type Project } from "../../core/document/types.js";
 import { isClipLocked, trackIndex, trackOf } from "../model/queries.js";
 
 export interface DuplicateResult {
@@ -37,5 +37,10 @@ export function duplicateClip(project: Project, clipId: ClipId, newId: () => str
   copy.start = freeSpotAfter(project, clip, clip.start + clip.duration, clip.duration);
   delete copy.linkGroup;
   delete copy.group;
+  // Transitions belong to cuts: the copy lands away from its neighbors (Batch 36).
+  if (isMediaClip(copy)) {
+    delete copy.transitionIn;
+    delete copy.transitionOut;
+  }
   return { command: { ...addClip(copy), id: "clip.duplicate", label: "Duplicate clip" }, clipId: copy.id };
 }

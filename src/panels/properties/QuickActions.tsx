@@ -22,7 +22,12 @@ import {
 import { useCallback } from "react";
 import { presetLibrary, presetNaming, presetSourceClip, updatablePreset, type PresetLibrary } from "../../app/presetController.js";
 import { actions, documentStore } from "../../app/services.js";
-import type { ClipId, Project } from "../../core/document/types.js";
+import { clickTransitionChip, pressTransitionChip } from "../../app/transitionController.js";
+import { secondsToFrames } from "../../core/document/time.js";
+import { TRANSITION_LABELS } from "../../core/document/transitions.js";
+import type { ClipId, Project, TransitionKind } from "../../core/document/types.js";
+import { fadeTargets, hasFade, QUICK_FADE_SECONDS } from "../../timeline/edit/fades.js";
+import { clipCut } from "../../timeline/edit/transitions.js";
 import { useStoreSelector } from "../../core/store/useStoreSelector.js";
 import { hasSpeed } from "../../timeline/edit/speed.js";
 import { isLayerClip, layerContent } from "../../timeline/edit/transform.js";
@@ -31,8 +36,12 @@ import { IconButton } from "../../ui/IconButton.js";
 import { PresetNameField } from "../media/PresetNameField.js";
 import styles from "./QuickActions.module.css";
 
-// The quick-action row (spec §11, §17): one click each, at the top of the panel for a clip selection,
-// in the §17 order. Fit, Fill, Center, Flip H / V, Reset, Freeze frame, Punch zoom, the speed chips
+// The quick-action row (spec §11, §17): one click each, at the top of the panel for a clip selection
+// (and for a selected edit point: only the transition chips apply there, Batch 36), in the §17 order.
+// Fade in / Fade out 0.5 s (Batch 36) fade the selected clips and their linked audio, or take the fade
+// away when they all have it (pressed then). The transition chips (Batch 36) add a dissolve, a dip to
+// black or white at the selected edit point, else at the primary clip's cut nearest the playhead; a
+// chip dragged onto the timeline adds it at the cut it lands on. Fit, Fill, Center, Flip H / V, Reset, Freeze frame, Punch zoom, the speed chips
 // (0.5x, 1x, 1.5x, 2x: the Speed section's options apply), Duplicate and Delete run their command ids;
 // the chips of later batches are present and disabled (never hidden, so the row never shifts), their
 // tooltip naming the batch in dev builds. A button is disabled when nothing selected can take it (its
@@ -53,6 +62,22 @@ interface Live {
   needs: (typeof NEEDS)[number];
 }
 
+/** A fade chip (Batch 36): live, pressed while every selected clip has that fade. */
+interface Fade {
+  kind: "fade";
+  id: "clip.fadeIn" | "clip.fadeOut";
+  label: string;
+  icon: LucideIcon;
+}
+
+/** A transition chip (Batch 36): click or drag onto a cut. */
+interface TransitionChip {
+  kind: "transition";
+  transition: TransitionKind;
+  label: string;
+  icon: LucideIcon;
+}
+
 interface Planned {
   kind: "planned";
   label: string;
@@ -61,7 +86,7 @@ interface Planned {
   batch: number;
 }
 
-type Entry = Live | Planned | { kind: "gap" } | { kind: "updatePreset" };
+type Entry = Live | Fade | TransitionChip | Planned | { kind: "gap" } | { kind: "updatePreset" };
 
 const ENTRIES: readonly Entry[] = [
   { kind: "live", id: "transform.fit", label: "Fit in frame", icon: Shrink, needs: "content" },
@@ -71,8 +96,8 @@ const ENTRIES: readonly Entry[] = [
   { kind: "live", id: "transform.flipV", label: "Flip vertical", icon: FlipVertical2, needs: "layer" },
   { kind: "live", id: "transform.reset", label: "Reset transform", icon: RotateCcw, needs: "layer" },
   { kind: "gap" },
-  { kind: "planned", label: "Fade in 0.5 s", icon: TrendingUp, batch: 36 },
-  { kind: "planned", label: "Fade out 0.5 s", icon: TrendingDown, batch: 36 },
+  { kind: "fade", id: "clip.fadeIn", label: "Fade in 0.5 s", icon: TrendingUp },
+  { kind: "fade", id: "clip.fadeOut", label: "Fade out 0.5 s", icon: TrendingDown },
   { kind: "live", id: "edit.freezeFrame", label: "Freeze frame", icon: Snowflake, commandId: "edit.freezeFrame", needs: "video" },
   { kind: "live", id: "edit.punchZoom", label: "Punch zoom", icon: ZoomIn, commandId: "edit.punchZoom", needs: "layer" },
   { kind: "gap" },
@@ -85,19 +110,30 @@ const ENTRIES: readonly Entry[] = [
   { kind: "live", id: "preset.save", label: "Save as preset", icon: BookmarkPlus, needs: "text" },
   { kind: "updatePreset" },
   { kind: "gap" },
-  { kind: "planned", label: "Add dissolve", icon: Blend, batch: 36 },
-  { kind: "planned", label: "Add dip to black", icon: Moon, batch: 36 },
-  { kind: "planned", label: "Add dip to white", icon: Sun, batch: 36 },
+  { kind: "transition", transition: "crossDissolve", label: "Add dissolve", icon: Blend },
+  { kind: "transition", transition: "dipToBlack", label: "Add dip to black", icon: Moon },
+  { kind: "transition", transition: "dipToWhite", label: "Add dip to white", icon: Sun },
   { kind: "gap" },
   { kind: "live", id: "edit.duplicate", label: "Duplicate", icon: CopyPlus, commandId: "edit.duplicate", needs: "primary" },
   { kind: "live", id: "edit.delete", label: "Delete", icon: Trash2, commandId: "edit.delete", needs: "clips" },
 ];
 
-const NEEDS = ["content", "layer", "primary", "clips", "video", "speed", "text"] as const;
+const NEEDS = ["content", "layer", "primary", "clips", "video", "speed", "text", "fade", "fadeIn", "fadeOut", "cut"] as const;
 
-/** What the selection can take, as bits of NEEDS (a number: the row renders only when it changes). */
-function abilities(project: Project, ids: readonly ClipId[], primary: ClipId): number {
-  let bits = 0;
+const bit = (need: (typeof NEEDS)[number]) => 1 << NEEDS.indexOf(need);
+
+/** What the selection can take, as bits of NEEDS (a number: the row renders only when it changes); `editPoint`: a selected cut. */
+function abilities(project: Project, ids: readonly ClipId[], primary: ClipId, editPoint: boolean): number {
+  let bits = editPoint ? bit("cut") : 0;
+  // Fades (Batch 36): any clip that fades; pressed when every one (with its linked audio) has the quick fade.
+  const fading = fadeTargets(project, ids);
+  if (fading.length > 0) {
+    bits |= bit("fade");
+    const frames = secondsToFrames(QUICK_FADE_SECONDS, project.settings.fps);
+    if (hasFade(project, fading, "in", frames)) bits |= bit("fadeIn");
+    if (hasFade(project, fading, "out", frames)) bits |= bit("fadeOut");
+  }
+  if (project.clips[primary] && clipCut(project, primary, 0)) bits |= bit("cut");
   for (const id of ids) {
     const clip = project.clips[id];
     if (!clip || isClipLocked(project, id)) continue;
@@ -134,8 +170,8 @@ function UpdatePresetButton() {
   return <IconButton icon={BookmarkCheck} label={label} commandId="preset.update" disabled={name === null} onClick={() => run("preset.update")} />;
 }
 
-export function QuickActions({ ids, primary }: { ids: readonly ClipId[]; primary: ClipId }) {
-  const select = useCallback((project: Project) => abilities(project, ids, primary), [ids, primary]);
+export function QuickActions({ ids, primary, editPoint = false }: { ids: readonly ClipId[]; primary: ClipId; editPoint?: boolean }) {
+  const select = useCallback((project: Project) => abilities(project, ids, primary, editPoint), [ids, primary, editPoint]);
   const bits = useStoreSelector(documentStore, select);
   const naming = useStoreSelector(presetNaming, (where) => where === "quick");
   return (
@@ -145,6 +181,24 @@ export function QuickActions({ ids, primary }: { ids: readonly ClipId[]; primary
           if (entry.kind === "gap") return <span key={`gap-${index}`} className={styles.gap} aria-hidden="true" />;
           if (entry.kind === "updatePreset") return <UpdatePresetButton key="update-preset" />;
           if (entry.kind === "planned") return <IconButton key={entry.label} icon={entry.icon} text={entry.text} label={plannedTooltip(entry)} disabled />;
+          if (entry.kind === "fade") {
+            const on = (bits & bit(entry.id === "clip.fadeIn" ? "fadeIn" : "fadeOut")) !== 0;
+            return <IconButton key={entry.id} icon={entry.icon} label={on ? `${entry.label}: on (click to remove)` : entry.label} pressed={on} disabled={(bits & bit("fade")) === 0} onClick={() => run(entry.id)} />;
+          }
+          if (entry.kind === "transition") {
+            // Always enabled: a chip can be dragged onto any cut.
+            const { transition } = entry;
+            const where = (bits & bit("cut")) !== 0 ? "at the selected cut, or drag it onto one" : "drag it onto a cut";
+            return (
+              <IconButton
+                key={transition}
+                icon={entry.icon}
+                label={`${entry.label} (${TRANSITION_LABELS[transition].toLowerCase()}, 15 frames): ${where}`}
+                onPointerDown={(event) => pressTransitionChip(event, transition, event.currentTarget)}
+                onClick={() => clickTransitionChip(transition)}
+              />
+            );
+          }
           const enabled = (bits & (1 << NEEDS.indexOf(entry.needs))) !== 0;
           return <IconButton key={entry.id} icon={entry.icon} text={entry.text} label={entry.label} commandId={entry.commandId} disabled={!enabled} onClick={() => run(entry.id)} />;
         })}

@@ -6,6 +6,8 @@
 // clips, a swatch of the shape and fill for solids;
 // what is not loaded yet is the body color, and the pass records it in `wants` for the loaders. With
 // Show clip keyframes on, keyframe lanes cross the bottom of the bodies (keyframeLane.ts, Batch 35).
+// Fades darken the faded part of a body under a wedge and transitions are blocks over their cuts
+// with an `fx` badge on their clips (fadesAndTransitions.ts, Batch 36).
 // Redrawn only when the document, the selection, the zoom/scroll, the size, the theme or the loaded
 // visuals change, never for the playhead. Clips are virtualized per track (binary search on start with
 // a longest-clip lookback, P10). The scrollbars (spec §6.1) close the bottom and right edges.
@@ -14,18 +16,21 @@ import { formatHexColor, isRgba } from "../../core/document/color.js";
 import { formatSpeed, usPerFrame, type TimecodeMode } from "../../core/document/time.js";
 import { isFreeze, isMediaClip, type Clip, type Frame, type Marker, type MediaClip, type Project, type SolidClip, type Track, type TrackId } from "../../core/document/types.js";
 import type { Selection } from "../../core/store/selection.js";
+import type { TransitionSelection } from "../../core/store/sessionStore.js";
 import type { Theme } from "../../core/theme/theme.js";
 import { cellOrigin, type ThumbLevel } from "../../media/cache/thumbSheets.js";
 import { frameAt, loopTimeUs } from "../../media/decode/animation.js";
 import { isPlayable } from "../../text/anim.js";
 import { cueLine } from "../../text/captions.js";
 import { firstLine } from "../../text/style.js";
-import { clipsInRange, contentEnd, linkOffset } from "../model/queries.js";
+import { clipsInRange, contentEnd, linkOffset, neighbors } from "../model/queries.js";
 import { clipLod, clipSpan, devicePx, LOD_THUMBS_PX, type ClipLod } from "./clipLayout.js";
 import { columnPeaks, peaksLevel, planFilmstrip, tileThumb, wantPeaks, wantSheet, type AnimationStripView, type ClipVisuals, type WantsCollector } from "./clipVisuals.js";
 import type { HeaderToggle, Rect, Row, TimelineGeometry } from "./geometry.js";
 import { CLIP_GLYPHS, drawGlyph, TRACK_GLYPHS, type GlyphName } from "./glyphs.js";
 import { drawScrollbars } from "./drawScrollbars.js";
+import { drawFades, drawTransitionBlock } from "./fadesAndTransitions.js";
+import { drawDiagonalHatch } from "./hatch.js";
 import { drawLane, laneFrames, shownLane, type LaneScene } from "./keyframeLane.js";
 import { layoutRuler } from "./ruler.js";
 import type { ScrollbarLayout } from "./scrollbars.js";
@@ -53,6 +58,8 @@ export interface ContentScene {
   fonts?: TimelineFonts | null;
   /** Keyframe lanes (spec §6.4, Batch 35): shown, their sections and the selected keys; none: no lanes. */
   lanes?: LaneScene | null;
+  /** The selected transition (Batch 36): its block is drawn selected. */
+  transition?: TransitionSelection | null;
 }
 
 export interface TimelineFonts {
@@ -170,6 +177,7 @@ function drawClips(scene: ContentScene): number {
       const next = clips[i + 1];
       drawClip(scene, clip, row, track, next !== undefined && next.start === clip.start + clip.duration, linkOffset(project, clip.id));
     });
+    drawBlocks(scene, row, track, clips);
     ctx.globalAlpha = 1;
     // Locked: no edits, no selection (spec §6.12), drawn with a diagonal hatch over the row.
     if (track.locked) drawDiagonalHatch(ctx, dpr, geometry.area.x, geometry.area.x + geometry.area.width, row.y, row.height - 1 / dpr, theme.timeline.lockHatch, theme.timeline.hatchGap);
@@ -179,26 +187,25 @@ function drawClips(scene: ContentScene): number {
   return drawn;
 }
 
+export { drawDiagonalHatch };
+
 /**
- * Diagonal lines over [left, right) x [y, y + height), `gap` apart on a fixed grid (by x, so the
- * pattern never crawls while what it covers moves), 1 device px wide.
+ * The transition blocks over a row's cuts (Batch 36): those of the clips drawn (their transition out),
+ * and the one entering the first of them from a clip off screen.
  */
-export function drawDiagonalHatch(ctx: CanvasRenderingContext2D, dpr: number, left: number, right: number, y: number, height: number, color: string, gap: number): void {
-  if (right <= left || height <= 0) return;
-  const step = Math.max(gap, 1);
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(left, y, right - left, height);
-  ctx.clip();
-  ctx.strokeStyle = color;
-  ctx.lineWidth = 1 / dpr;
-  ctx.beginPath();
-  for (let x = Math.floor((left - height) / step) * step; x < right; x += step) {
-    ctx.moveTo(x, y + height);
-    ctx.lineTo(x + height, y);
-  }
-  ctx.stroke();
-  ctx.restore();
+export function drawBlocks(scene: Pick<ContentScene, "ctx" | "dpr" | "geometry" | "theme" | "project" | "transition">, row: Row, track: Track, clips: readonly Clip[]): void {
+  const { ctx, dpr, geometry, theme, project } = scene;
+  const selected = scene.transition;
+  const draw = (left: Clip | null | undefined, right: Clip | null | undefined) => {
+    if (!left || !right || !isMediaClip(left) || !isMediaClip(right) || !left.transitionOut || left.transitionOut.id !== right.transitionIn?.id) return;
+    const state = { selected: selected?.left === left.id && selected.right === right.id, hot: null, dragged: false };
+    drawTransitionBlock(ctx, dpr, geometry, theme, project, row, track, left, right, left.transitionOut, state);
+  };
+  const first = clips[0];
+  if (first && isMediaClip(first) && first.transitionIn) draw(neighbors(project, first.id).prev, first);
+  clips.forEach((clip, i) => {
+    if (isMediaClip(clip) && clip.transitionOut) draw(clip, clips[i + 1] ?? neighbors(project, clip.id).next);
+  });
 }
 
 /**
@@ -243,6 +250,8 @@ export function drawClip(scene: ClipScene, clip: Clip, row: Row, track: Track, a
   const labelHeight = track.kind === "caption" || track.height === "S" ? height : Math.min(height, tl.labelHeight);
   if (labelHeight < height) drawBody(scene, clip, x, y + labelHeight, width, height - labelHeight, lod);
   fillClip(ctx, theme, clip, "label", x, y, width, labelHeight);
+  // Fades (Batch 36) over the body, or the whole clip where the label bar is all of it.
+  if (lod === "full") drawFades(ctx, dpr, geometry, theme, clip, x, width, labelHeight < height ? y + labelHeight : y, labelHeight < height ? height - labelHeight : height);
   ctx.globalAlpha = alpha;
   if (disabled) drawDiagonalHatch(ctx, dpr, x, x + width, y, height, tl.disabledHatch, tl.hatchGap);
   if (selected) {
@@ -380,7 +389,7 @@ function drawStripTiles(scene: ClipScene, clip: MediaClip, strip: AnimationStrip
  * The waveform (spec §6.4, §6.17): per device-pixel column, the peak of the source samples it covers
  * from the pyramid level closest to one bucket per CSS px, mirrored around the body's center line.
  * TODO(batch 37): the clip gain (and its keyframes) applied to the drawn level; 0 dB until then.
- * TODO(batch 36): fade curves as transparent wedges.
+ * The fades darken it under their wedges (drawFades, Batch 36).
  */
 function drawWaveform(scene: ClipScene, clip: MediaClip, y: number, height: number, left: number, right: number): void {
   const { ctx, dpr, geometry, theme, visuals, wants } = scene;
@@ -469,9 +478,9 @@ function drawLabel(scene: ClipScene, clip: Clip, x: number, y: number, width: nu
   const lineY = Math.min(centerY, y + theme.timeline.labelHeight / 2);
   // Badges from the right end (spec §6.4): the sync offset, the speed (`2x` when it is not 1; video
   // and audio only, stills and graphics have no speed; a snowflake for a freeze frame, Batch 27), the
-  // link and the keyframe icons, a text animation (sparkles, Batch 31), and a missing font (a text clip
-  // whose family is not available draws with the fallback font, §10.1). The name ends before them.
-  // TODO(batch 36): the `fx` badge when the clip has a transition.
+  // link and the keyframe icons, a text animation (sparkles, Batch 31), a missing font (a text clip
+  // whose family is not available draws with the fallback font, §10.1), and `fx` when it has a
+  // transition (Batch 36). The name ends before them.
   const minX = left + pad + icon + pad;
   const badgesEnd = right - theme.space[0];
   let badgesStart = badgesEnd;
@@ -482,6 +491,7 @@ function drawLabel(scene: ClipScene, clip: Clip, x: number, y: number, width: nu
   if (hasKeyframes(clip)) badgesStart = drawIconBadge(scene, "diamond", minX, badgesStart, lineY);
   if (clip.kind === "text" && (isPlayable(clip.animIn) || isPlayable(clip.animOut))) badgesStart = drawIconBadge(scene, "sparkles", minX, badgesStart, lineY);
   if (clip.kind === "text" && scene.fonts?.missing(clip.style.fontFamily)) badgesStart = drawIconBadge(scene, "triangleAlert", minX, badgesStart, lineY, theme.color.danger);
+  if (isMediaClip(clip) && (clip.transitionIn || clip.transitionOut)) badgesStart = drawBadge(scene, "fx", theme.color.textSecondary, minX, badgesStart, lineY);
   if (badgesStart < badgesEnd) right = badgesStart;
   drawGlyph(ctx, CLIP_GLYPHS[clip.kind], left + pad, lineY - icon / 2, icon, theme.color.textPrimary);
   const textX = left + pad + icon + pad;

@@ -7,15 +7,16 @@
 // Keyframes (Batch 35): a clip drag also tests the keys on the dragged clip's lane (MoveGesture), and
 // a keyframe drag snaps to the other keys of its lane, the playhead and its clip's edges through
 // candidates of its own (`snapCandidatesOf`).
-// TODO(batch 36): transition edges.
-import type { ClipId, Frame, Marker, Project } from "../../core/document/types.js";
+// Transitions (Batch 36): the start and the end of every transition are candidates (ref: the left
+// clip's id), and a transition edge drag snaps to the candidates but its own edges.
+import { isMediaClip, type ClipId, type Frame, type Marker, type Project } from "../../core/document/types.js";
 
 /** Candidate kinds in the §6.9 priority order: a tie in distance goes to the earlier kind. */
-export const SNAP_KINDS = ["playhead", "clipStart", "clipEnd", "marker", "in", "out", "zero", "keyframe"] as const;
+export const SNAP_KINDS = ["playhead", "clipStart", "clipEnd", "marker", "in", "out", "zero", "keyframe", "transition"] as const;
 export type SnapKind = (typeof SNAP_KINDS)[number];
 
-/** Priority rank per kind index (lower wins): clip starts and ends share one, as do in and out; keyframes rank with markers. */
-const RANK: readonly number[] = [0, 1, 1, 2, 3, 3, 4, 2];
+/** Priority rank per kind index (lower wins): clip starts and ends share one, as do in and out; keyframes and transition edges rank with markers. */
+const RANK: readonly number[] = [0, 1, 1, 2, 3, 3, 4, 2, 2];
 const PLAYHEAD = 0;
 const CLIP_START = 1;
 const CLIP_END = 2;
@@ -23,14 +24,15 @@ const MARKER = 3;
 const IN = 4;
 const OUT = 5;
 const ZERO = 6;
+const TRANSITION = 8;
 
 /**
- * The sort keys pack (frame, kind, entry) into one float64: `(frame * 8 + kind) * ENTRY_SPACE +
- * entry`. A plain numeric sort of a Float64Array then orders by frame, then priority, with no
- * comparator calls. Integers stay exact below 2^53: frames below 2^29 (103 days at 60 fps).
+ * The sort keys pack (frame, kind, entry) into one float64: `(frame * 16 + kind) * ENTRY_SPACE +
+ * entry`. A plain numeric sort of a Float64Array then orders by frame, then kind, with no comparator
+ * calls. Integers stay exact below 2^53: frames below 2^28 (51 days at 60 fps).
  */
 const ENTRY_SPACE = 2 ** 21;
-const KIND_SPACE = 8;
+const KIND_SPACE = 16;
 
 /** Candidate frames, ascending (same-frame candidates in priority order). */
 export interface SnapCandidates {
@@ -46,7 +48,12 @@ export interface SnapCandidates {
 export function buildSnapCandidates(project: Project, inPoint: Frame | null, outPoint: Frame | null): SnapCandidates {
   const { clips, markers } = project;
   const ids = Object.keys(clips);
-  const count = 2 * ids.length + markers.length + (inPoint !== null ? 1 : 0) + (outPoint !== null ? 1 : 0) + 1;
+  let transitions = 0;
+  for (const id of ids) {
+    const clip = clips[id];
+    if (clip && isMediaClip(clip) && clip.transitionOut) transitions += 1;
+  }
+  const count = 2 * ids.length + 2 * transitions + markers.length + (inPoint !== null ? 1 : 0) + (outPoint !== null ? 1 : 0) + 1;
   if (count > ENTRY_SPACE) throw new Error(`Snap index: ${count} candidates is over the ${ENTRY_SPACE} limit`);
   const keys = new Float64Array(count);
   const entries: (string | null)[] = new Array<string | null>(count);
@@ -61,6 +68,11 @@ export function buildSnapCandidates(project: Project, inPoint: Frame | null, out
     if (!clip) continue;
     add(clip.start, CLIP_START, id);
     add(clip.start + clip.duration, CLIP_END, id);
+    if (isMediaClip(clip) && clip.transitionOut) {
+      const cut = clip.start + clip.duration;
+      add(cut - clip.transitionOut.before, TRANSITION, id);
+      add(cut + clip.transitionOut.after, TRANSITION, id);
+    }
   }
   for (const marker of markers) add(marker.frame, MARKER, marker.id);
   if (inPoint !== null) add(inPoint, IN, null);
@@ -218,5 +230,7 @@ export function snapLabel(project: Project, target: SnapTarget): string {
       return "Timeline start";
     case "keyframe":
       return "Keyframe";
+    case "transition":
+      return "Transition";
   }
 }

@@ -4,8 +4,8 @@
 // other tracks). The members of a deleted clip's group go with it (spec §6.12), and so do linked
 // partners unless Linked selection is off; clips on locked tracks are never deleted. Each is one
 // command (one undo step).
-// TODO(batch 36): a transition shared with a neighbor at a deleted clip's cut goes with the clip (the
-// clip's own `transitionIn`/`transitionOut` go with its record already).
+// A transition shared with a neighbor at a deleted clip's cut goes with the clip: the clip's own half
+// goes with its record, the neighbor's with `reconcileTransitions` after the command (Batch 36).
 import { removeClips } from "../../core/commands/basicCommands.js";
 import type { Command } from "../../core/commands/command.js";
 import type { Clip, ClipId, Project } from "../../core/document/types.js";

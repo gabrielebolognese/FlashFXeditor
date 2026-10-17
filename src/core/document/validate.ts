@@ -1,6 +1,7 @@
 // Document invariants (spec §5.2). The DocumentStore runs `assertValid` after every command in dev
 // builds; messages name the track and clip so a broken command is found at once.
 import { keyframeIssues } from "./keyframes.js";
+import { transitionIssues } from "./transitions.js";
 import { usPerFrame } from "./time.js";
 import { CAPTION_HIGHLIGHTS, isFreeze, isMediaClip, LABEL_COLORS, SOLID_SHAPE_IDS, type CaptionClip, type CaptionStyle, type Clip, type ClipId, type ClipKind, type MediaItem, type Project, type SolidClip, type TextClip, type TextStyle, type Track, type TrackId, type TrackKind } from "./types.js";
 
@@ -65,6 +66,12 @@ function clipIssues(project: Project, clip: Clip): string[] {
   if (clip.kind === "solid") issues.push(...solidIssues(clip, label));
   // Keyframes (Batch 35): known properties, one key per integer frame in order, finite values, known eases.
   if ("keyframes" in clip && clip.keyframes !== undefined) issues.push(...keyframeIssues(clip.keyframes).map((issue) => `${label}: ${issue}`));
+  // Fades (Batch 36): integer frames, each within the clip.
+  if ("fades" in clip && clip.fades !== undefined) {
+    const { fades } = clip;
+    if (!Number.isInteger(fades.in) || !Number.isInteger(fades.out) || fades.in < 0 || fades.out < 0) issues.push(`${label}: fades ${fades.in}/${fades.out} must be integer frames >= 0`);
+    else if (fades.in > clip.duration || fades.out > clip.duration) issues.push(`${label}: fades ${fades.in}/${fades.out} are longer than the clip (${clip.duration})`);
+  }
   if (!isMediaClip(clip)) return issues;
 
   if (!Number.isInteger(clip.in) || !Number.isInteger(clip.out)) issues.push(`${label}: in/out must be integer microseconds`);
@@ -162,6 +169,7 @@ export function validateProject(project: Project): string[] {
   const issues: string[] = [];
   const trackIds = new Set<TrackId>();
   const placed = new Set<ClipId>();
+  const transitionIds = new Set<string>();
   let sawAudio = false;
 
   for (const track of project.tracks) {
@@ -171,6 +179,7 @@ export function validateProject(project: Project): string[] {
     else if (track.kind === "video" && sawAudio) issues.push(`${trackLabel(track)}: video track placed after an audio track`);
 
     let prev: Clip | null = null;
+    const ordered: Clip[] = [];
     for (const clipId of track.clipIds) {
       const clip = project.clips[clipId];
       if (!clip) {
@@ -182,11 +191,20 @@ export function validateProject(project: Project): string[] {
       if (clip.trackId !== track.id) issues.push(`${clipLabel(clip)}: listed on ${trackLabel(track)} but points to track ${clip.trackId}`);
       if (!ALLOWED_CLIPS[track.kind].has(clip.kind)) issues.push(`${clipLabel(clip)}: a ${clip.kind} clip cannot sit on ${track.kind} ${trackLabel(track)}`);
       issues.push(...clipIssues(project, clip));
+      ordered.push(clip);
       if (prev) {
         if (clip.start < prev.start) issues.push(`${trackLabel(track)}: ${clipLabel(clip)} is listed after ${clipLabel(prev)} but starts earlier`);
         else if (clip.start < prev.start + prev.duration) issues.push(`${trackLabel(track)}: ${clipLabel(clip)} overlaps ${clipLabel(prev)}`);
       }
       prev = clip;
+    }
+    // Transitions (Batch 36): each pairs a transition out with the same transition in on the abutting clip after it.
+    issues.push(...transitionIssues(project, ordered, clipLabel));
+    for (const clip of ordered) {
+      const id = isMediaClip(clip) ? clip.transitionOut?.id : undefined;
+      if (id === undefined) continue;
+      if (transitionIds.has(id)) issues.push(`${clipLabel(clip)}: transition id ${id} is used by another cut`);
+      transitionIds.add(id);
     }
   }
 

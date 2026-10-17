@@ -62,6 +62,45 @@ describe("HitTester", () => {
     expect(hits.hit(x(40) - 1, 260)).toMatchObject({ type: "clipEdgeOut", clipId: "c3", junction: null });
   });
 
+  it("finds fade handles first, then the junction, then a transition block's ends and body in its band, then the trim zones (Batch 36)", () => {
+    let project = makeProject();
+    project.media.m = makeMedia("m");
+    project.tracks.push(makeTrack("v1"), makeTrack("a1", "audio"));
+    const t = { id: "t", kind: "crossDissolve" as const, before: 4, after: 6 };
+    project = withClips(project, [
+      { ...makeMediaClip(project, { id: "a", trackId: "v1", start: 10, duration: 30, mediaId: "m" }), fades: { in: 5, out: 0 }, transitionOut: t },
+      { ...makeMediaClip(project, { id: "b", trackId: "v1", start: 40, duration: 30, mediaId: "m" }), transitionIn: t },
+    ]);
+    const geometry = new TimelineGeometry({ width: 1000, height: 428, tracks: project.tracks, pxPerFrame: 4, scrollFrame: 0, scrollY: 0, metrics: METRICS });
+    const hits = new HitTester({
+      geometry: () => geometry,
+      project: () => project,
+      playhead: () => 0,
+      playheadHeadWidth: 11,
+      trimZone: 8,
+      junctionZone: 6,
+      fades: { size: 8, inset: 2 },
+      transitions: { band: (row) => ({ y: row.y + 2, height: 16 }), edgeZone: 6 },
+    });
+    // a's fade in ends 5 frames (20 px) in: its handle at x(15), on the clip's top edge (y 174..182).
+    expect(hits.hit(x(15), 178)).toMatchObject({ type: "fadeHandle", clipId: "a", fade: "in" });
+    expect(hits.hit(x(15), 200).type).toBe("clip");
+    // No fade out: its handle sits in the corner, over the block's band.
+    expect(hits.hit(x(40) - 4, 178)).toMatchObject({ type: "fadeHandle", clipId: "a", fade: "out" });
+    // The block spans x(36)..x(46) in the band (174..190).
+    expect(hits.hit(x(43), 180)).toMatchObject({ type: "transition", clipId: "b", transition: { left: "a", right: "b", edge: null } });
+    expect(hits.hit(x(46) - 1, 180)).toMatchObject({ type: "transitionEdge", transition: { edge: "end" } });
+    expect(hits.hit(x(46) + 2.9, 180)).toMatchObject({ type: "transitionEdge", transition: { edge: "end" } });
+    expect(hits.hit(x(36) + 1, 180)).toMatchObject({ type: "transitionEdge", clipId: "a", transition: { edge: "start" } });
+    // b's fade in handle sits in its corner over the cut; under it (y 186) the junction comes first.
+    expect(hits.hit(x(40) + 1, 180)).toMatchObject({ type: "fadeHandle", clipId: "b", fade: "in" });
+    expect(hits.hit(x(40) + 1, 186).type).toBe("junction");
+    expect(hits.hit(x(40) + 7, 186).type).toBe("transition");
+    // Below the band the trim zones are as before.
+    expect(hits.hit(x(40) + 7, 210).type).toBe("clipEdgeIn");
+    expect(hits.hit(x(43), 210).type).toBe("clip");
+  });
+
   it("finds keyframe diamonds on a shown lane before the trim zones; elsewhere in the band a clip hit with its lane (Batch 35)", () => {
     let project = makeProject();
     project.media.m = makeMedia("m");

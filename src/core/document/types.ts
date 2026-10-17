@@ -120,9 +120,24 @@ export interface TextStyle {
 export const EASE_IDS = ["linear", "easeIn", "easeOut", "easeInOut", "hold", "smooth", "snap", "overshoot"] as const;
 export type EaseId = (typeof EASE_IDS)[number];
 
-// Types owned by later batches. They stay opaque JSON until their batch defines them.
-/** TODO(batch 36): transition kind, duration, alignment. */
-export type Transition = JsonObject;
+/** The transitions (spec §6.15, Batch 36), in the order of the properties panel's chips. Audio crossfades are `crossDissolve`. */
+export const TRANSITION_KINDS = ["crossDissolve", "dipToBlack", "dipToWhite"] as const;
+export type TransitionKind = (typeof TRANSITION_KINDS)[number];
+
+/**
+ * A transition at the cut between two abutting clips (spec §5.2, §6.15, Batch 36): the left clip's
+ * `transitionOut` and the right clip's `transitionIn` hold the same values (one `id`; edited together).
+ * It runs over `before` frames before the cut (the left clip's last frames, with the right clip's
+ * source before its in point) and `after` frames after it (the right clip's first frames, with the left
+ * clip's source after its out point): `before + after` frames in all. Where a clip's handle runs out,
+ * its edge frame repeats (core/document/transitions.ts).
+ */
+export interface Transition {
+  id: string;
+  kind: TransitionKind;
+  before: Frame;
+  after: Frame;
+}
 
 /** The text animations (spec §10.4), in the order of the properties panel's chips. */
 export const TEXT_ANIM_IDS = ["fade", "slideUp", "slideDown", "slideLeft", "slideRight", "pop", "typewriter", "wordPop", "wordFade", "lineReveal", "blurIn", "scaleBounce"] as const;
@@ -336,6 +351,8 @@ export interface SolidClip extends ClipBase {
   transform: Transform;
   opacity: number;
   keyframes?: Keyframes;
+  /** Opacity fades (spec §6.15 lists solids among the fading clips; §5.2 has no field: optional, none when absent). */
+  fades?: { in: Frame; out: Frame };
 }
 
 /** A word of a cue with its timing: frames relative to the cue's start, [start, end). */

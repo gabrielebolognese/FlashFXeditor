@@ -107,15 +107,21 @@ describe("splitClips", () => {
   });
 
   it("partitions keyframes (the motion kept) and fades, and drops the transitions at the cut", () => {
+    const into = { id: "t1", kind: "crossDissolve", before: 5, after: 5 } as const;
+    const out = { id: "t2", kind: "dipToBlack", before: 6, after: 6 } as const;
+    const source = (inFrames: number, frames: number) => ({ in: frameToUs(inFrames, fps), out: frameToUs(inFrames + frames, fps) });
     const p = project([
-      clip("a", "v1", 0, 100, {
+      clip("z", "v1", 0, 50, { ...source(0, 50), transitionOut: into }),
+      clip("a", "v1", 50, 100, {
+        ...source(200, 100),
         keyframes: { opacity: [{ frame: 0, value: 0, ease: "linear" }, { frame: 20, value: 1, ease: "linear" }, { frame: 80, value: 0.5, ease: "linear" }] },
         fades: { in: 10, out: 15 },
-        transitionIn: { kind: "dissolve" },
-        transitionOut: { kind: "dissolve" },
+        transitionIn: into,
+        transitionOut: out,
       }),
+      clip("b", "v1", 150, 50, { ...source(400, 50), transitionIn: out }),
     ]);
-    const { next } = commit(p, splitClips(p, ["a"], 50, ids()));
+    const { next } = commit(p, splitClips(p, ["a"], 100, ids()));
     const left = next.clips.a as MediaClip;
     const right = next.clips.n1 as MediaClip;
     // A key at each new edge with the value there (the segment 20 -> 80 is linear).
@@ -130,10 +136,32 @@ describe("splitClips", () => {
     ]);
     expect(left.fades).toEqual({ in: 10, out: 0 });
     expect(right.fades).toEqual({ in: 0, out: 15 });
-    expect(left.transitionIn).toEqual({ kind: "dissolve" });
+    // The transitions at the clip's own ends stay with the pieces that keep those ends.
+    expect(left.transitionIn).toEqual(into);
     expect(left.transitionOut).toBeUndefined();
     expect(right.transitionIn).toBeUndefined();
-    expect(right.transitionOut).toEqual({ kind: "dissolve" });
+    expect(right.transitionOut).toEqual(out);
+    expect((next.clips.z as MediaClip).transitionOut).toEqual(into);
+    expect((next.clips.b as MediaClip).transitionIn).toEqual(out);
+  });
+
+  it("removes a transition the cut goes through, both halves, in the split's undo step (Batch 36)", () => {
+    const t = { id: "t", kind: "crossDissolve", before: 8, after: 8 } as const;
+    const p = project([
+      clip("a", "v1", 0, 60, { in: 0, out: frameToUs(60, fps), transitionOut: t }),
+      clip("b", "v1", 60, 60, { in: frameToUs(300, fps), out: frameToUs(360, fps), transitionIn: t }),
+    ]);
+    // Frame 55 is inside the transition's 8 frames before the cut.
+    const { doc, next } = commit(p, splitClips(p, ["a"], 55, ids()));
+    expect((next.clips.a as MediaClip).transitionOut).toBeUndefined();
+    expect((next.clips.n1 as MediaClip).transitionOut).toBeUndefined();
+    expect((next.clips.b as MediaClip).transitionIn).toBeUndefined();
+    doc.undo();
+    expect(doc.getState()).toEqual(p);
+    // Frame 50 is before it: the right piece keeps it (8 frames fit in its 10).
+    const kept = commit(p, splitClips(p, ["a"], 50, ids())).next;
+    expect((kept.clips.n1 as MediaClip).transitionOut).toEqual(t);
+    expect((kept.clips.b as MediaClip).transitionIn).toEqual(t);
   });
 
   it("splits linked clips together: the right pieces form a new link, the left pieces keep theirs", () => {

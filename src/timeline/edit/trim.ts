@@ -24,6 +24,7 @@ import type { Draft } from "immer";
 import type { Command } from "../../core/commands/command.js";
 import { framesToSourceUs, usPerFrame } from "../../core/document/time.js";
 import { retimeKeyframes, shiftKeyframes } from "../../core/document/keyframes.js";
+import { BOUND_SLACK_US, headFrames, reconciled, tailFrames } from "../../core/document/transitions.js";
 import { isFreeze, isMediaClip, type CaptionClip, type Clip, type ClipId, type Frame, type MediaClip, type Project, type Rational, type TrackId } from "../../core/document/types.js";
 import { loopTimeUs } from "../../media/decode/animation.js";
 import { clipInIndex, isClipLocked, lastClipStartingBy, linkedPartners, trackIndex } from "../model/queries.js";
@@ -120,6 +121,8 @@ export interface TrimResult {
   command: Command | null;
 }
 
+export { headFrames, tailFrames };
+
 /** The timeline frame of a clip edge: its start, or its end (exclusive). */
 export function edgeFrame(clip: Clip, edge: TrimEdge): Frame {
   return edge === "in" ? clip.start : clip.start + clip.duration;
@@ -133,33 +136,18 @@ export function hasSource(clip: Clip): clip is MediaClip {
   return (clip.kind === "video" || clip.kind === "audio") && !isFreeze(clip);
 }
 
-/** Frames of source before `in`: the most an in point can extend (largest k with in - k frames >= 0). */
-export function headFrames(clip: MediaClip, fps: Rational): number {
-  let k = Math.max(0, Math.floor(clip.in / (usPerFrame(fps) * clip.speed)));
-  while (clip.in + framesToSourceUs(-(k + 1), clip.speed, fps) >= 0) k += 1;
-  while (k > 0 && clip.in + framesToSourceUs(-k, clip.speed, fps) < 0) k -= 1;
-  return k;
-}
 
 /** The longest duration a clip can have from its `in` without passing the media end (largest d with in + d frames <= durationUs). */
 export function maxDurationFrames(clip: MediaClip, durationUs: number, fps: Rational): number {
   const room = durationUs - clip.in;
   if (room <= 0) return 0;
   let d = Math.floor(room / (usPerFrame(fps) * clip.speed));
-  while (clip.in + framesToSourceUs(d + 1, clip.speed, fps) <= durationUs) d += 1;
-  while (d > 0 && clip.in + framesToSourceUs(d, clip.speed, fps) > durationUs) d -= 1;
+  // Within the rounding slack of the media end (BOUND_SLACK_US): `out` is clamped to it.
+  while (clip.in + framesToSourceUs(d + 1, clip.speed, fps) <= durationUs + BOUND_SLACK_US) d += 1;
+  while (d > 0 && clip.in + framesToSourceUs(d, clip.speed, fps) > durationUs + BOUND_SLACK_US) d -= 1;
   return d;
 }
 
-/** Frames of source after `out`: the most a slip can move the source later (largest k with out + k frames <= durationUs). */
-export function tailFrames(clip: MediaClip, durationUs: number, fps: Rational): number {
-  const room = durationUs - clip.out;
-  if (room <= 0) return 0;
-  let k = Math.floor(room / (usPerFrame(fps) * clip.speed));
-  while (clip.out + framesToSourceUs(k + 1, clip.speed, fps) <= durationUs) k += 1;
-  while (k > 0 && clip.out + framesToSourceUs(k, clip.speed, fps) > durationUs) k -= 1;
-  return k;
-}
 
 /** The durations a rate stretch allows (speed within 0.25x..4x, at least 1 frame), and what bounds the shortest. */
 function stretchRange(clip: Clip): { min: number; max: number; minReason: TrimLimitReason } {
@@ -451,7 +439,8 @@ function trimmedClip(clip: Clip, edge: TrimEdge, delta: number, ripple: boolean,
     } else if (isFreeze(clip)) {
       // A freeze frame holds its source time for any duration: `in` and `out` stay.
     } else if (edge === "in") {
-      media.in = clip.in + framesToSourceUs(delta, clip.speed, fps);
+      // Never before the media start (a handle counted within the rounding slack, BOUND_SLACK_US).
+      media.in = Math.max(0, clip.in + framesToSourceUs(delta, clip.speed, fps));
       // Keyframes follow the source (spec §6.10, "keyframes follow source" on for media clips):
       // a key stays on the source frame it was set on.
       // TODO(batch 42): the "keyframes follow source" setting.
@@ -464,7 +453,8 @@ function trimmedClip(clip: Clip, edge: TrimEdge, delta: number, ripple: boolean,
   }
   // Text, solids and images keep their keyframes on the clip start (spec §6.10: off for text clips).
   clampFades(next, clip);
-  // TODO(batch 36): shorten the transition on the trimmed side to the handle left, remove it when none is.
+  // Transitions on a trimmed edge are shortened to the handle left, or removed when none is, by
+  // `reconcileTransitions` (the document store after the command; `applyTrim` for the live preview).
   // A cue's words are relative to its start: an in trim cuts `delta` frames off its head (moving the
   // start, or sliding the rest under it in a ripple), so they are re-based. Words outside the new span
   // are kept (a trim back shows them again).
@@ -479,7 +469,7 @@ function slippedClip(clip: MediaClip, delta: number, project: Project): Clip {
   const { fps } = project.settings;
   const next = { ...clip };
   const moved = framesToSourceUs(delta, clip.speed, fps);
-  next.in = clip.in + moved;
+  next.in = Math.max(0, clip.in + moved);
   next.out = Math.min(project.media[clip.mediaId]?.durationUs ?? clip.out + moved, clip.out + moved);
   // TODO(batch 42): the "keyframes follow source" setting.
   if (clip.keyframes) next.keyframes = shiftKeyframes(clip.keyframes, delta);
@@ -606,7 +596,8 @@ export function applyTrim(project: Project, result: TrimResult): Project {
   if (result.changes.size === 0) return project;
   const clips = { ...project.clips };
   for (const [id, clip] of result.changes) clips[id] = clip;
-  return { ...project, clips };
+  // The transitions the edit shortens or removes (as the document store will after the command).
+  return reconciled(project, { ...project, clips });
 }
 
 export interface PlayheadTrim {

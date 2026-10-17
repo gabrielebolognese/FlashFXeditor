@@ -2,11 +2,14 @@ import { useCallback } from "react";
 import { closeContextMenu, setLabelColor, timelineMenu } from "../../app/cutController.js";
 import { addMarkerAt } from "../../app/markerController.js";
 import { keyframeClipboard, PANEL_SECTIONS } from "../../app/keyframeController.js";
+import { chipCut, fadePresetId } from "../../app/transitionController.js";
+import { TRANSITION_LABELS } from "../../core/document/transitions.js";
+import { canFade, FADE_PRESET_SECONDS } from "../edit/fades.js";
 import { actions, documentStore, sessionStore } from "../../app/services.js";
 import { EASE_LABELS, SECTION_LABELS, sectionEaseAt, type KeyframeSection } from "../../core/document/keyframes.js";
 import { laneSection } from "../../core/store/sessionStore.js";
 import { keyable } from "../edit/keyframes.js";
-import { EASE_IDS, type ClipId, type Frame, type LabelColor, type Project, type Track } from "../../core/document/types.js";
+import { EASE_IDS, TRANSITION_KINDS, type ClipId, type Frame, type LabelColor, type Project, type Track } from "../../core/document/types.js";
 import { useStoreSelector } from "../../core/store/useStoreSelector.js";
 import { ContextMenu, type ContextMenuEntry } from "../../ui/ContextMenu.js";
 import { selectionSpan } from "../model/inOut.js";
@@ -19,8 +22,10 @@ import { labelSwatches } from "./labelSwatches.js";
 // the keys and the toolbar); the label swatches set the selected clips' label color. Rendered only
 // while a menu is open (a right-click is not a P1 interaction). "Speed..." opens the Speed section on
 // its field; Reverse is not built, so it has no row (Batch 27). "Show keyframes for" lists the
-// sections a clip's lane can show (the menu has no submenus: a heading and one row per section).
-// TODO(batch 36): fades and transitions; TODO(batch 39): Duplicate; TODO(batch 41): Reveal in media panel.
+// sections a clip's lane can show (the menu has no submenus: a heading and one row per section). Fade in
+// and Fade out presets (0.25 s, 0.5 s, 1 s) and Add transition (the 3 kinds) are inline choice rows
+// (Batch 36: the transition at the cut the quick row's chips use, `chipCut`).
+// TODO(batch 39): Duplicate; TODO(batch 41): Reveal in media panel.
 
 const SWATCH_PREFIX = "label:";
 /** The ruler menu's Add marker: at the frame right-clicked (the `M` key adds at the playhead). */
@@ -59,6 +64,27 @@ function speedEntries(project: Project, clipId: ClipId): ContextMenuEntry[] {
     { kind: "item", id: "edit.freezeFrame", label: "Freeze frame at playhead", commandId: "edit.freezeFrame", disabled: !freezable },
   ];
 }
+
+/** Fade presets and Add transition (spec §6.16, Batch 36): inline choice rows. */
+function fadeEntries(project: Project, clipId: ClipId): ContextMenuEntry[] {
+  const clip = project.clips[clipId];
+  if (!clip || !canFade(clip)) return [];
+  const presets = (edge: "in" | "out") => FADE_PRESET_SECONDS.map((seconds) => ({ id: fadePresetId(edge, seconds), label: `${seconds} s`, tooltip: `Fade ${edge} ${seconds} s` }));
+  const cut = chipCut() !== null;
+  return [
+    { kind: "separator" },
+    { kind: "choices", id: "fadeIn", label: "Fade in", choices: presets("in") },
+    { kind: "choices", id: "fadeOut", label: "Fade out", choices: presets("out") },
+    {
+      kind: "choices",
+      id: "addTransition",
+      label: "Transition",
+      choices: TRANSITION_KINDS.map((kind) => ({ id: `transition.add.${kind}`, label: SHORT_KIND[kind], tooltip: `Add ${TRANSITION_LABELS[kind].toLowerCase()}`, disabled: !cut })),
+    },
+  ];
+}
+
+const SHORT_KIND = { crossDissolve: "Dissolve", dipToBlack: "Black", dipToWhite: "White" } as const;
 
 /** A cue's own rows (spec §10.5): merge it into the cue before it. */
 function cueEntries(project: Project, clipId: ClipId): ContextMenuEntry[] {
@@ -110,6 +136,7 @@ function clipEntries(project: Project, clipId: ClipId, current: LabelColor | nul
     { kind: "swatches", id: "labels", label: "Label", swatches: labelSwatches(current, { prefix: SWATCH_PREFIX, removable: true }) },
     { kind: "separator" },
     ...(project.clips[clipId]?.kind === "caption" ? cueEntries(project, clipId) : speedEntries(project, clipId)),
+    ...fadeEntries(project, clipId),
     ...laneEntries(project, clipId),
   ];
 }
