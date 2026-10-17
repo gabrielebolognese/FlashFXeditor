@@ -51,6 +51,7 @@ This page lists every keyboard shortcut that works in the current version of Sho
 - [Tracks, links and groups](#tracks-links-and-groups)
 - [Tools](#tools)
 - [Text](#text)
+- [Shapes and images](#shapes-and-images)
 - [Captions](#captions)
 - [Edit Properties](#edit-properties)
 - [Audio](#audio)
@@ -156,6 +157,7 @@ These work over the preview picture.
 | Crop a video or image with handles (crop mode), or leave crop mode | Double-click it | Double-click it |
 | Edit a text, with the caret where you click | Double-click the text | Double-click the text |
 | Change the font size of one selected text (its corner handles) or the width of its box (its side handles) | Drag a handle of the text; <kbd>Alt</kbd>: around the center | Same; <kbd>⌥</kbd>: around the center |
+| Change the size of one selected solid (**W** and **H**, not its scale) | Drag a handle of the shape; <kbd>Shift</kbd>+corner: width and height separately; <kbd>Alt</kbd>: around the center | Same; <kbd>⇧</kbd>+corner, <kbd>⌥</kbd> |
 | In crop mode: cut one side, or the two sides at a corner | Drag a bar, or a bracket | Same |
 | In crop mode: keep the shape of the visible part (with the **Aspect** lock on: change it freely) | <kbd>Shift</kbd>+drag a bracket or a bar | <kbd>⇧</kbd>+drag a bracket or a bar |
 | In crop mode: cut the opposite side by the same amount | <kbd>Alt</kbd>+drag a bracket or a bar | <kbd>⌥</kbd>+drag a bracket or a bar |
@@ -389,6 +391,17 @@ While you edit a text in the preview, every other shortcut is off and the keys t
 | Select from the caret to where you click | <kbd>Shift</kbd>+click the text | <kbd>⇧</kbd>+click the text |
 
 Clicking anywhere outside the text, except in **Edit Properties** and its pickers, also finishes editing. After you finish, <kbd>Ctrl</kbd>+<kbd>Z</kbd> takes back the whole edit at once (**Edit text**). See [Edit text in the preview](titles-and-text.md#edit-text-in-the-preview).
+
+## Shapes and images
+
+**Add solid** and **Add image** in the timeline toolbar have no keys of their own: click them. See [Shapes and images](shapes-and-images.md).
+
+| Action | Windows | macOS | Works in |
+| --- | --- | --- | --- |
+| Change the size of one selected solid (**W** and **H**, not its scale) | Drag a handle of the shape in the preview | Same | Preview |
+| Change width and height separately | <kbd>Shift</kbd>+drag a corner handle | <kbd>⇧</kbd>+drag a corner handle | Preview |
+| Change the size around the center | <kbd>Alt</kbd>+drag a handle | <kbd>⌥</kbd>+drag a handle | Preview |
+| Choose several images in the **Add image** file picker | <kbd>Ctrl</kbd>+click the files | <kbd>⌘</kbd>+click the files | File picker |
 
 ## Captions
 
@@ -638,4 +651,4 @@ Some buttons already show a shortcut in their tooltip although the button is dis
 - [Projects and saving](projects-and-saving.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 33, 2026-10-17</sub>
+<sub>Last updated: Batch 34, 2026-10-17</sub>

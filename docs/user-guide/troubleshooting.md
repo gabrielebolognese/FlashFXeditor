@@ -1,6 +1,6 @@
 # Troubleshooting
 
-This page helps you when something does not work as expected: the editor does not start in your browser, the preview stays empty, a folder or a file does not open, a clip drag, a trim, a split, a delete, a timeline tool, a typed timecode, a marker, an in/out range or **Lift** and **Extract** do something you did not expect, media from the Media panel lands somewhere you did not expect, a clip shows no thumbnails, a video gets no proxy or its proxy fails, the preview zoom, overlays or fullscreen behave unexpectedly, a picture in the preview can't be selected, moves unexpectedly, doesn't snap where you expect or gets cropped instead of resized, a value or a crop in **Edit Properties** doesn't do what you expect, a speed change, a freeze frame or a punch zoom does something you did not expect, a title lands somewhere you did not expect, the keys type into a text, a font is missing, a text preset doesn't apply, update or sync as you expect, a text animation plays shorter or differently than you expect, a caption cue doesn't import, move, show or highlight as you expect, a transcription doesn't start, is slow or gets words wrong, playback stutters, or you hear no sound. Each problem lists what you see, why it happens and what to do. The last section lists what the current version cannot do yet.
+This page helps you when something does not work as expected: the editor does not start in your browser, the preview stays empty, a folder or a file does not open, a clip drag, a trim, a split, a delete, a timeline tool, a typed timecode, a marker, an in/out range or **Lift** and **Extract** do something you did not expect, media from the Media panel lands somewhere you did not expect, a clip shows no thumbnails, a video gets no proxy or its proxy fails, the preview zoom, overlays or fullscreen behave unexpectedly, a picture in the preview can't be selected, moves unexpectedly, doesn't snap where you expect or gets cropped instead of resized, a value or a crop in **Edit Properties** doesn't do what you expect, a speed change, a freeze frame or a punch zoom does something you did not expect, a shape or an image doesn't look or play as you expect, a title lands somewhere you did not expect, the keys type into a text, a font is missing, a text preset doesn't apply, update or sync as you expect, a text animation plays shorter or differently than you expect, a caption cue doesn't import, move, show or highlight as you expect, a transcription doesn't start, is slow or gets words wrong, playback stutters, or you hear no sound. Each problem lists what you see, why it happens and what to do. The last section lists what the current version cannot do yet.
 
 > **Video placeholder: Fix common problems**
 > - File: `videos/troubleshooting/overview.mp4` (not recorded yet)
@@ -46,6 +46,7 @@ This page helps you when something does not work as expected: the editor does no
 >   38. Give a 4-second title **Word pop** in the **Animation** section and type `3` in its **Duration**: the hint **Plays in 2.00 s: half the clip** appears under the field. Click the **Title** preset card: the animation is gone. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>: it is back.
 >   39. Open the **Captions** tab of a project with cues, click into a cue's text and press <kbd>Delete</kbd>: a letter disappears. Press <kbd>Esc</kbd>, then <kbd>Delete</kbd>: the cue is deleted. On the **CC** row, drag a cue into the next one: it stops against it.
 >   40. Click **M** in the header of the audio track with the voice, click the microphone in the **Captions** header, then **Transcribe**: the message **No audio to transcribe** appears. Click **M** again, set an in and an out point that cut through two cues, and transcribe **In to out**: the review offers **Replace 2 cues**. Press <kbd>Esc</kbd>: the transcript is gone and nothing changed.
+>   41. Click **Add solid**, then click **Ellipse** in the **Solid** section: the **Radius** field is dimmed. Click **Rounded rectangle**, type `500` in **Radius**: the ends are half circles and grow no rounder. Drag a corner handle of the shape: **Scale** in **Transform** stays at 100% while **W** and **H** change.
 
 ## In this page
 - [Browser and graphics](#browser-and-graphics)
@@ -164,6 +165,17 @@ This page helps you when something does not work as expected: the editor does no
   - [Freeze frame or punch zoom does nothing](#freeze-frame-or-punch-zoom-does-nothing)
   - [A freeze frame moved clips on every track](#a-freeze-frame-moved-clips-on-every-track)
   - [The Speed field is dimmed at 0.0](#the-speed-field-is-dimmed-at-00)
+- [Shapes and images](#shapes-and-images)
+  - [Add solid put the shape on a new track](#add-solid-put-the-shape-on-a-new-track)
+  - [The Radius field is dimmed](#the-radius-field-is-dimmed)
+  - [The corners don't get any rounder](#the-corners-dont-get-any-rounder)
+  - [A shape's handles change its size, not its scale](#a-shapes-handles-change-its-size-not-its-scale)
+  - [Clicking beside an ellipse selects it](#clicking-beside-an-ellipse-selects-it)
+  - [Add image added no clip](#add-image-added-no-clip)
+  - [An animated image plays choppily](#an-animated-image-plays-choppily)
+  - [An animated image doesn't stop at its end](#an-animated-image-doesnt-stop-at-its-end)
+  - [An animated image plays slower than expected](#an-animated-image-plays-slower-than-expected)
+  - [An SVG image looks soft](#an-svg-image-looks-soft)
 - [Titles and text](#titles-and-text)
   - [T or Shift+T does nothing](#t-or-shiftt-does-nothing)
   - [A new title went onto a new track](#a-new-title-went-onto-a-new-track)
@@ -977,7 +989,7 @@ See [Audio](audio.md).
 - You just zoomed in, and the editor is still decoding the frame at the larger size.
 - The quality is **Proxy** (the preview shows the proxies of your videos), or **1/2** or **1/4** while playing.
 - The source has no more detail: a 1080×1920 clip in a 1080×1920 project has none beyond 100%, and a 4K landscape clip fitted to the frame width has detail up to about 356%. Frames larger than 4096 pixels on their long side are shown at 4096.
-- The clip is an SVG image that covers the whole frame. In this version, such an SVG doesn't get sharper above 100%.
+- The clip is an SVG image drawn larger than 4096 pixels on its longer side, the most it is drawn at: for an SVG that covers the whole 1080×1920 frame, above about 213%. See [Keep SVG images sharp](shapes-and-images.md#keep-svg-images-sharp).
 
 **Fix:** Pause and wait a moment. If the status line doesn't read **full** at rest, choose **Auto** or **Full** in the **Preview quality** menu. See [See real detail when you zoom in](preview-zoom-overlays-fullscreen.md#see-real-detail-when-you-zoom-in).
 
@@ -1282,6 +1294,97 @@ See [Audio](audio.md).
 **Cause:** The selected clip is a freeze frame. It holds one frame, so it has no speed.
 
 **Fix:** Nothing is wrong. Change its length with **Duration** or by dragging its edges. See [Change a freeze frame](speed-freeze-frames-and-punch-zoom.md#change-a-freeze-frame).
+
+## Shapes and images
+
+### Add solid put the shape on a new track
+
+**Symptom:** You click **Add solid**, and the shape lands on a new video track instead of the top one.
+
+**Cause:** The top video track is locked or hidden, or a clip on it overlaps the 5 seconds from the playhead. The new solid never covers or moves other clips, so it gets a track of its own. **Add image** does the same when the top video track is locked or taken.
+
+**Fix:** Nothing is wrong. Drag the clip onto another track afterwards if you like, or move the playhead to a free part of the top track first. See [Add a shape](shapes-and-images.md#add-a-shape).
+
+### The Radius field is dimmed
+
+**Symptom:** The **Radius** field of the **Solid** section is dimmed, and you can't change it.
+
+**Cause:** The shape is a **Rectangle** or an **Ellipse**: neither has rounded corners.
+
+**Fix:** Click **Rounded rectangle**, or **Line** for a line with round ends, in the **Shape** row. See [Choose the shape](shapes-and-images.md#choose-the-shape).
+
+### The corners don't get any rounder
+
+**Symptom:** You raise **Radius**, but past some value the corners stay as they are.
+
+**Cause:** The corners never round more than half of the shorter side of the shape. At that point, the short ends are half circles (a pill). A small **Scale** also makes the corners look smaller, because it shrinks the whole shape.
+
+**Fix:** Nothing is wrong: that is the roundest a rounded rectangle gets. For a circle or an oval, click **Ellipse**. To make a shape larger without shrinking its corners, change **W** and **H** instead of **Scale**. See [Set the size and the corner radius](shapes-and-images.md#set-the-size-and-the-corner-radius).
+
+### A shape's handles change its size, not its scale
+
+**Symptom:** You drag a handle of a solid in the preview: the shape grows, but **Scale** in the **Transform** section stays the same, and the readout shows pixels, such as **812 × 406 px**, instead of a percentage.
+
+**Cause:** On one selected solid, the handles change the size of the shape (its **W** and **H**), so its corners and its line thickness stay as you set them. There is no 100% snap for the same reason.
+
+**Fix:** Nothing is wrong. To change the scale instead, type it in **Scale** in the **Transform** section. See [Resize a shape in the preview](shapes-and-images.md#resize-a-shape-in-the-preview).
+
+### Clicking beside an ellipse selects it
+
+**Symptom:** You click just outside an ellipse or a rounded corner, on the picture behind it, and the solid is selected instead.
+
+**Cause:** A solid is picked by its whole box, also where its shape doesn't reach.
+
+**Fix:** Click outside the box, or <kbd>Alt</kbd>+click to select the layer below it. See [Select a layer under another one](arranging-layers-in-the-preview.md#select-a-layer-under-another-one).
+
+### Add image added no clip
+
+**Symptom:** You click **Add image** and pick files, but no clip appears at the playhead.
+
+**Cause:** One of these:
+- You switched the file picker to all files and picked videos or sounds: they are imported into the Media panel, but only images are placed.
+- The message **This project is read-only** appeared: the project can't be changed.
+- The message **Can't import** appeared: the file type is not supported, or an SVG has no size. See [Importing](#importing).
+
+**Fix:** Pick image files (.png, .jpg, .jpeg, .webp, .gif or .svg). Drag a video from the Media panel onto the timeline instead. In a read-only project, click **Allow editing** in the banner first. See [Add an image](shapes-and-images.md#add-an-image).
+
+### An animated image plays choppily
+
+**Symptom:** An animated GIF or WebP moves less smoothly in the preview than in a web browser.
+
+**Cause:** One of these:
+- The animation is large or long. The editor keeps up to 128 MB of its frames, at most 2048 pixels on their longer side. Beyond that, it keeps every second frame (or every third, and so on), so the animation keeps its length but has fewer frames.
+- The animation has more frames per second than the project: the preview shows one picture per project frame, so some frames are skipped.
+- The animation shows for the first time, and its frames are still loading.
+
+**Fix:** Use a smaller GIF or WebP: one about the size you show it at keeps all of its frames. Wait a moment after adding a new animation. See [Use animated GIF and WebP images](shapes-and-images.md#use-animated-gif-and-webp-images).
+
+### An animated image doesn't stop at its end
+
+**Symptom:** An animated GIF or WebP starts over again and again, also one that plays only once in other apps.
+
+**Cause:** Animated images always loop for as long as their clip lasts.
+
+**Fix:** Trim the clip to the length of one round: the Media panel shows that length as the item's duration. See [Trim a clip](trimming.md#trim-a-clip).
+
+### An animated image plays slower than expected
+
+**Symptom:** A GIF made with very short frame times plays slower than you expect.
+
+**Cause:** A frame shorter than 20 milliseconds shows for 100 milliseconds, as in web browsers.
+
+**Fix:** Save the GIF again with frame times of at least 20 milliseconds (2 hundredths of a second) in your GIF tool.
+
+### An SVG image looks soft
+
+**Symptom:** An SVG logo looks soft or has blurred edges in the preview.
+
+**Cause:** One of these:
+- You just zoomed in or resized the logo, and the editor is still drawing it again at the new size.
+- The video is playing or you scrub, with the **Auto** quality: the preview then shows the project's resolution.
+- The logo is drawn larger than 4096 pixels on its longer side, the most the editor draws an SVG at. For a square logo as wide as a 1080×1920 frame, that is above about 379% zoom.
+
+**Fix:** Stop playback and wait a moment. See [Keep SVG images sharp](shapes-and-images.md#keep-svg-images-sharp).
 
 ## Titles and text
 
@@ -1774,12 +1877,11 @@ The current version cannot do these things yet. Each one is available in a later
 - **Menus:** only clips, gaps, track headers, the ruler, media cards and pictures in the preview have a right-click menu, with a first set of rows. Menu rows can't be chosen with the arrow keys.
 - **Speed and edit points:** a speed applies to the whole clip, and sound at another speed always changes pitch. Playing a clip backward is not available. A punch zoom happens at once, at the cut; a zoom that grows over a few frames is not available. The length of a new freeze frame (2 seconds) and the size of a punch zoom (20%) can't be changed. A selected cut (edit point) only marks the cut; transitions are not available.
 - **Tracks:** track headers have room for names of about 9 characters; longer names are shortened. Groups are not marked on the timeline.
-- **Preview:** a change to a picture, its crop included, applies to the whole clip; changes over time (keyframes) are not available. An SVG image that covers the whole frame doesn't get sharper when you zoom in. The **Zoom**, **Preview quality** and **Overlays** menus can't be used with the arrow keys.
+- **Preview:** a change to a picture, its crop included, applies to the whole clip; changes over time (keyframes) are not available. The **Zoom**, **Preview quality** and **Overlays** menus can't be used with the arrow keys.
 - **Edit Properties:** the audio and transition sections are not available, nor are the dimmed quick actions and the **Still duration**, **Transition** and **Cache** rows of the **Project** section. A new resolution always scales the layout; keeping the layout as it is, is not available.
 - **Text:** a setting to always make new titles 3 seconds long is not available. A text's handles don't snap, and fonts can't be chosen with the arrow keys in the font picker. Deleted starter presets can't be restored. Text animations play in the preview and in **Export frame**; moving text over time with keyframes is not available.
-- **Captions:** all cues share one style; a style for a single cue is not available. Captions can't be selected, moved or styled in the preview. The highlight box has square corners, and cues can't be pasted.
+- **Captions:** all cues share one style; a style for a single cue is not available. Captions can't be selected, moved or styled in the preview, and cues can't be pasted.
 - **Transcription:** the cues can't be edited in the review; fix them in the **Captions** tab after adding them. The default model and language are set in the **Transcribe captions** dialog only.
-- **Animated GIF and WebP files** show as still images (their first frame), in the preview and in their clips' thumbnails.
 - **Media that cannot be decoded, or whose file is missing,** shows nothing in the preview, with no placeholder.
 - **Removing media** that a clip uses is not possible.
 - **Frame rate:** you cannot change it once the timeline has clips or markers.
@@ -1797,6 +1899,7 @@ The current version cannot do these things yet. Each one is available in a later
 - [Splitting, deleting and closing gaps](splitting-and-deleting.md)
 - [Advanced trimming](advanced-trimming.md)
 - [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md)
+- [Shapes and images](shapes-and-images.md)
 - [Getting started](getting-started.md)
 - [Projects and saving](projects-and-saving.md)
 - [Importing media](importing-media.md)
@@ -1814,4 +1917,4 @@ The current version cannot do these things yet. Each one is available in a later
 - [Transcription](transcription.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 33, 2026-10-17</sub>
+<sub>Last updated: Batch 34, 2026-10-17</sub>

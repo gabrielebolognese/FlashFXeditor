@@ -35,6 +35,8 @@ The imported items appear in the Media panel and are selected. A single import i
 
 > **Tip:** To add an imported item to the timeline, double-click its thumbnail or drag it onto a track. See [Adding media to the timeline](adding-media-to-the-timeline.md).
 
+> **Tip:** To import images and put them on the timeline in one go, click **Add image** in the timeline toolbar: the images you pick land at the playhead, centered in the frame. See [Add an image](shapes-and-images.md#add-an-image).
+
 > **Video placeholder: Drop a folder and paste an image**
 > - File: `videos/importing-media/drop-folder-and-paste.mp4` (not recorded yet)
 > - Length: about 30 seconds
@@ -64,7 +66,7 @@ Only images are pasted this way. Paste imports only when the Media panel has the
 |---|---|---|
 | Video | .mp4, .mov, .m4v | The video must use a codec Chrome can decode on your computer, such as H.264, HEVC (H.265) or AV1. Phone recordings from iPhone (HEVC .mov) and Android (H.264 .mp4) work, including portrait and variable frame rate clips. |
 | Audio | .mp3, .m4a, .aac, .wav, .ogg | |
-| Images | .png, .jpg, .jpeg, .webp, .gif, .svg | Animated GIF and WebP files keep their animation length as their duration. An SVG needs a width and height, or a viewBox. |
+| Images | .png, .jpg, .jpeg, .webp, .gif, .svg | Animated GIF and WebP files keep their animation length as their duration, and play in a loop on the timeline. An SVG needs a width and height, or a viewBox, and stays sharp at any size. See [Shapes and images](shapes-and-images.md). |
 
 Extensions are not case-sensitive (.MOV works). Any other type, for example .webm, .mkv, .avi or .heic, is refused with a message that names the file. Subtitle files (.srt, .vtt) are refused here too: import them in the **Captions** tab; see [Import an SRT or VTT file](captions.md#import-an-srt-or-vtt-file).
 
@@ -245,4 +247,4 @@ If a card keeps its kind icon instead of a thumbnail, Chrome could not decode th
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 32, 2026-10-17</sub>
+<sub>Last updated: Batch 34, 2026-10-17</sub>

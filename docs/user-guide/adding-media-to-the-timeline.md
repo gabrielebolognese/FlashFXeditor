@@ -30,6 +30,7 @@ This page shows every way to put your imported media on the timeline: double-cli
 | Place clips exactly | Drag cards onto a track | Where you release, on the track under the pointer | The new clips cover them; hold <kbd>Ctrl</kbd> to insert instead |
 | Place a picture on the frame | Drag cards onto the preview, or right-click and choose **Add to canvas** | At the playhead, on the top video track or a new one | Nothing is covered or moved |
 | Import and place in one go | Drag files from File Explorer onto a track | Where you release, on the track under the pointer | The new clips cover them; hold <kbd>Ctrl</kbd> to insert instead |
+| Pick images and place them in one go | Click **Add image** in the timeline toolbar and pick the files. See [Add an image](shapes-and-images.md#add-an-image). | At the playhead, centered in the frame, on the top video track or a new one | Nothing is covered or moved |
 
 Every way adds the clips in one step, which one <kbd>Ctrl</kbd>+<kbd>Z</kbd> undoes, and selects the new clips. A locked track never takes new clips. See [Lock a track](tracks.md#lock-a-track).
 
@@ -40,7 +41,7 @@ Every way adds the clips in one step, which one <kbd>Ctrl</kbd>+<kbd>Z</kbd> und
 | Video with sound | A video clip on a video track and an audio clip with its sound on an audio track, with the same start and length. The two clips are linked. See [Linking and grouping clips](links-and-groups.md). |
 | Video without sound | A video clip on a video track. |
 | Audio | An audio clip on an audio track. |
-| Image (including GIF and WebP) | A 5-second image clip on a video track. |
+| Image (including GIF and WebP) | A 5-second image clip on a video track. An animated GIF or WebP plays its animation in a loop for as long as the clip lasts; see [Use animated GIF and WebP images](shapes-and-images.md#use-animated-gif-and-webp-images). |
 
 - A video or audio clip uses the whole media, or only the part you marked. See [Use only part of a media item](#use-only-part-of-a-media-item). Lengths are whole frames at the project frame rate.
 - The picture is scaled to fit inside the frame and centered. A drop on the preview centers it where you release instead. See [See how clips fit the frame](preview-and-playback.md#see-how-clips-fit-the-frame).
@@ -269,4 +270,4 @@ Every way of adding media is one step in the history. Point at **Undo** in the a
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 30, 2026-10-16</sub>
+<sub>Last updated: Batch 34, 2026-10-17</sub>

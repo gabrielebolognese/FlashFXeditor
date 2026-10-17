@@ -89,13 +89,15 @@ How much detail you get depends on the source:
 | A 1080×1920 video or image | 100%: the project already shows every pixel of it. Above that, its pixels are enlarged. |
 | A 2160×3840 (4K vertical) video | 200% |
 | A 3840×2160 (4K landscape) video, fitted to the frame width | 356% |
+| An SVG logo, fitted to the frame width (1080 pixels wide) | 379% |
+| An SVG that covers the whole frame | 213% |
 
 - Beyond that zoom, each source pixel is shown larger. The **Pixel grid from 800%** overlay draws a line between project pixels when you zoom to 800% or more; see [Show grids, guides and rulers](#show-grids-guides-and-rulers).
 - When several clips are stacked, the preview draws the visible part of the frame at the detail of the sharpest one.
 - The preview prepares video frames of at most 4096 pixels on their long side. Larger sources, such as 6K or 8K video, show the detail of a 4096-pixel frame.
 - After you zoom in, the picture can stay soft for a moment while the editor decodes the current frame at the larger size. Then it sharpens.
 - With the default **Auto** quality, the extra detail appears when the picture is still: while you play, scrub or trim, and for 0.3 seconds after, the preview shows the project's resolution, or the proxy of a video that has one. See [Choose the preview quality](#choose-the-preview-quality).
-- An SVG image that covers the whole frame doesn't get sharper above 100%; more detail for SVG images is available in a later version.
+- An SVG image is drawn again at the size it has on the screen, up to 4096 pixels on its longer side, so smaller logos stay sharp even further in. See [Keep SVG images sharp](shapes-and-images.md#keep-svg-images-sharp).
 
 > **Tip:** To compare with the source, zoom to the level where one source pixel is one screen pixel. For a 4K landscape clip fitted to a 1080-pixel-wide frame, that is about 356%.
 
@@ -261,4 +263,4 @@ None of these are steps in the history: <kbd>Ctrl</kbd>+<kbd>Z</kbd> does not un
 - [Proxies](proxies.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 26, 2026-10-16</sub>
+<sub>Last updated: Batch 34, 2026-10-17</sub>

@@ -296,7 +296,7 @@ Choose the look in the **Highlight** row of **Caption style**:
 - Cues without word timings show in their text color, whatever the **Highlight** row says. The hint under the row reminds you: **Shows on cues with word timings (VTT karaoke, transcription).** With **None**, it reads **Off: cues show in the text color.**
 - Word timings move with their cue. A split shares them between the two cues, and a trim keeps them: trim the start back out and the words are there again.
 
-> **Note:** The highlight box has square corners in this version.
+> **Note:** The highlight box is a pill: its ends are rounded by half its height.
 
 ## Give captions the look of a preset
 
@@ -361,7 +361,6 @@ These parts are available in a later version:
 
 - A style for a single cue, and moving or styling captions in the preview.
 - Exporting the video with its captions, and exporting caption files from the export settings. **Export frame** already includes the captions, and **Export SRT or VTT** saves the cues.
-- Rounded corners for the highlight box.
 - Pasting cues.
 
 ## Related pages
@@ -376,4 +375,4 @@ These parts are available in a later version:
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 33, 2026-10-17</sub>
+<sub>Last updated: Batch 34, 2026-10-17</sub>

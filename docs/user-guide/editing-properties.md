@@ -1,6 +1,6 @@
 # Editing properties
 
-The **Edit Properties** panel shows the settings of what you selected: a clip, a track, a marker, or the project itself when nothing is selected. Use it to type exact values, such as a position in pixels or the end time of a clip, to drag a value while you watch the preview, to fit or fill the frame with one click, to crop a picture, to change a clip's speed, to style text and save it as a preset, to give your captions their look and place, and to change several clips at once.
+The **Edit Properties** panel shows the settings of what you selected: a clip, a track, a marker, or the project itself when nothing is selected. Use it to type exact values, such as a position in pixels or the end time of a clip, to drag a value while you watch the preview, to fit or fill the frame with one click, to crop a picture, to change a clip's speed, to shape and color solids, to style text and save it as a preset, to give your captions their look and place, and to change several clips at once.
 
 > **Video placeholder: Edit Properties in action**
 > - File: `videos/editing-properties/overview.mp4` (not recorded yet)
@@ -41,7 +41,7 @@ The **Edit Properties** panel sits at the top of the left side, next to the Medi
 | You selected | The panel shows | See |
 | --- | --- | --- |
 | Nothing (click an empty area of the timeline tracks) | The **Project** section | [Change project settings](projects-and-saving.md#change-project-settings) |
-| One or more clips | The quick actions, then the **Clip** section. When a text clip is among them, **Text** and **Animation** come right after **Clip**. When a caption cue is among them, **Caption style** comes next. When a video, image or text clip is among them, also **Transform** and **Opacity**, with **Crop** between them for video and image clips. When a video or audio clip is among them, also **Speed**, as the last section. | This page, [Titles and text](titles-and-text.md#style-text-in-the-text-section) for **Text**, [Text animations](text-animations.md) for **Animation**, [Style your captions](captions.md#style-your-captions) for **Caption style**, [Cropping and reframing](cropping-and-reframing.md) for **Crop**, and [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md) for **Speed** |
+| One or more clips | The quick actions, then the **Clip** section. When a text clip is among them, **Text** and **Animation** come right after **Clip**. When a solid is among them, **Solid** comes next. When a caption cue is among them, **Caption style** comes next. When a video, image, solid or text clip is among them, also **Transform** and **Opacity**, with **Crop** between them for video and image clips. When a video or audio clip is among them, also **Speed**, as the last section. | This page, [Titles and text](titles-and-text.md#style-text-in-the-text-section) for **Text**, [Text animations](text-animations.md) for **Animation**, [Shapes and images](shapes-and-images.md#choose-the-shape) for **Solid**, [Style your captions](captions.md#style-your-captions) for **Caption style**, [Cropping and reframing](cropping-and-reframing.md) for **Crop**, and [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md) for **Speed** |
 | One or more track headers | The **Track** section, and the **Caption style** section when the **CC** caption track is among them | [Change track settings in Edit Properties](tracks.md#change-track-settings-in-edit-properties), [Style your captions](captions.md#style-your-captions) |
 | A marker in the ruler | The **Marker** section | [Edit a marker in Edit Properties](markers-and-in-out-points.md#edit-a-marker-in-edit-properties) |
 
@@ -59,11 +59,11 @@ The **Edit Properties** panel sits at the top of the left side, next to the Medi
 
 In a number field you can also press <kbd>↑</kbd> or <kbd>↓</kbd> to add or subtract 1, and <kbd>Shift</kbd>+<kbd>↑</kbd> or <kbd>Shift</kbd>+<kbd>↓</kbd> to add or subtract 10. Hold the key to keep going.
 
-- Number fields show their unit after the value: **px** (pixels), **%**, **°** (degrees) or **s** (seconds). Most show one decimal, for example **100.0**, and round what you type to one decimal; the crop fields in **px** show whole pixels. The **Duration** and **Stagger** fields of the **Animation** section show seconds with two decimals and step one frame at a time; see [Set how long an animation plays](text-animations.md#set-how-long-an-animation-plays).
+- Number fields show their unit after the value: **px** (pixels), **%**, **°** (degrees) or **s** (seconds). Most show one decimal, for example **100.0**, and round what you type to one decimal; the crop fields in **px** and the **Solid** fields show whole pixels. The **Duration** and **Stagger** fields of the **Animation** section show seconds with two decimals and step one frame at a time; see [Set how long an animation plays](text-animations.md#set-how-long-an-animation-plays).
 - Both a comma and a point work as the decimal sign: `3,5` and `3.5` are the same.
 - A value outside the range of a field stops at its limit, for example 100 in **Opacity**.
 - Text that is not a number is ignored, and the field shows its value again.
-- Each typed value is one step in the history. In the **Text**, **Animation**, **Caption style**, **Transform**, **Crop**, **Opacity** and **Speed** sections, arrow presses less than 0.3 seconds apart are one step together, so one <kbd>Ctrl</kbd>+<kbd>Z</kbd> undoes a quick series. In the other number fields, each press is one step.
+- Each typed value is one step in the history. In the **Text**, **Animation**, **Solid**, **Caption style**, **Transform**, **Crop**, **Opacity** and **Speed** sections, arrow presses less than 0.3 seconds apart are one step together, so one <kbd>Ctrl</kbd>+<kbd>Z</kbd> undoes a quick series. In the other number fields, each press is one step.
 - Clicking the letter or icon at the left of a number field (the field's label), without dragging, also puts you in the field.
 - While you type in a field, shortcuts are off: <kbd>Space</kbd>, for example, types a space instead of playing.
 
@@ -82,7 +82,7 @@ Drag the label of a number field (the letter or icon at its left, such as **X**,
 | <kbd>Alt</kbd> | 0.1 per pixel |
 
 - The drag starts once the mouse has moved 3 pixels. You can press and release <kbd>Shift</kbd> and <kbd>Alt</kbd> during the drag.
-- While you drag, the label and the edge of the field turn gold. In the **Transform**, **Crop** and **Opacity** sections, the preview and the gold box around the picture follow at once. **Speed** is different: the field counts along, and the clip, the timeline and the preview change when you release.
+- While you drag, the label and the edge of the field turn gold. In the **Transform**, **Crop**, **Opacity** and **Solid** sections, the preview and the gold box around the picture follow at once. **Speed** is different: the field counts along, and the clip, the timeline and the preview change when you release.
 - The project's **W** and **H** fields (with a **Custom** resolution) change by 2 per pixel, and the frame takes the new size when you release.
 - The value stops at the limits of the field. Drag back and it moves again at once.
 - Press <kbd>Esc</kbd> before you release to cancel: the value goes back, and nothing is added to the history.
@@ -96,7 +96,7 @@ Select several clips, on the timeline or in the preview (see [Select clips](time
 - **A switch whose clips differ sits halfway.** Click it to turn it on for all of them.
 - **Name** renames every selected clip, and **Color** gives every selected clip the label color.
 - **Start**, **End**, **Duration**, **Source in** and **Source out** trim each selected clip to the time you type, all in one step.
-- **Transform**, **Crop** and **Opacity** change only the pictures among the selected clips, the video and image clips. A video's linked sound is left alone.
+- **Transform** and **Opacity** change only the pictures among the selected clips: the video, image, solid and text clips. **Crop** changes the video and image clips, and **Solid** the solids. A video's linked sound is left alone.
 - **Speed** changes the video and audio clips among them. With **Linked selection** on, a video's linked sound gets the same speed. See [Change the speed of a video and its sound](speed-freeze-frames-and-punch-zoom.md#change-the-speed-of-a-video-and-its-sound).
 - Clips on locked tracks keep their values.
 
@@ -119,14 +119,14 @@ With clips selected, a row of one-click buttons sits at the top of the panel. Po
 | **Duplicate** | Copies the clip you clicked last right after itself (<kbd>Ctrl</kbd>+<kbd>D</kbd>). See [Duplicate a clip](#duplicate-a-clip). |
 | **Delete** | Deletes the selected clips and leaves gaps, like the <kbd>Delete</kbd> key. See [Delete clips](splitting-and-deleting.md#delete-clips). |
 
-- A button is dimmed when none of the selected clips can take it. The picture buttons and **Punch zoom** need a video, image or text clip; an audio clip has no picture. On a text clip, the picture buttons use the box of its text. **Freeze frame** needs a video clip, and the speed buttons a video or audio clip that is not a freeze frame. **Save as preset** needs a text clip. **Update preset** needs a text clip whose style differs from the preset it uses. Clips on locked tracks are skipped.
+- A button is dimmed when none of the selected clips can take it. The picture buttons and **Punch zoom** need a video, image, solid or text clip; an audio clip has no picture. On a text clip, the picture buttons use the box of its text, and on a solid the box of its shape. **Freeze frame** needs a video clip, and the speed buttons a video or audio clip that is not a freeze frame. **Save as preset** needs a text clip. **Update preset** needs a text clip whose style differs from the preset it uses. Clips on locked tracks are skipped.
 - Whether a button is dimmed depends on the selection only, not on the playhead. **Freeze frame** and **Punch zoom** act at the playhead: when it is not over the selected clip, a message says so.
 - The other buttons of the row (fades, mute and transitions) are dimmed: they are available in a later version.
 - The buttons don't take the keyboard focus, but a click in the panel makes **Edit Properties** the active panel. See [How shortcuts work](keyboard-shortcuts.md#how-shortcuts-work).
 
 ## Fit, fill or center a picture
 
-Select one or more video, image or text clips, then click a button in the quick actions. For a text clip, the buttons use the box of its text. You find the same actions in the layer menu of the preview: right-click a picture and choose **Fit**, **Fill**, **Center**, **Flip horizontal**, **Flip vertical** or **Reset transform**. See [Use the layer menu](arranging-layers-in-the-preview.md#use-the-layer-menu).
+Select one or more video, image, solid or text clips, then click a button in the quick actions. For a text clip, the buttons use the box of its text, and for a solid the box of its shape. You find the same actions in the layer menu of the preview: right-click a picture and choose **Fit**, **Fill**, **Center**, **Flip horizontal**, **Flip vertical** or **Reset transform**. See [Use the layer menu](arranging-layers-in-the-preview.md#use-the-layer-menu).
 
 > **Video placeholder: Fit, fill and center**
 > - File: `videos/editing-properties/fit-fill-center.mp4` (not recorded yet)
@@ -147,7 +147,8 @@ Select one or more video, image or text clips, then click a button in the quick 
 | **Flip horizontal**, **Flip vertical** | The picture is mirrored in its place. A second click mirrors it back. | |
 | **Reset transform** | The picture goes back to how a new clip is placed: fitted to the frame and centered, upright, not mirrored, with the anchor point in the middle. Its crop stays. | Same as **Fit** |
 
-- These act on every selected video and image clip, also those that are not under the playhead.
+- These act on every selected picture, also those that are not under the playhead.
+- On a solid, **Fit** and **Fill** change its **Scale**, not its size, and **Reset transform** centers it at 100%. See [Move, turn and fade shapes](shapes-and-images.md#move-turn-and-fade-shapes).
 - On a cropped picture, **Fit**, **Fill** and **Center** size and center the part left after the crop. **Reset transform** leaves the crop as it is. See [Cropping and reframing](cropping-and-reframing.md).
 - A tilted picture keeps its angle. **Fit** and **Fill** size the upright box around the tilted picture: with **Fit** the whole tilted picture stays inside the frame; with **Fill** that box covers the frame, so small empty corners can remain where the tilted edges cross the frame.
 - **Fit** and **Fill** keep the shape of the picture: a picture stretched to a different width and height gets the same scale for both again.
@@ -239,7 +240,7 @@ To turn it back on, right-click it and choose **Enable**, or turn **Enabled** on
 
 ## Place a picture with exact values
 
-Select a video, image or text clip. The **Transform** and **Opacity** sections set where its picture sits in the frame, how big it is, its angle and how see-through it is. They hold the same values you change by dragging in the preview (see [Arranging layers in the preview](arranging-layers-in-the-preview.md)).
+Select a video, image, solid or text clip. The **Transform** and **Opacity** sections set where its picture sits in the frame, how big it is, its angle and how see-through it is. They hold the same values you change by dragging in the preview (see [Arranging layers in the preview](arranging-layers-in-the-preview.md)).
 
 > **Video placeholder: Exact position, scale and opacity**
 > - File: `videos/editing-properties/transform-section.mp4` (not recorded yet)
@@ -256,7 +257,7 @@ Select a video, image or text clip. The **Transform** and **Opacity** sections s
 | Row | Fields | What it sets |
 | --- | --- | --- |
 | **Position** | **X** and **Y**, in px | Where the anchor point of the picture sits, in pixels of the project frame from the center of the frame: **X** to the right, **Y** down. A fitted, centered picture reads 0, 0. These are the numbers of the move readout in the preview. |
-| **Scale** | **W** and **H**, in %, with a chain button between them | The size of the picture: 100% is the media's own size in pixels. From 1% to 10000%. |
+| **Scale** | **W** and **H**, in %, with a chain button between them | The size of the picture: 100% is the media's own size in pixels (for a solid, its **W** and **H** in the **Solid** section). From 1% to 10000%. |
 | **Rotation** | Curved arrow, in ° | The angle. Positive angles turn clockwise. |
 | **Anchor** | **X** and **Y**, in % | Where the anchor point is in the picture: 0% is the left or top edge, 50% the middle, 100% the right or bottom edge. The picture turns around this point. |
 | **Flip** | **Flip horizontal** and **Flip vertical** | Mirror the picture. A button is lit while its flip is on. |
@@ -295,7 +296,7 @@ Right-click a video or audio clip on the timeline and choose **Speed...** to ope
 
 ## Pick a color
 
-A color field is a swatch with the color's hex code next to it. In this version the **Background** of the project uses one (in the **Project** section, shown when nothing is selected).
+A color field is a swatch with the color's hex code next to it. The **Background** of the project uses one (in the **Project** section, shown when nothing is selected), and so do the colors of the **Text**, **Caption style** and **Solid** sections.
 
 - **Type a hex code.** Click in the code, type `#RGB`, `#RRGGBB` or `#RRGGBBAA` (the `#` is optional) and press <kbd>Enter</kbd>. Text that is not a color is ignored.
 - **Use the color picker.** Click the swatch (tooltip **Pick a color**). The picker opens under it.
@@ -322,7 +323,7 @@ A color field is a swatch with the color's hex code next to it. In this version 
 | Recent colors | The last 8 colors you applied, newest first. Point at one to see its hex code; click it to use it again. The row appears once you have applied a color. |
 
 - While you drag in the square or along a strip, or drag one of the letters **R**, **G**, **B** or **A**, the preview shows the color live. Release to apply it.
-- Each color you finish choosing (a drag you release, a typed value, a recent color, the eyedropper) applies at once and is one step in the history, named **Change background color**. The picker stays open, so you can keep adjusting.
+- Each color you finish choosing (a drag you release, a typed value, a recent color, the eyedropper) applies at once and is one step in the history, named after what it colors, for example **Change background color**, or **Change fill** for a solid. The picker stays open, so you can keep adjusting.
 - Press <kbd>Esc</kbd> or click outside the picker to close it. <kbd>Esc</kbd> during a drag also cancels the drag: the preview goes back to the color you had.
 - See-through colors show a checkerboard behind them in the swatches.
 - The recent colors belong to this browser, not to a project: every project shows the same row. They are not part of the undo history.
@@ -349,6 +350,7 @@ A color field is a swatch with the color's hex code next to it. In this version 
 | **Freeze frame**, **Freeze frames**, **Punch zoom** | **Freeze frame** and **Punch zoom**. See [Undo a pacing change](speed-freeze-frames-and-punch-zoom.md#undo-a-pacing-change). |
 | **In animation: Word pop**, **Remove out animation**, **Change in animation duration** and the other animation steps | The **Animation** section. See [Undo animation changes](text-animations.md#undo-animation-changes). |
 | **Caption position**, **Move captions**, **Change caption width**, **Word highlight** and the other caption steps | The **Caption style** section. See [Undo caption changes](captions.md#undo-caption-changes). |
+| **Change shape**, **Change fill**, **Change size**, **Change corner radius** | The **Solid** section. See [Undo shape and image changes](shapes-and-images.md#undo-shape-and-image-changes). |
 | **Change background color** | **Background** in the **Project** section |
 
 See [Undo and redo changes](projects-and-saving.md#undo-and-redo-changes).
@@ -364,6 +366,7 @@ These parts are available in a later version:
 - The dimmed rows of the **Project** section: **Still duration**, **Transition** and **Cache** with **Clear cache**.
 
 ## Related pages
+- [Shapes and images](shapes-and-images.md)
 - [Cropping and reframing](cropping-and-reframing.md)
 - [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md)
 - [Titles and text](titles-and-text.md)
@@ -382,4 +385,4 @@ These parts are available in a later version:
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 32, 2026-10-17</sub>
+<sub>Last updated: Batch 34, 2026-10-17</sub>
