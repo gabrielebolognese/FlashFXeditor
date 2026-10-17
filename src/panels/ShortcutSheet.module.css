@@ -1,0 +1,57 @@
+/* The cheat sheet (Batch 40; gap: the DS has none): categories flow in columns (overline headings),
+   each command a caption-type row with its keys as badge chips, the scope in tertiary text. */
+.columns {
+  column-width: var(--shortcut-column-width);
+  column-gap: var(--space-6);
+}
+
+.group {
+  break-inside: avoid;
+  margin-bottom: var(--space-4);
+}
+
+.heading {
+  padding-bottom: var(--space-1);
+  color: var(--text-tertiary);
+  font: var(--type-overline);
+  letter-spacing: var(--type-overline-track);
+  text-transform: uppercase;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--control-compact);
+  color: var(--text-secondary);
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-track);
+}
+
+.label {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.scope {
+  color: var(--text-tertiary);
+}
+
+.keys {
+  display: inline-flex;
+  flex: none;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-1);
+}
+
+.key {
+  min-width: var(--key-chip-min-width);
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-sm);
+  background: var(--surface-3);
+  color: var(--text-primary);
+  font: var(--type-badge);
+  line-height: var(--space-5);
+  text-align: center;
+}

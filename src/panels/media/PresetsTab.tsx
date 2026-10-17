@@ -5,27 +5,17 @@ import {
   appliesToCaptions,
   applyPresetById,
   canWrite,
-  chooseLibraryFolder,
-  deletePreset,
-  duplicatePresetById,
-  exportPresets,
-  findPreset,
   hoverPreset,
-  importPresets,
   presetDragSource,
   presetLibrary,
   presetNaming,
+  presetRenaming,
   presetSourceClip,
   presetThumbs,
   renamePreset,
-  setDefaultPreset,
-  stopLibraryFolder,
-  syncLibraryFolder,
-  toggleApplyPosition,
-  toggleFavorite,
   type LibraryFolder,
 } from "../../app/presetController.js";
-import { appSettings, sessionStore } from "../../app/services.js";
+import { actions, appSettings, sessionStore } from "../../app/services.js";
 import type { TextPreset } from "../../core/document/types.js";
 import { isEditableTarget } from "../../core/keyboard/KeyDispatcher.js";
 import type { PresetScope, SessionState } from "../../core/store/sessionStore.js";
@@ -45,7 +35,7 @@ import styles from "./PresetsTab.module.css";
 // switches between the global and the project's presets and searches them.
 
 const selectScope = (state: SessionState) => state.mediaPanel.presetScope;
-const setScope = (presetScope: PresetScope) => sessionStore.state.set((state) => ({ ...state, mediaPanel: { ...state.mediaPanel, presetScope } }));
+const scopeCommand = (scope: PresetScope) => (scope === "global" ? "presets.showGlobal" : "presets.showProject");
 /** Re-read on selection changes: whether a text clip is selected (Save as preset can run). */
 const selectHasText = () => presetSourceClip() !== null;
 
@@ -56,9 +46,9 @@ export function PresetsActions() {
   const hasText = useStoreSelector(sessionStore.selection, selectHasText);
   return (
     <>
-      <IconButton icon={BookmarkPlus} label={hasText ? "New preset from the selected text" : "New preset from the selected text: select a text clip first"} disabled={!hasText} onClick={() => presetNaming.set("tab")} />
-      <IconButton icon={FileUp} label="Import presets from a JSON file" onClick={() => void importPresets()} />
-      <IconButton icon={FileDown} label="Export the presets shown to a JSON file" disabled={count === 0} onClick={() => void exportPresets()} />
+      <IconButton icon={BookmarkPlus} label={hasText ? "New preset from the selected text" : "New preset from the selected text: select a text clip first"} commandId="preset.save" disabled={!hasText} />
+      <IconButton icon={FileUp} label="Import presets from a JSON file" commandId="presets.import" />
+      <IconButton icon={FileDown} label="Export the presets shown to a JSON file" commandId="presets.export" disabled={count === 0} />
     </>
   );
 }
@@ -153,6 +143,7 @@ const PresetCard = memo(function PresetCard({ preset, defaultTitle, defaultSubti
   );
 });
 
+/** The card menu's commands (presetController), run with the card's preset id. */
 const MENU = {
   apply: "preset.apply",
   defaultTitle: "preset.defaultTitle",
@@ -200,13 +191,13 @@ function FolderStrip() {
           <span className={styles.folderText} data-status={folder.status} title={FOLDER_TEXT[folder.status](folder)}>
             {FOLDER_TEXT[folder.status](folder)}
           </span>
-          <IconButton icon={FolderSync} label="Sync the global presets with the library folder" disabled={folder.status === "syncing"} onClick={() => void syncLibraryFolder()} />
-          <IconButton icon={FolderX} label="Stop syncing (the folder keeps its files)" onClick={() => void stopLibraryFolder()} />
+          <IconButton icon={FolderSync} label="Sync the global presets with the library folder" commandId="presets.syncFolder" disabled={folder.status === "syncing"} />
+          <IconButton icon={FolderX} label="Stop syncing (the folder keeps its files)" commandId="presets.stopFolder" />
         </>
       ) : (
         <>
           <span className={styles.folderText}>Global presets live in this browser.</span>
-          <Button size="compact" tooltip="Keep the global presets in a folder too (JSON files), e.g. a synced drive" onClick={() => void chooseLibraryFolder()}>
+          <Button size="compact" tooltip="Keep the global presets in a folder too (JSON files), e.g. a synced drive" commandId="presets.chooseFolder">
             Library folder
           </Button>
         </>
@@ -227,9 +218,9 @@ export function PresetsTab() {
   const defaultSubtitle = useStoreSelector(appSettings, (settings) => settings.defaultSubtitlePreset);
   const [query, setQuery] = useState("");
   const [menu, setMenu] = useState<{ id: string; x: number; y: number } | null>(null);
-  const [renaming, setRenaming] = useState<string | null>(null);
+  const renaming = useStoreSelector(presetRenaming, (id) => id);
   const shown = useMemo(() => searchPresets(presets, query), [presets, query]);
-  const endRename = useMemo(() => () => setRenaming(null), []);
+  const endRename = useMemo(() => () => presetRenaming.set(null), []);
 
   // Leaving the tab ends a hover preview and a name field.
   useEffect(
@@ -265,39 +256,8 @@ export function PresetsTab() {
     setMenu({ id, x: event.clientX, y: event.clientY });
   };
 
-  const onMenu = (action: string) => {
-    const id = menu?.id;
-    const preset = id ? findPreset(id)?.preset : null;
-    if (!id || !preset) return;
-    switch (action) {
-      case MENU.apply:
-        applyPresetById(id);
-        break;
-      case MENU.defaultTitle:
-        setDefaultPreset("title", defaultTitle === id ? null : id);
-        break;
-      case MENU.defaultSubtitle:
-        setDefaultPreset("subtitle", defaultSubtitle === id ? null : id);
-        break;
-      case MENU.favorite:
-        toggleFavorite(id);
-        break;
-      case MENU.applyPosition:
-        toggleApplyPosition(id);
-        break;
-      case MENU.rename:
-        setRenaming(id);
-        break;
-      case MENU.duplicate:
-        duplicatePresetById(id);
-        break;
-      case MENU.export:
-        void exportPresets(id);
-        break;
-      case MENU.delete:
-        deletePreset(id);
-        break;
-    }
+  const onMenu = (command: string) => {
+    if (menu) actions.run(command, null, menu.id);
   };
   const menuPreset = menu ? presets.find((preset) => preset.id === menu.id) : undefined;
 
@@ -323,8 +283,9 @@ export function PresetsTab() {
               className={styles.scopeChip}
               aria-pressed={scope === value}
               data-tooltip={value === "global" ? "Global presets: in every project" : "This project's presets (presets/text in its folder)"}
+              data-command={scopeCommand(value)}
               onMouseDown={(event) => event.preventDefault()}
-              onClick={() => setScope(value)}
+              onClick={() => actions.run(scopeCommand(value))}
             >
               {value === "global" ? "Global" : "Project"}
             </button>

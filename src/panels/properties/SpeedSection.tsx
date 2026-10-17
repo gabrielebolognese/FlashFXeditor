@@ -68,7 +68,7 @@ export function SpeedSection({ ids }: { ids: readonly ClipId[] }) {
       <Row label="Speed">
         <div ref={fieldRef} className={styles.withAction}>
           <NumberField label={<Gauge aria-hidden="true" />} unit="%" binding={binding} precision={1} min={MIN_SPEED * 100} max={MAX_SPEED * 100} disabled={frozen === true} ariaLabel="Clip speed" />
-          <IconButton icon={link ? Link2 : Unlink2} label={link ? "Unlink the duration from the speed" : "Link the duration to the speed"} pressed={link} onClick={toggleSpeedLink} />
+          <IconButton control icon={link ? Link2 : Unlink2} label={link ? "Unlink the duration from the speed" : "Link the duration to the speed"} pressed={link} onClick={toggleSpeedLink} />
         </div>
       </Row>
       {frozen === true && <span className={styles.hint}>Freeze frame: one picture held</span>}

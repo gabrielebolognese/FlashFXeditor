@@ -4,7 +4,7 @@
 // (`Shift+S`), link / unlink (`Mod+L`), group / ungroup (`Mod+G`, `Mod+Shift+G`) and Move into sync.
 // Every document edit is one command (one undo step) built by the pure edits in `timeline/edit`.
 import { updateTrack } from "../core/commands/basicCommands.js";
-import type { ActionRun } from "../core/commands/ActionRegistry.js";
+import type { CommandRun } from "../core/commands/CommandRegistry.js";
 import type { ClipId, Project, Track, TrackId } from "../core/document/types.js";
 import { createStore } from "../core/store/createStore.js";
 import { EMPTY_SELECTION, selectClips, selectedTrackIds, toSnapshot, type Selection } from "../core/store/selection.js";
@@ -148,7 +148,7 @@ function actionTracks(): TrackId[] {
   return menu !== null && !selected.includes(menu) ? [menu] : selected;
 }
 
-function addTrackAction(kind: "video" | "audio", side: "above" | "below" | null): ActionRun {
+function addTrackAction(kind: "video" | "audio", side: "above" | "below" | null): CommandRun {
   return () => {
     const project = documentStore.getState();
     const relative = side !== null ? menuTrack() : null;
@@ -158,7 +158,7 @@ function addTrackAction(kind: "video" | "audio", side: "above" | "below" | null)
 }
 
 /** Track menu "Delete track" (spec §6.11): refused with a toast when a track is locked. */
-const deleteTrackAction: ActionRun = () => {
+const deleteTrackAction: CommandRun = () => {
   const result = deleteTracks(documentStore.getState(), actionTracks());
   if (result.locked) {
     showToast({ tone: "error", message: "Can't delete a locked track", detail: `${result.locked.name} is locked. Unlock it to delete it.` });
@@ -167,18 +167,18 @@ const deleteTrackAction: ActionRun = () => {
   if (result.command) documentStore.dispatch(result.command, { selection: toSnapshot(EMPTY_SELECTION) });
 };
 
-const deleteEmptyAction: ActionRun = () => {
+const deleteEmptyAction: CommandRun = () => {
   const command = deleteEmptyTracks(documentStore.getState());
   if (command) documentStore.dispatch(command, { selection: toSnapshot(EMPTY_SELECTION) });
   else showToast({ tone: "info", message: "No empty tracks to delete", detail: "Unlocked tracks without clips are deleted; one video and one audio track always stay." });
 };
 
-function heightAction(height: TrackHeight): ActionRun {
+function heightAction(height: TrackHeight): CommandRun {
   return () => applyHeights(new Map(actionTracks().map((id) => [id, height])));
 }
 
 /** Track menu "Select all clips on track" (spec §6.16; also Mod+Shift+click on the header). */
-const selectTrackClips: ActionRun = () => {
+const selectTrackClips: CommandRun = () => {
   const track = trackById(documentStore.getState(), menuTrack() ?? "");
   if (track && !track.locked) setSelection(sessionStore, selectClips(track.clipIds));
 };
@@ -189,7 +189,7 @@ const selectTrackClips: ActionRun = () => {
  * `Mod+Alt+Up/Down` (spec §6.12): each selected track to its next taller / shorter preset (wrapping);
  * with no track selected, the tracks of the selected clips, else every track.
  */
-function cycleSelectedHeights(direction: "up" | "down"): ActionRun {
+function cycleSelectedHeights(direction: "up" | "down"): CommandRun {
   return () => {
     const project = documentStore.getState();
     const { ids } = selectedClips();
@@ -206,7 +206,7 @@ function cycleSelectedHeights(direction: "up" | "down"): ActionRun {
 }
 
 /** The toolbar's Track height button (spec §6.12: cycles all tracks together). */
-const cycleAllHeights: ActionRun = () => {
+const cycleAllHeights: CommandRun = () => {
   const { tracks } = documentStore.getState();
   const next = nextHeightForAll(tracks.filter((track) => track.kind !== "caption"));
   applyHeights(new Map(tracks.map((track) => [track.id, next])));
@@ -215,7 +215,7 @@ const cycleAllHeights: ActionRun = () => {
 // --- Links and groups ----------------------------------------------------------------------------
 
 /** `Mod+L` (spec §6.12): unlink the selection's link groups, or link a selected video + audio set. The selection stays. */
-const toggleLinkAction: ActionRun = () => {
+const toggleLinkAction: CommandRun = () => {
   const result = toggleLink(documentStore.getState(), selectedClips().ids, newId);
   if (result.kind === "refused") {
     if (result.reason === "needsPair") showToast({ tone: "info", message: "Select a video and an audio clip to link", detail: "Linked clips sit on different tracks: at least one audio clip and one clip on a video track." });
@@ -225,7 +225,7 @@ const toggleLinkAction: ActionRun = () => {
 };
 
 /** "Move into sync" (spec §6.12): the clip the menu was opened on, else the primary selected clip. */
-const moveIntoSyncAction: ActionRun = () => {
+const moveIntoSyncAction: CommandRun = () => {
   const menu = timelineMenu.getState();
   const clipId = menu?.kind === "clip" ? menu.clipId : selectedClips().primary;
   if (clipId === null) return;

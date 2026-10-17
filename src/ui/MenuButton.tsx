@@ -2,7 +2,6 @@ import { ChevronDown, type LucideIcon } from "lucide-react";
 import { useCallback, useRef, useState, type MouseEvent, type ReactNode } from "react";
 import { ContextMenu, type ContextMenuEntry } from "./ContextMenu.js";
 import styles from "./MenuButton.module.css";
-import { shortcutLabel } from "./shortcutLabel.js";
 
 export interface MenuButtonProps {
   /** Accessible name and tooltip text. */
@@ -19,13 +18,15 @@ export interface MenuButtonProps {
   onClose?: () => void;
   /** Some overlay of the menu is on: the icon in its active (gold) state. */
   pressed?: boolean | undefined;
+  /** The rows are a field's values (the Ease dropdown), not command ids. */
+  values?: boolean | undefined;
 }
 
 // Never takes focus on mouse down, so Space and other shortcuts keep working after a choice.
 const keepFocus = (event: MouseEvent) => event.preventDefault();
 
 /** A dropdown (spec §7.8 "single click opens, single click selects"): a compact button opening a menu under it. */
-export function MenuButton({ label, commandId, icon: Icon, children, entries, onSelect, onClose, pressed }: MenuButtonProps) {
+export function MenuButton({ label, commandId, icon: Icon, children, entries, onSelect, onClose, pressed, values = false }: MenuButtonProps) {
   const ref = useRef<HTMLButtonElement>(null);
   const [anchor, setAnchor] = useState<{ x: number; y: number } | null>(null);
   const close = useCallback(() => {
@@ -55,7 +56,6 @@ export function MenuButton({ label, commandId, icon: Icon, children, entries, on
         aria-expanded={anchor !== null}
         aria-pressed={pressed}
         data-tooltip={label}
-        data-shortcut={commandId ? shortcutLabel(commandId) : undefined}
         data-command={commandId}
         onMouseDown={keepFocus}
         onClick={toggle}
@@ -64,7 +64,7 @@ export function MenuButton({ label, commandId, icon: Icon, children, entries, on
         {children !== undefined && <span className={styles.text}>{children}</span>}
         <ChevronDown className={styles.chevron} aria-hidden="true" />
       </button>
-      {anchor && <ContextMenu x={anchor.x} y={anchor.y} entries={entries()} onSelect={onSelect} onClose={close} anchorRef={ref} />}
+      {anchor && <ContextMenu x={anchor.x} y={anchor.y} entries={entries()} onSelect={onSelect} onClose={close} anchorRef={ref} values={values} />}
     </>
   );
 }

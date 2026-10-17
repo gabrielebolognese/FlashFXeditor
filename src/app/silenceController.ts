@@ -306,8 +306,8 @@ function apply(): void {
 export function installSilenceController(): () => void {
   const stops = [
     actions.register("audio.removeSilence", () => (silenceRow.getState() ? closeRow() : openRow())),
-    actions.register("audio.removeSilence.apply", apply),
-    actions.register("audio.removeSilence.cancel", () => cancelRemoveSilence()),
+    actions.register("audio.removeSilence.apply", apply, { enabled: () => silenceRow.getState() }),
+    actions.register("audio.removeSilence.cancel", () => cancelRemoveSilence(), { enabled: () => silenceRow.getState() }),
   ];
   return () => {
     for (const stop of stops) stop();

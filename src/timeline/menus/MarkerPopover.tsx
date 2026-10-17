@@ -1,7 +1,7 @@
 import { Trash2 } from "lucide-react";
 import { useCallback, useLayoutEffect, useRef, type KeyboardEvent } from "react";
-import { closeMarkerEditor, deleteMarker, markerEditor, setMarkerFields } from "../../app/markerController.js";
-import { documentStore, sessionStore, themeBridge } from "../../app/services.js";
+import { closeMarkerEditor, markerEditor, setMarkerFields } from "../../app/markerController.js";
+import { actions, documentStore, sessionStore, themeBridge } from "../../app/services.js";
 import { timelineView } from "../../app/timelineController.js";
 import { MAX_MARKER_LABEL } from "../../core/commands/markerCommands.js";
 import type { LabelColor, Marker, Project } from "../../core/document/types.js";
@@ -75,10 +75,11 @@ function Editor({ markerId }: { markerId: string }) {
     if (event.key === "Enter") finish(true);
   };
   const pickColor = (color: string) => setMarkerFields(markerId, { color: color as LabelColor });
+  // The editor selected its marker: `marker.delete` deletes it.
   const remove = () => {
     done.current = true;
+    actions.run("marker.delete");
     closeMarkerEditor();
-    deleteMarker(markerId);
   };
   return (
     <div ref={panel} className={styles.popover} role="dialog" aria-label="Edit marker" data-scope="dialog">
@@ -95,7 +96,7 @@ function Editor({ markerId }: { markerId: string }) {
       <div className={styles.row} role="radiogroup" aria-label="Marker color">
         <Swatches swatches={labelSwatches(marker.color)} onPick={pickColor} />
         <span className={styles.spacer} />
-        <IconButton icon={Trash2} label="Delete marker" onClick={remove} />
+        <IconButton icon={Trash2} label="Delete marker" commandId="marker.delete" onClick={remove} />
       </div>
     </div>
   );

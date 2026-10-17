@@ -1,7 +1,7 @@
 import { Droplet, FlipHorizontal2, FlipVertical2, Link2, RotateCw, Unlink2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { liveEdit } from "../../app/liveEdit.js";
-import { actions, documentStore, sessionStore } from "../../app/services.js";
+import { documentStore, sessionStore } from "../../app/services.js";
 import type { Clip, ClipId } from "../../core/document/types.js";
 import { isLayerClip, scaleYOf } from "../../timeline/edit/transform.js";
 import { IconButton } from "../../ui/IconButton.js";
@@ -68,7 +68,7 @@ export function TransformSection({ ids }: { ids: readonly ClipId[] }) {
       <Row label="Scale">
         <div className={styles.locked}>
           <NumberField label="W" unit="%" binding={scale.x} precision={1} min={MIN_SCALE_PERCENT} max={MAX_SCALE_PERCENT} ariaLabel="Scale width" />
-          <IconButton icon={locked ? Link2 : Unlink2} label={locked ? "Unlock the aspect" : "Lock the aspect"} pressed={locked} onClick={() => setLocked((current) => !current)} />
+          <IconButton control icon={locked ? Link2 : Unlink2} label={locked ? "Unlock the aspect" : "Lock the aspect"} pressed={locked} onClick={() => setLocked((current) => !current)} />
           <NumberField label="H" unit="%" binding={scale.y} precision={1} min={MIN_SCALE_PERCENT} max={MAX_SCALE_PERCENT} ariaLabel="Scale height" />
         </div>
       </Row>
@@ -83,8 +83,8 @@ export function TransformSection({ ids }: { ids: readonly ClipId[] }) {
       </Row>
       <Row label="Flip">
         <div className={styles.buttons}>
-          <IconButton icon={FlipHorizontal2} label="Flip horizontal" pressed={flipH === true} onClick={() => void actions.run("transform.flipH")} />
-          <IconButton icon={FlipVertical2} label="Flip vertical" pressed={flipV === true} onClick={() => void actions.run("transform.flipV")} />
+          <IconButton icon={FlipHorizontal2} label="Flip horizontal" commandId="transform.flipH" pressed={flipH === true} />
+          <IconButton icon={FlipVertical2} label="Flip vertical" commandId="transform.flipV" pressed={flipV === true} />
         </div>
       </Row>
     </>

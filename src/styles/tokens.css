@@ -130,7 +130,19 @@
   --modal-width-sm: 384px;
   --modal-width-md: 448px;
   --modal-width-lg: 512px;
+  /* Gap (Batch 40): the cheat sheet and the shortcut editor list ~150 commands; the DS stops at max-w-lg,
+     this is Tailwind's max-w-4xl (56rem). */
+  --modal-width-xl: 896px;
   --modal-padding: 20px;
+
+  /* Command palette (Batch 40, gap: the DS has none): the menu material at the top center, under the
+     app bar, the start screen's column width, at most 12 default rows of commands. */
+  --palette-width: 560px;
+  --palette-top: calc(var(--appbar-height) + var(--space-6));
+  --palette-list-height: calc(12 * var(--control-default));
+  /* Shortcut editor and cheat sheet (Batch 40, gap): a cheat sheet column, a key chip's minimum width. */
+  --shortcut-column-width: calc(9 * var(--control-default));
+  --key-chip-min-width: var(--control-compact);
 
   /* Start screen (gap) */
   --start-width: 560px;

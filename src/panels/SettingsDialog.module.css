@@ -1,0 +1,200 @@
+/* Settings and its shortcut editor (Batch 40; gap: the DS has no settings layout). The tab strip is the
+   panel headers' (overline, gold underline); the editor is a tool row (search, Import, Export, Reset
+   all) over the commands by category (overline headings): a row is the name (caption, scope in
+   tertiary), the key chips (badge type on --surface-3, an x on hover; --danger edge and text when a
+   key clashes), then + and Reset; a conflict note under the row in --danger. A key being recorded is
+   the accent wash chip "Press a key…". */
+.tabs {
+  display: flex;
+  flex: none;
+  gap: var(--space-3);
+  height: var(--control-default);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.tab {
+  font: var(--type-overline);
+  letter-spacing: var(--type-overline-track);
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+
+.tab[aria-selected="true"] {
+  color: var(--text-primary);
+  box-shadow: inset 0 calc(-1 * var(--space-0)) 0 var(--accent);
+}
+
+/* The list scrolls under the tool row (the modal body does not). */
+.editor {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-height: 0;
+}
+
+.tools {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.search {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.search > label {
+  width: 100%;
+  height: var(--control-compact);
+}
+
+.count {
+  flex: none;
+  color: var(--text-tertiary);
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-track);
+}
+
+.list {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.heading {
+  padding: var(--space-2) 0 var(--space-1);
+  border-bottom: 1px solid var(--hairline);
+  color: var(--text-tertiary);
+  font: var(--type-overline);
+  letter-spacing: var(--type-overline-track);
+  text-transform: uppercase;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  column-gap: var(--space-3);
+  min-height: var(--control-default);
+  padding: 0 var(--space-1);
+  border-bottom: 1px solid var(--hairline);
+  color: var(--text-secondary);
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-track);
+}
+
+.row:hover {
+  background: var(--hover-wash);
+}
+
+.name {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.label {
+  overflow: hidden;
+  color: var(--text-primary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scope {
+  flex: none;
+  color: var(--text-tertiary);
+}
+
+.keys {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-1);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  height: var(--space-5);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: var(--surface-3);
+  color: var(--text-primary);
+  font: var(--type-badge);
+}
+
+.chipKey {
+  min-width: var(--key-chip-min-width);
+  height: 100%;
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-sm);
+  color: inherit;
+  font: inherit;
+}
+
+.chipKey:hover {
+  background: var(--hover-wash);
+}
+
+.chipRemove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 0;
+  height: 100%;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  color: var(--text-tertiary);
+  transition: width var(--duration-instant) var(--ease-out);
+}
+
+.chip:hover .chipRemove,
+.chipRemove:focus-visible {
+  width: var(--space-5);
+}
+
+.chipRemove:hover {
+  color: var(--text-primary);
+}
+
+.chipRemove svg {
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+}
+
+.clash {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.recording {
+  padding: 0 var(--space-2);
+  border-color: var(--accent-dim);
+  background: var(--accent-wash);
+  color: var(--accent);
+  font: var(--type-caption);
+}
+
+.actions {
+  display: inline-flex;
+  gap: var(--space-0);
+}
+
+.conflict {
+  grid-column: 1 / -1;
+  padding-bottom: var(--space-1);
+  color: var(--danger);
+}
+
+.empty {
+  color: var(--text-tertiary);
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-track);
+}

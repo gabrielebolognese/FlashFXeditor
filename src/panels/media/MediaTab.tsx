@@ -1,13 +1,13 @@
 import { ArrowDownWideNarrow, ArrowUpNarrowWide, AudioLines, ChevronDown, ChevronUp, Film, Image, Import, LayoutGrid, List, type LucideIcon } from "lucide-react";
 import { memo, useMemo, useRef, type DragEvent, type MouseEvent, type PointerEvent } from "react";
 import { insertMediaAtPlayhead } from "../../app/dropController.js";
-import { clearMediaSelection, dropMedia, importFromPicker, mediaPanel, openMediaMenu, selectMedia } from "../../app/mediaController.js";
+import { clearMediaSelection, dropMedia, mediaPanel, openMediaMenu, selectMedia } from "../../app/mediaController.js";
 import { mediaHover, pressMediaCard, takeClickAfterDrag } from "../../app/mediaGestures.js";
 import { documentStore, sessionStore } from "../../app/services.js";
 import { mediaUseCounts } from "../../core/commands/mediaCommands.js";
 import { formatDurationUs } from "../../core/document/time.js";
 import type { MediaId, MediaItem, Project } from "../../core/document/types.js";
-import type { MediaSort, MediaView, SessionState } from "../../core/store/sessionStore.js";
+import type { MediaSort, SessionState } from "../../core/store/sessionStore.js";
 import { isEditableTarget } from "../../core/keyboard/KeyDispatcher.js";
 import { useStoreSelector } from "../../core/store/useStoreSelector.js";
 import { Button } from "../../ui/Button.js";
@@ -57,14 +57,13 @@ function sortBy(sort: MediaSort): void {
 export function MediaActions() {
   const panel = useStoreSelector(sessionStore.state, selectPanelSession);
   const options = (HEADER_SORTS.includes(panel.sort) ? HEADER_SORTS : [...HEADER_SORTS, panel.sort]).map((value) => ({ value, label: SORT_LABELS[value] }));
-  const setView = (view: MediaView) => setPanel({ view });
   return (
     <>
       <Select size="compact" label="Sort media by" value={panel.sort} options={options} onChange={(sort) => setPanel({ sort, descending: false })} />
-      <IconButton icon={panel.descending ? ArrowDownWideNarrow : ArrowUpNarrowWide} label={panel.descending ? "Descending" : "Ascending"} onClick={() => setPanel({ descending: !panel.descending })} />
-      <IconButton icon={LayoutGrid} label="Grid view" pressed={panel.view === "grid"} onClick={() => setView("grid")} />
-      <IconButton icon={List} label="List view" pressed={panel.view === "list"} onClick={() => setView("list")} />
-      <IconButton icon={Import} label="Import media" commandId="media.import" onClick={() => void importFromPicker()} />
+      <IconButton icon={panel.descending ? ArrowDownWideNarrow : ArrowUpNarrowWide} label={panel.descending ? "Descending" : "Ascending"} commandId="media.toggleSortDirection" />
+      <IconButton icon={LayoutGrid} label="Grid view" commandId="media.viewGrid" pressed={panel.view === "grid"} />
+      <IconButton icon={List} label="List view" commandId="media.viewList" pressed={panel.view === "list"} />
+      <IconButton icon={Import} label="Import media" commandId="media.import" />
     </>
   );
 }
@@ -163,7 +162,7 @@ function ListHeader({ sort, descending }: { sort: MediaSort; descending: boolean
     <div className={styles.listHeader} role="row" onClick={(event) => event.stopPropagation()}>
       {COLUMNS.map((column, i) =>
         column.sort ? (
-          <button key={i} type="button" className={styles.column} aria-sort={sort === column.sort ? (descending ? "descending" : "ascending") : "none"} onMouseDown={(event) => event.preventDefault()} onClick={() => sortBy(column.sort as MediaSort)}>
+          <button key={i} type="button" className={styles.column} data-control="" aria-sort={sort === column.sort ? (descending ? "descending" : "ascending") : "none"} onMouseDown={(event) => event.preventDefault()} onClick={() => sortBy(column.sort as MediaSort)}>
             {column.label}
             {sort === column.sort && <Arrow className={styles.sortIcon} aria-hidden="true" />}
           </button>
@@ -183,7 +182,7 @@ function EmptyState() {
       <Film className={styles.emptyIcon} aria-hidden="true" />
       <p className={styles.emptyTitle}>No media yet</p>
       <p className={styles.emptyText}>Import video, audio and images, or drop files here.</p>
-      <Button variant="primary" icon={Import} commandId="media.import" onClick={() => void importFromPicker()}>
+      <Button variant="primary" icon={Import} commandId="media.import">
         Import media
       </Button>
     </div>

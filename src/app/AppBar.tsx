@@ -1,18 +1,15 @@
 import { Redo2, Settings, Undo2, Upload } from "lucide-react";
-import { useLayoutEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from "react";
+import { useLayoutEffect, useRef, type KeyboardEvent, type MouseEvent } from "react";
 import { MAX_PROJECT_NAME, renameProject } from "../core/commands/projectCommands.js";
 import type { Project } from "../core/document/types.js";
 import { useStoreSelector } from "../core/store/useStoreSelector.js";
 import type { SaveStatus } from "../project/Autosaver.js";
 import { formatFps } from "../project/projectPresets.js";
 import { IconButton } from "../ui/IconButton.js";
-import { shortcutLabel } from "../ui/shortcutLabel.js";
 import styles from "./AppBar.module.css";
-import { allowEditing, saveNow } from "./projectController.js";
+import { projectNaming } from "./projectController.js";
 import { actions, documentStore, saveStatus } from "./services.js";
 
-const undo = () => actions.run("history.undo");
-const redo = () => actions.run("history.redo");
 const keepFocus = (event: MouseEvent) => event.preventDefault();
 
 const selectName = (project: Project) => project.name;
@@ -45,27 +42,28 @@ function SaveDot() {
         const { state, text } = describeSaveStatus(status);
         dot.dataset.state = state;
         dot.dataset.tooltip = text;
+        // Read-only: the click asks for write access; otherwise it saves now.
+        dot.dataset.command = status.readOnly ? "project.allowEditing" : "project.save";
         dot.setAttribute("aria-label", text);
       },
       { fireImmediately: true },
     );
   }, []);
-  const onClick = () => {
-    if (saveStatus.getState().readOnly) allowEditing();
-    else saveNow();
-  };
-  return <button ref={ref} type="button" className={styles.saveDot} data-shortcut={shortcutLabel("project.save")} onMouseDown={keepFocus} onClick={onClick} />;
+  const onClick = () => actions.run(saveStatus.getState().readOnly ? "project.allowEditing" : "project.save");
+  return <button ref={ref} type="button" className={styles.saveDot} data-command="project.save" onMouseDown={keepFocus} onClick={onClick} />;
 }
 
-/** Click to rename; Enter or blur commits (one undoable command), Escape cancels. */
+const setEditing = (editing: boolean) => projectNaming.set(editing);
+
+/** Click to rename (`project.rename`); Enter or blur commits (one undoable command), Escape cancels. */
 function ProjectName() {
   const name = useStoreSelector(documentStore, selectName);
-  const [editing, setEditing] = useState(false);
+  const editing = useStoreSelector(projectNaming, (state) => state);
   const cancelled = useRef(false);
 
   if (!editing) {
     return (
-      <button type="button" className={styles.projectName} data-tooltip="Rename project" onClick={() => setEditing(true)}>
+      <button type="button" className={styles.projectName} data-tooltip="Rename project" data-command="project.rename" onClick={() => actions.run("project.rename")}>
         {name}
       </button>
     );
@@ -122,7 +120,6 @@ export function AppBar() {
         commandId="history.undo"
         disabled={!history.canUndo}
         size="default"
-        onClick={undo}
       />
       <IconButton
         icon={Redo2}
@@ -130,7 +127,6 @@ export function AppBar() {
         commandId="history.redo"
         disabled={!history.canRedo}
         size="default"
-        onClick={redo}
       />
       <div className={styles.divider} />
       <span className={styles.badge}>{badge}</span>
@@ -141,14 +137,14 @@ export function AppBar() {
         className={styles.export}
         aria-disabled="true"
         data-tooltip="Export"
-        data-shortcut={shortcutLabel("app.export")}
+        data-command="app.export"
         onMouseDown={keepFocus}
       >
         <Upload className={styles.exportIcon} strokeWidth={2.5} aria-hidden="true" />
         Export
       </button>
-      {/* TODO(batch 42): settings panel. */}
-      <IconButton icon={Settings} label="Settings" disabled size="default" />
+      {/* TODO(batch 42): the General section of the settings (Batch 40 builds its Shortcuts). */}
+      <IconButton icon={Settings} commandId="app.settings" size="default" />
     </header>
   );
 }

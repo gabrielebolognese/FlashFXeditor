@@ -54,7 +54,7 @@ import { pickFile, saveFile, type PickerType } from "./filePickers.js";
 import { patchLiveEdit } from "./liveEdit.js";
 import type { CardDragSource } from "./mediaGestures.js";
 import { addTitleClip, fontsVersion, selectedTextClip, setDefaultTitleLook } from "./textController.js";
-import { actions, appSettings, documentStore, fontLibrary, keyValueStore, saveStatus, scheduler, sessionStore, themeBridge } from "./services.js";
+import { actions, appSettings, documentStore, focusScopes, fontLibrary, keyValueStore, saveStatus, scheduler, sessionStore, themeBridge } from "./services.js";
 
 export interface LibraryFolder {
   name: string;
@@ -78,6 +78,8 @@ export const presetLibrary = createStore<PresetLibrary>({ loaded: false, global:
 
 /** Where Save as preset's name field is open: the quick row (properties) or the Presets tab; null when closed. */
 export const presetNaming = createStore<"quick" | "tab" | null>(null);
+/** The preset card whose name is being edited (the card menu's Rename, `preset.rename`), or null. */
+export const presetRenaming = createStore<string | null>(null);
 
 /** The Presets tab's card thumbnails (spec §3.4, P3: drawn in the FrameScheduler loop, at the device pixel ratio of the frame). */
 export const presetThumbs = new PresetThumbPainter(scheduler, (canvas, preset, width, height) => {
@@ -595,6 +597,30 @@ export async function exportPresets(id: string | null = null): Promise<void> {
   }
 }
 
+function setPresetScope(presetScope: PresetScope): void {
+  sessionStore.state.set((state) => ({ ...state, mediaPanel: { ...state.mediaPanel, presetScope } }));
+}
+
+/** The commands of one preset (its id as the argument): the card menu's rows and the favorite chips. */
+function presetCommands(): (() => void)[] {
+  const on = (run: (id: string) => void) => (_context: unknown, id?: string) => {
+    if (id !== undefined && findPreset(id)) run(id);
+  };
+  const defaults = appSettings.getState;
+  return [
+    actions.register("preset.apply", on(applyPresetById)),
+    actions.register("preset.addAtPlayhead", on((id) => void addPresetClip(id))),
+    actions.register("preset.defaultTitle", on((id) => setDefaultPreset("title", defaults().defaultTitlePreset === id ? null : id))),
+    actions.register("preset.defaultSubtitle", on((id) => setDefaultPreset("subtitle", defaults().defaultSubtitlePreset === id ? null : id))),
+    actions.register("preset.favorite", on(toggleFavorite)),
+    actions.register("preset.applyPosition", on(toggleApplyPosition)),
+    actions.register("preset.rename", on((id) => presetRenaming.set(id))),
+    actions.register("preset.duplicate", on((id) => void duplicatePresetById(id))),
+    actions.register("preset.export", on((id) => void exportPresets(id))),
+    actions.register("preset.delete", on(deletePreset)),
+  ];
+}
+
 /** Loads the presets and wires them in. Returns a stop function. */
 export function installPresetController(): () => void {
   void loadGlobal();
@@ -611,12 +637,28 @@ export function installPresetController(): () => void {
     sessionStore.selection.subscribe(() => endHover()),
     // A font loaded (or the system fonts came): the card thumbnails draw again (at the next frame).
     fontsVersion.subscribe(() => presetThumbs.redrawAll()),
-    // The quick row's Save as preset (opens its name field) and Update preset (spec §11, §17).
-    actions.register("preset.save", () => {
-      if (!presetSourceClip()) return false;
-      presetNaming.set("quick");
-    }),
+    // Save as preset (spec §11, §17: the quick row's, or the Presets header's New from selection when
+    // the Presets tab has the keyboard; each opens its own name field) and Update preset.
+    actions.register(
+      "preset.save",
+      (context) => {
+        if (!presetSourceClip()) return false;
+        const inTab = (context?.scope ?? focusScopes.scope) === "media" && sessionStore.state.getState().mediaPanel.tab === "presets";
+        presetNaming.set(inTab ? "tab" : "quick");
+      },
+      { enabled: () => presetSourceClip() !== null },
+    ),
     actions.register("preset.update", () => updatePresetFromSelection()),
+    // The Presets header and the library folder strip (spec §10.3, §17).
+    actions.register("presets.import", () => void importPresets()),
+    actions.register("presets.export", () => void exportPresets(), { enabled: () => list(sessionStore.state.getState().mediaPanel.presetScope).length > 0 }),
+    actions.register("presets.showGlobal", () => setPresetScope("global")),
+    actions.register("presets.showProject", () => setPresetScope("project")),
+    actions.register("presets.chooseFolder", () => void chooseLibraryFolder()),
+    actions.register("presets.syncFolder", () => void syncLibraryFolder(), { enabled: () => presetLibrary.getState().folder !== null && presetLibrary.getState().folder?.status !== "syncing" }),
+    actions.register("presets.stopFolder", () => void stopLibraryFolder(), { enabled: () => presetLibrary.getState().folder !== null }),
+    // The card menu (spec §10.3 "Right-click card") and the toolbar's favorite chips act on the preset named by the argument.
+    ...presetCommands(),
   ];
   if (import.meta.env.DEV) {
     // Console access for the acceptance checks.

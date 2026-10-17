@@ -1,4 +1,4 @@
-// Fades and transitions (spec §6.15, §6.16, §11, §17; Batch 36), registered in the ActionRegistry (the
+// Fades and transitions (spec §6.15, §6.16, §11, §17; Batch 36), registered in the CommandRegistry (the
 // command palette lists them from Batch 40): `Mod+Shift+D` (the default transition at the selected
 // edit point, or at the cut nearest the playhead on the targeted tracks), the quick row's Fade in /
 // Fade out (the selected clips and their linked audio) and transition chips, the clip menu's fade
@@ -21,6 +21,7 @@ import { addTransition, clipCut, defaultTransitionCut, removeTransitions, transi
 import { showToast } from "../ui/toasts.js";
 import { revealSection } from "./captionController.js";
 import styles from "./MediaGestures.module.css";
+import { fadePresetId } from "./commandCatalog.js";
 import { actions, documentStore, sessionStore, themeBridge } from "./services.js";
 import { timelineView } from "./timelineController.js";
 
@@ -29,7 +30,8 @@ const playhead = () => sessionStore.state.getState().playhead;
 const linked = () => sessionStore.state.getState().linkedSelection;
 
 /** Menu preset ids: `clip.fadeIn.25` (0.25 s), `.50`, `.100`. */
-export const fadePresetId = (edge: FadeEdge, seconds: number) => `clip.fade${edge === "in" ? "In" : "Out"}.${Math.round(seconds * 100)}`;
+// Fade preset ids (`clip.fadeIn.25`) are named by the command catalog.
+export { fadePresetId };
 
 function selectedIds(): ClipId[] {
   const selection = sessionStore.selection.getState();
@@ -201,7 +203,7 @@ export function pressTransitionChip(event: Pick<PointerEvent, "button" | "pointe
 /** The quick row's transition chips: a click (not the end of a drag) applies at the chip cut. */
 export function clickTransitionChip(kind: TransitionKind): void {
   if (takeChipClick()) return;
-  addAtChipCut(kind);
+  actions.run(`transition.add.${kind}`);
 }
 
 export function installTransitionController(): () => void {

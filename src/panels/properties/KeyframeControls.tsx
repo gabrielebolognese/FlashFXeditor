@@ -125,7 +125,7 @@ export function EaseRow({ ids, section }: { ids: readonly ClipId[]; section: Key
   return (
     <Row label="Ease">
       <span className={styles.easeCell}>
-        <MenuButton label="Ease of the keyframe at the playhead" entries={entries} onSelect={(id) => setEaseAtPlayhead(section, id as EaseId)}>
+        <MenuButton label="Ease of the keyframe at the playhead" values entries={entries} onSelect={(id) => setEaseAtPlayhead(section, id as EaseId)}>
           <EaseText ids={ids} section={section} />
         </MenuButton>
       </span>

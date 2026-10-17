@@ -83,7 +83,7 @@ describe("app settings", () => {
     await settings.load();
     expect(settings.getState()).toEqual(DEFAULT_APP_SETTINGS);
     await settings.update({ autosaveDelayMs: 5000 });
-    expect(kv.data.get("settings.v1")).toEqual({ autosaveDelayMs: 5000, importMode: "copy", monitorVolumeDb: 0, monitorMuted: false, proxyAuto: true, proxyRule: "heavy", proxyShortEdge: 540, recentColors: [], punchZoomScale: 1.2, punchZoomAnimate: true, favoriteFonts: [], matchClipUnderPlayhead: true, defaultTitlePreset: "starter-title", defaultSubtitlePreset: "starter-subtitle", transcribeModel: "base", transcribeLanguage: null, duckDepthDb: 12, duckRampFrames: 10, silenceThresholdDb: -40, silenceMinMs: 500, silencePaddingMs: 150 });
+    expect(kv.data.get("settings.v1")).toEqual({ autosaveDelayMs: 5000, importMode: "copy", monitorVolumeDb: 0, monitorMuted: false, proxyAuto: true, proxyRule: "heavy", proxyShortEdge: 540, recentColors: [], punchZoomScale: 1.2, punchZoomAnimate: true, favoriteFonts: [], matchClipUnderPlayhead: true, defaultTitlePreset: "starter-title", defaultSubtitlePreset: "starter-subtitle", transcribeModel: "base", transcribeLanguage: null, duckDepthDb: 12, duckRampFrames: 10, silenceThresholdDb: -40, silenceMinMs: 500, silencePaddingMs: 150, keymap: {}, recentCommands: [] });
     await settings.update({ autosaveDelayMs: 1234 });
     expect(settings.getState().autosaveDelayMs).toBe(5000);
 
@@ -207,5 +207,19 @@ describe("app settings", () => {
     expect(settings.getState()).toMatchObject({ defaultTitlePreset: "starter-title", defaultSubtitlePreset: null });
     await settings.update({ defaultTitlePreset: "mine" });
     expect(settings.getState().defaultTitlePreset).toBe("mine");
+  });
+  it("keeps the shortcut editor's overrides and the palette's recent commands, dropping invalid entries", async () => {
+    const kv = memoryKeyValueStore();
+    kv.data.set("settings.v1", {
+      keymap: { "edit.split": ["Mod+J", "Hyper+Q", 7], "edit.lift": [], "bad id!": ["K"], "edit.extract": "E" },
+      recentCommands: ["edit.closeAllGaps", "edit.closeAllGaps", 3, "timeline.zoomFit"],
+    });
+    const settings = createAppSettings(kv);
+    await settings.load();
+    expect(settings.getState().keymap).toEqual({ "edit.split": ["Mod+J"], "edit.lift": [] });
+    expect(settings.getState().recentCommands).toEqual(["edit.closeAllGaps", "timeline.zoomFit"]);
+    await settings.update({ keymap: [] as never, recentCommands: "x" as never });
+    expect(settings.getState().keymap).toEqual({ "edit.split": ["Mod+J"], "edit.lift": [] });
+    expect(settings.getState().recentCommands).toEqual(["edit.closeAllGaps", "timeline.zoomFit"]);
   });
 });

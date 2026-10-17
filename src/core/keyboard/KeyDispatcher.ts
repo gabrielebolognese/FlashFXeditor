@@ -2,7 +2,8 @@
 // focus scope (scope bindings first, then global) and dispatches the command id. A scope binding whose
 // command is not available yet (`isAvailable`: a later batch builds it), or whose handler declines
 // (returns false), gives way to the global binding of the same key: the preview's arrow keys nudge the
-// selected layers and step frames when there is nothing to nudge.
+// selected layers and step frames when there is nothing to nudge. Bindings marked `everywhere` (Mod+S)
+// also run while a text input or a dialog owns the keyboard. `setBindings` swaps the keymap (rebinding).
 import type { FocusScope } from "./focusScope.js";
 import type { KeyBinding } from "./keymap.js";
 import { eventChords, parseChord, type Platform } from "./keys.js";
@@ -44,18 +45,36 @@ type KeyEventLike = Pick<
 
 export class KeyDispatcher {
   private readonly index = new Map<FocusScope, Map<string, KeyBinding>>();
+  /** Bindings that run in every scope and in text inputs, by chord. */
+  private readonly everywhere = new Map<string, KeyBinding>();
   /** Held bindings by physical key code, so key-up finds them even if modifiers changed. */
   private readonly held = new Map<string, { binding: KeyBinding; scope: FocusScope }>();
 
   constructor(private readonly options: KeyDispatcherOptions) {
-    for (const binding of options.keymap) {
-      for (const scope of binding.scopes) {
-        let map = this.index.get(scope);
-        if (!map) {
-          map = new Map();
-          this.index.set(scope, map);
+    this.setBindings(options.keymap);
+  }
+
+  /** Replaces the keymap (a rebinding). Later bindings win a chord they share with earlier ones in a scope. */
+  setBindings(bindings: readonly KeyBinding[]): void {
+    this.index.clear();
+    this.everywhere.clear();
+    for (const binding of bindings) {
+      for (const keys of binding.keys) {
+        let chord: string;
+        try {
+          chord = parseChord(keys, this.options.platform);
+        } catch {
+          continue;
         }
-        for (const keys of binding.keys) map.set(parseChord(keys, options.platform), binding);
+        if (binding.everywhere) this.everywhere.set(chord, binding);
+        for (const scope of binding.scopes) {
+          let map = this.index.get(scope);
+          if (!map) {
+            map = new Map();
+            this.index.set(scope, map);
+          }
+          map.set(chord, binding);
+        }
       }
     }
   }
@@ -102,16 +121,24 @@ export class KeyDispatcher {
         break;
       }
     }
+    if (found.length === 0 && unavailable.length === 0 && ISOLATED_SCOPES.has(scope)) return this.everywhereFor(event);
     return found.length > 0 ? found : unavailable.slice(0, 1);
+  }
+
+  private everywhereFor(event: KeyEventLike): KeyBinding[] {
+    for (const chord of eventChords(event)) {
+      const binding = this.everywhere.get(chord);
+      if (binding) return [binding];
+    }
+    return [];
   }
 
   handleKeyDown(event: KeyEventLike): void {
     if (event.isComposing) return;
     const scope = this.options.getScope();
-    // Text inputs own their keys; only the inline text editor scope gets its own bindings.
-    if (isEditableTarget(event.target) && scope !== "textEditing") return;
-
-    for (const binding of this.candidates(event, scope)) {
+    // Text inputs own their keys (but `everywhere` ones); only the inline text editor scope gets its own bindings.
+    const typing = isEditableTarget(event.target) && scope !== "textEditing";
+    for (const binding of typing ? this.everywhereFor(event) : this.candidates(event, scope)) {
       if (binding.hold) {
         if (event.repeat || this.held.has(event.code)) {
           event.preventDefault();

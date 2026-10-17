@@ -22,7 +22,8 @@ import { MIXED, NONE, type Shared } from "./useShared.js";
 //   in its own font, set when its row scrolls into view (lazy previews: a long system list loads only
 //   what is seen, and scrolling renders nothing in React). A star keeps a family in Favorites (app
 //   settings). System fonts are listed on request (the Local Font Access permission asks once).
-// TODO(batch 40): arrow-key navigation in the list (the shared menus' keyboard TODO).
+// - Keyboard (Batch 40): Up / Down in the search field move through the families (the row in view),
+//   Enter picks the highlighted one (the first match when none is), Escape closes.
 
 const selectUsed = (project: Project) => usedFamilies(projectTextStyles(project).map((style) => ({ kind: "text", style }))).join("\n");
 const selectFavorites = (settings: AppSettings) => settings.favoriteFonts;
@@ -73,6 +74,8 @@ function FontPicker({ anchor, current, onPick, onClose }: { anchor: HTMLElement;
   const panel = useRef<HTMLDivElement>(null);
   const list = useRef<HTMLDivElement>(null);
   const [query, setQuery] = useState("");
+  /** The family row the arrow keys reached (its entry key), or null. */
+  const [active, setActive] = useState<string | null>(null);
   const used = useStoreSelector(documentStore, selectUsed);
   const favorites = useStoreSelector(appSettings, selectFavorites);
   const system = useStoreSelector(systemFonts, selectSystem);
@@ -147,21 +150,39 @@ function FontPicker({ anchor, current, onPick, onClose }: { anchor: HTMLElement;
     onPick(family);
     onClose();
   };
+  const fonts = entries.filter((entry): entry is Extract<Entry, { kind: "font" }> => entry.kind === "font");
   const onSearchKey = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key !== "Enter") return;
-    const first = entries.find((entry) => entry.kind === "font");
-    if (first?.kind === "font") pick(first.family);
+    const at = fonts.findIndex((entry) => entry.key === active);
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      if (fonts.length === 0) return;
+      const next = event.key === "ArrowDown" ? Math.min(fonts.length - 1, at + 1) : at <= 0 ? 0 : at - 1;
+      setActive(fonts[next]?.key ?? null);
+    } else if (event.key === "Enter") {
+      const chosen = fonts[at] ?? fonts[0];
+      if (chosen) pick(chosen.family);
+    }
   };
+
+  // The highlighted row stays in view.
+  useLayoutEffect(() => {
+    if (active !== null) list.current?.querySelector("[data-active]")?.scrollIntoView({ block: "nearest" });
+  }, [active]);
   const star = (event: MouseEvent, family: string) => {
     event.stopPropagation();
     void appSettings.update({ favoriteFonts: toggleFavoriteFont(appSettings.getState().favoriteFonts, family) });
   };
 
   return createPortal(
-    <div ref={panel} className={styles.picker} role="dialog" aria-label="Fonts">
+    <div ref={panel} className={styles.picker} role="dialog" aria-label="Fonts" data-control="">
       <label className={styles.search}>
         <Search aria-hidden="true" />
-        <input type="text" value={query} placeholder="Search fonts" aria-label="Search fonts" spellCheck={false} onChange={(event) => setQuery(event.target.value)} onKeyDown={onSearchKey} />
+        <input type="text" value={query} placeholder="Search fonts" aria-label="Search fonts" spellCheck={false} onChange={(event) => {
+            setQuery(event.target.value);
+            setActive(null);
+          }}
+          onKeyDown={onSearchKey}
+        />
       </label>
       <div ref={list} className={styles.list} role="listbox" aria-label="Font families">
         {entries.map((entry, i) => {
@@ -188,7 +209,7 @@ function FontPicker({ anchor, current, onPick, onClose }: { anchor: HTMLElement;
             case "font": {
               const favorite = favorites.includes(entry.family);
               return (
-                <div key={entry.key} className={styles.row} role="option" aria-selected={entry.family === current} tabIndex={-1} onClick={() => pick(entry.family)}>
+                <div key={entry.key} className={styles.row} role="option" aria-selected={entry.family === current} data-active={entry.key === active || undefined} tabIndex={-1} onClick={() => pick(entry.family)}>
                   <span className={styles.family} data-family={entry.family}>
                     {entry.family}
                   </span>

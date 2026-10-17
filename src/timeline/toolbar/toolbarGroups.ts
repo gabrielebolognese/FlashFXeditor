@@ -1,40 +1,9 @@
-// Timeline toolbar content (spec §6.1), left to right. Item ids are command ids.
-import {
-  AudioWaveform,
-  Bookmark,
-  ChevronsLeftRight,
-  Delete,
-  Diamond,
-  Expand,
-  Focus,
-  FoldHorizontal,
-  Gauge,
-  Hand,
-  ImagePlus,
-  Link,
-  LocateFixed,
-  Magnet,
-  MousePointer2,
-  MoveHorizontal,
-  Rows3,
-  ScanSearch,
-  Captions,
-  Shrink,
-  Slice,
-  Snowflake,
-  Square,
-  SquareSplitHorizontal,
-  Subtitles,
-  Trash2,
-  Type,
-  Waves,
-  ZoomIn,
-  ZoomOut,
-  type LucideIcon,
-} from "lucide-react";
+// Timeline toolbar content (spec §6.1, §17), left to right. Item ids are command ids: their icons and
+// labels come from the command catalog (app/commandCatalog.ts), `label` only where the toolbar words it
+// differently.
 
 export type ToolbarItem =
-  | { kind: "button"; id: string; label: string; icon: LucideIcon; text?: string; toggle?: true }
+  | { kind: "button"; id: string; label?: string; text?: string; toggle?: true }
   | { kind: "zoomSlider" }
   /** The favorite text presets as chips (spec §6.1: up to 8, from the Presets tab). */
   | { kind: "presetChips" };
@@ -53,12 +22,12 @@ export const TOOLBAR_GROUPS: readonly ToolbarGroup[] = [
     label: "Tools",
     priority: 5,
     items: [
-      { kind: "button", id: "tool.select", label: "Select", icon: MousePointer2, toggle: true },
-      { kind: "button", id: "tool.razor", label: "Razor", icon: Slice, toggle: true },
-      { kind: "button", id: "tool.hand", label: "Hand", icon: Hand, toggle: true },
-      { kind: "button", id: "tool.slip", label: "Slip", icon: MoveHorizontal, toggle: true },
-      { kind: "button", id: "tool.slide", label: "Slide", icon: ChevronsLeftRight, toggle: true },
-      { kind: "button", id: "tool.rateStretch", label: "Rate stretch", icon: Gauge, toggle: true },
+      { kind: "button", id: "tool.select", toggle: true },
+      { kind: "button", id: "tool.razor", toggle: true },
+      { kind: "button", id: "tool.hand", toggle: true },
+      { kind: "button", id: "tool.slip", toggle: true },
+      { kind: "button", id: "tool.slide", toggle: true },
+      { kind: "button", id: "tool.rateStretch", toggle: true },
     ],
   },
   {
@@ -66,11 +35,11 @@ export const TOOLBAR_GROUPS: readonly ToolbarGroup[] = [
     label: "Toggles",
     priority: 2,
     items: [
-      { kind: "button", id: "toggle.snap", label: "Snap", icon: Magnet, toggle: true },
-      { kind: "button", id: "toggle.linkedSelection", label: "Linked selection", icon: Link, toggle: true },
-      { kind: "button", id: "toggle.rippleMode", label: "Ripple mode", icon: Waves, toggle: true },
-      { kind: "button", id: "toggle.clipKeyframes", label: "Show clip keyframes", icon: Diamond, toggle: true },
-      { kind: "button", id: "toggle.audioScrub", label: "Audio scrub", icon: AudioWaveform, toggle: true },
+      { kind: "button", id: "toggle.snap", toggle: true },
+      { kind: "button", id: "toggle.linkedSelection", toggle: true },
+      { kind: "button", id: "toggle.rippleMode", toggle: true },
+      { kind: "button", id: "toggle.clipKeyframes", toggle: true },
+      { kind: "button", id: "toggle.audioScrub", toggle: true },
     ],
   },
   {
@@ -78,14 +47,14 @@ export const TOOLBAR_GROUPS: readonly ToolbarGroup[] = [
     label: "Edit",
     priority: 4,
     items: [
-      { kind: "button", id: "edit.split", label: "Split at playhead", icon: SquareSplitHorizontal },
-      { kind: "button", id: "edit.delete", label: "Delete", icon: Trash2 },
-      { kind: "button", id: "edit.rippleDelete", label: "Ripple delete", icon: Delete },
-      { kind: "button", id: "edit.closeGap", label: "Close gap", icon: FoldHorizontal },
-      { kind: "button", id: "edit.closeAllGaps", label: "Close all gaps (compact)", icon: Shrink },
-      { kind: "button", id: "marker.add", label: "Add marker", icon: Bookmark },
-      { kind: "button", id: "edit.freezeFrame", label: "Freeze frame", icon: Snowflake },
-      { kind: "button", id: "edit.punchZoom", label: "Punch zoom", icon: Focus },
+      { kind: "button", id: "edit.split" },
+      { kind: "button", id: "edit.delete" },
+      { kind: "button", id: "edit.rippleDelete" },
+      { kind: "button", id: "edit.closeGap" },
+      { kind: "button", id: "edit.closeAllGaps", label: "Close all gaps (compact)" },
+      { kind: "button", id: "marker.add" },
+      { kind: "button", id: "edit.freezeFrame" },
+      { kind: "button", id: "edit.punchZoom" },
     ],
   },
   {
@@ -93,11 +62,11 @@ export const TOOLBAR_GROUPS: readonly ToolbarGroup[] = [
     label: "Add",
     priority: 3,
     items: [
-      { kind: "button", id: "add.title", label: "Add title", icon: Type, text: "Title" },
-      { kind: "button", id: "add.subtitle", label: "Add subtitle", icon: Subtitles, text: "Subtitle" },
-      { kind: "button", id: "add.captionTrack", label: "Add caption track", icon: Captions },
-      { kind: "button", id: "add.solid", label: "Add solid", icon: Square },
-      { kind: "button", id: "add.image", label: "Add image", icon: ImagePlus },
+      { kind: "button", id: "add.title", text: "Title" },
+      { kind: "button", id: "add.subtitle", text: "Subtitle" },
+      { kind: "button", id: "add.captionTrack" },
+      { kind: "button", id: "add.solid" },
+      { kind: "button", id: "add.image" },
       { kind: "presetChips" },
     ],
   },
@@ -106,13 +75,13 @@ export const TOOLBAR_GROUPS: readonly ToolbarGroup[] = [
     label: "Zoom",
     priority: 1,
     items: [
-      { kind: "button", id: "timeline.zoomOut", label: "Zoom out", icon: ZoomOut },
+      { kind: "button", id: "timeline.zoomOut" },
       { kind: "zoomSlider" },
-      { kind: "button", id: "timeline.zoomIn", label: "Zoom in", icon: ZoomIn },
-      { kind: "button", id: "timeline.zoomFit", label: "Zoom to fit", icon: Expand },
-      { kind: "button", id: "timeline.zoomToSelection", label: "Zoom to selection", icon: ScanSearch },
-      { kind: "button", id: "timeline.centerPlayhead", label: "Center playhead", icon: LocateFixed },
-      { kind: "button", id: "timeline.trackHeightCycle", label: "Track height", icon: Rows3 },
+      { kind: "button", id: "timeline.zoomIn" },
+      { kind: "button", id: "timeline.zoomFit" },
+      { kind: "button", id: "timeline.zoomToSelection" },
+      { kind: "button", id: "timeline.centerPlayhead" },
+      { kind: "button", id: "timeline.trackHeightCycle" },
     ],
   },
 ];

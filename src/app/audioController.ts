@@ -161,7 +161,12 @@ export function detachAudio(): void {
 
 /** Registers the audio actions (and the dev console access). Returns a stop function. */
 export function installAudioController(): () => void {
-  const stops = [actions.register("audio.toggleMute", toggleMonitorMute), actions.register("toggle.audioScrub", toggleAudioScrub)];
+  const stops = [
+    actions.register("audio.toggleMute", toggleMonitorMute),
+    actions.register("toggle.audioScrub", toggleAudioScrub),
+    // The meter's clip indicators (the LED row is its button).
+    actions.register("audio.resetMeters", () => meterView.resetClip()),
+  ];
   if (import.meta.env.DEV) {
     const editor = ((globalThis as { __editor?: Record<string, unknown> }).__editor ??= {});
     const audio: Record<string, unknown> = {

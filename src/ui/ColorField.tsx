@@ -242,7 +242,7 @@ function ColorPicker({ anchor, initial, recent, onChange, onPreview, onClose }: 
   };
 
   return createPortal(
-    <div ref={panel} className={styles.picker} role="dialog" aria-label="Color picker">
+    <div ref={panel} className={styles.picker} role="dialog" aria-label="Color picker" data-control="">
       <div className={styles.square} data-part="square" {...area}>
         <div className={styles.thumb} data-part="squareThumb" />
       </div>
@@ -256,7 +256,7 @@ function ColorPicker({ anchor, initial, recent, onChange, onPreview, onClose }: 
       <div className={styles.row}>
         <div className={styles.preview} data-part="preview" aria-hidden="true" />
         <TextField value={hex} onCommit={pickHex} ariaLabel="Hex" mono maxLength={9} />
-        {Dropper && <IconButton icon={Pipette} label="Pick a color from the screen" onClick={sample} />}
+        {Dropper && <IconButton control icon={Pipette} label="Pick a color from the screen" onClick={sample} />}
       </div>
       <div className={styles.channels}>
         {(["R", "G", "B", "A"] as const).map((name, index) => (

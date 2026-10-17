@@ -8,7 +8,7 @@
 // stretch drags, Q/W/E, Ripple mode, §6.10), the tools (§6.18), the snap toggle (§6.9), select all /
 // deselect (§6.7), Esc for gestures and the dev clip generator.
 import { addTrack, updateClip, updateTrack, type ClipPatch, type TrackPatch } from "../core/commands/basicCommands.js";
-import type { ActionRun } from "../core/commands/ActionRegistry.js";
+import type { CommandRun } from "../core/commands/CommandRegistry.js";
 import { emptyTrack, nextTrackName } from "../core/document/project.js";
 import { formatTimecode, parseTimecode } from "../core/document/time.js";
 import type { ClipId, Frame, Project, TrackKind } from "../core/document/types.js";
@@ -109,7 +109,7 @@ function commitKeyTrim(result: TrimResult): boolean {
  * applies at the frame on screen and playback goes on. After Q the playhead moves to the edit point,
  * where the frame it showed now is, so the picture continues.
  */
-function rippleTrimToPlayhead(side: "start" | "end"): ActionRun {
+function rippleTrimToPlayhead(side: "start" | "end"): CommandRun {
   return () => {
     const trim = trimToPlayhead(documentStore.getState(), playhead(), side, { linked: sessionStore.state.getState().linkedSelection });
     if (trim && commitKeyTrim(trim.result) && trim.playhead !== playhead()) movePlayhead(trim.playhead);
@@ -117,7 +117,7 @@ function rippleTrimToPlayhead(side: "start" | "end"): ActionRun {
 }
 
 /** E (spec §6.10): the primary selected clip's nearest edge to the playhead (regular trim, with linked partners). */
-const extendEdit: ActionRun = () => {
+const extendEdit: CommandRun = () => {
   const { ids, primary } = selectedClips();
   const clipId = primary ?? ids[0];
   if (clipId === undefined) return;
@@ -181,7 +181,7 @@ function selectedClips(): { ids: ClipId[]; primary: ClipId | null } {
 }
 
 /** Alt+Left/Right (1 frame), Alt+Shift+Left/Right (5 frames): handled even with nothing selected (Alt+Left is the browser's Back). */
-function nudge(frames: number): ActionRun {
+function nudge(frames: number): CommandRun {
   return () => {
     const { ids, primary } = selectedClips();
     if (ids.length > 0) commitMove(nudgeClips(documentStore.getState(), ids, frames, newId), primary);
@@ -189,7 +189,7 @@ function nudge(frames: number): ActionRun {
 }
 
 /** Alt+Up/Down: the selection to the adjacent track, the primary clip's kind giving the direction. */
-function moveToTrack(direction: "up" | "down"): ActionRun {
+function moveToTrack(direction: "up" | "down"): CommandRun {
   return () => {
     const project = documentStore.getState();
     const { ids, primary } = selectedClips();
@@ -204,13 +204,13 @@ function moveToTrack(direction: "up" | "down"): ActionRun {
  * state, not undoable). During a drag the timeline reads S itself as hold-to-invert, so it never gets
  * here; the key-up of a held S does nothing.
  */
-const toggleSnap: ActionRun = (context) => {
+const toggleSnap: CommandRun = (context) => {
   if (context?.phase === "up") return;
   sessionStore.state.set((state) => ({ ...state, snap: !state.snap }));
 };
 
 /** V, Y, U, R and the toolbar tools (spec §6.18): the active tool (session state, not undoable). */
-function selectTool(tool: Tool): ActionRun {
+function selectTool(tool: Tool): CommandRun {
   return () => sessionStore.state.set((state) => (state.activeTool === tool ? state : { ...state, activeTool: tool }));
 }
 
@@ -351,7 +351,7 @@ export function movePlayhead(frame: Frame): void {
   timelineView.reveal(playhead());
 }
 
-function jumpTo(target: (project: Project, frame: Frame) => Frame | null): ActionRun {
+function jumpTo(target: (project: Project, frame: Frame) => Frame | null): CommandRun {
   return () => {
     const frame = target(documentStore.getState(), playhead());
     if (frame !== null) movePlayhead(frame);
@@ -368,7 +368,7 @@ function inOut(): (Frame | null)[] {
  * tracks), else the selected gap, else the clips of the selected edit point, framed with a 10% margin.
  * Nothing selected: nothing happens.
  */
-const zoomToSelection: ActionRun = () => {
+const zoomToSelection: CommandRun = () => {
   const span = selectionSpan(documentStore.getState(), sessionStore.selection.getState(), sessionStore.gap.getState(), sessionStore.editPoint.getState());
   if (span) timelineView.zoomToFrames(span.start, span.end);
 };
@@ -429,7 +429,10 @@ export function installTimelineController(): () => void {
   ];
   if (import.meta.env.DEV) {
     const generate = (clips?: number, tracks?: number) => generateTestClips(documentStore, { ...(clips !== undefined && { clips }), ...(tracks !== undefined && { tracks }) });
-    stops.push(actions.register("dev.generateTimeline", () => generate()));
+    stops.push(
+      actions.register("dev.generateTimeline", () => generate()),
+      actions.register("dev.toggleTimelineStats", () => timelineDev.set((state) => ({ stats: !state.stats }))),
+    );
     // Console access for the acceptance checks, e.g. `__editor.timeline.generate(500, 8)`.
     const editor = ((globalThis as { __editor?: Record<string, unknown> }).__editor ??= {});
     // `__editor.timeline.cuts(60, 1)`: 60 one-second clips on V1 cycling through the project's videos (playback checks).

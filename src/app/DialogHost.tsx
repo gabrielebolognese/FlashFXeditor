@@ -50,8 +50,8 @@ function NewProjectDialog({ dir }: { dir: FsDir }) {
       onClose={closeDialog}
       footer={
         <>
-          <Button onClick={closeDialog}>Cancel</Button>
-          <Button variant="primary" disabled={busy} onClick={create}>
+          <Button control onClick={closeDialog}>Cancel</Button>
+          <Button control variant="primary" disabled={busy} onClick={create}>
             Create project
           </Button>
         </>
@@ -90,8 +90,8 @@ function RecoveryDialog({ recovery }: { recovery: Recovery }) {
       onClose={closeDialog}
       footer={
         <>
-          <Button onClick={keepSavedVersion}>Keep saved version</Button>
-          <Button variant="primary" onClick={() => restoreRecovery(recovery)}>
+          <Button control onClick={keepSavedVersion}>Keep saved version</Button>
+          <Button control variant="primary" onClick={() => restoreRecovery(recovery)}>
             Restore changes
           </Button>
         </>
@@ -121,8 +121,8 @@ function PermissionDialog({ dir, message }: { dir: FsDir; message: string }) {
       onClose={closeDialog}
       footer={
         <>
-          <Button onClick={closeDialog}>Cancel</Button>
-          <Button variant="primary" onClick={() => void retryOpen(dir)}>
+          <Button control onClick={closeDialog}>Cancel</Button>
+          <Button control variant="primary" onClick={() => void retryOpen(dir)}>
             Try again
           </Button>
         </>
@@ -141,7 +141,7 @@ function ErrorDialog({ title, message, issues }: { title: string; message: strin
       icon={TriangleAlert}
       onClose={closeDialog}
       footer={
-        <Button variant="primary" onClick={closeDialog}>
+        <Button control variant="primary" onClick={closeDialog}>
           OK
         </Button>
       }
@@ -173,10 +173,10 @@ function RemoveMediaDialog({ ids }: { ids: readonly MediaId[] }) {
       footer={
         <>
           {/* TODO(batch 41): "Remove and delete clips" and the checkbox that deletes the copied file. */}
-          <Button disabled tooltip="Comes with the advanced media panel (Batch 41)">
+          <Button control disabled tooltip="Comes with the advanced media panel (Batch 41)">
             Remove and delete clips
           </Button>
-          <Button variant="primary" disabled={used > 0} onClick={confirmRemove}>
+          <Button control variant="primary" disabled={used > 0} onClick={confirmRemove}>
             Remove from project
           </Button>
         </>

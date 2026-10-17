@@ -1,4 +1,4 @@
-// Audio edit actions (spec §11 Audio section, §14, §17; Batch 37), registered in the ActionRegistry (the
+// Audio edit actions (spec §11 Audio section, §14, §17; Batch 37), registered in the CommandRegistry (the
 // command palette lists them from Batch 40): Mute (the quick row, the Audio section, the clip menu),
 // Normalize, Auto-duck music (the Audio section, the clip menu and an audio track's menu) and Detach
 // audio. Each edit is one command built by timeline/edit/volume.ts.

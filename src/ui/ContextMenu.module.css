@@ -164,3 +164,18 @@
 .choice[aria-disabled] {
   opacity: var(--disabled-opacity);
 }
+
+/* Keyboard focus (Batch 40; gap: the DS gives menus no focus look): a focused row, chip or step looks
+   hovered (wash + primary text) instead of the gold ring, which would crowd a dense menu. The menu
+   itself takes the focus when it opens and keeps its overlay shadow. */
+.menu:focus-visible {
+  box-shadow: var(--shadow-overlay);
+}
+
+.item:focus-visible,
+.choice:focus-visible,
+.step:focus-visible {
+  background: var(--hover-wash);
+  color: var(--text-primary);
+  box-shadow: none;
+}

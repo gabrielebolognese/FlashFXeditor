@@ -1,4 +1,4 @@
-import { Brackets, Expand, Gauge, Grid3x3, ImageDown, Magnet, Maximize, Minimize, Pause, Play, Repeat, RulerDimensionLine, SkipBack, SkipForward, StepBack, StepForward, Volume2, VolumeX } from "lucide-react";
+import { Grid3x3, Maximize, Minimize, Pause, Play, Volume2, VolumeX } from "lucide-react";
 import { useCallback, useEffect, useRef, useSyncExternalStore, type MouseEvent } from "react";
 import { commitMonitorVolume, meterView, previewMonitorVolume } from "../app/audioController.js";
 import { CanvasHost } from "../app/CanvasHost.js";
@@ -9,7 +9,6 @@ import {
   bindFpsBadge,
   bindQualityLabel,
   canvasInput,
-  exportFrame,
   playbackEngine,
   POOL_BUDGETS,
   previewDev,
@@ -17,19 +16,17 @@ import {
   textEditor,
   previewStats,
   previewView,
-  setPreviewOptions,
-  setPreviewZoom,
   viewportInput,
   type PreviewDevState,
 } from "../app/previewController.js";
 import { actions, appSettings, focusScopes, sessionStore, themeBridge } from "../app/services.js";
 import { bindTimecode } from "../app/timelineController.js";
-import { GRID_DIVISIONS_MAX, GRID_DIVISIONS_MIN, type PreviewGrid, type PreviewQuality, type SafeZone, type SessionState } from "../core/store/sessionStore.js";
+import { GRID_DIVISIONS_MAX, GRID_DIVISIONS_MIN, type PreviewGrid, type PreviewQuality, type SessionState } from "../core/store/sessionStore.js";
 import { useStoreSelector } from "../core/store/useStoreSelector.js";
 import { MONITOR_MAX_DB, MONITOR_MIN_DB, type AppSettings } from "../project/appSettings.js";
 import { qualityName } from "../render/preview/detail.js";
 import { SAFE_ZONE_CHOICES } from "../render/preview/safeZones.js";
-import { ZOOM_CHOICES, zoomLabel, type PreviewZoom } from "../render/preview/viewport.js";
+import { ZOOM_CHOICES, zoomLabel } from "../render/preview/viewport.js";
 import type { ContextMenuEntry } from "../ui/ContextMenu.js";
 import { IconButton } from "../ui/IconButton.js";
 import { Knob } from "../ui/Knob.js";
@@ -56,16 +53,15 @@ const selectRulers = (state: SessionState) => state.preview.rulers;
 const selectPixelGrid = (state: SessionState) => state.preview.pixelGrid;
 const selectStats = (state: PreviewDevState) => state.stats;
 const selectBudget = (state: PreviewDevState) => state.budget;
-const toggleStats = () => previewDev.set((state) => ({ ...state, stats: !state.stats }));
 const setBudget = (value: string) => previewDev.set((state) => ({ ...state, budget: Number(value) }));
 
 const selectMuted = (state: AppSettings) => state.monitorMuted;
 const selectVolume = (state: AppSettings) => state.monitorVolumeDb;
 const formatDb = (db: number) => `${db.toFixed(1)} dB`;
 const keepFocus = (event: MouseEvent) => event.preventDefault();
-const resetClip = () => meterView.resetClip();
 
 const run = (id: string) => () => void actions.run(id);
+const runCommand = (id: string) => void actions.run(id);
 // The preview's menus own the keyboard while open (dialog scope); it comes back to the preview after.
 const backToPreview = () => focusScopes.set("preview");
 // Play/pause only: the engine notifies on every dropped frame too, but this snapshot changes only on play and pause (P1).
@@ -91,21 +87,17 @@ function ZoomValue() {
   return <span ref={ref} />;
 }
 
-const ZOOM_COMMANDS: Partial<Record<string, string>> = { fit: "canvas.zoomFit", "1": "canvas.zoom100", "2": "canvas.zoom200" };
+/** The command of each Zoom menu level (Batch 40: every row is a command, so the palette has them too). */
+const zoomCommand = (zoom: (typeof ZOOM_CHOICES)[number]) => (zoom === "fit" ? "canvas.zoomFit" : `canvas.zoom${Math.round(zoom * 100)}`);
 
-/** Zoom (spec §7.8 "single click opens, single click selects"): Fit, 25-400%, and the current free zoom. */
+/** Zoom (spec §7.8 "single click opens, single click selects"): Fit and 25-400%; a free zoom shows on the button. */
 function ZoomMenu() {
   const entries = useCallback((): ContextMenuEntry[] => {
     const current = sessionStore.state.getState().preview.zoom;
-    const choices = ZOOM_CHOICES.includes(current) ? ZOOM_CHOICES : [...ZOOM_CHOICES, current].sort((a, b) => (a === "fit" ? -1 : b === "fit" ? 1 : a - b));
-    return choices.map((zoom) => {
-      const commandId = ZOOM_COMMANDS[String(zoom)];
-      return { kind: "item", id: String(zoom), label: zoomLabel(zoom), active: zoom === current, ...(commandId && { commandId }) };
-    });
+    return ZOOM_CHOICES.map((zoom) => ({ kind: "item", id: zoomCommand(zoom), label: zoomLabel(zoom), active: zoom === current }));
   }, []);
-  const select = useCallback((id: string) => setPreviewZoom((id === "fit" ? "fit" : Number(id)) as PreviewZoom), []);
   return (
-    <MenuButton label="Zoom" entries={entries} onSelect={select} onClose={backToPreview}>
+    <MenuButton label="Zoom" entries={entries} onSelect={runCommand} onClose={backToPreview}>
       <ZoomValue />
     </MenuButton>
   );
@@ -117,12 +109,11 @@ const QUALITIES: readonly PreviewQuality[] = ["auto", "full", "proxy", "half", "
 function QualityMenu() {
   const quality = useStoreSelector(sessionStore.state, selectQuality);
   const entries = useCallback(
-    (): ContextMenuEntry[] => QUALITIES.map((id) => ({ kind: "item", id, label: qualityName(id), active: id === quality })),
+    (): ContextMenuEntry[] => QUALITIES.map((id) => ({ kind: "item", id: `preview.quality.${id}`, label: qualityName(id), active: id === quality })),
     [quality],
   );
-  const select = useCallback((id: string) => setPreviewOptions({ quality: id as PreviewQuality }), []);
   return (
-    <MenuButton label="Preview quality" entries={entries} onSelect={select} onClose={backToPreview}>
+    <MenuButton label="Preview quality" entries={entries} onSelect={runCommand} onClose={backToPreview}>
       {qualityName(quality)}
     </MenuButton>
   );
@@ -148,31 +139,33 @@ function OverlaysMenu() {
   const entries = useCallback(
     (): ContextMenuEntry[] => [
       { kind: "heading", label: "Safe zone" },
-      ...SAFE_ZONE_CHOICES.map(({ id, label }): ContextMenuEntry => ({ kind: "item", id: `zone:${id}`, label, active: id === safeZone, keepOpen: true })),
+      ...SAFE_ZONE_CHOICES.map(({ id, label }): ContextMenuEntry => ({ kind: "item", id: `preview.safeZone.${id}`, label, active: id === safeZone, keepOpen: true })),
       { kind: "separator" },
       { kind: "heading", label: "Grid" },
-      ...GRIDS.map(({ id, label }): ContextMenuEntry => ({ kind: "item", id: `grid:${id}`, label, active: id === grid, keepOpen: true })),
-      { kind: "stepper", id: "divisions", label: "Cells per side", value: divisions, min: GRID_DIVISIONS_MIN, max: GRID_DIVISIONS_MAX, disabled: grid !== "custom" },
+      ...GRIDS.map(({ id, label }): ContextMenuEntry => ({ kind: "item", id: `preview.grid.${id}`, label, active: id === grid, keepOpen: true })),
+      {
+        kind: "stepper",
+        id: "divisions",
+        label: "Cells per side",
+        value: divisions,
+        min: GRID_DIVISIONS_MIN,
+        max: GRID_DIVISIONS_MAX,
+        dec: "preview.gridCellsFewer",
+        inc: "preview.gridCellsMore",
+        disabled: grid !== "custom",
+      },
       { kind: "separator" },
       { kind: "heading", label: "Guides" },
-      { kind: "item", id: "centerCross", label: "Center cross", active: centerCross, keepOpen: true },
-      { kind: "item", id: "safeMargins", label: "Title / action safe", active: safeMargins, keepOpen: true },
-      { kind: "item", id: "rulers", label: "Rulers above 100%", active: rulers, keepOpen: true },
-      { kind: "item", id: "pixelGrid", label: "Pixel grid from 800%", active: pixelGrid, keepOpen: true },
-      { kind: "item", id: "guides", label: "Smart guides", active: guides, keepOpen: true },
+      { kind: "item", id: "preview.toggleCenterCross", label: "Center cross", active: centerCross, keepOpen: true },
+      { kind: "item", id: "preview.toggleSafeMargins", label: "Title / action safe", active: safeMargins, keepOpen: true },
+      { kind: "item", id: "preview.toggleRulers", label: "Rulers above 100%", active: rulers, keepOpen: true },
+      { kind: "item", id: "preview.togglePixelGrid", label: "Pixel grid from 800%", active: pixelGrid, keepOpen: true },
+      { kind: "item", id: "preview.toggleGuides", label: "Smart guides", active: guides, keepOpen: true },
     ],
     [safeZone, grid, divisions, centerCross, safeMargins, rulers, pixelGrid, guides],
   );
-  const select = useCallback((id: string) => {
-    const { preview } = sessionStore.state.getState();
-    if (id.startsWith("zone:")) setPreviewOptions({ safeZone: id.slice(5) as SafeZone });
-    else if (id.startsWith("grid:")) setPreviewOptions({ grid: id.slice(5) as PreviewGrid });
-    else if (id === "divisions:dec") setPreviewOptions({ gridDivisions: Math.max(GRID_DIVISIONS_MIN, preview.gridDivisions - 1) });
-    else if (id === "divisions:inc") setPreviewOptions({ gridDivisions: Math.min(GRID_DIVISIONS_MAX, preview.gridDivisions + 1) });
-    else if (id === "centerCross" || id === "safeMargins" || id === "rulers" || id === "pixelGrid" || id === "guides") setPreviewOptions({ [id]: !preview[id] });
-  }, []);
   const on = safeZone !== "none" || grid !== "none" || centerCross || safeMargins;
-  return <MenuButton label="Overlays" icon={Grid3x3} pressed={on} entries={entries} onSelect={select} onClose={backToPreview} />;
+  return <MenuButton label="Overlays" icon={Grid3x3} pressed={on} entries={entries} onSelect={runCommand} onClose={backToPreview} />;
 }
 
 /** Snap (the global toggle, mirrored, spec §13) and Guides (smart guides on the canvas). */
@@ -181,15 +174,15 @@ function SnapGuides() {
   const guides = useStoreSelector(sessionStore.state, selectGuides);
   return (
     <>
-      <IconButton icon={Magnet} label="Snap" commandId="toggle.snap" pressed={snap} onClick={run("toggle.snap")} />
-      <IconButton icon={RulerDimensionLine} label="Smart guides" commandId="preview.toggleGuides" pressed={guides} onClick={run("preview.toggleGuides")} />
+      <IconButton commandId="toggle.snap" pressed={snap} />
+      <IconButton commandId="preview.toggleGuides" pressed={guides} />
     </>
   );
 }
 
 function FullscreenButton() {
   const fullscreen = useSyncExternalStore(subscribeFullscreen, isFullscreen);
-  return <IconButton icon={fullscreen ? Minimize : Maximize} label={fullscreen ? "Exit fullscreen" : "Fullscreen"} commandId="preview.toggleFullscreen" pressed={fullscreen} onClick={run("preview.toggleFullscreen")} />;
+  return <IconButton icon={fullscreen ? Minimize : Maximize} label={fullscreen ? "Exit fullscreen" : "Fullscreen"} commandId="preview.toggleFullscreen" pressed={fullscreen} />;
 }
 
 /** Header (spec §13, §17): Zoom, Fit, Quality, Overlays, Snap, Guides, Fullscreen, Export frame. */
@@ -201,16 +194,16 @@ function PreviewActions() {
       {import.meta.env.DEV && (
         <>
           <Select label="Texture pool budget (dev)" size="compact" value={String(budget)} options={BUDGET_OPTIONS} onChange={setBudget} />
-          <IconButton icon={Gauge} label="GPU stats (dev)" pressed={stats} onClick={toggleStats} />
+          <IconButton commandId="dev.toggleGpuStats" label="GPU stats (dev)" pressed={stats} />
         </>
       )}
       <ZoomMenu />
-      <IconButton icon={Expand} label="Fit the frame in the panel" commandId="canvas.zoomFit" onClick={run("canvas.zoomFit")} />
+      <IconButton label="Fit the frame in the panel" commandId="canvas.zoomFit" />
       <QualityMenu />
       <OverlaysMenu />
       <SnapGuides />
       <FullscreenButton />
-      <IconButton icon={ImageDown} label="Export frame" commandId="preview.exportFrame" onClick={() => void exportFrame()} />
+      <IconButton commandId="preview.exportFrame" />
     </>
   );
 }
@@ -273,11 +266,11 @@ function Transport() {
   const playing = useSyncExternalStore(subscribePlayback, isPlaying);
   return (
     <div className={styles.transport}>
-      <IconButton icon={SkipBack} label="Go to start" commandId="transport.goToStart" onClick={run("transport.goToStart")} />
-      <IconButton icon={StepBack} label="Previous frame" commandId="transport.stepBack" onClick={run("transport.stepBack")} />
-      <IconButton icon={playing ? Pause : Play} label={playing ? "Pause" : "Play"} commandId="transport.playPause" size="default" onClick={run("transport.playPause")} />
-      <IconButton icon={StepForward} label="Next frame" commandId="transport.stepForward" onClick={run("transport.stepForward")} />
-      <IconButton icon={SkipForward} label="Go to end" commandId="transport.goToEnd" onClick={run("transport.goToEnd")} />
+      <IconButton commandId="transport.goToStart" />
+      <IconButton commandId="transport.stepBack" />
+      <IconButton icon={playing ? Pause : Play} label={playing ? "Pause" : "Play"} commandId="transport.playPause" size="default" />
+      <IconButton commandId="transport.stepForward" />
+      <IconButton commandId="transport.goToEnd" />
     </div>
   );
 }
@@ -291,7 +284,7 @@ function MasterVolume() {
   const volume = useStoreSelector(appSettings, selectVolume);
   return (
     <>
-      <IconButton icon={muted ? VolumeX : Volume2} label={muted ? "Unmute" : "Mute"} commandId="audio.toggleMute" pressed={muted} onClick={run("audio.toggleMute")} />
+      <IconButton icon={muted ? VolumeX : Volume2} label={muted ? "Unmute" : "Mute"} commandId="audio.toggleMute" pressed={muted} />
       <Knob label="Master volume" value={volume} min={MONITOR_MIN_DB} max={MONITOR_MAX_DB} step={1} defaultValue={MONITOR_MAX_DB} format={formatDb} onInput={previewMonitorVolume} onCommit={commitMonitorVolume} />
     </>
   );
@@ -307,7 +300,7 @@ function MeterStrip() {
   return (
     <div className={styles.meter}>
       <div ref={ref} className={styles.meterCanvas} />
-      <button type="button" className={styles.clipReset} aria-label="Reset the clip indicator" data-tooltip="Clip indicator: click to reset" onMouseDown={keepFocus} onClick={resetClip} />
+      <button type="button" className={styles.clipReset} aria-label="Reset the clip indicator" data-tooltip="Clip indicator: click to reset" data-command="audio.resetMeters" onMouseDown={keepFocus} onClick={run("audio.resetMeters")} />
     </div>
   );
 }
@@ -317,8 +310,8 @@ function LoopControls() {
   const loop = useStoreSelector(sessionStore.state, selectLoop);
   return (
     <>
-      <IconButton icon={Repeat} label="Loop playback" commandId="transport.toggleLoop" pressed={loop} onClick={run("transport.toggleLoop")} />
-      <IconButton icon={Brackets} label="Play in to out" commandId="transport.playInToOut" onClick={run("transport.playInToOut")} />
+      <IconButton commandId="transport.toggleLoop" pressed={loop} />
+      <IconButton commandId="transport.playInToOut" />
     </>
   );
 }

@@ -4,14 +4,17 @@
 // recent colors (§11), the punch zoom (Batch 27), the font picker's favorites (§11, Batch 28), the
 // default Title and Subtitle presets (§10.2, Batch 30), the Transcribe dialog's model and language
 // (§10.6, Batch 33), Auto-duck music's depth and ramps (§14, Batch 37) and Remove silence's parameters
-// (§14, Batch 38).
-// TODO(batch 42): the settings panel.
+// (§14, Batch 38), the shortcut editor's keymap overrides and the command palette's recent commands
+// (Batch 40).
+// TODO(batch 42): the settings panel's General section.
 import { createStore, type Store } from "../core/store/createStore.js";
 import { DEFAULT_PROXY_SHORT_EDGE, PROXY_RULES, PROXY_SHORT_EDGES, type ProxyRule, type ProxySettings, type ProxyShortEdge } from "../media/proxy/proxyFormat.js";
 import { AUTOSAVE_DELAY_MS } from "./Autosaver.js";
 import { STARTER_SUBTITLE_ID, STARTER_TITLE_ID } from "../text/starterPresets.js";
 import { isWhisperLanguage } from "../media/transcribe/languages.js";
 import { DEFAULT_WHISPER_MODEL, isWhisperModel, type WhisperModelId } from "../media/transcribe/models.js";
+import type { KeymapOverrides } from "../core/keyboard/keymap.js";
+import { isValidKeys } from "../core/keyboard/rebind.js";
 import type { KeyValueStore } from "./kv.js";
 import { DUCK_DEPTH_DB, DUCK_RAMP_FRAMES } from "../timeline/edit/volume.js";
 import { clampSilenceParam, SILENCE_MIN_MS, SILENCE_PADDING_MS, SILENCE_THRESHOLD } from "../timeline/edit/silence.js";
@@ -71,6 +74,10 @@ export interface AppSettings {
   silenceThresholdDb: number;
   silenceMinMs: number;
   silencePaddingMs: number;
+  /** The shortcut editor's changes (spec §18): keys per command id where they differ from the keymap file. */
+  keymap: KeymapOverrides;
+  /** The command palette's recent commands, most recent first (Batch 40 "recent first"). */
+  recentCommands: readonly string[];
 }
 
 export const AUTOSAVE_DELAYS_MS = [1000, 2000, 5000, 10_000] as const;
@@ -103,7 +110,25 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   silenceThresholdDb: SILENCE_THRESHOLD.default,
   silenceMinMs: SILENCE_MIN_MS.default,
   silencePaddingMs: SILENCE_PADDING_MS.default,
+  keymap: {},
+  recentCommands: [],
 };
+
+/** The commands the palette remembers. */
+export const MAX_RECENT_COMMANDS = 12;
+const MAX_KEYS_PER_COMMAND = 8;
+const COMMAND_ID = /^[A-Za-z0-9.:_-]{1,80}$/;
+
+/** Overrides with valid command ids and keys only (an unparsable key is dropped, `[]` kept: unbound). */
+function sanitizeKeymap(value: unknown, fallback: KeymapOverrides): KeymapOverrides {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return fallback;
+  const out: Record<string, readonly string[]> = {};
+  for (const [id, keys] of Object.entries(value as Record<string, unknown>)) {
+    if (!COMMAND_ID.test(id) || !Array.isArray(keys)) continue;
+    out[id] = [...new Set(keys.filter((keys): keys is string => typeof keys === "string" && isValidKeys(keys, "other")))].slice(0, MAX_KEYS_PER_COMMAND);
+  }
+  return out;
+}
 
 /** The favorites kept by the font picker. */
 export const MAX_FAVORITE_FONTS = 50;
@@ -164,6 +189,10 @@ function sanitize(value: unknown, fallback: AppSettings = DEFAULT_APP_SETTINGS):
     silenceThresholdDb: clampSilenceParam({ ...SILENCE_THRESHOLD, default: fallback.silenceThresholdDb }, raw.silenceThresholdDb),
     silenceMinMs: clampSilenceParam({ ...SILENCE_MIN_MS, default: fallback.silenceMinMs }, raw.silenceMinMs),
     silencePaddingMs: clampSilenceParam({ ...SILENCE_PADDING_MS, default: fallback.silencePaddingMs }, raw.silencePaddingMs),
+    keymap: sanitizeKeymap(raw.keymap, fallback.keymap),
+    recentCommands: Array.isArray(raw.recentCommands)
+      ? [...new Set(raw.recentCommands.filter((id): id is string => typeof id === "string" && COMMAND_ID.test(id)))].slice(0, MAX_RECENT_COMMANDS)
+      : fallback.recentCommands,
   };
 }
 

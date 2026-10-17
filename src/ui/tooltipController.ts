@@ -1,8 +1,9 @@
 // Tooltips without React state (P1: no React renders on hover). Any element with `data-tooltip`
-// (and optionally `data-shortcut`) gets one; a single fixed bubble is positioned by direct DOM writes.
+// gets one; a single fixed bubble is positioned by direct DOM writes. The shortcut comes from the
+// element's `data-command` (the live keymap) when it shows, so a rebinding shows at once.
 import styles from "./Tooltip.module.css";
 
-export function installTooltips(doc: Document, delayMs: number): () => void {
+export function installTooltips(doc: Document, delayMs: number, shortcutOf: (commandId: string) => string | undefined = () => undefined): () => void {
   const win = doc.defaultView ?? window;
   const bubble = doc.createElement("div");
   bubble.className = styles.bubble ?? "";
@@ -24,8 +25,10 @@ export function installTooltips(doc: Document, delayMs: number): () => void {
 
   const show = (target: HTMLElement) => {
     text.textContent = target.dataset.tooltip ?? "";
-    keys.textContent = target.dataset.shortcut ?? "";
-    keys.hidden = !target.dataset.shortcut;
+    const command = target.dataset.command;
+    const shortcut = (command !== undefined ? shortcutOf(command) : undefined) ?? "";
+    keys.textContent = shortcut;
+    keys.hidden = shortcut === "";
     const rect = target.getBoundingClientRect();
     const width = bubble.offsetWidth;
     const height = bubble.offsetHeight;

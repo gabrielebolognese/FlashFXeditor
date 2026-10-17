@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { KeyDispatcher } from "./KeyDispatcher.js";
 import type { FocusScope } from "./focusScope.js";
 import { FocusScopeTracker, scopeOf } from "./focusScope.js";
-import { DEFAULT_KEYMAP } from "./keymap.js";
+import { DEFAULT_KEYMAP, Keymap } from "./keymap.js";
 
 function setup(initialScope: FocusScope = "global", isAvailable?: (id: string) => boolean) {
   let scope = initialScope;
@@ -149,6 +149,40 @@ describe("KeyDispatcher", () => {
     t.down({ key: "Backspace", code: "Backspace" });
     t.down({ key: "y", code: "KeyY", ctrlKey: true });
     expect(t.onAction.mock.calls.map((c) => c[0])).toEqual(["edit.delete", "history.redo"]);
+  });
+
+  it("saves with Mod+S while typing in an input and inside a dialog (everywhere bindings)", () => {
+    const t = setup("properties");
+    const input = document.createElement("input");
+    input.type = "text";
+    const typed = t.down({ key: "s", code: "KeyS", ctrlKey: true }, input);
+    expect(t.onAction).toHaveBeenLastCalledWith("project.save", expect.objectContaining({ scope: "properties" }));
+    expect(typed.defaultPrevented).toBe(true);
+    t.setScope("dialog");
+    t.down({ key: "s", code: "KeyS", ctrlKey: true });
+    expect(t.onAction).toHaveBeenLastCalledWith("project.save", expect.objectContaining({ scope: "dialog" }));
+    // Other keys stay with the input and the dialog.
+    t.onAction.mockClear();
+    t.down({ key: "k", code: "KeyK", ctrlKey: true });
+    t.down({ key: "k", code: "KeyK", ctrlKey: true }, input);
+    expect(t.onAction).not.toHaveBeenCalled();
+  });
+
+  it("follows a new keymap: the rebound key dispatches, the old one no longer does", () => {
+    const t = setup();
+    const map = new Keymap(DEFAULT_KEYMAP);
+    map.setKeys("edit.split", ["Mod+J"]);
+    t.dispatcher.setBindings(map.bindings());
+    t.down({ key: "j", code: "KeyJ", ctrlKey: true });
+    expect(t.onAction).toHaveBeenLastCalledWith("edit.split", expect.anything());
+    t.onAction.mockClear();
+    t.down({ key: "k", code: "KeyK", ctrlKey: true });
+    expect(t.onAction).not.toHaveBeenCalled();
+    // A key the user moved onto another command's chord wins it (the newest binding).
+    map.setKeys("edit.split", ["Mod+Z"]);
+    t.dispatcher.setBindings(map.bindings());
+    t.down({ key: "z", code: "KeyZ", ctrlKey: true });
+    expect(t.onAction).toHaveBeenLastCalledWith("edit.split", expect.anything());
   });
 
   it("leaves the browser default alone when the handler declines", () => {

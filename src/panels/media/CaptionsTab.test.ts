@@ -12,13 +12,13 @@ import { CaptionsTab } from "./CaptionsTab.js";
 
 // The real services open IndexedDB at import time, which jsdom lacks: the stores the list uses.
 vi.mock("../../app/services.js", async () => {
-  const { ActionRegistry } = await import("../../core/commands/ActionRegistry.js");
+  const { CommandRegistry } = await import("../../core/commands/CommandRegistry.js");
   const { createProject } = await import("../../core/document/project.js");
   const { DocumentStore } = await import("../../core/store/DocumentStore.js");
   const { createSessionStore } = await import("../../core/store/sessionStore.js");
   const sessionStore = createSessionStore();
   return {
-    actions: new ActionRegistry(),
+    actions: new CommandRegistry(),
     documentStore: new DocumentStore(createProject({ id: "placeholder", name: "Placeholder", now: "x", appVersion: "x" }), { session: sessionStore, validate: true }),
     sessionStore,
   };

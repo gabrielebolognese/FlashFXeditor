@@ -10,8 +10,6 @@ export interface PlannedCommand {
 }
 
 export const PLANNED_COMMANDS: Readonly<Record<string, PlannedCommand>> = {
-  // Batch 40: command palette.
-  "app.commandPalette": { batch: 40, label: "Command palette" },
   // Batch 44: export.
   "app.export": { batch: 44, label: "Export" },
 };

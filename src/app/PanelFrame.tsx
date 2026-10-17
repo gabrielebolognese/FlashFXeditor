@@ -53,9 +53,11 @@ export interface PanelTabsProps<T extends string> {
   tabs: readonly { id: T; label: string }[];
   active: T;
   onChange: (id: T) => void;
+  /** The command a tab's click runs (`onChange` runs it), so its tooltip shows the command's key. */
+  commandOf?: (id: T) => string;
 }
 
-export function PanelTabs<T extends string>({ tabs, active, onChange }: PanelTabsProps<T>) {
+export function PanelTabs<T extends string>({ tabs, active, onChange, commandOf }: PanelTabsProps<T>) {
   return (
     <div className={styles.tabs} role="tablist">
       {tabs.map((tab) => (
@@ -65,6 +67,7 @@ export function PanelTabs<T extends string>({ tabs, active, onChange }: PanelTab
           role="tab"
           className={styles.tab}
           aria-selected={tab.id === active}
+          data-command={commandOf?.(tab.id)}
           onMouseDown={(event) => event.preventDefault()}
           onClick={() => onChange(tab.id)}
         >

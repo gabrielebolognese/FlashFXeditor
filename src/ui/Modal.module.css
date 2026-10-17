@@ -30,6 +30,10 @@
   max-width: var(--modal-width-lg);
 }
 
+.panel[data-size="xl"] {
+  max-width: var(--modal-width-xl);
+}
+
 .panel:focus-visible {
   box-shadow: var(--shadow-modal);
 }

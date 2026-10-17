@@ -191,7 +191,8 @@
   cursor: pointer;
 }
 
-.row:hover {
+.row:hover,
+.row[data-active] {
   background: var(--hover-wash);
 }
 

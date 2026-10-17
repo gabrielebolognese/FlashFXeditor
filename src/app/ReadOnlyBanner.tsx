@@ -2,7 +2,6 @@ import { Lock } from "lucide-react";
 import { useStoreSelector } from "../core/store/useStoreSelector.js";
 import type { SaveStatus } from "../project/Autosaver.js";
 import { Button } from "../ui/Button.js";
-import { allowEditing } from "./projectController.js";
 import styles from "./ReadOnlyBanner.module.css";
 import { saveStatus } from "./services.js";
 
@@ -16,7 +15,7 @@ export function ReadOnlyBanner() {
     <div className={styles.banner} role="status">
       <Lock className={styles.icon} aria-hidden="true" />
       <span className={styles.text}>Read-only: Shorts Editor has no permission to write to this folder, so changes are not saved.</span>
-      <Button size="compact" onClick={allowEditing}>
+      <Button size="compact" commandId="project.allowEditing">
         Allow editing
       </Button>
     </div>

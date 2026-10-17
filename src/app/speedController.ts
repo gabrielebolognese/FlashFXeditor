@@ -12,6 +12,7 @@ import { freezeFrame, punchZoom, type OneClickMiss } from "../timeline/edit/free
 import { setSpeedDurations, setSpeeds, type SpeedOptions } from "../timeline/edit/speed.js";
 import type { TrimLimit } from "../timeline/edit/trim.js";
 import { showToast } from "../ui/toasts.js";
+import { SPEED_CHIPS } from "./commandCatalog.js";
 import { actions, appSettings, documentStore, sessionStore } from "./services.js";
 import { reportTrimLimit } from "./timelineController.js";
 
@@ -21,13 +22,8 @@ export const speedOptions = createStore<{ link: boolean; ripple: boolean }>({ li
 /** Bumped by "Speed...": the Speed section focuses its speed field (and resets it to 0). */
 export const speedFocus = createStore(0);
 
-/** The quick row's speed chips (spec §17): action id suffix and speed. */
-export const SPEED_CHIPS: readonly { id: string; speed: number }[] = [
-  { id: "clip.speed.50", speed: 0.5 },
-  { id: "clip.speed.100", speed: 1 },
-  { id: "clip.speed.150", speed: 1.5 },
-  { id: "clip.speed.200", speed: 2 },
-];
+/** The quick row's speed chips (spec §17): command id and speed (in the command catalog). */
+export { SPEED_CHIPS };
 
 const newId = () => crypto.randomUUID();
 const playhead = () => sessionStore.state.getState().playhead;

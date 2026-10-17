@@ -94,9 +94,9 @@ function AnimationRows({ ids, primary, side }: { ids: readonly ClipId[]; primary
     <>
       <Row label={title}>
         <div className={styles.chips} role="group" aria-label={`${title} animation`}>
-          <IconButton text="None" label={`No ${sideName} animation`} pressed={id === "none"} onClick={() => chooseTextAnim(ids, side, null, primary)} />
+          <IconButton control text="None" label={`No ${sideName} animation`} pressed={id === "none"} onClick={() => chooseTextAnim(ids, side, null, primary)} />
           {TEXT_ANIM_IDS.map((anim) => (
-            <IconButton key={anim} text={TEXT_ANIMS[anim].label} label={`${title}: ${TEXT_ANIMS[anim].label}. Click to preview`} pressed={id === anim} onClick={() => chooseTextAnim(ids, side, anim, primary)} />
+            <IconButton control key={anim} text={TEXT_ANIMS[anim].label} label={`${title}: ${TEXT_ANIMS[anim].label}. Click to preview`} pressed={id === anim} onClick={() => chooseTextAnim(ids, side, anim, primary)} />
           ))}
         </div>
       </Row>

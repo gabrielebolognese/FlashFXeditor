@@ -195,6 +195,9 @@ export function keepSavedVersion(): void {
   closeDialog();
 }
 
+/** The app bar's project name is being edited (`project.rename`: a click on the name, or the palette). */
+export const projectNaming = createStore(false);
+
 /** Mod+S and the save dot. */
 export function saveNow(): void {
   void current?.saveNow();
@@ -217,9 +220,11 @@ export function installProjectController(): () => void {
         if (!dialog && prev) focusScopes.set("global");
       },
     ),
-    actions.register("project.save", () => saveNow()),
+    actions.register("project.save", () => saveNow(), { enabled: () => current !== null }),
     actions.register("project.new", () => void newProject()),
     actions.register("project.open", () => void openProject()),
+    actions.register("project.rename", () => projectNaming.set(true), { enabled: () => current !== null }),
+    actions.register("project.allowEditing", () => allowEditing(), { enabled: () => saveStatus.getState().readOnly }),
   ];
   return () => {
     for (const stop of stops) stop();

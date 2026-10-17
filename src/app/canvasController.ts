@@ -6,7 +6,7 @@
 // gesture, else ends inline text editing (committed: focus in the properties panel while editing),
 // else leaves crop mode, else the fullscreen preview. Each edit is one command (nudges coalesce,
 // spec §7.3). Copy, Paste and Duplicate (+20 px) are the clipboard controller's (Batch 39).
-import type { ActionRun } from "../core/commands/ActionRegistry.js";
+import type { CommandRun } from "../core/commands/CommandRegistry.js";
 import type { ClipId } from "../core/document/types.js";
 import { arrangeLayers, type ArrangeDirection } from "../timeline/edit/arrange.js";
 import { nudgeLayers } from "../timeline/edit/transform.js";
@@ -25,7 +25,7 @@ function selectedLayerIds(): ClipId[] {
 }
 
 /** Arrow keys in the preview (spec §7.3): declined (frame step) when no layer is selected on the canvas. */
-function nudge(dx: number, dy: number): ActionRun {
+function nudge(dx: number, dy: number): CommandRun {
   return () => {
     if (canvasInput.active) return true;
     const ids = selectedLayerIds();
