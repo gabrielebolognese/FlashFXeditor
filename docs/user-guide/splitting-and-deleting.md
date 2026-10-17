@@ -177,7 +177,7 @@ Right-click a clip or a gap to open its menu. Rows that have a keyboard shortcut
 > **Video placeholder: The clip and gap menus**
 > - File: `videos/splitting-and-deleting/menus.mp4` (not recorded yet)
 > - Length: about 40 seconds
-> - Shows: right-click a video clip: it and its sound are selected and the menu opens with **Cut**, **Copy** and **Paste** dimmed, then **Split at playhead**, **Delete**, **Ripple delete**, **Disable**, **Unlink**, **Group**, **Ungroup** (dimmed), **Move into sync** (dimmed), **Rename**, the **Label** row of eight colors, **Speed...**, **Freeze frame at playhead**, and the **Fade in**, **Fade out** and **Transition** rows with their choices; point at the teal swatch: its tooltip reads **Teal**; click it: the video and its sound turn teal; right-click the clip again: the teal swatch has a gold ring; press <kbd>Escape</kbd>; right-click a gap: **Close gap** and **Close all gaps on track**; click **Close gap**.
+> - Shows: right-click a video clip: it and its sound are selected and the menu opens with **Cut**, **Copy** and **Paste** dimmed, then **Split at playhead**, **Delete**, **Ripple delete**, **Disable**, **Unlink**, **Group**, **Ungroup** (dimmed), **Move into sync** (dimmed), **Rename**, the **Label** row of eight colors, **Speed...**, **Freeze frame at playhead**, **Mute**, **Normalize**, **Auto-duck music**, **Detach audio**, and the **Fade in**, **Fade out** and **Transition** rows with their choices; point at the teal swatch: its tooltip reads **Teal**; click it: the video and its sound turn teal; right-click the clip again: the teal swatch has a gold ring; press <kbd>Escape</kbd>; right-click a gap: **Close gap** and **Close all gaps on track**; click **Close gap**.
 
 **Right-click a clip.** If the clip is not selected, it is selected first, with its linked clips and its group. If it is already part of the selection, the selection stays, and the menu acts on all the selected clips. Clips on a locked track have no menu.
 
@@ -196,8 +196,14 @@ Right-click a clip or a gap to open its menu. Rows that have a keyboard shortcut
 | **Label**, with eight color swatches | Gives the selected clips a label color, or removes it. See [Give clips a label color](timeline.md#give-clips-a-label-color). |
 | **Speed...** | Opens the **Speed** section of **Edit Properties** with **Speed** ready for typing. Dimmed for image clips. See [Type an exact speed](speed-freeze-frames-and-punch-zoom.md#type-an-exact-speed). |
 | **Freeze frame at playhead** | Holds the frame at the playhead for 2 seconds (<kbd>Shift</kbd>+<kbd>F</kbd>). Dimmed unless the clip is a video under the playhead. See [Hold a frame (freeze frame)](speed-freeze-frames-and-punch-zoom.md#hold-a-frame-freeze-frame). |
+| **Mute** or **Unmute** | Mutes the sound of the selected clips (audio clips, and the audio linked to videos), or brings it back. Reads **Unmute** when all of it is muted. See [Mute a clip](audio-editing.md#mute-a-clip). |
+| **Normalize** | Sets the volume of each selected audio clip, or of a selected video's sound, so its loudest moment reaches -1 dBFS. See [Normalize a clip](audio-editing.md#normalize-a-clip). |
+| **Auto-duck music** | Lowers the selected audio clips (a music clip, usually) by 12 dB wherever audio plays on the tracks above them. See [Lower music under voices with Auto-duck](audio-editing.md#lower-music-under-voices-with-auto-duck). |
+| **Detach audio** | Gives the sound of the selected videos a clip of its own: unlinks it, or adds an audio clip when the video has none. Dimmed when no selected video has sound to detach. See [Give a video's sound a clip of its own](audio-editing.md#give-a-videos-sound-a-clip-of-its-own). |
 | **Fade in**, **Fade out**, with **0.25 s**, **0.5 s** and **1 s** | Give the selected clips a fade in or out of that length. Not shown for caption cues. See [Use the fade lengths in the clip menu](fades-and-transitions.md#use-the-fade-lengths-in-the-clip-menu). |
 | **Transition**, with **Dissolve**, **Black** and **White** | Adds a cross dissolve, a dip to black or a dip to white at the clip's start or end, whichever is nearer the playhead. Dimmed when the clip touches no other clip. See [Add a transition with the quick actions or the clip menu](fades-and-transitions.md#add-a-transition-with-the-quick-actions-or-the-clip-menu). |
+
+The **Mute**, **Normalize**, **Auto-duck music** and **Detach audio** rows show for audio clips and for videos with sound. **Mute**, **Normalize** and **Auto-duck music** are dimmed when the selection has no audio clip to change, for example a video whose sound has no audio clip.
 
 **Right-click a gap.** The gap is selected first.
 
@@ -212,6 +218,7 @@ Right-click a clip or a gap to open its menu. Rows that have a keyboard shortcut
 - Right-clicking empty space after the last clip of a track opens no menu yet. Choosing menu rows and the choices in a row with the arrow keys is available in a later version.
 
 ## Related pages
+- [Editing audio](audio-editing.md)
 - [Timeline](timeline.md)
 - [Markers and in/out points](markers-and-in-out-points.md)
 - [Tracks](tracks.md)
@@ -227,4 +234,4 @@ Right-click a clip or a gap to open its menu. Rows that have a keyboard shortcut
 - [Projects and saving](projects-and-saving.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 36, 2026-10-17</sub>
+<sub>Last updated: Batch 37, 2026-10-17</sub>

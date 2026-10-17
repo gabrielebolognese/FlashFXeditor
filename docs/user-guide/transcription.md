@@ -37,7 +37,7 @@ Transcription turns the speech in your edit into captions. The editor listens to
 - The editor transcribes with **Whisper**, a speech recognition model. You choose one of three sizes: **Tiny**, **Base** or **Small**.
 - Everything runs on your computer, on the graphics card when the browser can use it, or else on the processor. Your audio never leaves your computer.
 - The model is downloaded once, the first time you use it, and stays in your browser. After that, transcription works without an internet connection.
-- The editor transcribes what you hear when you play the timeline: the mix of every audio track, with muted tracks left out. It does not read the media files one by one.
+- The editor transcribes what you hear when you play the timeline: the mix of every audio track, with muted tracks and muted clips left out, and each clip at its volume. It does not read the media files one by one.
 - You always see the result before it goes in. Nothing changes in your project until you click **Add** (or **Replace**) in the review.
 - The new cues have word timings, so the spoken word is highlighted out of the box. See [Highlight the spoken word](captions.md#highlight-the-spoken-word).
 
@@ -45,7 +45,7 @@ Transcription turns the speech in your edit into captions. The editor listens to
 
 - **Put the speech on the timeline.** **Transcribe** is dimmed until the timeline has an audio clip, such as the sound of a video. Its tooltip then reads **Transcribe: no audio on the timeline**.
 - **Be online the first time.** The first transcription with a model downloads it: 44 MB to 589 MB, depending on the model and your computer. See [Choose a model](#choose-a-model).
-- **Leave music out.** Whisper can mishear words under loud music, or try to write down song lyrics. Solo the track with the voice (**S** in its header) or mute the music track (**M**) before you transcribe, and turn it back on afterwards. See [Mute and solo audio tracks](audio.md#mute-and-solo-audio-tracks).
+- **Leave music out.** Whisper can mishear words under loud music, or try to write down song lyrics. Solo the track with the voice (**S** in its header) or mute the music track (**M**) before you transcribe, and turn it back on afterwards. See [Mute and solo audio tracks](audio.md#mute-and-solo-audio-tracks). To leave out a single clip, mute it; see [Mute a clip](audio-editing.md#mute-a-clip).
 - **Set the number of lines first.** Cues get as many lines as **Max lines** in **Caption style** allows (2 by default). To get one-line captions, add the caption track, set **Max lines** to `1`, then transcribe. Changing **Max lines** afterwards doesn't cut the cues again. See [Style your captions](captions.md#style-your-captions).
 
 > **Tip:** The **Master volume** knob and the **Mute** button under the preview make no difference: they only change what you hear.
@@ -268,6 +268,7 @@ These parts are available in a later version:
 - Editing cues in the review, and a style for a single cue.
 
 ## Related pages
+- [Editing audio](audio-editing.md)
 - [Captions](captions.md)
 - [Audio](audio.md)
 - [Markers and in/out points](markers-and-in-out-points.md)
@@ -275,4 +276,4 @@ These parts are available in a later version:
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 33, 2026-10-17</sub>
+<sub>Last updated: Batch 37, 2026-10-17</sub>

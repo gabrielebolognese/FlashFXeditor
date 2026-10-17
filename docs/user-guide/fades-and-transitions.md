@@ -48,7 +48,7 @@ A clip can have a fade in at its start and a fade out at its end. Each fade has 
 
 - A video and its sound fade separately: a fade on the video clip fades only the picture, and a fade on the audio clip fades only the sound. The **Fade in 0.5 s** and **Fade out 0.5 s** buttons fade both at once; see [Fade a clip and its sound with one click](#fade-a-clip-and-its-sound-with-one-click).
 - A clip's fade in and fade out never overlap: together they are at most as long as the clip.
-- A fade works on top of the clip's own **Opacity**, including opacity keyframes: a picture at 50% opacity fades in to 50%.
+- A fade works on top of the clip's own **Opacity**, including opacity keyframes: a picture at 50% opacity fades in to 50%. On an audio clip, it works on top of the clip's **Volume** and volume keyframes in the same way. See [Editing audio](audio-editing.md).
 - On a text clip, the fade applies to the whole text, together with any in or out animation. See [Text animations](text-animations.md).
 - On the timeline, a dark wedge covers the faded part of the clip, bounded by a thin line from the clip's bottom corner to the top: straight on a picture clip, rounded on an audio clip. On M and L tracks the wedge covers the body below the label bar; on S tracks it covers the whole clip.
 
@@ -64,6 +64,7 @@ A clip can have a fade in at its start and a fade out at its end. Each fade has 
 - The fade snaps like a clip you drag: within 8 pixels of the playhead, a marker, an in or out point or the edge of another clip, it jumps onto it, a gold line shows and the tooltip names the target. Hold <kbd>S</kbd> to switch snapping for this drag. See [Snap clips into place](timeline.md#snap-clips-into-place).
 - The fade stops at the clip's other fade: the two never overlap.
 - A handle fades only its own clip, not its linked clip.
+- For an audio clip, you can also type the fade lengths in frames in the **Fades** row of the **Audio** section of **Edit Properties**. See [Fade a clip's sound in the Audio section](audio-editing.md#fade-a-clips-sound-in-the-audio-section).
 - The handles work with the **Select** tool, on clips at least 24 pixels wide, on unlocked tracks. To reach the handles of a short clip, zoom in.
 - At a cut, the handles sit over the top corners of the two clips. To select or roll the cut instead, point a little lower on the cut.
 - Press <kbd>Esc</kbd> before you release to cancel the drag.
@@ -269,7 +270,7 @@ Each change is one step in the history. Hover over **Undo** in the app bar to se
 
 | Step name | What made it |
 | --- | --- |
-| **Fade in**, **Fade out** | A fade handle drag, **Fade in 0.5 s** or **Fade out 0.5 s**, or a fade length in the clip menu |
+| **Fade in**, **Fade out** | A fade handle drag, **Fade in 0.5 s** or **Fade out 0.5 s**, a fade length in the clip menu, or the **Fades** fields of the **Audio** section |
 | **Remove fade in**, **Remove fade out** | Clicking a lit **Fade in 0.5 s** or **Fade out 0.5 s** |
 | **Add cross dissolve**, **Add dip to black**, **Add dip to white** | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd>, a transition button (clicked or dragged), or the clip menu's **Transition** row |
 | **Change transition** | **Kind** in the **Transition** section |
@@ -283,13 +284,13 @@ See [Undo and redo changes](projects-and-saving.md#undo-and-redo-changes).
 
 These parts are available in a later version:
 
-- Fades in an **Audio** section, and changing a clip's volume (with keyframes or along the clip).
 - Choosing the default transition's length and kind (the dimmed **Transition** row of the **Project** section).
 - Copying and pasting clips with their fades and transitions.
 - Exporting your video with its transitions: only **Export frame** works.
 - Choosing the menu's fade lengths and transitions with the arrow keys.
 
 ## Related pages
+- [Editing audio](audio-editing.md)
 - [Timeline](timeline.md)
 - [Trimming clips](trimming.md)
 - [Advanced trimming](advanced-trimming.md)
@@ -302,4 +303,4 @@ These parts are available in a later version:
 - [Keyboard shortcuts](keyboard-shortcuts.md#fades-and-transitions)
 - [Troubleshooting](troubleshooting.md#fades-and-transitions)
 
-<sub>Last updated: Batch 36, 2026-10-17</sub>
+<sub>Last updated: Batch 37, 2026-10-17</sub>

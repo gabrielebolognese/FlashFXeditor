@@ -1,13 +1,13 @@
 # Editing properties
 
-The **Edit Properties** panel shows the settings of what you selected: a clip, a track, a marker, or the project itself when nothing is selected. Use it to type exact values, such as a position in pixels or the end time of a clip, to drag a value while you watch the preview, to fit or fill the frame with one click, to animate a picture with keyframes, to crop a picture, to change a clip's speed, to fade clips and set up transitions, to shape and color solids, to style text and save it as a preset, to give your captions their look and place, and to change several clips at once.
+The **Edit Properties** panel shows the settings of what you selected: a clip, a track, a marker, or the project itself when nothing is selected. Use it to type exact values, such as a position in pixels or the end time of a clip, to drag a value while you watch the preview, to fit or fill the frame with one click, to animate a picture with keyframes, to crop a picture, to change a clip's speed, to set the volume of a clip's sound, normalize it or duck music under a voice, to fade clips and set up transitions, to shape and color solids, to style text and save it as a preset, to give your captions their look and place, and to change several clips at once.
 
 > **Video placeholder: Edit Properties in action**
 > - File: `videos/editing-properties/overview.mp4` (not recorded yet)
 > - Length: about 90 seconds
 > - Shows:
 >   1. A 1080×1920 project with a 16:9 video with sound on V1 and A1 and a logo PNG on V2, the playhead over both. Click an empty area of the timeline tracks: **Edit Properties** shows the **Project** section.
->   2. Click the video clip on the timeline: the panel header reads **2 clips**, and the quick actions row appears above the **Clip**, **Transform**, **Crop**, **Opacity** and **Speed** sections.
+>   2. Click the video clip on the timeline: the panel header reads **2 clips**, and the quick actions row appears above the **Clip**, **Transform**, **Crop**, **Opacity**, **Speed** and **Audio** sections.
 >   3. Click **Fill frame** in the quick actions: the video covers the frame and its sides are cut off. Click **Fit in frame**: it fills the width again, with bands above and below.
 >   4. Click the logo in the preview. In **Transform**, press on the **X** of **Position** and drag to the right: the logo slides across the preview while the **X** turns gold. Release.
 >   5. Click in the **Y** field, type `-600` and press <kbd>Enter</kbd>: the logo jumps up.
@@ -30,6 +30,7 @@ The **Edit Properties** panel shows the settings of what you selected: a clip, a
 - [Animate values with keyframes](#animate-values-with-keyframes)
 - [Crop a picture](#crop-a-picture)
 - [Change a clip's speed](#change-a-clips-speed)
+- [Change a clip's sound](#change-a-clips-sound)
 - [Pick a color](#pick-a-color)
 - [Undo and cancel](#undo-and-cancel)
 - [What is not available yet](#what-is-not-available-yet)
@@ -42,14 +43,14 @@ The **Edit Properties** panel sits at the top of the left side, next to the Medi
 | You selected | The panel shows | See |
 | --- | --- | --- |
 | Nothing (click an empty area of the timeline tracks) | The **Project** section | [Change project settings](projects-and-saving.md#change-project-settings) |
-| One or more clips | The quick actions, then the **Clip** section. When a text clip is among them, **Text** and **Animation** come right after **Clip**. When a solid is among them, **Solid** comes next. When a caption cue is among them, **Caption style** comes next. When a video, image, solid or text clip is among them, also **Transform** and **Opacity**, with **Crop** between them for video and image clips. When a video or audio clip is among them, also **Speed**, as the last section. | This page, [Titles and text](titles-and-text.md#style-text-in-the-text-section) for **Text**, [Text animations](text-animations.md) for **Animation**, [Shapes and images](shapes-and-images.md#choose-the-shape) for **Solid**, [Style your captions](captions.md#style-your-captions) for **Caption style**, [Cropping and reframing](cropping-and-reframing.md) for **Crop**, and [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md) for **Speed** |
+| One or more clips | The quick actions, then the **Clip** section. When a text clip is among them, **Text** and **Animation** come right after **Clip**. When a solid is among them, **Solid** comes next. When a caption cue is among them, **Caption style** comes next. When a video, image, solid or text clip is among them, also **Transform** and **Opacity**, with **Crop** between them for video and image clips. When a video or audio clip is among them, also **Speed**. When an audio clip or a video with sound is among them, **Audio** comes last. | This page, [Titles and text](titles-and-text.md#style-text-in-the-text-section) for **Text**, [Text animations](text-animations.md) for **Animation**, [Shapes and images](shapes-and-images.md#choose-the-shape) for **Solid**, [Style your captions](captions.md#style-your-captions) for **Caption style**, [Cropping and reframing](cropping-and-reframing.md) for **Crop**, [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md) for **Speed**, and [Editing audio](audio-editing.md#find-the-audio-section) for **Audio** |
 | One or more track headers | The **Track** section, and the **Caption style** section when the **CC** caption track is among them | [Change track settings in Edit Properties](tracks.md#change-track-settings-in-edit-properties), [Style your captions](captions.md#style-your-captions) |
 | A marker in the ruler | The **Marker** section | [Edit a marker in Edit Properties](markers-and-in-out-points.md#edit-a-marker-in-edit-properties) |
 | A transition (click its block on the timeline) | The **Transition** section | [Change a transition in Edit Properties](fades-and-transitions.md#change-a-transition-in-edit-properties) |
 | A cut between two clips (an edit point) | The quick actions, with only the three transition buttons alive, and the **Transition** section when the cut has a transition | [Add a transition with the quick actions or the clip menu](fades-and-transitions.md#add-a-transition-with-the-quick-actions-or-the-clip-menu) |
 
 - With several clips or tracks selected, the right end of the panel header shows how many, for example **3 clips** or **2 tracks**.
-- Each section starts with a header: an arrow and the section name. The **Transform** and **Opacity** headers also hold a stopwatch at their right end, for keyframes; see [Animate values with keyframes](#animate-values-with-keyframes). Click the header to fold the section away, and click it again to open it. A folded section stays folded for every selection (fold **Transform** once, and it stays folded for every clip you select), and the project remembers it when you open it again.
+- Each section starts with a header: an arrow and the section name. The **Transform**, **Opacity** and **Audio** headers also hold a stopwatch at their right end, for keyframes (the **Audio** stopwatch animates **Volume**); see [Animate values with keyframes](#animate-values-with-keyframes). Click the header to fold the section away, and click it again to open it. A folded section stays folded for every selection (fold **Transform** once, and it stays folded for every clip you select), and the project remembers it when you open it again.
 - The quick actions stay at the top of the panel while the sections scroll under them.
 - Press <kbd>Tab</kbd> to move to the next field and <kbd>Shift</kbd>+<kbd>Tab</kbd> to the previous one.
 - The panel follows the selection, on the timeline and in the preview. When you move, resize or rotate a picture in the preview, the fields show the new values as soon as you release the mouse button. They also follow **Undo** and **Redo**.
@@ -62,11 +63,11 @@ The **Edit Properties** panel sits at the top of the left side, next to the Medi
 
 In a number field you can also press <kbd>↑</kbd> or <kbd>↓</kbd> to add or subtract 1, and <kbd>Shift</kbd>+<kbd>↑</kbd> or <kbd>Shift</kbd>+<kbd>↓</kbd> to add or subtract 10. Hold the key to keep going.
 
-- Number fields show their unit after the value: **px** (pixels), **%**, **°** (degrees) or **s** (seconds). Most show one decimal, for example **100.0**, and round what you type to one decimal; the crop fields in **px** and the **Solid** fields show whole pixels. The **Duration** and **Stagger** fields of the **Animation** section show seconds with two decimals and step one frame at a time; see [Set how long an animation plays](text-animations.md#set-how-long-an-animation-plays).
+- Number fields show their unit after the value: **px** (pixels), **%**, **°** (degrees), **s** (seconds), **dB** (decibels) or **f** (frames). Most show one decimal, for example **100.0**, and round what you type to one decimal; the crop fields in **px** and the **Solid** fields show whole pixels, and the **Fades** fields of the **Audio** section whole frames. The **Duration** and **Stagger** fields of the **Animation** section show seconds with two decimals and step one frame at a time; see [Set how long an animation plays](text-animations.md#set-how-long-an-animation-plays).
 - Both a comma and a point work as the decimal sign: `3,5` and `3.5` are the same.
 - A value outside the range of a field stops at its limit, for example 100 in **Opacity**.
 - Text that is not a number is ignored, and the field shows its value again.
-- Each typed value is one step in the history. In the **Text**, **Animation**, **Solid**, **Caption style**, **Transform**, **Crop**, **Opacity** and **Speed** sections, arrow presses less than 0.3 seconds apart are one step together, so one <kbd>Ctrl</kbd>+<kbd>Z</kbd> undoes a quick series. In the other number fields, each press is one step.
+- Each typed value is one step in the history. In the **Text**, **Animation**, **Solid**, **Caption style**, **Transform**, **Crop**, **Opacity**, **Speed** and **Audio** sections, arrow presses less than 0.3 seconds apart are one step together, so one <kbd>Ctrl</kbd>+<kbd>Z</kbd> undoes a quick series. In the other number fields, each press is one step.
 - Clicking the letter or icon at the left of a number field (the field's label), without dragging, also puts you in the field.
 - While you type in a field, shortcuts are off: <kbd>Space</kbd>, for example, types a space instead of playing.
 
@@ -85,7 +86,7 @@ Drag the label of a number field (the letter or icon at its left, such as **X**,
 | <kbd>Alt</kbd> | 0.1 per pixel |
 
 - The drag starts once the mouse has moved 3 pixels. You can press and release <kbd>Shift</kbd> and <kbd>Alt</kbd> during the drag.
-- While you drag, the label and the edge of the field turn gold. In the **Transform**, **Crop**, **Opacity** and **Solid** sections, the preview and the gold box around the picture follow at once. **Speed** is different: the field counts along, and the clip, the timeline and the preview change when you release.
+- While you drag, the label and the edge of the field turn gold. In the **Transform**, **Crop**, **Opacity** and **Solid** sections, the preview and the gold box around the picture follow at once. **Speed** and **Audio** are different: the field counts along, and the clip, the timeline, the preview and the sound change when you release.
 - The project's **W** and **H** fields (with a **Custom** resolution) change by 2 per pixel, and the frame takes the new size when you release.
 - The value stops at the limits of the field. Drag back and it moves again at once.
 - Press <kbd>Esc</kbd> before you release to cancel: the value goes back, and nothing is added to the history.
@@ -101,6 +102,7 @@ Select several clips, on the timeline or in the preview (see [Select clips](time
 - **Start**, **End**, **Duration**, **Source in** and **Source out** trim each selected clip to the time you type, all in one step.
 - **Transform** and **Opacity** change only the pictures among the selected clips: the video, image, solid and text clips. **Crop** changes the video and image clips, and **Solid** the solids. A video's linked sound is left alone.
 - **Speed** changes the video and audio clips among them. With **Linked selection** on, a video's linked sound gets the same speed. See [Change the speed of a video and its sound](speed-freeze-frames-and-punch-zoom.md#change-the-speed-of-a-video-and-its-sound).
+- **Audio** changes the audio clips among them and the audio clips linked to the selected videos.
 - Clips on locked tracks keep their values.
 
 ## Use the quick actions
@@ -121,12 +123,12 @@ With clips selected, a row of one-click buttons sits at the top of the panel. Po
 | **Save as preset** (a bookmark with a plus) | Opens a name field under the row: press <kbd>Enter</kbd> to save the selected text's style as a new text preset. See [Save a text style as a preset](text-presets.md#save-a-text-style-as-a-preset). |
 | **Update preset** (a bookmark with a check mark) | Writes the selected text's style into the preset it uses. Other texts that use the preset keep their style until you apply it to them again. See [Update a preset](text-presets.md#update-a-preset). |
 | **Add dissolve**, **Add dip to black**, **Add dip to white** | Add a 15-frame transition at the selected cut, or at the selected clip's start or end nearest the playhead. Drag one onto a cut on the timeline to add it there. See [Add a transition](fades-and-transitions.md#add-a-transition). |
+| **Mute** (a crossed-out speaker) | Mutes the selected audio clips and the sound of the selected videos. It looks pressed and reads **Unmute** while all of it is muted: click again to hear it. See [Mute a clip](audio-editing.md#mute-a-clip). |
 | **Duplicate** | Copies the clip you clicked last right after itself (<kbd>Ctrl</kbd>+<kbd>D</kbd>). See [Duplicate a clip](#duplicate-a-clip). |
 | **Delete** | Deletes the selected clips and leaves gaps, like the <kbd>Delete</kbd> key. See [Delete clips](splitting-and-deleting.md#delete-clips). |
 
-- A button is dimmed when none of the selected clips can take it. The picture buttons and **Punch zoom** need a video, image, solid or text clip; an audio clip has no picture. On a text clip, the picture buttons use the box of its text, and on a solid the box of its shape. **Freeze frame** needs a video clip, and the speed buttons a video or audio clip that is not a freeze frame. **Save as preset** needs a text clip. **Update preset** needs a text clip whose style differs from the preset it uses. The fade buttons need a clip that is not a caption cue. The transition buttons are never dimmed. Clips on locked tracks are skipped.
+- A button is dimmed when none of the selected clips can take it. The picture buttons and **Punch zoom** need a video, image, solid or text clip; an audio clip has no picture. On a text clip, the picture buttons use the box of its text, and on a solid the box of its shape. **Freeze frame** needs a video clip, and the speed buttons a video or audio clip that is not a freeze frame. **Save as preset** needs a text clip. **Update preset** needs a text clip whose style differs from the preset it uses. The fade buttons need a clip that is not a caption cue. **Mute** needs an audio clip, or a video whose sound is a linked audio clip. The transition buttons are never dimmed. Clips on locked tracks are skipped.
 - Whether a button is dimmed depends on the selection only, not on the playhead. **Freeze frame** and **Punch zoom** act at the playhead: when it is not over the selected clip, a message says so.
-- The **Mute** button is dimmed: it is available in a later version.
 - The buttons don't take the keyboard focus, but a click in the panel makes **Edit Properties** the active panel. See [How shortcuts work](keyboard-shortcuts.md#how-shortcuts-work).
 
 ## Fit, fill or center a picture
@@ -288,6 +290,8 @@ While the stopwatch is on:
 - **Position**, **Scale**, **Rotation** and **Opacity** show the values at the playhead and follow it while you play or scrub. **Anchor** and **Flip** are not animated.
 - Clicking the gold stopwatch removes the section's keyframes, and the picture keeps its look at the playhead.
 
+The stopwatch of the **Audio** section works the same way for **Volume** (tooltip **Animate volume**); see [Make the volume change over time](audio-editing.md#make-the-volume-change-over-time).
+
 See [Keyframes](keyframes.md).
 
 ## Crop a picture
@@ -312,6 +316,19 @@ Select a video or audio clip. The **Speed** section, the last one of the panel, 
 - **Freeze frame** holds the frame at the playhead for 2 seconds.
 
 Right-click a video or audio clip on the timeline and choose **Speed...** to open the section with **Speed** ready for typing. See [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md).
+
+## Change a clip's sound
+
+Select an audio clip, or a video with sound. The **Audio** section, the last one of the panel, edits the sound. With a video selected, it edits the audio clip linked to it.
+
+- **Volume** sets the clip's volume, from -60.0 to +12.0 dB. The stopwatch in the **Audio** header animates it with keyframes, the same keyframes the rubber band on the timeline shows; while it is on, an **Ease** row comes first.
+- **Mute** silences the clip.
+- **Fades** sets the fade in and the fade out of the sound, in frames.
+- **Normalize** sets the volume so the clip's loudest moment reaches -1 dBFS.
+- **Auto-duck** lowers a music clip by 12 dB wherever audio plays on the tracks above it.
+- **Detach audio** gives a video's sound a clip of its own.
+
+See [Editing audio](audio-editing.md).
 
 ## Pick a color
 
@@ -373,6 +390,7 @@ A color field is a swatch with the color's hex code next to it. The **Background
 | **Change background color** | **Background** in the **Project** section |
 | **Animate transform**, **Remove opacity keyframes**, **Add keyframe**, **Change keyframe easing** and the other keyframe steps | The stopwatches, the keyframe buttons and **Ease**. See [Undo keyframe changes](keyframes.md#undo-keyframe-changes). |
 | **Fade in**, **Remove fade out**, **Add cross dissolve**, **Change transition duration**, **Align transition** and the other fade and transition steps | The fade and transition buttons and the **Transition** section. See [Undo fades and transitions](fades-and-transitions.md#undo-fades-and-transitions). |
+| **Change volume**, **Mute clip**, **Normalize clip**, **Auto-duck music**, **Detach audio**, **Animate volume** and the other audio steps | The **Audio** section and the **Mute** quick action. See [Undo audio changes](audio-editing.md#undo-audio-changes). |
 
 See [Undo and redo changes](projects-and-saving.md#undo-and-redo-changes).
 
@@ -380,14 +398,13 @@ See [Undo and redo changes](projects-and-saving.md#undo-and-redo-changes).
 
 These parts are available in a later version:
 
-- More sections for clips: audio (volume and fades).
-- The dimmed **Mute** quick action.
 - Duplicating several clips, or a clip with its linked sound, with <kbd>Ctrl</kbd>+<kbd>D</kbd>, and the **Duplicate** row of the layer menu.
 - The dimmed rows of the **Project** section: **Still duration**, **Transition** and **Cache** with **Clear cache**.
 
 ## Related pages
 - [Keyframes](keyframes.md)
 - [Fades and transitions](fades-and-transitions.md)
+- [Editing audio](audio-editing.md)
 - [Shapes and images](shapes-and-images.md)
 - [Cropping and reframing](cropping-and-reframing.md)
 - [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md)
@@ -407,4 +424,4 @@ These parts are available in a later version:
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 36, 2026-10-17</sub>
+<sub>Last updated: Batch 37, 2026-10-17</sub>

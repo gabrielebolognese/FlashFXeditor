@@ -1,6 +1,6 @@
 # Keyframes
 
-Keyframes make a picture change while it plays: slide a logo into a corner, zoom slowly into a shot, turn a sticker, or fade a picture in and out. You set the look you want at two or more moments, and the editor fills in every frame between them. Keyframes work on the position, scale, rotation and opacity of video, image, solid and text clips.
+Keyframes make a picture change while it plays: slide a logo into a corner, zoom slowly into a shot, turn a sticker, or fade a picture in and out. You set the look you want at two or more moments, and the editor fills in every frame between them. Keyframes work on the position, scale, rotation and opacity of video, image, solid and text clips, and on the volume of audio clips.
 
 > **Video placeholder: Animate a picture with keyframes**
 > - File: `videos/keyframes/overview.mp4` (not recorded yet)
@@ -38,12 +38,13 @@ Keyframes make a picture change while it plays: slide a logo into a corner, zoom
 
 A keyframe stores the look of a picture at one frame of its clip. Between two keyframes, the editor moves each value from the first keyframe's value to the second one's, frame by frame. Before the first keyframe, the picture keeps the look of the first one; after the last keyframe, the look of the last one.
 
-Two sections of **Edit Properties** can be animated. Each has its own stopwatch in its header:
+Three sections of **Edit Properties** can be animated. Each has its own stopwatch in its header:
 
 | Section | What it animates | Clips |
 | --- | --- | --- |
 | **Transform** | **Position** (**X** and **Y**), **Scale** (**W** and **H**) and **Rotation** | Video, image, solid and text clips |
 | **Opacity** | **Opacity** | Video, image, solid and text clips |
+| **Audio** | **Volume** | Audio clips (select a video to animate the audio clip linked to it). The keyframes show on the clip's rubber band. See [Make the volume change over time](audio-editing.md#make-the-volume-change-over-time). |
 
 - A **Transform** keyframe always holds the position, the scale and the rotation together. When you only move a picture at a new keyframe, its scale and rotation are stored there too, with the values they have at that frame.
 - Keyframes sit on whole frames of the project's frame rate. They belong to their clip: they move with it on the timeline, and a copy of the clip gets them too.
@@ -178,7 +179,7 @@ While **Show clip keyframes** is on, a keyframe lane, a dark strip along the bot
 
 - **On the selected clips** of video tracks at height M or L.
 - **On every clip of an L track**, selected or not.
-- **Not on S tracks**, where a clip is only its label bar, and not on audio tracks or the **CC** caption track.
+- **Not on S tracks**, where a clip is only its label bar, and not on audio tracks or the **CC** caption track. Audio clips show their volume keyframes as diamonds on their rubber band instead, whether **Show clip keyframes** is on or not. See [Edit volume keyframes on the rubber band](audio-editing.md#edit-volume-keyframes-on-the-rubber-band).
 - A diamond sits where the playhead stands on its frame. A keyframe on the clip's first or last frame sits just inside the clip's edge, so you can still grab it.
 - Diamonds are white; selected diamonds are gold.
 
@@ -217,14 +218,14 @@ The steps are named **Move keyframe** or **Move keyframes**, **Add keyframe**, a
 
 ## Use the keyframe menu
 
-Right-click a diamond on a keyframe lane. When the diamond is selected, the menu acts on all the selected keyframes; otherwise the diamond is selected alone first.
+Right-click a diamond on a keyframe lane, or on the rubber band of an audio clip. When the diamond is selected, the menu acts on all the selected keyframes; otherwise the diamond is selected alone first.
 
 | Row | What it does |
 | --- | --- |
 | **Easing**: **Linear**, **Ease in**, **Ease out**, **Ease in-out**, **Hold**, **Smooth**, **Snap**, **Overshoot** | Sets the easing of the selected keyframes. The easing of the keyframe you right-clicked is gold. See [Choose the easing](#choose-the-easing). |
 | **Delete keyframe** or **Delete keyframes** | Deletes the selected keyframes, like <kbd>Delete</kbd>. |
 | **Copy keyframe** or **Copy keyframes** | Copies the selected keyframes. |
-| **Paste keyframes** | Pastes the copied keyframes on the selected clips, from the playhead on. Dimmed until you copy keyframes of the same section as this lane (**Transform** or **Opacity**). |
+| **Paste keyframes** | Pastes the copied keyframes on the selected clips, from the playhead on. Dimmed until you copy keyframes of the same section as this lane (**Transform** or **Opacity**), or volume keyframes for a rubber band. |
 
 <kbd>Esc</kbd> closes the menu.
 
@@ -269,9 +270,9 @@ Select several clips to work on their keyframes together:
 | Move a clip | They move with it. |
 | Split a clip (<kbd>Ctrl</kbd>+<kbd>K</kbd>, the **Razor** tool) | Each part keeps its share of the motion. Played one after the other, the parts look exactly as the clip did, also when the cut falls in the middle of an eased move. <kbd>Ctrl</kbd>+<kbd>Z</kbd> gives back one clip with its keyframes. |
 | Trim the end | Keyframes after the new end stay with the clip, hidden from the lane, and still shape the motion up to the end. Lengthen the clip again and they come back. |
-| Trim the start of a video | Keyframes stay on the same frame of the video, so the motion stays in step with the picture. Keyframes before the new start stay hidden, like at the end. |
+| Trim the start of a video or audio clip | Keyframes stay on the same frame of the video or the same moment of the sound, so the motion stays in step with the picture and a volume change with the sound. Keyframes before the new start stay hidden, like at the end. |
 | Trim the start of an image, solid or text | Keyframes stay at the same distance from the clip's start: the motion starts with the new start. |
-| Slip a video | Keyframes stay on the same frames of the video, so the motion moves with the picture. |
+| Slip a video or audio clip | Keyframes stay on the same frames of the video or the same moments of the sound, so the motion or the volume change moves with them. |
 | Change the speed, or **Rate stretch** | Keyframes stretch or squeeze with the clip's new length: at 2x, the motion takes half as long. Keyframes that land on the same frame become one. |
 | Freeze frame | The frozen clip holds the look the picture has at the playhead, without keyframes. The parts before and after it keep their motion. |
 | Duplicate (<kbd>Ctrl</kbd>+<kbd>D</kbd>, <kbd>Alt</kbd>+drag) | The copy gets the same keyframes. |
@@ -287,12 +288,13 @@ Each change is one step in the history. Hover over **Undo** in the app bar to se
 
 | Step name | What made it |
 | --- | --- |
-| **Animate transform**, **Animate opacity** | Turning a stopwatch on |
-| **Remove transform keyframes**, **Remove opacity keyframes** | Turning a stopwatch off |
-| **Add keyframe** | **Add keyframe**, or <kbd>Alt</kbd>+click on a keyframe lane |
+| **Animate transform**, **Animate opacity**, **Animate volume** | Turning a stopwatch on |
+| **Remove transform keyframes**, **Remove opacity keyframes**, **Remove volume keyframes** | Turning a stopwatch off |
+| **Add keyframe** | **Add keyframe**, <kbd>Alt</kbd>+click on a keyframe lane, or <kbd>Ctrl</kbd>+click on a rubber band |
 | **Remove keyframe** | **Remove keyframe** |
 | **Delete keyframe**, **Delete keyframes** | <kbd>Delete</kbd> or <kbd>Backspace</kbd> with keyframes selected, or the keyframe menu |
 | **Move keyframe**, **Move keyframes** | Dragging diamonds on a keyframe lane |
+| **Move volume keyframe**, **Move volume keyframes** | Dragging diamonds, or the line between them, on a rubber band |
 | **Change keyframe easing** | **Ease**, or an easing in the keyframe menu |
 | **Paste keyframes** | **Paste keyframes** in the keyframe menu |
 | **Move layer**, **Change position**, **Change opacity** and the other change names | A change at the playhead while the stopwatch is on |
@@ -303,7 +305,6 @@ See [Undo and redo changes](projects-and-saving.md#undo-and-redo-changes).
 
 These parts are available in a later version:
 
-- Changing a clip's volume over time with keyframes.
 - Copying and pasting keyframes with <kbd>Ctrl</kbd>+<kbd>C</kbd> and <kbd>Ctrl</kbd>+<kbd>V</kbd>: use the keyframe menu.
 - Choosing keyframe menu rows with the arrow keys.
 - Settings for the punch zoom (to cut in at once, without the 6-frame zoom) and for whether keyframes follow the video when you trim its start.
@@ -317,9 +318,10 @@ These parts are available in a later version:
 - [Trimming clips](trimming.md)
 - [Text animations](text-animations.md)
 - [Fades and transitions](fades-and-transitions.md)
+- [Editing audio](audio-editing.md)
 - [Shapes and images](shapes-and-images.md)
 - [Clip thumbnails, waveforms and badges](clip-thumbnails-and-waveforms.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md#keyframes)
 - [Troubleshooting](troubleshooting.md#keyframes)
 
-<sub>Last updated: Batch 36, 2026-10-17</sub>
+<sub>Last updated: Batch 37, 2026-10-17</sub>

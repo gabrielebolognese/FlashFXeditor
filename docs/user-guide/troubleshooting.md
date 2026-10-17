@@ -1,6 +1,6 @@
 # Troubleshooting
 
-This page helps you when something does not work as expected: the editor does not start in your browser, the preview stays empty, a folder or a file does not open, a clip drag, a trim, a split, a delete, a timeline tool, a typed timecode, a marker, an in/out range or **Lift** and **Extract** do something you did not expect, media from the Media panel lands somewhere you did not expect, a clip shows no thumbnails, a video gets no proxy or its proxy fails, the preview zoom, overlays or fullscreen behave unexpectedly, a picture in the preview can't be selected, moves unexpectedly, doesn't snap where you expect or gets cropped instead of resized, a value or a crop in **Edit Properties** doesn't do what you expect, a speed change, a freeze frame or a punch zoom does something you did not expect, a keyframe animation or a keyframe lane doesn't behave as you expect, a fade or a transition doesn't go where you expect, gets shorter or shows red stripes, a shape or an image doesn't look or play as you expect, a title lands somewhere you did not expect, the keys type into a text, a font is missing, a text preset doesn't apply, update or sync as you expect, a text animation plays shorter or differently than you expect, a caption cue doesn't import, move, show or highlight as you expect, a transcription doesn't start, is slow or gets words wrong, playback stutters, or you hear no sound. Each problem lists what you see, why it happens and what to do. The last section lists what the current version cannot do yet.
+This page helps you when something does not work as expected: the editor does not start in your browser, the preview stays empty, a folder or a file does not open, a clip drag, a trim, a split, a delete, a timeline tool, a typed timecode, a marker, an in/out range or **Lift** and **Extract** do something you did not expect, media from the Media panel lands somewhere you did not expect, a clip shows no thumbnails, a video gets no proxy or its proxy fails, the preview zoom, overlays or fullscreen behave unexpectedly, a picture in the preview can't be selected, moves unexpectedly, doesn't snap where you expect or gets cropped instead of resized, a value or a crop in **Edit Properties** doesn't do what you expect, a speed change, a freeze frame or a punch zoom does something you did not expect, a keyframe animation or a keyframe lane doesn't behave as you expect, a fade or a transition doesn't go where you expect, gets shorter or shows red stripes, the rubber band, **Normalize**, **Auto-duck**, **Detach audio** or **Audio scrub** doesn't do what you expect, a shape or an image doesn't look or play as you expect, a title lands somewhere you did not expect, the keys type into a text, a font is missing, a text preset doesn't apply, update or sync as you expect, a text animation plays shorter or differently than you expect, a caption cue doesn't import, move, show or highlight as you expect, a transcription doesn't start, is slow or gets words wrong, playback stutters, or you hear no sound. Each problem lists what you see, why it happens and what to do. The last section lists what the current version cannot do yet.
 
 > **Video placeholder: Fix common problems**
 > - File: `videos/troubleshooting/overview.mp4` (not recorded yet)
@@ -49,6 +49,7 @@ This page helps you when something does not work as expected: the editor does no
 >   41. Click **Add solid**, then click **Ellipse** in the **Solid** section: the **Radius** field is dimmed. Click **Rounded rectangle**, type `500` in **Radius**: the ends are half circles and grow no rounder. Drag a corner handle of the shape: **Scale** in **Transform** stays at 100% while **W** and **H** change.
 >   42. Select a logo whose **Transform** stopwatch is on, with **Show clip keyframes** on. Click a diamond on its lane and press <kbd>Delete</kbd>: only that keyframe disappears and the **Undo** tooltip reads **Undo Delete keyframe**. Click the clip's body and press <kbd>Delete</kbd>: now the clip goes. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> twice.
 >   43. Put two videos that each use their whole file end to end on V1, click right on the cut between them and press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd>: the block is striped red and the message **Not enough media for the transition** appears. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>. Select the first video and click **Fade in 0.5 s** twice: the second click removes the fade, and the **Undo** tooltip reads **Undo Remove fade in**.
+>   44. Put a music clip on A1 and a voice clip on A2 under it, select the music and click **Auto-duck** in the **Audio** section: the message **No voice to duck under** appears. Drag the A2 header above A1 and click **Auto-duck** again: the music's line dips under the voice. Click **Auto-duck** once more: the dip gets twice as deep; press <kbd>Ctrl</kbd>+<kbd>Z</kbd>.
 
 ## In this page
 - [Browser and graphics](#browser-and-graphics)
@@ -188,6 +189,22 @@ This page helps you when something does not work as expected: the editor does no
   - [A transition got shorter or disappeared](#a-transition-got-shorter-or-disappeared)
   - [The sound doesn't crossfade under a transition](#the-sound-doesnt-crossfade-under-a-transition)
   - [The sound dips at a crossfade](#the-sound-dips-at-a-crossfade)
+- [Audio editing](#audio-editing)
+  - [There is no white line on an audio clip](#there-is-no-white-line-on-an-audio-clip)
+  - [Dragging the line trims the clip or moves a fade](#dragging-the-line-trims-the-clip-or-moves-a-fade)
+  - [Ctrl+click on an audio clip selects it instead of adding a keyframe](#ctrlclick-on-an-audio-clip-selects-it-instead-of-adding-a-keyframe)
+  - [Dragging the line moved two keyframes](#dragging-the-line-moved-two-keyframes)
+  - [A volume keyframe stops before where you drag it](#a-volume-keyframe-stops-before-where-you-drag-it)
+  - [Typing a Volume changed only part of the clip](#typing-a-volume-changed-only-part-of-the-clip)
+  - [The Volume field shows -- or changes when the playhead moves](#the-volume-field-shows----or-changes-when-the-playhead-moves)
+  - [Normalize says The waveform is still loading or Nothing to normalize](#normalize-says-the-waveform-is-still-loading-or-nothing-to-normalize)
+  - [Normalize didn't bring the peak to -1 dBFS](#normalize-didnt-bring-the-peak-to--1-dbfs)
+  - [Auto-duck says No voice to duck under](#auto-duck-says-no-voice-to-duck-under)
+  - [Auto-duck lowered the music too much](#auto-duck-lowered-the-music-too-much)
+  - [The music doesn't come back up between two sentences](#the-music-doesnt-come-back-up-between-two-sentences)
+  - [Detach audio is missing or dimmed](#detach-audio-is-missing-or-dimmed)
+  - [Audio scrub plays no sound](#audio-scrub-plays-no-sound)
+  - [An audio clip is faded, has diagonal lines and plays no sound](#an-audio-clip-is-faded-has-diagonal-lines-and-plays-no-sound)
 - [Shapes and images](#shapes-and-images)
   - [Add solid put the shape on a new track](#add-solid-put-the-shape-on-a-new-track)
   - [The Radius field is dimmed](#the-radius-field-is-dimmed)
@@ -969,8 +986,10 @@ See [Preview and playback](preview-and-playback.md#know-what-to-expect-from-perf
 | --- | --- |
 | The button left of the **Master volume** knob shows a crossed-out speaker and reads **Unmute**. | Click **Unmute**. |
 | The **Master volume** knob is turned far down: its tooltip reads, for example, **Master volume: -60.0 dB**. | Double-click the knob to go back to 0.0 dB. |
-| You play backward, at 2x or faster, step frames or drag in the ruler. | Sound plays only at 1x forward. Press <kbd>K</kbd> to pause, then <kbd>Space</kbd> to play forward at 1x. |
+| You play backward, at 2x or faster, step frames or drag in the ruler. | Playback has sound only at 1x forward. Press <kbd>K</kbd> to pause, then <kbd>Space</kbd> to play forward at 1x. To hear the sound while you step or scrub, turn on **Audio scrub** in the timeline toolbar. |
 | **M** is highlighted in the header of the clip's audio track, or **S** is highlighted on another audio track. | Click the toggle to turn it off. See [Mute and solo audio tracks](audio.md#mute-and-solo-audio-tracks). |
+| The audio clip is drawn faded with diagonal lines: it is muted or turned off. | Select it and click **Unmute** in the quick actions, or right-click it and choose **Enable**. See [Mute a clip](audio-editing.md#mute-a-clip). |
+| The clip's white line runs along the bottom of the clip, and **Volume** in the **Audio** section reads a very low value such as -60.0. | Type `0` in **Volume**. See [Change a clip's volume](audio-editing.md#change-a-clips-volume). |
 | The meter at the right edge of the preview moves, but you still hear nothing. | The sound leaves the editor. Check the browser tab: if it shows a crossed-out speaker, right-click the tab and choose **Unmute site**. Then check your system volume and output device. |
 | The clip's file is an .mp3, .aac, .wav or .ogg file over 1 GB. | Such files play no sound. Convert the file to .m4a (AAC) and import it again. |
 | The sound cannot be decoded, or the clip's file is missing from the project's `media` folder. | Convert the file to .m4a, .mp3 or .wav and import it again, or put the missing file back in `media` with the same name. |
@@ -1180,8 +1199,7 @@ See [Audio](audio.md).
 **Symptom:** Buttons at the top of **Edit Properties** are dimmed, and clicking them does nothing.
 
 **Cause:** One of these:
-- The button belongs to a feature of a later version: **Mute**.
-- No selected clip can take it: **Fit in frame**, **Fill frame**, **Center in frame**, the flips, **Reset transform** and **Punch zoom** need a video, image or text clip, and an audio clip has no picture. **Freeze frame** needs a video clip. The speed buttons need a video or audio clip that is not a freeze frame. **Fade in 0.5 s** and **Fade out 0.5 s** need a clip that is not a caption cue. The transition buttons are never dimmed.
+- No selected clip can take it: **Fit in frame**, **Fill frame**, **Center in frame**, the flips, **Reset transform** and **Punch zoom** need a video, image or text clip, and an audio clip has no picture. **Freeze frame** needs a video clip. The speed buttons need a video or audio clip that is not a freeze frame. **Fade in 0.5 s** and **Fade out 0.5 s** need a clip that is not a caption cue. **Mute** needs an audio clip, or a video whose sound is a linked audio clip. The transition buttons are never dimmed.
 - The clips are on a locked track.
 
 **Fix:** Select a video, image or text clip, or unlock its track. See [Use the quick actions](editing-properties.md#use-the-quick-actions).
@@ -1488,6 +1506,137 @@ See [Audio](audio.md).
 ### The sound dips at a crossfade
 
 **Not a problem:** Sound can't repeat a frame. Where the clips have no unused audio at the cut, the first sound fades out before the end of its file and the second fades in from the start of its file, so the loudness dips briefly instead of clicking. Give the clips unused media at the cut to make the crossfade even. See [Crossfade the sound](fades-and-transitions.md#crossfade-the-sound).
+
+## Audio editing
+
+### There is no white line on an audio clip
+
+**Symptom:** An audio clip shows no rubber band, so you can't drag its volume.
+
+**Cause:** One of these:
+- The audio track is at height S, where a clip is only its label bar.
+- You are looking at a video clip: the line is on its sound, the linked audio clip on an audio track.
+- The clip is turned all the way down: at -60 dB the line runs along the bottom of the body.
+
+**Fix:** Click the height toggle in the audio track's header until the track is M or L. To find a very low line, type a value such as `0` in **Volume** in the **Audio** section. See [Read the rubber band](audio-editing.md#read-the-rubber-band).
+
+### Dragging the line trims the clip or moves a fade
+
+**Symptom:** You press on the white line and the clip's edge moves, a fade wedge grows, or the clip moves instead.
+
+**Cause:** Near the ends of a clip, the trim zones, the fade handles in the top corners and transition blocks come before the line. Elsewhere, the line reacts only within 4 pixels of it: further away, a press grabs the clip's body. The line doesn't react with a tool other than **Select**, or on a locked track.
+
+**Fix:** Zoom in and press on the line away from the clip's ends, where the cursor becomes an up-down arrow. Press <kbd>V</kbd> for the **Select** tool, or unlock the track. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> to undo a trim you didn't want.
+
+### Ctrl+click on an audio clip selects it instead of adding a keyframe
+
+**Symptom:** <kbd>Ctrl</kbd>+click on an audio clip adds it to the selection, or removes it, and no diamond appears.
+
+**Cause:** The pointer was not on the line. <kbd>Ctrl</kbd>+click adds a volume keyframe only within 4 pixels of the line; elsewhere on the clip it changes the selection.
+
+**Fix:** Hold <kbd>Ctrl</kbd> and move the pointer onto the line until the cursor shows a plus sign, then click. See [Make the volume change over time](audio-editing.md#make-the-volume-change-over-time).
+
+### Dragging the line moved two keyframes
+
+**Not a problem:** On a clip with volume keyframes, a drag of the line between two diamonds moves both up or down, so that part of the clip gets louder or quieter as a whole. Before the first diamond or after the last one, the drag moves that diamond.
+
+**Fix:** To change one keyframe, drag its diamond. To change only part of the line, <kbd>Ctrl</kbd>+click the line at the start and end of that part first. See [Edit volume keyframes on the rubber band](audio-editing.md#edit-volume-keyframes-on-the-rubber-band).
+
+### A volume keyframe stops before where you drag it
+
+**Symptom:** A diamond stops moving sideways, or doesn't move sideways at all.
+
+**Cause:** A keyframe moves only between its neighbors and inside the clip: it stops one frame before the next keyframe and at the clip's first and last frames. While you hold <kbd>Shift</kbd>, or when you drag one of several selected diamonds, keyframes keep their frames and only their volume changes.
+
+**Fix:** Release <kbd>Shift</kbd>, select only the diamond you want to move, or delete the neighbor in the way first.
+
+### Typing a Volume changed only part of the clip
+
+**Symptom:** You typed a new **Volume**, but only part of the clip got louder or quieter.
+
+**Cause:** The clip has volume keyframes (the **Audio** stopwatch is gold). **Volume** then shows and sets the volume at the playhead: the value you type writes a keyframe there.
+
+**Fix:** To change the whole clip, drag the line between the diamonds, or click **Normalize**, which moves all keyframes together. To go back to one volume for the whole clip, click the gold stopwatch: the keyframes go, and the clip keeps the volume it has at the playhead. See [Make the volume change over time](audio-editing.md#make-the-volume-change-over-time).
+
+### The Volume field shows -- or changes when the playhead moves
+
+**Not a problem:** `--` means the selected clips have different volumes; a value you type gives them all the same volume. A clip with volume keyframes shows its volume at the playhead, so the field follows the playhead.
+
+### Normalize says The waveform is still loading or Nothing to normalize
+
+**Symptom:** You click **Normalize** and a message appears instead of a new volume.
+
+**Cause:**
+- **The waveform is still loading**: **Normalize** reads the clip's waveform, and the editor hasn't made it yet, for example right after import. The editor now makes that waveform first.
+- **Nothing to normalize**: the part of the sound the clip uses is silent.
+
+**Fix:** Wait until the waveform appears in the clip, then click **Normalize** again. For a silent clip, check that the clip uses the part of the file you expect. See [Normalize a clip](audio-editing.md#normalize-a-clip).
+
+### Normalize didn't bring the peak to -1 dBFS
+
+**Symptom:** After **Normalize**, the meter peaks higher or lower than -1 dBFS.
+
+**Cause:** One of these:
+- Other clips play at the same time: their levels add up in the meter.
+- The clip is very quiet: the volume stops at +12 dB, so its peak can stay below -1 dBFS.
+- You changed the volume afterwards, for example with the rubber band, or the clip's trim now includes a louder part.
+
+**Fix:** Solo the clip's track with **S** to check the clip alone. Click **Normalize** again after you trim the clip.
+
+### Auto-duck says No voice to duck under
+
+**Symptom:** You click **Auto-duck** or **Auto-duck music**, the message **No voice to duck under** appears, and nothing changes.
+
+**Cause:** No audio clip plays during the selected clip on the audio tracks above its track. For example:
+- The voice is on a track below the music, such as the music on A1 and the voice on A2.
+- You selected the voice clip instead of the music.
+- The voice clips are muted, turned off with **Disable**, or on a muted track.
+- The voice doesn't overlap the music in time.
+
+**Fix:** Select the music clip. Drag the music's track header below the voice track, or move the clips so the voice is on the upper track. Unmute the voice clips and their track. See [Lower music under voices with Auto-duck](audio-editing.md#lower-music-under-voices-with-auto-duck).
+
+### Auto-duck lowered the music too much
+
+**Symptom:** The music almost disappears under the voice.
+
+**Cause:** Each **Auto-duck** lowers the music by 12 dB more than its own volume under the voices: running it twice lowers it by 24 dB. A music clip that was already turned down goes down further from there.
+
+**Fix:** Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> to undo the second **Auto-duck**. To make a dip shallower, drag the line inside the dip up: its two keyframes move together. The 12 dB can't be changed in this version.
+
+### The music doesn't come back up between two sentences
+
+**Not a problem:** Voice clips 20 frames apart or closer share one dip, so the music doesn't jump up in a short pause. To make it come up there, <kbd>Ctrl</kbd>+click the line inside the pause to add a keyframe and drag it up. See [Lower music under voices with Auto-duck](audio-editing.md#lower-music-under-voices-with-auto-duck).
+
+### Detach audio is missing or dimmed
+
+**Symptom:** The **Audio** section has no **Detach audio** button, or the clip menu shows it dimmed.
+
+**Cause:** No selected clip is a video with sound to detach: you selected only audio clips, or the video's file has no sound. A video on a locked track is left out.
+
+**Fix:** Select the video, or unlock its track. A video and its sound that are no longer linked are already detached. See [Give a video's sound a clip of its own](audio-editing.md#give-a-videos-sound-a-clip-of-its-own).
+
+### Audio scrub plays no sound
+
+**Symptom:** You drag in the ruler or step frames, and hear nothing.
+
+**Cause and fix:** Check these in order.
+
+| Check | Fix |
+| --- | --- |
+| **Audio scrub** in the timeline toolbar is not gold. | Click it. |
+| The timeline is playing. | **Audio scrub** stays quiet during playback, which plays its own sound. Pause first. |
+| You moved the playhead with <kbd>Home</kbd>, <kbd>End</kbd>, <kbd>↑</kbd>, <kbd>↓</kbd> or a typed timecode. | Only ruler scrubs and frame steps play sound. |
+| In the Preview panel, the arrow keys move a selected picture. | Click the timeline, then step. |
+| The clip's sound is not loaded yet, for example right after you open the project. | Scrub over it again a moment later: the sound loads while you scrub. |
+| The track is muted or another track is soloed, the clip is muted, or **Mute** under the preview is on. | Turn them off. See [Playback has no sound](#playback-has-no-sound). |
+
+### An audio clip is faded, has diagonal lines and plays no sound
+
+**Symptom:** One audio clip is drawn faded with diagonal lines, and you don't hear it.
+
+**Cause:** The clip is muted, or turned off with **Disable**.
+
+**Fix:** Select the clip and click **Unmute** in the quick actions, or turn off the **Mute** switch in the **Audio** section. For a turned-off clip, right-click it and choose **Enable**. See [Mute a clip](audio-editing.md#mute-a-clip).
 
 ## Shapes and images
 
@@ -2065,15 +2214,15 @@ See [Audio](audio.md).
 
 The current version cannot do these things yet. Each one is available in a later version.
 
-- **Sound:** no sound while you scrub, step frames, play backward or shuttle faster than 1x. Changing the volume of a clip (other than with fades and crossfades) and audio effects are not available.
+- **Sound:** no sound while you play backward or shuttle faster than 1x; while you scrub or step frames, only with **Audio scrub** on. How far **Auto-duck** lowers the music (12 dB) and its slopes (10 frames) can't be changed, and **Audio scrub** has no keyboard shortcut. Audio effects are not available.
 - **Editing clips:** clips can't be cut, copied or pasted (the **Cut**, **Copy** and **Paste** rows of the clip menu, and the **Copy**, **Paste** and **Duplicate** rows of the preview's layer menu, are dimmed). <kbd>Ctrl</kbd>+<kbd>D</kbd> duplicates one clip at a time, without its linked sound. The crop of a clip can't be copied to other clips.
 - **Markers:** markers belong to the timeline; markers inside clips are not available. Markers and the in/out range don't show on the scrollbars.
 - **Menus:** only clips, gaps, track headers, the ruler, media cards and pictures in the preview have a right-click menu, with a first set of rows. Menu rows can't be chosen with the arrow keys.
 - **Speed and edit points:** a speed applies to the whole clip, and sound at another speed always changes pitch. Playing a clip backward is not available. The length of a new freeze frame (2 seconds), the size of a punch zoom (20%) and its 6-frame zoom can't be changed. The default transition is always a 15-frame cross dissolve.
 - **Tracks:** track headers have room for names of about 9 characters; longer names are shortened. Groups are not marked on the timeline.
-- **Keyframes:** keyframes animate position, scale, rotation and opacity; a clip's volume can't change over time. Keyframes can't be copied or pasted with <kbd>Ctrl</kbd>+<kbd>C</kbd> and <kbd>Ctrl</kbd>+<kbd>V</kbd>; use the keyframe menu.
+- **Keyframes:** keyframes animate position, scale, rotation, opacity and the volume of audio clips. Keyframes can't be copied or pasted with <kbd>Ctrl</kbd>+<kbd>C</kbd> and <kbd>Ctrl</kbd>+<kbd>V</kbd>; use the keyframe menu.
 - **Preview:** the **Zoom**, **Preview quality** and **Overlays** menus can't be used with the arrow keys.
-- **Edit Properties:** the audio section is not available, nor are the dimmed **Mute** quick action and the **Still duration**, **Transition** and **Cache** rows of the **Project** section. A new resolution always scales the layout; keeping the layout as it is, is not available.
+- **Edit Properties:** the dimmed **Still duration**, **Transition** and **Cache** rows of the **Project** section are not available. A new resolution always scales the layout; keeping the layout as it is, is not available.
 - **Text:** a setting to always make new titles 3 seconds long is not available. A text's handles don't snap, and fonts can't be chosen with the arrow keys in the font picker. Deleted starter presets can't be restored. Text animations play in the preview and in **Export frame**.
 - **Captions:** all cues share one style; a style for a single cue is not available. Captions can't be selected, moved or styled in the preview, and cues can't be pasted.
 - **Transcription:** the cues can't be edited in the review; fix them in the **Captions** tab after adding them. The default model and language are set in the **Transcribe captions** dialog only.
@@ -2090,6 +2239,7 @@ The current version cannot do these things yet. Each one is available in a later
 - [Tracks](tracks.md)
 - [Linking and grouping clips](links-and-groups.md)
 - [Audio](audio.md)
+- [Editing audio](audio-editing.md)
 - [Trimming clips](trimming.md)
 - [Splitting, deleting and closing gaps](splitting-and-deleting.md)
 - [Advanced trimming](advanced-trimming.md)
@@ -2114,4 +2264,4 @@ The current version cannot do these things yet. Each one is available in a later
 - [Transcription](transcription.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 36, 2026-10-17</sub>
+<sub>Last updated: Batch 37, 2026-10-17</sub>

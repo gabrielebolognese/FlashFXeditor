@@ -58,6 +58,8 @@ Unlink a video and its sound to edit them separately for good, for example to re
 - After that, a click selects one clip only, and edits change only that clip.
 - The history step is named **Unlink clips**.
 
+**Detach audio**, in the **Audio** section of **Edit Properties** or the clip menu of a video, also unlinks a video from its sound, and selects the sound afterwards. A video with sound but no audio clip gets one. See [Give a video's sound a clip of its own](audio-editing.md#give-a-videos-sound-a-clip-of-its-own).
+
 ## Link clips
 
 Link clips to keep them together, for example a video you trimmed and its sound after you unlinked them, or a picture and a separate voice recording.
@@ -130,6 +132,7 @@ What a group does:
 - The history step is named **Ungroup clips**.
 
 ## Related pages
+- [Editing audio](audio-editing.md)
 - [Clip thumbnails, waveforms and badges](clip-thumbnails-and-waveforms.md)
 - [Timeline](timeline.md)
 - [Tracks](tracks.md)
@@ -141,4 +144,4 @@ What a group does:
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 36, 2026-10-17</sub>
+<sub>Last updated: Batch 37, 2026-10-17</sub>

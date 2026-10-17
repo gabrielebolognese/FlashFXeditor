@@ -2,6 +2,11 @@
 
 Shorts Editor grows in steps called batches. This page lists what each batch added that you can see or use, newest first. Follow the links for the full instructions.
 
+> **Video placeholder: What's new in Batch 37**
+> - File: `videos/whats-new/batch-37.mp4` (not recorded yet)
+> - Length: about 60 seconds
+> - Shows: a 1080×1920 project with a video on V1, three voice-over clips on A1 with pauses between them and a music clip on A2, both audio tracks at height M; point at the music clip: a white line runs across it and turns gold; drag it down until the tooltip reads `-6.0 dB`; click the music and scroll **Edit Properties** to the new **Audio** section; click **Auto-duck**: the line dips under each voice-over clip on A1; press <kbd>Home</kbd> and <kbd>Space</kbd>: the music drops whenever the voice-over speaks; click the first voice-over clip and click **Normalize**: **Volume** jumps up and the waveform grows; hold <kbd>Ctrl</kbd> and click the voice's line twice near its end, then drag the line after the second diamond down: the voice fades out; click **Mute** in the quick actions: the clip turns faded with diagonal lines; click **Unmute**; click **Audio scrub** in the timeline toolbar and drag across a cut in the ruler: short bits of sound follow the playhead.
+
 > **Video placeholder: What's new in Batch 36**
 > - File: `videos/whats-new/batch-36.mp4` (not recorded yet)
 > - Length: about 60 seconds
@@ -138,6 +143,7 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 > - Shows: open a project with three clips on the timeline; press <kbd>Space</kbd> to play and let the timeline page forward; press <kbd>L</kbd> three times to reach 8x, then <kbd>K</kbd>; hold <kbd>K</kbd> and tap <kbd>L</kbd> to step one frame; turn on **Loop playback**; point at the **Dropped** readout in the status strip.
 
 ## In this page
+- [Batch 37: Audio editing](#batch-37-audio-editing)
 - [Batch 36: Fades and transitions](#batch-36-fades-and-transitions)
 - [Batch 35: Keyframes](#batch-35-keyframes)
 - [Batch 34: Shapes and images](#batch-34-shapes-and-images)
@@ -174,6 +180,19 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 - [Batch 03: Projects, autosave and recovery](#batch-03-projects-autosave-and-recovery)
 - [Batch 02: Undo, redo and frame-exact time](#batch-02-undo-redo-and-frame-exact-time)
 - [Batch 01: The workspace](#batch-01-the-workspace)
+
+## Batch 37: Audio editing
+- Every audio clip now has its own volume, from -60 to +12 dB. Type it in **Volume** in the new **Audio** section of **Edit Properties**, or drag the white line across the clip on the timeline (the rubber band, on M and L tracks); the tooltip shows the dB, and the waveform grows or shrinks with the volume. Select a video to edit its sound. See [Change a clip's volume](audio-editing.md#change-a-clips-volume).
+- Make the volume change over time: <kbd>Ctrl</kbd>+click the rubber band to add a volume keyframe, then drag its diamond, or the line between two diamonds. The **Audio** header has a **Volume** stopwatch, with the keyframe buttons and the **Ease** row, like **Transform** and **Opacity**. Playback follows the curve smoothly, with no clicks. See [Make the volume change over time](audio-editing.md#make-the-volume-change-over-time) and [Edit volume keyframes on the rubber band](audio-editing.md#edit-volume-keyframes-on-the-rubber-band).
+- **Normalize** sets a clip's volume so its loudest moment reaches -1 dBFS. See [Normalize a clip](audio-editing.md#normalize-a-clip).
+- **Auto-duck** lowers a music clip by 12 dB wherever audio plays on the tracks above it, with 10-frame slopes, in one click: in the **Audio** section, the clip menu (**Auto-duck music**) or the menu of an audio track header. See [Lower music under voices with Auto-duck](audio-editing.md#lower-music-under-voices-with-auto-duck).
+- **Mute** silences a single clip: the **Mute** quick action now works, and the **Audio** section and the clip menu have it too. Muted clips are drawn faded with diagonal lines. See [Mute a clip](audio-editing.md#mute-a-clip).
+- The **Fades** row of the **Audio** section sets the sound's fades in frames. See [Fade a clip's sound in the Audio section](audio-editing.md#fade-a-clips-sound-in-the-audio-section).
+- **Detach audio** gives a video's sound a clip of its own: it unlinks the two, or adds an audio clip when the video has none. See [Give a video's sound a clip of its own](audio-editing.md#give-a-videos-sound-a-clip-of-its-own).
+- The **Audio scrub** toggle in the timeline toolbar now works: with it on, dragging in the ruler and stepping frames play short bits of sound, so you can find cuts by ear. See [Hear cuts while you scrub](audio-editing.md#hear-cuts-while-you-scrub).
+- The clip menu of audio clips and videos with sound gets **Mute**, **Normalize**, **Auto-duck music** and **Detach audio**. See [Use the clip and gap menus](splitting-and-deleting.md#use-the-clip-and-gap-menus).
+- Transcription hears each clip at its volume and leaves muted clips out. See [How transcription works](transcription.md#how-transcription-works).
+- New page: [Editing audio](audio-editing.md). New shortcuts section: [Rubber band on audio clips](keyboard-shortcuts.md#rubber-band-on-audio-clips). New troubleshooting group: [Audio editing](troubleshooting.md#audio-editing).
 
 ## Batch 36: Fades and transitions
 - Fade clips in and out: point at a clip on the timeline and drag the small square in its top left or top right corner. A dark wedge shows the fade, with a rounded curve on audio clips. Pictures fade their opacity, sound fades its volume. Works on video, image, audio, solid and text clips. See [Fade a clip with the fade handles](fades-and-transitions.md#fade-a-clip-with-the-fade-handles).
@@ -557,4 +576,4 @@ See [The workspace](workspace.md) and [Getting started](getting-started.md).
 - [Adding media to the timeline](adding-media-to-the-timeline.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 36, 2026-10-17</sub>
+<sub>Last updated: Batch 37, 2026-10-17</sub>

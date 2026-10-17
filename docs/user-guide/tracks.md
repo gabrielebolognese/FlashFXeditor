@@ -210,6 +210,7 @@ Right-click a track header, or one of its toggles, to open the track menu. If th
 | **Select all clips on track** | Selects the clips on this track. Dimmed when the track is locked or empty. |
 | **Lock all tracks** / **Unlock all tracks** | Locks every track, or unlocks every track when all are locked. Locking all clears the selection. |
 | **Mute all others** | Mutes every other track of this kind and unmutes this one. Not on the **CC** track. |
+| **Auto-duck music** (audio tracks) | Lowers every clip on the selected audio tracks by 12 dB wherever audio plays on the tracks above them, with volume keyframes. Dimmed when the track is locked or empty. See [Lower music under voices with Auto-duck](audio-editing.md#lower-music-under-voices-with-auto-duck). |
 
 Press <kbd>Escape</kbd> or click outside the menu to close it.
 
@@ -249,6 +250,7 @@ The caption track holds the captions of your video, as cues. A project has at mo
 See [Captions](captions.md).
 
 ## Related pages
+- [Editing audio](audio-editing.md)
 - [Captions](captions.md)
 - [Clip thumbnails, waveforms and badges](clip-thumbnails-and-waveforms.md)
 - [Timeline](timeline.md)
@@ -266,4 +268,4 @@ See [Captions](captions.md).
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 33, 2026-10-17</sub>
+<sub>Last updated: Batch 37, 2026-10-17</sub>

@@ -28,7 +28,7 @@ A clip has two parts:
 |---|---|
 | Video | A strip of thumbnails: frames of the video, side by side. |
 | Freeze frame | The same picture in every thumbnail: it holds one frame. |
-| Audio | The waveform of its sound. See [Read a waveform](#read-a-waveform). |
+| Audio | The waveform of its sound, with the rubber band: a white line that shows the clip's volume. See [Read a waveform](#read-a-waveform). |
 | Image | The picture, repeated across the clip. |
 | Animated GIF or WebP | The frames of the animation side by side: each shows the frame that plays at that moment of the clip, as the animation loops. |
 | Solid | A small swatch at the start of the body: the shape (a square, a rounded square, a circle or a bar) in its color or gradient. See [Shapes and images on the timeline](shapes-and-images.md#shapes-and-images-on-the-timeline). |
@@ -39,7 +39,7 @@ A video with sound gives you both: thumbnails in its video clip and the waveform
 
 With **Show clip keyframes** on in the timeline toolbar, a dark lane along the bottom of the body shows the clip's keyframes as diamonds, on the selected clips and on every clip of an L track. See [Show keyframes on the timeline](keyframes.md#show-keyframes-on-the-timeline).
 
-Clips of a track you don't see or hear (muted, hidden, or left out by a solo) are drawn faded, thumbnails and waveforms included. Clips on a locked track are covered with diagonal lines. See [Tracks](tracks.md). A clip you turned off with **Disable** is drawn faded and covered with diagonal lines; see [Turn a clip off](editing-properties.md#turn-a-clip-off).
+Clips of a track you don't see or hear (muted, hidden, or left out by a solo) are drawn faded, thumbnails and waveforms included. Clips on a locked track are covered with diagonal lines. See [Tracks](tracks.md). A clip you turned off with **Disable** is drawn faded and covered with diagonal lines; see [Turn a clip off](editing-properties.md#turn-a-clip-off). A clip whose sound you muted is drawn the same way; see [Mute a clip](audio-editing.md#mute-a-clip).
 
 ## Show thumbnails and waveforms
 
@@ -83,9 +83,8 @@ A waveform shows how loud a clip is from moment to moment. Loud parts are tall, 
 - The scale is linear: a sound at the highest level a file can hold reaches almost the top and bottom of the body, and a sound at half that level reaches halfway.
 - The waveform stays sharp at every zoom. Zoomed far in, it becomes a smooth outline of the sound.
 - It follows the clip like the thumbnails do: a trimmed clip shows only its part of the sound, and a clip at another speed is squeezed or stretched to match.
-- It shows the sound of the file. The listening volume and the track toggles don't change it; a muted track's clips are drawn faded.
-
-Changing a clip's volume is available in a later version.
+- It follows the clip's volume: a clip turned up has a taller waveform (up to the full height of the body), a clip turned down a shorter one. With volume keyframes, the waveform follows the volume along the clip. The listening volume and the track toggles don't change it; a muted track's clips are drawn faded.
+- On M and L tracks, a white line runs across the waveform: the rubber band. Its height shows the clip's volume, and its diamonds are the clip's volume keyframes. Drag it to change the volume. See [Read the rubber band](audio-editing.md#read-the-rubber-band).
 
 > **Tip:** Look for the thin lines in a voice recording to find the pauses between sentences, then split or trim there. See [Splitting, deleting and closing gaps](splitting-and-deleting.md) and [Trimming clips](trimming.md).
 
@@ -99,7 +98,7 @@ Badges sit at the right end of a clip's label bar, from right to left in this or
 | Speed | `0.5x`, `2x` or `1.33x` | The video or audio clip plays faster or slower than its media. See [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md) and [Change a clip's speed with Rate stretch](advanced-trimming.md#change-a-clips-speed-with-rate-stretch). |
 | Freeze frame | A snowflake, in the place of the speed | The clip holds one frame of its video. See [Hold a frame (freeze frame)](speed-freeze-frames-and-punch-zoom.md#hold-a-frame-freeze-frame). |
 | Link | A chain icon | The clip is linked to another clip, for example a video and its sound. See [Linking and grouping clips](links-and-groups.md). |
-| Keyframes | A diamond | The clip has keyframes: its position, scale, rotation or opacity changes over time. See [Keyframes](keyframes.md). |
+| Keyframes | A diamond | The clip has keyframes: its position, scale, rotation or opacity changes over time, or, on an audio clip, its volume. See [Keyframes](keyframes.md) and [Make the volume change over time](audio-editing.md#make-the-volume-change-over-time). |
 | Text animation | A sparkles icon | The text clip has an in or out animation. See [Text animations](text-animations.md). |
 | Missing font | A red warning triangle | The text clip uses a font this computer doesn't have, so it is drawn with a fallback font. See [Fix a missing font](titles-and-text.md#fix-a-missing-font). |
 | Transition | `fx` | The clip has a transition at its start or end. See [Fades and transitions](fades-and-transitions.md). |
@@ -138,6 +137,7 @@ A clip with a label color shows that color in its label bar above the thumbnails
 > **Tip:** On a busy timeline of video clips, the label bars are where label colors stand out. Keep tracks at M or L to see the thumbnails, or set them to S to see only the colored label bars.
 
 ## Related pages
+- [Editing audio](audio-editing.md)
 - [Timeline](timeline.md)
 - [Tracks](tracks.md)
 - [Linking and grouping clips](links-and-groups.md)
@@ -153,4 +153,4 @@ A clip with a label color shows that color in its label bar above the thumbnails
 - [Proxies](proxies.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 36, 2026-10-17</sub>
+<sub>Last updated: Batch 37, 2026-10-17</sub>

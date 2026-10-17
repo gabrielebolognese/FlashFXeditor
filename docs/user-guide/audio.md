@@ -1,6 +1,6 @@
 # Audio
 
-Shorts Editor plays the sound of your edit together with the picture, with the fades and crossfades you give your clips. Use the **Mute** button and the **Master volume** knob under the preview to set how loud you listen, the **M** and **S** toggles in the audio track headers to leave a track out or hear it alone, and the meter at the right edge of the preview to check your levels. The waveform inside each audio clip shows where its sound is loud or quiet.
+Shorts Editor plays the sound of your edit together with the picture, with the fades and crossfades you give your clips. Use the **Mute** button and the **Master volume** knob under the preview to set how loud you listen, the **M** and **S** toggles in the audio track headers to leave a track out or hear it alone, and the meter at the right edge of the preview to check your levels. The waveform inside each audio clip shows where its sound is loud or quiet. To change the sound of the clips themselves (their volume, volume keyframes, **Normalize**, **Auto-duck** and **Mute**), and to hear cuts while you scrub, see [Editing audio](audio-editing.md).
 
 > **Video placeholder: Audio overview**
 > - File: `videos/audio/overview.mp4` (not recorded yet)
@@ -38,9 +38,7 @@ When you add a video with sound, the picture goes on a video track and the sound
 | Play from in to out with <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Space</kbd> or **Play in to out** | Plays. |
 | Shuttle at 2x, 4x or 8x | Silent. |
 | Play backward with <kbd>J</kbd>, at any speed | Silent. |
-| Step frames, or drag in the ruler | Silent. |
-
-Hearing sound while you scrub (the **Audio scrub** toggle in the timeline toolbar) is available in a later version.
+| Step frames, or drag in the ruler | Silent, unless **Audio scrub** is on in the timeline toolbar: then each frame plays a short bit of its sound. See [Hear cuts while you scrub](audio-editing.md#hear-cuts-while-you-scrub). |
 
 ### Sound and picture stay in sync
 
@@ -61,7 +59,7 @@ A freeze frame has no sound: the video's own sound pauses for the hold and goes 
 
 - <kbd>Home</kbd>, <kbd>End</kbd> and a timecode typed in the timeline toolbar move the playhead while playback continues. The sound picks up at the new place at once.
 - Pausing, jumping and stopping fade the sound out over 10 milliseconds, and new sound fades in just as fast, so you hear no clicks or pops. The same goes for an audio track you delete during playback, or that an undo removes.
-- Changes you make while playing are heard at once: muting or soloing a track, **Undo**, inserting a clip.
+- Changes you make while playing are heard at once: muting or soloing a track, changing a clip's volume or its volume keyframes, **Undo**, inserting a clip.
 
 ## Set the listening volume
 
@@ -111,6 +109,7 @@ The **Mute** button and the **Master volume** knob change only what you hear.
 - They do not change your project, and they are not steps in the history.
 - The meter ignores them: it shows the level of your edit, not of your speakers. See [Read the audio meter](#read-the-audio-meter).
 - They are app settings: they apply to every project in this browser and are remembered when you reload the page.
+- They are not the volume of a clip. A clip's **Volume** in the **Audio** section of **Edit Properties** changes your project: what plays, what the meter shows and what transcription hears. See [Change a clip's volume](audio-editing.md#change-a-clips-volume).
 
 There is no keyboard shortcut for **Mute**.
 
@@ -118,7 +117,7 @@ There is no keyboard shortcut for **Mute**.
 
 Fades and crossfades change the sound of your project, unlike the listening volume.
 
-- **Fade a sound in or out.** Drag the small square in the top left or top right corner of an audio clip on the timeline, or select a video and click **Fade in 0.5 s** or **Fade out 0.5 s** in the quick actions to fade its picture and its sound together. The volume follows a rounded (equal-power) curve, drawn over the clip's waveform.
+- **Fade a sound in or out.** Drag the small square in the top left or top right corner of an audio clip on the timeline, type the length in frames in the **Fades** row of the **Audio** section (see [Fade a clip's sound in the Audio section](audio-editing.md#fade-a-clips-sound-in-the-audio-section)), or select a video and click **Fade in 0.5 s** or **Fade out 0.5 s** in the quick actions to fade its picture and its sound together. The volume follows a rounded (equal-power) curve, drawn over the clip's waveform.
 - **Crossfade at a cut.** A transition at a cut between two audio clips is a crossfade: one sound fades out while the next fades in, with no click at the cut. While **Linked selection** is on, the sound under a video transition crossfades with it automatically.
 - Fades and crossfades play as soon as you make them, also while you play. The meter shows the faded level.
 
@@ -156,7 +155,7 @@ Each audio track header has, among its toggles at the right of the track name, *
 - To hear only one track, you can also right-click its header and choose **Mute all others**: the other audio tracks are muted and this one is unmuted, in one step.
 - The **Mute** and **Solo** switches in the **Track** section of **Edit Properties** do the same for every selected track. See [Change track settings in Edit Properties](tracks.md#change-track-settings-in-edit-properties).
 
-The **M** toggle of a video track takes its picture out of the preview; video tracks have no sound of their own. Changing the volume of a single clip is available in a later version.
+The **M** toggle of a video track takes its picture out of the preview; video tracks have no sound of their own. To silence a single clip instead of a whole track, or to change its volume, see [Mute a clip](audio-editing.md#mute-a-clip) and [Change a clip's volume](audio-editing.md#change-a-clips-volume).
 
 ## Read the audio meter
 
@@ -189,7 +188,7 @@ The meter is the narrow strip along the right edge of the Preview panel, between
 
 Click the top row of the meter, where the clip lights are. Its tooltip reads **Clip indicator: click to reset**. Both lights turn off.
 
-> **Tip:** Keep the peaks below 0 dBFS. If the clip lights turn red, check where several loud clips play at the same time: their levels add up. Mute or solo tracks to find the loud one. Changing a clip's volume is available in a later version.
+> **Tip:** Keep the peaks below 0 dBFS. If the clip lights turn red, check where several loud clips play at the same time: their levels add up. Mute or solo tracks to find the loud one, then lower its **Volume** or click **Normalize**, which brings a clip's peak to -1 dBFS. See [Editing audio](audio-editing.md).
 
 ## Know how sound is loaded
 
@@ -216,6 +215,7 @@ After you import an audio file or a video with sound, the editor analyzes its so
 - If the sound of a file cannot be decoded, or its file is missing from the project's `media` folder, its clips play silently. See [Troubleshooting](troubleshooting.md#playback-has-no-sound).
 
 ## Related pages
+- [Editing audio](audio-editing.md)
 - [Clip thumbnails, waveforms and badges](clip-thumbnails-and-waveforms.md)
 - [Preview and playback](preview-and-playback.md)
 - [Markers and in/out points](markers-and-in-out-points.md)
@@ -231,4 +231,4 @@ After you import an audio file or a video with sound, the editor analyzes its so
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 36, 2026-10-17</sub>
+<sub>Last updated: Batch 37, 2026-10-17</sub>
