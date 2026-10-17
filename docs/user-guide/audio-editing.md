@@ -1,6 +1,6 @@
 # Editing audio
 
-Shape the sound of your clips. Set each clip's volume. Make the volume rise and fall over time with the rubber band on the timeline. Bring a quiet clip up to a safe peak with **Normalize**, lower the music under your voice-over with **Auto-duck**, and mute a single clip. You can also give a video's sound a clip of its own, and hear your cuts while you scrub with **Audio scrub**. Unlike the listening volume under the preview, these changes are part of your project.
+Shape the sound of your clips. Set each clip's volume. Make the volume rise and fall over time with the rubber band on the timeline. Bring a quiet clip up to a safe peak with **Normalize**, lower the music under your voice-over with **Auto-duck**, and mute a single clip. You can also give a video's sound a clip of its own, and hear your cuts while you scrub with **Audio scrub**. Unlike the listening volume under the preview, these changes are part of your project. To cut the pauses out of a talking clip, see [Removing silence](removing-silence.md).
 
 > **Video placeholder: Edit audio in a minute**
 > - File: `videos/audio-editing/overview.mp4` (not recorded yet)
@@ -344,6 +344,7 @@ These parts are available in a later version:
 
 ## Related pages
 - [Audio](audio.md)
+- [Removing silence](removing-silence.md)
 - [Fades and transitions](fades-and-transitions.md)
 - [Keyframes](keyframes.md)
 - [Editing properties](editing-properties.md)
@@ -354,4 +355,4 @@ These parts are available in a later version:
 - [Keyboard shortcuts](keyboard-shortcuts.md#audio)
 - [Troubleshooting](troubleshooting.md#audio-editing)
 
-<sub>Last updated: Batch 37, 2026-10-17</sub>
+<sub>Last updated: Batch 38, 2026-10-17</sub>

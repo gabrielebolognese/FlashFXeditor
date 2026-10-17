@@ -128,7 +128,7 @@ See [Preview zoom, overlays and fullscreen](preview-zoom-overlays-fullscreen.md)
 | Leave the fullscreen preview | <kbd>Escape</kbd> | <kbd>Esc</kbd> | All panels |
 
 - <kbd>Ctrl</kbd>+<kbd>0</kbd>, <kbd>Ctrl</kbd>+<kbd>1</kbd> and <kbd>Ctrl</kbd>+<kbd>2</kbd> keep the point in the middle of the panel where it is; **Fit** centers the frame. Outside the Preview panel the browser gets these keys; see [Keys the browser keeps](#keys-the-browser-keeps).
-- <kbd>Escape</kbd> first cancels a drag in progress (also a layer you move, resize, rotate or crop in the preview) or closes an open menu; the next press finishes a text you are editing (keeping what you typed), then leaves crop mode, and the press after that leaves fullscreen.
+- <kbd>Escape</kbd> first cancels a drag in progress (also a layer you move, resize, rotate or crop in the preview) or closes an open menu; the next press finishes a text you are editing (keeping what you typed), then leaves crop mode, then closes the **Remove silence** row, and the press after that leaves fullscreen.
 - The arrow keys move layers only while a selected layer is under the playhead. Otherwise <kbd>←</kbd> and <kbd>→</kbd> (with or without <kbd>Shift</kbd>) step frames in the Preview panel as in the other panels, and <kbd>↑</kbd> and <kbd>↓</kbd> do nothing there. <kbd>Ctrl</kbd>+<kbd>←</kbd> and <kbd>Ctrl</kbd>+<kbd>→</kbd> always step one second.
 - Arrow presses less than 0.3 seconds apart are one undo step, **Nudge layer**.
 - <kbd>Delete</kbd> also works in the Preview panel: it deletes the selected clips. See [Cutting and deleting](#cutting-and-deleting).
@@ -518,7 +518,7 @@ See [Editing properties](editing-properties.md).
 
 ## Audio
 
-**Mute**, **Normalize**, **Auto-duck**, **Detach audio**, the **Volume** stopwatch and the **Audio scrub** toggle have no keyboard shortcut: click them. With **Audio scrub** on, the frame-stepping keys (<kbd>←</kbd> and <kbd>→</kbd>, also with <kbd>Shift</kbd> or <kbd>Ctrl</kbd>, and <kbd>K</kbd>+<kbd>J</kbd> or <kbd>K</kbd>+<kbd>L</kbd>) play a short bit of sound at each step. See [Editing audio](audio-editing.md).
+**Mute**, **Remove silence**, **Normalize**, **Auto-duck**, **Detach audio**, the **Volume** stopwatch and the **Audio scrub** toggle have no keyboard shortcut: click them. With **Audio scrub** on, the frame-stepping keys (<kbd>←</kbd> and <kbd>→</kbd>, also with <kbd>Shift</kbd> or <kbd>Ctrl</kbd>, and <kbd>K</kbd>+<kbd>J</kbd> or <kbd>K</kbd>+<kbd>L</kbd>) play a short bit of sound at each step. See [Editing audio](audio-editing.md).
 
 ### Master volume knob
 
@@ -533,6 +533,24 @@ The **Master volume** knob in the transport bar under the preview takes these ke
 | Loudest (0.0 dB) | <kbd>End</kbd> | <kbd>Fn</kbd>+<kbd>→</kbd> | **Master volume** knob, focused |
 
 The **Mute** button under the preview and the toggles in the track headers have no keyboard shortcut: click them. Double-clicking the knob resets it to 0.0 dB.
+
+### Remove silence row
+
+These work while the **Remove silence** row is open under the quick actions of **Edit Properties**. See [Removing silence](removing-silence.md).
+
+| Action | Windows | macOS | Works in |
+| --- | --- | --- | --- |
+| Close the row without cutting (same as **Cancel**) | <kbd>Esc</kbd> | <kbd>Esc</kbd> | All panels |
+| Lower the **Threshold** by 1 dB | <kbd>←</kbd> or <kbd>↓</kbd> | <kbd>←</kbd> or <kbd>↓</kbd> | **Threshold** slider, focused |
+| Raise the **Threshold** by 1 dB | <kbd>→</kbd> or <kbd>↑</kbd> | <kbd>→</kbd> or <kbd>↑</kbd> | **Threshold** slider, focused |
+| Lowest threshold (-60 dB) | <kbd>Home</kbd> | <kbd>Fn</kbd>+<kbd>←</kbd> | **Threshold** slider, focused |
+| Highest threshold (-10 dB) | <kbd>End</kbd> | <kbd>Fn</kbd>+<kbd>→</kbd> | **Threshold** slider, focused |
+| Add or subtract 10 ms | <kbd>↑</kbd> or <kbd>↓</kbd> | <kbd>↑</kbd> or <kbd>↓</kbd> | **Min** or **Pad** field |
+| Add or subtract 100 ms | <kbd>Shift</kbd>+<kbd>↑</kbd> or <kbd>Shift</kbd>+<kbd>↓</kbd> | <kbd>⇧</kbd>+<kbd>↑</kbd> or <kbd>⇧</kbd>+<kbd>↓</kbd> | **Min** or **Pad** field |
+
+- Clicking the slider gives it the keyboard. While it has it, the arrow keys, <kbd>Home</kbd> and <kbd>End</kbd> move the slider instead of the playhead; click the timeline to step frames again. The other shortcuts, such as <kbd>Space</kbd>, keep working.
+- Dragging the **Min** or **Pad** label changes it by 10 ms per pixel, 100 ms with <kbd>Shift</kbd> and 1 ms with <kbd>Alt</kbd> (<kbd>⌥</kbd>).
+- While **Min** or **Pad** has the keyboard, the first <kbd>Esc</kbd> leaves the field; the next one closes the row.
 
 ### Rubber band on audio clips
 
@@ -704,6 +722,7 @@ Some buttons already show a shortcut in their tooltip although the button is dis
 
 ## Related pages
 - [Editing audio](audio-editing.md)
+- [Removing silence](removing-silence.md)
 - [Preview and playback](preview-and-playback.md)
 - [Preview zoom, overlays and fullscreen](preview-zoom-overlays-fullscreen.md)
 - [Arranging layers in the preview](arranging-layers-in-the-preview.md)
@@ -730,4 +749,4 @@ Some buttons already show a shortcut in their tooltip although the button is dis
 - [Projects and saving](projects-and-saving.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 37, 2026-10-17</sub>
+<sub>Last updated: Batch 38, 2026-10-17</sub>
