@@ -31,6 +31,7 @@ Trim zones trim with the **Select** tool, the one active in a new project. If an
 - The bracket turns gold when the trim will ripple: while you hold <kbd>Ctrl</kbd> over the edge, or while **Ripple mode** is on. See [Trim without leaving a gap (ripple trim)](#trim-without-leaving-a-gap-ripple-trim).
 - Where two clips touch, the left side of the cut is the end of the left clip, and the right side is the start of the right clip. Point just left of the cut to trim the first clip, just right of it to trim the second.
 - Within 3 pixels of such a cut, a click without dragging selects the cut as an edit point instead of the clip, and holding <kbd>Ctrl</kbd>+<kbd>Alt</kbd> rolls the cut. See [Select a cut (edit point)](advanced-trimming.md#select-a-cut-edit-point) and [Roll a cut between two clips](advanced-trimming.md#roll-a-cut-between-two-clips).
+- Where a cut has a transition, its block covers the top band of the two clips (the whole clip on S tracks), and pressing there selects or resizes the transition. To trim at that cut, grab the clip's edge below the block, or within 3 pixels of the cut. The small squares in a clip's top corners are fade handles, not trim zones. See [Fades and transitions](fades-and-transitions.md).
 - On a clip narrower than 24 pixels, each trim zone is a third of the clip, so you can still press its middle to move it. To grab the edge of a very short clip, zoom in first.
 - Clicking a trim zone without dragging selects the clip, like a click on its middle (except right on a cut, see above). A trim itself does not change the selection.
 
@@ -140,6 +141,8 @@ The edge stops following the pointer at these limits, and the clip never goes pa
 | Clips on other tracks | A ripple trim stops when a clip that moves would run into a clip that does not move. Clips on locked tracks never move and never stop a ripple. |
 | The linked clip | When the linked clip reaches one of these limits first, both stop. Hold <kbd>Alt</kbd> to trim one side only. |
 
+> **Note:** A trim that uses media a transition needs shortens the transition, and removes it when none is left. During the drag, the block already shows its new length. Fades keep their length. See [Know what edits do to fades and transitions](fades-and-transitions.md#know-what-edits-do-to-fades-and-transitions).
+
 > **Tip:** Trimmed frames are never lost. Drag the edge back to bring them back: a clip trimmed to 1 frame can be stretched back to its full length. Zoom in first so you can grab its edge.
 
 ## Trim to the playhead with Q and W
@@ -206,6 +209,7 @@ To move a cut between two clips without changing their total length, to change t
 - [Advanced trimming](advanced-trimming.md)
 - [Splitting, deleting and closing gaps](splitting-and-deleting.md)
 - [Linking and grouping clips](links-and-groups.md)
+- [Fades and transitions](fades-and-transitions.md)
 - [Tracks](tracks.md)
 - [Captions](captions.md)
 - [Timeline](timeline.md)
@@ -214,4 +218,4 @@ To move a cut between two clips without changing their total length, to change t
 - [Projects and saving](projects-and-saving.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 35, 2026-10-17</sub>
+<sub>Last updated: Batch 36, 2026-10-17</sub>

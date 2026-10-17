@@ -1,6 +1,6 @@
 # Audio
 
-Shorts Editor plays the sound of your edit together with the picture. Use the **Mute** button and the **Master volume** knob under the preview to set how loud you listen, the **M** and **S** toggles in the audio track headers to leave a track out or hear it alone, and the meter at the right edge of the preview to check your levels. The waveform inside each audio clip shows where its sound is loud or quiet.
+Shorts Editor plays the sound of your edit together with the picture, with the fades and crossfades you give your clips. Use the **Mute** button and the **Master volume** knob under the preview to set how loud you listen, the **M** and **S** toggles in the audio track headers to leave a track out or hear it alone, and the meter at the right edge of the preview to check your levels. The waveform inside each audio clip shows where its sound is loud or quiet.
 
 > **Video placeholder: Audio overview**
 > - File: `videos/audio/overview.mp4` (not recorded yet)
@@ -17,6 +17,7 @@ Shorts Editor plays the sound of your edit together with the picture. Use the **
 ## In this page
 - [Hear your edit](#hear-your-edit)
 - [Set the listening volume](#set-the-listening-volume)
+- [Fade and crossfade sound](#fade-and-crossfade-sound)
 - [Mute and solo audio tracks](#mute-and-solo-audio-tracks)
 - [Read the audio meter](#read-the-audio-meter)
 - [Know how sound is loaded](#know-how-sound-is-loaded)
@@ -112,6 +113,16 @@ The **Mute** button and the **Master volume** knob change only what you hear.
 - They are app settings: they apply to every project in this browser and are remembered when you reload the page.
 
 There is no keyboard shortcut for **Mute**.
+
+## Fade and crossfade sound
+
+Fades and crossfades change the sound of your project, unlike the listening volume.
+
+- **Fade a sound in or out.** Drag the small square in the top left or top right corner of an audio clip on the timeline, or select a video and click **Fade in 0.5 s** or **Fade out 0.5 s** in the quick actions to fade its picture and its sound together. The volume follows a rounded (equal-power) curve, drawn over the clip's waveform.
+- **Crossfade at a cut.** A transition at a cut between two audio clips is a crossfade: one sound fades out while the next fades in, with no click at the cut. While **Linked selection** is on, the sound under a video transition crossfades with it automatically.
+- Fades and crossfades play as soon as you make them, also while you play. The meter shows the faded level.
+
+See [Fades and transitions](fades-and-transitions.md), in particular [Crossfade the sound](fades-and-transitions.md#crossfade-the-sound).
 
 ## Mute and solo audio tracks
 
@@ -212,6 +223,7 @@ After you import an audio file or a video with sound, the editor analyzes its so
 - [Tracks](tracks.md)
 - [Advanced trimming](advanced-trimming.md)
 - [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md)
+- [Fades and transitions](fades-and-transitions.md)
 - [Importing media](importing-media.md)
 - [Adding media to the timeline](adding-media-to-the-timeline.md)
 - [Proxies](proxies.md)
@@ -219,4 +231,4 @@ After you import an audio file or a video with sound, the editor analyzes its so
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 33, 2026-10-17</sub>
+<sub>Last updated: Batch 36, 2026-10-17</sub>

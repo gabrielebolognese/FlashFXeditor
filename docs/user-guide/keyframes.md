@@ -85,6 +85,8 @@ The **Opacity** section has its own stopwatch, so a fade doesn't change the pict
 
 Halfway between a keyframe at 100% and one at 0%, a **Linear** fade shows the picture at 50%. To show the **Opacity** keyframes on the timeline, right-click the clip and choose **Opacity** under **Show keyframes for**; see [Show keyframes on the timeline](#show-keyframes-on-the-timeline).
 
+> **Tip:** For a fade at the very start or end of a clip, the fade handles in the clip's top corners on the timeline, or **Fade in 0.5 s** and **Fade out 0.5 s** in the quick actions, are quicker and leave **Opacity** free for keyframes. A fade works on top of the keyframed opacity. See [Fades and transitions](fades-and-transitions.md).
+
 ## Change an animated picture
 
 While a section's stopwatch is on, its fields show the values at the playhead, and they follow the playhead while you play, step or scrub. Every change you make writes a keyframe at the playhead:
@@ -314,9 +316,10 @@ These parts are available in a later version:
 - [Splitting, deleting and closing gaps](splitting-and-deleting.md)
 - [Trimming clips](trimming.md)
 - [Text animations](text-animations.md)
+- [Fades and transitions](fades-and-transitions.md)
 - [Shapes and images](shapes-and-images.md)
 - [Clip thumbnails, waveforms and badges](clip-thumbnails-and-waveforms.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md#keyframes)
 - [Troubleshooting](troubleshooting.md#keyframes)
 
-<sub>Last updated: Batch 35, 2026-10-17</sub>
+<sub>Last updated: Batch 36, 2026-10-17</sub>

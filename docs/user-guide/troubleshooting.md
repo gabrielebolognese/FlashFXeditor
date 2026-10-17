@@ -1,6 +1,6 @@
 # Troubleshooting
 
-This page helps you when something does not work as expected: the editor does not start in your browser, the preview stays empty, a folder or a file does not open, a clip drag, a trim, a split, a delete, a timeline tool, a typed timecode, a marker, an in/out range or **Lift** and **Extract** do something you did not expect, media from the Media panel lands somewhere you did not expect, a clip shows no thumbnails, a video gets no proxy or its proxy fails, the preview zoom, overlays or fullscreen behave unexpectedly, a picture in the preview can't be selected, moves unexpectedly, doesn't snap where you expect or gets cropped instead of resized, a value or a crop in **Edit Properties** doesn't do what you expect, a speed change, a freeze frame or a punch zoom does something you did not expect, a keyframe animation or a keyframe lane doesn't behave as you expect, a shape or an image doesn't look or play as you expect, a title lands somewhere you did not expect, the keys type into a text, a font is missing, a text preset doesn't apply, update or sync as you expect, a text animation plays shorter or differently than you expect, a caption cue doesn't import, move, show or highlight as you expect, a transcription doesn't start, is slow or gets words wrong, playback stutters, or you hear no sound. Each problem lists what you see, why it happens and what to do. The last section lists what the current version cannot do yet.
+This page helps you when something does not work as expected: the editor does not start in your browser, the preview stays empty, a folder or a file does not open, a clip drag, a trim, a split, a delete, a timeline tool, a typed timecode, a marker, an in/out range or **Lift** and **Extract** do something you did not expect, media from the Media panel lands somewhere you did not expect, a clip shows no thumbnails, a video gets no proxy or its proxy fails, the preview zoom, overlays or fullscreen behave unexpectedly, a picture in the preview can't be selected, moves unexpectedly, doesn't snap where you expect or gets cropped instead of resized, a value or a crop in **Edit Properties** doesn't do what you expect, a speed change, a freeze frame or a punch zoom does something you did not expect, a keyframe animation or a keyframe lane doesn't behave as you expect, a fade or a transition doesn't go where you expect, gets shorter or shows red stripes, a shape or an image doesn't look or play as you expect, a title lands somewhere you did not expect, the keys type into a text, a font is missing, a text preset doesn't apply, update or sync as you expect, a text animation plays shorter or differently than you expect, a caption cue doesn't import, move, show or highlight as you expect, a transcription doesn't start, is slow or gets words wrong, playback stutters, or you hear no sound. Each problem lists what you see, why it happens and what to do. The last section lists what the current version cannot do yet.
 
 > **Video placeholder: Fix common problems**
 > - File: `videos/troubleshooting/overview.mp4` (not recorded yet)
@@ -48,6 +48,7 @@ This page helps you when something does not work as expected: the editor does no
 >   40. Click **M** in the header of the audio track with the voice, click the microphone in the **Captions** header, then **Transcribe**: the message **No audio to transcribe** appears. Click **M** again, set an in and an out point that cut through two cues, and transcribe **In to out**: the review offers **Replace 2 cues**. Press <kbd>Esc</kbd>: the transcript is gone and nothing changed.
 >   41. Click **Add solid**, then click **Ellipse** in the **Solid** section: the **Radius** field is dimmed. Click **Rounded rectangle**, type `500` in **Radius**: the ends are half circles and grow no rounder. Drag a corner handle of the shape: **Scale** in **Transform** stays at 100% while **W** and **H** change.
 >   42. Select a logo whose **Transform** stopwatch is on, with **Show clip keyframes** on. Click a diamond on its lane and press <kbd>Delete</kbd>: only that keyframe disappears and the **Undo** tooltip reads **Undo Delete keyframe**. Click the clip's body and press <kbd>Delete</kbd>: now the clip goes. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> twice.
+>   43. Put two videos that each use their whole file end to end on V1, click right on the cut between them and press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd>: the block is striped red and the message **Not enough media for the transition** appears. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>. Select the first video and click **Fade in 0.5 s** twice: the second click removes the fade, and the **Undo** tooltip reads **Undo Remove fade in**.
 
 ## In this page
 - [Browser and graphics](#browser-and-graphics)
@@ -62,6 +63,7 @@ This page helps you when something does not work as expected: the editor does no
   - [Space starts playback only when you release it](#space-starts-playback-only-when-you-release-it)
   - [Ctrl+1 or Ctrl+2 switched to another browser tab](#ctrl1-or-ctrl2-switched-to-another-browser-tab)
   - [Ctrl+D opens the browser's bookmark dialog](#ctrld-opens-the-browsers-bookmark-dialog)
+  - [Ctrl+Shift+D bookmarks all your tabs](#ctrlshiftd-bookmarks-all-your-tabs)
 - [Timeline](#timeline)
   - [A drag copied clips or pushed other clips to the right](#a-drag-copied-clips-or-pushed-other-clips-to-the-right)
   - [A drag cut another clip short or split it](#a-drag-cut-another-clip-short-or-split-it)
@@ -176,6 +178,16 @@ This page helps you when something does not work as expected: the editor does no
   - [Paste keyframes is dimmed or Ctrl+V doesn't paste keyframes](#paste-keyframes-is-dimmed-or-ctrlv-doesnt-paste-keyframes)
   - [Punch zoom no longer jumps at the cut](#punch-zoom-no-longer-jumps-at-the-cut)
   - [A change to the anchor, crop or size applies to every frame](#a-change-to-the-anchor-crop-or-size-applies-to-every-frame)
+- [Fades and transitions](#fades-and-transitions)
+  - [The fade handles don't appear](#the-fade-handles-dont-appear)
+  - [Fade in 0.5 s removed a fade](#fade-in-05-s-removed-a-fade)
+  - [No cut to add a transition to](#no-cut-to-add-a-transition-to)
+  - [The transition went on another cut](#the-transition-went-on-another-cut)
+  - [The transition block is striped red](#the-transition-block-is-striped-red)
+  - [A transition end stops before where you drag it](#a-transition-end-stops-before-where-you-drag-it)
+  - [A transition got shorter or disappeared](#a-transition-got-shorter-or-disappeared)
+  - [The sound doesn't crossfade under a transition](#the-sound-doesnt-crossfade-under-a-transition)
+  - [The sound dips at a crossfade](#the-sound-dips-at-a-crossfade)
 - [Shapes and images](#shapes-and-images)
   - [Add solid put the shape on a new track](#add-solid-put-the-shape-on-a-new-track)
   - [The Radius field is dimmed](#the-radius-field-is-dimmed)
@@ -356,6 +368,14 @@ This page helps you when something does not work as expected: the editor does no
 **Cause:** The editor duplicates clips with <kbd>Ctrl</kbd>+<kbd>D</kbd> only while the Timeline or the Preview panel is active. In the other panels, Edit Properties included, the browser gets the key. Clicking **Duplicate** or a field in **Edit Properties** makes that panel the active one.
 
 **Fix:** Close the bookmark dialog with <kbd>Esc</kbd> (or remove the bookmark if the browser already added it). Click the clip on the timeline and press <kbd>Ctrl</kbd>+<kbd>D</kbd> again, or click **Duplicate** in the quick actions of **Edit Properties**. See [Duplicate a clip](editing-properties.md#duplicate-a-clip).
+
+### Ctrl+Shift+D bookmarks all your tabs
+
+**Symptom:** You pressed <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd> to add a transition, and the browser offered to bookmark all your open tabs.
+
+**Cause:** The editor adds the default transition with <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd> only while the Timeline panel is active. In the other panels the browser gets the key. Clicking a button or a field in **Edit Properties**, such as **Add dissolve**, makes that panel the active one.
+
+**Fix:** Close the dialog with <kbd>Esc</kbd>. Click the cut on the timeline (or an empty part of a track) and press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd> again. See [Add the default transition with Ctrl+Shift+D](fades-and-transitions.md#add-the-default-transition-with-ctrlshiftd).
 
 ## Timeline
 
@@ -1160,8 +1180,8 @@ See [Audio](audio.md).
 **Symptom:** Buttons at the top of **Edit Properties** are dimmed, and clicking them does nothing.
 
 **Cause:** One of these:
-- The button belongs to a feature of a later version: the fades, mute, presets and transitions. Its tooltip names the feature.
-- No selected clip can take it: **Fit in frame**, **Fill frame**, **Center in frame**, the flips, **Reset transform** and **Punch zoom** need a video, image or text clip, and an audio clip has no picture. **Freeze frame** needs a video clip. The speed buttons need a video or audio clip that is not a freeze frame.
+- The button belongs to a feature of a later version: **Mute**.
+- No selected clip can take it: **Fit in frame**, **Fill frame**, **Center in frame**, the flips, **Reset transform** and **Punch zoom** need a video, image or text clip, and an audio clip has no picture. **Freeze frame** needs a video clip. The speed buttons need a video or audio clip that is not a freeze frame. **Fade in 0.5 s** and **Fade out 0.5 s** need a clip that is not a caption cue. The transition buttons are never dimmed.
 - The clips are on a locked track.
 
 **Fix:** Select a video, image or text clip, or unlock its track. See [Use the quick actions](editing-properties.md#use-the-quick-actions).
@@ -1387,6 +1407,87 @@ See [Audio](audio.md).
 **Cause:** Keyframes animate only **Position**, **Scale**, **Rotation** and **Opacity**. The other settings are not animated.
 
 **Fix:** Animate **Scale** or **Position** instead, for example to make a picture grow or slide in. See [How keyframes work](keyframes.md#how-keyframes-work).
+
+## Fades and transitions
+
+### The fade handles don't appear
+
+**Symptom:** You point at a clip on the timeline, but no small squares appear in its top corners, or dragging there moves or trims the clip instead.
+
+**Cause:** One of these:
+- The clip is narrower than 24 pixels on screen.
+- The clip is on a locked track.
+- The clip is a caption cue: cues have no fades.
+- A tool other than **Select** is active: the other tools use the press for themselves.
+
+**Fix:** Zoom in on the clip, unlock its track, and press <kbd>V</kbd> for the **Select** tool. To fade without the handles, select the clip and click **Fade in 0.5 s** or **Fade out 0.5 s** in the quick actions, or right-click it and pick a length in the **Fade in** or **Fade out** row. See [Fade a clip with the fade handles](fades-and-transitions.md#fade-a-clip-with-the-fade-handles).
+
+### Fade in 0.5 s removed a fade
+
+**Symptom:** You clicked **Fade in 0.5 s** or **Fade out 0.5 s**, and the fade disappeared instead of being added.
+
+**Cause:** The button is a switch. When every selected clip, and its linked clips, already has a half-second fade, the button is lit, and a click removes those fades (the step is named **Remove fade in** or **Remove fade out**).
+
+**Fix:** Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> to bring the fade back. To change a fade's length, drag its handle on the timeline, or pick **0.25 s** or **1 s** in the clip menu. See [Fade a clip and its sound with one click](fades-and-transitions.md#fade-a-clip-and-its-sound-with-one-click).
+
+### No cut to add a transition to
+
+**Symptom:** You pressed <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd> or clicked a transition button, and the message **No cut to add a transition to** appeared. Nothing changed.
+
+**Cause:** One of these:
+- The two clips don't touch: even a one-frame gap between them means there is no cut.
+- The clips can't take a transition: text clips, solids and caption cues have none.
+- The cut is on a locked track, or, for <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd> with no cut selected, no targeted track has a cut.
+- You selected a clip that touches no other clip, and clicked a transition button.
+- The cut already has a transition of that kind, so there is nothing to add.
+
+**Fix:** Close the gap (click it and press <kbd>G</kbd>), unlock or target the track, or select the cut itself by clicking right on it. To change an existing transition, double-click its block and use the **Transition** section. See [Add a transition](fades-and-transitions.md#add-a-transition).
+
+### The transition went on another cut
+
+**Symptom:** The new transition landed on a cut you didn't mean.
+
+**Cause:** Without a selected cut, <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd> uses the cut nearest the playhead on any targeted track, and the transition buttons use the start or end of the selected clip that is nearer the playhead.
+
+**Fix:** Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>. Click right on the cut you want (red brackets mark it), then add the transition; or drag a transition button from the quick actions onto the cut. See [Drag a transition onto a cut](fades-and-transitions.md#drag-a-transition-onto-a-cut).
+
+### The transition block is striped red
+
+**Symptom:** Part of a transition block has red diagonal stripes. When you added it, the message **Not enough media for the transition** appeared, or the **Transition** section reads **Not enough media** with a number of frames.
+
+**Cause:** The clips have no unused media at the cut for those frames, so the editor repeats their edge frames there: the first clip holds its last frame, the second its first frame. This happens when the clips show their media right up to the cut, or when you typed a **Duration** or chose an **Alignment** that needs more media than there is.
+
+**Fix:** Shorten the transition (drag its ends inward, or type a smaller **Duration**), or give the clips unused media at the cut: <kbd>Ctrl</kbd>+drag the second clip's start a little to the right, or the first clip's end a little to the left, below the block. The stripes shrink as soon as there is media for those frames. See [Know how much media a transition needs](fades-and-transitions.md#know-how-much-media-a-transition-needs).
+
+### A transition end stops before where you drag it
+
+**Symptom:** You drag an end of a transition block, and it stops. A red bar shows, and **Media start** or **Media end** appears in red in the tooltip.
+
+**Cause:** A transition drag stops where the clip's unused media runs out, so that no edge frame repeats. Each side also stops at the far end of its clip.
+
+**Fix:** Type a longer **Duration** in the **Transition** section (the extra frames repeat edge frames, striped red), or trim the clips to give them more unused media at the cut. See [Change the length of a transition on the timeline](fades-and-transitions.md#change-the-length-of-a-transition-on-the-timeline).
+
+### A transition got shorter or disappeared
+
+**Symptom:** After an edit, a transition is shorter than before, or gone, and its clips no longer show `fx`.
+
+**Cause:** Edits keep transitions within the media there is. A trim, roll, slip, slide, rate stretch or speed change that uses up the media a transition plays shortens it, and removes it when none is left. A split inside the transition's frames removes it, and so does moving or deleting one of its clips so that the two no longer touch.
+
+**Fix:** Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>: the edit and the transition come back together. Then make the edit in a way that leaves media at the cut, or add the transition again afterwards. See [Know what edits do to fades and transitions](fades-and-transitions.md#know-what-edits-do-to-fades-and-transitions).
+
+### The sound doesn't crossfade under a transition
+
+**Symptom:** The pictures dissolve, but the sound still cuts hard, and the audio track shows no block.
+
+**Cause:** One of these:
+- **Linked selection** was off when you added the transition.
+- The sound is not linked to the video, or its cut is not at the same frame as the video's cut.
+
+**Fix:** Click right on the audio cut to select it, and press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd> to add a crossfade there. Or turn **Linked selection** on, select the video cut and click the same transition button again: the picture's transition stays as it is, and the sound gets a new crossfade of up to 15 frames. See [Crossfade the sound](fades-and-transitions.md#crossfade-the-sound).
+
+### The sound dips at a crossfade
+
+**Not a problem:** Sound can't repeat a frame. Where the clips have no unused audio at the cut, the first sound fades out before the end of its file and the second fades in from the start of its file, so the loudness dips briefly instead of clicking. Give the clips unused media at the cut to make the crossfade even. See [Crossfade the sound](fades-and-transitions.md#crossfade-the-sound).
 
 ## Shapes and images
 
@@ -1964,15 +2065,15 @@ See [Audio](audio.md).
 
 The current version cannot do these things yet. Each one is available in a later version.
 
-- **Sound:** no sound while you scrub, step frames, play backward or shuttle faster than 1x. Changing the volume of a clip, fades and audio effects are not available.
+- **Sound:** no sound while you scrub, step frames, play backward or shuttle faster than 1x. Changing the volume of a clip (other than with fades and crossfades) and audio effects are not available.
 - **Editing clips:** clips can't be cut, copied or pasted (the **Cut**, **Copy** and **Paste** rows of the clip menu, and the **Copy**, **Paste** and **Duplicate** rows of the preview's layer menu, are dimmed). <kbd>Ctrl</kbd>+<kbd>D</kbd> duplicates one clip at a time, without its linked sound. The crop of a clip can't be copied to other clips.
 - **Markers:** markers belong to the timeline; markers inside clips are not available. Markers and the in/out range don't show on the scrollbars.
 - **Menus:** only clips, gaps, track headers, the ruler, media cards and pictures in the preview have a right-click menu, with a first set of rows. Menu rows can't be chosen with the arrow keys.
-- **Speed and edit points:** a speed applies to the whole clip, and sound at another speed always changes pitch. Playing a clip backward is not available. The length of a new freeze frame (2 seconds), the size of a punch zoom (20%) and its 6-frame zoom can't be changed. A selected cut (edit point) only marks the cut; transitions are not available.
+- **Speed and edit points:** a speed applies to the whole clip, and sound at another speed always changes pitch. Playing a clip backward is not available. The length of a new freeze frame (2 seconds), the size of a punch zoom (20%) and its 6-frame zoom can't be changed. The default transition is always a 15-frame cross dissolve.
 - **Tracks:** track headers have room for names of about 9 characters; longer names are shortened. Groups are not marked on the timeline.
 - **Keyframes:** keyframes animate position, scale, rotation and opacity; a clip's volume can't change over time. Keyframes can't be copied or pasted with <kbd>Ctrl</kbd>+<kbd>C</kbd> and <kbd>Ctrl</kbd>+<kbd>V</kbd>; use the keyframe menu.
 - **Preview:** the **Zoom**, **Preview quality** and **Overlays** menus can't be used with the arrow keys.
-- **Edit Properties:** the audio and transition sections are not available, nor are the dimmed quick actions and the **Still duration**, **Transition** and **Cache** rows of the **Project** section. A new resolution always scales the layout; keeping the layout as it is, is not available.
+- **Edit Properties:** the audio section is not available, nor are the dimmed **Mute** quick action and the **Still duration**, **Transition** and **Cache** rows of the **Project** section. A new resolution always scales the layout; keeping the layout as it is, is not available.
 - **Text:** a setting to always make new titles 3 seconds long is not available. A text's handles don't snap, and fonts can't be chosen with the arrow keys in the font picker. Deleted starter presets can't be restored. Text animations play in the preview and in **Export frame**.
 - **Captions:** all cues share one style; a style for a single cue is not available. Captions can't be selected, moved or styled in the preview, and cues can't be pasted.
 - **Transcription:** the cues can't be edited in the review; fix them in the **Captions** tab after adding them. The default model and language are set in the **Transcribe captions** dialog only.
@@ -1994,6 +2095,7 @@ The current version cannot do these things yet. Each one is available in a later
 - [Advanced trimming](advanced-trimming.md)
 - [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md)
 - [Keyframes](keyframes.md)
+- [Fades and transitions](fades-and-transitions.md)
 - [Shapes and images](shapes-and-images.md)
 - [Getting started](getting-started.md)
 - [Projects and saving](projects-and-saving.md)
@@ -2012,4 +2114,4 @@ The current version cannot do these things yet. Each one is available in a later
 - [Transcription](transcription.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 35, 2026-10-17</sub>
+<sub>Last updated: Batch 36, 2026-10-17</sub>

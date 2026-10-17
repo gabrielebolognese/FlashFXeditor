@@ -43,6 +43,8 @@ Each animation plays over at most half the clip, so the in and out animations ne
 
 Animations show everywhere the preview plays: while you play, scrub, step frames and in the fullscreen preview. **Export frame** saves the text as it is at that frame, in the middle of its animation if the playhead is on one; see [Export the current frame](preview-and-playback.md#export-the-current-frame).
 
+> **Note:** The **Fade** animation is separate from a clip fade. You can also fade a text clip as a whole with the fade handles in its top corners on the timeline, or with **Fade in 0.5 s** and **Fade out 0.5 s**; the clip fade then works on top of the animation. See [Fades and transitions](fades-and-transitions.md).
+
 > **Note:** A text you are typing in the preview shows at rest, without its animation, so you always see what you type. The animation plays again as soon as you finish editing.
 
 ## Add an in or out animation
@@ -212,6 +214,7 @@ These parts are available in a later version:
 ## Related pages
 - [Titles and text](titles-and-text.md)
 - [Keyframes](keyframes.md)
+- [Fades and transitions](fades-and-transitions.md)
 - [Text presets](text-presets.md)
 - [Captions](captions.md)
 - [Editing properties](editing-properties.md)
@@ -220,4 +223,4 @@ These parts are available in a later version:
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 35, 2026-10-17</sub>
+<sub>Last updated: Batch 36, 2026-10-17</sub>

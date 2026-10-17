@@ -140,6 +140,7 @@ A solid is a layer of the picture like a video or an image. Everything on [Arran
 - **Fit in frame** and **Fill frame** change the shape's **Scale** so that its box fits inside, or covers, the frame. **Reset transform** puts it back in the middle of the frame at 100%, upright and not mirrored; its size and radius stay.
 - Shapes have no crop: the **Crop** section is not shown, and a double-click on a shape does nothing.
 - Animate a shape's position, scale, rotation and opacity with keyframes, for example to slide a bar in behind a title or fade a color wash out. Its **Solid** settings (shape, fill, **W**, **H** and **Radius**) are not animated: a change applies to every frame, also when you resize it with its handles. See [Keyframes](keyframes.md).
+- Fade a shape or an image in or out with the fade handles in its clip's top corners on the timeline, or with **Fade in 0.5 s** and **Fade out 0.5 s** in the quick actions. Image clips can also take a transition at a cut with a video or another image, and they never run short of frames for it; solids take no transitions. See [Fades and transitions](fades-and-transitions.md).
 - A solid shows only during its clip. For one color behind your whole video, the project's **Background** is simpler; see [Change project settings](projects-and-saving.md#change-project-settings). For a gradient background, or a color behind part of the video, add a solid, move its track below your video's track (see [Reorder tracks](tracks.md#reorder-tracks)), choose **Rectangle**, set **W** and **H** to the frame size (1080 and 1920), and trim it to the length you need.
 
 ## Add an image
@@ -239,6 +240,7 @@ These parts are available in a later version:
 ## Related pages
 - [Arranging layers in the preview](arranging-layers-in-the-preview.md)
 - [Keyframes](keyframes.md)
+- [Fades and transitions](fades-and-transitions.md)
 - [Editing properties](editing-properties.md)
 - [Importing media](importing-media.md)
 - [Adding media to the timeline](adding-media-to-the-timeline.md)
@@ -247,4 +249,4 @@ These parts are available in a later version:
 - [Titles and text](titles-and-text.md)
 - [Troubleshooting](troubleshooting.md#shapes-and-images)
 
-<sub>Last updated: Batch 35, 2026-10-17</sub>
+<sub>Last updated: Batch 36, 2026-10-17</sub>
