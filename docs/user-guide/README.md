@@ -1,6 +1,6 @@
 # Shorts Editor user guide
 
-Shorts Editor is a video editor for short vertical videos (9:16 by default) that runs in your desktop browser. Your projects are folders on your own disk, and your media never leaves your computer. This guide shows you how to set up a project, bring in your media, skim it and add the parts you want to the timeline, arrange, trim, cut and fine-tune it there with thumbnails and waveforms in every clip, mark moments and ranges, organize your tracks, place, resize and rotate the pictures in the frame with snapping and smart guides, type exact values in the Edit Properties panel, crop and reframe pictures, change the speed of clips, hold a frame and punch in at a cut, add styled titles and subtitles with one key and type them right in the preview, make them pop, slide or type themselves in and out, reuse your text styles and animations as presets in one click, check every pixel and the platform safe zones in the preview, and play it back with its sound, smoothly even with 4K footage thanks to proxies.
+Shorts Editor is a video editor for short vertical videos (9:16 by default) that runs in your desktop browser. Your projects are folders on your own disk, and your media never leaves your computer. This guide shows you how to set up a project, bring in your media, skim it and add the parts you want to the timeline, arrange, trim, cut and fine-tune it there with thumbnails and waveforms in every clip, mark moments and ranges, organize your tracks, place, resize and rotate the pictures in the frame with snapping and smart guides, type exact values in the Edit Properties panel, crop and reframe pictures, change the speed of clips, hold a frame and punch in at a cut, add styled titles and subtitles with one key and type them right in the preview, make them pop, slide or type themselves in and out, reuse your text styles and animations as presets in one click, caption your video from scratch or from an SRT or VTT file with the spoken word highlighted, check every pixel and the platform safe zones in the preview, and play it back with its sound, smoothly even with 4K footage thanks to proxies.
 
 > **Video placeholder: Shorts Editor in two minutes**
 > - File: `videos/home/overview.mp4` (not recorded yet)
@@ -35,9 +35,10 @@ Shorts Editor is a video editor for short vertical videos (9:16 by default) that
 19. [Titles and text](titles-and-text.md): add a title or a subtitle with one key, type it in the preview, and style it with fonts, outlines, shadows and boxes.
 20. [Text animations](text-animations.md): make titles fade, slide, pop or type themselves in and out, word by word or line by line.
 21. [Text presets](text-presets.md): save a text style and its animations once, apply them in one click, put favorites in the toolbar, and choose the look of <kbd>T</kbd> and <kbd>Shift</kbd>+<kbd>T</kbd>.
-22. [Preview zoom, overlays and fullscreen](preview-zoom-overlays-fullscreen.md): zoom in on real detail, check safe zones and grids, and watch in fullscreen.
-23. [Proxies](proxies.md): edit heavy 4K and 60 fps footage smoothly with light copies the editor makes for you.
-24. [Audio](audio.md): listen, set the volume and check your levels.
+22. [Captions](captions.md): add a caption track, write and fix cues in the Captions tab, import and export SRT and VTT files, style the captions and highlight the spoken word.
+23. [Preview zoom, overlays and fullscreen](preview-zoom-overlays-fullscreen.md): zoom in on real detail, check safe zones and grids, and watch in fullscreen.
+24. [Proxies](proxies.md): edit heavy 4K and 60 fps footage smoothly with light copies the editor makes for you.
+25. [Audio](audio.md): listen, set the volume and check your levels.
 
 ## All pages
 
@@ -65,11 +66,12 @@ Shorts Editor is a video editor for short vertical videos (9:16 by default) that
 | [Titles and text](titles-and-text.md) | Adding titles and subtitles with <kbd>T</kbd> and <kbd>Shift</kbd>+<kbd>T</kbd>, where a new title goes and how long it lasts, typing and selecting text in the preview, finishing an edit, selecting and moving text, the text handles (font size and box width), the **Text** section (font, weight, size, fill, stroke, shadow, background, alignment, anchor, spacing, line height, case, box), the font picker with **Favorites**, **Used in project**, **Bundled** and **System**, the eight fonts that come with the editor, fonts from your computer and the project's `fonts` folder, missing fonts, text clips on the timeline, step names |
 | [Text animations](text-animations.md) | When in and out animations play and the half-clip limit, the **Animation** section, the 12 animations, previewing on click, **Duration**, **Stagger** and **Easing**, removing animations, animating several texts, how animations treat outlines, shadows and boxes, animations in presets, the sparkles badge, undo |
 | [Text presets](text-presets.md) | What a preset keeps, animations in presets, the **Presets** tab, the 12 starter presets, **Save as preset** and **Update preset**, applying presets with a live look while you point, adding and dragging texts from presets, the default title and subtitle for <kbd>T</kbd> and <kbd>Shift</kbd>+<kbd>T</kbd>, favorite chips in the timeline toolbar, **Apply position**, searching, renaming, duplicating and deleting, **Global** and **Project** presets, exporting and importing JSON files, the library folder, presets in projects of other sizes, undo |
+| [Captions](captions.md) | The **CC** caption track, the **Captions** tab and its cue list, adding cues at the playhead, importing SRT and VTT files (overlaps, formatting, karaoke timings), editing, splitting, merging, searching and deleting cues, cues on the timeline that never overlap, the **Caption style** section (position, max width, max lines, text style), word highlight, presets on captions, exporting SRT and VTT files, hiding and locking the captions, undo |
 | [Preview zoom, overlays and fullscreen](preview-zoom-overlays-fullscreen.md) | Zoom levels and <kbd>Ctrl</kbd>+<kbd>0</kbd>/<kbd>1</kbd>/<kbd>2</kbd>, wheel zoom at the pointer, panning, real detail when zoomed in, the quality modes and the status line, Reels, TikTok and Shorts safe zones, grids, center cross, title / action safe, rulers, the pixel grid, the fullscreen preview |
 | [Proxies](proxies.md) | What proxies are, which videos get one, the **PX** chip and the **Proxy** column, **Generate proxy** and **Remove proxy**, the **Proxies**, **Proxy for** and **Proxy size** settings, proxies in the preview and the quality modes, **Regenerate thumbnails**, closing and reopening a project while a proxy is made |
 | [Audio](audio.md) | Hearing your edit in sync, sound of clips at another speed, the listening volume and mute, muting and soloing audio tracks, the audio meter, how sound loads |
 | [Keyboard shortcuts](keyboard-shortcuts.md) | Every working shortcut, with the panel it needs and the macOS keys |
-| [Troubleshooting](troubleshooting.md) | Problems with the browser, graphics, the timeline, folders, saving, importing, proxies, playback, layers in the preview, cropping, **Edit Properties**, speed changes, freeze frames and punch zoom, titles and text, text presets, text animations, and known limitations |
+| [Troubleshooting](troubleshooting.md) | Problems with the browser, graphics, the timeline, folders, saving, importing, proxies, playback, layers in the preview, cropping, **Edit Properties**, speed changes, freeze frames and punch zoom, titles and text, text presets, text animations, captions, and known limitations |
 | [What's new](whats-new.md) | What each batch added, newest first |
 
 ## What you can do in this version
@@ -101,8 +103,9 @@ Shorts Editor is a video editor for short vertical videos (9:16 by default) that
 - Add a title with <kbd>T</kbd> or a subtitle in the lower third with <kbd>Shift</kbd>+<kbd>T</kbd> and type it right in the preview, with the caret exactly between the letters at any zoom. Size text with its handles, and style it with eight fonts that come with the editor or the fonts on your computer, a solid or gradient fill, an outline, a shadow and a background box.
 - Make titles and subtitles move: choose one of 12 in and out animations, such as **Fade**, **Slide up**, **Word pop**, **Typewriter** or **Line reveal**, watch it play as you click, and set its duration, the delay between words and its easing.
 - Save a text style and its animations as a preset and apply them to other titles in one click, seeing each look on your title as you point at the cards. Start from 12 starter presets, put your favorites as chips in the timeline toolbar, choose the presets <kbd>T</kbd> and <kbd>Shift</kbd>+<kbd>T</kbd> use, keep presets for all projects or with one project, and share them as JSON files or through a synced folder.
+- Caption your video on its own **CC** track: add cues at the playhead or import an SRT or VTT file, fix the text in the **Captions** tab while the preview follows, split and merge cues with one key, give all captions one style and place in **Caption style** or from a text preset, highlight each word as it is spoken (from VTT karaoke files), and export the cues as an SRT or VTT file.
 
-More editing tools (copy and paste), audio editing (clip volume, fades), captions, keyframes, effects and video export arrive in later versions. Their buttons are already visible but dimmed. [What's new](whats-new.md) tracks each addition.
+More editing tools (copy and paste), audio editing (clip volume, fades), transcription, keyframes, effects and video export arrive in later versions. Their buttons are already visible but dimmed. [What's new](whats-new.md) tracks each addition.
 
 ## Conventions in this guide
 - **Bold text** is a label exactly as it appears on screen, such as **New project**.
@@ -111,4 +114,4 @@ More editing tools (copy and paste), audio editing (clip volume, fades), caption
 - Notes, tips and warnings appear as **Note**, **Tip** and **Important** boxes.
 - Each page starts with a **Video placeholder**: the planned walkthrough video for that page, with its file name, length and the steps it will show. The videos are not recorded yet; they will live in the `videos/` folder next to these pages.
 
-<sub>Last updated: Batch 31, 2026-10-16</sub>
+<sub>Last updated: Batch 32, 2026-10-17</sub>

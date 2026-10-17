@@ -1,6 +1,6 @@
 # Editing properties
 
-The **Edit Properties** panel shows the settings of what you selected: a clip, a track, a marker, or the project itself when nothing is selected. Use it to type exact values, such as a position in pixels or the end time of a clip, to drag a value while you watch the preview, to fit or fill the frame with one click, to crop a picture, to change a clip's speed, to style text and save it as a preset, and to change several clips at once.
+The **Edit Properties** panel shows the settings of what you selected: a clip, a track, a marker, or the project itself when nothing is selected. Use it to type exact values, such as a position in pixels or the end time of a clip, to drag a value while you watch the preview, to fit or fill the frame with one click, to crop a picture, to change a clip's speed, to style text and save it as a preset, to give your captions their look and place, and to change several clips at once.
 
 > **Video placeholder: Edit Properties in action**
 > - File: `videos/editing-properties/overview.mp4` (not recorded yet)
@@ -41,8 +41,8 @@ The **Edit Properties** panel sits at the top of the left side, next to the Medi
 | You selected | The panel shows | See |
 | --- | --- | --- |
 | Nothing (click an empty area of the timeline tracks) | The **Project** section | [Change project settings](projects-and-saving.md#change-project-settings) |
-| One or more clips | The quick actions, then the **Clip** section. When a text clip is among them, **Text** and **Animation** come right after **Clip**. When a video, image or text clip is among them, also **Transform** and **Opacity**, with **Crop** between them for video and image clips. When a video or audio clip is among them, also **Speed**, as the last section. | This page, [Titles and text](titles-and-text.md#style-text-in-the-text-section) for **Text**, [Text animations](text-animations.md) for **Animation**, [Cropping and reframing](cropping-and-reframing.md) for **Crop**, and [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md) for **Speed** |
-| One or more track headers | The **Track** section | [Change track settings in Edit Properties](tracks.md#change-track-settings-in-edit-properties) |
+| One or more clips | The quick actions, then the **Clip** section. When a text clip is among them, **Text** and **Animation** come right after **Clip**. When a caption cue is among them, **Caption style** comes next. When a video, image or text clip is among them, also **Transform** and **Opacity**, with **Crop** between them for video and image clips. When a video or audio clip is among them, also **Speed**, as the last section. | This page, [Titles and text](titles-and-text.md#style-text-in-the-text-section) for **Text**, [Text animations](text-animations.md) for **Animation**, [Style your captions](captions.md#style-your-captions) for **Caption style**, [Cropping and reframing](cropping-and-reframing.md) for **Crop**, and [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md) for **Speed** |
+| One or more track headers | The **Track** section, and the **Caption style** section when the **CC** caption track is among them | [Change track settings in Edit Properties](tracks.md#change-track-settings-in-edit-properties), [Style your captions](captions.md#style-your-captions) |
 | A marker in the ruler | The **Marker** section | [Edit a marker in Edit Properties](markers-and-in-out-points.md#edit-a-marker-in-edit-properties) |
 
 - With several clips or tracks selected, the right end of the panel header shows how many, for example **3 clips** or **2 tracks**.
@@ -63,7 +63,7 @@ In a number field you can also press <kbd>↑</kbd> or <kbd>↓</kbd> to add or 
 - Both a comma and a point work as the decimal sign: `3,5` and `3.5` are the same.
 - A value outside the range of a field stops at its limit, for example 100 in **Opacity**.
 - Text that is not a number is ignored, and the field shows its value again.
-- Each typed value is one step in the history. In the **Text**, **Animation**, **Transform**, **Crop**, **Opacity** and **Speed** sections, arrow presses less than 0.3 seconds apart are one step together, so one <kbd>Ctrl</kbd>+<kbd>Z</kbd> undoes a quick series. In the other number fields, each press is one step.
+- Each typed value is one step in the history. In the **Text**, **Animation**, **Caption style**, **Transform**, **Crop**, **Opacity** and **Speed** sections, arrow presses less than 0.3 seconds apart are one step together, so one <kbd>Ctrl</kbd>+<kbd>Z</kbd> undoes a quick series. In the other number fields, each press is one step.
 - Clicking the letter or icon at the left of a number field (the field's label), without dragging, also puts you in the field.
 - While you type in a field, shortcuts are off: <kbd>Space</kbd>, for example, types a space instead of playing.
 
@@ -348,6 +348,7 @@ A color field is a swatch with the color's hex code next to it. In this version 
 | **Change duration** | **Duration** in the **Speed** section |
 | **Freeze frame**, **Freeze frames**, **Punch zoom** | **Freeze frame** and **Punch zoom**. See [Undo a pacing change](speed-freeze-frames-and-punch-zoom.md#undo-a-pacing-change). |
 | **In animation: Word pop**, **Remove out animation**, **Change in animation duration** and the other animation steps | The **Animation** section. See [Undo animation changes](text-animations.md#undo-animation-changes). |
+| **Caption position**, **Move captions**, **Change caption width**, **Word highlight** and the other caption steps | The **Caption style** section. See [Undo caption changes](captions.md#undo-caption-changes). |
 | **Change background color** | **Background** in the **Project** section |
 
 See [Undo and redo changes](projects-and-saving.md#undo-and-redo-changes).
@@ -368,6 +369,7 @@ These parts are available in a later version:
 - [Titles and text](titles-and-text.md)
 - [Text animations](text-animations.md)
 - [Text presets](text-presets.md)
+- [Captions](captions.md)
 - [Arranging layers in the preview](arranging-layers-in-the-preview.md)
 - [Snapping and smart guides in the preview](snapping-and-smart-guides.md)
 - [Timeline](timeline.md)
@@ -380,4 +382,4 @@ These parts are available in a later version:
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 31, 2026-10-16</sub>
+<sub>Last updated: Batch 32, 2026-10-17</sub>

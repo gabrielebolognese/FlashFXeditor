@@ -37,6 +37,7 @@ What you get:
 - The frame shown in the preview becomes the first frame of the right part. The left part ends on the frame before it.
 - Both parts keep everything the clip had: its media, name, label color, speed and place in the frame. Played one after the other, they show and sound exactly like the clip did.
 - A video and its sound split together, and their right parts are linked to each other, like the left parts.
+- A caption cue on the **CC** track splits its text too: each part keeps the words on its side of the cut. See [Edit cues on the timeline](captions.md#edit-cues-on-the-timeline).
 - Selected clips stay selected: both parts of each one. The right part of the clip you clicked last gets the thicker outline. With nothing selected, nothing is selected afterwards.
 - The history step is named **Split clip** or **Split clips**. <kbd>Ctrl</kbd>+<kbd>Z</kbd> puts each clip back together in one step.
 - Nothing splits when no clip is under the playhead, or when the playhead is exactly on a clip's start or end.
@@ -76,7 +77,7 @@ To cut all tracks at once, hold <kbd>Shift</kbd>: the line runs over every clip 
 - Grouped clips go together: deleting one clip of a group deletes the whole group. See [Group clips](links-and-groups.md#group-clips).
 - Clips on locked tracks are never deleted.
 - The history step is named **Delete clip** or **Delete clips**. <kbd>Ctrl</kbd>+<kbd>Z</kbd> brings the clips back, selected as they were.
-- The keys work while the Timeline or the Preview panel is active. In the Media panel, <kbd>Delete</kbd> removes the selected media instead; see [Remove media](importing-media.md#remove-media).
+- The keys work while the Timeline or the Preview panel is active. In the Media panel, <kbd>Delete</kbd> removes the selected media instead; see [Remove media](importing-media.md#remove-media). On its **Captions** tab, <kbd>Delete</kbd> deletes the selected caption cues; see [Find, select and delete cues](captions.md#find-select-and-delete-cues).
 - While a gap is selected, <kbd>Delete</kbd> closes the gap. See [Close a gap](#close-a-gap).
 - While a marker is selected, <kbd>Delete</kbd>, <kbd>Shift</kbd>+<kbd>Delete</kbd> and the **Delete** and **Ripple delete** buttons delete the marker instead. See [Delete markers](markers-and-in-out-points.md#delete-markers).
 
@@ -210,10 +211,11 @@ Right-click a clip or a gap to open its menu. Rows that have a keyboard shortcut
 - [Linking and grouping clips](links-and-groups.md)
 - [Trimming clips](trimming.md)
 - [Advanced trimming](advanced-trimming.md)
+- [Captions](captions.md)
 - [Editing properties](editing-properties.md)
 - [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Projects and saving](projects-and-saving.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 27, 2026-10-16</sub>
+<sub>Last updated: Batch 32, 2026-10-17</sub>

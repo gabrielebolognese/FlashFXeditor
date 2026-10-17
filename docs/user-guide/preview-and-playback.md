@@ -282,7 +282,7 @@ Save the frame at the playhead as a PNG image, for a thumbnail or a cover pictur
 3. In the save dialog, choose a folder and a name. The editor suggests "*project name* frame.png".
 4. Click **Save**. A message confirms "Saved *file name*" with the image size, for example "1080×1920 PNG".
 
-Titles and other text appear as they are at that frame, partway through their animation when the playhead is on one (see [Text animations](text-animations.md)). The image has the project resolution and contains only the frame: no border, none of the panel around it, none of the overlays (safe zones, grids, guides, rulers), and no selection outlines or handles. The zoom level, the pan and the quality mode do not matter.
+Titles and other text appear as they are at that frame, partway through their animation when the playhead is on one (see [Text animations](text-animations.md)). Captions on the **CC** track appear too, with the spoken word highlighted (see [Captions](captions.md)). The image has the project resolution and contains only the frame: no border, none of the panel around it, none of the overlays (safe zones, grids, guides, rulers), and no selection outlines or handles. The zoom level, the pan and the quality mode do not matter.
 
 The editor draws the PNG from the exact frame at the playhead of your original media, at full quality, whatever the preview shows at that moment: never from a [proxy](proxies.md), never at the lower resolution of **1/2** or **1/4**, and never a nearby frame the preview still shows after a scrub. Each video is read at full resolution (up to 4096 pixels on its long side), so fine lines and text in 4K footage stay as sharp as the project resolution allows. Saving can take a moment while that frame is decoded.
 
@@ -316,6 +316,7 @@ If playback stutters, see [Troubleshooting](troubleshooting.md).
 - [Snapping and smart guides in the preview](snapping-and-smart-guides.md)
 - [Editing properties](editing-properties.md)
 - [Cropping and reframing](cropping-and-reframing.md)
+- [Captions](captions.md)
 - [Proxies](proxies.md)
 - [Audio](audio.md)
 - [Timeline](timeline.md)
@@ -329,4 +330,4 @@ If playback stutters, see [Troubleshooting](troubleshooting.md).
 - [Workspace](workspace.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 31, 2026-10-16</sub>
+<sub>Last updated: Batch 32, 2026-10-17</sub>

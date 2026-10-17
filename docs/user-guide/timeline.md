@@ -1,6 +1,6 @@
 # Timeline
 
-The timeline is where your short takes shape: clips sit on tracks in time order, and the playhead marks the frame the preview shows. In this version you add clips by double-clicking or dragging media (see [Adding media to the timeline](adding-media-to-the-timeline.md)), select clips and arrange them by dragging (also onto other tracks), snap them to the edges of other clips and to the playhead, duplicate them, zoom, scroll and pan with the scrollbars, the **Hand** tool or the mouse, move the playhead with the mouse, the keyboard or a typed timecode, read times in frames or milliseconds, and rename clips or give them a label color. To shorten or lengthen clips, see [Trimming clips](trimming.md); to split and delete clips and close gaps, see [Splitting, deleting and closing gaps](splitting-and-deleting.md); to roll cuts, slip, slide or stretch a clip, see [Advanced trimming](advanced-trimming.md); to change a clip's speed, hold a frame or punch in at a cut, see [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md). To add, lock, target or rearrange tracks, see [Tracks](tracks.md); to link, sync and group clips, see [Linking and grouping clips](links-and-groups.md). To mark moments with markers, mark a range with in and out points, loop it or lift and extract it, see [Markers and in/out points](markers-and-in-out-points.md). To read the thumbnails, waveforms and badges inside clips, see [Clip thumbnails, waveforms and badges](clip-thumbnails-and-waveforms.md). To place, resize and rotate the pictures of your clips in the frame, see [Arranging layers in the preview](arranging-layers-in-the-preview.md). To type a clip's exact times, copy a clip right after itself, or turn a clip off, see [Editing properties](editing-properties.md).
+The timeline is where your short takes shape: clips sit on tracks in time order, and the playhead marks the frame the preview shows. In this version you add clips by double-clicking or dragging media (see [Adding media to the timeline](adding-media-to-the-timeline.md)), select clips and arrange them by dragging (also onto other tracks), snap them to the edges of other clips and to the playhead, duplicate them, zoom, scroll and pan with the scrollbars, the **Hand** tool or the mouse, move the playhead with the mouse, the keyboard or a typed timecode, read times in frames or milliseconds, and rename clips or give them a label color. To shorten or lengthen clips, see [Trimming clips](trimming.md); to split and delete clips and close gaps, see [Splitting, deleting and closing gaps](splitting-and-deleting.md); to roll cuts, slip, slide or stretch a clip, see [Advanced trimming](advanced-trimming.md); to change a clip's speed, hold a frame or punch in at a cut, see [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md). To add, lock, target or rearrange tracks, see [Tracks](tracks.md); to link, sync and group clips, see [Linking and grouping clips](links-and-groups.md). To mark moments with markers, mark a range with in and out points, loop it or lift and extract it, see [Markers and in/out points](markers-and-in-out-points.md). To add captions on their own **CC** track, see [Captions](captions.md). To read the thumbnails, waveforms and badges inside clips, see [Clip thumbnails, waveforms and badges](clip-thumbnails-and-waveforms.md). To place, resize and rotate the pictures of your clips in the frame, see [Arranging layers in the preview](arranging-layers-in-the-preview.md). To type a clip's exact times, copy a clip right after itself, or turn a clip off, see [Editing properties](editing-properties.md).
 
 > **Video placeholder: Timeline tour**
 > - File: `videos/timeline/timeline-overview.mp4` (not recorded yet)
@@ -38,8 +38,8 @@ The timeline is where your short takes shape: clips sit on tracks in time order,
 | **Ruler** | Above the tracks | Shows time. Click or drag in it to move the playhead. |
 | **Markers** | Colored triangles at the bottom of the ruler | Mark moments in your edit. See [Markers and in/out points](markers-and-in-out-points.md). |
 | **In/out range** | Shading over the ruler and tracks, with a bracket at each end in the ruler | The range between the in and out points, when you set them. See [Set in and out points](markers-and-in-out-points.md#set-in-and-out-points). |
-| **Track headers** | Left column | Each track's icon and name (V1, V2 for video; A1, A2 for audio) and its toggles (target, lock, mute, solo or hide, height), plus the **+ Video track** and **+ Audio track** rows. See [Tracks](tracks.md). |
-| **Tracks** | Main area | Video tracks above the divider, audio tracks below it. Each row holds that track's clips. |
+| **Track headers** | Left column | Each track's icon and name (V1, V2 for video; A1, A2 for audio; CC for captions) and its toggles (target, lock, mute, solo or hide, height), plus the **+ Video track** and **+ Audio track** rows. See [Tracks](tracks.md). |
+| **Tracks** | Main area | Video tracks above the divider, audio tracks below it, and the **CC** caption track, when the project has one, above all video tracks. Each row holds that track's clips. |
 | **Playhead** | Red vertical line | Marks the current frame. Its head sits in the ruler. |
 | **Content end** | Thin vertical line | Marks the end of the last clip, in the ruler and across the tracks. |
 | **Scrollbars** | Under the tracks and at their right | The bar under the tracks scrolls the view left and right, and zooms it with the handles at the ends of its thumb. The bar at the right scrolls the tracks up and down. See [Use the scrollbars](#use-the-scrollbars). |
@@ -56,9 +56,9 @@ The ruler also holds your markers (small colored triangles along its bottom edge
 
 ### Clips
 
-- A clip is a rounded block in the color of its kind: blue for video, green for audio, gray for images, a paler gray for text. A clip with a label color is drawn in that color instead; see [Give clips a label color](#give-clips-a-label-color).
+- A clip is a rounded block in the color of its kind: blue for video, green for audio, gray for images, a paler gray for text, a slate gray for caption cues. A clip with a label color is drawn in that color instead; see [Give clips a label color](#give-clips-a-label-color).
 - A label bar in a stronger shade at the top shows the kind icon and the clip's name. Long names are shortened with "…". When a clip starts to the left of the view, its label stays visible at the left edge.
-- On M and L tracks, the body below the label bar shows the clip's content: thumbnails of a video, the waveform of a sound, the picture of an image, or the first line of a text. Zoom in to see more frames. See [Clip thumbnails, waveforms and badges](clip-thumbnails-and-waveforms.md).
+- On M and L tracks, the body below the label bar shows the clip's content: thumbnails of a video, the waveform of a sound, the picture of an image, or the first line of a text. A caption cue shows its text in its label bar. Zoom in to see more frames. See [Clip thumbnails, waveforms and badges](clip-thumbnails-and-waveforms.md).
 - A clip narrower than 24 pixels shows no icon or name. A clip narrower than 6 pixels shows only a thin strip of its color.
 - Clips that touch are separated by a thin line, so you can always see the cut.
 - A clip gets lighter while you point at it. A selected clip has a gold outline and tint (see [Select clips](#select-clips)).
@@ -74,10 +74,10 @@ In this version these parts of the toolbar work:
 - the **Select**, **Razor**, **Hand**, **Slip**, **Slide** and **Rate stretch** tools (see [Choose a tool](advanced-trimming.md#choose-a-tool), [Cut clips with the Razor tool](splitting-and-deleting.md#cut-clips-with-the-razor-tool) and [Pan the view](#pan-the-view));
 - the **Snap** toggle (see [Turn snapping on or off](#turn-snapping-on-or-off)), the **Linked selection** toggle (see [Turn Linked selection off](links-and-groups.md#turn-linked-selection-off)) and the **Ripple mode** toggle (see [Turn Ripple mode on or off](trimming.md#turn-ripple-mode-on-or-off));
 - the edit buttons **Split at playhead**, **Delete**, **Ripple delete**, **Close gap** and **Close all gaps (compact)** (see [Splitting, deleting and closing gaps](splitting-and-deleting.md)), **Add marker** (see [Add markers](markers-and-in-out-points.md#add-markers)), and **Freeze frame** and **Punch zoom** (see [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md));
-- the add buttons **Title** and **Subtitle** (see [Titles and text](titles-and-text.md)), and after them the chips of your favorite text presets, which add a text in that look at the playhead (see [Put favorite presets in the timeline toolbar](text-presets.md#put-favorite-presets-in-the-timeline-toolbar));
+- the add buttons **Title** and **Subtitle** (see [Titles and text](titles-and-text.md)) and **Add caption track** (see [Add the caption track](captions.md#add-the-caption-track)), and after them the chips of your favorite text presets, which add a text in that look at the playhead (see [Put favorite presets in the timeline toolbar](text-presets.md#put-favorite-presets-in-the-timeline-toolbar));
 - the whole zoom group: **Zoom out**, the zoom slider, **Zoom in**, **Zoom to fit**, **Zoom to selection** (see [Zoom in and out](#zoom-in-and-out)), **Center playhead** (see [Scroll the timeline](#scroll-the-timeline)) and **Track height** (see [Change track height](tracks.md#change-track-height)), then the timecode field and the duration.
 
-The other buttons (the **Show clip keyframes** and **Audio scrub** toggles, and the add buttons **Add caption track**, **Add solid** and **Add image**) are shown but disabled; they are available in a later version.
+The other buttons (the **Show clip keyframes** and **Audio scrub** toggles, and the add buttons **Add solid** and **Add image**) are shown but disabled; they are available in a later version.
 
 > **Note:** When the timeline panel is too narrow for the whole toolbar, the zoom group (with **Zoom to selection** and **Center playhead**) is the first to move into the **More tools** (…) menu, followed by the toggles with **Snap**, **Linked selection** and **Ripple mode**. Click **More tools** to reach them.
 
@@ -99,7 +99,7 @@ For every option and rule, see [Adding media to the timeline](adding-media-to-th
 
 ## Add and manage tracks
 
-Click **+ Video track** above the top video track, or **+ Audio track** below the bottom audio track, to add a track. Each track header also has toggles to target, lock, mute, solo or hide the track and to change its height; you can rename, reorder and delete tracks, and right-click a header for the track menu. See [Tracks](tracks.md).
+Click **+ Video track** above the top video track, or **+ Audio track** below the bottom audio track, to add a track. Each track header also has toggles to target, lock, mute, solo or hide the track and to change its height; you can rename, reorder and delete tracks, and right-click a header for the track menu. See [Tracks](tracks.md). For the **CC** caption track, see [Captions](captions.md).
 
 ## Zoom in and out
 
@@ -426,6 +426,7 @@ A plain drop covers what the moved clips land on. The clip underneath gives up e
 - The places the clips came from stay empty.
 - Clips can't move before `00:00:00`. When you drag further left, the earliest clip stops at the start.
 - Clips can't be dropped onto a locked track: the drop is refused, nothing changes, and the message **Can't drop clips onto a locked track** names the track. See [Lock a track](tracks.md#lock-a-track).
+- Caption cues on the **CC** track never cover each other: a dragged cue stops against its neighbors instead. See [Edit cues on the timeline](captions.md#edit-cues-on-the-timeline).
 
 ### After the drop
 
@@ -540,7 +541,7 @@ Drag clips up or down to put them on other tracks. Video tracks count up from th
 
 ### Create a track by dragging
 
-Drag above the top video track to put a clip on a new video track, or below the bottom audio track to put it on a new audio track. While you drag, the new track shows as an extra row with the name it will get, such as **V3**, and the ghost sits in it. If the row is out of view, hold the pointer at the edge of the tracks to scroll to it. The drop creates the track. A move that needs a track that does not exist yet, for example a sound going from A1 to A2 when there is no A2, creates it the same way.
+Drag above the top video track to put a clip on a new video track, or below the bottom audio track to put it on a new audio track. While you drag, the new track shows as an extra row with the name it will get, such as **V3**, and the ghost sits in it. If the row is out of view, hold the pointer at the edge of the tracks to scroll to it. The drop creates the track. With a **CC** caption track, the extra row shows above the CC row, and the new video track goes right below CC, so the captions stay on top. A move that needs a track that does not exist yet, for example a sound going from A1 to A2 when there is no A2, creates it the same way.
 
 Undo removes the tracks the move created, together with the move.
 
@@ -647,6 +648,7 @@ Label colors help you see at a glance which clips belong together, for example a
 - [Advanced trimming](advanced-trimming.md)
 - [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md)
 - [Titles and text](titles-and-text.md)
+- [Captions](captions.md)
 - [Audio](audio.md)
 - [Getting started](getting-started.md)
 - [Workspace](workspace.md)
@@ -659,4 +661,4 @@ Label colors help you see at a glance which clips belong together, for example a
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 30, 2026-10-16</sub>
+<sub>Last updated: Batch 32, 2026-10-17</sub>

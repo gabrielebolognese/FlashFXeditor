@@ -1,6 +1,6 @@
 # Tracks
 
-Tracks are the rows of the timeline: video tracks above the divider, audio tracks below it. Each track header holds the track's name and its toggles, so you can choose which tracks your edits act on, protect finished tracks from changes, take tracks out of the preview or the mix, and make rows taller or shorter. You can also add, rename, reorder and delete tracks.
+Tracks are the rows of the timeline: video tracks above the divider, audio tracks below it, and the **CC** caption track, when the project has one, above all video tracks. Each track header holds the track's name and its toggles, so you can choose which tracks your edits act on, protect finished tracks from changes, take tracks out of the preview or the mix, and make rows taller or shorter. You can also add, rename, reorder and delete tracks.
 
 > **Video placeholder: Manage tracks**
 > - File: `videos/tracks/overview.mp4` (not recorded yet)
@@ -20,19 +20,20 @@ Tracks are the rows of the timeline: video tracks above the divider, audio track
 - [Delete tracks](#delete-tracks)
 - [Use the track menu](#use-the-track-menu)
 - [Change track settings in Edit Properties](#change-track-settings-in-edit-properties)
+- [Work with the caption track](#work-with-the-caption-track)
 
 ## Read a track header
 
 The track header column is at the left of the timeline. Each header shows the track's kind icon and name, and a row of toggles at its right.
 
-| Toggle | Looks like | On video tracks | On audio tracks | What it does |
-| --- | --- | --- | --- | --- |
-| **Target** | A crosshair | Yes | Yes | Decides whether edits without a selection, such as <kbd>Ctrl</kbd>+<kbd>K</kbd>, act on the track. On in a new track. See [Choose the tracks your edits use](#choose-the-tracks-your-edits-use-target). |
-| **Lock** | A padlock | Yes | Yes | Protects the track's clips from every change. See [Lock a track](#lock-a-track). |
-| **M** (mute) | The letter M | Yes | Yes | Takes the track out of the preview (video) or out of the mix (audio). |
-| **S** (solo) | The letter S | No | Yes | Plays only the soloed audio tracks. |
-| **Hide** | An eye | Yes | No | Takes the track out of the preview. |
-| **Height** | Three stacked rows | Yes | Yes | Makes the row taller, step by step. See [Change track height](#change-track-height). |
+| Toggle | Looks like | On video tracks | On audio tracks | On the CC track | What it does |
+| --- | --- | --- | --- | --- | --- |
+| **Target** | A crosshair | Yes | Yes | Yes | Decides whether edits without a selection, such as <kbd>Ctrl</kbd>+<kbd>K</kbd>, act on the track. On in a new track. See [Choose the tracks your edits use](#choose-the-tracks-your-edits-use-target). |
+| **Lock** | A padlock | Yes | Yes | Yes | Protects the track's clips from every change. See [Lock a track](#lock-a-track). |
+| **M** (mute) | The letter M | Yes | Yes | No | Takes the track out of the preview (video) or out of the mix (audio). |
+| **S** (solo) | The letter S | No | Yes | No | Plays only the soloed audio tracks. |
+| **Hide** | An eye | Yes | No | Yes | Takes the track out of the preview. |
+| **Height** | Three stacked rows | Yes | Yes | No | Makes the row taller, step by step. See [Change track height](#change-track-height). |
 
 - A toggle that is on is gold: a closed padlock, a gold **M** or **S**, a crossed-out eye. The crosshair is the other way round: it looks normal while the track is targeted and dimmed when it is not.
 - A toggle gets lighter while you point at it. Click it to switch it. Clicking a toggle does not select the track.
@@ -67,6 +68,8 @@ The divider between video and audio tracks stays where it is, so the tracks you 
 
 You can also create a track by dragging clips past the top video track or the bottom audio track. See [Create a track by dragging](timeline.md#create-a-track-by-dragging).
 
+To add the caption track, click **Add caption track** in the timeline toolbar. See [Work with the caption track](#work-with-the-caption-track).
+
 ## Rename a track
 
 > **Video placeholder: Rename and reorder tracks**
@@ -91,7 +94,7 @@ Video tracks are stacked in the preview: a higher video track is drawn over the 
 2. Drag up or down. Once the pointer has moved 4 pixels, the header follows the pointer, and a gold line across the timeline shows where the track will land.
 3. Release.
 
-- Video tracks move only among the video tracks, and audio tracks only among the audio tracks. The divider stays where it is.
+- Video tracks move only among the video tracks, and audio tracks only among the audio tracks. The divider stays where it is. The **CC** caption track can't be moved: it always stays above the video tracks.
 - The track takes its name, its clips and its settings with it. Names don't change: after you move V1 to the top, the tracks read, for example, V2, V3, V1 from the bottom up.
 - Moving an audio track changes only its place on screen, not the sound.
 - Hold the pointer near the top or bottom edge of the tracks to scroll while you drag.
@@ -162,7 +165,7 @@ For how muting and soloing affect the sound and the audio meter, see [Mute and s
 
 ## Change track height
 
-Each track is Small (S, 32 pixels), Medium (M, 56 pixels) or Large (L, 88 pixels). New tracks are M.
+Each track is Small (S, 32 pixels), Medium (M, 56 pixels) or Large (L, 88 pixels). New tracks are M. The **CC** caption track is always S: the height toggle, the height keys, **Track height** and the **Height** rows leave it as it is.
 
 | To | Do this |
 | --- | --- |
@@ -199,14 +202,14 @@ Right-click a track header, or one of its toggles, to open the track menu. If th
 | --- | --- |
 | **Add video track above**, **Add video track below** (video tracks) | Adds a video track right above or below this one. |
 | **Add audio track above**, **Add audio track below** (audio tracks) | Adds an audio track right above or below this one. |
-| **Add audio track** (video tracks), **Add video track** (audio tracks) | Adds a track of the other kind, below the bottom audio track or above the top video track. |
+| **Add audio track** (video tracks), **Add video track** (audio tracks) | Adds a track of the other kind, below the bottom audio track or above the top video track. The **CC** track's menu has both. |
 | **Rename** | Opens the name field over this track's name. Its shortcut, <kbd>F2</kbd>, is shown on the right. |
 | **Delete track** | Deletes the selected tracks with their clips. Dimmed on a locked track. |
 | **Delete empty tracks** | Deletes every unlocked track without clips. |
-| **Height S**, **Height M**, **Height L** | Sets the height of the selected tracks. The current height is gold. |
+| **Height S**, **Height M**, **Height L** | Sets the height of the selected tracks. The current height is gold. Not on the **CC** track. |
 | **Select all clips on track** | Selects the clips on this track. Dimmed when the track is locked or empty. |
 | **Lock all tracks** / **Unlock all tracks** | Locks every track, or unlocks every track when all are locked. Locking all clears the selection. |
-| **Mute all others** | Mutes every other track of this kind and unmutes this one. |
+| **Mute all others** | Mutes every other track of this kind and unmutes this one. Not on the **CC** track. |
 
 Press <kbd>Escape</kbd> or click outside the menu to close it.
 
@@ -217,11 +220,11 @@ Click a track header. The **Edit Properties** panel shows the **Track** section:
 | Setting | What it does |
 | --- | --- |
 | **Name** | The track name. Type a new one and press <kbd>Enter</kbd>. |
-| **Kind** | **Video** or **Audio**. You can't change it. |
-| **Height** | **Small (S)**, **Medium (M)** or **Large (L)**. |
+| **Kind** | **Video**, **Audio** or **Captions**. You can't change it. |
+| **Height** | **Small (S)**, **Medium (M)** or **Large (L)**. Not shown for the **CC** track. |
 | **Target**, **Lock**, **Mute** | The same as the toggles in the header. |
 | **Solo** (audio tracks) | The same as **S** in the header. |
-| **Hide** (video tracks) | The same as the eye in the header. |
+| **Hide** (video tracks and the **CC** track) | The same as the eye in the header. |
 
 With several tracks selected, the panel header shows how many, for example **2 tracks**, and the section has no **Name** row.
 
@@ -232,7 +235,21 @@ With several tracks selected, the panel header shows how many, for example **2 t
 
 See [Edit several clips at once](editing-properties.md#edit-several-clips-at-once) for how fields work with several items selected.
 
+## Work with the caption track
+
+The caption track holds the captions of your video, as cues. A project has at most one. Its header reads **CC**, with a captions icon.
+
+- **Add it:** click **Add caption track** in the timeline toolbar. Adding a cue or importing an SRT or VTT file in the **Captions** tab also adds it. The button is dimmed while the project has one.
+- **Where it sits:** always above every video track, so captions show on top of every picture. A video track you add later goes below it.
+- **Its header:** **Target**, **Lock** and **Hide**. There is no **M**, **S** or height toggle, and the row is always S.
+- **Hide it** to take the captions out of the preview. **Lock it** to protect the cues and their style from changes, and to keep them in place during inserts and ripples on other tracks.
+- **Select it** (click its header) to see its **Track** and **Caption style** sections in **Edit Properties**.
+- **Delete it** with **Delete track** in its menu: its cues and its style go with it.
+
+See [Captions](captions.md).
+
 ## Related pages
+- [Captions](captions.md)
 - [Clip thumbnails, waveforms and badges](clip-thumbnails-and-waveforms.md)
 - [Timeline](timeline.md)
 - [Adding media to the timeline](adding-media-to-the-timeline.md)
@@ -249,4 +266,4 @@ See [Edit several clips at once](editing-properties.md#edit-several-clips-at-onc
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 25, 2026-10-16</sub>
+<sub>Last updated: Batch 32, 2026-10-17</sub>
