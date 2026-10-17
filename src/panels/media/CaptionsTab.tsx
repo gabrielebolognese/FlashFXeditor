@@ -2,6 +2,7 @@ import { Captions, Eraser, FileDown, FileUp, Mic, Paintbrush, Plus } from "lucid
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type FocusEvent, type KeyboardEvent, type MouseEvent, type UIEvent } from "react";
 import { commitCue, cueFocus, draftCue, mergeCueIntoPrevious, selectCue, splitCueAtCaret, type CueFocus } from "../../app/captionController.js";
 import { actions, documentStore, sessionStore } from "../../app/services.js";
+import { transcription, type TranscriptionState } from "../../app/transcription.js";
 import { formatTimecode, type TimecodeMode } from "../../core/document/time.js";
 import type { CaptionClip, ClipId, Project } from "../../core/document/types.js";
 import type { Selection } from "../../core/store/selection.js";
@@ -32,6 +33,9 @@ const EMPTY: readonly ClipId[] = [];
 const selectHasTrack = (project: Project) => captionTrackOf(project) !== null;
 const selectCueCount = (project: Project) => captionTrackOf(project)?.clipIds.length ?? 0;
 const selectMode = (state: SessionState) => state.timecodeFormat;
+/** True when an audio clip is on the timeline (Transcribe has something to hear). */
+const selectHasAudio = (project: Project) => Object.values(project.clips).some((clip) => clip.kind === "audio");
+const selectRunning = (state: TranscriptionState) => state.kind === "running";
 /** The selected cue ids, as a key string (the list renders when it changes). */
 const selectSelected = (selection: Selection) => (selection.kind === "clips" ? [...selection.clipIds].join("\n") : "");
 
@@ -39,14 +43,22 @@ const selectSelected = (selection: Selection) => (selection.kind === "clips" ? [
 export function CaptionsActions() {
   const hasTrack = useStoreSelector(documentStore, selectHasTrack);
   const count = useStoreSelector(documentStore, selectCueCount);
+  const hasAudio = useStoreSelector(documentStore, selectHasAudio);
+  const running = useStoreSelector(transcription, selectRunning);
   return (
     <>
       <IconButton icon={Plus} label="Add a 2 s cue at the playhead" commandId="captions.addCue" onClick={() => actions.run("captions.addCue")} />
       <IconButton icon={FileUp} label="Import SRT or VTT (replaces the cues)" commandId="captions.import" onClick={() => actions.run("captions.import")} />
       <IconButton icon={FileDown} label="Export SRT or VTT" commandId="captions.export" disabled={count === 0} onClick={() => actions.run("captions.export")} />
       <IconButton icon={Paintbrush} label="Caption style (in Edit Properties)" commandId="captions.style" disabled={!hasTrack} onClick={() => actions.run("captions.style")} />
-      {/* TODO(batch 33): Transcribe (local Whisper in transcribe.worker.ts, spec §10.6). */}
-      <IconButton icon={Mic} label="Transcribe: coming in Batch 33" disabled />
+      <IconButton
+        icon={Mic}
+        label={running ? "Cancel the transcription" : hasAudio ? "Transcribe the timeline's audio into cues (on this computer)" : "Transcribe: no audio on the timeline"}
+        commandId="captions.transcribe"
+        pressed={running}
+        disabled={!hasAudio && !running}
+        onClick={() => actions.run("captions.transcribe")}
+      />
       <IconButton icon={Eraser} label="Clear all cues" commandId="captions.clear" disabled={count === 0} onClick={() => actions.run("captions.clear")} />
     </>
   );
@@ -181,6 +193,7 @@ function shownSelector(query: string) {
 /** The Captions tab body. */
 export function CaptionsTab() {
   const hasTrack = useStoreSelector(documentStore, selectHasTrack);
+  const hasAudio = useStoreSelector(documentStore, selectHasAudio);
   const total = useStoreSelector(documentStore, selectCueCount);
   const mode = useStoreSelector(sessionStore.state, selectMode);
   const selectedKey = useStoreSelector(sessionStore.selection, selectSelected);
@@ -276,9 +289,12 @@ export function CaptionsTab() {
       <div className={styles.empty}>
         <Captions className={styles.emptyIcon} aria-hidden="true" />
         <p className={styles.emptyTitle}>No captions yet</p>
-        <p className={styles.emptyText}>Add a cue at the playhead, or import an SRT or VTT file.</p>
+        <p className={styles.emptyText}>Transcribe the timeline's audio, add a cue at the playhead, or import an SRT or VTT file.</p>
         <div className={styles.emptyActions}>
-          <Button variant="primary" icon={Plus} commandId="captions.addCue" onClick={() => actions.run("captions.addCue")}>
+          <Button variant="primary" icon={Mic} commandId="captions.transcribe" disabled={!hasAudio} tooltip={hasAudio ? undefined : "No audio on the timeline"} onClick={() => actions.run("captions.transcribe")}>
+            Transcribe
+          </Button>
+          <Button icon={Plus} commandId="captions.addCue" onClick={() => actions.run("captions.addCue")}>
             Cue at playhead
           </Button>
           <Button icon={FileUp} commandId="captions.import" onClick={() => actions.run("captions.import")}>

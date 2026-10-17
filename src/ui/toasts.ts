@@ -11,6 +11,13 @@ export interface Toast {
   detail?: string;
   /** 0..1; shows a progress bar and keeps the toast open. */
   progress?: number;
+  /** A text button before the close button (e.g. Cancel on a progress toast). */
+  action?: ToastAction;
+}
+
+export interface ToastAction {
+  label: string;
+  run: () => void;
 }
 
 export type ToastInput = Omit<Toast, "id">;

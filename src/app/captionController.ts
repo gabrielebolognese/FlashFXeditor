@@ -2,7 +2,7 @@
 // and VTT files, and the Caption style focus. Every edit is one command (timeline/edit/captions.ts).
 // - Actions: `add.captionTrack` (the timeline toolbar), `captions.addCue` (`+ Cue at playhead`),
 //   `captions.import`, `captions.export`, `captions.style`, `captions.clear` (the Captions header),
-//   `caption.mergePrevious` (the cue menu). Transcribe is Batch 33's.
+//   `caption.mergePrevious` (the cue menu). Transcribe: transcribeController.ts (Batch 33).
 // - The cue list types into a draft shown live on the canvas (`liveEdit.cues`, no undo step per key);
 //   blur, Tab, Enter (split), Mod+Backspace (merge) commit it. Selecting a cue moves the playhead to
 //   its start. After a split or a merge the list focuses the cue named by `cueFocus`.
@@ -35,7 +35,8 @@ export const cueFocus = createStore<CueFocus | null>(null);
 /** A properties section to scroll to and focus (the Captions header's Style), consumed by the panel. */
 export const revealSection = createStore<"captionStyle" | null>(null);
 
-function showCaptionsTab(): void {
+/** Opens the Media panel's Captions tab. */
+export function showCaptionsTab(): void {
   sessionStore.state.set((state) => (state.mediaPanel.tab === "captions" ? state : { ...state, mediaPanel: { ...state.mediaPanel, tab: "captions" } }));
 }
 

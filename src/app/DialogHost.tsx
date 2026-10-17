@@ -12,6 +12,7 @@ import { TextField } from "../ui/TextField.js";
 import { MAX_DIMENSION, MAX_PROJECT_NAME, MIN_DIMENSION } from "../core/commands/projectCommands.js";
 import type { MediaId } from "../core/document/types.js";
 import { documentStore } from "./services.js";
+import { TranscribeDialogs } from "../panels/media/TranscribeDialog.js";
 import styles from "./DialogHost.module.css";
 import { cancelRemove, clipsUsing, confirmRemove, mediaPanel, type MediaPanelState } from "./mediaController.js";
 import { appView, closeDialog, confirmNewProject, keepSavedVersion, restoreRecovery, retryOpen, type Dialog } from "./projectController.js";
@@ -189,11 +190,11 @@ function RemoveMediaDialog({ ids }: { ids: readonly MediaId[] }) {
   );
 }
 
-/** The one dialog of the project flows, over the start screen or the editor. */
+/** The one dialog of the project flows, over the start screen or the editor (then media removal, then transcription). */
 export function DialogHost() {
   const dialog = useStoreSelector(appView, selectDialog);
   const removing = useStoreSelector(mediaPanel, selectRemoving);
-  if (!dialog) return removing ? <RemoveMediaDialog ids={removing} /> : null;
+  if (!dialog) return removing ? <RemoveMediaDialog ids={removing} /> : <TranscribeDialogs />;
   switch (dialog.kind) {
     case "newProject":
       return <NewProjectDialog dir={dialog.dir} />;
