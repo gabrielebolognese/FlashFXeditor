@@ -71,7 +71,7 @@ The thumbnails start at the left end of the clip and sit side by side up to its 
 - The thumbnails follow the clip's content: a clip that starts later in its video starts with that later frame, and a clip at another speed (see [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md)) shows the frames it plays at that speed.
 - Each thumbnail has the shape of the video, upright: narrow for a portrait phone video, wide for a landscape one. A taller track gives larger thumbnails.
 - The editor keeps thumbnails at three levels of detail: one every 2 seconds of the video, one every half second, and one every 5 frames. It uses the level that gives each thumbnail on screen its own frame. Zoomed in so far that a thumbnail covers less than 5 frames, neighboring thumbnails show the same frame.
-- The first two levels are made right after import. Thumbnails every 5 frames are made only for the parts of a video you zoom into.
+- The first two levels are made right after import, or after the proxy for a video that gets one. Thumbnails every 5 frames are made only for the parts of a video you zoom into.
 - While a closer level is being made, the clip shows the nearest thumbnails it already has, so you may see the same thumbnail a few times in a row. On an idle computer, the right thumbnails usually replace them within a second.
 
 ## Read a waveform
@@ -124,7 +124,8 @@ The editor makes thumbnails and analyzes the sound in the background after you i
 - **After import.** Each video's card picture in the Media panel (its first frame) comes first, then the thumbnails every 2 seconds and every half second. Each audio file and video with sound is analyzed for its waveform. See [What happens when you import](importing-media.md#what-happens-when-you-import).
 - **Clips on screen first.** Thumbnails and waveforms of the clips you are looking at are made before the others.
 - **Not while you play, scrub or drag.** The editor pauses this work while you play, scrub or drag anything on the timeline, so the preview stays smooth. Clips keep what they already show (or their color) and fill in right after you stop.
-- **From the proxy once it is ready.** When a video's [proxy](proxies.md) is ready, its card picture and thumbnails are made again from the proxy, which is quicker. The thumbnails you see stay until the new ones replace them. After **Remove proxy**, they are made again from the original video.
+- **Heavy videos: after their proxy.** While a video waits for its [proxy](proxies.md) or the proxy is being made, its card picture, the thumbnails of its clips on screen and the frames you skim on its card are still made at once, from the original video. Its other thumbnails wait until the proxy is ready, so the proxy is made sooner. When you scroll or zoom to another part of such a clip, its thumbnails are made then, which can take a moment.
+- **From the proxy once it is ready.** When a video's proxy is ready, its card picture and thumbnails are made again from the proxy, which is quicker. The thumbnails you see stay until the new ones replace them. After **Remove proxy**, they are made again from the original video.
 - **Saved with the project.** Thumbnails and the sound analysis are saved in the project's `cache` folder. The next time you open the project, they appear at once, without being made again. If you delete the `cache` folder while the project is closed, they are made again. **Clear cache** does the same while the project is open: the thumbnails and waveforms come back by themselves within moments. See [Clear the cache](projects-and-saving.md#clear-the-cache). A [read-only project](projects-and-saving.md#work-in-read-only-mode) uses what is already in its `cache` folder but saves nothing new, so anything missing is made again each time you open it.
 
 A video that Chrome can't decode on your computer, such as HEVC without a hardware decoder, gets no thumbnails: its card keeps the film icon and its clips show only their color, until the preview tries to show it and marks it **Can't play**. A media item whose file is missing is offline: its clips are gray with an **Offline** badge. See [A video imports but shows nothing](troubleshooting.md#a-video-imports-but-shows-nothing) and [Offline media and relinking](offline-media-and-relinking.md).
@@ -155,4 +156,4 @@ A clip with a label color shows that color in its label bar above the thumbnails
 - [Proxies](proxies.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 42, 2026-10-18</sub>
+<sub>Last updated: Batch 45, 2026-10-18</sub>

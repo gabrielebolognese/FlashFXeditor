@@ -148,6 +148,7 @@ This page helps you when something does not work as expected: the editor does no
   - [A video gets no proxy](#a-video-gets-no-proxy)
   - [A proxy chip is red](#a-proxy-chip-is-red)
   - [A proxy stops counting or starts over](#a-proxy-stops-counting-or-starts-over)
+  - [Thumbnails fill in slowly while a proxy is made](#thumbnails-fill-in-slowly-while-a-proxy-is-made)
   - [The picture is softer while you play or scrub](#the-picture-is-softer-while-you-play-or-scrub)
 - [Adding media to the timeline](#adding-media-to-the-timeline)
   - [Double-clicking a card pushed other clips to the right](#double-clicking-a-card-pushed-other-clips-to-the-right)
@@ -1150,6 +1151,14 @@ To clear the red chip without making a proxy, right-click the card and choose **
 
 **Fix:** Nothing to fix. Stop playback to let the proxy continue. See [Follow a proxy while it is made](proxies.md#follow-a-proxy-while-it-is-made).
 
+### Thumbnails fill in slowly while a proxy is made
+
+**Symptom:** A heavy video's card shows a grey **PX** chip. When you scroll or zoom to another part of its clip, the thumbnails there take a moment to appear, or show the nearest thumbnail a few times in a row.
+
+**Cause:** While a video's proxy is queued or being made, the editor makes only the thumbnails you look at, from the original video. The rest wait for the proxy, so the proxy gets the video decoder and is ready sooner.
+
+**Fix:** Nothing to fix. Once the chip is green, all its thumbnails are made from the proxy in the background. See [Know when thumbnails and waveforms appear](clip-thumbnails-and-waveforms.md#know-when-thumbnails-and-waveforms-appear).
+
 ### The picture is softer while you play or scrub
 
 **Symptom:** While you play or scrub, the picture looks a little softer, and the status line under the transport bar reads **Auto: proxy**. When you stop, it gets crisp again and reads **Auto: full**.
@@ -1240,6 +1249,7 @@ If the picture stays soft after you stop and the status line reads **Proxy: prox
 - Check the cards of your heavy videos in the Media panel: wait until their **PX** chip is green, and keep **Preview quality** at **Auto** (or choose **Proxy**) so playback uses the proxies. If a card has no chip, right-click it and choose **Generate proxy**. See [Proxies](proxies.md).
 - Where you can, use 1080p footage instead of 4K.
 - In the **Preview quality** menu of the preview header, choose **1/2** or **1/4**: playback draws at half or a quarter of the resolution, which is lighter. Make sure the mode is not **Full**: it never uses proxies and keeps full detail when you play zoomed in above 100%. See [Choose the preview quality](preview-zoom-overlays-fullscreen.md#choose-the-preview-quality).
+- If it stutters at a transition between two clips of the same 4K video, keep **Preview quality** at **Auto** and wait for the video's green **PX** chip. In **Full**, the editor decodes the same 4K original at two places at once there, which drops many frames. The exported video is not affected. See [Edit with proxies in the preview](proxies.md#edit-with-proxies-in-the-preview).
 
 **Not a problem:**
 - Playback may wait up to half a second before it starts: the editor decodes the first frames.
@@ -2832,4 +2842,4 @@ The current version cannot do these things yet. Each one is available in a later
 - [Command palette and custom shortcuts](command-palette-and-custom-shortcuts.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 44, 2026-10-18</sub>
+<sub>Last updated: Batch 45, 2026-10-18</sub>

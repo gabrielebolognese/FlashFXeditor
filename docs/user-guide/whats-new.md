@@ -2,6 +2,11 @@
 
 Shorts Editor grows in steps called batches. This page lists what each batch added that you can see or use, newest first. Follow the links for the full instructions.
 
+> **Video placeholder: What's new in Batch 45**
+> - File: `videos/whats-new/batch-45.mp4` (not recorded yet)
+> - Length: about 45 seconds
+> - Shows: a 1080×1920, 60 fps project; import a 2-minute 4K 60 fps phone video and a 60-second 5.1 WAV file at once: the editor keeps responding while the cards appear; the video card gets its picture and a grey **PX** chip that counts up; double-click the card: its clip shows thumbnails at once; scroll along the clip: the thumbnails of the new part appear as you look; wait for the green **PX** chip; press <kbd>Space</kbd> to play the clip, press it again, and drag in the ruler across the whole clip: the picture follows without lag.
+
 > **Video placeholder: What's new in Batch 44**
 > - File: `videos/whats-new/batch-44.mp4` (not recorded yet)
 > - Length: about 75 seconds
@@ -178,6 +183,7 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 > - Shows: open a project with three clips on the timeline; press <kbd>Space</kbd> to play and let the timeline page forward; press <kbd>L</kbd> three times to reach 8x, then <kbd>K</kbd>; hold <kbd>K</kbd> and tap <kbd>L</kbd> to step one frame; turn on **Loop playback**; point at the **Dropped** readout in the status strip.
 
 ## In this page
+- [Batch 45: Faster proxies and a lighter editor](#batch-45-faster-proxies-and-a-lighter-editor)
 - [Batch 44: The Export tab](#batch-44-the-export-tab)
 - [Batch 43: Export](#batch-43-export)
 - [Batch 42: Project management](#batch-42-project-management)
@@ -222,6 +228,13 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 - [Batch 03: Projects, autosave and recovery](#batch-03-projects-autosave-and-recovery)
 - [Batch 02: Undo, redo and frame-exact time](#batch-02-undo-redo-and-frame-exact-time)
 - [Batch 01: The workspace](#batch-01-the-workspace)
+
+## Batch 45: Faster proxies and a lighter editor
+- Long 4K videos get their proxy much sooner. While a video's proxy is being made, the editor makes only the thumbnails you look at (the card picture, the clips on screen and the frames you skim on the card) from the original video; the rest wait for the proxy. On the development laptop, a 2-minute 4K 60 fps HEVC video got its proxy in about 3½ minutes instead of more than 4. See [Follow a proxy while it is made](proxies.md#follow-a-proxy-while-it-is-made) and [Know when thumbnails and waveforms appear](clip-thumbnails-and-waveforms.md#know-when-thumbnails-and-waveforms-appear).
+- Closing a project, by opening or creating another one, now frees all the memory it used: its pictures in the graphics card's memory, its decoded sound and video, and its background work. Switching between projects many times no longer slows the editor down. See [Open an existing project](getting-started.md#open-an-existing-project).
+- Importing or playing sound with more than two channels, such as a 5.1 surround WAV file, no longer makes the editor pause for a moment while it mixes the sound down to stereo. See [Decoding for playback](audio.md#decoding-for-playback).
+- Measured on the development laptop: a timeline of 500 clips on 8 tracks zooms, scrolls, drags and plays at 60 frames per second, scrubbing a 20-minute 4K video on its proxy follows at 60 frames per second, and a 60-second export takes about half a minute. See [Know what to expect from performance](preview-and-playback.md#know-what-to-expect-from-performance).
+- New troubleshooting entry: [Thumbnails fill in slowly while a proxy is made](troubleshooting.md#thumbnails-fill-in-slowly-while-a-proxy-is-made). [Playback stutters or drops frames](troubleshooting.md#playback-stutters-or-drops-frames) now covers transitions between two clips of the same 4K video.
 
 ## Batch 44: The Export tab
 - **Export** and <kbd>Ctrl</kbd>+<kbd>E</kbd> now open the **Export** tab beside **Edit Properties**. Its **Export** button has the keyboard, so <kbd>Ctrl</kbd>+<kbd>E</kbd> and <kbd>Enter</kbd> export with your last choices. <kbd>Esc</kbd> or the tab's **X** closes it. See [Open the Export tab](exporting-video.md#open-the-export-tab).
@@ -698,4 +711,4 @@ See [The workspace](workspace.md) and [Getting started](getting-started.md).
 - [Adding media to the timeline](adding-media-to-the-timeline.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 44, 2026-10-18</sub>
+<sub>Last updated: Batch 45, 2026-10-18</sub>

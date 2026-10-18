@@ -108,6 +108,8 @@ To create a new project while one is open, press <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+
 
 > **Note:** When the open project is read-only and has changes that were never saved, **Discard unsaved changes?** asks first. See [Before read-only changes are lost](projects-and-saving.md#before-read-only-changes-are-lost).
 
+When a project closes, it frees the memory it used: its pictures in the graphics card's memory, its decoded sound and video, and its background work on thumbnails, waveforms and proxies. You can switch between projects as often as you like without reloading the page. A proxy that was being made starts over the next time you open its project; see [Close and reopen a project with proxies](proxies.md#close-and-reopen-a-project-with-proxies).
+
 ## Reopen a recent project
 
 > **Video placeholder: Reopen a project from Recent projects**
@@ -168,4 +170,4 @@ For other problems, see [Troubleshooting](troubleshooting.md).
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 42, 2026-10-18</sub>
+<sub>Last updated: Batch 45, 2026-10-18</sub>
