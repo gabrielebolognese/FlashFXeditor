@@ -38,6 +38,7 @@ import { listFolderFiles, matchFolderFiles, MAX_FOLDER_FILES, type DirHandleLike
 import type { ClipVisualsSource } from "../timeline/view/clipVisuals.js";
 import { dismissToast, showToast, updateToast } from "../ui/toasts.js";
 import { decodedAudio, peaksFiles } from "./audioController.js";
+import { pausedWhileExporting } from "./exportState.js";
 import { mediaSources, mediaStatus, offlineReason, onRefreshMedia, refreshMedia, setMediaSources, sourceFile } from "./mediaOffline.js";
 import { actions, appSettings, documentStore, focusScopes, idleQueue, keyValueStore, scheduler, sessionStore, workerPool } from "./services.js";
 
@@ -223,7 +224,8 @@ export function attachMedia(dir: FsDir, isWritable: () => boolean, preview?: Thu
     files: proxyFiles(dir),
     settings: () => proxySettings(appSettings.getState()),
     watchSettings: (listener) => appSettings.subscribe(listener),
-    idle: idleQueue,
+    // Paused while an export runs too (it takes the encoder, spec §16).
+    idle: pausedWhileExporting(idleQueue),
     isWritable,
   });
   // Audio files the probe decodes (decodeAudioData) are not decoded again for playback and peaks.

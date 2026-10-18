@@ -8,6 +8,7 @@ import { createStore } from "../core/store/createStore.js";
 import { cacheSize, clearCache, formatBytes, type CacheSize } from "../project/cache.js";
 import { errorMessage } from "../project/errorMessage.js";
 import { showToast } from "../ui/toasts.js";
+import { exportRunning } from "./exportState.js";
 import { appView, closeDialog, currentSession, refuseReadOnly, showDialog, withMediaDetached } from "./projectController.js";
 import { actions } from "./services.js";
 
@@ -51,8 +52,11 @@ export async function measureCache(): Promise<void> {
 /** `project.clearCache`: asks first (proxies of long videos take a while to make again). */
 export function requestClearCache(): void {
   const session = currentSession();
-  // TODO(batch 43): refused while an export runs (it writes cache/export-temp/).
   if (!session || cacheInfo.getState().clearing) return;
+  if (exportRunning()) {
+    refuseWhileExporting();
+    return;
+  }
   if (session.readOnly) {
     refuseReadOnly("clear the cache");
     return;
@@ -61,11 +65,20 @@ export function requestClearCache(): void {
   void measureCache();
 }
 
+/** An export writes cache/export-temp/ (Batch 43): the cache stays until it ends. */
+function refuseWhileExporting(): void {
+  showToast({ tone: "info", message: "An export is running", detail: "Clear the cache once it has finished." });
+}
+
 /** The dialog's Clear cache. */
 export async function clearProjectCache(): Promise<void> {
   closeDialog();
   const session = currentSession();
   if (!session || cacheInfo.getState().clearing) return;
+  if (exportRunning()) {
+    refuseWhileExporting();
+    return;
+  }
   if (session.readOnly) {
     refuseReadOnly("clear the cache");
     return;

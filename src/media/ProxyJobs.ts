@@ -8,8 +8,8 @@
 //   to <id>.mp4 and the proxy becomes "ready" with its size. A failure marks it "failed" (not tried
 //   again this session); a cancel (Remove proxy, the media removed, the project closed) aborts the
 //   write and deletes the .part.
-// - Paused while the IdleQueue is (playback, timeline drags; TODO(batch 43): export): the worker stops
-//   feeding its decoder, and no job starts.
+// - Paused while the IdleQueue is (playback, timeline drags) and while an export runs (Batch 43: the
+//   app's `idle` pauser joins both): the worker stops feeding its decoder, and no job starts.
 // - On open, .part files (and the browser's .crswap swap files) of interrupted jobs are deleted, and
 //   their pending videos start over from the beginning (an MP4 cannot be continued); ready proxies
 //   whose file is gone are made again.

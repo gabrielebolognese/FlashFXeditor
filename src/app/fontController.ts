@@ -104,6 +104,16 @@ async function register(state: OpenFonts): Promise<void> {
   await fontLibrary.setProjectFaces(faces);
 }
 
+/** Copies of the open project's font faces (the export worker adds them to its own font set, Batch 43). */
+export function projectFontFaces(): ProjectFace[] {
+  const state = open;
+  if (!state) return [];
+  return state.faces.flatMap((face) => {
+    const data = state.data.get(face.file);
+    return data ? [{ family: face.family, weight: face.weight, italic: face.italic, data: data.slice(0) }] : [];
+  });
+}
+
 let scheduled = false;
 
 /** Copies used system fonts soon (after the current burst of commands). */

@@ -12,7 +12,8 @@ describe("planned commands", () => {
     }
   });
 
-  it("names the batch in the dev toast", () => {
+  it("has no dev toast left: every bound command is built (Export since Batch 43)", () => {
+    expect(Object.keys(PLANNED_COMMANDS)).toEqual([]);
     expect(plannedMessage("preview.toggleFullscreen")).toBeNull();
     expect(plannedMessage("canvas.nudgeLeft")).toBeNull();
     expect(plannedMessage("edit.freezeFrame")).toBeNull();
@@ -22,7 +23,7 @@ describe("planned commands", () => {
     expect(plannedMessage("marker.add")).toBeNull();
     expect(plannedMessage("clipboard.paste")).toBeNull();
     expect(plannedMessage("app.commandPalette")).toBeNull();
-    expect(plannedMessage("app.export")).toBe("Export: coming in Batch 44");
+    expect(plannedMessage("app.export")).toBeNull();
     expect(plannedMessage("timeline.zoomToSelection")).toBeNull();
     expect(plannedMessage("edit.duplicate")).toBeNull();
   });

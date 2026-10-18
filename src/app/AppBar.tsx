@@ -5,6 +5,7 @@ import type { Project } from "../core/document/types.js";
 import { useStoreSelector } from "../core/store/useStoreSelector.js";
 import type { SaveStatus } from "../project/Autosaver.js";
 import { formatFps } from "../project/projectPresets.js";
+import { runCommand } from "../ui/commands.js";
 import { IconButton } from "../ui/IconButton.js";
 import styles from "./AppBar.module.css";
 import { projectNaming } from "./projectController.js";
@@ -97,8 +98,7 @@ function ProjectName() {
 
 /**
  * The slim bar above the panels (spec §2.1): project name, save status, undo/redo, project badge,
- * Export, settings. No menus.
- * TODO(batch 44): Export opens the Export tab in the properties panel.
+ * Export (`app.export`: the Reels export of the whole timeline, Batch 43), settings. No menus.
  */
 export function AppBar() {
   // Re-renders only when undo/redo availability or labels change, or the badge text.
@@ -135,10 +135,10 @@ export function AppBar() {
       <button
         type="button"
         className={styles.export}
-        aria-disabled="true"
         data-tooltip="Export"
         data-command="app.export"
         onMouseDown={keepFocus}
+        onClick={() => runCommand("app.export")}
       >
         <Upload className={styles.exportIcon} strokeWidth={2.5} aria-hidden="true" />
         Export

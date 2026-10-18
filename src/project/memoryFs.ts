@@ -50,7 +50,7 @@ export class MemoryDir implements FsDir {
     return this;
   }
 
-  private child(name: string): string {
+  child(name: string): string {
     return this.path ? `${this.path}/${name}` : name;
   }
 
@@ -139,6 +139,20 @@ export class MemoryDir implements FsDir {
     if (file) this.files.set(to, file);
     this.files.delete(from);
     this.blobs.delete(from);
+  }
+
+  async moveTo(name: string, target: FsDir, to: string): Promise<void> {
+    const blob = this.blobs.get(name);
+    const file = this.files.get(name);
+    if (!blob && !file) throw new DOMException(`${name} does not exist`, "NotFoundError");
+    if (!(target instanceof MemoryDir)) throw new TypeError("A memory file moves into a memory directory only");
+    target.fs.attempt("write", target.child(to));
+    target.files.delete(to);
+    target.blobs.delete(to);
+    if (blob) target.blobs.set(to, blob);
+    if (file) target.files.set(to, file);
+    this.files.delete(name);
+    this.blobs.delete(name);
   }
 
   async remove(name: string): Promise<void> {

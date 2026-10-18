@@ -43,6 +43,7 @@ import { attachAudio, audioScheduler, detachAudio, meterView, scrubGrain } from 
 import { toggleFullscreen } from "./fullscreen.js";
 import { liveEdit, setLiveCrops, type LiveEdit } from "./liveEdit.js";
 import { requestProxyIfUndecided } from "./mediaController.js";
+import { exportRunning } from "./exportState.js";
 import { mediaSources, mediaStatus, offlineReason, OFFLINE_LABEL, onRefreshMedia, sourceFile } from "./mediaOffline.js";
 import { actions, audioClock, documentStore, focusScopes, fontLibrary, idleQueue, layoutStore, scheduler, sessionStore, themeBridge, workerPool } from "./services.js";
 
@@ -129,6 +130,8 @@ export const previewView: PreviewView = new PreviewView({
     return true;
   },
   behind: (mediaId) => playbackEngine.playing && playbackEngine.autoProxy.has(mediaId),
+  // Playback during an export plays proxies (spec §16: the export has its own decoders and device).
+  qualityOverride: (activity) => (activity === "playing" && exportRunning() ? "proxy" : null),
   // Offline media draw a labeled slate (spec §6.19, Batch 41); one the decoder refuses becomes offline too.
   offline: (mediaId) => {
     const reason = offlineReason(mediaId);
@@ -150,7 +153,7 @@ export const playbackEngine: PlaybackEngine = new PlaybackEngine({
   scrubbing: () => timelineView.scrubbing || timelineView.trimming,
   idle: idleQueue,
   audio: audioScheduler,
-  quality: () => sessionStore.state.getState().preview.quality,
+  quality: () => (exportRunning() ? "proxy" : sessionStore.state.getState().preview.quality),
   // Auto quality: a media too heavy to play at full gets a proxy, unless one was decided against.
   onBehind: (mediaId) => requestProxyIfUndecided(mediaId),
   // Keyboard stepping plays a grain with the audio scrub on (Batch 37).
@@ -309,10 +312,24 @@ export interface PreviewDevState {
 /** Dev chrome of the preview header (not persisted). */
 export const previewDev = createStore<PreviewDevState>({ stats: false, budget: DEFAULT_TEXTURE_BUDGET });
 
+/** The share of the texture budget the preview's pool keeps: 1, or 0.7 while an export runs (spec §16: split 70/30). */
+let textureShare = 1;
+
 previewDev.select(
   (state) => state.budget,
-  (budget) => texturePool.setBudget(budget),
+  (budget) => texturePool.setBudget(Math.round(budget * textureShare)),
 );
+
+/** The texture budget (P6) before any split. */
+export function textureBudget(): number {
+  return previewDev.getState().budget;
+}
+
+/** Gives the preview's pool `share` of the texture budget (it evicts down to it at once). */
+export function setTextureShare(share: number): void {
+  textureShare = share;
+  texturePool.setBudget(Math.round(textureBudget() * share));
+}
 
 // Textures of a lost device are dead: empty the pool; owners upload again on "ready".
 renderer.subscribe((event) => {
@@ -483,7 +500,6 @@ interface SaveFilePickerWindow {
   showSaveFilePicker(options: { suggestedName: string; id?: string; types: { description: string; accept: Record<string, string[]> }[] }): Promise<FileSystemFileHandle>;
 }
 
-/** Saves the current frame at project size as a PNG (the picker opens first, inside the click). */
 /**
  * The frame at the playhead as a small image (`height` px tall, webp) for the recent projects list
  * (spec §15 "thumbnail captured at the playhead on close", Batch 42): rendered like Export frame, then
@@ -520,6 +536,7 @@ export async function captureThumbnail(height: number, timeoutMs = 2000): Promis
   }
 }
 
+/** Saves the current frame at project size as a PNG (the picker opens first, inside the click). */
 export async function exportFrame(): Promise<void> {
   let handle: FileSystemFileHandle;
   try {

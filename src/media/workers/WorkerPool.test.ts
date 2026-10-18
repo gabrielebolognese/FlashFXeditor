@@ -46,6 +46,7 @@ function setup(handlers: Handlers, concurrency = 2, immediate: ReadonlySet<Metho
     analysis: noWorker,
     proxy: noWorker,
     transcribe: noWorker,
+    export: noWorker,
   });
   return { pool, workers };
 }
@@ -165,7 +166,7 @@ describe("WorkerPool + WorkerHost", () => {
         }) as WorkerLike["addEventListener"],
         terminate: () => undefined,
       };
-      const pool = new WorkerPool({ decode: () => worker, analysis: noWorker, proxy: noWorker, transcribe: noWorker });
+      const pool = new WorkerPool({ decode: () => worker, analysis: noWorker, proxy: noWorker, transcribe: noWorker, export: noWorker });
       const controller = new AbortController();
       const request = pool.request("poster", { file, kind: "image", maxSize: 320 }, { signal: controller.signal });
       const id = posted[0]?.id ?? -1;
