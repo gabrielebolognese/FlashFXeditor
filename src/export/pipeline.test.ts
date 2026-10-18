@@ -157,6 +157,17 @@ function job(frames: number, audio: Float32Array[] | null = null, projectFps = {
   return { plan: exportPlan({ start: 0, end: frames }, projectFps, FORMAT.fps, 2, 48000), format: FORMAT, audio };
 }
 
+/** Resolves when the export waits at `gate` while it is paused (parked between frames): no wall-clock sleeps, which a loaded machine outlasts. */
+function parked(gate: PauseGate): Promise<void> {
+  return new Promise((resolve) => {
+    const wait = gate.wait.bind(gate);
+    gate.wait = (signal) => {
+      if (gate.paused) resolve();
+      return wait(signal);
+    };
+  });
+}
+
 describe("runExport", () => {
   it("renders, encodes and muxes every frame with exact timestamps, keyframes every 2 s, and closes each frame", async () => {
     const h = harness();
@@ -253,8 +264,11 @@ describe("runExport", () => {
         resume = () => gate.set(false);
       }
     };
+    const parkedAt = parked(gate);
     const run = runExport(job(20), h.deps, new AbortController().signal, () => undefined, gate);
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    await parkedAt;
+    // It stays parked: no frame is rendered while paused.
+    await new Promise((resolve) => setTimeout(resolve, 5));
     expect(h.rendered).toHaveLength(11);
     expect(gate.paused).toBe(true);
     (resume as unknown as () => void)();
@@ -281,8 +295,9 @@ describe("runExport", () => {
     const gate = new PauseGate();
     gate.set(true);
     const kinds: string[] = [];
+    const parkedAt = parked(gate);
     const run = runExport(job(10), h.deps, new AbortController().signal, (progress) => kinds.push(progress.kind), gate);
-    await new Promise((resolve) => setTimeout(resolve, 5));
+    await parkedAt;
     expect(kinds).toContain("started");
     expect(h.rendered).toHaveLength(0);
     gate.set(false);
@@ -295,8 +310,9 @@ describe("runExport", () => {
     const controller = new AbortController();
     const gate = new PauseGate();
     gate.set(true);
+    const parkedAt = parked(gate);
     const run = runExport(job(10), h.deps, controller.signal, () => undefined, gate);
-    await new Promise((resolve) => setTimeout(resolve, 5));
+    await parkedAt;
     controller.abort();
     await expect(run).rejects.toMatchObject({ name: "AbortError" });
     expect(h.rendered).toHaveLength(0);
