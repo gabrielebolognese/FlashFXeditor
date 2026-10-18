@@ -2,6 +2,11 @@
 
 Shorts Editor grows in steps called batches. This page lists what each batch added that you can see or use, newest first. Follow the links for the full instructions.
 
+> **Video placeholder: What's new in Batch 49**
+> - File: `videos/whats-new/batch-49.mp4` (not recorded yet)
+> - Length: about 40 seconds
+> - Shows: drop a screen recording `demo.webm` on the Media panel: its card shows the first frame and "30 fps"; click **List view**: **Codec** reads **VP9** and **Audio** **Opus**; double-click the card, drag the playhead along the ruler and press <kbd>Space</kbd>: the recording plays with the voice in sync; press <kbd>Ctrl</kbd>+<kbd>E</kbd> and <kbd>Enter</kbd> and play the exported MP4; drop a text file renamed `broken.webm`: a row with a red **Failed** badge reads "Not a readable WebM file: it is damaged or is not a video".
+
 > **Video placeholder: What's new in Batch 48**
 > - File: `videos/whats-new/batch-48.mp4` (not recorded yet)
 > - Length: about 40 seconds
@@ -198,6 +203,7 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 > - Shows: open a project with three clips on the timeline; press <kbd>Space</kbd> to play and let the timeline page forward; press <kbd>L</kbd> three times to reach 8x, then <kbd>K</kbd>; hold <kbd>K</kbd> and tap <kbd>L</kbd> to step one frame; turn on **Loop playback**; point at the **Dropped** readout in the status strip.
 
 ## In this page
+- [Batch 49: WebM files and screen recordings](#batch-49-webm-files-and-screen-recordings)
 - [Batch 48: Runs without WebGPU](#batch-48-runs-without-webgpu)
 - [Batch 47: A steadier editor](#batch-47-a-steadier-editor)
 - [Batch 46: Keyboard navigation and a finished look](#batch-46-keyboard-navigation-and-a-finished-look)
@@ -246,6 +252,13 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 - [Batch 03: Projects, autosave and recovery](#batch-03-projects-autosave-and-recovery)
 - [Batch 02: Undo, redo and frame-exact time](#batch-02-undo-redo-and-frame-exact-time)
 - [Batch 01: The workspace](#batch-01-the-workspace)
+
+## Batch 49: WebM files and screen recordings
+- Import WebM (.webm) files, such as the screen recordings that Chrome, browser extensions and many recorders save: VP9, AV1, VP8 or H.264 video with Opus or Vorbis sound. They skim, scrub, play, get proxies, thumbnails and waveforms, and export like MP4 files, with the sound in sync. See [WebM files and screen recordings](importing-media.md#webm-files-and-screen-recordings).
+- A .webm file with sound only, for example audio downloaded from a video site, imports as an audio item, with no length limit.
+- Recordings with uneven gaps between frames keep each frame's time, and show their most common frame rate, for example 30 fps.
+- A damaged .webm file is listed under the search field of the **Media** tab with "Not a readable WebM file: it is damaged or is not a video". A WebM file with another video codec, such as HEVC, is refused with a message that names the codec. See [Fix import problems](importing-media.md#fix-import-problems).
+- Not supported: .mkv files, and the transparency of WebM overlays (they show opaque). See [A WebM video covers the layers below it](troubleshooting.md#a-webm-video-covers-the-layers-below-it).
 
 ## Batch 48: Runs without WebGPU
 - The editor now also runs in Chrome and Edge on computers without WebGPU, for example with an older graphics card or a driver the browser blocks for WebGPU. It uses WebGL2 there, by itself, with the same picture in the preview, in **Export frame** and in exported videos. See [Check your browser](getting-started.md#check-your-browser).
@@ -760,4 +773,4 @@ See [The workspace](workspace.md) and [Getting started](getting-started.md).
 - [Adding media to the timeline](adding-media-to-the-timeline.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 48, 2026-10-18</sub>
+<sub>Last updated: Batch 49, 2026-10-18</sub>

@@ -1,6 +1,6 @@
 # Troubleshooting
 
-This page helps you when something does not work as expected: the editor does not start in your browser, the preview stays empty or your graphics driver has trouble with WebGPU, a panel or the whole editor says it stopped working, a shortcut or a key you changed does nothing or runs another command, a folder or a file does not open or shows **Failed** in the Media tab, media are hidden in the Media tab, go offline or don't relink, a clip drag, a trim, a split, a delete, a timeline tool, a typed timecode, a marker, an in/out range or **Lift** and **Extract** do something you did not expect, media from the Media panel lands somewhere you did not expect, a clip shows no thumbnails, a video gets no proxy or its proxy fails, the preview zoom, overlays or fullscreen behave unexpectedly, a picture in the preview can't be selected, moves unexpectedly, doesn't snap where you expect or gets cropped instead of resized, a value or a crop in **Edit Properties** doesn't do what you expect, a paste or a duplicate lands somewhere you did not expect or is refused, a speed change, a freeze frame or a punch zoom does something you did not expect, a keyframe animation or a keyframe lane doesn't behave as you expect, a fade or a transition doesn't go where you expect, gets shorter or shows red stripes, the rubber band, **Normalize**, **Auto-duck**, **Detach audio** or **Audio scrub** doesn't do what you expect, **Remove silence** cuts too much, too little or nothing, a shape or an image doesn't look or play as you expect, a title lands somewhere you did not expect, the keys type into a text, a font is missing, a text preset doesn't apply, update or sync as you expect, a text animation plays shorter or differently than you expect, a caption cue doesn't import, move, show or highlight as you expect, a transcription doesn't start, is slow or gets words wrong, an export doesn't start, fails or gives a file you did not expect, playback stutters or pauses for a moment, an HDR video looks less bright than on your phone, or you hear no sound. Each problem lists what you see, why it happens and what to do. The last section lists what the current version cannot do yet.
+This page helps you when something does not work as expected: the editor does not start in your browser, the preview stays empty or your graphics driver has trouble with WebGPU, a panel or the whole editor says it stopped working, a shortcut or a key you changed does nothing or runs another command, a folder or a file does not open or shows **Failed** in the Media tab, media are hidden in the Media tab, go offline or don't relink, a clip drag, a trim, a split, a delete, a timeline tool, a typed timecode, a marker, an in/out range or **Lift** and **Extract** do something you did not expect, media from the Media panel lands somewhere you did not expect, a clip shows no thumbnails, a video gets no proxy or its proxy fails, the preview zoom, overlays or fullscreen behave unexpectedly, a picture in the preview can't be selected, moves unexpectedly, doesn't snap where you expect or gets cropped instead of resized, a value or a crop in **Edit Properties** doesn't do what you expect, a paste or a duplicate lands somewhere you did not expect or is refused, a speed change, a freeze frame or a punch zoom does something you did not expect, a keyframe animation or a keyframe lane doesn't behave as you expect, a fade or a transition doesn't go where you expect, gets shorter or shows red stripes, the rubber band, **Normalize**, **Auto-duck**, **Detach audio** or **Audio scrub** doesn't do what you expect, **Remove silence** cuts too much, too little or nothing, a shape or an image doesn't look or play as you expect, a title lands somewhere you did not expect, the keys type into a text, a font is missing, a text preset doesn't apply, update or sync as you expect, a text animation plays shorter or differently than you expect, a caption cue doesn't import, move, show or highlight as you expect, a transcription doesn't start, is slow or gets words wrong, an export doesn't start, fails or gives a file you did not expect, playback stutters or pauses for a moment, an HDR video looks less bright than on your phone, a WebM video covers the layers below it, or you hear no sound. Each problem lists what you see, why it happens and what to do. The last section lists what the current version cannot do yet.
 
 > **Video placeholder: Fix common problems**
 > - File: `videos/troubleshooting/overview.mp4` (not recorded yet)
@@ -10,7 +10,7 @@ This page helps you when something does not work as expected: the editor does no
 >   2. In Chrome, open `chrome://settings/system` and show **Use graphics acceleration when available** turned on.
 >   3. Add `?renderer=webgl2` to the end of the editor's address and press <kbd>Enter</kbd>: the start screen appears again. Open a project from **Recent projects** and play it: it looks the same as before.
 >   4. Open a project and allow only viewing when the browser asks: the read-only notice appears in the app bar. Click **Allow editing**, allow editing, and the notice disappears.
->   5. Import a `.webm` file: the message "Can't import ..." with "Unsupported file type" appears.
+>   5. Import a `.mkv` file: the message "Can't import ..." with "Unsupported file type" appears.
 >   6. Press <kbd>F</kbd>: the preview fills the window and the other panels disappear. Press <kbd>Esc</kbd>: they are back at their sizes.
 >   7. Play a 4K clip and point at **Dropped** in the status strip under the preview.
 >   8. Play a clip with sound while **Mute** is on: nothing is heard, but the meter moves. Click **Unmute**: the sound is back.
@@ -139,6 +139,7 @@ This page helps you when something does not work as expected: the editor does no
   - [A file cannot be imported](#a-file-cannot-be-imported)
   - [A video imports but shows nothing](#a-video-imports-but-shows-nothing)
   - [An HDR video looks less bright than on your phone](#an-hdr-video-looks-less-bright-than-on-your-phone)
+  - [A WebM video covers the layers below it](#a-webm-video-covers-the-layers-below-it)
 - [Organizing media](#organizing-media)
   - [Media are missing from the Media tab](#media-are-missing-from-the-media-tab)
   - [Delete or Move to bin left some selected media out](#delete-or-move-to-bin-left-some-selected-media-out)
@@ -1049,8 +1050,12 @@ See [Restore an older version](projects-and-saving.md#restore-an-older-version).
 
 | Reason | Cause | Fix |
 | --- | --- | --- |
-| Unsupported file type | The file type is not supported. The editor imports video `.mp4`, `.mov`, `.m4v`; audio `.mp3`, `.m4a`, `.aac`, `.wav`, `.ogg`; images `.png`, `.jpg`, `.jpeg`, `.webp`, `.gif`, `.svg`. WebM, MKV, AVI and HEIC are not supported. | Convert the file to MP4 (H.264) for video, or to PNG or JPEG for photos. |
+| Unsupported file type | The file type is not supported. The editor imports video `.mp4`, `.mov`, `.m4v`, `.webm`; audio `.mp3`, `.m4a`, `.aac`, `.wav`, `.ogg` (and `.webm` with sound only); images `.png`, `.jpg`, `.jpeg`, `.webp`, `.gif`, `.svg`. MKV, AVI and HEIC are not supported. | Convert the file to MP4 (H.264) for video, or to PNG or JPEG for photos. |
 | Not a readable MP4/MOV file: it is damaged or is not a video | The file is damaged, incomplete, or not really an MP4 or MOV file, for example another file renamed to `.mp4`. | Export or download the file again. |
+| Not a readable WebM file: it is damaged or is not a video | The `.webm` file is damaged, or not really a WebM file, for example another file renamed to `.webm`. | Record, export or download the file again. |
+| The video codec of this WebM file (*codec*) is not supported: use VP8, VP9, AV1 or H.264 | The WebM file holds video in another codec, for example HEVC or Theora. | Convert it to MP4 (H.264), or to WebM with VP9. See [WebM files and screen recordings](importing-media.md#webm-files-and-screen-recordings). |
+| This WebM file stores several video frames per block (lacing) ... / The video track of this WebM file is compressed or encrypted / The H.264 track of this WebM file has no decoder configuration | The WebM file stores its video in a way the editor can't read. | Convert it to MP4, or to a new WebM file. |
+| The video track has no frames | The video in the WebM file is empty. | Record or export it again. |
 | The video track has no samples | The video is empty, or it is a fragmented MP4 (written by some screen recorders and streaming downloads). | Save it again as a regular MP4 in a video converter. |
 | The file has no video or audio track | The MP4 or MOV file contains neither video nor audio. | Use a different file. |
 | The audio cannot be decoded ... / The audio is empty | The browser cannot read the audio, or it contains no sound. | Convert the file to WAV or MP3. |
@@ -1083,6 +1088,14 @@ If the card shows **Offline** instead, the video's file is missing: see [Cards s
 **Cause:** The editor works in standard dynamic range (SDR). It shows and exports HDR videos the way a normal (non-HDR) screen shows them. An HDR screen can show the original brighter.
 
 **Fix:** Nothing to fix: on a normal screen, the two look alike. To record SDR video on an iPhone, turn off **HDR Video** in **Settings** > **Camera** > **Record Video**. See [HDR videos](importing-media.md#hdr-videos).
+
+### A WebM video covers the layers below it
+
+**Symptom:** A WebM overlay with a transparent background, for example an animated sticker or a lower third, shows its background in the preview and in the export, and hides the clips on the tracks below.
+
+**Cause:** The editor shows WebM videos without their transparency (VP9 alpha): the whole picture is opaque.
+
+**Fix:** Use a format that keeps transparency: an animated GIF or WebP, or a PNG. See [Shapes and images](shapes-and-images.md) and [WebM files and screen recordings](importing-media.md#webm-files-and-screen-recordings).
 
 ## Organizing media
 
@@ -1373,7 +1386,7 @@ See [Preview and playback](preview-and-playback.md#know-what-to-expect-from-perf
 | The audio clip is drawn faded with diagonal lines: it is muted or turned off. | Select it and click **Unmute** in the quick actions, or right-click it and choose **Enable**. See [Mute a clip](audio-editing.md#mute-a-clip). |
 | The clip's white line runs along the bottom of the clip, and **Volume** in the **Audio** section reads a very low value such as -60.0. | Type `0` in **Volume**. See [Change a clip's volume](audio-editing.md#change-a-clips-volume). |
 | The meter at the right edge of the preview moves, but you still hear nothing. | The sound leaves the editor. Check the browser tab: if it shows a crossed-out speaker, right-click the tab and choose **Unmute site**. Then check your system volume and output device. |
-| The clip's file is an .mp3, .aac, .wav or .ogg file over 1 GB. | Such files play no sound. Convert the file to .m4a (AAC) and import it again. |
+| The clip's file is an .mp3, .aac, .wav or .ogg file, or a .webm file with Vorbis sound, over 1 GB. | Such files play no sound. Convert the file to .m4a (AAC), or the video to .mp4, and import it again. The **Audio** column of the Media tab's list view shows **Vorbis** for such a WebM file. |
 | The clip is gray with a red **Offline** badge: its file is missing, or the browser needs your permission to read it. | Relink the media, or click **Allow access** in the **Media** tab. See [Offline media and relinking](offline-media-and-relinking.md). |
 | The sound cannot be decoded. | Convert the file to .m4a, .mp3 or .wav and import it again. |
 
@@ -2926,4 +2939,4 @@ The current version cannot do these things yet. Each one is available in a later
 - [Command palette and custom shortcuts](command-palette-and-custom-shortcuts.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 48, 2026-10-18</sub>
+<sub>Last updated: Batch 49, 2026-10-18</sub>

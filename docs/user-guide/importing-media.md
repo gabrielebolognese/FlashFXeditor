@@ -13,6 +13,7 @@ Import brings your video, audio and image files into the project so you can use 
 - [Paste images](#paste-images)
 - [Supported file types](#supported-file-types)
   - [HDR videos](#hdr-videos)
+  - [WebM files and screen recordings](#webm-files-and-screen-recordings)
 - [What happens when you import](#what-happens-when-you-import)
 - [Copy or link your files](#copy-or-link-your-files)
 - [Browse your media](#browse-your-media)
@@ -68,11 +69,11 @@ Only images are pasted this way. Paste imports only when the Media panel has the
 
 | Kind | File extensions | Notes |
 |---|---|---|
-| Video | .mp4, .mov, .m4v | The video must use a codec Chrome can decode on your computer, such as H.264, HEVC (H.265) or AV1. Phone recordings from iPhone (HEVC .mov) and Android (H.264 .mp4) work, including portrait and variable frame rate clips. |
-| Audio | .mp3, .m4a, .aac, .wav, .ogg | .mp3, .aac, .wav and .ogg files can be up to 45 minutes long. .m4a files, and the sound of videos, have no length limit. |
+| Video | .mp4, .mov, .m4v, .webm | The video must use a codec Chrome can decode on your computer, such as H.264, HEVC (H.265) or AV1. Phone recordings from iPhone (HEVC .mov) and Android (H.264 .mp4) work, including portrait and variable frame rate clips. .webm files hold VP9, AV1, VP8 or H.264 video, for example screen recordings: see [WebM files and screen recordings](#webm-files-and-screen-recordings). |
+| Audio | .mp3, .m4a, .aac, .wav, .ogg, and .webm with sound only | .mp3, .aac, .wav and .ogg files can be up to 45 minutes long. .m4a files, .webm files and the sound of videos have no length limit. |
 | Images | .png, .jpg, .jpeg, .webp, .gif, .svg | Animated GIF and WebP files keep their animation length as their duration, and play in a loop on the timeline. An SVG needs a width and height, or a viewBox, and stays sharp at any size. See [Shapes and images](shapes-and-images.md). |
 
-Extensions are not case-sensitive (.MOV works). Any other type, for example .webm, .mkv, .avi or .heic, is refused with a message that names the file. Subtitle files (.srt, .vtt) are refused here too: import them in the **Captions** tab; see [Import an SRT or VTT file](captions.md#import-an-srt-or-vtt-file).
+Extensions are not case-sensitive (.MOV works). Any other type, for example .mkv, .avi or .heic, is refused with a message that names the file. Subtitle files (.srt, .vtt) are refused here too: import them in the **Captions** tab; see [Import an SRT or VTT file](captions.md#import-an-srt-or-vtt-file).
 
 > **Note:** Thumbnails and playback of HEVC video need Chrome's hardware HEVC decoder. Without it, the item is still imported but its card shows the film icon instead of a thumbnail, and its clips on the timeline show no thumbnails.
 
@@ -82,12 +83,44 @@ HDR videos import like any other video. This includes iPhone videos recorded wit
 
 > **Note:** On an HDR screen, your phone or the Photos app can show the same video brighter than the editor does. On a normal screen, the two look alike. Exported videos are SDR.
 
+### WebM files and screen recordings
+
+WebM (.webm) is the format Chrome saves when a web page or a browser extension records your screen, and many screen recorders and downloads use it too. A WebM file imports like an MP4: you can skim it, scrub and play it, make its proxy, see its thumbnails and waveform, and export it.
+
+> **Video placeholder: Import a WebM screen recording**
+> - File: `videos/importing-media/webm-screen-recording.mp4` (not recorded yet)
+> - Length: about 45 seconds
+> - Shows: a screen recording saved as `demo.webm` in File Explorer; click **Import media**, select `demo.webm` (listed under **Video**) and click **Open**; the card shows its first frame, its duration and a detail line such as "1584×692 · 30 fps"; click **List view**: the **Codec** column reads **VP9** and the **Audio** column **Opus**; click **Grid view** and double-click the card: the recording lands on the timeline with its sound; drag the playhead along the ruler: the preview follows; press <kbd>Space</kbd>: the recording plays with the voice in sync; press <kbd>Ctrl</kbd>+<kbd>E</kbd> and <kbd>Enter</kbd>: the export is an MP4 that plays the same.
+
+| Part of the file | Supported |
+| --- | --- |
+| Video | **VP9**, **AV1**, **VP8** or **H.264** |
+| Sound | **Opus** or **Vorbis** |
+| Sound only | A .webm file with sound and no picture, for example audio downloaded from a video site, imports as an audio item. In the file picker it is listed under **Video**. |
+
+The codec names show in the **Codec** and **Audio** columns of the list view.
+
+What to know:
+
+- Screen recordings often have uneven gaps between frames. Each frame keeps the time it was recorded at, and the detail line shows the most common frame rate, for example 30 fps.
+- Recorders often start the sound a few hundredths of a second after the first frame. The editor keeps that delay, so the voice stays in sync with the picture, also in your export.
+- The editor reads the whole file to find its frames, when you import it and again the first time its picture is needed: about half a second for a 10-minute 1080p recording. It then keeps the result in the project's `cache` folder.
+- The editor tells a video by its content, not its extension: a WebM file that was saved as .mp4 opens too.
+- **Vorbis** sound (written by older converters) is decoded whole, like an .mp3 file. A WebM file over 1 GB with Vorbis sound plays no sound, and a very long one uses a lot of memory. **Opus** sound, which browsers and most recorders write, has no such limits.
+
+What is not supported:
+
+- Other video codecs, for example HEVC or Theora, are refused. The message names the codec. See [Fix import problems](#fix-import-problems).
+- .mkv files are refused, although WebM is a kind of Matroska file. Convert them to .mp4 or .webm.
+- Transparency is not kept: a VP9 video with a transparent background shows as an opaque picture that covers the layers below. For a sticker with a transparent background, use an animated GIF or WebP instead; see [Shapes and images](shapes-and-images.md).
+- A recording whose window changed size while you recorded keeps the size it started with.
+
 ## What happens when you import
 
 For each file, Shorts Editor:
 
 1. **Checks the type** from the file extension (or, for a pasted image, from the image type). Unsupported files are skipped.
-2. **Reads the file's details**: duration, picture size, rotation, frame rate, and the video and audio formats. A portrait phone video is shown upright with its displayed size, for example 1080×1920. For a video with a variable frame rate, the most common frame rate is used, for example 30 fps. A file that cannot be read is skipped. A message gives the reason, and the file stays listed in the **Media** tab as a failed import. See [Check failed imports](#check-failed-imports).
+2. **Reads the file's details**: duration, picture size, rotation, frame rate, and the video and audio formats. A portrait phone video is shown upright with its displayed size, for example 1080×1920. For a video with a variable frame rate, such as a phone clip or a screen recording, the most common frame rate is used, for example 30 fps. A file that cannot be read is skipped. A message gives the reason, and the file stays listed in the **Media** tab as a failed import. See [Check failed imports](#check-failed-imports).
 3. **Copies the file** into the `media` folder of your project folder. The original file is not changed or moved, and the project keeps working even if you delete or move the original later.
    - If a file with the same name is already in `media`, the copy gets a number, for example `clip (2).mp4`.
    - Characters that are not allowed in file names are replaced with `_`.
@@ -292,7 +325,7 @@ Sometimes a file of a [supported type](#supported-file-types) can't be brought i
 - a red **Failed** badge. Its tooltip reads "This file could not be imported: it is not in the project".
 - the icon of the file's kind: video, audio or image.
 - the file name.
-- the reason, for example "Not a readable MP4/MOV file: it is damaged or is not a video". Point at a shortened name or reason to read it whole.
+- the reason, for example "Not a readable MP4/MOV file: it is damaged or is not a video" (or, for a .webm file, "Not a readable WebM file: it is damaged or is not a video"). Point at a shortened name or reason to read it whole.
 - **Dismiss** (the **X**) at the right end.
 
 What to know:
@@ -302,7 +335,7 @@ What to know:
 - Fix the file, for example export it again, and import it again. When it imports, its row disappears. If it fails again, the row shows the new reason.
 - To remove one row, click its **X**. To remove them all, run **Dismiss failed imports** from the command palette (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>).
 - The rows are not saved with the project: they disappear when you close the project.
-- A file of an unsupported type, such as .webm, gets no row. Only the message names it.
+- A file of an unsupported type, such as .mkv, gets no row. Only the message names it.
 
 ## Fix import problems
 
@@ -313,6 +346,10 @@ When a file is not imported, a message at the top of the window says why. It clo
 | **Can't import** *file name*: **Unsupported file type** | The extension is not in the [supported list](#supported-file-types). | Convert the file to a supported type, for example .mp4 or .png. |
 | **Can't import** *n* **files** | Several files were refused. The message lists each file with its reason. | Check each reason in this table. |
 | **Not a readable MP4/MOV file: it is damaged or is not a video** (or **Not a readable MP4/MOV file: no movie header found**) | The video file is damaged, incomplete, or not really an MP4 or MOV file, for example another file renamed to .mp4. | Export, download or convert it again. |
+| **Not a readable WebM file: it is damaged or is not a video** | The .webm file is damaged, or is not really a WebM file, for example another file renamed to .webm. A recording that was cut short is not damaged: it imports up to its last complete frame. | Record, export or download it again. |
+| **The video codec of this WebM file (***codec***) is not supported: use VP8, VP9, AV1 or H.264** | The WebM file holds video in another codec, for example HEVC (`V_MPEGH/ISO/HEVC`) or Theora (`V_THEORA`). | Convert it to .mp4 with H.264, or to .webm with VP9. |
+| **This WebM file stores several video frames per block (lacing), which is not supported**, **The video track of this WebM file is compressed or encrypted** or **The H.264 track of this WebM file has no decoder configuration** | The WebM file stores its video in a way the editor can't read. | Convert it to .mp4, or to a new .webm file. |
+| **The video track has no frames** | The video in the WebM file is empty, for example a recording stopped at once. | Record or export it again. |
 | **Audio files over 45 minutes cannot be imported yet (this one is** *N* **minutes)** | An .mp3, .aac, .wav or .ogg file is longer than 45 minutes. The editor refuses it before it reads the sound. | Cut it into parts of 45 minutes or less, or convert it to .m4a, which has no length limit. |
 | **The file has no video or audio track** | The file holds no picture or sound the editor can use. | Check the file in a media player. |
 | **The video track has no samples** | The video track is empty. | Export or convert it again. |
@@ -343,4 +380,4 @@ If a card keeps its kind icon instead of a thumbnail, Chrome could not decode th
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 47, 2026-10-18</sub>
+<sub>Last updated: Batch 49, 2026-10-18</sub>
