@@ -6,7 +6,9 @@
 // - Other audio files (mp3, aac, wav, ogg) and MP4 audio without a WebCodecs decoder use
 //   `decodeAudioData` on the whole file, at 48 kHz (one segment). The import probe already decodes
 //   these once; its buffer is reused (`put`).
-// - At most 2 channels (spec §14): MP4 audio is mixed down in the worker, decodeAudioData output here.
+// - At most 2 channels (spec §14): MP4 audio is mixed down in the worker, decodeAudioData output here
+//   in slices with yields between them (a long 5.1 file took one main-thread task per minute of audio).
+// - `reset` (the project closed) also closes the worker's parsed audio tracks and their files (P13).
 import type { MediaId, Project } from "../../core/document/types.js";
 import { downmix } from "../../media/decode/audioTrack.js";
 import { classifyFile } from "../../media/mediaKinds.js";
@@ -17,6 +19,8 @@ import { segmentLayout, segmentRange, type SegmentLayout } from "./segments.js";
 
 /** Sample frames copied per slice when filling an AudioBuffer from worker PCM. */
 const FILL_SLICE = 1 << 20;
+/** Sample frames mixed down per slice (~1 ms for 5.1). */
+const MIX_SLICE = 1 << 18;
 /** Larger files are not read whole into memory for decodeAudioData. */
 const MAX_WHOLE_FILE_BYTES = 1024 * 1024 * 1024;
 
@@ -88,6 +92,8 @@ export class DecodedAudio {
       const generation = this.generation;
       opening = this.openMedia(mediaId).then((audio) => {
         if (generation === this.generation) this.media.set(mediaId, audio);
+        // Opened for a project that closed meanwhile: the worker lets go of the track.
+        else if (audio.worker) this.closeWorkerAudio(mediaId);
         return audio;
       });
       this.opening.set(mediaId, opening);
@@ -134,11 +140,26 @@ export class DecodedAudio {
     this.load(mediaId, index, priority).catch(() => undefined);
   }
 
-  /** Stores a buffer decoded elsewhere (the import probe's decodeAudioData) as the media's whole audio. */
+  /**
+   * Stores a buffer decoded elsewhere (the import probe's decodeAudioData) as the media's whole audio.
+   * More than 2 channels are mixed down in slices first; loads meanwhile wait for it.
+   */
   put(mediaId: MediaId, decoded: AudioBuffer): void {
-    const buffer = this.atMostStereo(decoded);
-    this.media.set(mediaId, { layout: segmentLayout(buffer.sampleRate, buffer.length, { whole: true }), worker: false });
-    this.cache.set(mediaId, 0, buffer);
+    const generation = this.generation;
+    this.media.set(mediaId, { layout: segmentLayout(decoded.sampleRate, decoded.length, { whole: true }), worker: false });
+    const key = keyOf(mediaId, 0);
+    const loading = this.atMostStereo(decoded).then((buffer): LoadedSegment => {
+      if (generation === this.generation && this.media.has(mediaId)) this.cache.set(mediaId, 0, buffer);
+      return { buffer, pcm: null };
+    });
+    this.loading.set(key, loading);
+    const settle = () => {
+      if (this.loading.get(key) === loading) this.loading.delete(key);
+    };
+    loading.then(settle, (error: unknown) => {
+      settle();
+      this.fail(mediaId, error);
+    });
   }
 
   /** The media left the project. */
@@ -146,17 +167,23 @@ export class DecodedAudio {
     this.cache.release(mediaId);
     this.media.delete(mediaId);
     this.failed.delete(mediaId);
-    this.deps.workers.request("closeAudio", { mediaId }).catch(() => undefined);
+    this.closeWorkerAudio(mediaId);
   }
 
   /** The project closed: forget everything (loads in flight are dropped when they land). */
   reset(): void {
     this.generation += 1;
+    for (const [mediaId, audio] of this.media) if (audio.worker) this.closeWorkerAudio(mediaId);
     this.cache.clear();
     this.media.clear();
     this.opening.clear();
     this.loading.clear();
     this.failed.clear();
+  }
+
+  /** decode.worker keeps an opened track (its sample table and file) until it is closed (P13). */
+  private closeWorkerAudio(mediaId: MediaId): void {
+    this.deps.workers.request("closeAudio", { mediaId }).catch(() => undefined);
   }
 
   private fail(mediaId: MediaId, error: unknown): void {
@@ -184,7 +211,7 @@ export class DecodedAudio {
     const file = await this.requireFile(mediaId);
     if (!audio.worker) {
       if (file.size > MAX_WHOLE_FILE_BYTES) throw new Error("The file is too large to decode its audio whole");
-      const buffer = this.atMostStereo(await this.deps.decodeFile(await file.arrayBuffer()));
+      const buffer = await this.atMostStereo(await this.deps.decodeFile(await file.arrayBuffer()));
       // The real length is known now.
       audio.layout = segmentLayout(buffer.sampleRate, buffer.length, { whole: true });
       return { buffer, pcm: null };
@@ -204,17 +231,25 @@ export class DecodedAudio {
     for (let at = 0; at < length; at += FILL_SLICE) {
       const end = Math.min(length, at + FILL_SLICE);
       pcm.forEach((channel, c) => buffer.copyToChannel(channel.subarray(at, end), c, at));
-      if (end < length) await (this.deps.yieldToMain?.() ?? new Promise<void>((resolve) => setTimeout(resolve, 0)));
+      if (end < length) await this.yieldToMain();
     }
   }
 
-  /** decodeAudioData keeps the source channels: more than 2 are mixed down like the worker's. */
-  private atMostStereo(buffer: AudioBuffer): AudioBuffer {
+  /** decodeAudioData keeps the source channels: more than 2 are mixed down like the worker's, in slices. */
+  private async atMostStereo(buffer: AudioBuffer): Promise<AudioBuffer> {
     if (buffer.numberOfChannels <= 2) return buffer;
     const planes = Array.from({ length: buffer.numberOfChannels }, (_, c) => buffer.getChannelData(c));
     const out = this.deps.createBuffer({ length: buffer.length, numberOfChannels: 2, sampleRate: buffer.sampleRate });
-    downmix(planes).forEach((plane, c) => out.copyToChannel(plane as Float32Array<ArrayBuffer>, c));
+    for (let at = 0; at < buffer.length; at += MIX_SLICE) {
+      const end = Math.min(buffer.length, at + MIX_SLICE);
+      downmix(planes.map((plane) => plane.subarray(at, end))).forEach((plane, c) => out.copyToChannel(plane as Float32Array<ArrayBuffer>, c, at));
+      if (end < buffer.length) await this.yieldToMain();
+    }
     return out;
+  }
+
+  private yieldToMain(): Promise<void> {
+    return this.deps.yieldToMain?.() ?? new Promise<void>((resolve) => setTimeout(resolve, 0));
   }
 
   private async requireFile(mediaId: MediaId): Promise<File> {

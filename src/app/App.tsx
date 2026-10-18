@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { useStoreSelector } from "../core/store/useStoreSelector.js";
 import { CommandPalette } from "../panels/CommandPalette.js";
 import { MediaPanel } from "../panels/MediaPanel.js";
@@ -20,10 +20,19 @@ import { useWorkspaceLayout } from "./useWorkspaceLayout.js";
 
 const selectProjectId = (view: AppView) => view.project?.id ?? null;
 
+/** Marks `name` on the performance timeline at the first idle moment after the first commit (startup times, spec P12). */
+function useInteractiveMark(name: string): void {
+  useEffect(() => {
+    const handle = requestIdleCallback(() => performance.mark(name));
+    return () => cancelIdleCallback(handle);
+  }, [name]);
+}
+
 /** The fixed four-panel layout of spec §2. */
 function Editor() {
   const workspaceRef = useRef<HTMLDivElement>(null);
   useWorkspaceLayout(workspaceRef);
+  useInteractiveMark("editor:interactive");
 
   return (
     <div className={styles.app}>
@@ -54,6 +63,7 @@ function Editor() {
  */
 export function App() {
   const projectId = useStoreSelector(appView, selectProjectId);
+  useInteractiveMark("app:interactive");
   return (
     <>
       {projectId === null ? <StartScreen /> : <Editor key={projectId} />}

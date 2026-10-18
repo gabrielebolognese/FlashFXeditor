@@ -8,6 +8,7 @@
 // restore. Closing the tab or opening another project with such edits asks first.
 import { createStore } from "../core/store/createStore.js";
 import type { ConversionReport } from "../core/document/fpsConvert.js";
+import { createProject as emptyDocument } from "../core/document/project.js";
 import type { Rational } from "../core/document/types.js";
 import { showToast } from "../ui/toasts.js";
 import { errorMessage } from "../project/errorMessage.js";
@@ -22,7 +23,10 @@ import { attachFonts, detachFonts } from "./fontController.js";
 import { attachMedia, detachMedia } from "./mediaController.js";
 import { attachPresets, detachPresets } from "./presetController.js";
 import { attachPreview, captureThumbnail, detachPreview, frameService } from "./previewController.js";
-import { actions, appSettings, appVersion, documentStore, focusScopes, layoutStore, recentProjects, saveStatus, sessionStore, templateStore } from "./services.js";
+import { actions, appSettings, appVersion, documentStore, focusScopes, layoutStore, recentProjects, saveStatus, sessionStore, templateStore, workerPool } from "./services.js";
+
+/** Workers that serve one project (sessions, indexes, analysis and proxy jobs): stopped when it closes (P13). */
+const PROJECT_WORKERS = ["decode", "analysis", "proxy"] as const;
 
 /** What opening another project waits for while a read-only project has unsaved edits. */
 type Flow = () => Promise<void>;
@@ -166,6 +170,9 @@ async function closeCurrent(): Promise<void> {
   detachFonts();
   detachPresets();
   await session.close();
+  // Their memory goes with the project (decoders, sample indexes, parsed audio tracks, heaps); the
+  // next project starts new ones on its first request.
+  for (const kind of PROJECT_WORKERS) workerPool.stop(kind);
 }
 
 /** Opening another project closes the current one after saving (spec §15). */
@@ -195,6 +202,16 @@ async function switchTo(opened: OpenedProject): Promise<void> {
     project: { id: opened.project.id, folder: opened.dir.name },
     dialog: opened.recovery ? { kind: "recovery", recovery: opened.recovery } : null,
   });
+}
+
+/**
+ * Closes the open project and shows the start screen over an empty placeholder document, so nothing
+ * of the closed project stays referenced (dev builds: the memory benchmark of Batch 45).
+ */
+export async function closeProject(): Promise<void> {
+  await closeCurrent();
+  setView({ project: null, dialog: null });
+  documentStore.load(emptyDocument({ id: crypto.randomUUID(), name: "Untitled project", now: new Date().toISOString(), appVersion }));
 }
 
 /**

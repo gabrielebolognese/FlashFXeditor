@@ -1,4 +1,4 @@
-import { Redo2, Settings, Undo2, Upload } from "lucide-react";
+import { Activity, Redo2, Settings, Undo2, Upload } from "lucide-react";
 import { useLayoutEffect, useRef, type KeyboardEvent, type MouseEvent } from "react";
 import { MAX_PROJECT_NAME, renameProject } from "../core/commands/projectCommands.js";
 import type { Project } from "../core/document/types.js";
@@ -8,6 +8,7 @@ import { formatFps } from "../project/projectPresets.js";
 import { runCommand } from "../ui/commands.js";
 import { IconButton } from "../ui/IconButton.js";
 import styles from "./AppBar.module.css";
+import { perfDev } from "./perfDev.js";
 import { projectNaming } from "./projectController.js";
 import { actions, documentStore, saveStatus } from "./services.js";
 
@@ -143,7 +144,16 @@ export function AppBar() {
         <Upload className={styles.exportIcon} strokeWidth={2.5} aria-hidden="true" />
         Export
       </button>
+      {import.meta.env.DEV && <PerfStatsToggle />}
       <IconButton icon={Settings} commandId="app.settings" size="default" />
     </header>
   );
+}
+
+const selectPerfStats = (state: { stats: boolean }) => state.stats;
+
+/** Dev builds: the performance overlay's toggle (Batch 45). */
+function PerfStatsToggle() {
+  const shown = useStoreSelector(perfDev, selectPerfStats);
+  return <IconButton icon={Activity} commandId="dev.togglePerfStats" label="Performance stats (dev)" pressed={shown} size="default" />;
 }

@@ -195,6 +195,11 @@ export class VideoDecodeSession<F extends DecodedFrame = VideoFrame> {
     return this.running || this.jobs.length > 0;
   }
 
+  /** Jobs waiting for the decoder (dev stats: the worker's queue depth). */
+  get queued(): number {
+    return this.jobs.length;
+  }
+
   /** Frames held by the ring. */
   get openFrames(): number {
     return this.ring.length;

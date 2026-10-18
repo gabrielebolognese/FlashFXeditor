@@ -17,6 +17,7 @@
 //   ready (`proxyReady`) and it opened, else to the full file. A proxy that fails to open (file gone,
 //   no decoder) is not used again until it is released (removed or made again).
 import type { MediaId } from "../../core/document/types.js";
+import { percentiles } from "../../core/perf/perfMath.js";
 import { fitWithin } from "../../render/gpu/fitWithin.js";
 import type { Renderer, TextureHandle } from "../../render/gpu/renderer.js";
 import type { Lod, TextureKey, TexturePool } from "../cache/TexturePool.js";
@@ -26,7 +27,7 @@ import type { WorkerPool } from "../workers/WorkerPool.js";
 
 export const MAX_IN_FLIGHT_PER_MEDIA = 4;
 /** Latency samples kept for the percentiles. */
-const LATENCY_SAMPLES = 64;
+const LATENCY_SAMPLES = 128;
 
 /** Worker queue class of each frame priority. */
 const WORKER_PRIORITY: Record<FramePriority, Priority> = { scrub: "user", playback: "playback", idle: "prefetch" };
@@ -83,11 +84,15 @@ export interface FrameServiceStats {
   framesReceived: number;
   /** Frames received and not closed yet: 0 whenever the main thread is idle (P13). */
   openFrames: number;
-  /** ms from the request to the first frame shown (approximate or exact), and to the exact frame. */
+  /** ms from the request to the first frame shown (approximate or exact), and to the exact frame, over the last 128 requests. */
   approxLastMs: number | null;
+  approxP50Ms: number | null;
   approxP95Ms: number | null;
+  approxP99Ms: number | null;
   exactLastMs: number | null;
+  exactP50Ms: number | null;
   exactP95Ms: number | null;
+  exactP99Ms: number | null;
   indexFromCache: number;
   indexParsed: number;
 }
@@ -125,11 +130,6 @@ interface Lane {
 const keyOf = (mediaId: MediaId, lod: Lod) => `${mediaId}|${lod}`;
 const supersededError = () => new DOMException("Superseded by a newer request", "AbortError");
 
-function percentile95(samples: readonly number[]): number | null {
-  if (samples.length === 0) return null;
-  const sorted = [...samples].sort((a, b) => a - b);
-  return sorted[Math.min(sorted.length - 1, Math.ceil(sorted.length * 0.95) - 1)] as number;
-}
 
 export class FrameService {
   private source: FrameSource | null = null;
@@ -325,13 +325,25 @@ export class FrameService {
   }
 
   get stats(): FrameServiceStats {
-    return {
-      ...this.counters,
-      approxLastMs: this.approxLastMs,
-      approxP95Ms: percentile95(this.approxSamples),
-      exactLastMs: this.exactLastMs,
-      exactP95Ms: percentile95(this.exactSamples),
-    };
+    const [approxP50Ms = null, approxP95Ms = null, approxP99Ms = null] = percentiles(this.approxSamples, [50, 95, 99]);
+    const [exactP50Ms = null, exactP95Ms = null, exactP99Ms = null] = percentiles(this.exactSamples, [50, 95, 99]);
+    return { ...this.counters, approxLastMs: this.approxLastMs, approxP50Ms, approxP95Ms, approxP99Ms, exactLastMs: this.exactLastMs, exactP50Ms, exactP95Ms, exactP99Ms };
+  }
+
+  /** The latency samples kept (ms; benchmarks read them after `resetLatencies`). */
+  get latencySamples(): { approx: readonly number[]; exact: readonly number[] } {
+    return { approx: this.approxSamples, exact: this.exactSamples };
+  }
+
+  /** Every latency as it is measured (the scrub benchmark keeps them all), or null. */
+  onLatency: ((kind: "approx" | "exact", ms: number) => void) | null = null;
+
+  /** Forgets the latency samples, so a benchmark measures its own requests only. */
+  resetLatencies(): void {
+    this.approxSamples.length = 0;
+    this.exactSamples.length = 0;
+    this.approxLastMs = null;
+    this.exactLastMs = null;
   }
 
   /** The decode worker's own counters (dev stats). */
@@ -547,11 +559,13 @@ export class FrameService {
   private recordApprox(started: number): void {
     this.approxLastMs = this.now() - started;
     pushSample(this.approxSamples, this.approxLastMs);
+    this.onLatency?.("approx", this.approxLastMs);
   }
 
   private recordExact(started: number): void {
     this.exactLastMs = this.now() - started;
     pushSample(this.exactSamples, this.exactLastMs);
+    this.onLatency?.("exact", this.exactLastMs);
   }
 
   private now(): number {

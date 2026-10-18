@@ -16,7 +16,7 @@ const media = (id: string, relPath: string, extra: Partial<MediaItem> = {}): Med
   ...extra,
 });
 
-function setup(items: MediaItem[], worker: { supported?: boolean; frames?: number } = {}) {
+function setup(items: MediaItem[], worker: { supported?: boolean; frames?: number; decodedLength?: number } = {}) {
   const project: Project = { ...createProject({ id: "p", name: "P", now: "2026-10-15T00:00:00.000Z", appVersion: "0" }), media: Object.fromEntries(items.map((m) => [m.id, m])) };
   const requests: { method: string; params: Record<string, unknown> }[] = [];
   const request = vi.fn(async (method: string, params: Record<string, unknown>) => {
@@ -29,19 +29,20 @@ function setup(items: MediaItem[], worker: { supported?: boolean; frames?: numbe
     return null;
   });
   const decodeFile = vi.fn(async () => {
-    const buffer = new FakeAudioBuffer({ length: 4800, numberOfChannels: 6, sampleRate: 48_000 });
+    const buffer = new FakeAudioBuffer({ length: worker.decodedLength ?? 4800, numberOfChannels: 6, sampleRate: 48_000 });
     for (let c = 0; c < 6; c++) buffer.getChannelData(c).fill(c % 2 === 0 ? 0.1 : -0.1);
     return buffer as unknown as AudioBuffer;
   });
+  const yieldToMain = vi.fn(async () => undefined);
   const deps: DecodedAudioDeps = {
     workers: { request } as unknown as DecodedAudioDeps["workers"],
     document: { getState: () => project },
     file: async (id) => (project.media[id] ? new File([new Uint8Array(16)], "x") : null),
     decodeFile,
     createBuffer: (options) => new FakeAudioBuffer(options) as unknown as AudioBuffer,
-    yieldToMain: async () => undefined,
+    yieldToMain,
   };
-  return { audio: new DecodedAudio(deps), requests, decodeFile };
+  return { audio: new DecodedAudio(deps), requests, decodeFile, yieldToMain };
 }
 
 describe("DecodedAudio", () => {
@@ -78,6 +79,20 @@ describe("DecodedAudio", () => {
     expect(audio.layout("a")).toMatchObject({ frames: 4800, count: 1 });
   });
 
+  it("mixes long 5.1 audio down in slices, yielding between them", async () => {
+    const { audio, yieldToMain } = setup([media("a", "media/long.wav", { kind: "audio" })], { decodedLength: 600_000 });
+    const { buffer } = await audio.load("a", 0);
+    expect(buffer.numberOfChannels).toBe(2);
+    expect(buffer.length).toBe(600_000);
+    // 600,000 frames in 2^18-frame slices: two yields between three slices.
+    expect(yieldToMain).toHaveBeenCalledTimes(2);
+    // L + (C + SL) / sqrt(2) and R + (C + SR) / sqrt(2), the LFE dropped, in every slice.
+    for (const at of [0, 300_000, 599_999]) {
+      expect(buffer.getChannelData(0)[at]).toBeCloseTo(0.1 + Math.SQRT1_2 * 0.2, 6);
+      expect(buffer.getChannelData(1)[at]).toBeCloseTo(-0.1, 6);
+    }
+  });
+
   it("falls back to decodeAudioData when the worker has no decoder for the codec", async () => {
     const { audio, decodeFile, requests } = setup([media("v", "media/clip.mp4")], { supported: false });
     await audio.load("v", 0);
@@ -91,6 +106,28 @@ describe("DecodedAudio", () => {
     audio.put("a", decoded);
     expect((await audio.load("a", 0)).buffer).toBe(decoded);
     expect(decodeFile).not.toHaveBeenCalled();
+  });
+
+  it("mixes a 5.1 buffer from the probe down without decoding the file again", async () => {
+    const { audio, decodeFile } = setup([media("a", "media/surround.wav", { kind: "audio" })]);
+    const decoded = new FakeAudioBuffer({ length: 960, numberOfChannels: 6, sampleRate: 48_000 });
+    audio.put("a", decoded as unknown as AudioBuffer);
+    expect(audio.layout("a")).toMatchObject({ frames: 960, count: 1 });
+    const { buffer } = await audio.load("a", 0);
+    expect(buffer.numberOfChannels).toBe(2);
+    expect(audio.segment("a", 0)).toBe(buffer);
+    expect(decodeFile).not.toHaveBeenCalled();
+  });
+
+  it("closes the worker's audio tracks when the project closes, including opens in flight", async () => {
+    const { audio, requests } = setup([media("v", "media/clip.mp4"), media("w", "media/other.mp4")]);
+    await audio.open("v");
+    const opening = audio.open("w");
+    audio.reset();
+    expect(requests.filter((r) => r.method === "closeAudio").map((r) => r.params.mediaId)).toEqual(["v"]);
+    await opening;
+    expect(requests.filter((r) => r.method === "closeAudio").map((r) => r.params.mediaId)).toEqual(["v", "w"]);
+    expect(audio.layout("w")).toBeNull();
   });
 
   it("remembers failures, and forgets media on release and reset", async () => {

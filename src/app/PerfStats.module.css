@@ -1,0 +1,19 @@
+/*
+ * Dev performance stats (Batch 45; gap: no DS pattern for debug readouts): the GPU stats chip, fixed
+ * at the bottom left over the app (start screen included), never taking the pointer.
+ */
+.stats {
+  position: fixed;
+  bottom: var(--space-3);
+  left: var(--space-3);
+  z-index: var(--z-overlay);
+  margin: 0;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+  background: var(--surface-3);
+  color: var(--text-secondary);
+  font: var(--type-mono);
+  white-space: pre;
+  pointer-events: none;
+}

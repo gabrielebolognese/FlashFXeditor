@@ -118,12 +118,14 @@ export class DecodeSessions<F extends DecodedFrame = VideoFrame> {
     const totals = { ...this.closedStats };
     let liveDecoders = 0;
     let openFrames = 0;
+    let queued = 0;
     for (const { session } of this.entries.values()) {
       for (const stat of SUMMED) totals[stat] += session.stats[stat];
       if (session.live) liveDecoders += 1;
       openFrames += session.openFrames;
+      queued += session.queued;
     }
-    return { sessions: this.entries.size, liveDecoders, openFrames, ...totals, indexParsed: this.indexParsed, indexFromCache: this.indexFromCache, idleCloses: this.idleCloses };
+    return { sessions: this.entries.size, liveDecoders, openFrames, queued, ...totals, indexParsed: this.indexParsed, indexFromCache: this.indexFromCache, idleCloses: this.idleCloses };
   }
 
   /** Reads or builds the index and registers the session, unless `opening` was closed meanwhile. */
