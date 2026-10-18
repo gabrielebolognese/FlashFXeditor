@@ -1,6 +1,6 @@
 # Importing media
 
-Import brings your video, audio and image files into the project so you can use them on the timeline. Shorts Editor copies each file into the project folder, reads its details (duration, size, frame rate, rotation) and shows it in the Media panel. There you can browse, skim, sort, rename and remove your media, and follow the proxies the editor makes of heavy videos.
+Import brings your video, audio and image files into the project so you can use them on the timeline. Shorts Editor copies each file into the project folder (or, if you choose, links to it where it is), reads its details (duration, size, frame rate, rotation) and shows it in the Media panel. There you can browse, skim, sort, rename and remove your media, and follow the proxies the editor makes of heavy videos. To sort media into bins, search and filter them, see [Organizing media](organizing-media.md).
 
 > **Video placeholder: Import and organize media**
 > - File: `videos/importing-media/import-overview.mp4` (not recorded yet)
@@ -13,6 +13,7 @@ Import brings your video, audio and image files into the project so you can use 
 - [Paste images](#paste-images)
 - [Supported file types](#supported-file-types)
 - [What happens when you import](#what-happens-when-you-import)
+- [Copy or link your files](#copy-or-link-your-files)
 - [Browse your media](#browse-your-media)
 - [Sort media](#sort-media)
 - [Select media](#select-media)
@@ -81,6 +82,7 @@ For each file, Shorts Editor:
 3. **Copies the file** into the `media` folder of your project folder. The original file is not changed or moved, and the project keeps working even if you delete or move the original later.
    - If a file with the same name is already in `media`, the copy gets a number, for example `clip (2).mp4`.
    - Characters that are not allowed in file names are replaced with `_`.
+   - With **Link to the original files** chosen in **Settings** > **Media**, the file is not copied: the project reads it where it is. See [Copy or link your files](#copy-or-link-your-files).
 4. **Adds all the items to the project in one step**, so one Undo removes the whole import. Undo does not delete the copied files from the `media` folder.
 5. **Makes thumbnails** in the background. For each image, a thumbnail of the picture. For each video, first its card thumbnail (the first frame), then the thumbnails that its clips show on the timeline: one every 2 seconds and one every half second of the video. Video thumbnails wait while you play, scrub or drag. Audio items show an audio icon. Thumbnails are saved in the project's `cache` folder, so they appear at once the next time you open the project. If that folder is deleted, the thumbnails are made again. See [Clip thumbnails, waveforms and badges](clip-thumbnails-and-waveforms.md).
 6. **Analyzes the sound** of each audio file and each video with sound, in the background while you are not playing, and saves the result in the `cache` folder. Audio clips on the timeline draw their waveform from it. See [Know how sound is loaded](audio.md#know-how-sound-is-loaded).
@@ -94,7 +96,38 @@ When the files you import add up to 32 MB or more, a message at the top of the w
 - Several files: **Importing 2 of 5**, with the current file name and percentage.
 - At the end: **Imported 5 of 5 files**. This message closes by itself.
 
-You can keep working while files copy. If you start another import before the first one ends, it begins when the first one finishes. If you close the project during an import, the import stops, the partly copied files are removed, and nothing is added.
+You can keep working while files copy. If you start another import before the first one ends, it begins when the first one finishes. If you close the project during an import, the import stops, the partly copied files are removed, and nothing is added. Linked files are not copied, so they don't count toward the 32 MB.
+
+## Copy or link your files
+
+> **Video placeholder: Link to your files instead of copying them**
+> - File: `videos/importing-media/copy-or-link.mp4` (not recorded yet)
+> - Length: about 35 seconds
+> - Shows: click **Settings** (the gear) in the app bar, then the **Media** tab; point at **Copy files into the project folder** (chosen) and its note; click **Link to the original files**; click **Done**; drag a folder named "Footage" from File Explorer onto the Media panel; open the project folder in File Explorer: its `media` folder has no new files; right-click a new card and choose **Reveal in folder**: the message reads **Linked file: Footage/clip.mp4**.
+
+By default, the editor copies every file you import into the project's `media` folder. You can choose to link to your files where they are instead.
+
+1. Click **Settings** (the gear) at the right end of the app bar.
+2. Click the **Media** tab.
+3. Under **Import**, click one of the two choices:
+
+| Choice | What it does | Good for |
+| --- | --- | --- |
+| **Copy files into the project folder** (the default) | Copies each file into the `media` folder. "The project stays self-contained in one folder you can move or back up." | Projects you move, back up or open on another computer |
+| **Link to the original files** | Copies nothing: the project reads your files where they are. "Moved or renamed files go offline until you relink them, and after a restart the browser asks again before reading them." | Large footage you don't want twice on your disk |
+
+4. Click **Done**, or press <kbd>Esc</kbd>. The choice is already in effect.
+
+You can also switch with the command palette: run **Import mode: copy files into the project** or **Import mode: link to the original files**.
+
+What to know about the choice:
+
+- It applies to your next imports, in every project you open in this browser. "Media already in the project keep how they were imported."
+- Linking works for the files you pick with **Import media** or **Add image**, and for the files and folders you drop on the Media panel or the timeline. "Files you paste are always copied."
+- The browser keeps the links. In another browser or on another computer, linked media are offline until you relink them. Use copies for projects you move.
+- After you restart the browser, it asks again before the editor can read linked files. See [Give the browser access to linked files](offline-media-and-relinking.md#give-the-browser-access-to-linked-files).
+- If you move, rename or delete a linked file, its media item goes offline and its clips show a gray slate. See [Offline media and relinking](offline-media-and-relinking.md).
+- **Reveal in folder** in the media menu tells you where a linked file is. See [Find a media file on your disk](organizing-media.md#find-a-media-file-on-your-disk).
 
 ## Browse your media
 
@@ -102,10 +135,12 @@ The Media panel has three tabs: **Media**, **Presets** and **Captions**. This pa
 
 The **Media** tab has two views. Switch between them with the **Grid view** and **List view** buttons in the panel header.
 
+Above the cards, the **Search media** field and the filter chips **Video**, **Audio**, **Images** and **Unused** narrow what the tab shows. On the left, the bin strip shows **All** your media, one kind, or one of the bins you create with **New bin**. See [Organizing media](organizing-media.md). When media are offline, a notice strip under the search field says so; see [Offline media and relinking](offline-media-and-relinking.md).
+
 > **Video placeholder: Sort, rename and remove media**
 > - File: `videos/importing-media/organize-media.mp4` (not recorded yet)
 > - Length: about 55 seconds
-> - Shows: a Media panel with six items in grid view, one of them a 4K clip with a green **PX** chip; choose **Duration** in the **Sort media by** list, then click the **Ascending** button so it becomes **Descending**; switch to **List view**, click the **Resolution** column twice and point at the **Proxy** column (**960×540** for the 4K clip, **None** for the others); Shift+click to select three rows; double-click a name, type a new name and press <kbd>Enter</kbd>; select an item, press <kbd>Delete</kbd>, and click **Remove from project** in the **Remove media** dialog; press <kbd>Ctrl</kbd>+<kbd>Z</kbd> and the item comes back; switch back to **Grid view**, point at a card to show its **Unused** chip, right-click it to show the media menu with **Insert at playhead**, **Overwrite at playhead**, **Add to canvas**, **Generate proxy**, **Remove proxy**, **Regenerate thumbnails**, **Rename** and **Remove**, and press <kbd>Esc</kbd>.
+> - Shows: a Media panel with six items in grid view, one of them a 4K clip with a green **PX** chip; choose **Duration** in the **Sort media by** list, then click the **Ascending** button so it becomes **Descending**; switch to **List view**, click the **Resolution** column twice and point at the **Proxy** column (**960×540** for the 4K clip, **None** for the others); Shift+click to select three rows; drag the right edge of the **Name** heading to widen the column; double-click a name, type a new name and press <kbd>Enter</kbd>; select an unused item, press <kbd>Delete</kbd>, and click **Remove from project** in the **Remove media** dialog; press <kbd>Ctrl</kbd>+<kbd>Z</kbd> and the item comes back; switch back to **Grid view**, point at a card to show its **Unused** chip, right-click it to show the media menu with **Insert at playhead**, **Overwrite at playhead**, **Add to canvas**, **Generate proxy**, **Remove proxy**, **Regenerate thumbnails**, **Reveal in folder**, **Rename** and **Remove**, and press <kbd>Esc</kbd>.
 
 ### Grid view
 
@@ -131,6 +166,8 @@ The thumbnail of an item that no clip uses is dimmed. A gold bar along the botto
 
 A **PX** chip in the top-right corner of a video's thumbnail shows its proxy: grey while it waits or is being made (with the percentage done and a thin gold bar), green when it is ready, red when it failed. A video with no proxy has no chip. See [Follow a proxy while it is made](proxies.md#follow-a-proxy-while-it-is-made).
 
+A red badge on the thumbnail (**Offline**, **No access** or **Can't play**) with a **Relink…** or **Allow access** button marks media whose file the editor can't read. See [Offline media and relinking](offline-media-and-relinking.md).
+
 ### List view
 
 List view shows one row per item, with these columns:
@@ -147,9 +184,11 @@ List view shows one row per item, with these columns:
 | **Proxy** | The video's proxy: **None**, **Queued**, the percentage done while it is made (for example **42%**), the proxy's size when it is ready (for example **960×540**), or **Failed**. See [Proxies](proxies.md). |
 | **Used** | How many clips on the timeline use the item |
 
-The small thumbnail of a row skims too when you move the pointer across it.
+The small thumbnail of a row skims too when you move the pointer across it. An offline item shows a red badge after its name; see [See which media are offline](offline-media-and-relinking.md#see-which-media-are-offline).
 
-The tab, the view and the sort order you choose are saved with the project.
+To make a column wider or narrower, drag the right edge of its heading. Double-click the edge to give the column its default width back. See [Resize the list columns](organizing-media.md#resize-the-list-columns).
+
+The tab, the view, the sort order, the bin you show, the filter chips and the column widths you choose are saved with the project.
 
 ## Sort media
 
@@ -167,9 +206,10 @@ Items that tie are ordered by name. Names sort the way people count: "clip 2" co
 | Add or remove an item | <kbd>Ctrl</kbd>+click it |
 | Select a range | Click the first item, then <kbd>Shift</kbd>+click the last |
 | Add a range | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+click |
+| Select every item the tab shows | <kbd>Ctrl</kbd>+<kbd>A</kbd> (the Media panel must be active) |
 | Clear the selection | Click an empty area of the panel |
 
-After an import, the new items are selected.
+After an import, the new items are selected. Items that the bin, the filter chips or the search hide are never selected: when you hide selected items, they leave the selection. See [Select what the tab shows](organizing-media.md#select-what-the-tab-shows).
 
 ## Rename media
 
@@ -185,15 +225,28 @@ Renaming changes only the name shown in the editor. The file in the `media` fold
 
 ## Remove media
 
-1. Select one or more items.
-2. Press <kbd>Delete</kbd> or <kbd>Backspace</kbd>. The Media panel must have the keyboard: click in it first.
-3. In the **Remove media** dialog, click **Remove from project**.
+> **Video placeholder: Remove media and their clips**
+> - File: `videos/importing-media/remove-media.mp4` (not recorded yet)
+> - Length: about 40 seconds
+> - Shows: a project with `interview.mp4` on V1 and A1; click its card and press <kbd>Delete</kbd>: the **Remove media** dialog reads "Remove interview.mp4 from the project?" and "Used by 2 clips."; click **Remove from project**: the card disappears, the clips turn gray with a red **Offline** badge, and the preview shows a gray slate with "Media removed"; press <kbd>Ctrl</kbd>+<kbd>Z</kbd>: the card and the picture are back; press <kbd>Delete</kbd> again, tick **Also delete its copied file from the media folder** and click **Remove and delete clips**: the card and both clips are gone, leaving a gap, and the message **Deleted 1 file from media/** appears.
+
+1. Select one or more items. To remove all the media no clip uses, see [Clean up unused media](organizing-media.md#clean-up-unused-media).
+2. Press <kbd>Delete</kbd> or <kbd>Backspace</kbd>, or right-click and choose **Remove**. For the keys, the Media panel must have the keyboard: click in it first.
+3. The **Remove media** dialog asks, for example, "Remove interview.mp4 from the project?" or "Remove 3 media files from the project?". When clips on the timeline use the items, it says how many, for example "Used by 2 clips." A video with its sound counts as two clips.
+4. Click one of the buttons:
+
+| Button | What it does |
+| --- | --- |
+| **Remove from project** | Removes the items. Clips that use them stay on the timeline as offline clips: gray, with a slate that reads **Media removed** in the preview. See [Clips of removed media](offline-media-and-relinking.md#clips-of-removed-media). |
+| **Remove and delete clips** | Removes the items and every clip that uses them, on every track, locked tracks included. The clips leave gaps; the other clips don't move. Dimmed when no clip uses the items. |
 
 To cancel, press <kbd>Esc</kbd>, click the × button (**Close**), or click outside the dialog.
 
-The items leave the project, but their files stay in the project's `media` folder. <kbd>Ctrl</kbd>+<kbd>Z</kbd> brings them back with their thumbnails.
+**Delete the copied files too.** When some of the items have a copy in the project's `media` folder, the dialog also offers **Also delete its copied file from the media folder** (or **Also delete the 3 copied files from the media folder**). Tick it to delete those files from your disk as well, then click one of the buttons. The message **Deleted 3 files from media/** confirms it. Linked files are never deleted, and neither is a copy that another media item still uses. Without the checkbox, the files stay in `media`.
 
-> **Important:** You can't remove media that clips on the timeline use yet. The dialog then shows how many clips use it, and **Remove from project** is disabled. Removing used media, and the **Remove and delete clips** option, are available in a later version.
+A removal is one step in the history: <kbd>Ctrl</kbd>+<kbd>Z</kbd> brings back the items, their thumbnails and the deleted clips.
+
+> **Important:** Deleting the copied files can't be undone, as the dialog says: "Can't be undone: the media would come back offline." After <kbd>Ctrl</kbd>+<kbd>Z</kbd>, the items and clips are back, but offline. Relink them to the original files; see [Relink a media item to a file](offline-media-and-relinking.md#relink-a-media-item-to-a-file).
 
 ## Use the media menu
 
@@ -201,12 +254,17 @@ Right-click a card or a row to open the media menu. The item you right-click is 
 
 | Row | What it does |
 |---|---|
+| **Allow access** | Asks the browser for permission to read the selected linked files again. Shown when one of them waits for permission. See [Give the browser access to linked files](offline-media-and-relinking.md#give-the-browser-access-to-linked-files). |
+| **Relink…** | Points an offline item at another file. Shown, with the next row, when an offline item is selected. See [Relink a media item to a file](offline-media-and-relinking.md#relink-a-media-item-to-a-file). |
+| **Relink from folder…** | Finds the selected offline items in a folder you pick. See [Relink many files from a folder](offline-media-and-relinking.md#relink-many-files-from-a-folder). |
 | **Insert at playhead** (<kbd>,</kbd>) | Inserts the items at the playhead and pushes the later clips right. See [Insert at the playhead](adding-media-to-the-timeline.md#insert-at-the-playhead). |
 | **Overwrite at playhead** (<kbd>.</kbd>) | Puts the items at the playhead over what is there. See [Overwrite at the playhead](adding-media-to-the-timeline.md#overwrite-at-the-playhead). |
 | **Add to canvas** | Puts the items at the playhead on the top video track (or a new one), in the middle of the frame. See [Drop media on the preview](adding-media-to-the-timeline.md#drop-media-on-the-preview). |
 | **Generate proxy** | Makes a proxy of the selected videos that have none, or whose proxy failed. Dimmed when there is none. See [Make a proxy yourself](proxies.md#make-a-proxy-yourself). |
 | **Remove proxy** | Deletes the proxies of the selected videos, and stops one that is being made. Dimmed when none of them has a proxy. See [Remove a proxy or stop one being made](proxies.md#remove-a-proxy-or-stop-one-being-made). |
 | **Regenerate thumbnails** | Makes the card picture and timeline thumbnails of the selected videos again. Dimmed when no video is selected. See [Make thumbnails again](proxies.md#make-thumbnails-again). |
+| **Reveal in folder** | Shows where the item's file is and copies its path. See [Find a media file on your disk](organizing-media.md#find-a-media-file-on-your-disk). |
+| **Move to bin** | A chip per bin, and **None**: moves the items into that bin, or out of every bin. Shown once the project has a bin. See [Put media into a bin](organizing-media.md#put-media-into-a-bin). |
 | **Rename** (<kbd>F2</kbd>) | Renames the item. See [Rename media](#rename-media). |
 | **Remove** (<kbd>Delete</kbd>) | Opens the **Remove media** dialog. See [Remove media](#remove-media). |
 
@@ -227,13 +285,16 @@ When a file is not imported, a message at the top of the window says why. It clo
 | **The image cannot be decoded** | The image file is damaged or in a variant Chrome cannot read. | Save it again as .png or .jpg. |
 | **The SVG has no size (width/height or viewBox)** | The SVG does not say how large it is. | Add width and height, or a viewBox, to the SVG. |
 | **Could not copy it into media/** | The copy into the project folder failed, for example because the disk is full. | Free some space and import again. |
+| **Could not keep a link to it** | With **Link to the original files** chosen, the browser could not store the link to the file. | Try again, or choose **Copy files into the project folder** in **Settings** > **Media**. |
 | **This project is read-only** | The project is open without write access. | Allow editing first. See [Projects and saving](projects-and-saving.md). |
 | **Import failed** | Something unexpected stopped the import. Nothing was added. | Try again. See [Troubleshooting](troubleshooting.md). |
 | **Could not open the file picker** | Chrome could not show the file picker. | Try again, or drop the files on the Media panel. |
 
-If a card keeps its kind icon instead of a thumbnail, Chrome could not decode that video, for example HEVC on a computer without a hardware HEVC decoder, and its clips on the timeline show no thumbnails either. The editor tries once per session. The item is still in the project.
+If a card keeps its kind icon instead of a thumbnail, Chrome could not decode that video, for example HEVC on a computer without a hardware HEVC decoder, and its clips on the timeline show no thumbnails either. The editor tries once per session. The item is still in the project. Once the preview tries to show one of its clips, the card gets the red **Can't play** badge: convert the file and relink the item to the converted file. See [Offline media and relinking](offline-media-and-relinking.md).
 
 ## Related pages
+- [Organizing media](organizing-media.md)
+- [Offline media and relinking](offline-media-and-relinking.md)
 - [Adding media to the timeline](adding-media-to-the-timeline.md)
 - [Getting started](getting-started.md)
 - [Workspace](workspace.md)
@@ -247,4 +308,4 @@ If a card keeps its kind icon instead of a thumbnail, Chrome could not decode th
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 39, 2026-10-18</sub>
+<sub>Last updated: Batch 41, 2026-10-18</sub>

@@ -50,7 +50,7 @@ The app bar is the strip above the panels. From left to right:
 | **Undo** and **Redo** | Undo or redo the last change. The tooltip names the step, for example **Undo Rename project**. Dimmed when there is nothing to undo or redo. See [Undo and redo changes](projects-and-saving.md#undo-and-redo-changes). |
 | Project badge | The resolution and frame rate of the project, for example **1080×1920 · 30 fps**. It follows changes made in the **Project** section. |
 | **Export** | Available in a later version. |
-| **Settings** (gear) | Opens the **Settings** dialog. Its **Shortcuts** tab lets you change the keyboard shortcuts. See [Change a shortcut](command-palette-and-custom-shortcuts.md#change-a-shortcut). Other settings are available in a later version. |
+| **Settings** (gear) | Opens the **Settings** dialog. Its **Shortcuts** tab lets you change the keyboard shortcuts; see [Change a shortcut](command-palette-and-custom-shortcuts.md#change-a-shortcut). Its **Media** tab chooses whether imports copy your files into the project or link to them; see [Copy or link your files](importing-media.md#copy-or-link-your-files). Other settings are available in a later version. |
 
 When the editor cannot write to the project folder, a read-only banner appears under the app bar. See [Work in read-only mode](projects-and-saving.md#work-in-read-only-mode).
 
@@ -60,11 +60,11 @@ When the editor cannot write to the project folder, a read-only banner appears u
 
 Top left. Its header has three tabs: **Media**, **Presets** and **Captions**.
 
-- **Media** shows the files you imported. Its header buttons sort the files (**Sort media by**, plus **Ascending** / **Descending**), switch between **Grid view** and **List view**, and import files (**Import media**, <kbd>Ctrl</kbd>+<kbd>I</kbd>). See [Importing media](importing-media.md). Point at a card to skim it, double-click it or press <kbd>,</kbd> to insert it at the playhead, and drag it onto the timeline or the preview. See [Adding media to the timeline](adding-media-to-the-timeline.md). A **PX** chip on a video's card shows its proxy, the light copy the preview uses for heavy footage. See [Proxies](proxies.md).
+- **Media** shows the files you imported. Its header buttons sort the files (**Sort media by**, plus **Ascending** / **Descending**), switch between **Grid view** and **List view**, add a bin (**New bin**) and import files (**Import media**, <kbd>Ctrl</kbd>+<kbd>I</kbd>). See [Importing media](importing-media.md). Under the header, **Search media** and the filter chips narrow what the tab shows, and the bin strip on the left shows all media, one kind or one of your bins. See [Organizing media](organizing-media.md). Point at a card to skim it, double-click it or press <kbd>,</kbd> to insert it at the playhead, and drag it onto the timeline or the preview. See [Adding media to the timeline](adding-media-to-the-timeline.md). A **PX** chip on a video's card shows its proxy, the light copy the preview uses for heavy footage. See [Proxies](proxies.md).
 - **Presets** holds your text presets: saved looks for titles. Click a card to apply it to the selected text, or to add a new text at the playhead; point at it to see it on the selected text first; drag it onto the timeline or the preview; right-click it for its menu. The header buttons save the selected text as a preset (**New preset from the selected text**), import and export presets. See [Text presets](text-presets.md).
 - **Captions** lists the cues of the caption track: type in a cue to change its text while the preview follows, split and merge cues with the keyboard, and search them. The header buttons add a cue at the playhead, import and export SRT and VTT files, open the **Caption style** section, transcribe the timeline's speech into cues and clear all cues. See [Captions](captions.md) and [Transcription](transcription.md).
 
-The tab, view and sort order you choose, and the **Global** or **Project** list of the **Presets** tab, are remembered with the project.
+The tab, view and sort order you choose, the bin you show, the filter chips and the list column widths, and the **Global** or **Project** list of the **Presets** tab, are remembered with the project.
 
 ### Edit Properties panel
 
@@ -225,6 +225,7 @@ To jump to a time, type it into the timecode field of the timeline toolbar, or c
 - [Getting started](getting-started.md)
 - [Projects and saving](projects-and-saving.md)
 - [Importing media](importing-media.md)
+- [Organizing media](organizing-media.md)
 - [Adding media to the timeline](adding-media-to-the-timeline.md)
 - [Timeline](timeline.md)
 - [Trimming clips](trimming.md)
@@ -246,4 +247,4 @@ To jump to a time, type it into the timecode field of the timeline toolbar, or c
 - [Command palette and custom shortcuts](command-palette-and-custom-shortcuts.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 40, 2026-10-18</sub>
+<sub>Last updated: Batch 41, 2026-10-18</sub>

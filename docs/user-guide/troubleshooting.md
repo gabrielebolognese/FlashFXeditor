@@ -1,10 +1,10 @@
 # Troubleshooting
 
-This page helps you when something does not work as expected: the editor does not start in your browser, the preview stays empty, a shortcut or a key you changed does nothing or runs another command, a folder or a file does not open, a clip drag, a trim, a split, a delete, a timeline tool, a typed timecode, a marker, an in/out range or **Lift** and **Extract** do something you did not expect, media from the Media panel lands somewhere you did not expect, a clip shows no thumbnails, a video gets no proxy or its proxy fails, the preview zoom, overlays or fullscreen behave unexpectedly, a picture in the preview can't be selected, moves unexpectedly, doesn't snap where you expect or gets cropped instead of resized, a value or a crop in **Edit Properties** doesn't do what you expect, a paste or a duplicate lands somewhere you did not expect or is refused, a speed change, a freeze frame or a punch zoom does something you did not expect, a keyframe animation or a keyframe lane doesn't behave as you expect, a fade or a transition doesn't go where you expect, gets shorter or shows red stripes, the rubber band, **Normalize**, **Auto-duck**, **Detach audio** or **Audio scrub** doesn't do what you expect, **Remove silence** cuts too much, too little or nothing, a shape or an image doesn't look or play as you expect, a title lands somewhere you did not expect, the keys type into a text, a font is missing, a text preset doesn't apply, update or sync as you expect, a text animation plays shorter or differently than you expect, a caption cue doesn't import, move, show or highlight as you expect, a transcription doesn't start, is slow or gets words wrong, playback stutters, or you hear no sound. Each problem lists what you see, why it happens and what to do. The last section lists what the current version cannot do yet.
+This page helps you when something does not work as expected: the editor does not start in your browser, the preview stays empty, a shortcut or a key you changed does nothing or runs another command, a folder or a file does not open, media are hidden in the Media tab, go offline or don't relink, a clip drag, a trim, a split, a delete, a timeline tool, a typed timecode, a marker, an in/out range or **Lift** and **Extract** do something you did not expect, media from the Media panel lands somewhere you did not expect, a clip shows no thumbnails, a video gets no proxy or its proxy fails, the preview zoom, overlays or fullscreen behave unexpectedly, a picture in the preview can't be selected, moves unexpectedly, doesn't snap where you expect or gets cropped instead of resized, a value or a crop in **Edit Properties** doesn't do what you expect, a paste or a duplicate lands somewhere you did not expect or is refused, a speed change, a freeze frame or a punch zoom does something you did not expect, a keyframe animation or a keyframe lane doesn't behave as you expect, a fade or a transition doesn't go where you expect, gets shorter or shows red stripes, the rubber band, **Normalize**, **Auto-duck**, **Detach audio** or **Audio scrub** doesn't do what you expect, **Remove silence** cuts too much, too little or nothing, a shape or an image doesn't look or play as you expect, a title lands somewhere you did not expect, the keys type into a text, a font is missing, a text preset doesn't apply, update or sync as you expect, a text animation plays shorter or differently than you expect, a caption cue doesn't import, move, show or highlight as you expect, a transcription doesn't start, is slow or gets words wrong, playback stutters, or you hear no sound. Each problem lists what you see, why it happens and what to do. The last section lists what the current version cannot do yet.
 
 > **Video placeholder: Fix common problems**
 > - File: `videos/troubleshooting/overview.mp4` (not recorded yet)
-> - Length: about 210 seconds
+> - Length: about 220 seconds
 > - Shows:
 >   1. Open the editor in a browser without the required features: the screen "This browser cannot run Shorts Editor" lists what is missing.
 >   2. In Chrome, open `chrome://settings/system` and show **Use graphics acceleration when available** turned on.
@@ -53,6 +53,7 @@ This page helps you when something does not work as expected: the editor does no
 >   45. Select a title and point at **Remove silence** in the quick actions: it is dimmed. Select a talking-head video recorded in a noisy room and click **Remove silence**: the row reads **No silence found**. Drag the **Threshold** slider to `-30 dB`: red stripes cover the pauses. Click **Cancel**.
 >   46. Click the padlock in the V2 header. Select a clip on V1 and a clip on V2 above it, press <kbd>Ctrl</kbd>+<kbd>C</kbd>, click in the ruler at an empty spot and press <kbd>Ctrl</kbd>+<kbd>V</kbd>: the message **Can't paste onto a locked track** names V2. Click the padlock again and press <kbd>Ctrl</kbd>+<kbd>V</kbd>: the clips land at the playhead on V1 and V2. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>, put the playhead over another clip and press <kbd>Ctrl</kbd>+<kbd>V</kbd>: the clip under the copies is cut away. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> and press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>V</kbd>: the clips make room instead.
 >   47. Click **Settings** in the app bar and, on the **Shortcuts** tab, click **+** on **Split at playhead** and press <kbd>Ctrl</kbd>+<kbd>L</kbd>: the key turns red on **Split at playhead** and **Link / Unlink**. Click **Done**, click a video with sound on the timeline and press <kbd>Ctrl</kbd>+<kbd>L</kbd>: the video and its sound are unlinked, and nothing is split. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>, open **Settings** again and click **Reset all**. Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> and type `edit marker`: the row is grey. Press <kbd>Esc</kbd>.
+>   48. In the **Media** tab, click **Unused**: only the media no clip uses show. Click it again. Open a project whose linked video was moved to another folder: its card shows a red **Offline** badge and its clip is gray. Click **Relink…** on the card and pick the moved file: the badge disappears.
 
 ## In this page
 - [Browser and graphics](#browser-and-graphics)
@@ -118,6 +119,19 @@ This page helps you when something does not work as expected: the editor does no
 - [Importing](#importing)
   - [A file cannot be imported](#a-file-cannot-be-imported)
   - [A video imports but shows nothing](#a-video-imports-but-shows-nothing)
+- [Organizing media](#organizing-media)
+  - [Media are missing from the Media tab](#media-are-missing-from-the-media-tab)
+  - [Delete or Move to bin left some selected media out](#delete-or-move-to-bin-left-some-selected-media-out)
+  - [Media can't be dropped on a bin](#media-cant-be-dropped-on-a-bin)
+  - [Reveal in folder doesn't open a folder](#reveal-in-folder-doesnt-open-a-folder)
+- [Offline media](#offline-media)
+  - [Cards show Offline and their clips are gray](#cards-show-offline-and-their-clips-are-gray)
+  - [A card shows No access](#a-card-shows-no-access)
+  - [A card shows Can't play](#a-card-shows-cant-play)
+  - [Relink says Can't relink](#relink-says-cant-relink)
+  - [Relink folder doesn't find a file](#relink-folder-doesnt-find-a-file)
+  - [A clip shows Media removed](#a-clip-shows-media-removed)
+  - [Media came back offline after Undo](#media-came-back-offline-after-undo)
 - [Proxies](#proxies)
   - [A video gets no proxy](#a-video-gets-no-proxy)
   - [A proxy chip is red](#a-proxy-chip-is-red)
@@ -704,7 +718,8 @@ When <kbd>Q</kbd>, <kbd>W</kbd> or <kbd>E</kbd> stops short, a message names the
 | The clip is only a label bar, with no body below it. | Its track is set to height S. | Click the height toggle (three stacked rows) in the track header until the track is M or L. See [Show thumbnails and waveforms](clip-thumbnails-and-waveforms.md#show-thumbnails-and-waveforms). |
 | A video or image clip shows only its color, while wider clips show thumbnails. | The clip is narrower than 48 pixels on screen. | Zoom in. |
 | Thumbnails or waveforms are missing right after an import, or while you play. | The editor is still making them. It pauses while you play, scrub or drag. | Stop playback and wait a moment. See [Know when thumbnails and waveforms appear](clip-thumbnails-and-waveforms.md#know-when-thumbnails-and-waveforms-appear). |
-| A video clip never gets thumbnails, and the media card keeps the film icon. | Chrome can't decode the video on this computer, or its file is missing. | See [A video imports but shows nothing](#a-video-imports-but-shows-nothing). |
+| A video clip never gets thumbnails, and the media card keeps the film icon. | Chrome can't decode the video on this computer. | See [A video imports but shows nothing](#a-video-imports-but-shows-nothing). |
+| The clip is gray, with a red **Offline** badge in its label bar. | The editor can't read the clip's media file. | See [Cards show Offline and their clips are gray](#cards-show-offline-and-their-clips-are-gray). |
 | An audio clip never gets a waveform, and it plays no sound. | The sound can't be decoded, or its file is missing. | See [Playback has no sound](#playback-has-no-sound). |
 
 ### Thumbnails repeat or show the wrong frames
@@ -874,14 +889,117 @@ If a message "Import failed" appears instead, the whole import stopped; its deta
 
 ### A video imports but shows nothing
 
-**Symptom:** The video appears in the Media panel, but its card keeps showing the plain film icon instead of a thumbnail. Its clip is on the timeline, but it shows no thumbnails, and the preview shows only the background (or the tracks below) where the clip should be.
+**Symptom:** The video appears in the Media panel, but its card keeps showing the plain film icon instead of a thumbnail. Its clip is on the timeline, but it shows no thumbnails. Once the clip is under the playhead, the card gets a red **Can't play** badge, the clip turns gray, and the preview shows a gray slate with "Media can't be played".
 
-**Cause:** Usually your browser cannot decode the video's codec on this computer. Importing reads only the file's structure, so the problem shows when the picture is needed. Common cases are HEVC (H.265) on a computer whose graphics hardware cannot decode it, and professional codecs such as ProRes. The same happens when the video's file was removed from the project's `media` folder.
+**Cause:** Your browser cannot decode the video's codec on this computer. Importing reads only the file's structure, so the problem shows when the picture is needed. Common cases are HEVC (H.265) on a computer whose graphics hardware cannot decode it, and professional codecs such as ProRes.
 
 **Fix:**
 1. Check the codec: click **List view** in the Media panel and read the **Codec** column.
-2. Convert the video to MP4 with H.264 (on an iPhone, the **Most Compatible** camera format records H.264), then import the converted file.
-3. If the file was removed from the project's `media` folder, put it back with the same name.
+2. Convert the video to MP4 with H.264 (on an iPhone, the **Most Compatible** camera format records H.264).
+3. Click **Relink…** on the card and pick the converted file. The clips keep their place and show the picture. See [Relink a media item to a file](offline-media-and-relinking.md#relink-a-media-item-to-a-file).
+
+If the card shows **Offline** instead, the video's file is missing: see [Cards show Offline and their clips are gray](#cards-show-offline-and-their-clips-are-gray).
+
+## Organizing media
+
+### Media are missing from the Media tab
+
+**Symptom:** Media you imported don't show in the **Media** tab, or the tab reads **No media here** with "Nothing matches this bin, the filters and the search."
+
+**Cause:** The tab shows only what the bin strip, the filter chips and the search let through: a bin or one kind (**Video**, **Audio**, **Images**) is shown, a chip such as **Unused** is on, or there is text in **Search media**. New imports never go into a bin by themselves, so they don't show while a bin of your own is shown.
+
+**Fix:** Click **Clear filters** (it turns the chips off and empties the search), then click **All** in the bin strip. See [Show everything again](organizing-media.md#show-everything-again).
+
+### Delete or Move to bin left some selected media out
+
+**Symptom:** You selected several media items, then typed in the search, turned a chip on or showed another bin. <kbd>Delete</kbd>, **Move to bin** or a drag then acted on fewer items than you selected.
+
+**Cause:** Media that the bin, the chips or the search hide leave the selection, so no action touches media you can't see.
+
+**Fix:** Show the media first (click **All** and **Clear filters**), select them again, then act. See [Select what the tab shows](organizing-media.md#select-what-the-tab-shows).
+
+### Media can't be dropped on a bin
+
+**Symptom:** Cards dragged onto **All**, **Video**, **Audio** or **Images** in the bin strip don't go anywhere.
+
+**Cause:** These four chips sort your media by kind on their own. Only the bins you create take media.
+
+**Fix:** Click **New bin** in the panel header, then drag the cards onto the new chip. To take media out of a bin, right-click them and click **None** in the **Move to bin** row. See [Put media into a bin](organizing-media.md#put-media-into-a-bin).
+
+### Reveal in folder doesn't open a folder
+
+**Symptom:** **Reveal in folder** shows a message with a path, such as **In the project folder: media/clip.mp4**, instead of opening File Explorer.
+
+**Cause:** A web page can't open folders on your computer.
+
+**Fix:** Find the file yourself: the path starts in the project folder for a copy, and at the folder you dropped for a linked file. The path is on your clipboard when the message adds "Path copied." See [Find a media file on your disk](organizing-media.md#find-a-media-file-on-your-disk).
+
+## Offline media
+
+### Cards show Offline and their clips are gray
+
+**Symptom:** When you open the project, a message reads, for example, **2 media files offline**. Cards in the **Media** tab show a red **Offline** badge, the notice strip reads "2 files offline", the clips are gray with an **Offline** badge, and the preview shows a gray slate with "Media offline".
+
+**Cause:** The editor can't find the files. A linked file was moved, renamed or deleted; a copy was removed from the project's `media` folder; or you opened the project in another browser or on another computer, which doesn't have the links to your files.
+
+**Fix:**
+- Click **Relink…** on a card and pick the file. See [Relink a media item to a file](offline-media-and-relinking.md#relink-a-media-item-to-a-file).
+- If several files moved together, click **Relink folder…** in the notice strip and pick the folder they are in now. See [Relink many files from a folder](offline-media-and-relinking.md#relink-many-files-from-a-folder).
+- If you put a file back where it was while the project was open, reopen the project: the editor finds it again.
+
+### A card shows No access
+
+**Symptom:** A card shows a red **No access** badge, the notice strip reads, for example, "2 linked files need your permission", and the preview shows a slate with "Media offline: no access".
+
+**Cause:** The files are linked and still there, but after a restart the browser asks again before the editor can read them.
+
+**Fix:** Click **Allow access** in the notice strip (or on the card), and allow it when Chrome asks. If the message **2 linked files still offline** appears, click **Allow access** again. See [Give the browser access to linked files](offline-media-and-relinking.md#give-the-browser-access-to-linked-files).
+
+### A card shows Can't play
+
+**Symptom:** A card shows a red **Can't play** badge, and the preview shows a slate with "Media can't be played".
+
+**Cause:** The file is there, but Chrome can't decode it on this computer.
+
+**Fix:** See [A video imports but shows nothing](#a-video-imports-but-shows-nothing): convert the file and relink the item to the converted file.
+
+### Relink says Can't relink
+
+**Symptom:** After you pick a file for **Relink…**, the message **Can't relink** appears with the item's name, and the item stays offline.
+
+**Cause and fix:** The second line of the message gives the reason.
+
+| Reason | Fix |
+| --- | --- |
+| *file* **is shorter than its clips need** | The file is shorter than the part of the media the clips use, for example a trimmed export. Pick the full-length file. |
+| *file* **has no sound for its audio clips** | Audio clips use the item, but the file has no sound. Pick a file with sound. |
+| *file* **is audio, not video**, or another pair of kinds | The file is not of the item's kind. Pick a video for a video, an audio file for audio, an image for an image. |
+| *file*: **unsupported file type** | The editor doesn't import this type. See [Supported file types](importing-media.md#supported-file-types). |
+| *file* followed by an import error, such as **Not a readable MP4/MOV file** | The file can't be read. See [A file cannot be imported](#a-file-cannot-be-imported). |
+
+### Relink folder doesn't find a file
+
+**Symptom:** **Relink folder…** reports, for example, **Relinked 1 of 2 offline files** with "1 file not found in Footage (same name and size)".
+
+**Cause:** The editor finds files by their file name, and for media imported with this version also by their size. A file that was renamed, edited or exported again (so its size changed) is not found. For older media without a size, a name that several files in the folder share is not taken either. The search also stops after 20,000 files ("only its first 20,000 files were searched").
+
+**Fix:** Click **Relink…** on the card and pick the file yourself: a single relink doesn't compare names or sizes, only the kind, the length and the sound. Or pick a smaller folder. See [Relink many files from a folder](offline-media-and-relinking.md#relink-many-files-from-a-folder).
+
+### A clip shows Media removed
+
+**Symptom:** A clip is gray with an **Offline** badge, and the preview shows a slate with "Media removed". Its media is no longer in the Media panel.
+
+**Cause:** You removed its media item with **Remove from project**, which keeps the clips.
+
+**Fix:** Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> to bring the media item back, or select the clips and press <kbd>Delete</kbd>. These clips can't be relinked. See [Clips of removed media](offline-media-and-relinking.md#clips-of-removed-media).
+
+### Media came back offline after Undo
+
+**Symptom:** You removed media with **Also delete its copied file from the media folder** ticked, then pressed <kbd>Ctrl</kbd>+<kbd>Z</kbd>: the items and their clips are back, but offline.
+
+**Cause:** Deleting files from your disk can't be undone. Undo brings back the media items, not their files.
+
+**Fix:** Relink the items to the original files, if you still have them. See [Relink a media item to a file](offline-media-and-relinking.md#relink-a-media-item-to-a-file).
 
 ## Proxies
 
@@ -1054,7 +1172,8 @@ See [Preview and playback](preview-and-playback.md#know-what-to-expect-from-perf
 | The clip's white line runs along the bottom of the clip, and **Volume** in the **Audio** section reads a very low value such as -60.0. | Type `0` in **Volume**. See [Change a clip's volume](audio-editing.md#change-a-clips-volume). |
 | The meter at the right edge of the preview moves, but you still hear nothing. | The sound leaves the editor. Check the browser tab: if it shows a crossed-out speaker, right-click the tab and choose **Unmute site**. Then check your system volume and output device. |
 | The clip's file is an .mp3, .aac, .wav or .ogg file over 1 GB. | Such files play no sound. Convert the file to .m4a (AAC) and import it again. |
-| The sound cannot be decoded, or the clip's file is missing from the project's `media` folder. | Convert the file to .m4a, .mp3 or .wav and import it again, or put the missing file back in `media` with the same name. |
+| The clip is gray with a red **Offline** badge: its file is missing, or the browser needs your permission to read it. | Relink the media, or click **Allow access** in the **Media** tab. See [Offline media and relinking](offline-media-and-relinking.md). |
+| The sound cannot be decoded. | Convert the file to .m4a, .mp3 or .wav and import it again. |
 
 **Not a problem:** Right after you open a project, the sound of a long .mp3 or .wav file can join a moment after the picture: the editor decodes the whole file first. It then fades in and stays in sync.
 
@@ -1367,11 +1486,11 @@ See [Audio](audio.md).
 
 ### Pasted clips show no picture or sound
 
-**Symptom:** After you pasted clips from another project, the message **Pasted with offline media** appeared, and some of the pasted clips show nothing in the preview and play no sound.
+**Symptom:** After you pasted clips from another project, the message **Pasted with offline media** appeared. Some of the pasted clips are gray with an **Offline** badge, show a gray slate in the preview and play no sound, and their media card shows **Offline**.
 
-**Cause:** The project you pasted into has no media item of the same type with the same name (or file name) that is long enough for those clips. The editor added the copied media item without a file. Relinking it to a file is available in a later version.
+**Cause:** The project you pasted into has no media item of the same type with the same name (or file name) that is long enough for those clips. The editor added the copied media item without a file.
 
-**Fix:** Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>: the clips and the offline item go. Import the media file into this project and paste again: the clips find it by name. If the file has another name in this project, rename its media item to the name in the message first. See [Paste clips into another project](copy-and-paste.md#paste-clips-into-another-project).
+**Fix:** Click **Relink…** on the offline card and pick the file, or use **Relink folder…** to find it by its file name. See [Offline media and relinking](offline-media-and-relinking.md). Or press <kbd>Ctrl</kbd>+<kbd>Z</kbd> (the clips and the offline item go), import the media file into this project and paste again: the clips find it by name. If the file has another name in this project, rename its media item to the name in the message first. See [Paste clips into another project](copy-and-paste.md#paste-clips-into-another-project).
 
 ### A paste is refused
 
@@ -2442,7 +2561,8 @@ See [Messages when you paste](copy-and-paste.md#messages-when-you-paste).
 The current version cannot do these things yet. Each one is available in a later version.
 
 - **Sound:** no sound while you play backward or shuttle faster than 1x; while you scrub or step frames, only with **Audio scrub** on. How far **Auto-duck** lowers the music (12 dB) and its slopes (10 frames) can't be changed, and **Remove silence** has no default keyboard shortcut. Audio effects are not available.
-- **Copy and paste:** clips copied in a project with another frame rate can't be pasted. Media pasted from another project that this one doesn't have stays offline: relinking it to a file is not available. Caption cues can't take **Paste attributes**.
+- **Copy and paste:** clips copied in a project with another frame rate can't be pasted. Caption cues can't take **Paste attributes**.
+- **Media panel:** bins can't hold other bins. **Reveal in folder** can't open File Explorer: it shows and copies the path. Clips whose media item you removed can't be relinked. A file you put back while the project is open stays offline until you reopen the project.
 - **Markers:** markers belong to the timeline; markers inside clips are not available. Markers and the in/out range don't show on the scrollbars.
 - **Menus:** right-clicking empty space after the last clip of a track opens no menu.
 - **Speed and edit points:** a speed applies to the whole clip, and sound at another speed always changes pitch. Playing a clip backward is not available. The length of a new freeze frame (2 seconds), the size of a punch zoom (20%) and its 6-frame zoom can't be changed. The default transition is always a 15-frame cross dissolve.
@@ -2452,11 +2572,9 @@ The current version cannot do these things yet. Each one is available in a later
 - **Text:** a setting to always make new titles 3 seconds long is not available. A text's handles don't snap. Deleted starter presets can't be restored. Text animations play in the preview and in **Export frame**.
 - **Captions:** all cues share one style; a style for a single cue is not available. Captions can't be selected, moved or styled in the preview.
 - **Transcription:** the cues can't be edited in the review; fix them in the **Captions** tab after adding them. The default model and language are set in the **Transcribe captions** dialog only.
-- **Media that cannot be decoded, or whose file is missing,** shows nothing in the preview, with no placeholder.
-- **Removing media** that a clip uses is not possible.
 - **Frame rate:** you cannot change it once the timeline has clips or markers.
 - **Export:** only **Export frame** (a PNG of the current frame) and **Export SRT or VTT** (the captions as a subtitle file) work. The **Export** button in the app bar is disabled.
-- **Settings:** the **Settings** dialog has only the **Shortcuts** tab; the other settings are not available yet.
+- **Settings:** the **Settings** dialog has only the **Shortcuts** and **Media** tabs; the other settings are not available yet.
 - **Shortcuts:** <kbd>Ctrl</kbd>+<kbd>N</kbd> cannot create a project in a browser tab, and <kbd>Ctrl</kbd>+<kbd>E</kbd> belongs to export, which is not available yet. See [Keyboard shortcuts](keyboard-shortcuts.md).
 - **Heavy footage:** 4K 60 fps HEVC played from the original (in **Full** quality, or before its proxy is ready) can drop frames, and the original frame deep inside long phone clips takes a moment to appear after you stop.
 
@@ -2479,6 +2597,8 @@ The current version cannot do these things yet. Each one is available in a later
 - [Getting started](getting-started.md)
 - [Projects and saving](projects-and-saving.md)
 - [Importing media](importing-media.md)
+- [Organizing media](organizing-media.md)
+- [Offline media and relinking](offline-media-and-relinking.md)
 - [Proxies](proxies.md)
 - [Adding media to the timeline](adding-media-to-the-timeline.md)
 - [Preview and playback](preview-and-playback.md)
@@ -2494,4 +2614,4 @@ The current version cannot do these things yet. Each one is available in a later
 - [Command palette and custom shortcuts](command-palette-and-custom-shortcuts.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 40, 2026-10-18</sub>
+<sub>Last updated: Batch 41, 2026-10-18</sub>

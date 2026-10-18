@@ -57,7 +57,7 @@ Playback plays the sound of your audio tracks in sync with the picture. The audi
 
 ### Media that cannot be shown
 
-A video that your browser cannot decode (for example HEVC on a computer without HEVC decoding) shows nothing in the preview: you see the background, or the tracks below it. See [Troubleshooting](troubleshooting.md).
+A video or image clip whose media file the editor can't read shows a gray slate in the preview: a rectangle where the picture would be, with the media's name and the reason, for example "Media offline" for a missing file or "Media can't be played" for a video your browser can't decode (such as HEVC on a computer without HEVC decoding). Its sound is silent. See [Offline media and relinking](offline-media-and-relinking.md).
 
 ## See how clips fit the frame
 
@@ -327,9 +327,10 @@ If playback stutters, see [Troubleshooting](troubleshooting.md).
 - [Trimming clips](trimming.md)
 - [Advanced trimming](advanced-trimming.md)
 - [Importing media](importing-media.md)
+- [Offline media and relinking](offline-media-and-relinking.md)
 - [Adding media to the timeline](adding-media-to-the-timeline.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Workspace](workspace.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 37, 2026-10-17</sub>
+<sub>Last updated: Batch 41, 2026-10-18</sub>

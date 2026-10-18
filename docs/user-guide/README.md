@@ -1,6 +1,6 @@
 # Shorts Editor user guide
 
-Shorts Editor is a video editor for short vertical videos (9:16 by default) that runs in your desktop browser. Your projects are folders on your own disk, and your media never leaves your computer. This guide shows you how to set up a project, bring in your media, skim it and add the parts you want to the timeline, arrange, trim, cut and fine-tune it there with thumbnails and waveforms in every clip, copy, paste and duplicate clips, also into another project, give many clips the look of one, mark moments and ranges, organize your tracks, place, resize and rotate the pictures in the frame with snapping and smart guides, type exact values in the Edit Properties panel, crop and reframe pictures, animate their position, size, angle and opacity with keyframes, fade clips in and out and blend them with dissolves and dips at the cuts, set the volume of each clip and shape it over time on the timeline, normalize quiet recordings and duck the music under your voice-over in one click, cut the pauses out of a talking clip in one click, change the speed of clips, hold a frame and punch in at a cut with a smooth zoom, add shapes, color and gradient backgrounds, logos and animated stickers, add styled titles and subtitles with one key and type them right in the preview, make them pop, slide or type themselves in and out, reuse your text styles and animations as presets in one click, caption your video from scratch, from an SRT or VTT file or by transcribing its speech on your own computer, with the spoken word highlighted, check every pixel and the platform safe zones in the preview, and play it back with its sound, or hear your cuts while you scrub, smoothly even with 4K footage thanks to proxies. Any command is a few letters away in the command palette, and every keyboard shortcut can be changed to the keys you know.
+Shorts Editor is a video editor for short vertical videos (9:16 by default) that runs in your desktop browser. Your projects are folders on your own disk, and your media never leaves your computer. This guide shows you how to set up a project, bring in your media (copied into the project or linked where it is), sort it into bins, find any clip by typing part of its name, relink files that moved, skim it and add the parts you want to the timeline, arrange, trim, cut and fine-tune it there with thumbnails and waveforms in every clip, copy, paste and duplicate clips, also into another project, give many clips the look of one, mark moments and ranges, organize your tracks, place, resize and rotate the pictures in the frame with snapping and smart guides, type exact values in the Edit Properties panel, crop and reframe pictures, animate their position, size, angle and opacity with keyframes, fade clips in and out and blend them with dissolves and dips at the cuts, set the volume of each clip and shape it over time on the timeline, normalize quiet recordings and duck the music under your voice-over in one click, cut the pauses out of a talking clip in one click, change the speed of clips, hold a frame and punch in at a cut with a smooth zoom, add shapes, color and gradient backgrounds, logos and animated stickers, add styled titles and subtitles with one key and type them right in the preview, make them pop, slide or type themselves in and out, reuse your text styles and animations as presets in one click, caption your video from scratch, from an SRT or VTT file or by transcribing its speech on your own computer, with the spoken word highlighted, check every pixel and the platform safe zones in the preview, and play it back with its sound, or hear your cuts while you scrub, smoothly even with 4K footage thanks to proxies. Any command is a few letters away in the command palette, and every keyboard shortcut can be changed to the keys you know.
 
 > **Video placeholder: Shorts Editor in two minutes**
 > - File: `videos/home/overview.mp4` (not recorded yet)
@@ -16,37 +16,39 @@ Shorts Editor is a video editor for short vertical videos (9:16 by default) that
 ## Start here
 1. [Getting started](getting-started.md): check your browser and create your first project.
 2. [The workspace](workspace.md): learn the app bar and the four panels.
-3. [Importing media](importing-media.md): bring in your clips, sounds and images.
-4. [Adding media to the timeline](adding-media-to-the-timeline.md): skim your clips, mark the part you want, and insert, overwrite or drag them onto the timeline or the preview.
-5. [Timeline](timeline.md): put clips in order, select and move them, and move around your edit.
-6. [Trimming clips](trimming.md): shorten and lengthen clips, and cut them to the playhead.
-7. [Splitting, deleting and closing gaps](splitting-and-deleting.md): cut clips in two, remove them and tidy up the gaps.
-8. [Advanced trimming](advanced-trimming.md): roll cuts, slip and slide clips, and change their speed.
-9. [Markers and in/out points](markers-and-in-out-points.md): mark moments, mark a range, loop it, and lift or extract it.
-10. [Tracks](tracks.md): add, rename, reorder, lock, target, hide and resize tracks.
-11. [Linking and grouping clips](links-and-groups.md): keep a video and its sound together, put them back in sync, and group clips.
-12. [Copying, pasting and duplicating clips](copy-and-paste.md): copy, cut and paste clips at the playhead, paste with room made for them, paste into another project, give clips the look of another one, and duplicate clips with one key.
-13. [Clip thumbnails, waveforms and badges](clip-thumbnails-and-waveforms.md): read what each clip shows.
-14. [Preview and playback](preview-and-playback.md): watch and check your video.
-15. [Arranging layers in the preview](arranging-layers-in-the-preview.md): select pictures in the frame, move, resize and rotate them, and change which one is on top.
-16. [Snapping and smart guides in the preview](snapping-and-smart-guides.md): snap pictures to the frame, the safe zones and each other, space them evenly, and measure distances.
-17. [Editing properties](editing-properties.md): type or drag exact values, fit or fill the frame with one click, duplicate clips, turn clips off, and pick colors.
-18. [Cropping and reframing](cropping-and-reframing.md): cut away the sides of a picture, and turn landscape footage into a full vertical shot in two clicks.
-19. [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md): speed clips up or slow them down, hold a frame, and punch in on a shot.
-20. [Keyframes](keyframes.md): make pictures move, grow, turn and fade over time with a stopwatch, keyframes on the timeline and eight easings.
-21. [Fades and transitions](fades-and-transitions.md): fade clips in and out with a drag or one click, and add cross dissolves and dips to black or white at your cuts, with the sound crossfading under them.
-22. [Shapes and images](shapes-and-images.md): add rectangles, ellipses, lines and gradient backgrounds in one click, place images at the playhead, and use animated GIF and WebP stickers and sharp SVG logos.
-23. [Titles and text](titles-and-text.md): add a title or a subtitle with one key, type it in the preview, and style it with fonts, outlines, shadows and boxes.
-24. [Text animations](text-animations.md): make titles fade, slide, pop or type themselves in and out, word by word or line by line.
-25. [Text presets](text-presets.md): save a text style and its animations once, apply them in one click, put favorites in the toolbar, and choose the look of <kbd>T</kbd> and <kbd>Shift</kbd>+<kbd>T</kbd>.
-26. [Captions](captions.md): add a caption track, write and fix cues in the Captions tab, import and export SRT and VTT files, style the captions and highlight the spoken word.
-27. [Transcription](transcription.md): turn the speech of your edit into timed captions on your own computer, review them, and fix the words it got wrong.
-28. [Preview zoom, overlays and fullscreen](preview-zoom-overlays-fullscreen.md): zoom in on real detail, check safe zones and grids, and watch in fullscreen.
-29. [Proxies](proxies.md): edit heavy 4K and 60 fps footage smoothly with light copies the editor makes for you.
-30. [Audio](audio.md): listen, set the listening volume and check your levels.
-31. [Editing audio](audio-editing.md): set the volume of each clip, shape it with the rubber band, normalize clips, duck music under voices, mute and detach sound, and hear cuts while you scrub.
-32. [Removing silence](removing-silence.md): find the pauses in a talking clip, check them as red stripes on the timeline, and cut them out in one step, with a short breath left around every word.
-33. [Command palette and custom shortcuts](command-palette-and-custom-shortcuts.md): run any command by typing part of its name, look up every key, change, add and remove shortcuts, share them as a file, and use menus with the keyboard.
+3. [Importing media](importing-media.md): bring in your clips, sounds and images, copied into the project or linked where they are, and remove the ones you don't need.
+4. [Organizing media](organizing-media.md): sort your media into bins, search them as you type, show only one kind or the unused ones, and find where a file is.
+5. [Offline media and relinking](offline-media-and-relinking.md): see which files the editor can't read, give the browser access to linked files, and relink moved files one by one or a whole folder at once.
+6. [Adding media to the timeline](adding-media-to-the-timeline.md): skim your clips, mark the part you want, and insert, overwrite or drag them onto the timeline or the preview.
+7. [Timeline](timeline.md): put clips in order, select and move them, and move around your edit.
+8. [Trimming clips](trimming.md): shorten and lengthen clips, and cut them to the playhead.
+9. [Splitting, deleting and closing gaps](splitting-and-deleting.md): cut clips in two, remove them and tidy up the gaps.
+10. [Advanced trimming](advanced-trimming.md): roll cuts, slip and slide clips, and change their speed.
+11. [Markers and in/out points](markers-and-in-out-points.md): mark moments, mark a range, loop it, and lift or extract it.
+12. [Tracks](tracks.md): add, rename, reorder, lock, target, hide and resize tracks.
+13. [Linking and grouping clips](links-and-groups.md): keep a video and its sound together, put them back in sync, and group clips.
+14. [Copying, pasting and duplicating clips](copy-and-paste.md): copy, cut and paste clips at the playhead, paste with room made for them, paste into another project, give clips the look of another one, and duplicate clips with one key.
+15. [Clip thumbnails, waveforms and badges](clip-thumbnails-and-waveforms.md): read what each clip shows.
+16. [Preview and playback](preview-and-playback.md): watch and check your video.
+17. [Arranging layers in the preview](arranging-layers-in-the-preview.md): select pictures in the frame, move, resize and rotate them, and change which one is on top.
+18. [Snapping and smart guides in the preview](snapping-and-smart-guides.md): snap pictures to the frame, the safe zones and each other, space them evenly, and measure distances.
+19. [Editing properties](editing-properties.md): type or drag exact values, fit or fill the frame with one click, duplicate clips, turn clips off, and pick colors.
+20. [Cropping and reframing](cropping-and-reframing.md): cut away the sides of a picture, and turn landscape footage into a full vertical shot in two clicks.
+21. [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md): speed clips up or slow them down, hold a frame, and punch in on a shot.
+22. [Keyframes](keyframes.md): make pictures move, grow, turn and fade over time with a stopwatch, keyframes on the timeline and eight easings.
+23. [Fades and transitions](fades-and-transitions.md): fade clips in and out with a drag or one click, and add cross dissolves and dips to black or white at your cuts, with the sound crossfading under them.
+24. [Shapes and images](shapes-and-images.md): add rectangles, ellipses, lines and gradient backgrounds in one click, place images at the playhead, and use animated GIF and WebP stickers and sharp SVG logos.
+25. [Titles and text](titles-and-text.md): add a title or a subtitle with one key, type it in the preview, and style it with fonts, outlines, shadows and boxes.
+26. [Text animations](text-animations.md): make titles fade, slide, pop or type themselves in and out, word by word or line by line.
+27. [Text presets](text-presets.md): save a text style and its animations once, apply them in one click, put favorites in the toolbar, and choose the look of <kbd>T</kbd> and <kbd>Shift</kbd>+<kbd>T</kbd>.
+28. [Captions](captions.md): add a caption track, write and fix cues in the Captions tab, import and export SRT and VTT files, style the captions and highlight the spoken word.
+29. [Transcription](transcription.md): turn the speech of your edit into timed captions on your own computer, review them, and fix the words it got wrong.
+30. [Preview zoom, overlays and fullscreen](preview-zoom-overlays-fullscreen.md): zoom in on real detail, check safe zones and grids, and watch in fullscreen.
+31. [Proxies](proxies.md): edit heavy 4K and 60 fps footage smoothly with light copies the editor makes for you.
+32. [Audio](audio.md): listen, set the listening volume and check your levels.
+33. [Editing audio](audio-editing.md): set the volume of each clip, shape it with the rubber band, normalize clips, duck music under voices, mute and detach sound, and hear cuts while you scrub.
+34. [Removing silence](removing-silence.md): find the pauses in a talking clip, check them as red stripes on the timeline, and cut them out in one step, with a short breath left around every word.
+35. [Command palette and custom shortcuts](command-palette-and-custom-shortcuts.md): run any command by typing part of its name, look up every key, change, add and remove shortcuts, share them as a file, and use menus with the keyboard.
 
 ## All pages
 
@@ -55,7 +57,9 @@ Shorts Editor is a video editor for short vertical videos (9:16 by default) that
 | [Getting started](getting-started.md) | Browser requirements, the start screen, creating, opening and reopening projects, folder access |
 | [The workspace](workspace.md) | The app bar and **Settings**, the four panels, resizing panels, the timeline toolbar and right-click menus, tooltips with your keys, how shortcuts follow the panel you clicked |
 | [Projects and saving](projects-and-saving.md) | The project folder, autosave and the save dot, undo and redo, crash recovery, backups, read-only mode, project settings, what a new resolution does to your clips |
-| [Importing media](importing-media.md) | Importing, dropping and pasting files, supported types, the Media panel views, the usage and proxy chips, sorting, renaming and removing media, the media menu |
+| [Importing media](importing-media.md) | Importing, dropping and pasting files, supported types, copying or linking files (**Settings** > **Media**), the Media panel views, the usage, proxy and offline badges, sorting, selecting, renaming and removing media (keeping or deleting their clips, and their copied files), the media menu |
+| [Organizing media](organizing-media.md) | The parts of the **Media** tab, the **All**, **Video**, **Audio** and **Images** chips, creating, filling, renaming and deleting bins, **Move to bin**, **Search media**, the **Video**, **Audio**, **Images** and **Unused** filter chips, **Clear filters**, <kbd>Ctrl</kbd>+<kbd>A</kbd> and hidden media, cleaning up unused media, resizing list columns, **Reveal in folder**, what is kept with the project, the media commands in the palette |
+| [Offline media and relinking](offline-media-and-relinking.md) | Why media go offline (**Offline**, **No access**, **Can't play**), the message on open, the notice strip and badges, offline clips on the timeline and slates in the preview, **Allow access**, **Relink…** and what a file must have, **Relink folder…** and how files are matched, what relinking keeps, clips of removed media, messages |
 | [Adding media to the timeline](adding-media-to-the-timeline.md) | What each media item becomes, skimming cards, marking the part of a media item to use, inserting and overwriting at the playhead, building a sequence, dragging media onto the timeline, dropping media on the preview, dropping files from File Explorer onto the timeline |
 | [Timeline](timeline.md) | Ruler, tracks and clips, adding clips, zooming and zooming to the selection, the scrollbars and their zoom handles, scrolling, panning with the **Hand** tool, the middle mouse button or <kbd>Space</kbd>, centering on the playhead, moving the playhead and jumping between edit points, typing timecodes, timecodes in frames or milliseconds, selecting, moving, inserting, duplicating and nudging clips, snapping, renaming clips, label colors |
 | [Trimming clips](trimming.md) | Trimming clip edges, ripple trims and **Ripple mode**, trimming one side of a linked clip, trim limits, trimming to the playhead with Q, W and E |
@@ -87,12 +91,13 @@ Shorts Editor is a video editor for short vertical videos (9:16 by default) that
 | [Removing silence](removing-silence.md) | How **Remove silence** finds pauses, opening the **Remove silence** row from the quick actions, the red stripes and the count, **Threshold** (-60 to -10 dB), **Min** (100 to 5000 ms) and **Pad** (0 to 1000 ms), choosing a threshold for noisy recordings, what **Apply** cuts and how the gaps close, videos and their sound, J and L cuts, clips at another speed, closing the row, messages, undo |
 | [Command palette and custom shortcuts](command-palette-and-custom-shortcuts.md) | The command palette and its search, recent and grey rows, the **Keyboard shortcuts** sheet, **Settings** > **Shortcuts**, changing, adding and removing keys, conflicts, resetting keys, exporting and importing a keymap file, menus, the font picker and the **Paste attributes** checklist with the keyboard |
 | [Keyboard shortcuts](keyboard-shortcuts.md) | Every working shortcut with its default keys, the panel it needs and the macOS keys, the command palette, shortcut sheet and menu keys |
-| [Troubleshooting](troubleshooting.md) | Problems with the browser, graphics, the keyboard and changed shortcuts, the timeline, folders, saving, importing, proxies, playback, layers in the preview, cropping, **Edit Properties**, copying, pasting and duplicating, speed changes, freeze frames and punch zoom, keyframes, fades and transitions, audio editing, removing silence, shapes and images, titles and text, text presets, text animations, captions, transcription, and known limitations |
+| [Troubleshooting](troubleshooting.md) | Problems with the browser, graphics, the keyboard and changed shortcuts, the timeline, folders, saving, importing, organizing and offline media, proxies, playback, layers in the preview, cropping, **Edit Properties**, copying, pasting and duplicating, speed changes, freeze frames and punch zoom, keyframes, fades and transitions, audio editing, removing silence, shapes and images, titles and text, text presets, text animations, captions, transcription, and known limitations |
 | [What's new](whats-new.md) | What each batch added, newest first |
 
 ## What you can do in this version
 - Create projects in a folder you choose, with autosave, backups, undo and crash recovery.
-- Import video, audio and image files and organize them in the Media panel.
+- Import video, audio and image files, copied into the project or linked where they are, and organize them in the Media panel: sort them into bins, find any item as you type, show only videos, audio, images or the media no clip uses, and remove media with or without their clips in one step.
+- Keep working when files move: offline media show a red badge and their clips a gray slate, and **Relink…** or **Relink folder…** brings them back in one step, finding moved files by name and size.
 - Skim a clip by pointing at its card, mark just the part you want with <kbd>I</kbd> and <kbd>O</kbd>, and insert or overwrite it at the playhead with a double-click, <kbd>,</kbd> or <kbd>.</kbd>, so a sequence builds up clip after clip.
 - Drag media onto any track with snapping, onto the preview to place a picture where you drop it, or drop files from File Explorer straight onto the timeline.
 - Move the playhead to any frame.
@@ -138,4 +143,4 @@ Effects and video export arrive in later versions. Their buttons are already vis
 - Notes, tips and warnings appear as **Note**, **Tip** and **Important** boxes.
 - Each page starts with a **Video placeholder**: the planned walkthrough video for that page, with its file name, length and the steps it will show. The videos are not recorded yet; they will live in the `videos/` folder next to these pages.
 
-<sub>Last updated: Batch 40, 2026-10-18</sub>
+<sub>Last updated: Batch 41, 2026-10-18</sub>

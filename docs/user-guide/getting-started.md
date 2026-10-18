@@ -132,6 +132,8 @@ The browser lets Shorts Editor read and write only the folders you pick, and it 
 | You refuse editing, but the folder can still be read | The project opens read-only. A banner says so and nothing is saved. See [Work in read-only mode](projects-and-saving.md#work-in-read-only-mode). |
 | The folder cannot be read at all | The **Permission needed** dialog shows "Shorts Editor has no permission to read the folder "<name>"." Click **Try again** to be asked again (even if you refused before), or **Cancel**. |
 
+If the project links to media files outside its folder, the browser can also ask whether Shorts Editor may view those files. Allow it, or click **Allow access** later in the **Media** tab. See [Give the browser access to linked files](offline-media-and-relinking.md#give-the-browser-access-to-linked-files).
+
 ## If a project does not open
 
 Problems are shown in a dialog. Close it with **OK** or <kbd>Escape</kbd>.
@@ -151,7 +153,8 @@ For other problems, see [Troubleshooting](troubleshooting.md).
 - [The workspace](workspace.md)
 - [Projects and saving](projects-and-saving.md)
 - [Importing media](importing-media.md)
+- [Offline media and relinking](offline-media-and-relinking.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 33, 2026-10-17</sub>
+<sub>Last updated: Batch 41, 2026-10-18</sub>

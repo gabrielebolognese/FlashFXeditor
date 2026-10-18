@@ -2,6 +2,11 @@
 
 Shorts Editor grows in steps called batches. This page lists what each batch added that you can see or use, newest first. Follow the links for the full instructions.
 
+> **Video placeholder: What's new in Batch 41**
+> - File: `videos/whats-new/batch-41.mp4` (not recorded yet)
+> - Length: about 60 seconds
+> - Shows: a project with 40 media items in the Media panel; click **New bin**, type `Drone shots` and press <kbd>Enter</kbd>; type `drone` in **Search media**: the cards narrow as you type; press <kbd>Ctrl</kbd>+<kbd>A</kbd> and drag a card onto **Drone shots**; clear the search and click **Unused**: only the media no clip uses show; press <kbd>Ctrl</kbd>+<kbd>A</kbd> and <kbd>Delete</kbd>, tick **Also delete the copied files from the media folder** and click **Remove from project**; click **Settings** > **Media** and choose **Link to the original files**; open a project whose linked video was moved: the message **1 media file offline**, a red **Offline** badge on the card, a gray clip and a gray slate in the preview; click **Relink…** and pick the moved file: the video is back.
+
 > **Video placeholder: What's new in Batch 40**
 > - File: `videos/whats-new/batch-40.mp4` (not recorded yet)
 > - Length: about 60 seconds
@@ -158,6 +163,7 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 > - Shows: open a project with three clips on the timeline; press <kbd>Space</kbd> to play and let the timeline page forward; press <kbd>L</kbd> three times to reach 8x, then <kbd>K</kbd>; hold <kbd>K</kbd> and tap <kbd>L</kbd> to step one frame; turn on **Loop playback**; point at the **Dropped** readout in the status strip.
 
 ## In this page
+- [Batch 41: Organizing media and relinking](#batch-41-organizing-media-and-relinking)
 - [Batch 40: Command palette and custom shortcuts](#batch-40-command-palette-and-custom-shortcuts)
 - [Batch 39: Copy, paste and duplicate](#batch-39-copy-paste-and-duplicate)
 - [Batch 38: Remove silence](#batch-38-remove-silence)
@@ -198,6 +204,17 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 - [Batch 03: Projects, autosave and recovery](#batch-03-projects-autosave-and-recovery)
 - [Batch 02: Undo, redo and frame-exact time](#batch-02-undo-redo-and-frame-exact-time)
 - [Batch 01: The workspace](#batch-01-the-workspace)
+
+## Batch 41: Organizing media and relinking
+- **Bins**: click **New bin** in the Media panel header to make a bin, drag cards onto its chip in the new bin strip on the left, or use **Move to bin** in the media menu. Double-click a bin to rename it; right-click it to delete it. The strip also shows **All**, **Video**, **Audio** and **Images**, each with a count. See [Organizing media](organizing-media.md).
+- **Search media** narrows the cards as you type, by name or file name, ignoring case and accents. The filter chips **Video**, **Audio**, **Images** and **Unused** show only some media, and **Clear filters** shows everything again. <kbd>Ctrl</kbd>+<kbd>A</kbd> in the Media panel selects what the tab shows, and hidden media are never selected. See [Search your media](organizing-media.md#search-your-media).
+- Remove media that clips use: **Remove from project** keeps their clips on the timeline as gray offline clips, and **Remove and delete clips** takes the clips out too. A checkbox also deletes the copied files from the `media` folder. With **Unused**, <kbd>Ctrl</kbd>+<kbd>A</kbd> and <kbd>Delete</kbd>, unused media go in one dialog. See [Remove media](importing-media.md#remove-media) and [Clean up unused media](organizing-media.md#clean-up-unused-media).
+- **Settings** has a new **Media** tab: choose **Link to the original files** to import without copying, so big footage isn't stored twice. See [Copy or link your files](importing-media.md#copy-or-link-your-files).
+- Offline media: when a file is missing, needs your permission or can't be decoded, its card shows a red **Offline**, **No access** or **Can't play** badge, a notice strip offers **Allow access** or **Relink folder…**, its clips turn gray with an **Offline** badge, and the preview shows a gray slate with the file name. **Relink…** points the item at a file, and **Relink folder…** finds many moved files by name and size, each in one undo step. See [Offline media and relinking](offline-media-and-relinking.md).
+- In list view, drag the edge of a column heading to resize the column; double-click it to reset. **Reveal in folder** in the media menu shows where a file is and copies its path. See [Resize the list columns](organizing-media.md#resize-the-list-columns) and [Find a media file on your disk](organizing-media.md#find-a-media-file-on-your-disk).
+- Media pasted from another project that this one doesn't have can now be relinked. **Reveal in media panel** in the clip menu clears the search and filters that hide the media. See [Paste clips into another project](copy-and-paste.md#paste-clips-into-another-project).
+- The bin you show, the filter chips and the column widths are kept with the project.
+- New pages: [Organizing media](organizing-media.md) and [Offline media and relinking](offline-media-and-relinking.md). New troubleshooting sections: [Organizing media](troubleshooting.md#organizing-media) and [Offline media](troubleshooting.md#offline-media).
 
 ## Batch 40: Command palette and custom shortcuts
 - The command palette: press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> and type part of a name or a related word, for example `compact` for **Close all gaps**. Each row shows its category and its key; <kbd>Enter</kbd> runs the command in the panel you were working in, and the commands you ran last come first. Grey rows can't run right now. See [Run a command from the palette](command-palette-and-custom-shortcuts.md#run-a-command-from-the-palette).
@@ -626,4 +643,4 @@ See [The workspace](workspace.md) and [Getting started](getting-started.md).
 - [Adding media to the timeline](adding-media-to-the-timeline.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 40, 2026-10-18</sub>
+<sub>Last updated: Batch 41, 2026-10-18</sub>

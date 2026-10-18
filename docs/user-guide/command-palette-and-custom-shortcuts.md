@@ -56,7 +56,7 @@ A click outside the palette closes it too.
 
 - The palette doesn't open while you type in a field or while a dialog is open: press <kbd>Enter</kbd> or <kbd>Esc</kbd> first.
 - On the start screen, the palette opens too. There, **New project**, **Open project**, **Keyboard shortcuts** and **Settings** work; the other rows are grey until a project is open.
-- A few commands are not in the palette because they need something you point at: the rows of a preset card's menu (see [Text presets](text-presets.md)), the ruler menu's **Add marker** at the point you right-clicked, and the keys that only work while you edit a text or drag.
+- A few commands are not in the palette because they need something you point at: the rows of a preset card's menu (see [Text presets](text-presets.md)), the ruler menu's **Add marker** at the point you right-clicked, a bin chip's **Rename** and **Delete bin** and the media menu's **Move to bin** (see [Organizing media](organizing-media.md)), and the keys that only work while you edit a text or drag.
 
 The categories, in the order the list shows them, are **Transport**, **Timeline**, **Edit**, **Clipboard**, **Selection**, **Clip**, **Speed**, **Fades and transitions**, **Keyframes**, **Audio**, **Markers and range**, **Tracks**, **Tools**, **Toggles**, **Add**, **Text**, **Captions**, **Presets**, **Canvas**, **Preview**, **Media**, **Project** and **App**.
 
@@ -79,7 +79,7 @@ Do one of these:
 - Click **Edit shortcuts** in the **Keyboard shortcuts** sheet.
 - Open the command palette and run **Settings**.
 
-The **Settings** dialog opens on its **Shortcuts** tab. Other settings are available in a later version. Click **Done** or press <kbd>Esc</kbd> to close the dialog; your changes are already in effect.
+The **Settings** dialog opens on its **Shortcuts** tab. Its **Media** tab chooses whether imports copy your files or link to them; see [Copy or link your files](importing-media.md#copy-or-link-your-files). Other settings are available in a later version. Click **Done** or press <kbd>Esc</kbd> to close the dialog; your changes are already in effect.
 
 The tab lists every command you can give a key, by category, with the commands that have no key yet, such as **Remove silence**, **Normalize** or **Add solid**. Each row shows:
 
@@ -214,6 +214,7 @@ Two more lists work with the arrow keys:
 - [Splitting, deleting and closing gaps](splitting-and-deleting.md)
 - [Captions](captions.md)
 - [Text presets](text-presets.md)
+- [Organizing media](organizing-media.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 40, 2026-10-18</sub>
+<sub>Last updated: Batch 41, 2026-10-18</sub>

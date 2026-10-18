@@ -634,7 +634,7 @@ The white line across an audio clip on an M or L track shows its volume, and its
 
 ## Media panel
 
-These shortcuts work only while the Media panel is active. See [Importing media](importing-media.md) and [Adding media to the timeline](adding-media-to-the-timeline.md).
+These shortcuts work only while the Media panel is active. See [Importing media](importing-media.md), [Organizing media](organizing-media.md) and [Adding media to the timeline](adding-media-to-the-timeline.md).
 
 | Action | Windows | macOS | Works in |
 | --- | --- | --- | --- |
@@ -642,6 +642,7 @@ These shortcuts work only while the Media panel is active. See [Importing media]
 | Overwrite at the playhead with the selected media | <kbd>.</kbd> | <kbd>.</kbd> | Media panel |
 | Remove the selected media (asks first in the **Remove media** dialog); on the **Captions** tab, delete the selected cues | <kbd>Delete</kbd> or <kbd>Backspace</kbd> | <kbd>Delete</kbd> (⌫) | Media panel |
 | Rename the selected media | <kbd>F2</kbd> | <kbd>F2</kbd> | Media panel |
+| Select every media item the **Media** tab shows (the bin, the filter chips and the search leave the others out) | <kbd>Ctrl</kbd>+<kbd>A</kbd> | <kbd>⌘</kbd>+<kbd>A</kbd> | Media panel |
 | Import images from the clipboard | <kbd>Ctrl</kbd>+<kbd>V</kbd> | <kbd>⌘</kbd>+<kbd>V</kbd> | Media panel, or no panel active |
 
 ### While you point at a card
@@ -670,8 +671,16 @@ These keys act on the card under the pointer, whichever panel is active. Point a
 | Switch snapping for the drag | Hold <kbd>S</kbd> while you drag over the timeline | Same |
 | Place a picture at a point in the frame | Drag a card onto the preview | Same |
 | Import files and place their clips | Drag files from File Explorer onto a track of the timeline | Drag files from the Finder |
+| Move the dragged media into a bin | Drag cards onto a bin of your own in the bin strip | Same |
 | Cancel the drag | <kbd>Esc</kbd> before you release | <kbd>Esc</kbd> |
-| Open the media menu (insert, overwrite, add to canvas, proxies, thumbnails, rename, remove) | Right-click a card or row | Right-click a card or row |
+| Open the media menu (relink, insert, overwrite, add to canvas, proxies, thumbnails, reveal in folder, move to bin, rename, remove) | Right-click a card or row | Right-click a card or row |
+| Show a bin, one kind of media or all media | Click its chip in the bin strip | Same |
+| Rename a bin | Double-click its chip | Same |
+| Open a bin's menu (**Rename**, **Delete bin**) | Right-click its chip | Same |
+| Make a list column wider or narrower | Drag the right edge of its heading in **List view** | Same |
+| Give a list column its default width back | Double-click the right edge of its heading | Same |
+
+The media commands without a default key, such as **New bin**, **Search media**, the **Media filter** commands, **Relink media…** and **Reveal media in folder**, are in the command palette, and you can give them a key in **Settings** > **Shortcuts**. See [Use the palette](organizing-media.md#use-the-palette).
 
 ## Project and history
 
@@ -822,4 +831,4 @@ The browser acts on <kbd>Ctrl</kbd>+<kbd>N</kbd>, <kbd>Ctrl</kbd>+<kbd>T</kbd> a
 - [Projects and saving](projects-and-saving.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 40, 2026-10-18</sub>
+<sub>Last updated: Batch 41, 2026-10-18</sub>
