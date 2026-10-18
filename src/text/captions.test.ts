@@ -34,6 +34,11 @@ describe("cue text helpers", () => {
   it("counts words, matches searches and flattens lines", () => {
     expect(wordCount("  Hello  big\nworld ")).toBe(3);
     expect(wordCount("")).toBe(0);
+    // Dictionary words (Batch 47): a line without spaces is not one word; punctuation is no word.
+    expect(wordCount("Don't stop, it's 3.5 km!")).toBe(5);
+    expect(wordCount("— ¿?")).toBe(0);
+    expect(wordCount("我们今天去公园散步")).toBeGreaterThan(3);
+    expect(wordCount("今日は良い天気ですね")).toBeGreaterThan(3);
     expect(cueMatches("Hello World", "wor")).toBe(true);
     expect(cueMatches("Hello", "  ")).toBe(true);
     expect(cueMatches("Hello", "x")).toBe(false);

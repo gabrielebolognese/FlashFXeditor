@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { probeAudioFile } from "./audioProbe.js";
+import { MAX_WHOLE_AUDIO_SECONDS, probeAudioFile } from "./audioProbe.js";
 import { probeSvg, svgSize } from "./svgProbe.js";
 import { ProbeError } from "./types.js";
 
@@ -21,6 +21,23 @@ describe("probeAudioFile", () => {
     };
     await expect(probeAudioFile(new Blob(["x"]), "mp3", failing)).rejects.toThrow(ProbeError);
     await expect(probeAudioFile(new Blob(["x"]), "wav", async () => ({ length: 0, sampleRate: 48_000, numberOfChannels: 1 }))).rejects.toThrow(/empty/);
+  });
+
+  it("refuses audio too long to decode whole before decoding it (Batch 47)", async () => {
+    let decodes = 0;
+    const decode = async () => {
+      decodes += 1;
+      return { length: 48_000 * 60, sampleRate: 48_000, numberOfChannels: 2 };
+    };
+    await expect(probeAudioFile(new Blob(["mp3"]), "mp3", decode, undefined, async () => 62 * 60)).rejects.toMatchObject({
+      name: "ProbeError",
+      message: "Audio files over 45 minutes cannot be imported yet (this one is 62 minutes): cut it shorter, or use an MP4 or M4A file",
+    });
+    expect(decodes).toBe(0);
+    // Under the limit, or a duration the metadata does not give: decoded as before.
+    await expect(probeAudioFile(new Blob(["mp3"]), "mp3", decode, undefined, async () => MAX_WHOLE_AUDIO_SECONDS)).resolves.toMatchObject({ durationUs: 60_000_000 });
+    await expect(probeAudioFile(new Blob(["mp3"]), "mp3", decode, undefined, async () => null)).resolves.toMatchObject({ durationUs: 60_000_000 });
+    expect(decodes).toBe(2);
   });
 });
 

@@ -31,6 +31,8 @@ import { installTimelineController } from "./app/timelineController.js";
 import { installTransitionController } from "./app/transitionController.js";
 import { installTrackController } from "./app/trackController.js";
 import { UnsupportedScreen } from "./app/UnsupportedScreen.js";
+import { AppBoundary, FatalScreen } from "./app/FatalScreen.js";
+import { installPanelController } from "./app/panelController.js";
 import { installSettingsController } from "./app/settingsController.js";
 import { installHistoryController } from "./app/historyController.js";
 import { installTemplateController } from "./app/templateController.js";
@@ -54,6 +56,7 @@ async function start(): Promise<void> {
   performance.mark("app:gpu");
   startServices();
   installCommandController();
+  installPanelController();
   startGpu(adapter);
   installSettingsController();
   installProjectController();
@@ -88,20 +91,26 @@ async function start(): Promise<void> {
   perf?.installPerfController();
   root.render(
     <StrictMode>
-      {perf ? (
-        <>
-          <Profiler id="app" onRender={perf.perfMonitor.reactCommit}>
-            <App />
-          </Profiler>
-          <perf.PerfStats />
-        </>
-      ) : (
-        <App />
-      )}
+      <AppBoundary>
+        {perf ? (
+          <>
+            <Profiler id="app" onRender={perf.perfMonitor.reactCommit}>
+              <App />
+            </Profiler>
+            <perf.PerfStats />
+          </>
+        ) : (
+          <App />
+        )}
+      </AppBoundary>
     </StrictMode>,
   );
   // Every controller has registered its commands: the dev assertion (and the watch over buttons).
   if (import.meta.env.DEV) installCommandAudit();
 }
 
-void start();
+// A startup that fails shows what failed and Reload, never a blank page (Batch 47).
+start().catch((error: unknown) => {
+  console.error("[app] the editor could not start", error);
+  root.render(<FatalScreen message={error instanceof Error ? error.message || error.name : String(error)} />);
+});

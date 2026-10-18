@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { ByteSource, ChunkCache } from "../bytes/ByteSource.js";
 import { probeMp4, readMp4 } from "./mp4Probe.js";
 import { buildMp4, DEFAULT_AVCC, ROTATE_90_MATRIX, videoSamples, type TestMp4Options, type TestSample } from "./testMp4.js";
@@ -62,6 +62,15 @@ describe("probeMp4", () => {
     await expect(probeMp4(sourceOf(new TextEncoder().encode("definitely not a movie, just some text")))).rejects.toBeInstanceOf(ProbeError);
     await expect(probeMp4(sourceOf(new Uint8Array(0)))).rejects.toBeInstanceOf(ProbeError);
     await expect(probe({ tracks: [{ kind: "video", codec: "avc1", timescale: 30000, width: 64, height: 64, samples: [] }] })).rejects.toThrow(/no samples/);
+  });
+
+  it("gives a damaged file a plain reason, never the parser's box types read from garbage (Batch 47)", async () => {
+    vi.spyOn(console, "info").mockImplementation(() => undefined);
+    const garbage = Uint8Array.from({ length: 200_000 }, (_, i) => (i * 2654435761) >>> 24);
+    await expect(probeMp4(sourceOf(garbage))).rejects.toMatchObject({ name: "ProbeError", message: "Not a readable MP4/MOV file: it is damaged or is not a video" });
+    // The first 2000 bytes of a real file: no movie header.
+    const truncated = buildMp4({ tracks: [{ kind: "video", codec: "avc1", timescale: 30, width: 64, height: 64, samples: videoSamples(30, 1) }] }).slice(0, 40);
+    await expect(probeMp4(sourceOf(truncated))).rejects.toBeInstanceOf(ProbeError);
   });
 
   it("stops when aborted", async () => {

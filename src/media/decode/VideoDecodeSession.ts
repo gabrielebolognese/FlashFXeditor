@@ -409,7 +409,17 @@ export class VideoDecodeSession<F extends DecodedFrame = VideoFrame> {
   /** Starts a run at sync sample `key` on the same decoder (see the header), or on a new one. */
   private seek(key: number): void {
     const decoder = this.decoder ?? this.createDecoder();
-    if (decoder.state !== "configured") decoder.configure(this.config);
+    if (decoder.state !== "configured") {
+      try {
+        decoder.configure(this.config);
+      } catch (error) {
+        // isConfigSupported said yes, configure says no (Batch 47): undecodable, as an error before any frame.
+        this.decoder = null;
+        decoder.close();
+        if (!this.everDecoded) this.unsupported = new UnsupportedCodecError(`This browser cannot decode ${this.index.codec} (${error instanceof Error ? error.message : String(error)})`);
+        throw this.unsupported ?? error;
+      }
+    }
     for (const t of this.pending) {
       const leading = t < this.runStartUs;
       const copies = this.stale.get(t);

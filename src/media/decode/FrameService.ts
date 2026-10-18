@@ -16,6 +16,9 @@
 // - Proxies (spec §9.5): `lodFor` routes a request that wants the proxy to it when the media has one
 //   ready (`proxyReady`) and it opened, else to the full file. A proxy that fails to open (file gone,
 //   no decoder) is not used again until it is released (removed or made again).
+// - A crashed decode worker (Batch 47) loses its sessions: an open, a frame request or a prefetch
+//   that fails with a WorkerCrashError (or, on the new worker, NotOpenError) opens the video again and
+//   asks once more, so a crash costs a pause, never a media marked as failed.
 import type { MediaId } from "../../core/document/types.js";
 import { percentiles } from "../../core/perf/perfMath.js";
 import { fitWithin } from "../../render/gpu/fitWithin.js";
@@ -181,7 +184,7 @@ export class FrameService {
         (error: unknown) => {
           if (this.videos.get(key) !== video) return;
           this.videos.delete(key);
-          if (lod === "proxy" && !isNamed(error, "AbortError")) this.breakProxy(mediaId, error instanceof Error ? error.message : String(error));
+          if (lod === "proxy" && !isNamed(error, "AbortError") && !isNamed(error, "WorkerCrashError")) this.breakProxy(mediaId, error instanceof Error ? error.message : String(error));
         },
       ).finally(() => {
         if (this.opening.get(key) === controller) this.opening.delete(key);
@@ -247,8 +250,8 @@ export class FrameService {
         try {
           return await this.fetchFrame(mediaId, lod, timeUs, priority, controller.signal, started, onApproximate, minLongEdge, uploadAtLeast);
         } catch (error) {
-          // The worker was restarted and lost its sessions: open the video again, once.
-          if (attempt > 0 || !isNamed(error, "NotOpenError")) throw error;
+          // The worker crashed or was restarted and lost its sessions: open the video again, once.
+          if (attempt > 0 || !lostSession(error)) throw error;
           this.forget(mediaId, lod);
         }
       }
@@ -269,26 +272,32 @@ export class FrameService {
     const controller = this.track(lane, signal);
     lane.prefetches.add(controller);
     try {
-      const info = this.infos.get(keyOf(mediaId, lod)) ?? (await this.video(mediaId, lod));
-      if (!info.decodable) throw unsupported(info);
-      await this.acquire(lane, priority, controller.signal);
-      try {
-        this.counters.workerRequests += 1;
-        const { frames } = await this.deps.workers.request(
-          "prefetch",
-          { mediaId, lod, fromUs, toUs, priority, ...(stride > 1 && { stride }) },
-          {
-            priority: WORKER_PRIORITY[priority],
-            signal: controller.signal,
-            onProgress: (value) => {
-              const result = this.receive(mediaId, lod, value);
-              if (result && onFrame && !controller.signal.aborted) onFrame(result);
+      for (let attempt = 0; ; attempt++) {
+        const info = this.infos.get(keyOf(mediaId, lod)) ?? (await this.video(mediaId, lod));
+        if (!info.decodable) throw unsupported(info);
+        await this.acquire(lane, priority, controller.signal);
+        try {
+          this.counters.workerRequests += 1;
+          const { frames } = await this.deps.workers.request(
+            "prefetch",
+            { mediaId, lod, fromUs, toUs, priority, ...(stride > 1 && { stride }) },
+            {
+              priority: WORKER_PRIORITY[priority],
+              signal: controller.signal,
+              onProgress: (value) => {
+                const result = this.receive(mediaId, lod, value);
+                if (result && onFrame && !controller.signal.aborted) onFrame(result);
+              },
             },
-          },
-        );
-        return frames;
-      } finally {
-        this.releaseSlot(lane);
+          );
+          return frames;
+        } catch (error) {
+          // As getFrame: a lost session is opened again, once.
+          if (attempt > 0 || !lostSession(error)) throw error;
+          this.forget(mediaId, lod);
+        } finally {
+          this.releaseSlot(lane);
+        }
       }
     } finally {
       lane.prefetches.delete(controller);
@@ -390,7 +399,12 @@ export class FrameService {
     if (!file) throw new Error("The media file is missing");
     if (generation !== this.generation) throw abortError();
     signal.throwIfAborted();
-    const { info, index } = await this.deps.workers.request("openVideo", { mediaId, lod, file, cachedIndex }, { priority: "user", signal });
+    const request = () => this.deps.workers.request("openVideo", { mediaId, lod, file, cachedIndex }, { priority: "user", signal });
+    // A crash while it opens: the next request starts a new worker; ask that one, once.
+    const { info, index } = await request().catch((error: unknown) => {
+      if (!isNamed(error, "WorkerCrashError")) throw error;
+      return request();
+    });
     if (generation !== this.generation) throw abortError();
     if (info.indexFromCache) this.counters.indexFromCache += 1;
     else this.counters.indexParsed += 1;
@@ -588,4 +602,9 @@ function unsupported(info: VideoInfo): UnsupportedCodecError {
 
 function isNamed(error: unknown, name: string): boolean {
   return typeof error === "object" && error !== null && (error as { name?: unknown }).name === name;
+}
+
+/** The worker no longer has the video open: it crashed, or it is a new one. */
+function lostSession(error: unknown): boolean {
+  return isNamed(error, "NotOpenError") || isNamed(error, "WorkerCrashError");
 }

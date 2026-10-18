@@ -89,7 +89,8 @@ function shapeIssues(raw: JsonObject): string[] {
 export function parseProjectFile(text: string, migrations?: Readonly<Record<number, Migration>>, target?: number): Project {
   let raw: unknown;
   try {
-    raw = JSON.parse(text);
+    // A UTF-8 byte order mark (an editor may add one) is not JSON.
+    raw = JSON.parse(text.startsWith("\uFEFF") ? text.slice(1) : text);
   } catch (error) {
     throw new ProjectFileError(`project.json is not valid JSON (${errorMessage(error)})`);
   }

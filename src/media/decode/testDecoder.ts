@@ -39,6 +39,8 @@ export interface FakeOptions {
   drop?: ReadonlySet<number>;
   /** Fails when this timestamp is decoded. */
   failAt?: number;
+  /** `configure` throws, as Chrome's does for a config `isConfigSupported` accepted but no decoder takes. */
+  configureThrows?: boolean;
   /** Chunks are taken at once and each frame comes out this many ms later (timers). */
   latencyMs?: number;
   /**
@@ -83,6 +85,7 @@ export class FakeDecoder implements DecoderLike {
   }
 
   configure(): void {
+    if (this.options.configureThrows) throw new DOMException("Unsupported configuration", "NotSupportedError");
     this.state = "configured";
     this.keyRequired = true;
     this.lastFedAt = -2;

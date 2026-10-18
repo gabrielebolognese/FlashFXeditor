@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { makeMedia, makeMediaClip, makeProject, makeSolidClip, makeTrack, withClips } from "../core/document/fixtures.js";
 import { SCHEMA_VERSION, type JsonObject, type Project } from "../core/document/types.js";
+import { fuzzRun, random } from "../timeline/edit/fuzzKit.js";
 import { migrateProject, parseProjectFile, ProjectFileError, serializeProject, type Migration } from "./projectFile.js";
 
 const STAMP = { now: "2026-10-14T10:00:00.000Z", appVersion: "9.9.9" };
@@ -123,5 +124,63 @@ describe("migration hook", () => {
     delete unversioned.schemaVersion;
     expect(() => migrateProject(unversioned)).toThrow(/schemaVersion/);
     expect(() => migrateProject([1, 2])).toThrow(/project object/);
+  });
+});
+
+describe("edge cases (Batch 47)", () => {
+  /** Throws, and only a ProjectFileError: a broken file is reported, never a crash. */
+  const refusal = (text: string): ProjectFileError => {
+    try {
+      parseProjectFile(text);
+    } catch (error) {
+      expect(error).toBeInstanceOf(ProjectFileError);
+      return error as ProjectFileError;
+    }
+    throw new Error("expected a ProjectFileError");
+  };
+
+  it("round-trips random documents (links, transitions, keys, cues, offline media...), meta stamped", () => {
+    for (const seed of [1, 2, 3, 4, 5, 6]) {
+      const project = fuzzRun({ seed, steps: 150 }).final;
+      const text = serializeProject(project, STAMP);
+      expect(parseProjectFile(text), `seed ${seed}`).toStrictEqual({ ...project, meta: { ...project.meta, modifiedAt: STAMP.now, appVersion: STAMP.appVersion } });
+      expect(serializeProject(parseProjectFile(text), STAMP)).toBe(text);
+    }
+  });
+
+  it("opens a file that starts with a UTF-8 byte order mark", () => {
+    const project = richProject();
+    const text = serializeProject(project, STAMP);
+    expect(parseProjectFile(`\uFEFF${text}`)).toEqual(parseProjectFile(text));
+    // Only a leading one: a BOM inside a string stays.
+    const named = { ...project, name: "\uFEFFName" };
+    expect(parseProjectFile(`\uFEFF${serializeProject(named, STAMP)}`).name).toBe("\uFEFFName");
+  });
+
+  it("reports a truncated file, wherever it was cut", () => {
+    const text = serializeProject(fuzzRun({ seed: 11, steps: 60 }).final, STAMP);
+    const rng = random(11);
+    const cuts = [0, 1, 2, text.length - 2, ...Array.from({ length: 200 }, () => rng.int(0, text.length - 2))];
+    for (const at of cuts) expect(refusal(text.slice(0, at)).message, `cut at ${at}`).toMatch(/not valid JSON|project object/);
+    // The trailing newline is not part of the JSON.
+    expect(parseProjectFile(text.slice(0, -1)).id).toBe("fuzz-project");
+  });
+
+  it("refuses a schemaVersion that is a string, negative or fractional", () => {
+    const raw = JSON.parse(serializeProject(richProject(), STAMP)) as JsonObject;
+    for (const schemaVersion of ["2", -1, 1.5, null, true]) {
+      expect(refusal(JSON.stringify({ ...raw, schemaVersion })).message, String(schemaVersion)).toBe("project.json has no valid schemaVersion");
+    }
+    expect(refusal(JSON.stringify({ ...raw, schemaVersion: SCHEMA_VERSION + 0.5 })).message).toBe("project.json has no valid schemaVersion");
+    expect(refusal("[]").message).toBe("project.json does not hold a project object");
+    expect(refusal("null").message).toBe("project.json does not hold a project object");
+  });
+
+  it("keeps unknown top-level fields as they are (a file from a newer build of the same schema opens, and saves them back)", () => {
+    const raw = JSON.parse(serializeProject(richProject(), STAMP)) as JsonObject;
+    const text = JSON.stringify({ ...raw, futureField: { a: [1, 2] }, note: "x" });
+    const parsed = parseProjectFile(text) as Project & { futureField?: unknown; note?: unknown };
+    expect([parsed.futureField, parsed.note]).toEqual([{ a: [1, 2] }, "x"]);
+    expect(JSON.parse(serializeProject(parsed, STAMP))).toMatchObject({ futureField: { a: [1, 2] }, note: "x" });
   });
 });

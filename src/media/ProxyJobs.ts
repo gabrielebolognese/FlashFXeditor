@@ -26,7 +26,7 @@ import type { FsWritable } from "../project/fs.js";
 import { errorMessage } from "../project/errorMessage.js";
 import { PROXIES_DIR, proxyPath } from "../project/mediaFiles.js";
 import { proxySize, wantsProxy, type ProxySettings } from "./proxy/proxyFormat.js";
-import { isAbortError } from "./workers/protocol.js";
+import { isAbortError, isWorkerCrash } from "./workers/protocol.js";
 import type { WorkerPool } from "./workers/WorkerPool.js";
 
 export interface ProxyFiles {
@@ -84,6 +84,8 @@ export class ProxyJobs {
   private running: Running | null = null;
   /** Videos whose proxy failed this session. */
   private readonly failed = new Set<MediaId>();
+  /** Media whose proxy job ran again after a worker crash (once). */
+  private readonly crashRetried = new Set<MediaId>();
   /** Videos whose file now holds other content: their proxy is made again at the next sync. */
   private readonly remake = new Set<MediaId>();
   private started = false;
@@ -286,7 +288,11 @@ export class ProxyJobs {
       if (writable) await writable.abort().catch(() => undefined);
       await files.removePart(mediaId).catch(() => undefined);
       const reason: unknown = controller.signal.aborted ? controller.signal.reason : error;
-      if (!isAbortError(reason)) {
+      // A crashed proxy worker (Batch 47): the job runs once more on a new worker before it counts as failed.
+      if (isWorkerCrash(reason) && !this.crashRetried.has(mediaId)) {
+        this.crashRetried.add(mediaId);
+        console.warn(`[proxy] the proxy worker crashed making ${mediaId}'s proxy: starting again`);
+      } else if (!isAbortError(reason)) {
         console.warn(`[proxy] no proxy for ${mediaId}: ${errorMessage(reason)}`);
         this.failed.add(mediaId);
         const current = document.getState().media[mediaId];

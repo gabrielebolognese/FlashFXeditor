@@ -1,6 +1,7 @@
 // 1,000 random raw operations, validated after every step, then undone back to the original
 // document and redone to the final one.
 import { describe, expect, it } from "vitest";
+import { random, type Rng } from "../../timeline/edit/fuzzKit.js";
 import { gapAt, neighbors, trackEnd, trackGaps } from "../../timeline/model/queries.js";
 import { makeMedia, makeMediaClip, makeProject, makeSolidClip, makeTrack } from "../document/fixtures.js";
 import { frameToUs } from "../document/time.js";
@@ -10,22 +11,6 @@ import { DocumentStore } from "../store/DocumentStore.js";
 import { createSessionStore } from "../store/sessionStore.js";
 import { addClip, addTrack, removeClips, removeTrack, updateClip } from "./basicCommands.js";
 import type { Command } from "./command.js";
-
-/** Deterministic PRNG (mulberry32). */
-function random(seed: number) {
-  let state = seed;
-  const next = () => {
-    state = (state + 1831565813) | 0;
-    let t = Math.imul(state ^ (state >>> 15), 1 | state);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-  const int = (min: number, max: number) => min + Math.floor(next() * (max - min + 1));
-  const pick = <T>(items: readonly T[]): T => items[int(0, items.length - 1)] as T;
-  return { next, int, pick };
-}
-
-type Rng = ReturnType<typeof random>;
 
 /** A free start for `duration` frames on `track`: inside a large enough gap or after the last clip. */
 function freeStart(rng: Rng, project: Project, track: Track, duration: number): number {

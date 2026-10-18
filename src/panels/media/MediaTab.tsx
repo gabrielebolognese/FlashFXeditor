@@ -1,6 +1,7 @@
-import { ArrowDownWideNarrow, ArrowUpNarrowWide, AudioLines, ChevronDown, ChevronUp, FileSearch, Film, Folder, FolderPlus, FolderSearch, FunnelX, Image, Import, KeyRound, LayoutGrid, Library, List, SearchX, TriangleAlert, type LucideIcon } from "lucide-react";
+import { ArrowDownWideNarrow, ArrowUpNarrowWide, AudioLines, ChevronDown, ChevronUp, FileSearch, Film, Folder, FolderPlus, FolderSearch, FunnelX, Image, Import, KeyRound, LayoutGrid, Library, List, SearchX, TriangleAlert, X, type LucideIcon } from "lucide-react";
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, type CSSProperties, type DragEvent, type FocusEvent, type KeyboardEvent, type MouseEvent, type PointerEvent, type RefObject } from "react";
 import { insertMediaAtPlayhead } from "../../app/dropController.js";
+import { failedImports } from "../../app/failedImports.js";
 import { clearMediaSelection, dropMedia, mediaPanel, openMediaMenu, selectMedia, setMediaSearch } from "../../app/mediaController.js";
 import { mediaHover, pressMediaCard, takeClickAfterDrag } from "../../app/mediaGestures.js";
 import { mediaStatus } from "../../app/mediaOffline.js";
@@ -11,6 +12,7 @@ import type { MediaId, MediaItem, Project } from "../../core/document/types.js";
 import { MEDIA_COLUMNS, type MediaColumn, type MediaSort, type SessionState } from "../../core/store/sessionStore.js";
 import { isEditableTarget } from "../../core/keyboard/KeyDispatcher.js";
 import { useStoreSelector } from "../../core/store/useStoreSelector.js";
+import type { Container } from "../../media/mediaKinds.js";
 import type { MediaStatus } from "../../project/mediaSources.js";
 import { Button } from "../../ui/Button.js";
 import { EmptyState } from "../../ui/EmptyState.js";
@@ -29,6 +31,7 @@ import styles from "./MediaTab.module.css";
 import { PosterCanvas } from "./PosterCanvas.js";
 
 const KIND_ICONS: Record<MediaItem["kind"], LucideIcon> = { video: Film, audio: AudioLines, image: Image };
+const CONTAINER_ICONS: Record<Container, LucideIcon> = { mp4: Film, audio: AudioLines, image: Image, svg: Image };
 
 const SORT_LABELS: Record<MediaSort, string> = {
   name: "Name",
@@ -138,6 +141,38 @@ function OfflineNotice() {
       <Button size="compact" icon={FolderSearch} commandId="media.relinkFolder" disabled={missing === 0} tooltip={missing === 0 ? "No file is missing: Allow access reads the linked files again" : "Find the offline files in a folder (by name and size)"}>
         Relink folder…
       </Button>
+    </div>
+  );
+}
+
+/**
+ * Imports that failed (Batch 47): a file of an accepted type that could not be read (a corrupt MP4, no
+ * track, a failed copy) stays listed with a red badge and its reason until dismissed. Outside the media
+ * list: nothing can be selected, dragged or inserted from it.
+ */
+function FailedImports() {
+  const failed = useStoreSelector(failedImports, (state) => state);
+  if (failed.length === 0) return null;
+  return (
+    <div className={styles.failedImports} role="status" aria-label="Failed imports">
+      {failed.map((entry) => {
+        const Icon = CONTAINER_ICONS[entry.container];
+        return (
+          <div key={entry.id} className={styles.failedImport} data-failed-import={entry.name}>
+            <span className={styles.offline} data-tooltip="This file could not be imported: it is not in the project">
+              Failed
+            </span>
+            <Icon className={styles.kindIcon} aria-hidden="true" />
+            <span className={styles.failedName} data-tooltip={entry.name}>
+              {entry.name}
+            </span>
+            <span className={styles.failedReason} data-tooltip={entry.reason}>
+              {entry.reason}
+            </span>
+            <IconButton icon={X} size="compact" label="Dismiss" commandId="media.dismissFailedImport" arg={entry.id} />
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -560,6 +595,7 @@ export function MediaTab() {
     <div ref={rootRef} className={styles.root} onDragEnter={onDragEnter} onDragOver={onDragOver} onDragLeave={onDragLeave} onDrop={onDrop}>
       <MediaTools />
       <OfflineNotice />
+      <FailedImports />
       <div className={styles.body}>
         <BinStrip />
         <div className={styles.content}>

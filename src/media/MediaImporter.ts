@@ -16,10 +16,10 @@ import { errorMessage } from "../project/errorMessage.js";
 import type { FsDir } from "../project/fs.js";
 import { subdir } from "../project/layout.js";
 import { copyIntoMedia, MEDIA_DIR, removeFileAt, takenNames } from "../project/mediaFiles.js";
-import { browserDecodeAudio, probeAudioFile, type DecodeAudio, type DecodedAudioInfo } from "./probe/audioProbe.js";
+import { browserDecodeAudio, probeAudioFile, type DecodeAudio, type DecodedAudioInfo, type ReadDuration } from "./probe/audioProbe.js";
 import { probeSvg } from "./probe/svgProbe.js";
 import type { ProbeResult } from "./probe/types.js";
-import { classifyFile, type FileKind } from "./mediaKinds.js";
+import { classifyFile, type Container, type FileKind } from "./mediaKinds.js";
 import { isAbortError } from "./workers/protocol.js";
 import type { WorkerPool } from "./workers/WorkerPool.js";
 
@@ -27,16 +27,17 @@ export type ProbeFile = (file: File, kind: FileKind, signal?: AbortSignal) => Pr
 
 /**
  * The probe for each container. `onDecodedAudio` receives what decodeAudioData made of an audio file
- * (the decoded-audio cache keeps it instead of decoding the file again).
+ * (the decoded-audio cache keeps it instead of decoding the file again); `readAudioDuration` lets the
+ * audio probe refuse a file too long to decode whole before decoding it.
  */
-export function createProbeFile(pool: Pick<WorkerPool, "request">, decodeAudio: DecodeAudio = browserDecodeAudio(), onDecodedAudio?: (file: File, decoded: DecodedAudioInfo) => void): ProbeFile {
+export function createProbeFile(pool: Pick<WorkerPool, "request">, decodeAudio: DecodeAudio = browserDecodeAudio(), onDecodedAudio?: (file: File, decoded: DecodedAudioInfo) => void, readAudioDuration?: ReadDuration): ProbeFile {
   return (file, kind, signal) => {
     switch (kind.container) {
       case "mp4":
       case "image":
         return pool.request("probe", { file, container: kind.container, type: kind.mime }, { priority: "user", ...(signal && { signal }) });
       case "audio":
-        return probeAudioFile(file, kind.audioCodec ?? "", decodeAudio, onDecodedAudio && ((decoded) => onDecodedAudio(file, decoded)));
+        return probeAudioFile(file, kind.audioCodec ?? "", decodeAudio, onDecodedAudio && ((decoded) => onDecodedAudio(file, decoded)), readAudioDuration);
       case "svg":
         return probeSvg(file);
     }
@@ -76,6 +77,8 @@ const sourceFile = (source: ImportSource): File => (source instanceof File ? sou
 export interface Refusal {
   name: string;
   reason: string;
+  /** How the file would have been probed: set when its type is accepted and reading it failed (Batch 47: a failed import). */
+  container?: Container;
 }
 
 export interface ImportReport {
@@ -174,10 +177,10 @@ export class MediaImporter {
 
     const probed = await mapLimit(accepted, PROBE_CONCURRENCY, async ({ source, file, kind }) => {
       try {
-        return { source, file, probe: await this.deps.probe(file, kind, signal) };
+        return { source, file, container: kind.container, probe: await this.deps.probe(file, kind, signal) };
       } catch (error) {
         if (isAbortError(error)) throw error;
-        refused.push({ name: file.name, reason: errorMessage(error) });
+        refused.push({ name: file.name, reason: errorMessage(error), container: kind.container });
         return null;
       }
     });
@@ -196,7 +199,7 @@ export class MediaImporter {
     let bytes = 0;
     let linked = 0;
     try {
-      for (const [index, { source, file, probe }] of ready.entries()) {
+      for (const [index, { source, file, container, probe }] of ready.entries()) {
         const id = this.newId();
         const fields = { id, name: file.name, addedAt: this.now(), size: file.size };
         const handle = handleOf(source);
@@ -204,7 +207,7 @@ export class MediaImporter {
           try {
             await storeHandle(id, handle);
           } catch (error) {
-            refused.push({ name: file.name, reason: `could not keep a link to it (${errorMessage(error)})` });
+            refused.push({ name: file.name, reason: `could not keep a link to it (${errorMessage(error)})`, container });
             continue;
           }
           const pathHint = (!(source instanceof File) && source.path) || file.name;
@@ -220,7 +223,7 @@ export class MediaImporter {
           relPath = await copyIntoMedia(dir, file, file.name, taken, { onProgress: report, ...(signal && { signal }) });
         } catch (error) {
           if (isAbortError(error)) throw error;
-          refused.push({ name: file.name, reason: `could not copy it into media/ (${errorMessage(error)})` });
+          refused.push({ name: file.name, reason: `could not copy it into media/ (${errorMessage(error)})`, container });
           continue;
         }
         copied.push(relPath);

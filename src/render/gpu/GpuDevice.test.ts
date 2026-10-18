@@ -110,6 +110,20 @@ describe("GpuDevice", () => {
     expect(gpuDevice.device).toBeNull();
   });
 
+  it("goes to failed without a new device when it must not recover (the export's device, Batch 47)", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const { gpu, devices, requestAdapter } = fakeGpu(["ok", "ok"]);
+    const gpuDevice = new GpuDevice({ gpu, wait: async () => {}, recover: false });
+    const states: GpuState[] = [];
+    gpuDevice.subscribe((state) => states.push(state));
+    await gpuDevice.start();
+    devices[0]?.loseUnexpectedly();
+    await flush();
+    expect(states).toEqual(["ready", "lost", "failed"]);
+    expect(gpuDevice.device).toBeNull();
+    expect(requestAdapter).toHaveBeenCalledTimes(1);
+  });
+
   it("does not recover after dispose", async () => {
     const { gpu, devices, requestAdapter } = fakeGpu(["ok"]);
     const gpuDevice = new GpuDevice({ gpu, wait: async () => {} });

@@ -5,7 +5,7 @@ import type { FramePriority, VideoInfo } from "../../media/workers/protocol.js";
 import type { Composite, MediaLayer, SolidLayer, TextureLayer } from "../compositor/drawList.js";
 import type { TextureHandle } from "../gpu/renderer.js";
 import type { Mat3 } from "../mat3.js";
-import { LayerTextures } from "./LayerTextures.js";
+import { CRASH_RETRY_MS, LayerTextures } from "./LayerTextures.js";
 
 const FRAME = 33_333;
 /** Frame times starting at a composition offset of 1000 us. */
@@ -291,6 +291,24 @@ describe("LayerTextures", () => {
     expect(onChange).toHaveBeenCalled();
     resolve(textures, "idle", media({ trackId: "v1", mediaId: "new", timeUs: 0 }));
     expect(live()[0]).toMatchObject({ mediaId: "new", timeUs: 1000 });
+  });
+
+  it("asks again after a decode worker crash instead of failing the media (Batch 47)", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    const { textures, requests, onChange, flush } = setup();
+    const layer = media({ trackId: "v1", mediaId: "a", timeUs: 0 });
+    resolve(textures, "idle", layer);
+    requests[0]?.reject(Object.assign(new Error("The decode worker stopped responding"), { name: "WorkerCrashError" }));
+    await flush();
+    expect(textures.stats.failed).toBe(0);
+    expect(onChange).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(CRASH_RETRY_MS);
+    expect(onChange).toHaveBeenCalledTimes(1);
+    // Not settled: the next pass asks for the same frame again.
+    resolve(textures, "idle", layer);
+    expect(requests).toHaveLength(2);
+    expect(requests[1]).toMatchObject({ mediaId: "a", timeUs: 1000 });
+    vi.useRealTimers();
   });
 
   it("leaves out media this browser cannot decode", () => {

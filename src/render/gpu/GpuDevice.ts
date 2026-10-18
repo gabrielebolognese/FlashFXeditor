@@ -13,6 +13,11 @@ export interface GpuDeviceOptions {
   gpu?: GPU | undefined;
   recoveryDelaysMs?: readonly number[];
   wait?: (ms: number) => Promise<void>;
+  /**
+   * False: a lost device is not replaced; the state goes from "lost" to "failed" (the export, Batch 47:
+   * textures of the old device would be skipped silently, so the job fails instead).
+   */
+  recover?: boolean;
 }
 
 const defaultWait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
@@ -34,6 +39,7 @@ export class GpuDevice {
   private readonly gpu: GPU | undefined;
   private readonly delays: readonly number[];
   private readonly wait: (ms: number) => Promise<void>;
+  private readonly recovers: boolean;
   /** Devices created so far; texture handles remember theirs to know when they went stale. */
   generation = 0;
   /** Successful recoveries after a loss (dev stats). */
@@ -47,6 +53,7 @@ export class GpuDevice {
     this.gpu = options.gpu ?? (typeof navigator !== "undefined" ? navigator.gpu : undefined);
     this.delays = options.recoveryDelaysMs ?? RECOVERY_DELAYS_MS;
     this.wait = options.wait ?? defaultWait;
+    this.recovers = options.recover ?? true;
   }
 
   get device(): GPUDevice | null {
@@ -102,7 +109,8 @@ export class GpuDevice {
     this.current = null;
     this.lostAt = performance.now();
     this.setState("lost");
-    void this.recover();
+    if (this.recovers) void this.recover();
+    else this.setState("failed");
   }
 
   private async recover(): Promise<void> {

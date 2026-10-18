@@ -58,14 +58,22 @@ export const recentProjects = new RecentProjects(keyValueStore);
 /** Project templates (spec §15): settings, track layout and text presets, in IndexedDB. */
 export const templateStore = new TemplateStore(keyValueStore);
 export const appSettings = createAppSettings(keyValueStore);
-/** Media workers (spec §3.5), each created on its first request (transcribe: Batch 33, the Transcribe dialog; export: Batch 43, one per export). */
-export const workerPool = new WorkerPool({
-  decode: () => new Worker(new URL("../media/workers/decode.worker.ts", import.meta.url), { type: "module", name: "decode" }),
-  analysis: () => new Worker(new URL("../media/workers/analysis.worker.ts", import.meta.url), { type: "module", name: "analysis" }),
-  proxy: () => new Worker(new URL("../media/workers/proxy.worker.ts", import.meta.url), { type: "module", name: "proxy" }),
-  transcribe: () => new Worker(new URL("../media/workers/transcribe.worker.ts", import.meta.url), { type: "module", name: "transcribe" }),
-  export: () => new Worker(new URL("../media/workers/export.worker.ts", import.meta.url), { type: "module", name: "export" }),
-});
+/**
+ * Media workers (spec §3.5), each created on its first request (transcribe: Batch 33, the Transcribe
+ * dialog; export: Batch 43, one per export). The decode worker is watched for a silent death (Batch
+ * 47): its handlers never block for long (demuxing is chunked), so 1.2 s without a word while frames
+ * wait means it is gone, and playback recovers within 2 s.
+ */
+export const workerPool = new WorkerPool(
+  {
+    decode: () => new Worker(new URL("../media/workers/decode.worker.ts", import.meta.url), { type: "module", name: "decode" }),
+    analysis: () => new Worker(new URL("../media/workers/analysis.worker.ts", import.meta.url), { type: "module", name: "analysis" }),
+    proxy: () => new Worker(new URL("../media/workers/proxy.worker.ts", import.meta.url), { type: "module", name: "proxy" }),
+    transcribe: () => new Worker(new URL("../media/workers/transcribe.worker.ts", import.meta.url), { type: "module", name: "transcribe" }),
+    export: () => new Worker(new URL("../media/workers/export.worker.ts", import.meta.url), { type: "module", name: "export" }),
+  },
+  { watchdog: { decode: { pingAfterMs: 400, deadAfterMs: 800 } } },
+);
 /** The fonts text can use: bundled, the open project's, installed (spec §10.1). */
 export const fontLibrary = new FontLibrary(typeof document === "undefined" ? null : document.fonts);
 /** Save state of the open project, for the app bar dot and the read-only banner. */

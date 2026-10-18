@@ -239,6 +239,19 @@ describe("pasteClips into another project (the system clipboard JSON)", () => {
     expect(Object.keys(doc.getState().media)).toEqual(["short"]);
   });
 
+  it("never gives pasted audio clips a media of the same name without sound (Batch 47 fuzz)", () => {
+    const target = project([], { id: "target" });
+    target.media = { silent: { ...makeMedia("silent"), name: "Interview.mp4", hasAudio: false } };
+    const { result, clips } = paste(target, copied(source(), ["v", "a"]), 0);
+    expect(result.offline).toHaveLength(1);
+    expect(clips.map((clip) => [clip.kind, (clip as MediaClip).mediaId])).toEqual([
+      ["video", result.offline[0]?.id],
+      ["audio", result.offline[0]?.id],
+    ]);
+    // The picture alone takes it.
+    expect((paste(target, copied(source(), ["v"], null, false), 0).clips[0] as MediaClip).mediaId).toBe("silent");
+  });
+
   it("never points an offline item at a file of this project (both imported Interview.mp4 as media/Interview.mp4)", () => {
     const from = source();
     from.media.m = { ...(from.media.m as MediaItem), file: { relPath: "media/Interview.mp4" } };

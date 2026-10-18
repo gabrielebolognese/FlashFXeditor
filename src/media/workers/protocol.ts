@@ -267,7 +267,15 @@ export interface CancelMessage {
   type: "cancel";
   id: number;
 }
-export type ToWorker = RequestMessage | CancelMessage;
+/** The watchdog asks a quiet worker whether it still runs: any message back (a `pong`) says it does. */
+export interface PingMessage {
+  type: "ping";
+}
+/** Ends the worker without a word (dev: how a worker killed from DevTools looks to the pool). */
+export interface ExitMessage {
+  type: "exit";
+}
+export type ToWorker = RequestMessage | CancelMessage | PingMessage | ExitMessage;
 
 /** Errors cross the boundary as name + message (DOMExceptions do not survive every clone). */
 export interface ErrorInfo {
@@ -275,7 +283,7 @@ export interface ErrorInfo {
   message: string;
 }
 
-export type FromWorker = { type: "result"; id: number; value: unknown } | { type: "progress"; id: number; value: unknown } | { type: "error"; id: number; error: ErrorInfo };
+export type FromWorker = { type: "result"; id: number; value: unknown } | { type: "progress"; id: number; value: unknown } | { type: "error"; id: number; error: ErrorInfo } | { type: "pong" };
 
 export function toErrorInfo(error: unknown): ErrorInfo {
   if (typeof error === "object" && error !== null) {
@@ -289,6 +297,26 @@ export function fromErrorInfo(info: ErrorInfo): Error {
   const error = new Error(info.message);
   error.name = info.name;
   return error;
+}
+
+/**
+ * A worker that crashed (an uncaught error) or stopped answering: its requests reject with this, and
+ * the next request starts a new worker. Callers that can ask again (frames, audio) retry once.
+ */
+export class WorkerCrashError extends Error {
+  override name = "WorkerCrashError";
+
+  constructor(
+    readonly kind: WorkerKind,
+    message: string,
+  ) {
+    super(message);
+  }
+}
+
+/** True for a WorkerCrashError, also one that crossed a worker boundary as name + message. */
+export function isWorkerCrash(error: unknown): boolean {
+  return typeof error === "object" && error !== null && (error as { name?: unknown }).name === "WorkerCrashError";
 }
 
 export function abortError(): DOMException {

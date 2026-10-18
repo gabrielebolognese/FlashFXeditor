@@ -404,7 +404,8 @@ export function retimeKeyframes(keyframes: Keyframes, ratio: number): Keyframes 
   for (const [prop, keys] of Object.entries(keyframes)) {
     const out: Key[] = [];
     for (const key of keys) {
-      const frame = Math.round(key.frame * ratio);
+      // `|| 0`: no -0 (a key before the clip's start scaled onto it; JSON writes it as 0).
+      const frame = Math.round(key.frame * ratio) || 0;
       const last = out[out.length - 1];
       if (last && last.frame === frame) out[out.length - 1] = { ...key, frame };
       else out.push({ ...key, frame });

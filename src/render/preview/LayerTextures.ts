@@ -54,7 +54,7 @@ import { imageKey, type Lod, type TextureKey, type TexturePool } from "../../med
 import type { FrameResult, FrameService } from "../../media/decode/FrameService.js";
 import type { ImageService } from "../../media/decode/ImageService.js";
 import { mediaTimePosition } from "../../media/demux/sampleIndex.js";
-import { isAbortError, type FramePriority } from "../../media/workers/protocol.js";
+import { isAbortError, isWorkerCrash, type FramePriority } from "../../media/workers/protocol.js";
 import { newUnitState, type UnitState } from "../../text/anim.js";
 import type { NeighborFrame, UpcomingText } from "../compositor/Compositor.js";
 import { HIGHLIGHT_SLOT, type CaptionHighlightFrame, type Composite, type DissolveLayer, type DrawList, type Layer, type MediaLayer, type SolidGeometry, type SolidLayer, type TextAnimFrame, type TextCompositeLayer, type TextureLayer, type TransitionCompositeLayer, type UvRect } from "../compositor/drawList.js";
@@ -63,6 +63,9 @@ import { multiplyInto, mutableIdentity, setMat, type Mat3, type MutableMat3 } fr
 import type { Rect } from "../text/layout.js";
 import type { ResolvedText, ResolvedUnit, TextRasterCache } from "../text/TextRasterCache.js";
 import { exportLongEdge, layerDetail, vectorLongEdge } from "./detail.js";
+
+/** After a decode worker crash the frame service already asked twice: a new pass asks again this much later (Batch 47). */
+export const CRASH_RETRY_MS = 500;
 
 export interface LayerTexturesDeps {
   frames: Pick<FrameService, "info" | "video" | "getFrame" | "prefetch" | "lodFor">;
@@ -174,6 +177,7 @@ export class LayerTextures {
   private readonly refining = new Set<MediaId>();
   private readonly warming = new Set<string>();
   private readonly failed = new Set<MediaId>();
+  private retryTimer: ReturnType<typeof setTimeout> | null = null;
   private pass = 0;
   private resolving = false;
   /** Scratch keys of the frame a layer wants and of the other lod's frame at that time (copied when kept). */
@@ -442,6 +446,8 @@ export class LayerTextures {
       slots.clear();
     }
     this.failed.clear();
+    if (this.retryTimer !== null) clearTimeout(this.retryTimer);
+    this.retryTimer = null;
     this.opening.clear();
     this.loadingImages.clear();
     this.refining.clear();
@@ -512,7 +518,15 @@ export class LayerTextures {
       if (!info?.decodable || info.frameTimesUs.length === 0) return null;
       const timeUs = info.frameTimesUs[mediaTimePosition(info.frameTimesUs, layer.timeUs)] as number;
       const longEdge = exportLongEdge(Math.max(info.codedWidth, info.codedHeight), layerDetail(layer, info.codedWidth, info.codedHeight), maxLongEdge);
-      const result = await this.deps.frames.getFrame(mediaId, timeUs, { lod: "full", priority: "playback", minLongEdge: Math.floor(longEdge * DETAIL_TOLERANCE), uploadAtLeast: longEdge });
+      let result: FrameResult;
+      try {
+        result = await this.deps.frames.getFrame(mediaId, timeUs, { lod: "full", priority: "playback", minLongEdge: Math.floor(longEdge * DETAIL_TOLERANCE), uploadAtLeast: longEdge });
+      } catch (error) {
+        // The decoder refused the media partway (Batch 47): it becomes offline (a slate), as in the preview.
+        if ((error as { name?: unknown }).name !== "UnsupportedCodecError") throw error;
+        this.fail(mediaId, (error as Error).message);
+        return null;
+      }
       key = result.key;
       texture = result.texture;
     }
@@ -756,6 +770,8 @@ export class LayerTextures {
             return;
           }
           if ((error as { name?: unknown }).name === "UnsupportedCodecError") this.fail(key.mediaId, (error as Error).message);
+          // A crashed decode worker (twice in a row): nothing is wrong with the media, ask again soon.
+          else if (isWorkerCrash(error)) this.retryLater();
           else {
             slot.settled = true;
             copyKey(slot.settledKey, key);
@@ -777,8 +793,9 @@ export class LayerTextures {
       (error: unknown) => {
         this.opening.delete(id);
         if (isAbortError(error)) return;
+        if (isWorkerCrash(error)) this.retryLater();
         // A proxy that does not open: the frame service routes the media to its full file.
-        if (lod === "proxy") this.deps.onChange();
+        else if (lod === "proxy") this.deps.onChange();
         else this.fail(mediaId, error instanceof Error ? error.message : String(error));
       },
     );
@@ -818,6 +835,14 @@ export class LayerTextures {
         if (!isAbortError(error)) this.fail(mediaId, error instanceof Error ? error.message : String(error));
       },
     );
+  }
+
+  private retryLater(): void {
+    if (this.retryTimer !== null) return;
+    this.retryTimer = setTimeout(() => {
+      this.retryTimer = null;
+      this.deps.onChange();
+    }, CRASH_RETRY_MS);
   }
 
   private fail(mediaId: MediaId, reason: string): void {

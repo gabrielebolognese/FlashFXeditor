@@ -350,6 +350,14 @@ describe("VideoDecodeSession", () => {
     expect(decoders).toHaveLength(1);
   });
 
+  it("marks the video undecodable when configure throws although isConfigSupported said yes (Batch 47)", async () => {
+    const { decoders, shown } = setup(linearIndex(60), { configureThrows: true });
+    await expect(shown(3)).rejects.toMatchObject({ name: "UnsupportedCodecError", message: expect.stringContaining("Unsupported configuration") });
+    await expect(shown(40)).rejects.toMatchObject({ name: "UnsupportedCodecError" });
+    expect(decoders).toHaveLength(1);
+    expect(decoders[0]?.state).toBe("closed");
+  });
+
   it("fails the request on a decoder error, then recovers with a new decoder", async () => {
     const { decoders, shown } = setup(linearIndex(60), { failAt: us(5) });
     await expect(shown(8)).rejects.toThrow("decode failed");

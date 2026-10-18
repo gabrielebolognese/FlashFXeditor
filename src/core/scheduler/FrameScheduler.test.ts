@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { FrameScheduler } from "./FrameScheduler.js";
+import { FrameScheduler, VIEW_FAILURE_LIMIT } from "./FrameScheduler.js";
 
 function fakeFrames() {
   const queue: ((time: number) => void)[] = [];
@@ -149,5 +149,38 @@ describe("FrameScheduler", () => {
     frames.tick();
     frames.tick();
     expect(ok).toHaveBeenCalledTimes(2);
+  });
+
+  it("reports a view that fails several renders in a row, once, with its flags (Batch 47)", () => {
+    const frames = fakeFrames();
+    const scheduler = new FrameScheduler(frames.request, frames.cancel);
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const failures: [string[], unknown][] = [];
+    scheduler.onViewFailure = (flags, error) => failures.push([flags, error]);
+    let broken = true;
+    const view = {
+      render: vi.fn(() => {
+        if (broken) throw new Error("broken view");
+      }),
+    };
+    scheduler.register("preview", view);
+    scheduler.register("previewOverlay", view);
+    const frame = () => {
+      scheduler.invalidate("preview");
+      frames.tick();
+    };
+    // Failures with a success between them do not add up.
+    frame();
+    frame();
+    broken = false;
+    frame();
+    broken = true;
+    for (let i = 1; i < VIEW_FAILURE_LIMIT; i++) frame();
+    expect(failures).toEqual([]);
+    frame();
+    expect(failures).toEqual([[["preview", "previewOverlay"], new Error("broken view")]]);
+    frame();
+    frame();
+    expect(failures).toHaveLength(1);
   });
 });

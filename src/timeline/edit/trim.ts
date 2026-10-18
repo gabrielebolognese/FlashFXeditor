@@ -151,11 +151,17 @@ export function maxDurationFrames(clip: MediaClip, durationUs: number, fps: Rati
 
 
 /** The durations a rate stretch allows (speed within 0.25x..4x, at least 1 frame), and what bounds the shortest. */
-function stretchRange(clip: Clip): { min: number; max: number; minReason: TrimLimitReason } {
+function stretchRange(clip: Clip, fps: Rational): { min: number; max: number; minReason: TrimLimitReason } {
   // The source frames the clip plays stay the same: duration * speed (§5.1).
   const span = clip.duration * (isMediaClip(clip) ? clip.speed : 1);
   const fastest = Math.ceil(span / MAX_SPEED - 1e-9);
-  return { min: Math.max(1, fastest), max: Math.max(1, Math.floor(span / MIN_SPEED + 1e-9)), minReason: fastest > 1 ? "maxSpeed" : "minDuration" };
+  let max = Math.max(1, Math.floor(span / MIN_SPEED + 1e-9));
+  // `in` and `out` stay, so they must stay within one source frame (at the new speed) of duration *
+  // speed (§5.2): a source range off the frame grid (a frame rate conversion keeps one within a frame,
+  // fpsConvert.ts) slows down only as far as that holds.
+  const off = isMediaClip(clip) ? Math.abs(clip.out - clip.in - span * usPerFrame(fps)) : 0;
+  if (off > 0) max = Math.min(max, Math.max(clip.duration, Math.floor((span * usPerFrame(fps)) / off - 1e-6)));
+  return { min: Math.max(1, fastest), max, minReason: fastest > 1 ? "maxSpeed" : "minDuration" };
 }
 
 /** Keeps the tighter bound; a tie goes to the reason first in `REASON_ORDER`. */
@@ -244,7 +250,7 @@ function buildPlan(project: Project, kind: EditKind, clipId: ClipId, edge: TrimE
       case "stretchIn":
       case "stretchOut": {
         // The new duration is d - delta (in) or d + delta (out).
-        const range = stretchRange(clip);
+        const range = stretchRange(clip, fps);
         const d = clip.duration;
         if (move === "stretchIn") {
           hi = tighter(hi, d - range.min, at(range.minReason), "hi");

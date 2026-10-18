@@ -108,6 +108,15 @@ function trackDurationUs(track: Track): number {
   return ticksToUs(track.samples_duration > 0 ? track.samples_duration : track.duration, track.timescale);
 }
 
+/**
+ * A file the parser gave up on (Batch 47: shown on its failed import): a plain reason for the user, the
+ * parser's own words (box types read from garbage) on the console only.
+ */
+function unreadable(detail: string): ProbeError {
+  console.info(`[probe] mp4box: ${detail}`);
+  return new ProbeError("Not a readable MP4/MOV file: it is damaged or is not a video");
+}
+
 /** Parses the movie header. Throws ProbeError when the file is not a readable MP4/MOV. */
 export async function readMp4(source: ByteSource, signal?: AbortSignal): Promise<Mp4File> {
   const file = createFile();
@@ -129,9 +138,9 @@ export async function readMp4(source: ByteSource, signal?: AbortSignal): Promise
     try {
       next = file.appendBuffer(buffer, offset + length >= source.size);
     } catch (error) {
-      throw new ProbeError(`Not a readable MP4/MOV file (${error instanceof Error ? error.message : String(error)})`);
+      throw unreadable(error instanceof Error ? error.message : String(error));
     }
-    if (parseError) throw new ProbeError(`Not a readable MP4/MOV file (${parseError})`);
+    if (parseError) throw unreadable(parseError);
     offset = next > offset ? next : offset + length;
   }
   if (!movie) file.flush();

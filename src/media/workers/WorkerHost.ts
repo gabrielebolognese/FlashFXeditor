@@ -7,6 +7,8 @@ import { abortError, closeTransferables, PRIORITY_RANK, toErrorInfo, transferabl
 export interface HostScope {
   postMessage(message: FromWorker, transfer: Transferable[]): void;
   addEventListener(type: "message", listener: (event: MessageEvent<ToWorker>) => void): void;
+  /** Ends the worker (a worker's `self.close`); absent in-thread. */
+  close?(): void;
 }
 
 /** `emit` posts a progress value (with its transferables) while the request is still running. */
@@ -40,6 +42,15 @@ export class WorkerHost {
   receive(message: ToWorker): void {
     if (message.type === "cancel") {
       this.cancel(message.id);
+      return;
+    }
+    // The pool's watchdog: answered at once, whatever runs (a busy synchronous task delays it, as it should).
+    if (message.type === "ping") {
+      this.post({ type: "pong" });
+      return;
+    }
+    if (message.type === "exit") {
+      this.scope.close?.();
       return;
     }
     if (this.immediate.has(message.method)) {

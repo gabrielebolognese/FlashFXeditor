@@ -195,4 +195,20 @@ describe("project.setFrameRate", () => {
     expect(store.getState().settings.fps).toEqual(FPS_30);
     expect(store.history.getState().canUndo).toBe(false);
   });
+
+  it("keeps a freeze frame on the media's last frame inside the media at a lower rate (Batch 47 fuzz)", () => {
+    // Held 10 ms before the end of the media: one frame later is the media's end at 30 fps (freeze.ts
+    // clamps it there), and past it at 15 or 24 fps.
+    let project = makeProject();
+    project.media.m = makeMedia("m", "video", 10_000_000);
+    project.tracks = [makeTrack("v1")];
+    const freeze: MediaClip = { ...makeMediaClip(project, { id: "f", trackId: "v1", start: 0, duration: 60, mediaId: "m" }), speed: 0, in: 9_990_000, out: 10_000_000 };
+    project = withClips(project, [freeze]);
+    expect(validateProject(project)).toEqual([]);
+    for (const to of [{ num: 15, den: 1 }, { num: 24, den: 1 }, FPS_60]) {
+      const store = storeFor(project);
+      store.dispatch(setFrameRate(to));
+      expect(store.getState().clips.f).toMatchObject({ speed: 0, in: 9_990_000, out: 10_000_000 });
+    }
+  });
 });

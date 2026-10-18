@@ -23,6 +23,9 @@ export interface RenderView {
 /** Runs once per animation frame, before the views render. */
 export type Ticker = (time: number) => void;
 
+/** Renders a view may fail in a row before `onViewFailure` hears of it (one bad frame is only logged). */
+export const VIEW_FAILURE_LIMIT = 3;
+
 type RequestFrame = (callback: (time: number) => void) => number;
 type CancelFrame = (handle: number) => void;
 
@@ -30,7 +33,14 @@ export class FrameScheduler {
   private readonly views = new Map<InvalidationFlag, Set<RenderView>>();
   private dirty = new Set<InvalidationFlag>();
   private readonly tickers = new Set<Ticker>();
+  /** Renders failed in a row, per view. */
+  private readonly failures = new Map<RenderView, number>();
   private handle: number | null = null;
+  /**
+   * Called once when a view has failed VIEW_FAILURE_LIMIT renders in a row, with the flags it is
+   * registered for (Batch 47: the app puts the view's panel in its error state).
+   */
+  onViewFailure: ((flags: InvalidationFlag[], error: unknown) => void) | null = null;
   /** True while tickers run: their invalidations are rendered in this frame. */
   private ticking = false;
 
@@ -49,6 +59,7 @@ export class FrameScheduler {
     set.add(view);
     return () => {
       set.delete(view);
+      this.failures.delete(view);
     };
   }
 
@@ -78,6 +89,10 @@ export class FrameScheduler {
     this.tickers.clear();
   }
 
+  private flagsOf(view: RenderView): InvalidationFlag[] {
+    return FLAG_ORDER.filter((flag) => this.views.get(flag)?.has(view));
+  }
+
   private readonly frame = (time: number): void => {
     this.handle = null;
     this.ticking = true;
@@ -105,8 +120,12 @@ export class FrameScheduler {
     for (const view of toRender) {
       try {
         view.render(time);
+        if (this.failures.size > 0) this.failures.delete(view);
       } catch (error) {
         console.error("[scheduler] view render failed", error);
+        const failures = (this.failures.get(view) ?? 0) + 1;
+        this.failures.set(view, failures);
+        if (failures === VIEW_FAILURE_LIMIT) this.onViewFailure?.(this.flagsOf(view), error);
       }
     }
     if (this.handle === null && (this.tickers.size > 0 || this.dirty.size > 0)) this.handle = this.requestFrame(this.frame);

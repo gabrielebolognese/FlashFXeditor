@@ -487,6 +487,7 @@ export const COMMANDS: readonly CommandInfo[] = [
   media("media.generateProxy", "Generate proxy", { scopes: MEDIA }),
   media("media.removeProxy", "Remove proxy", { scopes: MEDIA }),
   media("media.regenerateThumbnails", "Regenerate thumbnails", { scopes: MEDIA }),
+  media("media.dismissFailedImport", "Dismiss failed imports", { icon: X, keywords: "clear error corrupt import failed" }),
   media("media.viewGrid", "Media: grid view", { icon: LayoutGrid }),
   media("media.viewList", "Media: list view", { icon: List }),
   media("media.toggleSortDirection", "Media: ascending / descending", { icon: ArrowUpDown, keywords: "sort order" }),
@@ -529,6 +530,7 @@ export const COMMANDS: readonly CommandInfo[] = [
   app("app.shortcuts", "Keyboard shortcuts", { icon: Keyboard, keywords: "cheat sheet keys help", anywhere: true }),
   app("app.settings", "Settings", { icon: Settings, keywords: "preferences shortcuts keymap rebind", anywhere: true }),
   app("app.cancel", "Cancel gesture / close", { palette: false }),
+  app("panel.reload", "Reload panel", { icon: RotateCcw, keywords: "error crash restart broken stopped working" }),
 
   // Export (spec §16, §17 Export tab)
   exporting("app.export", "Export…", { icon: Upload, keywords: "export tab render mp4 video reels instagram tiktok shorts" }),
@@ -555,6 +557,7 @@ export const COMMANDS: readonly CommandInfo[] = [
   dev("dev.benchExport", "Benchmark: 60 s export", { dev: true, keywords: "performance" }),
   dev("dev.benchStartup", "Benchmark: startup (reloads)", { dev: true, keywords: "performance" }),
   dev("dev.benchMemory", "Benchmark: memory after closing the project", { dev: true, keywords: "performance leak" }),
+  dev("dev.benchProjectCycles", "Benchmark: 100 project open/close cycles", { dev: true, keywords: "performance leak memory gpu textures" }),
 ];
 
 const BY_ID = new Map(COMMANDS.map((info) => [info.id, info]));

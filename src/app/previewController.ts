@@ -156,6 +156,7 @@ export const playbackEngine: PlaybackEngine = new PlaybackEngine({
   quality: () => (exportRunning() ? "proxy" : sessionStore.state.getState().preview.quality),
   // Auto quality: a media too heavy to play at full gets a proxy, unless one was decided against.
   onBehind: (mediaId) => requestProxyIfUndecided(mediaId),
+  onFail: (mediaId) => mediaSources()?.markFailed(mediaId),
   // Keyboard stepping plays a grain with the audio scrub on (Batch 37).
   onStep: (frame) => scrubGrain(frame),
 });
@@ -361,6 +362,9 @@ export function startGpu(adapter: GPUAdapter): void {
       frames: frameService,
       images: imageService,
       playback: playbackEngine,
+      // `__editor.workers.exitForTest("decode")`: the decode worker ends without a word (Batch 47 watchdog
+      // check); `__editor.workers.watchdogEnabled = false` before pausing a worker in the debugger.
+      workers: workerPool,
     }));
   }
 }

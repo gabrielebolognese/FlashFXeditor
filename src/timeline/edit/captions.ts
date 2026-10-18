@@ -496,8 +496,8 @@ function fits(cues: readonly Pick<Clip, "start" | "duration">[], index: TrackInd
 /**
  * The delta a drop of `ids` by `delta` gets on the caption track: a move is clamped to `cueMoveRange`;
  * copies (`duplicate`: the originals stay) go to the delta nearest `delta` where no copy overlaps a cue,
- * at most the copied block's length from it, or null when there is none. `delta` itself when no cue
- * is dropped.
+ * at most the copied block's length from it and with every dropped clip at frame 0 or later, or null
+ * when there is none. `delta` itself when no cue is dropped.
  */
 export function clampCueDelta(project: Project, ids: Iterable<ClipId>, delta: number, duplicate: boolean): number | null {
   const list = [...ids];
@@ -506,7 +506,10 @@ export function clampCueDelta(project: Project, ids: Iterable<ClipId>, delta: nu
     return range ? Math.min(range.hi, Math.max(range.lo, delta)) : delta;
   }
   const found = movedCues(project, list);
-  return found ? freeCueDelta(found.cues, found.index, delta) : delta;
+  if (!found) return delta;
+  // The clips copied with the cues stay at frame 0 or later too (as a paste's, `pasteClips`).
+  const first = Math.min(...list.map((id) => project.clips[id]?.start ?? Infinity));
+  return freeCueDelta(found.cues, found.index, delta, -first);
 }
 
 /**

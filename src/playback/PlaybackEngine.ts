@@ -64,7 +64,7 @@ import type { Lod, TextureKey, TexturePool } from "../media/cache/TexturePool.js
 import type { FrameResult, FrameService } from "../media/decode/FrameService.js";
 import type { ImageService } from "../media/decode/ImageService.js";
 import { nearestPosition } from "../media/demux/sampleIndex.js";
-import { isAbortError } from "../media/workers/protocol.js";
+import { isAbortError, isWorkerCrash } from "../media/workers/protocol.js";
 import { sourceTimeUs } from "../render/compositor/Compositor.js";
 import { extendedEnd, extendedStart, handleTimeUs } from "../core/document/transitions.js";
 import { wantedLod } from "../render/preview/detail.js";
@@ -145,6 +145,8 @@ export interface PlaybackEngineDeps {
   onBehind?(mediaId: MediaId): void;
   /** A frame step put the playhead on `frame` (Batch 37: the audio scrub plays a grain there). */
   onStep?(frame: Frame): void;
+  /** The decoder refused a media while it played (Batch 47): it shows the offline slate at once. */
+  onFail?(mediaId: MediaId, reason: string): void;
 }
 
 /**
@@ -665,8 +667,14 @@ export class PlaybackEngine {
           if (stream.inFlight !== controller) return;
           stream.inFlight = null;
           if (isAbortError(error)) return;
+          // The decode worker crashed twice in a row: the next frame asks again (Batch 47).
+          if (isWorkerCrash(error)) {
+            stream.requested = null;
+            return;
+          }
           stream.failed = true;
           console.warn(`[playback] no frames of ${stream.clip.mediaId}`, error);
+          if ((error as { name?: unknown }).name === "UnsupportedCodecError") this.deps.onFail?.(stream.clip.mediaId, (error as Error).message);
         },
       );
   }

@@ -116,7 +116,7 @@ describe("MediaImporter", () => {
       return VIDEO;
     });
     const report = await importer.importFiles([fileOf("broken.mp4"), fileOf("good.mov")]);
-    expect(report.refused).toEqual([{ name: "broken.mp4", reason: "Not a readable MP4/MOV file: no movie header found" }]);
+    expect(report.refused).toEqual([{ name: "broken.mp4", reason: "Not a readable MP4/MOV file: no movie header found", container: "mp4" }]);
     expect(Object.values(documentStore.getState().media).map((m) => m.name)).toEqual(["good.mov"]);
     expect(await resolveFile(dir, "media/broken.mp4")).toBeNull();
   });
@@ -163,7 +163,7 @@ describe("MediaImporter", () => {
     const { dir, documentStore, importer } = await setup();
     dir.fs.fail = (op, path) => op === "write" && path === "media/b.mp4";
     const report = await importer.importFiles([fileOf("a.mp4"), fileOf("b.mp4")]);
-    expect(report.refused).toEqual([{ name: "b.mp4", reason: expect.stringContaining("could not copy it into media/") }]);
+    expect(report.refused).toEqual([{ name: "b.mp4", reason: expect.stringContaining("could not copy it into media/"), container: "mp4" }]);
     expect(Object.values(documentStore.getState().media).map((m) => m.name)).toEqual(["a.mp4"]);
   });
 });
@@ -231,7 +231,7 @@ describe("MediaImporter in reference mode (Batch 41)", () => {
     expect(await importer.importFiles([{ file, handle }])).toMatchObject({ bytes: 3, linked: 0 });
     mode = "reference";
     const report = await importer.importFiles([{ file, handle }]);
-    expect(report.refused).toEqual([{ name: "a.mp4", reason: "could not keep a link to it (quota)" }]);
+    expect(report.refused).toEqual([{ name: "a.mp4", reason: "could not keep a link to it (quota)", container: "mp4" }]);
     expect(Object.keys(documentStore.getState().media)).toHaveLength(1);
   });
 });

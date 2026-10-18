@@ -333,6 +333,11 @@ export function saveNow(): void {
   void current?.saveNow();
 }
 
+/** Saves the open project now and waits (the fatal screen's Reload, Batch 47). */
+export async function saveBeforeReload(): Promise<void> {
+  await current?.saveNow();
+}
+
 /** The read-only banner and the dot: ask for write access again (needs the click's user gesture). */
 export function allowEditing(): void {
   void current?.requestWriteAccess();

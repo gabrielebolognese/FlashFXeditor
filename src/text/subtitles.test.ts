@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { random } from "../timeline/edit/fuzzKit.js";
 import { formatSubtitles, formatTimestamp, parseSrt, parseSubtitles, parseTimestamp, parseVtt, subtitleFormat } from "./subtitles.js";
 
 describe("timestamps", () => {
@@ -129,5 +130,74 @@ describe("formatSubtitles", () => {
       { startUs: 2_000_000, endUs: 4_500_000, text: "two\nlines" },
     ];
     for (const format of ["srt", "vtt"] as const) expect(parseSubtitles(formatSubtitles(sample, format)).cues).toEqual(sample);
+  });
+});
+
+describe("round trips and edge cases (Batch 47)", () => {
+  /** What a written text reads back as: lines trimmed, blank lines closed up (subtitles.ts `writableText`). */
+  const readBack = (text: string) =>
+    text
+      .split(/\r\n?|\n/)
+      .map((line) => line.trim())
+      .filter((line) => line !== "")
+      .join("\n");
+  const ms = (us: number) => Math.max(0, Math.round(us / 1000)) * 1000;
+
+  // SRT writes text as it is (no escaping), so its lines hold no markup; VTT escapes &, < and >.
+  const SRT_LINES = ["Hello", "Ünïcødé text", "Emoji 🎬🔥👍🏽", "\u200Fمرحبا بالعالم", "שלום\u200E", "A & B", "12345", "a -> b", "tab\tinside", "  padded  ", "", "   ", " \t ", "x\u00A0y", "Ça va? ¡Sí!"];
+  const VTT_LINES = [...SRT_LINES, "<i>not a tag</i>", "a < b > c", "&amp; stays literal", "x --> y", "<00:00:01.000>no karaoke", "&lt;3"];
+
+  function randomCues(seed: number, lines: readonly string[], count: number) {
+    const rng = random(seed);
+    let at = rng.int(0, 5_000_000);
+    return Array.from({ length: count }, () => {
+      // Now and then hours past 99 (a 3-digit hour field).
+      const startUs = rng.chance(0.05) ? rng.int(100, 400) * 3_600_000_000 + rng.int(0, 3_599_999_999) : (at += rng.int(0, 4_000_000));
+      const endUs = startUs + rng.int(0, 6_000_000);
+      const text = Array.from({ length: rng.int(1, 4) }, () => rng.pick(lines)).join(rng.pick(["\n", "\r\n", "\n\n"]));
+      return { startUs, endUs, text };
+    });
+  }
+
+  it("reads back the times (to the millisecond) and the text of random cues, in both formats", () => {
+    for (const seed of [1, 2, 3, 4, 5, 6, 7, 8]) {
+      for (const format of ["srt", "vtt"] as const) {
+        const cues = randomCues(seed, format === "srt" ? SRT_LINES : VTT_LINES, 60);
+        const parsed = parseSubtitles(formatSubtitles(cues, format));
+        const expected = cues.filter((cue) => readBack(cue.text) !== "").map((cue) => ({ startUs: ms(cue.startUs), endUs: ms(cue.endUs), text: readBack(cue.text) }));
+        expect(parsed, `seed ${seed} ${format}`).toEqual({ format, cues: expected, skipped: 0 });
+      }
+    }
+  });
+
+  it("reads files with CR-only line ends and whitespace-only separator lines", () => {
+    const srt = "1\r00:00:01,000 --> 00:00:02,000\rOne\rtwo\r\r2\r00:00:03,000 --> 00:00:04,000\rThree\r";
+    expect(parseSrt(srt).cues).toEqual([
+      { startUs: 1_000_000, endUs: 2_000_000, text: "One\ntwo" },
+      { startUs: 3_000_000, endUs: 4_000_000, text: "Three" },
+    ]);
+    const vtt = "WEBVTT\r\r00:01.000 --> 00:02.000\rOne\r \t\r00:03.000 --> 00:04.000\rTwo";
+    expect(parseVtt(vtt).cues.map((cue) => cue.text)).toEqual(["One", "Two"]);
+    const spaced = "1\n00:00:01,000 --> 00:00:02,000\nA\n   \n2\n00:00:03,000 --> 00:00:04,000\nB\n\t\n";
+    expect(parseSrt(spaced)).toEqual({ format: "srt", cues: [{ startUs: 1_000_000, endUs: 2_000_000, text: "A" }, { startUs: 3_000_000, endUs: 4_000_000, text: "B" }], skipped: 0 });
+  });
+
+  it("reads a file with only the WEBVTT header as no cues", () => {
+    for (const text of ["WEBVTT", "WEBVTT\n", "\uFEFFWEBVTT\r\n\r\n", "WEBVTT - a title\n\nNOTE nothing here\n"]) expect(parseSubtitles(text)).toEqual({ format: "vtt", cues: [], skipped: 0 });
+    expect(parseSubtitles("")).toEqual({ format: "srt", cues: [], skipped: 0 });
+  });
+
+  it("parses a huge file (10,000 cues) in reasonable time", () => {
+    const cues = Array.from({ length: 10_000 }, (_, i) => ({ startUs: i * 2_000_000, endUs: i * 2_000_000 + 1_500_000, text: `Line ${i}\nsecond line & more` }));
+    for (const format of ["srt", "vtt"] as const) {
+      const text = formatSubtitles(cues, format);
+      const t0 = performance.now();
+      const parsed = parseSubtitles(text);
+      const elapsed = performance.now() - t0;
+      expect(parsed.cues).toHaveLength(10_000);
+      expect(parsed.cues[9_999]).toEqual(cues[9_999]);
+      // About 50 ms here; generous for a loaded parallel run.
+      expect(elapsed).toBeLessThan(5_000);
+    }
   });
 });

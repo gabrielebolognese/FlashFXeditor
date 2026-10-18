@@ -391,6 +391,22 @@ describe("moving cues (no overlap)", () => {
     expect(clampCueDelta(full, ["q1", "q2"], 10, true)).toBe(60);
   });
 
+  it("never drops the clips copied with cues before frame 0 (Batch 47 fuzz)", () => {
+    // Copies of q1 and q3 with a clip at frame 5, dropped 5 frames earlier: the nearest free spot for
+    // the cues (10 frames earlier) would put the clip's copy at -5; the next one (10 frames later) fits.
+    const base = project([
+      [50, 10],
+      [100, 40],
+      [200, 10],
+    ]);
+    const p = withClips(base, [makeMediaClip(base, { id: "v", trackId: "v1", start: 5, duration: 20, mediaId: "m" })]);
+    expect(clampCueDelta(p, ["q1", "q3", "v"], -5, true)).toBe(10);
+    const moved = moveClips(p, ["q1", "q3", "v"], -5, new Map(), "overwrite", { newId: ids(), duplicate: true });
+    if (moved.kind !== "ok") throw new Error("expected a copy");
+    const next = run(p, moved.command);
+    expect([...moved.placed.values()].map((id) => next.clips[id]?.start)).toEqual([60, 210, 15]);
+  });
+
   it("splits a cue's text and words with the razor; insert pushes cues like other tracks", () => {
     const p = project([[0, 90, "one two three"]]);
     p.clips.q1 = { ...cue(p, "q1"), words: evenWords("one two three", 90) };

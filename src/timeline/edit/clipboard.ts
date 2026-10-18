@@ -228,7 +228,8 @@ export interface MediaResolution {
 /**
  * The media the pasted clips use in `project`: the same items in the project they were copied from;
  * elsewhere an item of the same kind and name (else file name) whose duration holds the clips' source
- * ranges, else the copied record added as an offline item under a new id.
+ * ranges (and that has sound when audio clips use it), else the copied record added as an offline
+ * item under a new id.
  */
 export function resolveMedia(project: Project, payload: ClipsPayload, newId: () => string): MediaResolution {
   const ids = new Map<MediaId, MediaId>();
@@ -241,8 +242,13 @@ export function resolveMedia(project: Project, payload: ClipsPayload, newId: () 
       continue;
     }
     let needUs = 0;
-    for (const { clip } of payload.clips) if (isMediaClip(clip) && clip.mediaId === item.id && clip.kind !== "image") needUs = Math.max(needUs, clip.out);
-    const holds = (candidate: MediaItem) => candidate.kind === item.kind && (item.kind === "image" || candidate.durationUs >= needUs);
+    let needsSound = false;
+    for (const { clip } of payload.clips) {
+      if (!isMediaClip(clip) || clip.mediaId !== item.id) continue;
+      if (clip.kind !== "image") needUs = Math.max(needUs, clip.out);
+      if (clip.kind === "audio") needsSound = true;
+    }
+    const holds = (candidate: MediaItem) => candidate.kind === item.kind && (item.kind === "image" || candidate.durationUs >= needUs) && (!needsSound || candidate.hasAudio);
     const found = items.find((candidate) => holds(candidate) && candidate.name === item.name) ?? items.find((candidate) => holds(candidate) && fileName(candidate) === fileName(item));
     if (found) {
       ids.set(item.id, found.id);
