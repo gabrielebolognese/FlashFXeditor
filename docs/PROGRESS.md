@@ -178,7 +178,7 @@ Items the design system did not define and the functional default that was used 
 - History dialog (Batch 42): an md modal; the backups in a box (surface-1, hairline, radius-sm) of rows `--control-comfortable` tall with hairlines between them: the version's time in body-strong primary, its project name, size and "latest backup" in caption tertiary, a compact secondary Restore… on the right; at most `--history-list-height` (10 comfortable controls, 320px) before it scrolls. Restore asks in the same modal ("Restore this version?", Back / Restore).
 - Project dialogs (Batch 42): Scale layout / Keep, the frame rate warning, Save as template, Clear cache and Discard unsaved changes are md modals with the DS footer; the frame rate warning line is a 14px `--danger` triangle before caption text in secondary color.
 - Theme (Batch 42, spec "theme if DESIGN_SYSTEMS.md provides variants"): the DS is dark only, so Settings has no theme choice.
-- Export progress (Batch 43, temporary until Batch 44's progress cards; the DS has no progress UI): the Dynamic Island progress toast. Message `Exporting <file>` (body-strong, one line, ellipsis), a live caption line `34% · 612 / 1800 frames · 0:42 left` (`Paused · …` while paused, `Preparing…` before the first frame), two text actions before the close button (Pause / Resume, then Cancel, the toast's existing pill style), and the 2px `--accent` bar. The line and the bar are written into the DOM from a store (no React render per update). The app bar's Export button is the hero gold button, now enabled.
+- Export progress (Batch 43, temporary until Batch 44's progress cards; the DS has no progress UI): the Dynamic Island progress toast. Message `Exporting <file>` (body-strong, one line, ellipsis), a live caption line `34% · 612 / 1800 frames · 0:42 left` (`Paused · …` while paused, `Preparing…` before the first frame, `Paused · Preparing…` when paused then), two text actions (Pause / Resume, then Cancel, the toast's existing pill style) and no close button (a `pinned` toast, never dropped for newer toasts; since the Batch 43 fixes), and the 2px `--accent` bar. The line and the bar are written into the DOM from a store (no React render per update). The app bar's Export button is the hero gold button, now enabled.
 
 ## Global deviations
 Decisions that diverge from docs/EDITOR_SPEC.md, with the reason. Each one also appears under its batch.
@@ -4840,7 +4840,7 @@ Why each dependency exists (Batch rule 8).
 - docs note: new user guide content:
   - Exporting with the Export button or Ctrl+E (the Instagram Reels settings: 1080x1920 or the project's size if smaller, 30 fps or the project's rate if lower, H.264 12 Mbps, AAC 192 kbps, the whole timeline).
   - Where the file goes (exports/ in the project folder, named `<project>-reels-<date>.mp4`, a free name if it exists) and the progress toast (percent, frames, time left).
-  - Pause / Resume and Cancel (also in the command palette); cancel leaves nothing in exports/.
+  - Pause / Resume and Cancel (also in the command palette); cancel leaves nothing in exports/. Pause works from the first moment ("Paused · Preparing…"). The progress toast stays until the export ends (it has no close button).
   - Editing while an export runs (the export uses the timeline as it was when it started).
   - What changes meanwhile: playback uses proxies, proxy generation waits, Clear cache waits.
   - One export at a time; read-only projects cannot export; switching projects cancels the export; "Nothing to export" on an empty timeline.
@@ -4855,3 +4855,18 @@ Why each dependency exists (Batch rule 8).
   - Non-blocking notes:
     - The progress toast can be closed with its X, or dropped when four newer toasts pile up (`MAX_TOASTS`, `src/ui/toasts.ts:39`). After that, nothing shows the export's progress, and Pause and Cancel are reachable only from the palette. Batch 44's job cards replace the toast, so this can wait for them.
     - `exportSize` (`src/export/presets.ts`) rounds odd sides to the nearest even number, so a 1081x1921 project exports at 1082x1922: a 1 px upscale and a slight stretch. Rounding down to even would keep "never scaled up".
+- fix-attempt: done (2026-10-18)
+  1. A Pause pressed while the export is "Preparing…" now holds the worker.
+     - `ExportJobParams.paused`: the job is posted in its pause state, and the handler starts its gate in it (`gate.set(params.paused)` in `media/workers/export.worker.ts`, no longer `gate.set(false)`).
+     - `export/pauseSync.ts` (`ExportPauseSync`): before the post, a Pause or Resume is only recorded and nothing goes to the worker (so `pauseExport` no longer starts the worker early). The state is read by `post()` right before `workerPool.request("exportVideo")`, with no await in between. Later changes are sent as `pauseExport`, which the worker handles after the job: `WorkerPool.request` posts at once and `WorkerHost` starts handlers in arrival order.
+     - `app/exportController.ts` uses it. The line reads `Paused · Preparing…` before the start, and the job knows its frame total from the start (`exportPlan`), so a job that starts paused reads `Paused · 0% · 0 / 1800 frames`, not `0 / 0`.
+     - Tests: `pauseSync.test.ts` (3: a pause before the post sends nothing and posts the job paused; changes after the post are sent; the worker's gate ends in the toast's state for every order of toggles and the post) and `pipeline.test.ts` +1 (an export whose gate starts paused emits `started`, renders nothing, then runs all frames once resumed).
+     - Browser (`%TEMP%/b43/fix_pause.mjs` on a restarted 5181 dev server, project `b43-a1`): 12/12.
+       - Start + Pause in the same task: `Paused · Preparing…`, then 0 / 1800 frames 0.5 s and 3 s after the worker started.
+       - Resume: 111 frames 2 s later. A Pause after the start holds at 118 frames.
+       - Cancel ends it. Pause + Resume while preparing runs to a finished file in exports/.
+  2. Non-blocking notes, both fixed (cheap):
+     - The export's progress toast is `pinned` (`ui/toasts.ts`, `ToastHost.tsx`): no Dismiss button, and the oldest unpinned toasts go first when more than four pile up. `toasts.test.ts` +1. Browser: five newer toasts keep it (`Exporting …`, `probe 2..4`), and it has no Dismiss button.
+     - `exportSize` rounds odd sides down to even, so nothing is scaled up: 721x1281 exports at 720x1280 (was 722x1282). An epsilon absorbs the float error of scaled sides (1921 x 1920 / 1921). `presets.test.ts` covers scaled sides landing on 1920 exactly.
+  - Regressions on the same server: `acc2.mjs 1 2` 18/18 (cancel at 50%, pause and resume, the snapshot, Clear cache refused), `acc1.mjs` 21/21 (the 60 s export took 30.7 s, zero React commits in 4 s of playback during it).
+  - `npm run check` green: typecheck, lint plus the CSS color check, 1956 unit tests in 198 files (+5) + 3 perf tests, build 1195.48 kB JS / 382.04 kB gzip, export.worker 367.97 kB.

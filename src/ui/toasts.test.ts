@@ -35,4 +35,13 @@ describe("toasts", () => {
     dismissToast(toastStore.getState()[0]?.id ?? -1);
     expect(messages()).toEqual(["t4", "t5", "t6"]);
   });
+
+  it("never drop a pinned toast for newer ones", () => {
+    showToast({ tone: "info", message: "t1" });
+    const pinned = showToast({ tone: "info", message: "export", progress: 0, pinned: true });
+    for (let i = 2; i <= 6; i++) showToast({ tone: "info", message: `t${i}` });
+    expect(messages()).toEqual(["export", "t4", "t5", "t6"]);
+    dismissToast(pinned);
+    expect(messages()).toEqual(["t4", "t5", "t6"]);
+  });
 });

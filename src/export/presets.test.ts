@@ -18,9 +18,17 @@ describe("exportSize", () => {
     expect(exportSize(2160, 2160, REELS_PRESET)).toEqual({ width: 1920, height: 1920 });
   });
 
-  it("makes both sides even", () => {
+  it("makes both sides even, rounding down so nothing is scaled up", () => {
     expect(exportSize(1081, 1921, REELS_PRESET)).toEqual({ width: 1080, height: 1920 });
-    expect(exportSize(721, 1281, REELS_PRESET)).toEqual({ width: 722, height: 1282 });
+    expect(exportSize(721, 1281, REELS_PRESET)).toEqual({ width: 720, height: 1280 });
+    expect(exportSize(1, 1, REELS_PRESET)).toEqual({ width: 2, height: 2 });
+    // Scaled sides land on the preset's edge exactly, whatever the float error.
+    for (const long of [1921, 1923, 2001, 2999, 3841, 7681]) {
+      const size = exportSize(Math.round(long * 0.5625), long, REELS_PRESET);
+      expect(size.height).toBe(1920);
+      expect(size.width % 2).toBe(0);
+      expect(size.width).toBeLessThanOrEqual(1080);
+    }
   });
 });
 

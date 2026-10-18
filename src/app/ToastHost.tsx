@@ -45,9 +45,11 @@ function ToastItem({ toast }: { toast: Toast }) {
       </div>
       {toast.secondaryAction && <ActionButton action={toast.secondaryAction} />}
       {toast.action && <ActionButton action={toast.action} />}
-      <button type="button" className={styles.close} aria-label="Dismiss" data-control="" onMouseDown={(event) => event.preventDefault()} onClick={() => dismissToast(toast.id)}>
-        <X className={styles.closeIcon} aria-hidden="true" />
-      </button>
+      {!toast.pinned && (
+        <button type="button" className={styles.close} aria-label="Dismiss" data-control="" onMouseDown={(event) => event.preventDefault()} onClick={() => dismissToast(toast.id)}>
+          <X className={styles.closeIcon} aria-hidden="true" />
+        </button>
+      )}
       {progress !== undefined && (
         <div className={styles.track} aria-hidden="true">
           <div ref={bar} className={styles.bar} style={{ width: percent(progress) }} />

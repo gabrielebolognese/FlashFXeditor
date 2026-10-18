@@ -1,8 +1,8 @@
 // export.worker entry (spec §3.5, §16, P5): one export at a time. ExportRenderer draws each frame
 // with the worker's own GPU device and decoders; runExport encodes it (VideoEncoder, AudioEncoder for
 // the main thread's mixdown) and muxes the MP4. The chosen codecs, the file's bytes with their
-// positions and the frames done go to the main thread as progress values; `pauseExport` pauses
-// between frames. Everything the export held is freed when it ends, however it ends (P13).
+// positions and the frames done go to the main thread as progress values; the job starts in its
+// `paused` state and `pauseExport` pauses or resumes it between frames. Everything the export held is freed when it ends, however it ends (P13).
 import { createAudioEncoder, createMp4Muxer, createVideoEncoder, planarAudioData } from "../../export/browserCodecs.js";
 import { ExportRenderer } from "../../export/ExportRenderer.js";
 import { PauseGate, runExport } from "../../export/pipeline.js";
@@ -17,7 +17,8 @@ new WorkerHost(
   {
     exportVideo: async (params, signal, emit) => {
       const started = performance.now();
-      gate.set(false);
+      // The job's own pause state: `pauseExport` only comes after the job (messages are handled in order).
+      gate.set(params.paused);
       const renderer = new ExportRenderer(params);
       try {
         await renderer.start(signal);

@@ -30,6 +30,8 @@ export interface ExportJobParams {
   audio: { sampleRate: number; channels: ArrayBuffer[] } | null;
   /** GPU texture budget of the worker's pool (spec §16: 30% of the budget while exporting). */
   textureBudget: number;
+  /** Starts paused: Pause was pressed before the job was posted (`ExportPauseSync`). */
+  paused: boolean;
 }
 
 export type ExportProgress = PipelineProgress;
