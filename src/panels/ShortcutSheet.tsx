@@ -2,7 +2,7 @@ import { Keyboard } from "lucide-react";
 import { useSyncExternalStore } from "react";
 import { closeShortcutSheet, keyLabel, shortcutGroups, shortcutSheet } from "../app/commandController.js";
 import { actions } from "../app/services.js";
-import type { FocusScope } from "../core/keyboard/focusScope.js";
+import { SCOPE_NAMES } from "../app/shortcutDoc.js";
 import { keymap } from "../core/keyboard/keymap.js";
 import { useStoreSelector } from "../core/store/useStoreSelector.js";
 import { Button } from "../ui/Button.js";
@@ -11,20 +11,10 @@ import styles from "./ShortcutSheet.module.css";
 
 // The in-app cheat sheet (Batch 40, Shift+/): every bound command by category, its keys and where they
 // act, rendered from the live keymap (a rebinding shows at once). Edit shortcuts opens the editor in the
-// settings.
+// settings. The README's cheat sheet is generated from the same catalog and keymap (app/shortcutDoc.ts).
 
 const subscribeKeymap = (listener: () => void) => keymap.subscribe(listener);
 const keymapSnapshot = () => keymap.getOverrides();
-
-const SCOPE_NAMES: Record<FocusScope, string> = {
-  global: "Everywhere",
-  timeline: "Timeline",
-  preview: "Preview",
-  media: "Media",
-  properties: "Properties",
-  textEditing: "Text editing",
-  dialog: "Dialogs",
-};
 
 /** Where a command's keys act, unless everywhere ("Timeline, Preview"). */
 export function scopeText(id: string): string | null {

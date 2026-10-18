@@ -256,10 +256,12 @@ describe("trimEdge: keyframes, fades", () => {
     expect((slipped.clips.a as MediaClip).keyframes?.["transform.scale"]?.map((key) => key.frame)).toEqual([0, 30]);
   });
 
-  it("clamps fades to the new duration", () => {
+  it("clamps fades to the new duration, the two together (Batch 50)", () => {
     const p = project([at("a", "v1", 0, 100, 0, { fades: { in: 30, out: 40 } })]);
     const next = commit(p, trimEdge(p, "a", "out", -80, { ripple: false }));
-    expect((next.clips.a as MediaClip).fades).toEqual({ in: 20, out: 20 });
+    expect((next.clips.a as MediaClip).fades).toEqual({ in: 9, out: 11 });
+    const fits = commit(p, trimEdge(p, "a", "in", 20, { ripple: false }));
+    expect((fits.clips.a as MediaClip).fades).toEqual({ in: 30, out: 40 });
   });
 });
 

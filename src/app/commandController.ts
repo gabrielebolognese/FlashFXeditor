@@ -22,7 +22,7 @@ import { actions, appSettings, focusScopes } from "./services.js";
 export const commandPalette = createStore<{ scope: FocusScope } | null>(null);
 /** The cheat sheet is open. */
 export const shortcutSheet = createStore(false);
-export type SettingsTab = "general" | "shortcuts";
+export type SettingsTab = "general" | "shortcuts" | "about";
 /** The settings dialog's tab while it is open (General or Shortcuts), else null. */
 export const settingsDialog = createStore<SettingsTab | null>(null);
 
@@ -210,7 +210,9 @@ export function installCommandController(): () => void {
     actions.register("app.commandPalette", () => (commandPalette.getState() ? closePalette() : openPalette())),
     actions.register("app.shortcuts", () => (shortcutSheet.getState() ? closeShortcutSheet() : shortcutSheet.set(true))),
     // The tab as argument ("shortcuts": the cheat sheet's Edit shortcuts); General by default.
-    actions.register("app.settings", (_context, tab) => settingsDialog.set(tab === "shortcuts" ? "shortcuts" : "general")),
+    actions.register("app.settings", (_context, tab) => settingsDialog.set(tab === "shortcuts" || tab === "about" ? tab : "general")),
+    // Batch 50: Settings > About (version, renderer, help, licenses).
+    actions.register("app.about", () => settingsDialog.set("about")),
   ];
   return () => {
     for (const stop of stops) stop();

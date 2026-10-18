@@ -129,6 +129,26 @@ describe("convertProjectFrames (spec §15)", () => {
     expect(b.start + b.duration).toBe((project.clips.a as MediaClip).start + (project.clips.a as MediaClip).duration + b.duration);
   });
 
+  it("counts a source range re-fitted to the new rate as rounded, so 30 -> 60 is not called lossless (Batch 50)", () => {
+    let project = makeProject();
+    project.media.m = makeMedia("m");
+    project.tracks = [makeTrack("v1")];
+    // 30 frames over 1.02 s of source: within one frame at 30 fps (a clip pasted from a 25 fps project),
+    // more than one frame off at 60 fps, so `out` follows the new duration there.
+    const offGrid: MediaClip = { ...makeMediaClip(project, { id: "c", trackId: "v1", start: 0, duration: 30, mediaId: "m" }), in: 0, out: 1_020_000 };
+    project = withClips(project, [offGrid]);
+    expect(validateProject(project)).toEqual([]);
+    const converted = structuredClone(project);
+    const report = convertProjectFrames(converted, FPS_60);
+    expect((converted.clips.c as MediaClip).out).toBe(1_000_000);
+    expect(report).toEqual({ rounded: 1, merged: 0, shifted: 0 });
+    expect(isLossless(report)).toBe(false);
+    // On the grid it stays lossless.
+    const onGrid = structuredClone(project);
+    (onGrid.clips.c as MediaClip).out = 1_000_000;
+    expect(isLossless(convertProjectFrames(onGrid, FPS_60))).toBe(true);
+  });
+
   it("random timelines stay valid at every rate, and 30 -> 60 -> 30 gives the same document back", { timeout: 30_000 }, () => {
     let seed = 42;
     const random = () => {

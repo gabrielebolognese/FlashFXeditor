@@ -15,10 +15,12 @@
 // - Opus audio decodes in decode.worker like MP4 audio (ranges, placed on media time by the packet
 //   times); other audio goes through decodeAudioData, whose output starts at the first audio block:
 //   recorders start the audio after the first frame (44 ms in a Chrome screen recording), so
-//   `webmAudioLeadUs` tells the main thread where that output belongs.
+//   `webmAudioLeadUs` tells the main thread where that output belongs. Sound decoded whole that way
+//   is refused past MAX_WHOLE_AUDIO_SECONDS, as other non-MP4 audio is (Batch 50).
 import type { Rational } from "../../core/document/types.js";
 import type { AudioTrackPlan } from "../decode/audioTrack.js";
 import { ticksToUs } from "../../core/document/time.js";
+import { MAX_WHOLE_AUDIO_SECONDS } from "../probe/audioProbe.js";
 import { estimateFps, FPS_SAMPLE_COUNT } from "../probe/fps.js";
 import { ProbeError, type ProbeResult } from "../probe/types.js";
 import { children, EbmlError, readFloat, readInt, readString, readUint, readVint, UNKNOWN_SIZE, WindowReader, type RangeReader } from "./ebml.js";
@@ -444,6 +446,12 @@ export function sampleIndexFromWebm(file: WebmFile): SampleIndex {
 /** The probe result of a parsed WebM: video when it has a video track, else audio (spec §9.1). */
 export function webmProbeResult(file: WebmFile): ProbeResult {
   const { audio } = file;
+  if (audio && webmAudioPlan(file) === null) {
+    const seconds = ticksToUs(Math.max(0, audio.end - audio.start), file.timescale) / 1_000_000;
+    if (seconds > MAX_WHOLE_AUDIO_SECONDS) {
+      throw new ProbeError(`This WebM file's sound is decoded whole, which works up to ${MAX_WHOLE_AUDIO_SECONDS / 60} minutes (this one is ${Math.round(seconds / 60)} minutes): cut it shorter, or save it with Opus sound or as an MP4 file`);
+    }
+  }
   const audioFields = audio ? { audioCodec: audioCodec(audio.track.codecId), audio: { channels: audio.track.channels, sampleRate: audio.track.sampleRate } } : {};
   if (file.video) {
     const { table, fps, durationUs } = webmVideoTable(file);
