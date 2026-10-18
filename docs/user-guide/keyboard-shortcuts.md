@@ -42,7 +42,7 @@ This page lists every keyboard shortcut that works in the current version of Sho
 >   34. Click **Audio scrub** in the timeline toolbar and press <kbd>→</kbd> a few times: each step plays a short bit of sound. Hold <kbd>Ctrl</kbd> and click the white line across an audio clip: a diamond appears on it. Press <kbd>Delete</kbd>: the diamond is gone and the clip stays.
 >   35. Click a video with sound and press <kbd>Ctrl</kbd>+<kbd>C</kbd>. Click in the ruler at an empty spot and press <kbd>Ctrl</kbd>+<kbd>V</kbd>: the video and its sound land at the playhead. Put the playhead in the middle of another clip and press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>V</kbd>: the clip splits and the copy goes in between. Click a title, press <kbd>Ctrl</kbd>+<kbd>C</kbd>, click another title and press <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>V</kbd>: the **Paste attributes** checklist opens; press <kbd>Enter</kbd>: the second title takes the look of the first.
 >   36. Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>, type `compact` and press <kbd>Enter</kbd>: every gap closes. Press <kbd>?</kbd>: the **Keyboard shortcuts** sheet lists every key; press <kbd>Esc</kbd>. Right-click a clip, press <kbd>↓</kbd> twice and <kbd>Enter</kbd>: the clip is copied. Press <kbd>Alt</kbd>+<kbd>S</kbd>: **Audio scrub** turns gold; press it again.
->   37. Press <kbd>Ctrl</kbd>+<kbd>E</kbd>: the message **Exporting** appears at the top of the window with the progress. Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>, type `cancel export` and press <kbd>Enter</kbd>: the message **Export cancelled** appears.
+>   37. Press <kbd>Ctrl</kbd>+<kbd>E</kbd>: the **Export** tab opens beside **Edit Properties**. Press <kbd>Enter</kbd>: a card under **Queue** shows the progress. Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>, type `cancel export` and press <kbd>Enter</kbd>: the message **Export cancelled** appears. Press <kbd>Esc</kbd>: the panel shows **Edit Properties** again.
 
 ## In this page
 - [How shortcuts work](#how-shortcuts-work)
@@ -66,6 +66,7 @@ This page lists every keyboard shortcut that works in the current version of Sho
 - [Audio](#audio)
 - [Media panel](#media-panel)
 - [Project and history](#project-and-history)
+- [Export](#export)
 - [Menus and lists](#menus-and-lists)
 - [Text fields and dialogs](#text-fields-and-dialogs)
 - [Mouse and wheel](#mouse-and-wheel)
@@ -156,7 +157,7 @@ See [Preview zoom, overlays and fullscreen](preview-zoom-overlays-fullscreen.md)
 | Leave the fullscreen preview | <kbd>Escape</kbd> | <kbd>Esc</kbd> | All panels |
 
 - <kbd>Ctrl</kbd>+<kbd>0</kbd>, <kbd>Ctrl</kbd>+<kbd>1</kbd> and <kbd>Ctrl</kbd>+<kbd>2</kbd> keep the point in the middle of the panel where it is; **Fit** centers the frame. Outside the Preview panel the browser gets these keys; see [Keys the browser keeps](#keys-the-browser-keeps).
-- <kbd>Escape</kbd> first cancels a drag in progress (also a layer you move, resize, rotate or crop in the preview) or closes an open menu; the next press finishes a text you are editing (keeping what you typed), then leaves crop mode, then closes the **Remove silence** row, and the press after that leaves fullscreen.
+- <kbd>Escape</kbd> first cancels a drag in progress (also a layer you move, resize, rotate or crop in the preview) or closes an open menu; the next press finishes a text you are editing (keeping what you typed), then leaves crop mode, then closes the **Remove silence** row, then leaves fullscreen, and the press after that closes the **Export** tab.
 - The arrow keys move layers only while a selected layer is under the playhead. Otherwise <kbd>←</kbd> and <kbd>→</kbd> (with or without <kbd>Shift</kbd>) step frames in the Preview panel as in the other panels, and <kbd>↑</kbd> and <kbd>↓</kbd> do nothing there. <kbd>Ctrl</kbd>+<kbd>←</kbd> and <kbd>Ctrl</kbd>+<kbd>→</kbd> always step one second.
 - Arrow presses less than 0.3 seconds apart are one undo step, **Nudge layer**.
 - <kbd>Delete</kbd> also works in the Preview panel: it deletes the selected clips. See [Cutting and deleting](#cutting-and-deleting).
@@ -694,12 +695,28 @@ These shortcuts work in all panels.
 | Save now | <kbd>Ctrl</kbd>+<kbd>S</kbd> | <kbd>⌘</kbd>+<kbd>S</kbd> | Also while you type in a field or a dialog is open. The project also saves automatically. |
 | Open a project folder | <kbd>Ctrl</kbd>+<kbd>O</kbd> | <kbd>⌘</kbd>+<kbd>O</kbd> | Also on the start screen. |
 | Import media | <kbd>Ctrl</kbd>+<kbd>I</kbd> | <kbd>⌘</kbd>+<kbd>I</kbd> | While a project is open. |
-| Export the video | <kbd>Ctrl</kbd>+<kbd>E</kbd> | <kbd>⌘</kbd>+<kbd>E</kbd> | Same as **Export** in the app bar: the whole timeline as an MP4 for Instagram Reels. See [Exporting your video](exporting-video.md). |
 | New project | <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>N</kbd> or <kbd>Ctrl</kbd>+<kbd>N</kbd> | <kbd>⌘</kbd>+<kbd>⌥</kbd>+<kbd>N</kbd> or <kbd>⌘</kbd>+<kbd>N</kbd> | Also on the start screen, and while a project is open. <kbd>Ctrl</kbd>+<kbd>N</kbd> is taken by the browser in a normal tab; see [Keys the browser keeps](#keys-the-browser-keeps). |
 
-**History…**, **Save as template…**, **Clear cache**, **Pause or resume the export** and **Cancel the export** have no key; run them from the command palette, or give them one in **Settings** > **Shortcuts**. While an export runs, its progress message also has **Pause** / **Resume** and **Cancel** buttons.
+**History…**, **Save as template…** and **Clear cache** have no key; run them from the command palette, or give them one in **Settings** > **Shortcuts**.
 
 See [Projects and saving](projects-and-saving.md) and [Project settings and templates](project-settings-and-templates.md).
+
+## Export
+
+| Action | Windows | macOS | Panel |
+| --- | --- | --- | --- |
+| Open the **Export** tab (same as **Export** in the app bar) | <kbd>Ctrl</kbd>+<kbd>E</kbd> | <kbd>⌘</kbd>+<kbd>E</kbd> | All panels |
+| Start the export (same as the **Export** button, which has the keyboard each time the tab opens) | <kbd>Enter</kbd> | <kbd>Return</kbd> | **Export** tab, right after <kbd>Ctrl</kbd>+<kbd>E</kbd> or **Export** |
+| Close the **Export** tab and show **Edit Properties** | <kbd>Esc</kbd> | <kbd>Esc</kbd> | All panels |
+| Save the preset (same as **Save**) | <kbd>Enter</kbd> | <kbd>Return</kbd> | **Preset name** field of **Save as preset…** |
+| Close the name field without saving (the tab stays open) | <kbd>Esc</kbd> | <kbd>Esc</kbd> | **Preset name** field of **Save as preset…** |
+
+- <kbd>Ctrl</kbd>+<kbd>E</kbd> followed by <kbd>Enter</kbd> exports with the choices you used last.
+- <kbd>Esc</kbd> closes the **Export** tab only when it has nothing else to do; see the order under [Preview](#preview).
+- These commands of the **Export** category have no key: **Export the video**, **Close the Export tab**, **Copy frame**, **Export audio**, **Export captions**, **Export again**, **Open the exports folder**, **Save export settings as a preset…**, **Delete the export preset**, **Pause or resume the export** and **Cancel the export**. **Export frame** is in the **Preview** category and has no key either. Run them from the command palette, or give them one in **Settings** > **Shortcuts**.
+- The job cards in the **Queue** and the progress message have **Pause** / **Resume** and **Cancel** buttons.
+
+See [Exporting your video](exporting-video.md).
 
 ## Menus and lists
 
@@ -802,7 +819,7 @@ The browser acts on <kbd>Ctrl</kbd>+<kbd>N</kbd>, <kbd>Ctrl</kbd>+<kbd>T</kbd> a
 
 ## Shortcuts for features not available yet
 
-None at the moment. <kbd>Ctrl</kbd>+<kbd>E</kbd>, the last key kept for a later feature, now exports your video; see [Project and history](#project-and-history).
+None at the moment.
 
 ## Related pages
 - [Exporting your video](exporting-video.md)
@@ -836,4 +853,4 @@ None at the moment. <kbd>Ctrl</kbd>+<kbd>E</kbd>, the last key kept for a later 
 - [Projects and saving](projects-and-saving.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 43, 2026-10-18</sub>
+<sub>Last updated: Batch 44, 2026-10-18</sub>

@@ -49,7 +49,7 @@ The app bar is the strip above the panels. From left to right:
 | Save status dot | Shows whether your changes are saved. Hover it for details; click it to save now. See [Check the save status](projects-and-saving.md#check-the-save-status). |
 | **Undo** and **Redo** | Undo or redo the last change. The tooltip names the step, for example **Undo Rename project**. Dimmed when there is nothing to undo or redo. See [Undo and redo changes](projects-and-saving.md#undo-and-redo-changes). |
 | Project badge | The resolution and frame rate of the project, for example **1080×1920 · 30 fps**. It follows changes made in the **Project** section. |
-| **Export** | Exports the whole timeline as an MP4 video for Instagram Reels into the project's `exports` folder (<kbd>Ctrl</kbd>+<kbd>E</kbd>). See [Exporting your video](exporting-video.md). |
+| **Export** | Opens the **Export** tab next to **Edit Properties** (<kbd>Ctrl</kbd>+<kbd>E</kbd>): presets for Reels, TikTok and Shorts, the range, the file name and place, the queue, the log and the extras. See [Exporting your video](exporting-video.md). |
 | **Settings** (gear) | Opens the **Settings** dialog on its **General** tab: autosave, the length of new clips, the default transition, editing, audio and transcription defaults, how imports bring in your files, proxies and storage; see [Settings](settings.md). Its **Shortcuts** tab lets you change the keyboard shortcuts; see [Change a shortcut](command-palette-and-custom-shortcuts.md#change-a-shortcut). |
 
 When the editor cannot write to the project folder, a read-only banner appears under the app bar. See [Work in read-only mode](projects-and-saving.md#work-in-read-only-mode).
@@ -76,6 +76,8 @@ Top middle. It shows the settings of what is selected, and lets you type or drag
 - With a marker selected (click it in the ruler), it shows the **Marker** section: label, color, time and **Delete marker**. See [Edit a marker in Edit Properties](markers-and-in-out-points.md#edit-a-marker-in-edit-properties).
 
 With several clips or tracks selected, the panel header shows how many, for example **3 clips**, and a field whose values differ shows `--`. Click a section header to fold the section away; the project remembers folded sections.
+
+**Export** in the app bar (<kbd>Ctrl</kbd>+<kbd>E</kbd>) opens the **Export** tab in this panel. While it is open, the header shows two tabs, **Edit Properties** and **Export**: click one to switch. Press <kbd>Esc</kbd> or click the **X** in the header to close the **Export** tab. See [Open the Export tab](exporting-video.md#open-the-export-tab).
 
 To get back to the **Project** section, click an empty area of the timeline tracks, or the preview beside the frame where no layer is, so that nothing is selected. A selected marker stays selected when you do that: click a clip or a track header first, then the empty area.
 
@@ -250,4 +252,4 @@ To jump to a time, type it into the timecode field of the timeline toolbar, or c
 - [Command palette and custom shortcuts](command-palette-and-custom-shortcuts.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 43, 2026-10-18</sub>
+<sub>Last updated: Batch 44, 2026-10-18</sub>

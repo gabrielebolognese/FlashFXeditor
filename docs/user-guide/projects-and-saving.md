@@ -29,10 +29,10 @@ When you create a project, the editor fills the folder you picked with these ite
 | `project.json` | The project itself: settings, tracks, clips, markers and the list of media. |
 | `session.json` | Where you left off: playhead, in and out points, the marked parts of media items, the timeline and preview zoom, the preview quality and overlays, panel sizes, the folded sections of **Edit Properties** and similar view settings. If it is missing or damaged, the project still opens, with default view settings. |
 | `media` | Copies of the files you import. Files you link to stay where they are and are not copied here. See [Copy or link your files](importing-media.md#copy-or-link-your-files). |
-| `cache` | Thumbnails, sound analysis and indexes the editor builds from your media, and the proxies of heavy videos in `cache/proxies` (see [Proxies](proxies.md)). While a video export runs, the unfinished video is written in `cache/export-temp`. Nothing in it is lost for good: to free disk space, use **Clear cache**, and the editor builds what it needs again. See [Clear the cache](#clear-the-cache). |
+| `cache` | Thumbnails, sound analysis and indexes the editor builds from your media, and the proxies of heavy videos in `cache/proxies` (see [Proxies](proxies.md)). While a video or audio export runs, the unfinished file is written in `cache/export-temp`. Nothing in it is lost for good: to free disk space, use **Clear cache**, and the editor builds what it needs again. See [Clear the cache](#clear-the-cache). |
 | `history` | Automatic backups of `project.json`: the newest 20. **History…** in the **Project** section lists them and restores one. See [Restore an older version](#restore-an-older-version). |
 | `fonts` | Copies of the fonts from your computer that your text clips use, and `fonts.json`, the list of those copies. Created the first time a text uses a font from your computer. The editor uses these copies when it opens the project, so the text looks the same on a computer without those fonts. See [Fonts travel with the project](titles-and-text.md#fonts-travel-with-the-project). |
-| `exports` | Your exported videos. Created by the first export. See [Find the exported file](exporting-video.md#find-the-exported-file). |
+| `exports` | Your exported videos, and the frames, audio files and caption files you save from the **Export** tab, unless you choose another place with **Choose file…**. Created by the first export. See [Find the exported file](exporting-video.md#find-the-exported-file). |
 | `presets/text` | The project's own text presets, one `.json` file per preset: the **Project** list of the **Presets** tab. See [Keep presets for all projects or for one](text-presets.md#keep-presets-for-all-projects-or-for-one). |
 | `project.json.tmp` | Exists only for a moment during each save. If one is left over after a crash, the editor offers to restore it. See [Restore unsaved changes after a crash](#restore-unsaved-changes-after-a-crash). |
 
@@ -256,7 +256,7 @@ You then see a banner under the app bar: "Read-only: Shorts Editor has no permis
 
 In read-only mode you can look at the project and even make changes, but nothing is written to the folder: no saves, no backups, no new proxies, no copies of the fonts your text uses, no changes to the project's text presets (new presets go into the **Global** list), and your view (playhead, zoom, panel sizes) is not saved with the project. Proxies already in the folder are still used.
 
-Actions that need to write to the folder are refused with the message **This project is read-only** and what to do, for example "Allow editing to clear the cache.": importing and removing media, bins, **Generate proxy** and **Remove proxy**, relinking, **Clear cache**, restoring a version and exporting the video ("Allow editing to export."). **History…** still lists the versions, but **Restore…** is dimmed (tooltip **Read-only project: allow editing to restore**). **Save as template…** works, because templates are kept in your browser.
+Actions that need to write to the folder are refused with the message **This project is read-only** and what to do, for example "Allow editing to clear the cache.": importing and removing media, bins, **Generate proxy** and **Remove proxy**, relinking, **Clear cache**, restoring a version and exporting into the `exports` folder ("Allow editing to export into the project's folder."). To export from a read-only project, choose **Choose file…** under **Save to** in the **Export** tab; see [Choose where the file goes](exporting-video.md#choose-where-the-file-goes). **History…** still lists the versions, but **Restore…** is dimmed (tooltip **Read-only project: allow editing to restore**). **Save as template…** works, because templates are kept in your browser.
 
 To start saving:
 
@@ -303,4 +303,4 @@ Changes made in read-only mode exist only in the tab. The editor asks before the
 - [Titles and text](titles-and-text.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 43, 2026-10-18</sub>
+<sub>Last updated: Batch 44, 2026-10-18</sub>

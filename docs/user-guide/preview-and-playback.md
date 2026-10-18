@@ -89,7 +89,7 @@ The Preview panel header holds the controls that change how you look at the fram
 | **Snap** (magnet) | Turns snapping on or off, for clips on the timeline and layers in the preview (<kbd>S</kbd>). |
 | **Smart guides** | Turns smart guides on or off: layers you drag snap to each other and show gold guides with distances. See [Snapping and smart guides in the preview](snapping-and-smart-guides.md). |
 | **Fullscreen** | Fills the browser window with the preview (<kbd>F</kbd>); <kbd>Esc</kbd> returns. |
-| **Export frame** | Saves the current frame as a PNG. See [Export the current frame](#export-the-current-frame). |
+| **Export frame** | Saves the current frame as a PNG, where your exports go. See [Export the current frame](#export-the-current-frame). |
 
 You can also zoom at the pointer with <kbd>Ctrl</kbd>+wheel and pan with the wheel, the middle mouse button or <kbd>Space</kbd>. Above 100%, the preview shows the real detail of your media. See [Preview zoom, overlays and fullscreen](preview-zoom-overlays-fullscreen.md).
 
@@ -279,15 +279,19 @@ A frame counts as dropped when the playback clock had to skip it, or when it was
 Save the frame at the playhead as a PNG image, for a thumbnail or a cover picture.
 
 1. Move the playhead to the frame you want.
-2. Click **Export frame** (the picture icon in the Preview panel header).
-3. In the save dialog, choose a folder and a name. The editor suggests "*project name* frame.png".
-4. Click **Save**. A message confirms "Saved *file name*" with the image size, for example "1080×1920 PNG".
+2. Click **Export frame** (the picture icon in the Preview panel header). The same button is in the **Extras** section of the **Export** tab.
+3. The editor saves the picture where your exports go, as chosen under **Save to** in the **Export** tab:
+   - **exports folder** (the default): the PNG goes into the project's `exports` folder, named *project name*`-frame-`*frame number*`.png`, for example `Promo-frame-120.png`. An existing file is never overwritten; the new one gets a number, such as `Promo-frame-120 (2).png`.
+   - **Choose file…**: the save dialog opens with that name. Choose a folder and a name and click **Save**.
+4. A message confirms "Saved *file name*" with the place, the image size and the file size, for example `exports/Promo-frame-120.png · 1080×1920 PNG · 1.2 MB`. Its **Open folder** button opens the file dialog in that folder.
+
+To put the frame on the clipboard instead, click **Copy frame** in the **Extras** section of the **Export** tab. See [Export a frame, the sound or the captions](exporting-video.md#export-a-frame-the-sound-or-the-captions).
 
 Titles and other text appear as they are at that frame, partway through their animation when the playhead is on one (see [Text animations](text-animations.md)). Captions on the **CC** track appear too, with the spoken word highlighted (see [Captions](captions.md)). The image has the project resolution and contains only the frame: no border, none of the panel around it, none of the overlays (safe zones, grids, guides, rulers), and no selection outlines or handles. The zoom level, the pan and the quality mode do not matter.
 
 The editor draws the PNG from the exact frame at the playhead of your original media, at full quality, whatever the preview shows at that moment: never from a [proxy](proxies.md), never at the lower resolution of **1/2** or **1/4**, and never a nearby frame the preview still shows after a scrub. Each video is read at full resolution (up to 4096 pixels on its long side), so fine lines and text in 4K footage stay as sharp as the project resolution allows. Saving can take a moment while that frame is decoded.
 
-If the file cannot be written, a message "Can't export the frame" gives the reason. **Export frame** also works while a video export runs. To export the whole video, see [Exporting your video](exporting-video.md).
+If the file cannot be written, a message "Can't export the frame" gives the reason. In a read-only project, saving into the `exports` folder is refused with **This project is read-only**; choose **Choose file…** under **Save to** in the **Export** tab to save it elsewhere. **Export frame** also works while a video export runs. To export the whole video, see [Exporting your video](exporting-video.md).
 
 ## Know what to expect from performance
 
@@ -334,4 +338,4 @@ If playback stutters, see [Troubleshooting](troubleshooting.md).
 - [Workspace](workspace.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 43, 2026-10-18</sub>
+<sub>Last updated: Batch 44, 2026-10-18</sub>
