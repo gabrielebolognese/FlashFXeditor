@@ -131,6 +131,7 @@ Shorts Editor is a video editor for short vertical videos (9:16 by default) that
 - Add a rectangle, rounded rectangle, ellipse or line with one click, fill it with a color or a two-color gradient, and size it with its handles or exact pixels and corner radius. Pick images and place them at the playhead in one step, with animated GIF and WebP stickers playing at their own speed and SVG logos staying sharp when you zoom in.
 - Snap pictures to the center and edges of the frame, the thirds, the safe areas and each other as you drag, with gold guides and pixel distances; space three pictures evenly; and hold <kbd>Alt</kbd> to measure the distances around a picture.
 - Edit 4K and 60 fps phone footage smoothly: the editor makes a light proxy of each heavy video in the background, plays and scrubs on it, and shows the original as soon as you stop. Follow its progress on the media card, and make or remove proxies yourself.
+- Work on big edits without slowing down: on the development laptop, a timeline of 500 clips on 8 tracks zooms, scrolls, drags and plays at 60 frames per second, and switching between projects frees the memory of the one you leave.
 - Zoom the preview up to 3200% at the pointer and pan around, see the real pixels of 4K footage, choose how much detail the preview draws while playing, lay Reels, TikTok or Shorts safe zones, grids and guides over the picture, and fill the window with the preview.
 - Hear your edit in sync with the picture, set the listening volume, mute or solo audio tracks, and check your levels on the audio meter.
 - Set each clip's volume from -60 to +12 dB, by typing it or dragging the white line across the clip, and make it rise and fall with volume keyframes on that line. Bring a quiet clip to a -1 dBFS peak with **Normalize**, lower the music by 12 dB under every voice clip with **Auto-duck**, mute a single clip, give a video's sound a clip of its own, and hear short bits of sound while you scrub or step with **Audio scrub**.
@@ -152,4 +153,4 @@ Video effects arrive in a later version. [What's new](whats-new.md) tracks each 
 - Notes, tips and warnings appear as **Note**, **Tip** and **Important** boxes.
 - Each page starts with a **Video placeholder**: the planned walkthrough video for that page, with its file name, length and the steps it will show. The videos are not recorded yet; they will live in the `videos/` folder next to these pages.
 
-<sub>Last updated: Batch 44, 2026-10-18</sub>
+<sub>Last updated: Batch 45, 2026-10-18</sub>

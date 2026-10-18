@@ -76,7 +76,8 @@ How proxies are made:
 - **In the background.** You can keep editing: put clips on the timeline, trim, move the playhead.
 - **Paused while you play** or drag on the timeline (moving clips, trimming, scrubbing in the ruler), so the preview gets all the decoding power. The percentage stops and continues when you stop.
 - **Paused while a video export runs**, and continued after it. See [Keep editing while you export](exporting-video.md#keep-editing-while-you-export).
-- **How long it takes:** on the development laptop, a proxy of 4K 60 fps footage took about as long as the clip itself, for example about 10 seconds for a 10-second clip. A long clip takes correspondingly longer, and its playback and scrubbing become light once its chip is green.
+- **Before the rest of the thumbnails.** While a video waits for its proxy or the proxy is being made, the editor makes only the thumbnails you look at from the original video: the card picture, the thumbnails of its clips on screen and the frames you skim on its card. The rest of its thumbnails wait until the proxy is ready and are then made from the proxy. This keeps the video decoder free for the proxy, so long 4K videos get their proxy much sooner. See [Know when thumbnails and waveforms appear](clip-thumbnails-and-waveforms.md#know-when-thumbnails-and-waveforms-appear).
+- **How long it takes:** on the development laptop, a proxy of 4K 60 fps footage took about as long as a short clip itself, for example about 10 seconds for a 10-second clip, and about 3½ minutes for a 2-minute 4K 60 fps HEVC video. A longer clip takes correspondingly longer, and its playback and scrubbing become light once its chip is green.
 
 ## Make a proxy yourself
 
@@ -154,13 +155,17 @@ Videos without a ready proxy always show the original. See [Choose the preview q
 
 While a video export runs, playback uses proxies whatever the mode, so it stays smooth while the export uses the video encoder. The status line then starts with **Proxy:**, for example **Proxy: proxy**. When you stop, the preview follows its mode again. See [Keep editing while you export](exporting-video.md#keep-editing-while-you-export).
 
-On the development laptop, a 4K 60 fps HEVC clip played on its proxy with no or almost no dropped frames, and while scrubbing the exact proxy frame appeared within one or two screen refreshes (17 to 34 milliseconds).
+On the development laptop, a 4K 60 fps HEVC clip played on its proxy with no or almost no dropped frames, and while scrubbing the exact proxy frame appeared within one or two screen refreshes (17 to 34 milliseconds). That also held for a 20-minute 4K 60 fps HEVC video swept from end to end in the ruler, at 60 frames per second.
+
+> **Note:** If you move again in the ruler right after the original frame has appeared, the first proxy frames can take a little longer, up to about 0.2 seconds. The preview shows the closest frame meanwhile.
+
+A transition between two clips of the same 4K video plays smoothly in **Auto**, because both sides play on the proxy. In **Full**, the editor has to decode the same 4K original at two places at once, and many frames drop at the transition. See [Playback stutters or drops frames](troubleshooting.md#playback-stutters-or-drops-frames).
 
 > **Note:** **Export frame** and video exports never use proxies. They always use your original media at full quality, whatever the preview quality. See [Export the current frame](preview-and-playback.md#export-the-current-frame) and [Exporting your video](exporting-video.md).
 
 ## Make thumbnails again
 
-Once a video's proxy is ready, the editor makes its card picture and timeline thumbnails again from the proxy, in the background. The thumbnails you see stay until the new ones replace them. After **Remove proxy**, they are made again from the original video.
+While a video's proxy is being made, only the thumbnails you look at come from the original video; the rest wait for the proxy. Once the proxy is ready, the editor makes the video's card picture and timeline thumbnails again from the proxy, in the background. The thumbnails you see stay until the new ones replace them. After **Remove proxy**, they are made again from the original video.
 
 To make the thumbnails of a video again from scratch, for example when they look wrong:
 
@@ -186,4 +191,4 @@ The card picture and the thumbnails of its clips on the timeline are made again,
 - [Projects and saving](projects-and-saving.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 43, 2026-10-18</sub>
+<sub>Last updated: Batch 45, 2026-10-18</sub>

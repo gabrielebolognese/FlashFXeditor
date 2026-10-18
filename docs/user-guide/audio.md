@@ -212,7 +212,7 @@ After you import an audio file or a video with sound, the editor analyzes its so
 | Sound in .mp4, .mov, .m4v and .m4a files | Only the sound is read from the file. Files over 10 minutes load in pieces of about 60 seconds as playback reaches them. |
 | .mp3, .aac, .wav and .ogg files | The whole file is decoded at once. Files over 1 GB play no sound. |
 
-- Sound with more than two channels, such as 5.1 surround, is mixed down to stereo.
+- Sound with more than two channels, such as 5.1 surround, is mixed down to stereo. The editor mixes a long file down in small steps, so it keeps responding while it does.
 - If the sound of a file cannot be decoded, or its file is missing from the project's `media` folder, its clips play silently. See [Troubleshooting](troubleshooting.md#playback-has-no-sound).
 
 ## Related pages
@@ -234,4 +234,4 @@ After you import an audio file or a video with sound, the editor analyzes its so
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 43, 2026-10-18</sub>
+<sub>Last updated: Batch 45, 2026-10-18</sub>

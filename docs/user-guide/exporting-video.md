@@ -59,7 +59,7 @@ With **Whole timeline**, the export covers everything from the very start (`00:0
 
 > **Tip:** To start the video with your first clip, move the clips to the start of the timeline first: click the empty stretch before the first clip and press <kbd>G</kbd>, or press <kbd>Shift</kbd>+<kbd>G</kbd> to close all gaps. See [Close a gap](splitting-and-deleting.md#close-a-gap). To export only a part, see [Export only the in/out range](#export-only-the-inout-range).
 
-You can click **Export** again at once, for example with another preset: each click adds an export to the queue, and they run one after another. On the development laptop, a 60-second 1080×1920 video at 30 fps took about 30 to 36 seconds to export, and a 10-minute video about 5 minutes. The speed depends mostly on your computer's video encoder. Playing your edit while it exports slows the export down a little.
+You can click **Export** again at once, for example with another preset: each click adds an export to the queue, and they run one after another. On the development laptop, a 60-second 1080×1920 video at 30 fps took about 26 to 36 seconds to export, and a 10-minute video about 5 minutes. The speed depends mostly on your computer's video encoder. Playing your edit while it exports slows the export down a little.
 
 ## Choose a preset
 
@@ -384,4 +384,4 @@ While any export runs, video or audio:
 - [Keyboard shortcuts](keyboard-shortcuts.md#export)
 - [Troubleshooting](troubleshooting.md#export)
 
-<sub>Last updated: Batch 44, 2026-10-18</sub>
+<sub>Last updated: Batch 45, 2026-10-18</sub>
