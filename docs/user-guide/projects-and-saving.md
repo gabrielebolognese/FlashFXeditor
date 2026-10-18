@@ -31,7 +31,7 @@ When you create a project, the editor fills the folder you picked with these ite
 | `media` | Copies of the files you import. Files you link to stay where they are and are not copied here. See [Copy or link your files](importing-media.md#copy-or-link-your-files). |
 | `cache` | Thumbnails, sound analysis and indexes the editor builds from your media, and the proxies of heavy videos in `cache/proxies` (see [Proxies](proxies.md)). While a video or audio export runs, the unfinished file is written in `cache/export-temp`. Nothing in it is lost for good: to free disk space, use **Clear cache**, and the editor builds what it needs again. See [Clear the cache](#clear-the-cache). |
 | `history` | Automatic backups of `project.json`: the newest 20. **History…** in the **Project** section lists them and restores one. See [Restore an older version](#restore-an-older-version). |
-| `fonts` | Copies of the fonts from your computer that your text clips use, and `fonts.json`, the list of those copies. Created the first time a text uses a font from your computer. The editor uses these copies when it opens the project, so the text looks the same on a computer without those fonts. See [Fonts travel with the project](titles-and-text.md#fonts-travel-with-the-project). |
+| `fonts` | Copies of every font your text clips and captions use, whether it comes with the editor, from **My fonts** or from your computer, and `fonts.json`, the list of those copies. Created with the first text clip or caption track. The editor uses these copies when it opens the project, so the text looks the same on a computer without those fonts. See [Fonts travel with the project](fonts.md#fonts-travel-with-the-project). |
 | `exports` | Your exported videos, and the frames, audio files and caption files you save from the **Export** tab, unless you choose another place with **Choose file…**. Created by the first export. See [Find the exported file](exporting-video.md#find-the-exported-file). |
 | `presets/text` | The project's own text presets, one `.json` file per preset: the **Project** list of the **Presets** tab. See [Keep presets for all projects or for one](text-presets.md#keep-presets-for-all-projects-or-for-one). |
 | `project.json.tmp` | Exists only for a moment during each save. If one is left over after a crash, the editor offers to restore it. See [Restore unsaved changes after a crash](#restore-unsaved-changes-after-a-crash). |
@@ -303,4 +303,4 @@ Changes made in read-only mode exist only in the tab. The editor asks before the
 - [Titles and text](titles-and-text.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 50, 2026-10-18</sub>
+<sub>Last updated: Batch 51, 2026-10-19</sub>

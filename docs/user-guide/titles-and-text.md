@@ -1,6 +1,6 @@
 # Titles and text
 
-Text clips put words on your video: a hook at the start, a title over a shot, a subtitle in the lower third. Press <kbd>T</kbd> and type: the title appears at the playhead and you write it right in the preview. Then style it in the **Text** section of **Edit Properties**, with a font that comes with the editor or one from your computer, an outline, a shadow and a background box. To make it move as it appears and leaves, give it an animation; see [Text animations](text-animations.md). To reuse a style, save it as a preset; see [Text presets](text-presets.md). To caption the speech of a whole video, use the caption track instead; see [Captions](captions.md).
+Text clips put words on your video: a hook at the start, a title over a shot, a subtitle in the lower third. Press <kbd>T</kbd> and type: the title appears at the playhead and you write it right in the preview. Then style it in the **Text** section of **Edit Properties**, with one of the 330 fonts that come with the editor, a font file of your own or a font from your computer, an outline, a shadow and a background box. To make it move as it appears and leaves, give it an animation; see [Text animations](text-animations.md). To reuse a style, save it as a preset; see [Text presets](text-presets.md). To caption the speech of a whole video, use the caption track instead; see [Captions](captions.md).
 
 > **Video placeholder: Titles and text in one minute**
 > - File: `videos/titles-and-text/overview.mp4` (not recorded yet)
@@ -10,7 +10,7 @@ Text clips put words on your video: a hook at the start, a title over a shot, a 
 >   2. Type `WAIT FOR IT` and press <kbd>Esc</kbd>: the clip on the new track V2 is named "WAIT FOR IT" and lasts as long as the video under it.
 >   3. Press <kbd>T</kbd> again, type `the ending` and press <kbd>Esc</kbd>: the second title sits just below the first.
 >   4. Press <kbd>Shift</kbd>+<kbd>T</kbd> over the video and type a long sentence: the subtitle in the lower third wraps and grows upwards, with a dark box behind each line. Press <kbd>Esc</kbd>.
->   5. Click the first title in the preview. In the **Text** section of **Edit Properties**, click the **Font** field, type `oswald` in **Search fonts** and press <kbd>Enter</kbd>.
+>   5. Click the first title in the preview. In the **Text** section of **Edit Properties**, click the **Font** field: the font browser opens. Type `oswald` in the search field and press <kbd>Enter</kbd>.
 >   6. Turn on **Stroke** and drag the **W** label of **Width** to the right: a black outline grows around the letters.
 >   7. Drag a corner handle of the title outward in the preview: the text gets larger and **Size** follows.
 >   8. Double-click a word of the title: the caret lands where you clicked. Double-click the word again to select it, type a new word and press <kbd>Esc</kbd>.
@@ -24,8 +24,6 @@ Text clips put words on your video: a hook at the start, a title over a shot, a 
 - [Resize text with its handles](#resize-text-with-its-handles)
 - [Style text in the Text section](#style-text-in-the-text-section)
 - [Choose a font](#choose-a-font)
-- [Use fonts from your computer](#use-fonts-from-your-computer)
-- [Fix a missing font](#fix-a-missing-font)
 - [Text clips on the timeline](#text-clips-on-the-timeline)
 - [Undo text changes](#undo-text-changes)
 - [Related pages](#related-pages)
@@ -168,7 +166,7 @@ The whole edit is one step in the history, named **Edit text**, whatever you typ
 
 The **Edit Properties** panel stays live while you edit. Change the font, the size, a color or any other value in the **Text** section, and the text updates at once while you keep editing: your typing and the caret stay where they are. Click the text to type again.
 
-Clicks in the font picker, the color picker, menus and dialogs also keep editing on.
+Clicks in the font browser, the color picker, menus and dialogs also keep editing on.
 
 ## Select and move text in the preview
 
@@ -228,8 +226,8 @@ The number fields work like the others in the panel: type a value, or drag the f
 | Row | What it does | Values |
 | --- | --- | --- |
 | **Text** | The content. Type here as in the preview; <kbd>Enter</kbd> starts a new line. With several text clips selected, what you type replaces the text of all of them. | Any text |
-| **Font** | The font family, shown in its own font. Click it to open the font picker. See [Choose a font](#choose-a-font). | |
-| **Weight** | How bold the letters are, with the **Italic** button next to it. | **Thin 100** to **Black 900**; for a font that comes with the editor, only the weights it has |
+| **Font** | The font family, shown in its own font. Click it to open the font browser. A red **Missing** chip means the font isn't available here. See [Fonts](fonts.md). | |
+| **Weight** | How bold the letters are, with the **Italic** button next to it. | **Thin 100** to **Black 900**: the weights the font has |
 | **Size** | The font size. | 1 to 2000 px |
 | **Fill** | **Solid** (one color) or **Gradient** (a vertical gradient). | |
 | **Color**, or **Top** and **Bottom** | The color of the letters. With **Gradient**, the top and bottom colors; the gradient runs over the whole text, from the top of the first line to the bottom of the last. | Any color |
@@ -273,105 +271,18 @@ To set the width with the mouse, drag a side handle of the text in the preview; 
 
 ## Choose a font
 
-> **Video placeholder: Choose a font**
-> - File: `videos/titles-and-text/choose-a-font.mp4` (not recorded yet)
-> - Length: about 45 seconds
-> - Shows:
->   1. A title selected. Click the **Font** field in the **Text** section: the font picker opens with **Search fonts**, then **Used in project**, **Bundled** and **System**, each name in its own font.
->   2. Click the star next to **Playfair Display**: it appears under **Favorites** at the top.
->   3. Type `mon` in **Search fonts**: only Montserrat and JetBrains Mono are left. Press <kbd>Enter</kbd>: the title switches to Montserrat and the picker closes.
->   4. Open the picker again and click **Show system fonts**. Chrome asks to use the fonts on your device: click **Allow**. The fonts installed on the computer appear under **System**.
->   5. Click **Georgia**: the title switches to Georgia.
-
 1. Select one or more text clips.
-2. In the **Text** section, click the **Font** field. The font picker opens under it.
-3. Click a font. Or type part of its name in **Search fonts** and press <kbd>Enter</kbd> to take the first match. To take another one, press <kbd>↓</kbd> or <kbd>↑</kbd> in **Search fonts** until it is highlighted in the list, then press <kbd>Enter</kbd>.
+2. In the **Text** section, click the **Font** field. The font browser opens under it.
+3. Point at fonts to see them on your text in the preview, then click the one you want. Or type part of its name in the search field and press <kbd>Enter</kbd>.
 
-The picker closes when you pick a font, click outside it, or press <kbd>Esc</kbd>.
-
-The picker lists the fonts in sections, each name drawn in its own font:
-
-| Section | What it lists |
-| --- | --- |
-| **Favorites** | The fonts you starred. Click the star at the right of a font to add it, and click it again to remove it. Your favorites are kept in this browser for all your projects. |
-| **Used in project** | The fonts the text clips of this project use. |
-| **Bundled** | The eight fonts that come with the editor. See [Fonts that come with the editor](#fonts-that-come-with-the-editor). |
-| **System** | The fonts installed on your computer, after you click **Show system fonts**. See [Use fonts from your computer](#use-fonts-from-your-computer). |
-
-**Favorites**, **Used in project** and **Bundled** are left out when they have no font that matches the search. **System** always shows.
-
-### Fonts that come with the editor
-
-These fonts work on every computer, with no installation:
-
-| Font | Style | Weights | Real italic |
-| --- | --- | --- | --- |
-| Inter | Sans-serif; the default for new text | 100 to 900 | Yes |
-| Montserrat | Geometric sans-serif | 100 to 900 | Yes |
-| Nunito | Rounded sans-serif | 200 to 900 | Yes |
-| Oswald | Tall, narrow display font | 200 to 700 | No |
-| Unbounded | Wide display font | 200 to 900 | No |
-| Playfair Display | Serif | 400 to 900 | Yes |
-| Caveat | Handwriting | 400 to 700 | No |
-| JetBrains Mono | Monospaced | 100 to 800 | Yes |
-
-> **Note:** These fonts cover the Latin alphabet of Western, Central and Eastern European languages (latin and latin-ext). Letters of other scripts, such as Greek, Cyrillic, Arabic, Hebrew, Chinese, Japanese or Korean, are drawn with a fallback font of your system instead. For those languages, pick a font from your computer that has them.
-
-A font loads the first time a text uses it, so a text may appear a moment after the rest of the picture the first time.
-
-## Use fonts from your computer
-
-1. In the font picker, click **Show system fonts** under **System**.
-2. The first time, Chrome asks whether the site may use the fonts on your computer. Allow it.
-3. The installed fonts appear under **System**. Click one to use it.
-
-The list stays until you reload the page; after a reload, click **Show system fonts** again. Chrome remembers your answer, so it asks only once.
-
-Instead of the font list, the **System** section can show:
-
-| Message | Meaning |
-| --- | --- |
-| **Listing the system fonts…** | The editor is reading the list. |
-| **Font access was not allowed** | You (or Chrome) refused the permission. **Show system fonts** stays below it. See [Show system fonts lists nothing](troubleshooting.md#show-system-fonts-lists-nothing). |
-| **This browser cannot list system fonts** | The browser has no access to installed fonts. Use the fonts that come with the editor. |
-| **No system fonts** | The computer reported no fonts other than the ones that come with the editor. |
-| **No match** | No installed font matches the search. |
-
-Fonts that come with the editor are listed only under **Bundled**, not again under **System**.
-
-### Fonts travel with the project
-
-When a text uses a font from your computer, the editor copies the font file into the `fonts` folder of the project, with a `fonts.json` file that lists the copies. The project then looks the same on a computer that doesn't have the font, and the editor uses the copy even where a different font of the same name is installed.
-
-- Only the variant the text uses is copied, for example Georgia Bold. Pick another weight or **Italic**, and that variant is copied too.
-- Copying happens in the background, a moment after you pick the font.
-- A project open in read-only mode copies nothing. See [Work in read-only mode](projects-and-saving.md#work-in-read-only-mode).
-- The editor copies fonts only while the list of system fonts is loaded. If you change the weight of a computer font in a later session, click **Show system fonts** once so the new variant can be copied.
-
-> **Important:** A font file in the project folder goes wherever the folder goes. Before you share a project folder, check that the licenses of the fonts you used allow it.
-
-## Fix a missing font
-
-When a text uses a font that is neither one of the editor's fonts, nor in the project's `fonts` folder, nor installed on this computer:
-
-- the text is drawn with the editor's interface font instead;
-- the **Font** field shows a red **Missing** chip (tooltip **This font is not installed here: the text uses the fallback font**);
-- the clip on the timeline shows a red warning triangle in its label bar.
-
-This happens, for example, when you open a project made on another computer that didn't copy the font, or after you delete the project's `fonts` folder.
-
-To fix it, do one of these:
-
-- Pick another font for the text in the font picker.
-- Install the font on this computer and reload the page. The chip and the triangle disappear.
-- On the computer where the project was made, open the project with editing allowed and click **Show system fonts** once: the editor copies the font into the project.
+The browser lists the 330 fonts that come with the editor, sorted by look (**Luxury & Elegant**, **Bold & Impact**, **Handwritten & Script** and more) and filtered by weight, your own font files under **My fonts**, and the fonts installed on your computer. Every font a text uses is copied into the project, and a text whose font isn't available shows a red **Missing** chip. See [Fonts](fonts.md).
 
 ## Text clips on the timeline
 
 - A text clip's label bar shows a **T** icon and the clip's name. Its body (on tracks of height M or L) shows the first line of its text, as shown in the picture (with its **Case**).
 - A new text clip is named after the first line of its text, up to 40 characters ("…" after that), or "Text" when it is empty. When you change the text, the name follows. Once you rename the clip yourself, your name stays. See [Rename clips](timeline.md#rename-clips).
 - A sparkles icon in the label bar means the text has an in or out animation. See [Text animations](text-animations.md).
-- A red warning triangle in the label bar means its font is missing. See [Fix a missing font](#fix-a-missing-font).
+- A red warning triangle in the label bar means its font is missing. See [Fix a missing font](fonts.md#fix-a-missing-font).
 - Text clips are trimmed, moved, split and deleted like other clips. Because text has no media behind it, its edges can go as far as you like.
 
 ## Undo text changes
@@ -383,7 +294,7 @@ Every text change is one step in the history. Hover **Undo** in the app bar to s
 | **Add title**, **Add subtitle** | <kbd>T</kbd>, <kbd>Shift</kbd>+<kbd>T</kbd>, or **Title** and **Subtitle** in the timeline toolbar |
 | **Edit text** | Typing in the preview (one step from start to finish), or a burst of typing in the **Text** field |
 | **Resize text**, **Change text box width** | Dragging a corner or a side handle of a text in the preview |
-| **Change font**, **Change font weight**, **Change italic**, **Change font size** | The **Font**, **Weight**, **Italic** and **Size** rows |
+| **Change font**, **Change font weight**, **Change italic**, **Change font size** | The **Font** (a pick in the font browser), **Weight**, **Italic** and **Size** rows |
 | **Change fill**, **Change text color** | **Fill** and its colors |
 | **Add stroke**, **Remove stroke**, **Change stroke** | **Stroke** and its values |
 | **Add shadow**, **Remove shadow**, **Change shadow** | **Shadow** and its values |
@@ -396,6 +307,7 @@ Every text change is one step in the history. Hover **Undo** in the app bar to s
 Pressing <kbd>↑</kbd> or <kbd>↓</kbd> in a number field of the **Text** section several times in a row, less than 0.3 seconds apart, is one step.
 
 ## Related pages
+- [Fonts](fonts.md)
 - [Exporting your video](exporting-video.md)
 - [Text animations](text-animations.md)
 - [Text presets](text-presets.md)
@@ -409,4 +321,4 @@ Pressing <kbd>↑</kbd> or <kbd>↓</kbd> in a number field of the **Text** sect
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 46, 2026-10-18</sub>
+<sub>Last updated: Batch 51, 2026-10-19</sub>

@@ -139,28 +139,29 @@ The **Storage** group:
 | Row | What it shows and does |
 | --- | --- |
 | **Cache** | The size of the open project's cache, for example "777 KB · 11 files", or **Empty**. **Clear cache** deletes the cache; the editor asks first. With no project open, the row reads **No project is open** and **Clear cache** is dimmed (tooltip **Open a project to clear its cache**). It waits while a video export runs. See [Clear the cache](projects-and-saving.md#clear-the-cache). |
-| **Preset folder** | The library folder your **Global** text presets are synced with, and its state: **Syncing…**, **Synced**, **Needs permission: Sync to allow**, or a reason when it can't sync. With no folder: "None: presets stay in this browser". Click **Choose…** (or **Change…**) to pick a folder. With a folder, the buttons next to it sync again (**Sync the presets library folder**) and stop syncing (**Stop syncing the presets library folder**). See [Sync your presets with a folder](text-presets.md#sync-your-presets-with-a-folder). |
+| **Preset folder** | The library folder your **Global** text presets are synced with, and its state: **Syncing…**, **Synced**, **Needs permission: Sync to allow**, or a reason when it can't sync. With no folder: "None: presets stay in this browser". Click **Choose…** (or **Change…**) to pick a folder. With a folder, the buttons next to it sync again (**Sync the presets library folder**) and stop syncing (**Stop syncing the presets library folder**). See [Sync your presets with a folder](text-presets.md#sync-your-presets-with-a-folder). The folder also keeps your **My fonts**; see [Where My fonts are kept](fonts.md#where-my-fonts-are-kept). |
 | **Starter presets** | **Restore** brings back the starter presets you deleted. See [Restore the starter presets](text-presets.md#restore-the-starter-presets). |
 
 ## See the version and get help
 
-The **About** tab tells you which version of Shorts Editor you are running and how it draws the picture, takes you to the shortcut sheet and the command palette, and lists the open-source packages and fonts that come with the editor.
+The **About** tab tells you which version of Shorts Editor you are running and how it draws the picture, takes you to the shortcut sheet and the command palette, and lists the open-source packages and fonts that come with the editor, with the designer and license of every font of the font library.
 
 > **Video placeholder: The About tab**
 > - File: `videos/settings/about.mp4` (not recorded yet)
-> - Length: about 30 seconds
+> - Length: about 40 seconds
 > - Shows:
 >   1. Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>, type `about` and press <kbd>Enter</kbd>: **Settings** opens on the **About** tab.
 >   2. Point at **Version** (1.0.0) and **Renderer** (**WebGPU**).
 >   3. Click **View licenses**: the license list opens in a new browser tab. Go back to the editor's tab.
->   4. Click **Keyboard shortcuts**: **Settings** closes and the **Keyboard shortcuts** sheet opens. Press <kbd>Esc</kbd>.
+>   4. Scroll down to **Font licenses** and click **Cinzel** ("Natanael Gama · SIL Open Font License 1.1"): its license text opens in a new browser tab. Go back to the editor's tab.
+>   5. Click **Keyboard shortcuts**: **Settings** closes and the **Keyboard shortcuts** sheet opens. Press <kbd>Esc</kbd>.
 
 1. Open the **About** tab in one of these ways:
    - Run **About Shorts Editor** in the command palette (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>). Typing `version`, `licenses` or `help` finds it too. It has no key by default.
    - Open **Settings** and click the **About** tab.
 2. Click **Done**, or press <kbd>Escape</kbd>, to close it.
 
-The tab works on the start screen too, before you open a project. It has three groups:
+The tab works on the start screen too, before you open a project. It has four groups:
 
 | Group | Row | What it shows and does |
 | --- | --- | --- |
@@ -169,10 +170,12 @@ The tab works on the start screen too, before you open a project. It has three g
 | **Help** | **Shortcuts** | **Keyboard shortcuts** closes **Settings** and opens the sheet of every key. See [See every shortcut](command-palette-and-custom-shortcuts.md#see-every-shortcut). |
 | | **Commands** | **Command palette** closes **Settings** and opens the palette, where you can find every command by name, with its shortcut. See [Run a command from the palette](command-palette-and-custom-shortcuts.md#run-a-command-from-the-palette). |
 | **Licenses** | **Third party** | **View licenses** (tooltip **Open the license list in a new tab**) opens the list of the open-source packages and the fonts that come with the editor, with their license texts, in a new browser tab. |
+| **Font licenses** | | Every font of the font library, 330 in all, with its designer and license, for example "Natanael Gama · SIL Open Font License 1.1" for Cinzel. Click a font (tooltip **Open the license of Cinzel**) to open its license text in a new browser tab. The list reads **Reading the font library…** for a moment the first time. See [See the font licenses](fonts.md#see-the-font-licenses). |
 
-The note under **Shorts Editor** sums up how the editor works: "A video editor for short vertical videos. Projects are folders on your disk, and your media never leaves your computer."
+The note under **Shorts Editor** sums up how the editor works: "A video editor for short vertical videos. Projects are folders on your disk, and your media never leaves your computer." The note under **Font licenses** reads "The fonts of the font library are free to use in your videos and come under these open licenses. Each name opens its license text."
 
 ## Related pages
+- [Fonts](fonts.md)
 - [Exporting your video](exporting-video.md)
 - [Project settings and templates](project-settings-and-templates.md)
 - [Projects and saving](projects-and-saving.md)
@@ -189,4 +192,4 @@ The note under **Shorts Editor** sums up how the editor works: "A video editor f
 - [Removing silence](removing-silence.md)
 - [Transcription](transcription.md)
 
-<sub>Last updated: Batch 50, 2026-10-18</sub>
+<sub>Last updated: Batch 51, 2026-10-19</sub>

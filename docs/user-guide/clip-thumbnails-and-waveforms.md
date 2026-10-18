@@ -101,7 +101,7 @@ Badges sit at the right end of a clip's label bar, from right to left in this or
 | Link | A chain icon | The clip is linked to another clip, for example a video and its sound. See [Linking and grouping clips](links-and-groups.md). |
 | Keyframes | A diamond | The clip has keyframes: its position, scale, rotation or opacity changes over time, or, on an audio clip, its volume. See [Keyframes](keyframes.md) and [Make the volume change over time](audio-editing.md#make-the-volume-change-over-time). |
 | Text animation | A sparkles icon | The text clip has an in or out animation. See [Text animations](text-animations.md). |
-| Missing font | A red warning triangle | The text clip uses a font this computer doesn't have, so it is drawn with a fallback font. See [Fix a missing font](titles-and-text.md#fix-a-missing-font). |
+| Missing font | A red warning triangle | The text clip uses a font that isn't available here (not in the library, **My fonts**, the project's `fonts` folder or this computer), so it is drawn with a fallback font. See [Fix a missing font](fonts.md#fix-a-missing-font). |
 | Transition | `fx` | The clip has a transition at its start or end. See [Fades and transitions](fades-and-transitions.md). |
 
 - A clip at normal speed shows no speed badge, and a clip in sync shows no number.
@@ -156,4 +156,4 @@ A clip with a label color shows that color in its label bar above the thumbnails
 - [Proxies](proxies.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 45, 2026-10-18</sub>
+<sub>Last updated: Batch 51, 2026-10-19</sub>

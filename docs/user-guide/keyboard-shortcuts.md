@@ -44,6 +44,7 @@ This page lists every keyboard shortcut that works in the current version of Sho
 >   36. Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>, type `compact` and press <kbd>Enter</kbd>: every gap closes. Press <kbd>?</kbd>: the **Keyboard shortcuts** sheet lists every key; press <kbd>Esc</kbd>. Right-click a clip, press <kbd>↓</kbd> twice and <kbd>Enter</kbd>: the clip is copied. Press <kbd>Alt</kbd>+<kbd>S</kbd>: **Audio scrub** turns gold; press it again.
 >   37. Press <kbd>Ctrl</kbd>+<kbd>E</kbd>: the **Export** tab opens beside **Edit Properties**. Press <kbd>Enter</kbd>: a card under **Queue** shows the progress. Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>, type `cancel export` and press <kbd>Enter</kbd>: the message **Export cancelled** appears. Press <kbd>Esc</kbd>: the panel shows **Edit Properties** again.
 >   38. Select a text clip and click the **Edit Properties** tab. Press <kbd>Tab</kbd> until the **Outline** switch has a gold ring: its tooltip reads **Outline**. Press <kbd>Space</kbd>: the outline turns on and playback does not start. Click the switch with the mouse and press <kbd>Space</kbd>: playback starts. Click the **Media** tab, press <kbd>Tab</kbd> until a card has the ring, press <kbd>→</kbd> and <kbd>Enter</kbd>: the next card is inserted at the playhead.
+>   39. Select a title and click its **Font** field: the font browser opens. Type `bold` and press <kbd>↓</kbd> three times: the title shows each highlighted font. Press <kbd>Esc</kbd>: the title is back in its font. Open the browser again, press <kbd>↓</kbd> and <kbd>Enter</kbd>: the title takes the first font and the browser closes.
 
 ## In this page
 - [How shortcuts work](#how-shortcuts-work)
@@ -484,6 +485,24 @@ Text animations have no keys of their own: you set them with the mouse in the **
 | Make it 10 frames longer or shorter | <kbd>Shift</kbd>+<kbd>↑</kbd> or <kbd>Shift</kbd>+<kbd>↓</kbd> | <kbd>⇧</kbd>+<kbd>↑</kbd> or <kbd>⇧</kbd>+<kbd>↓</kbd> |
 | Change **Duration** or **Stagger** while the preview at the playhead follows (1 frame per pixel) | Drag the field's icon left or right | Same |
 
+### Font browser
+
+These keys work while the font browser is open, with the cursor in its search field. Open it by clicking the **Font** field of the **Text** or **Caption style** section, or with <kbd>Enter</kbd> or <kbd>Space</kbd> when the field has the gold focus ring. See [Fonts](fonts.md).
+
+| Action | Windows | macOS |
+| --- | --- | --- |
+| Highlight the next or previous font, and see it on the selected texts | <kbd>↓</kbd> or <kbd>↑</kbd> | <kbd>↓</kbd> or <kbd>↑</kbd> |
+| Apply the highlighted font (with none highlighted, the first font of the list) and close the browser | <kbd>Enter</kbd> | <kbd>Return</kbd> |
+| Close the browser without a change | <kbd>Esc</kbd> | <kbd>Esc</kbd> |
+| Go on to **Add fonts…** and the look and weight chips | <kbd>Tab</kbd> | <kbd>Tab</kbd> |
+| See a font on the selected texts | Point at its row | Same |
+| Apply a font | Click its row | Same |
+| Star a font, or take its star off | Click the star at the right of its row | Same |
+| Add font files to **My fonts** | Drop them on the browser or on the **Presets** tab | Same |
+
+- After a pick or <kbd>Esc</kbd>, the keyboard focus goes back to the **Font** field.
+- **Open font browser**, **Add fonts…** and **Toggle favorite font** have no keys by default. Run them from the command palette, or give them keys in **Settings** > **Shortcuts**. See [Font commands in the command palette](fonts.md#font-commands-in-the-command-palette).
+
 ### While you edit text
 
 While you edit a text in the preview, every other shortcut is off and the keys type: <kbd>Space</kbd> types a space, <kbd>T</kbd> types a "t", <kbd>Delete</kbd> deletes a letter.
@@ -572,7 +591,7 @@ See [Editing properties](editing-properties.md).
 - **Duplicate** in the quick actions does what <kbd>Ctrl</kbd>+<kbd>D</kbd> does in the Timeline panel. See [Clipboard and duplicate](#clipboard-and-duplicate).
 - Hold <kbd>↑</kbd> or <kbd>↓</kbd> to keep going. In the **Text**, **Animation**, **Transform**, **Crop**, **Opacity** and **Speed** sections, presses less than 0.3 seconds apart are one undo step.
 - In the **Duration** and **Stagger** fields of the **Animation** section, the arrow keys and label drags count in frames: <kbd>↑</kbd> adds 1 frame, <kbd>Shift</kbd>+<kbd>↑</kbd> 10 frames.
-- In the **Text** field of the **Text** section, <kbd>Enter</kbd> starts a new line. In the font picker, <kbd>↓</kbd> and <kbd>↑</kbd> in **Search fonts** highlight a font in the list, <kbd>Enter</kbd> picks it (with none highlighted, the first font that matches), and <kbd>Esc</kbd> closes the picker. After a pick or <kbd>Esc</kbd>, the keyboard focus is back on **Font**.
+- In the **Text** field of the **Text** section, <kbd>Enter</kbd> starts a new line. For the keys of the font browser, see [Font browser](#font-browser).
 - Dimmed fields are still reached with <kbd>Tab</kbd>: they show their value, but <kbd>↑</kbd> and <kbd>↓</kbd> don't change it.
 - Edit Properties has no other keys of its own. While it is active and no field has the keyboard, the all-panels shortcuts work there, for example <kbd>Space</kbd> to play.
 
@@ -737,7 +756,7 @@ These keys work in every right-click menu (clips, gaps, track headers, the ruler
 | Run the row or choice you moved to | <kbd>Enter</kbd> or <kbd>Space</kbd> | <kbd>Return</kbd> or <kbd>Space</kbd> |
 | Close the menu | <kbd>Esc</kbd> | <kbd>Esc</kbd> |
 
-For the font picker and the **Paste attributes** checklist, see [Edit Properties](#edit-properties) and [Clipboard and duplicate](#clipboard-and-duplicate).
+For the font browser and the **Paste attributes** checklist, see [Font browser](#font-browser) and [Clipboard and duplicate](#clipboard-and-duplicate).
 
 ## Keyboard navigation
 
@@ -881,6 +900,7 @@ None at the moment.
 - [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md)
 - [Keyframes](keyframes.md)
 - [Titles and text](titles-and-text.md)
+- [Fonts](fonts.md)
 - [Text presets](text-presets.md)
 - [Text animations](text-animations.md)
 - [Tracks](tracks.md)
@@ -891,4 +911,4 @@ None at the moment.
 - [Projects and saving](projects-and-saving.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 50, 2026-10-18</sub>
+<sub>Last updated: Batch 51, 2026-10-19</sub>

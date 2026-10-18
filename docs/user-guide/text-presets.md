@@ -63,6 +63,8 @@ Click the **Presets** tab at the top of the Media panel. From top to bottom:
 
 Point at a card to see its tooltip: the name, then **Click: apply to the selected text, or add at the playhead. Drag onto the timeline. Right-click for more.**
 
+> **Tip:** Drop font files (`.ttf`, `.otf`, `.woff`, `.woff2`) on the **Presets** tab to add them to **My fonts**. While you drag, the tab shows **Drop font files to add them to My fonts**. See [Add your own fonts](fonts.md#add-your-own-fonts).
+
 Instead of cards, the list can show:
 
 | Message | Meaning |
@@ -364,6 +366,7 @@ From then on:
 - A sync merges both sides: when a preset is in both, the one changed last wins. A sync never deletes presets, so a preset you deleted on one computer comes back if another computer still has it and writes it to the folder.
 - Files in the folder that are not presets are left alone. The strip then adds, for example, **(2 files skipped: not presets)**.
 - **Stop syncing (the folder keeps its files)**, the other button in the strip, makes the editor forget the folder. Your presets stay in the browser, and the files stay in the folder.
+- The folder also keeps your **My fonts**, in a `fonts` folder inside it, and brings them to every browser that syncs with it. See [Where My fonts are kept](fonts.md#where-my-fonts-are-kept).
 
 The strip can also read **Syncing with My presets…** while the editor reads and writes the folder, or the folder's name with a reason when it can't, for example when the folder was moved or deleted. Click **Sync the global presets with the library folder** to try again, or click **Stop syncing (the folder keeps its files)** and choose another folder.
 
@@ -404,6 +407,7 @@ These parts are available in a later version:
 
 ## Related pages
 - [Titles and text](titles-and-text.md)
+- [Fonts](fonts.md)
 - [Text animations](text-animations.md)
 - [Captions](captions.md)
 - [Editing properties](editing-properties.md)
@@ -413,4 +417,4 @@ These parts are available in a later version:
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 46, 2026-10-18</sub>
+<sub>Last updated: Batch 51, 2026-10-19</sub>

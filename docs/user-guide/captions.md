@@ -271,11 +271,11 @@ The section has these rows:
 | **Highlight** | How the spoken word stands out: **None**, **Color**, **Box**, **Scale** or **Both**. See [Highlight the spoken word](#highlight-the-spoken-word). |
 | **Active** | The color of the spoken word, or of the box behind it |
 | **Other words** | The color of the other words while one is highlighted |
-| **Font**, **Weight**, **Size**, **Fill**, **Stroke**, **Shadow**, **Background**, **Align**, **Spacing**, **Line height**, **Case** | The text style of the captions, as in the **Text** section of a title. See [Style text in the Text section](titles-and-text.md#style-text-in-the-text-section) and [Choose a font](titles-and-text.md#choose-a-font). |
+| **Font**, **Weight**, **Size**, **Fill**, **Stroke**, **Shadow**, **Background**, **Align**, **Spacing**, **Line height**, **Case** | The text style of the captions, as in the **Text** section of a title. See [Style text in the Text section](titles-and-text.md#style-text-in-the-text-section) and [Fonts](fonts.md). |
 
 - The text style has no **Anchor** row and no **Box** or **Width** rows: the position and **Max width** take their place.
 - Number fields work as everywhere in **Edit Properties**: type a value, use the arrow keys, or drag the field's label, and the preview follows while you drag. See [Type a value](editing-properties.md#type-a-value) and [Drag a value](editing-properties.md#drag-a-value).
-- A font from your computer used in captions is copied into the project's `fonts` folder, as for titles. See [Fonts travel with the project](titles-and-text.md#fonts-travel-with-the-project).
+- **Font** opens the font browser, as for titles: point at a font to see it on the captions, and click it to use it. Every font the captions use is copied into the project's `fonts` folder. See [Fonts](fonts.md).
 
 ## Choose where captions sit
 
@@ -401,4 +401,4 @@ These parts are available in a later version:
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 47, 2026-10-18</sub>
+<sub>Last updated: Batch 51, 2026-10-19</sub>

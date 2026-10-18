@@ -2,6 +2,11 @@
 
 Shorts Editor grows in steps called batches. This page lists what each batch added that you can see or use, newest first. Follow the links for the full instructions.
 
+> **Video placeholder: What's new in Batch 51**
+> - File: `videos/whats-new/batch-51.mp4` (not recorded yet)
+> - Length: about 50 seconds
+> - Shows: select a title and click its **Font** field: the font browser opens with the look chips, the weight chips and the list, each name in its own font; click **Futuristic & Tech** and **Black**: point at **Orbitron**, then **Unbounded**: the title in the preview follows; press <kbd>Esc</kbd>: the title is back in Inter; open the browser again and click **Orbitron**: the title is set in Orbitron Black; drag a `.woff2` file from File Explorer onto the browser: the message **Added 1 font to My fonts** appears and the font is listed under **My fonts**; open **Settings** > **About** and scroll to **Font licenses**.
+
 > **Video placeholder: What's new in Batch 50**
 > - File: `videos/whats-new/batch-50.mp4` (not recorded yet)
 > - Length: about 40 seconds
@@ -208,6 +213,7 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 > - Shows: open a project with three clips on the timeline; press <kbd>Space</kbd> to play and let the timeline page forward; press <kbd>L</kbd> three times to reach 8x, then <kbd>K</kbd>; hold <kbd>K</kbd> and tap <kbd>L</kbd> to step one frame; turn on **Loop playback**; point at the **Dropped** readout in the status strip.
 
 ## In this page
+- [Batch 51: Font library](#batch-51-font-library)
 - [Batch 50: Version 1.0](#batch-50-version-10)
 - [Batch 49: WebM files and screen recordings](#batch-49-webm-files-and-screen-recordings)
 - [Batch 48: Runs without WebGPU](#batch-48-runs-without-webgpu)
@@ -258,6 +264,16 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 - [Batch 03: Projects, autosave and recovery](#batch-03-projects-autosave-and-recovery)
 - [Batch 02: Undo, redo and frame-exact time](#batch-02-undo-redo-and-frame-exact-time)
 - [Batch 01: The workspace](#batch-01-the-workspace)
+
+## Batch 51: Font library
+- The **Font** field opens a new font browser with 330 fonts that come with the editor, sorted into 14 looks such as **Luxury & Elegant**, **Bold & Impact**, **Futuristic & Tech**, **Handwritten & Script** and **Captions**. Narrow the list with the look chips, the weight chips (**Thin**, **Light**, **Regular**, **Bold**, **Black**) and a search over names, looks and tags. See [Find a font](fonts.md#find-a-font).
+- Point at a font, or move through the list with <kbd>↓</kbd> and <kbd>↑</kbd>, to see it on the selected texts or captions before you choose. A click or <kbd>Enter</kbd> applies it in one undo step, and <kbd>Esc</kbd> puts the text back as it was. With a weight chip on, the text also takes that weight. See [See a font on your text, then apply it](fonts.md#see-a-font-on-your-text-then-apply-it).
+- The list shows **Recent** (your last 8 fonts), **Favorites** (star a font to keep it there), **My fonts**, **Library** and **On this computer**, each name in its own font with its number of weights. It scrolls smoothly through every font: only the rows you see load their font. **Bundled** and **System** are now **Library** and **On this computer**; **Used in project** is gone, and the font of the selected text is marked in gold instead. See [What the list shows](fonts.md#what-the-list-shows).
+- Add your own fonts: click **Add fonts…**, or drop `.ttf`, `.otf`, `.woff` and `.woff2` files on the font browser or on the **Presets** tab. They are in every project, and you can rename them, give them looks and tags, or remove them. With a preset library folder, they are kept there too. See [Add your own fonts](fonts.md#add-your-own-fonts).
+- Every font a project uses is now copied into its `fonts` folder, also the fonts that come with the editor and your own, not only the fonts from your computer. The project looks the same on any computer, and still after a font leaves **My fonts**. Exports use the same fonts as the preview. See [Fonts travel with the project](fonts.md#fonts-travel-with-the-project).
+- The library works offline and is free to use in your videos: **Settings** > **About** lists every font with its designer and license under **Font licenses**. See [See the font licenses](fonts.md#see-the-font-licenses).
+- New commands in the palette: **Open font browser**, **Add fonts…** and **Toggle favorite font**. See [Font commands in the command palette](fonts.md#font-commands-in-the-command-palette).
+- Fonts have their own page in this guide: [Fonts](fonts.md).
 
 ## Batch 50: Version 1.0
 - This is Shorts Editor 1.0.0. **Settings** has a third tab, **About**: it shows the version and the renderer (**WebGPU** or **WebGL2**), has **Keyboard shortcuts** and **Command palette** buttons, and **View licenses** opens the list of the open-source packages and fonts that come with the editor. Open it from the command palette with **About Shorts Editor**, also on the start screen. See [See the version and get help](settings.md#see-the-version-and-get-help).
@@ -485,7 +501,7 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 - Change the font, the size or a color in **Edit Properties** while you type: the text updates and you keep typing where you were.
 - A selected text has its own handles: the corners change the font size (outline, shadow and box grow with it) and the sides change the width of the text box, so the words wrap. See [Resize text with its handles](titles-and-text.md#resize-text-with-its-handles).
 - The **Text** section of **Edit Properties**, built in the previous batch, is now yours: font, weight and italic, size, solid or gradient fill, outline, shadow, background box per line or for the whole block, alignment, anchor, letter spacing, line height, case, and an auto or fixed box. See [Style text in the Text section](titles-and-text.md#style-text-in-the-text-section).
-- The font picker lists your favorites, the fonts used in the project, the eight fonts that come with the editor and, after **Show system fonts**, the fonts on your computer. A font from your computer is copied into the project's new `fonts` folder, so the project looks the same elsewhere. A font that is missing shows a red **Missing** chip and a red triangle on the clip. See [Choose a font](titles-and-text.md#choose-a-font) and [Fix a missing font](titles-and-text.md#fix-a-missing-font).
+- The font picker lists your favorites, the fonts used in the project, the eight fonts that come with the editor and, after **Show system fonts**, the fonts on your computer. A font from your computer is copied into the project's new `fonts` folder, so the project looks the same elsewhere. A font that is missing shows a red **Missing** chip and a red triangle on the clip. See [Choose a font](titles-and-text.md#choose-a-font) and [Fix a missing font](fonts.md#fix-a-missing-font).
 - A click on a text selects it only on its letters or its background box, so you can still click the picture behind the empty parts of a text.
 - New pages: [Titles and text](titles-and-text.md). New shortcuts: <kbd>T</kbd>, <kbd>Shift</kbd>+<kbd>T</kbd>, <kbd>Enter</kbd> and, while you edit text, <kbd>Ctrl</kbd>+<kbd>Enter</kbd> and <kbd>Esc</kbd>; see [Keyboard shortcuts](keyboard-shortcuts.md#text).
 
@@ -786,4 +802,4 @@ See [The workspace](workspace.md) and [Getting started](getting-started.md).
 - [Adding media to the timeline](adding-media-to-the-timeline.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 50, 2026-10-18</sub>
+<sub>Last updated: Batch 51, 2026-10-19</sub>

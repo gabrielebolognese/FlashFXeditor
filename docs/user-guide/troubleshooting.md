@@ -1,6 +1,6 @@
 # Troubleshooting
 
-This page helps you when something does not work as expected: the editor does not start in your browser, the preview stays empty or your graphics driver has trouble with WebGPU, a panel or the whole editor says it stopped working, a shortcut or a key you changed does nothing or runs another command, a folder or a file does not open or shows **Failed** in the Media tab, media are hidden in the Media tab, go offline or don't relink, a clip drag, a trim, a split, a delete, a timeline tool, a typed timecode, a marker, an in/out range or **Lift** and **Extract** do something you did not expect, media from the Media panel lands somewhere you did not expect, a clip shows no thumbnails, a video gets no proxy or its proxy fails, the preview zoom, overlays or fullscreen behave unexpectedly, a picture in the preview can't be selected, moves unexpectedly, doesn't snap where you expect or gets cropped instead of resized, a value or a crop in **Edit Properties** doesn't do what you expect, a paste or a duplicate lands somewhere you did not expect or is refused, a speed change, a freeze frame or a punch zoom does something you did not expect, a keyframe animation or a keyframe lane doesn't behave as you expect, a fade or a transition doesn't go where you expect, gets shorter or shows red stripes, the rubber band, **Normalize**, **Auto-duck**, **Detach audio** or **Audio scrub** doesn't do what you expect, **Remove silence** cuts too much, too little or nothing, a shape or an image doesn't look or play as you expect, a title lands somewhere you did not expect, the keys type into a text, a font is missing, a text preset doesn't apply, update or sync as you expect, a text animation plays shorter or differently than you expect, a caption cue doesn't import, move, show or highlight as you expect, a transcription doesn't start, is slow or gets words wrong, an export doesn't start, fails or gives a file you did not expect, playback stutters or pauses for a moment, an HDR video looks less bright than on your phone, a WebM video covers the layers below it, or you hear no sound. Each problem lists what you see, why it happens and what to do. The last section lists what the current version cannot do yet.
+This page helps you when something does not work as expected: the editor does not start in your browser, the preview stays empty or your graphics driver has trouble with WebGPU, a panel or the whole editor says it stopped working, a shortcut or a key you changed does nothing or runs another command, a folder or a file does not open or shows **Failed** in the Media tab, media are hidden in the Media tab, go offline or don't relink, a clip drag, a trim, a split, a delete, a timeline tool, a typed timecode, a marker, an in/out range or **Lift** and **Extract** do something you did not expect, media from the Media panel lands somewhere you did not expect, a clip shows no thumbnails, a video gets no proxy or its proxy fails, the preview zoom, overlays or fullscreen behave unexpectedly, a picture in the preview can't be selected, moves unexpectedly, doesn't snap where you expect or gets cropped instead of resized, a value or a crop in **Edit Properties** doesn't do what you expect, a paste or a duplicate lands somewhere you did not expect or is refused, a speed change, a freeze frame or a punch zoom does something you did not expect, a keyframe animation or a keyframe lane doesn't behave as you expect, a fade or a transition doesn't go where you expect, gets shorter or shows red stripes, the rubber band, **Normalize**, **Auto-duck**, **Detach audio** or **Audio scrub** doesn't do what you expect, **Remove silence** cuts too much, too little or nothing, a shape or an image doesn't look or play as you expect, a title lands somewhere you did not expect, the keys type into a text, a font is missing, isn't added to **My fonts** or looks different from the one you installed, a text preset doesn't apply, update or sync as you expect, a text animation plays shorter or differently than you expect, a caption cue doesn't import, move, show or highlight as you expect, a transcription doesn't start, is slow or gets words wrong, an export doesn't start, fails or gives a file you did not expect, playback stutters or pauses for a moment, an HDR video looks less bright than on your phone, a WebM video covers the layers below it, or you hear no sound. Each problem lists what you see, why it happens and what to do. The last section lists what the current version cannot do yet.
 
 > **Video placeholder: Fix common problems**
 > - File: `videos/troubleshooting/overview.mp4` (not recorded yet)
@@ -41,7 +41,7 @@ This page helps you when something does not work as expected: the editor does no
 >   33. Select a video, move the playhead outside it and press <kbd>Shift</kbd>+<kbd>F</kbd>: the message **The playhead is not over the selected clip** appears.
 >   34. Press <kbd>T</kbd> and press <kbd>Space</kbd>: a space is typed instead of playing. Press <kbd>Esc</kbd>, then <kbd>Space</kbd>: playback starts. Pause.
 >   35. Click beside a short line of a two-line title, where no letter is: the video behind it is selected. Click a letter: the title is selected.
->   36. Open a project made on another computer with a font this one doesn't have: the **Font** field shows **Missing** and the clip shows a red triangle. Pick **Inter** in the font picker: both disappear.
+>   36. Open a project made on another computer with a font this one doesn't have: the **Font** field shows **Missing** and the clip shows a red triangle. Pick **Inter** in the font browser: both disappear.
 >   37. Click an empty area of the timeline tracks so nothing is selected, then click the **Breaking** card in the **Presets** tab: a new title appears instead of a changed one. Press <kbd>Esc</kbd>, then <kbd>Ctrl</kbd>+<kbd>Z</kbd>. Select the first title and click the card: it takes the red box.
 >   38. Select a title made with a preset and hover **Update preset** in the quick actions: it is dimmed while the title still has the preset's style. Change its color: the button comes alive.
 >   39. Give a 4-second title **Word pop** in the **Animation** section and type `3` in its **Duration**: the hint **Plays in 2.00 s: half the clip** appears under the field. Click the **Title** preset card: the animation is gone. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>: it is back.
@@ -288,10 +288,17 @@ This page helps you when something does not work as expected: the editor does no
   - [Typed text disappeared](#typed-text-disappeared)
   - [A click on a text selects the picture behind it](#a-click-on-a-text-selects-the-picture-behind-it)
   - [Dragging a corner of a text changes its font size](#dragging-a-corner-of-a-text-changes-its-font-size)
+- [Fonts](#fonts)
   - [A text shows Missing or a red triangle](#a-text-shows-missing-or-a-red-triangle)
   - [Show system fonts lists nothing](#show-system-fonts-lists-nothing)
   - [A font from your computer was not copied into the project](#a-font-from-your-computer-was-not-copied-into-the-project)
   - [Letters of some languages look different](#letters-of-some-languages-look-different)
+  - [A font file was not added to My fonts](#a-font-file-was-not-added-to-my-fonts)
+  - [A font of My fonts has the wrong name, or its weights are separate fonts](#a-font-of-my-fonts-has-the-wrong-name-or-its-weights-are-separate-fonts)
+  - [Texts keep the old name of a font you renamed](#texts-keep-the-old-name-of-a-font-you-renamed)
+  - [My fonts are empty in another browser](#my-fonts-are-empty-in-another-browser)
+  - [Font names in the list are plain for a moment](#font-names-in-the-list-are-plain-for-a-moment)
+  - [A font from your computer looks different from the one installed](#a-font-from-your-computer-looks-different-from-the-one-installed)
 - [Text presets](#text-presets)
   - [Clicking a preset adds a new title instead of changing the selected one](#clicking-a-preset-adds-a-new-title-instead-of-changing-the-selected-one)
   - [Update preset is dimmed](#update-preset-is-dimmed)
@@ -2354,21 +2361,23 @@ See [Messages when you paste](copy-and-paste.md#messages-when-you-paste).
 
 **Fix:** Nothing is wrong. To scale a text like a picture, type a value in **Scale** in the **Transform** section. To go back to a box that fits the lines, click **Auto** in **Box**. See [Resize text with its handles](titles-and-text.md#resize-text-with-its-handles).
 
+## Fonts
+
 ### A text shows Missing or a red triangle
 
-**Symptom:** The **Font** field of the **Text** section shows a red **Missing** chip, the text clip shows a red warning triangle on the timeline, and the text looks different.
+**Symptom:** The **Font** field of the **Text** or **Caption style** section shows a red **Missing** chip, the text clip shows a red warning triangle on the timeline, and the text looks different.
 
-**Cause:** The text uses a font that is not on this computer and not in the project's `fonts` folder, for example a project made on another computer that couldn't copy the font. The text is drawn with a fallback font.
+**Cause:** The text uses a font that is not in the library, not in **My fonts**, not in the project's `fonts` folder and not installed on this computer, for example in a project made on another computer that couldn't copy the font. The text is drawn with a fallback font.
 
-**Fix:** Pick another font, or install the font and reload the page. See [Fix a missing font](titles-and-text.md#fix-a-missing-font).
+**Fix:** Pick another font, add the font file to **My fonts**, or install the font and reload the page. See [Fix a missing font](fonts.md#fix-a-missing-font).
 
 ### Show system fonts lists nothing
 
-**Symptom:** After you click **Show system fonts**, the **System** section reads **Font access was not allowed** or **This browser cannot list system fonts**.
+**Symptom:** After you click **Show system fonts**, the **On this computer** section of the font browser reads **Font access was not allowed** or **This browser cannot list system fonts**.
 
 **Cause:** You refused the permission to use the fonts on your computer, Chrome blocked it for the site, or the browser has no access to installed fonts.
 
-**Fix:** Allow the **Fonts** permission for the site in Chrome's site settings (click the icon left of the address), reload the page and click **Show system fonts** again. Or use one of the eight fonts that come with the editor. See [Use fonts from your computer](titles-and-text.md#use-fonts-from-your-computer).
+**Fix:** Allow the **Fonts** permission for the site in Chrome's site settings (click the icon left of the address), reload the page and click **Show system fonts** again. Or use a font of the library, or add the font's file to **My fonts**. See [Use fonts from your computer](fonts.md#use-fonts-from-your-computer) and [Add your own fonts](fonts.md#add-your-own-fonts).
 
 ### A font from your computer was not copied into the project
 
@@ -2378,7 +2387,7 @@ See [Messages when you paste](copy-and-paste.md#messages-when-you-paste).
 - The project was open in read-only mode.
 - The list of system fonts wasn't loaded in that session: you changed the weight or **Italic** of a computer font without clicking **Show system fonts** first.
 
-**Fix:** On the computer that has the font, open the project with editing allowed, open the font picker of any text and click **Show system fonts**: the editor copies the fonts the project uses. See [Fonts travel with the project](titles-and-text.md#fonts-travel-with-the-project).
+**Fix:** On the computer that has the font, open the project with editing allowed, open the font browser of any text and click **Show system fonts**: the editor copies the fonts the project uses. See [Fonts travel with the project](fonts.md#fonts-travel-with-the-project).
 
 ### Letters of some languages look different
 
@@ -2386,7 +2395,55 @@ See [Messages when you paste](copy-and-paste.md#messages-when-you-paste).
 
 **Cause:** The fonts that come with the editor cover the Latin alphabet only. Other letters are drawn with a fallback font of your system.
 
-**Fix:** Pick a font from your computer that has those letters. See [Use fonts from your computer](titles-and-text.md#use-fonts-from-your-computer).
+**Fix:** Pick a font from your computer that has those letters, or add a font file that has them to **My fonts**. See [Use fonts from your computer](fonts.md#use-fonts-from-your-computer) and [Add your own fonts](fonts.md#add-your-own-fonts).
+
+### A font file was not added to My fonts
+
+**Symptom:** After you add or drop font files, the message **Couldn't add the font** (or **Couldn't add the fonts**) appears, or the message **Added 2 fonts to My fonts** lists a file with a reason.
+
+**Cause:** The file is not a `.ttf`, `.otf`, `.woff` or `.woff2` file, is larger than 32 MB, is a font collection (`.ttc`), is damaged, or is already in **My fonts**.
+
+**Fix:** Follow the reason in the message. For a collection, add the separate `.ttf` or `.otf` files of its fonts. See [Add your own fonts](fonts.md#add-your-own-fonts).
+
+### A font of My fonts has the wrong name, or its weights are separate fonts
+
+**Symptom:** A font you added is listed under a name you didn't expect, or the regular and bold files of one font are listed as two fonts.
+
+**Cause:** The editor names a `.woff2` font after its file: the part before the last `-` or `_`, when the rest is a style such as `Bold`. Files whose names don't share that first part become separate fonts.
+
+**Fix:** To rename a font, click its pencil under **My fonts** and type the name in **Name**. To join the weights of one font, remove them, rename the files so they share the first part, such as `Kalnia-Regular.woff2` and `Kalnia-Bold.woff2`, and add them again. See [Rename, sort or remove your fonts](fonts.md#rename-sort-or-remove-your-fonts).
+
+### Texts keep the old name of a font you renamed
+
+**Symptom:** After you rename a font in **My fonts**, the **Font** field of the texts that use it still shows the old name.
+
+**Cause:** Renaming changes your font list, not your projects. The texts keep the old name and draw with the copy in their project's `fonts` folder.
+
+**Fix:** Nothing is wrong: the texts look the same. To give them the new name, select them and pick the font in the font browser.
+
+### My fonts are empty in another browser
+
+**Symptom:** The fonts you added are not under **My fonts** in another browser, another Chrome profile or on another computer.
+
+**Cause:** **My fonts** are kept in the browser where you added them.
+
+**Fix:** Choose the same preset library folder in the **Presets** tab of both browsers: your fonts go into its `fonts` folder and come to the other browser at its next sync. Or add the files again there. Projects that use your fonts look right everywhere anyway: they keep copies. See [Where My fonts are kept](fonts.md#where-my-fonts-are-kept).
+
+### Font names in the list are plain for a moment
+
+**Symptom:** While you scroll the font browser, some names show dimmed in the editor's own font, then switch to their font.
+
+**Cause:** Only the rows you see load their font files, a few at a time, so scrolling stays smooth. A row shows its own font as soon as its file is in.
+
+**Fix:** Nothing is wrong: wait a moment, or scroll more slowly.
+
+### A font from your computer looks different from the one installed
+
+**Symptom:** You picked a font under **On this computer**, such as Montserrat, and the text doesn't look like your installed version, or the **Weight** field lists other weights.
+
+**Cause:** The library has a font of the same name. The editor draws it with the library's files, so the project looks the same on every computer.
+
+**Fix:** Add the installed font file to **My fonts** and rename it there, for example to "Montserrat Classic", then pick that name. See [Add your own fonts](fonts.md#add-your-own-fonts).
 
 ## Text presets
 
@@ -2934,6 +2991,7 @@ The current version cannot do these things yet. Each one is available in a later
 - [Editing properties](editing-properties.md)
 - [Cropping and reframing](cropping-and-reframing.md)
 - [Titles and text](titles-and-text.md)
+- [Fonts](fonts.md)
 - [Text presets](text-presets.md)
 - [Text animations](text-animations.md)
 - [Captions](captions.md)
@@ -2941,4 +2999,4 @@ The current version cannot do these things yet. Each one is available in a later
 - [Command palette and custom shortcuts](command-palette-and-custom-shortcuts.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 50, 2026-10-18</sub>
+<sub>Last updated: Batch 51, 2026-10-19</sub>

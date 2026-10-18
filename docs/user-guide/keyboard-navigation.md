@@ -109,7 +109,7 @@ See [Insert at the playhead](adding-media-to-the-timeline.md#insert-at-the-playh
 - **Right-click menus and the preview's menus:** the arrow keys move between rows, <kbd>Enter</kbd> runs a row and <kbd>Esc</kbd> closes the menu. The row you move to gets a gold ring. See [Use menus with the keyboard](command-palette-and-custom-shortcuts.md#use-menus-with-the-keyboard).
 - **More tools** (…), in a narrow timeline toolbar: <kbd>Enter</kbd> opens it with the focus on its first control, <kbd>Tab</kbd> and <kbd>Shift</kbd>+<kbd>Tab</kbd> go round its controls, and <kbd>Escape</kbd> closes it. See [When the toolbar does not fit](workspace.md#when-the-toolbar-does-not-fit).
 - **The color picker:** <kbd>Enter</kbd> on a color swatch opens it with the cursor in the hex field; <kbd>Tab</kbd> goes round its parts and <kbd>Esc</kbd> closes it. See [Pick a color](editing-properties.md#pick-a-color).
-- **The font picker:** <kbd>Enter</kbd> on **Font** opens it with the cursor in **Search fonts**; <kbd>↓</kbd> and <kbd>↑</kbd> highlight a font and <kbd>Enter</kbd> picks it. See [Choose a font](titles-and-text.md#choose-a-font).
+- **The font browser:** <kbd>Enter</kbd> on **Font** opens it with the cursor in the search field; <kbd>↓</kbd> and <kbd>↑</kbd> highlight a font and show it on your text, <kbd>Enter</kbd> applies it and <kbd>Esc</kbd> closes the browser without a change. <kbd>Tab</kbd> moves on to **Add fonts…** and the look and weight chips, which <kbd>Space</kbd> turns on and off. See [See a font on your text, then apply it](fonts.md#see-a-font-on-your-text-then-apply-it).
 
 ## Where the focus goes when something closes
 
@@ -119,7 +119,7 @@ When the control you are on goes away, the keyboard focus doesn't get lost. It g
 | --- | --- |
 | The **More tools** menu | **More tools** |
 | The color picker | Its color swatch |
-| The font picker, after a pick or <kbd>Esc</kbd> | **Font** |
+| The font browser, after a pick or <kbd>Esc</kbd> | **Font** |
 | The project name field in the app bar, after <kbd>Enter</kbd> or <kbd>Escape</kbd> | The project name |
 | A bin's name field, after <kbd>Enter</kbd> or <kbd>Escape</kbd> | The bin's chip |
 | The **Remove silence** row (**Apply**, **Cancel** or <kbd>Esc</kbd>) | **Remove silence** in the quick actions |
@@ -136,4 +136,4 @@ When the control you are on goes away, the keyboard focus doesn't get lost. It g
 - [Command palette and custom shortcuts](command-palette-and-custom-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 46, 2026-10-18</sub>
+<sub>Last updated: Batch 51, 2026-10-19</sub>
