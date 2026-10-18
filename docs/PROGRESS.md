@@ -5982,3 +5982,16 @@ Why each dependency exists (Batch rule 8).
       - Alt+1..9 are global and cannot fire while typing (`textEditing` is an isolated scope, `KeyDispatcher.ts:30`).
     - TODOs: the only `TODO(batch` in `src` is the Batch 53 hook, which has its tag.
     - There is no earlier rejection to recheck.
+- fix-attempt: done (2026-10-19)
+  1. A thumbnail made again after a font change now reaches its canvas.
+     - `PresetThumbService` calls its listeners with the preset id of every bitmap it makes, including one made again after a font change (`src/render/text/PresetThumbService.ts`).
+     - `PresetThumbPainter.bitmapMade(presetId)` replaces `redrawWaiting`. It draws again every canvas that shows that preset (the bar's button and the Presets tab's card), plus the canvases still waiting for a bitmap. `follow(service)` wires it, and `installPresetController` calls `presetThumbs.follow(presetThumbService)`.
+     - `redrawAll` has a caller again: `watchDevicePixelRatio(window, ...)` in `installPresetController`, so the thumbnails redraw at a new device pixel ratio (another screen, browser zoom). Before, the canvases kept their old backing size.
+     - Tests: a new `PresetThumbPainter.test.ts` case wires the real service and painter through `follow`, with a draw like the app's. It draws, reports a font change for the family, runs the idle queue and a frame, and expects the canvas to show the new bitmap. The old one is closed, the other family's canvas is not drawn again, and nothing happens after stop. Another new case: a preset's report draws all its canvases and no others. `PresetThumbService.test.ts` checks the listener's ids, the remake included. Both new painter tests fail with the old painter (no id match).
+     - `docs/ARCHITECTURE.md` (preset thumbnails) describes the remake path.
+  - `npm run check` green: typecheck, lint with the CSS color and token checks, 2454 unit tests in 235 files, 4 perf tests, build with no warning. Main JS 1371.42 kB (436.56 kB gzip), export.worker 418.31 kB.
+  - Browser checks on a fresh snapshot of the working tree (5293 / 9415, the review's helpers in `%TEMP%/rev52`):
+    - The review's `stuck.mjs` passes 4 / 4. The Zorblax button changes pixels by itself when the font arrives (`stats.made` 11 -> 14) and matches the renderer (0 of 3116 pixels off). The control `redrawAll` leaves the same hash.
+    - New `stucktab.mjs`, 4 / 4: the same with the Presets tab open (family "Quazzle"). The tab's card and the bar's button both repaint by themselves, the button matches the renderer, and a forced `redrawAll` changes neither.
+    - New `dpr2.mjs`, 5 / 5. Headless Chrome changes `devicePixelRatio` under CDP emulation but never fires the resolution media query's change event (`dprdbg.mjs`: the preview well does not resize either). So the probe records the app's resolution `MediaQueryList`s at page start and fires their change after the switch. At ratio 2 the 9 buttons draw at 164 x 76 device px (82 CSS px), the first matches the renderer (0 of 12464 off), and the bitmaps are made in idle time (9 -> 18). The preview well, the control, goes 640 -> 1280. Back at 1, everything returns to the old sizes.
+    - Re-runs, all pass: `acc123.mjs` (25), `acc4.mjs` (11), `acc5.mjs` (8), `extra.mjs` (28).

@@ -52,7 +52,9 @@ The timeline, the preview, the compositor and the audio engine subscribe directl
   sample text, made by the text engine in `IdleQueue` slices once its fonts are loaded (never while
   playing), cached by preset id, look and device size (a small LRU, closed on eviction).
   `panels/media/PresetThumbPainter.ts` copies them onto the preset bar's buttons (`panels/PresetBar.tsx`,
-  under the preview header) and the Presets tab's cards in the frame loop.
+  under the preview header) and the Presets tab's cards in the frame loop. A family that changes (a face
+  loaded, a font added) has its bitmaps made again; the service reports each one's preset id and every
+  canvas showing that preset draws the new bitmap (all of them again at a new device pixel ratio).
 - Theme bridge (`core/theme/theme.ts`): the CSS custom properties read into a typed `Theme` for canvases,
   again when `data-theme` changes.
 

@@ -22,6 +22,7 @@
 //   shown set), reordering, and the bundled starter pack brought up to date on load.
 import type { ClipId, Project, TextClip, TextPreset, TrackId, Transform } from "../core/document/types.js";
 import { usToFrame } from "../core/document/time.js";
+import { watchDevicePixelRatio } from "../core/scheduler/devicePixelRatio.js";
 import { createStore } from "../core/store/createStore.js";
 import type { PresetScope } from "../core/store/sessionStore.js";
 import { errorMessage } from "../project/errorMessage.js";
@@ -841,8 +842,10 @@ export function installPresetController(): () => void {
     ),
     // The hover preview follows the selection it was made for.
     sessionStore.selection.subscribe(() => endHover()),
-    // New thumbnail bitmaps: the cards and buttons that waited for theirs draw (at the next frame).
-    presetThumbService.subscribe(() => presetThumbs.redrawWaiting()),
+    // A thumbnail bitmap made, or made again after a font change: the cards and buttons that show its
+    // preset (or wait for theirs) draw at the next frame; all of them at a new device pixel ratio.
+    presetThumbs.follow(presetThumbService),
+    watchDevicePixelRatio(window, () => presetThumbs.redrawAll()),
     // Save as preset (spec §11, §17: the quick row's, or the Presets header's New from selection when
     // the Presets tab has the keyboard; each opens its own name field) and Update preset.
     actions.register(
