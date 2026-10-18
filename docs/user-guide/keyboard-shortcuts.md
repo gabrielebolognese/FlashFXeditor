@@ -114,6 +114,7 @@ See [Command palette and custom shortcuts](command-palette-and-custom-shortcuts.
 - **Settings** (the gear in the app bar) has no key by default. You can give it one, as any other command, in **Settings** > **Shortcuts**.
 - The palette and the sheet don't open while you type in a field or while a dialog is open.
 - A command run from the palette acts as its key would in the panel you were working in.
+- **Reload panel** has no key by default. From the palette, it reloads every panel that stopped working, or else the panel you were working in. See [Reload a panel that stopped working](workspace.md#reload-a-panel-that-stopped-working).
 
 ## Playback and navigation
 
@@ -650,6 +651,8 @@ These shortcuts work only while the Media panel is active. See [Importing media]
 | Select every media item the **Media** tab shows (the bin, the filter chips and the search leave the others out) | <kbd>Ctrl</kbd>+<kbd>A</kbd> | <kbd>⌘</kbd>+<kbd>A</kbd> | Media panel |
 | Import images from the clipboard | <kbd>Ctrl</kbd>+<kbd>V</kbd> | <kbd>⌘</kbd>+<kbd>V</kbd> | Media panel, or no panel active |
 
+**Dismiss failed imports** has no key: run it from the command palette, or give it one in **Settings** > **Shortcuts**. See [Check failed imports](importing-media.md#check-failed-imports).
+
 ### While you point at a card
 
 These keys act on the card under the pointer, whichever panel is active. Point at the card's picture (or the small picture of a row in list view). See [Use only part of a media item](adding-media-to-the-timeline.md#use-only-part-of-a-media-item).
@@ -887,4 +890,4 @@ None at the moment.
 - [Projects and saving](projects-and-saving.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 46, 2026-10-18</sub>
+<sub>Last updated: Batch 47, 2026-10-18</sub>

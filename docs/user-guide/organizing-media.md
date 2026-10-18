@@ -33,6 +33,7 @@ The **Media** tab has these parts, from top to bottom and left to right:
 | Panel header | **Sort media by** and its direction, **Grid view**, **List view**, **New bin** (the folder with a plus) and **Import media**. See [Sort media](importing-media.md#sort-media). |
 | Tool row | The **Search media** field and the filter chips **Video**, **Audio**, **Images** and **Unused**. See [Search your media](#search-your-media) and [Show only some media with the filter chips](#show-only-some-media-with-the-filter-chips). |
 | Notice strip | Appears only when media are offline, for example "2 files offline", with **Allow access** or **Relink folder…**. See [Offline media and relinking](offline-media-and-relinking.md). |
+| Failed imports | Appear only after a file could not be imported: one row per file, with a red **Failed** badge, the file name, the reason and an **X** to dismiss it. See [Check failed imports](importing-media.md#check-failed-imports). |
 | Bin strip | A column of chips on the left: **All**, **Video**, **Audio** and **Images**, then the bins you create. Each chip shows how many media items it holds. Click a chip to show its media. |
 | Cards or rows | The media the bin, the chips and the search let through, in grid or list view. See [Browse your media](importing-media.md#browse-your-media). |
 
@@ -206,6 +207,7 @@ Most of these actions are commands you can run from the command palette (<kbd>Ct
 | **Media: clear filters and search** | The same as **Clear filters** |
 | **Media: show all** | The same as **Show all media**: shows **All**, with no chip and no search |
 | **Reveal media in folder** | The same as **Reveal in folder** in the media menu |
+| **Dismiss failed imports** | Removes every failed import row from the top of the **Media** tab. See [Check failed imports](importing-media.md#check-failed-imports). |
 
 Showing, renaming and deleting a bin, and **Move to bin**, need the chip or the card you point at, so they are not in the palette. See [Command palette and custom shortcuts](command-palette-and-custom-shortcuts.md).
 
@@ -218,4 +220,4 @@ Showing, renaming and deleting a bin, and **Move to bin**, need the chip or the 
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 46, 2026-10-18</sub>
+<sub>Last updated: Batch 47, 2026-10-18</sub>

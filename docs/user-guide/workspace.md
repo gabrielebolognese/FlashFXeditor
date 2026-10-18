@@ -1,6 +1,6 @@
 # The workspace
 
-When a project is open, the editor shows one fixed layout: a slim app bar at the top and four panels below it. This page tours each part, shows how to resize the panels, and explains how keyboard shortcuts follow the panel you last clicked.
+When a project is open, the editor shows one fixed layout: a slim app bar at the top and four panels below it. This page tours each part, shows how to resize the panels, explains how keyboard shortcuts follow the panel you last clicked, and tells you how to get a panel back if it stops working.
 
 > **Video placeholder: Tour of the workspace**
 > - File: `videos/workspace/workspace-tour.mp4` (not recorded yet)
@@ -15,6 +15,7 @@ When a project is open, the editor shows one fixed layout: a slim app bar at the
 - [Use the timeline toolbar](#use-the-timeline-toolbar)
 - [Read tooltips and shortcuts](#read-tooltips-and-shortcuts)
 - [Read messages](#read-messages)
+- [Reload a panel that stopped working](#reload-a-panel-that-stopped-working)
 - [Send shortcuts to the right panel](#send-shortcuts-to-the-right-panel)
 - [Read timecodes](#read-timecodes)
 - [Related pages](#related-pages)
@@ -192,6 +193,24 @@ The editor tells you what happened in short messages at the top center of the wi
 - Click the **×** (**Dismiss**) of a message to close it sooner.
 - Messages that follow a long task, such as an import of large files or an export, show a progress bar and stay until the task ends.
 
+## Reload a panel that stopped working
+
+> **Video placeholder: Reload a panel**
+> - File: `videos/workspace/reload-panel.mp4` (not recorded yet)
+> - Length: about 25 seconds
+> - Shows: a project open with clips on the timeline; the **Edit Properties** panel shows a red triangle with **Properties stopped working**, a line about what went wrong and **Reload panel**, while the timeline and the preview keep working (press <kbd>Space</kbd>: playback runs); point at **Reload panel** to show its tooltip and click it: the panel is back with the **Project** section; click the timeline, press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>, type `reload` and press <kbd>Enter</kbd> on **Reload panel**: the timeline draws itself again and the clips stay as they were.
+
+If one panel runs into a problem it can't recover from, only that panel stops. In its place you see the panel's name, a red triangle, a title such as **Timeline stopped working** (or **Media**, **Properties** or **Preview**), a line that says what went wrong, and a **Reload panel** button. The other panels keep working, and your project keeps saving. A panel that draws pictures, such as the timeline, the preview or the thumbnails of the Media panel, also shows this when it fails to draw 3 times in a row.
+
+To get the panel back:
+
+1. Click **Reload panel**. Its tooltip reads "Build the panel again. Your project and its edits are kept."
+2. The panel builds itself again. Your project, your edits and the undo history are kept.
+
+You can also run **Reload panel** from the command palette (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>). It reloads every panel that stopped working. When none has stopped, it reloads the panel you were working in, for example the timeline after you clicked it. It has no key by default; you can give it one in **Settings** > **Shortcuts**.
+
+If the problem happens outside the panels, or the editor can't start, the whole window shows **Shorts Editor stopped working** with "Reload to carry on. Your project is saved in its folder; edits from the last second may be missing.", what went wrong, and a **Reload** button. Click **Reload**: the editor saves the open project first, then loads the page again. The start screen appears, and you open your project from **Recent projects**. The undo history starts empty after a reload. See [Troubleshooting](troubleshooting.md#shorts-editor-stopped-working-fills-the-window).
+
 ## Send shortcuts to the right panel
 
 > **Video placeholder: Shortcuts follow the panel you clicked**
@@ -276,4 +295,4 @@ To jump to a time, type it into the timecode field of the timeline toolbar, or c
 - [Keyboard navigation](keyboard-navigation.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 46, 2026-10-18</sub>
+<sub>Last updated: Batch 47, 2026-10-18</sub>

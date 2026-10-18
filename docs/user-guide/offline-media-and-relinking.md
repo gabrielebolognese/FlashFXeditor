@@ -26,7 +26,7 @@ A media item is offline when the editor can't read its file: a linked file was m
 | **No access** | The file is linked and still there, but the browser needs your permission again to read it, for example after you restart the browser. | [Give the browser access](#give-the-browser-access-to-linked-files). |
 | **Can't play** | The file is there, but the preview can't decode it, for example an HEVC video on a computer without an HEVC decoder. | Convert the file, for example to H.264 MP4, and [relink the item](#relink-a-media-item-to-a-file) to the converted file. |
 
-The editor checks every media file when you open a project, and checks new media as they come in. A file that disappears while the project is open is found the next time the editor reads it. **Can't play** appears once the preview tries to show the media, so after you put one of its clips under the playhead.
+The editor checks every media file when you open a project, and checks new media as they come in. A file that disappears while the project is open is found the next time the editor reads it. **Can't play** appears once the preview tries to show the media, so after you put one of its clips under the playhead, or right away when Chrome refuses the video while it plays. A video decoder that crashes and restarts doesn't make media **Can't play**; see [Know what to expect from performance](preview-and-playback.md#know-what-to-expect-from-performance).
 
 > **Note:** If you put a missing file back where it was while the project is open, the item stays offline. Reopen the project, or relink the item to the file.
 
@@ -57,7 +57,7 @@ The media menu of an offline item starts with **Allow access** (for files that n
 | **Media can't be played** | Chrome can't decode the file. |
 | **Media removed** | You removed the media item from the project and kept its clips. See [Clips of removed media](#clips-of-removed-media). |
 
-Other clips draw over and under the slate as usual. During a transition, the offline side shows no picture, not even the slate. A clip whose file is missing or not readable plays no sound. Exported videos show the same slates, so relink your media before you export; see [Know what goes into the file](exporting-video.md#know-what-goes-into-the-file).
+Other clips draw over and under the slate as usual. During a transition, the offline side shows no picture, not even the slate. A clip whose file is missing or not readable plays no sound. Exported videos show the same slates, also for a video that Chrome stops decoding partway through the export, so relink your media before you export; see [Know what goes into the file](exporting-video.md#know-what-goes-into-the-file).
 
 ## Give the browser access to linked files
 
@@ -158,4 +158,4 @@ These clips have no media item left, so you can't relink them. To get the pictur
 - [Proxies](proxies.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 43, 2026-10-18</sub>
+<sub>Last updated: Batch 47, 2026-10-18</sub>

@@ -12,6 +12,7 @@ Import brings your video, audio and image files into the project so you can use 
 - [Drop files and folders](#drop-files-and-folders)
 - [Paste images](#paste-images)
 - [Supported file types](#supported-file-types)
+  - [HDR videos](#hdr-videos)
 - [What happens when you import](#what-happens-when-you-import)
 - [Copy or link your files](#copy-or-link-your-files)
 - [Browse your media](#browse-your-media)
@@ -20,6 +21,7 @@ Import brings your video, audio and image files into the project so you can use 
 - [Rename media](#rename-media)
 - [Remove media](#remove-media)
 - [Use the media menu](#use-the-media-menu)
+- [Check failed imports](#check-failed-imports)
 - [Fix import problems](#fix-import-problems)
 
 ## Import files
@@ -67,19 +69,25 @@ Only images are pasted this way. Paste imports only when the Media panel has the
 | Kind | File extensions | Notes |
 |---|---|---|
 | Video | .mp4, .mov, .m4v | The video must use a codec Chrome can decode on your computer, such as H.264, HEVC (H.265) or AV1. Phone recordings from iPhone (HEVC .mov) and Android (H.264 .mp4) work, including portrait and variable frame rate clips. |
-| Audio | .mp3, .m4a, .aac, .wav, .ogg | |
+| Audio | .mp3, .m4a, .aac, .wav, .ogg | .mp3, .aac, .wav and .ogg files can be up to 45 minutes long. .m4a files, and the sound of videos, have no length limit. |
 | Images | .png, .jpg, .jpeg, .webp, .gif, .svg | Animated GIF and WebP files keep their animation length as their duration, and play in a loop on the timeline. An SVG needs a width and height, or a viewBox, and stays sharp at any size. See [Shapes and images](shapes-and-images.md). |
 
 Extensions are not case-sensitive (.MOV works). Any other type, for example .webm, .mkv, .avi or .heic, is refused with a message that names the file. Subtitle files (.srt, .vtt) are refused here too: import them in the **Captions** tab; see [Import an SRT or VTT file](captions.md#import-an-srt-or-vtt-file).
 
 > **Note:** Thumbnails and playback of HEVC video need Chrome's hardware HEVC decoder. Without it, the item is still imported but its card shows the film icon instead of a thumbnail, and its clips on the timeline show no thumbnails.
 
+### HDR videos
+
+HDR videos import like any other video. This includes iPhone videos recorded with **HDR Video** turned on (HLG and Dolby Vision) and other HDR10 or BT.2020 videos. The editor works in standard dynamic range (SDR). It converts the HDR picture to SDR the way Chrome shows the video on a normal screen, so the contrast and colors look right, not pale or washed out. The preview (paused and while playing), the thumbnails, the proxies and exported videos all show the same SDR picture.
+
+> **Note:** On an HDR screen, your phone or the Photos app can show the same video brighter than the editor does. On a normal screen, the two look alike. Exported videos are SDR.
+
 ## What happens when you import
 
 For each file, Shorts Editor:
 
 1. **Checks the type** from the file extension (or, for a pasted image, from the image type). Unsupported files are skipped.
-2. **Reads the file's details**: duration, picture size, rotation, frame rate, and the video and audio formats. A portrait phone video is shown upright with its displayed size, for example 1080×1920. For a video with a variable frame rate, the most common frame rate is used, for example 30 fps. A file that cannot be read is skipped, with the reason in a message.
+2. **Reads the file's details**: duration, picture size, rotation, frame rate, and the video and audio formats. A portrait phone video is shown upright with its displayed size, for example 1080×1920. For a video with a variable frame rate, the most common frame rate is used, for example 30 fps. A file that cannot be read is skipped. A message gives the reason, and the file stays listed in the **Media** tab as a failed import. See [Check failed imports](#check-failed-imports).
 3. **Copies the file** into the `media` folder of your project folder. The original file is not changed or moved, and the project keeps working even if you delete or move the original later.
    - If a file with the same name is already in `media`, the copy gets a number, for example `clip (2).mp4`.
    - Characters that are not allowed in file names are replaced with `_`.
@@ -272,15 +280,40 @@ Right-click a card or a row to open the media menu. The item you right-click is 
 
 Click a row to run it. Press <kbd>Esc</kbd> or click outside the menu to close it.
 
+## Check failed imports
+
+> **Video placeholder: A damaged file in the Media tab**
+> - File: `videos/importing-media/failed-imports.mp4` (not recorded yet)
+> - Length: about 30 seconds
+> - Shows: rename a text file to `broken.mp4` in File Explorer; drag it and a working clip onto the Media panel; the message **Can't import broken.mp4** appears at the top of the window and the clip's card appears; under the search field, a row shows a red **Failed** badge, `broken.mp4` and "Not a readable MP4/MOV file: it is damaged or is not a video"; the message closes by itself and the row stays; point at the **Failed** badge to show its tooltip; click the **X** at the end of the row: the row disappears.
+
+Sometimes a file of a [supported type](#supported-file-types) can't be brought into the project, for example a damaged video, or a copy that failed because the disk is full. The **Media** tab then keeps a row for that file near the top, under the search field and above the bins and the cards. Each row shows:
+
+- a red **Failed** badge. Its tooltip reads "This file could not be imported: it is not in the project".
+- the icon of the file's kind: video, audio or image.
+- the file name.
+- the reason, for example "Not a readable MP4/MOV file: it is damaged or is not a video". Point at a shortened name or reason to read it whole.
+- **Dismiss** (the **X**) at the right end.
+
+What to know:
+
+- The file is not in the project. It has no card, and you can't select its row, drag it or put it on the timeline.
+- The message at the top of the window still appears and closes by itself. The row stays until you dismiss it.
+- Fix the file, for example export it again, and import it again. When it imports, its row disappears. If it fails again, the row shows the new reason.
+- To remove one row, click its **X**. To remove them all, run **Dismiss failed imports** from the command palette (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>).
+- The rows are not saved with the project: they disappear when you close the project.
+- A file of an unsupported type, such as .webm, gets no row. Only the message names it.
+
 ## Fix import problems
 
-When a file is not imported, a message at the top of the window says why. It closes by itself after about 7 seconds (the orange **This project is read-only** after about 5.5 seconds); click its × button (**Dismiss**) to close it sooner. See [Read messages](workspace.md#read-messages). The other files of the same import are still imported.
+When a file is not imported, a message at the top of the window says why. It closes by itself after about 7 seconds (the orange **This project is read-only** after about 5.5 seconds); click its × button (**Dismiss**) to close it sooner. See [Read messages](workspace.md#read-messages). A file of a supported type that could not be read also stays listed in the **Media** tab with its reason; see [Check failed imports](#check-failed-imports). The other files of the same import are still imported.
 
 | Message | What it means | What to do |
 |---|---|---|
 | **Can't import** *file name*: **Unsupported file type** | The extension is not in the [supported list](#supported-file-types). | Convert the file to a supported type, for example .mp4 or .png. |
 | **Can't import** *n* **files** | Several files were refused. The message lists each file with its reason. | Check each reason in this table. |
-| **Not a readable MP4/MOV file** | The video file is damaged or is not really an MP4 or MOV file. | Export or convert it again. |
+| **Not a readable MP4/MOV file: it is damaged or is not a video** (or **Not a readable MP4/MOV file: no movie header found**) | The video file is damaged, incomplete, or not really an MP4 or MOV file, for example another file renamed to .mp4. | Export, download or convert it again. |
+| **Audio files over 45 minutes cannot be imported yet (this one is** *N* **minutes)** | An .mp3, .aac, .wav or .ogg file is longer than 45 minutes. The editor refuses it before it reads the sound. | Cut it into parts of 45 minutes or less, or convert it to .m4a, which has no length limit. |
 | **The file has no video or audio track** | The file holds no picture or sound the editor can use. | Check the file in a media player. |
 | **The video track has no samples** | The video track is empty. | Export or convert it again. |
 | **The audio cannot be decoded** or **The audio is empty** | Chrome cannot play the audio file, or it has no sound data. | Convert it to .mp3, .m4a or .wav. |
@@ -310,4 +343,4 @@ If a card keeps its kind icon instead of a thumbnail, Chrome could not decode th
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 46, 2026-10-18</sub>
+<sub>Last updated: Batch 47, 2026-10-18</sub>

@@ -241,7 +241,8 @@ The video shows what the preview shows, frame by frame, and plays what you hear:
 - **Fonts.** Text uses the same fonts as in the preview: the fonts that come with the editor and the fonts from your computer that the project keeps in its `fonts` folder. See [Fonts travel with the project](titles-and-text.md#fonts-travel-with-the-project).
 - **Tracks and clips.** Hidden and muted video tracks are left out, as in the preview. On audio tracks, **M** and **S** apply: a muted track, or a track left out by a solo, is not in the sound. Clips you turned off are left out too. See [Mute, solo and hide tracks](tracks.md#mute-solo-and-hide-tracks) and [Turn a clip off](editing-properties.md#turn-a-clip-off).
 - **Sound.** Clip volumes, volume keyframes, fades and crossfades are in the file. The **Master volume** knob and **Mute** under the preview change only what you hear, never the exported sound. See [Audio](audio.md).
-- **Offline media.** A clip whose file the editor can't read shows the same gray slate as in the preview, for example **Media offline**, and has no sound. Relink the file before you export; see [Offline media and relinking](offline-media-and-relinking.md).
+- **Offline media.** A clip whose file the editor can't read shows the same gray slate as in the preview, for example **Media offline**, and has no sound. Relink the file before you export; see [Offline media and relinking](offline-media-and-relinking.md). If Chrome stops decoding a video partway through the export, the export doesn't stop: that video shows the **Media can't be played** slate from that frame on.
+- **HDR videos in standard colors.** HDR footage, such as iPhone videos recorded with **HDR Video** on, goes into the file with the same SDR contrast and colors as in the preview. See [HDR videos](importing-media.md#hdr-videos).
 - **Nothing that is only on your screen:** no safe zones, grids, guides or rulers, no selection outlines or handles, and nothing of the panel around the frame.
 
 ## Follow the progress
@@ -364,7 +365,7 @@ While any export runs, video or audio:
 | **Nothing to export**: "Add clips to the timeline first." | The timeline has no clips. | Add clips. See [Adding media to the timeline](adding-media-to-the-timeline.md). |
 | **This project is read-only**: "Allow editing to export into the project's folder." | The editor may not write to the project folder, so it can't save the file in `exports`. | Click **Allow editing** in the app bar (see [Work in read-only mode](projects-and-saving.md#work-in-read-only-mode)), or choose **Choose file…** under **Save to**. |
 | **Export cancelled**: "Nothing was written to exports/." or "The picked file was left as it was." | You clicked **Cancel**, ran **Cancel the export**, or opened another project. | Export again when you are ready. |
-| **Export failed**, with the reason | The export could not finish, for example because the disk is full, the folder can't be written, the graphics chip was reset, or the browser can't encode video of this size. Nothing is left in `exports`, and the log lists it as failed. | See [An export fails](troubleshooting.md#an-export-fails). |
+| **Export failed**, with the reason | The export could not finish, for example because the disk is full, the folder can't be written, the graphics chip was reset (**The GPU was reset during the export (device lost). Export again.**), or the browser can't encode video of this size. Nothing is left in `exports`, and the log lists it as failed. | See [An export fails](troubleshooting.md#an-export-fails). |
 | **This browser can't pick a file**: "Choose the exports folder as the destination." | The browser has no save dialog for **Choose file…**. | Choose **exports folder** under **Save to**. |
 | **Can't save there**, with the reason | The save dialog refused the place you chose. | Choose another folder. |
 | **No captions to export**: "Add cues in the Captions tab first." or "No cue is in the in/out range." | The caption track has no cues, or none in the range. | Add cues, or choose **Whole timeline**. See [Captions](captions.md). |
@@ -384,4 +385,4 @@ While any export runs, video or audio:
 - [Keyboard shortcuts](keyboard-shortcuts.md#export)
 - [Troubleshooting](troubleshooting.md#export)
 
-<sub>Last updated: Batch 46, 2026-10-18</sub>
+<sub>Last updated: Batch 47, 2026-10-18</sub>

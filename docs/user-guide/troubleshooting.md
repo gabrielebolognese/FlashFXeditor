@@ -1,10 +1,10 @@
 # Troubleshooting
 
-This page helps you when something does not work as expected: the editor does not start in your browser, the preview stays empty, a shortcut or a key you changed does nothing or runs another command, a folder or a file does not open, media are hidden in the Media tab, go offline or don't relink, a clip drag, a trim, a split, a delete, a timeline tool, a typed timecode, a marker, an in/out range or **Lift** and **Extract** do something you did not expect, media from the Media panel lands somewhere you did not expect, a clip shows no thumbnails, a video gets no proxy or its proxy fails, the preview zoom, overlays or fullscreen behave unexpectedly, a picture in the preview can't be selected, moves unexpectedly, doesn't snap where you expect or gets cropped instead of resized, a value or a crop in **Edit Properties** doesn't do what you expect, a paste or a duplicate lands somewhere you did not expect or is refused, a speed change, a freeze frame or a punch zoom does something you did not expect, a keyframe animation or a keyframe lane doesn't behave as you expect, a fade or a transition doesn't go where you expect, gets shorter or shows red stripes, the rubber band, **Normalize**, **Auto-duck**, **Detach audio** or **Audio scrub** doesn't do what you expect, **Remove silence** cuts too much, too little or nothing, a shape or an image doesn't look or play as you expect, a title lands somewhere you did not expect, the keys type into a text, a font is missing, a text preset doesn't apply, update or sync as you expect, a text animation plays shorter or differently than you expect, a caption cue doesn't import, move, show or highlight as you expect, a transcription doesn't start, is slow or gets words wrong, an export doesn't start, fails or gives a file you did not expect, playback stutters, or you hear no sound. Each problem lists what you see, why it happens and what to do. The last section lists what the current version cannot do yet.
+This page helps you when something does not work as expected: the editor does not start in your browser, the preview stays empty, a panel or the whole editor says it stopped working, a shortcut or a key you changed does nothing or runs another command, a folder or a file does not open or shows **Failed** in the Media tab, media are hidden in the Media tab, go offline or don't relink, a clip drag, a trim, a split, a delete, a timeline tool, a typed timecode, a marker, an in/out range or **Lift** and **Extract** do something you did not expect, media from the Media panel lands somewhere you did not expect, a clip shows no thumbnails, a video gets no proxy or its proxy fails, the preview zoom, overlays or fullscreen behave unexpectedly, a picture in the preview can't be selected, moves unexpectedly, doesn't snap where you expect or gets cropped instead of resized, a value or a crop in **Edit Properties** doesn't do what you expect, a paste or a duplicate lands somewhere you did not expect or is refused, a speed change, a freeze frame or a punch zoom does something you did not expect, a keyframe animation or a keyframe lane doesn't behave as you expect, a fade or a transition doesn't go where you expect, gets shorter or shows red stripes, the rubber band, **Normalize**, **Auto-duck**, **Detach audio** or **Audio scrub** doesn't do what you expect, **Remove silence** cuts too much, too little or nothing, a shape or an image doesn't look or play as you expect, a title lands somewhere you did not expect, the keys type into a text, a font is missing, a text preset doesn't apply, update or sync as you expect, a text animation plays shorter or differently than you expect, a caption cue doesn't import, move, show or highlight as you expect, a transcription doesn't start, is slow or gets words wrong, an export doesn't start, fails or gives a file you did not expect, playback stutters or pauses for a moment, an HDR video looks less bright than on your phone, or you hear no sound. Each problem lists what you see, why it happens and what to do. The last section lists what the current version cannot do yet.
 
 > **Video placeholder: Fix common problems**
 > - File: `videos/troubleshooting/overview.mp4` (not recorded yet)
-> - Length: about 220 seconds
+> - Length: about 235 seconds
 > - Shows:
 >   1. Open the editor in a browser without the required features: the screen "This browser cannot run Shorts Editor" lists what is missing.
 >   2. In Chrome, open `chrome://settings/system` and show **Use graphics acceleration when available** turned on.
@@ -56,12 +56,16 @@ This page helps you when something does not work as expected: the editor does no
 >   48. In the **Media** tab, click **Unused**: only the media no clip uses show. Click it again. Open a project whose linked video was moved to another folder: its card shows a red **Offline** badge and its clip is gray. Click **Relink…** on the card and pick the moved file: the badge disappears.
 >   49. Click an empty area of the timeline tracks of a 30 fps project and choose **24 fps** in **Frame rate**: **Convert to 24 fps?** counts the rounded timings. Click **Cancel**. Open a project read-only, rename it and press <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>N</kbd>: **Discard unsaved changes?** appears; click **Cancel**. Click **History…**: **Restore…** is dimmed.
 >   50. Delete every clip, press <kbd>Ctrl</kbd>+<kbd>E</kbd> and <kbd>Enter</kbd>: the message **Nothing to export** appears. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>, click **Export** in the **Export** tab and press <kbd>Esc</kbd>: the progress message appears at the top of the window. Open **Settings** and click **Clear cache**: the message **An export is running** appears. Click **Done**, then **Cancel** in the progress message: **Export cancelled**.
+>   51. Rename a text file to `broken.mp4` and drop it on the **Media** tab: the message **Can't import broken.mp4** appears, and a row with a red **Failed** badge and "Not a readable MP4/MOV file: it is damaged or is not a video" stays under the search field. Click the **X** at the end of the row: it disappears. Click the timeline, press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>, type `reload` and press <kbd>Enter</kbd> on **Reload panel**: the timeline draws itself again, with every clip in place.
 
 ## In this page
 - [Browser and graphics](#browser-and-graphics)
   - [The browser cannot run Shorts Editor](#the-browser-cannot-run-shorts-editor)
   - [A WebGPU adapter is missing](#a-webgpu-adapter-is-missing)
   - [The preview goes blank after a graphics reset](#the-preview-goes-blank-after-a-graphics-reset)
+- [Panels and the whole editor](#panels-and-the-whole-editor)
+  - [A panel shows stopped working](#a-panel-shows-stopped-working)
+  - [Shorts Editor stopped working fills the window](#shorts-editor-stopped-working-fills-the-window)
 - [Keyboard](#keyboard)
   - [Shortcuts do nothing](#shortcuts-do-nothing)
   - [The new project shortcut opens a browser window](#the-new-project-shortcut-opens-a-browser-window)
@@ -132,6 +136,7 @@ This page helps you when something does not work as expected: the editor does no
 - [Importing](#importing)
   - [A file cannot be imported](#a-file-cannot-be-imported)
   - [A video imports but shows nothing](#a-video-imports-but-shows-nothing)
+  - [An HDR video looks less bright than on your phone](#an-hdr-video-looks-less-bright-than-on-your-phone)
 - [Organizing media](#organizing-media)
   - [Media are missing from the Media tab](#media-are-missing-from-the-media-tab)
   - [Delete or Move to bin left some selected media out](#delete-or-move-to-bin-left-some-selected-media-out)
@@ -161,6 +166,7 @@ This page helps you when something does not work as expected: the editor does no
   - [Nothing is added when you drag or press , or .](#nothing-is-added-when-you-drag-or-press--or-)
 - [Playback and preview](#playback-and-preview)
   - [Playback stutters or drops frames](#playback-stutters-or-drops-frames)
+  - [The picture stops for a moment during playback](#the-picture-stops-for-a-moment-during-playback)
   - [Playback repeats only part of the timeline](#playback-repeats-only-part-of-the-timeline)
   - [The preview shows a nearby frame for a moment](#the-preview-shows-a-nearby-frame-for-a-moment)
   - [Playback has no sound](#playback-has-no-sound)
@@ -332,7 +338,7 @@ This page helps you when something does not work as expected: the editor does no
   - [A word you fixed is no longer highlighted](#a-word-you-fixed-is-no-longer-highlighted)
   - [A transcription replaced cues outside the in/out range](#a-transcription-replaced-cues-outside-the-inout-range)
   - [The transcript disappeared before you added it](#the-transcript-disappeared-before-you-added-it)
-  - [Chinese or Japanese captions have no spaces or a low word count](#chinese-or-japanese-captions-have-no-spaces-or-a-low-word-count)
+  - [Chinese or Japanese captions have no spaces between words](#chinese-or-japanese-captions-have-no-spaces-between-words)
 - [Export](#export)
   - [Export says Nothing to export or This project is read-only](#export-says-nothing-to-export-or-this-project-is-read-only)
   - [An export doesn't start](#an-export-doesnt-start)
@@ -389,6 +395,33 @@ This page helps you when something does not work as expected: the editor does no
 1. Press <kbd>Ctrl</kbd>+<kbd>S</kbd> to save. Saving does not need the graphics card.
 2. Reload the page.
 3. Open the project again from **Recent projects** on the start screen.
+
+## Panels and the whole editor
+
+### A panel shows stopped working
+
+**Symptom:** One panel shows a red triangle, a title such as **Timeline stopped working** or **Properties stopped working**, a line about what went wrong and a **Reload panel** button. The other panels keep working.
+
+**Cause:** Something went wrong in that panel, or a panel that draws pictures (the timeline, the preview or the thumbnails of the Media panel) failed to draw 3 times in a row. Only that panel stopped. Your project, its edits and the undo history are safe, and the project keeps saving.
+
+**Fix:**
+1. Click **Reload panel**, or run **Reload panel** from the command palette (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>). The panel builds itself again.
+2. If it stops again right away, press <kbd>Ctrl</kbd>+<kbd>S</kbd> to save, reload the page and open the project again from **Recent projects**.
+3. If a panel that draws pictures keeps stopping, check the graphics settings: see [A WebGPU adapter is missing](#a-webgpu-adapter-is-missing), and update Chrome or Edge and your graphics driver.
+
+See [Reload a panel that stopped working](workspace.md#reload-a-panel-that-stopped-working).
+
+### Shorts Editor stopped working fills the window
+
+**Symptom:** Instead of the editor, the window shows **Shorts Editor stopped working** with "Reload to carry on. Your project is saved in its folder; edits from the last second may be missing.", a line about what went wrong, and a **Reload** button.
+
+**Cause:** Something went wrong outside the panels, or the editor could not start.
+
+**Fix:**
+1. Click **Reload**. The editor saves the open project first, then loads the page again.
+2. On the start screen, open your project from **Recent projects**. The undo history starts empty.
+3. If the editor offers to restore unsaved changes, see [Restore unsaved changes after a crash](projects-and-saving.md#restore-unsaved-changes-after-a-crash).
+4. If the screen comes back every time the page loads, update Chrome or Edge to the current version.
 
 ## Keyboard
 
@@ -990,20 +1023,23 @@ See [Restore an older version](projects-and-saving.md#restore-an-older-version).
 
 ### A file cannot be imported
 
-**Symptom:** A message "Can't import *file name*" appears with a reason, or "Can't import *N* files" with one reason per file. Other files of the same import are added normally.
+**Symptom:** A message "Can't import *file name*" appears with a reason, or "Can't import *N* files" with one reason per file. A file of a supported type also stays listed under the search field of the **Media** tab, with a red **Failed** badge and its reason. Other files of the same import are added normally.
 
 **Cause and fix:** It depends on the reason.
 
 | Reason | Cause | Fix |
 | --- | --- | --- |
 | Unsupported file type | The file type is not supported. The editor imports video `.mp4`, `.mov`, `.m4v`; audio `.mp3`, `.m4a`, `.aac`, `.wav`, `.ogg`; images `.png`, `.jpg`, `.jpeg`, `.webp`, `.gif`, `.svg`. WebM, MKV, AVI and HEIC are not supported. | Convert the file to MP4 (H.264) for video, or to PNG or JPEG for photos. |
-| Not a readable MP4/MOV file ... | The file is damaged, incomplete, or not really an MP4 or MOV file. | Export or download the file again. |
+| Not a readable MP4/MOV file: it is damaged or is not a video | The file is damaged, incomplete, or not really an MP4 or MOV file, for example another file renamed to `.mp4`. | Export or download the file again. |
 | The video track has no samples | The video is empty, or it is a fragmented MP4 (written by some screen recorders and streaming downloads). | Save it again as a regular MP4 in a video converter. |
 | The file has no video or audio track | The MP4 or MOV file contains neither video nor audio. | Use a different file. |
 | The audio cannot be decoded ... / The audio is empty | The browser cannot read the audio, or it contains no sound. | Convert the file to WAV or MP3. |
+| Audio files over 45 minutes cannot be imported yet (this one is *N* minutes) ... | An `.mp3`, `.aac`, `.wav` or `.ogg` file is longer than 45 minutes. | Cut it into parts of 45 minutes or less, or convert it to `.m4a`, which has no length limit. |
 | The image cannot be decoded ... | The image is damaged or uses a variant the browser cannot read. | Save it again as PNG or JPEG. |
 | The SVG has no size (width/height or viewBox) | The SVG file does not say how large it is. | Add `width` and `height` (or a `viewBox`) to the SVG in your drawing app. |
 | Could not copy it into media/ ... | The editor could not copy the file into the project's `media` folder, for example because the disk is full. | Free disk space and import again. |
+
+To remove a **Failed** row, click its **X**, or run **Dismiss failed imports** from the command palette to remove them all. Importing the fixed file removes its row too. See [Check failed imports](importing-media.md#check-failed-imports).
 
 If a message "Import failed" appears instead, the whole import stopped; its detail line gives the reason. See [Importing media](importing-media.md).
 
@@ -1019,6 +1055,14 @@ If a message "Import failed" appears instead, the whole import stopped; its deta
 3. Click **Relink…** on the card and pick the converted file. The clips keep their place and show the picture. See [Relink a media item to a file](offline-media-and-relinking.md#relink-a-media-item-to-a-file).
 
 If the card shows **Offline** instead, the video's file is missing: see [Cards show Offline and their clips are gray](#cards-show-offline-and-their-clips-are-gray).
+
+### An HDR video looks less bright than on your phone
+
+**Symptom:** An iPhone video recorded with **HDR Video** on looks less bright or less vivid in the editor and in your export than on the phone, or than in the Photos app on an HDR screen.
+
+**Cause:** The editor works in standard dynamic range (SDR). It shows and exports HDR videos the way a normal (non-HDR) screen shows them. An HDR screen can show the original brighter.
+
+**Fix:** Nothing to fix: on a normal screen, the two look alike. To record SDR video on an iPhone, turn off **HDR Video** in **Settings** > **Camera** > **Record Video**. See [HDR videos](importing-media.md#hdr-videos).
 
 ## Organizing media
 
@@ -1268,6 +1312,14 @@ If the picture stays soft after you stop and the status line reads **Proxy: prox
 - The first playback after the page loads, or right after a proxy is finished, can drop more frames than the following ones, especially in the fullscreen preview.
 
 See [Preview and playback](preview-and-playback.md#know-what-to-expect-from-performance).
+
+### The picture stops for a moment during playback
+
+**Symptom:** While you play, the picture freezes for a moment, then playback goes on by itself, usually within about a second.
+
+**Cause:** The browser's video decoder crashed or stopped responding, for example after a graphics driver problem. The editor noticed, started it again and asked for the frames again. Playback doesn't stop, and your media stays usable.
+
+**Fix:** Nothing: playback goes on by itself. If it happens often, update Chrome or Edge and your graphics driver, and check that hardware acceleration is on; see [A WebGPU adapter is missing](#a-webgpu-adapter-is-missing).
 
 ### Playback repeats only part of the timeline
 
@@ -2676,11 +2728,11 @@ See [Messages when you paste](copy-and-paste.md#messages-when-you-paste).
 
 **Fix:** Transcribe again. The model is already downloaded, so it is quicker. See [Review the transcript](transcription.md#review-the-transcript).
 
-### Chinese or Japanese captions have no spaces or a low word count
+### Chinese or Japanese captions have no spaces between words
 
-**Symptom:** Transcribed Chinese, Japanese, Thai, Lao or Burmese captions have no spaces between words, Chinese and Japanese lines are short, and the **Captions** tab counts each line of a Chinese or Japanese cue as 1 word.
+**Symptom:** Transcribed Chinese, Japanese, Thai, Lao or Burmese captions have no spaces between words, and Chinese and Japanese lines are short.
 
-**Cause:** These languages are written without spaces, and their wide characters fill a line twice as fast, so a line holds about 16 of them. The word count counts the pieces of text between spaces.
+**Cause:** These languages are written without spaces, and their wide characters fill a line twice as fast, so a line holds about 16 of them. The word count in the **Captions** tab still counts the words of Chinese and Japanese text one by one.
 
 **Fix:** Nothing to fix: the captions are written as the language is. The word highlight still finds each word. See [How the speech becomes cues](transcription.md#how-the-speech-becomes-cues).
 
@@ -2708,7 +2760,7 @@ See [Messages when you paste](copy-and-paste.md#messages-when-you-paste).
 
 **Cause:** The export could not finish. The reason tells you why, for example:
 - the disk is full, or the project folder can't be written any more (it was moved, or it is on a drive that was unplugged);
-- **The export's GPU device was lost** or **No WebGPU device for the export**: the graphics chip was reset or is not available;
+- **The GPU was reset during the export (device lost). Export again.** or **No WebGPU device for the export**: the graphics chip was reset during the export, for example by a driver update, or is not available. The preview keeps working, and the next export can run normally;
 - **This browser cannot encode 1080x1920 video**: the browser has no video encoder for this frame size.
 
 **Fix:**
@@ -2768,7 +2820,7 @@ See [Messages when you paste](copy-and-paste.md#messages-when-you-paste).
 
 **Symptom:** The file is silent, a track you see or hear in the editor is missing, or a clip shows a gray rectangle with **Media offline** or another slate text.
 
-**Cause:** The export leaves out what the editor leaves out: muted audio tracks, tracks left out by a solo, hidden or muted video tracks, and clips you turned off. Offline media show their slate and have no sound. The **Master volume** knob and **Mute** under the preview don't affect the file.
+**Cause:** The export leaves out what the editor leaves out: muted audio tracks, tracks left out by a solo, hidden or muted video tracks, and clips you turned off. Offline media show their slate and have no sound. A video that Chrome stops decoding partway through the export shows **Media can't be played** from that frame on. The **Master volume** knob and **Mute** under the preview don't affect the file.
 
 **Fix:** Play the timeline with **Mute** off: what you hear and see is what the export writes. Turn tracks and clips back on, and relink offline media before you export. See [Know what goes into the file](exporting-video.md#know-what-goes-into-the-file) and [Offline media and relinking](offline-media-and-relinking.md).
 
@@ -2802,6 +2854,7 @@ The current version cannot do these things yet. Each one is available in a later
 
 - **Sound:** no sound while you play backward or shuttle faster than 1x; while you scrub or step frames, only with **Audio scrub** on. **Remove silence** has no default keyboard shortcut. Audio effects are not available.
 - **Copy and paste:** caption cues can't take **Paste attributes**.
+- **Importing:** `.mp3`, `.aac`, `.wav` and `.ogg` files over 45 minutes can't be imported; convert them to `.m4a`, or cut them into shorter parts.
 - **Media panel:** bins can't hold other bins. **Reveal in folder** can't open File Explorer: it shows and copies the path. Clips whose media item you removed can't be relinked. A file you put back while the project is open stays offline until you reopen the project.
 - **Markers:** markers belong to the timeline; markers inside clips are not available.
 - **Menus:** right-clicking empty space after the last clip of a track opens no menu.
@@ -2852,4 +2905,4 @@ The current version cannot do these things yet. Each one is available in a later
 - [Command palette and custom shortcuts](command-palette-and-custom-shortcuts.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 46, 2026-10-18</sub>
+<sub>Last updated: Batch 47, 2026-10-18</sub>
