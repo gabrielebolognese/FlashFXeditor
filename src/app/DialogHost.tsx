@@ -2,7 +2,8 @@ import { Check, FolderPlus, History, KeyRound, Trash2, TriangleAlert } from "luc
 import { useCallback, useState } from "react";
 import { useStoreSelector } from "../core/store/useStoreSelector.js";
 import type { FsDir } from "../project/fs.js";
-import { CUSTOM_RESOLUTION, DEFAULT_NEW_PROJECT, FRAME_RATES, RESOLUTION_PRESETS, formatFps, fpsKey, parseFpsKey } from "../project/projectPresets.js";
+import { CUSTOM_RESOLUTION, DEFAULT_NEW_PROJECT, FRAME_RATES, RESOLUTION_PRESETS, formatFps, fpsKey, parseFpsKey, resolutionPresetId } from "../project/projectPresets.js";
+import { describeTemplate, type ProjectTemplate } from "../project/templates.js";
 import type { Recovery } from "../project/recovery.js";
 import { Button } from "../ui/Button.js";
 import { Modal } from "../ui/Modal.js";
@@ -11,7 +12,8 @@ import { Select } from "../ui/Select.js";
 import { TextField } from "../ui/TextField.js";
 import { MAX_DIMENSION, MAX_PROJECT_NAME, MIN_DIMENSION } from "../core/commands/projectCommands.js";
 import type { MediaId } from "../core/document/types.js";
-import { documentStore } from "./services.js";
+import { documentStore, templateStore } from "./services.js";
+import { ClearCacheDialog, DiscardChangesDialog, FrameRateDialog, HistoryDialog, ResolutionDialog, SaveTemplateDialog } from "./ProjectDialogs.js";
 import { TranscribeDialogs } from "../panels/media/TranscribeDialog.js";
 import styles from "./DialogHost.module.css";
 import { cancelRemove, clipsUsing, confirmRemove, copiedCount, mediaPanel, type MediaPanelState } from "./mediaController.js";
@@ -24,12 +26,29 @@ const selectRemoving = (state: MediaPanelState) => state.removing;
 const RESOLUTION_OPTIONS = [...RESOLUTION_PRESETS.map((p) => ({ value: p.id, label: p.label })), { value: CUSTOM_RESOLUTION, label: "Custom" }];
 const FPS_OPTIONS = FRAME_RATES.map((fps) => ({ value: fpsKey(fps), label: `${formatFps(fps)} fps` }));
 
-function NewProjectDialog({ dir }: { dir: FsDir }) {
+const NO_TEMPLATE = "none";
+
+/** The form's settings for a template (or the defaults). */
+function startingSettings(template: ProjectTemplate | null): { preset: string; size: { width: number; height: number }; fps: string } {
+  const source = template?.settings ?? DEFAULT_NEW_PROJECT;
+  return { preset: resolutionPresetId(source.width, source.height), size: { width: source.width, height: source.height }, fps: fpsKey(source.fps) };
+}
+
+function fpsChoices(current: string) {
+  const parsed = parseFpsKey(current);
+  return parsed && !FPS_OPTIONS.some((option) => option.value === current) ? [...FPS_OPTIONS, { value: current, label: `${formatFps(parsed)} fps` }] : FPS_OPTIONS;
+}
+
+function NewProjectDialog({ dir, initialTemplate }: { dir: FsDir; initialTemplate: string | null }) {
   const busy = useStoreSelector(appView, selectBusy);
+  const templates = useStoreSelector(templateStore.list, (list) => list);
+  const [templateId, setTemplateId] = useState(initialTemplate ?? NO_TEMPLATE);
+  const template = templates.find((candidate) => candidate.id === templateId) ?? null;
+  const start = startingSettings(template);
   const [name, setName] = useState(dir.name);
-  const [preset, setPreset] = useState<string>(RESOLUTION_PRESETS[0]?.id ?? CUSTOM_RESOLUTION);
-  const [size, setSize] = useState({ width: DEFAULT_NEW_PROJECT.width, height: DEFAULT_NEW_PROJECT.height });
-  const [fps, setFps] = useState(fpsKey(DEFAULT_NEW_PROJECT.fps));
+  const [preset, setPreset] = useState<string>(start.preset);
+  const [size, setSize] = useState(start.size);
+  const [fps, setFps] = useState(start.fps);
   const widthBinding = useValueBinding(size.width, useCallback((width: number) => setSize((s) => ({ ...s, width })), []));
   const heightBinding = useValueBinding(size.height, useCallback((height: number) => setSize((s) => ({ ...s, height })), []));
 
@@ -38,10 +57,18 @@ function NewProjectDialog({ dir }: { dir: FsDir }) {
     const match = RESOLUTION_PRESETS.find((p) => p.id === id);
     if (match) setSize({ width: match.width, height: match.height });
   };
+  const chooseTemplate = (id: string) => {
+    setTemplateId(id);
+    const next = startingSettings(templates.find((candidate) => candidate.id === id) ?? null);
+    setPreset(next.preset);
+    setSize(next.size);
+    setFps(next.fps);
+  };
   const create = () => {
     if (busy) return;
-    void confirmNewProject(dir, name, { ...size, fps: parseFpsKey(fps) ?? DEFAULT_NEW_PROJECT.fps });
+    void confirmNewProject(dir, name, { ...size, fps: parseFpsKey(fps) ?? DEFAULT_NEW_PROJECT.fps }, template?.id ?? null);
   };
+  const templateOptions = [{ value: NO_TEMPLATE, label: "None: V1 and A1" }, ...templates.map((candidate) => ({ value: candidate.id, label: candidate.name }))];
 
   return (
     <Modal
@@ -63,6 +90,12 @@ function NewProjectDialog({ dir }: { dir: FsDir }) {
       <div className={styles.form}>
         <span className={styles.label}>Name</span>
         <TextField value={name} onChange={setName} onCommit={create} ariaLabel="Project name" maxLength={MAX_PROJECT_NAME} autoFocus />
+        {templates.length > 0 && (
+          <>
+            <span className={styles.label}>Template</span>
+            <Select value={templateId} options={templateOptions} onChange={chooseTemplate} label="Template" />
+          </>
+        )}
         <span className={styles.label}>Resolution</span>
         <Select value={preset} options={RESOLUTION_OPTIONS} onChange={choosePreset} label="Resolution" />
         {preset === CUSTOM_RESOLUTION && (
@@ -75,8 +108,9 @@ function NewProjectDialog({ dir }: { dir: FsDir }) {
           </>
         )}
         <span className={styles.label}>Frame rate</span>
-        <Select value={fps} options={FPS_OPTIONS} onChange={setFps} label="Frame rate" />
+        <Select value={fps} options={fpsChoices(fps)} onChange={setFps} label="Frame rate" />
       </div>
+      {template && <p className={styles.note}>{`From ${template.name}: ${describeTemplate(template, formatFps)}. Its tracks, caption style, background and presets come with it.`}</p>}
     </Modal>
   );
 }
@@ -215,12 +249,24 @@ export function DialogHost() {
   if (!dialog) return removing ? <RemoveMediaDialog ids={removing} /> : <TranscribeDialogs />;
   switch (dialog.kind) {
     case "newProject":
-      return <NewProjectDialog dir={dialog.dir} />;
+      return <NewProjectDialog dir={dialog.dir} initialTemplate={dialog.template} />;
     case "recovery":
       return <RecoveryDialog recovery={dialog.recovery} />;
     case "permission":
       return <PermissionDialog dir={dialog.dir} message={dialog.message} />;
     case "error":
       return <ErrorDialog title={dialog.title} message={dialog.message} issues={dialog.issues} />;
+    case "resolution":
+      return <ResolutionDialog width={dialog.width} height={dialog.height} />;
+    case "frameRate":
+      return <FrameRateDialog fps={dialog.fps} report={dialog.report} />;
+    case "history":
+      return <HistoryDialog />;
+    case "saveTemplate":
+      return <SaveTemplateDialog />;
+    case "clearCache":
+      return <ClearCacheDialog />;
+    case "discardChanges":
+      return <DiscardChangesDialog next={dialog.next} />;
   }
 }

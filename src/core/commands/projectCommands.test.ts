@@ -91,14 +91,15 @@ describe("project commands", () => {
     expect(store.getState().settings.fps).toEqual({ num: 30000, den: 1001 });
   });
 
-  it("refuses to change the frame rate once clips exist", () => {
+  it("converts the clips' frames once clips exist (Batch 42; fpsConvert.test.ts has the details)", () => {
     let project = makeProject();
     project.tracks.push(makeTrack("v1"));
-    project = withClips(project, [makeSolidClip({ id: "s1", trackId: "v1", start: 0, duration: 10 })]);
+    project = withClips(project, [makeSolidClip({ id: "s1", trackId: "v1", start: 5, duration: 10 })]);
     const store = storeFor(project);
     expect(canChangeFrameRate(store.getState())).toBe(false);
-    expect(() => store.dispatch(setFrameRate({ num: 60, den: 1 }))).toThrow(/converting/);
-    expect(store.getState().settings.fps).toEqual({ num: 30, den: 1 });
+    store.dispatch(setFrameRate({ num: 60, den: 1 }));
+    expect(store.getState().settings.fps).toEqual({ num: 60, den: 1 });
+    expect([store.getState().clips.s1?.start, store.getState().clips.s1?.duration]).toEqual([10, 20]);
   });
 
   it("rejects a non-integer frame rate", () => {

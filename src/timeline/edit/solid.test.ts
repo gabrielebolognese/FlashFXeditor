@@ -3,7 +3,8 @@ import { makeProject, makeSolidClip, makeTrack, withClips } from "../../core/doc
 import type { Project, SolidClip } from "../../core/document/types.js";
 import { DocumentStore } from "../../core/store/DocumentStore.js";
 import { createSessionStore } from "../../core/store/sessionStore.js";
-import { addSolid, defaultSolid, drawnRadius, lineThickness, setSolids, SOLID_SECONDS, solidLook, withShape } from "./solid.js";
+import { BUILT_IN_EDIT_DEFAULTS } from "./editDefaults.js";
+import { addSolid, defaultSolid, drawnRadius, lineThickness, setSolids, solidLook, withShape } from "./solid.js";
 import { IDENTITY_TRANSFORM, layerContent } from "./transform.js";
 
 function project(): Project {
@@ -32,7 +33,7 @@ describe("addSolid", () => {
     const result = addSolid(p, 120, newId);
     s.dispatch(result.command);
     const clip = s.getState().clips[result.clipId] as SolidClip;
-    expect(clip).toMatchObject({ kind: "solid", trackId: "v2", start: 120, duration: SOLID_SECONDS * 30, shape: "roundedRect", transform: IDENTITY_TRANSFORM, opacity: 1, enabled: true });
+    expect(clip).toMatchObject({ kind: "solid", trackId: "v2", start: 120, duration: (BUILT_IN_EDIT_DEFAULTS.solidMs / 1000) * 30, shape: "roundedRect", transform: IDENTITY_TRANSFORM, opacity: 1, enabled: true });
     expect(s.history.getState().undoLabel).toBe("Add solid");
     expect(layerContent(s.getState(), clip)).toEqual({ width: 648, height: 324, left: 0, top: 0, right: 648, bottom: 324 });
   });

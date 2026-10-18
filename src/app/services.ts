@@ -22,6 +22,7 @@ import { createAppSettings } from "../project/appSettings.js";
 import { INITIAL_SAVE_STATUS, type SaveStatus } from "../project/Autosaver.js";
 import { idbKeyValueStore } from "../project/kv.js";
 import { RecentProjects } from "../project/recentProjects.js";
+import { TemplateStore } from "../project/templates.js";
 import { showToast } from "../ui/toasts.js";
 import { shortcutLabel } from "../ui/shortcutLabel.js";
 import { installTooltips } from "../ui/tooltipController.js";
@@ -54,6 +55,8 @@ export const audioClock = new AudioClock();
 /** IndexedDB key-value store of global things: recent projects, settings, global text presets (spec §3.1). */
 export const keyValueStore = idbKeyValueStore();
 export const recentProjects = new RecentProjects(keyValueStore);
+/** Project templates (spec §15): settings, track layout and text presets, in IndexedDB. */
+export const templateStore = new TemplateStore(keyValueStore);
 export const appSettings = createAppSettings(keyValueStore);
 /** Media workers (spec §3.5), each created on its first request (transcribe: Batch 33, the Transcribe dialog). */
 export const workerPool = new WorkerPool({

@@ -16,10 +16,11 @@
 //   found by name (or file name) and kind when its duration holds every pasted clip's source range,
 //   else the copied record is added as an offline item (a file reference that resolves nowhere, the
 //   copied path kept as its hint; the clip keeps its source range: Batch 41 finds it offline, draws
-//   its slate and relinks it by the hint's file name). Frames are not converted between frame
-//   rates (TODO(batch 42): the fps conversion of §15): such a paste is refused.
+//   its slate and relinks it by the hint's file name). Clips copied at another frame rate are converted
+//   first (`payloadAtFrameRate`: the §15 fps conversion, Batch 42), as Paste attributes takes them.
 // One command, one undo step ("Paste" / "Paste insert"), media records included.
 import type { Command } from "../../core/commands/command.js";
+import { convertClipRuns, FrameConverter, frameRatio, sameFrameRate } from "../../core/document/fpsConvert.js";
 import { isEaseId, isKeyframeSection, SECTION_PROPS } from "../../core/document/keyframes.js";
 import type { CaptionStyle, Clip, ClipId, Frame, MediaId, MediaItem, Project, Rational, Track, TrackId } from "../../core/document/types.js";
 import { isMediaClip } from "../../core/document/types.js";
@@ -275,10 +276,30 @@ export type PasteResult =
       /** Media records added as offline items. */
       offline: MediaItem[];
     }
-  /** `fps`: copied at another frame rate; `locked`: a clip would land on a locked track; `noRoom`: no spot near the playhead holds the cues. */
-  | { kind: "refused"; reason: "fps" | "locked" | "noRoom"; trackId?: TrackId };
+  /** `locked`: a clip would land on a locked track; `noRoom`: no spot near the playhead holds the cues. */
+  | { kind: "refused"; reason: "locked" | "noRoom"; trackId?: TrackId };
 
-const sameRate = (a: Rational, b: Rational) => a.num * b.den === b.num * a.den;
+/**
+ * `payload` with its frames at `fps` (spec §15 fps conversion): each lane's clips convert as a
+ * timeline run from the block's first frame (`convertClipRuns`), with their keys, fades, transitions,
+ * animations and words. The payload itself when it already is at that rate.
+ */
+export function payloadAtFrameRate(payload: ClipsPayload, fps: Rational): ClipsPayload {
+  if (sameFrameRate(payload.fps, fps)) return payload;
+  const next = structuredClone(payload);
+  const lanes = new Map<string, Clip[]>();
+  for (const { clip, lane } of next.clips) {
+    const key = lane.kind === "caption" ? "caption" : `${lane.kind}:${lane.number}`;
+    const run = lanes.get(key) ?? [];
+    run.push(clip);
+    lanes.set(key, run);
+  }
+  for (const run of lanes.values()) run.sort((a, b) => a.start - b.start);
+  const media = new Map(next.media.map((item) => [item.id, item]));
+  convertClipRuns([...lanes.values()], new FrameConverter(frameRatio(payload.fps, fps)), fps, (clip) => media.get(clip.mediaId));
+  next.fps = { num: fps.num, den: fps.den };
+  return next;
+}
 
 /** The first targeted, unlocked lane of `kind` (`Track.targeted`, spec §6.12), or null. */
 function targetedLane(tracks: readonly Track[], kind: LaneKind): number | null {
@@ -287,10 +308,9 @@ function targetedLane(tracks: readonly Track[], kind: LaneKind): number | null {
 }
 
 /** Paste (`mode` overwrite) or Paste insert (`insert`) of `payload` at frame `at` (see the header). */
-export function pasteClips(project: Project, payload: ClipsPayload, options: { at: Frame; mode: MoveMode; newId: () => string }): PasteResult {
+export function pasteClips(project: Project, copied: ClipsPayload, options: { at: Frame; mode: MoveMode; newId: () => string }): PasteResult {
   const { newId, mode } = options;
-  // TODO(batch 42): convert the copied frames with the fps conversion instead of refusing.
-  if (!sameRate(payload.fps, project.settings.fps)) return { kind: "refused", reason: "fps" };
+  const payload = payloadAtFrameRate(copied, project.settings.fps);
   const media = resolveMedia(project, payload, newId);
 
   // Lanes: each kind's lowest copied lane onto the lowest targeted lane of that kind.

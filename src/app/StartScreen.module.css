@@ -75,17 +75,19 @@
   letter-spacing: var(--type-caption-track);
 }
 
+/* Recent projects as DS project tiles (Batch 42): a grid of cards at least --recent-card-min wide. */
 .recentList {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--recent-card-min), 1fr));
+  gap: var(--space-3);
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-/* Project tile (DS cards): surface-1, hairline, radius-lg; hover lifts the border. */
-.recent {
+/* Project tile (DS cards): surface-1, hairline, radius-lg, thumbnail on top; hover lifts the border. */
+.recent,
+.template {
   position: relative;
   border: 1px solid var(--hairline);
   border-radius: var(--radius-lg);
@@ -94,39 +96,51 @@
 }
 
 .recent:hover,
-.recent:focus-within {
+.recent:focus-within,
+.template:hover,
+.template:focus-within {
   border-color: var(--surface-5);
 }
 
 .recentOpen {
   display: flex;
-  align-items: center;
-  gap: var(--space-4);
+  flex-direction: column;
+  gap: var(--space-2);
   width: 100%;
-  padding: var(--space-3) calc(var(--control-compact) + var(--space-4)) var(--space-3) var(--space-3);
+  padding: var(--space-2);
   border-radius: var(--radius-lg);
   text-align: left;
 }
 
-.recentOpen[aria-disabled] {
+.recentOpen[aria-disabled],
+.templateOpen[aria-disabled] {
   opacity: var(--disabled-opacity);
 }
 
-/* TODO(batch 42): real thumbnail captured at the playhead on close. */
+/* The thumbnail well: the frame at the playhead when the project last closed, letterboxed on the
+   sunken surface (the preview well's); the film glyph until one exists. */
 .thumb {
+  position: relative;
   display: grid;
-  flex: none;
   place-items: center;
   height: var(--recent-thumb-height);
-  aspect-ratio: 9 / 16;
+  overflow: hidden;
   border-radius: var(--radius-sm);
-  background: var(--surface-3);
+  background: var(--bg-sunken);
+}
+
+.thumbImage {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 
 .thumbIcon {
-  width: var(--icon-size-sm);
-  height: var(--icon-size-sm);
-  color: var(--text-tertiary);
+  width: var(--icon-size);
+  height: var(--icon-size);
+  color: var(--text-muted);
 }
 
 .recentText {
@@ -154,18 +168,52 @@
   white-space: nowrap;
 }
 
+/* The remove x sits over the card's top-right corner, shown on hover and focus. */
 .remove {
   position: absolute;
-  top: 50%;
-  right: var(--space-3);
+  top: var(--space-1);
+  right: var(--space-1);
   opacity: 0;
-  transform: translateY(-50%);
   transition: opacity var(--duration-micro) var(--ease-out);
 }
 
 .recent:hover .remove,
-.recent:focus-within .remove {
+.recent:focus-within .remove,
+.template:hover .remove,
+.template:focus-within .remove {
   opacity: 1;
+}
+
+/* Templates (Batch 42): one row each, the template glyph in accent, name and what it holds. */
+.templateList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.templateOpen {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-2) calc(var(--control-compact) + var(--space-3)) var(--space-2) var(--space-3);
+  border-radius: var(--radius-lg);
+  text-align: left;
+}
+
+.templateIcon {
+  flex: none;
+  width: var(--icon-size);
+  height: var(--icon-size);
+  color: var(--text-tertiary);
+}
+
+.template .remove {
+  top: 50%;
+  transform: translateY(-50%);
 }
 
 .dropOverlay {

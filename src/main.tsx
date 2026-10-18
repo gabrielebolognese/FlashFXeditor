@@ -31,6 +31,10 @@ import { installTimelineController } from "./app/timelineController.js";
 import { installTransitionController } from "./app/transitionController.js";
 import { installTrackController } from "./app/trackController.js";
 import { UnsupportedScreen } from "./app/UnsupportedScreen.js";
+import { installSettingsController } from "./app/settingsController.js";
+import { installHistoryController } from "./app/historyController.js";
+import { installTemplateController } from "./app/templateController.js";
+import { installCacheController } from "./app/cacheController.js";
 import { requestGpuAdapter } from "./render/gpu/GpuDevice.js";
 
 const container = document.getElementById("root");
@@ -48,7 +52,11 @@ async function start(): Promise<void> {
   startServices();
   installCommandController();
   startGpu(adapter);
+  installSettingsController();
   installProjectController();
+  installHistoryController();
+  installTemplateController();
+  installCacheController();
   installMediaController();
   installDropController();
   installPreviewController();

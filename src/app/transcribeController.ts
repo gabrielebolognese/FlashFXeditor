@@ -15,6 +15,7 @@
 //   catches up when playback stops. Phase changes always show.
 // - Dev builds: `__editor.transcribe` for the acceptance checks.
 import { renderMixdown } from "../audio/mixdown.js";
+import { createStore } from "../core/store/createStore.js";
 import { transcribeDialog, transcribeRange, transcription, type TranscribeOptions } from "./transcription.js";
 import { frameToUs } from "../core/document/time.js";
 import { selectClips, toSnapshot } from "../core/store/selection.js";
@@ -83,6 +84,47 @@ export async function removeModel(model: WhisperModelId): Promise<void> {
   }
   transcribeDialog.set((state) => (state ? { ...state, removing: null } : state));
   await refreshStatus();
+}
+
+// --- Settings > General (Batch 42): the downloaded models ------------------------------------------
+
+export interface DownloadedModels {
+  /** Which models are in the browser's cache; null while checking. */
+  cached: Record<WhisperModelId, boolean> | null;
+  removing: WhisperModelId | null;
+  error: string | null;
+}
+
+export const downloadedModels = createStore<DownloadedModels>({ cached: null, removing: null, error: null });
+
+/** Asks the transcription worker which models are downloaded. */
+export async function checkDownloadedModels(): Promise<void> {
+  downloadedModels.set((state) => ({ ...state, error: null }));
+  try {
+    const status = await workerPool.request("transcribeStatus", {}, { priority: "user" });
+    downloadedModels.set((state) => ({ ...state, cached: status.cached }));
+  } catch (error) {
+    if (!isAbortError(error)) downloadedModels.set((state) => ({ ...state, error: errorMessage(error) }));
+  }
+}
+
+/** Settings' Remove: deletes a downloaded model (it downloads again when next used). */
+export async function removeDownloadedModel(model: WhisperModelId): Promise<void> {
+  if (downloadedModels.getState().removing) return;
+  downloadedModels.set((state) => ({ ...state, removing: model }));
+  try {
+    await workerPool.request("transcribeRemove", { model }, { priority: "user" });
+    showToast({ tone: "success", message: `Removed Whisper ${whisperModel(model).label}`, detail: "Its files were deleted from this browser." });
+  } catch (error) {
+    if (!isAbortError(error)) showToast({ tone: "error", message: "Couldn't remove the model", detail: errorMessage(error) });
+  }
+  downloadedModels.set((state) => ({ ...state, removing: null }));
+  await checkDownloadedModels();
+}
+
+/** The settings closed: the worker goes unless a transcription or its dialog uses it. */
+export function releaseTranscribeWorker(): void {
+  if (transcription.getState().kind !== "running" && !transcribeDialog.getState()) workerPool.stop("transcribe");
 }
 
 // --- The run ------------------------------------------------------------------------------------

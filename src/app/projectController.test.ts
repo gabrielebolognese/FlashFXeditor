@@ -19,6 +19,7 @@ vi.mock("./services.js", async () => {
   const { INITIAL_SAVE_STATUS } = await import("../project/Autosaver.js");
   const { memoryKeyValueStore } = await import("../project/kv.js");
   const { RecentProjects } = await import("../project/recentProjects.js");
+  const { TemplateStore } = await import("../project/templates.js");
   const { IdleQueue } = await import("../core/scheduler/IdleQueue.js");
   const { FrameScheduler } = await import("../core/scheduler/FrameScheduler.js");
   const { ThemeBridge } = await import("../core/theme/theme.js");
@@ -46,6 +47,7 @@ vi.mock("./services.js", async () => {
       () => undefined,
     ),
     sessionStore,
+    templateStore: new TemplateStore(memoryKeyValueStore()),
     themeBridge: new ThemeBridge(document.documentElement, () => () => "0"),
     workerPool: { request: () => new Promise(() => undefined) },
   };

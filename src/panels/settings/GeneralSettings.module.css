@@ -1,0 +1,167 @@
+/* Settings > General (Batch 42; gap: the DS has no settings layout). The page scrolls under the tab
+   strip; its groups flow in two columns (--settings-column-width each, CSS columns, a group never
+   split), each an overline heading in tertiary text over the properties panel's label / control grid,
+   with an optional caption note in tertiary text. The import mode keeps Batch 41's radio rows. */
+.page {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  column-width: var(--settings-column-width);
+  column-gap: var(--space-5);
+  padding-top: var(--space-2);
+}
+
+.group {
+  break-inside: avoid;
+  padding-bottom: var(--space-3);
+}
+
+.heading {
+  margin: 0;
+  padding: var(--space-2) var(--space-4) 0;
+  color: var(--text-tertiary);
+  font: var(--type-overline);
+  letter-spacing: var(--type-overline-track);
+  text-transform: uppercase;
+}
+
+.note {
+  margin: 0;
+  padding: 0 var(--space-4);
+  color: var(--text-tertiary);
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-track);
+}
+
+.muted {
+  color: var(--text-tertiary);
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-track);
+}
+
+/* Downloaded models: one line each, the name then its Remove. */
+.models {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-height: var(--control-compact);
+  justify-content: center;
+}
+
+.model {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.modelName {
+  color: var(--text-primary);
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-track);
+}
+
+/* The preset folder: its name and status, then its buttons. */
+.folder {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.folderText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.folderName {
+  overflow: hidden;
+  color: var(--text-primary);
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-track);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.folderButtons {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+/* Import mode (Batch 41's radio rows; gap: the DS has no radio): one row per choice, a 14px ring (the
+   DS input: surface-1, the stronger border) with a --radio-dot-size gold dot in its middle when chosen
+   (gold marks the active state), the label in body-strong and its note in caption type under it. */
+.choices {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.choice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-md);
+  background: var(--surface-1);
+  color: var(--text-secondary);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--duration-micro) var(--ease-out);
+}
+
+.choice:hover {
+  border-color: var(--surface-5);
+}
+
+.choice[aria-checked="true"] {
+  border-color: var(--accent-dim);
+  color: var(--text-primary);
+}
+
+.choice:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.radio {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--icon-size);
+  height: var(--icon-size);
+  margin-top: var(--space-0);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--surface-1);
+}
+
+.choice[aria-checked="true"] .radio {
+  border-color: var(--accent);
+}
+
+.choice[aria-checked="true"] .radio::after {
+  width: var(--radio-dot-size);
+  height: var(--radio-dot-size);
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  content: "";
+}
+
+.choiceLabel {
+  display: block;
+  font: var(--type-body-strong);
+}
+
+.choiceNote {
+  display: block;
+  color: var(--text-tertiary);
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-track);
+}

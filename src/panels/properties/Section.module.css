@@ -144,20 +144,3 @@
   font: var(--type-caption);
   letter-spacing: var(--type-caption-track);
 }
-
-/* A row of a later batch, disabled: the wrapper takes the pointer (a disabled input gets none) so its
-   tooltip shows. */
-.planned {
-  display: grid;
-  justify-items: stretch;
-  min-width: 0;
-}
-
-/* A button keeps its own width. */
-.planned > button {
-  justify-self: start;
-}
-
-.planned input {
-  pointer-events: none;
-}

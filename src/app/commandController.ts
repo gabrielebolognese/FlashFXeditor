@@ -22,8 +22,9 @@ import { actions, appSettings, focusScopes } from "./services.js";
 export const commandPalette = createStore<{ scope: FocusScope } | null>(null);
 /** The cheat sheet is open. */
 export const shortcutSheet = createStore(false);
-/** The settings dialog is open (its one tab for now: Shortcuts). TODO(batch 42): the General settings. */
-export const settingsDialog = createStore(false);
+export type SettingsTab = "general" | "shortcuts";
+/** The settings dialog's tab while it is open (General or Shortcuts), else null. */
+export const settingsDialog = createStore<SettingsTab | null>(null);
 
 let platform: Platform | null = null;
 const currentPlatform = () => (platform ??= detectPlatform());
@@ -103,7 +104,7 @@ export function closeShortcutSheet(): void {
 
 export function closeSettings(): void {
   if (!settingsDialog.getState()) return;
-  settingsDialog.set(false);
+  settingsDialog.set(null);
   focusScopes.set("global");
 }
 
@@ -208,7 +209,8 @@ export function installCommandController(): () => void {
     appSettings.select((settings) => settings.keymap, (overrides) => keymap.setOverrides(overrides), { fireImmediately: true }),
     actions.register("app.commandPalette", () => (commandPalette.getState() ? closePalette() : openPalette())),
     actions.register("app.shortcuts", () => (shortcutSheet.getState() ? closeShortcutSheet() : shortcutSheet.set(true))),
-    actions.register("app.settings", () => settingsDialog.set(true)),
+    // The tab as argument ("shortcuts": the cheat sheet's Edit shortcuts); General by default.
+    actions.register("app.settings", (_context, tab) => settingsDialog.set(tab === "shortcuts" ? "shortcuts" : "general")),
   ];
   return () => {
     for (const stop of stops) stop();

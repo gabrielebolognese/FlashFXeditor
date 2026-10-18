@@ -13,7 +13,8 @@
 //   edge frames (no handles) says so in a toast.
 // - Linked selection on: the linked audio gets its crossfade with the picture's transition, and edits
 //   of a transition (its ends, its section) follow on it.
-import { DEFAULT_TRANSITION_FRAMES, DEFAULT_TRANSITION_KIND, TRANSITION_LABELS } from "../core/document/transitions.js";
+import { TRANSITION_LABELS } from "../core/document/transitions.js";
+import { editDefaults } from "../timeline/edit/editDefaults.js";
 import { TRANSITION_KINDS, type ClipId, type Frame, type TransitionKind } from "../core/document/types.js";
 import { selectTransition, type TransitionSelection } from "../core/store/sessionStore.js";
 import { dragFade, FADE_PRESET_SECONDS, presetFade, quickFade, type FadeEdge } from "../timeline/edit/fades.js";
@@ -53,7 +54,7 @@ export function chipCut(): Cut | null {
 
 /** Adds (or turns into) a `kind` transition at `cut`: one command; the transition is selected. False when the cut takes none. */
 export function applyTransition(cut: Cut, kind: TransitionKind): boolean {
-  const result = addTransition(documentStore.getState(), cut, kind, { length: DEFAULT_TRANSITION_FRAMES, linked: linked(), newId });
+  const result = addTransition(documentStore.getState(), cut, kind, { linked: linked(), newId });
   if (!result) {
     showToast({ tone: "info", message: "No cut to add a transition to", detail: "Transitions go between two clips that touch on one track." });
     return false;
@@ -78,7 +79,7 @@ function defaultTransition(): void {
     showToast({ tone: "info", message: "No cut to add a transition to", detail: "Transitions go between two clips that touch on a targeted track." });
     return;
   }
-  applyTransition(cut, DEFAULT_TRANSITION_KIND);
+  applyTransition(cut, editDefaults().transitionKind);
 }
 
 /** A fade handle drag's release (the view): one command. */

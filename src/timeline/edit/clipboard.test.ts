@@ -165,7 +165,7 @@ describe("pasteClips (spec §18 Paste / Paste insert, §6.8, §6.12 Target)", ()
     expect(doc.history.getState().undoLabel).toBe("Paste insert");
   });
 
-  it("refuses a paste onto a locked track and one from another frame rate", () => {
+  it("refuses a paste onto a locked track", () => {
     const p = project([video("v", "v1", 0, 10)]);
     const payload = copied(p, ["v"]);
     const locked = structuredClone(p);
@@ -175,7 +175,27 @@ describe("pasteClips (spec §18 Paste / Paste insert, §6.8, §6.12 Target)", ()
     expect(pasteClips(locked, payload, { at: 0, mode: "overwrite", newId })).toMatchObject({ kind: "ok" });
     (locked.tracks[1] as { locked: boolean }).locked = true;
     expect(pasteClips(locked, payload, { at: 0, mode: "overwrite", newId })).toMatchObject({ kind: "refused", reason: "locked" });
-    expect(pasteClips(p, { ...payload, fps: { num: 25, den: 1 } }, { at: 0, mode: "overwrite", newId })).toEqual({ kind: "refused", reason: "fps" });
+  });
+
+  it("converts clips copied at another frame rate (spec §15, Batch 42): positions, lengths, fades, keys and transitions", () => {
+    const t = { id: "T", kind: "crossDissolve" as const, before: 5, after: 5 };
+    const p60 = project([
+      video("a", "v1", 0, 60, { in: 0, out: 1_000_000, transitionOut: t, fades: { in: 10, out: 0 }, keyframes: { opacity: [{ frame: 0, value: 0, ease: "linear" }, { frame: 30, value: 1, ease: "linear" }] } }),
+      video("b", "v1", 60, 61, { in: 1_000_000, out: 2_016_667, transitionIn: t }),
+    ]);
+    p60.settings.fps = { num: 60, den: 1 };
+    const payload = copied(p60, ["a", "b"]);
+    const p30 = project([]);
+    const { clips, doc } = paste(p30, payload, 100);
+    const [a, b] = clips as [MediaClip, MediaClip];
+    expect([a.start, a.duration, b.start, b.duration]).toEqual([100, 30, 130, 31]);
+    expect(a.fades).toEqual({ in: 5, out: 0 });
+    expect(a.keyframes?.opacity?.map((key) => key.frame)).toEqual([0, 15]);
+    expect(a.transitionOut).toMatchObject({ before: 3, after: 3 });
+    expect(b.transitionIn).toMatchObject({ before: 3, after: 3 });
+    // The same media time is played: a source range is not rescaled.
+    expect([a.in, a.out]).toEqual([0, 1_000_000]);
+    expect(doc.getState().settings.fps).toEqual({ num: 30, den: 1 });
   });
 
   it("gives a transition pair pasted together a new id", () => {

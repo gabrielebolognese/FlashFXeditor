@@ -1,23 +1,46 @@
 // Project lifecycle for the UI (spec §15): folder pickers, create/open/switch, recovery offer,
-// permission retries, Mod+S/N/O. Framework-free; React reads `appView` through narrow selectors.
+// permission retries, Mod+S/N/O; templates (save, new from), the History list and its restore, Clear
+// cache, the recent list's thumbnails and the read-only rules (Batch 42). Framework-free; React reads
+// `appView` through narrow selectors.
+// Read-only (no write permission, spec §15): edits stay possible and are kept in memory only (the
+// banner and the dot say so). Everything that would write to the folder is refused with the one
+// read-only toast (`refuseReadOnly`): imports, media removal, bins, proxies, Clear cache, History
+// restore. Closing the tab or opening another project with such edits asks first.
 import { createStore } from "../core/store/createStore.js";
+import type { ConversionReport } from "../core/document/fpsConvert.js";
+import type { Rational } from "../core/document/types.js";
+import { showToast } from "../ui/toasts.js";
 import { errorMessage } from "../project/errorMessage.js";
 import { fromHandle, isDirectoryHandle, type FsDir } from "../project/fs.js";
 import { createProject, openProjectFolder, ProjectOpenError, type NewProjectSettings, type OpenedProject } from "../project/openProject.js";
 import { ProjectSession } from "../project/ProjectSession.js";
-import type { RecentProject } from "../project/recentProjects.js";
+import { RECENT_THUMB_HEIGHT, type RecentProject } from "../project/recentProjects.js";
 import type { Recovery } from "../project/recovery.js";
+import { followFrameRate } from "./conversionController.js";
 import { attachFonts, detachFonts } from "./fontController.js";
 import { attachMedia, detachMedia } from "./mediaController.js";
 import { attachPresets, detachPresets } from "./presetController.js";
-import { attachPreview, detachPreview, frameService } from "./previewController.js";
-import { actions, appSettings, appVersion, documentStore, focusScopes, layoutStore, recentProjects, saveStatus, sessionStore } from "./services.js";
+import { attachPreview, captureThumbnail, detachPreview, frameService } from "./previewController.js";
+import { actions, appSettings, appVersion, documentStore, focusScopes, layoutStore, recentProjects, saveStatus, sessionStore, templateStore } from "./services.js";
+
+/** What opening another project waits for while a read-only project has unsaved edits. */
+type Flow = () => Promise<void>;
 
 export type Dialog =
-  | { kind: "newProject"; dir: FsDir }
+  | { kind: "newProject"; dir: FsDir; template: string | null }
   | { kind: "recovery"; recovery: Recovery }
   | { kind: "permission"; dir: FsDir; message: string }
-  | { kind: "error"; title: string; message: string; issues: readonly string[] };
+  | { kind: "error"; title: string; message: string; issues: readonly string[] }
+  /** Scale layout or Keep (spec §15) for a new frame size. */
+  | { kind: "resolution"; width: number; height: number }
+  /** A frame rate conversion that rounds timings (spec §15 "warning if lossy"). */
+  | { kind: "frameRate"; fps: Rational; report: ConversionReport }
+  /** The History list (spec §15): the backups in history/, each restorable. */
+  | { kind: "history" }
+  | { kind: "saveTemplate" }
+  | { kind: "clearCache" }
+  /** A read-only project has edits nothing saved: opening another drops them (asked first). */
+  | { kind: "discardChanges"; next: Flow };
 
 export interface AppView {
   /** The open project; null shows the start screen. */
@@ -30,11 +53,27 @@ export interface AppView {
 export const appView = createStore<AppView>({ project: null, dialog: null, busy: false });
 
 let current: ProjectSession | null = null;
+let stopFrameRate: (() => void) | null = null;
 
 const setView = (patch: Partial<AppView>) => appView.set((view) => ({ ...view, ...patch }));
 
 export function closeDialog(): void {
   setView({ dialog: null });
+}
+
+/** Opens one of the project dialogs (DialogHost shows it). */
+export function showDialog(dialog: Dialog): void {
+  setView({ dialog });
+}
+
+/** The open project, or null. */
+export function currentSession(): ProjectSession | null {
+  return current;
+}
+
+/** The read-only toast for an action that would write to the project folder (`what`: "clear the cache"). */
+export function refuseReadOnly(what: string): void {
+  showToast({ tone: "error", message: "This project is read-only", detail: `Allow editing to ${what}.` });
 }
 
 function showError(title: string, error: unknown): void {
@@ -46,7 +85,7 @@ function showError(title: string, error: unknown): void {
 }
 
 /** One flow at a time; failures end in an error dialog, never in an unhandled rejection. */
-async function run(flow: () => Promise<void>): Promise<void> {
+async function run(flow: Flow): Promise<void> {
   if (appView.getState().busy) return;
   setView({ busy: true });
   try {
@@ -56,6 +95,27 @@ async function run(flow: () => Promise<void>): Promise<void> {
   } finally {
     setView({ busy: false });
   }
+}
+
+/** Edits of a read-only project that would be lost: nothing could save them. */
+function unsavedReadOnlyEdits(): boolean {
+  const status = saveStatus.getState();
+  return current !== null && status.readOnly && status.state === "unsaved";
+}
+
+/** Runs `flow`, or first asks to drop the unsaved edits of a read-only project (the dialog's button runs it, a user gesture for the pickers). */
+function guarded(flow: Flow): Promise<void> {
+  if (unsavedReadOnlyEdits()) {
+    setView({ dialog: { kind: "discardChanges", next: flow } });
+    return Promise.resolve();
+  }
+  return run(flow);
+}
+
+/** The discard dialog's "Discard and continue". */
+export function continueDiscarding(next: Flow): Promise<void> {
+  closeDialog();
+  return run(next);
 }
 
 interface DirectoryPickerWindow {
@@ -73,10 +133,31 @@ async function pickFolder(): Promise<FsDir | null> {
   }
 }
 
+/** The recent list's thumbnail of `session`: the frame at the playhead (spec §15), best effort. */
+async function captureRecentThumbnail(session: ProjectSession, timeoutMs?: number): Promise<void> {
+  const blob = await captureThumbnail(RECENT_THUMB_HEIGHT, timeoutMs);
+  if (blob) await recentProjects.update(session.projectId, { thumbnail: blob });
+}
+
+/** What the last thumbnail showed: the document and the playhead (a hidden tab captures again only when they changed). */
+let thumbnailOf: { project: unknown; playhead: number } | null = null;
+
+function captureIfChanged(session: ProjectSession): void {
+  const shown = { project: documentStore.getState(), playhead: sessionStore.state.getState().playhead };
+  if (thumbnailOf && thumbnailOf.project === shown.project && thumbnailOf.playhead === shown.playhead) return;
+  thumbnailOf = shown;
+  void captureRecentThumbnail(session);
+}
+
 async function closeCurrent(): Promise<void> {
   const session = current;
   current = null;
   if (!session) return;
+  stopFrameRate?.();
+  stopFrameRate = null;
+  // The thumbnail first: the preview still shows the project.
+  await captureRecentThumbnail(session, 1500);
+  thumbnailOf = null;
   detachPreview();
   detachMedia();
   detachFonts();
@@ -103,10 +184,32 @@ async function switchTo(opened: OpenedProject): Promise<void> {
   attachPreview(session.dir, () => !session.readOnly);
   attachFonts(session.dir, () => !session.readOnly);
   attachPresets(session.dir, () => !session.readOnly);
+  // After the document is loaded: a conversion, its undo or a restore move the session's frames.
+  stopFrameRate = followFrameRate();
   setView({
     project: { id: opened.project.id, folder: opened.dir.name },
     dialog: opened.recovery ? { kind: "recovery", recovery: opened.recovery } : null,
   });
+}
+
+/**
+ * Runs `work` with the project's media and preview services detached (Clear cache: nothing holds or
+ * writes cache files meanwhile), then attaches them again: thumbnails, waveforms, proxies and sample
+ * indexes are made again from what is on disk. The document and its undo history stay.
+ */
+export async function withMediaDetached<T>(work: (dir: FsDir) => Promise<T>): Promise<T | null> {
+  const session = current;
+  if (!session) return null;
+  detachPreview();
+  detachMedia();
+  try {
+    return await work(session.dir);
+  } finally {
+    if (current === session) {
+      attachMedia(session.dir, () => !session.readOnly, frameService, { announceOffline: false });
+      attachPreview(session.dir, () => !session.readOnly);
+    }
+  }
 }
 
 async function openDir(dir: FsDir, retry = false): Promise<void> {
@@ -126,19 +229,24 @@ async function openDir(dir: FsDir, retry = false): Promise<void> {
   await switchTo(opened);
 }
 
-/** New project: pick a folder, then the settings dialog. */
-export function newProject(): Promise<void> {
-  return run(async () => {
+/** New project: pick a folder, then the settings dialog (with a template preselected for New from template). */
+export function newProject(template: string | null = null): Promise<void> {
+  return guarded(async () => {
     const dir = await pickFolder();
-    if (dir) setView({ dialog: { kind: "newProject", dir } });
+    if (dir) setView({ dialog: { kind: "newProject", dir, template } });
   });
 }
 
-export function confirmNewProject(dir: FsDir, name: string, settings: NewProjectSettings): Promise<void> {
+/** New from template (spec §15, the start screen's Templates): New project with the template chosen. */
+export function newFromTemplate(id: string): Promise<void> {
+  return newProject(templateStore.find(id) ? id : null);
+}
+
+export function confirmNewProject(dir: FsDir, name: string, settings: NewProjectSettings, template: string | null = null): Promise<void> {
   return run(async () => {
     let opened: OpenedProject;
     try {
-      opened = await createProject(dir, name, settings, { appVersion });
+      opened = await createProject(dir, name, settings, { appVersion, template: template ? templateStore.find(template) : null });
     } catch (error) {
       showError("Could not create the project", error);
       return;
@@ -148,14 +256,14 @@ export function confirmNewProject(dir: FsDir, name: string, settings: NewProject
 }
 
 export function openProject(): Promise<void> {
-  return run(async () => {
+  return guarded(async () => {
     const dir = await pickFolder();
     if (dir) await openDir(dir);
   });
 }
 
 export function openRecent(entry: RecentProject): Promise<void> {
-  return run(async () => {
+  return guarded(async () => {
     if (!isDirectoryHandle(entry.handle)) {
       showError("Could not open the project", new Error(`The stored folder of "${entry.name}" is not usable any more. Remove it and open the folder again.`));
       return;
@@ -166,7 +274,7 @@ export function openRecent(entry: RecentProject): Promise<void> {
 
 /** Handles from a drop (DataTransferItem.getAsFileSystemHandle, requested inside the drop event). */
 export function openDropped(handles: readonly Promise<FileSystemHandle | null>[]): Promise<void> {
-  return run(async () => {
+  return guarded(async () => {
     const settled = await Promise.allSettled(handles);
     const folder = settled.map((result) => (result.status === "fulfilled" ? result.value : null)).find(isDirectoryHandle);
     if (!folder) {
@@ -208,10 +316,27 @@ export function allowEditing(): void {
   void current?.requestWriteAccess();
 }
 
+/** Closing the tab would lose edits: a read-only project's, or ones whose save failed. */
+function onBeforeUnload(event: BeforeUnloadEvent): void {
+  if (!current) return;
+  const status = saveStatus.getState();
+  if (unsavedReadOnlyEdits() || status.state === "error") {
+    event.preventDefault();
+    // Chrome shows its own "Leave site?" text; returnValue must be set for it to ask.
+    event.returnValue = "";
+  }
+}
+
 /** Registers project actions and loads persisted lists. Returns a stop function. */
 export function installProjectController(): () => void {
   void recentProjects.load();
   void appSettings.load();
+  void templateStore.load();
+  const onVisibility = () => {
+    if (document.visibilityState === "hidden" && current) captureIfChanged(current);
+  };
+  document.addEventListener("visibilitychange", onVisibility);
+  window.addEventListener("beforeunload", onBeforeUnload);
   const stops = [
     // A closing dialog owned the keyboard: hand it back to the global scope, whatever closed it.
     appView.select(
@@ -222,9 +347,14 @@ export function installProjectController(): () => void {
     ),
     actions.register("project.save", () => saveNow(), { enabled: () => current !== null }),
     actions.register("project.new", () => void newProject()),
+    actions.register("project.newFromTemplate", (_context, id) => {
+      if (typeof id === "string") void newFromTemplate(id);
+    }),
     actions.register("project.open", () => void openProject()),
     actions.register("project.rename", () => projectNaming.set(true), { enabled: () => current !== null }),
     actions.register("project.allowEditing", () => allowEditing(), { enabled: () => saveStatus.getState().readOnly }),
+    () => document.removeEventListener("visibilitychange", onVisibility),
+    () => window.removeEventListener("beforeunload", onBeforeUnload),
   ];
   return () => {
     for (const stop of stops) stop();

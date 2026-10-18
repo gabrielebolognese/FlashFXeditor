@@ -207,6 +207,26 @@ async function loadGlobal(): Promise<void> {
   await loadFolder();
 }
 
+/**
+ * Restore starter presets (Settings, Batch 42): the bundled starters that were deleted come back as
+ * shipped; starters still there keep their edits. Returns how many came back.
+ */
+export function restoreStarterPresets(): number {
+  const ids = new Set(list("global").map((preset) => preset.id));
+  const missing = starterPresets().filter((preset) => !ids.has(preset.id));
+  if (missing.length > 0) commit("global", [...list("global"), ...missing]);
+  return missing.length;
+}
+
+function restoreStartersAction(): void {
+  const restored = restoreStarterPresets();
+  showToast(
+    restored === 0
+      ? { tone: "info", message: "Every starter preset is there", detail: "Starters you changed keep your changes." }
+      : { tone: "success", message: `Restored ${restored} starter preset${restored === 1 ? "" : "s"}`, detail: "They are back among the Global presets of the Presets tab." },
+  );
+}
+
 // The library folder (spec §10.3 "synced to a user-chosen library folder").
 
 async function loadFolder(): Promise<void> {
@@ -655,6 +675,7 @@ export function installPresetController(): () => void {
     actions.register("presets.showGlobal", () => setPresetScope("global")),
     actions.register("presets.showProject", () => setPresetScope("project")),
     actions.register("presets.chooseFolder", () => void chooseLibraryFolder()),
+    actions.register("presets.restoreStarters", restoreStartersAction, { enabled: () => presetLibrary.getState().loaded }),
     actions.register("presets.syncFolder", () => void syncLibraryFolder(), { enabled: () => presetLibrary.getState().folder !== null && presetLibrary.getState().folder?.status !== "syncing" }),
     actions.register("presets.stopFolder", () => void stopLibraryFolder(), { enabled: () => presetLibrary.getState().folder !== null }),
     // The card menu (spec §10.3 "Right-click card") and the toolbar's favorite chips act on the preset named by the argument.

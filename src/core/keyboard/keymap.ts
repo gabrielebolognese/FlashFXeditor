@@ -155,7 +155,9 @@ export const DEFAULT_KEYMAP: readonly KeyBinding[] = [
 
   // App
   { id: "media.import", keys: ["Mod+I"], scopes: G },
-  { id: "project.new", keys: ["Mod+N"], scopes: G },
+  // Chrome keeps Ctrl+N for a new window in a normal tab (pages cannot take it): Mod+Alt+N first, Mod+N
+  // for the installed app's window (Batch 42, the Batch 01 follow-up).
+  { id: "project.new", keys: ["Mod+Alt+N", "Mod+N"], scopes: G },
   { id: "project.open", keys: ["Mod+O"], scopes: G },
   { id: "project.save", keys: ["Mod+S"], scopes: G, everywhere: true },
   { id: "app.export", keys: ["Mod+E"], scopes: G },
