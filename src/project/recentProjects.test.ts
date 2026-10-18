@@ -84,7 +84,7 @@ describe("app settings", () => {
     await settings.load();
     expect(settings.getState()).toEqual(DEFAULT_APP_SETTINGS);
     await settings.update({ autosaveDelayMs: 5000 });
-    expect(kv.data.get("settings.v1")).toEqual({ autosaveDelayMs: 5000, importMode: "copy", monitorVolumeDb: 0, monitorMuted: false, proxyAuto: true, proxyRule: "heavy", proxyShortEdge: 540, recentColors: [], punchZoomScale: 1.2, punchZoomAnimate: true, favoriteFonts: [], recentFonts: [], matchClipUnderPlayhead: true, defaultTitlePreset: "starter-title", defaultSubtitlePreset: "starter-subtitle", transcribeModel: "base", transcribeLanguage: null, duckDepthDb: 12, duckRampFrames: 10, silenceThresholdDb: -40, silenceMinMs: 500, silencePaddingMs: 150, keymap: {}, recentCommands: [], stillDurationMs: 5000, titleDurationMs: 3000, solidDurationMs: 5000, freezeDurationMs: 2000, transitionFrames: 15, transitionKind: "crossDissolve", keyframesFollowSource: true, exportPresetId: "reels", exportCustom: DEFAULT_CUSTOM_SETTINGS, exportPresets: [], exportFileTemplate: "{project}-{preset}-{date}.mp4", exportDestination: "project", exportAudioFormat: "wav", exportCaptionFormat: "srt" });
+    expect(kv.data.get("settings.v1")).toEqual({ autosaveDelayMs: 5000, importMode: "copy", monitorVolumeDb: 0, monitorMuted: false, proxyAuto: true, proxyRule: "heavy", proxyShortEdge: 540, recentColors: [], punchZoomScale: 1.2, punchZoomAnimate: true, favoriteFonts: [], recentFonts: [], matchClipUnderPlayhead: true, defaultTitlePreset: "starter-title", defaultSubtitlePreset: "starter-subtitle", recentPresets: [], presetOrder: {}, transcribeModel: "base", transcribeLanguage: null, duckDepthDb: 12, duckRampFrames: 10, silenceThresholdDb: -40, silenceMinMs: 500, silencePaddingMs: 150, keymap: {}, recentCommands: [], stillDurationMs: 5000, titleDurationMs: 3000, solidDurationMs: 5000, freezeDurationMs: 2000, transitionFrames: 15, transitionKind: "crossDissolve", keyframesFollowSource: true, exportPresetId: "reels", exportCustom: DEFAULT_CUSTOM_SETTINGS, exportPresets: [], exportFileTemplate: "{project}-{preset}-{date}.mp4", exportDestination: "project", exportAudioFormat: "wav", exportCaptionFormat: "srt" });
     await settings.update({ autosaveDelayMs: 1234 });
     expect(settings.getState().autosaveDelayMs).toBe(5000);
 
@@ -220,6 +220,18 @@ describe("app settings", () => {
     const recent = createAppSettings(kv);
     await recent.load();
     expect(recent.getState().recentFonts).toEqual(["Inter", "Anton"]);
+  });
+
+  it("keeps the preset bar's Recent set and set orders (Batch 52), valid ids only", async () => {
+    const kv = memoryKeyValueStore();
+    kv.data.set("settings.v1", {
+      recentPresets: ["a", 3, "", "a", "b", ...Array.from({ length: 20 }, (_, i) => `p${i}`)],
+      presetOrder: { favorites: ["x", 2, "y", "x"], "tag:Promo": [], "": ["z"], bad: "x", titles: "nope" },
+    });
+    const settings = createAppSettings(kv);
+    await settings.load();
+    expect(settings.getState().recentPresets).toEqual(["a", "b", ...Array.from({ length: 10 }, (_, i) => `p${i}`)]);
+    expect(settings.getState().presetOrder).toEqual({ favorites: ["x", "y"], "tag:Promo": [] });
   });
 
   it("matches titles to the clip under the playhead by default (Batch 29)", async () => {

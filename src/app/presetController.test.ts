@@ -3,10 +3,28 @@ import type { TextPreset } from "../core/document/types.js";
 import type { FsDir } from "../project/fs.js";
 import { createMemoryDir } from "../project/memoryFs.js";
 import { projectPresetsDir, readPresetFolder } from "../project/presetFiles.js";
-import { formatPresetFile, formatPresetsFile, presetFileName } from "../text/presets.js";
+import { makeProject, makeTextClip, makeTrack, withClips } from "../core/document/fixtures.js";
+import { selectClips } from "../core/store/selection.js";
+import { formatPresetFile, formatPresetsFile, presetFileName, presetLook, tagSetKey } from "../text/presets.js";
+import { STARTER_PACK_VERSION, starterPresets } from "../text/starterPresets.js";
 import { DEFAULT_TEXT_STYLE } from "../text/style.js";
-import { attachPresets, detachPresets, importPresets, presetLibrary } from "./presetController.js";
-import { sessionStore } from "./services.js";
+import {
+  applyBarButton,
+  attachPresets,
+  barPresets,
+  detachPresets,
+  findPreset,
+  importPresets,
+  installPresetController,
+  movePresetInSet,
+  presetLibrary,
+  presetRenaming,
+  presetTagging,
+  setPresetTags,
+  showBarSet,
+  togglePresetInSet,
+} from "./presetController.js";
+import { actions, appSettings, documentStore, keyValueStore, sessionStore } from "./services.js";
 
 // The real services open IndexedDB at import time, which jsdom lacks: same singletons, memory-backed.
 vi.mock("./services.js", async () => {
@@ -122,3 +140,94 @@ describe("project presets", () => {
     expect(ids((await readPresetFolder(folder, NOW)).presets)).toEqual(["a", "b", "c"]);
   });
 });
+
+describe("preset bar (Batch 52)", () => {
+  /** The 9 favorites of the starter pack in card order (the first start's Favorites set). */
+  const FAVORITES = starterPresets().filter((preset) => preset.favorite);
+  const order = (presets: readonly TextPreset[]) => presets.map((item) => item.id);
+
+  function threeTexts(): string[] {
+    const clips = ["t1", "t2", "t3"].map((id, i) => makeTextClip({ id, trackId: "v1", start: i * 30, duration: 30 }));
+    documentStore.load(withClips({ ...makeProject(), tracks: [makeTrack("v1")] }, clips));
+    sessionStore.selection.set(selectClips(["t1", "t2", "t3"]));
+    return ["t1", "t2", "t3"];
+  }
+
+  it("seeds the starter pack on the first start, stores its version and shows its favorites", async () => {
+    const stop = installPresetController();
+    try {
+      await vi.waitFor(() => expect(presetLibrary.getState().loaded).toBe(true));
+      await vi.waitFor(async () => expect(await keyValueStore.get("textPresets.starterPack")).toBe(STARTER_PACK_VERSION));
+      expect(presetLibrary.getState().global).toHaveLength(starterPresets().length);
+      expect(order(barPresets("favorites"))).toEqual(order(FAVORITES));
+      expect(barPresets("titles").length).toBeGreaterThanOrEqual(15);
+      expect(barPresets("recent")).toEqual([]);
+
+      // Sets: shown in the session; anything else is ignored.
+      showBarSet("captions");
+      expect(sessionStore.state.getState().presetBar.set).toBe("captions");
+      showBarSet("nope");
+      actions.run("presetBar.set.favorites");
+      expect(sessionStore.state.getState().presetBar.set).toBe("favorites");
+
+      // Alt+3 = the third button: three selected text clips restyled in one undo step, and it is Recent.
+      const texts = threeTexts();
+      const third = FAVORITES[2] as TextPreset;
+      const undoBefore = documentStore.history.getState();
+      expect(actions.run("presetBar.apply3")).not.toBe(false);
+      const project = documentStore.getState();
+      const look = presetLook(third, project.settings);
+      for (const id of texts) {
+        const clip = project.clips[id];
+        expect(clip?.kind === "text" && clip.presetId).toBe(third.id);
+        expect(clip?.kind === "text" && clip.style).toEqual(look.style);
+      }
+      expect(documentStore.history.getState().undoLabel).toBe(`Apply "${third.name}"`);
+      expect(documentStore.history.getState()).not.toBe(undoBefore);
+      documentStore.undo();
+      for (const id of texts) expect(documentStore.getState().clips[id]?.kind === "text" && documentStore.getState().clips[id]).toMatchObject({ style: DEFAULT_TEXT_STYLE });
+      expect(appSettings.getState().recentPresets[0]).toBe(third.id);
+      expect(order(barPresets("recent"))).toEqual([third.id]);
+      // A button the set does not have: declined.
+      expect(applyBarButton(99)).toBe(false);
+
+      // Reordering a set keeps its order in the app settings; Recent and All have none.
+      movePresetInSet("favorites", third.id, 0);
+      await vi.waitFor(() => expect(order(barPresets("favorites"))[0]).toBe(third.id));
+      expect(appSettings.getState().presetOrder.favorites?.[0]).toBe(third.id);
+      movePresetInSet("all", third.id, 5);
+      expect(appSettings.getState().presetOrder.all).toBeUndefined();
+
+      // Sets and tags from the card menu.
+      const plain = FAVORITES[0] as TextPreset;
+      togglePresetInSet(plain.id, "captions");
+      expect(findPreset(plain.id)?.preset.sets).toEqual(["titles", "captions"]);
+      setPresetTags(plain.id, "Promo, client");
+      expect(order(barPresets(tagSetKey("promo")))).toEqual([plain.id]);
+      // Rename and Tags from the bar's menu open the field on the card in the Presets tab.
+      actions.run("preset.editTags", null, plain.id);
+      expect(sessionStore.state.getState().mediaPanel.tab).toBe("presets");
+      expect(presetTagging.getState()).toBe(plain.id);
+      actions.run("preset.rename", null, plain.id);
+      expect(presetRenaming.getState()).toBe(plain.id);
+    } finally {
+      presetRenaming.set(null);
+      presetTagging.set(null);
+      stop();
+    }
+  });
+
+  it("toggles the bar in the session", () => {
+    const stop = installPresetController();
+    try {
+      expect(sessionStore.state.getState().presetBar.visible).toBe(true);
+      actions.run("preview.togglePresetBar");
+      expect(sessionStore.state.getState().presetBar.visible).toBe(false);
+      actions.run("preview.togglePresetBar");
+      expect(sessionStore.state.getState().presetBar.visible).toBe(true);
+    } finally {
+      stop();
+    }
+  });
+});
+

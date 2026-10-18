@@ -117,22 +117,3 @@
 .overflowMenu .group + .group::before {
   display: none;
 }
-
-/* Favorite preset chips (spec §6.1): text chips after the add buttons; long names end in an ellipsis. */
-.chips {
-  display: flex;
-  flex: none;
-  align-items: center;
-  gap: var(--space-0);
-  margin-left: var(--space-1);
-}
-
-.chips > button {
-  max-width: var(--preset-chip-max-width);
-  background: var(--surface-3);
-}
-
-.chips > button > span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-}

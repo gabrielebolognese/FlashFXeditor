@@ -174,8 +174,15 @@
   --column-resize-step: var(--space-3);
   /* Settings radio rows (Batch 41, gap: the DS has no radio): the chosen choice's gold dot in the 14px ring. */
   --radio-dot-size: var(--space-2);
-  /* Favorite preset chips in the timeline toolbar (Batch 30, gap): a long name ends in an ellipsis. */
-  --preset-chip-max-width: 96px;
+  /*
+   * Preset bar above the preview (Batch 52, gap: the DS sizes controls, not thumbnails): visual buttons
+   * tall enough for a text style to read, --space-1 around them, on a neutral mid tone (the DS's slate
+   * --text-tertiary: about 4.5:1 against both white and black text) so light and dark presets show.
+   */
+  --preset-button-width: 84px;
+  --preset-button-height: 40px;
+  --preset-bar-height: calc(var(--preset-button-height) + 2 * var(--space-1));
+  --preset-swatch: var(--text-tertiary);
   /* Captions tab cue rows (Batch 32; the DS has no cue list): two body lines of text and the times. */
   --cue-row-height: 48px;
   /* Gap (Batch 46): the cue count beside the search ("999 of 999"), fixed so typing never resizes the field. */

@@ -2,6 +2,7 @@
 // to lose, so parsing never throws: every invalid or missing field falls back to its default.
 import { isKeyframeSection, type KeyframeSection } from "../core/document/keyframes.js";
 import { sanitizeExportLog } from "../export/log.js";
+import { isPresetSetKey } from "../text/presets.js";
 import type { TimecodeMode } from "../core/document/time.js";
 import type { LayoutRatios } from "../core/store/layoutStore.js";
 import { sanitizeRatios } from "../core/store/layoutStore.js";
@@ -90,6 +91,7 @@ function sanitizeState(value: unknown): SessionState {
   const timeline = obj(raw.timeline);
   const preview = obj(raw.preview);
   const mediaPanel = obj(raw.mediaPanel);
+  const presetBar = obj(raw.presetBar);
   const pxPerFrame = finite(timeline.pxPerFrame, d.timeline.pxPerFrame);
   const zoom = preview.zoom === "fit" ? "fit" : finite(preview.zoom, 0) > 0 ? Math.min(PREVIEW_MAX_ZOOM, Math.max(PREVIEW_MIN_ZOOM, preview.zoom as number)) : d.preview.zoom;
   const divisions = preview.gridDivisions;
@@ -149,6 +151,7 @@ function sanitizeState(value: unknown): SessionState {
     keyframeLanes: sanitizeLanes(raw.keyframeLanes),
     exportRange: raw.exportRange === "inOut" ? "inOut" : "whole",
     exportLog: sanitizeExportLog(raw.exportLog),
+    presetBar: { visible: bool(presetBar.visible, d.presetBar.visible), set: isPresetSetKey(presetBar.set) ? presetBar.set : d.presetBar.set },
   };
 }
 

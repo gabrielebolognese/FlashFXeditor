@@ -185,12 +185,26 @@ export interface TextPreset {
   position?: { x: number; y: number };
   /** Applying the preset also moves clips to `position` (spec §10.3 "apply position"). */
   applyPosition: boolean;
+  /**
+   * What its preset bar button and Presets card show, and the content of a clip made from it (spec
+   * §20.2; absent: the name, cut to PRESET_SAMPLE_MAX characters, and a new clip reads `Title`).
+   */
+  sampleText?: string;
+  /** The bundled sets it is in (spec §20.2: Titles, Subtitles, Captions); its user sets are its `tags`. */
+  sets?: PresetSetId[];
+  /** The word highlight it gives a caption track it styles (Batch 52: the Captions starters' active word). */
+  highlight?: CaptionHighlight;
+  /** Its user sets (spec §20.2 "each user tag"), also searched. */
   tags: string[];
   favorite: boolean;
   /** ISO times; the newer `updatedAt` wins when two copies of a preset meet (the library folder). */
   createdAt: string;
   updatedAt: string;
 }
+/** The bundled preset sets of the preset bar (spec §20.2). */
+export const PRESET_SET_IDS = ["titles", "subtitles", "captions"] as const;
+export type PresetSetId = (typeof PRESET_SET_IDS)[number];
+
 /** Where a caption sits (spec §10.5): a preset, or `custom` at `CaptionStyle.y`. */
 export type CaptionPosition = "bottom" | "center" | "top" | "custom";
 

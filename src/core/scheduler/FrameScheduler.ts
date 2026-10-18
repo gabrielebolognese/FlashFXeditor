@@ -81,6 +81,22 @@ export class FrameScheduler {
     return this.handle !== null;
   }
 
+  /**
+   * Renders the dirty views of `flags` now, outside the frame, in FLAG_ORDER (Batch 52): a resize
+   * observed before paint (the preset bar toggled) draws the canvas at its new size in the same frame,
+   * so it never shows a frame laid out for the old one. The flags are no longer dirty afterwards.
+   */
+  flush(flags: readonly InvalidationFlag[]): void {
+    if (this.ticking) return;
+    const toRender = new Set<RenderView>();
+    for (const flag of FLAG_ORDER) {
+      if (!flags.includes(flag) || !this.dirty.delete(flag)) continue;
+      const views = this.views.get(flag);
+      if (views) for (const view of views) toRender.add(view);
+    }
+    for (const view of toRender) this.renderView(view, performance.now());
+  }
+
   dispose(): void {
     if (this.handle !== null) this.cancelFrame(this.handle);
     this.handle = null;
@@ -117,17 +133,19 @@ export class FrameScheduler {
       const views = this.views.get(flag);
       if (views) for (const view of views) toRender.add(view);
     }
-    for (const view of toRender) {
-      try {
-        view.render(time);
-        if (this.failures.size > 0) this.failures.delete(view);
-      } catch (error) {
-        console.error("[scheduler] view render failed", error);
-        const failures = (this.failures.get(view) ?? 0) + 1;
-        this.failures.set(view, failures);
-        if (failures === VIEW_FAILURE_LIMIT) this.onViewFailure?.(this.flagsOf(view), error);
-      }
-    }
+    for (const view of toRender) this.renderView(view, time);
     if (this.handle === null && (this.tickers.size > 0 || this.dirty.size > 0)) this.handle = this.requestFrame(this.frame);
   };
+
+  private renderView(view: RenderView, time: number): void {
+    try {
+      view.render(time);
+      if (this.failures.size > 0) this.failures.delete(view);
+    } catch (error) {
+      console.error("[scheduler] view render failed", error);
+      const failures = (this.failures.get(view) ?? 0) + 1;
+      this.failures.set(view, failures);
+      if (failures === VIEW_FAILURE_LIMIT) this.onViewFailure?.(this.flagsOf(view), error);
+    }
+  }
 }

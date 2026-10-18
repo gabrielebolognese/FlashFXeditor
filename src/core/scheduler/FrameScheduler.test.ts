@@ -183,4 +183,46 @@ describe("FrameScheduler", () => {
     frame();
     expect(failures).toHaveLength(1);
   });
+
+  it("flush renders the dirty views of the flags asked now, in order, and leaves the rest to the frame", () => {
+    const frames = fakeFrames();
+    const scheduler = new FrameScheduler(frames.request, frames.cancel);
+    const calls: string[] = [];
+    const preview = { render: vi.fn(() => calls.push("preview")) };
+    const gizmo = { render: vi.fn(() => calls.push("gizmo")) };
+    const timeline = { render: vi.fn(() => calls.push("timeline")) };
+    scheduler.register("preview", preview);
+    scheduler.register("gizmo", gizmo);
+    scheduler.register("timelineContent", timeline);
+
+    // A clean view is not rendered by a flush.
+    scheduler.flush(["preview", "gizmo"]);
+    expect(calls).toEqual([]);
+
+    scheduler.invalidate("gizmo");
+    scheduler.invalidate("preview");
+    scheduler.invalidate("timelineContent");
+    scheduler.flush(["gizmo", "preview"]);
+    expect(calls).toEqual(["preview", "gizmo"]);
+    // The frame renders what the flush left, and nothing twice.
+    frames.tick();
+    expect(calls).toEqual(["preview", "gizmo", "timeline"]);
+    expect(preview.render).toHaveBeenCalledTimes(1);
+  });
+
+  it("flush counts failures like the frame", () => {
+    const frames = fakeFrames();
+    const scheduler = new FrameScheduler(frames.request, frames.cancel);
+    const failures: unknown[] = [];
+    scheduler.onViewFailure = (flags) => failures.push(flags);
+    const broken = { render: vi.fn(() => { throw new Error("boom"); }) };
+    scheduler.register("preview", broken);
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    for (let i = 0; i < VIEW_FAILURE_LIMIT; i++) {
+      scheduler.invalidate("preview");
+      scheduler.flush(["preview"]);
+    }
+    expect(failures).toEqual([["preview"]]);
+    vi.restoreAllMocks();
+  });
 });

@@ -194,6 +194,8 @@ export interface TitleLook {
   presetId?: string;
   /** The clip's length (the preset's default duration), else the title length. */
   duration?: Frame;
+  /** The clip's content (a preset's sample text, Batch 52), else the built-in `Title` / `Subtitle`. */
+  value?: string;
 }
 
 /** The topmost video clip under `frame` on a shown video track, or null. */
@@ -243,7 +245,7 @@ export function addTitle(project: Project, options: TitleOptions, newId: () => s
   const builtIn = titleDefaults(options.kind, project.settings);
   const fields: TextClipFields = look
     ? {
-        value: builtIn.value,
+        value: look.value ?? builtIn.value,
         style: look.style,
         box: look.box,
         ...(look.animIn && { animIn: look.animIn }),

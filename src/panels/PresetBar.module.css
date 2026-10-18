@@ -1,0 +1,116 @@
+/*
+ * The preset bar (spec §20.2, Batch 52; gap: the DS has no thumbnail strip): one row under the preview
+ * header, the panel's full width, with the header's surface and a hairline bottom. The set selector, the
+ * scroll arrows, `+` and Manage are the header's compact controls; the buttons are thumbnails
+ * (--preset-button-width x --preset-button-height) on the neutral --preset-swatch, radius-md, a hairline
+ * border that lifts toward --surface-5 on hover and --accent-dim when pressed (the DS card hover), the
+ * focus ring from the keyboard. Hidden in fullscreen (the preview fills the window).
+ */
+.bar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-0);
+  height: var(--preset-bar-height);
+  padding: 0 var(--space-2);
+  border-bottom: 1px solid var(--hairline);
+  background: var(--surface-1);
+}
+
+[data-fullscreen] .bar {
+  display: none;
+}
+
+.set {
+  flex: none;
+  margin-right: var(--space-1);
+}
+
+.arrow {
+  display: flex;
+  flex: none;
+}
+
+/* The scroll row never wraps; its scrollbar is hidden (the wheel and the arrows scroll it). */
+.row {
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  align-self: stretch;
+  gap: var(--space-1);
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+
+.row::-webkit-scrollbar {
+  display: none;
+}
+
+.button {
+  position: relative;
+  flex: none;
+  width: var(--preset-button-width);
+  height: var(--preset-button-height);
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-md);
+  background: var(--preset-swatch);
+  cursor: pointer;
+  transition: border-color var(--duration-micro) var(--ease-out);
+}
+
+.button:hover {
+  border-color: var(--surface-5);
+}
+
+.button:active {
+  border-color: var(--accent-dim);
+}
+
+.button:focus-visible {
+  box-shadow: var(--focus-ring-inset);
+}
+
+/* The button picked up by a reorder drag. */
+.button[data-dragging] {
+  opacity: var(--disabled-opacity);
+}
+
+.thumb {
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* Where a reorder drag drops: an accent line in the gap (the timeline's insert line). */
+.marker {
+  position: absolute;
+  top: var(--space-1);
+  bottom: var(--space-1);
+  left: 0;
+  width: var(--timeline-insert-width);
+  margin-left: calc(-1 * var(--space-0));
+  background: var(--accent);
+  pointer-events: none;
+}
+
+.empty {
+  overflow: hidden;
+  padding: 0 var(--space-1);
+  color: var(--text-tertiary);
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-track);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* `+`'s name field takes the row while it is open. */
+.naming {
+  flex: 1 1 auto;
+  min-width: 0;
+}

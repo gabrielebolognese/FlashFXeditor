@@ -47,6 +47,7 @@ import {
   FolderSync,
   FolderX,
   Frame,
+  GalleryHorizontal,
   Gauge,
   Grid3x3,
   Group,
@@ -123,6 +124,7 @@ import { EASE_IDS, LABEL_COLORS, TRANSITION_KINDS } from "../core/document/types
 import type { FocusScope } from "../core/keyboard/focusScope.js";
 import { FADE_PRESET_SECONDS } from "../timeline/edit/fades.js";
 import { LABEL_NAMES } from "../timeline/menus/labelSwatches.js";
+import { FIXED_PRESET_SETS, presetSetLabel } from "../text/presets.js";
 
 /** Palette and cheat sheet groups, in their order. */
 export const COMMAND_CATEGORIES = [
@@ -456,6 +458,17 @@ export const COMMANDS: readonly CommandInfo[] = [
   presets("preset.duplicate", "Duplicate preset", { palette: false }),
   presets("preset.export", "Export preset…", { palette: false }),
   presets("preset.delete", "Delete preset", { palette: false }),
+  presets("preset.inTitles", "Preset in the Titles set", { palette: false }),
+  presets("preset.inSubtitles", "Preset in the Subtitles set", { palette: false }),
+  presets("preset.inCaptions", "Preset in the Captions set", { palette: false }),
+  presets("preset.editTags", "Preset tags…", { palette: false }),
+  // The preset bar above the preview (spec §20.2, Batch 52): Alt+1..9, `+`, its arrows and sets.
+  ...Array.from({ length: 9 }, (_, i) => presets(`presetBar.apply${i + 1}`, `Apply preset bar button ${i + 1}`, { keywords: "preset bar quick text style one click" })),
+  presets("presetBar.add", "Save as preset into the preset bar's set", { icon: Plus, keywords: "new preset from selection bar plus" }),
+  presets("presetBar.scrollLeft", "Scroll the preset bar left", { icon: ChevronLeft, palette: false }),
+  presets("presetBar.scrollRight", "Scroll the preset bar right", { icon: ChevronRight, palette: false }),
+  presets("presetBar.showSet", "Preset bar set", { palette: false }),
+  ...FIXED_PRESET_SETS.map((key) => presets(`presetBar.set.${key}`, `Preset bar: ${presetSetLabel(key)}`, { keywords: "preset bar set show" })),
 
   // Canvas (spec §7)
   ...NUDGES.flatMap(([name, word]) => [
@@ -477,6 +490,7 @@ export const COMMANDS: readonly CommandInfo[] = [
   preview("preview.toggleFullscreen", "Fullscreen preview", { icon: Maximize }),
   preview("preview.exportFrame", "Export frame", { icon: ImageDown, keywords: "still png snapshot" }),
   preview("preview.toggleGuides", "Smart guides", { icon: RulerDimensionLine }),
+  preview("preview.togglePresetBar", "Preset bar", { icon: GalleryHorizontal, keywords: "presets strip thumbnails one click text styles show hide" }),
   ...PREVIEW_QUALITIES.map((quality) => preview(`preview.quality.${quality}`, `Preview quality: ${QUALITY_LABELS[quality]}`)),
   ...SAFE_ZONE_IDS.map((zone) => preview(`preview.safeZone.${zone}`, `Safe zone: ${SAFE_ZONE_LABELS[zone]}`, { icon: Grid3x3 })),
   ...GRID_IDS.map((grid) => preview(`preview.grid.${grid}`, `Grid: ${GRID_LABELS[grid]}`, { icon: Grid3x3 })),

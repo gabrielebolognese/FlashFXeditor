@@ -2,11 +2,8 @@
 // labels come from the command catalog (app/commandCatalog.ts), `label` only where the toolbar words it
 // differently.
 
-export type ToolbarItem =
-  | { kind: "button"; id: string; label?: string; text?: string; toggle?: true }
-  | { kind: "zoomSlider" }
-  /** The favorite text presets as chips (spec §6.1: up to 8, from the Presets tab). */
-  | { kind: "presetChips" };
+// The favorite preset chips (spec §6.1) moved to the preset bar above the preview (§20.2, Batch 52).
+export type ToolbarItem = { kind: "button"; id: string; label?: string; text?: string; toggle?: true } | { kind: "zoomSlider" };
 
 export interface ToolbarGroup {
   id: string;
@@ -67,7 +64,6 @@ export const TOOLBAR_GROUPS: readonly ToolbarGroup[] = [
       { kind: "button", id: "add.captionTrack" },
       { kind: "button", id: "add.solid" },
       { kind: "button", id: "add.image" },
-      { kind: "presetChips" },
     ],
   },
   {

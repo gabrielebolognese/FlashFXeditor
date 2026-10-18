@@ -9,25 +9,30 @@ export interface PanelFrameProps {
   header: ReactNode;
   /** Right side of the header strip: panel one-click actions. */
   actions?: ReactNode;
+  /** A strip right under the header, the panel's full width (the preview's preset bar, Batch 52); the body size excludes it. */
+  strip?: ReactNode;
   /** A strip under the body (the preview chrome); the body size excludes it. */
   footer?: ReactNode;
   /** A column right of the body (the preview's audio meter); the body size excludes it. */
   aside?: ReactNode;
   /** The panel's section element (the preview writes its fullscreen attributes on it). */
   panelRef?: Ref<HTMLElement>;
+  /** Called in the body's ResizeObserver callback, before paint, after the layout store has its new size. */
+  onBodyResize?: () => void;
   children: ReactNode;
 }
 
-/** A panel: header strip + body (+ aside column) (+ footer strip). The body size is reported to the layout store. */
-export function PanelFrame({ id, header, actions, footer, aside, panelRef, children }: PanelFrameProps) {
+/** A panel: header strip (+ a strip under it) + body (+ aside column) (+ footer strip). The body size is reported to the layout store. */
+export function PanelFrame({ id, header, actions, strip, footer, aside, panelRef, onBodyResize, children }: PanelFrameProps) {
   const bodyRef = useRef<HTMLDivElement>(null);
-  usePanelSize(id, bodyRef);
+  usePanelSize(id, bodyRef, onBodyResize);
   return (
     <section ref={panelRef} className={styles.panel} data-panel={id} data-scope={id}>
       <header className={styles.header}>
         <div className={styles.headerMain}>{header}</div>
         {actions && <div className={styles.actions}>{actions}</div>}
       </header>
+      {strip}
       {aside ? (
         <div className={styles.row}>
           <div ref={bodyRef} className={styles.body}>

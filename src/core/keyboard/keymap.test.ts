@@ -24,6 +24,13 @@ describe("DEFAULT_KEYMAP", () => {
     expect(duplicates).toEqual([]);
   });
 
+  it("binds Alt+1..9 to the preset bar's first nine buttons, globally (spec §20.2)", () => {
+    for (let n = 1; n <= 9; n++) {
+      const binding = DEFAULT_KEYMAP.find((b) => b.id === `presetBar.apply${n}`);
+      expect(binding).toMatchObject({ keys: [`Alt+${n}`], scopes: ["global"] });
+    }
+  });
+
   it("covers the J/K/L shuttle and frame stepping as held keys", () => {
     const held = DEFAULT_KEYMAP.filter((b) => b.hold).map((b) => b.id);
     expect(held).toEqual(
