@@ -5942,3 +5942,43 @@ Why each dependency exists (Batch rule 8).
   - The favorite chips left the timeline toolbar (+ Title and + Subtitle stay). Preset cards in the Presets tab show the same pictures as the bar.
 - other: `docs/BATCHES.md` and `docs/EDITOR_SPEC.md` (Batches 51-53, §20), edited outside the batch runs, are left out of this batch's commit, as in Batches 29-51.
 - review request: README.md docs/ARCHITECTURE.md docs/BACKLOG.md docs/PROGRESS.md src/app/PanelFrame.tsx src/app/commandCatalog.ts src/app/presetController.test.ts src/app/presetController.ts src/app/useWorkspaceLayout.ts src/core/document/types.ts src/core/keyboard/keymap.test.ts src/core/keyboard/keymap.ts src/core/scheduler/FrameScheduler.test.ts src/core/scheduler/FrameScheduler.ts src/core/store/sessionStore.ts src/panels/PresetBar.module.css src/panels/PresetBar.tsx src/panels/PreviewPanel.tsx src/panels/media/PresetNameField.tsx src/panels/media/PresetThumbPainter.test.ts src/panels/media/PresetThumbPainter.ts src/panels/media/PresetsTab.tsx src/panels/media/presetMenu.ts src/project/appSettings.ts src/project/recentProjects.test.ts src/project/sessionFile.test.ts src/project/sessionFile.ts src/render/text/PresetThumbService.test.ts src/render/text/PresetThumbService.ts src/render/text/index.ts src/render/text/presetThumbnails.ts src/styles/tokens.css src/text/index.ts src/text/presets.test.ts src/text/presets.ts src/text/starterPresets.ts src/timeline/edit/text.ts src/timeline/toolbar/TimelineToolbar.module.css src/timeline/toolbar/TimelineToolbar.tsx src/timeline/toolbar/toolbarGroups.ts
+- review: rejected (2026-10-19, first review; `npm run check` green: typecheck, lint with the CSS color and token checks, 2452 / 2452 unit tests in 235 files, 4 / 4 perf tests, build with no warning, main JS 1371.29 kB / 436.49 kB gzip, export.worker 418.31 kB, the same as reported. Browser checks in headless Chrome 155 on 9415 (own profile `%TEMP%/rev52/profile`) against my own snapshot of the working tree on 5293, the batch's helpers copied to `%TEMP%/rev52` with the ports changed)
+  1. A thumbnail drawn before its font was available is never repainted once the font arrives. A preset bar button, and a Presets tab card (same painter), keeps the fallback look until something else redraws that canvas, such as a set switch or a resize. This fails acceptance 4: "every button shows the real look of its preset (font, weight, ...)".
+     - Cause:
+       - On a font change, `PresetThumbService` remakes the family's bitmaps (`src/render/text/PresetThumbService.ts:122-128`). Until the new bitmap exists, `get` keeps returning the old one (`:74`), so the painter treats the canvas as drawn and takes it out of `waiting` (`src/panels/media/PresetThumbPainter.ts:84`).
+       - When the new bitmap lands, the service calls its listeners (`PresetThumbService.ts:118`). The only listener is `presetThumbs.redrawWaiting()` (`src/app/presetController.ts:845`), and it repaints only the canvases in `waiting` (`PresetThumbPainter.ts:64-68`). The old bitmap is closed, and the canvas keeps the old pixels.
+       - Before this batch, `fontsVersion.subscribe(() => presetThumbs.redrawAll())` repainted every card on a font change. This batch removed it, and `redrawAll` (`PresetThumbPainter.ts:58`, "the device pixel ratio changed") now has no caller.
+       - Each half is tested on its own: `PresetThumbService.test.ts:112` (the remake) and `PresetThumbPainter.test.ts:93` ("... and only those"). Nothing tests the two together.
+     - Reproduced in the app (`%TEMP%/rev52/stuck.mjs`, project `rev52-stuck`):
+       - Setup: a text clip in a family nobody has ("Zorblax"), saved into Favorites with `saveSelectionAsPreset("Zorblax probe", "favorites")`. Its button draws in the fallback font.
+       - The user then adds `Zorblax.woff2` through `addFontFiles` (My fonts; the file is Monoton's latin woff2, renamed). The font loads (`document.fonts.check` true), and the service makes the bitmaps again (`stats.made` 12 -> 15).
+       - The button's pixels keep the same hash, and `__b52.compareButton` finds 599 of 3116 pixels off, by up to 255 levels.
+       - Control: after `presetThumbs.redrawAll()` the same button matches the renderer (0 off).
+     - The same path runs whenever a family changes after its thumbnails were drawn: project fonts registered after the bar drew, a My fonts family renamed or replaced, a library family whose face loads late. It also runs after the `MAX_WAITS` fallback draw (`PresetThumbService.ts:107`). The service says that draw is "made again when its family reports a change", but the new bitmap never reaches the screen.
+     - Fix: a canvas must repaint when the bitmap it shows is replaced. Options: the service reports which entries it remade and the painter repaints the canvases that show them; or the painter repaints every canvas on a service notification (bitmap copies are cheap); or the painter keeps the bitmap it drew for each canvas. Add a unit test that wires the real service and painter: draw, report a font change for the family, run the idle queue and a frame, and expect the canvas to get the new bitmap. Then run `stuck.mjs` again.
+  - Checked and fine:
+    - Acceptance 1-3 and 6: I ran `acc123.mjs` again, 25 / 25 pass.
+      - A click with nothing selected adds "Bold outline" at the playhead in one undo step, with the inline editor open on "Bold" all selected. Typing replaces it.
+      - A click restyles three clips in one step and the selection stays. Hover previews with 0 React commits and no undo step, and leaving gives the same pixel hash back.
+      - Alt+3 and Alt+9 apply the third and ninth buttons. The tooltips show `Alt+3` / `Alt+2`.
+      - The starter pack: 43 presets (Titles 23, Subtitles 10, Captions 10). The toolbar has no chips and keeps + Title and + Subtitle.
+      - Unit tests: `presetController.test.ts`, `keymap.test.ts` and `presets.test.ts` (the starters' fonts and weights checked against `catalog.json`).
+    - Acceptance 4, apart from problem 1: I ran `acc4.mjs` again, 11 / 11 pass.
+      - All 43 buttons match the renderer within 1 level, and all look different.
+      - Cinzel is really drawn, and the stroke, box, red box and highlighted words show.
+      - Update preset redraws the button. The 44 cards are drawn from the service.
+    - Acceptance 5: I ran `acc5.mjs` again, 8 / 8 pass.
+      - The preview grows by 48 px. The per-frame probe finds no frame painted at the old size when hiding or showing, and its control (flush off) catches the stale one.
+      - `{ visible: false, set: "captions" }` survives a reload.
+      - I did not rerun the playback measurement (P1 shown: 0 commits, 2 / 900 dropped). The bar's subscriptions do not change during playback: `presetBar` is one stable object, and `+` follows only the selection. Thumbnails come from the IdleQueue, which pauses while playing.
+    - Do not build yet: per-cue styles are not built. `captionTarget` writes the track style and carries the `TODO(batch 53)` hook (`src/app/presetController.ts:415`). The highlight a preset gives the track is a written deviation.
+    - Literals: `PresetBar.module.css` uses tokens only; the 1px is the hairline. The new sizes are tokens in `tokens.css` (`--preset-button-width/-height`, `--preset-bar-height`, `--preset-swatch`), logged as a design gap. The TS reads sizes from `themeBridge` (`space[1]`, `space[2]`, `space[5]`, `timeline.dragThreshold`). The starters' colors and sizes are content, which §10.3 / §20.2 allow.
+    - §3/§4:
+      - The bar is React chrome on narrow selectors. Hover, wheel, the arrows' state and reorder drags write the DOM. A reorder writes the app settings once, on release.
+      - Apply, Alt+n and Add are one command each. `defaultDuration` goes through `usToFrame`.
+      - Thumbnails are drawn by `PresetThumbPainter` in the FrameScheduler loop. `FrameScheduler.flush` renders through the same `renderView` and does nothing during a tick.
+      - Evicted and replaced bitmaps are closed (P13).
+      - Text rasterizes on the main thread in idle time, the existing Batch 28 practice for text.
+      - Alt+1..9 are global and cannot fire while typing (`textEditing` is an isolated scope, `KeyDispatcher.ts:30`).
+    - TODOs: the only `TODO(batch` in `src` is the Batch 53 hook, which has its tag.
+    - There is no earlier rejection to recheck.
