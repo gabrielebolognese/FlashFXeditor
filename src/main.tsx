@@ -19,6 +19,7 @@ import { installKeyframeController } from "./app/keyframeController.js";
 import { installMarkerController } from "./app/markerController.js";
 import { installMediaController } from "./app/mediaController.js";
 import { installPlaybackController } from "./app/playbackController.js";
+import { installFontController } from "./app/fontController.js";
 import { installPresetController } from "./app/presetController.js";
 import { installPreviewController, startGpu } from "./app/previewController.js";
 import { installProjectController } from "./app/projectController.js";
@@ -80,6 +81,7 @@ async function start(): Promise<void> {
   installTextController();
   installGraphicsController();
   installPresetController();
+  installFontController();
   installCaptionController();
   installTranscribeController();
   installMarkerController();

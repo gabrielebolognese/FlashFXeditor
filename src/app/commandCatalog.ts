@@ -32,6 +32,7 @@ import {
   FileAudio,
   FileDown,
   FilePlus,
+  FilePlus2,
   FileUp,
   FlipHorizontal2,
   FlipVertical2,
@@ -96,11 +97,13 @@ import {
   SquareSplitHorizontal,
   StepBack,
   StepForward,
+  Star,
   Subtitles,
   Sun,
   Tag,
   Timer,
   Trash2,
+  TypeOutline,
   TrendingDown,
   TrendingUp,
   Type,
@@ -417,6 +420,10 @@ export const COMMANDS: readonly CommandInfo[] = [
   text("text.edit", "Edit text", { icon: Type, keywords: "inline typing" }),
   text("text.commit", "Finish editing text", { palette: false }),
   text("text.cancel", "Leave text editing", { palette: false }),
+  // The font browser (spec §20.1, Batch 51)
+  text("text.fontBrowser", "Open font browser", { icon: TypeOutline, keywords: "fonts typeface family weight library luxury bold handwritten picker" }),
+  text("fonts.add", "Add fonts…", { icon: FilePlus2, keywords: "my fonts import ttf otf woff woff2 upload own font file" }),
+  text("fonts.toggleFavorite", "Toggle favorite font", { icon: Star, keywords: "star fonts favorites" }),
 
   // Captions (spec §10.5, §10.6)
   captions("captions.addCue", "Add cue at playhead", { icon: Plus }),

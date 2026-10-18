@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { fontExtension, fontShorthand, formatFontManifest, nearestFace, parseFaceStyle, parseFontManifest, quoteFamily, usedFamilies } from "./fonts.js";
+import { random } from "../timeline/edit/fuzzKit.js";
+import { faceCovers, faceWeightDescriptor, fontExtension, FONT_MANIFEST_VERSION, FONT_ORIGINS, fontRecords, fontShorthand, formatFontManifest, nearestFace, parseFaceStyle, parseFontManifest, quoteFamily, usedFamilies, type ProjectFontFace } from "./fonts.js";
 
 describe("fontShorthand", () => {
   it("writes style, weight, size, the quoted family and the fallback", () => {
@@ -62,13 +63,73 @@ describe("nearestFace", () => {
 });
 
 describe("font manifest", () => {
-  it("round-trips faces and drops what is not one", () => {
-    const faces = [{ family: "Segoe UI", style: "Bold", weight: 700, italic: false, postscriptName: "SegoeUI-Bold", file: "SegoeUI-Bold.ttf" }];
-    expect(parseFontManifest(formatFontManifest(faces))).toEqual(faces);
+  const segoe: ProjectFontFace = { family: "Segoe UI", style: "Bold", weight: 700, italic: false, postscriptName: "SegoeUI-Bold", file: "SegoeUI-Bold.ttf", source: "system" };
+  const anton: ProjectFontFace = { family: "Anton", style: "Regular", weight: 400, italic: false, postscriptName: "anton-latin-400-normal", file: "anton-latin-400-normal.woff2", source: "library", unicodeRange: "U+0000-00FF", origin: "anton/anton-latin-400-normal.woff2" };
+  const inter: ProjectFontFace = { family: "Inter", style: "Variable", weight: 400, italic: true, postscriptName: "inter-latin-wght-italic", file: "inter-latin-wght-italic.woff2", source: "library", weightRange: [100, 900], origin: "inter/inter-latin-wght-italic.woff2" };
+  const brand: ProjectFontFace = { family: "Brand", style: "Bold", weight: 700, italic: false, postscriptName: "Brand-Bold", file: "u1.ttf", source: "user", origin: "u1" };
+
+  it("round-trips faces of every source (version 2) and drops what is not one", () => {
+    const faces = [segoe, anton, inter, brand];
+    const text = formatFontManifest(faces);
+    expect(JSON.parse(text).version).toBe(FONT_MANIFEST_VERSION);
+    expect(parseFontManifest(text)).toEqual(faces);
     expect(parseFontManifest("not json")).toEqual([]);
-    expect(parseFontManifest(JSON.stringify({ faces: [{ family: "A", file: "../x.ttf" }, { family: "B", file: ".hidden" }, { family: "", file: "c.ttf" }, null, { family: "D", file: "d.ttf" }] }))).toEqual([
-      { family: "D", style: "Regular", weight: 400, italic: false, postscriptName: "d.ttf", file: "d.ttf" },
+    expect(parseFontManifest(JSON.stringify({ version: 2, faces: [{ family: "A", file: "../x.ttf" }, { family: "B", file: ".hidden" }, { family: "", file: "c.ttf" }, null, { family: "D", file: "d.ttf", source: "nope", weightRange: [900, 100] }] }))).toEqual([
+      { family: "D", style: "Regular", weight: 400, italic: false, postscriptName: "d.ttf", file: "d.ttf", source: "system" },
     ]);
+  });
+
+  it("migrates a version 1 manifest (Batch 28): its faces are system fonts", () => {
+    const v1 = JSON.stringify({ version: 1, faces: [{ family: "Segoe UI", style: "Bold", weight: 700, italic: false, postscriptName: "SegoeUI-Bold", file: "SegoeUI-Bold.ttf", source: "library" }] });
+    expect(parseFontManifest(v1)).toEqual([segoe]);
+    expect(parseFontManifest(JSON.stringify({ faces: [{ family: "Segoe UI", file: "SegoeUI-Bold.ttf", style: "Bold", weight: 700, postscriptName: "SegoeUI-Bold" }] }))).toEqual([segoe]);
+  });
+
+  it("describes what a face draws: its weight descriptor and the weights it covers", () => {
+    expect(faceWeightDescriptor(inter)).toBe("100 900");
+    expect(faceWeightDescriptor(anton)).toBe("400");
+    expect(faceCovers(inter, 650, true)).toBe(true);
+    expect(faceCovers(inter, 650, false)).toBe(false);
+    expect(faceCovers(anton, 400, false)).toBe(true);
+    expect(faceCovers(anton, 700, false)).toBe(false);
+  });
+
+  it("groups faces into one record per family and source", () => {
+    expect(fontRecords([inter, brand, anton, { ...anton, file: "anton-latin-ext-400-normal.woff2" }]).map((r) => [r.family, r.source, r.faces.length])).toEqual([
+      ["Anton", "library", 2],
+      ["Brand", "user", 1],
+      ["Inter", "library", 1],
+    ]);
+  });
+
+  // Property-based (Batch 47 style, extended to font records): random manifests survive a write and a
+  // read unchanged, damaged ones never throw and only keep valid faces.
+  it("round-trips random manifests and survives damaged ones (seeded)", () => {
+    const rng = random(2851);
+    const families = ["Inter", "Brand", 'Q"uote', "Ünïcødé", "Segoe UI"];
+    for (let i = 0; i < 200; i += 1) {
+      const faces: ProjectFontFace[] = Array.from({ length: rng.int(0, 6) }, (_, k) => {
+        const source = rng.pick(["library", "user", "system"] as const);
+        const ranged = source === "library" && rng.chance(0.5);
+        return {
+          family: rng.pick(families),
+          style: rng.pick(["Regular", "Bold Italic", "Variable"]),
+          weight: rng.int(1, 1000),
+          italic: rng.chance(0.3),
+          postscriptName: `ps-${i}-${k}`,
+          file: `f${i}-${k}.${rng.pick(["ttf", "otf", "woff2"])}`,
+          source,
+          ...(ranged && { weightRange: [rng.int(1, 400), rng.int(500, 1000)] as const }),
+          ...(source === "library" && rng.chance(0.7) && { unicodeRange: "U+0000-00FF" }),
+          ...(source !== "system" && { origin: `o${k}` }),
+        };
+      });
+      const text = formatFontManifest(faces);
+      expect(parseFontManifest(text)).toEqual(faces);
+      const damaged = text.slice(0, rng.int(0, text.length));
+      const read = parseFontManifest(damaged);
+      for (const face of read) expect(FONT_ORIGINS).toContain(face.source);
+    }
   });
 
   it("names a file by its sfnt tag", () => {

@@ -40,6 +40,12 @@ The timeline, the preview, the compositor and the audio engine subscribe directl
 - A 2D overlay canvas over the preview holds the gizmo, guides, safe zones and inline text editing.
 - Text (`render/text/`): layout and Canvas2D rasterization to textures, cached by content, style and scale
   bucket (P11); animated text draws per word or line from an atlas and moves on the GPU.
+- Fonts (`render/text/FontLibrary.ts`, Batch 51): the font library (`public/fonts/library/`, its catalog
+  read on the first font browser open), My fonts (IndexedDB), the project's copies (`<project>/fonts/`)
+  and installed fonts. Library and My fonts files load on demand through `FontLoadQueue` (6 at a time,
+  cancellable); text that needs a face gets it at once, while font browser rows get theirs in idle-time
+  batches, since each face added to the document's font set restyles the page. The export worker adds
+  the same faces (the copies, library URLs, My fonts bytes) before its first frame.
 - Theme bridge (`core/theme/theme.ts`): the CSS custom properties read into a typed `Theme` for canvases,
   again when `data-theme` changes.
 

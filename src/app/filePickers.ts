@@ -36,6 +36,29 @@ export async function pickFile(types: readonly PickerType[]): Promise<File | nul
   });
 }
 
+/** The files the user picks among `types` (several at once; empty when cancelled). */
+export async function pickFiles(types: readonly PickerType[]): Promise<File[]> {
+  const picker = window as unknown as FilePickerWindow;
+  if (picker.showOpenFilePicker) {
+    try {
+      const handles = await picker.showOpenFilePicker({ types: [...types], multiple: true });
+      return await Promise.all(handles.map((handle) => handle.getFile()));
+    } catch (error) {
+      if (isAbort(error)) return [];
+      throw error;
+    }
+  }
+  return new Promise((resolve) => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.multiple = true;
+    input.accept = types.flatMap((type) => Object.entries(type.accept).flatMap(([mime, extensions]) => [mime, ...extensions])).join(",");
+    input.addEventListener("change", () => resolve([...(input.files ?? [])]), { once: true });
+    input.addEventListener("cancel", () => resolve([]), { once: true });
+    input.click();
+  });
+}
+
 /**
  * Saves `text` as a file the user names (suggested `name`): `content` gives the text for the name
  * chosen (a format picked by its extension). Returns the saved name, or null when cancelled.

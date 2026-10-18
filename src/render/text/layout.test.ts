@@ -125,4 +125,12 @@ describe("textLayout cache", () => {
     setTextMeasurer({ measure: (text) => ({ width: text.length * 10, left: 0, right: text.length * 10, ascent: 5, descent: 1 }), fontMetrics: () => ({ ascent: 8, descent: 2 }) });
     expect(textLayout(textContent("abc"), style()).width).toBe(30);
   });
+
+  it("drops the measurer's cached font metrics with the layouts (a font that loaded measures anew, Batch 51)", () => {
+    const reset = vi.fn();
+    setTextMeasurer({ ...approximateMeasurer, reset });
+    reset.mockClear();
+    invalidateTextLayouts();
+    expect(reset).toHaveBeenCalledTimes(1);
+  });
 });

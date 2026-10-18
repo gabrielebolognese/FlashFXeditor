@@ -7,8 +7,10 @@
 // - Frames come from `LayerTextures.resolveExact`, the Export frame path: every video at its exact
 //   full-resolution frame (never a proxy), at its own size or twice its drawn size, text at its exact
 //   scale, animations, captions, transitions, solids and images as the preview draws them.
-// - Fonts: the bundled faces and the project's are added to the worker's font set, and the faces the
-//   range's text needs are loaded before the first frame (layouts are never measured with a stand-in).
+// - Fonts (spec §20.1 Workers): the core faces (from the library folder under the app's base URL) and
+//   the faces the main thread hands over (the project's copies, library files, My fonts files) are
+//   added to the worker's font set, and the faces the range's text needs are loaded before the first
+//   frame (layouts are never measured with a stand-in).
 // - Offline media draw slates (spec §6.19); a video this worker cannot open or decode becomes one too,
 //   also when its decoder refuses it partway (the frame is drawn again with the slate).
 // - A lost GPU device (driver reset, GPU process crash) fails the job (Batch 47): the device is not
@@ -98,7 +100,7 @@ export class ExportRenderer {
       if (source) this.svgByFile.set(source.file, bitmap);
       else bitmap.close();
     }
-    this.fonts = new FontLibrary(typeof self !== "undefined" && "fonts" in self ? (self as unknown as { fonts: FontFaceSet }).fonts : null);
+    this.fonts = new FontLibrary(typeof self !== "undefined" && "fonts" in self ? (self as unknown as { fonts: FontFaceSet }).fonts : null, { baseUrl: params.fontBaseUrl });
     this.text = new TextRasterCache({
       upload: (canvas, options) => this.renderer.uploadImageBitmap(canvas, options),
       fontsReady: (style, value) => this.fonts.ready(style, value),
@@ -121,7 +123,7 @@ export class ExportRenderer {
     const { project, range, fonts } = this.params;
     if (!(await this.gpu.start())) throw new Error(`No ${this.params.renderer === "webgl2" ? "WebGL2" : "WebGPU"} device for the export`);
     this.stops.push(this.fonts.install());
-    await this.fonts.setProjectFaces(fonts);
+    await this.fonts.addDescriptors(fonts);
     const needs = exportNeeds(project, range);
     await Promise.all(needs.texts.map(({ style, text }) => this.fonts.load(style, text)));
     signal.throwIfAborted();
@@ -185,7 +187,7 @@ export class ExportRenderer {
     this.textures.clear();
     this.text.clear();
     for (const stop of this.stops.splice(0).reverse()) stop();
-    this.fonts.clearProjectFaces();
+    this.fonts.clearDescriptors();
     this.workers.terminate();
     this.pool.clear();
     for (const bitmap of this.svgByFile.values()) bitmap.close();

@@ -402,11 +402,14 @@
   --picker-dark: #000;
   --picker-hue: linear-gradient(to right, #f00 0%, #ff0 16.67%, #0f0 33.33%, #0ff 50%, #00f 66.67%, #f0f 83.33%, #f00 100%);
   --picker-checker: repeating-conic-gradient(var(--surface-5) 0% 25%, var(--surface-3) 0% 50%) 0 0 / var(--space-3) var(--space-3);
-  /* Font picker popover (Batch 28, gap: the DS has none): a search field over the families, each drawn
-     in its own font at the stat size, in sections (overline headings); 10 x --control-default wide,
-     the list at most 12 rows tall. */
-  --font-picker-width: calc(10 * var(--control-default));
-  --font-picker-list-height: calc(12 * var(--control-default));
+  /* Font browser popover (Batch 51, replacing the Batch 28 picker; gap: the DS has none): a search
+     row, a row of category chips and one of weight chips over the families, each drawn in its own font
+     at the stat size, in sections (overline headings); 12 x --control-default wide (room for the weight
+     chips in one row), the list 12 rows tall (fixed: filtering never resizes it). */
+  --font-browser-width: calc(12 * var(--control-default));
+  --font-browser-list-height: calc(12 * var(--control-default));
+  /* Settings > About > Font licenses (Batch 51): the list scrolls inside its group, 10 rows of two lines. */
+  --font-licenses-height: calc(10 * (var(--type-body-line) + var(--type-caption-line) + 2 * var(--space-1)));
   /* The Text section's content field: four body lines tall before it scrolls (resizable). */
   --text-content-height: calc(4 * var(--type-body-line) + 2 * var(--space-2));
 
