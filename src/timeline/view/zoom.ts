@@ -41,9 +41,19 @@ export function fitPxPerFrame(context: ZoomContext): number {
   return clamp(context.width / fitFrames(context.contentEnd, context.fps), MIN_PX_PER_FRAME, MAX_PX_PER_FRAME);
 }
 
-/** Zoomed out as far as Fit-to-content (never below 0.01 px/frame), in to 400 px/frame. */
+/**
+ * A short or empty timeline can still be zoomed out to show this much (Batch 46): Fit alone would stop
+ * an empty project at 2 s, with no room to see where a clip would land at 10 s.
+ */
+const MIN_ZOOM_OUT_SECONDS = 60;
+
+/**
+ * Zoomed out as far as Fit-to-content or a minute, whichever shows more (never below 0.01 px/frame), in
+ * to 400 px/frame.
+ */
 export function zoomLimits(context: ZoomContext): { min: number; max: number } {
-  return { min: fitPxPerFrame(context), max: MAX_PX_PER_FRAME };
+  const minute = context.width > 0 ? context.width / secondsToFrames(MIN_ZOOM_OUT_SECONDS, context.fps) : MIN_PX_PER_FRAME;
+  return { min: Math.max(MIN_PX_PER_FRAME, Math.min(fitPxPerFrame(context), minute)), max: MAX_PX_PER_FRAME };
 }
 
 /** Never before frame 0, never more than OVERSCROLL of the view past the content end. */
@@ -82,8 +92,8 @@ export const SELECTION_MARGIN = 0.1;
  * side, centered, within the zoom limits and the scroll range.
  */
 export function zoomToSpan(start: number, end: number, context: ZoomContext): TimelineViewport {
-  const limits = zoomLimits(context);
-  const px = clamp((context.width * (1 - 2 * SELECTION_MARGIN)) / Math.max(1, end - start), limits.min, limits.max);
+  // Never wider than Fit: the minute a short timeline may zoom out to is not a selection's.
+  const px = clamp((context.width * (1 - 2 * SELECTION_MARGIN)) / Math.max(1, end - start), fitPxPerFrame(context), MAX_PX_PER_FRAME);
   return { pxPerFrame: px, scrollFrame: clampScroll((start + end) / 2 - context.width / px / 2, px, context) };
 }
 

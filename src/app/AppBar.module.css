@@ -24,6 +24,8 @@
 .projectName,
 .nameInput {
   min-width: 0;
+  /* The field is as wide as the name it edits: the bar does not move when it opens (Batch 46). */
+  field-sizing: content;
   max-width: calc(var(--control-default) * 10);
   height: var(--control-compact);
   margin-left: var(--space-1);
@@ -114,8 +116,13 @@
   white-space: nowrap;
 }
 
+/* The free middle; it holds the read-only notice (Batch 46). */
 .spacer {
+  display: flex;
   flex: 1 1 auto;
+  justify-content: center;
+  min-width: 0;
+  padding: 0 var(--space-4);
 }
 
 /* The one hero button of the screen: brand-gold gradient. */
@@ -140,6 +147,11 @@
 
 .export[aria-disabled] {
   opacity: var(--disabled-opacity);
+}
+
+/* The gold ring does not show on gold (Batch 46). */
+.export:focus-visible {
+  box-shadow: var(--focus-ring-on-accent);
 }
 
 .exportIcon {

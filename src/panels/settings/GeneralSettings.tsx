@@ -1,5 +1,6 @@
 import { FolderOpen, RotateCcw, Trash2 } from "lucide-react";
 import { useEffect, type ReactNode } from "react";
+import { commandLabel } from "../../app/commandCatalog.js";
 import { presetLibrary } from "../../app/presetController.js";
 import { appView } from "../../app/projectController.js";
 import { actions, appSettings } from "../../app/services.js";
@@ -12,6 +13,7 @@ import { SILENCE_MIN_MS, SILENCE_PADDING_MS, SILENCE_THRESHOLD } from "../../tim
 import { Button } from "../../ui/Button.js";
 import { IconButton } from "../../ui/IconButton.js";
 import { Select } from "../../ui/Select.js";
+import { shortcutLabel } from "../../ui/shortcutLabel.js";
 import { Row } from "../properties/Section.js";
 import sectionStyles from "../properties/Section.module.css";
 import { AutosaveRow, CacheRow, DurationRow, ProxyRows, SettingNumber, SwitchRow, TransitionRows } from "./SettingFields.js";
@@ -40,12 +42,14 @@ const IMPORT_MODES = [
     command: "media.importMode.copy",
     label: "Copy files into the project folder",
     note: "The project stays self-contained in one folder you can move or back up.",
+    tooltip: "New imports are copied into the project's media folder",
   },
   {
     mode: "reference",
     command: "media.importMode.reference",
     label: "Link to the original files",
     note: "Nothing is copied. Moved or renamed files go offline until you relink them, and after a restart the browser asks again before reading them.",
+    tooltip: "New imports link to the files where they are",
   },
 ] as const;
 
@@ -55,7 +59,16 @@ function ImportMode() {
   return (
     <div className={styles.choices} role="radiogroup" aria-label="Import mode">
       {IMPORT_MODES.map((choice) => (
-        <button key={choice.mode} type="button" role="radio" aria-checked={mode === choice.mode} className={styles.choice} data-command={choice.command} onClick={() => actions.run(choice.command)}>
+        <button
+          key={choice.mode}
+          type="button"
+          role="radio"
+          aria-checked={mode === choice.mode}
+          className={styles.choice}
+          data-command={choice.command}
+          data-tooltip={choice.tooltip}
+          onClick={() => actions.run(choice.command)}
+        >
           <span className={styles.radio} aria-hidden="true" />
           <span>
             <span className={styles.choiceLabel}>{choice.label}</span>
@@ -108,7 +121,10 @@ function Transcription() {
   );
 }
 
-/** The preset library folder (spec §10.3; the Presets tab's strip has the same buttons). */
+/**
+ * The preset library folder (spec §10.3; the Presets tab's strip has the same buttons). Sync and Stop
+ * are always there (Batch 46), disabled until a folder is chosen.
+ */
 function LibraryFolder() {
   const folder = useStoreSelector(presetLibrary, (state) => state.folder);
   const status = folder ? ({ syncing: "Syncing…", synced: "Synced", permission: "Needs permission: Sync to allow", error: folder.message ?? "Couldn't sync" } as const)[folder.status] : "None: presets stay in this browser";
@@ -123,12 +139,22 @@ function LibraryFolder() {
           <Button size="compact" icon={FolderOpen} commandId="presets.chooseFolder">
             {folder ? "Change…" : "Choose…"}
           </Button>
-          {folder && <IconButton commandId="presets.syncFolder" />}
-          {folder && <IconButton commandId="presets.stopFolder" />}
+          <IconButton
+            commandId="presets.syncFolder"
+            disabled={!folder || folder.status === "syncing"}
+            label={!folder ? "Sync the library folder: choose one first" : folder.status === "syncing" ? "Syncing with the library folder…" : undefined}
+          />
+          <IconButton commandId="presets.stopFolder" disabled={!folder} label={folder ? undefined : "Stop syncing: no library folder is set"} />
         </span>
       </div>
     </Row>
   );
+}
+
+/** The default transition's key, as the keymap has it now (rebindable, Batch 40). */
+function transitionNote(): string {
+  const keys = shortcutLabel("edit.defaultTransition");
+  return keys ? `${keys} adds this transition at the nearest cut.` : `${commandLabel("edit.defaultTransition")} (no key set) adds this transition at the nearest cut.`;
 }
 
 export function GeneralSettings() {
@@ -145,7 +171,7 @@ export function GeneralSettings() {
         <DurationRow label="Solid" setting="solidDurationMs" ariaLabel="Default solid duration" />
         <DurationRow label="Freeze frame" setting="freezeDurationMs" ariaLabel="Freeze frame duration" />
       </Group>
-      <Group title="Transitions" note="Ctrl+Shift+D adds this transition at the nearest cut.">
+      <Group title="Transitions" note={transitionNote()}>
         <TransitionRows withKind />
       </Group>
       <Group title="Editing">
@@ -182,7 +208,7 @@ export function GeneralSettings() {
         <ProxyRows />
       </Group>
       <Group title="Storage">
-        {projectOpen && <CacheRow />}
+        <CacheRow projectOpen={projectOpen} />
         <LibraryFolder />
         <Row label="Starter presets">
           <div className={styles.folderButtons}>

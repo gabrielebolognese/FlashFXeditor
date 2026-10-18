@@ -21,3 +21,14 @@
   white-space: pre;
   pointer-events: none;
 }
+
+/* The empty timeline's hint (Batch 46): over the track area, right of the header column and under the
+   ruler; clicks and drops go through to the canvas. */
+.empty {
+  position: absolute;
+  top: var(--timeline-ruler-height);
+  right: 0;
+  bottom: 0;
+  left: var(--timeline-header-width);
+  pointer-events: none;
+}

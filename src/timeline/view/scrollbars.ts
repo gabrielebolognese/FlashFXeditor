@@ -20,7 +20,8 @@ export interface ScrollbarHit {
 
 /** Where the scrollbars are (view CSS px): troughs, thumbs (null: nothing to scroll) and the zoom handle width. */
 export interface ScrollbarLayout {
-  h: { trough: Rect; thumb: Rect; handle: number };
+  /** `span`: the frames the trough spans (`scrollSpan`), which places the markers and the in/out range on it. */
+  h: { trough: Rect; thumb: Rect; handle: number; span: number };
   v: { trough: Rect; thumb: Rect | null };
 }
 
@@ -114,9 +115,15 @@ export function layoutScrollbars(
   const hThumb = horizontalThumb(view, context, h, minThumb);
   const vThumb = verticalThumb(bars.scrollY, bars.scrollYRange, bars.viewHeight, v, minThumb);
   return {
-    h: { trough: h, thumb: { x: hThumb.x, y: h.y, width: hThumb.width, height: h.height }, handle: Math.min(h.height, hThumb.width / 3) },
+    h: { trough: h, thumb: { x: hThumb.x, y: h.y, width: hThumb.width, height: h.height }, handle: Math.min(h.height, hThumb.width / 3), span: scrollSpan(view, context) },
     v: { trough: v, thumb: vThumb ? { x: v.x, y: vThumb.y, width: v.width, height: vThumb.height } : null },
   };
+}
+
+/** Where `frame` lies along the horizontal trough (the markers and the in/out range on the bar, Batch 46). */
+export function scrollbarX(layout: ScrollbarLayout, frame: number): number {
+  const { trough, span } = layout.h;
+  return trough.x + (span > 0 ? clamp(frame / span, 0, 1) : 0) * trough.width;
 }
 
 const inside = (rect: Rect, x: number, y: number) => x >= rect.x && x < rect.x + rect.width && y >= rect.y && y < rect.y + rect.height;

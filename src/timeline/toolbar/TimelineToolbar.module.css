@@ -77,7 +77,9 @@
   box-shadow: 0 0 0 1px var(--danger-wash);
 }
 
+/* At least the widest usual format ("00:00.000"): the ff / ms toggle never moves the field (Batch 46). */
 .duration {
+  min-width: calc(var(--space-6) * 2 + var(--space-5));
   color: var(--text-tertiary);
   font: var(--type-mono);
   font-variant-numeric: tabular-nums;

@@ -1,5 +1,5 @@
 import { Pipette } from "lucide-react";
-import { useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
+import { useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { createPortal } from "react-dom";
 import { formatHexColor, parseHexColor } from "../core/document/color.js";
 import type { RGBA } from "../core/document/types.js";
@@ -18,6 +18,10 @@ import { useDismiss } from "./useDismiss.js";
 // typed, a recent color, the eyedropper) is one `onChange` (one command); while the square, a strip or
 // a channel label is dragged the picker paints itself by direct DOM writes (P1) and reports `onPreview`
 // (ephemeral, P2). A drag that ends without a release (Esc, the picker closed) only ends the preview.
+// Keyboard (Batch 46): the picker takes the focus (its hex field) when it opens and Tab cycles inside it;
+// the square and the strips are sliders (the arrows step 1%, or 1 degree of hue, Shift 10x; on the
+// square Left / Right move the saturation, Up / Down the brightness; each step is one pick); Esc, or a
+// pick that closes it, gives the focus back to the swatch.
 
 export interface ColorFieldProps {
   value: RGBA;
@@ -69,7 +73,7 @@ export function ColorField({ value, onChange, onPreview, recent, ariaLabel, disa
   );
 }
 
-interface PickerColor extends Hsv {
+export interface PickerColor extends Hsv {
   a: number;
 }
 
@@ -140,7 +144,7 @@ interface PickerProps {
   onClose: () => void;
 }
 
-type Area = "square" | "hue" | "alpha";
+export type Area = "square" | "hue" | "alpha";
 
 /** The picker color under a pointer on one of the areas. */
 function colorAt(color: PickerColor, area: Area, element: HTMLElement, clientX: number, clientY: number): PickerColor {
@@ -151,6 +155,49 @@ function colorAt(color: PickerColor, area: Area, element: HTMLElement, clientX: 
   if (area === "hue") return { ...color, h: Math.min(359.999, x * 360) };
   return { ...color, a: Math.round(x * 100) / 100 };
 }
+
+/**
+ * The picker color after a key on one of the areas, or null when the key does nothing there: the arrows
+ * step 1% (hue: 1 degree), 10x with Shift, from the whole step nearest the current value; on the square
+ * Left / Right move the saturation and Up / Down the brightness; Home / End go to a strip's ends.
+ */
+export function stepColor(color: PickerColor, area: Area, key: string, shift: boolean): PickerColor | null {
+  const step = shift ? 10 : 1;
+  const percent = (value: number, delta: number) => Math.min(100, Math.max(0, Math.round(value * 100) + delta)) / 100;
+  if (area === "square") {
+    if (key === "ArrowLeft" || key === "ArrowRight") return { ...color, s: percent(color.s, key === "ArrowLeft" ? -step : step) };
+    if (key === "ArrowDown" || key === "ArrowUp") return { ...color, v: percent(color.v, key === "ArrowDown" ? -step : step) };
+    return null;
+  }
+  const max = area === "hue" ? 360 : 100;
+  const current = Math.round(area === "hue" ? color.h : color.a * 100);
+  let next: number;
+  if (key === "ArrowLeft" || key === "ArrowDown") next = current - step;
+  else if (key === "ArrowRight" || key === "ArrowUp") next = current + step;
+  else if (key === "Home") next = 0;
+  else if (key === "End") next = max;
+  else return null;
+  next = Math.min(max, Math.max(0, next));
+  // The hue strip's right end is red again: kept just under 360, as a drag there does.
+  return area === "hue" ? { ...color, h: Math.min(359.999, next) } : { ...color, a: next / 100 };
+}
+
+/** The slider attributes of an area for its color (written into the DOM by the picker's paint, P1). */
+export function sliderValue(color: PickerColor, area: Area): { now: number; text: string } {
+  if (area === "square") {
+    const s = Math.round(color.s * 100);
+    return { now: s, text: `Saturation ${s}%, brightness ${Math.round(color.v * 100)}%` };
+  }
+  if (area === "hue") {
+    const h = Math.round(color.h);
+    return { now: h, text: `${h} degrees` };
+  }
+  const a = Math.round(color.a * 100);
+  return { now: a, text: `${a}%` };
+}
+
+/** What Tab can reach in the picker (it cycles there while the picker is open). */
+const TABBABLE = 'input:not([disabled]), button:not([disabled]), [tabindex="0"]';
 
 function ColorPicker({ anchor, initial, recent, onChange, onPreview, onClose }: PickerProps) {
   const panel = useRef<HTMLDivElement>(null);
@@ -173,6 +220,7 @@ function ColorPicker({ anchor, initial, recent, onChange, onPreview, onClose }: 
     element.style.top = `${below ? rect.bottom + gap : Math.max(gap, rect.top - gap - element.offsetHeight)}px`;
     element.style.visibility = "visible";
     const part = (name: string) => element.querySelector<HTMLElement>(`[data-part="${name}"]`);
+    const sliders = (["square", "hue", "alpha"] as const).map((area) => [area, part(area)] as const);
     const square = part("square");
     const squareThumb = part("squareThumb");
     const hueThumb = part("hueThumb");
@@ -190,6 +238,11 @@ function ColorPicker({ anchor, initial, recent, onChange, onPreview, onClose }: 
       alphaFill?.style.setProperty("background-image", `linear-gradient(to right, transparent, ${solid})`);
       alphaThumb?.style.setProperty("left", `${color.a * 100}%`);
       preview?.style.setProperty("--swatch-color", formatHexColor(rgba));
+      for (const [area, slider] of sliders) {
+        const { now, text } = sliderValue(color, area);
+        slider?.setAttribute("aria-valuenow", String(now));
+        slider?.setAttribute("aria-valuetext", text);
+      }
       // The hex field is a commit-mode text field: it renders when a pick ends, never during a drag (P1).
       if (!dragging) setHex(formatHexColor(rgba));
     };
@@ -198,6 +251,19 @@ function ColorPicker({ anchor, initial, recent, onChange, onPreview, onClose }: 
   }, [anchor, store]);
 
   useDismiss([panel], onClose);
+  // The keyboard comes in on open (the hex field), and goes back to the swatch when the picker closes
+  // with it inside (Esc, a pick that closes it); a press elsewhere keeps the focus it moved. Checked once
+  // the picker has left the page: a dev StrictMode remount keeps it there, and nothing moves.
+  useLayoutEffect(() => {
+    const element = panel.current;
+    element?.querySelector<HTMLInputElement>('input[aria-label="Hex"]')?.focus({ preventScroll: true });
+    return () => {
+      if (!element?.contains(document.activeElement)) return;
+      queueMicrotask(() => {
+        if (!element.isConnected && anchor.isConnected) anchor.focus({ preventScroll: true });
+      });
+    };
+  }, [anchor]);
   // Closed or unmounted mid-drag (Esc, the selection changed): the preview ends, nothing is committed (P2).
   useLayoutEffect(
     () => () => {
@@ -222,7 +288,29 @@ function ColorPicker({ anchor, initial, recent, onChange, onPreview, onClose }: 
   const onAreaUp = () => {
     if (store.getState().dragging) pick(store, store.getState().color, "commit");
   };
-  const area = { onPointerDown: onAreaDown, onPointerMove: onAreaMove, onPointerUp: onAreaUp, onPointerCancel: onAreaUp };
+  // A key on a focused area: one pick (one command), as a typed channel value is.
+  const onAreaKey = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (event.altKey || event.ctrlKey || event.metaKey || store.getState().dragging) return;
+    const next = stepColor(store.getState().color, event.currentTarget.dataset.part as Area, event.key, event.shiftKey);
+    if (!next) return;
+    event.preventDefault();
+    pick(store, next, "commit");
+  };
+  const area = { tabIndex: 0, role: "slider", onPointerDown: onAreaDown, onPointerMove: onAreaMove, onPointerUp: onAreaUp, onPointerCancel: onAreaUp, onKeyDown: onAreaKey };
+  // Tab and Shift+Tab cycle inside the picker: it is portalled to the end of the page, where Tab would leave it.
+  const onPanelKey = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    const element = panel.current;
+    if (event.key !== "Tab" || !element) return;
+    const items = [...element.querySelectorAll<HTMLElement>(TABBABLE)];
+    const first = items[0];
+    const last = items.at(-1);
+    if (!first || !last) return;
+    const at = items.indexOf(document.activeElement as HTMLElement);
+    if (event.shiftKey ? at <= 0 : at === items.length - 1 || at < 0) {
+      event.preventDefault();
+      (event.shiftKey ? last : first).focus();
+    }
+  };
 
   const Dropper = eyeDropper();
   const sample = () => {
@@ -242,14 +330,14 @@ function ColorPicker({ anchor, initial, recent, onChange, onPreview, onClose }: 
   };
 
   return createPortal(
-    <div ref={panel} className={styles.picker} role="dialog" aria-label="Color picker" data-control="">
-      <div className={styles.square} data-part="square" {...area}>
+    <div ref={panel} className={styles.picker} role="dialog" aria-label="Color picker" data-control="" onKeyDown={onPanelKey}>
+      <div className={styles.square} data-part="square" aria-label="Saturation and brightness" aria-valuemin={0} aria-valuemax={100} {...area}>
         <div className={styles.thumb} data-part="squareThumb" />
       </div>
-      <div className={styles.strip} data-part="hue" data-kind="hue" {...area}>
+      <div className={styles.strip} data-part="hue" data-kind="hue" aria-label="Hue" aria-valuemin={0} aria-valuemax={360} {...area}>
         <div className={styles.stripThumb} data-part="hueThumb" />
       </div>
-      <div className={styles.strip} data-part="alpha" data-kind="alpha" {...area}>
+      <div className={styles.strip} data-part="alpha" data-kind="alpha" aria-label="Opacity" aria-valuemin={0} aria-valuemax={100} {...area}>
         <div className={styles.alphaFill} data-part="alphaFill" />
         <div className={styles.stripThumb} data-part="alphaThumb" />
       </div>

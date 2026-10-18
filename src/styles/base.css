@@ -45,6 +45,13 @@ button {
   box-shadow: var(--focus-ring);
 }
 
+/* Selected text in fields (the rename fields, the timecodes, the cue editor): the canvas editor's gold
+   highlight instead of the browser's blue (Batch 46, the Batch 15 follow-up). */
+::selection {
+  background: var(--text-selection);
+  color: var(--text-primary);
+}
+
 h1,
 h2,
 h3,

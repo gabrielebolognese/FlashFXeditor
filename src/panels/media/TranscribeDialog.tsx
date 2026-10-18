@@ -81,16 +81,24 @@ function TranscribeSettingsDialog({ state }: { state: TranscribeDialogState }) {
       onClose={closeTranscribeDialog}
       footer={
         <>
-          {cached && (
-            <span className={styles.footerStart}>
-              <Button control icon={Trash2} disabled={state.removing !== null} tooltip="Delete this model's files from the browser (it downloads again next time)" onClick={() => void removeModel(model)}>
-                {state.removing === model ? "Removing…" : "Remove model"}
-              </Button>
-            </span>
-          )}
+          {/* Always there (Batch 46): disabled until the chosen model is downloaded. */}
+          <span className={styles.footerStart}>
+            <Button control icon={Trash2} disabled={!cached || state.removing !== null} tooltip={cached ? "Delete this model's files from the browser (it downloads again next time)" : cached === false ? "This model is not downloaded" : "Checking the downloaded models…"} onClick={() => void removeModel(model)}>
+              {state.removing === model ? "Removing…" : "Remove model"}
+            </Button>
+          </span>
           <Button control onClick={closeTranscribeDialog}>Cancel</Button>
-          <Button control variant="primary" icon={cached === false ? Download : undefined} disabled={!frames} autoFocus onClick={start}>
-            {cached === false ? `Download ${whisperModel(model).sizeMb[device]} MB and transcribe` : "Transcribe"}
+          <Button control variant="primary" disabled={!frames} tooltip={frames ? undefined : "The timeline is empty: nothing to transcribe"} autoFocus onClick={start}>
+            {/* Both labels share one cell: the button keeps the longer one's width as the model changes. */}
+            <span className={styles.startLabels}>
+              <span className={styles.startLabel} data-shown={cached === false || undefined}>
+                <Download className={styles.startIcon} aria-hidden="true" />
+                {`Download ${whisperModel(model).sizeMb[device]} MB and transcribe`}
+              </span>
+              <span className={styles.startLabel} data-shown={cached !== false || undefined}>
+                Transcribe
+              </span>
+            </span>
           </Button>
         </>
       }
@@ -106,27 +114,34 @@ function TranscribeSettingsDialog({ state }: { state: TranscribeDialogState }) {
         <Select value={language} options={LANGUAGE_SELECT} onChange={setLanguage} label="Transcription language" />
         <span className={styles.label}>Range</span>
         <div className={styles.range}>
-          {inOutKey !== "" && (
-            <div className={styles.chips}>
-              <IconButton control text="In to out" label="Transcribe the in/out range" pressed={range === "inOut"} onClick={() => setRange("inOut")} />
-              <IconButton control text="Whole timeline" label="Transcribe the whole timeline" pressed={range === "all"} onClick={() => setRange("all")} />
-            </div>
-          )}
+          {/* Both chips always (Batch 46): In to out is disabled until an in or out point is set. */}
+          <div className={styles.chips}>
+            <IconButton
+              control
+              text="In to out"
+              label={inOutKey === "" ? "Transcribe the in/out range: set an in or out point first" : "Transcribe the in/out range"}
+              pressed={range === "inOut"}
+              disabled={inOutKey === ""}
+              onClick={() => setRange("inOut")}
+            />
+            <IconButton control text="Whole timeline" label="Transcribe the whole timeline" pressed={range === "all"} onClick={() => setRange("all")} />
+          </div>
           <span className={styles.mono}>{frames ? span(project, frames) : "The timeline is empty"}</span>
         </div>
       </div>
-      <p className={styles.note}>
+      <p className={styles.status}>
         {state.error
           ? `Couldn't read the model cache: ${state.error}`
           : state.status
             ? `Runs on ${DEVICE_TEXT[device]} of this computer; the audio never leaves it. ${cached ? "" : "The model downloads once from Hugging Face and stays in this browser."}`
             : "Checking the downloaded models…"}
       </p>
-      {replaced > 0 && (
-        <p className={styles.warning}>
-          The {replaced} cue{replaced === 1 ? "" : "s"} in this range will be replaced: you review the new ones first.
-        </p>
-      )}
+      {/* A reserved line (Batch 46): what the transcription replaces, or that it replaces nothing. */}
+      <p className={styles.warning} data-quiet={replaced === 0 || undefined}>
+        {replaced > 0
+          ? `The ${replaced} cue${replaced === 1 ? "" : "s"} in this range will be replaced: you review the new ones first.`
+          : "No cue is replaced: you review the new ones before they go on the caption track."}
+      </p>
     </Modal>
   );
 }

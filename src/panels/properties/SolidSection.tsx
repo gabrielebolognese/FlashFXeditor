@@ -86,11 +86,10 @@ export function SolidSection({ ids }: { ids: readonly ClipId[] }) {
       <Row label={isGradient ? "Top" : "Color"}>
         <ColorField value={colorOf(top, WHITE)} recent={recent} ariaLabel={isGradient ? "Gradient top color" : "Fill color"} {...color("Change fill", withTop)} />
       </Row>
-      {isGradient && (
-        <Row label="Bottom">
-          <ColorField value={colorOf(bottom, BLACK)} recent={recent} ariaLabel="Gradient bottom color" {...color("Change fill", withBottom)} />
-        </Row>
-      )}
+      {/* Disabled, never hidden (spec §17): choosing Gradient moves nothing; a solid fill shows the bottom a gradient starts with. */}
+      <Row label="Bottom">
+        <ColorField value={colorOf(bottom, BLACK)} recent={recent} ariaLabel="Gradient bottom color" disabled={!isGradient} {...color("Change fill", withBottom)} />
+      </Row>
       <Row label="Size">
         <div className={styles.pair}>
           <NumberField label="W" unit="px" binding={bindings.width} precision={0} min={SOLID_WIDTH.min} max={SOLID_WIDTH.max} ariaLabel="Solid width" />

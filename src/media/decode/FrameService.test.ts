@@ -395,7 +395,8 @@ describe("FrameService", () => {
     detach();
     const closed = workers.request.mock.calls.filter(([method]) => method === "closeVideo").map(([, params]) => params);
     expect(closed).toEqual([{ mediaId: "m1" }, { mediaId: "m2" }]);
-    await expect(frames.video("m1")).rejects.toThrow(/No project/);
+    // A request after the close is moot: an abort, which the preview ignores (no warning, Batch 46).
+    await expect(frames.video("m1")).rejects.toMatchObject({ name: "AbortError" });
   });
 
   it("cancels the open of a media released while it opens", async () => {

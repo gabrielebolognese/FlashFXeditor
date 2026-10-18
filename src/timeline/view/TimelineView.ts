@@ -53,7 +53,7 @@
 import type { Affect } from "../../core/commands/command.js";
 import type { KeyframeSection } from "../../core/document/keyframes.js";
 import { firstFrameOfSecond, formatSpeed, formatTimecode, secondOfFrame, usToFrame } from "../../core/document/time.js";
-import { isMediaClip, type Clip, type ClipId, type Frame, type Project, type TrackId, type TrackKind } from "../../core/document/types.js";
+import { isMediaClip, type Clip, type ClipId, type Frame, type Project, type Track, type TrackId, type TrackKind } from "../../core/document/types.js";
 import { isEditableTarget } from "../../core/keyboard/KeyDispatcher.js";
 import { isSnapKey, type Platform } from "../../core/keyboard/keys.js";
 import { watchDevicePixelRatio } from "../../core/scheduler/devicePixelRatio.js";
@@ -80,11 +80,12 @@ import { contentEnd, gapAt, isClipLocked, laneOf, linkedPartners, neighbors, sel
 import { resolveSnap, snapCandidatesOf, SnapIndex, snapLabel, type SnapCandidates, type SnapKind, type SnapTarget } from "../snap/snapIndex.js";
 import { createWants, type ClipVisualsSource } from "./clipVisuals.js";
 import { trimCursor, trimCursors, type TrimCursors } from "./cursors.js";
-import { drawContent, type TimelineFonts } from "./drawContent.js";
+import { drawContent, fontOf, type TimelineFonts } from "./drawContent.js";
 import { drawOverlay, type BandScene, type BlockScene, type EditPointMark, type MarkerScene, type RangeScene, type RazorScene, type TrackDragScene } from "./drawOverlay.js";
 import { blockBand } from "./fadesAndTransitions.js";
 import { contains, TimelineGeometry, type HeaderToggle, type Rect, type TimelineMetrics } from "./geometry.js";
-import { edgeStep } from "./gestures/autoScroll.js";
+import { edgeStep, holdBoost } from "./gestures/autoScroll.js";
+import { canvasCapacity } from "../../core/scheduler/canvasCapacity.js";
 import { MediaDropGesture } from "./gestures/dropMedia.js";
 import { MarqueeGesture } from "./gestures/marquee.js";
 import { MoveGesture, NO_MODIFIERS, type DragModifiers, type MoveSnap } from "./gestures/moveClips.js";
@@ -125,6 +126,11 @@ export interface TimelineViewDeps {
   onAddTrack(kind: TrackKind): void;
   /** A track header toggle (target, lock, mute, solo, hide, height) was clicked. */
   onToggleTrack(trackId: TrackId, toggle: HeaderToggle): void;
+  /**
+   * The hovered header toggle, or a header name cut short, as a tooltip (Batch 46: the canvas controls
+   * get the app's tooltip): its box in viewport px, or null when the pointer leaves it.
+   */
+  onHoverHint?(hint: { rect: { left: number; top: number; width: number; height: number }; text: string } | null): void;
   /** A track header was dragged to `lane` among the tracks of its kind (spec §6.12): one command. */
   onReorderTrack?(trackId: TrackId, lane: number): void;
   /** A track header was double-clicked (spec §6.1): the controller opens the inline rename. */
@@ -213,6 +219,9 @@ interface Layer {
   /** Backing store in device px. */
   width: number;
   height: number;
+  /** The canvas element's size in CSS px: its capacity, at least the view's (Batch 46, `canvasCapacity`). */
+  cssWidth: number;
+  cssHeight: number;
 }
 
 /** What a drag of a pressed clip body does with the active tool (null: nothing, a click selects). */
@@ -379,6 +388,26 @@ interface CursorContext {
   pan: boolean;
   /** Mod held: a click on the rubber band's line adds a key (Batch 37). */
   mod: boolean;
+  /** The hovered header can be dragged to reorder its track (video and audio, spec §6.12). */
+  headerDrag: boolean;
+}
+
+/** A header toggle's tooltip: what a click does to this track (Batch 46). */
+function toggleHint(toggle: HeaderToggle, track: Track): string {
+  switch (toggle) {
+    case "target":
+      return track.targeted ? "Untarget track (edits skip it)" : "Target track (edits act on it)";
+    case "lock":
+      return track.locked ? "Unlock track" : "Lock track";
+    case "mute":
+      return track.muted ? "Unmute track" : "Mute track";
+    case "solo":
+      return track.solo ? "Unsolo track" : "Solo track";
+    case "hide":
+      return track.hidden ? "Show track" : "Hide track";
+    case "height":
+      return `Track height: ${track.height} (click for the next)`;
+  }
 }
 
 /** The cursor of an edit (a drag, or a press that may become one). */
@@ -400,7 +429,7 @@ function editCursor(cursors: TrimCursors, target: EditTarget, ripple: boolean): 
 /** The cursor for the hover hit and the gesture (spec §6.18: set from the hover hit, by tool). */
 function cursorFor(hit: HitResult | null, gesture: Gesture | null, cursors: TrimCursors, context: CursorContext): string {
   if (gesture?.kind === "pan") return "grabbing";
-  if (gesture?.kind === "scrollbar") return gesture.part === "thumb" ? "default" : "ew-resize";
+  if (gesture?.kind === "scrollbar") return gesture.part === "thumb" ? "grabbing" : "ew-resize";
   if (gesture?.kind === "scrub" || gesture?.kind === "markerDrag" || gesture?.kind === "rangeDrag") return "ew-resize";
   if (gesture?.kind === "trackDrag") return "grabbing";
   if (gesture?.kind === "keyDrag" || gesture?.kind === "fadeDrag" || gesture?.kind === "transitionDrag") return "ew-resize";
@@ -420,7 +449,7 @@ function cursorFor(hit: HitResult | null, gesture: Gesture | null, cursors: Trim
   if (gesture?.kind === "press" && (gesture.drag === "slip" || gesture.drag === "slide")) return cursors[gesture.drag];
   if (gesture) return "default";
   if (!hit) return "default";
-  if (hit.type === "scrollbar") return hit.scrollbar?.part === "start" || hit.scrollbar?.part === "end" ? "ew-resize" : "default";
+  if (hit.type === "scrollbar") return hit.scrollbar?.part === "start" || hit.scrollbar?.part === "end" ? "ew-resize" : hit.scrollbar?.part === "thumb" ? "grab" : "default";
   if (context.pan) return "grab";
   if (hit.type === "ruler" || hit.type === "playheadHead" || hit.type === "inHandle" || hit.type === "outHandle") return "ew-resize";
   if (hit.type === "marker" || (hit.type === "keyframe" && context.tool === "select")) return "pointer";
@@ -428,6 +457,9 @@ function cursorFor(hit: HitResult | null, gesture: Gesture | null, cursors: Trim
   if (context.tool === "select" && hit.type === "transition") return "pointer";
   if (context.tool === "select" && hit.type === "rubberBand") return hit.band?.key !== null ? "pointer" : context.mod ? "copy" : "ns-resize";
   if ((hit.type === "trackHeader" && hit.addTrack) || hit.type === "headerToggle") return "pointer";
+  // Batch 46: every hit type has its cursor; a header drags its track, a gap is clicked to select it.
+  if (hit.type === "trackHeader") return context.headerDrag ? "grab" : "default";
+  if (hit.type === "gap" && context.tool === "select") return "pointer";
   const edge = hitEdge(hit);
   const { tool } = context;
   if (tool === "razor") return inTrackRow(hit) ? cursors.razor : "default";
@@ -448,6 +480,10 @@ export class TimelineView {
 
   private content: Layer | null = null;
   private overlay: Layer | null = null;
+  /** When the current run of auto-scroll frames began (its hold boost ramps from there), or null. */
+  private edgeSince: number | null = null;
+  /** The header tooltip last reported (`onHoverHint`). */
+  private hintKey: string | null = null;
   private size: Size = { width: 0, height: 0 };
   private metrics: TimelineMetrics;
   private cursors: TrimCursors;
@@ -2008,6 +2044,7 @@ export class TimelineView {
     const { idle, scheduler } = this.deps;
     idle?.pause("gesture");
     this.lastTick = null;
+    this.edgeSince = null;
     const stopTicker = scheduler.addTicker((time) => this.autoScroll(time));
     const win = this.overlay?.canvas.ownerDocument.defaultView ?? null;
     // Capture phase, ahead of the KeyDispatcher: during a drag S is a modifier (hold to invert
@@ -2076,10 +2113,18 @@ export class TimelineView {
     const zone = this.deps.theme.theme.timeline.autoScrollZone;
     const scale = elapsed / FRAME_MS;
     // A track drag is vertical.
-    const dx = gesture.kind === "trackDrag" ? 0 : edgeStep(pointer.x, area.x, area.x + area.width, zone) * scale;
+    let dx = gesture.kind === "trackDrag" ? 0 : edgeStep(pointer.x, area.x, area.x + area.width, zone) * scale;
     // Scrubs, trims, marker and handle drags are horizontal.
-    const dy = kind === "scrub" || kind === "trim" || kind === "markerDrag" || kind === "rangeDrag" || kind === "fadeDrag" || kind === "transitionDrag" ? 0 : edgeStep(pointer.y, area.y, area.y + area.height, zone) * scale;
-    if (dx === 0 && dy === 0) return;
+    let dy = kind === "scrub" || kind === "trim" || kind === "markerDrag" || kind === "rangeDrag" || kind === "fadeDrag" || kind === "transitionDrag" ? 0 : edgeStep(pointer.y, area.y, area.y + area.height, zone) * scale;
+    if (dx === 0 && dy === 0) {
+      this.edgeSince = null;
+      return;
+    }
+    // Holding at an edge speeds the scroll up (the acceleration curve, Batch 46).
+    this.edgeSince ??= time;
+    const boost = holdBoost(time - this.edgeSince);
+    dx *= boost;
+    dy *= boost;
     if (dx !== 0) {
       const context = this.zoomContext();
       // A drag may take clips past the content end: the view can follow them there.
@@ -2286,6 +2331,43 @@ export class TimelineView {
     this.hover = hit;
     if (!sameHover(prev, hit)) this.deps.scheduler.invalidate("timelineOverlay");
     this.updateCursor();
+    this.updateHint();
+  }
+
+  /** The tooltip of what the pointer rests on in the header column (a toggle, a name cut short); written only when it changes. */
+  private updateHint(): void {
+    const hint = this.gesture ? null : this.headerHint();
+    const key = hint ? `${hint.text}|${hint.rect.x}|${hint.rect.y}` : null;
+    if (key === this.hintKey) return;
+    this.hintKey = key;
+    const canvas = this.overlay?.canvas;
+    if (!hint || !canvas) {
+      this.deps.onHoverHint?.(null);
+      return;
+    }
+    // One layout read per hint change (P9: never per frame).
+    const box = canvas.getBoundingClientRect();
+    this.deps.onHoverHint?.({ rect: { left: box.left + hint.rect.x, top: box.top + hint.rect.y, width: hint.rect.width, height: hint.rect.height }, text: hint.text });
+  }
+
+  private headerHint(): { rect: Rect; text: string } | null {
+    const hover = this.hover;
+    if (!hover?.trackId || (hover.type !== "headerToggle" && hover.type !== "trackHeader")) return null;
+    const track = this.deps.document.getState().tracks.find((candidate) => candidate.id === hover.trackId);
+    const geometry = this.geometry();
+    const row = geometry.rowOf(hover.trackId);
+    if (!track || !row) return null;
+    if (hover.type === "headerToggle" && hover.toggle) {
+      const rect = geometry.headerToggle(row, hover.toggle);
+      return rect ? { rect, text: toggleHint(hover.toggle, track) } : null;
+    }
+    // A name the header cuts short (spec §6.1: five toggles leave ~9 characters) shows in full.
+    const { theme } = this.deps.theme;
+    const name = geometry.headerName(row, theme.icon.size, theme.space[2]);
+    const ctx = this.overlay?.ctx;
+    if (!ctx || !this.pointer || !contains(name, this.pointer.x, this.pointer.y)) return null;
+    ctx.font = fontOf(theme, "body");
+    return this.text.fit(ctx, track.name, name.width) === track.name ? null : { rect: name, text: track.name };
   }
 
   /**
@@ -2297,6 +2379,7 @@ export class TimelineView {
     const prev = this.hover;
     if (this.pointer && !this.gesture) this.hover = this.hitTester.hit(this.pointer.x, this.pointer.y);
     this.updateCursor();
+    this.updateHint();
     return !sameHover(prev, this.hover);
   }
 
@@ -2308,7 +2391,9 @@ export class TimelineView {
     const hover = this.hover?.type === "clip" && isClipLocked(this.deps.document.getState(), this.hover.clipId as ClipId) ? null : this.hover;
     const pointer = this.pointer;
     const pan = this.space !== null || (activeTool === "hand" && pointer !== null && contains(this.geometry().area, pointer.x, pointer.y));
-    const cursor = cursorFor(hover, this.gesture, this.cursors, { tool: activeTool, ripple: ripple || mod, roll: mod && alt, pan, mod });
+    const headerTrack = hover?.type === "trackHeader" && !hover.addTrack ? this.deps.document.getState().tracks.find((track) => track.id === hover.trackId) : undefined;
+    const headerDrag = headerTrack !== undefined && headerTrack.kind !== "caption";
+    const cursor = cursorFor(hover, this.gesture, this.cursors, { tool: activeTool, ripple: ripple || mod, roll: mod && alt, pan, mod, headerDrag });
     if (cursor === this.cursor || !this.overlay) return;
     this.cursor = cursor;
     this.overlay.canvas.style.cursor = cursor;
@@ -2467,6 +2552,7 @@ export class TimelineView {
       visuals: this.deps.visuals ?? null,
       fonts: this.deps.fonts ?? null,
       scrollbar: this.scrollbarState(idle),
+      scrollbarMarks: this.scrollbarMarks(project),
       range: this.rangeScene(project, idle),
       markers,
       keyDrag: gesture?.kind === "keyDrag" ? this.keyDragScene(project, geometry, gesture) : null,
@@ -2688,6 +2774,17 @@ export class TimelineView {
   }
 
   /** The scrollbar part being dragged, or the one under a pointer at rest. */
+  /** The markers and the in/out range for the horizontal scrollbar, or null when there are none. */
+  private scrollbarMarks(project: Project): { layout: ScrollbarLayout; markers: Project["markers"]; range: { from: Frame; to: Frame } | null } | null {
+    const gesture = this.gesture;
+    const { inPoint, outPoint } = gesture?.kind === "rangeDrag" ? gesture.range : this.deps.session.state.getState();
+    if (project.markers.length === 0 && inPoint === null && outPoint === null) return null;
+    const layout = this.scrollbars();
+    if (!layout) return null;
+    const range = inPoint === null && outPoint === null ? null : { from: inPoint ?? 0, to: outPoint ?? contentEnd(project) };
+    return { layout, markers: project.markers, range };
+  }
+
   private scrollbarState(idle: boolean): { layout: ScrollbarLayout; hit: ScrollbarHit; active: boolean } | null {
     const layout = this.scrollbars();
     const gesture = this.gesture;
@@ -2771,19 +2868,27 @@ export class TimelineView {
     return this.content?.canvas.ownerDocument.defaultView?.devicePixelRatio ?? 1;
   }
 
-  /** Sizes the backing store to the panel at the current DPR (inside the render, so never blank). */
+  /**
+   * Sizes the backing store for the panel at the current DPR (inside the render, so never blank), with
+   * headroom (`canvasCapacity`): a splitter drag reallocates it a few times, not every frame. Drawing
+   * covers the view from the top-left; the canvas host clips the rest.
+   */
   private prepare(layer: Layer): boolean {
     const dpr = this.dpr();
-    const width = Math.round(this.size.width * dpr);
-    const height = Math.round(this.size.height * dpr);
-    if (width === 0 || height === 0) return false;
+    if (Math.round(this.size.width * dpr) === 0 || Math.round(this.size.height * dpr) === 0) return false;
+    const cssWidth = canvasCapacity(layer.cssWidth, this.size.width);
+    const cssHeight = canvasCapacity(layer.cssHeight, this.size.height);
+    const width = Math.round(cssWidth * dpr);
+    const height = Math.round(cssHeight * dpr);
     if (width !== layer.width || height !== layer.height) {
       layer.canvas.width = width;
       layer.canvas.height = height;
-      layer.canvas.style.width = `${this.size.width}px`;
-      layer.canvas.style.height = `${this.size.height}px`;
+      layer.canvas.style.width = `${cssWidth}px`;
+      layer.canvas.style.height = `${cssHeight}px`;
       layer.width = width;
       layer.height = height;
+      layer.cssWidth = cssWidth;
+      layer.cssHeight = cssHeight;
     }
     return true;
   }
@@ -2831,6 +2936,6 @@ function createLayer(host: HTMLElement): Layer {
   host.append(canvas);
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Canvas 2D is not available");
-  return { canvas, ctx, width: 0, height: 0 };
+  return { canvas, ctx, width: 0, height: 0, cssWidth: 0, cssHeight: 0 };
 }
 

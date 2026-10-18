@@ -84,7 +84,7 @@ function ZoomValue() {
       { fireImmediately: true },
     );
   }, []);
-  return <span ref={ref} />;
+  return <span ref={ref} className={styles.zoomValue} />;
 }
 
 /** The command of each Zoom menu level (Batch 40: every row is a command, so the palette has them too). */
@@ -334,7 +334,7 @@ function StatusStrip() {
   }, []);
   return (
     <div className={styles.status}>
-      <span ref={quality} className={styles.badge} data-tooltip="Preview quality: the mode, then what the preview renders now" />
+      <span ref={quality} className={`${styles.badge} ${styles.quality}`} data-tooltip="Preview quality: the mode, then what the preview renders now" />
       <span ref={dropped} className={styles.statusValue} data-tooltip="Dropped frames of the last playback" />
       <span ref={pool} className={styles.statusValue} data-tooltip="Texture pool (dev)" hidden />
     </div>

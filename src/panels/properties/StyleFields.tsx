@@ -39,7 +39,9 @@ import { MIXED, NONE, SKIP, type Shared } from "./useShared.js";
 // previews), weight and italic, size, fill (solid or a vertical gradient), stroke, shadow and
 // background box (each a switch with its values), alignment, vertical anchor (text clips), letter
 // spacing, line height and case. What they edit is a `StyleTarget`: its values (shared, `--` when
-// mixed), one undo step per edit, a live preview (a color dragged) and the number field bindings.
+// mixed), one undo step per edit, a live preview (a color dragged) and the number field bindings. The
+// rows of an option that is off (the gradient's bottom color, a switch's values) stay in place,
+// disabled (spec §17, Batch 46): turning it on moves nothing.
 
 /** What the style rows edit. */
 export interface StyleTarget {
@@ -172,6 +174,10 @@ export function StyleFields({ target, anchor }: { target: StyleTarget; anchor: b
   const familyName = typeof family === "string" ? family : null;
   const weightValue = typeof weight === "number" ? weight : null;
   const isGradientFill = gradient === true;
+  // Off on every target: its rows are disabled (mixed: they edit every target).
+  const strokeOff = stroke === false || stroke === NONE;
+  const shadowOff = shadow === false || shadow === NONE;
+  const backgroundOff = background === false || background === NONE;
 
   return (
     <>
@@ -211,78 +217,72 @@ export function StyleFields({ target, anchor }: { target: StyleTarget; anchor: b
       <Row label={isGradientFill ? "Top" : "Color"}>
         <ColorField value={colorOf(fill, WHITE)} recent={recent} ariaLabel={isGradientFill ? "Gradient top color" : "Text color"} {...color("Change text color", (s, c) => ({ fill: isGradient(s.fill) ? { ...s.fill, from: c } : c }))} />
       </Row>
-      {isGradientFill && (
-        <Row label="Bottom">
-          <ColorField value={colorOf(fillBottom, BLACK)} recent={recent} ariaLabel="Gradient bottom color" {...color("Change text color", (s, c) => ({ fill: isGradient(s.fill) ? { ...s.fill, to: c } : c }))} />
-        </Row>
-      )}
+      {/* A solid fill shows the bottom a gradient would start with (the stroke color), disabled. */}
+      <Row label="Bottom">
+        <ColorField
+          value={colorOf(fillBottom, colorOf(strokeColor, BLACK))}
+          recent={recent}
+          ariaLabel="Gradient bottom color"
+          disabled={!isGradientFill}
+          {...color("Change text color", (s, c) => ({ fill: isGradient(s.fill) ? { ...s.fill, to: c } : c }))}
+        />
+      </Row>
       <Row label="Stroke">
         <span className={styles.switchCell}>
           <Toggle checked={stroke === true} mixed={stroke === MIXED} label="Outline" onChange={(on) => edit(on ? "Add stroke" : "Remove stroke", (s) => ({ stroke: { ...s.stroke, enabled: on } }))} />
         </span>
       </Row>
-      {stroke !== false && stroke !== NONE && (
-        <>
-          <Row label="Width">
-            <NumberField label="W" unit="px" binding={bindings.stroke} precision={1} min={STROKE_WIDTH.min} max={STROKE_WIDTH.max} ariaLabel="Stroke width" />
-          </Row>
-          <Row label="Color">
-            <ColorField value={colorOf(strokeColor, BLACK)} recent={recent} ariaLabel="Stroke color" {...color("Change stroke", (s, c) => ({ stroke: { ...s.stroke, color: c } }))} />
-          </Row>
-        </>
-      )}
+      <Row label="Width">
+        <NumberField label="W" unit="px" binding={bindings.stroke} precision={1} min={STROKE_WIDTH.min} max={STROKE_WIDTH.max} disabled={strokeOff} ariaLabel="Stroke width" />
+      </Row>
+      <Row label="Color">
+        <ColorField value={colorOf(strokeColor, BLACK)} recent={recent} ariaLabel="Stroke color" disabled={strokeOff} {...color("Change stroke", (s, c) => ({ stroke: { ...s.stroke, color: c } }))} />
+      </Row>
       <Row label="Shadow">
         <span className={styles.switchCell}>
           <Toggle checked={shadow === true} mixed={shadow === MIXED} label="Drop shadow" onChange={(on) => edit(on ? "Add shadow" : "Remove shadow", (s) => ({ shadow: { ...s.shadow, enabled: on } }))} />
         </span>
       </Row>
-      {shadow !== false && shadow !== NONE && (
-        <>
-          <Row label="Offset">
-            <div className={styles.pair}>
-              <NumberField label="X" unit="px" binding={bindings.shadowX} precision={1} min={SHADOW_X.min} max={SHADOW_X.max} ariaLabel="Shadow X" />
-              <NumberField label="Y" unit="px" binding={bindings.shadowY} precision={1} min={SHADOW_Y.min} max={SHADOW_Y.max} ariaLabel="Shadow Y" />
-            </div>
-          </Row>
-          <Row label="Blur">
-            <NumberField label={<Droplets aria-hidden="true" />} unit="px" binding={bindings.shadowBlur} precision={1} min={SHADOW_BLUR.min} max={SHADOW_BLUR.max} ariaLabel="Shadow blur" />
-          </Row>
-          <Row label="Color">
-            <ColorField value={colorOf(shadowColor, BLACK)} recent={recent} ariaLabel="Shadow color" {...color("Change shadow", (s, c) => ({ shadow: { ...s.shadow, color: c } }))} />
-          </Row>
-        </>
-      )}
+      <Row label="Offset">
+        <div className={styles.pair}>
+          <NumberField label="X" unit="px" binding={bindings.shadowX} precision={1} min={SHADOW_X.min} max={SHADOW_X.max} disabled={shadowOff} ariaLabel="Shadow X" />
+          <NumberField label="Y" unit="px" binding={bindings.shadowY} precision={1} min={SHADOW_Y.min} max={SHADOW_Y.max} disabled={shadowOff} ariaLabel="Shadow Y" />
+        </div>
+      </Row>
+      <Row label="Blur">
+        <NumberField label={<Droplets aria-hidden="true" />} unit="px" binding={bindings.shadowBlur} precision={1} min={SHADOW_BLUR.min} max={SHADOW_BLUR.max} disabled={shadowOff} ariaLabel="Shadow blur" />
+      </Row>
+      <Row label="Color">
+        <ColorField value={colorOf(shadowColor, BLACK)} recent={recent} ariaLabel="Shadow color" disabled={shadowOff} {...color("Change shadow", (s, c) => ({ shadow: { ...s.shadow, color: c } }))} />
+      </Row>
       <Row label="Background">
         <span className={styles.switchCell}>
           <Toggle checked={background === true} mixed={background === MIXED} label="Background box" onChange={(on) => edit(on ? "Add background" : "Remove background", (s) => ({ background: { ...s.background, enabled: on } }))} />
         </span>
       </Row>
-      {background !== false && background !== NONE && (
-        <>
-          <Row label="Mode">
-            <Choice
-              value={backgroundMode}
-              options={[
-                { value: "line", label: "A box behind each line", text: "Per line" },
-                { value: "block", label: "One box behind the whole text", text: "Block" },
-              ]}
-              onChange={(mode) => edit("Change background", (s) => ({ background: { ...s.background, mode } }))}
-            />
-          </Row>
-          <Row label="Padding">
-            <div className={styles.pair}>
-              <NumberField label="X" unit="px" binding={bindings.padX} precision={0} min={PADDING_X.min} max={PADDING_X.max} ariaLabel="Background padding X" />
-              <NumberField label="Y" unit="px" binding={bindings.padY} precision={0} min={PADDING_Y.min} max={PADDING_Y.max} ariaLabel="Background padding Y" />
-            </div>
-          </Row>
-          <Row label="Radius">
-            <NumberField label={<SquareRoundCorner aria-hidden="true" />} unit="px" binding={bindings.radius} precision={0} min={RADIUS.min} max={RADIUS.max} ariaLabel="Background corner radius" />
-          </Row>
-          <Row label="Color">
-            <ColorField value={colorOf(backgroundColor, BLACK)} recent={recent} ariaLabel="Background color" {...color("Change background", (s, c) => ({ background: { ...s.background, color: c } }))} />
-          </Row>
-        </>
-      )}
+      <Row label="Mode">
+        <Choice
+          value={backgroundMode}
+          options={[
+            { value: "line", label: "A box behind each line", text: "Per line" },
+            { value: "block", label: "One box behind the whole text", text: "Block" },
+          ]}
+          disabled={backgroundOff}
+          onChange={(mode) => edit("Change background", (s) => ({ background: { ...s.background, mode } }))}
+        />
+      </Row>
+      <Row label="Padding">
+        <div className={styles.pair}>
+          <NumberField label="X" unit="px" binding={bindings.padX} precision={0} min={PADDING_X.min} max={PADDING_X.max} disabled={backgroundOff} ariaLabel="Background padding X" />
+          <NumberField label="Y" unit="px" binding={bindings.padY} precision={0} min={PADDING_Y.min} max={PADDING_Y.max} disabled={backgroundOff} ariaLabel="Background padding Y" />
+        </div>
+      </Row>
+      <Row label="Radius">
+        <NumberField label={<SquareRoundCorner aria-hidden="true" />} unit="px" binding={bindings.radius} precision={0} min={RADIUS.min} max={RADIUS.max} disabled={backgroundOff} ariaLabel="Background corner radius" />
+      </Row>
+      <Row label="Color">
+        <ColorField value={colorOf(backgroundColor, BLACK)} recent={recent} ariaLabel="Background color" disabled={backgroundOff} {...color("Change background", (s, c) => ({ background: { ...s.background, color: c } }))} />
+      </Row>
       <Row label="Align">
         <Choice value={align} options={ALIGNS} onChange={(next) => edit("Change alignment", () => ({ align: next }))} />
       </Row>

@@ -1,5 +1,5 @@
 import { ChevronDown, MonitorDown, Search, Star, TriangleAlert } from "lucide-react";
-import { useCallback, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEvent } from "react";
+import { useCallback, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEvent } from "react";
 import { createPortal } from "react-dom";
 import { fontsVersion } from "../../app/textController.js";
 import { requestSystemFonts, systemFonts, type SystemFonts } from "../../app/fontController.js";
@@ -10,20 +10,23 @@ import { toggleFavoriteFont, type AppSettings } from "../../project/appSettings.
 import { BUNDLED_FONTS, bundledFont } from "../../render/text/bundledFonts.js";
 import { projectTextStyles, quoteFamily, usedFamilies } from "../../text/fonts.js";
 import { useDismiss } from "../../ui/useDismiss.js";
+import { useFocusReturn } from "./focusReturn.js";
 import styles from "./TextSection.module.css";
 import { MIXED, NONE, type Shared } from "./useShared.js";
 
 // The font field and its picker (spec §11 "Font field opens a searchable list with live previews and
 // sections: Favorites, Bundled, System, Used in project"; §10.1 "the picker shows a preview rendered
 // with the real font"):
-// - The field shows the family in its own font, and a Missing chip when the family is not available
-//   (it draws with the DS body font; the timeline clip has a badge too).
+// - The field shows the family in its own font, and a Missing chip inside it when the family is not
+//   available (it draws with the DS body font; the timeline clip has a badge too). The chip takes the
+//   name's room, so the field keeps its width (Batch 46).
 // - The picker: a search field (Enter picks the first match), then the sections. Each family is drawn
 //   in its own font, set when its row scrolls into view (lazy previews: a long system list loads only
 //   what is seen, and scrolling renders nothing in React). A star keeps a family in Favorites (app
 //   settings). System fonts are listed on request (the Local Font Access permission asks once).
-// - Keyboard (Batch 40): Up / Down in the search field move through the families (the row in view),
-//   Enter picks the highlighted one (the first match when none is), Escape closes.
+// - Keyboard (Batch 40): Up / Down in the search field move through the families (the row in view,
+//   the search field's active descendant), Enter picks the highlighted one (the first match when none
+//   is), Escape closes. Closed with the focus inside (a pick, Escape), the focus goes back to the field.
 
 const selectUsed = (project: Project) => usedFamilies(projectTextStyles(project).map((style) => ({ kind: "text", style }))).join("\n");
 const selectFavorites = (settings: AppSettings) => settings.favoriteFonts;
@@ -32,6 +35,8 @@ const selectVersion = (version: number) => version;
 
 /** The CSS stack that draws `family`, the UI font behind it. */
 export const familyStyle = (family: string): CSSProperties => ({ fontFamily: `${quoteFamily(family)}, var(--font-ui)` });
+
+const MISSING = "This font is not installed here: the text uses the fallback font";
 
 export function FontField({ value, onPick }: { value: Shared<string>; onPick: (family: string) => void }) {
   const [anchor, setAnchor] = useState<HTMLElement | null>(null);
@@ -44,7 +49,7 @@ export function FontField({ value, onPick }: { value: Shared<string>; onPick: (f
       <button
         type="button"
         className={styles.fontButton}
-        aria-label="Font"
+        aria-label={missing ? "Font (missing: the text uses the fallback font)" : "Font"}
         aria-haspopup="listbox"
         aria-expanded={anchor !== null}
         data-tooltip="Font"
@@ -53,14 +58,14 @@ export function FontField({ value, onPick }: { value: Shared<string>; onPick: (f
         <span className={styles.fontName} style={family ? familyStyle(family) : undefined} data-mixed={family === null || undefined}>
           {family ?? "--"}
         </span>
+        {missing && (
+          <span className={styles.missing} data-tooltip={MISSING} aria-hidden="true">
+            <TriangleAlert aria-hidden="true" />
+            Missing
+          </span>
+        )}
         <ChevronDown className={styles.chevron} aria-hidden="true" />
       </button>
-      {missing && (
-        <span className={styles.missing} data-tooltip="This font is not installed here: the text uses the fallback font">
-          <TriangleAlert aria-hidden="true" />
-          Missing
-        </span>
-      )}
       {anchor && <FontPicker anchor={anchor} current={family} onPick={onPick} onClose={close} />}
     </div>
   );
@@ -73,6 +78,7 @@ const matches = (family: string, query: string) => query === "" || family.toLowe
 function FontPicker({ anchor, current, onPick, onClose }: { anchor: HTMLElement; current: string | null; onPick: (family: string) => void; onClose: () => void }) {
   const panel = useRef<HTMLDivElement>(null);
   const list = useRef<HTMLDivElement>(null);
+  const ids = useId();
   const [query, setQuery] = useState("");
   /** The family row the arrow keys reached (its entry key), or null. */
   const [active, setActive] = useState<string | null>(null);
@@ -145,12 +151,18 @@ function FontPicker({ anchor, current, onPick, onClose }: { anchor: HTMLElement;
   }, [entries]);
 
   useDismiss([panel, { current: anchor }], onClose);
+  // Closed with the focus inside (a pick, Escape): it goes back to the font field, not to the page.
+  useFocusReturn(panel, () => anchor);
 
   const pick = (family: string) => {
     onPick(family);
     onClose();
   };
   const fonts = entries.filter((entry): entry is Extract<Entry, { kind: "font" }> => entry.kind === "font");
+  // Option ids by entry index for the search field's aria-activedescendant (entry keys hold any character).
+  const optionId = (index: number) => `${ids}-option-${index}`;
+  const activeIndex = active === null ? -1 : entries.findIndex((entry) => entry.kind === "font" && entry.key === active);
+  const listId = `${ids}-fonts`;
   const onSearchKey = (event: KeyboardEvent<HTMLInputElement>) => {
     const at = fonts.findIndex((entry) => entry.key === active);
     if (event.key === "ArrowDown" || event.key === "ArrowUp") {
@@ -177,14 +189,25 @@ function FontPicker({ anchor, current, onPick, onClose }: { anchor: HTMLElement;
     <div ref={panel} className={styles.picker} role="dialog" aria-label="Fonts" data-control="">
       <label className={styles.search}>
         <Search aria-hidden="true" />
-        <input type="text" value={query} placeholder="Search fonts" aria-label="Search fonts" spellCheck={false} onChange={(event) => {
+        <input
+          type="text"
+          role="combobox"
+          value={query}
+          placeholder="Search fonts"
+          aria-label="Search fonts"
+          aria-expanded="true"
+          aria-controls={listId}
+          aria-autocomplete="list"
+          aria-activedescendant={activeIndex >= 0 ? optionId(activeIndex) : undefined}
+          spellCheck={false}
+          onChange={(event) => {
             setQuery(event.target.value);
             setActive(null);
           }}
           onKeyDown={onSearchKey}
         />
       </label>
-      <div ref={list} className={styles.list} role="listbox" aria-label="Font families">
+      <div ref={list} id={listId} className={styles.list} role="listbox" aria-label="Font families">
         {entries.map((entry, i) => {
           switch (entry.kind) {
             case "heading":
@@ -208,12 +231,13 @@ function FontPicker({ anchor, current, onPick, onClose }: { anchor: HTMLElement;
               );
             case "font": {
               const favorite = favorites.includes(entry.family);
+              const starLabel = favorite ? `Remove ${entry.family} from favorites` : `Add ${entry.family} to favorites`;
               return (
-                <div key={entry.key} className={styles.row} role="option" aria-selected={entry.family === current} data-active={entry.key === active || undefined} tabIndex={-1} onClick={() => pick(entry.family)}>
+                <div key={entry.key} id={optionId(i)} className={styles.row} role="option" aria-selected={entry.family === current} data-active={entry.key === active || undefined} tabIndex={-1} onClick={() => pick(entry.family)}>
                   <span className={styles.family} data-family={entry.family}>
                     {entry.family}
                   </span>
-                  <button type="button" className={styles.star} aria-label={favorite ? `Remove ${entry.family} from favorites` : `Add ${entry.family} to favorites`} aria-pressed={favorite} onClick={(event) => star(event, entry.family)}>
+                  <button type="button" className={styles.star} aria-label={starLabel} data-tooltip={starLabel} aria-pressed={favorite} onClick={(event) => star(event, entry.family)}>
                     <Star aria-hidden="true" />
                   </button>
                 </div>

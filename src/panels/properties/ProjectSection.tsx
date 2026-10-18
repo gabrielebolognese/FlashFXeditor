@@ -59,9 +59,10 @@ export function ProjectSection() {
   const background = useStoreSelector(documentStore, selectBackground);
   const recent = useStoreSelector(appSettings, selectRecent);
   const sizes = useMemo(() => ({ width: sizeBinding("width"), height: sizeBinding("height") }), []);
-  // "Custom" picked while the size still matches a preset: show the size fields anyway.
+  // "Custom" picked while the size still matches a preset: the size fields open to edits anyway.
   const [customOpen, setCustomOpen] = useState(false);
   const preset = customOpen ? CUSTOM_RESOLUTION : resolutionPresetId(width, height);
+  const custom = preset === CUSTOM_RESOLUTION;
 
   const choosePreset = (id: string) => {
     const match = RESOLUTION_PRESETS.find((p) => p.id === id);
@@ -81,14 +82,13 @@ export function ProjectSection() {
       <Row label="Resolution">
         <Select value={preset} options={RESOLUTION_OPTIONS} onChange={choosePreset} label="Resolution" />
       </Row>
-      {preset === CUSTOM_RESOLUTION && (
-        <Row label="Size">
-          <div className={styles.pair}>
-            <NumberField label="W" unit="px" binding={sizes.width} min={MIN_DIMENSION} max={MAX_DIMENSION} step={2} ariaLabel="Width" />
-            <NumberField label="H" unit="px" binding={sizes.height} min={MIN_DIMENSION} max={MAX_DIMENSION} step={2} ariaLabel="Height" />
-          </div>
-        </Row>
-      )}
+      {/* Disabled, never hidden (spec §17): it shows a preset's size and opens to edits with Custom. */}
+      <Row label="Size">
+        <div className={styles.pair}>
+          <NumberField label="W" unit="px" binding={sizes.width} min={MIN_DIMENSION} max={MAX_DIMENSION} step={2} disabled={!custom} ariaLabel="Width" />
+          <NumberField label="H" unit="px" binding={sizes.height} min={MIN_DIMENSION} max={MAX_DIMENSION} step={2} disabled={!custom} ariaLabel="Height" />
+        </div>
+      </Row>
       <Row label="Frame rate">
         <Select value={fps} options={fpsOptions(fps)} onChange={chooseFps} label="Frame rate" />
       </Row>

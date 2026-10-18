@@ -74,7 +74,7 @@ function reportLimit(result: CloseResult, kind: "gap" | "compact" | "ripple"): v
   const none = result.closed.every((frames) => frames === 0);
   const message =
     kind === "ripple" ? (none ? "Deleted without closing the gap" : "Ripple delete stopped short") : kind === "compact" ? "Some gaps stayed open" : none ? "Can't close the gap" : "Gap closed partly";
-  showToast({ tone: "info", message, detail: `${clip} on ${track} can't move further left without overlapping.` });
+  showToast({ tone: "warning", message, detail: `${clip} on ${track} can't move further left without overlapping.` });
 }
 
 function commitClose(result: CloseResult, kind: "gap" | "compact"): boolean {

@@ -1,4 +1,5 @@
-/* The quick-action row stays on top; the sections scroll under it. */
+/* The quick-action row stays on top; the sections scroll under it. The body is the panel's focus home
+   (focusReturn.ts): focused there, the ring goes inside it (the panel clips an outer one). */
 .body {
   display: flex;
   flex-direction: column;
@@ -6,10 +7,19 @@
   min-height: 0;
 }
 
+.body:focus-visible {
+  box-shadow: var(--focus-ring-inset);
+}
+
 .scroll {
   flex: 1 1 auto;
   min-height: 0;
   overflow: auto;
+}
+
+/* The Export tab's close button: no box of its own (a wrapper that sees the focus leave with it). */
+.close {
+  display: contents;
 }
 
 /* "3 clips" / "2 tracks" in the header strip for a selection of several items. */

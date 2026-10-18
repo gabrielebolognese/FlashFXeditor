@@ -31,12 +31,15 @@
   height: var(--control-compact);
 }
 
+/* The count keeps the width of "999 of 999" (Batch 46): typing a search does not resize the field. */
 .total {
   flex: none;
+  min-width: var(--cue-count-width);
   color: var(--text-tertiary);
   font: var(--type-caption);
   letter-spacing: var(--type-caption-track);
   font-variant-numeric: tabular-nums;
+  text-align: right;
 }
 
 .scroll {
@@ -57,7 +60,9 @@
   right: 0;
   left: 0;
   display: grid;
-  grid-template-columns: var(--cue-time-width) minmax(0, 1fr) auto;
+  /* The word count column is as wide on every row (3 digits, Batch 46): the text fields line up and do
+     not narrow while typing past 9 words. */
+  grid-template-columns: var(--cue-time-width) minmax(0, 1fr) var(--control-default);
   align-items: center;
   gap: var(--space-2);
   height: var(--cue-row-height);
@@ -137,7 +142,8 @@
 }
 
 .count {
-  min-width: var(--space-5);
+  box-sizing: border-box;
+  width: 100%;
   padding: 0 var(--space-1);
   border-radius: var(--radius-sm);
   background: var(--surface-3);
@@ -145,52 +151,4 @@
   font: var(--type-badge);
   text-align: center;
   font-variant-numeric: tabular-nums;
-}
-
-.note {
-  margin: 0;
-  padding: var(--space-5);
-  color: var(--text-tertiary);
-  font: var(--type-caption);
-  letter-spacing: var(--type-caption-track);
-  text-align: center;
-}
-
-/* Empty state: the Media tab's (muted icon, title type, caption hint, actions). */
-.empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
-  height: 100%;
-  padding: var(--space-5);
-  text-align: center;
-}
-
-.emptyIcon {
-  width: var(--control-default);
-  height: var(--control-default);
-  color: var(--text-muted);
-}
-
-.emptyTitle {
-  margin: 0;
-  color: var(--text-primary);
-  font: var(--type-title);
-  letter-spacing: var(--type-title-track);
-}
-
-.emptyText {
-  margin: 0 0 var(--space-2);
-  color: var(--text-tertiary);
-  font: var(--type-caption);
-  letter-spacing: var(--type-caption-track);
-}
-
-.emptyActions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: var(--space-2);
 }

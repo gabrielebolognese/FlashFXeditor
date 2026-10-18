@@ -122,7 +122,8 @@
   pointer-events: none;
 }
 
-/* Badges in the top-left corner: favorite star, default Title / Subtitle (accent: the active state). */
+/* Badges in the top-left corner: favorite star, default Title / Subtitle (accent: the active state).
+   Each badge takes the pointer for its own tooltip (Batch 46); presses go on to the card. */
 .badges {
   position: absolute;
   top: var(--space-1);
@@ -141,6 +142,7 @@
   background: var(--surface-3);
   color: var(--accent);
   font: var(--type-badge);
+  pointer-events: auto;
 }
 
 .badgeIcon {
@@ -183,15 +185,8 @@
   user-select: text;
 }
 
-.empty {
-  padding: var(--space-6) var(--space-4);
-  color: var(--text-tertiary);
-  font: var(--type-caption);
-  letter-spacing: var(--type-caption-track);
-  text-align: center;
-}
-
-/* The library folder (spec §10.3 "synced to a user-chosen library folder"): a strip at the bottom. */
+/* The library folder (spec §10.3 "synced to a user-chosen library folder"): a strip at the bottom, in
+   both scopes (Batch 46: its buttons disabled in the Project scope, which it explains). */
 .folder {
   border-top: 1px solid var(--hairline);
   background: var(--surface-1);

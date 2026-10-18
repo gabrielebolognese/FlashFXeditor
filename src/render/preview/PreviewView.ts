@@ -60,6 +60,7 @@ import { mutableIdentity, setMat, type Mat3, type MutableMat3 } from "../mat3.js
 import { AUTO_SETTLE_MS, DETAIL_MAX_SIZE, fullScale, qualityLabel, renderScale, sourceDetail, uploadLongEdge, vectorDetailSize, wantedLod, type PreviewActivity } from "./detail.js";
 import { LayerTextures, type LayerTexturesDeps, type LayerTexturesStats } from "./LayerTextures.js";
 import { deviceSizeInto, frameTransformInto, type Size } from "./viewport.js";
+import { canvasCapacity } from "../../core/scheduler/canvasCapacity.js";
 
 const TRANSPARENT: RGBA = { r: 0, g: 0, b: 0, a: 0 };
 /** Text clips starting within this many seconds of the playhead are rasterized ahead (spec §10.4, P11). */
@@ -181,6 +182,8 @@ export class PreviewView implements RenderView {
   private canvas: HTMLCanvasElement | null = null;
   private target: CanvasTarget | null = null;
   private cssSize: Size = { width: 0, height: 0 };
+  /** The canvas element's size in CSS px: its capacity, at least `cssSize` (Batch 46). */
+  private readonly capacity: Size = { width: 0, height: 0 };
   private readonly size: Size = { width: 0, height: 0 };
   private readonly transform = mutableIdentity();
   private chrome: Chrome;
@@ -327,9 +330,18 @@ export class PreviewView implements RenderView {
     const size = deviceSizeInto(this.size, this.cssSize, dpr);
     let resized = false;
     if (size.width !== this.stats.width || size.height !== this.stats.height || dpr !== this.stats.dpr) {
-      renderer.resize(target, size.width, size.height);
-      canvas.style.width = `${this.cssSize.width}px`;
-      canvas.style.height = `${this.cssSize.height}px`;
+      // The backing store keeps headroom (Batch 46, `canvasCapacity`): a splitter drag reallocates it a
+      // few times, not every frame. The frame is placed in the visible `size` from the top-left; the
+      // pass clears the whole canvas and the host clips the unused edge.
+      const cssWidth = canvasCapacity(this.capacity.width, this.cssSize.width);
+      const cssHeight = canvasCapacity(this.capacity.height, this.cssSize.height);
+      if (cssWidth !== this.capacity.width || cssHeight !== this.capacity.height || dpr !== this.stats.dpr) {
+        renderer.resize(target, Math.round(cssWidth * dpr), Math.round(cssHeight * dpr));
+        canvas.style.width = `${cssWidth}px`;
+        canvas.style.height = `${cssHeight}px`;
+        this.capacity.width = cssWidth;
+        this.capacity.height = cssHeight;
+      }
       this.stats.width = size.width;
       this.stats.height = size.height;
       this.stats.dpr = dpr;
@@ -701,6 +713,8 @@ export class PreviewView implements RenderView {
     this.target = null;
     this.stats.width = 0;
     this.stats.height = 0;
+    this.capacity.width = 0;
+    this.capacity.height = 0;
     this.textures.clear();
     this.snapshot.reset();
     this.rightSnapshot.reset();

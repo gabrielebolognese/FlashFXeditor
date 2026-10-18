@@ -17,9 +17,11 @@ export interface TextFieldProps {
   placeholder?: string | undefined;
   disabled?: boolean | undefined;
   autoFocus?: boolean | undefined;
+  /** The compact (24px) height, beside compact buttons (the Export tab's preset name). */
+  compact?: boolean | undefined;
 }
 
-export function TextField({ value, onCommit, onChange, ariaLabel, mono, maxLength, placeholder, disabled, autoFocus }: TextFieldProps) {
+export function TextField({ value, onCommit, onChange, ariaLabel, mono, maxLength, placeholder, disabled, autoFocus, compact }: TextFieldProps) {
   const { draft, set: setDraft, take } = useDraft();
   const live = onChange !== undefined;
 
@@ -44,14 +46,16 @@ export function TextField({ value, onCommit, onChange, ariaLabel, mono, maxLengt
   };
 
   return (
-    <label className={styles.field} data-disabled={disabled || undefined}>
+    <label className={styles.field} data-disabled={disabled || undefined} data-size={compact ? "compact" : undefined}>
       <input
         className={cx(styles.input, !mono && styles.text)}
         type="text"
         value={live ? value : (draft ?? value)}
         maxLength={maxLength}
         placeholder={placeholder}
-        disabled={disabled}
+        // Disabled, still reachable with Tab (Batch 46): read-only rather than `disabled`.
+        readOnly={disabled}
+        aria-disabled={disabled || undefined}
         autoFocus={autoFocus}
         spellCheck={false}
         aria-label={ariaLabel}

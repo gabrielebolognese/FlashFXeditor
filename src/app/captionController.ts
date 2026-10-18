@@ -41,7 +41,7 @@ export function showCaptionsTab(): void {
 }
 
 function lockedToast(): void {
-  showToast({ tone: "error", message: "The caption track is locked", detail: "Unlock CC to edit its cues." });
+  showToast({ tone: "warning", message: "The caption track is locked", detail: "Unlock CC to edit its cues." });
 }
 
 /** `+ Caption track` (spec §17): the caption track, then the Captions tab. */

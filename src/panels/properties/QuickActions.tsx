@@ -9,6 +9,7 @@ import {
   Maximize2,
   Moon,
   RotateCcw,
+  Scan,
   ScissorsLineDashed,
   Shrink,
   Snowflake,
@@ -17,10 +18,9 @@ import {
   TrendingDown,
   TrendingUp,
   VolumeX,
-  ZoomIn,
   type LucideIcon,
 } from "lucide-react";
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 import { presetLibrary, presetNaming, presetSourceClip, updatablePreset, type PresetLibrary } from "../../app/presetController.js";
 import { documentStore } from "../../app/services.js";
 import { silenceRow } from "../../app/silenceController.js";
@@ -38,6 +38,7 @@ import { isLayerClip, layerContent } from "../../timeline/edit/transform.js";
 import { isClipLocked } from "../../timeline/model/queries.js";
 import { IconButton } from "../../ui/IconButton.js";
 import { PresetNameField } from "../media/PresetNameField.js";
+import { useFocusReturn } from "./focusReturn.js";
 import { SilenceRow } from "./SilenceRow.js";
 import styles from "./QuickActions.module.css";
 
@@ -56,7 +57,9 @@ import styles from "./QuickActions.module.css";
 // state follows the selection, never the playhead: Freeze frame and Punch zoom report a playhead that
 // is not over the clip). Save as preset (spec §10.3) opens a name field under the row; Update preset
 // is enabled when the selected text clip's preset exists and its look differs, its tooltip naming the
-// preset and saying what happens to the other clips that use it.
+// preset and saying what happens to the other clips that use it. A disabled button's tooltip says what
+// to select (Batch 46). When the row goes with the focus in it (Delete by keyboard), the focus goes to
+// the panel body (focusReturn.ts).
 
 /** A plain command chip: `id` is its command id (the tooltip shows its key). */
 interface Live {
@@ -112,7 +115,7 @@ const ENTRIES: readonly Entry[] = [
   { kind: "fade", id: "clip.fadeIn", label: "Fade in 0.5 s", icon: TrendingUp },
   { kind: "fade", id: "clip.fadeOut", label: "Fade out 0.5 s", icon: TrendingDown },
   { kind: "live", id: "edit.freezeFrame", label: "Freeze frame", icon: Snowflake, needs: "video" },
-  { kind: "live", id: "edit.punchZoom", label: "Punch zoom", icon: ZoomIn, needs: "layer" },
+  { kind: "live", id: "edit.punchZoom", label: "Punch zoom", icon: Scan, needs: "layer" },
   { kind: "gap" },
   { kind: "live", id: "clip.speed.50", label: "Speed 0.5x", text: "0.5x", needs: "speed" },
   { kind: "live", id: "clip.speed.100", label: "Speed 1x", text: "1x", needs: "speed" },
@@ -135,6 +138,16 @@ const ENTRIES: readonly Entry[] = [
 const NEEDS = ["content", "layer", "primary", "clips", "video", "speed", "text", "fade", "fadeIn", "fadeOut", "cut", "audio", "muted", "silence"] as const;
 
 const bit = (need: (typeof NEEDS)[number]) => 1 << NEEDS.indexOf(need);
+
+/** What to select for a disabled chip (its tooltip after the name). */
+const NEEDED: Partial<Record<(typeof NEEDS)[number], string>> = {
+  content: "select an unlocked video, image, solid or text clip",
+  layer: "select an unlocked video, image, solid or text clip",
+  clips: "select an unlocked clip",
+  video: "select an unlocked video clip",
+  speed: "select an unlocked video or audio clip",
+  text: "select an unlocked text clip",
+};
 
 /** What the selection can take, as bits of NEEDS (a number: the row renders only when it changes); `editPoint`: a selected cut. */
 function abilities(project: Project, ids: readonly ClipId[], primary: ClipId, editPoint: boolean): number {
@@ -192,15 +205,18 @@ export function QuickActions({ ids, primary, editPoint = false }: { ids: readonl
   const bits = useStoreSelector(documentStore, select);
   const naming = useStoreSelector(presetNaming, (where) => where === "quick");
   const silence = useStoreSelector(silenceRow, (open) => open);
+  const group = useRef<HTMLDivElement>(null);
+  useFocusReturn(group);
   return (
-    <>
+    <div ref={group} className={styles.group}>
       <div className={styles.row} role="toolbar" aria-label="Quick actions">
         {ENTRIES.map((entry, index) => {
           if (entry.kind === "gap") return <span key={`gap-${index}`} className={styles.gap} aria-hidden="true" />;
           if (entry.kind === "updatePreset") return <UpdatePresetButton key="update-preset" />;
           if (entry.kind === "mute") {
             const on = (bits & bit("muted")) !== 0;
-            return <IconButton key="mute" icon={entry.icon} label={on ? "Unmute" : "Mute"} commandId="clip.mute" pressed={on} disabled={(bits & bit("audio")) === 0} />;
+            const enabled = (bits & bit("audio")) !== 0;
+            return <IconButton key="mute" icon={entry.icon} label={on ? "Unmute" : enabled ? "Mute" : "Mute: select a clip with sound"} commandId="clip.mute" pressed={on} disabled={!enabled} />;
           }
           if (entry.kind === "silence") {
             const enabled = (bits & bit("silence")) !== 0;
@@ -209,7 +225,9 @@ export function QuickActions({ ids, primary, editPoint = false }: { ids: readonl
           }
           if (entry.kind === "fade") {
             const on = (bits & bit(entry.id === "clip.fadeIn" ? "fadeIn" : "fadeOut")) !== 0;
-            return <IconButton key={entry.id} icon={entry.icon} label={on ? `${entry.label}: on (click to remove)` : entry.label} commandId={entry.id} pressed={on} disabled={(bits & bit("fade")) === 0} />;
+            const enabled = (bits & bit("fade")) !== 0;
+            const label = on ? `${entry.label}: on (click to remove)` : enabled ? entry.label : `${entry.label}: select an unlocked clip`;
+            return <IconButton key={entry.id} icon={entry.icon} label={label} commandId={entry.id} pressed={on} disabled={!enabled} />;
           }
           if (entry.kind === "transition") {
             // Always enabled: a chip can be dragged onto any cut.
@@ -227,7 +245,8 @@ export function QuickActions({ ids, primary, editPoint = false }: { ids: readonl
             );
           }
           const enabled = (bits & (1 << NEEDS.indexOf(entry.needs))) !== 0;
-          return <IconButton key={entry.id} icon={entry.icon} text={entry.text} label={entry.label} commandId={entry.id} disabled={!enabled} />;
+          const needed = NEEDED[entry.needs];
+          return <IconButton key={entry.id} icon={entry.icon} text={entry.text} label={enabled || !needed ? entry.label : `${entry.label}: ${needed}`} commandId={entry.id} disabled={!enabled} />;
         })}
       </div>
       {naming && (
@@ -236,6 +255,6 @@ export function QuickActions({ ids, primary, editPoint = false }: { ids: readonl
         </div>
       )}
       {silence && <SilenceRow />}
-    </>
+    </div>
   );
 }

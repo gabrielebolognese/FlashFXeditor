@@ -1,10 +1,10 @@
-import { CircleAlert, CircleCheck, Info, X, type LucideIcon } from "lucide-react";
+import { CircleAlert, CircleCheck, Info, TriangleAlert, X, type LucideIcon } from "lucide-react";
 import { useLayoutEffect, useRef } from "react";
 import { useStoreSelector } from "../core/store/useStoreSelector.js";
 import { dismissToast, toastStore, type Toast, type ToastAction, type ToastLive, type ToastTone } from "../ui/toasts.js";
 import styles from "./ToastHost.module.css";
 
-const ICONS: Record<ToastTone, LucideIcon> = { info: Info, success: CircleCheck, error: CircleAlert };
+const ICONS: Record<ToastTone, LucideIcon> = { info: Info, success: CircleCheck, warning: TriangleAlert, error: CircleAlert };
 
 const percent = (progress: number) => `${Math.round(Math.min(1, Math.max(0, progress)) * 100)}%`;
 
@@ -46,7 +46,7 @@ function ToastItem({ toast }: { toast: Toast }) {
       {toast.secondaryAction && <ActionButton action={toast.secondaryAction} />}
       {toast.action && <ActionButton action={toast.action} />}
       {!toast.pinned && (
-        <button type="button" className={styles.close} aria-label="Dismiss" data-control="" onMouseDown={(event) => event.preventDefault()} onClick={() => dismissToast(toast.id)}>
+        <button type="button" className={styles.close} aria-label="Dismiss" data-tooltip="Dismiss" data-control="" onMouseDown={(event) => event.preventDefault()} onClick={() => dismissToast(toast.id)}>
           <X className={styles.closeIcon} aria-hidden="true" />
         </button>
       )}

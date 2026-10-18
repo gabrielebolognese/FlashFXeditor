@@ -68,6 +68,7 @@ export function PanelTabs<T extends string>({ tabs, active, onChange, commandOf 
           className={styles.tab}
           aria-selected={tab.id === active}
           data-command={commandOf?.(tab.id)}
+          data-tooltip={commandOf ? tab.label : undefined}
           onMouseDown={(event) => event.preventDefault()}
           onClick={() => onChange(tab.id)}
         >

@@ -78,7 +78,7 @@ export function currentSession(): ProjectSession | null {
 
 /** The read-only toast for an action that would write to the project folder (`what`: "clear the cache"). */
 export function refuseReadOnly(what: string): void {
-  showToast({ tone: "error", message: "This project is read-only", detail: `Allow editing to ${what}.` });
+  showToast({ tone: "warning", message: "This project is read-only", detail: `Allow editing to ${what}.` });
 }
 
 function showError(title: string, error: unknown): void {

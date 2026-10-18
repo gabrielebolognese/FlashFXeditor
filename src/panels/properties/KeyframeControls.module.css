@@ -1,6 +1,7 @@
 /* Keyframe controls of an animatable section (spec §11, Batch 35; gap: the DS has no keyframe UI).
    Header: compact icon buttons --space-0 apart, the stopwatch last (gold while animated, the IconButton
    pressed state); the key count as a DS badge (--type-badge on --surface-3, radius-sm, tertiary text).
+   While the stopwatch is off the navigator and the count stay in place, disabled (Batch 46).
    Body: the Ease dropdown in the compact value look; `--` (no key at the playhead) in muted text. */
 .controls {
   display: flex;
@@ -8,8 +9,10 @@
   gap: var(--space-0);
 }
 
+/* A fixed width that fits 3 digits (tabular), so the header does not move as the count changes. */
 .count {
-  min-width: var(--space-5);
+  flex: none;
+  width: calc(3ch + 2 * var(--space-1));
   margin: 0 var(--space-1);
   padding: 0 var(--space-1);
   border-radius: var(--radius-sm);
@@ -18,6 +21,11 @@
   font: var(--type-badge);
   font-variant-numeric: tabular-nums;
   text-align: center;
+}
+
+/* The stopwatch is off: dimmed as the disabled navigator beside it. */
+.count[data-off] {
+  opacity: var(--disabled-opacity);
 }
 
 .easeCell {

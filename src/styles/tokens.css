@@ -48,6 +48,9 @@
   --danger: #e5545a;
   --info: #4c86d6;
   --live: #ff3b5c;
+  /* Gap (Batch 46): the DS semantic set has no warning; warning toasts (refused by a lock or read-only, done
+     only partly) use the orange label color, never the gold (selection, focus, active). */
+  --warning: var(--label-orange);
   --danger-wash: rgba(229, 84, 90, 0.24); /* DS: "semantic states use success/danger/info at low opacity" (refused drops) */
 
   /* Typography */
@@ -167,12 +170,16 @@
   --bin-strip-width: calc(var(--control-default) * 4);
   --media-column-min: var(--control-default);
   --column-resize-hit: var(--splitter-hit);
+  /* Gap (Batch 46): a focused column edge moves this far per Left / Right press (Shift: four steps). */
+  --column-resize-step: var(--space-3);
   /* Settings radio rows (Batch 41, gap: the DS has no radio): the chosen choice's gold dot in the 14px ring. */
   --radio-dot-size: var(--space-2);
   /* Favorite preset chips in the timeline toolbar (Batch 30, gap): a long name ends in an ellipsis. */
   --preset-chip-max-width: 96px;
   /* Captions tab cue rows (Batch 32; the DS has no cue list): two body lines of text and the times. */
   --cue-row-height: 48px;
+  /* Gap (Batch 46): the cue count beside the search ("999 of 999"), fixed so typing never resizes the field. */
+  --cue-count-width: calc(2 * var(--control-default) + var(--space-2));
   --cue-time-width: calc(3 * var(--space-6) + var(--space-3)); /* 80px: the toolbar timecode field's width */
   --cue-text-height: calc(2 * var(--type-body-line) + 2 * var(--space-0) + 2px); /* 38px: two body lines, their padding, the 1px borders */
   --type-badge: 500 10px / 12px var(--font-mono); /* DS chips: 9.5-10px */
@@ -408,6 +415,12 @@
   --shadow-modal: 0 16px 48px -8px rgba(0, 0, 0, 0.6), 0 4px 12px -4px rgba(0, 0, 0, 0.45);
   --shadow-top-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.05);
   --focus-ring: 0 0 0 2px rgba(217, 165, 33, 0.55), 0 0 0 4px rgba(217, 165, 33, 0.15);
+  /* Gap (Batch 46): the gold ring does not show on a gold button; there it is a sunken-navy gap and a gold
+     edge (the DS ring's two widths). */
+  --focus-ring-on-accent: 0 0 0 2px var(--bg-sunken), 0 0 0 4px var(--accent);
+  /* Gap (Batch 46): inside a clipping container (a toast, a scrolled list's full-width rows) the ring is
+     drawn inward: the DS ring's inner 2px band. */
+  --focus-ring-inset: inset 0 0 0 2px rgba(217, 165, 33, 0.55);
 
   /* Materials (glass), floating surfaces only */
   --material-menu-bg: rgba(26, 42, 66, 0.85);

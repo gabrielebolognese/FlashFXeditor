@@ -181,7 +181,7 @@ export function SaveTemplateDialog() {
           <Button control onClick={closeDialog}>
             Cancel
           </Button>
-          <Button control variant="primary" disabled={!clean} onClick={save}>
+          <Button control variant="primary" disabled={!clean} tooltip={clean ? undefined : "Type a name for the template first"} onClick={save}>
             Save template
           </Button>
         </>

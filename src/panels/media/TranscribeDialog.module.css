@@ -106,13 +106,20 @@
   font-variant-numeric: tabular-nums;
 }
 
-.note {
+.note,
+.status {
   color: var(--text-tertiary);
   font: var(--type-caption);
   letter-spacing: var(--type-caption-track);
 }
 
-/* What the transcription replaces: a quiet box, not an alarm (Undo brings the cues back). */
+/* Where it runs: two lines kept while the models are checked (Batch 46: the dialog does not grow). */
+.status {
+  min-height: calc(2 * var(--type-caption-line));
+}
+
+/* What the transcription replaces: a quiet box, not an alarm (Undo brings the cues back). Its line is
+   kept when nothing is replaced (Batch 46), the box then without its edge and surface. */
 .warning {
   padding: var(--space-2) var(--space-3);
   border: 1px solid var(--hairline);
@@ -123,8 +130,37 @@
   letter-spacing: var(--type-caption-track);
 }
 
+.warning[data-quiet] {
+  border-color: transparent;
+  background: transparent;
+  color: var(--text-tertiary);
+}
+
 .footerStart {
   margin-right: auto;
+}
+
+/* The start button's two labels in one grid cell: it is as wide as the longer one whichever shows. */
+.startLabels {
+  display: grid;
+  justify-items: center;
+}
+
+.startLabel {
+  display: inline-flex;
+  grid-area: 1 / 1;
+  align-items: center;
+  gap: var(--space-2);
+  visibility: hidden;
+}
+
+.startLabel[data-shown] {
+  visibility: visible;
+}
+
+.startIcon {
+  width: var(--icon-size);
+  height: var(--icon-size);
 }
 
 .summary {

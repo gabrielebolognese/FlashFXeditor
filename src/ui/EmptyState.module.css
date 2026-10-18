@@ -1,0 +1,53 @@
+/* Empty states (Batch 46, gap: the DS has none): a 28px muted icon, title type in primary text, a caption
+   hint in tertiary text, then the actions; one look for every panel. */
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  box-sizing: border-box;
+  height: 100%;
+  padding: var(--space-5);
+  text-align: center;
+}
+
+.empty[data-layout="inline"] {
+  justify-content: flex-start;
+  height: auto;
+  padding: var(--space-6) var(--space-5);
+}
+
+.empty[data-pass-through] {
+  pointer-events: none;
+}
+
+.icon {
+  flex: none;
+  width: var(--control-default);
+  height: var(--control-default);
+  color: var(--text-muted);
+}
+
+.title {
+  margin: 0;
+  color: var(--text-primary);
+  font: var(--type-title);
+  letter-spacing: var(--type-title-track);
+}
+
+.text {
+  max-width: var(--start-width);
+  margin: 0 0 var(--space-2);
+  color: var(--text-tertiary);
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-track);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-2);
+  pointer-events: auto;
+}

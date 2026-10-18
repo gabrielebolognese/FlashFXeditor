@@ -70,6 +70,7 @@ function AnimationRows({ ids, primary, side }: { ids: readonly ClipId[]; primary
   const title = side === "animIn" ? "In" : "Out";
   const step = 1 / fpsToNumber(fps);
   const anyAnim = id === MIXED || has;
+  const hint = typeof clamped === "number" && clamped >= 0 ? (clamped === 0 ? "The clip is too short to play it" : `Plays in ${(clamped / fpsToNumber(fps)).toFixed(ANIM_PRECISION)} s: half the clip`) : "";
   const defaultEase: TextEase | null = has ? animEase({ id: id as TextAnimId }, side === "animIn" ? "in" : "out") : null;
   const easeOptions: SelectOption<string>[] = [
     ...(ease === MIXED ? [{ value: "", label: "--" }] : []),
@@ -112,9 +113,10 @@ function AnimationRows({ ids, primary, side }: { ids: readonly ClipId[]; primary
           ariaLabel={`${title} animation duration`}
         />
       </Row>
-      {typeof clamped === "number" && clamped >= 0 && (
-        <span className={styles.hint}>{clamped === 0 ? "The clip is too short to play it" : `Plays in ${(clamped / fpsToNumber(fps)).toFixed(ANIM_PRECISION)} s: half the clip`}</span>
-      )}
+      {/* Always there, one line tall: only its text changes as the duration does (no row moves, spec §17). */}
+      <span className={`${styles.hint} ${styles.hintLine}`} data-tooltip={hint || undefined}>
+        {hint}
+      </span>
       <Row label="Stagger">
         <NumberField
           label={<ChevronsRight aria-hidden="true" />}

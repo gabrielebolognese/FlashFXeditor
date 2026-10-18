@@ -12,6 +12,11 @@
   background: var(--surface-1);
 }
 
+/* The row and the inline rows under it, one element to watch for the focus (no box of its own). */
+.group {
+  display: contents;
+}
+
 .gap {
   flex: none;
   width: 1px;

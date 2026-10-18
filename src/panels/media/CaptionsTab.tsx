@@ -1,4 +1,4 @@
-import { Captions, Eraser, FileDown, FileUp, Mic, Paintbrush, Plus } from "lucide-react";
+import { Captions, Eraser, FileDown, FileUp, Mic, Paintbrush, Plus, SearchX } from "lucide-react";
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type FocusEvent, type KeyboardEvent, type MouseEvent, type UIEvent } from "react";
 import { commitCue, cueFocus, draftCue, mergeCueIntoPrevious, selectCue, splitCueAtCaret, type CueFocus } from "../../app/captionController.js";
 import { actions, documentStore, sessionStore } from "../../app/services.js";
@@ -13,6 +13,7 @@ import { captionTrackOf } from "../../timeline/edit/captions.js";
 import { clipAtFrame } from "../../timeline/model/queries.js";
 import { Button } from "../../ui/Button.js";
 import { ContextMenu, type ContextMenuEntry } from "../../ui/ContextMenu.js";
+import { EmptyState } from "../../ui/EmptyState.js";
 import { IconButton } from "../../ui/IconButton.js";
 import { TextField } from "../../ui/TextField.js";
 import styles from "./CaptionsTab.module.css";
@@ -50,8 +51,14 @@ export function CaptionsActions() {
     <>
       <IconButton icon={Plus} label="Add a 2 s cue at the playhead" commandId="captions.addCue" onClick={() => actions.run("captions.addCue")} />
       <IconButton icon={FileUp} label="Import SRT or VTT (replaces the cues)" commandId="captions.import" onClick={() => actions.run("captions.import")} />
-      <IconButton icon={FileDown} label="Export SRT or VTT" commandId="captions.export" disabled={count === 0} onClick={() => actions.run("captions.export")} />
-      <IconButton icon={Paintbrush} label="Caption style (in Edit Properties)" commandId="captions.style" disabled={!hasTrack} onClick={() => actions.run("captions.style")} />
+      <IconButton icon={FileDown} label={count > 0 ? "Export SRT or VTT" : "Export SRT or VTT: no cues yet"} commandId="captions.export" disabled={count === 0} onClick={() => actions.run("captions.export")} />
+      <IconButton
+        icon={Paintbrush}
+        label={hasTrack ? "Caption style (in Edit Properties)" : "Caption style: no caption track yet (add a cue first)"}
+        commandId="captions.style"
+        disabled={!hasTrack}
+        onClick={() => actions.run("captions.style")}
+      />
       <IconButton
         icon={Mic}
         label={running ? "Cancel the transcription" : hasAudio ? "Transcribe the timeline's audio into cues (on this computer)" : "Transcribe: no audio on the timeline"}
@@ -60,8 +67,28 @@ export function CaptionsActions() {
         disabled={!hasAudio && !running}
         onClick={() => actions.run("captions.transcribe")}
       />
-      <IconButton icon={Eraser} label="Clear all cues" commandId="captions.clear" disabled={count === 0} onClick={() => actions.run("captions.clear")} />
+      <IconButton icon={Eraser} label={count > 0 ? "Clear all cues" : "Clear all cues: there are none"} commandId="captions.clear" disabled={count === 0} onClick={() => actions.run("captions.clear")} />
     </>
+  );
+}
+
+/**
+ * No caption track, or a track without cues (Batch 46: one look): Transcribe (disabled without audio
+ * on the timeline), a cue at the playhead, an SRT or VTT file.
+ */
+function NoCues({ hasTrack, hasAudio }: { hasTrack: boolean; hasAudio: boolean }) {
+  return (
+    <EmptyState icon={Captions} title={hasTrack ? "No cues yet" : "No captions yet"} text="Transcribe the timeline's audio, add a cue at the playhead, or import an SRT or VTT file.">
+      <Button variant="primary" icon={Mic} commandId="captions.transcribe" disabled={!hasAudio} tooltip={hasAudio ? undefined : "Transcribe: no audio on the timeline"} onClick={() => actions.run("captions.transcribe")}>
+        Transcribe
+      </Button>
+      <Button icon={Plus} commandId="captions.addCue" onClick={() => actions.run("captions.addCue")}>
+        Cue at playhead
+      </Button>
+      <Button icon={FileUp} commandId="captions.import" onClick={() => actions.run("captions.import")}>
+        Import SRT/VTT
+      </Button>
+    </EmptyState>
   );
 }
 
@@ -320,26 +347,7 @@ export function CaptionsTab() {
     if (event.target instanceof HTMLTextAreaElement) setEditing(null);
   };
 
-  if (!hasTrack) {
-    return (
-      <div className={styles.empty}>
-        <Captions className={styles.emptyIcon} aria-hidden="true" />
-        <p className={styles.emptyTitle}>No captions yet</p>
-        <p className={styles.emptyText}>Transcribe the timeline's audio, add a cue at the playhead, or import an SRT or VTT file.</p>
-        <div className={styles.emptyActions}>
-          <Button variant="primary" icon={Mic} commandId="captions.transcribe" disabled={!hasAudio} tooltip={hasAudio ? undefined : "No audio on the timeline"} onClick={() => actions.run("captions.transcribe")}>
-            Transcribe
-          </Button>
-          <Button icon={Plus} commandId="captions.addCue" onClick={() => actions.run("captions.addCue")}>
-            Cue at playhead
-          </Button>
-          <Button icon={FileUp} commandId="captions.import" onClick={() => actions.run("captions.import")}>
-            Import SRT/VTT
-          </Button>
-        </div>
-      </div>
-    );
-  }
+  if (!hasTrack) return <NoCues hasTrack={false} hasAudio={hasAudio} />;
 
   const first = Math.max(0, (view.block - 1) * BLOCK);
   const last = Math.min(shown.length, (view.block + 1) * BLOCK + view.rows + BLOCK);
@@ -357,8 +365,14 @@ export function CaptionsTab() {
         <span className={styles.total}>{query.trim() === "" ? `${total} cue${total === 1 ? "" : "s"}` : `${shown.length} of ${total}`}</span>
       </div>
       <div ref={scroller} className={styles.scroll} role="listbox" aria-label="Cues" onScroll={onScroll} onClick={onClick} onFocus={onFocus} onBlur={onBlur} onContextMenu={onContextMenu}>
-        {shown.length === 0 ? (
-          <p className={styles.note}>{total === 0 ? "No cues yet. Click + to add one at the playhead." : "No cue matches the search."}</p>
+        {total === 0 ? (
+          <NoCues hasTrack hasAudio={hasAudio} />
+        ) : shown.length === 0 ? (
+          <EmptyState layout="inline" icon={SearchX} title="No cue matches" text={`Nothing matches “${query.trim()}”.`}>
+            <Button control size="compact" onClick={() => setQuery("")}>
+              Clear search
+            </Button>
+          </EmptyState>
         ) : (
           <div className={styles.spacer} style={{ height: shown.length * rowHeight }}>
             {rows.map(({ id, index }) => (

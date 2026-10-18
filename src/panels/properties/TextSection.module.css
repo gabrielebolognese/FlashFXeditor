@@ -79,14 +79,14 @@
   color: var(--text-tertiary);
 }
 
-/* A missing font (spec §10.1 "missing font badge"): danger at low opacity, the DS semantic chip. */
+/* A missing font (spec §10.1 "missing font badge"): danger at low opacity, the DS semantic chip, inside
+   the field before the chevron (it takes the name's room: the field keeps its width, Batch 46). */
 .missing {
   display: inline-flex;
   flex: none;
   align-items: center;
   gap: var(--space-0);
-  height: var(--control-compact);
-  padding: 0 var(--space-1);
+  padding: var(--space-0) var(--space-1);
   border-radius: var(--radius-sm);
   background: var(--danger-wash);
   color: var(--danger);

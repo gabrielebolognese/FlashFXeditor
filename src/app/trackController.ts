@@ -161,7 +161,7 @@ function addTrackAction(kind: "video" | "audio", side: "above" | "below" | null)
 const deleteTrackAction: CommandRun = () => {
   const result = deleteTracks(documentStore.getState(), actionTracks());
   if (result.locked) {
-    showToast({ tone: "error", message: "Can't delete a locked track", detail: `${result.locked.name} is locked. Unlock it to delete it.` });
+    showToast({ tone: "warning", message: "Can't delete a locked track", detail: `${result.locked.name} is locked. Unlock it to delete it.` });
     return;
   }
   if (result.command) documentStore.dispatch(result.command, { selection: toSnapshot(EMPTY_SELECTION) });
@@ -230,7 +230,7 @@ const moveIntoSyncAction: CommandRun = () => {
   const clipId = menu?.kind === "clip" ? menu.clipId : selectedClips().primary;
   if (clipId === null) return;
   const result: MoveResult | null = moveIntoSync(documentStore.getState(), clipId, newId);
-  if (result?.kind === "refused") showToast({ tone: "error", message: "Can't move the clip into sync", detail: "Its track is locked." });
+  if (result?.kind === "refused") showToast({ tone: "warning", message: "Can't move the clip into sync", detail: "Its track is locked." });
   if (result?.kind === "ok") documentStore.dispatch(result.command);
 };
 

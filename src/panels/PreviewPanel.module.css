@@ -75,10 +75,11 @@
 }
 
 /* Editable playhead timecode (§7.8): the timeline toolbar's field, reading as text until hovered or
-   focused (the DS input on focus), as wide as its text (the narrow footer keeps the fps badge). */
+   focused (the DS input on focus), as wide as the toolbar's: typing, the ff / ms toggle or an hour more
+   never moves the duration and the fps badge (Batch 46). */
 .timecode {
   flex: none;
-  field-sizing: content;
+  width: calc(var(--space-6) * 3 + var(--space-3));
   height: var(--control-compact);
   padding: 0 var(--space-1);
   border: 1px solid transparent;
@@ -108,7 +109,10 @@
   box-shadow: 0 0 0 1px var(--danger-wash);
 }
 
+/* As wide as the longest format ("00:00.000", "1:00:00:00"): the fps badge stays put (Batch 46). */
 .duration {
+  flex: none;
+  min-width: calc(var(--space-6) * 2 + var(--space-5));
   color: var(--text-tertiary);
   font: var(--type-mono);
   font-variant-numeric: tabular-nums;
@@ -155,6 +159,13 @@
   min-width: 0;
 }
 
+/* The zoom in its dropdown: wide enough for 3200% (Batch 46: the button keeps its width as the zoom changes). */
+.zoomValue {
+  display: inline-block;
+  min-width: calc(var(--space-6) + var(--space-4));
+  text-align: right;
+}
+
 /* Chips (DS: surface-3, 9.5-10px, radius sm): the fps badge and the quality mode. */
 .badge {
   flex: none;
@@ -164,6 +175,12 @@
   color: var(--text-tertiary);
   font: var(--type-badge);
   white-space: nowrap;
+}
+
+/* The quality chip flips between "Auto: full", "Auto: proxy" and "Auto: reduced" while playing: as wide as
+   the longest ("Proxy: reduced"), so "Dropped" beside it never moves (Batch 46). */
+.quality {
+  min-width: calc(var(--space-6) * 4);
 }
 
 /* Status strip (§13, gap: the DS has none): a compact row under the transport, tertiary caption text. */

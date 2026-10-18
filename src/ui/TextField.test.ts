@@ -97,3 +97,10 @@ describe("TextField (live mode)", () => {
     expect(onCommit.mock.calls).toEqual([["Reel"]]);
   });
 });
+
+describe("TextField (size)", () => {
+  it("takes the compact height only when asked (beside compact buttons)", () => {
+    expect(mount({ value: "", ariaLabel: "Name", compact: true }).parentElement?.dataset.size).toBe("compact");
+    expect(mount({ value: "", ariaLabel: "Name" }).parentElement?.hasAttribute("data-size")).toBe(false);
+  });
+});

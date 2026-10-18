@@ -5,10 +5,14 @@
   border-bottom: 1px solid var(--hairline);
 }
 
+/* The h3 resets to the panel's type: its header actions (the keyframe controls) would take the
+   browser's bold 1.17em (Batch 46 token audit). */
 .heading {
   display: flex;
   align-items: center;
   margin: 0;
+  font: inherit;
+  letter-spacing: inherit;
 }
 
 .header {
@@ -32,6 +36,11 @@
 .header:hover {
   background: var(--hover-wash);
   color: var(--text-secondary);
+}
+
+/* Full width inside a scrolling body that clips an outer ring: the ring goes inside the header. */
+.header:focus-visible {
+  box-shadow: var(--focus-ring-inset);
 }
 
 /* Header actions (the Crop section's crop mode toggle): compact icon buttons at the right edge. */
@@ -143,4 +152,14 @@
   color: var(--text-muted);
   font: var(--type-caption);
   letter-spacing: var(--type-caption-track);
+}
+
+/* A hint that comes and goes with a value (Batch 46): always one line tall, empty or not, so the rows
+   under it never move; a longer text ends in an ellipsis (the whole of it in the tooltip). */
+.hintLine {
+  min-width: 0;
+  min-height: var(--type-caption-line);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

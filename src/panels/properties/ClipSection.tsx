@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { setLabelColor } from "../../app/cutController.js";
-import { renameClips, retime, setClipsEnabled } from "../../app/propertiesController.js";
-import { documentStore, sessionStore } from "../../app/services.js";
+import { renameClips, retime } from "../../app/propertiesController.js";
+import { actions, documentStore, sessionStore } from "../../app/services.js";
 import { formatTimecode, frameToUs, parseTimecode, usToFrame } from "../../core/document/time.js";
 import type { Clip, ClipId, LabelColor, Project, Rational } from "../../core/document/types.js";
 import type { SessionState } from "../../core/store/sessionStore.js";
@@ -88,7 +88,8 @@ export function ClipSection({ ids }: { ids: readonly ClipId[] }) {
       </Row>
       <Row label="Enabled">
         <span className={styles.switchCell}>
-          <Toggle checked={enabled === true} mixed={enabled === MIXED} onChange={(on) => setClipsEnabled(ids, on)} label="Clip enabled" />
+          {/* The Enable / Disable command (spec §6.16), so the tooltip shows its shortcut. */}
+          <Toggle checked={enabled === true} mixed={enabled === MIXED} onChange={() => void actions.run("clip.toggleEnabled")} label="Clip enabled" commandId="clip.toggleEnabled" />
         </span>
       </Row>
       <TimeRow label="Start" field="start" ids={ids} value={start} {...time} />

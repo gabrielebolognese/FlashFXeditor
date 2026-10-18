@@ -121,22 +121,29 @@ const MEASURE_EVERY_MS = 5000;
 let measuredAt = -Infinity;
 
 /** The open project's cache size and Clear cache (spec §9.7, §11). */
-export function CacheRow() {
+/** The open project's cache; with no project open it stays, disabled (spec §17: never hidden, Batch 46). */
+export function CacheRow({ projectOpen = true }: { projectOpen?: boolean }) {
   const info = useStoreSelector(cacheInfo, (state) => state);
   useEffect(() => {
+    if (!projectOpen) return;
     const now = performance.now();
     if (cacheInfo.getState().size === null || now - measuredAt > MEASURE_EVERY_MS) {
       measuredAt = now;
       void measureCache();
     }
-  }, []);
+  }, [projectOpen]);
   return (
     <Row label="Cache">
       <div className={styles.withAction}>
         <span className={styles.value} data-cache-size="">
-          {cacheText(info)}
+          {projectOpen ? cacheText(info) : "No project is open"}
         </span>
-        <Button size="compact" commandId="project.clearCache" disabled={info.clearing} tooltip="Delete this project's proxies, thumbnails and waveforms: they are made again">
+        <Button
+          size="compact"
+          commandId="project.clearCache"
+          disabled={info.clearing || !projectOpen}
+          tooltip={projectOpen ? "Delete this project's proxies, thumbnails and waveforms: they are made again" : "Open a project to clear its cache"}
+        >
           Clear cache
         </Button>
       </div>

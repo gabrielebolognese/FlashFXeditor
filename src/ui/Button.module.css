@@ -58,6 +58,12 @@
   color: var(--on-brand-gold);
 }
 
+/* The gold ring does not show on a gold button: the on-accent ring (a navy gap, then a gold edge). */
+.button[data-variant="primary"]:focus-visible,
+.button[data-variant="hero"]:focus-visible {
+  box-shadow: var(--focus-ring-on-accent);
+}
+
 .button[aria-disabled] {
   opacity: var(--disabled-opacity);
 }

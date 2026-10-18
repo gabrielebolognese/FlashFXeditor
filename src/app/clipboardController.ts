@@ -126,7 +126,7 @@ function reportRefusal(result: Extract<PasteResult, { kind: "refused" }>): void 
   const track = project.tracks.find((candidate) => candidate.id === result.trackId)?.name ?? "A track";
   switch (result.reason) {
     case "locked":
-      showToast({ tone: "info", message: "Can't paste onto a locked track", detail: `${track} is locked. Unlock it or target other tracks.` });
+      showToast({ tone: "warning", message: "Can't paste onto a locked track", detail: `${track} is locked. Unlock it or target other tracks.` });
       return;
     case "noRoom":
       showToast({ tone: "info", message: "No room for the captions", detail: "The pasted cues would overlap captions near the playhead." });
@@ -160,7 +160,7 @@ function reportOffline(offline: readonly MediaItem[]): void {
   if (offline.length === 0) return;
   const names = offline.map((item) => item.name);
   const list = names.length <= 2 ? names.join(" and ") : `${names.slice(0, 2).join(", ")} and ${names.length - 2} more`;
-  showToast({ tone: "info", message: offline.length === 1 ? "Pasted with offline media" : `Pasted with ${offline.length} offline media`, detail: `${list} ${offline.length === 1 ? "is" : "are"} not in this project; the clips stay offline until the media is relinked.` });
+  showToast({ tone: "warning", message: offline.length === 1 ? "Pasted with offline media" : `Pasted with ${offline.length} offline media`, detail: `${list} ${offline.length === 1 ? "is" : "are"} not in this project; the clips stay offline until the media is relinked.` });
 }
 
 /** Whether `command` makes a valid document; a toast and false when not (`what`: "clips" or "keyframes"). */

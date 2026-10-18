@@ -11,6 +11,11 @@
   transition: border-color var(--duration-micro) var(--ease-out);
 }
 
+/* Beside compact buttons (the Export tab's preset name): the row keeps its height when it swaps them. */
+.field[data-size="compact"] {
+  height: var(--control-compact);
+}
+
 .field:focus-within {
   border-color: var(--accent-dim);
   box-shadow: 0 0 0 1px var(--accent-wash);

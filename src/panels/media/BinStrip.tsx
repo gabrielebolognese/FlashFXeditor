@@ -15,11 +15,11 @@ import styles from "./MediaTab.module.css";
 // a bin's chip renames on double-click, has a menu (Rename, Delete bin) and takes media dropped on it
 // (`data-bin-drop`, read by the media drag). The chips are the strip's own controls (`data-control`).
 
-const VIRTUAL: readonly { id: VirtualBin; label: string; icon: LucideIcon }[] = [
-  { id: "all", label: "All", icon: Library },
-  { id: "video", label: "Video", icon: Film },
-  { id: "audio", label: "Audio", icon: AudioLines },
-  { id: "image", label: "Images", icon: Image },
+const VIRTUAL: readonly { id: VirtualBin; label: string; icon: LucideIcon; tooltip: string }[] = [
+  { id: "all", label: "All", icon: Library, tooltip: "Every media of the project" },
+  { id: "video", label: "Video", icon: Film, tooltip: "The videos, whatever their bin" },
+  { id: "audio", label: "Audio", icon: AudioLines, tooltip: "The audio files, whatever their bin" },
+  { id: "image", label: "Images", icon: Image, tooltip: "The images, whatever their bin" },
 ];
 
 const selectBins = (project: Project) => project.bins;
@@ -28,7 +28,17 @@ const selectCounts = (project: Project) => [...binCounts(Object.values(project.m
 const keep = (event: MouseEvent) => event.preventDefault();
 const MEDIA_CONTEXT = { scope: "media", phase: "down", repeat: false } as const;
 
-function BinRow({ id, label, icon: Icon, count, active, drop }: { id: string; label: string; icon: LucideIcon; count: number; active: boolean; drop: boolean }) {
+interface BinRowProps {
+  id: string;
+  label: string;
+  icon: LucideIcon;
+  count: number;
+  active: boolean;
+  drop: boolean;
+  tooltip?: string | undefined;
+}
+
+function BinRow({ id, label, icon: Icon, count, active, drop, tooltip }: BinRowProps) {
   const onContextMenu = (event: MouseEvent) => {
     if (!drop) return;
     event.preventDefault();
@@ -41,7 +51,7 @@ function BinRow({ id, label, icon: Icon, count, active, drop }: { id: string; la
       aria-pressed={active}
       data-bin-drop={drop ? id : undefined}
       data-command="media.showBin"
-      data-tooltip={drop ? `${label}: drop media here, double-click to rename` : undefined}
+      data-tooltip={drop ? `${label}: drop media here, double-click to rename` : tooltip}
       onMouseDown={keep}
       onClick={() => void actions.run("media.showBin", MEDIA_CONTEXT, id)}
       onDoubleClick={drop ? () => void actions.run("media.renameBin", MEDIA_CONTEXT, id) : undefined}
@@ -57,15 +67,19 @@ function BinRow({ id, label, icon: Icon, count, active, drop }: { id: string; la
 /**
  * A bin's inline rename: Enter, blur or a press anywhere else commits (one undoable command; the
  * strip's chips and the panel's buttons keep the focus where it is, so the input would not blur),
- * Escape cancels.
+ * Escape cancels. Ended with Enter or Escape, the bin's chip takes the focus (Batch 46: it would fall
+ * to the page with the field).
  */
 function BinRename({ bin }: { bin: Bin }) {
   const done = useRef(false);
   const input = useRef<HTMLInputElement>(null);
-  const finish = (value: string | null) => {
+  const finish = (value: string | null, refocus = false) => {
     if (done.current) return;
     done.current = true;
+    const strip = refocus ? input.current?.closest("nav") : null;
     finishBinRename(bin.id, value);
+    // After the strip renders the chip again.
+    if (strip) requestAnimationFrame(() => strip.querySelector<HTMLElement>(`[data-bin-drop="${CSS.escape(bin.id)}"]`)?.focus());
   };
   useEffect(() => {
     const onPointerDown = (event: PointerEvent) => {
@@ -76,8 +90,8 @@ function BinRename({ bin }: { bin: Bin }) {
     return () => document.removeEventListener("pointerdown", onPointerDown, true);
   }, []);
   const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === "Enter") finish(event.currentTarget.value);
-    else if (event.key === "Escape") finish(null);
+    if (event.key === "Enter") finish(event.currentTarget.value, true);
+    else if (event.key === "Escape") finish(null, true);
   };
   return (
     <input
@@ -105,7 +119,7 @@ export function BinStrip() {
   return (
     <nav className={styles.bins} aria-label="Bins" data-control="">
       {VIRTUAL.map((bin) => (
-        <BinRow key={bin.id} id={bin.id} label={bin.label} icon={bin.icon} count={counts.get(bin.id) ?? 0} active={active === bin.id} drop={false} />
+        <BinRow key={bin.id} id={bin.id} label={bin.label} icon={bin.icon} tooltip={bin.tooltip} count={counts.get(bin.id) ?? 0} active={active === bin.id} drop={false} />
       ))}
       {bins.length > 0 && <div className={styles.binSeparator} role="separator" />}
       {bins.map((bin) => (renaming === bin.id ? <BinRename key={bin.id} bin={bin} /> : <BinRow key={bin.id} id={bin.id} label={bin.name} icon={Folder} count={counts.get(bin.id) ?? 0} active={active === bin.id} drop />))}

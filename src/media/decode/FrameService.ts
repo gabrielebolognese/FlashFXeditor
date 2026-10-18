@@ -130,7 +130,6 @@ interface Lane {
 const keyOf = (mediaId: MediaId, lod: Lod) => `${mediaId}|${lod}`;
 const supersededError = () => new DOMException("Superseded by a newer request", "AbortError");
 
-
 export class FrameService {
   private source: FrameSource | null = null;
   /** Bumped on attach/detach: opens from a previous project are dropped. */
@@ -385,7 +384,8 @@ export class FrameService {
   private async open(mediaId: MediaId, lod: Lod, signal: AbortSignal): Promise<VideoInfo> {
     const source = this.source;
     const generation = this.generation;
-    if (!source) throw new Error("No project is open");
+    // The project closed (or none is open yet): the request is moot, as a superseded one (no warning).
+    if (!source) throw abortError();
     const [file, cachedIndex] = await Promise.all([source.file(mediaId, lod), source.readIndex(mediaId, lod).catch(() => null)]);
     if (!file) throw new Error("The media file is missing");
     if (generation !== this.generation) throw abortError();

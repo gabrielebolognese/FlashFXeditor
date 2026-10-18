@@ -2,6 +2,7 @@
 // canvas renderers and other non-CSS consumers. Canvases never use color or size literals.
 import { LABEL_COLORS, type ClipKind, type LabelColor, type Track } from "../document/types.js";
 import { parseCubicBezier, type CubicBezier } from "./easing.js";
+import { parseShadow, type ShadowLayer } from "./shadow.js";
 
 export type SpaceStep = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
@@ -54,6 +55,8 @@ export interface Theme {
   /** The DS easings as cubic-bezier control points (x1, y1, x2, y2). */
   ease: { out: CubicBezier };
   tooltipDelay: number;
+  /** The DS floating shadow (`--shadow-overlay`) for chips drawn on canvases (drag tooltips, readouts). */
+  shadow: { overlay: ShadowLayer[] };
   timeline: TimelineTheme;
   /** The stereo peak meter (CSS px). */
   meter: { barWidth: number; barGap: number; ledHeight: number };
@@ -292,6 +295,7 @@ export function readTheme(read: TokenReader, root?: Element): { theme: Theme; mi
     },
     ease: { out: parseCubicBezier(str("--ease-out")) },
     tooltipDelay: num("--tooltip-delay"),
+    shadow: { overlay: parseShadow(str("--shadow-overlay")) },
     timeline: {
       headerWidth: num("--timeline-header-width"),
       rulerHeight: num("--timeline-ruler-height"),

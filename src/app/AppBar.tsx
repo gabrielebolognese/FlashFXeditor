@@ -10,6 +10,7 @@ import { IconButton } from "../ui/IconButton.js";
 import styles from "./AppBar.module.css";
 import { perfDev } from "./perfDev.js";
 import { projectNaming } from "./projectController.js";
+import { ReadOnlyBanner } from "./ReadOnlyBanner.js";
 import { actions, documentStore, saveStatus } from "./services.js";
 
 const keepFocus = (event: MouseEvent) => event.preventDefault();
@@ -62,19 +63,30 @@ function ProjectName() {
   const name = useStoreSelector(documentStore, selectName);
   const editing = useStoreSelector(projectNaming, (state) => state);
   const cancelled = useRef(false);
+  // Enter or Escape closes the field: the focus goes back to the name it replaced (Batch 46).
+  const refocus = useRef(false);
+  const button = useRef<HTMLButtonElement>(null);
+  useLayoutEffect(() => {
+    if (editing || !refocus.current) return;
+    refocus.current = false;
+    button.current?.focus();
+  }, [editing]);
 
   if (!editing) {
     return (
-      <button type="button" className={styles.projectName} data-tooltip="Rename project" data-command="project.rename" onClick={() => actions.run("project.rename")}>
+      <button ref={button} type="button" className={styles.projectName} data-tooltip="Rename project" data-command="project.rename" onClick={() => actions.run("project.rename")}>
         {name}
       </button>
     );
   }
 
   const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === "Enter") event.currentTarget.blur();
-    else if (event.key === "Escape") {
+    if (event.key === "Enter") {
+      refocus.current = true;
+      event.currentTarget.blur();
+    } else if (event.key === "Escape") {
       cancelled.current = true;
+      refocus.current = true;
       event.currentTarget.blur();
     }
   };
@@ -107,7 +119,7 @@ export function AppBar() {
   const badge = useStoreSelector(documentStore, selectBadge);
 
   return (
-    <header className={styles.bar}>
+    <header className={styles.bar} data-app-bar="">
       <div className={styles.brand} aria-hidden="true">
         S
       </div>
@@ -132,7 +144,9 @@ export function AppBar() {
       <div className={styles.divider} />
       <span className={styles.badge}>{badge}</span>
 
-      <div className={styles.spacer} />
+      <div className={styles.spacer}>
+        <ReadOnlyBanner />
+      </div>
       <button
         type="button"
         className={styles.export}

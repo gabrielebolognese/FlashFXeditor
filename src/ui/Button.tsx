@@ -1,7 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import type { MouseEvent, ReactNode } from "react";
 import styles from "./Button.module.css";
-import { runCommand } from "./commands.js";
+import { commandBridge, runCommand } from "./commands.js";
 import type { ButtonDispatch } from "./IconButton.js";
 
 export type ButtonProps = ButtonDispatch & {
@@ -23,6 +23,8 @@ export type ButtonProps = ButtonDispatch & {
  */
 export function Button({ children, variant = "secondary", size = "default", icon: Icon, disabled, commandId, control, tooltip, autoFocus, onClick }: ButtonProps) {
   const click = onClick ?? (commandId !== undefined ? () => runCommand(commandId) : undefined);
+  // A command's tooltip is its catalog label ("Restore starter presets" for a "Restore" button), as on IconButton.
+  const label = commandId !== undefined ? (commandBridge().label(commandId) ?? (typeof children === "string" ? children : undefined)) : undefined;
   return (
     <button
       type="button"
@@ -30,7 +32,7 @@ export function Button({ children, variant = "secondary", size = "default", icon
       data-variant={variant}
       data-size={size}
       aria-disabled={disabled || undefined}
-      data-tooltip={tooltip ?? (commandId !== undefined && typeof children === "string" ? children : undefined)}
+      data-tooltip={tooltip ?? label}
       data-command={commandId}
       data-control={control ? "" : undefined}
       autoFocus={autoFocus}

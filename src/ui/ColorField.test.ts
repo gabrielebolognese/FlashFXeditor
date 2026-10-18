@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it } from "vitest";
 import { formatHexColor } from "../core/document/color.js";
 import type { RGBA } from "../core/document/types.js";
-import { ColorField } from "./ColorField.js";
+import { ColorField, sliderValue, stepColor, type PickerColor } from "./ColorField.js";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -144,5 +144,81 @@ describe("ColorField picker: drags (spec §11, P1/P2)", () => {
     expect(picker()).toBeNull();
     expect(previews.at(-1)).toBeNull();
     expect(changes).toEqual([]);
+  });
+});
+
+function key(target: HTMLElement, name: string, init: KeyboardEventInit = {}): void {
+  act(() => {
+    target.dispatchEvent(new KeyboardEvent("keydown", { key: name, bubbles: true, cancelable: true, ...init }));
+  });
+}
+
+describe("ColorField picker: keyboard (Batch 46)", () => {
+  const RED: PickerColor = { h: 0, s: 1, v: 1, a: 1 };
+
+  it("steps the square (Left / Right saturation, Up / Down brightness) by 1%, Shift 10%, within 0..100%", () => {
+    const grey: PickerColor = { h: 200, s: 0.437, v: 0.5, a: 1 };
+    expect(stepColor(grey, "square", "ArrowRight", false)).toEqual({ ...grey, s: 0.45 });
+    expect(stepColor(grey, "square", "ArrowLeft", true)).toEqual({ ...grey, s: 0.34 });
+    expect(stepColor(grey, "square", "ArrowUp", false)).toEqual({ ...grey, v: 0.51 });
+    expect(stepColor(grey, "square", "ArrowDown", true)).toEqual({ ...grey, v: 0.4 });
+    expect(stepColor(RED, "square", "ArrowRight", true)).toEqual(RED);
+    expect(stepColor(grey, "square", "Home", false)).toBeNull();
+    expect(stepColor(grey, "square", "a", false)).toBeNull();
+  });
+
+  it("steps the hue by 1 degree (Shift 10) and the alpha by 1% (Shift 10%); Home / End go to the ends", () => {
+    expect(stepColor(RED, "hue", "ArrowRight", false)?.h).toBe(1);
+    expect(stepColor(RED, "hue", "ArrowLeft", true)?.h).toBe(0);
+    expect(stepColor({ ...RED, h: 355 }, "hue", "ArrowUp", true)?.h).toBe(359.999);
+    expect(stepColor(RED, "hue", "End", false)?.h).toBe(359.999);
+    expect(stepColor(RED, "alpha", "ArrowDown", true)?.a).toBeCloseTo(0.9, 9);
+    expect(stepColor({ ...RED, a: 0.5 }, "alpha", "Home", false)?.a).toBe(0);
+    expect(stepColor({ ...RED, a: 0.5 }, "alpha", "End", false)?.a).toBe(1);
+    expect(stepColor(RED, "alpha", "Enter", false)).toBeNull();
+  });
+
+  it("describes each area as a slider value", () => {
+    const color: PickerColor = { h: 120.4, s: 0.25, v: 0.8, a: 0.5 };
+    expect(sliderValue(color, "square")).toEqual({ now: 25, text: "Saturation 25%, brightness 80%" });
+    expect(sliderValue(color, "hue")).toEqual({ now: 120, text: "120 degrees" });
+    expect(sliderValue(color, "alpha")).toEqual({ now: 50, text: "50%" });
+  });
+
+  it("takes the focus on open (the hex field), keeps Tab inside, and gives it back to the swatch on Esc", async () => {
+    const { picker } = mountOpen();
+    const panel = picker()!;
+    const hex = panel.querySelector<HTMLInputElement>('input[aria-label="Hex"]')!;
+    expect(document.activeElement).toBe(hex);
+    const square = panel.querySelector<HTMLElement>('[data-part="square"]')!;
+    expect(square.getAttribute("role")).toBe("slider");
+    expect(square.tabIndex).toBe(0);
+    // Shift+Tab from the first stop goes round to the last, Tab from the last to the first.
+    act(() => square.focus());
+    key(square, "Tab", { shiftKey: true });
+    const stops = panel.querySelectorAll<HTMLElement>('input:not([disabled]), button:not([disabled]), [tabindex="0"]');
+    const last = stops[stops.length - 1]!;
+    expect(document.activeElement).toBe(last);
+    key(last, "Tab");
+    expect(document.activeElement).toBe(square);
+    const swatch = document.querySelector<HTMLButtonElement>('button[aria-label="Background color: color picker"]')!;
+    escape();
+    expect(picker()).toBeNull();
+    // Once the picker has left the page (a microtask after the commit).
+    await Promise.resolve();
+    expect(document.activeElement).toBe(swatch);
+  });
+
+  it("an arrow on a focused strip is one pick, written into the slider's value", () => {
+    const { changes, picker } = mountOpen();
+    const hue = picker()!.querySelector<HTMLElement>('[data-part="hue"]')!;
+    expect(hue.getAttribute("aria-valuenow")).toBe("0");
+    const alpha = picker()!.querySelector<HTMLElement>('[data-part="alpha"]')!;
+    act(() => alpha.focus());
+    key(alpha, "ArrowLeft", { shiftKey: true });
+    expect(changes).toHaveLength(1);
+    expect(changes[0]!.a).toBeCloseTo(0.9, 9);
+    expect(alpha.getAttribute("aria-valuenow")).toBe("90");
+    expect(alpha.getAttribute("aria-valuetext")).toBe("90%");
   });
 });

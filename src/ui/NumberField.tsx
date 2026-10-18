@@ -175,6 +175,7 @@ export function NumberField({ binding, label, unit, min = -Infinity, max = Infin
       input.blur();
     } else if (event.key === "ArrowUp" || event.key === "ArrowDown") {
       event.preventDefault();
+      if (disabled) return;
       const amount = (event.key === "ArrowUp" ? 1 : -1) * (event.shiftKey ? 10 : 1) * step;
       if (dirty.current) {
         dirty.current = false;
@@ -264,6 +265,8 @@ export function NumberField({ binding, label, unit, min = -Infinity, max = Infin
         <span
           className={styles.scrub}
           aria-hidden="true"
+          // An icon label has no visible name: its tooltip says what the field is (a text label needs none).
+          data-tooltip={typeof label === "string" || typeof label === "number" ? undefined : ariaLabel}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
@@ -279,7 +282,10 @@ export function NumberField({ binding, label, unit, min = -Infinity, max = Infin
         type="text"
         inputMode="decimal"
         spellCheck={false}
-        disabled={disabled}
+        // Disabled, still reachable (Batch 46): read-only rather than `disabled`, which would drop the
+        // field from the Tab order (as IconButton keeps its focus with aria-disabled).
+        readOnly={disabled}
+        aria-disabled={disabled || undefined}
         aria-label={ariaLabel}
         onInput={() => {
           dirty.current = true;

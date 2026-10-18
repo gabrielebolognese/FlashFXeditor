@@ -42,7 +42,7 @@ export function MediaName({ id, name }: { id: MediaId; name: string }) {
   return (
     <span
       className={styles.name}
-      title={name}
+      data-tooltip={name}
       onDoubleClick={(event) => {
         // Rename, not insert: the card's double-click handler must not see this one.
         event.stopPropagation();

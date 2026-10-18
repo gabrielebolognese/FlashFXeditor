@@ -255,6 +255,11 @@
   box-shadow: 0 0 0 1px var(--accent-wash);
 }
 
+/* Keyboard focus (Batch 46): the DS ring, on a selected card too (after it: same specificity). */
+.card:focus-visible {
+  box-shadow: var(--focus-ring);
+}
+
 /* Unused and offline media (spec §12 "unused" dim state): the picture at the disabled opacity, full while scrubbed. */
 .card[data-unused] .poster[data-ready],
 .card[data-offline] .poster[data-ready],
@@ -588,6 +593,15 @@ button.offline:focus-visible {
   background: var(--accent-dim);
 }
 
+/* A focused edge (Batch 46: Left / Right resize its column): the line in --accent instead of a ring. */
+.resizer:focus-visible {
+  box-shadow: none;
+}
+
+.resizer:focus-visible::after {
+  background: var(--accent);
+}
+
 .list[data-resizing] {
   cursor: col-resize;
   user-select: none;
@@ -643,6 +657,11 @@ button.column:hover,
   background: var(--accent-wash);
 }
 
+/* Keyboard focus (Batch 46): an inset edge, as the cue rows' (the ring would be cut off at the list's sides). */
+.row:focus-visible {
+  box-shadow: inset 0 0 0 1px var(--accent-dim);
+}
+
 .rowThumb {
   position: relative;
   display: grid;
@@ -677,51 +696,9 @@ button.column:hover,
   color: var(--danger);
 }
 
-/* Nothing matches (Batch 41): the empty state's title and text, and Clear filters; above the (empty)
-   grid, under the list's header. */
-.noMatch {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-6) var(--space-5);
-  text-align: center;
-}
-
-.noMatch ~ .grid {
+/* Nothing matches (the shared inline empty state, above the empty grid): the grid takes no height. */
+.grid[data-empty] {
   min-height: 0;
-}
-
-/* Empty state with its one action. */
-.empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
-  height: 100%;
-  padding: var(--space-5);
-  text-align: center;
-}
-
-.emptyIcon {
-  width: var(--control-default);
-  height: var(--control-default);
-  color: var(--text-muted);
-}
-
-.emptyTitle {
-  margin: 0;
-  color: var(--text-primary);
-  font: var(--type-title);
-  letter-spacing: var(--type-title-track);
-}
-
-.emptyText {
-  margin: 0 0 var(--space-2);
-  color: var(--text-tertiary);
-  font: var(--type-caption);
-  letter-spacing: var(--type-caption-track);
 }
 
 /* Drop target (gap logged in Batch 03): dashed accent-dim outline on accent-wash. */

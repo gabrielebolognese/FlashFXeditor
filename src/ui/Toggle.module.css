@@ -10,6 +10,11 @@
   transition: background-color var(--duration-micro) var(--ease-out);
 }
 
+/* The highlight above replaces the global focus ring: keep both. */
+.toggle:focus-visible {
+  box-shadow: var(--focus-ring), var(--shadow-top-highlight);
+}
+
 .thumb {
   position: absolute;
   top: var(--space-0);
