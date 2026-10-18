@@ -201,7 +201,7 @@ Right-click a clip or a gap to open its menu. Rows that have a keyboard shortcut
 | **Label**, with eight color swatches | Gives the selected clips a label color, or removes it. See [Give clips a label color](timeline.md#give-clips-a-label-color). |
 | **Speed...** | Opens the **Speed** section of **Edit Properties** with **Speed** ready for typing. Dimmed for image clips. See [Type an exact speed](speed-freeze-frames-and-punch-zoom.md#type-an-exact-speed). |
 | **Freeze frame at playhead** | Holds the frame at the playhead for 2 seconds (<kbd>Shift</kbd>+<kbd>F</kbd>). Dimmed unless the clip is a video under the playhead. See [Hold a frame (freeze frame)](speed-freeze-frames-and-punch-zoom.md#hold-a-frame-freeze-frame). |
-| **Reveal in media panel** | Opens the **Media** tab of the Media panel with the clip's media selected and scrolled into view, and gives the keyboard to the Media panel. Shown for video, audio and image clips. |
+| **Reveal in media panel** | Opens the **Media** tab of the Media panel with the clip's media selected and scrolled into view, and gives the keyboard to the Media panel. When the search, the filter chips or the bin you show hide the media, they are cleared or switched so it shows (see [Select what the tab shows](organizing-media.md#select-what-the-tab-shows)). Shown for video, audio and image clips. |
 | **Mute** or **Unmute** | Mutes the sound of the selected clips (audio clips, and the audio linked to videos), or brings it back. Reads **Unmute** when all of it is muted. See [Mute a clip](audio-editing.md#mute-a-clip). |
 | **Normalize** | Sets the volume of each selected audio clip, or of a selected video's sound, so its loudest moment reaches -1 dBFS. See [Normalize a clip](audio-editing.md#normalize-a-clip). |
 | **Auto-duck music** | Lowers the selected audio clips (a music clip, usually) by 12 dB wherever audio plays on the tracks above them. See [Lower music under voices with Auto-duck](audio-editing.md#lower-music-under-voices-with-auto-duck). |
@@ -245,4 +245,4 @@ The **Mute**, **Normalize**, **Auto-duck music** and **Detach audio** rows show 
 - [Projects and saving](projects-and-saving.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 40, 2026-10-18</sub>
+<sub>Last updated: Batch 41, 2026-10-18</sub>

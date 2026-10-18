@@ -28,7 +28,7 @@ When you create a project, the editor fills the folder you picked with these ite
 | --- | --- |
 | `project.json` | The project itself: settings, tracks, clips, markers and the list of media. |
 | `session.json` | Where you left off: playhead, in and out points, the marked parts of media items, the timeline and preview zoom, the preview quality and overlays, panel sizes, the folded sections of **Edit Properties** and similar view settings. If it is missing or damaged, the project still opens, with default view settings. |
-| `media` | Copies of the files you import. See [Importing media](importing-media.md). |
+| `media` | Copies of the files you import. Files you link to stay where they are and are not copied here. See [Copy or link your files](importing-media.md#copy-or-link-your-files). |
 | `cache` | Thumbnails, sound analysis and indexes the editor builds from your media, and the proxies of heavy videos in `cache/proxies` (see [Proxies](proxies.md)). If you delete this folder while the project is closed, the editor builds what it needs again the next time. This takes a little longer, and for proxies about as long as the videos themselves. |
 | `history` | Automatic backups of `project.json`: the newest 20. See [Restore an older version](#restore-an-older-version). |
 | `fonts` | Copies of the fonts from your computer that your text clips use, and `fonts.json`, the list of those copies. Created the first time a text uses a font from your computer. The editor uses these copies when it opens the project, so the text looks the same on a computer without those fonts. See [Fonts travel with the project](titles-and-text.md#fonts-travel-with-the-project). |
@@ -38,7 +38,7 @@ When you create a project, the editor fills the folder you picked with these ite
 
 > **Note:** Transcription models are not in the project folder: your browser keeps them for all your projects. See [Manage downloaded models](transcription.md#manage-downloaded-models).
 
-> **Important:** Keep the project folder together. Do not rename, move or delete files inside `media` or `fonts`: the project refers to them by name. To move a project, move the whole folder, then open it with **Open project**.
+> **Important:** Keep the project folder together. Do not rename, move or delete files inside `media` or `fonts`: the project refers to them by name. A media file that is gone makes its media item offline, with gray slates for its clips, until you relink it; see [Offline media and relinking](offline-media-and-relinking.md). To move a project, move the whole folder, then open it with **Open project**. Media you linked instead of copying are not in the folder, so they don't move with it.
 
 > **Note:** Do not edit `project.json` while the project is open in the editor. The next save replaces it.
 
@@ -133,7 +133,7 @@ When you open a project again, the editor restores your view from the last sessi
 - the timeline zoom and scroll position, also after you pan or use the scrollbars
 - the timecode format: frames (**ff**) or milliseconds (**ms**)
 - the preview zoom and pan, the preview quality, and the safe zone, grid and guides of the **Overlays** menu (see [Preview zoom, overlays and fullscreen](preview-zoom-overlays-fullscreen.md))
-- the media panel tab, view (grid or list) and sort order, and the **Global** or **Project** list of the **Presets** tab
+- the media panel tab, view (grid or list) and sort order, the bin you show, the filter chips that are on and the list column widths (see [Organizing media](organizing-media.md)), and the **Global** or **Project** list of the **Presets** tab
 - whether **Loop playback** is on
 - whether **Snap** is on
 - whether **Linked selection** is on
@@ -144,7 +144,7 @@ When you open a project again, the editor restores your view from the last sessi
 - the sections you folded in **Edit Properties**
 - the panel sizes
 
-The undo history, a selected cut (edit point), a selected gap, a selected marker, crop mode and the fullscreen preview are not restored. Markers are part of the project itself, so they are always there. Because the view is saved every 10 seconds, the last few seconds of view changes can be missing after a browser crash; your project changes are saved separately by autosave.
+The undo history, a selected cut (edit point), a selected gap, a selected marker, crop mode, the fullscreen preview and the text in **Search media** are not restored. Markers are part of the project itself, so they are always there. Because the view is saved every 10 seconds, the last few seconds of view changes can be missing after a browser crash; your project changes are saved separately by autosave.
 
 ## Restore unsaved changes after a crash
 
@@ -244,6 +244,8 @@ Choosing to keep the layout as it is when you change the resolution is available
 - [Getting started](getting-started.md)
 - [The workspace](workspace.md)
 - [Importing media](importing-media.md)
+- [Organizing media](organizing-media.md)
+- [Offline media and relinking](offline-media-and-relinking.md)
 - [Adding media to the timeline](adding-media-to-the-timeline.md)
 - [Timeline](timeline.md)
 - [Trimming clips](trimming.md)
@@ -258,4 +260,4 @@ Choosing to keep the layout as it is when you change the resolution is available
 - [Titles and text](titles-and-text.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 40, 2026-10-18</sub>
+<sub>Last updated: Batch 41, 2026-10-18</sub>

@@ -131,8 +131,8 @@ Clips you copy also go on your computer's clipboard as text. Paste them into ano
 >   1. Project A has `shared.mp4` as a video with sound on V1 and A1, and `only-a.mp4` on V2. Click the timeline, press <kbd>Ctrl</kbd>+<kbd>A</kbd>, then <kbd>Ctrl</kbd>+<kbd>C</kbd>.
 >   2. Open a second browser tab with the editor and open project B, which has its own `shared.mp4` in the Media panel.
 >   3. Click the timeline, put the playhead at 1 second and press <kbd>Ctrl</kbd>+<kbd>V</kbd>: the three clips appear. The message **Pasted with offline media** names `only-a.mp4`.
->   4. Press <kbd>Space</kbd>: the `shared.mp4` clips play from project B's file, and the `only-a.mp4` clip shows nothing.
->   5. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>: the clips and the `only-a.mp4` item are gone.
+>   4. Press <kbd>Space</kbd>: the `shared.mp4` clips play from project B's file, and the `only-a.mp4` clip shows a gray slate with "Media offline"; its card in the Media panel shows a red **Offline** badge.
+>   5. Click **Relink…** on the `only-a.mp4` card and pick the file: the clip shows its picture.
 
 1. Copy the clips in the first project.
 2. Open the other project.
@@ -140,7 +140,7 @@ Clips you copy also go on your computer's clipboard as text. Paste them into ano
 
 **How the clips find their media.** For each copied media item, the editor looks in the project you paste into for an item of the same type (video, audio or image) with the same name, or else with the same file name, that is long enough for the pasted clips. The pasted clips use that item.
 
-**Media the project doesn't have.** When no item matches, the copied item is added to the project as offline media, and the message **Pasted with offline media** names it. Its clips are on the timeline, but they show no picture and play no sound. Relinking offline media to a file is available in a later version. To use the clips now, press <kbd>Ctrl</kbd>+<kbd>Z</kbd> (it removes the offline item too), import the file into this project, and paste again.
+**Media the project doesn't have.** When no item matches, the copied item is added to the project as offline media, and the message **Pasted with offline media** names it. Its card shows a red **Offline** badge, and its clips are on the timeline, gray, with a slate in the preview and no sound. To bring them to life, click **Relink…** on the card and pick the file, or use **Relink folder…** to find it by its file name in a folder. The file is copied into the project or linked, as chosen in **Settings** > **Media**. See [Offline media and relinking](offline-media-and-relinking.md). Or press <kbd>Ctrl</kbd>+<kbd>Z</kbd> (it removes the offline item too), import the file into this project, and paste again.
 
 - **Frame rates.** Both projects need the same frame rate. Otherwise nothing is pasted and the message **Can't paste across frame rates** gives both rates. Pasting between frame rates is available in a later version.
 - **Which copy Ctrl+V pastes.** <kbd>Ctrl</kbd>+<kbd>V</kbd> and <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>V</kbd> paste the clips on your computer's clipboard, so the latest copy from any Shorts Editor tab. When the clipboard holds something else, for example text you copied in another app, they paste the clips you copied last in this tab.
@@ -246,7 +246,7 @@ In the preview, Duplicate puts a copy of the selected pictures on top of them, a
 | **Can't paste onto a locked track** | A pasted clip would land on the locked track the message names. | Unlock the track, or target other tracks. See [Choose the tracks pasted clips go to](#choose-the-tracks-pasted-clips-go-to). |
 | **Can't paste across frame rates** | The clips come from a project with another frame rate. | Paste into a project with the same frame rate. |
 | **No room for the captions** | The pasted cues would overlap cues near the playhead. | Move the playhead to where the **CC** track has room, or use **Paste insert**. |
-| **Pasted with offline media** (or **Pasted with N offline media**) | The project has no media item that matches the copied one. The clips are pasted, without picture or sound. | See [Paste clips into another project](#paste-clips-into-another-project). |
+| **Pasted with offline media** (or **Pasted with N offline media**) | The project has no media item that matches the copied one. The clips are pasted as offline clips, with a gray slate and no sound. | Relink the item to its file. See [Paste clips into another project](#paste-clips-into-another-project). |
 | **Select a clip to paste keyframes on** | Keyframes were copied last, and no selected clip can take them. | Select a clip of the right kind, or copy clips again. |
 | **Copy a clip first** | <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>V</kbd> found no copied clips, for example after you copied keyframes. | Copy the clip whose look you want. |
 | **Nothing to paste onto** | No clips are selected, or the selected clips can take none of the copied clip's settings. | Select the clips to change. |
@@ -281,7 +281,8 @@ See [Undo and redo changes](projects-and-saving.md#undo-and-redo-changes).
 - [Titles and text](titles-and-text.md)
 - [Captions](captions.md)
 - [Arranging layers in the preview](arranging-layers-in-the-preview.md)
+- [Offline media and relinking](offline-media-and-relinking.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md#clipboard-and-duplicate)
 - [Troubleshooting](troubleshooting.md#copy-paste-and-duplicate)
 
-<sub>Last updated: Batch 40, 2026-10-18</sub>
+<sub>Last updated: Batch 41, 2026-10-18</sub>

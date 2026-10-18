@@ -1,6 +1,6 @@
 # Clip thumbnails, waveforms and badges
 
-Clips on the timeline show what is in them: video clips show a strip of thumbnails, audio clips show their waveform, image clips show their picture (or the frames of an animation), solids show a swatch of their shape and color, and text clips show their text. Small badges in each clip's label bar tell you about its speed, its link and its sync, mark freeze frames, keyframes, animated text and transitions, and warn about missing fonts. Use them to find a shot, a cut point or a loud moment without playing the timeline.
+Clips on the timeline show what is in them: video clips show a strip of thumbnails, audio clips show their waveform, image clips show their picture (or the frames of an animation), solids show a swatch of their shape and color, and text clips show their text. Small badges in each clip's label bar tell you about its speed, its link and its sync, mark freeze frames, keyframes, animated text and transitions, and warn about missing fonts and offline media. Use them to find a shot, a cut point or a loud moment without playing the timeline.
 
 > **Video placeholder: Thumbnails, waveforms and badges**
 > - File: `videos/clip-thumbnails-and-waveforms/overview.mp4` (not recorded yet)
@@ -39,7 +39,7 @@ A video with sound gives you both: thumbnails in its video clip and the waveform
 
 With **Show clip keyframes** on in the timeline toolbar, a dark lane along the bottom of the body shows the clip's keyframes as diamonds, on the selected clips and on every clip of an L track. See [Show keyframes on the timeline](keyframes.md#show-keyframes-on-the-timeline).
 
-Clips of a track you don't see or hear (muted, hidden, or left out by a solo) are drawn faded, thumbnails and waveforms included. Clips on a locked track are covered with diagonal lines. See [Tracks](tracks.md). A clip you turned off with **Disable** is drawn faded and covered with diagonal lines; see [Turn a clip off](editing-properties.md#turn-a-clip-off). A clip whose sound you muted is drawn the same way; see [Mute a clip](audio-editing.md#mute-a-clip).
+Clips of a track you don't see or hear (muted, hidden, or left out by a solo) are drawn faded, thumbnails and waveforms included. Clips on a locked track are covered with diagonal lines. See [Tracks](tracks.md). A clip you turned off with **Disable** is drawn faded and covered with diagonal lines; see [Turn a clip off](editing-properties.md#turn-a-clip-off). A clip whose sound you muted is drawn the same way; see [Mute a clip](audio-editing.md#mute-a-clip). A video, audio or image clip whose media file is offline is gray, with no thumbnails or waveform and a red **Offline** badge; see [What offline clips look like](offline-media-and-relinking.md#what-offline-clips-look-like).
 
 ## Show thumbnails and waveforms
 
@@ -94,6 +94,7 @@ Badges sit at the right end of a clip's label bar, from right to left in this or
 
 | Badge | Looks like | What it means |
 |---|---|---|
+| Offline | The red word **Offline**, at the very right | The clip's media file can't be read: it is missing, waits for your permission, can't be decoded, or the media item was removed. The clip is gray. See [Offline media and relinking](offline-media-and-relinking.md). |
 | Sync number | A red number such as **+12** or **-12** | The clip is that many frames out of step with its linked clip. See [Keep linked clips in sync](links-and-groups.md#keep-linked-clips-in-sync). |
 | Speed | `0.5x`, `2x` or `1.33x` | The video or audio clip plays faster or slower than its media. See [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md) and [Change a clip's speed with Rate stretch](advanced-trimming.md#change-a-clips-speed-with-rate-stretch). |
 | Freeze frame | A snowflake, in the place of the speed | The clip holds one frame of its video. See [Hold a frame (freeze frame)](speed-freeze-frames-and-punch-zoom.md#hold-a-frame-freeze-frame). |
@@ -126,7 +127,7 @@ The editor makes thumbnails and analyzes the sound in the background after you i
 - **From the proxy once it is ready.** When a video's [proxy](proxies.md) is ready, its card picture and thumbnails are made again from the proxy, which is quicker. The thumbnails you see stay until the new ones replace them. After **Remove proxy**, they are made again from the original video.
 - **Saved with the project.** Thumbnails and the sound analysis are saved in the project's `cache` folder. The next time you open the project, they appear at once, without being made again. If you delete the `cache` folder while the project is closed, they are made again. A [read-only project](projects-and-saving.md#work-in-read-only-mode) uses what is already in its `cache` folder but saves nothing new, so anything missing is made again each time you open it.
 
-A video that Chrome can't decode on your computer, such as HEVC without a hardware decoder, or whose file is missing from the project's `media` folder, gets no thumbnails: its card keeps the film icon and its clips show only their color. See [A video imports but shows nothing](troubleshooting.md#a-video-imports-but-shows-nothing).
+A video that Chrome can't decode on your computer, such as HEVC without a hardware decoder, gets no thumbnails: its card keeps the film icon and its clips show only their color, until the preview tries to show it and marks it **Can't play**. A media item whose file is missing is offline: its clips are gray with an **Offline** badge. See [A video imports but shows nothing](troubleshooting.md#a-video-imports-but-shows-nothing) and [Offline media and relinking](offline-media-and-relinking.md).
 
 If a video's thumbnails look wrong or out of date, right-click its card in the Media panel and choose **Regenerate thumbnails**: the card picture and the thumbnails of its clips are made again from scratch. See [Make thumbnails again](proxies.md#make-thumbnails-again).
 
@@ -150,7 +151,8 @@ A clip with a label color shows that color in its label bar above the thumbnails
 - [Captions](captions.md)
 - [Audio](audio.md)
 - [Importing media](importing-media.md)
+- [Offline media and relinking](offline-media-and-relinking.md)
 - [Proxies](proxies.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 37, 2026-10-17</sub>
+<sub>Last updated: Batch 41, 2026-10-18</sub>
