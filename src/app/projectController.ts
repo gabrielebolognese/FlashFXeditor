@@ -17,6 +17,7 @@ import { ProjectSession } from "../project/ProjectSession.js";
 import { RECENT_THUMB_HEIGHT, type RecentProject } from "../project/recentProjects.js";
 import type { Recovery } from "../project/recovery.js";
 import { followFrameRate } from "./conversionController.js";
+import { cancelExport, clearExportLeftovers } from "./exportController.js";
 import { attachFonts, detachFonts } from "./fontController.js";
 import { attachMedia, detachMedia } from "./mediaController.js";
 import { attachPresets, detachPresets } from "./presetController.js";
@@ -155,6 +156,8 @@ async function closeCurrent(): Promise<void> {
   if (!session) return;
   stopFrameRate?.();
   stopFrameRate = null;
+  // An export of this project stops (its temp file is deleted).
+  cancelExport();
   // The thumbnail first: the preview still shows the project.
   await captureRecentThumbnail(session, 1500);
   thumbnailOf = null;
@@ -184,6 +187,8 @@ async function switchTo(opened: OpenedProject): Promise<void> {
   attachPreview(session.dir, () => !session.readOnly);
   attachFonts(session.dir, () => !session.readOnly);
   attachPresets(session.dir, () => !session.readOnly);
+  // Temp files of exports an earlier tab did not finish.
+  if (!session.readOnly) clearExportLeftovers(session.dir).catch((error: unknown) => console.warn("[export] cannot clear cache/export-temp/", error));
   // After the document is loaded: a conversion, its undo or a restore move the session's frames.
   stopFrameRate = followFrameRate();
   setView({

@@ -9,10 +9,7 @@ export interface PlannedCommand {
   label: string;
 }
 
-export const PLANNED_COMMANDS: Readonly<Record<string, PlannedCommand>> = {
-  // Batch 44: export.
-  "app.export": { batch: 44, label: "Export" },
-};
+export const PLANNED_COMMANDS: Readonly<Record<string, PlannedCommand>> = {};
 
 /** The dev toast for a bound key whose command is not built yet: `Add title: coming in Batch 29`. */
 export function plannedMessage(id: string): string | null {

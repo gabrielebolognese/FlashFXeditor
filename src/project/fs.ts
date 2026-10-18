@@ -48,6 +48,8 @@ export interface FsDir {
   openWritable(name: string): Promise<FsWritable>;
   /** Renames a file in this directory, replacing `to`: a move where the browser has one, else a copy and a removal. */
   rename(from: string, to: string): Promise<void>;
+  /** Moves a file of this directory into `target` as `to` (a finished export into exports/): a move where the browser has one, else a copy and a removal. */
+  moveTo(name: string, target: FsDir, to: string): Promise<void>;
   /** Deletes a file; a missing file is not an error. */
   remove(name: string): Promise<void>;
   list(): Promise<FsEntry[]>;
@@ -60,7 +62,7 @@ export interface FsDir {
 
 // Chromium-only parts of the API that lib.dom does not declare.
 interface MovableHandle {
-  move?(name: string): Promise<void>;
+  move?(...args: [name: string] | [directory: FileSystemDirectoryHandle, name: string]): Promise<void>;
 }
 
 interface PermissionedHandle {
@@ -152,6 +154,22 @@ class NativeDir implements FsDir {
     }
     await this.writeFile(to, await source.getFile());
     await this.remove(from);
+  }
+
+  async moveTo(name: string, target: FsDir, to: string): Promise<void> {
+    const source = await this.handle.getFileHandle(name);
+    const movable = source as unknown as MovableHandle;
+    if (typeof movable.move === "function" && isDirectoryHandle(target.handle)) {
+      try {
+        await movable.move(target.handle, to);
+        return;
+      } catch (error) {
+        // Moves between some folders are refused: copy instead.
+        if (!(error instanceof DOMException)) throw error;
+      }
+    }
+    await target.writeFile(to, await source.getFile());
+    await this.remove(name);
   }
 
   async remove(name: string): Promise<void> {

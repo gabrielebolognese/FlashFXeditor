@@ -2,7 +2,8 @@
 // and cancellation. The main thread talks to workers only through WorkerPool; workers serve requests
 // through WorkerHost. Results carry transferables (ImageBitmap, VideoFrame, ArrayBuffer) only. A
 // request may also post `progress` values before its result (frames of a prefetch, the approximate
-// frame of a scrub, the bytes and progress of a proxy).
+// frame of a scrub, the bytes and progress of a proxy or an export).
+import type { ExportJobParams, ExportJobResult, ExportProgress } from "../../export/job.js";
 import type { Lod } from "../cache/TexturePool.js";
 import type { ThumbSheetParams, ThumbSheetResult } from "../decode/thumbSheet.js";
 import type { MakeProxyParams, MakeProxyResult, ProxyProgress } from "../proxy/ProxyMaker.js";
@@ -18,8 +19,7 @@ export type Priority = "user" | "playback" | "prefetch" | "background";
 
 export const PRIORITY_RANK: Record<Priority, number> = { user: 0, playback: 1, prefetch: 2, background: 3 };
 
-// TODO(batch 43): "export".
-export type WorkerKind = "decode" | "analysis" | "proxy" | "transcribe";
+export type WorkerKind = "decode" | "analysis" | "proxy" | "transcribe" | "export";
 
 export interface PosterResult {
   bitmap: ImageBitmap;
@@ -217,6 +217,10 @@ export interface WorkerMethods {
   transcribeRemove: { params: { model: WhisperModelId }; result: null };
   /** Speech to timed words (downloading the model first when needed); the phases come as progress. */
   transcribe: { params: TranscribeParams; result: TranscribeResult; progress: TranscribeProgress };
+  /** Renders, encodes and muxes an export (spec §16): the chosen codecs, the file's bytes and the frames done come as progress. */
+  exportVideo: { params: ExportJobParams; result: ExportJobResult; progress: ExportProgress };
+  /** Pauses or resumes the running export between frames. */
+  pauseExport: { params: { paused: boolean }; result: null };
 }
 
 export type Method = keyof WorkerMethods;
@@ -249,6 +253,8 @@ export const METHOD_WORKER: Record<Method, WorkerKind> = {
   transcribeStatus: "transcribe",
   transcribeRemove: "transcribe",
   transcribe: "transcribe",
+  exportVideo: "export",
+  pauseExport: "export",
 };
 
 export type RequestMessage = { [M in Method]: { type: "request"; id: number; method: M; priority: Priority; params: Params<M> } }[Method];

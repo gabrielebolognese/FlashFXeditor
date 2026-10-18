@@ -35,6 +35,7 @@ import { installSettingsController } from "./app/settingsController.js";
 import { installHistoryController } from "./app/historyController.js";
 import { installTemplateController } from "./app/templateController.js";
 import { installCacheController } from "./app/cacheController.js";
+import { installExportController } from "./app/exportController.js";
 import { requestGpuAdapter } from "./render/gpu/GpuDevice.js";
 
 const container = document.getElementById("root");
@@ -57,6 +58,7 @@ async function start(): Promise<void> {
   installHistoryController();
   installTemplateController();
   installCacheController();
+  installExportController();
   installMediaController();
   installDropController();
   installPreviewController();

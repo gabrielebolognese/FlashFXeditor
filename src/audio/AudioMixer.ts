@@ -63,7 +63,7 @@ export function rampTo(param: AudioParam, value: number, at: number): void {
 }
 
 export class AudioMixer {
-  /** The mix of every track (spec "master GainNode"); TODO(batch 43): the export mixdown builds the same graph offline. */
+  /** The mix of every track (spec "master GainNode"); the export mixdown builds the same graph offline (audio/mixdown.ts). */
   readonly bus: GainNode;
   readonly meters: readonly [AnalyserNode, AnalyserNode];
   private readonly monitor: GainNode;

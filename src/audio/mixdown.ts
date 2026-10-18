@@ -1,7 +1,7 @@
 // The offline mixdown (spec §14): the timeline's audio mix of a frame range, rendered by the playback
 // code itself (AudioScheduler voices -> AudioMixer track gains, mute and solo -> mix bus) against an
 // OfflineAudioContext instead of the live one, so what is rendered is what is heard. Transcription
-// (spec §10.6) renders it at 48 kHz mono; TODO(batch 43): the export's 48 kHz stereo mix uses it too.
+// (spec §10.6) renders it at 48 kHz mono, the export (§16, Batch 43) at 48 kHz stereo.
 // - The audio of every clip heard in the range is loaded first and held here while rendering, so the
 //   512 MB LRU cannot drop a segment before it is scheduled. Media whose audio cannot be decoded are
 //   left out (as in playback).

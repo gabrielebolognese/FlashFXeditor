@@ -102,6 +102,8 @@ export interface PreviewViewDeps extends Omit<LayerTexturesDeps, "onChange" | "w
   loadFonts?(style: TextStyle, text: string): Promise<boolean>;
   /** True when playback fell behind on the media this playback (1/2 and 1/4 then play its proxy). */
   behind?(mediaId: string): boolean;
+  /** A quality mode in force instead of the session's (an export forces proxies while playing, spec §16), or null. */
+  qualityOverride?(activity: PreviewActivity): PreviewQuality | null;
   /**
    * Why a media is offline (the slate's second line, spec §6.19, Batch 41), or null when it is online.
    * The owner invalidates `preview` when it changes. Without it, offline media draw nothing.
@@ -345,7 +347,8 @@ export class PreviewView implements RenderView {
       this.lastMove = this.now();
     }
     const activity = this.activity(priority);
-    this.passQuality = preview.quality;
+    const quality = this.deps.qualityOverride?.(activity) ?? preview.quality;
+    this.passQuality = quality;
     this.passActivity = activity;
     const split = override?.previewSplit ?? null;
     if (split) {
@@ -366,12 +369,12 @@ export class PreviewView implements RenderView {
     const background = override ? null : (this.deps.background?.() ?? null);
     if (background) composite.background = background;
     const transform = frameTransformInto(this.transform, preview.zoom, composite, size, this.chrome.margin * dpr, preview.panX, preview.panY);
-    const scale = this.detailOf(doc, composite, transform[0], preview, activity);
+    const scale = this.detailOf(doc, composite, transform[0], quality, activity);
     this.textRenderScale = this.textScale(composite, transform, size, scale);
     // The text clips about to play are rasterized ahead (their animations' atlases included).
     const upcoming = override ? [] : this.compositor.upcomingTexts(doc, frame, secondsToFrames(TEXT_LOOKAHEAD_SECONDS, doc.settings.fps));
     const list = this.textures.resolve(composite, priority, this.stats.detail.upload, this.textRenderScale, upcoming);
-    this.showQuality(preview.quality);
+    this.showQuality(quality);
     if (priority !== "playback") this.textures.warm(this.compositor.neighbors(doc, frame));
     const shown = this.firstShown;
     if (!override && shown.frame !== playhead) {
@@ -537,7 +540,7 @@ export class PreviewView implements RenderView {
   }
 
   /** The render scale of this frame (detail.ts) into `stats.detail`, with the upload size and the status text. */
-  private detailOf(doc: Project, composite: Composite, view: number, preview: PreviewSession, activity: PreviewActivity): number {
+  private detailOf(doc: Project, composite: Composite, view: number, quality: PreviewQuality, activity: PreviewActivity): number {
     const detail = this.stats.detail;
     const source = sourceDetail(composite, (mediaId) => {
       const item = doc.media[mediaId];
@@ -546,14 +549,14 @@ export class PreviewView implements RenderView {
       return isSvgImage(item) ? vectorDetailSize(item.width, item.height) : { width: item.width, height: item.height };
     });
     const full = fullScale(view, source);
-    const render = renderScale(preview.quality, activity, full);
+    const render = renderScale(quality, activity, full);
     const { width, height } = doc.settings;
     detail.view = view;
     detail.source = source;
     detail.full = full;
     detail.render = render;
     detail.activity = activity;
-    detail.upload = uploadLongEdge(Math.max(width, height), preview.quality, activity, render, this.deps.renderer.maxTextureSize);
+    detail.upload = uploadLongEdge(Math.max(width, height), quality, activity, render, this.deps.renderer.maxTextureSize);
     return render;
   }
 
@@ -725,11 +728,16 @@ const EMPTY_LIST: DrawList = { width: 0, height: 0, background: TRANSPARENT, lay
 /** The blit layer's texture before the first offscreen render. */
 const NO_TEXTURE: TextureHandle = { width: 1, height: 1, mipLevels: 0, bytes: 0, valid: false, destroy: () => undefined };
 
+/** How offline slates look in `theme` (the preview's and the export's, Batch 41). */
+export function slateLook(theme: Theme): SlateLook {
+  return { fill: cssColorToRgba(theme.preview.slate) ?? TRANSPARENT, text: cssColorToRgba(theme.preview.slateText) ?? TRANSPARENT, ...theme.preview.slateType };
+}
+
 function chromeFromTheme(theme: Theme): Chrome {
   return {
     outside: cssColorToRgba(theme.color.bgSunken) ?? TRANSPARENT,
     border: cssColorToRgba(theme.color.hairline) ?? TRANSPARENT,
     margin: theme.layout.previewMargin,
-    slate: { fill: cssColorToRgba(theme.preview.slate) ?? TRANSPARENT, text: cssColorToRgba(theme.preview.slateText) ?? TRANSPARENT, ...theme.preview.slateType },
+    slate: slateLook(theme),
   };
 }

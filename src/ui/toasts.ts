@@ -1,6 +1,8 @@
 // Transient status messages (the design system's Dynamic Island): refusals, errors, progress.
-// Framework-free; ToastHost renders the list. Progress toasts stay until updated or dismissed.
-import { createStore } from "../core/store/createStore.js";
+// Framework-free; ToastHost renders the list. Progress toasts stay until updated or dismissed. A toast
+// with a `live` store shows its progress and detail line from it, written into the toast as they
+// change without rendering it again (P1: an export's progress while the user plays or drags).
+import { createStore, type Store } from "../core/store/createStore.js";
 
 export type ToastTone = "info" | "success" | "error";
 
@@ -13,6 +15,16 @@ export interface Toast {
   progress?: number;
   /** A text button before the close button (e.g. Cancel on a progress toast). */
   action?: ToastAction;
+  /** A second text button before `action` (Pause on the export's progress toast). */
+  secondaryAction?: ToastAction;
+  /** The progress and detail line, followed live instead of `progress` and `detail`. */
+  live?: Store<ToastLive>;
+}
+
+export interface ToastLive {
+  /** 0..1 */
+  progress: number;
+  detail: string;
 }
 
 export interface ToastAction {
@@ -44,7 +56,7 @@ export function showToast(input: ToastInput, options: { durationMs?: number | nu
   // The oldest go first when too many pile up.
   for (const dropped of toasts.splice(0, Math.max(0, toasts.length - MAX_TOASTS))) schedule(dropped.id, null);
   toastStore.set(toasts);
-  schedule(id, options.durationMs !== undefined ? options.durationMs : input.progress !== undefined ? null : TOAST_DURATION_MS[input.tone]);
+  schedule(id, options.durationMs !== undefined ? options.durationMs : input.progress !== undefined || input.live ? null : TOAST_DURATION_MS[input.tone]);
   return id;
 }
 

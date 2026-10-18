@@ -17,6 +17,7 @@ import {
   ChevronRight,
   ChevronsDown,
   ChevronsLeftRight,
+  CircleX,
   Clipboard,
   ClipboardPaste,
   Command,
@@ -517,7 +518,9 @@ export const COMMANDS: readonly CommandInfo[] = [
   app("app.commandPalette", "Command palette", { icon: Command, anywhere: true, palette: false }),
   app("app.shortcuts", "Keyboard shortcuts", { icon: Keyboard, keywords: "cheat sheet keys help", anywhere: true }),
   app("app.settings", "Settings", { icon: Settings, keywords: "preferences shortcuts keymap rebind", anywhere: true }),
-  app("app.export", "Export", { icon: Upload, keywords: "render mp4" }),
+  app("app.export", "Export", { icon: Upload, keywords: "render mp4 video reels instagram" }),
+  app("export.pauseResume", "Pause or resume the export", { icon: Pause, keywords: "export render continue" }),
+  app("export.cancel", "Cancel the export", { icon: CircleX, keywords: "export render stop abort" }),
   app("app.cancel", "Cancel gesture / close", { palette: false }),
 
   // Dev builds only
