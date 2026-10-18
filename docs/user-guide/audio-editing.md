@@ -334,11 +334,12 @@ Each change is one step in the history. Hover over **Undo** in the app bar to se
 
 See [Undo and redo changes](projects-and-saving.md#undo-and-redo-changes).
 
+> **Tip:** To save the sound of your edit alone, as a WAV or M4A file, use **Export audio** in the **Extras** section of the **Export** tab. It mixes the clips with their volumes, keyframes and fades, as in an exported video. See [Export a frame, the sound or the captions](exporting-video.md#export-a-frame-the-sound-or-the-captions).
+
 ## What is not available yet
 
 These parts are available in a later version:
 
-- Exporting only the sound of your video as an audio file. Exported videos already carry it; see [Exporting your video](exporting-video.md).
 - Audio effects.
 
 ## Related pages
@@ -355,4 +356,4 @@ These parts are available in a later version:
 - [Keyboard shortcuts](keyboard-shortcuts.md#audio)
 - [Troubleshooting](troubleshooting.md#audio-editing)
 
-<sub>Last updated: Batch 43, 2026-10-18</sub>
+<sub>Last updated: Batch 44, 2026-10-18</sub>

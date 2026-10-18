@@ -58,7 +58,7 @@ A click outside the palette closes it too.
 - On the start screen, the palette opens too. There, **New project**, **Open project**, **Keyboard shortcuts** and **Settings** work; the other rows are grey until a project is open.
 - A few commands are not in the palette because they need something you point at: the rows of a preset card's menu (see [Text presets](text-presets.md)), the ruler menu's **Add marker** at the point you right-clicked, a bin chip's **Rename** and **Delete bin** and the media menu's **Move to bin** (see [Organizing media](organizing-media.md)), and the keys that only work while you edit a text or drag.
 
-The categories, in the order the list shows them, are **Transport**, **Timeline**, **Edit**, **Clipboard**, **Selection**, **Clip**, **Speed**, **Fades and transitions**, **Keyframes**, **Audio**, **Markers and range**, **Tracks**, **Tools**, **Toggles**, **Add**, **Text**, **Captions**, **Presets**, **Canvas**, **Preview**, **Media**, **Project** and **App**.
+The categories, in the order the list shows them, are **Transport**, **Timeline**, **Edit**, **Clipboard**, **Selection**, **Clip**, **Speed**, **Fades and transitions**, **Keyframes**, **Audio**, **Markers and range**, **Tracks**, **Tools**, **Toggles**, **Add**, **Text**, **Captions**, **Presets**, **Canvas**, **Preview**, **Media**, **Project**, **Export** and **App**.
 
 ## See every shortcut
 
@@ -216,4 +216,4 @@ Two more lists work with the arrow keys:
 - [Organizing media](organizing-media.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 42, 2026-10-18</sub>
+<sub>Last updated: Batch 44, 2026-10-18</sub>

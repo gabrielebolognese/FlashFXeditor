@@ -2,6 +2,11 @@
 
 Shorts Editor grows in steps called batches. This page lists what each batch added that you can see or use, newest first. Follow the links for the full instructions.
 
+> **Video placeholder: What's new in Batch 44**
+> - File: `videos/whats-new/batch-44.mp4` (not recorded yet)
+> - Length: about 75 seconds
+> - Shows: a 1080×1920, 60 fps project named `Promo` with an 8-second edit and caption cues; press <kbd>Ctrl</kbd>+<kbd>E</kbd>: the **Export** tab opens beside **Edit Properties**; click **Reels** and **Export**, **TikTok** and **Export**, **Shorts** and **Export**: three cards under **Queue**, two reading **Queued**; click the **X** on the **TikTok** card: it leaves the queue; click **Edit Properties** in the panel header: the message **Exporting Promo-reels-2026-10-18.mp4 (+1 queued)** follows the export; click **Export** in the header again; when both are done, open **Log**: **Shorts** and **Reels** with a green check; mark in and out points, click **In to out** and read `120 frames` under it; open **Settings**, choose **HEVC** in **Codec**: **Custom** lights up; click **Save as preset…**, type `Half HEVC` and press <kbd>Enter</kbd>; open **Extras** and click **Export frame**, **Copy frame**, **M4A** and **Export audio**, then **SRT** and **Export captions**; press <kbd>Esc</kbd>: **Edit Properties** is back.
+
 > **Video placeholder: What's new in Batch 43**
 > - File: `videos/whats-new/batch-43.mp4` (not recorded yet)
 > - Length: about 60 seconds
@@ -173,6 +178,7 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 > - Shows: open a project with three clips on the timeline; press <kbd>Space</kbd> to play and let the timeline page forward; press <kbd>L</kbd> three times to reach 8x, then <kbd>K</kbd>; hold <kbd>K</kbd> and tap <kbd>L</kbd> to step one frame; turn on **Loop playback**; point at the **Dropped** readout in the status strip.
 
 ## In this page
+- [Batch 44: The Export tab](#batch-44-the-export-tab)
 - [Batch 43: Export](#batch-43-export)
 - [Batch 42: Project management](#batch-42-project-management)
 - [Batch 41: Organizing media and relinking](#batch-41-organizing-media-and-relinking)
@@ -217,8 +223,19 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 - [Batch 02: Undo, redo and frame-exact time](#batch-02-undo-redo-and-frame-exact-time)
 - [Batch 01: The workspace](#batch-01-the-workspace)
 
+## Batch 44: The Export tab
+- **Export** and <kbd>Ctrl</kbd>+<kbd>E</kbd> now open the **Export** tab beside **Edit Properties**. Its **Export** button has the keyboard, so <kbd>Ctrl</kbd>+<kbd>E</kbd> and <kbd>Enter</kbd> export with your last choices. <kbd>Esc</kbd> or the tab's **X** closes it. See [Open the Export tab](exporting-video.md#open-the-export-tab).
+- Presets for **Reels**, **TikTok** (10 Mbps) and **Shorts** (up to 60 fps, 2160×3840 for a 4K project, at YouTube's recommended bitrate). The line under the chips shows what your project gets. See [Choose a preset](exporting-video.md#choose-a-preset).
+- Export only the in/out range, with exactly its frames, and name the file with a template using `{project}`, `{preset}` and `{date}`. Save it in the `exports` folder, or choose a file anywhere with **Choose file…**, which also works in a read-only project. The estimated size shows next to **Export**. See [Export only the in/out range](exporting-video.md#export-only-the-inout-range), [Name the file](exporting-video.md#name-the-file) and [Choose where the file goes](exporting-video.md#choose-where-the-file-goes).
+- **Settings**: codec (**H.264**, **HEVC**, **AV1**, with codecs your browser can't encode marked "(not supported here)"), resolution 100%, 75% or 50%, frame rate, **Variable (VBR)** or **Constant (CBR)** bitrate with **Target** and **Max**, keyframes every 0.5 to 2 seconds, AAC audio from 128 to 320 kbps, and the encoder. Changing a preset's setting switches to **Custom**; **Save as preset…** keeps up to 30 presets of your own. See [Change the export settings](exporting-video.md#change-the-export-settings) and [Save your own preset](exporting-video.md#save-your-own-preset).
+- Exports wait in a **Queue** and run one after another, each with its own card, bar, **Pause** / **Resume** and **Cancel**. A waiting export can be removed. While the tab is hidden, the progress message at the top of the window follows the running export. See [Follow the progress](exporting-video.md#follow-the-progress) and [Pause, resume or cancel an export](exporting-video.md#pause-resume-or-cancel-an-export).
+- The **Log** keeps your last 20 exports of the project, with **Export again** and **Open folder**, which opens the file dialog in the folder of the file. The **Exported** message has the same two buttons. See [See your last exports and export again](exporting-video.md#see-your-last-exports-and-export-again).
+- **Extras**: **Export frame** (now saved where your exports go, named after the project and the frame number), **Copy frame** to the clipboard, **Export audio** as WAV or M4A, and **Export captions** as SRT or VTT, cut to the range. See [Export a frame, the sound or the captions](exporting-video.md#export-a-frame-the-sound-or-the-captions).
+- The command palette has a new **Export** category with these commands. See [Export](keyboard-shortcuts.md#export) in the keyboard shortcuts.
+- New troubleshooting entries: [An export doesn't start](troubleshooting.md#an-export-doesnt-start), [A codec reads not supported here](troubleshooting.md#a-codec-reads-not-supported-here), [The file is smaller than the estimate](troubleshooting.md#the-file-is-smaller-than-the-estimate), [In to out is dimmed](troubleshooting.md#in-to-out-is-dimmed) and [Open folder shows a file dialog](troubleshooting.md#open-folder-shows-a-file-dialog).
+
 ## Batch 43: Export
-- **Export** in the app bar now works, and so does <kbd>Ctrl</kbd>+<kbd>E</kbd>: it exports the whole timeline as an MP4 video for Instagram Reels into the `exports` folder of your project folder. The picture is H.264 at about 12 Mbit/s, 1080×1920 for a 9:16 project, at 30 fps or your project's lower rate; the sound is AAC stereo at 48 kHz, in sync over the whole video. See [Export the whole timeline](exporting-video.md#export-the-whole-timeline) and [Know what the file is like](exporting-video.md#know-what-the-file-is-like).
+- **Export** in the app bar now works, and so does <kbd>Ctrl</kbd>+<kbd>E</kbd>: it exports the whole timeline as an MP4 video for Instagram Reels into the `exports` folder of your project folder. The picture is H.264 at about 12 Mbit/s, 1080×1920 for a 9:16 project, at 30 fps or your project's lower rate; the sound is AAC stereo at 48 kHz, in sync over the whole video. See [Export the whole timeline](exporting-video.md#export-a-video) and [Know what the file is like](exporting-video.md#know-what-the-file-is-like).
 - The video has everything the preview shows, from your original media at full quality: trims, speed changes, keyframes, fades and transitions, shapes and images, titles with their animations and the captions. Overlays, guides and selection handles stay out. See [Know what goes into the file](exporting-video.md#know-what-goes-into-the-file).
 - A message at the top of the window follows the export: the percentage, the frames and the time left, with **Pause** / **Resume** and **Cancel**. Cancelling leaves nothing in `exports`. The command palette has **Pause or resume the export** and **Cancel the export**. See [Follow the progress](exporting-video.md#follow-the-progress) and [Pause, resume or cancel an export](exporting-video.md#pause-resume-or-cancel-an-export).
 - Keep editing while it runs: the export uses the timeline as it was when you clicked **Export**. Meanwhile, playback uses proxies, new proxies wait, and **Clear cache** waits for the export to finish. See [Keep editing while you export](exporting-video.md#keep-editing-while-you-export).
@@ -681,4 +698,4 @@ See [The workspace](workspace.md) and [Getting started](getting-started.md).
 - [Adding media to the timeline](adding-media-to-the-timeline.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 43, 2026-10-18</sub>
+<sub>Last updated: Batch 44, 2026-10-18</sub>

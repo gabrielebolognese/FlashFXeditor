@@ -346,6 +346,8 @@ What the file holds:
 
 Use the file to upload captions to a platform separately from the video, or to edit them in another app and import them again.
 
+> **Tip:** **Export SRT or VTT** always saves every cue. To save only the cues of the in/out range, timed from its start so they match a video of that range, use **Export captions** in the **Extras** section of the **Export** tab. See [Export a frame, the sound or the captions](exporting-video.md#export-a-frame-the-sound-or-the-captions).
+
 ## Hide, lock or remove the captions
 
 The **CC** track header has three toggles: **Target**, **Lock** and **Hide**. See [Read a track header](tracks.md#read-a-track-header).
@@ -380,7 +382,6 @@ Every caption change is one step in the history. Hover **Undo** in the app bar t
 These parts are available in a later version:
 
 - A style for a single cue, and moving or styling captions in the preview.
-- Exporting caption files from the export settings. Exported videos already include the captions in the picture, and **Export SRT or VTT** saves the cues.
 - **Paste attributes** for cues.
 
 ## Related pages
@@ -398,4 +399,4 @@ These parts are available in a later version:
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 43, 2026-10-18</sub>
+<sub>Last updated: Batch 44, 2026-10-18</sub>

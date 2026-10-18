@@ -55,7 +55,7 @@ This page helps you when something does not work as expected: the editor does no
 >   47. Click **Settings** in the app bar, click the **Shortcuts** tab, click **+** on **Split at playhead** and press <kbd>Ctrl</kbd>+<kbd>L</kbd>: the key turns red on **Split at playhead** and **Link / Unlink**. Click **Done**, click a video with sound on the timeline and press <kbd>Ctrl</kbd>+<kbd>L</kbd>: the video and its sound are unlinked, and nothing is split. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>, open **Settings** again, click **Shortcuts** and click **Reset all**. Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> and type `edit marker`: the row is grey. Press <kbd>Esc</kbd>.
 >   48. In the **Media** tab, click **Unused**: only the media no clip uses show. Click it again. Open a project whose linked video was moved to another folder: its card shows a red **Offline** badge and its clip is gray. Click **Relink…** on the card and pick the moved file: the badge disappears.
 >   49. Click an empty area of the timeline tracks of a 30 fps project and choose **24 fps** in **Frame rate**: **Convert to 24 fps?** counts the rounded timings. Click **Cancel**. Open a project read-only, rename it and press <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>N</kbd>: **Discard unsaved changes?** appears; click **Cancel**. Click **History…**: **Restore…** is dimmed.
->   50. Delete every clip and click **Export**: the message **Nothing to export** appears. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> and press <kbd>Ctrl</kbd>+<kbd>E</kbd>: the progress message appears. Open **Settings** and click **Clear cache**: the message **An export is running** appears. Click **Done**, then **Cancel** in the progress message: **Export cancelled**.
+>   50. Delete every clip, press <kbd>Ctrl</kbd>+<kbd>E</kbd> and <kbd>Enter</kbd>: the message **Nothing to export** appears. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>, click **Export** in the **Export** tab and press <kbd>Esc</kbd>: the progress message appears at the top of the window. Open **Settings** and click **Clear cache**: the message **An export is running** appears. Click **Done**, then **Cancel** in the progress message: **Export cancelled**.
 
 ## In this page
 - [Browser and graphics](#browser-and-graphics)
@@ -333,13 +333,18 @@ This page helps you when something does not work as expected: the editor does no
   - [Chinese or Japanese captions have no spaces or a low word count](#chinese-or-japanese-captions-have-no-spaces-or-a-low-word-count)
 - [Export](#export)
   - [Export says Nothing to export or This project is read-only](#export-says-nothing-to-export-or-this-project-is-read-only)
+  - [An export doesn't start](#an-export-doesnt-start)
   - [An export fails](#an-export-fails)
   - [An export was cancelled by itself](#an-export-was-cancelled-by-itself)
   - [The exported video doesn't have your latest changes](#the-exported-video-doesnt-have-your-latest-changes)
   - [The exported video isn't 1080×1920 or 60 fps](#the-exported-video-isnt-10801920-or-60-fps)
+  - [A codec reads not supported here](#a-codec-reads-not-supported-here)
+  - [The file is smaller than the estimate](#the-file-is-smaller-than-the-estimate)
+  - [In to out is dimmed](#in-to-out-is-dimmed)
   - [The exported video has no sound, misses a track or shows a gray slate](#the-exported-video-has-no-sound-misses-a-track-or-shows-a-gray-slate)
   - [Playback looks softer or a proxy stops during an export](#playback-looks-softer-or-a-proxy-stops-during-an-export)
   - [You can't find the exported file](#you-cant-find-the-exported-file)
+  - [Open folder shows a file dialog](#open-folder-shows-a-file-dialog)
 - [Known limitations](#known-limitations)
 
 ## Browser and graphics
@@ -355,7 +360,7 @@ This page helps you when something does not work as expected: the editor does no
 | WebGPU (navigator.gpu) | Drawing the preview with your graphics card. |
 | WebCodecs VideoDecoder, VideoEncoder, AudioDecoder, AudioEncoder, VideoFrame, ImageDecoder | Reading and writing video, audio and images. |
 | File System Access (showDirectoryPicker) | Opening and saving project folders on your disk. |
-| File System Access (showSaveFilePicker) | Saving files such as an exported frame. |
+| File System Access (showSaveFilePicker) | Saving files to a place you choose, such as exports with **Choose file…** and caption files. |
 | A WebGPU adapter (a supported GPU with hardware acceleration turned on) | See [A WebGPU adapter is missing](#a-webgpu-adapter-is-missing). |
 
 **Fix:** Open the editor in the current stable version of Google Chrome or Microsoft Edge on a desktop or laptop computer. Update the browser if it is older. Phones and tablets are not supported.
@@ -2663,15 +2668,23 @@ See [Messages when you paste](copy-and-paste.md#messages-when-you-paste).
 
 ### Export says Nothing to export or This project is read-only
 
-**Symptom:** You click **Export** or press <kbd>Ctrl</kbd>+<kbd>E</kbd>, and the message **Nothing to export** ("Add clips to the timeline first.") or **This project is read-only** ("Allow editing to export.") appears instead of the progress.
+**Symptom:** You click **Export** in the **Export** tab, and the message **Nothing to export** ("Add clips to the timeline first.") or **This project is read-only** ("Allow editing to export into the project's folder.") appears, and no card shows in the **Queue**.
 
-**Cause:** **Nothing to export**: the timeline has no clips. **This project is read-only**: the editor may not write to the project folder, so it can't save the video in its `exports` folder.
+**Cause:** **Nothing to export**: the timeline has no clips. **This project is read-only**: the editor may not write to the project folder, so it can't save the file in its `exports` folder. The same goes for **Export audio** and **Export frame**.
 
-**Fix:** Add clips to the timeline, or click **Allow editing** in the read-only banner and allow editing when the browser asks. See [Work in read-only mode](projects-and-saving.md#work-in-read-only-mode).
+**Fix:** Add clips to the timeline. In a read-only project, click **Allow editing** in the read-only banner and allow editing when the browser asks, or choose **Choose file…** under **Save to** and save the file somewhere else. See [Work in read-only mode](projects-and-saving.md#work-in-read-only-mode) and [Choose where the file goes](exporting-video.md#choose-where-the-file-goes).
+
+### An export doesn't start
+
+**Symptom:** You clicked **Export**, but the card stays at **Queued**, or nothing happens at all.
+
+**Cause:** Exports run one at a time, in order: a card reads **Queued** until the exports before it are done. A paused export keeps its place, so the ones after it wait. With **Choose file…** under **Save to**, the export starts only after you pick a file in the save dialog; if you cancel the dialog, nothing is queued.
+
+**Fix:** Look at the first card in the **Queue**: click **Resume** if it reads **Paused**, or **Cancel** to let the next one start. With **Choose file…**, pick a file in the dialog. See [Follow the progress](exporting-video.md#follow-the-progress).
 
 ### An export fails
 
-**Symptom:** The message **Export failed** appears with a reason, and no new file is in `exports`.
+**Symptom:** The message **Export failed** appears with a reason, the **Log** lists the export with a red cross, and no new file is in `exports`.
 
 **Cause:** The export could not finish. The reason tells you why, for example:
 - the disk is full, or the project folder can't be written any more (it was moved, or it is on a drive that was unplugged);
@@ -2681,31 +2694,55 @@ See [Messages when you paste](copy-and-paste.md#messages-when-you-paste).
 **Fix:**
 1. Free disk space on the drive of the project folder, and check that the folder is still there.
 2. Check that Chrome uses hardware acceleration; see [A WebGPU adapter is missing](#a-webgpu-adapter-is-missing). Update Chrome or Edge to the current version.
-3. Export again. If the frame size can't be encoded, try a project with a standard size, such as **9:16 · 1080×1920**; see [Change the frame size](project-settings-and-templates.md#change-the-frame-size).
+3. Export again with **Export again with these settings** in the log row. If the frame size can't be encoded, choose a lower **Resolution** in the **Settings** section of the **Export** tab, set **Encoder** to **Auto**, or try a project with a standard size, such as **9:16 · 1080×1920**; see [Change the export settings](exporting-video.md#change-the-export-settings) and [Change the frame size](project-settings-and-templates.md#change-the-frame-size).
 
 ### An export was cancelled by itself
 
-**Symptom:** The message **Export cancelled** ("Nothing was written to exports/.") appears although you didn't click **Cancel**, or the progress message disappeared and no file came.
+**Symptom:** The message **Export cancelled** ("Nothing was written to exports/.") appears although you didn't click **Cancel**, or the **Queue** is empty and no file came.
 
-**Cause:** Opening or creating another project stops a running export, and so does **Cancel the export** in the command palette. Closing the tab or reloading the page stops it without a message.
+**Cause:** Opening or creating another project stops the running export and empties the queue, and **Cancel the export** in the command palette stops the running export. Closing the tab or reloading the page stops all exports without a message.
 
-**Fix:** Open the project again and export once more. Wait for **Exported** before you switch projects or close the tab. See [Keep editing while you export](exporting-video.md#keep-editing-while-you-export).
+**Fix:** Open the project again and export once more: **Export again with these settings** in the **Log** repeats an export that was cancelled while it ran. Wait until the **Queue** is empty before you switch projects or close the tab. See [Keep editing while you export](exporting-video.md#keep-editing-while-you-export).
 
 ### The exported video doesn't have your latest changes
 
 **Symptom:** A trim, a move or a new title you made while the export ran is not in the exported file.
 
-**Cause:** The export uses the timeline as it was when you clicked **Export**. Changes you make while it runs stay in your project but don't go into that file.
+**Cause:** The export uses the timeline as it was when you clicked **Export**, also while it waited in the queue. Changes you make after that stay in your project but don't go into that file.
 
-**Fix:** Export again once you are done: the new file gets its own name next to the first one.
+**Fix:** Export again once you are done, for example with **Export again with these settings** in the **Log**: the new file gets its own name next to the first one.
 
 ### The exported video isn't 1080×1920 or 60 fps
 
 **Symptom:** The file is, for example, 1080×1350 or 1920×1080, or plays at 30 fps although your project has 60.
 
-**Cause:** **Export** uses the Instagram Reels settings: the file keeps the shape of your project, at most 1920 pixels on its long side, and has at most 30 frames per second. A 50, 59.94 or 60 fps project exports every second frame.
+**Cause:** Every preset keeps the shape of your project. **Reels** and **TikTok** export at most 1920 pixels on the long side and at most 30 frames per second, so a 50, 59.94 or 60 fps project exports every second frame. A **Custom** setting or your own preset may use a lower **Resolution** or **Frame rate**.
 
-**Fix:** For a full-screen Reel, use a **9:16 · 1080×1920** project. Other frame rates and sizes come with the export settings of a later version. See [Know what the file is like](exporting-video.md#know-what-the-file-is-like).
+**Fix:** For a full-screen video, use a **9:16 · 1080×1920** project. For 60 fps, choose **Shorts**, or **Custom** with **60 fps** in **Frame rate**. Check the line under the preset chips before you export: it shows the frame size and the frame rate you get. See [Know what the file is like](exporting-video.md#know-what-the-file-is-like).
+
+### A codec reads not supported here
+
+**Symptom:** In the **Settings** section of the **Export** tab, **HEVC** or **AV1** reads "(not supported here)", and the line under the preset chips adds, for example, "HEVC not supported here: H.264 is used".
+
+**Cause:** Your browser can't encode that codec with these settings on this computer. Some codecs work only with your computer's video chip, or only up to a certain frame size.
+
+**Fix:** Export with H.264, which the editor uses anyway in that case. Or set **Encoder** to **Auto** or **Prefer hardware**, or choose a lower **Resolution**: the list updates as you change the settings. See [Change the export settings](exporting-video.md#change-the-export-settings).
+
+### The file is smaller than the estimate
+
+**Symptom:** The exported file is much smaller than the figure next to the **Export** button.
+
+**Cause:** The estimate is the most the bitrate allows. Simple pictures, such as titles on a plain color or still images, need far less, even with **Constant (CBR)**.
+
+**Fix:** Nothing: the file is complete. See [Check the estimated size](exporting-video.md#check-the-estimated-size).
+
+### In to out is dimmed
+
+**Symptom:** In the **Range** row of the **Export** tab, **In to out** is dimmed, and its tooltip reads **Mark in and out points first (I, O)**.
+
+**Cause:** The timeline has no in or out point, or the out point is not after the in point.
+
+**Fix:** Press <kbd>I</kbd> at the first frame you want and <kbd>O</kbd> at the last one, then click **In to out**. See [Export only the in/out range](exporting-video.md#export-only-the-inout-range).
 
 ### The exported video has no sound, misses a track or shows a gray slate
 
@@ -2721,15 +2758,23 @@ See [Messages when you paste](copy-and-paste.md#messages-when-you-paste).
 
 **Cause:** The export uses the video encoder. Meanwhile, playback uses proxies, new proxies wait, and the cache stays as it is, because the export writes its file there.
 
-**Fix:** Nothing: all of it goes back to normal when the export ends. When you stop playback, the preview shows the original frame as usual. To give the preview your computer's full power for a moment, click **Pause** in the progress message. See [Keep editing while you export](exporting-video.md#keep-editing-while-you-export).
+**Fix:** Nothing: all of it goes back to normal when the export ends. When you stop playback, the preview shows the original frame as usual. To give the preview your computer's full power for a moment, click **Pause** on the export's card in the **Queue** or in the progress message. See [Keep editing while you export](exporting-video.md#keep-editing-while-you-export).
 
 ### You can't find the exported file
 
 **Symptom:** The message **Exported** appeared, but you don't see the file where you expected it.
 
-**Cause:** The editor writes the file into the `exports` folder inside your project folder, not into your Downloads folder. When a file of the same name is there already, the new one gets a number, such as `Promo-reels-2026-10-18 (2).mp4`.
+**Cause:** With **exports folder** under **Save to**, the editor writes the file into the `exports` folder inside your project folder, not into your Downloads folder. When a file of the same name is there already, the new one gets a number, such as `Promo-reels-2026-10-18 (2).mp4`. With **Choose file…**, the file is where you saved it in the save dialog.
 
-**Fix:** Open your project folder in File Explorer, then `exports`, and look for the name the **Exported** message showed. See [Find the exported file](exporting-video.md#find-the-exported-file).
+**Fix:** Click **Open folder** in the **Exported** message or in the file's row of the **Log**. Or open your project folder in File Explorer, then `exports`, and look for the name the **Exported** message showed. See [Find the exported file](exporting-video.md#find-the-exported-file).
+
+### Open folder shows a file dialog
+
+**Symptom:** **Open folder** opens a file dialog instead of File Explorer, or the message **Exports folder** appears and names the folder.
+
+**Cause:** A browser can't open File Explorer. The editor opens the file dialog in the folder instead. When that isn't possible either, for example in a read-only project, it names the folder.
+
+**Fix:** Choose a file in the dialog and click **Open**: it opens in a new browser tab. If the message **Pop-up blocked** appears, allow pop-ups for the editor's site in the browser's address bar. To see the folder in File Explorer, open your project folder there, then `exports`.
 
 ## Known limitations
 
@@ -2746,7 +2791,6 @@ The current version cannot do these things yet. Each one is available in a later
 - **Text:** a text's handles don't snap. **Restore starter presets** brings back deleted starters, not the original look of a starter you changed. Text animations play in the preview, in **Export frame** and in exported videos.
 - **Captions:** all cues share one style; a style for a single cue is not available. Captions can't be selected, moved or styled in the preview.
 - **Transcription:** the cues can't be edited in the review; fix them in the **Captions** tab after adding them.
-- **Export:** **Export** always exports the whole timeline with the Instagram Reels settings into the project's `exports` folder. Other presets, custom settings, an in/out range, another folder, a queue of exports and exporting the sound alone are not available. See [What is not available yet](exporting-video.md#what-is-not-available-yet).
 - **Heavy footage:** 4K 60 fps HEVC played from the original (in **Full** quality, or before its proxy is ready) can drop frames, and the original frame deep inside long phone clips takes a moment to appear after you stop.
 
 ## Related pages
@@ -2788,4 +2832,4 @@ The current version cannot do these things yet. Each one is available in a later
 - [Command palette and custom shortcuts](command-palette-and-custom-shortcuts.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 43, 2026-10-18</sub>
+<sub>Last updated: Batch 44, 2026-10-18</sub>
