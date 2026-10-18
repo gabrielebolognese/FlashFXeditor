@@ -19,6 +19,8 @@ export interface Toast {
   secondaryAction?: ToastAction;
   /** The progress and detail line, followed live instead of `progress` and `detail`. */
   live?: Store<ToastLive>;
+  /** No close button, and never dropped for newer toasts: only its owner dismisses it (an export's controls). */
+  pinned?: boolean;
 }
 
 export interface ToastLive {
@@ -52,10 +54,16 @@ function schedule(id: number, durationMs: number | null): void {
 /** Shows a toast; `durationMs` null keeps it until dismissed (default: by tone, none with progress). */
 export function showToast(input: ToastInput, options: { durationMs?: number | null } = {}): number {
   const id = nextId++;
-  const toasts = [...toastStore.getState(), { ...input, id }];
-  // The oldest go first when too many pile up.
-  for (const dropped of toasts.splice(0, Math.max(0, toasts.length - MAX_TOASTS))) schedule(dropped.id, null);
-  toastStore.set(toasts);
+  const toasts: Toast[] = [...toastStore.getState(), { ...input, id }];
+  // The oldest go first when too many pile up, pinned ones aside.
+  let excess = toasts.length - MAX_TOASTS;
+  const kept = toasts.filter((toast) => {
+    if (excess <= 0 || toast.pinned || toast.id === id) return true;
+    excess -= 1;
+    schedule(toast.id, null);
+    return false;
+  });
+  toastStore.set(kept);
   schedule(id, options.durationMs !== undefined ? options.durationMs : input.progress !== undefined || input.live ? null : TOAST_DURATION_MS[input.tone]);
   return id;
 }

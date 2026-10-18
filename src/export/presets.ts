@@ -65,9 +65,11 @@ export interface ExportFormat {
   channels: 2;
 }
 
-const even = (value: number) => Math.max(2, 2 * Math.round(value / 2));
+// Rounded down (never up: an odd side would be scaled up by a pixel); the epsilon absorbs a scaled
+// side's float error (1921 * 1920 / 1921).
+const even = (value: number) => Math.max(2, 2 * Math.floor(value / 2 + 1e-6));
 
-/** The export frame size: the project's, scaled down so its long edge fits the preset's, both sides even. */
+/** The export frame size: the project's, scaled down so its long edge fits the preset's, both sides even (rounded down). */
 export function exportSize(width: number, height: number, preset: Pick<ExportPreset, "width" | "height">): { width: number; height: number } {
   const scale = Math.min(1, Math.max(preset.width, preset.height) / Math.max(width, height));
   return { width: even(width * scale), height: even(height * scale) };

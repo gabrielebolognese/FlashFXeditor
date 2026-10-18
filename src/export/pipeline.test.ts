@@ -276,6 +276,20 @@ describe("runExport", () => {
     expect(h.muxed.finalized).toBe(false);
   });
 
+  it("starts paused when its gate is (a Pause before the job was posted), then runs once resumed", async () => {
+    const h = harness();
+    const gate = new PauseGate();
+    gate.set(true);
+    const kinds: string[] = [];
+    const run = runExport(job(10), h.deps, new AbortController().signal, (progress) => kinds.push(progress.kind), gate);
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    expect(kinds).toContain("started");
+    expect(h.rendered).toHaveLength(0);
+    gate.set(false);
+    await run;
+    expect(h.rendered).toHaveLength(10);
+  });
+
   it("stops a paused export when it is aborted", async () => {
     const h = harness();
     const controller = new AbortController();

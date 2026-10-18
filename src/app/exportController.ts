@@ -15,7 +15,8 @@
 //   cancels it. One export at a time (the queue is Batch 44's).
 // - Progress: a toast whose bar and line (percent, frames, time left by a moving average) follow a
 //   live store, written without a React render (P1), with Pause / Resume and Cancel; the palette has
-//   `export.pauseResume` and `export.cancel`.
+//   `export.pauseResume` and `export.cancel`. A Pause while the inputs are gathered posts the job paused
+//   (ExportPauseSync). The toast is pinned: no close button, never dropped by newer toasts.
 import { renderMixdown } from "../audio/mixdown.js";
 import { createStore, type Store } from "../core/store/createStore.js";
 import type { Frame, MediaId, Project } from "../core/document/types.js";
@@ -23,6 +24,8 @@ import { EtaEstimator, formatRemaining } from "../export/eta.js";
 import { clearExportTemp, ExportFile, EXPORTS_DIR } from "../export/exportFile.js";
 import { exportNeeds } from "../export/inputs.js";
 import type { ExportJobParams, ExportJobResult, ExportMediaFile } from "../export/job.js";
+import { ExportPauseSync } from "../export/pauseSync.js";
+import { exportPlan } from "../export/plan.js";
 import { exportFormat, fillFileName, FILE_NAME_TEMPLATE, REELS_PRESET, type ExportFormat, type ExportPreset } from "../export/presets.js";
 import { SVG_MAX_SIZE } from "../media/decode/ImageService.js";
 import { isSvgImage } from "../media/mediaKinds.js";
@@ -52,7 +55,7 @@ interface Job {
   live: Store<ToastLive>;
   eta: EtaEstimator;
   started: boolean;
-  paused: boolean;
+  pause: ExportPauseSync;
   done: number;
   total: number;
 }
@@ -62,10 +65,11 @@ let running: Job | null = null;
 const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? "" : "s"}`;
 
 function progressLine(job: Job): string {
-  if (!job.started) return "Preparing…";
+  const paused = job.pause.paused;
+  if (!job.started) return paused ? "Paused · Preparing…" : "Preparing…";
   const share = job.total > 0 ? job.done / job.total : 0;
   const head = `${Math.floor(share * 100)}% · ${job.done} / ${job.total} frames`;
-  if (job.paused) return `Paused · ${head}`;
+  if (paused) return `Paused · ${head}`;
   const left = job.eta.remainingMs(job.total);
   return left === null ? head : `${head} · ${formatRemaining(left)} left`;
 }
@@ -127,7 +131,9 @@ export async function startExport(preset: ExportPreset = REELS_PRESET): Promise<
   const format: ExportFormat = exportFormat(project, preset);
   const fileName = safeFileName(fillFileName(FILE_NAME_TEMPLATE, { project: project.name, preset: preset.id, date: new Date() }));
   const live = createStore<ToastLive>({ progress: 0, detail: "Preparing…" });
-  const job: Job = { controller: new AbortController(), toast: 0, live, eta: new EtaEstimator(), started: false, paused: false, done: 0, total: 0 };
+  const pause = new ExportPauseSync((paused) => void workerPool.request("pauseExport", { paused }, { priority: "user" }).catch(() => undefined));
+  const total = exportPlan(range, project.settings.fps, format.fps, format.keyframeSeconds, format.sampleRate).frames;
+  const job: Job = { controller: new AbortController(), toast: 0, live, eta: new EtaEstimator(), started: false, pause, done: 0, total };
   running = job;
   exportState.set({ running: true, paused: false });
   setTextureShare(MAIN_TEXTURE_SHARE);
@@ -135,6 +141,7 @@ export async function startExport(preset: ExportPreset = REELS_PRESET): Promise<
     tone: "info",
     message: `Exporting ${fileName}`,
     live,
+    pinned: true,
     secondaryAction: { label: "Pause", run: togglePauseExport },
     action: { label: "Cancel", run: cancelExport },
   });
@@ -147,7 +154,8 @@ export async function startExport(preset: ExportPreset = REELS_PRESET): Promise<
     // A failed write stops the export with its error.
     const output = await ExportFile.create(dir, crypto.randomUUID(), (error) => job.controller.abort(error));
     file = output;
-    const params: ExportJobParams = { project, range, format, slate: slateLook(themeBridge.theme), textureBudget: Math.round(textureBudget() * (1 - MAIN_TEXTURE_SHARE)), ...inputs };
+    // Read right before the post (no await in between): a Pause from now on is sent after the job.
+    const params: ExportJobParams = { project, range, format, slate: slateLook(themeBridge.theme), textureBudget: Math.round(textureBudget() * (1 - MAIN_TEXTURE_SHARE)), ...inputs, paused: job.pause.post() };
     const transfer: Transferable[] = [...Object.values(inputs.svg), ...(inputs.audio?.channels ?? []), ...inputs.fonts.map((face) => face.data)];
     const result: ExportJobResult = await workerPool.request("exportVideo", params, {
       priority: "user",
@@ -200,13 +208,13 @@ export function cancelExport(): void {
 export function togglePauseExport(): void {
   const job = running;
   if (!job) return;
-  job.paused = !job.paused;
+  // Sent to the worker once the job is posted; before that, the job is posted in this state.
+  const paused = job.pause.toggle();
   const now = performance.now();
-  if (job.paused) job.eta.pause(now);
+  if (paused) job.eta.pause(now);
   else job.eta.resume(now);
-  workerPool.request("pauseExport", { paused: job.paused }, { priority: "user" }).catch(() => undefined);
-  exportState.set({ running: true, paused: job.paused });
-  updateToast(job.toast, { secondaryAction: { label: job.paused ? "Resume" : "Pause", run: togglePauseExport } });
+  exportState.set({ running: true, paused });
+  updateToast(job.toast, { secondaryAction: { label: paused ? "Resume" : "Pause", run: togglePauseExport } });
   showProgress(job);
 }
 
