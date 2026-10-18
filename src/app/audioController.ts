@@ -13,6 +13,7 @@ import { AudioScrubber } from "../audio/scrub/AudioScrubber.js";
 import type { Frame, MediaId } from "../core/document/types.js";
 import type { FsDir } from "../project/fs.js";
 import { peaksPath, resolveFile, writeFileAt } from "../project/mediaFiles.js";
+import { onRefreshMedia, sourceFile } from "./mediaOffline.js";
 import type { PeaksJobDeps } from "../media/PeaksJobs.js";
 import { actions, appSettings, audioClock, documentStore, scheduler, sessionStore, themeBridge, workerPool } from "./services.js";
 
@@ -25,11 +26,9 @@ let open: OpenProject | null = null;
 let stopProject: (() => void) | null = null;
 let decodeContext: OfflineAudioContext | null = null;
 
-/** The source file of a media item in the open project (copy mode). TODO(batch 41): file handles. */
+/** The source file of a media item in the open project (a copy in media/ or a linked file); null when offline. */
 async function mediaFile(mediaId: MediaId): Promise<File | null> {
-  const item = documentStore.getState().media[mediaId];
-  if (!open || !item || !("relPath" in item.file)) return null;
-  return resolveFile(open.dir, item.file.relPath);
+  return open ? sourceFile(mediaId) : null;
 }
 
 /** Decoded audio by media and segment (512 MB LRU). */
@@ -140,13 +139,23 @@ export function attachAudio(dir: FsDir, isWritable: () => boolean): void {
   detachAudio();
   open = { dir, isWritable };
   let media = documentStore.getState().media;
-  stopProject = documentStore.subscribe(
-    (state) => {
-      for (const id of Object.keys(media) as MediaId[]) if (!Object.hasOwn(state.media, id)) decodedAudio.release(id);
-      media = state.media;
-    },
-    { affects: ["media"] },
-  );
+  const stops = [
+    documentStore.subscribe(
+      (state) => {
+        // Removed media, and relinked ones (Batch 41: the old file's audio goes).
+        for (const id of Object.keys(media) as MediaId[]) if (!Object.hasOwn(state.media, id) || state.media[id]?.file !== media[id]?.file) decodedAudio.release(id);
+        media = state.media;
+      },
+      { affects: ["media"] },
+    ),
+    // A media back online: decoded again when it plays (its failure is forgotten).
+    onRefreshMedia((ids) => {
+      for (const id of ids) decodedAudio.release(id);
+    }),
+  ];
+  stopProject = () => {
+    for (const stop of stops) stop();
+  };
 }
 
 /** Before the project closes: silence and free the decoded audio (P13). */

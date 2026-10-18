@@ -5,7 +5,7 @@ import type { TimecodeMode } from "../core/document/time.js";
 import type { LayoutRatios } from "../core/store/layoutStore.js";
 import { sanitizeRatios } from "../core/store/layoutStore.js";
 import type { SelectionKind, SelectionSnapshot } from "../core/store/selection.js";
-import { DEFAULT_SESSION, GRID_DIVISIONS_MAX, GRID_DIVISIONS_MIN, PREVIEW_MAX_ZOOM, PREVIEW_MIN_ZOOM, type MediaSort, type MediaTab, type MediaView, type PresetScope, type PreviewGrid, type PreviewQuality, type SafeZone, type SessionState, type SourceRange, type Tool } from "../core/store/sessionStore.js";
+import { DEFAULT_SESSION, GRID_DIVISIONS_MAX, GRID_DIVISIONS_MIN, MEDIA_COLUMNS, PREVIEW_MAX_ZOOM, PREVIEW_MIN_ZOOM, type MediaColumn, type MediaFilters, type MediaSort, type MediaTab, type MediaView, type PresetScope, type PreviewGrid, type PreviewQuality, type SafeZone, type SessionState, type SourceRange, type Tool } from "../core/store/sessionStore.js";
 
 export const SESSION_FILE_VERSION = 1;
 
@@ -58,6 +58,22 @@ function sanitizeRanges(value: unknown): Record<string, SourceRange> {
     ranges[mediaId] = { inUs, outUs };
   }
   return ranges;
+}
+
+/** The media filter chips (Batch 41): known kinds once each, `unused` a boolean. */
+function sanitizeFilters(value: unknown): MediaFilters {
+  const raw = obj(value);
+  const kinds = Array.isArray(raw.kinds) ? [...new Set(raw.kinds.filter((kind): kind is MediaFilters["kinds"][number] => kind === "video" || kind === "audio" || kind === "image"))] : [];
+  return { kinds, unused: bool(raw.unused, false) };
+}
+
+/** List column widths (Batch 41): known columns, finite widths within 1..4096 CSS px. */
+function sanitizeColumns(value: unknown): Partial<Record<MediaColumn, number>> {
+  const columns: Partial<Record<MediaColumn, number>> = {};
+  for (const [key, width] of Object.entries(obj(value))) {
+    if ((MEDIA_COLUMNS as readonly string[]).includes(key) && typeof width === "number" && Number.isFinite(width) && width >= 1 && width <= 4096) columns[key as MediaColumn] = Math.round(width);
+  }
+  return columns;
 }
 
 /** Keyframe lane choices by clip id (Batch 35): known sections only. */
@@ -121,6 +137,10 @@ function sanitizeState(value: unknown): SessionState {
       sort: oneOf(MEDIA_SORTS, mediaPanel.sort, d.mediaPanel.sort),
       descending: bool(mediaPanel.descending, d.mediaPanel.descending),
       presetScope: oneOf(PRESET_SCOPES, mediaPanel.presetScope, d.mediaPanel.presetScope),
+      // A bin id that is no longer in the project falls back to All when the panel reads it.
+      bin: typeof mediaPanel.bin === "string" && mediaPanel.bin !== "" ? mediaPanel.bin : d.mediaPanel.bin,
+      filters: sanitizeFilters(mediaPanel.filters),
+      columns: sanitizeColumns(mediaPanel.columns),
     },
     sourceRanges: sanitizeRanges(raw.sourceRanges),
     collapsedSections,

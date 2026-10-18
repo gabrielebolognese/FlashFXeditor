@@ -124,7 +124,8 @@ export const DEFAULT_KEYMAP: readonly KeyBinding[] = [
   { id: "clipboard.pasteAttributes", keys: ["Mod+Alt+V"], scopes: TL_PV },
 
   // Selection
-  { id: "selection.selectAll", keys: ["Mod+A"], scopes: TL_PV },
+  // In the Media tab: every media it shows (Batch 41).
+  { id: "selection.selectAll", keys: ["Mod+A"], scopes: ["timeline", "preview", "media"] },
   { id: "selection.deselect", keys: ["Mod+Shift+A"], scopes: TL_PV },
 
   // Canvas (preview)

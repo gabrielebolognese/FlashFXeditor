@@ -30,6 +30,8 @@ export interface ClipVisuals {
   strip(mediaId: MediaId): AnimationStripView | null;
   /** The peaks of an audio-bearing media, or null. */
   peaks(mediaId: MediaId): Peaks | null;
+  /** True when the media is offline (Batch 41: missing, no access, undecodable, removed): its clips draw a slate. */
+  offline?(mediaId: MediaId): boolean;
 }
 
 /** What one content pass wanted to draw. */

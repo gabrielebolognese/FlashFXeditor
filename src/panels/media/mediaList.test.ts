@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { makeMedia } from "../../core/document/fixtures.js";
 import type { MediaItem } from "../../core/document/types.js";
-import { clickSelection, codecLabel, durationBadge, EMPTY_MEDIA_SELECTION, metaLabel, pruneSelection, resolutionLabel, sortMedia } from "./mediaList.js";
+import { baseName, binCounts, clickSelection, codecLabel, durationBadge, EMPTY_MEDIA_SELECTION, mediaMatcher, mediaPath, metaLabel, pruneSelection, resolutionLabel, searchText, shownBin, sortMedia, type MediaQuery } from "./mediaList.js";
 
 const item = (id: string, fields: Partial<MediaItem> = {}): MediaItem => ({ ...makeMedia(id), name: id, ...fields });
 
@@ -87,5 +87,60 @@ describe("labels", () => {
     expect(durationBadge(item("i", { kind: "image", durationUs: 0 }))).toBe("");
     expect(durationBadge(item("g", { kind: "image", durationUs: 2_400_000 }))).toBe("00:02");
     expect(durationBadge(item("v", { durationUs: 61_000_000 }))).toBe("01:01");
+  });
+});
+
+describe("bins, filter chips and search (Batch 41)", () => {
+  const v1 = item("Beach day.mp4", { kind: "video", binId: "b1" });
+  const v2 = item("Interview A.mov", { kind: "video", file: { handleKey: "h2", pathHint: "Shoot/Interview A.mov" } });
+  const a1 = item("Café music.mp3", { kind: "audio", binId: "b2" });
+  const i1 = item("logo.png", { kind: "image", binId: "b1" });
+  const all = [v1, v2, a1, i1];
+  const uses = new Map([[v1.id, 2], [a1.id, 1]]);
+  const query = (fields: Partial<MediaQuery> = {}): MediaQuery => ({ bin: "all", filters: { kinds: [], unused: false }, search: "", ...fields });
+  const shown = (fields: Partial<MediaQuery>) => all.filter(mediaMatcher(query(fields), uses)).map((m) => m.name);
+
+  it("shows a virtual bin by kind, a bin by its media", () => {
+    expect(shown({})).toEqual(["Beach day.mp4", "Interview A.mov", "Café music.mp3", "logo.png"]);
+    expect(shown({ bin: "video" })).toEqual(["Beach day.mp4", "Interview A.mov"]);
+    expect(shown({ bin: "image" })).toEqual(["logo.png"]);
+    expect(shown({ bin: "b1" })).toEqual(["Beach day.mp4", "logo.png"]);
+    expect(shown({ bin: "gone" })).toEqual([]);
+    expect(shownBin("gone", [{ id: "b1", name: "B" }])).toBe("all");
+    expect(shownBin("b1", [{ id: "b1", name: "B" }])).toBe("b1");
+    expect(shownBin("audio", [])).toBe("audio");
+  });
+
+  it("combines kind chips (any of them) with Unused and the bin", () => {
+    expect(shown({ filters: { kinds: ["audio", "image"], unused: false } })).toEqual(["Café music.mp3", "logo.png"]);
+    expect(shown({ filters: { kinds: [], unused: true } })).toEqual(["Interview A.mov", "logo.png"]);
+    expect(shown({ bin: "b1", filters: { kinds: ["video"], unused: true } })).toEqual([]);
+  });
+
+  it("searches every word in the name or path, ignoring case and accents", () => {
+    expect(shown({ search: "  BEACH " })).toEqual(["Beach day.mp4"]);
+    expect(shown({ search: "cafe" })).toEqual(["Café music.mp3"]);
+    expect(shown({ search: "shoot interview" })).toEqual(["Interview A.mov"]);
+    expect(shown({ search: "media/" })).toEqual(["Beach day.mp4", "Café music.mp3", "logo.png"]);
+    expect(shown({ search: "beach logo" })).toEqual([]);
+    expect(searchText("Ünïcödé")).toBe("unicode");
+  });
+
+  it("counts the media of every chip; paths and file names", () => {
+    expect(Object.fromEntries(binCounts(all))).toEqual({ all: 4, video: 2, audio: 1, image: 1, b1: 2, b2: 1 });
+    expect(mediaPath(v2)).toBe("Shoot/Interview A.mov");
+    expect(mediaPath(v1)).toBe("media/Beach day.mp4.mp4");
+    expect(baseName("Shoot/Interview A.mov")).toBe("Interview A.mov");
+    expect(baseName("clip.mp4")).toBe("clip.mp4");
+  });
+
+  it("narrows 2000 items quickly", () => {
+    const many = Array.from({ length: 2000 }, (_, i) => item(`Take ${i} ${i % 3 === 0 ? "drone" : "ground"}.mp4`, i % 2 ? { binId: "b1" } : {}));
+    const started = performance.now();
+    const match = mediaMatcher(query({ search: "take 1 drone", bin: "b1" }), new Map());
+    const found = many.filter(match);
+    expect(performance.now() - started).toBeLessThan(200);
+    expect(found.length).toBeGreaterThan(0);
+    expect(found.every((m) => m.name.includes("drone") && m.binId === "b1")).toBe(true);
   });
 });

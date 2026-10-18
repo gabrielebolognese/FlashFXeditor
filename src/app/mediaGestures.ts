@@ -7,6 +7,8 @@
 // point (§7.2 drop target), elsewhere it does nothing; Esc cancels. The panels' page rects are read
 // once, when the drag starts (P9). Several selected items drag together, in selection order. Preset
 // cards (spec §10.3) drag the same way through `pressDragCard`: their item is a text clip.
+// Media dragged onto a bin chip of the Media tab (spec §12 "Drag out: ... to a bin", Batch 41) move into
+// that bin (one command); the chip under the pointer is marked through a data attribute.
 import type { MediaId } from "../core/document/types.js";
 import { detectPlatform } from "../core/keyboard/keys.js";
 import { HoverScrub } from "../panels/media/hoverScrub.js";
@@ -14,7 +16,7 @@ import { isTextDrop, type DropItem } from "../timeline/edit/dropMedia.js";
 import type { DragModifiers } from "../timeline/view/gestures/moveClips.js";
 import { dropMediaOnCanvas, dropMediaOnTimeline, itemsOf, placeAtPlayhead, setMediaRange } from "./dropController.js";
 import styles from "./MediaGestures.module.css";
-import { posterPainter, scrubSheets, selectedMedia } from "./mediaController.js";
+import { moveToBin, posterPainter, scrubSheets, selectedMedia } from "./mediaController.js";
 import { previewView } from "./previewController.js";
 import { documentStore, sessionStore, themeBridge } from "./services.js";
 import { timelineView } from "./timelineController.js";
@@ -24,6 +26,15 @@ export interface CardDragSource {
   items(): DropItem[];
   /** Released over the preview canvas at `point` (project px from the frame's top-left). */
   dropOnCanvas(point: { x: number; y: number } | null): void;
+  /** The media a drop on a bin chip moves (media cards only). */
+  media?: readonly MediaId[];
+}
+
+/** A bin chip a media drag can drop on: its element (marked while under the pointer) and page rect. */
+interface BinTarget {
+  binId: string;
+  element: HTMLElement;
+  rect: DOMRect;
 }
 
 interface Press {
@@ -45,7 +56,8 @@ interface Drag {
   timeline: DOMRect | null;
   preview: DOMRect | null;
   chip: HTMLElement;
-  over: "timeline" | "preview" | null;
+  bins: BinTarget[];
+  over: "timeline" | "preview" | BinTarget | null;
   /** The last pointer position (client px). */
   x: number;
   y: number;
@@ -82,7 +94,7 @@ const inside = (rect: DOMRect | null, x: number, y: number): rect is DOMRect => 
 export function pressMediaCard(event: PointerEvent, element: HTMLElement, id: MediaId): void {
   const selected = selectedMedia();
   const ids = selected.includes(id) ? selected : [id];
-  pressDragCard(event, element, { items: () => itemsOf(documentStore.getState(), ids), dropOnCanvas: (point) => dropMediaOnCanvas(ids, point) });
+  pressDragCard(event, element, { items: () => itemsOf(documentStore.getState(), ids), dropOnCanvas: (point) => dropMediaOnCanvas(ids, point), media: ids });
 }
 
 /** A press on a card that drags `source`'s items past the dead zone (`element` captures the pointer then). */
@@ -121,6 +133,9 @@ function start(press: Press, event: PointerEvent): void {
   const timeline = timelineView.element?.getBoundingClientRect() ?? null;
   const preview = previewView.element?.getBoundingClientRect() ?? null;
   const { element } = press;
+  const bins = press.source.media
+    ? [...element.ownerDocument.querySelectorAll<HTMLElement>("[data-bin-drop]")].map((bin) => ({ binId: bin.dataset.binDrop ?? "", element: bin, rect: bin.getBoundingClientRect() }))
+    : [];
   try {
     element.setPointerCapture(press.pointerId);
   } catch {
@@ -131,7 +146,7 @@ function start(press: Press, event: PointerEvent): void {
   chip.textContent = items.length === 1 ? itemName(items[0] as DropItem) : `${items.length} items`;
   chip.hidden = true;
   element.ownerDocument.body.append(chip);
-  gesture = { kind: "drag", pointerId: press.pointerId, element, source: press.source, items, timeline, preview, chip, over: null, x: event.clientX, y: event.clientY };
+  gesture = { kind: "drag", pointerId: press.pointerId, element, source: press.source, items, timeline, preview, chip, bins, over: null, x: event.clientX, y: event.clientY };
 }
 
 /** The drag follows the pointer: ghosts on the timeline, else the chip. */
@@ -141,6 +156,7 @@ function follow(drag: Drag, event: PointerEvent): void {
   drag.x = x;
   drag.y = y;
   if (inside(drag.timeline, x, y)) {
+    markBin(drag, null);
     drag.over = "timeline";
     timelineView.dragMedia(drag.items, x - drag.timeline.left, y - drag.timeline.top, modifiersOf(event));
     drag.chip.hidden = true;
@@ -148,11 +164,21 @@ function follow(drag: Drag, event: PointerEvent): void {
     return;
   }
   if (drag.over === "timeline") timelineView.leaveMediaDrag();
-  drag.over = inside(drag.preview, x, y) ? "preview" : null;
+  const bin = drag.bins.find((target) => inside(target.rect, x, y)) ?? null;
+  markBin(drag, bin);
+  drag.over = bin ?? (inside(drag.preview, x, y) ? "preview" : null);
   const offset = themeBridge.theme.space[3];
   drag.chip.hidden = false;
   drag.chip.style.transform = `translate(${x + offset}px, ${y + offset}px)`;
-  drag.element.style.cursor = drag.over === "preview" ? "copy" : "grabbing";
+  drag.element.style.cursor = drag.over === "preview" || bin ? "copy" : "grabbing";
+}
+
+/** Marks the bin chip under the pointer (a DOM attribute, no React render). */
+function markBin(drag: Drag, bin: BinTarget | null): void {
+  const previous = typeof drag.over === "object" && drag.over !== null ? drag.over : null;
+  if (previous === bin) return;
+  if (previous) delete previous.element.dataset.dropTarget;
+  if (bin) bin.element.dataset.dropTarget = "";
 }
 
 const onMove = (event: PointerEvent): void => {
@@ -196,6 +222,7 @@ function finish(commit: boolean): void {
   win?.removeEventListener("keydown", onKey, true);
   if (current.kind !== "drag") return;
   if (current.element.hasPointerCapture?.(current.pointerId)) current.element.releasePointerCapture(current.pointerId);
+  markBin(current, null);
   current.chip.remove();
   current.element.style.cursor = "";
   // The click that follows the release must not select or clear (the list's click handler asks).
@@ -206,5 +233,7 @@ function finish(commit: boolean): void {
     if (commit && request) dropMediaOnTimeline(request);
   } else if (commit && current.over === "preview" && current.preview) {
     current.source.dropOnCanvas(previewView.projectPoint(current.x - current.preview.left, current.y - current.preview.top));
+  } else if (commit && typeof current.over === "object" && current.over !== null && current.source.media) {
+    moveToBin(current.over.binId, current.source.media);
   }
 }

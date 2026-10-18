@@ -106,14 +106,35 @@ describe("validateProject", () => {
     expect(validateProject(project)).toEqual([]);
   });
 
-  it("reports out <= in and missing media", () => {
+  it("reports out <= in; a clip whose media was removed is an offline clip (Batch 41)", () => {
     const project = valid();
     const clip = mediaClip(project, "c1");
     clip.out = clip.in;
-    clip.mediaId = "nope";
     const issues = validateProject(project).join("\n");
     expect(issues).toContain("out 0 <= in 0");
-    expect(issues).toContain("media nope does not exist");
+    // "Remove from project" keeps the clips of used media offline (spec §6.19): no media bound to check.
+    const offline = valid();
+    delete offline.media.m1;
+    const c2 = mediaClip(offline, "c2");
+    c2.in += 60_000_000;
+    c2.out += 60_000_000;
+    expect(validateProject(offline)).toEqual([]);
+  });
+
+  it("checks bins: unique ids, names, and media bins that exist; media sizes", () => {
+    const project = valid();
+    project.bins.push({ id: "b1", name: "B-roll" });
+    project.media.m1!.binId = "b1";
+    project.media.m1!.size = 1234;
+    expect(validateProject(project)).toEqual([]);
+    project.bins.push({ id: "b1", name: " " });
+    project.media.m1!.binId = "b2";
+    project.media.m1!.size = 1.5;
+    const issues = validateProject(project).join("\n");
+    expect(issues).toContain("bin b1: listed more than once");
+    expect(issues).toContain("bin b1: name must be a non-empty string");
+    expect(issues).toContain("bin b2 does not exist");
+    expect(issues).toContain("size 1.5 must be an integer >= 0");
   });
 
   it("accepts the 8 label colors only", () => {

@@ -72,7 +72,19 @@ describe("migration hook", () => {
   it("leaves a current file alone", () => {
     const raw = v1();
     expect(migrateProject(raw)).toEqual(raw);
-    expect(SCHEMA_VERSION).toBe(1);
+    expect(SCHEMA_VERSION).toBe(2);
+  });
+
+  it("opens a schema 1 project (Batch 41): no bins yet, media without sizes", () => {
+    const project = richProject();
+    const raw = JSON.parse(serializeProject(project, STAMP)) as JsonObject;
+    delete raw.bins;
+    raw.schemaVersion = 1;
+    const parsed = parseProjectFile(JSON.stringify(raw));
+    expect(parsed.schemaVersion).toBe(2);
+    expect(parsed.bins).toEqual([]);
+    expect(parsed.media.m1).toEqual(project.media.m1);
+    expect(parsed.clips).toEqual(project.clips);
   });
 
   it("runs every step from the file's version to the target, in order, on a copy", () => {
@@ -105,7 +117,7 @@ describe("migration hook", () => {
   });
 
   it("refuses files from a newer app, a missing step, or no version", () => {
-    expect(() => migrateProject({ ...v1(), schemaVersion: 2 })).toThrow(/newer version/);
+    expect(() => migrateProject({ ...v1(), schemaVersion: SCHEMA_VERSION + 1 })).toThrow(/newer version/);
     expect(() => migrateProject({ ...v1(), schemaVersion: 0 }, {})).toThrow(/No migration from schema version 0/);
     const unversioned = v1();
     delete unversioned.schemaVersion;

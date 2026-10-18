@@ -214,12 +214,19 @@ export function drawBlocks(scene: Pick<ContentScene, "ctx" | "dpr" | "geometry" 
  * One clip in its row: body (with its filmstrip, waveform, text or swatch at M/L heights), label bar
  * (kind glyph, name, badges), selection tint and outline, in the clip's label color when it has one.
  * A disabled or muted clip is dimmed and hatched (spec §6.4). `syncOffset`: frames off its link
- * partner (`linkOffset`), shown as a `+12` / `-12` badge.
+ * partner (`linkOffset`), shown as a `+12` / `-12` badge. A clip of offline media (spec §6.19, Batch
+ * 41) is a slate: the offline body and label bar colors, no filmstrip or waveform, an "Offline" badge.
  */
 export function drawClip(scene: ClipScene, clip: Clip, row: Row, track: Track, abutsNext: boolean, syncOffset = 0): void {
   const { ctx, dpr, geometry, theme, selection } = scene;
   const tl = theme.timeline;
   const selected = selection.clipIds.has(clip.id);
+  const offline = isMediaClip(clip) && scene.visuals?.offline?.(clip.mediaId) === true;
+  const fill = (part: "body" | "label", fx: number, fy: number, fw: number, fh: number) => {
+    if (!offline) return fillClip(ctx, theme, clip, part, fx, fy, fw, fh);
+    ctx.fillStyle = part === "body" ? tl.offlineBody : tl.offlineLabel;
+    ctx.fillRect(fx, fy, fw, fh);
+  };
 
   const span = clipSpan(geometry.frameToX(clip.start), geometry.frameToX(clip.start + clip.duration), abutsNext, dpr);
   const x = span.x0 / dpr;
@@ -234,7 +241,7 @@ export function drawClip(scene: ClipScene, clip: Clip, row: Row, track: Track, a
       ctx.fillStyle = theme.color.accent;
       ctx.fillRect(x, y, width, height);
     } else {
-      fillClip(ctx, theme, clip, "body", x, y, width, height);
+      fill("body", x, y, width, height);
     }
     return;
   }
@@ -247,11 +254,11 @@ export function drawClip(scene: ClipScene, clip: Clip, row: Row, track: Track, a
   ctx.roundRect(x, y, width, height, radius);
   ctx.clip();
   if (disabled) ctx.globalAlpha = alpha * tl.inactiveOpacity;
-  fillClip(ctx, theme, clip, "body", x, y, width, height);
+  fill("body", x, y, width, height);
   // The label bar is the whole clip on S tracks (spec §6.4): no body there.
   const labelHeight = track.kind === "caption" || track.height === "S" ? height : Math.min(height, tl.labelHeight);
-  if (labelHeight < height) drawBody(scene, clip, x, y + labelHeight, width, height - labelHeight, lod);
-  fillClip(ctx, theme, clip, "label", x, y, width, labelHeight);
+  if (labelHeight < height && !offline) drawBody(scene, clip, x, y + labelHeight, width, height - labelHeight, lod);
+  fill("label", x, y, width, labelHeight);
   // Fades (Batch 36) over the body, or the whole clip where the label bar is all of it.
   if (lod === "full") drawFades(ctx, dpr, geometry, theme, clip, x, width, labelHeight < height ? y + labelHeight : y, labelHeight < height ? height - labelHeight : height);
   ctx.globalAlpha = alpha;
@@ -260,7 +267,7 @@ export function drawClip(scene: ClipScene, clip: Clip, row: Row, track: Track, a
     ctx.fillStyle = theme.color.accentWash;
     ctx.fillRect(x, y, width, height);
   }
-  if (lod === "full") drawLabel(scene, clip, x, y, width, labelHeight, syncOffset);
+  if (lod === "full") drawLabel(scene, clip, x, y, width, labelHeight, syncOffset, offline);
   // The keyframe lane (spec §6.4) across the bottom of the body, its selected keys in the accent.
   const lane = labelHeight < height ? shownLane(scene.lanes, clip, track, selected) : null;
   if (lane) {
@@ -474,7 +481,7 @@ function drawSwatch(scene: ClipScene, clip: SolidClip, left: number, y: number, 
   ctx.stroke();
 }
 
-function drawLabel(scene: ClipScene, clip: Clip, x: number, y: number, width: number, labelHeight: number, syncOffset: number): void {
+function drawLabel(scene: ClipScene, clip: Clip, x: number, y: number, width: number, labelHeight: number, syncOffset: number, offline = false): void {
   const { ctx, theme, text } = scene;
   const pad = theme.space[1];
   const icon = theme.icon.small;
@@ -491,10 +498,12 @@ function drawLabel(scene: ClipScene, clip: Clip, x: number, y: number, width: nu
   // and audio only, stills and graphics have no speed; a snowflake for a freeze frame, Batch 27), the
   // link and the keyframe icons, a text animation (sparkles, Batch 31), a missing font (a text clip
   // whose family is not available draws with the fallback font, §10.1), and `fx` when it has a
-  // transition (Batch 36). The name ends before them.
+  // transition (Batch 36), and `Offline` first when its media is offline (Batch 41). The name ends
+  // before them.
   const minX = left + pad + icon + pad;
   const badgesEnd = right - theme.space[0];
   let badgesStart = badgesEnd;
+  if (offline) badgesStart = drawBadge(scene, "Offline", theme.color.danger, minX, badgesStart, lineY);
   if (syncOffset !== 0) badgesStart = drawBadge(scene, `${syncOffset > 0 ? "+" : "-"}${Math.abs(syncOffset)}`, theme.color.danger, minX, badgesStart, lineY);
   if (isFreeze(clip)) badgesStart = drawIconBadge(scene, "snowflake", minX, badgesStart, lineY);
   else if ((clip.kind === "video" || clip.kind === "audio") && clip.speed !== 1) badgesStart = drawBadge(scene, formatSpeed(clip.speed), theme.color.textSecondary, minX, badgesStart, lineY);

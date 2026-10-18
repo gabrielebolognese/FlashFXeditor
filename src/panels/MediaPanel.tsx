@@ -17,7 +17,7 @@ const selectTab = (state: SessionState) => state.mediaPanel.tab;
 const tabCommand = (tab: MediaTabId) => `panel.${tab}`;
 const setTab = (tab: MediaTabId) => void actions.run(tabCommand(tab));
 
-// TODO(batch 41): bins, search, filter chips.
+// The Media tab holds the bins, the search and the filter chips (Batch 41).
 export function MediaPanel() {
   const tab = useStoreSelector(sessionStore.state, selectTab);
   return (

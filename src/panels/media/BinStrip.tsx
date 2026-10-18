@@ -1,0 +1,111 @@
+import { AudioLines, Film, Folder, Image, Library, type LucideIcon } from "lucide-react";
+import { useRef, type KeyboardEvent, type MouseEvent } from "react";
+import { binMenu, closeBinMenu, finishBinRename, mediaPanel, openBinMenu, showBin, startBinRename } from "../../app/mediaController.js";
+import { actions, documentStore, sessionStore } from "../../app/services.js";
+import { MAX_BIN_NAME } from "../../core/commands/mediaCommands.js";
+import type { Bin, Project } from "../../core/document/types.js";
+import type { VirtualBin } from "../../core/store/sessionStore.js";
+import { useStoreSelector } from "../../core/store/useStoreSelector.js";
+import { ContextMenu, type ContextMenuEntry } from "../../ui/ContextMenu.js";
+import { binCounts, shownBin } from "./mediaList.js";
+import styles from "./MediaTab.module.css";
+
+// The bin strip of the Media tab (spec §12, Batch 41): a left column of chips, the virtual bins (All,
+// Video, Audio, Images) then the project's bins (one level), each with its count. A click shows a bin;
+// a bin's chip renames on double-click, has a menu (Rename, Delete bin) and takes media dropped on it
+// (`data-bin-drop`, read by the media drag). The chips are the strip's own controls (`data-control`).
+
+const VIRTUAL: readonly { id: VirtualBin; label: string; icon: LucideIcon }[] = [
+  { id: "all", label: "All", icon: Library },
+  { id: "video", label: "Video", icon: Film },
+  { id: "audio", label: "Audio", icon: AudioLines },
+  { id: "image", label: "Images", icon: Image },
+];
+
+const selectBins = (project: Project) => project.bins;
+/** Counts as a string: media edits that do not change them do not re-render the strip. */
+const selectCounts = (project: Project) => [...binCounts(Object.values(project.media))].map(([id, n]) => `${id}:${n}`).join(",");
+const keep = (event: MouseEvent) => event.preventDefault();
+
+function BinRow({ id, label, icon: Icon, count, active, drop }: { id: string; label: string; icon: LucideIcon; count: number; active: boolean; drop: boolean }) {
+  const onContextMenu = (event: MouseEvent) => {
+    if (!drop) return;
+    event.preventDefault();
+    openBinMenu(id, event.clientX, event.clientY);
+  };
+  return (
+    <button
+      type="button"
+      className={styles.binRow}
+      aria-pressed={active}
+      data-bin-drop={drop ? id : undefined}
+      data-tooltip={drop ? `${label}: drop media here, double-click to rename` : undefined}
+      onMouseDown={keep}
+      onClick={() => showBin(id)}
+      onDoubleClick={drop ? () => startBinRename(id) : undefined}
+      onContextMenu={onContextMenu}
+    >
+      <Icon className={styles.binIcon} aria-hidden="true" />
+      <span className={styles.binName}>{label}</span>
+      <span className={styles.binCount}>{count}</span>
+    </button>
+  );
+}
+
+/** A bin's inline rename: Enter or blur commits (one undoable command), Escape cancels. */
+function BinRename({ bin }: { bin: Bin }) {
+  const done = useRef(false);
+  const finish = (value: string | null) => {
+    if (done.current) return;
+    done.current = true;
+    finishBinRename(bin.id, value);
+  };
+  const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Enter") finish(event.currentTarget.value);
+    else if (event.key === "Escape") finish(null);
+  };
+  return (
+    <input
+      className={styles.binInput}
+      defaultValue={bin.name}
+      maxLength={MAX_BIN_NAME}
+      aria-label="Bin name"
+      spellCheck={false}
+      autoFocus
+      onFocus={(event) => event.currentTarget.select()}
+      onKeyDown={onKeyDown}
+      onBlur={(event) => finish(event.currentTarget.value)}
+    />
+  );
+}
+
+export function BinStrip() {
+  const bins = useStoreSelector(documentStore, selectBins);
+  const countKey = useStoreSelector(documentStore, selectCounts);
+  const shown = useStoreSelector(sessionStore.state, (state) => state.mediaPanel.bin);
+  const renaming = useStoreSelector(mediaPanel, (state) => state.renamingBin);
+  const counts = new Map(countKey ? countKey.split(",").map((entry) => [entry.slice(0, entry.lastIndexOf(":")), Number(entry.slice(entry.lastIndexOf(":") + 1))] as const) : []);
+  const active = shownBin(shown, bins);
+  return (
+    <nav className={styles.bins} aria-label="Bins" data-control="">
+      {VIRTUAL.map((bin) => (
+        <BinRow key={bin.id} id={bin.id} label={bin.label} icon={bin.icon} count={counts.get(bin.id) ?? 0} active={active === bin.id} drop={false} />
+      ))}
+      {bins.length > 0 && <div className={styles.binSeparator} role="separator" />}
+      {bins.map((bin) => (renaming === bin.id ? <BinRename key={bin.id} bin={bin} /> : <BinRow key={bin.id} id={bin.id} label={bin.name} icon={Folder} count={counts.get(bin.id) ?? 0} active={active === bin.id} drop />))}
+    </nav>
+  );
+}
+
+const MEDIA_CONTEXT = { scope: "media", phase: "down", repeat: false } as const;
+const BIN_ENTRIES: readonly ContextMenuEntry[] = [
+  { kind: "item", id: "media.renameBin", label: "Rename" },
+  { kind: "item", id: "media.deleteBin", label: "Delete bin" },
+];
+
+/** A bin chip's menu: its commands run with the bin's id. */
+export function BinMenu() {
+  const menu = useStoreSelector(binMenu, (state) => state);
+  if (!menu) return null;
+  return <ContextMenu x={menu.x} y={menu.y} entries={BIN_ENTRIES} onSelect={(id) => void actions.run(id, MEDIA_CONTEXT, menu.binId)} onClose={closeBinMenu} />;
+}

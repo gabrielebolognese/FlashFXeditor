@@ -49,7 +49,7 @@ import type { PreviewQuality, PreviewSession, SessionState } from "../../core/st
 import { cssColorToRgba } from "../../core/theme/cssColor.js";
 import type { Theme, ThemeBridge } from "../../core/theme/theme.js";
 import { secondsToFrames } from "../../core/document/time.js";
-import { Compositor, type LiveAnims, type LiveCaptions, type LiveText } from "../compositor/Compositor.js";
+import { Compositor, type LiveAnims, type LiveCaptions, type LiveText, type OfflineSlates } from "../compositor/Compositor.js";
 import type { Composite, DrawList, Layer, TextureLayer } from "../compositor/drawList.js";
 import { DrawListSnapshot } from "../compositor/DrawListSnapshot.js";
 import type { FramePriority } from "../../media/workers/protocol.js";
@@ -102,6 +102,11 @@ export interface PreviewViewDeps extends Omit<LayerTexturesDeps, "onChange" | "w
   loadFonts?(style: TextStyle, text: string): Promise<boolean>;
   /** True when playback fell behind on the media this playback (1/2 and 1/4 then play its proxy). */
   behind?(mediaId: string): boolean;
+  /**
+   * Why a media is offline (the slate's second line, spec §6.19, Batch 41), or null when it is online.
+   * The owner invalidates `preview` when it changes. Without it, offline media draw nothing.
+   */
+  offline?(mediaId: string): string | null;
   /** Clock of the Auto settle time (ms); `performance.now` by default. */
   now?(): number;
 }
@@ -166,6 +171,8 @@ interface Chrome {
   outside: RGBA;
   border: RGBA;
   margin: number;
+  /** Offline slates (Batch 41). */
+  slate: { fill: RGBA; text: RGBA };
 }
 
 export class PreviewView implements RenderView {
@@ -175,13 +182,15 @@ export class PreviewView implements RenderView {
   private readonly size: Size = { width: 0, height: 0 };
   private readonly transform = mutableIdentity();
   private chrome: Chrome;
-  private readonly compositor = new Compositor();
+  /** What offline media show, in the theme's slate colors (shared by the view's compositors). */
+  private readonly slates: OfflineSlates | null;
+  private readonly compositor: Compositor;
   private readonly textures: LayerTextures;
   private readonly snapshot = new DrawListSnapshot();
   private readonly viewport: PaneViewport = newViewport();
   private viewportDrawn = false;
   // The split preview: the right frame's compositor and snapshot, the two panes, whether it is on screen.
-  private readonly rightCompositor = new Compositor();
+  private readonly rightCompositor: Compositor;
   private readonly rightSnapshot = new DrawListSnapshot();
   private readonly panes: [Pane & { viewport: PaneViewport }, Pane & { viewport: PaneViewport }] = [
     { list: EMPTY_LIST, viewport: newViewport(), bounds: { x: 0, y: 0, width: 0, height: 0 } },
@@ -212,7 +221,7 @@ export class PreviewView implements RenderView {
   private passQuality: PreviewQuality = "auto";
   private passActivity: PreviewActivity = "idle";
   /** Evaluates Export frame's composite apart from the view's. */
-  private readonly exportCompositor = new Compositor();
+  private readonly exportCompositor: Compositor;
   private settleTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly now: () => number;
   private readonly viewListeners = new Set<() => void>();
@@ -226,6 +235,11 @@ export class PreviewView implements RenderView {
 
   constructor(private readonly deps: PreviewViewDeps) {
     this.chrome = chromeFromTheme(deps.theme.theme);
+    const offline = deps.offline;
+    this.slates = offline ? { label: (mediaId) => offline(mediaId), look: () => this.chrome.slate } : null;
+    this.compositor = new Compositor(this.slates);
+    this.rightCompositor = new Compositor(this.slates);
+    this.exportCompositor = new Compositor(this.slates);
     this.textures = new LayerTextures({
       frames: deps.frames,
       images: deps.images,
@@ -233,6 +247,7 @@ export class PreviewView implements RenderView {
       ...(deps.text && { text: deps.text }),
       onChange: () => deps.scheduler.invalidate("preview"),
       wantedLod: (mediaId) => wantedLod(this.passQuality, this.passActivity, deps.behind?.(mediaId) ?? false),
+      ...(deps.onFail && { onFail: deps.onFail }),
     });
     this.now = deps.now ?? (() => performance.now());
     this.stats = {
@@ -715,5 +730,6 @@ function chromeFromTheme(theme: Theme): Chrome {
     outside: cssColorToRgba(theme.color.bgSunken) ?? TRANSPARENT,
     border: cssColorToRgba(theme.color.hairline) ?? TRANSPARENT,
     margin: theme.layout.previewMargin,
+    slate: { fill: cssColorToRgba(theme.preview.slate) ?? TRANSPARENT, text: cssColorToRgba(theme.preview.slateText) ?? TRANSPARENT },
   };
 }

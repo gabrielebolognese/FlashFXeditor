@@ -13,6 +13,7 @@ import {
   shortcutGroups,
 } from "../app/commandController.js";
 import { commandLabel } from "../app/commandCatalog.js";
+import { actions, appSettings } from "../app/services.js";
 import { keymap } from "../core/keyboard/keymap.js";
 import { detectPlatform } from "../core/keyboard/keys.js";
 import { recordChord, type KeyConflict } from "../core/keyboard/rebind.js";
@@ -31,6 +32,8 @@ import { scopeText } from "./ShortcutSheet.js";
 // Reset puts back the command's default keys; conflicts with another command in the same scope (or a
 // global key a panel's binding hides) are flagged on both rows; the keymap exports to and imports from a
 // JSON file. Changes apply at once: tooltips, menus, the palette and the cheat sheet read the live keymap.
+// Batch 41 adds the Media tab: the import mode (spec §9.1: copy into media/, the default, or link to the
+// original files), through the `media.importMode.*` commands.
 // TODO(batch 42): the General tab (autosave, cache, punch zoom, auto-duck parameters).
 
 const subscribeKeymap = (listener: () => void) => keymap.subscribe(listener);
@@ -163,7 +166,45 @@ function ShortcutEditor() {
   );
 }
 
+const IMPORT_MODES = [
+  {
+    mode: "copy",
+    command: "media.importMode.copy",
+    label: "Copy files into the project folder",
+    note: "The project stays self-contained in one folder you can move or back up.",
+  },
+  {
+    mode: "reference",
+    command: "media.importMode.reference",
+    label: "Link to the original files",
+    note: "Nothing is copied. Moved or renamed files go offline until you relink them, and after a restart the browser asks again before reading them.",
+  },
+] as const;
+
+/** The Media tab (Batch 41): how imports bring files into the project (spec §9.1). */
+function MediaSettings() {
+  const mode = useStoreSelector(appSettings, (state) => state.importMode);
+  return (
+    <div className={styles.media}>
+      <p className={styles.heading}>Import</p>
+      <div className={styles.choices} role="radiogroup" aria-label="Import mode">
+        {IMPORT_MODES.map((choice) => (
+          <button key={choice.mode} type="button" role="radio" aria-checked={mode === choice.mode} className={styles.choice} data-command={choice.command} onClick={() => actions.run(choice.command)}>
+            <span className={styles.radio} aria-hidden="true" />
+            <span>
+              <span className={styles.choiceLabel}>{choice.label}</span>
+              <span className={styles.choiceNote}>{choice.note}</span>
+            </span>
+          </button>
+        ))}
+      </div>
+      <p className={styles.hint}>Files you paste are always copied. Media already in the project keep how they were imported.</p>
+    </div>
+  );
+}
+
 function Dialog() {
+  const [tab, setTab] = useState<"shortcuts" | "media">("shortcuts");
   return (
     <Modal
       title="Settings"
@@ -177,11 +218,14 @@ function Dialog() {
       }
     >
       <div className={styles.tabs} role="tablist" aria-label="Settings">
-        <button type="button" role="tab" aria-selected="true" className={styles.tab} onMouseDown={keepFocus}>
+        <button type="button" role="tab" aria-selected={tab === "shortcuts"} className={styles.tab} onMouseDown={keepFocus} onClick={() => setTab("shortcuts")}>
           Shortcuts
         </button>
+        <button type="button" role="tab" aria-selected={tab === "media"} className={styles.tab} onMouseDown={keepFocus} onClick={() => setTab("media")}>
+          Media
+        </button>
       </div>
-      <ShortcutEditor />
+      {tab === "shortcuts" ? <ShortcutEditor /> : <MediaSettings />}
     </Modal>
   );
 }

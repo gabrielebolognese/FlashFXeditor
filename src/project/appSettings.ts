@@ -19,7 +19,7 @@ import type { KeyValueStore } from "./kv.js";
 import { DUCK_DEPTH_DB, DUCK_RAMP_FRAMES } from "../timeline/edit/volume.js";
 import { clampSilenceParam, SILENCE_MIN_MS, SILENCE_PADDING_MS, SILENCE_THRESHOLD } from "../timeline/edit/silence.js";
 
-/** copy: into media/ (default). reference: file handles in IndexedDB. TODO(batch 41): reference mode. */
+/** copy: into media/ (default). reference: linked, the file handles kept in IndexedDB (Batch 41, spec §9.1). */
 export type ImportMode = "copy" | "reference";
 
 export interface AppSettings {

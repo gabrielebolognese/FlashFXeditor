@@ -29,8 +29,11 @@ export type ContextMenuEntry =
   /** `dec` / `inc` are the commands of the - / + buttons; the ends of the range disable them. */
   | { kind: "stepper"; id: string; label: string; value: number; min: number; max: number; dec: string; inc: string; disabled?: boolean }
   | { kind: "heading"; label: string }
-  /** A label, then text chips side by side; a pick sends the chip's id and closes the menu. */
-  | { kind: "choices"; id: string; label: string; choices: readonly { id: string; label: string; tooltip?: string; disabled?: boolean }[] }
+  /**
+   * A label, then text chips side by side; a pick sends the chip's id and closes the menu. A chip's
+   * `command` is the command it runs when its id is not one (a value of it: Move to bin's bins).
+   */
+  | { kind: "choices"; id: string; label: string; choices: readonly { id: string; label: string; tooltip?: string; disabled?: boolean; command?: string }[] }
   | { kind: "separator" };
 
 export interface ContextMenuProps {
@@ -190,7 +193,7 @@ export function ContextMenu({ x, y, entries, onSelect, onClose, anchorRef, value
                 role="menuitem"
                 className={styles.choice}
                 data-row={index}
-                data-command={command?.(choice.id)}
+                data-command={command?.(choice.command ?? choice.id)}
                 data-control={control}
                 data-tooltip={choice.tooltip}
                 aria-label={choice.tooltip ?? `${entry.label} ${choice.label}`}

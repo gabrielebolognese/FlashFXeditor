@@ -426,6 +426,51 @@ describe("Compositor.evaluate", () => {
   });
 });
 
+describe("Compositor offline slates (Batch 41)", () => {
+  const GRAY = { r: 0.3, g: 0.3, b: 0.35, a: 1 };
+  const WHITE = { r: 1, g: 1, b: 1, a: 1 };
+  const slates = (offline: Record<string, string>) => ({ label: (id: string) => offline[id] ?? null, look: () => ({ fill: GRAY, text: WHITE }) });
+
+  it("draws an offline clip as a slate over the media's visible box, then its label; online clips as media", () => {
+    let doc = project(["v1", "v2"], [video("m1", 1920, 1080), video("m2", 1920, 1080)]);
+    doc = withClips(doc, [
+      clip(doc, { id: "off", trackId: "v1", start: 0, duration: 30, crop: { left: 0.25, top: 0, right: 0, bottom: 0.5 }, transform: transform({ scale: 0.5 }) }),
+      clip(doc, { id: "on", trackId: "v2", start: 0, duration: 30, mediaId: "m2" }),
+    ]);
+    const compositor = new Compositor(slates({ m1: "Media offline" }));
+    const layers = compositor.evaluate(doc, 10).layers;
+    const slate = layers[0] as SolidLayer;
+    expect(slate.kind).toBe("solid");
+    expect(slate.color).toEqual(GRAY);
+    // The 1920x1080 media at half size, centered: 960x540; the crop keeps x 0.25..1 and y 0..0.5.
+    const box = corners(slate.transform);
+    expect(box.left).toBeCloseTo(W / 2 - 480 + 240, 6);
+    expect(box.right).toBeCloseTo(W / 2 + 480, 6);
+    expect(box.top).toBeCloseTo(H / 2 - 270, 6);
+    expect(box.bottom).toBeCloseTo(H / 2, 6);
+    const rest = layers.slice(1);
+    // The label (when the text layout can raster here), then the online clip's media layer.
+    const label = rest.find((layer) => layer.kind === "text");
+    if (label?.kind === "text") {
+      expect(label.clipId).toBe("off#offline");
+      expect(label.text.value).toBe("m1.mp4\nMedia offline");
+    }
+    expect(media(rest[rest.length - 1]).clipId).toBe("on");
+    // An offline media is not warmed at a cut.
+    expect(compositor.neighbors(doc, 0).map((n) => n.mediaId)).toEqual([]);
+  });
+
+  it("draws a clip whose media record is gone at the frame's size, named after the clip", () => {
+    let doc = project(["v1"]);
+    doc = withClips(doc, [clip(doc, { id: "c", trackId: "v1", start: 0, duration: 30 })]);
+    delete doc.media.m1;
+    const slate = new Compositor(slates({ m1: "Media removed" })).evaluate(doc, 0).layers[0] as SolidLayer;
+    expect(corners(slate.transform)).toEqual({ left: 0, right: W, top: 0, bottom: H });
+    // Without slates, a clip with no media record draws nothing.
+    expect(new Compositor().evaluate(doc, 0).layers).toEqual([]);
+  });
+});
+
 describe("Compositor.neighbors", () => {
   it("lists the edge frames of the clips next to the playhead within reach", () => {
     let doc = project(["v1", "v2"], [video("m1", 1920, 1080), video("m2", 1920, 1080)]);

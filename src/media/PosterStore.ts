@@ -32,6 +32,8 @@ export interface PosterStoreDeps {
   svgPoster: (file: Blob, maxSize: number) => Promise<ImageBitmap>;
   /** A poster appeared or went away (the timeline redraws its image clips). */
   onChange?: (id: MediaId) => void;
+  /** The media's source file, copied or linked (Batch 41); null when offline. Without it: copies in `dir`. */
+  file?: (id: MediaId) => Promise<File | null>;
 }
 
 const isSvg = (item: MediaItem) => item.codec === "svg";
@@ -106,6 +108,17 @@ export class PosterStore {
     this.pump();
   }
 
+  /** Loads these media's posters again (relinked, or readable again): the cached poster first, if any. */
+  refresh(ids: readonly MediaId[]): void {
+    for (const id of ids) {
+      if (!this.present[id] || this.waiting.some((m) => m.id === id)) continue;
+      this.attempted.delete(id);
+      this.strips.get(id)?.bitmap.close();
+      this.strips.delete(id);
+    }
+    this.sync(this.present);
+  }
+
   dispose(): void {
     this.controller.abort();
     this.waiting.length = 0;
@@ -150,8 +163,7 @@ export class PosterStore {
   }
 
   private async loadStrip(item: MediaItem, signal: AbortSignal): Promise<void> {
-    if (!("relPath" in item.file)) return;
-    const source = await resolveFile(this.deps.dir, item.file.relPath);
+    const source = await this.source(item);
     if (!source) return;
     const strip = await this.deps.pool.request("animationStrip", { blob: source, type: `image/${item.codec ?? "gif"}`, cellHeight: STRIP_HEIGHT, maxCells: STRIP_CELLS }, { signal });
     if (signal.aborted || !this.present[item.id]) {
@@ -175,11 +187,16 @@ export class PosterStore {
     }
   }
 
+  /** The media's file: through `deps.file` (copied or linked, Batch 41), else its copy in the project folder. */
+  private source(item: MediaItem): Promise<File | null> {
+    if (this.deps.file) return this.deps.file(item.id);
+    return "relPath" in item.file ? resolveFile(this.deps.dir, item.file.relPath) : Promise.resolve(null);
+  }
+
   private async generate(item: MediaItem, signal: AbortSignal): Promise<ImageBitmap | null> {
-    // TODO(batch 41): reference-mode media resolve their file through the stored handle.
-    if (!("relPath" in item.file)) return null;
-    const source = await resolveFile(this.deps.dir, item.file.relPath);
-    if (!source) throw new Error(`${item.file.relPath} is missing`);
+    const source = await this.source(item);
+    // An offline file: no poster (the card shows its offline badge); tried again when it comes back.
+    if (!source) return null;
     signal.throwIfAborted();
     if (isSvg(item)) return this.deps.svgPoster(source, POSTER_SIZE);
     const { bitmap, blob } = await this.deps.pool.request("poster", { file: source, kind: "image", maxSize: POSTER_SIZE }, { signal });

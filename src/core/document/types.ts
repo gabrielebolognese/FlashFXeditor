@@ -1,7 +1,7 @@
 // The persistent document (spec §5.2). Plain JSON only: no classes, Maps, Sets or undefined-valued
 // keys, so a Project can be serialized as-is and diffed by Immer patches.
 
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 export type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
 export type JsonObject = { [key: string]: JsonValue };
@@ -237,6 +237,12 @@ export interface Project {
   name: string;
   settings: { width: number; height: number; fps: Rational; background: RGBA; sampleRate: 48000 };
   media: Record<MediaId, MediaItem>;
+  /**
+   * The media panel's bins (spec §12, Batch 41; schema 2): flat folders in strip order, one level. A
+   * media item is in at most one (`MediaItem.binId`); the virtual bins (All, Video, Audio, Images) are
+   * not stored.
+   */
+  bins: Bin[];
   /** Ordered: index 0 = bottom video track; audio tracks after video tracks. */
   tracks: Track[];
   /** All clips by id; tracks hold ordered id arrays. */
@@ -269,6 +275,14 @@ export interface MediaItem {
   analysis: { thumbs: "none" | "pending" | "ready"; peaks: "none" | "pending" | "ready" };
   binId?: string;
   addedAt: string;
+  /** The source file's size in bytes when it was imported (Batch 41): a folder relink matches by name and size. */
+  size?: number;
+}
+
+/** A media panel bin (spec §12). */
+export interface Bin {
+  id: string;
+  name: string;
 }
 
 export type TrackKind = "video" | "audio" | "caption";

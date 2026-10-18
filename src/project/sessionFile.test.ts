@@ -31,7 +31,7 @@ describe("session file", () => {
         snap: false,
         loop: true,
         timecodeFormat: "ms",
-        mediaPanel: { tab: "captions", view: "list", sort: "resolution", descending: true, presetScope: "project" },
+        mediaPanel: { tab: "captions", view: "list", sort: "resolution", descending: true, presetScope: "project", bin: "bin-1", filters: { kinds: ["audio", "image"], unused: true }, columns: { name: 240, used: 48 } },
         collapsedSections: { transform: true, crop: false },
       },
       selection: { clipIds: ["a", "b"], primary: "b", kind: "clips" },
@@ -59,7 +59,7 @@ describe("session file", () => {
         snap: "yes",
         ripple: true,
         timecodeFormat: "seconds",
-        mediaPanel: { tab: "presets", view: "table", sort: "size", descending: 1, presetScope: "local" },
+        mediaPanel: { tab: "presets", view: "table", sort: "size", descending: 1, presetScope: "local", bin: 7, filters: { kinds: ["video", "font", "video"], unused: "yes" }, columns: { name: 180.4, size: 40, used: -3, fps: Infinity } },
         collapsedSections: { a: true, b: "no" },
       },
       selection: { clipIds: ["x", 3, "x"], primary: "missing", kind: "clips" },
@@ -72,7 +72,7 @@ describe("session file", () => {
       timeline: { ...DEFAULT_SESSION.timeline, scrollFrame: 9 },
       preview: { ...DEFAULT_SESSION.preview, safeZone: "reels", centerCross: true },
       ripple: true,
-      mediaPanel: { ...DEFAULT_SESSION.mediaPanel, tab: "presets" },
+      mediaPanel: { ...DEFAULT_SESSION.mediaPanel, tab: "presets", filters: { kinds: ["video"], unused: false }, columns: { name: 180 } },
       collapsedSections: { a: true },
     });
     expect(parsed.selection).toEqual({ clipIds: ["x"], primary: "x", kind: "clips" });

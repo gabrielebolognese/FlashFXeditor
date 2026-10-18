@@ -155,6 +155,11 @@
   --media-card-min: 112px;
   --media-thumb-aspect: 16 / 9;
   --media-list-thumb-width: 40px;
+  /* Media panel advanced (Batch 41, gap): the bin strip's width (4 default controls), the narrowest a
+     list column can be dragged to, the hit zone of a column's resize edge (the splitters'). */
+  --bin-strip-width: calc(var(--control-default) * 4);
+  --media-column-min: var(--control-default);
+  --column-resize-hit: var(--splitter-hit);
   /* Favorite preset chips in the timeline toolbar (Batch 30, gap): a long name ends in an ellipsis. */
   --preset-chip-max-width: 96px;
   /* Captions tab cue rows (Batch 32; the DS has no cue list): two body lines of text and the times. */
@@ -342,6 +347,15 @@
      is dimmed (--timeline-inactive-opacity) under the overwrite hatch. */
   --clip-waveform: rgba(230, 237, 246, 0.62); /* text-primary at 62% */
   --clip-disabled-hatch: var(--timeline-hatch);
+  /* Offline clips (Batch 41, spec §6.19 "a labeled gray slate"; the DS has none): the DS's slate grays
+     (--text-muted body, --text-tertiary label bar), no filmstrip or waveform, an "Offline" badge (the
+     sync badge's chip, its text in --danger). The composite draws the same slate where the media would
+     be: --offline-slate with the media's name and the reason in --offline-slate-text (the default
+     text face). */
+  --clip-offline-body: var(--text-muted);
+  --clip-offline-label: var(--text-tertiary);
+  --offline-slate: var(--text-muted);
+  --offline-slate-text: var(--text-primary);
   /* Label swatches in the clip menu (gap): grow a little under the pointer; the current label gets a
      2px --accent ring set off the swatch by a 1px --bg-sunken gap. */
   --swatch-hover-scale: 1.15;

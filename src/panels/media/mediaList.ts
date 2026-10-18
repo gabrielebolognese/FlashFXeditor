@@ -1,7 +1,8 @@
-// Pure logic of the media panel: ordering, multi-selection and display labels (spec §12).
-import type { MediaId, MediaItem } from "../../core/document/types.js";
+// Pure logic of the media panel: ordering, multi-selection, what the bins, filter chips and search
+// show (Batch 41) and display labels (spec §12).
+import type { Bin, MediaId, MediaItem } from "../../core/document/types.js";
 import { formatDurationUs } from "../../core/document/time.js";
-import type { MediaSort } from "../../core/store/sessionStore.js";
+import { VIRTUAL_BINS, type MediaFilters, type MediaSort, type VirtualBin } from "../../core/store/sessionStore.js";
 import { codecLabel } from "../../media/mediaKinds.js";
 import { displaySize } from "../../media/probe/rotation.js";
 import { formatFps } from "../../project/projectPresets.js";
@@ -38,6 +39,66 @@ export function sortMedia(items: readonly MediaItem[], sort: MediaSort, descendi
     const primary = sort === "name" ? collator.compare(a.name, b.name) : COMPARE[sort](a, b, uses);
     return direction * primary || collator.compare(a.name, b.name) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
   });
+}
+
+/** Lower case without accents: "Café" matches "cafe". */
+export function searchText(text: string): string {
+  return text
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase();
+}
+
+/** Where a media item's file is: its path in the project folder, or the hint of a linked file. */
+export function mediaPath(item: MediaItem): string {
+  return "relPath" in item.file ? item.file.relPath : item.file.pathHint;
+}
+
+/** The file name of a path (after the last slash). */
+export function baseName(path: string): string {
+  return path.slice(path.lastIndexOf("/") + 1);
+}
+
+const isVirtualBin = (bin: string): bin is VirtualBin => (VIRTUAL_BINS as readonly string[]).includes(bin);
+
+/** The bin the panel shows: a bin id that is no longer in the project shows All. */
+export function shownBin(bin: string, bins: readonly Bin[]): string {
+  return isVirtualBin(bin) || bins.some((other) => other.id === bin) ? bin : "all";
+}
+
+/** What the Media tab shows (spec §12): a bin, the filter chips and the search words. */
+export interface MediaQuery {
+  bin: string;
+  filters: MediaFilters;
+  search: string;
+}
+
+/**
+ * Whether `item` shows: in the bin (All; a kind's virtual bin; a bin's own media), of a checked kind
+ * (none checked: any), unused when `unused` is on, and every word of the search in its name or path.
+ */
+export function mediaMatcher(query: MediaQuery, uses: ReadonlyMap<MediaId, number>): (item: MediaItem) => boolean {
+  const words = searchText(query.search).split(/\s+/).filter(Boolean);
+  const kinds = new Set(query.filters.kinds);
+  const { bin } = query;
+  return (item) => {
+    if (bin !== "all" && (isVirtualBin(bin) ? item.kind !== bin : item.binId !== bin)) return false;
+    if (kinds.size > 0 && !kinds.has(item.kind)) return false;
+    if (query.filters.unused && (uses.get(item.id) ?? 0) > 0) return false;
+    if (words.length === 0) return true;
+    const text = `${searchText(item.name)}\n${searchText(mediaPath(item))}`;
+    return words.every((word) => text.includes(word));
+  };
+}
+
+/** How many media each bin chip holds: the virtual bins by kind, the bins by `binId`. */
+export function binCounts(items: readonly MediaItem[]): Map<string, number> {
+  const counts = new Map<string, number>([["all", items.length]]);
+  for (const item of items) {
+    counts.set(item.kind, (counts.get(item.kind) ?? 0) + 1);
+    if (item.binId !== undefined) counts.set(item.binId, (counts.get(item.binId) ?? 0) + 1);
+  }
+  return counts;
 }
 
 export interface MediaSelection {
