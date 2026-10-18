@@ -73,12 +73,23 @@ import { HIGHLIGHT_SLOT, TRANSITION_SLOT, type CaptionHighlightFrame, type Compo
 /** How far from the playhead the clips next to it count as cut neighbours (seconds). */
 export const NEIGHBOR_SECONDS = 2;
 
+/** How offline slates look (the theme's `--offline-slate*` tokens). */
+export interface SlateLook {
+  fill: RGBA;
+  text: RGBA;
+  /** The label's size, as a share of the slate's shorter visible side. */
+  textShare: number;
+  /** The label's wrap width, as a share of the slate's visible width. */
+  wrapShare: number;
+  weight: number;
+  lineHeight: number;
+}
+
 /** What offline media clips show (spec §6.19, Batch 41). */
 export interface OfflineSlates {
   /** The slate's second line for an offline media (why it is offline), or null when it is online. */
   label(mediaId: MediaId): string | null;
-  /** The slate's colors (the theme's). */
-  look(): { fill: RGBA; text: RGBA };
+  look(): SlateLook;
 }
 
 /** A slate's label as made for one clip (`name` and `reason` as given, before cutting). */
@@ -91,9 +102,6 @@ interface SlateText {
 
 /** The raster slot of a slate's label: its clip id plus this. */
 export const OFFLINE_SLOT = "#offline";
-/** The slate label's size, as a share of the slate's shorter visible side; its wrap width, of the visible width. */
-const SLATE_TEXT_SHARE = 0.045;
-const SLATE_WRAP_SHARE = 0.86;
 /** Names longer than this are cut with an ellipsis on the slate. */
 const SLATE_NAME_MAX = 60;
 
@@ -323,10 +331,10 @@ export class Compositor {
       const opacity = opacities?.get(clip.id) ?? animatedOpacity(clip, rel);
       if (clip.kind === "video" || clip.kind === "image") {
         const reason = this.offline?.label(clip.mediaId) ?? null;
-        if (reason !== null) {
+        if (reason !== null && this.offline) {
           const slate = (this.solidPool[solidLayers] ??= newSolidLayer());
           const label = (this.textPool[textLayers] ??= newTextLayer());
-          const drawn = this.writeSlate(slate, label, doc, clip, transform, opacity * fadeFactor(clip, frame), crops?.get(clip.id) ?? clip.crop, reason);
+          const drawn = this.writeSlate(slate, label, doc, clip, transform, opacity * fadeFactor(clip, frame), crops?.get(clip.id) ?? clip.crop, reason, this.offline.look());
           if (drawn > 0) {
             out.layers.push(slate);
             solidLayers += 1;
@@ -624,7 +632,7 @@ export class Compositor {
    * `reason`) centered on it. Returns how many layers it wrote: 0 (cropped away), 1 (no label raster)
    * or 2.
    */
-  private writeSlate(slate: WritableSolidLayer, label: WritableTextLayer, doc: Project, clip: MediaClip, transform: Transform, opacity: number, shownCrop: Crop, reason: string): number {
+  private writeSlate(slate: WritableSolidLayer, label: WritableTextLayer, doc: Project, clip: MediaClip, transform: Transform, opacity: number, shownCrop: Crop, reason: string, look: SlateLook): number {
     const item = doc.media[clip.mediaId];
     const quarter = item?.rotation === 90 || item?.rotation === 270;
     const known = item?.width !== undefined && item.width > 0 && item.height !== undefined && item.height > 0;
@@ -635,7 +643,6 @@ export class Compositor {
     const y0 = clamp01(shownCrop.top) * height;
     const y1 = (1 - clamp01(shownCrop.bottom)) * height;
     if (x1 <= x0 || y1 <= y0) return 0;
-    const look = this.offline?.look() ?? { fill: BLACK, text: WHITE };
     const m = writeModel(slate.transform, transform, width, height, doc.settings.width, doc.settings.height);
     multiplyInto(m, m, setMat(this.step, x1 - x0, 0, 0, y1 - y0, x0, y0));
     copyColor(slate.color, look.fill);
@@ -643,7 +650,7 @@ export class Compositor {
     slate.shape = null;
     slate.opacity = clamp01(opacity);
 
-    const text = this.slateText(clip.id, item?.name ?? clip.name, reason, Math.min(x1 - x0, y1 - y0), x1 - x0, look.text);
+    const text = this.slateText(clip.id, item?.name ?? clip.name, reason, Math.min(x1 - x0, y1 - y0), x1 - x0, look);
     const layout = textLayout(text.content, text.style);
     const raster = layout.raster;
     if (!raster) return 1;
@@ -665,15 +672,34 @@ export class Compositor {
   }
 
   /** A slate label's content and style: the default text face, centered, wrapping inside the slate. */
-  private slateText(clipId: ClipId, name: string, reason: string, side: number, width: number, color: RGBA): SlateText {
-    const fontSize = Math.max(1, Math.round(side * SLATE_TEXT_SHARE));
-    const wrap = Math.max(1, Math.round(width * SLATE_WRAP_SHARE));
+  private slateText(clipId: ClipId, name: string, reason: string, side: number, width: number, look: SlateLook): SlateText {
+    const fontSize = Math.max(1, Math.round(side * look.textShare));
+    const wrap = Math.max(1, Math.round(width * look.wrapShare));
+    const color = look.text;
     const known = this.slateTexts.get(clipId);
-    const fill = known?.style.fill;
-    if (known && known.name === name && known.reason === reason && known.style.fontSize === fontSize && known.content.box.width === wrap && fill && isRgba(fill) && fill.r === color.r && fill.g === color.g && fill.b === color.b && fill.a === color.a) return known;
+    const style = known?.style;
+    const fill = style?.fill;
+    if (
+      known &&
+      style &&
+      known.name === name &&
+      known.reason === reason &&
+      style.fontSize === fontSize &&
+      style.fontWeight === look.weight &&
+      style.lineHeight === look.lineHeight &&
+      known.content.box.width === wrap &&
+      fill &&
+      isRgba(fill) &&
+      fill.r === color.r &&
+      fill.g === color.g &&
+      fill.b === color.b &&
+      fill.a === color.a
+    ) {
+      return known;
+    }
     if (this.slateTexts.size > 64) this.slateTexts.clear();
     const shown = name.length > SLATE_NAME_MAX ? `${name.slice(0, SLATE_NAME_MAX - 1)}…` : name;
-    const text: SlateText = { name, reason, content: textContent(`${shown}\n${reason}`, { mode: "fixed", width: wrap }), style: { ...DEFAULT_TEXT_STYLE, fontWeight: 600, fontSize, fill: { ...color }, lineHeight: 1.3 } };
+    const text: SlateText = { name, reason, content: textContent(`${shown}\n${reason}`, { mode: "fixed", width: wrap }), style: { ...DEFAULT_TEXT_STYLE, fontWeight: look.weight, fontSize, fill: { ...color }, lineHeight: look.lineHeight } };
     this.slateTexts.set(clipId, text);
     return text;
   }

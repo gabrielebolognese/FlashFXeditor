@@ -10,7 +10,7 @@ import type { MediaId, MediaItem } from "../core/document/types.js";
 import type { DocumentStore } from "../core/store/DocumentStore.js";
 import { errorMessage } from "../project/errorMessage.js";
 import type { FsDir } from "../project/fs.js";
-import { posterPath, resolveFile, writeFileAt } from "../project/mediaFiles.js";
+import { posterPath, removeFileAt, resolveFile, writeFileAt } from "../project/mediaFiles.js";
 import { isAnimatedImage } from "./mediaKinds.js";
 import { isAbortError, type AnimationStrip } from "./workers/protocol.js";
 import type { WorkerPool } from "./workers/WorkerPool.js";
@@ -44,6 +44,8 @@ export class PosterStore {
   private readonly listeners = new Map<MediaId, Set<PosterListener>>();
   /** Media that are queued, loading, done or failed: each is attempted once per session. */
   private readonly attempted = new Set<MediaId>();
+  /** Images whose next poster is made from the file, the cached one deleted (it is another file's). */
+  private readonly fresh = new Set<MediaId>();
   private readonly waiting: MediaItem[] = [];
   private active = 0;
   private present: Record<MediaId, MediaItem> = {};
@@ -119,6 +121,23 @@ export class PosterStore {
     this.sync(this.present);
   }
 
+  /**
+   * These images' files hold other content now (a relink, its undo or redo, Batch 41): their posters
+   * and filmstrips go at once and are made again from the file, not from cache/thumbs/.
+   */
+  regenerate(ids: readonly MediaId[]): void {
+    const images = ids.filter((id) => this.present[id]?.kind === "image");
+    for (const id of images) {
+      this.fresh.add(id);
+      const bitmap = this.bitmaps.get(id);
+      if (!bitmap) continue;
+      bitmap.close();
+      this.bitmaps.delete(id);
+      this.emit(id, null);
+    }
+    this.refresh(images);
+  }
+
   dispose(): void {
     this.controller.abort();
     this.waiting.length = 0;
@@ -149,7 +168,9 @@ export class PosterStore {
   private async load(item: MediaItem): Promise<void> {
     const signal = this.controller.signal;
     try {
-      const bitmap = (await this.fromCache(item, signal)) ?? (await this.generate(item, signal));
+      const fresh = this.fresh.delete(item.id);
+      if (fresh && this.deps.isWritable()) await removeFileAt(this.deps.dir, posterPath(item.id)).catch(() => undefined);
+      const bitmap = (fresh ? null : await this.fromCache(item, signal)) ?? (await this.generate(item, signal));
       if (bitmap) this.set(item.id, bitmap);
       if (isAnimatedImage(item)) {
         await this.loadStrip(item, signal).catch((error: unknown) => {

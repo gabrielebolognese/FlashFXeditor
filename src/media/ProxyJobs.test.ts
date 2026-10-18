@@ -231,6 +231,41 @@ describe("ProxyJobs", () => {
     warn.mockRestore();
   });
 
+  it("makes a proxy again when its file holds other content (a relink undone or redone); a failure is forgotten on any file change", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const ready = { relPath: "cache/proxies/r.mp4", width: 960, height: 540, status: "ready" as const };
+    const root = createMemoryDir();
+    await writeFileAt(root, proxyPath("r"), new Blob(["r"]));
+    await writeFileAt(root, proxyPath("same"), new Blob(["same"]));
+    const t = setup({ root, media: [video("r", { proxy: ready }), video("f"), video("n", { proxy: { ...ready, relPath: "cache/proxies/n.mp4", status: "none" } }), video("same", { proxy: { ...ready, relPath: "cache/proxies/same.mp4" } })] });
+    await t.flush();
+    expect(t.jobs.map((job) => job.params.mediaId)).toEqual(["f"]);
+    t.jobs[0]?.fail(new Error("the media file is missing"));
+    await t.flush();
+    expect(t.proxy("f")?.status).toBe("failed");
+    expect(t.jobs).toHaveLength(1);
+    // Same content: a ready proxy stays; the failed one is tried again once its proxy is decided again.
+    t.proxies.filesChanged(["same", "f"], []);
+    await t.flush();
+    expect(t.proxy("same")?.status).toBe("ready");
+    expect(t.proxy("f")?.status).toBe("failed");
+    expect(t.proxies.generate(["f"])).toBe(true);
+    await t.flush();
+    expect(t.jobs).toHaveLength(2);
+    expect(t.jobs[1]?.params.mediaId).toBe("f");
+    // Other content: ready becomes pending, "none" stays, the running job is cancelled and queued again.
+    t.proxies.filesChanged(["r", "n", "f"], ["r", "n", "f"]);
+    await t.flush();
+    expect(t.jobs[1]?.signal.aborted).toBe(true);
+    expect(t.proxy("r")?.status).toBe("pending");
+    expect(t.proxy("n")?.status).toBe("none");
+    expect(t.proxy("f")?.status).toBe("pending");
+    expect(t.jobs).toHaveLength(3);
+    expect(t.jobs[2]?.params.mediaId).toBe("r");
+    expect(t.store.history.getState().undoLabel).toBe("Import 4 media files");
+    warn.mockRestore();
+  });
+
   it("on open, deletes the files of interrupted jobs, restarts pending ones and remakes ready proxies whose file is gone", async () => {
     const root = createMemoryDir();
     await writeFileAt(root, proxyPartPath("a"), new Blob(["half"]));

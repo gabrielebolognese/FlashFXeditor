@@ -49,7 +49,7 @@ import type { PreviewQuality, PreviewSession, SessionState } from "../../core/st
 import { cssColorToRgba } from "../../core/theme/cssColor.js";
 import type { Theme, ThemeBridge } from "../../core/theme/theme.js";
 import { secondsToFrames } from "../../core/document/time.js";
-import { Compositor, type LiveAnims, type LiveCaptions, type LiveText, type OfflineSlates } from "../compositor/Compositor.js";
+import { Compositor, type LiveAnims, type LiveCaptions, type LiveText, type OfflineSlates, type SlateLook } from "../compositor/Compositor.js";
 import type { Composite, DrawList, Layer, TextureLayer } from "../compositor/drawList.js";
 import { DrawListSnapshot } from "../compositor/DrawListSnapshot.js";
 import type { FramePriority } from "../../media/workers/protocol.js";
@@ -172,7 +172,7 @@ interface Chrome {
   border: RGBA;
   margin: number;
   /** Offline slates (Batch 41). */
-  slate: { fill: RGBA; text: RGBA };
+  slate: SlateLook;
 }
 
 export class PreviewView implements RenderView {
@@ -730,6 +730,6 @@ function chromeFromTheme(theme: Theme): Chrome {
     outside: cssColorToRgba(theme.color.bgSunken) ?? TRANSPARENT,
     border: cssColorToRgba(theme.color.hairline) ?? TRANSPARENT,
     margin: theme.layout.previewMargin,
-    slate: { fill: cssColorToRgba(theme.preview.slate) ?? TRANSPARENT, text: cssColorToRgba(theme.preview.slateText) ?? TRANSPARENT },
+    slate: { fill: cssColorToRgba(theme.preview.slate) ?? TRANSPARENT, text: cssColorToRgba(theme.preview.slateText) ?? TRANSPARENT, ...theme.preview.slateType },
   };
 }

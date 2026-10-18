@@ -47,9 +47,11 @@ export function clipsOfMedia(project: Project, ids: Iterable<MediaId>): ClipId[]
 
 /**
  * Removes media (spec §12 Delete, §6.19); unknown ids are ignored. `keep` ("Remove from project"):
- * their clips stay, offline (a gray slate, no media to relink; Undo brings the media back). `delete`
+ * their clips stay, offline (a gray slate, no media to relink; Undo brings the media back), with their
+ * transitions (an offline clip's handles are not bounded: `handleOf`). `delete`
  * ("Remove and delete clips"): their clips go too, on every track, leaving gaps (a transition shared
- * with a removed clip goes with it: `reconcileTransitions`). One undo step either way.
+ * with a removed clip goes with it: `reconcileTransitions`; a partner left alone in a link group or a
+ * group loses it). One undo step either way.
  */
 export function removeMedia(ids: readonly MediaId[], clips: "keep" | "delete" = "keep"): Command {
   const count = ids.length === 1 ? "media" : `${ids.length} media files`;
@@ -59,12 +61,27 @@ export function removeMedia(ids: readonly MediaId[], clips: "keep" | "delete" = 
     affects: clips === "delete" ? ["media", "clips", "timeline"] : ["media", "clips"],
     run(draft) {
       if (clips === "delete") {
+        const left = { linkGroup: new Set<string>(), group: new Set<string>() };
         for (const clipId of clipsOfMedia(draft as Project, ids)) {
           const clip = draft.clips[clipId];
           if (!clip) continue;
+          if (clip.linkGroup !== undefined) left.linkGroup.add(clip.linkGroup);
+          if (clip.group !== undefined) left.group.add(clip.group);
           const track = draft.tracks.find((t) => t.id === clip.trackId);
           if (track) track.clipIds.splice(track.clipIds.indexOf(clipId), 1);
           delete draft.clips[clipId];
+        }
+        // A partner left alone in a link group or a group loses it (as when its track is deleted).
+        for (const field of ["linkGroup", "group"] as const) {
+          const members = new Map<string, number>();
+          for (const clip of Object.values(draft.clips)) {
+            const group = clip[field];
+            if (group !== undefined && left[field].has(group)) members.set(group, (members.get(group) ?? 0) + 1);
+          }
+          for (const clip of Object.values(draft.clips)) {
+            const group = clip[field];
+            if (group !== undefined && members.get(group) === 1) delete clip[field];
+          }
         }
       }
       for (const id of ids) delete draft.media[id];

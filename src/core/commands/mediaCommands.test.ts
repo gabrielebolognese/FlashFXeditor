@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { makeMedia, makeMediaClip, makeProject, makeTrack, withClips } from "../document/fixtures.js";
+import { frameToUs } from "../document/time.js";
+import type { MediaClip, Transition } from "../document/types.js";
 import { DocumentStore } from "../store/DocumentStore.js";
 import { createSessionStore } from "../store/sessionStore.js";
 import { addBin, addMedia, cleanBinName, cleanMediaName, clipsOfMedia, mediaUseCounts, nextBinName, relinkMedia, removeBin, removeMedia, renameBin, renameMedia, setMediaBin, setMediaProxy } from "./mediaCommands.js";
@@ -54,10 +56,10 @@ describe("media commands", () => {
     project.tracks.push(makeTrack("v1"), makeTrack("v2"), makeTrack("a1", "audio"));
     project.tracks[1]!.locked = true;
     return withClips(project, [
-      makeMediaClip(project, { id: "c1", trackId: "v1", start: 0, duration: 30, mediaId: "m" }),
+      { ...makeMediaClip(project, { id: "c1", trackId: "v1", start: 0, duration: 30, mediaId: "m" }), linkGroup: "L", group: "G" },
       makeMediaClip(project, { id: "c2", trackId: "a1", start: 0, duration: 30, mediaId: "m", kind: "audio" }),
-      makeMediaClip(project, { id: "c3", trackId: "v1", start: 30, duration: 30, mediaId: "n" }),
-      makeMediaClip(project, { id: "c4", trackId: "v2", start: 0, duration: 30, mediaId: "m" }),
+      { ...makeMediaClip(project, { id: "c3", trackId: "v1", start: 30, duration: 30, mediaId: "n" }), linkGroup: "L", group: "G" },
+      { ...makeMediaClip(project, { id: "c4", trackId: "v2", start: 0, duration: 30, mediaId: "m" }), group: "G" },
     ]);
   }
 
@@ -80,10 +82,35 @@ describe("media commands", () => {
     const state = store.getState();
     expect(state.media.m).toBeUndefined();
     expect(Object.keys(state.clips)).toEqual(["c3"]);
+    // c3 was linked to c1 and grouped with c1 and c4: alone now, it keeps neither.
+    expect(state.clips.c3?.linkGroup).toBeUndefined();
+    expect(state.clips.c3?.group).toBeUndefined();
     expect(state.tracks.map((track) => track.clipIds)).toEqual([["c3"], [], []]);
     expect(store.history.getState().undoLabel).toBe("Remove media and delete clips");
     store.undo();
     expect(store.getState()).toEqual(project);
+  });
+
+  it("Remove from project keeps the transitions of the removed media's clips, on either side", () => {
+    const project = makeProject();
+    project.media.m = makeMedia("m");
+    project.media.n = makeMedia("n");
+    project.tracks.push(makeTrack("v1"));
+    const { fps } = project.settings;
+    const t: Transition = { id: "t", kind: "crossDissolve", before: 5, after: 5 };
+    const left: MediaClip = { ...makeMediaClip(project, { id: "c1", trackId: "v1", start: 0, duration: 30, mediaId: "m" }), transitionOut: t };
+    const right: MediaClip = { ...makeMediaClip(project, { id: "c2", trackId: "v1", start: 30, duration: 30, mediaId: "n" }), in: frameToUs(10, fps), out: frameToUs(40, fps), transitionIn: { ...t } };
+    const store = storeFor(withClips(project, [left, right]));
+    // The outgoing side's media (its tail is no longer bounded by a record), then the incoming side's.
+    for (const id of ["m", "n"]) {
+      store.dispatch(removeMedia([id], "keep"));
+      expect((store.getState().clips.c1 as MediaClip).transitionOut).toEqual(t);
+      expect((store.getState().clips.c2 as MediaClip).transitionIn).toEqual(t);
+      store.undo();
+    }
+    // Remove and delete clips: the transition goes with its clip.
+    store.dispatch(removeMedia(["m"], "delete"));
+    expect((store.getState().clips.c2 as MediaClip).transitionIn).toBeUndefined();
   });
 
   it("relinks media to new files in one step; undefined fields are removed", () => {

@@ -341,4 +341,22 @@ describe("ThumbnailStore", { timeout: 20_000 }, () => {
     expect(t.made).toHaveLength(6);
     expect(methods(t.request)).not.toContain("decodeSheet");
   });
+
+  it("drops the sheets of a file replaced by other content at once and makes them again without the cache", async () => {
+    const t = setup();
+    const images: unknown[] = [];
+    t.store.observeCard("v", (image) => images.push(image && image.sw));
+    t.documentStore.dispatch(addMedia([video("v")]));
+    await t.settle();
+    const sheet = t.store.sheet("v", 0, 0) as unknown as FakeBitmap;
+    t.store.replace("v");
+    t.store.replace("nope");
+    expect(sheet.close).toHaveBeenCalled();
+    expect(t.store.sheet("v", 0, 0)).toBeNull();
+    expect(images).toEqual([284, null]);
+    await t.settle();
+    expect(t.made).toHaveLength(6);
+    expect(methods(t.request)).not.toContain("decodeSheet");
+    expect(images.at(-1)).toBe(284);
+  });
 });

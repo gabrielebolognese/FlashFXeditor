@@ -58,7 +58,21 @@ export interface Theme {
   /** The stereo peak meter (CSS px). */
   meter: { barWidth: number; barGap: number; ledHeight: number };
   /** Preview overlays (CSS px) and the fullscreen chrome's hide delay (ms) (spec §7.5, §7.6, §7.8). */
-  preview: { mask: string; guide: string; grid: string; pixelGrid: string; dash: number; crossSize: number; rulerSize: number; rulerTick: number; chromeHideDelay: number; slate: string; slateText: string };
+  preview: {
+    mask: string;
+    guide: string;
+    grid: string;
+    pixelGrid: string;
+    dash: number;
+    crossSize: number;
+    rulerSize: number;
+    rulerTick: number;
+    chromeHideDelay: number;
+    slate: string;
+    slateText: string;
+    /** The offline slate label's type (Batch 41): size and wrap width as shares of the slate, weight, line height. */
+    slateType: { textShare: number; wrapShare: number; weight: number; lineHeight: number };
+  };
   /** The canvas selection and transform gizmo, snapping and smart guides (CSS px, spec §7.2, §7.3, §7.4). */
   gizmo: {
     lineWidth: number;
@@ -356,6 +370,12 @@ export function readTheme(read: TokenReader, root?: Element): { theme: Theme; mi
       chromeHideDelay: num("--preview-chrome-hide-delay"),
       slate: str("--offline-slate"),
       slateText: str("--offline-slate-text"),
+      slateType: {
+        textShare: num("--offline-slate-text-share"),
+        wrapShare: num("--offline-slate-wrap-share"),
+        weight: num("--offline-slate-weight"),
+        lineHeight: num("--offline-slate-line-height"),
+      },
     },
     gizmo: {
       lineWidth: num("--gizmo-line-width"),

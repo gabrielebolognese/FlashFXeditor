@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { makeMedia } from "../../core/document/fixtures.js";
 import type { MediaItem } from "../../core/document/types.js";
-import { baseName, binCounts, clickSelection, codecLabel, durationBadge, EMPTY_MEDIA_SELECTION, mediaMatcher, mediaPath, metaLabel, pruneSelection, resolutionLabel, searchText, shownBin, sortMedia, type MediaQuery } from "./mediaList.js";
+import { baseName, binCounts, clickSelection, codecLabel, durationBadge, EMPTY_MEDIA_SELECTION, mediaMatcher, mediaPath, metaLabel, pruneSelection, resolutionLabel, revealQuery, searchPath, searchText, shownBin, shownSelection, sortMedia, type MediaQuery } from "./mediaList.js";
 
 const item = (id: string, fields: Partial<MediaItem> = {}): MediaItem => ({ ...makeMedia(id), name: id, ...fields });
 
@@ -117,13 +117,40 @@ describe("bins, filter chips and search (Batch 41)", () => {
     expect(shown({ bin: "b1", filters: { kinds: ["video"], unused: true } })).toEqual([]);
   });
 
-  it("searches every word in the name or path, ignoring case and accents", () => {
+  it("searches every word in the name or the file's name (a linked file's folders too), ignoring case and accents", () => {
     expect(shown({ search: "  BEACH " })).toEqual(["Beach day.mp4"]);
     expect(shown({ search: "cafe" })).toEqual(["Café music.mp3"]);
     expect(shown({ search: "shoot interview" })).toEqual(["Interview A.mov"]);
-    expect(shown({ search: "media/" })).toEqual(["Beach day.mp4", "Café music.mp3", "logo.png"]);
+    // The project's media/ folder holds every copy: it matches none of them.
+    expect(shown({ search: "media/" })).toEqual([]);
+    expect(shown({ search: "dia" })).toEqual([]);
     expect(shown({ search: "beach logo" })).toEqual([]);
     expect(searchText("Ünïcödé")).toBe("unicode");
+    // A renamed copy is found by its file's name.
+    const renamed = item("Opening", { file: { relPath: "media/drone_0042.mp4" } });
+    expect(mediaMatcher(query({ search: "drone 0042" }), uses)(renamed)).toBe(true);
+    expect(mediaMatcher(query({ search: "media" }), uses)(renamed)).toBe(false);
+    expect(searchPath(renamed)).toBe("drone_0042.mp4");
+    expect(searchPath(v2)).toBe("Shoot/Interview A.mov");
+  });
+
+  it("keeps the selection to what the tab shows", () => {
+    const media = Object.fromEntries(all.map((m) => [m.id, m]));
+    const selection = { ids: new Set([v1.id, v2.id, a1.id]), anchor: v1.id };
+    const unused = mediaMatcher(query({ filters: { kinds: [], unused: true } }), uses);
+    expect(shownSelection(selection, media, unused)).toEqual({ ids: new Set([v2.id]), anchor: null });
+    const everything = mediaMatcher(query(), uses);
+    expect(shownSelection(selection, media, everything)).toBe(selection);
+    expect(shownSelection({ ids: new Set(["gone"]), anchor: "gone" }, media, everything)).toEqual(EMPTY_MEDIA_SELECTION);
+  });
+
+  it("reveals a hidden media: the search and chips cleared, then its bin (or All)", () => {
+    const hidden = query({ bin: "b2", filters: { kinds: ["audio"], unused: true }, search: "cafe" });
+    expect(revealQuery(a1, query({ bin: "b2", search: "cafe" }), uses)).toEqual(query({ bin: "b2", search: "cafe" }));
+    expect(revealQuery(a1, hidden, uses)).toEqual(query({ bin: "b2" }));
+    expect(revealQuery(v1, hidden, uses)).toEqual(query({ bin: "b1" }));
+    expect(revealQuery(v2, hidden, uses)).toEqual(query({ bin: "all" }));
+    expect(revealQuery(v2, query({ bin: "video", search: "zzz" }), uses)).toEqual(query({ bin: "video" }));
   });
 
   it("counts the media of every chip; paths and file names", () => {

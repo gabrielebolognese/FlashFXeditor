@@ -186,7 +186,7 @@ function MediaSettings() {
   const mode = useStoreSelector(appSettings, (state) => state.importMode);
   return (
     <div className={styles.media}>
-      <p className={styles.heading}>Import</p>
+      <p className={styles.mediaHeading}>Import</p>
       <div className={styles.choices} role="radiogroup" aria-label="Import mode">
         {IMPORT_MODES.map((choice) => (
           <button key={choice.mode} type="button" role="radio" aria-checked={mode === choice.mode} className={styles.choice} data-command={choice.command} onClick={() => actions.run(choice.command)}>

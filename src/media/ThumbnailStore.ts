@@ -256,6 +256,18 @@ export class ThumbnailStore {
     this.pump();
   }
 
+  /**
+   * A video's file holds other content now (a relink, its undo or redo, Batch 41): its sheets go at
+   * once (cards and clips show none of the other file's) and are made again without cache/thumbs/.
+   */
+  replace(mediaId: MediaId): void {
+    const entry = this.entries.get(mediaId);
+    if (!entry) return;
+    this.drop(mediaId);
+    this.entries.set(mediaId, { layout: entry.layout, source: entry.source, index: null, file: null, broken: false, fresh: true });
+    this.regenerate(mediaId);
+  }
+
   /** Tries a video's sheets again (its file came back: relinked, readable again), the cache first (Batch 41). */
   retry(mediaId: MediaId): void {
     const entry = this.entries.get(mediaId);

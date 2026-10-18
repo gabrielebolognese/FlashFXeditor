@@ -128,6 +128,27 @@ describe("PosterStore", () => {
     warn.mockRestore();
   });
 
+  it("makes a poster again from the file when the file holds other content (a relink undone or redone)", async () => {
+    const t = await setup([still("i"), still("j")]);
+    const first = t.store.get("i") as unknown as FakeBitmap;
+    expect(first.label).toBe("fresh:i.png");
+    const seen: (string | null)[] = [];
+    t.store.observe("i", (b) => seen.push(label(b)));
+    // The cached poster is the other file's: not read again, deleted, made from the file.
+    t.store.regenerate(["i", "nope"]);
+    expect(first.close).toHaveBeenCalled();
+    expect(t.store.get("i")).toBeNull();
+    await t.store.whenIdle();
+    expect(seen).toEqual(["fresh:i.png", null, "fresh:i.png"]);
+    expect(t.pool.calls).toEqual(["poster i.png", "poster j.png", "poster i.png"]);
+    // Offline now: no poster, and none left in the cache to show the other file's picture later.
+    await t.dir.dir("media").then((media) => media?.remove("j.png"));
+    t.store.regenerate(["j"]);
+    await t.store.whenIdle();
+    expect(t.store.get("j")).toBeNull();
+    expect(await resolveFile(t.dir, posterPath("j"))).toBeNull();
+  });
+
   it("dispose closes every bitmap", async () => {
     const { store } = await setup([still("a"), still("b")]);
     const bitmaps = ["a", "b"].map((id) => store.get(id) as unknown as FakeBitmap);

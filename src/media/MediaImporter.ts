@@ -150,7 +150,12 @@ export class MediaImporter {
 
   /** Imports after any import still running. */
   importFiles(files: readonly ImportSource[], options: ImportOptions = {}): Promise<ImportReport> {
-    const run = this.chain.then(() => this.run(files, options));
+    return this.exclusive(() => this.run(files, options));
+  }
+
+  /** Runs `task` after any import still running, and no import starts before it ends (a relink's copies into media/ pick unique names too). */
+  exclusive<T>(task: () => Promise<T>): Promise<T> {
+    const run = this.chain.then(task);
     this.chain = run.catch(() => undefined);
     return run;
   }

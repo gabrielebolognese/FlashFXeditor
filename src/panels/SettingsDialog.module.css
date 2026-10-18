@@ -200,8 +200,9 @@
 }
 
 /* The Media tab (Batch 41; gap: the DS has no radio): an overline heading, then one row per choice, a
-   14px ring (the DS input: surface-1, the stronger border) filled with the gold dot when chosen (gold
-   marks the active state), the label in body type and its note in caption type under it. */
+   14px ring (the DS input: surface-1, the stronger border) with a --radio-dot-size gold dot in its
+   middle when chosen (gold marks the active state), the label in body type and its note in caption
+   type under it. */
 .media {
   display: flex;
   flex-direction: column;
@@ -209,7 +210,7 @@
   padding-top: var(--space-3);
 }
 
-.heading {
+.mediaHeading {
   margin: 0;
   color: var(--text-tertiary);
   font: var(--type-overline);
@@ -252,7 +253,10 @@
 }
 
 .radio {
+  display: flex;
   flex: none;
+  align-items: center;
+  justify-content: center;
   width: var(--icon-size);
   height: var(--icon-size);
   margin-top: var(--space-0);
@@ -263,7 +267,14 @@
 
 .choice[aria-checked="true"] .radio {
   border-color: var(--accent);
-  background: radial-gradient(circle, var(--accent) 0 40%, transparent 45%);
+}
+
+.choice[aria-checked="true"] .radio::after {
+  width: var(--radio-dot-size);
+  height: var(--radio-dot-size);
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  content: "";
 }
 
 .choiceLabel {
