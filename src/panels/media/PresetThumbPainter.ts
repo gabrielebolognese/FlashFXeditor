@@ -3,9 +3,10 @@
 // ResizeObserver) or a font change only marks it dirty and invalidates `mediaThumbs`; the scheduler
 // then calls `render` once per frame, which draws every dirty canvas once at its latest preset and size.
 // Drawing is a copy of a bitmap the thumbnail service made in idle time (Batch 52, render/text/
-// PresetThumbService.ts): one not made yet leaves the canvas as it is (old pixels, no flash) and is
-// drawn when the service reports new bitmaps (`redrawWaiting`). Framework-free: components only hand
-// over their canvas, preset, margin and size.
+// PresetThumbService.ts): one not made yet leaves the canvas as it is (old pixels, no flash). When the
+// service reports a preset's bitmap (`follow`: new, or made again after a font change), the canvases
+// that show that preset draw again, with those still waiting for theirs. Framework-free: components
+// only hand over their canvas, preset, margin and size.
 import type { TextPreset } from "../../core/document/types.js";
 import type { FrameScheduler, RenderView } from "../../core/scheduler/FrameScheduler.js";
 
@@ -60,11 +61,20 @@ export class PresetThumbPainter implements RenderView {
     if (this.dirty.size > 0) this.scheduler.invalidate("mediaThumbs");
   }
 
-  /** New bitmaps were made: the canvases that waited for theirs draw again. */
-  redrawWaiting(): void {
+  /**
+   * A bitmap of preset `presetId` was made, or made again (a font change replaced the one drawn): the
+   * canvases that show that preset draw again, and so do those that waited for theirs.
+   */
+  bitmapMade(presetId: string): void {
+    for (const [canvas, card] of this.cards) if (card.preset?.id === presetId) this.dirty.add(canvas);
     for (const canvas of this.waiting) this.dirty.add(canvas);
     this.waiting.clear();
     if (this.dirty.size > 0) this.scheduler.invalidate("mediaThumbs");
+  }
+
+  /** Draws again on `service`'s bitmap reports (`bitmapMade`). Returns a stop function. */
+  follow(service: { subscribe(listener: (presetId: string) => void): () => void }): () => void {
+    return service.subscribe((presetId) => this.bitmapMade(presetId));
   }
 
   /** The canvas is gone: it is no longer drawn. */

@@ -2,12 +2,13 @@
 // generated lazily in idle time and again when the preset changes"), for the preset bar's buttons and
 // the Presets tab's cards. `get` answers from the cache or queues the bitmap in the IdleQueue (which
 // pauses while playing and dragging, so a thumbnail is never rasterized during playback) and returns
-// null (a made thumbnail with nothing to draw is `{ bitmap: null }`); listeners hear when bitmaps
-// arrive, and the painter keeps a canvas's old pixels until then.
+// null (a made thumbnail with nothing to draw is `{ bitmap: null }`); listeners hear the preset id of
+// every bitmap that arrives, and the painter keeps a canvas's old pixels until then.
 // A preset whose fonts are not loaded yet waits (the font library loads them) and is made when its
 // family reports a change; a family that changes (a face loaded, the catalog read, a project font
-// added) has its bitmaps made again, the old ones shown until the new ones land. The cache is a small
-// LRU; evicted and replaced bitmaps are closed (P13).
+// added) has its bitmaps made again, the old ones shown until the new ones land (listeners hear those
+// too: a canvas showing the old bitmap draws again). The cache is a small LRU; evicted and replaced
+// bitmaps are closed (P13).
 import type { IdleQueue } from "../../core/scheduler/IdleQueue.js";
 import type { TextPreset } from "../../core/document/types.js";
 import { presetLookKey, presetSampleText } from "../../text/presets.js";
@@ -48,7 +49,7 @@ interface Entry {
 export class PresetThumbService {
   /** Most recently used last. */
   private readonly entries = new Map<string, Entry>();
-  private readonly listeners = new Set<() => void>();
+  private readonly listeners = new Set<(presetId: string) => void>();
   private readonly stopFonts: () => void;
   /** Bitmaps made and font waits since the start (the acceptance checks read them). */
   readonly stats = { made: 0, waits: 0 };
@@ -80,8 +81,8 @@ export class PresetThumbService {
     return null;
   }
 
-  /** Calls `listener` after bitmaps arrive (once per idle task that made any). */
-  subscribe(listener: () => void): () => void {
+  /** Calls `listener` with the preset's id each time one of its bitmaps is made or made again (it replaces the old one). */
+  subscribe(listener: (presetId: string) => void): () => void {
     this.listeners.add(listener);
     return () => {
       this.listeners.delete(listener);
@@ -115,7 +116,7 @@ export class PresetThumbService {
       entry.bitmap = bitmap;
       entry.made = true;
       this.stats.made += 1;
-      for (const listener of [...this.listeners]) listener();
+      for (const listener of [...this.listeners]) listener(entry.preset.id);
     });
   }
 

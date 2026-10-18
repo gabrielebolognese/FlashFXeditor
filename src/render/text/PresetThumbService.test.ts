@@ -60,6 +60,7 @@ describe("PresetThumbService", () => {
     expect(render).toHaveBeenCalledTimes(1);
     expect(render).toHaveBeenCalledWith(p, 168, 80, 8);
     expect(listener).toHaveBeenCalledTimes(1);
+    expect(listener).toHaveBeenCalledWith("a");
     expect(service.get(p, 168, 80, 8)?.bitmap).toBe(render.mock.results[0]?.value);
     // A rename (with a sample text of its own) or a star is not a new look: the same bitmap.
     expect(service.get({ ...p, name: "renamed", favorite: true }, 168, 80, 8)?.bitmap).toBe(render.mock.results[0]?.value);
@@ -115,10 +116,14 @@ describe("PresetThumbService", () => {
     service.get(p, 168, 80, 8);
     runIdle();
     const first = service.get(p, 168, 80, 8)?.bitmap as ImageBitmap & { close: ReturnType<typeof vi.fn> };
+    const listener = vi.fn();
+    service.subscribe(listener);
     fonts("cinzel");
     expect(service.get(p, 168, 80, 8)?.bitmap).toBe(first);
     runIdle();
     expect(render).toHaveBeenCalledTimes(2);
+    // The painter hears the remake (the canvases showing "a" draw the new bitmap).
+    expect(listener.mock.calls).toEqual([["a"]]);
     expect(first.close).toHaveBeenCalled();
     expect(service.get(p, 168, 80, 8)?.bitmap).not.toBe(first);
   });
