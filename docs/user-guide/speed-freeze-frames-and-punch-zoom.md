@@ -36,8 +36,8 @@ These tools set the pace of your short. Speed a clip up or slow it down with one
 | Speed buttons **0.5x**, **1x**, **1.5x**, **2x** | The quick actions at the top of **Edit Properties** | |
 | The **Speed** section: **Speed**, **Duration**, **Ripple** and **Freeze frame** | **Edit Properties**, with a video or audio clip selected | |
 | **Speed...** | The clip menu (right-click a video or audio clip): opens the **Speed** section | |
-| **Freeze frame** | The **Edit** group of the timeline toolbar, the quick actions, the **Speed** section, and **Freeze frame at playhead** in the clip menu | <kbd>Shift</kbd>+<kbd>F</kbd> |
-| **Punch zoom** | The **Edit** group of the timeline toolbar and the quick actions | <kbd>Shift</kbd>+<kbd>Z</kbd> |
+| **Freeze frame** | The **Edit** group of the timeline toolbar (**Freeze frame at playhead**), the quick actions, the **Speed** section, and **Freeze frame at playhead** in the clip menu | <kbd>Shift</kbd>+<kbd>F</kbd> |
+| **Punch zoom** | The **Edit** group of the timeline toolbar (**Punch zoom at playhead**) and the quick actions | <kbd>Shift</kbd>+<kbd>Z</kbd> |
 
 <kbd>Shift</kbd>+<kbd>F</kbd> and <kbd>Shift</kbd>+<kbd>Z</kbd> work in every panel, except while you type in a field. Point at a button to see its name and shortcut.
 
@@ -173,7 +173,7 @@ A freeze frame holds one picture of a video for 2 seconds, for example to let a 
 >   6. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> twice: the video is one clip again.
 
 1. Move the playhead to the frame you want to hold.
-2. Press <kbd>Shift</kbd>+<kbd>F</kbd>, or click **Freeze frame** in the timeline toolbar, the quick actions or the **Speed** section. You can also right-click the video and choose **Freeze frame at playhead**; that row is dimmed unless the clip you right-click is a video under the playhead.
+2. Press <kbd>Shift</kbd>+<kbd>F</kbd>, or click **Freeze frame at playhead** in the timeline toolbar, or **Freeze frame** in the quick actions or the **Speed** section. You can also right-click the video and choose **Freeze frame at playhead**; that row is dimmed unless the clip you right-click is a video under the playhead.
 
 What happens:
 
@@ -214,7 +214,7 @@ A punch zoom cuts a clip at the playhead and enlarges the part after the cut in 
 >   5. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> twice: the video is one clip again, at its first size.
 
 1. Move the playhead to the moment the shot should come closer.
-2. Press <kbd>Shift</kbd>+<kbd>Z</kbd>, or click **Punch zoom** in the timeline toolbar or the quick actions.
+2. Press <kbd>Shift</kbd>+<kbd>Z</kbd>, or click **Punch zoom at playhead** in the timeline toolbar, or **Punch zoom** in the quick actions.
 
 What happens:
 
@@ -279,4 +279,4 @@ See [Undo and redo changes](projects-and-saving.md#undo-and-redo-changes).
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 35, 2026-10-17</sub>
+<sub>Last updated: Batch 40, 2026-10-18</sub>

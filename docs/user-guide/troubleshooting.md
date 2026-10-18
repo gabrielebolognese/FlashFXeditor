@@ -1,6 +1,6 @@
 # Troubleshooting
 
-This page helps you when something does not work as expected: the editor does not start in your browser, the preview stays empty, a folder or a file does not open, a clip drag, a trim, a split, a delete, a timeline tool, a typed timecode, a marker, an in/out range or **Lift** and **Extract** do something you did not expect, media from the Media panel lands somewhere you did not expect, a clip shows no thumbnails, a video gets no proxy or its proxy fails, the preview zoom, overlays or fullscreen behave unexpectedly, a picture in the preview can't be selected, moves unexpectedly, doesn't snap where you expect or gets cropped instead of resized, a value or a crop in **Edit Properties** doesn't do what you expect, a paste or a duplicate lands somewhere you did not expect or is refused, a speed change, a freeze frame or a punch zoom does something you did not expect, a keyframe animation or a keyframe lane doesn't behave as you expect, a fade or a transition doesn't go where you expect, gets shorter or shows red stripes, the rubber band, **Normalize**, **Auto-duck**, **Detach audio** or **Audio scrub** doesn't do what you expect, **Remove silence** cuts too much, too little or nothing, a shape or an image doesn't look or play as you expect, a title lands somewhere you did not expect, the keys type into a text, a font is missing, a text preset doesn't apply, update or sync as you expect, a text animation plays shorter or differently than you expect, a caption cue doesn't import, move, show or highlight as you expect, a transcription doesn't start, is slow or gets words wrong, playback stutters, or you hear no sound. Each problem lists what you see, why it happens and what to do. The last section lists what the current version cannot do yet.
+This page helps you when something does not work as expected: the editor does not start in your browser, the preview stays empty, a shortcut or a key you changed does nothing or runs another command, a folder or a file does not open, a clip drag, a trim, a split, a delete, a timeline tool, a typed timecode, a marker, an in/out range or **Lift** and **Extract** do something you did not expect, media from the Media panel lands somewhere you did not expect, a clip shows no thumbnails, a video gets no proxy or its proxy fails, the preview zoom, overlays or fullscreen behave unexpectedly, a picture in the preview can't be selected, moves unexpectedly, doesn't snap where you expect or gets cropped instead of resized, a value or a crop in **Edit Properties** doesn't do what you expect, a paste or a duplicate lands somewhere you did not expect or is refused, a speed change, a freeze frame or a punch zoom does something you did not expect, a keyframe animation or a keyframe lane doesn't behave as you expect, a fade or a transition doesn't go where you expect, gets shorter or shows red stripes, the rubber band, **Normalize**, **Auto-duck**, **Detach audio** or **Audio scrub** doesn't do what you expect, **Remove silence** cuts too much, too little or nothing, a shape or an image doesn't look or play as you expect, a title lands somewhere you did not expect, the keys type into a text, a font is missing, a text preset doesn't apply, update or sync as you expect, a text animation plays shorter or differently than you expect, a caption cue doesn't import, move, show or highlight as you expect, a transcription doesn't start, is slow or gets words wrong, playback stutters, or you hear no sound. Each problem lists what you see, why it happens and what to do. The last section lists what the current version cannot do yet.
 
 > **Video placeholder: Fix common problems**
 > - File: `videos/troubleshooting/overview.mp4` (not recorded yet)
@@ -52,6 +52,7 @@ This page helps you when something does not work as expected: the editor does no
 >   44. Put a music clip on A1 and a voice clip on A2 under it, select the music and click **Auto-duck** in the **Audio** section: the message **No voice to duck under** appears. Drag the A2 header above A1 and click **Auto-duck** again: the music's line dips under the voice. Click **Auto-duck** once more: the dip gets twice as deep; press <kbd>Ctrl</kbd>+<kbd>Z</kbd>.
 >   45. Select a title and point at **Remove silence** in the quick actions: it is dimmed. Select a talking-head video recorded in a noisy room and click **Remove silence**: the row reads **No silence found**. Drag the **Threshold** slider to `-30 dB`: red stripes cover the pauses. Click **Cancel**.
 >   46. Click the padlock in the V2 header. Select a clip on V1 and a clip on V2 above it, press <kbd>Ctrl</kbd>+<kbd>C</kbd>, click in the ruler at an empty spot and press <kbd>Ctrl</kbd>+<kbd>V</kbd>: the message **Can't paste onto a locked track** names V2. Click the padlock again and press <kbd>Ctrl</kbd>+<kbd>V</kbd>: the clips land at the playhead on V1 and V2. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>, put the playhead over another clip and press <kbd>Ctrl</kbd>+<kbd>V</kbd>: the clip under the copies is cut away. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> and press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>V</kbd>: the clips make room instead.
+>   47. Click **Settings** in the app bar and, on the **Shortcuts** tab, click **+** on **Split at playhead** and press <kbd>Ctrl</kbd>+<kbd>L</kbd>: the key turns red on **Split at playhead** and **Link / Unlink**. Click **Done**, click a video with sound on the timeline and press <kbd>Ctrl</kbd>+<kbd>L</kbd>: the video and its sound are unlinked, and nothing is split. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>, open **Settings** again and click **Reset all**. Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> and type `edit marker`: the row is grey. Press <kbd>Esc</kbd>.
 
 ## In this page
 - [Browser and graphics](#browser-and-graphics)
@@ -61,7 +62,11 @@ This page helps you when something does not work as expected: the editor does no
 - [Keyboard](#keyboard)
   - [Shortcuts do nothing](#shortcuts-do-nothing)
   - [The new project shortcut opens a browser window](#the-new-project-shortcut-opens-a-browser-window)
-  - [The save shortcut opens the browser's Save dialog](#the-save-shortcut-opens-the-browsers-save-dialog)
+  - [A shortcut runs another command or does nothing](#a-shortcut-runs-another-command-or-does-nothing)
+  - [A shortcut is red in Settings](#a-shortcut-is-red-in-settings)
+  - [A new key works only in one panel](#a-new-key-works-only-in-one-panel)
+  - [A row in the command palette is grey](#a-row-in-the-command-palette-is-grey)
+  - [Importing a keymap says Not a keymap file](#importing-a-keymap-says-not-a-keymap-file)
   - [Alt+Left leaves the editor](#altleft-leaves-the-editor)
   - [Space starts playback only when you release it](#space-starts-playback-only-when-you-release-it)
   - [Ctrl+1 or Ctrl+2 switched to another browser tab](#ctrl1-or-ctrl2-switched-to-another-browser-tab)
@@ -353,12 +358,13 @@ This page helps you when something does not work as expected: the editor does no
 - A text field has the keyboard focus (the project name, a media name, the timecode field, a number field). Typing always comes before shortcuts.
 - You are editing a text in the preview (a gold outline and a caret): the keys type into it. Press <kbd>Esc</kbd> to finish.
 - A dropdown list has the keyboard focus, for example **Sort media by** after you chose a value with the keyboard.
-- A dialog or a menu is open.
+- A dialog or a menu is open. An open menu has the keyboard: <kbd>Space</kbd>, <kbd>Enter</kbd> and the arrow keys work on its rows.
+- You changed or removed the key in **Settings** > **Shortcuts**. See [A shortcut runs another command or does nothing](#a-shortcut-runs-another-command-or-does-nothing).
 - The **Edit Properties** panel was the last one you clicked. It has no shortcuts of its own: only the shortcuts for all panels work there, so <kbd>Delete</kbd>, for example, does nothing.
 - The shortcut belongs to another panel. For example, <kbd>↑</kbd> and <kbd>↓</kbd> jump between clips, and <kbd>X</kbd>, <kbd>;</kbd> and <kbd>'</kbd> mark a clip, lift and extract, only in the Timeline panel, and <kbd>Ctrl</kbd>+<kbd>0</kbd>, <kbd>Ctrl</kbd>+<kbd>1</kbd> and <kbd>Ctrl</kbd>+<kbd>2</kbd> zoom the preview only in the Preview panel.
 - The shortcut belongs to a feature that is available in a later version.
 
-**Fix:** Press <kbd>Enter</kbd> or <kbd>Escape</kbd> to leave a text field, close the dialog, or click the timeline or the preview picture. Then try again. See [Keyboard shortcuts](keyboard-shortcuts.md) for the panel each shortcut needs.
+**Fix:** Press <kbd>Enter</kbd> or <kbd>Escape</kbd> to leave a text field, close the dialog or the menu, or click the timeline or the preview picture. Then try again. Press <kbd>?</kbd> to see the keys you use now and where they work. See [Keyboard shortcuts](keyboard-shortcuts.md) for the panel each shortcut needs.
 
 ### The new project shortcut opens a browser window
 
@@ -368,13 +374,47 @@ This page helps you when something does not work as expected: the editor does no
 
 **Fix:** Close the extra window. To create a project, click **New project** on the start screen. See [Projects and saving](projects-and-saving.md).
 
-### The save shortcut opens the browser's Save dialog
+### A shortcut runs another command or does nothing
 
-**Symptom:** <kbd>Ctrl</kbd>+<kbd>S</kbd> opens the browser's own "Save as" dialog for the web page.
+**Symptom:** A key that used to work does nothing, or does something else, for example <kbd>Ctrl</kbd>+<kbd>K</kbd> no longer splits.
 
-**Cause:** A text field had the keyboard focus, or a dialog was open. There the editor leaves the key to the browser.
+**Cause:** One of these:
+- The key was changed or removed in **Settings** > **Shortcuts**, or a keymap file you imported gave it to another command. Your keys are kept in this browser for all your projects.
+- Two commands share the key. Then it runs only one of them: a panel's command wins in its panel, and when both work in the same place, the command whose keys were changed wins.
 
-**Fix:** Cancel the browser's dialog. Press <kbd>Enter</kbd> or <kbd>Escape</kbd> to leave the field, or close the editor's dialog, then press <kbd>Ctrl</kbd>+<kbd>S</kbd> again. Your project also saves automatically after each change.
+**Fix:** Press <kbd>?</kbd> and look up the command: the sheet shows its keys now. To change them, click **Edit shortcuts**, find the command and click **Reset to the default keys** on its row, or **Reset all** for every command. A red key marks a key two commands share; see [A shortcut is red in Settings](#a-shortcut-is-red-in-settings). See [Change a shortcut](command-palette-and-custom-shortcuts.md#change-a-shortcut).
+
+### A shortcut is red in Settings
+
+**Symptom:** In **Settings** > **Shortcuts**, a key chip is red on two rows, with a red line such as **Ctrl+L is also Link / Unlink (Timeline)**.
+
+**Cause:** Both commands have that key, and both can see it: they work in the same panel, or one works in every panel and the other in one panel. The editor marks the clash instead of refusing the key.
+
+**Fix:** Point at the red chip on one of the two rows and click its **x**, or click the chip and press another key. The red marks go away on both rows. See [Fix a shortcut conflict](command-palette-and-custom-shortcuts.md#fix-a-shortcut-conflict).
+
+### A new key works only in one panel
+
+**Symptom:** You gave a command a new key, and it works in one panel only, for example only after you click the timeline.
+
+**Cause:** A command keeps the place where its keys work. **Zoom in**, for example, works in the Timeline panel only, so any key you give it does too. The place shows next to the command's name in **Settings** > **Shortcuts** and in the shortcut sheet.
+
+**Fix:** Click the panel shown next to the command, then press the key. Commands without a place work in every panel. See [Change a shortcut](command-palette-and-custom-shortcuts.md#change-a-shortcut).
+
+### A row in the command palette is grey
+
+**Symptom:** A row in the command palette is grey, and <kbd>Enter</kbd> or a click does nothing. The bottom of the palette reads, for example, **Edit marker: not available now**.
+
+**Cause:** The command has nothing to act on right now: **Undo** with nothing to undo, **Edit marker** with no marker selected, **Remove silence: apply** while the **Remove silence** row is closed, **Paste** before you copy anything. On the start screen, every command that needs a project is grey.
+
+**Fix:** Close the palette with <kbd>Esc</kbd>, select what the command works on (or open a project), and run it again. See [Run a command from the palette](command-palette-and-custom-shortcuts.md#run-a-command-from-the-palette).
+
+### Importing a keymap says Not a keymap file
+
+**Symptom:** After **Import…** in **Settings** > **Shortcuts**, the message **Not a keymap file** appears and no key changes. Or the message **Keymap imported** adds that some unknown commands or keys were skipped.
+
+**Cause:** **Not a keymap file**: the file is not a keymap exported from Shorts Editor, or it was changed so that the editor can't read it. **Skipped**: the file names commands this version doesn't have, or keys it can't use; the rest was imported.
+
+**Fix:** Export a keymap from **Settings** > **Shortcuts** with **Export…** and import that file. Check the skipped commands in the list and give them keys by hand. See [Share your shortcuts with a keymap file](command-palette-and-custom-shortcuts.md#share-your-shortcuts-with-a-keymap-file).
 
 ### Alt+Left leaves the editor
 
@@ -2401,23 +2441,23 @@ See [Messages when you paste](copy-and-paste.md#messages-when-you-paste).
 
 The current version cannot do these things yet. Each one is available in a later version.
 
-- **Sound:** no sound while you play backward or shuttle faster than 1x; while you scrub or step frames, only with **Audio scrub** on. How far **Auto-duck** lowers the music (12 dB) and its slopes (10 frames) can't be changed, and **Audio scrub** and **Remove silence** have no keyboard shortcut. Audio effects are not available.
-- **Copy and paste:** clips copied in a project with another frame rate can't be pasted. Media pasted from another project that this one doesn't have stays offline: relinking it to a file is not available. The rows of the **Paste attributes** checklist can't be chosen with the arrow keys, and caption cues can't take **Paste attributes**.
+- **Sound:** no sound while you play backward or shuttle faster than 1x; while you scrub or step frames, only with **Audio scrub** on. How far **Auto-duck** lowers the music (12 dB) and its slopes (10 frames) can't be changed, and **Remove silence** has no default keyboard shortcut. Audio effects are not available.
+- **Copy and paste:** clips copied in a project with another frame rate can't be pasted. Media pasted from another project that this one doesn't have stays offline: relinking it to a file is not available. Caption cues can't take **Paste attributes**.
 - **Markers:** markers belong to the timeline; markers inside clips are not available. Markers and the in/out range don't show on the scrollbars.
-- **Menus:** only clips, gaps, track headers, the ruler, media cards and pictures in the preview have a right-click menu, with a first set of rows. Menu rows can't be chosen with the arrow keys.
+- **Menus:** right-clicking empty space after the last clip of a track opens no menu.
 - **Speed and edit points:** a speed applies to the whole clip, and sound at another speed always changes pitch. Playing a clip backward is not available. The length of a new freeze frame (2 seconds), the size of a punch zoom (20%) and its 6-frame zoom can't be changed. The default transition is always a 15-frame cross dissolve.
 - **Tracks:** track headers have room for names of about 9 characters; longer names are shortened. Groups are not marked on the timeline.
 - **Keyframes:** keyframes animate position, scale, rotation, opacity and the volume of audio clips.
-- **Preview:** the **Zoom**, **Preview quality** and **Overlays** menus can't be used with the arrow keys.
 - **Edit Properties:** the dimmed **Still duration**, **Transition** and **Cache** rows of the **Project** section are not available. A new resolution always scales the layout; keeping the layout as it is, is not available.
-- **Text:** a setting to always make new titles 3 seconds long is not available. A text's handles don't snap, and fonts can't be chosen with the arrow keys in the font picker. Deleted starter presets can't be restored. Text animations play in the preview and in **Export frame**.
+- **Text:** a setting to always make new titles 3 seconds long is not available. A text's handles don't snap. Deleted starter presets can't be restored. Text animations play in the preview and in **Export frame**.
 - **Captions:** all cues share one style; a style for a single cue is not available. Captions can't be selected, moved or styled in the preview.
 - **Transcription:** the cues can't be edited in the review; fix them in the **Captions** tab after adding them. The default model and language are set in the **Transcribe captions** dialog only.
 - **Media that cannot be decoded, or whose file is missing,** shows nothing in the preview, with no placeholder.
 - **Removing media** that a clip uses is not possible.
 - **Frame rate:** you cannot change it once the timeline has clips or markers.
-- **Export:** only **Export frame** (a PNG of the current frame) and **Export SRT or VTT** (the captions as a subtitle file) work. The **Export** button and the **Settings** button in the app bar are disabled.
-- **Shortcuts:** <kbd>Ctrl</kbd>+<kbd>N</kbd> cannot create a project in a browser tab, and many shortcuts in the keymap belong to features that are not available yet. See [Keyboard shortcuts](keyboard-shortcuts.md).
+- **Export:** only **Export frame** (a PNG of the current frame) and **Export SRT or VTT** (the captions as a subtitle file) work. The **Export** button in the app bar is disabled.
+- **Settings:** the **Settings** dialog has only the **Shortcuts** tab; the other settings are not available yet.
+- **Shortcuts:** <kbd>Ctrl</kbd>+<kbd>N</kbd> cannot create a project in a browser tab, and <kbd>Ctrl</kbd>+<kbd>E</kbd> belongs to export, which is not available yet. See [Keyboard shortcuts](keyboard-shortcuts.md).
 - **Heavy footage:** 4K 60 fps HEVC played from the original (in **Full** quality, or before its proxy is ready) can drop frames, and the original frame deep inside long phone clips takes a moment to appear after you stop.
 
 ## Related pages
@@ -2451,6 +2491,7 @@ The current version cannot do these things yet. Each one is available in a later
 - [Text animations](text-animations.md)
 - [Captions](captions.md)
 - [Transcription](transcription.md)
+- [Command palette and custom shortcuts](command-palette-and-custom-shortcuts.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 39, 2026-10-18</sub>
+<sub>Last updated: Batch 40, 2026-10-18</sub>

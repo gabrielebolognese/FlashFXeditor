@@ -285,7 +285,7 @@ To set the width with the mouse, drag a side handle of the text in the preview; 
 
 1. Select one or more text clips.
 2. In the **Text** section, click the **Font** field. The font picker opens under it.
-3. Click a font. Or type part of its name in **Search fonts** and press <kbd>Enter</kbd> to take the first match.
+3. Click a font. Or type part of its name in **Search fonts** and press <kbd>Enter</kbd> to take the first match. To take another one, press <kbd>↓</kbd> or <kbd>↑</kbd> in **Search fonts** until it is highlighted in the list, then press <kbd>Enter</kbd>.
 
 The picker closes when you pick a font, click outside it, or press <kbd>Esc</kbd>.
 
@@ -298,7 +298,7 @@ The picker lists the fonts in sections, each name drawn in its own font:
 | **Bundled** | The eight fonts that come with the editor. See [Fonts that come with the editor](#fonts-that-come-with-the-editor). |
 | **System** | The fonts installed on your computer, after you click **Show system fonts**. See [Use fonts from your computer](#use-fonts-from-your-computer). |
 
-**Favorites**, **Used in project** and **Bundled** are left out when they have no font that matches the search. **System** always shows. Choosing a font in the list with the arrow keys is available in a later version.
+**Favorites**, **Used in project** and **Bundled** are left out when they have no font that matches the search. **System** always shows.
 
 ### Fonts that come with the editor
 
@@ -401,7 +401,6 @@ These parts are available in a later version:
 
 - A setting to always make new titles 3 seconds long, instead of matching the video clip under the playhead.
 - Snapping while you drag a text's handles.
-- Choosing a font in the font picker with the arrow keys.
 - Exporting the video with its text. **Export frame** already includes text and its animations; see [Export the current frame](preview-and-playback.md#export-the-current-frame).
 
 ## Related pages
@@ -417,4 +416,4 @@ These parts are available in a later version:
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 32, 2026-10-17</sub>
+<sub>Last updated: Batch 40, 2026-10-18</sub>

@@ -23,6 +23,7 @@ Captions are the subtitles that run along with the speech of your video. They li
 - [Edit a cue's text](#edit-a-cues-text)
 - [Split and merge cues](#split-and-merge-cues)
 - [Find, select and delete cues](#find-select-and-delete-cues)
+- [Use the cue menu](#use-the-cue-menu)
 - [Edit cues on the timeline](#edit-cues-on-the-timeline)
 - [Style your captions](#style-your-captions)
 - [Choose where captions sit](#choose-where-captions-sit)
@@ -186,7 +187,7 @@ Keys in a cue's text:
 - The caret goes to the start of the second cue. The split is one step, **Split cue**.
 - A cue shorter than 2 frames can't be split: the message **Can't split this cue** appears.
 
-**Merge a cue into the one before it:** put the caret at the very start of its text and press <kbd>Ctrl</kbd>+<kbd>Backspace</kbd>, or right-click the cue on the timeline and choose **Merge with previous cue**.
+**Merge a cue into the one before it:** put the caret at the very start of its text and press <kbd>Ctrl</kbd>+<kbd>Backspace</kbd>, or right-click the cue (its row in the list, or the cue on the timeline) and choose **Merge with previous cue**.
 
 - The two texts are joined with a space, and the cue before it now lasts until the end of the merged cue, the gap between them included.
 - The caret goes to where the two texts meet. The merge is one step, **Merge cues**.
@@ -200,6 +201,24 @@ You can also split cues on the timeline with <kbd>Ctrl</kbd>+<kbd>K</kbd> or the
 - **Select a cue:** click its row, away from the text. The cue is selected on the timeline too, and the playhead jumps to its start. A cue you select on the timeline scrolls into view in the list.
 - **Delete cues:** select cues (in the list or on the timeline) and press <kbd>Delete</kbd> or <kbd>Backspace</kbd>, while the Media panel or the timeline is active. In the list, press <kbd>Esc</kbd> first if you are typing in a cue. The step is **Delete clip** or **Delete clips**.
 - **Clear all cues:** click **Clear all cues** (eraser) in the Captions header. Every cue goes at once, with no question asked; the track and its style stay. The step is **Clear captions**: press <kbd>Ctrl</kbd>+<kbd>Z</kbd> to bring the cues back.
+
+## Use the cue menu
+
+Right-click a cue's row in the **Captions** tab, away from its text. The cue is selected, and its menu opens. A right-click in the text itself opens the browser's usual text menu instead.
+
+| Row | What it does |
+| --- | --- |
+| **Edit text** | Puts the caret at the end of the cue's text, ready for typing. See [Edit a cue's text](#edit-a-cues-text). |
+| **Cut** | Copies the selected cues and deletes them (<kbd>Ctrl</kbd>+<kbd>X</kbd> on the timeline). |
+| **Copy** | Copies the selected cues (<kbd>Ctrl</kbd>+<kbd>C</kbd> on the timeline). |
+| **Paste at playhead** | Pastes the copied clips or cues at the playhead. Pasted cues go to the free spot nearest the playhead on the **CC** track. Dimmed until you copy something. See [Paste caption cues](copy-and-paste.md#paste-caption-cues). |
+| **Split at playhead** | Splits the selected cues at the playhead, their text included (<kbd>Ctrl</kbd>+<kbd>K</kbd>). |
+| **Merge with previous cue** | Joins the cue to the one before it. Dimmed on the first cue. See [Split and merge cues](#split-and-merge-cues). |
+| **Delete** | Deletes the selected cues (<kbd>Delete</kbd>). |
+| **Add cue at playhead** | Adds a new cue at the playhead, as **Add a 2 s cue at the playhead** (+) in the header does. See [Add a cue at the playhead](#add-a-cue-at-the-playhead). |
+| **Caption style** | Opens the **Caption style** section in **Edit Properties**. See [Style your captions](#style-your-captions). |
+
+The menu works with the keyboard: <kbd>↓</kbd> and <kbd>↑</kbd> move between rows, <kbd>Enter</kbd> runs one, and <kbd>Esc</kbd> closes the menu. See [Use menus with the keyboard](command-palette-and-custom-shortcuts.md#use-menus-with-the-keyboard). **Edit cue text** is also in the command palette: it starts typing in the selected cue.
 
 ## Edit cues on the timeline
 
@@ -374,7 +393,8 @@ These parts are available in a later version:
 - [Splitting, deleting and closing gaps](splitting-and-deleting.md)
 - [Editing properties](editing-properties.md)
 - [Preview zoom, overlays and fullscreen](preview-zoom-overlays-fullscreen.md)
+- [Command palette and custom shortcuts](command-palette-and-custom-shortcuts.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 39, 2026-10-18</sub>
+<sub>Last updated: Batch 40, 2026-10-18</sub>

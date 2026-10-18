@@ -2,6 +2,11 @@
 
 Shorts Editor grows in steps called batches. This page lists what each batch added that you can see or use, newest first. Follow the links for the full instructions.
 
+> **Video placeholder: What's new in Batch 40**
+> - File: `videos/whats-new/batch-40.mp4` (not recorded yet)
+> - Length: about 60 seconds
+> - Shows: a 1080×1920 project with three clips on V1, a gap between the second and third, and an image clip on V2; click the timeline and press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>; type `compact`: **Close all gaps** is first with **Shift+G**; press <kbd>Enter</kbd>: the gap closes; press <kbd>?</kbd>: the **Keyboard shortcuts** sheet opens; click **Edit shortcuts**; in **Settings** > **Shortcuts**, click **Ctrl+K** on **Split at playhead** and press <kbd>Ctrl</kbd>+<kbd>J</kbd>; click **+** on the same row and press <kbd>Ctrl</kbd>+<kbd>L</kbd>: both **Split at playhead** and **Link / Unlink** turn red; click the **x** on **Ctrl+L**; click **Done** and point at **Split at playhead** in the toolbar: **Ctrl+J**; right-click the image clip and choose **Reveal in media panel**: the **Media** tab shows the image's card selected; right-click the image clip again, press <kbd>↓</kbd> to the **Match project size** row, press <kbd>→</kbd> to **Fill** and <kbd>Enter</kbd>: the image fills the frame.
+
 > **Video placeholder: What's new in Batch 39**
 > - File: `videos/whats-new/batch-39.mp4` (not recorded yet)
 > - Length: about 60 seconds
@@ -153,6 +158,7 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 > - Shows: open a project with three clips on the timeline; press <kbd>Space</kbd> to play and let the timeline page forward; press <kbd>L</kbd> three times to reach 8x, then <kbd>K</kbd>; hold <kbd>K</kbd> and tap <kbd>L</kbd> to step one frame; turn on **Loop playback**; point at the **Dropped** readout in the status strip.
 
 ## In this page
+- [Batch 40: Command palette and custom shortcuts](#batch-40-command-palette-and-custom-shortcuts)
 - [Batch 39: Copy, paste and duplicate](#batch-39-copy-paste-and-duplicate)
 - [Batch 38: Remove silence](#batch-38-remove-silence)
 - [Batch 37: Audio editing](#batch-37-audio-editing)
@@ -192,6 +198,19 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 - [Batch 03: Projects, autosave and recovery](#batch-03-projects-autosave-and-recovery)
 - [Batch 02: Undo, redo and frame-exact time](#batch-02-undo-redo-and-frame-exact-time)
 - [Batch 01: The workspace](#batch-01-the-workspace)
+
+## Batch 40: Command palette and custom shortcuts
+- The command palette: press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> and type part of a name or a related word, for example `compact` for **Close all gaps**. Each row shows its category and its key; <kbd>Enter</kbd> runs the command in the panel you were working in, and the commands you ran last come first. Grey rows can't run right now. See [Run a command from the palette](command-palette-and-custom-shortcuts.md#run-a-command-from-the-palette).
+- <kbd>?</kbd> (<kbd>Shift</kbd>+<kbd>/</kbd>) opens the **Keyboard shortcuts** sheet: every key by category, with where it works. See [See every shortcut](command-palette-and-custom-shortcuts.md#see-every-shortcut).
+- **Settings** (the gear in the app bar) now opens, with a **Shortcuts** tab: search, click a key and press a new one, add keys with **+**, remove them with **x**, reset one command or all of them. A key that two commands share where both work turns red on both rows, with the other command named. Your keys show at once in tooltips, menus, the palette and the sheet, and stay in this browser for all your projects. See [Change a shortcut](command-palette-and-custom-shortcuts.md#change-a-shortcut) and [Fix a shortcut conflict](command-palette-and-custom-shortcuts.md#fix-a-shortcut-conflict).
+- **Export…** and **Import…** save your keys as a keymap file and bring them into another browser. See [Share your shortcuts with a keymap file](command-palette-and-custom-shortcuts.md#share-your-shortcuts-with-a-keymap-file).
+- Menus work with the keyboard: <kbd>↑</kbd> and <kbd>↓</kbd> move between rows, <kbd>←</kbd> and <kbd>→</kbd> between the choices of a row, <kbd>Enter</kbd> runs, <kbd>Esc</kbd> closes. So do the right-click menus, the preview's **Zoom**, **Preview quality** and **Overlays** menus, the font picker and the **Paste attributes** checklist. See [Use menus with the keyboard](command-palette-and-custom-shortcuts.md#use-menus-with-the-keyboard).
+- The clip menu has **Reveal in media panel** (shows the clip's media in the **Media** tab) and **Match project size** with **Fit** and **Fill**. See [Use the clip and gap menus](splitting-and-deleting.md#use-the-clip-and-gap-menus).
+- Right-click a cue row in the **Captions** tab for the new cue menu: **Edit text**, **Cut**, **Copy**, **Paste at playhead**, **Split at playhead**, **Merge with previous cue**, **Delete**, **Add cue at playhead** and **Caption style**. See [Use the cue menu](captions.md#use-the-cue-menu).
+- <kbd>Alt</kbd>+<kbd>S</kbd> turns **Audio scrub** on or off. See [Hear cuts while you scrub](audio-editing.md#hear-cuts-while-you-scrub).
+- <kbd>Ctrl</kbd>+<kbd>S</kbd> now saves also while you type in a field or a dialog is open, so the browser's own Save dialog no longer opens. See [Save now](projects-and-saving.md#save-now).
+- The tools in the timeline toolbar are now named **Select tool**, **Razor tool**, **Hand tool**, **Slip tool**, **Slide tool** and **Rate stretch tool** in their tooltips, and **Freeze frame** and **Punch zoom** there read **Freeze frame at playhead** and **Punch zoom at playhead**, as in the palette. After a wheel zoom, the preview's **Zoom** menu no longer lists the free level: the button shows it.
+- New page: [Command palette and custom shortcuts](command-palette-and-custom-shortcuts.md). New shortcuts section: [Command palette, shortcut sheet and settings](keyboard-shortcuts.md#command-palette-shortcut-sheet-and-settings). New troubleshooting entries, from [A shortcut runs another command or does nothing](troubleshooting.md#a-shortcut-runs-another-command-or-does-nothing) to [Importing a keymap says Not a keymap file](troubleshooting.md#importing-a-keymap-says-not-a-keymap-file).
 
 ## Batch 39: Copy, paste and duplicate
 - Copy, cut and paste clips: <kbd>Ctrl</kbd>+<kbd>C</kbd> copies the selected clips with their linked sound and groups, <kbd>Ctrl</kbd>+<kbd>X</kbd> cuts them and leaves a gap, and <kbd>Ctrl</kbd>+<kbd>V</kbd> pastes them at the playhead on the targeted tracks, keeping their spacing. The pasted clips are selected and the playhead jumps to their end, so the next paste goes right after them. See [Paste clips at the playhead](copy-and-paste.md#paste-clips-at-the-playhead) and [Choose the tracks pasted clips go to](copy-and-paste.md#choose-the-tracks-pasted-clips-go-to).
@@ -607,4 +626,4 @@ See [The workspace](workspace.md) and [Getting started](getting-started.md).
 - [Adding media to the timeline](adding-media-to-the-timeline.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 39, 2026-10-18</sub>
+<sub>Last updated: Batch 40, 2026-10-18</sub>

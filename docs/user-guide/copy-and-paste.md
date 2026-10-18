@@ -169,7 +169,7 @@ Paste attributes gives the selected clips chosen settings of a copied clip, such
 1. Select the clip with the look you want and press <kbd>Ctrl</kbd>+<kbd>C</kbd>.
 2. Select the clips to change, for example with a click and <kbd>Shift</kbd>+clicks.
 3. Press <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>V</kbd> while the Timeline or the Preview panel is active, or right-click one of the clips and choose **Paste attributes...**.
-4. In the **Paste attributes** checklist, uncheck what should stay as it is.
+4. In the **Paste attributes** checklist, uncheck what should stay as it is. With the keyboard, press <kbd>↓</kbd> or <kbd>↑</kbd> to move between the rows and buttons, and <kbd>Space</kbd> to check or uncheck a row.
 5. Click **Paste**, or press <kbd>Enter</kbd>.
 
 The checklist opens where you right-clicked, or over the middle of the active panel. It reads **Onto 1 clip** or **Onto N clips** and lists only the groups the copied clips can give and at least one selected clip can take:
@@ -284,4 +284,4 @@ See [Undo and redo changes](projects-and-saving.md#undo-and-redo-changes).
 - [Keyboard shortcuts](keyboard-shortcuts.md#clipboard-and-duplicate)
 - [Troubleshooting](troubleshooting.md#copy-paste-and-duplicate)
 
-<sub>Last updated: Batch 39, 2026-10-18</sub>
+<sub>Last updated: Batch 40, 2026-10-18</sub>

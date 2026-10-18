@@ -264,7 +264,6 @@ See [Undo and redo changes](projects-and-saving.md#undo-and-redo-changes).
 These parts are available in a later version:
 
 - Settings for the default model and language and the list of downloaded models outside the **Transcribe captions** dialog.
-- Starting a transcription from the command palette.
 - Editing cues in the review, and a style for a single cue.
 
 ## Related pages
@@ -276,4 +275,4 @@ These parts are available in a later version:
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 37, 2026-10-17</sub>
+<sub>Last updated: Batch 40, 2026-10-18</sub>
