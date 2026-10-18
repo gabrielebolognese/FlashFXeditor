@@ -5,7 +5,7 @@ When a project is open, the editor shows one fixed layout: a slim app bar at the
 > **Video placeholder: Tour of the workspace**
 > - File: `videos/workspace/workspace-tour.mp4` (not recorded yet)
 > - Length: about 90 seconds
-> - Shows: with a project open at 1920×1080, point at the app bar from left to right (project name, save dot, **Undo**, **Redo**, the badge **1080×1920 · 30 fps**, **Export**, **Settings**); click the **Media**, **Presets** and **Captions** tabs, then back to **Media**; point at the **Edit Properties** panel showing the **Project** section; point at the **Preview** panel, the controls in its header (**Zoom**, **Fit the frame in the panel**, **Preview quality**, **Overlays**, **Snap**, **Smart guides**, **Fullscreen**, **Export frame**), the transport bar under the picture and the audio meter along its right edge; press <kbd>F</kbd>: the preview fills the window; press <kbd>Esc</kbd>; point at the timeline toolbar groups from left to right, at the timecode field at the right end and at the scrollbars under and beside the tracks; hover **Split at playhead** until its tooltip shows "Ctrl+K"; drag the splitter left of the Preview to the right until the **More tools** button (…) appears; click it to show the hidden groups; press <kbd>Escape</kbd>.
+> - Shows: with a project open at 1920×1080, point at the app bar from left to right (project name, save dot, **Undo**, **Redo**, the badge **1080×1920 · 30 fps**, **Export**, **Settings**); click the **Media**, **Presets** and **Captions** tabs, then back to **Media**; point at the **Edit Properties** panel showing the **Project** section; point at the **Preview** panel, the controls in its header (**Zoom**, **Fit the frame in the panel**, **Preview quality**, **Overlays**, **Snap**, **Smart guides**, **Fullscreen**, **Export frame**), the transport bar under the picture and the audio meter along its right edge; press <kbd>F</kbd>: the preview fills the window; press <kbd>Esc</kbd>; point at the timeline toolbar groups from left to right, at the timecode field at the right end and at the scrollbars under and beside the tracks; hover **Split at playhead** until its tooltip shows "Ctrl+K"; drag the splitter left of the Preview to the right until the **More tools** button (…) appears; click it to show the hidden groups; press <kbd>Escape</kbd>; click **Settings** (the gear) at the right end of the app bar: the **Settings** dialog opens on its **Shortcuts** tab; click **Done**; press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>: the command palette opens; press <kbd>Esc</kbd>.
 
 ## In this page
 - [The layout at a glance](#the-layout-at-a-glance)
@@ -50,7 +50,7 @@ The app bar is the strip above the panels. From left to right:
 | **Undo** and **Redo** | Undo or redo the last change. The tooltip names the step, for example **Undo Rename project**. Dimmed when there is nothing to undo or redo. See [Undo and redo changes](projects-and-saving.md#undo-and-redo-changes). |
 | Project badge | The resolution and frame rate of the project, for example **1080×1920 · 30 fps**. It follows changes made in the **Project** section. |
 | **Export** | Available in a later version. |
-| **Settings** (gear) | Available in a later version. |
+| **Settings** (gear) | Opens the **Settings** dialog. Its **Shortcuts** tab lets you change the keyboard shortcuts. See [Change a shortcut](command-palette-and-custom-shortcuts.md#change-a-shortcut). Other settings are available in a later version. |
 
 When the editor cannot write to the project folder, a read-only banner appears under the app bar. See [Work in read-only mode](projects-and-saving.md#work-in-read-only-mode).
 
@@ -131,9 +131,9 @@ The toolbar is one row of button groups, from left to right:
 
 | Group | Buttons | What works now |
 | --- | --- | --- |
-| Tools | **Select**, **Razor**, **Hand**, **Slip**, **Slide**, **Rate stretch** | All work: **Select** (<kbd>V</kbd>), **Razor** (<kbd>C</kbd>), **Hand** (<kbd>H</kbd>), **Slip** (<kbd>Y</kbd>), **Slide** (<kbd>U</kbd>) and **Rate stretch** (<kbd>R</kbd>). The active tool is gold. See [Choose a tool](advanced-trimming.md#choose-a-tool) and [Pan the view](timeline.md#pan-the-view). |
-| Toggles | **Snap**, **Linked selection**, **Ripple mode**, **Show clip keyframes**, **Audio scrub** | Each is gold while it is on. **Snap** has the key <kbd>S</kbd> and **Linked selection** <kbd>Shift</kbd>+<kbd>S</kbd>. See [Snap clips into place](timeline.md#snap-clips-into-place), [Turn Linked selection off](links-and-groups.md#turn-linked-selection-off), [Turn Ripple mode on or off](trimming.md#turn-ripple-mode-on-or-off), [Show keyframes on the timeline](keyframes.md#show-keyframes-on-the-timeline) and [Hear cuts while you scrub](audio-editing.md#hear-cuts-while-you-scrub). |
-| Edit | **Split at playhead**, **Delete**, **Ripple delete**, **Close gap**, **Close all gaps (compact)**, **Add marker**, **Freeze frame**, **Punch zoom** | All work: **Split at playhead** (<kbd>Ctrl</kbd>+<kbd>K</kbd>), **Delete** (<kbd>Delete</kbd>), **Ripple delete** (<kbd>Shift</kbd>+<kbd>Delete</kbd>), **Close gap** (<kbd>G</kbd>), **Close all gaps (compact)** (<kbd>Shift</kbd>+<kbd>G</kbd>), **Add marker** (<kbd>M</kbd>), **Freeze frame** (<kbd>Shift</kbd>+<kbd>F</kbd>) and **Punch zoom** (<kbd>Shift</kbd>+<kbd>Z</kbd>). See [Splitting, deleting and closing gaps](splitting-and-deleting.md), [Add markers](markers-and-in-out-points.md#add-markers) and [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md). |
+| Tools | **Select tool**, **Razor tool**, **Hand tool**, **Slip tool**, **Slide tool**, **Rate stretch tool** | All work: **Select** (<kbd>V</kbd>), **Razor** (<kbd>C</kbd>), **Hand** (<kbd>H</kbd>), **Slip** (<kbd>Y</kbd>), **Slide** (<kbd>U</kbd>) and **Rate stretch** (<kbd>R</kbd>). The active tool is gold. See [Choose a tool](advanced-trimming.md#choose-a-tool) and [Pan the view](timeline.md#pan-the-view). |
+| Toggles | **Snap**, **Linked selection**, **Ripple mode**, **Show clip keyframes**, **Audio scrub** | Each is gold while it is on. **Snap** has the key <kbd>S</kbd>, **Linked selection** <kbd>Shift</kbd>+<kbd>S</kbd> and **Audio scrub** <kbd>Alt</kbd>+<kbd>S</kbd>. See [Snap clips into place](timeline.md#snap-clips-into-place), [Turn Linked selection off](links-and-groups.md#turn-linked-selection-off), [Turn Ripple mode on or off](trimming.md#turn-ripple-mode-on-or-off), [Show keyframes on the timeline](keyframes.md#show-keyframes-on-the-timeline) and [Hear cuts while you scrub](audio-editing.md#hear-cuts-while-you-scrub). |
+| Edit | **Split at playhead**, **Delete**, **Ripple delete**, **Close gap**, **Close all gaps (compact)**, **Add marker**, **Freeze frame at playhead**, **Punch zoom at playhead** | All work: **Split at playhead** (<kbd>Ctrl</kbd>+<kbd>K</kbd>), **Delete** (<kbd>Delete</kbd>), **Ripple delete** (<kbd>Shift</kbd>+<kbd>Delete</kbd>), **Close gap** (<kbd>G</kbd>), **Close all gaps (compact)** (<kbd>Shift</kbd>+<kbd>G</kbd>), **Add marker** (<kbd>M</kbd>), **Freeze frame at playhead** (<kbd>Shift</kbd>+<kbd>F</kbd>) and **Punch zoom at playhead** (<kbd>Shift</kbd>+<kbd>Z</kbd>). See [Splitting, deleting and closing gaps](splitting-and-deleting.md), [Add markers](markers-and-in-out-points.md#add-markers) and [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md). |
 | Add | **Title**, **Subtitle**, **Add caption track**, **Add solid**, **Add image**, then up to 8 chips of your favorite text presets | **Title** (<kbd>T</kbd>, tooltip **Add title**) and **Subtitle** (<kbd>Shift</kbd>+<kbd>T</kbd>, tooltip **Add subtitle**) work: they add a text clip at the playhead and let you type it in the preview. See [Titles and text](titles-and-text.md). A preset chip adds a text in that preset's look the same way; see [Put favorite presets in the timeline toolbar](text-presets.md#put-favorite-presets-in-the-timeline-toolbar). **Add caption track** adds the **CC** caption track and opens the **Captions** tab; it is dimmed once the project has one. See [Add the caption track](captions.md#add-the-caption-track). **Add solid** (a square) adds a white rounded rectangle at the playhead, and **Add image** (a picture with a plus) opens the file picker and places the images you pick at the playhead. See [Shapes and images](shapes-and-images.md). |
 | Zoom | **Zoom out**, the zoom slider, **Zoom in**, **Zoom to fit**, **Zoom to selection**, **Center playhead**, **Track height** | All work. **Zoom to selection** (<kbd>Shift</kbd>+<kbd>\\</kbd>) fills the view with the selection, **Center playhead** (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>.</kbd>) scrolls the playhead to the middle of the view (see [Zoom in and out](timeline.md#zoom-in-and-out) and [Scroll the timeline](timeline.md#scroll-the-timeline)), and **Track height** changes the height of all tracks (see [Change track height](tracks.md#change-track-height)). |
 
@@ -141,7 +141,9 @@ At the right end, the playhead timecode field shows where the playhead is (you c
 
 Under the tracks and along their right side run the timeline's scrollbars. The bottom one also zooms: drag an end of its thumb. See [Use the scrollbars](timeline.md#use-the-scrollbars).
 
-Right-click a clip or a gap on the timeline for a menu with the most common edits for it. See [Use the clip and gap menus](splitting-and-deleting.md#use-the-clip-and-gap-menus). Right-click a track header for the track menu. See [Use the track menu](tracks.md#use-the-track-menu). Right-click the ruler for the ruler menu, with markers and the in and out points. See [Use the ruler menu](markers-and-in-out-points.md#use-the-ruler-menu). In the Media panel, right-click a card or a row for the media menu, which also makes and removes proxies and makes thumbnails again. See [Use the media menu](importing-media.md#use-the-media-menu). In the Preview panel, right-click a picture for the layer menu. See [Use the layer menu](arranging-layers-in-the-preview.md#use-the-layer-menu).
+Right-click a clip or a gap on the timeline for a menu with the most common edits for it. See [Use the clip and gap menus](splitting-and-deleting.md#use-the-clip-and-gap-menus). Right-click a track header for the track menu. See [Use the track menu](tracks.md#use-the-track-menu). Right-click the ruler for the ruler menu, with markers and the in and out points. See [Use the ruler menu](markers-and-in-out-points.md#use-the-ruler-menu). In the Media panel, right-click a card or a row for the media menu, which also makes and removes proxies and makes thumbnails again. See [Use the media menu](importing-media.md#use-the-media-menu). In the Preview panel, right-click a picture for the layer menu. See [Use the layer menu](arranging-layers-in-the-preview.md#use-the-layer-menu). Preset cards in the **Presets** tab and cue rows in the **Captions** tab have menus too. See [Text presets](text-presets.md) and [Use the cue menu](captions.md#use-the-cue-menu).
+
+Every menu works with the keyboard while it is open: <kbd>↑</kbd> and <kbd>↓</kbd> move between rows, <kbd>←</kbd> and <kbd>→</kbd> between the choices of a row, <kbd>Enter</kbd> runs, and <kbd>Esc</kbd> closes. See [Use menus with the keyboard](command-palette-and-custom-shortcuts.md#use-menus-with-the-keyboard).
 
 Buttons that are not available yet are dimmed. They still show their tooltip, but clicking them does nothing.
 
@@ -159,6 +161,11 @@ With the default layout, everything fits in a 1920 px wide window; in a 1600 px 
 
 Hold the pointer over a button for about half a second to see its tooltip. The tooltip shows the button's name and, if it has one, its keyboard shortcut, for example **Split at playhead** with <kbd>Ctrl</kbd>+<kbd>K</kbd>. Tooltips close when you click, press a key or scroll.
 
+Tooltips always show the key you use now: when you change a shortcut in **Settings** > **Shortcuts**, the tooltip shows the new key.
+
+- Press <kbd>?</kbd> to see every shortcut in the **Keyboard shortcuts** sheet. See [See every shortcut](command-palette-and-custom-shortcuts.md#see-every-shortcut).
+- Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> to find any command by name and run it. See [Run a command from the palette](command-palette-and-custom-shortcuts.md#run-a-command-from-the-palette).
+
 For the full list of shortcuts, see [Keyboard shortcuts](keyboard-shortcuts.md).
 
 ## Send shortcuts to the right panel
@@ -172,8 +179,8 @@ The editor sends your key presses to the panel you clicked last (or moved into w
 
 - **Shortcuts for the whole editor**, such as <kbd>Space</kbd> (play or pause), <kbd>Ctrl</kbd>+<kbd>Z</kbd> (undo), <kbd>Ctrl</kbd>+<kbd>S</kbd> (save) and <kbd>Ctrl</kbd>+<kbd>I</kbd> (import media), work whichever panel you clicked last.
 - **Panel shortcuts** work only after you click in their panel. When a panel shortcut and an editor-wide shortcut share a key, the panel shortcut wins in that panel.
-- **While you type in a text field**, shortcuts are off and the keys go to the field. <kbd>Ctrl</kbd>+<kbd>Z</kbd> inside a field undoes your typing in that field, not a change to the project.
-- **While a dialog is open**, shortcuts are off. <kbd>Escape</kbd> closes the dialog.
+- **While you type in a text field**, shortcuts are off and the keys go to the field. <kbd>Ctrl</kbd>+<kbd>Z</kbd> inside a field undoes your typing in that field, not a change to the project. Only <kbd>Ctrl</kbd>+<kbd>S</kbd> still saves.
+- **While a dialog or a menu is open**, shortcuts are off, except <kbd>Ctrl</kbd>+<kbd>S</kbd>. <kbd>Escape</kbd> closes the dialog or the menu.
 - Clicking the app bar does not select a panel: only the editor-wide shortcuts work then.
 
 Examples:
@@ -236,6 +243,7 @@ To jump to a time, type it into the timecode field of the timeline toolbar, or c
 - [Captions](captions.md)
 - [Proxies](proxies.md)
 - [Audio](audio.md)
+- [Command palette and custom shortcuts](command-palette-and-custom-shortcuts.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 39, 2026-10-18</sub>
+<sub>Last updated: Batch 40, 2026-10-18</sub>

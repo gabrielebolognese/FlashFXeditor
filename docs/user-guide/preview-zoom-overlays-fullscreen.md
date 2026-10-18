@@ -38,11 +38,13 @@ The Preview panel works like a monitor you can inspect up close. Zoom in to chec
 | **200%** | <kbd>Ctrl</kbd>+<kbd>2</kbd> | Each project pixel twice as wide and twice as high. |
 | **400%** | | Four times actual size. |
 
-- The current level is highlighted in gold in the menu. After a wheel zoom, the menu also lists that free level, for example **137%**, in its place between the others.
+- The current level is highlighted in gold in the menu. After a wheel zoom, the button shows that free level, for example **137%**; the menu keeps its six levels.
 - Choosing a level from the menu or with a shortcut keeps the point in the middle of the panel where it is. **Fit** always centers the whole frame again.
 - **Fit the frame in the panel** (the button right of **Zoom**) does the same as **Fit** and <kbd>Ctrl</kbd>+<kbd>0</kbd>.
 - <kbd>Ctrl</kbd>+<kbd>0</kbd>, <kbd>Ctrl</kbd>+<kbd>1</kbd> and <kbd>Ctrl</kbd>+<kbd>2</kbd> work only after you click the preview. In the other panels the browser gets them: <kbd>Ctrl</kbd>+<kbd>0</kbd> resets the browser's page zoom, and <kbd>Ctrl</kbd>+<kbd>1</kbd> and <kbd>Ctrl</kbd>+<kbd>2</kbd> switch to your first or second browser tab.
-- The **Zoom** button never takes the keyboard focus: <kbd>Space</kbd> and the other shortcuts work right after you choose a level.
+- While the menu is open, it has the keyboard: press <kbd>↓</kbd> or <kbd>↑</kbd> to move to a level and <kbd>Enter</kbd> to choose it, or <kbd>Esc</kbd> to close the menu. The **Preview quality** and **Overlays** menus work the same way. See [Use menus with the keyboard](command-palette-and-custom-shortcuts.md#use-menus-with-the-keyboard).
+- When the menu closes, the keyboard goes back where it was: <kbd>Space</kbd> and the other shortcuts work right after you choose a level.
+- Every level is also in the command palette, for example **Preview zoom 400%**, and so are the quality modes, safe zones, grids and guides of the other two menus. See [Run a command from the palette](command-palette-and-custom-shortcuts.md#run-a-command-from-the-palette).
 
 > **Note:** 100% counts the real pixels of your screen. With Windows display scaling above 100% (common on laptops), screen pixels are smaller than the pixels of the page layout, so the frame at 100% looks smaller than you might expect.
 
@@ -257,10 +259,11 @@ None of these are steps in the history: <kbd>Ctrl</kbd>+<kbd>Z</kbd> does not un
 - [Adding media to the timeline](adding-media-to-the-timeline.md)
 - [Timeline](timeline.md)
 - [Advanced trimming](advanced-trimming.md)
+- [Command palette and custom shortcuts](command-palette-and-custom-shortcuts.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Workspace](workspace.md)
 - [Projects and saving](projects-and-saving.md)
 - [Proxies](proxies.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 34, 2026-10-17</sub>
+<sub>Last updated: Batch 40, 2026-10-18</sub>

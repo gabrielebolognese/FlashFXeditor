@@ -286,9 +286,7 @@ See [Undo and redo changes](projects-and-saving.md#undo-and-redo-changes).
 These parts are available in a later version:
 
 - Choosing the default transition's length and kind (the dimmed **Transition** row of the **Project** section).
-- Copying and pasting clips with their fades and transitions.
 - Exporting your video with its transitions: only **Export frame** works.
-- Choosing the menu's fade lengths and transitions with the arrow keys.
 
 ## Related pages
 - [Editing audio](audio-editing.md)
@@ -304,4 +302,4 @@ These parts are available in a later version:
 - [Keyboard shortcuts](keyboard-shortcuts.md#fades-and-transitions)
 - [Troubleshooting](troubleshooting.md#fades-and-transitions)
 
-<sub>Last updated: Batch 39, 2026-10-18</sub>
+<sub>Last updated: Batch 40, 2026-10-18</sub>

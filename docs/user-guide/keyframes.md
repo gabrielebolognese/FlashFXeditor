@@ -309,7 +309,6 @@ See [Undo and redo changes](projects-and-saving.md#undo-and-redo-changes).
 
 These parts are available in a later version:
 
-- Choosing keyframe menu rows with the arrow keys.
 - Settings for the punch zoom (to cut in at once, without the 6-frame zoom) and for whether keyframes follow the video when you trim its start.
 
 ## Related pages
@@ -328,4 +327,4 @@ These parts are available in a later version:
 - [Keyboard shortcuts](keyboard-shortcuts.md#keyframes)
 - [Troubleshooting](troubleshooting.md#keyframes)
 
-<sub>Last updated: Batch 39, 2026-10-18</sub>
+<sub>Last updated: Batch 40, 2026-10-18</sub>

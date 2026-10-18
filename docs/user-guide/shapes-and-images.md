@@ -48,7 +48,7 @@ A new solid appears in the middle of the frame, selected, and **Edit Properties*
 - The sizes follow the shorter side of the frame, so a 1920×1080 project gets the same 648×324 shape, and a 720×1280 project a 432×216 one.
 - A solid has no media behind it: trim it to any length, split it and move it like any other clip. See [Trim a clip](trimming.md#trim-a-clip).
 - Adding a solid is one step in the history, named **Add solid**.
-- **Add solid** has no keyboard shortcut.
+- **Add solid** has no keyboard shortcut by default. Run it from the command palette (type `solid`), or give it a key in **Settings** > **Shortcuts**. See [Command palette and custom shortcuts](command-palette-and-custom-shortcuts.md).
 
 ## Choose the shape
 
@@ -234,7 +234,6 @@ See [Undo and redo changes](projects-and-saving.md#undo-and-redo-changes).
 
 These parts are available in a later version:
 
-- Adding solids and images from the command palette.
 - Exporting the video. **Export frame** already includes shapes and the current frame of each animation.
 
 ## Related pages
@@ -249,4 +248,4 @@ These parts are available in a later version:
 - [Titles and text](titles-and-text.md)
 - [Troubleshooting](troubleshooting.md#shapes-and-images)
 
-<sub>Last updated: Batch 36, 2026-10-17</sub>
+<sub>Last updated: Batch 40, 2026-10-18</sub>

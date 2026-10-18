@@ -74,7 +74,7 @@ When a save fails, your changes stay in the editor. The editor tries again after
 
 Press <kbd>Ctrl</kbd>+<kbd>S</kbd> or click the save dot. This always writes the project, even when nothing changed, and makes a backup in `history` each time.
 
-> **Note:** <kbd>Ctrl</kbd>+<kbd>S</kbd> does not reach the editor while you type in a text field or while a dialog is open; the browser may show its own "Save page" dialog instead. Cancel that dialog, click outside the field, and press <kbd>Ctrl</kbd>+<kbd>S</kbd> again.
+<kbd>Ctrl</kbd>+<kbd>S</kbd> works in every panel, also while you type in a text field and while a dialog or a menu is open; the browser's own "Save page" dialog doesn't open. What you are still typing in a field goes into the project when you press <kbd>Enter</kbd> or leave the field, and the next autosave writes it.
 
 ## Undo and redo changes
 
@@ -258,4 +258,4 @@ Choosing to keep the layout as it is when you change the resolution is available
 - [Titles and text](titles-and-text.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 39, 2026-10-18</sub>
+<sub>Last updated: Batch 40, 2026-10-18</sub>

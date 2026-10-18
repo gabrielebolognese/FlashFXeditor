@@ -284,9 +284,9 @@ With **Audio scrub** on, you hear short bits of sound while you drag the playhea
 >   2. Click **Audio scrub** (the waveform icon) in the timeline toolbar: it turns gold.
 >   3. Drag slowly in the ruler across the cut: short bits of voice follow the playhead, then the music takes over at the cut.
 >   4. Press <kbd>→</kbd> a few times: each step plays a short bit.
->   5. Click **Audio scrub** again and drag in the ruler: silence.
+>   5. Press <kbd>Alt</kbd>+<kbd>S</kbd>: **Audio scrub** is no longer gold. Drag in the ruler: silence.
 
-1. Click **Audio scrub** (a waveform icon) in the toggles of the timeline toolbar, after **Show clip keyframes**. It is gold while it is on.
+1. Click **Audio scrub** (a waveform icon) in the toggles of the timeline toolbar, after **Show clip keyframes**, or press <kbd>Alt</kbd>+<kbd>S</kbd> in any panel. It is gold while it is on.
 2. Click or drag in the ruler, or step frames with <kbd>←</kbd> and <kbd>→</kbd> (also with <kbd>Shift</kbd> for 5 frames or <kbd>Ctrl</kbd> for a second), or with <kbd>K</kbd>+<kbd>J</kbd> and <kbd>K</kbd>+<kbd>L</kbd>.
 
 - Each frame the playhead shows plays a 40-millisecond bit of the sound at that point. Holding an arrow key plays a bit at every step.
@@ -294,7 +294,7 @@ With **Audio scrub** on, you hear short bits of sound while you drag the playhea
 - Each bit rises and falls in 4 milliseconds and takes over smoothly from the one before, so there are no clicks, also when you scrub fast.
 - Other jumps of the playhead, such as <kbd>Home</kbd>, <kbd>End</kbd>, <kbd>↑</kbd>, <kbd>↓</kbd> or a typed timecode, stay silent. While the timeline plays, playback has its own sound and **Audio scrub** stays quiet.
 - Only sound the editor has already decoded plays. The first time you scrub over a clip whose sound is not loaded yet, the first bits can be silent while it loads.
-- **Audio scrub** is not a step in the history, and it has no keyboard shortcut. The project remembers it when you open it again.
+- **Audio scrub** is not a step in the history. Its key is <kbd>Alt</kbd>+<kbd>S</kbd> (<kbd>⌥</kbd>+<kbd>S</kbd> on a Mac); <kbd>Shift</kbd>+<kbd>S</kbd> is **Linked selection**. The project remembers it when you open it again.
 
 ## Know what edits do to the volume
 
@@ -338,7 +338,6 @@ See [Undo and redo changes](projects-and-saving.md#undo-and-redo-changes).
 These parts are available in a later version:
 
 - Settings for **Auto-duck**: how far it lowers the music (12 dB) and the length of its slopes (10 frames).
-- A keyboard shortcut for **Audio scrub**.
 - Exporting your video with its sound: only **Export frame** works.
 - Audio effects.
 
@@ -355,4 +354,4 @@ These parts are available in a later version:
 - [Keyboard shortcuts](keyboard-shortcuts.md#audio)
 - [Troubleshooting](troubleshooting.md#audio-editing)
 
-<sub>Last updated: Batch 39, 2026-10-18</sub>
+<sub>Last updated: Batch 40, 2026-10-18</sub>

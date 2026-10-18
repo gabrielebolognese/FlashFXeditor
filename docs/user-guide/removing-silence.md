@@ -172,7 +172,7 @@ Opening and closing the row, the stripes and the values you set are not steps in
 
 These parts are available in a later version:
 
-- A keyboard shortcut for **Remove silence**, and **Remove silence** in the command palette.
+- A default keyboard shortcut for **Remove silence**. You can give it a key yourself in **Settings** > **Shortcuts**; see [Change a shortcut](command-palette-and-custom-shortcuts.md#change-a-shortcut).
 - The **Remove silence** values in the app settings: set them in the row.
 - Exporting your video: only **Export frame** works.
 
@@ -187,4 +187,4 @@ These parts are available in a later version:
 - [Keyboard shortcuts](keyboard-shortcuts.md#remove-silence-row)
 - [Troubleshooting](troubleshooting.md#removing-silence)
 
-<sub>Last updated: Batch 38, 2026-10-17</sub>
+<sub>Last updated: Batch 40, 2026-10-18</sub>

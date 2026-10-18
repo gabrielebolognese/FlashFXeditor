@@ -1,6 +1,6 @@
 # Keyboard shortcuts
 
-This page lists every keyboard shortcut that works in the current version of Shorts Editor, grouped by area. Use it to play and navigate your edit without the mouse, and to learn which panel a shortcut needs.
+This page lists every keyboard shortcut that works in the current version of Shorts Editor, grouped by area, with its default keys. Use it to play and navigate your edit without the mouse, and to learn which panel a shortcut needs. To change the keys, see [Command palette and custom shortcuts](command-palette-and-custom-shortcuts.md).
 
 > **Video placeholder: Keyboard shortcuts in action**
 > - File: `videos/keyboard-shortcuts/overview.mp4` (not recorded yet)
@@ -41,9 +41,11 @@ This page lists every keyboard shortcut that works in the current version of Sho
 >   33. Click right on a cut between two clips on the timeline: red brackets mark it. Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd>: a cross dissolve block appears over the cut. Hold <kbd>Alt</kbd> and drag its right end: only that end moves. Click the block and press <kbd>Delete</kbd>: it is gone.
 >   34. Click **Audio scrub** in the timeline toolbar and press <kbd>→</kbd> a few times: each step plays a short bit of sound. Hold <kbd>Ctrl</kbd> and click the white line across an audio clip: a diamond appears on it. Press <kbd>Delete</kbd>: the diamond is gone and the clip stays.
 >   35. Click a video with sound and press <kbd>Ctrl</kbd>+<kbd>C</kbd>. Click in the ruler at an empty spot and press <kbd>Ctrl</kbd>+<kbd>V</kbd>: the video and its sound land at the playhead. Put the playhead in the middle of another clip and press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>V</kbd>: the clip splits and the copy goes in between. Click a title, press <kbd>Ctrl</kbd>+<kbd>C</kbd>, click another title and press <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>V</kbd>: the **Paste attributes** checklist opens; press <kbd>Enter</kbd>: the second title takes the look of the first.
+>   36. Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>, type `compact` and press <kbd>Enter</kbd>: every gap closes. Press <kbd>?</kbd>: the **Keyboard shortcuts** sheet lists every key; press <kbd>Esc</kbd>. Right-click a clip, press <kbd>↓</kbd> twice and <kbd>Enter</kbd>: the clip is copied. Press <kbd>Alt</kbd>+<kbd>S</kbd>: **Audio scrub** turns gold; press it again.
 
 ## In this page
 - [How shortcuts work](#how-shortcuts-work)
+- [Command palette, shortcut sheet and settings](#command-palette-shortcut-sheet-and-settings)
 - [Playback and navigation](#playback-and-navigation)
 - [Preview](#preview)
 - [Timeline](#timeline)
@@ -63,6 +65,7 @@ This page lists every keyboard shortcut that works in the current version of Sho
 - [Audio](#audio)
 - [Media panel](#media-panel)
 - [Project and history](#project-and-history)
+- [Menus and lists](#menus-and-lists)
 - [Text fields and dialogs](#text-fields-and-dialogs)
 - [Mouse and wheel](#mouse-and-wheel)
 - [Keys the browser keeps](#keys-the-browser-keeps)
@@ -76,15 +79,37 @@ This page lists every keyboard shortcut that works in the current version of Sho
 - **Panel** shortcuts work only while that panel is active.
 - When a panel uses the same key as an all-panels shortcut, the panel wins. When the panel's own action has nothing to act on, or belongs to a later feature, the all-panels shortcut works there. For example, in the Preview panel the arrow keys move the selected layers; with no layer selected there, <kbd>←</kbd> and <kbd>→</kbd> step frames as everywhere else.
 
-**Typing comes first.** Shortcuts are off while you type in a text field (a name, a timecode field, a number) or edit a text in the preview (there only <kbd>Ctrl</kbd>+<kbd>Enter</kbd> and <kbd>Esc</kbd> work; see [While you edit text](#while-you-edit-text)), while a dropdown list such as **Sort media by** or **Resolution** has the keyboard focus, and while a dialog or a menu is open. Press <kbd>Enter</kbd> or <kbd>Escape</kbd> to leave a text field. A dropdown list gives the keyboard back as soon as you pick a value with the mouse; after you pick one with the keyboard, click the preview picture or the timeline.
+**Typing comes first.** Shortcuts are off while you type in a text field (a name, a timecode field, a number) or edit a text in the preview (there only <kbd>Ctrl</kbd>+<kbd>Enter</kbd> and <kbd>Esc</kbd> work; see [While you edit text](#while-you-edit-text)), while a dropdown list such as **Sort media by** or **Resolution** has the keyboard focus, and while a dialog or a menu is open. Press <kbd>Enter</kbd> or <kbd>Escape</kbd> to leave a text field. A dropdown list gives the keyboard back as soon as you pick a value with the mouse; after you pick one with the keyboard, click the preview picture or the timeline. One key works everywhere, also while you type and in dialogs: <kbd>Ctrl</kbd>+<kbd>S</kbd> saves the project.
+
+**Menus take the keyboard.** While a menu is open, the arrow keys, <kbd>Enter</kbd> and <kbd>Space</kbd> work on its rows. When it closes, the keyboard goes back to the panel you were in. See [Menus and lists](#menus-and-lists).
+
+**Your keys.** The tables on this page show the default keys. If you changed keys in **Settings** > **Shortcuts**, yours apply instead, and the tooltips, menus, the command palette and the shortcut sheet (<kbd>?</kbd>) show yours. Many commands that have no key on this page, such as **Normalize**, **Ripple mode** or **Add solid**, can get one there. See [Change a shortcut](command-palette-and-custom-shortcuts.md#change-a-shortcut).
 
 **Icon buttons keep your shortcuts.** Clicking an icon button, such as the transport buttons, **Mute**, **Loop playback** or **Fit the frame in the panel**, choosing from the **Zoom**, **Preview quality** or **Overlays** menu of the preview, or dragging the **Master volume** knob, does not take the keyboard focus, so <kbd>Space</kbd> still plays right after.
 
-**Tooltips show shortcuts.** Hover over a button to see its name and shortcut. Tooltips write the arrow keys as Left, Right, Up and Down.
+**Tooltips show shortcuts.** Hover over a button to see its name and shortcut, the key you use now. Tooltips write the arrow keys as Left, Right, Up and Down.
 
 **macOS.** Where this page says <kbd>Ctrl</kbd>, press <kbd>⌘</kbd> (Command) on a Mac; <kbd>Shift</kbd> is <kbd>⇧</kbd>. On a Mac, tooltips show the symbols, for example ⌘⇧L. On a Mac keyboard without <kbd>Home</kbd> and <kbd>End</kbd> keys, press <kbd>Fn</kbd>+<kbd>←</kbd> and <kbd>Fn</kbd>+<kbd>→</kbd>.
 
 **Other keyboard layouts.** Symbol keys such as <kbd>=</kbd>, <kbd>-</kbd> and <kbd>\\</kbd> also work through the key in the same position as on a US keyboard, so they work on layouts where the symbol sits elsewhere.
+
+## Command palette, shortcut sheet and settings
+
+See [Command palette and custom shortcuts](command-palette-and-custom-shortcuts.md).
+
+| Action | Windows | macOS | Works in |
+| --- | --- | --- | --- |
+| Open the command palette, or close it | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>P</kbd> | All panels, the start screen |
+| Open the **Keyboard shortcuts** sheet | <kbd>?</kbd> or <kbd>Shift</kbd>+<kbd>/</kbd> | <kbd>?</kbd> or <kbd>⇧</kbd>+<kbd>/</kbd> | All panels, the start screen |
+| Next or previous row | <kbd>↓</kbd> or <kbd>↑</kbd> | <kbd>↓</kbd> or <kbd>↑</kbd> | Command palette |
+| 8 rows down or up | <kbd>Page Down</kbd> or <kbd>Page Up</kbd> | <kbd>Fn</kbd>+<kbd>↓</kbd> or <kbd>Fn</kbd>+<kbd>↑</kbd> | Command palette |
+| Run the highlighted command | <kbd>Enter</kbd> | <kbd>Return</kbd> | Command palette |
+| Close without running anything | <kbd>Esc</kbd> | <kbd>Esc</kbd> | Command palette, **Keyboard shortcuts** sheet, **Settings** |
+| Keep the old key instead of recording one | <kbd>Esc</kbd> | <kbd>Esc</kbd> | **Settings** > **Shortcuts**, while a chip reads **Press a key…** |
+
+- **Settings** (the gear in the app bar) has no key by default. You can give it one, as any other command, in **Settings** > **Shortcuts**.
+- The palette and the sheet don't open while you type in a field or while a dialog is open.
+- A command run from the palette acts as its key would in the panel you were working in.
 
 ## Playback and navigation
 
@@ -273,6 +298,8 @@ See [Copying, pasting and duplicating clips](copy-and-paste.md).
 | Paste attributes: open the checklist that gives the selected clips settings of the copied clip | <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>V</kbd> | <kbd>⌘</kbd>+<kbd>⌥</kbd>+<kbd>V</kbd> | Timeline, Preview |
 | Duplicate the selected clips, with their linked clips and groups, right after them (same as **Duplicate** in the quick actions and the clip menu) | <kbd>Ctrl</kbd>+<kbd>D</kbd> | <kbd>⌘</kbd>+<kbd>D</kbd> | Timeline |
 | Duplicate the selected pictures 20 pixels down and to the right, on the track above (same as **Duplicate** in the layer menu) | <kbd>Ctrl</kbd>+<kbd>D</kbd> | <kbd>⌘</kbd>+<kbd>D</kbd> | Preview |
+| Move between the rows and buttons | <kbd>↓</kbd> or <kbd>↑</kbd> | <kbd>↓</kbd> or <kbd>↑</kbd> | **Paste attributes** checklist |
+| Check or uncheck the row you moved to | <kbd>Space</kbd> | <kbd>Space</kbd> | **Paste attributes** checklist |
 | Paste the checked groups (same as **Paste**) | <kbd>Enter</kbd> | <kbd>Return</kbd> | **Paste attributes** checklist |
 | Close the checklist without pasting (same as **Cancel**) | <kbd>Esc</kbd> | <kbd>Esc</kbd> | **Paste attributes** checklist |
 
@@ -501,7 +528,7 @@ These keys work in a cue's text in the **Captions** tab of the Media panel. See 
 | Move a cue one frame (it stops at its neighbors) | <kbd>Alt</kbd>+<kbd>←</kbd> or <kbd>Alt</kbd>+<kbd>→</kbd> | <kbd>⌥</kbd>+<kbd>←</kbd> or <kbd>⌥</kbd>+<kbd>→</kbd> | Timeline |
 
 - While you type in a cue, the other shortcuts are off: <kbd>Space</kbd> types a space. Clicking anywhere else also saves the text.
-- The header buttons of the **Captions** tab and the **Caption style** section have no keys of their own: click them.
+- The header buttons of the **Captions** tab and the **Caption style** section have no keys of their own: click them. Right-click a cue row, away from its text, for the cue menu. See [Use the cue menu](captions.md#use-the-cue-menu).
 
 In the transcription dialogs (see [Transcription](transcription.md)):
 
@@ -539,12 +566,18 @@ See [Editing properties](editing-properties.md).
 - **Duplicate** in the quick actions does what <kbd>Ctrl</kbd>+<kbd>D</kbd> does in the Timeline panel. See [Clipboard and duplicate](#clipboard-and-duplicate).
 - Hold <kbd>↑</kbd> or <kbd>↓</kbd> to keep going. In the **Text**, **Animation**, **Transform**, **Crop**, **Opacity** and **Speed** sections, presses less than 0.3 seconds apart are one undo step.
 - In the **Duration** and **Stagger** fields of the **Animation** section, the arrow keys and label drags count in frames: <kbd>↑</kbd> adds 1 frame, <kbd>Shift</kbd>+<kbd>↑</kbd> 10 frames.
-- In the **Text** field of the **Text** section, <kbd>Enter</kbd> starts a new line. In the font picker, <kbd>Enter</kbd> in **Search fonts** picks the first font that matches, and <kbd>Esc</kbd> closes the picker.
+- In the **Text** field of the **Text** section, <kbd>Enter</kbd> starts a new line. In the font picker, <kbd>↓</kbd> and <kbd>↑</kbd> in **Search fonts** highlight a font in the list, <kbd>Enter</kbd> picks it (with none highlighted, the first font that matches), and <kbd>Esc</kbd> closes the picker.
 - Edit Properties has no other keys of its own. While it is active and no field has the keyboard, the all-panels shortcuts work there, for example <kbd>Space</kbd> to play.
 
 ## Audio
 
-**Mute**, **Remove silence**, **Normalize**, **Auto-duck**, **Detach audio**, the **Volume** stopwatch and the **Audio scrub** toggle have no keyboard shortcut: click them. With **Audio scrub** on, the frame-stepping keys (<kbd>←</kbd> and <kbd>→</kbd>, also with <kbd>Shift</kbd> or <kbd>Ctrl</kbd>, and <kbd>K</kbd>+<kbd>J</kbd> or <kbd>K</kbd>+<kbd>L</kbd>) play a short bit of sound at each step. See [Editing audio](audio-editing.md).
+See [Editing audio](audio-editing.md).
+
+| Action | Windows | macOS | Works in |
+| --- | --- | --- | --- |
+| Turn **Audio scrub** on or off | <kbd>Alt</kbd>+<kbd>S</kbd> | <kbd>⌥</kbd>+<kbd>S</kbd> | All panels |
+
+With **Audio scrub** on, the frame-stepping keys (<kbd>←</kbd> and <kbd>→</kbd>, also with <kbd>Shift</kbd> or <kbd>Ctrl</kbd>, and <kbd>K</kbd>+<kbd>J</kbd> or <kbd>K</kbd>+<kbd>L</kbd>) play a short bit of sound at each step. **Mute**, **Remove silence**, **Normalize**, **Auto-duck**, **Detach audio** and the **Volume** stopwatch have no key by default: click them, run them from the command palette, or give them a key in **Settings** > **Shortcuts**.
 
 ### Master volume knob
 
@@ -648,12 +681,26 @@ These shortcuts work in all panels.
 | --- | --- | --- | --- |
 | Undo | <kbd>Ctrl</kbd>+<kbd>Z</kbd> | <kbd>⌘</kbd>+<kbd>Z</kbd> | Same as **Undo** in the app bar. |
 | Redo | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd> or <kbd>Ctrl</kbd>+<kbd>Y</kbd> | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>Z</kbd> or <kbd>⌘</kbd>+<kbd>Y</kbd> | Same as **Redo** in the app bar. |
-| Save now | <kbd>Ctrl</kbd>+<kbd>S</kbd> | <kbd>⌘</kbd>+<kbd>S</kbd> | The project also saves automatically. |
+| Save now | <kbd>Ctrl</kbd>+<kbd>S</kbd> | <kbd>⌘</kbd>+<kbd>S</kbd> | Also while you type in a field or a dialog is open. The project also saves automatically. |
 | Open a project folder | <kbd>Ctrl</kbd>+<kbd>O</kbd> | <kbd>⌘</kbd>+<kbd>O</kbd> | Also on the start screen. |
 | Import media | <kbd>Ctrl</kbd>+<kbd>I</kbd> | <kbd>⌘</kbd>+<kbd>I</kbd> | While a project is open. |
 | New project | <kbd>Ctrl</kbd>+<kbd>N</kbd> | <kbd>⌘</kbd>+<kbd>N</kbd> | Taken by the browser in a normal tab; see [Keys the browser keeps](#keys-the-browser-keeps). |
 
 See [Projects and saving](projects-and-saving.md).
+
+## Menus and lists
+
+These keys work in every right-click menu (clips, gaps, track headers, the ruler, pictures in the preview, keyframes, media cards, preset cards and cue rows) and in the **Zoom**, **Preview quality** and **Overlays** menus of the preview, while the menu is open. See [Use menus with the keyboard](command-palette-and-custom-shortcuts.md#use-menus-with-the-keyboard).
+
+| Action | Windows | macOS |
+| --- | --- | --- |
+| Next or previous row (dimmed rows are skipped) | <kbd>↓</kbd> or <kbd>↑</kbd> | <kbd>↓</kbd> or <kbd>↑</kbd> |
+| Next or previous choice in a row, such as the **Fade in** lengths, **Match project size** or the **Label** colors | <kbd>→</kbd> or <kbd>←</kbd> | <kbd>→</kbd> or <kbd>←</kbd> |
+| First or last row | <kbd>Home</kbd> or <kbd>End</kbd> | <kbd>Fn</kbd>+<kbd>←</kbd> or <kbd>Fn</kbd>+<kbd>→</kbd> |
+| Run the row or choice you moved to | <kbd>Enter</kbd> or <kbd>Space</kbd> | <kbd>Return</kbd> or <kbd>Space</kbd> |
+| Close the menu | <kbd>Esc</kbd> | <kbd>Esc</kbd> |
+
+For the font picker and the **Paste attributes** checklist, see [Edit Properties](#edit-properties) and [Clipboard and duplicate](#clipboard-and-duplicate).
 
 ## Text fields and dialogs
 
@@ -738,15 +785,14 @@ Because of this, <kbd>Ctrl</kbd>+<kbd>N</kbd> opens a new browser window instead
 
 > **Important:** <kbd>Ctrl</kbd>+<kbd>W</kbd> closes the editor's tab. Your project saves automatically, 1 second after your last change by default (the **Autosave** setting in the **Project** section of **Edit Properties**). Before you close the tab, hover over the save dot next to the project name in the app bar and check that it reads "All changes saved".
 
-While you type in a text field, or while a dialog is open, the editor leaves <kbd>Ctrl</kbd>+<kbd>S</kbd> to the browser, which then opens its own "Save as" dialog. Cancel it, leave the field with <kbd>Enter</kbd> or <kbd>Escape</kbd>, and press <kbd>Ctrl</kbd>+<kbd>S</kbd> again.
+The browser acts on <kbd>Ctrl</kbd>+<kbd>N</kbd>, <kbd>Ctrl</kbd>+<kbd>T</kbd> and <kbd>Ctrl</kbd>+<kbd>W</kbd> before the editor sees them, also while you record a new key in **Settings** > **Shortcuts**, so you can't give them to a command.
 
 ## Shortcuts for features not available yet
 
-Some buttons already show a shortcut in their tooltip although the button is disabled, for example **Export** in the app bar. These shortcuts start working when their feature is available in a later version; until then the keys do nothing. In the current version this also applies to:
-
-- <kbd>Ctrl</kbd>+<kbd>E</kbd> (export) and <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> (command palette).
+**Export** in the app bar is disabled but already shows its shortcut, <kbd>Ctrl</kbd>+<kbd>E</kbd>, in its tooltip. The key starts working when export is available in a later version; until then it does nothing.
 
 ## Related pages
+- [Command palette and custom shortcuts](command-palette-and-custom-shortcuts.md)
 - [Copying, pasting and duplicating clips](copy-and-paste.md)
 - [Editing audio](audio-editing.md)
 - [Removing silence](removing-silence.md)
@@ -776,4 +822,4 @@ Some buttons already show a shortcut in their tooltip although the button is dis
 - [Projects and saving](projects-and-saving.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 39, 2026-10-18</sub>
+<sub>Last updated: Batch 40, 2026-10-18</sub>
