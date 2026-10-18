@@ -34,6 +34,8 @@ export interface TextMeasurer {
   measure(text: string, font: string, size: number, letterSpacing: number): RunMetrics;
   /** The font's ascent and descent (its em box around the baseline) at `size` px. */
   fontMetrics(font: string, size: number): { ascent: number; descent: number };
+  /** Forgets what it cached (a font loaded: the same font string may measure differently now). */
+  reset?(): void;
 }
 
 export interface Rect {

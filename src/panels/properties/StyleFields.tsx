@@ -16,19 +16,21 @@ import {
 import { useMemo } from "react";
 import { rememberColor } from "../../app/propertiesController.js";
 import { appSettings, fontLibrary } from "../../app/services.js";
-import { systemFonts } from "../../app/fontController.js";
+import { systemFaces, systemFonts } from "../../app/fontController.js";
+import { fontCatalog } from "../../app/catalogController.js";
+import { userFonts } from "../../app/userFontsController.js";
 import { formatHexColor, parseHexColor } from "../../core/document/color.js";
 import type { RGBA, TextAlign, TextAnchor, TextCase, TextStyle } from "../../core/document/types.js";
 import { useStoreSelector } from "../../core/store/useStoreSelector.js";
 import type { AppSettings } from "../../project/appSettings.js";
-import { bundledFont } from "../../render/text/bundledFonts.js";
+import { coreFont } from "../../render/text/bundledFonts.js";
 import { fillColor, isGradient } from "../../text/style.js";
 import { ColorField } from "../../ui/ColorField.js";
 import { IconButton } from "../../ui/IconButton.js";
 import { NumberField, type NumberBinding } from "../../ui/NumberField.js";
 import { Select, type SelectOption } from "../../ui/Select.js";
 import { Toggle } from "../../ui/Toggle.js";
-import { FontField } from "./FontPicker.js";
+import { FontField } from "./FontBrowser.js";
 import { Row } from "./Section.js";
 import styles from "./Section.module.css";
 import { FONT_SIZE, LETTER_SPACING, LINE_HEIGHT, PADDING_X, PADDING_Y, RADIUS, SHADOW_BLUR, SHADOW_X, SHADOW_Y, STROKE_WIDTH, type TextNumberProp } from "./textProps.js";
@@ -75,11 +77,26 @@ const selectRecent = (settings: AppSettings) => settings.recentColors;
 
 const WEIGHT_NAMES: Record<number, string> = { 100: "Thin", 200: "ExtraLight", 300: "Light", 400: "Regular", 500: "Medium", 600: "SemiBold", 700: "Bold", 800: "ExtraBold", 900: "Black" };
 
-/** The weights a family offers: a bundled font's axis in steps of 100, an installed family's faces, else 100..900. */
+/**
+ * The weights a family offers: a variable font's axis in steps of 100 (core and library families), a
+ * static library family's, My fonts' faces, an installed family's faces, else 100..900.
+ */
+export function familyWeights(family: string | null): number[] {
+  const all = [100, 200, 300, 400, 500, 600, 700, 800, 900];
+  if (!family) return all;
+  const core = coreFont(family);
+  if (core) return all.filter((w) => w >= core.weights[0] && w <= core.weights[1]);
+  const library = fontLibrary.libraryFamily(family);
+  if (library) return library.variable ? all.filter((w) => w >= (library.variable?.wght[0] ?? 0) && w <= (library.variable?.wght[1] ?? 1000)) : [...library.weights];
+  const user = fontLibrary.userFamily(family);
+  if (user) return [...user.weights];
+  const installed = systemFaces(family);
+  if (installed.length > 0) return [...new Set(installed.map((face) => face.weight))].sort((a, b) => a - b);
+  return all;
+}
+
 function weightOptions(family: string | null, current: number | null): SelectOption<string>[] {
-  let weights: number[] = [100, 200, 300, 400, 500, 600, 700, 800, 900];
-  const bundled = family ? bundledFont(family) : null;
-  if (bundled) weights = weights.filter((w) => w >= bundled.weights[0] && w <= bundled.weights[1]);
+  let weights = familyWeights(family);
   if (current !== null && !weights.includes(current)) weights = [...weights, current].sort((a, b) => a - b);
   return weights.map((w) => ({ value: String(w), label: `${WEIGHT_NAMES[w] ?? "Weight"} ${w}` }));
 }
@@ -160,8 +177,10 @@ export function StyleFields({ target, anchor }: { target: StyleTarget; anchor: b
   const verticalAnchor = target.useShared(getAnchor);
   const textCase = target.useShared(getCase);
   const recent = useStoreSelector(appSettings, selectRecent);
-  // The weight list follows the installed fonts once they are listed.
+  // The weight list follows the installed fonts once they are listed, the catalog once read and My fonts.
   useStoreSelector(systemFonts, (state) => state.status);
+  useStoreSelector(fontCatalog, (state) => state.status);
+  useStoreSelector(userFonts, (state) => state.fonts);
 
   const edit = (label: string, patch: (style: TextStyle) => Partial<TextStyle>) => target.edit(label, patch);
   const color = (label: string, set: (style: TextStyle, color: RGBA) => Partial<TextStyle>) => ({
@@ -182,13 +201,7 @@ export function StyleFields({ target, anchor }: { target: StyleTarget; anchor: b
   return (
     <>
       <Row label="Font">
-        <FontField
-          value={family}
-          onPick={(next) => {
-            if (fontLibrary.source(next) !== "bundled") void fontLibrary.load({ fontFamily: next, fontWeight: weightValue ?? 400, italic: italic === true }, "");
-            edit("Change font", () => ({ fontFamily: next }));
-          }}
-        />
+        <FontField value={family} target={target} />
       </Row>
       <Row label="Weight">
         <div className={styles.withAction}>

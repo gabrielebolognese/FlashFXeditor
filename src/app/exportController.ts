@@ -72,7 +72,8 @@ import { formatSubtitles } from "../text/subtitles.js";
 import { dismissToast, showToast, updateToast, type ToastLive } from "../ui/toasts.js";
 import { decodedAudio } from "./audioController.js";
 import { closeExportTab, exportState, exportTab, openExportTab } from "./exportState.js";
-import { projectFontFaces } from "./fontController.js";
+import { appBaseUrl } from "../render/text/bundledFonts.js";
+import { exportFontFaces } from "./fontController.js";
 import { offlineReason, OFFLINE_LABEL, sourceFile } from "./mediaOffline.js";
 import { renderer, renderFramePng, setTextureShare, textureBudget } from "./previewController.js";
 import { currentSession, refuseReadOnly } from "./projectController.js";
@@ -203,7 +204,7 @@ function syncProgressToast(): void {
 }
 
 /** What the worker needs besides the document, gathered on the main thread. */
-async function gatherInputs(dir: FsDir, project: Project, range: FrameRange, signal: AbortSignal): Promise<Pick<ExportJobParams, "media" | "svg" | "fonts" | "offline" | "audio">> {
+async function gatherInputs(dir: FsDir, project: Project, range: FrameRange, signal: AbortSignal): Promise<Pick<ExportJobParams, "media" | "svg" | "fonts" | "fontBaseUrl" | "offline" | "audio">> {
   const media: Record<MediaId, ExportMediaFile> = {};
   const svg: Record<MediaId, ImageBitmap> = {};
   const offline: Record<MediaId, string> = {};
@@ -222,7 +223,8 @@ async function gatherInputs(dir: FsDir, project: Project, range: FrameRange, sig
       if (isSvgImage(item)) svg[mediaId] = await svgPoster(file, SVG_MAX_SIZE);
     }
     signal.throwIfAborted();
-    return { media, svg, offline, fonts: projectFontFaces(), audio: await mixdown(project, range, signal) };
+    const fonts = await exportFontFaces(exportNeeds(project, range).texts.map((text) => text.style));
+    return { media, svg, offline, fonts, fontBaseUrl: appBaseUrl(), audio: await mixdown(project, range, signal) };
   } catch (error) {
     for (const bitmap of Object.values(svg)) bitmap.close();
     throw error;
@@ -265,7 +267,7 @@ async function runJob(job: QueueJob<ExportJobSpec>, signal: AbortSignal, fail: (
       output = spec.picked ? await ExportFile.toPicked(spec.picked.file, fail) : await ExportFile.create(dir, crypto.randomUUID(), fail, ext);
       // Read right before the post (no await in between): a Pause from now on is sent after the job.
       const params: ExportJobParams = { project: spec.project, range: spec.range, format: spec.format, slate: slateLook(themeBridge.theme), textureBudget: Math.round(textureBudget() * (1 - MAIN_TEXTURE_SHARE)), renderer: renderer.backend ?? "webgpu", ...inputs, paused: rt.pause.post() };
-      const transfer: Transferable[] = [...Object.values(inputs.svg), ...(inputs.audio?.channels ?? []), ...inputs.fonts.map((face) => face.data)];
+      const transfer: Transferable[] = [...Object.values(inputs.svg), ...(inputs.audio?.channels ?? []), ...inputs.fonts.flatMap((face) => (face.data ? [face.data] : []))];
       const result: ExportJobResult = await workerPool.request("exportVideo", params, { priority: "user", signal, transfer, onProgress });
       const name = await output.finish(spec.fileName);
       const bytes = output.bytes;

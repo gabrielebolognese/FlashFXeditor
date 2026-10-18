@@ -3,7 +3,7 @@
 import type { Frame, MediaId, Project } from "../core/document/types.js";
 import type { SlateLook } from "../render/compositor/Compositor.js";
 import type { RendererBackend } from "../render/gpu/backend.js";
-import type { ProjectFace } from "../render/text/FontLibrary.js";
+import type { FontDescriptor } from "../render/text/FontLibrary.js";
 import type { PipelineProgress } from "./pipeline.js";
 import type { AudioFileFormat } from "./audioExport.js";
 import type { ExportFormat } from "./presets.js";
@@ -23,8 +23,13 @@ export interface ExportJobParams {
   media: Record<MediaId, ExportMediaFile>;
   /** SVG images rasterized on the main thread (workers cannot draw SVG) at SVG_MAX_SIZE (transferred). */
   svg: Record<MediaId, ImageBitmap>;
-  /** The project's font faces (`fonts/`; bundled fonts are added by the worker itself). */
-  fonts: ProjectFace[];
+  /**
+   * The faces the worker adds before it draws (spec §20.1 Workers): the project's copies (`fonts/`),
+   * library files by URL and My fonts files the copies do not cover yet; the core fonts are added by
+   * the worker itself, from the library folder under `fontBaseUrl` (the app's base URL).
+   */
+  fonts: FontDescriptor[];
+  fontBaseUrl: string;
   /** Media drawn as offline slates: their slate's second line (spec §6.19). */
   offline: Record<MediaId, string>;
   slate: SlateLook;

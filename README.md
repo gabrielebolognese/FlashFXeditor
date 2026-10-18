@@ -44,6 +44,7 @@ The dev server prints its address (http://localhost:5173 by default). Open it in
 | `npm test` | Vitest: the unit tests, then the timing tests one file at a time |
 | `npm run check` | typecheck + lint + test + build |
 | `npm run docs:shortcuts` | Rewrites the shortcuts section of this README from the keymap |
+| `node scripts/fonts/fetch-library.mjs` | Downloads the font library again (the only step that needs the network; its output is committed, see below) |
 
 ## Production build and hosting
 
@@ -64,11 +65,14 @@ npm ci && npm run build && npm run preview
   `index.html` with `no-cache` so a new release is picked up.
 - **Path:** the build expects the site root of an origin. For a sub-path, build with
   `npx vite build --base=/sub/path/`.
-- **Network:** everything the editor needs ships in `dist/`. Only the optional Whisper transcription
-  models are downloaded from huggingface.co on first use, then kept in the browser's cache. A
+- **Network:** everything the editor needs ships in `dist/`, the font library included
+  (`fonts/library/`: 330 families, about 32 MB, each file loaded only when it is shown or used). Only
+  the optional Whisper transcription models are downloaded from huggingface.co on first use, then kept
+  in the browser's cache. A
   Content-Security-Policy, if you add one, must allow `wasm-unsafe-eval` and those downloads.
-- **Licenses:** `dist/licenses.txt` lists every bundled package and font with its license text
-  (Settings > About > View licenses).
+- **Licenses:** `dist/licenses.txt` lists every bundled package and font with its license
+  (Settings > About > View licenses); each library font's full license text is in
+  `fonts/library/LICENSES/`, and Settings > About > Font licenses lists them with their designers.
 
 ## Project folder layout
 
@@ -80,7 +84,8 @@ A project is a folder you pick (spec §9.7, §15). The editor writes:
   project.json.tmp      only while a save is in progress (crash recovery)
   session.json          selection, playhead, zoom, panel sizes (not undoable)
   media/                imported files in copy mode
-  fonts/                fonts the project uses (system fonts copied when used)
+  fonts/                every font the project uses (library, My fonts, system), copied when used;
+                        fonts.json records each file's family, weight, style and source
   cache/                disposable: index/ proxies/ thumbs/ peaks/ text/ export-temp/
   history/              the last 20 saves, project-YYYYMMDD-HHMMSS.json
   exports/              default export destination
@@ -107,8 +112,19 @@ src/
   panels/     React panels: media, properties, presets, captions, export, settings
   ui/         shared React controls
   styles/     tokens.css (design tokens: the only place for color literals) and base styles
-scripts/      lint checks, the license list plugin, the README shortcut generator, the batch runner
+scripts/      lint checks, the license list plugin, the README shortcut generator, the batch runner,
+              fonts/ (the font library's list, families.json, and its downloader)
+public/fonts/library/   the font library: one folder per family (woff2, latin and latin-ext), LICENSES/,
+                        catalog.json
 ```
+
+## Font library
+
+`public/fonts/library/` is checked in, so a fresh clone builds and runs with no network. It is made by
+`node scripts/fonts/fetch-library.mjs` from `scripts/fonts/families.json` (the hand-curated families,
+their looks and tags): Google Fonts families through Fontsource, kept only under the SIL Open Font
+License, Apache 2.0 or the Ubuntu Font Licence. A rerun fetches the versions `catalog.json` records
+(`--update` takes the latest) and reproduces the folder; it prints the total size (cap 40 MB).
 
 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) explains how these fit together.
 

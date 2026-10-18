@@ -15,3 +15,38 @@
   align-items: center;
   gap: var(--space-1);
 }
+
+/* Font licenses (Batch 51; gap: the DS has no license list): one row per library family, the name in
+   body type over its designer and license in caption tertiary, the whole row a link (hover wash), in a
+   list that scrolls inside the group (--font-licenses-height). */
+.fonts {
+  max-height: var(--font-licenses-height);
+  margin: 0;
+  padding: 0 var(--space-2);
+  overflow-y: auto;
+  list-style: none;
+}
+
+.font {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  text-decoration: none;
+}
+
+.font:hover {
+  background: var(--hover-wash);
+}
+
+.fontName {
+  font: var(--type-body);
+  letter-spacing: var(--type-body-track);
+}
+
+.fontMeta {
+  color: var(--text-tertiary);
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-track);
+}

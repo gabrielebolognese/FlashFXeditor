@@ -1,7 +1,9 @@
 // Font model of the text engine (spec §10.1 "Fonts"): the CSS font shorthand a style draws with, face
 // names of system fonts (`queryLocalFonts` gives "Bold Italic", "Semibold"...) as weight and italic,
 // CSS font matching among a family's faces, and the manifest of the font files a project carries in
-// `<project>/fonts/` (system fonts copied when used, so the project renders the same elsewhere). Pure.
+// `<project>/fonts/`. Since Batch 51 (spec §20.1 Projects) every used font is copied there, whatever
+// its source (library, My fonts, system), and the manifest records the source of each face (version
+// 2; version 1 manifests held system faces only and read as such). Pure.
 import type { Project, TextStyle } from "../core/document/types.js";
 
 /** The project folder's font files and their manifest (spec §10.1). */
@@ -89,21 +91,40 @@ function weightRank(face: number, wanted: number): number {
   return face > wanted ? d : 1000 + d;
 }
 
-/** A font file of the project folder (`fonts/<file>`): one face of a family copied from the system. */
+/** Where a project's font came from (spec §20.1): the app's library, My fonts, the system. */
+export type FontOrigin = "library" | "user" | "system";
+export const FONT_ORIGINS: readonly FontOrigin[] = ["library", "user", "system"];
+
+/** The manifest's version: 2 since Batch 51 (each face's source); version 1 faces were system fonts. */
+export const FONT_MANIFEST_VERSION = 2;
+
+/** A font file of the project folder (`fonts/<file>`): one face of a family, with where it came from. */
 export interface ProjectFontFace {
   family: string;
-  /** The face's style name as the system gave it ("Bold Italic"). */
+  /** The face's style name ("Bold Italic"). */
   style: string;
   weight: number;
   italic: boolean;
   postscriptName: string;
   /** The file name in `fonts/`. */
   file: string;
+  source: FontOrigin;
+  /** A variable file's weight axis: every weight in it draws from this file. */
+  weightRange?: readonly [number, number];
+  /** The characters a subset file covers (library files: latin, latin-ext). */
+  unicodeRange?: string;
+  /** What it is a copy of: the library file (`<slug>/<file>`) or the My fonts id. */
+  origin?: string;
 }
 
 const isText = (value: unknown): value is string => typeof value === "string" && value !== "";
+const isWeight = (value: unknown): value is number => typeof value === "number" && value >= 1 && value <= 1000;
+const isSafeFile = (file: string) => !file.includes("/") && !file.includes("\\") && !file.startsWith(".");
 
-/** The faces of a `fonts/fonts.json` text; entries that are not faces (and unsafe file names) are left out. */
+/**
+ * The faces of a `fonts/fonts.json` text; entries that are not faces (and unsafe file names) are left
+ * out. A version 1 manifest (Batch 28) is migrated: its faces are system fonts.
+ */
 export function parseFontManifest(text: string): ProjectFontFace[] {
   let raw: unknown;
   try {
@@ -111,20 +132,63 @@ export function parseFontManifest(text: string): ProjectFontFace[] {
   } catch {
     return [];
   }
-  const faces = (raw as { faces?: unknown } | null)?.faces;
+  const data = raw as { version?: unknown; faces?: unknown } | null;
+  const faces = data?.faces;
   if (!Array.isArray(faces)) return [];
+  const legacy = data?.version === 1 || data?.version === undefined;
   const out: ProjectFontFace[] = [];
   for (const entry of faces as unknown[]) {
     const face = entry as Partial<ProjectFontFace> | null;
-    if (!face || !isText(face.family) || !isText(face.file) || face.file.includes("/") || face.file.includes("\\") || face.file.startsWith(".")) continue;
-    const weight = typeof face.weight === "number" && face.weight >= 1 && face.weight <= 1000 ? face.weight : 400;
-    out.push({ family: face.family, style: isText(face.style) ? face.style : "Regular", weight, italic: face.italic === true, postscriptName: isText(face.postscriptName) ? face.postscriptName : face.file, file: face.file });
+    if (!face || !isText(face.family) || !isText(face.file) || !isSafeFile(face.file)) continue;
+    const weight = isWeight(face.weight) ? face.weight : 400;
+    const source: FontOrigin = legacy ? "system" : FONT_ORIGINS.includes(face.source as FontOrigin) ? (face.source as FontOrigin) : "system";
+    const range = face.weightRange;
+    const weightRange = Array.isArray(range) && range.length === 2 && isWeight(range[0]) && isWeight(range[1]) && range[0] <= range[1] ? ([range[0], range[1]] as const) : undefined;
+    out.push({
+      family: face.family,
+      style: isText(face.style) ? face.style : "Regular",
+      weight,
+      italic: face.italic === true,
+      postscriptName: isText(face.postscriptName) ? face.postscriptName : face.file,
+      file: face.file,
+      source,
+      ...(weightRange && { weightRange }),
+      ...(isText(face.unicodeRange) && { unicodeRange: face.unicodeRange }),
+      ...(isText(face.origin) && { origin: face.origin }),
+    });
   }
   return out;
 }
 
 export function formatFontManifest(faces: readonly ProjectFontFace[]): string {
-  return `${JSON.stringify({ version: 1, faces }, null, 2)}\n`;
+  return `${JSON.stringify({ version: FONT_MANIFEST_VERSION, faces }, null, 2)}\n`;
+}
+
+/** The CSS `font-weight` descriptor of a project face: its axis ("100 900") or its weight. */
+export const faceWeightDescriptor = (face: Pick<ProjectFontFace, "weight" | "weightRange">): string => (face.weightRange ? `${face.weightRange[0]} ${face.weightRange[1]}` : String(face.weight));
+
+/** Whether `face` draws `weight` / `italic` exactly (its weight, or inside its axis; the same style). */
+export function faceCovers(face: Pick<ProjectFontFace, "weight" | "weightRange" | "italic">, weight: number, italic: boolean): boolean {
+  if (face.italic !== italic) return false;
+  return face.weightRange ? weight >= face.weightRange[0] && weight <= face.weightRange[1] : face.weight === weight;
+}
+
+/** A project's font records (spec §20.1 "every used font is recorded with its source"): one per family and source. */
+export interface ProjectFontRecord {
+  family: string;
+  source: FontOrigin;
+  faces: ProjectFontFace[];
+}
+
+export function fontRecords(faces: readonly ProjectFontFace[]): ProjectFontRecord[] {
+  const records = new Map<string, ProjectFontRecord>();
+  for (const face of faces) {
+    const key = `${face.source}|${face.family.toLowerCase()}`;
+    const record = records.get(key);
+    if (record) record.faces.push(face);
+    else records.set(key, { family: face.family, source: face.source, faces: [face] });
+  }
+  return [...records.values()].sort((a, b) => a.family.localeCompare(b.family) || a.source.localeCompare(b.source));
 }
 
 /** The extension of an sfnt font file from its first 4 bytes: `.otf` (CFF), `.ttc` (collection), else `.ttf`. */

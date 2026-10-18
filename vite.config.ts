@@ -3,7 +3,8 @@ import react from "@vitejs/plugin-react";
 import { licenses } from "./scripts/licenses.js";
 
 // Third-party licenses of the main and the worker bundles in dist/licenses.txt (Batch 50).
-const notices = licenses({ app: "Shorts Editor", fontsDir: "src/render/text/fonts" });
+// The library fonts since Batch 51.
+const notices = licenses({ app: "Shorts Editor", libraryDir: "public/fonts/library" });
 
 export default defineConfig({
   plugins: [react(), notices.emit],

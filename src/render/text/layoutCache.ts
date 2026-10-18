@@ -56,6 +56,11 @@ export function canvasMeasurer(): TextMeasurer | null {
       }
       return metrics;
     },
+    // Metrics measured while a font was still loading are the fallback's (Batch 51: library fonts load
+    // on demand, so a gizmo or hit test often measures first): dropped with the layouts.
+    reset() {
+      fontMetrics.clear();
+    },
   };
 }
 
@@ -100,6 +105,7 @@ export function textLayoutVersion(): number {
 export function invalidateTextLayouts(): void {
   version += 1;
   cache = new WeakMap();
+  measurer?.reset?.();
   for (const listener of [...listeners]) listener();
 }
 

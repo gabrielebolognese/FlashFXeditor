@@ -1,5 +1,5 @@
-import { BookmarkPlus, FileDown, FileUp, FolderOpen, FolderSync, FolderX, LoaderCircle, RotateCcw, SearchX, Star, Subtitles, Type } from "lucide-react";
-import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type FocusEvent, type KeyboardEvent, type MouseEvent, type PointerEvent, type ReactNode } from "react";
+import { BookmarkPlus, FileDown, FilePlus2, FileUp, FolderOpen, FolderSync, FolderX, LoaderCircle, RotateCcw, SearchX, Star, Subtitles, Type } from "lucide-react";
+import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type DragEvent, type FocusEvent, type KeyboardEvent, type MouseEvent, type PointerEvent, type ReactNode } from "react";
 import { draggingMedia, pressDragCard, takeClickAfterDrag } from "../../app/mediaGestures.js";
 import {
   appliesToCaptions,
@@ -16,6 +16,7 @@ import {
   type LibraryFolder,
 } from "../../app/presetController.js";
 import { actions, appSettings, sessionStore } from "../../app/services.js";
+import { addFontFiles, dragHasFiles, droppedFontFiles } from "../../app/userFontsController.js";
 import type { TextPreset } from "../../core/document/types.js";
 import { isEditableTarget } from "../../core/keyboard/KeyDispatcher.js";
 import type { PresetScope, SessionState } from "../../core/store/sessionStore.js";
@@ -381,8 +382,45 @@ export function PresetsTab() {
     );
   }
 
+  // Font files dropped on the tab join My fonts (spec §20.1); the highlight is a data attribute (no render).
+  const rootRef = useRef<HTMLDivElement>(null);
+  const dragDepth = useRef(0);
+  const setDropping = (on: boolean) => {
+    const root = rootRef.current;
+    if (!root) return;
+    if (on) root.dataset.dropping = "";
+    else delete root.dataset.dropping;
+  };
+  const onDragEnter = (event: DragEvent) => {
+    if (!dragHasFiles(event.dataTransfer)) return;
+    event.preventDefault();
+    dragDepth.current += 1;
+    setDropping(true);
+  };
+  const onDragOver = (event: DragEvent) => {
+    if (!dragHasFiles(event.dataTransfer)) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "copy";
+  };
+  const onDragLeave = () => {
+    dragDepth.current = Math.max(0, dragDepth.current - 1);
+    if (dragDepth.current === 0) setDropping(false);
+  };
+  const onDrop = (event: DragEvent) => {
+    if (!dragHasFiles(event.dataTransfer)) return;
+    event.preventDefault();
+    dragDepth.current = 0;
+    setDropping(false);
+    const fonts = droppedFontFiles(event.dataTransfer);
+    void addFontFiles(fonts.length > 0 ? fonts : [...event.dataTransfer.files]);
+  };
+
   return (
-    <div className={styles.root}>
+    <div ref={rootRef} className={styles.root} onDragEnter={onDragEnter} onDragOver={onDragOver} onDragLeave={onDragLeave} onDrop={onDrop}>
+      <div className={styles.dropOverlay} aria-hidden="true">
+        <FilePlus2 className={styles.dropIcon} />
+        Drop font files to add them to My fonts
+      </div>
       <div className={styles.tools}>
         <div className={styles.scope} role="group" aria-label="Presets shown">
           {(["global", "project"] as const).map((value) => (

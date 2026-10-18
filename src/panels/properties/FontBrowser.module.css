@@ -1,0 +1,334 @@
+/* The font browser (spec §20.1; gap: the DS has no font browser). The menu material (floating: glass,
+   hairline, overlay shadow, radius-lg) under the font field, --font-browser-width wide: the search row
+   with Add fonts, a scrolling row of category chips, a row of weight chips, then the virtualized list
+   (one --control-default row per family, heading, note or action). Rows draw the family in its own
+   font at the row's weight (content, not UI type), the number of weights in caption type, a star and,
+   for My fonts, an edit button. A row still loading shows the name in the UI font, dimmed, at the same
+   size (nothing moves when the font arrives). Dropping font files highlights the whole browser. */
+.browser {
+  position: fixed;
+  z-index: var(--z-overlay);
+  display: flex;
+  flex-direction: column;
+  width: var(--font-browser-width);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  background: var(--material-menu-bg);
+  backdrop-filter: var(--material-menu-filter);
+  box-shadow: var(--shadow-overlay);
+  visibility: hidden;
+}
+
+/* A drag with files over it: the Media tab's drop look. */
+.browser[data-dropping] {
+  outline: 1px dashed var(--accent-dim);
+  outline-offset: calc(-1 * var(--space-1));
+  background: var(--accent-wash);
+}
+
+.top {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin: var(--space-2) var(--space-2) var(--space-1);
+}
+
+.search {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+  height: var(--control-default);
+  padding: 0 var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-1);
+  color: var(--text-tertiary);
+}
+
+.search:focus-within {
+  border-color: var(--accent-dim);
+  box-shadow: 0 0 0 1px var(--accent-wash);
+}
+
+.search svg {
+  flex: none;
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+}
+
+.search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: none;
+  color: var(--text-primary);
+  font: var(--type-body);
+  letter-spacing: var(--type-body-track);
+  outline: none;
+}
+
+.search input::placeholder {
+  color: var(--text-muted);
+}
+
+/* The field's edge shows the focus (the input's own ring would double it). */
+.search input:focus-visible {
+  box-shadow: none;
+}
+
+/* A row of chips: one line; the categories scroll sideways (wheel or drag), the scrollbar hidden. */
+.chips {
+  display: flex;
+  flex: none;
+  gap: var(--space-0);
+  padding: var(--space-0) var(--space-2);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.chips::-webkit-scrollbar {
+  display: none;
+}
+
+.chips > * {
+  flex: none;
+}
+
+.weights {
+  padding-bottom: var(--space-2);
+}
+
+.list {
+  position: relative;
+  height: var(--font-browser-list-height);
+  overflow-y: auto;
+  border-top: 1px solid var(--hairline);
+  contain: strict;
+}
+
+.sizer {
+  position: relative;
+}
+
+/* Every list row is one --control-default tall, placed by the list (translateY). */
+.row,
+.heading,
+.note,
+.action {
+  position: absolute;
+  top: 0;
+  right: var(--space-1);
+  left: var(--space-1);
+  height: var(--control-default);
+}
+
+.heading {
+  display: flex;
+  align-items: flex-end;
+  padding: 0 var(--space-2) var(--space-1);
+  color: var(--text-tertiary);
+  font: var(--type-overline);
+  letter-spacing: var(--type-overline-track);
+  text-transform: uppercase;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0 var(--space-1) 0 var(--space-2);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.row:hover,
+.row[data-active] {
+  background: var(--hover-wash);
+}
+
+/* The current family: the DS active row (accent text on the accent wash). */
+.row[aria-selected="true"] {
+  background: var(--accent-wash);
+  color: var(--accent);
+}
+
+/* The family name in its own font at the row's weight (set by the list once its file is in). */
+.family {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: var(--type-stat-size);
+  line-height: var(--type-stat-line);
+  letter-spacing: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Loading: the UI font, dimmed (the same size: the row does not move when the font arrives). */
+.family[data-loading] {
+  color: var(--text-tertiary);
+}
+
+.meta {
+  flex: none;
+  color: var(--text-tertiary);
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-track);
+  white-space: nowrap;
+}
+
+.row[aria-selected="true"] .meta {
+  color: var(--accent-dim);
+}
+
+.star,
+.edit {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--control-compact);
+  height: var(--control-compact);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  opacity: 0;
+  transition:
+    opacity var(--duration-micro) var(--ease-out),
+    color var(--duration-micro) var(--ease-out);
+}
+
+.star svg,
+.edit svg {
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+}
+
+.row:hover .star,
+.row:hover .edit,
+.row[data-active] .star,
+.row[data-active] .edit,
+.star[aria-pressed="true"] {
+  opacity: 1;
+}
+
+.star:hover,
+.edit:hover {
+  color: var(--text-primary);
+}
+
+.star[aria-pressed="true"] {
+  color: var(--accent);
+}
+
+.star[aria-pressed="true"] svg {
+  fill: currentColor;
+}
+
+.note {
+  display: flex;
+  align-items: center;
+  padding: 0 var(--space-2);
+  color: var(--text-tertiary);
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-track);
+}
+
+.action {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-track);
+  cursor: pointer;
+}
+
+.action:hover {
+  background: var(--hover-wash);
+  color: var(--text-primary);
+}
+
+.action svg {
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+}
+
+/* Icons the list clones into its rows. */
+.icons {
+  display: none;
+}
+
+/* My fonts: a family's editor in place of the list (the properties grid's label / control rows). */
+.editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  height: var(--font-browser-list-height);
+  padding: var(--space-2) var(--space-3);
+  overflow-y: auto;
+  border-top: 1px solid var(--hairline);
+}
+
+.editorTitle {
+  color: var(--text-primary);
+  font: var(--type-title);
+  letter-spacing: var(--type-title-track);
+}
+
+.editorNote {
+  color: var(--text-tertiary);
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-track);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  color: var(--text-secondary);
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-track);
+}
+
+.field input {
+  height: var(--control-default);
+  padding: 0 var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-1);
+  color: var(--text-primary);
+  font: var(--type-body);
+  letter-spacing: var(--type-body-track);
+  outline: none;
+}
+
+.field input:focus {
+  border-color: var(--accent-dim);
+  box-shadow: 0 0 0 1px var(--accent-wash);
+}
+
+.field input[aria-invalid="true"] {
+  border-color: var(--danger);
+}
+
+.error {
+  color: var(--danger);
+}
+
+.categories {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-0);
+}
+
+.editorActions {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-1);
+  margin-top: auto;
+}

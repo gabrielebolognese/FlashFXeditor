@@ -1,7 +1,8 @@
 // Global app settings (spec §3.1: persisted with idb-keyval). For now the autosave delay and the proxy
 // settings of the Project section (§11, §9.5), the import mode (§9.1, no UI yet), the monitoring
 // volume and mute of the preview chrome (§14: monitoring only, never the export), the color picker's
-// recent colors (§11), the punch zoom (Batch 27), the font picker's favorites (§11, Batch 28), the
+// recent colors (§11), the punch zoom (Batch 27), the font picker's favorites (§11, Batch 28) and the
+// font browser's recent families (§20.1, Batch 51), the
 // default Title and Subtitle presets (§10.2, Batch 30), the Transcribe dialog's model and language
 // (§10.6, Batch 33), Auto-duck music's depth and ramps (§14, Batch 37) and Remove silence's parameters
 // (§14, Batch 38), the shortcut editor's keymap overrides and the command palette's recent commands
@@ -54,6 +55,8 @@ export interface AppSettings {
   punchZoomAnimate: boolean;
   /** The font picker's Favorites section (spec §11): family names, in the order starred. */
   favoriteFonts: readonly string[];
+  /** The font browser's Recent section (spec §20.1 "last 8"): families chosen, most recent first. */
+  recentFonts: readonly string[];
   /**
    * `+ Title` / `+ Subtitle` last as long as the rest of the video clip under the playhead (spec §10.2
    * "match clip under playhead", on by default), else the default title duration.
@@ -137,6 +140,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   punchZoomScale: 1.2,
   punchZoomAnimate: true,
   favoriteFonts: [],
+  recentFonts: [],
   matchClipUnderPlayhead: true,
   defaultTitlePreset: STARTER_TITLE_ID,
   defaultSubtitlePreset: STARTER_SUBTITLE_ID,
@@ -183,6 +187,14 @@ function sanitizeKeymap(value: unknown, fallback: KeymapOverrides): KeymapOverri
 
 /** The favorites kept by the font picker. */
 export const MAX_FAVORITE_FONTS = 50;
+
+/** The families the font browser's Recent section keeps (spec §20.1). */
+export const MAX_RECENT_FONTS = 8;
+
+/** `family` first in the recent fonts (once), at most MAX_RECENT_FONTS. */
+export function pushRecentFont(recent: readonly string[], family: string): string[] {
+  return [family, ...recent.filter((name) => name.toLowerCase() !== family.toLowerCase())].slice(0, MAX_RECENT_FONTS);
+}
 
 /** `family` added to (or removed from) the favorite fonts. */
 export function toggleFavoriteFont(favorites: readonly string[], family: string): string[] {
@@ -236,6 +248,9 @@ function sanitize(value: unknown, fallback: AppSettings = DEFAULT_APP_SETTINGS):
     favoriteFonts: Array.isArray(raw.favoriteFonts)
       ? [...new Set(raw.favoriteFonts.filter((name): name is string => typeof name === "string" && name !== ""))].slice(-MAX_FAVORITE_FONTS)
       : fallback.favoriteFonts,
+    recentFonts: Array.isArray(raw.recentFonts)
+      ? [...new Set(raw.recentFonts.filter((name): name is string => typeof name === "string" && name !== ""))].slice(0, MAX_RECENT_FONTS)
+      : fallback.recentFonts,
     matchClipUnderPlayhead: typeof raw.matchClipUnderPlayhead === "boolean" ? raw.matchClipUnderPlayhead : fallback.matchClipUnderPlayhead,
     defaultTitlePreset: presetIdOr(raw.defaultTitlePreset, fallback.defaultTitlePreset),
     defaultSubtitlePreset: presetIdOr(raw.defaultSubtitlePreset, fallback.defaultSubtitlePreset),

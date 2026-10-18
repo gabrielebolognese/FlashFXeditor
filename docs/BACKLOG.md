@@ -2,18 +2,10 @@
 
 Work that v1.0.0 leaves out, with what is needed to pick it up. Batch 50 resolved every
 `TODO(batch NN)` comment in `src/`; the hooks that were still open are listed here instead, next to the
-batch that builds them. Batches 51-53 are planned in `docs/BATCHES.md` (spec §20). The known issues
+batch that builds them. Batches 51-53 are planned in `docs/BATCHES.md` (spec §20); Batch 51 (font library) is built. The known issues
 users can meet are in `docs/PROGRESS.md` (Known issues).
 
 ## Hooks for the planned batches
-
-### Batch 51: font library
-- Every new action (open the font browser, Add fonts, toggle favorite) registers in the
-  `CommandRegistry` and gets an entry in `src/app/commandCatalog.ts`, or the dev command audit flags it
-  (Batch 40).
-- Settings > About (Batch 50, `src/panels/settings/AboutSettings.tsx`) has the Licenses group where the
-  library's font licenses go; the production build already lists the bundled fonts' OFL texts in
-  `licenses.txt` (`scripts/licenses.ts` reads `src/render/text/fonts/*/OFL.txt`).
 
 ### Batch 53: caption styles per cue
 - **Compositor** (was `TODO(batch 53)`, Batch 32): `writeCaption` in `src/render/compositor/Compositor.ts`

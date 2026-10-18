@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createAppSettings, DEFAULT_APP_SETTINGS, editDefaultsOf, proxySettings, toggleFavoriteFont } from "./appSettings.js";
+import { createAppSettings, DEFAULT_APP_SETTINGS, editDefaultsOf, MAX_RECENT_FONTS, proxySettings, pushRecentFont, toggleFavoriteFont } from "./appSettings.js";
 import { DEFAULT_CUSTOM_SETTINGS } from "../export/presets.js";
 import { memoryKeyValueStore } from "./kv.js";
 import { RECENT_LIMIT, RecentProjects, type RecentProject } from "./recentProjects.js";
@@ -84,7 +84,7 @@ describe("app settings", () => {
     await settings.load();
     expect(settings.getState()).toEqual(DEFAULT_APP_SETTINGS);
     await settings.update({ autosaveDelayMs: 5000 });
-    expect(kv.data.get("settings.v1")).toEqual({ autosaveDelayMs: 5000, importMode: "copy", monitorVolumeDb: 0, monitorMuted: false, proxyAuto: true, proxyRule: "heavy", proxyShortEdge: 540, recentColors: [], punchZoomScale: 1.2, punchZoomAnimate: true, favoriteFonts: [], matchClipUnderPlayhead: true, defaultTitlePreset: "starter-title", defaultSubtitlePreset: "starter-subtitle", transcribeModel: "base", transcribeLanguage: null, duckDepthDb: 12, duckRampFrames: 10, silenceThresholdDb: -40, silenceMinMs: 500, silencePaddingMs: 150, keymap: {}, recentCommands: [], stillDurationMs: 5000, titleDurationMs: 3000, solidDurationMs: 5000, freezeDurationMs: 2000, transitionFrames: 15, transitionKind: "crossDissolve", keyframesFollowSource: true, exportPresetId: "reels", exportCustom: DEFAULT_CUSTOM_SETTINGS, exportPresets: [], exportFileTemplate: "{project}-{preset}-{date}.mp4", exportDestination: "project", exportAudioFormat: "wav", exportCaptionFormat: "srt" });
+    expect(kv.data.get("settings.v1")).toEqual({ autosaveDelayMs: 5000, importMode: "copy", monitorVolumeDb: 0, monitorMuted: false, proxyAuto: true, proxyRule: "heavy", proxyShortEdge: 540, recentColors: [], punchZoomScale: 1.2, punchZoomAnimate: true, favoriteFonts: [], recentFonts: [], matchClipUnderPlayhead: true, defaultTitlePreset: "starter-title", defaultSubtitlePreset: "starter-subtitle", transcribeModel: "base", transcribeLanguage: null, duckDepthDb: 12, duckRampFrames: 10, silenceThresholdDb: -40, silenceMinMs: 500, silencePaddingMs: 150, keymap: {}, recentCommands: [], stillDurationMs: 5000, titleDurationMs: 3000, solidDurationMs: 5000, freezeDurationMs: 2000, transitionFrames: 15, transitionKind: "crossDissolve", keyframesFollowSource: true, exportPresetId: "reels", exportCustom: DEFAULT_CUSTOM_SETTINGS, exportPresets: [], exportFileTemplate: "{project}-{preset}-{date}.mp4", exportDestination: "project", exportAudioFormat: "wav", exportCaptionFormat: "srt" });
     await settings.update({ autosaveDelayMs: 1234 });
     expect(settings.getState().autosaveDelayMs).toBe(5000);
 
@@ -213,6 +213,13 @@ describe("app settings", () => {
     expect(settings.getState().favoriteFonts).toEqual(["Inter", "Oswald"]);
     expect(toggleFavoriteFont(["Inter", "Oswald"], "Inter")).toEqual(["Oswald"]);
     expect(toggleFavoriteFont(["Inter"], "Caveat")).toEqual(["Inter", "Caveat"]);
+    // The font browser's Recent section (Batch 51): the last 8, newest first, once each.
+    expect(pushRecentFont(["Inter", "Anton"], "anton")).toEqual(["anton", "Inter"]);
+    expect(pushRecentFont(Array.from({ length: 10 }, (_, i) => `F${i}`), "New")).toHaveLength(MAX_RECENT_FONTS);
+    kv.data.set("settings.v1", { recentFonts: ["Inter", 3, "", "Inter", "Anton"] });
+    const recent = createAppSettings(kv);
+    await recent.load();
+    expect(recent.getState().recentFonts).toEqual(["Inter", "Anton"]);
   });
 
   it("matches titles to the clip under the playhead by default (Batch 29)", async () => {

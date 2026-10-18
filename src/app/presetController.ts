@@ -122,6 +122,11 @@ interface OpenProject {
 let openProject: OpenProject | null = null;
 let projectWrites: Promise<void> = Promise.resolve();
 
+/** The synced library folder, or null (none chosen, or waiting for permission): My fonts mirror into its `fonts/` (Batch 51). */
+export function libraryFolderDir(): FsDir | null {
+  return folder?.dir ?? null;
+}
+
 function folderFailed(error: unknown): void {
   console.warn("[presets] cannot write the library folder", error);
   const current = presetLibrary.getState().folder;

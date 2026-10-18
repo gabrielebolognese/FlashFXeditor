@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { makeTextClip } from "../core/document/fixtures.js";
 import type { TextAnim, TextClip, TextPreset } from "../core/document/types.js";
-import { BUNDLED_FONTS } from "../render/text/bundledFonts.js";
+import { CORE_FONTS } from "../render/text/bundledFonts.js";
 import {
   defaultPresetName,
   duplicatePreset,
@@ -223,13 +223,13 @@ describe("files", () => {
 describe("starter presets", () => {
   const starters = starterPresets();
 
-  it("are 8 to 12 distinct looks with unique ids and names, in bundled fonts", () => {
+  it("are 8 to 12 distinct looks with unique ids and names, in the core fonts", () => {
     expect(starters.length).toBeGreaterThanOrEqual(8);
     expect(starters.length).toBeLessThanOrEqual(12);
     expect(new Set(starters.map((p) => p.id)).size).toBe(starters.length);
     expect(new Set(starters.map((p) => p.name)).size).toBe(starters.length);
     expect(new Set(starters.map((p) => styleKey(p.style))).size).toBe(starters.length);
-    const families = new Set(BUNDLED_FONTS.map((font) => font.family));
+    const families = new Set(CORE_FONTS.map((font) => font.family));
     for (const starter of starters) expect(families.has(starter.style.fontFamily)).toBe(true);
     // Animations (Batch 31): valid, and none on the defaults (T and Shift+T stay still).
     for (const starter of starters) for (const anim of [starter.animIn, starter.animOut]) if (anim) expect(sanitizePresetAnim(anim)).toEqual(anim);
