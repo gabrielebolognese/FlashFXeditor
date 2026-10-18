@@ -1,7 +1,9 @@
 // The export's frames (spec §16, §9.4 "the same code path renders the preview and the export"), in
-// export.worker: its own WebGPU device and renderer, texture pool (a share of the budget), frame and
-// image services with their own decode sessions (decodeHandlers reached in-thread), fonts, text
-// rasters and compositor, drawing each frame into an OffscreenCanvas of the export size.
+// export.worker: its own GPU device and renderer of the preview's backend (WebGPU, or WebGL2 since
+// Batch 48: its context lives on the frame canvas, drawn directly), texture pool (a share of the
+// budget), frame and image services with their own decode sessions (decodeHandlers reached
+// in-thread), fonts, text rasters and compositor, drawing each frame into an OffscreenCanvas of the
+// export size.
 // - Frames come from `LayerTextures.resolveExact`, the Export frame path: every video at its exact
 //   full-resolution frame (never a proxy), at its own size or twice its drawn size, text at its exact
 //   scale, animations, captions, transitions, solids and images as the preview draws them.
@@ -22,9 +24,9 @@ import { loopbackWorker } from "../media/workers/loopback.js";
 import type { WorkerKind } from "../media/workers/protocol.js";
 import { WorkerPool, type WorkerLike } from "../media/workers/WorkerPool.js";
 import { Compositor, type OfflineSlates } from "../render/compositor/Compositor.js";
-import { GpuDevice } from "../render/gpu/GpuDevice.js";
+import type { BackendRenderer, RenderDevice } from "../render/gpu/backend.js";
+import { createBackend } from "../render/gpu/createBackend.js";
 import type { CanvasTarget } from "../render/gpu/renderer.js";
-import { WebGpuRenderer } from "../render/gpu/WebGpuRenderer.js";
 import { DETAIL_MAX_SIZE } from "../render/preview/detail.js";
 import { LayerTextures } from "../render/preview/LayerTextures.js";
 import { FontLibrary } from "../render/text/FontLibrary.js";
@@ -43,8 +45,10 @@ const noWorker = (kind: WorkerKind) => (): WorkerLike => {
 export const DEVICE_LOST_MESSAGE = "The GPU was reset during the export (device lost). Export again.";
 
 export class ExportRenderer {
-  private readonly gpu = new GpuDevice({ recover: false });
-  private readonly renderer = new WebGpuRenderer(this.gpu);
+  private readonly gpu: RenderDevice;
+  private readonly renderer: BackendRenderer;
+  /** The frame canvas (export size): each frame is drawn into it and made a VideoFrame from it. */
+  private readonly canvas: OffscreenCanvas;
   private readonly pool: TexturePool;
   private readonly workers: WorkerPool;
   private readonly frames: FrameService;
@@ -57,11 +61,15 @@ export class ExportRenderer {
   /** The main thread's SVG rasters by the media's file (what ImageService rasterizes from). */
   private readonly svgByFile = new Map<File, ImageBitmap>();
   private readonly stops: (() => void)[] = [];
-  private canvas: OffscreenCanvas | null = null;
   private target: CanvasTarget | null = null;
 
   constructor(private readonly params: ExportJobParams) {
     const { project, media, svg } = params;
+    this.canvas = new OffscreenCanvas(params.format.width, params.format.height);
+    // The device is not replaced mid-export (Batch 47); a WebGL2 context lives on the frame canvas.
+    const backend = createBackend(params.renderer, { recover: false, canvas: this.canvas });
+    this.gpu = backend.device;
+    this.renderer = backend.renderer;
     this.pool = new TexturePool(params.textureBudget);
     this.offline = new Map(Object.entries(params.offline) as [MediaId, string][]);
     this.workers = new WorkerPool({
@@ -110,8 +118,8 @@ export class ExportRenderer {
 
   /** Creates the device, loads the fonts and opens the videos of the range. */
   async start(signal: AbortSignal): Promise<void> {
-    const { project, range, format, fonts } = this.params;
-    if (!(await this.gpu.start())) throw new Error("No WebGPU device for the export");
+    const { project, range, fonts } = this.params;
+    if (!(await this.gpu.start())) throw new Error(`No ${this.params.renderer === "webgl2" ? "WebGL2" : "WebGPU"} device for the export`);
     this.stops.push(this.fonts.install());
     await this.fonts.setProjectFaces(fonts);
     const needs = exportNeeds(project, range);
@@ -130,7 +138,6 @@ export class ExportRenderer {
       }),
     );
     signal.throwIfAborted();
-    this.canvas = new OffscreenCanvas(format.width, format.height);
     this.target = this.renderer.createCanvasTarget(this.canvas);
   }
 
@@ -147,7 +154,7 @@ export class ExportRenderer {
 
   private async draw(frame: Frame, timestampUs: number, durationUs: number, signal: AbortSignal): Promise<VideoFrame> {
     const { canvas, target } = this;
-    if (!canvas || !target) throw new Error("The export renderer is not started");
+    if (!target) throw new Error("The export renderer is not started");
     const project: Project = this.params.project;
     const offline = this.offline.size;
     let resolved = await this.textures.resolveExact(this.compositor.evaluate(project, frame), Math.min(DETAIL_MAX_SIZE, this.renderer.maxTextureSize));
@@ -168,14 +175,13 @@ export class ExportRenderer {
 
   /** Loses the GPU device on purpose (dev: `__exportDev.loseDevice()` in the export worker, Batch 47 check). */
   loseDeviceForTest(): void {
-    this.gpu.device?.destroy();
+    this.gpu.loseForTest();
   }
 
   /** Frees the device, the textures, the decoders and the font faces (P13). */
   dispose(): void {
     if (this.target) this.renderer.releaseTarget(this.target);
     this.target = null;
-    this.canvas = null;
     this.textures.clear();
     this.text.clear();
     for (const stop of this.stops.splice(0).reverse()) stop();

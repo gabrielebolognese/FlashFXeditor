@@ -25,10 +25,14 @@ describe("findMissingApis", () => {
 
   it("lists each missing API", () => {
     const missing = findMissingApis(fakeWindow(["VideoDecoder", "VideoFrame"], false));
-    expect(missing).toContain("WebGPU (navigator.gpu)");
+    expect(missing).toContain("WebGPU (navigator.gpu) or WebGL2");
     expect(missing).toContain("WebCodecs VideoEncoder");
     expect(missing).toContain("File System Access (showDirectoryPicker)");
     expect(missing).not.toContain("WebCodecs VideoDecoder");
+  });
+
+  it("accepts WebGL2 without WebGPU (Batch 48)", () => {
+    expect(findMissingApis(fakeWindow([...ALL_GLOBALS, "WebGL2RenderingContext"], false))).toEqual([]);
   });
 
   it("reports jsdom as unsupported", () => {

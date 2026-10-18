@@ -326,6 +326,9 @@ export class PreviewView implements RenderView {
     if (!canvas || !target) return;
     const started = performance.now();
     const { renderer, document, session } = this.deps;
+    // A lost device (or context) draws nothing and uploads would throw: renders failing in a row would
+    // put the panel in its error state while a WebGL2 context is restored (Batch 48). "ready" redraws.
+    if (!renderer.ready) return;
     const dpr = canvas.ownerDocument.defaultView?.devicePixelRatio ?? 1;
     const size = deviceSizeInto(this.size, this.cssSize, dpr);
     let resized = false;

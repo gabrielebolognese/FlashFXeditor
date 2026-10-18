@@ -1,27 +1,28 @@
 // The WebGPU backend of `Renderer` (spec §3.1, §9.3, §9.4). Draws a draw list (or several side by
 // side, `drawPanes`) in one render pass with premultiplied alpha: a textured-quad pipeline, a
-// two-texture dissolve pipeline (Batch 36) and a solid-color pipeline. Per-layer uniforms live in one
-// buffer bound with dynamic offsets; each layer's matrix already maps to target px (its pane's viewport
-// applied), and the view uniform maps target px to clip space. Each record carries its scissor (the
-// frame, or the pane for the border). Each texture gets its bind group once, at creation, so a frame
-// creates no bind groups. Everything GPU-side is rebuilt when GpuDevice replaces a lost device; texture
-// handles of the old device turn invalid and their owners re-upload on "ready".
+// two-texture dissolve pipeline (Batch 36) and a solid-color pipeline. The records (one per quad, with
+// its scissor) come from `DrawRecords`, shared with the WebGL2 backend (Batch 48). Per-layer uniforms
+// live in one buffer bound with dynamic offsets; each layer's matrix already maps to target px (its
+// pane's viewport applied), and the view uniform maps target px to clip space. Each texture gets its
+// bind group once, at creation, so a frame creates no bind groups. Everything GPU-side is rebuilt when
+// GpuDevice replaces a lost device; texture handles of the old device turn invalid and their owners
+// re-upload on "ready".
 // A textured layer with a blur (a text's blurIn, spec §10.4) is blurred first, in the same command
 // encoder: two passes of a separable Gaussian (horizontal into one pooled texture, vertical into
 // another, the radius capped at MAX_BLUR_SIGMA), then drawn from the second with its quad grown by
 // the blur's reach. The pooled textures are reused from draw to draw (text rasters are small).
-// A shaped solid (a box with rounded corners or an ellipse, Batch 34) has its quad grown by one target
-// px on each side, its UV past 0..1 with it, so the shader's anti-aliased edge is drawn whole.
 import type { RGBA } from "../../core/document/types.js";
-import type { DrawList, Layer, UvRect } from "../compositor/drawList.js";
-import { IDENTITY, invertInto, multiplyInto, mutableIdentity, setMat, type Mat3, type MutableMat3 } from "../mat3.js";
+import type { DrawList } from "../compositor/drawList.js";
+import { IDENTITY, mutableIdentity, setMat, type Mat3, type MutableMat3 } from "../mat3.js";
+import type { BackendRenderer } from "./backend.js";
+import { blurRegionInto, DrawRecords, premultipliedInto, setRect, showBlurred, type BlurRegion, type RecordKind } from "./drawRecords.js";
 import { fitWithin } from "./fitWithin.js";
 import type { GpuDevice } from "./GpuDevice.js";
-import { isHdrColorSpace } from "./hdr.js";
-import { layerFloats, LAYER_SIZE, LAYER_STRIDE, packLayer, packMat3, pixelsToClipInto, SHAPE_CODE, VIEW_SIZE, type LayerUniform } from "./layerUniforms.js";
+import { isHdrColorSpace, toneMapToCanvas } from "./hdr.js";
+import { layerFloats, LAYER_SIZE, LAYER_STRIDE, packLayer, packMat3, pixelsToClipInto, VIEW_SIZE } from "./layerUniforms.js";
 import { generateMipmaps, mipLevelCount, textureBytes, type MipGenerator } from "./mipmaps.js";
 import { paddedBytesPerRow, unpadAndUnpremultiply } from "./readback.js";
-import type { CanvasTarget, DeviceEvent, OffscreenTarget, Pane, Renderer, RenderTarget, TextureHandle, TextureOptions, Viewport } from "./renderer.js";
+import type { CanvasTarget, DeviceEvent, OffscreenTarget, Pane, RenderTarget, TextureHandle, TextureOptions, Viewport } from "./renderer.js";
 import { BLUR_WGSL, DISSOLVE_WGSL, MIPMAP_WGSL, SCALE_WGSL, SOLID_WGSL, TEXTURED_WGSL } from "./shaders.js";
 
 /** Textures, offscreen targets and mip levels are rgba8 (spec §9.3); canvases use the preferred format. */
@@ -29,18 +30,14 @@ const TEXTURE_FORMAT: GPUTextureFormat = "rgba8unorm";
 const TRANSPARENT: RGBA = { r: 0, g: 0, b: 0, a: 0 };
 const DEFAULT_MAX_TEXTURE = 8192;
 const INITIAL_LAYERS = 64;
-/** Largest blur (Gaussian sigma, texture px): the kernel reaches 3 sigma (spec §10.4 "cap the blur radius"). */
-export const MAX_BLUR_SIGMA = 16;
 /** Bytes the blur shader reads per pass (3 vec4), at the layers' 256-byte stride. */
 const BLUR_SIZE = 48;
 /** Blur textures are made in steps of this many px, so a blur of a slightly other size reuses one. */
-const BLUR_STEP = 64;
+export const BLUR_STEP = 64;
 /** Draws a pooled blur texture stays unused before it is freed. */
-const BLUR_KEEP_DRAWS = 120;
-/** Target px a shaped solid's quad grows by on each side: its anti-aliased edge reaches half a px out. */
-const SHAPE_MARGIN = 1;
+export const BLUR_KEEP_DRAWS = 120;
 
-type PipelineKind = "textured" | "dissolve" | "solid";
+type PipelineKind = RecordKind;
 
 interface Pipelines {
   textured: GPURenderPipeline;
@@ -172,50 +169,8 @@ class GpuOffscreenTarget implements OffscreenTarget {
   }
 }
 
-/** One quad of a draw. Records are pooled and rewritten every draw (no allocation once warm). */
-interface DrawRecord {
-  kind: PipelineKind;
-  uniform: Omit<LayerUniform, "transform" | "mapA" | "mapB"> & { transform: MutableMat3; mapA: MutableMat3; mapB: MutableMat3 };
-  /** Bound at groups 1 and 2 (none for solids, one for textured layers, two for dissolves). */
-  texture0: GpuTexture | null;
-  texture1: GpuTexture | null;
-  /** Gaussian sigma in texture px (textured layers; 0: none). */
-  blur: number;
-  /** Target px it is clipped to: the frame within its pane (document layers), or the pane (the border). */
-  scissor: Rect;
-}
-
-interface Rect {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
-
-const newRecord = (): DrawRecord => ({
-  kind: "solid",
-  uniform: {
-    transform: mutableIdentity(),
-    uv: { u0: 0, v0: 0, u1: 1, v1: 1 },
-    color: { r: 0, g: 0, b: 0, a: 0 },
-    to: { r: 0, g: 0, b: 0, a: 0 },
-    shape: { width: 0, height: 0, radius: 0, code: SHAPE_CODE.quad },
-    opacity: 1,
-    flipX: false,
-    flipY: false,
-    mix: 0,
-    uv2: { u0: 0, v0: 0, u1: 1, v1: 1 },
-    mapA: mutableIdentity(),
-    mapB: mutableIdentity(),
-    sides: { from: 1, to: 1 },
-  },
-  texture0: null,
-  texture1: null,
-  blur: 0,
-  scissor: { x: 0, y: 0, width: 0, height: 0 },
-});
-
-export class WebGpuRenderer implements Renderer {
+export class WebGpuRenderer implements BackendRenderer {
+  readonly backend = "webgpu";
   private resources: DeviceResources | null = null;
   private readonly canvases = new Set<GpuCanvasTarget>();
   private readonly listeners = new Set<(event: DeviceEvent) => void>();
@@ -227,18 +182,14 @@ export class WebGpuRenderer implements Renderer {
   private readonly viewData = new Float32Array(VIEW_SIZE / 4);
   private readonly canvasFormat: GPUTextureFormat;
   // Scratch state of `draw`, reused so a frame allocates nothing on our side (the WebGPU calls do).
-  private readonly recordPool: DrawRecord[] = [];
-  private recordCount = 0;
+  private readonly records = new DrawRecords<GpuTexture>((texture): texture is GpuTexture => texture instanceof GpuTexture && texture.valid);
   private readonly fillView: Viewport & { transform: MutableMat3 } = { transform: mutableIdentity(), outside: TRANSPARENT, border: null };
   /** The one pane of `draw`. */
-  private readonly fillPane: Pane & { bounds: Rect } = { list: { width: 0, height: 0, background: TRANSPARENT, layers: [] }, viewport: this.fillView, bounds: { x: 0, y: 0, width: 0, height: 0 } };
+  private readonly fillPane: Pane & { bounds: { x: number; y: number; width: number; height: number } } = { list: { width: 0, height: 0, background: TRANSPARENT, layers: [] }, viewport: this.fillView, bounds: { x: 0, y: 0, width: 0, height: 0 } };
   private readonly fillPanes: Pane[] = [this.fillPane];
-  private readonly inverse = mutableIdentity();
   private readonly toClip = mutableIdentity();
-  private readonly frameBox: Rect = { x: 0, y: 0, width: 0, height: 0 };
-  private readonly frameScissor: Rect = { x: 0, y: 0, width: 0, height: 0 };
-  private readonly paneScissor: Rect = { x: 0, y: 0, width: 0, height: 0 };
-  private readonly lastScissor: Rect = { x: 0, y: 0, width: 0, height: 0 };
+  private readonly lastScissor = { x: 0, y: 0, width: 0, height: 0 };
+  private readonly blurRegion: BlurRegion = { x: 0, y: 0, width: 0, height: 0, sigma: 0, reach: 0 };
   private readonly clearValue = { r: 0, g: 0, b: 0, a: 0 };
   private readonly dynamicOffset = new Uint32Array(1);
   private blurData = new Float32Array(LAYER_STRIDE / 4);
@@ -416,20 +367,11 @@ export class WebGpuRenderer implements Renderer {
       return false;
     }
 
-    this.recordCount = 0;
-    for (const pane of panes) {
-      const { list, viewport } = pane;
-      // A pane with no frame or a singular viewport draws nothing; its bounds still clip.
-      const bounds = clipRect(this.paneScissor, pane.bounds, target.width, target.height);
-      if (!bounds || list.width < 1 || list.height < 1 || !invertInto(this.inverse, viewport.transform)) continue;
-      const frame = frameRect(this.frameBox, viewport.transform, list.width, list.height);
-      const frameScissor = clipRect(this.frameScissor, frame, bounds.x + bounds.width, bounds.y + bounds.height, bounds.x, bounds.y);
-      this.buildRecords(list, viewport, frame, frameScissor, bounds);
-    }
+    const count = this.records.build(panes, target.width, target.height);
     const encoder = res.device.createCommandEncoder({ label: "draw list" });
     this.draws += 1;
-    this.blurRecords(res, encoder);
-    this.writeUniforms(res, pixelsToClipInto(this.toClip, target.width, target.height, IDENTITY));
+    this.blurRecords(res, encoder, count);
+    this.writeUniforms(res, count, pixelsToClipInto(this.toClip, target.width, target.height, IDENTITY));
 
     const pipelines = this.pipelines(res, format);
     premultipliedInto(this.clearValue, first.viewport.outside);
@@ -443,8 +385,8 @@ export class WebGpuRenderer implements Renderer {
     const offset = this.dynamicOffset;
     // The pass starts with the whole target as its scissor.
     const last = setRect(this.lastScissor, 0, 0, target.width, target.height);
-    for (let index = 0; index < this.recordCount; index++) {
-      const record = this.recordPool[index] as DrawRecord;
+    for (let index = 0; index < count; index++) {
+      const record = this.records.at(index);
       const { scissor } = record;
       if (scissor.x !== last.x || scissor.y !== last.y || scissor.width !== last.width || scissor.height !== last.height) {
         pass.setScissorRect(scissor.x, scissor.y, scissor.width, scissor.height);
@@ -466,40 +408,26 @@ export class WebGpuRenderer implements Renderer {
    * Blurs the source of every blurred record into a pooled texture (two passes encoded before the
    * draw's own) and points the record at it: the quad grown by the blur's reach on each side.
    */
-  private blurRecords(res: DeviceResources, encoder: GPUCommandEncoder): void {
+  private blurRecords(res: DeviceResources, encoder: GPUCommandEncoder, count: number): void {
     const blur = res.blur;
     let passes = 0;
-    for (let index = 0; index < this.recordCount; index++) {
-      const record = this.recordPool[index] as DrawRecord;
+    for (let index = 0; index < count; index++) {
+      const record = this.records.at(index);
+      const region = blurRegionInto(this.blurRegion, record);
       const source = record.texture0;
-      if (record.kind !== "textured" || record.blur < 0.05 || !source) continue;
-      const sigma = Math.min(MAX_BLUR_SIGMA, record.blur);
-      const reach = Math.ceil(3 * sigma);
-      const uv = record.uniform.uv;
-      const x0 = Math.round(Math.min(uv.u0, uv.u1) * source.width);
-      const x1 = Math.round(Math.max(uv.u0, uv.u1) * source.width);
-      const y0 = Math.round(Math.min(uv.v0, uv.v1) * source.height);
-      const y1 = Math.round(Math.max(uv.v0, uv.v1) * source.height);
-      const width = x1 - x0;
-      const height = y1 - y0;
-      if (width < 1 || height < 1) continue;
+      if (!region || !source) continue;
+      const { x, y, width, height, sigma, reach } = region;
       const w = width + 2 * reach;
       const h = height + 2 * reach;
       const across = this.blurTexture(res, w, h);
       const down = this.blurTexture(res, w, h);
       if (passes + 2 > blur.capacity) this.growBlur(res, passes + 2);
-      this.writeBlurPass(passes, x0, y0, width, height, 1, 0, sigma, reach, reach);
+      this.writeBlurPass(passes, x, y, width, height, 1, 0, sigma, reach, reach);
       this.blurPass(res, encoder, passes, source, across, w, h);
       this.writeBlurPass(passes + 1, 0, 0, w, h, 0, 1, sigma, reach, 0);
       this.blurPass(res, encoder, passes + 1, across, down, w, h);
       passes += 2;
-      // The quad grows by the reach on each side and shows the blurred part of `down`.
-      const gx = reach / width;
-      const gy = reach / height;
-      const m = record.uniform.transform;
-      multiplyInto(m, m, setMat(this.blurGrow, 1 + 2 * gx, 0, 0, 1 + 2 * gy, -gx, -gy));
-      setUv(uv, 0, 0, w / down.width, h / down.height);
-      record.texture0 = down;
+      showBlurred(record, region, down, this.blurGrow);
     }
     if (passes > 0) res.device.queue.writeBuffer(blur.buffer, 0, this.blurData.buffer, 0, passes * LAYER_STRIDE);
     // Textures no draw used for a while go.
@@ -653,21 +581,14 @@ export class WebGpuRenderer implements Renderer {
    * show it washed out (hdr.ts, Batch 47).
    */
   private toneMapIn(res: DeviceResources, frame: VideoFrame, width: number, height: number, options: TextureOptions, into: GpuTexture | null): GpuTexture {
-    const w = this.clampSize(width);
-    const h = this.clampSize(height);
-    const canvas = (this.hdrCanvas ??= new OffscreenCanvas(w, h));
-    if (canvas.width !== w || canvas.height !== h) {
-      canvas.width = w;
-      canvas.height = h;
-    }
-    const context = canvas.getContext("2d", { alpha: false, colorSpace: "srgb" });
-    if (!context) {
+    let canvas: OffscreenCanvas;
+    try {
+      canvas = this.hdrCanvas = toneMapToCanvas(this.hdrCanvas, frame, this.clampSize(width), this.clampSize(height));
+    } catch (error) {
       into?.destroy();
-      throw new Error("No 2D canvas for an HDR frame");
+      throw error;
     }
-    context.imageSmoothingQuality = "high";
-    context.drawImage(frame, 0, 0, w, h);
-    return this.copyIn(res, canvas, w, h, { mipmaps: false, ...options }, into, this.recycleFrame);
+    return this.copyIn(res, canvas, canvas.width, canvas.height, { mipmaps: false, ...options }, into, this.recycleFrame);
   }
 
   /** A spare video-frame texture of this size, wrapped in a new handle; null when there is none. */
@@ -716,117 +637,10 @@ export class WebGpuRenderer implements Renderer {
     return new GpuTexture(texture, view, bindGroup, bytes, res.generation, () => this.resources?.generation ?? -1, recycle, this.counts);
   }
 
-  /**
-   * Adds the records of one pane to the pool: the frame background and the layers (clipped to the
-   * frame within the pane: `frameScissor`, none when the frame is out of view), then the border around
-   * the frame (clipped to the pane). Matrices map to target px.
-   */
-  private buildRecords(list: DrawList, view: Viewport, frame: Rect, frameScissor: Rect | null, paneScissor: Rect): void {
-    if (frameScissor) {
-      const background = this.solidRecord(list.background, frameScissor).uniform.transform;
-      multiplyInto(background, view.transform, setMat(background, list.width, 0, 0, list.height, 0, 0));
-      for (const layer of list.layers) this.layerRecord(layer, view.transform, frameScissor);
-    }
-    const border = view.border;
-    if (border && border.width > 0 && border.color.a > 0) {
-      const w = border.width;
-      this.edgeRecord(border.color, frame.x - w, frame.y - w, frame.width + 2 * w, w, paneScissor);
-      this.edgeRecord(border.color, frame.x - w, frame.y + frame.height, frame.width + 2 * w, w, paneScissor);
-      this.edgeRecord(border.color, frame.x - w, frame.y, w, frame.height, paneScissor);
-      this.edgeRecord(border.color, frame.x + frame.width, frame.y, w, frame.height, paneScissor);
-    }
-  }
-
-  private nextRecord(kind: PipelineKind, scissor: Rect): DrawRecord {
-    const record = (this.recordPool[this.recordCount] ??= newRecord());
-    this.recordCount += 1;
-    record.kind = kind;
-    setRect(record.scissor, scissor.x, scissor.y, scissor.width, scissor.height);
-    record.texture0 = null;
-    record.texture1 = null;
-    record.blur = 0;
-    const u = record.uniform;
-    u.opacity = 1;
-    u.flipX = false;
-    u.flipY = false;
-    u.mix = 0;
-    setUv(u.uv, 0, 0, 1, 1);
-    setColor(u.color, TRANSPARENT);
-    setColor(u.to, TRANSPARENT);
-    u.shape.code = SHAPE_CODE.quad;
-    return record;
-  }
-
-  /** A flat color quad. */
-  private solidRecord(color: RGBA, scissor: Rect): DrawRecord {
-    const record = this.nextRecord("solid", scissor);
-    setColor(record.uniform.color, color);
-    setColor(record.uniform.to, color);
-    return record;
-  }
-
-  /** A solid around the frame: a target-px rectangle. */
-  private edgeRecord(color: RGBA, x: number, y: number, width: number, height: number, scissor: Rect): void {
-    setMat(this.solidRecord(color, scissor).uniform.transform, width, 0, 0, height, x, y);
-  }
-
-  /** Adds the record of a document layer (its matrix mapped to target px by `view`); layers with a missing or dead texture are skipped. */
-  private layerRecord(layer: Layer, view: Mat3, scissor: Rect): void {
-    switch (layer.kind) {
-      case "texture": {
-        if (!(layer.texture instanceof GpuTexture) || !layer.texture.valid) return;
-        const record = this.nextRecord("textured", scissor);
-        record.texture0 = layer.texture;
-        record.blur = layer.blur ?? 0;
-        copyLayer(record, view, layer.transform, layer.opacity);
-        setUv(record.uniform.uv, layer.crop.u0, layer.crop.v0, layer.crop.u1, layer.crop.v1);
-        record.uniform.flipX = layer.flipX;
-        record.uniform.flipY = layer.flipY;
-        return;
-      }
-      case "dissolve": {
-        const { from, to } = layer;
-        if (!(from.texture instanceof GpuTexture) || !(to.texture instanceof GpuTexture) || !from.texture.valid || !to.texture.valid) return;
-        // A picture whose quad covers nothing draws nothing.
-        if (!covers(from.transform) || !covers(to.transform)) return;
-        const record = this.nextRecord("dissolve", scissor);
-        const u = record.uniform;
-        // Each picture's quad as seen from the layer's: the layer's unit quad onto the picture's (no view: both are in project px).
-        sideMap(u.mapA, from.transform, layer.transform);
-        sideMap(u.mapB, to.transform, layer.transform);
-        record.texture0 = from.texture;
-        record.texture1 = to.texture;
-        copyLayer(record, view, layer.transform, layer.opacity);
-        setUv(u.uv, from.crop.u0, from.crop.v0, from.crop.u1, from.crop.v1);
-        setUv(u.uv2, to.crop.u0, to.crop.v0, to.crop.u1, to.crop.v1);
-        u.sides.from = from.opacity;
-        u.sides.to = to.opacity;
-        u.mix = layer.mix;
-        return;
-      }
-      case "solid": {
-        const record = this.solidRecord(layer.color, scissor);
-        copyLayer(record, view, layer.transform, layer.opacity);
-        const u = record.uniform;
-        if (layer.to) setColor(u.to, layer.to);
-        const shape = layer.shape;
-        if (shape && shape.width > 0 && shape.height > 0) {
-          u.shape.width = shape.width;
-          u.shape.height = shape.height;
-          u.shape.radius = shape.radius;
-          u.shape.code = shape.kind === "ellipse" ? SHAPE_CODE.ellipse : SHAPE_CODE.box;
-          growQuad(u.transform, u.uv, SHAPE_MARGIN);
-        }
-        return;
-      }
-    }
-  }
-
-  private writeUniforms(res: DeviceResources, projectToClip: Mat3): void {
-    const count = this.recordCount;
+  private writeUniforms(res: DeviceResources, count: number, projectToClip: Mat3): void {
     if (count > res.layerCapacity) this.growLayers(res, count);
     if (this.layerData.length < layerFloats(count)) this.layerData = new Float32Array(layerFloats(res.layerCapacity));
-    for (let index = 0; index < count; index++) packLayer(this.layerData, index, (this.recordPool[index] as DrawRecord).uniform);
+    for (let index = 0; index < count; index++) packLayer(this.layerData, index, this.records.at(index).uniform);
     res.device.queue.writeBuffer(res.layerBuffer, 0, this.layerData.buffer, 0, count * LAYER_STRIDE);
     packMat3(this.viewData, 0, projectToClip);
     res.device.queue.writeBuffer(res.viewBuffer, 0, this.viewData);
@@ -989,94 +803,4 @@ function groupBindGroup(res: Pick<DeviceResources, "device" | "groupLayout" | "v
       { binding: 1, resource: { buffer: res.layerBuffer, size: LAYER_SIZE } },
     ],
   });
-}
-
-/** Grows the unit quad of `m` (unit quad -> target px) by `margin` target px on each side, the UV past 0..1 with it. */
-function growQuad(m: MutableMat3, uv: UvRect, margin: number): void {
-  const width = Math.hypot(m[0], m[1]);
-  const height = Math.hypot(m[2], m[3]);
-  if (!(width > 1e-6) || !(height > 1e-6)) return;
-  const ex = margin / width;
-  const ey = margin / height;
-  // m * [1 + 2ex, 0; 0, 1 + 2ey] with the quad moved by (-ex, -ey).
-  m[4] -= m[0] * ex + m[2] * ey;
-  m[5] -= m[1] * ex + m[3] * ey;
-  m[0] *= 1 + 2 * ex;
-  m[1] *= 1 + 2 * ex;
-  m[2] *= 1 + 2 * ey;
-  m[3] *= 1 + 2 * ey;
-  setUv(uv, -ex, -ey, 1 + ex, 1 + ey);
-}
-
-/** The layer's matrix in target px (`view * transform`) and its opacity. */
-/** A quad with an area (an inverse). */
-const covers = (m: Mat3) => {
-  const det = m[0] * m[3] - m[1] * m[2];
-  return det !== 0 && Number.isFinite(det);
-};
-
-/** `out` = inverse(`side`) x `quad`: where a point of the unit quad drawn by `quad` lies on the unit quad of `side` (which `covers`). */
-function sideMap(out: MutableMat3, side: Mat3, quad: Mat3): void {
-  if (invertInto(out, side)) multiplyInto(out, out, quad);
-}
-
-function copyLayer(record: DrawRecord, view: Mat3, transform: Mat3, opacity: number): void {
-  multiplyInto(record.uniform.transform, view, transform);
-  record.uniform.opacity = opacity;
-}
-
-function setRect(out: Rect, x: number, y: number, width: number, height: number): Rect {
-  out.x = x;
-  out.y = y;
-  out.width = width;
-  out.height = height;
-  return out;
-}
-
-function setUv(uv: UvRect, u0: number, v0: number, u1: number, v1: number): void {
-  uv.u0 = u0;
-  uv.v0 = v0;
-  uv.u1 = u1;
-  uv.v1 = v1;
-}
-
-function setColor(out: RGBA, color: RGBA): void {
-  out.r = color.r;
-  out.g = color.g;
-  out.b = color.b;
-  out.a = color.a;
-}
-
-/** The frame (0, 0, width, height in project px) in target px (the viewport is axis-aligned), into `out`. */
-function frameRect(out: Rect, transform: Mat3, width: number, height: number): Rect {
-  const ax = transform[4];
-  const ay = transform[5];
-  const bx = transform[0] * width + transform[2] * height + ax;
-  const by = transform[1] * width + transform[3] * height + ay;
-  out.x = Math.min(ax, bx);
-  out.y = Math.min(ay, by);
-  out.width = Math.abs(bx - ax);
-  out.height = Math.abs(by - ay);
-  return out;
-}
-
-/** The integer scissor of `rect` inside (left, top)..(right, bottom), into `out`; null when nothing of it is visible. */
-function clipRect(out: Rect, rect: Rect, right: number, bottom: number, left = 0, top = 0): Rect | null {
-  const x0 = Math.max(left, Math.floor(rect.x));
-  const y0 = Math.max(top, Math.floor(rect.y));
-  const x1 = Math.min(right, Math.ceil(rect.x + rect.width));
-  const y1 = Math.min(bottom, Math.ceil(rect.y + rect.height));
-  if (x1 <= x0 || y1 <= y0) return null;
-  out.x = x0;
-  out.y = y0;
-  out.width = x1 - x0;
-  out.height = y1 - y0;
-  return out;
-}
-
-function premultipliedInto(out: { r: number; g: number; b: number; a: number }, color: RGBA): void {
-  out.r = color.r * color.a;
-  out.g = color.g * color.a;
-  out.b = color.b * color.a;
-  out.a = color.a;
 }

@@ -2,6 +2,7 @@
 // The document is a snapshot taken when the export starts: edits made meanwhile never reach it.
 import type { Frame, MediaId, Project } from "../core/document/types.js";
 import type { SlateLook } from "../render/compositor/Compositor.js";
+import type { RendererBackend } from "../render/gpu/backend.js";
 import type { ProjectFace } from "../render/text/FontLibrary.js";
 import type { PipelineProgress } from "./pipeline.js";
 import type { AudioFileFormat } from "./audioExport.js";
@@ -31,6 +32,8 @@ export interface ExportJobParams {
   audio: { sampleRate: number; channels: ArrayBuffer[] } | null;
   /** GPU texture budget of the worker's pool (spec §16: 30% of the budget while exporting). */
   textureBudget: number;
+  /** The preview's backend (Batch 48): the export draws its frames with the same one. */
+  renderer: RendererBackend;
   /** Starts paused: Pause was pressed before the job was posted (`ExportPauseSync`). */
   paused: boolean;
 }

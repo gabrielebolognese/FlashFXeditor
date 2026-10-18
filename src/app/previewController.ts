@@ -25,8 +25,11 @@ import { PlaybackEngine } from "../playback/PlaybackEngine.js";
 import type { FsDir } from "../project/fs.js";
 import { resolveFile, sampleIndexPath, writeFileAt } from "../project/mediaFiles.js";
 import { formatFps } from "../project/projectPresets.js";
+import type { BackendChoice } from "../render/gpu/backend.js";
+import { createBackend } from "../render/gpu/createBackend.js";
 import { GpuDevice } from "../render/gpu/GpuDevice.js";
-import { WebGpuRenderer } from "../render/gpu/WebGpuRenderer.js";
+import { GlContext } from "../render/gpu/GlContext.js";
+import { SwitchRenderer } from "../render/gpu/SwitchRenderer.js";
 import { CanvasEditInput } from "../render/preview/CanvasEditInput.js";
 import type { LiveCaptions, LiveText } from "../render/compositor/Compositor.js";
 import { InlineTextEditor, type DraftText } from "../render/preview/InlineTextEditor.js";
@@ -60,8 +63,10 @@ import { alignmentHover, alignmentPreview } from "./transitionPreview.js";
 
 const MB = 1024 * 1024;
 
-export const gpuDevice = new GpuDevice();
-export const renderer = new WebGpuRenderer(gpuDevice);
+/** The app's renderer: WebGPU or WebGL2, chosen at startup (`startGpu`, Batch 48). */
+export const renderer = new SwitchRenderer();
+/** The chosen backend's GPU device (WebGPU) or context (WebGL2). */
+export const gpuDevice = renderer.device;
 export const texturePool = new TexturePool();
 /**
  * Video frames for the preview and playback. Frames are uploaded at most at the size the preview
@@ -342,17 +347,23 @@ renderer.subscribe((event) => {
 
 let stopProject: (() => void) | null = null;
 
-/** Creates the GPU device from the adapter of the startup check. */
-export function startGpu(adapter: GPUAdapter): void {
-  void gpuDevice.start(adapter);
+/** Creates the renderer of the backend the startup check chose, and its device (from its adapter for WebGPU). */
+export function startGpu(choice: BackendChoice): void {
+  const backend = createBackend(choice.backend);
+  renderer.select(backend.renderer, backend.device);
+  void backend.device.start(choice.adapter);
   if (import.meta.env.DEV) {
-    // Console access for the acceptance checks, e.g. `__editor.device.destroy()`.
+    // Console access for the acceptance checks, e.g. `__editor.device.destroy()` (WebGPU) or
+    // `__editor.gpu.loseForTest()` (either backend; `__editor.gl` is the WebGL2 context).
     const editor = ((globalThis as { __editor?: Record<string, unknown> }).__editor ??= {});
+    const device = backend.device;
     Object.defineProperties(editor, Object.getOwnPropertyDescriptors({
       gpu: gpuDevice,
+      backend: choice.backend,
       get device() {
-        return gpuDevice.device;
+        return device instanceof GpuDevice ? device.device : null;
       },
+      gl: device instanceof GlContext ? device : null,
       renderer,
       pool: texturePool,
       preview: previewView,

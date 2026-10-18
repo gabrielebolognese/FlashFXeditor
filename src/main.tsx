@@ -38,6 +38,8 @@ import { installHistoryController } from "./app/historyController.js";
 import { installTemplateController } from "./app/templateController.js";
 import { installCacheController } from "./app/cacheController.js";
 import { installExportController } from "./app/exportController.js";
+import { chooseBackend, forcedBackend } from "./render/gpu/backend.js";
+import { webgl2Available } from "./render/gpu/GlContext.js";
 import { requestGpuAdapter } from "./render/gpu/GpuDevice.js";
 
 const container = document.getElementById("root");
@@ -47,9 +49,10 @@ const root = createRoot(container);
 async function start(): Promise<void> {
   performance.mark("app:start");
   const missing = findMissingApis(window);
-  // WebGPU without an adapter (blocklisted GPU, hardware acceleration off) is unsupported too.
-  const adapter = missing.length === 0 ? await requestGpuAdapter() : null;
-  if (!adapter) {
+  // A WebGPU adapter, else WebGL2 on the GPU (Batch 48); neither (blocklisted GPU, hardware
+  // acceleration off) is unsupported too. `?renderer=webgl2` tries WebGL2 first (dev flag).
+  const choice = missing.length === 0 ? await chooseBackend(forcedBackend(location.search), { requestAdapter: () => requestGpuAdapter(), webgl2: webgl2Available }) : null;
+  if (!choice) {
     root.render(<UnsupportedScreen missing={missing.length > 0 ? missing : [GPU_ADAPTER_LABEL]} />);
     return;
   }
@@ -57,7 +60,7 @@ async function start(): Promise<void> {
   startServices();
   installCommandController();
   installPanelController();
-  startGpu(adapter);
+  startGpu(choice);
   installSettingsController();
   installProjectController();
   installHistoryController();

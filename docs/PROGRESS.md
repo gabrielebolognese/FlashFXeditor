@@ -1,6 +1,6 @@
 # Progress
 
-last_completed_batch: 47
+last_completed_batch: 48
 in_progress_batch: none
 skipped_batches: []
 needs_human: none
@@ -414,6 +414,14 @@ Decisions that diverge from docs/EDITOR_SPEC.md, with the reason. Each one also 
 - Export robustness (Batch 47): the export's GPU device is not replaced when lost (`GpuDevice` option `recover: false`): the job fails with "The GPU was reset during the export (device lost). Export again." whatever step meets the loss first, as replacing it mid-export would skip the old device's textures without a word. A video whose decoder refuses it partway through an export becomes offline there and the frame is drawn again with its slate, as the preview shows it (before: the export failed). (Batch 47)
 - Long non-MP4 audio (Batch 47, the Batch 10 follow-up): MP3, AAC, WAV and Ogg files are still decoded whole; one longer than 45 minutes (about 1 GB of stereo float; its duration read from the file's metadata by an <audio> element before any decode) is refused at import as a failed import with the reason, rather than risking the tab's memory. Segmented decoding moved to Batch 50. (Batch 47)
 - Dev assertion (Batch 47, "open VideoFrames are zero after idle"): dev builds look every second; after 3 s with no frame requests and nothing playing, scrubbing, trimming or exporting, any VideoFrame still open (the main thread's, the decode worker's rings, which a session gives back after 1 s without requests) is a console error. The 100-cycle check is a dev benchmark (`dev.benchProjectCycles`, `__editor.perf.bench.cycles(n)`), run by a CDP script. (Batch 47)
+
+- WebGL2 renderer (Batch 48):
+  - §1.4 is amended as the batch asks: the GPU requirement is WebGPU or WebGL2. WebGL2 counts only when it runs on the GPU (`failIfMajorPerformanceCaveat`): software rendering is still "no degraded mode". The backend is chosen once at startup: a WebGPU adapter first, else WebGL2.
+  - The URL flag (`?renderer=webgl2`: WebGL2 first; `?renderer=webgpu`: WebGPU only) works in every build: it is harmless, and it lets a user whose WebGPU driver misbehaves use WebGL2.
+  - WebGL2's context lives on its own OffscreenCanvas and presents the preview through `bitmaprenderer` (`transferToImageBitmap`): textures cannot be shared across contexts, and the preview canvas is remounted with its panel. The export worker's context lives on its frame canvas, because Chrome 155 makes no VideoFrame from a `bitmaprenderer` canvas or from a WebGL canvas's ImageBitmap.
+  - WebGL2 textures are capped at 8192 px (WebGPU's default limit), so both backends upload the same sizes. Video-frame textures take each frame with `texImage2D` (mutable storage), because `texSubImage2D` into immutable storage held the decoder's buffers longer.
+  - 4K at Full quality without a proxy drops 0-18 of ~157 frames on WebGL2 against 1-2 on WebGPU: WebGL has no external textures, so the whole frame is copied before it is scaled. Auto quality (proxies) plays the same on both. (measured, accepted)
+  - The preview renders nothing while its renderer is not ready (a lost device), so renders failing during a restore cannot trip the panel error state. (Batch 48)
 
 ## Follow-ups
 Small things discovered during a batch that belong to a later batch. Format: `- [from Batch NN -> Batch MM] description`.
@@ -5331,3 +5339,98 @@ Why each dependency exists (Batch rule 8).
   - Checks: `npm run check` green (typecheck, lint with the CSS color and token checks, 2273 unit tests in 216 files, 4 perf tests, build). The two parallel unit runs above passed too. Acceptance items are unchanged: no source file outside tests changed. Acceptance 1 (`fuzz.perf.test.ts`) passed in the check run.
 - review: accepted (2026-10-18, second review; `npm run check` green on the first run: typecheck, lint with the CSS color and token checks, 2273 / 2273 unit tests in 216 files (125 s), 4 / 4 perf tests (19.4 s, with the 10,000-op `fuzz.perf.test.ts`, which asserts its own 60 s budget), build 1273.63 kB JS / 407.36 kB gzip, export.worker 378.53 kB, decode.worker 213.68 kB, the same as reported). Earlier rejection: problem 1 is fixed. `src/project/projectFile.test.ts:131` `describe("edge cases (Batch 47)", { timeout: 30_000 }, ...)`, and the other fuzz-driven suites without one got it too (`src/core/commands/undoFuzz.test.ts:70`, `src/core/document/time.test.ts:228`). Every suite that runs `fuzzRun` / `randomProject` now has an explicit timeout (`fuzz.test.ts`, `speed.test.ts`, `fuzz.perf.test.ts` already did). `editMatrix.test.ts` (one fixed fixture per test) and `subtitles.test.ts` (PRNG only) do not need one. The `src/export/pipeline.test.ts` pause tests now wait for the parked state (`parked(gate)`), not fixed sleeps. I checked that `started` is emitted (`pipeline.ts:158`) before the first `gate.wait` (`:235`), so "starts paused" still tests what it says. Only test files changed in the fix. Rechecked independently: 1. Acceptance 1 is covered by `fuzz.perf.test.ts` (ran). 2 by the `WorkerPool watchdog (Batch 47)` tests (silent death, clock kept across cancelled windows, long-task tick, watchdog off) plus pending manual check 1. 3 by `mp4Probe.test.ts:67` (plain reason), `failedImports.test.ts`, `PanelBoundary.test.ts`, `panelErrors.test.ts` plus pending manual checks 3-4. 4 by `hdr.test.ts` plus pending manual check 2, with the approach in Global deviations. 2. The batch has no `Do not build yet` list, and nothing from Batches 48-53 is in the diff (no WebGL, WebM / VP9 / AV1, font library, preset bar or cue styles). 3. The new CSS (`MediaTab.module.css` failed rows, `UnsupportedScreen.module.css` `.detail` / `.actions`, `EmptyState.module.css` danger tone) uses tokens only (the 1px is the hairline). The new TSX has no inline styles, numeric icon sizes or color literals. 4. §3/§4: the boundaries, the fatal screen and the failed-import rows are React chrome on narrow store selectors. `FrameScheduler` only counts failed renders and calls `onViewFailure` once at `VIEW_FAILURE_LIMIT`. The watchdog interval runs only while watched requests wait. There is no new document command or gesture, and failed imports are session state. Decoding stays in workers. The HDR 2D-canvas upload is a written deviation, and `uploadVideoFrame` still closes the frame in its `finally`. The idle-frame check, the cycles benchmark and `__editor.workers` are dev-only (`perfController` is a dynamic import behind `import.meta.env.DEV`). 5. Every TODO in `src` carries a `(batch NN)` tag, and the batch adds none. 6. Earlier rejection: fixed, as above.
 - docs: importing-media.md (new: Check failed imports with the red Failed badge, the reason, the X and Dismiss failed imports, rows not saved and none for unsupported types, with a video placeholder; HDR videos (iPhone HLG / Dolby Vision, HDR10, BT.2020) shown and exported in SDR; the 45-minute limit of .mp3 / .aac / .wav / .ogg with .m4a unlimited; Fix import problems: the plain damaged-MP4 reason and the long-audio row), organizing-media.md (Failed imports in the parts of the Media tab; Dismiss failed imports in the palette table), workspace.md (new: Reload a panel that stopped working (the <Panel> stopped working state, Reload panel and its tooltip, from the palette: failed panels else the active one, the Shorts Editor stopped working screen and Reload saving first), with a video placeholder), preview-and-playback.md (HDR in standard colors; the slate at once when Chrome refuses a video during playback; the decoder restart within about 1.5 s), offline-media-and-relinking.md (Can't play during playback, not after a decoder crash; export slates partway), exporting-video.md (a video refused partway shows its slate and the export goes on; HDR in the file; the device-lost message), captions.md (the word count counts Chinese and Japanese words and leaves out punctuation), projects-and-saving.md (project.json with a BOM opens), keyboard-shortcuts.md (Dismiss failed imports and Reload panel have no key), troubleshooting.md (new: Panels and the whole editor with A panel shows stopped working and Shorts Editor stopped working fills the window; An HDR video looks less bright than on your phone; The picture stops for a moment during playback; A file cannot be imported with the Failed row, the new MP4 reason and the long-audio reason; the Chinese / Japanese entry renamed for the word count; An export fails with the device-lost message; the export slate; the 45-minute limit in Known limitations; overview video step 51), README.md, whats-new.md in docs/user-guide/ (2026-10-18)
+
+### Batch 48 (optional): WebGL2 renderer fallback
+- status: done
+- date: 2026-10-18
+- notes:
+  - Built in auto mode. The optional batch was built, not skipped: the runner picks the batch, and skipping is the user's call (`/next-batch skip`).
+  - Browser checks ran in headless Chrome 155 over CDP (9363, own profile) on a snapshot server (5221). Helpers are in `%TEMP%/b48`:
+    - Setup and page helpers: `setup.mjs` (`open({ backend })` adds `?renderer=webgl2`; `localFile`); `page.js` `__b48` (`buildAll` scene projects, `reopen`, `settle`, `frame` = Export frame PNG, `canvasRect`, `overlay`, `split`, `compare` (pixel and 8x8-cell differences of two PNGs), `exportVideo`, `exportFrames`, `buildHdr`).
+    - Scripts: `build.mjs`, `shots.mjs <backend>`, `compare.mjs a b`, `expshots.mjs`, `expcompare.mjs`, `misc.mjs [fallback loss playloss export cycles]`, `hdr48.mjs`, `upload.mjs`, `play4k.mjs`, `prod.mjs`.
+    - Regression copies of the earlier helpers are in `%TEMP%/b48reg` (5221 / 9363; `B48_GL=1` runs the Batch 45 P1 script on WebGL2).
+  - `render/gpu/drawRecords.ts`: the CPU side of a draw, moved out of `WebGpuRenderer` and shared by both backends so they draw the same quads. It covers:
+    - pooled records per pane, with the frame and pane scissors;
+    - the border edges;
+    - the shaped-solid growth;
+    - the dissolve side maps;
+    - the blur region and quad growth (`blurRegionInto`, `showBlurred`).
+    `WebGpuRenderer` uses it unchanged in output: all 25 WebGPU captures of the parity scenes equal HEAD's pixel for pixel (A/B on the same origin).
+  - `render/gpu/backend.ts`:
+    - `RendererBackend`, the `RenderDevice` interface (GpuDevice and GlContext: state, generation, restores, start, dispose, `loseForTest`), `BackendRenderer` (Renderer + backend, texture counts, `releaseCaches`).
+    - `forcedBackend`: `?renderer=webgl2` puts WebGL2 first (WebGPU stays the fallback); `?renderer=webgpu` allows WebGPU only.
+    - `chooseBackend`: a WebGPU adapter, else WebGL2 on the GPU, else none.
+    - `render/gpu/createBackend.ts` makes a backend's device and renderer.
+  - `render/gpu/GlContext.ts`: the WebGL2 context on its own OffscreenCanvas (`GL_ATTRIBUTES`: no alpha, depth, stencil or MSAA, `failIfMajorPerformanceCaveat`). `webglcontextlost` is prevented and `webglcontextrestored` is a new generation; `recover: false` fails instead (export); `webgl2Available()` is the startup probe.
+  - `render/gpu/glShaders.ts`: GLSL ES 3.00 ports of the WGSL. They cover the textured layers (footprint taps, `u_mipmapped`), the dissolve, solids (SDF box / ellipse, gradient), the full-frame scale pass and the blur pass, with the same 13-vec4 layer layout as `packLayer` and quads from `gl_VertexID`.
+  - `render/gpu/WebGl2Renderer.ts`, uploads and targets:
+    - RGBA8 textures; premultiplied uploads (`UNPACK_PREMULTIPLY_ALPHA_WEBGL`; Chrome's default ImageBitmaps, PNGs and ImageDecoder frames arrive premultiplied: measured); `generateMipmap`; spare video-frame textures as on WebGPU.
+    - Video-frame textures have mutable storage and take each frame with `texImage2D`: `texSubImage2D` into immutable storage held the decoder's buffers longer (see acceptance). Other textures are immutable (`texStorage2D`).
+    - A scaled upload goes whole into a scratch texture of the frame's visible size (what a VideoFrame upload writes: measured), then through the scale pass. HDR frames go through the shared `toneMapToCanvas` (hdr.ts).
+    - Offscreen targets are framebuffers drawn top row first (the view's y turned), so sampling and readback match WebGPU.
+    - Canvas targets: the context's own canvas is drawn directly (the export); another canvas is presented through `bitmaprenderer` (`transferToImageBitmap`).
+  - `render/gpu/WebGl2Renderer.ts`, draws: uniforms go through `uniform4fv(location, data, offset, length)` out of one array, so a draw allocates nothing on our side. The two blur passes run into pooled framebuffers. Texture counts and `releaseCaches` work as on WebGPU, and nothing is drawn on a context lost before its event.
+  - `render/gpu/SwitchRenderer.ts`: the app's one `renderer` and `gpuDevice` (`renderer.device`). It forwards to the backend chosen at startup, because `FrameService`, `ImageService`, `TextRasterCache` and `PreviewView` are created at module load before the choice is made.
+  - Startup and the unsupported screen:
+    - `main.tsx` calls `chooseBackend` and `startGpu(choice)`.
+    - `app/compat.ts`: the requirement reads "WebGPU (navigator.gpu) or WebGL2"; without either GPU renderer the screen lists "A GPU renderer: WebGPU or WebGL2 on a supported GPU with hardware acceleration turned on".
+    - The dev stats line names the backend ("GPU ready · WebGL2 · device 1").
+    - Dev globals: `__editor.backend`, and `__editor.gl` (the WebGL2 context, `loseForTest(ms)`); `__editor.gpu.loseForTest()` works on both backends.
+  - Export: `ExportJobParams.renderer` is the preview's backend. `ExportRenderer` makes it with `recover: false`, and a WebGL2 context lives on the frame canvas. In Chrome 155 a VideoFrame cannot be made from a `bitmaprenderer` canvas nor from a WebGL canvas's ImageBitmap, only from the WebGL canvas itself (measured).
+  - `PreviewView.render` returns at once while the renderer is not ready (a lost device). Renders during a loss used to throw (text raster uploads), and three in a row while playing would put the preview in its Batch 47 error state while a context is restored.
+  - Tests: +4 files, +26 tests.
+    - `drawRecords.test.ts` (10: transforms and scissors, dead or foreign textures skipped, border edges clipped to the pane, split panes, shaped solids, dissolve maps, reuse, blur region and quad, clear color).
+    - `backend.test.ts` (6), `GlContext.test.ts` (5: start, no context, loss and restore as a new generation, no recovery, dispose), `SwitchRenderer.test.ts` (2).
+    - `compat.test.ts` (+1: WebGL2 without WebGPU), `PreviewView.test.ts` (+1: nothing rendered while lost, the frame asked again on ready), `GpuDevice.test.ts` (+1: `loseForTest`).
+  - Checks: `npm run check` green: typecheck, lint with the CSS color and token checks, 2299 unit tests in 220 files and 4 perf tests, build 1297.00 kB JS (412.89 kB gzip, +23.4 / +5.5 kB), export.worker 399.20 kB (+20.7 kB), decode.worker 213.68 kB.
+  - Production build (`vite preview`, `prod.mjs`): `?renderer=webgl2` starts on WebGL2 (the probe and the app's context, both with `failIfMajorPerformanceCaveat`), with no console error (every program links). Without the flag no WebGL2 context is made.
+  - Regressions (the two previous batches, on 5221, WebGPU):
+    - Batch 46: `kbd.mjs` (Tab onto Snap shows "Snap S", Space and Enter toggle it, no playback); `s4.mjs` audits (only the logged gaps: the inputs' accent-wash ring, the 16px save dot); `s3.mjs` (0 layout-shift entries; More tools by keyboard).
+    - Batch 47: `kill.mjs` (close / throw / exit: playback goes on, recovered within 1.5 s); `corrupt.mjs` 11 / 11; `exportloss.mjs` 5 / 5.
+    - Batch 45 `p1.mjs`: ALL PASS on both backends.
+- acceptance:
+  1. Forced WebGL2 (`?renderer=webgl2`): parity screenshots of the visual checks of Batches 08, 21, 28 and 36. The same OPFS projects were captured on each backend (`shots.mjs`, `compare.mjs`) as Export frame PNGs (project size) and canvas screenshots.
+     - States captured:
+       - B08: three stacked clips with opacities 1 / 0.7 / 0.5, positions, a rotation and a PNG with alpha; a 16:9 clip letterboxed in 9:16; a rotate-90 clip upright.
+       - B21: a 4K source with one-pixel lines at Fit and at 400% (the detail offscreen path), and the Reels safe zone (overlay on screen, absent from Export frame).
+       - B28: text with stroke, shadow and a box, a gradient fill, at Fit and 400%.
+       - B36: a fade in, a cross dissolve and a dip to black.
+       - Extras: solids (rounded gradient, ellipse, line) at Fit and 400%, a blurred text animation (the blur passes), the split preview (transition alignment hover), and the iPhone HLG clip (HDR canvas path).
+     - Results:
+       - All 12 Export frames are identical pixel for pixel (one within 1 level).
+       - Of the 17 canvas screenshots, 14 match within 1 level. The rest differ only on a few anti-aliased edge pixels: the solid line's end (max 33, 0.002% of pixels) and one frame-corner pixel of the text scenes (max 20, 0.001%).
+     - Export worker parity (`expshots.mjs`, `expcompare.mjs`): the exported MP4s decode to the same frames on both backends.
+       - The transitions scene is identical (same file size); the stack is within 2 levels; text is within compression noise (max 24-25, 0% of pixels over 8 levels).
+       - Export against Export frame differs the same on both backends (H.264 at the preset's bitrate: mean 0.34-1.33 levels).
+  - Also checked on WebGL2 (`misc.mjs`, `hdr48.mjs`):
+    - Automatic fallback: with WebGPU removed and no flag the app starts on WebGL2. With WebGL2 refused too, the unsupported screen lists the GPU renderer.
+    - Context loss: lost and restored, the preview draws the same frame (diff 0), restored in 109 ms (WebGPU 21 ms). A 1.5 s loss during playback: no panel error, 0 view failures, playback goes on.
+    - Export: the export worker's context lost at frame 32 / 180 fails the job with the device-lost message and leaves no file; the next export completes.
+    - Memory: 20 open / close cycles: 0 GPU textures after every close, every cycle drawn.
+    - HDR: the iPhone HLG clip has Export frames identical to WebGPU's and screens within 1 level.
+  - Playback, 1080x1920 H.264 30 fps:
+    - P1: 0 React commits during 10 s of playback, a ruler scrub, a clip drag, a gizmo drag and a field scrub, on both backends.
+    - Right after an import (the P1 flow): WebGL2 drops 4 / 0 / 0 frames of ~299, against 2-48 before video textures became mutable; WebGPU drops 0.
+    - Reopened, 3 warm passes: 7 / 1 / 0 against WebGPU 8 / 3 / 0. Uploads p50 0.5-0.6 ms (WebGPU 0.4-0.5), draws p95 0.2-0.4 ms on both.
+  - Playback, 4K H.264 30 fps (`play4k.mjs`, interleaved):
+    - Auto quality (the 960x540 proxy): WebGL2 0 / 3 / 0 dropped of ~160, WebGPU 0 / 0 / 0.
+    - At Full quality without the proxy (the scaled upload): WebGL2 drops 0-18 of ~157 in warm passes (21-28 when the scratch was respecified per frame, 88-131 with texSubImage2D), WebGPU 1-2. See deviations.
+- deviations:
+  - §1.4 is amended as the batch asks: WebGPU or WebGL2. WebGL2 counts only when it runs on the GPU (`failIfMajorPerformanceCaveat`): software rendering is still "no degraded mode".
+  - The backend is chosen once at startup (no switch at runtime). The URL flag works in every build: it is harmless, and it lets a user whose WebGPU driver misbehaves use WebGL2.
+  - WebGL2 presents the preview through `bitmaprenderer` from the context's own OffscreenCanvas: textures cannot be shared across contexts, and the preview canvas is remounted with its panel. The export draws into the context's canvas (the VideoFrame limits above).
+  - WebGL2 textures are capped at 8192 px, WebGPU's default limit, so both backends upload the same sizes.
+  - Measured, not fixed: 4K at Full quality without a proxy drops 0-18 of ~157 frames on WebGL2 against 1-2 on WebGPU. WebGL has no external textures, so the whole 4K frame is copied to RGBA before it is scaled. Auto quality plays the proxy (equal on both). The first playback after a page load drops more on both, more on WebGL2 (42-123).
+- follow-ups: none.
+- design gaps: none (no new UI; the unsupported screen's new text uses its existing styles).
+- pending manual checks (`npm run dev`):
+  1. WebGL2 on this machine: open `http://localhost:5173/?renderer=webgl2`, then open a project with video, text, a transition and a solid. Turn on the dev stats (preview header): the first line reads "GPU ready · WebGL2". Play, scrub, zoom to 400%, use Export frame and Export. Everything looks as it does without the flag.
+  2. Driver reset: with the editor open (with and without `?renderer=webgl2`), open `chrome://gpucrash` in another tab. Expected: the preview goes blank for a moment and comes back by itself (dev stats "restores 1"), with no panel error.
+  3. A machine whose GPU has no WebGPU (or is blocklisted for it): the editor opens on WebGL2 by itself, and the dev stats say WebGL2.
+- docs note: user-visible changes:
+  - The editor also runs in Chrome / Edge where WebGPU is not available (older GPUs, blocklisted drivers), through WebGL2, chosen automatically, with the same picture and the same export.
+  - The "This browser cannot run Shorts Editor" message now asks for WebGPU or WebGL2 with hardware acceleration.
+  - Adding `?renderer=webgl2` to the address forces WebGL2, for troubleshooting a misbehaving WebGPU driver.
+  - 4K playback at Full quality is smoother with WebGPU; Auto quality (proxies) plays the same on both.
+  - Dev-only (not for the guide): the stats line naming the backend, `__editor.gl`.
+- other: `docs/BATCHES.md` (Batches 51-53) and `docs/EDITOR_SPEC.md` (§20), edited outside the batch runs, are left out of this batch's commit (as in Batches 29-47).
