@@ -599,7 +599,7 @@ export class Compositor {
     if (cue?.kind !== "caption" || !cue.enabled) return false;
     const text = live?.texts?.get(cue.id) ?? cue.text;
     if (text.trim() === "") return false;
-    // TODO(batch 53): the cue's style override over the track's style (spec §20.3).
+    // The track's caption style for every cue; per-cue style overrides (spec §20.3) come here (docs/BACKLOG.md).
     const style = live?.styles?.get(track.id) ?? captionStyle(doc, track.id);
     const look = captionLook(text, style);
     const words = cue.words;

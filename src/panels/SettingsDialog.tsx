@@ -24,6 +24,7 @@ import { EmptyState } from "../ui/EmptyState.js";
 import { IconButton } from "../ui/IconButton.js";
 import { Modal } from "../ui/Modal.js";
 import { TextField } from "../ui/TextField.js";
+import { AboutSettings } from "./settings/AboutSettings.js";
 import { GeneralSettings } from "./settings/GeneralSettings.js";
 import styles from "./SettingsDialog.module.css";
 import { scopeText } from "./ShortcutSheet.js";
@@ -36,7 +37,8 @@ import { scopeText } from "./ShortcutSheet.js";
 // JSON file. Changes apply at once: tooltips, menus, the palette and the cheat sheet read the live keymap.
 // Batch 42 adds the General tab (settings/GeneralSettings.tsx: saving, the lengths of new clips, the
 // default transition, editing, audio, transcription, media with Batch 41's import mode, storage with
-// Clear cache), first; Shortcuts stays beside it (the cheat sheet's Edit shortcuts opens it).
+// Clear cache), first; Shortcuts stays beside it (the cheat sheet's Edit shortcuts opens it). Batch 50
+// adds About last (settings/AboutSettings.tsx: version, renderer, help, licenses).
 
 const subscribeKeymap = (listener: () => void) => keymap.subscribe(listener);
 const keymapSnapshot = () => keymap.getOverrides();
@@ -196,8 +198,11 @@ function Dialog({ tab }: { tab: SettingsTab }) {
         <button type="button" role="tab" aria-selected={tab === "shortcuts"} className={styles.tab} onClick={() => setTab("shortcuts")}>
           Shortcuts
         </button>
+        <button type="button" role="tab" aria-selected={tab === "about"} className={styles.tab} onClick={() => setTab("about")}>
+          About
+        </button>
       </div>
-      {tab === "shortcuts" ? <ShortcutEditor /> : <GeneralSettings />}
+      {tab === "shortcuts" ? <ShortcutEditor /> : tab === "about" ? <AboutSettings /> : <GeneralSettings />}
     </Modal>
   );
 }

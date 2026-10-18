@@ -1,0 +1,17 @@
+/* Settings > About (Batch 50; gap: the DS has no about page). The General tab's page, groups and
+   label / control grid; values (version, renderer) in --type-mono primary text with tabular figures,
+   as tall as a compact control so they line up with the button rows; buttons keep their own width. */
+.value {
+  display: flex;
+  align-items: center;
+  min-height: var(--control-compact);
+  color: var(--text-primary);
+  font: var(--type-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}

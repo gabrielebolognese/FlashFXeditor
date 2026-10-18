@@ -26,7 +26,8 @@ import styles from "./GeneralSettings.module.css";
 // proxies) and storage (the open project's cache, the preset library folder, the starter presets).
 // The design system is dark only, so there is no theme choice.
 
-function Group({ title, children, note }: { title: string; children: ReactNode; note?: string }) {
+/** A settings group: an overline heading over the label / control grid (Settings > About uses it too). */
+export function Group({ title, children, note }: { title: string; children: ReactNode; note?: string }) {
   return (
     <section className={styles.group} aria-label={title}>
       <h3 className={styles.heading}>{title}</h3>

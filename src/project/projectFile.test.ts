@@ -3,6 +3,7 @@ import { makeMedia, makeMediaClip, makeProject, makeSolidClip, makeTrack, withCl
 import { SCHEMA_VERSION, type JsonObject, type Project } from "../core/document/types.js";
 import { fuzzRun, random } from "../timeline/edit/fuzzKit.js";
 import { migrateProject, parseProjectFile, ProjectFileError, serializeProject, type Migration } from "./projectFile.js";
+import { version as packageVersion } from "../../package.json";
 
 const STAMP = { now: "2026-10-14T10:00:00.000Z", appVersion: "9.9.9" };
 
@@ -28,6 +29,12 @@ describe("serializeProject / parseProjectFile", () => {
     expect(parsed).toEqual({ ...project, meta: { ...project.meta, modifiedAt: STAMP.now, appVersion: STAMP.appVersion } });
     // A second round trip is byte-identical.
     expect(serializeProject(parsed, STAMP)).toBe(serializeProject(project, STAMP));
+  });
+
+  it("stamps the release version of package.json (the app passes it as appVersion, Batch 50)", () => {
+    expect(packageVersion).toMatch(/^\d+\.\d+\.\d+$/);
+    const parsed = parseProjectFile(serializeProject(richProject(), { now: STAMP.now, appVersion: packageVersion }));
+    expect(parsed.meta.appVersion).toBe(packageVersion);
   });
 
   it("does not mutate the document when stamping", () => {

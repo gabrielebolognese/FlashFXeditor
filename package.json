@@ -1,6 +1,6 @@
 {
   "name": "shorts-editor",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "engines": {
@@ -15,6 +15,7 @@
     "test": "vitest run --project unit && vitest run --project perf",
     "test:watch": "vitest",
     "check": "npm run typecheck && npm run lint && npm run test && npm run build",
+    "docs:shortcuts": "node scripts/update-shortcuts.mjs",
     "clean": "rm -rf dist"
   },
   "dependencies": {

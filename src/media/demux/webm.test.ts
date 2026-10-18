@@ -140,6 +140,22 @@ describe("readWebm: muxed files (ffmpeg, mkvmerge)", () => {
     expect(await probeWebm(reader(buildWebm({ tracks: [vorbis], blocks: grouped })))).toMatchObject({ kind: "audio", durationUs: 2_985_000, audioCodec: "vorbis", audio: { channels: 1, sampleRate: 44100 } });
   });
 
+  it("refuses sound decoded whole (Vorbis, laced blocks) past 45 minutes, not Opus (Batch 50)", async () => {
+    const vorbis = { ...OPUS, codecId: "A_VORBIS", sampleRate: 44100, channels: 1, defaultDuration: 0 };
+    const long = (minutes: number, laced = false): TestBlock[] => [
+      { track: 2, time: 0, key: true, laced },
+      { track: 2, time: minutes * 60_000 - 20, key: true, laced, group: { duration: 20 } },
+    ];
+    const probe = (tracks: TestWebmTrack[], blocks: TestBlock[]) => probeWebm(reader(buildWebm({ tracks, blocks, clusterBlocks: 1 })));
+    await expect(probe([vorbis], long(46))).rejects.toThrow("decoded whole, which works up to 45 minutes (this one is 46 minutes)");
+    await expect(probe([OPUS], long(46, true))).rejects.toBeInstanceOf(ProbeError);
+    await expect(probe([vorbis], long(44))).resolves.toMatchObject({ kind: "audio", audioCodec: "vorbis" });
+    await expect(probe([OPUS], long(46))).resolves.toMatchObject({ kind: "audio", audioCodec: "opus" });
+    // A video with whole-decoded sound is refused too: its sound would be decoded the same way.
+    const withVideo = [...vp9Frames(2), ...long(46)].sort((a, b) => a.time - b.time);
+    await expect(probe([VP9, vorbis], withVideo)).rejects.toBeInstanceOf(ProbeError);
+  });
+
   it("takes the first enabled track of each kind", async () => {
     const tracks: TestWebmTrack[] = [{ ...VP9, number: 1, enabled: false, codecId: "V_THEORA" }, { ...VP9, number: 3 }, { ...VP9, number: 4, codecId: "V_AV1" }, OPUS];
     const blocks = [...vp9Frames(30).map((block) => ({ ...block, track: 3 })), ...videoBlocks(30, 33, 30, 4), ...videoBlocks(30, 33, 30, 1)];

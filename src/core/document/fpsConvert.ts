@@ -6,7 +6,10 @@
 //   that abutted still abut and a clip keeps its place against the playhead. A clip whose edges round
 //   onto one frame keeps 1 frame and pushes the next clips of its track by what it needs (counted as
 //   `shifted`). Media clips keep their source in/out (µs) when they still match the new duration
-//   (§5.1 within one source frame), else `out` follows the new duration, clamped to the media.
+//   (§5.1 within one source frame), else `out` follows the new duration, clamped to the media, and
+//   the clip counts as `rounded` (a source range off the new rate's grid: a clip pasted from a project
+//   at another rate; Batch 50). A freeze's `out` is one frame after its held time at the new rate (it
+//   shows `in` alone), not counted.
 // - Inside a clip: keyframes (relative to the clip start) convert as positions on the timeline, so a
 //   key stays on its moment; keys landing on one frame merge, the later one winning (`merged`), as a
 //   rate stretch does. Fades, transition sides and text animation durations and staggers are lengths;
@@ -15,6 +18,7 @@
 // The report counts every value that did not land exactly on a frame of the new rate: a conversion with
 // none (30 to 60 fps, or 60 to 30 with even frames) is lossless and changes no timing.
 import type { Draft } from "immer";
+import { fitFades } from "./fades.js";
 import { framesToSourceUs, frameToUs, usPerFrame } from "./time.js";
 import type { CaptionClip, Clip, Keyframes, MediaClip, MediaItem, Project, Rational, TextAnim, Transition } from "./types.js";
 import { isFreeze, isMediaClip } from "./types.js";
@@ -119,7 +123,7 @@ function convertAnim(anim: TextAnim, conv: FrameConverter): TextAnim {
  * source frame at the new rate), else `out` follows the duration, clamped to the media (the duration
  * then shortened to what the media holds).
  */
-function fitSource(clip: MediaClip, to: Rational, media: MediaItem | undefined): void {
+function fitSource(clip: MediaClip, to: Rational, media: MediaItem | undefined, conv: FrameConverter): void {
   if (isFreeze(clip)) {
     // One project frame after the held time, within the media (as freeze.ts makes it).
     clip.out = Math.min(clip.in + frameToUs(1, to), media?.durationUs ?? Infinity);
@@ -127,10 +131,13 @@ function fitSource(clip: MediaClip, to: Rational, media: MediaItem | undefined):
   }
   const sourceFrame = usPerFrame(to) * clip.speed;
   if (Math.abs(clip.out - clip.in - clip.duration * sourceFrame) <= sourceFrame) return;
+  const out = clip.out;
   clip.out = clip.in + framesToSourceUs(clip.duration, clip.speed, to);
-  if (!media || clip.kind === "image" || clip.out <= media.durationUs) return;
-  clip.out = media.durationUs;
-  clip.duration = Math.max(1, Math.floor((clip.out - clip.in) / sourceFrame));
+  if (media && clip.kind !== "image" && clip.out > media.durationUs) {
+    clip.out = media.durationUs;
+    clip.duration = Math.max(1, Math.floor((clip.out - clip.in) / sourceFrame));
+  }
+  if (clip.out !== out) conv.report.rounded += 1;
 }
 
 /** The clip's own frame values (keys, fades, transitions, animations, words) after its edges moved. */
@@ -138,11 +145,11 @@ function convertInside(clip: Clip, conv: FrameConverter, oldStart: number, to: R
   const newStart = clip.start;
   if ("keyframes" in clip && clip.keyframes) clip.keyframes = convertKeys(clip.keyframes, conv, oldStart, newStart);
   if (isMediaClip(clip)) {
-    fitSource(clip, to, media);
+    fitSource(clip, to, media, conv);
     if (clip.transitionIn) clip.transitionIn = convertTransition(clip.transitionIn, conv);
     if (clip.transitionOut) clip.transitionOut = convertTransition(clip.transitionOut, conv);
   }
-  if ("fades" in clip && clip.fades) clip.fades = { in: Math.min(clip.duration, conv.length(clip.fades.in)), out: Math.min(clip.duration, conv.length(clip.fades.out)) };
+  if ("fades" in clip && clip.fades) clip.fades = fitFades({ in: conv.length(clip.fades.in), out: conv.length(clip.fades.out) }, clip.duration);
   if (clip.kind === "text") {
     if (clip.animIn) clip.animIn = convertAnim(clip.animIn, conv);
     if (clip.animOut) clip.animOut = convertAnim(clip.animOut, conv);

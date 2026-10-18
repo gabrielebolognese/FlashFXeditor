@@ -54,6 +54,7 @@ import {
   ImageDown,
   ImagePlus,
   Import,
+  Info,
   Keyboard,
   LayoutGrid,
   LayoutTemplate,
@@ -529,6 +530,7 @@ export const COMMANDS: readonly CommandInfo[] = [
   app("app.commandPalette", "Command palette", { icon: Command, anywhere: true, palette: false }),
   app("app.shortcuts", "Keyboard shortcuts", { icon: Keyboard, keywords: "cheat sheet keys help", anywhere: true }),
   app("app.settings", "Settings", { icon: Settings, keywords: "preferences shortcuts keymap rebind", anywhere: true }),
+  app("app.about", "About Shorts Editor", { icon: Info, keywords: "version help licenses renderer webgpu webgl2", anywhere: true }),
   app("app.cancel", "Cancel gesture / close", { palette: false }),
   app("panel.reload", "Reload panel", { icon: RotateCcw, keywords: "error crash restart broken stopped working" }),
 

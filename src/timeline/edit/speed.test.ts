@@ -127,7 +127,8 @@ describe("setSpeeds", () => {
     expect(get(next, "a").speed).toBe(4);
     expect(span(next, "a")).toEqual([0, 75]);
     expect(get(next, "a").keyframes?.opacity?.map((key) => key.frame)).toEqual([0, 50]);
-    expect(get(next, "a").fades).toEqual({ in: 10, out: 75 });
+    // The two fades fit the new duration together (Batch 50), in proportion.
+    expect(get(next, "a").fades).toEqual({ in: 3, out: 72 });
     expect(get(next, "l").speed).toBe(1);
     expect(get(next, "f").speed).toBe(0);
     // The freeze rippled with the faster clip.

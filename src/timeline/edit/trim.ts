@@ -23,6 +23,7 @@
 import type { Draft } from "immer";
 import type { Command } from "../../core/commands/command.js";
 import { framesToSourceUs, usPerFrame } from "../../core/document/time.js";
+import { fitFades } from "../../core/document/fades.js";
 import { retimeKeyframes, shiftKeyframes } from "../../core/document/keyframes.js";
 import { editDefaults } from "./editDefaults.js";
 import { BOUND_SLACK_US, headFrames, reconciled, tailFrames } from "../../core/document/transitions.js";
@@ -419,9 +420,9 @@ export function planEdit(project: Project, spec: EditSpec): TrimPlan {
   }
 }
 
-/** Fades never outlast the clip. */
+/** Fades never outlast the clip, the two together (Batch 50: `fitFades`). */
 function clampFades(next: Clip & Record<string, unknown>, clip: Clip): void {
-  if ("fades" in clip) next.fades = { in: Math.min(clip.fades.in, next.duration), out: Math.min(clip.fades.out, next.duration) };
+  if ("fades" in clip) next.fades = fitFades(clip.fades, next.duration);
 }
 
 /** The clip with its `edge` moved by `delta` frames (the delta is within the plan's limits). */

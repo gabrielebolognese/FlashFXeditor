@@ -5,7 +5,7 @@
 // and redoes to the final one. Follow-ups of Batches 34-42 have their own suites.
 import { describe, expect, it } from "vitest";
 import { setFrameRate } from "../../core/commands/projectCommands.js";
-import { convertProjectFrames } from "../../core/document/fpsConvert.js";
+import { convertProjectFrames, isLossless } from "../../core/document/fpsConvert.js";
 import { keyframeIssues } from "../../core/document/keyframes.js";
 import { createProject } from "../../core/document/project.js";
 import { usPerFrame } from "../../core/document/time.js";
@@ -230,10 +230,14 @@ describe("frame rates and templates (Batch 42 follow-up)", { timeout: 30_000 }, 
       expect(withoutOuts(store.getState(), offGrid)).toStrictEqual(withoutOuts(doc, offGrid));
       if (offGrid.size === 0) expect(store.getState()).toStrictEqual(doc);
       const plain = structuredClone(doc);
-      convertProjectFrames(plain, { num: 60, den: 1 });
+      const there = convertProjectFrames(plain, { num: 60, den: 1 });
       expect(validateProject(plain)).toEqual([]);
       convertProjectFrames(plain, { num: 30, den: 1 });
       expect(withoutOuts(plain, offGrid)).toStrictEqual(withoutOuts(doc, offGrid));
+      // Batch 50: a lossless report means every source range came back (re-fitted ones count as rounded).
+      if (isLossless(there)) {
+        for (const clip of Object.values(doc.clips)) if (isMediaClip(clip) && !isFreeze(clip)) expect(plain.clips[clip.id]).toMatchObject({ out: clip.out });
+      }
 
       let n = 0;
       const template = templateFromProject(doc, [], { id: `t${seed}`, name: doc.name, now: "2026-10-18T00:00:00.000Z" });

@@ -25,7 +25,7 @@ import { PlaybackEngine } from "../playback/PlaybackEngine.js";
 import type { FsDir } from "../project/fs.js";
 import { resolveFile, sampleIndexPath, writeFileAt } from "../project/mediaFiles.js";
 import { formatFps } from "../project/projectPresets.js";
-import type { BackendChoice } from "../render/gpu/backend.js";
+import type { BackendChoice, RendererBackend } from "../render/gpu/backend.js";
 import { createBackend } from "../render/gpu/createBackend.js";
 import { GpuDevice } from "../render/gpu/GpuDevice.js";
 import { GlContext } from "../render/gpu/GlContext.js";
@@ -346,9 +346,16 @@ renderer.subscribe((event) => {
 });
 
 let stopProject: (() => void) | null = null;
+let chosenBackend: RendererBackend | null = null;
+
+/** The backend the startup check chose (Settings > About shows it); null before `startGpu`. */
+export function activeBackend(): RendererBackend | null {
+  return chosenBackend;
+}
 
 /** Creates the renderer of the backend the startup check chose, and its device (from its adapter for WebGPU). */
 export function startGpu(choice: BackendChoice): void {
+  chosenBackend = choice.backend;
   const backend = createBackend(choice.backend);
   renderer.select(backend.renderer, backend.device);
   void backend.device.start(choice.adapter);

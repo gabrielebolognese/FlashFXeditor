@@ -24,6 +24,7 @@
 // Freeze frames, images, text, solids and captions have no speed. Locked clips never change. Each call
 // is one command (one undo step).
 import type { Command } from "../../core/commands/command.js";
+import { fitFades } from "../../core/document/fades.js";
 import { retimeKeyframes } from "../../core/document/keyframes.js";
 import { framesToSourceUs, usPerFrame } from "../../core/document/time.js";
 import { isMediaClip, type Clip, type ClipId, type MediaClip, type Project } from "../../core/document/types.js";
@@ -158,7 +159,7 @@ function retimeGroup(project: Project, group: readonly MediaClip[], speed: numbe
     const next: MediaClip = { ...clip, speed, duration, out };
     // Keys scale with the duration; keys landing on one frame merge, eases and holds stay (Batch 35).
     if (clip.keyframes && duration !== clip.duration) next.keyframes = retimeKeyframes(clip.keyframes, duration / clip.duration);
-    next.fades = { in: Math.min(clip.fades.in, duration), out: Math.min(clip.fades.out, duration) };
+    next.fades = fitFades(clip.fades, duration);
     // Transitions are shortened to the handles left (or removed) by `reconcileTransitions` after the command.
     changes.set(clip.id, next);
   }
