@@ -19,7 +19,7 @@ import {
   viewportInput,
   type PreviewDevState,
 } from "../app/previewController.js";
-import { actions, appSettings, focusScopes, sessionStore, themeBridge } from "../app/services.js";
+import { actions, appSettings, focusScopes, scheduler, sessionStore, themeBridge } from "../app/services.js";
 import { bindTimecode } from "../app/timelineController.js";
 import { GRID_DIVISIONS_MAX, GRID_DIVISIONS_MIN, type PreviewGrid, type PreviewQuality, type SessionState } from "../core/store/sessionStore.js";
 import { useStoreSelector } from "../core/store/useStoreSelector.js";
@@ -34,6 +34,7 @@ import { MenuButton } from "../ui/MenuButton.js";
 import { Select } from "../ui/Select.js";
 import { CanvasContextMenu } from "./CanvasContextMenu.js";
 import { CropChip } from "./CropChip.js";
+import { PresetBar } from "./PresetBar.js";
 import styles from "./PreviewPanel.module.css";
 import wellStyles from "./Well.module.css";
 
@@ -180,12 +181,20 @@ function SnapGuides() {
   );
 }
 
+const selectPresetBar = (state: SessionState) => state.presetBar.visible;
+
+/** The `Presets` toggle (spec §20.2): shows or hides the preset bar under the header. */
+function PresetBarToggle() {
+  const visible = useStoreSelector(sessionStore.state, selectPresetBar);
+  return <IconButton commandId="preview.togglePresetBar" label={visible ? "Presets: hide the preset bar" : "Presets: show the preset bar"} pressed={visible} />;
+}
+
 function FullscreenButton() {
   const fullscreen = useSyncExternalStore(subscribeFullscreen, isFullscreen);
   return <IconButton icon={fullscreen ? Minimize : Maximize} label={fullscreen ? "Exit fullscreen" : "Fullscreen"} commandId="preview.toggleFullscreen" pressed={fullscreen} />;
 }
 
-/** Header (spec §13, §17): Zoom, Fit, Quality, Overlays, Snap, Guides, Fullscreen, Export frame. */
+/** Header (spec §13, §17, §20.2): Zoom, Fit, Quality, Overlays, Snap, Guides, Presets, Fullscreen, Export frame. */
 function PreviewActions() {
   const stats = useStoreSelector(previewDev, selectStats);
   const budget = useStoreSelector(previewDev, selectBudget);
@@ -202,6 +211,7 @@ function PreviewActions() {
       <QualityMenu />
       <OverlaysMenu />
       <SnapGuides />
+      <PresetBarToggle />
       <FullscreenButton />
       <IconButton commandId="preview.exportFrame" />
     </>
@@ -360,6 +370,11 @@ function PreviewChrome() {
 
 const isChrome = (target: EventTarget | null) => target instanceof Element && target.closest("header, footer") !== null;
 const hideDelay = () => themeBridge.theme.preview.chromeHideDelay;
+/**
+ * The canvas's new size is drawn before paint (Batch 52, spec §20.2 "re-fits without a jump"): the
+ * preset bar toggled or a splitter moved, the frame and its overlays never show laid out for the old size.
+ */
+const refitNow = () => scheduler.flush(["preview", "gizmo", "previewOverlay"]);
 
 export function PreviewPanel() {
   const panelRef = useRef<HTMLElement>(null);
@@ -383,7 +398,16 @@ export function PreviewPanel() {
     return panel ? bindFullscreen(panel, isChrome, hideDelay) : undefined;
   }, []);
   return (
-    <PanelFrame id="preview" panelRef={panelRef} header={<PanelTitle>Preview</PanelTitle>} actions={<PreviewActions />} footer={<PreviewChrome />} aside={<MeterStrip />}>
+    <PanelFrame
+      id="preview"
+      panelRef={panelRef}
+      header={<PanelTitle>Preview</PanelTitle>}
+      actions={<PreviewActions />}
+      strip={<PresetBar />}
+      footer={<PreviewChrome />}
+      aside={<MeterStrip />}
+      onBodyResize={refitNow}
+    >
       <div className={wellStyles.well}>
         <CanvasHost panel="preview">
           <div ref={canvasRef} className={styles.canvas} />

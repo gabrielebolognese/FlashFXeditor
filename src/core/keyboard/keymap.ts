@@ -113,6 +113,8 @@ export const DEFAULT_KEYMAP: readonly KeyBinding[] = [
   // Add
   { id: "add.title", keys: ["T"], scopes: G },
   { id: "add.subtitle", keys: ["Shift+T"], scopes: G },
+  // The preset bar (spec §20.2, Batch 52): the first nine buttons of the set it shows.
+  ...Array.from({ length: 9 }, (_, i): KeyBinding => ({ id: `presetBar.apply${i + 1}`, keys: [`Alt+${i + 1}`], scopes: G })),
 
   // History and clipboard
   { id: "history.undo", keys: ["Mod+Z"], scopes: G },

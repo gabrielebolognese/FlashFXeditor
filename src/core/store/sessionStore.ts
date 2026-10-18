@@ -6,12 +6,13 @@
 // never persisted, and selecting one of the four clears the other three. Selected keyframes (spec
 // §6.4, Batch 35) have a channel too: they belong to one selected clip and go when it leaves the
 // clip selection. Remove silence's preview (Batch 38: the cuts Apply would make) has one as well; it is
-// never persisted either. The Export tab's range choice and the export log (Batch 44) are session
-// state of the project, kept in session.json.
+// never persisted either. The Export tab's range choice and the export log (Batch 44), and the preset
+// bar's visibility and set (Batch 52), are session state of the project, kept in session.json.
 import type { TimecodeMode } from "../document/time.js";
 import type { KeyframeSection } from "../document/keyframes.js";
 import type { ClipId, Frame, MediaId, TrackId, Us } from "../document/types.js";
 import type { ExportLogEntry, ExportRangeMode } from "../../export/log.js";
+import type { PresetSetKey } from "../../text/presets.js";
 import { createStore, type Store } from "./createStore.js";
 import { EMPTY_SELECTION, selectionEquals, type Selection } from "./selection.js";
 
@@ -107,6 +108,8 @@ export interface SessionState {
   exportRange: ExportRangeMode;
   /** The export log (spec §16: the last 20 jobs), newest first. */
   exportLog: readonly ExportLogEntry[];
+  /** The preset bar above the preview (spec §20.2): shown (the header's Presets toggle) and the set it shows. */
+  presetBar: { visible: boolean; set: PresetSetKey };
 }
 
 export const DEFAULT_SESSION: SessionState = {
@@ -143,6 +146,7 @@ export const DEFAULT_SESSION: SessionState = {
   keyframeLanes: {},
   exportRange: "whole",
   exportLog: [],
+  presetBar: { visible: true, set: "favorites" },
 };
 
 /**

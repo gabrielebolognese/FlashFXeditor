@@ -1,4 +1,4 @@
-import { useLayoutEffect, type RefObject } from "react";
+import { useLayoutEffect, useRef, type RefObject } from "react";
 import { shallowEqual } from "../core/store/createStore.js";
 import { effectiveRatios, type PanelId } from "../core/store/layoutStore.js";
 import { layoutStore } from "./services.js";
@@ -36,12 +36,19 @@ export function useWorkspaceLayout(ref: RefObject<HTMLElement | null>): void {
 }
 
 /** Reports an element's content size as the size of a panel. */
-export function usePanelSize(id: PanelId, ref: RefObject<HTMLElement | null>): void {
+export function usePanelSize(id: PanelId, ref: RefObject<HTMLElement | null>, onResized?: () => void): void {
+  // The latest callback, so a new function each render does not observe again.
+  const resized = useRef(onResized);
+  useLayoutEffect(() => {
+    resized.current = onResized;
+  });
   useLayoutEffect(() => {
     const element = ref.current;
     if (!element) return;
     const observer = new ResizeObserver(([entry]) => {
-      if (entry) layoutStore.setPanelSize(id, { width: entry.contentRect.width, height: entry.contentRect.height });
+      if (!entry) return;
+      layoutStore.setPanelSize(id, { width: entry.contentRect.width, height: entry.contentRect.height });
+      resized.current?.();
     });
     observer.observe(element);
     return () => observer.disconnect();

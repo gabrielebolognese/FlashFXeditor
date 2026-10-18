@@ -1,24 +1,30 @@
 import { useRef, type KeyboardEvent } from "react";
-import { presetNaming, saveSelectionAsPreset, suggestedPresetName } from "../../app/presetController.js";
+import { barSet, presetNaming, saveSelectionAsPreset, suggestedPresetName } from "../../app/presetController.js";
 import { MAX_PRESET_NAME } from "../../text/presets.js";
 import fieldStyles from "../../ui/NumberField.module.css";
 import { useFocusReturn } from "../properties/focusReturn.js";
 
-/** Closed from inside (Enter, Esc), the field gives the focus back to its panel's Save as preset button. */
-const opener = ({ panel }: { panel: Element | null }) => panel?.querySelector('[data-command="preset.save"]:not([aria-disabled])');
+/** Closed from inside (Enter, Esc), the field gives the focus back to the button that opened it in its panel. */
+const opener =
+  (command: string) =>
+  ({ panel }: { panel: Element | null }) =>
+    panel?.querySelector(`[data-command="${command}"]:not([aria-disabled])`);
+const FROM_SAVE = opener("preset.save");
+const FROM_BAR = opener("presetBar.add");
 
 /**
  * The inline name field of Save as preset (spec §10.3): prefilled with the selected text's font and
- * size, all selected; Enter saves, Esc or a click elsewhere cancels.
+ * size, all selected; Enter saves, Esc or a click elsewhere cancels. In the preset bar (`bar`, the `+`
+ * button, spec §20.2) the new preset joins the set the bar shows.
  */
-export function PresetNameField() {
+export function PresetNameField({ bar = false }: { bar?: boolean }) {
   const done = useRef(false);
   const field = useRef<HTMLLabelElement>(null);
-  useFocusReturn(field, opener);
+  useFocusReturn(field, bar ? FROM_BAR : FROM_SAVE);
   const finish = (name: string | null) => {
     if (done.current) return;
     done.current = true;
-    if (name !== null) saveSelectionAsPreset(name);
+    if (name !== null) saveSelectionAsPreset(name, bar ? barSet() : null);
     presetNaming.set(null);
   };
   const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {

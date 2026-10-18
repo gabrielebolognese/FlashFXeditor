@@ -2,7 +2,6 @@ import { BookmarkPlus, FileDown, FilePlus2, FileUp, FolderOpen, FolderSync, Fold
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type DragEvent, type FocusEvent, type KeyboardEvent, type MouseEvent, type PointerEvent, type ReactNode } from "react";
 import { draggingMedia, pressDragCard, takeClickAfterDrag } from "../../app/mediaGestures.js";
 import {
-  appliesToCaptions,
   applyPresetById,
   canWrite,
   hoverPreset,
@@ -11,24 +10,27 @@ import {
   presetNaming,
   presetRenaming,
   presetSourceClip,
+  presetTagging,
   presetThumbs,
   renamePreset,
+  setPresetTags,
   type LibraryFolder,
 } from "../../app/presetController.js";
-import { actions, appSettings, sessionStore } from "../../app/services.js";
+import { actions, appSettings, sessionStore, themeBridge } from "../../app/services.js";
 import { addFontFiles, dragHasFiles, droppedFontFiles } from "../../app/userFontsController.js";
 import type { TextPreset } from "../../core/document/types.js";
 import { isEditableTarget } from "../../core/keyboard/KeyDispatcher.js";
 import type { PresetScope, SessionState } from "../../core/store/sessionStore.js";
 import { useStoreSelector } from "../../core/store/useStoreSelector.js";
-import { MAX_PRESET_NAME, searchPresets } from "../../text/presets.js";
+import { MAX_PRESET_NAME, MAX_PRESET_TAGS, MAX_TAG_LENGTH, searchPresets } from "../../text/presets.js";
 import { Button } from "../../ui/Button.js";
-import { ContextMenu, type ContextMenuEntry } from "../../ui/ContextMenu.js";
+import { ContextMenu } from "../../ui/ContextMenu.js";
 import { EmptyState } from "../../ui/EmptyState.js";
 import { IconButton } from "../../ui/IconButton.js";
 import { TextField } from "../../ui/TextField.js";
 import { gridColumns, pressWithoutFocus, setTabStop, stepIndex } from "./listNavigation.js";
 import { PresetNameField } from "./PresetNameField.js";
+import { presetMenuEntries } from "./presetMenu.js";
 import styles from "./PresetsTab.module.css";
 
 // The Presets tab (spec §10.3, §12, §17 Presets header): the text preset library. Cards show each
@@ -37,6 +39,8 @@ import styles from "./PresetsTab.module.css";
 // writes the live edit), a drag puts it on the timeline, a right-click opens its menu. The tool row
 // switches between the global and the project's presets and searches them. Batch 46: the cards are one
 // Tab stop, the arrows move between them, Enter or Space applies the focused one (a click's action).
+// Batch 52: the thumbnails are the preset bar's (bitmaps of the sample text), and a card's tags (its
+// preset bar user sets) are edited in place like its name.
 
 const selectScope = (state: SessionState) => state.mediaPanel.presetScope;
 const scopeCommand = (scope: PresetScope) => (scope === "global" ? "presets.showGlobal" : "presets.showProject");
@@ -59,7 +63,7 @@ export function PresetsActions() {
 
 /**
  * A card's thumbnail. The canvas, its preset and its size go to `presetThumbs`, which draws it in the
- * FrameScheduler loop (spec §3.4, P3) when one of them or the fonts change; nothing is drawn here.
+ * FrameScheduler loop (spec §3.4, P3) when one of them or its bitmap changes; nothing is drawn here.
  */
 function PresetThumb({ preset }: { preset: TextPreset }) {
   const ref = useRef<HTMLCanvasElement>(null);
@@ -77,17 +81,21 @@ function PresetThumb({ preset }: { preset: TextPreset }) {
     };
   }, []);
   useEffect(() => {
-    if (ref.current) presetThumbs.show(ref.current, preset);
+    if (ref.current) presetThumbs.show(ref.current, preset, themeBridge.theme.space[2]);
   }, [preset]);
   return <canvas ref={ref} className={styles.canvas} aria-hidden="true" />;
 }
 
-function RenameInput({ preset, onDone }: { preset: TextPreset; onDone: () => void }) {
+/** The card's inline field: its name (Rename) or its tags as a comma-separated list (Tags…, Batch 52). */
+function CardField({ preset, field, onDone }: { preset: TextPreset; field: "name" | "tags"; onDone: () => void }) {
   const done = useRef(false);
-  const finish = (name: string | null) => {
+  const finish = (value: string | null) => {
     if (done.current) return;
     done.current = true;
-    if (name !== null) renamePreset(preset.id, name);
+    if (value !== null) {
+      if (field === "name") renamePreset(preset.id, value);
+      else setPresetTags(preset.id, value);
+    }
     onDone();
   };
   const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
@@ -100,9 +108,11 @@ function RenameInput({ preset, onDone }: { preset: TextPreset; onDone: () => voi
   return (
     <input
       className={styles.renameInput}
-      defaultValue={preset.name}
-      maxLength={MAX_PRESET_NAME}
-      aria-label="Preset name"
+      defaultValue={field === "name" ? preset.name : preset.tags.join(", ")}
+      maxLength={field === "name" ? MAX_PRESET_NAME : MAX_PRESET_TAGS * (MAX_TAG_LENGTH + 2)}
+      aria-label={field === "name" ? "Preset name" : "Preset tags, separated by commas"}
+      placeholder={field === "tags" ? "Tags, separated by commas" : undefined}
+      data-tooltip={field === "tags" ? "Each tag is a set of the preset bar. Enter saves, Esc cancels." : undefined}
       spellCheck={false}
       autoFocus
       onFocus={(event) => event.currentTarget.select()}
@@ -117,16 +127,29 @@ function RenameInput({ preset, onDone }: { preset: TextPreset; onDone: () => voi
 
 const CARD_HINT = "Click: apply to the selected text, or add at the playhead. Drag onto the timeline. Right-click for more.";
 
-const PresetCard = memo(function PresetCard({ preset, defaultTitle, defaultSubtitle, renaming, onRenamed }: { preset: TextPreset; defaultTitle: boolean; defaultSubtitle: boolean; renaming: boolean; onRenamed: () => void }) {
+const PresetCard = memo(function PresetCard({
+  preset,
+  defaultTitle,
+  defaultSubtitle,
+  editing,
+  onEdited,
+}: {
+  preset: TextPreset;
+  defaultTitle: boolean;
+  defaultSubtitle: boolean;
+  /** Its name or tags field is open. */
+  editing: "name" | "tags" | null;
+  onEdited: () => void;
+}) {
   return (
-    <div className={styles.card} data-preset-id={preset.id} role="option" aria-selected="false" aria-label={preset.name} tabIndex={-1} data-tooltip={renaming ? undefined : `${preset.name}. ${CARD_HINT}`}>
+    <div className={styles.card} data-preset-id={preset.id} role="option" aria-selected="false" aria-label={preset.name} tabIndex={-1} data-tooltip={editing ? undefined : `${preset.name}. ${CARD_HINT}`}>
       <div className={styles.thumb}>
         <PresetThumb preset={preset} />
         {/* Each badge has its own tooltip (the card's is the nearest one otherwise). */}
         {(preset.favorite || defaultTitle || defaultSubtitle) && (
           <span className={styles.badges}>
             {preset.favorite && (
-              <span className={styles.badge} aria-label="Favorite" data-tooltip="Favorite: a chip in the timeline toolbar">
+              <span className={styles.badge} aria-label="Favorite" data-tooltip="Favorite: in the preset bar's Favorites">
                 <Star className={styles.badgeIcon} aria-hidden="true" />
               </span>
             )}
@@ -143,40 +166,10 @@ const PresetCard = memo(function PresetCard({ preset, defaultTitle, defaultSubti
           </span>
         )}
       </div>
-      <div className={styles.info}>{renaming ? <RenameInput preset={preset} onDone={onRenamed} /> : <span className={styles.name}>{preset.name}</span>}</div>
+      <div className={styles.info}>{editing ? <CardField preset={preset} field={editing} onDone={onEdited} /> : <span className={styles.name}>{preset.name}</span>}</div>
     </div>
   );
 });
-
-/** The card menu's commands (presetController), run with the card's preset id. */
-const MENU = {
-  apply: "preset.apply",
-  defaultTitle: "preset.defaultTitle",
-  defaultSubtitle: "preset.defaultSubtitle",
-  favorite: "preset.favorite",
-  applyPosition: "preset.applyPosition",
-  rename: "preset.rename",
-  duplicate: "preset.duplicate",
-  export: "preset.export",
-  delete: "preset.delete",
-} as const;
-
-/** The card menu (spec §10.3 "Right-click card"). */
-function menuEntries(preset: TextPreset, writable: boolean, defaults: { title: string | null; subtitle: string | null }): ContextMenuEntry[] {
-  return [
-    { kind: "item", id: MENU.apply, label: presetSourceClip() ? "Apply to selected text" : appliesToCaptions() ? "Apply to captions" : "Add at playhead" },
-    { kind: "separator" },
-    { kind: "item", id: MENU.defaultTitle, label: "Use as default title", commandId: "add.title", active: defaults.title === preset.id },
-    { kind: "item", id: MENU.defaultSubtitle, label: "Use as default subtitle", commandId: "add.subtitle", active: defaults.subtitle === preset.id },
-    { kind: "item", id: MENU.favorite, label: "Favorite: chip in the timeline toolbar", active: preset.favorite, disabled: !writable },
-    { kind: "item", id: MENU.applyPosition, label: "Apply position", active: preset.applyPosition, disabled: !writable },
-    { kind: "separator" },
-    { kind: "item", id: MENU.rename, label: "Rename", disabled: !writable },
-    { kind: "item", id: MENU.duplicate, label: "Duplicate", disabled: !writable },
-    { kind: "item", id: MENU.export, label: "Export…" },
-    { kind: "item", id: MENU.delete, label: "Delete", disabled: !writable },
-  ];
-}
 
 const FOLDER_TEXT: Record<LibraryFolder["status"], (folder: LibraryFolder) => string> = {
   syncing: (folder) => `Syncing with ${folder.name}…`,
@@ -276,9 +269,16 @@ export function PresetsTab() {
   const [query, setQuery] = useState("");
   const [menu, setMenu] = useState<{ id: string; x: number; y: number } | null>(null);
   const renaming = useStoreSelector(presetRenaming, (id) => id);
+  const tagging = useStoreSelector(presetTagging, (id) => id);
   const gridRef = useRef<HTMLDivElement>(null);
   const shown = useMemo(() => searchPresets(presets, query), [presets, query]);
-  const endRename = useMemo(() => () => presetRenaming.set(null), []);
+  const endEdit = useMemo(
+    () => () => {
+      presetRenaming.set(null);
+      presetTagging.set(null);
+    },
+    [],
+  );
 
   // Leaving the tab ends a hover preview and a name field.
   useEffect(
@@ -296,7 +296,7 @@ export function PresetsTab() {
     // The release of a drag out of the panel is no click.
     if (takeClickAfterDrag()) return;
     const id = cardId(event.target);
-    if (id && id !== renaming) applyPresetById(id);
+    if (id && id !== renaming && id !== tagging) applyPresetById(id);
   };
   const onPointerDown = (event: PointerEvent<HTMLDivElement>) => {
     if (event.button !== 0 || isEditableTarget(event.target)) return;
@@ -325,7 +325,7 @@ export function PresetsTab() {
       event.preventDefault();
       event.stopPropagation();
       const id = card.dataset.presetId;
-      if (id && id !== renaming && !event.repeat) applyPresetById(id);
+      if (id && id !== renaming && id !== tagging && !event.repeat) applyPresetById(id);
       return;
     }
     const cards = [...grid.querySelectorAll<HTMLElement>(PRESET_ITEM)];
@@ -464,7 +464,14 @@ export function PresetsTab() {
         {empty ?? (
           <div ref={gridRef} className={styles.grid}>
             {shown.map((preset) => (
-              <PresetCard key={preset.id} preset={preset} defaultTitle={defaultTitle === preset.id} defaultSubtitle={defaultSubtitle === preset.id} renaming={renaming === preset.id} onRenamed={endRename} />
+              <PresetCard
+                key={preset.id}
+                preset={preset}
+                defaultTitle={defaultTitle === preset.id}
+                defaultSubtitle={defaultSubtitle === preset.id}
+                editing={renaming === preset.id ? "name" : tagging === preset.id ? "tags" : null}
+                onEdited={endEdit}
+              />
             ))}
           </div>
         )}
@@ -474,7 +481,7 @@ export function PresetsTab() {
         <ContextMenu
           x={menu.x}
           y={menu.y}
-          entries={menuEntries(menuPreset, canWrite(scope), { title: defaultTitle, subtitle: defaultSubtitle })}
+          entries={presetMenuEntries(menuPreset, canWrite(scope), { title: defaultTitle, subtitle: defaultSubtitle })}
           onSelect={onMenu}
           onClose={() => setMenu(null)}
         />

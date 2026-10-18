@@ -268,6 +268,20 @@ The default keys (spec §18). Every key can be changed in Settings > Shortcuts; 
 | Finish editing text | `Ctrl+Enter` | `⌘Enter` | Text editing |
 | Leave text editing | `Escape` | `Escape` | Text editing |
 
+### Presets
+
+| Command | Windows, Linux | macOS | Where |
+| --- | --- | --- | --- |
+| Apply preset bar button 1 | `Alt+1` | `⌥1` | Everywhere |
+| Apply preset bar button 2 | `Alt+2` | `⌥2` | Everywhere |
+| Apply preset bar button 3 | `Alt+3` | `⌥3` | Everywhere |
+| Apply preset bar button 4 | `Alt+4` | `⌥4` | Everywhere |
+| Apply preset bar button 5 | `Alt+5` | `⌥5` | Everywhere |
+| Apply preset bar button 6 | `Alt+6` | `⌥6` | Everywhere |
+| Apply preset bar button 7 | `Alt+7` | `⌥7` | Everywhere |
+| Apply preset bar button 8 | `Alt+8` | `⌥8` | Everywhere |
+| Apply preset bar button 9 | `Alt+9` | `⌥9` | Everywhere |
+
 ### Canvas
 
 | Command | Windows, Linux | macOS | Where |

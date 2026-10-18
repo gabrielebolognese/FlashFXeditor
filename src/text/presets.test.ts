@@ -1,16 +1,33 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { makeTextClip } from "../core/document/fixtures.js";
 import type { TextAnim, TextClip, TextPreset } from "../core/document/types.js";
-import { CORE_FONTS } from "../render/text/bundledFonts.js";
 import {
+  allPresets,
+  applyOrder,
   defaultPresetName,
   duplicatePreset,
   exportFileName,
-  favoriteChips,
+  FIXED_PRESET_SETS,
   formatPresetFile,
   formatPresetsFile,
-  MAX_FAVORITE_CHIPS,
+  inPresetSet,
+  isPresetSetKey,
+  joinPresetSet,
+  MAX_RECENT_PRESETS,
   mergePresets,
+  movedOrder,
+  notedRecent,
+  parseTags,
+  presetLookKey,
+  presetSampleText,
+  presetSetChoices,
+  presetSetLabel,
+  presetsInSet,
+  reorderableSet,
+  setTag,
+  tagSetKey,
+  togglePresetSet,
   parsePresetsFile,
   presetDiffers,
   presetFileName,
@@ -21,12 +38,12 @@ import {
   sanitizePreset,
   sanitizeTextStyle,
   searchPresets,
-  thumbnailText,
   uniquePresetName,
 } from "./presets.js";
 import { sanitizePresetAnim } from "./anim.js";
-import { STARTER_SUBTITLE_ID, STARTER_TITLE_ID, starterPresets, upgradeStarters } from "./starterPresets.js";
-import { DEFAULT_SUBTITLE_BOX, DEFAULT_SUBTITLE_STYLE, DEFAULT_TEXT_STYLE, DEFAULT_TITLE_STYLE, styleKey } from "./style.js";
+import { parseCatalog } from "./fonts/catalog.js";
+import { STARTER_PACK_VERSION, STARTER_SUBTITLE_ID, STARTER_TAGS, STARTER_TITLE_ID, starterPresets, upgradeStarterPack, upgradeStarters } from "./starterPresets.js";
+import { DEFAULT_SUBTITLE_BOX, DEFAULT_SUBTITLE_STYLE, DEFAULT_TEXT_STYLE, DEFAULT_TITLE_STYLE } from "./style.js";
 
 const FPS = { num: 30, den: 1 };
 const SHORT = { width: 1080, height: 1920, fps: FPS };
@@ -130,12 +147,24 @@ describe("preset sizes", () => {
 });
 
 describe("names", () => {
-  it("prefills the font and size, cleans names and shows Aa for long ones", () => {
+  it("prefills the font and size, and shows the sample text, else the name cut to 14 characters, else Aa", () => {
     expect(defaultPresetName({ fontFamily: "Inter", fontSize: 120 })).toBe("Inter 120");
     expect(defaultPresetName({ fontFamily: "Playfair Display", fontSize: 56.25 })).toBe("Playfair Display 56.3");
-    expect(thumbnailText("Bold outline")).toBe("Bold outline");
-    expect(thumbnailText("A much longer preset name")).toBe("Aa");
-    expect(thumbnailText("  ")).toBe("Aa");
+    expect(presetSampleText({ name: "Bold outline" })).toBe("Bold outline");
+    expect(presetSampleText({ name: "A much longer preset name" })).toBe("A much longer");
+    expect(presetSampleText({ name: "  " })).toBe("Aa");
+    expect(presetSampleText({ name: "Caption bold", sampleText: "  Say   it loud " })).toBe("Say it loud");
+    expect(presetSampleText({ name: "Caption bold", sampleText: "   " })).toBe("Caption bold");
+  });
+
+  it("keys a thumbnail by everything it draws", () => {
+    const base = preset();
+    const key = presetLookKey(base);
+    expect(presetLookKey({ ...base, name: "Other", favorite: true, tags: ["x"] })).not.toBe(key);
+    expect(presetLookKey({ ...base, sampleText: "Preset" })).toBe(key);
+    expect(presetLookKey({ ...base, style: { ...base.style, fontWeight: 400 } })).not.toBe(key);
+    expect(presetLookKey({ ...base, highlight: { mode: "color", color: { r: 1, g: 1, b: 0, a: 1 }, inactiveColor: { r: 1, g: 1, b: 1, a: 1 } } })).not.toBe(key);
+    expect(presetLookKey({ ...base, highlight: { mode: "none", color: { r: 1, g: 1, b: 0, a: 1 }, inactiveColor: { r: 1, g: 1, b: 1, a: 1 } } })).toBe(key);
   });
 
   it("makes names unique and duplicates as a copy that is no favorite", () => {
@@ -160,12 +189,11 @@ describe("lists", () => {
     expect(searchPresets(list, "oswald bold")).toEqual([]);
   });
 
-  it("gives at most 8 favorite chips, global ones first", () => {
-    const many = Array.from({ length: 10 }, (_, i) => preset({ id: `g${i}`, favorite: i !== 3, createdAt: `2026-01-0${i % 9}T00:00:0${i}.000Z` }));
-    const chips = favoriteChips(many, [preset({ id: "p1", favorite: true })]);
-    expect(chips).toHaveLength(MAX_FAVORITE_CHIPS);
-    expect(chips.some((p) => p.id === "g3" || p.id === "p1")).toBe(false);
-    expect(favoriteChips([preset({ id: "g", favorite: true })], [preset({ id: "p1", favorite: true })]).map((p) => p.id)).toEqual(["g", "p1"]);
+  it("lists every preset once, the global ones first", () => {
+    const global = [preset({ id: "b", createdAt: LATER }), preset({ id: "a" })];
+    const project = [preset({ id: "p" }), preset({ id: "a", name: "shadowed" })];
+    expect(allPresets(global, project).map((p) => p.id)).toEqual(["a", "b", "p"]);
+    expect(allPresets(global, project)[0]?.name).toBe("Preset");
   });
 
   it("merges by id, the newer copy winning", () => {
@@ -180,10 +208,113 @@ describe("lists", () => {
   });
 });
 
+describe("preset bar sets (Batch 52)", () => {
+  const global = [
+    preset({ id: "t1", sets: ["titles"], favorite: true, createdAt: "2026-01-01T00:00:00.000Z" }),
+    preset({ id: "t2", sets: ["titles", "captions"], tags: ["Promo"], createdAt: "2026-01-02T00:00:00.000Z" }),
+    preset({ id: "s1", sets: ["subtitles"], tags: ["promo", "title"], createdAt: "2026-01-03T00:00:00.000Z" }),
+  ];
+  const project = [preset({ id: "p1", favorite: true, tags: ["Client"], createdAt: "2026-01-01T00:00:00.000Z" })];
+  const ids = (list: readonly TextPreset[]) => list.map((p) => p.id);
+
+  it("knows the set keys and their labels", () => {
+    expect(FIXED_PRESET_SETS).toEqual(["favorites", "titles", "subtitles", "captions", "recent", "all"]);
+    for (const key of FIXED_PRESET_SETS) expect(isPresetSetKey(key)).toBe(true);
+    expect(isPresetSetKey(tagSetKey("Promo"))).toBe(true);
+    expect(isPresetSetKey("tag:")).toBe(false);
+    expect(isPresetSetKey("tag: padded ")).toBe(false);
+    expect(isPresetSetKey("tag:a,b")).toBe(false);
+    expect(isPresetSetKey("favourites")).toBe(false);
+    expect(isPresetSetKey(3)).toBe(false);
+    expect(setTag(tagSetKey("Promo"))).toBe("Promo");
+    expect(setTag("titles")).toBeNull();
+    expect(presetSetLabel("favorites")).toBe("Favorites");
+    expect(presetSetLabel(tagSetKey("Promo"))).toBe("Promo");
+  });
+
+  it("offers the fixed sets, then the user tags (not the starters' own), once each", () => {
+    const choices = presetSetChoices([...global, ...project], new Set(["title"]));
+    expect(choices.map((c) => c.key)).toEqual([...FIXED_PRESET_SETS, "tag:Client", "tag:Promo"]);
+    expect(choices.at(-1)?.label).toBe("Promo");
+  });
+
+  it("lists a set's presets: favorites, bundled sets, tags, Recent by recency, All in card order", () => {
+    const saved = { recent: ["s1", "gone", "p1"] };
+    expect(ids(presetsInSet(global, project, "favorites", saved))).toEqual(["t1", "p1"]);
+    expect(ids(presetsInSet(global, project, "titles", saved))).toEqual(["t1", "t2"]);
+    expect(ids(presetsInSet(global, project, "captions", saved))).toEqual(["t2"]);
+    expect(ids(presetsInSet(global, project, tagSetKey("PROMO"), saved))).toEqual(["t2", "s1"]);
+    expect(ids(presetsInSet(global, project, "recent", saved))).toEqual(["s1", "p1"]);
+    expect(ids(presetsInSet(global, project, "all", saved))).toEqual(["t1", "t2", "s1", "p1"]);
+    expect(inPresetSet(global[0] as TextPreset, "subtitles")).toBe(false);
+  });
+
+  it("keeps a set's stored order, presets it does not name after it in card order", () => {
+    expect(ids(presetsInSet(global, project, "all", { recent: [], order: ["s1"] }))).toEqual(["t1", "t2", "s1", "p1"]);
+    expect(ids(presetsInSet(global, project, "titles", { recent: [], order: ["t2", "gone", "t1"] }))).toEqual(["t2", "t1"]);
+    expect(ids(applyOrder(global, ["s1"]))).toEqual(["s1", "t1", "t2"]);
+    expect(reorderableSet("favorites")).toBe(true);
+    expect(reorderableSet(tagSetKey("Promo"))).toBe(true);
+    expect(reorderableSet("recent")).toBe(false);
+    expect(reorderableSet("all")).toBe(false);
+  });
+
+  it("moves an id into a gap", () => {
+    const list = ["a", "b", "c", "d"];
+    expect(movedOrder(list, "a", 0)).toEqual(list);
+    expect(movedOrder(list, "a", 1)).toEqual(list);
+    expect(movedOrder(list, "a", 2)).toEqual(["b", "a", "c", "d"]);
+    expect(movedOrder(list, "a", 4)).toEqual(["b", "c", "d", "a"]);
+    expect(movedOrder(list, "d", 0)).toEqual(["d", "a", "b", "c"]);
+    expect(movedOrder(list, "c", 1)).toEqual(["a", "c", "b", "d"]);
+    expect(movedOrder(list, "x", 1)).toEqual(list);
+    expect(movedOrder(list, "b", 99)).toEqual(["a", "c", "d", "b"]);
+  });
+
+  it("puts a new preset into the shown set, and toggles bundled sets", () => {
+    const p = preset();
+    expect(joinPresetSet(p, "favorites").favorite).toBe(true);
+    expect(joinPresetSet(p, "captions").sets).toEqual(["captions"]);
+    expect(joinPresetSet({ ...p, sets: ["captions"] }, "titles").sets).toEqual(["titles", "captions"]);
+    expect(joinPresetSet(p, tagSetKey("Promo")).tags).toEqual(["Promo"]);
+    expect(joinPresetSet(p, "recent")).toBe(p);
+    expect(joinPresetSet(p, "all")).toBe(p);
+    const titled = togglePresetSet(p, "titles");
+    expect(titled.sets).toEqual(["titles"]);
+    expect(togglePresetSet(titled, "titles").sets).toBeUndefined();
+    expect(togglePresetSet({ ...p, sets: ["captions"] }, "subtitles").sets).toEqual(["subtitles", "captions"]);
+  });
+
+  it("parses tags and keeps Recent short", () => {
+    expect(parseTags(" promo, Client ,,PROMO,  two   words ")).toEqual(["promo", "Client", "two words"]);
+    expect(parseTags("x".repeat(50))).toEqual(["x".repeat(40)]);
+    expect(parseTags(Array.from({ length: 30 }, (_, i) => `t${i}`).join(","))).toHaveLength(20);
+    expect(notedRecent(["a", "b"], "b")).toEqual(["b", "a"]);
+    const many = Array.from({ length: 20 }, (_, i) => `p${i}`);
+    expect(notedRecent(many, "new")).toHaveLength(MAX_RECENT_PRESETS);
+    expect(notedRecent(many, "new")[0]).toBe("new");
+  });
+});
+
 describe("files", () => {
   it("reads a preset back exactly as written", () => {
     const original = preset({ id: "p1", name: "Box", style: structuredClone(DEFAULT_SUBTITLE_STYLE), box: { ...DEFAULT_SUBTITLE_BOX }, position: { x: 0, y: 500 }, applyPosition: true, tags: ["a"], favorite: true, defaultDuration: 2500, animIn: { id: "fade", durationMs: 333, staggerMs: 0, ease: "easeIn" } });
     expect(sanitizePreset(JSON.parse(formatPresetFile(original)), LATER)).toEqual(original);
+    // Batch 52: the sample text, the sets and the word highlight.
+    const bar = preset({ id: "p2", sampleText: "Say it", sets: ["titles", "captions"], highlight: { mode: "background", color: { r: 0.5, g: 0.3, b: 1, a: 1 }, inactiveColor: { r: 1, g: 1, b: 1, a: 1 } } });
+    expect(sanitizePreset(JSON.parse(formatPresetFile(bar)), LATER)).toEqual(bar);
+  });
+
+  it("reads the Batch 52 fields defensively (older files have none)", () => {
+    const read = sanitizePreset({ id: "a", style: {}, sampleText: "  two\nlines  ", sets: ["captions", "nope", "titles", "captions"], highlight: { mode: "laser" }, tags: ["a,b", "A b"] }, NOW);
+    expect(read).toMatchObject({ sampleText: "two lines", sets: ["titles", "captions"], tags: ["a b"] });
+    expect(read?.highlight).toBeUndefined();
+    const old = sanitizePreset({ id: "b", style: {} }, NOW);
+    expect(old).not.toHaveProperty("sampleText");
+    expect(old).not.toHaveProperty("sets");
+    expect(old).not.toHaveProperty("highlight");
+    expect(sanitizePreset({ id: "c", style: {}, sampleText: "", sets: [] }, NOW)).not.toHaveProperty("sets");
+    expect(sanitizePreset({ id: "d", style: {}, highlight: { mode: "scale", color: "red" } }, NOW)?.highlight).toEqual({ mode: "scale", color: { r: 1, g: 1, b: 1, a: 1 }, inactiveColor: { r: 1, g: 1, b: 1, a: 1 } });
   });
 
   it("falls back on bad values, skips presets without an id or a style", () => {
@@ -222,15 +353,23 @@ describe("files", () => {
 
 describe("starter presets", () => {
   const starters = starterPresets();
+  const catalog = parseCatalog(JSON.parse(readFileSync("public/fonts/library/catalog.json", "utf8")));
 
-  it("are 8 to 12 distinct looks with unique ids and names, in the core fonts", () => {
-    expect(starters.length).toBeGreaterThanOrEqual(8);
-    expect(starters.length).toBeLessThanOrEqual(12);
+  it("are about 40 distinct looks (spec §20.2) with unique ids and names, in library fonts at weights they have", () => {
+    expect(starters.length).toBeGreaterThanOrEqual(36);
+    expect(starters.length).toBeLessThanOrEqual(44);
     expect(new Set(starters.map((p) => p.id)).size).toBe(starters.length);
     expect(new Set(starters.map((p) => p.name)).size).toBe(starters.length);
-    expect(new Set(starters.map((p) => styleKey(p.style))).size).toBe(starters.length);
-    const families = new Set(CORE_FONTS.map((font) => font.family));
-    for (const starter of starters) expect(families.has(starter.style.fontFamily)).toBe(true);
+    expect(new Set(starters.map((p) => presetLookKey(p))).size).toBe(starters.length);
+    for (const starter of starters) {
+      const family = catalog.byFamily.get(starter.style.fontFamily.toLowerCase());
+      expect(family, starter.style.fontFamily).toBeDefined();
+      if (!family) continue;
+      const weight = starter.style.fontWeight;
+      const has = family.weights.includes(weight) || (family.variable !== null && weight >= family.variable.wght[0] && weight <= family.variable.wght[1]);
+      expect(has, `${starter.name}: ${family.family} ${weight}`).toBe(true);
+      if (starter.style.italic) expect(family.italic, starter.name).toBe(true);
+    }
     // Animations (Batch 31): valid, and none on the defaults (T and Shift+T stay still).
     for (const starter of starters) for (const anim of [starter.animIn, starter.animOut]) if (anim) expect(sanitizePresetAnim(anim)).toEqual(anim);
     expect(starters.filter((p) => p.animIn).length).toBeGreaterThanOrEqual(3);
@@ -254,6 +393,59 @@ describe("starter presets", () => {
     expect(upgraded?.[lower]?.animIn).toBeUndefined();
     expect(upgradeStarters(upgraded as TextPreset[])).toBeNull();
     expect(upgradeStarters([])).toBeNull();
+  });
+
+  it("fill the Titles, Subtitles and Captions sets, with nine favorites and short sample texts", () => {
+    const count = (set: "titles" | "subtitles" | "captions") => starters.filter((p) => p.sets?.includes(set)).length;
+    expect(count("titles")).toBeGreaterThanOrEqual(15);
+    expect(count("subtitles")).toBeGreaterThanOrEqual(6);
+    expect(count("captions")).toBeGreaterThanOrEqual(6);
+    for (const starter of starters) expect(starter.sets?.length, starter.name).toBe(1);
+    expect(starters.filter((p) => p.favorite)).toHaveLength(9);
+    for (const starter of starters) expect([...presetSampleText(starter)].length, starter.name).toBeLessThanOrEqual(14);
+    // The captions' word highlights (yellow active word, boxed word, ...), and every mode once at least.
+    const modes = new Set(starters.flatMap((p) => (p.highlight ? [p.highlight.mode] : [])));
+    expect([...modes].sort()).toEqual(["background", "color", "colorAndScale", "scale"]);
+    for (const starter of starters) if (starter.highlight) expect(starter.sets).toEqual(["captions"]);
+    // Their tags are search words, not preset bar sets.
+    expect(presetSetChoices(starters, STARTER_TAGS).map((c) => c.key)).toEqual([...FIXED_PRESET_SETS]);
+  });
+
+  it("keep the 12 Batch 30 starters first, at their ids, looks and dates", () => {
+    const old = ["starter-title", "starter-subtitle", "starter-bold-outline", "starter-lower-third", "starter-caption", "starter-highlight", "starter-minimal-mono", "starter-big-number", "starter-elegant-serif", "starter-handwritten", "starter-neon", "starter-breaking"];
+    expect(starters.slice(0, 12).map((p) => p.id)).toEqual(old);
+    expect(starters[4]?.createdAt).toBe("2026-01-01T00:04:00.000Z");
+    expect(starters[2]?.style).toMatchObject({ fontFamily: "Unbounded", fontWeight: 800, fontSize: 104, textCase: "upper" });
+  });
+
+  it("bring a pack 1 store up to date: new starters join, stored ones get their sets and sample texts", () => {
+    const bundled = starterPresets();
+    const strip = (p: TextPreset): TextPreset => {
+      const copy = { ...p, favorite: false };
+      delete copy.sets;
+      delete copy.sampleText;
+      delete copy.highlight;
+      return copy;
+    };
+    // Pack 1: the 12 of Batch 30 as stored then; the user deleted Highlight and changed Bold outline; Title is untouched.
+    const stored = bundled
+      .slice(0, 12)
+      .filter((p) => p.id !== "starter-highlight")
+      .map(strip)
+      .map((p) => (p.id === "starter-bold-outline" ? { ...p, name: "Mine", favorite: false, updatedAt: LATER } : p));
+    const upgraded = upgradeStarterPack(stored, 1) as TextPreset[];
+    expect(upgraded).not.toBeNull();
+    expect(upgraded.length).toBe(bundled.length - 1);
+    expect(upgraded.some((p) => p.id === "starter-highlight")).toBe(false);
+    const bold = upgraded.find((p) => p.id === "starter-bold-outline");
+    expect(bold).toMatchObject({ name: "Mine", sets: ["titles"], sampleText: "Bold", favorite: false, updatedAt: LATER });
+    const title = upgraded.find((p) => p.id === STARTER_TITLE_ID);
+    expect(title).toMatchObject({ sets: ["titles"], favorite: true, updatedAt: bundled[0]?.updatedAt });
+    expect(upgraded.find((p) => p.id === "starter-caption-yellow")).toEqual(bundled.find((p) => p.id === "starter-caption-yellow"));
+    // Nothing more to do at the current pack, nor for a store that is already current.
+    expect(upgradeStarterPack(upgraded, STARTER_PACK_VERSION)).toBeNull();
+    expect(upgradeStarterPack(upgraded, 1)).toBeNull();
+    expect(upgradeStarterPack([], 1)?.length).toBe(bundled.length - 12);
   });
 
   it("read back unchanged from a file, oldest first in card order", () => {

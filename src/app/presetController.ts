@@ -1,4 +1,4 @@
-// Text presets in the app (spec §10.3, §10.2, §6.1, §11, §15). Framework-free; React reads
+// Text presets in the app (spec §10.3, §10.2, §11, §15, §20.2). Framework-free; React reads
 // `presetLibrary` through narrow selectors.
 // - Stores: the global presets live in IndexedDB (`textPresets.v1`; the starters are put there on the
 //   first start) and, when the user chose one, in a library folder (one JSON file per preset, read
@@ -9,13 +9,17 @@
 //   Update preset (the selected clip's look into its preset; other clips keep theirs), Apply (the
 //   selected text clips, one undo step; else a new clip), Add (a new text clip at the playhead with
 //   the preset, edited inline at once, like `+ Title`), rename, duplicate, delete, favorite, apply
-//   position, default Title / Subtitle (T / Shift+T use them), import and export JSON.
+//   position, sets and tags, default Title / Subtitle (T / Shift+T use them), import and export JSON.
 // - Hover: a card hovered with text clips selected shows the preset on them, live only (P2).
 // - Captions (spec §10.5): with cues or the caption track selected (and no text clip), Apply sets the
 //   caption track's text style from the preset (position, width, lines and highlight stay); hovering
 //   shows it live.
 // - Drags: a card dragged onto the timeline (or the canvas) adds a text clip with the preset there.
-// - Thumbnails: the Presets tab's cards are drawn by `presetThumbs` in the FrameScheduler loop.
+// - Thumbnails: bitmaps made in idle time by `presetThumbService` (Batch 52), drawn on the Presets tab's
+//   cards and the preset bar's buttons by `presetThumbs` in the FrameScheduler loop.
+// - The preset bar (spec §20.2, Batch 52): its set (session state), the set's buttons in order
+//   (`barPresets`: stored orders and Recent in the app settings), Alt+1..9, `+` (Save as preset into the
+//   shown set), reordering, and the bundled starter pack brought up to date on load.
 import type { ClipId, Project, TextClip, TextPreset, TrackId, Transform } from "../core/document/types.js";
 import { usToFrame } from "../core/document/time.js";
 import { createStore } from "../core/store/createStore.js";
@@ -25,24 +29,39 @@ import { fromHandle, isDirectoryHandle, type FsDir } from "../project/fs.js";
 import { PresetFolderWriter, projectPresetsDir, readPresetFolder } from "../project/presetFiles.js";
 import { PresetThumbPainter } from "../panels/media/PresetThumbPainter.js";
 import type { LiveText } from "../render/compositor/Compositor.js";
-import { drawPresetThumbnail } from "../render/text/presetThumbnails.js";
+import { PresetThumbService } from "../render/text/PresetThumbService.js";
+import { renderPresetThumbnail } from "../render/text/presetThumbnails.js";
 import {
+  allPresets,
   cleanPresetName,
   defaultPresetName,
   duplicatePreset,
   exportFileName,
+  FIXED_PRESET_SETS,
   formatPresetsFile,
+  isPresetSetKey,
+  joinPresetSet,
   mergePresets,
+  movedOrder,
+  notedRecent,
   parsePresetsFile,
+  parseTags,
   presetDiffers,
   presetFromClip,
   presetLook,
+  presetSampleText,
+  presetsInSet,
   presetUpdatedFromClip,
+  reorderableSet,
   sanitizePreset,
   sortPresets,
+  togglePresetSet,
   uniquePresetName,
+  type PresetSetKey,
 } from "../text/presets.js";
-import { starterPresets, upgradeStarters } from "../text/starterPresets.js";
+import { STARTER_PACK_VERSION, starterPresets, upgradeStarterPack, upgradeStarters } from "../text/starterPresets.js";
+import type { PresetSetId } from "../core/document/types.js";
+import { fontCatalog, loadFontCatalog } from "./catalogController.js";
 import type { TitleKind } from "../text/style.js";
 import type { DropItem } from "../timeline/edit/dropMedia.js";
 import { captionStyleOf, captionTrackOf, setCaptionStyle } from "../timeline/edit/captions.js";
@@ -53,8 +72,8 @@ import { showToast } from "../ui/toasts.js";
 import { pickFile, saveFile, type PickerType } from "./filePickers.js";
 import { patchLiveEdit } from "./liveEdit.js";
 import type { CardDragSource } from "./mediaGestures.js";
-import { addTitleClip, fontsVersion, selectedTextClip, setDefaultTitleLook } from "./textController.js";
-import { actions, appSettings, documentStore, focusScopes, fontLibrary, keyValueStore, saveStatus, scheduler, sessionStore, themeBridge } from "./services.js";
+import { addTitleClip, selectedTextClip, setDefaultTitleLook } from "./textController.js";
+import { actions, appSettings, documentStore, focusScopes, fontLibrary, idleQueue, keyValueStore, saveStatus, scheduler, sessionStore } from "./services.js";
 
 export interface LibraryFolder {
   name: string;
@@ -76,17 +95,51 @@ export interface PresetLibrary {
 
 export const presetLibrary = createStore<PresetLibrary>({ loaded: false, global: [], project: [], projectOpen: false, projectWritable: false, folder: null });
 
-/** Where Save as preset's name field is open: the quick row (properties) or the Presets tab; null when closed. */
-export const presetNaming = createStore<"quick" | "tab" | null>(null);
+/** Where Save as preset's name field is open: the quick row (properties), the Presets tab or the preset bar (`+`); null when closed. */
+export const presetNaming = createStore<"quick" | "tab" | "bar" | null>(null);
 /** The preset card whose name is being edited (the card menu's Rename, `preset.rename`), or null. */
 export const presetRenaming = createStore<string | null>(null);
+/** The preset card whose tags (its user sets) are being edited (`preset.editTags`), or null. */
+export const presetTagging = createStore<string | null>(null);
 
-/** The Presets tab's card thumbnails (spec §3.4, P3: drawn in the FrameScheduler loop, at the device pixel ratio of the frame). */
-export const presetThumbs = new PresetThumbPainter(scheduler, (canvas, preset, width, height) => {
-  drawPresetThumbnail(canvas, preset, width, height, window.devicePixelRatio || 1, themeBridge.theme.space[2], fontLibrary);
+/**
+ * Preset thumbnails as bitmaps (spec §20.2), made in idle time once their fonts are loaded. A family no
+ * source knows yet may be a library font whose catalog was not read: the catalog is read first (idle
+ * time, never at start), so a starter never shows in the fallback font.
+ */
+export const presetThumbService = new PresetThumbService({
+  idle: idleQueue,
+  fontsReady(preset, text) {
+    const status = fontCatalog.getState().status;
+    if (fontLibrary.source(preset.style.fontFamily) === "missing" && (status === "idle" || status === "loading")) {
+      void loadFontCatalog();
+      return false;
+    }
+    return fontLibrary.ready(preset.style, text);
+  },
+  render: renderPresetThumbnail,
+  subscribeFonts: (listener) => fontLibrary.subscribe((change) => listener(change.families)),
+});
+
+/** Draws the thumbnails on the cards and buttons (spec §3.4, P3: in the FrameScheduler loop, at the device pixel ratio of the frame). */
+export const presetThumbs = new PresetThumbPainter(scheduler, (canvas, preset, cssWidth, cssHeight, cssMargin) => {
+  const dpr = window.devicePixelRatio || 1;
+  const width = Math.max(1, Math.round(cssWidth * dpr));
+  const height = Math.max(1, Math.round(cssHeight * dpr));
+  const thumb = presetThumbService.get(preset, width, height, Math.round(cssMargin * dpr));
+  if (!thumb) return false;
+  if (canvas.width !== width) canvas.width = width;
+  if (canvas.height !== height) canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return true;
+  ctx.clearRect(0, 0, width, height);
+  if (thumb.bitmap) ctx.drawImage(thumb.bitmap, 0, 0);
+  return true;
 });
 
 const GLOBAL_KEY = "textPresets.v1";
+/** The starter pack the stored global presets were brought to (absent: pack 1, Batch 30's 12). */
+const PACK_KEY = "textPresets.starterPack";
 const FOLDER_KEY = "presetLibraryFolder.v1";
 const now = () => new Date().toISOString();
 const newId = () => crypto.randomUUID();
@@ -195,16 +248,21 @@ async function loadGlobal(): Promise<void> {
     if (Array.isArray(stored)) {
       const at = now();
       const presets = stored.map((value) => sanitizePreset(value, at)).filter((preset): preset is TextPreset => preset !== null);
-      // Untouched starters seeded before they had animations take them (Batch 31), stored at once.
-      const upgraded = upgradeStarters(presets);
-      if (upgraded) commit("global", mergePresets(upgraded, list("global")));
+      const pack = await keyValueStore.get(PACK_KEY);
+      // Untouched starters seeded before they had animations take them (Batch 31); the starter pack of
+      // Batch 52 joins (new starters, sets, sample texts, highlights), stored at once.
+      const animated = upgradeStarters(presets);
+      const upgraded = upgradeStarterPack(animated ?? presets, typeof pack === "number" ? pack : 1);
+      const next = upgraded ?? animated;
+      if (next) commit("global", mergePresets(next, list("global")));
       else setLibrary({ global: sortPresets(mergePresets(presets, list("global"))) });
       setLibrary({ loaded: true });
     } else {
-      // The first start: the starters (spec §10.3 "bundled starter presets").
+      // The first start: the starters (spec §10.3 "bundled starter presets", §20.2 starter pack).
       commit("global", mergePresets(starterPresets(), list("global")));
       setLibrary({ loaded: true });
     }
+    if ((await keyValueStore.get(PACK_KEY)) !== STARTER_PACK_VERSION) await keyValueStore.set(PACK_KEY, STARTER_PACK_VERSION);
   } catch (error) {
     console.warn("[presets] cannot read the presets", error);
     setLibrary({ loaded: true });
@@ -350,7 +408,11 @@ function selectedTextIds(project: Project = documentStore.getState()): ClipId[] 
   return [...selection.clipIds].filter((id) => project.clips[id]?.kind === "text" && !isClipLocked(project, id));
 }
 
-/** The caption track a preset applies to: selected cues' or the selected caption track, when no text clip is selected. */
+/**
+ * The caption track a preset applies to: selected cues' or the selected caption track, when no text clip
+ * is selected (spec §20.2 Click: the track's style).
+ */
+// TODO(batch 53): with cues selected, a preset (bar, Presets tab, hover) writes their style overrides (§20.3) instead of the track's style.
 function captionTarget(project: Project = documentStore.getState()): TrackId | null {
   if (selectedTextIds(project).length > 0) return null;
   const track = captionTrackOf(project);
@@ -391,16 +453,19 @@ export function suggestedPresetName(): string {
 
 /**
  * Save as preset (spec §10.3): the selected text clip's look as a new preset named `name` (made unique)
- * in the Presets tab's scope; the clip is linked to it (one undo step). Returns the new preset's id.
+ * in the Presets tab's scope; the clip is linked to it (one undo step). From the preset bar's `+` (spec
+ * §20.2) it joins the bar's set `set`. Returns the new preset's id.
  */
-export function saveSelectionAsPreset(name: string): string | null {
+export function saveSelectionAsPreset(name: string, set: PresetSetKey | null = null): string | null {
   const project = documentStore.getState();
   const clip = presetSourceClip(project);
   if (!clip) return null;
   const scope = targetScope();
   const taken = list(scope).map((preset) => preset.name);
-  const preset = presetFromClip(clip, project.settings, { id: newId(), name: uniquePresetName(cleanPresetName(name) || defaultPresetName(clip.style), taken), now: now() });
+  const made = presetFromClip(clip, project.settings, { id: newId(), name: uniquePresetName(cleanPresetName(name) || defaultPresetName(clip.style), taken), now: now() });
+  const preset = set ? joinPresetSet(made, set) : made;
   commit(scope, [...list(scope), preset]);
+  if (set === "recent") noteRecentPreset(preset.id);
   const command = linkPreset(project, clip.id, preset.id, `Save preset "${preset.name}"`);
   if (command) documentStore.dispatch(command);
   return preset.id;
@@ -430,6 +495,30 @@ export function toggleApplyPosition(id: string): void {
   changePreset(id, (preset) => ({ ...preset, applyPosition: !preset.applyPosition }));
 }
 
+/** In or out of a bundled set (the card menu's In Titles / In Subtitles / In Captions, spec §20.2). */
+export function togglePresetInSet(id: string, set: PresetSetId): void {
+  changePreset(id, (preset) => togglePresetSet(preset, set));
+}
+
+/** A preset's tags, its user sets (spec §20.2), from a comma-separated list. */
+export function setPresetTags(id: string, text: string): void {
+  const tags = parseTags(text);
+  const found = findPreset(id);
+  if (found && found.preset.tags.join("\n") !== tags.join("\n")) changePreset(id, (preset) => ({ ...preset, tags }));
+}
+
+/**
+ * Shows the preset's card in the Presets tab (its scope, the Media panel's keyboard) and opens its
+ * name or tags field there: the card menu of the preset bar has no field of its own.
+ */
+function editInTab(id: string, field: "name" | "tags"): void {
+  const found = findPreset(id);
+  if (!found || !canWrite(found.scope)) return;
+  sessionStore.state.set((state) => ({ ...state, mediaPanel: { ...state.mediaPanel, tab: "presets", presetScope: found.scope } }));
+  focusScopes.set("media");
+  (field === "name" ? presetRenaming : presetTagging).set(id);
+}
+
 export function duplicatePresetById(id: string): string | null {
   const found = findPreset(id);
   if (!found || !canWrite(found.scope)) return null;
@@ -454,14 +543,27 @@ export function setDefaultPreset(kind: TitleKind, id: string | null): void {
   void appSettings.update(kind === "title" ? { defaultTitlePreset: id } : { defaultSubtitlePreset: id });
 }
 
-/** A preset's look in the open project, as `addTitle` takes it. */
+/** A preset's look in the open project, as `addTitle` takes it: a clip made from it reads its sample text (Batch 52). */
 function lookOf(preset: TextPreset, project: Project): TitleLook {
   const look = presetLook(preset, project.settings);
   return {
     ...look,
     presetId: preset.id,
+    ...(preset.sampleText !== undefined && { value: presetSampleText(preset) }),
     ...(preset.defaultDuration !== undefined && { duration: Math.max(1, usToFrame(preset.defaultDuration * 1000, project.settings.fps)) }),
   };
+}
+
+/** Where a clip made from a preset sits (spec §10.2): a Subtitles or Captions preset in the lower third, others as a Title. */
+function presetKind(preset: TextPreset): TitleKind {
+  const sets = preset.sets ?? [];
+  return !sets.includes("titles") && (sets.includes("subtitles") || sets.includes("captions")) ? "subtitle" : "title";
+}
+
+/** The Recent set (spec §20.2) after `id` was applied. */
+function noteRecentPreset(id: string): void {
+  const recent = appSettings.getState().recentPresets;
+  if (recent[0] !== id) void appSettings.update({ recentPresets: notedRecent(recent, id) });
 }
 
 /** The look `+ Title` / `+ Subtitle` take: the default preset's, or null (built-in). */
@@ -484,7 +586,13 @@ export function addPresetClip(id: string, point: { x: number; y: number } | null
   const project = documentStore.getState();
   const look = lookOf(found.preset, project);
   if (point) look.position = { x: Math.round(point.x - project.settings.width / 2), y: Math.round(point.y - project.settings.height / 2) };
-  return addTitleClip("title", { look, label: `Add "${found.preset.name}"` });
+  noteRecentPreset(id);
+  return addTitleClip(presetKind(found.preset), { look, label: `Add "${found.preset.name}"` });
+}
+
+/** The caption style a preset gives `track`: its text style, and its word highlight when it has one. */
+function captionStyleWith(project: Project, track: TrackId, preset: TextPreset) {
+  return { ...captionStyleOf(project, track), text: presetLook(preset, project.settings).style, ...(preset.highlight && { highlight: structuredClone(preset.highlight) }) };
 }
 
 /** Click on a card (spec §10.3 Apply): onto the selected text clips (one undo step), else a new clip at the playhead. */
@@ -496,8 +604,8 @@ export function applyPresetById(id: string): void {
   const ids = selectedTextIds(project);
   const captions = captionTarget(project);
   if (captions) {
-    const style = { ...captionStyleOf(project, captions), text: presetLook(found.preset, project.settings).style };
-    const command = setCaptionStyle(project, captions, style, { label: `Apply "${found.preset.name}" to captions` });
+    noteRecentPreset(id);
+    const command = setCaptionStyle(project, captions, captionStyleWith(project, captions, found.preset), { label: `Apply "${found.preset.name}" to captions` });
     if (command) documentStore.dispatch(command);
     return;
   }
@@ -505,6 +613,7 @@ export function applyPresetById(id: string): void {
     addPresetClip(id);
     return;
   }
+  noteRecentPreset(id);
   const look = presetLook(found.preset, project.settings);
   const command = applyPreset(project, ids, { presetId: id, ...look }, `Apply "${found.preset.name}"`);
   if (command) documentStore.dispatch(command);
@@ -527,8 +636,7 @@ export function hoverPreset(id: string | null): void {
   const captions = found ? captionTarget(project) : null;
   if (found && captions) {
     hovered = id;
-    const style = { ...captionStyleOf(project, captions), text: presetLook(found.preset, project.settings).style };
-    patchLiveEdit({ captionStyles: new Map([[captions, style]]) });
+    patchLiveEdit({ captionStyles: new Map([[captions, captionStyleWith(project, captions, found.preset)]]) });
     return;
   }
   if (!found || ids.length === 0) {
@@ -566,7 +674,7 @@ export function presetDragSource(id: string): CardDragSource {
       const look = lookOf(found.preset, project);
       const duration = look.duration ?? titleDuration(project, sessionStore.state.getState().playhead, false);
       const fields = {
-        value: "Title",
+        value: look.value ?? "Title",
         style: look.style,
         box: look.box,
         presetId: id,
@@ -626,7 +734,76 @@ function setPresetScope(presetScope: PresetScope): void {
   sessionStore.state.set((state) => ({ ...state, mediaPanel: { ...state.mediaPanel, presetScope } }));
 }
 
-/** The commands of one preset (its id as the argument): the card menu's rows and the favorite chips. */
+// The preset bar (spec §20.2).
+
+/** The set the preset bar shows (session state). */
+export const barSet = (): PresetSetKey => sessionStore.state.getState().presetBar.set;
+
+/** The buttons of set `key` in order (Recent and the stored orders from the app settings). */
+export function barPresets(key: PresetSetKey = barSet(), library: PresetLibrary = presetLibrary.getState(), settings = appSettings.getState()): TextPreset[] {
+  return presetsInSet(library.global, library.project, key, { recent: settings.recentPresets, order: settings.presetOrder[key] });
+}
+
+/** Every preset once (the set selector reads their tags). */
+export const everyPreset = (library: PresetLibrary = presetLibrary.getState()): TextPreset[] => allPresets(library.global, library.project);
+
+function setBar(patch: Partial<{ visible: boolean; set: PresetSetKey }>): void {
+  sessionStore.state.set((state) => ({ ...state, presetBar: { ...state.presetBar, ...patch } }));
+}
+
+/** Shows set `key` in the preset bar. */
+export function showBarSet(key: string): void {
+  if (isPresetSetKey(key) && key !== barSet()) setBar({ set: key });
+}
+
+/** Alt+1..9 (spec §20.2): the `n`th button (1-based) of the shown set; false when it has none. */
+export function applyBarButton(n: number): boolean {
+  const preset = barPresets()[n - 1];
+  if (!preset) return false;
+  applyPresetById(preset.id);
+  return true;
+}
+
+/** A drag in the bar: `id` into gap `gap` of set `key`, whose order the app settings keep (spec §20.2). */
+export function movePresetInSet(key: PresetSetKey, id: string, gap: number): void {
+  if (!reorderableSet(key)) return;
+  const ids = barPresets(key).map((preset) => preset.id);
+  const next = movedOrder(ids, id, gap);
+  if (next.join("\n") === ids.join("\n")) return;
+  void appSettings.update({ presetOrder: { ...appSettings.getState().presetOrder, [key]: next } });
+}
+
+/** The bar's scroller (the component sets it): the arrow buttons' and commands' target. */
+let barScroller: ((direction: -1 | 1) => void) | null = null;
+export function setPresetBarScroller(scroll: ((direction: -1 | 1) => void) | null): void {
+  barScroller = scroll;
+}
+
+/** The preset bar's commands (spec §20.2): the header toggle, Alt+1..9, `+`, the arrows and the set choices. */
+function presetBarCommands(): (() => void)[] {
+  const hasSource = () => presetSourceClip() !== null;
+  return [
+    actions.register("preview.togglePresetBar", () => setBar({ visible: !sessionStore.state.getState().presetBar.visible })),
+    ...Array.from({ length: 9 }, (_, i) => actions.register(`presetBar.apply${i + 1}`, () => applyBarButton(i + 1))),
+    actions.register(
+      "presetBar.add",
+      () => {
+        if (!hasSource()) return false;
+        if (!sessionStore.state.getState().presetBar.visible) setBar({ visible: true });
+        presetNaming.set("bar");
+      },
+      { enabled: hasSource },
+    ),
+    actions.register("presetBar.scrollLeft", () => barScroller?.(-1)),
+    actions.register("presetBar.scrollRight", () => barScroller?.(1)),
+    actions.register("presetBar.showSet", (_context: unknown, key?: string) => {
+      if (key !== undefined) showBarSet(key);
+    }),
+    ...FIXED_PRESET_SETS.map((key) => actions.register(`presetBar.set.${key}`, () => showBarSet(key))),
+  ];
+}
+
+/** The commands of one preset (its id as the argument): the card menu's rows (Presets tab and preset bar). */
 function presetCommands(): (() => void)[] {
   const on = (run: (id: string) => void) => (_context: unknown, id?: string) => {
     if (id !== undefined && findPreset(id)) run(id);
@@ -639,7 +816,11 @@ function presetCommands(): (() => void)[] {
     actions.register("preset.defaultSubtitle", on((id) => setDefaultPreset("subtitle", defaults().defaultSubtitlePreset === id ? null : id))),
     actions.register("preset.favorite", on(toggleFavorite)),
     actions.register("preset.applyPosition", on(toggleApplyPosition)),
-    actions.register("preset.rename", on((id) => presetRenaming.set(id))),
+    actions.register("preset.inTitles", on((id) => togglePresetInSet(id, "titles"))),
+    actions.register("preset.inSubtitles", on((id) => togglePresetInSet(id, "subtitles"))),
+    actions.register("preset.inCaptions", on((id) => togglePresetInSet(id, "captions"))),
+    actions.register("preset.rename", on((id) => editInTab(id, "name"))),
+    actions.register("preset.editTags", on((id) => editInTab(id, "tags"))),
     actions.register("preset.duplicate", on((id) => void duplicatePresetById(id))),
     actions.register("preset.export", on((id) => void exportPresets(id))),
     actions.register("preset.delete", on(deletePreset)),
@@ -660,8 +841,8 @@ export function installPresetController(): () => void {
     ),
     // The hover preview follows the selection it was made for.
     sessionStore.selection.subscribe(() => endHover()),
-    // A font loaded (or the system fonts came): the card thumbnails draw again (at the next frame).
-    fontsVersion.subscribe(() => presetThumbs.redrawAll()),
+    // New thumbnail bitmaps: the cards and buttons that waited for theirs draw (at the next frame).
+    presetThumbService.subscribe(() => presetThumbs.redrawWaiting()),
     // Save as preset (spec §11, §17: the quick row's, or the Presets header's New from selection when
     // the Presets tab has the keyboard; each opens its own name field) and Update preset.
     actions.register(
@@ -683,13 +864,26 @@ export function installPresetController(): () => void {
     actions.register("presets.restoreStarters", restoreStartersAction, { enabled: () => presetLibrary.getState().loaded }),
     actions.register("presets.syncFolder", () => void syncLibraryFolder(), { enabled: () => presetLibrary.getState().folder !== null && presetLibrary.getState().folder?.status !== "syncing" }),
     actions.register("presets.stopFolder", () => void stopLibraryFolder(), { enabled: () => presetLibrary.getState().folder !== null }),
-    // The card menu (spec §10.3 "Right-click card") and the toolbar's favorite chips act on the preset named by the argument.
+    // The card menu (spec §10.3 "Right-click card", also the preset bar's) acts on the preset named by the argument.
     ...presetCommands(),
+    ...presetBarCommands(),
   ];
   if (import.meta.env.DEV) {
     // Console access for the acceptance checks.
     const editor = ((globalThis as { __editor?: Record<string, unknown> }).__editor ??= {});
-    editor.presets = { library: presetLibrary, find: findPreset, save: saveSelectionAsPreset, update: updatePresetFromSelection, apply: applyPresetById, add: addPresetClip, remove: deletePreset, importPresets, exportPresets };
+    editor.presets = {
+      library: presetLibrary,
+      find: findPreset,
+      save: saveSelectionAsPreset,
+      update: updatePresetFromSelection,
+      apply: applyPresetById,
+      add: addPresetClip,
+      remove: deletePreset,
+      importPresets,
+      exportPresets,
+      bar: { presets: barPresets, set: barSet, show: showBarSet, move: movePresetInSet, applyButton: applyBarButton },
+      thumbs: presetThumbService,
+    };
   }
   return () => {
     for (const stop of stops) stop();

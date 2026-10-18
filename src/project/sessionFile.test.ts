@@ -134,6 +134,17 @@ describe("session file", () => {
     expect(parseSessionFile(text).selection).toEqual({ clipIds: [], primary: null, kind: "none" });
   });
 
+  it("keeps the preset bar's visibility and a known set (Batch 52)", () => {
+    expect(defaultSessionFile().state.presetBar).toEqual({ visible: true, set: "favorites" });
+    const read = (presetBar: unknown) => parseSessionFile(JSON.stringify({ version: 1, state: { presetBar } })).state.presetBar;
+    expect(read({ visible: false, set: "captions" })).toEqual({ visible: false, set: "captions" });
+    expect(read({ visible: false, set: "tag:Promo" })).toEqual({ visible: false, set: "tag:Promo" });
+    expect(read({ visible: "no", set: "tag:" })).toEqual({ visible: true, set: "favorites" });
+    expect(read(null)).toEqual({ visible: true, set: "favorites" });
+    const data = { ...defaultSessionFile(), state: { ...defaultSessionFile().state, presetBar: { visible: false, set: "recent" as const } } };
+    expect(parseSessionFile(serializeSession(data)).state.presetBar).toEqual({ visible: false, set: "recent" });
+  });
+
   it("does not share the default objects", () => {
     const a = defaultSessionFile();
     a.state.collapsedSections.x = true;

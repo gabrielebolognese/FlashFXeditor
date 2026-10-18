@@ -1,5 +1,5 @@
-// Text presets (spec §10.3): the model of the Presets tab, the quick row's Save / Update preset and the
-// toolbar's favorite chips. Pure.
+// Text presets (spec §10.3, §20.2): the model of the Presets tab, the quick row's Save / Update preset and
+// the preset bar above the preview (its sets, their order, Recent). Pure.
 // - Sizes are stored for a frame whose short side is TEXT_REFERENCE_SIDE (1080 px, a 1080 x 1920
 //   short) and scale with the project a preset is used in (`presetLook`), as the default Title and
 //   Subtitle did in Batch 29. On a 1080 px project nothing is scaled, so values stay exact.
@@ -11,7 +11,21 @@
 // - Files: one preset per JSON object; an export is `{ format, version, presets: [...] }`. Everything
 //   read from a file goes through `sanitizePreset` (bad values fall back to the defaults, a preset
 //   without an id or a style is skipped).
-import type { Gradient, PresetTextAnim, Rational, RGBA, TextAnim, TextBox, TextClip, TextPreset, TextStyle } from "../core/document/types.js";
+import {
+  CAPTION_HIGHLIGHTS,
+  PRESET_SET_IDS,
+  type CaptionHighlight,
+  type Gradient,
+  type PresetSetId,
+  type PresetTextAnim,
+  type Rational,
+  type RGBA,
+  type TextAnim,
+  type TextBox,
+  type TextClip,
+  type TextPreset,
+  type TextStyle,
+} from "../core/document/types.js";
 import { fromPresetAnim, isPlayable, sameAnim, sanitizePresetAnim, toPresetAnim } from "./anim.js";
 import { DEFAULT_TEXT_BOX, DEFAULT_TEXT_STYLE, isGradient, scaleTextStyle, styleKey, TEXT_LIMITS, TEXT_REFERENCE_SIDE } from "./style.js";
 
@@ -19,10 +33,15 @@ import { DEFAULT_TEXT_BOX, DEFAULT_TEXT_STYLE, isGradient, scaleTextStyle, style
 export const PRESETS_FILE_FORMAT = "shorts-editor.text-presets";
 export const PRESETS_FILE_VERSION = 1;
 export const MAX_PRESET_NAME = 60;
-/** Favorite presets shown as chips in the timeline toolbar (spec §6.1). */
-export const MAX_FAVORITE_CHIPS = 8;
-/** A card's thumbnail shows the preset's name up to this many characters, else `Aa` (spec §10.3). */
-export const THUMBNAIL_NAME_MAX = 12;
+/** A preset without its own sample text shows its name cut to this many characters (spec §20.2 "about 14"). */
+export const PRESET_SAMPLE_MAX = 14;
+/** The longest sample text a preset stores. */
+export const MAX_SAMPLE_TEXT = 40;
+/** Tags a preset keeps, and their length. */
+export const MAX_PRESET_TAGS = 20;
+export const MAX_TAG_LENGTH = 40;
+/** The preset bar's Recent set: presets applied, most recent first. */
+export const MAX_RECENT_PRESETS = 12;
 
 /** A project's frame (its sizes scale presets) and frame rate (its animations' frames). */
 type Frame = { width: number; height: number; fps: Rational };
@@ -136,10 +155,26 @@ export function cleanPresetName(name: string): string {
   return name.replace(/\s+/g, " ").trim().slice(0, MAX_PRESET_NAME);
 }
 
-/** The text a card's thumbnail shows: the name, or `Aa` when it is long (spec §10.3). */
-export function thumbnailText(name: string): string {
-  const clean = cleanPresetName(name);
-  return clean === "" || [...clean].length > THUMBNAIL_NAME_MAX ? "Aa" : clean;
+/** A sample text as stored: one line, trimmed, at most MAX_SAMPLE_TEXT characters ("" for none). */
+export function cleanSampleText(text: string): string {
+  return [...text.replace(/\s+/g, " ").trim()].slice(0, MAX_SAMPLE_TEXT).join("").trim();
+}
+
+/**
+ * The text a preset's thumbnail shows (spec §20.2, the Presets tab's cards too): its sample text, else
+ * its name cut to PRESET_SAMPLE_MAX characters, else `Aa`.
+ */
+export function presetSampleText(preset: Pick<TextPreset, "name" | "sampleText">): string {
+  const sample = preset.sampleText === undefined ? "" : cleanSampleText(preset.sampleText);
+  if (sample !== "") return sample;
+  const name = [...cleanPresetName(preset.name)].slice(0, PRESET_SAMPLE_MAX).join("").trim();
+  return name === "" ? "Aa" : name;
+}
+
+/** Everything a thumbnail draws from (its cache key): the style, the box, the sample text and the word highlight. */
+export function presetLookKey(preset: TextPreset): string {
+  const highlight = preset.highlight && preset.highlight.mode !== "none" ? JSON.stringify(preset.highlight) : "";
+  return `${styleKey(preset.style)}|${preset.box.mode}:${preset.box.width}|${presetSampleText(preset)}|${highlight}`;
 }
 
 /** `name`, or `name 2`, `name 3`... the first not in `taken`. */
@@ -172,9 +207,138 @@ export function searchPresets(presets: readonly TextPreset[], query: string): Te
   });
 }
 
-/** The toolbar's favorite chips (spec §6.1: up to 8): global favorites first, then the project's, each in card order. */
-export function favoriteChips(global: readonly TextPreset[], project: readonly TextPreset[]): TextPreset[] {
-  return [...sortPresets(global), ...sortPresets(project)].filter((preset) => preset.favorite).slice(0, MAX_FAVORITE_CHIPS);
+// The preset bar's sets (spec §20.2).
+
+/** A set of the preset bar: Favorites, a bundled set, Recent, All, or a user tag (`tag:<name>`). */
+export type PresetSetKey = "favorites" | PresetSetId | "recent" | "all" | `tag:${string}`;
+/** The fixed sets, in the selector's order (the user tags follow). */
+export const FIXED_PRESET_SETS = ["favorites", ...PRESET_SET_IDS, "recent", "all"] as const satisfies readonly PresetSetKey[];
+export const DEFAULT_PRESET_SET: PresetSetKey = "favorites";
+const SET_LABELS: Record<(typeof FIXED_PRESET_SETS)[number], string> = { favorites: "Favorites", titles: "Titles", subtitles: "Subtitles", captions: "Captions", recent: "Recent", all: "All" };
+
+const TAG_PREFIX = "tag:";
+export const tagSetKey = (tag: string): PresetSetKey => `${TAG_PREFIX}${tag}`;
+/** The tag of a user set's key, or null for a fixed set. */
+export const setTag = (key: PresetSetKey): string | null => (key.startsWith(TAG_PREFIX) ? key.slice(TAG_PREFIX.length) : null);
+
+export function isPresetSetKey(value: unknown): value is PresetSetKey {
+  if (typeof value !== "string") return false;
+  if ((FIXED_PRESET_SETS as readonly string[]).includes(value)) return true;
+  const tag = value.startsWith(TAG_PREFIX) ? value.slice(TAG_PREFIX.length) : "";
+  return tag !== "" && [...tag].length <= MAX_TAG_LENGTH && tag.trim() === tag && !tag.includes(",");
+}
+
+export function presetSetLabel(key: PresetSetKey): string {
+  return setTag(key) ?? SET_LABELS[key as keyof typeof SET_LABELS];
+}
+
+/** Every preset once: the global ones, then the project's (one with a global id is hidden), each in card order. */
+export function allPresets(global: readonly TextPreset[], project: readonly TextPreset[]): TextPreset[] {
+  const ids = new Set(global.map((preset) => preset.id));
+  return [...sortPresets(global), ...sortPresets(project.filter((preset) => !ids.has(preset.id)))];
+}
+
+/**
+ * The set selector's choices: the fixed sets, then each user tag (sorted, case-insensitive). Tags in
+ * `bundledTags` (lower case: the starters' own, which search uses) are not sets; only the user's are.
+ */
+export function presetSetChoices(presets: readonly TextPreset[], bundledTags: ReadonlySet<string>): { key: PresetSetKey; label: string }[] {
+  const tags = new Map<string, string>();
+  for (const preset of presets) {
+    for (const tag of preset.tags) {
+      const lower = tag.toLocaleLowerCase();
+      if (!bundledTags.has(lower) && !tags.has(lower) && isPresetSetKey(tagSetKey(tag))) tags.set(lower, tag);
+    }
+  }
+  const user = [...tags.values()].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
+  return [...FIXED_PRESET_SETS.map((key) => ({ key, label: SET_LABELS[key] })), ...user.map((tag) => ({ key: tagSetKey(tag), label: tag }))];
+}
+
+/** Whether `preset` is in a set (Recent and All list any preset). */
+export function inPresetSet(preset: TextPreset, key: PresetSetKey): boolean {
+  if (key === "favorites") return preset.favorite;
+  if (key === "recent" || key === "all") return true;
+  const tag = setTag(key);
+  if (tag !== null) return preset.tags.some((own) => own.toLocaleLowerCase() === tag.toLocaleLowerCase());
+  return preset.sets?.includes(key as PresetSetId) ?? false;
+}
+
+/** A drag reorders a set, which keeps its order (spec §20.2): every set but Recent (by recency) and All (card order). */
+export const reorderableSet = (key: PresetSetKey): boolean => key !== "recent" && key !== "all";
+
+/** `items` with those named in `order` first, in its order, then the rest as they were. */
+export function applyOrder<T extends { id: string }>(items: readonly T[], order: readonly string[] | undefined): T[] {
+  if (!order || order.length === 0) return [...items];
+  const rank = new Map(order.map((id, index) => [id, index]));
+  const ranked = items.filter((item) => rank.has(item.id)).sort((a, b) => (rank.get(a.id) ?? 0) - (rank.get(b.id) ?? 0));
+  return [...ranked, ...items.filter((item) => !rank.has(item.id))];
+}
+
+/**
+ * The buttons of a set, in order: Recent by recency (`recent` ids), All in card order (global first),
+ * the others filtered and in their stored `order` (presets it does not name after, in card order).
+ */
+export function presetsInSet(
+  global: readonly TextPreset[],
+  project: readonly TextPreset[],
+  key: PresetSetKey,
+  saved: { recent: readonly string[]; order?: readonly string[] | undefined },
+): TextPreset[] {
+  const all = allPresets(global, project);
+  if (key === "all") return all;
+  if (key === "recent") {
+    const byId = new Map(all.map((preset) => [preset.id, preset]));
+    return saved.recent.map((id) => byId.get(id)).filter((preset): preset is TextPreset => preset !== undefined);
+  }
+  return applyOrder(
+    all.filter((preset) => inPresetSet(preset, key)),
+    saved.order,
+  );
+}
+
+/** `ids` with `id` moved into gap `gap` of the list (0: before the first, ids.length: after the last). */
+export function movedOrder(ids: readonly string[], id: string, gap: number): string[] {
+  const from = ids.indexOf(id);
+  if (from === -1) return [...ids];
+  const rest = ids.filter((other) => other !== id);
+  const at = Math.max(0, Math.min(rest.length, gap > from ? gap - 1 : gap));
+  return [...rest.slice(0, at), id, ...rest.slice(at)];
+}
+
+/** `preset` in set `key` (spec §20.2 `+`: a new preset joins the shown set): a favorite, in a bundled set, or tagged. */
+export function joinPresetSet(preset: TextPreset, key: PresetSetKey): TextPreset {
+  if (key === "recent" || key === "all" || inPresetSet(preset, key)) return preset;
+  if (key === "favorites") return { ...preset, favorite: true };
+  const tag = setTag(key);
+  if (tag !== null) return { ...preset, tags: [...preset.tags, tag].slice(0, MAX_PRESET_TAGS) };
+  return { ...preset, sets: PRESET_SET_IDS.filter((set) => set === key || preset.sets?.includes(set)) };
+}
+
+/** `preset` in or out of a bundled set (the card menu's In Titles / In Subtitles / In Captions). */
+export function togglePresetSet(preset: TextPreset, set: PresetSetId): TextPreset {
+  const had = preset.sets?.includes(set) ?? false;
+  const sets = PRESET_SET_IDS.filter((id) => (id === set ? !had : (preset.sets?.includes(id) ?? false)));
+  const next: TextPreset = { ...preset, sets };
+  if (sets.length === 0) delete next.sets;
+  return next;
+}
+
+/** Tags typed as a comma-separated list: each one line and trimmed, unique (case-insensitive), at most MAX_PRESET_TAGS. */
+export function parseTags(text: string): string[] {
+  const seen = new Set<string>();
+  const tags: string[] = [];
+  for (const part of text.split(",")) {
+    const tag = [...part.replace(/\s+/g, " ").trim()].slice(0, MAX_TAG_LENGTH).join("").trim();
+    if (tag === "" || seen.has(tag.toLocaleLowerCase())) continue;
+    seen.add(tag.toLocaleLowerCase());
+    tags.push(tag);
+  }
+  return tags.slice(0, MAX_PRESET_TAGS);
+}
+
+/** The Recent set after `id` was applied: it first, at most MAX_RECENT_PRESETS. */
+export function notedRecent(recent: readonly string[], id: string): string[] {
+  return [id, ...recent.filter((other) => other !== id)].slice(0, MAX_RECENT_PRESETS);
 }
 
 /**
@@ -251,6 +415,16 @@ export function sanitizeTextStyle(value: unknown, fallback: TextStyle = DEFAULT_
   };
 }
 
+/** A preset's word highlight read from a file (none when absent or off). */
+function sanitizeHighlight(value: unknown): CaptionHighlight | null {
+  const raw = obj(value);
+  if (!raw) return null;
+  const mode = oneOf(CAPTION_HIGHLIGHTS, raw.mode, "none");
+  if (mode === "none") return null;
+  const white = { r: 1, g: 1, b: 1, a: 1 };
+  return { mode, color: rgba(raw.color, white), inactiveColor: rgba(raw.inactiveColor, white) };
+}
+
 const isoTime = (value: unknown, fallback: string) => (typeof value === "string" && !Number.isNaN(Date.parse(value)) ? value : fallback);
 
 /** A preset read from a file, or null when it has no id or no style. `now` dates a preset that has none. */
@@ -265,6 +439,10 @@ export function sanitizePreset(value: unknown, now: string): TextPreset | null {
   const duration = num(raw.defaultDuration, NaN, 1, 3_600_000);
   const animIn = sanitizePresetAnim(raw.animIn);
   const animOut = sanitizePresetAnim(raw.animOut);
+  // Batch 52 (no file version change: older files have none of these, older editors drop them).
+  const sampleText = typeof raw.sampleText === "string" ? cleanSampleText(raw.sampleText) : "";
+  const sets = Array.isArray(raw.sets) ? PRESET_SET_IDS.filter((set) => (raw.sets as unknown[]).includes(set)) : [];
+  const highlight = sanitizeHighlight(raw.highlight);
   return {
     id: raw.id,
     name: (typeof raw.name === "string" && cleanPresetName(raw.name)) || defaultPresetName(style),
@@ -275,7 +453,11 @@ export function sanitizePreset(value: unknown, now: string): TextPreset | null {
     ...(Number.isFinite(duration) && { defaultDuration: Math.round(duration) }),
     ...(position && { position: { x: Math.round(num(position.x, 0, -100_000, 100_000)), y: Math.round(num(position.y, 0, -100_000, 100_000)) } }),
     applyPosition: bool(raw.applyPosition, false),
-    tags: Array.isArray(raw.tags) ? [...new Set(raw.tags.filter((tag): tag is string => typeof tag === "string" && tag.trim() !== "").map((tag) => tag.trim().slice(0, 40)))].slice(0, 20) : [],
+    ...(sampleText !== "" && { sampleText }),
+    ...(sets.length > 0 && { sets }),
+    ...(highlight && { highlight }),
+    // A comma inside a tag would split it when edited as a list: it reads as a space.
+    tags: Array.isArray(raw.tags) ? parseTags(raw.tags.filter((tag): tag is string => typeof tag === "string").map((tag) => tag.replace(/,/g, " ")).join(",")) : [],
     favorite: bool(raw.favorite, false),
     createdAt,
     updatedAt: isoTime(raw.updatedAt, createdAt),

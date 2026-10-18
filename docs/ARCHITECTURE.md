@@ -28,7 +28,9 @@ The timeline, the preview, the compositor and the audio engine subscribe directl
 - One `FrameScheduler` (`core/scheduler/FrameScheduler.ts`) wraps `requestAnimationFrame`: views call
   `invalidate(flag)`, each dirty view renders at most once per frame; the playback engine is a ticker at
   the start of the frame. Idle work (thumbnails, peaks, font preloads) runs in `IdleQueue` slices that
-  pause while playing or dragging.
+  pause while playing or dragging. `flush(flags)` renders dirty views at once, from a ResizeObserver
+  callback before paint: the preview re-fits in the same frame when the preset bar shows or hides
+  (Batch 52).
 - The timeline (`timeline/view/`) is framework-free with two canvases: content (ruler, clips, thumbnails,
   waveforms, markers) and overlay (playhead, hover, ghosts, snap lines, trims). Playback redraws the
   overlay only (P3); drawing is virtualized by binary search per track (P10).
@@ -46,6 +48,11 @@ The timeline, the preview, the compositor and the audio engine subscribe directl
   cancellable); text that needs a face gets it at once, while font browser rows get theirs in idle-time
   batches, since each face added to the document's font set restyles the page. The export worker adds
   the same faces (the copies, library URLs, My fonts bytes) before its first frame.
+- Preset thumbnails (`render/text/PresetThumbService.ts`, Batch 52): ImageBitmaps of each preset's
+  sample text, made by the text engine in `IdleQueue` slices once its fonts are loaded (never while
+  playing), cached by preset id, look and device size (a small LRU, closed on eviction).
+  `panels/media/PresetThumbPainter.ts` copies them onto the preset bar's buttons (`panels/PresetBar.tsx`,
+  under the preview header) and the Presets tab's cards in the frame loop.
 - Theme bridge (`core/theme/theme.ts`): the CSS custom properties read into a typed `Theme` for canvases,
   again when `data-theme` changes.
 

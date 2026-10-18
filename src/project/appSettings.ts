@@ -3,7 +3,8 @@
 // volume and mute of the preview chrome (§14: monitoring only, never the export), the color picker's
 // recent colors (§11), the punch zoom (Batch 27), the font picker's favorites (§11, Batch 28) and the
 // font browser's recent families (§20.1, Batch 51), the
-// default Title and Subtitle presets (§10.2, Batch 30), the Transcribe dialog's model and language
+// default Title and Subtitle presets (§10.2, Batch 30), the preset bar's Recent set and set orders
+// (§20.2, Batch 52), the Transcribe dialog's model and language
 // (§10.6, Batch 33), Auto-duck music's depth and ramps (§14, Batch 37) and Remove silence's parameters
 // (§14, Batch 38), the shortcut editor's keymap overrides and the command palette's recent commands
 // (Batch 40), the default durations, the default transition and "keyframes follow source" (§11, §6.15,
@@ -27,6 +28,7 @@ import type { AudioFileFormat } from "../export/audioExport.js";
 import type { ExportDestination } from "../export/log.js";
 import { DEFAULT_CUSTOM_SETTINGS, FILE_NAME_TEMPLATE, MAX_FILE_TEMPLATE, REELS_PRESET, sanitizeExportSettings, sanitizeUserPresets, type ExportPreset, type ExportSettings } from "../export/presets.js";
 import type { SubtitleFormat } from "../text/subtitles.js";
+import { MAX_RECENT_PRESETS } from "../text/presets.js";
 
 /** copy: into media/ (default). reference: linked, the file handles kept in IndexedDB (Batch 41, spec §9.1). */
 export type ImportMode = "copy" | "reference";
@@ -69,6 +71,10 @@ export interface AppSettings {
    */
   defaultTitlePreset: string | null;
   defaultSubtitlePreset: string | null;
+  /** The preset bar's Recent set (spec §20.2, Batch 52): presets applied, most recent first. */
+  recentPresets: readonly string[];
+  /** The preset bar's order of each set it lets you drag (spec §20.2 "keep their order"): preset ids by set key. */
+  presetOrder: Readonly<Record<string, readonly string[]>>;
   /** The Whisper model of the Transcribe dialog (spec §10.6), and its language (a Whisper code; null: detected). */
   transcribeModel: WhisperModelId;
   transcribeLanguage: string | null;
@@ -144,6 +150,8 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   matchClipUnderPlayhead: true,
   defaultTitlePreset: STARTER_TITLE_ID,
   defaultSubtitlePreset: STARTER_SUBTITLE_ID,
+  recentPresets: [],
+  presetOrder: {},
   transcribeModel: DEFAULT_WHISPER_MODEL,
   transcribeLanguage: null,
   duckDepthDb: DUCK_DEPTH_DB,
@@ -181,6 +189,21 @@ function sanitizeKeymap(value: unknown, fallback: KeymapOverrides): KeymapOverri
   for (const [id, keys] of Object.entries(value as Record<string, unknown>)) {
     if (!COMMAND_ID.test(id) || !Array.isArray(keys)) continue;
     out[id] = [...new Set(keys.filter((keys): keys is string => typeof keys === "string" && isValidKeys(keys, "other")))].slice(0, MAX_KEYS_PER_COMMAND);
+  }
+  return out;
+}
+
+/** Sets whose order the preset bar keeps, and the presets each lists. */
+export const MAX_PRESET_ORDERS = 64;
+export const MAX_PRESET_ORDER_IDS = 400;
+
+/** Set orders with string ids only (a set key or id that is not a non-empty string is dropped). */
+function sanitizePresetOrder(value: unknown, fallback: AppSettings["presetOrder"]): AppSettings["presetOrder"] {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return fallback;
+  const out: Record<string, readonly string[]> = {};
+  for (const [key, ids] of Object.entries(value as Record<string, unknown>).slice(0, MAX_PRESET_ORDERS)) {
+    if (key === "" || key.length > 80 || !Array.isArray(ids)) continue;
+    out[key] = [...new Set(ids.filter((id): id is string => typeof id === "string" && id !== "" && id.length <= 200))].slice(0, MAX_PRESET_ORDER_IDS);
   }
   return out;
 }
@@ -254,6 +277,10 @@ function sanitize(value: unknown, fallback: AppSettings = DEFAULT_APP_SETTINGS):
     matchClipUnderPlayhead: typeof raw.matchClipUnderPlayhead === "boolean" ? raw.matchClipUnderPlayhead : fallback.matchClipUnderPlayhead,
     defaultTitlePreset: presetIdOr(raw.defaultTitlePreset, fallback.defaultTitlePreset),
     defaultSubtitlePreset: presetIdOr(raw.defaultSubtitlePreset, fallback.defaultSubtitlePreset),
+    recentPresets: Array.isArray(raw.recentPresets)
+      ? [...new Set(raw.recentPresets.filter((id): id is string => typeof id === "string" && id !== "" && id.length <= 200))].slice(0, MAX_RECENT_PRESETS)
+      : fallback.recentPresets,
+    presetOrder: sanitizePresetOrder(raw.presetOrder, fallback.presetOrder),
     transcribeModel: isWhisperModel(raw.transcribeModel) ? raw.transcribeModel : fallback.transcribeModel,
     transcribeLanguage: raw.transcribeLanguage === null || isWhisperLanguage(raw.transcribeLanguage) ? (raw.transcribeLanguage ?? null) : fallback.transcribeLanguage,
     duckDepthDb: typeof raw.duckDepthDb === "number" && Number.isFinite(raw.duckDepthDb) ? Math.min(DUCK_DEPTH_MAX, Math.max(DUCK_DEPTH_MIN, raw.duckDepthDb)) : fallback.duckDepthDb,

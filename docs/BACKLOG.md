@@ -2,12 +2,15 @@
 
 Work that v1.0.0 leaves out, with what is needed to pick it up. Batch 50 resolved every
 `TODO(batch NN)` comment in `src/`; the hooks that were still open are listed here instead, next to the
-batch that builds them. Batches 51-53 are planned in `docs/BATCHES.md` (spec §20); Batch 51 (font library) is built. The known issues
+batch that builds them. Batches 51-53 are planned in `docs/BATCHES.md` (spec §20); Batches 51 (font library) and 52 (preset bar) are built. The known issues
 users can meet are in `docs/PROGRESS.md` (Known issues).
 
 ## Hooks for the planned batches
 
 ### Batch 53: caption styles per cue
+- **Presets on cues** (`TODO(batch 53)` in `src/app/presetController.ts`, Batch 52): with cues selected,
+  the preset bar, the Presets tab and their hover style the caption track (`captionTarget`); §20.3 writes
+  the selected cues' overrides instead, a preset's word `highlight` included.
 - **Compositor** (was `TODO(batch 53)`, Batch 32): `writeCaption` in `src/render/compositor/Compositor.ts`
   takes one style per caption track: `live?.styles?.get(track.id) ?? captionStyle(doc, track.id)`. The
   effective style of a cue (the track style with the cue's `styleOverride`, spec §20.3) is resolved
