@@ -42,6 +42,7 @@ function mediaIssues(key: string, media: MediaItem): string[] {
     issues.push(`${label}: fps ${media.fps.num}/${media.fps.den} must be a ratio of positive integers`);
   }
   if ("relPath" in media.file && !isInsidePath(media.file.relPath)) issues.push(`${label}: relPath "${media.file.relPath}" must be a relative path inside the project folder`);
+  if (media.size !== undefined && !(Number.isInteger(media.size) && media.size >= 0)) issues.push(`${label}: size ${media.size} must be an integer >= 0`);
   const { proxy } = media;
   if (proxy) {
     if (!PROXY_STATUSES.has(proxy.status)) issues.push(`${label}: proxy status "${proxy.status}" is not none, pending, ready or failed`);
@@ -78,10 +79,11 @@ function clipIssues(project: Project, clip: Clip): string[] {
   if (clip.in < 0) issues.push(`${label}: in ${clip.in} < 0`);
   if (clip.out <= clip.in) issues.push(`${label}: out ${clip.out} <= in ${clip.in}`);
   const media = project.media[clip.mediaId];
-  if (!media) issues.push(`${label}: media ${clip.mediaId} does not exist`);
-  // Image clips show their picture for any length: a still holds it (durationUs 0), an animated image
-  // loops (Batch 34), so `out` is not bound by the media.
-  else if (clip.kind !== "image" && clip.out > media.durationUs) issues.push(`${label}: out ${clip.out} > media duration ${media.durationUs}`);
+  // A clip whose media was removed from the project keeps its timing as an offline clip (spec §6.19
+  // "Remove, keep offline clips", Batch 41): no media bound to check. Image clips show their picture
+  // for any length: a still holds it (durationUs 0), an animated image loops (Batch 34), so `out` is
+  // not bound by the media.
+  if (media && clip.kind !== "image" && clip.out > media.durationUs) issues.push(`${label}: out ${clip.out} > media duration ${media.durationUs}`);
   if (isFreeze(clip)) {
     // A freeze frame holds `in` for any duration (Batch 27): no duration * speed invariant.
   } else if (!(clip.speed > 0)) {
@@ -213,6 +215,7 @@ export function validateProject(project: Project): string[] {
     if (!placed.has(clip.id)) issues.push(`${clipLabel(clip)}: not listed on any track (trackId ${clip.trackId})`);
   }
   for (const [key, media] of Object.entries(project.media)) issues.push(...mediaIssues(key, media));
+  issues.push(...binIssues(project));
   // One caption track at most (spec §6.12), above every video track (§10.5): after the last video track.
   const captions = project.tracks.filter((track) => track.kind === "caption");
   if (captions.length > 1) issues.push(`${captions.length} caption tracks: a project has one at most`);
@@ -224,6 +227,25 @@ export function validateProject(project: Project): string[] {
     issues.push(...captionStyleIssues(data?.style, `captionTracks entry ${trackId}`));
   }
   issues.push(...markerIssues(project));
+  return issues;
+}
+
+/** Bins (spec §12, Batch 41): unique ids, a non-empty name; a media item's `binId` names one of them. */
+function binIssues(project: Project): string[] {
+  const issues: string[] = [];
+  const ids = new Set<string>();
+  for (const bin of project.bins) {
+    if (typeof bin?.id !== "string" || bin.id === "") {
+      issues.push("a bin has no id");
+      continue;
+    }
+    if (ids.has(bin.id)) issues.push(`bin ${bin.id}: listed more than once`);
+    ids.add(bin.id);
+    if (typeof bin.name !== "string" || bin.name.trim() === "") issues.push(`bin ${bin.id}: name must be a non-empty string`);
+  }
+  for (const media of Object.values(project.media)) {
+    if (media.binId !== undefined && !ids.has(media.binId)) issues.push(`media "${media.name}" (${media.id}): bin ${media.binId} does not exist`);
+  }
   return issues;
 }
 

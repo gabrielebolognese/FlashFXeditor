@@ -1,13 +1,227 @@
+/* The Media tab (spec §12; Batch 41 adds the tool row, the offline notice and the bin strip): a column
+   of the tool row, the notice, then the bin strip beside the cards or rows. */
 .root {
   position: relative;
+  display: flex;
+  flex-direction: column;
   width: 100%;
   height: 100%;
+  min-height: 0;
+}
+
+/* The tool row: the search field and the filter chips (the Presets tab's tool row and scope chips). */
+.tools {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.search {
+  flex: 1 1 auto;
+  min-width: calc(var(--control-default) * 3);
+}
+
+.search > label {
+  width: 100%;
+  height: var(--control-compact);
+}
+
+.chips {
+  display: inline-flex;
+  flex: none;
+  gap: var(--space-0);
+  padding: var(--space-0);
+  border-radius: var(--radius-sm);
+  background: var(--surface-1);
+}
+
+.chip {
+  height: var(--control-compact);
+  padding: 0 var(--space-2);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-tertiary);
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-track);
+  cursor: pointer;
+  transition:
+    background-color var(--duration-micro) var(--ease-out),
+    color var(--duration-micro) var(--ease-out);
+}
+
+.chip:hover {
+  color: var(--text-primary);
+}
+
+.chip[aria-pressed="true"] {
+  background: var(--surface-4);
+  color: var(--text-primary);
+}
+
+.chip:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* Offline media (Batch 41; gap): a strip under the tool row, a --danger icon, caption text, compact buttons. */
+.notice {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: var(--space-1) var(--space-3);
+  border-bottom: 1px solid var(--hairline);
+  background: var(--surface-1);
+}
+
+.noticeIcon {
+  flex: none;
+  width: var(--icon-size);
+  height: var(--icon-size);
+  color: var(--danger);
+}
+
+.noticeText {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-secondary);
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-track);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.body {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.content {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* The bin strip (spec §12 "a left strip of chips", Batch 41; gap: the DS sidebar's rows in a narrow
+   column): rows a compact control tall, icon + name + count; the shown bin is the DS active row
+   (raised surface, gold icon, primary text); a bin media are dragged over is the drop target look. */
+.bins {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: var(--space-0);
+  width: var(--bin-strip-width);
+  padding: var(--space-2) var(--space-1);
+  overflow-y: auto;
+  border-right: 1px solid var(--hairline);
+}
+
+.binRow {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+  height: var(--control-compact);
+  padding: 0 var(--space-1);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-track);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color var(--duration-micro) var(--ease-out),
+    color var(--duration-micro) var(--ease-out);
+}
+
+.binRow:hover {
+  background: var(--hover-wash);
+  color: var(--text-primary);
+}
+
+.binRow[aria-pressed="true"] {
+  background: var(--surface-3);
+  color: var(--text-primary);
+}
+
+.binRow:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.binRow[data-drop-target] {
+  border: 1px dashed var(--accent-dim);
+  background: var(--accent-wash);
+}
+
+.binIcon {
+  flex: none;
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+  color: var(--text-tertiary);
+}
+
+.binRow[aria-pressed="true"] .binIcon {
+  color: var(--accent);
+}
+
+.binName {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.binCount {
+  flex: none;
+  color: var(--text-tertiary);
+  font: var(--type-badge);
+}
+
+.binSeparator {
+  flex: none;
+  height: 1px;
+  margin: var(--space-1) var(--space-1);
+  background: var(--hairline);
+}
+
+.binInput {
+  flex: none;
+  min-width: 0;
+  height: var(--control-compact);
+  padding: 0 var(--space-1);
+  border: 1px solid var(--accent-dim);
+  border-radius: var(--radius-sm);
+  background: var(--surface-1);
+  box-shadow: 0 0 0 1px var(--accent-wash);
+  color: var(--text-primary);
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-track);
+  user-select: text;
 }
 
 .scroll {
   width: 100%;
   height: 100%;
   overflow: auto;
+}
+
+/* Cards and rows the bin, the chips or the search hide stay mounted (Batch 41). */
+.card[hidden],
+.row[hidden] {
+  display: none;
 }
 
 /* Grid view: cards (design system: surface-1, hairline border, radius-lg, thumbnail on top). */
@@ -41,9 +255,77 @@
   box-shadow: 0 0 0 1px var(--accent-wash);
 }
 
-/* Unused media (spec §12 "unused" dim state): the picture at the disabled opacity, full while scrubbed. */
-.card[data-unused] .poster[data-ready] {
+/* Unused and offline media (spec §12 "unused" dim state): the picture at the disabled opacity, full while scrubbed. */
+.card[data-unused] .poster[data-ready],
+.card[data-offline] .poster[data-ready],
+.row[data-offline] .poster[data-ready] {
   opacity: var(--disabled-opacity);
+}
+
+/* Offline media (spec §12 "red badge, Relink button", Batch 41; gap): a badge chip in --danger on
+   --danger-wash (DS: semantic states at low opacity) at the thumbnail's bottom left (in a list row,
+   after the name, where it is the Relink button), and on cards a compact secondary Relink button in
+   the middle of the thumbnail. */
+.offline {
+  flex: none;
+  padding: 0 var(--space-1);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--danger-wash);
+  color: var(--danger);
+  font: var(--type-badge);
+  white-space: nowrap;
+}
+
+.thumb .offline {
+  position: absolute;
+  bottom: var(--space-1);
+  left: var(--space-1);
+  z-index: 1;
+}
+
+button.offline {
+  cursor: pointer;
+}
+
+button.offline:hover {
+  color: var(--text-primary);
+}
+
+.relink {
+  position: absolute;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  height: var(--control-compact);
+  padding: 0 var(--space-2);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-md);
+  background: var(--surface-3);
+  color: var(--text-secondary);
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-track);
+  cursor: pointer;
+  transition:
+    background-color var(--duration-micro) var(--ease-out),
+    color var(--duration-micro) var(--ease-out);
+}
+
+.relink:hover {
+  background: var(--surface-4);
+  color: var(--text-primary);
+}
+
+.relink:focus-visible,
+button.offline:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.relinkIcon {
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
 }
 
 .card[data-unused] .thumb[data-scrubbing] .poster[data-ready] {
@@ -260,10 +542,55 @@
 .listHeader {
   position: sticky;
   top: 0;
-  z-index: 1;
+  z-index: 2;
   height: var(--control-compact);
   border-bottom: 1px solid var(--hairline);
   background: var(--bg);
+}
+
+/* A header cell holds its column's label and, on its right edge (in the gap), the resize handle
+   (Batch 41; gap): a --column-resize-hit wide zone with a 1px --border line on hover, --accent-dim
+   while dragged (the splitters' look). */
+.headerCell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  height: 100%;
+}
+
+.resizer {
+  position: absolute;
+  top: 0;
+  right: calc((var(--space-3) + var(--column-resize-hit)) / -2);
+  bottom: 0;
+  z-index: 1;
+  width: var(--column-resize-hit);
+  cursor: col-resize;
+}
+
+.resizer::after {
+  content: "";
+  position: absolute;
+  top: var(--space-1);
+  bottom: var(--space-1);
+  left: 50%;
+  width: 1px;
+  background: transparent;
+  transition: background-color var(--duration-micro) var(--ease-out);
+}
+
+.resizer:hover::after {
+  background: var(--border);
+}
+
+.resizer:active::after {
+  background: var(--accent-dim);
+}
+
+.list[data-resizing] {
+  cursor: col-resize;
+  user-select: none;
 }
 
 .column {
@@ -348,6 +675,21 @@ button.column:hover,
 
 .failed {
   color: var(--danger);
+}
+
+/* Nothing matches (Batch 41): the empty state's title and text, and Clear filters; above the (empty)
+   grid, under the list's header. */
+.noMatch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-6) var(--space-5);
+  text-align: center;
+}
+
+.noMatch ~ .grid {
+  min-height: 0;
 }
 
 /* Empty state with its one action. */

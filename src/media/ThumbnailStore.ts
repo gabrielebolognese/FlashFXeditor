@@ -256,6 +256,14 @@ export class ThumbnailStore {
     this.pump();
   }
 
+  /** Tries a video's sheets again (its file came back: relinked, readable again), the cache first (Batch 41). */
+  retry(mediaId: MediaId): void {
+    const entry = this.entries.get(mediaId);
+    if (!entry) return;
+    this.restart(mediaId, entry, true);
+    this.pump();
+  }
+
   /** Resolves when no job runs or waits (tests, diagnostics). */
   whenIdle(): Promise<void> {
     if (!this.busy) return Promise.resolve();

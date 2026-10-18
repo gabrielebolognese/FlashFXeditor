@@ -58,7 +58,7 @@ export interface Theme {
   /** The stereo peak meter (CSS px). */
   meter: { barWidth: number; barGap: number; ledHeight: number };
   /** Preview overlays (CSS px) and the fullscreen chrome's hide delay (ms) (spec §7.5, §7.6, §7.8). */
-  preview: { mask: string; guide: string; grid: string; pixelGrid: string; dash: number; crossSize: number; rulerSize: number; rulerTick: number; chromeHideDelay: number };
+  preview: { mask: string; guide: string; grid: string; pixelGrid: string; dash: number; crossSize: number; rulerSize: number; rulerTick: number; chromeHideDelay: number; slate: string; slateText: string };
   /** The canvas selection and transform gizmo, snapping and smart guides (CSS px, spec §7.2, §7.3, §7.4). */
   gizmo: {
     lineWidth: number;
@@ -133,6 +133,9 @@ export interface TimelineTheme {
   /** Clip bodies (spec §6.4): the waveform fill, the hatch over disabled or muted clips. */
   waveform: string;
   disabledHatch: string;
+  /** Offline clips (Batch 41, spec §6.19): the slate's body and label bar. */
+  offlineBody: string;
+  offlineLabel: string;
   /** Scrollbars (spec §6.1): trough thickness, and the shortest thumb (the horizontal one holds two zoom handles). */
   scrollbarSize: number;
   scrollbarMinThumb: number;
@@ -314,6 +317,8 @@ export function readTheme(read: TokenReader, root?: Element): { theme: Theme; mi
       labelBarAlpha: num("--clip-label-bar-alpha"),
       waveform: str("--clip-waveform"),
       disabledHatch: str("--clip-disabled-hatch"),
+      offlineBody: str("--clip-offline-body"),
+      offlineLabel: str("--clip-offline-label"),
       scrollbarSize: num("--timeline-scrollbar-size"),
       scrollbarMinThumb: num("--timeline-scrollbar-min-thumb"),
       markerWidth: num("--timeline-marker-width"),
@@ -349,6 +354,8 @@ export function readTheme(read: TokenReader, root?: Element): { theme: Theme; mi
       rulerSize: num("--preview-ruler-size"),
       rulerTick: num("--preview-ruler-tick"),
       chromeHideDelay: num("--preview-chrome-hide-delay"),
+      slate: str("--offline-slate"),
+      slateText: str("--offline-slate-text"),
     },
     gizmo: {
       lineWidth: num("--gizmo-line-width"),

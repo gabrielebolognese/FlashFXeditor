@@ -15,8 +15,8 @@
 // - Media: in the project they were copied from, clips keep their media; in another one, each media is
 //   found by name (or file name) and kind when its duration holds every pasted clip's source range,
 //   else the copied record is added as an offline item (a file reference that resolves nowhere, the
-//   copied path kept as its hint; the clip keeps its source range; TODO(batch 41):
-//   missing media detection, the offline slate and Relink). Frames are not converted between frame
+//   copied path kept as its hint; the clip keeps its source range: Batch 41 finds it offline, draws
+//   its slate and relinks it by the hint's file name). Frames are not converted between frame
 //   rates (TODO(batch 42): the fps conversion of §15): such a paste is refused.
 // One command, one undo step ("Paste" / "Paste insert"), media records included.
 import type { Command } from "../../core/commands/command.js";

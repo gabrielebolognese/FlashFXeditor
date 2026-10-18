@@ -30,7 +30,7 @@ import { showToast } from "../ui/toasts.js";
 import { openContextMenu, razorCut } from "./cutController.js";
 import { dropFilesOnTimeline, insertMediaAtPlayhead } from "./dropController.js";
 import { moveMarker, openMarkerEditor } from "./markerController.js";
-import { clipVisuals } from "./mediaController.js";
+import { clipVisuals, selectAllMedia } from "./mediaController.js";
 import { moveTrackTo, startTrackRename, toggleTrack } from "./trackController.js";
 import { generateCutTimeline, generateTestClips } from "./timelineDev.js";
 import { openTransition, setFade, setTransitionSides } from "./transitionController.js";
@@ -398,7 +398,11 @@ export function installTimelineController(): () => void {
         return outPoint !== null ? lastFrameOf(outPoint) : null;
       }),
     ),
-    actions.register("selection.selectAll", () => {
+    actions.register("selection.selectAll", (context) => {
+      if (context?.scope === "media") {
+        if (sessionStore.state.getState().mediaPanel.tab === "media") selectAllMedia();
+        return;
+      }
       const { primary } = selectedClips();
       setSelection(sessionStore, selectClips(selectableClipIds(documentStore.getState()), primary));
     }),

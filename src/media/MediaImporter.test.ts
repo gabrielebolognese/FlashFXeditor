@@ -27,7 +27,7 @@ async function setup(probe: ProbeFile = async (file) => (file.name.endsWith(".mp
 
 describe("mediaItemFrom", () => {
   it("maps the probe and starts the analysis that applies to the kind", () => {
-    const fields = { id: "a", name: "IMG_0001.MOV", relPath: "media/IMG_0001.MOV", addedAt: "t" };
+    const fields = { id: "a", name: "IMG_0001.MOV", file: { relPath: "media/IMG_0001.MOV" }, addedAt: "t" };
     expect(mediaItemFrom(VIDEO, fields)).toEqual({
       id: "a",
       kind: "video",
@@ -44,6 +44,7 @@ describe("mediaItemFrom", () => {
       analysis: { thumbs: "pending", peaks: "pending" },
       addedAt: "t",
     });
+    expect(mediaItemFrom(VIDEO, { ...fields, file: { handleKey: "a", pathHint: "Shoot/IMG_0001.MOV" }, size: 99 })).toMatchObject({ file: { handleKey: "a", pathHint: "Shoot/IMG_0001.MOV" }, size: 99 });
     expect(mediaItemFrom(AUDIO, fields).analysis).toEqual({ thumbs: "none", peaks: "pending" });
     expect(mediaItemFrom(IMAGE, fields).analysis).toEqual({ thumbs: "none", peaks: "none" });
     expect(mediaItemFrom({ ...VIDEO, hasAudio: false }, fields).analysis).toEqual({ thumbs: "pending", peaks: "none" });
@@ -92,7 +93,7 @@ describe("MediaImporter", () => {
     const probe = vi.fn<ProbeFile>(async () => VIDEO);
     const { dir, documentStore, importer } = await setup(probe);
     const report = await importer.importFiles([fileOf("notes.txt"), fileOf("movie.webm")]);
-    expect(report).toEqual({ added: [], refused: [{ name: "notes.txt", reason: "unsupported file type" }, { name: "movie.webm", reason: "unsupported file type" }], bytes: 0 });
+    expect(report).toEqual({ added: [], refused: [{ name: "notes.txt", reason: "unsupported file type" }, { name: "movie.webm", reason: "unsupported file type" }], bytes: 0, linked: 0 });
     expect(probe).not.toHaveBeenCalled();
     expect(documentStore.getState().media).toEqual({});
     expect(documentStore.history.getState().canUndo).toBe(false);
@@ -181,5 +182,56 @@ describe("createProbeFile", () => {
     await expect(probe(fileOf("a.mp3"), { container: "audio", mime: "audio/mpeg", audioCodec: "mp3" })).resolves.toMatchObject({ kind: "audio", durationUs: 1_000_000 });
     const svg = new File(['<svg xmlns="http://www.w3.org/2000/svg" width="10" height="20"/>'], "a.svg");
     await expect(probe(svg, { container: "svg", mime: "image/svg+xml" })).resolves.toMatchObject({ kind: "image", width: 10, height: 20 });
+  });
+});
+
+describe("MediaImporter in reference mode (Batch 41)", () => {
+  it("links files that come with a handle (stored by media id), copies the others, records sizes", async () => {
+    const dir = createMemoryDir();
+    await ensureFolderLayout(dir);
+    const documentStore = new DocumentStore(makeProject(), { session: createSessionStore(), validate: true });
+    const stored = new Map<string, unknown>();
+    let n = 0;
+    const importer = new MediaImporter({
+      dir,
+      documentStore,
+      probe: async (file) => (file.name.endsWith(".png") ? IMAGE : VIDEO),
+      newId: () => `m${++n}`,
+      importMode: () => "reference",
+      storeHandle: async (key, handle) => void stored.set(key, handle),
+    });
+    const clip = fileOf("clip.mp4", 40);
+    const handle = { kind: "file" as const, name: "clip.mp4", getFile: async () => clip };
+    const report = await importer.importFiles([{ file: clip, handle, path: "Shoot/day 1/clip.mp4" }, { file: fileOf("b.mp4", 8), handle }, fileOf("pasted.png", 5)]);
+    expect(report).toMatchObject({ refused: [], bytes: 5, linked: 2 });
+    const media = documentStore.getState().media;
+    expect(media.m1).toMatchObject({ name: "clip.mp4", file: { handleKey: "m1", pathHint: "Shoot/day 1/clip.mp4" }, size: 40 });
+    expect(media.m2?.file).toEqual({ handleKey: "m2", pathHint: "b.mp4" });
+    expect(media.m3).toMatchObject({ file: { relPath: "media/pasted.png" }, size: 5 });
+    expect([...stored.keys()]).toEqual(["m1", "m2"]);
+    expect(await resolveFile(dir, "media/clip.mp4")).toBeNull();
+  });
+
+  it("copies in copy mode even with handles, and refuses a file whose handle cannot be kept", async () => {
+    const dir = createMemoryDir();
+    await ensureFolderLayout(dir);
+    const documentStore = new DocumentStore(makeProject(), { session: createSessionStore(), validate: true });
+    let mode: "copy" | "reference" = "copy";
+    const importer = new MediaImporter({
+      dir,
+      documentStore,
+      probe: async () => VIDEO,
+      importMode: () => mode,
+      storeHandle: async () => {
+        throw new Error("quota");
+      },
+    });
+    const file = fileOf("a.mp4", 3);
+    const handle = { kind: "file" as const, name: "a.mp4", getFile: async () => file };
+    expect(await importer.importFiles([{ file, handle }])).toMatchObject({ bytes: 3, linked: 0 });
+    mode = "reference";
+    const report = await importer.importFiles([{ file, handle }]);
+    expect(report.refused).toEqual([{ name: "a.mp4", reason: "could not keep a link to it (quota)" }]);
+    expect(Object.keys(documentStore.getState().media)).toHaveLength(1);
   });
 });

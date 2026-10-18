@@ -1,7 +1,9 @@
-// Media commands (spec §9.1, §12): one `media.add` per import batch, removal, rename. The files in
-// media/ are not touched here: copying happens before `media.add`, and removal keeps the file (the
-// optional file deletion comes with Batch 41).
-import { isMediaClip, type MediaId, type MediaItem, type Project } from "../document/types.js";
+// Media commands (spec §9.1, §12): one `media.add` per import batch, removal (used media keep their
+// clips offline, or the clips go with them), rename, bins (Batch 41: one level, `Project.bins`, a media
+// item in at most one) and relinking a missing file. The files in media/ are not touched here: copying
+// happens before `media.add` / `media.relink`, and the optional file deletion of the Remove dialog
+// runs after `media.remove` (app/mediaController.ts).
+import { isMediaClip, type Bin, type ClipId, type MediaId, type MediaItem, type Project } from "../document/types.js";
 import type { Command } from "./command.js";
 
 export const MAX_MEDIA_NAME = 255;
@@ -35,18 +37,141 @@ export function addMedia(items: readonly MediaItem[]): Command {
   };
 }
 
-/** Removes media no clip uses; unknown ids are ignored. */
-export function removeMedia(ids: readonly MediaId[]): Command {
+/** The clips that use any of `ids`. */
+export function clipsOfMedia(project: Project, ids: Iterable<MediaId>): ClipId[] {
+  const set = new Set(ids);
+  return Object.values(project.clips)
+    .filter((clip) => isMediaClip(clip) && set.has(clip.mediaId))
+    .map((clip) => clip.id);
+}
+
+/**
+ * Removes media (spec §12 Delete, §6.19); unknown ids are ignored. `keep` ("Remove from project"):
+ * their clips stay, offline (a gray slate, no media to relink; Undo brings the media back). `delete`
+ * ("Remove and delete clips"): their clips go too, on every track, leaving gaps (a transition shared
+ * with a removed clip goes with it: `reconcileTransitions`). One undo step either way.
+ */
+export function removeMedia(ids: readonly MediaId[], clips: "keep" | "delete" = "keep"): Command {
+  const count = ids.length === 1 ? "media" : `${ids.length} media files`;
   return {
     id: "media.remove",
-    label: ids.length === 1 ? "Remove media" : `Remove ${ids.length} media files`,
+    label: clips === "delete" ? `Remove ${count} and delete clips` : `Remove ${count}`,
+    affects: clips === "delete" ? ["media", "clips", "timeline"] : ["media", "clips"],
+    run(draft) {
+      if (clips === "delete") {
+        for (const clipId of clipsOfMedia(draft as Project, ids)) {
+          const clip = draft.clips[clipId];
+          if (!clip) continue;
+          const track = draft.tracks.find((t) => t.id === clip.trackId);
+          if (track) track.clipIds.splice(track.clipIds.indexOf(clipId), 1);
+          delete draft.clips[clipId];
+        }
+      }
+      for (const id of ids) delete draft.media[id];
+    },
+  };
+}
+
+/** The probe fields and the file a relink changes (spec §12 Relink). */
+type RelinkKey = "size" | "durationUs" | "width" | "height" | "rotation" | "fps" | "hasAudio" | "codec" | "audioCodec" | "analysis" | "proxy";
+export type RelinkFields = Pick<MediaItem, "file"> & { [K in RelinkKey]?: MediaItem[K] | undefined };
+
+/**
+ * Points missing media at their new files (spec §12 Relink: one file, or a folder's matches in one
+ * step). Fields set to undefined are removed (a new file without a proxy yet). Unknown ids are ignored.
+ */
+export function relinkMedia(entries: readonly { id: MediaId; fields: RelinkFields }[]): Command {
+  return {
+    id: "media.relink",
+    label: entries.length === 1 ? "Relink media" : `Relink ${entries.length} media files`,
+    affects: ["media", "clips"],
+    run(draft) {
+      for (const { id, fields } of entries) {
+        const media = draft.media[id];
+        if (!media) continue;
+        for (const [key, value] of Object.entries(structuredClone(fields))) {
+          if (value === undefined) delete (media as Record<string, unknown>)[key];
+          else (media as Record<string, unknown>)[key] = value;
+        }
+      }
+    },
+  };
+}
+
+export const MAX_BIN_NAME = 64;
+
+/** One line, trimmed and capped; empty names become null (rejected). */
+export function cleanBinName(name: string): string | null {
+  const clean = name.replace(/\s+/g, " ").trim().slice(0, MAX_BIN_NAME);
+  return clean === "" ? null : clean;
+}
+
+/** "Bin", "Bin 2", "Bin 3"...: the first that no bin has (case-insensitive). */
+export function nextBinName(bins: readonly Bin[], base = "Bin"): string {
+  const names = new Set(bins.map((bin) => bin.name.toLowerCase()));
+  let name = base;
+  for (let n = 2; names.has(name.toLowerCase()); n++) name = `${base} ${n}`;
+  return name;
+}
+
+/** New bin (spec §12), at the end of the strip. */
+export function addBin(bin: Bin): Command {
+  const name = cleanBinName(bin.name);
+  return {
+    id: "media.bin.add",
+    label: "New bin",
     affects: ["media"],
     run(draft) {
-      const counts = mediaUseCounts(draft as Project);
-      const used = ids.filter((id) => (counts.get(id) ?? 0) > 0);
-      // TODO(batch 41): "Remove from project" keeps offline clips; "Remove and delete clips" removes them.
-      if (used.length > 0) throw new Error(`media.remove: ${used.join(", ")} still used by clips`);
-      for (const id of ids) delete draft.media[id];
+      if (name === null) throw new Error("media.bin.add: empty name");
+      if (draft.bins.some((other) => other.id === bin.id)) throw new Error(`media.bin.add: bin ${bin.id} already exists`);
+      draft.bins.push({ id: bin.id, name });
+    },
+  };
+}
+
+export function renameBin(id: string, name: string): Command {
+  const clean = cleanBinName(name);
+  return {
+    id: "media.bin.rename",
+    label: "Rename bin",
+    affects: ["media"],
+    run(draft) {
+      const bin = draft.bins.find((other) => other.id === id);
+      if (!bin) throw new Error(`media.bin.rename: bin ${id} does not exist`);
+      if (clean !== null) bin.name = clean;
+    },
+  };
+}
+
+/** Deletes a bin; its media stay in the project, in no bin. */
+export function removeBin(id: string): Command {
+  return {
+    id: "media.bin.remove",
+    label: "Delete bin",
+    affects: ["media"],
+    run(draft) {
+      const index = draft.bins.findIndex((bin) => bin.id === id);
+      if (index < 0) return;
+      draft.bins.splice(index, 1);
+      for (const media of Object.values(draft.media)) if (media.binId === id) delete media.binId;
+    },
+  };
+}
+
+/** Moves media into a bin (`binId`), or out of every bin (null). */
+export function setMediaBin(ids: readonly MediaId[], binId: string | null): Command {
+  return {
+    id: "media.setBin",
+    label: binId === null ? "Remove from bin" : ids.length === 1 ? "Move media to bin" : `Move ${ids.length} media files to bin`,
+    affects: ["media"],
+    run(draft) {
+      if (binId !== null && !draft.bins.some((bin) => bin.id === binId)) throw new Error(`media.setBin: bin ${binId} does not exist`);
+      for (const id of ids) {
+        const media = draft.media[id];
+        if (!media) continue;
+        if (binId === null) delete media.binId;
+        else media.binId = binId;
+      }
     },
   };
 }

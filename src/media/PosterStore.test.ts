@@ -113,12 +113,19 @@ describe("PosterStore", () => {
     expect(await resolveFile(dir, posterPath("s"))).toBeNull();
   });
 
-  it("logs and skips media whose file is missing", async () => {
+  it("skips media whose file is missing (offline: the card shows its badge) and tries again on refresh", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
     const dir = createMemoryDir();
     const { store } = await setup([still("gone")], { dir });
     expect(store.get("gone")).toBeNull();
-    expect(warn).toHaveBeenCalledWith(expect.stringContaining("media/gone.png is missing"));
+    expect(warn).not.toHaveBeenCalled();
+    // The file comes back (relinked, Batch 41): a refresh loads its poster.
+    const media = await dir.dir("media", { create: true });
+    await media?.writeFile("gone.png", new Blob([new Uint8Array(4)]));
+    store.refresh(["gone"]);
+    await store.whenIdle();
+    expect(store.get("gone")).not.toBeNull();
+    warn.mockRestore();
   });
 
   it("dispose closes every bitmap", async () => {

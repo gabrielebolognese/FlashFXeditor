@@ -1,4 +1,4 @@
-import { FolderPlus, History, KeyRound, Trash2, TriangleAlert } from "lucide-react";
+import { Check, FolderPlus, History, KeyRound, Trash2, TriangleAlert } from "lucide-react";
 import { useCallback, useState } from "react";
 import { useStoreSelector } from "../core/store/useStoreSelector.js";
 import type { FsDir } from "../project/fs.js";
@@ -14,7 +14,7 @@ import type { MediaId } from "../core/document/types.js";
 import { documentStore } from "./services.js";
 import { TranscribeDialogs } from "../panels/media/TranscribeDialog.js";
 import styles from "./DialogHost.module.css";
-import { cancelRemove, clipsUsing, confirmRemove, mediaPanel, type MediaPanelState } from "./mediaController.js";
+import { cancelRemove, clipsUsing, confirmRemove, copiedCount, mediaPanel, type MediaPanelState } from "./mediaController.js";
 import { appView, closeDialog, confirmNewProject, keepSavedVersion, restoreRecovery, retryOpen, type Dialog } from "./projectController.js";
 
 const selectDialog = (view: { dialog: Dialog | null }) => view.dialog;
@@ -158,25 +158,30 @@ function ErrorDialog({ title, message, issues }: { title: string; message: strin
   );
 }
 
-/** Delete in the media panel (spec §12). The files stay in media/. */
+/**
+ * Delete in the media panel (spec §12): "Remove from project" (used media leave their clips offline,
+ * a gray slate) or "Remove and delete clips", and a checkbox that deletes the copied files from media/.
+ */
 function RemoveMediaDialog({ ids }: { ids: readonly MediaId[] }) {
   const media = documentStore.getState().media;
   const names = ids.map((id) => media[id]?.name ?? id);
   const used = clipsUsing(ids);
+  const copied = copiedCount(ids);
+  const [deleteFiles, setDeleteFiles] = useState(false);
   const subject = ids.length === 1 ? (names[0] ?? "") : `${ids.length} media files`;
+  const clips = `${used} clip${used === 1 ? "" : "s"}`;
   return (
     <Modal
       title="Remove media"
       icon={Trash2}
-      size="sm"
+      size="md"
       onClose={cancelRemove}
       footer={
         <>
-          {/* TODO(batch 41): "Remove and delete clips" and the checkbox that deletes the copied file. */}
-          <Button control disabled tooltip="Comes with the advanced media panel (Batch 41)">
+          <Button control disabled={used === 0} tooltip={used === 0 ? "No clip uses this media" : `Also deletes the ${clips} that use it`} onClick={() => confirmRemove("delete", deleteFiles)}>
             Remove and delete clips
           </Button>
-          <Button control variant="primary" disabled={used > 0} onClick={confirmRemove}>
+          <Button control variant="primary" autoFocus onClick={() => confirmRemove("keep", deleteFiles)}>
             Remove from project
           </Button>
         </>
@@ -185,7 +190,20 @@ function RemoveMediaDialog({ ids }: { ids: readonly MediaId[] }) {
       <p className={styles.text}>
         Remove <span className={styles.folder}>{subject}</span> from the project?
       </p>
-      <p className={styles.note}>{used > 0 ? `Used by ${used} clip${used === 1 ? "" : "s"}: removing used media comes with Batch 41.` : "The files stay in the project's media folder. Undo brings the media back."}</p>
+      <p className={styles.note}>
+        {used > 0 ? `Used by ${clips}. Remove from project keeps them on the timeline as offline clips (a gray slate); Remove and delete clips takes them out too. Undo brings everything back.` : "No clip uses it. Undo brings the media back."}
+      </p>
+      {copied > 0 && (
+        <button type="button" role="checkbox" aria-checked={deleteFiles} className={styles.check} onClick={() => setDeleteFiles((on) => !on)}>
+          <span className={styles.box} data-on={deleteFiles || undefined} aria-hidden="true">
+            {deleteFiles && <Check className={styles.checkIcon} />}
+          </span>
+          <span>
+            Also delete {copied === 1 ? "its copied file" : `the ${copied} copied files`} from the media folder
+            <span className={styles.checkNote}>Can't be undone: the media would come back offline.</span>
+          </span>
+        </button>
+      )}
     </Modal>
   );
 }

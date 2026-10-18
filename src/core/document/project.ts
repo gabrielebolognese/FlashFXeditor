@@ -9,6 +9,7 @@ export function createProject(options: { id: string; name: string; now: string; 
     name: options.name,
     settings: { width: 1080, height: 1920, fps: { ...FPS_30 }, background: { r: 0, g: 0, b: 0, a: 1 }, sampleRate: 48000 },
     media: {},
+    bins: [],
     tracks: [],
     clips: {},
     markers: [],

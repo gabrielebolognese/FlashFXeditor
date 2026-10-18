@@ -17,10 +17,13 @@ export class ProjectFileError extends Error {
 export type Migration = (raw: JsonObject) => JsonObject;
 
 /**
- * `MIGRATIONS[n]` turns a version-n file into version n+1. Empty while the schema is at version 1;
- * a schema change bumps SCHEMA_VERSION and adds its step here.
+ * `MIGRATIONS[n]` turns a version-n file into version n+1; a schema change bumps SCHEMA_VERSION and
+ * adds its step here.
+ * - 1 -> 2 (Batch 41): media bins (`bins`, empty). `MediaItem.size` is optional: older items have none.
  */
-export const MIGRATIONS: Readonly<Record<number, Migration>> = {};
+export const MIGRATIONS: Readonly<Record<number, Migration>> = {
+  1: (raw) => ({ ...raw, bins: Array.isArray(raw.bins) ? raw.bins : [] }),
+};
 
 function isObject(value: unknown): value is JsonObject {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -57,6 +60,7 @@ function shapeIssues(raw: JsonObject): string[] {
   expect("name", string, "a string");
   expect("settings", isObject, "an object");
   expect("media", isObject, "an object");
+  expect("bins", Array.isArray, "an array");
   expect("tracks", Array.isArray, "an array");
   expect("clips", isObject, "an object");
   expect("markers", Array.isArray, "an array");

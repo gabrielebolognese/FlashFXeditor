@@ -2,8 +2,14 @@
 // thread for decodeAudioData formats and SVG) -> copy into media/ one file at a time -> one `media.add`
 // for the whole batch. Imports run one after another so two batches never pick the same file name.
 // An aborted import (project closed) removes what it copied and adds nothing.
+// Reference mode (Batch 41, the `importMode` setting): a file that comes with its handle (the picker,
+// a drop) is not copied: its handle is kept in IndexedDB (`storeHandle`, keyed by the new media id)
+// and the item refers to it (`{ handleKey, pathHint }`, the hint being the dropped path or the file
+// name). Files without a handle (pasted images) are copied as in copy mode. Every item records its
+// source size (relinking a folder matches by name and size).
 import { addMedia } from "../core/commands/mediaCommands.js";
 import type { MediaItem } from "../core/document/types.js";
+import type { FileHandleLike } from "../project/mediaSources.js";
 import type { DocumentStore } from "../core/store/DocumentStore.js";
 import type { ImportMode } from "../project/appSettings.js";
 import { errorMessage } from "../project/errorMessage.js";
@@ -38,20 +44,21 @@ export function createProbeFile(pool: Pick<WorkerPool, "request">, decodeAudio: 
 }
 
 /**
- * The document record of a probed, copied file. Analysis that applies to the kind starts pending
- * (§9.1): thumbnails for video, peaks for anything with audio.
+ * The document record of a probed, copied (or linked) file. Analysis that applies to the kind starts
+ * pending (§9.1): thumbnails for video, peaks for anything with audio.
  */
-export function mediaItemFrom(probe: ProbeResult, fields: { id: string; name: string; relPath: string; addedAt: string }): MediaItem {
+export function mediaItemFrom(probe: ProbeResult, fields: { id: string; name: string; file: MediaItem["file"]; addedAt: string; size?: number }): MediaItem {
   const item: MediaItem = {
     id: fields.id,
     kind: probe.kind,
     name: fields.name,
-    file: { relPath: fields.relPath },
+    file: { ...fields.file },
     durationUs: probe.durationUs,
     hasAudio: probe.hasAudio,
     analysis: { thumbs: probe.kind === "video" ? "pending" : "none", peaks: probe.hasAudio ? "pending" : "none" },
     addedAt: fields.addedAt,
   };
+  if (fields.size !== undefined) item.size = fields.size;
   if (probe.width !== undefined) item.width = probe.width;
   if (probe.height !== undefined) item.height = probe.height;
   if (probe.rotation !== undefined && probe.kind === "video") item.rotation = probe.rotation;
@@ -60,6 +67,11 @@ export function mediaItemFrom(probe: ProbeResult, fields: { id: string; name: st
   if (probe.audioCodec) item.audioCodec = probe.audioCodec;
   return item;
 }
+
+/** A file to import, with its handle and its path inside a dropped folder when there are ones (reference mode). */
+export type ImportSource = File | { file: File; handle?: FileHandleLike | undefined; path?: string | undefined };
+
+const sourceFile = (source: ImportSource): File => (source instanceof File ? source : source.file);
 
 export interface Refusal {
   name: string;
@@ -71,6 +83,8 @@ export interface ImportReport {
   refused: Refusal[];
   /** Bytes copied into media/. */
   bytes: number;
+  /** Items that refer to their files instead of a copy (reference mode). */
+  linked: number;
 }
 
 export interface ImportProgress {
@@ -100,6 +114,8 @@ export interface MediaImporterDeps {
   documentStore: DocumentStore;
   probe: ProbeFile;
   importMode?: () => ImportMode;
+  /** Keeps a linked file's handle (reference mode); without it every file is copied. */
+  storeHandle?: (handleKey: string, handle: FileHandleLike) => Promise<void>;
   newId?: () => string;
   now?: () => string;
   /** Each media item added, with the file it was probed from. */
@@ -133,26 +149,27 @@ export class MediaImporter {
   }
 
   /** Imports after any import still running. */
-  importFiles(files: readonly File[], options: ImportOptions = {}): Promise<ImportReport> {
+  importFiles(files: readonly ImportSource[], options: ImportOptions = {}): Promise<ImportReport> {
     const run = this.chain.then(() => this.run(files, options));
     this.chain = run.catch(() => undefined);
     return run;
   }
 
-  private async run(files: readonly File[], { signal, onProgress, place, placeLabel }: ImportOptions): Promise<ImportReport> {
+  private async run(files: readonly ImportSource[], { signal, onProgress, place, placeLabel }: ImportOptions): Promise<ImportReport> {
     const refused: Refusal[] = [];
-    const accepted: { file: File; kind: FileKind }[] = [];
-    for (const file of files) {
+    const accepted: { source: ImportSource; file: File; kind: FileKind }[] = [];
+    for (const source of files) {
+      const file = sourceFile(source);
       const kind = classifyFile(file.name, file.type);
-      if (kind) accepted.push({ file, kind });
+      if (kind) accepted.push({ source, file, kind });
       else refused.push({ name: file.name, reason: "unsupported file type" });
     }
-    if (accepted.length === 0) return { added: [], refused, bytes: 0 };
+    if (accepted.length === 0) return { added: [], refused, bytes: 0, linked: 0 };
     signal?.throwIfAborted();
 
-    const probed = await mapLimit(accepted, PROBE_CONCURRENCY, async ({ file, kind }) => {
+    const probed = await mapLimit(accepted, PROBE_CONCURRENCY, async ({ source, file, kind }) => {
       try {
-        return { file, probe: await this.deps.probe(file, kind, signal) };
+        return { source, file, probe: await this.deps.probe(file, kind, signal) };
       } catch (error) {
         if (isAbortError(error)) throw error;
         refused.push({ name: file.name, reason: errorMessage(error) });
@@ -161,22 +178,36 @@ export class MediaImporter {
     });
     const ready = probed.filter((entry) => entry !== null);
     signal?.throwIfAborted();
-    if (ready.length === 0) return { added: [], refused, bytes: 0 };
+    if (ready.length === 0) return { added: [], refused, bytes: 0, linked: 0 };
 
-    if (this.deps.importMode?.() === "reference") {
-      // TODO(batch 41): reference mode keeps FileSystemFileHandles in IndexedDB (project/kv.ts) instead of copying.
-      console.info("[media] reference import mode is not available yet; copying into media/");
-    }
-
-    const { dir } = this.deps;
+    const { dir, storeHandle } = this.deps;
+    const reference = this.deps.importMode?.() === "reference" && storeHandle !== undefined;
+    const handleOf = (source: ImportSource) => (reference && !(source instanceof File) ? (source.handle ?? null) : null);
     const taken = await takenNames(await subdir(dir, MEDIA_DIR));
-    const totalBytes = ready.reduce((sum, entry) => sum + entry.file.size, 0);
+    const totalBytes = ready.reduce((sum, entry) => sum + (handleOf(entry.source) ? 0 : entry.file.size), 0);
     const items: MediaItem[] = [];
     const sources: File[] = [];
     const copied: string[] = [];
     let bytes = 0;
+    let linked = 0;
     try {
-      for (const [index, { file, probe }] of ready.entries()) {
+      for (const [index, { source, file, probe }] of ready.entries()) {
+        const id = this.newId();
+        const fields = { id, name: file.name, addedAt: this.now(), size: file.size };
+        const handle = handleOf(source);
+        if (handle && storeHandle) {
+          try {
+            await storeHandle(id, handle);
+          } catch (error) {
+            refused.push({ name: file.name, reason: `could not keep a link to it (${errorMessage(error)})` });
+            continue;
+          }
+          const pathHint = (!(source instanceof File) && source.path) || file.name;
+          items.push(mediaItemFrom(probe, { ...fields, file: { handleKey: id, pathHint } }));
+          sources.push(file);
+          linked += 1;
+          continue;
+        }
         const report = (written: number) => onProgress?.({ index, count: ready.length, name: file.name, copiedBytes: bytes + written, totalBytes });
         report(0);
         let relPath: string;
@@ -189,7 +220,7 @@ export class MediaImporter {
         }
         copied.push(relPath);
         bytes += file.size;
-        items.push(mediaItemFrom(probe, { id: this.newId(), name: file.name, relPath, addedAt: this.now() }));
+        items.push(mediaItemFrom(probe, { ...fields, file: { relPath } }));
         sources.push(file);
       }
       signal?.throwIfAborted();
@@ -207,6 +238,6 @@ export class MediaImporter {
       await Promise.all(copied.map((relPath) => removeFileAt(dir, relPath).catch(() => undefined)));
       throw error;
     }
-    return { added: items, refused, bytes };
+    return { added: items, refused, bytes, linked };
   }
 }

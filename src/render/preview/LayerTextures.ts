@@ -74,6 +74,8 @@ export interface LayerTexturesDeps {
   wantedLod?(mediaId: MediaId): Lod;
   /** Text rasters (spec §10.1); text layers draw nothing without it. */
   text?: Pick<TextRasterCache, "begin" | "end" | "resolve" | "exact" | "resolveAtlas" | "resolveBackground" | "warm">;
+  /** A media cannot be shown (its file is missing or cannot be decoded): it is drawn as an offline slate (Batch 41). */
+  onFail?(mediaId: MediaId, reason: string): void;
 }
 
 export interface LayerTexturesStats {
@@ -822,8 +824,9 @@ export class LayerTextures {
     if (this.failed.has(mediaId)) return;
     this.failed.add(mediaId);
     this.stats.failed = this.failed.size;
-    // TODO(batch 41): offline and undecodable media render as a labeled gray slate (§6.19).
+    // Offline and undecodable media render as a labeled gray slate (§6.19): the compositor draws it.
     console.warn(`[preview] cannot show media ${mediaId}: ${reason}`);
+    this.deps.onFail?.(mediaId, reason);
   }
 
   /** Draws `texture` with the layer's geometry from this slot, pinning it in the pool. */

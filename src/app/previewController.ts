@@ -43,6 +43,7 @@ import { attachAudio, audioScheduler, detachAudio, meterView, scrubGrain } from 
 import { toggleFullscreen } from "./fullscreen.js";
 import { liveEdit, setLiveCrops, type LiveEdit } from "./liveEdit.js";
 import { requestProxyIfUndecided } from "./mediaController.js";
+import { mediaSources, mediaStatus, offlineReason, OFFLINE_LABEL, onRefreshMedia, sourceFile } from "./mediaOffline.js";
 import { actions, audioClock, documentStore, focusScopes, fontLibrary, idleQueue, layoutStore, scheduler, sessionStore, themeBridge, workerPool } from "./services.js";
 
 /** The last keyed text transform made for the inline editor (one object per clip and frame: its draft memo keys on it). */
@@ -128,6 +129,12 @@ export const previewView: PreviewView = new PreviewView({
     return true;
   },
   behind: (mediaId) => playbackEngine.playing && playbackEngine.autoProxy.has(mediaId),
+  // Offline media draw a labeled slate (spec §6.19, Batch 41); one the decoder refuses becomes offline too.
+  offline: (mediaId) => {
+    const reason = offlineReason(mediaId);
+    return reason === null ? null : OFFLINE_LABEL[reason];
+  },
+  onFail: (mediaId) => mediaSources()?.markFailed(mediaId),
 });
 /** Plays the timeline through the preview (spec §8). */
 export const playbackEngine: PlaybackEngine = new PlaybackEngine({
@@ -341,15 +348,15 @@ export function startGpu(adapter: GPUAdapter): void {
   }
 }
 
-/** The project's media files, their ready proxies and cache/index/ for the frame service. */
+/** The project's media files (copied or linked), their ready proxies and cache/index/ for the frame service. */
 function frameSource(dir: FsDir, isWritable: () => boolean): FrameSource {
   return {
     file: async (mediaId, lod) => {
-      // TODO(batch 41): media referenced by a file handle.
       const item = documentStore.getState().media[mediaId];
       if (!item) return null;
       if (lod === "proxy") return item.proxy?.status === "ready" ? resolveFile(dir, item.proxy.relPath) : null;
-      return "relPath" in item.file ? resolveFile(dir, item.file.relPath) : null;
+      // A copy in media/ or a linked file (Batch 41); an offline one is marked for the slate.
+      return sourceFile(mediaId);
     },
     readIndex: (mediaId, lod) => resolveFile(dir, sampleIndexPath(mediaId, lod)),
     writeIndex: async (mediaId, lod, bytes) => {
@@ -376,7 +383,11 @@ function releaseRemovedMedia(): () => void {
         const now = state.media[id];
         if (now === before) continue;
         previewView.forgetMedia(id);
-        if (before?.proxy?.status === "ready" && now?.proxy?.status !== "ready") frameService.release(id, "proxy");
+        if (before && now && before.file !== now.file) {
+          // Relinked (Batch 41): the old file's decoders and frames go.
+          frameService.release(id);
+          imageService.release(id);
+        } else if (before?.proxy?.status === "ready" && now?.proxy?.status !== "ready") frameService.release(id, "proxy");
       }
       media = state.media;
     },
@@ -393,6 +404,16 @@ export function attachPreview(dir: FsDir, isWritable: () => boolean): void {
     frameService.attach(source),
     imageService.attach({ file: (mediaId) => source.file(mediaId, "full") }),
     releaseRemovedMedia(),
+    // A media back online (relinked, access granted): its frames load again; offline ones draw a slate.
+    onRefreshMedia((ids) => {
+      for (const id of ids) {
+        frameService.release(id);
+        imageService.release(id);
+        previewView.forgetMedia(id);
+      }
+      scheduler.invalidate("preview");
+    }),
+    mediaStatus.subscribe(() => scheduler.invalidate("preview")),
   ];
   previewView.resetFrames();
   attachAudio(dir, isWritable);

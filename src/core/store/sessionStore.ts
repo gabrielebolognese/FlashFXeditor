@@ -51,6 +51,17 @@ export type MediaTab = "media" | "presets" | "captions";
 /** Header sort choices (§12) plus the list-view columns. */
 export type MediaSort = "name" | "date" | "duration" | "kind" | "resolution" | "fps" | "codec" | "audio" | "used";
 export type MediaView = "grid" | "list";
+/** The virtual bins of the Media tab (spec §12: All, Video, Audio, Images); any other value is a bin id. */
+export const VIRTUAL_BINS = ["all", "video", "audio", "image"] as const;
+export type VirtualBin = (typeof VIRTUAL_BINS)[number];
+/** The filter chips (spec §12): kinds (none on = every kind) and `unused`. */
+export interface MediaFilters {
+  kinds: ("video" | "audio" | "image")[];
+  unused: boolean;
+}
+/** The list view's resizable columns (spec §12), in order. */
+export const MEDIA_COLUMNS = ["name", "duration", "resolution", "fps", "codec", "audio", "proxy", "used"] as const;
+export type MediaColumn = (typeof MEDIA_COLUMNS)[number];
 /** Which presets the Presets tab shows (spec §10.3 "a toggle"), and where Save as preset puts new ones. */
 export type PresetScope = "global" | "project";
 
@@ -77,7 +88,11 @@ export interface SessionState {
   audioScrub: boolean;
   /** Timecodes as `mm:ss:ff` or `mm:ss.mmm` (spec §5.1: the preview panel's toggle; the timeline field and ruler follow). */
   timecodeFormat: TimecodeMode;
-  mediaPanel: { tab: MediaTab; view: MediaView; sort: MediaSort; descending: boolean; presetScope: PresetScope };
+  /**
+   * `bin`: the bin chip shown (a virtual bin or a bin id, Batch 41); `filters`: the filter chips;
+   * `columns`: list column widths in CSS px set by dragging their header edges (absent: the default).
+   */
+  mediaPanel: { tab: MediaTab; view: MediaView; sort: MediaSort; descending: boolean; presetScope: PresetScope; bin: string; filters: MediaFilters; columns: Partial<Record<MediaColumn, number>> };
   /** Source ranges of media items (spec §12), by media id; inserts and drags take only that range. */
   sourceRanges: Readonly<Record<MediaId, SourceRange>>;
   /** Properties panel sections by id; true = collapsed. */
@@ -115,7 +130,7 @@ export const DEFAULT_SESSION: SessionState = {
   loop: false,
   audioScrub: false,
   timecodeFormat: "frames",
-  mediaPanel: { tab: "media", view: "grid", sort: "date", descending: false, presetScope: "global" },
+  mediaPanel: { tab: "media", view: "grid", sort: "date", descending: false, presetScope: "global", bin: "all", filters: { kinds: [], unused: false }, columns: {} },
   sourceRanges: {},
   collapsedSections: {},
   clipKeyframes: false,

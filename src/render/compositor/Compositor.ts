@@ -42,6 +42,12 @@
 //   half (the outgoing one, then the incoming one) under a solid of the color in the clip's own quad,
 //   at twice the mix (up to the middle, then down).
 // - Fades: video, image, text and solid clips fade their opacity (`fadeFactor`).
+// - Offline media (spec §6.19, Batch 41; `OfflineSlates`): a video or image clip whose media is offline
+//   (missing, no access, undecodable, or removed from the project) draws a slate instead: a solid in the
+//   theme's slate color over the visible part of where the media would be (its size, crop and
+//   transform; the frame's size when the record is gone) and a text layer with the media's name and
+//   why it is offline, centered on it (its raster keyed `clipId + OFFLINE_SLOT`). In a transition an
+//   offline side has no picture (the other side shows alone).
 // Layer structs and arrays are reused between frames; evaluating allocates nothing once warm.
 import { isRgba } from "../../core/document/color.js";
 import { animatedOpacity, animatedTransform, maxKeyedScale } from "../../core/document/keyframes.js";
@@ -66,6 +72,30 @@ import { HIGHLIGHT_SLOT, TRANSITION_SLOT, type CaptionHighlightFrame, type Compo
 
 /** How far from the playhead the clips next to it count as cut neighbours (seconds). */
 export const NEIGHBOR_SECONDS = 2;
+
+/** What offline media clips show (spec §6.19, Batch 41). */
+export interface OfflineSlates {
+  /** The slate's second line for an offline media (why it is offline), or null when it is online. */
+  label(mediaId: MediaId): string | null;
+  /** The slate's colors (the theme's). */
+  look(): { fill: RGBA; text: RGBA };
+}
+
+/** A slate's label as made for one clip (`name` and `reason` as given, before cutting). */
+interface SlateText {
+  name: string;
+  reason: string;
+  content: TextContent;
+  style: TextStyle;
+}
+
+/** The raster slot of a slate's label: its clip id plus this. */
+export const OFFLINE_SLOT = "#offline";
+/** The slate label's size, as a share of the slate's shorter visible side; its wrap width, of the visible width. */
+const SLATE_TEXT_SHARE = 0.045;
+const SLATE_WRAP_SHARE = 0.86;
+/** Names longer than this are cut with an ellipsis on the slate. */
+const SLATE_NAME_MAX = 60;
 
 type WritableMediaLayer = Omit<MediaLayer, "transform"> & { transform: MutableMat3 };
 type WritableSolidLayer = Omit<SolidLayer, "transform" | "color" | "to" | "shape"> & { transform: MutableMat3; color: RGBA; to: RGBA | null; toValue: RGBA; shape: SolidGeometry | null; shapeValue: SolidGeometry };
@@ -195,6 +225,11 @@ export class Compositor {
   private readonly captionTransform: Transform = { x: 0, y: 0, scale: 1, rotation: 0, anchor: { x: 0.5, y: 0.5 }, flipH: false, flipV: false };
   /** A keyed clip's transform at the frame (read before the next layer). */
   private readonly animated: Transform = { x: 0, y: 0, scale: 1, rotation: 0, anchor: { x: 0.5, y: 0.5 }, flipH: false, flipV: false };
+  /** Slate labels by clip (made again only when the name, reason, size or color changes, never per frame). */
+  private readonly slateTexts = new Map<ClipId, SlateText>();
+
+  /** `offline`: what offline media show; without it every media clip is drawn as online. */
+  constructor(private readonly offline: OfflineSlates | null = null) {}
 
   /**
    * The document at `frame`, bottom track first, with `transforms` (a canvas gesture's or a field
@@ -287,6 +322,21 @@ export class Compositor {
       const transform = transforms?.get(clip.id) ?? animatedTransform(clip, rel, this.animated);
       const opacity = opacities?.get(clip.id) ?? animatedOpacity(clip, rel);
       if (clip.kind === "video" || clip.kind === "image") {
+        const reason = this.offline?.label(clip.mediaId) ?? null;
+        if (reason !== null) {
+          const slate = (this.solidPool[solidLayers] ??= newSolidLayer());
+          const label = (this.textPool[textLayers] ??= newTextLayer());
+          const drawn = this.writeSlate(slate, label, doc, clip, transform, opacity * fadeFactor(clip, frame), crops?.get(clip.id) ?? clip.crop, reason);
+          if (drawn > 0) {
+            out.layers.push(slate);
+            solidLayers += 1;
+          }
+          if (drawn > 1) {
+            out.layers.push(label);
+            textLayers += 1;
+          }
+          continue;
+        }
         const layer = (this.mediaPool[media] ??= newMediaLayer());
         if (this.writeMedia(layer, doc, clip, frame, transform, opacity, crops?.get(clip.id) ?? clip.crop)) {
           out.layers.push(layer);
@@ -402,6 +452,8 @@ export class Compositor {
 
   private addNeighbor(doc: Project, clip: Clip, at: Frame, frame: Frame, reach: Frame): void {
     if (!clip.enabled || (clip.kind !== "video" && clip.kind !== "image") || Math.abs(at - frame) > reach) return;
+    // An offline media has nothing to warm (its slate is drawn).
+    if (this.offline?.label(clip.mediaId) != null) return;
     const list = this.neighborList;
     const neighbor = (this.neighborPool[list.length] ??= { mediaId: "", still: false, timeUs: 0 });
     neighbor.mediaId = clip.mediaId;
@@ -436,6 +488,8 @@ export class Compositor {
   private writeMedia(layer: WritableMediaLayer, doc: Project, clip: MediaClip, frame: Frame, transform: Transform, opacity: number, shownCrop: Crop, handles = false): boolean {
     const item = doc.media[clip.mediaId];
     if (!item?.width || !item.height) return false;
+    // An offline side of a transition has no picture.
+    if (handles && this.offline?.label(clip.mediaId) != null) return false;
     const rotation = item.rotation ?? 0;
     const quarter = rotation === 90 || rotation === 270;
     const shownWidth = quarter ? item.height : item.width;
@@ -562,6 +616,66 @@ export class Compositor {
     layer.anim = null;
     layer.karaoke = highlighting ? writeKaraoke(layer.karaokeFrame, look, layout, style, words, frame - cue.start) : null;
     return true;
+  }
+
+  /**
+   * An offline clip's slate (spec §6.19): the slate color over the visible part of the media's shown
+   * box (the frame's size without a record), and its label (the media's or the clip's name, then
+   * `reason`) centered on it. Returns how many layers it wrote: 0 (cropped away), 1 (no label raster)
+   * or 2.
+   */
+  private writeSlate(slate: WritableSolidLayer, label: WritableTextLayer, doc: Project, clip: MediaClip, transform: Transform, opacity: number, shownCrop: Crop, reason: string): number {
+    const item = doc.media[clip.mediaId];
+    const quarter = item?.rotation === 90 || item?.rotation === 270;
+    const known = item?.width !== undefined && item.width > 0 && item.height !== undefined && item.height > 0;
+    const width = known ? ((quarter ? item.height : item.width) as number) : doc.settings.width;
+    const height = known ? ((quarter ? item.width : item.height) as number) : doc.settings.height;
+    const x0 = clamp01(shownCrop.left) * width;
+    const x1 = (1 - clamp01(shownCrop.right)) * width;
+    const y0 = clamp01(shownCrop.top) * height;
+    const y1 = (1 - clamp01(shownCrop.bottom)) * height;
+    if (x1 <= x0 || y1 <= y0) return 0;
+    const look = this.offline?.look() ?? { fill: BLACK, text: WHITE };
+    const m = writeModel(slate.transform, transform, width, height, doc.settings.width, doc.settings.height);
+    multiplyInto(m, m, setMat(this.step, x1 - x0, 0, 0, y1 - y0, x0, y0));
+    copyColor(slate.color, look.fill);
+    slate.to = null;
+    slate.shape = null;
+    slate.opacity = clamp01(opacity);
+
+    const text = this.slateText(clip.id, item?.name ?? clip.name, reason, Math.min(x1 - x0, y1 - y0), x1 - x0, look.text);
+    const layout = textLayout(text.content, text.style);
+    const raster = layout.raster;
+    if (!raster) return 1;
+    const model = writeModel(label.model, transform, width, height, doc.settings.width, doc.settings.height);
+    multiplyInto(model, model, setMat(this.step, 1, 0, 0, 1, (x0 + x1 - layout.width) / 2, (y0 + y1 - layout.height) / 2));
+    const own = Math.max(Math.abs(transform.scale), Math.abs(transform.scaleY ?? transform.scale));
+    if (!(own > 0)) return 1;
+    label.trackId = clip.trackId;
+    label.clipId = clip.id + OFFLINE_SLOT;
+    label.text = text.content;
+    label.style = text.style;
+    label.highlight = null;
+    label.scale = own;
+    label.detail = Math.min(MAX_TEXT_SCALE, TEXT_RASTER_MAX / Math.max(raster.width, raster.height)) / own;
+    label.opacity = clamp01(opacity);
+    label.anim = null;
+    label.karaoke = null;
+    return 2;
+  }
+
+  /** A slate label's content and style: the default text face, centered, wrapping inside the slate. */
+  private slateText(clipId: ClipId, name: string, reason: string, side: number, width: number, color: RGBA): SlateText {
+    const fontSize = Math.max(1, Math.round(side * SLATE_TEXT_SHARE));
+    const wrap = Math.max(1, Math.round(width * SLATE_WRAP_SHARE));
+    const known = this.slateTexts.get(clipId);
+    const fill = known?.style.fill;
+    if (known && known.name === name && known.reason === reason && known.style.fontSize === fontSize && known.content.box.width === wrap && fill && isRgba(fill) && fill.r === color.r && fill.g === color.g && fill.b === color.b && fill.a === color.a) return known;
+    if (this.slateTexts.size > 64) this.slateTexts.clear();
+    const shown = name.length > SLATE_NAME_MAX ? `${name.slice(0, SLATE_NAME_MAX - 1)}…` : name;
+    const text: SlateText = { name, reason, content: textContent(`${shown}\n${reason}`, { mode: "fixed", width: wrap }), style: { ...DEFAULT_TEXT_STYLE, fontWeight: 600, fontSize, fill: { ...color }, lineHeight: 1.3 } };
+    this.slateTexts.set(clipId, text);
+    return text;
   }
 
   /** A solid in `look` (its own, or a live one): its size's box as its shape, in its color or gradient. */
