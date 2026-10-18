@@ -766,6 +766,7 @@ Small things discovered during a batch that belong to a later batch. Format: `- 
 - [from Batch 51 -> Batch 52] Preset thumbnails with library fonts: a thumbnail drawn before its font loaded must draw again when it arrives (`fontLibrary.load(style, text)` for the preset's style, or redraw on `fontsVersion`), and the starter pack's library fonts get copied into a project only when a text uses them (as every font).
 - [from Batch 51 -> Batch 53] Per-cue caption styles: `projectTextStyles` (font copies into `fonts/`, the catalog's idle read) and `exportNeeds` (the export worker's font faces) must include each cue's override style, not only the track style.
 - [from Batch 51 -> Batch 53] The main chunk grew by 43 kB (font browser, My fonts, catalog queries, name parser); if a later startup measure needs it, the font browser and the `name` parser can be dynamic imports (the browser opens in about 33 ms).
+- [from Batch 51 -> Batch 53] My fonts drops (non-blocking notes of the Batch 51 review): `addFontFiles` reads the records before its awaits, so two drops at the same moment can lose the first one's records (chain the adds); a row still loading shows its name in the UI font at the row's weight (up to 900), above the design system's UI maximum of 600.
 ## Dependencies
 Why each dependency exists (Batch rule 8).
 - `react`, `react-dom` 18.3.1: UI chrome (spec §3.1). (Batch 01)
@@ -5750,6 +5751,7 @@ Why each dependency exists (Batch rule 8).
   - [from Batch 51 -> Batch 52] Preset thumbnails with library fonts: a thumbnail drawn before its font loaded must draw again when it arrives, and the starter pack's library fonts get copied into a project only when a text uses them.
   - [from Batch 51 -> Batch 53] Per-cue caption styles: `projectTextStyles` and `exportNeeds` must include each cue's override style.
   - [from Batch 51 -> Batch 53] The main chunk grew by 43 kB; the font browser and the `name` parser can become dynamic imports if a later startup measure needs it.
+  - [from Batch 51 -> Batch 53] My fonts: two drops at the same moment can lose the first one's records (`addFontFiles`); a loading row's name shows at weights above 600 (added by the fix-attempt).
 - design gaps (also under Design system gaps): the font browser (width, chip rows, fixed list height, row anatomy, the loading look, the drop target), the My fonts editor, the Presets tab's drop target, Settings > About > Font licenses.
 - pending manual checks (`npm run dev`):
   1. Real file drops from the system: drag a `.ttf` and a `.woff2` from Explorer or Finder onto the open font browser, then a `.otf` onto the Presets tab. Expected: the browser and the tab show the dashed drop look while dragging, a toast lists the fonts, and My fonts shows them in their own fonts. The scripted drops used page-side DragEvents.
@@ -5780,3 +5782,14 @@ Why each dependency exists (Batch rule 8).
     - §3 / §4: the list is framework-free DOM, and hover previews through `StyleTarget.preview` with 0 commits (only arrow keys set React state). A pick is one command. Row faces are decoded in idle time and added in batches, while text faces are added at once. The catalog is never read at start (P12: 60 ms), and font loads are capped and cancellable. The export worker adds the same faces (`FontDescriptor`s by bytes or library URL) before its first frame. No time values were touched, and no media work was added to the main thread.
     - TODOs: none added, zero `TODO(batch` in `src/`. No earlier `review: rejected` list for this batch.
     - Non-blocking: while a row loads, its name shows in the UI font at the row's weight (up to 900), above the DS's UI maximum of 600. `addFontFiles` reads the list before its awaits, so two drops at the same moment can lose the first one's records. `onDrop` in `FontBrowser.tsx` calls `droppedFontFiles` twice.
+- fix-attempt: done (2026-10-18)
+  1. `src/panels/properties/FontList.ts` has no size literal left.
+     - The row height is the `--control-default` token with no numeric fallback: an unreadable token gives 0 and the list draws nothing.
+     - The view is the list's own `clientHeight`, with no 12-row fallback. A list with no height (hidden while the My fonts editor is open) unbinds every row, which cancels their loads, and binds nothing when its items change. The ResizeObserver draws the rows again when the list shows.
+     - New `src/panels/properties/FontList.test.ts` (3 tests: the visible rows and their margin load and nothing else; a hidden list binds no rows, cancels their loads, loads nothing for new items and draws again when it shows; an unreadable token draws nothing). The two last tests fail on the previous `FontList.ts`.
+     - Also fixed (a non-blocking note): `onDrop` in `FontBrowser.tsx` reads `droppedFontFiles` once. The other two non-blocking notes (simultaneous drops, the loading row's weight) are a follow-up to Batch 53.
+  - `npm run check` green: typecheck, lint with the CSS color and token checks, 2424 unit tests in 234 files, 4 perf tests, build with no warning. Main JS 1342.99 kB (428.28 kB gzip), export.worker 418.31 kB.
+  - Browser checks on a fresh snapshot of the working tree (5271 / 9403):
+    - New `%TEMP%/b51/fixhidden.mjs` (9/9): the list draws 16 rows. With the editor open, the list is hidden (0 px), binds 0 rows and requests 0 font files, also after a rename changes its items. After Done it draws 16 rows again, with the renamed family listed and every visible row in its own font.
+    - Re-runs, all pass: `acc23.mjs` (20), `acc4.mjs` (12), `acc5.mjs` (17), `acc6.mjs` (6), `offline.mjs` (5), `extra.mjs` (17).
+    - `acc4.mjs` numbers: opening loads 8 row files and the end of the list 13. The steady scroll has a max frame gap of 17.7 ms (p95 17.2), no long task and 0 commits; every file requested belonged to a row on screen or in its margin, and 295 loads were cancelled. Flings and the slow scroll hold 60 fps, with 100% of the visible rows drawn in their font. No layout shift, and the browser opens in 31-33 ms.

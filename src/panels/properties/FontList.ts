@@ -141,8 +141,9 @@ export class FontList {
     this.host.replaceChildren();
   }
 
+  /** The row height is the `--control-default` token (unreadable: 0, and nothing is drawn). */
   private measure(): void {
-    const height = Number.parseFloat(getComputedStyle(this.host).getPropertyValue("--control-default")) || 28;
+    const height = Number.parseFloat(getComputedStyle(this.host).getPropertyValue("--control-default")) || 0;
     if (height !== this.rowHeight) {
       this.rowHeight = height;
       this.sizer.style.height = `${this.items.length * height}px`;
@@ -150,11 +151,19 @@ export class FontList {
     this.render();
   }
 
-  /** Places the rows the scroll position shows (DOM writes only; the scroll position is read once). */
+  /**
+   * Places the rows the scroll position shows (DOM writes only; the scroll position is read once). A
+   * list with no height (hidden while My fonts are edited) shows no rows and loads nothing; the
+   * ResizeObserver draws them again when it shows.
+   */
   private render(): void {
     const height = this.rowHeight;
     if (height <= 0) return;
-    const view = this.host.clientHeight || height * 12;
+    const view = this.host.clientHeight;
+    if (view <= 0) {
+      for (const row of this.rows) this.bind(row, -1);
+      return;
+    }
     const first = Math.max(0, Math.floor(this.host.scrollTop / height) - OVERSCAN);
     const last = Math.min(this.items.length - 1, Math.ceil((this.host.scrollTop + view) / height) + OVERSCAN);
     const wanted = Math.max(0, last - first + 1);
