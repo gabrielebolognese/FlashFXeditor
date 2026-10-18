@@ -45,11 +45,10 @@ const ARROWED = 'input[type="range"], [role="slider"], [role="spinbutton"], [rol
 const NAVIGATION_KEYS = new Set(["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End", "PageUp", "PageDown"]);
 
 /**
- * True when the focused control handles the key itself (Batch 46, keyboard-only use): plain Space and
+ * True when the focused control can handle the key itself (Batch 46, keyboard-only use): plain Space and
  * Enter on a focused button or switch, and the navigation keys on a slider or inside a radio group, tab
- * list or list box. The shortcut (Space = play, the arrows = frame steps) gives way and the browser or
- * the widget acts. A pointer click never leaves a button focused (buttons keep the focus where it was),
- * so this only applies to controls reached with Tab.
+ * list or list box. The dispatcher gives the key to the control only when the keyboard focused it (see
+ * `KeyDispatcher.handleKeyDown`): a control a pointer press focused keeps the shortcuts.
  */
 export function isNativeKeyTarget(target: EventTarget | null, event: Pick<KeyboardEvent, "key" | "ctrlKey" | "metaKey" | "altKey">): boolean {
   if (!(target instanceof Element) || event.ctrlKey || event.metaKey || event.altKey) return false;
@@ -60,7 +59,7 @@ export function isNativeKeyTarget(target: EventTarget | null, event: Pick<Keyboa
 
 type KeyEventLike = Pick<
   KeyboardEvent,
-  "key" | "code" | "ctrlKey" | "metaKey" | "altKey" | "shiftKey" | "repeat" | "target" | "isComposing" | "preventDefault"
+  "key" | "code" | "ctrlKey" | "metaKey" | "altKey" | "shiftKey" | "repeat" | "target" | "isComposing" | "defaultPrevented" | "preventDefault"
 >;
 
 export class KeyDispatcher {
@@ -69,6 +68,10 @@ export class KeyDispatcher {
   private readonly everywhere = new Map<string, KeyBinding>();
   /** Held bindings by physical key code, so key-up finds them even if modifiers changed. */
   private readonly held = new Map<string, { binding: KeyBinding; scope: FocusScope }>();
+  /** The last input that can move the focus was a pointer press (false: Tab, or no input yet). */
+  private pointerInput = false;
+  /** The focused element, when a pointer press focused it (or pressed it while it had the focus). */
+  private pointerFocused: Element | null = null;
 
   constructor(private readonly options: KeyDispatcherOptions) {
     this.setBindings(options.keymap);
@@ -103,15 +106,48 @@ export class KeyDispatcher {
     const down = (event: KeyboardEvent) => this.handleKeyDown(event);
     const up = (event: KeyboardEvent) => this.handleKeyUp(event);
     const blur = () => this.releaseAll();
+    // Capture: a widget that stops a key or a press (the More tools menu cycling Tab) still counts.
+    const tab = (event: KeyboardEvent) => {
+      if (event.key === "Tab") this.noteTab();
+    };
+    const press = (event: Event) => this.notePointerDown(event.target, target.document.activeElement);
+    const focus = (event: Event) => this.noteFocus(event.target);
+    target.addEventListener("keydown", tab, true);
+    target.addEventListener("pointerdown", press, true);
+    target.addEventListener("focusin", focus, true);
     target.addEventListener("keydown", down);
     target.addEventListener("keyup", up);
     target.addEventListener("blur", blur);
     return () => {
+      target.removeEventListener("keydown", tab, true);
+      target.removeEventListener("pointerdown", press, true);
+      target.removeEventListener("focusin", focus, true);
       target.removeEventListener("keydown", down);
       target.removeEventListener("keyup", up);
       target.removeEventListener("blur", blur);
       this.held.clear();
     };
+  }
+
+  /**
+   * Where the focus came from (the Batch 46 review): a press focuses a clicked button or switch (Chrome
+   * does, and only some of the app's buttons keep the focus where it was), so a focused control only
+   * keeps Space, Enter and the arrows when the keyboard put the focus there. A Tab press makes the next
+   * focus a keyboard one, a pointer press a pointer one; a focus a script moves (a closed field handing it
+   * back to its button) is the kind of the last of them.
+   */
+  noteTab(): void {
+    this.pointerInput = false;
+  }
+
+  /** A pointer press on `target`; `active` is the focused element (a press on it makes it a pointer focus). */
+  notePointerDown(target: EventTarget | null, active: Element | null): void {
+    this.pointerInput = true;
+    if (active && target instanceof Node && active.contains(target)) this.pointerFocused = active;
+  }
+
+  noteFocus(target: EventTarget | null): void {
+    this.pointerFocused = this.pointerInput && target instanceof Element ? target : null;
   }
 
   /** Finds the binding for the event in the given scope, or undefined. */
@@ -157,8 +193,11 @@ export class KeyDispatcher {
     if (event.isComposing) return;
     const scope = this.options.getScope();
     // Text inputs own their keys (but `everywhere` ones); only the inline text editor scope gets its own
-    // bindings. A focused control's own keys (Space on a button, arrows on a slider) are left to it.
-    const typing = (isEditableTarget(event.target) && scope !== "textEditing") || isNativeKeyTarget(event.target, event);
+    // bindings. A focused control's own keys (Space on a button, arrows on a slider) are left to it when
+    // the keyboard focused it, or when its widget handled the key already (a color square's arrows);
+    // after a click on a switch, Space still plays.
+    const native = isNativeKeyTarget(event.target, event) && (event.defaultPrevented || event.target !== this.pointerFocused);
+    const typing = (isEditableTarget(event.target) && scope !== "textEditing") || native;
     for (const binding of typing ? this.everywhereFor(event) : this.candidates(event, scope)) {
       if (binding.hold) {
         if (event.repeat || this.held.has(event.code)) {

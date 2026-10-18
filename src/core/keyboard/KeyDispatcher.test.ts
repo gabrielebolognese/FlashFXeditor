@@ -265,3 +265,84 @@ describe("focused controls keep their own keys (Batch 46)", () => {
     expect(t.onAction).toHaveBeenCalledWith("edit.split", expect.anything());
   });
 });
+
+describe("a control the pointer focused keeps the shortcuts (Batch 46 review)", () => {
+  const make = (html: string, selector: string) => {
+    const host = document.createElement("div");
+    host.innerHTML = html;
+    document.body.append(host);
+    return host.querySelector<HTMLElement>(selector)!;
+  };
+  // What Chrome does on a click: the press, then the focus (only some buttons prevent it on mouse down).
+  const click = (element: HTMLElement) => {
+    element.dispatchEvent(new Event("pointerdown", { bubbles: true }));
+    element.focus();
+  };
+  const tab = () => window.dispatchEvent(new KeyboardEvent("keydown", { key: "Tab", code: "Tab" }));
+  const attached = (initialScope: FocusScope = "global") => {
+    const t = setup(initialScope);
+    const detach = t.dispatcher.attach(window);
+    return { ...t, detach };
+  };
+
+  it("plays on Space and steps on the arrows after a click on a switch or a tab, and does not press it", () => {
+    const t = attached("properties");
+    const toggle = make('<button role="switch" aria-checked="false">Drop shadow</button>', "button");
+    click(toggle);
+    const space = t.down({ key: " ", code: "Space" }, toggle);
+    expect(t.onAction).toHaveBeenLastCalledWith("transport.playPause", expect.anything());
+    // Prevented: Chrome does not toggle the switch on the key-up.
+    expect(space.defaultPrevented).toBe(true);
+    const panelTab = make('<div role="tablist"><button role="tab">Presets</button></div>', "button");
+    click(panelTab);
+    t.down({ key: "ArrowRight", code: "ArrowRight" }, panelTab);
+    expect(t.onAction).toHaveBeenLastCalledWith("transport.stepForward", expect.anything());
+    t.detach();
+  });
+
+  it("leaves Space to the same switch once Tab reached it", () => {
+    const t = attached();
+    const before = make("<button>Crop to frame</button>", "button");
+    const toggle = make('<button role="switch" aria-checked="false">Outline</button>', "button");
+    click(before);
+    tab();
+    toggle.focus();
+    expect(t.down({ key: " ", code: "Space" }, toggle).defaultPrevented).toBe(false);
+    expect(t.onAction).not.toHaveBeenCalled();
+    // A press on the focused switch: the pointer is back, Space plays again.
+    toggle.dispatchEvent(new Event("pointerdown", { bubbles: true }));
+    t.down({ key: " ", code: "Space" }, toggle);
+    expect(t.onAction).toHaveBeenCalledWith("transport.playPause", expect.anything());
+    t.detach();
+  });
+
+  it("gives a focus a script moves the kind of the last input", () => {
+    const t = attached();
+    const name = make("<button>Project name</button>", "button");
+    // Clicked, renamed, Enter: the field hands the focus back to the name, and Space plays.
+    document.body.dispatchEvent(new Event("pointerdown", { bubbles: true }));
+    name.focus();
+    t.down({ key: " ", code: "Space" }, name);
+    expect(t.onAction).toHaveBeenCalledWith("transport.playPause", expect.anything());
+    t.onAction.mockClear();
+    // Reached with Tab first: Space renames again.
+    name.blur();
+    tab();
+    name.focus();
+    t.down({ key: " ", code: "Space" }, name);
+    expect(t.onAction).not.toHaveBeenCalled();
+    t.detach();
+  });
+
+  it("leaves a key to a clicked widget that handled it (a color square's arrows)", () => {
+    const t = attached();
+    const square = make('<div role="slider" tabindex="0"></div>', "div");
+    click(square);
+    const event = new KeyboardEvent("keydown", { key: "ArrowLeft", code: "ArrowLeft", cancelable: true });
+    event.preventDefault();
+    Object.defineProperty(event, "target", { value: square });
+    t.dispatcher.handleKeyDown(event);
+    expect(t.onAction).not.toHaveBeenCalled();
+    t.detach();
+  });
+});
