@@ -46,7 +46,7 @@ A clip can have a fade in at its start and a fade out at its end. Each fade has 
 | Caption cues | Nothing: cues have no fades. |
 
 - A video and its sound fade separately: a fade on the video clip fades only the picture, and a fade on the audio clip fades only the sound. The **Fade in 0.5 s** and **Fade out 0.5 s** buttons fade both at once; see [Fade a clip and its sound with one click](#fade-a-clip-and-its-sound-with-one-click).
-- A clip's fade in and fade out never overlap: together they are at most as long as the clip.
+- A clip's fade in and fade out never overlap: together they are at most as long as the clip. An edit that makes the clip shorter than the two keeps them in proportion; see [Know what edits do to fades and transitions](#know-what-edits-do-to-fades-and-transitions).
 - A fade works on top of the clip's own **Opacity**, including opacity keyframes: a picture at 50% opacity fades in to 50%. On an audio clip, it works on top of the clip's **Volume** and volume keyframes in the same way. See [Editing audio](audio-editing.md).
 - On a text clip, the fade applies to the whole text, together with any in or out animation. See [Text animations](text-animations.md).
 - On the timeline, a dark wedge covers the faded part of the clip, bounded by a thin line from the clip's bottom corner to the top: straight on a picture clip, rounded on an audio clip. On M and L tracks the wedge covers the body below the label bar; on S tracks it covers the whole clip.
@@ -261,7 +261,7 @@ See [Audio](audio.md).
 
 | Edit | Fades | Transitions |
 | --- | --- | --- |
-| Trim, roll, slip, slide, rate stretch, speed change | Each fade keeps its length. A fade longer than the clip becomes as long as the clip. | A side that used part of a handle gets shorter when the edit uses up that part of the handle, and the transition goes when its handle is used up. Each side also stays within its clip. During a trim drag, the block already shows its new length. |
+| Trim, roll, slip, slide, rate stretch, speed change | Each fade keeps its length. When the clip becomes shorter than its fade in and fade out together, both get shorter in proportion and together fill the clip: a 20-frame fade in and a 10-frame fade out on a clip trimmed to 15 frames become 10 and 5 frames. | A side that used part of a handle gets shorter when the edit uses up that part of the handle, and the transition goes when its handle is used up. Each side also stays within its clip. During a trim drag, the block already shows its new length. |
 | Split | The left piece keeps the fade in, the right piece keeps the fade out. | A split inside the transition's frames removes it. A split elsewhere in the clip keeps the transition on its cut. |
 | Move one of the clips away, delete one of them, ripple delete | Unchanged. | The transition goes when its two clips no longer touch. |
 | Duplicate, copy and paste | The copy keeps the fades. | A transition comes along when both of its clips are copied; otherwise the copy has none at that cut. A copy made in the preview with <kbd>Ctrl</kbd>+<kbd>D</kbd> has no transitions. |
@@ -302,4 +302,4 @@ See [Undo and redo changes](projects-and-saving.md#undo-and-redo-changes).
 - [Keyboard shortcuts](keyboard-shortcuts.md#fades-and-transitions)
 - [Troubleshooting](troubleshooting.md#fades-and-transitions)
 
-<sub>Last updated: Batch 46, 2026-10-18</sub>
+<sub>Last updated: Batch 50, 2026-10-18</sub>

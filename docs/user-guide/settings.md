@@ -1,6 +1,6 @@
 # Settings
 
-The **Settings** dialog holds the choices that apply to every project you open in this browser: how soon the editor saves, how long new clips and transitions last, how punch zoom and keyframes behave, the defaults for ducking, silence removal and transcription, how imports bring in your files, and the storage the editor uses. Its **Shortcuts** tab changes your keyboard shortcuts.
+The **Settings** dialog holds the choices that apply to every project you open in this browser: how soon the editor saves, how long new clips and transitions last, how punch zoom and keyframes behave, the defaults for ducking, silence removal and transcription, how imports bring in your files, and the storage the editor uses. Its **Shortcuts** tab changes your keyboard shortcuts, and its **About** tab shows the version of the editor and the way to help and licenses.
 
 > **Video placeholder: Set your defaults in Settings**
 > - File: `videos/settings/overview.mp4` (not recorded yet)
@@ -23,12 +23,13 @@ The **Settings** dialog holds the choices that apply to every project you open i
 - [Set the transcription defaults](#set-the-transcription-defaults)
 - [Choose how media are imported](#choose-how-media-are-imported)
 - [Manage storage](#manage-storage)
+- [See the version and get help](#see-the-version-and-get-help)
 - [Related pages](#related-pages)
 
 ## Open Settings
 
 1. Click **Settings** (the gear) at the right end of the app bar, or run **Settings** in the command palette (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>).
-2. The dialog opens on the **General** tab. Click **Shortcuts** to change your keys; see [Change a shortcut](command-palette-and-custom-shortcuts.md#change-a-shortcut). **Edit shortcuts** in the **Keyboard shortcuts** sheet opens the dialog on **Shortcuts**.
+2. The dialog opens on the **General** tab. It has three tabs: **General**, **Shortcuts** and **About**. Click **Shortcuts** to change your keys; see [Change a shortcut](command-palette-and-custom-shortcuts.md#change-a-shortcut). **Edit shortcuts** in the **Keyboard shortcuts** sheet opens the dialog on **Shortcuts**, and **About Shorts Editor** in the command palette opens it on **About**; see [See the version and get help](#see-the-version-and-get-help).
 3. Change what you need. Each change takes effect at once.
 4. Click **Done**, or press <kbd>Escape</kbd>.
 
@@ -141,11 +142,42 @@ The **Storage** group:
 | **Preset folder** | The library folder your **Global** text presets are synced with, and its state: **Syncing…**, **Synced**, **Needs permission: Sync to allow**, or a reason when it can't sync. With no folder: "None: presets stay in this browser". Click **Choose…** (or **Change…**) to pick a folder. With a folder, the buttons next to it sync again (**Sync the presets library folder**) and stop syncing (**Stop syncing the presets library folder**). See [Sync your presets with a folder](text-presets.md#sync-your-presets-with-a-folder). |
 | **Starter presets** | **Restore** brings back the starter presets you deleted. See [Restore the starter presets](text-presets.md#restore-the-starter-presets). |
 
+## See the version and get help
+
+The **About** tab tells you which version of Shorts Editor you are running and how it draws the picture, takes you to the shortcut sheet and the command palette, and lists the open-source packages and fonts that come with the editor.
+
+> **Video placeholder: The About tab**
+> - File: `videos/settings/about.mp4` (not recorded yet)
+> - Length: about 30 seconds
+> - Shows:
+>   1. Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>, type `about` and press <kbd>Enter</kbd>: **Settings** opens on the **About** tab.
+>   2. Point at **Version** (1.0.0) and **Renderer** (**WebGPU**).
+>   3. Click **View licenses**: the license list opens in a new browser tab. Go back to the editor's tab.
+>   4. Click **Keyboard shortcuts**: **Settings** closes and the **Keyboard shortcuts** sheet opens. Press <kbd>Esc</kbd>.
+
+1. Open the **About** tab in one of these ways:
+   - Run **About Shorts Editor** in the command palette (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>). Typing `version`, `licenses` or `help` finds it too. It has no key by default.
+   - Open **Settings** and click the **About** tab.
+2. Click **Done**, or press <kbd>Escape</kbd>, to close it.
+
+The tab works on the start screen too, before you open a project. It has three groups:
+
+| Group | Row | What it shows and does |
+| --- | --- | --- |
+| **Shorts Editor** | **Version** | The version of the editor, for example 1.0.0. Every save writes this version into the project's `project.json`. |
+| | **Renderer** | How the editor draws the preview and the frames of your exports: **WebGPU**, or **WebGL2** on computers without WebGPU or when you started the editor with `?renderer=webgl2`. See [Check your browser](getting-started.md#check-your-browser). It reads **Not started** if the editor hasn't set up your graphics card yet. |
+| **Help** | **Shortcuts** | **Keyboard shortcuts** closes **Settings** and opens the sheet of every key. See [See every shortcut](command-palette-and-custom-shortcuts.md#see-every-shortcut). |
+| | **Commands** | **Command palette** closes **Settings** and opens the palette, where you can find every command by name, with its shortcut. See [Run a command from the palette](command-palette-and-custom-shortcuts.md#run-a-command-from-the-palette). |
+| **Licenses** | **Third party** | **View licenses** (tooltip **Open the license list in a new tab**) opens the list of the open-source packages and the fonts that come with the editor, with their license texts, in a new browser tab. |
+
+The note under **Shorts Editor** sums up how the editor works: "A video editor for short vertical videos. Projects are folders on your disk, and your media never leaves your computer."
+
 ## Related pages
 - [Exporting your video](exporting-video.md)
 - [Project settings and templates](project-settings-and-templates.md)
 - [Projects and saving](projects-and-saving.md)
 - [Command palette and custom shortcuts](command-palette-and-custom-shortcuts.md)
+- [Getting started](getting-started.md)
 - [Importing media](importing-media.md)
 - [Proxies](proxies.md)
 - [Titles and text](titles-and-text.md)
@@ -157,4 +189,4 @@ The **Storage** group:
 - [Removing silence](removing-silence.md)
 - [Transcription](transcription.md)
 
-<sub>Last updated: Batch 46, 2026-10-18</sub>
+<sub>Last updated: Batch 50, 2026-10-18</sub>

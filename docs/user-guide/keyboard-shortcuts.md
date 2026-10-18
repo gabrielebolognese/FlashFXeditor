@@ -112,6 +112,7 @@ See [Command palette and custom shortcuts](command-palette-and-custom-shortcuts.
 | Keep the old key instead of recording one | <kbd>Esc</kbd> | <kbd>Esc</kbd> | **Settings** > **Shortcuts**, while a chip reads **Press a key…** |
 
 - **Settings** (the gear in the app bar) has no key by default. You can give it one, as any other command, in **Settings** > **Shortcuts**.
+- **About Shorts Editor** has no key by default either: run it from the palette to open **Settings** on its **About** tab. Its **Keyboard shortcuts** and **Command palette** buttons close **Settings** and open the sheet or the palette. See [See the version and get help](settings.md#see-the-version-and-get-help).
 - The palette and the sheet don't open while you type in a field or while a dialog is open.
 - A command run from the palette acts as its key would in the panel you were working in.
 - **Reload panel** has no key by default. From the palette, it reloads every panel that stopped working, or else the panel you were working in. See [Reload a panel that stopped working](workspace.md#reload-a-panel-that-stopped-working).
@@ -890,4 +891,4 @@ None at the moment.
 - [Projects and saving](projects-and-saving.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 47, 2026-10-18</sub>
+<sub>Last updated: Batch 50, 2026-10-18</sub>

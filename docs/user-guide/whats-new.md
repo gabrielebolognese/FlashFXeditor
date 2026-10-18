@@ -2,6 +2,11 @@
 
 Shorts Editor grows in steps called batches. This page lists what each batch added that you can see or use, newest first. Follow the links for the full instructions.
 
+> **Video placeholder: What's new in Batch 50**
+> - File: `videos/whats-new/batch-50.mp4` (not recorded yet)
+> - Length: about 40 seconds
+> - Shows: press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>, type `about` and press <kbd>Enter</kbd>: **Settings** opens on **About** with **Version** 1.0.0 and **Renderer** **WebGPU**; click **View licenses**: the license list opens in a new tab; go back and click **Keyboard shortcuts**: the sheet opens; press <kbd>Esc</kbd>; on the timeline, click a 30-frame clip with a 20-frame fade in and a 10-frame fade out and drag its end to the left to 15 frames: both fade wedges shrink together, to 10 and 5 frames.
+
 > **Video placeholder: What's new in Batch 49**
 > - File: `videos/whats-new/batch-49.mp4` (not recorded yet)
 > - Length: about 40 seconds
@@ -203,6 +208,7 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 > - Shows: open a project with three clips on the timeline; press <kbd>Space</kbd> to play and let the timeline page forward; press <kbd>L</kbd> three times to reach 8x, then <kbd>K</kbd>; hold <kbd>K</kbd> and tap <kbd>L</kbd> to step one frame; turn on **Loop playback**; point at the **Dropped** readout in the status strip.
 
 ## In this page
+- [Batch 50: Version 1.0](#batch-50-version-10)
 - [Batch 49: WebM files and screen recordings](#batch-49-webm-files-and-screen-recordings)
 - [Batch 48: Runs without WebGPU](#batch-48-runs-without-webgpu)
 - [Batch 47: A steadier editor](#batch-47-a-steadier-editor)
@@ -252,6 +258,13 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 - [Batch 03: Projects, autosave and recovery](#batch-03-projects-autosave-and-recovery)
 - [Batch 02: Undo, redo and frame-exact time](#batch-02-undo-redo-and-frame-exact-time)
 - [Batch 01: The workspace](#batch-01-the-workspace)
+
+## Batch 50: Version 1.0
+- This is Shorts Editor 1.0.0. **Settings** has a third tab, **About**: it shows the version and the renderer (**WebGPU** or **WebGL2**), has **Keyboard shortcuts** and **Command palette** buttons, and **View licenses** opens the list of the open-source packages and fonts that come with the editor. Open it from the command palette with **About Shorts Editor**, also on the start screen. See [See the version and get help](settings.md#see-the-version-and-get-help).
+- Each save writes the version of the editor into the project's `project.json`. See [What is in the project folder](projects-and-saving.md#what-is-in-the-project-folder).
+- When a trim, a speed change or a frame rate conversion makes a clip shorter than its fade in and fade out together, both now get shorter in proportion and fill the clip, instead of each being cut to the clip's length on its own. See [Know what edits do to fades and transitions](fades-and-transitions.md#know-what-edits-do-to-fades-and-transitions).
+- Converting a project to another frame rate now warns before it rounds the media of clips pasted from projects at other rates, instead of converting them without asking. See [When timings are rounded](project-settings-and-templates.md#when-timings-are-rounded).
+- WebM files longer than 45 minutes whose sound is decoded whole, such as **Vorbis** sound, are refused at import with the reason, like long .mp3, .aac, .wav and .ogg files. WebM files with **Opus** sound have no limit. See [WebM files and screen recordings](importing-media.md#webm-files-and-screen-recordings) and [Fix import problems](importing-media.md#fix-import-problems).
 
 ## Batch 49: WebM files and screen recordings
 - Import WebM (.webm) files, such as the screen recordings that Chrome, browser extensions and many recorders save: VP9, AV1, VP8 or H.264 video with Opus or Vorbis sound. They skim, scrub, play, get proxies, thumbnails and waveforms, and export like MP4 files, with the sound in sync. See [WebM files and screen recordings](importing-media.md#webm-files-and-screen-recordings).
@@ -773,4 +786,4 @@ See [The workspace](workspace.md) and [Getting started](getting-started.md).
 - [Adding media to the timeline](adding-media-to-the-timeline.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 49, 2026-10-18</sub>
+<sub>Last updated: Batch 50, 2026-10-18</sub>

@@ -52,7 +52,7 @@ The app bar is the strip above the panels. From left to right:
 | **Undo** and **Redo** | Undo or redo the last change. The tooltip names the step, for example **Undo Rename project**. Dimmed when there is nothing to undo or redo. See [Undo and redo changes](projects-and-saving.md#undo-and-redo-changes). |
 | Project badge | The resolution and frame rate of the project, for example **1080×1920 · 30 fps**. It follows changes made in the **Project** section. |
 | **Export** | Opens the **Export** tab next to **Edit Properties** (<kbd>Ctrl</kbd>+<kbd>E</kbd>): presets for Reels, TikTok and Shorts, the range, the file name and place, the queue, the log and the extras. See [Exporting your video](exporting-video.md). |
-| **Settings** (gear) | Opens the **Settings** dialog on its **General** tab: autosave, the length of new clips, the default transition, editing, audio and transcription defaults, how imports bring in your files, proxies and storage; see [Settings](settings.md). Its **Shortcuts** tab lets you change the keyboard shortcuts; see [Change a shortcut](command-palette-and-custom-shortcuts.md#change-a-shortcut). |
+| **Settings** (gear) | Opens the **Settings** dialog on its **General** tab: autosave, the length of new clips, the default transition, editing, audio and transcription defaults, how imports bring in your files, proxies and storage; see [Settings](settings.md). Its **Shortcuts** tab lets you change the keyboard shortcuts; see [Change a shortcut](command-palette-and-custom-shortcuts.md#change-a-shortcut). Its **About** tab shows the version and the renderer, with buttons for the shortcut sheet, the command palette and the licenses; see [See the version and get help](settings.md#see-the-version-and-get-help). |
 
 When the editor cannot write to the project folder, the middle of the app bar shows the notice **Read-only: changes are not saved** with an **Allow editing** button. See [Work in read-only mode](projects-and-saving.md#work-in-read-only-mode).
 
@@ -295,4 +295,4 @@ To jump to a time, type it into the timecode field of the timeline toolbar, or c
 - [Keyboard navigation](keyboard-navigation.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 47, 2026-10-18</sub>
+<sub>Last updated: Batch 50, 2026-10-18</sub>

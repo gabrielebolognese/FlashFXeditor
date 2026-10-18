@@ -122,7 +122,7 @@ The conversion is one undo step named **Change frame rate**. <kbd>Ctrl</kbd>+<kb
 | --- | --- |
 | Clips | Their start and end move to the same moment at the new rate. |
 | Video and audio clips | They play the same part of their media: the first and last frame shown stay the same, to within one frame of the media. |
-| Fades and transitions | Their lengths, and the frames on each side of a cut. |
+| Fades and transitions | Their lengths, and the frames on each side of a cut. If a clip's fade in and fade out together would be longer than the clip after rounding, both get shorter in proportion to fit it. |
 | Keyframes | Each stays at the same moment of its clip. |
 | Caption cues | Their times, and the timing of each spoken word for the highlight. |
 | Text animations | Their lengths and the delay between words or letters. |
@@ -137,6 +137,8 @@ A frame at one rate does not always fall on a frame at another: 30 fps has a fra
 
 - "… keyframes land on the frame of another and merge": two keyframes of a clip less than a frame apart at the new rate become one.
 - "… clips move a frame later to keep the clip before it": a clip so short that it would round to nothing keeps one frame, and the clip right after it starts a frame later.
+
+A video or audio clip you pasted from a project at another frame rate can play a part of its media that doesn't fit whole frames of the new rate. The conversion fits that part to the clip's new length and counts it among the rounded timings, so the **Convert to … fps?** dialog can ask first even for a rate that otherwise converts without rounding, such as 30 to 60 fps.
 
 A rate that is a whole multiple of the current one converts without rounding: 30 to 60 fps, 25 to 50 fps and 29.97 to 59.94 fps. Going back down, for example from 60 to 30 fps, rounds only the timings that sit on odd frames.
 
@@ -212,4 +214,4 @@ The template is deleted at once, without a question, and can't be brought back. 
 - [Proxies](proxies.md)
 - [Troubleshooting](troubleshooting.md#project-settings-and-templates)
 
-<sub>Last updated: Batch 42, 2026-10-18</sub>
+<sub>Last updated: Batch 50, 2026-10-18</sub>

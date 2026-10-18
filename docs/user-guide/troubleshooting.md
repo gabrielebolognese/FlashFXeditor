@@ -412,6 +412,7 @@ If it happens often, see [The picture or the export goes wrong only on this comp
 2. Click the browser's address bar and add `?renderer=webgl2` to the end of the editor's address. If the address already contains a `?`, add `&renderer=webgl2` instead.
 3. Press <kbd>Enter</kbd>. The editor starts again at the start screen.
 4. Open your project from **Recent projects**.
+5. To check, run **About Shorts Editor** in the command palette: **Renderer** reads **WebGL2**. See [See the version and get help](settings.md#see-the-version-and-get-help).
 
 The editor uses WebGL2 for the preview and for your exports each time you open that address; bookmark it to keep it. The choice is made when the editor starts, so it does not change while the page is open. To go back to WebGPU, remove `?renderer=webgl2` from the address and press <kbd>Enter</kbd>. If WebGL2 can't run on your graphics card, the editor starts with WebGPU anyway.
 
@@ -1060,6 +1061,7 @@ See [Restore an older version](projects-and-saving.md#restore-an-older-version).
 | The file has no video or audio track | The MP4 or MOV file contains neither video nor audio. | Use a different file. |
 | The audio cannot be decoded ... / The audio is empty | The browser cannot read the audio, or it contains no sound. | Convert the file to WAV or MP3. |
 | Audio files over 45 minutes cannot be imported yet (this one is *N* minutes) ... | An `.mp3`, `.aac`, `.wav` or `.ogg` file is longer than 45 minutes. | Cut it into parts of 45 minutes or less, or convert it to `.m4a`, which has no length limit. |
+| This WebM file's sound is decoded whole, which works up to 45 minutes (this one is *N* minutes) ... | A `.webm` file, with or without a picture, is longer than 45 minutes and its sound is decoded whole, for example **Vorbis** sound. The whole file is refused, its picture too. | Cut it into parts of 45 minutes or less, or convert it to a WebM file with Opus sound or to an MP4 file, which have no length limit. See [WebM files and screen recordings](importing-media.md#webm-files-and-screen-recordings). |
 | The image cannot be decoded ... | The image is damaged or uses a variant the browser cannot read. | Save it again as PNG or JPEG. |
 | The SVG has no size (width/height or viewBox) | The SVG file does not say how large it is. | Add `width` and `height` (or a `viewBox`) to the SVG in your drawing app. |
 | Could not copy it into media/ ... | The editor could not copy the file into the project's `media` folder, for example because the disk is full. | Free disk space and import again. |
@@ -2888,7 +2890,7 @@ The current version cannot do these things yet. Each one is available in a later
 
 - **Sound:** no sound while you play backward or shuttle faster than 1x; while you scrub or step frames, only with **Audio scrub** on. **Remove silence** has no default keyboard shortcut. Audio effects are not available.
 - **Copy and paste:** caption cues can't take **Paste attributes**.
-- **Importing:** `.mp3`, `.aac`, `.wav` and `.ogg` files over 45 minutes can't be imported; convert them to `.m4a`, or cut them into shorter parts.
+- **Importing:** `.mp3`, `.aac`, `.wav` and `.ogg` files over 45 minutes can't be imported, nor `.webm` files over 45 minutes with **Vorbis** sound; convert them to `.m4a` (or the WebM files to `.mp4`, or to WebM with Opus sound), or cut them into shorter parts.
 - **Media panel:** bins can't hold other bins. **Reveal in folder** can't open File Explorer: it shows and copies the path. Clips whose media item you removed can't be relinked. A file you put back while the project is open stays offline until you reopen the project.
 - **Markers:** markers belong to the timeline; markers inside clips are not available.
 - **Menus:** right-clicking empty space after the last clip of a track opens no menu.
@@ -2939,4 +2941,4 @@ The current version cannot do these things yet. Each one is available in a later
 - [Command palette and custom shortcuts](command-palette-and-custom-shortcuts.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 49, 2026-10-18</sub>
+<sub>Last updated: Batch 50, 2026-10-18</sub>
