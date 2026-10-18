@@ -5995,3 +5995,47 @@ Why each dependency exists (Batch rule 8).
     - New `stucktab.mjs`, 4 / 4: the same with the Presets tab open (family "Quazzle"). The tab's card and the bar's button both repaint by themselves, the button matches the renderer, and a forced `redrawAll` changes neither.
     - New `dpr2.mjs`, 5 / 5. Headless Chrome changes `devicePixelRatio` under CDP emulation but never fires the resolution media query's change event (`dprdbg.mjs`: the preview well does not resize either). So the probe records the app's resolution `MediaQueryList`s at page start and fires their change after the switch. At ratio 2 the 9 buttons draw at 164 x 76 device px (82 CSS px), the first matches the renderer (0 of 12464 off), and the bitmaps are made in idle time (9 -> 18). The preview well, the control, goes 640 -> 1280. Back at 1, everything returns to the old sizes.
     - Re-runs, all pass: `acc123.mjs` (25), `acc4.mjs` (11), `acc5.mjs` (8), `extra.mjs` (28).
+- review: rejected (2026-10-19, second review; `npm run check` green: typecheck, lint with the CSS color and token checks, 2454 / 2454 unit tests in 235 files, 4 / 4 perf tests, build with no warning, main JS 1371.42 kB / 436.56 kB gzip, export.worker 418.31 kB, the same as reported. Browser checks in headless Chrome 155 on 9417 (own profile `%TEMP%/rev52b/profile`) against my own snapshot of the working tree on 5295, the batch's helpers copied to `%TEMP%/rev52b` with the ports changed)
+  1. A cancelled click on a preset bar button leaves its reorder drag pending: press the button, slide off the bar up or down, and release outside the bar. The next plain hover over the bar (no mouse button held) then starts a phantom reorder: the pressed button dims, the insert marker follows the pointer, and hover previews stop. A later click in a gap of the row reorders the set and saves that order in the app settings. This breaks the build item "drag to reorder". Until the next press in the row, it also breaks acceptance 2 ("hovering another button previews it on the canvas"). Sliding off a button to cancel a click is a common gesture, and Favorites, the default set, can be reordered.
+     - Cause (`src/panels/PresetBar.tsx`):
+       - `onPointerDown` (`:239-243`) stores `reorder.current` on every left press on a button of a set that can be reordered. The row takes pointer capture only after the pointer has moved `dragThreshold` px sideways (`:249-252`). The threshold looks at x only.
+       - The pending drag ends only in the row's `onPointerUp`, `onPointerCancel` and `onLostPointerCapture` (`:303-305`). A release outside the row before the capture fires none of them, and `onPointerLeave` (`:306-308`) keeps the state. So `reorder.current` stays set after the button is released.
+       - `onPointerMove` (`:229-236`) then passes every move to `moveReorder` (`:244-268`) instead of `hoverPreset`. `moveReorder` never checks that a button is still held (`event.buttons`). Once the pointer is 4 px sideways from the old press, it starts the drag: `hoverPreset(null)`, `data-dragging` on the old button, the marker shown.
+       - A press in a gap between buttons has no preset id, so it leaves the phantom in place (`:242`). Its release runs `endReorder(true)` and `movePresetInSet`, and the click is swallowed (`clickTaken`).
+       - A press on a button replaces `reorder.current` without clearing the phantom's `data-dragging` and marker. `endReorder` (`:269-274`) returns before that cleanup when the new drag has no layout. So the dimmed button and the marker stay on screen after the apply.
+     - Reproduced with `%TEMP%/rev52b/slideoff.mjs` (project `rev52b-slide`, Favorites in the shipped order): press on Title, move 80 px below the bar (x within 1 px), release in the preview well.
+       - Nothing is added, which is correct.
+       - Then the mouse moves sideways over the bar from Title to Bold outline, no button held. The marker shows (`translateX(176px)`) and Title has `data-dragging`.
+       - A click in the 4 px gap left of Caption bold reorders Favorites to Subtitle, Bold outline, Title, Caption bold... and `presetOrder.favorites` in the app settings now holds that order.
+       - The same start, then a click on Subtitle: the preset is applied, but the marker and the dimmed Title stay on screen.
+     - Reproduced with `%TEMP%/rev52b/slidehover.mjs` (project `rev52b-hover`, one text clip selected):
+       - Control: hovering Bold outline previews it live (Unbounded).
+       - After the same cancelled click on Title, hovering Bold outline previews nothing (`liveEdit.texts` is empty).
+     - Fix: end a pending reorder when the press ends, wherever it ends.
+       - Options: in `onPointerMove`, drop a drag whose `event.buttons & 1` is 0, clean up its marker and `data-dragging`, and go on with the hover. Or listen for `pointerup` / `pointercancel` on the window while a press is pending.
+       - `onPointerDown` should also clean up a leftover drag before it starts a new one.
+       - Then run `slideoff.mjs` and `slidehover.mjs` (every check should pass) and `extra.mjs` (the E2 reorder checks) again.
+  - Checked and fine:
+    - The first review's rejection (a thumbnail drawn before its font was available was never repainted) is fixed.
+      - `PresetThumbService` calls its listeners with the preset id of every bitmap it makes or makes again (`src/render/text/PresetThumbService.ts:119`).
+      - `PresetThumbPainter.bitmapMade` (`src/panels/media/PresetThumbPainter.ts:68-73`) draws again every canvas that shows that preset, plus the ones still waiting. `installPresetController` wires it through `presetThumbs.follow(presetThumbService)`. `redrawAll` has a caller again (a device pixel ratio change).
+      - The new painter test wires the real service and painter.
+      - I ran the first review's `stuck.mjs` again: 4 / 4. The Zorblax button changes by itself when the font arrives and matches the renderer (0 of 3116 pixels off). The fix's `stucktab.mjs`: 5 / 5 (the card and the button repaint by themselves).
+    - Acceptance 1-3 and 6: `acc123.mjs` 25 / 25.
+      - A click with nothing selected adds Bold outline at the playhead in one undo step, edited inline with "Bold" selected. Typing replaces it.
+      - Three clips are restyled in one step. Hover previews with 0 React commits and no undo step, and leaving gives the same pixel hash back.
+      - Alt+3 and Alt+9 apply. The tooltips show Alt+3 / Alt+2.
+      - The starter pack has 43 presets (23 / 10 / 10). The toolbar has no chips.
+    - Acceptance 4: `acc4.mjs` 11 / 11.
+      - 43 of 43 buttons are within 1 level of the renderer, and all look different.
+      - Cinzel is really drawn, and the stroke, box, red box and highlighted words show.
+      - Update preset redraws the button. The 44 cards are drawn from the service.
+    - Acceptance 5: `acc5.mjs` 8 / 8.
+      - Hiding and showing re-fit with no stale frame, and the control (no flush) catches one.
+      - Hidden on Captions is kept over a reload.
+      - I did not rerun the playback measurement (P1 with the bar shown). The fix changes no code that runs during playback.
+    - Other checks: `extra.mjs` 28 / 28.
+    - Do not build yet: per-cue styles are not built (there is no `styleOverride` in `src`). `captionTarget` keeps the `TODO(batch 53)` hook (`src/app/presetController.ts:416`).
+    - Literals: the batch's CSS uses tokens only, and the new sizes are tokens in `tokens.css`, logged as a design gap. The starters' colors and sizes are content colors (§10.3, §20.2). The lint color and token checks pass.
+    - §3/§4: the fix keeps the thumbnails drawn in the FrameScheduler loop (`mediaThumbs`) from bitmaps made in idle time. The rest is as the first review found it.
+    - TODOs: the only `TODO(batch` in `src` is the Batch 53 hook, which has its tag.
