@@ -285,7 +285,8 @@ function FontBrowser({ anchor, current, target, onClose }: { anchor: HTMLElement
     event.stopPropagation();
     dragDepth.current = 0;
     setDropping(false);
-    void addFontFiles(droppedFontFiles(event.dataTransfer).length > 0 ? droppedFontFiles(event.dataTransfer) : [...event.dataTransfer.files]);
+    const files = droppedFontFiles(event.dataTransfer);
+    void addFontFiles(files.length > 0 ? files : [...event.dataTransfer.files]);
   };
   // The category chips scroll sideways with the wheel.
   const onChipsWheel = (event: WheelEvent<HTMLDivElement>) => {
