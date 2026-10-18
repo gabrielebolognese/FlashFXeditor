@@ -51,7 +51,7 @@ The **Edit Properties** panel sits at the top of the left side, next to the Medi
 - With several clips or tracks selected, the right end of the panel header shows how many, for example **3 clips** or **2 tracks**.
 - Each section starts with a header: an arrow and the section name. The **Transform**, **Opacity** and **Audio** headers also hold a stopwatch at their right end, for keyframes (the **Audio** stopwatch animates **Volume**); see [Animate values with keyframes](#animate-values-with-keyframes). Click the header to fold the section away, and click it again to open it. A folded section stays folded for every selection (fold **Transform** once, and it stays folded for every clip you select), and the project remembers it when you open it again.
 - The quick actions stay at the top of the panel while the sections scroll under them.
-- Press <kbd>Tab</kbd> to move to the next field and <kbd>Shift</kbd>+<kbd>Tab</kbd> to the previous one.
+- Press <kbd>Tab</kbd> to move to the next field and <kbd>Shift</kbd>+<kbd>Tab</kbd> to the previous one. <kbd>Tab</kbd> reaches every control of the panel, the quick actions, switches, chips and section headers too, also the dimmed ones: a dimmed field shows its value but can't be changed. See [Keyboard navigation](keyboard-navigation.md).
 - The panel follows the selection, on the timeline and in the preview. When you move, resize or rotate a picture in the preview, the fields show the new values as soon as you release the mouse button. They also follow **Undo** and **Redo**.
 
 ## Type a value
@@ -129,7 +129,8 @@ With clips selected, a row of one-click buttons sits at the top of the panel. Po
 
 - A button is dimmed when none of the selected clips can take it. The picture buttons and **Punch zoom** need a video, image, solid or text clip; an audio clip has no picture. On a text clip, the picture buttons use the box of its text, and on a solid the box of its shape. **Freeze frame** needs a video clip, and the speed buttons a video or audio clip that is not a freeze frame. **Save as preset** needs a text clip. **Update preset** needs a text clip whose style differs from the preset it uses. The fade buttons need a clip that is not a caption cue. **Mute** and **Remove silence** need an audio clip, or a video whose sound is a linked audio clip, and **Remove silence** also needs the video and its sound on unlocked tracks. The transition buttons are never dimmed. Clips on locked tracks are skipped.
 - Whether a button is dimmed depends on the selection only, not on the playhead. **Freeze frame** and **Punch zoom** act at the playhead: when it is not over the selected clip, a message says so.
-- The buttons don't take the keyboard focus, but a click in the panel makes **Edit Properties** the active panel. See [How shortcuts work](keyboard-shortcuts.md#how-shortcuts-work).
+- Clicking a button doesn't take the keyboard focus, so <kbd>Space</kbd> still plays right after; a click in the panel makes **Edit Properties** the active panel. See [How shortcuts work](keyboard-shortcuts.md#how-shortcuts-work). To use the buttons with the keyboard, press <kbd>Tab</kbd> until the one you want has a gold ring and press <kbd>Enter</kbd> or <kbd>Space</kbd>.
+- When a button makes itself or its row go away (**Delete**, or closing the **Remove silence** row), the keyboard focus doesn't get lost: it goes back to the top of the panel, or to **Remove silence** for its row, so the next <kbd>Tab</kbd> continues from there.
 
 ## Fit, fill or center a picture
 
@@ -190,7 +191,7 @@ Select a clip. The **Clip** section shows:
 | --- | --- |
 | **Name** | The name in the clip's label bar. Type a new one and press <kbd>Enter</kbd>. Up to 255 characters; spaces at the start and end are removed, and a blank name is ignored. Same as [Rename clips](timeline.md#rename-clips). |
 | **Color** | The eight label colors. Click one to give the selected clips that color. The current color has a gold ring; click it to remove the label. Same as the **Label** row of the clip menu; see [Give clips a label color](timeline.md#give-clips-a-label-color). |
-| **Enabled** | On: the clip is seen and heard. Off: it is left out. See [Turn a clip off](#turn-a-clip-off). |
+| **Enabled** | On: the clip is seen and heard. Off: it is left out. With some selected clips on and some off, the switch shows a mixed state, and a click turns them all off. See [Turn a clip off](#turn-a-clip-off). |
 | **Start** | Where the clip starts on the timeline. |
 | **End** | Where the clip ends: the first frame after its last frame, so **End** is always **Start** plus **Duration**. |
 | **Duration** | How long the clip is. |
@@ -233,7 +234,8 @@ What a disabled clip does:
 
 To turn it back on, right-click it and choose **Enable**, or turn **Enabled** on.
 
-- The menu row reads **Disable** while any selected clip is on, and turns them all off; when all of them are off, it reads **Enable**.
+- The menu row reads **Disable** while any selected clip is on, and turns them all off; when all of them are off, it reads **Enable**. The **Enabled** switch works the same way.
+- The switch's tooltip reads **Clip enabled**. It runs the command **Enable / Disable clip**, which has no key by default; give it one in **Settings** > **Shortcuts** and the tooltip shows it. See [Change a shortcut](command-palette-and-custom-shortcuts.md#change-a-shortcut).
 - A right-click on a video that isn't selected selects it together with its sound, so both are turned off. To turn off only the picture, <kbd>Alt</kbd>+click the video first, then right-click it.
 - Clips on locked tracks don't change.
 - Each change is one step in the history, named **Disable clip** or **Enable clip** (**Disable clips**, **Enable clips** for several).
@@ -353,6 +355,20 @@ A color field is a swatch with the color's hex code next to it. The **Background
 - While you drag in the square or along a strip, or drag one of the letters **R**, **G**, **B** or **A**, the preview shows the color live. Release to apply it.
 - Each color you finish choosing (a drag you release, a typed value, a recent color, the eyedropper) applies at once and is one step in the history, named after what it colors, for example **Change background color**, or **Change fill** for a solid. The picker stays open, so you can keep adjusting.
 - Press <kbd>Esc</kbd> or click outside the picker to close it. <kbd>Esc</kbd> during a drag also cancels the drag: the preview goes back to the color you had.
+
+**With the keyboard.** Press <kbd>Tab</kbd> until the swatch has a gold ring, then press <kbd>Enter</kbd> or <kbd>Space</kbd>. The picker opens with the cursor in the hex field.
+
+| Key | What it does |
+| --- | --- |
+| <kbd>Tab</kbd>, <kbd>Shift</kbd>+<kbd>Tab</kbd> | Go to the next or previous part of the picker: the square, the hue strip, the opacity strip, the hex field, **Pick a color from the screen**, **R**, **G**, **B**, **A**, then the recent colors. After the last part, <kbd>Tab</kbd> goes back to the square. |
+| <kbd>←</kbd>, <kbd>→</kbd> in the square | Less or more vivid, by 1% (with <kbd>Shift</kbd>, 10%) |
+| <kbd>↓</kbd>, <kbd>↑</kbd> in the square | Darker or brighter, by 1% (with <kbd>Shift</kbd>, 10%) |
+| <kbd>←</kbd> or <kbd>↓</kbd>, <kbd>→</kbd> or <kbd>↑</kbd> on the hue strip | The hue 1° down or up (with <kbd>Shift</kbd>, 10°). <kbd>Home</kbd> and <kbd>End</kbd> go to both ends of the strip (red). |
+| <kbd>←</kbd> or <kbd>↓</kbd>, <kbd>→</kbd> or <kbd>↑</kbd> on the opacity strip | 1% more see-through or more solid (with <kbd>Shift</kbd>, 10%). <kbd>Home</kbd> is fully see-through, <kbd>End</kbd> fully solid. |
+| <kbd>Enter</kbd> or <kbd>Space</kbd> on a recent color or on **Pick a color from the screen** | Uses that color, or starts the eyedropper |
+| <kbd>Esc</kbd> | Closes the picker. The keyboard focus goes back to the swatch. |
+
+Each key press on the square or a strip applies at once and is one step in the history.
 - See-through colors show a checkerboard behind them in the swatches.
 - The recent colors belong to this browser, not to a project: every project shows the same row. They are not part of the undo history.
 
@@ -412,4 +428,4 @@ See [Undo and redo changes](projects-and-saving.md#undo-and-redo-changes).
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 42, 2026-10-18</sub>
+<sub>Last updated: Batch 46, 2026-10-18</sub>

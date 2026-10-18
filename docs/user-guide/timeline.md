@@ -42,9 +42,11 @@ The timeline is where your short takes shape: clips sit on tracks in time order,
 | **Tracks** | Main area | Video tracks above the divider, audio tracks below it, and the **CC** caption track, when the project has one, above all video tracks. Each row holds that track's clips. |
 | **Playhead** | Red vertical line | Marks the current frame. Its head sits in the ruler. |
 | **Content end** | Thin vertical line | Marks the end of the last clip, in the ruler and across the tracks. |
-| **Scrollbars** | Under the tracks and at their right | The bar under the tracks scrolls the view left and right, and zooms it with the handles at the ends of its thumb. The bar at the right scrolls the tracks up and down. See [Use the scrollbars](#use-the-scrollbars). |
+| **Scrollbars** | Under the tracks and at their right | The bar under the tracks scrolls the view left and right, and zooms it with the handles at the ends of its thumb. The bar at the right scrolls the tracks up and down. The bottom bar also shows your markers and the in/out range. See [Use the scrollbars](#use-the-scrollbars). |
 
 A project created from the start screen begins with one video track (V1) and one audio track (A1).
+
+While the timeline has no clips, the track area reads **No clips yet** ("Drag media here from the Media panel or from your files, or add a title.") with two buttons: **Import media** opens the file picker (see [Import files](importing-media.md#import-files)), and **Add title** adds a title at the playhead (see [Add a title](titles-and-text.md#add-a-title)). The message doesn't get in the way: drop media cards or files from File Explorer right onto the tracks through it, or click and drag there as usual. It goes away with the first clip.
 
 ### Ruler
 
@@ -79,7 +81,7 @@ In this version these parts of the toolbar work:
 - the add buttons **Title** and **Subtitle** (see [Titles and text](titles-and-text.md)), **Add caption track** (see [Add the caption track](captions.md#add-the-caption-track)), **Add solid** and **Add image** (see [Shapes and images](shapes-and-images.md)), and after them the chips of your favorite text presets, which add a text in that look at the playhead (see [Put favorite presets in the timeline toolbar](text-presets.md#put-favorite-presets-in-the-timeline-toolbar));
 - the whole zoom group: **Zoom out**, the zoom slider, **Zoom in**, **Zoom to fit**, **Zoom to selection** (see [Zoom in and out](#zoom-in-and-out)), **Center playhead** (see [Scroll the timeline](#scroll-the-timeline)) and **Track height** (see [Change track height](tracks.md#change-track-height)), then the timecode field and the duration.
 
-> **Note:** When the timeline panel is too narrow for the whole toolbar, the zoom group (with **Zoom to selection** and **Center playhead**) is the first to move into the **More tools** (…) menu, followed by the toggles with **Snap**, **Linked selection** and **Ripple mode**. Click **More tools** to reach them.
+> **Note:** When the timeline panel is too narrow for the whole toolbar, the zoom slider is the first to go; the zoom buttons stay. Next, the zoom group (with **Zoom to selection** and **Center playhead**, and the slider back inside it) moves into the **More tools** (…) menu, followed by the toggles with **Snap**, **Linked selection** and **Ripple mode**. Click **More tools** to reach them. See [When the toolbar does not fit](workspace.md#when-the-toolbar-does-not-fit).
 
 ## Add clips from the Media panel
 
@@ -120,8 +122,8 @@ Click **+ Video track** above the top video track, or **+ Audio track** below th
 - The buttons and keys zoom by 25% per step. They zoom around the playhead when it is in view, otherwise around the center of the view.
 - A step from the buttons or keys glides to the new zoom in 120 milliseconds. Press again before it arrives and the steps add up, so three quick presses zoom three steps.
 - With the mouse wheel, each notch is one step, and the frame under the pointer stays under the pointer. Wheel zoom changes at once, without the glide.
-- The zoom slider runs from **Zoom to fit** at the far left to the closest zoom, where one frame is 400 pixels wide, at the far right. Moving it by the same distance always changes the zoom by the same factor, so it is as precise zoomed out as zoomed in.
-- You can't zoom out further than **Zoom to fit**.
+- The zoom slider runs from the furthest zoom-out at the far left to the closest zoom, where one frame is 400 pixels wide, at the far right. Moving it by the same distance always changes the zoom by the same factor, so it is as precise zoomed out as zoomed in.
+- **How far out you can zoom.** Down to **Zoom to fit**, or until one minute fills the width of the tracks, whichever shows more. A timeline shorter than about a minute, or an empty one, can therefore zoom out to a whole minute, so you can see where a clip would land at 30 seconds. A longer timeline stops at **Zoom to fit**. The buttons, keys, wheel, slider and scrollbar handles all stop there.
 - **Zoom to fit** shows everything from the start to the end of the last clip, plus 2 seconds (at least 1 second in all). It also scrolls back to the start and returns the tracks to their resting position.
 
 The keyboard shortcuts work when the timeline has the keyboard: click in the timeline first.
@@ -156,7 +158,7 @@ A scrollbar runs under the tracks and another one along their right side. The th
 > **Video placeholder: Zoom and scroll with the scrollbars**
 > - File: `videos/timeline/scrollbars.mp4` (not recorded yet)
 > - Length: about 45 seconds
-> - Shows: a timeline with about twenty clips at a medium zoom; point at the scrollbar under the tracks and the dots at both ends of its thumb; drag the middle of the thumb to the right: the view scrolls; point at the dot at the right end: the cursor becomes a double arrow and the dot lights up; drag it to the left: the view zooms in while its left edge stays where it was; drag it back to the right: the view zooms out; drag the dot at the left end to the left: the view zooms out while its right edge stays where it was; click the empty part of the bar near its right end: the thumb jumps there; press <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>Up</kbd> until the tracks no longer fit, then drag the thumb of the bar at the right: the tracks scroll up and down.
+> - Shows: a timeline with about twenty clips at a medium zoom; point at the scrollbar under the tracks and the dots at both ends of its thumb; drag the middle of the thumb to the right: the view scrolls; point at the dot at the right end: the cursor becomes a double arrow and the dot lights up; drag it to the left: the view zooms in while its left edge stays where it was; drag it back to the right: the view zooms out; drag the dot at the left end to the left: the view zooms out while its right edge stays where it was; click the empty part of the bar near its right end: the thumb jumps there; point at the thin colored lines of two markers and the light band of the in/out range in the bar; press <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>Up</kbd> until the tracks no longer fit, then drag the thumb of the bar at the right: the tracks scroll up and down.
 
 | To | Do this |
 |---|---|
@@ -169,7 +171,9 @@ A scrollbar runs under the tracks and another one along their right side. The th
 - The bottom bar stands for the timeline from its start to the end of the last clip, plus a quarter of the view's width. The more you zoom in, the shorter the thumb.
 - Over a zoom handle, the cursor becomes a double arrow and the handle's dot lights up.
 - The thumb is never shorter than 36 pixels, so both handles stay easy to grab.
-- Zooming with a handle stays within the zoom limits: no further out than **Zoom to fit**, no further in than one frame per 400 pixels.
+- Zooming with a handle stays within the zoom limits: no further out than **Zoom to fit** (or a whole minute on a short timeline; see [Zoom in and out](#zoom-in-and-out)), no further in than one frame per 400 pixels.
+- Over the thumb, the pointer is an open hand; it closes while you drag.
+- **Markers and the in/out range show in the bottom bar.** Each marker is a thin line in its color, and the in/out range is a light band, drawn over the thumb, so you can find them while you scroll. With only an in point, the band runs to the end of the content; with only an out point, from the start. The band follows while you drag an in or out point. See [Markers and in/out points](markers-and-in-out-points.md).
 - The scrollbar at the right has a thumb only when the tracks don't all fit in the panel. Otherwise there is nothing to scroll, and clicking it does nothing.
 - During playback, dragging the bottom scrollbar stops the view from following the playhead. See [Follow the playhead during playback](#follow-the-playhead-during-playback).
 
@@ -224,7 +228,7 @@ Panning moves the view with the pointer, as if you were dragging the timeline it
 
 - Click anywhere in the ruler to move the playhead there. A click on a marker selects the marker, and a press on an in or out bracket in the upper part of the ruler grabs that point; click beside them to move the playhead.
 - Drag along the ruler to scrub: the playhead and the preview follow the pointer. The playhead line gets wider while you drag.
-- To scrub past the part of the timeline you can see, hold the pointer near the left or right edge of the tracks, or past it: the timeline scrolls. The further out you go, the faster it scrolls.
+- To scrub past the part of the timeline you can see, hold the pointer near the left or right edge of the tracks, or past it: the timeline scrolls. It starts slowly near the edge and goes faster the further out you go, up to three times its speed at the edge. Keep the pointer there and it speeds up further, to twice that within a second.
 - If the editor is playing, dragging in the ruler pauses it.
 - With **Audio scrub** on in the toolbar, you hear a short bit of the sound at each frame the playhead passes. See [Hear cuts while you scrub](audio-editing.md#hear-cuts-while-you-scrub).
 - Hold <kbd>Shift</kbd> while you click or drag in the ruler to snap the playhead to the nearest clip start or end, marker, or in or out point. See [Snap the playhead in the ruler](#snap-the-playhead-in-the-ruler).
@@ -435,7 +439,7 @@ A plain drop covers what the moved clips land on. The clip underneath gives up e
 - The **Undo** tooltip names the move, for example **Undo Move clip** or **Undo Move clips**. <kbd>Ctrl</kbd>+<kbd>Z</kbd> undoes the whole move at once: clips that were shortened, split or removed come back, any track the move created disappears, and the selection is restored.
 - Dropping moved clips back where they started changes nothing and adds no step to the history.
 
-> **Tip:** Hold the pointer near the edge of the tracks, or past it, to scroll the timeline while you drag, left and right or up and down. The further out you go, the faster it scrolls, so you can carry clips to a part of the timeline you can't see.
+> **Tip:** Hold the pointer near the edge of the tracks, or past it, to scroll the timeline while you drag, left and right or up and down. It starts slowly near the edge, goes faster the further out you go, and speeds up further while you hold the pointer there, so you can carry clips to a part of the timeline you can't see.
 
 Clips snap to the edges of other clips and to the playhead while you drag. See [Snap clips into place](#snap-clips-into-place).
 
@@ -668,4 +672,4 @@ Label colors help you see at a glance which clips belong together, for example a
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 39, 2026-10-18</sub>
+<sub>Last updated: Batch 46, 2026-10-18</sub>

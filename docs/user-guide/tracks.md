@@ -37,8 +37,10 @@ The track header column is at the left of the timeline. Each header shows the tr
 
 - A toggle that is on is gold: a closed padlock, a gold **M** or **S**, a crossed-out eye. The crosshair is the other way round: it looks normal while the track is targeted and dimmed when it is not.
 - A toggle gets lighter while you point at it. Click it to switch it. Clicking a toggle does not select the track.
+- Rest the pointer on a toggle for a moment to see its tooltip. It says what a click does now, so it changes with the toggle: **Lock track** or **Unlock track**, **Mute track** or **Unmute track**, **Solo track** or **Unsolo track**, **Hide track** or **Show track**, and **Target track (edits act on it)** or **Untarget track (edits skip it)**. The height toggle's tooltip names the current height, for example **Track height: M (click for the next)**.
 - Each click on **Target**, **Lock**, **M**, **S** or **Hide** is one step in the history, for example **Lock track** or **Untarget track**. The height toggle is not.
-- Long track names are shortened with "…" to fit the header.
+- Long track names are shortened with "…" to fit the header. Point at a shortened name to see it whole in a tooltip.
+- Over a video or audio track header, the pointer is an open hand: you can drag the header to reorder the track. See [Reorder tracks](#reorder-tracks).
 - Rows of a locked track are covered with diagonal lines. Clips of a track that you don't see or hear (muted or hidden video, muted audio, or audio left out by a solo) are drawn faded.
 
 ## Select tracks
@@ -269,4 +271,4 @@ See [Captions](captions.md).
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 39, 2026-10-18</sub>
+<sub>Last updated: Batch 46, 2026-10-18</sub>

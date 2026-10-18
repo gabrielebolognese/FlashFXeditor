@@ -28,7 +28,6 @@ Text clips put words on your video: a hook at the start, a title over a shot, a 
 - [Fix a missing font](#fix-a-missing-font)
 - [Text clips on the timeline](#text-clips-on-the-timeline)
 - [Undo text changes](#undo-text-changes)
-- [What is not available yet](#what-is-not-available-yet)
 - [Related pages](#related-pages)
 
 ## Add a title
@@ -201,7 +200,8 @@ One selected text has six handles: the four corners and the middle of the left a
 | Any handle, with <kbd>Alt</kbd> | As above, but around the center of the box. |
 
 - A text has no top and bottom handles: its height comes from its lines.
-- <kbd>Shift</kbd> does nothing on text handles, and the handles don't snap.
+- <kbd>Shift</kbd> does nothing on text handles.
+- **The handles snap.** While snapping is on and the text is upright, the edge you drag snaps to the frame, the overlays shown and the other layers, with a gold guide, as a picture's edge does: a corner keeps the text's proportions, a side moves only that edge. Hold <kbd>S</kbd> during the drag to place it freely. See [Snap an edge while you resize](snapping-and-smart-guides.md#snap-an-edge-while-you-resize).
 - When the text is small on screen, the side handles hide (a side must be at least 28 pixels long on screen). Zoom the preview in to get them back.
 - The **Size** and **Width** fields of the **Text** section follow when you release the mouse button.
 - Each drag is one step in the history: **Resize text** or **Change text box width**.
@@ -395,12 +395,6 @@ Every text change is one step in the history. Hover **Undo** in the app bar to s
 
 Pressing <kbd>↑</kbd> or <kbd>↓</kbd> in a number field of the **Text** section several times in a row, less than 0.3 seconds apart, is one step.
 
-## What is not available yet
-
-These parts are available in a later version:
-
-- Snapping while you drag a text's handles.
-
 ## Related pages
 - [Exporting your video](exporting-video.md)
 - [Text animations](text-animations.md)
@@ -415,4 +409,4 @@ These parts are available in a later version:
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 43, 2026-10-18</sub>
+<sub>Last updated: Batch 46, 2026-10-18</sub>

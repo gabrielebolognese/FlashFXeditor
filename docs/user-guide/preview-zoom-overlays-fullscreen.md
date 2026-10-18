@@ -224,12 +224,13 @@ Press <kbd>F</kbd>, or click **Fullscreen** in the Preview panel header. The pre
 > - Shows:
 >   1. Press <kbd>F</kbd>: the preview fills the browser window, with the header at the top and the transport bar at the bottom floating over the picture.
 >   2. Press <kbd>Space</kbd> and keep the mouse still: after 2 seconds the header, the transport bar and the pointer disappear while the video plays.
->   3. Move the mouse: they come back. Point at **Dropped 0** in the status line.
+>   3. Move the mouse: they come back. Point at **Dropped 0** in the status line. Keep the mouse still and press <kbd>Tab</kbd>: the header and the transport bar show again, with a gold ring on a control, and stay while you tab through them.
 >   4. Press <kbd>Esc</kbd>: the Media, Edit Properties, Timeline and Preview panels are back at their sizes.
 
 - The header (with **Zoom**, **Fit the frame in the panel**, **Preview quality**, **Overlays**, **Snap**, **Smart guides**, **Exit fullscreen** and **Export frame**) floats at the top, and the transport bar with the status line at the bottom. The audio meter stays along the right edge.
 - After 2 seconds without moving the mouse, the header and the transport bar fade out, and the pointer disappears over the picture. Move the mouse to bring them back. While the pointer rests on the header or the transport bar, they stay.
 - The playback shortcuts keep working: play, shuttle and step through your edit as usual.
+- With the keyboard, <kbd>Tab</kbd> moves only through the header and the transport bar: the panels and the app bar under the preview can't be reached until you leave fullscreen. While one of these controls has the keyboard focus, the header and the transport bar stay shown.
 - You can select, move, resize and rotate layers on the larger picture as in the panel, with snapping and smart guides. See [Arranging layers in the preview](arranging-layers-in-the-preview.md).
 - The zoom, the overlays and the quality stay as you set them; at **Fit** the frame fills the larger space.
 
@@ -267,4 +268,4 @@ None of these are steps in the history: <kbd>Ctrl</kbd>+<kbd>Z</kbd> does not un
 - [Proxies](proxies.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 43, 2026-10-18</sub>
+<sub>Last updated: Batch 46, 2026-10-18</sub>

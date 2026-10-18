@@ -144,6 +144,7 @@ Drag one of the eight handles of the selected layer:
 | Any handle, with <kbd>Alt</kbd> | As above, but around the center of the layer: both sides move. |
 
 - The cursor shows a two-headed arrow in the direction the handle moves.
+- The handle keeps the spot where you grabbed it: grab it off-center and it does not jump under the pointer when the drag starts. The same goes for crop handles, text handles and the anchor point.
 - **100% snap.** While snapping is on, the scale holds at exactly 100% when it passes within 2% of it, and the sides of the box at the dragged handle turn into a thicker gold line. 100% is the media's own size: one pixel of the video or image on one pixel of the project frame. Keep dragging to go past it, or hold <kbd>S</kbd> to pass it without stopping.
 - **Edge snap.** While snapping is on and the layer is upright, the edge you drag also snaps to the frame, the overlays shown and the other layers, with a gold guide. See [Snap an edge while you resize](snapping-and-smart-guides.md#snap-an-edge-while-you-resize).
 - A layer can't get smaller than 1%. Dragging a handle past the opposite side does not flip the layer.
@@ -326,4 +327,4 @@ While the layer is animated:
 - [Projects and saving](projects-and-saving.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 39, 2026-10-18</sub>
+<sub>Last updated: Batch 46, 2026-10-18</sub>

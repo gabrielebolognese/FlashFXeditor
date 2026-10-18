@@ -5,7 +5,7 @@ When a project is open, the editor shows one fixed layout: a slim app bar at the
 > **Video placeholder: Tour of the workspace**
 > - File: `videos/workspace/workspace-tour.mp4` (not recorded yet)
 > - Length: about 90 seconds
-> - Shows: with a project open at 1920×1080, point at the app bar from left to right (project name, save dot, **Undo**, **Redo**, the badge **1080×1920 · 30 fps**, **Export**, **Settings**); click the **Media**, **Presets** and **Captions** tabs, then back to **Media**; point at the **Edit Properties** panel showing the **Project** section; point at the **Preview** panel, the controls in its header (**Zoom**, **Fit the frame in the panel**, **Preview quality**, **Overlays**, **Snap**, **Smart guides**, **Fullscreen**, **Export frame**), the transport bar under the picture and the audio meter along its right edge; press <kbd>F</kbd>: the preview fills the window; press <kbd>Esc</kbd>; point at the timeline toolbar groups from left to right, at the timecode field at the right end and at the scrollbars under and beside the tracks; hover **Split at playhead** until its tooltip shows "Ctrl+K"; drag the splitter left of the Preview to the right until the **More tools** button (…) appears; click it to show the hidden groups; press <kbd>Escape</kbd>; click **Settings** (the gear) at the right end of the app bar: the **Settings** dialog opens on its **General** tab; click **Shortcuts**, then **Done**; press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>: the command palette opens; press <kbd>Esc</kbd>.
+> - Shows: with a project open at 1920×1080, point at the app bar from left to right (project name, save dot, **Undo**, **Redo**, the badge **1080×1920 · 30 fps**, **Export**, **Settings**); click the **Media**, **Presets** and **Captions** tabs, then back to **Media**; point at the **Edit Properties** panel showing the **Project** section; point at the **Preview** panel, the controls in its header (**Zoom**, **Fit the frame in the panel**, **Preview quality**, **Overlays**, **Snap**, **Smart guides**, **Fullscreen**, **Export frame**), the transport bar under the picture and the audio meter along its right edge; press <kbd>F</kbd>: the preview fills the window; press <kbd>Esc</kbd>; point at the timeline toolbar groups from left to right, at the timecode field at the right end and at the scrollbars under and beside the tracks; hover **Split at playhead** until its tooltip shows "Ctrl+K"; drag the splitter left of the Preview to the right: the zoom slider goes first, then the **More tools** button (…) appears; click it to show the hidden groups; press <kbd>Escape</kbd>; click **Settings** (the gear) at the right end of the app bar: the **Settings** dialog opens on its **General** tab; click **Shortcuts**, then **Done**; press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>: the command palette opens; press <kbd>Esc</kbd>.
 
 ## In this page
 - [The layout at a glance](#the-layout-at-a-glance)
@@ -14,6 +14,7 @@ When a project is open, the editor shows one fixed layout: a slim app bar at the
 - [Resize panels](#resize-panels)
 - [Use the timeline toolbar](#use-the-timeline-toolbar)
 - [Read tooltips and shortcuts](#read-tooltips-and-shortcuts)
+- [Read messages](#read-messages)
 - [Send shortcuts to the right panel](#send-shortcuts-to-the-right-panel)
 - [Read timecodes](#read-timecodes)
 - [Related pages](#related-pages)
@@ -52,7 +53,7 @@ The app bar is the strip above the panels. From left to right:
 | **Export** | Opens the **Export** tab next to **Edit Properties** (<kbd>Ctrl</kbd>+<kbd>E</kbd>): presets for Reels, TikTok and Shorts, the range, the file name and place, the queue, the log and the extras. See [Exporting your video](exporting-video.md). |
 | **Settings** (gear) | Opens the **Settings** dialog on its **General** tab: autosave, the length of new clips, the default transition, editing, audio and transcription defaults, how imports bring in your files, proxies and storage; see [Settings](settings.md). Its **Shortcuts** tab lets you change the keyboard shortcuts; see [Change a shortcut](command-palette-and-custom-shortcuts.md#change-a-shortcut). |
 
-When the editor cannot write to the project folder, a read-only banner appears under the app bar. See [Work in read-only mode](projects-and-saving.md#work-in-read-only-mode).
+When the editor cannot write to the project folder, the middle of the app bar shows the notice **Read-only: changes are not saved** with an **Allow editing** button. See [Work in read-only mode](projects-and-saving.md#work-in-read-only-mode).
 
 ## The four panels
 
@@ -127,6 +128,8 @@ The editor remembers your sizes:
 - Each project also stores its own sizes. Opening a project restores its layout; a new project starts with the sizes you used last.
 - Sizes are kept as proportions of the window, so the panels grow and shrink with the browser window, never below their minimum sizes.
 
+The timeline and the preview redraw smoothly while you drag a splitter, also a fast one, without stretched or blank edges.
+
 ## Use the timeline toolbar
 
 The toolbar is one row of button groups, from left to right:
@@ -147,28 +150,47 @@ Right-click a clip or a gap on the timeline for a menu with the most common edit
 
 Every menu works with the keyboard while it is open: <kbd>↑</kbd> and <kbd>↓</kbd> move between rows, <kbd>←</kbd> and <kbd>→</kbd> between the choices of a row, <kbd>Enter</kbd> runs, and <kbd>Esc</kbd> closes. See [Use menus with the keyboard](command-palette-and-custom-shortcuts.md#use-menus-with-the-keyboard).
 
-Buttons that are not available yet are dimmed. They still show their tooltip, but clicking them does nothing.
+Dimmed buttons can't be used right now. They still show their tooltip, which often says why, for example **Transcribe: no audio on the timeline**, and you can still reach them with <kbd>Tab</kbd>; clicking them does nothing. Dimmed controls keep their place, so nothing around them moves when they turn on or off.
 
 ### When the toolbar does not fit
 
-The toolbar never wraps to a second row. When the Timeline panel is too narrow, whole groups move into a menu, in this order: **Zoom** first, then **Toggles**, **Add** (with the preset chips), **Edit** and **Tools** last. A **More tools** button (…) then appears near the right end.
+The toolbar never wraps to a second row. When the Timeline panel gets narrower, the zoom slider is the first to go: the zoom buttons stay. If that is not enough, whole groups move into a menu, in this order: **Zoom** first (with the slider back inside it), then **Toggles**, **Add** (with the preset chips), **Edit** and **Tools** last. A **More tools** button (…) then appears near the right end.
 
 1. Click **More tools** to open the menu with the hidden groups.
 2. Use the buttons in the menu as you would in the toolbar.
 3. Click outside the menu, click **More tools** again, or press <kbd>Escape</kbd> to close it.
 
-With the default layout, everything fits in a 1920 px wide window; in a 1600 px wide window the **Zoom** group usually moves into the menu. To bring groups back, widen the Timeline panel by dragging the splitter left of the Preview to the right.
+With the keyboard, press <kbd>Tab</kbd> until **More tools** has a gold ring and press <kbd>Enter</kbd>: the menu opens with the keyboard focus on its first control. <kbd>Tab</kbd> and <kbd>Shift</kbd>+<kbd>Tab</kbd> go round the controls of the menu, <kbd>Enter</kbd> or <kbd>Space</kbd> presses one (the menu stays open), and <kbd>Escape</kbd> closes the menu and puts the focus back on **More tools**.
+
+With the default layout, everything fits in a 1920 px wide window; in a 1600 px wide window usually only the zoom slider is hidden. To bring groups back, widen the Timeline panel by dragging the splitter left of the Preview to the right.
 
 ## Read tooltips and shortcuts
 
 Hold the pointer over a button for about half a second to see its tooltip. The tooltip shows the button's name and, if it has one, its keyboard shortcut, for example **Split at playhead** with <kbd>Ctrl</kbd>+<kbd>K</kbd>. Tooltips close when you click, press a key or scroll.
+
+Every button without a text label has a tooltip, also the small ones: the **-** and **+** of a number field, chips, badges, and the toggles and cut-short names in the track headers. A control you reach with <kbd>Tab</kbd> shows its tooltip too, after the same short wait. A text that is cut short with "…", such as a long hint, shows in full in its tooltip.
 
 Tooltips always show the key you use now: when you change a shortcut in **Settings** > **Shortcuts**, the tooltip shows the new key.
 
 - Press <kbd>?</kbd> to see every shortcut in the **Keyboard shortcuts** sheet. See [See every shortcut](command-palette-and-custom-shortcuts.md#see-every-shortcut).
 - Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> to find any command by name and run it. See [Run a command from the palette](command-palette-and-custom-shortcuts.md#run-a-command-from-the-palette).
 
-For the full list of shortcuts, see [Keyboard shortcuts](keyboard-shortcuts.md).
+For the full list of shortcuts, see [Keyboard shortcuts](keyboard-shortcuts.md). To work through the panels with the keyboard alone, see [Keyboard navigation](keyboard-navigation.md).
+
+## Read messages
+
+The editor tells you what happened in short messages at the top center of the window, just under the app bar. Up to four show at once, the newest at the bottom.
+
+| Kind | Icon | Used for | Closes after |
+| --- | --- | --- | --- |
+| Information | A blue **i** | Something you may want to know, such as **No room on that track** | About 4 seconds |
+| Done | A green check | An action finished, such as **Exported** with the file name after an export | About 3 seconds |
+| Warning | An orange triangle | An action was refused because of something you can change, such as a locked track (**Can't paste onto a locked track**) or a read-only project (**This project is read-only**), or it was done only in part, such as a trim that stopped at a limit (**Trim stopped at the next clip**) or media that are offline (**2 media files offline**) | About 5.5 seconds |
+| Error | A red circle with an exclamation mark | Something failed, such as a file that can't be imported (**Can't import** with its name) | About 7 seconds |
+
+- A second line under the title says more, for example what to do.
+- Click the **×** (**Dismiss**) of a message to close it sooner.
+- Messages that follow a long task, such as an import of large files or an export, show a progress bar and stay until the task ends.
 
 ## Send shortcuts to the right panel
 
@@ -183,6 +205,7 @@ The editor sends your key presses to the panel you clicked last (or moved into w
 - **Panel shortcuts** work only after you click in their panel. When a panel shortcut and an editor-wide shortcut share a key, the panel shortcut wins in that panel.
 - **While you type in a text field**, shortcuts are off and the keys go to the field. <kbd>Ctrl</kbd>+<kbd>Z</kbd> inside a field undoes your typing in that field, not a change to the project. Only <kbd>Ctrl</kbd>+<kbd>S</kbd> still saves.
 - **While a dialog or a menu is open**, shortcuts are off, except <kbd>Ctrl</kbd>+<kbd>S</kbd>. <kbd>Escape</kbd> closes the dialog or the menu.
+- **On a control you reached with <kbd>Tab</kbd>**, <kbd>Space</kbd> and <kbd>Enter</kbd> press the control instead of playing, and a slider keeps the arrow keys. After a mouse click on a control, the keys work as shortcuts again. See [Keyboard navigation](keyboard-navigation.md).
 - Clicking the app bar does not select a panel: only the editor-wide shortcuts work then.
 
 Examples:
@@ -250,6 +273,7 @@ To jump to a time, type it into the timecode field of the timeline toolbar, or c
 - [Proxies](proxies.md)
 - [Audio](audio.md)
 - [Command palette and custom shortcuts](command-palette-and-custom-shortcuts.md)
+- [Keyboard navigation](keyboard-navigation.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 44, 2026-10-18</sub>
+<sub>Last updated: Batch 46, 2026-10-18</sub>

@@ -72,7 +72,9 @@ On a project of another size, the sizes follow the shorter side of the frame, as
 
 Click **Captions** in the header of the Media panel. The editor remembers the open tab with the project.
 
-Before the project has a caption track, the tab reads **No captions yet** ("Transcribe the timeline's audio, add a cue at the playhead, or import an SRT or VTT file."), with three buttons: **Transcribe**, **Cue at playhead** and **Import SRT/VTT**. **Transcribe** is dimmed until the timeline has an audio clip (tooltip **No audio on the timeline**); see [Transcription](transcription.md).
+Before the project has a caption track, the tab reads **No captions yet** ("Transcribe the timeline's audio, add a cue at the playhead, or import an SRT or VTT file."), with three buttons: **Transcribe**, **Cue at playhead** and **Import SRT/VTT**. **Transcribe** is dimmed until the timeline has an audio clip (tooltip **Transcribe: no audio on the timeline**); see [Transcription](transcription.md). **Cue at playhead** adds the track with a first cue (see [Add a cue at the playhead](#add-a-cue-at-the-playhead)), and **Import SRT/VTT** fills it from a file (see [Import an SRT or VTT file](#import-an-srt-or-vtt-file)).
+
+When the track is there but has no cues, for example after **Clear all cues**, the count reads **0 cues** and the list reads **No cues yet**, with the same text and the same three buttons.
 
 Once there is a track, the tab shows a search field, the number of cues (for example **200 cues**) and the cue list. Each row shows:
 
@@ -197,7 +199,7 @@ You can also split cues on the timeline with <kbd>Ctrl</kbd>+<kbd>K</kbd> or the
 
 ## Find, select and delete cues
 
-- **Search:** type in **Search cues** at the top of the tab. The list shows only the cues whose text contains what you typed, in capitals or not, and the count reads, for example, **3 of 200**. When no cue matches, the list reads **No cue matches the search.** Clear the field to see all cues again.
+- **Search:** type in **Search cues** at the top of the tab. The list shows only the cues whose text contains what you typed, in capitals or not, and the count reads, for example, **3 of 200**. When no cue matches, the list reads **No cue matches** ("Nothing matches “<search>”.") with a **Clear search** button. Click it, or clear the field, to see all cues again.
 - **Select a cue:** click its row, away from the text. The cue is selected on the timeline too, and the playhead jumps to its start. A cue you select on the timeline scrolls into view in the list.
 - **Delete cues:** select cues (in the list or on the timeline) and press <kbd>Delete</kbd> or <kbd>Backspace</kbd>, while the Media panel or the timeline is active. In the list, press <kbd>Esc</kbd> first if you are typing in a cue. The step is **Delete clip** or **Delete clips**.
 - **Clear all cues:** click **Clear all cues** (eraser) in the Captions header. Every cue goes at once, with no question asked; the track and its style stay. The step is **Clear captions**: press <kbd>Ctrl</kbd>+<kbd>Z</kbd> to bring the cues back.
@@ -399,4 +401,4 @@ These parts are available in a later version:
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 44, 2026-10-18</sub>
+<sub>Last updated: Batch 46, 2026-10-18</sub>

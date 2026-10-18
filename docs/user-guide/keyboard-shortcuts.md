@@ -43,6 +43,7 @@ This page lists every keyboard shortcut that works in the current version of Sho
 >   35. Click a video with sound and press <kbd>Ctrl</kbd>+<kbd>C</kbd>. Click in the ruler at an empty spot and press <kbd>Ctrl</kbd>+<kbd>V</kbd>: the video and its sound land at the playhead. Put the playhead in the middle of another clip and press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>V</kbd>: the clip splits and the copy goes in between. Click a title, press <kbd>Ctrl</kbd>+<kbd>C</kbd>, click another title and press <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>V</kbd>: the **Paste attributes** checklist opens; press <kbd>Enter</kbd>: the second title takes the look of the first.
 >   36. Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>, type `compact` and press <kbd>Enter</kbd>: every gap closes. Press <kbd>?</kbd>: the **Keyboard shortcuts** sheet lists every key; press <kbd>Esc</kbd>. Right-click a clip, press <kbd>↓</kbd> twice and <kbd>Enter</kbd>: the clip is copied. Press <kbd>Alt</kbd>+<kbd>S</kbd>: **Audio scrub** turns gold; press it again.
 >   37. Press <kbd>Ctrl</kbd>+<kbd>E</kbd>: the **Export** tab opens beside **Edit Properties**. Press <kbd>Enter</kbd>: a card under **Queue** shows the progress. Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>, type `cancel export` and press <kbd>Enter</kbd>: the message **Export cancelled** appears. Press <kbd>Esc</kbd>: the panel shows **Edit Properties** again.
+>   38. Select a text clip and click the **Edit Properties** tab. Press <kbd>Tab</kbd> until the **Outline** switch has a gold ring: its tooltip reads **Outline**. Press <kbd>Space</kbd>: the outline turns on and playback does not start. Click the switch with the mouse and press <kbd>Space</kbd>: playback starts. Click the **Media** tab, press <kbd>Tab</kbd> until a card has the ring, press <kbd>→</kbd> and <kbd>Enter</kbd>: the next card is inserted at the playhead.
 
 ## In this page
 - [How shortcuts work](#how-shortcuts-work)
@@ -68,6 +69,7 @@ This page lists every keyboard shortcut that works in the current version of Sho
 - [Project and history](#project-and-history)
 - [Export](#export)
 - [Menus and lists](#menus-and-lists)
+- [Keyboard navigation](#keyboard-navigation)
 - [Text fields and dialogs](#text-fields-and-dialogs)
 - [Mouse and wheel](#mouse-and-wheel)
 - [Keys the browser keeps](#keys-the-browser-keeps)
@@ -87,9 +89,9 @@ This page lists every keyboard shortcut that works in the current version of Sho
 
 **Your keys.** The tables on this page show the default keys. If you changed keys in **Settings** > **Shortcuts**, yours apply instead, and the tooltips, menus, the command palette and the shortcut sheet (<kbd>?</kbd>) show yours. Many commands that have no key on this page, such as **Normalize**, **Ripple mode** or **Add solid**, can get one there. See [Change a shortcut](command-palette-and-custom-shortcuts.md#change-a-shortcut).
 
-**Icon buttons keep your shortcuts.** Clicking an icon button, such as the transport buttons, **Mute**, **Loop playback** or **Fit the frame in the panel**, choosing from the **Zoom**, **Preview quality** or **Overlays** menu of the preview, or dragging the **Master volume** knob, does not take the keyboard focus, so <kbd>Space</kbd> still plays right after.
+**Clicks keep your shortcuts.** Clicking a control with the mouse never gives it <kbd>Space</kbd>, <kbd>Enter</kbd> or the arrow keys: after you click a transport button, **Mute**, a switch such as **Enabled**, a chip, a text button such as **Reset**, a tab or a card, choose from the **Zoom**, **Preview quality** or **Overlays** menu, or drag the **Master volume** knob or the zoom slider, <kbd>Space</kbd> still plays and the arrow keys still step frames. Only a control you reach with <kbd>Tab</kbd> takes these keys: <kbd>Space</kbd> or <kbd>Enter</kbd> presses it, and a slider or a list of cards keeps the arrow keys. See [Keyboard navigation](#keyboard-navigation).
 
-**Tooltips show shortcuts.** Hover over a button to see its name and shortcut, the key you use now. Tooltips write the arrow keys as Left, Right, Up and Down.
+**Tooltips show shortcuts.** Hover over a button, or reach it with <kbd>Tab</kbd>, to see its name and shortcut, the key you use now. Tooltips write the arrow keys as Left, Right, Up and Down.
 
 **macOS.** Where this page says <kbd>Ctrl</kbd>, press <kbd>⌘</kbd> (Command) on a Mac; <kbd>Shift</kbd> is <kbd>⇧</kbd>. On a Mac, tooltips show the symbols, for example ⌘⇧L. On a Mac keyboard without <kbd>Home</kbd> and <kbd>End</kbd> keys, press <kbd>Fn</kbd>+<kbd>←</kbd> and <kbd>Fn</kbd>+<kbd>→</kbd>.
 
@@ -568,7 +570,8 @@ See [Editing properties](editing-properties.md).
 - **Duplicate** in the quick actions does what <kbd>Ctrl</kbd>+<kbd>D</kbd> does in the Timeline panel. See [Clipboard and duplicate](#clipboard-and-duplicate).
 - Hold <kbd>↑</kbd> or <kbd>↓</kbd> to keep going. In the **Text**, **Animation**, **Transform**, **Crop**, **Opacity** and **Speed** sections, presses less than 0.3 seconds apart are one undo step.
 - In the **Duration** and **Stagger** fields of the **Animation** section, the arrow keys and label drags count in frames: <kbd>↑</kbd> adds 1 frame, <kbd>Shift</kbd>+<kbd>↑</kbd> 10 frames.
-- In the **Text** field of the **Text** section, <kbd>Enter</kbd> starts a new line. In the font picker, <kbd>↓</kbd> and <kbd>↑</kbd> in **Search fonts** highlight a font in the list, <kbd>Enter</kbd> picks it (with none highlighted, the first font that matches), and <kbd>Esc</kbd> closes the picker.
+- In the **Text** field of the **Text** section, <kbd>Enter</kbd> starts a new line. In the font picker, <kbd>↓</kbd> and <kbd>↑</kbd> in **Search fonts** highlight a font in the list, <kbd>Enter</kbd> picks it (with none highlighted, the first font that matches), and <kbd>Esc</kbd> closes the picker. After a pick or <kbd>Esc</kbd>, the keyboard focus is back on **Font**.
+- Dimmed fields are still reached with <kbd>Tab</kbd>: they show their value, but <kbd>↑</kbd> and <kbd>↓</kbd> don't change it.
 - Edit Properties has no other keys of its own. While it is active and no field has the keyboard, the all-panels shortcuts work there, for example <kbd>Space</kbd> to play.
 
 ## Audio
@@ -682,7 +685,7 @@ These keys act on the card under the pointer, whichever panel is active. Point a
 | Make a list column wider or narrower | Drag the right edge of its heading in **List view** | Same |
 | Give a list column its default width back | Double-click the right edge of its heading | Same |
 
-The media commands without a default key, such as **New bin**, **Search media**, the **Media filter** commands, **Relink media…** and **Reveal media in folder**, are in the command palette, and you can give them a key in **Settings** > **Shortcuts**. See [Use the palette](organizing-media.md#use-the-palette).
+The media commands without a default key, such as **New bin**, **Search media**, the **Media filter** commands, **Media: show all**, **Relink media…** and **Reveal media in folder**, are in the command palette, and you can give them a key in **Settings** > **Shortcuts**. See [Use the palette](organizing-media.md#use-the-palette).
 
 ## Project and history
 
@@ -731,6 +734,37 @@ These keys work in every right-click menu (clips, gaps, track headers, the ruler
 | Close the menu | <kbd>Esc</kbd> | <kbd>Esc</kbd> |
 
 For the font picker and the **Paste attributes** checklist, see [Edit Properties](#edit-properties) and [Clipboard and duplicate](#clipboard-and-duplicate).
+
+## Keyboard navigation
+
+These keys move through the controls of the editor without the mouse. A control you reach with <kbd>Tab</kbd> has a gold ring and shows its tooltip with its shortcut. See [Keyboard navigation](keyboard-navigation.md).
+
+| Action | Windows | macOS | Works in |
+| --- | --- | --- | --- |
+| Next or previous control | <kbd>Tab</kbd> or <kbd>Shift</kbd>+<kbd>Tab</kbd> | <kbd>Tab</kbd> or <kbd>⇧</kbd>+<kbd>Tab</kbd> | All panels, the app bar |
+| Press the button, turn the switch on or off, choose the chip or show the tab | <kbd>Space</kbd> or <kbd>Enter</kbd> | <kbd>Space</kbd> or <kbd>Return</kbd> | A control reached with <kbd>Tab</kbd> |
+| Fold or open a section | <kbd>Space</kbd> or <kbd>Enter</kbd> | <kbd>Space</kbd> or <kbd>Return</kbd> | A section header in Edit Properties, reached with <kbd>Tab</kbd> |
+| Zoom the timeline in or out a small step | <kbd>→</kbd> or <kbd>↑</kbd>, <kbd>←</kbd> or <kbd>↓</kbd> | <kbd>→</kbd> or <kbd>↑</kbd>, <kbd>←</kbd> or <kbd>↓</kbd> | The zoom slider, reached with <kbd>Tab</kbd> |
+| Zoom the timeline all the way out or in | <kbd>Home</kbd> or <kbd>End</kbd> | <kbd>Fn</kbd>+<kbd>←</kbd> or <kbd>Fn</kbd>+<kbd>→</kbd> | The zoom slider, reached with <kbd>Tab</kbd> |
+| Open **More tools** with the focus inside | <kbd>Enter</kbd> or <kbd>Space</kbd> | <kbd>Return</kbd> or <kbd>Space</kbd> | **More tools** (…), reached with <kbd>Tab</kbd> |
+| Go round the controls of **More tools** | <kbd>Tab</kbd> or <kbd>Shift</kbd>+<kbd>Tab</kbd> | <kbd>Tab</kbd> or <kbd>⇧</kbd>+<kbd>Tab</kbd> | **More tools** menu |
+| Close **More tools** and go back to its button | <kbd>Escape</kbd> | <kbd>Esc</kbd> | **More tools** menu |
+| Move to the previous or next card, and select it | <kbd>←</kbd> or <kbd>→</kbd> | <kbd>←</kbd> or <kbd>→</kbd> | Media cards and rows, reached with <kbd>Tab</kbd> |
+| Move one row up or down, and select the card | <kbd>↑</kbd> or <kbd>↓</kbd> | <kbd>↑</kbd> or <kbd>↓</kbd> | Media cards and rows, reached with <kbd>Tab</kbd> |
+| Move to the first or last card | <kbd>Home</kbd> or <kbd>End</kbd> | <kbd>Fn</kbd>+<kbd>←</kbd> or <kbd>Fn</kbd>+<kbd>→</kbd> | Media cards and rows, preset cards |
+| Select a range of cards | <kbd>Shift</kbd>+an arrow key, <kbd>Home</kbd> or <kbd>End</kbd> | <kbd>⇧</kbd>+an arrow key | Media cards and rows |
+| Insert the card at the playhead, as a double-click does | <kbd>Enter</kbd> or <kbd>Space</kbd> | <kbd>Return</kbd> or <kbd>Space</kbd> | A media card or row with the ring |
+| Move between preset cards | Arrow keys | Arrow keys | Preset cards, reached with <kbd>Tab</kbd> |
+| Apply the preset, or add a text with it, as a click does | <kbd>Enter</kbd> or <kbd>Space</kbd> | <kbd>Return</kbd> or <kbd>Space</kbd> | A preset card with the ring |
+| Widen or narrow a list column by 8 pixels (32 with <kbd>Shift</kbd>) | <kbd>→</kbd> or <kbd>←</kbd> | <kbd>→</kbd> or <kbd>←</kbd> | A column edge in the media list view, reached with <kbd>Tab</kbd> |
+| Open the color picker | <kbd>Enter</kbd> or <kbd>Space</kbd> | <kbd>Return</kbd> or <kbd>Space</kbd> | A color swatch, reached with <kbd>Tab</kbd> |
+| Go round the parts of the color picker | <kbd>Tab</kbd> or <kbd>Shift</kbd>+<kbd>Tab</kbd> | <kbd>Tab</kbd> or <kbd>⇧</kbd>+<kbd>Tab</kbd> | Color picker |
+| Change saturation (<kbd>←</kbd> <kbd>→</kbd>) or brightness (<kbd>↓</kbd> <kbd>↑</kbd>) by 1% (10% with <kbd>Shift</kbd>) | Arrow keys | Arrow keys | The color picker's square |
+| Change the hue by 1° or the opacity by 1% (10 with <kbd>Shift</kbd>) | Arrow keys; <kbd>Home</kbd> or <kbd>End</kbd> for the ends | Arrow keys; <kbd>Fn</kbd>+<kbd>←</kbd> or <kbd>Fn</kbd>+<kbd>→</kbd> | The color picker's hue or opacity strip |
+| Close the color picker and go back to the swatch | <kbd>Esc</kbd> | <kbd>Esc</kbd> | Color picker |
+
+- A click with the mouse doesn't give a control these keys: after a click, <kbd>Space</kbd> plays and the arrow keys step frames, as everywhere else.
+- <kbd>Esc</kbd>, <kbd>Delete</kbd> and shortcuts with <kbd>Ctrl</kbd> or <kbd>Alt</kbd> keep working while a control has the ring.
 
 ## Text fields and dialogs
 
@@ -853,4 +887,4 @@ None at the moment.
 - [Projects and saving](projects-and-saving.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 45, 2026-10-18</sub>
+<sub>Last updated: Batch 46, 2026-10-18</sub>

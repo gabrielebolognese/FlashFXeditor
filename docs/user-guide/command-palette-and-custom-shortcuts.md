@@ -198,17 +198,18 @@ While a menu is open, it has the keyboard. This works in every right-click menu 
 | <kbd>Enter</kbd> or <kbd>Space</kbd> | Run the row or choice you moved to |
 | <kbd>Esc</kbd> | Close the menu without doing anything |
 
-- The row you move to looks as if you pointed at it.
+- The row you move to looks as if you pointed at it, with a gold ring around it.
 - Each row shows the key of its command on the right, the one you use now.
 - While a menu is open, the other shortcuts don't run: <kbd>Space</kbd> and <kbd>Enter</kbd> work on the menu. When the menu closes, the keyboard goes back to the panel you were in, so <kbd>Space</kbd> plays again right away.
 
 Two more lists work with the arrow keys:
 
-- **The font picker:** in **Search fonts**, press <kbd>↓</kbd> or <kbd>↑</kbd> to highlight a font in the list, and <kbd>Enter</kbd> to pick it. With no font highlighted, <kbd>Enter</kbd> picks the first one that matches. See [Titles and text](titles-and-text.md).
+- **The font picker:** in **Search fonts**, press <kbd>↓</kbd> or <kbd>↑</kbd> to highlight a font in the list, and <kbd>Enter</kbd> to pick it. With no font highlighted, <kbd>Enter</kbd> picks the first one that matches. After a pick or <kbd>Esc</kbd>, the keyboard focus goes back to **Font**. See [Titles and text](titles-and-text.md).
 - **The Paste attributes checklist:** press <kbd>↓</kbd> or <kbd>↑</kbd> to move between its rows and buttons, <kbd>Space</kbd> to check or uncheck a row, and <kbd>Enter</kbd> to paste. See [Give clips the look of another clip (Paste attributes)](copy-and-paste.md#give-clips-the-look-of-another-clip-paste-attributes).
 
 ## Related pages
 - [Keyboard shortcuts](keyboard-shortcuts.md)
+- [Keyboard navigation](keyboard-navigation.md)
 - [The workspace](workspace.md)
 - [Splitting, deleting and closing gaps](splitting-and-deleting.md)
 - [Captions](captions.md)
@@ -216,4 +217,4 @@ Two more lists work with the arrow keys:
 - [Organizing media](organizing-media.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 44, 2026-10-18</sub>
+<sub>Last updated: Batch 46, 2026-10-18</sub>
