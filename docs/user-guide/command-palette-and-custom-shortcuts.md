@@ -55,14 +55,14 @@ Each row shows the command's icon, its name, its category (for example **Edit** 
 A click outside the palette closes it too.
 
 - The palette doesn't open while you type in a field or while a dialog is open: press <kbd>Enter</kbd> or <kbd>Esc</kbd> first.
-- On the start screen, the palette opens too. There, **New project**, **Open project**, **Keyboard shortcuts** and **Settings** work; the other rows are grey until a project is open.
+- On the start screen, the palette opens too. There, **New project**, **Open project**, **Keyboard shortcuts**, **Settings** and **About Shorts Editor** work; the other rows are grey until a project is open.
 - A few commands are not in the palette because they need something you point at: the rows of a preset card's menu (see [Text presets](text-presets.md)), the ruler menu's **Add marker** at the point you right-clicked, a bin chip's **Rename** and **Delete bin** and the media menu's **Move to bin** (see [Organizing media](organizing-media.md)), and the keys that only work while you edit a text or drag.
 
 The categories, in the order the list shows them, are **Transport**, **Timeline**, **Edit**, **Clipboard**, **Selection**, **Clip**, **Speed**, **Fades and transitions**, **Keyframes**, **Audio**, **Markers and range**, **Tracks**, **Tools**, **Toggles**, **Add**, **Text**, **Captions**, **Presets**, **Canvas**, **Preview**, **Media**, **Project**, **Export** and **App**.
 
 ## See every shortcut
 
-Press <kbd>?</kbd> (<kbd>Shift</kbd>+<kbd>/</kbd> on most keyboards) to open the **Keyboard shortcuts** sheet.
+Press <kbd>?</kbd> (<kbd>Shift</kbd>+<kbd>/</kbd> on most keyboards) to open the **Keyboard shortcuts** sheet, or click **Keyboard shortcuts** in **Settings** > **About** (see [See the version and get help](settings.md#see-the-version-and-get-help)).
 
 - It lists every command that has a key, by category, in columns. Each row shows the command's name, every key it has, and after a dot where the keys work, for example **Timeline** or **Timeline, Preview**. A row without a place works in every panel.
 - It always shows the keys you use now: when you change a key, the sheet shows the new one.
@@ -217,4 +217,4 @@ Two more lists work with the arrow keys:
 - [Organizing media](organizing-media.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 46, 2026-10-18</sub>
+<sub>Last updated: Batch 50, 2026-10-18</sub>

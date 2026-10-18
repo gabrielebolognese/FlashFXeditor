@@ -141,7 +141,7 @@ The edge stops following the pointer at these limits, and the clip never goes pa
 | Clips on other tracks | A ripple trim stops when a clip that moves would run into a clip that does not move. Clips on locked tracks never move and never stop a ripple. |
 | The linked clip | When the linked clip reaches one of these limits first, both stop. Hold <kbd>Alt</kbd> to trim one side only. |
 
-> **Note:** A trim that uses media a transition needs shortens the transition, and removes it when none is left. During the drag, the block already shows its new length. Fades keep their length. See [Know what edits do to fades and transitions](fades-and-transitions.md#know-what-edits-do-to-fades-and-transitions).
+> **Note:** A trim that uses media a transition needs shortens the transition, and removes it when none is left. During the drag, the block already shows its new length. Fades keep their length, unless the clip becomes shorter than its two fades together: then both get shorter in proportion. See [Know what edits do to fades and transitions](fades-and-transitions.md#know-what-edits-do-to-fades-and-transitions).
 
 > **Tip:** Trimmed frames are never lost. Drag the edge back to bring them back: a clip trimmed to 1 frame can be stretched back to its full length. Zoom in first so you can grab its edge.
 
@@ -218,4 +218,4 @@ To move a cut between two clips without changing their total length, to change t
 - [Projects and saving](projects-and-saving.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 36, 2026-10-17</sub>
+<sub>Last updated: Batch 50, 2026-10-18</sub>

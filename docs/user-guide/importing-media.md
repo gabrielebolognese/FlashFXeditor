@@ -70,7 +70,7 @@ Only images are pasted this way. Paste imports only when the Media panel has the
 | Kind | File extensions | Notes |
 |---|---|---|
 | Video | .mp4, .mov, .m4v, .webm | The video must use a codec Chrome can decode on your computer, such as H.264, HEVC (H.265) or AV1. Phone recordings from iPhone (HEVC .mov) and Android (H.264 .mp4) work, including portrait and variable frame rate clips. .webm files hold VP9, AV1, VP8 or H.264 video, for example screen recordings: see [WebM files and screen recordings](#webm-files-and-screen-recordings). |
-| Audio | .mp3, .m4a, .aac, .wav, .ogg, and .webm with sound only | .mp3, .aac, .wav and .ogg files can be up to 45 minutes long. .m4a files, .webm files and the sound of videos have no length limit. |
+| Audio | .mp3, .m4a, .aac, .wav, .ogg, and .webm with sound only | .mp3, .aac, .wav and .ogg files can be up to 45 minutes long, and so can .webm files with **Vorbis** sound. .m4a files, .webm files with **Opus** sound and the sound of .mp4 and .mov videos have no length limit. |
 | Images | .png, .jpg, .jpeg, .webp, .gif, .svg | Animated GIF and WebP files keep their animation length as their duration, and play in a loop on the timeline. An SVG needs a width and height, or a viewBox, and stays sharp at any size. See [Shapes and images](shapes-and-images.md). |
 
 Extensions are not case-sensitive (.MOV works). Any other type, for example .mkv, .avi or .heic, is refused with a message that names the file. Subtitle files (.srt, .vtt) are refused here too: import them in the **Captions** tab; see [Import an SRT or VTT file](captions.md#import-an-srt-or-vtt-file).
@@ -106,7 +106,7 @@ What to know:
 - Recorders often start the sound a few hundredths of a second after the first frame. The editor keeps that delay, so the voice stays in sync with the picture, also in your export.
 - The editor reads the whole file to find its frames, when you import it and again the first time its picture is needed: about half a second for a 10-minute 1080p recording. It then keeps the result in the project's `cache` folder.
 - The editor tells a video by its content, not its extension: a WebM file that was saved as .mp4 opens too.
-- **Vorbis** sound (written by older converters) is decoded whole, like an .mp3 file. A WebM file over 1 GB with Vorbis sound plays no sound, and a very long one uses a lot of memory. **Opus** sound, which browsers and most recorders write, has no such limits.
+- **Vorbis** sound (written by older converters) is decoded whole, like an .mp3 file. A WebM file with Vorbis sound can be up to 45 minutes long: a longer one is refused, its picture too, with the reason. A WebM file over 1 GB with Vorbis sound plays no sound. **Opus** sound, which browsers and most recorders write, has no such limits.
 
 What is not supported:
 
@@ -351,6 +351,7 @@ When a file is not imported, a message at the top of the window says why. It clo
 | **This WebM file stores several video frames per block (lacing), which is not supported**, **The video track of this WebM file is compressed or encrypted** or **The H.264 track of this WebM file has no decoder configuration** | The WebM file stores its video in a way the editor can't read. | Convert it to .mp4, or to a new .webm file. |
 | **The video track has no frames** | The video in the WebM file is empty, for example a recording stopped at once. | Record or export it again. |
 | **Audio files over 45 minutes cannot be imported yet (this one is** *N* **minutes)** | An .mp3, .aac, .wav or .ogg file is longer than 45 minutes. The editor refuses it before it reads the sound. | Cut it into parts of 45 minutes or less, or convert it to .m4a, which has no length limit. |
+| **This WebM file's sound is decoded whole, which works up to 45 minutes (this one is** *N* **minutes): cut it shorter, or save it with Opus sound or as an MP4 file** | A .webm file longer than 45 minutes has sound the editor decodes whole, for example **Vorbis** sound. The whole file is refused, its picture too. | Cut it into parts of 45 minutes or less, or convert it to a WebM file with Opus sound or to an MP4 file. |
 | **The file has no video or audio track** | The file holds no picture or sound the editor can use. | Check the file in a media player. |
 | **The video track has no samples** | The video track is empty. | Export or convert it again. |
 | **The audio cannot be decoded** or **The audio is empty** | Chrome cannot play the audio file, or it has no sound data. | Convert it to .mp3, .m4a or .wav. |
@@ -380,4 +381,4 @@ If a card keeps its kind icon instead of a thumbnail, Chrome could not decode th
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 49, 2026-10-18</sub>
+<sub>Last updated: Batch 50, 2026-10-18</sub>

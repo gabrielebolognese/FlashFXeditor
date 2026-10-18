@@ -26,7 +26,7 @@ When you create a project, the editor fills the folder you picked with these ite
 
 | Item | What it holds |
 | --- | --- |
-| `project.json` | The project itself: settings, tracks, clips, markers and the list of media. |
+| `project.json` | The project itself: settings, tracks, clips, markers and the list of media. Each save also writes the version of the editor that saved it, the one **Settings** > **About** shows; see [See the version and get help](settings.md#see-the-version-and-get-help). |
 | `session.json` | Where you left off: playhead, in and out points, the marked parts of media items, the timeline and preview zoom, the preview quality and overlays, panel sizes, the folded sections of **Edit Properties** and similar view settings. If it is missing or damaged, the project still opens, with default view settings. |
 | `media` | Copies of the files you import. Files you link to stay where they are and are not copied here. See [Copy or link your files](importing-media.md#copy-or-link-your-files). |
 | `cache` | Thumbnails, sound analysis and indexes the editor builds from your media, and the proxies of heavy videos in `cache/proxies` (see [Proxies](proxies.md)). While a video or audio export runs, the unfinished file is written in `cache/export-temp`. Nothing in it is lost for good: to free disk space, use **Clear cache**, and the editor builds what it needs again. See [Clear the cache](#clear-the-cache). |
@@ -303,4 +303,4 @@ Changes made in read-only mode exist only in the tab. The editor asks before the
 - [Titles and text](titles-and-text.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 47, 2026-10-18</sub>
+<sub>Last updated: Batch 50, 2026-10-18</sub>
