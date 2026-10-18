@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { makeMedia } from "../core/document/fixtures.js";
+import { addMedia, relinkMedia, removeMedia } from "../core/commands/mediaCommands.js";
+import { makeMedia, makeProject } from "../core/document/fixtures.js";
 import type { MediaId, MediaItem } from "../core/document/types.js";
 import { createStore } from "../core/store/createStore.js";
+import { DocumentStore } from "../core/store/DocumentStore.js";
+import { createSessionStore } from "../core/store/sessionStore.js";
 import type { PermissionStatus } from "./fs.js";
 import { memoryKeyValueStore } from "./kv.js";
 import { createMemoryDir } from "./memoryFs.js";
-import { handleStoreKey, MediaSources, type FileHandleLike, type MediaStatus } from "./mediaSources.js";
+import { handleStoreKey, MediaSources, sameContent, sameFile, type FileHandleLike, type MediaStatus } from "./mediaSources.js";
 import { listFolderFiles, matchFolderFiles, relinkNames, type DirHandleLike, type FolderFile } from "./relink.js";
 
 /** A linked file: `gone` once the file was moved (NotFoundError), its permission settable. */
@@ -144,6 +147,74 @@ describe("MediaSources", () => {
     t.sources.markFailed("a");
     t.sources.forget(["a"]);
     expect(t.statusOf()).toEqual({});
+  });
+});
+
+describe("MediaSources following the document (Batch 41 fixes)", () => {
+  async function follow(items: MediaItem[]) {
+    const store = new DocumentStore(makeProject(), { session: createSessionStore(), validate: true });
+    store.dispatch(addMedia(items));
+    const kv = memoryKeyValueStore();
+    const status = createStore<ReadonlyMap<MediaId, MediaStatus>>(new Map());
+    const sources = new MediaSources({ dir: createMemoryDir(), kv, media: () => store.getState().media, status });
+    const stop = sources.attach(store);
+    await sources.checkAll();
+    return { store, sources, status, stop, statusOf: () => Object.fromEntries(status.getState()) };
+  }
+
+  it("checks a relink, its undo and its redo again (the status follows the file the record names)", async () => {
+    const moved = new FakeFileHandle("clip.mp4");
+    moved.gone = true;
+    const found = new FakeFileHandle("clip.mp4");
+    const t = await follow([]);
+    await t.sources.storeHandle("old", moved);
+    await t.sources.storeHandle("new", found);
+    t.store.dispatch(addMedia([linked("m", "old", "Shoot/clip.mp4")]));
+    await t.sources.whenChecked();
+    expect(t.statusOf()).toEqual({ m: "missing" });
+    t.store.dispatch(relinkMedia([{ id: "m", fields: { file: { handleKey: "new", pathHint: "Moved/clip.mp4" } } }]));
+    await t.sources.whenChecked();
+    expect(t.statusOf()).toEqual({});
+    t.store.undo();
+    await t.sources.whenChecked();
+    expect(t.statusOf()).toEqual({ m: "missing" });
+    t.store.redo();
+    await t.sources.whenChecked();
+    expect(t.statusOf()).toEqual({});
+    // Undo and redo at once: the last file wins, whatever order the lookups finish in.
+    t.store.undo();
+    t.store.redo();
+    await t.sources.whenChecked();
+    expect(t.statusOf()).toEqual({});
+    t.store.undo();
+    t.store.redo();
+    t.store.undo();
+    await t.sources.whenChecked();
+    expect(t.statusOf()).toEqual({ m: "missing" });
+    t.stop();
+  });
+
+  it("drops the status of a removed media at once, and checks it again when an undo brings it back", async () => {
+    const t = await follow([makeMedia("gone"), makeMedia("other", "image")]);
+    expect(t.statusOf()).toEqual({ gone: "missing", other: "missing" });
+    t.store.dispatch(removeMedia(["gone"], "keep"));
+    expect(t.statusOf()).toEqual({ other: "missing" });
+    t.store.undo();
+    await t.sources.whenChecked();
+    expect(t.statusOf()).toEqual({ gone: "missing", other: "missing" });
+    t.stop();
+  });
+
+  it("tells files and contents apart", () => {
+    expect(sameFile({ relPath: "media/a.mp4" }, { relPath: "media/a.mp4" })).toBe(true);
+    expect(sameFile({ relPath: "media/a.mp4" }, { handleKey: "media/a.mp4", pathHint: "a.mp4" })).toBe(false);
+    expect(sameFile({ handleKey: "k", pathHint: "a.mp4" }, { handleKey: "k", pathHint: "b.mp4" })).toBe(true);
+    const item = { durationUs: 10, width: 4, height: 2, size: 100 };
+    expect(sameContent(item, { ...item })).toBe(true);
+    expect(sameContent(item, { ...item, size: undefined })).toBe(true);
+    expect(sameContent(item, { ...item, size: 101 })).toBe(false);
+    expect(sameContent(item, { ...item, durationUs: 11 })).toBe(false);
+    expect(sameContent(item, { ...item, height: 3 })).toBe(false);
   });
 });
 

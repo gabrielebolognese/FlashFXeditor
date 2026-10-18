@@ -13,6 +13,8 @@
 // - On open, .part files (and the browser's .crswap swap files) of interrupted jobs are deleted, and
 //   their pending videos start over from the beginning (an MP4 cannot be continued); ready proxies
 //   whose file is gone are made again.
+// - A video whose file changed (a relink, its undo or redo, Batch 41: `filesChanged`) is tried again;
+//   when the file holds other content its proxy (ready, failed or being made) is made again from it.
 // - `progress` gives the running job's share done (the cards draw it without React, P1).
 import { setMediaProxy } from "../core/commands/mediaCommands.js";
 import type { Affect, Command } from "../core/commands/command.js";
@@ -82,6 +84,8 @@ export class ProxyJobs {
   private running: Running | null = null;
   /** Videos whose proxy failed this session. */
   private readonly failed = new Set<MediaId>();
+  /** Videos whose file now holds other content: their proxy is made again at the next sync. */
+  private readonly remake = new Set<MediaId>();
   private started = false;
   private disposed = false;
   private syncQueued = false;
@@ -137,6 +141,21 @@ export class ProxyJobs {
     return true;
   }
 
+  /**
+   * These videos' files changed (a relink, its undo or redo): a failure of the other file is
+   * forgotten, and the proxies of the `replaced` ones (the file holds other content now) are made
+   * again: a ready or failed one becomes pending, a running job starts over; "none" stays.
+   */
+  filesChanged(ids: readonly MediaId[], replaced: readonly MediaId[]): void {
+    for (const id of ids) this.failed.delete(id);
+    for (const id of replaced) {
+      this.failed.delete(id);
+      this.remake.add(id);
+      if (this.running?.mediaId === id) this.running.controller.abort();
+    }
+    this.queueSync();
+  }
+
   /** Resolves when no job runs and none can start (tests). */
   whenIdle(): Promise<void> {
     if (!this.running && !this.syncQueued && this.started) return Promise.resolve();
@@ -181,6 +200,13 @@ export class ProxyJobs {
     if (this.disposed || !this.started) return;
     const media = this.deps.document.getState().media;
     const settings = this.deps.settings();
+    if (this.deps.isWritable()) {
+      for (const id of this.remake) {
+        const item = media[id];
+        if (isVideo(item) && item.proxy && item.proxy.status !== "none") this.markPending(item);
+      }
+    }
+    this.remake.clear();
     if (settings.auto && this.deps.isWritable()) {
       for (const item of Object.values(media)) if (isVideo(item) && !item.proxy && wantsProxy(item, settings.rule)) this.markPending(item);
     }

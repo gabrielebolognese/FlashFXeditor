@@ -160,6 +160,8 @@
   --bin-strip-width: calc(var(--control-default) * 4);
   --media-column-min: var(--control-default);
   --column-resize-hit: var(--splitter-hit);
+  /* Settings radio rows (Batch 41, gap: the DS has no radio): the chosen choice's gold dot in the 14px ring. */
+  --radio-dot-size: var(--space-2);
   /* Favorite preset chips in the timeline toolbar (Batch 30, gap): a long name ends in an ellipsis. */
   --preset-chip-max-width: 96px;
   /* Captions tab cue rows (Batch 32; the DS has no cue list): two body lines of text and the times. */
@@ -356,6 +358,12 @@
   --clip-offline-label: var(--text-tertiary);
   --offline-slate: var(--text-muted);
   --offline-slate-text: var(--text-primary);
+  /* The slate label's type: its size as a share of the slate's shorter side, its wrap width as a share
+     of the slate's width, the weight (the DS's strongest) and the line height. */
+  --offline-slate-text-share: 0.045;
+  --offline-slate-wrap-share: 0.86;
+  --offline-slate-weight: 600;
+  --offline-slate-line-height: 1.3;
   /* Label swatches in the clip menu (gap): grow a little under the pointer; the current label gets a
      2px --accent ring set off the swatch by a 1px --bg-sunken gap. */
   --swatch-hover-scale: 1.15;

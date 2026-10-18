@@ -71,7 +71,10 @@ export function handleOf(project: Pick<Project, "media" | "settings">, clip: Cli
   if (clip.kind === "image" || isFreeze(clip)) return Infinity;
   const { fps } = project.settings;
   if (side === "head") return headFrames(clip, fps);
-  return tailFrames(clip, project.media[clip.mediaId]?.durationUs ?? clip.out, fps);
+  // A clip whose media record is gone ("Remove from project", Batch 41) is offline: nothing bounds its
+  // tail, so removing the record changes none of its transitions.
+  const media = project.media[clip.mediaId];
+  return media ? tailFrames(clip, media.durationUs, fps) : Infinity;
 }
 
 /** Two clips a transition can join (their cut aside): media clips of one track, both audio or both pictures. */

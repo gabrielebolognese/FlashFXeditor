@@ -1,6 +1,6 @@
 import { AudioLines, Film, Folder, Image, Library, type LucideIcon } from "lucide-react";
-import { useRef, type KeyboardEvent, type MouseEvent } from "react";
-import { binMenu, closeBinMenu, finishBinRename, mediaPanel, openBinMenu, showBin, startBinRename } from "../../app/mediaController.js";
+import { useEffect, useRef, type KeyboardEvent, type MouseEvent } from "react";
+import { binMenu, closeBinMenu, finishBinRename, mediaPanel, openBinMenu } from "../../app/mediaController.js";
 import { actions, documentStore, sessionStore } from "../../app/services.js";
 import { MAX_BIN_NAME } from "../../core/commands/mediaCommands.js";
 import type { Bin, Project } from "../../core/document/types.js";
@@ -26,6 +26,7 @@ const selectBins = (project: Project) => project.bins;
 /** Counts as a string: media edits that do not change them do not re-render the strip. */
 const selectCounts = (project: Project) => [...binCounts(Object.values(project.media))].map(([id, n]) => `${id}:${n}`).join(",");
 const keep = (event: MouseEvent) => event.preventDefault();
+const MEDIA_CONTEXT = { scope: "media", phase: "down", repeat: false } as const;
 
 function BinRow({ id, label, icon: Icon, count, active, drop }: { id: string; label: string; icon: LucideIcon; count: number; active: boolean; drop: boolean }) {
   const onContextMenu = (event: MouseEvent) => {
@@ -39,10 +40,11 @@ function BinRow({ id, label, icon: Icon, count, active, drop }: { id: string; la
       className={styles.binRow}
       aria-pressed={active}
       data-bin-drop={drop ? id : undefined}
+      data-command="media.showBin"
       data-tooltip={drop ? `${label}: drop media here, double-click to rename` : undefined}
       onMouseDown={keep}
-      onClick={() => showBin(id)}
-      onDoubleClick={drop ? () => startBinRename(id) : undefined}
+      onClick={() => void actions.run("media.showBin", MEDIA_CONTEXT, id)}
+      onDoubleClick={drop ? () => void actions.run("media.renameBin", MEDIA_CONTEXT, id) : undefined}
       onContextMenu={onContextMenu}
     >
       <Icon className={styles.binIcon} aria-hidden="true" />
@@ -52,20 +54,34 @@ function BinRow({ id, label, icon: Icon, count, active, drop }: { id: string; la
   );
 }
 
-/** A bin's inline rename: Enter or blur commits (one undoable command), Escape cancels. */
+/**
+ * A bin's inline rename: Enter, blur or a press anywhere else commits (one undoable command; the
+ * strip's chips and the panel's buttons keep the focus where it is, so the input would not blur),
+ * Escape cancels.
+ */
 function BinRename({ bin }: { bin: Bin }) {
   const done = useRef(false);
+  const input = useRef<HTMLInputElement>(null);
   const finish = (value: string | null) => {
     if (done.current) return;
     done.current = true;
     finishBinRename(bin.id, value);
   };
+  useEffect(() => {
+    const onPointerDown = (event: PointerEvent) => {
+      const field = input.current;
+      if (field && !field.contains(event.target as Node)) field.blur();
+    };
+    document.addEventListener("pointerdown", onPointerDown, true);
+    return () => document.removeEventListener("pointerdown", onPointerDown, true);
+  }, []);
   const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === "Enter") finish(event.currentTarget.value);
     else if (event.key === "Escape") finish(null);
   };
   return (
     <input
+      ref={input}
       className={styles.binInput}
       defaultValue={bin.name}
       maxLength={MAX_BIN_NAME}
@@ -97,7 +113,6 @@ export function BinStrip() {
   );
 }
 
-const MEDIA_CONTEXT = { scope: "media", phase: "down", repeat: false } as const;
 const BIN_ENTRIES: readonly ContextMenuEntry[] = [
   { kind: "item", id: "media.renameBin", label: "Rename" },
   { kind: "item", id: "media.deleteBin", label: "Delete bin" },

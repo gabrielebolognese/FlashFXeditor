@@ -54,6 +54,11 @@ export function mediaPath(item: MediaItem): string {
   return "relPath" in item.file ? item.file.relPath : item.file.pathHint;
 }
 
+/** The part of a media's path the search reads: a copy's file name (not the project's media/ folder), a linked file's folders and name. */
+export function searchPath(item: MediaItem): string {
+  return "relPath" in item.file ? baseName(item.file.relPath) : item.file.pathHint;
+}
+
 /** The file name of a path (after the last slash). */
 export function baseName(path: string): string {
   return path.slice(path.lastIndexOf("/") + 1);
@@ -75,7 +80,8 @@ export interface MediaQuery {
 
 /**
  * Whether `item` shows: in the bin (All; a kind's virtual bin; a bin's own media), of a checked kind
- * (none checked: any), unused when `unused` is on, and every word of the search in its name or path.
+ * (none checked: any), unused when `unused` is on, and every word of the search in its name or its
+ * file's name (a linked file's folders too: `searchPath`).
  */
 export function mediaMatcher(query: MediaQuery, uses: ReadonlyMap<MediaId, number>): (item: MediaItem) => boolean {
   const words = searchText(query.search).split(/\s+/).filter(Boolean);
@@ -86,7 +92,7 @@ export function mediaMatcher(query: MediaQuery, uses: ReadonlyMap<MediaId, numbe
     if (kinds.size > 0 && !kinds.has(item.kind)) return false;
     if (query.filters.unused && (uses.get(item.id) ?? 0) > 0) return false;
     if (words.length === 0) return true;
-    const text = `${searchText(item.name)}\n${searchText(mediaPath(item))}`;
+    const text = `${searchText(item.name)}\n${searchText(searchPath(item))}`;
     return words.every((word) => text.includes(word));
   };
 }
@@ -133,6 +139,28 @@ export function clickSelection(selection: MediaSelection, id: MediaId, mods: { t
 export function pruneSelection(selection: MediaSelection, exists: (id: MediaId) => boolean): MediaSelection {
   if ([...selection.ids].every(exists) && (selection.anchor === null || exists(selection.anchor))) return selection;
   return { ids: new Set([...selection.ids].filter(exists)), anchor: selection.anchor !== null && exists(selection.anchor) ? selection.anchor : null };
+}
+
+/**
+ * The selection without the media the tab does not show (spec §12: what the bin, the chips or the
+ * search hide is never deleted, moved or dragged); the same object when nothing changed.
+ */
+export function shownSelection(selection: MediaSelection, media: Readonly<Record<MediaId, MediaItem>>, shows: (item: MediaItem) => boolean): MediaSelection {
+  return pruneSelection(selection, (id) => {
+    const item = media[id];
+    return item !== undefined && shows(item);
+  });
+}
+
+/**
+ * What the tab must show to reveal `item` (Reveal in media panel): `query` when it shows it, else with
+ * the search and the chips cleared, and in the item's bin (All when it is in none) when the bin hides
+ * it too. `query.bin` is the shown bin (`shownBin`).
+ */
+export function revealQuery(item: MediaItem, query: MediaQuery, uses: ReadonlyMap<MediaId, number>): MediaQuery {
+  if (mediaMatcher(query, uses)(item)) return query;
+  const cleared: MediaQuery = { ...query, filters: { kinds: [], unused: false }, search: "" };
+  return mediaMatcher(cleared, uses)(item) ? cleared : { ...cleared, bin: item.binId ?? "all" };
 }
 
 export function audioLabel(item: MediaItem): string {

@@ -1,5 +1,5 @@
 import { ArrowDownWideNarrow, ArrowUpNarrowWide, AudioLines, ChevronDown, ChevronUp, FileSearch, Film, FolderPlus, FolderSearch, Image, Import, KeyRound, LayoutGrid, List, TriangleAlert, type LucideIcon } from "lucide-react";
-import { memo, useLayoutEffect, useMemo, useRef, type CSSProperties, type DragEvent, type MouseEvent, type PointerEvent } from "react";
+import { memo, useLayoutEffect, useMemo, useRef, type CSSProperties, type DragEvent, type MouseEvent, type PointerEvent, type RefObject } from "react";
 import { insertMediaAtPlayhead } from "../../app/dropController.js";
 import { clearMediaSelection, dropMedia, mediaPanel, openMediaMenu, selectMedia, setMediaSearch } from "../../app/mediaController.js";
 import { mediaHover, pressMediaCard, takeClickAfterDrag } from "../../app/mediaGestures.js";
@@ -199,13 +199,30 @@ function OfflineBadge({ id, card }: { id: MediaId; card: boolean }) {
   );
 }
 
+/**
+ * A card's or row's `aria-selected` (its selected look), written to the DOM on change: selecting or
+ * deselecting many media (Mod+A, a search hiding selected ones) re-renders none of them.
+ */
+function useSelectedAttribute(ref: RefObject<HTMLDivElement | null>, id: MediaId): void {
+  useLayoutEffect(
+    () =>
+      mediaPanel.select(
+        (state) => state.selection.ids.has(id),
+        (selected) => ref.current?.setAttribute("aria-selected", String(selected)),
+        { fireImmediately: true },
+      ),
+    [ref, id],
+  );
+}
+
 const MediaCard = memo(function MediaCard({ item, uses }: { item: MediaItem; uses: number }) {
-  const selected = useStoreSelector(mediaPanel, (state) => state.selection.ids.has(item.id));
+  const ref = useRef<HTMLDivElement>(null);
+  useSelectedAttribute(ref, item.id);
   const offline = useStoreSelector(mediaStatus, (state) => state.has(item.id));
   const Icon = KIND_ICONS[item.kind];
   const badge = durationBadge(item);
   return (
-    <div className={styles.card} data-media-id={item.id} data-unused={uses === 0 || undefined} data-offline={offline || undefined} role="option" aria-selected={selected}>
+    <div ref={ref} className={styles.card} data-media-id={item.id} data-unused={uses === 0 || undefined} data-offline={offline || undefined} role="option">
       <div className={styles.thumb} data-thumb="">
         <Icon className={styles.placeholderIcon} aria-hidden="true" />
         {item.kind !== "audio" && <PosterCanvas id={item.id} />}
@@ -230,11 +247,12 @@ const MediaCard = memo(function MediaCard({ item, uses }: { item: MediaItem; use
 });
 
 const MediaRow = memo(function MediaRow({ item, uses }: { item: MediaItem; uses: number }) {
-  const selected = useStoreSelector(mediaPanel, (state) => state.selection.ids.has(item.id));
+  const ref = useRef<HTMLDivElement>(null);
+  useSelectedAttribute(ref, item.id);
   const offline = useStoreSelector(mediaStatus, (state) => state.has(item.id));
   const Icon = KIND_ICONS[item.kind];
   return (
-    <div className={styles.row} data-media-id={item.id} data-offline={offline || undefined} role="option" aria-selected={selected}>
+    <div ref={ref} className={styles.row} data-media-id={item.id} data-offline={offline || undefined} role="option">
       <div className={styles.rowThumb} data-thumb="">
         <Icon className={styles.placeholderIcon} aria-hidden="true" />
         {item.kind !== "audio" && <PosterCanvas id={item.id} />}

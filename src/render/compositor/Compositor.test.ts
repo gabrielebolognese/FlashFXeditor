@@ -429,7 +429,7 @@ describe("Compositor.evaluate", () => {
 describe("Compositor offline slates (Batch 41)", () => {
   const GRAY = { r: 0.3, g: 0.3, b: 0.35, a: 1 };
   const WHITE = { r: 1, g: 1, b: 1, a: 1 };
-  const slates = (offline: Record<string, string>) => ({ label: (id: string) => offline[id] ?? null, look: () => ({ fill: GRAY, text: WHITE }) });
+  const slates = (offline: Record<string, string>) => ({ label: (id: string) => offline[id] ?? null, look: () => ({ fill: GRAY, text: WHITE, textShare: 0.045, wrapShare: 0.86, weight: 600, lineHeight: 1.3 }) });
 
   it("draws an offline clip as a slate over the media's visible box, then its label; online clips as media", () => {
     let doc = project(["v1", "v2"], [video("m1", 1920, 1080), video("m2", 1920, 1080)]);

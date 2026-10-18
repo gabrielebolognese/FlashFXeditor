@@ -8,9 +8,12 @@
 // - `missing`: the file is not there (deleted from media/, moved or renamed on disk, no handle);
 // - `permission`: a linked file the browser has not granted read access to yet;
 // - `failed`: the file is there but cannot be shown (an undecodable codec: the preview reports it).
-// `checkAll` finds them on open; every later `file()` that fails marks its media too. Framework-free.
+// `checkAll` finds them on open; every later `file()` that fails marks its media too. `attach` follows
+// the document: new media and media whose file changed (a relink, its undo or redo) are checked again,
+// and media that leave the project lose their status at once. Framework-free.
+import type { Affect } from "../core/commands/command.js";
 import type { Store } from "../core/store/createStore.js";
-import type { MediaId, MediaItem } from "../core/document/types.js";
+import type { MediaId, MediaItem, Project } from "../core/document/types.js";
 import type { FsDir, PermissionStatus } from "./fs.js";
 import type { KeyValueStore } from "./kv.js";
 import { resolveFile } from "./mediaFiles.js";
@@ -31,6 +34,34 @@ const HANDLE_PREFIX = "media-handle:";
 /** The IndexedDB key of a linked file's handle. */
 export const handleStoreKey = (handleKey: string): string => `${HANDLE_PREFIX}${handleKey}`;
 
+/** Whether two records of a media name the same file (the same copy, or the same stored handle). */
+export function sameFile(a: MediaItem["file"], b: MediaItem["file"]): boolean {
+  return "relPath" in a ? "relPath" in b && a.relPath === b.relPath : "handleKey" in b && a.handleKey === b.handleKey;
+}
+
+/** What tells two files of a media apart: their bytes (when both are known), length and picture size. */
+export interface ContentFields {
+  size?: number | undefined;
+  durationUs: number;
+  width?: number | undefined;
+  height?: number | undefined;
+}
+
+/**
+ * Whether two files of a media hold the same content (a relink to a moved or copied file keeps the
+ * media's caches; another file makes them again).
+ */
+export function sameContent(a: ContentFields, b: ContentFields): boolean {
+  if (a.durationUs !== b.durationUs || a.width !== b.width || a.height !== b.height) return false;
+  return a.size === undefined || b.size === undefined || a.size === b.size;
+}
+
+/** The document as `attach` follows it. */
+export interface MediaDocument {
+  getState(): Pick<Project, "media">;
+  subscribe(listener: (state: Pick<Project, "media">, prev: Pick<Project, "media">) => void, options: { affects: readonly Affect[] }): () => void;
+}
+
 export interface MediaSourcesDeps {
   dir: FsDir;
   kv: KeyValueStore;
@@ -49,15 +80,44 @@ export class MediaSources {
   /** Handles by `handleKey` (null: none stored), loaded once per open project. */
   private readonly handles = new Map<string, Promise<FileHandleLike | null>>();
   private disposed = false;
+  /** Settles once every check started so far has (`whenChecked`). */
+  private checked: Promise<void> = Promise.resolve();
 
   constructor(private readonly deps: MediaSourcesDeps) {}
+
+  /**
+   * Follows the document's media (`deps.media` must read the same document): new media (an import,
+   * an offline record pasted from another project, an undone removal) and media whose file changed (a
+   * relink, its undo or redo) are checked, and media that left the project lose their status at once
+   * (no file read tells it for a removed media). Returns a stop function.
+   */
+  attach(document: MediaDocument): () => void {
+    return document.subscribe(
+      (state, prev) => {
+        const changed = Object.keys(state.media).filter((id) => {
+          const before = prev.media[id];
+          return !before || !sameFile(before.file, (state.media[id] as MediaItem).file);
+        });
+        if (Object.keys(prev.media).some((id) => !Object.hasOwn(state.media, id))) this.update(new Map());
+        if (changed.length > 0) void this.check(changed);
+      },
+      { affects: ["media"] },
+    );
+  }
+
+  /** Resolves once the checks started so far are done (a relink's toast, tests). */
+  whenChecked(): Promise<void> {
+    return this.checked;
+  }
 
   /** The media's source file, or null when it is offline (its status is updated either way). */
   async file(mediaId: MediaId): Promise<File | null> {
     const item = this.deps.media()[mediaId];
     if (!item) return null;
     const found = await this.lookup(item);
-    this.update(new Map([[mediaId, found.status]]));
+    // A file changed meanwhile (an undo of a relink) is told by its own check.
+    const now = this.deps.media()[mediaId];
+    if (now && sameFile(now.file, item.file)) this.update(new Map([[mediaId, found.status]]));
     return found.file;
   }
 
@@ -86,11 +146,26 @@ export class MediaSources {
     await this.check(Object.keys(this.deps.media()));
   }
 
-  /** Checks these media again (after a relink, an access grant, a file that came back). */
-  async check(ids: readonly MediaId[]): Promise<void> {
+  /**
+   * Checks these media again (a new or relinked file, an access grant, a file that came back). A
+   * media whose file changed again while it was looked up keeps the newer check's result.
+   */
+  check(ids: readonly MediaId[]): Promise<void> {
     const media = this.deps.media();
-    const results = await Promise.all(ids.map(async (id) => [id, media[id] ? (await this.lookup(media[id])).status : null] as const));
-    this.update(new Map(results), true);
+    const done = Promise.all(ids.map(async (id) => [id, media[id] ? (await this.lookup(media[id])).status : null] as const)).then((results) => {
+      const now = this.deps.media();
+      const current = ([id]: readonly [MediaId, unknown]) => {
+        const looked = media[id];
+        const latest = now[id];
+        return !looked || !latest || sameFile(looked.file, latest.file);
+      };
+      this.update(new Map(results.filter(current)), true);
+    });
+    this.checked = Promise.all([this.checked, done]).then(
+      () => undefined,
+      () => undefined,
+    );
+    return done;
   }
 
   /** Linked media waiting for the browser's read permission. */
@@ -130,7 +205,7 @@ export class MediaSources {
     if (this.deps.media()[mediaId] && !this.deps.status.getState().has(mediaId)) this.update(new Map([[mediaId, "failed"]]));
   }
 
-  /** Drops the media's statuses (a relink: checked again by the next `file()` or `check`) and records of media that left the project. */
+  /** Drops the media's statuses (checked again by the next `file()` or `check`) and those of media that left the project. */
   forget(ids: readonly MediaId[]): void {
     this.update(new Map(ids.map((id) => [id, null])), true);
   }

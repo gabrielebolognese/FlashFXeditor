@@ -13,6 +13,7 @@ import { addBin, clipsOfMedia, mediaUseCounts, nextBinName, relinkMedia, removeB
 import { isMediaClip, type MediaId, type MediaItem } from "../core/document/types.js";
 import { isEditableTarget } from "../core/keyboard/KeyDispatcher.js";
 import { createStore } from "../core/store/createStore.js";
+import { filterSelection, toSnapshot } from "../core/store/selection.js";
 import type { SessionState } from "../core/store/sessionStore.js";
 import { AnalysisScheduler } from "../media/AnalysisScheduler.js";
 import { PeaksJobs } from "../media/PeaksJobs.js";
@@ -25,19 +26,19 @@ import { svgPoster } from "../media/probe/svgProbe.js";
 import { ThumbnailStore, type ThumbFiles, type ThumbnailDeps } from "../media/ThumbnailStore.js";
 import { isAbortError } from "../media/workers/protocol.js";
 import type { ScrubSheets } from "../panels/media/hoverScrub.js";
-import { clickSelection, EMPTY_MEDIA_SELECTION, mediaMatcher, mediaPath, pruneSelection, shownBin, sortMedia, type MediaSelection } from "../panels/media/mediaList.js";
+import { clickSelection, EMPTY_MEDIA_SELECTION, mediaMatcher, mediaPath, pruneSelection, revealQuery, shownBin, shownSelection, sortMedia, type MediaQuery, type MediaSelection } from "../panels/media/mediaList.js";
 import { PosterPainter, wholeImage, type PosterSource } from "../panels/media/PosterPainter.js";
 import { errorMessage } from "../project/errorMessage.js";
 import type { FsDir } from "../project/fs.js";
 import { proxySettings } from "../project/appSettings.js";
 import { copyIntoMedia, MEDIA_DIR, openWritableAt, peaksPath, posterPath, PROXIES_DIR, proxyPartPath, proxyPath, removeFileAt, renameFileAt, resolveFile, sampleIndexPath, takenNames, thumbIndexPath, writeFileAt } from "../project/mediaFiles.js";
 import { subdir } from "../project/layout.js";
-import { MediaSources, type FileHandleLike } from "../project/mediaSources.js";
-import { listFolderFiles, matchFolderFiles, type DirHandleLike } from "../project/relink.js";
+import { MediaSources, sameContent, sameFile, type FileHandleLike } from "../project/mediaSources.js";
+import { listFolderFiles, matchFolderFiles, MAX_FOLDER_FILES, type DirHandleLike } from "../project/relink.js";
 import type { ClipVisualsSource } from "../timeline/view/clipVisuals.js";
 import { dismissToast, showToast, updateToast } from "../ui/toasts.js";
 import { decodedAudio, peaksFiles } from "./audioController.js";
-import { mediaSources, mediaStatus, offlineReason, onRefreshMedia, setMediaSources, sourceFile } from "./mediaOffline.js";
+import { mediaSources, mediaStatus, offlineReason, onRefreshMedia, refreshMedia, setMediaSources, sourceFile } from "./mediaOffline.js";
 import { actions, appSettings, documentStore, focusScopes, idleQueue, keyValueStore, scheduler, sessionStore, workerPool } from "./services.js";
 
 export interface MediaPanelState {
@@ -268,12 +269,13 @@ export function attachMedia(dir: FsDir, isWritable: () => boolean, preview?: Thu
       }),
       proxies.progress.subscribe((progress) => proxyProgress.set(progress)),
       proxies.attach(),
+      // New media and changed files are checked, removed media lose their offline status.
+      sources.attach(documentStore),
       documentStore.subscribe(
         (state, prev) => {
           const exists = (id: MediaId) => Object.hasOwn(state.media, id);
-          // New media (an import, an offline record pasted from another project, an undone removal): checked at once.
-          const added = Object.keys(state.media).filter((id) => !Object.hasOwn(prev.media, id));
-          if (added.length > 0) void sources.check(added);
+          const refiled = Object.keys(state.media).filter((id) => Object.hasOwn(prev.media, id) && !sameFile((prev.media[id] as MediaItem).file, (state.media[id] as MediaItem).file));
+          if (refiled.length > 0 && open) filesChanged(open, refiled, prev.media, state.media);
           const current = mediaPanel.getState();
           const selection = pruneSelection(current.selection, exists);
           const renaming = current.renaming !== null && !exists(current.renaming) ? null : current.renaming;
@@ -287,6 +289,8 @@ export function attachMedia(dir: FsDir, isWritable: () => boolean, preview?: Thu
         },
         { affects: ["media"] },
       ),
+      // Media moved out of the shown bin, or used while Unused is on, leave the selection.
+      documentStore.subscribe(keepShownSelection, { affects: ["media", "clips"] }),
     ],
   };
   mediaPanel.set(initialPanel());
@@ -320,6 +324,28 @@ async function findOfflineMedia(current: OpenMedia): Promise<void> {
     tone: "error",
     message: `${plural(offline.length, "media file")} offline`,
     detail: waiting === offline.length ? "Click Allow access in the Media panel to read the linked files." : "Their clips show a gray slate. Relink them from the Media panel.",
+  });
+}
+
+/**
+ * Media whose file changed (a relink, its undo or redo, spec §12; `MediaSources` checks them again):
+ * when the file holds other content now, what was made from the other one goes at once and is made
+ * again (the image poster, the sheets, the peaks, the proxy); media online before and after load their
+ * file again (a status change does it for the others).
+ */
+function filesChanged(current: OpenMedia, ids: readonly MediaId[], prev: Readonly<Record<MediaId, MediaItem>>, next: Readonly<Record<MediaId, MediaItem>>): void {
+  const replaced = ids.filter((id) => !sameContent(prev[id] as MediaItem, next[id] as MediaItem));
+  current.posters.regenerate(replaced);
+  for (const id of replaced) {
+    current.thumbs.replace(id);
+    current.peaks.forget(id);
+  }
+  current.proxies.filesChanged(ids, replaced);
+  if (replaced.length > 0) notifyArrival();
+  const online = (id: MediaId) => !mediaStatus.getState().has(id);
+  const wereOnline = ids.filter(online);
+  void current.sources.whenChecked().then(() => {
+    if (open === current) refreshMedia(wereOnline.filter(online));
   });
 }
 
@@ -397,6 +423,8 @@ export async function importMediaFiles(files: readonly ImportSource[], placement
     if (report.added.length > 0 && open === current) {
       const ids = report.added.map((item) => item.id);
       patch({ selection: { ids: new Set(ids), anchor: ids[0] ?? null } });
+      // New media the bin, the chips or the search hide are not selected.
+      keepShownSelection();
     }
   } catch (error) {
     if (toast !== null) dismissToast(toast);
@@ -527,8 +555,11 @@ export function confirmRemove(clips: "keep" | "delete" = "keep", deleteFiles = f
     return;
   }
   const before = documentStore.getState().media;
+  // Deleted clips leave the timeline selection.
+  const deleted = new Set(clips === "delete" ? clipsOfMedia(documentStore.getState(), ids) : []);
+  const selection = filterSelection(toSnapshot(sessionStore.selection.getState()), (id) => !deleted.has(id));
   try {
-    documentStore.dispatch(removeMedia(ids, clips));
+    documentStore.dispatch(removeMedia(ids, clips), { selection });
   } catch (error) {
     showToast({ tone: "error", message: "Could not remove the media", detail: errorMessage(error) });
     return;
@@ -569,13 +600,30 @@ export function copiedCount(ids: readonly MediaId[]): number {
 
 type MediaPanelSessionState = SessionState["mediaPanel"];
 
+/** What the Media tab shows now: the shown bin, the filter chips and the search. */
+function shownQuery(): MediaQuery {
+  const panel = sessionStore.state.getState().mediaPanel;
+  return { bin: shownBin(panel.bin, documentStore.getState().bins), filters: panel.filters, search: mediaPanel.getState().search };
+}
+
 /** The media the Media tab shows, in its order: the bin, the filter chips and the search over the sorted media. */
 export function visibleMedia(): MediaItem[] {
   const project = documentStore.getState();
   const panel = sessionStore.state.getState().mediaPanel;
   const uses = mediaUseCounts(project);
-  const match = mediaMatcher({ bin: shownBin(panel.bin, project.bins), filters: panel.filters, search: mediaPanel.getState().search }, uses);
-  return sortMedia(Object.values(project.media).filter(match), panel.sort, panel.descending, uses);
+  return sortMedia(Object.values(project.media).filter(mediaMatcher(shownQuery(), uses)), panel.sort, panel.descending, uses);
+}
+
+/**
+ * The selection keeps only what the Media tab shows (spec §12): media a bin, a chip or the search
+ * hide are never removed, moved to a bin or dragged with the shown ones.
+ */
+function keepShownSelection(): void {
+  const { selection } = mediaPanel.getState();
+  if (selection.ids.size === 0 && selection.anchor === null) return;
+  const project = documentStore.getState();
+  const next = shownSelection(selection, project.media, mediaMatcher(shownQuery(), mediaUseCounts(project)));
+  if (next !== selection) patch({ selection: next });
 }
 
 /** Mod+A in the Media tab: every media it shows. */
@@ -585,11 +633,14 @@ export function selectAllMedia(): void {
 }
 
 export function setMediaSearch(search: string): void {
-  if (mediaPanel.getState().search !== search) patch({ search });
+  if (mediaPanel.getState().search === search) return;
+  patch({ search });
+  keepShownSelection();
 }
 
 function setPanelFilters(next: Partial<MediaPanelSessionState["filters"]>): void {
   sessionStore.state.set((state) => ({ ...state, mediaPanel: { ...state.mediaPanel, filters: { ...state.mediaPanel.filters, ...next } } }));
+  keepShownSelection();
 }
 
 /** A kind's filter chip (Video, Audio, Image): any checked kinds show. */
@@ -600,7 +651,9 @@ function toggleKind(kind: MediaItem["kind"]): void {
 
 /** Shows a bin: a virtual one (all, video, audio, image) or a bin id. */
 export function showBin(bin: string): void {
-  if (sessionStore.state.getState().mediaPanel.bin !== bin) setPanelSession({ bin });
+  if (sessionStore.state.getState().mediaPanel.bin === bin) return;
+  setPanelSession({ bin });
+  keepShownSelection();
 }
 
 function writable(action: string): boolean {
@@ -741,17 +794,23 @@ export async function relinkFromFolder(): Promise<void> {
   }
   const toast = showToast({ tone: "info", message: `Looking for ${plural(items.length, "file")} in ${folder.name}…`, progress: 0 });
   try {
-    const { files } = await listFolderFiles(folder);
+    const { files, truncated } = await listFolderFiles(folder);
     const matches = await matchFolderFiles(items, files, async (file) => (await file.handle.getFile()).size);
     const sources: RelinkSource[] = [];
     for (const [id, found] of matches) sources.push({ id, file: await found.handle.getFile(), handle: found.handle, path: found.path });
     const report = await applyRelinks(sources);
     dismissToast(toast);
-    const missed = items.length - report.done;
+    // Files not found, the search cut short, then the files found but refused (wrong kind, too short).
+    const missed = items.length - matches.size;
+    const notes = [
+      ...(missed > 0 ? [`${plural(missed, "file")} not found in ${folder.name} (same name${items.some((item) => item.size !== undefined) ? " and size" : ""})`] : []),
+      ...(truncated ? [`only its first ${MAX_FOLDER_FILES.toLocaleString("en-US")} files were searched`] : []),
+      ...report.refused,
+    ];
     showToast({
       tone: report.done > 0 ? "success" : "error",
       message: `Relinked ${report.done} of ${plural(items.length, "offline file")}`,
-      detail: missed > 0 ? [`${plural(missed, "file")} not found in ${folder.name} (same name${items.some((item) => item.size !== undefined) ? " and size" : ""})`, ...report.refused].join(" · ") : "",
+      detail: notes.join(" · "),
     });
   } catch (error) {
     dismissToast(toast);
@@ -765,13 +824,24 @@ function relinkKeepsCopy(item: MediaItem): boolean {
   return item.file.handleKey === "" && appSettings.getState().importMode === "copy";
 }
 
-/** What the clips of a media need from its file: the longest source range (us), 0 for stills. */
-function neededDurationUs(id: MediaId): number {
-  let needed = 0;
+/** What the clips of a media need from its file: the longest source range (us; 0 for stills), and sound when audio clips use it. */
+function neededByClips(id: MediaId): { durationUs: number; audio: boolean } {
+  let durationUs = 0;
+  let audio = false;
   for (const clip of Object.values(documentStore.getState().clips)) {
-    if (isMediaClip(clip) && clip.mediaId === id && clip.kind !== "image") needed = Math.max(needed, clip.out);
+    if (!isMediaClip(clip) || clip.mediaId !== id) continue;
+    if (clip.kind !== "image") durationUs = Math.max(durationUs, clip.out);
+    if (clip.kind === "audio") audio = true;
   }
-  return needed;
+  return { durationUs, audio };
+}
+
+/** Why a probed file cannot stand in for a media's clips, or null when it can. */
+function relinkRefusal(name: string, id: MediaId, probe: { durationUs: number; hasAudio: boolean }): string | null {
+  const needed = neededByClips(id);
+  if (probe.durationUs < needed.durationUs) return `${name} is shorter than its clips need`;
+  if (needed.audio && !probe.hasAudio) return `${name} has no sound for its audio clips`;
+  return null;
 }
 
 /** Deletes a media's disposable caches (sample index, sheets, poster, peaks, proxy): its file changed. */
@@ -781,57 +851,63 @@ async function dropMediaCaches(dir: FsDir, id: MediaId): Promise<void> {
   await Promise.all(paths.map((path) => removeFileAt(dir, path).catch(() => undefined)));
 }
 
-/**
- * Relinks offline media to new files: each is probed (its kind must match and it must hold the
- * clips' source ranges), copied into media/ or linked, then all in one undo step (`media.relink`).
- * A different file (size or duration) drops the media's caches and starts its analysis again.
- */
-async function applyRelinks(sources: readonly RelinkSource[]): Promise<{ done: number; refused: string[] }> {
-  const current = open;
-  const refused: string[] = [];
-  if (!current || sources.length === 0) return { done: 0, refused };
+/** A file ready to stand in for an offline media: probed, copied into media/ (`copied`) or linked. */
+interface RelinkEntry {
+  id: MediaId;
+  name: string;
+  probe: { durationUs: number; hasAudio: boolean };
+  fields: RelinkFields;
+  /** The file holds other content than the media's record describes. */
+  changed: boolean;
+  copied: string | null;
+}
+
+/** Probes, checks and copies (or links) the files of a relink; null when the project closed meanwhile. */
+async function prepareRelinks(current: OpenMedia, sources: readonly RelinkSource[], refused: string[]): Promise<RelinkEntry[] | null> {
   const media = documentStore.getState().media;
   const taken = await takenNames(await subdir(current.dir, MEDIA_DIR));
-  const entries: { id: MediaId; fields: RelinkFields; changed: boolean }[] = [];
+  const entries: RelinkEntry[] = [];
   for (const source of sources) {
     const item = media[source.id];
     if (!item) continue;
-    const kind = classifyFile(source.file.name, source.file.type);
+    const name = source.file.name;
+    const kind = classifyFile(name, source.file.type);
     if (!kind) {
-      refused.push(`${source.file.name}: unsupported file type`);
+      refused.push(`${name}: unsupported file type`);
       continue;
     }
     let probe;
     try {
       probe = await current.probe(source.file, kind, current.controller.signal);
     } catch (error) {
-      if (isAbortError(error)) return { done: 0, refused };
-      refused.push(`${source.file.name}: ${errorMessage(error)}`);
+      if (isAbortError(error)) return null;
+      refused.push(`${name}: ${errorMessage(error)}`);
       continue;
     }
     if (probe.kind !== item.kind) {
-      refused.push(`${source.file.name} is ${probe.kind === "image" ? "an image" : `${probe.kind}`}, not ${item.kind === "image" ? "an image" : item.kind}`);
+      refused.push(`${name} is ${probe.kind === "image" ? "an image" : `${probe.kind}`}, not ${item.kind === "image" ? "an image" : item.kind}`);
       continue;
     }
-    if (probe.durationUs < neededDurationUs(item.id)) {
-      refused.push(`${source.file.name} is shorter than its clips need`);
+    const refusal = relinkRefusal(name, item.id, probe);
+    if (refusal) {
+      refused.push(refusal);
       continue;
     }
     let file: MediaItem["file"];
     try {
       if (relinkKeepsCopy(item) || !source.handle) {
-        file = { relPath: await copyIntoMedia(current.dir, source.file, source.file.name, taken, { signal: current.controller.signal }) };
+        file = { relPath: await copyIntoMedia(current.dir, source.file, name, taken, { signal: current.controller.signal }) };
       } else {
         const key = crypto.randomUUID();
         await current.sources.storeHandle(key, source.handle);
-        file = { handleKey: key, pathHint: source.path ?? source.file.name };
+        file = { handleKey: key, pathHint: source.path ?? name };
       }
     } catch (error) {
-      if (isAbortError(error)) return { done: 0, refused };
-      refused.push(`${source.file.name}: ${errorMessage(error)}`);
+      if (isAbortError(error)) return null;
+      refused.push(`${name}: ${errorMessage(error)}`);
       continue;
     }
-    const changed = item.size !== undefined ? item.size !== source.file.size || probe.durationUs !== item.durationUs : probe.durationUs !== item.durationUs || probe.width !== item.width || probe.height !== item.height;
+    const changed = !sameContent(item, { size: source.file.size, durationUs: probe.durationUs, width: probe.width, height: probe.height });
     const fields: RelinkFields = { file, size: source.file.size };
     if (changed) {
       Object.assign(fields, {
@@ -850,16 +926,41 @@ async function applyRelinks(sources: readonly RelinkSource[]): Promise<{ done: n
       // The proxy failed for want of its file: decided again.
       fields.proxy = undefined;
     }
-    entries.push({ id: item.id, fields, changed });
+    entries.push({ id: item.id, name, probe, fields, changed, copied: "relPath" in file ? file.relPath : null });
   }
-  if (entries.length === 0 || open !== current) return { done: 0, refused };
-  for (const entry of entries) if (entry.changed) await dropMediaCaches(current.dir, entry.id);
-  documentStore.dispatch(relinkMedia(entries.map(({ id, fields }) => ({ id, fields }))));
-  const ids = entries.map((entry) => entry.id);
-  current.sources.forget(ids);
-  await current.sources.check(ids);
-  for (const entry of entries) if (entry.changed) current.thumbs.regenerate(entry.id);
-  return { done: entries.length, refused };
+  return entries;
+}
+
+/**
+ * Relinks offline media to new files: each is probed (its kind must match and it must hold the
+ * clips' source ranges, with sound for their audio clips), copied into media/ (with no import running:
+ * unique names) or linked, checked again against the clips (a trim may have run during a long copy),
+ * then all in one undo step (`media.relink`). A different file (size or duration) drops the media's
+ * caches on disk first; the document subscription (`filesChanged`) makes them again and `MediaSources`
+ * checks the new files.
+ */
+async function applyRelinks(sources: readonly RelinkSource[]): Promise<{ done: number; refused: string[] }> {
+  const current = open;
+  const refused: string[] = [];
+  if (!current || sources.length === 0) return { done: 0, refused };
+  const entries = await current.importer.exclusive(() => prepareRelinks(current, sources, refused));
+  if (!entries || open !== current) return { done: 0, refused };
+  const ready: RelinkEntry[] = [];
+  for (const entry of entries) {
+    const refusal = documentStore.getState().media[entry.id] ? relinkRefusal(entry.name, entry.id, entry.probe) : `${entry.name}: its media was removed`;
+    if (!refusal) {
+      ready.push(entry);
+      continue;
+    }
+    refused.push(refusal);
+    if (entry.copied) await removeFileAt(current.dir, entry.copied).catch(() => undefined);
+  }
+  if (ready.length === 0) return { done: 0, refused };
+  for (const entry of ready) if (entry.changed) await dropMediaCaches(current.dir, entry.id);
+  if (open !== current) return { done: 0, refused };
+  documentStore.dispatch(relinkMedia(ready.map(({ id, fields }) => ({ id, fields }))));
+  await current.sources.whenChecked();
+  return { done: ready.length, refused };
 }
 
 /** Reveal in folder (spec §12): the browser cannot open folders, so the path is shown and copied. */
@@ -936,11 +1037,22 @@ function selectedClipMedia(): MediaId | null {
   return clip && "mediaId" in clip && documentStore.getState().media[clip.mediaId] ? clip.mediaId : null;
 }
 
-/** Reveal in media panel (spec §6.16): the Media tab, the clip's media selected and scrolled into view. */
+/**
+ * Reveal in media panel (spec §6.16): the Media tab, the clip's media shown (the search and chips
+ * cleared, its bin shown, when they hid it), selected and scrolled into view.
+ */
 function revealSelectedMedia(): void {
   const id = selectedClipMedia();
-  if (id === null) return;
+  const project = documentStore.getState();
+  const item = id !== null ? project.media[id] : undefined;
+  if (id === null || !item) return;
   showTab("media");
+  const query = shownQuery();
+  const reveal = revealQuery(item, query, mediaUseCounts(project));
+  if (reveal !== query) {
+    setPanelSession({ bin: reveal.bin, filters: reveal.filters });
+    patch({ search: reveal.search });
+  }
   mediaPanel.set((state) => ({ ...state, selection: { ids: new Set([id]), anchor: id } }));
   // After the tab renders its cards.
   requestAnimationFrame(() => document.querySelector(`[data-media-id="${CSS.escape(id)}"]`)?.scrollIntoView({ block: "nearest" }));
