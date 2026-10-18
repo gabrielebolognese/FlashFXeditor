@@ -224,7 +224,8 @@ describe("formatSpeed", () => {
   });
 });
 
-describe("drop-frame rates and large values (Batch 47)", () => {
+// ~1.5 s alone, several times that in the full parallel run on a loaded machine: an explicit timeout.
+describe("drop-frame rates and large values (Batch 47)", { timeout: 30_000 }, () => {
   const FILM: Rational = { num: 24000, den: 1001 };
   const NTSC_60: Rational = { num: 60000, den: 1001 };
   const RATES: Rational[] = [FILM, { num: 24, den: 1 }, { num: 25, den: 1 }, NTSC, FPS_30, { num: 50, den: 1 }, NTSC_60, FPS_60, { num: 120, den: 1 }];

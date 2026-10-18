@@ -66,7 +66,8 @@ function setup() {
   return { store, original };
 }
 
-describe("undo/redo fuzz", () => {
+// ~1.7 s per seed in the full parallel run, more on a loaded machine: an explicit timeout.
+describe("undo/redo fuzz", { timeout: 30_000 }, () => {
   for (const seed of [1, 7, 2026]) {
     it(`undoes 1,000 random raw operations back to the original document (seed ${seed})`, () => {
       const rng = random(seed);

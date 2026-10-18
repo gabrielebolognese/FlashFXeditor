@@ -127,7 +127,8 @@ describe("migration hook", () => {
   });
 });
 
-describe("edge cases (Batch 47)", () => {
+// The fuzz runs take ~0.7 s alone, over 5 s in the full parallel run on a loaded machine: an explicit timeout.
+describe("edge cases (Batch 47)", { timeout: 30_000 }, () => {
   /** Throws, and only a ProjectFileError: a broken file is reported, never a crash. */
   const refusal = (text: string): ProjectFileError => {
     try {
