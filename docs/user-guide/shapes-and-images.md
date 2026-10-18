@@ -41,10 +41,10 @@ A new solid appears in the middle of the frame, selected, and **Edit Properties*
 | --- | --- |
 | A white rounded rectangle, 60% of the frame's shorter side wide and 30% of it high, with corners rounded by 5% of it | 648×324 pixels, corners of 54 pixels |
 | Centered in the frame, at 100% scale | **Position** 0, 0 |
-| 5 seconds long, from the playhead | 150 frames at 30 fps |
+| 5 seconds long, from the playhead (the **Solid** length in **Settings** > **General**) | 150 frames at 30 fps |
 | A clip named **Solid** | |
 
-- **Track.** The solid goes on the top video track when that track is unlocked, not hidden, and free for the 5 seconds. Otherwise a new video track is created above the others.
+- **Track.** The solid goes on the top video track when that track is unlocked, not hidden, and free for the whole length. Otherwise a new video track is created above the others.
 - The sizes follow the shorter side of the frame, so a 1920×1080 project gets the same 648×324 shape, and a 720×1280 project a 432×216 one.
 - A solid has no media behind it: trim it to any length, split it and move it like any other clip. See [Trim a clip](trimming.md#trim-a-clip).
 - Adding a solid is one step in the history, named **Add solid**.
@@ -141,7 +141,7 @@ A solid is a layer of the picture like a video or an image. Everything on [Arran
 - Shapes have no crop: the **Crop** section is not shown, and a double-click on a shape does nothing.
 - Animate a shape's position, scale, rotation and opacity with keyframes, for example to slide a bar in behind a title or fade a color wash out. Its **Solid** settings (shape, fill, **W**, **H** and **Radius**) are not animated: a change applies to every frame, also when you resize it with its handles. See [Keyframes](keyframes.md).
 - Fade a shape or an image in or out with the fade handles in its clip's top corners on the timeline, or with **Fade in 0.5 s** and **Fade out 0.5 s** in the quick actions. Image clips can also take a transition at a cut with a video or another image, and they never run short of frames for it; solids take no transitions. See [Fades and transitions](fades-and-transitions.md).
-- A solid shows only during its clip. For one color behind your whole video, the project's **Background** is simpler; see [Change project settings](projects-and-saving.md#change-project-settings). For a gradient background, or a color behind part of the video, add a solid, move its track below your video's track (see [Reorder tracks](tracks.md#reorder-tracks)), choose **Rectangle**, set **W** and **H** to the frame size (1080 and 1920), and trim it to the length you need.
+- A solid shows only during its clip. For one color behind your whole video, the project's **Background** is simpler; see [What the Project section sets](project-settings-and-templates.md#what-the-project-section-sets). For a gradient background, or a color behind part of the video, add a solid, move its track below your video's track (see [Reorder tracks](tracks.md#reorder-tracks)), choose **Rectangle**, set **W** and **H** to the frame size (1080 and 1920), and trim it to the length you need.
 
 ## Add an image
 
@@ -154,7 +154,7 @@ The editor imports each image into the Media panel and places it at the playhead
 
 - **Track.** On the top video track when it is unlocked and free for the whole length of the new clips; otherwise on a new video track above the others.
 - **Position.** Fitted inside the frame and centered, as any new picture. See [See how clips fit the frame](preview-and-playback.md#see-how-clips-fit-the-frame).
-- **Length.** 5 seconds. Several images go back to back from the playhead.
+- **Length.** 5 seconds, or the **Still image** length you set in **Settings** > **General** or the **Project** section; see [Set the length of new clips](settings.md#set-the-length-of-new-clips). Several images go back to back from the playhead.
 - The new clips are selected, and the playhead stays where it is.
 - The import and the new clips are one step in the history, named **Add image**: one <kbd>Ctrl</kbd>+<kbd>Z</kbd> removes both the clips and the imported items.
 
@@ -248,4 +248,4 @@ These parts are available in a later version:
 - [Titles and text](titles-and-text.md)
 - [Troubleshooting](troubleshooting.md#shapes-and-images)
 
-<sub>Last updated: Batch 40, 2026-10-18</sub>
+<sub>Last updated: Batch 42, 2026-10-18</sub>

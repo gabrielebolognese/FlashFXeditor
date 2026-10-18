@@ -41,7 +41,7 @@ Every way adds the clips in one step, which one <kbd>Ctrl</kbd>+<kbd>Z</kbd> und
 | Video with sound | A video clip on a video track and an audio clip with its sound on an audio track, with the same start and length. The two clips are linked. See [Linking and grouping clips](links-and-groups.md). |
 | Video without sound | A video clip on a video track. |
 | Audio | An audio clip on an audio track. |
-| Image (including GIF and WebP) | A 5-second image clip on a video track. An animated GIF or WebP plays its animation in a loop for as long as the clip lasts; see [Use animated GIF and WebP images](shapes-and-images.md#use-animated-gif-and-webp-images). |
+| Image (including GIF and WebP) | A 5-second image clip on a video track (the **Still image** length in **Settings** > **General**; see [Set the length of new clips](settings.md#set-the-length-of-new-clips)). An animated GIF or WebP plays its animation in a loop for as long as the clip lasts; see [Use animated GIF and WebP images](shapes-and-images.md#use-animated-gif-and-webp-images). |
 
 - A video or audio clip uses the whole media, or only the part you marked. See [Use only part of a media item](#use-only-part-of-a-media-item). Lengths are whole frames at the project frame rate.
 - The picture is scaled to fit inside the frame and centered. A drop on the preview centers it where you release instead. See [See how clips fit the frame](preview-and-playback.md#see-how-clips-fit-the-frame).
@@ -270,4 +270,4 @@ Every way of adding media is one step in the history. Point at **Undo** in the a
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 34, 2026-10-17</sub>
+<sub>Last updated: Batch 42, 2026-10-18</sub>

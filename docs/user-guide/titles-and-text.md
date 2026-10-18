@@ -38,7 +38,7 @@ Text clips put words on your video: a hook at the start, a title over a shot, a 
 3. The word "Title" appears in the middle of the preview, selected (a gold highlight behind the letters). Type your text: it replaces the selection.
 4. Press <kbd>Esc</kbd> or <kbd>Ctrl</kbd>+<kbd>Enter</kbd> to finish.
 
-That is the whole workflow: one key, your words, one key. The new title has the look of the default title preset: at first the **Title** preset, white Inter ExtraBold at 120 pixels, centered, with a soft shadow. To start your titles in another look, choose another default; see [Choose the presets for T and Shift+T](text-presets.md#choose-the-presets-for-t-and-shiftt). The title lasts 3 seconds, or until the end of the video clip under the playhead; see [Where a new title goes](#where-a-new-title-goes).
+That is the whole workflow: one key, your words, one key. The new title has the look of the default title preset: at first the **Title** preset, white Inter ExtraBold at 120 pixels, centered, with a soft shadow. To start your titles in another look, choose another default; see [Choose the presets for T and Shift+T](text-presets.md#choose-the-presets-for-t-and-shiftt). The title lasts until the end of the video clip under the playhead, or 3 seconds by default; see [Where a new title goes](#where-a-new-title-goes).
 
 - <kbd>T</kbd> works in every panel, except while you type in a text field, while a dialog is open, and while you edit a text (there it types a "t").
 - If the video is playing, it pauses, so the playhead stays on the new title while you type.
@@ -72,7 +72,7 @@ Titles and subtitles follow the same rules:
 | | Rule |
 | --- | --- |
 | Start | At the playhead. |
-| Length | Until the end of the video clip under the playhead, so the text covers the rest of that shot. When no video clip is under the playhead, 3 seconds. The video clip counted is the one on the highest shown video track that has a video (not an image or a text) at the playhead. |
+| Length | Until the end of the video clip under the playhead, so the text covers the rest of that shot. When no video clip is under the playhead, 3 seconds by default. The video clip counted is the one on the highest shown video track that has a video (not an image or a text) at the playhead. To always use one length, turn **Match clip** off in **Settings** > **General**; the **Title** row there and in the **Project** section sets the length. See [Set the length of new clips](settings.md#set-the-length-of-new-clips). |
 | Track | The top video track, when it is free for the whole length, unlocked and shown. Otherwise a new video track at the top, so the text stays above the picture. |
 | Place in the frame | A title: in the middle of the frame, or 40 pixels below the selected text clip. A subtitle: its bottom edge at 78% of the frame height, centered. When the default preset has **Apply position** on: the preset's position. |
 | Name | The clip is named after the first line of its text. See [Text clips on the timeline](#text-clips-on-the-timeline). |
@@ -399,7 +399,6 @@ Pressing <kbd>↑</kbd> or <kbd>↓</kbd> in a number field of the **Text** sect
 
 These parts are available in a later version:
 
-- A setting to always make new titles 3 seconds long, instead of matching the video clip under the playhead.
 - Snapping while you drag a text's handles.
 - Exporting the video with its text. **Export frame** already includes text and its animations; see [Export the current frame](preview-and-playback.md#export-the-current-frame).
 
@@ -416,4 +415,4 @@ These parts are available in a later version:
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 40, 2026-10-18</sub>
+<sub>Last updated: Batch 42, 2026-10-18</sub>

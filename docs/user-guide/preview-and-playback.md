@@ -74,7 +74,7 @@ The bands show the project background color.
 
 To change the fit afterwards, click the picture in the preview and drag it, or drag its handles to resize it. See [Arranging layers in the preview](arranging-layers-in-the-preview.md). To fill the frame without bands, select the clip and click **Fill frame** in the quick actions of **Edit Properties**, or right-click the picture and choose **Fill**. To type an exact position and size, use the **Transform** section. See [Fit, fill or center a picture](editing-properties.md#fit-fill-or-center-a-picture). To turn a landscape video into a full vertical shot with nothing hanging past the frame, click **Crop to frame** in the **Crop** section, then **Fill frame**. See [Reframe a landscape video for a vertical frame](cropping-and-reframing.md#reframe-a-landscape-video-for-a-vertical-frame).
 
-> **Note:** The fit is set when you add the clip. If you change the project resolution later, the pictures scale with the frame: a picture that fit inside the old frame fits inside the new one. See [What a new resolution does to your clips](projects-and-saving.md#what-a-new-resolution-does-to-your-clips).
+> **Note:** The fit is set when you add the clip. If you change the project resolution later, choose **Scale layout** to scale the pictures with the frame: a picture that fit inside the old frame fits inside the new one. **Keep** leaves each picture at its size in pixels. See [Change the frame size](project-settings-and-templates.md#change-the-frame-size).
 
 ## Zoom in, add overlays and go fullscreen
 
@@ -333,4 +333,4 @@ If playback stutters, see [Troubleshooting](troubleshooting.md).
 - [Workspace](workspace.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 41, 2026-10-18</sub>
+<sub>Last updated: Batch 42, 2026-10-18</sub>

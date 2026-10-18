@@ -197,7 +197,7 @@ The steps are named **Add keyframe**, **Move volume keyframe** or **Move volume 
 
 ## Lower music under voices with Auto-duck
 
-**Auto-duck** lowers a music clip wherever someone speaks: it adds volume keyframes that bring the music down by 12 dB under every audio clip on the audio tracks above it, and back up in between.
+**Auto-duck** lowers a music clip wherever someone speaks: it adds volume keyframes that bring the music down, by 12 dB unless you changed it, under every audio clip on the audio tracks above it, and back up in between.
 
 1. Put the voice on an upper audio track, for example A1, and the music on a lower one, for example A2. A1 is the audio track right under the video tracks; A2 is below it.
 2. Select the music clip, then click **Auto-duck** in the **Actions** row of the **Audio** section. You can also right-click the music clip and choose **Auto-duck music**, or right-click the header of the music track and choose **Auto-duck music** to duck every clip on that track.
@@ -211,6 +211,7 @@ The music's rubber band now dips under each voice clip:
 - The keyframes are ordinary volume keyframes: drag them on the rubber band to adjust a dip, or delete the ones you don't want.
 - With several music clips selected, each one is ducked.
 - The step is named **Auto-duck music**. To try again, press <kbd>Ctrl</kbd>+<kbd>Z</kbd> first: a second **Auto-duck** lowers the music by another 12 dB under the voices.
+- To duck deeper or more gently, set **Duck depth** (1 to 60 dB) and **Duck ramps** (0 to 120 frames) in **Settings** > **General** > **Audio**. Voices closer than two ramps then share one dip. See [Set the audio defaults](settings.md#set-the-audio-defaults).
 
 **What counts as a voice:** any audio clip on an audio track above the music's track, such as a voice-over, an interview or a sound effect, as long as it is turned on and not muted, on a track that is not muted. Clips on tracks below the music's track don't count. When no such clip plays during the music, the message **No voice to duck under** appears ("Auto-duck lowers a music clip where audio clips play on the tracks above it."), and nothing changes.
 
@@ -337,7 +338,6 @@ See [Undo and redo changes](projects-and-saving.md#undo-and-redo-changes).
 
 These parts are available in a later version:
 
-- Settings for **Auto-duck**: how far it lowers the music (12 dB) and the length of its slopes (10 frames).
 - Exporting your video with its sound: only **Export frame** works.
 - Audio effects.
 
@@ -354,4 +354,4 @@ These parts are available in a later version:
 - [Keyboard shortcuts](keyboard-shortcuts.md#audio)
 - [Troubleshooting](troubleshooting.md#audio-editing)
 
-<sub>Last updated: Batch 40, 2026-10-18</sub>
+<sub>Last updated: Batch 42, 2026-10-18</sub>

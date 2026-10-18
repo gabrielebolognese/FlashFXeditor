@@ -32,7 +32,6 @@ Keyframes make a picture change while it plays: slide a logo into a corner, zoom
 - [Know what happens to keyframes when you edit clips](#know-what-happens-to-keyframes-when-you-edit-clips)
 - [Zoom in smoothly with punch zoom](#zoom-in-smoothly-with-punch-zoom)
 - [Undo keyframe changes](#undo-keyframe-changes)
-- [What is not available yet](#what-is-not-available-yet)
 
 ## How keyframes work
 
@@ -273,18 +272,19 @@ Select several clips to work on their keyframes together:
 | Move a clip | They move with it. |
 | Split a clip (<kbd>Ctrl</kbd>+<kbd>K</kbd>, the **Razor** tool) | Each part keeps its share of the motion. Played one after the other, the parts look exactly as the clip did, also when the cut falls in the middle of an eased move. <kbd>Ctrl</kbd>+<kbd>Z</kbd> gives back one clip with its keyframes. |
 | Trim the end | Keyframes after the new end stay with the clip, hidden from the lane, and still shape the motion up to the end. Lengthen the clip again and they come back. |
-| Trim the start of a video or audio clip | Keyframes stay on the same frame of the video or the same moment of the sound, so the motion stays in step with the picture and a volume change with the sound. Keyframes before the new start stay hidden, like at the end. |
+| Trim the start of a video or audio clip | Keyframes stay on the same frame of the video or the same moment of the sound, so the motion stays in step with the picture and a volume change with the sound. Keyframes before the new start stay hidden, like at the end. With **Follow source** off in **Settings**, they stay at the same distance from the clip's start instead. |
 | Trim the start of an image, solid or text | Keyframes stay at the same distance from the clip's start: the motion starts with the new start. |
-| Slip a video or audio clip | Keyframes stay on the same frames of the video or the same moments of the sound, so the motion or the volume change moves with them. |
+| Slip a video or audio clip | Keyframes stay on the same frames of the video or the same moments of the sound, so the motion or the volume change moves with them. With **Follow source** off, they stay where they are on the clip. |
 | Change the speed, or **Rate stretch** | Keyframes stretch or squeeze with the clip's new length: at 2x, the motion takes half as long. Keyframes that land on the same frame become one. |
 | Freeze frame | The frozen clip holds the look the picture has at the playhead, without keyframes. The parts before and after it keep their motion. |
 | Duplicate (<kbd>Ctrl</kbd>+<kbd>D</kbd>, <kbd>Alt</kbd>+drag), copy and paste | The copy gets the same keyframes. A copy made in the preview with <kbd>Ctrl</kbd>+<kbd>D</kbd> keeps the motion 20 pixels down and to the right. |
 | **Paste attributes** | With **Keyframes** checked, each pasted **Transform**, **Opacity** or **Audio gain** group replaces the clip's keyframes in that section with the copied clip's; unchecked, it removes them. See [Give clips the look of another clip (Paste attributes)](copy-and-paste.md#give-clips-the-look-of-another-clip-paste-attributes). |
-| A new project resolution | Position and scale keyframes scale with the layout, like the pictures. See [What a new resolution does to your clips](projects-and-saving.md#what-a-new-resolution-does-to-your-clips). |
+| A new project resolution | With **Scale layout**, position and scale keyframes scale with the layout, like the pictures; with **Keep**, they stay as they are. See [Change the frame size](project-settings-and-templates.md#change-the-frame-size). |
+| A new project frame rate | Each keyframe stays at the same moment of its clip. Two keyframes that land on the same frame of the new rate become one. See [Change the frame rate](project-settings-and-templates.md#change-the-frame-rate). |
 
 ## Zoom in smoothly with punch zoom
 
-**Punch zoom** (<kbd>Shift</kbd>+<kbd>Z</kbd>) uses keyframes: the part after the cut gets a **Transform** keyframe on its first frame, with its own scale and **Ease out**, and one 6 frames later, 20% larger. The shot zooms in over those 6 frames and lands softly: at 30 fps that is 0.2 seconds. Change the keyframes like any others, for example drag the second one further to zoom in more slowly. See [Punch in at a cut (punch zoom)](speed-freeze-frames-and-punch-zoom.md#punch-in-at-a-cut-punch-zoom).
+**Punch zoom** (<kbd>Shift</kbd>+<kbd>Z</kbd>) uses keyframes: the part after the cut gets a **Transform** keyframe on its first frame, with its own scale and **Ease out**, and one 6 frames later, 20% larger by default. The shot zooms in over those 6 frames and lands softly: at 30 fps that is 0.2 seconds. Change the keyframes like any others, for example drag the second one further to zoom in more slowly. **Punch zoom** and **Animate zoom** in **Settings** > **General** > **Editing** set how much closer it goes and whether it zooms over 6 frames or cuts in at once; see [Change how editing behaves](settings.md#change-how-editing-behaves). See [Punch in at a cut (punch zoom)](speed-freeze-frames-and-punch-zoom.md#punch-in-at-a-cut-punch-zoom).
 
 ## Undo keyframe changes
 
@@ -305,12 +305,6 @@ Each change is one step in the history. Hover over **Undo** in the app bar to se
 
 See [Undo and redo changes](projects-and-saving.md#undo-and-redo-changes).
 
-## What is not available yet
-
-These parts are available in a later version:
-
-- Settings for the punch zoom (to cut in at once, without the 6-frame zoom) and for whether keyframes follow the video when you trim its start.
-
 ## Related pages
 - [Copying, pasting and duplicating clips](copy-and-paste.md)
 - [Editing properties](editing-properties.md)
@@ -327,4 +321,4 @@ These parts are available in a later version:
 - [Keyboard shortcuts](keyboard-shortcuts.md#keyframes)
 - [Troubleshooting](troubleshooting.md#keyframes)
 
-<sub>Last updated: Batch 40, 2026-10-18</sub>
+<sub>Last updated: Batch 42, 2026-10-18</sub>

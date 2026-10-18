@@ -75,11 +75,10 @@ Like the other shortcuts, <kbd>?</kbd> doesn't open the sheet while you type in 
 
 Do one of these:
 
-- Click **Settings** (the gear) at the right end of the app bar.
-- Click **Edit shortcuts** in the **Keyboard shortcuts** sheet.
-- Open the command palette and run **Settings**.
+- Click **Edit shortcuts** in the **Keyboard shortcuts** sheet: **Settings** opens on its **Shortcuts** tab.
+- Click **Settings** (the gear) at the right end of the app bar, or run **Settings** in the command palette, then click the **Shortcuts** tab. **Settings** opens on its **General** tab, which holds your other settings; see [Settings](settings.md).
 
-The **Settings** dialog opens on its **Shortcuts** tab. Its **Media** tab chooses whether imports copy your files or link to them; see [Copy or link your files](importing-media.md#copy-or-link-your-files). Other settings are available in a later version. Click **Done** or press <kbd>Esc</kbd> to close the dialog; your changes are already in effect.
+Click **Done** or press <kbd>Esc</kbd> to close the dialog; your changes are already in effect.
 
 The tab lists every command you can give a key, by category, with the commands that have no key yet, such as **Remove silence**, **Normalize** or **Add solid**. Each row shows:
 
@@ -102,9 +101,9 @@ At the top of the tab:
 > **Video placeholder: Change a shortcut and fix a conflict**
 > - File: `videos/command-palette-and-custom-shortcuts/change-a-shortcut.mp4` (not recorded yet)
 > - Length: about 60 seconds
-> - Shows: click **Settings** (the gear) at the right of the app bar; in **Search commands or keys** type `split`; on the **Split at playhead** row, click **Ctrl+K**: the chip reads **Press a key…**; press <kbd>Ctrl</kbd>+<kbd>J</kbd>: the chip reads **Ctrl+J** and the top of the tab reads **1 changed**; click **+** on the same row and press <kbd>Ctrl</kbd>+<kbd>L</kbd>: the **Ctrl+L** chip turns red, a red line under the row reads **Ctrl+L is also Link / Unlink (Timeline)**, and the **Link / Unlink** row turns red too; point at the **Ctrl+L** chip and click its **x**: both rows are back to normal; click **Reset all**: **Split at playhead** shows **Ctrl+K** again and the top reads **Default keymap**; click **Done**.
+> - Shows: click **Settings** (the gear) at the right of the app bar, then the **Shortcuts** tab; in **Search commands or keys** type `split`; on the **Split at playhead** row, click **Ctrl+K**: the chip reads **Press a key…**; press <kbd>Ctrl</kbd>+<kbd>J</kbd>: the chip reads **Ctrl+J** and the top of the tab reads **1 changed**; click **+** on the same row and press <kbd>Ctrl</kbd>+<kbd>L</kbd>: the **Ctrl+L** chip turns red, a red line under the row reads **Ctrl+L is also Link / Unlink (Timeline)**, and the **Link / Unlink** row turns red too; point at the **Ctrl+L** chip and click its **x**: both rows are back to normal; click **Reset all**: **Split at playhead** shows **Ctrl+K** again and the top reads **Default keymap**; click **Done**.
 
-1. Open **Settings** and stay on the **Shortcuts** tab. See [Open the shortcut settings](#open-the-shortcut-settings).
+1. Open **Settings** on the **Shortcuts** tab. See [Open the shortcut settings](#open-the-shortcut-settings).
 2. Find the command: type part of its name in **Search commands or keys**, or scroll to its category.
 3. Click the key you want to replace, for example **Ctrl+K** on **Split at playhead**. The chip reads **Press a key…**.
 4. Press the new key, with the modifiers you want, for example <kbd>Ctrl</kbd>+<kbd>J</kbd>. The chip shows the new key.
@@ -217,4 +216,4 @@ Two more lists work with the arrow keys:
 - [Organizing media](organizing-media.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 41, 2026-10-18</sub>
+<sub>Last updated: Batch 42, 2026-10-18</sub>

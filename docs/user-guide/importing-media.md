@@ -82,7 +82,7 @@ For each file, Shorts Editor:
 3. **Copies the file** into the `media` folder of your project folder. The original file is not changed or moved, and the project keeps working even if you delete or move the original later.
    - If a file with the same name is already in `media`, the copy gets a number, for example `clip (2).mp4`.
    - Characters that are not allowed in file names are replaced with `_`.
-   - With **Link to the original files** chosen in **Settings** > **Media**, the file is not copied: the project reads it where it is. See [Copy or link your files](#copy-or-link-your-files).
+   - With **Link to the original files** chosen in **Settings** > **General** > **Media**, the file is not copied: the project reads it where it is. See [Copy or link your files](#copy-or-link-your-files).
 4. **Adds all the items to the project in one step**, so one Undo removes the whole import. Undo does not delete the copied files from the `media` folder.
 5. **Makes thumbnails** in the background. For each image, a thumbnail of the picture. For each video, first its card thumbnail (the first frame), then the thumbnails that its clips show on the timeline: one every 2 seconds and one every half second of the video. Video thumbnails wait while you play, scrub or drag. Audio items show an audio icon. Thumbnails are saved in the project's `cache` folder, so they appear at once the next time you open the project. If that folder is deleted, the thumbnails are made again. See [Clip thumbnails, waveforms and badges](clip-thumbnails-and-waveforms.md).
 6. **Analyzes the sound** of each audio file and each video with sound, in the background while you are not playing, and saves the result in the `cache` folder. Audio clips on the timeline draw their waveform from it. See [Know how sound is loaded](audio.md#know-how-sound-is-loaded).
@@ -103,13 +103,13 @@ You can keep working while files copy. If you start another import before the fi
 > **Video placeholder: Link to your files instead of copying them**
 > - File: `videos/importing-media/copy-or-link.mp4` (not recorded yet)
 > - Length: about 35 seconds
-> - Shows: click **Settings** (the gear) in the app bar, then the **Media** tab; point at **Copy files into the project folder** (chosen) and its note; click **Link to the original files**; click **Done**; drag a folder named "Footage" from File Explorer onto the Media panel; open the project folder in File Explorer: its `media` folder has no new files; right-click a new card and choose **Reveal in folder**: the message reads **Linked file: Footage/clip.mp4**.
+> - Shows: click **Settings** (the gear) in the app bar: the **General** tab opens; scroll to the **Media** group; point at **Copy files into the project folder** (chosen) and its note; click **Link to the original files**; click **Done**; drag a folder named "Footage" from File Explorer onto the Media panel; open the project folder in File Explorer: its `media` folder has no new files; right-click a new card and choose **Reveal in folder**: the message reads **Linked file: Footage/clip.mp4**.
 
 By default, the editor copies every file you import into the project's `media` folder. You can choose to link to your files where they are instead.
 
-1. Click **Settings** (the gear) at the right end of the app bar.
-2. Click the **Media** tab.
-3. Under **Import**, click one of the two choices:
+1. Click **Settings** (the gear) at the right end of the app bar. The dialog opens on its **General** tab.
+2. Scroll to the **Media** group.
+3. In the **Import** row, click one of the two choices:
 
 | Choice | What it does | Good for |
 | --- | --- | --- |
@@ -122,8 +122,8 @@ You can also switch with the command palette: run **Import mode: copy files into
 
 What to know about the choice:
 
-- It applies to your next imports, in every project you open in this browser. "Media already in the project keep how they were imported."
-- Linking works for the files you pick with **Import media** or **Add image**, and for the files and folders you drop on the Media panel or the timeline. "Files you paste are always copied."
+- It applies to your next imports, in every project you open in this browser. Media already in the project keep how they were imported.
+- Linking works for the files you pick with **Import media** or **Add image**, and for the files and folders you drop on the Media panel or the timeline. Files you paste are always copied.
 - The browser keeps the links. In another browser or on another computer, linked media are offline until you relink them. Use copies for projects you move.
 - After you restart the browser, it asks again before the editor can read linked files. See [Give the browser access to linked files](offline-media-and-relinking.md#give-the-browser-access-to-linked-files).
 - If you move, rename or delete a linked file, its media item goes offline and its clips show a gray slate. See [Offline media and relinking](offline-media-and-relinking.md).
@@ -285,7 +285,7 @@ When a file is not imported, a message at the top of the window says why. It clo
 | **The image cannot be decoded** | The image file is damaged or in a variant Chrome cannot read. | Save it again as .png or .jpg. |
 | **The SVG has no size (width/height or viewBox)** | The SVG does not say how large it is. | Add width and height, or a viewBox, to the SVG. |
 | **Could not copy it into media/** | The copy into the project folder failed, for example because the disk is full. | Free some space and import again. |
-| **Could not keep a link to it** | With **Link to the original files** chosen, the browser could not store the link to the file. | Try again, or choose **Copy files into the project folder** in **Settings** > **Media**. |
+| **Could not keep a link to it** | With **Link to the original files** chosen, the browser could not store the link to the file. | Try again, or choose **Copy files into the project folder** in **Settings** > **General** > **Media**. |
 | **This project is read-only** | The project is open without write access. | Allow editing first. See [Projects and saving](projects-and-saving.md). |
 | **Import failed** | Something unexpected stopped the import. Nothing was added. | Try again. See [Troubleshooting](troubleshooting.md). |
 | **Could not open the file picker** | Chrome could not show the file picker. | Try again, or drop the files on the Media panel. |
@@ -308,4 +308,4 @@ If a card keeps its kind icon instead of a thumbnail, Chrome could not decode th
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 41, 2026-10-18</sub>
+<sub>Last updated: Batch 42, 2026-10-18</sub>

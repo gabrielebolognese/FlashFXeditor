@@ -18,6 +18,7 @@ A text preset is a saved look for text: the font, size, colors, outline, shadow,
 - [What a preset keeps](#what-a-preset-keeps)
 - [Open the Presets tab](#open-the-presets-tab)
 - [Start with the starter presets](#start-with-the-starter-presets)
+  - [Restore the starter presets](#restore-the-starter-presets)
 - [Save a text style as a preset](#save-a-text-style-as-a-preset)
 - [Apply a preset to text](#apply-a-preset-to-text)
 - [Apply a preset to captions](#apply-a-preset-to-captions)
@@ -95,7 +96,16 @@ The starters are yours to apply, change, rename or delete like your own presets.
 
 > **Note:** If your starters were added by an earlier version of the editor, **Lower third**, **Caption bold**, **Neon glow** and **Breaking** get their animations the next time you open the editor, as long as you never changed them. A starter you changed keeps its look as it is. To animate it, select a text, click the starter's card, choose the animations in the **Animation** section, then click **Update preset**.
 
-> **Note:** A starter preset you delete doesn't come back. Restoring the starters is available in a later version. To keep a copy before you change one, use **Duplicate**, or export your presets to a file; see [Export and import presets](#export-and-import-presets).
+### Restore the starter presets
+
+A starter preset you deleted can come back:
+
+1. Click **Settings** (the gear) in the app bar. The **General** tab opens.
+2. In the **Storage** group, click **Restore** in the **Starter presets** row. You can also run **Restore starter presets** in the command palette.
+
+The starters you deleted are back in your **Global** list, as they came with the editor, and the message **Restored 2 starter presets** (with the number) says so: "They are back among the Global presets of the Presets tab." When none is missing, the message reads **Every starter preset is there**.
+
+> **Note:** **Restore** doesn't touch the starters still in your list: "Starters you changed keep your changes." To keep a copy of a starter's original look before you change it, use **Duplicate**, or export your presets to a file; see [Export and import presets](#export-and-import-presets).
 
 ## Save a text style as a preset
 
@@ -357,6 +367,8 @@ From then on:
 
 The strip can also read **Syncing with My presets…** while the editor reads and writes the folder, or the folder's name with a reason when it can't, for example when the folder was moved or deleted. Click **Sync the global presets with the library folder** to try again, or click **Stop syncing (the folder keeps its files)** and choose another folder.
 
+The **Preset folder** row of **Settings** > **General** > **Storage** shows the same folder and its state, with **Choose…** (or **Change…**) and the sync and stop buttons. See [Manage storage](settings.md#manage-storage).
+
 ## Presets in projects of other sizes
 
 Presets store their sizes for a frame whose shorter side is 1080 pixels, such as 1080×1920 or 1920×1080. In a project of another size, the font size, outline, shadow, letter spacing, padding, box width and position scale with the shorter side of the frame, so a preset looks the same in every project:
@@ -382,14 +394,13 @@ Changes to your text clips are steps in the history. Hover **Undo** in the app b
 | **Add clip**, **Insert clip** | A drop on the timeline |
 | **Add title**, **Add subtitle** | <kbd>T</kbd> and <kbd>Shift</kbd>+<kbd>T</kbd>, also with a default preset |
 
-Changes to the presets themselves are not steps in the history and can't be undone: saving, updating, renaming, duplicating and deleting presets, favorites, **Apply position**, the default title and subtitle, imports and the library folder.
+Changes to the presets themselves are not steps in the history and can't be undone: saving, updating, renaming, duplicating and deleting presets, favorites, **Apply position**, the default title and subtitle, imports, the library folder and restoring the starters.
 
 ## What is not available yet
 
 These parts are available in a later version:
 
-- Restoring the starter presets after you delete or change them.
-- Choosing the library folder in the editor's **Settings**: for now, the strip at the bottom of the **Global** list does it.
+- Restoring a starter preset you changed to its original look. **Restore** brings back only the starters you deleted.
 
 ## Related pages
 - [Titles and text](titles-and-text.md)
@@ -402,4 +413,4 @@ These parts are available in a later version:
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 32, 2026-10-17</sub>
+<sub>Last updated: Batch 42, 2026-10-18</sub>

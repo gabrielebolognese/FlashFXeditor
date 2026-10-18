@@ -2,6 +2,11 @@
 
 Shorts Editor grows in steps called batches. This page lists what each batch added that you can see or use, newest first. Follow the links for the full instructions.
 
+> **Video placeholder: What's new in Batch 42**
+> - File: `videos/whats-new/batch-42.mp4` (not recorded yet)
+> - Length: about 75 seconds
+> - Shows: a 30 fps project with clips, a dissolve, a title with **Word pop**, caption cues and two markers; click an empty area of the timeline tracks and choose **60 fps** in **Frame rate**: the message **Converted to 60 fps** appears and nothing moves on the ruler; press <kbd>Ctrl</kbd>+<kbd>Z</kbd>; choose **1:1 · 1080×1080** in **Resolution** and click **Scale layout**; click **History…**, then **Restore…** on an older version and **Restore**; click **Save as template…**, type `Square talk` and press <kbd>Enter</kbd>; click **Settings** (the gear): the **General** tab opens; set **Still image** to `2`, choose **Dip to black** in **Transition**, and click **Clear cache** under **Storage**, then **Clear cache** again; click **Done**; reload the page: the start screen shows the project as a card with its picture, and **Square talk** under **New from template**.
+
 > **Video placeholder: What's new in Batch 41**
 > - File: `videos/whats-new/batch-41.mp4` (not recorded yet)
 > - Length: about 60 seconds
@@ -163,6 +168,7 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 > - Shows: open a project with three clips on the timeline; press <kbd>Space</kbd> to play and let the timeline page forward; press <kbd>L</kbd> three times to reach 8x, then <kbd>K</kbd>; hold <kbd>K</kbd> and tap <kbd>L</kbd> to step one frame; turn on **Loop playback**; point at the **Dropped** readout in the status strip.
 
 ## In this page
+- [Batch 42: Project management](#batch-42-project-management)
 - [Batch 41: Organizing media and relinking](#batch-41-organizing-media-and-relinking)
 - [Batch 40: Command palette and custom shortcuts](#batch-40-command-palette-and-custom-shortcuts)
 - [Batch 39: Copy, paste and duplicate](#batch-39-copy-paste-and-duplicate)
@@ -204,6 +210,21 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 - [Batch 03: Projects, autosave and recovery](#batch-03-projects-autosave-and-recovery)
 - [Batch 02: Undo, redo and frame-exact time](#batch-02-undo-redo-and-frame-exact-time)
 - [Batch 01: The workspace](#batch-01-the-workspace)
+
+## Batch 42: Project management
+- Change the **Frame rate** at any time, also with a full timeline: clips, the media part they play, fades, transitions, keyframes, caption cues and their word timings, text animations, markers, the playhead and the in and out points keep their moments, in one undo step. From 30 to 60 fps it happens at once; when timings would fall between frames, for example from 30 to 24 fps, **Convert to 24 fps?** says how many are rounded first. See [Change the frame rate](project-settings-and-templates.md#change-the-frame-rate).
+- A new **Resolution** asks **Scale layout** (the pictures follow the new frame, as before) or **Keep** (each picture keeps its size in pixels). See [Change the frame size](project-settings-and-templates.md#change-the-frame-size).
+- **History…** in the **Project** section lists the earlier versions of the project with their time, name and size, and **Restore…** brings one back. The state before a restore stays in the list. See [Restore an older version](projects-and-saving.md#restore-an-older-version).
+- Templates: **Save as template…** keeps the frame size, frame rate, background, tracks, caption style and project presets of a project. The start screen lists them under **New from template**, and the **New project** dialog has a **Template** field. See [Save a project as a template](project-settings-and-templates.md#save-a-project-as-a-template).
+- **Settings** now opens on a **General** tab: autosave, the length of new still images, titles, solids and freeze frames, **Match clip** for titles, the kind and length of the default transition, **Follow source** for keyframes, the punch zoom amount and **Animate zoom**, Auto-duck depth and ramps, the Remove silence values, the default transcription model and language with the downloaded models, the import mode (it moved here from the **Media** tab) and proxies, and storage. See [Settings](settings.md).
+- **Clear cache** (in **Settings** and the **Project** section) shows the size of the project's cache and deletes it; thumbnails, waveforms and proxies are made again in the background. See [Clear the cache](projects-and-saving.md#clear-the-cache).
+- The **Project** section's **Still image**, **Title**, **Transition** and **Cache** rows now work, and it has **History…** and **Save as template…** buttons. See [What the Project section sets](project-settings-and-templates.md#what-the-project-section-sets).
+- **Recent projects** on the start screen are cards with a picture of each project, taken at the playhead, and its size and frame rate. See [Reopen a recent project](getting-started.md#reopen-a-recent-project).
+- Clips copied in a project at another frame rate now paste, converted to this project's rate; the message **Can't paste across frame rates** is gone. See [Paste clips into another project](copy-and-paste.md#paste-clips-into-another-project).
+- Read-only projects: **Clear cache** and **Restore…** are refused, and before your unsaved changes are lost, **Discard unsaved changes?** asks when you open another project and Chrome asks when you close the tab. See [Before read-only changes are lost](projects-and-saving.md#before-read-only-changes-are-lost).
+- **Restore** under **Starter presets** in **Settings** brings back the starter text presets you deleted, and the **Preset folder** row manages your library folder. See [Restore the starter presets](text-presets.md#restore-the-starter-presets).
+- <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>N</kbd> creates a new project, on the start screen and while a project is open. See [Create a project](getting-started.md#create-a-project).
+- New pages: [Project settings and templates](project-settings-and-templates.md) and [Settings](settings.md). New troubleshooting section: [Project settings and templates](troubleshooting.md#project-settings-and-templates), and new entries from [Opening another project asks Discard unsaved changes?](troubleshooting.md#opening-another-project-asks-discard-unsaved-changes) to [Clear cache is refused or the thumbnails are missing afterwards](troubleshooting.md#clear-cache-is-refused-or-the-thumbnails-are-missing-afterwards).
 
 ## Batch 41: Organizing media and relinking
 - **Bins**: click **New bin** in the Media panel header to make a bin, drag cards onto its chip in the new bin strip on the left, or use **Move to bin** in the media menu. Double-click a bin to rename it; right-click it to delete it. The strip also shows **All**, **Video**, **Audio** and **Images**, each with a count. See [Organizing media](organizing-media.md).
@@ -626,6 +647,8 @@ See [Projects and saving](projects-and-saving.md).
 See [The workspace](workspace.md) and [Getting started](getting-started.md).
 
 ## Related pages
+- [Project settings and templates](project-settings-and-templates.md)
+- [Settings](settings.md)
 - [Copying, pasting and duplicating clips](copy-and-paste.md)
 - [Shapes and images](shapes-and-images.md)
 - [Captions](captions.md)
@@ -643,4 +666,4 @@ See [The workspace](workspace.md) and [Getting started](getting-started.md).
 - [Adding media to the timeline](adding-media-to-the-timeline.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 41, 2026-10-18</sub>
+<sub>Last updated: Batch 42, 2026-10-18</sub>

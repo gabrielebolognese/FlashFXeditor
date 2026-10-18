@@ -1,6 +1,6 @@
 # Getting started
 
-Shorts Editor is a video editor for short vertical videos that runs in your browser. Your projects live in folders on your own disk, and your media never leaves your computer. This page covers what you need to run the editor, the start screen, and how to create, open and reopen a project.
+Shorts Editor is a video editor for short vertical videos that runs in your browser. Your projects live in folders on your own disk, and your media never leaves your computer. This page covers what you need to run the editor, the start screen, and how to create, open and reopen a project, also from a template.
 
 > **Video placeholder: Create your first project**
 > - File: `videos/getting-started/create-first-project.mp4` (not recorded yet)
@@ -56,12 +56,13 @@ The start screen is shown whenever no project is open. It has:
 
 | Element | What it does |
 | --- | --- |
-| **New project** | Creates a project in a folder you pick. Shortcut <kbd>Ctrl</kbd>+<kbd>N</kbd> (see the note below). |
+| **New project** | Creates a project in a folder you pick. Shortcut <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>N</kbd> (see the note below). |
 | **Open project** | Opens a project folder. Shortcut <kbd>Ctrl</kbd>+<kbd>O</kbd>. |
-| **Recent projects** | The projects you opened recently. Shows "No recent projects yet." until you create or open one. |
+| **Recent projects** | Cards of the projects you opened recently, each with a picture of the project. Shows "No recent projects yet." until you create or open one. See [Reopen a recent project](#reopen-a-recent-project). |
+| **New from template** | The templates you saved. Click one to start a project with it. See [Start a project from a template](project-settings-and-templates.md#start-a-project-from-a-template). |
 | Drop area | The whole window: drop a project folder on it to open the project. |
 
-> **Note:** In a normal browser tab, Chrome and Edge keep <kbd>Ctrl</kbd>+<kbd>N</kbd> for themselves and open a new browser window. Click **New project** instead.
+> **Note:** <kbd>Ctrl</kbd>+<kbd>N</kbd> is also a key for **New project**, but in a normal browser tab Chrome and Edge keep it for themselves and open a new browser window. Use <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>N</kbd>.
 
 While a project is being created or opened, the buttons are disabled until the step finishes.
 
@@ -78,17 +79,18 @@ A project is a folder. The editor writes the project file and its subfolders int
 | Setting | Choices | Default |
 | --- | --- | --- |
 | **Name** | Any text up to 120 characters. | The folder name. |
+| **Template** (only when you have saved a template) | **None: V1 and A1**, or one of your templates. A template sets **Resolution** and **Frame rate** to its values, which you can still change, and brings its tracks, caption style, background and text presets. See [Project settings and templates](project-settings-and-templates.md). | **None: V1 and A1** |
 | **Resolution** | **9:16 · 1080×1920**, **4:5 · 1080×1350**, **1:1 · 1080×1080**, **16:9 · 1920×1080**, or **Custom**. | **9:16 · 1080×1920** |
 | **Size** (with **Custom** only) | **W** and **H** in pixels, from 16 to 7680. Odd values are rounded to an even number. Type a value, press <kbd>↑</kbd> or <kbd>↓</kbd> to change it by 2, or drag the **W** or **H** letter left or right. | 1080 × 1920 |
 | **Frame rate** | **23.976 fps**, **24 fps**, **25 fps**, **29.97 fps**, **30 fps**, **50 fps**, **59.94 fps**, **60 fps** | **30 fps** |
 
-The editor opens with the new project. It starts with one video track (**V1**), one audio track (**A1**) and a black background, and it appears at the top of **Recent projects**.
+The editor opens with the new project. Without a template, it starts with one video track (**V1**), one audio track (**A1**) and a black background. It appears at the top of **Recent projects**.
 
 To stop without creating anything, click **Cancel**, press <kbd>Escape</kbd>, or click outside the dialog. Nothing is written to the folder until you click **Create project**.
 
 > **Note:** A folder that already contains a project is refused with "The folder "<name>" already contains a project. Open it instead, or pick an empty folder." Other files already in the folder are left alone.
 
-> **Tip:** You can change the name, resolution and background later, and the frame rate as long as the timeline is empty. See [Change project settings](projects-and-saving.md#change-project-settings).
+> **Tip:** You can change the name, resolution, frame rate and background later, also with clips on the timeline. See [Project settings and templates](project-settings-and-templates.md).
 
 ## Open an existing project
 
@@ -102,25 +104,32 @@ You can also drag the project folder from File Explorer onto the start screen. W
 
 To switch to another project while one is open, press <kbd>Ctrl</kbd>+<kbd>O</kbd> in the editor. The current project is saved first, and it closes only after the new one has opened. If the new one cannot be opened, you stay in the current project.
 
-> **Tip:** To create a new project while one is open, wait until the save dot is green, reload the page to return to the start screen, and click **New project**.
+To create a new project while one is open, press <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>N</kbd>, or run **New project** in the command palette. Here too, the current project is saved and closes once the new one has opened.
+
+> **Note:** When the open project is read-only and has changes that were never saved, **Discard unsaved changes?** asks first. See [Before read-only changes are lost](projects-and-saving.md#before-read-only-changes-are-lost).
 
 ## Reopen a recent project
 
 > **Video placeholder: Reopen a project from Recent projects**
 > - File: `videos/getting-started/reopen-recent-project.mp4` (not recorded yet)
 > - Length: about 30 seconds
-> - Shows: with a project open, reload the page; the start screen lists the project under **Recent projects** with its folder name and last save time; click the row; the browser asks for edit permission; allow it; the editor opens with the same name, panel sizes and playhead position; reload again, hover a row on the start screen and point at the **X** (**Remove from recent projects**) without clicking it.
+> - Shows: with a project open, put the playhead on a striking frame and press <kbd>Ctrl</kbd>+<kbd>O</kbd> to open a second project; reload the page; the start screen shows both projects as cards, the first one with the striking frame as its picture, its name, its last save time, and its folder name with "1080×1920 · 30 fps"; click the first card; the browser asks for edit permission; allow it; the editor opens with the same name, panel sizes and playhead position; reload again, hover a card and point at the **X** (**Remove from recent projects**) without clicking it.
 
-**Recent projects** lists up to 12 projects, the most recently opened first. Each row shows the project name, the folder name and the date and time of the last save.
+**Recent projects** shows up to 12 projects as cards, the most recently opened first. Each card shows:
 
-1. Click a row.
+- a picture of the project: the frame at the playhead when you last worked on it, or a film icon until the editor has taken one
+- the project name
+- the date and time of the last save
+- the folder name, the frame size and the frame rate, for example "My short · 1080×1920 · 30 fps"
+
+The editor takes the picture when you open another project from the editor, and when you switch to another browser tab or minimize the window (the next time, only if the project or the playhead changed).
+
+1. Click a card.
 2. If the browser asks for permission to edit the folder, allow it.
 
-To take a project off the list, hover its row and click the **X** (**Remove from recent projects**). This only changes the list: the folder and its files stay on your disk.
+To take a project off the list, hover its card and click the **X** (**Remove from recent projects**). This only changes the list: the folder and its files stay on your disk.
 
 > **Note:** The list is stored in your browser. Another browser or browser profile has its own list, and clearing the site data of Shorts Editor empties it. Your project folders are not affected; open them again with **Open project**.
-
-Project thumbnails in the list are available in a later version.
 
 ## Allow access to the project folder
 
@@ -152,9 +161,11 @@ For other problems, see [Troubleshooting](troubleshooting.md).
 ## Related pages
 - [The workspace](workspace.md)
 - [Projects and saving](projects-and-saving.md)
+- [Project settings and templates](project-settings-and-templates.md)
+- [Settings](settings.md)
 - [Importing media](importing-media.md)
 - [Offline media and relinking](offline-media-and-relinking.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 41, 2026-10-18</sub>
+<sub>Last updated: Batch 42, 2026-10-18</sub>

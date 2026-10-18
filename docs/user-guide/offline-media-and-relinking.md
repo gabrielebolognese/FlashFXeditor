@@ -86,7 +86,7 @@ The file must:
 
 Otherwise the message **Can't relink** with the item's name gives the reason, and nothing changes. See [Messages about offline media](#messages-about-offline-media).
 
-**Where the new file goes.** A copied item gets a copy of the new file in the project's `media` folder. A linked item links to the new file where it is. An item pasted from another project follows the choice in **Settings** > **Media**. See [Copy or link your files](importing-media.md#copy-or-link-your-files).
+**Where the new file goes.** A copied item gets a copy of the new file in the project's `media` folder. A linked item links to the new file where it is. An item pasted from another project follows the choice in **Settings** > **General** > **Media**. See [Copy or link your files](importing-media.md#copy-or-link-your-files).
 
 A relink is one step in the history (**Relink media**). <kbd>Ctrl</kbd>+<kbd>Z</kbd> points the item back at its old file, so it is offline again; <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd> relinks it again.
 
@@ -157,4 +157,4 @@ These clips have no media item left, so you can't relink them. To get the pictur
 - [Proxies](proxies.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 41, 2026-10-18</sub>
+<sub>Last updated: Batch 42, 2026-10-18</sub>

@@ -1,6 +1,6 @@
 # Projects and saving
 
-Every Shorts Editor project is a folder on your disk. The editor saves your work automatically, keeps backups of earlier versions, lets you undo changes, and remembers where you left off. This page explains what the project folder holds, how saving and undo work, how to recover after a crash, and how to change the project settings.
+Every Shorts Editor project is a folder on your disk. The editor saves your work automatically, keeps backups of earlier versions, lets you undo changes, and remembers where you left off. This page explains what the project folder holds, how saving and undo work, how to recover after a crash, how to go back to an earlier version, how to clear the cache, and what happens when a project is read-only. To change the frame size, frame rate or background, see [Project settings and templates](project-settings-and-templates.md).
 
 > **Video placeholder: Autosave and undo**
 > - File: `videos/projects-and-saving/autosave-and-undo.mp4` (not recorded yet)
@@ -16,8 +16,8 @@ Every Shorts Editor project is a folder on your disk. The editor saves your work
 - [Pick up where you left off](#pick-up-where-you-left-off)
 - [Restore unsaved changes after a crash](#restore-unsaved-changes-after-a-crash)
 - [Restore an older version](#restore-an-older-version)
+- [Clear the cache](#clear-the-cache)
 - [Work in read-only mode](#work-in-read-only-mode)
-- [Change project settings](#change-project-settings)
 - [Related pages](#related-pages)
 
 ## What is in the project folder
@@ -29,8 +29,8 @@ When you create a project, the editor fills the folder you picked with these ite
 | `project.json` | The project itself: settings, tracks, clips, markers and the list of media. |
 | `session.json` | Where you left off: playhead, in and out points, the marked parts of media items, the timeline and preview zoom, the preview quality and overlays, panel sizes, the folded sections of **Edit Properties** and similar view settings. If it is missing or damaged, the project still opens, with default view settings. |
 | `media` | Copies of the files you import. Files you link to stay where they are and are not copied here. See [Copy or link your files](importing-media.md#copy-or-link-your-files). |
-| `cache` | Thumbnails, sound analysis and indexes the editor builds from your media, and the proxies of heavy videos in `cache/proxies` (see [Proxies](proxies.md)). If you delete this folder while the project is closed, the editor builds what it needs again the next time. This takes a little longer, and for proxies about as long as the videos themselves. |
-| `history` | Automatic backups of `project.json`: the newest 20. See [Restore an older version](#restore-an-older-version). |
+| `cache` | Thumbnails, sound analysis and indexes the editor builds from your media, and the proxies of heavy videos in `cache/proxies` (see [Proxies](proxies.md)). Nothing in it is lost for good: to free disk space, use **Clear cache**, and the editor builds what it needs again. See [Clear the cache](#clear-the-cache). |
+| `history` | Automatic backups of `project.json`: the newest 20. **History…** in the **Project** section lists them and restores one. See [Restore an older version](#restore-an-older-version). |
 | `fonts` | Copies of the fonts from your computer that your text clips use, and `fonts.json`, the list of those copies. Created the first time a text uses a font from your computer. The editor uses these copies when it opens the project, so the text looks the same on a computer without those fonts. See [Fonts travel with the project](titles-and-text.md#fonts-travel-with-the-project). |
 | `exports` | The default place for exported videos. Export is available in a later version. |
 | `presets/text` | The project's own text presets, one `.json` file per preset: the **Project** list of the **Presets** tab. See [Keep presets for all projects or for one](text-presets.md#keep-presets-for-all-projects-or-for-one). |
@@ -52,7 +52,7 @@ You never need to save by hand. After each change, the editor waits for a short 
 - Where you left off (playhead, zoom, panel sizes) is saved separately, every 10 seconds when something changed.
 - When you switch to another browser tab, minimize the window, close the tab or open another project, the editor saves pending changes right away.
 
-You can change the pause in the **Project** section: **1 s after the last change** (default), **2 s**, **5 s** or **10 s**. With **10 s**, the editor also waits up to 10 seconds during continuous editing. This setting applies to every project in this browser. See [Change project settings](#change-project-settings).
+You can change the pause with **Autosave** in **Settings** > **General** or in the **Project** section: **1 s after the last change** (default), **2 s**, **5 s** or **10 s**. With **10 s**, the editor also waits up to 10 seconds during continuous editing. This setting applies to every project in this browser. See [Change how often the project saves](settings.md#change-how-often-the-project-saves).
 
 > **Tip:** Before you close the tab, check that the save dot is green.
 
@@ -90,7 +90,7 @@ How undo behaves:
 - Undo also brings back the selection you had before the change; redo brings back the selection after it.
 - When you make a new change after undoing, the steps you undid can no longer be redone.
 - Undo and redo are changes like any other: they are saved automatically.
-- The history lasts while the project is open. Opening a project (also after a reload) starts with an empty history, and so does restoring unsaved changes after a crash.
+- The history lasts while the project is open. Opening a project (also after a reload) starts with an empty history, and so do restoring unsaved changes after a crash and restoring a version from **History**.
 - In a text field, <kbd>Ctrl</kbd>+<kbd>Z</kbd> undoes your typing in that field, not a change to the project.
 
 What you can undo:
@@ -98,10 +98,11 @@ What you can undo:
 | Undoable (one step each) | Not undoable |
 | --- | --- |
 | Renaming the project | Moving the playhead and playing |
-| Changing the resolution, frame rate or background color | Selecting clips, tracks, a cut (edit point), a gap or a marker |
+| Changing the resolution (with **Scale layout** or **Keep**), the background color, and the frame rate with every timing it converts | Selecting clips, tracks, a cut (edit point), a gap or a marker |
 | Importing media, renaming media, removing media | Zooming, scrolling and panning the timeline (also with the scrollbars), zooming and panning the preview, the preview quality, overlays and fullscreen |
 | Adding media to the timeline: each insert, overwrite, drag, drop on the preview or **Add to canvas**; dropped files with their import are one step | Panel sizes, panel tabs, the media view and sort order, skimming media cards |
-| Moving, inserting, duplicating and nudging clips (a quick series of nudges is one step) | **Loop playback**, **Snap**, **Linked selection**, **Ripple mode**, **Audio scrub**, the timecode format, the **Autosave** setting and the proxy settings |
+| Moving, inserting, duplicating and nudging clips (a quick series of nudges is one step) | **Loop playback**, **Snap**, **Linked selection**, **Ripple mode**, **Audio scrub**, the timecode format, and every setting of **Settings** (also the **Autosave**, duration, transition, proxy and cache rows of the **Project** section) |
+| | Restoring a version from **History**, **Clear cache**, and saving or deleting templates |
 | Moving, resizing, rotating and cropping layers in the preview and moving their anchor point (one step per drag), nudging them with the arrow keys (a quick series is one step), **Fit**, **Fill**, **Center**, the flips, **Reset transform**, **Bring forward** and **Send backward** | Folding and opening the sections of **Edit Properties**, the scale lock in the **Transform** section, and the recent colors of the color picker |
 | Values typed or dragged in **Edit Properties**: position, scale, rotation, anchor, crop, opacity, the clip times, and the shape, fill, size and corner radius of a solid (one step per value, per drag, or per quick series of arrow presses) | Turning crop mode on or off, the crop units (**px** or **%**) and the crop **Aspect** lock |
 | **Crop to frame** and resetting a crop | |
@@ -169,24 +170,81 @@ The editor offers this only when the temporary copy is newer than `project.json`
 
 ## Restore an older version
 
-Every save keeps the previous version of `project.json` in the `history` folder, so you can go back to an earlier state of the project. A backup browser inside the editor is available in a later version; for now you restore a backup in File Explorer.
+> **Video placeholder: Restore an older version from History**
+> - File: `videos/projects-and-saving/history.mp4` (not recorded yet)
+> - Length: about 45 seconds
+> - Shows:
+>   1. Rename the project "One" and wait for the green dot; rename it "Two" and wait again.
+>   2. Click an empty area of the timeline tracks, then **History…** in the **Project** section: the **History** dialog lists the versions, newest first, each with its time, project name and size; the first one reads **latest backup**.
+>   3. Click **Restore…** on the version named "One": **Restore this version?** names the time. Click **Restore**.
+>   4. The app bar shows "One" and a message names the version's time. Click **History…** again: the newest version is named "Two", the state before the restore.
+>   5. Click **Done**.
 
-1. Wait until the save dot is green, then reload the page. The start screen appears.
+Every save keeps the previous version of `project.json` in the `history` folder, so you can go back to an earlier state of the project.
+
+1. Click an empty area of the timeline tracks so the **Project** section shows, then click **History…**. You can also run **History…** in the command palette (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>).
+2. The **History** dialog lists the versions, newest first. Each row shows when that version was saved, in your local time, then the project's name in that version and the size of the file. The newest row also reads **latest backup**.
+3. Click **Restore…** on the version you want (tooltip **Make this version the current one**).
+4. **Restore this version?** names the project and the time of the version: "The current version is saved first and stays in History, so you can come back to it. Undo history starts over."
+5. Click **Restore** to go back to that version, or **Back** to return to the list.
+
+What happens when you restore:
+
+- Your current state is saved first, so it becomes the newest version in **History**. To undo a restore, open **History…** again and restore that newest version.
+- The project switches to the version you chose and is saved right away. The message **Restored the version from** and the time appears: "The version before it is the newest entry in History."
+- The undo history starts empty.
+- Autosave goes on as usual.
+
+If the current state can't be saved first, nothing is restored and the message **Can't restore this backup** explains why. Click **Done** or press <kbd>Escape</kbd> to close the list without restoring. Before the first saves, the list reads "No earlier versions yet: they appear after the first saves."
+
+> **Important:** `history` keeps only the newest 20 backups. Because every save makes one, 20 backups can cover just the last few minutes of work, and each <kbd>Ctrl</kbd>+<kbd>S</kbd> adds one even without changes. A restore adds one too. Copy a backup somewhere else if you want to keep it.
+
+### Restore a version when the project doesn't open
+
+When `project.json` is damaged and the project no longer opens, restore a backup in File Explorer instead:
+
+1. Reload the page so the start screen appears.
 2. In File Explorer, open the project folder and then its `history` folder. Backups are named `project-YYYYMMDD-HHMMSS.json`. Saves within the same second get `-2`, `-3` and so on.
 3. Rename the current `project.json` in the project folder, for example to `project-before-restore.json`, so you can go back to it.
 4. Copy the backup you want into the project folder and rename the copy to `project.json`.
 5. Open the project from **Recent projects**.
 
-> **Note:** Backup names use UTC time, not your local time, so the hour can differ from your clock.
+> **Note:** Backup file names use UTC time, not your local time, so the hour can differ from your clock. The **History** dialog shows your local time.
 
-> **Important:** `history` keeps only the newest 20 backups. Because every save makes one, 20 backups can cover just the last few minutes of work, and each <kbd>Ctrl</kbd>+<kbd>S</kbd> adds one even without changes. Copy a backup somewhere else if you want to keep it.
+## Clear the cache
+
+> **Video placeholder: Clear the cache**
+> - File: `videos/projects-and-saving/clear-cache.mp4` (not recorded yet)
+> - Length: about 40 seconds
+> - Shows:
+>   1. A project with a 1080p 60 fps video (its card shows a green **PX** chip) and a video with sound on the timeline, with thumbnails and waveforms.
+>   2. Click **Settings** (the gear), scroll to **Storage**: **Cache** reads, for example, "777 KB · 11 files".
+>   3. Click **Clear cache**: **Clear the cache?** names the project and the size. Click **Clear cache**.
+>   4. The message **Cleared 777 KB of cache** appears. Click **Done**: the **PX** chip shows its progress, then turns green again, and the thumbnails and waveforms come back by themselves.
+
+The `cache` folder holds what the editor builds from your media: thumbnails, posters, waveforms, sound indexes and proxies. Proxies can make it large. Clearing it frees that space, and the editor builds everything again in the background from your media.
+
+1. Find the **Cache** row: in **Settings** > **General**, under **Storage**, or in the **Project** section. It shows the size, for example "777 KB · 11 files", or **Empty**.
+2. Click **Clear cache** (tooltip **Delete this project's proxies, thumbnails and waveforms: they are made again**). You can also run **Clear cache** in the command palette.
+3. **Clear the cache?** names the project and the size: "Nothing of the project is lost: they are made again in the background, proxies of long videos take a while. Media files stay where they are."
+4. Click **Clear cache**. The row reads **Clearing…**, then the message **Cleared** with the size appears: "Thumbnails, waveforms and proxies are made again in the background."
+
+What to know about clearing the cache:
+
+- Only the `cache` folder is emptied. The project, its media files, `history`, `fonts` and presets stay, and so does the undo history.
+- Thumbnails and waveforms come back within moments. Proxies are made again, which takes about as long as the videos themselves; until a proxy is ready, the original video plays. See [Proxies](proxies.md).
+- Clearing the cache is not an undo step.
+- It is not available in a read-only project: the message **This project is read-only** reads "Allow editing to clear the cache."
+- If something goes wrong, the message **Can't clear the cache** gives the reason.
+
+You can also delete the `cache` folder in File Explorer while the project is closed. The editor builds what it needs again the next time you open the project.
 
 ## Work in read-only mode
 
 > **Video placeholder: Read-only mode and Allow editing**
 > - File: `videos/projects-and-saving/read-only-mode.mp4` (not recorded yet)
-> - Length: about 45 seconds
-> - Shows: reload the page and click a project in **Recent projects**; when the browser asks for permission to edit files, refuse it (allow viewing if asked); the editor opens with the read-only banner and a grey save dot; hover the dot to show its tooltip; rename the project in the app bar; click **Allow editing** in the banner; allow editing in the browser prompt; the banner disappears and the save dot turns gold, then green.
+> - Length: about 60 seconds
+> - Shows: reload the page and click a project in **Recent projects**; when the browser asks for permission to edit files, refuse it (allow viewing if asked); the editor opens with the read-only banner and a grey save dot; hover the dot to show its tooltip; rename the project in the app bar; open **History…** in the **Project** section and point at the dimmed **Restore…**; click **Done**; press <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>N</kbd>: **Discard unsaved changes?** appears; click **Allow editing** and allow editing in the browser prompt; close the dialog with **Cancel**; the banner is gone and the save dot turns gold, then green.
 
 A project opens read-only when the editor may read the project folder but not write to it. This happens when:
 
@@ -195,7 +253,9 @@ A project opens read-only when the editor may read the project folder but not wr
 
 You then see a banner under the app bar: "Read-only: Shorts Editor has no permission to write to this folder, so changes are not saved." with an **Allow editing** button, and the save dot is grey.
 
-In read-only mode you can look at the project and even make changes, but nothing is written to the folder: no saves, no backups, no new proxies, no copies of the fonts your text uses, no changes to the project's text presets (new presets go into the **Global** list), and your view (playhead, zoom, panel sizes) is not saved with the project. Changes made in read-only mode are lost when you close the tab. Proxies already in the folder are still used; **Generate proxy** and **Remove proxy** show the message **This project is read-only**.
+In read-only mode you can look at the project and even make changes, but nothing is written to the folder: no saves, no backups, no new proxies, no copies of the fonts your text uses, no changes to the project's text presets (new presets go into the **Global** list), and your view (playhead, zoom, panel sizes) is not saved with the project. Proxies already in the folder are still used.
+
+Actions that need to write to the folder are refused with the message **This project is read-only** and what to do, for example "Allow editing to clear the cache.": importing and removing media, bins, **Generate proxy** and **Remove proxy**, relinking, **Clear cache** and restoring a version. **History…** still lists the versions, but **Restore…** is dimmed (tooltip **Read-only project: allow editing to restore**). **Save as template…** works, because templates are kept in your browser.
 
 To start saving:
 
@@ -205,43 +265,24 @@ To start saving:
 
 If you refuse again, the project stays read-only.
 
-## Change project settings
+### Before read-only changes are lost
 
-1. Click an empty area of the timeline tracks so that nothing is selected.
-2. The **Edit Properties** panel shows the **Project** section.
-3. Change a field. Text and number fields apply when you press <kbd>Enter</kbd> or click elsewhere; <kbd>Escape</kbd> puts back the previous value. See [Type a value](editing-properties.md#type-a-value).
+Changes made in read-only mode exist only in the tab. The editor asks before they are lost:
 
-| Field | What it sets | Notes |
-| --- | --- | --- |
-| **Name** | The project name, the same as in the app bar. | Up to 120 characters. Renaming does not rename the folder. |
-| **Resolution** | **9:16 · 1080×1920**, **4:5 · 1080×1350**, **1:1 · 1080×1080**, **16:9 · 1920×1080**, or **Custom**. | The layout scales with the frame, as the hint under the field says: see [What a new resolution does to your clips](#what-a-new-resolution-does-to-your-clips). |
-| **Size** (with **Custom** only) | **W** and **H** in pixels. | From 16 to 7680; odd values are rounded to an even number. Type a value, press <kbd>↑</kbd> or <kbd>↓</kbd> to change it by 2 (<kbd>Shift</kbd>: by 20), or drag the **W** or **H** letter: the frame takes the new size when you release. Each change is one undo step. |
-| **Frame rate** | **23.976 fps** to **60 fps**, the same choices as for a new project. | Can only be changed while the timeline has no clips and no markers. Otherwise it is locked and the panel shows "Locked while the timeline has clips or markers." |
-| **Background** | The color of the frame where no clip covers it: a swatch and its hex code. | Type a hex code (`#RGB`, `#RRGGBB` or `#RRGGBBAA`, with or without `#`), or click the swatch to open the color picker; see [Pick a color](editing-properties.md#pick-a-color). The default is `#000000` (black). Text that is not a valid color is ignored. |
-| **Autosave** | How long the editor waits after your last change before saving: **1 s after the last change**, **2 s after the last change**, **5 s after the last change** or **10 s after the last change**. | An app setting for every project in this browser, not part of the project. Not undoable. |
-| **Proxies** | Whether heavy videos get a proxy automatically. On by default. | An app setting, like **Autosave**. See [Change the proxy settings](proxies.md#change-the-proxy-settings). |
-| **Proxy for** | Which videos get one: **Above 1080p or 30 fps** (default), **Above 1080p** or **Every video**. | An app setting. Dimmed while **Proxies** is off. |
-| **Proxy size** | The short side of new proxies: **360p**, **540p** (default) or **720p**. | An app setting. Proxies already made keep their size. |
+- When you start a new project (<kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>N</kbd>) or open another one (<kbd>Ctrl</kbd>+<kbd>O</kbd>, or the command palette), **Discard unsaved changes?** appears first: "<name> is read-only: your changes to it were never saved and are lost when another project opens."
 
-Each change to **Name**, **Resolution**, **Size**, **Frame rate** or **Background** is one undo step. The project badge in the app bar always shows the current resolution and frame rate.
+  | Button | What happens |
+  | --- | --- |
+  | **Cancel** (or <kbd>Escape</kbd>) | You stay in the project with your changes. |
+  | **Allow editing** | The browser asks for permission to write to the folder; once you allow it, your changes are saved into the project folder. |
+  | **Discard and continue** | Your changes are dropped and the folder picker opens. |
 
-The rows **Still duration**, **Transition** and **Cache** (with **Clear cache**) are dimmed: they are available in a later version, and so is converting an existing timeline to another frame rate.
-
-### What a new resolution does to your clips
-
-When you choose another resolution, or type another size, the layout of your pictures scales with the frame, in one undo step named **Change resolution**:
-
-- Each picture keeps its place relative to the frame: its position moves in proportion to the new width and height.
-- Each picture grows or shrinks by the smaller of the two size changes, so a picture that fit inside the old frame fits inside the new one. Angles and flips stay.
-- Keyframes follow: the positions and scales stored in them change the same way, so animated pictures keep their motion in the new frame. See [Keyframes](keyframes.md).
-- Pictures on locked tracks are scaled too.
-
-For example, going from **9:16 · 1080×1920** to **4:5 · 1080×1350** makes every picture about 70% of its size: a full-frame vertical video now fits the height of the new frame, with bands at the sides. To cover the new frame, select the clips and click **Fill frame** in **Edit Properties**; to refit a picture to the frame, click **Fit in frame** or **Reset transform**. See [Fit, fill or center a picture](editing-properties.md#fit-fill-or-center-a-picture).
-
-Choosing to keep the layout as it is when you change the resolution is available in a later version.
+- When you close or reload the tab, Chrome asks whether you want to leave (or reload) the site. Click **Cancel** to stay, then click **Allow editing**. Chrome also asks when the last save failed (red save dot).
 
 ## Related pages
 - [Getting started](getting-started.md)
+- [Project settings and templates](project-settings-and-templates.md)
+- [Settings](settings.md)
 - [The workspace](workspace.md)
 - [Importing media](importing-media.md)
 - [Organizing media](organizing-media.md)
@@ -260,4 +301,4 @@ Choosing to keep the layout as it is when you change the resolution is available
 - [Titles and text](titles-and-text.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 41, 2026-10-18</sub>
+<sub>Last updated: Batch 42, 2026-10-18</sub>

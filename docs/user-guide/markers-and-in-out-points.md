@@ -255,7 +255,7 @@ Press <kbd>Escape</kbd> or click outside the menu to close it.
 | **Lift** and **Extract** | With the project | Yes, one step each |
 | The selected marker | No | No |
 
-While the timeline has markers, the project's frame rate is locked. See [Change project settings](projects-and-saving.md#change-project-settings).
+When you change the project's frame rate, each marker stays at the same moment, and so do the in and out points. See [Change the frame rate](project-settings-and-templates.md#change-the-frame-rate).
 
 ## Related pages
 - [Timeline](timeline.md)
@@ -268,4 +268,4 @@ While the timeline has markers, the project's frame rate is locked. See [Change 
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 33, 2026-10-17</sub>
+<sub>Last updated: Batch 42, 2026-10-18</sub>
