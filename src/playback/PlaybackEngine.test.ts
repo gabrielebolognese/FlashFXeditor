@@ -80,6 +80,7 @@ function setup(doc: Project, options: { infos?: Record<string, VideoInfo>; audio
   const infoKey = (mediaId: string, lod: Lod = "full") => (lod === "full" ? mediaId : `${mediaId}|${lod}`);
   const windows: Window[] = [];
   const onBehind = vi.fn();
+  const onFail = vi.fn();
   const frames = {
     info: (mediaId: string, lod: Lod = "full") => infos.get(infoKey(mediaId, lod)) ?? null,
     video: vi.fn(async (mediaId: string, lod: Lod = "full") => {
@@ -122,6 +123,7 @@ function setup(doc: Project, options: { infos?: Record<string, VideoInfo>; audio
     ...(options.audio && { audio: options.audio }),
     ...(options.quality && { quality: () => options.quality as PreviewQuality }),
     onBehind,
+    onFail,
   });
   const flush = async () => {
     for (let i = 0; i < 5; i++) await Promise.resolve();
@@ -187,6 +189,7 @@ function setup(doc: Project, options: { infos?: Record<string, VideoInfo>; audio
     infos,
     tickers,
     onBehind,
+    onFail,
     flush,
     playhead: () => session.state.getState().playhead,
     advance: (seconds: number) => {
@@ -544,6 +547,36 @@ describe("PlaybackEngine prefetch windows", () => {
     t.frame();
     expect(t.playhead()).toBe(1);
     expect(t.positionsOf(t.live()[0] as Window)).toEqual([15]);
+  });
+
+  it("asks again after the decode worker crashed under a window, instead of freezing the clip (Batch 47)", async () => {
+    const t = setup(ONE_CLIP());
+    t.engine.play();
+    t.frame();
+    const first = t.live()[0] as Window;
+    first.done = true;
+    first.reject(Object.assign(new Error("The decode worker crashed"), { name: "WorkerCrashError" }));
+    await t.flush();
+    t.frame();
+    const again = t.live()[0] as Window;
+    expect(again).toBeDefined();
+    expect(again).not.toBe(first);
+    expect(t.positionsOf(again)).toEqual([0, 1]);
+    expect(t.onFail).not.toHaveBeenCalled();
+  });
+
+  it("reports a media the decoder refuses while it plays, so it shows the offline slate (Batch 47)", async () => {
+    const t = setup(ONE_CLIP());
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    t.engine.play();
+    t.frame();
+    const first = t.live()[0] as Window;
+    first.done = true;
+    first.reject(Object.assign(new Error("This browser cannot decode hvc1"), { name: "UnsupportedCodecError" }));
+    await t.flush();
+    t.frame();
+    expect(t.onFail).toHaveBeenCalledWith("a", "This browser cannot decode hvc1");
+    expect(t.live()).toHaveLength(0);
   });
 
   it("pins the frames it decoded until the playhead passes them, and lets all go on pause", async () => {

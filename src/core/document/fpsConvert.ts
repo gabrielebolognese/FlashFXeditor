@@ -121,7 +121,8 @@ function convertAnim(anim: TextAnim, conv: FrameConverter): TextAnim {
  */
 function fitSource(clip: MediaClip, to: Rational, media: MediaItem | undefined): void {
   if (isFreeze(clip)) {
-    clip.out = clip.in + frameToUs(1, to);
+    // One project frame after the held time, within the media (as freeze.ts makes it).
+    clip.out = Math.min(clip.in + frameToUs(1, to), media?.durationUs ?? Infinity);
     return;
   }
   const sourceFrame = usPerFrame(to) * clip.speed;

@@ -46,3 +46,16 @@
   color: var(--text-primary);
   font: var(--type-mono);
 }
+
+/* The fatal screen (Batch 47): what failed, then Reload. */
+.detail {
+  margin: 0;
+  color: var(--text-tertiary);
+  font: var(--type-mono);
+  overflow-wrap: anywhere;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+}

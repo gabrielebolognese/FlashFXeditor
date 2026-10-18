@@ -268,12 +268,16 @@ export function segmentKeys(keys: readonly Key[], rel: number): Frame[] {
   return [(keys[right - 1] as Key).frame, (keys[right] as Key).frame];
 }
 
-/** How far a key at `frame` may move in time: to its neighbours (exclusive) and the clip's frames. */
+/**
+ * How far a key at `frame` may move in time: to its neighbours (exclusive) and the clip's frames. A key
+ * with no frame of the clip between its neighbours (a trim keeps keys past the clip's end) stays.
+ */
 export function clampKeyShift(clip: { duration: Frame }, keys: readonly Key[], frame: Frame, delta: number): number {
   const at = keys.findIndex((key) => key.frame === frame);
   if (at === -1) return 0;
   const lo = Math.max(0, (keys[at - 1]?.frame ?? -1) + 1);
   const hi = Math.min(clip.duration - 1, (keys[at + 1]?.frame ?? clip.duration) - 1);
+  if (lo > hi) return 0;
   return Math.min(hi, Math.max(lo, frame + Math.round(delta))) - frame;
 }
 

@@ -225,9 +225,10 @@ function titleTransform(project: Project, kind: TitleKind, box: Size, below: Cli
     const xs = corners.map((p) => p.x);
     const bottom = Math.max(...corners.map((p) => p.y));
     const centerX = (Math.min(...xs) + Math.max(...xs)) / 2;
-    return { ...IDENTITY_TRANSFORM, x: Math.round(centerX - frame.width / 2), y: Math.round(bottom + TITLE_STACK_GAP + box.height / 2 - frame.height / 2) };
+    // `|| 0`: no -0 (JSON writes it as 0).
+    return { ...IDENTITY_TRANSFORM, x: Math.round(centerX - frame.width / 2) || 0, y: Math.round(bottom + TITLE_STACK_GAP + box.height / 2 - frame.height / 2) || 0 };
   }
-  if (kind === "subtitle") return { ...IDENTITY_TRANSFORM, y: Math.round(SUBTITLE_BOTTOM * frame.height - box.height / 2 - frame.height / 2) };
+  if (kind === "subtitle") return { ...IDENTITY_TRANSFORM, y: Math.round(SUBTITLE_BOTTOM * frame.height - box.height / 2 - frame.height / 2) || 0 };
   return { ...IDENTITY_TRANSFORM };
 }
 

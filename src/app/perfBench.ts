@@ -16,11 +16,12 @@
 import { fpsToNumber, secondsToFrames } from "../core/document/time.js";
 import type { PerfSnapshot } from "../core/perf/formatPerf.js";
 import { frameSummary, percentiles } from "../core/perf/perfMath.js";
+import { setPlayhead } from "../core/store/sessionStore.js";
 import { contentEnd } from "../timeline/model/queries.js";
 import { currentRequest, enqueueExport, exportQueue } from "./exportController.js";
 import { perfMonitor } from "./perfMonitor.js";
 import { frameService, playbackEngine, previewView } from "./previewController.js";
-import { closeProject, currentSession } from "./projectController.js";
+import { closeProject, currentSession, retryOpen } from "./projectController.js";
 import { documentStore, sessionStore } from "./services.js";
 import { timelineView } from "./timelineController.js";
 import { generateTestClips } from "./timelineDev.js";
@@ -365,4 +366,74 @@ export async function benchMemory(): Promise<{ open: MemoryReport; closed: Memor
   await closeProject();
   await sleep(3000);
   return { open, closed: await memoryNow() };
+}
+
+/** Waits until the preview drew every layer with its exact frame (false after `timeoutMs`). */
+async function previewDrawn(timeoutMs = 5000): Promise<boolean> {
+  const until = performance.now() + timeoutMs;
+  while (performance.now() < until) {
+    const { layers, exact } = previewView.stats.textures;
+    if (layers > 0 && exact === layers) return true;
+    await sleep(50);
+  }
+  return false;
+}
+
+export interface CycleRow {
+  cycle: number;
+  /** The preview drew its exact frames at two playheads while the project was open. */
+  drawn: boolean;
+  /** With the project open and its frame drawn. */
+  openTextures: number;
+  openPoolTextures: number;
+  /** After it closed to the start screen. */
+  closedTextures: number;
+  closedPoolTextures: number;
+  closedFrames: number;
+  heapMB: number | null;
+}
+
+/**
+ * Batch 47 memory check: opens and closes the current project `count` times (open, the preview draws,
+ * close to the start screen) and reads the GPU textures each time. Stable means every close ends at
+ * zero and the open counts do not grow. Leaves the project open, as found.
+ */
+export async function benchCycles(count = 100, onCycle?: (row: CycleRow) => void): Promise<{ rows: CycleRow[]; openTextures: { min: number; max: number }; closedTexturesMax: number; heapMB: { first: number | null; last: number | null } }> {
+  const session = currentSession();
+  if (!session) throw new Error("Open a project first");
+  const { dir } = session;
+  const rows: CycleRow[] = [];
+  for (let cycle = 1; cycle <= count; cycle++) {
+    if (!currentSession()) await retryOpen(dir);
+    let drawn = await previewDrawn();
+    // A second frame elsewhere on the timeline (more textures, a seek).
+    const end = contentEnd(documentStore.getState());
+    if (end > 1) setPlayhead(sessionStore, (cycle * 37) % end);
+    await sleep(50);
+    drawn = (await previewDrawn()) && drawn;
+    const open = await memoryNow();
+    await closeProject();
+    await sleep(100);
+    const closed = await memoryNow();
+    const row: CycleRow = {
+      cycle,
+      drawn,
+      openTextures: open.gpuTextures,
+      openPoolTextures: open.poolTextures,
+      closedTextures: closed.gpuTextures,
+      closedPoolTextures: closed.poolTextures,
+      closedFrames: closed.frames.main + (closed.frames.worker ?? 0),
+      heapMB: closed.heapUsed === null ? null : Math.round((closed.heapUsed / 1048576) * 10) / 10,
+    };
+    rows.push(row);
+    onCycle?.(row);
+  }
+  await retryOpen(dir);
+  const opens = rows.map((row) => row.openTextures);
+  return {
+    rows,
+    openTextures: { min: Math.min(...opens), max: Math.max(...opens) },
+    closedTexturesMax: Math.max(...rows.map((row) => row.closedTextures)),
+    heapMB: { first: rows[0]?.heapMB ?? null, last: rows.at(-1)?.heapMB ?? null },
+  };
 }

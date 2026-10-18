@@ -15,7 +15,7 @@ export function loopbackWorker(handlers: Handlers, concurrency: number, immediat
     postMessage: (message) => {
       queueMicrotask(() => {
         if (terminated) {
-          if (message.type !== "error") closeTransferables(message.value);
+          if (message.type === "result" || message.type === "progress") closeTransferables(message.value);
           return;
         }
         for (const listener of toPool) listener({ data: message } as MessageEvent<FromWorker>);
@@ -27,8 +27,8 @@ export function loopbackWorker(handlers: Handlers, concurrency: number, immediat
   };
   new WorkerHost(scope, handlers, concurrency, immediate);
   function addEventListener(type: "message", listener: (event: MessageEvent<FromWorker>) => void): void;
-  function addEventListener(type: "error", listener: (event: ErrorEvent) => void): void;
-  function addEventListener(type: "message" | "error", listener: ((event: MessageEvent<FromWorker>) => void) | ((event: ErrorEvent) => void)): void {
+  function addEventListener(type: "error" | "messageerror", listener: (event: Event) => void): void;
+  function addEventListener(type: "message" | "error" | "messageerror", listener: ((event: MessageEvent<FromWorker>) => void) | ((event: Event) => void)): void {
     // An in-thread host never crashes as a worker does: its failures are request errors.
     if (type === "message") toPool.push(listener as (event: MessageEvent<FromWorker>) => void);
   }

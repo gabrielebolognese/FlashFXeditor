@@ -14,6 +14,9 @@ import type { Method } from "./protocol.js";
 import { WorkerHost, type HostScope } from "./WorkerHost.js";
 
 const gate = new PauseGate();
+/** The running video export (dev: `__exportDev.loseDevice()` from the worker's console loses its GPU device, Batch 47). */
+let running: ExportRenderer | null = null;
+if (import.meta.env.DEV) (self as unknown as { __exportDev: unknown }).__exportDev = { loseDevice: () => running?.loseDeviceForTest() };
 
 new WorkerHost(
   self as unknown as HostScope,
@@ -23,6 +26,7 @@ new WorkerHost(
       // The job's own pause state: `pauseExport` only comes after the job (messages are handled in order).
       gate.set(params.paused);
       const renderer = new ExportRenderer(params);
+      running = renderer;
       try {
         await renderer.start(signal);
         const { format, range, project } = params;
@@ -46,6 +50,7 @@ new WorkerHost(
         );
         return { frames: result.frames, videoCodec: result.videoCodec, audioCodec: result.audioCodec, width: format.width, height: format.height, ms: performance.now() - started };
       } finally {
+        if (running === renderer) running = null;
         renderer.dispose();
       }
     },

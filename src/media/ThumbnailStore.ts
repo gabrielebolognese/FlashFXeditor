@@ -42,7 +42,7 @@ import {
   type ThumbLayout,
   type ThumbLevel,
 } from "./cache/thumbSheets.js";
-import { isAbortError } from "./workers/protocol.js";
+import { isAbortError, isWorkerCrash } from "./workers/protocol.js";
 import type { WorkerPool } from "./workers/WorkerPool.js";
 
 /** Sheets kept in memory at most (spec §9.6: an LRU of 256 sheets)... */
@@ -147,6 +147,8 @@ export class ThumbnailStore {
   /** Videos whose eager levels are not all known to be written. */
   private readonly eager: MediaId[] = [];
   private readonly failed = new Set<string>();
+  /** Sheets whose worker crashed once (asked for again; a second crash gives them up). */
+  private readonly crashed = new Set<string>();
   private readonly cards = new Map<MediaId, Set<CardListener>>();
   private readonly counters = { decoded: 0, cached: 0, failed: 0 };
   private active: AbortController | null = null;
@@ -389,6 +391,8 @@ export class ThumbnailStore {
       if (isAbortError(error) || signal.aborted) throw error;
       this.counters.failed += 1;
       if (error instanceof Error && MEDIA_ERRORS.has(error.name)) entry.broken = true;
+      // A crashed analysis worker (Batch 47): the sheet is asked for again once (the new worker), then given up.
+      else if (isWorkerCrash(error) && !this.crashed.has(k)) this.crashed.add(k);
       else this.failed.add(k);
       console.warn(`[thumbs] no sheet ${k}: ${errorMessage(error)}`);
     }

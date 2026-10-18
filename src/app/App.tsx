@@ -11,6 +11,7 @@ import { TimelinePanel } from "../panels/TimelinePanel.js";
 import styles from "./App.module.css";
 import { AppBar } from "./AppBar.js";
 import { DialogHost } from "./DialogHost.js";
+import { PanelBoundary } from "./PanelBoundary.js";
 import { appView, type AppView } from "./projectController.js";
 import { Splitter } from "./Splitter.js";
 import { StartScreen } from "./StartScreen.js";
@@ -27,7 +28,7 @@ function useInteractiveMark(name: string): void {
   }, [name]);
 }
 
-/** The fixed four-panel layout of spec §2. */
+/** The fixed four-panel layout of spec §2, each panel behind its error boundary (Batch 47). */
 function Editor() {
   const workspaceRef = useRef<HTMLDivElement>(null);
   useWorkspaceLayout(workspaceRef);
@@ -39,14 +40,22 @@ function Editor() {
       <main ref={workspaceRef} className={styles.workspace} data-layout-ratio="left">
         <div className={styles.leftGroup} data-layout-ratio="top">
           <div className={styles.topRow} data-layout-ratio="media">
-            <MediaPanel />
-            <PropertiesPanel />
+            <PanelBoundary id="media" title="Media">
+              <MediaPanel />
+            </PanelBoundary>
+            <PanelBoundary id="properties" title="Properties">
+              <PropertiesPanel />
+            </PanelBoundary>
             <Splitter id="media" axis="x" />
           </div>
-          <TimelinePanel />
+          <PanelBoundary id="timeline" title="Timeline">
+            <TimelinePanel />
+          </PanelBoundary>
           <Splitter id="top" axis="y" />
         </div>
-        <PreviewPanel />
+        <PanelBoundary id="preview" title="Preview">
+          <PreviewPanel />
+        </PanelBoundary>
         <Splitter id="left" axis="x" />
       </main>
       <PasteAttributesPopover />

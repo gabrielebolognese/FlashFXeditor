@@ -17,6 +17,7 @@ import type { DrawList, Layer, UvRect } from "../compositor/drawList.js";
 import { IDENTITY, invertInto, multiplyInto, mutableIdentity, setMat, type Mat3, type MutableMat3 } from "../mat3.js";
 import { fitWithin } from "./fitWithin.js";
 import type { GpuDevice } from "./GpuDevice.js";
+import { isHdrColorSpace } from "./hdr.js";
 import { layerFloats, LAYER_SIZE, LAYER_STRIDE, packLayer, packMat3, pixelsToClipInto, SHAPE_CODE, VIEW_SIZE, type LayerUniform } from "./layerUniforms.js";
 import { generateMipmaps, mipLevelCount, textureBytes, type MipGenerator } from "./mipmaps.js";
 import { paddedBytesPerRow, unpadAndUnpremultiply } from "./readback.js";
@@ -219,6 +220,8 @@ export class WebGpuRenderer implements Renderer {
   private readonly canvases = new Set<GpuCanvasTarget>();
   private readonly listeners = new Set<(event: DeviceEvent) => void>();
   private readonly spares: SpareTexture[] = [];
+  /** The color-managed 2D canvas HDR frames are drawn through (see hdr.ts), kept between uploads. */
+  private hdrCanvas: OffscreenCanvas | null = null;
   private readonly counts: TextureCounts = { generation: -1, live: 0, bytes: 0 };
   private layerData = new Float32Array(layerFloats(INITIAL_LAYERS));
   private readonly viewData = new Float32Array(VIEW_SIZE / 4);
@@ -294,8 +297,9 @@ export class WebGpuRenderer implements Renderer {
       const res = this.require();
       const { width, height } = fitWithin(frame.displayWidth, frame.displayHeight, options.maxSize);
       const into = this.spareFor(res, width, height);
-      const texture =
-        width === frame.displayWidth && height === frame.displayHeight
+      const texture = isHdrColorSpace(frame.colorSpace)
+        ? this.toneMapIn(res, frame, width, height, options, into)
+        : width === frame.displayWidth && height === frame.displayHeight
           ? this.copyIn(res, frame, width, height, { mipmaps: false, ...options }, into, this.recycleFrame)
           : this.scaleIn(res, frame, width, height, options, into);
       // Sends the copy now rather than with the next draw: until it runs, the decoder cannot reuse
@@ -363,6 +367,7 @@ export class WebGpuRenderer implements Renderer {
     }
     const pool = this.resources?.blur.pool;
     if (pool) for (const entry of pool.splice(0)) entry.texture.destroy();
+    this.hdrCanvas = null;
   }
 
   releaseTarget(target: RenderTarget): void {
@@ -640,6 +645,29 @@ export class WebGpuRenderer implements Renderer {
       throw error;
     }
     return texture;
+  }
+
+  /**
+   * An HDR frame (HLG, PQ, BT.2020) at `width` x `height`: drawn into a color-managed 2D canvas, which
+   * tone maps it to SDR as a <video> element shows it, and the canvas uploaded. The GPU paths would
+   * show it washed out (hdr.ts, Batch 47).
+   */
+  private toneMapIn(res: DeviceResources, frame: VideoFrame, width: number, height: number, options: TextureOptions, into: GpuTexture | null): GpuTexture {
+    const w = this.clampSize(width);
+    const h = this.clampSize(height);
+    const canvas = (this.hdrCanvas ??= new OffscreenCanvas(w, h));
+    if (canvas.width !== w || canvas.height !== h) {
+      canvas.width = w;
+      canvas.height = h;
+    }
+    const context = canvas.getContext("2d", { alpha: false, colorSpace: "srgb" });
+    if (!context) {
+      into?.destroy();
+      throw new Error("No 2D canvas for an HDR frame");
+    }
+    context.imageSmoothingQuality = "high";
+    context.drawImage(frame, 0, 0, w, h);
+    return this.copyIn(res, canvas, w, h, { mipmaps: false, ...options }, into, this.recycleFrame);
   }
 
   /** A spare video-frame texture of this size, wrapped in a new handle; null when there is none. */

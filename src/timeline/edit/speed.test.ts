@@ -6,6 +6,7 @@ import { validateProject } from "../../core/document/validate.js";
 import { DocumentStore } from "../../core/store/DocumentStore.js";
 import { createSessionStore } from "../../core/store/sessionStore.js";
 import { linkOffset } from "../model/queries.js";
+import { random, type Rng } from "./fuzzKit.js";
 import { setSpeedDurations, setSpeeds, type SpeedOptions, type SpeedResult } from "./speed.js";
 import { maxDurationFrames, rateStretch, trimEdge } from "./trim.js";
 
@@ -266,22 +267,6 @@ describe("setSpeeds on the media's last frames", () => {
     expect(setSpeeds(p, ["v"], 4, LINKED).limit).toMatchObject({ reason: "mediaEnd", clipId: "v" });
   });
 });
-
-/** Deterministic PRNG (mulberry32), as in undoFuzz.test.ts. */
-function random(seed: number) {
-  let state = seed;
-  const next = () => {
-    state = (state + 1831565813) | 0;
-    let t = Math.imul(state ^ (state >>> 15), 1 | state);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-  const int = (min: number, max: number) => min + Math.floor(next() * (max - min + 1));
-  const pick = <T>(items: readonly T[]): T => items[int(0, items.length - 1)] as T;
-  return { next, int, pick };
-}
-
-type Rng = ReturnType<typeof random>;
 
 /**
  * Two video and two audio tracks (one maybe locked) of clips at various speeds, sources and gaps over

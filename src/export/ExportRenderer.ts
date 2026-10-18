@@ -7,7 +7,10 @@
 //   scale, animations, captions, transitions, solids and images as the preview draws them.
 // - Fonts: the bundled faces and the project's are added to the worker's font set, and the faces the
 //   range's text needs are loaded before the first frame (layouts are never measured with a stand-in).
-// - Offline media draw slates (spec §6.19); a video this worker cannot open or decode becomes one too.
+// - Offline media draw slates (spec §6.19); a video this worker cannot open or decode becomes one too,
+//   also when its decoder refuses it partway (the frame is drawn again with the slate).
+// - A lost GPU device (driver reset, GPU process crash) fails the job (Batch 47): the device is not
+//   replaced mid-export, where textures of the old device would be skipped without a word.
 // - SVG images arrive rasterized (workers cannot draw SVG) and are resized here to the size asked.
 // Browser only (WebGPU, WebCodecs, OffscreenCanvas): checked in the browser, not by unit tests.
 import type { Frame, MediaId, Project } from "../core/document/types.js";
@@ -36,8 +39,11 @@ const noWorker = (kind: WorkerKind) => (): WorkerLike => {
   throw new Error(`The export has no ${kind} worker`);
 };
 
+/** The error of an export whose GPU device was lost. */
+export const DEVICE_LOST_MESSAGE = "The GPU was reset during the export (device lost). Export again.";
+
 export class ExportRenderer {
-  private readonly gpu = new GpuDevice();
+  private readonly gpu = new GpuDevice({ recover: false });
   private readonly renderer = new WebGpuRenderer(this.gpu);
   private readonly pool: TexturePool;
   private readonly workers: WorkerPool;
@@ -90,7 +96,14 @@ export class ExportRenderer {
       fontsReady: (style, value) => this.fonts.ready(style, value),
       loadFonts: (style, value) => this.fonts.load(style, value),
     });
-    this.textures = new LayerTextures({ frames: this.frames, images: this.images, pool: this.pool, onChange: () => undefined, text: this.text });
+    this.textures = new LayerTextures({
+      frames: this.frames,
+      images: this.images,
+      pool: this.pool,
+      onChange: () => undefined,
+      text: this.text,
+      onFail: (mediaId) => this.offline.set(mediaId, FAILED_LABEL),
+    });
     const slates: OfflineSlates = { label: (mediaId) => this.offline.get(mediaId) ?? null, look: () => params.slate };
     this.compositor = new Compositor(slates);
   }
@@ -123,18 +136,39 @@ export class ExportRenderer {
 
   /** Project frame `frame` drawn at the export size, as a VideoFrame at `timestampUs` (the caller closes it). */
   async render(frame: Frame, timestampUs: number, durationUs: number, signal: AbortSignal): Promise<VideoFrame> {
+    try {
+      return await this.draw(frame, timestampUs, durationUs, signal);
+    } catch (error) {
+      // Whatever step met the lost device first (an upload, the draw), the job says what happened.
+      if (this.gpu.state !== "ready" && !signal.aborted) throw new Error(DEVICE_LOST_MESSAGE);
+      throw error;
+    }
+  }
+
+  private async draw(frame: Frame, timestampUs: number, durationUs: number, signal: AbortSignal): Promise<VideoFrame> {
     const { canvas, target } = this;
     if (!canvas || !target) throw new Error("The export renderer is not started");
     const project: Project = this.params.project;
-    const composite = this.compositor.evaluate(project, frame);
-    const { list, release } = await this.textures.resolveExact(composite, Math.min(DETAIL_MAX_SIZE, this.renderer.maxTextureSize));
+    const offline = this.offline.size;
+    let resolved = await this.textures.resolveExact(this.compositor.evaluate(project, frame), Math.min(DETAIL_MAX_SIZE, this.renderer.maxTextureSize));
+    // A media failed while this frame resolved: draw it again, with its slate.
+    if (this.offline.size !== offline) {
+      resolved.release();
+      resolved = await this.textures.resolveExact(this.compositor.evaluate(project, frame), Math.min(DETAIL_MAX_SIZE, this.renderer.maxTextureSize));
+    }
+    const { list, release } = resolved;
     try {
       signal.throwIfAborted();
-      if (!this.renderer.draw(list, target)) throw new Error("The export's GPU device was lost");
+      if (this.gpu.state !== "ready" || !this.renderer.draw(list, target)) throw new Error(DEVICE_LOST_MESSAGE);
       return new VideoFrame(canvas, { timestamp: timestampUs, duration: durationUs });
     } finally {
       release();
     }
+  }
+
+  /** Loses the GPU device on purpose (dev: `__exportDev.loseDevice()` in the export worker, Batch 47 check). */
+  loseDeviceForTest(): void {
+    this.gpu.device?.destroy();
   }
 
   /** Frees the device, the textures, the decoders and the font faces (P13). */

@@ -29,6 +29,10 @@
   color: var(--text-muted);
 }
 
+.empty[data-tone="danger"] .icon {
+  color: var(--danger);
+}
+
 .title {
   margin: 0;
   color: var(--text-primary);

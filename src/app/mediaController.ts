@@ -17,7 +17,7 @@ import { filterSelection, toSnapshot } from "../core/store/selection.js";
 import type { SessionState } from "../core/store/sessionStore.js";
 import { AnalysisScheduler } from "../media/AnalysisScheduler.js";
 import { PeaksJobs } from "../media/PeaksJobs.js";
-import { browserDecodeAudio } from "../media/probe/audioProbe.js";
+import { browserAudioDuration, browserDecodeAudio } from "../media/probe/audioProbe.js";
 import { createProbeFile, MediaImporter, type ImportSource, type ProbeFile, type Refusal } from "../media/MediaImporter.js";
 import { ProxyJobs, type ProxyFiles, type ProxyProgress } from "../media/ProxyJobs.js";
 import { classifyFile, PICKER_TYPES } from "../media/mediaKinds.js";
@@ -39,6 +39,7 @@ import type { ClipVisualsSource } from "../timeline/view/clipVisuals.js";
 import { dismissToast, showToast, updateToast } from "../ui/toasts.js";
 import { decodedAudio, peaksFiles } from "./audioController.js";
 import { pausedWhileExporting } from "./exportState.js";
+import { dismissFailedImport, failedImports, recordImport } from "./failedImports.js";
 import { mediaSources, mediaStatus, offlineReason, onRefreshMedia, refreshMedia, setMediaSources, sourceFile } from "./mediaOffline.js";
 import { actions, appSettings, documentStore, focusScopes, idleQueue, keyValueStore, scheduler, sessionStore, workerPool } from "./services.js";
 
@@ -230,9 +231,14 @@ export function attachMedia(dir: FsDir, isWritable: () => boolean, preview?: Thu
   });
   // Audio files the probe decodes (decodeAudioData) are not decoded again for playback and peaks.
   const decodedByFile = new WeakMap<File, AudioBuffer>();
-  const probe = createProbeFile(workerPool, browserDecodeAudio(), (file, decoded) => {
-    if (typeof AudioBuffer !== "undefined" && decoded instanceof AudioBuffer) decodedByFile.set(file, decoded);
-  });
+  const probe = createProbeFile(
+    workerPool,
+    browserDecodeAudio(),
+    (file, decoded) => {
+      if (typeof AudioBuffer !== "undefined" && decoded instanceof AudioBuffer) decodedByFile.set(file, decoded);
+    },
+    browserAudioDuration(),
+  );
   const importer = new MediaImporter({
     dir,
     documentStore,
@@ -358,6 +364,7 @@ function filesChanged(current: OpenMedia, ids: readonly MediaId[], prev: Readonl
 export function detachMedia(): void {
   const current = open;
   open = null;
+  dismissFailedImport();
   if (!current) return;
   current.controller.abort();
   for (const stop of current.stops) stop();
@@ -425,6 +432,14 @@ export async function importMediaFiles(files: readonly ImportSource[], placement
       toast = null;
     }
     refusalToast(report.refused);
+    // Files of an accepted type that could not be read stay listed as failed imports (Batch 47).
+    if (open === current) {
+      const refusedNames = new Set(report.refused.map((refusal) => refusal.name));
+      recordImport(
+        report.refused.flatMap(({ name, reason, container }) => (container ? [{ name, reason: reason.charAt(0).toUpperCase() + reason.slice(1), container }] : [])),
+        files.map((source) => (source instanceof File ? source : source.file).name).filter((name) => !refusedNames.has(name)),
+      );
+    }
     if (report.added.length > 0 && open === current) {
       const ids = report.added.map((item) => item.id);
       patch({ selection: { ids: new Set(ids), anchor: ids[0] ?? null } });
@@ -1087,6 +1102,10 @@ export function installMediaController(doc: Document = document): () => void {
     actions.register("media.generateProxy", generateProxies),
     actions.register("media.removeProxy", removeProxies),
     actions.register("media.regenerateThumbnails", regenerateThumbnails),
+    // A failed import's Dismiss button (its id), or all of them from the palette (Batch 47).
+    actions.register("media.dismissFailedImport", (_context, id?: string) => dismissFailedImport(typeof id === "string" ? id : undefined), {
+      enabled: () => failedImports.getState().length > 0,
+    }),
     actions.register("media.viewGrid", () => setPanelSession({ view: "grid" })),
     actions.register("media.viewList", () => setPanelSession({ view: "list" })),
     actions.register("media.toggleSortDirection", () => setPanelSession({ descending: !sessionStore.state.getState().mediaPanel.descending })),

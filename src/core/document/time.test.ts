@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { FPS_30, firstFrameOfSecond, formatDurationUs, formatSpeed, formatTimecode, framesToSourceUs, frameToUs, parseTimecode, playedFrames, secondOfFrame, secondsToFrames, ticksToUs, usPerFrame, usToFrame, usToFrameFloor } from "./time.js";
+import { random } from "../../timeline/edit/fuzzKit.js";
 import type { Rational } from "./types.js";
 
 const NTSC: Rational = { num: 30000, den: 1001 };
@@ -220,5 +221,69 @@ describe("formatSpeed", () => {
     expect(formatSpeed(4 / 3)).toBe("1.33x");
     expect(formatSpeed(2 / 3)).toBe("0.67x");
     expect(formatSpeed(0.49999995)).toBe("0.5x");
+  });
+});
+
+describe("drop-frame rates and large values (Batch 47)", () => {
+  const FILM: Rational = { num: 24000, den: 1001 };
+  const NTSC_60: Rational = { num: 60000, den: 1001 };
+  const RATES: Rational[] = [FILM, { num: 24, den: 1 }, { num: 25, den: 1 }, NTSC, FPS_30, { num: 50, den: 1 }, NTSC_60, FPS_60, { num: 120, den: 1 }];
+  /** Frames in `hours` at `fps`. */
+  const framesIn = (hours: number, fps: Rational) => Math.floor((hours * 3600 * fps.num) / fps.den);
+
+  it("round-trips every frame of ten minutes at 24000/1001 and 60000/1001", () => {
+    for (const fps of [FILM, NTSC_60]) {
+      for (let frame = 0; frame <= framesIn(1 / 6, fps); frame++) {
+        if (usToFrame(frameToUs(frame, fps), fps) !== frame) throw new Error(`${fps.num}/${fps.den} frame ${frame}`);
+      }
+    }
+  });
+
+  it("round-trips random frames up to 24 h at every rate, and stays exact there", () => {
+    const rng = random(2024);
+    for (const fps of RATES) {
+      const last = framesIn(24, fps);
+      for (let i = 0; i < 2000; i++) {
+        const frame = i === 0 ? last : rng.int(0, last);
+        const us = frameToUs(frame, fps);
+        expect(Number.isSafeInteger(us)).toBe(true);
+        // Within half a microsecond of the exact time (integer arithmetic, no drift).
+        expect(Math.abs(us - (frame * 1_000_000 * fps.den) / fps.num)).toBeLessThanOrEqual(0.5);
+        if (usToFrame(us, fps) !== frame) throw new Error(`${fps.num}/${fps.den} frame ${frame} (${us} us)`);
+      }
+    }
+  });
+
+  it("usToFrameFloor is monotonic, never above the nearest frame, and at most one below it", () => {
+    const rng = random(7);
+    for (const fps of RATES) {
+      const times = Array.from({ length: 3000 }, () => rng.int(0, 86_400_000_000)).sort((a, b) => a - b);
+      let previous = -1;
+      for (const us of times) {
+        const floor = usToFrameFloor(us, fps);
+        expect(floor).toBeGreaterThanOrEqual(previous);
+        const nearest = usToFrame(us, fps);
+        expect(nearest - floor === 0 || nearest - floor === 1).toBe(true);
+        // A clip of `floor` frames fits in `us` of media.
+        expect(frameToUs(floor, fps)).toBeLessThanOrEqual(us + 1);
+        previous = floor;
+      }
+    }
+  });
+
+  it("round-trips formatTimecode -> parseTimecode at 24000/1001 and 60000/1001 for random frames, hours included", () => {
+    const rng = random(42);
+    for (const fps of [FILM, NTSC_60]) {
+      for (const mode of ["frames", "ms"] as const) {
+        for (let i = 0; i < 3000; i++) {
+          const frame = rng.chance(0.5) ? rng.int(0, framesIn(1, fps)) : rng.int(0, framesIn(24, fps));
+          const text = formatTimecode(frame, fps, mode);
+          if (parseTimecode(text, fps, { mode }) !== frame) throw new Error(`${fps.num}/${fps.den} ${mode} frame ${frame}: ${text}`);
+        }
+      }
+    }
+    // Wall-clock seconds: one hour reads 01:00:00:00 at both rates.
+    expect(formatTimecode(firstFrameOfSecond(3600, FILM), FILM)).toBe("01:00:00:00");
+    expect(formatTimecode(firstFrameOfSecond(3600, NTSC_60), NTSC_60)).toBe("01:00:00:00");
   });
 });

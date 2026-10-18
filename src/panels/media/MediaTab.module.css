@@ -98,6 +98,45 @@
   white-space: nowrap;
 }
 
+/* Failed imports (Batch 47): rows under the notice, at most three tall (plus the hairline), then they scroll. */
+.failedImports {
+  flex: none;
+  max-height: calc(var(--control-default) * 3 + 1px);
+  overflow-y: auto;
+  border-bottom: 1px solid var(--hairline);
+  background: var(--surface-1);
+}
+
+.failedImport {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  height: var(--control-default);
+  padding: 0 var(--space-1) 0 var(--space-3);
+}
+
+.failedName,
+.failedReason {
+  min-width: 0;
+  overflow: hidden;
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-track);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.failedName {
+  flex: 0 1 auto;
+  max-width: 40%;
+  color: var(--text-primary);
+}
+
+.failedReason {
+  flex: 1 1 auto;
+  color: var(--text-tertiary);
+}
+
 .body {
   display: flex;
   flex: 1 1 auto;

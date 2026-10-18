@@ -84,9 +84,17 @@ export function captionMiddleY(style: Pick<CaptionStyle, "position" | "y">, heig
 
 // --- Cue text ------------------------------------------------------------------------------------
 
-/** Words in a cue text (runs of non-space). */
+const WORDS = typeof Intl.Segmenter === "function" ? new Intl.Segmenter(undefined, { granularity: "word" }) : null;
+
+/**
+ * Words in a cue text, punctuation left out. Dictionary words (Batch 47): runs of non-space would count
+ * a Chinese or Japanese line, written without spaces, as one word.
+ */
 export function wordCount(text: string): number {
-  return text.split(/\s+/).filter((word) => word !== "").length;
+  if (!WORDS) return text.split(/\s+/).filter((word) => word !== "").length;
+  let count = 0;
+  for (const segment of WORDS.segment(text)) if (segment.isWordLike) count += 1;
+  return count;
 }
 
 /** Whether a cue's text contains `query` (case-insensitive; an empty query matches every cue). */

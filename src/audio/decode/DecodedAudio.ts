@@ -12,7 +12,7 @@
 import type { MediaId, Project } from "../../core/document/types.js";
 import { downmix } from "../../media/decode/audioTrack.js";
 import { classifyFile } from "../../media/mediaKinds.js";
-import type { AudioInfo, Priority } from "../../media/workers/protocol.js";
+import { isWorkerCrash, type AudioInfo, type Priority } from "../../media/workers/protocol.js";
 import type { WorkerPool } from "../../media/workers/WorkerPool.js";
 import { AudioBufferCache } from "./AudioBufferCache.js";
 import { segmentLayout, segmentRange, type SegmentLayout } from "./segments.js";
@@ -187,6 +187,11 @@ export class DecodedAudio {
   }
 
   private fail(mediaId: MediaId, error: unknown): void {
+    // A crashed decode worker is not the media's fault: the next request asks the new worker (Batch 47).
+    if (isWorkerCrash(error)) {
+      console.warn(`[audio] the decode worker crashed while decoding ${mediaId}; asking again`);
+      return;
+    }
     if (this.failed.has(mediaId)) return;
     this.failed.add(mediaId);
     console.warn(`[audio] cannot decode the audio of ${mediaId}`, error);

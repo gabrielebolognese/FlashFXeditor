@@ -16,11 +16,13 @@ const media = (id: string, relPath: string, extra: Partial<MediaItem> = {}): Med
   ...extra,
 });
 
-function setup(items: MediaItem[], worker: { supported?: boolean; frames?: number; decodedLength?: number } = {}) {
+function setup(items: MediaItem[], worker: { supported?: boolean; frames?: number; decodedLength?: number; crashes?: number } = {}) {
   const project: Project = { ...createProject({ id: "p", name: "P", now: "2026-10-15T00:00:00.000Z", appVersion: "0" }), media: Object.fromEntries(items.map((m) => [m.id, m])) };
   const requests: { method: string; params: Record<string, unknown> }[] = [];
+  let crashes = worker.crashes ?? 0;
   const request = vi.fn(async (method: string, params: Record<string, unknown>) => {
     requests.push({ method, params });
+    if (method === "decodeAudio" && crashes-- > 0) throw Object.assign(new Error("The decode worker crashed: out of memory"), { name: "WorkerCrashError" });
     if (method === "openAudio") return { supported: worker.supported ?? true, codec: "mp4a.40.2", sampleRate: 48_000, channels: 2, frames: worker.frames ?? 480_000 };
     if (method === "decodeAudio") {
       const length = (params.to as number) - (params.from as number);
@@ -128,6 +130,16 @@ describe("DecodedAudio", () => {
     await opening;
     expect(requests.filter((r) => r.method === "closeAudio").map((r) => r.params.mediaId)).toEqual(["v", "w"]);
     expect(audio.layout("w")).toBeNull();
+  });
+
+  it("does not count a crashed decode worker as a failure of the media: the next load asks again (Batch 47)", async () => {
+    const { audio, requests } = setup([media("v", "media/clip.mp4")], { crashes: 1 });
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    await expect(audio.load("v", 0)).rejects.toMatchObject({ name: "WorkerCrashError" });
+    expect(audio.hasFailed("v")).toBe(false);
+    const loaded = await audio.load("v", 0);
+    expect(loaded.buffer.length).toBe(480_000);
+    expect(requests.filter((r) => r.method === "decodeAudio")).toHaveLength(2);
   });
 
   it("remembers failures, and forgets media on release and reset", async () => {

@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { ProbeResult } from "../probe/types.js";
 import type { DeliveredFrame, FromWorker, Method, ToWorker } from "./protocol.js";
 import { WorkerHost, type Handlers, type HostScope } from "./WorkerHost.js";
-import { WorkerPool, type WorkerLike } from "./WorkerPool.js";
+import { WATCHDOG_TICK_MS, WorkerPool, type WorkerLike, type WorkerPoolOptions } from "./WorkerPool.js";
 
 const AUDIO: ProbeResult = { kind: "audio", durationUs: 1_000_000, hasAudio: true };
 const file = new Blob(["x"]);
@@ -10,7 +10,11 @@ const file = new Blob(["x"]);
 interface FakeWorker extends WorkerLike {
   host: WorkerHost;
   terminated: boolean;
-  crash(message: string): void;
+  /** Ended from inside (`self.close`): nothing goes in or out any more, and no event fires. */
+  closed: boolean;
+  /** Messages the pool posted to it. */
+  received: ToWorker[];
+  crash(message: string, where?: { filename: string; lineno: number; colno: number }): void;
 }
 
 const noWorker = (): WorkerLike => {
@@ -18,36 +22,52 @@ const noWorker = (): WorkerLike => {
 };
 
 /** A pool whose workers are in-process hosts; messages are delivered asynchronously, like postMessage. */
-function setup(handlers: Handlers, concurrency = 2, immediate: ReadonlySet<Method> = new Set()) {
+function setup(handlers: Handlers, concurrency = 2, immediate: ReadonlySet<Method> = new Set(), options: WorkerPoolOptions = {}) {
   const workers: FakeWorker[] = [];
-  const pool = new WorkerPool({
-    decode: () => {
-      const toMain: { message: ((event: MessageEvent<FromWorker>) => void)[]; error: ((event: ErrorEvent) => void)[] } = { message: [], error: [] };
-      let toHost: ((event: MessageEvent<ToWorker>) => void) | null = null;
-      const scope: HostScope = {
-        postMessage: (message) => queueMicrotask(() => toMain.message.forEach((l) => l({ data: message } as MessageEvent<FromWorker>))),
-        addEventListener: (_type, listener) => {
-          toHost = listener;
-        },
-      };
-      const worker: FakeWorker = {
-        host: new WorkerHost(scope, handlers, concurrency, immediate),
-        terminated: false,
-        postMessage: (message) => queueMicrotask(() => toHost?.({ data: message } as MessageEvent<ToWorker>)),
-        addEventListener: ((type: "message" | "error", listener: never) => toMain[type].push(listener)) as WorkerLike["addEventListener"],
-        terminate: () => {
-          worker.terminated = true;
-        },
-        crash: (message) => toMain.error.forEach((l) => l({ message, preventDefault() {} } as ErrorEvent)),
-      };
-      workers.push(worker);
-      return worker;
+  const pool = new WorkerPool(
+    {
+      decode: () => {
+        const toMain: { message: ((event: MessageEvent<FromWorker>) => void)[]; error: ((event: Event) => void)[]; messageerror: ((event: Event) => void)[] } = { message: [], error: [], messageerror: [] };
+        let toHost: ((event: MessageEvent<ToWorker>) => void) | null = null;
+        const scope: HostScope = {
+          postMessage: (message) =>
+            queueMicrotask(() => {
+              if (!worker.closed) toMain.message.forEach((l) => l({ data: message } as MessageEvent<FromWorker>));
+            }),
+          addEventListener: (_type, listener) => {
+            toHost = listener;
+          },
+          close: () => {
+            worker.closed = true;
+          },
+        };
+        const worker: FakeWorker = {
+          host: new WorkerHost(scope, handlers, concurrency, immediate),
+          terminated: false,
+          closed: false,
+          received: [],
+          postMessage: (message) => {
+            worker.received.push(message);
+            queueMicrotask(() => {
+              if (!worker.closed) toHost?.({ data: message } as MessageEvent<ToWorker>);
+            });
+          },
+          addEventListener: ((type: "message" | "error" | "messageerror", listener: never) => toMain[type].push(listener)) as WorkerLike["addEventListener"],
+          terminate: () => {
+            worker.terminated = true;
+          },
+          crash: (message, where) => toMain.error.forEach((l) => l({ message, ...where, preventDefault() {} } as unknown as ErrorEvent)),
+        };
+        workers.push(worker);
+        return worker;
+      },
+      analysis: noWorker,
+      proxy: noWorker,
+      transcribe: noWorker,
+      export: noWorker,
     },
-    analysis: noWorker,
-    proxy: noWorker,
-    transcribe: noWorker,
-    export: noWorker,
-  });
+    options,
+  );
   return { pool, workers };
 }
 
@@ -183,7 +203,8 @@ describe("WorkerPool + WorkerHost", () => {
       const pool = new WorkerPool({ decode: () => worker, analysis: noWorker, proxy: noWorker, transcribe: noWorker, export: noWorker });
       const controller = new AbortController();
       const request = pool.request("poster", { file, kind: "image", maxSize: 320 }, { signal: controller.signal });
-      const id = posted[0]?.id ?? -1;
+      const first = posted[0];
+      const id = first && "id" in first ? first.id : -1;
       // The worker has already posted its result when the cancel goes out.
       controller.abort();
       await expect(request).rejects.toMatchObject({ name: "AbortError" });
@@ -310,6 +331,24 @@ describe("WorkerPool + WorkerHost", () => {
     expect(workers).toHaveLength(2);
   });
 
+  it("rejects with a WorkerCrashError naming where the worker failed, and tells the crash listeners", async () => {
+    const gate = deferred<void>();
+    const { pool, workers } = setup({ probe: () => gate.promise.then(() => AUDIO) });
+    const errors = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const crashes: string[] = [];
+    pool.onCrash((kind, error) => crashes.push(`${kind}: ${error.name}`));
+    const a = pool.request("probe", { file, container: "mp4", type: "" });
+    await flush();
+    workers[0]?.crash("", { filename: "decode.worker.js", lineno: 12, colno: 7 });
+    await expect(a).rejects.toMatchObject({ name: "WorkerCrashError", kind: "decode", message: "The decode worker crashed: unknown error at decode.worker.js:12:7" });
+    expect(errors.mock.calls[0]?.[0]).toBe("[media] decode worker crashed at decode.worker.js:12:7: unknown error");
+    expect(crashes).toEqual(["decode: WorkerCrashError"]);
+    expect(pool.crashes).toEqual({ decode: 1 });
+    // A late error event of the dead worker is not a second crash.
+    workers[0]?.crash("again");
+    expect(crashes).toHaveLength(1);
+  });
+
   it("stops a worker on purpose: its requests reject with AbortErrors, the next request starts a new one", async () => {
     const gate = deferred<void>();
     const { pool, workers } = setup({
@@ -333,5 +372,139 @@ describe("WorkerPool + WorkerHost", () => {
   it("reports a missing handler as an error", async () => {
     const { pool } = setup({});
     await expect(pool.request("decodeImage", { blob: file, maxSize: 10 })).rejects.toThrow(/No handler for decodeImage/);
+  });
+});
+
+describe("WorkerPool watchdog (Batch 47)", () => {
+  const WATCH = { watchdog: { decode: { pingAfterMs: 500, deadAfterMs: 1000 } } };
+
+  function watched(handlers: Handlers, options: WorkerPoolOptions = WATCH) {
+    let clock = 0;
+    vi.useFakeTimers({ toFake: ["setInterval", "clearInterval", "setTimeout", "clearTimeout"] });
+    const result = setup(handlers, 2, new Set(), { ...options, now: () => clock });
+    /** Moves the clock and the timers together, a watchdog tick at a time. */
+    const advance = async (ms: number) => {
+      for (let left = ms; left > 0; left -= WATCHDOG_TICK_MS) {
+        clock += Math.min(WATCHDOG_TICK_MS, left);
+        await vi.advanceTimersByTimeAsync(Math.min(WATCHDOG_TICK_MS, left));
+      }
+    };
+    return { ...result, advance, jump: (ms: number) => (clock += ms) };
+  }
+
+  it("finds a worker that died without a word: pings it, then fails its requests and restarts it", async () => {
+    const gate = deferred<void>();
+    const { pool, workers, advance } = watched({ probe: async ({ type }) => (type === "hang" ? gate.promise.then(() => AUDIO) : AUDIO) });
+    const errors = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const crashes: string[] = [];
+    pool.onCrash((kind) => crashes.push(kind));
+    const a = pool.request("probe", { file, container: "mp4", type: "hang" });
+    const failed = a.catch((error: unknown) => error);
+    pool.exitForTest("decode");
+    await advance(250);
+    expect(workers[0]?.closed).toBe(true);
+    expect(workers[0]?.received.some((m) => m.type === "ping")).toBe(false);
+    // Quiet for 500 ms since the request: one ping; no answer for 1000 ms more: crashed.
+    await advance(250);
+    expect(workers[0]?.received.filter((m) => m.type === "ping")).toHaveLength(1);
+    await advance(750);
+    expect(crashes).toEqual([]);
+    await advance(250);
+    await expect(failed).resolves.toMatchObject({ name: "WorkerCrashError", message: "The decode worker stopped responding" });
+    expect(crashes).toEqual(["decode"]);
+    expect(workers[0]?.terminated).toBe(true);
+    expect(errors).toHaveBeenCalledWith("[media] the decode worker stopped responding");
+    await expect(pool.request("probe", { file, container: "mp4", type: "ok" })).resolves.toEqual(AUDIO);
+    expect(workers).toHaveLength(2);
+    vi.useRealTimers();
+  });
+
+  it("leaves a worker that answers alone, however long its request takes", async () => {
+    const gate = deferred<void>();
+    const { pool, workers, advance } = watched({ probe: () => gate.promise.then(() => AUDIO) });
+    const crashes: string[] = [];
+    pool.onCrash((kind) => crashes.push(kind));
+    const a = pool.request("probe", { file, container: "mp4", type: "" });
+    await advance(10_000);
+    expect(workers[0]?.received.filter((m) => m.type === "ping").length).toBeGreaterThan(3);
+    expect(crashes).toEqual([]);
+    gate.resolve();
+    await expect(a).resolves.toEqual(AUDIO);
+    // Nothing waits: the watchdog stops ticking soon after.
+    await advance(500);
+    expect(vi.getTimerCount()).toBe(0);
+    vi.useRealTimers();
+  });
+
+  it("keeps the clock running through requests cancelled and asked again at once (playback windows)", async () => {
+    const { pool, advance } = watched({ probe: () => new Promise(() => undefined) });
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const crashes: string[] = [];
+    pool.onCrash((kind) => crashes.push(kind));
+    let controller = new AbortController();
+    void pool.request("probe", { file, container: "mp4", type: "" }, { signal: controller.signal }).catch(() => undefined);
+    pool.exitForTest("decode");
+    for (let i = 0; i < 8 && crashes.length === 0; i++) {
+      await advance(250);
+      controller.abort();
+      controller = new AbortController();
+      void pool.request("probe", { file, container: "mp4", type: "" }, { signal: controller.signal }).catch(() => undefined);
+    }
+    expect(crashes).toEqual(["decode"]);
+    vi.useRealTimers();
+  });
+
+  it("starts the clock again after the worker was idle", async () => {
+    const gate = deferred<void>();
+    const { pool, workers, advance } = watched({ probe: async ({ type }) => (type === "hang" ? gate.promise.then(() => AUDIO) : AUDIO) });
+    await expect(pool.request("probe", { file, container: "mp4", type: "ok" })).resolves.toEqual(AUDIO);
+    // Idle for 3 s, then a slow request: no ping before it has waited 500 ms.
+    await advance(3000);
+    void pool.request("probe", { file, container: "mp4", type: "hang" });
+    await advance(250);
+    expect(workers[0]?.received.some((m) => m.type === "ping")).toBe(false);
+    await advance(500);
+    expect(workers[0]?.received.some((m) => m.type === "ping")).toBe(true);
+    vi.useRealTimers();
+  });
+
+  it("decides nothing on a tick that follows a long task of the main thread", async () => {
+    const gate = deferred<void>();
+    const { pool, advance, jump } = watched({ probe: () => gate.promise.then(() => AUDIO) });
+    const crashes: string[] = [];
+    pool.onCrash((kind) => crashes.push(kind));
+    void pool.request("probe", { file, container: "mp4", type: "" }).catch(() => undefined);
+    pool.exitForTest("decode");
+    await advance(750);
+    // A ping is out; the main thread then blocks for 3 s before the next tick.
+    jump(3000);
+    await advance(250);
+    expect(crashes).toEqual([]);
+    await advance(1000);
+    expect(crashes).toEqual(["decode"]);
+    vi.useRealTimers();
+  });
+
+  it("leaves a silent worker alone while the watchdog is switched off (a worker paused in a debugger)", async () => {
+    const { pool, workers, advance } = watched({ probe: () => new Promise(() => undefined) });
+    pool.watchdogEnabled = false;
+    void pool.request("probe", { file, container: "mp4", type: "" });
+    pool.exitForTest("decode");
+    await advance(5000);
+    expect(workers[0]?.received.some((m) => m.type === "ping")).toBe(false);
+    expect(pool.crashes).toEqual({});
+    vi.useRealTimers();
+  });
+
+  it("does not watch kinds without watchdog times", async () => {
+    const gate = deferred<void>();
+    const { pool, workers, advance } = watched({ probe: () => gate.promise.then(() => AUDIO) }, {});
+    void pool.request("probe", { file, container: "mp4", type: "" });
+    pool.exitForTest("decode");
+    await advance(5000);
+    expect(workers[0]?.received.some((m) => m.type === "ping")).toBe(false);
+    expect(pool.inFlight).toBe(1);
+    expect(vi.getTimerCount()).toBe(0);
+    vi.useRealTimers();
   });
 });

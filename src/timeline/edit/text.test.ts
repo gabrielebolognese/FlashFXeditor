@@ -197,6 +197,15 @@ describe("addTitle", () => {
     expect(clip.transform.x).toBe(0);
   });
 
+  it("never places a title at -0 (Batch 47 fuzz: JSON writes it as 0)", () => {
+    // The selected text sits 0.2 px left of the center: the new title's x rounds to 0, not -0.
+    const p = project({ transform: { ...IDENTITY_TRANSFORM, x: -0.2 } });
+    const result = addTitle(p, { kind: "title", playhead: 0, matchClip: true, below: "t" }, newId);
+    const store = new DocumentStore(p, { session: createSessionStore(), validate: true });
+    store.dispatch(result.command);
+    expect(Object.is((store.getState().clips[result.clipId] as TextClip).transform.x, 0)).toBe(true);
+  });
+
   it("scales the defaults to the project frame", () => {
     const small = titleDefaults("title", { width: 720, height: 1280 });
     expect(small.style.fontSize).toBe(80);

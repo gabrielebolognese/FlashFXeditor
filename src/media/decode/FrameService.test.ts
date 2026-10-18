@@ -39,13 +39,15 @@ function texture(width = 4, height = 4): TextureHandle & { destroyed: boolean } 
 }
 
 /** A FrameService over a scripted worker: openVideo answers at once, frame requests wait for `deliver`. */
-function setup(options: { info?: VideoInfo; cachedIndex?: boolean; ready?: boolean; uploadSize?: number | (() => number); proxyReady?: (mediaId: string) => boolean; failProxy?: boolean } = {}) {
+function setup(options: { info?: VideoInfo; cachedIndex?: boolean; ready?: boolean; uploadSize?: number | (() => number); proxyReady?: (mediaId: string) => boolean; failProxy?: boolean; crashOpens?: number } = {}) {
   const calls: Call[] = [];
   const opens: unknown[] = [];
+  let crashOpens = options.crashOpens ?? 0;
   const workers = {
     request: vi.fn((method: Method, params: unknown, requestOptions: RequestOptions<DeliveredFrame> = {}) => {
       if (method === "openVideo") {
         opens.push(params);
+        if (crashOpens-- > 0) return Promise.reject(crash());
         if (options.failProxy && (params as { lod: string }).lod === "proxy") return Promise.reject(new Error("The media file is missing"));
         return Promise.resolve({ info: { ...(options.info ?? info()), indexFromCache: options.cachedIndex ?? false }, index: options.cachedIndex ? null : new ArrayBuffer(8) });
       }
@@ -101,6 +103,13 @@ function setup(options: { info?: VideoInfo; cachedIndex?: boolean; ready?: boole
 }
 
 const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+/** What a request gets when its worker crashed (WorkerPool, Batch 47). */
+function crash(): Error {
+  const error = new Error("The decode worker stopped responding");
+  error.name = "WorkerCrashError";
+  return error;
+}
 
 beforeEach(() => {
   frameCounter.open = 0;
@@ -317,6 +326,48 @@ describe("FrameService", () => {
     expect(opens).toHaveLength(2);
     deliver(frameCalls()[1] as Call);
     expect((await request).timeUs).toBe(3 * FRAME);
+  });
+
+  it("asks the new worker once when the decode worker crashed under a frame request (Batch 47)", async () => {
+    const { frames, frameCalls, deliver, opens } = setup();
+    const request = frames.getFrame("m1", 3 * FRAME);
+    await settle();
+    (frameCalls()[0] as Call).reject(crash());
+    await settle();
+    expect(opens).toHaveLength(2);
+    deliver(frameCalls()[1] as Call);
+    expect((await request).timeUs).toBe(3 * FRAME);
+    expect(frames.stats.failed).toBe(0);
+  });
+
+  it("asks once more when a prefetch's worker crashed (playback windows recover)", async () => {
+    const { frames, calls, opens } = setup();
+    const prefetch = frames.prefetch("m1", 0, 10 * FRAME, { priority: "playback" });
+    await settle();
+    const windows = () => calls.filter((c) => c.method === "prefetch" && !c.options.signal?.aborted);
+    windows()[0]?.reject(crash());
+    await settle();
+    expect(opens).toHaveLength(2);
+    expect(windows()).toHaveLength(2);
+    windows()[1]?.resolve({ frames: 11 });
+    await expect(prefetch).resolves.toBe(11);
+  });
+
+  it("gives up after a second crash in a row", async () => {
+    const { frames, frameCalls } = setup();
+    const request = frames.getFrame("m1", 0);
+    await settle();
+    (frameCalls()[0] as Call).reject(crash());
+    await settle();
+    (frameCalls()[1] as Call).reject(crash());
+    await expect(request).rejects.toMatchObject({ name: "WorkerCrashError" });
+  });
+
+  it("opens again when the worker crashed while opening, and keeps the proxy usable", async () => {
+    const { frames, opens } = setup({ crashOpens: 1, proxyReady: () => true });
+    await expect(frames.video("m1", "proxy")).resolves.toMatchObject({ decodable: true });
+    expect(opens).toHaveLength(2);
+    expect(frames.hasProxy("m1")).toBe(true);
   });
 
   it("closes the frame and fails when the GPU device is not ready", async () => {

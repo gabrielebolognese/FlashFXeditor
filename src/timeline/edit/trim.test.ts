@@ -719,4 +719,19 @@ describe("rateStretch (spec §6.10, §5.1)", () => {
     expect((next.clips.a as MediaClip).keyframes?.opacity?.map((key) => key.frame)).toEqual([0, 100]);
     expect(span(commit(p, rateStretch(p, "s", "out", 10)), "s")).toEqual([0, 30]);
   });
+
+  it("slows a source range off the frame grid only while it stays within one source frame (Batch 47 fuzz)", () => {
+    // A 3-frame clip of a 25 fps project converted to 30 fps keeps its 120 ms of source over 4 frames
+    // (fpsConvert.ts): 0.4 frame off duration * speed, allowed at 1x. At 0.25x one source frame is a
+    // quarter: in and out kept, the stretch may only go to 10 frames (0.4x).
+    const p = project([clip("a", "v1", 100, 4, { in: 0, out: 120_000 })]);
+    expect(validateProject(p)).toEqual([]);
+    const out = rateStretch(p, "a", "out", 12);
+    expect(out).toMatchObject({ delta: 5, limit: { reason: "minSpeed", clipId: "a" } });
+    const next = commit(p, out);
+    expect([span(next, "a"), source(next, "a")]).toEqual([[100, 9], [0, 120_000]]);
+    expect(rateStretch(p, "a", "in", -12)).toMatchObject({ delta: -5, limit: { reason: "minSpeed" } });
+    // Speeding up is not bound by it.
+    expect(rateStretch(p, "a", "out", -2).delta).toBe(-2);
+  });
 });

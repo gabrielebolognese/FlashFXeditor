@@ -36,7 +36,8 @@ function abortable<T>(signal: AbortSignal | undefined, value: () => T, hold?: Pr
   });
 }
 
-function setup(options: { project?: Project; files?: Map<string, Blob>; maxSheets?: number; fail?: string; preview?: ThumbnailDeps["preview"]; now?: () => number } = {}) {
+function setup(options: { project?: Project; files?: Map<string, Blob>; maxSheets?: number; fail?: string; crashes?: number; preview?: ThumbnailDeps["preview"]; now?: () => number } = {}) {
+  let crashes = options.crashes ?? 0;
   const slices: ((deadline: { timeRemaining(): number }) => void)[] = [];
   const idle = new IdleQueue(
     (cb) => slices.push(cb),
@@ -53,6 +54,7 @@ function setup(options: { project?: Project; files?: Map<string, Blob>; maxSheet
     if (method === "thumbSheet") {
       const p = params as ThumbSheetParams;
       if (options.fail) return Promise.reject(Object.assign(new Error("no decoder"), { name: options.fail }));
+      if (crashes-- > 0) return Promise.reject(Object.assign(new Error("The analysis worker crashed"), { name: "WorkerCrashError" }));
       return abortable(
         opts.signal,
         () => {
@@ -257,6 +259,29 @@ describe("ThumbnailStore", { timeout: 20_000 }, () => {
     expect(t.store.stats.failed).toBe(1);
     expect(t.documentStore.getState().media.v?.analysis.thumbs).toBe("pending");
     await t.store.whenIdle();
+  });
+
+  it("asks for a sheet once more after an analysis worker crash, and gives it up after a second one (Batch 47)", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const once = setup({ crashes: 1 });
+    once.documentStore.dispatch(addMedia([video("v")]));
+    once.store.want([{ mediaId: "v", level: 2, sheet: 0 }]);
+    await once.settle();
+    await once.store.whenIdle();
+    // The crashed sheet was made on the second try, with every other one.
+    const sheetCalls = (request: ReturnType<typeof vi.fn>) => request.mock.calls.filter(([method]) => method === "thumbSheet").map(([, params]) => (params as ThumbSheetParams).timesUs.join());
+    expect(sheetCalls(once.request)).toHaveLength(once.made.length + 1);
+    expect(once.store.stats.failed).toBe(1);
+    const twice = setup({ fail: "WorkerCrashError" });
+    twice.documentStore.dispatch(addMedia([video("v")]));
+    twice.store.want([{ mediaId: "v", level: 2, sheet: 0 }]);
+    await twice.settle();
+    await twice.store.whenIdle();
+    // Every sheet asked for twice, then given up: no loop.
+    const counts = new Map<string, number>();
+    for (const key of sheetCalls(twice.request)) counts.set(key, (counts.get(key) ?? 0) + 1);
+    expect([...counts.values()].every((count) => count === 2)).toBe(true);
+    expect(twice.made).toHaveLength(0);
   });
 
   it("has no layout for stills and audio", () => {

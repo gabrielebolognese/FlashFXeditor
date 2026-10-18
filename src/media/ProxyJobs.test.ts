@@ -218,6 +218,22 @@ describe("ProxyJobs", () => {
     expect(await t.exists(proxyPartPath("a"))).toBe(false);
   });
 
+  it("runs a job once more after a proxy worker crash, then marks it failed (Batch 47)", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const t = setup({ media: [video("a")] });
+    await t.flush();
+    const crash = () => Object.assign(new Error("The proxy worker crashed"), { name: "WorkerCrashError" });
+    t.jobs[0]?.fail(crash());
+    await t.flush();
+    expect(t.proxy("a")?.status).toBe("pending");
+    expect(t.jobs).toHaveLength(2);
+    t.jobs[1]?.fail(crash());
+    await t.flush();
+    expect(t.proxy("a")?.status).toBe("failed");
+    expect(t.jobs).toHaveLength(2);
+    warn.mockRestore();
+  });
+
   it("marks a failed proxy failed, deletes its part file and does not try it again this session", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
     const t = setup({ media: [video("a")] });

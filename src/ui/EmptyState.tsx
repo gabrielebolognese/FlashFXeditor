@@ -15,15 +15,17 @@ export interface EmptyStateProps {
   layout?: "fill" | "inline";
   /** Pointer events go through the block to what lies under it (the timeline canvas), its actions aside. */
   passThrough?: boolean;
+  /** `danger`: something failed (a panel's error state, Batch 47): the icon in the danger color. */
+  tone?: "danger";
 }
 
 /**
  * The one empty state look (Batch 46): a muted icon, title type, a caption hint, then the actions that
  * fix it (spec §0: every state has a one-click way forward).
  */
-export function EmptyState({ icon: Icon, title, text, children, layout = "fill", passThrough }: EmptyStateProps) {
+export function EmptyState({ icon: Icon, title, text, children, layout = "fill", passThrough, tone }: EmptyStateProps) {
   return (
-    <div className={styles.empty} data-layout={layout} data-pass-through={passThrough ? "" : undefined}>
+    <div className={styles.empty} data-layout={layout} data-pass-through={passThrough ? "" : undefined} data-tone={tone}>
       <Icon className={styles.icon} aria-hidden="true" />
       <p className={styles.title}>{title}</p>
       {text !== undefined && <p className={styles.text}>{text}</p>}

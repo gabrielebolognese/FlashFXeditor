@@ -189,6 +189,11 @@ describe("retimeKeyframes", () => {
     expect(retimed.opacity).toEqual(keys([0, 0, "hold"], [1, 0.5, "easeIn"], [4, 0]));
     expect(retimeKeyframes({ opacity: keys([0, 0], [10, 1]) }, 2).opacity?.map((key) => key.frame)).toEqual([0, 20]);
   });
+
+  it("never makes a -0 frame of a key before the clip's start (Batch 47 fuzz: JSON writes it as 0)", () => {
+    const frame = retimeKeyframes({ opacity: keys([-1, 0], [10, 1]) }, 0.25).opacity?.[0]?.frame;
+    expect(Object.is(frame, 0)).toBe(true);
+  });
 });
 
 describe("keyframeIssues", () => {

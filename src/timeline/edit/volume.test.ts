@@ -10,6 +10,7 @@ import {
   autoDuck,
   bandEdit,
   canDetach,
+  clampKeyShift,
   clipPeak,
   duckDips,
   detachAudio,
@@ -159,6 +160,17 @@ describe("rubber band edits (Batch 37)", () => {
     s.dispatch(bandEdit(s.getState(), "a", { kind: "keys", frames: [20], deltaDb: 100, deltaFrames: 50 })!);
     expect(volumeKeys(get(s, "a"))).toEqual([key(10, -3), key(39, 12), key(40, 0)]);
     expect(bandEdit(s.getState(), "a", { kind: "keys", frames: [7], deltaDb: 1, deltaFrames: 0 })).toBeNull();
+  });
+
+  it("never moves a key past the clip's end onto or before the key before it (Batch 47 fuzz)", () => {
+    // A trim keeps keys past the clip's end: 30 frames long, keys at 29 and 40 (and 35 and 40).
+    for (const frames of [[10, 29, 40], [10, 35, 40]]) {
+      const keys = frames.map((frame) => key(frame, -6));
+      const s = store(project([audio("a", 0, 30, { keyframes: { "volume.gainDb": keys } })]));
+      expect(clampKeyShift({ duration: 30 }, keys, 40, -20)).toBe(0);
+      s.dispatch(bandEdit(s.getState(), "a", { kind: "keys", frames: [40], deltaDb: 3, deltaFrames: -20 })!);
+      expect(volumeKeys(get(s, "a"))).toEqual([key(frames[0] as number, -6), key(frames[1] as number, -6), key(40, -3)]);
+    }
   });
 });
 
