@@ -55,6 +55,8 @@ The timeline, the preview, the compositor and the audio engine subscribe directl
   under the preview header) and the Presets tab's cards in the frame loop. A family that changes (a face
   loaded, a font added) has its bitmaps made again; the service reports each one's preset id and every
   canvas showing that preset draws the new bitmap (all of them again at a new device pixel ratio).
+  The bar's drag to reorder is `panels/presetBarReorder.ts`, framework-free and DOM-direct: a press
+  ends wherever it is released (the window's release before the drag starts, then the row's capture).
 - Theme bridge (`core/theme/theme.ts`): the CSS custom properties read into a typed `Theme` for canvases,
   again when `data-theme` changes.
 

@@ -6039,3 +6039,39 @@ Why each dependency exists (Batch rule 8).
     - Literals: the batch's CSS uses tokens only, and the new sizes are tokens in `tokens.css`, logged as a design gap. The starters' colors and sizes are content colors (§10.3, §20.2). The lint color and token checks pass.
     - §3/§4: the fix keeps the thumbnails drawn in the FrameScheduler loop (`mediaThumbs`) from bitmaps made in idle time. The rest is as the first review found it.
     - TODOs: the only `TODO(batch` in `src` is the Batch 53 hook, which has its tag.
+- fix-attempt: done (2026-10-19, second review)
+  1. A press on a preset bar button now ends wherever it is released, so a cancelled click leaves no reorder drag behind.
+     - The reorder drag moved out of `PresetBar.tsx` into a framework-free class, `src/panels/presetBarReorder.ts` (`PresetBarReorder`: `press`, `move`, `end`, `takeClick`). It still writes the DOM directly, one write per move, and reads the button positions once when the drag starts.
+     - A pending press (no drag yet, so no pointer capture) listens for `pointerup` / `pointercancel` on the window, in the capture phase. A release or cancel anywhere ends it, without a drop. A drag that has started has the row's capture and is left to the row's own release.
+     - A move with no left button held (`buttons & 1` is 0) drops a press whose release the page never saw, for example one released outside the browser. The move then goes to the hover preview.
+     - Every press first ends what is left of an earlier one: `end` always removes `data-dragging` and hides the marker, also when the drag never started. It also resets the "the release was a drag" flag, so a cancelled drag (`pointercancel`) no longer swallows the next click.
+     - `end(commit)` returns the drop (`{ id, gap }`), and `PresetBar` calls `movePresetInSet` with the set it renders. The row's `pointerup` and `lostpointercapture` commit, `pointercancel` does not. The unmount ends a pending press and removes the window listeners.
+     - The same bug had a second effect, found by the new `slideleave.mjs`: the row's `pointerleave` kept the hover preview while a press was pending. A press on a hovered button that slid off the bar left that preset previewed on the canvas after the release outside. `pointerleave` and the row's scroll now always end the hover preview. During a real drag the preview has already ended, so this changes nothing there.
+     - Tests: a new `src/panels/presetBarReorder.test.ts` (9 cases) covers:
+       - a drag past the threshold (marker, dimmed button, drop, the click it takes);
+       - the review's repro: a release off the row before the drag starts, then a plain hover and a click in a gap;
+       - a missed release, dropped at the first move with no button held;
+       - a cancel off the row, and another pointer's release (ignored);
+       - a press that clears a leftover drag;
+       - the window's release leaving a started drag to the row;
+       - a cancelled drag (no drop, no click taken);
+       - a short press (a click), a set without an order, the right button;
+       - the window listeners removed when the press ends.
+     - With the window listener, the `buttons` check and the clean-up on press switched off (the old behavior), 4 of the 9 cases fail.
+     - `docs/ARCHITECTURE.md` (preset thumbnails) names the module.
+  - `npm run check` green: typecheck, lint with the CSS color and token checks, 2463 unit tests in 236 files, 4 perf tests, build. Main JS 1372.35 kB (436.87 kB gzip), export.worker 418.31 kB.
+    - The build prints rolldown's `[PLUGIN_TIMINGS]` notice. 44-49% of the build is `vite:prepare-out-dir`, which copies `public/` (the 37 MB font library since Batch 51) into `dist/` on the OneDrive folder.
+    - The notice is there with `dist/` deleted first and with nothing else running. It is a timing report about this machine's disk, not a code warning, and the fix touches no build step.
+  - Browser checks in headless Chrome 155 on 9419 (own profile `%TEMP%/fix52b/profile`) against a snapshot of the working tree on 5297 (`%TEMP%/fix52b/snap.sh`), with the second review's helpers copied to `%TEMP%/fix52b` and the ports changed:
+    - The review's `slideoff.mjs`: 5 / 5.
+      - The cancelled click adds nothing, and a plain hover shows no marker or dimmed button.
+      - A click in a gap reorders nothing (`presetOrder.favorites` stays unset).
+      - A click on a button after the cancelled click leaves no marker or dimmed button.
+    - The review's `slidehover.mjs`: 2 / 2. After the cancelled click, hovering Bold outline previews it (Unbounded), the same as the control.
+    - New `slideleave.mjs`, 11 / 11:
+      - L1: sliding off the bar with the button held ends the hover preview, and nothing stays previewed or added after the release outside.
+      - L2: a plain hover previews again.
+      - L3: a press whose release the page never sees (the mouse moves with no button held) is dropped at the next hover over the bar, which previews and shows no drag. The stray release reorders nothing.
+      - L4: a real drag after the cancelled click still shows the marker and the dimmed button, the drop reorders Favorites (Subtitle, Title, Bold outline), it adds nothing, and the marker and dimming end.
+    - Control: with HEAD's `PresetBar.tsx` in the snapshot, `slideoff.mjs` fails S2-S4 and `slideleave.mjs` fails 6 checks (L1 x2, L2, L3, L4 x2). The probes catch the bug.
+    - Re-runs, all pass: `extra.mjs` 28 / 28 (the E2 reorder checks included), `acc123.mjs` 25 / 25, `acc5.mjs` 8 / 8 (the bar hidden and shown, so it unmounts and mounts again).
