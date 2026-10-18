@@ -40,7 +40,7 @@ Captions are the subtitles that run along with the speech of your video. They li
 - A project has at most one caption track. Its header reads **CC**, and it always sits above every video track, so captions show on top of everything else in the frame.
 - The track holds cues. A cue is a piece of text with a start and an end. Cues never overlap: at any frame, at most one cue shows.
 - The look of the captions belongs to the track: every cue shows in the same font, colors and position. You set it once in the **Caption style** section. See [Style your captions](#style-your-captions).
-- Captions are drawn by the same text engine as titles, so they stay sharp at every preview zoom and show in **Export frame**. See [Export the current frame](preview-and-playback.md#export-the-current-frame).
+- Captions are drawn by the same text engine as titles, so they stay sharp at every preview zoom and show in **Export frame** and in exported videos, drawn into the picture. See [Export the current frame](preview-and-playback.md#export-the-current-frame) and [Know what goes into the file](exporting-video.md#know-what-goes-into-the-file).
 - A cue can carry word timings: when each word is spoken. With them, the editor highlights the spoken word. Transcribed cues always have them. See [Highlight the spoken word](#highlight-the-spoken-word).
 
 > **Note:** Captions are not titles. You can't click them in the preview, drag them there, or type in them there; a click on a caption selects the picture under it. Edit their text in the **Captions** tab and their place in **Caption style**. For text you place by hand, use a title or a subtitle; see [Titles and text](titles-and-text.md).
@@ -380,10 +380,11 @@ Every caption change is one step in the history. Hover **Undo** in the app bar t
 These parts are available in a later version:
 
 - A style for a single cue, and moving or styling captions in the preview.
-- Exporting the video with its captions, and exporting caption files from the export settings. **Export frame** already includes the captions, and **Export SRT or VTT** saves the cues.
+- Exporting caption files from the export settings. Exported videos already include the captions in the picture, and **Export SRT or VTT** saves the cues.
 - **Paste attributes** for cues.
 
 ## Related pages
+- [Exporting your video](exporting-video.md)
 - [Transcription](transcription.md)
 - [Copying, pasting and duplicating clips](copy-and-paste.md)
 - [Titles and text](titles-and-text.md)
@@ -397,4 +398,4 @@ These parts are available in a later version:
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 40, 2026-10-18</sub>
+<sub>Last updated: Batch 43, 2026-10-18</sub>

@@ -49,7 +49,7 @@ The app bar is the strip above the panels. From left to right:
 | Save status dot | Shows whether your changes are saved. Hover it for details; click it to save now. See [Check the save status](projects-and-saving.md#check-the-save-status). |
 | **Undo** and **Redo** | Undo or redo the last change. The tooltip names the step, for example **Undo Rename project**. Dimmed when there is nothing to undo or redo. See [Undo and redo changes](projects-and-saving.md#undo-and-redo-changes). |
 | Project badge | The resolution and frame rate of the project, for example **1080×1920 · 30 fps**. It follows changes made in the **Project** section. |
-| **Export** | Available in a later version. |
+| **Export** | Exports the whole timeline as an MP4 video for Instagram Reels into the project's `exports` folder (<kbd>Ctrl</kbd>+<kbd>E</kbd>). See [Exporting your video](exporting-video.md). |
 | **Settings** (gear) | Opens the **Settings** dialog on its **General** tab: autosave, the length of new clips, the default transition, editing, audio and transcription defaults, how imports bring in your files, proxies and storage; see [Settings](settings.md). Its **Shortcuts** tab lets you change the keyboard shortcuts; see [Change a shortcut](command-palette-and-custom-shortcuts.md#change-a-shortcut). |
 
 When the editor cannot write to the project folder, a read-only banner appears under the app bar. See [Work in read-only mode](projects-and-saving.md#work-in-read-only-mode).
@@ -222,6 +222,7 @@ To read times in milliseconds instead (`mm:ss.mmm`, for example `00:05.400`), cl
 To jump to a time, type it into the timecode field of the timeline toolbar, or click the playhead timecode under the preview and type it there. See [Jump to a timecode](timeline.md#jump-to-a-timecode).
 
 ## Related pages
+- [Exporting your video](exporting-video.md)
 - [Getting started](getting-started.md)
 - [Projects and saving](projects-and-saving.md)
 - [Project settings and templates](project-settings-and-templates.md)
@@ -249,4 +250,4 @@ To jump to a time, type it into the timecode field of the timeline toolbar, or c
 - [Command palette and custom shortcuts](command-palette-and-custom-shortcuts.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 42, 2026-10-18</sub>
+<sub>Last updated: Batch 43, 2026-10-18</sub>

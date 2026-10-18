@@ -287,7 +287,7 @@ Titles and other text appear as they are at that frame, partway through their an
 
 The editor draws the PNG from the exact frame at the playhead of your original media, at full quality, whatever the preview shows at that moment: never from a [proxy](proxies.md), never at the lower resolution of **1/2** or **1/4**, and never a nearby frame the preview still shows after a scrub. Each video is read at full resolution (up to 4096 pixels on its long side), so fine lines and text in 4K footage stay as sharp as the project resolution allows. Saving can take a moment while that frame is decoded.
 
-If the file cannot be written, a message "Can't export the frame" gives the reason. Exporting the whole video is available in a later version.
+If the file cannot be written, a message "Can't export the frame" gives the reason. **Export frame** also works while a video export runs. To export the whole video, see [Exporting your video](exporting-video.md).
 
 ## Know what to expect from performance
 
@@ -312,6 +312,7 @@ The preview draws with your graphics card (GPU) and decodes video with the brows
 If playback stutters, see [Troubleshooting](troubleshooting.md).
 
 ## Related pages
+- [Exporting your video](exporting-video.md)
 - [Editing audio](audio-editing.md)
 - [Preview zoom, overlays and fullscreen](preview-zoom-overlays-fullscreen.md)
 - [Arranging layers in the preview](arranging-layers-in-the-preview.md)
@@ -333,4 +334,4 @@ If playback stutters, see [Troubleshooting](troubleshooting.md).
 - [Workspace](workspace.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 42, 2026-10-18</sub>
+<sub>Last updated: Batch 43, 2026-10-18</sub>

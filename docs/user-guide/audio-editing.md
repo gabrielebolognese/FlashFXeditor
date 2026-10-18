@@ -338,10 +338,11 @@ See [Undo and redo changes](projects-and-saving.md#undo-and-redo-changes).
 
 These parts are available in a later version:
 
-- Exporting your video with its sound: only **Export frame** works.
+- Exporting only the sound of your video as an audio file. Exported videos already carry it; see [Exporting your video](exporting-video.md).
 - Audio effects.
 
 ## Related pages
+- [Exporting your video](exporting-video.md)
 - [Audio](audio.md)
 - [Removing silence](removing-silence.md)
 - [Fades and transitions](fades-and-transitions.md)
@@ -354,4 +355,4 @@ These parts are available in a later version:
 - [Keyboard shortcuts](keyboard-shortcuts.md#audio)
 - [Troubleshooting](troubleshooting.md#audio-editing)
 
-<sub>Last updated: Batch 42, 2026-10-18</sub>
+<sub>Last updated: Batch 43, 2026-10-18</sub>

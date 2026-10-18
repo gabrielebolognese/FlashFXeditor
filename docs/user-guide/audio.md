@@ -108,6 +108,7 @@ The **Mute** button and the **Master volume** knob change only what you hear.
 
 - They do not change your project, and they are not steps in the history.
 - The meter ignores them: it shows the level of your edit, not of your speakers. See [Read the audio meter](#read-the-audio-meter).
+- They don't change the exported video. Muting or soloing audio tracks does. See [Know what goes into the file](exporting-video.md#know-what-goes-into-the-file).
 - They are app settings: they apply to every project in this browser and are remembered when you reload the page.
 - They are not the volume of a clip. A clip's **Volume** in the **Audio** section of **Edit Properties** changes your project: what plays, what the meter shows and what transcription hears. See [Change a clip's volume](audio-editing.md#change-a-clips-volume).
 
@@ -215,6 +216,7 @@ After you import an audio file or a video with sound, the editor analyzes its so
 - If the sound of a file cannot be decoded, or its file is missing from the project's `media` folder, its clips play silently. See [Troubleshooting](troubleshooting.md#playback-has-no-sound).
 
 ## Related pages
+- [Exporting your video](exporting-video.md)
 - [Editing audio](audio-editing.md)
 - [Removing silence](removing-silence.md)
 - [Clip thumbnails, waveforms and badges](clip-thumbnails-and-waveforms.md)
@@ -232,4 +234,4 @@ After you import an audio file or a video with sound, the editor analyzes its so
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 38, 2026-10-17</sub>
+<sub>Last updated: Batch 43, 2026-10-18</sub>

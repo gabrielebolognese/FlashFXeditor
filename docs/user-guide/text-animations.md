@@ -27,7 +27,6 @@ Text animations make titles and subtitles move as they appear and leave: a fade,
 - [Save animations in a preset](#save-animations-in-a-preset)
 - [Find animated clips on the timeline](#find-animated-clips-on-the-timeline)
 - [Undo animation changes](#undo-animation-changes)
-- [What is not available yet](#what-is-not-available-yet)
 - [Related pages](#related-pages)
 
 ## When an animation plays
@@ -41,7 +40,7 @@ Between them, the text stays still, exactly as you styled it.
 
 Each animation plays over at most half the clip, so the in and out animations never overlap. On a 4-second title, a 3-second in animation plays in 2 seconds. Under the **Duration** field, a hint then reads, for example, **Plays in 2.00 s: half the clip**. The duration you typed is kept: lengthen the clip later and the animation plays at its full length again. A clip shorter than 2 frames plays no animation, and the hint reads **The clip is too short to play it**.
 
-Animations show everywhere the preview plays: while you play, scrub, step frames and in the fullscreen preview. **Export frame** saves the text as it is at that frame, in the middle of its animation if the playhead is on one; see [Export the current frame](preview-and-playback.md#export-the-current-frame).
+Animations show everywhere the preview plays: while you play, scrub, step frames and in the fullscreen preview. **Export frame** saves the text as it is at that frame, in the middle of its animation if the playhead is on one; see [Export the current frame](preview-and-playback.md#export-the-current-frame). Exported videos play them as the preview does; see [Exporting your video](exporting-video.md).
 
 > **Note:** The **Fade** animation is separate from a clip fade. You can also fade a text clip as a whole with the fade handles in its top corners on the timeline, or with **Fade in 0.5 s** and **Fade out 0.5 s**; the clip fade then works on top of the animation. See [Fades and transitions](fades-and-transitions.md).
 
@@ -205,13 +204,8 @@ Every animation change is one step in the history. Hover **Undo** in the app bar
 | **Change in animation stagger**, **Change out animation stagger** | The **Stagger** field |
 | **Change in animation easing**, **Change out animation easing** | The **Easing** menu |
 
-## What is not available yet
-
-These parts are available in a later version:
-
-- Exporting the video with its animations. **Export frame** already includes them.
-
 ## Related pages
+- [Exporting your video](exporting-video.md)
 - [Titles and text](titles-and-text.md)
 - [Keyframes](keyframes.md)
 - [Fades and transitions](fades-and-transitions.md)
@@ -223,4 +217,4 @@ These parts are available in a later version:
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 36, 2026-10-17</sub>
+<sub>Last updated: Batch 43, 2026-10-18</sub>

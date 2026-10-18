@@ -34,7 +34,6 @@ Fades and transitions soften the edges of your clips. A fade brings a clip in fr
 - [Crossfade the sound](#crossfade-the-sound)
 - [Know what edits do to fades and transitions](#know-what-edits-do-to-fades-and-transitions)
 - [Undo fades and transitions](#undo-fades-and-transitions)
-- [What is not available yet](#what-is-not-available-yet)
 
 ## How fades work
 
@@ -112,7 +111,7 @@ A transition sits on a cut: the frame where one clip ends and the next one start
 - During a transition, both clips play. The first clip goes on past its end, and the second clip starts before its start. Each keeps the look (position, opacity, fades) of its own edge frame while it plays past its edge.
 - Every frame of a cross dissolve shows a little of both clips. In a 15-frame dissolve, the first frame shows 1/16 of the second clip and the last frame 15/16 of it.
 - A dip covers only the clip's own picture. A small picture on V2 dips alone, and the tracks under it stay visible.
-- Transitions show in the preview while you play, step and scrub, and in [Export frame](preview-and-playback.md#export-the-current-frame). While you play, the editor prepares the frames of both clips ahead of time.
+- Transitions show in the preview while you play, step and scrub, in [Export frame](preview-and-playback.md#export-the-current-frame) and in [exported videos](exporting-video.md), with the sound crossfading. While you play, the editor prepares the frames of both clips ahead of time.
 
 ## Know how much media a transition needs
 
@@ -281,13 +280,8 @@ Each change is one step in the history. Hover over **Undo** in the app bar to se
 
 See [Undo and redo changes](projects-and-saving.md#undo-and-redo-changes).
 
-## What is not available yet
-
-These parts are available in a later version:
-
-- Exporting your video with its transitions: only **Export frame** works.
-
 ## Related pages
+- [Exporting your video](exporting-video.md)
 - [Editing audio](audio-editing.md)
 - [Timeline](timeline.md)
 - [Trimming clips](trimming.md)
@@ -301,4 +295,4 @@ These parts are available in a later version:
 - [Keyboard shortcuts](keyboard-shortcuts.md#fades-and-transitions)
 - [Troubleshooting](troubleshooting.md#fades-and-transitions)
 
-<sub>Last updated: Batch 42, 2026-10-18</sub>
+<sub>Last updated: Batch 43, 2026-10-18</sub>

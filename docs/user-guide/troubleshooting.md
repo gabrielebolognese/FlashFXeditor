@@ -1,6 +1,6 @@
 # Troubleshooting
 
-This page helps you when something does not work as expected: the editor does not start in your browser, the preview stays empty, a shortcut or a key you changed does nothing or runs another command, a folder or a file does not open, media are hidden in the Media tab, go offline or don't relink, a clip drag, a trim, a split, a delete, a timeline tool, a typed timecode, a marker, an in/out range or **Lift** and **Extract** do something you did not expect, media from the Media panel lands somewhere you did not expect, a clip shows no thumbnails, a video gets no proxy or its proxy fails, the preview zoom, overlays or fullscreen behave unexpectedly, a picture in the preview can't be selected, moves unexpectedly, doesn't snap where you expect or gets cropped instead of resized, a value or a crop in **Edit Properties** doesn't do what you expect, a paste or a duplicate lands somewhere you did not expect or is refused, a speed change, a freeze frame or a punch zoom does something you did not expect, a keyframe animation or a keyframe lane doesn't behave as you expect, a fade or a transition doesn't go where you expect, gets shorter or shows red stripes, the rubber band, **Normalize**, **Auto-duck**, **Detach audio** or **Audio scrub** doesn't do what you expect, **Remove silence** cuts too much, too little or nothing, a shape or an image doesn't look or play as you expect, a title lands somewhere you did not expect, the keys type into a text, a font is missing, a text preset doesn't apply, update or sync as you expect, a text animation plays shorter or differently than you expect, a caption cue doesn't import, move, show or highlight as you expect, a transcription doesn't start, is slow or gets words wrong, playback stutters, or you hear no sound. Each problem lists what you see, why it happens and what to do. The last section lists what the current version cannot do yet.
+This page helps you when something does not work as expected: the editor does not start in your browser, the preview stays empty, a shortcut or a key you changed does nothing or runs another command, a folder or a file does not open, media are hidden in the Media tab, go offline or don't relink, a clip drag, a trim, a split, a delete, a timeline tool, a typed timecode, a marker, an in/out range or **Lift** and **Extract** do something you did not expect, media from the Media panel lands somewhere you did not expect, a clip shows no thumbnails, a video gets no proxy or its proxy fails, the preview zoom, overlays or fullscreen behave unexpectedly, a picture in the preview can't be selected, moves unexpectedly, doesn't snap where you expect or gets cropped instead of resized, a value or a crop in **Edit Properties** doesn't do what you expect, a paste or a duplicate lands somewhere you did not expect or is refused, a speed change, a freeze frame or a punch zoom does something you did not expect, a keyframe animation or a keyframe lane doesn't behave as you expect, a fade or a transition doesn't go where you expect, gets shorter or shows red stripes, the rubber band, **Normalize**, **Auto-duck**, **Detach audio** or **Audio scrub** doesn't do what you expect, **Remove silence** cuts too much, too little or nothing, a shape or an image doesn't look or play as you expect, a title lands somewhere you did not expect, the keys type into a text, a font is missing, a text preset doesn't apply, update or sync as you expect, a text animation plays shorter or differently than you expect, a caption cue doesn't import, move, show or highlight as you expect, a transcription doesn't start, is slow or gets words wrong, an export doesn't start, fails or gives a file you did not expect, playback stutters, or you hear no sound. Each problem lists what you see, why it happens and what to do. The last section lists what the current version cannot do yet.
 
 > **Video placeholder: Fix common problems**
 > - File: `videos/troubleshooting/overview.mp4` (not recorded yet)
@@ -55,6 +55,7 @@ This page helps you when something does not work as expected: the editor does no
 >   47. Click **Settings** in the app bar, click the **Shortcuts** tab, click **+** on **Split at playhead** and press <kbd>Ctrl</kbd>+<kbd>L</kbd>: the key turns red on **Split at playhead** and **Link / Unlink**. Click **Done**, click a video with sound on the timeline and press <kbd>Ctrl</kbd>+<kbd>L</kbd>: the video and its sound are unlinked, and nothing is split. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>, open **Settings** again, click **Shortcuts** and click **Reset all**. Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> and type `edit marker`: the row is grey. Press <kbd>Esc</kbd>.
 >   48. In the **Media** tab, click **Unused**: only the media no clip uses show. Click it again. Open a project whose linked video was moved to another folder: its card shows a red **Offline** badge and its clip is gray. Click **Relink…** on the card and pick the moved file: the badge disappears.
 >   49. Click an empty area of the timeline tracks of a 30 fps project and choose **24 fps** in **Frame rate**: **Convert to 24 fps?** counts the rounded timings. Click **Cancel**. Open a project read-only, rename it and press <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>N</kbd>: **Discard unsaved changes?** appears; click **Cancel**. Click **History…**: **Restore…** is dimmed.
+>   50. Delete every clip and click **Export**: the message **Nothing to export** appears. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> and press <kbd>Ctrl</kbd>+<kbd>E</kbd>: the progress message appears. Open **Settings** and click **Clear cache**: the message **An export is running** appears. Click **Done**, then **Cancel** in the progress message: **Export cancelled**.
 
 ## In this page
 - [Browser and graphics](#browser-and-graphics)
@@ -330,6 +331,15 @@ This page helps you when something does not work as expected: the editor does no
   - [A transcription replaced cues outside the in/out range](#a-transcription-replaced-cues-outside-the-inout-range)
   - [The transcript disappeared before you added it](#the-transcript-disappeared-before-you-added-it)
   - [Chinese or Japanese captions have no spaces or a low word count](#chinese-or-japanese-captions-have-no-spaces-or-a-low-word-count)
+- [Export](#export)
+  - [Export says Nothing to export or This project is read-only](#export-says-nothing-to-export-or-this-project-is-read-only)
+  - [An export fails](#an-export-fails)
+  - [An export was cancelled by itself](#an-export-was-cancelled-by-itself)
+  - [The exported video doesn't have your latest changes](#the-exported-video-doesnt-have-your-latest-changes)
+  - [The exported video isn't 1080×1920 or 60 fps](#the-exported-video-isnt-10801920-or-60-fps)
+  - [The exported video has no sound, misses a track or shows a gray slate](#the-exported-video-has-no-sound-misses-a-track-or-shows-a-gray-slate)
+  - [Playback looks softer or a proxy stops during an export](#playback-looks-softer-or-a-proxy-stops-during-an-export)
+  - [You can't find the exported file](#you-cant-find-the-exported-file)
 - [Known limitations](#known-limitations)
 
 ## Browser and graphics
@@ -2649,6 +2659,78 @@ See [Messages when you paste](copy-and-paste.md#messages-when-you-paste).
 
 **Fix:** Nothing to fix: the captions are written as the language is. The word highlight still finds each word. See [How the speech becomes cues](transcription.md#how-the-speech-becomes-cues).
 
+## Export
+
+### Export says Nothing to export or This project is read-only
+
+**Symptom:** You click **Export** or press <kbd>Ctrl</kbd>+<kbd>E</kbd>, and the message **Nothing to export** ("Add clips to the timeline first.") or **This project is read-only** ("Allow editing to export.") appears instead of the progress.
+
+**Cause:** **Nothing to export**: the timeline has no clips. **This project is read-only**: the editor may not write to the project folder, so it can't save the video in its `exports` folder.
+
+**Fix:** Add clips to the timeline, or click **Allow editing** in the read-only banner and allow editing when the browser asks. See [Work in read-only mode](projects-and-saving.md#work-in-read-only-mode).
+
+### An export fails
+
+**Symptom:** The message **Export failed** appears with a reason, and no new file is in `exports`.
+
+**Cause:** The export could not finish. The reason tells you why, for example:
+- the disk is full, or the project folder can't be written any more (it was moved, or it is on a drive that was unplugged);
+- **The export's GPU device was lost** or **No WebGPU device for the export**: the graphics chip was reset or is not available;
+- **This browser cannot encode 1080x1920 video**: the browser has no video encoder for this frame size.
+
+**Fix:**
+1. Free disk space on the drive of the project folder, and check that the folder is still there.
+2. Check that Chrome uses hardware acceleration; see [A WebGPU adapter is missing](#a-webgpu-adapter-is-missing). Update Chrome or Edge to the current version.
+3. Export again. If the frame size can't be encoded, try a project with a standard size, such as **9:16 · 1080×1920**; see [Change the frame size](project-settings-and-templates.md#change-the-frame-size).
+
+### An export was cancelled by itself
+
+**Symptom:** The message **Export cancelled** ("Nothing was written to exports/.") appears although you didn't click **Cancel**, or the progress message disappeared and no file came.
+
+**Cause:** Opening or creating another project stops a running export, and so does **Cancel the export** in the command palette. Closing the tab or reloading the page stops it without a message.
+
+**Fix:** Open the project again and export once more. Wait for **Exported** before you switch projects or close the tab. See [Keep editing while you export](exporting-video.md#keep-editing-while-you-export).
+
+### The exported video doesn't have your latest changes
+
+**Symptom:** A trim, a move or a new title you made while the export ran is not in the exported file.
+
+**Cause:** The export uses the timeline as it was when you clicked **Export**. Changes you make while it runs stay in your project but don't go into that file.
+
+**Fix:** Export again once you are done: the new file gets its own name next to the first one.
+
+### The exported video isn't 1080×1920 or 60 fps
+
+**Symptom:** The file is, for example, 1080×1350 or 1920×1080, or plays at 30 fps although your project has 60.
+
+**Cause:** **Export** uses the Instagram Reels settings: the file keeps the shape of your project, at most 1920 pixels on its long side, and has at most 30 frames per second. A 50, 59.94 or 60 fps project exports every second frame.
+
+**Fix:** For a full-screen Reel, use a **9:16 · 1080×1920** project. Other frame rates and sizes come with the export settings of a later version. See [Know what the file is like](exporting-video.md#know-what-the-file-is-like).
+
+### The exported video has no sound, misses a track or shows a gray slate
+
+**Symptom:** The file is silent, a track you see or hear in the editor is missing, or a clip shows a gray rectangle with **Media offline** or another slate text.
+
+**Cause:** The export leaves out what the editor leaves out: muted audio tracks, tracks left out by a solo, hidden or muted video tracks, and clips you turned off. Offline media show their slate and have no sound. The **Master volume** knob and **Mute** under the preview don't affect the file.
+
+**Fix:** Play the timeline with **Mute** off: what you hear and see is what the export writes. Turn tracks and clips back on, and relink offline media before you export. See [Know what goes into the file](exporting-video.md#know-what-goes-into-the-file) and [Offline media and relinking](offline-media-and-relinking.md).
+
+### Playback looks softer or a proxy stops during an export
+
+**Symptom:** While an export runs, playback looks softer and the status line under the preview reads **Proxy: proxy**, a proxy's percentage on a media card stops, or **Clear cache** shows **An export is running**.
+
+**Cause:** The export uses the video encoder. Meanwhile, playback uses proxies, new proxies wait, and the cache stays as it is, because the export writes its file there.
+
+**Fix:** Nothing: all of it goes back to normal when the export ends. When you stop playback, the preview shows the original frame as usual. To give the preview your computer's full power for a moment, click **Pause** in the progress message. See [Keep editing while you export](exporting-video.md#keep-editing-while-you-export).
+
+### You can't find the exported file
+
+**Symptom:** The message **Exported** appeared, but you don't see the file where you expected it.
+
+**Cause:** The editor writes the file into the `exports` folder inside your project folder, not into your Downloads folder. When a file of the same name is there already, the new one gets a number, such as `Promo-reels-2026-10-18 (2).mp4`.
+
+**Fix:** Open your project folder in File Explorer, then `exports`, and look for the name the **Exported** message showed. See [Find the exported file](exporting-video.md#find-the-exported-file).
+
 ## Known limitations
 
 The current version cannot do these things yet. Each one is available in a later version.
@@ -2661,14 +2743,14 @@ The current version cannot do these things yet. Each one is available in a later
 - **Speed and edit points:** a speed applies to the whole clip, and sound at another speed always changes pitch. Playing a clip backward is not available.
 - **Tracks:** track headers have room for names of about 9 characters; longer names are shortened. Groups are not marked on the timeline.
 - **Keyframes:** keyframes animate position, scale, rotation, opacity and the volume of audio clips.
-- **Text:** a text's handles don't snap. **Restore starter presets** brings back deleted starters, not the original look of a starter you changed. Text animations play in the preview and in **Export frame**.
+- **Text:** a text's handles don't snap. **Restore starter presets** brings back deleted starters, not the original look of a starter you changed. Text animations play in the preview, in **Export frame** and in exported videos.
 - **Captions:** all cues share one style; a style for a single cue is not available. Captions can't be selected, moved or styled in the preview.
 - **Transcription:** the cues can't be edited in the review; fix them in the **Captions** tab after adding them.
-- **Export:** only **Export frame** (a PNG of the current frame) and **Export SRT or VTT** (the captions as a subtitle file) work. The **Export** button in the app bar is disabled.
-- **Shortcuts:** <kbd>Ctrl</kbd>+<kbd>E</kbd> belongs to export, which is not available yet. See [Keyboard shortcuts](keyboard-shortcuts.md).
+- **Export:** **Export** always exports the whole timeline with the Instagram Reels settings into the project's `exports` folder. Other presets, custom settings, an in/out range, another folder, a queue of exports and exporting the sound alone are not available. See [What is not available yet](exporting-video.md#what-is-not-available-yet).
 - **Heavy footage:** 4K 60 fps HEVC played from the original (in **Full** quality, or before its proxy is ready) can drop frames, and the original frame deep inside long phone clips takes a moment to appear after you stop.
 
 ## Related pages
+- [Exporting your video](exporting-video.md)
 - [Copying, pasting and duplicating clips](copy-and-paste.md)
 - [Markers and in/out points](markers-and-in-out-points.md)
 - [Clip thumbnails, waveforms and badges](clip-thumbnails-and-waveforms.md)
@@ -2706,4 +2788,4 @@ The current version cannot do these things yet. Each one is available in a later
 - [Command palette and custom shortcuts](command-palette-and-custom-shortcuts.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 42, 2026-10-18</sub>
+<sub>Last updated: Batch 43, 2026-10-18</sub>

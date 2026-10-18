@@ -119,7 +119,7 @@ The quality decides how much detail the preview draws, and when, and whether it 
 
 A scrub you hold still for 0.3 seconds counts as stopped: the original frame follows. See [Edit with proxies in the preview](proxies.md#edit-with-proxies-in-the-preview).
 
-> **Note:** **Export frame** always saves your original media at full quality, whatever the mode. See [Export the current frame](preview-and-playback.md#export-the-current-frame).
+> **Note:** **Export frame** and video exports always use your original media at full quality, whatever the mode. See [Export the current frame](preview-and-playback.md#export-the-current-frame) and [Exporting your video](exporting-video.md).
 
 ### Read the quality in the status line
 
@@ -173,7 +173,7 @@ The areas on a 1080×1920 frame, in project pixels:
 - Only one safe zone shows at a time. You can combine it with a grid and the guides below.
 - While a safe zone shows, layers you drag also snap to the edges of its dashed safe area. See [Choose what layers snap to](snapping-and-smart-guides.md#choose-what-layers-snap-to).
 
-> **Important:** Overlays exist only on your screen. They never appear in a frame you save with **Export frame**.
+> **Important:** Overlays exist only on your screen. They never appear in a frame you save with **Export frame** or in an exported video.
 
 ## Show grids, guides and rulers
 
@@ -252,6 +252,7 @@ Each project remembers, for the next time you open it:
 None of these are steps in the history: <kbd>Ctrl</kbd>+<kbd>Z</kbd> does not undo a zoom, a pan or an overlay. See [Pick up where you left off](projects-and-saving.md#pick-up-where-you-left-off).
 
 ## Related pages
+- [Exporting your video](exporting-video.md)
 - [Preview and playback](preview-and-playback.md)
 - [Arranging layers in the preview](arranging-layers-in-the-preview.md)
 - [Snapping and smart guides in the preview](snapping-and-smart-guides.md)
@@ -266,4 +267,4 @@ None of these are steps in the history: <kbd>Ctrl</kbd>+<kbd>Z</kbd> does not un
 - [Proxies](proxies.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 40, 2026-10-18</sub>
+<sub>Last updated: Batch 43, 2026-10-18</sub>
