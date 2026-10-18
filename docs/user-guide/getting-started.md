@@ -24,21 +24,23 @@ Shorts Editor is a video editor for short vertical videos that runs in your brow
 | --- | --- |
 | Browser | The current stable version of Chrome or Edge on a desktop computer. Safari, Firefox and mobile browsers are not supported. |
 | Operating system | Windows is the primary platform. |
-| Graphics | A GPU that supports WebGPU, with hardware acceleration turned on in the browser. |
+| Graphics | A GPU that supports WebGPU or WebGL2, with hardware acceleration turned on in the browser. |
 | Screen | At least 1600×900. The editor is designed for 1920×1080 and larger. |
 | Disk | One folder per project, on a drive the browser can write to. There is no server and no account. |
 | Internet | Not needed to edit. Transcription downloads its speech model once, 44 MB to 589 MB; see [Transcription](transcription.md). |
+
+The editor draws the preview and the frames of your exports with your graphics card. It uses WebGPU when your computer has it. Where WebGPU is not available, for example with an older graphics card or a driver the browser blocks for WebGPU, it uses WebGL2 instead, by itself, when it starts. You don't need to set anything: the preview and the exported files look the same either way. Only 4K video played from the original in **Full** quality is smoother with WebGPU; with the default **Auto** quality, which plays [proxies](proxies.md), both play the same. To use WebGL2 on a computer that has WebGPU, see [The picture or the export goes wrong only on this computer](troubleshooting.md#the-picture-or-the-export-goes-wrong-only-on-this-computer).
 
 When the editor starts, it checks that the browser has every feature it needs. If one is missing, you see a single full-screen message instead of the editor: **This browser cannot run Shorts Editor**, with the text "Open it in the current stable version of Chrome or Edge on desktop. These required features are missing:" and a list of what is missing. There is no reduced mode.
 
 The screen can list these items:
 
-- **WebGPU (navigator.gpu)**
+- **WebGPU (navigator.gpu) or WebGL2**: the browser has neither.
 - **WebCodecs VideoDecoder**, **WebCodecs VideoEncoder**, **WebCodecs AudioDecoder**, **WebCodecs AudioEncoder**, **WebCodecs VideoFrame**, **WebCodecs ImageDecoder**
 - **File System Access (showDirectoryPicker)**, **File System Access (showSaveFilePicker)**
-- **A WebGPU adapter (a supported GPU with hardware acceleration turned on)**: the browser has WebGPU, but cannot use your graphics card.
+- **A GPU renderer: WebGPU or WebGL2 on a supported GPU with hardware acceleration turned on**: the browser has WebGPU or WebGL2, but can't use either of them with your graphics card.
 
-> **Tip:** If the only item listed is the WebGPU adapter, turn on hardware acceleration (in Chrome: **Settings** > **System** > **Use graphics acceleration when available**), restart the browser, and update your graphics driver if the message stays.
+> **Tip:** If the only item listed is **A GPU renderer**, turn on hardware acceleration (in Chrome: **Settings** > **System** > **Use graphics acceleration when available**), restart the browser, and update your graphics driver if the message stays. See [No GPU renderer is available](troubleshooting.md#no-gpu-renderer-is-available).
 
 > **Note:** Browsers offer these features only on a secure address (`https://` or `localhost`). Opened from any other address, the editor shows the unsupported-browser screen.
 
@@ -170,4 +172,4 @@ For other problems, see [Troubleshooting](troubleshooting.md).
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 46, 2026-10-18</sub>
+<sub>Last updated: Batch 48, 2026-10-18</sub>

@@ -1,68 +1,70 @@
 # Troubleshooting
 
-This page helps you when something does not work as expected: the editor does not start in your browser, the preview stays empty, a panel or the whole editor says it stopped working, a shortcut or a key you changed does nothing or runs another command, a folder or a file does not open or shows **Failed** in the Media tab, media are hidden in the Media tab, go offline or don't relink, a clip drag, a trim, a split, a delete, a timeline tool, a typed timecode, a marker, an in/out range or **Lift** and **Extract** do something you did not expect, media from the Media panel lands somewhere you did not expect, a clip shows no thumbnails, a video gets no proxy or its proxy fails, the preview zoom, overlays or fullscreen behave unexpectedly, a picture in the preview can't be selected, moves unexpectedly, doesn't snap where you expect or gets cropped instead of resized, a value or a crop in **Edit Properties** doesn't do what you expect, a paste or a duplicate lands somewhere you did not expect or is refused, a speed change, a freeze frame or a punch zoom does something you did not expect, a keyframe animation or a keyframe lane doesn't behave as you expect, a fade or a transition doesn't go where you expect, gets shorter or shows red stripes, the rubber band, **Normalize**, **Auto-duck**, **Detach audio** or **Audio scrub** doesn't do what you expect, **Remove silence** cuts too much, too little or nothing, a shape or an image doesn't look or play as you expect, a title lands somewhere you did not expect, the keys type into a text, a font is missing, a text preset doesn't apply, update or sync as you expect, a text animation plays shorter or differently than you expect, a caption cue doesn't import, move, show or highlight as you expect, a transcription doesn't start, is slow or gets words wrong, an export doesn't start, fails or gives a file you did not expect, playback stutters or pauses for a moment, an HDR video looks less bright than on your phone, or you hear no sound. Each problem lists what you see, why it happens and what to do. The last section lists what the current version cannot do yet.
+This page helps you when something does not work as expected: the editor does not start in your browser, the preview stays empty or your graphics driver has trouble with WebGPU, a panel or the whole editor says it stopped working, a shortcut or a key you changed does nothing or runs another command, a folder or a file does not open or shows **Failed** in the Media tab, media are hidden in the Media tab, go offline or don't relink, a clip drag, a trim, a split, a delete, a timeline tool, a typed timecode, a marker, an in/out range or **Lift** and **Extract** do something you did not expect, media from the Media panel lands somewhere you did not expect, a clip shows no thumbnails, a video gets no proxy or its proxy fails, the preview zoom, overlays or fullscreen behave unexpectedly, a picture in the preview can't be selected, moves unexpectedly, doesn't snap where you expect or gets cropped instead of resized, a value or a crop in **Edit Properties** doesn't do what you expect, a paste or a duplicate lands somewhere you did not expect or is refused, a speed change, a freeze frame or a punch zoom does something you did not expect, a keyframe animation or a keyframe lane doesn't behave as you expect, a fade or a transition doesn't go where you expect, gets shorter or shows red stripes, the rubber band, **Normalize**, **Auto-duck**, **Detach audio** or **Audio scrub** doesn't do what you expect, **Remove silence** cuts too much, too little or nothing, a shape or an image doesn't look or play as you expect, a title lands somewhere you did not expect, the keys type into a text, a font is missing, a text preset doesn't apply, update or sync as you expect, a text animation plays shorter or differently than you expect, a caption cue doesn't import, move, show or highlight as you expect, a transcription doesn't start, is slow or gets words wrong, an export doesn't start, fails or gives a file you did not expect, playback stutters or pauses for a moment, an HDR video looks less bright than on your phone, or you hear no sound. Each problem lists what you see, why it happens and what to do. The last section lists what the current version cannot do yet.
 
 > **Video placeholder: Fix common problems**
 > - File: `videos/troubleshooting/overview.mp4` (not recorded yet)
-> - Length: about 235 seconds
+> - Length: about 245 seconds
 > - Shows:
 >   1. Open the editor in a browser without the required features: the screen "This browser cannot run Shorts Editor" lists what is missing.
 >   2. In Chrome, open `chrome://settings/system` and show **Use graphics acceleration when available** turned on.
->   3. Open a project and allow only viewing when the browser asks: the read-only notice appears in the app bar. Click **Allow editing**, allow editing, and the notice disappears.
->   4. Import a `.webm` file: the message "Can't import ..." with "Unsupported file type" appears.
->   5. Press <kbd>F</kbd>: the preview fills the window and the other panels disappear. Press <kbd>Esc</kbd>: they are back at their sizes.
->   6. Play a 4K clip and point at **Dropped** in the status strip under the preview.
->   7. Play a clip with sound while **Mute** is on: nothing is heard, but the meter moves. Click **Unmute**: the sound is back.
->   8. Drag a clip near the end of another clip: it jumps onto the edge with a gold line. Hold <kbd>S</kbd> and place it a few frames away instead.
->   9. Click **Ripple mode** in the timeline toolbar so it is gold, and drag the end of a clip to the left: the later clips move too. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> and click **Ripple mode** again to turn it off.
->   10. Press <kbd>Y</kbd> and drag a clip: it stays in place while its picture changes. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>, then <kbd>V</kbd>, and drag the clip again: it moves.
->   11. Press <kbd>C</kbd> and click a clip: it splits in two. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>, then <kbd>V</kbd>.
->   12. With three videos end to end on V1, put a music clip on A2 that runs under the second video and ends after it, and a short sound effect on A2 one second after the music. Select the second video and press <kbd>Shift</kbd>+<kbd>Delete</kbd>: the message **Ripple delete stopped short** names the sound effect, and the third video moves only one second to the left.
->   13. Click the padlock in the V1 header: diagonal lines cover the row, and clicking its clips selects nothing. Click the padlock again: the clips can be selected.
->   14. Click the height toggle in the V1 header until the track is S: its clips show only their label bar. Click it again: the thumbnails are back.
->   15. Press <kbd>H</kbd> and drag a clip: the view pans and the clip stays where it is. Press <kbd>V</kbd> and drag the clip again: it moves.
->   16. With playback stopped, point at an empty part of a track and press <kbd>Space</kbd>: the cursor turns into a hand, and playback starts only when you release the key.
->   17. Click the timeline's timecode field, type `1:x5` and press <kbd>Enter</kbd>: the field gets a red border. Press <kbd>Esc</kbd>.
->   18. Set an in point and an out point, turn on **Loop playback**, click in the ruler after the range and press <kbd>Space</kbd>: playback starts at the in point and repeats the range. Press <kbd>Space</kbd>, then <kbd>Alt</kbd>+<kbd>X</kbd>: the shading disappears.
->   19. Click a marker in the ruler, click an empty part of a track and press <kbd>Delete</kbd>: the marker disappears, the clips stay. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>.
->   20. Point at the picture of a video card in the Media panel and press <kbd>I</kbd>: a gold bar appears on the card, and the timeline's in point does not change. Press <kbd>Alt</kbd>+<kbd>X</kbd>: the bar disappears.
->   21. Put the playhead in the middle of a clip and double-click a card: the clip splits and the later clips move right. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>, click the card and press <kbd>.</kbd>: the new clip covers what was there instead.
->   22. Choose **400%** in the preview **Zoom** menu with a 4K clip under the playhead and press <kbd>Space</kbd>: the status line reads **Auto: proxy** (**Auto: reduced** before the clip's proxy is ready) and the picture is soft. Press <kbd>Space</kbd> again: a moment later the picture sharpens and the status line reads **Auto: full**.
->   23. Click a picture in the preview and press <kbd>→</kbd>: the picture moves 1 pixel and the playhead stays. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>, click the area around the frame and press <kbd>→</kbd>: the playhead steps one frame.
->   24. With a logo on V2 over a video on V1, click the eye in the V2 header and click where the logo was: the video on V1 is selected. Click the eye again, click the logo, then <kbd>Alt</kbd>+click it: the video under it is selected.
->   25. Drag the logo slowly toward the middle of the frame: it jumps to the center and gold lines cross the frame. Keep the mouse button down and hold <kbd>S</kbd>: it moves freely and the lines disappear. Release the mouse button, then click **Smart guides** in the preview header so it is no longer gold, and drag the logo next to another picture: it no longer snaps to it. Click **Smart guides** again.
->   26. Import a 4K 60 fps clip: its card shows a grey **PX** chip that counts up. Press <kbd>Space</kbd>: the percentage stops while the timeline plays. Press <kbd>Space</kbd> again: it continues. Right-click a 1080p 30 fps card with no chip and choose **Generate proxy**: a grey chip appears.
->   27. Click a clip on the timeline, click an empty part of the **Edit Properties** panel and press <kbd>Ctrl</kbd>+<kbd>D</kbd>: the browser offers to bookmark the page. Press <kbd>Esc</kbd>, click the clip on the timeline and press <kbd>Ctrl</kbd>+<kbd>D</kbd>: a copy appears right after it.
->   28. Select three clips with different opacities: **Opacity** shows `--`. Right-click one of them and choose **Disable**: they turn faded with diagonal lines and leave the preview. Right-click again and choose **Enable**.
->   29. Double-click a picture in the preview: white brackets and bars replace its handles, and the **Crop** chip appears at the top of the preview. Drag a corner bracket inward: the picture is cut, not resized. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>, then <kbd>Esc</kbd>: the usual handles are back.
->   30. In the **Crop** section, click the chain button in the **Aspect** row so it is lit, and type `200` in **T**: **L** and **R** change too. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> and click the chain button again to unlock it.
->   31. Select a video with a clip right after it. In the **Speed** section, turn **Ripple** off and type `50` in **Speed**: the clip stops at the next one, and the message **Shortened at the next clip** appears. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> and turn **Ripple** on again.
->   32. Select a video, move the playhead outside it and press <kbd>Shift</kbd>+<kbd>F</kbd>: the message **The playhead is not over the selected clip** appears.
->   33. Press <kbd>T</kbd> and press <kbd>Space</kbd>: a space is typed instead of playing. Press <kbd>Esc</kbd>, then <kbd>Space</kbd>: playback starts. Pause.
->   34. Click beside a short line of a two-line title, where no letter is: the video behind it is selected. Click a letter: the title is selected.
->   35. Open a project made on another computer with a font this one doesn't have: the **Font** field shows **Missing** and the clip shows a red triangle. Pick **Inter** in the font picker: both disappear.
->   36. Click an empty area of the timeline tracks so nothing is selected, then click the **Breaking** card in the **Presets** tab: a new title appears instead of a changed one. Press <kbd>Esc</kbd>, then <kbd>Ctrl</kbd>+<kbd>Z</kbd>. Select the first title and click the card: it takes the red box.
->   37. Select a title made with a preset and hover **Update preset** in the quick actions: it is dimmed while the title still has the preset's style. Change its color: the button comes alive.
->   38. Give a 4-second title **Word pop** in the **Animation** section and type `3` in its **Duration**: the hint **Plays in 2.00 s: half the clip** appears under the field. Click the **Title** preset card: the animation is gone. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>: it is back.
->   39. Open the **Captions** tab of a project with cues, click into a cue's text and press <kbd>Delete</kbd>: a letter disappears. Press <kbd>Esc</kbd>, then <kbd>Delete</kbd>: the cue is deleted. On the **CC** row, drag a cue into the next one: it stops against it.
->   40. Click **M** in the header of the audio track with the voice, click the microphone in the **Captions** header, then **Transcribe**: the message **No audio to transcribe** appears. Click **M** again, set an in and an out point that cut through two cues, and transcribe **In to out**: the review offers **Replace 2 cues**. Press <kbd>Esc</kbd>: the transcript is gone and nothing changed.
->   41. Click **Add solid**, then click **Ellipse** in the **Solid** section: the **Radius** field is dimmed. Click **Rounded rectangle**, type `500` in **Radius**: the ends are half circles and grow no rounder. Drag a corner handle of the shape: **Scale** in **Transform** stays at 100% while **W** and **H** change.
->   42. Select a logo whose **Transform** stopwatch is on, with **Show clip keyframes** on. Click a diamond on its lane and press <kbd>Delete</kbd>: only that keyframe disappears and the **Undo** tooltip reads **Undo Delete keyframe**. Click the clip's body and press <kbd>Delete</kbd>: now the clip goes. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> twice.
->   43. Put two videos that each use their whole file end to end on V1, click right on the cut between them and press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd>: the block is striped red and the message **Not enough media for the transition** appears. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>. Select the first video and click **Fade in 0.5 s** twice: the second click removes the fade, and the **Undo** tooltip reads **Undo Remove fade in**.
->   44. Put a music clip on A1 and a voice clip on A2 under it, select the music and click **Auto-duck** in the **Audio** section: the message **No voice to duck under** appears. Drag the A2 header above A1 and click **Auto-duck** again: the music's line dips under the voice. Click **Auto-duck** once more: the dip gets twice as deep; press <kbd>Ctrl</kbd>+<kbd>Z</kbd>.
->   45. Select a title and point at **Remove silence** in the quick actions: it is dimmed. Select a talking-head video recorded in a noisy room and click **Remove silence**: the row reads **No silence found**. Drag the **Threshold** slider to `-30 dB`: red stripes cover the pauses. Click **Cancel**.
->   46. Click the padlock in the V2 header. Select a clip on V1 and a clip on V2 above it, press <kbd>Ctrl</kbd>+<kbd>C</kbd>, click in the ruler at an empty spot and press <kbd>Ctrl</kbd>+<kbd>V</kbd>: the message **Can't paste onto a locked track** names V2. Click the padlock again and press <kbd>Ctrl</kbd>+<kbd>V</kbd>: the clips land at the playhead on V1 and V2. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>, put the playhead over another clip and press <kbd>Ctrl</kbd>+<kbd>V</kbd>: the clip under the copies is cut away. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> and press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>V</kbd>: the clips make room instead.
->   47. Click **Settings** in the app bar, click the **Shortcuts** tab, click **+** on **Split at playhead** and press <kbd>Ctrl</kbd>+<kbd>L</kbd>: the key turns red on **Split at playhead** and **Link / Unlink**. Click **Done**, click a video with sound on the timeline and press <kbd>Ctrl</kbd>+<kbd>L</kbd>: the video and its sound are unlinked, and nothing is split. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>, open **Settings** again, click **Shortcuts** and click **Reset all**. Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> and type `edit marker`: the row is grey. Press <kbd>Esc</kbd>.
->   48. In the **Media** tab, click **Unused**: only the media no clip uses show. Click it again. Open a project whose linked video was moved to another folder: its card shows a red **Offline** badge and its clip is gray. Click **Relink…** on the card and pick the moved file: the badge disappears.
->   49. Click an empty area of the timeline tracks of a 30 fps project and choose **24 fps** in **Frame rate**: **Convert to 24 fps?** counts the rounded timings. Click **Cancel**. Open a project read-only, rename it and press <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>N</kbd>: **Discard unsaved changes?** appears; click **Cancel**. Click **History…**: **Restore…** is dimmed.
->   50. Delete every clip, press <kbd>Ctrl</kbd>+<kbd>E</kbd> and <kbd>Enter</kbd>: the message **Nothing to export** appears. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>, click **Export** in the **Export** tab and press <kbd>Esc</kbd>: the progress message appears at the top of the window. Open **Settings** and click **Clear cache**: the message **An export is running** appears. Click **Done**, then **Cancel** in the progress message: **Export cancelled**.
->   51. Rename a text file to `broken.mp4` and drop it on the **Media** tab: the message **Can't import broken.mp4** appears, and a row with a red **Failed** badge and "Not a readable MP4/MOV file: it is damaged or is not a video" stays under the search field. Click the **X** at the end of the row: it disappears. Click the timeline, press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>, type `reload` and press <kbd>Enter</kbd> on **Reload panel**: the timeline draws itself again, with every clip in place.
+>   3. Add `?renderer=webgl2` to the end of the editor's address and press <kbd>Enter</kbd>: the start screen appears again. Open a project from **Recent projects** and play it: it looks the same as before.
+>   4. Open a project and allow only viewing when the browser asks: the read-only notice appears in the app bar. Click **Allow editing**, allow editing, and the notice disappears.
+>   5. Import a `.webm` file: the message "Can't import ..." with "Unsupported file type" appears.
+>   6. Press <kbd>F</kbd>: the preview fills the window and the other panels disappear. Press <kbd>Esc</kbd>: they are back at their sizes.
+>   7. Play a 4K clip and point at **Dropped** in the status strip under the preview.
+>   8. Play a clip with sound while **Mute** is on: nothing is heard, but the meter moves. Click **Unmute**: the sound is back.
+>   9. Drag a clip near the end of another clip: it jumps onto the edge with a gold line. Hold <kbd>S</kbd> and place it a few frames away instead.
+>   10. Click **Ripple mode** in the timeline toolbar so it is gold, and drag the end of a clip to the left: the later clips move too. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> and click **Ripple mode** again to turn it off.
+>   11. Press <kbd>Y</kbd> and drag a clip: it stays in place while its picture changes. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>, then <kbd>V</kbd>, and drag the clip again: it moves.
+>   12. Press <kbd>C</kbd> and click a clip: it splits in two. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>, then <kbd>V</kbd>.
+>   13. With three videos end to end on V1, put a music clip on A2 that runs under the second video and ends after it, and a short sound effect on A2 one second after the music. Select the second video and press <kbd>Shift</kbd>+<kbd>Delete</kbd>: the message **Ripple delete stopped short** names the sound effect, and the third video moves only one second to the left.
+>   14. Click the padlock in the V1 header: diagonal lines cover the row, and clicking its clips selects nothing. Click the padlock again: the clips can be selected.
+>   15. Click the height toggle in the V1 header until the track is S: its clips show only their label bar. Click it again: the thumbnails are back.
+>   16. Press <kbd>H</kbd> and drag a clip: the view pans and the clip stays where it is. Press <kbd>V</kbd> and drag the clip again: it moves.
+>   17. With playback stopped, point at an empty part of a track and press <kbd>Space</kbd>: the cursor turns into a hand, and playback starts only when you release the key.
+>   18. Click the timeline's timecode field, type `1:x5` and press <kbd>Enter</kbd>: the field gets a red border. Press <kbd>Esc</kbd>.
+>   19. Set an in point and an out point, turn on **Loop playback**, click in the ruler after the range and press <kbd>Space</kbd>: playback starts at the in point and repeats the range. Press <kbd>Space</kbd>, then <kbd>Alt</kbd>+<kbd>X</kbd>: the shading disappears.
+>   20. Click a marker in the ruler, click an empty part of a track and press <kbd>Delete</kbd>: the marker disappears, the clips stay. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>.
+>   21. Point at the picture of a video card in the Media panel and press <kbd>I</kbd>: a gold bar appears on the card, and the timeline's in point does not change. Press <kbd>Alt</kbd>+<kbd>X</kbd>: the bar disappears.
+>   22. Put the playhead in the middle of a clip and double-click a card: the clip splits and the later clips move right. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>, click the card and press <kbd>.</kbd>: the new clip covers what was there instead.
+>   23. Choose **400%** in the preview **Zoom** menu with a 4K clip under the playhead and press <kbd>Space</kbd>: the status line reads **Auto: proxy** (**Auto: reduced** before the clip's proxy is ready) and the picture is soft. Press <kbd>Space</kbd> again: a moment later the picture sharpens and the status line reads **Auto: full**.
+>   24. Click a picture in the preview and press <kbd>→</kbd>: the picture moves 1 pixel and the playhead stays. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>, click the area around the frame and press <kbd>→</kbd>: the playhead steps one frame.
+>   25. With a logo on V2 over a video on V1, click the eye in the V2 header and click where the logo was: the video on V1 is selected. Click the eye again, click the logo, then <kbd>Alt</kbd>+click it: the video under it is selected.
+>   26. Drag the logo slowly toward the middle of the frame: it jumps to the center and gold lines cross the frame. Keep the mouse button down and hold <kbd>S</kbd>: it moves freely and the lines disappear. Release the mouse button, then click **Smart guides** in the preview header so it is no longer gold, and drag the logo next to another picture: it no longer snaps to it. Click **Smart guides** again.
+>   27. Import a 4K 60 fps clip: its card shows a grey **PX** chip that counts up. Press <kbd>Space</kbd>: the percentage stops while the timeline plays. Press <kbd>Space</kbd> again: it continues. Right-click a 1080p 30 fps card with no chip and choose **Generate proxy**: a grey chip appears.
+>   28. Click a clip on the timeline, click an empty part of the **Edit Properties** panel and press <kbd>Ctrl</kbd>+<kbd>D</kbd>: the browser offers to bookmark the page. Press <kbd>Esc</kbd>, click the clip on the timeline and press <kbd>Ctrl</kbd>+<kbd>D</kbd>: a copy appears right after it.
+>   29. Select three clips with different opacities: **Opacity** shows `--`. Right-click one of them and choose **Disable**: they turn faded with diagonal lines and leave the preview. Right-click again and choose **Enable**.
+>   30. Double-click a picture in the preview: white brackets and bars replace its handles, and the **Crop** chip appears at the top of the preview. Drag a corner bracket inward: the picture is cut, not resized. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>, then <kbd>Esc</kbd>: the usual handles are back.
+>   31. In the **Crop** section, click the chain button in the **Aspect** row so it is lit, and type `200` in **T**: **L** and **R** change too. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> and click the chain button again to unlock it.
+>   32. Select a video with a clip right after it. In the **Speed** section, turn **Ripple** off and type `50` in **Speed**: the clip stops at the next one, and the message **Shortened at the next clip** appears. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> and turn **Ripple** on again.
+>   33. Select a video, move the playhead outside it and press <kbd>Shift</kbd>+<kbd>F</kbd>: the message **The playhead is not over the selected clip** appears.
+>   34. Press <kbd>T</kbd> and press <kbd>Space</kbd>: a space is typed instead of playing. Press <kbd>Esc</kbd>, then <kbd>Space</kbd>: playback starts. Pause.
+>   35. Click beside a short line of a two-line title, where no letter is: the video behind it is selected. Click a letter: the title is selected.
+>   36. Open a project made on another computer with a font this one doesn't have: the **Font** field shows **Missing** and the clip shows a red triangle. Pick **Inter** in the font picker: both disappear.
+>   37. Click an empty area of the timeline tracks so nothing is selected, then click the **Breaking** card in the **Presets** tab: a new title appears instead of a changed one. Press <kbd>Esc</kbd>, then <kbd>Ctrl</kbd>+<kbd>Z</kbd>. Select the first title and click the card: it takes the red box.
+>   38. Select a title made with a preset and hover **Update preset** in the quick actions: it is dimmed while the title still has the preset's style. Change its color: the button comes alive.
+>   39. Give a 4-second title **Word pop** in the **Animation** section and type `3` in its **Duration**: the hint **Plays in 2.00 s: half the clip** appears under the field. Click the **Title** preset card: the animation is gone. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>: it is back.
+>   40. Open the **Captions** tab of a project with cues, click into a cue's text and press <kbd>Delete</kbd>: a letter disappears. Press <kbd>Esc</kbd>, then <kbd>Delete</kbd>: the cue is deleted. On the **CC** row, drag a cue into the next one: it stops against it.
+>   41. Click **M** in the header of the audio track with the voice, click the microphone in the **Captions** header, then **Transcribe**: the message **No audio to transcribe** appears. Click **M** again, set an in and an out point that cut through two cues, and transcribe **In to out**: the review offers **Replace 2 cues**. Press <kbd>Esc</kbd>: the transcript is gone and nothing changed.
+>   42. Click **Add solid**, then click **Ellipse** in the **Solid** section: the **Radius** field is dimmed. Click **Rounded rectangle**, type `500` in **Radius**: the ends are half circles and grow no rounder. Drag a corner handle of the shape: **Scale** in **Transform** stays at 100% while **W** and **H** change.
+>   43. Select a logo whose **Transform** stopwatch is on, with **Show clip keyframes** on. Click a diamond on its lane and press <kbd>Delete</kbd>: only that keyframe disappears and the **Undo** tooltip reads **Undo Delete keyframe**. Click the clip's body and press <kbd>Delete</kbd>: now the clip goes. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> twice.
+>   44. Put two videos that each use their whole file end to end on V1, click right on the cut between them and press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd>: the block is striped red and the message **Not enough media for the transition** appears. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>. Select the first video and click **Fade in 0.5 s** twice: the second click removes the fade, and the **Undo** tooltip reads **Undo Remove fade in**.
+>   45. Put a music clip on A1 and a voice clip on A2 under it, select the music and click **Auto-duck** in the **Audio** section: the message **No voice to duck under** appears. Drag the A2 header above A1 and click **Auto-duck** again: the music's line dips under the voice. Click **Auto-duck** once more: the dip gets twice as deep; press <kbd>Ctrl</kbd>+<kbd>Z</kbd>.
+>   46. Select a title and point at **Remove silence** in the quick actions: it is dimmed. Select a talking-head video recorded in a noisy room and click **Remove silence**: the row reads **No silence found**. Drag the **Threshold** slider to `-30 dB`: red stripes cover the pauses. Click **Cancel**.
+>   47. Click the padlock in the V2 header. Select a clip on V1 and a clip on V2 above it, press <kbd>Ctrl</kbd>+<kbd>C</kbd>, click in the ruler at an empty spot and press <kbd>Ctrl</kbd>+<kbd>V</kbd>: the message **Can't paste onto a locked track** names V2. Click the padlock again and press <kbd>Ctrl</kbd>+<kbd>V</kbd>: the clips land at the playhead on V1 and V2. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>, put the playhead over another clip and press <kbd>Ctrl</kbd>+<kbd>V</kbd>: the clip under the copies is cut away. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> and press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>V</kbd>: the clips make room instead.
+>   48. Click **Settings** in the app bar, click the **Shortcuts** tab, click **+** on **Split at playhead** and press <kbd>Ctrl</kbd>+<kbd>L</kbd>: the key turns red on **Split at playhead** and **Link / Unlink**. Click **Done**, click a video with sound on the timeline and press <kbd>Ctrl</kbd>+<kbd>L</kbd>: the video and its sound are unlinked, and nothing is split. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>, open **Settings** again, click **Shortcuts** and click **Reset all**. Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> and type `edit marker`: the row is grey. Press <kbd>Esc</kbd>.
+>   49. In the **Media** tab, click **Unused**: only the media no clip uses show. Click it again. Open a project whose linked video was moved to another folder: its card shows a red **Offline** badge and its clip is gray. Click **Relink…** on the card and pick the moved file: the badge disappears.
+>   50. Click an empty area of the timeline tracks of a 30 fps project and choose **24 fps** in **Frame rate**: **Convert to 24 fps?** counts the rounded timings. Click **Cancel**. Open a project read-only, rename it and press <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>N</kbd>: **Discard unsaved changes?** appears; click **Cancel**. Click **History…**: **Restore…** is dimmed.
+>   51. Delete every clip, press <kbd>Ctrl</kbd>+<kbd>E</kbd> and <kbd>Enter</kbd>: the message **Nothing to export** appears. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>, click **Export** in the **Export** tab and press <kbd>Esc</kbd>: the progress message appears at the top of the window. Open **Settings** and click **Clear cache**: the message **An export is running** appears. Click **Done**, then **Cancel** in the progress message: **Export cancelled**.
+>   52. Rename a text file to `broken.mp4` and drop it on the **Media** tab: the message **Can't import broken.mp4** appears, and a row with a red **Failed** badge and "Not a readable MP4/MOV file: it is damaged or is not a video" stays under the search field. Click the **X** at the end of the row: it disappears. Click the timeline, press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>, type `reload` and press <kbd>Enter</kbd> on **Reload panel**: the timeline draws itself again, with every clip in place.
 
 ## In this page
 - [Browser and graphics](#browser-and-graphics)
   - [The browser cannot run Shorts Editor](#the-browser-cannot-run-shorts-editor)
-  - [A WebGPU adapter is missing](#a-webgpu-adapter-is-missing)
+  - [No GPU renderer is available](#no-gpu-renderer-is-available)
   - [The preview goes blank after a graphics reset](#the-preview-goes-blank-after-a-graphics-reset)
+  - [The picture or the export goes wrong only on this computer](#the-picture-or-the-export-goes-wrong-only-on-this-computer)
 - [Panels and the whole editor](#panels-and-the-whole-editor)
   - [A panel shows stopped working](#a-panel-shows-stopped-working)
   - [Shorts Editor stopped working fills the window](#shorts-editor-stopped-working-fills-the-window)
@@ -365,25 +367,25 @@ This page helps you when something does not work as expected: the editor does no
 
 | Listed feature | What the editor uses it for |
 | --- | --- |
-| WebGPU (navigator.gpu) | Drawing the preview with your graphics card. |
+| WebGPU (navigator.gpu) or WebGL2 | Drawing the preview and the frames of your exports with your graphics card. The editor needs one of the two. |
 | WebCodecs VideoDecoder, VideoEncoder, AudioDecoder, AudioEncoder, VideoFrame, ImageDecoder | Reading and writing video, audio and images. |
 | File System Access (showDirectoryPicker) | Opening and saving project folders on your disk. |
 | File System Access (showSaveFilePicker) | Saving files to a place you choose, such as exports with **Choose file…** and caption files. |
-| A WebGPU adapter (a supported GPU with hardware acceleration turned on) | See [A WebGPU adapter is missing](#a-webgpu-adapter-is-missing). |
+| A GPU renderer: WebGPU or WebGL2 on a supported GPU with hardware acceleration turned on | See [No GPU renderer is available](#no-gpu-renderer-is-available). |
 
 **Fix:** Open the editor in the current stable version of Google Chrome or Microsoft Edge on a desktop or laptop computer. Update the browser if it is older. Phones and tablets are not supported.
 
-### A WebGPU adapter is missing
+### No GPU renderer is available
 
-**Symptom:** The unsupported screen lists only "A WebGPU adapter (a supported GPU with hardware acceleration turned on)".
+**Symptom:** The unsupported screen lists only "A GPU renderer: WebGPU or WebGL2 on a supported GPU with hardware acceleration turned on".
 
-**Cause:** Your browser supports WebGPU but cannot use your graphics hardware. Usually hardware acceleration is turned off, or the browser blocks your graphics card or its driver.
+**Cause:** Your browser has WebGPU or WebGL2, but can't use either of them with your graphics card. Usually hardware acceleration is turned off, or the browser blocks your graphics card or its driver. The editor starts with WebGPU when it can and with WebGL2 otherwise, but only on the graphics card: it never draws with the processor instead, which would be too slow for video.
 
 **Fix:**
 1. In Chrome, open `chrome://settings/system` and turn on **Use graphics acceleration when available**. In Edge, open `edge://settings/system` and turn on the same setting.
 2. Relaunch the browser.
 3. If the screen still appears, update your graphics driver from your computer or graphics card maker, then relaunch the browser.
-4. To check, open `chrome://gpu` (or `edge://gpu`) and look for the WebGPU line under "Graphics Feature Status". It should say that WebGPU is hardware accelerated.
+4. To check, open `chrome://gpu` (or `edge://gpu`) and look at the WebGPU and WebGL2 lines under "Graphics Feature Status". The editor starts when one of them says it is hardware accelerated.
 
 ### The preview goes blank after a graphics reset
 
@@ -391,10 +393,28 @@ This page helps you when something does not work as expected: the editor does no
 
 **Cause:** The browser lost its connection to the graphics card.
 
-**Fix:** Usually nothing: the editor reconnects on its own, typically within a second, and draws the frame again. It keeps trying for about 4 seconds. If the preview stays empty:
+**Fix:** Usually nothing: the editor reconnects on its own, typically within a second, and draws the frame again. With WebGPU it keeps trying for about 4 seconds; with WebGL2 it draws again as soon as the browser gives the graphics card back. If the preview stays empty:
 1. Press <kbd>Ctrl</kbd>+<kbd>S</kbd> to save. Saving does not need the graphics card.
 2. Reload the page.
 3. Open the project again from **Recent projects** on the start screen.
+
+If it happens often, see [The picture or the export goes wrong only on this computer](#the-picture-or-the-export-goes-wrong-only-on-this-computer).
+
+### The picture or the export goes wrong only on this computer
+
+**Symptom:** On one computer, the preview often goes blank after a graphics reset or draws parts of the picture wrong, or exports fail with **The GPU was reset during the export (device lost). Export again.** The same project looks and exports fine on another computer.
+
+**Cause:** The editor draws with WebGPU whenever your computer has it. WebGPU is newer than WebGL2, and the graphics drivers of some computers still have problems with it.
+
+**Fix:** Update your graphics driver and the browser first. If the problem stays, start the editor with WebGL2 instead:
+1. Press <kbd>Ctrl</kbd>+<kbd>S</kbd> to save your project.
+2. Click the browser's address bar and add `?renderer=webgl2` to the end of the editor's address. If the address already contains a `?`, add `&renderer=webgl2` instead.
+3. Press <kbd>Enter</kbd>. The editor starts again at the start screen.
+4. Open your project from **Recent projects**.
+
+The editor uses WebGL2 for the preview and for your exports each time you open that address; bookmark it to keep it. The choice is made when the editor starts, so it does not change while the page is open. To go back to WebGPU, remove `?renderer=webgl2` from the address and press <kbd>Enter</kbd>. If WebGL2 can't run on your graphics card, the editor starts with WebGPU anyway.
+
+> **Note:** The preview and the exported files look the same with WebGL2 as with WebGPU. With WebGL2, 4K video played from the original (in **Full** quality, or before its proxy is ready) drops more frames, so keep **Preview quality** at **Auto**. See [Know what to expect from performance](preview-and-playback.md#know-what-to-expect-from-performance).
 
 ## Panels and the whole editor
 
@@ -407,7 +427,7 @@ This page helps you when something does not work as expected: the editor does no
 **Fix:**
 1. Click **Reload panel**, or run **Reload panel** from the command palette (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>). The panel builds itself again.
 2. If it stops again right away, press <kbd>Ctrl</kbd>+<kbd>S</kbd> to save, reload the page and open the project again from **Recent projects**.
-3. If a panel that draws pictures keeps stopping, check the graphics settings: see [A WebGPU adapter is missing](#a-webgpu-adapter-is-missing), and update Chrome or Edge and your graphics driver.
+3. If a panel that draws pictures keeps stopping, check the graphics settings: see [No GPU renderer is available](#no-gpu-renderer-is-available), and update Chrome or Edge and your graphics driver. If it still happens, try WebGL2; see [The picture or the export goes wrong only on this computer](#the-picture-or-the-export-goes-wrong-only-on-this-computer).
 
 See [Reload a panel that stopped working](workspace.md#reload-a-panel-that-stopped-working).
 
@@ -1304,6 +1324,7 @@ If the picture stays soft after you stop and the status line reads **Proxy: prox
 - Where you can, use 1080p footage instead of 4K.
 - In the **Preview quality** menu of the preview header, choose **1/2** or **1/4**: playback draws at half or a quarter of the resolution, which is lighter. Make sure the mode is not **Full**: it never uses proxies and keeps full detail when you play zoomed in above 100%. See [Choose the preview quality](preview-zoom-overlays-fullscreen.md#choose-the-preview-quality).
 - If it stutters at a transition between two clips of the same 4K video, keep **Preview quality** at **Auto** and wait for the video's green **PX** chip. In **Full**, the editor decodes the same 4K original at two places at once there, which drops many frames. The exported video is not affected. See [Edit with proxies in the preview](proxies.md#edit-with-proxies-in-the-preview).
+- If you opened the editor with `?renderer=webgl2` in its address, 4K video played from the original drops more frames than with WebGPU. Keep **Preview quality** at **Auto**, or remove `?renderer=webgl2` from the address if WebGPU works on your computer. See [The picture or the export goes wrong only on this computer](#the-picture-or-the-export-goes-wrong-only-on-this-computer).
 
 **Not a problem:**
 - Playback may wait up to half a second before it starts: the editor decodes the first frames.
@@ -1319,7 +1340,7 @@ See [Preview and playback](preview-and-playback.md#know-what-to-expect-from-perf
 
 **Cause:** The browser's video decoder crashed or stopped responding, for example after a graphics driver problem. The editor noticed, started it again and asked for the frames again. Playback doesn't stop, and your media stays usable.
 
-**Fix:** Nothing: playback goes on by itself. If it happens often, update Chrome or Edge and your graphics driver, and check that hardware acceleration is on; see [A WebGPU adapter is missing](#a-webgpu-adapter-is-missing).
+**Fix:** Nothing: playback goes on by itself. If it happens often, update Chrome or Edge and your graphics driver, and check that hardware acceleration is on; see [No GPU renderer is available](#no-gpu-renderer-is-available).
 
 ### Playback repeats only part of the timeline
 
@@ -2760,12 +2781,12 @@ See [Messages when you paste](copy-and-paste.md#messages-when-you-paste).
 
 **Cause:** The export could not finish. The reason tells you why, for example:
 - the disk is full, or the project folder can't be written any more (it was moved, or it is on a drive that was unplugged);
-- **The GPU was reset during the export (device lost). Export again.** or **No WebGPU device for the export**: the graphics chip was reset during the export, for example by a driver update, or is not available. The preview keeps working, and the next export can run normally;
+- **The GPU was reset during the export (device lost). Export again.**, **No WebGPU device for the export** or **No WebGL2 device for the export**: the graphics chip was reset during the export, for example by a driver update, or is not available. The preview keeps working, and the next export can run normally;
 - **This browser cannot encode 1080x1920 video**: the browser has no video encoder for this frame size.
 
 **Fix:**
 1. Free disk space on the drive of the project folder, and check that the folder is still there.
-2. Check that Chrome uses hardware acceleration; see [A WebGPU adapter is missing](#a-webgpu-adapter-is-missing). Update Chrome or Edge to the current version.
+2. Check that Chrome uses hardware acceleration; see [No GPU renderer is available](#no-gpu-renderer-is-available). Update Chrome or Edge to the current version. If exports keep failing with the device-lost message on this computer, try WebGL2; see [The picture or the export goes wrong only on this computer](#the-picture-or-the-export-goes-wrong-only-on-this-computer).
 3. Export again with **Export again with these settings** in the log row. If the frame size can't be encoded, choose a lower **Resolution** in the **Settings** section of the **Export** tab, set **Encoder** to **Auto**, or try a project with a standard size, such as **9:16 · 1080×1920**; see [Change the export settings](exporting-video.md#change-the-export-settings) and [Change the frame size](project-settings-and-templates.md#change-the-frame-size).
 
 ### An export was cancelled by itself
@@ -2905,4 +2926,4 @@ The current version cannot do these things yet. Each one is available in a later
 - [Command palette and custom shortcuts](command-palette-and-custom-shortcuts.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 47, 2026-10-18</sub>
+<sub>Last updated: Batch 48, 2026-10-18</sub>

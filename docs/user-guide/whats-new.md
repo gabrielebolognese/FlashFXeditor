@@ -2,6 +2,11 @@
 
 Shorts Editor grows in steps called batches. This page lists what each batch added that you can see or use, newest first. Follow the links for the full instructions.
 
+> **Video placeholder: What's new in Batch 48**
+> - File: `videos/whats-new/batch-48.mp4` (not recorded yet)
+> - Length: about 40 seconds
+> - Shows: open a project with a video, a title, a cross dissolve and a solid; play it and stop on the dissolve; click the browser's address bar, add `?renderer=webgl2` to the end of the address and press <kbd>Enter</kbd>: the start screen appears; open the project from **Recent projects** and play it again: the picture looks the same; press <kbd>Ctrl</kbd>+<kbd>E</kbd> and <kbd>Enter</kbd> to export, then play the exported file; remove `?renderer=webgl2` from the address and press <kbd>Enter</kbd>.
+
 > **Video placeholder: What's new in Batch 47**
 > - File: `videos/whats-new/batch-47.mp4` (not recorded yet)
 > - Length: about 45 seconds
@@ -193,6 +198,7 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 > - Shows: open a project with three clips on the timeline; press <kbd>Space</kbd> to play and let the timeline page forward; press <kbd>L</kbd> three times to reach 8x, then <kbd>K</kbd>; hold <kbd>K</kbd> and tap <kbd>L</kbd> to step one frame; turn on **Loop playback**; point at the **Dropped** readout in the status strip.
 
 ## In this page
+- [Batch 48: Runs without WebGPU](#batch-48-runs-without-webgpu)
 - [Batch 47: A steadier editor](#batch-47-a-steadier-editor)
 - [Batch 46: Keyboard navigation and a finished look](#batch-46-keyboard-navigation-and-a-finished-look)
 - [Batch 45: Faster proxies and a lighter editor](#batch-45-faster-proxies-and-a-lighter-editor)
@@ -240,6 +246,12 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 - [Batch 03: Projects, autosave and recovery](#batch-03-projects-autosave-and-recovery)
 - [Batch 02: Undo, redo and frame-exact time](#batch-02-undo-redo-and-frame-exact-time)
 - [Batch 01: The workspace](#batch-01-the-workspace)
+
+## Batch 48: Runs without WebGPU
+- The editor now also runs in Chrome and Edge on computers without WebGPU, for example with an older graphics card or a driver the browser blocks for WebGPU. It uses WebGL2 there, by itself, with the same picture in the preview, in **Export frame** and in exported videos. See [Check your browser](getting-started.md#check-your-browser).
+- The **This browser cannot run Shorts Editor** screen now asks for **WebGPU (navigator.gpu) or WebGL2**, and lists **A GPU renderer: WebGPU or WebGL2 on a supported GPU with hardware acceleration turned on** when the browser can't use your graphics card. See [No GPU renderer is available](troubleshooting.md#no-gpu-renderer-is-available).
+- If WebGPU misbehaves on your computer, add `?renderer=webgl2` to the editor's address to use WebGL2 instead, for the preview and your exports. See [The picture or the export goes wrong only on this computer](troubleshooting.md#the-picture-or-the-export-goes-wrong-only-on-this-computer).
+- 4K video played from the original in **Full** quality is smoother with WebGPU than with WebGL2; with the default **Auto** quality, which plays proxies, both play the same. See [Know what to expect from performance](preview-and-playback.md#know-what-to-expect-from-performance).
 
 ## Batch 47: A steadier editor
 - A file that can't be imported, such as a damaged video or another file renamed to .mp4, now stays listed near the top of the **Media** tab: a red **Failed** badge, the file name and the reason in plain words, for example "Not a readable MP4/MOV file: it is damaged or is not a video". Click the **X** to dismiss it, or run **Dismiss failed imports** from the command palette. See [Check failed imports](importing-media.md#check-failed-imports).
@@ -748,4 +760,4 @@ See [The workspace](workspace.md) and [Getting started](getting-started.md).
 - [Adding media to the timeline](adding-media-to-the-timeline.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 47, 2026-10-18</sub>
+<sub>Last updated: Batch 48, 2026-10-18</sub>
