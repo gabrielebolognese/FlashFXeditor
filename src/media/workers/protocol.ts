@@ -76,6 +76,8 @@ export interface WorkerDecodeStats {
   liveDecoders: number;
   /** VideoFrames the worker holds (backward-step rings). */
   openFrames: number;
+  /** Frame and prefetch jobs waiting for their decoder, over all sessions (queue depth). */
+  queued: number;
   seeks: number;
   decoded: number;
   /** Decoded frames never delivered (before a seek target, or cancelled). */

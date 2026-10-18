@@ -446,6 +446,8 @@ export function detachPreview(): void {
   stopProject = null;
   texturePool.clear();
   textRasters.clear();
+  // The pool's frame textures went to the renderer's spares: those go too.
+  renderer.releaseCaches();
   detachAudio();
 }
 

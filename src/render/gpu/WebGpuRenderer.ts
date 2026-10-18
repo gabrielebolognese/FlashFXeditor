@@ -71,6 +71,13 @@ interface DeviceResources {
 /** Takes a destroyed handle's GPU texture back for reuse; false when it does not (the texture is destroyed). */
 type Recycle = (texture: GpuTexture) => boolean;
 
+/** GPU textures the renderer allocated and has not destroyed on the current device (dev stats, P13 leak checks). */
+interface TextureCounts {
+  generation: number;
+  live: number;
+  bytes: number;
+}
+
 class GpuTexture implements TextureHandle {
   private destroyed = false;
 
@@ -83,6 +90,7 @@ class GpuTexture implements TextureHandle {
     readonly generation: number,
     private readonly currentGeneration: () => number,
     private readonly recycle: Recycle | null = null,
+    private readonly counts: TextureCounts | null = null,
   ) {}
 
   get width(): number {
@@ -104,7 +112,12 @@ class GpuTexture implements TextureHandle {
   destroy(): void {
     if (this.destroyed) return;
     this.destroyed = true;
-    if (!this.recycle?.(this)) this.texture.destroy();
+    if (this.recycle?.(this)) return;
+    this.texture.destroy();
+    if (this.counts && this.counts.generation === this.generation) {
+      this.counts.live -= 1;
+      this.counts.bytes -= this.bytes;
+    }
   }
 }
 
@@ -206,6 +219,7 @@ export class WebGpuRenderer implements Renderer {
   private readonly canvases = new Set<GpuCanvasTarget>();
   private readonly listeners = new Set<(event: DeviceEvent) => void>();
   private readonly spares: SpareTexture[] = [];
+  private readonly counts: TextureCounts = { generation: -1, live: 0, bytes: 0 };
   private layerData = new Float32Array(layerFloats(INITIAL_LAYERS));
   private readonly viewData = new Float32Array(VIEW_SIZE / 4);
   private readonly canvasFormat: GPUTextureFormat;
@@ -236,6 +250,8 @@ export class WebGpuRenderer implements Renderer {
       const had = this.resources !== null;
       this.resources = null;
       for (const spare of this.spares.splice(0)) spare.texture.destroy();
+      // Textures of the old device are gone with it.
+      Object.assign(this.counts, { generation: gpu.generation, live: 0, bytes: 0 });
       if (state === "ready" && device) {
         this.resources = this.build(device, gpu.generation);
         for (const target of this.canvases) this.configure(target);
@@ -248,6 +264,11 @@ export class WebGpuRenderer implements Renderer {
 
   get ready(): boolean {
     return this.resources !== null;
+  }
+
+  /** GPU textures allocated and not destroyed (pool frames, images, text rasters, targets, spares). */
+  get textureCounts(): { live: number; bytes: number } {
+    return { live: this.counts.live, bytes: this.counts.bytes };
   }
 
   get maxTextureSize(): number {
@@ -326,6 +347,22 @@ export class WebGpuRenderer implements Renderer {
       target.texture.destroy();
       target.texture = this.newTexture(this.require(), w, h, { label: "offscreen target" });
     }
+  }
+
+  /**
+   * Destroys the textures kept for reuse: spare video-frame textures and pooled blur passes. A closed
+   * project leaves nothing on the GPU (P13); the next draws allocate again.
+   */
+  releaseCaches(): void {
+    for (const spare of this.spares.splice(0)) {
+      spare.texture.destroy();
+      if (spare.generation === this.counts.generation) {
+        this.counts.live -= 1;
+        this.counts.bytes -= spare.bytes;
+      }
+    }
+    const pool = this.resources?.blur.pool;
+    if (pool) for (const entry of pool.splice(0)) entry.texture.destroy();
   }
 
   releaseTarget(target: RenderTarget): void {
@@ -612,7 +649,7 @@ export class WebGpuRenderer implements Renderer {
     const at = this.spares.findIndex((spare) => spare.generation === res.generation && spare.texture.width === w && spare.texture.height === h);
     if (at === -1) return null;
     const spare = this.spares.splice(at, 1)[0] as SpareTexture;
-    return new GpuTexture(spare.texture, spare.view, spare.bindGroup, spare.bytes, res.generation, () => this.resources?.generation ?? -1, this.recycleFrame);
+    return new GpuTexture(spare.texture, spare.view, spare.bindGroup, spare.bytes, res.generation, () => this.resources?.generation ?? -1, this.recycleFrame, this.counts);
   }
 
   /** A destroyed video-frame handle gives its texture back, up to MAX_SPARE_FRAMES of the current device. */
@@ -643,7 +680,12 @@ export class WebGpuRenderer implements Renderer {
         { binding: 1, resource: view },
       ],
     });
-    return new GpuTexture(texture, view, bindGroup, textureBytes(w, h, levels), res.generation, () => this.resources?.generation ?? -1, recycle);
+    const bytes = textureBytes(w, h, levels);
+    if (this.counts.generation === res.generation) {
+      this.counts.live += 1;
+      this.counts.bytes += bytes;
+    }
+    return new GpuTexture(texture, view, bindGroup, bytes, res.generation, () => this.resources?.generation ?? -1, recycle, this.counts);
   }
 
   /**

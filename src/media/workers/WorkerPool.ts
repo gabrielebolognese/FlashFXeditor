@@ -41,6 +41,18 @@ export class WorkerPool {
     return this.pending.size;
   }
 
+  /** Requests in flight per worker kind (dev stats: queue depths). */
+  inFlightByKind(): Partial<Record<WorkerKind, number>> {
+    const counts: Partial<Record<WorkerKind, number>> = {};
+    for (const { kind } of this.pending.values()) counts[kind] = (counts[kind] ?? 0) + 1;
+    return counts;
+  }
+
+  /** The kinds whose worker runs now. */
+  get running(): WorkerKind[] {
+    return [...this.workers.keys()];
+  }
+
   request<M extends Method>(method: M, params: Params<M>, options: RequestOptions<Progress<M>> = {}): Promise<Result<M>> {
     const { signal, priority = "background", transfer = [], onProgress } = options;
     if (signal?.aborted) return Promise.reject(signal.reason ?? abortError());

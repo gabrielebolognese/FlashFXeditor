@@ -1,6 +1,6 @@
 import "./styles/tokens.css";
 import "./styles/base.css";
-import { StrictMode } from "react";
+import { Profiler, StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./app/App.js";
 import { findMissingApis, GPU_ADAPTER_LABEL } from "./app/compat.js";
@@ -43,6 +43,7 @@ if (!container) throw new Error("#root element missing from index.html");
 const root = createRoot(container);
 
 async function start(): Promise<void> {
+  performance.mark("app:start");
   const missing = findMissingApis(window);
   // WebGPU without an adapter (blocklisted GPU, hardware acceleration off) is unsupported too.
   const adapter = missing.length === 0 ? await requestGpuAdapter() : null;
@@ -50,6 +51,7 @@ async function start(): Promise<void> {
     root.render(<UnsupportedScreen missing={missing.length > 0 ? missing : [GPU_ADAPTER_LABEL]} />);
     return;
   }
+  performance.mark("app:gpu");
   startServices();
   installCommandController();
   startGpu(adapter);
@@ -81,9 +83,21 @@ async function start(): Promise<void> {
   installAudioEditController();
   installSilenceController();
   installClipboardController();
+  // Dev builds: the performance overlay, benchmarks and the React commit counter (Batch 45).
+  const perf = import.meta.env.DEV ? await import("./app/perfController.js") : null;
+  perf?.installPerfController();
   root.render(
     <StrictMode>
-      <App />
+      {perf ? (
+        <>
+          <Profiler id="app" onRender={perf.perfMonitor.reactCommit}>
+            <App />
+          </Profiler>
+          <perf.PerfStats />
+        </>
+      ) : (
+        <App />
+      )}
     </StrictMode>,
   );
   // Every controller has registered its commands: the dev assertion (and the watch over buttons).

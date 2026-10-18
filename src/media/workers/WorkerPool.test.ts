@@ -70,6 +70,20 @@ describe("WorkerPool + WorkerHost", () => {
     expect(pool.inFlight).toBe(0);
   });
 
+  it("counts the requests in flight per worker kind", async () => {
+    const gate = deferred<typeof AUDIO>();
+    const { pool } = setup({ probe: () => gate.promise });
+    expect(pool.inFlightByKind()).toEqual({});
+    expect(pool.running).toEqual([]);
+    const first = pool.request("probe", { file, container: "mp4", type: "audio/mp4" });
+    const second = pool.request("probe", { file, container: "mp4", type: "audio/mp4" });
+    expect(pool.inFlightByKind()).toEqual({ decode: 2 });
+    expect(pool.running).toEqual(["decode"]);
+    gate.resolve(AUDIO);
+    await Promise.all([first, second]);
+    expect(pool.inFlightByKind()).toEqual({});
+  });
+
   it("rejects with the handler's error name and message", async () => {
     const { pool } = setup({
       probe: async () => {

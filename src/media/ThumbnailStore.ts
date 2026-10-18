@@ -14,7 +14,10 @@
 // MAX_SHEETS / MAX_BYTES that closes what it evicts, never the sheets on screen or a card's first
 // sheet. Eager sheets nobody shows are written and closed at once.
 // Sheets are decoded from the video's proxy once it is ready (spec §9.6), else from the source (also
-// when the proxy file is missing). When a video's source changes, the sheets in memory keep showing,
+// when the proxy file is missing). While a video's proxy is being made, its eager levels wait: they
+// would be made again from the proxy anyway, and decoding a 4K source beside the proxy job starved it
+// of the shared hardware decoder (a 20-minute 4K60 proxy ran at 0.08x real time, Batch 45). Wanted
+// sheets (cards, the timeline, a hover scrub) still come from the source at once. When a video's source changes, the sheets in memory keep showing,
 // its index starts over for the new source, and LOD0 and LOD1 are made again after the other eager
 // work (others when shown). `regenerate` (Regenerate thumbnails) does the same without the cache.
 import { setMediaAnalysis } from "../core/commands/mediaCommands.js";
@@ -111,6 +114,8 @@ interface MediaEntry {
   layout: ThumbLayout;
   /** The file the sheets come from: the proxy once it is ready. */
   source: Lod;
+  /** Its proxy is being made: the eager levels wait for it. */
+  proxyPending: boolean;
   index: ThumbIndex | null;
   file: File | null;
   /** No sheet can be made this session (missing file, no decoder). */
@@ -233,7 +238,9 @@ export class ThumbnailStore {
       if (!layout) continue;
       const entry = this.entries.get(item.id);
       const source = sourceOf(item);
+      const proxyPending = item.proxy?.status === "pending";
       if (entry && sameLayout(entry.layout, layout)) {
+        entry.proxyPending = proxyPending;
         if (entry.source !== source) {
           entry.source = source;
           this.restart(item.id, entry, false);
@@ -241,7 +248,7 @@ export class ThumbnailStore {
         continue;
       }
       if (entry) this.drop(item.id);
-      this.entries.set(item.id, { layout, source, index: null, file: null, broken: false, fresh: false });
+      this.entries.set(item.id, { layout, source, proxyPending, index: null, file: null, broken: false, fresh: false });
       this.eager.push(item.id);
     }
     this.pump();
@@ -264,7 +271,7 @@ export class ThumbnailStore {
     const entry = this.entries.get(mediaId);
     if (!entry) return;
     this.drop(mediaId);
-    this.entries.set(mediaId, { layout: entry.layout, source: entry.source, index: null, file: null, broken: false, fresh: true });
+    this.entries.set(mediaId, { layout: entry.layout, source: entry.source, proxyPending: entry.proxyPending, index: null, file: null, broken: false, fresh: true });
     this.regenerate(mediaId);
   }
 
@@ -299,7 +306,7 @@ export class ThumbnailStore {
 
   private pump(): void {
     if (this.disposed || this.busy) return;
-    if (!this.nextWanted() && this.eager.length === 0) {
+    if (!this.nextWanted() && this.nextEager() === undefined) {
       this.resolveIdle();
       return;
     }
@@ -333,6 +340,11 @@ export class ThumbnailStore {
     return null;
   }
 
+  /** The first video whose eager levels can be made now (not one whose proxy is being made). */
+  private nextEager(): MediaId | undefined {
+    return this.eager.find((id) => !this.entries.get(id)?.proxyPending);
+  }
+
   private needs(key: SheetKey): boolean {
     const entry = this.entries.get(key.mediaId);
     if (!entry || entry.broken) return false;
@@ -346,18 +358,18 @@ export class ThumbnailStore {
       await this.produce(wanted, signal);
       return;
     }
-    const mediaId = this.eager[0];
+    const mediaId = this.nextEager();
     if (mediaId === undefined) return;
     const entry = this.entries.get(mediaId);
     if (!entry || entry.broken) {
-      this.eager.shift();
+      this.dropEager(mediaId);
       return;
     }
     const index = await this.ensureIndex(mediaId, entry, signal);
     // A sheet that failed is not tried again this session.
     const missing = firstMissingSheet(index, EAGER_LEVELS, (level, sheet) => this.failed.has(keyOf(mediaId, level, sheet)));
     if (!missing) {
-      if (this.eager[0] === mediaId) this.eager.shift();
+      this.dropEager(mediaId);
       this.markReady(mediaId);
       return;
     }
@@ -413,12 +425,16 @@ export class ThumbnailStore {
     entry.file = null;
     entry.broken = false;
     for (const k of [...this.failed]) if (k.startsWith(`${mediaId}/`)) this.failed.delete(k);
-    const at = this.eager.indexOf(mediaId);
-    if (at !== -1) this.eager.splice(at, 1);
+    this.dropEager(mediaId);
     if (first) this.eager.unshift(mediaId);
     else this.eager.push(mediaId);
     this.active?.abort();
     this.deps.workers.request("closeThumbs", { mediaId }).catch(() => undefined);
+  }
+
+  private dropEager(mediaId: MediaId): void {
+    const at = this.eager.indexOf(mediaId);
+    if (at !== -1) this.eager.splice(at, 1);
   }
 
   /** A sheet the index lists, from cache/thumbs/; null when its file is gone or damaged. */
@@ -548,8 +564,7 @@ export class ThumbnailStore {
       this.sheets.delete(k);
     }
     for (const k of [...this.failed]) if (k.startsWith(`${mediaId}/`)) this.failed.delete(k);
-    const at = this.eager.indexOf(mediaId);
-    if (at !== -1) this.eager.splice(at, 1);
+    this.dropEager(mediaId);
     this.emitCard(mediaId);
     this.deps.workers.request("closeThumbs", { mediaId }).catch(() => undefined);
   }

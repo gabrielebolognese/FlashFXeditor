@@ -17,7 +17,7 @@ describe("loopbackWorker", () => {
     const workers = pool({
       decodeStats: async () => {
         order.push("handled");
-        return { sessions: 1, liveDecoders: 0, openFrames: 0, seeks: 0, decoded: 0, dropped: 0, ringHits: 0, stalls: 0, indexParsed: 0, indexFromCache: 0, idleCloses: 0 };
+        return { sessions: 1, liveDecoders: 0, openFrames: 0, queued: 0, seeks: 0, decoded: 0, dropped: 0, ringHits: 0, stalls: 0, indexParsed: 0, indexFromCache: 0, idleCloses: 0 };
       },
       prefetch: async (_params, _signal, emit) => {
         emit({ frame: { close: () => undefined } as unknown as VideoFrame, timeUs: 5, approximate: false });

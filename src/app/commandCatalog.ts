@@ -3,6 +3,7 @@
 // handlers; buttons, menus, the command palette, the shortcut editor and the cheat sheet read their
 // names and icons here, and the dev audit (app/commandAudit.ts) checks that both agree with the keymap.
 import {
+  Activity,
   ArrowUpDown,
   AudioLines,
   AudioWaveform,
@@ -543,6 +544,12 @@ export const COMMANDS: readonly CommandInfo[] = [
   dev("dev.generateTimeline", "Generate a test timeline", { dev: true }),
   dev("dev.toggleGpuStats", "GPU stats", { icon: Gauge, dev: true }),
   dev("dev.toggleTimelineStats", "Timeline stats", { icon: Gauge, dev: true }),
+  dev("dev.togglePerfStats", "Performance stats", { icon: Activity, dev: true, keywords: "fps commits redraws memory long tasks" }),
+  dev("dev.benchTimeline", "Benchmark: 500 clips on 8 tracks", { dev: true, keywords: "performance" }),
+  dev("dev.benchScrub", "Benchmark: scrub the longest video", { dev: true, keywords: "performance proxy" }),
+  dev("dev.benchExport", "Benchmark: 60 s export", { dev: true, keywords: "performance" }),
+  dev("dev.benchStartup", "Benchmark: startup (reloads)", { dev: true, keywords: "performance" }),
+  dev("dev.benchMemory", "Benchmark: memory after closing the project", { dev: true, keywords: "performance leak" }),
 ];
 
 const BY_ID = new Map(COMMANDS.map((info) => [info.id, info]));

@@ -323,6 +323,39 @@ describe("ThumbnailStore", { timeout: 20_000 }, () => {
     expect(t.documentStore.getState().media.v?.analysis.thumbs).toBe("ready");
   });
 
+  it("waits with a video's eager levels while its proxy is made, wanted sheets still coming from the source", async () => {
+    const t = setup();
+    const proxy = { relPath: "cache/proxies/v.mp4", width: 960, height: 540 };
+    t.documentStore.dispatch(addMedia([video("v", { proxy: { ...proxy, status: "pending" } }), video("w")]));
+    await t.settle();
+    expect(t.made.map((m) => m.mediaId)).toEqual(["w", "w", "w"]);
+    expect(t.documentStore.getState().media.v?.analysis.thumbs).toBe("pending");
+    t.store.want([{ mediaId: "v", level: 0, sheet: 0 }]);
+    await t.settle();
+    expect(t.made.slice(3).map((m) => [m.mediaId, m.source])).toEqual([["v", "full"]]);
+    t.proxyFiles.add("v");
+    t.documentStore.amend(setMediaProxy("v", { ...proxy, status: "ready" }));
+    await t.settle();
+    expect(t.made.slice(4).map((m) => [m.mediaId, m.source, m.times[0]])).toEqual([
+      ["v", "proxy", 0],
+      ["v", "proxy", 0],
+      ["v", "proxy", 8_000_000],
+    ]);
+    expect(t.documentStore.getState().media.v?.analysis.thumbs).toBe("ready");
+  });
+
+  it("makes the eager levels from the source when the proxy fails", async () => {
+    const t = setup();
+    const proxy = { relPath: "cache/proxies/v.mp4", width: 960, height: 540 };
+    t.documentStore.dispatch(addMedia([video("v", { proxy: { ...proxy, status: "pending" } })]));
+    await t.settle();
+    expect(t.made).toEqual([]);
+    t.documentStore.amend(setMediaProxy("v", { ...proxy, status: "failed" }));
+    await t.settle();
+    expect(t.made.map((m) => m.source)).toEqual(["full", "full", "full"]);
+    expect(t.documentStore.getState().media.v?.analysis.thumbs).toBe("ready");
+  });
+
   it("decodes from the source when the proxy file is missing", async () => {
     const t = setup();
     t.documentStore.dispatch(addMedia([video("v", { proxy: { relPath: "cache/proxies/v.mp4", width: 960, height: 540, status: "ready" } })]));

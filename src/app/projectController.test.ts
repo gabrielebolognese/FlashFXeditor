@@ -3,8 +3,8 @@ import { renameProject } from "../core/commands/projectCommands.js";
 import { createMemoryDir } from "../project/memoryFs.js";
 import { createProject } from "../project/openProject.js";
 import { parseProjectFile } from "../project/projectFile.js";
-import { appView, retryOpen } from "./projectController.js";
-import { documentStore } from "./services.js";
+import { appView, closeProject, retryOpen } from "./projectController.js";
+import { documentStore, workerPool } from "./services.js";
 
 // The real services open IndexedDB at import time, which jsdom lacks: same singletons, memory-backed.
 vi.mock("./services.js", async () => {
@@ -49,7 +49,7 @@ vi.mock("./services.js", async () => {
     sessionStore,
     templateStore: new TemplateStore(memoryKeyValueStore()),
     themeBridge: new ThemeBridge(document.documentElement, () => () => "0"),
-    workerPool: { request: () => new Promise(() => undefined) },
+    workerPool: { request: () => new Promise(() => undefined), stop: vi.fn(), running: [], inFlightByKind: () => ({}) },
   };
 });
 
@@ -77,5 +77,21 @@ describe("projectController", () => {
     expect(appView.getState().dialog).toBeNull();
     expect(documentStore.getState().name).toBe("Renamed");
     expect(parseProjectFile(dir.text("project.json")!).name).toBe("Renamed");
+  });
+
+  it("stops the project's workers and leaves an empty document when the project closes", async () => {
+    const dir = createMemoryDir("Close");
+    await createProject(dir, "Close", { width: 1080, height: 1920, fps: { num: 30, den: 1 } }, { appVersion: "test" });
+    await retryOpen(dir);
+    const stop = vi.mocked(workerPool.stop);
+    stop.mockClear();
+    documentStore.dispatch(renameProject("Edited"));
+    await closeProject();
+    expect(stop.mock.calls.map(([kind]) => kind).sort()).toEqual(["analysis", "decode", "proxy"]);
+    expect(appView.getState().project).toBeNull();
+    expect(documentStore.getState().name).toBe("Untitled project");
+    expect(documentStore.history.getState().canUndo).toBe(false);
+    // Saved on the way out.
+    expect(parseProjectFile(dir.text("project.json")!).name).toBe("Edited");
   });
 });
