@@ -1,6 +1,8 @@
 // WebGPU adapter and device (spec §3.1). Owns the one GPUDevice of the app and replaces it when it is
 // lost (driver reset, GPU process crash, `device.destroy()` from the console): a new adapter and device
 // are requested at once, then with growing delays. Listeners rebuild their GPU objects on "ready".
+// The WebGL2 backend's counterpart is GlContext (Batch 48); both are `RenderDevice`s.
+import type { RenderDevice } from "./backend.js";
 
 export type GpuState = "idle" | "ready" | "lost" | "failed" | "disposed";
 
@@ -32,7 +34,8 @@ export async function requestGpuAdapter(gpu: GPU | undefined = navigator.gpu): P
   }
 }
 
-export class GpuDevice {
+export class GpuDevice implements RenderDevice {
+  readonly backend = "webgpu";
   private current: GPUDevice | null = null;
   private stateValue: GpuState = "idle";
   private readonly listeners = new Set<GpuListener>();
@@ -82,6 +85,11 @@ export class GpuDevice {
   subscribe(listener: GpuListener): () => void {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
+  }
+
+  /** Destroys the device as a driver reset would (dev checks): it is replaced unless `recover` is false. */
+  loseForTest(): void {
+    this.current?.destroy();
   }
 
   /** Destroys the device on purpose: no recovery. */

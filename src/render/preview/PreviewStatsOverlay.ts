@@ -1,5 +1,5 @@
-// Dev stats over the preview (spec §13 "GPU memory of the texture pool (dev toggle)"): GPU state and
-// recoveries, preview draws (and identical frames skipped) against resize events, the compositor's
+// Dev stats over the preview (spec §13 "GPU memory of the texture pool (dev toggle)"): GPU state, the
+// backend (WebGPU or WebGL2, Batch 48) and recoveries, preview draws (and identical frames skipped) against resize events, the compositor's
 // layers (exact, stand-in, held, missing) and requests, the texture pool's count, bytes and evictions,
 // and the decode engine: latencies to the first and to the exact frame, seeks, live decoders, frames
 // held on each side (the main thread's must stay 0, P13), sample index cache hits, and playback
@@ -13,7 +13,7 @@ import type { TexturePool } from "../../media/cache/TexturePool.js";
 import type { FrameService } from "../../media/decode/FrameService.js";
 import type { WorkerDecodeStats } from "../../media/workers/protocol.js";
 import type { PlaybackEngine } from "../../playback/PlaybackEngine.js";
-import type { GpuDevice } from "../gpu/GpuDevice.js";
+import type { RenderDevice } from "../gpu/backend.js";
 import type { TextRasterStats } from "../text/TextRasterCache.js";
 import type { PreviewStats } from "./PreviewView.js";
 
@@ -24,7 +24,7 @@ export interface PreviewStatsDeps {
   scheduler: Pick<FrameScheduler, "register" | "invalidate">;
   preview: { readonly stats: PreviewStats };
   pool: Pick<TexturePool, "stats" | "subscribe">;
-  gpu: Pick<GpuDevice, "state" | "generation" | "restores" | "lastRecoveryMs" | "subscribe">;
+  gpu: Pick<RenderDevice, "backend" | "state" | "generation" | "restores" | "lastRecoveryMs" | "subscribe">;
   frames: Pick<FrameService, "stats" | "subscribe" | "workerStats">;
   playback?: Pick<PlaybackEngine, "stats" | "speed" | "autoProxy" | "subscribe">;
   /** Canvas snapping: candidate rebuilds (only when the layers or overlays change) and queries. */
@@ -99,7 +99,7 @@ export class PreviewStatsOverlay implements RenderView {
       ? `decoders ${w.liveDecoders}/${w.sessions} · seeks ${w.seeks} · decoded ${w.decoded} · dropped ${w.dropped} · ring hits ${w.ringHits} · stalls ${w.stalls} · index cached ${w.indexFromCache} parsed ${w.indexParsed}`
       : "decode worker not started";
     this.element.textContent = [
-      `GPU ${gpu.state} · device ${gpu.generation} · restores ${gpu.restores}${recovery}`,
+      `GPU ${gpu.state} · ${gpu.backend === "webgl2" ? "WebGL2" : "WebGPU"} · device ${gpu.generation} · restores ${gpu.restores}${recovery}`,
       `draws ${p.renders} · skipped ${p.skipped} · ${p.ms.toFixed(2)} ms · resizes ${p.resizes} · ${p.width}×${p.height} @${p.dpr}x`,
       `layers ${p.textures.layers}: exact ${p.textures.exact} · stand-in ${p.textures.standIns} · held ${p.textures.held} · missing ${p.textures.missing} · pending ${p.textures.pending} · warming ${p.textures.warming} · failed ${p.textures.failed} · proxy ${p.textures.proxy}`,
       `pool ${s.count} tex · ${mb(s.bytes)} / ${mb(s.budget)} MB · pinned ${s.pinned} · evicted ${s.evictions}`,

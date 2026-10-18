@@ -84,6 +84,20 @@ describe("GpuDevice", () => {
     expect(requestAdapter).toHaveBeenCalledTimes(2);
   });
 
+  it("loses its device on purpose for the dev checks, as a RenderDevice (Batch 48)", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.spyOn(console, "info").mockImplementation(() => {});
+    const { gpu, devices } = fakeGpu(["ok", "ok"]);
+    const gpuDevice = new GpuDevice({ gpu, wait: async () => {} });
+    expect(gpuDevice.backend).toBe("webgpu");
+    await gpuDevice.start();
+    gpuDevice.loseForTest();
+    await flush();
+    expect(devices[0]?.destroyed).toBe(true);
+    expect(gpuDevice.device).toBe(devices[1]);
+    expect(gpuDevice.restores).toBe(1);
+  });
+
   it("retries with the delays until an adapter comes back", async () => {
     vi.spyOn(console, "warn").mockImplementation(() => {});
     vi.spyOn(console, "info").mockImplementation(() => {});

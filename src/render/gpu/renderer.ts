@@ -1,6 +1,6 @@
 // The rendering backend interface (spec §3.1, §9.4). Callers (preview, export, compositor) talk to a
-// `Renderer` only, so a WebGL2 backend could be added without touching them. The WebGPU one is
-// `WebGpuRenderer`.
+// `Renderer` only: `WebGpuRenderer`, or `WebGl2Renderer` on machines without WebGPU (Batch 48), chosen
+// at startup (backend.ts) behind the app's `SwitchRenderer`.
 import type { RGBA } from "../../core/document/types.js";
 import type { DrawList } from "../compositor/drawList.js";
 import type { Mat3 } from "../mat3.js";

@@ -133,6 +133,23 @@ describe("PreviewView", () => {
     window.document.body.replaceChildren();
   });
 
+  it("renders nothing while the device is lost and draws again once it is ready (Batch 48)", () => {
+    const { session, scheduler, renderer, frames, requests } = setup();
+    scheduler.flush();
+    const draw = renderer.draw as ReturnType<typeof vi.fn>;
+    const asked = frames.getFrame.mock.calls.length;
+    const draws = draw.mock.calls.length;
+    (renderer as { ready: boolean }).ready = false;
+    setPlayhead(session, 100);
+    expect(() => scheduler.flush()).not.toThrow();
+    expect(draw.mock.calls.length).toBe(draws);
+    expect(frames.getFrame.mock.calls.length).toBe(asked);
+    (renderer as { ready: boolean }).ready = true;
+    scheduler.invalidate("preview");
+    scheduler.flush();
+    expect(requests.at(-1)?.timeUs).toBe(timeOf(100));
+  });
+
   it("shows the override's document at its frame while there is one (a trim's new edge frame)", () => {
     let override: { project: Project; frame: number } | null = null;
     const { session, document, scheduler, frames, requests } = setup({ override: () => override, priority: () => (override ? "scrub" : "idle") });

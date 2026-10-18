@@ -74,7 +74,7 @@ import { decodedAudio } from "./audioController.js";
 import { closeExportTab, exportState, exportTab, openExportTab } from "./exportState.js";
 import { projectFontFaces } from "./fontController.js";
 import { offlineReason, OFFLINE_LABEL, sourceFile } from "./mediaOffline.js";
-import { renderFramePng, setTextureShare, textureBudget } from "./previewController.js";
+import { renderer, renderFramePng, setTextureShare, textureBudget } from "./previewController.js";
 import { currentSession, refuseReadOnly } from "./projectController.js";
 import { actions, appSettings, documentStore, sessionStore, themeBridge, workerPool } from "./services.js";
 
@@ -264,7 +264,7 @@ async function runJob(job: QueueJob<ExportJobSpec>, signal: AbortSignal, fail: (
       signal.throwIfAborted();
       output = spec.picked ? await ExportFile.toPicked(spec.picked.file, fail) : await ExportFile.create(dir, crypto.randomUUID(), fail, ext);
       // Read right before the post (no await in between): a Pause from now on is sent after the job.
-      const params: ExportJobParams = { project: spec.project, range: spec.range, format: spec.format, slate: slateLook(themeBridge.theme), textureBudget: Math.round(textureBudget() * (1 - MAIN_TEXTURE_SHARE)), ...inputs, paused: rt.pause.post() };
+      const params: ExportJobParams = { project: spec.project, range: spec.range, format: spec.format, slate: slateLook(themeBridge.theme), textureBudget: Math.round(textureBudget() * (1 - MAIN_TEXTURE_SHARE)), renderer: renderer.backend ?? "webgpu", ...inputs, paused: rt.pause.post() };
       const transfer: Transferable[] = [...Object.values(inputs.svg), ...(inputs.audio?.channels ?? []), ...inputs.fonts.map((face) => face.data)];
       const result: ExportJobResult = await workerPool.request("exportVideo", params, { priority: "user", signal, transfer, onProgress });
       const name = await output.finish(spec.fileName);
