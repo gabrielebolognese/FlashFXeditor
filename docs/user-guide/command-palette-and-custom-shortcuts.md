@@ -204,7 +204,7 @@ While a menu is open, it has the keyboard. This works in every right-click menu 
 
 Two more lists work with the arrow keys:
 
-- **The font picker:** in **Search fonts**, press <kbd>↓</kbd> or <kbd>↑</kbd> to highlight a font in the list, and <kbd>Enter</kbd> to pick it. With no font highlighted, <kbd>Enter</kbd> picks the first one that matches. After a pick or <kbd>Esc</kbd>, the keyboard focus goes back to **Font**. See [Titles and text](titles-and-text.md).
+- **The font browser:** in its search field, press <kbd>↓</kbd> or <kbd>↑</kbd> to highlight a font in the list and see it on your text, and <kbd>Enter</kbd> to apply it. With no font highlighted, <kbd>Enter</kbd> applies the first font of the list. <kbd>Esc</kbd> closes the browser without a change. After a pick or <kbd>Esc</kbd>, the keyboard focus goes back to **Font**. See [Fonts](fonts.md).
 - **The Paste attributes checklist:** press <kbd>↓</kbd> or <kbd>↑</kbd> to move between its rows and buttons, <kbd>Space</kbd> to check or uncheck a row, and <kbd>Enter</kbd> to paste. See [Give clips the look of another clip (Paste attributes)](copy-and-paste.md#give-clips-the-look-of-another-clip-paste-attributes).
 
 ## Related pages
@@ -217,4 +217,4 @@ Two more lists work with the arrow keys:
 - [Organizing media](organizing-media.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 50, 2026-10-18</sub>
+<sub>Last updated: Batch 51, 2026-10-19</sub>
