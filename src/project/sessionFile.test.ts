@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_RATIOS } from "../core/store/layoutStore.js";
 import { DEFAULT_SESSION } from "../core/store/sessionStore.js";
+import { REELS_PRESET } from "../export/presets.js";
 import { defaultSessionFile, parseSessionFile, serializeSession, type SessionFileData } from "./sessionFile.js";
 
 describe("session file", () => {
@@ -33,6 +34,18 @@ describe("session file", () => {
         timecodeFormat: "ms",
         mediaPanel: { tab: "captions", view: "list", sort: "resolution", descending: true, presetScope: "project", bin: "bin-1", filters: { kinds: ["audio", "image"], unused: true }, columns: { name: 240, used: 48 } },
         collapsedSections: { transform: true, crop: false },
+        exportRange: "inOut",
+        exportLog: [
+          {
+            id: "j1",
+            name: "Reel-reels-2026-10-18.mp4",
+            status: "done",
+            at: 1_760_000_000_000,
+            bytes: 12_345,
+            summary: "1080×1920 · 30 fps · H.264 · 12 Mbps · AAC 192 kbps",
+            request: { kind: "video", presetId: "reels", presetName: "Reels", settings: REELS_PRESET.settings, audioFormat: "wav", range: { start: 10, end: 200 }, template: "{project}-{preset}-{date}.mp4", destination: "project" },
+          },
+        ],
       },
       selection: { clipIds: ["a", "b"], primary: "b", kind: "clips" },
       layout: { left: 0.6, top: 0.45, media: 0.5 },

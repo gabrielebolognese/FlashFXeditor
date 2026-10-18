@@ -6,7 +6,8 @@
 // (§10.6, Batch 33), Auto-duck music's depth and ramps (§14, Batch 37) and Remove silence's parameters
 // (§14, Batch 38), the shortcut editor's keymap overrides and the command palette's recent commands
 // (Batch 40), the default durations, the default transition and "keyframes follow source" (§11, §6.15,
-// §6.10, Batch 42). Settings > General (panels/settings/) and the Project section edit them.
+// §6.10, Batch 42), the Export tab's choices and one's own export presets (§16, Batch 44). Settings >
+// General (panels/settings/) and the Project section edit them.
 import { createStore, type Store } from "../core/store/createStore.js";
 import { DEFAULT_PROXY_SHORT_EDGE, PROXY_RULES, PROXY_SHORT_EDGES, type ProxyRule, type ProxySettings, type ProxyShortEdge } from "../media/proxy/proxyFormat.js";
 import { AUTOSAVE_DELAY_MS } from "./Autosaver.js";
@@ -21,6 +22,10 @@ import { clampSilenceParam, SILENCE_MIN_MS, SILENCE_PADDING_MS, SILENCE_THRESHOL
 import { BUILT_IN_EDIT_DEFAULTS, type EditDefaults } from "../timeline/edit/editDefaults.js";
 import { isTransitionKind } from "../core/document/transitions.js";
 import type { TransitionKind } from "../core/document/types.js";
+import type { AudioFileFormat } from "../export/audioExport.js";
+import type { ExportDestination } from "../export/log.js";
+import { DEFAULT_CUSTOM_SETTINGS, FILE_NAME_TEMPLATE, MAX_FILE_TEMPLATE, REELS_PRESET, sanitizeExportSettings, sanitizeUserPresets, type ExportPreset, type ExportSettings } from "../export/presets.js";
+import type { SubtitleFormat } from "../text/subtitles.js";
 
 /** copy: into media/ (default). reference: linked, the file handles kept in IndexedDB (Batch 41, spec §9.1). */
 export type ImportMode = "copy" | "reference";
@@ -95,6 +100,18 @@ export interface AppSettings {
   transitionKind: TransitionKind;
   /** In trims and slips of video and audio clips keep their keys on the source frames (spec §6.10, on). */
   keyframesFollowSource: boolean;
+  /**
+   * The Export tab (spec §16, Batch 44), as last used: the chosen preset (a built-in id, one's own, or
+   * `custom`), Custom's settings, one's own presets, the file name template, the destination (the
+   * project's exports/ or a file picked each time), Export audio's and Export captions' file types.
+   */
+  exportPresetId: string;
+  exportCustom: ExportSettings;
+  exportPresets: readonly ExportPreset[];
+  exportFileTemplate: string;
+  exportDestination: ExportDestination;
+  exportAudioFormat: AudioFileFormat;
+  exportCaptionFormat: SubtitleFormat;
 }
 
 export const AUTOSAVE_DELAYS_MS = [1000, 2000, 5000, 10_000] as const;
@@ -139,6 +156,13 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   transitionFrames: BUILT_IN_EDIT_DEFAULTS.transitionFrames,
   transitionKind: BUILT_IN_EDIT_DEFAULTS.transitionKind,
   keyframesFollowSource: BUILT_IN_EDIT_DEFAULTS.keyframesFollowSource,
+  exportPresetId: REELS_PRESET.id,
+  exportCustom: DEFAULT_CUSTOM_SETTINGS,
+  exportPresets: [],
+  exportFileTemplate: FILE_NAME_TEMPLATE,
+  exportDestination: "project",
+  exportAudioFormat: "wav",
+  exportCaptionFormat: "srt",
 };
 
 /** The commands the palette remembers. */
@@ -233,6 +257,14 @@ function sanitize(value: unknown, fallback: AppSettings = DEFAULT_APP_SETTINGS):
     transitionFrames: clampInt(raw.transitionFrames, 1, TRANSITION_FRAMES_MAX, fallback.transitionFrames),
     transitionKind: isTransitionKind(raw.transitionKind) ? raw.transitionKind : fallback.transitionKind,
     keyframesFollowSource: typeof raw.keyframesFollowSource === "boolean" ? raw.keyframesFollowSource : fallback.keyframesFollowSource,
+    exportPresetId: typeof raw.exportPresetId === "string" && raw.exportPresetId !== "" ? raw.exportPresetId : fallback.exportPresetId,
+    exportCustom: sanitizeExportSettings(raw.exportCustom, fallback.exportCustom),
+    exportPresets: Array.isArray(raw.exportPresets) ? sanitizeUserPresets(raw.exportPresets) : fallback.exportPresets,
+    exportFileTemplate:
+      typeof raw.exportFileTemplate === "string" && raw.exportFileTemplate.trim() !== "" ? raw.exportFileTemplate.slice(0, MAX_FILE_TEMPLATE) : fallback.exportFileTemplate,
+    exportDestination: raw.exportDestination === "project" || raw.exportDestination === "pick" ? raw.exportDestination : fallback.exportDestination,
+    exportAudioFormat: raw.exportAudioFormat === "wav" || raw.exportAudioFormat === "m4a" ? raw.exportAudioFormat : fallback.exportAudioFormat,
+    exportCaptionFormat: raw.exportCaptionFormat === "srt" || raw.exportCaptionFormat === "vtt" ? raw.exportCaptionFormat : fallback.exportCaptionFormat,
   };
 }
 

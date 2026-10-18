@@ -5,8 +5,9 @@
 // - HEVC Main and AV1 Main (8-bit) at their lowest fitting level; an export asking for one of them
 //   falls back to H.264 when this browser cannot encode it.
 // - Audio: AAC-LC (spec §14), else Opus (both muxed into MP4).
-// Quality latency mode (spec §16), variable bitrate around the target, the browser's choice of
-// hardware or software.
+// Quality latency mode (spec §16); the format's bitrate mode (variable around the target, or constant)
+// and hardware preference (spec §16 Custom). WebCodecs has no peak bitrate: the level is chosen to hold
+// the format's peak (`maxBitrate`), so the stream it declares covers what the encoder may produce.
 import { fpsToNumber } from "../core/document/time.js";
 import { avcLevel } from "../media/proxy/proxyFormat.js";
 import type { ExportFormat, VideoCodecId } from "./presets.js";
@@ -83,22 +84,27 @@ export function muxerVideoCodec(codec: string): VideoCodecId {
   return "avc";
 }
 
+export type VideoConfigFormat = Pick<ExportFormat, "codec" | "width" | "height" | "fps" | "videoBitrate" | "maxBitrate" | "bitrateMode" | "hardware">;
+
 /** The video encoder configurations to try, best first (H.264 last for the other codecs). */
-export function videoEncoderConfigs(format: Pick<ExportFormat, "codec" | "width" | "height" | "fps" | "videoBitrate">): VideoEncoderConfig[] {
+export function videoEncoderConfigs(format: VideoConfigFormat): VideoEncoderConfig[] {
+  return [...codecConfigs(format, format.codec), ...(format.codec !== "avc" ? codecConfigs(format, "avc") : [])];
+}
+
+/** The configurations of `codec` alone, best first. */
+export function codecConfigs(format: VideoConfigFormat, codec: VideoCodecId): VideoEncoderConfig[] {
   const fps = fpsToNumber(format.fps);
-  const codecs = codecStrings(format.codec, format.width, format.height, fps, format.videoBitrate);
-  if (format.codec !== "avc") codecs.push(...codecStrings("avc", format.width, format.height, fps, format.videoBitrate));
-  return codecs.map((codec) => {
-    const family = muxerVideoCodec(codec);
+  return codecStrings(codec, format.width, format.height, fps, Math.max(format.videoBitrate, format.maxBitrate)).map((codecString) => {
+    const family = muxerVideoCodec(codecString);
     return {
-      codec,
+      codec: codecString,
       width: format.width,
       height: format.height,
       bitrate: format.videoBitrate,
       framerate: fps,
-      bitrateMode: "variable",
+      bitrateMode: format.bitrateMode,
       latencyMode: "quality",
-      hardwareAcceleration: "no-preference",
+      hardwareAcceleration: format.hardware,
       ...(family === "avc" && { avc: { format: "avc" } }),
       ...(family === "hevc" && { hevc: { format: "hevc" } }),
     } as VideoEncoderConfig;
@@ -106,7 +112,7 @@ export function videoEncoderConfigs(format: Pick<ExportFormat, "codec" | "width"
 }
 
 /** The audio encoder configurations to try: AAC-LC, then Opus. */
-export function audioEncoderConfigs(format: Pick<ExportFormat, "sampleRate" | "channels" | "audioBitrate">): AudioEncoderConfig[] {
+export function audioEncoderConfigs(format: { sampleRate: number; channels: number; audioBitrate: number }): AudioEncoderConfig[] {
   const base = { sampleRate: format.sampleRate, numberOfChannels: format.channels, bitrate: format.audioBitrate };
   return [
     { codec: "mp4a.40.2", ...base },

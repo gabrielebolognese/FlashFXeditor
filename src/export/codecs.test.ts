@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { audioEncoderConfigs, avcLevelFor, chooseConfig, codecStrings, muxerAudioCodec, muxerVideoCodec, videoEncoderConfigs } from "./codecs.js";
+import { audioEncoderConfigs, avcLevelFor, chooseConfig, codecConfigs, codecStrings, muxerAudioCodec, muxerVideoCodec, videoEncoderConfigs } from "./codecs.js";
 
-const FORMAT = { codec: "avc" as const, width: 1080, height: 1920, fps: { num: 30, den: 1 }, videoBitrate: 12_000_000 };
+const FORMAT = { codec: "avc" as const, width: 1080, height: 1920, fps: { num: 30, den: 1 }, videoBitrate: 12_000_000, maxBitrate: 12_000_000, bitrateMode: "variable" as const, hardware: "no-preference" as const };
 
 describe("codecStrings", () => {
   it("picks H.264 High, Main and Baseline at the lowest level holding the size and rate", () => {
@@ -51,6 +51,19 @@ describe("videoEncoderConfigs", () => {
     const av1 = videoEncoderConfigs({ ...FORMAT, codec: "av1" });
     expect(av1[0]?.codec).toBe("av01.0.08M.08");
     expect(av1[0]).not.toHaveProperty("avc");
+  });
+
+  it("takes the bitrate mode and hardware preference, and the level from the peak bitrate", () => {
+    const [cbr] = videoEncoderConfigs({ ...FORMAT, bitrateMode: "constant", hardware: "prefer-hardware" });
+    expect(cbr).toMatchObject({ bitrateMode: "constant", hardwareAcceleration: "prefer-hardware", bitrate: 12_000_000 });
+    // A 30 Mbps peak needs level 4.1 (4.0 holds 25 Mbps in High), the target stays the bitrate.
+    const [peak] = videoEncoderConfigs({ ...FORMAT, maxBitrate: 30_000_000 });
+    expect(peak).toMatchObject({ codec: "avc1.640029", bitrate: 12_000_000 });
+  });
+
+  it("lists one codec's configurations alone (the support probe)", () => {
+    expect(codecConfigs(FORMAT, "hevc").map((config) => config.codec)).toEqual(["hvc1.1.6.L120.B0"]);
+    expect(codecConfigs(FORMAT, "avc")).toHaveLength(3);
   });
 
   it("names the muxer's codec of each string", () => {

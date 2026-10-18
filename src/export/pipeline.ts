@@ -15,7 +15,7 @@
 //   when every frame and sample was encoded.
 import type { Frame } from "../core/document/types.js";
 import { abortError } from "../media/workers/protocol.js";
-import { audioEncoderConfigs, chooseConfig, muxerAudioCodec, muxerVideoCodec, videoEncoderConfigs } from "./codecs.js";
+import { audioEncoderConfigs, chooseConfig, muxerAudioCodec, muxerVideoCodec, videoEncoderConfigs, type VideoConfigFormat } from "./codecs.js";
 import { expectedChunks, frameDurationUs, frameTimestampUs, isKeyFrame, projectFrameAt, samplesThrough, sampleTimestampUs, videoTimescale, type ExportPlan } from "./plan.js";
 import type { ExportFormat, VideoCodecId } from "./presets.js";
 
@@ -135,7 +135,7 @@ export class PauseGate {
 
 export interface PipelineJob {
   plan: ExportPlan;
-  format: Pick<ExportFormat, "codec" | "width" | "height" | "fps" | "videoBitrate" | "sampleRate" | "channels" | "audioBitrate">;
+  format: VideoConfigFormat & Pick<ExportFormat, "sampleRate" | "channels" | "audioBitrate">;
   /** The mix of the range (one plane per channel), or null for silence. */
   audio: readonly Float32Array[] | null;
 }

@@ -98,7 +98,7 @@ function ProjectName() {
 
 /**
  * The slim bar above the panels (spec §2.1): project name, save status, undo/redo, project badge,
- * Export (`app.export`: the Reels export of the whole timeline, Batch 43), settings. No menus.
+ * Export (`app.export`: opens the Export tab in the properties panel, Batch 44), settings. No menus.
  */
 export function AppBar() {
   // Re-renders only when undo/redo availability or labels change, or the badge text.

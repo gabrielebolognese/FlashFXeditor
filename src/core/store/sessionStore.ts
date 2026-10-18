@@ -6,10 +6,12 @@
 // never persisted, and selecting one of the four clears the other three. Selected keyframes (spec
 // §6.4, Batch 35) have a channel too: they belong to one selected clip and go when it leaves the
 // clip selection. Remove silence's preview (Batch 38: the cuts Apply would make) has one as well; it is
-// never persisted either.
+// never persisted either. The Export tab's range choice and the export log (Batch 44) are session
+// state of the project, kept in session.json.
 import type { TimecodeMode } from "../document/time.js";
 import type { KeyframeSection } from "../document/keyframes.js";
 import type { ClipId, Frame, MediaId, TrackId, Us } from "../document/types.js";
+import type { ExportLogEntry, ExportRangeMode } from "../../export/log.js";
 import { createStore, type Store } from "./createStore.js";
 import { EMPTY_SELECTION, selectionEquals, type Selection } from "./selection.js";
 
@@ -101,6 +103,10 @@ export interface SessionState {
   clipKeyframes: boolean;
   /** The section each clip's lane shows (spec §6.4 "chosen property", clip menu); Transform when absent. */
   keyframeLanes: Readonly<Record<ClipId, KeyframeSection>>;
+  /** The Export tab's range (spec §16): the whole timeline or the in/out range. */
+  exportRange: ExportRangeMode;
+  /** The export log (spec §16: the last 20 jobs), newest first. */
+  exportLog: readonly ExportLogEntry[];
 }
 
 export const DEFAULT_SESSION: SessionState = {
@@ -135,6 +141,8 @@ export const DEFAULT_SESSION: SessionState = {
   collapsedSections: {},
   clipKeyframes: false,
   keyframeLanes: {},
+  exportRange: "whole",
+  exportLog: [],
 };
 
 /**

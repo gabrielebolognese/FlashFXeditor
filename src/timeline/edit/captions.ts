@@ -409,10 +409,20 @@ export function replaceCuesInRange(project: Project, range: { start: Frame; end:
   };
 }
 
-/** Export SRT/VTT (spec §10.5): the cues in order, their frames as times (word timings left out). */
-export function exportCues(project: Project): SubtitleCue[] {
+/**
+ * Export SRT/VTT (spec §10.5): the cues in order, their frames as times (word timings left out). With
+ * a range (the Export tab's in/out, spec §16), the cues it shows, cut to it and timed from its start,
+ * so they match a video exported from the same range.
+ */
+export function exportCues(project: Project, range?: { start: Frame; end: Frame }): SubtitleCue[] {
   const { fps } = project.settings;
-  return cuesOf(project).map((cue) => ({ startUs: frameToUs(cue.start, fps), endUs: frameToUs(cue.start + cue.duration, fps), text: cue.text }));
+  const from = range?.start ?? 0;
+  const to = range?.end ?? Infinity;
+  return cuesOf(project).flatMap((cue) => {
+    const start = Math.max(cue.start, from);
+    const end = Math.min(cue.start + cue.duration, to);
+    return end > start ? [{ startUs: frameToUs(start - from, fps), endUs: frameToUs(end - from, fps), text: cue.text }] : [];
+  });
 }
 
 /** The caption style edit (spec §10.5, §11 Caption style): one undo step; null when nothing changes. */

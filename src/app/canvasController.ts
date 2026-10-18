@@ -10,6 +10,7 @@ import type { CommandRun } from "../core/commands/CommandRegistry.js";
 import type { ClipId } from "../core/document/types.js";
 import { arrangeLayers, type ArrangeDirection } from "../timeline/edit/arrange.js";
 import { nudgeLayers } from "../timeline/edit/transform.js";
+import { closeExportTab } from "./exportState.js";
 import { exitFullscreen } from "./fullscreen.js";
 import { canvasInput, canvasMenu, textEditor } from "./previewController.js";
 import { actions, documentStore, focusScopes, sessionStore } from "./services.js";
@@ -71,8 +72,9 @@ export function installCanvasController(): () => void {
     actions.register("canvas.lockTrack", lockTracks),
     // Esc (spec §18 "Cancel gesture"): cancels a timeline or canvas gesture, else ends inline text
     // editing (§7.7), else leaves crop mode (Batch 26), else closes Remove silence's row (Batch 38),
-    // else the fullscreen preview (§7.8); declined when none, so popovers and the browser get it.
-    actions.register("app.cancel", () => timelineView.cancelGesture() || canvasInput.cancel() || textEditor.end(true) || canvasInput.exitCropMode() || cancelRemoveSilence() || exitFullscreen()),
+    // else the fullscreen preview (§7.8), else the Export tab (§16: back to the properties); declined
+    // when none, so popovers and the browser get it.
+    actions.register("app.cancel", () => timelineView.cancelGesture() || canvasInput.cancel() || textEditor.end(true) || canvasInput.exitCropMode() || cancelRemoveSilence() || exitFullscreen() || closeExportTab()),
   ];
   return () => {
     for (const stop of stops) stop();

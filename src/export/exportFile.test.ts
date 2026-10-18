@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createMemoryDir, type MemoryDir } from "../project/memoryFs.js";
-import { clearExportTemp, ExportFile } from "./exportFile.js";
+import { clearExportTemp, ExportFile, saveExport, type PickedFile } from "./exportFile.js";
 
 const bytes = (...values: number[]) => new Uint8Array(values);
 
@@ -72,5 +72,63 @@ describe("clearExportTemp", () => {
     await clearExportTemp(root);
     expect(temp?.tree()).toEqual([]);
     await clearExportTemp(createMemoryDir());
+  });
+});
+
+/** A picked file in memory: the committed content, and whether it was removed. */
+function picked(name: string) {
+  const state = { content: [] as number[], removed: false, aborted: false };
+  const file: PickedFile = {
+    name,
+    async openWritable() {
+      const staged: number[] = [];
+      return {
+        write: async (data: Uint8Array, position: number) => {
+          data.forEach((value, i) => (staged[position + i] = value));
+        },
+        close: async () => {
+          state.content = Array.from(staged, (value) => value ?? 0);
+        },
+        abort: async () => {
+          state.aborted = true;
+        },
+      };
+    },
+    remove: async () => {
+      state.removed = true;
+    },
+  };
+  return { file, state };
+}
+
+describe("ExportFile to a picked file", () => {
+  it("writes in place and commits under the picked name, touching no project folder", async () => {
+    const { file, state } = picked("Final.mp4");
+    const out = await ExportFile.toPicked(file);
+    out.write(bytes(1, 2), 0);
+    out.write(bytes(7), 3);
+    expect(await out.finish("ignored.mp4")).toBe("Final.mp4");
+    expect(state.content).toEqual([1, 2, 0, 7]);
+    expect(state.removed).toBe(false);
+  });
+
+  it("discards by aborting the write and removing what the picker made", async () => {
+    const { file, state } = picked("Final.mp4");
+    const out = await ExportFile.toPicked(file);
+    out.write(bytes(1), 0);
+    await out.discard();
+    expect(state).toMatchObject({ aborted: true, removed: true, content: [] });
+  });
+});
+
+describe("saveExport", () => {
+  it("writes into exports/ under a free name, or into the picked file", async () => {
+    const root = createMemoryDir();
+    expect(await saveExport({ root }, "frame.png", new Blob([bytes(1, 2)]))).toBe("frame.png");
+    expect(await saveExport({ root }, "frame.png", new Blob([bytes(3)]))).toBe("frame (2).png");
+    expect(await content(root, "exports/frame (2).png")).toEqual([3]);
+    const { file, state } = picked("Mine.srt");
+    expect(await saveExport({ picked: file }, "x.srt", new Blob([bytes(65, 66)]))).toBe("Mine.srt");
+    expect(state.content).toEqual([65, 66]);
   });
 });

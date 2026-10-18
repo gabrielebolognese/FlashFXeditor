@@ -1,9 +1,12 @@
 // export.worker entry (spec §3.5, §16, P5): one export at a time. ExportRenderer draws each frame
 // with the worker's own GPU device and decoders; runExport encodes it (VideoEncoder, AudioEncoder for
-// the main thread's mixdown) and muxes the MP4. The chosen codecs, the file's bytes with their
-// positions and the frames done go to the main thread as progress values; the job starts in its
-// `paused` state and `pauseExport` pauses or resumes it between frames. Everything the export held is freed when it ends, however it ends (P13).
-import { createAudioEncoder, createMp4Muxer, createVideoEncoder, planarAudioData } from "../../export/browserCodecs.js";
+// the main thread's mixdown) and muxes the MP4. Export audio (Batch 44): runAudioExport writes the
+// mixdown as a WAV or an M4A. The chosen codecs, the file's bytes with their positions and the frames
+// (samples) done go to the main thread as progress values; the job starts in its `paused` state and
+// `pauseExport` pauses or resumes it between frames. Everything the export held is freed when it
+// ends, however it ends (P13).
+import { runAudioExport } from "../../export/audioExport.js";
+import { createAudioEncoder, createAudioMp4Muxer, createMp4Muxer, createVideoEncoder, planarAudioData } from "../../export/browserCodecs.js";
 import { ExportRenderer } from "../../export/ExportRenderer.js";
 import { PauseGate, runExport } from "../../export/pipeline.js";
 import { exportPlan } from "../../export/plan.js";
@@ -45,6 +48,23 @@ new WorkerHost(
       } finally {
         renderer.dispose();
       }
+    },
+    exportAudio: async (params, signal, emit) => {
+      gate.set(params.paused);
+      const planes = params.audio ? params.audio.channels.map((buffer) => new Float32Array(buffer)) : null;
+      return runAudioExport(
+        { format: params.format, planes, sampleRate: params.sampleRate, channels: params.channels, samples: params.samples, audioBitrate: params.audioBitrate },
+        {
+          createAudioEncoder,
+          audioSupported: async (config) => (await AudioEncoder.isConfigSupported(config)).supported === true,
+          audioData: planarAudioData,
+          createAudioMuxer: createAudioMp4Muxer,
+          now: () => performance.now(),
+        },
+        signal,
+        emit,
+        gate,
+      );
     },
     pauseExport: async ({ paused }) => {
       gate.set(paused);
