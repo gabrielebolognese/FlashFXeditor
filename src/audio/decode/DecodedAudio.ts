@@ -3,9 +3,11 @@
 //   samples are read, a range decodes on its own, so media over 10 minutes load in ~60 s segments on
 //   demand. The PCM is copied into an AudioBuffer in slices (no long main-thread task) and handed to
 //   the caller once, so the peaks job can transfer it on to analysis.worker without another copy.
-// - Other audio files (mp3, aac, wav, ogg) and MP4 audio without a WebCodecs decoder use
-//   `decodeAudioData` on the whole file, at 48 kHz (one segment). The import probe already decodes
-//   these once; its buffer is reused (`put`).
+// - Other audio files (mp3, aac, wav, ogg), the audio of WebM files (Batch 49) and MP4 audio without a
+//   WebCodecs decoder use `decodeAudioData` on the whole file, at 48 kHz (one segment). The import
+//   probe already decodes audio-only files once; its buffer is reused (`put`). decodeAudioData output
+//   starts at the file's first audio sample: for WebM the worker reports where that sample plays
+//   (`leadUs`), and the buffer is padded with silence or cut at its start to match media time.
 // - At most 2 channels (spec §14): MP4 audio is mixed down in the worker, decodeAudioData output here
 //   in slices with yields between them (a long 5.1 file took one main-thread task per minute of audio).
 // - `reset` (the project closed) also closes the worker's parsed audio tracks and their files (P13).
@@ -52,6 +54,8 @@ interface MediaAudio {
   layout: SegmentLayout;
   /** True: decode.worker decodes ranges; false: decodeAudioData on the whole file. */
   worker: boolean;
+  /** decodeAudioData only: where its first sample plays, in us after media time 0 (Batch 49). */
+  leadUs?: number;
 }
 
 const keyOf = (mediaId: MediaId, index: number) => `${mediaId}#${index}`;
@@ -201,11 +205,15 @@ export class DecodedAudio {
     const item = this.deps.document.getState().media[mediaId];
     if (!item || !(item.kind === "audio" || (item.kind === "video" && item.hasAudio))) throw new Error("The media has no audio");
     const name = "relPath" in item.file ? item.file.relPath : item.file.pathHint;
-    if (classifyFile(name, "")?.container === "mp4") {
+    const container = classifyFile(name, "")?.container;
+    if (container === "mp4" || container === "webm") {
       const file = await this.requireFile(mediaId);
       const info: AudioInfo = await this.deps.workers.request("openAudio", { mediaId, file }, { priority: "user" });
       if (info.supported) return { layout: segmentLayout(info.sampleRate, info.frames), worker: true };
-      console.info(`[audio] no WebCodecs decoder for ${info.codec || "the audio"} of ${mediaId}; decoding the whole file`);
+      // The worker's track is not used: let it go now (P13).
+      this.closeWorkerAudio(mediaId);
+      if (container === "mp4") console.info(`[audio] no WebCodecs decoder for ${info.codec || "the audio"} of ${mediaId}; decoding the whole file`);
+      return { layout: segmentLayout(48_000, 0, { whole: true }), worker: false, leadUs: info.leadUs ?? 0 };
     }
     return { layout: segmentLayout(48_000, 0, { whole: true }), worker: false };
   }
@@ -216,7 +224,7 @@ export class DecodedAudio {
     const file = await this.requireFile(mediaId);
     if (!audio.worker) {
       if (file.size > MAX_WHOLE_FILE_BYTES) throw new Error("The file is too large to decode its audio whole");
-      const buffer = await this.atMostStereo(await this.deps.decodeFile(await file.arrayBuffer()));
+      const buffer = await this.atMediaTime(await this.atMostStereo(await this.deps.decodeFile(await file.arrayBuffer())), audio.leadUs ?? 0);
       // The real length is known now.
       audio.layout = segmentLayout(buffer.sampleRate, buffer.length, { whole: true });
       return { buffer, pcm: null };
@@ -248,6 +256,21 @@ export class DecodedAudio {
     for (let at = 0; at < buffer.length; at += MIX_SLICE) {
       const end = Math.min(buffer.length, at + MIX_SLICE);
       downmix(planes.map((plane) => plane.subarray(at, end))).forEach((plane, c) => out.copyToChannel(plane as Float32Array<ArrayBuffer>, c, at));
+      if (end < buffer.length) await this.yieldToMain();
+    }
+    return out;
+  }
+
+  /** decodeAudioData output moved to media time: `leadUs` of silence before it, or as much cut from its start when negative. */
+  private async atMediaTime(buffer: AudioBuffer, leadUs: number): Promise<AudioBuffer> {
+    const shift = Math.round((leadUs * buffer.sampleRate) / 1_000_000);
+    if (shift === 0) return buffer;
+    const skip = Math.max(0, -shift);
+    const out = this.deps.createBuffer({ length: Math.max(1, buffer.length + shift), numberOfChannels: buffer.numberOfChannels, sampleRate: buffer.sampleRate });
+    const planes = Array.from({ length: buffer.numberOfChannels }, (_, c) => buffer.getChannelData(c));
+    for (let at = skip; at < buffer.length; at += FILL_SLICE) {
+      const end = Math.min(buffer.length, at + FILL_SLICE);
+      planes.forEach((plane, c) => out.copyToChannel(plane.subarray(at, end) as Float32Array<ArrayBuffer>, c, at + shift));
       if (end < buffer.length) await this.yieldToMain();
     }
     return out;

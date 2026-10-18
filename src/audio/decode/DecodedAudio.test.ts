@@ -16,14 +16,14 @@ const media = (id: string, relPath: string, extra: Partial<MediaItem> = {}): Med
   ...extra,
 });
 
-function setup(items: MediaItem[], worker: { supported?: boolean; frames?: number; decodedLength?: number; crashes?: number } = {}) {
+function setup(items: MediaItem[], worker: { supported?: boolean; frames?: number; decodedLength?: number; crashes?: number; leadUs?: number } = {}) {
   const project: Project = { ...createProject({ id: "p", name: "P", now: "2026-10-15T00:00:00.000Z", appVersion: "0" }), media: Object.fromEntries(items.map((m) => [m.id, m])) };
   const requests: { method: string; params: Record<string, unknown> }[] = [];
   let crashes = worker.crashes ?? 0;
   const request = vi.fn(async (method: string, params: Record<string, unknown>) => {
     requests.push({ method, params });
     if (method === "decodeAudio" && crashes-- > 0) throw Object.assign(new Error("The decode worker crashed: out of memory"), { name: "WorkerCrashError" });
-    if (method === "openAudio") return { supported: worker.supported ?? true, codec: "mp4a.40.2", sampleRate: 48_000, channels: 2, frames: worker.frames ?? 480_000 };
+    if (method === "openAudio") return { supported: worker.supported ?? true, codec: "mp4a.40.2", sampleRate: 48_000, channels: 2, frames: worker.frames ?? 480_000, ...(worker.leadUs !== undefined && { leadUs: worker.leadUs }) };
     if (method === "decodeAudio") {
       const length = (params.to as number) - (params.from as number);
       return { sampleRate: 48_000, channels: [new Float32Array(length).fill(0.25).buffer, new Float32Array(length).fill(-0.25).buffer] };
@@ -100,6 +100,32 @@ describe("DecodedAudio", () => {
     await audio.load("v", 0);
     expect(decodeFile).toHaveBeenCalledTimes(1);
     expect(requests.some((r) => r.method === "decodeAudio")).toBe(false);
+  });
+
+  it("decodes WebM Opus in the worker by segments (Batch 49)", async () => {
+    const { audio, decodeFile, requests } = setup([media("w", "media/Screen Recording.webm")]);
+    await audio.load("w", 0);
+    expect(decodeFile).not.toHaveBeenCalled();
+    expect(requests.map((r) => r.method)).toEqual(["openAudio", "decodeAudio"]);
+  });
+
+  it("decodes other WebM audio whole and places it at media time with the worker's lead (Batch 49)", async () => {
+    const { audio, decodeFile, requests } = setup([media("w", "media/Screen Recording.webm")], { supported: false, leadUs: 44_000 });
+    const { buffer } = await audio.load("w", 0);
+    expect(decodeFile).toHaveBeenCalledTimes(1);
+    expect(requests.map((r) => r.method)).toEqual(["openAudio", "closeAudio"]);
+    // 44 ms at 48 kHz: 2112 frames of silence, then the decoded audio (4800 frames, mixed down).
+    expect(buffer.length).toBe(4800 + 2112);
+    expect(buffer.getChannelData(0)[2111]).toBe(0);
+    expect(buffer.getChannelData(0)[2112]).toBeCloseTo(0.1 + Math.SQRT1_2 * 0.2, 6);
+    expect(audio.layout("w")).toMatchObject({ frames: 6912, count: 1 });
+  });
+
+  it("cuts the start of WebM audio that begins before the first frame", async () => {
+    const { audio } = setup([media("w", "media/rec.webm")], { supported: false, leadUs: -10_000, decodedLength: 600_000 });
+    const { buffer } = await audio.load("w", 0);
+    expect(buffer.length).toBe(600_000 - 480);
+    expect(buffer.getChannelData(1)[0]).toBeCloseTo(-0.1, 6);
   });
 
   it("reuses a buffer the import probe decoded", async () => {

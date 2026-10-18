@@ -4,10 +4,9 @@
 // is written back at its start, so the main thread writes at positions).
 import { Muxer, StreamTarget } from "mp4-muxer";
 import { ByteSource } from "../bytes/ByteSource.js";
-import { sampleIndexFromMp4, type SampleIndex } from "../demux/sampleIndex.js";
+import { parseSampleIndex } from "../demux/container.js";
+import type { SampleIndex } from "../demux/sampleIndex.js";
 import { readSampleIndex } from "../demux/sampleIndexFile.js";
-import { readMp4 } from "../probe/mp4Probe.js";
-import { ProbeError } from "../probe/types.js";
 import type { EncoderCallbacks, EncoderLike, MuxerLike, MuxerOptions } from "./ProxyMaker.js";
 import { halvingSteps } from "./proxyFormat.js";
 
@@ -64,14 +63,12 @@ export function halvingScaler(): (frame: VideoFrame, width: number, height: numb
   };
 }
 
-/** The cached sample index when it still matches the file, else the one parsed from its moov. */
+/** The cached sample index when it still matches the file, else the one parsed from its moov (or its WebM clusters). */
 export async function loadSampleIndex(source: ByteSource, file: File, cachedIndex: Blob | null, signal: AbortSignal): Promise<SampleIndex> {
   const stamp = { size: file.size, lastModified: file.lastModified };
   const cached = cachedIndex ? readSampleIndex(await cachedIndex.arrayBuffer(), stamp) : null;
   if (cached) return cached;
-  const { video } = await readMp4(source, signal);
-  if (!video || video.samples.length === 0) throw new ProbeError("The file has no video track");
-  return sampleIndexFromMp4(video);
+  return parseSampleIndex(file, source, signal);
 }
 
 /** The proxy's MP4: H.264 frames with their times (the first at 0) and the source's rotation. */

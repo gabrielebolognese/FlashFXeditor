@@ -28,7 +28,7 @@ export interface PosterResult {
 }
 
 /** Containers a worker can probe. Audio-only formats and SVG are probed on the main thread. */
-export type WorkerContainer = "mp4" | "image";
+export type WorkerContainer = "mp4" | "webm" | "image";
 
 /** Frame request classes (spec §3.5, P8), most urgent first. */
 export type FramePriority = "scrub" | "playback" | "idle";
@@ -110,6 +110,11 @@ export interface AudioInfo {
   channels: number;
   /** Sample frames from media time 0 to the end of the audio. */
   frames: number;
+  /**
+   * When unsupported: where decodeAudioData's first sample plays, in us after media time 0 (WebM:
+   * recorders start the audio after the first frame; negative when it starts first). Batch 49.
+   */
+  leadUs?: number;
 }
 
 /** Planar float PCM, one buffer per channel (transferred). */

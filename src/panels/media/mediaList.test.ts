@@ -71,6 +71,11 @@ describe("labels", () => {
     expect(codecLabel("avc1.64001f")).toBe("H.264");
     expect(codecLabel("mp4a.40.2")).toBe("AAC");
     expect(codecLabel("mp3")).toBe("MP3");
+    expect(codecLabel("vp09.00.40.08")).toBe("VP9");
+    expect(codecLabel("av01.0.08M.08")).toBe("AV1");
+    expect(codecLabel("vp8")).toBe("VP8");
+    expect(codecLabel("opus")).toBe("Opus");
+    expect(codecLabel("vorbis")).toBe("Vorbis");
     expect(codecLabel("png")).toBe("PNG");
     expect(codecLabel(undefined)).toBe("");
   });

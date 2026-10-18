@@ -1,6 +1,6 @@
 # Progress
 
-last_completed_batch: 48
+last_completed_batch: 49
 in_progress_batch: none
 skipped_batches: []
 needs_human: none
@@ -423,6 +423,13 @@ Decisions that diverge from docs/EDITOR_SPEC.md, with the reason. Each one also 
   - 4K at Full quality without a proxy drops 0-18 of ~157 frames on WebGL2 against 1-2 on WebGPU: WebGL has no external textures, so the whole frame is copied before it is scaled. Auto quality (proxies) plays the same on both. (measured, accepted)
   - The preview renders nothing while its renderer is not ready (a lost device), so renders failing during a restore cannot trip the panel error state. (Batch 48)
 
+- WebM sources (Batch 49):
+  - Own EBML demuxer (`media/demux/ebml.ts`, `webm.ts`, `webmCodecs.ts`; no dependency). The container is told by the file's first bytes, so a WebM named `.mp4` also opens. `.mkv` stays refused by name (§9.1 lists `.webm`).
+  - The sample index comes from a scan of every Cluster, at the probe and at the first open, then from cache/index/ (same format), not from Cues (key frames only, absent from live recordings). 10 minutes, 183 MB: 0.44-0.47 s per scan.
+  - Audio, against the batch's "decodeAudioData continues to handle audio": Opus decodes in decode.worker from the demuxed packets, like MP4 audio since Batch 10. decodeAudioData holds a whole recording as PCM, and its output starts at the first audio block, so the audio of a Chrome screen recording would play 33-36 ms early. Vorbis, laced audio and Opus without a WebCodecs decoder keep decodeAudioData, padded or cut by the lead the worker reports.
+  - VP8 and H.264 in WebM are accepted besides VP9 and AV1 (Chrome's MediaRecorder writes them). Rotation is 0, VP9 alpha decodes opaque, and a recording whose size changes midway is laid out at its first size.
+  - Frame rates from jittery tick times (WebM's milliseconds: 30 fps as 33 / 34 ms) snap within half a tick, for every container; fine MP4 timescales are unaffected.
+
 ## Follow-ups
 Small things discovered during a batch that belong to a later batch. Format: `- [from Batch NN -> Batch MM] description`.
 - [from Batch 00 -> Batch 01] `npm run check` and `npm run lint` do not exist yet; Batch 01 creates them along with the Vite + React scaffold. (done in Batch 01)
@@ -711,6 +718,7 @@ Small things discovered during a batch that belong to a later batch. Format: `- 
 - [from Batch 47 -> Batch 50] Remove silence on several targets: each track closes its own gaps, so a lone target's silence before another link group on one of its tracks moves that group out of sync (sync-locked closing, or limiting the closing on the group's other tracks).
 - [from Batch 47 -> Batch 50] Frame rate round trips: clips whose source range is off the frame grid (pastes from other frame rates) and offline freezes get `out` re-fitted on 30 -> 60 -> 30, while the conversion report says lossless.
 - [from Batch 47 -> Batch 50] Fades: trims, speed changes and slices clamp each fade against the duration on its own, so in + out can exceed the duration (the validator checks each alone); decide whether the pair is clamped.
+- [from Batch 49 -> Batch 50] WebM Vorbis (and laced audio) still decodes whole with decodeAudioData and, probed in the worker, is not refused past 45 minutes like other non-MP4 audio: a long Vorbis WebM can exhaust memory (rare: current muxers write Opus). Part of the long non-MP4 audio follow-up.
 
 ## Dependencies
 Why each dependency exists (Batch rule 8).
@@ -5437,3 +5445,93 @@ Why each dependency exists (Batch rule 8).
 - review request: docs/PROGRESS.md src/app/compat.test.ts src/app/compat.ts src/app/exportController.ts src/app/previewController.ts src/export/ExportRenderer.ts src/export/job.ts src/main.tsx src/render/gpu/GlContext.test.ts src/render/gpu/GlContext.ts src/render/gpu/GpuDevice.test.ts src/render/gpu/GpuDevice.ts src/render/gpu/SwitchRenderer.test.ts src/render/gpu/SwitchRenderer.ts src/render/gpu/WebGl2Renderer.ts src/render/gpu/WebGpuRenderer.ts src/render/gpu/backend.test.ts src/render/gpu/backend.ts src/render/gpu/createBackend.ts src/render/gpu/drawRecords.test.ts src/render/gpu/drawRecords.ts src/render/gpu/glShaders.ts src/render/gpu/hdr.ts src/render/gpu/renderer.ts src/render/preview/PreviewStatsOverlay.ts src/render/preview/PreviewView.test.ts src/render/preview/PreviewView.ts
 - review: accepted (2026-10-18, first review; `npm run check` green: typecheck, lint with the CSS color and token checks, 2299 / 2299 unit tests in 220 files, 4 / 4 perf tests, build 1297.00 kB JS / 412.89 kB gzip, export.worker 399.20 kB, decode.worker 213.68 kB, the same as reported). 1. The one acceptance item is verified by commands, and I ran them again myself. The item: forced WebGL2 must pass the visual checks of Batches 08, 21, 28 and 36 with identical screenshots. My setup: my own snapshot of HEAD on 5221 (the origin and OPFS projects the batch used), Chrome 155 on 9363, scripts copied to `%TEMP%/rev48`; I ran `shots.mjs webgpu`, `shots.mjs webgl2` and `compare.mjs`. All 12 Export frames are identical or within 1 level, and 14 of the 17 canvas screenshots are within 1 level. The other 3 differ only on single anti-aliased pixels: the end of the solid line (max 33, 0.003% of pixels) and one corner pixel of the frame in the text scenes (max 20, 0.001%). These are the reported numbers. I also reran `misc.mjs`. Without WebGPU the app starts on WebGL2 with no flag. With WebGL2 refused too, the unsupported screen names the GPU renderer. After a context loss and restore (116 ms), the preview draws the same frame (diff 0). A 1.5 s loss during playback shows no panel error, and playback goes on. A context loss in the export worker fails the job with the device-lost message and leaves no partial file, and the next export completes. After every project close, 0 GPU textures remain. The Batch 45 P1 script on WebGL2 (`B48_GL=1`) counts 0 React commits during playback, a ruler scrub, a clip drag, a gizmo drag and a field scrub. Unit tests cover the parts that do not need a GPU: `drawRecords.test.ts`, `backend.test.ts`, `GlContext.test.ts`, `SwitchRenderer.test.ts`, and the new cases in `compat`, `PreviewView` and `GpuDevice`. Real driver resets and a machine without WebGPU are pending manual checks 2-3, with steps. 2. The batch has no `Do not build yet` list, and nothing from Batches 49-53 is in the diff (no WebM / VP9 / AV1, font library, preset bar or cue styles). 3. No color, font or size literal: the diff has no CSS and no color literals in TS. The numbers in `glShaders.ts` are shader math, and the unsupported screen reuses its existing styles. 4. §3/§4: the only React change is the requirement label. `WebGl2Renderer` implements the existing `Renderer` interface, and `SwitchRenderer` forwards to the backend chosen once at startup, so callers did not change. The preview still draws only through `PreviewView.render`, run by the `FrameScheduler`; it now returns at once while the renderer is not ready (`src/render/preview/PreviewView.ts:331`). `uploadVideoFrame` closes the frame in its `finally` (`src/render/gpu/WebGl2Renderer.ts:249-251`, P5/P13). The scaled upload and the blur are GPU passes, and the per-record uniforms come out of one reused array. The WebGPU path was moved into the shared `drawRecords.ts` with its output unchanged: the batch compared its WebGPU captures with the previous commit, and my WebGPU and WebGL2 captures agree. Time math and document commands are untouched. Written deviations cover: the extra dropped frames on WebGL2 for 4K at Full quality, the backend being chosen only at startup, and the URL flag working in every build. 5. Every TODO in `src` carries a `(batch NN)` tag, and the batch adds none. 6. There is no earlier rejection to recheck.
 - docs: troubleshooting.md (A WebGPU adapter is missing renamed No GPU renderer is available, with the new label "A GPU renderer: WebGPU or WebGL2 on a supported GPU with hardware acceleration turned on", chrome://gpu WebGPU and WebGL2 lines, never the processor; the requirement row "WebGPU (navigator.gpu) or WebGL2" for the preview and the export frames; new The picture or the export goes wrong only on this computer: add ?renderer=webgl2 (or &renderer=webgl2) to the address, start screen, Recent projects, kept per address and bookmarkable, chosen at startup, remove it to go back, WebGPU when WebGL2 cannot run, same picture and files, more dropped 4K frames in Full; graphics reset: WebGPU retries about 4 s, WebGL2 draws again when the browser gives the card back; stutter fix bullet for WebGL2; No WebGL2 device for the export; links to the renamed entry and the new one from panels, decoder stalls and failed exports; placeholder step 3 added, steps renumbered, 245 s), getting-started.md (Graphics row WebGPU or WebGL2; WebGPU first, WebGL2 by itself where WebGPU is missing, same picture and exports, 4K Full smoother on WebGPU; the two new unsupported-screen labels and the tip), preview-and-playback.md (performance: WebGPU or WebGL2 intro, WebGPU and WebGL2 bullet with the measured drops: 1080x1920 0-8 of ~300 on both, 4K Auto 0-3 of ~160, 4K Full up to 18 of ~157 on WebGL2 against 1-2, first playback worse), exporting-video.md (Know what goes into the file: same picture with WebGPU or WebGL2, the export uses the preview's), README.md (Getting started and Troubleshooting rows, a What you can do bullet), whats-new.md (Batch 48 entry and video placeholder) in docs/user-guide/ (2026-10-18)
+
+### Batch 49 (optional): WebM (VP9/AV1) sources
+- status: done
+- date: 2026-10-18
+- notes:
+  - Built in auto mode. The optional batch was built, not skipped: the runner picks the batch, and skipping is the user's call (`/next-batch skip`).
+  - Browser checks ran in headless Chrome 155 over CDP (9373, own profile, `--window-size=1600,900 --auto-accept-this-tab-capture`) on a snapshot server (5231). Helpers are in `%TEMP%/b49`:
+    - `setup.mjs` (`localFile`, `saveFile`, `B49_GL=1` opens `?renderer=webgl2`); `page.js` `__b49`: `record` (a real screen recording: MediaRecorder over this tab through `getDisplayMedia`, or over a canvas, with a microphone-like Opus track; each picture carries a 16-bit counter in stripes and a white band when the audio has its click on a whole second), `groundTruth` (every frame decoded in order with WebCodecs: time, counter, flash), `scrubTo`, `play`, `makeProxy`, `exportVideo`, `exportFrames`, `sourceClicks`.
+    - Scripts: `rec.mjs <tab|canvas> <vp9|av1|vp8> <s>`, `acc.mjs <file> <project>`, `clicks.mjs`, `misc.mjs`, `peek.mjs`, `shot.mjs`. Recordings: `rec-tab-vp9.webm`, `rec-tab-av1.webm`, `rec-tab-vp8.webm` (Chrome screen captures, 1584x692, VP9 / AV1 / VP8 + Opus). Regression copies of the Batch 47 and 48 helpers: `%TEMP%/b49reg`.
+  - Demuxer (own implementation, no dependency):
+    - `media/demux/ebml.ts`: variable-length integers (unknown sizes included), element headers, values, `children` of a master in memory, and `WindowReader`, which serves a scan from 4 MB windows read straight from the file (`blobReader`: a full scan must not evict the decoders' chunks from the shared 64 MB cache).
+    - `media/demux/webm.ts`: `readWebm` walks the EBML header (DocType webm or matroska), the Segment (known or unknown size), Info (TimestampScale), Tracks (the first enabled video and audio tracks; a video track with ContentEncodings is refused) and every Cluster (an unknown-size Cluster ends at the next top-level element), with SimpleBlocks and BlockGroups (Block, BlockDuration, ReferenceBlock). It keeps each video frame's payload offset, size, time and key flag, and each audio packet. A recording cut short ends at its last complete block. Laced video blocks are refused. `webmVideoTable` / `sampleIndexFromWebm` make the Batch 06 sample index: times in TimestampScale ticks (microseconds when 1e9 / scale is not whole), decode times = the sorted presentation times (H.264 B-frames), durations to the next frame shown. `webmProbeResult` / `probeWebm`, `webmAudioPlan` (Opus for decode.worker) and `webmAudioLeadUs`.
+    - `media/demux/webmCodecs.ts`: WebCodecs strings. VP9: `vp09.PP.LL.DD`, profile and bit depth from the first key frame's uncompressed header (WebM VP9 has no configuration record), level from the VP9 level table (size and rate). AV1: `av01.P.LLT.DD` from the av1C in CodecPrivate, which is also the description. VP8: `vp8`. H.264: `avc1.PPCCLL` from the avcC. Other codecs are refused with their CodecID.
+    - `media/demux/container.ts`: `isEbml` (the first 4 bytes), `probeVideoFile` and `parseSampleIndex` choose MP4 or WebM by content, not by name. Used by the decode worker's probe, `DecodeSessions` (preview, thumbnails in analysis.worker, the export's loopback sessions) and the proxy worker's `loadSampleIndex`. The index file format and `INDEX_VERSION` are unchanged.
+  - Audio: Opus is decoded in decode.worker by `AudioTracks` from `webmAudioPlan`, the same range decodes as MP4 audio (media time 0 = the first frame, packets placed by their times). Vorbis, laced audio and Opus without a WebCodecs decoder read as unsupported, with `leadUs` (the first audio block after the first frame). `DecodedAudio` then decodes the file whole with decodeAudioData, pads or cuts the buffer by the lead, and closes the worker's track at once. See deviations.
+  - Import: `.webm` maps to container `webm` (`video/webm`, in the Video picker types). The worker probes it; the failed-import row uses the Film icon. A `.webm` that is neither container gets "Not a readable WebM file: it is damaged or is not a video". Codec labels: VP9, AV1, VP8, Opus, Vorbis.
+  - Frame rate (`probe/fps.ts`): when the deltas around the mode jitter by a tick (rounded times), the rate snaps within half a tick, to a standard rate first and then to a whole one. A Chrome screen recording read as 1000/33 (30.3 fps) before, which also made an unneeded automatic proxy (rule: above 30 fps).
+  - Tests: +5 files, +55 tests:
+    - `ebml.test.ts` (12: integers, unknown sizes, headers, values, children, windows across edges, abort).
+    - `webmCodecs.test.ts` (9: VP9 headers of profiles 0-3, levels, codec strings, av1C, avcC, VP8, refusals).
+    - `webm.test.ts` (21: live recordings, muxed files with SeekHead / Duration / Cues / Void / BlockGroups, Matroska and other timestamp scales, H.264 reordering, audio-only, track choice, truncated files, small windows, refusals, `webmAudioLeadUs`, `webmAudioPlan` with the worker decode loop).
+    - `container.test.ts` (5) and `AudioTracks.test.ts` (3).
+    - New cases in `DecodeSessions` (a WebM opened, cached and decoded), `DecodedAudio` (WebM in the worker; padding and cutting decodeAudioData output), `fps`, `mediaKinds`, `MediaImporter`, `mediaList`.
+    - `media/demux/testWebm.ts` is a test-only writer for both layouts (live: unknown sizes; muxed: known sizes, Cues, BlockGroups, Void).
+  - Checks: `npm run check` green: typecheck, lint with the CSS color and token checks, 2354 unit tests in 225 files and 4 perf tests. Build: 1297.70 kB JS (413.06 kB gzip, +0.7 kB), decode.worker 226.72 kB (+13.0), export.worker 412.34 kB (+13.1), proxy.worker 237.84 kB, analysis.worker 218.57 kB.
+  - Measured:
+    - What Chrome screen recordings look like (MediaRecorder; Segment and Clusters of unknown size, no Cues, no Duration):
+      - VFR: 16-167 ms between frames, median 33.
+      - VP9 key frames every 5-32 frames; AV1 and VP8 every 101.
+      - The audio starts 36-44 ms after the first frame.
+      - Chrome writes the av1C as `av01.0.09M.08`.
+    - A 10-minute 1080p30 recording (183 MB, 18,000 frames, 30,000 Opus packets, read from OPFS):
+      - probe 470 ms, sample index 441 ms (594 kB), from cache/index/ 10 ms;
+      - Opus track open 412 ms; a 60 s segment from minute 5 decodes in 474 ms.
+- acceptance:
+  1. A VP9 WebM screen recording imports, scrubs, plays and exports (`acc.mjs`). The recording is a real Chrome screen capture: 12 s, 1584x692, VP9 + Opus, 359 frames, VFR. Each check compares the counter the preview or the export shows with the counter of the frame decoded in order.
+     - Import: 108 ms. The media reads VP9 (`vp09.00.40.08`), 30 fps, Opus, 11.997 s. The analysis worker's thumbnail sheets and the peaks are ready 1.3 s later.
+     - Scrubs: 20 playhead jumps over the whole recording, every one the exact frame (median 88 ms, max 157 ms at Full quality). A ruler drag over CDP gives 62 preview renders on 31 playheads, and the frame after release is exact.
+     - Playback:
+       - 8 s at Full quality, decoding VP9 while playing: 0 dropped of 236, every render the frame expected for the playhead, 0 React commits (counted from 1 s in, as in Batch 45).
+       - 4 s from the middle in Auto: 0 dropped.
+       - A proxy made from the WebM (Generate proxy, 4.9 s) plays 8 s with 0 dropped, every frame right.
+     - Export: an MP4 of 359 frames, every frame the source frame expected for its project frame (0 mismatches). The 12 audio clicks land 7-8 ms after their flash frames; the source itself has 7.5-11.5 ms from capture.
+     - Reopen: the index loads from cache/index/ (`indexParsed 0`, `indexFromCache 1`) and the frames stay exact.
+     - The same run passes for an AV1 and a VP8 recording, and on WebGL2 (`B49_GL=1`).
+       - All export frames match.
+       - Proxy playback on WebGL2 drops 3 of 238 (the H.264 proxy; the WebGL2 cost in the Batch 48 notes). Full VP9 playback drops 0.
+       - In the AV1 and VP8 exports the clicks land 42-50 ms after the flashes. That is the source's own capture offset (26.5-34.5 ms) plus up to 16 ms of rounding to the project's frame grid.
+     - Other files (`misc.mjs`):
+       - A YouTube audio-only Opus WebM (3.6 MB, another muxer, with Cues): imports as audio of 218.001 s, the duration an `<audio>` element reports, and decodes in the worker.
+       - A damaged .webm and a text file named .webm are failed imports with "Not a readable WebM file: it is damaged or is not a video".
+- regressions (the two previous batches, on 5231 / 9373):
+  - Batch 47:
+    - `corrupt.mjs` 11 / 11 (the injected fatal error is the script's own).
+    - `kill.mjs --fresh`: all 6 decode worker kills (close, throw, exit) recover within 2 s, max 1563 ms.
+  - Batch 48:
+    - `build.mjs` + `shots.mjs webgpu|webgl2` + `compare.mjs`: the same parity numbers as Batch 48 (frames identical or within 1 level; the solid line's end max 33, a text corner pixel max 20).
+    - `misc.mjs fallback loss`: 4 / 4 (automatic WebGL2 without WebGPU, the unsupported screen, a context loss on each backend).
+- deviations:
+  - Audio: the batch says "decodeAudioData continues to handle audio". Opus (what browsers, screen recorders, YouTube and ffmpeg write) decodes in decode.worker like MP4 audio (Batch 10). Two reasons:
+    - decodeAudioData holds the whole file as PCM: about 1.4 GB for a 60-minute recording, and non-MP4 audio over 45 minutes has been refused since Batch 47.
+    - Its output starts at the first audio block. Measured on a Chrome screen recording: the audio would play 33-36 ms early; with the packet times it lands where the source has it.
+
+    Vorbis, laced audio and Opus without a WebCodecs decoder still use decodeAudioData, placed on media time by the worker's `leadUs`. The export puts the clicks where the source has them on both paths (7-8 ms after the flashes).
+  - The index comes from a scan of every Cluster, at the probe and at the first open (then from cache/index/), not from Cues. Cues list key frames only, and live recordings have none. Measured on a 10-minute recording: 0.44-0.47 s per scan, reading the file once.
+  - Codecs: VP8 and H.264 in WebM are accepted besides VP9 and AV1. Chrome's MediaRecorder writes VP8 by default and H.264 into .webm with `codecs=h264`, and each costs one line. Other video codecs (HEVC, Theora) are refused at import, by CodecID. An AV1 track without its required av1C gets `av01.0.LLM.08` (Main, 8 bits, the level from the size).
+  - `.mkv` stays refused by name (§9.1 lists `.webm`). Matroska content inside a `.webm` is read. Since the container is told by content, a WebM named `.mp4` also opens.
+  - Not handled:
+    - Rotation: Matroska files carry none in common use, so 0.
+    - VP9 alpha (BlockAdditions): decodes opaque.
+    - A recording whose size changes midway (a window resized while recording) is laid out at its first size (PixelWidth/Height).
+    - Opus pre-skip (6.5 ms): Chrome's decoder handles it.
+  - Frame rate snapping for jittery tick times (see notes) applies to every container. MP4 files with fine timescales are unchanged (half a tick is below the 0.03% tolerance there), and all earlier fps tests pass.
+- follow-ups:
+  - [from Batch 49 -> Batch 50] WebM Vorbis (and laced audio) still decodes whole with decodeAudioData and, probed in the worker, is not refused past 45 minutes like other non-MP4 audio: a long Vorbis WebM can exhaust memory (rare: current muxers write Opus). Part of the long non-MP4 audio follow-up.
+- design gaps: none (no new UI; the failed-import row reuses the Film icon).
+- pending manual checks (`npm run dev`):
+  1. A screen recording from your own recorder: OBS with WebM output, a Chrome extension (Loom, Screencastify), or the Windows / macOS recorder saving WebM. Steps:
+     - Import it. Expected: a card with its duration and a VP9 / VP8 / AV1 label.
+     - Drag it to the timeline, scrub the ruler, play, then Export.
+     - Expected: the picture follows the playhead, playback has no stutter, lip sync is right (speech on the mouth movements), and the exported MP4 plays the same.
+  2. A recording during which the recorded window was resized: the frames after the resize are shown (laid out at the first size).
+  3. A transparent VP9 WebM (an overlay with alpha): it imports and plays opaque (alpha is not supported).
+  4. A WebM with Vorbis audio (older ffmpeg, `-c:a libvorbis`): it plays with sound in sync (the decodeAudioData path).
+- docs note: user-visible changes:
+  - WebM files (.webm) import like MP4: screen recordings from the browser and most screen recorders, in VP9, AV1, VP8 or H.264, with Opus or Vorbis audio, and audio-only WebM.
+  - Scrubbing, playback, proxies, thumbnails, waveforms and export work as for MP4. Recordings with a variable frame rate keep their timing.
+  - A damaged WebM is listed under failed imports with "Not a readable WebM file".
+  - Not supported: other codecs in WebM (HEVC, Theora; the reason names the codec), .mkv files, VP9 transparency (shows opaque).
+- other: `docs/BATCHES.md` (Batches 51-53) and `docs/EDITOR_SPEC.md` (§20), edited outside the batch runs, are left out of this batch's commit (as in Batches 29-48).

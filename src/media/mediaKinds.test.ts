@@ -11,11 +11,12 @@ describe("classifyFile", () => {
     expect(classifyFile("photo.JPEG", "")).toMatchObject({ container: "image", mime: "image/jpeg" });
     expect(classifyFile("anim.gif", "")).toMatchObject({ container: "image" });
     expect(classifyFile("logo.svg", "")).toMatchObject({ container: "svg" });
-    expect(ACCEPTED_EXTENSIONS).toHaveLength(14);
+    expect(classifyFile("Screen Recording.WEBM", "")).toEqual({ container: "webm", mime: "video/webm" });
+    expect(ACCEPTED_EXTENSIONS).toHaveLength(15);
   });
 
-  it("refuses unknown types, WebM and documents", () => {
-    expect(classifyFile("movie.webm", "video/webm")).toBeNull();
+  it("refuses unknown types, Matroska by name and documents", () => {
+    expect(classifyFile("movie.mkv", "video/x-matroska")).toBeNull();
     expect(classifyFile("notes.txt", "text/plain")).toBeNull();
     expect(classifyFile("archive.mp4.zip", "")).toBeNull();
     expect(classifyFile("README", "")).toBeNull();

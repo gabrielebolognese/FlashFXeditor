@@ -1,10 +1,10 @@
 // Accepted import types (spec §9.1). The extension decides; files without one (pasted images) fall
-// back to their MIME type. WebM waits for the optional WebM batch (49) and is refused like any other
-// unknown type.
+// back to their MIME type. WebM (Batch 49) is probed and demuxed in the workers like MP4; its audio
+// goes through decodeAudioData.
 import type { MediaItem } from "../core/document/types.js";
 
-/** How a file is probed: mp4box in the worker, decodeAudioData, the worker image probe, or SVG. */
-export type Container = "mp4" | "audio" | "image" | "svg";
+/** How a file is probed: mp4box or the WebM demuxer in the worker, decodeAudioData, the worker image probe, or SVG. */
+export type Container = "mp4" | "webm" | "audio" | "image" | "svg";
 
 export interface FileKind {
   container: Container;
@@ -20,6 +20,7 @@ const BY_EXTENSION = new Map<string, FileKind>([
   ["mov", { container: "mp4", mime: "video/quicktime" }],
   ["m4v", { container: "mp4", mime: "video/x-m4v" }],
   ["m4a", { container: "mp4", mime: "audio/mp4" }],
+  ["webm", { container: "webm", mime: "video/webm" }],
   ["mp3", { container: "audio", mime: "audio/mpeg", audioCodec: "mp3" }],
   ["aac", { container: "audio", mime: "audio/aac", audioCodec: "aac" }],
   ["wav", { container: "audio", mime: "audio/wav", audioCodec: "pcm" }],
@@ -51,7 +52,7 @@ export function classifyFile(name: string, type: string): FileKind | null {
 
 /** `showOpenFilePicker` types. "All files" stays available so unknown files reach the refusal toast. */
 export const PICKER_TYPES = [
-  { description: "Video", accept: { "video/*": [".mp4", ".mov", ".m4v"] } },
+  { description: "Video", accept: { "video/*": [".mp4", ".mov", ".m4v", ".webm"] } },
   { description: "Audio", accept: { "audio/*": [".mp3", ".m4a", ".aac", ".wav", ".ogg"] } },
   { description: "Images", accept: { "image/*": [".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg"] } },
 ];
@@ -78,6 +79,7 @@ const CODEC_NAMES: [prefix: string, label: string][] = [
   ["mp4a.69", "MP3"],
   ["mp4a", "AAC"],
   ["opus", "Opus"],
+  ["vorbis", "Vorbis"],
   ["alac", "ALAC"],
   ["ac-3", "AC-3"],
   ["ec-3", "E-AC-3"],
