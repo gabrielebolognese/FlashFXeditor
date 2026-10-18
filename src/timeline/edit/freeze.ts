@@ -1,7 +1,7 @@
 // Freeze frame and punch zoom (spec §6.1 toolbar, §6.16 clip menu, §11/§17 quick row, §18 Shift+F /
 // Shift+Z; Batch 27), the pure edits behind both one-clicks:
 // - Freeze frame: the video clip under the playhead is split there (with its linked partners, always:
-//   its sound must stay in sync) and a FREEZE_SECONDS clip holding the frame at the playhead goes
+//   its sound must stay in sync) and a clip of the default freeze length (2 s, a setting) holding the frame at the playhead goes
 //   between the halves. The freeze is a video clip of the same media with `speed = 0` (`in` = the
 //   source time shown at the playhead, `out` one project frame later): the compositor shows `in` on
 //   every frame and the playback engine asks the decoder for that single frame. Every clip from the
@@ -23,15 +23,14 @@
 // change. One command each (one undo step).
 import { current, isDraft, type Draft } from "immer";
 import type { Command } from "../../core/commands/command.js";
-import { framesToSourceUs, frameToUs, secondsToFrames } from "../../core/document/time.js";
+import { framesToSourceUs, frameToUs } from "../../core/document/time.js";
 import { clipAt, hasSectionKeys, mapKeyValues, transformValues, writeKeys } from "../../core/document/keyframes.js";
 import type { Clip, ClipId, Frame, Keyframes, MediaClip, Project, Transform } from "../../core/document/types.js";
 import { clipInIndex, isClipLocked, linkedPartners, trackIndex } from "../model/queries.js";
+import { defaultFrames, editDefaults } from "./editDefaults.js";
 import { splitClips, splitsAt } from "./split.js";
 import { isLayerClip, normalizeTransform } from "./transform.js";
 
-/** How long a new freeze frame holds (Batch 27: "a 2 s frozen clip"). */
-export const FREEZE_SECONDS = 2;
 /** The animated punch zoom's length (Batch 35: "from 1.0 to 1.2 over 6 frames with ease out"). */
 export const PUNCH_ZOOM_FRAMES = 6;
 
@@ -86,7 +85,7 @@ function splitSet(project: Project, clips: readonly Clip[], frame: Frame, linked
   return [...ids];
 }
 
-/** The freeze frame of `clip` at `frame`: its look, `FREEZE_SECONDS` long, holding the source time shown there. */
+/** The freeze frame of `clip` at `frame`: its look, `duration` long, holding the source time shown there. */
 function freezeOf(project: Project, clip: MediaClip, frame: Frame, duration: Frame, id: ClipId): MediaClip {
   const { fps } = project.settings;
   // The source time the clip shows at the frame (§5.1; a freeze frame's own `in`).
@@ -113,7 +112,7 @@ export function freezeFrame(project: Project, frame: Frame, selection: readonly 
   const targets = targetsAt(project, frame, selection, isVideo, isVideo);
   if (!Array.isArray(targets)) return targets;
   const split = splitClips(project, splitSet(project, targets, frame, true), frame, newId);
-  const duration = secondsToFrames(FREEZE_SECONDS, project.settings.fps);
+  const duration = defaultFrames(editDefaults().freezeMs, project.settings.fps);
   const freezes = targets.map((clip) => freezeOf(project, clip as MediaClip, frame, duration, newId()));
   const command: Command = {
     id: "clip.freezeFrame",

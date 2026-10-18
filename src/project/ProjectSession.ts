@@ -1,5 +1,7 @@
 // An open project wired to the app: loads the document and the session into the stores, autosaves the
-// document, saves session.json, keeps the recent entry current, and flushes everything on close.
+// document, saves session.json, keeps the recent entry current, restores history backups, and flushes
+// everything on close.
+import type { Project } from "../core/document/types.js";
 import type { Store } from "../core/store/createStore.js";
 import type { DocumentStore } from "../core/store/DocumentStore.js";
 import type { LayoutStore } from "../core/store/layoutStore.js";
@@ -14,6 +16,12 @@ import { ensureAccess } from "./permissions.js";
 import type { RecentProjects } from "./recentProjects.js";
 import { discardRecovery, type Recovery } from "./recovery.js";
 import { SessionSaver } from "./SessionSaver.js";
+import { formatFps } from "./projectPresets.js";
+
+/** "1080×1920 · 30 fps": what the recent list shows of a project. */
+export function projectFormat(project: Project): string {
+  return `${project.settings.width}×${project.settings.height} · ${formatFps(project.settings.fps)} fps`;
+}
 
 export interface ProjectSessionDeps {
   documentStore: DocumentStore;
@@ -74,6 +82,7 @@ export class ProjectSession {
       documentStore.subscribe(
         (state, prev) => {
           if (state.name !== prev.name) void recent.update(this.projectId, { name: state.name });
+          if (state.settings !== prev.settings) void recent.update(this.projectId, { format: projectFormat(state) });
         },
         { affects: ["settings"] },
       ),
@@ -92,7 +101,7 @@ export class ProjectSession {
       this.stops.push(() => doc.removeEventListener("visibilitychange", onVisibility));
     }
 
-    void recent.touch({ id: opened.project.id, name: opened.project.name, pathHint: this.dir.name, modified: opened.project.meta.modifiedAt, handle: this.dir.handle });
+    void recent.touch({ id: opened.project.id, name: opened.project.name, pathHint: this.dir.name, modified: opened.project.meta.modifiedAt, handle: this.dir.handle, format: projectFormat(opened.project) });
   }
 
   get readOnly(): boolean {
@@ -116,6 +125,23 @@ export class ProjectSession {
     }
     this.sessionSaver.setReadOnly(false);
     this.autosaver.setReadOnly(false);
+    return true;
+  }
+
+  /**
+   * Restores a history backup as the current document (spec §15 History): what is unsaved is saved
+   * first, so project.json holds the state before the restore; the backup is loaded (undo history
+   * cleared, as for a recovery) and saved at once, which copies that project.json into history/: the
+   * pre-restore state is the newest backup. Autosave goes on as before. False (nothing changed) when the
+   * project is read-only or the first save fails; the save of the restored document can still fail
+   * like any save (the dot shows it, it is retried).
+   */
+  async restoreBackup(project: Project): Promise<boolean> {
+    if (!this.writable || this.closed) return false;
+    if (!(await this.autosaver.flush())) return false;
+    if (this.closed) return false;
+    this.deps.documentStore.load({ ...project, id: this.projectId });
+    await this.autosaver.saveNow();
     return true;
   }
 

@@ -49,16 +49,17 @@ function Editor() {
 
 /**
  * The start screen until a project is open (spec §15), then the editor. Dialogs float over both, as do
- * the command palette, the cheat sheet and the settings (Batch 40).
+ * the command palette, the cheat sheet and the settings (Batch 40). The project dialogs come after the
+ * settings: one opened from them (Clear cache, Batch 42) shows above them.
  */
 export function App() {
   const projectId = useStoreSelector(appView, selectProjectId);
   return (
     <>
       {projectId === null ? <StartScreen /> : <Editor key={projectId} />}
-      <DialogHost />
       <SettingsDialog />
       <ShortcutSheet />
+      <DialogHost />
       <CommandPalette />
       <ToastHost />
     </>

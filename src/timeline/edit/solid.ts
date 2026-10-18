@@ -2,7 +2,8 @@
 // and edits of their look (shape, fill, size, corner radius).
 // - `addSolid` (`+ Solid`): a white rounded rectangle centered on the frame, sized from the frame's
 //   short side, at the playhead on the topmost video track when it is free there (unlocked, shown),
-//   else on a new video track above the others; SOLID_SECONDS long. One command `clip.addSolid`.
+//   else on a new video track above the others; the default solid duration long (5 s, a setting).
+//   One command `clip.addSolid`.
 // - `setSolids` writes new looks (and the transforms a size handle drag moves, spec §7.3) as one command
 //   `clip.solid` (one undo step; a field's arrow steps coalesce by key). Clips that are gone, locked,
 //   not solids or unchanged are skipped.
@@ -15,13 +16,11 @@ import type { Draft } from "immer";
 import { addTrack } from "../../core/commands/basicCommands.js";
 import type { Command } from "../../core/commands/command.js";
 import { emptyTrack, nextTrackName } from "../../core/document/project.js";
-import { secondsToFrames } from "../../core/document/time.js";
 import type { ClipId, Frame, Project, SolidClip, SolidShape, Track, Transform } from "../../core/document/types.js";
 import { clipsInRange, isClipLocked } from "../model/queries.js";
+import { defaultFrames, editDefaults } from "./editDefaults.js";
 import { applyTransformWrite, IDENTITY_TRANSFORM, transformWrite, type TransformWrite } from "./transform.js";
 
-/** The length of a new solid (spec §6.14 gives images 5 s; solids take the same). */
-export const SOLID_SECONDS = 5;
 
 /** What the Solid section edits: the solid's own look, apart from its transform. */
 export type SolidLook = Pick<SolidClip, "shape" | "fill" | "size" | "cornerRadius">;
@@ -103,13 +102,13 @@ export function newSolidClip(fields: { id: ClipId; trackId: string; start: Frame
 }
 
 /**
- * `+ Solid` (spec §6.1): the default solid at the playhead, centered, SOLID_SECONDS long, on the
+ * `+ Solid` (spec §6.1): the default solid at the playhead, centered, the default duration long, on the
  * topmost video track when it is free there (unlocked, shown), else on a new video track above the
  * others. One command ("Add solid"); the new clip's id.
  */
 export function addSolid(project: Project, playhead: Frame, newId: () => string, look: SolidLook = defaultSolid(project.settings)): { command: Command; clipId: ClipId } {
   const start = Math.max(0, Math.round(playhead));
-  const length = secondsToFrames(SOLID_SECONDS, project.settings.fps);
+  const length = defaultFrames(editDefaults().solidMs, project.settings.fps);
   const top = project.tracks.filter((track) => track.kind === "video").at(-1);
   const free = top && !top.locked && !top.hidden && clipsInRange(project, top.id, start, start + length).length === 0 ? top : null;
   const newTrack = free ? null : emptyTrack(newId(), "video", nextTrackName(project.tracks, "video"));

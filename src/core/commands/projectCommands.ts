@@ -1,5 +1,6 @@
 // Project settings commands (spec §11 Project section). Undoable like any other document change.
-import { current, type Draft } from "immer";
+import { current, produce, type Draft } from "immer";
+import { convertProjectFrames, sameFrameRate, type ConversionReport } from "../document/fpsConvert.js";
 import { mapKeyValues } from "../document/keyframes.js";
 import type { Clip, Keyframes, Project, Rational, RGBA, Transform } from "../document/types.js";
 import type { Command } from "./command.js";
@@ -55,8 +56,8 @@ export function scaledTransform(transform: Transform, from: { width: number; hei
 /**
  * New frame size, even and in range. With `scaleLayout` the clips' transforms follow the frame
  * (`scaledTransform`; locked tracks too: the frame changes under them), their position and scale keys
- * too (Batch 35), else they are kept.
- * TODO(batch 42): the "Scale layout" / "Keep" choice of §15.
+ * too (Batch 35), else they are kept ("Keep" of §15: every layer keeps its pixel size and its offset
+ * from the frame center). The app asks which (app/conversionController.ts).
  */
 export function setResolution(width: number, height: number, options: { scaleLayout?: boolean } = {}): Command {
   const w = clampDimension(width);
@@ -84,13 +85,17 @@ export function setResolution(width: number, height: number, options: { scaleLay
   };
 }
 
-/** Frame values would need converting once anything sits on the timeline. O(1): no key listing. */
+/** The timeline has nothing to convert: no clips and no markers. O(1): no key listing. */
 export function canChangeFrameRate(project: Project): boolean {
   for (const id in project.clips) if (Object.hasOwn(project.clips, id)) return false;
   return project.markers.length === 0;
 }
 
-/** Only for a project without clips or markers. TODO(batch 42): fps conversion of frame values. */
+/**
+ * A new frame rate (spec §15): every frame value of the document converted by the rational ratio,
+ * rounded to the nearest frame (`core/document/fpsConvert.ts`), in one undo step. `frameRateReport`
+ * tells beforehand what a conversion would round.
+ */
 export function setFrameRate(fps: Rational): Command {
   if (!(Number.isInteger(fps.num) && Number.isInteger(fps.den) && fps.num > 0 && fps.den > 0)) {
     throw new Error(`project.setFrameRate: invalid frame rate ${fps.num}/${fps.den}`);
@@ -98,12 +103,25 @@ export function setFrameRate(fps: Rational): Command {
   return {
     id: "project.setFrameRate",
     label: "Change frame rate",
-    affects: ["settings", "timeline"],
+    affects: ["settings", "timeline", "clips", "markers", "captions", "text", "audio", "composite"],
     run(draft) {
-      if (!canChangeFrameRate(draft)) throw new Error("project.setFrameRate: the project has clips or markers; frame values would need converting");
-      draft.settings.fps = { num: fps.num, den: fps.den };
+      if (sameFrameRate(draft.settings.fps, fps)) {
+        draft.settings.fps = { num: fps.num, den: fps.den };
+        return;
+      }
+      convertProjectFrames(draft, fps);
     },
   };
+}
+
+/** What converting `project` to `fps` would round (nothing for a lossless ratio or an empty timeline). */
+export function frameRateReport(project: Project, fps: Rational): ConversionReport {
+  let report: ConversionReport = { rounded: 0, merged: 0, shifted: 0 };
+  if (canChangeFrameRate(project) || sameFrameRate(project.settings.fps, fps)) return report;
+  produce(project, (draft) => {
+    report = convertProjectFrames(draft, fps);
+  });
+  return report;
 }
 
 export function setBackground(color: RGBA): Command {

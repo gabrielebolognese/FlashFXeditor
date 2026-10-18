@@ -204,8 +204,11 @@ function proxyFiles(dir: FsDir): ProxyFiles {
 
 const patch = (next: Partial<MediaPanelState>) => mediaPanel.set((state) => ({ ...state, ...next }));
 
-/** Wires media to a newly opened project (after its document is loaded); `preview` is the frame service thumbnail decodes yield to. */
-export function attachMedia(dir: FsDir, isWritable: () => boolean, preview?: ThumbnailDeps["preview"]): void {
+/**
+ * Wires media to a newly opened project (after its document is loaded); `preview` is the frame service
+ * thumbnail decodes yield to. `announceOffline` false: no offline toast (attached again after Clear cache).
+ */
+export function attachMedia(dir: FsDir, isWritable: () => boolean, preview?: ThumbnailDeps["preview"], options: { announceOffline?: boolean } = {}): void {
   detachMedia();
   // The media files (copied or linked) and which are offline: the panel, timeline, preview and audio read them.
   const sources = new MediaSources({ dir, kv: keyValueStore, media: () => documentStore.getState().media, status: mediaStatus });
@@ -300,7 +303,7 @@ export function attachMedia(dir: FsDir, isWritable: () => boolean, preview?: Thu
   });
   if (import.meta.env.DEV) Object.assign(((globalThis as { __editor?: Record<string, unknown> }).__editor ??= {}), { thumbs, proxies, sources });
   notifyArrival();
-  void findOfflineMedia(open);
+  void findOfflineMedia(open, options.announceOffline ?? true);
 }
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
@@ -311,14 +314,14 @@ const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? o
  * click (the browser needs one), else the Media tab's Allow access does it. Offline media are named in
  * a toast.
  */
-async function findOfflineMedia(current: OpenMedia): Promise<void> {
+async function findOfflineMedia(current: OpenMedia, announce: boolean): Promise<void> {
   await current.sources.checkAll();
   if (open !== current) return;
   const activation = (navigator as { userActivation?: { isActive: boolean } }).userActivation;
   if (current.sources.waitingForAccess().length > 0 && activation?.isActive) await current.sources.requestAccess();
   if (open !== current) return;
   const offline = [...mediaStatus.getState()];
-  if (offline.length === 0) return;
+  if (offline.length === 0 || !announce) return;
   const waiting = offline.filter(([, status]) => status === "permission").length;
   showToast({
     tone: "error",

@@ -26,11 +26,11 @@ import type { Draft } from "immer";
 import { addTrack } from "../../core/commands/basicCommands.js";
 import type { Command } from "../../core/commands/command.js";
 import { emptyTrack, nextTrackName } from "../../core/document/project.js";
-import { secondsToFrames } from "../../core/document/time.js";
 import type { ClipId, Frame, Project, TextAnim, TextBox, TextClip, TextContent, TextStyle, Track, Transform } from "../../core/document/types.js";
 import { textLayout } from "../../render/text/layoutCache.js";
 import { DEFAULT_TEXT_BOX, DEFAULT_TEXT_STYLE, firstLine, textContent, titleDefaults, type TitleKind } from "../../text/style.js";
 import { clipAtFrame, clipsInRange, isClipLocked } from "../model/queries.js";
+import { defaultFrames, editDefaults } from "./editDefaults.js";
 import { applyTransformWrite, editedTransform, IDENTITY_TRANSFORM, layerContent, layerCorners, layerPoint, shiftedWrite, transformWrite, type Size, type TransformWrite } from "./transform.js";
 
 export interface TextEdit {
@@ -165,8 +165,6 @@ export function addTextClip(project: Project, frame: Frame, duration: Frame, new
   return insertTextClip(project, free ?? null, start, length, newId, fields, "Add text");
 }
 
-/** The default length of a title (spec §10.2). */
-export const TITLE_SECONDS = 3;
 /** The gap between a selected text clip and a title created under it (Batch 29), in project px. */
 export const TITLE_STACK_GAP = 40;
 /** Where the Subtitle's bottom edge sits, as a fraction of the frame height: in the lower third (spec §10.2). */
@@ -208,9 +206,9 @@ function videoUnder(project: Project, frame: Frame): Track | null {
   return null;
 }
 
-/** A title's length in frames (spec §10.2): the rest of the video clip under the playhead when matching, else TITLE_SECONDS. */
+/** A title's length in frames (spec §10.2): the rest of the video clip under the playhead when matching, else the default title duration (3 s). */
 export function titleDuration(project: Project, playhead: Frame, matchClip: boolean): Frame {
-  const fallback = secondsToFrames(TITLE_SECONDS, project.settings.fps);
+  const fallback = defaultFrames(editDefaults().titleMs, project.settings.fps);
   if (!matchClip) return fallback;
   const track = videoUnder(project, playhead);
   const clip = track ? clipAtFrame(project, track.id, playhead) : null;

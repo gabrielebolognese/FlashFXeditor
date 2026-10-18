@@ -143,7 +143,6 @@ export function AppBar() {
         <Upload className={styles.exportIcon} strokeWidth={2.5} aria-hidden="true" />
         Export
       </button>
-      {/* TODO(batch 42): the General section of the settings (Batch 40 builds its Shortcuts). */}
       <IconButton icon={Settings} commandId="app.settings" size="default" />
     </header>
   );

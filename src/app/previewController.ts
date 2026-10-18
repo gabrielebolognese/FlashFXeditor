@@ -484,6 +484,42 @@ interface SaveFilePickerWindow {
 }
 
 /** Saves the current frame at project size as a PNG (the picker opens first, inside the click). */
+/**
+ * The frame at the playhead as a small image (`height` px tall, webp) for the recent projects list
+ * (spec §15 "thumbnail captured at the playhead on close", Batch 42): rendered like Export frame, then
+ * scaled. Null when the preview cannot draw it within `timeoutMs` (a frame still decoding, no GPU).
+ */
+export async function captureThumbnail(height: number, timeoutMs = 2000): Promise<Blob | null> {
+  let late = false;
+  const render = previewView.renderFrame().then((bitmap) => {
+    if (late) bitmap.close();
+    return bitmap;
+  });
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<null>((resolve) => {
+    timer = setTimeout(() => resolve(null), timeoutMs);
+  });
+  try {
+    const bitmap = await Promise.race([render, timeout]);
+    if (!bitmap) {
+      late = true;
+      return null;
+    }
+    const scaled = await createImageBitmap(bitmap, { resizeHeight: height, resizeWidth: Math.max(1, Math.round((bitmap.width * height) / bitmap.height)), resizeQuality: "medium" });
+    bitmap.close();
+    const canvas = new OffscreenCanvas(scaled.width, scaled.height);
+    canvas.getContext("2d")?.drawImage(scaled, 0, 0);
+    scaled.close();
+    return await canvas.convertToBlob({ type: "image/webp", quality: 0.82 });
+  } catch (error) {
+    late = true;
+    console.warn("[preview] no thumbnail for the recent list", error);
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export async function exportFrame(): Promise<void> {
   let handle: FileSystemFileHandle;
   try {

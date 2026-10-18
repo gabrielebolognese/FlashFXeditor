@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createAppSettings, DEFAULT_APP_SETTINGS, proxySettings, toggleFavoriteFont } from "./appSettings.js";
+import { createAppSettings, DEFAULT_APP_SETTINGS, editDefaultsOf, proxySettings, toggleFavoriteFont } from "./appSettings.js";
 import { memoryKeyValueStore } from "./kv.js";
 import { RECENT_LIMIT, RecentProjects, type RecentProject } from "./recentProjects.js";
 
@@ -83,7 +83,7 @@ describe("app settings", () => {
     await settings.load();
     expect(settings.getState()).toEqual(DEFAULT_APP_SETTINGS);
     await settings.update({ autosaveDelayMs: 5000 });
-    expect(kv.data.get("settings.v1")).toEqual({ autosaveDelayMs: 5000, importMode: "copy", monitorVolumeDb: 0, monitorMuted: false, proxyAuto: true, proxyRule: "heavy", proxyShortEdge: 540, recentColors: [], punchZoomScale: 1.2, punchZoomAnimate: true, favoriteFonts: [], matchClipUnderPlayhead: true, defaultTitlePreset: "starter-title", defaultSubtitlePreset: "starter-subtitle", transcribeModel: "base", transcribeLanguage: null, duckDepthDb: 12, duckRampFrames: 10, silenceThresholdDb: -40, silenceMinMs: 500, silencePaddingMs: 150, keymap: {}, recentCommands: [] });
+    expect(kv.data.get("settings.v1")).toEqual({ autosaveDelayMs: 5000, importMode: "copy", monitorVolumeDb: 0, monitorMuted: false, proxyAuto: true, proxyRule: "heavy", proxyShortEdge: 540, recentColors: [], punchZoomScale: 1.2, punchZoomAnimate: true, favoriteFonts: [], matchClipUnderPlayhead: true, defaultTitlePreset: "starter-title", defaultSubtitlePreset: "starter-subtitle", transcribeModel: "base", transcribeLanguage: null, duckDepthDb: 12, duckRampFrames: 10, silenceThresholdDb: -40, silenceMinMs: 500, silencePaddingMs: 150, keymap: {}, recentCommands: [], stillDurationMs: 5000, titleDurationMs: 3000, solidDurationMs: 5000, freezeDurationMs: 2000, transitionFrames: 15, transitionKind: "crossDissolve", keyframesFollowSource: true });
     await settings.update({ autosaveDelayMs: 1234 });
     expect(settings.getState().autosaveDelayMs).toBe(5000);
 
@@ -115,6 +115,17 @@ describe("app settings", () => {
     expect(settings.getState().importMode).toBe("reference");
     await settings.update({ importMode: "link" as never });
     expect(settings.getState().importMode).toBe("reference");
+  });
+
+  it("keeps the default durations and the default transition in range (Batch 42)", async () => {
+    const kv = memoryKeyValueStore();
+    kv.data.set("settings.v1", { stillDurationMs: 2500.4, titleDurationMs: 5, solidDurationMs: 10e6, freezeDurationMs: "long", transitionFrames: 0, transitionKind: "wipe", keyframesFollowSource: false });
+    const settings = createAppSettings(kv);
+    await settings.load();
+    expect(settings.getState()).toMatchObject({ stillDurationMs: 2500, titleDurationMs: 100, solidDurationMs: 60_000, freezeDurationMs: 2000, transitionFrames: 1, transitionKind: "crossDissolve", keyframesFollowSource: false });
+    expect(editDefaultsOf(settings.getState())).toEqual({ stillMs: 2500, titleMs: 100, solidMs: 60_000, freezeMs: 2000, transitionFrames: 1, transitionKind: "crossDissolve", keyframesFollowSource: false });
+    await settings.update({ transitionFrames: 999, transitionKind: "dipToBlack" });
+    expect(settings.getState()).toMatchObject({ transitionFrames: 120, transitionKind: "dipToBlack" });
   });
 
   it("keeps Remove silence's parameters in range and in whole units (Batch 38)", async () => {

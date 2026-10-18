@@ -25,9 +25,9 @@ import { produce, type Draft } from "immer";
 import { framesToSourceUs, usPerFrame } from "./time.js";
 import { isFreeze, isMediaClip, TRANSITION_KINDS, type Clip, type Frame, type MediaClip, type Project, type Rational, type Transition, type TransitionKind } from "./types.js";
 
-/** Spec §6.15: the default transition is 15 frames (the Project section's setting comes with Batch 42). */
+/** Spec §6.15: the default transition is 15 frames; the built-in value of the setting (timeline/edit/editDefaults.ts). */
 export const DEFAULT_TRANSITION_FRAMES = 15;
-/** `Mod+Shift+D` and the timeline's default kind. TODO(batch 42): the default transition setting. */
+/** `Mod+Shift+D`'s kind until the setting changes it (timeline/edit/editDefaults.ts). */
 export const DEFAULT_TRANSITION_KIND: TransitionKind = "crossDissolve";
 
 export const TRANSITION_LABELS: Readonly<Record<TransitionKind, string>> = { crossDissolve: "Cross dissolve", dipToBlack: "Dip to black", dipToWhite: "Dip to white" };

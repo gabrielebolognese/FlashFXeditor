@@ -5,9 +5,9 @@
 // is one command. The number fields' bindings (panels/properties/bindings.ts) write through `liveEdit`
 // and the document store. Duplicate (the quick row, Mod+D) is the clipboard controller's (Batch 39).
 import { updateClip } from "../core/commands/basicCommands.js";
-import { canChangeFrameRate, setBackground, setFrameRate, setResolution } from "../core/commands/projectCommands.js";
+import { setBackground } from "../core/commands/projectCommands.js";
 import { formatHexColor } from "../core/document/color.js";
-import type { ClipId, Rational, RGBA } from "../core/document/types.js";
+import type { ClipId, RGBA } from "../core/document/types.js";
 import { pushRecentColor } from "../project/appSettings.js";
 import { retimeClips, setEnabled, type ClipTimeField } from "../timeline/edit/clipProps.js";
 import { isCropClip, quickCrops, type QuickCrop } from "../timeline/edit/crop.js";
@@ -91,24 +91,6 @@ export function renameClips(ids: readonly ClipId[], name: string): void {
   documentStore.transaction(changed.length === 1 ? "Rename clip" : "Rename clips", () => {
     for (const id of changed) documentStore.dispatch(updateClip(id, { name: clean }));
   });
-}
-
-/**
- * A new frame size from the Project section (spec §15 "changing resolution offers scale layout or
- * keep"): the conversion flow's placeholder. TODO(batch 42): the Scale layout / Keep dialog; until
- * then the layout is scaled with the frame (one undo step).
- */
-export function changeResolution(width: number, height: number): void {
-  const { settings } = documentStore.getState();
-  if (width !== settings.width || height !== settings.height) documentStore.dispatch(setResolution(width, height, { scaleLayout: true }));
-}
-
-/**
- * A new frame rate from the Project section. TODO(batch 42): the conversion of every frame value by
- * the rational ratio (§15); until then the rate changes only while the timeline has no clips or markers.
- */
-export function changeFrameRate(fps: Rational): void {
-  if (canChangeFrameRate(documentStore.getState())) documentStore.dispatch(setFrameRate(fps));
 }
 
 /** The project background (one undo step); the color joins the picker's recent colors. */

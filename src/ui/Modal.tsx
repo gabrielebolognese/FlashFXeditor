@@ -1,5 +1,5 @@
 import { X, type LucideIcon } from "lucide-react";
-import { useId, useLayoutEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { useId, useLayoutEffect, useRef, useState, type FocusEvent, type KeyboardEvent, type ReactNode } from "react";
 import { IconButton } from "./IconButton.js";
 import styles from "./Modal.module.css";
 
@@ -16,7 +16,9 @@ export interface ModalProps {
 
 /**
  * Centered modal (design system: surface-2 panel, radius-xl, modal shadow, black/60 + blur scrim).
- * Owns the keyboard through the `dialog` focus scope; focus moves in on open and back on close.
+ * Owns the keyboard through the `dialog` focus scope; focus moves in on open and back on close. Focus
+ * that would fall to the page (a field blurring itself on Enter, a select chosen with the pointer) goes
+ * back to the panel, so Escape still closes it and no panel shortcut runs behind it (Batch 42).
  */
 export function Modal({ title, icon: Icon, size = "md", onClose, children, footer }: ModalProps) {
   const panelRef = useRef<HTMLDivElement>(null);
@@ -35,6 +37,14 @@ export function Modal({ title, icon: Icon, size = "md", onClose, children, foote
     };
   }, [previous]);
 
+  const onBlur = (event: FocusEvent) => {
+    if (event.relatedTarget !== null) return;
+    queueMicrotask(() => {
+      const panel = panelRef.current;
+      if (panel?.isConnected && document.activeElement === document.body) panel.focus();
+    });
+  };
+
   const onKeyDown = (event: KeyboardEvent) => {
     if (event.key !== "Escape") return;
     event.stopPropagation();
@@ -49,7 +59,7 @@ export function Modal({ title, icon: Icon, size = "md", onClose, children, foote
         if (event.target === event.currentTarget) onClose();
       }}
     >
-      <div ref={panelRef} className={styles.panel} data-size={size} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1} onKeyDown={onKeyDown}>
+      <div ref={panelRef} className={styles.panel} data-size={size} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1} onKeyDown={onKeyDown} onBlur={onBlur}>
         <header className={styles.header}>
           {Icon && <Icon className={styles.icon} aria-hidden="true" />}
           <h2 id={titleId} className={styles.title}>

@@ -146,7 +146,14 @@
 
   /* Start screen (gap) */
   --start-width: 560px;
-  --recent-thumb-height: 40px;
+  /* Recent project cards (Batch 42, gap; the DS "Cards (e.g. project tiles)": thumbnail on top): at least
+     4 default controls wide, a 96px well (3 comfortable controls) holding the frame at the playhead. */
+  --recent-card-min: calc(4 * var(--control-comfortable));
+  --recent-thumb-height: calc(3 * var(--control-comfortable));
+  /* Settings > General (Batch 42, gap: the DS has no settings layout): the width of a group column
+     (two fit the xl modal); the History dialog's backup list, at most 10 rows before it scrolls. */
+  --settings-column-width: calc(14 * var(--control-default));
+  --history-list-height: calc(10 * var(--control-comfortable));
 
   /* Toasts in the Dynamic Island (gap: placement and width) */
   --toast-width: 360px;

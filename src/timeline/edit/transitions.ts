@@ -16,9 +16,10 @@
 // Each edit is one command (one undo step).
 import type { Draft } from "immer";
 import type { Command } from "../../core/commands/command.js";
-import { canTransition, DEFAULT_TRANSITION_FRAMES, fitTransition, handleOf, sameTransition, TRANSITION_LABELS, transitionRoom } from "../../core/document/transitions.js";
+import { canTransition, fitTransition, handleOf, sameTransition, TRANSITION_LABELS, transitionRoom } from "../../core/document/transitions.js";
 import { isMediaClip, type ClipId, type Frame, type MediaClip, type Project, type Track, type TrackId, type Transition, type TransitionKind } from "../../core/document/types.js";
 import { isClipLocked, linkedPartners, neighbors, trackIndex } from "../model/queries.js";
+import { editDefaults } from "./editDefaults.js";
 
 /** A cut between two abutting clips: where a transition sits. */
 export interface Cut {
@@ -119,7 +120,7 @@ export interface AddTransitionResult {
 }
 
 /**
- * Adds a `kind` transition at `cut` (spec §6.15): centered, `length` frames (default 15) or the most
+ * Adds a `kind` transition at `cut` (spec §6.15): centered, `length` frames (default: the setting, 15) or the most
  * the handles allow; a cut that has one keeps its frames and takes the kind. With `linked`, the linked
  * cuts get a crossfade of the same frames. Null when the cut cannot hold one.
  */
@@ -127,7 +128,7 @@ export function addTransition(project: Project, cut: Cut, kind: TransitionKind, 
   const cuts = linkedCuts(project, cut, options.linked === true);
   const first = cuts[0];
   if (!first) return null;
-  const length = options.length ?? DEFAULT_TRANSITION_FRAMES;
+  const length = options.length ?? editDefaults().transitionFrames;
   const writes: { cut: ValidCut; value: Transition }[] = [];
   let repeated = false;
   for (const target of cuts) {

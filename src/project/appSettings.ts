@@ -5,8 +5,8 @@
 // default Title and Subtitle presets (§10.2, Batch 30), the Transcribe dialog's model and language
 // (§10.6, Batch 33), Auto-duck music's depth and ramps (§14, Batch 37) and Remove silence's parameters
 // (§14, Batch 38), the shortcut editor's keymap overrides and the command palette's recent commands
-// (Batch 40).
-// TODO(batch 42): the settings panel's General section.
+// (Batch 40), the default durations, the default transition and "keyframes follow source" (§11, §6.15,
+// §6.10, Batch 42). Settings > General (panels/settings/) and the Project section edit them.
 import { createStore, type Store } from "../core/store/createStore.js";
 import { DEFAULT_PROXY_SHORT_EDGE, PROXY_RULES, PROXY_SHORT_EDGES, type ProxyRule, type ProxySettings, type ProxyShortEdge } from "../media/proxy/proxyFormat.js";
 import { AUTOSAVE_DELAY_MS } from "./Autosaver.js";
@@ -18,6 +18,9 @@ import { isValidKeys } from "../core/keyboard/rebind.js";
 import type { KeyValueStore } from "./kv.js";
 import { DUCK_DEPTH_DB, DUCK_RAMP_FRAMES } from "../timeline/edit/volume.js";
 import { clampSilenceParam, SILENCE_MIN_MS, SILENCE_PADDING_MS, SILENCE_THRESHOLD } from "../timeline/edit/silence.js";
+import { BUILT_IN_EDIT_DEFAULTS, type EditDefaults } from "../timeline/edit/editDefaults.js";
+import { isTransitionKind } from "../core/document/transitions.js";
+import type { TransitionKind } from "../core/document/types.js";
 
 /** copy: into media/ (default). reference: linked, the file handles kept in IndexedDB (Batch 41, spec §9.1). */
 export type ImportMode = "copy" | "reference";
@@ -41,14 +44,14 @@ export interface AppSettings {
   /**
    * Punch zoom as an animated zoom (Batch 35: scale keyframes over 6 frames with ease out) instead of
    * a cut-in; on by default. Named `punchZoomAnimated` (reserved, off) before Batch 35: that stored
-   * value is dropped, so the new default applies. TODO(batch 42): the switch in the settings panel.
+   * value is dropped, so the new default applies.
    */
   punchZoomAnimate: boolean;
   /** The font picker's Favorites section (spec §11): family names, in the order starred. */
   favoriteFonts: readonly string[];
   /**
    * `+ Title` / `+ Subtitle` last as long as the rest of the video clip under the playhead (spec §10.2
-   * "match clip under playhead", on by default), else 3 s. TODO(batch 42): the switch in the settings panel.
+   * "match clip under playhead", on by default), else the default title duration.
    */
   matchClipUnderPlayhead: boolean;
   /**
@@ -63,7 +66,7 @@ export interface AppSettings {
   transcribeLanguage: string | null;
   /**
    * Auto-duck music (spec §14 "parameters in settings"): how far the music dips (dB, DUCK_DEPTH_MIN..MAX)
-   * and its ramps (frames, 0..DUCK_RAMP_MAX). TODO(batch 42): the fields in the settings panel.
+   * and its ramps (frames, 0..DUCK_RAMP_MAX).
    */
   duckDepthDb: number;
   duckRampFrames: number;
@@ -78,6 +81,20 @@ export interface AppSettings {
   keymap: KeymapOverrides;
   /** The command palette's recent commands, most recent first (Batch 40 "recent first"). */
   recentCommands: readonly string[];
+  /**
+   * Default durations (spec §11), whole milliseconds in DEFAULT_DURATION_MS: a still image dropped or
+   * inserted, `+ Title` / `+ Subtitle` (when not matching the clip under the playhead), `+ Solid`, a
+   * freeze frame.
+   */
+  stillDurationMs: number;
+  titleDurationMs: number;
+  solidDurationMs: number;
+  freezeDurationMs: number;
+  /** The default transition (spec §6.15 "Default duration 15 frames (settings)"): frames (1..TRANSITION_FRAMES_MAX) and the kind Mod+Shift+D adds. */
+  transitionFrames: number;
+  transitionKind: TransitionKind;
+  /** In trims and slips of video and audio clips keep their keys on the source frames (spec §6.10, on). */
+  keyframesFollowSource: boolean;
 }
 
 export const AUTOSAVE_DELAYS_MS = [1000, 2000, 5000, 10_000] as const;
@@ -88,6 +105,9 @@ export const PUNCH_ZOOM_MAX = 3;
 export const DUCK_DEPTH_MIN = 1;
 export const DUCK_DEPTH_MAX = 60;
 export const DUCK_RAMP_MAX = 120;
+/** The range of the default durations (ms). */
+export const DEFAULT_DURATION_MS = { min: 100, max: 60_000 } as const;
+export const TRANSITION_FRAMES_MAX = 120;
 export const DEFAULT_APP_SETTINGS: AppSettings = {
   autosaveDelayMs: AUTOSAVE_DELAY_MS,
   importMode: "copy",
@@ -112,6 +132,13 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   silencePaddingMs: SILENCE_PADDING_MS.default,
   keymap: {},
   recentCommands: [],
+  stillDurationMs: BUILT_IN_EDIT_DEFAULTS.stillMs,
+  titleDurationMs: BUILT_IN_EDIT_DEFAULTS.titleMs,
+  solidDurationMs: BUILT_IN_EDIT_DEFAULTS.solidMs,
+  freezeDurationMs: BUILT_IN_EDIT_DEFAULTS.freezeMs,
+  transitionFrames: BUILT_IN_EDIT_DEFAULTS.transitionFrames,
+  transitionKind: BUILT_IN_EDIT_DEFAULTS.transitionKind,
+  keyframesFollowSource: BUILT_IN_EDIT_DEFAULTS.keyframesFollowSource,
 };
 
 /** The commands the palette remembers. */
@@ -157,6 +184,12 @@ const KEY = "settings.v1";
 
 const presetIdOr = (value: unknown, fallback: string | null): string | null => (value === null || (typeof value === "string" && value !== "") ? value : fallback);
 
+/** A whole number in [min, max], or `fallback` when `value` is not a finite number. */
+function clampInt(value: unknown, min: number, max: number, fallback: number): number {
+  return typeof value === "number" && Number.isFinite(value) ? Math.min(max, Math.max(min, Math.round(value))) : fallback;
+}
+const durationMs = (value: unknown, fallback: number) => clampInt(value, DEFAULT_DURATION_MS.min, DEFAULT_DURATION_MS.max, fallback);
+
 /** Invalid or missing fields fall back to `fallback`. */
 function sanitize(value: unknown, fallback: AppSettings = DEFAULT_APP_SETTINGS): AppSettings {
   const raw = (typeof value === "object" && value !== null ? value : {}) as Partial<Record<keyof AppSettings, unknown>>;
@@ -193,6 +226,26 @@ function sanitize(value: unknown, fallback: AppSettings = DEFAULT_APP_SETTINGS):
     recentCommands: Array.isArray(raw.recentCommands)
       ? [...new Set(raw.recentCommands.filter((id): id is string => typeof id === "string" && COMMAND_ID.test(id)))].slice(0, MAX_RECENT_COMMANDS)
       : fallback.recentCommands,
+    stillDurationMs: durationMs(raw.stillDurationMs, fallback.stillDurationMs),
+    titleDurationMs: durationMs(raw.titleDurationMs, fallback.titleDurationMs),
+    solidDurationMs: durationMs(raw.solidDurationMs, fallback.solidDurationMs),
+    freezeDurationMs: durationMs(raw.freezeDurationMs, fallback.freezeDurationMs),
+    transitionFrames: clampInt(raw.transitionFrames, 1, TRANSITION_FRAMES_MAX, fallback.transitionFrames),
+    transitionKind: isTransitionKind(raw.transitionKind) ? raw.transitionKind : fallback.transitionKind,
+    keyframesFollowSource: typeof raw.keyframesFollowSource === "boolean" ? raw.keyframesFollowSource : fallback.keyframesFollowSource,
+  };
+}
+
+/** The edit defaults the settings hold (timeline/edit/editDefaults.ts). */
+export function editDefaultsOf(settings: AppSettings): EditDefaults {
+  return {
+    stillMs: settings.stillDurationMs,
+    titleMs: settings.titleDurationMs,
+    solidMs: settings.solidDurationMs,
+    freezeMs: settings.freezeDurationMs,
+    transitionFrames: settings.transitionFrames,
+    transitionKind: settings.transitionKind,
+    keyframesFollowSource: settings.keyframesFollowSource,
   };
 }
 

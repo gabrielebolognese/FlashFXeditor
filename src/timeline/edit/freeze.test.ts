@@ -7,13 +7,14 @@ import { validateProject } from "../../core/document/validate.js";
 import { DocumentStore } from "../../core/store/DocumentStore.js";
 import { createSessionStore } from "../../core/store/sessionStore.js";
 import { sourceTimeUs } from "../../render/compositor/Compositor.js";
-import { FREEZE_SECONDS, freezeFrame, punchZoom, PUNCH_ZOOM_FRAMES, type FreezeResult, type PunchZoomResult } from "./freeze.js";
+import { BUILT_IN_EDIT_DEFAULTS } from "./editDefaults.js";
+import { freezeFrame, punchZoom, PUNCH_ZOOM_FRAMES, type FreezeResult, type PunchZoomResult } from "./freeze.js";
 import { splitClips } from "./split.js";
 import { planSlip, planStretch, planTrim, resolveTrim } from "./trim.js";
 
 const fps = makeProject().settings.fps;
 const MEDIA_US = 20_000_000;
-const FREEZE = FREEZE_SECONDS * 30;
+const FREEZE = (BUILT_IN_EDIT_DEFAULTS.freezeMs / 1000) * 30;
 
 function clip(id: string, trackId: string, start: number, duration: number, inFrames = 0, extra: Partial<MediaClip> = {}): MediaClip {
   const base = makeMediaClip(makeProject(), { id, trackId, start, duration, mediaId: "m", kind: trackId.startsWith("a") ? "audio" : "video" });

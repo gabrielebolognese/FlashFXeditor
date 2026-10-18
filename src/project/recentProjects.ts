@@ -1,5 +1,6 @@
 // Recent projects (spec §15): newest first, persisted in IndexedDB with the directory handle so a
-// click can reopen the folder after a permission prompt.
+// click can reopen the folder after a permission prompt, and a thumbnail of the frame at the playhead
+// captured when the project closes (Batch 42).
 import { createStore, type Store } from "../core/store/createStore.js";
 import type { KeyValueStore } from "./kv.js";
 
@@ -14,8 +15,10 @@ export interface RecentProject {
   pathHint: string;
   /** ISO time of the last save. */
   modified: string;
-  /** TODO(batch 42): thumbnail captured at the playhead on close. */
-  thumbnail: null;
+  /** The frame at the playhead when the project last closed (an image, RECENT_THUMB_HEIGHT px tall), or null. */
+  thumbnail: Blob | null;
+  /** "1080×1920 · 30 fps", or "" for entries stored before Batch 42. */
+  format: string;
   /** FileSystemDirectoryHandle. */
   handle: unknown;
 }
@@ -26,6 +29,15 @@ function isEntry(value: unknown): value is RecentProject {
   return typeof entry.id === "string" && typeof entry.name === "string" && typeof entry.pathHint === "string" && typeof entry.modified === "string" && entry.handle != null;
 }
 
+/** Older entries get the fields added since (no thumbnail, no format). */
+function normalize(entry: RecentProject): RecentProject {
+  const thumbnail = typeof Blob !== "undefined" && entry.thumbnail instanceof Blob ? entry.thumbnail : null;
+  return { ...entry, thumbnail, format: typeof entry.format === "string" ? entry.format : "" };
+}
+
+/** The pixel height recent-project thumbnails are captured at (the start screen's well at 2x). */
+export const RECENT_THUMB_HEIGHT = 192;
+
 export class RecentProjects {
   readonly list: Store<readonly RecentProject[]> = createStore<readonly RecentProject[]>([]);
   private writing: Promise<void> = Promise.resolve();
@@ -35,21 +47,22 @@ export class RecentProjects {
   async load(): Promise<void> {
     try {
       const stored = await this.kv.get(KEY);
-      this.list.set(Array.isArray(stored) ? stored.filter(isEntry).slice(0, RECENT_LIMIT) : []);
+      this.list.set(Array.isArray(stored) ? stored.filter(isEntry).map(normalize).slice(0, RECENT_LIMIT) : []);
     } catch (error) {
       console.warn("[recent] could not read recent projects", error);
     }
   }
 
-  /** Adds or moves the project to the top. */
-  touch(entry: Omit<RecentProject, "thumbnail">): Promise<void> {
-    const next = [{ ...entry, thumbnail: null }, ...this.list.getState().filter((e) => e.id !== entry.id)].slice(0, RECENT_LIMIT);
+  /** Adds or moves the project to the top; it keeps its thumbnail (and format, when none is given). */
+  touch(entry: Omit<RecentProject, "thumbnail" | "format"> & { format?: string }): Promise<void> {
+    const old = this.list.getState().find((e) => e.id === entry.id);
+    const next = [{ ...entry, thumbnail: old?.thumbnail ?? null, format: entry.format ?? old?.format ?? "" }, ...this.list.getState().filter((e) => e.id !== entry.id)].slice(0, RECENT_LIMIT);
     this.list.set(next);
     return this.persist();
   }
 
   /** Updates an entry in place (rename, save time). Unknown ids are ignored. */
-  update(id: string, patch: Partial<Pick<RecentProject, "name" | "modified">>): Promise<void> {
+  update(id: string, patch: Partial<Pick<RecentProject, "name" | "modified" | "format" | "thumbnail">>): Promise<void> {
     const current = this.list.getState();
     const index = current.findIndex((e) => e.id === id);
     const entry = current[index];

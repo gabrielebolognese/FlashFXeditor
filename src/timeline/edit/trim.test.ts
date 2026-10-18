@@ -6,6 +6,7 @@ import { validateProject } from "../../core/document/validate.js";
 import { DocumentStore } from "../../core/store/DocumentStore.js";
 import { createSessionStore } from "../../core/store/sessionStore.js";
 import { linkOffset } from "../model/queries.js";
+import { BUILT_IN_EDIT_DEFAULTS, setEditDefaults } from "./editDefaults.js";
 import { applyTrim, extendToPlayhead, headFrames, maxDurationFrames, planEdit, planTrim, rateStretch, resolveTrim, rollEdit, slide, slip, trimEdge, trimToPlayhead, type TrimResult } from "./trim.js";
 
 const fps = makeProject().settings.fps;
@@ -237,6 +238,22 @@ describe("trimEdge: keyframes, fades", () => {
     // Out trims never move keyframes.
     const out = commit(p, trimEdge(p, "a", "out", -30, { ripple: false }));
     expect((out.clips.a as MediaClip).keyframes).toEqual(keyframes);
+  });
+
+  it("with keyframes follow source off (Batch 42 setting) keeps media keys on the clip start in trims and slips", () => {
+    const keyframes: Keyframes = { "transform.scale": [{ frame: 10, value: 1, ease: "linear" }, { frame: 40, value: 2, ease: "linear" }] };
+    const p = project([at("a", "v1", 100, 50, 100, { keyframes })]);
+    setEditDefaults({ keyframesFollowSource: false });
+    try {
+      const trimmed = commit(p, trimEdge(p, "a", "in", 20, { ripple: false }));
+      expect((trimmed.clips.a as MediaClip).keyframes).toEqual(keyframes);
+      const slipped = commit(p, slip(p, "a", 10));
+      expect((slipped.clips.a as MediaClip).keyframes).toEqual(keyframes);
+    } finally {
+      setEditDefaults(BUILT_IN_EDIT_DEFAULTS);
+    }
+    const slipped = commit(p, slip(p, "a", 10));
+    expect((slipped.clips.a as MediaClip).keyframes?.["transform.scale"]?.map((key) => key.frame)).toEqual([0, 30]);
   });
 
   it("clamps fades to the new duration", () => {

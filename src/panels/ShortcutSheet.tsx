@@ -37,7 +37,7 @@ function Sheet() {
   const groups = shortcutGroups({ boundOnly: true });
   const edit = () => {
     closeShortcutSheet();
-    actions.run("app.settings");
+    actions.run("app.settings", null, "shortcuts");
   };
   return (
     <Modal

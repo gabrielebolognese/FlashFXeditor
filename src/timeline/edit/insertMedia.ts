@@ -1,14 +1,12 @@
 // Media items as clips (spec §6.14, §12): a media item becomes a clip at its natural duration (images
-// 5 s), or over its source range (set in the media hover-scrub); a video with audio also gets its audio
+// the default still duration, 5 s), or over its source range (set in the media hover-scrub); a video with audio also gets its audio
 // clip, linked through `linkGroup`. The building blocks of every way media enters the timeline
 // (`dropMedia.ts`: drags, insert and overwrite at the playhead, drops on the preview canvas). Pure.
-import { frameToUs, secondsToFrames, usToFrameFloor } from "../../core/document/time.js";
+import { frameToUs, usToFrameFloor } from "../../core/document/time.js";
 import type { Frame, MediaClip, MediaItem, Rational, TrackId, Transform, Us } from "../../core/document/types.js";
 import type { SourceRange } from "../../core/store/sessionStore.js";
 import { displaySize } from "../../media/probe/rotation.js";
-
-/** Natural duration of a still image on the timeline (spec §6.14). */
-export const IMAGE_SECONDS = 5;
+import { defaultFrames, editDefaults } from "./editDefaults.js";
 
 export type { SourceRange };
 
@@ -23,7 +21,8 @@ export function sourceSpan(media: MediaItem, range: SourceRange | null): { inUs:
 
 /** Timeline duration of a media item (over its source range) at speed 1; null when it has no usable duration. */
 export function naturalDuration(media: MediaItem, fps: Rational, range: SourceRange | null = null): Frame | null {
-  if (media.kind === "image") return secondsToFrames(IMAGE_SECONDS, fps);
+  // A still's length is the default still duration (spec §6.14 5 s; a setting since Batch 42).
+  if (media.kind === "image") return defaultFrames(editDefaults().stillMs, fps);
   const span = sourceSpan(media, range);
   return span ? Math.max(1, usToFrameFloor(span.outUs - span.inUs, fps)) : null;
 }

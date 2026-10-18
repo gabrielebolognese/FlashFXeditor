@@ -1,4 +1,5 @@
-// Rotating backups in history/ (spec §9.7, §15): project-YYYYMMDD-HHMMSS.json, newest 20 kept.
+// Rotating backups in history/ (spec §9.7, §15): project-YYYYMMDD-HHMMSS.json, newest 20 kept, and
+// the list the History dialog shows (Batch 42).
 // Stamps are UTC so a daylight-saving fall-back never makes a new backup sort as the oldest one.
 import type { FsDir } from "./fs.js";
 
@@ -42,4 +43,44 @@ export async function rotateHistory(history: FsDir, keep = HISTORY_LIMIT): Promi
   const doomed = backupsToDelete(files, keep);
   for (const name of doomed) await history.remove(name);
   return doomed;
+}
+
+/** A backup in history/ (spec §15 "History list"). */
+export interface Backup {
+  name: string;
+  /** When the version was saved (its `meta.modifiedAt`), else when it was backed up (the name's stamp); ms since epoch. */
+  time: number;
+  /** The project's name in that version, or null when the file could not be read. */
+  projectName: string | null;
+  /** Bytes, or null when the file could not be read. */
+  size: number | null;
+}
+
+/** The time a backup name stamps (UTC), ms since epoch; null for other files. */
+export function backupTime(name: string): number | null {
+  const match = BACKUP_NAME.exec(name);
+  if (!match) return null;
+  const [d, t] = [match[1] as string, match[2] as string];
+  return Date.UTC(Number(d.slice(0, 4)), Number(d.slice(4, 6)) - 1, Number(d.slice(6, 8)), Number(t.slice(0, 2)), Number(t.slice(2, 4)), Number(t.slice(4, 6)));
+}
+
+/** The backups of a project, newest first (other files in history/ are left out). */
+export async function listBackups(history: FsDir): Promise<Backup[]> {
+  const names = (await history.list()).filter((entry) => entry.kind === "file" && backupSortKey(entry.name) !== null).map((entry) => entry.name);
+  names.sort((a, b) => ((backupSortKey(a) as string) < (backupSortKey(b) as string) ? 1 : -1));
+  return Promise.all(
+    names.map(async (name) => {
+      const stamp = backupTime(name) as number;
+      const file = await history.getFile(name).catch(() => null);
+      if (!file) return { name, time: stamp, projectName: null, size: null };
+      let saved: { name?: unknown; meta?: { modifiedAt?: unknown } } = {};
+      try {
+        saved = JSON.parse(await file.text()) as typeof saved;
+      } catch {
+        // Not JSON: listed with its stamp, and refused when restored.
+      }
+      const modified = typeof saved.meta?.modifiedAt === "string" ? Date.parse(saved.meta.modifiedAt) : Number.NaN;
+      return { name, time: Number.isNaN(modified) ? stamp : modified, projectName: typeof saved.name === "string" ? saved.name : null, size: file.size };
+    }),
+  );
 }

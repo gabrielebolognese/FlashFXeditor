@@ -27,7 +27,7 @@ import { createStore } from "../core/store/createStore.js";
 import { EMPTY_SELECTION, selectClips, toSnapshot } from "../core/store/selection.js";
 import { setPlayhead } from "../core/store/sessionStore.js";
 import { errorMessage } from "../project/errorMessage.js";
-import { copyClips, copySet, keysPayload, parseClipboard, pasteClips, serializeClipboard, type ClipboardPayload, type ClipsPayload, type PasteResult } from "../timeline/edit/clipboard.js";
+import { copyClips, copySet, keysPayload, parseClipboard, pasteClips, payloadAtFrameRate, serializeClipboard, type ClipboardPayload, type ClipsPayload, type PasteResult } from "../timeline/edit/clipboard.js";
 import { deleteClips } from "../timeline/edit/delete.js";
 import { duplicateClips, duplicateLayers } from "../timeline/edit/duplicate.js";
 import type { MoveMode } from "../timeline/edit/move.js";
@@ -51,7 +51,10 @@ export const clipboard = createStore<ClipboardPayload | null>(null);
 export interface PasteAttributesMenu {
   x: number;
   y: number;
+  /** The copied clips at the project's frame rate (spec §15 conversion, Batch 42). */
   payload: ClipsPayload;
+  /** As copied: what the tab keeps when the payload came from the system clipboard. */
+  copied: ClipsPayload;
   ids: ClipId[];
   groups: AttributeGroup[];
   /** The panel the keyboard goes back to when it closes. */
@@ -118,15 +121,10 @@ function copy(cut: boolean): boolean {
 // --- Paste ---------------------------------------------------------------------------------------
 
 /** Why a paste was refused, as a toast. */
-function reportRefusal(result: Extract<PasteResult, { kind: "refused" }>, payload: ClipsPayload): void {
+function reportRefusal(result: Extract<PasteResult, { kind: "refused" }>): void {
   const project = documentStore.getState();
   const track = project.tracks.find((candidate) => candidate.id === result.trackId)?.name ?? "A track";
   switch (result.reason) {
-    case "fps": {
-      const fps = (rate: { num: number; den: number }) => `${Math.round((rate.num / rate.den) * 100) / 100} fps`;
-      showToast({ tone: "info", message: "Can't paste across frame rates", detail: `These clips come from a ${fps(payload.fps)} project; this one runs at ${fps(project.settings.fps)}.` });
-      return;
-    }
     case "locked":
       showToast({ tone: "info", message: "Can't paste onto a locked track", detail: `${track} is locked. Unlock it or target other tracks.` });
       return;
@@ -198,7 +196,7 @@ function paste(payload: ClipboardPayload, mode: MoveMode, adopt: boolean): void 
     return;
   }
   if (result.kind === "refused") {
-    reportRefusal(result, payload);
+    reportRefusal(result);
     return;
   }
   if (!accept(result.command, "clips")) return;
@@ -258,18 +256,20 @@ function popoverPlace(): { x: number; y: number; scope: FocusScope } {
 }
 
 /** Opens the popover for the copied clips and the selection (a toast when there is nothing to paste or onto). */
-function openPasteAttributes(payload: ClipboardPayload | null, fromSystem: boolean): void {
+function openPasteAttributes(copied: ClipboardPayload | null, fromSystem: boolean): void {
   const { ids } = selectedClips();
-  if (!payload || payload.kind !== "clips") {
+  if (!copied || copied.kind !== "clips") {
     showToast({ tone: "info", message: "Copy a clip first", detail: "Paste attributes gives the selected clips the look of the copied one." });
     return;
   }
+  // Fades, keyframes and animations copied at another frame rate take this project's frames.
+  const payload = payloadAtFrameRate(copied, documentStore.getState().settings.fps);
   const groups = availableGroups(documentStore.getState(), payload, ids);
   if (groups.length === 0) {
     showToast({ tone: "info", message: "Nothing to paste onto", detail: ids.length === 0 ? "Select the clips that should take the copied clip's look." : "The selected clips take none of the copied clip's attributes." });
     return;
   }
-  pasteAttributesMenu.set({ ...popoverPlace(), payload, ids, groups, fromSystem });
+  pasteAttributesMenu.set({ ...popoverPlace(), payload, copied, ids, groups, fromSystem });
 }
 
 function pasteAttributesAction(): void {
@@ -336,7 +336,7 @@ export function applyPasteAttributes(groups: ReadonlySet<AttributeGroup>): void 
     reportBroken("attributes", error.issues);
     return;
   }
-  if (menu.fromSystem) clipboard.set(menu.payload);
+  if (menu.fromSystem) clipboard.set(menu.copied);
   if (limit) reportSpeedLimit(limit);
 }
 

@@ -13,7 +13,7 @@
 // (its clip redrawn with the new fade), the hovered or dragged transition block (a drag redraws its two
 // clips under the block as it would be) and the cut a dragged transition chip would land on. Remove
 // silence's preview (Batch 38): the cuts its Apply would make, hatched red over the clip bodies.
-import { DEFAULT_TRANSITION_FRAMES } from "../../core/document/transitions.js";
+import { editDefaults } from "../edit/editDefaults.js";
 import { isMediaClip, type Clip, type Frame, type Marker, type MediaClip, type Project, type Track, type TrackId, type Transition } from "../../core/document/types.js";
 import { EMPTY_SELECTION, type Selection } from "../../core/store/selection.js";
 import type { SilencePreview, TransitionSelection } from "../../core/store/sessionStore.js";
@@ -409,9 +409,10 @@ function drawBlockScene(scene: OverlayScene, blocks: BlockScene, project: Projec
     // Where a dropped chip puts its transition: the default frames centered on the cut.
     const { frame, row, track } = blocks.drop;
     const band = blockBand(row, track, theme);
-    const half = Math.floor(DEFAULT_TRANSITION_FRAMES / 2);
+    const length = editDefaults().transitionFrames;
+    const half = Math.floor(length / 2);
     const x0 = snap(geometry.frameToX(frame - half), dpr);
-    const x1 = snap(geometry.frameToX(frame - half + DEFAULT_TRANSITION_FRAMES), dpr);
+    const x1 = snap(geometry.frameToX(frame - half + length), dpr);
     const line = Math.max(1 / dpr, snap(theme.timeline.transitionEdgeWidth, dpr));
     ctx.beginPath();
     ctx.roundRect(x0, snap(band.y, dpr), x1 - x0, snap(band.height, dpr), theme.radius.sm);

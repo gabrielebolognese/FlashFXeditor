@@ -24,6 +24,7 @@ import type { Draft } from "immer";
 import type { Command } from "../../core/commands/command.js";
 import { framesToSourceUs, usPerFrame } from "../../core/document/time.js";
 import { retimeKeyframes, shiftKeyframes } from "../../core/document/keyframes.js";
+import { editDefaults } from "./editDefaults.js";
 import { BOUND_SLACK_US, headFrames, reconciled, tailFrames } from "../../core/document/transitions.js";
 import { isFreeze, isMediaClip, type CaptionClip, type Clip, type ClipId, type Frame, type MediaClip, type Project, type Rational, type TrackId } from "../../core/document/types.js";
 import { loopTimeUs } from "../../media/decode/animation.js";
@@ -441,10 +442,9 @@ function trimmedClip(clip: Clip, edge: TrimEdge, delta: number, ripple: boolean,
     } else if (edge === "in") {
       // Never before the media start (a handle counted within the rounding slack, BOUND_SLACK_US).
       media.in = Math.max(0, clip.in + framesToSourceUs(delta, clip.speed, fps));
-      // Keyframes follow the source (spec §6.10, "keyframes follow source" on for media clips):
-      // a key stays on the source frame it was set on.
-      // TODO(batch 42): the "keyframes follow source" setting.
-      if (clip.keyframes) media.keyframes = shiftKeyframes(clip.keyframes, delta);
+      // Keyframes follow the source (spec §6.10, "keyframes follow source", a setting on by default for
+      // media clips): a key stays on the source frame it was set on; off, it stays on the clip start.
+      if (clip.keyframes && editDefaults().keyframesFollowSource) media.keyframes = shiftKeyframes(clip.keyframes, delta);
     } else {
       // Moved by the delta (not recomputed from `in`), so a trim and its reverse give back the same out.
       const durationUs = project.media[clip.mediaId]?.durationUs ?? clip.out;
@@ -471,8 +471,7 @@ function slippedClip(clip: MediaClip, delta: number, project: Project): Clip {
   const moved = framesToSourceUs(delta, clip.speed, fps);
   next.in = Math.max(0, clip.in + moved);
   next.out = Math.min(project.media[clip.mediaId]?.durationUs ?? clip.out + moved, clip.out + moved);
-  // TODO(batch 42): the "keyframes follow source" setting.
-  if (clip.keyframes) next.keyframes = shiftKeyframes(clip.keyframes, delta);
+  if (clip.keyframes && editDefaults().keyframesFollowSource) next.keyframes = shiftKeyframes(clip.keyframes, delta);
   return next;
 }
 
