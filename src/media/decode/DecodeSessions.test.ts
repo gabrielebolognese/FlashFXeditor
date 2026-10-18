@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { buildWebm, videoBlocks } from "../demux/testWebm.js";
 import { buildMp4, ROTATE_90_MATRIX, videoSamples } from "../probe/testMp4.js";
 import { DecodeSessions, IDLE_MS, NotOpenError, RING_IDLE_MS, UnsupportedCodecError, type Delivered } from "./DecodeSessions.js";
 import { FakeDecoder, frameCounter, type FakeFrame, type FakeOptions } from "./testDecoder.js";
@@ -62,6 +63,20 @@ describe("DecodeSessions", () => {
     expect(second.info.indexFromCache).toBe(true);
     expect(Array.from(second.info.frameTimesUs)).toEqual(Array.from(first.info.frameTimesUs));
     expect(sessions.stats()).toMatchObject({ indexParsed: 1, indexFromCache: 1, sessions: 1 });
+  });
+
+  it("opens WebM recordings (Batch 49): the index from the clusters, cached like an MP4's, frames by time", async () => {
+    const { sessions, frame } = setup();
+    const bytes = buildWebm({ live: true, tracks: [{ number: 1, type: "video", codecId: "V_VP9", width: 1920, height: 1080 }], blocks: videoBlocks(90, 40, 30) });
+    const file = new File([bytes as Uint8Array<ArrayBuffer>], "Screen Recording.webm", { lastModified: 5 });
+    const first = await sessions.open({ mediaId: "w", lod: "full", file, cachedIndex: null });
+    expect(first.info).toMatchObject({ codec: "vp09.00.40.08", codedWidth: 1920, codedHeight: 1080, rotation: 0, decodable: true, indexFromCache: false });
+    expect(first.info.frameTimesUs[1]).toBe(40_000);
+    expect(await frame("w", 1_000_000 + 5)).toEqual({ timeUs: 1_000_000, approximate: [] });
+    expect(await frame("w", 3_000_000, "scrub")).toEqual({ timeUs: 3_000_000, approximate: [2_400_000] });
+    const again = await sessions.open({ mediaId: "w", lod: "full", file, cachedIndex: new Blob([first.index as ArrayBuffer]) });
+    expect(again.info.indexFromCache).toBe(true);
+    expect(Array.from(again.info.frameTimesUs)).toEqual(Array.from(first.info.frameTimesUs));
   });
 
   it("parses again when the cached index belongs to another version of the file", async () => {

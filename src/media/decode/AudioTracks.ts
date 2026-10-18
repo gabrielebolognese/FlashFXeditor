@@ -1,7 +1,13 @@
 // decode.worker's audio side (spec §14): the parsed audio tracks of MP4/MOV media (sample table,
 // decoder configuration, edit lists) and their decoder output format, kept for the last few media,
-// and range decodes to planar float PCM transferred to the main thread.
+// and range decodes to planar float PCM transferred to the main thread. WebM (Batch 49): Opus audio is
+// read from the clusters (webm.ts) and decoded the same way; other WebM audio reads as unsupported,
+// with the lead that places the output of decodeAudioData (it starts at the first audio block) on
+// media time.
 import { ByteSource } from "../bytes/ByteSource.js";
+import { isEbml } from "../demux/container.js";
+import { blobReader } from "../demux/ebml.js";
+import { readWebm, webmAudioLeadUs, webmAudioPlan } from "../demux/webm.js";
 import { readMp4 } from "../probe/mp4Probe.js";
 import type { AudioInfo, PcmResult } from "../workers/protocol.js";
 import { audioPlan, decodeAudioRange, decoderConfig, probeAudioOutput, type AudioDecodeDeps, type AudioTrackPlan } from "./audioTrack.js";
@@ -73,9 +79,18 @@ export class AudioTracks {
 
   private async parse(file: File, signal?: AbortSignal): Promise<OpenTrack> {
     const source = new ByteSource(file);
-    const plan = audioPlan(await readMp4(source, signal));
-    if (!plan) return { file, plan, source, info: UNSUPPORTED("") };
-    if (!(await this.deps.isConfigSupported(decoderConfig(plan)))) return { file, plan, source, info: UNSUPPORTED(plan.codec) };
+    let plan: AudioTrackPlan | null;
+    let leadUs: number | undefined;
+    if (await isEbml(file)) {
+      const webm = await readWebm(blobReader(file), signal);
+      plan = webmAudioPlan(webm);
+      leadUs = webmAudioLeadUs(webm);
+    } else {
+      plan = audioPlan(await readMp4(source, signal));
+    }
+    const unsupported = (codec: string): AudioInfo => ({ ...UNSUPPORTED(codec), ...(leadUs !== undefined && { leadUs }) });
+    if (!plan) return { file, plan, source, info: unsupported("") };
+    if (!(await this.deps.isConfigSupported(decoderConfig(plan)))) return { file, plan, source, info: unsupported(plan.codec) };
     const output = await probeAudioOutput(plan, this.deps.decodeDeps(source));
     const info: AudioInfo = {
       supported: true,

@@ -31,7 +31,7 @@ import styles from "./MediaTab.module.css";
 import { PosterCanvas } from "./PosterCanvas.js";
 
 const KIND_ICONS: Record<MediaItem["kind"], LucideIcon> = { video: Film, audio: AudioLines, image: Image };
-const CONTAINER_ICONS: Record<Container, LucideIcon> = { mp4: Film, audio: AudioLines, image: Image, svg: Image };
+const CONTAINER_ICONS: Record<Container, LucideIcon> = { mp4: Film, webm: Film, audio: AudioLines, image: Image, svg: Image };
 
 const SORT_LABELS: Record<MediaSort, string> = {
   name: "Name",

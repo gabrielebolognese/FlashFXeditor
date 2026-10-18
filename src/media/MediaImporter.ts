@@ -34,6 +34,7 @@ export function createProbeFile(pool: Pick<WorkerPool, "request">, decodeAudio: 
   return (file, kind, signal) => {
     switch (kind.container) {
       case "mp4":
+      case "webm":
       case "image":
         return pool.request("probe", { file, container: kind.container, type: kind.mime }, { priority: "user", ...(signal && { signal }) });
       case "audio":

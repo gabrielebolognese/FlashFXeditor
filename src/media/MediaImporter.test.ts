@@ -92,8 +92,8 @@ describe("MediaImporter", () => {
   it("refuses unsupported files by name and creates nothing for them", async () => {
     const probe = vi.fn<ProbeFile>(async () => VIDEO);
     const { dir, documentStore, importer } = await setup(probe);
-    const report = await importer.importFiles([fileOf("notes.txt"), fileOf("movie.webm")]);
-    expect(report).toEqual({ added: [], refused: [{ name: "notes.txt", reason: "unsupported file type" }, { name: "movie.webm", reason: "unsupported file type" }], bytes: 0, linked: 0 });
+    const report = await importer.importFiles([fileOf("notes.txt"), fileOf("movie.mkv")]);
+    expect(report).toEqual({ added: [], refused: [{ name: "notes.txt", reason: "unsupported file type" }, { name: "movie.mkv", reason: "unsupported file type" }], bytes: 0, linked: 0 });
     expect(probe).not.toHaveBeenCalled();
     expect(documentStore.getState().media).toEqual({});
     expect(documentStore.history.getState().canUndo).toBe(false);
@@ -169,15 +169,17 @@ describe("MediaImporter", () => {
 });
 
 describe("createProbeFile", () => {
-  it("routes MP4 and images to the worker, decodeAudioData formats and SVG to the main thread", async () => {
+  it("routes MP4, WebM and images to the worker, decodeAudioData formats and SVG to the main thread", async () => {
     const request = vi.fn(async () => VIDEO);
     const decode = vi.fn(async () => ({ length: 48_000, sampleRate: 48_000, numberOfChannels: 1 }));
     const probe = createProbeFile({ request } as never, decode);
     await probe(fileOf("a.mov"), { container: "mp4", mime: "video/quicktime" });
     await probe(fileOf("a.gif"), { container: "image", mime: "image/gif" });
+    await probe(fileOf("a.webm"), { container: "webm", mime: "video/webm" });
     expect(request.mock.calls.map((call) => (call as unknown[])[1])).toEqual([
       { file: expect.any(File), container: "mp4", type: "video/quicktime" },
       { file: expect.any(File), container: "image", type: "image/gif" },
+      { file: expect.any(File), container: "webm", type: "video/webm" },
     ]);
     await expect(probe(fileOf("a.mp3"), { container: "audio", mime: "audio/mpeg", audioCodec: "mp3" })).resolves.toMatchObject({ kind: "audio", durationUs: 1_000_000 });
     const svg = new File(['<svg xmlns="http://www.w3.org/2000/svg" width="10" height="20"/>'], "a.svg");

@@ -1,6 +1,6 @@
 // The videos open in decode.worker (spec §3.5, §9.2, P13): one VideoDecodeSession per media and lod,
 // with its sample index (loaded from cache/index/ when it still matches the file, else built from
-// the file's moov and handed back for caching) and its byte source. A decoder is closed after
+// the file's moov, or its clusters for WebM (Batch 49), and handed back for caching) and its byte source. A decoder is closed after
 // IDLE_MS without requests, and at most MAX_LIVE_DECODERS are open at once (the least recently used
 // idle one is closed to make room). The index stays, so a later request only creates a decoder. A
 // session idle for RING_IDLE_MS closes the frames of its ring: during playback several decoders stay
@@ -9,10 +9,9 @@
 // thread). A video closed while it opens is dropped when the open ends.
 import type { Lod } from "../cache/TexturePool.js";
 import { ByteSource } from "../bytes/ByteSource.js";
-import { frameAt, sampleIndexFromMp4, type SampleIndex } from "../demux/sampleIndex.js";
+import { parseSampleIndex } from "../demux/container.js";
+import { frameAt, type SampleIndex } from "../demux/sampleIndex.js";
 import { readSampleIndex, writeSampleIndex } from "../demux/sampleIndexFile.js";
-import { readMp4 } from "../probe/mp4Probe.js";
-import { ProbeError } from "../probe/types.js";
 import { abortError, type FramePriority, type OpenVideoResult, type PrefetchParams, type VideoInfo, type WorkerDecodeStats } from "../workers/protocol.js";
 import { UnsupportedCodecError, VideoDecodeSession, type DecodedFrame, type DecoderCallbacks, type DecoderLike } from "./VideoDecodeSession.js";
 
@@ -137,9 +136,7 @@ export class DecodeSessions<F extends DecodedFrame = VideoFrame> {
     const source = new ByteSource(file);
     try {
       if (!index) {
-        const { video } = await readMp4(source, signal);
-        if (!video || video.samples.length === 0) throw new ProbeError("The file has no video track");
-        index = sampleIndexFromMp4(video);
+        index = await parseSampleIndex(file, source, signal);
         bytes = writeSampleIndex(index, stamp);
         this.indexParsed += 1;
       } else {

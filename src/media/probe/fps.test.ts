@@ -37,6 +37,16 @@ describe("estimateFps", () => {
     expect(estimateFps(long, 30000)).toEqual({ num: 30, den: 1 });
   });
 
+  it("snaps millisecond times (WebM) within their rounding: 30, 60 and 15 fps", () => {
+    // A Chrome screen recording at 30 fps: mostly 33 ms, some 34 and 32 (capture jitter), a few long gaps.
+    const recording = Array.from({ length: 119 }, (_, i) => (i % 9 === 4 ? 34 : i % 13 === 6 ? 32 : i % 31 === 30 ? 67 : 33));
+    expect(estimateFps(times(recording), 1000)).toEqual({ num: 30, den: 1 });
+    expect(estimateFps(times(Array.from({ length: 119 }, (_, i) => (i % 3 === 2 ? 16 : 17))), 1000)).toEqual({ num: 60, den: 1 });
+    expect(estimateFps(times(Array.from({ length: 119 }, (_, i) => (i % 3 === 0 ? 66 : 67))), 1000)).toEqual({ num: 15, den: 1 });
+    // 29.97 at 600 stays 29.97 (the nearest within the looser tolerance).
+    expect(estimateFps(times(Array.from({ length: 119 }, (_, i) => (i % 50 === 49 ? 21 : 20))), 600)).toEqual({ num: 30000, den: 1001 });
+  });
+
   it("keeps an unusual rate as the reduced rational", () => {
     expect(estimateFps(times(Array(50).fill(3)), 37)).toEqual({ num: 37, den: 3 });
   });
@@ -54,5 +64,7 @@ describe("helpers", () => {
     expect(reduceRational(90000, 3000)).toEqual({ num: 30, den: 1 });
     expect(snapToStandardRate(29.97)).toEqual({ num: 30000, den: 1001 });
     expect(snapToStandardRate(27)).toBeNull();
+    expect(snapToStandardRate(30.26)).toBeNull();
+    expect(snapToStandardRate(30.26, 0.015)).toEqual({ num: 30, den: 1 });
   });
 });
