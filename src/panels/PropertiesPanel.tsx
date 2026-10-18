@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, type ReactNode } from "react";
 import { revealSection } from "../app/captionController.js";
-import { PanelFrame, PanelTitle } from "../app/PanelFrame.js";
+import { exportTab, showExportTab, type ExportTabState } from "../app/exportState.js";
+import { PanelFrame, PanelTabs, PanelTitle } from "../app/PanelFrame.js";
 import { documentStore, sessionStore } from "../app/services.js";
 import type { Project } from "../core/document/types.js";
 import type { Selection } from "../core/store/selection.js";
@@ -11,6 +12,7 @@ import { AudioSection } from "./properties/AudioSection.js";
 import { CaptionStyleSection } from "./properties/CaptionStyleSection.js";
 import { ClipSection } from "./properties/ClipSection.js";
 import { CropModeToggle, CropSection } from "./properties/CropSection.js";
+import { ExportTab } from "./properties/ExportTab.js";
 import { contextKey, propertiesContext, sectionIds, type PropertiesContext, type SectionId, type SelectedCuts } from "./properties/context.js";
 import { KeyframeControls } from "./properties/KeyframeControls.js";
 import { MarkerSection } from "./properties/MarkerSection.js";
@@ -23,6 +25,7 @@ import { TextSection } from "./properties/TextSection.js";
 import { TrackSection } from "./properties/TrackSection.js";
 import { TransitionSection } from "./properties/TransitionSection.js";
 import { OpacitySection, TransformSection } from "./properties/TransformSection.js";
+import { IconButton } from "../ui/IconButton.js";
 import styles from "./PropertiesPanel.module.css";
 
 // The properties panel (spec §11): context-driven sections from a registry keyed by the selection kind
@@ -31,6 +34,9 @@ import styles from "./PropertiesPanel.module.css";
 // selector on a key string), never on value changes: fields are bound to the store outside React.
 // The panel is the `properties` keyboard scope (PanelFrame's data-scope); Tab follows the visual order.
 // A section asked for by `revealSection` (the Captions header's Style) is scrolled to and focused.
+// The Export tab (spec §2.2, §16) sits beside Edit Properties while it is open (Export, Mod+E): the
+// header shows both tabs and the Export tab's close button; closing it (or Esc) returns to the
+// properties.
 
 const SECTION_TITLES: Record<SectionId, string> = {
   clip: "Clip",
@@ -104,7 +110,30 @@ const selectedCuts = (): SelectedCuts => {
   return { transition: sessionStore.transition.getState(), editPoint: point ? { left: point.left, right: point.right } : null };
 };
 
+const PANEL_TABS = [
+  { id: "properties", label: "Edit Properties" },
+  { id: "export", label: "Export" },
+] as const;
+type PanelTab = (typeof PANEL_TABS)[number]["id"];
+
+/** null: only Edit Properties (the Export tab is closed). */
+const selectPanelTab = (state: ExportTabState): PanelTab | null => (state.open ? (state.active ? "export" : "properties") : null);
+const choosePanelTab = (tab: PanelTab) => showExportTab(tab === "export");
+
 export function PropertiesPanel() {
+  const tab = useStoreSelector(exportTab, selectPanelTab);
+  if (tab === "export") {
+    return (
+      <PanelFrame id="properties" header={<PanelTabs tabs={PANEL_TABS} active={tab} onChange={choosePanelTab} />} actions={<IconButton commandId="export.close" />}>
+        <ExportTab />
+      </PanelFrame>
+    );
+  }
+  return <PropertiesView tabs={tab !== null} />;
+}
+
+/** Edit Properties (spec §11): the sections of the selection; `tabs`: the Export tab is open beside it. */
+function PropertiesView({ tabs }: { tabs: boolean }) {
   const selectionKey = useStoreSelector(sessionStore.selection, selectKey);
   const markerId = useStoreSelector(sessionStore.marker, (id) => id);
   const transitionKey = useStoreSelector(sessionStore.transition, cutKey);
@@ -133,7 +162,7 @@ export function PropertiesPanel() {
   }, [reveal, key]);
   const title = context.kind === "clips" && context.clipIds.length > 1 ? `${context.clipIds.length} clips` : context.kind === "track" && context.trackIds.length > 1 ? `${context.trackIds.length} tracks` : null;
   return (
-    <PanelFrame id="properties" header={<PanelTitle>Edit Properties</PanelTitle>} actions={title && <span className={styles.count}>{title}</span>}>
+    <PanelFrame id="properties" header={tabs ? <PanelTabs tabs={PANEL_TABS} active="properties" onChange={choosePanelTab} /> : <PanelTitle>Edit Properties</PanelTitle>} actions={title && <span className={styles.count}>{title}</span>}>
       <div ref={body} className={styles.body}>
         {context.kind === "clips" && <QuickActions ids={context.clipIds} primary={context.primary} />}
         {context.kind === "editPoint" && <QuickActions ids={NO_IDS} primary="" editPoint />}

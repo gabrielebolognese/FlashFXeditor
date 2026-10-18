@@ -3,7 +3,7 @@
 // through WorkerHost. Results carry transferables (ImageBitmap, VideoFrame, ArrayBuffer) only. A
 // request may also post `progress` values before its result (frames of a prefetch, the approximate
 // frame of a scrub, the bytes and progress of a proxy or an export).
-import type { ExportJobParams, ExportJobResult, ExportProgress } from "../../export/job.js";
+import type { AudioJobParams, AudioJobResult, ExportJobParams, ExportJobResult, ExportProgress } from "../../export/job.js";
 import type { Lod } from "../cache/TexturePool.js";
 import type { ThumbSheetParams, ThumbSheetResult } from "../decode/thumbSheet.js";
 import type { MakeProxyParams, MakeProxyResult, ProxyProgress } from "../proxy/ProxyMaker.js";
@@ -219,7 +219,9 @@ export interface WorkerMethods {
   transcribe: { params: TranscribeParams; result: TranscribeResult; progress: TranscribeProgress };
   /** Renders, encodes and muxes an export (spec §16): the chosen codecs, the file's bytes and the frames done come as progress. */
   exportVideo: { params: ExportJobParams; result: ExportJobResult; progress: ExportProgress };
-  /** Pauses or resumes the running export between frames. */
+  /** Writes the mixdown as a WAV or an M4A (spec §16 Export audio): the codec, the file's bytes and the samples done come as progress. */
+  exportAudio: { params: AudioJobParams; result: AudioJobResult; progress: ExportProgress };
+  /** Pauses or resumes the running export between frames (or audio blocks). */
   pauseExport: { params: { paused: boolean }; result: null };
 }
 
@@ -254,6 +256,7 @@ export const METHOD_WORKER: Record<Method, WorkerKind> = {
   transcribeRemove: "transcribe",
   transcribe: "transcribe",
   exportVideo: "export",
+  exportAudio: "export",
   pauseExport: "export",
 };
 

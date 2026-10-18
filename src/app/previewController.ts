@@ -20,11 +20,10 @@ import { DEFAULT_TEXTURE_BUDGET, TexturePool } from "../media/cache/TexturePool.
 import { FrameService, type FrameSource } from "../media/decode/FrameService.js";
 import { ImageService } from "../media/decode/ImageService.js";
 import { svgPoster } from "../media/probe/svgProbe.js";
-import { isAbortError, type FramePriority } from "../media/workers/protocol.js";
+import type { FramePriority } from "../media/workers/protocol.js";
 import { PlaybackEngine } from "../playback/PlaybackEngine.js";
-import { errorMessage } from "../project/errorMessage.js";
 import type { FsDir } from "../project/fs.js";
-import { resolveFile, safeFileName, sampleIndexPath, writeFileAt } from "../project/mediaFiles.js";
+import { resolveFile, sampleIndexPath, writeFileAt } from "../project/mediaFiles.js";
 import { formatFps } from "../project/projectPresets.js";
 import { GpuDevice } from "../render/gpu/GpuDevice.js";
 import { WebGpuRenderer } from "../render/gpu/WebGpuRenderer.js";
@@ -38,7 +37,6 @@ import { PreviewView } from "../render/preview/PreviewView.js";
 import { ViewportInput } from "../render/preview/ViewportInput.js";
 import { zoomAround, type PreviewZoom } from "../render/preview/viewport.js";
 import { TextRasterCache } from "../render/text/TextRasterCache.js";
-import { showToast } from "../ui/toasts.js";
 import { attachAudio, audioScheduler, detachAudio, meterView, scrubGrain } from "./audioController.js";
 import { toggleFullscreen } from "./fullscreen.js";
 import { liveEdit, setLiveCrops, type LiveEdit } from "./liveEdit.js";
@@ -496,10 +494,6 @@ export function bindFpsBadge(fps: HTMLElement): () => void {
   return documentStore.subscribe(show, { affects: ["settings"] });
 }
 
-interface SaveFilePickerWindow {
-  showSaveFilePicker(options: { suggestedName: string; id?: string; types: { description: string; accept: Record<string, string[]> }[] }): Promise<FileSystemFileHandle>;
-}
-
 /**
  * The frame at the playhead as a small image (`height` px tall, webp) for the recent projects list
  * (spec §15 "thumbnail captured at the playhead on close", Batch 42): rendered like Export frame, then
@@ -536,33 +530,16 @@ export async function captureThumbnail(height: number, timeoutMs = 2000): Promis
   }
 }
 
-/** Saves the current frame at project size as a PNG (the picker opens first, inside the click). */
-export async function exportFrame(): Promise<void> {
-  let handle: FileSystemFileHandle;
-  try {
-    handle = await (window as unknown as SaveFilePickerWindow).showSaveFilePicker({
-      suggestedName: safeFileName(`${documentStore.getState().name} frame.png`),
-      id: "shorts-editor-frame",
-      types: [{ description: "PNG image", accept: { "image/png": [".png"] } }],
-    });
-  } catch (error) {
-    if (!isAbortError(error)) showToast({ tone: "error", message: "Can't export the frame", detail: errorMessage(error) });
-    return;
-  }
-  try {
-    const bitmap = await previewView.renderFrame();
-    const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
-    canvas.getContext("2d")?.drawImage(bitmap, 0, 0);
-    bitmap.close();
-    const blob = await canvas.convertToBlob({ type: "image/png" });
-    const writable = await handle.createWritable();
-    await writable.write(blob);
-    await writable.close();
-    showToast({ tone: "success", message: `Saved ${handle.name}`, detail: `${canvas.width}×${canvas.height} PNG` });
-  } catch (error) {
-    console.error("[preview] export frame failed", error);
-    showToast({ tone: "error", message: "Can't export the frame", detail: errorMessage(error) });
-  }
+/**
+ * The composite at the playhead at project size as a PNG (spec §16 Export frame, Copy frame): exact
+ * full-quality frames whatever the preview's quality mode, no overlays (they live on another canvas).
+ */
+export async function renderFramePng(): Promise<{ blob: Blob; width: number; height: number }> {
+  const bitmap = await previewView.renderFrame();
+  const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+  canvas.getContext("2d")?.drawImage(bitmap, 0, 0);
+  bitmap.close();
+  return { blob: await canvas.convertToBlob({ type: "image/png" }), width: canvas.width, height: canvas.height };
 }
 
 const previewOptions = () => sessionStore.state.getState().preview;
@@ -570,7 +547,6 @@ const previewOptions = () => sessionStore.state.getState().preview;
 /** Registers the preview actions. Returns a stop function. */
 export function installPreviewController(): () => void {
   const stops = [
-    actions.register("preview.exportFrame", () => void exportFrame()),
     // Spec §18: preview scope (the canvas zoom), Fit / 100% / 200% around the canvas center.
     actions.register("canvas.zoomFit", () => setPreviewZoom("fit")),
     actions.register("canvas.zoom100", () => setPreviewZoom(1)),

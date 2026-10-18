@@ -235,6 +235,23 @@ describe("import and export", () => {
     expect(again).toMatchObject({ count: 2, replaced: 200 });
     expect(cuesOf(run(next, again?.command))).toHaveLength(2);
   });
+
+  it("exports the cues of a range cut to it and timed from its start (the Export tab's in/out)", () => {
+    const p = project([
+      [0, 30, "a"],
+      [40, 30, "b"],
+      [90, 30, "c"],
+      [150, 30, "d"],
+    ]);
+    const us = (frames: number) => Math.round((frames * 1_000_000) / 30);
+    expect(exportCues(p, { start: 50, end: 100 })).toEqual([
+      { startUs: 0, endUs: us(20), text: "b" },
+      { startUs: us(40), endUs: us(50), text: "c" },
+    ]);
+    expect(exportCues(p, { start: 30, end: 40 })).toEqual([]);
+    expect(exportCues(p).map((c) => c.text)).toEqual(["a", "b", "c", "d"]);
+    expect(exportCues(p, { start: 0, end: 1000 })).toEqual(exportCues(p));
+  });
 });
 
 describe("transcription", () => {

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { createAppSettings, DEFAULT_APP_SETTINGS, editDefaultsOf, proxySettings, toggleFavoriteFont } from "./appSettings.js";
+import { DEFAULT_CUSTOM_SETTINGS } from "../export/presets.js";
 import { memoryKeyValueStore } from "./kv.js";
 import { RECENT_LIMIT, RecentProjects, type RecentProject } from "./recentProjects.js";
 
@@ -83,7 +84,7 @@ describe("app settings", () => {
     await settings.load();
     expect(settings.getState()).toEqual(DEFAULT_APP_SETTINGS);
     await settings.update({ autosaveDelayMs: 5000 });
-    expect(kv.data.get("settings.v1")).toEqual({ autosaveDelayMs: 5000, importMode: "copy", monitorVolumeDb: 0, monitorMuted: false, proxyAuto: true, proxyRule: "heavy", proxyShortEdge: 540, recentColors: [], punchZoomScale: 1.2, punchZoomAnimate: true, favoriteFonts: [], matchClipUnderPlayhead: true, defaultTitlePreset: "starter-title", defaultSubtitlePreset: "starter-subtitle", transcribeModel: "base", transcribeLanguage: null, duckDepthDb: 12, duckRampFrames: 10, silenceThresholdDb: -40, silenceMinMs: 500, silencePaddingMs: 150, keymap: {}, recentCommands: [], stillDurationMs: 5000, titleDurationMs: 3000, solidDurationMs: 5000, freezeDurationMs: 2000, transitionFrames: 15, transitionKind: "crossDissolve", keyframesFollowSource: true });
+    expect(kv.data.get("settings.v1")).toEqual({ autosaveDelayMs: 5000, importMode: "copy", monitorVolumeDb: 0, monitorMuted: false, proxyAuto: true, proxyRule: "heavy", proxyShortEdge: 540, recentColors: [], punchZoomScale: 1.2, punchZoomAnimate: true, favoriteFonts: [], matchClipUnderPlayhead: true, defaultTitlePreset: "starter-title", defaultSubtitlePreset: "starter-subtitle", transcribeModel: "base", transcribeLanguage: null, duckDepthDb: 12, duckRampFrames: 10, silenceThresholdDb: -40, silenceMinMs: 500, silencePaddingMs: 150, keymap: {}, recentCommands: [], stillDurationMs: 5000, titleDurationMs: 3000, solidDurationMs: 5000, freezeDurationMs: 2000, transitionFrames: 15, transitionKind: "crossDissolve", keyframesFollowSource: true, exportPresetId: "reels", exportCustom: DEFAULT_CUSTOM_SETTINGS, exportPresets: [], exportFileTemplate: "{project}-{preset}-{date}.mp4", exportDestination: "project", exportAudioFormat: "wav", exportCaptionFormat: "srt" });
     await settings.update({ autosaveDelayMs: 1234 });
     expect(settings.getState().autosaveDelayMs).toBe(5000);
 
@@ -126,6 +127,20 @@ describe("app settings", () => {
     expect(editDefaultsOf(settings.getState())).toEqual({ stillMs: 2500, titleMs: 100, solidMs: 60_000, freezeMs: 2000, transitionFrames: 1, transitionKind: "crossDissolve", keyframesFollowSource: false });
     await settings.update({ transitionFrames: 999, transitionKind: "dipToBlack" });
     expect(settings.getState()).toMatchObject({ transitionFrames: 120, transitionKind: "dipToBlack" });
+  });
+
+  it("keeps the Export tab's choices and one's own presets (Batch 44)", async () => {
+    const kv = memoryKeyValueStore();
+    const mine = { id: "u1", name: "Master", settings: { codec: "hevc", scale: 50 } };
+    kv.data.set("settings.v1", { exportPresetId: "u1", exportCustom: { codec: "av1", keyframeSeconds: 9 }, exportPresets: [mine, { id: "", name: "x" }], exportFileTemplate: "{project}.mp4", exportDestination: "pick", exportAudioFormat: "m4a", exportCaptionFormat: "vtt" });
+    const settings = createAppSettings(kv);
+    await settings.load();
+    const state = settings.getState();
+    expect(state).toMatchObject({ exportPresetId: "u1", exportFileTemplate: "{project}.mp4", exportDestination: "pick", exportAudioFormat: "m4a", exportCaptionFormat: "vtt" });
+    expect(state.exportCustom).toMatchObject({ codec: "av1", keyframeSeconds: 2 });
+    expect(state.exportPresets.map((p) => [p.id, p.settings.codec, p.settings.scale])).toEqual([["u1", "hevc", 50]]);
+    await settings.update({ exportFileTemplate: "   ", exportDestination: "cloud" as never, exportAudioFormat: "flac" as never });
+    expect(settings.getState()).toMatchObject({ exportFileTemplate: "{project}.mp4", exportDestination: "pick", exportAudioFormat: "m4a" });
   });
 
   it("keeps Remove silence's parameters in range and in whole units (Batch 38)", async () => {

@@ -3,7 +3,7 @@ import type { Frame } from "../core/document/types.js";
 import { exportPlan } from "./plan.js";
 import { AUDIO_BLOCK, ExportEncoderError, MAX_ENCODE_QUEUE, PauseGate, runExport, type EncoderCallbacks, type MuxOptions, type PipelineDeps, type PipelineJob, type PipelineProgress } from "./pipeline.js";
 
-const FORMAT = { codec: "avc" as const, width: 1080, height: 1920, fps: { num: 30, den: 1 }, videoBitrate: 12_000_000, sampleRate: 48000 as const, channels: 2 as const, audioBitrate: 192_000 };
+const FORMAT = { codec: "avc" as const, width: 1080, height: 1920, fps: { num: 30, den: 1 }, videoBitrate: 12_000_000, maxBitrate: 12_000_000, bitrateMode: "variable" as const, hardware: "no-preference" as const, sampleRate: 48000 as const, channels: 2 as const, audioBitrate: 192_000 };
 
 class FakeFrame {
   closed = false;

@@ -1,6 +1,7 @@
 // session.json (spec §5.3): session state, the selection and the panel layout of one project. Harmless
 // to lose, so parsing never throws: every invalid or missing field falls back to its default.
 import { isKeyframeSection, type KeyframeSection } from "../core/document/keyframes.js";
+import { sanitizeExportLog } from "../export/log.js";
 import type { TimecodeMode } from "../core/document/time.js";
 import type { LayoutRatios } from "../core/store/layoutStore.js";
 import { sanitizeRatios } from "../core/store/layoutStore.js";
@@ -146,6 +147,8 @@ function sanitizeState(value: unknown): SessionState {
     collapsedSections,
     clipKeyframes: bool(raw.clipKeyframes, d.clipKeyframes),
     keyframeLanes: sanitizeLanes(raw.keyframeLanes),
+    exportRange: raw.exportRange === "inOut" ? "inOut" : "whole",
+    exportLog: sanitizeExportLog(raw.exportLog),
   };
 }
 

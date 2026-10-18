@@ -28,6 +28,7 @@ import {
   Diamond,
   Eraser,
   Expand,
+  FileAudio,
   FileDown,
   FilePlus,
   FileUp,
@@ -104,6 +105,7 @@ import {
   Upload,
   VolumeX,
   Waves,
+  X,
   ZoomIn,
   ZoomOut,
   type LucideIcon,
@@ -139,6 +141,7 @@ export const COMMAND_CATEGORIES = [
   "Preview",
   "Media",
   "Project",
+  "Export",
   "App",
   "Dev",
 ] as const;
@@ -193,6 +196,7 @@ const canvas = entry("Canvas");
 const preview = entry("Preview");
 const media = entry("Media");
 const project = entry("Project");
+const exporting = entry("Export");
 const app = entry("App");
 const dev = entry("Dev");
 
@@ -518,10 +522,21 @@ export const COMMANDS: readonly CommandInfo[] = [
   app("app.commandPalette", "Command palette", { icon: Command, anywhere: true, palette: false }),
   app("app.shortcuts", "Keyboard shortcuts", { icon: Keyboard, keywords: "cheat sheet keys help", anywhere: true }),
   app("app.settings", "Settings", { icon: Settings, keywords: "preferences shortcuts keymap rebind", anywhere: true }),
-  app("app.export", "Export", { icon: Upload, keywords: "render mp4 video reels instagram" }),
-  app("export.pauseResume", "Pause or resume the export", { icon: Pause, keywords: "export render continue" }),
-  app("export.cancel", "Cancel the export", { icon: CircleX, keywords: "export render stop abort" }),
   app("app.cancel", "Cancel gesture / close", { palette: false }),
+
+  // Export (spec §16, §17 Export tab)
+  exporting("app.export", "Export…", { icon: Upload, keywords: "export tab render mp4 video reels instagram tiktok shorts" }),
+  exporting("export.start", "Export the video", { icon: Upload, keywords: "render mp4 queue start" }),
+  exporting("export.close", "Close the Export tab", { icon: X, keywords: "export back properties" }),
+  exporting("export.copyFrame", "Copy frame", { icon: Copy, keywords: "clipboard still png image snapshot" }),
+  exporting("export.audio", "Export audio", { icon: FileAudio, keywords: "wav m4a aac mixdown sound music" }),
+  exporting("export.captions", "Export captions", { icon: Captions, keywords: "subtitles srt vtt file" }),
+  exporting("export.again", "Export again", { icon: RotateCcw, keywords: "repeat last export same settings" }),
+  exporting("export.openFolder", "Open the exports folder", { icon: FolderOpen, keywords: "show file location reveal" }),
+  exporting("export.savePreset", "Save export settings as a preset…", { icon: BookmarkPlus, keywords: "custom export preset" }),
+  exporting("export.deletePreset", "Delete the export preset", { icon: Trash2, keywords: "remove custom export preset" }),
+  exporting("export.pauseResume", "Pause or resume the export", { icon: Pause, keywords: "export render continue" }),
+  exporting("export.cancel", "Cancel the export", { icon: CircleX, keywords: "export render stop abort" }),
 
   // Dev builds only
   dev("dev.addText", "Add a dev text", { dev: true }),

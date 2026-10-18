@@ -14,7 +14,8 @@ import styles from "./Section.module.css";
 
 const keepFocus = (event: MouseEvent) => event.preventDefault();
 
-export function Section({ id, title, actions, children }: { id: SectionId; title: string; actions?: ReactNode; children: ReactNode }) {
+/** `id`: a properties section (context.ts) or another panel section with a remembered state (the Export tab's). */
+export function Section({ id, title, actions, children }: { id: SectionId | `export${string}`; title: string; actions?: ReactNode; children: ReactNode }) {
   const collapsed = useStoreSelector(sessionStore.state, (state: SessionState) => state.collapsedSections[id] === true);
   const bodyId = `properties-section-${id}`;
   return (

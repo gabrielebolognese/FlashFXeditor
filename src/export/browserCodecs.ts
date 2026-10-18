@@ -6,6 +6,7 @@
 // memory stays flat for any length (no in-memory file, no fragmented MP4 for large ones). Bytes go out
 // in MUX_CHUNK_BYTES pieces with their positions.
 import { Muxer, StreamTarget } from "mp4-muxer";
+import type { AudioMuxerLike, AudioMuxOptions } from "./audioExport.js";
 import type { AudioEncoderLike, EncoderCallbacks, MuxerLike, MuxOptions, VideoEncoderLike } from "./pipeline.js";
 
 export const MUX_CHUNK_BYTES = 4 << 20;
@@ -61,6 +62,20 @@ export function createMp4Muxer(options: MuxOptions, onData: (data: Uint8Array, p
   });
   return {
     addVideo: (chunk, meta) => muxer.addVideoChunk(chunk, meta as EncodedVideoChunkMetadata | undefined),
+    addAudio: (chunk, meta) => muxer.addAudioChunk(chunk, meta as EncodedAudioChunkMetadata | undefined),
+    finalize: () => muxer.finalize(),
+  };
+}
+
+/** An audio-only MP4 (M4A, Export audio) with its moov reserved at the front, as the video's. */
+export function createAudioMp4Muxer(options: AudioMuxOptions, onData: (data: Uint8Array, position: number) => void): AudioMuxerLike<EncodedAudioChunk> {
+  const muxer = new Muxer({
+    target: new StreamTarget({ onData, chunked: true, chunkSize: MUX_CHUNK_BYTES }),
+    audio: { codec: options.codec, sampleRate: options.sampleRate, numberOfChannels: options.channels },
+    fastStart: { expectedAudioChunks: options.expectedChunks },
+    firstTimestampBehavior: "strict",
+  });
+  return {
     addAudio: (chunk, meta) => muxer.addAudioChunk(chunk, meta as EncodedAudioChunkMetadata | undefined),
     finalize: () => muxer.finalize(),
   };
