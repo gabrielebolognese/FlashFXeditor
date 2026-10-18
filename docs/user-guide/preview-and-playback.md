@@ -297,7 +297,7 @@ If the file cannot be written, a message "Can't export the frame" gives the reas
 
 ## Know what to expect from performance
 
-The preview draws with your graphics card (GPU) and decodes video with the browser's hardware video decoder. What you can expect:
+The preview draws with your graphics card (GPU), through WebGPU or, on computers without it, WebGL2 (see [Check your browser](getting-started.md#check-your-browser)), and decodes video with the browser's hardware video decoder. What you can expect:
 
 - **Starting playback:** up to half a second of waiting while the first frames and the sound under the playhead are decoded. Sound and picture then start together.
 - **During playback:** each clip under the playhead is decoded up to 15 frames ahead, and never more than half a second ahead. Clips that start within the next 2 seconds are prepared before their cut, so cuts play smoothly.
@@ -305,6 +305,7 @@ The preview draws with your graphics card (GPU) and decodes video with the brows
 - **1080p footage:** plays smoothly, even with a cut every second. On the development machine, a one-minute timeline of one-second 1080p cuts from five different videos played with no dropped frames.
 - **4K 60 fps HEVC footage** (common on recent phones): at the limit of what a laptop GPU decodes at full quality. With the default **Auto** quality, the editor makes a [proxy](proxies.md) of such footage after import and plays it: on the development laptop, a 4K 60 fps clip played on its proxy with no or almost no dropped frames. Played in **Full** quality, or before its proxy is ready, expect dropped frames (about 1% on a rested development machine, many more when it runs hot).
 - **Transitions within one 4K video:** a transition between two clips of the same 4K 60 fps video dropped 1 to 3 frames of 230 in **Auto** on the development laptop. In **Full**, more than half of its frames dropped, because the same original has to be decoded at two places at once.
+- **WebGPU and WebGL2:** both draw the same picture, and 1080p footage and proxies play the same. On the development laptop, 10 seconds of 1080×1920 30 fps video dropped 0 to 8 frames of about 300 with either, and a 4K clip in **Auto** quality, on its proxy, 0 to 3 of about 160. A 4K clip played from the original in **Full** quality dropped up to 18 of about 157 frames with WebGL2, against 1 or 2 with WebGPU, because WebGL2 has more work to do with each 4K frame. The first such playback after the page loads drops more frames with both, and more with WebGL2. With WebGL2, keep **Preview quality** at **Auto**.
 - **Scrubbing:** with a proxy, the exact frame follows within one or two screen refreshes (17 to 34 milliseconds on the development laptop), also across a 20-minute 4K 60 fps video. If you move again right after the original frame has appeared, the first proxy frames can take up to about 0.2 seconds. Without a proxy, it usually follows within a fraction of a second: video is stored in groups of frames that start with a keyframe, so the editor decodes from the previous keyframe to show a frame. Deep inside a 4K HEVC phone clip this can take about half a second; the preview shows the closest frame meanwhile.
 - **After you stop:** with **Auto**, the original frame replaces the proxy frame usually within a third of a second; deep inside a 4K 60 fps phone clip it can take up to about 0.4 seconds.
 - **Backward playback and fast shuttle speeds** need more decoding work than 1x forward.
@@ -346,4 +347,4 @@ If playback stutters, see [Troubleshooting](troubleshooting.md).
 - [Workspace](workspace.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 47, 2026-10-18</sub>
+<sub>Last updated: Batch 48, 2026-10-18</sub>

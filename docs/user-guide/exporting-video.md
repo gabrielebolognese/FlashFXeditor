@@ -243,6 +243,7 @@ The video shows what the preview shows, frame by frame, and plays what you hear:
 - **Sound.** Clip volumes, volume keyframes, fades and crossfades are in the file. The **Master volume** knob and **Mute** under the preview change only what you hear, never the exported sound. See [Audio](audio.md).
 - **Offline media.** A clip whose file the editor can't read shows the same gray slate as in the preview, for example **Media offline**, and has no sound. Relink the file before you export; see [Offline media and relinking](offline-media-and-relinking.md). If Chrome stops decoding a video partway through the export, the export doesn't stop: that video shows the **Media can't be played** slate from that frame on.
 - **HDR videos in standard colors.** HDR footage, such as iPhone videos recorded with **HDR Video** on, goes into the file with the same SDR contrast and colors as in the preview. See [HDR videos](importing-media.md#hdr-videos).
+- **The same picture with WebGPU or WebGL2.** The export draws its frames with the same one the preview uses (see [Check your browser](getting-started.md#check-your-browser)), and the files look the same either way.
 - **Nothing that is only on your screen:** no safe zones, grids, guides or rulers, no selection outlines or handles, and nothing of the panel around the frame.
 
 ## Follow the progress
@@ -385,4 +386,4 @@ While any export runs, video or audio:
 - [Keyboard shortcuts](keyboard-shortcuts.md#export)
 - [Troubleshooting](troubleshooting.md#export)
 
-<sub>Last updated: Batch 47, 2026-10-18</sub>
+<sub>Last updated: Batch 48, 2026-10-18</sub>

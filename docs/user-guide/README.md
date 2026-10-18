@@ -59,7 +59,7 @@ Shorts Editor is a video editor for short vertical videos (9:16 by default) that
 
 | Page | What it covers |
 | --- | --- |
-| [Getting started](getting-started.md) | Browser requirements, the start screen, creating projects (also from a template), opening projects and switching between them, the recent project cards with their pictures, folder access |
+| [Getting started](getting-started.md) | Browser requirements, WebGPU or WebGL2, the start screen, creating projects (also from a template), opening projects and switching between them, the recent project cards with their pictures, folder access |
 | [The workspace](workspace.md) | The app bar and **Settings**, the four panels, resizing panels, the timeline toolbar and right-click menus, tooltips with your keys, dimmed controls, the four kinds of messages, reloading a panel that stopped working and the **Shorts Editor stopped working** screen, how shortcuts follow the panel you clicked, the read-only notice |
 | [Projects and saving](projects-and-saving.md) | The project folder, autosave and the save dot, undo and redo, crash recovery, restoring an older version from **History**, clearing the cache, read-only mode and the questions before read-only changes are lost |
 | [Project settings and templates](project-settings-and-templates.md) | The **Project** section and its rows, changing the frame size with **Scale layout** or **Keep**, converting the frame rate (what converts, what rounds, the warning, undo), pasting clips from another frame rate, saving, using and deleting templates |
@@ -100,7 +100,7 @@ Shorts Editor is a video editor for short vertical videos (9:16 by default) that
 | [Keyboard navigation](keyboard-navigation.md) | Moving between controls with <kbd>Tab</kbd>, the gold focus ring and tooltips, pressing buttons, switches, chips and tabs with <kbd>Space</kbd> and <kbd>Enter</kbd>, when the keys go to a control and when they stay shortcuts, sliders, the media and preset cards, menus and pickers, where the focus goes when something closes |
 | [Settings](settings.md) | Opening **Settings**, the **General** tab and its groups: autosave, the length of new still images, titles, solids and freeze frames, **Match clip**, the default transition, **Follow source**, punch zoom, Auto-duck and Remove silence values, transcription model, language and downloaded models, import mode and proxies, the cache, the preset folder and **Restore** for starter presets |
 | [Keyboard shortcuts](keyboard-shortcuts.md) | Every working shortcut with its default keys, the panel it needs and the macOS keys, the command palette, shortcut sheet, menu and keyboard navigation keys |
-| [Troubleshooting](troubleshooting.md) | Problems with the browser, graphics, panels that stop working, the keyboard and changed shortcuts, the timeline, folders, saving, importing, organizing and offline media, proxies, playback, layers in the preview, cropping, **Edit Properties**, copying, pasting and duplicating, speed changes, freeze frames and punch zoom, keyframes, fades and transitions, audio editing, removing silence, shapes and images, titles and text, text presets, text animations, captions, transcription, export, and known limitations |
+| [Troubleshooting](troubleshooting.md) | Problems with the browser, graphics (and switching to WebGL2), panels that stop working, the keyboard and changed shortcuts, the timeline, folders, saving, importing, organizing and offline media, proxies, playback, layers in the preview, cropping, **Edit Properties**, copying, pasting and duplicating, speed changes, freeze frames and punch zoom, keyframes, fades and transitions, audio editing, removing silence, shapes and images, titles and text, text presets, text animations, captions, transcription, export, and known limitations |
 | [What's new](whats-new.md) | What each batch added, newest first |
 
 ## What you can do in this version
@@ -148,6 +148,7 @@ Shorts Editor is a video editor for short vertical videos (9:16 by default) that
 - Export your video in two keys, <kbd>Ctrl</kbd>+<kbd>E</kbd> and <kbd>Enter</kbd>, from the **Export** tab: an MP4 for Instagram Reels, TikTok or YouTube Shorts, with picture and sound in sync, from your original media at full quality. Export the whole timeline or only the in/out range, name the file with a template, and save it in the project's `exports` folder or wherever you choose. Change the codec, size, frame rate and bitrate and keep them as your own presets. Queue several exports, follow, pause or cancel each one, repeat any of the last 20 from the log, and keep editing while they run. Save the current frame as a PNG or copy it, the sound as a WAV or M4A file, and the captions as an SRT or VTT file.
 
 - Keep working when something goes wrong: a panel that stops working comes back with **Reload panel** while the others keep going, playback carries on by itself if the video decoder crashes, and an export stops with a clear message if the graphics chip is reset.
+- Edit on computers without WebGPU: the editor uses WebGL2 there by itself, with the same picture and the same exported files.
 
 Video effects arrive in a later version. [What's new](whats-new.md) tracks each addition.
 
@@ -158,4 +159,4 @@ Video effects arrive in a later version. [What's new](whats-new.md) tracks each 
 - Notes, tips and warnings appear as **Note**, **Tip** and **Important** boxes.
 - Each page starts with a **Video placeholder**: the planned walkthrough video for that page, with its file name, length and the steps it will show. The videos are not recorded yet; they will live in the `videos/` folder next to these pages.
 
-<sub>Last updated: Batch 47, 2026-10-18</sub>
+<sub>Last updated: Batch 48, 2026-10-18</sub>
