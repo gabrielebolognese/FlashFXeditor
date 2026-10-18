@@ -82,7 +82,7 @@ Once there is a track, the tab shows a search field, the number of cues (for exa
 | --- | --- |
 | Times | The cue's start above its end, in the timecode format of the editor (frames or milliseconds; see [Show times in milliseconds](timeline.md#show-times-in-milliseconds)) |
 | Text | The cue's text, up to two lines. Click into it to edit it. |
-| Word count | The number of words in the cue (tooltip **Words**) |
+| Word count | The number of words in the cue (tooltip **Words**). Punctuation doesn't count. Chinese and Japanese text, written without spaces, is counted word by word too. |
 
 - The row of the selected cue is highlighted. The row of the cue under the playhead has a red bar at its left edge, which moves from row to row while you play.
 - The list scrolls smoothly even with hundreds of cues.
@@ -401,4 +401,4 @@ These parts are available in a later version:
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 46, 2026-10-18</sub>
+<sub>Last updated: Batch 47, 2026-10-18</sub>

@@ -40,7 +40,7 @@ When you create a project, the editor fills the folder you picked with these ite
 
 > **Important:** Keep the project folder together. Do not rename, move or delete files inside `media` or `fonts`: the project refers to them by name. A media file that is gone makes its media item offline, with gray slates for its clips, until you relink it; see [Offline media and relinking](offline-media-and-relinking.md). To move a project, move the whole folder, then open it with **Open project**. Media you linked instead of copying are not in the folder, so they don't move with it.
 
-> **Note:** Do not edit `project.json` while the project is open in the editor. The next save replaces it.
+> **Note:** Do not edit `project.json` while the project is open in the editor. The next save replaces it. If you edit it in a text editor while the project is closed, you can save it as UTF-8 with or without a byte order mark (BOM): the project opens either way.
 
 ## How autosave works
 
@@ -303,4 +303,4 @@ Changes made in read-only mode exist only in the tab. The editor asks before the
 - [Titles and text](titles-and-text.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 46, 2026-10-18</sub>
+<sub>Last updated: Batch 47, 2026-10-18</sub>

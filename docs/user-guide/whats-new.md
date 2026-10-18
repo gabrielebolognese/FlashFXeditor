@@ -2,6 +2,11 @@
 
 Shorts Editor grows in steps called batches. This page lists what each batch added that you can see or use, newest first. Follow the links for the full instructions.
 
+> **Video placeholder: What's new in Batch 47**
+> - File: `videos/whats-new/batch-47.mp4` (not recorded yet)
+> - Length: about 45 seconds
+> - Shows: rename a text file to `broken.mp4` and drop it on the **Media** tab with an iPhone video recorded with **HDR Video** on; the message **Can't import broken.mp4** appears and a row with a red **Failed** badge and "Not a readable MP4/MOV file: it is damaged or is not a video" stays under the search field; click its **X**; double-click the iPhone card and pause on a frame: the colors look as on a normal screen, not washed out; press <kbd>Space</kbd>: playback looks the same; click the timeline, press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>, type `reload` and press <kbd>Enter</kbd> on **Reload panel**: the timeline draws itself again; open the **Captions** tab of a project with Japanese cues: each cue counts its words.
+
 > **Video placeholder: What's new in Batch 46**
 > - File: `videos/whats-new/batch-46.mp4` (not recorded yet)
 > - Length: about 60 seconds
@@ -188,6 +193,7 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 > - Shows: open a project with three clips on the timeline; press <kbd>Space</kbd> to play and let the timeline page forward; press <kbd>L</kbd> three times to reach 8x, then <kbd>K</kbd>; hold <kbd>K</kbd> and tap <kbd>L</kbd> to step one frame; turn on **Loop playback**; point at the **Dropped** readout in the status strip.
 
 ## In this page
+- [Batch 47: A steadier editor](#batch-47-a-steadier-editor)
 - [Batch 46: Keyboard navigation and a finished look](#batch-46-keyboard-navigation-and-a-finished-look)
 - [Batch 45: Faster proxies and a lighter editor](#batch-45-faster-proxies-and-a-lighter-editor)
 - [Batch 44: The Export tab](#batch-44-the-export-tab)
@@ -234,6 +240,18 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 - [Batch 03: Projects, autosave and recovery](#batch-03-projects-autosave-and-recovery)
 - [Batch 02: Undo, redo and frame-exact time](#batch-02-undo-redo-and-frame-exact-time)
 - [Batch 01: The workspace](#batch-01-the-workspace)
+
+## Batch 47: A steadier editor
+- A file that can't be imported, such as a damaged video or another file renamed to .mp4, now stays listed near the top of the **Media** tab: a red **Failed** badge, the file name and the reason in plain words, for example "Not a readable MP4/MOV file: it is damaged or is not a video". Click the **X** to dismiss it, or run **Dismiss failed imports** from the command palette. See [Check failed imports](importing-media.md#check-failed-imports).
+- .mp3, .aac, .wav and .ogg files over 45 minutes are refused at import with that reason, before they can use up the browser's memory. .m4a files and the sound of videos have no limit. See [Supported file types](importing-media.md#supported-file-types).
+- HDR videos, such as iPhone videos recorded with **HDR Video** on, no longer look washed out: the preview, paused and while playing, the proxies and exported videos show them with the contrast and colors of a normal screen. See [HDR videos](importing-media.md#hdr-videos).
+- If a panel runs into a problem, only that panel stops: it shows, for example, **Timeline stopped working** with a **Reload panel** button, and the other panels keep working. **Reload panel** is also in the command palette. A problem outside the panels shows **Shorts Editor stopped working** with **Reload**, which saves your project first, instead of a blank page. See [Reload a panel that stopped working](workspace.md#reload-a-panel-that-stopped-working).
+- If the browser's video decoder crashes while you play, the picture holds for a moment and playback goes on by itself, usually within about 1.5 seconds. See [Know what to expect from performance](preview-and-playback.md#know-what-to-expect-from-performance).
+- A video that Chrome refuses partway through playback shows its **Media can't be played** slate right away. In an export, it shows the same slate from that frame on, and the export goes on instead of failing. If the graphics chip is reset during an export, the export stops with **The GPU was reset during the export (device lost). Export again.**, and the next export can run normally. See [Know what goes into the file](exporting-video.md#know-what-goes-into-the-file) and [An export fails](troubleshooting.md#an-export-fails).
+- The word count of the **Captions** tab counts the words of Chinese and Japanese text, which is written without spaces, and leaves out punctuation. See [Open the Captions tab](captions.md#open-the-captions-tab).
+- A `project.json` that a text editor saved with a byte order mark (BOM) now opens. See [What is in the project folder](projects-and-saving.md#what-is-in-the-project-folder).
+- Several rare editing problems are fixed, found by testing thousands of random edits. For example, sound pasted from another project no longer picks a media item of the same name that has no sound, and a volume keyframe moved past the end of its clip no longer lands on the keyframe before it.
+- New troubleshooting entries: [A panel shows stopped working](troubleshooting.md#a-panel-shows-stopped-working), [Shorts Editor stopped working fills the window](troubleshooting.md#shorts-editor-stopped-working-fills-the-window), [An HDR video looks less bright than on your phone](troubleshooting.md#an-hdr-video-looks-less-bright-than-on-your-phone) and [The picture stops for a moment during playback](troubleshooting.md#the-picture-stops-for-a-moment-during-playback).
 
 ## Batch 46: Keyboard navigation and a finished look
 - Use every control with the keyboard alone. <kbd>Tab</kbd> reaches every control of **Edit Properties**, the app bar, the panel headers, the timeline toolbar and the transport bar, dimmed ones too, and the control you are on gets a gold ring and shows its tooltip with its shortcut. <kbd>Space</kbd> or <kbd>Enter</kbd> presses it, sliders keep the arrow keys, and the media and preset cards are one stop each: move with the arrow keys and press <kbd>Enter</kbd> to insert a clip or apply a preset. After a mouse click on a control, <kbd>Space</kbd> still plays and the arrow keys still step frames. See the new page [Keyboard navigation](keyboard-navigation.md) and [Keyboard navigation](keyboard-shortcuts.md#keyboard-navigation) in the shortcut list.
@@ -730,4 +748,4 @@ See [The workspace](workspace.md) and [Getting started](getting-started.md).
 - [Adding media to the timeline](adding-media-to-the-timeline.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 46, 2026-10-18</sub>
+<sub>Last updated: Batch 47, 2026-10-18</sub>

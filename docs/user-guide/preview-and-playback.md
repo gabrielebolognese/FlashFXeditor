@@ -39,6 +39,7 @@ What you see in the Preview panel:
 - **The area around the frame.** It belongs to the panel, not to your video. It never appears in an exported frame.
 - **The background.** Wherever no clip covers the frame, you see the project background color: black by default. Change it in the **Background** field of the same **Project** section: type a hex color such as `#000000`, or click its swatch to pick a color. See [Pick a color](editing-properties.md#pick-a-color).
 - **Fine detail at small sizes.** When a video is shown smaller than its own size, for example a 1080×1920 clip at **Fit** in a narrow panel, the preview smooths it as it shrinks it. Thin lines, stripes and small text stay steady instead of shimmering or showing wavy patterns. At 100% and above, every pixel is drawn as it is.
+- **HDR videos in standard colors.** HDR videos, such as iPhone videos recorded with **HDR Video** on, show with the contrast and colors of a normal (SDR) screen, paused and while playing. See [HDR videos](importing-media.md#hdr-videos).
 - **Empty frames.** In a gap between clips, past the end of the last clip, or in a project with no clips, the frame shows only the background.
 - **Outlines and handles.** A selected clip under the playhead has a gold outline with eight handles in the preview, and the picture under the pointer gets a thin, darker gold outline. They are only on your screen, never in an exported frame. See [Arranging layers in the preview](arranging-layers-in-the-preview.md).
 
@@ -58,7 +59,7 @@ Playback plays the sound of your audio tracks in sync with the picture. The audi
 
 ### Media that cannot be shown
 
-A video or image clip whose media file the editor can't read shows a gray slate in the preview: a rectangle where the picture would be, with the media's name and the reason, for example "Media offline" for a missing file or "Media can't be played" for a video your browser can't decode (such as HEVC on a computer without HEVC decoding). Its sound is silent. See [Offline media and relinking](offline-media-and-relinking.md).
+A video or image clip whose media file the editor can't read shows a gray slate in the preview: a rectangle where the picture would be, with the media's name and the reason, for example "Media offline" for a missing file or "Media can't be played" for a video your browser can't decode (such as HEVC on a computer without HEVC decoding). Its sound is silent. If the browser stops decoding a video in the middle of playback, the slate appears right away. See [Offline media and relinking](offline-media-and-relinking.md).
 
 ## See how clips fit the frame
 
@@ -307,6 +308,7 @@ The preview draws with your graphics card (GPU) and decodes video with the brows
 - **Scrubbing:** with a proxy, the exact frame follows within one or two screen refreshes (17 to 34 milliseconds on the development laptop), also across a 20-minute 4K 60 fps video. If you move again right after the original frame has appeared, the first proxy frames can take up to about 0.2 seconds. Without a proxy, it usually follows within a fraction of a second: video is stored in groups of frames that start with a keyframe, so the editor decodes from the previous keyframe to show a frame. Deep inside a 4K HEVC phone clip this can take about half a second; the preview shows the closest frame meanwhile.
 - **After you stop:** with **Auto**, the original frame replaces the proxy frame usually within a third of a second; deep inside a 4K 60 fps phone clip it can take up to about 0.4 seconds.
 - **Backward playback and fast shuttle speeds** need more decoding work than 1x forward.
+- **If the video decoder stops:** the browser's video decoder can crash or stop responding, for example after a graphics driver problem. The editor notices and restarts it by itself. Playback shows the frames it already has for about half a second, the picture then holds for a moment, and it moves again within about 1.5 seconds of the crash. Playback doesn't stop, and a proxy or thumbnails being made at that moment are made again.
 - **Zoomed in above 100%:** with the default **Auto** quality, playback and scrubbing show the project's resolution (or the proxy), and the full detail of your media follows 0.3 seconds after you stop. **Full** keeps full detail while playing, which is heavier. **1/2** and **1/4** draw playback at half or a quarter of the resolution, which is lighter at every zoom. See [Choose the preview quality](preview-zoom-overlays-fullscreen.md#choose-the-preview-quality).
 - **Fullscreen:** on the development laptop, a 60 fps 1080×1920 project played in the fullscreen preview with at most about 0.5% dropped frames. The first playback after the page loads can drop many more frames while the editor warms up, especially with a large preview; the following playbacks are smoother.
 - **Dragging layers:** moving a layer in the preview follows the pointer at the full rate of a 60 Hz screen, also while it snaps and shows smart guides. On the development laptop, frames during a snapped drag took about 17 milliseconds on average. See [Snapping and smart guides in the preview](snapping-and-smart-guides.md).
@@ -344,4 +346,4 @@ If playback stutters, see [Troubleshooting](troubleshooting.md).
 - [Workspace](workspace.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 46, 2026-10-18</sub>
+<sub>Last updated: Batch 47, 2026-10-18</sub>
