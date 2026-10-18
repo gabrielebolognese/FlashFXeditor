@@ -137,11 +137,12 @@ The **Storage** group:
 
 | Row | What it shows and does |
 | --- | --- |
-| **Cache** | Only while a project is open: the size of its cache, for example "777 KB · 11 files", or **Empty**. **Clear cache** deletes the cache; the editor asks first. See [Clear the cache](projects-and-saving.md#clear-the-cache). |
+| **Cache** | Only while a project is open: the size of its cache, for example "777 KB · 11 files", or **Empty**. **Clear cache** deletes the cache; the editor asks first. It waits while a video export runs. See [Clear the cache](projects-and-saving.md#clear-the-cache). |
 | **Preset folder** | The library folder your **Global** text presets are synced with, and its state: **Syncing…**, **Synced**, **Needs permission: Sync to allow**, or a reason when it can't sync. With no folder: "None: presets stay in this browser". Click **Choose…** (or **Change…**) to pick a folder. With a folder, the buttons next to it sync again (**Sync the presets library folder**) and stop syncing (**Stop syncing the presets library folder**). See [Sync your presets with a folder](text-presets.md#sync-your-presets-with-a-folder). |
 | **Starter presets** | **Restore** brings back the starter presets you deleted. See [Restore the starter presets](text-presets.md#restore-the-starter-presets). |
 
 ## Related pages
+- [Exporting your video](exporting-video.md)
 - [Project settings and templates](project-settings-and-templates.md)
 - [Projects and saving](projects-and-saving.md)
 - [Command palette and custom shortcuts](command-palette-and-custom-shortcuts.md)
@@ -156,4 +157,4 @@ The **Storage** group:
 - [Removing silence](removing-silence.md)
 - [Transcription](transcription.md)
 
-<sub>Last updated: Batch 42, 2026-10-18</sub>
+<sub>Last updated: Batch 43, 2026-10-18</sub>

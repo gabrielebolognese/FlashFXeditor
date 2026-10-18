@@ -42,6 +42,7 @@ This page lists every keyboard shortcut that works in the current version of Sho
 >   34. Click **Audio scrub** in the timeline toolbar and press <kbd>→</kbd> a few times: each step plays a short bit of sound. Hold <kbd>Ctrl</kbd> and click the white line across an audio clip: a diamond appears on it. Press <kbd>Delete</kbd>: the diamond is gone and the clip stays.
 >   35. Click a video with sound and press <kbd>Ctrl</kbd>+<kbd>C</kbd>. Click in the ruler at an empty spot and press <kbd>Ctrl</kbd>+<kbd>V</kbd>: the video and its sound land at the playhead. Put the playhead in the middle of another clip and press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>V</kbd>: the clip splits and the copy goes in between. Click a title, press <kbd>Ctrl</kbd>+<kbd>C</kbd>, click another title and press <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>V</kbd>: the **Paste attributes** checklist opens; press <kbd>Enter</kbd>: the second title takes the look of the first.
 >   36. Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>, type `compact` and press <kbd>Enter</kbd>: every gap closes. Press <kbd>?</kbd>: the **Keyboard shortcuts** sheet lists every key; press <kbd>Esc</kbd>. Right-click a clip, press <kbd>↓</kbd> twice and <kbd>Enter</kbd>: the clip is copied. Press <kbd>Alt</kbd>+<kbd>S</kbd>: **Audio scrub** turns gold; press it again.
+>   37. Press <kbd>Ctrl</kbd>+<kbd>E</kbd>: the message **Exporting** appears at the top of the window with the progress. Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>, type `cancel export` and press <kbd>Enter</kbd>: the message **Export cancelled** appears.
 
 ## In this page
 - [How shortcuts work](#how-shortcuts-work)
@@ -693,9 +694,10 @@ These shortcuts work in all panels.
 | Save now | <kbd>Ctrl</kbd>+<kbd>S</kbd> | <kbd>⌘</kbd>+<kbd>S</kbd> | Also while you type in a field or a dialog is open. The project also saves automatically. |
 | Open a project folder | <kbd>Ctrl</kbd>+<kbd>O</kbd> | <kbd>⌘</kbd>+<kbd>O</kbd> | Also on the start screen. |
 | Import media | <kbd>Ctrl</kbd>+<kbd>I</kbd> | <kbd>⌘</kbd>+<kbd>I</kbd> | While a project is open. |
+| Export the video | <kbd>Ctrl</kbd>+<kbd>E</kbd> | <kbd>⌘</kbd>+<kbd>E</kbd> | Same as **Export** in the app bar: the whole timeline as an MP4 for Instagram Reels. See [Exporting your video](exporting-video.md). |
 | New project | <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>N</kbd> or <kbd>Ctrl</kbd>+<kbd>N</kbd> | <kbd>⌘</kbd>+<kbd>⌥</kbd>+<kbd>N</kbd> or <kbd>⌘</kbd>+<kbd>N</kbd> | Also on the start screen, and while a project is open. <kbd>Ctrl</kbd>+<kbd>N</kbd> is taken by the browser in a normal tab; see [Keys the browser keeps](#keys-the-browser-keeps). |
 
-**History…**, **Save as template…** and **Clear cache** have no key; run them from the command palette, or give them one in **Settings** > **Shortcuts**.
+**History…**, **Save as template…**, **Clear cache**, **Pause or resume the export** and **Cancel the export** have no key; run them from the command palette, or give them one in **Settings** > **Shortcuts**. While an export runs, its progress message also has **Pause** / **Resume** and **Cancel** buttons.
 
 See [Projects and saving](projects-and-saving.md) and [Project settings and templates](project-settings-and-templates.md).
 
@@ -800,9 +802,10 @@ The browser acts on <kbd>Ctrl</kbd>+<kbd>N</kbd>, <kbd>Ctrl</kbd>+<kbd>T</kbd> a
 
 ## Shortcuts for features not available yet
 
-**Export** in the app bar is disabled but already shows its shortcut, <kbd>Ctrl</kbd>+<kbd>E</kbd>, in its tooltip. The key starts working when export is available in a later version; until then it does nothing.
+None at the moment. <kbd>Ctrl</kbd>+<kbd>E</kbd>, the last key kept for a later feature, now exports your video; see [Project and history](#project-and-history).
 
 ## Related pages
+- [Exporting your video](exporting-video.md)
 - [Command palette and custom shortcuts](command-palette-and-custom-shortcuts.md)
 - [Copying, pasting and duplicating clips](copy-and-paste.md)
 - [Editing audio](audio-editing.md)
@@ -833,4 +836,4 @@ The browser acts on <kbd>Ctrl</kbd>+<kbd>N</kbd>, <kbd>Ctrl</kbd>+<kbd>T</kbd> a
 - [Projects and saving](projects-and-saving.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 42, 2026-10-18</sub>
+<sub>Last updated: Batch 43, 2026-10-18</sub>

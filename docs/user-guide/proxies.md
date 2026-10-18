@@ -75,6 +75,7 @@ How proxies are made:
 - **One at a time**, oldest import first. The others wait with a grey chip.
 - **In the background.** You can keep editing: put clips on the timeline, trim, move the playhead.
 - **Paused while you play** or drag on the timeline (moving clips, trimming, scrubbing in the ruler), so the preview gets all the decoding power. The percentage stops and continues when you stop.
+- **Paused while a video export runs**, and continued after it. See [Keep editing while you export](exporting-video.md#keep-editing-while-you-export).
 - **How long it takes:** on the development laptop, a proxy of 4K 60 fps footage took about as long as the clip itself, for example about 10 seconds for a 10-second clip. A long clip takes correspondingly longer, and its playback and scrubbing become light once its chip is green.
 
 ## Make a proxy yourself
@@ -151,9 +152,11 @@ The other preview quality modes use proxies like this:
 
 Videos without a ready proxy always show the original. See [Choose the preview quality](preview-zoom-overlays-fullscreen.md#choose-the-preview-quality).
 
+While a video export runs, playback uses proxies whatever the mode, so it stays smooth while the export uses the video encoder. The status line then starts with **Proxy:**, for example **Proxy: proxy**. When you stop, the preview follows its mode again. See [Keep editing while you export](exporting-video.md#keep-editing-while-you-export).
+
 On the development laptop, a 4K 60 fps HEVC clip played on its proxy with no or almost no dropped frames, and while scrubbing the exact proxy frame appeared within one or two screen refreshes (17 to 34 milliseconds).
 
-> **Note:** **Export frame** never uses proxies. It always saves the frame from your original media at full quality, whatever the preview quality. See [Export the current frame](preview-and-playback.md#export-the-current-frame).
+> **Note:** **Export frame** and video exports never use proxies. They always use your original media at full quality, whatever the preview quality. See [Export the current frame](preview-and-playback.md#export-the-current-frame) and [Exporting your video](exporting-video.md).
 
 ## Make thumbnails again
 
@@ -175,6 +178,7 @@ The card picture and the thumbnails of its clips on the timeline are made again,
 - **Removing a video** from the project stops its proxy if it is being made.
 
 ## Related pages
+- [Exporting your video](exporting-video.md)
 - [Importing media](importing-media.md)
 - [Preview and playback](preview-and-playback.md)
 - [Preview zoom, overlays and fullscreen](preview-zoom-overlays-fullscreen.md)
@@ -182,4 +186,4 @@ The card picture and the thumbnails of its clips on the timeline are made again,
 - [Projects and saving](projects-and-saving.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 42, 2026-10-18</sub>
+<sub>Last updated: Batch 43, 2026-10-18</sub>

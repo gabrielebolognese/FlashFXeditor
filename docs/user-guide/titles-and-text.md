@@ -400,9 +400,9 @@ Pressing <kbd>↑</kbd> or <kbd>↓</kbd> in a number field of the **Text** sect
 These parts are available in a later version:
 
 - Snapping while you drag a text's handles.
-- Exporting the video with its text. **Export frame** already includes text and its animations; see [Export the current frame](preview-and-playback.md#export-the-current-frame).
 
 ## Related pages
+- [Exporting your video](exporting-video.md)
 - [Text animations](text-animations.md)
 - [Text presets](text-presets.md)
 - [Captions](captions.md)
@@ -415,4 +415,4 @@ These parts are available in a later version:
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 42, 2026-10-18</sub>
+<sub>Last updated: Batch 43, 2026-10-18</sub>

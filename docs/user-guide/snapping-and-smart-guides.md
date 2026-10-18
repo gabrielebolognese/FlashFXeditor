@@ -92,7 +92,7 @@ While a layer is snapped, or lines up exactly with a target, gold guides show it
 - Guides show every target the layer meets exactly, also in the direction <kbd>Shift</kbd> holds still.
 - The lines are 1 pixel wide on screen at every zoom. The guides disappear when you release the mouse button.
 - Guides show only while snapping is on. With **Snap** off, a drag shows no guides, unless you hold <kbd>S</kbd>.
-- Guides exist only on your screen. They never appear in a frame you save with **Export frame**.
+- Guides exist only on your screen. They never appear in a frame you save with **Export frame** or in an exported video.
 
 ## Space layers evenly
 
@@ -189,4 +189,4 @@ Good to know:
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 29, 2026-10-16</sub>
+<sub>Last updated: Batch 43, 2026-10-18</sub>

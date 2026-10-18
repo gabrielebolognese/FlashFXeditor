@@ -38,7 +38,7 @@ A crop cuts away part of the left, right, top and bottom sides of a picture. The
 - **Media pixels.** A crop is measured in pixels of the media itself, not of the project frame. Cropping 100 px from the left of a 1920×1080 video removes 100 of its 1920 columns, however large the picture is shown. You can also crop in percent of the media's width (left and right) or height (top and bottom).
 - **Something always stays.** A crop always leaves at least 1 pixel of the media visible across and down.
 - **The visible part is the layer.** In the preview, the gold outline, the box and its handles go around the visible part. A click on a cropped-away area selects the picture below it, or nothing. **Fit in frame**, **Fill frame** and **Center in frame** size and center the visible part.
-- **Everywhere.** The cut-away parts don't show in the preview, in fullscreen or in frames you save with **Export frame**.
+- **Everywhere.** The cut-away parts don't show in the preview, in fullscreen, in frames you save with **Export frame** or in exported videos.
 - **Saved with the project.** Each change to a crop is one step in the history. See [Undo and cancel](#undo-and-cancel).
 
 ## Reframe a landscape video for a vertical frame
@@ -233,4 +233,4 @@ Each clip gets the same crop, fitted to its own picture, in one step named **Pas
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 39, 2026-10-18</sub>
+<sub>Last updated: Batch 43, 2026-10-18</sub>

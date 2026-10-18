@@ -27,7 +27,6 @@ Solids are shapes you add with one click: a rectangle, a rounded rectangle, an e
 - [Keep SVG images sharp](#keep-svg-images-sharp)
 - [Shapes and images on the timeline](#shapes-and-images-on-the-timeline)
 - [Undo shape and image changes](#undo-shape-and-image-changes)
-- [What is not available yet](#what-is-not-available-yet)
 - [Related pages](#related-pages)
 
 ## Add a shape
@@ -203,6 +202,7 @@ An SVG image is a drawing, not a grid of pixels. The editor draws it again at th
 | An SVG that covers the whole frame | 213% |
 
 - **Export frame** draws each SVG at the size it has in the exported frame.
+- Exported videos include shapes, images, animated stickers and SVG logos, as the preview shows them. See [Exporting your video](exporting-video.md).
 - An SVG needs a width and a height, or a viewBox, to be imported. See [Supported file types](importing-media.md#supported-file-types).
 
 ## Shapes and images on the timeline
@@ -230,12 +230,6 @@ An SVG image is a drawing, not a grid of pixels. The editor draws it again at th
 
 See [Undo and redo changes](projects-and-saving.md#undo-and-redo-changes).
 
-## What is not available yet
-
-These parts are available in a later version:
-
-- Exporting the video. **Export frame** already includes shapes and the current frame of each animation.
-
 ## Related pages
 - [Arranging layers in the preview](arranging-layers-in-the-preview.md)
 - [Keyframes](keyframes.md)
@@ -248,4 +242,4 @@ These parts are available in a later version:
 - [Titles and text](titles-and-text.md)
 - [Troubleshooting](troubleshooting.md#shapes-and-images)
 
-<sub>Last updated: Batch 42, 2026-10-18</sub>
+<sub>Last updated: Batch 43, 2026-10-18</sub>

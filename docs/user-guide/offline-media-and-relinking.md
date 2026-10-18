@@ -57,7 +57,7 @@ The media menu of an offline item starts with **Allow access** (for files that n
 | **Media can't be played** | Chrome can't decode the file. |
 | **Media removed** | You removed the media item from the project and kept its clips. See [Clips of removed media](#clips-of-removed-media). |
 
-Other clips draw over and under the slate as usual. During a transition, the offline side shows no picture, not even the slate. A clip whose file is missing or not readable plays no sound.
+Other clips draw over and under the slate as usual. During a transition, the offline side shows no picture, not even the slate. A clip whose file is missing or not readable plays no sound. Exported videos show the same slates, so relink your media before you export; see [Know what goes into the file](exporting-video.md#know-what-goes-into-the-file).
 
 ## Give the browser access to linked files
 
@@ -148,6 +148,7 @@ These clips have no media item left, so you can't relink them. To get the pictur
 | **This project is read-only** with "Allow editing to relink media." | The project is open without write access. | Click **Allow editing**. See [Work in read-only mode](projects-and-saving.md#work-in-read-only-mode). |
 
 ## Related pages
+- [Exporting your video](exporting-video.md)
 - [Importing media](importing-media.md)
 - [Organizing media](organizing-media.md)
 - [Projects and saving](projects-and-saving.md)
@@ -157,4 +158,4 @@ These clips have no media item left, so you can't relink them. To get the pictur
 - [Proxies](proxies.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 42, 2026-10-18</sub>
+<sub>Last updated: Batch 43, 2026-10-18</sub>

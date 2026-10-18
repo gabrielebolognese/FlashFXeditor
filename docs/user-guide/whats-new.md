@@ -2,6 +2,11 @@
 
 Shorts Editor grows in steps called batches. This page lists what each batch added that you can see or use, newest first. Follow the links for the full instructions.
 
+> **Video placeholder: What's new in Batch 43**
+> - File: `videos/whats-new/batch-43.mp4` (not recorded yet)
+> - Length: about 60 seconds
+> - Shows: a 1080×1920, 30 fps project named `Promo` with a one-minute edit: two videos with sound and a cross dissolve, a title and caption cues; click **Export** in the app bar: the message **Exporting Promo-reels-2026-10-18.mp4** shows **Preparing…**, then a line such as `12% · 216 / 1800 frames · 0:31 left` with a gold bar; click **Pause**, then **Resume**; while it runs, trim the last clip and press <kbd>Space</kbd>: playback goes on; wait for **Exported** with `exports/Promo-reels-2026-10-18.mp4`, the size, `1080×1920` and `1800 frames`; open the project folder's `exports` folder and play the file: it has the edit as it was when the export started, with its sound in sync; press <kbd>Ctrl</kbd>+<kbd>E</kbd> and click **Cancel**: **Export cancelled**, and no new file in `exports`.
+
 > **Video placeholder: What's new in Batch 42**
 > - File: `videos/whats-new/batch-42.mp4` (not recorded yet)
 > - Length: about 75 seconds
@@ -168,6 +173,7 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 > - Shows: open a project with three clips on the timeline; press <kbd>Space</kbd> to play and let the timeline page forward; press <kbd>L</kbd> three times to reach 8x, then <kbd>K</kbd>; hold <kbd>K</kbd> and tap <kbd>L</kbd> to step one frame; turn on **Loop playback**; point at the **Dropped** readout in the status strip.
 
 ## In this page
+- [Batch 43: Export](#batch-43-export)
 - [Batch 42: Project management](#batch-42-project-management)
 - [Batch 41: Organizing media and relinking](#batch-41-organizing-media-and-relinking)
 - [Batch 40: Command palette and custom shortcuts](#batch-40-command-palette-and-custom-shortcuts)
@@ -210,6 +216,14 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 - [Batch 03: Projects, autosave and recovery](#batch-03-projects-autosave-and-recovery)
 - [Batch 02: Undo, redo and frame-exact time](#batch-02-undo-redo-and-frame-exact-time)
 - [Batch 01: The workspace](#batch-01-the-workspace)
+
+## Batch 43: Export
+- **Export** in the app bar now works, and so does <kbd>Ctrl</kbd>+<kbd>E</kbd>: it exports the whole timeline as an MP4 video for Instagram Reels into the `exports` folder of your project folder. The picture is H.264 at about 12 Mbit/s, 1080×1920 for a 9:16 project, at 30 fps or your project's lower rate; the sound is AAC stereo at 48 kHz, in sync over the whole video. See [Export the whole timeline](exporting-video.md#export-the-whole-timeline) and [Know what the file is like](exporting-video.md#know-what-the-file-is-like).
+- The video has everything the preview shows, from your original media at full quality: trims, speed changes, keyframes, fades and transitions, shapes and images, titles with their animations and the captions. Overlays, guides and selection handles stay out. See [Know what goes into the file](exporting-video.md#know-what-goes-into-the-file).
+- A message at the top of the window follows the export: the percentage, the frames and the time left, with **Pause** / **Resume** and **Cancel**. Cancelling leaves nothing in `exports`. The command palette has **Pause or resume the export** and **Cancel the export**. See [Follow the progress](exporting-video.md#follow-the-progress) and [Pause, resume or cancel an export](exporting-video.md#pause-resume-or-cancel-an-export).
+- Keep editing while it runs: the export uses the timeline as it was when you clicked **Export**. Meanwhile, playback uses proxies, new proxies wait, and **Clear cache** waits for the export to finish. See [Keep editing while you export](exporting-video.md#keep-editing-while-you-export).
+- The exported file is named after the project, the preset and the date, for example `Promo-reels-2026-10-18.mp4`, and never overwrites an earlier export. See [Find the exported file](exporting-video.md#find-the-exported-file).
+- New page: [Exporting your video](exporting-video.md). New troubleshooting section: [Export](troubleshooting.md#export).
 
 ## Batch 42: Project management
 - Change the **Frame rate** at any time, also with a full timeline: clips, the media part they play, fades, transitions, keyframes, caption cues and their word timings, text animations, markers, the playhead and the in and out points keep their moments, in one undo step. From 30 to 60 fps it happens at once; when timings would fall between frames, for example from 30 to 24 fps, **Convert to 24 fps?** says how many are rounded first. See [Change the frame rate](project-settings-and-templates.md#change-the-frame-rate).
@@ -647,6 +661,7 @@ See [Projects and saving](projects-and-saving.md).
 See [The workspace](workspace.md) and [Getting started](getting-started.md).
 
 ## Related pages
+- [Exporting your video](exporting-video.md)
 - [Project settings and templates](project-settings-and-templates.md)
 - [Settings](settings.md)
 - [Copying, pasting and duplicating clips](copy-and-paste.md)
@@ -666,4 +681,4 @@ See [The workspace](workspace.md) and [Getting started](getting-started.md).
 - [Adding media to the timeline](adding-media-to-the-timeline.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 42, 2026-10-18</sub>
+<sub>Last updated: Batch 43, 2026-10-18</sub>

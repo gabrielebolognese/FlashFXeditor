@@ -173,9 +173,9 @@ Opening and closing the row, the stripes and the values you set are not steps in
 These parts are available in a later version:
 
 - A default keyboard shortcut for **Remove silence**. You can give it a key yourself in **Settings** > **Shortcuts**; see [Change a shortcut](command-palette-and-custom-shortcuts.md#change-a-shortcut).
-- Exporting your video: only **Export frame** works.
 
 ## Related pages
+- [Exporting your video](exporting-video.md)
 - [Editing audio](audio-editing.md)
 - [Audio](audio.md)
 - [Splitting, deleting and closing gaps](splitting-and-deleting.md)
@@ -186,4 +186,4 @@ These parts are available in a later version:
 - [Keyboard shortcuts](keyboard-shortcuts.md#remove-silence-row)
 - [Troubleshooting](troubleshooting.md#removing-silence)
 
-<sub>Last updated: Batch 42, 2026-10-18</sub>
+<sub>Last updated: Batch 43, 2026-10-18</sub>
