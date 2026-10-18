@@ -108,7 +108,7 @@ A transition sits on a cut: the frame where one clip ends and the next one start
 
 - Transitions join video and image clips on a video track, and audio clips on an audio track. Text clips, solids and caption cues take no transitions.
 - On an audio track, a transition is always a crossfade. See [Crossfade the sound](#crossfade-the-sound).
-- A new transition is 15 frames long and centered on the cut: 7 frames before the cut and 8 after it.
+- A new transition is 15 frames long by default and centered on the cut: 7 frames before the cut and 8 after it. To change the length of new transitions, see [Choose the default transition](settings.md#choose-the-default-transition).
 - During a transition, both clips play. The first clip goes on past its end, and the second clip starts before its start. Each keeps the look (position, opacity, fades) of its own edge frame while it plays past its edge.
 - Every frame of a cross dissolve shows a little of both clips. In a 15-frame dissolve, the first frame shows 1/16 of the second clip and the last frame 15/16 of it.
 - A dip covers only the clip's own picture. A small picture on V2 dips alone, and the tracks under it stay visible.
@@ -121,7 +121,7 @@ To play past their edges, the two clips need more media than they show: frames b
 - A clip trimmed from a longer recording has handles: the part of its media before its **Source in** (its head) and after its **Source out** (its tail). A clip that shows its media right up to the first or the last frame has no handle on that side.
 - The frames before the cut come from the second clip's head; the frames after the cut come from the first clip's tail.
 - A new transition takes the frames it asks for when the handles allow. When one side is short, the other side takes the frames it can't: for example, with only 3 frames before the second clip's start, a 15-frame transition is 3 frames before the cut and 12 after it. When both sides are short, the transition is as long as the handles allow.
-- When neither clip has any handle at that cut, the transition stays 15 frames long and repeats the edge frames: the first clip holds its last frame and the second clip holds its first frame. The repeated frames are striped red on the block, and the message **Not enough media for the transition** appears. The transition still plays, with a frozen frame mixing in.
+- When neither clip has any handle at that cut, the transition keeps its full length and repeats the edge frames: the first clip holds its last frame and the second clip holds its first frame. The repeated frames are striped red on the block, and the message **Not enough media for the transition** appears. The transition still plays, with a frozen frame mixing in.
 - Image clips and freeze frames never run out of handles: a still picture holds, and an animated GIF or WebP keeps looping.
 
 > **Tip:** For a clean dissolve, trim a few frames off the end of the first clip and the start of the second one before you add the transition, so both have unused media at the cut.
@@ -163,7 +163,7 @@ Whichever way you use:
 
 - With an edit point selected, the transition goes there. Otherwise, it goes on the cut nearest the playhead among the targeted, unlocked tracks; when a video and an audio track have a cut at the same distance, the video track wins. See [Choose the tracks your edits use (target)](tracks.md#choose-the-tracks-your-edits-use-target).
 - Selected clips don't change where it goes.
-- The default transition is a 15-frame **Cross dissolve**. Choosing another default length or kind is available in a later version.
+- The default transition is a 15-frame **Cross dissolve**. To add a dip with this key, or another length, set **Transition** and **Length** in **Settings** > **General** > **Transitions**; see [Choose the default transition](settings.md#choose-the-default-transition).
 - In the other panels, the browser keeps <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd> and offers to bookmark all your tabs. See [Keys the browser keeps](keyboard-shortcuts.md#keys-the-browser-keeps).
 
 ## Add a transition with the quick actions or the clip menu
@@ -175,7 +175,7 @@ The quick actions of **Edit Properties** have three transition buttons: **Add di
 
 - With a cut selected, **Edit Properties** shows the quick actions with only the three transition buttons alive, followed by the **Transition** section when the cut already has a transition.
 - With a clip selected, the transition goes on its start or its end, whichever is nearer the playhead. A clip that touches no other clip shows the message **No cut to add a transition to**.
-- The tooltip names the kind and the length, for example **Add dissolve (cross dissolve, 15 frames): at the selected cut, or drag it onto one**.
+- The tooltip names the kind and the built-in length, for example **Add dissolve (cross dissolve, 15 frames): at the selected cut, or drag it onto one**. The transition gets the **Length** set in **Settings**, also when it differs from the 15 frames of the tooltip.
 - The buttons are never dimmed, because you can always drag them onto a cut. See [Drag a transition onto a cut](#drag-a-transition-onto-a-cut).
 
 In the clip menu, the **Transition** row offers the same three kinds as **Dissolve**, **Black** and **White**. Right-click a clip and click one: the transition goes on the clip's start or end, whichever is nearer the playhead. The choices are dimmed when the clip touches no other clip.
@@ -285,7 +285,6 @@ See [Undo and redo changes](projects-and-saving.md#undo-and-redo-changes).
 
 These parts are available in a later version:
 
-- Choosing the default transition's length and kind (the dimmed **Transition** row of the **Project** section).
 - Exporting your video with its transitions: only **Export frame** works.
 
 ## Related pages
@@ -302,4 +301,4 @@ These parts are available in a later version:
 - [Keyboard shortcuts](keyboard-shortcuts.md#fades-and-transitions)
 - [Troubleshooting](troubleshooting.md#fades-and-transitions)
 
-<sub>Last updated: Batch 40, 2026-10-18</sub>
+<sub>Last updated: Batch 42, 2026-10-18</sub>

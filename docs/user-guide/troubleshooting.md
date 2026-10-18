@@ -52,8 +52,9 @@ This page helps you when something does not work as expected: the editor does no
 >   44. Put a music clip on A1 and a voice clip on A2 under it, select the music and click **Auto-duck** in the **Audio** section: the message **No voice to duck under** appears. Drag the A2 header above A1 and click **Auto-duck** again: the music's line dips under the voice. Click **Auto-duck** once more: the dip gets twice as deep; press <kbd>Ctrl</kbd>+<kbd>Z</kbd>.
 >   45. Select a title and point at **Remove silence** in the quick actions: it is dimmed. Select a talking-head video recorded in a noisy room and click **Remove silence**: the row reads **No silence found**. Drag the **Threshold** slider to `-30 dB`: red stripes cover the pauses. Click **Cancel**.
 >   46. Click the padlock in the V2 header. Select a clip on V1 and a clip on V2 above it, press <kbd>Ctrl</kbd>+<kbd>C</kbd>, click in the ruler at an empty spot and press <kbd>Ctrl</kbd>+<kbd>V</kbd>: the message **Can't paste onto a locked track** names V2. Click the padlock again and press <kbd>Ctrl</kbd>+<kbd>V</kbd>: the clips land at the playhead on V1 and V2. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>, put the playhead over another clip and press <kbd>Ctrl</kbd>+<kbd>V</kbd>: the clip under the copies is cut away. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> and press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>V</kbd>: the clips make room instead.
->   47. Click **Settings** in the app bar and, on the **Shortcuts** tab, click **+** on **Split at playhead** and press <kbd>Ctrl</kbd>+<kbd>L</kbd>: the key turns red on **Split at playhead** and **Link / Unlink**. Click **Done**, click a video with sound on the timeline and press <kbd>Ctrl</kbd>+<kbd>L</kbd>: the video and its sound are unlinked, and nothing is split. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>, open **Settings** again and click **Reset all**. Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> and type `edit marker`: the row is grey. Press <kbd>Esc</kbd>.
+>   47. Click **Settings** in the app bar, click the **Shortcuts** tab, click **+** on **Split at playhead** and press <kbd>Ctrl</kbd>+<kbd>L</kbd>: the key turns red on **Split at playhead** and **Link / Unlink**. Click **Done**, click a video with sound on the timeline and press <kbd>Ctrl</kbd>+<kbd>L</kbd>: the video and its sound are unlinked, and nothing is split. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>, open **Settings** again, click **Shortcuts** and click **Reset all**. Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> and type `edit marker`: the row is grey. Press <kbd>Esc</kbd>.
 >   48. In the **Media** tab, click **Unused**: only the media no clip uses show. Click it again. Open a project whose linked video was moved to another folder: its card shows a red **Offline** badge and its clip is gray. Click **Relink…** on the card and pick the moved file: the badge disappears.
+>   49. Click an empty area of the timeline tracks of a 30 fps project and choose **24 fps** in **Frame rate**: **Convert to 24 fps?** counts the rounded timings. Click **Cancel**. Open a project read-only, rename it and press <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>N</kbd>: **Discard unsaved changes?** appears; click **Cancel**. Click **History…**: **Restore…** is dimmed.
 
 ## In this page
 - [Browser and graphics](#browser-and-graphics)
@@ -116,6 +117,16 @@ This page helps you when something does not work as expected: the editor does no
   - [The project opens read-only](#the-project-opens-read-only)
   - [A project folder does not open](#a-project-folder-does-not-open)
   - [Changes are not saved](#changes-are-not-saved)
+  - [Opening another project asks Discard unsaved changes?](#opening-another-project-asks-discard-unsaved-changes)
+  - [The browser asks whether to leave the site](#the-browser-asks-whether-to-leave-the-site)
+  - [History shows no versions or can't restore one](#history-shows-no-versions-or-cant-restore-one)
+  - [Clear cache is refused or the thumbnails are missing afterwards](#clear-cache-is-refused-or-the-thumbnails-are-missing-afterwards)
+- [Project settings and templates](#project-settings-and-templates)
+  - [Changing the frame rate asks before converting](#changing-the-frame-rate-asks-before-converting)
+  - [A clip or a keyframe moved after a frame rate change](#a-clip-or-a-keyframe-moved-after-a-frame-rate-change)
+  - [A template is missing from the start screen](#a-template-is-missing-from-the-start-screen)
+  - [The New project dialog has no Template field](#the-new-project-dialog-has-no-template-field)
+  - [New images, solids, titles or transitions have an unexpected length](#new-images-solids-titles-or-transitions-have-an-unexpected-length)
 - [Importing](#importing)
   - [A file cannot be imported](#a-file-cannot-be-imported)
   - [A video imports but shows nothing](#a-video-imports-but-shows-nothing)
@@ -260,7 +271,7 @@ This page helps you when something does not work as expected: the editor does no
 - [Titles and text](#titles-and-text)
   - [T or Shift+T does nothing](#t-or-shiftt-does-nothing)
   - [A new title went onto a new track](#a-new-title-went-onto-a-new-track)
-  - [A new title is not 3 seconds long](#a-new-title-is-not-3-seconds-long)
+  - [A new title has another length](#a-new-title-has-another-length)
   - [Keys type into the text instead of working](#keys-type-into-the-text-instead-of-working)
   - [Typed text disappeared](#typed-text-disappeared)
   - [A click on a text selects the picture behind it](#a-click-on-a-text-selects-the-picture-behind-it)
@@ -386,7 +397,7 @@ This page helps you when something does not work as expected: the editor does no
 
 **Cause:** In a normal browser tab, the browser keeps <kbd>Ctrl</kbd>+<kbd>N</kbd>, <kbd>Ctrl</kbd>+<kbd>T</kbd> and <kbd>Ctrl</kbd>+<kbd>W</kbd> for itself (<kbd>⌘</kbd> on a Mac). A web page never receives them.
 
-**Fix:** Close the extra window. To create a project, click **New project** on the start screen. See [Projects and saving](projects-and-saving.md).
+**Fix:** Close the extra window. To create a project, press <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>N</kbd>, or click **New project** on the start screen. See [Create a project](getting-started.md#create-a-project).
 
 ### A shortcut runs another command or does nothing
 
@@ -828,7 +839,7 @@ Undo doesn't bring in and out points back: they are not part of the history.
 
 ### The project opens read-only
 
-**Symptom:** A banner under the app bar reads "Read-only: Shorts Editor has no permission to write to this folder, so changes are not saved." The save dot next to the project name is gray. Importing shows "This project is read-only" with "Allow editing to import media."
+**Symptom:** A banner under the app bar reads "Read-only: Shorts Editor has no permission to write to this folder, so changes are not saved." The save dot next to the project name is gray. Importing shows "This project is read-only" with "Allow editing to import media.", and **Clear cache** with "Allow editing to clear the cache." In **History**, **Restore…** is dimmed.
 
 **Cause:** The browser gave the editor permission to read the project folder, but not to write to it.
 
@@ -851,7 +862,7 @@ The banner disappears and the editor saves the changes you made in the meantime.
 | Shorts Editor has no permission to write to the folder "*name*". | The browser did not allow edits to the folder you picked for a new project. | Try again and allow editing, or pick another folder. |
 | Drop the folder that contains project.json, not single files. (title "Drop a project folder") | You dropped files on the start screen instead of a project folder. | Drop the project folder itself. |
 
-**Restore a backup of project.json:** Each save keeps the previous version in the project's `history` folder, up to the 20 most recent. The files are named by date and time in UTC, for example `project-20261015-143000.json`.
+**Restore a backup of project.json:** Each save keeps the previous version in the project's `history` folder, up to the 20 most recent. While a project opens, **History…** in the **Project** section restores one for you (see [Restore an older version](projects-and-saving.md#restore-an-older-version)); when it doesn't open, restore one by hand. The files are named by date and time in UTC, for example `project-20261015-143000.json`.
 1. Copy the damaged `project.json` somewhere safe.
 2. Copy the newest file from `history` into the project folder and rename it `project.json`.
 3. Open the folder again.
@@ -865,6 +876,89 @@ See [Projects and saving](projects-and-saving.md).
 **Cause:** The editor could not write to the project folder, for example because the folder was moved, renamed or deleted while open, the drive was disconnected, or the disk is full.
 
 **Fix:** Solve the cause (reconnect the drive, free disk space, put the folder back), then click the save dot or press <kbd>Ctrl</kbd>+<kbd>S</kbd> to save again.
+
+### Opening another project asks Discard unsaved changes?
+
+**Symptom:** You pressed <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>N</kbd> or <kbd>Ctrl</kbd>+<kbd>O</kbd>, and instead of the folder picker, **Discard unsaved changes?** appears.
+
+**Cause:** The open project is read-only, and you changed it. Those changes were never saved and would be lost when another project opens.
+
+**Fix:** Click **Allow editing** and allow editing when the browser asks: your changes are saved into the project folder. Or click **Discard and continue** to drop them and go on, or **Cancel** to stay. See [Before read-only changes are lost](projects-and-saving.md#before-read-only-changes-are-lost).
+
+### The browser asks whether to leave the site
+
+**Symptom:** When you close or reload the tab, Chrome asks whether you want to leave (or reload) the site.
+
+**Cause:** Changes would be lost: the project is read-only and has changes, or the last save failed (the save dot is red).
+
+**Fix:** Click **Cancel** to stay. Then click **Allow editing** in the read-only banner, or fix the save problem and click the red save dot. See [Work in read-only mode](projects-and-saving.md#work-in-read-only-mode) and [Changes are not saved](#changes-are-not-saved).
+
+### History shows no versions or can't restore one
+
+**Symptom:** The **History** dialog reads "No earlier versions yet: they appear after the first saves." or "Couldn't read the history folder:" with a reason, **Restore…** is dimmed, or a restore ends with the message **Can't restore this backup**.
+
+**Cause and fix:**
+
+| What you see | Cause | Fix |
+| --- | --- | --- |
+| "No earlier versions yet" | The project has not been saved since it was created, or the `history` folder was emptied. | Make a change and wait for the green save dot: each save keeps the version before it. |
+| "Couldn't read the history folder:" | The browser could not read the `history` folder, for example because it was moved or deleted. | Check that the project folder is complete, then open **History…** again. |
+| **Restore…** is dimmed (tooltip **Read-only project: allow editing to restore**) | The project is read-only. | Click **Allow editing** in the banner. See [Work in read-only mode](projects-and-saving.md#work-in-read-only-mode). |
+| **Can't restore this backup**: "The current version could not be saved first, so nothing was restored. Check the save status and try again." | The editor saves your current state before a restore, and that save failed. | Fix the save problem (see [Changes are not saved](#changes-are-not-saved)), then try again. |
+| **Can't restore this backup**: the file "is no longer in the history folder." | The backup was deleted, for example by the rotation that keeps the newest 20. | Open **History…** again and pick a version from the new list. |
+| **Can't restore this backup** with another reason | The backup file is damaged or was edited by hand. | Pick another version. |
+
+See [Restore an older version](projects-and-saving.md#restore-an-older-version).
+
+### Clear cache is refused or the thumbnails are missing afterwards
+
+**Symptom:** **Clear cache** shows the message **This project is read-only** or **Can't clear the cache**, or right after clearing, clips have no thumbnails or waveforms and video cards show a grey **PX** chip.
+
+**Cause:** A read-only project can't delete files. **Can't clear the cache** means the browser could not delete the files; its reason says why. Right after a clear, the thumbnails, waveforms and proxies are being made again.
+
+**Fix:** For a read-only project, click **Allow editing** first. For **Can't clear the cache**, check that the project folder is still where it was, then try again. After a clear, wait: thumbnails and waveforms come back within moments, and proxies take about as long as their videos. See [Clear the cache](projects-and-saving.md#clear-the-cache).
+
+## Project settings and templates
+
+### Changing the frame rate asks before converting
+
+**Symptom:** You chose another **Frame rate**, and the **Convert to … fps?** dialog appears with a warning such as "14 timings fall between frames and are rounded to the nearest one".
+
+**Cause:** Some timings of the project don't land on a frame of the new rate, for example when you go from 30 to 24 fps. The editor tells you before it rounds them.
+
+**Fix:** Click **Convert** to go on, or **Cancel** to keep the current rate. After a conversion, <kbd>Ctrl</kbd>+<kbd>Z</kbd> puts back every timing exactly. To avoid rounding, convert to a whole multiple of the current rate, such as 30 to 60 fps. See [Change the frame rate](project-settings-and-templates.md#change-the-frame-rate).
+
+### A clip or a keyframe moved after a frame rate change
+
+**Symptom:** After a frame rate change, a cut is a frame off, a clip starts one frame later, or a clip has one keyframe fewer.
+
+**Cause:** The conversion rounded timings that fell between frames. A clip that would have rounded to nothing keeps one frame and pushes the next clip a frame later, and two keyframes that landed on the same frame became one. The dialog before the conversion counted these.
+
+**Fix:** Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> to go back to the old rate, or fix the clip by hand with a trim or a nudge. See [When timings are rounded](project-settings-and-templates.md#when-timings-are-rounded).
+
+### A template is missing from the start screen
+
+**Symptom:** A template you saved is not under **New from template**.
+
+**Cause:** Templates are stored in the browser where you saved them. Another browser or browser profile has its own, clearing the site data of Shorts Editor deletes them, and a template saved with the same name as an older one replaced it.
+
+**Fix:** Open a project with the setup you want in this browser and click **Save as template…** again. See [Save a project as a template](project-settings-and-templates.md#save-a-project-as-a-template).
+
+### The New project dialog has no Template field
+
+**Symptom:** The **New project** dialog shows **Name**, **Resolution** and **Frame rate**, but no **Template**.
+
+**Cause:** The field appears only when this browser has at least one template.
+
+**Fix:** Save a template first. See [Save a project as a template](project-settings-and-templates.md#save-a-project-as-a-template).
+
+### New images, solids, titles or transitions have an unexpected length
+
+**Symptom:** A new image, solid, title, freeze frame or transition is longer or shorter than this guide's defaults (5 s, 5 s, 3 s, 2 s and 15 frames).
+
+**Cause:** Their lengths are settings, for all your projects in this browser, and they were changed.
+
+**Fix:** Check **Still image**, **Title**, **Solid** and **Freeze frame** under **New clips**, and **Length** under **Transitions**, in **Settings** > **General**. See [Set the length of new clips](settings.md#set-the-length-of-new-clips) and [Choose the default transition](settings.md#choose-the-default-transition).
 
 ## Importing
 
@@ -1397,9 +1491,9 @@ See [Audio](audio.md).
 
 **Symptom:** After you chose another **Resolution** in the **Project** section, the pictures are smaller (or larger), and bands of the background show around them.
 
-**Cause:** A new resolution scales the layout with the frame: each picture grows or shrinks by the smaller of the two size changes, so a picture that fit inside the old frame still fits inside the new one.
+**Cause:** You chose **Scale layout** in the **Change the frame size** dialog: each picture grows or shrinks by the smaller of the two size changes, so a picture that fit inside the old frame still fits inside the new one. With **Keep**, pictures keep their size in pixels instead, so they can be cut off by the new frame or leave bands.
 
-**Fix:** Select the clips and click **Fill frame** to cover the new frame, or **Fit in frame** to fit it. To go back to the old resolution, press <kbd>Ctrl</kbd>+<kbd>Z</kbd>. See [What a new resolution does to your clips](projects-and-saving.md#what-a-new-resolution-does-to-your-clips).
+**Fix:** Select the clips and click **Fill frame** to cover the new frame, or **Fit in frame** to fit it. To go back to the old resolution, press <kbd>Ctrl</kbd>+<kbd>Z</kbd>, then choose the resolution again and pick the other button. See [Change the frame size](project-settings-and-templates.md#change-the-frame-size).
 
 ### The background went back to its old color
 
@@ -1501,7 +1595,6 @@ See [Audio](audio.md).
 | Message | Cause | Fix |
 | --- | --- | --- |
 | **Can't paste onto a locked track** | A pasted clip would land on the locked track the message names. | Click the padlock in that track's header, or target other tracks. |
-| **Can't paste across frame rates** | The clips come from a project with another frame rate. | Paste them into a project with the same frame rate. Pasting between frame rates is available in a later version. |
 | **No room for the captions** | Pasted cues would overlap the cues near the playhead. | Move the playhead to where the **CC** track has room, or press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>V</kbd>. |
 | **Can't paste these clips**, **Can't paste these keyframes**, **Can't paste these attributes** | The clipboard holds text that looks like copied clips or keyframes but is damaged, for example edited by hand. | Copy the clips again in the editor. |
 
@@ -2095,13 +2188,13 @@ See [Messages when you paste](copy-and-paste.md#messages-when-you-paste).
 
 **Fix:** Nothing is wrong. Drag the clip to another track if you like, or delete the empty track. See [Where a new title goes](titles-and-text.md#where-a-new-title-goes).
 
-### A new title is not 3 seconds long
+### A new title has another length
 
 **Symptom:** A new title or subtitle is longer or shorter than 3 seconds.
 
-**Cause:** When the playhead is over a video clip, a new title lasts until the end of that clip. A setting to turn this off is available in a later version.
+**Cause:** When the playhead is over a video clip, a new title lasts until the end of that clip (**Match clip** in **Settings** > **General**, on by default). Otherwise it lasts the **Title** length of the settings, 3 seconds unless you changed it. A title added from a preset with its own length keeps that length.
 
-**Fix:** Trim the title's edges on the timeline, or type a **Duration** in the **Clip** section. See [Change a clip's name, color and times](editing-properties.md#change-a-clips-name-color-and-times).
+**Fix:** Trim the title's edges on the timeline, or type a **Duration** in the **Clip** section. See [Change a clip's name, color and times](editing-properties.md#change-a-clips-name-color-and-times). To always get one length, turn **Match clip** off; see [Set the length of new clips](settings.md#set-the-length-of-new-clips).
 
 ### Keys type into the text instead of working
 
@@ -2560,22 +2653,19 @@ See [Messages when you paste](copy-and-paste.md#messages-when-you-paste).
 
 The current version cannot do these things yet. Each one is available in a later version.
 
-- **Sound:** no sound while you play backward or shuttle faster than 1x; while you scrub or step frames, only with **Audio scrub** on. How far **Auto-duck** lowers the music (12 dB) and its slopes (10 frames) can't be changed, and **Remove silence** has no default keyboard shortcut. Audio effects are not available.
-- **Copy and paste:** clips copied in a project with another frame rate can't be pasted. Caption cues can't take **Paste attributes**.
+- **Sound:** no sound while you play backward or shuttle faster than 1x; while you scrub or step frames, only with **Audio scrub** on. **Remove silence** has no default keyboard shortcut. Audio effects are not available.
+- **Copy and paste:** caption cues can't take **Paste attributes**.
 - **Media panel:** bins can't hold other bins. **Reveal in folder** can't open File Explorer: it shows and copies the path. Clips whose media item you removed can't be relinked. A file you put back while the project is open stays offline until you reopen the project.
 - **Markers:** markers belong to the timeline; markers inside clips are not available. Markers and the in/out range don't show on the scrollbars.
 - **Menus:** right-clicking empty space after the last clip of a track opens no menu.
-- **Speed and edit points:** a speed applies to the whole clip, and sound at another speed always changes pitch. Playing a clip backward is not available. The length of a new freeze frame (2 seconds), the size of a punch zoom (20%) and its 6-frame zoom can't be changed. The default transition is always a 15-frame cross dissolve.
+- **Speed and edit points:** a speed applies to the whole clip, and sound at another speed always changes pitch. Playing a clip backward is not available.
 - **Tracks:** track headers have room for names of about 9 characters; longer names are shortened. Groups are not marked on the timeline.
 - **Keyframes:** keyframes animate position, scale, rotation, opacity and the volume of audio clips.
-- **Edit Properties:** the dimmed **Still duration**, **Transition** and **Cache** rows of the **Project** section are not available. A new resolution always scales the layout; keeping the layout as it is, is not available.
-- **Text:** a setting to always make new titles 3 seconds long is not available. A text's handles don't snap. Deleted starter presets can't be restored. Text animations play in the preview and in **Export frame**.
+- **Text:** a text's handles don't snap. **Restore starter presets** brings back deleted starters, not the original look of a starter you changed. Text animations play in the preview and in **Export frame**.
 - **Captions:** all cues share one style; a style for a single cue is not available. Captions can't be selected, moved or styled in the preview.
-- **Transcription:** the cues can't be edited in the review; fix them in the **Captions** tab after adding them. The default model and language are set in the **Transcribe captions** dialog only.
-- **Frame rate:** you cannot change it once the timeline has clips or markers.
+- **Transcription:** the cues can't be edited in the review; fix them in the **Captions** tab after adding them.
 - **Export:** only **Export frame** (a PNG of the current frame) and **Export SRT or VTT** (the captions as a subtitle file) work. The **Export** button in the app bar is disabled.
-- **Settings:** the **Settings** dialog has only the **Shortcuts** and **Media** tabs; the other settings are not available yet.
-- **Shortcuts:** <kbd>Ctrl</kbd>+<kbd>N</kbd> cannot create a project in a browser tab, and <kbd>Ctrl</kbd>+<kbd>E</kbd> belongs to export, which is not available yet. See [Keyboard shortcuts](keyboard-shortcuts.md).
+- **Shortcuts:** <kbd>Ctrl</kbd>+<kbd>E</kbd> belongs to export, which is not available yet. See [Keyboard shortcuts](keyboard-shortcuts.md).
 - **Heavy footage:** 4K 60 fps HEVC played from the original (in **Full** quality, or before its proxy is ready) can drop frames, and the original frame deep inside long phone clips takes a moment to appear after you stop.
 
 ## Related pages
@@ -2596,6 +2686,8 @@ The current version cannot do these things yet. Each one is available in a later
 - [Shapes and images](shapes-and-images.md)
 - [Getting started](getting-started.md)
 - [Projects and saving](projects-and-saving.md)
+- [Project settings and templates](project-settings-and-templates.md)
+- [Settings](settings.md)
 - [Importing media](importing-media.md)
 - [Organizing media](organizing-media.md)
 - [Offline media and relinking](offline-media-and-relinking.md)
@@ -2614,4 +2706,4 @@ The current version cannot do these things yet. Each one is available in a later
 - [Command palette and custom shortcuts](command-palette-and-custom-shortcuts.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 41, 2026-10-18</sub>
+<sub>Last updated: Batch 42, 2026-10-18</sub>

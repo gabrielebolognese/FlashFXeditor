@@ -140,9 +140,9 @@ Clips you copy also go on your computer's clipboard as text. Paste them into ano
 
 **How the clips find their media.** For each copied media item, the editor looks in the project you paste into for an item of the same type (video, audio or image) with the same name, or else with the same file name, that is long enough for the pasted clips. The pasted clips use that item.
 
-**Media the project doesn't have.** When no item matches, the copied item is added to the project as offline media, and the message **Pasted with offline media** names it. Its card shows a red **Offline** badge, and its clips are on the timeline, gray, with a slate in the preview and no sound. To bring them to life, click **Relink…** on the card and pick the file, or use **Relink folder…** to find it by its file name in a folder. The file is copied into the project or linked, as chosen in **Settings** > **Media**. See [Offline media and relinking](offline-media-and-relinking.md). Or press <kbd>Ctrl</kbd>+<kbd>Z</kbd> (it removes the offline item too), import the file into this project, and paste again.
+**Media the project doesn't have.** When no item matches, the copied item is added to the project as offline media, and the message **Pasted with offline media** names it. Its card shows a red **Offline** badge, and its clips are on the timeline, gray, with a slate in the preview and no sound. To bring them to life, click **Relink…** on the card and pick the file, or use **Relink folder…** to find it by its file name in a folder. The file is copied into the project or linked, as chosen in **Settings** > **General** > **Media**. See [Offline media and relinking](offline-media-and-relinking.md). Or press <kbd>Ctrl</kbd>+<kbd>Z</kbd> (it removes the offline item too), import the file into this project, and paste again.
 
-- **Frame rates.** Both projects need the same frame rate. Otherwise nothing is pasted and the message **Can't paste across frame rates** gives both rates. Pasting between frame rates is available in a later version.
+- **Frame rates.** Clips copied in a project at another frame rate are converted when you paste them: they keep their length in time, with their fades, transitions, keyframes, text animations and word timings, rounded to the nearest frame of this project. This also applies to **Paste attributes**. See [Change the frame rate](project-settings-and-templates.md#change-the-frame-rate).
 - **Which copy Ctrl+V pastes.** <kbd>Ctrl</kbd>+<kbd>V</kbd> and <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>V</kbd> paste the clips on your computer's clipboard, so the latest copy from any Shorts Editor tab. When the clipboard holds something else, for example text you copied in another app, they paste the clips you copied last in this tab.
 - **Menu rows** paste the clips you copied last in this tab. Use <kbd>Ctrl</kbd>+<kbd>V</kbd> to paste a copy from another tab.
 - In a tab where you haven't copied clips yet, <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>V</kbd> reads your computer's clipboard. The first time, Chrome may ask whether the site may see the clipboard: allow it.
@@ -244,7 +244,6 @@ In the preview, Duplicate puts a copy of the selected pictures on top of them, a
 | Message | Why | What to do |
 | --- | --- | --- |
 | **Can't paste onto a locked track** | A pasted clip would land on the locked track the message names. | Unlock the track, or target other tracks. See [Choose the tracks pasted clips go to](#choose-the-tracks-pasted-clips-go-to). |
-| **Can't paste across frame rates** | The clips come from a project with another frame rate. | Paste into a project with the same frame rate. |
 | **No room for the captions** | The pasted cues would overlap cues near the playhead. | Move the playhead to where the **CC** track has room, or use **Paste insert**. |
 | **Pasted with offline media** (or **Pasted with N offline media**) | The project has no media item that matches the copied one. The clips are pasted as offline clips, with a gray slate and no sound. | Relink the item to its file. See [Paste clips into another project](#paste-clips-into-another-project). |
 | **Select a clip to paste keyframes on** | Keyframes were copied last, and no selected clip can take them. | Select a clip of the right kind, or copy clips again. |
@@ -285,4 +284,4 @@ See [Undo and redo changes](projects-and-saving.md#undo-and-redo-changes).
 - [Keyboard shortcuts](keyboard-shortcuts.md#clipboard-and-duplicate)
 - [Troubleshooting](troubleshooting.md#copy-paste-and-duplicate)
 
-<sub>Last updated: Batch 41, 2026-10-18</sub>
+<sub>Last updated: Batch 42, 2026-10-18</sub>

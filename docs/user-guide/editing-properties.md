@@ -33,7 +33,6 @@ The **Edit Properties** panel shows the settings of what you selected: a clip, a
 - [Change a clip's sound](#change-a-clips-sound)
 - [Pick a color](#pick-a-color)
 - [Undo and cancel](#undo-and-cancel)
-- [What is not available yet](#what-is-not-available-yet)
 - [Related pages](#related-pages)
 
 ## Find your way around the panel
@@ -42,7 +41,7 @@ The **Edit Properties** panel sits at the top of the left side, next to the Medi
 
 | You selected | The panel shows | See |
 | --- | --- | --- |
-| Nothing (click an empty area of the timeline tracks) | The **Project** section | [Change project settings](projects-and-saving.md#change-project-settings) |
+| Nothing (click an empty area of the timeline tracks) | The **Project** section | [Project settings and templates](project-settings-and-templates.md) |
 | One or more clips | The quick actions, then the **Clip** section. When a text clip is among them, **Text** and **Animation** come right after **Clip**. When a solid is among them, **Solid** comes next. When a caption cue is among them, **Caption style** comes next. When a video, image, solid or text clip is among them, also **Transform** and **Opacity**, with **Crop** between them for video and image clips. When a video or audio clip is among them, also **Speed**. When an audio clip or a video with sound is among them, **Audio** comes last. | This page, [Titles and text](titles-and-text.md#style-text-in-the-text-section) for **Text**, [Text animations](text-animations.md) for **Animation**, [Shapes and images](shapes-and-images.md#choose-the-shape) for **Solid**, [Style your captions](captions.md#style-your-captions) for **Caption style**, [Cropping and reframing](cropping-and-reframing.md) for **Crop**, [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md) for **Speed**, and [Editing audio](audio-editing.md#find-the-audio-section) for **Audio** |
 | One or more track headers | The **Track** section, and the **Caption style** section when the **CC** caption track is among them | [Change track settings in Edit Properties](tracks.md#change-track-settings-in-edit-properties), [Style your captions](captions.md#style-your-captions) |
 | A marker in the ruler | The **Marker** section | [Edit a marker in Edit Properties](markers-and-in-out-points.md#edit-a-marker-in-edit-properties) |
@@ -380,19 +379,13 @@ A color field is a swatch with the color's hex code next to it. The **Background
 | **In animation: Word pop**, **Remove out animation**, **Change in animation duration** and the other animation steps | The **Animation** section. See [Undo animation changes](text-animations.md#undo-animation-changes). |
 | **Caption position**, **Move captions**, **Change caption width**, **Word highlight** and the other caption steps | The **Caption style** section. See [Undo caption changes](captions.md#undo-caption-changes). |
 | **Change shape**, **Change fill**, **Change size**, **Change corner radius** | The **Solid** section. See [Undo shape and image changes](shapes-and-images.md#undo-shape-and-image-changes). |
-| **Change background color** | **Background** in the **Project** section |
+| **Change background color**, **Change resolution**, **Change frame rate** | **Background**, **Resolution** (or **Size**) and **Frame rate** in the **Project** section. See [Project settings and templates](project-settings-and-templates.md). |
 | **Animate transform**, **Remove opacity keyframes**, **Add keyframe**, **Change keyframe easing** and the other keyframe steps | The stopwatches, the keyframe buttons and **Ease**. See [Undo keyframe changes](keyframes.md#undo-keyframe-changes). |
 | **Fade in**, **Remove fade out**, **Add cross dissolve**, **Change transition duration**, **Align transition** and the other fade and transition steps | The fade and transition buttons and the **Transition** section. See [Undo fades and transitions](fades-and-transitions.md#undo-fades-and-transitions). |
 | **Change volume**, **Mute clip**, **Normalize clip**, **Auto-duck music**, **Detach audio**, **Animate volume** and the other audio steps | The **Audio** section and the **Mute** quick action. See [Undo audio changes](audio-editing.md#undo-audio-changes). |
 | **Remove silence** | **Apply** in the **Remove silence** row. See [Undo Remove silence](removing-silence.md#undo-remove-silence). |
 
 See [Undo and redo changes](projects-and-saving.md#undo-and-redo-changes).
-
-## What is not available yet
-
-These parts are available in a later version:
-
-- The dimmed rows of the **Project** section: **Still duration**, **Transition** and **Cache** with **Clear cache**.
 
 ## Related pages
 - [Copying, pasting and duplicating clips](copy-and-paste.md)
@@ -419,4 +412,4 @@ These parts are available in a later version:
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 39, 2026-10-18</sub>
+<sub>Last updated: Batch 42, 2026-10-18</sub>

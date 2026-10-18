@@ -235,6 +235,8 @@ To free the space a model takes:
 
 Removing a model doesn't change your captions. The next transcription with that model downloads it again.
 
+You can also remove models in **Settings** > **General** > **Transcription**: the **Downloaded** row lists the models your browser keeps, each with **Remove**. The **Model** and **Language** rows there choose what the **Transcribe captions** dialog starts with. See [Set the transcription defaults](settings.md#set-the-transcription-defaults).
+
 ## If a transcription doesn't start
 
 | Message | Why | What to do |
@@ -263,7 +265,6 @@ See [Undo and redo changes](projects-and-saving.md#undo-and-redo-changes).
 
 These parts are available in a later version:
 
-- Settings for the default model and language and the list of downloaded models outside the **Transcribe captions** dialog.
 - Editing cues in the review, and a style for a single cue.
 
 ## Related pages
@@ -275,4 +276,4 @@ These parts are available in a later version:
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 40, 2026-10-18</sub>
+<sub>Last updated: Batch 42, 2026-10-18</sub>

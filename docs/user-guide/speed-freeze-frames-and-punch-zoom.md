@@ -1,6 +1,6 @@
 # Speed, freeze frames and punch zoom
 
-These tools set the pace of your short. Speed a clip up or slow it down with one click or an exact percentage, hold a frame for two seconds to let a moment land, and punch in on a shot with a cut that zooms 20% closer in a fraction of a second. Each one is a single step that you undo with <kbd>Ctrl</kbd>+<kbd>Z</kbd>.
+These tools set the pace of your short. Speed a clip up or slow it down with one click or an exact percentage, hold a frame for two seconds to let a moment land, and punch in on a shot with a cut that zooms 20% closer in a fraction of a second. **Settings** changes the length of the hold and the size of the zoom. Each one is a single step that you undo with <kbd>Ctrl</kbd>+<kbd>Z</kbd>.
 
 > **Video placeholder: Pacing tools in one minute**
 > - File: `videos/speed-freeze-frames-and-punch-zoom/overview.mp4` (not recorded yet)
@@ -159,7 +159,7 @@ When a limit stops a speed or duration change short, a message says why.
 
 ## Hold a frame (freeze frame)
 
-A freeze frame holds one picture of a video for 2 seconds, for example to let a reaction land or to give a title time to be read. Its sound pauses for the hold, and the video then goes on from the same frame.
+A freeze frame holds one picture of a video for 2 seconds by default, for example to let a reaction land or to give a title time to be read. Its sound pauses for the hold, and the video then goes on from the same frame.
 
 > **Video placeholder: Freeze a frame**
 > - File: `videos/speed-freeze-frames-and-punch-zoom/freeze-frame.mp4` (not recorded yet)
@@ -184,7 +184,7 @@ What happens:
 - The freeze frame gets the video's name, label color, position, size, angle, crop and opacity. For a video animated with keyframes, it holds the look the video has at the playhead, without keyframes. It is not linked to any sound and not in a group.
 - The freeze frame is selected afterwards, so you can change its length right away.
 - When the playhead is exactly at the start of a video, nothing is cut: the freeze frame goes right before the video and holds its first frame.
-- The hold is 2 seconds at every frame rate: 60 frames at 30 fps.
+- The hold is 2 seconds at every frame rate: 60 frames at 30 fps. To make new freeze frames longer or shorter, set **Freeze frame** in **Settings** > **General** > **New clips**, from 0.1 to 60 seconds; see [Set the length of new clips](settings.md#set-the-length-of-new-clips). The tooltip of the **Freeze frame** button keeps naming 2 s.
 - The step is named **Freeze frame**, or **Freeze frames** when several videos were frozen.
 
 To find out which video is frozen when several are under the playhead, see [Know which clip a freeze or punch zoom uses](#know-which-clip-a-freeze-or-punch-zoom-uses).
@@ -222,6 +222,7 @@ What happens:
 - The zoom takes 6 frames, at any frame rate (0.2 seconds at 30 fps), with **Ease out**: fast at first, then landing softly. Over those frames a 100% picture shows 100%, 108.4%, 114.1%, 117.5%, 119.3%, 119.9% and 120%. A part shorter than 7 frames reaches 120% on its last frame.
 - The zoom is made of two **Transform** keyframes on the part after the cut: one on its first frame, at its own size, and one on its seventh frame, 20% larger. Change them like other keyframes, for example drag the second one further along the clip for a slower zoom, or delete the first one to jump closer at once, right at the cut. See [Keyframes](keyframes.md).
 - A part that is already animated with **Transform** keyframes gets 20% larger at once, at every keyframe; its own motion stays.
+- To zoom more or less, set **Punch zoom** in **Settings** > **General** > **Editing**, from 1.05× to 3× (1.2× is the 20% above). To cut in at once without the 6-frame zoom, turn **Animate zoom** off there: the part after the cut is simply larger, with no keyframes. See [Change how editing behaves](settings.md#change-how-editing-behaves).
 - The picture grows around its anchor point, the middle of the picture unless you moved it. See [Move the anchor point](arranging-layers-in-the-preview.md#move-the-anchor-point).
 - With **Linked selection** on, the linked sound is cut at the same place, like **Split at playhead**. The sound itself doesn't change, and no clip moves.
 - The enlarged part is selected afterwards, so you can frame the shot. Because the zoom is animated, a drag in the preview changes the keyframe at the playhead, or adds one: to move the whole shot, drag it on both keyframes, at the cut and 6 frames later (**Next keyframe** in the **Transform** header takes you there). See [Change an animated picture](keyframes.md#change-an-animated-picture).
@@ -262,7 +263,6 @@ See [Undo and redo changes](projects-and-saving.md#undo-and-redo-changes).
 
 ## What is not available yet
 
-- Settings for the length of a new freeze frame (2 seconds), the size of a punch zoom (20%), and a punch zoom that jumps at once instead of zooming over 6 frames are available in a later version.
 - Playing a clip backward (reverse) is not available, and the clip menu has no row for it.
 - Sound at another speed always changes pitch; keeping the original pitch is not available.
 
@@ -279,4 +279,4 @@ See [Undo and redo changes](projects-and-saving.md#undo-and-redo-changes).
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 40, 2026-10-18</sub>
+<sub>Last updated: Batch 42, 2026-10-18</sub>

@@ -693,9 +693,11 @@ These shortcuts work in all panels.
 | Save now | <kbd>Ctrl</kbd>+<kbd>S</kbd> | <kbd>⌘</kbd>+<kbd>S</kbd> | Also while you type in a field or a dialog is open. The project also saves automatically. |
 | Open a project folder | <kbd>Ctrl</kbd>+<kbd>O</kbd> | <kbd>⌘</kbd>+<kbd>O</kbd> | Also on the start screen. |
 | Import media | <kbd>Ctrl</kbd>+<kbd>I</kbd> | <kbd>⌘</kbd>+<kbd>I</kbd> | While a project is open. |
-| New project | <kbd>Ctrl</kbd>+<kbd>N</kbd> | <kbd>⌘</kbd>+<kbd>N</kbd> | Taken by the browser in a normal tab; see [Keys the browser keeps](#keys-the-browser-keeps). |
+| New project | <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>N</kbd> or <kbd>Ctrl</kbd>+<kbd>N</kbd> | <kbd>⌘</kbd>+<kbd>⌥</kbd>+<kbd>N</kbd> or <kbd>⌘</kbd>+<kbd>N</kbd> | Also on the start screen, and while a project is open. <kbd>Ctrl</kbd>+<kbd>N</kbd> is taken by the browser in a normal tab; see [Keys the browser keeps](#keys-the-browser-keeps). |
 
-See [Projects and saving](projects-and-saving.md).
+**History…**, **Save as template…** and **Clear cache** have no key; run them from the command palette, or give them one in **Settings** > **Shortcuts**.
+
+See [Projects and saving](projects-and-saving.md) and [Project settings and templates](project-settings-and-templates.md).
 
 ## Menus and lists
 
@@ -790,9 +792,9 @@ In a normal browser tab, the browser keeps some shortcuts for itself, and a web 
 | <kbd>Ctrl</kbd>+<kbd>D</kbd> (<kbd>⌘</kbd>+<kbd>D</kbd>), outside the Timeline and Preview panels | Bookmarks the page. In the Timeline and Preview panels the editor keeps it for **Duplicate**. |
 | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd> (<kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>D</kbd>), outside the Timeline panel | Bookmarks all open tabs. In the Timeline panel the editor keeps it for the default transition. |
 
-Because of this, <kbd>Ctrl</kbd>+<kbd>N</kbd> opens a new browser window instead of a new project. To create a project, click **New project** on the start screen.
+Because of this, <kbd>Ctrl</kbd>+<kbd>N</kbd> opens a new browser window instead of a new project. To create a project, press <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>N</kbd>, or click **New project** on the start screen.
 
-> **Important:** <kbd>Ctrl</kbd>+<kbd>W</kbd> closes the editor's tab. Your project saves automatically, 1 second after your last change by default (the **Autosave** setting in the **Project** section of **Edit Properties**). Before you close the tab, hover over the save dot next to the project name in the app bar and check that it reads "All changes saved".
+> **Important:** <kbd>Ctrl</kbd>+<kbd>W</kbd> closes the editor's tab. Your project saves automatically, 1 second after your last change by default (the **Autosave** setting in **Settings** > **General** and in the **Project** section of **Edit Properties**). Before you close the tab, hover over the save dot next to the project name in the app bar and check that it reads "All changes saved".
 
 The browser acts on <kbd>Ctrl</kbd>+<kbd>N</kbd>, <kbd>Ctrl</kbd>+<kbd>T</kbd> and <kbd>Ctrl</kbd>+<kbd>W</kbd> before the editor sees them, also while you record a new key in **Settings** > **Shortcuts**, so you can't give them to a command.
 
@@ -831,4 +833,4 @@ The browser acts on <kbd>Ctrl</kbd>+<kbd>N</kbd>, <kbd>Ctrl</kbd>+<kbd>T</kbd> a
 - [Projects and saving](projects-and-saving.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 41, 2026-10-18</sub>
+<sub>Last updated: Batch 42, 2026-10-18</sub>

@@ -114,8 +114,10 @@ The chip disappears and the proxy file is deleted. If the proxy was being made, 
 
 ## Change the proxy settings
 
-1. Click an empty area of the timeline tracks so that nothing is selected.
-2. The **Edit Properties** panel shows the **Project** section. The proxy settings are at its end.
+The proxy settings are in two places, which change the same settings:
+
+- In **Settings** (the gear in the app bar), on the **General** tab, in the **Media** group. See [Choose how media are imported](settings.md#choose-how-media-are-imported).
+- In the **Project** section of **Edit Properties**: click an empty area of the timeline tracks so that nothing is selected.
 
 | Setting | Choices | What it does |
 | --- | --- | --- |
@@ -168,7 +170,7 @@ The card picture and the thumbnails of its clips on the timeline are made again,
 
 - **Ready proxies are kept** in the project folder and used again the next time you open the project.
 - **A proxy that was being made starts over.** If you close the project or the browser tab, or reload the page, while a chip counts, the unfinished file is deleted (when you close the project, or else the next time you open it) and the proxy is made again from 0%. No broken files are left behind.
-- **A missing proxy file is made again.** If a proxy file was deleted from `cache/proxies`, for example with the whole `cache` folder, the preview uses the original video, and the proxy is made again the next time you open the project.
+- **A missing proxy file is made again.** If a proxy file was deleted from `cache/proxies`, for example with the whole `cache` folder, the preview uses the original video, and the proxy is made again the next time you open the project. **Clear cache** deletes every proxy of the project and makes them again right away, without reopening it; see [Clear the cache](projects-and-saving.md#clear-the-cache).
 - **Read-only projects make no proxies.** They use the proxies already in the folder. See [Work in read-only mode](projects-and-saving.md#work-in-read-only-mode).
 - **Removing a video** from the project stops its proxy if it is being made.
 
@@ -180,4 +182,4 @@ The card picture and the thumbnails of its clips on the timeline are made again,
 - [Projects and saving](projects-and-saving.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 24, 2026-10-16</sub>
+<sub>Last updated: Batch 42, 2026-10-18</sub>

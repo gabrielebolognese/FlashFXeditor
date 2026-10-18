@@ -101,7 +101,7 @@ The **Remove silence** row has three settings:
 - Drag the label (**Min** or **Pad**) left or right: 10 ms per pixel, 100 ms with <kbd>Shift</kbd>, 1 ms with <kbd>Alt</kbd>. The stripes follow while you drag. See [Drag a value](editing-properties.md#drag-a-value).
 
 - Values are whole decibels and milliseconds. A value outside the range stops at its end.
-- The editor remembers the values you set, for every project in this browser, and the row opens with them next time. Changing them is not a step in the history.
+- The editor remembers the values you set, for every project in this browser, and the row opens with them next time. Changing them is not a step in the history. You also find them in **Settings** > **General** > **Audio** as **Silence below**, **Shortest silence** and **Keep around**; see [Set the audio defaults](settings.md#set-the-audio-defaults).
 
 > **Tip:** To tighten a fast-paced short, lower **Min** so that shorter pauses go too. If the cuts sound abrupt, raise **Pad**. **Pad** `0` removes each pause up to the first and last sound of the words.
 
@@ -173,7 +173,6 @@ Opening and closing the row, the stripes and the values you set are not steps in
 These parts are available in a later version:
 
 - A default keyboard shortcut for **Remove silence**. You can give it a key yourself in **Settings** > **Shortcuts**; see [Change a shortcut](command-palette-and-custom-shortcuts.md#change-a-shortcut).
-- The **Remove silence** values in the app settings: set them in the row.
 - Exporting your video: only **Export frame** works.
 
 ## Related pages
@@ -187,4 +186,4 @@ These parts are available in a later version:
 - [Keyboard shortcuts](keyboard-shortcuts.md#remove-silence-row)
 - [Troubleshooting](troubleshooting.md#removing-silence)
 
-<sub>Last updated: Batch 40, 2026-10-18</sub>
+<sub>Last updated: Batch 42, 2026-10-18</sub>
