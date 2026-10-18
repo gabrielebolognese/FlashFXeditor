@@ -14,6 +14,7 @@ import { ClipSection } from "./properties/ClipSection.js";
 import { CropModeToggle, CropSection } from "./properties/CropSection.js";
 import { ExportTab } from "./properties/ExportTab.js";
 import { contextKey, propertiesContext, sectionIds, type PropertiesContext, type SectionId, type SelectedCuts } from "./properties/context.js";
+import { useFocusReturn } from "./properties/focusReturn.js";
 import { KeyframeControls } from "./properties/KeyframeControls.js";
 import { MarkerSection } from "./properties/MarkerSection.js";
 import { ProjectSection } from "./properties/ProjectSection.js";
@@ -36,7 +37,7 @@ import styles from "./PropertiesPanel.module.css";
 // A section asked for by `revealSection` (the Captions header's Style) is scrolled to and focused.
 // The Export tab (spec §2.2, §16) sits beside Edit Properties while it is open (Export, Mod+E): the
 // header shows both tabs and the Export tab's close button; closing it (or Esc) returns to the
-// properties.
+// properties. Both tabs share one frame (Batch 46: a tab switch keeps the focus where it was).
 
 const SECTION_TITLES: Record<SectionId, string> = {
   clip: "Clip",
@@ -122,18 +123,26 @@ const choosePanelTab = (tab: PanelTab) => showExportTab(tab === "export");
 
 export function PropertiesPanel() {
   const tab = useStoreSelector(exportTab, selectPanelTab);
-  if (tab === "export") {
-    return (
-      <PanelFrame id="properties" header={<PanelTabs tabs={PANEL_TABS} active={tab} onChange={choosePanelTab} />} actions={<IconButton commandId="export.close" />}>
-        <ExportTab />
-      </PanelFrame>
-    );
-  }
-  return <PropertiesView tabs={tab !== null} />;
+  // One frame for both tabs: a tab switch swaps only the body, so the tab or the close button that has
+  // the focus keeps its element (keyboard). The close button stays at the right end on both tabs.
+  return (
+    <PanelFrame
+      id="properties"
+      header={tab !== null ? <PanelTabs tabs={PANEL_TABS} active={tab} onChange={choosePanelTab} /> : <PanelTitle>Edit Properties</PanelTitle>}
+      actions={
+        <>
+          {tab !== "export" && <SelectionCount />}
+          {tab !== null && <CloseExport />}
+        </>
+      }
+    >
+      {tab === "export" ? <ExportTab /> : <PropertiesView />}
+    </PanelFrame>
+  );
 }
 
-/** Edit Properties (spec §11): the sections of the selection; `tabs`: the Export tab is open beside it. */
-function PropertiesView({ tabs }: { tabs: boolean }) {
+/** The panel's context (context.ts) and its key: a render when the selection, the marker, the selected transition or edit point change. */
+function usePropertiesContext(): { context: PropertiesContext; key: string } {
   const selectionKey = useStoreSelector(sessionStore.selection, selectKey);
   const markerId = useStoreSelector(sessionStore.marker, (id) => id);
   const transitionKey = useStoreSelector(sessionStore.transition, cutKey);
@@ -150,6 +159,45 @@ function PropertiesView({ tabs }: { tabs: boolean }) {
     [selectionKey, markerId, transitionKey, editPointKey, editPointTransition],
   );
   const key = `${contextKey(sessionStore.selection.getState(), markerId, selectedCuts())}:${editPointTransition}`;
+  return { context, key };
+}
+
+/** "3 clips" / "2 tracks" in the header strip for a selection of several items (Edit Properties only). */
+function SelectionCount() {
+  const { context } = usePropertiesContext();
+  const title = context.kind === "clips" && context.clipIds.length > 1 ? `${context.clipIds.length} clips` : context.kind === "track" && context.trackIds.length > 1 ? `${context.trackIds.length} tracks` : null;
+  return title && <span className={styles.count}>{title}</span>;
+}
+
+/** The Export tab's close button (on both tabs while it is open); used by keyboard, the focus then goes to the body. */
+function CloseExport() {
+  const wrap = useRef<HTMLSpanElement>(null);
+  useFocusReturn(wrap);
+  return (
+    <span ref={wrap} className={styles.close}>
+      <IconButton commandId="export.close" />
+    </span>
+  );
+}
+
+/** The sections of one context (keyed by it): when they go with the focus inside, it goes to the panel body. */
+function Sections({ children }: { children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useFocusReturn(ref);
+  return (
+    <div ref={ref} className={styles.scroll}>
+      {children}
+    </div>
+  );
+}
+
+/**
+ * Edit Properties (spec §11): the sections of the selection. Its body is the panel's focus home: a
+ * control that goes away with the focus (Delete, the Export tab closed with Esc) leaves it there, and
+ * the next Tab goes on from the top of the panel.
+ */
+function PropertiesView() {
+  const { context, key } = usePropertiesContext();
   const body = useRef<HTMLDivElement>(null);
   const reveal = useStoreSelector(revealSection, (id) => id);
   useEffect(() => {
@@ -160,21 +208,18 @@ function PropertiesView({ tabs }: { tabs: boolean }) {
     section.scrollIntoView({ block: "start" });
     section.querySelector<HTMLElement>("[aria-pressed='true'], input, textarea, select")?.focus();
   }, [reveal, key]);
-  const title = context.kind === "clips" && context.clipIds.length > 1 ? `${context.clipIds.length} clips` : context.kind === "track" && context.trackIds.length > 1 ? `${context.trackIds.length} tracks` : null;
   return (
-    <PanelFrame id="properties" header={tabs ? <PanelTabs tabs={PANEL_TABS} active="properties" onChange={choosePanelTab} /> : <PanelTitle>Edit Properties</PanelTitle>} actions={title && <span className={styles.count}>{title}</span>}>
-      <div ref={body} className={styles.body}>
-        {context.kind === "clips" && <QuickActions ids={context.clipIds} primary={context.primary} />}
-        {context.kind === "editPoint" && <QuickActions ids={NO_IDS} primary="" editPoint />}
-        {/* Keyed by the context: a new selection mounts fresh sections (their bindings follow it). */}
-        <div key={key} className={styles.scroll}>
-          {sectionIds(context).map((id) => (
-            <Section key={id} id={id} title={SECTION_TITLES[id]} actions={sectionActions(id, context)}>
-              {sectionBody(id, context)}
-            </Section>
-          ))}
-        </div>
-      </div>
-    </PanelFrame>
+    <div ref={body} className={styles.body} tabIndex={-1} data-focus-home="">
+      {context.kind === "clips" && <QuickActions ids={context.clipIds} primary={context.primary} />}
+      {context.kind === "editPoint" && <QuickActions ids={NO_IDS} primary="" editPoint />}
+      {/* Keyed by the context: a new selection mounts fresh sections (their bindings follow it). */}
+      <Sections key={key}>
+        {sectionIds(context).map((id) => (
+          <Section key={id} id={id} title={SECTION_TITLES[id]} actions={sectionActions(id, context)}>
+            {sectionBody(id, context)}
+          </Section>
+        ))}
+      </Sections>
+    </div>
   );
 }

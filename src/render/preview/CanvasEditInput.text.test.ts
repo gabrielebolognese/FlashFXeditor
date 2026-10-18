@@ -118,6 +118,16 @@ describe("text layers on the canvas", () => {
     expect(doc.history.getState().undoLabel).toBe("Change text box width");
   });
 
+  it("snaps a side handle's edge to the frame's edge (Batch 46)", () => {
+    const { drag, clip, session } = setup();
+    session.state.set((state) => ({ ...state, snap: true }));
+    // 5 px short of the frame's right edge (1080): the edge snaps there, the left edge stays at 402.5.
+    drag([677.5, 960], [1075, 960]);
+    const box = clip().text.box;
+    expect(box.mode).toBe("fixed");
+    expect(Math.abs((box.mode === "fixed" ? box.width : 0) - (1080 - 402.5))).toBeLessThanOrEqual(0.5);
+  });
+
   it("edits text inline on a double-click, the caret where clicked", () => {
     const { element, editor, session } = setup();
     element.dispatchEvent(new MouseEvent("dblclick", { ...{ clientX: 110 + 0.5 * 460, clientY: 70 + 0.5 * 960 }, button: 0, bubbles: true }));

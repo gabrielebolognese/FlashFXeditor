@@ -1,4 +1,4 @@
-import { FileDown, FileUp, Plus, RotateCcw, Settings, X } from "lucide-react";
+import { FileDown, FileUp, Plus, RotateCcw, SearchX, Settings, X } from "lucide-react";
 import { useEffect, useState, useSyncExternalStore, type MouseEvent } from "react";
 import {
   closeSettings,
@@ -20,6 +20,7 @@ import { recordChord, type KeyConflict } from "../core/keyboard/rebind.js";
 import { useStoreSelector } from "../core/store/useStoreSelector.js";
 import { Button } from "../ui/Button.js";
 import { cx } from "../ui/cx.js";
+import { EmptyState } from "../ui/EmptyState.js";
 import { IconButton } from "../ui/IconButton.js";
 import { Modal } from "../ui/Modal.js";
 import { TextField } from "../ui/TextField.js";
@@ -84,7 +85,7 @@ function ShortcutRow({ id, recording, onRecord, conflicts }: { id: string; recor
       </span>
       <span className={styles.actions}>
         <IconButton control icon={Plus} label={recordingHere ? "Cancel (Esc)" : "Add a key"} pressed={recordingHere && recording?.replace === null} onClick={() => onRecord(recordingHere ? null : { id, replace: null })} />
-        <IconButton control icon={RotateCcw} label="Reset to the default keys" disabled={!custom} onClick={() => resetCommandKeys(id)} />
+        <IconButton control icon={RotateCcw} label={custom ? "Reset to the default keys" : "Reset: these are the default keys"} disabled={!custom} onClick={() => resetCommandKeys(id)} />
       </span>
       {conflicts.length > 0 && <span className={styles.conflict}>{conflictText(conflicts)}</span>}
     </div>
@@ -148,12 +149,18 @@ function ShortcutEditor() {
         <Button control size="compact" icon={FileDown} tooltip="Export the keymap as a JSON file" onClick={() => void exportKeymap()}>
           Export…
         </Button>
-        <Button control size="compact" icon={RotateCcw} tooltip="Every command back to its default keys" disabled={changed === 0} onClick={resetAllKeys}>
+        <Button control size="compact" icon={RotateCcw} tooltip={changed === 0 ? "Reset all: the keymap is the default one" : "Every command back to its default keys"} disabled={changed === 0} onClick={resetAllKeys}>
           Reset all
         </Button>
       </div>
       <div className={styles.list}>
-        {groups.length === 0 && <p className={styles.empty}>No command matches “{query.trim()}”.</p>}
+        {groups.length === 0 && (
+          <EmptyState layout="inline" icon={SearchX} title="No command matches" text={`Nothing matches “${query.trim()}”.`}>
+            <Button control size="compact" onClick={() => setQuery("")}>
+              Clear search
+            </Button>
+          </EmptyState>
+        )}
         {groups.map((group) => (
           <section key={group.category} aria-label={group.category}>
             <h3 className={styles.heading}>{group.category}</h3>

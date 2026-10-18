@@ -80,6 +80,7 @@ function Popover({ menu }: { menu: PasteAttributesMenu }) {
               role="checkbox"
               aria-checked={on}
               aria-disabled={dim || undefined}
+              data-tooltip={dim ? "Keyframes come with Transform, Opacity or Audio gain: check one of them" : undefined}
               className={cx(styles.row, group === "keyframes" && styles.separated)}
               onClick={dim ? undefined : () => toggle(group)}
             >
@@ -95,7 +96,7 @@ function Popover({ menu }: { menu: PasteAttributesMenu }) {
         <Button control size="compact" onClick={closePasteAttributes}>
           Cancel
         </Button>
-        <Button control size="compact" variant="primary" disabled={nothing} autoFocus onClick={apply}>
+        <Button control size="compact" variant="primary" disabled={nothing} tooltip={nothing ? "Check an attribute to paste first" : undefined} autoFocus onClick={apply}>
           Paste
         </Button>
       </div>

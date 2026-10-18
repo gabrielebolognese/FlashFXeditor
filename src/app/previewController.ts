@@ -56,6 +56,7 @@ function keyedTransformAt(clip: TextClip, frame: Frame): Transform {
   return transform;
 }
 import { timelineView } from "./timelineController.js";
+import { alignmentHover, alignmentPreview } from "./transitionPreview.js";
 
 const MB = 1024 * 1024;
 
@@ -109,8 +110,9 @@ export const previewView: PreviewView = new PreviewView({
       for (const stop of stops) stop();
     };
   },
-  // A trim shows its new edge frame live (spec §6.10).
-  override: () => timelineView.trimPreview,
+  // A trim shows its new edge frame live (spec §6.10); a hovered transition alignment splits the
+  // preview at the transition's first and last frames (Batch 46).
+  override: () => timelineView.trimPreview ?? alignmentPreview(documentStore.getState(), alignmentHover.getState()),
   // A canvas gesture (spec §7.3), a properties field scrub (§11) or inline text editing (§7.7) shows its values live (P2).
   transforms: () => canvasInput.transforms,
   opacities: () => liveEdit.getState().opacities,
@@ -429,6 +431,8 @@ export function attachPreview(dir: FsDir, isWritable: () => boolean): void {
       scheduler.invalidate("preview");
     }),
     mediaStatus.subscribe(() => scheduler.invalidate("preview")),
+    // The Transition section's alignment hover (Batch 46) splits the preview while it lasts.
+    alignmentHover.subscribe(() => scheduler.invalidate("preview")),
   ];
   previewView.resetFrames();
   attachAudio(dir, isWritable);

@@ -34,7 +34,10 @@ describe("zoom limits and Fit", () => {
     expect(fitFrames(0, NTSC)).toBe(60);
     expect(fitPxPerFrame({ width: 720, contentEnd: 300, fps: FPS })).toBe(2);
     expect(fitPxPerFrame({ width: 800, contentEnd: 1e9, fps: FPS })).toBe(MIN_PX_PER_FRAME);
-    expect(zoomLimits({ width: 720, contentEnd: 300, fps: FPS })).toEqual({ min: 2, max: MAX_PX_PER_FRAME });
+    // A short timeline zooms out past Fit to a minute (Batch 46); a long one stops at Fit.
+    expect(zoomLimits({ width: 720, contentEnd: 300, fps: FPS })).toEqual({ min: 720 / 1800, max: MAX_PX_PER_FRAME });
+    expect(zoomLimits({ width: 720, contentEnd: 0, fps: FPS }).min).toBe(720 / 1800);
+    expect(zoomLimits({ width: 720, contentEnd: 30 * 300, fps: FPS }).min).toBe(fitPxPerFrame({ width: 720, contentEnd: 30 * 300, fps: FPS }));
     expect(fitView({ width: 720, contentEnd: 300, fps: FPS })).toEqual({ pxPerFrame: 2, scrollFrame: 0 });
   });
 

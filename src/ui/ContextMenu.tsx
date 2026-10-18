@@ -162,6 +162,8 @@ export function ContextMenu({ x, y, entries, onSelect, onClose, anchorRef, value
               data-command={command?.(entry.dec)}
               data-control={control}
               aria-label={`${entry.label}: fewer`}
+              // Icon-only: the tooltip names it (and says why it is off at the end of the range).
+              data-tooltip={entry.value <= entry.min ? `${entry.label}: fewer (at the minimum)` : `${entry.label}: fewer`}
               aria-disabled={entry.disabled || entry.value <= entry.min || undefined}
               onMouseDown={keepFocus}
               onClick={entry.disabled || entry.value <= entry.min ? undefined : () => onSelect(entry.dec)}
@@ -176,6 +178,7 @@ export function ContextMenu({ x, y, entries, onSelect, onClose, anchorRef, value
               data-command={command?.(entry.inc)}
               data-control={control}
               aria-label={`${entry.label}: more`}
+              data-tooltip={entry.value >= entry.max ? `${entry.label}: more (at the maximum)` : `${entry.label}: more`}
               aria-disabled={entry.disabled || entry.value >= entry.max || undefined}
               onMouseDown={keepFocus}
               onClick={entry.disabled || entry.value >= entry.max ? undefined : () => onSelect(entry.inc)}

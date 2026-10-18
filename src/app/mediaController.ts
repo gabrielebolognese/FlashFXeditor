@@ -7,8 +7,8 @@
 // source ranges of removed media are dropped.
 // Batch 41: bins (new, rename, delete, move to), the filter chips and the search, offline media (found
 // on open through `MediaSources`, read access asked for again, Relink one file or a folder) and Reveal
-// in folder (the path, copied). Framework-free; the media panel reads `mediaPanel` through narrow
-// selectors.
+// in folder (the path, copied). Batch 46: Show all media (an empty bin's or search's way out).
+// Framework-free; the media panel reads `mediaPanel` through narrow selectors.
 import { addBin, clipsOfMedia, mediaUseCounts, nextBinName, relinkMedia, removeBin, removeMedia, renameBin, renameMedia, setMediaBin, type RelinkFields } from "../core/commands/mediaCommands.js";
 import { isMediaClip, type MediaId, type MediaItem } from "../core/document/types.js";
 import { isEditableTarget } from "../core/keyboard/KeyDispatcher.js";
@@ -326,7 +326,7 @@ async function findOfflineMedia(current: OpenMedia, announce: boolean): Promise<
   if (offline.length === 0 || !announce) return;
   const waiting = offline.filter(([, status]) => status === "permission").length;
   showToast({
-    tone: "error",
+    tone: "warning",
     message: `${plural(offline.length, "media file")} offline`,
     detail: waiting === offline.length ? "Click Allow access in the Media panel to read the linked files." : "Their clips show a gray slate. Relink them from the Media panel.",
   });
@@ -397,7 +397,7 @@ export async function importMediaFiles(files: readonly ImportSource[], placement
   const current = open;
   if (!current || files.length === 0) return;
   if (!current.isWritable()) {
-    showToast({ tone: "error", message: "This project is read-only", detail: "Allow editing to import media." });
+    showToast({ tone: "warning", message: "This project is read-only", detail: "Allow editing to import media." });
     return;
   }
   const totalBytes = files.reduce((sum, source) => sum + (source instanceof File ? source : source.file).size, 0);
@@ -556,7 +556,7 @@ export function confirmRemove(clips: "keep" | "delete" = "keep", deleteFiles = f
   const current = open;
   if (ids.length === 0 || !current) return;
   if (!current.isWritable()) {
-    showToast({ tone: "error", message: "This project is read-only", detail: "Allow editing to remove media." });
+    showToast({ tone: "warning", message: "This project is read-only", detail: "Allow editing to remove media." });
     return;
   }
   const before = documentStore.getState().media;
@@ -661,9 +661,24 @@ export function showBin(bin: string): void {
   keepShownSelection();
 }
 
+/** Whether a filter chip is checked or the search has words (Clear filters has something to clear). */
+function mediaFiltered(): boolean {
+  const { filters } = sessionStore.state.getState().mediaPanel;
+  return filters.kinds.length > 0 || filters.unused || mediaPanel.getState().search.trim() !== "";
+}
+
+/**
+ * Show all media (Batch 46, the way out of an empty bin or search): the All bin, no filter chip, no
+ * search. Showing more keeps the selection.
+ */
+function showAllMedia(): void {
+  sessionStore.state.set((state) => ({ ...state, mediaPanel: { ...state.mediaPanel, bin: "all", filters: { ...state.mediaPanel.filters, kinds: [], unused: false } } }));
+  setMediaSearch("");
+}
+
 function writable(action: string): boolean {
   if (open?.isWritable()) return true;
-  showToast({ tone: "error", message: "This project is read-only", detail: `Allow editing to ${action}.` });
+  showToast({ tone: "warning", message: "This project is read-only", detail: `Allow editing to ${action}.` });
   return false;
 }
 
@@ -724,7 +739,7 @@ export async function allowMediaAccess(): Promise<void> {
   const sources = mediaSources();
   if (!sources) return;
   const left = await sources.requestAccess();
-  if (left > 0) showToast({ tone: "error", message: `${plural(left, "linked file")} still offline`, detail: "The browser did not allow reading them. Try again, or relink them." });
+  if (left > 0) showToast({ tone: "warning", message: `${plural(left, "linked file")} still offline`, detail: "The browser did not allow reading them. Try again, or relink them." });
 }
 
 const relinkId = () => {
@@ -813,7 +828,7 @@ export async function relinkFromFolder(): Promise<void> {
       ...report.refused,
     ];
     showToast({
-      tone: report.done > 0 ? "success" : "error",
+      tone: report.done === items.length ? "success" : report.done > 0 ? "warning" : "error",
       message: `Relinked ${report.done} of ${plural(items.length, "offline file")}`,
       detail: notes.join(" · "),
     });
@@ -991,7 +1006,7 @@ export function requestProxyIfUndecided(mediaId: MediaId): void {
   open?.proxies.generateIfUndecided(mediaId);
 }
 
-const readOnlyToast = () => showToast({ tone: "error", message: "This project is read-only", detail: "Allow editing to change proxies." });
+const readOnlyToast = () => showToast({ tone: "warning", message: "This project is read-only", detail: "Allow editing to change proxies." });
 
 /** Generate proxy (media menu, spec §12): the selected videos without a ready or running proxy. */
 export function generateProxies(): void {
@@ -1101,9 +1116,16 @@ export function installMediaController(doc: Document = document): () => void {
     actions.register("media.filterAudio", () => toggleKind("audio")),
     actions.register("media.filterImage", () => toggleKind("image")),
     actions.register("media.filterUnused", () => setPanelFilters({ unused: !sessionStore.state.getState().mediaPanel.filters.unused })),
-    actions.register("media.clearFilters", () => {
-      setPanelFilters({ kinds: [], unused: false });
-      setMediaSearch("");
+    actions.register(
+      "media.clearFilters",
+      () => {
+        setPanelFilters({ kinds: [], unused: false });
+        setMediaSearch("");
+      },
+      { enabled: mediaFiltered },
+    ),
+    actions.register("media.showAll", showAllMedia, {
+      enabled: () => sessionStore.state.getState().mediaPanel.bin !== "all" || mediaFiltered(),
     }),
     actions.register("media.search", () => {
       showTab("media");

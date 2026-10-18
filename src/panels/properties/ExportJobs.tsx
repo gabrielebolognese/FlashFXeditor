@@ -8,17 +8,26 @@ import type { ExportLogEntry, ExportLogStatus } from "../../export/log.js";
 import type { QueueJob } from "../../export/queue.js";
 import { formatBytes } from "../../project/cache.js";
 import { IconButton } from "../../ui/IconButton.js";
+import { useFocusReturn, type FocusSurroundings } from "./focusReturn.js";
 import styles from "./ExportTab.module.css";
 
 // The Export tab's queue and log (spec §16, Batch 44). The queue renders when a job is added, starts,
 // ends or is paused (the queue store); each card's bar and line follow the job's live store, written
 // into the DOM without a React render (P1: an export's progress while the user plays or drags). The
-// log is the session's last 20 jobs, newest first, each with Export again and Open folder.
+// log is the session's last 20 jobs, newest first, each with Export again and Open folder. A card that
+// goes with the focus in it (cancelled by keyboard, or done) hands it to the next card, else the one
+// before, else the Queue header (Batch 46).
 
 const selectJobs = (jobs: readonly QueueJob<ExportJobSpec>[]) => jobs;
 const selectLog = (state: SessionState) => state.exportLog;
 
+/** Where the focus goes when a card leaves with it: a neighbor card's first button, or the Queue header. */
+const nextFocus = ({ panel, previous, next }: FocusSurroundings) =>
+  [next, previous].find((card) => card?.isConnected)?.querySelector("button") ?? panel?.querySelector('[data-section="exportQueue"] button');
+
 function JobCard({ job }: { job: QueueJob<ExportJobSpec> }) {
+  const card = useRef<HTMLLIElement>(null);
+  useFocusReturn(card, nextFocus);
   const bar = useRef<HTMLDivElement>(null);
   const line = useRef<HTMLSpanElement>(null);
   useEffect(() => {
@@ -34,7 +43,7 @@ function JobCard({ job }: { job: QueueJob<ExportJobSpec> }) {
   const paused = jobPaused(job.id);
   const Icon = job.spec.request.kind === "video" ? Film : FileAudio;
   return (
-    <li className={styles.card} data-job={job.id} data-status={job.status}>
+    <li ref={card} className={styles.card} data-job={job.id} data-status={job.status}>
       <Icon className={styles.cardIcon} aria-hidden="true" />
       <div className={styles.cardText}>
         <span className={styles.cardName} title={job.spec.fileName}>
@@ -89,7 +98,7 @@ function LogRow({ entry }: { entry: ExportLogEntry }) {
       </div>
       <div className={styles.cardActions}>
         <IconButton commandId="export.again" arg={entry.id} icon={RotateCcw} label="Export again with these settings" />
-        <IconButton commandId="export.openFolder" arg={entry.id} icon={FolderOpen} label="Open folder" disabled={entry.status !== "done"} />
+        <IconButton commandId="export.openFolder" arg={entry.id} icon={FolderOpen} label={entry.status === "done" ? "Open folder" : `Open folder: nothing was saved (${STATUS_TEXT[entry.status].toLowerCase()})`} disabled={entry.status !== "done"} />
       </div>
     </li>
   );

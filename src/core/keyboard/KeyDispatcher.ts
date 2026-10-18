@@ -38,6 +38,26 @@ export function isEditableTarget(target: EventTarget | null): boolean {
   return target instanceof HTMLInputElement && TEXT_INPUT_TYPES.has(target.type);
 }
 
+/** Controls that a plain Space or Enter activates (a focused button clicks, a switch toggles). */
+const ACTIVATED = 'button, a[href], summary, input[type="checkbox"], input[type="radio"], input[type="range"], input[type="button"], input[type="submit"], [role="button"], [role="switch"], [role="checkbox"], [role="radio"], [role="tab"], [role="menuitem"], [role="option"], [role="slider"]';
+/** Controls (or composite widgets around them) that move with the arrows, Home, End and Page keys. */
+const ARROWED = 'input[type="range"], [role="slider"], [role="spinbutton"], [role="separator"][tabindex], [role="radiogroup"], [role="tablist"], [role="listbox"], [role="menu"], [role="grid"]';
+const NAVIGATION_KEYS = new Set(["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End", "PageUp", "PageDown"]);
+
+/**
+ * True when the focused control handles the key itself (Batch 46, keyboard-only use): plain Space and
+ * Enter on a focused button or switch, and the navigation keys on a slider or inside a radio group, tab
+ * list or list box. The shortcut (Space = play, the arrows = frame steps) gives way and the browser or
+ * the widget acts. A pointer click never leaves a button focused (buttons keep the focus where it was),
+ * so this only applies to controls reached with Tab.
+ */
+export function isNativeKeyTarget(target: EventTarget | null, event: Pick<KeyboardEvent, "key" | "ctrlKey" | "metaKey" | "altKey">): boolean {
+  if (!(target instanceof Element) || event.ctrlKey || event.metaKey || event.altKey) return false;
+  if (event.key === " " || event.key === "Enter") return target.matches(ACTIVATED);
+  if (NAVIGATION_KEYS.has(event.key)) return target.closest(ARROWED) !== null;
+  return false;
+}
+
 type KeyEventLike = Pick<
   KeyboardEvent,
   "key" | "code" | "ctrlKey" | "metaKey" | "altKey" | "shiftKey" | "repeat" | "target" | "isComposing" | "preventDefault"
@@ -136,8 +156,9 @@ export class KeyDispatcher {
   handleKeyDown(event: KeyEventLike): void {
     if (event.isComposing) return;
     const scope = this.options.getScope();
-    // Text inputs own their keys (but `everywhere` ones); only the inline text editor scope gets its own bindings.
-    const typing = isEditableTarget(event.target) && scope !== "textEditing";
+    // Text inputs own their keys (but `everywhere` ones); only the inline text editor scope gets its own
+    // bindings. A focused control's own keys (Space on a button, arrows on a slider) are left to it.
+    const typing = (isEditableTarget(event.target) && scope !== "textEditing") || isNativeKeyTarget(event.target, event);
     for (const binding of typing ? this.everywhereFor(event) : this.candidates(event, scope)) {
       if (binding.hold) {
         if (event.repeat || this.held.has(event.code)) {

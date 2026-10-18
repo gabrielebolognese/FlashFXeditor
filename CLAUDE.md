@@ -15,7 +15,7 @@ Shorts Editor: browser video editor. Vite + React 18 (chrome only) + TypeScript 
 - Dev: `npm run dev`
 - Build: `npm run build`
 - Typecheck: `npm run typecheck`
-- Lint (ESLint + CSS color check): `npm run lint`
+- Lint (ESLint + CSS color and token checks): `npm run lint`
 - Test: `npm test`
 - Everything: `npm run check`
 

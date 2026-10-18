@@ -1,5 +1,5 @@
 import { Ellipsis } from "lucide-react";
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 import { presetLibrary, type PresetLibrary } from "../../app/presetController.js";
 import { actions, documentStore, sessionStore } from "../../app/services.js";
@@ -46,7 +46,7 @@ function ZoomSlider() {
     const input = ref.current;
     return input ? bindZoomSlider(input) : undefined;
   }, []);
-  return <input ref={ref} type="range" className={styles.slider} aria-label="Timeline zoom" />;
+  return <input ref={ref} type="range" className={styles.slider} aria-label="Timeline zoom" data-tooltip="Timeline zoom" />;
 }
 
 /** Playhead timecode (editable) and total duration, written by subscriptions, never by React. */
@@ -148,15 +148,24 @@ export function TimelineToolbar() {
     for (const group of groups) group.hidden = false;
     more.hidden = false;
 
+    const slider = bar.querySelector<HTMLInputElement>('[data-group="zoom"] input[type="range"]');
+    if (slider) slider.hidden = false;
     // Natural widths, measured once with everything visible.
     const widthOf = (element: Element | null) => element?.getBoundingClientRect().width ?? 0;
     const widths = groups.map(widthOf);
+    const sliderStyle = slider ? getComputedStyle(slider) : null;
+    const sliderWidth = slider && sliderStyle ? widthOf(slider) + parseFloat(sliderStyle.marginLeft) + parseFloat(sliderStyle.marginRight) : 0;
     const fixedWidth = widthOf(bar.querySelector("[data-end]"));
     const moreWidth = widthOf(more);
     const hideOrder = groups.map((_, i) => i).sort((a, b) => Number(groups[a]?.dataset.priority) - Number(groups[b]?.dataset.priority));
 
     const fit = (available: number) => {
       let total = widths.reduce((sum, w) => sum + w, fixedWidth);
+      // The zoom slider goes first (Batch 46, the Batch 07 follow-up): Zoom -, + and Fit stay on the row
+      // at widths where the whole group would have gone into "...".
+      const compact = slider !== null && total > available;
+      if (slider) slider.hidden = compact;
+      if (compact) total -= sliderWidth;
       const hidden = new Set<number>();
       for (const index of hideOrder) {
         if (total <= available) break;
@@ -191,8 +200,32 @@ export function TimelineToolbar() {
       top: rect.bottom,
     });
   };
-  const closeOverflow = useCallback(() => setOverflow(null), []);
+  const closeOverflow = useCallback(() => {
+    // Closed from the keyboard (Escape) with the focus inside: back to the More button (Batch 46).
+    if (menuRef.current?.contains(document.activeElement)) moreRef.current?.querySelector("button")?.focus();
+    setOverflow(null);
+  }, []);
   useDismiss([menuRef, moreRef], closeOverflow, overflow !== null);
+  // The menu takes the focus when it opens, so the keyboard reaches the groups it holds.
+  const opened = overflow !== null;
+  useEffect(() => {
+    if (opened) menuRef.current?.querySelector<HTMLElement>("button, input")?.focus();
+  }, [opened]);
+  // Tab cycles inside the open menu (it is portalled to the end of the page, so Tab would leave the app).
+  const onMenuKey = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key !== "Tab" || !menuRef.current) return;
+    const items = [...menuRef.current.querySelectorAll<HTMLElement>("button, input")];
+    const first = items[0];
+    const last = items[items.length - 1];
+    if (!first || !last) return;
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  };
 
   return (
     <div ref={barRef} className={styles.bar} role="toolbar" aria-label="Timeline">
@@ -208,7 +241,7 @@ export function TimelineToolbar() {
       </div>
       {overflow &&
         createPortal(
-          <div ref={menuRef} className={styles.overflowMenu} style={{ right: overflow.right, top: overflow.top }}>
+          <div ref={menuRef} className={styles.overflowMenu} style={{ right: overflow.right, top: overflow.top }} role="group" aria-label="More tools" onKeyDown={onMenuKey}>
             {overflow.groups.map((group) => (
               <Group key={group.id} group={group} />
             ))}

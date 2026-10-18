@@ -38,6 +38,7 @@ import { ACTION_SAFE, centeredRect, gridLines, rulerStep, safeZoneOn, ticksIn, T
 import type { PreviewPlacement } from "./PreviewView.js";
 import type { ZoneRect } from "./safeZones.js";
 import { formatDistance, type GuideLine, type Guides, type GuideSpan } from "./snap.js";
+import { canvasCapacity } from "../../core/scheduler/canvasCapacity.js";
 
 export interface PreviewOverlayDeps {
   scheduler: Pick<FrameScheduler, "register" | "invalidate">;
@@ -74,6 +75,8 @@ export class PreviewOverlayView implements RenderView {
   private sceneText = "";
   /** Renders that drew (the others compared and returned). */
   draws = 0;
+  /** The canvas element's size in CSS px: its capacity, at least the preview's (Batch 46). */
+  private readonly capacity = { width: 0, height: 0 };
 
   constructor(private readonly deps: PreviewOverlayDeps) {
     this.theme = deps.theme.theme;
@@ -97,8 +100,11 @@ export class PreviewOverlayView implements RenderView {
       layout.select(
         (state) => state.panels.preview,
         (size) => {
-          canvas.style.width = `${size.width}px`;
-          canvas.style.height = `${size.height}px`;
+          // With the preview canvas's headroom (Batch 46): the overlay is as large as its capacity.
+          this.capacity.width = canvasCapacity(this.capacity.width, size.width);
+          this.capacity.height = canvasCapacity(this.capacity.height, size.height);
+          canvas.style.width = `${this.capacity.width}px`;
+          canvas.style.height = `${this.capacity.height}px`;
         },
         { fireImmediately: true },
       ),
@@ -138,8 +144,10 @@ export class PreviewOverlayView implements RenderView {
       for (let i = 0; i < 6; i++) drawn.transform[i] = placement.transform[i] as number;
       drawn.width = placement.width;
       drawn.height = placement.height;
-      if (canvas.width !== placement.width) canvas.width = placement.width;
-      if (canvas.height !== placement.height) canvas.height = placement.height;
+      const width = Math.max(placement.width, Math.round(this.capacity.width * placement.dpr));
+      const height = Math.max(placement.height, Math.round(this.capacity.height * placement.dpr));
+      if (canvas.width !== width) canvas.width = width;
+      if (canvas.height !== height) canvas.height = height;
     }
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -154,6 +162,8 @@ export class PreviewOverlayView implements RenderView {
     this.canvas?.remove();
     this.canvas = null;
     this.ctx = null;
+    this.capacity.width = 0;
+    this.capacity.height = 0;
     this.drawn.settings = null;
     this.drawn.shown = false;
     this.sceneNumbers.length = 0;

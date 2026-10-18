@@ -166,7 +166,8 @@
 }
 
 /* Keyboard focus (Batch 40; gap: the DS gives menus no focus look): a focused row, chip or step looks
-   hovered (wash + primary text) instead of the gold ring, which would crowd a dense menu. The menu
+   hovered (wash + primary text) and, since Batch 46, carries the DS ring drawn inward: the 4% wash
+   alone could not be found on a real screen, and an outer ring would crowd the dense menu. The menu
    itself takes the focus when it opens and keeps its overlay shadow. */
 .menu:focus-visible {
   box-shadow: var(--shadow-overlay);
@@ -177,5 +178,5 @@
 .step:focus-visible {
   background: var(--hover-wash);
   color: var(--text-primary);
-  box-shadow: none;
+  box-shadow: var(--focus-ring-inset);
 }

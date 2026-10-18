@@ -1,5 +1,5 @@
 import { Film, FolderOpen, LayoutTemplate, Plus, X } from "lucide-react";
-import { useEffect, useRef, type DragEvent } from "react";
+import { useEffect, useRef, useState, type DragEvent } from "react";
 import { useStoreSelector } from "../core/store/useStoreSelector.js";
 import { formatFps } from "../project/projectPresets.js";
 import type { RecentProject } from "../project/recentProjects.js";
@@ -33,14 +33,19 @@ function Thumbnail({ blob }: { blob: Blob }) {
   return <img ref={ref} className={styles.thumbImage} alt="" draggable={false} />;
 }
 
+/** Why the start screen's buttons are disabled while a flow runs. */
+const BUSY_REASON = "Wait: a project is opening";
+
 /** A project tile (DS cards: thumbnail on top, title, tertiary meta): the frame at the playhead when it last closed. */
-function RecentCard({ entry, disabled }: { entry: RecentProject; disabled: boolean }) {
+function RecentCard({ entry, disabled, onOpen }: { entry: RecentProject; disabled: boolean; onOpen: (name: string) => void }) {
   const open = () => {
-    if (!disabled) void openRecent(entry);
+    if (disabled) return;
+    onOpen(entry.name);
+    void openRecent(entry);
   };
   return (
     <li className={styles.recent}>
-      <button type="button" className={styles.recentOpen} data-control="" aria-disabled={disabled || undefined} onClick={open}>
+      <button type="button" className={styles.recentOpen} data-control="" aria-disabled={disabled || undefined} data-tooltip={disabled ? BUSY_REASON : undefined} onClick={open}>
         <span className={styles.thumb} aria-hidden="true">
           {entry.thumbnail ? <Thumbnail blob={entry.thumbnail} /> : <Film className={styles.thumbIcon} />}
         </span>
@@ -65,7 +70,7 @@ function TemplateRow({ template, disabled }: { template: ProjectTemplate; disabl
         type="button"
         className={styles.templateOpen}
         data-command="project.newFromTemplate"
-        data-tooltip="New project from this template"
+        data-tooltip={disabled ? BUSY_REASON : "New project from this template"}
         aria-disabled={disabled || undefined}
         onClick={() => {
           if (!disabled) actions.run("project.newFromTemplate", null, template.id);
@@ -91,6 +96,19 @@ export function StartScreen() {
   const templates = useStoreSelector(templateStore.list, selectTemplates);
   const screenRef = useRef<HTMLDivElement>(null);
   const dragDepth = useRef(0);
+  // The recent project being opened, for the status line (the other flows do not know the name yet).
+  const [opening, setOpening] = useState<string | null>(null);
+  useEffect(
+    () =>
+      appView.select(
+        (view) => view.busy,
+        (running) => {
+          if (!running) setOpening(null);
+        },
+      ),
+    [],
+  );
+  const status = busy ? (opening ? `Opening ${opening}…` : "Opening project…") : "";
 
   // Drop highlight through a data attribute: no React render while dragging.
   const setDropping = (on: boolean) => {
@@ -141,12 +159,16 @@ export function StartScreen() {
         </header>
 
         <div className={styles.actions}>
-          <Button variant="hero" size="comfortable" icon={Plus} commandId="project.new" tooltip="New project" disabled={busy}>
+          <Button variant="hero" size="comfortable" icon={Plus} commandId="project.new" tooltip={busy ? BUSY_REASON : "New project"} disabled={busy}>
             New project
           </Button>
-          <Button size="comfortable" icon={FolderOpen} commandId="project.open" tooltip="Open a project folder" disabled={busy}>
+          <Button size="comfortable" icon={FolderOpen} commandId="project.open" tooltip={busy ? BUSY_REASON : "Open a project folder"} disabled={busy}>
             Open project
           </Button>
+          {/* While a flow runs (Batch 46): what is happening, in a slot beside the buttons (no shift). */}
+          <span className={styles.status} role="status">
+            {status}
+          </span>
         </div>
 
         <section className={styles.recentSection} aria-labelledby="recent-title">
@@ -158,7 +180,7 @@ export function StartScreen() {
           ) : (
             <ul className={styles.recentList}>
               {recent.map((entry) => (
-                <RecentCard key={entry.id} entry={entry} disabled={busy} />
+                <RecentCard key={entry.id} entry={entry} disabled={busy} onOpen={setOpening} />
               ))}
             </ul>
           )}

@@ -59,6 +59,7 @@
   visibility: hidden;
 }
 
+/* The square and the strips are sliders (Batch 46): the global focus ring on their own shape. */
 .square {
   position: relative;
   height: var(--picker-square-height);

@@ -49,6 +49,10 @@
   color: var(--success);
 }
 
+.toast[data-tone="warning"] .icon {
+  color: var(--warning);
+}
+
 .toast[data-tone="error"] .icon {
   color: var(--danger);
 }
@@ -71,6 +75,8 @@
 .detail {
   overflow: hidden;
   font: var(--type-caption);
+  /* The live progress line ("42% · 12 s left") does not jitter as its digits change (Batch 46). */
+  font-variant-numeric: tabular-nums;
   letter-spacing: var(--type-caption-track);
   color: var(--text-secondary);
   display: -webkit-box;
@@ -135,4 +141,10 @@
   border-radius: var(--radius-pill);
   background: var(--accent);
   transition: width var(--duration-micro) var(--ease-out);
+}
+
+/* The toast clips its content (rounded island): its buttons ring inward (Batch 46). */
+.action:focus-visible,
+.close:focus-visible {
+  box-shadow: var(--focus-ring-inset);
 }

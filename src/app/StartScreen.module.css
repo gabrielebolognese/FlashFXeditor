@@ -52,7 +52,20 @@
 
 .actions {
   display: flex;
+  align-items: center;
   gap: var(--space-3);
+}
+
+/* What a running flow does (Batch 46): caption text after the buttons, in the row's height (no shift). */
+.status {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-tertiary);
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-track);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .recentSection {

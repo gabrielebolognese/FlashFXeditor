@@ -67,7 +67,7 @@ export function requestClearCache(): void {
 
 /** An export writes cache/export-temp/ (Batch 43): the cache stays until it ends. */
 function refuseWhileExporting(): void {
-  showToast({ tone: "info", message: "An export is running", detail: "Clear the cache once it has finished." });
+  showToast({ tone: "warning", message: "An export is running", detail: "Clear the cache once it has finished." });
 }
 
 /** The dialog's Clear cache. */

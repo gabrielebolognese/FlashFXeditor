@@ -63,13 +63,40 @@ fn vs(@builtin(vertex_index) index: u32) -> VertexOut {
 }
 `;
 
-export const TEXTURED_WGSL = /* wgsl */ `${COMMON}
+/**
+ * Batch 46 (the Batch 21 follow-up): a texture with no mips (a video frame) drawn smaller than it is
+ * aliased fine detail. A grid of taps over the pixel's footprint, spread as far as the texture is
+ * minified: nothing at 1:1 or larger (exports and zooms of 100% and more take the one sample they took
+ * before), full spread from 2x. Mipmapped textures (images, text) keep their trilinear sample. Measured
+ * on one-pixel lines drawn 2.6x smaller: the moiré's standard deviation 62 -> 17 (3 x 3 taps).
+ */
+const FOOTPRINT_TAPS = /* wgsl */ `
+fn footprintRamp(dx: vec2f, dy: vec2f, size: vec2f, mipmapped: bool) -> f32 {
+  let footprint = max(length(dx * size), length(dy * size));
+  return select(clamp(footprint - 1.0, 0.0, 1.0), 0.0, mipmapped);
+}
+`;
+
+export const TEXTURED_WGSL = /* wgsl */ `${COMMON}${FOOTPRINT_TAPS}
 @group(1) @binding(0) var sourceSampler: sampler;
 @group(1) @binding(1) var source: texture_2d<f32>;
 
 @fragment
 fn fs(in: VertexOut) -> @location(0) vec4f {
-  return textureSample(source, sourceSampler, in.uv) * layer.params.x;
+  let dx = dpdx(in.uv);
+  let dy = dpdy(in.uv);
+  // 3 x 3 taps a third of the footprint apart; one sample when nothing is minified.
+  let spread = footprintRamp(dx, dy, vec2f(textureDimensions(source)), textureNumLevels(source) > 1u) / 3.0;
+  if (spread <= 0.0) {
+    return textureSampleGrad(source, sourceSampler, in.uv, dx, dy) * layer.params.x;
+  }
+  var sum = vec4f(0.0);
+  for (var i = -1; i <= 1; i++) {
+    for (var j = -1; j <= 1; j++) {
+      sum += textureSampleGrad(source, sourceSampler, in.uv + dx * (f32(i) * spread) + dy * (f32(j) * spread), dx, dy);
+    }
+  }
+  return sum * (layer.params.x / 9.0);
 }
 `;
 
@@ -145,8 +172,11 @@ fn fs(in: VertexOut) -> @location(0) vec4f {
 }
 `;
 
-/** A video frame drawn into a smaller texture (sampled as decoded: no full-size copy first). */
-export const SCALE_WGSL = /* wgsl */ `
+/**
+ * A video frame drawn into a smaller texture (sampled as decoded: no full-size copy first), with the
+ * layers' footprint taps: a 4K frame scaled to a 1080 x 1920 project's size no longer aliases.
+ */
+export const SCALE_WGSL = /* wgsl */ `${FOOTPRINT_TAPS}
 @group(0) @binding(0) var sourceSampler: sampler;
 @group(0) @binding(1) var source: texture_external;
 
@@ -167,7 +197,17 @@ fn vs(@builtin(vertex_index) index: u32) -> VertexOut {
 
 @fragment
 fn fs(in: VertexOut) -> @location(0) vec4f {
-  return vec4f(textureSampleBaseClampToEdge(source, sourceSampler, in.uv).rgb, 1.0);
+  let dx = dpdx(in.uv);
+  let dy = dpdy(in.uv);
+  // 2 x 2 taps (each converts the decoded picture to RGB): a 4 x 4 texel box at the usual 2x (4K to 1080p).
+  let spread = footprintRamp(dx, dy, vec2f(textureDimensions(source)), false) / 4.0;
+  let ox = dx * spread;
+  let oy = dy * spread;
+  let sum = textureSampleBaseClampToEdge(source, sourceSampler, in.uv - ox - oy)
+    + textureSampleBaseClampToEdge(source, sourceSampler, in.uv + ox - oy)
+    + textureSampleBaseClampToEdge(source, sourceSampler, in.uv - ox + oy)
+    + textureSampleBaseClampToEdge(source, sourceSampler, in.uv + ox + oy);
+  return vec4f(sum.rgb * 0.25, 1.0);
 }
 `;
 

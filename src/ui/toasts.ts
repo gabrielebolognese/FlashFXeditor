@@ -4,7 +4,11 @@
 // change without rendering it again (P1: an export's progress while the user plays or drags).
 import { createStore, type Store } from "../core/store/createStore.js";
 
-export type ToastTone = "info" | "success" | "error";
+/**
+ * `warning`: refused by a state the user can change (a locked track, a read-only project) or done only
+ * partly (a limit, offline media); `error`: something failed (Batch 46).
+ */
+export type ToastTone = "info" | "success" | "warning" | "error";
 
 export interface Toast {
   id: number;
@@ -37,7 +41,7 @@ export interface ToastAction {
 export type ToastInput = Omit<Toast, "id">;
 
 /** How long a toast stays, by tone (gap: the design system gives no durations). */
-export const TOAST_DURATION_MS: Record<ToastTone, number> = { info: 4000, success: 3000, error: 7000 };
+export const TOAST_DURATION_MS: Record<ToastTone, number> = { info: 4000, success: 3000, warning: 5500, error: 7000 };
 const MAX_TOASTS = 4;
 
 export const toastStore = createStore<readonly Toast[]>([]);

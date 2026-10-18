@@ -27,6 +27,7 @@ import type { TrimRequest } from "../timeline/view/gestures/trimClip.js";
 import { TimelineView } from "../timeline/view/TimelineView.js";
 import { pxToSlider, sliderToPx, zoomLimits, ZOOM_IN_STEP, ZOOM_OUT_STEP, type ZoomContext } from "../timeline/view/zoom.js";
 import { showToast } from "../ui/toasts.js";
+import { pointTooltip } from "../ui/tooltipController.js";
 import { openContextMenu, razorCut } from "./cutController.js";
 import { dropFilesOnTimeline, insertMediaAtPlayhead } from "./dropController.js";
 import { moveMarker, openMarkerEditor } from "./markerController.js";
@@ -54,7 +55,7 @@ export function reportMoveRefusal(refusal: MoveRefusal): void {
     return;
   }
   const message = refusal.reason === "lockedTarget" ? "Can't drop clips onto a locked track" : "Can't move clips on a locked track";
-  showToast({ tone: "error", message, detail: `${name} is locked. Unlock it to edit its clips.` });
+  showToast({ tone: "warning", message, detail: `${name} is locked. Unlock it to edit its clips.` });
 }
 
 /** Dispatches a move as one undo step, selecting the moved clips (or the copies), the dragged one primary. */
@@ -92,7 +93,7 @@ export function reportTrimLimit(limit: TrimLimit): void {
     ripple: { message: `Ripple stopped by ${track}`, detail: `Clips on ${track} can't move further without overlapping.` },
     timelineStart: { message: "Trim stopped at the timeline start", detail: "Clips can't start before 0." },
   };
-  showToast({ tone: "info", ...toasts[limit.reason] });
+  showToast({ tone: "warning", ...toasts[limit.reason] });
 }
 
 /** Dispatches a keyboard trim (one undo step); a limit that stopped it short gets a toast. */
@@ -133,6 +134,7 @@ export const timelineView = new TimelineView({
   theme: themeBridge,
   onAddTrack: addTrackOfKind,
   onToggleTrack: toggleTrack,
+  onHoverHint: pointTooltip,
   onReorderTrack: moveTrackTo,
   onRenameTrack: startTrackRename,
   onMoveClips: moveClips,
@@ -235,6 +237,9 @@ export function bindZoomSlider(input: HTMLInputElement): () => void {
   input.max = String(SLIDER_STEPS);
   input.step = "1";
   let dragging = false;
+  // A change made with the pointer gives the arrow keys back to the shortcuts; one made with the keys
+  // keeps the focus, so the keyboard can go on zooming (Batch 46).
+  let pointer = false;
   const sync = () => {
     if (dragging) return;
     const limits = zoomLimits(zoomContext());
@@ -247,12 +252,19 @@ export function bindZoomSlider(input: HTMLInputElement): () => void {
   const onChange = () => {
     dragging = false;
     timelineView.commitPreviewZoom();
-    // Give the arrow keys back to the shortcuts (frame stepping).
-    input.blur();
+    if (pointer) input.blur();
     sync();
+  };
+  const onPointer = () => {
+    pointer = true;
+  };
+  const onKey = () => {
+    pointer = false;
   };
   input.addEventListener("input", onInput);
   input.addEventListener("change", onChange);
+  input.addEventListener("pointerdown", onPointer);
+  input.addEventListener("keydown", onKey);
   const stops = [
     sessionStore.state.select((state) => state.timeline.pxPerFrame, sync),
     documentStore.subscribe(sync, { affects: ["timeline", "clips", "settings"] }),
@@ -262,6 +274,8 @@ export function bindZoomSlider(input: HTMLInputElement): () => void {
   return () => {
     input.removeEventListener("input", onInput);
     input.removeEventListener("change", onChange);
+    input.removeEventListener("pointerdown", onPointer);
+    input.removeEventListener("keydown", onKey);
     for (const stop of stops) stop();
   };
 }

@@ -30,7 +30,7 @@
   box-shadow: 0 0 0 1px var(--accent-wash);
 }
 
-.select:disabled {
+.select[aria-disabled="true"] {
   opacity: var(--disabled-opacity);
 }
 

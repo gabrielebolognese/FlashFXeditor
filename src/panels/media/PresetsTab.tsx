@@ -1,5 +1,5 @@
-import { BookmarkPlus, FileDown, FileUp, FolderOpen, FolderSync, FolderX, Star, Subtitles, Type } from "lucide-react";
-import { memo, useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent, type PointerEvent } from "react";
+import { BookmarkPlus, FileDown, FileUp, FolderOpen, FolderSync, FolderX, LoaderCircle, RotateCcw, SearchX, Star, Subtitles, Type } from "lucide-react";
+import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type FocusEvent, type KeyboardEvent, type MouseEvent, type PointerEvent, type ReactNode } from "react";
 import { draggingMedia, pressDragCard, takeClickAfterDrag } from "../../app/mediaGestures.js";
 import {
   appliesToCaptions,
@@ -23,8 +23,10 @@ import { useStoreSelector } from "../../core/store/useStoreSelector.js";
 import { MAX_PRESET_NAME, searchPresets } from "../../text/presets.js";
 import { Button } from "../../ui/Button.js";
 import { ContextMenu, type ContextMenuEntry } from "../../ui/ContextMenu.js";
+import { EmptyState } from "../../ui/EmptyState.js";
 import { IconButton } from "../../ui/IconButton.js";
 import { TextField } from "../../ui/TextField.js";
+import { gridColumns, pressWithoutFocus, setTabStop, stepIndex } from "./listNavigation.js";
 import { PresetNameField } from "./PresetNameField.js";
 import styles from "./PresetsTab.module.css";
 
@@ -32,7 +34,8 @@ import styles from "./PresetsTab.module.css";
 // preset rendered by the text engine; a click applies it to the selected text clips (or adds a text
 // clip with it at the playhead), hovering previews it on them (no React render: presetController
 // writes the live edit), a drag puts it on the timeline, a right-click opens its menu. The tool row
-// switches between the global and the project's presets and searches them.
+// switches between the global and the project's presets and searches them. Batch 46: the cards are one
+// Tab stop, the arrows move between them, Enter or Space applies the focused one (a click's action).
 
 const selectScope = (state: SessionState) => state.mediaPanel.presetScope;
 const scopeCommand = (scope: PresetScope) => (scope === "global" ? "presets.showGlobal" : "presets.showProject");
@@ -48,7 +51,7 @@ export function PresetsActions() {
     <>
       <IconButton icon={BookmarkPlus} label={hasText ? "New preset from the selected text" : "New preset from the selected text: select a text clip first"} commandId="preset.save" disabled={!hasText} />
       <IconButton icon={FileUp} label="Import presets from a JSON file" commandId="presets.import" />
-      <IconButton icon={FileDown} label="Export the presets shown to a JSON file" commandId="presets.export" disabled={count === 0} />
+      <IconButton icon={FileDown} label={count > 0 ? "Export the presets shown to a JSON file" : "Export the presets shown: there are none"} commandId="presets.export" disabled={count === 0} />
     </>
   );
 }
@@ -115,23 +118,24 @@ const CARD_HINT = "Click: apply to the selected text, or add at the playhead. Dr
 
 const PresetCard = memo(function PresetCard({ preset, defaultTitle, defaultSubtitle, renaming, onRenamed }: { preset: TextPreset; defaultTitle: boolean; defaultSubtitle: boolean; renaming: boolean; onRenamed: () => void }) {
   return (
-    <div className={styles.card} data-preset-id={preset.id} role="option" aria-selected="false" aria-label={preset.name} data-tooltip={renaming ? undefined : `${preset.name}. ${CARD_HINT}`}>
+    <div className={styles.card} data-preset-id={preset.id} role="option" aria-selected="false" aria-label={preset.name} tabIndex={-1} data-tooltip={renaming ? undefined : `${preset.name}. ${CARD_HINT}`}>
       <div className={styles.thumb}>
         <PresetThumb preset={preset} />
+        {/* Each badge has its own tooltip (the card's is the nearest one otherwise). */}
         {(preset.favorite || defaultTitle || defaultSubtitle) && (
           <span className={styles.badges}>
             {preset.favorite && (
-              <span className={styles.badge} aria-label="Favorite">
+              <span className={styles.badge} aria-label="Favorite" data-tooltip="Favorite: a chip in the timeline toolbar">
                 <Star className={styles.badgeIcon} aria-hidden="true" />
               </span>
             )}
             {defaultTitle && (
-              <span className={styles.badge} aria-label="Default title">
+              <span className={styles.badge} aria-label="Default title" data-tooltip="The default title: Add title uses it" data-command="add.title">
                 <Type className={styles.badgeIcon} aria-hidden="true" />
               </span>
             )}
             {defaultSubtitle && (
-              <span className={styles.badge} aria-label="Default subtitle">
+              <span className={styles.badge} aria-label="Default subtitle" data-tooltip="The default subtitle: Add subtitle uses it" data-command="add.subtitle">
                 <Subtitles className={styles.badgeIcon} aria-hidden="true" />
               </span>
             )}
@@ -180,31 +184,82 @@ const FOLDER_TEXT: Record<LibraryFolder["status"], (folder: LibraryFolder) => st
   error: (folder) => `${folder.name}: ${folder.message ?? "cannot sync"}`,
 };
 
-/** The library folder strip (spec §10.3): the global presets are kept in a folder of JSON files too. */
-function FolderStrip() {
+/** Where the presets the Project scope shows are kept, or why they cannot change. */
+function projectText(projectOpen: boolean, writable: boolean): string {
+  if (!projectOpen) return "No project is open: its presets show here.";
+  return writable ? "This project's presets, kept in its folder (presets/text)." : "This project is read-only: its presets cannot change.";
+}
+
+/** Why the folder strip's buttons are disabled in the Project scope. */
+const ONLY_GLOBAL = "the library folder keeps the global presets (show Global)";
+
+/**
+ * The library folder strip (spec §10.3): the global presets are kept in a folder of JSON files too. In
+ * both scopes and every state it holds the same buttons (Batch 46: nothing shifts), disabled with the
+ * reason when they do not apply: the Project scope, no folder chosen, a sync running.
+ */
+function FolderStrip({ scope, projectOpen, writable }: { scope: PresetScope; projectOpen: boolean; writable: boolean }) {
   const folder = useStoreSelector(presetLibrary, (state) => state.folder);
+  const global = scope === "global";
+  const text = !global ? projectText(projectOpen, writable) : folder ? FOLDER_TEXT[folder.status](folder) : "Global presets live in this browser.";
+  const syncLabel = !global
+    ? `Sync: ${ONLY_GLOBAL}`
+    : !folder
+      ? "Sync the library folder: choose one first"
+      : folder.status === "syncing"
+        ? "Syncing with the library folder…"
+        : "Sync the global presets with the library folder";
+  const stopLabel = !global ? `Stop syncing: ${ONLY_GLOBAL}` : !folder ? "Stop syncing: no library folder is set" : "Stop syncing (the folder keeps its files)";
+  const chooseTip = !global
+    ? `Choose a folder: ${ONLY_GLOBAL}`
+    : folder
+      ? "Keep the global presets in another folder"
+      : "Keep the global presets in a folder too (JSON files), e.g. a synced drive";
   return (
     <div className={styles.folder}>
       <FolderOpen className={styles.folderIcon} aria-hidden="true" />
-      {folder ? (
-        <>
-          <span className={styles.folderText} data-status={folder.status} title={FOLDER_TEXT[folder.status](folder)}>
-            {FOLDER_TEXT[folder.status](folder)}
-          </span>
-          <IconButton icon={FolderSync} label="Sync the global presets with the library folder" commandId="presets.syncFolder" disabled={folder.status === "syncing"} />
-          <IconButton icon={FolderX} label="Stop syncing (the folder keeps its files)" commandId="presets.stopFolder" />
-        </>
-      ) : (
-        <>
-          <span className={styles.folderText}>Global presets live in this browser.</span>
-          <Button size="compact" tooltip="Keep the global presets in a folder too (JSON files), e.g. a synced drive" commandId="presets.chooseFolder">
-            Library folder
-          </Button>
-        </>
-      )}
+      <span className={styles.folderText} data-status={global ? folder?.status : undefined} data-tooltip={text}>
+        {text}
+      </span>
+      <Button size="compact" tooltip={chooseTip} commandId="presets.chooseFolder" disabled={!global}>
+        Library folder
+      </Button>
+      <IconButton icon={FolderSync} label={syncLabel} commandId="presets.syncFolder" disabled={!global || !folder || folder.status === "syncing"} />
+      <IconButton icon={FolderX} label={stopLabel} commandId="presets.stopFolder" disabled={!global || !folder} />
     </div>
   );
 }
+
+/**
+ * No presets in the scope (Batch 46): New from selection (a text clip must be selected), Import, and in
+ * the global scope the starter presets back. A read-only project's presets cannot change.
+ */
+function NoPresets({ scope, writable, hasText }: { scope: PresetScope; writable: boolean; hasText: boolean }) {
+  const readOnly = writable ? undefined : "This project is read-only: its presets cannot change";
+  return (
+    <EmptyState
+      icon={BookmarkPlus}
+      title="No presets yet"
+      text={scope === "global" ? "Save a styled text clip as a preset, import a presets file, or bring the starter presets back." : "Save a styled text clip as a preset, or import a presets file: they stay with this project."}
+    >
+      <Button variant="primary" icon={BookmarkPlus} commandId="preset.save" disabled={!hasText || !writable} tooltip={readOnly ?? (hasText ? "New preset from the selected text" : "Select a text clip first")}>
+        New from selection
+      </Button>
+      <Button icon={FileUp} commandId="presets.import" disabled={!writable} tooltip={readOnly ?? "Import presets from a JSON file"}>
+        Import…
+      </Button>
+      {scope === "global" && (
+        <Button icon={RotateCcw} commandId="presets.restoreStarters">
+          Restore starters
+        </Button>
+      )}
+    </EmptyState>
+  );
+}
+
+const PRESET_ITEM = "[data-preset-id]";
+/** The card itself (not its rename field). */
+const presetCard = (target: EventTarget | null) => (target instanceof HTMLElement && target.matches(PRESET_ITEM) ? target : null);
 
 /** The Presets tab body. */
 export function PresetsTab() {
@@ -216,9 +271,11 @@ export function PresetsTab() {
   const naming = useStoreSelector(presetNaming, (where) => where === "tab");
   const defaultTitle = useStoreSelector(appSettings, (settings) => settings.defaultTitlePreset);
   const defaultSubtitle = useStoreSelector(appSettings, (settings) => settings.defaultSubtitlePreset);
+  const hasText = useStoreSelector(sessionStore.selection, selectHasText);
   const [query, setQuery] = useState("");
   const [menu, setMenu] = useState<{ id: string; x: number; y: number } | null>(null);
   const renaming = useStoreSelector(presetRenaming, (id) => id);
+  const gridRef = useRef<HTMLDivElement>(null);
   const shown = useMemo(() => searchPresets(presets, query), [presets, query]);
   const endRename = useMemo(() => () => presetRenaming.set(null), []);
 
@@ -256,21 +313,73 @@ export function PresetsTab() {
     setMenu({ id, x: event.clientX, y: event.clientY });
   };
 
+  // The keyboard (Batch 46): the arrows, Home and End move the focus over the cards (by rows of the
+  // grid), Enter or Space applies the focused preset as a click does. Handled keys stop here: the
+  // KeyDispatcher (on window) must not step frames or play.
+  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    const card = presetCard(event.target);
+    const grid = gridRef.current;
+    if (!card || !grid || event.ctrlKey || event.metaKey || event.altKey) return;
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      event.stopPropagation();
+      const id = card.dataset.presetId;
+      if (id && id !== renaming && !event.repeat) applyPresetById(id);
+      return;
+    }
+    const cards = [...grid.querySelectorAll<HTMLElement>(PRESET_ITEM)];
+    const next = stepIndex(event.key, cards.indexOf(card), cards.length, gridColumns(grid));
+    if (next === null) return;
+    event.preventDefault();
+    event.stopPropagation();
+    cards[next]?.focus();
+  };
+  // A press on a card applies it without focusing it (Space keeps playing); the rename field keeps its own.
+  const onMouseDown = (event: MouseEvent<HTMLDivElement>) => {
+    const card = (event.target as Element).closest<HTMLElement>(PRESET_ITEM);
+    if (card && !isEditableTarget(event.target)) pressWithoutFocus(event, event.currentTarget, card, PRESET_ITEM);
+  };
+  // The focused card is the list's one Tab stop, the first card until one was focused.
+  const tabStop = useRef<string | null>(null);
+  const onFocus = (event: FocusEvent) => {
+    const card = presetCard(event.target);
+    if (!card || !gridRef.current) return;
+    tabStop.current = card.dataset.presetId ?? null;
+    setTabStop(gridRef.current, PRESET_ITEM, card);
+  };
+  useLayoutEffect(() => {
+    const grid = gridRef.current;
+    if (grid) setTabStop(grid, PRESET_ITEM, tabStop.current === null ? null : grid.querySelector(`[data-preset-id="${CSS.escape(tabStop.current)}"]`));
+  });
+
   const onMenu = (command: string) => {
     if (menu) actions.run(command, null, menu.id);
   };
   const menuPreset = menu ? presets.find((preset) => preset.id === menu.id) : undefined;
 
-  const empty =
-    scope === "project" && !projectOpen
-      ? "Open a project to keep presets in it."
-      : !loaded
-        ? "Loading presets…"
-        : presets.length === 0
-          ? "No presets yet. Select a text clip and click Save as preset."
-          : shown.length === 0
-            ? "No preset matches the search."
-            : null;
+  // Empty states (Batch 46), each with the action that fixes it.
+  let empty: ReactNode = null;
+  if (scope === "project" && !projectOpen) {
+    empty = (
+      <EmptyState icon={FolderOpen} title="No project open" text="Open a project to keep presets in it.">
+        <Button commandId="presets.showGlobal" tooltip="Show the presets kept in this browser">
+          Show global presets
+        </Button>
+      </EmptyState>
+    );
+  } else if (!loaded) {
+    empty = <EmptyState icon={LoaderCircle} title="Loading presets…" />;
+  } else if (presets.length === 0) {
+    empty = <NoPresets scope={scope} writable={writable} hasText={hasText} />;
+  } else if (shown.length === 0) {
+    empty = (
+      <EmptyState layout="inline" icon={SearchX} title="No preset matches" text={`Nothing matches “${query.trim()}”.`}>
+        <Button control size="compact" onClick={() => setQuery("")}>
+          Clear search
+        </Button>
+      </EmptyState>
+    );
+  }
 
   return (
     <div className={styles.root}>
@@ -300,19 +409,29 @@ export function PresetsTab() {
           <PresetNameField />
         </div>
       )}
-      <div className={styles.scroll} role="listbox" aria-label="Text presets" onClick={onClick} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerLeave={() => hoverPreset(null)} onContextMenu={onContextMenu} onScroll={() => hoverPreset(null)}>
-        {empty ? (
-          <p className={styles.empty}>{empty}</p>
-        ) : (
-          <div className={styles.grid}>
+      <div
+        className={styles.scroll}
+        role="listbox"
+        aria-label="Text presets"
+        onClick={onClick}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerLeave={() => hoverPreset(null)}
+        onContextMenu={onContextMenu}
+        onScroll={() => hoverPreset(null)}
+        onKeyDown={onKeyDown}
+        onMouseDown={onMouseDown}
+        onFocus={onFocus}
+      >
+        {empty ?? (
+          <div ref={gridRef} className={styles.grid}>
             {shown.map((preset) => (
               <PresetCard key={preset.id} preset={preset} defaultTitle={defaultTitle === preset.id} defaultSubtitle={defaultSubtitle === preset.id} renaming={renaming === preset.id} onRenamed={endRename} />
             ))}
           </div>
         )}
       </div>
-      {scope === "project" && projectOpen && !writable && <p className={styles.empty}>This project is read-only: its presets cannot change.</p>}
-      {scope === "global" && <FolderStrip />}
+      <FolderStrip scope={scope} projectOpen={projectOpen} writable={writable} />
       {menu && menuPreset && (
         <ContextMenu
           x={menu.x}

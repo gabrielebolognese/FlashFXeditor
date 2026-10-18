@@ -2,6 +2,10 @@ import { useRef, type KeyboardEvent } from "react";
 import { presetNaming, saveSelectionAsPreset, suggestedPresetName } from "../../app/presetController.js";
 import { MAX_PRESET_NAME } from "../../text/presets.js";
 import fieldStyles from "../../ui/NumberField.module.css";
+import { useFocusReturn } from "../properties/focusReturn.js";
+
+/** Closed from inside (Enter, Esc), the field gives the focus back to its panel's Save as preset button. */
+const opener = ({ panel }: { panel: Element | null }) => panel?.querySelector('[data-command="preset.save"]:not([aria-disabled])');
 
 /**
  * The inline name field of Save as preset (spec §10.3): prefilled with the selected text's font and
@@ -9,6 +13,8 @@ import fieldStyles from "../../ui/NumberField.module.css";
  */
 export function PresetNameField() {
   const done = useRef(false);
+  const field = useRef<HTMLLabelElement>(null);
+  useFocusReturn(field, opener);
   const finish = (name: string | null) => {
     if (done.current) return;
     done.current = true;
@@ -24,7 +30,7 @@ export function PresetNameField() {
     }
   };
   return (
-    <label className={fieldStyles.field}>
+    <label ref={field} className={fieldStyles.field}>
       <input
         className={`${fieldStyles.input} ${fieldStyles.text}`}
         defaultValue={suggestedPresetName()}

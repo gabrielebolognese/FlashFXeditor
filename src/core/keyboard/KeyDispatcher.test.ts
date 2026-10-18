@@ -224,3 +224,44 @@ describe("focus scopes", () => {
     panel.remove();
   });
 });
+
+describe("focused controls keep their own keys (Batch 46)", () => {
+  const make = (html: string, selector: string) => {
+    const host = document.createElement("div");
+    host.innerHTML = html;
+    document.body.append(host);
+    return host.querySelector(selector)!;
+  };
+
+  it("leaves Space and Enter to a focused button or switch, and still plays from elsewhere", () => {
+    const t = setup();
+    const button = make("<button>Split</button>", "button");
+    const space = t.down({ key: " ", code: "Space" }, button);
+    expect(space.defaultPrevented).toBe(false);
+    const toggle = make('<span role="switch" tabindex="0"></span>', "[role=switch]");
+    t.down({ key: "Enter", code: "Enter" }, toggle);
+    expect(t.onAction).not.toHaveBeenCalled();
+    t.down({ key: " ", code: "Space" });
+    expect(t.onAction).toHaveBeenCalledWith("transport.playPause", expect.anything());
+  });
+
+  it("leaves the arrows to a slider and to a radio group's items, but not to a plain button", () => {
+    const t = setup("timeline");
+    const slider = make('<input type="range">', "input");
+    t.down({ key: "ArrowLeft", code: "ArrowLeft" }, slider);
+    const chip = make('<div role="radiogroup"><button role="radio">A</button></div>', "button");
+    t.down({ key: "ArrowRight", code: "ArrowRight" }, chip);
+    t.down({ key: "Home", code: "Home" }, chip);
+    expect(t.onAction).not.toHaveBeenCalled();
+    const button = make("<button>Zoom in</button>", "button");
+    t.down({ key: "ArrowLeft", code: "ArrowLeft" }, button);
+    expect(t.onAction).toHaveBeenLastCalledWith("transport.stepBack", expect.anything());
+  });
+
+  it("still runs modified shortcuts on a focused control", () => {
+    const t = setup();
+    const button = make("<button>Split</button>", "button");
+    t.down({ key: "k", code: "KeyK", ctrlKey: true }, button);
+    expect(t.onAction).toHaveBeenCalledWith("edit.split", expect.anything());
+  });
+});

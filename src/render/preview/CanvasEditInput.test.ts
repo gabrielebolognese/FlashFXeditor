@@ -153,6 +153,18 @@ describe("CanvasEditInput (spec §7.2, §7.3)", () => {
     expect(s.input.solids).toBeNull();
   });
 
+  it("keeps a handle where it was grabbed instead of jumping it under the pointer (Batch 46)", () => {
+    const s = setup([{}, { x: -300 }, { x: 300 }]);
+    const size = (id: string) => (s.doc.getState().clips[id] as SolidClip).size;
+    s.click(540, 960);
+    // The se handle (590, 1010) pressed 4 project px off its center, then moved 50 px: it moves 50 px too.
+    s.pointer("pointerdown", 594, 1014);
+    s.pointer("pointermove", 619, 1039);
+    s.pointer("pointermove", 644, 1064);
+    s.pointer("pointerup", 644, 1064);
+    expect(size("s1")).toEqual({ w: 150, h: 150 });
+  });
+
   it("scales several layers as a group (solids too)", () => {
     const s = setup([{}, { x: -300 }, { x: 300 }]);
     s.click(540, 960);

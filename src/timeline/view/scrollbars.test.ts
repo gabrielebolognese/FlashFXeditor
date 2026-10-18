@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { FPS_30 } from "../../core/document/time.js";
-import { handleEdge, horizontalThumb, layoutScrollbars, scrollbarAt, scrollForThumb, scrollSpan, scrollYForThumb, verticalThumb, zoomHandleView } from "./scrollbars.js";
+import { handleEdge, horizontalThumb, layoutScrollbars, scrollbarAt, scrollbarX, scrollForThumb, scrollSpan, scrollYForThumb, verticalThumb, zoomHandleView } from "./scrollbars.js";
 import { clampScroll, fitView, zoomLimits, type ZoomContext } from "./zoom.js";
 
 // 1000 px of track area over a 1000 px trough, 3000 frames of content at 30 fps.
@@ -134,5 +134,16 @@ describe("scrollbar hits", () => {
     expect(scrollbarAt(layout, 1205, (vThumb?.y ?? 0) + 5)).toEqual({ axis: "y", part: "thumb" });
     expect(scrollbarAt(layout, 1205, 29)).toEqual({ axis: "y", part: "trough" });
     expect(scrollbarAt(layout, 600, 200)).toBeNull();
+  });
+
+  it("places frames along the trough as the thumb does (markers and the in/out range, Batch 46)", () => {
+    const view = { pxPerFrame: 1, scrollFrame: 500 };
+    const layout = layoutScrollbars(view, context, { h: trough, v: { x: 1200, y: 28, width: 12, height: 372 }, scrollY: 0, scrollYRange: { min: 0, max: 0 }, viewHeight: 372 }, MIN);
+    expect(layout.h.span).toBe(scrollSpan(view, context));
+    expect(scrollbarX(layout, 0)).toBe(trough.x);
+    expect(scrollbarX(layout, layout.h.span)).toBe(trough.x + trough.width);
+    // The view's first frame sits at the thumb's left end (the thumb is wider than its minimum here).
+    expect(scrollbarX(layout, view.scrollFrame)).toBeCloseTo(layout.h.thumb.x, 6);
+    expect(scrollbarX(layout, -50)).toBe(trough.x);
   });
 });

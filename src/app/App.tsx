@@ -12,7 +12,6 @@ import styles from "./App.module.css";
 import { AppBar } from "./AppBar.js";
 import { DialogHost } from "./DialogHost.js";
 import { appView, type AppView } from "./projectController.js";
-import { ReadOnlyBanner } from "./ReadOnlyBanner.js";
 import { Splitter } from "./Splitter.js";
 import { StartScreen } from "./StartScreen.js";
 import { ToastHost } from "./ToastHost.js";
@@ -37,10 +36,9 @@ function Editor() {
   return (
     <div className={styles.app}>
       <AppBar />
-      <ReadOnlyBanner />
-      <main ref={workspaceRef} className={styles.workspace}>
-        <div className={styles.leftGroup}>
-          <div className={styles.topRow}>
+      <main ref={workspaceRef} className={styles.workspace} data-layout-ratio="left">
+        <div className={styles.leftGroup} data-layout-ratio="top">
+          <div className={styles.topRow} data-layout-ratio="media">
             <MediaPanel />
             <PropertiesPanel />
             <Splitter id="media" axis="x" />

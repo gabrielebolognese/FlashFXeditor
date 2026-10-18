@@ -392,7 +392,7 @@ export function saveExportPreset(name: string): boolean {
   const trimmed = name.trim().slice(0, MAX_PRESET_NAME);
   if (trimmed === "") return false;
   if (settings.exportPresets.length >= MAX_USER_PRESETS) {
-    showToast({ tone: "info", message: "Too many export presets", detail: `Delete one of your ${MAX_USER_PRESETS} presets first.` });
+    showToast({ tone: "warning", message: "Too many export presets", detail: `Delete one of your ${MAX_USER_PRESETS} presets first.` });
     return false;
   }
   const preset: ExportPreset = { id: crypto.randomUUID(), name: trimmed, description: trimmed, settings: editableSettings(settings) };
@@ -641,7 +641,7 @@ export async function openFolder(entryId?: string): Promise<void> {
     const [chosen] = await picker.call(window, { startIn, id: "shorts-editor-exports" });
     if (!chosen) return;
     const url = URL.createObjectURL(await chosen.getFile());
-    if (!window.open(url, "_blank")) showToast({ tone: "info", message: "Pop-up blocked", detail: "Allow pop-ups for this site to open exported files." });
+    if (!window.open(url, "_blank")) showToast({ tone: "warning", message: "Pop-up blocked", detail: "Allow pop-ups for this site to open exported files." });
     setTimeout(() => URL.revokeObjectURL(url), 60_000);
   } catch (error) {
     if (isAbortError(error)) return;

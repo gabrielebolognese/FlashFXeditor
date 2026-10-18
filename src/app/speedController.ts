@@ -46,13 +46,13 @@ export function reportSpeedLimit(limit: TrimLimit): void {
   switch (limit.reason) {
     case "mediaEnd":
       // Shortened to the media end, or, with less than one frame left, the speed kept.
-      showToast({ tone: "info", message: "Limited by the media end", detail: `${clip} has no more frames at this speed.` });
+      showToast({ tone: "warning", message: "Limited by the media end", detail: `${clip} has no more frames at this speed.` });
       return;
     case "neighbor":
-      showToast({ tone: "info", message: "Shortened at the next clip", detail: `${clip} stops where the next clip on ${track} starts. Turn on Ripple to move later clips.` });
+      showToast({ tone: "warning", message: "Shortened at the next clip", detail: `${clip} stops where the next clip on ${track} starts. Turn on Ripple to move later clips.` });
       return;
     case "ripple":
-      showToast({ tone: "info", message: `Ripple stopped by ${track}`, detail: `Clips on ${track} can't move back further without overlapping, so a gap stays.` });
+      showToast({ tone: "warning", message: `Ripple stopped by ${track}`, detail: `Clips on ${track} can't move back further without overlapping, so a gap stays.` });
       return;
     default:
       reportTrimLimit(limit);

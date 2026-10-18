@@ -127,7 +127,7 @@ function reportExtractLimit(limit: GapLimit, none: boolean): void {
   const project = documentStore.getState();
   const clip = project.clips[limit.clipId]?.name ?? "A clip";
   const track = project.tracks.find((candidate) => candidate.id === limit.trackId)?.name ?? "another track";
-  showToast({ tone: "info", message: none ? "Extracted without closing the gap" : "Extract closed the gap partly", detail: `${clip} on ${track} can't move further left without overlapping.` });
+  showToast({ tone: "warning", message: none ? "Extracted without closing the gap" : "Extract closed the gap partly", detail: `${clip} on ${track} can't move further left without overlapping.` });
 }
 
 /**

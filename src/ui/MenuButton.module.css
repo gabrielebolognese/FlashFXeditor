@@ -29,12 +29,12 @@
   border-radius: var(--radius-md);
 }
 
-.button:hover {
+.button:not([aria-disabled]):hover {
   background: var(--hover-wash);
   color: var(--text-primary);
 }
 
-.button[data-kind="value"]:hover {
+.button[data-kind="value"]:not([aria-disabled]):hover {
   border-color: var(--surface-5);
   background: var(--surface-1);
 }
@@ -48,6 +48,10 @@
 .button[aria-expanded="true"][data-kind="icon"] {
   background: var(--accent-wash);
   color: var(--accent);
+}
+
+.button[aria-disabled] {
+  opacity: var(--disabled-opacity);
 }
 
 .button:focus-visible {

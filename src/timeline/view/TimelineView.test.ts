@@ -217,12 +217,14 @@ describe("TimelineView", () => {
     vi.unstubAllGlobals();
   });
 
-  it("draws both canvases once when mounted, sized to the panel", () => {
+  it("draws both canvases once when mounted, sized to the panel with headroom (Batch 46)", () => {
     const { view, overlay } = setup();
     expect(view.stats.contentDraws).toBe(1);
     expect(view.stats.overlayDraws).toBe(1);
-    expect(overlay.width).toBe(1000);
-    expect(overlay.style.height).toBe("428px");
+    // 1000 x 428 CSS px at dpr 1: rounded up to 128 px steps plus one step.
+    expect(overlay.width).toBe(1152);
+    expect(overlay.style.width).toBe("1152px");
+    expect(overlay.style.height).toBe("640px");
   });
 
   it("redraws only the overlay while the playhead is dragged on the ruler", () => {
@@ -399,7 +401,8 @@ describe("TimelineView", () => {
     expect(lastHover().addRow).not.toBeNull();
     pointer("pointerdown", 20, 150);
     expect(document.getState().tracks).toHaveLength(3);
-    expect(overlay.style.cursor).toBe("default");
+    // The new track's header is under the pointer now: it can be dragged (Batch 46 cursors).
+    expect(overlay.style.cursor).toBe("grab");
     scheduler.flush();
     expect(lastHover().addRow).toBeNull();
     // V2 (56 px) sits between V1 and the + row now; the row lights up again where it went.

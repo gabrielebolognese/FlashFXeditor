@@ -1,5 +1,5 @@
-import { ArrowDownWideNarrow, ArrowUpNarrowWide, AudioLines, ChevronDown, ChevronUp, FileSearch, Film, FolderPlus, FolderSearch, Image, Import, KeyRound, LayoutGrid, List, TriangleAlert, type LucideIcon } from "lucide-react";
-import { memo, useLayoutEffect, useMemo, useRef, type CSSProperties, type DragEvent, type MouseEvent, type PointerEvent, type RefObject } from "react";
+import { ArrowDownWideNarrow, ArrowUpNarrowWide, AudioLines, ChevronDown, ChevronUp, FileSearch, Film, Folder, FolderPlus, FolderSearch, FunnelX, Image, Import, KeyRound, LayoutGrid, Library, List, SearchX, TriangleAlert, type LucideIcon } from "lucide-react";
+import { memo, useEffect, useLayoutEffect, useMemo, useRef, type CSSProperties, type DragEvent, type FocusEvent, type KeyboardEvent, type MouseEvent, type PointerEvent, type RefObject } from "react";
 import { insertMediaAtPlayhead } from "../../app/dropController.js";
 import { clearMediaSelection, dropMedia, mediaPanel, openMediaMenu, selectMedia, setMediaSearch } from "../../app/mediaController.js";
 import { mediaHover, pressMediaCard, takeClickAfterDrag } from "../../app/mediaGestures.js";
@@ -13,12 +13,14 @@ import { isEditableTarget } from "../../core/keyboard/KeyDispatcher.js";
 import { useStoreSelector } from "../../core/store/useStoreSelector.js";
 import type { MediaStatus } from "../../project/mediaSources.js";
 import { Button } from "../../ui/Button.js";
+import { EmptyState } from "../../ui/EmptyState.js";
 import { IconButton } from "../../ui/IconButton.js";
 import { Select } from "../../ui/Select.js";
 import { TextField } from "../../ui/TextField.js";
 import { BinMenu, BinStrip } from "./BinStrip.js";
-import { listColumns, pressColumnResizer, resetColumn } from "./columnResize.js";
+import { describeColumnWidth, keyResizeColumn, listColumns, pressColumnResizer, resetColumn } from "./columnResize.js";
 import { rangeFractions } from "./hoverScrub.js";
+import { gridColumns, pressWithoutFocus, setTabStop, stepIndex } from "./listNavigation.js";
 import { MediaContextMenu } from "./MediaContextMenu.js";
 import { MediaName } from "./MediaName.js";
 import { ProxyBadge, ProxyCell } from "./ProxyBadge.js";
@@ -72,7 +74,7 @@ export function MediaActions() {
   const options = (HEADER_SORTS.includes(panel.sort) ? HEADER_SORTS : [...HEADER_SORTS, panel.sort]).map((value) => ({ value, label: SORT_LABELS[value] }));
   return (
     <>
-      <Select size="compact" label="Sort media by" value={panel.sort} options={options} onChange={(sort) => setPanel({ sort, descending: false })} />
+      <Select size="compact" label="Sort media by" tooltip="Sort media by" value={panel.sort} options={options} onChange={(sort) => setPanel({ sort, descending: false })} />
       <IconButton icon={panel.descending ? ArrowDownWideNarrow : ArrowUpNarrowWide} label={panel.descending ? "Descending" : "Ascending"} commandId="media.toggleSortDirection" />
       <IconButton icon={LayoutGrid} label="Grid view" commandId="media.viewGrid" pressed={panel.view === "grid"} />
       <IconButton icon={List} label="List view" commandId="media.viewList" pressed={panel.view === "list"} />
@@ -83,9 +85,9 @@ export function MediaActions() {
 }
 
 const FILTER_CHIPS = [
-  { kind: "video", label: "Video", command: "media.filterVideo" },
-  { kind: "audio", label: "Audio", command: "media.filterAudio" },
-  { kind: "image", label: "Images", command: "media.filterImage" },
+  { kind: "video", label: "Video", command: "media.filterVideo", tooltip: "Show only videos (with the other checked kinds)" },
+  { kind: "audio", label: "Audio", command: "media.filterAudio", tooltip: "Show only audio (with the other checked kinds)" },
+  { kind: "image", label: "Images", command: "media.filterImage", tooltip: "Show only images (with the other checked kinds)" },
 ] as const;
 
 /** The search field and the filter chips (spec §12; a tool row like the Presets tab's). */
@@ -100,7 +102,7 @@ function MediaTools() {
       </div>
       <div className={styles.chips} role="group" aria-label="Show only">
         {FILTER_CHIPS.map((chip) => (
-          <button key={chip.kind} type="button" className={styles.chip} aria-pressed={filters.kinds.includes(chip.kind)} data-command={chip.command} onMouseDown={keep} onClick={() => actions.run(chip.command)}>
+          <button key={chip.kind} type="button" className={styles.chip} aria-pressed={filters.kinds.includes(chip.kind)} data-command={chip.command} data-tooltip={chip.tooltip} onMouseDown={keep} onClick={() => actions.run(chip.command)}>
             {chip.label}
           </button>
         ))}
@@ -114,7 +116,11 @@ function MediaTools() {
 
 const countOf = (statuses: ReadonlyMap<MediaId, MediaStatus>, status: MediaStatus) => [...statuses.values()].filter((value) => value === status).length;
 
-/** Offline media (spec §12, Batch 41): linked files waiting for the browser's permission, missing files. */
+/**
+ * Offline media (spec §12, Batch 41): linked files waiting for the browser's permission, missing files.
+ * Both buttons stay while the notice shows (Batch 46: no shift as the counts change), the one with
+ * nothing to do disabled.
+ */
 function OfflineNotice() {
   const waiting = useStoreSelector(mediaStatus, (state) => countOf(state, "permission"));
   const missing = useStoreSelector(mediaStatus, (state) => state.size - countOf(state, "permission"));
@@ -123,19 +129,15 @@ function OfflineNotice() {
   return (
     <div className={styles.notice} role="status">
       <TriangleAlert className={styles.noticeIcon} aria-hidden="true" />
-      <span className={styles.noticeText} title={text}>
+      <span className={styles.noticeText} data-tooltip={text}>
         {text}
       </span>
-      {waiting > 0 && (
-        <Button size="compact" icon={KeyRound} commandId="media.allowAccess" tooltip="Let the browser read the linked files again">
-          Allow access
-        </Button>
-      )}
-      {missing > 0 && (
-        <Button size="compact" icon={FolderSearch} commandId="media.relinkFolder" tooltip="Find the offline files in a folder (by name and size)">
-          Relink folder…
-        </Button>
-      )}
+      <Button size="compact" icon={KeyRound} commandId="media.allowAccess" disabled={waiting === 0} tooltip={waiting === 0 ? "No linked file is waiting for permission" : "Let the browser read the linked files again"}>
+        Allow access
+      </Button>
+      <Button size="compact" icon={FolderSearch} commandId="media.relinkFolder" disabled={missing === 0} tooltip={missing === 0 ? "No file is missing: Allow access reads the linked files again" : "Find the offline files in a folder (by name and size)"}>
+        Relink folder…
+      </Button>
     </div>
   );
 }
@@ -191,7 +193,14 @@ function OfflineBadge({ id, card }: { id: MediaId; card: boolean }) {
       <span className={styles.offline} data-tooltip={badge.tooltip}>
         {badge.label}
       </span>
-      <button type="button" className={styles.relink} data-command={command} onClick={onClick} onDoubleClick={(event) => event.stopPropagation()}>
+      <button
+        type="button"
+        className={styles.relink}
+        data-command={command}
+        data-tooltip={status === "permission" ? "Let the browser read this linked file again" : "Pick the file this media should use"}
+        onClick={onClick}
+        onDoubleClick={(event) => event.stopPropagation()}
+      >
         {status === "permission" ? <KeyRound className={styles.relinkIcon} aria-hidden="true" /> : <FileSearch className={styles.relinkIcon} aria-hidden="true" />}
         {label}
       </button>
@@ -222,7 +231,7 @@ const MediaCard = memo(function MediaCard({ item, uses }: { item: MediaItem; use
   const Icon = KIND_ICONS[item.kind];
   const badge = durationBadge(item);
   return (
-    <div ref={ref} className={styles.card} data-media-id={item.id} data-unused={uses === 0 || undefined} data-offline={offline || undefined} role="option">
+    <div ref={ref} className={styles.card} data-media-id={item.id} data-unused={uses === 0 || undefined} data-offline={offline || undefined} role="option" tabIndex={-1}>
       <div className={styles.thumb} data-thumb="">
         <Icon className={styles.placeholderIcon} aria-hidden="true" />
         {item.kind !== "audio" && <PosterCanvas id={item.id} />}
@@ -252,7 +261,7 @@ const MediaRow = memo(function MediaRow({ item, uses }: { item: MediaItem; uses:
   const offline = useStoreSelector(mediaStatus, (state) => state.has(item.id));
   const Icon = KIND_ICONS[item.kind];
   return (
-    <div ref={ref} className={styles.row} data-media-id={item.id} data-offline={offline || undefined} role="option">
+    <div ref={ref} className={styles.row} data-media-id={item.id} data-offline={offline || undefined} role="option" tabIndex={-1}>
       <div className={styles.rowThumb} data-thumb="">
         <Icon className={styles.placeholderIcon} aria-hidden="true" />
         {item.kind !== "audio" && <PosterCanvas id={item.id} />}
@@ -303,16 +312,30 @@ function ListHeader({ sort, descending }: { sort: MediaSort; descending: boolean
             ) : (
               <span className={styles.column}>{column.label}</span>
             )}
-            {/* Drag to resize the column, double-click for its default width. */}
+            {/* Drag (or Left / Right when focused) to resize the column, double-click for its default width. */}
             <span
               className={styles.resizer}
               data-resize={key}
-              aria-hidden="true"
+              role="separator"
+              aria-orientation="vertical"
+              aria-label={`${column.label} column width`}
+              tabIndex={0}
+              data-tooltip="Drag to resize the column (Left / Right when focused), double-click for its default width"
               onPointerDown={(event) => {
                 event.stopPropagation();
                 pressColumnResizer(event.nativeEvent, key);
               }}
               onDoubleClick={() => resetColumn(key)}
+              // A press does not focus the edge: the arrows keep stepping frames after a drag.
+              onMouseDown={(event) => event.preventDefault()}
+              onFocus={(event) => describeColumnWidth(event.currentTarget)}
+              onKeyDown={(event) => {
+                if ((event.key !== "ArrowLeft" && event.key !== "ArrowRight") || event.ctrlKey || event.metaKey || event.altKey) return;
+                // The arrows resize here: they must not step frames (the KeyDispatcher listens on window).
+                event.preventDefault();
+                event.stopPropagation();
+                keyResizeColumn(event.currentTarget, key, event.key === "ArrowLeft" ? -1 : 1, event.shiftKey);
+              }}
             />
           </span>
         );
@@ -321,37 +344,75 @@ function ListHeader({ sort, descending }: { sort: MediaSort; descending: boolean
   );
 }
 
-function EmptyState() {
+function NoMedia() {
   return (
-    <div className={styles.empty}>
-      <Film className={styles.emptyIcon} aria-hidden="true" />
-      <p className={styles.emptyTitle}>No media yet</p>
-      <p className={styles.emptyText}>Import video, audio and images, or drop files here.</p>
+    <EmptyState icon={Film} title="No media yet" text="Import video, audio and images, or drop files here.">
       <Button variant="primary" icon={Import} commandId="media.import">
         Import media
       </Button>
-    </div>
+    </EmptyState>
   );
 }
 
-/** Nothing matches the bin, the filter chips and the search. */
-function NoMatch() {
-  return (
-    <div className={styles.noMatch}>
-      <p className={styles.emptyTitle}>No media here</p>
-      <p className={styles.emptyText}>Nothing matches this bin, the filters and the search.</p>
-      <Button size="compact" commandId="media.clearFilters">
-        Clear filters
+const KIND_BIN_EMPTY: Record<MediaItem["kind"], string> = { video: "No videos yet", audio: "No audio yet", image: "No images yet" };
+const isKindBin = (bin: string): bin is MediaItem["kind"] => bin === "video" || bin === "audio" || bin === "image";
+
+/**
+ * Nothing matches the bin, the filter chips and the search (Batch 46: with the action that fixes it):
+ * checked chips or search words hide the media: Clear filters (and Show all media from a bin); an empty
+ * kind's bin: Import media or Show all media; an empty bin: Show all media.
+ */
+function NoMatch({ bin, filtered }: { bin: string; filtered: boolean }) {
+  const showAll =
+    bin === "all" ? null : (
+      <Button size="compact" icon={Library} commandId="media.showAll" tooltip="Show every media: the All bin, no filter, no search">
+        Show all media
       </Button>
-    </div>
+    );
+  if (filtered) {
+    return (
+      <EmptyState layout="inline" icon={SearchX} title="No media match" text={bin === "all" ? "Nothing matches the filters and the search." : "Nothing in this bin matches the filters and the search."}>
+        <Button size="compact" icon={FunnelX} commandId="media.clearFilters" tooltip="Uncheck the filter chips and clear the search">
+          Clear filters
+        </Button>
+        {showAll}
+      </EmptyState>
+    );
+  }
+  if (isKindBin(bin)) {
+    return (
+      <EmptyState layout="inline" icon={KIND_ICONS[bin]} title={KIND_BIN_EMPTY[bin]} text="Import some, or show every media.">
+        <Button size="compact" icon={Import} commandId="media.import">
+          Import media
+        </Button>
+        {showAll}
+      </EmptyState>
+    );
+  }
+  return (
+    <EmptyState layout="inline" icon={Folder} title="This bin is empty" text="Drag media onto the bin, or use Move to bin in a media's menu.">
+      {showAll}
+    </EmptyState>
   );
+}
+
+const MEDIA_ITEM = "[data-media-id]";
+/** The card or row itself (not a button or field inside it). */
+const mediaCard = (target: EventTarget | null) => (target instanceof HTMLElement && target.matches(MEDIA_ITEM) ? target : null);
+
+/** The list's one Tab stop (Batch 46): the selection's anchor when shown, else its first shown media, else the first shown card. */
+function placeTabStop(list: HTMLElement, order: readonly MediaId[]): void {
+  const { selection } = mediaPanel.getState();
+  const anchor = selection.anchor !== null && selection.ids.has(selection.anchor) && order.includes(selection.anchor) ? selection.anchor : undefined;
+  const id = anchor ?? order.find((other) => selection.ids.has(other));
+  setTabStop(list, MEDIA_ITEM, id === undefined ? null : list.querySelector(`[data-media-id="${CSS.escape(id)}"]`));
 }
 
 /**
  * The Media tab body (spec §12): the search and filter chips, the bin strip, grid or list, selection,
  * drop target, hover-scrub, drags out (to the timeline, the canvas, a bin), offline media, context
- * menus. Every media keeps its card while the bin, the chips or the search hide it (no remount, so a
- * search narrows at once).
+ * menus, the keyboard (Batch 46). Every media keeps its card while the bin, the chips or the search
+ * hide it (no remount, so a search narrows at once).
  */
 export function MediaTab() {
   const media = useStoreSelector(documentStore, selectMediaRecord);
@@ -370,17 +431,32 @@ export function MediaTab() {
     const match = mediaMatcher({ bin, filters: panel.filters, search }, uses);
     return items.filter(match).map((item) => item.id);
   }, [items, bin, panel.filters, search, uses]);
+  const filtered = panel.filters.kinds.length > 0 || panel.filters.unused || search.trim() !== "";
+  const orderRef = useRef(order);
 
-  // The bin, chips and search hide cards in place: no card re-renders, none remounts.
+  // The bin, chips and search hide cards in place: no card re-renders, none remounts. Then the Tab stop.
   useLayoutEffect(() => {
+    orderRef.current = order;
     const list = listRef.current;
     if (!list) return;
     const shown = new Set(order);
-    for (const element of list.querySelectorAll<HTMLElement>("[data-media-id]")) {
+    for (const element of list.querySelectorAll<HTMLElement>(MEDIA_ITEM)) {
       const hidden = !shown.has(element.dataset.mediaId as MediaId);
       if (element.hidden !== hidden) element.hidden = hidden;
     }
+    placeTabStop(list, order);
   });
+  // A selection made anywhere (a click, the arrows, Mod+A, Reveal in media panel) takes the Tab stop.
+  useEffect(
+    () =>
+      mediaPanel.select(
+        (state) => state.selection,
+        () => {
+          if (listRef.current) placeTabStop(listRef.current, orderRef.current);
+        },
+      ),
+    [],
+  );
 
   // Selection by event delegation: cards stay dumb and keep their memoized props.
   const onClick = (event: MouseEvent) => {
@@ -416,7 +492,38 @@ export function MediaTab() {
     mediaHover.leave();
     openMediaMenu(id, event.clientX, event.clientY);
   };
-  const listHandlers = { onClick, onDoubleClick, onPointerDown, onPointerMove, onPointerLeave, onContextMenu, onScroll: onPointerLeave };
+  // The keyboard (Batch 46): the arrows, Home and End move the focus and the selection over the shown
+  // media as a click does (Shift extends it), Enter or Space inserts the focused one at the playhead as
+  // a double-click does. Handled keys stop here: the KeyDispatcher (on window) must not step frames.
+  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    const card = mediaCard(event.target);
+    if (!card || event.ctrlKey || event.metaKey || event.altKey) return;
+    const id = card.dataset.mediaId as MediaId;
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      event.stopPropagation();
+      if (!event.repeat) insertMediaAtPlayhead(id);
+      return;
+    }
+    const list = listRef.current;
+    const next = stepIndex(event.key, order.indexOf(id), order.length, panel.view === "grid" && list ? gridColumns(list) : 1);
+    const nextId = next === null ? undefined : order[next];
+    if (nextId === undefined || !list) return;
+    event.preventDefault();
+    event.stopPropagation();
+    selectMedia(nextId, { toggle: false, range: event.shiftKey }, order);
+    list.querySelector<HTMLElement>(`[data-media-id="${CSS.escape(nextId)}"]`)?.focus();
+  };
+  // A press on a card selects it without focusing it (Space keeps playing); its buttons and name field keep theirs.
+  const onMouseDown = (event: MouseEvent<HTMLDivElement>) => {
+    const card = (event.target as Element).closest<HTMLElement>(MEDIA_ITEM);
+    if (card && !isEditableTarget(event.target) && !(event.target as Element).closest("button")) pressWithoutFocus(event, event.currentTarget, card, MEDIA_ITEM);
+  };
+  const onFocus = (event: FocusEvent) => {
+    const card = mediaCard(event.target);
+    if (card && listRef.current) setTabStop(listRef.current, MEDIA_ITEM, card);
+  };
+  const listHandlers = { onClick, onDoubleClick, onPointerDown, onPointerMove, onPointerLeave, onContextMenu, onScroll: onPointerLeave, onKeyDown, onMouseDown, onFocus };
 
   // Drop highlight through a data attribute: no React render while dragging.
   const setDropping = (on: boolean) => {
@@ -457,11 +564,11 @@ export function MediaTab() {
         <BinStrip />
         <div className={styles.content}>
           {items.length === 0 ? (
-            <EmptyState />
+            <NoMedia />
           ) : panel.view === "grid" ? (
             <div className={styles.scroll} role="listbox" aria-label="Media" aria-multiselectable="true" {...listHandlers}>
-              {order.length === 0 && <NoMatch />}
-              <div ref={listRef} className={styles.grid}>
+              {order.length === 0 && <NoMatch bin={bin} filtered={filtered} />}
+              <div ref={listRef} className={styles.grid} data-empty={order.length === 0 || undefined}>
                 {items.map((item) => (
                   <MediaCard key={item.id} item={item} uses={uses.get(item.id) ?? 0} />
                 ))}
@@ -475,7 +582,7 @@ export function MediaTab() {
                   <MediaRow key={item.id} item={item} uses={uses.get(item.id) ?? 0} />
                 ))}
               </div>
-              {order.length === 0 && <NoMatch />}
+              {order.length === 0 && <NoMatch bin={bin} filtered={filtered} />}
             </div>
           )}
         </div>

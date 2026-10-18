@@ -1,7 +1,28 @@
 /*
  * Layout of spec §2. The split ratios are CSS variables written by useWorkspaceLayout from the layout
  * store; splitters sit absolutely on the boundaries, so panels share edges with no gutters.
+ *
+ * Batch 46: the ratios are registered as non-inherited and written only on the grid that uses each one
+ * and on its splitter. Inherited, a ratio written on the workspace restyled every element of the app on
+ * each frame of a splitter drag (10-15 ms of style recalculation, forced by the first canvas font set).
  */
+@property --layout-left {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0.68;
+}
+
+@property --layout-top {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0.5;
+}
+
+@property --layout-media {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0.49;
+}
 .app {
   display: flex;
   flex-direction: column;

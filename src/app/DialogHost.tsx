@@ -78,7 +78,7 @@ function NewProjectDialog({ dir, initialTemplate }: { dir: FsDir; initialTemplat
       footer={
         <>
           <Button control onClick={closeDialog}>Cancel</Button>
-          <Button control variant="primary" disabled={busy} onClick={create}>
+          <Button control variant="primary" disabled={busy} tooltip={busy ? "Creating the project…" : undefined} onClick={create}>
             Create project
           </Button>
         </>

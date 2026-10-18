@@ -20,13 +20,15 @@ export interface MenuButtonProps {
   pressed?: boolean | undefined;
   /** The rows are a field's values (the Ease dropdown), not command ids. */
   values?: boolean | undefined;
+  /** Not applicable now: dimmed, does not open, keeps its focus and tooltip (aria-disabled, spec §17). */
+  disabled?: boolean | undefined;
 }
 
 // Never takes focus on mouse down, so Space and other shortcuts keep working after a choice.
 const keepFocus = (event: MouseEvent) => event.preventDefault();
 
 /** A dropdown (spec §7.8 "single click opens, single click selects"): a compact button opening a menu under it. */
-export function MenuButton({ label, commandId, icon: Icon, children, entries, onSelect, onClose, pressed, values = false }: MenuButtonProps) {
+export function MenuButton({ label, commandId, icon: Icon, children, entries, onSelect, onClose, pressed, values = false, disabled }: MenuButtonProps) {
   const ref = useRef<HTMLButtonElement>(null);
   const [anchor, setAnchor] = useState<{ x: number; y: number } | null>(null);
   const close = useCallback(() => {
@@ -38,6 +40,7 @@ export function MenuButton({ label, commandId, icon: Icon, children, entries, on
       close();
       return;
     }
+    if (disabled) return;
     const button = ref.current;
     if (!button) return;
     // One rect read per open.
@@ -55,6 +58,8 @@ export function MenuButton({ label, commandId, icon: Icon, children, entries, on
         aria-haspopup="menu"
         aria-expanded={anchor !== null}
         aria-pressed={pressed}
+        // aria-disabled, not disabled: the button keeps its focus and its tooltip.
+        aria-disabled={disabled || undefined}
         data-tooltip={label}
         data-command={commandId}
         onMouseDown={keepFocus}

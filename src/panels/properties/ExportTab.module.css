@@ -44,17 +44,32 @@
   box-shadow: var(--focus-ring);
 }
 
-/* A readout under its row (the format, the range, the file name), in the control column. */
+/* A readout under its row (the format, the range, the file name), in the control column: one line, a
+   longer text ends in an ellipsis (the whole of it in the tooltip), so the rows under it never move.
+   The codec check's notice is an info icon at its end. */
 .summary {
+  display: flex;
   grid-column: 2;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
   margin-top: calc(-1 * var(--space-1));
   color: var(--text-tertiary);
   font: var(--type-mono);
   font-variant-numeric: tabular-nums;
-  overflow-wrap: anywhere;
+}
+
+.summaryText {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .notice {
+  flex: none;
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
   color: var(--info);
 }
 

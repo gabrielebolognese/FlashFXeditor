@@ -61,7 +61,7 @@ export function applyTransition(cut: Cut, kind: TransitionKind): boolean {
   }
   documentStore.dispatch(result.command);
   selectTransition(sessionStore, result.cut);
-  if (result.repeated) showToast({ tone: "info", message: "Not enough media for the transition", detail: "The clips have no frames beyond the cut: their edge frames repeat (striped on the timeline)." });
+  if (result.repeated) showToast({ tone: "warning", message: "Not enough media for the transition", detail: "The clips have no frames beyond the cut: their edge frames repeat (striped on the timeline)." });
   return true;
 }
 

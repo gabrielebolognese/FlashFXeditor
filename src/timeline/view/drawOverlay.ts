@@ -18,9 +18,10 @@ import { isMediaClip, type Clip, type Frame, type Marker, type MediaClip, type P
 import { EMPTY_SELECTION, type Selection } from "../../core/store/selection.js";
 import type { SilencePreview, TransitionSelection } from "../../core/store/sessionStore.js";
 import type { Theme } from "../../core/theme/theme.js";
+import { castShadow } from "../../core/theme/shadow.js";
 import { edgeFrame, type TrimEdge } from "../edit/trim.js";
 import { markedRange } from "../model/inOut.js";
-import { clipsInRange, linkOffset, neighbors, type Gap } from "../model/queries.js";
+import { clipsInRange, contentEnd, linkOffset, neighbors, type Gap } from "../model/queries.js";
 import { clipLod, clipSpan, devicePx, LOD_LABEL_PX } from "./clipLayout.js";
 import type { ClipVisuals } from "./clipVisuals.js";
 import { drawLane, type LaneDraw } from "./keyframeLane.js";
@@ -33,7 +34,7 @@ import type { Ghost, MoveProposal, NewLane } from "./gestures/moveClips.js";
 import type { TrimProposal } from "./gestures/trimClip.js";
 import { drawScrollbarState } from "./drawScrollbars.js";
 import { CLIP_GLYPHS, drawGlyph, TRACK_GLYPHS } from "./glyphs.js";
-import type { ScrollbarHit, ScrollbarLayout } from "./scrollbars.js";
+import { scrollbarX, type ScrollbarHit, type ScrollbarLayout } from "./scrollbars.js";
 import type { TextCache } from "./textCache.js";
 
 /** A clip drag as drawn: the proposal and the height of a new track row. */
@@ -146,6 +147,8 @@ export interface OverlayScene {
   fonts?: TimelineFonts | null;
   /** The scrollbar part under the pointer (or dragged: `active`), on the scrollbars as laid out. */
   scrollbar?: { layout: ScrollbarLayout; hit: ScrollbarHit; active: boolean } | null;
+  /** The markers and the in/out range on the horizontal scrollbar (Batches 18/19 follow-up, drawn in Batch 46). */
+  scrollbarMarks?: { layout: ScrollbarLayout; markers: readonly Marker[]; range: { from: Frame; to: Frame } | null } | null;
   /** The in/out range, when a point is set. */
   range?: RangeScene | null;
   markers?: MarkerScene | null;
@@ -172,6 +175,11 @@ export interface Tooltip {
   alert?: string | null;
   x: number;
   y: number;
+  /**
+   * The edited clip's band (an edit's tooltip): the tooltip sits above it, or under it when there is no
+   * room above, so it never covers the label bars at the cut (spec §6.10).
+   */
+  band?: { top: number; bottom: number } | null;
 }
 
 export function drawOverlay(scene: OverlayScene): void {
@@ -212,12 +220,49 @@ export function drawOverlay(scene: OverlayScene): void {
   if (scene.trackDrag) drawTrackDrag(scene, scene.trackDrag);
   if (scene.markers) drawMarkerStates(scene, scene.markers);
   drawPlayhead(scene);
+  // A snap or a cut on the playhead's frame draws again over it in the track area: the 2 px scrubbing
+  // playhead would hide the 1 px line (Batches 12 and 15 follow-ups).
+  if (scene.snapFrame === scene.playhead || scene.razor?.frame === scene.playhead) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(geometry.area.x, geometry.area.y, geometry.area.width, geometry.area.height);
+    ctx.clip();
+    if (scene.snapFrame === scene.playhead) drawSnapLine(scene, scene.snapFrame);
+    if (scene.razor?.frame === scene.playhead) drawRazor(scene, scene.razor);
+    ctx.restore();
+  }
   if (scene.scrollbar) drawScrollbarState(ctx, scene.theme, scene.scrollbar.layout, scene.scrollbar.hit, scene.scrollbar.active);
+  if (scene.scrollbarMarks) drawScrollbarMarks(scene, scene.scrollbarMarks);
   if (scene.tooltip) drawTooltip(scene, scene.tooltip);
 }
 
 /** Snaps a CSS coordinate to the device pixel grid. */
 const snap = (value: number, dpr: number) => Math.round(value * dpr) / dpr;
+
+/**
+ * The whole timeline at a glance on the horizontal scrollbar: the in/out range as the ruler's range
+ * wash across the trough, each marker as a device-pixel tick in its label color, over the thumb (the
+ * thumb only moves the view, the marks say where things are).
+ */
+function drawScrollbarMarks(scene: OverlayScene, marks: NonNullable<OverlayScene["scrollbarMarks"]>): void {
+  const { ctx, dpr, theme } = scene;
+  const { layout } = marks;
+  const { trough } = layout.h;
+  const inset = theme.space[0];
+  const y = trough.y + inset;
+  const height = Math.max(0, trough.height - 2 * inset);
+  if (height <= 0 || trough.width <= 0) return;
+  if (marks.range) {
+    const x0 = snap(scrollbarX(layout, marks.range.from), dpr);
+    const x1 = snap(scrollbarX(layout, marks.range.to), dpr);
+    ctx.fillStyle = theme.timeline.rangeWash;
+    ctx.fillRect(x0, y, Math.max(1 / dpr, x1 - x0), height);
+  }
+  for (const marker of marks.markers) {
+    ctx.fillStyle = theme.timeline.labels[marker.color];
+    ctx.fillRect(snap(scrollbarX(layout, marker.frame), dpr), y, 1 / dpr, height);
+  }
+}
 
 /**
  * Remove silence's preview (spec §14 "red hatched segments on the clip"): each cut a wash and red
@@ -297,6 +342,8 @@ function drawTrimLayout(scene: OverlayScene, trim: TrimScene): void {
   const inset = theme.timeline.clipInset;
   const visible = geometry.visibleFrames;
   const clipScene = { ctx, dpr, geometry, theme, selection: trim.selection, text: scene.text, project, visuals: scene.visuals ?? null, fonts: scene.fonts ?? null };
+  // The content canvas's end line, under the spans cleared here (the Batch 13 follow-up).
+  const end = contentEnd(scene.project ?? project);
   ctx.save();
   ctx.beginPath();
   ctx.rect(geometry.area.x, geometry.area.y, geometry.area.width, geometry.area.height);
@@ -321,6 +368,10 @@ function drawTrimLayout(scene: OverlayScene, trim: TrimScene): void {
     });
     // The transitions as the edit leaves them (shortened or gone, Batch 36).
     drawBlocks({ ctx, dpr, geometry, theme, project, transition: scene.transition ?? null }, row, track, clips);
+    if (end > 0 && end >= from && end <= to) {
+      ctx.fillStyle = theme.color.border;
+      ctx.fillRect(snap(geometry.frameToX(end), dpr), y, 1 / dpr, height);
+    }
   }
   ctx.restore();
 }
@@ -710,11 +761,18 @@ function drawTooltip(scene: OverlayScene, tooltip: Tooltip): void {
   if (nameWidth + textWidth + targetWidth + alertWidth === 0) return;
   const width = nameWidth + nameGap + textWidth + gap + targetWidth + alertGap + alertWidth + 2 * space[2];
   const height = theme.type.caption.line + 2 * space[1];
-  const x = snap(Math.max(0, Math.min(tooltip.x + space[3], geometry.width - width)), dpr);
+  // Over the track area only: an in point pulled to frame 0 keeps it off the header column.
+  const minX = Math.min(geometry.area.x, Math.max(0, geometry.width - width));
+  const x = snap(Math.max(minX, Math.min(tooltip.x + space[3], geometry.width - width)), dpr);
   let y = tooltip.y - space[3] - height;
-  if (y < geometry.rulerHeight) y = tooltip.y + space[5];
+  if (tooltip.band) {
+    y = Math.min(y, tooltip.band.top - space[1] - height);
+    if (y < geometry.rulerHeight) y = tooltip.band.bottom + space[1];
+  } else if (y < geometry.rulerHeight) y = tooltip.y + space[5];
   y = snap(Math.max(0, Math.min(y, geometry.height - height)), dpr);
   const line = 1 / dpr;
+  // A floating chip: the DS overlay shadow (Batch 11 follow-up).
+  castShadow(ctx, theme.shadow.overlay, dpr, x, y, width, height, theme.radius.sm, color.surface4);
   ctx.beginPath();
   ctx.roundRect(x + line / 2, y + line / 2, width - line, height - line, theme.radius.sm);
   ctx.fillStyle = color.surface4;

@@ -1,6 +1,7 @@
 import { Blend, Moon, Sun, Timer, type LucideIcon } from "lucide-react";
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { documentStore, sessionStore } from "../../app/services.js";
+import { hoverAlignment } from "../../app/transitionPreview.js";
 import { alignedSides, alignmentOf, repeatedFrames, TRANSITION_LABELS, type TransitionAlignment } from "../../core/document/transitions.js";
 import { TRANSITION_KINDS, type Project, type TransitionKind } from "../../core/document/types.js";
 import { useStoreSelector } from "../../core/store/useStoreSelector.js";
@@ -64,11 +65,19 @@ export function TransitionSection({ cut }: { cut: Cut }) {
       ),
     [cut],
   );
+  // The section going away (another selection) ends a split it started.
+  useEffect(() => () => hoverAlignment(null), []);
   if (!transition) return null;
   const alignment = alignmentOf(transition);
+  const hint = repeated > 0 ? `Not enough media: ${repeated} ${repeated === 1 ? "frame repeats" : "frames repeat"} an edge frame` : "";
   const setKind = (kind: TransitionKind) => {
     const command = updateTransition(documentStore.getState(), cut, { kind }, { linked: linked() });
     if (command) documentStore.dispatch(command);
+  };
+  const previewChoice = (group: HTMLElement, target: EventTarget) => {
+    const button = target instanceof Element ? target.closest("button") : null;
+    const entry = button ? ALIGNMENTS[[...group.children].indexOf(button)] : undefined;
+    hoverAlignment(entry ? { cut, alignment: entry.id } : null);
   };
   const align = (id: Exclude<TransitionAlignment, "custom">) => {
     const command = updateTransition(documentStore.getState(), cut, alignedSides(transition.before + transition.after, id), { linked: linked(), label: "Align transition" });
@@ -88,9 +97,22 @@ export function TransitionSection({ cut }: { cut: Cut }) {
       <Row label="Duration">
         <NumberField label={<Timer aria-hidden="true" />} unit="f" binding={binding} precision={0} step={1} min={1} ariaLabel="Transition duration in frames" />
       </Row>
-      {repeated > 0 && <span className={styles.hint}>{`Not enough media: ${repeated} ${repeated === 1 ? "frame repeats" : "frames repeat"} an edge frame`}</span>}
+      {/* Always there, one line tall: only its text changes with the duration (no row moves, spec §17). */}
+      <span className={`${styles.hint} ${styles.hintLine}`} data-tooltip={hint || undefined}>
+        {hint}
+      </span>
       <Row label="Alignment">
-        <div className={styles.chips} role="group" aria-label="Transition alignment">
+        <div
+          className={styles.chips}
+          role="group"
+          aria-label="Transition alignment"
+          // Resting on a choice (pointer or keyboard focus) splits the preview at the transition's first and
+          // last frames as that alignment places it (Batch 46); nothing changes until it is clicked.
+          onPointerOver={(event) => previewChoice(event.currentTarget, event.target)}
+          onPointerLeave={() => hoverAlignment(null)}
+          onFocus={(event) => previewChoice(event.currentTarget, event.target)}
+          onBlur={() => hoverAlignment(null)}
+        >
           {ALIGNMENTS.map((entry) => (
             <IconButton control key={entry.id} text={entry.label} label={entry.tooltip} pressed={alignment === entry.id} onClick={() => align(entry.id)} />
           ))}

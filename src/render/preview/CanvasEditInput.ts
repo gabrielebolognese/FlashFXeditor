@@ -195,6 +195,12 @@ interface Drag {
   /** The document the gesture started from: another change under it cancels it. */
   project: Project;
   point: Point;
+  /**
+   * The grabbed handle's (or anchor's) offset from the press (Batch 46, the Batch 22 review note): the
+   * handle keeps it while dragged instead of jumping under the pointer. Zero for moves and rotations
+   * (they follow the pointer's travel).
+   */
+  grab: Point;
   tracker: AngleTracker | null;
   result: GestureResult | null;
   guides: Guides | null;
@@ -797,6 +803,14 @@ export class CanvasEditInput {
     const kind = press.drag.kind;
     const cropLayer = kind === "crop" ? this.cropLayer(held) : null;
     if (kind === "crop" && !cropLayer) return;
+    const handle = press.drag.handle ?? null;
+    const first = held[0] as CanvasLayer;
+    const grabbed =
+      kind === "anchor"
+        ? { x: project.settings.width / 2 + first.transform.x, y: project.settings.height / 2 + first.transform.y }
+        : handle && (kind === "scale" || kind === "crop" || kind === "textSize" || kind === "textWidth")
+          ? handlePoint(box, handle)
+          : null;
     this.drag = {
       pointerId: press.pointerId,
       kind,
@@ -805,6 +819,7 @@ export class CanvasEditInput {
       held: new Set(held.map((layer) => layer.clipId)),
       project,
       point: press.point,
+      grab: grabbed ? { x: grabbed.x - press.point.x, y: grabbed.y - press.point.y } : { x: 0, y: 0 },
       tracker: kind === "rotate" ? new AngleTracker(rotationPivot(start), press.point) : null,
       result: null,
       guides: null,
@@ -827,11 +842,13 @@ export class CanvasEditInput {
     const placement = this.deps.placement();
     const pointer = this.pointer;
     if (!drag || !pointer) return;
-    const point = this.projectPoint(pointer, placement);
-    if (!point || !placement) return;
+    const pressed = this.projectPoint(pointer, placement);
+    if (!pressed || !placement) return;
     const mods: Modifiers = { shift: this.modifiers.shift, alt: this.modifiers.alt };
     const snapping = this.snapping;
     drag.guides = null;
+    // Where the grabbed handle is now: the pointer plus the offset it was grabbed at.
+    const point = { x: pressed.x + drag.grab.x, y: pressed.y + drag.grab.y };
     switch (drag.kind) {
       case "move": {
         const dx = point.x - drag.point.x;
@@ -881,7 +898,21 @@ export class CanvasEditInput {
       case "textWidth": {
         const start = drag.text as TextGestureStart;
         const handle = drag.handle as HandleId;
-        const result = drag.kind === "textSize" ? textSizeGesture(start, handle, point, mods) : textWidthGesture(start, handle, point, mods);
+        const kind = drag.kind;
+        const run = (aim: Point) => (kind === "textSize" ? textSizeGesture(start, handle, aim, mods) : textWidthGesture(start, handle, aim, mods));
+        let result = run(point);
+        // The dragged edge snaps (§7.4) as a scale handle's does, while the box is axis-aligned (the
+        // Batch 29 follow-up, Batch 46): a corner keeps the text's proportions, a side moves one edge.
+        if (snapping && isAxisAligned(drag.start.box)) {
+          const candidates = this.snapCandidates(drag.held);
+          const { u, v } = HANDLES[handle];
+          const fixed = boxPoint(drag.start.box, mods.alt ? 0.5 : 1 - u, mods.alt ? 0.5 : 1 - v);
+          const grab = handlePoint(drag.start.box, handle);
+          const free = { x: Math.abs(grab.x - fixed.x) > 1e-9, y: Math.abs(grab.y - fixed.y) > 1e-9 };
+          const aim = snapHandle(candidates, handlePoint(result.box, handle), fixed, free, isCorner(handle), this.snapReach(placement));
+          if (aim) result = run(aim);
+          drag.guides = handleGuides(candidates, quadsBounds([result.box]) as Rect, handlePoint(result.box, handle), free);
+        }
         drag.result = { transforms: new Map([[start.clipId, result.transform]]), box: result.box, snapX: false, snapY: false, readout: result.readout };
         drag.texts = new Map([[start.clipId, { text: result.text, style: result.style }]]);
         break;

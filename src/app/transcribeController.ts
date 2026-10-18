@@ -41,7 +41,7 @@ const TOAST_EVERY_MS = 250;
 const newId = () => crypto.randomUUID();
 
 function lockedToast(): void {
-  showToast({ tone: "error", message: "The caption track is locked", detail: "Unlock CC to add transcribed captions." });
+  showToast({ tone: "warning", message: "The caption track is locked", detail: "Unlock CC to add transcribed captions." });
 }
 
 // --- The dialog ---------------------------------------------------------------------------------

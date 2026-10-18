@@ -192,6 +192,13 @@ describe("NumberField: typing (spec §11)", () => {
     expect(input.value).toBe("7");
   });
 
+  it("explains an icon label with the field's name; a text label needs no tooltip", () => {
+    const icon = mount({ binding: fake(1).binding, label: createElement("svg"), ariaLabel: "Clip volume" });
+    expect(icon.handle.dataset.tooltip).toBe("Clip volume");
+    const text = mount({ binding: fake(1).binding, label: "X" });
+    expect(text.handle.hasAttribute("data-tooltip")).toBe(false);
+  });
+
   it("parses and rounds", () => {
     expect(parseNumber(" 12,5 ")).toBe(12.5);
     expect(parseNumber("x")).toBeNull();
@@ -274,6 +281,18 @@ describe("NumberField: label scrubbing (spec §11, P1)", () => {
     pointer(handle, "pointermove", 20);
     pointer(handle, "pointermove", 40);
     pointer(handle, "pointerup", 40);
+    expect(bound.calls).toEqual([]);
+  });
+
+  it("stays reachable with Tab when disabled, read-only, and ignores the arrows (Batch 46)", () => {
+    const bound = fake(1);
+    const { input } = mount({ binding: bound.binding, disabled: true });
+    expect(input.disabled).toBe(false);
+    expect(input.readOnly).toBe(true);
+    expect(input.getAttribute("aria-disabled")).toBe("true");
+    input.focus();
+    expect(document.activeElement).toBe(input);
+    press(input, "ArrowUp");
     expect(bound.calls).toEqual([]);
   });
 });

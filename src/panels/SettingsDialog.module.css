@@ -143,21 +143,22 @@
   background: var(--hover-wash);
 }
 
+/* The x keeps its width (Batch 46: the chips beside it never move) and fades in on hover or focus. */
 .chipRemove {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 0;
+  width: var(--space-5);
   height: 100%;
-  overflow: hidden;
   border-radius: var(--radius-sm);
   color: var(--text-tertiary);
-  transition: width var(--duration-instant) var(--ease-out);
+  opacity: 0;
+  transition: opacity var(--duration-instant) var(--ease-out);
 }
 
 .chip:hover .chipRemove,
 .chipRemove:focus-visible {
-  width: var(--space-5);
+  opacity: 1;
 }
 
 .chipRemove:hover {
@@ -191,10 +192,4 @@
   grid-column: 1 / -1;
   padding-bottom: var(--space-1);
   color: var(--danger);
-}
-
-.empty {
-  color: var(--text-tertiary);
-  font: var(--type-caption);
-  letter-spacing: var(--type-caption-track);
 }
