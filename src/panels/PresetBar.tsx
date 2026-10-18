@@ -26,6 +26,7 @@ import { PresetNameField } from "./media/PresetNameField.js";
 import { presetMenuEntries } from "./media/presetMenu.js";
 import { pressWithoutFocus, setTabStop } from "./media/listNavigation.js";
 import styles from "./PresetBar.module.css";
+import { PresetBarReorder } from "./presetBarReorder.js";
 
 // The preset bar (spec §20.2, Batch 52): one row at the top of the preview panel, under its header.
 // Left: the set selector; then the row of visual buttons, each its preset drawn by the text engine (a
@@ -92,16 +93,6 @@ function emptyText(set: PresetSetKey, loaded: boolean): string {
   return `No presets in ${presetSetLabel(set)} yet.`;
 }
 
-/** A reorder drag in progress (spec §20.2 "dragging a button reorders it"): direct DOM, one write per move. */
-interface Reorder {
-  id: string;
-  pointerId: number;
-  startX: number;
-  /** Read once when the drag starts (P9), in the row's content px: the button middles and where each gap's marker goes. */
-  layout: { left: number; middles: number[]; gaps: number[] } | null;
-  gap: number;
-}
-
 export function PresetBar() {
   const { visible, set } = useStoreSelector(sessionStore.state, selectBar);
   if (!visible) return null;
@@ -130,8 +121,7 @@ function PresetBarRow({ set }: { set: PresetSetKey }) {
   const leftRef = useRef<HTMLSpanElement>(null);
   const rightRef = useRef<HTMLSpanElement>(null);
   const markerRef = useRef<HTMLDivElement>(null);
-  const reorder = useRef<Reorder | null>(null);
-  const clickTaken = useRef(false);
+  const reorder = useRef<PresetBarReorder | null>(null);
 
   // The arrows are disabled at the ends (never hidden: nothing shifts), written to the DOM on scroll.
   const updateArrows = () => {
@@ -145,7 +135,11 @@ function PresetBarRow({ set }: { set: PresetSetKey }) {
 
   useEffect(() => {
     const row = rowRef.current;
-    if (!row) return undefined;
+    const marker = markerRef.current;
+    if (!row || !marker) return undefined;
+    // Drag to reorder: the drag's start ends the hover preview.
+    const drags = new PresetBarReorder({ row, marker, threshold: () => themeBridge.theme.timeline.dragThreshold, onStart: () => hoverPreset(null) });
+    reorder.current = drags;
     // A vertical wheel scrolls the row sideways (it never wraps).
     const onWheel = (event: WheelEvent) => {
       if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
@@ -162,6 +156,8 @@ function PresetBarRow({ set }: { set: PresetSetKey }) {
       row.scrollBy({ left: direction * step, behavior: "smooth" });
     });
     return () => {
+      drags.end(false);
+      reorder.current = null;
       row.removeEventListener("wheel", onWheel);
       observer.disconnect();
       setPresetBarScroller(null);
@@ -179,10 +175,7 @@ function PresetBarRow({ set }: { set: PresetSetKey }) {
   });
 
   const onClick = (event: MouseEvent) => {
-    if (clickTaken.current) {
-      clickTaken.current = false;
-      return;
-    }
+    if (reorder.current?.takeClick()) return;
     const id = presetIdOf(event.target);
     if (id) actions.run("preset.apply", null, id);
   };
@@ -225,56 +218,15 @@ function PresetBarRow({ set }: { set: PresetSetKey }) {
     setTabStop(rowRef.current, BUTTON, button);
   };
 
-  // Hover previews the preset on the selection (presetController writes the live edit, no React render).
+  // Hover previews the preset on the selection (presetController writes the live edit, no React render);
+  // a press's moves go to the reorder drag.
   const onPointerMove = (event: PointerEvent<HTMLDivElement>) => {
-    const drag = reorder.current;
-    if (drag) {
-      moveReorder(event, drag);
-      return;
-    }
-    hoverPreset(presetIdOf(event.target));
+    if (!reorder.current?.move(event.nativeEvent)) hoverPreset(presetIdOf(event.target));
   };
-
-  // Reordering (spec §20.2): a press and a move past the drag threshold; the marker shows the gap.
-  const onPointerDown = (event: PointerEvent<HTMLDivElement>) => {
-    if (event.button !== 0 || !reorderableSet(set)) return;
-    const id = presetIdOf(event.target);
-    if (id) reorder.current = { id, pointerId: event.pointerId, startX: event.clientX, layout: null, gap: -1 };
-  };
-  const moveReorder = (event: PointerEvent<HTMLDivElement>, drag: Reorder) => {
-    const row = rowRef.current;
-    const marker = markerRef.current;
-    if (!row || !marker || event.pointerId !== drag.pointerId) return;
-    if (!drag.layout) {
-      if (Math.abs(event.clientX - drag.startX) < themeBridge.theme.timeline.dragThreshold) return;
-      // The drag starts: the hover preview ends, the row keeps the pointer, the positions are read once.
-      hoverPreset(null);
-      row.setPointerCapture(event.pointerId);
-      const buttons = [...row.querySelectorAll<HTMLElement>(BUTTON)];
-      const ends = buttons.map((button) => ({ left: button.offsetLeft, right: button.offsetLeft + button.offsetWidth }));
-      drag.layout = {
-        left: row.getBoundingClientRect().left,
-        middles: ends.map((end) => (end.left + end.right) / 2),
-        gaps: [...ends.map((end) => end.left), ends.at(-1)?.right ?? 0],
-      };
-      row.querySelector<HTMLElement>(`[data-preset-id="${CSS.escape(drag.id)}"]`)?.setAttribute("data-dragging", "");
-      marker.hidden = false;
-    }
-    const x = event.clientX - drag.layout.left + row.scrollLeft;
-    const gap = drag.layout.middles.filter((middle) => middle < x).length;
-    if (gap === drag.gap) return;
-    drag.gap = gap;
-    marker.style.transform = `translateX(${drag.layout.gaps[gap] ?? 0}px)`;
-  };
+  const onPointerDown = (event: PointerEvent<HTMLDivElement>) => reorder.current?.press(event.nativeEvent, presetIdOf(event.target), reorderableSet(set));
   const endReorder = (commit: boolean) => {
-    const drag = reorder.current;
-    reorder.current = null;
-    if (!drag?.layout) return;
-    rowRef.current?.querySelector("[data-dragging]")?.removeAttribute("data-dragging");
-    if (markerRef.current) markerRef.current.hidden = true;
-    // The release of a drag is no click.
-    clickTaken.current = true;
-    if (commit && drag.gap >= 0) movePresetInSet(set, drag.id, drag.gap);
+    const drop = reorder.current?.end(commit);
+    if (drop) movePresetInSet(set, drop.id, drop.gap);
   };
 
   const menuPreset = menu ? (presets.find((preset) => preset.id === menu.id) ?? findPreset(menu.id)?.preset) : undefined;
@@ -303,11 +255,9 @@ function PresetBarRow({ set }: { set: PresetSetKey }) {
         onPointerUp={() => endReorder(true)}
         onPointerCancel={() => endReorder(false)}
         onLostPointerCapture={() => endReorder(true)}
-        onPointerLeave={() => {
-          if (!reorder.current) hoverPreset(null);
-        }}
+        onPointerLeave={() => hoverPreset(null)}
         onScroll={() => {
-          if (!reorder.current) hoverPreset(null);
+          hoverPreset(null);
           updateArrows();
         }}
       >
