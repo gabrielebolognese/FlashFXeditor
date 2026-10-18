@@ -38,6 +38,7 @@ What you see in the Preview panel:
 - **The project frame.** It has the size of your project: 1080×1920 (9:16) by default, or the **Resolution** you chose in the **Project** section of the **Edit Properties** panel (shown when no clip is selected). A thin line marks its edge.
 - **The area around the frame.** It belongs to the panel, not to your video. It never appears in an exported frame.
 - **The background.** Wherever no clip covers the frame, you see the project background color: black by default. Change it in the **Background** field of the same **Project** section: type a hex color such as `#000000`, or click its swatch to pick a color. See [Pick a color](editing-properties.md#pick-a-color).
+- **Fine detail at small sizes.** When a video is shown smaller than its own size, for example a 1080×1920 clip at **Fit** in a narrow panel, the preview smooths it as it shrinks it. Thin lines, stripes and small text stay steady instead of shimmering or showing wavy patterns. At 100% and above, every pixel is drawn as it is.
 - **Empty frames.** In a gap between clips, past the end of the last clip, or in a project with no clips, the frame shows only the background.
 - **Outlines and handles.** A selected clip under the playhead has a gold outline with eight handles in the preview, and the picture under the pointer gets a thin, darker gold outline. They are only on your screen, never in an exported frame. See [Arranging layers in the preview](arranging-layers-in-the-preview.md).
 
@@ -343,4 +344,4 @@ If playback stutters, see [Troubleshooting](troubleshooting.md).
 - [Workspace](workspace.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 45, 2026-10-18</sub>
+<sub>Last updated: Batch 46, 2026-10-18</sub>

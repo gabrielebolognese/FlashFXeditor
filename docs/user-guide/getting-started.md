@@ -64,7 +64,7 @@ The start screen is shown whenever no project is open. It has:
 
 > **Note:** <kbd>Ctrl</kbd>+<kbd>N</kbd> is also a key for **New project**, but in a normal browser tab Chrome and Edge keep it for themselves and open a new browser window. Use <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>N</kbd>.
 
-While a project is being created or opened, the buttons are disabled until the step finishes.
+While a project is being created or opened, a line beside the buttons reads **Opening project…**, or **Opening <name>…** after you click a recent project, and the buttons and cards are dimmed until the step finishes (tooltip **Wait: a project is opening**).
 
 ## Create a project
 
@@ -100,7 +100,7 @@ To stop without creating anything, click **Cancel**, press <kbd>Escape</kbd>, or
 
 You can also drag the project folder from File Explorer onto the start screen. While you drag, the window shows "Drop the project folder to open it".
 
-> **Note:** A dropped folder can open read-only, because the browser may not ask for edit permission after a drop. Click **Allow editing** in the banner to fix it. See [Work in read-only mode](projects-and-saving.md#work-in-read-only-mode).
+> **Note:** A dropped folder can open read-only, because the browser may not ask for edit permission after a drop. Click **Allow editing** in the app bar to fix it. See [Work in read-only mode](projects-and-saving.md#work-in-read-only-mode).
 
 To switch to another project while one is open, press <kbd>Ctrl</kbd>+<kbd>O</kbd> in the editor. The current project is saved first, and it closes only after the new one has opened. If the new one cannot be opened, you stay in the current project.
 
@@ -140,7 +140,7 @@ The browser lets Shorts Editor read and write only the folders you pick, and it 
 | Your answer | What happens |
 | --- | --- |
 | You allow editing | The project opens normally and saves automatically. |
-| You refuse editing, but the folder can still be read | The project opens read-only. A banner says so and nothing is saved. See [Work in read-only mode](projects-and-saving.md#work-in-read-only-mode). |
+| You refuse editing, but the folder can still be read | The project opens read-only. A notice in the app bar says so and nothing is saved. See [Work in read-only mode](projects-and-saving.md#work-in-read-only-mode). |
 | The folder cannot be read at all | The **Permission needed** dialog shows "Shorts Editor has no permission to read the folder "<name>"." Click **Try again** to be asked again (even if you refused before), or **Cancel**. |
 
 If the project links to media files outside its folder, the browser can also ask whether Shorts Editor may view those files. Allow it, or click **Allow access** later in the **Media** tab. See [Give the browser access to linked files](offline-media-and-relinking.md#give-the-browser-access-to-linked-files).
@@ -170,4 +170,4 @@ For other problems, see [Troubleshooting](troubleshooting.md).
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 45, 2026-10-18</sub>
+<sub>Last updated: Batch 46, 2026-10-18</sub>

@@ -234,6 +234,13 @@ Select a transition, or double-click its block. **Edit Properties** shows its **
 | **Duration** | The length in frames (**f**). Type a number, press <kbd>↑</kbd> or <kbd>↓</kbd>, or drag the timer icon at its left (the change applies when you release). The transition keeps its alignment as it gets longer or shorter. |
 | **Alignment** | Where the transition sits on the cut: **Center** (tooltip **Center on the cut**), **Start** (**Start at the cut**: all its frames after the cut) or **End** (**End at the cut**: all its frames before the cut). After you drag one end with <kbd>Alt</kbd>, none of them is lit. |
 
+**Compare the alignments before you choose.** Point at **Center**, **Start** or **End** in the **Alignment** row, or reach it with <kbd>Tab</kbd>: the preview splits into two halves side by side. The left half shows the transition's first frame and the right half its last frame, as that alignment would place them. Nothing changes until you click. Move the pointer off the row, or press <kbd>Tab</kbd> past it, and the preview shows the playhead's frame again.
+
+> **Video placeholder: Compare transition alignments**
+> - File: `videos/fades-and-transitions/alignment-preview.mp4` (not recorded yet)
+> - Length: about 25 seconds
+> - Shows: a cross dissolve on a cut between two clips, selected; in the **Transition** section, point at **Start**: the preview splits into the dissolve's first frame (left) and last frame (right); point at **End**: both halves change; point at **Center**; move the pointer away: the preview shows the playhead's frame again; click **End**: the block on the timeline moves before the cut.
+
 - When some frames repeat an edge frame, a hint under **Duration** says how many, for example **Not enough media: 3 frames repeat an edge frame**.
 - **Duration** and **Alignment** can make the transition use more media than the handles have: the extra frames repeat edge frames, and the hint and the stripes show it. A drag on the block's ends stops at the handles instead.
 - A transition can't be longer than its clips allow: each side stays within its own clip.
@@ -295,4 +302,4 @@ See [Undo and redo changes](projects-and-saving.md#undo-and-redo-changes).
 - [Keyboard shortcuts](keyboard-shortcuts.md#fades-and-transitions)
 - [Troubleshooting](troubleshooting.md#fades-and-transitions)
 
-<sub>Last updated: Batch 43, 2026-10-18</sub>
+<sub>Last updated: Batch 46, 2026-10-18</sub>

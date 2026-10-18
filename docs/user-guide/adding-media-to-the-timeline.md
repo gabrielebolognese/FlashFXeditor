@@ -119,13 +119,14 @@ An insert puts the clip at the playhead and pushes everything after it to the ri
    - Click the card (or select several), then press <kbd>,</kbd>. The Media panel must be active.
    - Point at a card's picture and press <kbd>,</kbd>. This works whichever panel is active and adds the card you point at.
    - Right-click the card and choose **Insert at playhead**.
+   - With the keyboard: press <kbd>Tab</kbd> until a card has a gold ring, move to the card with the arrow keys, and press <kbd>Enter</kbd> or <kbd>Space</kbd>. It works like a double-click, so pressing it again on the next card builds a sequence. See [Move through cards and lists](keyboard-navigation.md#move-through-cards-and-lists).
 
 What the insert does:
 
 - **Tracks.** The clips go to the targeted video track and the targeted audio track nearest the divider (V1 and A1 in a new project). When no unlocked track of that kind is targeted, the unlocked track nearest the divider is used; when there is none, a track is created. See [Choose the tracks your edits use](tracks.md#choose-the-tracks-your-edits-use-target).
 - **Room.** On every unlocked track, everything from the playhead on moves right by the length of the new clips. A clip that runs across the playhead is split there, and its second part moves too. Every track stays in step, so sound stays in sync with its picture. Locked tracks don't move.
 - **Playhead.** The playhead moves to the end of the new clips, ready for the next one.
-- **Several items.** With several cards selected, <kbd>,</kbd> and **Insert at playhead** add all of them back to back. A double-click adds only the item you double-click.
+- **Several items.** With several cards selected, <kbd>,</kbd> and **Insert at playhead** add all of them back to back. A double-click, or <kbd>Enter</kbd> on a card with the gold ring, adds only that item.
 - **History.** The step is named **Insert clip** or **Insert clips**.
 
 ## Overwrite at the playhead
@@ -270,4 +271,4 @@ Every way of adding media is one step in the history. Point at **Undo** in the a
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 42, 2026-10-18</sub>
+<sub>Last updated: Batch 46, 2026-10-18</sub>

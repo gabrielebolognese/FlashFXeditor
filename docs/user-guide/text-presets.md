@@ -59,7 +59,7 @@ Click the **Presets** tab at the top of the Media panel. From top to bottom:
 - **Tool row**: the **Global** and **Project** switch, which picks the list you see (see [Keep presets for all projects or for one](#keep-presets-for-all-projects-or-for-one)), and the **Search presets** field.
 - **Cards**: each card draws the preset's name in the preset's own look, or **Aa** when the name is longer than 12 characters, with the name under it. The oldest presets come first.
 - **Badges** in the top-left corner of a card, in gold: a star for a favorite, a **T** for the default title and a subtitle icon for the default subtitle.
-- **Library folder strip** at the bottom, in the **Global** list only. See [Sync your presets with a folder](#sync-your-presets-with-a-folder).
+- **Library folder strip** at the bottom, with **Library folder** and the sync and stop buttons. See [Sync your presets with a folder](#sync-your-presets-with-a-folder). In the **Project** list, the strip says where the project's presets are kept instead (**This project's presets, kept in its folder (presets/text).**), and its buttons are dimmed: the library folder keeps the global presets.
 
 Point at a card to see its tooltip: the name, then **Click: apply to the selected text, or add at the playhead. Drag onto the timeline. Right-click for more.**
 
@@ -68,10 +68,10 @@ Instead of cards, the list can show:
 | Message | Meaning |
 | --- | --- |
 | **Loading presets…** | The editor is reading your presets. |
-| **No presets yet. Select a text clip and click Save as preset.** | The list is empty. |
-| **No preset matches the search.** | Clear or change the search. |
-| **Open a project to keep presets in it.** | The **Project** list needs an open project. |
-| **This project is read-only: its presets cannot change.** (under the cards) | The project opened read-only. See [Work in read-only mode](projects-and-saving.md#work-in-read-only-mode). |
+| **No presets yet**, with **New from selection**, **Import…** and, in the **Global** list, **Restore starters** | The list is empty. **New from selection** saves the selected text clip as a preset (it is dimmed until you select one: tooltip **Select a text clip first**), **Import…** reads a presets file (see [Export and import presets](#export-and-import-presets)), and **Restore starters** brings the starter presets back (see [Restore the starter presets](#restore-the-starter-presets)). |
+| **No preset matches**: "Nothing matches “<search>”.", with **Clear search** | No preset matches what you typed. **Clear search** empties the search field. See [Find and organize presets](#find-and-organize-presets). |
+| **No project open**: "Open a project to keep presets in it.", with **Show global presets** | The **Project** list needs an open project. **Show global presets** switches to the **Global** list. |
+| **This project is read-only: its presets cannot change.** (in the strip at the bottom of the **Project** list) | The project opened read-only. **New from selection** and **Import…** are dimmed, with this reason in their tooltips. See [Work in read-only mode](projects-and-saving.md#work-in-read-only-mode). |
 
 ## Start with the starter presets
 
@@ -136,7 +136,7 @@ The starters you deleted are back in your **Global** list, as they came with the
 
 1. Select one or more text clips, on the timeline or in the preview.
 2. In the **Presets** tab, point at the cards. While the pointer is on a card, the selected texts show that preset in the preview. Nothing changes yet.
-3. Click the card you want. Or right-click it and choose **Apply to selected text**.
+3. Click the card you want. Or right-click it and choose **Apply to selected text**. With the keyboard, press <kbd>Tab</kbd> until a card has the gold ring, move to the card with the arrow keys, and press <kbd>Enter</kbd> or <kbd>Space</kbd>: it does what a click does. See [Move through cards and lists](keyboard-navigation.md#move-through-cards-and-lists).
 
 What happens:
 
@@ -316,7 +316,7 @@ The **Global** and **Project** switch in the tool row picks the list the tab sho
 > - Length: about 40 seconds
 > - Shows:
 >   1. The **Presets** tab with **Global** chosen and a favorite chip in the timeline toolbar. Click **Export the presets shown to a JSON file** in the header and save `text-presets.json`: the message **Exported 13 presets** appears.
->   2. Right-click each card and choose **Delete** until the list reads **No presets yet. Select a text clip and click Save as preset.** The chip is gone.
+>   2. Right-click each card and choose **Delete** until the list reads **No presets yet**. The chip is gone.
 >   3. Click **Import presets from a JSON file** and pick `text-presets.json`: the message **Imported 13 presets** appears, and the same cards come back in the same order, with their stars and badges. The chip is back.
 
 **Export:**
@@ -413,4 +413,4 @@ These parts are available in a later version:
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 42, 2026-10-18</sub>
+<sub>Last updated: Batch 46, 2026-10-18</sub>

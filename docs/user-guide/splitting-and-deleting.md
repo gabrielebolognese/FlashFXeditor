@@ -109,7 +109,7 @@ A gap is the empty space on a track before a clip: between two clips, or between
 > - Length: about 50 seconds
 > - Shows: a timeline with clips on V1 and V2 and a few gaps between them; point at a gap on V1: it lights up; click it: a gold tint with a dashed gold outline; press <kbd>Delete</kbd>: the gap closes, the later clips on V1 move left and the clip on V2 after the gap moves with them; hover **Undo**: it reads **Undo Close gap**; move the playhead into another gap and press <kbd>G</kbd>: that gap closes; right-click a gap on V2 and choose **Close all gaps on track**; press <kbd>Ctrl</kbd>+<kbd>Z</kbd>; click **Close all gaps (compact)** in the toolbar: every clip packs to the left; press <kbd>Ctrl</kbd>+<kbd>Z</kbd> once: all the gaps are back.
 
-- Point at a gap: it lights up.
+- Point at a gap: it lights up, and with the **Select** tool the pointer becomes a pointing hand.
 - Click it: it is selected, with a gold tint and a dashed gold outline.
 - A drag that starts in a gap draws a selection rectangle, as on any empty track space.
 
@@ -245,4 +245,4 @@ The **Mute**, **Normalize**, **Auto-duck music** and **Detach audio** rows show 
 - [Projects and saving](projects-and-saving.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 41, 2026-10-18</sub>
+<sub>Last updated: Batch 46, 2026-10-18</sub>

@@ -2,6 +2,11 @@
 
 Shorts Editor grows in steps called batches. This page lists what each batch added that you can see or use, newest first. Follow the links for the full instructions.
 
+> **Video placeholder: What's new in Batch 46**
+> - File: `videos/whats-new/batch-46.mp4` (not recorded yet)
+> - Length: about 60 seconds
+> - Shows: create a new project: the Media panel reads **No media yet** and the timeline **No clips yet**, each with **Import media**; click **Add title** on the timeline: a title appears; select it and press <kbd>Tab</kbd> through **Edit Properties**: a gold ring moves from control to control and each tooltip shows its name and key; press <kbd>Space</kbd> on **Outline**: it turns on; click the timeline and press <kbd>Space</kbd>: playback starts; lock V1 and paste a clip onto it: an orange message **Can't paste onto a locked track** appears; point at the lock toggle of V1: its tooltip reads **Unlock track**; add a marker and set in and out points: they show in the scrollbar under the tracks; select a dissolve and point at **Start** in the **Transition** section: the preview splits into its first and last frame.
+
 > **Video placeholder: What's new in Batch 45**
 > - File: `videos/whats-new/batch-45.mp4` (not recorded yet)
 > - Length: about 45 seconds
@@ -183,6 +188,7 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 > - Shows: open a project with three clips on the timeline; press <kbd>Space</kbd> to play and let the timeline page forward; press <kbd>L</kbd> three times to reach 8x, then <kbd>K</kbd>; hold <kbd>K</kbd> and tap <kbd>L</kbd> to step one frame; turn on **Loop playback**; point at the **Dropped** readout in the status strip.
 
 ## In this page
+- [Batch 46: Keyboard navigation and a finished look](#batch-46-keyboard-navigation-and-a-finished-look)
 - [Batch 45: Faster proxies and a lighter editor](#batch-45-faster-proxies-and-a-lighter-editor)
 - [Batch 44: The Export tab](#batch-44-the-export-tab)
 - [Batch 43: Export](#batch-43-export)
@@ -228,6 +234,19 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 - [Batch 03: Projects, autosave and recovery](#batch-03-projects-autosave-and-recovery)
 - [Batch 02: Undo, redo and frame-exact time](#batch-02-undo-redo-and-frame-exact-time)
 - [Batch 01: The workspace](#batch-01-the-workspace)
+
+## Batch 46: Keyboard navigation and a finished look
+- Use every control with the keyboard alone. <kbd>Tab</kbd> reaches every control of **Edit Properties**, the app bar, the panel headers, the timeline toolbar and the transport bar, dimmed ones too, and the control you are on gets a gold ring and shows its tooltip with its shortcut. <kbd>Space</kbd> or <kbd>Enter</kbd> presses it, sliders keep the arrow keys, and the media and preset cards are one stop each: move with the arrow keys and press <kbd>Enter</kbd> to insert a clip or apply a preset. After a mouse click on a control, <kbd>Space</kbd> still plays and the arrow keys still step frames. See the new page [Keyboard navigation](keyboard-navigation.md) and [Keyboard navigation](keyboard-shortcuts.md#keyboard-navigation) in the shortcut list.
+- The color picker works with the keyboard: <kbd>Enter</kbd> on a swatch opens it, <kbd>Tab</kbd> goes round its parts, the arrow keys change the color and <kbd>Esc</kbd> closes it. Media list columns get wider or narrower with the arrow keys, and **More tools** opens with the focus inside. When a menu, a picker or a name field closes, the focus goes back to the control that opened it. See [Pick a color](editing-properties.md#pick-a-color), [Resize the list columns](organizing-media.md#resize-the-list-columns) and [When the toolbar does not fit](workspace.md#when-the-toolbar-does-not-fit).
+- Empty panels say what to do, with a button for it: **No media yet** with **Import media**; **No clips yet** over the timeline with **Import media** and **Add title**; **No presets yet** with **New from selection**, **Import…** and **Restore starters**; **No captions yet** and **No cues yet** with **Transcribe**, **Cue at playhead** and **Import SRT/VTT**; and searches with no result with **Clear search**. An empty bin or a filter with no result offers the new **Show all media**, also in the palette as **Media: show all**. See [Show everything again](organizing-media.md#show-everything-again), [Find your way around the timeline](timeline.md#find-your-way-around-the-timeline), [Open the Presets tab](text-presets.md#open-the-presets-tab) and [Open the Captions tab](captions.md#open-the-captions-tab).
+- Messages now come in four kinds, each with its own icon and color. The new orange warning says that an action was refused because of something you can change, such as a locked track or a read-only project, or that it was done only in part. See [Read messages](workspace.md#read-messages).
+- A read-only project shows its notice and **Allow editing** in the middle of the app bar instead of a strip above the panels, so nothing moves when it appears. See [Work in read-only mode](projects-and-saving.md#work-in-read-only-mode).
+- Tooltips everywhere: the track header toggles say what a click does (**Lock track** or **Unlock track**), a shortened track name shows whole, and dimmed buttons often say why they are dimmed. See [Read a track header](tracks.md#read-a-track-header) and [Read tooltips and shortcuts](workspace.md#read-tooltips-and-shortcuts).
+- Point at **Center**, **Start** or **End** in a transition's **Alignment** row: the preview splits into the transition's first and last frame, as that alignment would place them. See [Change a transition in Edit Properties](fades-and-transitions.md#change-a-transition-in-edit-properties).
+- The scrollbar under the tracks shows your markers and the in/out range. A short or empty timeline zooms out until a whole minute shows. See [Use the scrollbars](timeline.md#use-the-scrollbars) and [Zoom in and out](timeline.md#zoom-in-and-out).
+- The handles of a text snap like a picture's edges, and every handle keeps the spot where you grabbed it instead of jumping under the pointer. See [Resize text with its handles](titles-and-text.md#resize-text-with-its-handles) and [Snap an edge while you resize](snapping-and-smart-guides.md#snap-an-edge-while-you-resize).
+- Smoother details: dragging a splitter redraws the timeline and the preview without stutter; thin lines and fine patterns in a video no longer shimmer when the preview shows it smaller than its size; the timeline scrolls faster the longer you hold a clip at its edge; a narrow timeline toolbar hides the zoom slider before anything else; **Punch zoom** has a new icon, four corner brackets like a viewfinder; selected text in fields is gold; the start screen says **Opening…** while a project opens; **Settings** shows the **Cache** row (dimmed) with no project open; and the **Enabled** switch turns a mixed selection of clips off, like the clip menu. See [Resize panels](workspace.md#resize-panels), [Read the preview](preview-and-playback.md#read-the-preview), [Turn a clip off](editing-properties.md#turn-a-clip-off) and [The start screen](getting-started.md#the-start-screen).
+- New troubleshooting entry: [Space presses a button instead of playing](troubleshooting.md#space-presses-a-button-instead-of-playing).
 
 ## Batch 45: Faster proxies and a lighter editor
 - Long 4K videos get their proxy much sooner. While a video's proxy is being made, the editor makes only the thumbnails you look at (the card picture, the clips on screen and the frames you skim on the card) from the original video; the rest wait for the proxy. On the development laptop, a 2-minute 4K 60 fps HEVC video got its proxy in about 3½ minutes instead of more than 4. See [Follow a proxy while it is made](proxies.md#follow-a-proxy-while-it-is-made) and [Know when thumbnails and waveforms appear](clip-thumbnails-and-waveforms.md#know-when-thumbnails-and-waveforms-appear).
@@ -711,4 +730,4 @@ See [The workspace](workspace.md) and [Getting started](getting-started.md).
 - [Adding media to the timeline](adding-media-to-the-timeline.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 45, 2026-10-18</sub>
+<sub>Last updated: Batch 46, 2026-10-18</sub>

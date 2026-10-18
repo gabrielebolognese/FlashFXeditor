@@ -88,7 +88,7 @@ Point at a bin's chip to see its tooltip, for example "Drone shots: drop media h
 > **Video placeholder: Find media with search and filters**
 > - File: `videos/organizing-media/search-and-filters.mp4` (not recorded yet)
 > - Length: about 40 seconds
-> - Shows: a project with 200 images in grid view; click **Search media** and type `drone 1`: the cards narrow as you type, down to 22; click **Images**: nothing changes, all of them are images; click **Video**: the panel reads **No media here**; click **Clear filters**: all 200 are back and the search field is empty; click **Unused**: only the images no clip uses show.
+> - Shows: a project with 200 images in grid view; click **Search media** and type `drone 1`: the cards narrow as you type, down to 22; click **Images**: nothing changes, all of them are images; click **Video**: the panel reads **No media match**; click **Clear filters**: all 200 are back and the search field is empty; click **Unused**: only the images no clip uses show.
 
 1. Click **Search media** at the top of the **Media** tab.
 2. Type a word or part of a word. The cards narrow as you type.
@@ -121,10 +121,20 @@ The chips at the right of **Search media** limit what the tab shows:
 
 ## Show everything again
 
-When the bin, the chips and the search leave nothing to show, the tab reads **No media here** with "Nothing matches this bin, the filters and the search." and a **Clear filters** button.
+When the bin, the chips and the search leave nothing to show, the tab says why and offers the button that fixes it:
 
-- Click **Clear filters** to turn every chip off and empty the search field. The tab stays on the bin it shows.
-- If the bin itself is empty, click **All** in the bin strip.
+| The tab reads | When | Buttons |
+| --- | --- | --- |
+| **No media match**: "Nothing matches the filters and the search." | A chip is on or the search has text, and **All** is shown | **Clear filters** |
+| **No media match**: "Nothing in this bin matches the filters and the search." | A chip is on or the search has text, and a bin or a kind is shown | **Clear filters**, **Show all media** |
+| **No videos yet**, **No audio yet** or **No images yet**: "Import some, or show every media." | The **Video**, **Audio** or **Images** chip of the bin strip is shown and the project has none of that kind | **Import media**, **Show all media** |
+| **This bin is empty**: "Drag media onto the bin, or use Move to bin in a media's menu." | One of your bins is shown and it holds nothing | **Show all media** |
+
+- **Clear filters** turns every filter chip off and empties the search field. The tab stays on the bin it shows.
+- **Show all media** shows **All**, turns the chips off and empties the search, in one click. The selected media stay selected.
+- In list view, the message appears under the column headers; in grid view, at the top of the tab.
+
+Before you import anything, the tab reads **No media yet** ("Import video, audio and images, or drop files here.") with **Import media**. See [Import files](importing-media.md#import-files).
 
 ## Select what the tab shows
 
@@ -161,6 +171,8 @@ In **List view**, every column after the small picture can be made wider or narr
 
 Double-click the edge of a heading to give that column its default share back. The widths are kept with the project.
 
+With the keyboard, press <kbd>Tab</kbd> until a column edge shows a gold line, then press <kbd>→</kbd> to widen the column or <kbd>←</kbd> to narrow it, by 8 pixels per press (32 with <kbd>Shift</kbd>). A column can't get narrower than 28 pixels. Point at an edge for its tooltip: **Drag to resize the column (Left / Right when focused), double-click for its default width**.
+
 ## Find a media file on your disk
 
 The browser can't open folders on your computer, so **Reveal in folder** tells you where a file is instead:
@@ -192,6 +204,7 @@ Most of these actions are commands you can run from the command palette (<kbd>Ct
 | **Search media** | Opens the **Media** tab and puts the cursor in **Search media** |
 | **Media filter: video**, **Media filter: audio**, **Media filter: images**, **Media filter: unused** | Turn a filter chip on or off |
 | **Media: clear filters and search** | The same as **Clear filters** |
+| **Media: show all** | The same as **Show all media**: shows **All**, with no chip and no search |
 | **Reveal media in folder** | The same as **Reveal in folder** in the media menu |
 
 Showing, renaming and deleting a bin, and **Move to bin**, need the chip or the card you point at, so they are not in the palette. See [Command palette and custom shortcuts](command-palette-and-custom-shortcuts.md).
@@ -205,4 +218,4 @@ Showing, renaming and deleting a bin, and **Move to bin**, need the chip or the 
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 41, 2026-10-18</sub>
+<sub>Last updated: Batch 46, 2026-10-18</sub>

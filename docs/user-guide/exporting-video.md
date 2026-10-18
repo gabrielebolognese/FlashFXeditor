@@ -362,7 +362,7 @@ While any export runs, video or audio:
 | Message | What it means | What to do |
 | --- | --- | --- |
 | **Nothing to export**: "Add clips to the timeline first." | The timeline has no clips. | Add clips. See [Adding media to the timeline](adding-media-to-the-timeline.md). |
-| **This project is read-only**: "Allow editing to export into the project's folder." | The editor may not write to the project folder, so it can't save the file in `exports`. | Click **Allow editing** in the banner (see [Work in read-only mode](projects-and-saving.md#work-in-read-only-mode)), or choose **Choose file…** under **Save to**. |
+| **This project is read-only**: "Allow editing to export into the project's folder." | The editor may not write to the project folder, so it can't save the file in `exports`. | Click **Allow editing** in the app bar (see [Work in read-only mode](projects-and-saving.md#work-in-read-only-mode)), or choose **Choose file…** under **Save to**. |
 | **Export cancelled**: "Nothing was written to exports/." or "The picked file was left as it was." | You clicked **Cancel**, ran **Cancel the export**, or opened another project. | Export again when you are ready. |
 | **Export failed**, with the reason | The export could not finish, for example because the disk is full, the folder can't be written, the graphics chip was reset, or the browser can't encode video of this size. Nothing is left in `exports`, and the log lists it as failed. | See [An export fails](troubleshooting.md#an-export-fails). |
 | **This browser can't pick a file**: "Choose the exports folder as the destination." | The browser has no save dialog for **Choose file…**. | Choose **exports folder** under **Save to**. |
@@ -384,4 +384,4 @@ While any export runs, video or audio:
 - [Keyboard shortcuts](keyboard-shortcuts.md#export)
 - [Troubleshooting](troubleshooting.md#export)
 
-<sub>Last updated: Batch 45, 2026-10-18</sub>
+<sub>Last updated: Batch 46, 2026-10-18</sub>

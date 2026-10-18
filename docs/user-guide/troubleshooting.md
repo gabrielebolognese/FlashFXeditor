@@ -8,7 +8,7 @@ This page helps you when something does not work as expected: the editor does no
 > - Shows:
 >   1. Open the editor in a browser without the required features: the screen "This browser cannot run Shorts Editor" lists what is missing.
 >   2. In Chrome, open `chrome://settings/system` and show **Use graphics acceleration when available** turned on.
->   3. Open a project and allow only viewing when the browser asks: the read-only banner appears. Click **Allow editing**, allow editing, and the banner disappears.
+>   3. Open a project and allow only viewing when the browser asks: the read-only notice appears in the app bar. Click **Allow editing**, allow editing, and the notice disappears.
 >   4. Import a `.webm` file: the message "Can't import ..." with "Unsupported file type" appears.
 >   5. Press <kbd>F</kbd>: the preview fills the window and the other panels disappear. Press <kbd>Esc</kbd>: they are back at their sizes.
 >   6. Play a 4K clip and point at **Dropped** in the status strip under the preview.
@@ -72,6 +72,7 @@ This page helps you when something does not work as expected: the editor does no
   - [Importing a keymap says Not a keymap file](#importing-a-keymap-says-not-a-keymap-file)
   - [Alt+Left leaves the editor](#altleft-leaves-the-editor)
   - [Space starts playback only when you release it](#space-starts-playback-only-when-you-release-it)
+  - [Space presses a button instead of playing](#space-presses-a-button-instead-of-playing)
   - [Ctrl+1 or Ctrl+2 switched to another browser tab](#ctrl1-or-ctrl2-switched-to-another-browser-tab)
   - [Ctrl+D opens the browser's bookmark dialog](#ctrld-opens-the-browsers-bookmark-dialog)
   - [Ctrl+Shift+D bookmarks all your tabs](#ctrlshiftd-bookmarks-all-your-tabs)
@@ -400,6 +401,7 @@ This page helps you when something does not work as expected: the editor does no
 - You are editing a text in the preview (a gold outline and a caret): the keys type into it. Press <kbd>Esc</kbd> to finish.
 - A dropdown list has the keyboard focus, for example **Sort media by** after you chose a value with the keyboard.
 - A dialog or a menu is open. An open menu has the keyboard: <kbd>Space</kbd>, <kbd>Enter</kbd> and the arrow keys work on its rows.
+- A control you reached with <kbd>Tab</kbd> has the gold ring: <kbd>Space</kbd> presses it. See [Space presses a button instead of playing](#space-presses-a-button-instead-of-playing).
 - You changed or removed the key in **Settings** > **Shortcuts**. See [A shortcut runs another command or does nothing](#a-shortcut-runs-another-command-or-does-nothing).
 - The **Edit Properties** panel was the last one you clicked. It has no shortcuts of its own: only the shortcuts for all panels work there, so <kbd>Delete</kbd>, for example, does nothing.
 - The shortcut belongs to another panel. For example, <kbd>↑</kbd> and <kbd>↓</kbd> jump between clips, and <kbd>X</kbd>, <kbd>;</kbd> and <kbd>'</kbd> mark a clip, lift and extract, only in the Timeline panel, and <kbd>Ctrl</kbd>+<kbd>0</kbd>, <kbd>Ctrl</kbd>+<kbd>1</kbd> and <kbd>Ctrl</kbd>+<kbd>2</kbd> zoom the preview only in the Preview panel.
@@ -464,6 +466,14 @@ This page helps you when something does not work as expected: the editor does no
 **Cause:** <kbd>Alt</kbd>+<kbd>←</kbd> is the browser's Back key on Windows. The editor uses it to nudge clips only while the Timeline panel is active. When another panel was the last one you clicked, the browser gets the key.
 
 **Fix:** Open the editor again and open your project from **Recent projects**. Your project saves automatically, 1 second after each change by default. Before you nudge clips, click the timeline. See [Nudge clips with the keyboard](timeline.md#nudge-clips-with-the-keyboard).
+
+### Space presses a button instead of playing
+
+**Symptom:** <kbd>Space</kbd> turns a switch on or off, presses a button or chooses a chip instead of playing, or the arrow keys zoom the timeline or move through media cards instead of stepping frames. The control has a gold ring.
+
+**Cause:** You reached the control with <kbd>Tab</kbd>, so it has the keyboard focus, and <kbd>Space</kbd>, <kbd>Enter</kbd> and the arrow keys go to it. A slider (such as the timeline zoom slider) and a list of cards keep the arrow keys.
+
+**Fix:** Click the timeline or the preview picture, or click the control itself with the mouse: <kbd>Space</kbd> plays and the arrow keys step frames again. See [Know when the keys go to a control](keyboard-navigation.md#know-when-the-keys-go-to-a-control).
 
 ### Space starts playback only when you release it
 
@@ -855,15 +865,15 @@ Undo doesn't bring in and out points back: they are not part of the history.
 
 ### The project opens read-only
 
-**Symptom:** A banner under the app bar reads "Read-only: Shorts Editor has no permission to write to this folder, so changes are not saved." The save dot next to the project name is gray. Importing shows "This project is read-only" with "Allow editing to import media.", and **Clear cache** with "Allow editing to clear the cache." In **History**, **Restore…** is dimmed.
+**Symptom:** The middle of the app bar reads **Read-only: changes are not saved**, with an **Allow editing** button. The save dot next to the project name is gray. Importing shows "This project is read-only" with "Allow editing to import media.", and **Clear cache** with "Allow editing to clear the cache." In **History**, **Restore…** is dimmed.
 
 **Cause:** The browser gave the editor permission to read the project folder, but not to write to it.
 
 **Fix:**
-1. Click **Allow editing** in the banner (or click the save dot).
+1. Click **Allow editing** in the app bar (or click the save dot).
 2. When the browser asks, allow the editor to edit the files.
 
-The banner disappears and the editor saves the changes you made in the meantime. If the browser does not ask, check the site's permissions in the browser (the icon at the left of the address bar) and try again.
+The notice disappears and the editor saves the changes you made in the meantime. If the browser does not ask, check the site's permissions in the browser (the icon at the left of the address bar) and try again.
 
 ### A project folder does not open
 
@@ -907,7 +917,7 @@ See [Projects and saving](projects-and-saving.md).
 
 **Cause:** Changes would be lost: the project is read-only and has changes, or the last save failed (the save dot is red).
 
-**Fix:** Click **Cancel** to stay. Then click **Allow editing** in the read-only banner, or fix the save problem and click the red save dot. See [Work in read-only mode](projects-and-saving.md#work-in-read-only-mode) and [Changes are not saved](#changes-are-not-saved).
+**Fix:** Click **Cancel** to stay. Then click **Allow editing** in the app bar, or fix the save problem and click the red save dot. See [Work in read-only mode](projects-and-saving.md#work-in-read-only-mode) and [Changes are not saved](#changes-are-not-saved).
 
 ### History shows no versions or can't restore one
 
@@ -919,7 +929,7 @@ See [Projects and saving](projects-and-saving.md).
 | --- | --- | --- |
 | "No earlier versions yet" | The project has not been saved since it was created, or the `history` folder was emptied. | Make a change and wait for the green save dot: each save keeps the version before it. |
 | "Couldn't read the history folder:" | The browser could not read the `history` folder, for example because it was moved or deleted. | Check that the project folder is complete, then open **History…** again. |
-| **Restore…** is dimmed (tooltip **Read-only project: allow editing to restore**) | The project is read-only. | Click **Allow editing** in the banner. See [Work in read-only mode](projects-and-saving.md#work-in-read-only-mode). |
+| **Restore…** is dimmed (tooltip **Read-only project: allow editing to restore**) | The project is read-only. | Click **Allow editing** in the app bar. See [Work in read-only mode](projects-and-saving.md#work-in-read-only-mode). |
 | **Can't restore this backup**: "The current version could not be saved first, so nothing was restored. Check the save status and try again." | The editor saves your current state before a restore, and that save failed. | Fix the save problem (see [Changes are not saved](#changes-are-not-saved)), then try again. |
 | **Can't restore this backup**: the file "is no longer in the history folder." | The backup was deleted, for example by the rotation that keeps the newest 20. | Open **History…** again and pick a version from the new list. |
 | **Can't restore this backup** with another reason | The backup file is damaged or was edited by hand. | Pick another version. |
@@ -1014,11 +1024,11 @@ If the card shows **Offline** instead, the video's file is missing: see [Cards s
 
 ### Media are missing from the Media tab
 
-**Symptom:** Media you imported don't show in the **Media** tab, or the tab reads **No media here** with "Nothing matches this bin, the filters and the search."
+**Symptom:** Media you imported don't show in the **Media** tab, or the tab reads **No media match**, **No videos yet** (or **No audio yet**, **No images yet**) or **This bin is empty**.
 
 **Cause:** The tab shows only what the bin strip, the filter chips and the search let through: a bin or one kind (**Video**, **Audio**, **Images**) is shown, a chip such as **Unused** is on, or there is text in **Search media**. New imports never go into a bin by themselves, so they don't show while a bin of your own is shown.
 
-**Fix:** Click **Clear filters** (it turns the chips off and empties the search), then click **All** in the bin strip. See [Show everything again](organizing-media.md#show-everything-again).
+**Fix:** Click **Show all media** in the message (it shows **All**, turns the chips off and empties the search), or click **Clear filters** and then **All** in the bin strip. See [Show everything again](organizing-media.md#show-everything-again).
 
 ### Delete or Move to bin left some selected media out
 
@@ -1124,7 +1134,7 @@ If the card shows **Offline** instead, the video's file is missing: see [Cards s
 | The video is light enough for the **Proxy for** rule. By default, only videos above 1080p or above 30 fps get a proxy, so a 1080×1920 clip at 30 fps gets none. | Usually it plays smoothly without one. To make one anyway, right-click the card and choose **Generate proxy**, or choose **Every video** in **Proxy for**. |
 | **Proxies** is off in the **Project** section of **Edit Properties**. | Turn it on, or right-click the card and choose **Generate proxy**. See [Change the proxy settings](proxies.md#change-the-proxy-settings). |
 | You chose **Remove proxy** for this video before. Such a video never gets a proxy automatically again. | Right-click the card and choose **Generate proxy**. |
-| The project is read-only: the editor makes no proxies, and **Generate proxy** shows **This project is read-only**. | Click **Allow editing** in the banner. See [The project opens read-only](#the-project-opens-read-only). |
+| The project is read-only: the editor makes no proxies, and **Generate proxy** shows **This project is read-only**. | Click **Allow editing** in the app bar. See [The project opens read-only](#the-project-opens-read-only). |
 | The item is an audio file or an image. | Nothing to fix: only videos get proxies. |
 
 ### A proxy chip is red
@@ -1426,7 +1436,7 @@ See [Audio](audio.md).
 - The target picture is on a hidden or muted video track. Only pictures that are drawn are targets.
 - The thirds snap only while **Grid** is **Thirds**, and a safe area only while its safe zone or **Title / action safe** shows. The **Squares** and **Custom** grids are not targets.
 - You rotate the picture or drag its anchor point. Rotation snaps only to 45° steps with <kbd>Shift</kbd>, and the anchor point never snaps.
-- You resize a rotated picture. Edges snap only while the box is upright (not rotated, or rotated by a multiple of 90°).
+- You resize a rotated picture or text. Edges snap only while the box is upright (not rotated, or rotated by a multiple of 90°).
 - You crop in crop mode. Crop sides snap only to the frame (its edges, center lines and thirds), and only while the picture is upright. See [Snap crop edges to the frame](cropping-and-reframing.md#snap-crop-edges-to-the-frame).
 - For equal spacing: the picture is not between two others in line with it, another picture sits between them, or it doesn't fit in the space.
 
@@ -2153,7 +2163,7 @@ See [Messages when you paste](copy-and-paste.md#messages-when-you-paste).
 - The message **This project is read-only** appeared: the project can't be changed.
 - The message **Can't import** appeared: the file type is not supported, or an SVG has no size. See [Importing](#importing).
 
-**Fix:** Pick image files (.png, .jpg, .jpeg, .webp, .gif or .svg). Drag a video from the Media panel onto the timeline instead. In a read-only project, click **Allow editing** in the banner first. See [Add an image](shapes-and-images.md#add-an-image).
+**Fix:** Pick image files (.png, .jpg, .jpeg, .webp, .gif or .svg). Drag a video from the Media panel onto the timeline instead. In a read-only project, click **Allow editing** in the app bar first. See [Add an image](shapes-and-images.md#add-an-image).
 
 ### An animated image plays choppily
 
@@ -2344,7 +2354,7 @@ See [Messages when you paste](copy-and-paste.md#messages-when-you-paste).
 
 **Cause:** The project opened read-only: the editor can't write to its `presets/text` folder.
 
-**Fix:** Click **Allow editing** in the read-only banner and allow editing. See [Work in read-only mode](projects-and-saving.md#work-in-read-only-mode).
+**Fix:** Click **Allow editing** in the app bar and allow editing. See [Work in read-only mode](projects-and-saving.md#work-in-read-only-mode).
 
 ### A preset looks larger or smaller in another project
 
@@ -2580,7 +2590,7 @@ See [Messages when you paste](copy-and-paste.md#messages-when-you-paste).
 
 ### Transcribe is dimmed
 
-**Symptom:** The microphone in the **Captions** header, or **Transcribe** in an empty **Captions** tab, is dimmed. Its tooltip reads **Transcribe: no audio on the timeline** or **No audio on the timeline**.
+**Symptom:** The microphone in the **Captions** header, or **Transcribe** in an empty **Captions** tab, is dimmed. Its tooltip reads **Transcribe: no audio on the timeline**.
 
 **Cause:** The timeline has no audio clip. The editor transcribes the sound of the timeline, not the media in the Media panel. A video placed without its sound has nothing to transcribe.
 
@@ -2682,7 +2692,7 @@ See [Messages when you paste](copy-and-paste.md#messages-when-you-paste).
 
 **Cause:** **Nothing to export**: the timeline has no clips. **This project is read-only**: the editor may not write to the project folder, so it can't save the file in its `exports` folder. The same goes for **Export audio** and **Export frame**.
 
-**Fix:** Add clips to the timeline. In a read-only project, click **Allow editing** in the read-only banner and allow editing when the browser asks, or choose **Choose file…** under **Save to** and save the file somewhere else. See [Work in read-only mode](projects-and-saving.md#work-in-read-only-mode) and [Choose where the file goes](exporting-video.md#choose-where-the-file-goes).
+**Fix:** Add clips to the timeline. In a read-only project, click **Allow editing** in the app bar and allow editing when the browser asks, or choose **Choose file…** under **Save to** and save the file somewhere else. See [Work in read-only mode](projects-and-saving.md#work-in-read-only-mode) and [Choose where the file goes](exporting-video.md#choose-where-the-file-goes).
 
 ### An export doesn't start
 
@@ -2793,12 +2803,12 @@ The current version cannot do these things yet. Each one is available in a later
 - **Sound:** no sound while you play backward or shuttle faster than 1x; while you scrub or step frames, only with **Audio scrub** on. **Remove silence** has no default keyboard shortcut. Audio effects are not available.
 - **Copy and paste:** caption cues can't take **Paste attributes**.
 - **Media panel:** bins can't hold other bins. **Reveal in folder** can't open File Explorer: it shows and copies the path. Clips whose media item you removed can't be relinked. A file you put back while the project is open stays offline until you reopen the project.
-- **Markers:** markers belong to the timeline; markers inside clips are not available. Markers and the in/out range don't show on the scrollbars.
+- **Markers:** markers belong to the timeline; markers inside clips are not available.
 - **Menus:** right-clicking empty space after the last clip of a track opens no menu.
 - **Speed and edit points:** a speed applies to the whole clip, and sound at another speed always changes pitch. Playing a clip backward is not available.
-- **Tracks:** track headers have room for names of about 9 characters; longer names are shortened. Groups are not marked on the timeline.
+- **Tracks:** track headers have room for names of about 9 characters; longer names are shortened (point at one to see it whole). Groups are not marked on the timeline.
 - **Keyframes:** keyframes animate position, scale, rotation, opacity and the volume of audio clips.
-- **Text:** a text's handles don't snap. **Restore starter presets** brings back deleted starters, not the original look of a starter you changed. Text animations play in the preview, in **Export frame** and in exported videos.
+- **Text:** **Restore starter presets** brings back deleted starters, not the original look of a starter you changed. Text animations play in the preview, in **Export frame** and in exported videos.
 - **Captions:** all cues share one style; a style for a single cue is not available. Captions can't be selected, moved or styled in the preview.
 - **Transcription:** the cues can't be edited in the review; fix them in the **Captions** tab after adding them.
 - **Heavy footage:** 4K 60 fps HEVC played from the original (in **Full** quality, or before its proxy is ready) can drop frames, and the original frame deep inside long phone clips takes a moment to appear after you stop.
@@ -2842,4 +2852,4 @@ The current version cannot do these things yet. Each one is available in a later
 - [Command palette and custom shortcuts](command-palette-and-custom-shortcuts.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 45, 2026-10-18</sub>
+<sub>Last updated: Batch 46, 2026-10-18</sub>

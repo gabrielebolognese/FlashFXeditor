@@ -245,14 +245,14 @@ You can also delete the `cache` folder in File Explorer while the project is clo
 > **Video placeholder: Read-only mode and Allow editing**
 > - File: `videos/projects-and-saving/read-only-mode.mp4` (not recorded yet)
 > - Length: about 60 seconds
-> - Shows: reload the page and click a project in **Recent projects**; when the browser asks for permission to edit files, refuse it (allow viewing if asked); the editor opens with the read-only banner and a grey save dot; hover the dot to show its tooltip; rename the project in the app bar; open **History…** in the **Project** section and point at the dimmed **Restore…**; click **Done**; press <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>N</kbd>: **Discard unsaved changes?** appears; click **Allow editing** and allow editing in the browser prompt; close the dialog with **Cancel**; the banner is gone and the save dot turns gold, then green.
+> - Shows: reload the page and click a project in **Recent projects**; when the browser asks for permission to edit files, refuse it (allow viewing if asked); the editor opens with the read-only notice in the middle of the app bar and a grey save dot; hover the notice, then the dot, to show their tooltips; rename the project in the app bar; open **History…** in the **Project** section and point at the dimmed **Restore…**; click **Done**; press <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>N</kbd>: **Discard unsaved changes?** appears; click **Allow editing** and allow editing in the browser prompt; close the dialog with **Cancel**; the notice is gone and the save dot turns gold, then green.
 
 A project opens read-only when the editor may read the project folder but not write to it. This happens when:
 
 - you refuse edit permission in the browser prompt, or
 - you dropped the folder on the start screen and the browser did not ask for edit permission.
 
-You then see a banner under the app bar: "Read-only: Shorts Editor has no permission to write to this folder, so changes are not saved." with an **Allow editing** button, and the save dot is grey.
+You then see a notice with a lock in the middle of the app bar, **Read-only: changes are not saved**, followed by an **Allow editing** button, and the save dot is grey. Point at the notice for the whole sentence: "Shorts Editor has no permission to write to this folder, so changes are not saved." The notice takes no room from the panels, so nothing moves when it appears or goes away.
 
 In read-only mode you can look at the project and even make changes, but nothing is written to the folder: no saves, no backups, no new proxies, no copies of the fonts your text uses, no changes to the project's text presets (new presets go into the **Global** list), and your view (playhead, zoom, panel sizes) is not saved with the project. Proxies already in the folder are still used.
 
@@ -260,9 +260,9 @@ Actions that need to write to the folder are refused with the message **This pro
 
 To start saving:
 
-1. Click **Allow editing** in the banner, or click the grey save dot.
+1. Click **Allow editing** in the app bar, or click the grey save dot.
 2. Allow editing when the browser asks.
-3. The banner disappears, and the changes you made in the meantime are saved.
+3. The notice disappears, and the changes you made in the meantime are saved.
 
 If you refuse again, the project stays read-only.
 
@@ -303,4 +303,4 @@ Changes made in read-only mode exist only in the tab. The editor asks before the
 - [Titles and text](titles-and-text.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 44, 2026-10-18</sub>
+<sub>Last updated: Batch 46, 2026-10-18</sub>

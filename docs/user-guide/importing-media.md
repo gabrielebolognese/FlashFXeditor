@@ -28,7 +28,8 @@ Import brings your video, audio and image files into the project so you can use 
 2. Do one of the following:
    - In the Media panel header, click **Import media** (the import icon at the right end).
    - Press <kbd>Ctrl</kbd>+<kbd>I</kbd>. This works in every panel, except while you are typing in a text field.
-   - If the Media panel is empty, click the **Import media** button in the middle of the panel.
+   - If the Media panel is empty, it reads **No media yet** ("Import video, audio and images, or drop files here."): click the **Import media** button in the middle of the panel.
+   - If the timeline has no clips yet, click **Import media** in the middle of the tracks.
 3. In the file picker, select one or more files. The file-type list offers **Video**, **Audio** and **Images**, and you can switch to showing all files.
 4. Click **Open**.
 
@@ -208,6 +209,7 @@ Items that tie are ordered by name. Names sort the way people count: "clip 2" co
 | Add a range | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+click |
 | Select every item the tab shows | <kbd>Ctrl</kbd>+<kbd>A</kbd> (the Media panel must be active) |
 | Clear the selection | Click an empty area of the panel |
+| Select with the keyboard | Press <kbd>Tab</kbd> until a card or row has a gold ring, then use the arrow keys, <kbd>Home</kbd> and <kbd>End</kbd>: the item you move to is selected. Hold <kbd>Shift</kbd> to select a range. See [Move through cards and lists](keyboard-navigation.md#move-through-cards-and-lists). |
 
 After an import, the new items are selected. Items that the bin, the filter chips or the search hide are never selected: when you hide selected items, they leave the selection. See [Select what the tab shows](organizing-media.md#select-what-the-tab-shows).
 
@@ -272,7 +274,7 @@ Click a row to run it. Press <kbd>Esc</kbd> or click outside the menu to close i
 
 ## Fix import problems
 
-When a file is not imported, a message at the top of the window says why. It closes by itself after about 7 seconds; click its × button (**Dismiss**) to close it sooner. The other files of the same import are still imported.
+When a file is not imported, a message at the top of the window says why. It closes by itself after about 7 seconds (the orange **This project is read-only** after about 5.5 seconds); click its × button (**Dismiss**) to close it sooner. See [Read messages](workspace.md#read-messages). The other files of the same import are still imported.
 
 | Message | What it means | What to do |
 |---|---|---|
@@ -308,4 +310,4 @@ If a card keeps its kind icon instead of a thumbnail, Chrome could not decode th
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 42, 2026-10-18</sub>
+<sub>Last updated: Batch 46, 2026-10-18</sub>

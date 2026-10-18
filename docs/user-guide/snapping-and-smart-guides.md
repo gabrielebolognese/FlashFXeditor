@@ -127,6 +127,8 @@ When you drag a handle of a selected layer, the edge you drag snaps to the same 
 | A corner | The edge nearer to a target. The other edge follows, so the layer keeps its shape. |
 | A corner, with <kbd>Shift</kbd> | Each of the two edges, on its own. |
 | Any handle, with <kbd>Alt</kbd> | As above, while the layer grows or shrinks around its center. |
+| A corner of a text | The edge nearer to a target. The font size follows, so the text keeps its proportions. |
+| A side of a text | That edge: the text box gets wider or narrower. |
 
 - A gold line shows the target the edge meets.
 - Edges snap only while the box is upright: the layer is not rotated, or rotated by an exact multiple of 90°. The box around several layers is always upright.
@@ -176,7 +178,6 @@ Good to know:
 - **Arrow-key nudges** move by exactly 1 or 10 pixels.
 - **Values in Edit Properties**, typed or dragged on a field's label, land exactly where you set them, also in the **Crop** section. See [Place a picture with exact values](editing-properties.md#place-a-picture-with-exact-values).
 - **Fit**, **Fill** and **Center** place pictures relative to the frame; they don't line up with other pictures.
-- **The handles of a text** (font size and box width) don't snap. Moving a text snaps its box like a picture. See [Resize text with its handles](titles-and-text.md#resize-text-with-its-handles).
 
 ## Related pages
 - [Arranging layers in the preview](arranging-layers-in-the-preview.md)
@@ -189,4 +190,4 @@ Good to know:
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 43, 2026-10-18</sub>
+<sub>Last updated: Batch 46, 2026-10-18</sub>
