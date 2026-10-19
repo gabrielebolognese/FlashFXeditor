@@ -6075,3 +6075,31 @@ Why each dependency exists (Batch rule 8).
       - L4: a real drag after the cancelled click still shows the marker and the dimmed button, the drop reorders Favorites (Subtitle, Title, Bold outline), it adds nothing, and the marker and dimming end.
     - Control: with HEAD's `PresetBar.tsx` in the snapshot, `slideoff.mjs` fails S2-S4 and `slideleave.mjs` fails 6 checks (L1 x2, L2, L3, L4 x2). The probes catch the bug.
     - Re-runs, all pass: `extra.mjs` 28 / 28 (the E2 reorder checks included), `acc123.mjs` 25 / 25, `acc5.mjs` 8 / 8 (the bar hidden and shown, so it unmounts and mounts again).
+- review: accepted (2026-10-19, third review; `npm run check` green: typecheck, lint with the CSS color and token checks, 2463 / 2463 unit tests in 236 files, 4 / 4 perf tests, build, main JS 1372.35 kB / 436.87 kB gzip, export.worker 418.31 kB, the same as reported. The build prints rolldown's `[PLUGIN_TIMINGS]` notice, which is a timing report and not a code warning. Browser checks in headless Chrome 155 on 9421 (own profile `%TEMP%/rev52c/profile`) against my own snapshot of the working tree on 5299. The earlier helpers are copied to `%TEMP%/rev52c` with the ports changed.)
+  - The second review's rejection is fixed: a cancelled click on a bar button no longer leaves a reorder drag pending.
+    - `src/panels/presetBarReorder.ts` (`PresetBarReorder`) is framework-free. A press listens for `pointerup` / `pointercancel` on the window, in the capture phase, until a drag starts, and ends wherever it is released. A move with no left button held drops the press. Every press first clears what an earlier one left: the marker, `data-dragging` and the swallowed-click flag. A started drag keeps the row's pointer capture, and the row's release commits it once. `PresetBar.tsx` ends a pending press on unmount, and leaving or scrolling the row ends the hover preview.
+    - `presetBarReorder.test.ts` has 9 cases: the review's repro, a missed release, a cancel, a leftover drag, the window's release during a started drag, a cancelled drag, and listener removal.
+    - I ran the repro scripts again. `slideoff.mjs` passes 5 / 5: the cancelled click adds nothing, and afterwards there is no phantom marker, no dimmed button and no reorder from a click in a gap. `slidehover.mjs` passes 2 / 2: hover still previews after the cancelled click. The fix's `slideleave.mjs` passes 11 / 11.
+    - My own `afterdrop.mjs` passes 12 / 12:
+      - A drag released below the bar, where the row holds the capture, still drops Title after Subtitle. It adds nothing, makes no undo step and leaves no marker or preview.
+      - The next click on a button applies in one undo step.
+      - Hiding the bar with a button held and showing it again leaves nothing pending. Hover previews, a click applies, and there are no console messages.
+  - The first review's rejection stays fixed. `stucktab.mjs` passes 5 / 5: when a font arrives, the card and the button repaint by themselves, and the button matches the renderer (0 of 3116 pixels off).
+  - Acceptance:
+    - 1-3 and 6: `acc123.mjs` 25 / 25.
+      - With nothing selected, a click adds Bold outline at the playhead in one undo step and starts inline editing with "Bold" selected; typing replaces it.
+      - Three clips are restyled in one step. Hover previews with 0 React commits, and leaving restores the same pixel hash.
+      - Alt+3 and Alt+9 apply the third and ninth buttons, and the tooltips show the shortcuts.
+      - There are 43 starters (Titles 23, Subtitles 10, Captions 10), and the toolbar has no favorite chips.
+    - 4: `acc4.mjs` 11 / 11. All buttons are within 1 level of the renderer, Cinzel really draws, the stroke, box and highlighted words show, and Update preset redraws the button.
+    - 5: `acc5.mjs` 8 / 8. The preview re-fits with no stale frame when the bar is hidden or shown, and the stale-frame control catches one when the flush is off. Hidden on Captions survives a reload. I did not rerun playback with the bar shown (0 commits, 2 / 900 dropped when the batch measured it): the fix only changes pointer handlers on the bar.
+    - Other checks: `extra.mjs` 28 / 28, the E2 reorder checks included.
+    - Pending manual checks 1-4 have exact steps.
+  - Do not build yet: per-cue styles are not built (no `styleOverride` in `src`). `captionTarget` keeps the `TODO(batch 53)` hook (`src/app/presetController.ts:416`).
+  - Literals: the new module has no color, font or size literal. Its drag threshold comes from `themeBridge` (`timeline.dragThreshold`), and the marker position is computed from the button layout. The lint color and token checks pass.
+  - §3/§4:
+    - The drag writes the DOM directly and reads the layout once when it starts (P9).
+    - A drop writes the set's order to the app settings once, on release.
+    - React renders the bar only on preset, set or order changes.
+    - Thumbnails stay `ImageBitmap`s from idle time, drawn in the FrameScheduler loop.
+  - TODOs: the only `TODO(batch` in `src` is the Batch 53 hook, and it has its tag.
