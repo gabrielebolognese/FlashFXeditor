@@ -9,7 +9,7 @@ import type { CaptionClip, ClipId, Project } from "../../core/document/types.js"
 import type { Selection } from "../../core/store/selection.js";
 import type { SessionState } from "../../core/store/sessionStore.js";
 import { useStoreSelector } from "../../core/store/useStoreSelector.js";
-import { cueMatches, wordCount } from "../../text/captions.js";
+import { cueMatches, hasOwnStyle, wordCount } from "../../text/captions.js";
 import { captionTrackOf } from "../../timeline/edit/captions.js";
 import { clipAtFrame } from "../../timeline/model/queries.js";
 import { Button } from "../../ui/Button.js";
@@ -246,7 +246,7 @@ const CueRow = memo(function CueRow({ id, index, top, selected, mode, order }: R
       <span className={styles.count} data-tooltip="Words">
         {wordCount(text)}
       </span>
-      {(cue.styleOverride !== undefined || cue.presetId !== undefined) && <span className={styles.styleDot} role="img" aria-label="Own style" data-tooltip="This cue has its own style" />}
+      {hasOwnStyle(cue) && <span className={styles.styleDot} role="img" aria-label="Own style" data-tooltip="This cue has its own style" />}
     </div>
   );
 });

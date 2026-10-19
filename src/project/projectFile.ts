@@ -1,6 +1,7 @@
 // project.json: serialization, schema migrations and validation on load.
 import { SCHEMA_VERSION, type JsonObject, type Project } from "../core/document/types.js";
 import { validateProject } from "../core/document/validate.js";
+import { upgradeCaptionStyle } from "../text/captions.js";
 import { errorMessage } from "./errorMessage.js";
 
 export class ProjectFileError extends Error {
@@ -30,8 +31,7 @@ export const MIGRATIONS: Readonly<Record<number, Migration>> = {
     if (!tracks) return raw;
     const captionTracks: JsonObject = {};
     for (const [id, data] of Object.entries(tracks)) {
-      const style = isObject(data) && isObject(data.style) ? data.style : null;
-      captionTracks[id] = style && style.x === undefined ? { ...data as JsonObject, style: { ...style, x: 0 } } : data;
+      captionTracks[id] = isObject(data) && isObject(data.style) ? { ...data, style: upgradeCaptionStyle(data.style) } : data;
     }
     return { ...raw, captionTracks };
   },

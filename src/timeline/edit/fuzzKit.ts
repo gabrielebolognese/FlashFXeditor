@@ -9,8 +9,8 @@
 // - `documentChecks` adds what validateProject leaves out: finite numbers and plain JSON everywhere,
 //   clips on locked tracks unchanged, media records gone only through Remove, clips on media of their
 //   kind, speeds within 0.25x..4x, crops within the media, non-empty link and group ids, cue style
-//   overrides never empty (an override that sets nothing is removed, spec §20.3) and every cue's
-//   effective style one the layout can draw.
+//   overrides never empty (an override that sets nothing is removed, spec §20.3), no cue preset link
+//   without an override, and every cue's effective style one the layout can draw.
 import { addTrack, updateClip } from "../../core/commands/basicCommands.js";
 import type { Command } from "../../core/commands/command.js";
 import { addBin, addMedia, relinkMedia, removeBin, removeMedia, renameBin, renameMedia, setMediaBin } from "../../core/commands/mediaCommands.js";
@@ -1787,8 +1787,10 @@ function clipIssues(project: Project, clip: Clip): string[] {
   const label = `clip ${clip.id}`;
   if (clip.linkGroup === "" || clip.group === "") issues.push(`${label}: empty link group or group id`);
   if (clip.kind === "caption") {
-    // An override that sets nothing is removed (spec §20.3); the effective style is one the layout can draw.
+    // An override that sets nothing is removed, a preset link goes with the last override (spec §20.3);
+    // the effective style is one the layout can draw.
     if (clip.styleOverride !== undefined && isEmptyOverride(clip.styleOverride)) issues.push(`${label}: an empty style override`);
+    if (clip.presetId !== undefined && clip.styleOverride === undefined) issues.push(`${label}: a preset link without a style override`);
     const style = cueStyleOf(project, clip);
     if (!(style.text.fontSize > 0 && style.maxWidth > 0 && style.maxLines >= 1)) issues.push(`${label}: effective style ${JSON.stringify({ size: style.text.fontSize, width: style.maxWidth, lines: style.maxLines })} cannot be drawn`);
   }

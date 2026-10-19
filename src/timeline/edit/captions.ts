@@ -469,8 +469,9 @@ export interface CueStyle {
 
 /**
  * The cues' own styles (spec §20.3 Selected scope, a preset on cues, a canvas drag, Paste style): each
- * cue of `styles` gets that override and preset (an empty override or none clears it), one undo step.
- * Cues that are gone, locked or unchanged are left out; null when none changes.
+ * cue of `styles` gets that override and preset (an empty override or none clears both: a preset link
+ * alone is no style of the cue's), one undo step. Cues that are gone, locked or unchanged are left
+ * out; null when none changes.
  */
 export function setCueStyles(project: Project, styles: ReadonlyMap<ClipId, CueStyle>, options: { label: string; coalesceKey?: string }): Command | null {
   const writes: [ClipId, CueStyle][] = [];
@@ -478,7 +479,7 @@ export function setCueStyles(project: Project, styles: ReadonlyMap<ClipId, CueSt
     const cue = editableCue(project, id);
     if (!cue) continue;
     const override = isEmptyOverride(style.styleOverride) ? undefined : style.styleOverride;
-    const presetId = style.presetId;
+    const presetId = override ? style.presetId : undefined;
     if (JSON.stringify(cue.styleOverride) === JSON.stringify(override) && cue.presetId === presetId) continue;
     writes.push([id, { styleOverride: override && structuredClone(override), presetId }]);
   }
@@ -508,8 +509,8 @@ export type CaptionDragScope = "all" | "selected";
 /**
  * A canvas drag of cue `cueId`'s caption (spec §20.3) as one command: `selected` writes `fields` into
  * the cue's own style (its preset link stays); `all` changes the track's style with `change` and
- * drops the cue's own values of `fields`, so the dragged caption follows the track as shown. Null when
- * the cue cannot be edited or nothing changes.
+ * drops the cue's own values of `fields` (its preset link too when no value is left), so the dragged
+ * caption follows the track as shown. Null when the cue cannot be edited or nothing changes.
  */
 function captionDrag(
   project: Project,
@@ -534,7 +535,8 @@ function captionDrag(
   const after = change(before);
   const own = overrideWithout(cue.styleOverride, paths);
   const styleChanged = JSON.stringify(before) !== JSON.stringify(after);
-  const ownChanged = JSON.stringify(own) !== JSON.stringify(cue.styleOverride);
+  // Without an override left, the preset link goes too (as in setCueStyles).
+  const ownChanged = JSON.stringify(own) !== JSON.stringify(cue.styleOverride) || (!own && cue.presetId !== undefined);
   if (!styleChanged && !ownChanged) return null;
   return {
     id: "caption.style",
@@ -546,7 +548,10 @@ function captionDrag(
       const target = draft.clips[cueId];
       if (ownChanged && target?.kind === "caption") {
         if (own) target.styleOverride = structuredClone(own);
-        else delete target.styleOverride;
+        else {
+          delete target.styleOverride;
+          delete target.presetId;
+        }
       }
     },
   };

@@ -283,4 +283,19 @@ describe("pasteClips into another project (the system clipboard JSON)", () => {
     expect(clips[0]).toMatchObject({ trackId: track?.id, start: 10, kind: "caption" });
     expect(doc.getState().captionTracks[track?.id as string]?.style.maxLines).toBe(3);
   });
+
+  it("cues copied in 1.0.0 (a caption style without x) paste into a project with no caption track", () => {
+    const from = withClips(addCaptionTrack(project([], { id: "source" })), [makeCaptionClip({ id: "c1", trackId: "cc", start: 0, duration: 20 })]);
+    const old = JSON.parse(serializeClipboard(copied(from, ["c1"]))) as { captionStyle: Record<string, unknown> };
+    delete old.captionStyle.x;
+    const payload = parseClipboard(JSON.stringify(old)) as ClipsPayload;
+    expect(payload.captionStyle).toMatchObject({ x: 0, position: "bottom" });
+    // `paste` dispatches into a validating store: the new caption track's style is a valid one.
+    const { doc } = paste(project([], { id: "target" }), payload, 10);
+    const track = doc.getState().tracks.find((candidate) => candidate.kind === "caption");
+    expect(doc.getState().captionTracks[track?.id as string]?.style).toMatchObject({ x: 0, position: "bottom" });
+    // A payload of this version is left as it is.
+    const current = copied(from, ["c1"]);
+    expect(parseClipboard(serializeClipboard(current))).toEqual(current);
+  });
 });

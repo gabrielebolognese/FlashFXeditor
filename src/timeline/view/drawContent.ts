@@ -21,7 +21,7 @@ import type { Theme } from "../../core/theme/theme.js";
 import { cellOrigin, type ThumbLevel } from "../../media/cache/thumbSheets.js";
 import { frameAt, loopTimeUs } from "../../media/decode/animation.js";
 import { isPlayable } from "../../text/anim.js";
-import { cueLine } from "../../text/captions.js";
+import { cueLine, hasOwnStyle } from "../../text/captions.js";
 import { firstLine } from "../../text/style.js";
 import { clipsInRange, contentEnd, linkOffset, neighbors } from "../model/queries.js";
 import { clipLod, clipSpan, devicePx, LOD_THUMBS_PX, type ClipLod } from "./clipLayout.js";
@@ -512,7 +512,7 @@ function drawLabel(scene: ClipScene, clip: Clip, x: number, y: number, width: nu
   if (clip.kind === "text" && (isPlayable(clip.animIn) || isPlayable(clip.animOut))) badgesStart = drawIconBadge(scene, "sparkles", minX, badgesStart, lineY);
   if (clip.kind === "text" && scene.fonts?.missing(clip.style.fontFamily)) badgesStart = drawIconBadge(scene, "triangleAlert", minX, badgesStart, lineY, theme.color.danger);
   // A cue with its own style (spec §20.3).
-  if (clip.kind === "caption" && (clip.styleOverride !== undefined || clip.presetId !== undefined)) badgesStart = drawIconBadge(scene, "paintbrush", minX, badgesStart, lineY);
+  if (clip.kind === "caption" && hasOwnStyle(clip)) badgesStart = drawIconBadge(scene, "paintbrush", minX, badgesStart, lineY);
   if (isMediaClip(clip) && (clip.transitionIn || clip.transitionOut)) badgesStart = drawBadge(scene, "fx", theme.color.textSecondary, minX, badgesStart, lineY);
   if (badgesStart < badgesEnd) right = badgesStart;
   drawGlyph(ctx, CLIP_GLYPHS[clip.kind], left + pad, lineY - icon / 2, icon, theme.color.textPrimary);

@@ -200,6 +200,26 @@ describe("templates (spec §15)", () => {
     expect(sanitizeTemplate({ ...b, tracks: [{ ...b.tracks[0], kind: "nope" }] }, "now")).toBeNull();
     expect(cleanTemplateName("   ")).toBeNull();
   });
+
+  it("a template saved by 1.0.0 (a caption style without x) loads, makes a valid project and survives the next save", async () => {
+    const old = structuredClone(templateFromProject(source(), [], { id: "old", name: "From 1.0", now: "1" })) as unknown as { tracks: { captionStyle?: Record<string, unknown> }[] };
+    const caption = old.tracks.find((track) => track.captionStyle)!;
+    delete caption.captionStyle!.x;
+    const kv = memoryKeyValueStore();
+    kv.data.set("templates.v1", [old]);
+    const store = new TemplateStore(kv);
+    await store.load("now");
+    const loaded = store.find("old");
+    expect(loaded?.tracks.find((track) => track.kind === "caption")?.captionStyle).toMatchObject({ x: 0, maxLines: 1 });
+    let n = 0;
+    const made = projectFromTemplate(loaded!, createDocument({ id: "p3", name: "New", now: "x", appVersion: "x" }), () => `n${++n}`);
+    expect(validateProject(made)).toEqual([]);
+    expect(made.captionTracks.n3?.style).toMatchObject({ x: 0, position: "bottom", maxLines: 1 });
+    await store.save(templateFromProject(source(), [], { id: "new", name: "Other", now: "2" }));
+    const reloaded = new TemplateStore(kv);
+    await reloaded.load("now");
+    expect(reloaded.list.getState().map((t) => t.id)).toEqual(["new", "old"]);
+  });
 });
 
 describe("recent projects (Batch 42 thumbnails)", () => {

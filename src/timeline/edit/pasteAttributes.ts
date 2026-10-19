@@ -24,6 +24,7 @@ import type { Draft } from "immer";
 import type { Command } from "../../core/commands/command.js";
 import { animatedOpacity, animatedTransform, gainDbAt, SECTION_PROPS, sliceKeyframes, type KeyframeSection } from "../../core/document/keyframes.js";
 import { isMediaClip, type Clip, type ClipId, type Keyframes, type Project } from "../../core/document/types.js";
+import { hasOwnStyle } from "../../text/captions.js";
 import { isClipLocked } from "../model/queries.js";
 import type { ClipsPayload } from "./clipboard.js";
 import { clampCrop, cropSize, isCropClip } from "./crop.js";
@@ -197,7 +198,7 @@ export function pasteAttributes(project: Project, payload: ClipsPayload, ids: re
   apply("captionStyle", (target, source) => {
     if (target.kind !== "caption" || source.kind !== "caption") return;
     put(target, "styleOverride", source.styleOverride);
-    put(target, "presetId", source.presetId);
+    put(target, "presetId", hasOwnStyle(source) ? source.presetId : undefined);
   });
   apply("audio", (target, source) => {
     if (target.kind !== "audio" || source.kind !== "audio") return;

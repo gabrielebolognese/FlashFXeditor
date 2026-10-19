@@ -4,7 +4,7 @@ import type { CaptionClip, CaptionStyleOverride, Clip, Project } from "../../cor
 import type { Command as Cmd } from "../../core/commands/command.js";
 import { DocumentStore } from "../../core/store/DocumentStore.js";
 import { createSessionStore } from "../../core/store/sessionStore.js";
-import { defaultCaptionStyle, evenWords, wordRanges } from "../../text/captions.js";
+import { defaultCaptionStyle, evenWords, hasOwnStyle, overrideWithout, wordRanges } from "../../text/captions.js";
 import { cuesFromWords, wordsFromChunks, type TimedWord } from "../../text/transcript.js";
 import { formatSubtitles, parseSrt } from "../../text/subtitles.js";
 import {
@@ -517,6 +517,31 @@ describe("styles per cue (spec §20.3)", () => {
     expect(cue(next, "q1")).not.toHaveProperty("styleOverride");
     expect(cue(next, "q1")).not.toHaveProperty("presetId");
     expect(resetCueStyles(next, ["q1"])).toBeNull();
+  });
+
+  it("a preset link goes with the cue's last override (the rows' resets, an All cues drag)", () => {
+    const p = styled();
+    // A row's reset keeps the link while a field of the cue's own is left...
+    const partial = run(p, setCueStyles(p, new Map([["q1", { styleOverride: overrideWithout(BIG, ["text.fontSize"]), presetId: "pr" }]]), { label: "Reset size" }));
+    expect(cue(partial, "q1")).toMatchObject({ styleOverride: { text: { fill: BIG.text?.fill } }, presetId: "pr" });
+    expect(hasOwnStyle(cue(partial, "q1"))).toBe(true);
+    // ...and drops it with the last one: the cue looks like the track and has no style of its own.
+    const none = run(partial, setCueStyles(partial, new Map([["q1", { styleOverride: overrideWithout(cue(partial, "q1").styleOverride, ["text.fill", "position", "x", "y"]), presetId: "pr" }]]), { label: "Reset" }));
+    expect(cue(none, "q1")).not.toHaveProperty("styleOverride");
+    expect(cue(none, "q1")).not.toHaveProperty("presetId");
+    expect(hasOwnStyle(cue(none, "q1"))).toBe(false);
+    expect(resetCueStyles(none, ["q1"])).toBeNull();
+    // An All cues drag that takes the cue's last own values drops the link too.
+    const placed = styled();
+    placed.clips.q1 = { ...cue(placed, "q1"), styleOverride: { position: "custom", x: 0, y: -600 } };
+    const all = run(placed, moveCaption(placed, "q1", "all", { x: 0, y: -500 }));
+    expect(cue(all, "q1")).not.toHaveProperty("styleOverride");
+    expect(cue(all, "q1")).not.toHaveProperty("presetId");
+    // A link alone (a cue saved before this was fixed) is no style of the cue's; Reset still clears it.
+    const lone = styled();
+    lone.clips.q2 = { ...cue(lone, "q2"), presetId: "pr" };
+    expect(hasOwnStyle(cue(lone, "q2"))).toBe(false);
+    expect(cue(run(lone, resetCueStyles(lone, ["q2"])), "q2")).not.toHaveProperty("presetId");
   });
 
   it("splitting a styled cue keeps the style on both halves (cue list and timeline); merging keeps the first cue's", () => {

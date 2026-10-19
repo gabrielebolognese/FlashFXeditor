@@ -502,6 +502,7 @@ Decisions that diverge from docs/EDITOR_SPEC.md, with the reason. Each one also 
   - Cue list: Shift click selects from the primary (last clicked) cue; a Shift or Ctrl press on a cue's text selects without focusing it; a right-click on a selected cue keeps the selection, so the menu's Paste style and Reset to track style act on all of them. The text field shows the cue's text until a key is typed (Batch 32 kept a draft from the focus on, which a merge or an undo under it would write back on blur).
   - Copy style / Paste style keep the copied cue's own style and preset link in memory (not the system clipboard); a cue without one pastes "the track style" (a reset). Paste attributes' Caption style does the same from copied clips.
   - Inline editing of a cue (double-click on its caption): Enter inserts a line break as in titles (the cue list's Enter splits); the end is one "Edit caption" step.
+  - A cue's own style is its override (`hasOwnStyle`, fix-attempt): the preset link goes with the last override (a row reset, an All cues drag, Paste style or Paste attributes from a cue without one), and the cue list's dot, the timeline's badge and Reset to track style look at the override only. A link alone, saved by the batch's first build, changes nothing the cue shows, so it is shown as no style (Reset to track style still clears it).
 
 ## Follow-ups
 Small things discovered during a batch that belong to a later batch. Format: `- [from Batch NN -> Batch MM] description`.
@@ -6234,3 +6235,28 @@ Why each dependency exists (Batch rule 8).
       - Export loads each cue's fonts (`exportNeeds`, `projectTextStyles`). No time values changed.
     - TODOs: there are none in `src/` (the Batch 52 `TODO(batch 53)` hook is resolved). `package.json` is at 1.1.0, and the tag `v1.1.0` is on 8962887.
     - There is no earlier rejection to recheck.
+- fix-attempt: done (2026-10-19)
+  1. Caption styles saved by 1.0.0 outside project.json get `x` when they are read.
+     - New `upgradeCaptionStyle` (`src/text/captions.ts`): a stored caption style object without `x` gets `x: 0` (centered, as before). The 2 -> 3 migration of project.json uses it now, too.
+     - Templates: `sanitizeTrack` passes the stored `captionStyle` through it (`src/project/templates.ts`), so a 1.0.0 template makes a valid project, stays in the list and survives the next save.
+     - Clipboard: `parseClipboard` passes the payload's `captionStyle` through it (`src/timeline/edit/clipboard.ts`), so cues copied in 1.0.0 paste into a project without a caption track.
+     - Other stores: `grep CaptionStyle src` finds no other store that keeps one outside project.json. Text presets keep a `TextStyle` and a highlight, session.json and the app settings keep no caption style, Copy style lives in memory, and recovery and history files go through `parseProjectFile` (the migration).
+  2. A cue keeps no preset link without an override.
+     - `setCueStyles` drops the link when the override comes out empty (a row marker's reset, Paste style of a cue without one) (`src/timeline/edit/captions.ts`). An All cues canvas drag that takes the cue's last own values drops it as well.
+     - Paste attributes' Caption style gives no link from a source cue that only has one.
+     - New `hasOwnStyle(cue)` (an override): used by the cue list's dot (`CaptionsTab.tsx`), the timeline's paintbrush badge (`drawContent.ts`), the menu's Reset to track style (`captionController.ts`) and the section's Reset button (`CaptionStyleSection.tsx`). The fuzz kit's `documentChecks` adds "no preset link without a style override".
+  - Tests (+3 tests, no new files):
+    - `projectManagement.test.ts`: a 1.0.0 template (no `x`) loads from the store, makes a valid project (`x` 0), and is still stored after another template is saved and the store is loaded again.
+    - `clipboard.test.ts`: a payload without `x` parses with `x: 0` and pastes into a project with no caption track through a validating store. A payload of this version parses unchanged.
+    - `timeline/edit/captions.test.ts`: the rows' resets keep the link while a field is left and drop it with the last one (`hasOwnStyle` false, Reset has nothing to do). An All cues drag that takes the last values drops it. A link alone shows no style, and Reset clears it.
+    - `pasteAttributes.test.ts`: a source cue with a link alone gives no link.
+    - Against the old code: with the old `templates.ts` and `clipboard.ts`, the two new store tests fail. With the old `timeline/edit/captions.ts` and `pasteAttributes.ts`, the new captions case and the extended paste attributes case fail.
+  - `npm run check` green: typecheck, lint with the CSS color and token checks, 2499 unit tests in 238 files, 4 perf tests, build (rolldown's `[PLUGIN_TIMINGS]` timing notice only). Main JS 1393.30 kB (443.57 kB gzip), export.worker 419.23 kB.
+  - Browser checks: a fresh snapshot of the working tree (5303 / 9425, the batch's helpers in `%TEMP%/b53`).
+    - New `fix.mjs`, 11 / 11:
+      - Cue 1 gets the bar's "Caption bold" with **Selected (1)**, then each row marker is clicked until none is left (20 resets, one step each). The cue then has no override and no link and looks like cue 2. Its dot is gone and **Reset to track style** is disabled.
+      - A 1.0.0 template (no `x`) written to IndexedDB `templates.v1` is listed after a reload. New from template makes a valid project whose caption style has `x` 0. After another template is saved and the page reloads, both are listed and stored.
+      - A 1.0.0 cue payload on the system clipboard pastes through the app's **Paste** into a project with no caption track: the track is created with the cue, `x` 0, and no refusal toast.
+    - Control: the same script on HEAD's sources (swapped into the snapshot, Vite restarted) fails 8 of 11, the review's three findings. The link stays, so the dot shows and Reset is enabled. The template is dropped and then deleted by the next save. The paste is refused ("Can't paste these clips").
+    - Re-runs, all pass: `acc1.mjs` (21), `acc2.mjs` (14), `acc3.mjs` (17), `acc4.mjs` (10), `acc56.mjs` (9), `acc56gl.mjs` (9, WebGL2), `extra.mjs` (10), `extra2.mjs` (7), `nudge.mjs` (3).
+  - Deviation (also under Global deviations, Caption styles per cue): a cue's own style is its override (`hasOwnStyle`). A link alone, from the batch's first build, shows as no style.
