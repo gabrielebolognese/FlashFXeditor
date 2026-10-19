@@ -90,6 +90,7 @@ The Preview panel header holds the controls that change how you look at the fram
 | **Overlays** (grid icon) | Safe zones for Reels, TikTok and Shorts, grids, the center cross, title / action safe, rulers and the pixel grid. |
 | **Snap** (magnet) | Turns snapping on or off, for clips on the timeline and layers in the preview (<kbd>S</kbd>). |
 | **Smart guides** | Turns smart guides on or off: layers you drag snap to each other and show gold guides with distances. See [Snapping and smart guides in the preview](snapping-and-smart-guides.md). |
+| **Presets** | Shows or hides the preset bar under the header: picture buttons that style the selected texts or captions, or add a new text, in one click. Hiding it gives its 48 pixels back to the picture. See [The preset bar](preset-bar.md). |
 | **Fullscreen** | Fills the browser window with the preview (<kbd>F</kbd>); <kbd>Esc</kbd> returns. |
 | **Export frame** | Saves the current frame as a PNG, where your exports go. See [Export the current frame](#export-the-current-frame). |
 
@@ -312,6 +313,7 @@ The preview draws with your graphics card (GPU), through WebGPU or, on computers
 - **If the video decoder stops:** the browser's video decoder can crash or stop responding, for example after a graphics driver problem. The editor notices and restarts it by itself. Playback shows the frames it already has for about half a second, the picture then holds for a moment, and it moves again within about 1.5 seconds of the crash. Playback doesn't stop, and a proxy or thumbnails being made at that moment are made again.
 - **Zoomed in above 100%:** with the default **Auto** quality, playback and scrubbing show the project's resolution (or the proxy), and the full detail of your media follows 0.3 seconds after you stop. **Full** keeps full detail while playing, which is heavier. **1/2** and **1/4** draw playback at half or a quarter of the resolution, which is lighter at every zoom. See [Choose the preview quality](preview-zoom-overlays-fullscreen.md#choose-the-preview-quality).
 - **Fullscreen:** on the development laptop, a 60 fps 1080×1920 project played in the fullscreen preview with at most about 0.5% dropped frames. The first playback after the page loads can drop many more frames while the editor warms up, especially with a large preview; the following playbacks are smoother.
+- **The preset bar:** its buttons get their pictures while the video is paused, never while it plays, so the bar doesn't slow playback down. On the development laptop, 30 seconds of playback dropped 2 frames of 900 with the bar shown, no more than with it hidden. See [The preset bar](preset-bar.md).
 - **Dragging layers:** moving a layer in the preview follows the pointer at the full rate of a 60 Hz screen, also while it snaps and shows smart guides. On the development laptop, frames during a snapped drag took about 17 milliseconds on average. See [Snapping and smart guides in the preview](snapping-and-smart-guides.md).
 - **Dragging a value in Edit Properties:** when you drag the label of a field such as **X** or **Opacity**, the preview follows at the full rate of a 60 Hz screen. On the development laptop, frames took about 17 milliseconds on average during such a drag, with none over 20 milliseconds. See [Drag a value](editing-properties.md#drag-a-value).
 - **Cropping:** while you drag a crop bracket or bar, the preview and the **Crop** fields follow the pointer at the full rate of a 60 Hz screen. On the development laptop, frames took about 17 milliseconds on average during such a drag. See [Crop with handles in the preview](cropping-and-reframing.md#crop-with-handles-in-the-preview).
@@ -333,6 +335,7 @@ If playback stutters, see [Troubleshooting](troubleshooting.md).
 - [Editing properties](editing-properties.md)
 - [Cropping and reframing](cropping-and-reframing.md)
 - [Captions](captions.md)
+- [The preset bar](preset-bar.md)
 - [Proxies](proxies.md)
 - [Audio](audio.md)
 - [Timeline](timeline.md)
@@ -347,4 +350,4 @@ If playback stutters, see [Troubleshooting](troubleshooting.md).
 - [Workspace](workspace.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 48, 2026-10-18</sub>
+<sub>Last updated: Batch 52, 2026-10-19</sub>

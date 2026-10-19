@@ -31,7 +31,7 @@ You can reach and use every control of the editor with the keyboard alone: move 
 - <kbd>Tab</kbd> reaches every control of the app bar, the panel headers, the timeline toolbar, the transport bar under the preview and the **Edit Properties** panel: buttons, switches, chips, fields, section headers and the stopwatches.
 - **Dimmed controls are reached too.** Their tooltip often says why they are dimmed, for example **Transcribe: no audio on the timeline**. A dimmed field shows its value but you can't change it, and a dimmed dropdown list doesn't open.
 - Moving into a panel with <kbd>Tab</kbd> makes it the active panel, as a click does. See [Send shortcuts to the right panel](workspace.md#send-shortcuts-to-the-right-panel).
-- Each list of media cards or preset cards is a single stop: <kbd>Tab</kbd> enters it, and the arrow keys move inside. See [Move through cards and lists](#move-through-cards-and-lists).
+- Each list of media cards or preset cards, and the row of buttons in the preset bar, is a single stop: <kbd>Tab</kbd> enters it, and the arrow keys move inside. See [Move through cards and lists](#move-through-cards-and-lists).
 - While the preview fills the window (<kbd>F</kbd>), <kbd>Tab</kbd> moves only through its header and transport bar, and they stay shown while one of their controls has the focus. See [Fill the window with the preview](preview-zoom-overlays-fullscreen.md#fill-the-window-with-the-preview).
 
 > **Tip:** On the gold **Export** button of the app bar, the ring is a dark gap with a gold edge, so you can still see it on the gold.
@@ -100,6 +100,7 @@ The cards of the **Media** tab (grid view and list view) and of the **Presets** 
 
 - **Media tab:** the card you move to is selected, as with a click. Hold <kbd>Shift</kbd> with the arrow keys to select a range. With <kbd>Ctrl</kbd> or <kbd>Alt</kbd> held, the keys run their shortcuts instead.
 - **Presets tab:** the arrow keys move only the ring; presets are not selected.
+- **Preset bar:** its row of buttons above the preview works the same way: <kbd>←</kbd> and <kbd>→</kbd> move the ring (the row scrolls along), <kbd>Home</kbd> and <kbd>End</kbd> go to the first and last button, and <kbd>Enter</kbd> or <kbd>Space</kbd> does what a click does. The set menu, the arrows, **+** and **Manage presets (the Presets tab)** are stops of their own. See [Use the bar with the keyboard](preset-bar.md#use-the-bar-with-the-keyboard).
 - Clicking a card doesn't give it the focus, so <kbd>Space</kbd> still plays. Only when a card already had the ring does the clicked card take it.
 
 See [Insert at the playhead](adding-media-to-the-timeline.md#insert-at-the-playhead) and [Apply a preset to text](text-presets.md#apply-a-preset-to-text).
@@ -124,6 +125,7 @@ When the control you are on goes away, the keyboard focus doesn't get lost. It g
 | A bin's name field, after <kbd>Enter</kbd> or <kbd>Escape</kbd> | The bin's chip |
 | The **Remove silence** row (**Apply**, **Cancel** or <kbd>Esc</kbd>) | **Remove silence** in the quick actions |
 | The preset name field of **Save as preset** | **Save as preset** |
+| The preset name field of **+** in the preset bar | **+** |
 | An export card you removed from the **Queue** | The next card, or the previous one |
 | The quick actions or a section, after **Delete** or a new selection | The top of the **Edit Properties** panel |
 
@@ -133,7 +135,8 @@ When the control you are on goes away, the keyboard focus doesn't get lost. It g
 - [Editing properties](editing-properties.md)
 - [Organizing media](organizing-media.md)
 - [Text presets](text-presets.md)
+- [The preset bar](preset-bar.md)
 - [Command palette and custom shortcuts](command-palette-and-custom-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 51, 2026-10-19</sub>
+<sub>Last updated: Batch 52, 2026-10-19</sub>

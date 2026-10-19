@@ -1,10 +1,10 @@
 # Troubleshooting
 
-This page helps you when something does not work as expected: the editor does not start in your browser, the preview stays empty or your graphics driver has trouble with WebGPU, a panel or the whole editor says it stopped working, a shortcut or a key you changed does nothing or runs another command, a folder or a file does not open or shows **Failed** in the Media tab, media are hidden in the Media tab, go offline or don't relink, a clip drag, a trim, a split, a delete, a timeline tool, a typed timecode, a marker, an in/out range or **Lift** and **Extract** do something you did not expect, media from the Media panel lands somewhere you did not expect, a clip shows no thumbnails, a video gets no proxy or its proxy fails, the preview zoom, overlays or fullscreen behave unexpectedly, a picture in the preview can't be selected, moves unexpectedly, doesn't snap where you expect or gets cropped instead of resized, a value or a crop in **Edit Properties** doesn't do what you expect, a paste or a duplicate lands somewhere you did not expect or is refused, a speed change, a freeze frame or a punch zoom does something you did not expect, a keyframe animation or a keyframe lane doesn't behave as you expect, a fade or a transition doesn't go where you expect, gets shorter or shows red stripes, the rubber band, **Normalize**, **Auto-duck**, **Detach audio** or **Audio scrub** doesn't do what you expect, **Remove silence** cuts too much, too little or nothing, a shape or an image doesn't look or play as you expect, a title lands somewhere you did not expect, the keys type into a text, a font is missing, isn't added to **My fonts** or looks different from the one you installed, a text preset doesn't apply, update or sync as you expect, a text animation plays shorter or differently than you expect, a caption cue doesn't import, move, show or highlight as you expect, a transcription doesn't start, is slow or gets words wrong, an export doesn't start, fails or gives a file you did not expect, playback stutters or pauses for a moment, an HDR video looks less bright than on your phone, a WebM video covers the layers below it, or you hear no sound. Each problem lists what you see, why it happens and what to do. The last section lists what the current version cannot do yet.
+This page helps you when something does not work as expected: the editor does not start in your browser, the preview stays empty or your graphics driver has trouble with WebGPU, a panel or the whole editor says it stopped working, a shortcut or a key you changed does nothing or runs another command, a folder or a file does not open or shows **Failed** in the Media tab, media are hidden in the Media tab, go offline or don't relink, a clip drag, a trim, a split, a delete, a timeline tool, a typed timecode, a marker, an in/out range or **Lift** and **Extract** do something you did not expect, media from the Media panel lands somewhere you did not expect, a clip shows no thumbnails, a video gets no proxy or its proxy fails, the preview zoom, overlays or fullscreen behave unexpectedly, a picture in the preview can't be selected, moves unexpectedly, doesn't snap where you expect or gets cropped instead of resized, a value or a crop in **Edit Properties** doesn't do what you expect, a paste or a duplicate lands somewhere you did not expect or is refused, a speed change, a freeze frame or a punch zoom does something you did not expect, a keyframe animation or a keyframe lane doesn't behave as you expect, a fade or a transition doesn't go where you expect, gets shorter or shows red stripes, the rubber band, **Normalize**, **Auto-duck**, **Detach audio** or **Audio scrub** doesn't do what you expect, **Remove silence** cuts too much, too little or nothing, a shape or an image doesn't look or play as you expect, a title lands somewhere you did not expect, the keys type into a text, a font is missing, isn't added to **My fonts** or looks different from the one you installed, a text preset doesn't apply, update or sync as you expect, the preset bar is gone or <kbd>Alt</kbd> and a number does nothing, a text animation plays shorter or differently than you expect, a caption cue doesn't import, move, show or highlight as you expect, a transcription doesn't start, is slow or gets words wrong, an export doesn't start, fails or gives a file you did not expect, playback stutters or pauses for a moment, an HDR video looks less bright than on your phone, a WebM video covers the layers below it, or you hear no sound. Each problem lists what you see, why it happens and what to do. The last section lists what the current version cannot do yet.
 
 > **Video placeholder: Fix common problems**
 > - File: `videos/troubleshooting/overview.mp4` (not recorded yet)
-> - Length: about 245 seconds
+> - Length: about 255 seconds
 > - Shows:
 >   1. Open the editor in a browser without the required features: the screen "This browser cannot run Shorts Editor" lists what is missing.
 >   2. In Chrome, open `chrome://settings/system` and show **Use graphics acceleration when available** turned on.
@@ -58,6 +58,7 @@ This page helps you when something does not work as expected: the editor does no
 >   50. Click an empty area of the timeline tracks of a 30 fps project and choose **24 fps** in **Frame rate**: **Convert to 24 fps?** counts the rounded timings. Click **Cancel**. Open a project read-only, rename it and press <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>N</kbd>: **Discard unsaved changes?** appears; click **Cancel**. Click **History…**: **Restore…** is dimmed.
 >   51. Delete every clip, press <kbd>Ctrl</kbd>+<kbd>E</kbd> and <kbd>Enter</kbd>: the message **Nothing to export** appears. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>, click **Export** in the **Export** tab and press <kbd>Esc</kbd>: the progress message appears at the top of the window. Open **Settings** and click **Clear cache**: the message **An export is running** appears. Click **Done**, then **Cancel** in the progress message: **Export cancelled**.
 >   52. Rename a text file to `broken.mp4` and drop it on the **Media** tab: the message **Can't import broken.mp4** appears, and a row with a red **Failed** badge and "Not a readable MP4/MOV file: it is damaged or is not a video" stays under the search field. Click the **X** at the end of the row: it disappears. Click the timeline, press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>, type `reload` and press <kbd>Enter</kbd> on **Reload panel**: the timeline draws itself again, with every clip in place.
+>   53. Click **Presets** in the Preview panel header: the preset bar disappears. Click it again: the bar is back. Choose **Recent** in its set menu and drag a button: nothing moves. Choose **Favorites** and press <kbd>Alt</kbd>+<kbd>9</kbd> with a title selected: the title takes **Yellow word**.
 
 ## In this page
 - [Browser and graphics](#browser-and-graphics)
@@ -304,12 +305,20 @@ This page helps you when something does not work as expected: the editor does no
   - [Update preset is dimmed](#update-preset-is-dimmed)
   - [Other titles did not change after Update preset](#other-titles-did-not-change-after-update-preset)
   - [T or Shift+T makes a different look than expected](#t-or-shiftt-makes-a-different-look-than-expected)
-  - [A favorite chip is missing from the toolbar](#a-favorite-chip-is-missing-from-the-toolbar)
   - [Presets in the Project list can't be changed](#presets-in-the-project-list-cant-be-changed)
   - [A preset looks larger or smaller in another project](#a-preset-looks-larger-or-smaller-in-another-project)
   - [Import says No presets imported or Couldn't import the presets](#import-says-no-presets-imported-or-couldnt-import-the-presets)
   - [The library folder strip asks you to click Sync](#the-library-folder-strip-asks-you-to-click-sync)
   - [A deleted preset came back](#a-deleted-preset-came-back)
+- [Preset bar](#preset-bar)
+  - [The preset bar is gone](#the-preset-bar-is-gone)
+  - [A preset is missing from the bar](#a-preset-is-missing-from-the-bar)
+  - [Alt and a number do nothing or apply another preset](#alt-and-a-number-do-nothing-or-apply-another-preset)
+  - [A button can't be moved](#a-button-cant-be-moved)
+  - [A tag doesn't appear in the set menu](#a-tag-doesnt-appear-in-the-set-menu)
+  - [A button is empty or plain for a moment](#a-button-is-empty-or-plain-for-a-moment)
+  - [A new text from a preset sits in the lower third](#a-new-text-from-a-preset-sits-in-the-lower-third)
+  - [Captions changed their word highlight](#captions-changed-their-word-highlight)
 - [Text animations](#text-animations)
   - [An animation plays shorter than its Duration](#an-animation-plays-shorter-than-its-duration)
   - [The Stagger field is dimmed](#the-stagger-field-is-dimmed)
@@ -2449,11 +2458,11 @@ See [Messages when you paste](copy-and-paste.md#messages-when-you-paste).
 
 ### Clicking a preset adds a new title instead of changing the selected one
 
-**Symptom:** You click a card in the **Presets** tab, and a new title appears at the playhead, while the title you meant stays as it was.
+**Symptom:** You click a card in the **Presets** tab or a button of the preset bar (or press <kbd>Alt</kbd> and a number), and a new title appears at the playhead, while the title you meant stays as it was.
 
 **Cause:** A click applies the preset to the selected text clips. When no text clip is selected (for example only a video is selected), or the selected texts are on a locked track, the click adds a new text instead.
 
-**Fix:** Press <kbd>Esc</kbd>, then <kbd>Ctrl</kbd>+<kbd>Z</kbd> to remove the new title. Select the title on the timeline or in the preview (unlock its track if needed) and click the card again. See [Apply a preset to text](text-presets.md#apply-a-preset-to-text).
+**Fix:** Press <kbd>Esc</kbd>, then <kbd>Ctrl</kbd>+<kbd>Z</kbd> to remove the new title. Select the title on the timeline or in the preview (unlock its track if needed) and click the card or button again. See [Apply a preset to text](text-presets.md#apply-a-preset-to-text).
 
 ### Update preset is dimmed
 
@@ -2483,19 +2492,9 @@ See [Messages when you paste](copy-and-paste.md#messages-when-you-paste).
 
 **Fix:** In the **Presets** tab, look for the card with the title or subtitle badge in its top-left corner. Right-click the card you want and choose **Use as default title** or **Use as default subtitle**. Choose the highlighted row again to go back to the built-in look. See [Choose the presets for T and Shift+T](text-presets.md#choose-the-presets-for-t-and-shiftt).
 
-### A favorite chip is missing from the toolbar
-
-**Symptom:** A preset has a star, but no chip in the timeline toolbar.
-
-**Cause:** One of these:
-- More than 8 presets are favorites. The toolbar shows the first 8: the **Global** favorites first, then the project's.
-- The Timeline panel is narrow, and the **Add** group with the chips moved into the **More tools** (…) menu.
-
-**Fix:** Turn off the favorites you need less, click **More tools**, or widen the Timeline panel. See [Put favorite presets in the timeline toolbar](text-presets.md#put-favorite-presets-in-the-timeline-toolbar).
-
 ### Presets in the Project list can't be changed
 
-**Symptom:** In the **Project** list, **Favorite**, **Apply position**, **Rename**, **Duplicate** and **Delete** are dimmed, the tab reads **This project is read-only: its presets cannot change.**, and new presets go into **Global**.
+**Symptom:** In the **Project** list, **Apply position**, the preset bar sets (**Favorites**, **Titles**, **Subtitles**, **Captions**), **Tags…**, **Rename**, **Duplicate** and **Delete** are dimmed, the tab reads **This project is read-only: its presets cannot change.**, and new presets go into **Global**.
 
 **Cause:** The project opened read-only: the editor can't write to its `presets/text` folder.
 
@@ -2534,6 +2533,79 @@ See [Messages when you paste](copy-and-paste.md#messages-when-you-paste).
 - You imported a file that holds it.
 
 **Fix:** Delete it again on every computer that syncs with the folder. See [Sync your presets with a folder](text-presets.md#sync-your-presets-with-a-folder).
+
+## Preset bar
+
+### The preset bar is gone
+
+**Symptom:** There is no row of preset buttons under the preview header.
+
+**Cause:** One of these:
+- The bar was hidden with **Presets** in the Preview panel header. The project remembers it.
+- The preview fills the window (<kbd>F</kbd>): fullscreen has no bar.
+
+**Fix:** Click **Presets** in the Preview panel header (tooltip **Presets: show the preset bar**), or press <kbd>Esc</kbd> to leave fullscreen. See [Show or hide the bar](preset-bar.md#show-or-hide-the-bar).
+
+### A preset is missing from the bar
+
+**Symptom:** A preset is in the **Presets** tab, but the preset bar has no button for it.
+
+**Cause:** The bar shows one set at a time, and the preset is not in that set: for example it has no star and the bar shows **Favorites**, or it was used more than 12 presets ago and the bar shows **Recent**. A project's presets show only while that project is open.
+
+**Fix:** Choose **All** in the bar's set menu, or right-click the preset's card in the **Presets** tab and click the set under **Preset bar sets**. When the row is long, scroll it with the mouse wheel or the arrows. See [Choose which presets the bar shows](preset-bar.md#choose-which-presets-the-bar-shows).
+
+### Alt and a number do nothing or apply another preset
+
+**Symptom:** <kbd>Alt</kbd>+<kbd>4</kbd> does nothing, or applies another look than you expected.
+
+**Cause:** One of these:
+- The keys use the set the bar shows, also while the bar is hidden. With another set chosen, <kbd>Alt</kbd>+<kbd>4</kbd> is the fourth button of that set.
+- The set has fewer buttons than the number.
+- You reordered the set: the keys follow the new order.
+- You are typing in a field, editing a text in the preview, or a dialog or a menu is open.
+- You gave the commands other keys in **Settings** > **Shortcuts**.
+
+**Fix:** Point at a button to see its key in the tooltip, choose the set you want, or press <kbd>Esc</kbd> to finish typing first. To use other keys, change **Apply preset bar button 1** to **Apply preset bar button 9** in **Settings** > **Shortcuts**. See [Apply a preset with Alt and a number](preset-bar.md#apply-a-preset-with-alt-and-a-number).
+
+### A button can't be moved
+
+**Symptom:** You drag a button of the preset bar, but no gold line appears and the order stays.
+
+**Cause:** **Recent** (the latest first) and **All** (the order of the **Presets** tab) can't be reordered.
+
+**Fix:** Choose **Favorites**, **Titles**, **Subtitles**, **Captions** or one of your tags, and drag there. A drag doesn't scroll the row, so to move a button far, move it in a few steps. See [Reorder the buttons](preset-bar.md#reorder-the-buttons).
+
+### A tag doesn't appear in the set menu
+
+**Symptom:** You gave a preset a tag with **Tags…**, but the bar's set menu has no set of that name.
+
+**Cause:** The starter presets use some words as search words, such as `title`, `box`, `neon` or `karaoke`. Those words don't make sets.
+
+**Fix:** Use another word, for example `my neon` instead of `neon`. See [Make your own sets with tags](preset-bar.md#make-your-own-sets-with-tags).
+
+### A button is empty or plain for a moment
+
+**Symptom:** A button of the preset bar, or a card in the **Presets** tab, shows nothing or an old picture for a moment.
+
+**Cause:** The pictures are drawn a moment after the bar appears, while the video is paused. While you play, new pictures wait. A preset in a font that is still loading draws again once the font has arrived.
+
+**Fix:** Pause playback and wait a moment. See [The parts of the bar](preset-bar.md#the-parts-of-the-bar).
+
+### A new text from a preset sits in the lower third
+
+**Symptom:** You click a button with nothing selected, and the new text appears low in the frame instead of in the middle.
+
+**Cause:** Presets of the **Subtitles** and **Captions** sets put new texts in the lower third, like <kbd>Shift</kbd>+<kbd>T</kbd>. Presets with **Apply position** on put them at their own position.
+
+**Fix:** Drag the text where you want it in the preview. To have a preset add its texts in the middle, right-click it and click **Titles** under **Preset bar sets**: a preset that is also in **Titles** is placed like a title. See [Add a new text from the bar](preset-bar.md#add-a-new-text-from-the-bar).
+
+### Captions changed their word highlight
+
+**Symptom:** After you applied a preset to the captions, the spoken word is highlighted in another way or color.
+
+**Cause:** Some presets, such as **Yellow word**, **Boxed word** or **Green karaoke**, carry a word highlight, and give it to the captions with their style.
+
+**Fix:** Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>, or choose the highlight again in the **Highlight**, **Active** and **Other words** rows of **Caption style**. See [Style your captions from the bar](preset-bar.md#style-your-captions-from-the-bar).
 
 ## Text animations
 
@@ -2955,7 +3027,8 @@ The current version cannot do these things yet. Each one is available in a later
 - **Tracks:** track headers have room for names of about 9 characters; longer names are shortened (point at one to see it whole). Groups are not marked on the timeline.
 - **Keyframes:** keyframes animate position, scale, rotation, opacity and the volume of audio clips.
 - **Text:** **Restore starter presets** brings back deleted starters, not the original look of a starter you changed. Text animations play in the preview, in **Export frame** and in exported videos.
-- **Captions:** all cues share one style; a style for a single cue is not available. Captions can't be selected, moved or styled in the preview.
+- **Captions:** all cues share one style; a style for a single cue is not available, also from a preset. Captions can't be selected, moved or styled in the preview.
+- **Preset bar:** dragging a button doesn't scroll the row, and the buttons can't be dragged onto the timeline or the preview (drag the preset's card in the **Presets** tab instead).
 - **Transcription:** the cues can't be edited in the review; fix them in the **Captions** tab after adding them.
 - **Heavy footage:** 4K 60 fps HEVC played from the original (in **Full** quality, or before its proxy is ready) can drop frames, and the original frame deep inside long phone clips takes a moment to appear after you stop.
 
@@ -2993,10 +3066,11 @@ The current version cannot do these things yet. Each one is available in a later
 - [Titles and text](titles-and-text.md)
 - [Fonts](fonts.md)
 - [Text presets](text-presets.md)
+- [The preset bar](preset-bar.md)
 - [Text animations](text-animations.md)
 - [Captions](captions.md)
 - [Transcription](transcription.md)
 - [Command palette and custom shortcuts](command-palette-and-custom-shortcuts.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 51, 2026-10-19</sub>
+<sub>Last updated: Batch 52, 2026-10-19</sub>
