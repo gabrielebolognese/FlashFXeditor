@@ -3,10 +3,12 @@
 // zoom) on the DS background with a 1 px DS border, at devicePixelRatio.
 // - It draws only from the FrameScheduler's `preview` flag. The playhead, document changes that can
 //   change the frame (timeline, clips, tracks, media, settings, composite), late frames, a resize, a
-//   zoom, the theme, the DPR and a new GPU device invalidate it.
+//   zoom, the theme, the DPR, a new GPU device and a priority change (pause) invalidate it.
 // - Each render evaluates the document at the playhead (`Compositor`), resolves media layers to pool
 //   textures (`LayerTextures`: playback priority while playing, scrub while the ruler is dragged, idle
 //   otherwise), warms the cut neighbours (not while playing: the engine's lookahead does), and draws.
+//   A pause leaves the playhead where it is, but playback may have held a track's previous layer
+//   there (shuttle speeds deliver every n-th frame): the render after it requests the exact frame.
 //   When the draw list and the viewport equal the last ones drawn, the GPU draw is skipped (§9.4).
 // - `firstShown` reports what the first render of each playhead frame drew, for the playback
 //   engine's dropped-frame count.
@@ -40,6 +42,8 @@ export interface PreviewViewDeps extends Omit<LayerTexturesDeps, "onChange"> {
   theme: Pick<ThemeBridge, "theme" | "subscribe">;
   /** How frames are asked for now: `playback` while playing, `scrub` while the ruler is dragged, else `idle`. */
   priority(): FramePriority;
+  /** Calls `listener` when `priority()` may have changed to or from `playback` (play, pause). */
+  watchPriority(listener: () => void): () => void;
 }
 
 /** What the first render of a playhead frame drew (later renders of the same frame do not change it). */
@@ -84,6 +88,8 @@ export class PreviewView implements RenderView {
   private readonly snapshot = new DrawListSnapshot();
   private readonly viewport: Viewport & { transform: MutableMat3 } = { transform: mutableIdentity(), outside: TRANSPARENT, border: { color: TRANSPARENT, width: 1 } };
   private viewportDrawn = false;
+  /** The priority of the last render. */
+  private drawnPriority: FramePriority = "idle";
   private readonly stops: (() => void)[] = [];
   readonly stats: PreviewStats;
   readonly firstShown: FirstShown = { frame: -1, layers: 0, exact: 0 };
@@ -117,6 +123,10 @@ export class PreviewView implements RenderView {
       ),
       session.select((state) => state.playhead, invalidate),
       session.select((state) => state.preview.zoom, invalidate),
+      // Back from `playback`, the frame on screen may be a held layer that was never requested.
+      this.deps.watchPriority(() => {
+        if (this.deps.priority() !== this.drawnPriority) invalidate();
+      }),
       document.subscribe(invalidate, { affects: ["timeline", "clips", "tracks", "media", "settings", "composite"] }),
       theme.subscribe((next) => {
         this.chrome = chromeFromTheme(next);
@@ -159,6 +169,7 @@ export class PreviewView implements RenderView {
     const doc = document.getState();
     const { playhead, preview } = session.getState();
     const priority = this.deps.priority();
+    this.drawnPriority = priority;
     const list = this.textures.resolve(this.compositor.evaluate(doc, playhead), priority);
     if (priority !== "playback") this.textures.warm(this.compositor.neighbors(doc, playhead));
     const shown = this.firstShown;
