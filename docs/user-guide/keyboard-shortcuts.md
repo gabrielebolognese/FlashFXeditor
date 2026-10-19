@@ -153,8 +153,8 @@ See [Preview zoom, overlays and fullscreen](preview-zoom-overlays-fullscreen.md)
 
 | Action | Windows | macOS | Works in |
 | --- | --- | --- | --- |
-| Move the selected layers 1 pixel | <kbd>←</kbd>, <kbd>→</kbd>, <kbd>↑</kbd> or <kbd>↓</kbd> | <kbd>←</kbd>, <kbd>→</kbd>, <kbd>↑</kbd> or <kbd>↓</kbd> | Preview panel |
-| Move the selected layers 10 pixels | <kbd>Shift</kbd>+<kbd>←</kbd>, <kbd>Shift</kbd>+<kbd>→</kbd>, <kbd>Shift</kbd>+<kbd>↑</kbd> or <kbd>Shift</kbd>+<kbd>↓</kbd> | <kbd>⇧</kbd>+<kbd>←</kbd>, <kbd>⇧</kbd>+<kbd>→</kbd>, <kbd>⇧</kbd>+<kbd>↑</kbd> or <kbd>⇧</kbd>+<kbd>↓</kbd> | Preview panel |
+| Move the selected layers, or a caption selected alone, 1 pixel | <kbd>←</kbd>, <kbd>→</kbd>, <kbd>↑</kbd> or <kbd>↓</kbd> | <kbd>←</kbd>, <kbd>→</kbd>, <kbd>↑</kbd> or <kbd>↓</kbd> | Preview panel |
+| Move the selected layers, or a caption selected alone, 10 pixels | <kbd>Shift</kbd>+<kbd>←</kbd>, <kbd>Shift</kbd>+<kbd>→</kbd>, <kbd>Shift</kbd>+<kbd>↑</kbd> or <kbd>Shift</kbd>+<kbd>↓</kbd> | <kbd>⇧</kbd>+<kbd>←</kbd>, <kbd>⇧</kbd>+<kbd>→</kbd>, <kbd>⇧</kbd>+<kbd>↑</kbd> or <kbd>⇧</kbd>+<kbd>↓</kbd> | Preview panel |
 | Fit the whole frame in the panel (same as **Fit the frame in the panel**) | <kbd>Ctrl</kbd>+<kbd>0</kbd> | <kbd>⌘</kbd>+<kbd>0</kbd> | Preview panel |
 | Zoom the preview to 100% | <kbd>Ctrl</kbd>+<kbd>1</kbd> | <kbd>⌘</kbd>+<kbd>1</kbd> | Preview panel |
 | Zoom the preview to 200% | <kbd>Ctrl</kbd>+<kbd>2</kbd> | <kbd>⌘</kbd>+<kbd>2</kbd> | Preview panel |
@@ -165,7 +165,7 @@ See [Preview zoom, overlays and fullscreen](preview-zoom-overlays-fullscreen.md)
 - <kbd>Ctrl</kbd>+<kbd>0</kbd>, <kbd>Ctrl</kbd>+<kbd>1</kbd> and <kbd>Ctrl</kbd>+<kbd>2</kbd> keep the point in the middle of the panel where it is; **Fit** centers the frame. Outside the Preview panel the browser gets these keys; see [Keys the browser keeps](#keys-the-browser-keeps).
 - <kbd>Escape</kbd> first cancels a drag in progress (also a layer you move, resize, rotate or crop in the preview) or closes an open menu; the next press finishes a text you are editing (keeping what you typed), then leaves crop mode, then closes the **Remove silence** row, then leaves fullscreen, and the press after that closes the **Export** tab.
 - The arrow keys move layers only while a selected layer is under the playhead. Otherwise <kbd>←</kbd> and <kbd>→</kbd> (with or without <kbd>Shift</kbd>) step frames in the Preview panel as in the other panels, and <kbd>↑</kbd> and <kbd>↓</kbd> do nothing there. <kbd>Ctrl</kbd>+<kbd>←</kbd> and <kbd>Ctrl</kbd>+<kbd>→</kbd> always step one second.
-- Arrow presses less than 0.3 seconds apart are one undo step, **Nudge layer**.
+- Arrow presses less than 0.3 seconds apart are one undo step, **Nudge layer** (**Nudge caption** for a caption). A caption moves as the **Edit** row of **Caption style** says: only its cue with **Selected**, or every caption with **All cues**. See [Move and size captions in the preview](captions.md#move-and-size-captions-in-the-preview).
 - <kbd>Delete</kbd> also works in the Preview panel: it deletes the selected clips. See [Cutting and deleting](#cutting-and-deleting).
 
 ### Preview mouse and wheel
@@ -195,6 +195,10 @@ These work over the preview picture.
 | Show the distances from the selected layers to their neighbors and the frame edges (**Smart guides** on) | Hold <kbd>Alt</kbd> with the pointer over the preview, without clicking | Hold <kbd>⌥</kbd> with the pointer over the preview, without clicking |
 | Crop a video or image with handles (crop mode), or leave crop mode | Double-click it | Double-click it |
 | Edit a text, with the caret where you click | Double-click the text | Double-click the text |
+| Select a caption's cue | Click the caption | Click the caption |
+| Move a caption (its cue with **Selected**, every caption with **All cues**) | Drag the caption | Same |
+| Change a caption's font size | Drag a corner handle of the caption | Same |
+| Type a cue's text in the preview (<kbd>Enter</kbd>: new line) | Double-click the caption | Double-click the caption |
 | Change the font size of one selected text (its corner handles) or the width of its box (its side handles) | Drag a handle of the text; <kbd>Alt</kbd>: around the center | Same; <kbd>⌥</kbd>: around the center |
 | Change the size of one selected solid (**W** and **H**, not its scale) | Drag a handle of the shape; <kbd>Shift</kbd>+corner: width and height separately; <kbd>Alt</kbd>: around the center | Same; <kbd>⇧</kbd>+corner, <kbd>⌥</kbd> |
 | In crop mode: cut one side, or the two sides at a corner | Drag a bar, or a bracket | Same |
@@ -537,7 +541,7 @@ While you edit a text in the preview, every other shortcut is off and the keys t
 | Put the caret where you click; select a word; select all | Click; double-click; triple-click the text | Same |
 | Select from the caret to where you click | <kbd>Shift</kbd>+click the text | <kbd>⇧</kbd>+click the text |
 
-Clicking anywhere outside the text, except in **Edit Properties** and its pickers, also finishes editing. After you finish, <kbd>Ctrl</kbd>+<kbd>Z</kbd> takes back the whole edit at once (**Edit text**). See [Edit text in the preview](titles-and-text.md#edit-text-in-the-preview).
+Clicking anywhere outside the text, except in **Edit Properties** and its pickers, also finishes editing. After you finish, <kbd>Ctrl</kbd>+<kbd>Z</kbd> takes back the whole edit at once (**Edit text**, or **Edit caption** for a caption). The same keys work in a caption you double-clicked in the preview. See [Edit text in the preview](titles-and-text.md#edit-text-in-the-preview) and [Type a cue's text in the preview](captions.md#type-a-cues-text-in-the-preview).
 
 ## Shapes and images
 
@@ -570,6 +574,16 @@ These keys work in a cue's text in the **Captions** tab of the Media panel. See 
 
 - While you type in a cue, the other shortcuts are off: <kbd>Space</kbd> types a space. Clicking anywhere else also saves the text.
 - The header buttons of the **Captions** tab and the **Caption style** section have no keys of their own: click them. Right-click a cue row, away from its text, for the cue menu. See [Use the cue menu](captions.md#use-the-cue-menu).
+- **Copy caption style**, **Paste caption style** and **Reset to track style** have no key by default. Use the cue menu or the command palette, or give them keys in **Settings** > **Shortcuts**.
+
+In the cue list of the **Captions** tab:
+
+| Action | Windows | macOS |
+| --- | --- | --- |
+| Add a cue to the selection, or take it out | <kbd>Ctrl</kbd>+click its row | <kbd>⌘</kbd>+click its row |
+| Select the cues from the selected cue to the one you click | <kbd>Shift</kbd>+click its row | <kbd>⇧</kbd>+click its row |
+
+Both also work on a row's text, without starting to type in it. See [Find, select and delete cues](captions.md#find-select-and-delete-cues).
 
 In the transcription dialogs (see [Transcription](transcription.md)):
 
@@ -929,4 +943,4 @@ None at the moment.
 - [Projects and saving](projects-and-saving.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 52, 2026-10-19</sub>
+<sub>Last updated: Batch 53, 2026-10-19</sub>

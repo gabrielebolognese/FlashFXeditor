@@ -102,6 +102,7 @@ Badges sit at the right end of a clip's label bar, from right to left in this or
 | Keyframes | A diamond | The clip has keyframes: its position, scale, rotation or opacity changes over time, or, on an audio clip, its volume. See [Keyframes](keyframes.md) and [Make the volume change over time](audio-editing.md#make-the-volume-change-over-time). |
 | Text animation | A sparkles icon | The text clip has an in or out animation. See [Text animations](text-animations.md). |
 | Missing font | A red warning triangle | The text clip uses a font that isn't available here (not in the library, **My fonts**, the project's `fonts` folder or this computer), so it is drawn with a fallback font. See [Fix a missing font](fonts.md#fix-a-missing-font). |
+| Own caption style | A brush | The caption cue has a style of its own, on top of the caption track's. See [Give single cues their own style](captions.md#give-single-cues-their-own-style). |
 | Transition | `fx` | The clip has a transition at its start or end. See [Fades and transitions](fades-and-transitions.md). |
 
 - A clip at normal speed shows no speed badge, and a clip in sync shows no number.
@@ -156,4 +157,4 @@ A clip with a label color shows that color in its label bar above the thumbnails
 - [Proxies](proxies.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 51, 2026-10-19</sub>
+<sub>Last updated: Batch 53, 2026-10-19</sub>

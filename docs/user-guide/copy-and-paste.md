@@ -101,6 +101,8 @@ A pasted clip is an exact copy of the one you copied:
 Copy cues by selecting them on the **CC** track of the timeline, alone or together with other clips, and press <kbd>Ctrl</kbd>+<kbd>C</kbd>.
 
 - Pasted cues always go to the **CC** track. When the project has no caption track, the paste adds one with the copied captions' style.
+- A cue with a style of its own keeps it in the paste. See [Give single cues their own style](captions.md#give-single-cues-their-own-style).
+- Cues copied in Shorts Editor 1.0 paste too, also into a project without a caption track.
 - Cues never cover other cues. With **Paste**, when a pasted cue would overlap a cue on the **CC** track, all the pasted clips move together to the nearest frame where the cues fit. When there is no such spot near the playhead, nothing is pasted and the message **No room for the captions** appears. **Paste insert** makes room for the cues instead.
 
 ## Copy and paste keyframes
@@ -182,6 +184,7 @@ The checklist opens where you right-clicked, or over the middle of the active pa
 | **Speed** | The speed. The clips get longer or shorter as with the speed buttons, following the duration link and **Ripple** of the **Speed** section. | Video and audio clips (not freeze frames) and, with **Linked selection** on, their linked clips |
 | **Text style** | **Font**, **Weight** and **Italic**, **Size**, **Fill**, **Stroke**, **Shadow**, **Background**, **Align**, **Anchor**, **Spacing**, **Line height** and **Case** of the **Text** section, and the link to the text's preset. The words and the **Box** stay. | Text clips |
 | **Text animations** | The **In** and **Out** animations with their settings | Text clips |
+| **Caption style** | The copied cue's own style: its font, colors, size, place and word highlight, as far as it sets them. A copied cue without a style of its own gives the cues the track's look back. See [Give single cues their own style](captions.md#give-single-cues-their-own-style). | Caption cues |
 | **Audio gain** | The volume and **Mute** | Selected audio clips, and the sound of selected videos |
 | **Fades** | The fade in and fade out lengths, shortened to fit a shorter clip | Every selected clip except caption cues, and the sound of selected videos |
 | **Keyframes** | How **Transform**, **Opacity** and **Audio gain** arrive (see below) | |
@@ -284,4 +287,4 @@ See [Undo and redo changes](projects-and-saving.md#undo-and-redo-changes).
 - [Keyboard shortcuts](keyboard-shortcuts.md#clipboard-and-duplicate)
 - [Troubleshooting](troubleshooting.md#copy-paste-and-duplicate)
 
-<sub>Last updated: Batch 42, 2026-10-18</sub>
+<sub>Last updated: Batch 53, 2026-10-19</sub>

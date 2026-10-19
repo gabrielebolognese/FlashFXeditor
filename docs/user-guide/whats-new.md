@@ -2,6 +2,11 @@
 
 Shorts Editor grows in steps called batches. This page lists what each batch added that you can see or use, newest first. Follow the links for the full instructions.
 
+> **Video placeholder: What's new in Batch 53**
+> - File: `videos/whats-new/batch-53.mp4` (not recorded yet)
+> - Length: about 60 seconds
+> - Shows: a project with captions on **CC**; in the **Captions** tab, click the second cue's row and <kbd>Ctrl</kbd>+click the third; in **Caption style**, click **Selected (2)** in the **Edit** row and pick **Anton** in **Font**: only those two cues change, gold dots appear next to **Font** and **Weight** and at the right of the two rows, and a brush on their clips; choose **Captions** in the preset bar's set menu and click **Yellow word**: the two cues take it, the others don't; click **Reset to track style**: they look like the others again; move the playhead to the fourth cue and click its caption in the preview, click **Selected (1)** and drag it to the top of the frame: it snaps to the safe area and only that cue moves; drag a corner: it grows; double-click it and type a word, then press <kbd>Esc</kbd>; open **Settings** > **About**: **Version** reads 1.1.0.
+
 > **Video placeholder: What's new in Batch 52**
 > - File: `videos/whats-new/batch-52.mp4` (not recorded yet)
 > - Length: about 50 seconds
@@ -218,6 +223,7 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 > - Shows: open a project with three clips on the timeline; press <kbd>Space</kbd> to play and let the timeline page forward; press <kbd>L</kbd> three times to reach 8x, then <kbd>K</kbd>; hold <kbd>K</kbd> and tap <kbd>L</kbd> to step one frame; turn on **Loop playback**; point at the **Dropped** readout in the status strip.
 
 ## In this page
+- [Batch 53: Version 1.1 and caption styles per cue](#batch-53-version-11-and-caption-styles-per-cue)
 - [Batch 52: Preset bar](#batch-52-preset-bar)
 - [Batch 51: Font library](#batch-51-font-library)
 - [Batch 50: Version 1.0](#batch-50-version-10)
@@ -270,6 +276,17 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 - [Batch 03: Projects, autosave and recovery](#batch-03-projects-autosave-and-recovery)
 - [Batch 02: Undo, redo and frame-exact time](#batch-02-undo-redo-and-frame-exact-time)
 - [Batch 01: The workspace](#batch-01-the-workspace)
+
+## Batch 53: Version 1.1 and caption styles per cue
+- Any caption cue can have a look of its own. Select cues and click **Selected (n)** in the new **Edit** row of **Caption style**: the rows then change only those cues, in one undo step, and the other cues keep the track's look. **All cues** changes the track's style, as before. Only the settings you change become a cue's own, so later changes to the track still reach everything else. See [Give single cues their own style](captions.md#give-single-cues-their-own-style).
+- With **Selected**, a gold dot next to a row shows a setting the selected cues set themselves; click it to give that setting back to the track. **Reset to track style** gives them the track's whole look again. A gold dot in the cue list and a brush on the timeline mark cues with a style of their own. See [Read and reset the dots](captions.md#read-and-reset-the-dots).
+- Click a caption in the preview to select its cue. Drag it to move it, with snapping to the frame, the safe areas and other layers; drag a corner to change its font size; nudge it with the arrow keys; double-click it to type its text right there. The **Edit** row decides whether this changes only that cue or all captions. See [Move and size captions in the preview](captions.md#move-and-size-captions-in-the-preview) and [Type a cue's text in the preview](captions.md#type-a-cues-text-in-the-preview).
+- **Position** is followed by **Offset**, with a new **X** next to **Y**: a **Custom** caption can now sit to the left or right. See [Choose where captions sit](captions.md#choose-where-captions-sit).
+- Presets from the preset bar and the **Presets** tab style only the selected cues when cues are selected, including their word highlight and, with **Apply position**, their place. With the **CC** track selected, they style all captions as before. See [Give captions the look of a preset](captions.md#give-captions-the-look-of-a-preset).
+- In the cue list, <kbd>Ctrl</kbd>+click adds or removes a cue and <kbd>Shift</kbd>+click selects a range. The cue menu, in the list and on the timeline, has **Copy style**, **Paste style** and **Reset to track style**, and **Paste attributes** offers **Caption style** for cues. See [Find, select and delete cues](captions.md#find-select-and-delete-cues) and [Copy a cue's style to other cues](captions.md#copy-a-cues-style-to-other-cues).
+- Each cue highlights the spoken word in its own colors, and exports draw every caption in its own look and place, exactly as the preview. Splitting a cue keeps its look on both parts; merging keeps the first cue's.
+- This is version 1.1.0 (**Settings** > **About**). Projects, templates and copied cues from version 1.0 open and paste unchanged.
+- Two fixes in the font browser: when you drop font files twice in quick succession, both drops add their fonts to **My fonts**, and a row that is still loading shows its name in the editor's own font at its usual weight. See [Fonts](fonts.md).
 
 ## Batch 52: Preset bar
 - A preset bar sits under the preview header: one row of buttons, each drawing a text preset in its own font, colors, outline, shadow and box. With texts selected, a click restyles them all in one undo step, and pointing at a button shows its look on them first. With nothing selected, a click adds a text at the playhead with the preset's sample text selected, so you type over it right away. With the **CC** track or a cue selected, it styles the captions. See [The preset bar](preset-bar.md).
@@ -821,4 +838,4 @@ See [The workspace](workspace.md) and [Getting started](getting-started.md).
 - [Adding media to the timeline](adding-media-to-the-timeline.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 52, 2026-10-19</sub>
+<sub>Last updated: Batch 53, 2026-10-19</sub>

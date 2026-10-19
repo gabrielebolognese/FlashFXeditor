@@ -220,11 +220,16 @@ The live look while you point shows the preset's style, box and position, not it
 
 Captions take a preset's look too.
 
-1. Select the **CC** caption track (click its header) or a cue, and no text clip.
+1. Select the **CC** caption track (click its header) for all the captions, or one or more cues for only those, and no text clip.
 2. Point at the buttons of the preset bar or the cards of the **Presets** tab: the captions in the preview show each look while the pointer is on it.
 3. Click the one you want, or right-click it and choose **Apply to captions**.
 
-The captions take the preset's style: font, size, colors, outline, shadow and background box. A preset with a word highlight, such as **Yellow word** or **Green karaoke**, also gives them its **Highlight**, **Active** and **Other words**; other presets leave the highlight as it is. The captions keep their position, max width and max lines; the preset's box width, **Apply position** and animations are not used. The step is named, for example, **Apply "Neon glow" to captions**. See [Give captions the look of a preset](captions.md#give-captions-the-look-of-a-preset).
+The captions take the preset's style: font, size, colors, outline, shadow and background box. A preset with a word highlight, such as **Yellow word** or **Green karaoke**, also gives them its **Highlight**, **Active** and **Other words**; other presets leave the highlight as it is. The preset's box width and animations are not used. The step is named, for example, **Apply "Neon glow" to captions**.
+
+- **On the CC track**, the captions keep their position, max width and max lines, and **Apply position** is not used.
+- **On selected cues**, the look becomes the cues' own style, and the other cues keep the track's. A preset with **Apply position** on also puts the cues at its place.
+
+See [Give captions the look of a preset](captions.md#give-captions-the-look-of-a-preset).
 
 ## Add a new text with a preset
 
@@ -339,7 +344,7 @@ With **Apply position** on:
 - Applying the preset moves the selected texts to its position (their X and Y in the **Transform** section). Their scale and rotation stay. While you point at the card or button, the preview shows the move too.
 - New texts from the preset, from a card, a button of the preset bar, <kbd>T</kbd>, <kbd>Shift</kbd>+<kbd>T</kbd> or a drop on the timeline, appear at its position.
 - A drop on the preview still puts the text where you release.
-- Captions never take a preset's position.
+- The caption track never takes a preset's position. Selected cues do: they move to it, as **Custom**. See [Give captions the look of a preset](captions.md#give-captions-the-look-of-a-preset).
 
 The **Lower third**, **Lower third gold**, **Lower third clean** and **Big centered** starters have **Apply position** on. The **Subtitle** starter's position is one line in the lower third, and the other starters' is the middle of the frame.
 
@@ -475,7 +480,6 @@ Changes to the presets themselves are not steps in the history and can't be undo
 These parts are available in a later version:
 
 - Restoring a starter preset you changed to its original look. **Restore** brings back only the starters you deleted.
-- Styling single caption cues with a preset. A preset styles all the captions of the track, also with a cue selected.
 
 ## Related pages
 - [The preset bar](preset-bar.md)
@@ -490,4 +494,4 @@ These parts are available in a later version:
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 52, 2026-10-19</sub>
+<sub>Last updated: Batch 53, 2026-10-19</sub>

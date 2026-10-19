@@ -71,7 +71,7 @@ Layers snap to these targets, as long as **Snap** is on:
 | Thirds of the frame | One third and two thirds across and down | While **Grid** in the **Overlays** menu is **Thirds** |
 | A platform safe area | The four edges of the dashed safe rectangle | While a **Safe zone** (**Reels**, **TikTok** or **Shorts**) shows |
 | Title / action safe | The four edges of each dashed rectangle (90% and 80% of the frame) | While **Title / action safe** is on |
-| Other layers | Their left, center and right; their top, middle and bottom | While **Smart guides** is on |
+| Other layers | Their left, center and right; their top, middle and bottom. The caption under the playhead is one of them. | While **Smart guides** is on |
 | Equal spacing | The place where the gaps to the layers on both sides are the same | While **Smart guides** is on. See [Space layers evenly](#space-layers-evenly). |
 
 - To snap to a safe area or the thirds, turn on the overlay in the **Overlays** menu first. With **Reels** on a 1080×1920 frame, for example, the safe area edges are at x 65 and 918 and at y 270 and 1250. See [Show a platform safe zone](preview-zoom-overlays-fullscreen.md#show-a-platform-safe-zone) and [Show grids, guides and rulers](preview-zoom-overlays-fullscreen.md#show-grids-guides-and-rulers).
@@ -178,6 +178,7 @@ Good to know:
 - **Arrow-key nudges** move by exactly 1 or 10 pixels.
 - **Values in Edit Properties**, typed or dragged on a field's label, land exactly where you set them, also in the **Crop** section. See [Place a picture with exact values](editing-properties.md#place-a-picture-with-exact-values).
 - **Fit**, **Fill** and **Center** place pictures relative to the frame; they don't line up with other pictures.
+- **A caption's corner handles** change its font size without snapping. Dragging the caption itself snaps like a layer. See [Move and size captions in the preview](captions.md#move-and-size-captions-in-the-preview).
 
 ## Related pages
 - [Arranging layers in the preview](arranging-layers-in-the-preview.md)
@@ -190,4 +191,4 @@ Good to know:
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 46, 2026-10-18</sub>
+<sub>Last updated: Batch 53, 2026-10-19</sub>

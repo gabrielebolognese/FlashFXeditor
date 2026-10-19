@@ -135,6 +135,7 @@ When you open a project again, the editor restores your view from the last sessi
 - the timecode format: frames (**ff**) or milliseconds (**ms**)
 - the preview zoom and pan, the preview quality, and the safe zone, grid and guides of the **Overlays** menu (see [Preview zoom, overlays and fullscreen](preview-zoom-overlays-fullscreen.md))
 - whether the preset bar is shown, and the set it shows (see [The preset bar](preset-bar.md))
+- the choice in the **Edit** row of **Caption style**: **All cues** or **Selected** (see [Give single cues their own style](captions.md#give-single-cues-their-own-style))
 - the media panel tab, view (grid or list) and sort order, the bin you show, the filter chips that are on and the list column widths (see [Organizing media](organizing-media.md)), and the **Global** or **Project** list of the **Presets** tab
 - whether **Loop playback** is on
 - whether **Snap** is on
@@ -305,4 +306,4 @@ Changes made in read-only mode exist only in the tab. The editor asks before the
 - [The preset bar](preset-bar.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 52, 2026-10-19</sub>
+<sub>Last updated: Batch 53, 2026-10-19</sub>

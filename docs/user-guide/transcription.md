@@ -265,7 +265,7 @@ See [Undo and redo changes](projects-and-saving.md#undo-and-redo-changes).
 
 These parts are available in a later version:
 
-- Editing cues in the review, and a style for a single cue.
+- Editing cues in the review.
 
 ## Related pages
 - [Editing audio](audio-editing.md)
@@ -276,4 +276,4 @@ These parts are available in a later version:
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 42, 2026-10-18</sub>
+<sub>Last updated: Batch 53, 2026-10-19</sub>
