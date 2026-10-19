@@ -8,7 +8,7 @@ import type { CaptionHighlightMode, CaptionPosition, CaptionStyle, ClipId, Proje
 import type { CaptionScope, SessionState } from "../../core/store/sessionStore.js";
 import { useStoreSelector } from "../../core/store/useStoreSelector.js";
 import type { AppSettings } from "../../project/appSettings.js";
-import { captionMiddleY, DEFAULT_HIGHLIGHT_COLOR, DEFAULT_INACTIVE_COLOR, overrideFields, overrideWithout } from "../../text/captions.js";
+import { captionMiddleY, DEFAULT_HIGHLIGHT_COLOR, DEFAULT_INACTIVE_COLOR, hasOwnStyle, overrideFields, overrideWithout } from "../../text/captions.js";
 import { captionStyleOf, cueStyleOf, setCaptionStyle, setCueStyles } from "../../timeline/edit/captions.js";
 import { Button } from "../../ui/Button.js";
 import { ColorField } from "../../ui/ColorField.js";
@@ -191,7 +191,7 @@ const PATHS = {
 function useAnyOverride(cueIds: readonly ClipId[]): boolean {
   return useStoreSelector(
     documentStore,
-    useCallback((project: Project) => editableCues(project, cueIds).some((cue) => cue.styleOverride !== undefined || cue.presetId !== undefined), [cueIds]),
+    useCallback((project: Project) => editableCues(project, cueIds).some(hasOwnStyle), [cueIds]),
   );
 }
 

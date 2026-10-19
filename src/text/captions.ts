@@ -59,6 +59,16 @@ export function defaultCaptionStyle(frame: { width: number; height: number }): C
   };
 }
 
+/**
+ * A caption style stored by an older version (a schema 2 project.json, a 1.0.0 template or clipboard
+ * payload) with the fields added since filled in: `x` 0, centered as before (Batch 53). Anything else
+ * comes back as it is, for validation to judge.
+ */
+export function upgradeCaptionStyle<T>(style: T): T {
+  const old = typeof style === "object" && style !== null && !Array.isArray(style) && (style as { x?: unknown }).x === undefined;
+  return old ? { ...style, x: 0 } : style;
+}
+
 /** Where the presets put a caption, as a fraction of the frame height: the edge (or middle) that stays put. */
 export const CAPTION_PLACES: Readonly<Record<Exclude<CaptionPosition, "custom">, { at: number; anchor: number }>> = {
   // The bottom edge in the lower third, where the Subtitle sits (Batch 29: 78%).
@@ -132,6 +142,14 @@ export function effectiveCaptionStyle(track: CaptionStyle, override: CaptionStyl
 /** Whether an override sets nothing. */
 export function isEmptyOverride(override: CaptionStyleOverride | undefined): boolean {
   return override === undefined || overrideFields(override).length === 0;
+}
+
+/**
+ * Whether a cue has a style of its own (spec §20.3: the cue list's dot, the timeline's badge, Reset to
+ * track style): an override. A preset link alone changes nothing the cue shows.
+ */
+export function hasOwnStyle(cue: Pick<CaptionClip, "styleOverride">): boolean {
+  return cue.styleOverride !== undefined;
 }
 
 /**

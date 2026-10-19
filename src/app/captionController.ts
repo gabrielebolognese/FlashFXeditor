@@ -14,7 +14,7 @@ import type { CaptionClip, ClipId, Project } from "../core/document/types.js";
 import { createStore } from "../core/store/createStore.js";
 import { selectClips, selectTracks, toSnapshot } from "../core/store/selection.js";
 import { setSectionCollapsed } from "../core/store/sessionStore.js";
-import { evenWords } from "../text/captions.js";
+import { evenWords, hasOwnStyle } from "../text/captions.js";
 import { formatSubtitles, parseSubtitles, type SubtitleFormat } from "../text/subtitles.js";
 import { addCaptionTrack, addCueAt, captionTrackOf, clearCues, cuesOf, exportCues, importCues, mergeWithPrevious, resetCueStyles, setCueStyles, setCueText, splitCue, type CueStyle } from "../timeline/edit/captions.js";
 import { isClipLocked } from "../timeline/model/queries.js";
@@ -174,10 +174,7 @@ export function resetSelectedCueStyles(): void {
 /** Whether a selected cue has a style of its own (Reset to track style has something to do). */
 function selectionHasCueStyle(): boolean {
   const project = documentStore.getState();
-  return selectedCueIds(project).some((id) => {
-    const cue = project.clips[id] as CaptionClip;
-    return cue.styleOverride !== undefined || cue.presetId !== undefined;
-  });
+  return selectedCueIds(project).some((id) => hasOwnStyle(project.clips[id] as CaptionClip));
 }
 
 /** Clear all (spec §10.5): every cue goes in one undo step (no confirmation: Undo brings them back). */

@@ -24,6 +24,7 @@ import { convertClipRuns, FrameConverter, frameRatio, sameFrameRate } from "../.
 import { isEaseId, isKeyframeSection, SECTION_PROPS } from "../../core/document/keyframes.js";
 import type { CaptionStyle, Clip, ClipId, Frame, MediaId, MediaItem, Project, Rational, Track, TrackId } from "../../core/document/types.js";
 import { isMediaClip } from "../../core/document/types.js";
+import { upgradeCaptionStyle } from "../../text/captions.js";
 import type { KeyframeClipboard } from "./keyframes.js";
 import { captionStyleOf, captionTrackOf, freeCueDelta, newCaptionTrack } from "./captions.js";
 import { LaneTracks } from "./dropMedia.js";
@@ -207,7 +208,9 @@ export function parseClipboard(text: string): ClipboardPayload | null {
   if (typeof value.projectId !== "string" || !isRecord(fps) || !isInt(fps.num) || !isInt(fps.den)) return null;
   if (!Array.isArray(value.clips) || value.clips.length === 0 || !value.clips.every(isCopiedClip) || !Array.isArray(value.media)) return null;
   if (!value.media.every(isMediaRecord)) return null;
-  return value as unknown as ClipsPayload;
+  // Cues copied in 1.0.0 carry a caption style without `x` (Batch 53): filled in, as project.json's migration does.
+  const payload = value as unknown as ClipsPayload;
+  return payload.captionStyle === undefined ? payload : { ...payload, captionStyle: upgradeCaptionStyle(payload.captionStyle) };
 }
 
 // --- Media ---------------------------------------------------------------------------------------

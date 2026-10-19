@@ -8,6 +8,7 @@ import { createStore, type Store } from "../core/store/createStore.js";
 import { createProject as createDocument } from "../core/document/project.js";
 import type { CaptionStyle, Project, Rational, RGBA, TextPreset, Track } from "../core/document/types.js";
 import { validateProject } from "../core/document/validate.js";
+import { upgradeCaptionStyle } from "../text/captions.js";
 import { sanitizePreset } from "../text/presets.js";
 import type { KeyValueStore } from "./kv.js";
 
@@ -114,7 +115,8 @@ function sanitizeTrack(value: unknown): TemplateTrack | null {
     solo: flag("solo", false),
     hidden: flag("hidden", false),
     targeted: flag("targeted", true),
-    ...(value.kind === "caption" && { captionStyle: structuredClone(value.captionStyle) as unknown as CaptionStyle }),
+    // A 1.0.0 template's style has no `x` (Batch 53): it is filled in, as project.json's migration does.
+    ...(value.kind === "caption" && { captionStyle: structuredClone(upgradeCaptionStyle(value.captionStyle)) as unknown as CaptionStyle }),
   };
 }
 

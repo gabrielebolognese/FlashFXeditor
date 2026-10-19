@@ -143,5 +143,13 @@ describe("Caption style (spec §20.3, Batch 53)", () => {
     expect(pasteAttributes(next, payloadOf(next, ["q2"], "q2"), ["q3"], new Set(["captionStyle"]))).toBeNull();
     const reset = apply(p, payloadOf(p, ["q2"], "q2"), ["q3"], ["captionStyle"]);
     expect(reset.clips.q3).not.toHaveProperty("styleOverride");
+    // A copied cue with a preset link alone (no style of its own) gives no link.
+    const lone = withClips(base, [
+      { ...makeCaptionClip({ id: "q1", trackId: "cc", start: 0, duration: 30, text: "a" }), presetId: "pr" },
+      { ...makeCaptionClip({ id: "q2", trackId: "cc", start: 30, duration: 30, text: "b" }), styleOverride: own, presetId: "pr" },
+    ]);
+    const cleared = apply(lone, payloadOf(lone, ["q1"], "q1"), ["q2"], ["captionStyle"]);
+    expect(cleared.clips.q2).not.toHaveProperty("styleOverride");
+    expect(cleared.clips.q2).not.toHaveProperty("presetId");
   });
 });
