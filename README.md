@@ -2,7 +2,8 @@
 
 A browser video editor for short vertical videos (Instagram Reels, TikTok, YouTube Shorts). It runs as a
 static site in desktop Chrome or Edge: projects are folders on your own disk, media never leaves the
-computer, and there is no server. Version 1.0.0.
+computer, and there is no server. Version 1.1.0: 1.0.0 with a library of about 300 fonts, the preset bar above the
+preview, and caption styles per cue.
 
 - User guide: [`docs/user-guide/`](docs/user-guide/README.md)
 - Architecture (one page): [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)

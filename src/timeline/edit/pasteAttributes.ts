@@ -1,11 +1,13 @@
 // Paste attributes (spec §18 Mod+Alt+V, Batch 39): the look of a copied clip onto the selected clips,
 // by groups the user checks in a small popover: Transform, Opacity, Crop, Speed, Text style, Text
-// animations, Audio gain, Fades and Keyframes.
+// animations, Caption style (Batch 53, spec §20.3), Audio gain, Fades and Keyframes.
 // - Each group takes its values from the first copied clip that has them, the primary one first (a
 //   copied video and its linked audio give the picture groups and the audio gain).
 // - Targets: Transform and Opacity the selected layers, Crop the selected video and image clips, Speed
 //   the selected video and audio clips (partners follow with Linked selection, `setSpeeds`), Text
-//   style and animations the selected text clips, Audio gain the audio the Audio section edits (the
+//   style and animations the selected text clips, Caption style the selected cues (a copied cue's own
+//   style and preset link: none puts them back to the track style), Audio gain the audio the Audio
+//   section edits (the
 //   selected audio clips and those linked to selected video clips), Fades every selected clip that
 //   fades and its linked audio (audio targets take an audio clip's fades when one was copied).
 // - Keyframes decides how the animatable groups (Transform, Opacity, Audio gain) arrive: checked, a
@@ -31,7 +33,7 @@ import { textEdit } from "./text.js";
 import { isLayerClip, shiftedWrite } from "./transform.js";
 import { audioTargets } from "./volume.js";
 
-export const ATTRIBUTE_GROUPS = ["transform", "opacity", "crop", "speed", "textStyle", "animations", "audio", "fades", "keyframes"] as const;
+export const ATTRIBUTE_GROUPS = ["transform", "opacity", "crop", "speed", "textStyle", "animations", "captionStyle", "audio", "fades", "keyframes"] as const;
 export type AttributeGroup = (typeof ATTRIBUTE_GROUPS)[number];
 
 export const ATTRIBUTE_LABELS: Readonly<Record<AttributeGroup, string>> = {
@@ -41,6 +43,7 @@ export const ATTRIBUTE_LABELS: Readonly<Record<AttributeGroup, string>> = {
   speed: "Speed",
   textStyle: "Text style",
   animations: "Text animations",
+  captionStyle: "Caption style",
   audio: "Audio gain",
   fades: "Fades",
   keyframes: "Keyframes",
@@ -62,6 +65,8 @@ function gives(group: AttributeGroup, clip: Clip): boolean {
     case "textStyle":
     case "animations":
       return clip.kind === "text";
+    case "captionStyle":
+      return clip.kind === "caption";
     case "audio":
       return clip.kind === "audio";
     case "fades":
@@ -96,6 +101,8 @@ export function attributeTargets(project: Project, ids: readonly ClipId[], group
     case "textStyle":
     case "animations":
       return unlocked((clip) => clip.kind === "text");
+    case "captionStyle":
+      return unlocked((clip) => clip.kind === "caption");
     case "audio":
       return audioTargets(project, ids);
     case "fades":
@@ -186,6 +193,11 @@ export function pasteAttributes(project: Project, payload: ClipsPayload, ids: re
     if (target.kind !== "text" || source.kind !== "text") return;
     put(target, "animIn", source.animIn);
     put(target, "animOut", source.animOut);
+  });
+  apply("captionStyle", (target, source) => {
+    if (target.kind !== "caption" || source.kind !== "caption") return;
+    put(target, "styleOverride", source.styleOverride);
+    put(target, "presetId", source.presetId);
   });
   apply("audio", (target, source) => {
     if (target.kind !== "audio" || source.kind !== "audio") return;

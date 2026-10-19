@@ -4,11 +4,12 @@
 // to a cut plays into its handle.
 import { extendedEnd, extendedStart } from "../core/document/transitions.js";
 import type { Frame, MediaId, Project, TextStyle } from "../core/document/types.js";
+import { defaultCaptionStyle, effectiveCaptionStyle } from "../text/captions.js";
 
 export interface ExportNeeds {
   /** Media of video and image clips on video tracks in the range, in track order. */
   media: MediaId[];
-  /** The styles and texts of the text clips and caption cues in the range. */
+  /** The styles and texts of the text clips and caption cues in the range (a cue in its own style, spec §20.3). */
   texts: { style: TextStyle; text: string }[];
 }
 
@@ -17,13 +18,13 @@ export function exportNeeds(project: Project, range: { start: Frame; end: Frame 
   const texts: { style: TextStyle; text: string }[] = [];
   for (const track of project.tracks) {
     if (track.kind === "audio") continue;
-    const captionStyle = track.kind === "caption" ? project.captionTracks[track.id]?.style.text : undefined;
+    const captionStyle = track.kind === "caption" ? (project.captionTracks[track.id]?.style ?? defaultCaptionStyle(project.settings)) : undefined;
     for (const id of track.clipIds) {
       const clip = project.clips[id];
       if (!clip || extendedEnd(clip) <= range.start || extendedStart(clip) >= range.end) continue;
       if ((clip.kind === "video" || clip.kind === "image") && track.kind === "video") media.add(clip.mediaId);
       else if (clip.kind === "text") texts.push({ style: clip.style, text: clip.text.value });
-      else if (clip.kind === "caption" && captionStyle) texts.push({ style: captionStyle, text: clip.text });
+      else if (clip.kind === "caption" && captionStyle) texts.push({ style: effectiveCaptionStyle(captionStyle, clip.styleOverride).text, text: clip.text });
     }
   }
   return { media: [...media], texts };

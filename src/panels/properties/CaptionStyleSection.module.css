@@ -1,0 +1,58 @@
+/* The Caption style section's override markers (spec §20.3; gap: the DS has no override marker). A
+   --space-5 (16px) slot at the label column's right edge, in every row of the Selected scope: an
+   --accent dot (--space-2, 6px, the save dot's size) while a selected cue sets the row's fields. The
+   dot is a button: under the pointer or the focus it turns into the reset arrow (--icon-size-sm,
+   primary text) on the hover wash, radius-sm, the DS focus ring. */
+.slot,
+.mark {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--space-5);
+  height: var(--space-5);
+}
+
+.mark {
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  transition: background-color var(--duration-micro) var(--ease-out);
+}
+
+.dot {
+  width: var(--space-2);
+  height: var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+}
+
+.reset {
+  display: none;
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+}
+
+.mark:hover,
+.mark:focus-visible {
+  background: var(--hover-wash);
+}
+
+.mark:focus-visible {
+  box-shadow: var(--focus-ring);
+}
+
+.mark:hover .dot,
+.mark:focus-visible .dot {
+  display: none;
+}
+
+.mark:hover .reset,
+.mark:focus-visible .reset {
+  display: block;
+}
+
+/* Reset to track style: the button at the start of the control column. */
+.resetRow {
+  display: flex;
+  align-items: center;
+}

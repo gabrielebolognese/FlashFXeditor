@@ -67,6 +67,8 @@ export const MEDIA_COLUMNS = ["name", "duration", "resolution", "fps", "codec", 
 export type MediaColumn = (typeof MEDIA_COLUMNS)[number];
 /** Which presets the Presets tab shows (spec §10.3 "a toggle"), and where Save as preset puts new ones. */
 export type PresetScope = "global" | "project";
+/** What the Caption style section and a cue's canvas drag edit with cues selected (spec §20.3): the track's style, or the selected cues' own. */
+export type CaptionScope = "all" | "selected";
 
 /**
  * A source in/out range on a media item (spec §12: set with I / O while hovering its card): media
@@ -110,6 +112,8 @@ export interface SessionState {
   exportLog: readonly ExportLogEntry[];
   /** The preset bar above the preview (spec §20.2): shown (the header's Presets toggle) and the set it shows. */
   presetBar: { visible: boolean; set: PresetSetKey };
+  /** The Caption style section's scope switch (spec §20.3 `All cues | Selected (n)`). */
+  captionScope: CaptionScope;
 }
 
 export const DEFAULT_SESSION: SessionState = {
@@ -147,6 +151,7 @@ export const DEFAULT_SESSION: SessionState = {
   exportRange: "whole",
   exportLog: [],
   presetBar: { visible: true, set: "favorites" },
+  captionScope: "all",
 };
 
 /**

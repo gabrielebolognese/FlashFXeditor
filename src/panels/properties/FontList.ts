@@ -236,7 +236,12 @@ export class FontList {
     const family = document.createElement("span");
     family.className = classes.family ?? "";
     family.textContent = item.family;
-    family.style.fontWeight = String(item.weight);
+    // The row's own font at its weight; while it loads, the UI font at the UI weight (Batch 53: the
+    // design system's UI type stops at 600).
+    const show = () => {
+      family.style.fontFamily = `${quoteFamily(item.family)}, var(--font-ui)`;
+      family.style.fontWeight = String(item.weight);
+    };
     const meta = document.createElement("span");
     meta.className = classes.meta ?? "";
     meta.textContent = item.meta;
@@ -246,7 +251,7 @@ export class FontList {
     element.replaceChildren(...parts);
     this.decorate(row);
     if (this.deps.previewReady(item.family, item.weight)) {
-      family.style.fontFamily = `${quoteFamily(item.family)}, var(--font-ui)`;
+      show();
       return;
     }
     // Loading: the UI font, dimmed, until the row's file is in.
@@ -257,7 +262,7 @@ export class FontList {
     if (!ticket) {
       delete family.dataset.loading;
       family.removeAttribute("aria-busy");
-      family.style.fontFamily = `${quoteFamily(item.family)}, var(--font-ui)`;
+      show();
       return;
     }
     void ticket.done.then((loaded) => {
@@ -266,7 +271,7 @@ export class FontList {
       row.ticket = null;
       delete family.dataset.loading;
       family.removeAttribute("aria-busy");
-      if (loaded) family.style.fontFamily = `${quoteFamily(item.family)}, var(--font-ui)`;
+      if (loaded) show();
     });
   }
 

@@ -1,7 +1,7 @@
 // The persistent document (spec §5.2). Plain JSON only: no classes, Maps, Sets or undefined-valued
 // keys, so a Project can be serialized as-is and diffed by Immer patches.
 
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 
 export type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
 export type JsonObject = { [key: string]: JsonValue };
@@ -227,6 +227,8 @@ export interface CaptionHighlight {
 export interface CaptionStyle {
   text: TextStyle;
   position: CaptionPosition;
+  /** `custom`: the middle of the caption, project px from the frame center (right is positive; Batch 53). */
+  x: number;
   /** `custom`: the middle of the caption, project px from the frame center (down is positive). */
   y: number;
   /** Words wrap at this width (project px). */
@@ -234,6 +236,40 @@ export interface CaptionStyle {
   /** A cue with more lines is drawn smaller until it fits. */
   maxLines: number;
   highlight: CaptionHighlight;
+}
+
+/**
+ * The text style fields a cue can set over its track's (spec §20.3): any of them, and the parts of the
+ * stroke, shadow and background box one by one. The vertical anchor is not one: captions sit at their
+ * position.
+ */
+export interface CaptionTextOverride {
+  fontFamily?: string;
+  fontWeight?: number;
+  italic?: boolean;
+  fontSize?: number;
+  fill?: RGBA | Gradient;
+  stroke?: Partial<TextStroke>;
+  shadow?: Partial<TextShadow>;
+  background?: Partial<TextBackground>;
+  textCase?: TextCase;
+  letterSpacing?: number;
+  lineHeight?: number;
+  align?: TextAlign;
+}
+
+/**
+ * A cue's own style over its track's `CaptionStyle` (spec §20.3, Batch 53): a sparse set of fields, so
+ * a change of the track style still changes every field the cue did not set.
+ */
+export interface CaptionStyleOverride {
+  text?: CaptionTextOverride;
+  position?: CaptionPosition;
+  x?: number;
+  y?: number;
+  maxWidth?: number;
+  maxLines?: number;
+  highlight?: Partial<CaptionHighlight>;
 }
 
 /**
@@ -390,11 +426,17 @@ export interface CaptionWord {
   end: Frame;
 }
 
-/** A cue (spec §10.5): plain text with `\n` line breaks, and optional word timings (karaoke). */
+/**
+ * A cue (spec §10.5): plain text with `\n` line breaks, and optional word timings (karaoke). Its style
+ * is its track's with `styleOverride` on top (spec §20.3); `presetId` names the preset it was styled
+ * with.
+ */
 export interface CaptionClip extends ClipBase {
   kind: "caption";
   text: string;
   words?: CaptionWord[];
+  styleOverride?: CaptionStyleOverride;
+  presetId?: string;
 }
 
 export type Clip = MediaClip | TextClip | SolidClip | CaptionClip;

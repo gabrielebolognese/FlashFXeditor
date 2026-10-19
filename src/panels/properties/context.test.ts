@@ -44,6 +44,7 @@ describe("properties context (spec §11)", () => {
       audioIds: ["a"],
       detachIds: ["v"],
       captionTrackId: null,
+      cueIds: [],
     });
     expect(sectionIds(linked)).toEqual(["clip", "transform", "crop", "opacity", "speed", "audio"]);
     const audio = propertiesContext(selectClips(["a"]), null, p);

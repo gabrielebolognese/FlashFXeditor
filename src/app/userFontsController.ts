@@ -152,8 +152,20 @@ export interface AddResult {
   skipped: { name: string; reason: string }[];
 }
 
-/** Adds font files to My fonts (spec §20.1: picked or dropped, several at once). */
-export async function addFontFiles(files: readonly File[]): Promise<AddResult> {
+/** The adds running, one after another: each reads My fonts once the one before has committed. */
+let adding: Promise<unknown> = Promise.resolve();
+
+/**
+ * Adds font files to My fonts (spec §20.1: picked or dropped, several at once). Adds run one after
+ * another (Batch 53, the Batch 51 review note): two drops at the same moment both keep their fonts.
+ */
+export function addFontFiles(files: readonly File[]): Promise<AddResult> {
+  const run = adding.then(() => addNow(files));
+  adding = run.catch(() => undefined);
+  return run;
+}
+
+async function addNow(files: readonly File[]): Promise<AddResult> {
   const result: AddResult = { added: [], skipped: [] };
   let fonts = [...userFonts.getState().fonts];
   for (const file of files) {

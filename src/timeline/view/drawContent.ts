@@ -498,8 +498,8 @@ function drawLabel(scene: ClipScene, clip: Clip, x: number, y: number, width: nu
   // and audio only, stills and graphics have no speed; a snowflake for a freeze frame, Batch 27), the
   // link and the keyframe icons, a text animation (sparkles, Batch 31), a missing font (a text clip
   // whose family is not available draws with the fallback font, §10.1), and `fx` when it has a
-  // transition (Batch 36), and `Offline` first when its media is offline (Batch 41). The name ends
-  // before them.
+  // transition (Batch 36), `Offline` first when its media is offline (Batch 41), and a paintbrush on a
+  // cue with its own style (Batch 53). The name ends before them.
   const minX = left + pad + icon + pad;
   const badgesEnd = right - theme.space[0];
   let badgesStart = badgesEnd;
@@ -511,6 +511,8 @@ function drawLabel(scene: ClipScene, clip: Clip, x: number, y: number, width: nu
   if (hasKeyframes(clip)) badgesStart = drawIconBadge(scene, "diamond", minX, badgesStart, lineY);
   if (clip.kind === "text" && (isPlayable(clip.animIn) || isPlayable(clip.animOut))) badgesStart = drawIconBadge(scene, "sparkles", minX, badgesStart, lineY);
   if (clip.kind === "text" && scene.fonts?.missing(clip.style.fontFamily)) badgesStart = drawIconBadge(scene, "triangleAlert", minX, badgesStart, lineY, theme.color.danger);
+  // A cue with its own style (spec §20.3).
+  if (clip.kind === "caption" && (clip.styleOverride !== undefined || clip.presetId !== undefined)) badgesStart = drawIconBadge(scene, "paintbrush", minX, badgesStart, lineY);
   if (isMediaClip(clip) && (clip.transitionIn || clip.transitionOut)) badgesStart = drawBadge(scene, "fx", theme.color.textSecondary, minX, badgesStart, lineY);
   if (badgesStart < badgesEnd) right = badgesStart;
   drawGlyph(ctx, CLIP_GLYPHS[clip.kind], left + pad, lineY - icon / 2, icon, theme.color.textPrimary);

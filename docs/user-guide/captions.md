@@ -39,11 +39,11 @@ Captions are the subtitles that run along with the speech of your video. They li
 
 - A project has at most one caption track. Its header reads **CC**, and it always sits above every video track, so captions show on top of everything else in the frame.
 - The track holds cues. A cue is a piece of text with a start and an end. Cues never overlap: at any frame, at most one cue shows.
-- The look of the captions belongs to the track: every cue shows in the same font, colors and position. You set it once in the **Caption style** section. See [Style your captions](#style-your-captions).
+- The look of the captions belongs to the track: every cue shows in its font, colors and position unless you give a cue a style of its own. You set the track's look once in the **Caption style** section; with cues selected, its **Edit** row switches between **All cues** (the track's look) and **Selected** (the look of the selected cues only). See [Style your captions](#style-your-captions).
 - Captions are drawn by the same text engine as titles, so they stay sharp at every preview zoom and show in **Export frame** and in exported videos, drawn into the picture. See [Export the current frame](preview-and-playback.md#export-the-current-frame) and [Know what goes into the file](exporting-video.md#know-what-goes-into-the-file).
 - A cue can carry word timings: when each word is spoken. With them, the editor highlights the spoken word. Transcribed cues always have them. See [Highlight the spoken word](#highlight-the-spoken-word).
 
-> **Note:** Captions are not titles. You can't click them in the preview, drag them there, or type in them there; a click on a caption selects the picture under it. Edit their text in the **Captions** tab and their place in **Caption style**. For text you place by hand, use a title or a subtitle; see [Titles and text](titles-and-text.md).
+> **Note:** A click on a caption in the preview selects its cue. Drag it to move it (with **Selected** in the **Edit** row, only that cue moves; with **All cues**, every caption moves), drag a corner to change its font size, and double-click it to type its text there. For text you place freely, use a title or a subtitle; see [Titles and text](titles-and-text.md).
 
 ## Add the caption track
 
@@ -385,8 +385,7 @@ Every caption change is one step in the history. Hover **Undo** in the app bar t
 
 These parts are available in a later version:
 
-- A style for a single cue, and moving or styling captions in the preview.
-- **Paste attributes** for cues.
+- Several fonts or colors inside one cue (apart from the spoken word's highlight).
 
 ## Related pages
 - [Exporting your video](exporting-video.md)

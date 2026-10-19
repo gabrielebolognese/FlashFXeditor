@@ -11,7 +11,8 @@
 //   held, the marquee, the 100% scale snap line on the dragged handle's sides, and the numeric readout
 //   near the cursor (the timeline's drag tooltip style). In crop mode (Batch 26) the box gets crop
 //   handles (corner brackets and edge bars inside it) and the whole media's box is outlined dashed. A
-//   text box (Batch 29) has no top and bottom handles; inline text editing draws the edited box's
+//   text box (Batch 29) has no top and bottom handles, a caption (Batch 53) only its corner handles;
+//   inline text editing draws the edited box's
 //   outline, the caret (--text-caret-width, --accent) and the IME composition underline. A box holding
 //   a keyframed layer gets the keyframe diamond up and right of its top-right handle (Batch 35).
 // - Smart guides (§7.4, the scene's `guides`): 1 px --accent lines (across the frame for the frame and
@@ -202,7 +203,7 @@ export class PreviewOverlayView implements RenderView {
       }
       out.push(scene.crop ? 1 : 0);
       if (scene.crop) quad(scene.crop.media); else out.push(0);
-      out.push(scene.textBox ? 1 : 0);
+      out.push(scene.textBox ? 1 : 0, scene.captionBox ? 1 : 0);
       out.push(scene.keyframe ? (scene.keyframe.on ? 2 : 1) : 0);
       const editing = scene.text;
       if (editing) {
@@ -273,7 +274,7 @@ export class PreviewOverlayView implements RenderView {
       // Square handles on screen: the corners always, the edge handles on sides long enough.
       const shown = edgeHandlesShown(box, t, gizmo.minEdge * dpr);
       const size = Math.round(gizmo.handleSize * dpr);
-      const handles: HandleId[] = [...CORNERS, ...EDGES.filter((h) => (h === "n" || h === "s" ? shown.horizontal && !scene.textBox : shown.vertical))];
+      const handles: HandleId[] = scene.captionBox ? [...CORNERS] : [...CORNERS, ...EDGES.filter((h) => (h === "n" || h === "s" ? shown.horizontal && !scene.textBox : shown.vertical))];
       ctx.fillStyle = color.textPrimary;
       ctx.strokeStyle = color.accent;
       for (const handle of handles) {

@@ -20,9 +20,21 @@ export type Migration = (raw: JsonObject) => JsonObject;
  * `MIGRATIONS[n]` turns a version-n file into version n+1; a schema change bumps SCHEMA_VERSION and
  * adds its step here.
  * - 1 -> 2 (Batch 41): media bins (`bins`, empty). `MediaItem.size` is optional: older items have none.
+ * - 2 -> 3 (Batch 53): caption styles get a custom `x` (0: centered, as before). Cues may carry a
+ *   `styleOverride` and a `presetId`; older cues have none, so they look as they did.
  */
 export const MIGRATIONS: Readonly<Record<number, Migration>> = {
   1: (raw) => ({ ...raw, bins: Array.isArray(raw.bins) ? raw.bins : [] }),
+  2: (raw) => {
+    const tracks = isObject(raw.captionTracks) ? raw.captionTracks : null;
+    if (!tracks) return raw;
+    const captionTracks: JsonObject = {};
+    for (const [id, data] of Object.entries(tracks)) {
+      const style = isObject(data) && isObject(data.style) ? data.style : null;
+      captionTracks[id] = style && style.x === undefined ? { ...data as JsonObject, style: { ...style, x: 0 } } : data;
+    }
+    return { ...raw, captionTracks };
+  },
 };
 
 function isObject(value: unknown): value is JsonObject {

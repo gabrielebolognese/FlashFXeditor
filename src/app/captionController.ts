@@ -6,6 +6,9 @@
 // - The cue list types into a draft shown live on the canvas (`liveEdit.cues`, no undo step per key);
 //   blur, Tab, Enter (split), Mod+Backspace (merge) commit it. Selecting a cue moves the playhead to
 //   its start. After a split or a merge the list focuses the cue named by `cueFocus`.
+// - Styles per cue (spec §20.3, Batch 53): `caption.copyStyle` keeps the primary selected cue's own
+//   style (its override and preset; none: the track style), `caption.pasteStyle` gives it to the
+//   selected cues and `caption.resetStyle` clears theirs, each one undo step.
 // - Dev builds: `__editor.captions` for the acceptance checks.
 import type { CaptionClip, ClipId, Project } from "../core/document/types.js";
 import { createStore } from "../core/store/createStore.js";
@@ -13,7 +16,8 @@ import { selectClips, selectTracks, toSnapshot } from "../core/store/selection.j
 import { setSectionCollapsed } from "../core/store/sessionStore.js";
 import { evenWords } from "../text/captions.js";
 import { formatSubtitles, parseSubtitles, type SubtitleFormat } from "../text/subtitles.js";
-import { addCaptionTrack, addCueAt, captionTrackOf, clearCues, cuesOf, exportCues, importCues, mergeWithPrevious, setCueText, splitCue } from "../timeline/edit/captions.js";
+import { addCaptionTrack, addCueAt, captionTrackOf, clearCues, cuesOf, exportCues, importCues, mergeWithPrevious, resetCueStyles, setCueStyles, setCueText, splitCue, type CueStyle } from "../timeline/edit/captions.js";
+import { isClipLocked } from "../timeline/model/queries.js";
 import { showToast } from "../ui/toasts.js";
 import { pickFile, saveFile, type PickerType } from "./filePickers.js";
 import { patchLiveEdit } from "./liveEdit.js";
@@ -135,6 +139,47 @@ function editSelectedCue(): void {
   cueFocus.set({ cueId: cue.id, caret: cue.text.length });
 }
 
+/** The selected cues that can be edited (unlocked), in selection order. */
+export function selectedCueIds(project: Project = documentStore.getState()): ClipId[] {
+  const selection = sessionStore.selection.getState();
+  if (selection.kind !== "clips") return [];
+  return [...selection.clipIds].filter((id) => project.clips[id]?.kind === "caption" && !isClipLocked(project, id));
+}
+
+/** The style Copy style kept (spec §20.3), or null; menus read it to enable Paste style. */
+export const copiedCueStyle = createStore<CueStyle | null>(null);
+
+/** Copy style: the primary selected cue's own style (override and preset). */
+function copyCueStyle(): void {
+  const cue = selectedCue();
+  if (cue) copiedCueStyle.set({ styleOverride: cue.styleOverride && structuredClone(cue.styleOverride), presetId: cue.presetId });
+}
+
+/** Paste style: the copied style on every selected cue, one undo step. */
+function pasteCueStyle(): void {
+  const style = copiedCueStyle.getState();
+  const project = documentStore.getState();
+  if (!style) return;
+  const command = setCueStyles(project, new Map(selectedCueIds(project).map((id) => [id, style])), { label: "Paste caption style" });
+  if (command) documentStore.dispatch(command);
+}
+
+/** Reset to track style (spec §20.3): the selected cues lose their own style, one undo step. */
+export function resetSelectedCueStyles(): void {
+  const project = documentStore.getState();
+  const command = resetCueStyles(project, selectedCueIds(project));
+  if (command) documentStore.dispatch(command);
+}
+
+/** Whether a selected cue has a style of its own (Reset to track style has something to do). */
+function selectionHasCueStyle(): boolean {
+  const project = documentStore.getState();
+  return selectedCueIds(project).some((id) => {
+    const cue = project.clips[id] as CaptionClip;
+    return cue.styleOverride !== undefined || cue.presetId !== undefined;
+  });
+}
+
 /** Clear all (spec §10.5): every cue goes in one undo step (no confirmation: Undo brings them back). */
 function clearAll(): void {
   const command = clearCues(documentStore.getState());
@@ -228,6 +273,9 @@ export function installCaptionController(): () => void {
     actions.register("caption.mergePrevious", mergeSelected),
     // The cue menu's Edit text (Batch 40): the selected cue's text field on the Captions tab, caret at the end.
     actions.register("caption.editText", editSelectedCue, { enabled: () => selectedCue() !== null }),
+    actions.register("caption.copyStyle", copyCueStyle, { enabled: () => selectedCue() !== null }),
+    actions.register("caption.pasteStyle", pasteCueStyle, { enabled: () => copiedCueStyle.getState() !== null && selectedCueIds().length > 0 }),
+    actions.register("caption.resetStyle", resetSelectedCueStyles, { enabled: selectionHasCueStyle }),
   ];
   if (import.meta.env.DEV) {
     // Console access for the acceptance checks, e.g. `__editor.captions.karaoke(id)` (word timings
@@ -258,6 +306,7 @@ export function installCaptionController(): () => void {
     for (const stop of stops) stop();
     cueFocus.set(null);
     revealSection.set(null);
-    patchLiveEdit({ cues: null, captionStyles: null });
+    copiedCueStyle.set(null);
+    patchLiveEdit({ cues: null, captionStyles: null, cueStyles: null });
   };
 }

@@ -40,8 +40,14 @@
 // - Keyframes (spec §7.3, Batch 35): a held layer with Transform keys is shown, moved and keyed at the
 //   playhead (`canvasLayersAt` evaluates the keys; the commit writes keys there); the gizmo box gets a
 //   diamond at its top-right corner, filled while the playhead is on a key.
+// - Captions (spec §20.3, Batch 53; captionGizmo.ts): the active cue's caption is the top layer. Selected
+//   alone, its gizmo has corner handles only: a body drag moves it (snapping and smart guides as any
+//   layer) and ends as a Custom position, a corner drag sizes its font (shown live through `cueStyles`);
+//   the Caption style section's scope says whose: the cue's own style (`Selected`) or the track's
+//   (`All cues`). Selected with other layers it is outlined but not held. A double-click edits its text
+//   inline.
 import type { Command } from "../../core/commands/command.js";
-import type { ClipId, Crop, Project, TextContent, TextStyle, Transform } from "../../core/document/types.js";
+import type { CaptionStyle, ClipId, Crop, Project, TextContent, TextStyle, Transform } from "../../core/document/types.js";
 import { isEditableTarget } from "../../core/keyboard/KeyDispatcher.js";
 import { isSnapKey, type Platform } from "../../core/keyboard/keys.js";
 import type { FrameScheduler } from "../../core/scheduler/FrameScheduler.js";
@@ -56,7 +62,9 @@ import { setTexts } from "../../timeline/edit/text.js";
 import { isLayerClip, layerCorners, setTransforms, type Point } from "../../timeline/edit/transform.js";
 import { keyAt, stopwatchOn } from "../../timeline/edit/keyframes.js";
 import { isClipLocked, selectionPartners } from "../../timeline/model/queries.js";
-import type { LiveText } from "../compositor/Compositor.js";
+import type { LiveCaptions, LiveText } from "../compositor/Compositor.js";
+import { moveCaption, sizeCaption } from "../../timeline/edit/captions.js";
+import { captionMiddle, captionSizeGesture, shownCueStyle, type CaptionSizeStart } from "./captionGizmo.js";
 import { onTextLayoutsChanged, textLayoutVersion } from "../text/layoutCache.js";
 import { canvasLayersAt, layersInRect, layersUnder, pictureLayersAt, quadsBounds, type CanvasLayer, type Quad, type Rect } from "./canvasLayers.js";
 import { canvasCursors, type CanvasCursors } from "./canvasCursors.js";
@@ -141,6 +149,8 @@ export interface CanvasEditDeps {
   cropMode?: Store<CropModeState>;
   /** Inline text editing (spec §7.7); without it a double-click on text does nothing. */
   textEditor?: CanvasTextEditing;
+  /** The live caption values (the cue list's and the inline editor's drafts, style scrubs, hovered presets), or null: cue boxes follow them. */
+  captions?(): LiveCaptions | null;
 }
 
 /** What the overlay draws for selection and the gizmo; null parts are not drawn. */
@@ -165,13 +175,15 @@ export interface GizmoScene {
   crop: { media: Quad } | null;
   /** The box is one text layer's: corner and side handles only (§7.3). */
   textBox: boolean;
+  /** The box is a caption's: corner handles only (spec §20.3). */
+  captionBox?: boolean;
   /** Inline text editing (§7.7): the caret and the composition underline. */
   text: TextEditScene | null;
   /** The keyframe diamond (§7.3): a held layer's transform is keyed; `on` while every keyed one has a key at the playhead. */
   keyframe?: { on: boolean } | null;
 }
 
-type GestureKind = "move" | "scale" | "rotate" | "anchor" | "crop" | "textSize" | "textWidth";
+type GestureKind = "move" | "scale" | "rotate" | "anchor" | "crop" | "textSize" | "textWidth" | "captionSize";
 
 interface Press {
   pointerId: number;
@@ -213,6 +225,11 @@ interface Drag {
   /** A size handle drag of one solid: the solid, and its look as the drag leaves it (ephemeral until the release). */
   solid: SolidGestureStart | null;
   solids: ReadonlyMap<ClipId, SolidLook> | null;
+  /** A caption drag (spec §20.3): the cue it holds; a size drag's start and the cue's style as it leaves it (ephemeral until the release). */
+  cue: ClipId | null;
+  caption: CaptionSizeStart | null;
+  cueStyles: ReadonlyMap<ClipId, CaptionStyle> | null;
+  fontSize: number | null;
 }
 
 interface Marquee {
@@ -234,6 +251,7 @@ const LABELS: Record<GestureKind, [string, string]> = {
   crop: ["Crop layer", "Crop layers"],
   textSize: ["Resize text", "Resize text"],
   textWidth: ["Change text box width", "Change text box width"],
+  captionSize: ["Resize caption", "Resize caption"],
 };
 
 export class CanvasEditInput {
@@ -259,6 +277,7 @@ export class CanvasEditInput {
     crops: ReadonlyMap<ClipId, Crop> | null;
     texts: ReadonlyMap<ClipId, LiveText> | null;
     solids: ReadonlyMap<ClipId, SolidLook> | null;
+    captions: LiveCaptions | null;
     version: number;
     layers: CanvasLayer[];
   } = {
@@ -268,6 +287,7 @@ export class CanvasEditInput {
     crops: null,
     texts: null,
     solids: null,
+    captions: null,
     version: -1,
     layers: [],
   };
@@ -301,6 +321,11 @@ export class CanvasEditInput {
   /** A solid size handle drag's ephemeral looks (the compositor reads them, P2), or null. */
   get solids(): ReadonlyMap<ClipId, SolidLook> | null {
     return this.drag?.solids ?? null;
+  }
+
+  /** A caption size handle drag's ephemeral cue style (the compositor reads it, P2), or null. */
+  get cueStyles(): ReadonlyMap<ClipId, CaptionStyle> | null {
+    return this.drag?.cueStyles ?? null;
   }
 
   /** The clip in crop mode (spec §7.3), or null. */
@@ -456,17 +481,28 @@ export class CanvasEditInput {
     const crops = this.deps.crops?.read() ?? null;
     const texts = this.deps.texts?.() ?? null;
     const solids = this.solids ?? this.deps.solids?.() ?? null;
+    const captions = this.deps.captions?.() ?? null;
     const version = textLayoutVersion();
     const cache = this.cache;
-    if (cache.project !== project || cache.frame !== frame || cache.transforms !== transforms || cache.crops !== crops || cache.texts !== texts || cache.solids !== solids || cache.version !== version) {
+    if (
+      cache.project !== project ||
+      cache.frame !== frame ||
+      cache.transforms !== transforms ||
+      cache.crops !== crops ||
+      cache.texts !== texts ||
+      cache.solids !== solids ||
+      cache.captions !== captions ||
+      cache.version !== version
+    ) {
       cache.project = project;
       cache.frame = frame;
       cache.transforms = transforms;
       cache.crops = crops;
       cache.texts = texts;
       cache.solids = solids;
+      cache.captions = captions;
       cache.version = version;
-      cache.layers = canvasLayersAt(project, frame, transforms, crops, texts, solids);
+      cache.layers = canvasLayersAt(project, frame, transforms, crops, texts, solids, captions);
     }
     return cache.layers;
   }
@@ -489,11 +525,22 @@ export class CanvasEditInput {
     return picture.layers;
   }
 
-  /** The selected layers at the playhead, bottom first: what the gizmo holds. */
+  /** The selected layers at the playhead, bottom first (a selected cue's caption included, outlined). */
   selectedLayers(): CanvasLayer[] {
     const selection = this.deps.session.selection.getState();
     if (selection.kind !== "clips") return [];
     return this.layers().filter((layer) => selection.clipIds.has(layer.clipId));
+  }
+
+  /** What the gizmo holds: the selected layers, a cue's caption only when it is selected alone (spec §20.3). */
+  heldLayers(selected: CanvasLayer[] = this.selectedLayers()): CanvasLayer[] {
+    return selected.length > 1 && selected.some((layer) => layer.cue) ? selected.filter((layer) => !layer.cue) : selected;
+  }
+
+  /** The cue whose caption the gizmo holds alone, or null. */
+  private captionLayer(held: readonly CanvasLayer[]): CanvasLayer | null {
+    const only = held.length === 1 ? held[0] : undefined;
+    return only?.cue ? only : null;
   }
 
   /** The layer crop mode works on now: the crop target when it is the one layer `held` (the selected ones at the playhead). */
@@ -533,16 +580,18 @@ export class CanvasEditInput {
       return { hover: null, outlines: edited ? [edited.quad] : [], box: null, group: false, anchor: null, marquee: null, snap: null, readout: null, guides: null, crop: null, textBox: false, text: this.deps.textEditor?.scene() ?? null };
     }
     const selection = this.deps.session.selection.getState();
-    const selected = selection.kind === "clips" ? layers.filter((layer) => selection.clipIds.has(layer.clipId)) : [];
+    const all = selection.kind === "clips" ? layers.filter((layer) => selection.clipIds.has(layer.clipId)) : [];
+    const selected = this.heldLayers(all);
     const drag = this.drag;
     const marquee = this.marquee;
     // A marquee shows the selection it would make: its layers, plus the current ones when it adds.
-    const outlined = marquee ? layers.filter((layer) => marquee.hits.includes(layer.clipId) || (marquee.additive && selected.includes(layer))) : selected;
+    const outlined = marquee ? layers.filter((layer) => marquee.hits.includes(layer.clipId) || (marquee.additive && all.includes(layer))) : all;
     const outlines = outlined.map((layer) => layer.quad);
-    const box = drag?.result?.box ?? (marquee ? null : gizmoBoxOf(outlines));
+    const box = drag?.result?.box ?? (marquee ? null : gizmoBoxOf(selected.map((layer) => layer.quad)));
     const hoverLayer = !drag && !marquee && this.hover !== null ? layers.find((layer) => layer.clipId === this.hover && !selected.includes(layer)) : undefined;
     const single = selected.length === 1 ? selected[0] : undefined;
-    const showAnchor = single !== undefined && (drag?.kind === "anchor" || (!drag && !marquee && this.modifiers.alt && this.over));
+    const caption = marquee ? null : this.captionLayer(selected);
+    const showAnchor = single !== undefined && !caption && (drag?.kind === "anchor" || (!drag && !marquee && this.modifiers.alt && this.over));
     const pointer = this.pointer;
     const result = drag?.result;
     const frame = this.deps.document.getState().settings;
@@ -562,6 +611,7 @@ export class CanvasEditInput {
       guides,
       crop: cropLayer ? { media: layerCorners(cropLayer.transform, { ...cropLayer.box, left: 0, top: 0, right: cropLayer.box.width, bottom: cropLayer.box.height }, frame) } : null,
       textBox: !marquee && !cropLayer && this.textLayer(drag ? drag.start.layers.length : selected.length, single) !== null,
+      captionBox: caption !== null,
       text: null,
       keyframe: box && !marquee && !cropLayer ? this.keyframeMark(selected) : null,
     };
@@ -615,12 +665,13 @@ export class CanvasEditInput {
     }
     const { session } = this.deps;
     const selection = session.selection.getState();
-    const held = this.selectedLayers();
+    const held = this.heldLayers();
     const box = gizmoBoxOf(held.map((layer) => layer.quad));
     const mods = this.modifiers;
     const cropLayer = this.cropLayer(held);
     const textLayer = cropLayer ? null : this.textLayer(held.length, held[0]);
-    const hit = box ? this.hitBox(box, placement, event, cropLayer !== null, textLayer !== null) : null;
+    const caption = this.captionLayer(held);
+    const hit = box ? this.hitBox(box, placement, event, cropLayer !== null, textLayer !== null, caption !== null) : null;
     const under = layersUnder(this.layers(), point.x, point.y);
     const top = under[0];
     // Deep select (§7.2): the next layer under the pointer after the selected one, alone.
@@ -630,8 +681,8 @@ export class CanvasEditInput {
     };
     let press: Pick<Press, "drag" | "click"> | null = null;
     // Alt over the anchor marker drags the anchor; released without a drag it is the Alt+click.
-    if (box && mods.alt && held.length === 1 && !cropLayer && this.overAnchor(held[0] as CanvasLayer, placement, event)) press = { drag: { kind: "anchor" }, click: top ? cycled() : null };
-    else if (hit?.kind === "handle") press = { drag: { kind: cropLayer ? "crop" : textLayer ? textHandleKind(hit.handle) : "scale", handle: hit.handle }, click: null };
+    if (box && mods.alt && held.length === 1 && !cropLayer && !caption && this.overAnchor(held[0] as CanvasLayer, placement, event)) press = { drag: { kind: "anchor" }, click: top ? cycled() : null };
+    else if (hit?.kind === "handle") press = { drag: { kind: cropLayer ? "crop" : caption ? "captionSize" : textLayer ? textHandleKind(hit.handle) : "scale", handle: hit.handle }, click: null };
     // In crop mode a click on its layer keeps the selection (a group would end crop mode).
     else if (cropLayer && hit?.kind === "body" && !mods.alt && !mods.shift && !mods.mod && top?.clipId === cropLayer.clipId) press = { drag: { kind: "move" }, click: null };
     else if (hit?.kind === "rotate") press = { drag: { kind: "rotate", handle: hit.corner }, click: null };
@@ -716,8 +767,9 @@ export class CanvasEditInput {
       const project = this.deps.document.getState();
       // Keyed layers take keys at the playhead (spec §7.3, Batch 35).
       const at = this.deps.session.state.getState().playhead;
-      const command =
-        drag.kind === "crop"
+      const command = drag.cue
+        ? this.captionCommand(drag, project)
+        : drag.kind === "crop"
           ? drag.crops
             ? setCrops(project, drag.crops, { label })
             : null
@@ -745,7 +797,7 @@ export class CanvasEditInput {
     const { session } = this.deps;
     const selection = session.selection.getState();
     const top = layersUnder(this.layers(), point.x, point.y)[0];
-    const box = gizmoBoxOf(this.selectedLayers().map((layer) => layer.quad));
+    const box = gizmoBoxOf(this.heldLayers().map((layer) => layer.quad));
     const inBox = box !== null && this.hitBox(box, placement, event)?.kind === "body";
     if (top && !(selection.kind === "clips" && selection.clipIds.has(top.clipId)) && !inBox) setSelection(session, clickSelection(selection, top.clipId, "none", this.partners(top.clipId, "none")));
     else if (!top && !inBox) {
@@ -774,7 +826,7 @@ export class CanvasEditInput {
       return;
     }
     const clip = top ? this.deps.document.getState().clips[top.clipId] : undefined;
-    if (top && clip?.kind === "text" && editor) {
+    if (top && (clip?.kind === "text" || clip?.kind === "caption") && editor) {
       this.cancel();
       setSelection(this.deps.session, selectClips([top.clipId]));
       editor.begin(top.clipId, point);
@@ -795,12 +847,16 @@ export class CanvasEditInput {
       this.marquee = { pointerId: press.pointerId, additive: press.drag.additive, base, from: press.point, to: press.point, hits: [] };
       return;
     }
-    const held = this.selectedLayers();
+    const held = this.heldLayers();
     const box = gizmoBoxOf(held.map((layer) => layer.quad));
     if (!box) return;
     const project = this.deps.document.getState();
     const start: GestureStart = { layers: held.map((layer) => ({ clipId: layer.clipId, transform: layer.transform, box: layer.box })), box, frame: project.settings };
     const kind = press.drag.kind;
+    const caption = this.captionLayer(held);
+    // A caption moves and sizes (spec §20.3); it never scales, rotates or crops.
+    if (caption && kind !== "move" && kind !== "captionSize") return;
+    if (kind === "captionSize" && !caption) return;
     const cropLayer = kind === "crop" ? this.cropLayer(held) : null;
     if (kind === "crop" && !cropLayer) return;
     const handle = press.drag.handle ?? null;
@@ -808,7 +864,7 @@ export class CanvasEditInput {
     const grabbed =
       kind === "anchor"
         ? { x: project.settings.width / 2 + first.transform.x, y: project.settings.height / 2 + first.transform.y }
-        : handle && (kind === "scale" || kind === "crop" || kind === "textSize" || kind === "textWidth")
+        : handle && (kind === "scale" || kind === "crop" || kind === "textSize" || kind === "textWidth" || kind === "captionSize")
           ? handlePoint(box, handle)
           : null;
     this.drag = {
@@ -829,7 +885,15 @@ export class CanvasEditInput {
       texts: null,
       solid: kind === "scale" && held.length === 1 ? this.solidStart(held[0] as CanvasLayer, project) : null,
       solids: null,
+      cue: caption?.clipId ?? null,
+      caption: kind === "captionSize" && caption ? this.captionStart(caption, project) : null,
+      cueStyles: null,
+      fontSize: null,
     };
+    if (kind === "captionSize" && !this.drag.caption) {
+      this.drag = null;
+      return;
+    }
     if ((kind === "textSize" || kind === "textWidth") && !this.drag.text) {
       this.drag = null;
       return;
@@ -917,6 +981,21 @@ export class CanvasEditInput {
         drag.texts = new Map([[start.clipId, { text: result.text, style: result.style }]]);
         break;
       }
+      case "captionSize": {
+        const start = drag.caption as CaptionSizeStart;
+        const result = captionSizeGesture(start, drag.handle as HandleId, point);
+        drag.result = { transforms: new Map(), box: result.box, snapX: false, snapY: false, readout: result.readout };
+        drag.cueStyles = new Map([[start.clipId, result.style]]);
+        drag.fontSize = result.fontSize;
+        break;
+      }
+    }
+    // A caption's move reads the Custom position it will leave (its middle, spec §20.3).
+    const held = drag.start.layers[0];
+    const moved = drag.cue && drag.kind === "move" && held ? drag.result?.transforms.get(drag.cue) : undefined;
+    if (moved && held && drag.result) {
+      const middle = captionMiddle(moved, held.box);
+      drag.result.readout = `X ${middle.x} · Y ${middle.y}`;
     }
     this.deps.scheduler.invalidate("preview");
     this.invalidate();
@@ -946,6 +1025,27 @@ export class CanvasEditInput {
     if (clip?.kind !== "text") return null;
     const live = this.deps.texts?.()?.get(layer.clipId);
     return { clipId: layer.clipId, text: live?.text ?? clip.text, style: live?.style ?? clip.style, transform: layer.transform, frame: project.settings };
+  }
+
+  /** A cue's caption as a size handle drag starts from it: its shown text and style (live values first), where it sits. */
+  private captionStart(layer: CanvasLayer, project: Project): CaptionSizeStart | null {
+    const cue = project.clips[layer.clipId];
+    if (cue?.kind !== "caption") return null;
+    const live = this.deps.captions?.() ?? null;
+    return { clipId: cue.id, text: live?.texts?.get(cue.id) ?? cue.text, style: shownCueStyle(project, cue, live), transform: layer.transform, box: layer.box, frame: project.settings };
+  }
+
+  /**
+   * The one command a caption drag ends with (spec §20.3): a move as a Custom position, a size drag as
+   * the font size, of the cue's own style (`Selected` scope) or of the track's (`All cues`).
+   */
+  private captionCommand(drag: Drag, project: Project): Command | null {
+    const cueId = drag.cue as ClipId;
+    const scope = this.deps.session.state.getState().captionScope;
+    if (drag.kind === "captionSize") return drag.fontSize === null ? null : sizeCaption(project, cueId, scope, drag.fontSize);
+    const moved = drag.result?.transforms.get(cueId);
+    const layer = drag.start.layers[0];
+    return moved && layer ? moveCaption(project, cueId, scope, captionMiddle(moved, layer.box)) : null;
   }
 
   /** A crop handle drag step: the crop gesture, its edge snapped to the frame, the crop written live (P2). */
@@ -1077,10 +1177,10 @@ export class CanvasEditInput {
     return { handleHit: handleHit * dpr, rotateZone: rotateZone * dpr, minEdge: minEdge * dpr };
   }
 
-  /** The gizmo zone under the pointer (device px against the box on screen); `crop`: crop handles, no rotate zones; `text`: no top and bottom handles. */
-  private hitBox(box: GizmoBox, placement: PreviewPlacement, event: { clientX: number; clientY: number }, crop = false, text = false): GizmoHit | null {
+  /** The gizmo zone under the pointer (device px against the box on screen); `crop`: crop handles, no rotate zones; `text`: no top and bottom handles; `caption`: corner handles only. */
+  private hitBox(box: GizmoBox, placement: PreviewPlacement, event: { clientX: number; clientY: number }, crop = false, text = false, caption = false): GizmoHit | null {
     const device = this.devicePoint(event, placement.dpr);
-    return device ? hitGizmo(box, placement.transform, device.x, device.y, this.metrics(placement.dpr), crop, text) : null;
+    return device ? hitGizmo(box, placement.transform, device.x, device.y, this.metrics(placement.dpr), crop, text, caption) : null;
   }
 
   private overAnchor(layer: CanvasLayer, placement: PreviewPlacement, event: { clientX: number; clientY: number }): boolean {
@@ -1147,12 +1247,13 @@ export class CanvasEditInput {
       const point = this.projectPoint(this.pointer, placement);
       return point && editor.contains(point, (this.theme.gizmo.handleHit * placement.dpr) / 2 / placement.transform[0]) ? "text" : "";
     }
-    const held = this.selectedLayers();
+    const held = this.heldLayers();
     const box = gizmoBoxOf(held.map((layer) => layer.quad));
     if (!box) return "";
     const cropping = this.cropLayer(held) !== null;
-    if (!cropping && this.modifiers.alt && held.length === 1 && this.overAnchor(held[0] as CanvasLayer, placement, this.pointer)) return "crosshair";
-    const hit = this.hitBox(box, placement, this.pointer, cropping, !cropping && this.textLayer(held.length, held[0]) !== null);
+    const caption = this.captionLayer(held) !== null;
+    if (!cropping && !caption && this.modifiers.alt && held.length === 1 && this.overAnchor(held[0] as CanvasLayer, placement, this.pointer)) return "crosshair";
+    const hit = this.hitBox(box, placement, this.pointer, cropping, !cropping && this.textLayer(held.length, held[0]) !== null, caption);
     if (hit?.kind === "handle") return resizeCursor(box, placement.transform, hit.handle);
     if (hit?.kind === "rotate") return this.cursors.rotate;
     return hit?.kind === "body" ? "move" : "";

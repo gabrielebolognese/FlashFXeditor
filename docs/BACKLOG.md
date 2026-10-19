@@ -1,26 +1,18 @@
-# Backlog after v1.0.0
+# Backlog after v1.1.0
 
-Work that v1.0.0 leaves out, with what is needed to pick it up. Batch 50 resolved every
-`TODO(batch NN)` comment in `src/`; the hooks that were still open are listed here instead, next to the
-batch that builds them. Batches 51-53 are planned in `docs/BATCHES.md` (spec §20); Batches 51 (font library) and 52 (preset bar) are built. The known issues
-users can meet are in `docs/PROGRESS.md` (Known issues).
+Work that v1.1.0 leaves out, with what is needed to pick it up. Batch 50 resolved every
+`TODO(batch NN)` comment in `src/` for v1.0.0; Batches 51-53 (spec §20: the font library, the preset bar,
+caption styles per cue) are built for v1.1.0, the hooks Batch 50 listed for them are resolved, and `src/`
+has no `TODO(batch NN)` comment. The known issues users can meet are in `docs/PROGRESS.md` (Known issues).
 
-## Hooks for the planned batches
+## Left out of caption styles per cue (Batch 53)
 
-### Batch 53: caption styles per cue
-- **Presets on cues** (`TODO(batch 53)` in `src/app/presetController.ts`, Batch 52): with cues selected,
-  the preset bar, the Presets tab and their hover style the caption track (`captionTarget`); §20.3 writes
-  the selected cues' overrides instead, a preset's word `highlight` included.
-- **Compositor** (was `TODO(batch 53)`, Batch 32): `writeCaption` in `src/render/compositor/Compositor.ts`
-  takes one style per caption track: `live?.styles?.get(track.id) ?? captionStyle(doc, track.id)`. The
-  effective style of a cue (the track style with the cue's `styleOverride`, spec §20.3) is resolved
-  there, and the raster cache key follows it.
-- **Transcription** (Batch 33): `replaceCuesInRange` places transcribed cues like an import, with no
-  override.
-- **Paste attributes** (Batch 39): the groups in `src/timeline/edit/pasteAttributes.ts` are clip groups;
-  §20.3 adds `Caption style` for cues.
-- **Snapping** (Batches 23, 28, 46): text boxes snap by their box. Batch 53's per-cue caption drags bring
-  snapping and smart guides for captions; glyph bounds and baselines are not snap targets.
+- **Rich text inside a cue** (spec §10.1, §20.3): one cue has one style; several fonts or colors within a
+  cue (apart from the word highlight) would need runs in `CaptionClip.text` and in the text layout
+  (`src/render/text/`).
+- **Glyph bounds and baselines as snap targets** (Batches 23, 28, 46): text boxes and captions snap by
+  their box (a caption's drag snaps its box's edges and center to the frame, the safe zones and the
+  other layers).
 
 ## Engineering items (moved out of Batch 50)
 

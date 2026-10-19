@@ -4,7 +4,8 @@
 // canvas gizmo draw them (previewController invalidates both on every change), and the release
 // commits one command. A crop handle drag on the canvas (§7.3) writes its crops here too, so the Crop
 // fields follow it live. An Animation field scrub (§10.4) gives the text clips' animations. The cue list
-// (§10.5) gives the text of the cue being typed, a Caption style field scrub the caption track's style.
+// (§10.5) gives the text of the cue being typed, a Caption style field scrub the caption track's style
+// (or, in the Selected scope, the selected cues' own styles: spec §20.3).
 // A Solid field scrub or a fill color dragged (Batch 34) gives the solids' looks.
 import type { CaptionStyle, ClipId, Crop, RGBA, TrackId, Transform } from "../core/document/types.js";
 import { createStore, type Store } from "../core/store/createStore.js";
@@ -23,12 +24,14 @@ export interface LiveEdit {
   cues: ReadonlyMap<ClipId, string> | null;
   /** Caption track styles (a Caption style field scrub, a color dragged, a preset hovered). */
   captionStyles: ReadonlyMap<TrackId, CaptionStyle> | null;
+  /** Cues' effective styles (a Selected scope field scrub, a color dragged, a preset hovered over selected cues; spec §20.3). */
+  cueStyles: ReadonlyMap<ClipId, CaptionStyle> | null;
   /** Solids' looks (a Solid field scrub, a fill color dragged). */
   solids: ReadonlyMap<ClipId, SolidLook> | null;
   background: RGBA | null;
 }
 
-export const NO_LIVE_EDIT: LiveEdit = { transforms: null, opacities: null, crops: null, texts: null, anims: null, cues: null, captionStyles: null, solids: null, background: null };
+export const NO_LIVE_EDIT: LiveEdit = { transforms: null, opacities: null, crops: null, texts: null, anims: null, cues: null, captionStyles: null, cueStyles: null, solids: null, background: null };
 
 export const liveEdit = createStore<LiveEdit>(NO_LIVE_EDIT);
 

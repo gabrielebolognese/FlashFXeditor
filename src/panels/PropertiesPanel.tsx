@@ -29,6 +29,9 @@ import { OpacitySection, TransformSection } from "./properties/TransformSection.
 import { IconButton } from "../ui/IconButton.js";
 import styles from "./PropertiesPanel.module.css";
 
+/** No cues selected (the caption track is): the Caption style section edits the track. */
+const NO_CUES: readonly string[] = [];
+
 // The properties panel (spec §11): context-driven sections from a registry keyed by the selection kind
 // (context.ts), each collapsible with its state persisted; the quick-action row on top for a clip
 // selection. The panel renders when the selection kind, its ids or the primary item change (one
@@ -67,7 +70,7 @@ function sectionBody(id: SectionId, context: PropertiesContext): ReactNode {
     case "solid":
       return context.kind === "clips" ? <SolidSection ids={context.solidIds} /> : null;
     case "captionStyle":
-      return (context.kind === "clips" || context.kind === "track") && context.captionTrackId ? <CaptionStyleSection trackId={context.captionTrackId} /> : null;
+      return (context.kind === "clips" || context.kind === "track") && context.captionTrackId ? <CaptionStyleSection trackId={context.captionTrackId} cueIds={context.kind === "clips" ? context.cueIds : NO_CUES} /> : null;
     case "transform":
       return context.kind === "clips" ? <TransformSection ids={context.layerIds} /> : null;
     case "crop":

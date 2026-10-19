@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { addCaptionTrack, makeCaptionClip, makeMedia, makeMediaClip, makeProject, makeSolidClip, makeTextClip, makeTrack, withClips } from "../core/document/fixtures.js";
-import type { MediaClip, Project } from "../core/document/types.js";
+import type { CaptionClip, MediaClip, Project } from "../core/document/types.js";
 import { exportNeeds } from "./inputs.js";
 
 function project(): Project {
@@ -35,5 +35,12 @@ describe("exportNeeds", () => {
     expect(exportNeeds(doc, { start: 0, end: 25 }).media).toEqual(["a"]);
     expect(exportNeeds(doc, { start: 0, end: 25 }).texts.map(({ text }) => text)).toEqual(["Hello"]);
     expect(exportNeeds(doc, { start: 60, end: 100 })).toEqual({ media: [], texts: [] });
+  });
+
+  it("lists a cue in its own style (spec §20.3): the export worker loads its fonts", () => {
+    const doc = project();
+    doc.clips.c1 = { ...(doc.clips.c1 as CaptionClip), styleOverride: { text: { fontFamily: "Anton", fontWeight: 400 } } };
+    const style = exportNeeds(doc, { start: 0, end: 200 }).texts[1]?.style;
+    expect(style).toMatchObject({ fontFamily: "Anton", fontWeight: 400, fontSize: doc.captionTracks.cc?.style.text.fontSize });
   });
 });

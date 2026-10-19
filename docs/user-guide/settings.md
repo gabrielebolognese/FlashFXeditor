@@ -151,7 +151,7 @@ The **About** tab tells you which version of Shorts Editor you are running and h
 > - Length: about 40 seconds
 > - Shows:
 >   1. Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>, type `about` and press <kbd>Enter</kbd>: **Settings** opens on the **About** tab.
->   2. Point at **Version** (1.0.0) and **Renderer** (**WebGPU**).
+>   2. Point at **Version** (1.1.0) and **Renderer** (**WebGPU**).
 >   3. Click **View licenses**: the license list opens in a new browser tab. Go back to the editor's tab.
 >   4. Scroll down to **Font licenses** and click **Cinzel** ("Natanael Gama · SIL Open Font License 1.1"): its license text opens in a new browser tab. Go back to the editor's tab.
 >   5. Click **Keyboard shortcuts**: **Settings** closes and the **Keyboard shortcuts** sheet opens. Press <kbd>Esc</kbd>.
@@ -165,7 +165,7 @@ The tab works on the start screen too, before you open a project. It has four gr
 
 | Group | Row | What it shows and does |
 | --- | --- | --- |
-| **Shorts Editor** | **Version** | The version of the editor, for example 1.0.0. Every save writes this version into the project's `project.json`. |
+| **Shorts Editor** | **Version** | The version of the editor, for example 1.1.0. Every save writes this version into the project's `project.json`. |
 | | **Renderer** | How the editor draws the preview and the frames of your exports: **WebGPU**, or **WebGL2** on computers without WebGPU or when you started the editor with `?renderer=webgl2`. See [Check your browser](getting-started.md#check-your-browser). It reads **Not started** if the editor hasn't set up your graphics card yet. |
 | **Help** | **Shortcuts** | **Keyboard shortcuts** closes **Settings** and opens the sheet of every key. See [See every shortcut](command-palette-and-custom-shortcuts.md#see-every-shortcut). |
 | | **Commands** | **Command palette** closes **Settings** and opens the palette, where you can find every command by name, with its shortcut. See [Run a command from the palette](command-palette-and-custom-shortcuts.md#run-a-command-from-the-palette). |

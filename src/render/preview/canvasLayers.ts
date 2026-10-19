@@ -13,11 +13,16 @@
 // - Hit testing goes top layer first (§7.2); a marquee takes the layers whose quad intersects it. Text
 //   layers are hit on their glyph bounds padded by TEXT_HIT_PADDING project px and on their
 //   background boxes (`hits`), not on the empty corners of their box.
+// - The caption track's cue at the frame (spec §20.3, Batch 53) is the top layer (the track is above
+//   every video track), marked `cue`: its caption as drawn (captionGizmo.ts, with the live caption
+//   values and a drag's position), hit on its glyphs and boxes like text. Hidden caption tracks have
+//   none; a locked one is in the picture only.
 import { animatedTransform } from "../../core/document/keyframes.js";
-import type { ClipId, Crop, Frame, Project, TextClip, Track, TrackId, Transform } from "../../core/document/types.js";
+import type { ClipId, Crop, Frame, Project, TextContent, TextStyle, Track, TrackId, Transform } from "../../core/document/types.js";
 import { clipInIndex, trackIndex } from "../../timeline/model/queries.js";
 import { isLayerClip, layerContent, layerCorners, layerPoint, scaleYOf, type ContentBox, type Point, type Size } from "../../timeline/edit/transform.js";
-import type { LiveText } from "../compositor/Compositor.js";
+import type { LiveCaptions, LiveText } from "../compositor/Compositor.js";
+import { cueGeometry } from "./captionGizmo.js";
 import type { SolidLook } from "../../timeline/edit/solid.js";
 import type { Rect as TextRect } from "../text/layout.js";
 import { textLayout } from "../text/layoutCache.js";
@@ -37,6 +42,8 @@ export interface CanvasLayer {
   quad: Quad;
   /** Where a click selects it instead of the whole quad (text: padded glyph bounds and background boxes). */
   hits?: readonly Quad[];
+  /** The caption track's cue (spec §20.3): moved and sized as a caption, not transformed. */
+  cue?: true;
 }
 
 /** Axis-aligned rectangle in project px. */
@@ -55,13 +62,14 @@ export function canvasLayersAt(
   crops: ReadonlyMap<ClipId, Crop> | null = null,
   texts: ReadonlyMap<ClipId, LiveText> | null = null,
   solids: ReadonlyMap<ClipId, SolidLook> | null = null,
+  captions: LiveCaptions | null = null,
 ): CanvasLayer[] {
-  return layersAt(project, frame, transforms, crops, texts, solids, (track) => !track.hidden && !track.locked);
+  return layersAt(project, frame, transforms, crops, texts, solids, captions, (track) => !track.hidden && !track.locked);
 }
 
 /** The layers in the picture at `frame`, bottom first: the compositor's tracks (locked included, §6.12). */
 export function pictureLayersAt(project: Project, frame: Frame, transforms: ReadonlyMap<ClipId, Transform> | null = null): CanvasLayer[] {
-  return layersAt(project, frame, transforms, null, null, null, (track) => !track.hidden && !track.muted);
+  return layersAt(project, frame, transforms, null, null, null, null, (track) => !track.hidden && (track.kind === "caption" || !track.muted));
 }
 
 function layersAt(
@@ -71,10 +79,13 @@ function layersAt(
   crops: ReadonlyMap<ClipId, Crop> | null,
   texts: ReadonlyMap<ClipId, LiveText> | null,
   solids: ReadonlyMap<ClipId, SolidLook> | null,
+  captions: LiveCaptions | null,
   include: (track: Track) => boolean,
 ): CanvasLayer[] {
   const layers: CanvasLayer[] = [];
+  let cueTrack: Track | null = null;
   for (const track of project.tracks) {
+    if (track.kind === "caption" && include(track)) cueTrack = track;
     if (track.kind !== "video" || !include(track)) continue;
     const found = clipInIndex(trackIndex(project, track), frame);
     if (!found?.enabled || !isLayerClip(found)) continue;
@@ -86,15 +97,24 @@ function layersAt(
     // A keyed transform as it is at the frame (spec §7.3: the gizmo edits the keyframe there).
     const transform = transforms?.get(clip.id) ?? animatedTransform(clip, frame - clip.start);
     const layer: CanvasLayer = { clipId: clip.id, trackId: track.id, transform, box, quad: layerCorners(transform, box, project.settings) };
-    if (clip.kind === "text") layer.hits = textHits(clip, transform, box, project.settings);
+    if (clip.kind === "text") layer.hits = textHits(clip.text, clip.style, transform, box, project.settings);
     layers.push(layer);
+  }
+  // The cue at the frame, on top (spec §20.3).
+  const cue = cueTrack ? clipInIndex(trackIndex(project, cueTrack), frame) : null;
+  if (cueTrack && cue?.kind === "caption") {
+    const geometry = cueGeometry(project, cueTrack, cue, captions, transforms?.get(cue.id));
+    if (geometry) {
+      const { look, box, transform } = geometry;
+      layers.push({ clipId: cue.id, trackId: cueTrack.id, transform, box, quad: layerCorners(transform, box, project.settings), hits: textHits(look.content, look.style, transform, box, project.settings), cue: true });
+    }
   }
   return layers;
 }
 
 /** A text layer's hit areas (§7.2): each line's glyph bounds padded by TEXT_HIT_PADDING project px, and its background boxes. */
-function textHits(clip: TextClip, transform: Transform, box: Size, frame: Size): Quad[] {
-  const layout = textLayout(clip.text, clip.style);
+function textHits(text: TextContent, style: TextStyle, transform: Transform, box: Size, frame: Size): Quad[] {
+  const layout = textLayout(text, style);
   const padX = TEXT_HIT_PADDING / Math.max(Math.abs(transform.scale), 1e-6);
   const padY = TEXT_HIT_PADDING / Math.max(Math.abs(scaleYOf(transform)), 1e-6);
   const rects: TextRect[] = layout.glyphs.map((g) => ({ x: g.x - padX, y: g.y - padY, width: g.width + 2 * padX, height: g.height + 2 * padY }));

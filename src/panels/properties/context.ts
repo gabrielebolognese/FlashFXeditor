@@ -59,6 +59,8 @@ export type PropertiesContext =
       detachIds: readonly ClipId[];
       /** The caption track when cues are among them (the Caption style section). */
       captionTrackId: TrackId | null;
+      /** The cues among them (the Caption style section's Selected scope, spec §20.3). */
+      cueIds: readonly ClipId[];
     }
   /** The session's `cue` selection kind (spec §3.3); cues are selected as clips, so nothing makes it. */
   | { kind: "cue" };
@@ -104,10 +106,11 @@ export function propertiesContext(selection: Selection, markerId: string | null,
       });
       const textIds = clipIds.filter((id) => project.clips[id]?.kind === "text");
       const solidIds = clipIds.filter((id) => project.clips[id]?.kind === "solid");
-      const cue = clipIds.map((id) => project.clips[id]).find((clip) => clip?.kind === "caption");
+      const cueIds = clipIds.filter((id) => project.clips[id]?.kind === "caption");
+      const cue = cueIds.length > 0 ? project.clips[cueIds[0] as ClipId] : undefined;
       const audioIds = audioTargets(project, clipIds);
       const detachIds = clipIds.filter((id) => canDetach(project, id));
-      return { kind: "clips", clipIds, primary, layerIds, layerPrimary, mediaIds, speedIds, textIds, solidIds, audioIds, detachIds, captionTrackId: cue?.trackId ?? null };
+      return { kind: "clips", clipIds, primary, layerIds, layerPrimary, mediaIds, speedIds, textIds, solidIds, audioIds, detachIds, captionTrackId: cue?.trackId ?? null, cueIds };
     }
   }
 }

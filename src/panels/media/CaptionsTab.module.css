@@ -152,3 +152,16 @@
   text-align: center;
   font-variant-numeric: tabular-nums;
 }
+
+/* A cue with its own style (spec §20.3; gap: the DS has none): an --accent dot (--space-2, the
+   properties panel's override marker) in the row's right padding, centered. */
+.styleDot {
+  position: absolute;
+  top: 50%;
+  right: var(--space-0);
+  width: var(--space-2);
+  height: var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  transform: translateY(-50%);
+}

@@ -143,7 +143,7 @@ Where the new text goes:
 - All the captions of the track take the preset's font, size, colors, outline, shadow and background box, in one step named, for example, **Apply "Yellow word" to captions**.
 - A preset with a word highlight, such as **Yellow word**, **Boxed word**, **Green karaoke** or **Pop word**, also sets the track's **Highlight**, **Active** and **Other words**. Other presets keep the highlight the captions have. See [Highlight the spoken word](captions.md#highlight-the-spoken-word).
 - The captions keep their **Position**, **Max width** and **Max lines**. The preset's box width, **Apply position** and animations are not used.
-- With a cue selected, the preset styles all the captions too. Styles for single cues are available in a later version.
+- With cues selected (and not the **CC** track), the preset styles only those cues: they take its look as a style of their own, and the other captions keep the track's. **Reset to track style** in the **Caption style** section or in the cue menu gives them the track's look back.
 
 See [Give captions the look of a preset](captions.md#give-captions-the-look-of-a-preset).
 

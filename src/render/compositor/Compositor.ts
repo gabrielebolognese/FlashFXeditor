@@ -26,6 +26,12 @@
 //   cue has word timings and the style a highlight, the layer carries the active word
 //   (`CaptionHighlightFrame`). `captions` gives the cue list's live text and a style field scrub's
 //   live style. Cues about to show are listed by `upcomingTexts` too.
+// - Styles per cue (spec §20.3, Batch 53): a cue is drawn in its effective style (the track's with its
+//   `styleOverride` on top, text/captions.ts `effectiveCaptionStyle`: one object per override, so the
+//   look and raster caches hold), at its own position and with its own highlight colors. `captions`
+//   also gives cues' live styles (a Selected scope field scrub, a hovered preset, a corner handle drag)
+//   and the cue edited inline (its draft text, its selection highlight, no word highlight); a canvas
+//   drag of a cue gives its live position through `transforms` (the caption's box, anchored as placed).
 // - Solids (spec §5.2, Batch 34) resolve to geometry: their size's box drawn as its shape (a box with
 //   the drawn corner radius, or an ellipse) in their color or vertical gradient; flips mirror the
 //   fill inside the box. `solids` gives a Solid field scrub's or a size handle drag's looks.
@@ -54,7 +60,7 @@ import { animatedOpacity, animatedTransform, maxKeyedScale } from "../../core/do
 import { framesToSourceUs, secondsToFrames } from "../../core/document/time.js";
 import { handleTimeUs, transitionMix } from "../../core/document/transitions.js";
 import type { CaptionClip, CaptionStyle, Clip, ClipId, Crop, Frame, MediaClip, MediaId, Project, RGBA, TextAnim, TextClip, TextContent, TextStyle, Track, TrackId, Transform } from "../../core/document/types.js";
-import { activeWordIndex, captionPlace, defaultCaptionStyle } from "../../text/captions.js";
+import { activeWordIndex, captionPlace, defaultCaptionStyle, effectiveCaptionStyle } from "../../text/captions.js";
 import { activeAnim, animUnit, isPlayable, newUnitState, presence, resetUnitState, typedCount, unitProgress, writeUnitShape, type ActiveAnim, type UnitState } from "../../text/anim.js";
 import { clipInIndex, lastClipStartingBy, trackIndex, type TrackIndex } from "../../timeline/model/queries.js";
 import { multiplyInto, mutableIdentity, setMat, type MutableMat3 } from "../mat3.js";
@@ -138,6 +144,10 @@ export interface LiveAnims {
 export interface LiveCaptions {
   texts: ReadonlyMap<ClipId, string> | null;
   styles: ReadonlyMap<TrackId, CaptionStyle> | null;
+  /** Cues' effective styles shown live (spec §20.3: a Selected scope field scrub, a hovered preset, a corner handle drag). */
+  cueStyles?: ReadonlyMap<ClipId, CaptionStyle> | null;
+  /** The cue edited inline on the canvas (spec §7.7, §20.3): its selection highlight (drawn in the raster); no word highlight while edited. */
+  editing?: { cueId: ClipId; highlight: TextHighlight | null } | null;
 }
 
 /** A text clip about to show and what it will draw (`upcomingTexts`). */
@@ -272,7 +282,7 @@ export class Compositor {
       // The caption track's cue (spec §10.5), unless the track is hidden.
       if (track.kind === "caption") {
         const layer = (this.textPool[textLayers] ??= newTextLayer());
-        if (!track.hidden && this.writeCaption(layer, doc, track, frame, captions)) {
+        if (!track.hidden && this.writeCaption(layer, doc, track, frame, captions, transforms)) {
           out.layers.push(layer);
           textLayers += 1;
         }
@@ -428,11 +438,12 @@ export class Compositor {
   /** The cues showing in [`frame`, `frame` + `reach`): their raster, and with a highlight their word atlases. */
   private upcomingCues(doc: Project, track: Track, frame: Frame, reach: Frame): void {
     const index = trackIndex(doc, track);
-    const style = captionStyle(doc, track.id);
+    const trackStyle = captionStyle(doc, track.id);
     for (let at = lastClipStartingBy(index, frame + reach - 1); at >= 0; at--) {
       const cue = index.clips[at] as CaptionClip;
       if (cue.start + cue.duration <= frame) break;
       if (!cue.enabled || cue.text.trim() === "") continue;
+      const style = effectiveCaptionStyle(trackStyle, cue.styleOverride);
       const look = captionLook(cue.text, style);
       const highlighting = style.highlight.mode !== "none" && cue.words !== undefined && cue.words.length > 0;
       const shown = highlighting ? look.inactive : look.style;
@@ -591,33 +602,43 @@ export class Compositor {
   }
 
   /**
-   * The caption track's cue at `frame` (spec §10.5): its text (or the cue list's live text) laid out in
-   * the track's style (or a field scrub's), centered at the style's position, with its active word.
+   * The caption track's cue at `frame` (spec §10.5): its text (or the cue list's or the inline editor's
+   * live text) laid out in its effective style (spec §20.3: the track's, or a field scrub's, with the
+   * cue's override on top; or the cue's live style), at the style's position (or where a canvas drag
+   * has it), with its active word.
    */
-  private writeCaption(layer: WritableTextLayer, doc: Project, track: Track, frame: Frame, live: LiveCaptions | null): boolean {
+  private writeCaption(layer: WritableTextLayer, doc: Project, track: Track, frame: Frame, live: LiveCaptions | null, transforms: ReadonlyMap<ClipId, Transform> | null): boolean {
     const cue = clipInIndex(trackIndex(doc, track), frame);
     if (cue?.kind !== "caption" || !cue.enabled) return false;
     const text = live?.texts?.get(cue.id) ?? cue.text;
     if (text.trim() === "") return false;
-    // The track's caption style for every cue; per-cue style overrides (spec §20.3) come here (docs/BACKLOG.md).
-    const style = live?.styles?.get(track.id) ?? captionStyle(doc, track.id);
+    const style = live?.cueStyles?.get(cue.id) ?? effectiveCaptionStyle(live?.styles?.get(track.id) ?? captionStyle(doc, track.id), cue.styleOverride);
     const look = captionLook(text, style);
     const words = cue.words;
-    const highlighting = style.highlight.mode !== "none" && words !== undefined && words.length > 0 && text === cue.text;
+    const edited = live?.editing?.cueId === cue.id ? live.editing : null;
+    const highlighting = style.highlight.mode !== "none" && words !== undefined && words.length > 0 && text === cue.text && !edited;
     const shown = highlighting ? look.inactive : look.style;
     const layout = textLayout(look.content, shown);
     const raster = layout.raster;
     if (!raster) return false;
-    const place = captionPlace(style, doc.settings.height);
     const transform = this.captionTransform;
-    transform.y = place.y;
-    transform.anchor.y = place.anchorY;
+    const moved = transforms?.get(cue.id);
+    if (moved) {
+      transform.x = moved.x;
+      transform.y = moved.y;
+      transform.anchor.y = moved.anchor.y;
+    } else {
+      const place = captionPlace(style, doc.settings.height);
+      transform.x = place.x;
+      transform.y = place.y;
+      transform.anchor.y = place.anchorY;
+    }
     writeModel(layer.model, transform, layout.width, layout.height, doc.settings.width, doc.settings.height);
     layer.trackId = track.id;
     layer.clipId = cue.id;
     layer.text = look.content;
     layer.style = shown;
-    layer.highlight = null;
+    layer.highlight = edited?.highlight ?? null;
     layer.scale = 1;
     layer.detail = Math.min(MAX_TEXT_SCALE, TEXT_RASTER_MAX / Math.max(raster.width, raster.height));
     layer.opacity = 1;

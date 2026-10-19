@@ -436,6 +436,10 @@ export const COMMANDS: readonly CommandInfo[] = [
   captions("captions.transcribe", "Transcribe", { icon: Mic, keywords: "speech to text whisper auto captions" }),
   captions("caption.mergePrevious", "Merge with previous cue", { icon: Merge }),
   captions("caption.editText", "Edit cue text", { icon: Pencil, scopes: MEDIA }),
+  // Styles per cue (spec §20.3, Batch 53)
+  captions("caption.copyStyle", "Copy caption style", { icon: Copy, keywords: "cue look format" }),
+  captions("caption.pasteStyle", "Paste caption style", { icon: ClipboardPaste, keywords: "cue look format" }),
+  captions("caption.resetStyle", "Reset to track style", { icon: RotateCcw, keywords: "cue caption style override default" }),
 
   // Presets (spec §10.3)
   presets("preset.save", "Save as preset", { icon: BookmarkPlus, keywords: "new preset from selection text style" }),
