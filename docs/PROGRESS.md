@@ -6193,3 +6193,44 @@ Why each dependency exists (Batch rule 8).
   - Version 1.1.0 (Settings > About).
 - other: `docs/BATCHES.md` and `docs/EDITOR_SPEC.md` (Batches 51-53, §20), edited outside the batch runs, are left out of this batch's commit, as in Batches 29-52.
 - review request: README.md docs/ARCHITECTURE.md docs/BACKLOG.md docs/PROGRESS.md docs/user-guide/captions.md docs/user-guide/preset-bar.md docs/user-guide/settings.md package-lock.json package.json src/app/canvasController.ts src/app/captionController.ts src/app/commandCatalog.ts src/app/liveEdit.ts src/app/presetController.test.ts src/app/presetController.ts src/app/previewController.ts src/app/userFontsController.ts src/core/document/types.ts src/core/document/validate.ts src/core/store/sessionStore.ts src/export/inputs.test.ts src/export/inputs.ts src/panels/PropertiesPanel.tsx src/panels/media/CaptionsTab.module.css src/panels/media/CaptionsTab.tsx src/panels/media/cueSelection.test.ts src/panels/media/cueSelection.ts src/panels/properties/CaptionStyleSection.module.css src/panels/properties/CaptionStyleSection.tsx src/panels/properties/FontList.ts src/panels/properties/Section.module.css src/panels/properties/Section.tsx src/panels/properties/StyleFields.tsx src/panels/properties/captionBinding.test.ts src/panels/properties/captionBinding.ts src/panels/properties/context.test.ts src/panels/properties/context.ts src/project/projectFile.test.ts src/project/projectFile.ts src/project/sessionFile.test.ts src/project/sessionFile.ts src/render/compositor/Compositor.ts src/render/preview/CanvasEditInput.ts src/render/preview/InlineTextEditor.ts src/render/preview/PreviewOverlayView.ts src/render/preview/canvasLayers.ts src/render/preview/captionGizmo.test.ts src/render/preview/captionGizmo.ts src/render/preview/gizmo.ts src/render/text/captionLayers.test.ts src/text/captions.test.ts src/text/captions.ts src/text/fonts.ts src/timeline/edit/captions.test.ts src/timeline/edit/captions.ts src/timeline/edit/fuzzKit.ts src/timeline/edit/pasteAttributes.test.ts src/timeline/edit/pasteAttributes.ts src/timeline/menus/TimelineContextMenu.tsx src/timeline/view/drawContent.ts src/timeline/view/glyphs.ts
+- review: rejected (2026-10-19, first review; `npm run check` green: typecheck, lint with the CSS color and token checks, 2496 / 2496 unit tests in 238 files, 4 / 4 perf tests, build, main JS 1393.23 kB / 443.54 kB gzip, export.worker 419.23 kB, the same as reported. The build prints rolldown's `[PLUGIN_TIMINGS]` notice, which is a timing report and not a code warning. I read the batch commit with `git diff 07a845c~1 07a845c` and checked the two problems below with throwaway unit tests, deleted afterwards. I did not rerun the browser scripts.)
+  1. Saved project templates that have a caption track are lost after the update to 1.1.0. Cues copied in 1.0.0 cannot be pasted into a project that has no caption track. Both stores keep a full `CaptionStyle`. This batch made `CaptionStyle.x` a required field (`src/core/document/validate.ts:220`), but only migrated `project.json` (`src/project/projectFile.ts:28`, migration 2 -> 3).
+     - Templates (Batch 42, IndexedDB key `templates.v1`):
+       - `sanitizeTrack` copies the stored `captionStyle` as it is (`src/project/templates.ts:117`).
+       - `sanitizeTemplate` then validates the project the template makes and drops the template on any issue (`:140`). The issue here is "x undefined must be a number".
+       - `TemplateStore.load` lists only the templates that pass. The next `save` or `remove` writes that shorter list back, so the old templates are deleted for good.
+       - Reproduced in a unit test: a template from `templateFromProject` with the caption style's `x` deleted (the 1.0.0 shape). `sanitizeTemplate` returns null for it and keeps the same template with `x`. After `load`, the list is empty. After one `save` of another template, the store holds only that other template.
+       - Saving the caption track's style is one of the things a template is for (spec §15, the module header).
+     - Clipboard (Batch 39, system clipboard):
+       - `parseClipboard` accepts the payload's `captionStyle` unchecked (`src/timeline/edit/clipboard.ts:210`). `pasteClips` gives that style to the caption track it creates (`:377`).
+       - Reproduced: cues copied with `copyClips`, then `x` removed from `captionStyle`. The payload parses and `pasteClips` returns `ok`. The document it makes has the issue `captionTracks entry n1: x undefined must be a number`, so `clipboardController` refuses the paste with a toast.
+     - Fix:
+       - Fill in `x: 0` wherever a stored caption style is read: the template track in `sanitizeTrack`, and the clipboard payload's `captionStyle` in `parseClipboard` or before `pasteClips` uses it. One shared helper is enough, and migration 2 -> 3 can use it too.
+       - Add unit tests for both cases: a template stored without `x` loads, makes a valid project and survives the next save; a payload without `x` pastes into a project that has no caption track.
+       - Also check for any other store that keeps a `CaptionStyle` outside `project.json`. I found only these two (`grep CaptionStyle src`).
+  2. Minor: a cue that keeps only its preset link still shows as having its own style.
+     - The row markers' reset keeps `presetId` (`src/panels/properties/CaptionStyleSection.tsx:113`), and `setCueStyles` writes it back even when the override comes out empty (`src/timeline/edit/captions.ts:498`).
+     - Repro: apply a Captions preset to a cue, then in **Selected** click each row's marker until no marker is left. The cue now looks exactly like the track, but it still shows:
+       - the cue list's dot, "This cue has its own style" (`src/panels/media/CaptionsTab.tsx:249`);
+       - the timeline's paintbrush badge (`src/timeline/view/drawContent.ts:515`);
+       - an enabled **Reset to track style** (`src/app/captionController.ts:179`), which then adds an undo step that changes nothing visible.
+     - The batch entry and spec §20.3 give the dot and the badge to cues "with an override".
+     - Fix: drop the preset link when a cue's override becomes empty (in `setCueStyles`, or in the marker reset). Add a unit test.
+  - Checked and fine:
+    - Acceptance 1-6 each have a browser script with recorded results and unit tests that pass here:
+      - `captionBinding.test.ts`: Selected scope edits, one step.
+      - `timeline/edit/captions.test.ts`: split, merge, move, trim and copy carry the style; undo and redo; canvas moves and sizes in both scopes.
+      - `presetController.test.ts`: presets on cues, hover, reset.
+      - `projectFile.test.ts`: a schema 2 project opens unchanged.
+      - `captionLayers.test.ts`: per-cue style, position and highlight colors, live values.
+      - `inputs.test.ts`: export fonts per cue.
+      - Pending manual checks list the real-screen, IME, long-transcription and macOS cases with steps.
+    - Do not build yet: there is no rich text inside a cue. A cue has one style plus the word highlight.
+    - Literals: the new CSS (`CaptionStyleSection.module.css`, `CaptionsTab.module.css` `.styleDot`, `Section.module.css` `.labelMarked`) uses tokens only. The canvas code takes colors from the theme. The paintbrush glyph is path data, like the other glyphs. The gaps are logged.
+    - §3/§4:
+      - A canvas move, a corner drag and a label scrub stay ephemeral until release: `Drag.cueStyles`, the drag transforms and `liveEdit.cueStyles`. Each ends in one command (`moveCaption` / `sizeCaption` / `setCueStyles`).
+      - The section's selectors read the document only, so live values cause no React render.
+      - `effectiveCaptionStyle` gives one object per override and track style, so the look and raster caches keep their keys.
+      - Export loads each cue's fonts (`exportNeeds`, `projectTextStyles`). No time values changed.
+    - TODOs: there are none in `src/` (the Batch 52 `TODO(batch 53)` hook is resolved). `package.json` is at 1.1.0, and the tag `v1.1.0` is on 8962887.
+    - There is no earlier rejection to recheck.
