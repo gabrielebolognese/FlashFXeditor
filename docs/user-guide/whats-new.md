@@ -2,6 +2,11 @@
 
 Shorts Editor grows in steps called batches. This page lists what each batch added that you can see or use, newest first. Follow the links for the full instructions.
 
+> **Video placeholder: What's new in Batch 52**
+> - File: `videos/whats-new/batch-52.mp4` (not recorded yet)
+> - Length: about 50 seconds
+> - Shows: open a new project: the preset bar under the preview header shows nine **Favorites** buttons, each drawn in its own look; click an empty area of the tracks and click **Bold outline**: "BOLD" appears at the playhead, selected; type `HELLO` and press <kbd>Esc</kbd>; with the text selected, point at **Neon glow** and **Luxury gold**: the text follows; press <kbd>Alt</kbd>+<kbd>7</kbd>: it takes **Impact**; choose **Captions** in the set menu, select the **CC** track and click **Yellow word**: the captions turn bold white with the spoken word in yellow; drag a button to another place in **Favorites**; click **Presets** in the preview header: the bar hides and the picture grows.
+
 > **Video placeholder: What's new in Batch 51**
 > - File: `videos/whats-new/batch-51.mp4` (not recorded yet)
 > - Length: about 50 seconds
@@ -213,6 +218,7 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 > - Shows: open a project with three clips on the timeline; press <kbd>Space</kbd> to play and let the timeline page forward; press <kbd>L</kbd> three times to reach 8x, then <kbd>K</kbd>; hold <kbd>K</kbd> and tap <kbd>L</kbd> to step one frame; turn on **Loop playback**; point at the **Dropped** readout in the status strip.
 
 ## In this page
+- [Batch 52: Preset bar](#batch-52-preset-bar)
 - [Batch 51: Font library](#batch-51-font-library)
 - [Batch 50: Version 1.0](#batch-50-version-10)
 - [Batch 49: WebM files and screen recordings](#batch-49-webm-files-and-screen-recordings)
@@ -264,6 +270,18 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 - [Batch 03: Projects, autosave and recovery](#batch-03-projects-autosave-and-recovery)
 - [Batch 02: Undo, redo and frame-exact time](#batch-02-undo-redo-and-frame-exact-time)
 - [Batch 01: The workspace](#batch-01-the-workspace)
+
+## Batch 52: Preset bar
+- A preset bar sits under the preview header: one row of buttons, each drawing a text preset in its own font, colors, outline, shadow and box. With texts selected, a click restyles them all in one undo step, and pointing at a button shows its look on them first. With nothing selected, a click adds a text at the playhead with the preset's sample text selected, so you type over it right away. With the **CC** track or a cue selected, it styles the captions. See [The preset bar](preset-bar.md).
+- The set menu on the left picks what the bar shows: **Favorites** (the default), **Titles**, **Subtitles**, **Captions**, **Recent** (your last 12), **All**, and your own tags. Scroll the row with the mouse wheel or the arrows, and drag a button to reorder a set. See [Choose which presets the bar shows](preset-bar.md#choose-which-presets-the-bar-shows).
+- <kbd>Alt</kbd>+<kbd>1</kbd> to <kbd>Alt</kbd>+<kbd>9</kbd> apply the first nine buttons, in every panel and also while the bar is hidden. Their tooltips show the keys, and you can change them in **Settings** > **Shortcuts**. See [Apply a preset with Alt and a number](preset-bar.md#apply-a-preset-with-alt-and-a-number).
+- **+** saves the selected text's style as a preset in the set the bar shows, and **Manage presets (the Presets tab)** opens the **Presets** tab. **Presets** in the preview header shows or hides the bar; the project remembers it, and the fullscreen preview has no bar. See [Save the selected text into the bar](preset-bar.md#save-the-selected-text-into-the-bar).
+- The preset menu has a **Preset bar sets** part: **Favorites**, **Titles**, **Subtitles** and **Captions** to put a preset into a set or take it out, and **Tags…**, where each tag you type becomes a set. See [Put presets into sets](preset-bar.md#put-presets-into-sets).
+- 31 new starter presets, 43 in all, in fonts of the font library: 23 **Titles** (luxury, bold, futuristic, handwritten, minimal, retro, neon, comic, pixel), 10 **Subtitles** (boxes, outlines, lower thirds) and 10 **Captions**. Several caption looks, such as **Yellow word**, **Boxed word** and **Green karaoke**, bring their word highlight to the caption track. Your existing starters get their sets, and the new ones join your **Global** list. See [Start with the starter presets](text-presets.md#start-with-the-starter-presets).
+- A new text from a **Subtitles** or **Captions** preset goes in the lower third, like <kbd>Shift</kbd>+<kbd>T</kbd>. See [Add a new text with a preset](text-presets.md#add-a-new-text-with-a-preset).
+- The cards of the **Presets** tab show the same pictures as the bar: the preset's sample text in its look. **Search presets** also finds presets by tag.
+- The favorite chips left the timeline toolbar; your favorites are in the bar's **Favorites** set, and **Title** and **Subtitle** stay in the toolbar. See [Put presets in the preset bar](text-presets.md#put-presets-in-the-preset-bar).
+- The bar costs playback nothing: its pictures are drawn while the video is paused. See [Know what to expect from performance](preview-and-playback.md#know-what-to-expect-from-performance).
 
 ## Batch 51: Font library
 - The **Font** field opens a new font browser with 330 fonts that come with the editor, sorted into 14 looks such as **Luxury & Elegant**, **Bold & Impact**, **Futuristic & Tech**, **Handwritten & Script** and **Captions**. Narrow the list with the look chips, the weight chips (**Thin**, **Light**, **Regular**, **Bold**, **Black**) and a search over names, looks and tags. See [Find a font](fonts.md#find-a-font).
@@ -487,7 +505,7 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 - 12 starter presets come with the editor: **Title**, **Subtitle**, **Bold outline**, **Lower third**, **Caption bold**, **Highlight**, **Minimal mono**, **Big number**, **Elegant serif**, **Handwritten**, **Neon glow** and **Breaking**. See [Start with the starter presets](text-presets.md#start-with-the-starter-presets).
 - **Update preset** in the quick actions writes a title's new style into its preset. Other titles that use the preset keep their style until you apply it to them again, as its tooltip says. See [Update a preset](text-presets.md#update-a-preset).
 - Choose the presets <kbd>T</kbd> and <kbd>Shift</kbd>+<kbd>T</kbd> use: right-click a card and choose **Use as default title** or **Use as default subtitle**. See [Choose the presets for T and Shift+T](text-presets.md#choose-the-presets-for-t-and-shiftt).
-- Mark a preset as a favorite, and a chip with its name appears in the timeline toolbar: one click adds a title in that look at the playhead (up to 8 chips). See [Put favorite presets in the timeline toolbar](text-presets.md#put-favorite-presets-in-the-timeline-toolbar).
+- Mark a preset as a favorite, and a chip with its name appears in the timeline toolbar: one click adds a title in that look at the playhead (up to 8 chips). Since Batch 52, favorites are in the preset bar above the preview instead. See [Put presets in the preset bar](text-presets.md#put-presets-in-the-preset-bar).
 - **Apply position** makes a preset place text too, for example a name in the lower left of the frame. See [Place text with a preset (Apply position)](text-presets.md#place-text-with-a-preset-apply-position).
 - Keep presets for every project (**Global**) or inside one project's folder (**Project**, in `presets/text`). Search, rename, duplicate and delete them from the card menu, export and import them as JSON files, and keep your global presets in a library folder, for example on a synced drive. See [Keep presets for all projects or for one](text-presets.md#keep-presets-for-all-projects-or-for-one), [Export and import presets](text-presets.md#export-and-import-presets) and [Sync your presets with a folder](text-presets.md#sync-your-presets-with-a-folder).
 - Presets look the same in projects of every size: their sizes follow the shorter side of the frame. The default subtitle of a landscape 1920×1080 project is now 900 pixels wide, as in a vertical one.
@@ -782,6 +800,7 @@ See [Projects and saving](projects-and-saving.md).
 See [The workspace](workspace.md) and [Getting started](getting-started.md).
 
 ## Related pages
+- [The preset bar](preset-bar.md)
 - [Exporting your video](exporting-video.md)
 - [Project settings and templates](project-settings-and-templates.md)
 - [Settings](settings.md)
@@ -802,4 +821,4 @@ See [The workspace](workspace.md) and [Getting started](getting-started.md).
 - [Adding media to the timeline](adding-media-to-the-timeline.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 51, 2026-10-19</sub>
+<sub>Last updated: Batch 52, 2026-10-19</sub>

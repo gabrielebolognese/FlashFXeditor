@@ -56,7 +56,8 @@ A click outside the palette closes it too.
 
 - The palette doesn't open while you type in a field or while a dialog is open: press <kbd>Enter</kbd> or <kbd>Esc</kbd> first.
 - On the start screen, the palette opens too. There, **New project**, **Open project**, **Keyboard shortcuts**, **Settings** and **About Shorts Editor** work; the other rows are grey until a project is open.
-- A few commands are not in the palette because they need something you point at: the rows of a preset card's menu (see [Text presets](text-presets.md)), the ruler menu's **Add marker** at the point you right-clicked, a bin chip's **Rename** and **Delete bin** and the media menu's **Move to bin** (see [Organizing media](organizing-media.md)), and the keys that only work while you edit a text or drag.
+- The preset bar's commands are under **Presets**: **Apply preset bar button 1** to **Apply preset bar button 9** (<kbd>Alt</kbd>+<kbd>1</kbd> to <kbd>Alt</kbd>+<kbd>9</kbd>), **Save as preset into the preset bar's set**, and **Preset bar: Favorites**, **Preset bar: Titles**, **Preset bar: Subtitles**, **Preset bar: Captions**, **Preset bar: Recent** and **Preset bar: All** to show a set. **Preset bar**, which shows or hides the bar, is under **Preview**. See [The preset bar](preset-bar.md).
+- A few commands are not in the palette because they need something you point at: the rows of a preset card's menu, also on a button of the preset bar (see [Text presets](text-presets.md)), your own tag sets of the preset bar (choose them in the bar's set menu), the ruler menu's **Add marker** at the point you right-clicked, a bin chip's **Rename** and **Delete bin** and the media menu's **Move to bin** (see [Organizing media](organizing-media.md)), and the keys that only work while you edit a text or drag.
 
 The categories, in the order the list shows them, are **Transport**, **Timeline**, **Edit**, **Clipboard**, **Selection**, **Clip**, **Speed**, **Fades and transitions**, **Keyframes**, **Audio**, **Markers and range**, **Tracks**, **Tools**, **Toggles**, **Add**, **Text**, **Captions**, **Presets**, **Canvas**, **Preview**, **Media**, **Project**, **Export** and **App**.
 
@@ -214,7 +215,8 @@ Two more lists work with the arrow keys:
 - [Splitting, deleting and closing gaps](splitting-and-deleting.md)
 - [Captions](captions.md)
 - [Text presets](text-presets.md)
+- [The preset bar](preset-bar.md)
 - [Organizing media](organizing-media.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 51, 2026-10-19</sub>
+<sub>Last updated: Batch 52, 2026-10-19</sub>

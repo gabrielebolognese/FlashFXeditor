@@ -111,7 +111,7 @@ What you can undo:
 | Adding a solid with **Add solid**, and adding images with **Add image** (the import and the clips are one step) | |
 | Duplicating clips with <kbd>Ctrl</kbd>+<kbd>D</kbd> or **Duplicate**, turning clips off and on (**Disable**, **Enable**) | |
 | **Cut**, **Paste**, **Paste insert**, pasting keyframes and **Paste attributes** (one step each) | Copying clips or keyframes |
-| Applying a text preset, adding a text from a preset, and linking a text to the preset you save it as | Text presets themselves: saving, updating, renaming, duplicating, deleting, importing and syncing presets, favorites, **Apply position** and the default title and subtitle |
+| Applying a text preset, adding a text from a preset, and linking a text to the preset you save it as | Text presets themselves: saving, updating, renaming, duplicating, deleting, importing and syncing presets, favorites, sets and tags, **Apply position** and the default title and subtitle; showing, hiding and reordering the preset bar |
 | Adding, moving, renaming, recoloring and deleting markers | Setting, moving and clearing the in and out points, and marking a part of a media item with <kbd>I</kbd> and <kbd>O</kbd> on its card |
 | **Lift** and **Extract** (one step each) | Proxies: **Generate proxy**, **Remove proxy**, a proxy being made or failing, and **Regenerate thumbnails** |
 | Trimming clips: each trim drag and each press of <kbd>Q</kbd>, <kbd>W</kbd> or <kbd>E</kbd> | Choosing a tool (**Select**, **Razor**, **Hand**, **Slip**, **Slide**, **Rate stretch**) |
@@ -134,6 +134,7 @@ When you open a project again, the editor restores your view from the last sessi
 - the timeline zoom and scroll position, also after you pan or use the scrollbars
 - the timecode format: frames (**ff**) or milliseconds (**ms**)
 - the preview zoom and pan, the preview quality, and the safe zone, grid and guides of the **Overlays** menu (see [Preview zoom, overlays and fullscreen](preview-zoom-overlays-fullscreen.md))
+- whether the preset bar is shown, and the set it shows (see [The preset bar](preset-bar.md))
 - the media panel tab, view (grid or list) and sort order, the bin you show, the filter chips that are on and the list column widths (see [Organizing media](organizing-media.md)), and the **Global** or **Project** list of the **Presets** tab
 - whether **Loop playback** is on
 - whether **Snap** is on
@@ -301,6 +302,7 @@ Changes made in read-only mode exist only in the tab. The editor asks before the
 - [Proxies](proxies.md)
 - [Editing properties](editing-properties.md)
 - [Titles and text](titles-and-text.md)
+- [The preset bar](preset-bar.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 51, 2026-10-19</sub>
+<sub>Last updated: Batch 52, 2026-10-19</sub>

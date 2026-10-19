@@ -35,7 +35,7 @@ Text clips put words on your video: a hook at the start, a title over a shot, a 
 3. The word "Title" appears in the middle of the preview, selected (a gold highlight behind the letters). Type your text: it replaces the selection.
 4. Press <kbd>Esc</kbd> or <kbd>Ctrl</kbd>+<kbd>Enter</kbd> to finish.
 
-That is the whole workflow: one key, your words, one key. The new title has the look of the default title preset: at first the **Title** preset, white Inter ExtraBold at 120 pixels, centered, with a soft shadow. To start your titles in another look, choose another default; see [Choose the presets for T and Shift+T](text-presets.md#choose-the-presets-for-t-and-shiftt). The title lasts until the end of the video clip under the playhead, or 3 seconds by default; see [Where a new title goes](#where-a-new-title-goes).
+That is the whole workflow: one key, your words, one key. The new title has the look of the default title preset: at first the **Title** preset, white Inter ExtraBold at 120 pixels, centered, with a soft shadow. To start your titles in another look, choose another default; see [Choose the presets for T and Shift+T](text-presets.md#choose-the-presets-for-t-and-shiftt). Or click a button of the preset bar above the preview with nothing selected: a new text in that look appears at the playhead, ready for typing. See [Add a new text from the bar](preset-bar.md#add-a-new-text-from-the-bar). The title lasts until the end of the video clip under the playhead, or 3 seconds by default; see [Where a new title goes](#where-a-new-title-goes).
 
 - <kbd>T</kbd> works in every panel, except while you type in a text field, while a dialog is open, and while you edit a text (there it types a "t").
 - If the video is playing, it pauses, so the playhead stays on the new title while you type.
@@ -244,7 +244,7 @@ The number fields work like the others in the panel: type a value, or drag the f
 | **Width** | The width of a fixed box. Dimmed while **Box** is **Auto**. | 10 to 8000 px |
 
 - Turning a switch off keeps its values: turn it on again to get the same outline, shadow or box back.
-- To give other texts the same style in one click, save it as a preset with **Save as preset** in the quick actions. See [Save a text style as a preset](text-presets.md#save-a-text-style-as-a-preset).
+- To give other texts the same style in one click, save it as a preset with **Save as preset** in the quick actions. See [Save a text style as a preset](text-presets.md#save-a-text-style-as-a-preset). To try a ready-made look instead, point at the buttons of the preset bar above the preview with the text selected, and click one. See [The preset bar](preset-bar.md).
 - The background box casts no shadow.
 - A font without a real italic, such as Oswald, gets slanted letters when you click **Italic**.
 - Changing the font, the size or another value that changes the size of the text keeps the text's anchor point where it is on the frame.
@@ -311,6 +311,7 @@ Pressing <kbd>↑</kbd> or <kbd>↓</kbd> in a number field of the **Text** sect
 - [Exporting your video](exporting-video.md)
 - [Text animations](text-animations.md)
 - [Text presets](text-presets.md)
+- [The preset bar](preset-bar.md)
 - [Captions](captions.md)
 - [Editing properties](editing-properties.md)
 - [Arranging layers in the preview](arranging-layers-in-the-preview.md)
@@ -321,4 +322,4 @@ Pressing <kbd>↑</kbd> or <kbd>↓</kbd> in a number field of the **Text** sect
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 51, 2026-10-19</sub>
+<sub>Last updated: Batch 52, 2026-10-19</sub>

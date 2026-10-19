@@ -322,17 +322,19 @@ Choose the look in the **Highlight** row of **Caption style**:
 
 ## Give captions the look of a preset
 
-You can give your captions the style of any text preset, such as **Neon glow** or **Caption bold**.
+You can give your captions the style of any text preset, such as **Neon glow** or **Caption bold**. The **Captions** set of the preset bar has ten looks made for captions, several with a word highlight.
 
 1. Select the **CC** track, or a cue, and no title or subtitle.
-2. Open the **Presets** tab of the Media panel and point at the cards: the captions in the preview take each look while the pointer is on its card.
-3. Click the card you want. Or right-click it and choose **Apply to captions**.
+2. Point at the buttons of the preset bar above the preview (choose **Captions** in its set menu for the caption looks), or at the cards in the **Presets** tab of the Media panel: the captions in the preview take each look while the pointer is on it.
+3. Click the one you want, or press <kbd>Alt</kbd>+<kbd>1</kbd> to <kbd>Alt</kbd>+<kbd>9</kbd> for the first nine buttons of the bar. Or right-click it and choose **Apply to captions**.
 
 - The captions take the preset's font, size, colors, outline, shadow and background box.
-- They keep their **Position**, **Max width**, **Max lines** and **Highlight**. The preset's box width, position and animations are not used.
+- A preset with a word highlight, such as **Yellow word**, **Boxed word**, **Big centered**, **Green karaoke**, **Pop word**, **Comic caption** or **Boxed line**, also sets **Highlight**, **Active** and **Other words**. Other presets keep the highlight the captions have.
+- The captions keep their **Position**, **Max width** and **Max lines**. The preset's box width, position and animations are not used.
+- With a cue selected, the preset styles all the captions of the track. Styles for single cues are available in a later version.
 - The step is named after the preset, for example **Apply "Neon glow" to captions**.
 
-See [Text presets](text-presets.md).
+See [Style your captions from the bar](preset-bar.md#style-your-captions-from-the-bar) and [Text presets](text-presets.md).
 
 ## Export an SRT or VTT file
 
@@ -376,7 +378,7 @@ Every caption change is one step in the history. Hover **Undo** in the app bar t
 | **Caption position**, **Move captions**, **Change caption width**, **Change caption lines** | **Position**, **Y**, **Max width** and **Max lines** |
 | **Word highlight**, **Change highlight color** | **Highlight**, **Active** and **Other words** |
 | **Change font size**, **Add stroke** and the other text style steps | The text style rows, as in [Undo text changes](titles-and-text.md#undo-text-changes) |
-| **Apply "Neon glow" to captions** (with the preset's name) | A preset card with the captions selected |
+| **Apply "Neon glow" to captions** (with the preset's name) | A preset card or a preset bar button (or <kbd>Alt</kbd> and a number) with the captions selected |
 | **Move clip**, **Trim clip**, **Split clip**, **Delete clip**, **Paste**, **Cut** and the other clip steps | Edits of cues on the timeline |
 
 ## What is not available yet
@@ -392,6 +394,7 @@ These parts are available in a later version:
 - [Copying, pasting and duplicating clips](copy-and-paste.md)
 - [Titles and text](titles-and-text.md)
 - [Text presets](text-presets.md)
+- [The preset bar](preset-bar.md)
 - [Tracks](tracks.md)
 - [Timeline](timeline.md)
 - [Splitting, deleting and closing gaps](splitting-and-deleting.md)
@@ -401,4 +404,4 @@ These parts are available in a later version:
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 51, 2026-10-19</sub>
+<sub>Last updated: Batch 52, 2026-10-19</sub>

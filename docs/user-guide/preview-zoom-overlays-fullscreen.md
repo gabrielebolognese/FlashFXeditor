@@ -227,7 +227,8 @@ Press <kbd>F</kbd>, or click **Fullscreen** in the Preview panel header. The pre
 >   3. Move the mouse: they come back. Point at **Dropped 0** in the status line. Keep the mouse still and press <kbd>Tab</kbd>: the header and the transport bar show again, with a gold ring on a control, and stay while you tab through them.
 >   4. Press <kbd>Esc</kbd>: the Media, Edit Properties, Timeline and Preview panels are back at their sizes.
 
-- The header (with **Zoom**, **Fit the frame in the panel**, **Preview quality**, **Overlays**, **Snap**, **Smart guides**, **Exit fullscreen** and **Export frame**) floats at the top, and the transport bar with the status line at the bottom. The audio meter stays along the right edge.
+- The header (with **Zoom**, **Fit the frame in the panel**, **Preview quality**, **Overlays**, **Snap**, **Smart guides**, **Presets**, **Exit fullscreen** and **Export frame**) floats at the top, and the transport bar with the status line at the bottom. The audio meter stays along the right edge.
+- The preset bar is hidden, so the picture gets all the room. It comes back when you leave fullscreen, and <kbd>Alt</kbd>+<kbd>1</kbd> to <kbd>Alt</kbd>+<kbd>9</kbd> still apply its first nine presets. See [The preset bar](preset-bar.md).
 - After 2 seconds without moving the mouse, the header and the transport bar fade out, and the pointer disappears over the picture. Move the mouse to bring them back. While the pointer rests on the header or the transport bar, they stay.
 - The playback shortcuts keep working: play, shuttle and step through your edit as usual.
 - With the keyboard, <kbd>Tab</kbd> moves only through the header and the transport bar: the panels and the app bar under the preview can't be reached until you leave fullscreen. While one of these controls has the keyboard focus, the header and the transport bar stay shown.
@@ -249,6 +250,7 @@ Each project remembers, for the next time you open it:
 - the preview zoom and the part of the frame you panned to
 - the quality mode
 - the safe zone, the grid with its cells per side, and each guide row of the **Overlays** menu
+- whether the preset bar is shown, and the set it shows (see [What the bar remembers](preset-bar.md#what-the-bar-remembers))
 
 None of these are steps in the history: <kbd>Ctrl</kbd>+<kbd>Z</kbd> does not undo a zoom, a pan or an overlay. See [Pick up where you left off](projects-and-saving.md#pick-up-where-you-left-off).
 
@@ -266,6 +268,7 @@ None of these are steps in the history: <kbd>Ctrl</kbd>+<kbd>Z</kbd> does not un
 - [Workspace](workspace.md)
 - [Projects and saving](projects-and-saving.md)
 - [Proxies](proxies.md)
+- [The preset bar](preset-bar.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 46, 2026-10-18</sub>
+<sub>Last updated: Batch 52, 2026-10-19</sub>

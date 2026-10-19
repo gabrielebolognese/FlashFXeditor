@@ -45,6 +45,7 @@ This page lists every keyboard shortcut that works in the current version of Sho
 >   37. Press <kbd>Ctrl</kbd>+<kbd>E</kbd>: the **Export** tab opens beside **Edit Properties**. Press <kbd>Enter</kbd>: a card under **Queue** shows the progress. Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>, type `cancel export` and press <kbd>Enter</kbd>: the message **Export cancelled** appears. Press <kbd>Esc</kbd>: the panel shows **Edit Properties** again.
 >   38. Select a text clip and click the **Edit Properties** tab. Press <kbd>Tab</kbd> until the **Outline** switch has a gold ring: its tooltip reads **Outline**. Press <kbd>Space</kbd>: the outline turns on and playback does not start. Click the switch with the mouse and press <kbd>Space</kbd>: playback starts. Click the **Media** tab, press <kbd>Tab</kbd> until a card has the ring, press <kbd>→</kbd> and <kbd>Enter</kbd>: the next card is inserted at the playhead.
 >   39. Select a title and click its **Font** field: the font browser opens. Type `bold` and press <kbd>↓</kbd> three times: the title shows each highlighted font. Press <kbd>Esc</kbd>: the title is back in its font. Open the browser again, press <kbd>↓</kbd> and <kbd>Enter</kbd>: the title takes the first font and the browser closes.
+>   40. With the title still selected, point at the third button of the preset bar above the preview: its tooltip reads **Bold outline** with **Alt+3**. Press <kbd>Alt</kbd>+<kbd>3</kbd>: the title takes **Bold outline**. Click an empty area of the tracks so nothing is selected and press <kbd>Alt</kbd>+<kbd>1</kbd>: a new "Title" appears at the playhead, ready for typing; press <kbd>Esc</kbd>.
 
 ## In this page
 - [How shortcuts work](#how-shortcuts-work)
@@ -457,20 +458,35 @@ See [Titles and text](titles-and-text.md).
 
 ### Text presets
 
-Text presets have no keys of their own: you use them with the mouse in the **Presets** tab of the Media panel and the timeline toolbar. See [Text presets](text-presets.md).
+You use text presets with the mouse in the **Presets** tab of the Media panel and in the preset bar above the preview, and with <kbd>Alt</kbd>+<kbd>1</kbd> to <kbd>Alt</kbd>+<kbd>9</kbd> (see [Preset bar](#preset-bar)). See [Text presets](text-presets.md).
 
 | Action | Windows | macOS |
 | --- | --- | --- |
-| See a preset on the selected texts, without changing them | Point at its card | Same |
-| Apply a preset to the selected texts, or add a new text with it at the playhead when no text is selected | Click its card | Same |
+| See a preset on the selected texts or captions, without changing them | Point at its card or its button in the preset bar | Same |
+| Apply a preset to the selected texts or captions, or add a new text with it at the playhead when nothing is selected | Click its card or its button | Same |
 | Add a text clip with a preset where you release | Drag its card onto a track of the timeline | Same |
 | Insert it, moving later clips right | Hold <kbd>Ctrl</kbd> when you release the drag on the timeline | Hold <kbd>⌘</kbd> |
 | Add a text with a preset at a point in the frame | Drag its card onto the preview | Same |
 | Cancel the drag | <kbd>Esc</kbd> before you release | <kbd>Esc</kbd> |
-| Open the preset menu (default title or subtitle, favorite, **Apply position**, rename, duplicate, export, delete) | Right-click its card | Right-click its card |
-| Add a text with a favorite preset at the playhead | Click its chip in the timeline toolbar | Same |
-| Save the name of a new preset (after **Save as preset**) or a renamed one | <kbd>Enter</kbd> | <kbd>Return</kbd> |
-| Close the name field without saving | <kbd>Esc</kbd> | <kbd>Esc</kbd> |
+| Open the preset menu (default title or subtitle, **Apply position**, the preset bar sets, tags, rename, duplicate, export, delete) | Right-click its card or its button | Right-click its card or its button |
+| Save the name of a new preset (after **Save as preset** or **+**), a renamed one or its tags | <kbd>Enter</kbd> | <kbd>Return</kbd> |
+| Close the name or tags field without saving | <kbd>Esc</kbd> | <kbd>Esc</kbd> |
+
+### Preset bar
+
+See [The preset bar](preset-bar.md).
+
+| Action | Windows | macOS | Works in |
+| --- | --- | --- | --- |
+| Use the first to ninth button of the set the bar shows: style the selected texts or captions, or add a new text at the playhead | <kbd>Alt</kbd>+<kbd>1</kbd> to <kbd>Alt</kbd>+<kbd>9</kbd> | <kbd>⌥</kbd>+<kbd>1</kbd> to <kbd>⌥</kbd>+<kbd>9</kbd> | All panels, also while the bar is hidden |
+| Scroll the row of buttons sideways | Mouse wheel over the row | Same | The preset bar |
+| Reorder a set (not **Recent** or **All**) | Drag a button sideways | Same | The preset bar |
+| Move to the previous or next button | <kbd>←</kbd> or <kbd>→</kbd> | <kbd>←</kbd> or <kbd>→</kbd> | The row of buttons, reached with <kbd>Tab</kbd> |
+| Move to the first or last button | <kbd>Home</kbd> or <kbd>End</kbd> | <kbd>Fn</kbd>+<kbd>←</kbd> or <kbd>Fn</kbd>+<kbd>→</kbd> | The row of buttons, reached with <kbd>Tab</kbd> |
+| Use the button, as a click does | <kbd>Enter</kbd> or <kbd>Space</kbd> | <kbd>Return</kbd> or <kbd>Space</kbd> | A button with the gold ring |
+
+- A number past the end of the set does nothing. The tooltips of the first nine buttons show their key; after you reorder a set, the keys follow the new order.
+- **Preset bar** (show or hide the bar), **Save as preset into the preset bar's set** and **Preset bar: Favorites**, **Titles**, **Subtitles**, **Captions**, **Recent** and **All** have no key by default. Run them from the command palette, or give them keys in **Settings** > **Shortcuts**, where <kbd>Alt</kbd>+<kbd>1</kbd> to <kbd>Alt</kbd>+<kbd>9</kbd> are listed as **Apply preset bar button 1** to **9**.
 
 ### Text animations
 
@@ -779,6 +795,7 @@ These keys move through the controls of the editor without the mouse. A control 
 | Insert the card at the playhead, as a double-click does | <kbd>Enter</kbd> or <kbd>Space</kbd> | <kbd>Return</kbd> or <kbd>Space</kbd> | A media card or row with the ring |
 | Move between preset cards | Arrow keys | Arrow keys | Preset cards, reached with <kbd>Tab</kbd> |
 | Apply the preset, or add a text with it, as a click does | <kbd>Enter</kbd> or <kbd>Space</kbd> | <kbd>Return</kbd> or <kbd>Space</kbd> | A preset card with the ring |
+| Move between the buttons of the preset bar, or to the first or last one | <kbd>←</kbd> or <kbd>→</kbd>, <kbd>Home</kbd> or <kbd>End</kbd> | <kbd>←</kbd> or <kbd>→</kbd>, <kbd>Fn</kbd>+<kbd>←</kbd> or <kbd>Fn</kbd>+<kbd>→</kbd> | The preset bar's buttons, reached with <kbd>Tab</kbd>; <kbd>Enter</kbd> or <kbd>Space</kbd> uses the button |
 | Widen or narrow a list column by 8 pixels (32 with <kbd>Shift</kbd>) | <kbd>→</kbd> or <kbd>←</kbd> | <kbd>→</kbd> or <kbd>←</kbd> | A column edge in the media list view, reached with <kbd>Tab</kbd> |
 | Open the color picker | <kbd>Enter</kbd> or <kbd>Space</kbd> | <kbd>Return</kbd> or <kbd>Space</kbd> | A color swatch, reached with <kbd>Tab</kbd> |
 | Go round the parts of the color picker | <kbd>Tab</kbd> or <kbd>Shift</kbd>+<kbd>Tab</kbd> | <kbd>Tab</kbd> or <kbd>⇧</kbd>+<kbd>Tab</kbd> | Color picker |
@@ -902,6 +919,7 @@ None at the moment.
 - [Titles and text](titles-and-text.md)
 - [Fonts](fonts.md)
 - [Text presets](text-presets.md)
+- [The preset bar](preset-bar.md)
 - [Text animations](text-animations.md)
 - [Tracks](tracks.md)
 - [Linking and grouping clips](links-and-groups.md)
@@ -911,4 +929,4 @@ None at the moment.
 - [Projects and saving](projects-and-saving.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 51, 2026-10-19</sub>
+<sub>Last updated: Batch 52, 2026-10-19</sub>
