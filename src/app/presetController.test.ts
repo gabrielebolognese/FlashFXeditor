@@ -1,19 +1,25 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { TextPreset } from "../core/document/types.js";
+import type { CaptionClip, TextPreset } from "../core/document/types.js";
 import type { FsDir } from "../project/fs.js";
 import { createMemoryDir } from "../project/memoryFs.js";
 import { projectPresetsDir, readPresetFolder } from "../project/presetFiles.js";
-import { makeProject, makeTextClip, makeTrack, withClips } from "../core/document/fixtures.js";
-import { selectClips } from "../core/store/selection.js";
+import { addCaptionTrack, makeCaptionClip, makeProject, makeTextClip, makeTrack, withClips } from "../core/document/fixtures.js";
+import { selectClips, selectTracks } from "../core/store/selection.js";
+import { cueStyleOf } from "../timeline/edit/captions.js";
+import { resetSelectedCueStyles } from "./captionController.js";
+import { liveEdit } from "./liveEdit.js";
 import { formatPresetFile, formatPresetsFile, presetFileName, presetLook, tagSetKey } from "../text/presets.js";
 import { STARTER_PACK_VERSION, starterPresets } from "../text/starterPresets.js";
 import { DEFAULT_TEXT_STYLE } from "../text/style.js";
 import {
+  appliesToCaptions,
   applyBarButton,
+  applyPresetById,
   attachPresets,
   barPresets,
   detachPresets,
   findPreset,
+  hoverPreset,
   importPresets,
   installPresetController,
   movePresetInSet,
@@ -231,3 +237,56 @@ describe("preset bar (Batch 52)", () => {
   });
 });
 
+
+describe("presets on caption cues (spec §20.3, Batch 53)", () => {
+  function captions(): void {
+    const p = addCaptionTrack({ ...makeProject(), tracks: [makeTrack("v1")] });
+    const cues = ["q1", "q2", "q3"].map((id, i) => makeCaptionClip({ id, trackId: "cc", start: i * 30, duration: 30, text: id }));
+    documentStore.load(withClips(p, cues));
+  }
+
+  it("styles the selected cues (one undo step), hover shows them live; with the track selected it sets the track's style", async () => {
+    const stop = installPresetController();
+    try {
+      await vi.waitFor(() => expect(presetLibrary.getState().loaded).toBe(true));
+      captions();
+      const track = documentStore.getState().captionTracks.cc!.style;
+      const preset = starterPresets().find((item) => item.highlight && item.sets?.includes("captions")) as TextPreset;
+      sessionStore.selection.set(selectClips(["q1", "q2"]));
+      expect(appliesToCaptions()).toBe(true);
+
+      hoverPreset(preset.id);
+      expect([...(liveEdit.getState().cueStyles?.keys() ?? [])]).toEqual(["q1", "q2"]);
+      expect(documentStore.getState().clips.q1).not.toHaveProperty("styleOverride");
+      hoverPreset(null);
+      expect(liveEdit.getState().cueStyles).toBeNull();
+
+      applyPresetById(preset.id);
+      const project = documentStore.getState();
+      const look = presetLook(preset, project.settings);
+      for (const id of ["q1", "q2"]) {
+        const cue = project.clips[id] as CaptionClip;
+        expect(cue.presetId).toBe(preset.id);
+        expect(cueStyleOf(project, cue).text.fontFamily).toBe(look.style.fontFamily);
+        expect(cueStyleOf(project, cue).highlight).toEqual(preset.highlight);
+      }
+      expect(project.clips.q3).not.toHaveProperty("styleOverride");
+      expect(project.captionTracks.cc!.style).toBe(track);
+      expect(documentStore.history.getState().undoLabel).toBe(`Apply "${preset.name}" to captions`);
+
+      // Reset to track style: the cues are the track's again.
+      resetSelectedCueStyles();
+      expect(documentStore.getState().clips.q1).not.toHaveProperty("styleOverride");
+      expect(documentStore.getState().clips.q2).not.toHaveProperty("presetId");
+      documentStore.undo();
+      expect((documentStore.getState().clips.q1 as CaptionClip).presetId).toBe(preset.id);
+
+      // The caption track selected: its style.
+      sessionStore.selection.set(selectTracks(["cc"]));
+      applyPresetById(preset.id);
+      expect(documentStore.getState().captionTracks.cc!.style.text.fontFamily).toBe(look.style.fontFamily);
+    } finally {
+      stop();
+    }
+  });
+});

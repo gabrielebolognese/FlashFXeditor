@@ -13,7 +13,7 @@ import {
   TextAlignStart,
   type LucideIcon,
 } from "lucide-react";
-import { useMemo } from "react";
+import { useMemo, type ReactNode } from "react";
 import { rememberColor } from "../../app/propertiesController.js";
 import { appSettings, fontLibrary } from "../../app/services.js";
 import { systemFaces, systemFonts } from "../../app/fontController.js";
@@ -55,6 +55,8 @@ export interface StyleTarget {
   preview(patch: ((style: TextStyle) => Partial<TextStyle>) | null): void;
   /** A number field's binding for a style property. */
   binding(prop: TextNumberProp): NumberBinding;
+  /** A row's marker for the style fields at `paths` (`stroke.width`...; the Caption style section's override dots, spec §20.3), or none. */
+  marker?(paths: readonly string[], label: string): ReactNode;
 }
 
 const getFamily = (s: TextStyle) => s.fontFamily;
@@ -141,6 +143,30 @@ const CASES: ChoiceProps<TextCase>["options"] = [
 ];
 
 const BLACK: RGBA = { r: 0, g: 0, b: 0, a: 1 };
+
+// The style fields each row edits (marker paths, stable: the markers' selectors key on them).
+const MARK = {
+  FONT: ["fontFamily"],
+  WEIGHT: ["fontWeight", "italic"],
+  SIZE: ["fontSize"],
+  FILL: ["fill"],
+  STROKE: ["stroke.enabled"],
+  STROKE_WIDTH: ["stroke.width"],
+  STROKE_COLOR: ["stroke.color"],
+  SHADOW: ["shadow.enabled"],
+  SHADOW_OFFSET: ["shadow.x", "shadow.y"],
+  SHADOW_BLUR: ["shadow.blur"],
+  SHADOW_COLOR: ["shadow.color"],
+  BACKGROUND: ["background.enabled"],
+  BACKGROUND_MODE: ["background.mode"],
+  PADDING: ["background.paddingX", "background.paddingY"],
+  RADIUS: ["background.radius"],
+  BACKGROUND_COLOR: ["background.color"],
+  ALIGN: ["align"],
+  SPACING: ["letterSpacing"],
+  LINE_HEIGHT: ["lineHeight"],
+  CASE: ["textCase"],
+} as const;
 const WHITE: RGBA = { r: 1, g: 1, b: 1, a: 1 };
 
 /** The style rows of `target`; `anchor` adds the vertical anchor (text clips; captions sit at their position). */
@@ -183,6 +209,7 @@ export function StyleFields({ target, anchor }: { target: StyleTarget; anchor: b
   useStoreSelector(userFonts, (state) => state.fonts);
 
   const edit = (label: string, patch: (style: TextStyle) => Partial<TextStyle>) => target.edit(label, patch);
+  const mark = (paths: readonly string[], label: string) => target.marker?.(paths, label);
   const color = (label: string, set: (style: TextStyle, color: RGBA) => Partial<TextStyle>) => ({
     onChange: (next: RGBA) => {
       edit(label, (s) => set(s, next));
@@ -200,10 +227,10 @@ export function StyleFields({ target, anchor }: { target: StyleTarget; anchor: b
 
   return (
     <>
-      <Row label="Font">
+      <Row label="Font" marker={mark(MARK.FONT, "Font")}>
         <FontField value={family} target={target} />
       </Row>
-      <Row label="Weight">
+      <Row label="Weight" marker={mark(MARK.WEIGHT, "Weight")}>
         <div className={styles.withAction}>
           <Select
             label="Font weight"
@@ -214,10 +241,10 @@ export function StyleFields({ target, anchor }: { target: StyleTarget; anchor: b
           <IconButton control icon={Italic} label="Italic" pressed={italic === true} onClick={() => edit("Change italic", () => ({ italic: italic !== true }))} />
         </div>
       </Row>
-      <Row label="Size">
+      <Row label="Size" marker={mark(MARK.SIZE, "Size")}>
         <NumberField label={<ALargeSmall aria-hidden="true" />} unit="px" binding={bindings.size} precision={0} min={FONT_SIZE.min} max={FONT_SIZE.max} ariaLabel="Font size" />
       </Row>
-      <Row label="Fill">
+      <Row label="Fill" marker={mark(MARK.FILL, "Fill")}>
         <Choice
           value={gradient === MIXED || gradient === NONE ? gradient : isGradientFill ? "gradient" : "solid"}
           options={[
@@ -227,7 +254,7 @@ export function StyleFields({ target, anchor }: { target: StyleTarget; anchor: b
           onChange={(mode) => edit("Change fill", (s) => (mode === "gradient" ? { fill: isGradient(s.fill) ? s.fill : { from: s.fill, to: s.stroke.color } } : { fill: fillColor(s.fill) }))}
         />
       </Row>
-      <Row label={isGradientFill ? "Top" : "Color"}>
+      <Row label={isGradientFill ? "Top" : "Color"} marker={mark(MARK.FILL, "Text color")}>
         <ColorField value={colorOf(fill, WHITE)} recent={recent} ariaLabel={isGradientFill ? "Gradient top color" : "Text color"} {...color("Change text color", (s, c) => ({ fill: isGradient(s.fill) ? { ...s.fill, from: c } : c }))} />
       </Row>
       {/* A solid fill shows the bottom a gradient would start with (the stroke color), disabled. */}
@@ -240,40 +267,40 @@ export function StyleFields({ target, anchor }: { target: StyleTarget; anchor: b
           {...color("Change text color", (s, c) => ({ fill: isGradient(s.fill) ? { ...s.fill, to: c } : c }))}
         />
       </Row>
-      <Row label="Stroke">
+      <Row label="Stroke" marker={mark(MARK.STROKE, "Stroke")}>
         <span className={styles.switchCell}>
           <Toggle checked={stroke === true} mixed={stroke === MIXED} label="Outline" onChange={(on) => edit(on ? "Add stroke" : "Remove stroke", (s) => ({ stroke: { ...s.stroke, enabled: on } }))} />
         </span>
       </Row>
-      <Row label="Width">
+      <Row label="Width" marker={mark(MARK.STROKE_WIDTH, "Stroke width")}>
         <NumberField label="W" unit="px" binding={bindings.stroke} precision={1} min={STROKE_WIDTH.min} max={STROKE_WIDTH.max} disabled={strokeOff} ariaLabel="Stroke width" />
       </Row>
-      <Row label="Color">
+      <Row label="Color" marker={mark(MARK.STROKE_COLOR, "Stroke color")}>
         <ColorField value={colorOf(strokeColor, BLACK)} recent={recent} ariaLabel="Stroke color" disabled={strokeOff} {...color("Change stroke", (s, c) => ({ stroke: { ...s.stroke, color: c } }))} />
       </Row>
-      <Row label="Shadow">
+      <Row label="Shadow" marker={mark(MARK.SHADOW, "Shadow")}>
         <span className={styles.switchCell}>
           <Toggle checked={shadow === true} mixed={shadow === MIXED} label="Drop shadow" onChange={(on) => edit(on ? "Add shadow" : "Remove shadow", (s) => ({ shadow: { ...s.shadow, enabled: on } }))} />
         </span>
       </Row>
-      <Row label="Offset">
+      <Row label="Offset" marker={mark(MARK.SHADOW_OFFSET, "Shadow offset")}>
         <div className={styles.pair}>
           <NumberField label="X" unit="px" binding={bindings.shadowX} precision={1} min={SHADOW_X.min} max={SHADOW_X.max} disabled={shadowOff} ariaLabel="Shadow X" />
           <NumberField label="Y" unit="px" binding={bindings.shadowY} precision={1} min={SHADOW_Y.min} max={SHADOW_Y.max} disabled={shadowOff} ariaLabel="Shadow Y" />
         </div>
       </Row>
-      <Row label="Blur">
+      <Row label="Blur" marker={mark(MARK.SHADOW_BLUR, "Shadow blur")}>
         <NumberField label={<Droplets aria-hidden="true" />} unit="px" binding={bindings.shadowBlur} precision={1} min={SHADOW_BLUR.min} max={SHADOW_BLUR.max} disabled={shadowOff} ariaLabel="Shadow blur" />
       </Row>
-      <Row label="Color">
+      <Row label="Color" marker={mark(MARK.SHADOW_COLOR, "Shadow color")}>
         <ColorField value={colorOf(shadowColor, BLACK)} recent={recent} ariaLabel="Shadow color" disabled={shadowOff} {...color("Change shadow", (s, c) => ({ shadow: { ...s.shadow, color: c } }))} />
       </Row>
-      <Row label="Background">
+      <Row label="Background" marker={mark(MARK.BACKGROUND, "Background")}>
         <span className={styles.switchCell}>
           <Toggle checked={background === true} mixed={background === MIXED} label="Background box" onChange={(on) => edit(on ? "Add background" : "Remove background", (s) => ({ background: { ...s.background, enabled: on } }))} />
         </span>
       </Row>
-      <Row label="Mode">
+      <Row label="Mode" marker={mark(MARK.BACKGROUND_MODE, "Background mode")}>
         <Choice
           value={backgroundMode}
           options={[
@@ -284,19 +311,19 @@ export function StyleFields({ target, anchor }: { target: StyleTarget; anchor: b
           onChange={(mode) => edit("Change background", (s) => ({ background: { ...s.background, mode } }))}
         />
       </Row>
-      <Row label="Padding">
+      <Row label="Padding" marker={mark(MARK.PADDING, "Background padding")}>
         <div className={styles.pair}>
           <NumberField label="X" unit="px" binding={bindings.padX} precision={0} min={PADDING_X.min} max={PADDING_X.max} disabled={backgroundOff} ariaLabel="Background padding X" />
           <NumberField label="Y" unit="px" binding={bindings.padY} precision={0} min={PADDING_Y.min} max={PADDING_Y.max} disabled={backgroundOff} ariaLabel="Background padding Y" />
         </div>
       </Row>
-      <Row label="Radius">
+      <Row label="Radius" marker={mark(MARK.RADIUS, "Background radius")}>
         <NumberField label={<SquareRoundCorner aria-hidden="true" />} unit="px" binding={bindings.radius} precision={0} min={RADIUS.min} max={RADIUS.max} disabled={backgroundOff} ariaLabel="Background corner radius" />
       </Row>
-      <Row label="Color">
+      <Row label="Color" marker={mark(MARK.BACKGROUND_COLOR, "Background color")}>
         <ColorField value={colorOf(backgroundColor, BLACK)} recent={recent} ariaLabel="Background color" disabled={backgroundOff} {...color("Change background", (s, c) => ({ background: { ...s.background, color: c } }))} />
       </Row>
-      <Row label="Align">
+      <Row label="Align" marker={mark(MARK.ALIGN, "Alignment")}>
         <Choice value={align} options={ALIGNS} onChange={(next) => edit("Change alignment", () => ({ align: next }))} />
       </Row>
       {anchor && (
@@ -304,13 +331,13 @@ export function StyleFields({ target, anchor }: { target: StyleTarget; anchor: b
           <Choice value={verticalAnchor} options={ANCHORS} onChange={(next) => edit("Change anchor", () => ({ verticalAnchor: next }))} />
         </Row>
       )}
-      <Row label="Spacing">
+      <Row label="Spacing" marker={mark(MARK.SPACING, "Letter spacing")}>
         <NumberField label={<MoveHorizontal aria-hidden="true" />} unit="px" binding={bindings.spacing} precision={1} min={LETTER_SPACING.min} max={LETTER_SPACING.max} ariaLabel="Letter spacing" />
       </Row>
-      <Row label="Line height">
+      <Row label="Line height" marker={mark(MARK.LINE_HEIGHT, "Line height")}>
         <NumberField label={<MoveVertical aria-hidden="true" />} unit="×" binding={bindings.lineHeight} precision={2} step={0.01} min={LINE_HEIGHT.min} max={LINE_HEIGHT.max} ariaLabel="Line height" />
       </Row>
-      <Row label="Case">
+      <Row label="Case" marker={mark(MARK.CASE, "Case")}>
         <Choice value={textCase} options={CASES} onChange={(next) => edit("Change case", () => ({ textCase: next }))} />
       </Row>
     </>

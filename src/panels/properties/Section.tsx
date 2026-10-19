@@ -44,11 +44,21 @@ export function Section({ id, title, actions, children }: { id: SectionId | `exp
   );
 }
 
-/** A grid row: the label on the left, the control(s) on the right. */
-export function Row({ label, children }: { label: string; children: ReactNode }) {
+/**
+ * A grid row: the label on the left, the control(s) on the right. A `marker` (the Caption style
+ * section's override dot, spec §20.3) sits at the label column's right edge.
+ */
+export function Row({ label, marker, children }: { label: string; marker?: ReactNode; children: ReactNode }) {
   return (
     <>
-      <span className={styles.label}>{label}</span>
+      {marker === undefined ? (
+        <span className={styles.label}>{label}</span>
+      ) : (
+        <span className={`${styles.label} ${styles.labelMarked}`}>
+          {label}
+          {marker}
+        </span>
+      )}
       {children}
     </>
   );

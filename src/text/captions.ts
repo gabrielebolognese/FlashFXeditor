@@ -10,7 +10,7 @@
 //   characters on each side, or at the first right word's start when the cue has word timings.
 // - Merging (Mod+Backspace): the texts joined by a space, the span from the first cue's start to the
 //   second's end, the words of both.
-import type { CaptionClip, CaptionPosition, CaptionStyle, CaptionWord, Frame, RGBA, TextStyle } from "../core/document/types.js";
+import type { CaptionClip, CaptionPosition, CaptionStyle, CaptionStyleOverride, CaptionTextOverride, CaptionWord, Frame, RGBA, TextStyle } from "../core/document/types.js";
 import { DEFAULT_TEXT_STYLE, scaleTextStyle, TEXT_REFERENCE_SIDE } from "./style.js";
 
 /** A new cue's length (spec §10.5 `+ Cue at playhead`: a 2 s cue). */
@@ -23,6 +23,7 @@ export const CAPTION_TRACK_NAME = "CC";
 export const CAPTION_LIMITS = {
   maxLines: { min: 1, max: 6 },
   maxWidth: { min: 50, max: 8000 },
+  x: { min: -4000, max: 4000 },
   y: { min: -4000, max: 4000 },
 } as const;
 
@@ -50,6 +51,7 @@ export function defaultCaptionStyle(frame: { width: number; height: number }): C
   return {
     text: k > 0 && k !== 1 ? scaleTextStyle(DEFAULT_CAPTION_TEXT, k) : structuredClone(DEFAULT_CAPTION_TEXT),
     position: "bottom",
+    x: 0,
     y: 0,
     maxWidth: Math.max(CAPTION_LIMITS.maxWidth.min, Math.round((frame.width * DEFAULT_MAX_WIDTH) / TEXT_REFERENCE_SIDE)),
     maxLines: 2,
@@ -68,18 +70,156 @@ export const CAPTION_PLACES: Readonly<Record<Exclude<CaptionPosition, "custom">,
 
 /**
  * Where a caption of `style` sits on a `height` px tall frame: the box's vertical anchor (0 top, 1
- * bottom) and its y from the frame center (project px). Horizontally it is centered.
+ * bottom) and its x and y from the frame center (project px). The presets center it horizontally;
+ * Custom puts its middle at (`x`, `y`).
  */
-export function captionPlace(style: Pick<CaptionStyle, "position" | "y">, height: number): { anchorY: number; y: number } {
-  if (style.position === "custom") return { anchorY: 0.5, y: style.y };
+export function captionPlace(style: Pick<CaptionStyle, "position" | "x" | "y">, height: number): { anchorY: number; x: number; y: number } {
+  if (style.position === "custom") return { anchorY: 0.5, x: style.x, y: style.y };
   const place = CAPTION_PLACES[style.position];
-  return { anchorY: place.anchor, y: height * place.at - height / 2 };
+  return { anchorY: place.anchor, x: 0, y: height * place.at - height / 2 };
 }
 
 /** The y (frame center relative, the middle of the box) a preset position shows a `boxHeight` caption at: where Custom starts from. */
-export function captionMiddleY(style: Pick<CaptionStyle, "position" | "y">, height: number, boxHeight: number): number {
+export function captionMiddleY(style: Pick<CaptionStyle, "position" | "x" | "y">, height: number, boxHeight: number): number {
   const { anchorY, y } = captionPlace(style, height);
   return Math.round(y + (0.5 - anchorY) * boxHeight);
+}
+
+// --- Styles per cue (spec §20.3) ---------------------------------------------------------------
+
+/** The text style fields a cue override sets whole, and those it sets part by part. */
+const TEXT_FIELDS = ["fontFamily", "fontWeight", "italic", "fontSize", "fill", "textCase", "letterSpacing", "lineHeight", "align"] as const;
+const TEXT_PARTS = ["stroke", "shadow", "background"] as const;
+/** The caption style's own fields an override sets whole. */
+const CAPTION_FIELDS = ["position", "x", "y", "maxWidth", "maxLines"] as const;
+
+type Plain = Record<string, unknown>;
+
+const same = (a: unknown, b: unknown) => a === b || JSON.stringify(a) === JSON.stringify(b);
+
+/** `track` with the fields of `override` on top (spec §20.3). */
+export function applyCaptionOverride(track: CaptionStyle, override: CaptionStyleOverride): CaptionStyle {
+  const style: CaptionStyle = { ...track };
+  const t = override.text as Plain | undefined;
+  if (t) {
+    const text: Plain = { ...track.text };
+    for (const key of TEXT_FIELDS) if (t[key] !== undefined) text[key] = t[key];
+    for (const key of TEXT_PARTS) if (t[key]) text[key] = { ...track.text[key], ...(t[key] as Plain) };
+    style.text = text as unknown as TextStyle;
+  }
+  for (const key of CAPTION_FIELDS) if (override[key] !== undefined) (style as unknown as Plain)[key] = override[key];
+  if (override.highlight) style.highlight = { ...track.highlight, ...override.highlight };
+  return style;
+}
+
+/** One effective style per override (and the track style it was made from). */
+const effectiveStyles = new WeakMap<CaptionStyleOverride, { track: CaptionStyle; style: CaptionStyle }>();
+
+/**
+ * The style a cue is drawn in (spec §20.3): its track's style with the cue's override on top. The track
+ * style itself without an override, and the same object for an unchanged override and track style, so
+ * the caches keyed by style objects (looks, rasters) keep their entries.
+ */
+export function effectiveCaptionStyle(track: CaptionStyle, override: CaptionStyleOverride | undefined): CaptionStyle {
+  if (!override) return track;
+  const memo = effectiveStyles.get(override);
+  if (memo?.track === track) return memo.style;
+  const style = applyCaptionOverride(track, override);
+  effectiveStyles.set(override, { track, style });
+  return style;
+}
+
+/** Whether an override sets nothing. */
+export function isEmptyOverride(override: CaptionStyleOverride | undefined): boolean {
+  return override === undefined || overrideFields(override).length === 0;
+}
+
+/**
+ * `override` with every field that differs between `before` and `after` set to its `after` value (an
+ * edit in the Selected scope, a preset, a canvas drag): only what the edit changed becomes the cue's
+ * own. The stroke, shadow, background and highlight go part by part. Undefined when nothing is set.
+ */
+export function overrideWith(override: CaptionStyleOverride | undefined, before: CaptionStyle, after: CaptionStyle): CaptionStyleOverride | undefined {
+  const next: CaptionStyleOverride = structuredClone(override ?? {});
+  const text: Plain = (next.text as Plain | undefined) ?? {};
+  const a = before.text as unknown as Plain;
+  const b = after.text as unknown as Plain;
+  for (const key of TEXT_FIELDS) if (!same(a[key], b[key])) text[key] = structuredClone(b[key]);
+  for (const key of TEXT_PARTS) {
+    const from = a[key] as Plain;
+    const to = b[key] as Plain;
+    const part: Plain = { ...((text[key] as Plain | undefined) ?? {}) };
+    for (const sub of Object.keys(to)) if (!same(from[sub], to[sub])) part[sub] = structuredClone(to[sub]);
+    if (Object.keys(part).length > 0) text[key] = part;
+  }
+  if (Object.keys(text).length > 0) next.text = text as CaptionTextOverride;
+  for (const key of CAPTION_FIELDS) if (!same(before[key], after[key])) (next as Plain)[key] = after[key];
+  const highlight: Plain = { ...(next.highlight ?? {}) };
+  for (const sub of ["mode", "color", "inactiveColor"] as const) if (!same(before.highlight[sub], after.highlight[sub])) highlight[sub] = structuredClone(after.highlight[sub]);
+  if (Object.keys(highlight).length > 0) next.highlight = highlight;
+  return isEmptyOverride(next) ? undefined : next;
+}
+
+/**
+ * The fields an override sets, as paths: `text.fontFamily`, `text.stroke.width`, `position`, `x`,
+ * `highlight.color`... (the properties panel marks their rows).
+ */
+export function overrideFields(override: CaptionStyleOverride | undefined): string[] {
+  const fields: string[] = [];
+  const walk = (value: unknown, path: string) => {
+    if (typeof value === "object" && value !== null && !Array.isArray(value) && !isLeaf(path)) {
+      for (const [key, inner] of Object.entries(value)) walk(inner, path === "" ? key : `${path}.${key}`);
+    } else if (value !== undefined && path !== "") fields.push(path);
+  };
+  walk(override ?? {}, "");
+  return fields;
+}
+
+/** Fields whose values are objects but set whole: colors and the fill. */
+function isLeaf(path: string): boolean {
+  return path === "text.fill" || path.endsWith(".color") || path.endsWith("Color");
+}
+
+/**
+ * `override` without the fields at `paths` (a path names a field or a group: `text.stroke` drops the
+ * whole stroke); undefined when nothing is left (a row's reset, spec §20.3).
+ */
+export function overrideWithout(override: CaptionStyleOverride | undefined, paths: readonly string[]): CaptionStyleOverride | undefined {
+  if (!override) return undefined;
+  const next = structuredClone(override) as Plain;
+  for (const path of paths) {
+    const keys = path.split(".");
+    const parents: Plain[] = [next];
+    let node: Plain | undefined = next;
+    for (const key of keys.slice(0, -1)) {
+      const inner: unknown = node?.[key];
+      node = typeof inner === "object" && inner !== null ? (inner as Plain) : undefined;
+      if (node) parents.push(node);
+    }
+    if (!node) continue;
+    delete node[keys[keys.length - 1] as string];
+    // Empty groups go too.
+    for (let depth = parents.length - 1; depth > 0; depth--) {
+      const parent = parents[depth - 1] as Plain;
+      const key = keys[depth - 1] as string;
+      if (Object.keys(parents[depth] as Plain).length === 0) delete parent[key];
+    }
+  }
+  return isEmptyOverride(next as CaptionStyleOverride) ? undefined : (next as CaptionStyleOverride);
+}
+
+/**
+ * `override` with a preset's look (spec §20.3 "applying a text preset with cues selected writes its
+ * style into their overrides"): its whole text style (not the vertical anchor: captions sit at their
+ * position), its word highlight when it has one, and its position (as Custom) when it applies one.
+ */
+export function presetOverride(override: CaptionStyleOverride | undefined, look: { style: TextStyle; position: { x: number; y: number } | null }, highlight?: CaptionStyle["highlight"]): CaptionStyleOverride {
+  const text: Partial<TextStyle> = structuredClone(look.style);
+  delete text.verticalAnchor;
+  const next: CaptionStyleOverride = { ...structuredClone(override ?? {}), text: text as CaptionTextOverride };
+  if (highlight) next.highlight = structuredClone(highlight);
+  if (look.position) Object.assign(next, { position: "custom", x: Math.round(look.position.x), y: Math.round(look.position.y) });
+  return next;
 }
 
 // --- Cue text ------------------------------------------------------------------------------------

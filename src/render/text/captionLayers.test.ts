@@ -2,7 +2,7 @@
 // 55 px per character at 100 px, lines 120 px tall (line height 1.2).
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { addCaptionTrack, makeCaptionClip, makeProject, makeSolidClip, makeTrack, withClips } from "../../core/document/fixtures.js";
-import type { CaptionHighlightMode, CaptionStyle, CaptionWord, Project } from "../../core/document/types.js";
+import type { CaptionClip, CaptionHighlightMode, CaptionStyle, CaptionWord, Project } from "../../core/document/types.js";
 import { TexturePool } from "../../media/cache/TexturePool.js";
 import { defaultCaptionStyle } from "../../text/captions.js";
 import { DEFAULT_TEXT_STYLE } from "../../text/style.js";
@@ -194,5 +194,70 @@ describe("highlighted cues in the preview's textures", () => {
     expect(box.color).toEqual(YELLOW);
     expect(box.shape?.kind).toBe("box");
     expect(box.shape?.radius).toBeCloseTo((box.shape?.height ?? 0) / 2);
+  });
+});
+
+describe("styles per cue (spec §20.3)", () => {
+  const RED = { r: 1, g: 0, b: 0, a: 1 };
+  const GREEN = { r: 0, g: 1, b: 0, a: 1 };
+
+  /** Two cues: q (0..30) with `override`, r (30..60) without. */
+  function twoCues(override: CaptionClip["styleOverride"], words?: CaptionWord[]): Project {
+    const p = project("ab cd", captionStyle(), words);
+    p.clips.q = { ...(p.clips.q as CaptionClip), ...(override && { styleOverride: override }) };
+    p.clips.r = makeCaptionClip({ id: "r", trackId: "cc", start: 30, duration: 30, text: "ab cd", ...(words && { words }) });
+    p.tracks.find((track) => track.id === "cc")!.clipIds.push("r");
+    return p;
+  }
+
+  it("draws a cue in its own style and at its own position, the others in the track's", () => {
+    const p = twoCues({ text: { fontSize: 200, fill: RED }, position: "custom", x: 100, y: -500 });
+    const own = captionLayer(p, 5)!;
+    expect(own.style.fontSize).toBe(200);
+    expect(own.style.fill).toEqual(RED);
+    // A 2-line box? No: 5 chars at 200 px = 550 px wide, within 900; its middle at (640, 460).
+    const middle = applyToPoint(own.model, 275, 120);
+    expect(middle.x).toBeCloseTo(540 + 100);
+    expect(middle.y).toBeCloseTo(960 - 500);
+    const other = captionLayer(p, 35)!;
+    expect(other.style.fontSize).toBe(100);
+    expect(applyToPoint(other.model, 0, 120).y).toBeCloseTo(1920 * 0.78);
+  });
+
+  it("highlights the spoken word in each cue's own colors", () => {
+    const p = twoCues({ highlight: { color: GREEN, inactiveColor: RED } }, WORDS);
+    const own = captionLayer(p, 12)!;
+    expect(own.style.fill).toEqual(RED);
+    expect(own.karaoke?.style.fill).toEqual(GREEN);
+    const other = captionLayer(p, 42)!;
+    expect(other.style.fill).toEqual(GREY);
+    expect(other.karaoke?.style.fill).toEqual(YELLOW);
+  });
+
+  it("changes a cue with what it does not override when the track style changes", () => {
+    const p = twoCues({ text: { fill: RED } });
+    p.captionTracks.cc = { style: { ...captionStyle(), position: "top" } };
+    const own = captionLayer(p, 5)!;
+    expect(own.style.fill).toEqual(RED);
+    expect(applyToPoint(own.model, 0, 0).y).toBeCloseTo(1920 * 0.18);
+  });
+
+  it("shows a cue's live style, a canvas drag's position and the inline editor's draft with its selection", () => {
+    const p = twoCues(undefined);
+    const compositor = new Compositor();
+    const moved = { x: 0, y: -300, scale: 1, rotation: 0, anchor: { x: 0.5, y: 0.5 }, flipH: false, flipV: false };
+    const highlight = { rects: [{ x: 0, y: 0, width: 10, height: 10 }], color: "selection" };
+    const live = { texts: new Map([["q", "typed"]]), styles: null, cueStyles: new Map([["q", captionStyle({ text: { ...captionStyle().text, fontSize: 50 } })]]), editing: { cueId: "q", highlight } };
+    const layer = compositor.evaluate(p, 5, new Map([["q", moved]]), null, null, null, null, live).layers[1] as TextCompositeLayer;
+    expect(layer.text.value).toBe("typed");
+    expect(layer.style.fontSize).toBe(50);
+    expect(layer.highlight).toBe(highlight);
+    expect(applyToPoint(layer.model, 0, 30).y).toBeCloseTo(960 - 300);
+  });
+
+  it("lists each cue about to show in its own style", () => {
+    const p = twoCues({ text: { fontSize: 200 } });
+    const upcoming = new Compositor().upcomingTexts(p, 0, 60);
+    expect(upcoming.map((item) => item.style.fontSize)).toEqual([100, 200]);
   });
 });

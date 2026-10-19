@@ -77,6 +77,14 @@
   white-space: nowrap;
 }
 
+/* A label with a marker at the column's right edge (the Caption style section's override dot). */
+.labelMarked {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-1);
+}
+
 /* A read-only value (the Track section's kind). */
 .value {
   color: var(--text-primary);

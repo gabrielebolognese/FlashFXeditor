@@ -1,5 +1,26 @@
 import { describe, expect, it } from "vitest";
-import { activeWordIndex, captionMiddleY, captionPlace, cueBoundary, cueLine, cueMatches, cueSlice, defaultCaptionStyle, evenWords, mergeCues, splitCueAt, wordCount, wordRanges } from "./captions.js";
+import type { CaptionStyleOverride } from "../core/document/types.js";
+import {
+  activeWordIndex,
+  captionMiddleY,
+  captionPlace,
+  cueBoundary,
+  cueLine,
+  cueMatches,
+  cueSlice,
+  defaultCaptionStyle,
+  effectiveCaptionStyle,
+  evenWords,
+  isEmptyOverride,
+  mergeCues,
+  overrideFields,
+  overrideWith,
+  overrideWithout,
+  presetOverride,
+  splitCueAt,
+  wordCount,
+  wordRanges,
+} from "./captions.js";
 
 const cue = (text: string, duration: number, words?: { text: string; start: number; end: number }[]) => ({ text, start: 100, duration, ...(words && { words }) });
 
@@ -18,15 +39,16 @@ describe("defaultCaptionStyle", () => {
 
 describe("captionPlace", () => {
   it("anchors the presets at their edge and custom at its middle", () => {
-    expect(captionPlace({ position: "bottom", y: 0 }, 1920)).toEqual({ anchorY: 1, y: 1920 * 0.78 - 960 });
-    expect(captionPlace({ position: "center", y: 50 }, 1920)).toEqual({ anchorY: 0.5, y: 0 });
-    expect(captionPlace({ position: "top", y: 0 }, 1000)).toEqual({ anchorY: 0, y: -320 });
-    expect(captionPlace({ position: "custom", y: -120 }, 1920)).toEqual({ anchorY: 0.5, y: -120 });
+    expect(captionPlace({ position: "bottom", x: 0, y: 0 }, 1920)).toEqual({ anchorY: 1, x: 0, y: 1920 * 0.78 - 960 });
+    expect(captionPlace({ position: "center", x: 40, y: 50 }, 1920)).toEqual({ anchorY: 0.5, x: 0, y: 0 });
+    expect(captionPlace({ position: "top", x: 0, y: 0 }, 1000)).toEqual({ anchorY: 0, x: 0, y: -320 });
+    // Custom (Batch 53: an x too) puts the middle there.
+    expect(captionPlace({ position: "custom", x: -30, y: -120 }, 1920)).toEqual({ anchorY: 0.5, x: -30, y: -120 });
   });
 
   it("gives the middle a preset shows a box at (where Custom starts)", () => {
-    expect(captionMiddleY({ position: "bottom", y: 0 }, 1000, 100)).toBe(230);
-    expect(captionMiddleY({ position: "top", y: 0 }, 1000, 100)).toBe(-270);
+    expect(captionMiddleY({ position: "bottom", x: 0, y: 0 }, 1000, 100)).toBe(230);
+    expect(captionMiddleY({ position: "top", x: 0, y: 0 }, 1000, 100)).toBe(-270);
   });
 });
 
@@ -134,5 +156,66 @@ describe("word timings", () => {
     expect(activeWordIndex(words, 40)).toBe(1);
     expect(activeWordIndex(words, 100)).toBe(-1);
     expect(evenWords("a b c", 2).every((word) => word.end > word.start)).toBe(true);
+  });
+});
+
+describe("styles per cue (spec §20.3)", () => {
+  const track = () => defaultCaptionStyle({ width: 1080, height: 1920 });
+
+  it("draws a cue without an override in the track's own style object", () => {
+    const style = track();
+    expect(effectiveCaptionStyle(style, undefined)).toBe(style);
+  });
+
+  it("puts the override's fields over the track's, the stroke, shadow, box and highlight part by part", () => {
+    const style = track();
+    const override: CaptionStyleOverride = { text: { fontFamily: "Anton", stroke: { width: 9 } }, position: "custom", x: 40, y: -300, highlight: { color: { r: 0, g: 1, b: 0, a: 1 } } };
+    const effective = effectiveCaptionStyle(style, override);
+    expect(effective.text.fontFamily).toBe("Anton");
+    expect(effective.text.fontSize).toBe(style.text.fontSize);
+    expect(effective.text.stroke).toEqual({ ...style.text.stroke, width: 9 });
+    expect(effective).toMatchObject({ position: "custom", x: 40, y: -300, maxWidth: style.maxWidth });
+    expect(effective.highlight).toEqual({ ...style.highlight, color: { r: 0, g: 1, b: 0, a: 1 } });
+    // One object per override and track style (the caches keyed by style objects hold).
+    expect(effectiveCaptionStyle(style, override)).toBe(effective);
+    const changed = { ...style, maxLines: 3 };
+    const again = effectiveCaptionStyle(changed, override);
+    expect(again).not.toBe(effective);
+    expect(again.maxLines).toBe(3);
+  });
+
+  it("writes only what an edit changed, parts one by one, and keeps what the override had", () => {
+    const style = track();
+    const after = { ...style, text: { ...style.text, fontSize: 90, shadow: { ...style.text.shadow, blur: 3 } } };
+    const override = overrideWith({ maxLines: 1 }, style, after);
+    expect(override).toEqual({ maxLines: 1, text: { fontSize: 90, shadow: { blur: 3 } } });
+    expect(overrideWith(undefined, style, structuredClone(style))).toBeUndefined();
+    const highlighted = overrideWith(undefined, style, { ...style, highlight: { ...style.highlight, mode: "scale" } });
+    expect(highlighted).toEqual({ highlight: { mode: "scale" } });
+  });
+
+  it("lists the overridden fields as paths and drops fields or groups, nothing left being no override", () => {
+    const override: CaptionStyleOverride = { text: { fill: { r: 1, g: 0, b: 0, a: 1 }, stroke: { width: 2, color: { r: 0, g: 0, b: 0, a: 1 } } }, y: 10, highlight: { inactiveColor: { r: 1, g: 1, b: 1, a: 1 } } };
+    expect(overrideFields(override).sort()).toEqual(["highlight.inactiveColor", "text.fill", "text.stroke.color", "text.stroke.width", "y"]);
+    expect(overrideWithout(override, ["text.stroke.width"])?.text?.stroke).toEqual({ color: { r: 0, g: 0, b: 0, a: 1 } });
+    const less = overrideWithout(override, ["text.stroke", "y"]);
+    expect(less).toEqual({ text: { fill: { r: 1, g: 0, b: 0, a: 1 } }, highlight: { inactiveColor: { r: 1, g: 1, b: 1, a: 1 } } });
+    expect(overrideWithout(less, ["text.fill", "highlight.inactiveColor"])).toBeUndefined();
+    expect(isEmptyOverride({ text: {} })).toBe(true);
+    expect(isEmptyOverride(undefined)).toBe(true);
+    // The input is not changed.
+    expect(overrideFields(override)).toHaveLength(5);
+  });
+
+  it("takes a preset's whole text style (not its anchor), its highlight and, when it applies one, its position as Custom", () => {
+    const style = track();
+    const text = { ...style.text, fontFamily: "Bebas Neue", verticalAnchor: "top" as const };
+    const plain = presetOverride({ maxLines: 1 }, { style: text, position: null });
+    expect(plain.maxLines).toBe(1);
+    expect(plain.text?.fontFamily).toBe("Bebas Neue");
+    expect(plain.text).not.toHaveProperty("verticalAnchor");
+    expect(plain).not.toHaveProperty("position");
+    const placed = presetOverride(undefined, { style: text, position: { x: 10.4, y: -99.6 } }, { mode: "background", color: { r: 1, g: 1, b: 0, a: 1 }, inactiveColor: { r: 1, g: 1, b: 1, a: 1 } });
+    expect(placed).toMatchObject({ position: "custom", x: 10, y: -100, highlight: { mode: "background" } });
   });
 });

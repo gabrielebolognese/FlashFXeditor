@@ -13,13 +13,17 @@
 //   cues in order with their frames as times (word timings are not exported).
 // - A transcription (spec §10.6) replaces the cues overlapping its range with its own, placed inside
 //   the range on the frame grid as an import's.
+// - Styles per cue (spec §20.3, Batch 53): a cue's `styleOverride` (and `presetId`) is set, changed or
+//   cleared by one command for any number of cues (`setCueStyles`, `resetCueStyles`). A split gives
+//   both halves the cue's override, a merge keeps the first cue's; moves, trims and copies carry the
+//   cue whole. Imports and transcriptions make cues without one.
 import type { Draft } from "immer";
 import type { Command } from "../../core/commands/command.js";
 import { defaultTrackIndex } from "../../core/commands/basicCommands.js";
 import { emptyTrack } from "../../core/document/project.js";
 import { frameToUs, secondsToFrames, usToFrame } from "../../core/document/time.js";
-import type { CaptionClip, CaptionStyle, CaptionWord, Clip, ClipId, Frame, Project, Track, TrackId } from "../../core/document/types.js";
-import { CAPTION_TRACK_NAME, CUE_SECONDS, defaultCaptionStyle, mergeCues, NEW_CUE_TEXT, splitCueAt } from "../../text/captions.js";
+import type { CaptionClip, CaptionStyle, CaptionStyleOverride, CaptionWord, Clip, ClipId, Frame, Project, Track, TrackId } from "../../core/document/types.js";
+import { CAPTION_TRACK_NAME, CUE_SECONDS, defaultCaptionStyle, effectiveCaptionStyle, isEmptyOverride, mergeCues, NEW_CUE_TEXT, overrideWithout, splitCueAt } from "../../text/captions.js";
 import type { SubtitleCue } from "../../text/subtitles.js";
 import { clipInIndex, clipsOverlapping, lastClipStartingBy, trackIndex, type TrackIndex } from "../model/queries.js";
 
@@ -34,6 +38,11 @@ export function captionTrackOf(project: Project): Track | null {
 /** The style of the caption track `trackId` (the default one when its data is missing). */
 export function captionStyleOf(project: Project, trackId: TrackId): CaptionStyle {
   return project.captionTracks[trackId]?.style ?? defaultCaptionStyle(project.settings);
+}
+
+/** The style cue `cue` is drawn in (spec §20.3): its track's with its override on top. */
+export function cueStyleOf(project: Project, cue: CaptionClip): CaptionStyle {
+  return effectiveCaptionStyle(captionStyleOf(project, cue.trackId), cue.styleOverride);
 }
 
 /** The cues of the caption track in order (none without one). */
@@ -167,7 +176,15 @@ export function splitCue(project: Project, id: ClipId, text: string, caret: numb
   if (!cue) return null;
   const split = splitCueAt({ ...cue, text }, caret);
   if (!split) return null;
-  const right: CaptionClip = { ...newCue(newId(), cue.trackId, cue.start + split.at, cue.duration - split.at, split.right.text, split.right.words), name: cue.name, enabled: cue.enabled, ...(cue.color && { color: cue.color }) };
+  // Both halves keep the cue's own style (spec §20.3).
+  const right: CaptionClip = {
+    ...newCue(newId(), cue.trackId, cue.start + split.at, cue.duration - split.at, split.right.text, split.right.words),
+    name: cue.name,
+    enabled: cue.enabled,
+    ...(cue.color && { color: cue.color }),
+    ...(cue.styleOverride && { styleOverride: structuredClone(cue.styleOverride) }),
+    ...(cue.presetId !== undefined && { presetId: cue.presetId }),
+  };
   const setLeft = cueFields(id, { text: split.left.text, duration: split.at, ...(split.left.words && { words: split.left.words }) }, "set");
   return {
     rightId: right.id,
@@ -440,6 +457,120 @@ export function setCaptionStyle(project: Project, trackId: TrackId, style: Capti
       draft.captionTracks[trackId] = { style: structuredClone(style) };
     },
   };
+}
+
+// --- Styles per cue (spec §20.3) -----------------------------------------------------------------
+
+/** A cue's own style as a command writes it: the override (none: the track style) and the preset it came from. */
+export interface CueStyle {
+  styleOverride?: CaptionStyleOverride | undefined;
+  presetId?: string | undefined;
+}
+
+/**
+ * The cues' own styles (spec §20.3 Selected scope, a preset on cues, a canvas drag, Paste style): each
+ * cue of `styles` gets that override and preset (an empty override or none clears it), one undo step.
+ * Cues that are gone, locked or unchanged are left out; null when none changes.
+ */
+export function setCueStyles(project: Project, styles: ReadonlyMap<ClipId, CueStyle>, options: { label: string; coalesceKey?: string }): Command | null {
+  const writes: [ClipId, CueStyle][] = [];
+  for (const [id, style] of styles) {
+    const cue = editableCue(project, id);
+    if (!cue) continue;
+    const override = isEmptyOverride(style.styleOverride) ? undefined : style.styleOverride;
+    const presetId = style.presetId;
+    if (JSON.stringify(cue.styleOverride) === JSON.stringify(override) && cue.presetId === presetId) continue;
+    writes.push([id, { styleOverride: override && structuredClone(override), presetId }]);
+  }
+  if (writes.length === 0) return null;
+  return {
+    id: "caption.cueStyle",
+    label: options.label,
+    ...(options.coalesceKey !== undefined && { coalesceKey: options.coalesceKey }),
+    // `clips`: the timeline's style badge.
+    affects: ["clips", "captions"],
+    run(draft) {
+      for (const [id, { styleOverride, presetId }] of writes) {
+        const cue = draft.clips[id];
+        if (cue?.kind !== "caption") throw new Error(`caption.cueStyle: cue ${id} does not exist`);
+        if (styleOverride) cue.styleOverride = structuredClone(styleOverride);
+        else delete cue.styleOverride;
+        if (presetId !== undefined) cue.presetId = presetId;
+        else delete cue.presetId;
+      }
+    },
+  };
+}
+
+/** What a caption drag on the canvas edits (spec §20.3): the dragged cue's own style, or the track's. */
+export type CaptionDragScope = "all" | "selected";
+
+/**
+ * A canvas drag of cue `cueId`'s caption (spec §20.3) as one command: `selected` writes `fields` into
+ * the cue's own style (its preset link stays); `all` changes the track's style with `change` and
+ * drops the cue's own values of `fields`, so the dragged caption follows the track as shown. Null when
+ * the cue cannot be edited or nothing changes.
+ */
+function captionDrag(
+  project: Project,
+  cueId: ClipId,
+  scope: CaptionDragScope,
+  fields: CaptionStyleOverride,
+  paths: readonly string[],
+  change: (style: CaptionStyle) => CaptionStyle,
+  labels: [string, string],
+  coalesceKey?: string,
+): Command | null {
+  const cue = editableCue(project, cueId);
+  if (!cue) return null;
+  if (scope === "selected") {
+    const merged: CaptionStyleOverride = { ...structuredClone(cue.styleOverride ?? {}), ...fields };
+    if (fields.text) merged.text = { ...(cue.styleOverride?.text ?? {}), ...fields.text };
+    return setCueStyles(project, new Map([[cueId, { styleOverride: merged, presetId: cue.presetId }]]), { label: labels[0], ...(coalesceKey !== undefined && { coalesceKey }) });
+  }
+  const track = project.tracks.find((t) => t.id === cue.trackId);
+  if (!track || track.locked) return null;
+  const before = captionStyleOf(project, cue.trackId);
+  const after = change(before);
+  const own = overrideWithout(cue.styleOverride, paths);
+  const styleChanged = JSON.stringify(before) !== JSON.stringify(after);
+  const ownChanged = JSON.stringify(own) !== JSON.stringify(cue.styleOverride);
+  if (!styleChanged && !ownChanged) return null;
+  return {
+    id: "caption.style",
+    label: labels[1],
+    ...(coalesceKey !== undefined && { coalesceKey }),
+    affects: ["captions", "clips"],
+    run(draft) {
+      if (styleChanged) draft.captionTracks[cue.trackId] = { style: structuredClone(after) };
+      const target = draft.clips[cueId];
+      if (ownChanged && target?.kind === "caption") {
+        if (own) target.styleOverride = structuredClone(own);
+        else delete target.styleOverride;
+      }
+    },
+  };
+}
+
+/**
+ * A caption moved on the canvas to `middle` (its box's middle from the frame center): a Custom position,
+ * of the cue or the track (spec §20.3). `nudge`: an arrow key's step (consecutive nudges coalesce, §7.3).
+ */
+export function moveCaption(project: Project, cueId: ClipId, scope: CaptionDragScope, middle: { x: number; y: number }, nudge = false): Command | null {
+  const at = { position: "custom" as const, x: Math.round(middle.x), y: Math.round(middle.y) };
+  const labels: [string, string] = nudge ? ["Nudge caption", "Nudge captions"] : ["Move caption", "Move captions"];
+  return captionDrag(project, cueId, scope, at, ["position", "x", "y"], (style) => ({ ...style, ...at }), labels, nudge ? "canvas.nudgeCaption" : undefined);
+}
+
+/** A caption's corner handle drag (spec §20.3): the font size, of the cue or the track. */
+export function sizeCaption(project: Project, cueId: ClipId, scope: CaptionDragScope, fontSize: number): Command | null {
+  return captionDrag(project, cueId, scope, { text: { fontSize } }, ["text.fontSize"], (style) => ({ ...style, text: { ...style.text, fontSize } }), ["Resize caption", "Resize captions"]);
+}
+
+/** Reset to track style (spec §20.3): the cues `ids` lose their override and preset, one undo step; null when none has one. */
+export function resetCueStyles(project: Project, ids: Iterable<ClipId>): Command | null {
+  const command = setCueStyles(project, new Map([...ids].map((id) => [id, {}])), { label: "Reset to track style" });
+  return command && { ...command, id: "caption.resetStyle" };
 }
 
 // --- Moving cues -----------------------------------------------------------------------------------

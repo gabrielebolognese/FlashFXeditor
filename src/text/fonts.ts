@@ -5,6 +5,7 @@
 // its source (library, My fonts, system), and the manifest records the source of each face (version
 // 2; version 1 manifests held system faces only and read as such). Pure.
 import type { Project, TextStyle } from "../core/document/types.js";
+import { effectiveCaptionStyle } from "./captions.js";
 
 /** The project folder's font files and their manifest (spec §10.1). */
 export const FONTS_DIR = "fonts";
@@ -201,10 +202,17 @@ export function fontExtension(header: Uint8Array): string {
   return ".ttf";
 }
 
-/** Every text style a document draws with: its text clips' and its caption tracks' (spec §10.1, §10.5). */
+/** Every text style a document draws with: its text clips', its cues' own (spec §20.3) and its caption tracks' (spec §10.1, §10.5). */
 export function projectTextStyles(project: Pick<Project, "clips" | "captionTracks">): TextStyle[] {
   const styles: TextStyle[] = [];
-  for (const clip of Object.values(project.clips)) if (clip.kind === "text") styles.push(clip.style);
+  for (const clip of Object.values(project.clips)) {
+    if (clip.kind === "text") styles.push(clip.style);
+    // A cue's own style (spec §20.3): its fonts are the project's too.
+    else if (clip.kind === "caption" && clip.styleOverride?.text) {
+      const track = project.captionTracks[clip.trackId]?.style;
+      if (track?.text) styles.push(effectiveCaptionStyle(track, clip.styleOverride).text);
+    }
+  }
   for (const data of Object.values(project.captionTracks)) if (data?.style?.text) styles.push(data.style.text);
   return styles;
 }

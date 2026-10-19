@@ -152,6 +152,7 @@ function sanitizeState(value: unknown): SessionState {
     exportRange: raw.exportRange === "inOut" ? "inOut" : "whole",
     exportLog: sanitizeExportLog(raw.exportLog),
     presetBar: { visible: bool(presetBar.visible, d.presetBar.visible), set: isPresetSetKey(presetBar.set) ? presetBar.set : d.presetBar.set },
+    captionScope: raw.captionScope === "selected" ? "selected" : "all",
   };
 }
 

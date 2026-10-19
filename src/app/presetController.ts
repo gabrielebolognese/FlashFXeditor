@@ -11,16 +11,18 @@
 //   the preset, edited inline at once, like `+ Title`), rename, duplicate, delete, favorite, apply
 //   position, sets and tags, default Title / Subtitle (T / Shift+T use them), import and export JSON.
 // - Hover: a card hovered with text clips selected shows the preset on them, live only (P2).
-// - Captions (spec §10.5): with cues or the caption track selected (and no text clip), Apply sets the
-//   caption track's text style from the preset (position, width, lines and highlight stay); hovering
-//   shows it live.
+// - Captions (spec §10.5, §20.3): with the caption track selected (and no text clip), Apply sets the
+//   caption track's text style from the preset (position, width, lines and highlight stay); with cues
+//   selected it writes the preset's look into their own styles (text/captions.ts `presetOverride`: its
+//   text style, its word highlight, its position when it applies one), one undo step. Hovering shows
+//   either live.
 // - Drags: a card dragged onto the timeline (or the canvas) adds a text clip with the preset there.
 // - Thumbnails: bitmaps made in idle time by `presetThumbService` (Batch 52), drawn on the Presets tab's
 //   cards and the preset bar's buttons by `presetThumbs` in the FrameScheduler loop.
 // - The preset bar (spec §20.2, Batch 52): its set (session state), the set's buttons in order
 //   (`barPresets`: stored orders and Recent in the app settings), Alt+1..9, `+` (Save as preset into the
 //   shown set), reordering, and the bundled starter pack brought up to date on load.
-import type { ClipId, Project, TextClip, TextPreset, TrackId, Transform } from "../core/document/types.js";
+import type { CaptionClip, CaptionStyle, ClipId, Project, TextClip, TextPreset, TrackId, Transform } from "../core/document/types.js";
 import { usToFrame } from "../core/document/time.js";
 import { watchDevicePixelRatio } from "../core/scheduler/devicePixelRatio.js";
 import { createStore } from "../core/store/createStore.js";
@@ -65,7 +67,9 @@ import type { PresetSetId } from "../core/document/types.js";
 import { fontCatalog, loadFontCatalog } from "./catalogController.js";
 import type { TitleKind } from "../text/style.js";
 import type { DropItem } from "../timeline/edit/dropMedia.js";
-import { captionStyleOf, captionTrackOf, setCaptionStyle } from "../timeline/edit/captions.js";
+import { captionStyleOf, captionTrackOf, setCaptionStyle, setCueStyles, type CueStyle } from "../timeline/edit/captions.js";
+import { effectiveCaptionStyle, presetOverride } from "../text/captions.js";
+import { selectedCueIds } from "./captionController.js";
 import { applyPreset, linkPreset, titleDuration, type TitleLook } from "../timeline/edit/text.js";
 import { IDENTITY_TRANSFORM } from "../timeline/edit/transform.js";
 import { isClipLocked } from "../timeline/model/queries.js";
@@ -409,22 +413,20 @@ function selectedTextIds(project: Project = documentStore.getState()): ClipId[] 
   return [...selection.clipIds].filter((id) => project.clips[id]?.kind === "text" && !isClipLocked(project, id));
 }
 
-/**
- * The caption track a preset applies to: selected cues' or the selected caption track, when no text clip
- * is selected (spec §20.2 Click: the track's style).
- */
-// TODO(batch 53): with cues selected, a preset (bar, Presets tab, hover) writes their style overrides (§20.3) instead of the track's style.
-function captionTarget(project: Project = documentStore.getState()): TrackId | null {
+/** What a preset applies to when no text clip is selected (spec §20.2 Click): the selected cues (their own styles, §20.3), or the selected caption track (its style). */
+type CaptionApply = { kind: "track"; trackId: TrackId } | { kind: "cues"; cueIds: ClipId[] };
+
+function captionTarget(project: Project = documentStore.getState()): CaptionApply | null {
   if (selectedTextIds(project).length > 0) return null;
   const track = captionTrackOf(project);
   if (!track || track.locked) return null;
   const selection = sessionStore.selection.getState();
-  if (selection.kind === "track") return selection.trackIds?.has(track.id) ? track.id : null;
-  if (selection.kind === "clips") return [...selection.clipIds].some((id) => project.clips[id]?.kind === "caption") ? track.id : null;
-  return null;
+  if (selection.kind === "track") return selection.trackIds?.has(track.id) ? { kind: "track", trackId: track.id } : null;
+  const cueIds = selectedCueIds(project);
+  return cueIds.length > 0 ? { kind: "cues", cueIds } : null;
 }
 
-/** Whether Apply (a card click) would set the caption track's style (the card menu names it). */
+/** Whether Apply (a card click) would style captions: the caption track's or the selected cues' (the card menu names it). */
 export function appliesToCaptions(): boolean {
   return captionTarget() !== null;
 }
@@ -596,6 +598,38 @@ function captionStyleWith(project: Project, track: TrackId, preset: TextPreset) 
   return { ...captionStyleOf(project, track), text: presetLook(preset, project.settings).style, ...(preset.highlight && { highlight: structuredClone(preset.highlight) }) };
 }
 
+/** The own styles a preset gives the cues `ids` (spec §20.3), linked to it. */
+function cueStylesWith(project: Project, ids: readonly ClipId[], preset: TextPreset): Map<ClipId, CueStyle> {
+  const look = presetLook(preset, project.settings);
+  const styles = new Map<ClipId, CueStyle>();
+  for (const id of ids) {
+    const cue = project.clips[id];
+    if (cue?.kind === "caption") styles.set(id, { styleOverride: presetOverride(cue.styleOverride, look, preset.highlight), presetId: preset.id });
+  }
+  return styles;
+}
+
+/** A preset on captions (spec §20.2, §20.3): the caption track's style, or the selected cues' own, one undo step. */
+function applyToCaptions(project: Project, target: CaptionApply, preset: TextPreset): void {
+  const label = `Apply "${preset.name}" to captions`;
+  const command = target.kind === "track" ? setCaptionStyle(project, target.trackId, captionStyleWith(project, target.trackId, preset), { label }) : setCueStyles(project, cueStylesWith(project, target.cueIds, preset), { label });
+  if (command) documentStore.dispatch(command);
+}
+
+/** A preset on captions shown live (hover): the caption track's style, or the selected cues' effective styles. */
+function previewOnCaptions(project: Project, target: CaptionApply, preset: TextPreset): void {
+  if (target.kind === "track") {
+    patchLiveEdit({ captionStyles: new Map([[target.trackId, captionStyleWith(project, target.trackId, preset)]]) });
+    return;
+  }
+  const live = new Map<ClipId, CaptionStyle>();
+  for (const [id, style] of cueStylesWith(project, target.cueIds, preset)) {
+    const cue = project.clips[id] as CaptionClip;
+    live.set(id, effectiveCaptionStyle(captionStyleOf(project, cue.trackId), style.styleOverride));
+  }
+  patchLiveEdit({ cueStyles: live });
+}
+
 /** Click on a card (spec §10.3 Apply): onto the selected text clips (one undo step), else a new clip at the playhead. */
 export function applyPresetById(id: string): void {
   const found = findPreset(id);
@@ -606,8 +640,7 @@ export function applyPresetById(id: string): void {
   const captions = captionTarget(project);
   if (captions) {
     noteRecentPreset(id);
-    const command = setCaptionStyle(project, captions, captionStyleWith(project, captions, found.preset), { label: `Apply "${found.preset.name}" to captions` });
-    if (command) documentStore.dispatch(command);
+    applyToCaptions(project, captions, found.preset);
     return;
   }
   if (ids.length === 0) {
@@ -637,7 +670,7 @@ export function hoverPreset(id: string | null): void {
   const captions = found ? captionTarget(project) : null;
   if (found && captions) {
     hovered = id;
-    patchLiveEdit({ captionStyles: new Map([[captions, captionStyleWith(project, captions, found.preset)]]) });
+    previewOnCaptions(project, captions, found.preset);
     return;
   }
   if (!found || ids.length === 0) {
@@ -659,7 +692,7 @@ export function hoverPreset(id: string | null): void {
 function endHover(): void {
   if (hovered === null) return;
   hovered = null;
-  patchLiveEdit({ texts: null, transforms: null, captionStyles: null });
+  patchLiveEdit({ texts: null, transforms: null, captionStyles: null, cueStyles: null });
 }
 
 // Drags (spec §10.3: "drag a card onto the timeline to create a clip with it").

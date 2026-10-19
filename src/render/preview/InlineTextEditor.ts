@@ -19,6 +19,9 @@
 //   the textarea, the canvas and the kept areas (the properties panel and its popovers stay live while
 //   editing: a font size change keeps the caret and the draft), the clip leaving the selection, the
 //   playhead leaving the clip, or its track hiding. A removed or locked clip ends it with no command.
+// - A cue's caption (spec §20.3, Batch 53) is edited the same way: its shown text carries `place`, which
+//   lays a draft out as the caption draws it (refitted to its max lines, kept at its position), and
+//   the end is one "Edit caption" command on the cue's text.
 import type { Command } from "../../core/commands/command.js";
 import type { ClipId, TextContent, TextStyle, Transform } from "../../core/document/types.js";
 import type { Platform } from "../../core/keyboard/keys.js";
@@ -28,6 +31,7 @@ import type { DocumentStore } from "../../core/store/DocumentStore.js";
 import type { SessionStore } from "../../core/store/sessionStore.js";
 import type { Theme, ThemeBridge } from "../../core/theme/theme.js";
 import { keepAnchored, setTexts } from "../../timeline/edit/text.js";
+import { setCueText } from "../../timeline/edit/captions.js";
 import { layerPoint, rotationTrig, scaleYOf, type Point, type Size } from "../../timeline/edit/transform.js";
 import { isClipLocked } from "../../timeline/model/queries.js";
 import { caretAt, indexAtPoint, lineEdge, selectionRects, verticalMove, wordAt, type CaretContext } from "../text/caret.js";
@@ -43,6 +47,8 @@ export interface ShownText {
   text: TextContent;
   style: TextStyle;
   transform: Transform;
+  /** A cue's caption (spec §20.3): how a draft of `value` shows (its content, its fitted style, where it sits). */
+  place?(value: string): { text: TextContent; style: TextStyle; transform: Transform };
 }
 
 export interface InlineTextEditorDeps {
@@ -55,7 +61,7 @@ export interface InlineTextEditorDeps {
   placement(): PreviewPlacement | null;
   /** Device px per project px the last render rasterized text at. */
   textScale(): number;
-  /** The clip as shown apart from the draft, or null when it is not a text clip. */
+  /** The clip as shown apart from the draft, or null when it is not a text clip or a cue. */
   shown(clipId: ClipId): ShownText | null;
   /** The edit's one command (spec P2). */
   commit(command: Command): void;
@@ -68,6 +74,8 @@ export interface InlineTextEditorDeps {
 /** The edited text as the preview and the canvas show it. */
 export interface DraftText extends ShownText {
   clipId: ClipId;
+  /** A text clip's, or a cue's caption (the preview shows the draft through its live captions). */
+  kind: "text" | "caption";
   layout: TextLayout;
   /** The selection highlight (drawn in the raster), or null with no selection. */
   highlight: TextHighlight | null;
@@ -250,10 +258,10 @@ export class InlineTextEditor implements RenderView {
     if (this.session && this.session.clipId !== clipId) this.end(true);
     const project = this.deps.document.getState();
     const clip = project.clips[clipId];
-    if (!textarea || clip?.kind !== "text" || isClipLocked(project, clipId)) return false;
+    if (!textarea || (clip?.kind !== "text" && clip?.kind !== "caption") || isClipLocked(project, clipId)) return false;
     if (project.tracks.find((track) => track.id === clip.trackId)?.hidden) return false;
     if (!this.session) {
-      const value = clip.text.value;
+      const value = clip.kind === "text" ? clip.text.value : clip.text;
       this.session = { clipId, value, start: 0, end: 0, backward: false, upstream: false, goalX: null, composition: null, own: null };
       this.memo = null;
       this.placed = "";
@@ -280,6 +288,9 @@ export class InlineTextEditor implements RenderView {
       const clip = project.clips[s.clipId];
       if (clip?.kind === "text" && clip.text.value !== s.value) {
         const command = setTexts(project, new Map([[s.clipId, { text: { ...clip.text, value: s.value } }]]), { label: "Edit text", at: this.deps.session.state.getState().playhead });
+        if (command) this.deps.commit(command);
+      } else if (clip?.kind === "caption") {
+        const command = setCueText(project, s.clipId, s.value);
         if (command) this.deps.commit(command);
       }
     }
@@ -311,15 +322,18 @@ export class InlineTextEditor implements RenderView {
     const base = this.deps.shown(s.clipId);
     if (!base) return null;
     const frame = this.deps.document.getState().settings;
-    const text = this.draftContent(base.text, s.value);
-    const layout = textLayout(text, base.style);
-    const scale = this.rasterScale(layout, base.transform);
+    // A caption lays its draft out itself (refitted, at its position); a text keeps its anchored point.
+    const placed = base.place?.(s.value) ?? null;
+    const text = placed ? placed.text : this.draftContent(base.text, s.value);
+    const style = placed ? placed.style : base.style;
+    const layout = textLayout(text, style);
+    const scale = this.rasterScale(layout, placed ? placed.transform : base.transform);
     const color = this.theme.gizmo.textSelection;
-    const key = [base.text, base.style, base.transform, text, s.start, s.end, scale, color, textLayoutVersion(), frame.width, frame.height];
+    const key = [base.text, base.style, base.transform, text, style, placed?.transform, s.start, s.end, scale, color, textLayoutVersion(), frame.width, frame.height];
     const memo = this.memo;
     if (memo && memo.key.length === key.length && memo.key.every((value, i) => value === key[i])) return memo.draft;
-    const transform = keepAnchored(base.transform, textLayout(base.text, base.style), layout, base.style, frame);
-    const draft: DraftText = { clipId: s.clipId, text, style: base.style, transform, layout, highlight: null, scale };
+    const transform = placed ? placed.transform : keepAnchored(base.transform, textLayout(base.text, base.style), layout, base.style, frame);
+    const draft: DraftText = { clipId: s.clipId, kind: placed ? "caption" : "text", text, style, transform, layout, highlight: null, scale };
     if (s.start !== s.end) draft.highlight = { rects: selectionRects(this.context(draft, s.value), s.start, s.end), color };
     this.memo = { key, draft };
     return draft;
@@ -542,7 +556,7 @@ export class InlineTextEditor implements RenderView {
     if (!s) return;
     const project = this.deps.document.getState();
     const clip = project.clips[s.clipId];
-    if (clip?.kind !== "text" || isClipLocked(project, s.clipId)) {
+    if ((clip?.kind !== "text" && clip?.kind !== "caption") || isClipLocked(project, s.clipId)) {
       this.end(false);
       return;
     }

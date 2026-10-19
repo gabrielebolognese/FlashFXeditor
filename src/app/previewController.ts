@@ -9,9 +9,10 @@
 // (its sample index cached apart), the preview and the engine pick the lod of the quality mode, and
 // a media whose playback falls behind gets a proxy queued when it has no proxy decision yet.
 // Inline text editing (spec §7.7, `textEditor`): its textarea sits over the canvases; the preview and
-// the canvas show its draft over the other live values (`liveTexts`, `liveTransforms`).
+// the canvas show its draft over the other live values (`liveTexts`, `liveTransforms`; a cue's draft
+// through `liveCaptions`, spec §20.3).
 import { animatedTransform } from "../core/document/keyframes.js";
-import type { ClipId, Frame, MediaId, TextClip, Transform } from "../core/document/types.js";
+import type { CaptionClip, CaptionStyle, ClipId, Frame, MediaId, TextClip, TextContent, TextStyle, Transform } from "../core/document/types.js";
 import { detectPlatform } from "../core/keyboard/keys.js";
 import { createStore } from "../core/store/createStore.js";
 import { GRID_DIVISIONS_MAX, GRID_DIVISIONS_MIN, type PreviewSession } from "../core/store/sessionStore.js";
@@ -32,7 +33,9 @@ import { GlContext } from "../render/gpu/GlContext.js";
 import { SwitchRenderer } from "../render/gpu/SwitchRenderer.js";
 import { CanvasEditInput } from "../render/preview/CanvasEditInput.js";
 import type { LiveCaptions, LiveText } from "../render/compositor/Compositor.js";
-import { InlineTextEditor, type DraftText } from "../render/preview/InlineTextEditor.js";
+import { InlineTextEditor, type DraftText, type ShownText } from "../render/preview/InlineTextEditor.js";
+import { captionTransform, shownCueStyle } from "../render/preview/captionGizmo.js";
+import { captionLook } from "../render/text/captionLayout.js";
 import { NO_CROP_MODE, type CropModeState } from "../render/preview/cropGizmo.js";
 import { PreviewOverlayView } from "../render/preview/PreviewOverlayView.js";
 import { PreviewStatsOverlay } from "../render/preview/PreviewStatsOverlay.js";
@@ -198,6 +201,8 @@ export const canvasInput: CanvasEditInput = new CanvasEditInput({
   texts: () => liveTexts(),
   // A Solid field scrub resizes the solid's box live.
   solids: () => liveEdit.getState().solids,
+  // Cue drafts, caption style scrubs and hovered presets move and size the caption's box live.
+  captions: () => liveCaptions(),
   cropMode,
   textEditor: {
     get editing() {
@@ -228,9 +233,11 @@ export const textEditor: InlineTextEditor = new InlineTextEditor({
   platform: detectPlatform(),
   placement: () => previewView.placement,
   textScale: () => previewView.textRenderScale,
-  // The clip as a Text field scrub shows it (the draft goes over it), keyed at the playhead.
+  // The clip as a Text field scrub shows it (the draft goes over it), keyed at the playhead; a cue as
+  // its caption shows (spec §20.3).
   shown: (clipId) => {
     const clip = documentStore.getState().clips[clipId];
+    if (clip?.kind === "caption") return shownCue(clip);
     if (clip?.kind !== "text") return null;
     const live = liveEdit.getState();
     const text = live.texts?.get(clipId);
@@ -249,20 +256,64 @@ export const textEditor: InlineTextEditor = new InlineTextEditor({
 let textsMemo: { base: ReadonlyMap<ClipId, LiveText> | null; draft: DraftText | null; value: ReadonlyMap<ClipId, LiveText> | null } = { base: null, draft: null, value: null };
 let transformsMemo: { base: ReadonlyMap<ClipId, Transform> | null; draft: DraftText | null; value: ReadonlyMap<ClipId, Transform> | null } = { base: null, draft: null, value: null };
 
-let captionsMemo: { cues: ReadonlyMap<ClipId, string> | null; styles: LiveEdit["captionStyles"]; value: LiveCaptions | null } = { cues: null, styles: null, value: null };
+/** Where a caption of a style sits (one object per style and frame height: the editor's draft memo keys on it). */
+const placedTransforms = new WeakMap<CaptionStyle, { height: number; transform: Transform }>();
 
-/** The cue list's live text and a Caption style scrub's style (the same object while nothing changed). */
+function placedTransform(style: CaptionStyle, height: number): Transform {
+  const found = placedTransforms.get(style);
+  if (found?.height === height) return found.transform;
+  const transform = captionTransform(style, height);
+  placedTransforms.set(style, { height, transform });
+  return transform;
+}
+
+/** A cue as the inline editor starts from it (spec §20.3): its caption in its shown style, and how a draft shows. */
+function shownCue(cue: CaptionClip): ShownText {
+  const project = documentStore.getState();
+  const base = liveEdit.getState();
+  // The cue list's draft and the track's or the cue's live style, not the inline draft itself.
+  const style = shownCueStyle(project, cue, { texts: base.cues, styles: base.captionStyles, cueStyles: base.cueStyles });
+  const place = (value: string): { text: TextContent; style: TextStyle; transform: Transform } => {
+    const look = captionLook(value, style);
+    return { text: look.content, style: look.style, transform: placedTransform(style, project.settings.height) };
+  };
+  return { ...place(cue.text), place };
+}
+
+let captionsMemo: {
+  cues: ReadonlyMap<ClipId, string> | null;
+  styles: LiveEdit["captionStyles"];
+  cueStyles: LiveEdit["cueStyles"];
+  drag: ReadonlyMap<ClipId, CaptionStyle> | null;
+  draft: DraftText | null;
+  value: LiveCaptions | null;
+} = { cues: null, styles: null, cueStyles: null, drag: null, draft: null, value: null };
+
+/**
+ * The live caption values (the same object while nothing changed): the cue list's text and the inline
+ * editor's draft of a cue (with its selection highlight), a Caption style scrub's track style, and the
+ * cues' own live styles (a Selected scope scrub or a hovered preset, a canvas size drag over them).
+ */
 function liveCaptions(): LiveCaptions | null {
-  const { cues, captionStyles } = liveEdit.getState();
-  if (cues === null && captionStyles === null) return null;
-  if (captionsMemo.cues !== cues || captionsMemo.styles !== captionStyles) captionsMemo = { cues, styles: captionStyles, value: { texts: cues, styles: captionStyles } };
+  const { cues, captionStyles, cueStyles } = liveEdit.getState();
+  const drag = canvasInput.cueStyles;
+  const live = textEditor.live();
+  const draft = live?.kind === "caption" ? live : null;
+  if (cues === null && captionStyles === null && cueStyles === null && drag === null && draft === null) return null;
+  const memo = captionsMemo;
+  if (memo.cues !== cues || memo.styles !== captionStyles || memo.cueStyles !== cueStyles || memo.drag !== drag || memo.draft !== draft) {
+    const texts = draft ? new Map([...(cues ?? []), [draft.clipId, draft.text.value]]) : cues;
+    const styles = drag ? new Map([...(cueStyles ?? []), ...drag]) : cueStyles;
+    captionsMemo = { cues, styles: captionStyles, cueStyles, drag, draft, value: { texts, styles: captionStyles, cueStyles: styles, editing: draft ? { cueId: draft.clipId, highlight: draft.highlight } : null } };
+  }
   return captionsMemo.value;
 }
 
 /** The live texts: a canvas text handle drag's or a Text field scrub's, with the inline draft over them (the same map while nothing changed). */
 function liveTexts(): ReadonlyMap<ClipId, LiveText> | null {
   const base = canvasInput.texts ?? liveEdit.getState().texts;
-  const draft = textEditor.live();
+  const live = textEditor.live();
+  const draft = live?.kind === "text" ? live : null;
   if (!draft) return base;
   if (textsMemo.base !== base || textsMemo.draft !== draft) {
     const value = new Map<ClipId, LiveText>(base ?? []);
@@ -276,7 +327,8 @@ function liveTexts(): ReadonlyMap<ClipId, LiveText> | null {
 /** The live transforms of field scrubs, with the inline draft's box (moved by its anchor) over them. */
 function liveTransforms(): ReadonlyMap<ClipId, Transform> | null {
   const base = liveEdit.getState().transforms;
-  const draft = textEditor.live();
+  const live = textEditor.live();
+  const draft = live?.kind === "text" ? live : null;
   if (!draft) return base;
   if (transformsMemo.base !== base || transformsMemo.draft !== draft) {
     const value = new Map<ClipId, Transform>(base ?? []);

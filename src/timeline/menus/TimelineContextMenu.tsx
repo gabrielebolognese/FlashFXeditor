@@ -131,9 +131,14 @@ function fadeEntries(project: Project, clipId: ClipId): ContextMenuEntry[] {
 
 const SHORT_KIND = { crossDissolve: "Dissolve", dipToBlack: "Black", dipToWhite: "White" } as const;
 
-/** A cue's own rows (spec §10.5): merge it into the cue before it. */
+/** A cue's own rows (spec §10.5, §20.3): merge it into the cue before it, its style. */
 function cueEntries(project: Project, clipId: ClipId): ContextMenuEntry[] {
-  return [{ kind: "item", id: "caption.mergePrevious", label: "Merge with previous cue", disabled: neighbors(project, clipId).prev === null }];
+  return [
+    { kind: "item", id: "caption.mergePrevious", label: "Merge with previous cue", disabled: neighbors(project, clipId).prev === null },
+    { kind: "item", id: "caption.copyStyle", label: "Copy style", commandId: "caption.copyStyle" },
+    { kind: "item", id: "caption.pasteStyle", label: "Paste style", commandId: "caption.pasteStyle", disabled: !actions.isEnabled("caption.pasteStyle") },
+    { kind: "item", id: "caption.resetStyle", label: "Reset to track style", commandId: "caption.resetStyle", disabled: !actions.isEnabled("caption.resetStyle") },
+  ];
 }
 
 /** "Show keyframes for" (spec §6.16, §6.4): the section the clip's lane shows, for clips with a lane (layers). */

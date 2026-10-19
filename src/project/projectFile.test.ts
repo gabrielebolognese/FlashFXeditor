@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { makeMedia, makeMediaClip, makeProject, makeSolidClip, makeTrack, withClips } from "../core/document/fixtures.js";
+import { addCaptionTrack, makeCaptionClip, makeMedia, makeMediaClip, makeProject, makeSolidClip, makeTrack, withClips } from "../core/document/fixtures.js";
 import { SCHEMA_VERSION, type JsonObject, type Project } from "../core/document/types.js";
 import { fuzzRun, random } from "../timeline/edit/fuzzKit.js";
 import { migrateProject, parseProjectFile, ProjectFileError, serializeProject, type Migration } from "./projectFile.js";
@@ -80,7 +80,7 @@ describe("migration hook", () => {
   it("leaves a current file alone", () => {
     const raw = v1();
     expect(migrateProject(raw)).toEqual(raw);
-    expect(SCHEMA_VERSION).toBe(2);
+    expect(SCHEMA_VERSION).toBe(3);
   });
 
   it("opens a schema 1 project (Batch 41): no bins yet, media without sizes", () => {
@@ -89,10 +89,32 @@ describe("migration hook", () => {
     delete raw.bins;
     raw.schemaVersion = 1;
     const parsed = parseProjectFile(JSON.stringify(raw));
-    expect(parsed.schemaVersion).toBe(2);
+    expect(parsed.schemaVersion).toBe(SCHEMA_VERSION);
     expect(parsed.bins).toEqual([]);
     expect(parsed.media.m1).toEqual(project.media.m1);
     expect(parsed.clips).toEqual(project.clips);
+  });
+
+  it("opens a schema 2 project (before Batch 53) unchanged: caption styles get a centered x, cues no override", () => {
+    const project = withClips(addCaptionTrack(richProject()), [makeCaptionClip({ id: "q1", trackId: "cc", start: 0, duration: 30, text: "Hello" })]);
+    const style = project.captionTracks.cc!.style;
+    style.position = "custom";
+    style.y = -200;
+    const raw = JSON.parse(serializeProject(project, STAMP)) as { schemaVersion: number; captionTracks: Record<string, { style: Record<string, unknown> }> };
+    raw.schemaVersion = 2;
+    delete raw.captionTracks.cc!.style.x;
+    const parsed = parseProjectFile(JSON.stringify(raw));
+    expect(parsed.schemaVersion).toBe(3);
+    expect(parsed.captionTracks.cc!.style).toEqual({ ...style, x: 0 });
+    expect(parsed.clips).toEqual(project.clips);
+    expect(parsed.clips.q1).not.toHaveProperty("styleOverride");
+  });
+
+  it("refuses a cue override with an unknown or invalid field", () => {
+    const project = withClips(addCaptionTrack(richProject()), [makeCaptionClip({ id: "q1", trackId: "cc", start: 0, duration: 30, text: "Hello" })]);
+    const raw = JSON.parse(serializeProject(project, STAMP)) as { clips: Record<string, Record<string, unknown>> };
+    raw.clips.q1!.styleOverride = { text: { fontSize: -4, glow: true }, maxLines: 1.5 };
+    expect(() => parseProjectFile(JSON.stringify(raw))).toThrow(/text\.fontSize[\s\S]*text\.glow[\s\S]*maxLines|maxLines[\s\S]*text/);
   });
 
   it("runs every step from the file's version to the target, in order, on a copy", () => {

@@ -1,5 +1,7 @@
-// Canvas actions (spec §7.2, §7.3, §18): arrow nudges of the selected layers (1 px, Shift 10 px; with
-// no layer to nudge the arrows step frames, the global binding), and the canvas context menu's rows:
+// Canvas actions (spec §7.2, §7.3, §18): arrow nudges of the selected layers (1 px, Shift 10 px; a
+// caption selected alone moves as its drag does, spec §20.3: its own position or, in the All cues scope,
+// the track's; with nothing to nudge the arrows step frames, the global binding), and the canvas context
+// menu's rows:
 // Bring forward / Send backward (the clip to the adjacent video track, one created if needed), Lock
 // track. Fit, Fill, Center, Flip H / V and Reset transform are the properties quick row's actions
 // (`transform.*`, propertiesController); Delete is `edit.delete`. Esc cancels a canvas or timeline
@@ -9,6 +11,8 @@
 import type { CommandRun } from "../core/commands/CommandRegistry.js";
 import type { ClipId } from "../core/document/types.js";
 import { arrangeLayers, type ArrangeDirection } from "../timeline/edit/arrange.js";
+import { moveCaption } from "../timeline/edit/captions.js";
+import { captionMiddle } from "../render/preview/captionGizmo.js";
 import { nudgeLayers } from "../timeline/edit/transform.js";
 import { closeExportTab } from "./exportState.js";
 import { exitFullscreen } from "./fullscreen.js";
@@ -20,9 +24,23 @@ import { setTracksFlag } from "./trackController.js";
 
 const newId = () => crypto.randomUUID();
 
-/** The selected layers at the playhead (on visible, unlocked video tracks): what the canvas actions take. */
+/** The selected layers at the playhead (on visible, unlocked video tracks): what the canvas actions take (a cue's caption is moved by dragging, spec §20.3). */
 function selectedLayerIds(): ClipId[] {
-  return canvasInput.selectedLayers().map((layer) => layer.clipId);
+  return canvasInput
+    .selectedLayers()
+    .filter((layer) => !layer.cue)
+    .map((layer) => layer.clipId);
+}
+
+/** A caption the gizmo holds alone, nudged (spec §20.3); false when none is. */
+function nudgeCaption(dx: number, dy: number): boolean {
+  const held = canvasInput.heldLayers();
+  const layer = held.length === 1 && held[0]?.cue ? held[0] : null;
+  if (!layer) return false;
+  const middle = captionMiddle(layer.transform, layer.box);
+  const command = moveCaption(documentStore.getState(), layer.clipId, sessionStore.state.getState().captionScope, { x: middle.x + dx, y: middle.y + dy }, true);
+  if (command) documentStore.dispatch(command);
+  return true;
 }
 
 /** Arrow keys in the preview (spec §7.3): declined (frame step) when no layer is selected on the canvas. */
@@ -30,7 +48,7 @@ function nudge(dx: number, dy: number): CommandRun {
   return () => {
     if (canvasInput.active) return true;
     const ids = selectedLayerIds();
-    if (ids.length === 0) return false;
+    if (ids.length === 0) return nudgeCaption(dx, dy);
     const command = nudgeLayers(documentStore.getState(), ids, dx, dy, sessionStore.state.getState().playhead);
     if (command) documentStore.dispatch(command);
     return true;

@@ -2,6 +2,7 @@ import { Captions, Eraser, FileDown, FileUp, Mic, Paintbrush, Plus, SearchX } fr
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type FocusEvent, type KeyboardEvent, type MouseEvent, type UIEvent } from "react";
 import { commitCue, cueFocus, draftCue, mergeCueIntoPrevious, selectCue, splitCueAtCaret, type CueFocus } from "../../app/captionController.js";
 import { actions, documentStore, sessionStore } from "../../app/services.js";
+import { detectPlatform } from "../../core/keyboard/keys.js";
 import { transcription, type TranscriptionState } from "../../app/transcription.js";
 import { formatTimecode, type TimecodeMode } from "../../core/document/time.js";
 import type { CaptionClip, ClipId, Project } from "../../core/document/types.js";
@@ -17,6 +18,7 @@ import { EmptyState } from "../../ui/EmptyState.js";
 import { IconButton } from "../../ui/IconButton.js";
 import { TextField } from "../../ui/TextField.js";
 import styles from "./CaptionsTab.module.css";
+import { cueClickSelection, type CueClick } from "./cueSelection.js";
 
 // The Captions tab (spec §10.5, §12, §17 Captions header): the caption track's cue list. Each row shows
 // the cue's in and out timecodes, its text (edited in place, shown live on the canvas) and its word
@@ -27,6 +29,12 @@ import styles from "./CaptionsTab.module.css";
 // block around them, and the row being edited) exist, re-rendered when the view crosses a block of
 // rows, not on every scroll step; the cue under the playhead is marked through the DOM (no React
 // render while playing, P1). A row that goes away while its text is edited commits the text.
+// Styles per cue (spec §20.3, Batch 53): Ctrl (Cmd) click toggles a cue in the selection and Shift
+// click selects a range (cueSelection.ts), on the text too (the field then takes no focus); a cue with
+// its own style shows a dot at the row's right edge; the menu has Copy style, Paste style and Reset to
+// track style.
+
+const MAC = detectPlatform() === "mac";
 
 /** Rows rendered beyond the view, and the scroll step that re-renders the list. */
 const BLOCK = 16;
@@ -95,7 +103,16 @@ function NoCues({ hasTrack, hasAudio }: { hasTrack: boolean; hasAudio: boolean }
 /** The rows run as the Captions tab's keys would (Delete deletes the selected cues there). */
 const MEDIA_CONTEXT = { scope: "media", phase: "down", repeat: false } as const;
 
-/** A cue row's menu (Batch 40): the selected cue's edit, clipboard, split / merge and delete, then the track's. */
+/** A cue's style rows (spec §20.3): Copy style, Paste style (once a style was copied), Reset to track style (with an own style selected). */
+export function cueStyleEntries(): ContextMenuEntry[] {
+  return [
+    { kind: "item", id: "caption.copyStyle", label: "Copy style" },
+    { kind: "item", id: "caption.pasteStyle", label: "Paste style", disabled: !actions.isEnabled("caption.pasteStyle") },
+    { kind: "item", id: "caption.resetStyle", label: "Reset to track style", disabled: !actions.isEnabled("caption.resetStyle") },
+  ];
+}
+
+/** A cue row's menu (Batch 40): the selected cue's edit, clipboard, split / merge and delete, its style, then the track's. */
 function cueMenuEntries(project: Project, cueId: ClipId): ContextMenuEntry[] {
   const track = captionTrackOf(project);
   const index = track ? track.clipIds.indexOf(cueId) : -1;
@@ -109,6 +126,8 @@ function cueMenuEntries(project: Project, cueId: ClipId): ContextMenuEntry[] {
     { kind: "item", id: "edit.split", label: "Split at playhead" },
     { kind: "item", id: "caption.mergePrevious", label: "Merge with previous cue", disabled: index <= 0 },
     { kind: "item", id: "edit.delete", label: "Delete" },
+    { kind: "separator" },
+    ...cueStyleEntries(),
     { kind: "separator" },
     { kind: "item", id: "captions.addCue", label: "Add cue at playhead" },
     { kind: "item", id: "captions.style", label: "Caption style" },
@@ -207,7 +226,9 @@ const CueRow = memo(function CueRow({ id, index, top, selected, mode, order }: R
           handled.current = false;
           pending.current = null;
           selectCue(id);
-          setDraft(cue.text);
+          // No draft until a key is typed: the field shows the cue's text, which a merge, a split or an
+          // undo may change while it has the focus (a stale draft would be committed back on blur).
+          setDraft(null);
         }}
         onChange={(event) => {
           pending.current = event.target.value;
@@ -225,6 +246,7 @@ const CueRow = memo(function CueRow({ id, index, top, selected, mode, order }: R
       <span className={styles.count} data-tooltip="Words">
         {wordCount(text)}
       </span>
+      {(cue.styleOverride !== undefined || cue.presetId !== undefined) && <span className={styles.styleDot} role="img" aria-label="Own style" data-tooltip="This cue has its own style" />}
     </div>
   );
 });
@@ -321,22 +343,36 @@ export function CaptionsTab() {
     };
   }, [view, shown]);
 
-  // A right-click on a row (not in its text, which keeps the browser's text menu) selects the cue and opens its menu.
+  // A right-click on a row (not in its text, which keeps the browser's text menu) selects the cue (a
+  // selected one keeps the selection) and opens its menu.
   const [menu, setMenu] = useState<{ cueId: ClipId; x: number; y: number } | null>(null);
   const onContextMenu = (event: MouseEvent) => {
     const row = event.target instanceof Element ? event.target.closest<HTMLElement>("[data-cue-id]") : null;
     if (!row || event.target instanceof HTMLTextAreaElement) return;
     event.preventDefault();
     const cueId = row.dataset.cueId as ClipId;
-    selectCue(cueId);
+    // A selected cue keeps the selection (Paste style and Reset to track style act on all of them).
+    const selection = sessionStore.selection.getState();
+    if (!(selection.kind === "clips" && selection.clipIds.has(cueId))) selectCue(cueId);
     setMenu({ cueId, x: event.clientX, y: event.clientY });
   };
   const closeMenu = useCallback(() => setMenu(null), []);
 
+  // Shift and Ctrl (Cmd) presses select several cues (spec §20.3), on the text too: the press then
+  // neither focuses the field nor moves the playhead.
+  const multiClick = (event: MouseEvent): CueClick | null => (event.shiftKey ? "range" : (MAC ? event.metaKey : event.ctrlKey) ? "toggle" : null);
+  const onMouseDown = (event: MouseEvent) => {
+    const row = event.target instanceof Element ? event.target.closest<HTMLElement>("[data-cue-id]") : null;
+    const click = event.button === 0 ? multiClick(event) : null;
+    if (!row || !click) return;
+    event.preventDefault();
+    sessionStore.selection.set(cueClickSelection(sessionStore.selection.getState(), row.dataset.cueId as ClipId, click, shown));
+    row.focus();
+  };
   // A click on a row (not in its text) selects the cue and moves the playhead to it.
   const onClick = (event: MouseEvent) => {
     const row = event.target instanceof Element ? event.target.closest<HTMLElement>("[data-cue-id]") : null;
-    if (!row || event.target instanceof HTMLTextAreaElement) return;
+    if (!row || event.target instanceof HTMLTextAreaElement || multiClick(event)) return;
     selectCue(row.dataset.cueId as string);
     row.focus();
   };
@@ -364,7 +400,7 @@ export function CaptionsTab() {
         </div>
         <span className={styles.total}>{query.trim() === "" ? `${total} cue${total === 1 ? "" : "s"}` : `${shown.length} of ${total}`}</span>
       </div>
-      <div ref={scroller} className={styles.scroll} role="listbox" aria-label="Cues" onScroll={onScroll} onClick={onClick} onFocus={onFocus} onBlur={onBlur} onContextMenu={onContextMenu}>
+      <div ref={scroller} className={styles.scroll} role="listbox" aria-label="Cues" onScroll={onScroll} onMouseDown={onMouseDown} onClick={onClick} onFocus={onFocus} onBlur={onBlur} onContextMenu={onContextMenu}>
         {total === 0 ? (
           <NoCues hasTrack hasAudio={hasAudio} />
         ) : shown.length === 0 ? (

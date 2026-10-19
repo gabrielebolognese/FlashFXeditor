@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { addCaptionTrack as withCaptionTrack, makeCaptionClip, makeMedia, makeMediaClip, makeProject, makeTrack, withClips } from "../../core/document/fixtures.js";
-import type { CaptionClip, Clip, Project } from "../../core/document/types.js";
+import type { CaptionClip, CaptionStyleOverride, Clip, Project } from "../../core/document/types.js";
 import type { Command as Cmd } from "../../core/commands/command.js";
 import { DocumentStore } from "../../core/store/DocumentStore.js";
 import { createSessionStore } from "../../core/store/sessionStore.js";
@@ -17,12 +17,17 @@ import {
   cuesFromSubtitles,
   cuesInRange,
   cuesOf,
+  cueStyleOf,
   exportCues,
   importCues,
   mergeWithPrevious,
+  moveCaption,
   replaceCuesInRange,
+  resetCueStyles,
   setCaptionStyle,
+  setCueStyles,
   setCueText,
+  sizeCaption,
   splitCue,
   transcribedCues,
 } from "./captions.js";
@@ -459,5 +464,133 @@ describe("validity", () => {
     }
     const final = cuesOf(doc.getState()) as Clip[];
     for (let i = 1; i < final.length; i++) expect(final[i]!.start).toBeGreaterThanOrEqual(final[i - 1]!.start + final[i - 1]!.duration);
+  });
+});
+
+describe("styles per cue (spec §20.3)", () => {
+  const BIG: CaptionStyleOverride = { text: { fontSize: 96, fill: { r: 1, g: 0.8, b: 0, a: 1 } }, position: "custom", x: 0, y: -600 };
+  const styled = (): Project => {
+    const p = project([
+      [0, 60, "one two"],
+      [60, 30, "three"],
+      [90, 30, "four"],
+    ]);
+    p.clips.q1 = { ...cue(p, "q1"), styleOverride: structuredClone(BIG), presetId: "pr" };
+    return p;
+  };
+
+  it("sets the own styles of several cues in one undo step, the others keeping the track style", () => {
+    const p = project([
+      [0, 30],
+      [30, 30],
+      [60, 30],
+    ]);
+    const next = run(
+      p,
+      setCueStyles(
+        p,
+        new Map([
+          ["q1", { styleOverride: BIG }],
+          ["q2", { styleOverride: BIG, presetId: "pr" }],
+        ]),
+        { label: "Change font size" },
+      ),
+    );
+    expect(cue(next, "q1").styleOverride).toEqual(BIG);
+    expect(cue(next, "q2")).toMatchObject({ styleOverride: BIG, presetId: "pr" });
+    expect(cue(next, "q3").styleOverride).toBeUndefined();
+    expect(cueStyleOf(next, cue(next, "q3"))).toBe(next.captionTracks.cc!.style);
+    expect(cueStyleOf(next, cue(next, "q1")).text.fontSize).toBe(96);
+    // Nothing to change, an empty override, a locked track: no command.
+    expect(setCueStyles(next, new Map([["q1", { styleOverride: BIG }]]), { label: "x" })).toBeNull();
+    expect(setCueStyles(p, new Map([["q1", { styleOverride: { text: {} } }]]), { label: "x" })).toBeNull();
+    const locked = structuredClone(next);
+    locked.tracks.find((t) => t.id === "cc")!.locked = true;
+    expect(setCueStyles(locked, new Map([["q3", { styleOverride: BIG }]]), { label: "x" })).toBeNull();
+  });
+
+  it("Reset to track style clears the overrides and preset links of the cues", () => {
+    const p = styled();
+    const reset = resetCueStyles(p, ["q1", "q2"]);
+    expect(reset?.id).toBe("caption.resetStyle");
+    const next = run(p, reset);
+    expect(cue(next, "q1")).not.toHaveProperty("styleOverride");
+    expect(cue(next, "q1")).not.toHaveProperty("presetId");
+    expect(resetCueStyles(next, ["q1"])).toBeNull();
+  });
+
+  it("splitting a styled cue keeps the style on both halves (cue list and timeline); merging keeps the first cue's", () => {
+    const p = styled();
+    const atCaret = splitCue(p, "q1", "one two", 3, ids());
+    const listed = run(p, atCaret?.command);
+    expect(cue(listed, "q1")).toMatchObject({ styleOverride: BIG, presetId: "pr" });
+    expect(cue(listed, atCaret!.rightId)).toMatchObject({ styleOverride: BIG, presetId: "pr" });
+    const razor = splitClips(p, ["q1"], 30, ids());
+    const cut = run(p, razor?.command);
+    expect(cue(cut, "q1").styleOverride).toEqual(BIG);
+    expect(cue(cut, "n1")).toMatchObject({ styleOverride: BIG, presetId: "pr" });
+    // q2 (no style) into q1 keeps q1's; q1's style is gone when q1 merges into nothing styled before it.
+    const merged = run(p, mergeWithPrevious(p, "q2")?.command);
+    expect(cue(merged, "q1")).toMatchObject({ text: "one two three", styleOverride: BIG });
+    const second = run(merged, mergeWithPrevious(merged, "q3")?.command);
+    expect(cue(second, "q1").styleOverride).toEqual(BIG);
+    const p2 = styled();
+    p2.clips.q2 = { ...cue(p2, "q2"), styleOverride: { maxLines: 1 } };
+    expect(cue(run(p2, mergeWithPrevious(p2, "q2")?.command), "q1").styleOverride).toEqual(BIG);
+  });
+
+  it("moving, trimming and copying carry the style", () => {
+    const p = styled();
+    p.clips.q3 = { ...cue(p, "q3"), styleOverride: { maxLines: 1 } };
+    const moved = moveClips(p, ["q3"], 30, new Map(), "overwrite", { newId: ids() });
+    if (moved.kind !== "ok") throw new Error("expected a move");
+    expect(cue(run(p, moved.command), "q3")).toMatchObject({ start: 120, styleOverride: { maxLines: 1 } });
+    const trimmed = run(p, trimEdge(p, "q1", "out", -20, { ripple: false }).command);
+    expect(cue(trimmed, "q1")).toMatchObject({ duration: 40, styleOverride: BIG });
+    const copies = moveClips(p, ["q1"], 200, new Map(), "overwrite", { newId: ids(), duplicate: true });
+    if (copies.kind !== "ok") throw new Error("expected a copy");
+    const copied = run(p, copies.command);
+    expect(cue(copied, [...copies.placed.values()][0] as string)).toMatchObject({ styleOverride: BIG, presetId: "pr" });
+  });
+
+  it("a canvas move is a Custom position of the cue (Selected) or of the track, the cue then following it (All cues)", () => {
+    const p = styled();
+    const own = run(p, moveCaption(p, "q2", "selected", { x: 12.4, y: -700 }));
+    expect(cue(own, "q2").styleOverride).toEqual({ position: "custom", x: 12, y: -700 });
+    expect(own.captionTracks).toEqual(p.captionTracks);
+    const all = run(p, moveCaption(p, "q1", "all", { x: 0, y: -500 }));
+    expect(all.captionTracks.cc!.style).toMatchObject({ position: "custom", x: 0, y: -500 });
+    // q1's own position goes (the dragged caption follows the track); its size and color stay.
+    expect(cue(all, "q1").styleOverride).toEqual({ text: BIG.text });
+    expect(cue(all, "q1").presetId).toBe("pr");
+  });
+
+  it("a corner drag sizes the cue's font (Selected) or the track's (All cues)", () => {
+    const p = styled();
+    const own = run(p, sizeCaption(p, "q2", "selected", 120));
+    expect(cue(own, "q2").styleOverride).toEqual({ text: { fontSize: 120 } });
+    const ownMore = run(p, sizeCaption(p, "q1", "selected", 40));
+    expect(cue(ownMore, "q1").styleOverride?.text).toEqual({ ...BIG.text, fontSize: 40 });
+    const all = run(p, sizeCaption(p, "q1", "all", 50));
+    expect(all.captionTracks.cc!.style.text.fontSize).toBe(50);
+    expect(cue(all, "q1").styleOverride?.text).toEqual({ fill: BIG.text?.fill });
+    expect(sizeCaption(p, "q2", "all", p.captionTracks.cc!.style.text.fontSize)).toBeNull();
+  });
+});
+
+describe("caption nudges (spec §7.3, §20.3)", () => {
+  it("coalesce into one undo step, on the cue's own style or the track's", () => {
+    let time = 0;
+    const p = project([[0, 30]]);
+    const doc = new DocumentStore(p, { session: createSessionStore(), validate: true, now: () => time });
+    doc.dispatch(moveCaption(doc.getState(), "q1", "selected", { x: 1, y: -100 }, true) as Cmd);
+    time += 50;
+    doc.dispatch(moveCaption(doc.getState(), "q1", "selected", { x: 2, y: -100 }, true) as Cmd);
+    expect(cue(doc.getState(), "q1").styleOverride).toEqual({ position: "custom", x: 2, y: -100 });
+    expect(doc.history.getState().undoLabel).toBe("Nudge caption");
+    doc.undo();
+    expect(doc.getState()).toEqual(p);
+    const all = moveCaption(p, "q1", "all", { x: 0, y: -10 }, true);
+    expect(all).toMatchObject({ label: "Nudge captions", coalesceKey: "canvas.nudgeCaption" });
   });
 });

@@ -8,7 +8,9 @@
 //   dispatching it (one command, or one transaction: one undo step per operation).
 // - `documentChecks` adds what validateProject leaves out: finite numbers and plain JSON everywhere,
 //   clips on locked tracks unchanged, media records gone only through Remove, clips on media of their
-//   kind, speeds within 0.25x..4x, crops within the media, non-empty link and group ids.
+//   kind, speeds within 0.25x..4x, crops within the media, non-empty link and group ids, cue style
+//   overrides never empty (an override that sets nothing is removed, spec §20.3) and every cue's
+//   effective style one the layout can draw.
 import { addTrack, updateClip } from "../../core/commands/basicCommands.js";
 import type { Command } from "../../core/commands/command.js";
 import { addBin, addMedia, relinkMedia, removeBin, removeMedia, renameBin, renameMedia, setMediaBin } from "../../core/commands/mediaCommands.js";
@@ -47,6 +49,7 @@ import { PEAKS_BUCKET, type Peaks } from "../../media/cache/peaks.js";
 import { approximateMeasurer, setTextMeasurer } from "../../render/text/layoutCache.js";
 import { newTextAnim } from "../../text/anim.js";
 import { presetLook } from "../../text/presets.js";
+import { isEmptyOverride, overrideWith, overrideWithout, presetOverride } from "../../text/captions.js";
 import { starterPresets } from "../../text/starterPresets.js";
 import { DEFAULT_TEXT_STYLE, textContent } from "../../text/style.js";
 import type { SubtitleCue } from "../../text/subtitles.js";
@@ -63,9 +66,15 @@ import {
   mergeWithPrevious,
   replaceCuesInRange,
   setCaptionStyle,
+  cueStyleOf,
+  moveCaption,
+  resetCueStyles,
+  setCueStyles,
+  sizeCaption,
   setCueText,
   splitCue,
   transcribedCues,
+  type CueStyle,
 } from "./captions.js";
 import { setEnabled, setOpacities, retimeClips, type ClipTimeField } from "./clipProps.js";
 import { copyClips, pasteClips, payloadAtFrameRate, type ClipsPayload } from "./clipboard.js";
@@ -1574,6 +1583,53 @@ const CAPTION_OPS: FuzzOp[] = [
     return track ? exec(store, setCaptionStyle(p, track.id, randomCaptionStyle(rng, captionStyleOf(p, track.id)), { label: "Caption style" })) : false;
   }),
   op("captions.clear", "captions", (store) => exec(store, clearCues(store.getState())), { weight: 0.2, effect: "shrink" }),
+  // Styles per cue (spec §20.3, Batch 53): Selected scope edits, presets, canvas drags in both scopes,
+  // a row's reset, Reset to track style.
+  op("captions.cueStyle", "captions", (store, rng) => {
+    const p = store.getState();
+    const cue = pickCue(p, rng);
+    if (!cue) return false;
+    const ids = rng.chance(0.4) ? [cue.id, ...subset(rng, captionTrackOf(p)?.clipIds ?? [], 0.3)] : [cue.id];
+    const styles = new Map<ClipId, CueStyle>();
+    for (const id of new Set(ids)) {
+      const target = p.clips[id] as CaptionClip;
+      const before = cueStyleOf(p, target);
+      styles.set(id, { styleOverride: overrideWith(target.styleOverride, before, randomCaptionStyle(rng, before)), presetId: target.presetId });
+    }
+    return exec(store, setCueStyles(p, styles, { label: "Caption style" }));
+  }),
+  op("captions.cuePreset", "captions", (store, rng) => {
+    const p = store.getState();
+    const cue = pickCue(p, rng);
+    if (!cue) return false;
+    const preset = rng.pick(starterPresets());
+    const look = presetLook({ ...preset, applyPosition: rng.chance(0.3), position: { x: rng.int(-200, 200), y: rng.int(-400, 400) } }, p.settings);
+    return exec(store, setCueStyles(p, new Map([[cue.id, { styleOverride: presetOverride(cue.styleOverride, look, preset.highlight), presetId: preset.id }]]), { label: "Apply preset" }));
+  }),
+  op("captions.drag", "captions", (store, rng) => {
+    const p = store.getState();
+    const cue = pickCue(p, rng);
+    if (!cue) return false;
+    const scope = rng.pick(["all", "selected"] as const);
+    return exec(store, rng.chance(0.5) ? moveCaption(p, cue.id, scope, { x: rng.int(-500, 500), y: rng.int(-900, 900) }) : sizeCaption(p, cue.id, scope, rng.int(8, 300)));
+  }),
+  op("captions.resetField", "captions", (store, rng) => {
+    const p = store.getState();
+    const cue = pickClip(p, rng, (clip) => clip.kind === "caption" && clip.styleOverride !== undefined) as CaptionClip | null;
+    if (!cue) return false;
+    const paths = subset(rng, ["text.fontFamily", "text.fontSize", "text.stroke", "text.stroke.width", "text.fill", "position", "x", "y", "highlight", "highlight.color", "maxLines"], 0.3);
+    return exec(store, setCueStyles(p, new Map([[cue.id, { styleOverride: overrideWithout(cue.styleOverride, paths), presetId: cue.presetId }]]), { label: "Reset field" }));
+  }),
+  op(
+    "captions.resetStyle",
+    "captions",
+    (store, rng) => {
+      const p = store.getState();
+      const cue = pickCue(p, rng);
+      return cue ? exec(store, resetCueStyles(p, rng.chance(0.3) ? (captionTrackOf(p)?.clipIds ?? []) : [cue.id])) : false;
+    },
+    { weight: 0.5 },
+  ),
 ];
 
 const BIN_NAMES = ["B-roll", "Music", "  ", "Interviews", "Bin"];
@@ -1730,6 +1786,12 @@ function clipIssues(project: Project, clip: Clip): string[] {
   const issues: string[] = [];
   const label = `clip ${clip.id}`;
   if (clip.linkGroup === "" || clip.group === "") issues.push(`${label}: empty link group or group id`);
+  if (clip.kind === "caption") {
+    // An override that sets nothing is removed (spec §20.3); the effective style is one the layout can draw.
+    if (clip.styleOverride !== undefined && isEmptyOverride(clip.styleOverride)) issues.push(`${label}: an empty style override`);
+    const style = cueStyleOf(project, clip);
+    if (!(style.text.fontSize > 0 && style.maxWidth > 0 && style.maxLines >= 1)) issues.push(`${label}: effective style ${JSON.stringify({ size: style.text.fontSize, width: style.maxWidth, lines: style.maxLines })} cannot be drawn`);
+  }
   if (!isMediaClip(clip)) return issues;
   const media = project.media[clip.mediaId];
   if (media) {

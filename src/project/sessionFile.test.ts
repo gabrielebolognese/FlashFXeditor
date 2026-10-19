@@ -145,6 +145,15 @@ describe("session file", () => {
     expect(parseSessionFile(serializeSession(data)).state.presetBar).toEqual({ visible: false, set: "recent" });
   });
 
+  it("keeps the Caption style section's scope (Batch 53), All cues by default", () => {
+    expect(defaultSessionFile().state.captionScope).toBe("all");
+    const read = (captionScope: unknown) => parseSessionFile(JSON.stringify({ version: 1, state: { captionScope } })).state.captionScope;
+    expect(read("selected")).toBe("selected");
+    expect(read("everything")).toBe("all");
+    const data = { ...defaultSessionFile(), state: { ...defaultSessionFile().state, captionScope: "selected" as const } };
+    expect(parseSessionFile(serializeSession(data)).state.captionScope).toBe("selected");
+  });
+
   it("does not share the default objects", () => {
     const a = defaultSessionFile();
     a.state.collapsedSections.x = true;

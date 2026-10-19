@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { makeMedia, makeMediaClip, makeProject, makeTextClip, makeTrack, withClips } from "../../core/document/fixtures.js";
+import { addCaptionTrack, makeCaptionClip, makeMedia, makeMediaClip, makeProject, makeTextClip, makeTrack, withClips } from "../../core/document/fixtures.js";
 import type { Clip, ClipId, MediaClip, Project, TextClip, TextStyle } from "../../core/document/types.js";
 import { DocumentStore } from "../../core/store/DocumentStore.js";
 import { createSessionStore } from "../../core/store/sessionStore.js";
@@ -121,5 +121,27 @@ describe("pasteAttributes (Batch 39)", () => {
     const payload = payloadOf(p, ["src"], "src");
     expect(pastedSpeed(payload, new Set(["speed"]))).toBe(2);
     expect(pastedSpeed(payload, new Set(["transform"]))).toBeNull();
+  });
+});
+
+describe("Caption style (spec §20.3, Batch 53)", () => {
+  it("gives a copied cue's own style and preset link to the selected cues; a cue with none puts them back to the track style", () => {
+    const own = { text: { fontSize: 120 }, position: "custom" as const, x: 0, y: -400 };
+    const base = addCaptionTrack(project([]));
+    const p = withClips(base, [
+      { ...makeCaptionClip({ id: "q1", trackId: "cc", start: 0, duration: 30, text: "a" }), styleOverride: own, presetId: "pr" },
+      makeCaptionClip({ id: "q2", trackId: "cc", start: 30, duration: 30, text: "b" }),
+      { ...makeCaptionClip({ id: "q3", trackId: "cc", start: 60, duration: 30, text: "c" }), styleOverride: { maxLines: 1 } },
+    ]);
+    const styled = payloadOf(p, ["q1"], "q1");
+    expect(availableGroups(p, styled, ["q2", "q3"])).toEqual(["captionStyle"]);
+    expect(attributeTargets(p, ["q2", "q3"], "captionStyle")).toEqual(["q2", "q3"]);
+    const next = apply(p, styled, ["q2", "q3"], ["captionStyle"]);
+    expect(next.clips.q2).toMatchObject({ styleOverride: own, presetId: "pr" });
+    expect(next.clips.q3).toMatchObject({ styleOverride: own, presetId: "pr" });
+    // The same style already: nothing to paste.
+    expect(pasteAttributes(next, payloadOf(next, ["q2"], "q2"), ["q3"], new Set(["captionStyle"]))).toBeNull();
+    const reset = apply(p, payloadOf(p, ["q2"], "q2"), ["q3"], ["captionStyle"]);
+    expect(reset.clips.q3).not.toHaveProperty("styleOverride");
   });
 });

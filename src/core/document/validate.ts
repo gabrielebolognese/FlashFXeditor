@@ -125,6 +125,8 @@ function textIssues(clip: TextClip, label: string): string[] {
 function cueIssues(clip: CaptionClip, label: string): string[] {
   const issues: string[] = [];
   if (typeof clip.text !== "string") issues.push(`${label}: cue text must be a string`);
+  if (clip.presetId !== undefined && (typeof clip.presetId !== "string" || clip.presetId === "")) issues.push(`${label}: preset id must be a non-empty string`);
+  if (clip.styleOverride !== undefined) issues.push(...overrideIssues(clip.styleOverride, label));
   if (clip.words === undefined) return issues;
   if (!Array.isArray(clip.words)) return [...issues, `${label}: words must be a list`];
   clip.words.forEach((word, i) => {
@@ -132,6 +134,66 @@ function cueIssues(clip: CaptionClip, label: string): string[] {
     if (!Number.isInteger(word?.start) || !Number.isInteger(word?.end) || word.end <= word.start) issues.push(`${label}: word ${i} must have integer frames start < end (${String(word?.start)}, ${String(word?.end)})`);
   });
   return issues;
+}
+
+type Check = (value: unknown) => boolean;
+const isFiniteNumber: Check = (value) => typeof value === "number" && Number.isFinite(value);
+const isNonNegative: Check = (value) => isFiniteNumber(value) && (value as number) >= 0;
+const isBoolean: Check = (value) => typeof value === "boolean";
+// `isColor` is defined further down: called, not referenced, at load.
+const isRgba: Check = (value) => isColor(value);
+const oneOf =
+  (...values: string[]): Check =>
+  (value) =>
+    typeof value === "string" && values.includes(value);
+
+/** The checks of each field a cue override may set (spec §20.3: every field validated, nothing else allowed). */
+const TEXT_OVERRIDE: Readonly<Record<string, Check>> = {
+  fontFamily: (value) => typeof value === "string" && value !== "",
+  fontWeight: (value) => isPositive(value) && (value as number) <= 1000,
+  italic: isBoolean,
+  fontSize: isPositive,
+  fill: (value) => isColor(value) || (typeof value === "object" && value !== null && isColor((value as Record<string, unknown>).from) && isColor((value as Record<string, unknown>).to)),
+  textCase: oneOf("none", "upper", "lower", "title"),
+  letterSpacing: isFiniteNumber,
+  lineHeight: isPositive,
+  align: oneOf("left", "center", "right"),
+};
+const PART_OVERRIDES: Readonly<Record<string, Readonly<Record<string, Check>>>> = {
+  stroke: { enabled: isBoolean, width: isNonNegative, color: isRgba },
+  shadow: { enabled: isBoolean, x: isFiniteNumber, y: isFiniteNumber, blur: isNonNegative, color: isRgba },
+  background: { enabled: isBoolean, color: isRgba, paddingX: isNonNegative, paddingY: isNonNegative, radius: isNonNegative, mode: oneOf("line", "block") },
+};
+const CAPTION_OVERRIDE: Readonly<Record<string, Check>> = {
+  position: (value) => CAPTION_POSITIONS.has(value as string),
+  x: isFiniteNumber,
+  y: isFiniteNumber,
+  maxWidth: isPositive,
+  maxLines: isPositiveInteger,
+};
+const HIGHLIGHT_OVERRIDE: Readonly<Record<string, Check>> = { mode: (value) => HIGHLIGHT_MODES.has(value as string), color: isRgba, inactiveColor: isRgba };
+
+/** The fields of `value` (an object) against `checks`: unknown fields and bad values are issues. */
+function fieldIssues(value: unknown, checks: Readonly<Record<string, Check>>, label: string, path: string, nested: Readonly<Record<string, (inner: unknown, at: string) => string[]>> = {}): string[] {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return [`${label}: style override ${path} must be an object`];
+  const issues: string[] = [];
+  for (const [key, inner] of Object.entries(value)) {
+    const at = path === "" ? key : `${path}.${key}`;
+    const deeper = nested[key];
+    if (deeper) issues.push(...deeper(inner, at));
+    else if (!Object.hasOwn(checks, key)) issues.push(`${label}: style override has an unknown field ${at}`);
+    else if (!(checks[key] as Check)(inner)) issues.push(`${label}: style override ${at} ${JSON.stringify(inner) ?? String(inner)} is not valid`);
+  }
+  return issues;
+}
+
+/** A cue's style override (spec §20.3): known fields only, each a valid value. */
+function overrideIssues(override: unknown, label: string): string[] {
+  const parts = Object.fromEntries(Object.entries(PART_OVERRIDES).map(([key, checks]) => [key, (inner: unknown, at: string) => fieldIssues(inner, checks, label, at)]));
+  return fieldIssues(override, CAPTION_OVERRIDE, label, "", {
+    text: (inner, at) => fieldIssues(inner, TEXT_OVERRIDE, label, at, parts),
+    highlight: (inner, at) => fieldIssues(inner, HIGHLIGHT_OVERRIDE, label, at),
+  });
 }
 
 const CAPTION_POSITIONS: ReadonlySet<string> = new Set(["bottom", "center", "top", "custom"]);
@@ -155,6 +217,7 @@ function captionStyleIssues(style: CaptionStyle | undefined, label: string): str
   if (typeof style !== "object" || style === null) return [`${label}: style must be an object`];
   const issues = styleIssues(style.text, label);
   if (!CAPTION_POSITIONS.has(style.position)) issues.push(`${label}: position "${String(style.position)}" is not bottom, center, top or custom`);
+  if (typeof style.x !== "number" || !Number.isFinite(style.x)) issues.push(`${label}: x ${String(style.x)} must be a number`);
   if (typeof style.y !== "number" || !Number.isFinite(style.y)) issues.push(`${label}: y ${String(style.y)} must be a number`);
   if (!isPositive(style.maxWidth)) issues.push(`${label}: max width ${String(style.maxWidth)} must be > 0`);
   if (!isPositiveInteger(style.maxLines)) issues.push(`${label}: max lines ${String(style.maxLines)} must be a positive integer`);
