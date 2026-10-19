@@ -136,14 +136,21 @@ Where the new text goes:
 
 ## Style your captions from the bar
 
-1. Select the **CC** caption track (click its header) or a cue, and no text clip.
+1. Select the **CC** caption track (click its header) to style all the captions, or one or more cues to style only those, and no text clip.
 2. Point at the buttons: the captions in the preview take each look while the pointer is on its button.
 3. Click the one you want.
+
+With the **CC** track selected:
 
 - All the captions of the track take the preset's font, size, colors, outline, shadow and background box, in one step named, for example, **Apply "Yellow word" to captions**.
 - A preset with a word highlight, such as **Yellow word**, **Boxed word**, **Green karaoke** or **Pop word**, also sets the track's **Highlight**, **Active** and **Other words**. Other presets keep the highlight the captions have. See [Highlight the spoken word](captions.md#highlight-the-spoken-word).
 - The captions keep their **Position**, **Max width** and **Max lines**. The preset's box width, **Apply position** and animations are not used.
-- With cues selected (and not the **CC** track), the preset styles only those cues: they take its look as a style of their own, and the other captions keep the track's. **Reset to track style** in the **Caption style** section or in the cue menu gives them the track's look back.
+
+With cues selected:
+
+- Only those cues change: they take the preset's look, and its word highlight when it has one, as a style of their own. The other captions keep the track's. The step has the same name.
+- A preset with **Apply position** on, such as **Big centered**, also puts the cues at its place.
+- **Reset to track style** in the **Caption style** section or in the cue menu gives them the track's look back. See [Give single cues their own style](captions.md#give-single-cues-their-own-style).
 
 See [Give captions the look of a preset](captions.md#give-captions-the-look-of-a-preset).
 
@@ -282,4 +289,4 @@ Showing or hiding the bar, choosing a set, reordering, sets and tags are not ste
 - [Command palette and custom shortcuts](command-palette-and-custom-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 52, 2026-10-19</sub>
+<sub>Last updated: Batch 53, 2026-10-19</sub>

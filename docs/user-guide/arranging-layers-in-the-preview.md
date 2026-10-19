@@ -39,6 +39,7 @@ The preview draws the clip of each video track at the playhead, from the bottom 
 - You only see a layer's box and handles while the playhead is over its clip. Move the playhead into a clip to work on it in the preview.
 - Selecting in the preview is the same selection as on the timeline. A layer you click in the preview gets the gold outline on the timeline, and a clip you click on the timeline gets its box in the preview when it is under the playhead.
 - Audio clips have no picture and are never layers.
+- The caption of the cue under the playhead is the top layer. Click it to select its cue; you can move it and change its font size, but not rotate, scale or crop it. See [Move and size captions in the preview](captions.md#move-and-size-captions-in-the-preview).
 
 Which layers you can pick in the preview:
 
@@ -201,6 +202,7 @@ With one or more layers selected in the preview, and the Preview panel active (c
 - When no selected layer is under the playhead, <kbd>←</kbd> and <kbd>→</kbd> step frames as in the other panels (<kbd>Shift</kbd>: 5 frames), and <kbd>↑</kbd> and <kbd>↓</kbd> do nothing.
 - <kbd>Ctrl</kbd>+<kbd>←</kbd> and <kbd>Ctrl</kbd>+<kbd>→</kbd> always move the playhead by one second.
 - In the Timeline panel, the arrow keys move the playhead as usual. See [Move the playhead](timeline.md#move-the-playhead).
+- A caption you selected alone in the preview moves the same way, in steps named **Nudge caption** (or **Nudge captions**, with **All cues** in its **Edit** row). See [Move and size captions in the preview](captions.md#move-and-size-captions-in-the-preview).
 
 ## Transform several layers at once
 
@@ -327,4 +329,4 @@ While the layer is animated:
 - [Projects and saving](projects-and-saving.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 46, 2026-10-18</sub>
+<sub>Last updated: Batch 53, 2026-10-19</sub>

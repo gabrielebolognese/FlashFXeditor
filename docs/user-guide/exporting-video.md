@@ -236,7 +236,7 @@ You can also run **Save export settings as a preset…** from the command palett
 The video shows what the preview shows, frame by frame, and plays what you hear:
 
 - **Your original media at full quality.** The export always reads your original files and never uses [proxies](proxies.md), whatever the preview quality.
-- **Everything you edited:** trims, speed changes, freeze frames and punch zooms, crops, keyframe animations, fades and transitions, shapes, images, animated stickers and SVG logos, titles with their animations, and the captions of the **CC** track with the spoken word highlighted.
+- **Everything you edited:** trims, speed changes, freeze frames and punch zooms, crops, keyframe animations, fades and transitions, shapes, images, animated stickers and SVG logos, titles with their animations, and the captions of the **CC** track with the spoken word highlighted, each cue in its own look and place, as in the preview.
 - **Captions are part of the picture.** They are drawn into the video and can't be turned off by the viewer. To upload a separate subtitle file as well, use **Export captions**; see [Export a frame, the sound or the captions](#export-a-frame-the-sound-or-the-captions).
 - **Fonts.** Text uses the same fonts as in the preview, whether they come with the editor, from **My fonts** or from your computer. See [Fonts travel with the project](fonts.md#fonts-travel-with-the-project).
 - **Tracks and clips.** Hidden and muted video tracks are left out, as in the preview. On audio tracks, **M** and **S** apply: a muted track, or a track left out by a solo, is not in the sound. Clips you turned off are left out too. See [Mute, solo and hide tracks](tracks.md#mute-solo-and-hide-tracks) and [Turn a clip off](editing-properties.md#turn-a-clip-off).
@@ -386,4 +386,4 @@ While any export runs, video or audio:
 - [Keyboard shortcuts](keyboard-shortcuts.md#export)
 - [Troubleshooting](troubleshooting.md#export)
 
-<sub>Last updated: Batch 51, 2026-10-19</sub>
+<sub>Last updated: Batch 53, 2026-10-19</sub>

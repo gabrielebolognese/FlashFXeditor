@@ -1,6 +1,6 @@
 # Captions
 
-Captions are the subtitles that run along with the speech of your video. They live on their own caption track, **CC**, above every video track, as short pieces of text called cues. You let the editor transcribe them from the speech, write and fix them in the **Captions** tab of the Media panel, bring them in from SRT or VTT subtitle files, and give all of them one look in the **Caption style** section of **Edit Properties**. When a cue has word timings, the spoken word lights up as it plays.
+Captions are the subtitles that run along with the speech of your video. They live on their own caption track, **CC**, above every video track, as short pieces of text called cues. You let the editor transcribe them from the speech, write and fix them in the **Captions** tab of the Media panel, bring them in from SRT or VTT subtitle files, and give all of them one look in the **Caption style** section of **Edit Properties**. Any cue can also get a font, colors, a size and a place of its own, from the same section, from a preset, or by dragging its caption in the preview. When a cue has word timings, the spoken word lights up as it plays.
 
 > **Video placeholder: Captions in one minute**
 > - File: `videos/captions/overview.mp4` (not recorded yet)
@@ -12,7 +12,8 @@ Captions are the subtitles that run along with the speech of your video. They li
 >   4. Click into the text of the third cue and fix a typo: the preview shows the new text as you type. Put the caret after the comma and press <kbd>Enter</kbd>: the cue becomes two cues, and the caret is in the second one.
 >   5. Click **Caption style (in Edit Properties)** in the Captions header: **Edit Properties** shows the **Caption style** section. Click **Top**: the captions move to the top of the frame.
 >   6. Open the **Presets** tab and click **Neon glow**: the captions take its font and glow and stay at the top.
->   7. Back in the **Captions** tab, click **Export SRT or VTT**, type `talk.vtt` as the file name and save.
+>   7. Move the playhead to the fifth cue and click its caption in the preview: it gets a gold box with four corner handles. In **Caption style**, click **Selected (1)** in the **Edit** row, then drag the caption down to the middle of the frame: only that cue moves, and a brush appears on its clip on the **CC** row.
+>   8. Back in the **Captions** tab, click **Export SRT or VTT**, type `talk.vtt` as the file name and save.
 
 ## In this page
 - [How captions work](#how-captions-work)
@@ -27,8 +28,12 @@ Captions are the subtitles that run along with the speech of your video. They li
 - [Edit cues on the timeline](#edit-cues-on-the-timeline)
 - [Style your captions](#style-your-captions)
 - [Choose where captions sit](#choose-where-captions-sit)
+- [Give single cues their own style](#give-single-cues-their-own-style)
+- [Move and size captions in the preview](#move-and-size-captions-in-the-preview)
+- [Type a cue's text in the preview](#type-a-cues-text-in-the-preview)
 - [Highlight the spoken word](#highlight-the-spoken-word)
 - [Give captions the look of a preset](#give-captions-the-look-of-a-preset)
+- [Copy a cue's style to other cues](#copy-a-cues-style-to-other-cues)
 - [Export an SRT or VTT file](#export-an-srt-or-vtt-file)
 - [Hide, lock or remove the captions](#hide-lock-or-remove-the-captions)
 - [Undo caption changes](#undo-caption-changes)
@@ -39,11 +44,11 @@ Captions are the subtitles that run along with the speech of your video. They li
 
 - A project has at most one caption track. Its header reads **CC**, and it always sits above every video track, so captions show on top of everything else in the frame.
 - The track holds cues. A cue is a piece of text with a start and an end. Cues never overlap: at any frame, at most one cue shows.
-- The look of the captions belongs to the track: every cue shows in its font, colors and position unless you give a cue a style of its own. You set the track's look once in the **Caption style** section; with cues selected, its **Edit** row switches between **All cues** (the track's look) and **Selected** (the look of the selected cues only). See [Style your captions](#style-your-captions).
+- The look of the captions belongs to the track: you set it once in the **Caption style** section, and every cue shows in it. A cue can also have a style of its own. It holds only the settings you changed for that cue, such as its font or its place; for everything else, the cue keeps following the track. See [Style your captions](#style-your-captions) and [Give single cues their own style](#give-single-cues-their-own-style).
 - Captions are drawn by the same text engine as titles, so they stay sharp at every preview zoom and show in **Export frame** and in exported videos, drawn into the picture. See [Export the current frame](preview-and-playback.md#export-the-current-frame) and [Know what goes into the file](exporting-video.md#know-what-goes-into-the-file).
 - A cue can carry word timings: when each word is spoken. With them, the editor highlights the spoken word. Transcribed cues always have them. See [Highlight the spoken word](#highlight-the-spoken-word).
 
-> **Note:** A click on a caption in the preview selects its cue. Drag it to move it (with **Selected** in the **Edit** row, only that cue moves; with **All cues**, every caption moves), drag a corner to change its font size, and double-click it to type its text there. For text you place freely, use a title or a subtitle; see [Titles and text](titles-and-text.md).
+> **Note:** A click on a caption in the preview selects its cue. Drag it to move it, drag a corner to change its font size, and double-click it to type its text there. See [Move and size captions in the preview](#move-and-size-captions-in-the-preview). For text that isn't tied to the speech, such as a hook or a title, use a title or a subtitle; see [Titles and text](titles-and-text.md).
 
 ## Add the caption track
 
@@ -83,8 +88,9 @@ Once there is a track, the tab shows a search field, the number of cues (for exa
 | Times | The cue's start above its end, in the timecode format of the editor (frames or milliseconds; see [Show times in milliseconds](timeline.md#show-times-in-milliseconds)) |
 | Text | The cue's text, up to two lines. Click into it to edit it. |
 | Word count | The number of words in the cue (tooltip **Words**). Punctuation doesn't count. Chinese and Japanese text, written without spaces, is counted word by word too. |
+| Style dot | A gold dot at the right end of the row (tooltip **This cue has its own style**), when the cue has a style of its own. See [Give single cues their own style](#give-single-cues-their-own-style). |
 
-- The row of the selected cue is highlighted. The row of the cue under the playhead has a red bar at its left edge, which moves from row to row while you play.
+- The rows of the selected cues are highlighted. The row of the cue under the playhead has a red bar at its left edge, which moves from row to row while you play.
 - The list scrolls smoothly even with hundreds of cues.
 
 The header of the tab has these buttons, from left to right:
@@ -187,12 +193,14 @@ Keys in a cue's text:
 - The time is shared by the number of letters on each side. For example, a 36-frame cue "Hello brave new world" split after "brave" gives "Hello brave" for 20 frames and "new world" for 16.
 - When the cue has word timings, the second cue starts when its first word is spoken.
 - The caret goes to the start of the second cue. The split is one step, **Split cue**.
+- A cue with its own style keeps it on both parts.
 - A cue shorter than 2 frames can't be split: the message **Can't split this cue** appears.
 
 **Merge a cue into the one before it:** put the caret at the very start of its text and press <kbd>Ctrl</kbd>+<kbd>Backspace</kbd>, or right-click the cue (its row in the list, or the cue on the timeline) and choose **Merge with previous cue**.
 
 - The two texts are joined with a space, and the cue before it now lasts until the end of the merged cue, the gap between them included.
 - The caret goes to where the two texts meet. The merge is one step, **Merge cues**.
+- The merged cue keeps the style of the cue before it: its own style, or the track's when it has none. The style of the cue you merged into it goes.
 - **Merge with previous cue** is dimmed on the first cue.
 
 You can also split cues on the timeline with <kbd>Ctrl</kbd>+<kbd>K</kbd> or the **Razor** tool. See [Edit cues on the timeline](#edit-cues-on-the-timeline).
@@ -201,12 +209,13 @@ You can also split cues on the timeline with <kbd>Ctrl</kbd>+<kbd>K</kbd> or the
 
 - **Search:** type in **Search cues** at the top of the tab. The list shows only the cues whose text contains what you typed, in capitals or not, and the count reads, for example, **3 of 200**. When no cue matches, the list reads **No cue matches** ("Nothing matches “<search>”.") with a **Clear search** button. Click it, or clear the field, to see all cues again.
 - **Select a cue:** click its row, away from the text. The cue is selected on the timeline too, and the playhead jumps to its start. A cue you select on the timeline scrolls into view in the list.
+- **Select several cues:** <kbd>Ctrl</kbd>+click a row to add the cue to the selection, or to take it out. <kbd>Shift</kbd>+click a row to select every cue the list shows from the selected cue down or up to the one you click; the next <kbd>Shift</kbd>+click starts from the same cue again. Both work on a row's text too: they select the cue without starting to type in it, and the playhead stays where it is. With a search, a range takes only the cues the list shows.
 - **Delete cues:** select cues (in the list or on the timeline) and press <kbd>Delete</kbd> or <kbd>Backspace</kbd>, while the Media panel or the timeline is active. In the list, press <kbd>Esc</kbd> first if you are typing in a cue. The step is **Delete clip** or **Delete clips**.
 - **Clear all cues:** click **Clear all cues** (eraser) in the Captions header. Every cue goes at once, with no question asked; the track and its style stay. The step is **Clear captions**: press <kbd>Ctrl</kbd>+<kbd>Z</kbd> to bring the cues back.
 
 ## Use the cue menu
 
-Right-click a cue's row in the **Captions** tab, away from its text. The cue is selected, and its menu opens. A right-click in the text itself opens the browser's usual text menu instead.
+Right-click a cue's row in the **Captions** tab, away from its text. The cue is selected, and its menu opens. When the cue is already selected together with others, they all stay selected, so the rows act on all of them. A right-click in the text itself opens the browser's usual text menu instead.
 
 | Row | What it does |
 | --- | --- |
@@ -217,16 +226,21 @@ Right-click a cue's row in the **Captions** tab, away from its text. The cue is 
 | **Split at playhead** | Splits the selected cues at the playhead, their text included (<kbd>Ctrl</kbd>+<kbd>K</kbd>). |
 | **Merge with previous cue** | Joins the cue to the one before it. Dimmed on the first cue. See [Split and merge cues](#split-and-merge-cues). |
 | **Delete** | Deletes the selected cues (<kbd>Delete</kbd>). |
+| **Copy style** | Remembers the style of the selected cue (with several selected, the one you selected last). See [Copy a cue's style to other cues](#copy-a-cues-style-to-other-cues). |
+| **Paste style** | Gives the selected cues the style you copied. Dimmed until you copy a style. |
+| **Reset to track style** | Gives the selected cues the track's look again. Dimmed when none of them has a style of its own. See [Give single cues their own style](#give-single-cues-their-own-style). |
 | **Add cue at playhead** | Adds a new cue at the playhead, as **Add a 2 s cue at the playhead** (+) in the header does. See [Add a cue at the playhead](#add-a-cue-at-the-playhead). |
 | **Caption style** | Opens the **Caption style** section in **Edit Properties**. See [Style your captions](#style-your-captions). |
 
-The menu works with the keyboard: <kbd>↓</kbd> and <kbd>↑</kbd> move between rows, <kbd>Enter</kbd> runs one, and <kbd>Esc</kbd> closes the menu. See [Use menus with the keyboard](command-palette-and-custom-shortcuts.md#use-menus-with-the-keyboard). **Edit cue text** is also in the command palette: it starts typing in the selected cue.
+The menu works with the keyboard: <kbd>↓</kbd> and <kbd>↑</kbd> move between rows, <kbd>Enter</kbd> runs one, and <kbd>Esc</kbd> closes the menu. See [Use menus with the keyboard](command-palette-and-custom-shortcuts.md#use-menus-with-the-keyboard). **Edit cue text** is also in the command palette: it starts typing in the selected cue. So are **Copy caption style**, **Paste caption style** and **Reset to track style**, which do what the menu rows do.
 
 ## Edit cues on the timeline
 
-On the **CC** row, each cue is a grey clip that shows its text on one line. The row always has the small height S.
+On the **CC** row, each cue is a grey clip that shows its text on one line. A cue with a style of its own shows a brush at the right end of its clip. The row always has the small height S.
 
-Cues are clips, so you select, move, trim, split and delete them, give them a label color and turn them off as on other tracks. A cue that is turned off doesn't show in the preview. See [Timeline](timeline.md), [Trimming clips](trimming.md) and [Splitting, deleting and closing gaps](splitting-and-deleting.md). A cue that is selected shows the **Clip** and **Caption style** sections in **Edit Properties**.
+Cues are clips, so you select, move, trim, split and delete them, give them a label color and turn them off as on other tracks. A cue that is turned off doesn't show in the preview. See [Timeline](timeline.md), [Trimming clips](trimming.md) and [Splitting, deleting and closing gaps](splitting-and-deleting.md). A cue that is selected shows the **Clip** and **Caption style** sections in **Edit Properties**. Moves, trims, splits and copies keep each cue's own style.
+
+The menu of a cue on the timeline (right-click it) also has **Merge with previous cue**, **Copy style**, **Paste style** and **Reset to track style**. See [Use the cue menu](#use-the-cue-menu).
 
 Because cues must not overlap, some edits work differently on the **CC** track:
 
@@ -252,20 +266,22 @@ The caption track still moves along with the picture:
 > - Shows:
 >   1. A project with cues on **CC** and the playhead over a long cue. Click the **CC** track header: **Edit Properties** shows the **Track** and **Caption style** sections.
 >   2. Click **Center**, then **Top**: the captions move in the preview.
->   3. Click **Custom** and drag the **Y** label to the left: the captions move up while you drag.
+>   3. Click **Custom** and drag the **Y** label of the **Offset** row to the left: the captions move up while you drag. Drag the **X** label to the right: they move sideways.
 >   4. Type `600` in **Max width**: the long cue wraps onto more lines. Type `1` in **Max lines**: it is drawn smaller to fit on one line.
 >   5. Click **Size**, type `80` and press <kbd>Enter</kbd>. Turn on **Background**: a dark box appears behind each line.
 
 1. Select the **CC** track (click its header), or one or more cues, or click **Caption style (in Edit Properties)** in the Captions header.
 2. In **Edit Properties**, find the **Caption style** section. It comes after the **Track** section for a selected track, and after the **Clip** section for selected cues.
-3. Change the settings. The captions in the preview follow at once. Each change is one step in the history.
+3. With cues selected, check the **Edit** row at the top of the section: **All cues** changes the track's style, which every cue follows; **Selected (n)** changes only the selected cues. See [Give single cues their own style](#give-single-cues-their-own-style).
+4. Change the settings. The captions in the preview follow at once. Each change is one step in the history.
 
 The section has these rows:
 
 | Row | What it does |
 | --- | --- |
+| **Edit** | Only with cues selected: **All cues** (tooltip **Edit the track's style: every cue without its own style**) or **Selected (n)** (tooltip **Edit the selected cues' own style**), where n is the number of selected cues. With **Selected**, a **Reset to track style** button follows. |
 | **Position** | Where the captions sit: **Bottom**, **Center**, **Top** or **Custom**. See [Choose where captions sit](#choose-where-captions-sit). |
-| **Y** | With **Custom**: the height of the middle of the captions, in pixels from the center of the frame (negative values go up). Dimmed with the other positions. From -4000 to 4000. |
+| **Offset** | With **Custom**: **X** and **Y**, the middle of the captions in pixels from the center of the frame. Negative **X** values go left, negative **Y** values go up. Dimmed with the other positions. Each from -4000 to 4000. |
 | **Max width** | How wide a caption can get before its words wrap onto the next line, in pixels. From 50 to 8000. A shorter cue keeps its own width, and its background box fits its text. |
 | **Max lines** | How many lines a cue may take, from 1 to 6. A cue that needs more lines is drawn smaller, in steps of 10%, down to half its size, until it fits. |
 | **Highlight** | How the spoken word stands out: **None**, **Color**, **Box**, **Scale** or **Both**. See [Highlight the spoken word](#highlight-the-spoken-word). |
@@ -286,9 +302,99 @@ Click a chip in the **Position** row:
 | **Bottom** | **Bottom: in the lower third** | Their bottom edge at 78% of the frame's height, where a subtitle sits. More lines grow upward. |
 | **Center** | **Center of the frame** | Their middle at the center of the frame |
 | **Top** | **Top: below the platform bar** | Their top edge at 18% of the frame's height, below the top bar of Reels, TikTok and Shorts. More lines grow downward. |
-| **Custom** | **Custom: at the Y below** | Their middle at the **Y** you type. **Custom** starts where the position you had showed a one-line caption, so nothing jumps. |
+| **Custom** | **Custom: at the X and Y below** | Their middle at the **X** and **Y** of the **Offset** row. **Custom** starts where the position you had showed a one-line caption, centered across the frame (**X** 0), so nothing jumps. |
 
-Captions are always centered across the frame. To check that the platforms' buttons don't cover them, open **Overlays** in the preview header and choose your platform. See [Show a platform safe zone](preview-zoom-overlays-fullscreen.md#show-a-platform-safe-zone).
+- With **Bottom**, **Center** and **Top**, captions are centered across the frame. With **Custom**, **X** moves them sideways.
+- Dragging a caption in the preview also sets **Custom**, at the place where you drop it. See [Move and size captions in the preview](#move-and-size-captions-in-the-preview).
+- To check that the platforms' buttons don't cover the captions, open **Overlays** in the preview header and choose your platform. See [Show a platform safe zone](preview-zoom-overlays-fullscreen.md#show-a-platform-safe-zone).
+
+## Give single cues their own style
+
+> **Video placeholder: Style single cues**
+> - File: `videos/captions/cue-styles.mp4` (not recorded yet)
+> - Length: about 60 seconds
+> - Shows:
+>   1. A project with 12 cues on **CC**, all in the track's white Inter. In the **Captions** tab, click the second cue's row, then <kbd>Ctrl</kbd>+click the third: both rows are highlighted.
+>   2. In **Edit Properties**, the **Caption style** section starts with the **Edit** row, on **All cues**. Click **Selected (2)**: a dimmed **Reset to track style** button appears under it.
+>   3. Click the **Font** field and click **Anton**. Click the hex code of **Color** and type `FF3366`. Type `120` in **Size** and press <kbd>Enter</kbd>. Drag the playhead over cues 2, 3 and 4: the first two are pink Anton, cue 4 is still white Inter.
+>   4. Point at the gold dots next to **Font**, **Weight**, **Size**, **Fill** and **Color**, at the gold dots at the right of the two rows in the **Captions** tab, and at the brushes on their clips on the **CC** row.
+>   5. Point at the dot next to **Size**: it turns into a reset arrow. Click it: both cues go back to the track's size, and stay pink Anton.
+>   6. Click **All cues** and change **Color** to yellow: every caption turns yellow, except cues 2 and 3, which stay pink.
+>   7. Click **Selected (2)**, then **Reset to track style**: the two cues look like all the others again, and their dots and brushes are gone.
+
+1. Select the cues: <kbd>Ctrl</kbd>+click or <kbd>Shift</kbd>+click their rows in the **Captions** tab (see [Find, select and delete cues](#find-select-and-delete-cues)), select them on the timeline, or click a caption in the preview.
+2. In the **Caption style** section of **Edit Properties**, click **Selected (n)** in the **Edit** row.
+3. Change any row. Only the selected cues change, in one step named as for the track, for example **Change font**, **Change text color** or **Change font size**. The other cues keep the track's look.
+
+How a cue's own style works:
+
+- **Only what you change becomes the cue's own.** Everything else still comes from the track. When you change the track's style later, with **All cues** or with the **CC** track selected, the cue follows in every setting it doesn't set itself. A setting you changed stays the cue's own until you reset it, even when you give it the track's value.
+- **Mixed values.** With **Selected**, the rows show the values of the selected cues. When they differ, the field shows `--`. Type a value to give it to all of them; drag the label or press <kbd>↑</kbd> and <kbd>↓</kbd> to change each cue from its own value. See [Edit several clips at once](editing-properties.md#edit-several-clips-at-once).
+- **A font comes with its weight.** Choosing a font for cues also sets their weight, so **Weight** gets a dot too.
+- **The choice in the Edit row** applies to the section and to drags in the preview. It starts at **All cues**, and the editor remembers it with the project. The row shows only while cues are selected: with the **CC** track header selected, the section always changes the track's style.
+- **Locked track.** While the **CC** track is locked, the cues' styles don't change.
+
+### Read and reset the dots
+
+With **Selected**, a gold dot at the right of a row's label shows that at least one selected cue sets that row itself.
+
+- Point at the dot: it turns into a reset arrow, with a tooltip such as **Size: set on the selected cues. Click to use the track style.**
+- Click it: the selected cues take that row from the track again. The step is named after the row, for example **Reset size to track style**. The cues keep their other own settings.
+- Every row of the section has a dot when it is set: **Position**, **Offset**, **Max width**, **Max lines**, **Highlight**, **Active**, **Other words**, and the text style rows, also **Width**, **Color**, **Offset**, **Blur**, **Mode**, **Padding** and **Radius** under **Stroke**, **Shadow** and **Background**. **Weight** covers italics too.
+
+To give the selected cues the track's whole look again, click **Reset to track style** under the **Edit** row, or choose **Reset to track style** in the cue menu or the command palette. The step is **Reset to track style**. The button is dimmed when none of the selected cues has a style of its own.
+
+### See which cues have their own style
+
+- A gold dot at the right end of the cue's row in the **Captions** tab (tooltip **This cue has its own style**).
+- A brush at the right end of the cue's clip on the **CC** row of the timeline.
+- When you reset a cue's last own setting, the dot and the brush go away.
+
+Cues you add at the playhead, import or transcribe take the track's look. A split gives both parts the cue's style, a merge keeps the first cue's, and copied cues keep theirs.
+
+## Move and size captions in the preview
+
+> **Video placeholder: Move a caption in the preview**
+> - File: `videos/captions/move-in-preview.mp4` (not recorded yet)
+> - Length: about 50 seconds
+> - Shows:
+>   1. A 1080×1920 project with cues on **CC** at **Bottom**. In the preview header, open **Overlays** and choose **Reels** under **Safe zone**.
+>   2. Click a caption in the preview: a gold box with four corner handles surrounds it, and its cue is selected in the **Captions** tab.
+>   3. In **Caption style**, click **Selected (1)**. Drag the caption up towards the top of the frame: gold guides appear, the readout next to the pointer shows **X 0 · Y** and a number, and the caption's top snaps to the top of the safe area. Release: **Position** reads **Custom**, and the other cues stay at the bottom.
+>   4. Drag the top right corner handle outward: the readout shows the font size, such as **96 px**, and the caption grows.
+>   5. Press <kbd>Shift</kbd>+<kbd>↓</kbd> twice: the caption moves 20 pixels down.
+>   6. Move the playhead to another cue and click its caption. Click **All cues** and drag the caption to the middle of the frame: every caption that has no place of its own moves there, the first cue stays at the top.
+
+1. Move the playhead over the cue, so the preview shows its caption.
+2. Click the caption: its letters or its background box. The cue is selected, in the **Captions** tab and on the timeline, and the caption gets a gold box with a handle at each corner.
+3. In the **Edit** row of **Caption style**, choose what the drag changes: **Selected (1)** changes only this cue; **All cues** changes the track's style, so every caption without a place or size of its own follows.
+4. Drag the caption, a corner handle, or press the arrow keys:
+
+| To | Do this | Step in the history |
+| --- | --- | --- |
+| Move the caption | Drag it. It snaps to the frame, the thirds, the safe areas and other layers, with gold guides, as a layer does. The readout next to the pointer shows the **X** and **Y** it will get, for example **X 0 · Y -540**. When you release, **Position** becomes **Custom** at that place. | **Move caption** (**Selected**), **Move captions** (**All cues**) |
+| Change its font size | Drag a corner handle. The caption keeps the edge it sits on: a **Bottom** caption grows upward, a **Top** caption downward. The readout shows the size, for example **96 px**. From 1 to 2000 px. Corner handles don't snap. | **Resize caption**, **Resize captions** |
+| Nudge it | Press <kbd>←</kbd>, <kbd>→</kbd>, <kbd>↑</kbd> or <kbd>↓</kbd> for 1 pixel, with <kbd>Shift</kbd> for 10 pixels, while the Preview panel is active. Presses less than 0.3 seconds apart are one step. A nudge also sets **Custom**. | **Nudge caption**, **Nudge captions** |
+| Type its text | Double-click it. See [Type a cue's text in the preview](#type-a-cues-text-in-the-preview). | **Edit caption** |
+| Cancel a drag | Press <kbd>Esc</kbd> before you release. | None |
+
+Good to know:
+
+- **All cues and a cue's own place.** With **All cues**, the dragged cue gives up its own place (or its own size, for a corner drag) and follows the track from then on. Other cues with a place of their own stay where they are.
+- **Whole pixels.** A moved caption lands on whole pixels of the frame. Snapping works as for pictures; see [Snapping and smart guides in the preview](snapping-and-smart-guides.md).
+- **Only moves and sizes.** A caption has no side handles and can't be rotated, scaled or cropped. Its corner handles change only the font size.
+- **On top.** The caption is always the top layer, so a click on it selects its cue rather than the picture under it. To select the picture underneath, <kbd>Alt</kbd>+click. Other layers snap to the caption, too.
+- **With other layers.** When you select a caption together with other layers, for example with <kbd>Shift</kbd>+click, it is outlined but doesn't move with them. Select it alone to drag it.
+- **Locked or hidden.** A caption on a locked **CC** track can't be selected in the preview; one on a hidden track isn't drawn.
+
+## Type a cue's text in the preview
+
+1. Double-click the caption in the preview. A caret appears where you clicked, and the cue's text is ready for typing, as in a title. See [Edit text in the preview](titles-and-text.md#edit-text-in-the-preview).
+2. Type. The caption keeps its place and style, and a long text wraps and shrinks to fit **Max lines** as it will show.
+3. Press <kbd>Esc</kbd> or <kbd>Ctrl</kbd>+<kbd>Enter</kbd>, or click elsewhere, to finish. What you typed is kept, in one step, **Edit caption**.
+
+- <kbd>Enter</kbd> starts a new line in the cue; it doesn't split the cue. To split it, use <kbd>Enter</kbd> in the cue's text in the **Captions** tab, or <kbd>Ctrl</kbd>+<kbd>K</kbd>. See [Split and merge cues](#split-and-merge-cues).
+- While you type, the spoken word isn't highlighted.
 
 ## Highlight the spoken word
 
@@ -314,6 +420,7 @@ Choose the look in the **Highlight** row of **Caption style**:
 | **Both** | **The spoken word in the highlight color, grown** | Takes the **Active** color and grows to 1.15 times its size |
 
 - With **Color**, **Box**, **Scale** or **Both**, the other words take the **Other words** color. The defaults are a warm yellow for **Active** and white for **Other words**.
+- A cue with its own **Highlight**, **Active** or **Other words** highlights its words its own way, in the preview and in the export; the other cues use the track's. Set them with **Selected** in the **Edit** row, or with a preset. See [Give single cues their own style](#give-single-cues-their-own-style).
 - Between two words, nothing is highlighted. While you type in a cue, its highlight pauses until you finish.
 - Cues without word timings show in their text color, whatever the **Highlight** row says. The hint under the row reminds you: **Shows on cues with word timings (VTT karaoke, transcription).** With **None**, it reads **Off: cues show in the text color.**
 - Word timings move with their cue. A split shares them between the two cues, and a trim keeps them: trim the start back out and the words are there again.
@@ -324,17 +431,41 @@ Choose the look in the **Highlight** row of **Caption style**:
 
 You can give your captions the style of any text preset, such as **Neon glow** or **Caption bold**. The **Captions** set of the preset bar has ten looks made for captions, several with a word highlight.
 
-1. Select the **CC** track, or a cue, and no title or subtitle.
+1. Select what the preset should style, and no title or subtitle:
+   - the **CC** track (click its header) for all the captions;
+   - one or more cues (in the **Captions** tab, on the timeline or in the preview) for those cues only.
 2. Point at the buttons of the preset bar above the preview (choose **Captions** in its set menu for the caption looks), or at the cards in the **Presets** tab of the Media panel: the captions in the preview take each look while the pointer is on it.
 3. Click the one you want, or press <kbd>Alt</kbd>+<kbd>1</kbd> to <kbd>Alt</kbd>+<kbd>9</kbd> for the first nine buttons of the bar. Or right-click it and choose **Apply to captions**.
+
+On the **CC** track:
 
 - The captions take the preset's font, size, colors, outline, shadow and background box.
 - A preset with a word highlight, such as **Yellow word**, **Boxed word**, **Big centered**, **Green karaoke**, **Pop word**, **Comic caption** or **Boxed line**, also sets **Highlight**, **Active** and **Other words**. Other presets keep the highlight the captions have.
 - The captions keep their **Position**, **Max width** and **Max lines**. The preset's box width, position and animations are not used.
-- With a cue selected, the preset styles all the captions of the track. Styles for single cues are available in a later version.
-- The step is named after the preset, for example **Apply "Neon glow" to captions**.
+
+On selected cues:
+
+- The cues get the preset's look as a style of their own: its font, size, colors, outline, shadow and background box, and its word highlight when it has one. The other cues keep the track's look.
+- A preset with **Apply position** on also puts the cues at the preset's place, as **Custom**. See [Place text with a preset (Apply position)](text-presets.md#place-text-with-a-preset-apply-position).
+- The **Edit** row doesn't matter here: a preset always styles the selected cues, not the track.
+- **Reset to track style** gives them the track's look back. See [Give single cues their own style](#give-single-cues-their-own-style).
+
+Either way, the step is named after the preset, for example **Apply "Neon glow" to captions**.
 
 See [Style your captions from the bar](preset-bar.md#style-your-captions-from-the-bar) and [Text presets](text-presets.md).
+
+## Copy a cue's style to other cues
+
+**With the cue menu:**
+
+1. Right-click the cue whose look you want, in the **Captions** tab or on the timeline, and choose **Copy style**.
+2. Select the cues that should look the same.
+3. Right-click one of them and choose **Paste style**. They all get the copied style, in one step, **Paste caption style**.
+
+- **Copy style** takes the selected cue's own style, or, with several cues selected, the style of the one you selected last. When that cue has no style of its own, **Paste style** gives the cues the track's look back.
+- The copied style stays until you reload the page. It isn't put on the system clipboard, so <kbd>Ctrl</kbd>+<kbd>V</kbd> doesn't paste it.
+
+**With Paste attributes:** copy a cue with <kbd>Ctrl</kbd>+<kbd>C</kbd> on the timeline, select other cues, press <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>V</kbd> and keep **Caption style** checked. See [Give clips the look of another clip (Paste attributes)](copy-and-paste.md#give-clips-the-look-of-another-clip-paste-attributes).
 
 ## Export an SRT or VTT file
 
@@ -372,13 +503,20 @@ Every caption change is one step in the history. Hover **Undo** in the app bar t
 | **Add cue** | **Add a 2 s cue at the playhead** or **Cue at playhead** |
 | **Import captions** | An import (it also adds the track when there was none) |
 | **Transcribe captions** | **Add N captions** or **Replace N cues** in the review of a transcription (it also adds the track when there was none) |
-| **Edit caption** | Typing in a cue, from the first key to leaving the field |
+| **Edit caption** | Typing in a cue, from the first key to leaving the field, in the **Captions** tab or in the preview |
 | **Split cue**, **Merge cues** | <kbd>Enter</kbd>, <kbd>Ctrl</kbd>+<kbd>Backspace</kbd> and **Merge with previous cue** |
 | **Clear captions** | **Clear all cues** |
-| **Caption position**, **Move captions**, **Change caption width**, **Change caption lines** | **Position**, **Y**, **Max width** and **Max lines** |
+| **Caption position**, **Move captions**, **Change caption width**, **Change caption lines** | **Position**, **X** and **Y** of **Offset**, **Max width** and **Max lines** |
 | **Word highlight**, **Change highlight color** | **Highlight**, **Active** and **Other words** |
 | **Change font size**, **Add stroke** and the other text style steps | The text style rows, as in [Undo text changes](titles-and-text.md#undo-text-changes) |
-| **Apply "Neon glow" to captions** (with the preset's name) | A preset card or a preset bar button (or <kbd>Alt</kbd> and a number) with the captions selected |
+| **Reset size to track style** and the other **Reset … to track style** steps | A row's dot with **Selected** in the **Edit** row |
+| **Reset to track style** | **Reset to track style** in the section, the cue menu or the command palette |
+| **Paste caption style** | **Paste style** |
+| **Move caption**, **Move captions** | Dragging a caption in the preview (one cue, or the track with **All cues**) |
+| **Resize caption**, **Resize captions** | Dragging a caption's corner handle |
+| **Nudge caption**, **Nudge captions** | The arrow keys with a caption selected in the preview |
+| **Apply "Neon glow" to captions** (with the preset's name) | A preset card or a preset bar button (or <kbd>Alt</kbd> and a number) with the **CC** track or cues selected |
+| **Paste attributes** | **Paste attributes** with **Caption style** checked |
 | **Move clip**, **Trim clip**, **Split clip**, **Delete clip**, **Paste**, **Cut** and the other clip steps | Edits of cues on the timeline |
 
 ## What is not available yet
@@ -399,8 +537,10 @@ These parts are available in a later version:
 - [Splitting, deleting and closing gaps](splitting-and-deleting.md)
 - [Editing properties](editing-properties.md)
 - [Preview zoom, overlays and fullscreen](preview-zoom-overlays-fullscreen.md)
+- [Arranging layers in the preview](arranging-layers-in-the-preview.md)
+- [Snapping and smart guides in the preview](snapping-and-smart-guides.md)
 - [Command palette and custom shortcuts](command-palette-and-custom-shortcuts.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 52, 2026-10-19</sub>
+<sub>Last updated: Batch 53, 2026-10-19</sub>

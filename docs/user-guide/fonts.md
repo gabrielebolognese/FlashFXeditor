@@ -34,7 +34,7 @@ Shorts Editor comes with a library of 330 font families, sorted by look: elegant
 
 ## Open the font browser
 
-1. Select one or more text clips, or the caption track.
+1. Select one or more text clips, the caption track, or caption cues. With cues selected, the **Edit** row of **Caption style** decides whether the font goes to all the captions (**All cues**) or only to those cues (**Selected**); see [Give single cues their own style](captions.md#give-single-cues-their-own-style).
 2. In **Edit Properties**, click the **Font** field: in the **Text** section for text clips, in the **Caption style** section for captions. The field shows the font's name in the font itself.
 3. The font browser opens under the field, with the cursor in the search field.
 
@@ -131,7 +131,7 @@ Each row shows:
 
 The font of the selected text has a gold name on a gold tint. A section with no matching font is left out while you search or filter. **Recent** and **Favorites** keep their order until you search; the other sections are sorted by name, with the best matches first while you search.
 
-**Fonts load as you scroll.** Only the rows you see load their font files, a few at a time, so the list scrolls smoothly through all 330 families. A row whose font is still loading shows its name dimmed, in the editor's own font, for a moment. The first time you open the browser in a session, the library takes a moment to load: until then, **Library** shows the eight fonts of earlier versions and **Loading the font library…**.
+**Fonts load as you scroll.** Only the rows you see load their font files, a few at a time, so the list scrolls smoothly through all 330 families. A row whose font is still loading shows its name dimmed, in the editor's own font at its usual weight, for a moment. The first time you open the browser in a session, the library takes a moment to load: until then, **Library** shows the eight fonts of earlier versions and **Loading the font library…**.
 
 ## Keep your favorite fonts
 
@@ -321,4 +321,4 @@ Pointing at rows and moving with <kbd>↓</kbd> and <kbd>↑</kbd> add no step. 
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 51, 2026-10-19</sub>
+<sub>Last updated: Batch 53, 2026-10-19</sub>

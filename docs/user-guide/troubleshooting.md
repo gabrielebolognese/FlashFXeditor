@@ -1,6 +1,6 @@
 # Troubleshooting
 
-This page helps you when something does not work as expected: the editor does not start in your browser, the preview stays empty or your graphics driver has trouble with WebGPU, a panel or the whole editor says it stopped working, a shortcut or a key you changed does nothing or runs another command, a folder or a file does not open or shows **Failed** in the Media tab, media are hidden in the Media tab, go offline or don't relink, a clip drag, a trim, a split, a delete, a timeline tool, a typed timecode, a marker, an in/out range or **Lift** and **Extract** do something you did not expect, media from the Media panel lands somewhere you did not expect, a clip shows no thumbnails, a video gets no proxy or its proxy fails, the preview zoom, overlays or fullscreen behave unexpectedly, a picture in the preview can't be selected, moves unexpectedly, doesn't snap where you expect or gets cropped instead of resized, a value or a crop in **Edit Properties** doesn't do what you expect, a paste or a duplicate lands somewhere you did not expect or is refused, a speed change, a freeze frame or a punch zoom does something you did not expect, a keyframe animation or a keyframe lane doesn't behave as you expect, a fade or a transition doesn't go where you expect, gets shorter or shows red stripes, the rubber band, **Normalize**, **Auto-duck**, **Detach audio** or **Audio scrub** doesn't do what you expect, **Remove silence** cuts too much, too little or nothing, a shape or an image doesn't look or play as you expect, a title lands somewhere you did not expect, the keys type into a text, a font is missing, isn't added to **My fonts** or looks different from the one you installed, a text preset doesn't apply, update or sync as you expect, the preset bar is gone or <kbd>Alt</kbd> and a number does nothing, a text animation plays shorter or differently than you expect, a caption cue doesn't import, move, show or highlight as you expect, a transcription doesn't start, is slow or gets words wrong, an export doesn't start, fails or gives a file you did not expect, playback stutters or pauses for a moment, an HDR video looks less bright than on your phone, a WebM video covers the layers below it, or you hear no sound. Each problem lists what you see, why it happens and what to do. The last section lists what the current version cannot do yet.
+This page helps you when something does not work as expected: the editor does not start in your browser, the preview stays empty or your graphics driver has trouble with WebGPU, a panel or the whole editor says it stopped working, a shortcut or a key you changed does nothing or runs another command, a folder or a file does not open or shows **Failed** in the Media tab, media are hidden in the Media tab, go offline or don't relink, a clip drag, a trim, a split, a delete, a timeline tool, a typed timecode, a marker, an in/out range or **Lift** and **Extract** do something you did not expect, media from the Media panel lands somewhere you did not expect, a clip shows no thumbnails, a video gets no proxy or its proxy fails, the preview zoom, overlays or fullscreen behave unexpectedly, a picture in the preview can't be selected, moves unexpectedly, doesn't snap where you expect or gets cropped instead of resized, a value or a crop in **Edit Properties** doesn't do what you expect, a paste or a duplicate lands somewhere you did not expect or is refused, a speed change, a freeze frame or a punch zoom does something you did not expect, a keyframe animation or a keyframe lane doesn't behave as you expect, a fade or a transition doesn't go where you expect, gets shorter or shows red stripes, the rubber band, **Normalize**, **Auto-duck**, **Detach audio** or **Audio scrub** doesn't do what you expect, **Remove silence** cuts too much, too little or nothing, a shape or an image doesn't look or play as you expect, a title lands somewhere you did not expect, the keys type into a text, a font is missing, isn't added to **My fonts** or looks different from the one you installed, a text preset doesn't apply, update or sync as you expect, the preset bar is gone or <kbd>Alt</kbd> and a number does nothing, a text animation plays shorter or differently than you expect, a caption cue doesn't import, move, show, highlight or take a style as you expect, a transcription doesn't start, is slow or gets words wrong, an export doesn't start, fails or gives a file you did not expect, playback stutters or pauses for a moment, an HDR video looks less bright than on your phone, a WebM video covers the layers below it, or you hear no sound. Each problem lists what you see, why it happens and what to do. The last section lists what the current version cannot do yet.
 
 > **Video placeholder: Fix common problems**
 > - File: `videos/troubleshooting/overview.mp4` (not recorded yet)
@@ -340,7 +340,11 @@ This page helps you when something does not work as expected: the editor does no
   - [A cue stops before where you drag it](#a-cue-stops-before-where-you-drag-it)
   - [Captions moved after an edit on another track](#captions-moved-after-an-edit-on-another-track)
   - [A caption doesn't show in the preview](#a-caption-doesnt-show-in-the-preview)
-  - [Clicking a caption in the preview selects the video](#clicking-a-caption-in-the-preview-selects-the-video)
+  - [A caption can't be selected or dragged in the preview](#a-caption-cant-be-selected-or-dragged-in-the-preview)
+  - [Dragging one caption moved all of them](#dragging-one-caption-moved-all-of-them)
+  - [A style change reached only the selected cues](#a-style-change-reached-only-the-selected-cues)
+  - [A cue doesn't follow the caption style](#a-cue-doesnt-follow-the-caption-style)
+  - [Paste style is dimmed](#paste-style-is-dimmed)
   - [The spoken word isn't highlighted](#the-spoken-word-isnt-highlighted)
   - [A long cue looks smaller than the others](#a-long-cue-looks-smaller-than-the-others)
   - [A preset card added a title instead of styling the captions](#a-preset-card-added-a-title-instead-of-styling-the-captions)
@@ -2763,13 +2767,45 @@ See [Messages when you paste](copy-and-paste.md#messages-when-you-paste).
 
 **Fix:** Click the eye in the **CC** header, right-click the cue and choose **Enable**, or type the cue's text in the **Captions** tab. See [Hide, lock or remove the captions](captions.md#hide-lock-or-remove-the-captions).
 
-### Clicking a caption in the preview selects the video
+### A caption can't be selected or dragged in the preview
 
-**Symptom:** You click a caption in the preview, and the picture under it is selected instead, with its handles.
+**Symptom:** A click on a caption selects nothing, or the picture under it. Or the caption has a gold outline but no handles, and dragging it moves other pictures instead.
 
-**Cause:** Captions can't be selected, moved or edited in the preview in this version.
+**Cause:** The **CC** track is locked (its captions can't be selected in the preview) or hidden (they aren't drawn), or the playhead isn't over the cue. Or the caption is selected together with other layers: it is then outlined, but only the other layers move.
 
-**Fix:** Edit the text in the **Captions** tab, and place the captions with **Position** in the **Caption style** section. See [Choose where captions sit](captions.md#choose-where-captions-sit).
+**Fix:** Unlock the **CC** track with the padlock in its header, and move the playhead into the cue. Click the caption on its own, without <kbd>Shift</kbd> or <kbd>Ctrl</kbd>, so its cue is the only selection. See [Move and size captions in the preview](captions.md#move-and-size-captions-in-the-preview).
+
+### Dragging one caption moved all of them
+
+**Symptom:** You drag a caption in the preview, drag one of its corners or nudge it with the arrow keys, and every caption moves or changes size.
+
+**Cause:** The **Edit** row of **Caption style** is on **All cues**, where it starts: a drag then changes the track's style, which every cue without its own place or size follows.
+
+**Fix:** Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>. Click **Selected (1)** in the **Edit** row, then drag the caption again: only its cue moves. The editor remembers the choice with the project. See [Give single cues their own style](captions.md#give-single-cues-their-own-style).
+
+### A style change reached only the selected cues
+
+**Symptom:** With cues selected, you change a row of **Caption style**, and only those cues change. The other captions stay as they were.
+
+**Cause:** The **Edit** row is on **Selected (n)**: the rows change only the selected cues.
+
+**Fix:** Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>, click **All cues** and make the change again, or click the **CC** track header and change it there. See [Give single cues their own style](captions.md#give-single-cues-their-own-style).
+
+### A cue doesn't follow the caption style
+
+**Symptom:** You change the caption style with **All cues** or on the **CC** track, and one or more cues keep their own font, color, size or place.
+
+**Cause:** Those cues have a style of their own for that setting: from a change with **Selected**, a preset applied to them, **Paste style** or a drag in the preview. Their rows in the **Captions** tab show a gold dot, and their clips on the timeline a brush.
+
+**Fix:** Select those cues and click **Selected (n)** in the **Edit** row. Click the gold dot next to the row that should follow the track again, or click **Reset to track style** to give them the track's whole look. See [Read and reset the dots](captions.md#read-and-reset-the-dots).
+
+### Paste style is dimmed
+
+**Symptom:** In the cue menu, **Paste style** is dimmed.
+
+**Cause:** You haven't copied a cue's style since you opened the editor, or no cue is selected. A copied style is kept only until you reload the page.
+
+**Fix:** Right-click the cue whose look you want and choose **Copy style**, then select the other cues and choose **Paste style**. See [Copy a cue's style to other cues](captions.md#copy-a-cues-style-to-other-cues).
 
 ### The spoken word isn't highlighted
 
@@ -3018,7 +3054,6 @@ See [Messages when you paste](copy-and-paste.md#messages-when-you-paste).
 The current version cannot do these things yet. Each one is available in a later version.
 
 - **Sound:** no sound while you play backward or shuttle faster than 1x; while you scrub or step frames, only with **Audio scrub** on. **Remove silence** has no default keyboard shortcut. Audio effects are not available.
-- **Copy and paste:** caption cues can't take **Paste attributes**.
 - **Importing:** `.mp3`, `.aac`, `.wav` and `.ogg` files over 45 minutes can't be imported, nor `.webm` files over 45 minutes with **Vorbis** sound; convert them to `.m4a` (or the WebM files to `.mp4`, or to WebM with Opus sound), or cut them into shorter parts.
 - **Media panel:** bins can't hold other bins. **Reveal in folder** can't open File Explorer: it shows and copies the path. Clips whose media item you removed can't be relinked. A file you put back while the project is open stays offline until you reopen the project.
 - **Markers:** markers belong to the timeline; markers inside clips are not available.
@@ -3027,7 +3062,7 @@ The current version cannot do these things yet. Each one is available in a later
 - **Tracks:** track headers have room for names of about 9 characters; longer names are shortened (point at one to see it whole). Groups are not marked on the timeline.
 - **Keyframes:** keyframes animate position, scale, rotation, opacity and the volume of audio clips.
 - **Text:** **Restore starter presets** brings back deleted starters, not the original look of a starter you changed. Text animations play in the preview, in **Export frame** and in exported videos.
-- **Captions:** all cues share one style; a style for a single cue is not available, also from a preset. Captions can't be selected, moved or styled in the preview.
+- **Captions:** a cue has one style, apart from the spoken word's highlight: several fonts or colors inside one cue are not available.
 - **Preset bar:** dragging a button doesn't scroll the row, and the buttons can't be dragged onto the timeline or the preview (drag the preset's card in the **Presets** tab instead).
 - **Transcription:** the cues can't be edited in the review; fix them in the **Captions** tab after adding them.
 - **Heavy footage:** 4K 60 fps HEVC played from the original (in **Full** quality, or before its proxy is ready) can drop frames, and the original frame deep inside long phone clips takes a moment to appear after you stop.
@@ -3073,4 +3108,4 @@ The current version cannot do these things yet. Each one is available in a later
 - [Command palette and custom shortcuts](command-palette-and-custom-shortcuts.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 52, 2026-10-19</sub>
+<sub>Last updated: Batch 53, 2026-10-19</sub>
