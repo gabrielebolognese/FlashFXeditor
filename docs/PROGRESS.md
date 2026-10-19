@@ -6260,3 +6260,27 @@ Why each dependency exists (Batch rule 8).
     - Control: the same script on HEAD's sources (swapped into the snapshot, Vite restarted) fails 8 of 11, the review's three findings. The link stays, so the dot shows and Reset is enabled. The template is dropped and then deleted by the next save. The paste is refused ("Can't paste these clips").
     - Re-runs, all pass: `acc1.mjs` (21), `acc2.mjs` (14), `acc3.mjs` (17), `acc4.mjs` (10), `acc56.mjs` (9), `acc56gl.mjs` (9, WebGL2), `extra.mjs` (10), `extra2.mjs` (7), `nudge.mjs` (3).
   - Deviation (also under Global deviations, Caption styles per cue): a cue's own style is its override (`hasOwnStyle`). A link alone, from the batch's first build, shows as no style.
+- review: accepted (2026-10-19, second review. `npm run check` is green: typecheck, lint with the CSS color and token checks, 2499 / 2499 unit tests in 238 files, 4 / 4 perf tests, and the build. Main JS is 1393.30 kB (443.57 kB gzip) and export.worker 419.23 kB, as reported. The build prints only rolldown's `[PLUGIN_TIMINGS]` notice. I read the batch commit (`git diff 07a845c~1 07a845c`) and the fixes commit (`git show d1849c7`). I re-ran the browser scripts on a fresh snapshot of HEAD: server 5307, Chrome 9429 with a new profile, copies in `%TEMP%/rev53b`.)
+  - Earlier rejection, both problems fixed:
+    1. Caption styles stored by 1.0.0 outside project.json:
+       - `upgradeCaptionStyle` (`src/text/captions.ts:67`) fills in `x: 0`. Three places use it: `sanitizeTrack` for templates (`src/project/templates.ts:119`), `parseClipboard` for clipboard payloads (`src/timeline/edit/clipboard.ts:213`), and the 2 -> 3 migration (`src/project/projectFile.ts:34`).
+       - `grep CaptionStyle src` finds no other store. The template store and the app settings are the only KeyValueStore users that could hold one, and the app settings keep none.
+       - New tests in `projectManagement.test.ts` and `clipboard.test.ts` cover a template that loads, makes a valid project and survives the next save, and a paste into a project with no caption track.
+       - In the browser, the 1.0.0 template is still listed after reloads, and New from template gives a valid project with `x` 0. The 1.0.0 payload pastes through the app's Paste with no refusal.
+    2. A preset link with no override:
+       - `setCueStyles` (`src/timeline/edit/captions.ts:482`) drops the link when the override comes out empty. So do the All cues drag (`:539`, `:553`) and Paste attributes (`src/timeline/edit/pasteAttributes.ts:201`).
+       - The cue list's dot, the timeline badge, the menu's Reset and the section's Reset all read `hasOwnStyle`. The fuzz checks refuse a link without an override.
+       - In the browser: a cue styled by "Caption bold", then 20 row resets (one undo step each), has no override and no link. It looks like cue 2, shows no dot, and Reset to track style is disabled.
+  - Re-runs on the fresh snapshot, all pass: `fix.mjs` 11 / 11, `acc1.mjs` 21 / 21, `acc3.mjs` 17 / 17, `acc4.mjs` 10 / 10, `extra2.mjs` 7 / 7.
+  - Checked and fine:
+    - Acceptance 1-6: each has a browser script with recorded results, and unit tests that pass here. The four pending manual checks give steps for a real screen and device pixel ratio 2, IME, 100+ cues and macOS Cmd+click.
+    - Do not build yet: a cue has one style plus the word highlight. There is no rich text inside a cue.
+    - Literals: the new CSS uses tokens only. The canvas code takes its gizmo metrics and colors from the theme. The added TS has no px, hex or rgb literals. The design gaps are logged.
+    - §3 / §4:
+      - Canvas moves, corner drags, label scrubs, color drags and preset hovers stay ephemeral (`Drag.cueStyles`, the drag transforms, `liveEdit.cueStyles`). Each gesture ends in one command.
+      - The caption layer and its box come from the same live values the compositor draws.
+      - The section's selectors read the document only.
+      - Persisted caption `x` / `y` and the corner-drag font size are rounded. No time values changed.
+      - Export fonts include each cue's own style.
+    - TODOs: none in `src/`. `TODO(batch` count is 0.
+    - Tag `v1.1.0` is on d1849c7, the fixes commit.
