@@ -188,6 +188,11 @@
   /* Cutting and gaps (Batch 15, gap: the DS has no razor or gap visuals) */
   --timeline-cut-line-width: 1px; /* the Razor's cut line over the clips it would cut, --text-primary */
   --timeline-gap-dash: var(--space-1); /* a selected gap: dashed --accent outline (spec §6.7) on --accent-wash */
+  /* Scrollbars (Batch 18, gap: the DS has none). Drawn on the timeline canvas (spec §6.1): a --surface-1
+     trough with a hairline edge, a --surface-4 pill thumb inset --space-0 (--surface-5 hovered or dragged);
+     the horizontal thumb's ends are the zoom handles (one scrollbar size each), marked by dots. */
+  --timeline-scrollbar-size: var(--space-4);
+  --timeline-scrollbar-min-thumb: 36px; /* 3 x the scrollbar size: two zoom handles and the grip between (read by the canvas: no calc) */
 
   /* Audio (gap: the DS has no meter or knob). Stereo peak meter along the preview's right edge, master volume knob. */
   --meter-bar-width: var(--space-1);

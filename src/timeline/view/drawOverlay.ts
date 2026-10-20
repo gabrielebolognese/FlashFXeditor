@@ -3,8 +3,9 @@
 // the Razor's cut line, the trim preview (the rows an edit changes, redrawn as the drop would leave
 // them), the selected edit point's brackets, the snap line, clip drag ghosts with the new track rows,
 // overwrite hatching and the insert line, the edit's ghost edges, the marquee, the playhead and the
-// drag tooltip with the snap target's name. It is redrawn for every interaction frame (scrubbing,
-// dragging, hover changes) while the content canvas stays untouched.
+// drag tooltip with the snap target's name, and the hovered or dragged scrollbar. It is redrawn for
+// every interaction frame (scrubbing, dragging, hover changes) while the content canvas stays untouched.
+// Nothing but the scrollbar state is drawn over the scrollbars.
 import type { Clip, Frame, Track, TrackId } from "../../core/document/types.js";
 import type { Selection } from "../../core/store/selection.js";
 import type { Theme } from "../../core/theme/theme.js";
@@ -16,7 +17,9 @@ import { drawClip, drawDiagonalHatch, drawHeader, fillClip, fontOf } from "./dra
 import type { Rect, Row, TimelineGeometry } from "./geometry.js";
 import type { Ghost, MoveProposal, NewLane } from "./gestures/moveClips.js";
 import type { TrimProposal } from "./gestures/trimClip.js";
+import { drawScrollbarState } from "./drawScrollbars.js";
 import { CLIP_GLYPHS, drawGlyph, TRACK_GLYPHS } from "./glyphs.js";
+import type { ScrollbarHit, ScrollbarLayout } from "./scrollbars.js";
 import type { TextCache } from "./textCache.js";
 
 /** A clip drag as drawn: the proposal and the height of a new track row. */
@@ -90,6 +93,8 @@ export interface OverlayScene {
   text: TextCache;
   /** Loaded thumbnails and peaks, for the clips the trim preview redraws. */
   visuals?: ClipVisuals | null;
+  /** The scrollbar part under the pointer (or dragged: `active`), on the scrollbars as laid out. */
+  scrollbar?: { layout: ScrollbarLayout; hit: ScrollbarHit; active: boolean } | null;
 }
 
 export interface Tooltip {
@@ -108,9 +113,11 @@ export function drawOverlay(scene: OverlayScene): void {
   ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
+  // Rows reach under the vertical scrollbar: clip at the track area's right edge.
+  const right = geometry.area.x + geometry.area.width;
   ctx.save();
   ctx.beginPath();
-  ctx.rect(0, geometry.area.y, geometry.width, geometry.area.height);
+  ctx.rect(0, geometry.area.y, right, geometry.area.height);
   ctx.clip();
   drawHover(scene);
   if (scene.hoverGap || scene.gap) drawGaps(scene);
@@ -122,7 +129,7 @@ export function drawOverlay(scene: OverlayScene): void {
   if (scene.snapFrame !== null) drawSnapLine(scene, scene.snapFrame);
   ctx.save();
   ctx.beginPath();
-  ctx.rect(0, geometry.area.y, geometry.width, geometry.area.height);
+  ctx.rect(0, geometry.area.y, right, geometry.area.height);
   ctx.clip();
   if (scene.move) drawMove(scene, scene.move);
   if (scene.trim) drawTrimEdges(scene, scene.trim);
@@ -132,6 +139,7 @@ export function drawOverlay(scene: OverlayScene): void {
   ctx.restore();
   if (scene.trackDrag) drawTrackDrag(scene, scene.trackDrag);
   drawPlayhead(scene);
+  if (scene.scrollbar) drawScrollbarState(ctx, scene.theme, scene.scrollbar.layout, scene.scrollbar.hit, scene.scrollbar.active);
   if (scene.tooltip) drawTooltip(scene, scene.tooltip);
 }
 
@@ -442,13 +450,14 @@ function drawSnapLine(scene: OverlayScene, frame: Frame): void {
   const x = geometry.frameToX(frame);
   const width = devicePx(theme.timeline.snapLineWidth, dpr) / dpr;
   const left = Math.round(x * dpr - (width * dpr) / 2) / dpr;
-  if (left + width <= geometry.headerWidth || left >= geometry.width) return;
+  const { area } = geometry;
+  if (left + width <= area.x || left >= area.x + area.width) return;
   ctx.save();
   ctx.beginPath();
-  ctx.rect(geometry.headerWidth, 0, geometry.width - geometry.headerWidth, geometry.height);
+  ctx.rect(area.x, 0, area.width, area.y + area.height);
   ctx.clip();
   ctx.fillStyle = theme.color.accent;
-  ctx.fillRect(left, 0, width, geometry.height);
+  ctx.fillRect(left, 0, width, area.y + area.height);
   ctx.restore();
 }
 
@@ -511,7 +520,7 @@ function drawTrackDrag(scene: OverlayScene, drag: TrackDragScene): void {
   const tl = theme.timeline;
   ctx.save();
   ctx.beginPath();
-  ctx.rect(0, geometry.area.y, geometry.width, geometry.area.height);
+  ctx.rect(0, geometry.area.y, geometry.area.x + geometry.area.width, geometry.area.height);
   ctx.clip();
   if (drag.insertY !== null) {
     const width = devicePx(tl.insertWidth, dpr) / dpr;
@@ -573,18 +582,20 @@ function drawPlayhead(scene: OverlayScene): void {
   const tl = theme.timeline;
   const x = geometry.frameToX(scene.playhead);
   const half = tl.playheadHeadWidth / 2;
-  if (x + half < geometry.headerWidth || x - half > geometry.width) return;
+  const { area } = geometry;
+  const bottom = area.y + area.height;
+  if (x + half < area.x || x - half > area.x + area.width) return;
 
   ctx.save();
   ctx.beginPath();
-  ctx.rect(geometry.headerWidth, 0, geometry.width - geometry.headerWidth, geometry.height);
+  ctx.rect(area.x, 0, area.width, bottom);
   ctx.clip();
   ctx.fillStyle = tl.playhead;
   const lineDevice = devicePx(scene.scrubbing ? tl.playheadWidthActive : tl.playheadWidth, dpr);
   const left = Math.round(x * dpr - lineDevice / 2) / dpr;
   const center = left + lineDevice / dpr / 2;
   const headTop = geometry.rulerHeight - tl.playheadHeadHeight;
-  ctx.fillRect(left, headTop, lineDevice / dpr, geometry.height - headTop);
+  ctx.fillRect(left, headTop, lineDevice / dpr, bottom - headTop);
   // Pentagon head pointing down onto the tracks (spec §6.1).
   const shoulder = headTop + tl.playheadHeadHeight / 2;
   ctx.beginPath();

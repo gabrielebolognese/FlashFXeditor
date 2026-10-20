@@ -117,4 +117,20 @@ describe("ruler labels", () => {
     const result = layout(3, FPS);
     for (const x of result.minors) expect(result.majors).not.toContain(x);
   });
+
+  it("labels in milliseconds when the preview's toggle says so, the parts between seconds as .mmm", () => {
+    const ms = (pxPerFrame: number) =>
+      layoutRuler({ from: 0, to: WIDTH / pxPerFrame, frameToX: (frame) => frame * pxPerFrame, pxPerFrame, fps: FPS, mode: "ms", measure, labelGap: GAP, minorMinPx: 8 });
+    const seconds = ms(1);
+    expect(seconds.labels[0]?.text).toBe("00:00.000");
+    expect(seconds.labels.every((label) => label.kind === "second" && /^\d\d:\d\d\.\d{3}$/.test(label.text))).toBe(true);
+    expectNoOverlap(seconds);
+    // Zoomed in: the frames between seconds get their millisecond part, never overlapping.
+    const frames = ms(12);
+    const between = frames.labels.filter((label) => label.kind === "frame");
+    expect(between.length).toBeGreaterThan(0);
+    expect(between[0]?.text).toMatch(/^(\.\d{3}|\d\d:\d\d\.\d{3})$/);
+    expect(between.some((label) => label.text === ".500")).toBe(true);
+    expectNoOverlap(frames);
+  });
 });

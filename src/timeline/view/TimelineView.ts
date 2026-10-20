@@ -19,9 +19,13 @@
 // Clip visuals (spec §6.17): each content pass draws the thumbnails and peaks loaded so far and hands
 // what it wanted to `visuals`, which loads it through the IdleQueue; arrivals redraw the content at
 // most ARRIVAL_INTERVAL_MS apart, and not while playing or dragging (P3: they wait for the resume).
+// Navigation (spec §6.1, §6.2, §6.6): the scrollbars (a thumb drag scrolls, a zoom handle drag zooms
+// with the opposite edge fixed), panning in both axes (Hand tool, Space+drag on empty space, middle
+// drag), and keyboard zoom steps eased over `--duration-micro` (wheel zoom stays immediate).
 import type { Affect } from "../../core/commands/command.js";
 import { formatSpeed, formatTimecode, usToFrame } from "../../core/document/time.js";
 import { isMediaClip, type Clip, type ClipId, type Frame, type Project, type TrackId, type TrackKind } from "../../core/document/types.js";
+import { isEditableTarget } from "../../core/keyboard/KeyDispatcher.js";
 import type { Platform } from "../../core/keyboard/keys.js";
 import { watchDevicePixelRatio } from "../../core/scheduler/devicePixelRatio.js";
 import type { FrameScheduler, RenderView } from "../../core/scheduler/FrameScheduler.js";
@@ -31,6 +35,7 @@ import type { DocumentStore } from "../../core/store/DocumentStore.js";
 import type { LayoutState, Size } from "../../core/store/layoutStore.js";
 import { clickSelection, EMPTY_SELECTION, selectClips, selectedTrackIds, selectTracks, trackClickSelection, type ClickModifier, type Selection } from "../../core/store/selection.js";
 import { selectEditPoint, selectGap, setPlayhead, setSelection, type EditPoint, type SessionStore, type Tool } from "../../core/store/sessionStore.js";
+import { ease } from "../../core/theme/easing.js";
 import type { Theme, ThemeBridge } from "../../core/theme/theme.js";
 import type { MoveRequest } from "../edit/move.js";
 import { clipsToSplit } from "../edit/split.js";
@@ -41,16 +46,18 @@ import { createWants, type ClipVisualsSource } from "./clipVisuals.js";
 import { trimCursor, trimCursors, type TrimCursors } from "./cursors.js";
 import { drawContent } from "./drawContent.js";
 import { drawOverlay, type EditPointMark, type RazorScene, type TrackDragScene } from "./drawOverlay.js";
-import { TimelineGeometry, type HeaderToggle, type Rect, type TimelineMetrics } from "./geometry.js";
+import { contains, TimelineGeometry, type HeaderToggle, type Rect, type TimelineMetrics } from "./geometry.js";
 import { edgeStep } from "./gestures/autoScroll.js";
 import { MarqueeGesture } from "./gestures/marquee.js";
 import { MoveGesture, NO_MODIFIERS, type DragModifiers, type MoveSnap } from "./gestures/moveClips.js";
 import { TrimGesture, type EditTarget, type PreviewSplit, type TrimRequest } from "./gestures/trimClip.js";
 import { HitTester, type HitResult } from "./HitTester.js";
+import { handleEdge, layoutScrollbars, scrollForThumb, scrollYForThumb, zoomHandleView, type ScrollbarAxis, type ScrollbarHit, type ScrollbarLayout } from "./scrollbars.js";
 import { TextCache } from "./textCache.js";
 import {
   clampScroll,
   fitView,
+  interpolateZoom,
   keyZoomAnchor,
   pageToFrame,
   scrollBy,
@@ -58,6 +65,7 @@ import {
   wheelZoomFactor,
   zoomAt,
   zoomLimits,
+  zoomToSpan,
   type TimelineViewport,
   type ZoomContext,
 } from "./zoom.js";
@@ -97,6 +105,11 @@ export interface TimelineViewDeps {
   visuals?: ClipVisualsSource;
   /** Which key is Mod (Ctrl, or Cmd on macOS). */
   platform?: Platform;
+  /**
+   * Space pressed and released with no drag while it was armed for Space+drag panning (spec §6.6): the
+   * play/pause the key would have been.
+   */
+  onSpaceTap?(): void;
 }
 
 /** A Razor click (spec §6.11): cut `clipId` (and its linked partners) at `frame`, or with `all` every unlocked track. */
@@ -156,7 +169,23 @@ type Gesture =
   /** A press on a track header: a reorder drag once it moves past the dead zone, else a click setting `click`. */
   | { kind: "pressHeader"; pointerId: number; x: number; y: number; trackId: TrackId; click: Selection }
   /** A track header dragged to reorder (spec §6.12): `grab` is the pointer's offset in the row, `lane` where it would land. */
-  | { kind: "trackDrag"; pointerId: number; trackId: TrackId; grab: number; lane: number };
+  | { kind: "trackDrag"; pointerId: number; trackId: TrackId; grab: number; lane: number }
+  /** Panning (spec §6.6): the view follows the pointer in both axes from where it went down (`view`, `scrollY`). */
+  | { kind: "pan"; pointerId: number; x: number; y: number; view: TimelineViewport; scrollY: number }
+  /**
+   * A scrollbar dragged (spec §6.1): the thumb scrolls, a zoom handle (`start`, `end`) zooms from `view`
+   * (the view at the press). `grab`: the pointer's offset from the dragged end (from the thumb's start for a thumb).
+   */
+  | { kind: "scrollbar"; pointerId: number; axis: ScrollbarAxis; part: "thumb" | "start" | "end"; grab: number; view: TimelineViewport };
+
+/** A keyboard zoom step on its way (spec §6.2): from `from` to `to` with `anchor` held; `start` is set by the first frame. */
+interface ZoomAnimation {
+  from: TimelineViewport;
+  to: TimelineViewport;
+  anchor: { frame: number; x: number };
+  start: number | null;
+  stop: () => void;
+}
 
 /** Auto-scroll steps are given per 60 Hz frame. */
 const FRAME_MS = 1000 / 60;
@@ -173,6 +202,7 @@ function metricsOf(theme: Theme): TimelineMetrics {
     headerLine: theme.control.comfortable,
     toggleSize: tl.toggleSize,
     toggleGap: tl.toggleGap,
+    scrollbarSize: tl.scrollbarSize,
   };
 }
 
@@ -186,7 +216,9 @@ const sameHover = (a: HitResult | null, b: HitResult | null) =>
     a.trackId === b.trackId &&
     a.toggle === b.toggle &&
     a.junction?.frame === b.junction?.frame &&
-    a.gap?.start === b.gap?.start);
+    a.gap?.start === b.gap?.start &&
+    a.scrollbar?.axis === b.scrollbar?.axis &&
+    a.scrollbar?.part === b.scrollbar?.part);
 
 /** A hit on a track row's clip area: what the Razor can cut (and shows its cursor over). */
 function inTrackRow(hit: HitResult): boolean {
@@ -224,6 +256,8 @@ interface CursorContext {
   ripple: boolean;
   /** Mod+Alt held: a cut shows the roll cursor (spec §6.10). */
   roll: boolean;
+  /** A press here would pan: Space armed, or the Hand tool over the track area (spec §6.6). */
+  pan: boolean;
 }
 
 /** The cursor of an edit (a drag, or a press that may become one). */
@@ -244,6 +278,8 @@ function editCursor(cursors: TrimCursors, target: EditTarget, ripple: boolean): 
 
 /** The cursor for the hover hit and the gesture (spec §6.18: set from the hover hit, by tool). */
 function cursorFor(hit: HitResult | null, gesture: Gesture | null, cursors: TrimCursors, context: CursorContext): string {
+  if (gesture?.kind === "pan") return "grabbing";
+  if (gesture?.kind === "scrollbar") return gesture.part === "thumb" ? "default" : "ew-resize";
   if (gesture?.kind === "scrub") return "ew-resize";
   if (gesture?.kind === "trackDrag") return "grabbing";
   if (gesture?.kind === "move") {
@@ -258,6 +294,8 @@ function cursorFor(hit: HitResult | null, gesture: Gesture | null, cursors: Trim
   if (gesture?.kind === "press" && (gesture.drag === "slip" || gesture.drag === "slide")) return cursors[gesture.drag];
   if (gesture) return "default";
   if (!hit) return "default";
+  if (hit.type === "scrollbar") return hit.scrollbar?.part === "start" || hit.scrollbar?.part === "end" ? "ew-resize" : "default";
+  if (context.pan) return "grab";
   if (hit.type === "ruler" || hit.type === "playheadHead") return "ew-resize";
   if ((hit.type === "trackHeader" && hit.addTrack) || hit.type === "headerToggle") return "pointer";
   const edge = hitEdge(hit);
@@ -275,6 +313,8 @@ function cursorFor(hit: HitResult | null, gesture: Gesture | null, cursors: Trim
 export class TimelineView {
   readonly stats: TimelineStats = { contentDraws: 0, overlayDraws: 0, clipsDrawn: 0, clipsTotal: 0, contentMs: 0, overlayMs: 0, resizes: 0 };
   readonly hitTester: HitTester;
+  /** Playback runs (the playback controller keeps it): Space stays play/pause (a pause is never delayed) and does not arm the pan. */
+  playing = false;
 
   private content: Layer | null = null;
   private overlay: Layer | null = null;
@@ -283,6 +323,11 @@ export class TimelineView {
   private cursors: TrimCursors;
   private readonly text = new TextCache();
   private cachedGeometry: { key: readonly unknown[]; geometry: TimelineGeometry } | null = null;
+  private cachedScrollbars: { geometry: TimelineGeometry; project: Project; minThumb: number; layout: ScrollbarLayout } | null = null;
+  /** A keyboard zoom step being eased in (spec §6.2), or null. */
+  private zoomAnimation: ZoomAnimation | null = null;
+  /** Space held for Space+drag (spec §6.6); `panned` once a pan started (the release then plays nothing). */
+  private space: { panned: boolean } | null = null;
   /** Zoom shown while the toolbar slider is dragged; written to the session once on release. */
   private ephemeral: TimelineViewport | null = null;
   private gesture: Gesture | null = null;
@@ -326,6 +371,7 @@ export class TimelineView {
       get junctionZone() {
         return deps.theme.theme.timeline.junctionZone;
       },
+      scrollbars: () => this.scrollbars(),
     });
   }
 
@@ -350,6 +396,10 @@ export class TimelineView {
       this.setHover(null);
     };
     const onWheel = (event: WheelEvent) => this.onWheel(event);
+    // A middle press pans (spec §6.6): never the browser's autoscroll or a Linux primary paste.
+    const onMiddle = (event: MouseEvent) => {
+      if (event.button === 1) event.preventDefault();
+    };
     const onContextMenu = (event: MouseEvent) => this.onContextMenu(event);
     const onDoubleClick = (event: MouseEvent) => this.onDoubleClick(event);
     // Mod pressed or released over a trim edge switches it to the ripple cursor (spec §6.4), Mod+Alt
@@ -365,6 +415,12 @@ export class TimelineView {
     };
     win?.addEventListener("keydown", onHoverKey);
     win?.addEventListener("keyup", onHoverKey);
+    // Capture phase, ahead of the KeyDispatcher: an armed Space never reaches the shortcuts.
+    const onSpaceKey = (event: KeyboardEvent) => this.onSpaceKey(event);
+    const onBlur = () => this.disarmSpace();
+    win?.addEventListener("keydown", onSpaceKey, true);
+    win?.addEventListener("keyup", onSpaceKey, true);
+    win?.addEventListener("blur", onBlur);
     overlay.addEventListener("pointerdown", onPointerDown);
     overlay.addEventListener("pointermove", onPointerMove);
     overlay.addEventListener("pointerup", onPointerUp);
@@ -374,6 +430,8 @@ export class TimelineView {
     overlay.addEventListener("wheel", onWheel, { passive: false });
     overlay.addEventListener("contextmenu", onContextMenu);
     overlay.addEventListener("dblclick", onDoubleClick);
+    overlay.addEventListener("mousedown", onMiddle);
+    overlay.addEventListener("auxclick", onMiddle);
 
     this.stops.push(
       scheduler.register("timelineContent", this.contentView),
@@ -388,6 +446,8 @@ export class TimelineView {
         { fireImmediately: true },
       ),
       session.state.select((state) => state.timeline, both),
+      // The ruler labels follow the timecode format (spec §6.3).
+      session.state.select((state) => state.timecodeFormat, () => scheduler.invalidate("timelineContent")),
       session.state.select(
         (state) => state.playhead,
         () => {
@@ -449,8 +509,13 @@ export class TimelineView {
         overlay.removeEventListener("wheel", onWheel);
         overlay.removeEventListener("contextmenu", onContextMenu);
         overlay.removeEventListener("dblclick", onDoubleClick);
+        overlay.removeEventListener("mousedown", onMiddle);
+        overlay.removeEventListener("auxclick", onMiddle);
         win?.removeEventListener("keydown", onHoverKey);
         win?.removeEventListener("keyup", onHoverKey);
+        win?.removeEventListener("keydown", onSpaceKey, true);
+        win?.removeEventListener("keyup", onSpaceKey, true);
+        win?.removeEventListener("blur", onBlur);
       },
     );
     both();
@@ -459,6 +524,8 @@ export class TimelineView {
 
   unmount(): void {
     this.cancelGesture();
+    this.cancelZoomAnimation();
+    this.space = null;
     // A scrub is not cancelled, but its ticker and idle pause end here too.
     this.finishDrag();
     for (const stop of this.stops.splice(0)) stop();
@@ -471,6 +538,7 @@ export class TimelineView {
     this.hover = null;
     this.ephemeral = null;
     this.cachedGeometry = null;
+    this.cachedScrollbars = null;
   }
 
   get mounted(): boolean {
@@ -569,13 +637,68 @@ export class TimelineView {
     return geometry;
   }
 
-  /** Zoom keys and buttons: anchored at the playhead when visible, else at the view center. */
+  /**
+   * Zoom keys and buttons (spec §6.2): anchored at the playhead when visible, else at the view center,
+   * eased over `--duration-micro` with `--ease-out`. A step during a step builds on its target, so fast
+   * presses add up. The session takes each frame's view (the geometry and hit tests follow).
+   */
   zoomBy(factor: number): void {
-    if (!this.mounted) return;
+    if (!this.mounted || this.ephemeral) return;
     const view = this.viewport();
     const context = this.zoomContext();
     const anchor = keyZoomAnchor(view, this.deps.session.state.getState().playhead, context.width);
-    this.writeViewport(zoomAt(view, view.pxPerFrame * factor, anchor.frame, anchor.x, context));
+    const base = this.zoomAnimation?.to.pxPerFrame ?? view.pxPerFrame;
+    const to = zoomAt(view, base * factor, anchor.frame, anchor.x, context);
+    this.cancelZoomAnimation();
+    if (this.deps.theme.theme.motion.micro <= 0) {
+      this.writeViewport(to);
+      return;
+    }
+    const stop = this.deps.scheduler.addTicker((time) => this.stepZoom(time));
+    this.zoomAnimation = { from: view, to, anchor, start: null, stop };
+  }
+
+  /** One frame of the keyboard zoom: the eased view, the target at the end. */
+  private stepZoom(time: number): void {
+    const animation = this.zoomAnimation;
+    if (!animation) return;
+    // The first frame already moves by one frame's worth.
+    animation.start ??= time - FRAME_MS;
+    const { theme } = this.deps.theme;
+    const t = Math.min(1, (time - animation.start) / theme.motion.micro);
+    const view = interpolateZoom(animation.from, animation.to, animation.anchor, ease(theme.ease.out, t), this.zoomContext());
+    if (t >= 1) this.cancelZoomAnimation();
+    this.writeViewport(view, undefined, true);
+    this.followPointer();
+  }
+
+  private cancelZoomAnimation(): void {
+    this.zoomAnimation?.stop();
+    this.zoomAnimation = null;
+  }
+
+  /** Zoom to selection (spec §6.2, `Shift+\`): frames [start, end) with 10% of the view free on each side. */
+  zoomToFrames(start: number, end: number): void {
+    if (!this.mounted || this.ephemeral) return;
+    this.writeViewport(zoomToSpan(start, end, this.zoomContext()));
+  }
+
+  /** Where the scrollbars are (spec §6.1), for drawing and hit tests; null when the theme gives them no size. */
+  scrollbars(): ScrollbarLayout | null {
+    if (this.metrics.scrollbarSize <= 0 || !this.mounted) return null;
+    const geometry = this.geometry();
+    const project = this.deps.document.getState();
+    const minThumb = this.deps.theme.theme.timeline.scrollbarMinThumb;
+    const cached = this.cachedScrollbars;
+    if (cached && cached.geometry === geometry && cached.project === project && cached.minThumb === minThumb) return cached.layout;
+    const layout = layoutScrollbars(
+      this.viewport(),
+      { width: geometry.area.width, contentEnd: contentEnd(project), fps: project.settings.fps },
+      { h: geometry.hScrollbar, v: geometry.vScrollbar, scrollY: geometry.scrollY, scrollYRange: geometry.scrollYRange, viewHeight: geometry.area.height },
+      minThumb,
+    );
+    this.cachedScrollbars = { geometry, project, minThumb, layout };
+    return layout;
   }
 
   /** `Fit`: the whole content in view; both scroll positions back to 0 (spec §6.2, §6.6). */
@@ -642,6 +765,7 @@ export class TimelineView {
   /** Slider drag: draw at `pxPerFrame` without touching the session. */
   previewZoom(pxPerFrame: number): void {
     if (!this.mounted) return;
+    this.cancelZoomAnimation();
     const view = this.viewport();
     const context = this.zoomContext();
     const anchor = keyZoomAnchor(view, this.deps.session.state.getState().playhead, context.width);
@@ -658,7 +782,9 @@ export class TimelineView {
     this.writeViewport(view);
   }
 
-  private writeViewport(view: TimelineViewport, scrollY?: number): void {
+  /** Writes the view to the session; any other write than the zoom animation's own ends the animation. */
+  private writeViewport(view: TimelineViewport, scrollY?: number, animating = false): void {
+    if (!animating) this.cancelZoomAnimation();
     this.deps.session.state.set((state) => {
       const timeline = state.timeline;
       const nextY = scrollY ?? timeline.scrollY;
@@ -703,9 +829,30 @@ export class TimelineView {
   private onPointerDown(event: PointerEvent): void {
     this.pointer = { x: event.offsetX, y: event.offsetY };
     this.modifiers = this.modifiersOf(event);
-    if (event.button !== 0 || this.gesture) return;
+    if (this.gesture) return;
+    // Middle drag pans anywhere, whatever the tool (spec §6.6).
+    if (event.button === 1) {
+      event.preventDefault();
+      this.startPan(event);
+      return;
+    }
+    if (event.button !== 0) return;
+    if (this.space) {
+      this.space.panned = true;
+      this.startPan(event);
+      return;
+    }
     const hit = this.hitTester.hit(event.offsetX, event.offsetY);
+    if (hit.type === "scrollbar" && hit.scrollbar) {
+      this.pressScrollbar(event, hit.scrollbar);
+      return;
+    }
     const tool = this.deps.session.state.getState().activeTool;
+    // The Hand tool pans from anywhere in the track area, clips included; the ruler still scrubs.
+    if (tool === "hand" && contains(this.geometry().area, event.offsetX, event.offsetY)) {
+      this.startPan(event);
+      return;
+    }
     if (tool === "razor" && inTrackRow(hit)) {
       this.pressRazor(event, hit);
       return;
@@ -785,7 +932,7 @@ export class TimelineView {
       this.pressEdge(event, { kind: "stretch", clipId, edge }, hit.frame, null);
       return;
     }
-    // TODO(batch 18): the Hand tool pans.
+    // Any other tool (none today: the Hand pans before this) only selects.
     if (tool !== "select") {
       this.pressClip(event, clipId, hit.frame, null);
       return;
@@ -839,6 +986,118 @@ export class TimelineView {
     this.gesture = { kind: "trackDrag", pointerId: press.pointerId, trackId: press.trackId, grab: press.y - row.y, lane: lane.number };
     this.startDrag();
     this.followPointer();
+  }
+
+  /** A pan starts (spec §6.6): the view will follow the pointer from here. */
+  private startPan(event: PointerEvent): void {
+    this.capture(event.pointerId);
+    const { scrollY } = this.deps.session.state.getState().timeline;
+    this.gesture = { kind: "pan", pointerId: event.pointerId, x: event.offsetX, y: event.offsetY, view: this.viewport(), scrollY };
+    this.updateCursor();
+    this.deps.scheduler.invalidate("timelineOverlay");
+  }
+
+  /** The content under the pointer stays under it: the view moves by the pointer's travel, within the scroll ranges. */
+  private panTo(pan: Extract<Gesture, { kind: "pan" }>, x: number, y: number): void {
+    const { view } = pan;
+    const scrollFrame = clampScroll(view.scrollFrame - (x - pan.x) / view.pxPerFrame, view.pxPerFrame, this.zoomContext());
+    const range = this.geometry().scrollYRange;
+    // A view already outside the vertical range (tracks were removed) is never pulled further out.
+    const scrollY = Math.min(Math.max(pan.scrollY - (y - pan.y), Math.min(range.min, pan.scrollY)), Math.max(range.max, pan.scrollY));
+    // A manual scroll stops follow playhead until the next play (spec §6.2).
+    if (scrollFrame !== this.viewport().scrollFrame) this.following = false;
+    this.writeViewport({ pxPerFrame: view.pxPerFrame, scrollFrame }, scrollY);
+  }
+
+  /**
+   * A press on a scrollbar (spec §6.1): its thumb or a zoom handle starts a drag from where it was
+   * grabbed; a press on the trough brings the thumb's middle under the pointer and drags it from there.
+   */
+  private pressScrollbar(event: PointerEvent, hit: ScrollbarHit): void {
+    const layout = this.scrollbars();
+    if (!layout) return;
+    const { offsetX: x, offsetY: y } = event;
+    let part: "thumb" | "start" | "end";
+    let grab: number;
+    if (hit.axis === "x") {
+      const { thumb } = layout.h;
+      part = hit.part === "trough" ? "thumb" : hit.part;
+      // A handle moves the proportional thumb's end (it may sit a few px inside a thumb held at its minimum).
+      grab = hit.part === "trough" ? thumb.width / 2 : part === "thumb" ? x - thumb.x : x - handleEdge(part, this.viewport(), this.zoomContext(), this.geometry().hScrollbar);
+    } else {
+      const { thumb } = layout.v;
+      // Every row fits: nothing to scroll.
+      if (!thumb) return;
+      part = "thumb";
+      grab = hit.part === "trough" ? thumb.height / 2 : y - thumb.y;
+    }
+    this.capture(event.pointerId);
+    this.gesture = { kind: "scrollbar", pointerId: event.pointerId, axis: hit.axis, part, grab, view: this.viewport() };
+    if (hit.part === "trough") this.dragScrollbar(x, y);
+    this.updateCursor();
+    this.deps.scheduler.invalidate("timelineOverlay");
+  }
+
+  /** A scrollbar drag at the pointer: the thumb's grabbed point (or the dragged handle) follows it. */
+  private dragScrollbar(x: number, y: number): void {
+    const gesture = this.gesture;
+    if (gesture?.kind !== "scrollbar") return;
+    const geometry = this.geometry();
+    const minThumb = this.deps.theme.theme.timeline.scrollbarMinThumb;
+    if (gesture.axis === "y") {
+      this.writeViewport(this.viewport(), scrollYForThumb(y - gesture.grab, geometry.scrollYRange, geometry.area.height, geometry.vScrollbar, minThumb));
+      return;
+    }
+    const context = this.zoomContext();
+    const view = this.viewport();
+    const next =
+      gesture.part === "thumb"
+        ? { pxPerFrame: view.pxPerFrame, scrollFrame: scrollForThumb(x - gesture.grab, view, context, geometry.hScrollbar, minThumb) }
+        : zoomHandleView(gesture.part, x - gesture.grab, gesture.view, context, geometry.hScrollbar);
+    if (next.scrollFrame !== view.scrollFrame || next.pxPerFrame !== view.pxPerFrame) this.following = false;
+    this.writeViewport(next);
+  }
+
+  /** The pointer rests on empty track space (no clip, edge or header under it): where Space arms a pan. */
+  private onEmptySpace(): boolean {
+    const { pointer, hover } = this;
+    return pointer !== null && (hover?.type === "empty" || hover?.type === "gap") && contains(this.geometry().area, pointer.x, pointer.y);
+  }
+
+  /**
+   * Space+drag (spec §6.6). While playback is stopped and the pointer rests on empty track space, a
+   * plain Space press arms a pan instead of reaching the shortcuts (the cursor turns into a hand); a
+   * press then pans. Released with no pan in between, it is the play/pause tap it would have been
+   * (`onSpaceTap`). Elsewhere, and while playing, Space goes on to the shortcuts at once.
+   */
+  private onSpaceKey(event: KeyboardEvent): void {
+    if (event.code !== "Space") return;
+    if (event.type === "keyup") {
+      const space = this.space;
+      if (!space) return;
+      this.disarmSpace();
+      if (!space.panned) this.deps.onSpaceTap?.();
+      return;
+    }
+    if (this.space) {
+      // Repeats of the held key.
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
+    if (event.repeat || event.shiftKey || event.altKey || event.ctrlKey || event.metaKey || this.gesture || isEditableTarget(event.target)) return;
+    if (!this.onEmptySpace() || this.playing) return;
+    event.preventDefault();
+    event.stopPropagation();
+    this.space = { panned: false };
+    this.updateCursor();
+  }
+
+  /** Space let go (or the window lost the keyboard): back to the tool's cursor. */
+  private disarmSpace(): void {
+    if (!this.space) return;
+    this.space = null;
+    this.updateCursor();
   }
 
   /** Double-click on a track header (spec §6.1): rename it inline. */
@@ -962,6 +1221,12 @@ export class TimelineView {
     switch (gesture.kind) {
       case "scrub":
         this.scrubAt(event.offsetX);
+        break;
+      case "pan":
+        this.panTo(gesture, event.offsetX, event.offsetY);
+        break;
+      case "scrollbar":
+        this.dragScrollbar(event.offsetX, event.offsetY);
         break;
       case "press":
         if (gesture.drag && Math.hypot(event.offsetX - gesture.x, event.offsetY - gesture.y) > threshold) {
@@ -1223,6 +1488,9 @@ export class TimelineView {
         if (commit && gesture.lane !== laneOf(this.deps.document.getState().tracks, gesture.trackId)?.number) this.deps.onReorderTrack?.(gesture.trackId, gesture.lane);
         break;
       case "scrub":
+      case "pan":
+      case "scrollbar":
+        // The session already holds the view.
         break;
     }
     this.refreshHover();
@@ -1262,7 +1530,9 @@ export class TimelineView {
     const { mod, alt } = this.modifiers;
     // A locked clip takes no edits: no edit cursor over it.
     const hover = this.hover?.type === "clip" && isClipLocked(this.deps.document.getState(), this.hover.clipId as ClipId) ? null : this.hover;
-    const cursor = cursorFor(hover, this.gesture, this.cursors, { tool: activeTool, ripple: ripple || mod, roll: mod && alt });
+    const pointer = this.pointer;
+    const pan = this.space !== null || (activeTool === "hand" && pointer !== null && contains(this.geometry().area, pointer.x, pointer.y));
+    const cursor = cursorFor(hover, this.gesture, this.cursors, { tool: activeTool, ripple: ripple || mod, roll: mod && alt, pan });
     if (cursor === this.cursor || !this.overlay) return;
     this.cursor = cursor;
     this.overlay.canvas.style.cursor = cursor;
@@ -1318,6 +1588,8 @@ export class TimelineView {
       text: this.text,
       visuals: visuals ?? null,
       wants,
+      scrollbars: this.scrollbars(),
+      timecodeFormat: this.deps.session.state.getState().timecodeFormat,
     });
     if (wants) visuals?.want(wants);
     this.stats.contentDraws += 1;
@@ -1369,6 +1641,7 @@ export class TimelineView {
       tooltip: this.pointer && (proposal || trim || snap) ? this.tooltip(project, proposal?.deltaFrames ?? null, trim, snap, this.pointer) : null,
       text: this.text,
       visuals: this.deps.visuals ?? null,
+      scrollbar: this.scrollbarState(idle),
     });
     this.stats.overlayDraws += 1;
     this.stats.overlayMs = performance.now() - start;
@@ -1416,6 +1689,16 @@ export class TimelineView {
       if (partner && next?.start === right.start && partner.trackId !== left.trackId) marks.push({ trackId: partner.trackId, frame: right.start, side: point.side });
     }
     return marks;
+  }
+
+  /** The scrollbar part being dragged, or the one under a pointer at rest. */
+  private scrollbarState(idle: boolean): { layout: ScrollbarLayout; hit: ScrollbarHit; active: boolean } | null {
+    const layout = this.scrollbars();
+    const gesture = this.gesture;
+    if (!layout) return null;
+    if (gesture?.kind === "scrollbar") return { layout, hit: { axis: gesture.axis, part: gesture.part }, active: true };
+    const hit = idle && this.hover?.type === "scrollbar" ? this.hover.scrollbar : null;
+    return hit ? { layout, hit, active: false } : null;
   }
 
   /** The selected gap while it still is one in the document (an edit may have moved or closed it). */
@@ -1522,9 +1805,8 @@ export class TimelineView {
   }
 }
 
-/** What a drag of a clip body does with each tool (spec §6.18); the Razor cuts on the press, Hand bodies do nothing yet. */
+/** What a drag of a clip body does with each tool (spec §6.18); the Razor cuts and the Hand pans on the press. */
 function bodyDrag(tool: Tool): BodyDrag {
-  // TODO(batch 18): the Hand tool pans.
   return tool === "select" ? "move" : tool === "slip" || tool === "slide" ? tool : null;
 }
 

@@ -74,6 +74,34 @@ export function fitView(context: ZoomContext): TimelineViewport {
   return { pxPerFrame: fitPxPerFrame(context), scrollFrame: 0 };
 }
 
+/** Zoom to selection leaves this fraction of the view free on each side of the selection (spec §6.2). */
+export const SELECTION_MARGIN = 0.1;
+
+/**
+ * Zoom to selection (spec §6.2, `Shift+\`): frames [start, end) with a 10% margin of the view on each
+ * side, centered, within the zoom limits and the scroll range.
+ */
+export function zoomToSpan(start: number, end: number, context: ZoomContext): TimelineViewport {
+  const limits = zoomLimits(context);
+  const px = clamp((context.width * (1 - 2 * SELECTION_MARGIN)) / Math.max(1, end - start), limits.min, limits.max);
+  return { pxPerFrame: px, scrollFrame: clampScroll((start + end) / 2 - context.width / px / 2, px, context) };
+}
+
+/**
+ * One step of an animated zoom from `from` to `to` (the keyboard steps, spec §6.2) at eased progress
+ * `t` (0..1): the zoom moves geometrically with `anchor` (a frame and its x in the track area) held in
+ * place, and the scroll eases into the target's, which the scroll clamp may have moved off the anchor.
+ */
+export function interpolateZoom(from: TimelineViewport, to: TimelineViewport, anchor: { frame: number; x: number }, t: number, context: ZoomContext): TimelineViewport {
+  if (t <= 0) return from;
+  if (t >= 1) return to;
+  const px = from.pxPerFrame * (to.pxPerFrame / from.pxPerFrame) ** t;
+  const anchored = (pxPerFrame: number) => anchor.frame - anchor.x / pxPerFrame;
+  const startOff = from.scrollFrame - anchored(from.pxPerFrame);
+  const endOff = to.scrollFrame - anchored(to.pxPerFrame);
+  return { pxPerFrame: px, scrollFrame: clampScroll(anchored(px) + startOff + (endOff - startOff) * t, px, context) };
+}
+
 export function scrollBy(view: TimelineViewport, deltaPx: number, context: ZoomContext): TimelineViewport {
   const scrollFrame = clampScroll(view.scrollFrame + deltaPx / view.pxPerFrame, view.pxPerFrame, context);
   return scrollFrame === view.scrollFrame ? view : { pxPerFrame: view.pxPerFrame, scrollFrame };

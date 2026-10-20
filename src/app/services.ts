@@ -7,6 +7,7 @@ import { KeyDispatcher } from "../core/keyboard/KeyDispatcher.js";
 import { FocusScopeTracker } from "../core/keyboard/focusScope.js";
 import { DEFAULT_KEYMAP } from "../core/keyboard/keymap.js";
 import { detectPlatform } from "../core/keyboard/keys.js";
+import { plannedMessage } from "../core/keyboard/planned.js";
 import { FrameScheduler } from "../core/scheduler/FrameScheduler.js";
 import { IdleQueue } from "../core/scheduler/IdleQueue.js";
 import { createStore } from "../core/store/createStore.js";
@@ -19,6 +20,7 @@ import { createAppSettings } from "../project/appSettings.js";
 import { INITIAL_SAVE_STATUS, type SaveStatus } from "../project/Autosaver.js";
 import { idbKeyValueStore } from "../project/kv.js";
 import { RecentProjects } from "../project/recentProjects.js";
+import { showToast } from "../ui/toasts.js";
 import { installTooltips } from "../ui/tooltipController.js";
 
 function localStorageOrNull(): Storage | null {
@@ -73,8 +75,11 @@ export function startServices(): () => void {
     getScope: () => focusScopes.scope,
     onAction: (id, context) => {
       if (actions.has(id)) return actions.run(id, context);
-      // Not wired yet: log it and keep consuming the key, as before.
-      console.debug("[cmd]", id, context);
+      // Bound but not built yet (spec §18 is bound in full): keep consuming the key; dev builds say
+      // which batch brings the command.
+      const message = import.meta.env.DEV && context.phase === "down" && !context.repeat ? plannedMessage(id) : null;
+      if (message) showToast({ tone: "info", message, detail: "Dev builds only: the shortcut is bound, its command comes in that batch." });
+      else console.debug("[cmd]", id, context);
     },
   });
 

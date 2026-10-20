@@ -4,6 +4,7 @@
 // A selected edit point and a selected gap (spec §6.7) have channels of their own too: they are not
 // clip selections (§3.3 fixes the selection kinds), they are never persisted, and selecting one of
 // the three clears the other two.
+import type { TimecodeMode } from "../document/time.js";
 import type { ClipId, Frame, TrackId } from "../document/types.js";
 import { createStore, type Store } from "./createStore.js";
 import { EMPTY_SELECTION, selectionEquals, type Selection } from "./selection.js";
@@ -28,6 +29,8 @@ export interface SessionState {
   ripple: boolean;
   loop: boolean;
   audioScrub: boolean;
+  /** Timecodes as `mm:ss:ff` or `mm:ss.mmm` (spec §5.1: the preview panel's toggle; the timeline field and ruler follow). */
+  timecodeFormat: TimecodeMode;
   mediaPanel: { tab: MediaTab; view: MediaView; sort: MediaSort; descending: boolean };
   /** Properties panel sections by id; true = collapsed. */
   collapsedSections: Record<string, boolean>;
@@ -46,6 +49,7 @@ export const DEFAULT_SESSION: SessionState = {
   ripple: false,
   loop: false,
   audioScrub: false,
+  timecodeFormat: "frames",
   mediaPanel: { tab: "media", view: "grid", sort: "date", descending: false },
   collapsedSections: {},
 };

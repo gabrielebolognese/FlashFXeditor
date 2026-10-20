@@ -2,11 +2,13 @@
 // handles and diamonds > edges/junctions > transitions > clip body > gap > track. Real results so far:
 // the ruler, the playhead head, track headers (and the "+ track" rows), the junction band on a cut
 // between abutting clips, the trim zones of clip edges, clip bodies, gaps (the empty span before a
-// clip on an unlocked track) and empty space; the other types are declared for the batches that draw
-// them. The active tool decides what a hit does (the view).
+// clip on an unlocked track), the scrollbars (their thumbs, zoom handles and troughs) and empty space;
+// the other types are declared for the batches that draw them. The active tool decides what a hit does
+// (the view).
 import type { ClipId, Frame, Project, TrackId, TrackKind } from "../../core/document/types.js";
 import { clipAtFrame, gapAt, neighbors, type Gap } from "../model/queries.js";
 import { contains, type HeaderToggle, type TimelineGeometry } from "./geometry.js";
+import { scrollbarAt, type ScrollbarHit, type ScrollbarLayout } from "./scrollbars.js";
 
 export type HitType =
   | "clip"
@@ -31,6 +33,8 @@ export type HitType =
   | "inHandle"
   | "outHandle"
   | "playheadHead"
+  // The horizontal and vertical scrollbars (spec §6.1).
+  | "scrollbar"
   | "empty";
 
 export interface HitResult {
@@ -47,6 +51,8 @@ export interface HitResult {
   junction: Junction | null;
   /** `gap`: the empty span under the point (spec §6.7). */
   gap: Gap | null;
+  /** `scrollbar`: which bar and which part of it. */
+  scrollbar: ScrollbarHit | null;
 }
 
 /** A cut between two abutting clips on a track (spec §6.10: the roll zone). */
@@ -66,6 +72,8 @@ export interface HitSource {
   trimZone: number;
   /** Width of the band centered on a cut between abutting clips, CSS px (spec §6.10: 6 px). */
   junctionZone: number;
+  /** Where the scrollbars are (none: no scrollbar hits). */
+  scrollbars?(): ScrollbarLayout | null;
 }
 
 /** Extra CSS px on each side of the playhead head that still grab it. */
@@ -77,8 +85,19 @@ export class HitTester {
   hit(x: number, y: number): HitResult {
     const geometry = this.source.geometry();
     const frame = geometry.xToFrame(x);
-    const result: HitResult = { type: "empty", frame, trackId: null, clipId: null, addTrack: null, toggle: null, junction: null, gap: null };
+    const result: HitResult = { type: "empty", frame, trackId: null, clipId: null, addTrack: null, toggle: null, junction: null, gap: null, scrollbar: null };
     if (x < 0 || y < 0 || x >= geometry.width || y >= geometry.height) return result;
+
+    const { area } = geometry;
+    const scrollbars = this.source.scrollbars?.();
+    const bar = scrollbars ? scrollbarAt(scrollbars, x, y) : null;
+    if (bar) {
+      result.type = "scrollbar";
+      result.scrollbar = bar;
+      return result;
+    }
+    // The corners beside the scrollbars (under the header column, over the vertical bar) hold nothing.
+    if (y >= area.y + area.height || x >= area.x + area.width) return result;
 
     if (y < geometry.rulerHeight) {
       if (x < geometry.headerWidth) return result;

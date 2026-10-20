@@ -4,6 +4,7 @@ import {
   fitFrames,
   fitPxPerFrame,
   fitView,
+  interpolateZoom,
   keyZoomAnchor,
   MAX_PX_PER_FRAME,
   MIN_PX_PER_FRAME,
@@ -15,6 +16,7 @@ import {
   wheelZoomFactor,
   zoomAt,
   zoomLimits,
+  zoomToSpan,
   ZOOM_IN_STEP,
   ZOOM_OUT_STEP,
   type ZoomContext,
@@ -154,5 +156,48 @@ describe("pageToFrame (follow playhead)", () => {
     expect(pageToFrame({ pxPerFrame: 4, scrollFrame: 100 }, 300, short)).toEqual({ pxPerFrame: 4, scrollFrame: 250 });
     expect(pageToFrame({ pxPerFrame: 4, scrollFrame: 250 }, 450, short)).toBeNull();
     expect(pageToFrame(view, 300, { ...LONG, width: 0 })).toBeNull();
+  });
+});
+
+describe("zoom to selection", () => {
+  it("frames the span with 10% of the view free on each side, centered", () => {
+    // 100 frames in 800 px: 640 px for them, 6.4 px/frame, 80 px (12.5 frames) of margin on each side.
+    const view = zoomToSpan(1000, 1100, LONG);
+    expect(view.pxPerFrame).toBeCloseTo(6.4, 9);
+    expect(view.scrollFrame).toBeCloseTo(1000 - 12.5, 9);
+  });
+
+  it("stays within the zoom limits and the scroll range", () => {
+    // One frame would need 640 px/frame: 400 at most, still centered.
+    const one = zoomToSpan(500, 501, LONG);
+    expect(one.pxPerFrame).toBe(MAX_PX_PER_FRAME);
+    expect(one.scrollFrame).toBeCloseTo(500.5 - 1, 9);
+    // At the start the margin cannot go before frame 0.
+    expect(zoomToSpan(0, 100, LONG).scrollFrame).toBe(0);
+    // Wider than the content plus 2 s: Fit at most.
+    const short: ZoomContext = { width: 800, contentEnd: 300, fps: FPS };
+    expect(zoomToSpan(0, 300, short).pxPerFrame).toBe(fitPxPerFrame(short));
+  });
+});
+
+describe("animated zoom steps", () => {
+  it("moves the zoom geometrically from the start to the target with the anchor held", () => {
+    const from = { pxPerFrame: 4, scrollFrame: 1000 };
+    const anchor = { frame: 1050, x: 200 };
+    const to = zoomAt(from, 5, anchor.frame, anchor.x, LONG);
+    expect(interpolateZoom(from, to, anchor, 0, LONG)).toBe(from);
+    expect(interpolateZoom(from, to, anchor, 1, LONG)).toBe(to);
+    const half = interpolateZoom(from, to, anchor, 0.5, LONG);
+    expect(half.pxPerFrame).toBeCloseTo(Math.sqrt(20), 9);
+    // The anchor frame stays under its x all along.
+    expect((anchor.frame - half.scrollFrame) * half.pxPerFrame).toBeCloseTo(200, 9);
+  });
+
+  it("eases into a target the scroll clamp moved, never before frame 0", () => {
+    const from = { pxPerFrame: 4, scrollFrame: 0 };
+    const anchor = { frame: 10, x: 40 };
+    const to = zoomAt(from, 3.2, anchor.frame, anchor.x, LONG);
+    expect(to.scrollFrame).toBe(0);
+    for (const t of [0.25, 0.5, 0.75]) expect(interpolateZoom(from, to, anchor, t, LONG).scrollFrame).toBeGreaterThanOrEqual(0);
   });
 });

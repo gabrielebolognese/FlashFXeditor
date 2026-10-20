@@ -164,6 +164,19 @@ export function contentEnd(project: Project): Frame {
   return end;
 }
 
+/** The frames the given clips cover together, [start, end); null when none of them exists (zoom to selection, spec §6.2). */
+export function clipsSpan(project: Project, clipIds: Iterable<ClipId>): { start: Frame; end: Frame } | null {
+  let start = Infinity;
+  let end = -Infinity;
+  for (const id of clipIds) {
+    const clip = project.clips[id];
+    if (!clip) continue;
+    start = Math.min(start, clip.start);
+    end = Math.max(end, clip.start + clip.duration);
+  }
+  return end > start ? { start, end } : null;
+}
+
 /** Sorted, unique clip starts and ends on the given tracks (all tracks by default). */
 export function editPoints(project: Project, trackIds?: readonly TrackId[]): Frame[] {
   const points = new Set<Frame>();

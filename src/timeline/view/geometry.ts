@@ -7,6 +7,9 @@
 // caption track above them) stack upward from it, audio tracks downward, so adding a track never
 // moves the divider. `scrollY` shifts everything; 0 is the resting position and it may be negative
 // (scrolled up to see high video tracks).
+//
+// Scrollbars (spec §6.1): the horizontal one runs under the track area, the vertical one beside it on
+// the right; the track area (and the ruler over it) ends where they begin.
 import type { Frame, Track, TrackId, TrackKind } from "../../core/document/types.js";
 import type { LaneKind } from "../model/queries.js";
 
@@ -21,6 +24,8 @@ export interface TimelineMetrics {
   headerLine: number;
   toggleSize: number;
   toggleGap: number;
+  /** Thickness of the scrollbar troughs. */
+  scrollbarSize: number;
 }
 
 /** The toggles of a track header (spec §6.1, §6.12): flags, and the height preset (a click cycles it). */
@@ -80,8 +85,11 @@ export class TimelineGeometry {
   readonly pxPerFrame: number;
   readonly scrollFrame: number;
   readonly scrollY: number;
-  /** Below the ruler, right of the header column. */
+  /** Below the ruler, right of the header column, above and left of the scrollbars. */
   readonly area: Rect;
+  /** The scrollbar troughs: under the track area (with the zoom handles) and right of it. */
+  readonly hScrollbar: Rect;
+  readonly vScrollbar: Rect;
   /** Track rows, top to bottom on screen. */
   readonly rows: readonly Row[];
   /** The band between video and audio tracks, full width. */
@@ -106,12 +114,17 @@ export class TimelineGeometry {
     this.pxPerFrame = input.pxPerFrame;
     this.scrollFrame = input.scrollFrame;
     this.scrollY = input.scrollY;
+    const bar = metrics.scrollbarSize;
     this.area = {
       x: this.headerWidth,
       y: this.rulerHeight,
-      width: Math.max(0, input.width - this.headerWidth),
-      height: Math.max(0, input.height - this.rulerHeight),
+      width: Math.max(0, input.width - this.headerWidth - bar),
+      height: Math.max(0, input.height - this.rulerHeight - bar),
     };
+    const areaRight = this.area.x + this.area.width;
+    const areaBottom = this.area.y + this.area.height;
+    this.hScrollbar = { x: this.area.x, y: areaBottom, width: this.area.width, height: Math.max(0, Math.min(bar, input.height - areaBottom)) };
+    this.vScrollbar = { x: areaRight, y: this.area.y, width: Math.max(0, Math.min(bar, input.width - areaRight)), height: this.area.height };
 
     const anchor = Math.round(this.area.height * DIVIDER_ANCHOR);
     const origin = this.area.y + anchor - input.scrollY;

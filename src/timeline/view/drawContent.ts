@@ -6,10 +6,10 @@
 // what is not loaded yet is the body color, and the pass records it in `wants` for the loaders.
 // Redrawn only when the document, the selection, the zoom/scroll, the size, the theme or the loaded
 // visuals change, never for the playhead. Clips are virtualized per track (binary search on start with
-// a longest-clip lookback, P10).
+// a longest-clip lookback, P10). The scrollbars (spec §6.1) close the bottom and right edges.
 import { audibleTracks } from "../../audio/AudioMixer.js";
 import { formatHexColor, isRgba } from "../../core/document/color.js";
-import { formatSpeed, usPerFrame } from "../../core/document/time.js";
+import { formatSpeed, usPerFrame, type TimecodeMode } from "../../core/document/time.js";
 import { isMediaClip, type Clip, type MediaClip, type Project, type SolidClip, type Track, type TrackId } from "../../core/document/types.js";
 import type { Selection } from "../../core/store/selection.js";
 import type { Theme } from "../../core/theme/theme.js";
@@ -19,7 +19,9 @@ import { clipLod, clipSpan, devicePx, LOD_THUMBS_PX, type ClipLod } from "./clip
 import { columnPeaks, peaksLevel, planFilmstrip, tileThumb, wantPeaks, wantSheet, type ClipVisuals, type WantsCollector } from "./clipVisuals.js";
 import type { HeaderToggle, Rect, Row, TimelineGeometry } from "./geometry.js";
 import { CLIP_GLYPHS, drawGlyph, TRACK_GLYPHS, type GlyphName } from "./glyphs.js";
+import { drawScrollbars } from "./drawScrollbars.js";
 import { layoutRuler } from "./ruler.js";
+import type { ScrollbarLayout } from "./scrollbars.js";
 import type { TextCache } from "./textCache.js";
 
 export interface ContentScene {
@@ -34,6 +36,10 @@ export interface ContentScene {
   visuals?: ClipVisuals | null;
   /** Collects what this pass wanted to draw (the content pass only). */
   wants?: WantsCollector | null;
+  /** The scrollbars to draw (none: no scrollbars). */
+  scrollbars?: ScrollbarLayout | null;
+  /** Ruler labels in `mm:ss:ff` (default) or `mm:ss.mmm` (spec §6.3: the preview's format toggle). */
+  timecodeFormat?: TimecodeMode;
 }
 
 /** What drawing a clip needs (the overlay's trim preview draws clips too, from what is loaded). */
@@ -111,6 +117,7 @@ export function drawContent(scene: ContentScene): ContentStats {
   ctx.restore();
 
   drawRuler(scene);
+  if (scene.scrollbars) drawScrollbars(ctx, dpr, geometry, theme, scene.scrollbars);
   vline(ctx, geometry.headerWidth - 1 / dpr, 0, geometry.height, dpr, color.hairline);
   return { clipsDrawn };
 }
@@ -589,6 +596,7 @@ function drawRuler(scene: ContentScene): void {
     frameToX: (frame) => geometry.frameToX(frame),
     pxPerFrame: geometry.pxPerFrame,
     fps: project.settings.fps,
+    mode: scene.timecodeFormat ?? "frames",
     measure: (value) => text.width(ctx, value),
     labelGap: space[3],
     minorMinPx: space[3],

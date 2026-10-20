@@ -3,6 +3,7 @@ import { makeMedia, makeMediaClip, makeProject, makeTrack, withClips } from "../
 import { METRICS } from "./fixtures.js";
 import { TimelineGeometry } from "./geometry.js";
 import { HitTester } from "./HitTester.js";
+import { layoutScrollbars } from "./scrollbars.js";
 
 function setup(playhead = 50) {
   let project = makeProject();
@@ -137,5 +138,30 @@ describe("HitTester", () => {
     // Video: hide where audio has solo (v1's first line 172..204, toggles 180..196).
     expect([80, 100, 120, 140, 160].map((at) => hits.hit(at, 188).toggle)).toEqual(["target", "lock", "mute", "hide", "height"]);
     expect(hits.hit(40, 188)).toMatchObject({ type: "trackHeader", toggle: null, trackId: "v1" });
+  });
+
+  it("finds the scrollbars before anything else, and nothing in the corners beside them", () => {
+    let project = makeProject();
+    project.media.m = makeMedia("m");
+    project.tracks.push(makeTrack("v1"), makeTrack("a1", "audio"));
+    project = withClips(project, [makeMediaClip(project, { id: "c1", trackId: "v1", start: 0, duration: 3000, mediaId: "m" })]);
+    // 12 px scrollbars: track area 176..988 x 28..416, the horizontal bar under it, the vertical bar right of it.
+    const geometry = new TimelineGeometry({ width: 1000, height: 428, tracks: project.tracks, pxPerFrame: 1, scrollFrame: 100, scrollY: 0, metrics: { ...METRICS, scrollbarSize: 12 } });
+    expect(geometry.area).toEqual({ x: 176, y: 28, width: 812, height: 388 });
+    expect(geometry.hScrollbar).toEqual({ x: 176, y: 416, width: 812, height: 12 });
+    expect(geometry.vScrollbar).toEqual({ x: 988, y: 28, width: 12, height: 388 });
+    const context = { width: geometry.area.width, contentEnd: 3000, fps: project.settings.fps };
+    const layout = layoutScrollbars({ pxPerFrame: 1, scrollFrame: 100 }, context, { h: geometry.hScrollbar, v: geometry.vScrollbar, scrollY: 0, scrollYRange: { min: -400, max: 400 }, viewHeight: 388 }, 36);
+    const hits = new HitTester({ geometry: () => geometry, project: () => project, playhead: () => 0, playheadHeadWidth: 11, trimZone: 8, junctionZone: 6, scrollbars: () => layout });
+    const { thumb } = layout.h;
+    expect(hits.hit(thumb.x + 1, 420)).toMatchObject({ type: "scrollbar", scrollbar: { axis: "x", part: "start" } });
+    expect(hits.hit(thumb.x + thumb.width - 1, 420)).toMatchObject({ type: "scrollbar", scrollbar: { axis: "x", part: "end" } });
+    expect(hits.hit(thumb.x + thumb.width / 2, 420)).toMatchObject({ type: "scrollbar", scrollbar: { axis: "x", part: "thumb" } });
+    expect(hits.hit(994, 30)).toMatchObject({ type: "scrollbar", scrollbar: { axis: "y" } });
+    // The clip row reaches under the vertical bar; the header column's foot and the ruler's end are empty.
+    expect(hits.hit(990, 200).type).toBe("scrollbar");
+    expect(hits.hit(985, 200)).toMatchObject({ type: "clip", clipId: "c1" });
+    expect(hits.hit(100, 420)).toMatchObject({ type: "empty", trackId: null });
+    expect(hits.hit(994, 10)).toMatchObject({ type: "empty" });
   });
 });

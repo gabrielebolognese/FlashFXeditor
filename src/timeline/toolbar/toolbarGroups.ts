@@ -12,6 +12,7 @@ import {
   Hand,
   ImagePlus,
   Link,
+  LocateFixed,
   Magnet,
   MousePointer2,
   MoveHorizontal,
@@ -108,7 +109,7 @@ export const TOOLBAR_GROUPS: readonly ToolbarGroup[] = [
       { kind: "button", id: "timeline.zoomIn", label: "Zoom in", icon: ZoomIn },
       { kind: "button", id: "timeline.zoomFit", label: "Zoom to fit", icon: Expand },
       { kind: "button", id: "timeline.zoomToSelection", label: "Zoom to selection", icon: ScanSearch },
-      // TODO(batch 18): the Center playhead button (spec §6.6; `Mod+Shift+.` works since Batch 14).
+      { kind: "button", id: "timeline.centerPlayhead", label: "Center playhead", icon: LocateFixed },
       { kind: "button", id: "timeline.trackHeightCycle", label: "Track height", icon: Rows3 },
     ],
   },

@@ -66,6 +66,8 @@ function followPlayhead(): () => void {
     playbackEngine.subscribe(() => {
       if (playbackEngine.playing && !wasPlaying) timelineView.resumeFollowing();
       wasPlaying = playbackEngine.playing;
+      // While playing, Space pauses at once and never arms the timeline's Space+drag pan.
+      timelineView.playing = playbackEngine.playing;
     }),
     sessionStore.state.select(
       (state) => state.playhead,
