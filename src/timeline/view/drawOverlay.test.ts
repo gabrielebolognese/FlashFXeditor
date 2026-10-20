@@ -265,3 +265,79 @@ describe("drawOverlay: snapping", () => {
     expect(texts.at(-1)).toMatchObject({ text: "Playhead", style: accent });
   });
 });
+
+describe("drawOverlay: gaps and the Razor (Batch 15)", () => {
+  const theme = testTheme();
+  const strokes: { style: unknown; dash: unknown; x: number; width: number }[] = [];
+  beforeEach(() => {
+    rects.length = 0;
+    strokes.length = 0;
+    vi.stubGlobal("Path2D", class {});
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  /** Draws an idle overlay (4 px/frame from x = 176) with the gap and Razor fields given. */
+  function draw(fields: Pick<OverlayScene, "hoverGap" | "gap" | "razor">, scrollFrame = 0): TimelineGeometry {
+    const ctx = fakeContext();
+    let dash: number[] = [];
+    Object.assign(ctx, {
+      setLineDash: (value: number[]) => void (dash = value),
+      strokeRect: (x: number, _y: number, width: number) => void strokes.push({ style: ctx.strokeStyle, dash, x, width }),
+    });
+    const geometry = new TimelineGeometry({ width: 1000, height: 428, tracks: [makeTrack("v1"), makeTrack("a1", "audio")], pxPerFrame: 4, scrollFrame, scrollY: 0, metrics: METRICS });
+    drawOverlay({
+      ctx,
+      dpr: 1,
+      geometry,
+      theme,
+      playhead: 0,
+      scrubbing: false,
+      hoverClip: null,
+      hoverAddRow: null,
+      hoverToggle: null,
+      snapFrame: null,
+      move: null,
+      trim: null,
+      editPoints: [],
+      marquee: null,
+      tooltip: null,
+      text: new TextCache(),
+      ...fields,
+    });
+    return geometry;
+  }
+
+  it("fills a hovered gap with the hover wash, a selected one with the accent wash and a dashed accent outline", () => {
+    const geometry = draw({ hoverGap: { trackId: "v1", start: 10, end: 30 }, gap: { trackId: "a1", start: 0, end: 20 } });
+    const v1 = geometry.rowOf("v1") as { y: number; height: number };
+    const a1 = geometry.rowOf("a1") as { y: number; height: number };
+    expect(rects).toContainEqual({ style: theme.color.hoverWash, x: 176 + 40, y: v1.y + 2, width: 80, height: v1.height - 4 });
+    expect(rects).toContainEqual({ style: theme.color.accentWash, x: 176, y: a1.y + 2, width: 80, height: a1.height - 4 });
+    const dash = theme.timeline.gapDash;
+    expect(strokes).toEqual([{ style: theme.color.accent, dash: [dash, dash], x: 176 + 1, width: 78 }]);
+  });
+
+  it("does not light the selected gap with the hover wash too", () => {
+    draw({ hoverGap: { trackId: "v1", start: 10, end: 30 }, gap: { trackId: "v1", start: 10, end: 30 } });
+    expect(rects.some((rect) => rect.style === theme.color.hoverWash)).toBe(false);
+    expect(strokes).toHaveLength(1);
+  });
+
+  it("draws the Razor's cut line across each clip it would cut, nothing off screen", () => {
+    const project: Project = makeProject();
+    project.media.m = makeMedia("m");
+    const clips = [
+      makeMediaClip(project, { id: "v", trackId: "v1", start: 0, duration: 100, mediaId: "m" }),
+      makeMediaClip(project, { id: "a", trackId: "a1", start: 0, duration: 100, mediaId: "m", kind: "audio" }),
+    ];
+    const geometry = draw({ razor: { frame: 50, clips } });
+    const lines = rects.filter((rect) => rect.style === theme.color.textPrimary);
+    expect(lines.map((line) => [line.x, line.y, line.width])).toEqual([
+      [376, (geometry.rowOf("v1")?.y ?? 0) + 2, 1],
+      [376, (geometry.rowOf("a1")?.y ?? 0) + 2, 1],
+    ]);
+    rects.length = 0;
+    draw({ razor: { frame: 50, clips } }, 500);
+    expect(rects.filter((rect) => rect.style === theme.color.textPrimary)).toEqual([]);
+  });
+});

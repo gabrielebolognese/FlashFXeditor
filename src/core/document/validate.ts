@@ -1,7 +1,7 @@
 // Document invariants (spec §5.2). The DocumentStore runs `assertValid` after every command in dev
 // builds; messages name the track and clip so a broken command is found at once.
 import { usPerFrame } from "./time.js";
-import { isMediaClip, type Clip, type ClipId, type ClipKind, type MediaItem, type Project, type Track, type TrackId, type TrackKind } from "./types.js";
+import { isMediaClip, LABEL_COLORS, type Clip, type ClipId, type ClipKind, type MediaItem, type Project, type Track, type TrackId, type TrackKind } from "./types.js";
 
 export class DocumentInvariantError extends Error {
   readonly issues: readonly string[];
@@ -20,6 +20,7 @@ const ALLOWED_CLIPS: Record<TrackKind, ReadonlySet<ClipKind>> = {
 };
 
 const ROTATIONS: ReadonlySet<number> = new Set([0, 90, 180, 270]);
+const LABEL_SET: ReadonlySet<string> = new Set(LABEL_COLORS);
 const isPositiveInteger = (value: unknown) => Number.isInteger(value) && (value as number) > 0;
 
 const trackLabel = (track: Track) => `track "${track.name}" (${track.id})`;
@@ -51,6 +52,7 @@ function clipIssues(project: Project, clip: Clip): string[] {
   const label = clipLabel(clip);
   if (!Number.isInteger(clip.start) || clip.start < 0) issues.push(`${label}: start ${clip.start} must be an integer frame >= 0`);
   if (!Number.isInteger(clip.duration) || clip.duration < 1) issues.push(`${label}: duration ${clip.duration} must be an integer >= 1`);
+  if (clip.color !== undefined && !LABEL_SET.has(clip.color)) issues.push(`${label}: color "${clip.color}" is not a label color`);
   if (!isMediaClip(clip)) return issues;
 
   if (!Number.isInteger(clip.in) || !Number.isInteger(clip.out)) issues.push(`${label}: in/out must be integer microseconds`);

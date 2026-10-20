@@ -88,6 +88,14 @@ describe("validateProject", () => {
     expect(issues).toContain("media nope does not exist");
   });
 
+  it("accepts the 8 label colors only", () => {
+    const project = valid();
+    project.clips.c1!.color = "violet";
+    expect(validateProject(project)).toEqual([]);
+    (project.clips.c1 as { color: string }).color = "magenta";
+    expect(validateProject(project)).toEqual(['clip "c1" (c1): color "magenta" is not a label color']);
+  });
+
   it("reports clips on the wrong track kind", () => {
     const project = withClips(base(), [makeSolidClip({ id: "s1", trackId: "a1", start: 0, duration: 5 })]);
     expect(validateProject(project).join()).toContain("a solid clip cannot sit on audio");

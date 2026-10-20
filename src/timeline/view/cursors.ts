@@ -1,8 +1,9 @@
 // Edit cursors (spec §6.4, §6.10, §6.18): trim brackets with a double arrow, `[` on in points and `]`
 // on out points, in the primary text color, or in the accent color for the ripple variant (Ripple
 // mode on, or Mod held); the roll `][`, the slip `|<->|` and slide `<-||->` marks, and the rate
-// stretch bracket with a double chevron. SVG data URLs built from the theme, so no color literal lives
-// in code; a dark outline keeps them visible on any clip color. Built once per theme.
+// stretch bracket with a double chevron, and the razor (a cut line with a blade beside it). SVG data
+// URLs built from the theme, so no color literal lives in code; a dark outline keeps them visible on
+// any clip color. Built once per theme.
 import type { Theme } from "../../core/theme/theme.js";
 import type { TrimEdge } from "../edit/trim.js";
 
@@ -16,6 +17,7 @@ export interface TrimCursors {
   slide: string;
   stretchIn: string;
   stretchOut: string;
+  razor: string;
 }
 
 /** 24x24, hotspot at the center (on the bracket's spine for trims, on the cut for rolls). */
@@ -54,12 +56,14 @@ const ROLL = `M6 4 H10 V20 H6 M18 4 H14 V20 H18 ${pointer(-1, 8, 2)} ${pointer(1
 const SLIP = `M5 4 V20 M19 4 V20 ${pointer(-1, 12, 8)} ${pointer(1, 12, 16)}`;
 /** The clip moves, pushing on both sides. */
 const SLIDE = `M10 6 V18 M14 6 V18 ${pointer(-1, 8, 2)} ${pointer(1, 16, 22)}`;
+/** The cut line on the hotspot, a blade up and right of it (spec §6.11 Razor). */
+const RAZOR = `M12 3 V21 M15 3 H21 V9 H15 Z M18 9 V11`;
 
-function cursor(d: string, color: string, outline: string): string {
+function cursor(d: string, color: string, outline: string, fallback = "ew-resize"): string {
   const svg =
     `<svg xmlns="http://www.w3.org/2000/svg" width="${SIZE}" height="${SIZE}" viewBox="0 0 ${SIZE} ${SIZE}" fill="none" stroke-linecap="square" stroke-linejoin="miter">` +
     `<path d="${d}" stroke="${outline}" stroke-width="4"/><path d="${d}" stroke="${color}" stroke-width="2"/></svg>`;
-  return `url("data:image/svg+xml,${encodeURIComponent(svg)}") ${HOT} ${HOT}, ew-resize`;
+  return `url("data:image/svg+xml,${encodeURIComponent(svg)}") ${HOT} ${HOT}, ${fallback}`;
 }
 
 export function trimCursors(theme: Theme): TrimCursors {
@@ -74,6 +78,7 @@ export function trimCursors(theme: Theme): TrimCursors {
     slide: cursor(SLIDE, textPrimary, bgSunken),
     stretchIn: cursor(stretchPath("in"), textPrimary, bgSunken),
     stretchOut: cursor(stretchPath("out"), textPrimary, bgSunken),
+    razor: cursor(RAZOR, textPrimary, bgSunken, "crosshair"),
   };
 }
 

@@ -29,9 +29,11 @@ export interface RGBA {
   a: number;
 }
 
+/** The 8 label colors of clips and markers (spec §6.4), in swatch order. */
+export const LABEL_COLORS = ["red", "orange", "green", "teal", "blue", "violet", "pink", "grey"] as const;
+export type LabelColor = (typeof LABEL_COLORS)[number];
+
 // Types owned by later batches. They stay opaque JSON until their batch defines them.
-/** TODO(batch 17): one of the 8 label colors. */
-export type LabelColor = string;
 /** TODO(batch 35): easing ids. */
 export type EaseId = string;
 /** TODO(batch 34): vertical two-stop gradient fill. */

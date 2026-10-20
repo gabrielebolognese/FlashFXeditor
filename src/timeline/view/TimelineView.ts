@@ -9,12 +9,14 @@
 // `trimPreview` is the document it proposes and the frame (or the two frames) the preview shows
 // (spec §6.10). The active tool decides what a hit does (spec §6.18): Select drags clips and trims
 // edges (Mod+Alt on a cut rolls, a click on a cut selects the edit point), Slip and Slide drag clip
-// bodies, Rate stretch drags edges.
+// bodies, Rate stretch drags edges, Razor cuts at the click (spec §6.11: hovering shows the cut line).
+// A click on a gap selects it (spec §6.7); a right-click on a clip or a gap asks for its context menu
+// (spec §6.16).
 // Snapping (spec §6.9): clip drags and edits snap while the toggle is on, ruler scrubs only with Shift
 // too, and holding S during a drag inverts the toggle until it is released.
 import type { Affect } from "../../core/commands/command.js";
 import { formatSpeed, formatTimecode, usToFrame } from "../../core/document/time.js";
-import { isMediaClip, type ClipId, type Frame, type Project, type TrackId, type TrackKind } from "../../core/document/types.js";
+import { isMediaClip, type Clip, type ClipId, type Frame, type Project, type TrackId, type TrackKind } from "../../core/document/types.js";
 import type { Platform } from "../../core/keyboard/keys.js";
 import { watchDevicePixelRatio } from "../../core/scheduler/devicePixelRatio.js";
 import type { FrameScheduler, RenderView } from "../../core/scheduler/FrameScheduler.js";
@@ -23,16 +25,17 @@ import type { Store } from "../../core/store/createStore.js";
 import type { DocumentStore } from "../../core/store/DocumentStore.js";
 import type { LayoutState, Size } from "../../core/store/layoutStore.js";
 import { clickSelection, EMPTY_SELECTION, type ClickModifier, type Selection } from "../../core/store/selection.js";
-import { selectEditPoint, setPlayhead, setSelection, type EditPoint, type SessionStore, type Tool } from "../../core/store/sessionStore.js";
+import { selectEditPoint, selectGap, setPlayhead, setSelection, type EditPoint, type SessionStore, type Tool } from "../../core/store/sessionStore.js";
 import type { Theme, ThemeBridge } from "../../core/theme/theme.js";
 import type { MoveRequest } from "../edit/move.js";
+import { clipsToSplit } from "../edit/split.js";
 import { MAX_SPEED, MIN_SPEED, type TrimEdge } from "../edit/trim.js";
-import { contentEnd, isClipLocked, linkedPartners, neighbors } from "../model/queries.js";
+import { contentEnd, gapAt, isClipLocked, linkedPartners, neighbors, type Gap } from "../model/queries.js";
 import { resolveSnap, SnapIndex, snapLabel, type SnapCandidates, type SnapTarget } from "../snap/snapIndex.js";
 import { trimCursor, trimCursors, type TrimCursors } from "./cursors.js";
 import { drawContent } from "./drawContent.js";
-import { drawOverlay, type EditPointMark } from "./drawOverlay.js";
-import { TimelineGeometry, type HeaderToggle, type TimelineMetrics } from "./geometry.js";
+import { drawOverlay, type EditPointMark, type RazorScene } from "./drawOverlay.js";
+import { TimelineGeometry, type HeaderToggle, type Rect, type TimelineMetrics } from "./geometry.js";
 import { edgeStep } from "./gestures/autoScroll.js";
 import { MarqueeGesture } from "./gestures/marquee.js";
 import { MoveGesture, NO_MODIFIERS, type DragModifiers, type MoveSnap } from "./gestures/moveClips.js";
@@ -72,11 +75,26 @@ export interface TimelineViewDeps {
   onTrimEdge(request: TrimRequest): void;
   /** `trimPreview` changed (an edit started, moved or ended): the preview redraws. */
   onTrimPreview?(): void;
+  /** A Razor click (spec §6.11): the controller splits as one command. */
+  onRazor?(request: RazorRequest): void;
+  /** A right-click on a clip or a gap (spec §6.16), already selected: the controller opens its menu. */
+  onContextMenu?(request: ContextMenuRequest): void;
   /** Background work pauses while a gesture runs (spec §3.4). */
   idle?: Pick<IdleQueue, "pause" | "resume">;
   /** Which key is Mod (Ctrl, or Cmd on macOS). */
   platform?: Platform;
 }
+
+/** A Razor click (spec §6.11): cut `clipId` (and its linked partners) at `frame`, or with `all` every unlocked track. */
+export interface RazorRequest {
+  /** The snapped frame under the pointer. */
+  frame: Frame;
+  clipId: ClipId | null;
+  all: boolean;
+}
+
+/** A context menu to open (spec §6.16) at a client (page) point. */
+export type ContextMenuRequest = { kind: "clip"; clipId: ClipId; x: number; y: number } | { kind: "gap"; gap: Gap; x: number; y: number };
 
 export interface TimelineStats {
   contentDraws: number;
@@ -115,7 +133,8 @@ type Gesture =
   | { kind: "pressEdge"; pointerId: number; x: number; y: number; target: EditTarget; frame: number; click: Selection; editPoint: EditPoint | null }
   /** Any edit drag: trim, roll, slip, slide, rate stretch. */
   | { kind: "trim"; pointerId: number; trim: TrimGesture }
-  | { kind: "pendingMarquee"; pointerId: number; x: number; y: number; additive: boolean }
+  /** A press on empty track space or a gap: a marquee once it moves, else a click (on a gap: selects it). */
+  | { kind: "pendingMarquee"; pointerId: number; x: number; y: number; additive: boolean; gap: Gap | null }
   | { kind: "marquee"; pointerId: number; marquee: MarqueeGesture };
 
 /** Auto-scroll steps are given per 60 Hz frame. */
@@ -138,7 +157,36 @@ function metricsOf(theme: Theme): TimelineMetrics {
 
 const sameHover = (a: HitResult | null, b: HitResult | null) =>
   a === b ||
-  (a !== null && b !== null && a.type === b.type && a.clipId === b.clipId && a.addTrack === b.addTrack && a.trackId === b.trackId && a.toggle === b.toggle && a.junction?.frame === b.junction?.frame);
+  (a !== null &&
+    b !== null &&
+    a.type === b.type &&
+    a.clipId === b.clipId &&
+    a.addTrack === b.addTrack &&
+    a.trackId === b.trackId &&
+    a.toggle === b.toggle &&
+    a.junction?.frame === b.junction?.frame &&
+    a.gap?.start === b.gap?.start);
+
+/** A hit on a track row's clip area: what the Razor can cut (and shows its cursor over). */
+function inTrackRow(hit: HitResult): boolean {
+  switch (hit.type) {
+    case "clip":
+    case "clipEdgeIn":
+    case "clipEdgeOut":
+    case "junction":
+    case "gap":
+      return true;
+    case "empty":
+      return hit.trackId !== null;
+    default:
+      return false;
+  }
+}
+
+/** The clip a hit on a body, trim zone or cut is on, else null. */
+function hitClip(hit: HitResult): ClipId | null {
+  return hit.type === "clip" || hit.type === "clipEdgeIn" || hit.type === "clipEdgeOut" || hit.type === "junction" ? hit.clipId : null;
+}
 
 /** The edge a hit on a trim zone or a cut is on (a cut: the side under the pointer), or null. */
 function hitEdge(hit: HitResult): TrimEdge | null {
@@ -192,6 +240,7 @@ function cursorFor(hit: HitResult | null, gesture: Gesture | null, cursors: Trim
   if ((hit.type === "trackHeader" && hit.addTrack) || hit.type === "headerToggle") return "pointer";
   const edge = hitEdge(hit);
   const { tool } = context;
+  if (tool === "razor") return inTrackRow(hit) ? cursors.razor : "default";
   // Edges and cuts belong to unlocked clips only; a body may be locked (the caller passes no hit then).
   if ((tool === "slip" || tool === "slide") && (edge || hit.type === "clip")) return cursors[tool];
   if (!edge) return "default";
@@ -275,6 +324,7 @@ export class TimelineView {
       this.setHover(null);
     };
     const onWheel = (event: WheelEvent) => this.onWheel(event);
+    const onContextMenu = (event: MouseEvent) => this.onContextMenu(event);
     // Mod pressed or released over a trim edge switches it to the ripple cursor (spec §6.4), Mod+Alt
     // over a cut to the roll cursor (§6.10). The modifier state is only read here: keys still go to
     // the KeyDispatcher.
@@ -283,6 +333,8 @@ export class TimelineView {
       if (this.gesture || !this.pointer) return;
       this.modifiers = this.modifiersOf(event);
       this.updateCursor();
+      // Shift switches the Razor's cut line between the clip and every track.
+      if (this.deps.session.state.getState().activeTool === "razor") this.deps.scheduler.invalidate("timelineOverlay");
     };
     win?.addEventListener("keydown", onHoverKey);
     win?.addEventListener("keyup", onHoverKey);
@@ -293,6 +345,7 @@ export class TimelineView {
     overlay.addEventListener("lostpointercapture", onPointerCancel);
     overlay.addEventListener("pointerleave", onPointerLeave);
     overlay.addEventListener("wheel", onWheel, { passive: false });
+    overlay.addEventListener("contextmenu", onContextMenu);
 
     this.stops.push(
       scheduler.register("timelineContent", this.contentView),
@@ -323,13 +376,17 @@ export class TimelineView {
           else this.updateCursor();
         },
       ),
-      // The tool changes what lies under the pointer (spec §6.18).
+      // The tool changes what lies under the pointer (spec §6.18) and the Razor's cut line.
       session.state.select(
         (state) => state.activeTool,
-        () => this.updateCursor(),
+        () => {
+          this.updateCursor();
+          scheduler.invalidate("timelineOverlay");
+        },
       ),
       session.selection.subscribe(() => scheduler.invalidate("timelineContent")),
       session.editPoint.subscribe(() => scheduler.invalidate("timelineOverlay")),
+      session.gap.subscribe(() => scheduler.invalidate("timelineOverlay")),
       // The FrameScheduler flags of document changes (spec §3.4): every command carries `affects`.
       document.subscribe(both, { affects: CONTENT_AFFECTS }),
       // A drag or marquee holds clips of the document it started from: an edit under it (an undo
@@ -351,6 +408,7 @@ export class TimelineView {
         overlay.removeEventListener("lostpointercapture", onPointerCancel);
         overlay.removeEventListener("pointerleave", onPointerLeave);
         overlay.removeEventListener("wheel", onWheel);
+        overlay.removeEventListener("contextmenu", onContextMenu);
         win?.removeEventListener("keydown", onHoverKey);
         win?.removeEventListener("keyup", onHoverKey);
       },
@@ -495,6 +553,31 @@ export class TimelineView {
     this.writeViewport({ pxPerFrame: view.pxPerFrame, scrollFrame: clampScroll(playhead - context.width / 2 / view.pxPerFrame, view.pxPerFrame, context) });
   }
 
+  /**
+   * Where a clip's label bar is, in view CSS px (the canvases' coordinates), for the inline rename
+   * field: the visible part of the clip, at least `minWidth` wide, kept inside the track area. The
+   * view first pages to the clip's start when none of it is visible. Null when its row is off screen.
+   */
+  clipLabelRect(clipId: ClipId, minWidth: number): Rect | null {
+    const clip = this.deps.document.getState().clips[clipId];
+    if (!clip || !this.mounted) return null;
+    let geometry = this.geometry();
+    const { from, to } = geometry.visibleFrames;
+    if (clip.start + clip.duration <= from || clip.start >= to) {
+      this.reveal(clip.start);
+      geometry = this.geometry();
+    }
+    const row = geometry.rowOf(clip.trackId);
+    const { area } = geometry;
+    if (!row || row.y + row.height <= area.y || row.y >= area.y + area.height) return null;
+    const tl = this.deps.theme.theme.timeline;
+    const track = this.deps.document.getState().tracks[row.index];
+    const height = track?.kind === "caption" || track?.height === "S" ? row.height - 2 * tl.clipInset : tl.labelHeight;
+    const width = Math.min(area.width, Math.max(minWidth, Math.min(geometry.frameToX(clip.start + clip.duration), area.x + area.width) - Math.max(geometry.frameToX(clip.start), area.x)));
+    const x = Math.min(Math.max(geometry.frameToX(clip.start), area.x), area.x + area.width - width);
+    return { x, y: Math.max(area.y, row.y + tl.clipInset), width, height };
+  }
+
   /** Pages the view so `frame` is in it (spec §6.2 paging): keyboard jumps and the timecode field. */
   reveal(frame: number): void {
     if (!this.mounted || this.ephemeral) return;
@@ -583,6 +666,10 @@ export class TimelineView {
     if (event.button !== 0 || this.gesture) return;
     const hit = this.hitTester.hit(event.offsetX, event.offsetY);
     const tool = this.deps.session.state.getState().activeTool;
+    if (tool === "razor" && inTrackRow(hit)) {
+      this.pressRazor(event, hit);
+      return;
+    }
     switch (hit.type) {
       case "ruler":
       case "playheadHead": {
@@ -609,6 +696,9 @@ export class TimelineView {
         break;
       case "headerToggle":
         if (hit.trackId && hit.toggle) this.deps.onToggleTrack(hit.trackId, hit.toggle);
+        break;
+      case "gap":
+        this.pressEmpty(event, hit.gap);
         break;
       case "empty":
         this.pressEmpty(event);
@@ -655,7 +745,7 @@ export class TimelineView {
       this.pressEdge(event, { kind: "stretch", clipId, edge }, hit.frame, null);
       return;
     }
-    // TODO(batch 15): the Razor tool cuts; TODO(batch 18): the Hand tool pans.
+    // TODO(batch 18): the Hand tool pans.
     if (tool !== "select") {
       this.pressClip(event, clipId, hit.frame, null);
       return;
@@ -686,12 +776,73 @@ export class TimelineView {
     this.updateCursor();
   }
 
-  /** A press on empty track space: a marquee once it moves past the dead zone, else a click that clears the selection. */
-  private pressEmpty(event: PointerEvent): void {
+  /**
+   * A press on empty track space or a gap: a marquee once it moves past the dead zone, else a click
+   * that selects the gap (spec §6.7) or clears the selection.
+   */
+  private pressEmpty(event: PointerEvent, gap: Gap | null = null): void {
     const geometry = this.geometry();
     if (event.offsetX < geometry.headerWidth || event.offsetY < geometry.rulerHeight) return;
     this.capture(event.pointerId);
-    this.gesture = { kind: "pendingMarquee", pointerId: event.pointerId, x: event.offsetX, y: event.offsetY, additive: event.shiftKey };
+    this.gesture = { kind: "pendingMarquee", pointerId: event.pointerId, x: event.offsetX, y: event.offsetY, additive: event.shiftKey, gap };
+  }
+
+  /**
+   * A Razor press (spec §6.11): cuts the clip under the pointer (and its linked partners) at the
+   * snapped frame, or with Shift every unlocked track there. Clips on locked tracks are never cut.
+   */
+  private pressRazor(event: PointerEvent, hit: HitResult): void {
+    const clipId = hitClip(hit);
+    const unlocked = clipId !== null && !isClipLocked(this.deps.document.getState(), clipId) ? clipId : null;
+    const all = event.shiftKey;
+    if (!all && unlocked === null) return;
+    this.deps.onRazor?.({ frame: this.razorFrame(event.offsetX).frame, clipId: unlocked, all });
+    // The cut line now stands on a clip edge: redraw it.
+    this.deps.scheduler.invalidate("timelineOverlay");
+  }
+
+  /** The frame the Razor cuts at for view x: the nearest frame boundary, snapped while snapping is on (spec §6.9). */
+  private razorFrame(x: number): { frame: Frame; snap: SnapTarget | null } {
+    const frame = this.geometry().xToFrame(x);
+    const hit = this.snapping
+      ? resolveSnap(this.snapCandidates(), [frame], {
+          thresholdPx: this.deps.theme.theme.timeline.snapThreshold,
+          pxPerFrame: this.viewport().pxPerFrame,
+          playhead: this.deps.session.state.getState().playhead,
+        })
+      : null;
+    return hit ? { frame: hit.target.frame, snap: hit.target } : { frame: Math.max(0, Math.round(frame)), snap: null };
+  }
+
+  /** The Razor at the pointer while no gesture runs (spec §6.11: hovering shows the cut line), or null. */
+  private razorPreview(project: Project): (RazorScene & { snap: SnapTarget | null }) | null {
+    const hover = this.hover;
+    if (this.gesture || !this.pointer || !hover || !inTrackRow(hover) || this.deps.session.state.getState().activeTool !== "razor") return null;
+    const { frame, snap } = this.razorFrame(this.pointer.x);
+    const clipId = hitClip(hover);
+    const ids = this.modifiers.shift
+      ? clipsToSplit(project, frame, { kind: "all" })
+      : clipId !== null
+        ? clipsToSplit(project, frame, { kind: "clips", clipIds: [clipId] }, { linked: this.deps.session.state.getState().linkedSelection })
+        : [];
+    return { frame, snap, clips: ids.map((id) => project.clips[id] as Clip) };
+  }
+
+  /** Right-click (spec §6.16): a clip or a gap is selected (a selected clip keeps the selection), then its menu opens. */
+  private onContextMenu(event: MouseEvent): void {
+    event.preventDefault();
+    if (this.gesture) return;
+    const hit = this.hitTester.hit(event.offsetX, event.offsetY);
+    const { session } = this.deps;
+    const clipId = hitClip(hit);
+    if (clipId !== null && !isClipLocked(this.deps.document.getState(), clipId)) {
+      const selection = session.selection.getState();
+      if (!(selection.kind === "clips" && selection.clipIds.has(clipId))) setSelection(session, clickSelection(selection, clipId, "none", this.partners(clipId)));
+      this.deps.onContextMenu?.({ kind: "clip", clipId, x: event.clientX, y: event.clientY });
+    } else if (hit.type === "gap" && hit.gap) {
+      selectGap(session, hit.gap);
+      this.deps.onContextMenu?.({ kind: "gap", gap: hit.gap, x: event.clientX, y: event.clientY });
+    }
   }
 
   private capture(pointerId: number): void {
@@ -704,6 +855,8 @@ export class TimelineView {
     const gesture = this.gesture;
     if (!gesture) {
       this.setHover(this.hitTester.hit(event.offsetX, event.offsetY));
+      // The Razor's cut line follows the pointer within a clip too.
+      if (this.deps.session.state.getState().activeTool === "razor") this.deps.scheduler.invalidate("timelineOverlay");
       return;
     }
     if (event.pointerId !== gesture.pointerId) return;
@@ -923,9 +1076,12 @@ export class TimelineView {
         if (commit && gesture.click) setSelection(session, gesture.click);
         break;
       case "pendingMarquee":
-        if (commit && !gesture.additive) {
+        if (commit && gesture.gap) {
+          selectGap(session, gesture.gap);
+        } else if (commit && !gesture.additive) {
           setSelection(session, EMPTY_SELECTION);
           selectEditPoint(session, null);
+          selectGap(session, null);
         }
         break;
       case "marquee": {
@@ -1065,7 +1221,8 @@ export class TimelineView {
     const gesture = this.gesture;
     const proposal = gesture?.kind === "move" ? gesture.move.proposal : null;
     const trim = gesture?.kind === "trim" ? gesture.trim.proposal : null;
-    const snap = proposal ? proposal.snap : trim ? trim.snap : gesture?.kind === "scrub" ? gesture.snap : null;
+    const razor = this.razorPreview(project);
+    const snap = proposal ? proposal.snap : trim ? trim.snap : gesture?.kind === "scrub" ? gesture.snap : (razor?.snap ?? null);
     // The brackets stand on the document's cut: not while a drag moves clips.
     const editPoints = proposal || gesture?.kind === "trim" ? [] : this.editPointMarks(project);
     // Hover highlights are for a pointer at rest: none while dragging.
@@ -1080,6 +1237,9 @@ export class TimelineView {
       hoverClip: idle ? this.hoverClip(project, geometry) : null,
       hoverAddRow: idle && this.hover?.addTrack ? (this.hover.addTrack === "video" ? geometry.addVideo : geometry.addAudio) : null,
       hoverToggle: idle ? this.hoverToggle(geometry) : null,
+      hoverGap: idle && !razor && this.hover?.type === "gap" ? this.hover.gap : null,
+      gap: this.selectedGap(project),
+      razor,
       snapFrame: snap?.frame ?? null,
       move: proposal ? { proposal, newRowHeight: theme.timeline.trackHeight.M } : null,
       trim: trim ? { proposal: trim, selection: this.deps.session.selection.getState() } : null,
@@ -1136,6 +1296,14 @@ export class TimelineView {
     return marks;
   }
 
+  /** The selected gap while it still is one in the document (an edit may have moved or closed it). */
+  private selectedGap(project: Project): Gap | null {
+    const gap = this.deps.session.gap.getState();
+    if (!gap) return null;
+    const current = gapAt(project, gap.trackId, gap.start);
+    return current && current.start === gap.start && current.end === gap.end ? gap : null;
+  }
+
   private hoverToggle(geometry: TimelineGeometry) {
     const hover = this.hover;
     if (hover?.type !== "headerToggle" || !hover.trackId || !hover.toggle) return null;
@@ -1186,9 +1354,9 @@ export class TimelineView {
   }
 }
 
-/** What a drag of a clip body does with each tool (spec §6.18); Razor and Hand bodies do nothing yet. */
+/** What a drag of a clip body does with each tool (spec §6.18); the Razor cuts on the press, Hand bodies do nothing yet. */
 function bodyDrag(tool: Tool): BodyDrag {
-  // TODO(batch 15): the Razor tool cuts at the click; TODO(batch 18): the Hand tool pans.
+  // TODO(batch 18): the Hand tool pans.
   return tool === "select" ? "move" : tool === "slip" || tool === "slide" ? tool : null;
 }
 

@@ -5,11 +5,21 @@ import styles from "./ContextMenu.module.css";
 import { shortcutLabel } from "./shortcutLabel.js";
 import { useDismiss } from "./useDismiss.js";
 
-// Shell: floating menu with rows, shortcuts and separators; closes on outside press and Escape.
+// Shell: floating menu with rows, shortcuts, separators and inline swatch rows (§6.16 label colors);
+// closes on outside press and Escape.
 // TODO(batch 40): keyboard navigation and the command-id driven item lists of §6.16.
+
+/** One swatch of a swatch row: `color` is a CSS color (a custom property such as `var(--label-red)`). */
+export interface ContextMenuSwatch {
+  id: string;
+  label: string;
+  color: string;
+  active?: boolean;
+}
 
 export type ContextMenuEntry =
   | { kind: "item"; id: string; label: string; commandId?: string; disabled?: boolean; active?: boolean }
+  | { kind: "swatches"; id: string; label: string; swatches: readonly ContextMenuSwatch[] }
   | { kind: "separator" };
 
 export interface ContextMenuProps {
@@ -41,6 +51,27 @@ export function ContextMenu({ x, y, entries, onSelect, onClose }: ContextMenuPro
       {entries.map((entry, index) =>
         entry.kind === "separator" ? (
           <div key={`separator-${index}`} className={styles.separator} role="separator" />
+        ) : entry.kind === "swatches" ? (
+          <div key={entry.id} className={styles.swatchRow} role="group" aria-label={entry.label}>
+            <span className={styles.label}>{entry.label}</span>
+            {entry.swatches.map((swatch) => (
+              <button
+                key={swatch.id}
+                type="button"
+                role="menuitemradio"
+                aria-checked={swatch.active ?? false}
+                aria-label={swatch.label}
+                data-tooltip={swatch.label}
+                className={cx(styles.swatch, swatch.active && styles.swatchActive)}
+                style={{ background: swatch.color }}
+                onMouseDown={keepFocus}
+                onClick={() => {
+                  onSelect(swatch.id);
+                  onClose();
+                }}
+              />
+            ))}
+          </div>
         ) : (
           <button
             key={entry.id}

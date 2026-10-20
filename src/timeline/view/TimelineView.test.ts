@@ -106,6 +106,8 @@ function setup(clipCount = 0) {
   const onMoveClips = vi.fn();
   const onTrimEdge = vi.fn();
   const onTrimPreview = vi.fn();
+  const onRazor = vi.fn();
+  const onContextMenu = vi.fn();
   const idle = { pause: vi.fn(), resume: vi.fn() };
   const view = new TimelineView({
     scheduler,
@@ -118,6 +120,8 @@ function setup(clipCount = 0) {
     onMoveClips,
     onTrimEdge,
     onTrimPreview,
+    onRazor,
+    onContextMenu,
     idle,
     platform: "other",
   });
@@ -131,7 +135,7 @@ function setup(clipCount = 0) {
     overlay.dispatchEvent(new PointerEvent(type, { clientX: x, clientY: y, pointerId: 1, button: 0, bubbles: true, ...init }));
   /** A key event on the window (modifier changes during a drag). */
   const key = (type: "keydown" | "keyup", keyName: string, init: KeyboardEventInit = {}) => window.dispatchEvent(new KeyboardEvent(type, { key: keyName, bubbles: true, ...init }));
-  return { view, session, document, layout, scheduler, overlay, pointer, key, onAddTrack, onToggleTrack, onMoveClips, onTrimEdge, onTrimPreview, idle, unmount };
+  return { view, session, document, layout, scheduler, overlay, pointer, key, onAddTrack, onToggleTrack, onMoveClips, onTrimEdge, onTrimPreview, onRazor, onContextMenu, idle, unmount };
 }
 
 describe("TimelineView", () => {
@@ -1034,6 +1038,141 @@ describe("TimelineView", () => {
       pointer("pointerup", 400, 200);
       document.dispatch(updateClip("a", { name: "Intro" }));
       expect(view.snapCandidates()).not.toBe(first);
+    });
+  });
+  describe("cutting and gaps (Batch 15)", () => {
+    /** V1: a [0, 20), b [40, 80) linked to A1's au [40, 80); V2 locked with l [0, 100); 4 px/frame from x = 176. */
+    function cutSetup() {
+      const t = setup();
+      t.document.dispatch(addTrack({ ...makeTrack("v2"), locked: true }, 1));
+      const add = (id: string, trackId: string, start: number, duration: number, extra: object = {}) =>
+        t.document.dispatch(addClip({ ...makeMediaClip(t.document.getState(), { id, trackId, start, duration, mediaId: "m", kind: trackId === "a1" ? "audio" : "video" }), ...extra }));
+      add("a", "v1", 0, 20);
+      add("b", "v1", 40, 40, { linkGroup: "L" });
+      add("au", "a1", 40, 40, { linkGroup: "L" });
+      add("l", "v2", 0, 100);
+      t.scheduler.flush();
+      const row = (trackId: string) => (t.view.geometry().rowOf(trackId)?.y ?? 0) + 30;
+      return { ...t, row };
+    }
+    const x = (frame: number) => 176 + frame * 4;
+    const scene = () => vi.mocked(drawOverlay).mock.lastCall?.[0];
+    const cursors = trimCursors(testTheme());
+    const contextMenu = (overlay: HTMLCanvasElement, clientX: number, clientY: number) =>
+      overlay.dispatchEvent(new MouseEvent("contextmenu", { clientX, clientY, button: 2, bubbles: true, cancelable: true }));
+
+    it("Razor: the cut line follows the pointer over the clip (all unlocked tracks with Shift), a click cuts at the snapped frame", () => {
+      const { session, scheduler, overlay, pointer, key, onRazor, row } = cutSetup();
+      session.state.set((state) => ({ ...state, activeTool: "razor", snap: false }));
+      pointer("pointermove", x(60), row("v1"));
+      scheduler.flush();
+      expect(overlay.style.cursor).toBe(cursors.razor);
+      // b and its linked partner au (Linked selection on).
+      expect(scene()?.razor).toMatchObject({ frame: 60 });
+      expect(scene()?.razor?.clips.map((clip) => clip.id)).toEqual(["b", "au"]);
+      pointer("pointermove", x(65), row("v1"));
+      scheduler.flush();
+      expect(scene()?.razor?.frame).toBe(65);
+      // Shift: every unlocked track there (V2 is locked).
+      key("keydown", "Shift", { shiftKey: true });
+      scheduler.flush();
+      expect(scene()?.razor?.clips.map((clip) => clip.id)).toEqual(["b", "au"]);
+      key("keyup", "Shift");
+      // Over a gap without Shift: no line, and no gap hover with the Razor.
+      pointer("pointermove", x(30), row("v1"));
+      scheduler.flush();
+      expect(scene()?.razor?.clips).toEqual([]);
+      expect(scene()?.hoverGap ?? null).toBeNull();
+      pointer("pointerdown", x(65), row("v1"));
+      pointer("pointerup", x(65), row("v1"));
+      expect(onRazor).toHaveBeenLastCalledWith({ frame: 65, clipId: "b", all: false });
+      // Snapping on: the cut snaps to the playhead, with the snap line.
+      session.state.set((state) => ({ ...state, snap: true }));
+      setPlayhead(session, 50);
+      pointer("pointermove", x(51), row("v1"));
+      scheduler.flush();
+      expect(scene()?.razor?.frame).toBe(50);
+      expect(scene()?.snapFrame).toBe(50);
+      pointer("pointerdown", x(51), row("v1"), { shiftKey: true });
+      expect(onRazor).toHaveBeenLastCalledWith({ frame: 50, clipId: "b", all: true });
+      // A plain click on empty space or a locked clip cuts nothing; Shift+click there cuts all tracks.
+      onRazor.mockClear();
+      pointer("pointerdown", x(30), row("v1"));
+      pointer("pointerdown", x(30), row("v2"));
+      expect(onRazor).not.toHaveBeenCalled();
+      pointer("pointerdown", x(30), row("v2"), { shiftKey: true });
+      expect(onRazor).toHaveBeenLastCalledWith({ frame: 30, clipId: null, all: true });
+    });
+
+    it("a click on a gap selects it (dashed outline), hovering lights it; a click elsewhere or on a clip drops it", () => {
+      const { session, scheduler, pointer, row } = cutSetup();
+      pointer("pointermove", x(30), row("v1"));
+      scheduler.flush();
+      expect(scene()?.hoverGap).toEqual({ trackId: "v1", start: 20, end: 40 });
+      pointer("pointerdown", x(30), row("v1"));
+      pointer("pointerup", x(30), row("v1"));
+      expect(session.gap.getState()).toEqual({ trackId: "v1", start: 20, end: 40 });
+      scheduler.flush();
+      expect(scene()?.gap).toEqual({ trackId: "v1", start: 20, end: 40 });
+      // After the last clip: empty space, the gap goes.
+      pointer("pointerdown", x(200), row("v1"));
+      pointer("pointerup", x(200), row("v1"));
+      expect(session.gap.getState()).toBeNull();
+      // The leading gap of A1; then a clip click drops it.
+      pointer("pointerdown", x(10), row("a1"));
+      pointer("pointerup", x(10), row("a1"));
+      expect(session.gap.getState()).toEqual({ trackId: "a1", start: 0, end: 40 });
+      pointer("pointerdown", x(10), row("v1"));
+      pointer("pointerup", x(10), row("v1"));
+      expect(session.gap.getState()).toBeNull();
+      expect([...session.selection.getState().clipIds]).toEqual(["a"]);
+      // A drag from a gap is a marquee, not a gap click.
+      pointer("pointerdown", x(30), row("v1"));
+      pointer("pointermove", x(30) + 40, row("v1") + 5);
+      pointer("pointerup", x(30) + 40, row("v1") + 5);
+      expect(session.gap.getState()).toBeNull();
+    });
+
+    it("a right-click selects the clip (or keeps a selection holding it) or the gap, then asks for the menu", () => {
+      const { session, overlay, pointer, onContextMenu, row } = cutSetup();
+      contextMenu(overlay, x(60), row("v1"));
+      expect([...session.selection.getState().clipIds].sort()).toEqual(["au", "b"]);
+      expect(onContextMenu).toHaveBeenLastCalledWith({ kind: "clip", clipId: "b", x: x(60), y: row("v1") });
+      // A selection holding the clip stays.
+      pointer("pointerdown", x(10), row("v1"), { shiftKey: true });
+      pointer("pointerup", x(10), row("v1"), { shiftKey: true });
+      contextMenu(overlay, x(60), row("a1"));
+      expect([...session.selection.getState().clipIds].sort()).toEqual(["a", "au", "b"]);
+      expect(onContextMenu).toHaveBeenLastCalledWith({ kind: "clip", clipId: "au", x: x(60), y: row("a1") });
+      contextMenu(overlay, x(30), row("v1"));
+      expect(session.gap.getState()).toEqual({ trackId: "v1", start: 20, end: 40 });
+      expect(session.selection.getState().kind).toBe("none");
+      expect(onContextMenu).toHaveBeenLastCalledWith({ kind: "gap", gap: { trackId: "v1", start: 20, end: 40 }, x: x(30), y: row("v1") });
+      // Locked clips and empty space open nothing.
+      onContextMenu.mockClear();
+      contextMenu(overlay, x(50), row("v2"));
+      contextMenu(overlay, x(300), row("v1"));
+      expect(onContextMenu).not.toHaveBeenCalled();
+    });
+
+    it("places the rename field over a clip's label bar, paging the view to it when off screen", () => {
+      const { view, session } = cutSetup();
+      expect(view.clipLabelRect("b", 100)).toEqual({ x: x(40), y: (view.geometry().rowOf("v1")?.y ?? 0) + 2, width: 160, height: 16 });
+      // A narrow clip gets the minimum width.
+      expect(view.clipLabelRect("a", 168)?.width).toBe(168);
+      session.state.set((state) => ({ ...state, timeline: { ...state.timeline, scrollFrame: 500 } }));
+      expect(view.clipLabelRect("b", 100)).not.toBeNull();
+      expect(session.state.getState().timeline.scrollFrame).toBeLessThanOrEqual(40);
+      expect(view.clipLabelRect("missing", 100)).toBeNull();
+    });
+
+    it("draws a clip with a label color in that color (body and label bar), others in their kind's", () => {
+      const { document, scheduler } = cutSetup();
+      fills.length = 0;
+      document.dispatch(updateClip("a", { color: "teal" }));
+      scheduler.flush();
+      expect(fills.filter((fill) => fill.style === "--label-teal")).toHaveLength(2);
+      expect(fills.some((fill) => fill.style === "--clip-video")).toBe(true);
     });
   });
 });

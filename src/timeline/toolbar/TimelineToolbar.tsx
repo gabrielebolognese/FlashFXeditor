@@ -10,9 +10,18 @@ import { useDismiss } from "../../ui/useDismiss.js";
 import styles from "./TimelineToolbar.module.css";
 import { TOOLBAR_GROUPS, type ToolbarGroup, type ToolbarItem } from "./toolbarGroups.js";
 
-// Actions stay disabled until their batches wire them (tools: razor 15, hand 18; toggles: 16/35/37,
-// edits: 15-19, add: 29/32/34, zoom to selection: 18, track height: 16).
-const ENABLED: ReadonlySet<string> = new Set(["timeline.zoomOut", "timeline.zoomIn", "timeline.zoomFit"]);
+// Actions stay disabled until their batches wire them (tools: hand 18; toggles: 16/35/37, edits:
+// marker 19, freeze frame and punch zoom 27, add: 29/32/34, zoom to selection: 18, track height: 16).
+const ENABLED: ReadonlySet<string> = new Set([
+  "timeline.zoomOut",
+  "timeline.zoomIn",
+  "timeline.zoomFit",
+  "edit.split",
+  "edit.delete",
+  "edit.rippleDelete",
+  "edit.closeGap",
+  "edit.closeAllGaps",
+]);
 
 /**
  * Toggle buttons whose pressed state is session state: the toggles and the active tool. Each
@@ -25,6 +34,7 @@ const TOGGLE_STATE: Readonly<Record<string, (state: SessionState) => boolean>> =
   "toggle.snap": (state) => state.snap,
   "toggle.rippleMode": (state) => state.ripple,
   "tool.select": (state) => state.activeTool === "select",
+  "tool.razor": (state) => state.activeTool === "razor",
   "tool.slip": (state) => state.activeTool === "slip",
   "tool.slide": (state) => state.activeTool === "slide",
   "tool.rateStretch": (state) => state.activeTool === "rateStretch",

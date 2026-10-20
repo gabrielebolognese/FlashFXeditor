@@ -3,6 +3,8 @@ import { CanvasHost } from "../app/CanvasHost.js";
 import { PanelFrame } from "../app/PanelFrame.js";
 import { timelineDev, timelineView } from "../app/timelineController.js";
 import { useStoreSelector } from "../core/store/useStoreSelector.js";
+import { ClipRenameField } from "../timeline/menus/ClipRenameField.js";
+import { TimelineContextMenu } from "../timeline/menus/TimelineContextMenu.js";
 import { TimelineToolbar } from "../timeline/toolbar/TimelineToolbar.js";
 import styles from "./TimelinePanel.module.css";
 import wellStyles from "./Well.module.css";
@@ -19,7 +21,10 @@ function StatsOverlay() {
   return <pre ref={ref} className={styles.stats} aria-label="Timeline stats" />;
 }
 
-/** The toolbar strip is the panel's header; the two timeline canvases mount once in the canvas host. */
+/**
+ * The toolbar strip is the panel's header; the two timeline canvases mount once in the canvas host,
+ * with the inline clip rename field over them; the context menus float above everything.
+ */
 export function TimelinePanel() {
   const canvasRef = useRef<HTMLDivElement>(null);
   const stats = useStoreSelector(timelineDev, selectStats);
@@ -32,9 +37,11 @@ export function TimelinePanel() {
       <div className={wellStyles.well}>
         <CanvasHost panel="timeline">
           <div ref={canvasRef} className={styles.canvas} />
+          <ClipRenameField />
           {stats && <StatsOverlay />}
         </CanvasHost>
       </div>
+      <TimelineContextMenu />
     </PanelFrame>
   );
 }

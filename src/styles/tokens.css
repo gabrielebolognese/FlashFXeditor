@@ -182,6 +182,9 @@
   --timeline-trim-zone: 8px; /* spec §6.4: the outer 8px of each clip edge (inside the clip) */
   --timeline-trim-edge-width: 2px; /* the ghost edge: --accent, --danger at a media bound */
   --timeline-junction-zone: 6px; /* spec §6.10: the band on the cut between abutting clips (roll zone, edit point clicks) */
+  /* Cutting and gaps (Batch 15, gap: the DS has no razor or gap visuals) */
+  --timeline-cut-line-width: 1px; /* the Razor's cut line over the clips it would cut, --text-primary */
+  --timeline-gap-dash: var(--space-1); /* a selected gap: dashed --accent outline (spec §6.7) on --accent-wash */
 
   /* Audio (gap: the DS has no meter or knob). Stereo peak meter along the preview's right edge, master volume knob. */
   --meter-bar-width: var(--space-1);
@@ -203,6 +206,20 @@
   --clip-solid-label: var(--surface-5);
   --clip-caption: rgba(100, 116, 139, 0.3); /* text-tertiary */
   --clip-caption-label: rgba(100, 116, 139, 0.55);
+
+  /* Label colors (gap: spec §6.4 asks for 8, the DS defines none). The DS semantic hues (danger,
+     success, info, text-secondary) plus four in between at the same weight; never the gold, which
+     marks selection. Clips with a label are drawn in it at the clip body and label bar alphas. */
+  --label-red: var(--danger);
+  --label-orange: #e0823d;
+  --label-green: var(--success);
+  --label-teal: #2fb3ad;
+  --label-blue: var(--info);
+  --label-violet: #8c6ff0;
+  --label-pink: #d65fa8;
+  --label-grey: var(--text-secondary);
+  --clip-label-body-alpha: 0.34;
+  --clip-label-bar-alpha: 0.62;
 
   /* Elevation, floating only */
   --shadow-overlay: 0 8px 24px -4px rgba(0, 0, 0, 0.5), 0 2px 6px -2px rgba(0, 0, 0, 0.4);

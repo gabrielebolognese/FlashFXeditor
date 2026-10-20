@@ -37,6 +37,26 @@ export const fontOf = (theme: Theme, step: "caption" | "body", mono = false) =>
 /** Snaps a CSS coordinate to the device pixel grid. */
 const snap = (value: number, dpr: number) => Math.round(value * dpr) / dpr;
 
+/**
+ * Fills a clip's body or label bar: in its label color (spec §6.4) at the label alphas, else in its
+ * kind's color. Respects the current `globalAlpha` (drag ghosts).
+ * TODO(batch 17): label colors with filmstrips and waveforms.
+ */
+export function fillClip(ctx: CanvasRenderingContext2D, theme: Theme, clip: Clip, part: "body" | "label", x: number, y: number, width: number, height: number): void {
+  const tl = theme.timeline;
+  const label = clip.color !== undefined ? tl.labels[clip.color] : undefined;
+  if (!label) {
+    ctx.fillStyle = tl.clip[clip.kind][part];
+    ctx.fillRect(x, y, width, height);
+    return;
+  }
+  const alpha = ctx.globalAlpha;
+  ctx.globalAlpha = alpha * (part === "body" ? tl.labelBodyAlpha : tl.labelBarAlpha);
+  ctx.fillStyle = label;
+  ctx.fillRect(x, y, width, height);
+  ctx.globalAlpha = alpha;
+}
+
 function hline(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, dpr: number, color: string): void {
   ctx.fillStyle = color;
   ctx.fillRect(x, snap(y, dpr), width, 1 / dpr);
@@ -104,13 +124,13 @@ function drawClips(scene: ContentScene): number {
 
 /**
  * One clip in its row: body, label bar (kind glyph, name, speed and sync badges), selection tint and
- * outline. `syncOffset`: frames off its link partner (`linkOffset`), shown as a `+12` / `-12` badge.
- * TODO(batch 17): filmstrips and waveforms in the body, badges (link, keyframes, fx), label colors.
+ * outline, in the clip's label color when it has one. `syncOffset`: frames off its link partner
+ * (`linkOffset`), shown as a `+12` / `-12` badge.
+ * TODO(batch 17): filmstrips and waveforms in the body, badges (link, keyframes, fx).
  */
 export function drawClip(scene: ClipScene, clip: Clip, row: Row, track: Track, abutsNext: boolean, syncOffset = 0): void {
   const { ctx, dpr, geometry, theme, selection } = scene;
   const tl = theme.timeline;
-  const colors = tl.clip[clip.kind];
   const selected = selection.clipIds.has(clip.id);
 
   const span = clipSpan(geometry.frameToX(clip.start), geometry.frameToX(clip.start + clip.duration), abutsNext, dpr);
@@ -122,8 +142,12 @@ export function drawClip(scene: ClipScene, clip: Clip, row: Row, track: Track, a
 
   if (lod === "line") {
     // Below 6 px only the body color shows (spec §6.4).
-    ctx.fillStyle = selected ? theme.color.accent : colors.body;
-    ctx.fillRect(x, y, width, height);
+    if (selected) {
+      ctx.fillStyle = theme.color.accent;
+      ctx.fillRect(x, y, width, height);
+    } else {
+      fillClip(ctx, theme, clip, "body", x, y, width, height);
+    }
     return;
   }
 
@@ -132,12 +156,10 @@ export function drawClip(scene: ClipScene, clip: Clip, row: Row, track: Track, a
   ctx.beginPath();
   ctx.roundRect(x, y, width, height, radius);
   ctx.clip();
-  ctx.fillStyle = colors.body;
-  ctx.fillRect(x, y, width, height);
+  fillClip(ctx, theme, clip, "body", x, y, width, height);
   // The label bar is the whole clip on S tracks (spec §6.4).
   const labelHeight = track.kind === "caption" || track.height === "S" ? height : Math.min(height, tl.labelHeight);
-  ctx.fillStyle = colors.label;
-  ctx.fillRect(x, y, width, labelHeight);
+  fillClip(ctx, theme, clip, "label", x, y, width, labelHeight);
   if (selected) {
     ctx.fillStyle = theme.color.accentWash;
     ctx.fillRect(x, y, width, height);
