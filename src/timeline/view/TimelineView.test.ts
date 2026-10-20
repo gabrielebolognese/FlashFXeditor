@@ -457,6 +457,25 @@ describe("TimelineView", () => {
     expect([...session.selection.getState().clipIds].sort()).toEqual(["c0", "c1", "c2", "c3", "c4"]);
   });
 
+  it("marquee: stays inside the track area once the view scrolls past its start, the clips there still selected", () => {
+    const { view, session, pointer, scheduler } = setup(100);
+    const { area } = view.geometry();
+    const a1 = view.geometry().rowOf("a1");
+    const v1 = view.geometry().rowOf("v1");
+    if (!a1 || !v1) throw new Error("rows");
+    // Empty A1 space at frame 20, then up into V1 and past the right edge: the view auto-scrolls.
+    pointer("pointerdown", area.x + 20 * 4, a1.y + a1.height / 2);
+    pointer("pointermove", area.x + area.width + 10, v1.y + v1.height / 2);
+    for (let i = 0; i < 120; i++) scheduler.flush();
+    expect(view.geometry().scrollFrame).toBeGreaterThan(20);
+    const rect = vi.mocked(drawOverlay).mock.lastCall?.[0].marquee;
+    expect(rect).toEqual({ x: area.x, y: v1.y + v1.height / 2, width: area.width, height: a1.y + a1.height / 2 - (v1.y + v1.height / 2) });
+    pointer("pointerup", area.x + area.width + 10, v1.y + v1.height / 2);
+    const selected = session.selection.getState().clipIds;
+    expect(selected.has("c2")).toBe(true);
+    expect(selected.has("c1")).toBe(false);
+  });
+
   it("keeps a multi-selection on a press for the drag, and collapses it on a click", () => {
     const { session, pointer, onMoveClips } = setup(5);
     session.selection.set(selectClips(["c0", "c2"], "c0"));
