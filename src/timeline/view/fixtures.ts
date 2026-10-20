@@ -36,6 +36,8 @@ const TOKENS: Record<string, string> = {
   "--timeline-hatch-gap": "6px",
   "--timeline-insert-width": "2px",
   "--timeline-insert-arrow": "8px",
+  "--timeline-snap-threshold": "8px",
+  "--timeline-snap-line-width": "1px",
   "--type-caption-line": "14px",
 };
 

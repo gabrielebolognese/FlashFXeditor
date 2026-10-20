@@ -175,6 +175,9 @@
   --timeline-hatch-gap: var(--space-2);
   --timeline-insert-width: 2px;
   --timeline-insert-arrow: var(--space-3);
+  /* Snapping (Batch 12, gap: the DS has no snap visuals; the threshold is the spec §6.9 default) */
+  --timeline-snap-threshold: 8px; /* spec §6.9: in screen space, the same at every zoom */
+  --timeline-snap-line-width: 1px; /* drawn in --accent through the full timeline height */
 
   /* Audio (gap: the DS has no meter or knob). Stereo peak meter along the preview's right edge, master volume knob. */
   --meter-bar-width: var(--space-1);

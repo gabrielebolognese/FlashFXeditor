@@ -86,6 +86,9 @@ export interface TimelineTheme {
   hatchGap: number;
   insertWidth: number;
   insertArrow: number;
+  /** Snapping (spec §6.9): distance that snaps, in CSS px; width of the snap line. */
+  snapThreshold: number;
+  snapLineWidth: number;
 }
 
 /** Reads one custom property by name (e.g. `--accent`); returns "" when it is not defined. */
@@ -220,6 +223,8 @@ export function readTheme(read: TokenReader, root?: Element): { theme: Theme; mi
       hatchGap: num("--timeline-hatch-gap"),
       insertWidth: num("--timeline-insert-width"),
       insertArrow: num("--timeline-insert-arrow"),
+      snapThreshold: num("--timeline-snap-threshold"),
+      snapLineWidth: num("--timeline-snap-line-width"),
     },
     meter: { barWidth: num("--meter-bar-width"), barGap: num("--meter-bar-gap"), ledHeight: num("--meter-led-height") },
   };

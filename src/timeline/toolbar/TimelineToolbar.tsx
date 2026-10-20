@@ -1,17 +1,33 @@
 import { Ellipsis, Gauge } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { actions } from "../../app/services.js";
+import { actions, sessionStore } from "../../app/services.js";
 import { bindTimecode, bindZoomSlider, timelineDev } from "../../app/timelineController.js";
+import type { SessionState } from "../../core/store/sessionStore.js";
 import { useStoreSelector } from "../../core/store/useStoreSelector.js";
 import { IconButton } from "../../ui/IconButton.js";
 import { useDismiss } from "../../ui/useDismiss.js";
 import styles from "./TimelineToolbar.module.css";
 import { TOOLBAR_GROUPS, type ToolbarGroup, type ToolbarItem } from "./toolbarGroups.js";
 
-// Actions stay disabled until their batches wire them (tools: 11/13/14, toggles: 11/12, edits:
+// Actions stay disabled until their batches wire them (tools: 11/13/14, toggles: 13/16/35/37, edits:
 // 13-19, add: 29/32/34, zoom to selection: 18, track height: 16).
 const ENABLED: ReadonlySet<string> = new Set(["timeline.zoomOut", "timeline.zoomIn", "timeline.zoomFit"]);
+
+/**
+ * Toggle buttons whose pressed state is session state. Each subscribes to its own flag only (spec
+ * §6.17): toggling re-renders that button, nothing else, and no drag ever writes these flags (hold S
+ * inverts snapping without touching the session).
+ * TODO(batch 13): ripple mode. TODO(batch 16): linked selection. TODO(batch 35): clip keyframes. TODO(batch 37): audio scrub.
+ */
+const TOGGLE_STATE: Readonly<Record<string, (state: SessionState) => boolean>> = {
+  "toggle.snap": (state) => state.snap,
+};
+
+function SessionToggle({ item, pressedIn }: { item: Extract<ToolbarItem, { kind: "button" }>; pressedIn: (state: SessionState) => boolean }) {
+  const pressed = useStoreSelector(sessionStore.state, pressedIn);
+  return <IconButton icon={item.icon} label={item.label} commandId={item.id} pressed={pressed} onClick={() => actions.run(item.id)} />;
+}
 
 /** Rendered once; its value follows the zoom through direct DOM writes (no React render, P1). */
 function ZoomSlider() {
@@ -49,6 +65,8 @@ function DevStatsToggle() {
 
 function renderItem(item: ToolbarItem) {
   if (item.kind === "zoomSlider") return <ZoomSlider key="zoom-slider" />;
+  const pressedIn = TOGGLE_STATE[item.id];
+  if (pressedIn) return <SessionToggle key={item.id} item={item} pressedIn={pressedIn} />;
   const enabled = ENABLED.has(item.id);
   return (
     <IconButton
