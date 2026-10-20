@@ -15,7 +15,7 @@ function setup(playhead = 50) {
   ]);
   // 4 px/frame from x = 176; rows: v1 172..228, divider 228..232, a1 232..288; add rows at 148 and 288.
   const geometry = new TimelineGeometry({ width: 1000, height: 428, tracks: project.tracks, pxPerFrame: 4, scrollFrame: 0, scrollY: 0, metrics: METRICS });
-  return new HitTester({ geometry: () => geometry, project: () => project, playhead: () => playhead, playheadHeadWidth: 11, trimZone: 8 });
+  return new HitTester({ geometry: () => geometry, project: () => project, playhead: () => playhead, playheadHeadWidth: 11, trimZone: 8, junctionZone: 6 });
 }
 
 const x = (frame: number) => 176 + frame * 4;
@@ -38,13 +38,27 @@ describe("HitTester", () => {
     expect(hits.hit(x(10) + 8, 200).type).toBe("clip");
     expect(hits.hit(x(40) - 8, 200)).toMatchObject({ type: "clipEdgeOut", clipId: "c1" });
     expect(hits.hit(x(40) - 8.1, 200).type).toBe("clip");
-    expect(hits.hit(x(40) - 0.1, 200)).toMatchObject({ type: "clipEdgeOut", clipId: "c1" });
-    expect(hits.hit(x(40), 200)).toMatchObject({ type: "clipEdgeIn", clipId: "c2" });
+    expect(hits.hit(x(40) - 3.1, 200)).toMatchObject({ type: "clipEdgeOut", clipId: "c1" });
+    expect(hits.hit(x(40) + 3, 200)).toMatchObject({ type: "clipEdgeIn", clipId: "c2" });
     expect(hits.hit(x(40) + 6.6, 200).type).toBe("clipEdgeIn");
     expect(hits.hit(x(42.5), 200)).toMatchObject({ type: "clip", clipId: "c2" });
     expect(hits.hit(x(45) - 6.6, 200)).toMatchObject({ type: "clipEdgeOut", clipId: "c2" });
     // Outside a clip there is no zone.
     expect(hits.hit(x(10) - 1, 200).type).toBe("empty");
+  });
+
+  it("finds the junction: the 6 px band centered on a cut between abutting clips, the side under the pointer", () => {
+    const hits = setup();
+    const cut = { left: "c1", right: "c2", frame: 40 };
+    expect(hits.hit(x(40) - 3, 200)).toMatchObject({ type: "junction", clipId: "c1", junction: cut });
+    expect(hits.hit(x(40) - 0.1, 200)).toMatchObject({ type: "junction", clipId: "c1", junction: cut });
+    expect(hits.hit(x(40), 200)).toMatchObject({ type: "junction", clipId: "c2", junction: cut });
+    expect(hits.hit(x(40) + 2.9, 200)).toMatchObject({ type: "junction", clipId: "c2", junction: cut });
+    expect(hits.hit(x(40) + 3, 200)).toMatchObject({ type: "clipEdgeIn", junction: null });
+    // An edge with a gap or nothing beyond it has no junction.
+    expect(hits.hit(x(10), 200)).toMatchObject({ type: "clipEdgeIn", junction: null });
+    expect(hits.hit(x(45) - 1, 200)).toMatchObject({ type: "clipEdgeOut", junction: null });
+    expect(hits.hit(x(40) - 1, 260)).toMatchObject({ type: "clipEdgeOut", clipId: "c3", junction: null });
   });
 
   it("gives clips on locked tracks no trim zones", () => {
@@ -53,7 +67,7 @@ describe("HitTester", () => {
     project.tracks.push({ ...makeTrack("v1"), locked: true });
     project = withClips(project, [makeMediaClip(project, { id: "c1", trackId: "v1", start: 10, duration: 30, mediaId: "m" })]);
     const geometry = new TimelineGeometry({ width: 1000, height: 428, tracks: project.tracks, pxPerFrame: 4, scrollFrame: 0, scrollY: 0, metrics: METRICS });
-    const hits = new HitTester({ geometry: () => geometry, project: () => project, playhead: () => 0, playheadHeadWidth: 11, trimZone: 8 });
+    const hits = new HitTester({ geometry: () => geometry, project: () => project, playhead: () => 0, playheadHeadWidth: 11, trimZone: 8, junctionZone: 6 });
     const row = geometry.rowOf("v1");
     expect(hits.hit(x(10), (row?.y ?? 0) + 10)).toMatchObject({ type: "clip", clipId: "c1" });
   });

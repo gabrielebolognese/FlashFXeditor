@@ -3,15 +3,18 @@
 // selection, zoom/scroll, size and theme changes; the overlay canvas (playhead, hover, drag ghosts,
 // marquee) on every interaction frame. Both draw only from the FrameScheduler. Zoom and scroll live in
 // the session store; the view subscribes to them directly and React never renders for them.
-// Gestures (scrub, clip drag, trim, marquee) keep their state here, never in a store: a clip drag
-// reaches the document once, on drop, through `onMoveClips`, a trim through `onTrimEdge`; a marquee
-// writes the selection once, on release. While a trim runs, `trimPreview` is the document it proposes
-// and the frame its edge shows (the preview panel draws it, spec §6.10).
-// Snapping (spec §6.9): clip drags and trims snap while the toggle is on, ruler scrubs only with Shift
+// Gestures (scrub, clip drag, trim, roll, slip, slide, rate stretch, marquee) keep their state here,
+// never in a store: a clip drag reaches the document once, on drop, through `onMoveClips`, an edit
+// through `onTrimEdge`; a marquee writes the selection once, on release. While an edit runs,
+// `trimPreview` is the document it proposes and the frame (or the two frames) the preview shows
+// (spec §6.10). The active tool decides what a hit does (spec §6.18): Select drags clips and trims
+// edges (Mod+Alt on a cut rolls, a click on a cut selects the edit point), Slip and Slide drag clip
+// bodies, Rate stretch drags edges.
+// Snapping (spec §6.9): clip drags and edits snap while the toggle is on, ruler scrubs only with Shift
 // too, and holding S during a drag inverts the toggle until it is released.
 import type { Affect } from "../../core/commands/command.js";
-import { formatTimecode } from "../../core/document/time.js";
-import type { ClipId, Frame, Project, TrackId, TrackKind } from "../../core/document/types.js";
+import { formatSpeed, formatTimecode, usToFrame } from "../../core/document/time.js";
+import { isMediaClip, type ClipId, type Frame, type Project, type TrackId, type TrackKind } from "../../core/document/types.js";
 import type { Platform } from "../../core/keyboard/keys.js";
 import { watchDevicePixelRatio } from "../../core/scheduler/devicePixelRatio.js";
 import type { FrameScheduler, RenderView } from "../../core/scheduler/FrameScheduler.js";
@@ -20,23 +23,24 @@ import type { Store } from "../../core/store/createStore.js";
 import type { DocumentStore } from "../../core/store/DocumentStore.js";
 import type { LayoutState, Size } from "../../core/store/layoutStore.js";
 import { clickSelection, EMPTY_SELECTION, type ClickModifier, type Selection } from "../../core/store/selection.js";
-import { setPlayhead, setSelection, type SessionStore } from "../../core/store/sessionStore.js";
+import { selectEditPoint, setPlayhead, setSelection, type EditPoint, type SessionStore, type Tool } from "../../core/store/sessionStore.js";
 import type { Theme, ThemeBridge } from "../../core/theme/theme.js";
 import type { MoveRequest } from "../edit/move.js";
-import type { TrimEdge } from "../edit/trim.js";
+import { MAX_SPEED, MIN_SPEED, type TrimEdge } from "../edit/trim.js";
 import { contentEnd, isClipLocked, linkedPartners, neighbors } from "../model/queries.js";
 import { resolveSnap, SnapIndex, snapLabel, type SnapCandidates, type SnapTarget } from "../snap/snapIndex.js";
 import { trimCursor, trimCursors, type TrimCursors } from "./cursors.js";
 import { drawContent } from "./drawContent.js";
-import { drawOverlay } from "./drawOverlay.js";
+import { drawOverlay, type EditPointMark } from "./drawOverlay.js";
 import { TimelineGeometry, type HeaderToggle, type TimelineMetrics } from "./geometry.js";
 import { edgeStep } from "./gestures/autoScroll.js";
 import { MarqueeGesture } from "./gestures/marquee.js";
 import { MoveGesture, NO_MODIFIERS, type DragModifiers, type MoveSnap } from "./gestures/moveClips.js";
-import { TrimGesture, type TrimRequest } from "./gestures/trimClip.js";
+import { TrimGesture, type EditTarget, type PreviewSplit, type TrimRequest } from "./gestures/trimClip.js";
 import { HitTester, type HitResult } from "./HitTester.js";
 import { TextCache } from "./textCache.js";
 import {
+  clampScroll,
   fitView,
   keyZoomAnchor,
   pageToFrame,
@@ -64,9 +68,9 @@ export interface TimelineViewDeps {
   onToggleTrack(trackId: TrackId, toggle: HeaderToggle): void;
   /** A clip drag was dropped: the controller applies it as one command (spec §6.8, P2). */
   onMoveClips(request: MoveRequest): void;
-  /** A trim drag was released: the controller applies it as one command (spec §6.10, P2). */
+  /** An edit drag (trim, roll, slip, slide, rate stretch) was released: the controller applies it as one command (spec §6.10, P2). */
   onTrimEdge(request: TrimRequest): void;
-  /** `trimPreview` changed (a trim started, moved its edge or ended): the preview redraws. */
+  /** `trimPreview` changed (an edit started, moved or ended): the preview redraws. */
   onTrimPreview?(): void;
   /** Background work pauses while a gesture runs (spec §3.4). */
   idle?: Pick<IdleQueue, "pause" | "resume">;
@@ -94,15 +98,22 @@ interface Layer {
   height: number;
 }
 
+/** What a drag of a pressed clip body does with the active tool (null: nothing, a click selects). */
+type BodyDrag = "move" | "slip" | "slide" | null;
+
 /** Pointer gestures. `press` and `pendingMarquee` wait for the dead zone (spec §6.8) before dragging. */
 type Gesture =
   /** `snap`: what a Shift scrub snapped the playhead to (spec §6.3). */
   | { kind: "scrub"; pointerId: number; snap: SnapTarget | null }
   /** A press on a clip. `click`: the selection a release without a drag sets (deferred on a selected clip, so a drag keeps the selection). */
-  | { kind: "press"; pointerId: number; x: number; y: number; clipId: ClipId; frame: number; click: Selection | null; movable: boolean }
+  | { kind: "press"; pointerId: number; x: number; y: number; clipId: ClipId; frame: number; click: Selection | null; drag: BodyDrag }
   | { kind: "move"; pointerId: number; move: MoveGesture }
-  /** A press on a trim zone: a trim once it moves past the dead zone, else a click on the clip. */
-  | { kind: "pressEdge"; pointerId: number; x: number; y: number; clipId: ClipId; edge: TrimEdge; frame: number; click: Selection }
+  /**
+   * A press on a trim zone or a cut: an edit once it moves past the dead zone, else a click: on a cut
+   * it selects the edit point (`editPoint`), elsewhere the clip (`click`).
+   */
+  | { kind: "pressEdge"; pointerId: number; x: number; y: number; target: EditTarget; frame: number; click: Selection; editPoint: EditPoint | null }
+  /** Any edit drag: trim, roll, slip, slide, rate stretch. */
   | { kind: "trim"; pointerId: number; trim: TrimGesture }
   | { kind: "pendingMarquee"; pointerId: number; x: number; y: number; additive: boolean }
   | { kind: "marquee"; pointerId: number; marquee: MarqueeGesture };
@@ -126,23 +137,68 @@ function metricsOf(theme: Theme): TimelineMetrics {
 }
 
 const sameHover = (a: HitResult | null, b: HitResult | null) =>
-  a === b || (a !== null && b !== null && a.type === b.type && a.clipId === b.clipId && a.addTrack === b.addTrack && a.trackId === b.trackId && a.toggle === b.toggle);
+  a === b ||
+  (a !== null && b !== null && a.type === b.type && a.clipId === b.clipId && a.addTrack === b.addTrack && a.trackId === b.trackId && a.toggle === b.toggle && a.junction?.frame === b.junction?.frame);
 
-/** The cursor for the hover hit and the gesture; `ripple`: a trim edge shows the ripple variant (spec §6.4). */
-function cursorFor(hit: HitResult | null, gesture: Gesture | null, cursors: TrimCursors, ripple: boolean): string {
+/** The edge a hit on a trim zone or a cut is on (a cut: the side under the pointer), or null. */
+function hitEdge(hit: HitResult): TrimEdge | null {
+  if (hit.type === "clipEdgeIn") return "in";
+  if (hit.type === "clipEdgeOut") return "out";
+  if (hit.type === "junction" && hit.junction) return hit.clipId === hit.junction.left ? "out" : "in";
+  return null;
+}
+
+/** What the cursor depends on besides the hit and the gesture. */
+interface CursorContext {
+  tool: Tool;
+  /** Ripple mode on, or Mod held: trim edges show the ripple variant (spec §6.4). */
+  ripple: boolean;
+  /** Mod+Alt held: a cut shows the roll cursor (spec §6.10). */
+  roll: boolean;
+}
+
+/** The cursor of an edit (a drag, or a press that may become one). */
+function editCursor(cursors: TrimCursors, target: EditTarget, ripple: boolean): string {
+  switch (target.kind) {
+    case "trim":
+      return trimCursor(cursors, target.edge, ripple);
+    case "roll":
+      return cursors.roll;
+    case "slip":
+      return cursors.slip;
+    case "slide":
+      return cursors.slide;
+    case "stretch":
+      return target.edge === "in" ? cursors.stretchIn : cursors.stretchOut;
+  }
+}
+
+/** The cursor for the hover hit and the gesture (spec §6.18: set from the hover hit, by tool). */
+function cursorFor(hit: HitResult | null, gesture: Gesture | null, cursors: TrimCursors, context: CursorContext): string {
   if (gesture?.kind === "scrub") return "ew-resize";
   if (gesture?.kind === "move") {
     const proposal = gesture.move.proposal;
     return proposal?.refused ? "not-allowed" : proposal?.duplicate ? "copy" : "grabbing";
   }
-  if (gesture?.kind === "trim") return trimCursor(cursors, gesture.trim.edge, gesture.trim.proposal?.ripple ?? ripple);
-  if (gesture?.kind === "pressEdge") return trimCursor(cursors, gesture.edge, ripple);
+  if (gesture?.kind === "trim") {
+    const { trim } = gesture;
+    return editCursor(cursors, { kind: trim.kind, clipId: trim.clip.id, edge: trim.edge }, trim.proposal?.ripple ?? context.ripple);
+  }
+  if (gesture?.kind === "pressEdge") return editCursor(cursors, gesture.target, context.ripple);
+  if (gesture?.kind === "press" && (gesture.drag === "slip" || gesture.drag === "slide")) return cursors[gesture.drag];
   if (gesture) return "default";
   if (!hit) return "default";
   if (hit.type === "ruler" || hit.type === "playheadHead") return "ew-resize";
-  if (hit.type === "clipEdgeIn" || hit.type === "clipEdgeOut") return trimCursor(cursors, hit.type === "clipEdgeIn" ? "in" : "out", ripple);
   if ((hit.type === "trackHeader" && hit.addTrack) || hit.type === "headerToggle") return "pointer";
-  return "default";
+  const edge = hitEdge(hit);
+  const { tool } = context;
+  // Edges and cuts belong to unlocked clips only; a body may be locked (the caller passes no hit then).
+  if ((tool === "slip" || tool === "slide") && (edge || hit.type === "clip")) return cursors[tool];
+  if (!edge) return "default";
+  if (tool === "rateStretch") return edge === "in" ? cursors.stretchIn : cursors.stretchOut;
+  if (tool !== "select") return "default";
+  if (hit.type === "junction" && context.roll) return cursors.roll;
+  return trimCursor(cursors, edge, context.ripple);
 }
 
 export class TimelineView {
@@ -192,6 +248,9 @@ export class TimelineView {
       get trimZone() {
         return deps.theme.theme.timeline.trimZone;
       },
+      get junctionZone() {
+        return deps.theme.theme.timeline.junctionZone;
+      },
     });
   }
 
@@ -216,8 +275,9 @@ export class TimelineView {
       this.setHover(null);
     };
     const onWheel = (event: WheelEvent) => this.onWheel(event);
-    // Mod pressed or released over a trim edge switches it to the ripple cursor (spec §6.4). The
-    // modifier state is only read here: keys still go to the KeyDispatcher.
+    // Mod pressed or released over a trim edge switches it to the ripple cursor (spec §6.4), Mod+Alt
+    // over a cut to the roll cursor (§6.10). The modifier state is only read here: keys still go to
+    // the KeyDispatcher.
     const win = host.ownerDocument.defaultView;
     const onHoverKey = (event: KeyboardEvent) => {
       if (this.gesture || !this.pointer) return;
@@ -263,7 +323,13 @@ export class TimelineView {
           else this.updateCursor();
         },
       ),
+      // The tool changes what lies under the pointer (spec §6.18).
+      session.state.select(
+        (state) => state.activeTool,
+        () => this.updateCursor(),
+      ),
       session.selection.subscribe(() => scheduler.invalidate("timelineContent")),
+      session.editPoint.subscribe(() => scheduler.invalidate("timelineOverlay")),
       // The FrameScheduler flags of document changes (spec §3.4): every command carries `affects`.
       document.subscribe(both, { affects: CONTENT_AFFECTS }),
       // A drag or marquee holds clips of the document it started from: an edit under it (an undo
@@ -323,23 +389,24 @@ export class TimelineView {
     return this.gesture?.kind === "move" ? this.gesture.move : null;
   }
 
-  /** True while a clip edge is trimmed (the preview then asks frames with scrub priority, P8, and playback pauses). */
+  /** True while an edit drags (the preview then asks frames with scrub priority, P8, and playback pauses). */
   get trimming(): boolean {
     return this.gesture?.kind === "trim";
   }
 
-  /** The trim in progress, or null. */
+  /** The edit in progress (trim, roll, slip, slide, rate stretch), or null. */
   get trim(): TrimGesture | null {
     return this.gesture?.kind === "trim" ? this.gesture.trim : null;
   }
 
   /**
-   * While a trim runs (spec §6.10 live feedback): the document it proposes and the new edge frame,
-   * the first included frame of an in trim or the last of an out trim. Null otherwise.
+   * While an edit runs (spec §6.10 live feedback): the document it proposes and the new edge frame,
+   * the first included frame of an in trim or the last of an out trim; rolls, slips and slides show
+   * two frames side by side (`previewSplit`). Null otherwise.
    */
-  get trimPreview(): { project: Project; frame: Frame } | null {
+  get trimPreview(): { project: Project; frame: Frame; previewSplit: PreviewSplit | null } | null {
     const proposal = this.gesture?.kind === "trim" ? this.gesture.trim.proposal : null;
-    return proposal ? { project: proposal.project, frame: proposal.previewFrame } : null;
+    return proposal ? { project: proposal.project, frame: proposal.previewFrame, previewSplit: proposal.previewSplit } : null;
   }
 
   /**
@@ -417,6 +484,15 @@ export class TimelineView {
   fit(): void {
     if (!this.mounted) return;
     this.writeViewport(fitView(this.zoomContext()), 0);
+  }
+
+  /** Center playhead (spec §6.6, `Mod+Shift+.`): the view scrolls so the playhead is in its middle (within the scroll range). */
+  centerPlayhead(): void {
+    if (!this.mounted || this.ephemeral) return;
+    const view = this.viewport();
+    const context = this.zoomContext();
+    const playhead = this.deps.session.state.getState().playhead;
+    this.writeViewport({ pxPerFrame: view.pxPerFrame, scrollFrame: clampScroll(playhead - context.width / 2 / view.pxPerFrame, view.pxPerFrame, context) });
   }
 
   /** Pages the view so `frame` is in it (spec §6.2 paging): keyboard jumps and the timecode field. */
@@ -506,6 +582,7 @@ export class TimelineView {
     this.modifiers = this.modifiersOf(event);
     if (event.button !== 0 || this.gesture) return;
     const hit = this.hitTester.hit(event.offsetX, event.offsetY);
+    const tool = this.deps.session.state.getState().activeTool;
     switch (hit.type) {
       case "ruler":
       case "playheadHead": {
@@ -519,13 +596,12 @@ export class TimelineView {
       case "clip":
         // Clips on locked tracks take no selection (spec §6.12): the press acts as on empty space.
         if (isClipLocked(this.deps.document.getState(), hit.clipId as ClipId)) this.pressEmpty(event);
-        else this.pressClip(event, hit.clipId as ClipId, hit.frame);
+        else this.pressClip(event, hit.clipId as ClipId, hit.frame, bodyDrag(tool));
         break;
       case "clipEdgeIn":
       case "clipEdgeOut":
-        // Trim zones trim with the Select tool. TODO(batch 14): rate stretch on edges.
-        if (this.deps.session.state.getState().activeTool === "select") this.pressEdge(event, hit.clipId as ClipId, hit.type === "clipEdgeIn" ? "in" : "out", hit.frame);
-        else this.pressClip(event, hit.clipId as ClipId, hit.frame);
+      case "junction":
+        this.pressEdgeHit(event, hit, tool);
         break;
       case "trackHeader":
         // TODO(batch 16): track selection, Mod+Shift+click selects the track's clips.
@@ -550,7 +626,7 @@ export class TimelineView {
    * selection, a click without a drag then applies (plain: only this clip and its partners; Shift and
    * Mod: remove it; Alt: only this clip).
    */
-  private pressClip(event: PointerEvent, clipId: ClipId, frame: number): void {
+  private pressClip(event: PointerEvent, clipId: ClipId, frame: number, drag: BodyDrag): void {
     const { session } = this.deps;
     const selection = session.selection.getState();
     const modifier: ClickModifier = event.altKey ? "alt" : this.modifiers.mod ? "mod" : event.shiftKey ? "shift" : "none";
@@ -558,22 +634,55 @@ export class TimelineView {
     const next = clickSelection(selection, clipId, modifier, partners);
     const selected = selection.kind === "clips" && selection.clipIds.has(clipId);
     if (!selected) setSelection(session, next);
-    const movable = session.state.getState().activeTool === "select";
     this.capture(event.pointerId);
-    this.gesture = { kind: "press", pointerId: event.pointerId, x: event.offsetX, y: event.offsetY, clipId, frame, click: selected ? next : null, movable };
+    this.gesture = { kind: "press", pointerId: event.pointerId, x: event.offsetX, y: event.offsetY, clipId, frame, click: selected ? next : null, drag };
+    this.updateCursor();
   }
 
   /**
-   * A press on a trim zone (spec §6.10): a trim once the pointer moves past the dead zone (the
-   * selection stays as it is), else, on release, a click on the clip.
+   * A press on a trim zone or a cut (spec §6.10, §6.18), by tool: Select trims the edge (Mod+Alt on a
+   * cut rolls it; a click on a cut selects the edit point: a roll's, or with Mod or Ripple mode the
+   * ripple side under the pointer), Rate stretch stretches it, Slip and Slide take the clip.
    */
-  private pressEdge(event: PointerEvent, clipId: ClipId, edge: TrimEdge, frame: number): void {
+  private pressEdgeHit(event: PointerEvent, hit: HitResult, tool: Tool): void {
+    const clipId = hit.clipId as ClipId;
+    const edge = hitEdge(hit) as TrimEdge;
+    if (tool === "slip" || tool === "slide") {
+      this.pressClip(event, clipId, hit.frame, tool);
+      return;
+    }
+    if (tool === "rateStretch") {
+      this.pressEdge(event, { kind: "stretch", clipId, edge }, hit.frame, null);
+      return;
+    }
+    // TODO(batch 15): the Razor tool cuts; TODO(batch 18): the Hand tool pans.
+    if (tool !== "select") {
+      this.pressClip(event, clipId, hit.frame, null);
+      return;
+    }
+    const junction = hit.junction;
+    if (!junction) {
+      this.pressEdge(event, { kind: "trim", clipId, edge }, hit.frame, null);
+      return;
+    }
+    const roll = this.modifiers.mod && this.modifiers.alt;
+    const ripple = !roll && (this.modifiers.mod || this.deps.session.state.getState().ripple);
+    const target: EditTarget = roll ? { kind: "roll", clipId: junction.left, edge: "out", rightId: junction.right } : { kind: "trim", clipId, edge };
+    const side = ripple ? (edge === "out" ? "left" : "right") : "both";
+    this.pressEdge(event, target, hit.frame, { left: junction.left, right: junction.right, side });
+  }
+
+  /**
+   * A press that may become an edit (spec §6.10): the edit once the pointer moves past the dead zone
+   * (the selection stays as it is), else, on release, a click on the clip, or on the edit point.
+   */
+  private pressEdge(event: PointerEvent, target: EditTarget, frame: number, editPoint: EditPoint | null): void {
     const { session } = this.deps;
     const modifier: ClickModifier = event.altKey ? "alt" : this.modifiers.mod ? "mod" : event.shiftKey ? "shift" : "none";
-    const partners = modifier === "none" || modifier === "shift" ? this.partners(clipId) : [];
-    const click = clickSelection(session.selection.getState(), clipId, modifier, partners);
+    const partners = modifier === "none" || modifier === "shift" ? this.partners(target.clipId) : [];
+    const click = clickSelection(session.selection.getState(), target.clipId, modifier, partners);
     this.capture(event.pointerId);
-    this.gesture = { kind: "pressEdge", pointerId: event.pointerId, x: event.offsetX, y: event.offsetY, clipId, edge, frame, click };
+    this.gesture = { kind: "pressEdge", pointerId: event.pointerId, x: event.offsetX, y: event.offsetY, target, frame, click, editPoint };
     this.updateCursor();
   }
 
@@ -604,13 +713,16 @@ export class TimelineView {
         this.scrubAt(event.offsetX);
         break;
       case "press":
-        if (gesture.movable && Math.hypot(event.offsetX - gesture.x, event.offsetY - gesture.y) > threshold) this.startMove(gesture);
+        if (gesture.drag && Math.hypot(event.offsetX - gesture.x, event.offsetY - gesture.y) > threshold) {
+          if (gesture.drag === "move") this.startMove(gesture);
+          else this.startEdit(gesture.pointerId, { kind: gesture.drag, clipId: gesture.clipId, edge: "in" }, gesture.frame);
+        }
         break;
       case "pendingMarquee":
         if (Math.hypot(event.offsetX - gesture.x, event.offsetY - gesture.y) > threshold) this.startMarquee(gesture);
         break;
       case "pressEdge":
-        if (Math.hypot(event.offsetX - gesture.x, event.offsetY - gesture.y) > threshold) this.startTrim(gesture);
+        if (Math.hypot(event.offsetX - gesture.x, event.offsetY - gesture.y) > threshold) this.startEdit(gesture.pointerId, gesture.target, gesture.frame);
         break;
       case "move":
       case "trim":
@@ -620,10 +732,10 @@ export class TimelineView {
     }
   }
 
-  /** The press on a trim zone became a drag: the edge follows the pointer from where it went down. */
-  private startTrim(press: Extract<Gesture, { kind: "pressEdge" }>): void {
+  /** A press became an edit drag: the edge (or the clip, or its source) follows the pointer from where it went down. */
+  private startEdit(pointerId: number, target: EditTarget, frame: number): void {
     const project = this.deps.document.getState();
-    this.gesture = { kind: "trim", pointerId: press.pointerId, trim: new TrimGesture(project, press.clipId, press.edge, press.frame) };
+    this.gesture = { kind: "trim", pointerId, trim: new TrimGesture(project, target, frame) };
     this.startDrag();
     this.followPointer();
   }
@@ -811,7 +923,10 @@ export class TimelineView {
         if (commit && gesture.click) setSelection(session, gesture.click);
         break;
       case "pendingMarquee":
-        if (commit && !gesture.additive) setSelection(session, EMPTY_SELECTION);
+        if (commit && !gesture.additive) {
+          setSelection(session, EMPTY_SELECTION);
+          selectEditPoint(session, null);
+        }
         break;
       case "marquee": {
         const selection = gesture.marquee.current?.selection;
@@ -827,7 +942,8 @@ export class TimelineView {
         break;
       }
       case "pressEdge":
-        if (commit) setSelection(session, gesture.click);
+        if (commit && gesture.editPoint) selectEditPoint(session, gesture.editPoint);
+        else if (commit) setSelection(session, gesture.click);
         break;
       case "trim": {
         const request = gesture.trim.request();
@@ -870,10 +986,13 @@ export class TimelineView {
     return !sameHover(prev, this.hover);
   }
 
-  /** The cursor follows the hover hit and the drag; the style is written only when it changes. */
+  /** The cursor follows the hover hit, the tool and the drag; the style is written only when it changes. */
   private updateCursor(): void {
-    const ripple = this.deps.session.state.getState().ripple || this.modifiers.mod;
-    const cursor = cursorFor(this.hover, this.gesture, this.cursors, ripple);
+    const { ripple, activeTool } = this.deps.session.state.getState();
+    const { mod, alt } = this.modifiers;
+    // A locked clip takes no edits: no edit cursor over it.
+    const hover = this.hover?.type === "clip" && isClipLocked(this.deps.document.getState(), this.hover.clipId as ClipId) ? null : this.hover;
+    const cursor = cursorFor(hover, this.gesture, this.cursors, { tool: activeTool, ripple: ripple || mod, roll: mod && alt });
     if (cursor === this.cursor || !this.overlay) return;
     this.cursor = cursor;
     this.overlay.canvas.style.cursor = cursor;
@@ -947,6 +1066,8 @@ export class TimelineView {
     const proposal = gesture?.kind === "move" ? gesture.move.proposal : null;
     const trim = gesture?.kind === "trim" ? gesture.trim.proposal : null;
     const snap = proposal ? proposal.snap : trim ? trim.snap : gesture?.kind === "scrub" ? gesture.snap : null;
+    // The brackets stand on the document's cut: not while a drag moves clips.
+    const editPoints = proposal || gesture?.kind === "trim" ? [] : this.editPointMarks(project);
     // Hover highlights are for a pointer at rest: none while dragging.
     const idle = gesture === null || gesture.kind === "scrub" || gesture.kind === "press" || gesture.kind === "pressEdge";
     drawOverlay({
@@ -962,6 +1083,7 @@ export class TimelineView {
       snapFrame: snap?.frame ?? null,
       move: proposal ? { proposal, newRowHeight: theme.timeline.trackHeight.M } : null,
       trim: trim ? { proposal: trim, selection: this.deps.session.selection.getState() } : null,
+      editPoints,
       marquee: gesture?.kind === "marquee" ? (gesture.marquee.current?.rect ?? null) : null,
       tooltip: this.pointer && (proposal || trim || snap) ? this.tooltip(project, proposal?.deltaFrames ?? null, trim, snap, this.pointer) : null,
       text: this.text,
@@ -972,15 +1094,46 @@ export class TimelineView {
   }
 
   /**
-   * The drag tooltip: a move's delta, or a trim's delta and the clip's new duration (spec §6.10:
-   * `Δ -00:00:08 · 00:02:15`), the snap target's name, and `Media start` / `Media end` while a trimmed
-   * edge sits on its media bound.
+   * The drag tooltip: a move's delta; a trim's delta and the clip's new duration (spec §6.10:
+   * `Δ -00:00:08 · 00:02:15`), a rate stretch's with the new speed, a slip's with the new source in
+   * point, a roll's or a slide's delta alone; the snap target's name; and `Media start` / `Media end`
+   * while an edited clip sits on its media bound (or the speed limit a stretch reached).
    */
   private tooltip(project: Project, moveDelta: number | null, trim: TrimGesture["proposal"], snap: SnapTarget | null, pointer: { x: number; y: number }) {
     const fps = project.settings.fps;
-    const text = trim ? `${deltaLabel(trim.result.delta, project)} · ${formatTimecode(trim.clip.duration, fps)}` : moveDelta !== null ? deltaLabel(moveDelta, project) : null;
-    const bound = trim?.result.mediaBound;
-    return { text, target: snap ? snapLabel(project, snap) : null, alert: bound === "start" ? "Media start" : bound === "end" ? "Media end" : null, x: pointer.x, y: pointer.y };
+    const target = snap ? snapLabel(project, snap) : null;
+    if (!trim) return { text: moveDelta !== null ? deltaLabel(moveDelta, project) : null, target, alert: null, x: pointer.x, y: pointer.y };
+    const { result, clip } = trim;
+    const delta = deltaLabel(result.delta, project);
+    const duration = formatTimecode(clip.duration, fps);
+    let text = delta;
+    if (result.plan.kind === "trim") text = `${delta} · ${duration}`;
+    else if (result.plan.kind === "stretch") text = `${delta} · ${duration} · ${formatSpeed(isMediaClip(clip) ? clip.speed : 1)}`;
+    else if (result.plan.kind === "slip" && isMediaClip(clip)) text = `${delta} · In ${formatTimecode(usToFrame(clip.in, fps), fps)}`;
+    const bound = result.mediaBound;
+    const reason = result.limit?.reason;
+    const alert =
+      bound === "start" ? "Media start" : bound === "end" ? "Media end" : reason === "maxSpeed" ? `Max speed ${formatSpeed(MAX_SPEED)}` : reason === "minSpeed" ? `Min speed ${formatSpeed(MIN_SPEED)}` : null;
+    return { text, target, alert, x: pointer.x, y: pointer.y };
+  }
+
+  /**
+   * The selected edit point's brackets (spec §6.7) while its clips still meet on a cut, and with
+   * Linked selection on, the cuts of their linked partners at the same frame.
+   */
+  private editPointMarks(project: Project): EditPointMark[] {
+    const point = this.deps.session.editPoint.getState();
+    const left = point ? project.clips[point.left] : undefined;
+    const right = point ? project.clips[point.right] : undefined;
+    if (!point || !left || !right || left.trackId !== right.trackId || left.start + left.duration !== right.start) return [];
+    const marks: EditPointMark[] = [{ trackId: left.trackId, frame: right.start, side: point.side }];
+    if (!this.deps.session.state.getState().linkedSelection) return marks;
+    for (const id of linkedPartners(project, left.id)) {
+      const partner = project.clips[id];
+      const next = partner && partner.start + partner.duration === right.start ? neighbors(project, id).next : null;
+      if (partner && next?.start === right.start && partner.trackId !== left.trackId) marks.push({ trackId: partner.trackId, frame: right.start, side: point.side });
+    }
+    return marks;
   }
 
   private hoverToggle(geometry: TimelineGeometry) {
@@ -992,8 +1145,8 @@ export class TimelineView {
 
   private hoverClip(project: Project, geometry: TimelineGeometry) {
     const type = this.hover?.type;
-    // The trim zones are part of the clip: it stays lit while the cursor shows the bracket.
-    const id = type === "clip" || type === "clipEdgeIn" || type === "clipEdgeOut" ? (this.hover?.clipId ?? null) : null;
+    // The trim zones and its side of a cut are part of the clip: it stays lit while the cursor shows the bracket.
+    const id = type === "clip" || type === "clipEdgeIn" || type === "clipEdgeOut" || type === "junction" ? (this.hover?.clipId ?? null) : null;
     const clip = id !== null ? project.clips[id] : undefined;
     const row = clip ? geometry.rowOf(clip.trackId) : null;
     if (!clip || !row) return null;
@@ -1031,6 +1184,12 @@ export class TimelineView {
       `content ${s.contentDraws} draws · ${s.clipsDrawn}/${s.clipsTotal} clips · ${s.contentMs.toFixed(1)} ms\n` +
       `overlay ${s.overlayDraws} draws · ${s.overlayMs.toFixed(1)} ms · ${view.pxPerFrame.toFixed(3)} px/f`;
   }
+}
+
+/** What a drag of a clip body does with each tool (spec §6.18); Razor and Hand bodies do nothing yet. */
+function bodyDrag(tool: Tool): BodyDrag {
+  // TODO(batch 15): the Razor tool cuts at the click; TODO(batch 18): the Hand tool pans.
+  return tool === "select" ? "move" : tool === "slip" || tool === "slide" ? tool : null;
 }
 
 /**

@@ -1,16 +1,24 @@
-// Trimming (spec §6.10, §6.19, P2): the pure edits behind edge drags, Q/W (trim to playhead) and E
-// (extend edit). A trim moves one edge of some clips by the same number of frames:
-// - regular: the clip changes `start`/`in` (in point) or `duration`/`out` (out point) and nothing
-//   else moves; the neighbor clip bounds it (no overlap, no overwrite);
-// - ripple: the in point keeps its timeline position (the clip's content slides under it), and every
-//   clip after the edit point on every unlocked track shifts by the change in duration, so no gap
-//   opens or closes. The shift stops at the largest one that keeps every track overlap-free.
-// Linked partners trim with the clip (same delta) unless the caller trims one side only (Alt). Every
-// limit is an interval of deltas, so the request is clamped, never refused: the 1-frame minimum,
-// the media bounds (`in >= 0`, `out <= media.durationUs`; none for images, text, solids, captions),
-// frame 0, the neighbor clip (regular), the ripple collisions (ripple), and each partner's own.
-// `planTrim` does the delta-independent part once per gesture; `resolveTrim` turns a delta into one
-// command (one undo step).
+// Trimming (spec §6.10, §6.19, P2): the pure edits behind edge drags, the Slip, Slide and Rate stretch
+// tools, rolling edits, Q/W (trim to playhead) and E (extend edit). Every edit moves clip edges (or a
+// clip's source) by the same number of frames:
+// - trim: the clip changes `start`/`in` (in point) or `duration`/`out` (out point) and nothing else
+//   moves; the neighbor clip bounds it (no overlap, no overwrite);
+// - ripple trim: the in point keeps its timeline position (the clip's content slides under it), and
+//   every clip after the edit point on every unlocked track shifts by the change in duration, so no
+//   gap opens or closes. The shift stops at the largest one that keeps every track overlap-free;
+// - roll: the cut between two abutting clips moves: the left clip's out and the right clip's in
+//   change together, so the total duration stays;
+// - slip: `in` and `out` move by the same amount; position and duration stay;
+// - slide: the clip moves while its abutting neighbors give and take the frames (the previous one's
+//   out, the next one's in), so the total duration stays; a gap on a side grows or shrinks instead;
+// - rate stretch: an edge moves and `speed` changes so the same `in`/`out` range fills the new
+//   duration (§5.1: speed = source frames / duration; 0.25x to 4x, spec §14).
+// Linked partners take the same edit (same delta) unless the caller edits one side only (Alt). Every
+// limit is an interval of deltas, so the request is clamped, never refused: the 1-frame minimum, the
+// media bounds (`in >= 0`, `out <= media.durationUs`; none for images, text, solids, captions), the
+// speed range, frame 0, the neighbor clips (an edge whose facing neighbor edge does not move with it),
+// the ripple collisions, and each partner's own. A `plan*` function does the delta-independent part
+// once per gesture; `resolveTrim` turns a delta into one command (one undo step).
 import type { Draft } from "immer";
 import type { Command } from "../../core/commands/command.js";
 import { framesToSourceUs, usPerFrame } from "../../core/document/time.js";
@@ -19,6 +27,16 @@ import { clipInIndex, isClipLocked, lastClipStartingBy, linkedPartners, trackInd
 
 export type TrimEdge = "in" | "out";
 
+/** The edits of spec §6.10 that move clip edges (or a source) by a number of frames. */
+export type EditKind = "trim" | "roll" | "slip" | "slide" | "stretch";
+
+/**
+ * How an edit changes one clip: an edge trims (`in`, `out`), the whole clip moves (`move`: the slid
+ * clip), its source slips under it (`slip`), or an edge moves and changes its speed (`stretchIn`,
+ * `stretchOut`).
+ */
+export type ClipMove = "in" | "out" | "move" | "slip" | "stretchIn" | "stretchOut";
+
 export interface TrimOptions {
   /** Ripple trim (spec §6.10: Ripple mode, or Mod while dragging). */
   ripple: boolean;
@@ -26,14 +44,18 @@ export interface TrimOptions {
   linked?: boolean;
 }
 
-/** What stops a trim, in the order a tie between limits at the same delta is reported. */
-export type TrimLimitReason = "mediaStart" | "mediaEnd" | "minDuration" | "neighbor" | "ripple" | "timelineStart";
+/** What stops an edit, in the order a tie between limits at the same delta is reported. */
+export type TrimLimitReason = "mediaStart" | "mediaEnd" | "minDuration" | "minSpeed" | "maxSpeed" | "neighbor" | "ripple" | "timelineStart";
 
-const REASON_ORDER: readonly TrimLimitReason[] = ["mediaStart", "mediaEnd", "minDuration", "neighbor", "ripple", "timelineStart"];
+const REASON_ORDER: readonly TrimLimitReason[] = ["mediaStart", "mediaEnd", "minDuration", "minSpeed", "maxSpeed", "neighbor", "ripple", "timelineStart"];
+
+/** The speed range of clips (spec §14: 0.25x to 4x). */
+export const MIN_SPEED = 0.25;
+export const MAX_SPEED = 4;
 
 export interface TrimLimit {
   reason: TrimLimitReason;
-  /** The trimmed clip whose bound it is; for `ripple`, the clip that would collide. */
+  /** The edited clip whose bound it is; for `ripple`, the clip that would collide. */
   clipId: ClipId;
   trackId: TrackId;
 }
@@ -43,23 +65,36 @@ interface Bound {
   limit: TrimLimit | null;
 }
 
+/** A delta that puts a clip's source on its media start or end. */
+export interface MediaBoundAt {
+  delta: number;
+  clipId: ClipId;
+  side: "start" | "end";
+}
+
 export interface TrimPlan {
   project: Project;
+  kind: EditKind;
+  /** The dragged clip. */
+  clipId: ClipId;
+  /** Its dragged edge (a roll drags the left clip's out point; slips and slides use `in`). */
   edge: TrimEdge;
   ripple: boolean;
-  /** The clips the trim changes: the given ones first, then their linked partners. */
+  /** The clips the edit changes: the given ones first, then their linked partners (and a slide's neighbors). */
   trimmed: readonly Clip[];
-  /** Clips the ripple shifts (none for a regular trim). */
+  /** How each of `trimmed` changes. */
+  moves: ReadonlyMap<ClipId, ClipMove>;
+  /** Clips the ripple shifts (none for other edits). */
   shifted: readonly Clip[];
   /** Per track: the start of its first shifted clip, before the shift. */
   firstShifted: ReadonlyMap<TrackId, Frame>;
-  /** Trimmed and shifted ids: what the trim moves (snapping excludes them, spec §6.9). */
+  /** Edited and shifted ids: what the edit moves (snapping excludes them, spec §6.9). */
   moving: ReadonlySet<ClipId>;
   /** The lowest and highest delta every limit allows (`lo <= 0 <= hi`). */
   lo: Bound;
   hi: Bound;
-  /** The deltas that put a trimmed clip's edge on its media bound. */
-  mediaBounds: readonly number[];
+  /** The deltas that put an edited clip's source on its media bound. */
+  mediaBounds: readonly MediaBoundAt[];
 }
 
 export interface TrimResult {
@@ -72,8 +107,10 @@ export interface TrimResult {
   shift: number;
   /** What clamped the request, or null when it fit. */
   limit: TrimLimit | null;
-  /** The trimmed edge sits on a media bound (spec §6.10: red edge, `Media start` / `Media end`). */
+  /** The dragged clip's (else the first) source sits on a media bound (spec §6.10: `Media start` / `Media end`). */
   mediaBound: "start" | "end" | null;
+  /** Every edited clip whose source sits on a media bound, and which one (its edge turns red). */
+  bounds: ReadonlyMap<ClipId, "start" | "end">;
   /** The new version of every clip that changes. */
   changes: ReadonlyMap<ClipId, Clip>;
   /** One undo step, or null when nothing changes. */
@@ -85,8 +122,8 @@ export function edgeFrame(clip: Clip, edge: TrimEdge): Frame {
   return edge === "in" ? clip.start : clip.start + clip.duration;
 }
 
-/** Video and audio clips play a source that moves under them: media bounds, keyframes follow it. */
-function hasSource(clip: Clip): clip is MediaClip {
+/** Video and audio clips play a source that moves under them: media bounds, slips, speed, keyframes follow it. */
+export function hasSource(clip: Clip): clip is MediaClip {
   return clip.kind === "video" || clip.kind === "audio";
 }
 
@@ -108,6 +145,24 @@ export function maxDurationFrames(clip: MediaClip, durationUs: number, fps: Rati
   return d;
 }
 
+/** Frames of source after `out`: the most a slip can move the source later (largest k with out + k frames <= durationUs). */
+export function tailFrames(clip: MediaClip, durationUs: number, fps: Rational): number {
+  const room = durationUs - clip.out;
+  if (room <= 0) return 0;
+  let k = Math.floor(room / (usPerFrame(fps) * clip.speed));
+  while (clip.out + framesToSourceUs(k + 1, clip.speed, fps) <= durationUs) k += 1;
+  while (k > 0 && clip.out + framesToSourceUs(k, clip.speed, fps) > durationUs) k -= 1;
+  return k;
+}
+
+/** The durations a rate stretch allows (speed within 0.25x..4x, at least 1 frame), and what bounds the shortest. */
+function stretchRange(clip: Clip): { min: number; max: number; minReason: TrimLimitReason } {
+  // The source frames the clip plays stay the same: duration * speed (§5.1).
+  const span = clip.duration * (isMediaClip(clip) ? clip.speed : 1);
+  const fastest = Math.ceil(span / MAX_SPEED - 1e-9);
+  return { min: Math.max(1, fastest), max: Math.max(1, Math.floor(span / MIN_SPEED + 1e-9)), minReason: fastest > 1 ? "maxSpeed" : "minDuration" };
+}
+
 /** Keeps the tighter bound; a tie goes to the reason first in `REASON_ORDER`. */
 function tighter(current: Bound, value: number, limit: TrimLimit, side: "lo" | "hi"): Bound {
   if (side === "lo" ? value > current.value : value < current.value) return { value, limit };
@@ -115,59 +170,98 @@ function tighter(current: Bound, value: number, limit: TrimLimit, side: "lo" | "
   return current;
 }
 
+const startMoves = (move: ClipMove | undefined) => move === "in" || move === "move" || move === "stretchIn";
+const endMoves = (move: ClipMove | undefined) => move === "out" || move === "move" || move === "stretchOut";
+
+/** Adds `move` for a clip that exists, is not on a locked track (spec §6.12) and has no move yet. */
+function addMove(project: Project, moves: Map<ClipId, ClipMove>, clipId: ClipId, move: ClipMove): void {
+  if (!project.clips[clipId] || moves.has(clipId) || isClipLocked(project, clipId)) return;
+  moves.set(clipId, move);
+}
+
+/** The partners of every clip in `moves` (unless `linked` is false), with the move `of` gives. */
+function addPartners(project: Project, moves: Map<ClipId, ClipMove>, linked: boolean | undefined, of: (move: ClipMove) => ClipMove | null): void {
+  if (linked === false) return;
+  for (const [id, move] of [...moves]) {
+    const partnerMove = of(move);
+    if (partnerMove) for (const partner of linkedPartners(project, id)) addMove(project, moves, partner, partnerMove);
+  }
+}
+
 /**
- * The delta-independent part of a trim of `edge` on `clipIds` (and, with `linked`, their partners on
- * unlocked tracks): the clips it moves and the delta range every limit allows. Clips on locked tracks
- * are never trimmed or shifted (spec §6.12).
+ * The delta-independent part of an edit: the delta range every limit allows for `moves` (and, for a
+ * ripple trim of `edge`, the clips it shifts). Clips on locked tracks are never edited or shifted.
  */
-export function planTrim(project: Project, clipIds: readonly ClipId[], edge: TrimEdge, options: TrimOptions): TrimPlan {
+function buildPlan(project: Project, kind: EditKind, clipId: ClipId, edge: TrimEdge, moves: ReadonlyMap<ClipId, ClipMove>, ripple: boolean): TrimPlan {
   const { fps } = project.settings;
-  const ripple = options.ripple;
   const trimmed: Clip[] = [];
-  const trimmedIds = new Set<ClipId>();
-  const take = (id: ClipId) => {
-    const clip = project.clips[id];
-    if (!clip || trimmedIds.has(id) || isClipLocked(project, id)) return;
-    trimmedIds.add(id);
-    trimmed.push(clip);
-  };
-  for (const id of clipIds) take(id);
-  if (options.linked !== false) for (const clip of [...trimmed]) for (const id of linkedPartners(project, clip.id)) take(id);
+  for (const id of moves.keys()) trimmed.push(project.clips[id] as Clip);
 
   let lo: Bound = { value: -Infinity, limit: null };
   let hi: Bound = { value: Infinity, limit: null };
-  const mediaBounds: number[] = [];
+  const mediaBounds: MediaBoundAt[] = [];
   const tracks = new Map(project.tracks.map((track) => [track.id, track]));
   for (const clip of trimmed) {
+    const move = moves.get(clip.id) as ClipMove;
     const at = (reason: TrimLimitReason): TrimLimit => ({ reason, clipId: clip.id, trackId: clip.trackId });
     const track = tracks.get(clip.trackId);
     if (!track) continue;
     const index = trackIndex(project, track);
     const position = lastClipStartingBy(index, clip.start);
-    if (edge === "in") {
-      hi = tighter(hi, clip.duration - 1, at("minDuration"), "hi");
-      if (!ripple) {
-        lo = tighter(lo, -clip.start, at("timelineStart"), "lo");
-        const prev = index.clips[position - 1];
-        if (prev && !trimmedIds.has(prev.id)) lo = tighter(lo, prev.start + prev.duration - clip.start, at("neighbor"), "lo");
+    const end = clip.start + clip.duration;
+    // The neighbors: an edge stops at the facing edge of the clip next to it, unless that edge moves too.
+    if (!ripple && startMoves(move)) {
+      lo = tighter(lo, -clip.start, at("timelineStart"), "lo");
+      const prev = index.clips[position - 1];
+      if (prev && !endMoves(moves.get(prev.id))) lo = tighter(lo, prev.start + prev.duration - clip.start, at("neighbor"), "lo");
+    }
+    if (!ripple && endMoves(move)) {
+      const next = index.clips[position + 1];
+      if (next && !startMoves(moves.get(next.id))) hi = tighter(hi, next.start - end, at("neighbor"), "hi");
+    }
+    const media = hasSource(clip) ? project.media[clip.mediaId] : undefined;
+    switch (move) {
+      case "in":
+        hi = tighter(hi, clip.duration - 1, at("minDuration"), "hi");
+        if (hasSource(clip)) {
+          const bound = -headFrames(clip, fps);
+          mediaBounds.push({ delta: bound, clipId: clip.id, side: "start" });
+          lo = tighter(lo, bound, at("mediaStart"), "lo");
+        }
+        break;
+      case "out":
+        lo = tighter(lo, 1 - clip.duration, at("minDuration"), "lo");
+        if (hasSource(clip)) {
+          const bound = media ? Math.max(0, maxDurationFrames(clip, media.durationUs, fps) - clip.duration) : 0;
+          mediaBounds.push({ delta: bound, clipId: clip.id, side: "end" });
+          hi = tighter(hi, bound, at("mediaEnd"), "hi");
+        }
+        break;
+      case "slip":
+        if (hasSource(clip)) {
+          const head = -headFrames(clip, fps);
+          const tail = media ? tailFrames(clip, media.durationUs, fps) : 0;
+          mediaBounds.push({ delta: head, clipId: clip.id, side: "start" }, { delta: tail, clipId: clip.id, side: "end" });
+          lo = tighter(lo, head, at("mediaStart"), "lo");
+          hi = tighter(hi, tail, at("mediaEnd"), "hi");
+        }
+        break;
+      case "stretchIn":
+      case "stretchOut": {
+        // The new duration is d - delta (in) or d + delta (out).
+        const range = stretchRange(clip);
+        const d = clip.duration;
+        if (move === "stretchIn") {
+          hi = tighter(hi, d - range.min, at(range.minReason), "hi");
+          lo = tighter(lo, d - range.max, at("minSpeed"), "lo");
+        } else {
+          lo = tighter(lo, range.min - d, at(range.minReason), "lo");
+          hi = tighter(hi, range.max - d, at("minSpeed"), "hi");
+        }
+        break;
       }
-      if (hasSource(clip)) {
-        const bound = -headFrames(clip, fps);
-        mediaBounds.push(bound);
-        lo = tighter(lo, bound, at("mediaStart"), "lo");
-      }
-    } else {
-      lo = tighter(lo, 1 - clip.duration, at("minDuration"), "lo");
-      if (!ripple) {
-        const next = index.clips[position + 1];
-        if (next && !trimmedIds.has(next.id)) hi = tighter(hi, next.start - (clip.start + clip.duration), at("neighbor"), "hi");
-      }
-      if (hasSource(clip)) {
-        const media = project.media[clip.mediaId];
-        const bound = media ? Math.max(0, maxDurationFrames(clip, media.durationUs, fps) - clip.duration) : 0;
-        mediaBounds.push(bound);
-        hi = tighter(hi, bound, at("mediaEnd"), "hi");
-      }
+      case "move":
+        break;
     }
   }
 
@@ -190,7 +284,7 @@ export function planTrim(project: Project, clipIds: readonly ClipId[], edge: Tri
       let first = -1;
       for (let i = lastClipStartingBy(index, point - 1) + 1; i < index.clips.length; i++) {
         const clip = index.clips[i] as Clip;
-        if (trimmedIds.has(clip.id)) continue;
+        if (moves.has(clip.id)) continue;
         if (first === -1) first = i;
         shifted.push(clip);
       }
@@ -200,7 +294,7 @@ export function planTrim(project: Project, clipIds: readonly ClipId[], edge: Tri
       // A shift to the left is bounded by the clip before the first shifted one (or frame 0). A
       // trimmed clip there moves its edge with the shift, so it never limits.
       const prev = index.clips[first - 1];
-      if (prev && trimmedIds.has(prev.id)) continue;
+      if (prev && moves.has(prev.id)) continue;
       const gap = head.start - (prev ? prev.start + prev.duration : 0);
       const limit: TrimLimit = { reason: "ripple", clipId: head.id, trackId: track.id };
       // Out point: the shift is the delta; in point: the shift is minus the delta.
@@ -211,9 +305,114 @@ export function planTrim(project: Project, clipIds: readonly ClipId[], edge: Tri
   // A valid document always allows 0 (no change).
   if (lo.value > 0) lo = { value: 0, limit: lo.limit };
   if (hi.value < 0) hi = { value: 0, limit: hi.limit };
-  const moving = new Set<ClipId>(trimmedIds);
+  const moving = new Set<ClipId>(moves.keys());
   for (const clip of shifted) moving.add(clip.id);
-  return { project, edge, ripple, trimmed, shifted, firstShifted, moving, lo, hi, mediaBounds };
+  return { project, kind, clipId, edge, ripple, trimmed, moves, shifted, firstShifted, moving, lo, hi, mediaBounds };
+}
+
+/**
+ * A trim of `edge` on `clipIds` and, with `linked`, their partners on unlocked tracks (spec §6.10):
+ * regular, or ripple with `options.ripple`.
+ */
+export function planTrim(project: Project, clipIds: readonly ClipId[], edge: TrimEdge, options: TrimOptions): TrimPlan {
+  const moves = new Map<ClipId, ClipMove>();
+  for (const id of clipIds) addMove(project, moves, id, edge);
+  addPartners(project, moves, options.linked, () => edge);
+  return buildPlan(project, "trim", clipIds[0] ?? "", edge, moves, options.ripple);
+}
+
+/**
+ * A rolling edit of the cut between `leftId` and the clip after it, `rightId` (spec §6.10): the left
+ * clip's out and the right clip's in move together, and so do their partners' (a linked partner with
+ * no clip against it trims alone, bounded by its neighbor). Limited by both media bounds.
+ */
+export function planRoll(project: Project, leftId: ClipId, rightId: ClipId, options: { linked?: boolean } = {}): TrimPlan {
+  const moves = new Map<ClipId, ClipMove>();
+  addMove(project, moves, leftId, "out");
+  addMove(project, moves, rightId, "in");
+  addPartners(project, moves, options.linked, (move) => move);
+  return buildPlan(project, "roll", leftId, "out", moves, false);
+}
+
+/** A slip of a video or audio clip and its partners (spec §6.10): `in` and `out` move by the delta (later source for > 0). */
+export function planSlip(project: Project, clipId: ClipId, options: { linked?: boolean } = {}): TrimPlan {
+  const moves = new Map<ClipId, ClipMove>();
+  const slip = (id: ClipId) => {
+    const clip = project.clips[id];
+    if (clip && hasSource(clip)) addMove(project, moves, id, "slip");
+  };
+  slip(clipId);
+  if (options.linked !== false) for (const id of [...moves.keys()]) for (const partner of linkedPartners(project, id)) slip(partner);
+  return buildPlan(project, "slip", clipId, "in", moves, false);
+}
+
+/**
+ * A slide of a clip and its partners (spec §6.10): each moves by the delta; the clip abutting it on the
+ * left changes its out point and the one abutting it on the right its in point by the same delta, so
+ * the track's total duration stays. A gap on a side takes the change instead (bounded by the clip
+ * beyond it). Limited by the neighbors' media bounds and 1-frame minimum.
+ */
+export function planSlide(project: Project, clipId: ClipId, options: { linked?: boolean } = {}): TrimPlan {
+  const slid = new Map<ClipId, ClipMove>();
+  addMove(project, slid, clipId, "move");
+  addPartners(project, slid, options.linked, () => "move");
+  const moves = new Map(slid);
+  for (const id of slid.keys()) {
+    const clip = project.clips[id] as Clip;
+    const track = project.tracks.find((candidate) => candidate.id === clip.trackId);
+    if (!track) continue;
+    const index = trackIndex(project, track);
+    const position = lastClipStartingBy(index, clip.start);
+    const prev = index.clips[position - 1];
+    const next = index.clips[position + 1];
+    if (prev && prev.start + prev.duration === clip.start) addMove(project, moves, prev.id, "out");
+    if (next && next.start === clip.start + clip.duration) addMove(project, moves, next.id, "in");
+  }
+  return buildPlan(project, "slide", clipId, "in", moves, false);
+}
+
+/**
+ * A rate stretch of `edge` (spec §6.10): the edge moves like a trim and the clip's speed changes so the
+ * same `in`/`out` range fills the new duration (0.25x..4x); its partners stretch with it. Images, text,
+ * solids and captions have no speed: their edge trims.
+ */
+export function planStretch(project: Project, clipId: ClipId, edge: TrimEdge, options: { linked?: boolean } = {}): TrimPlan {
+  const moves = new Map<ClipId, ClipMove>();
+  const stretch = (id: ClipId) => {
+    const clip = project.clips[id];
+    if (clip) addMove(project, moves, id, hasSource(clip) ? (edge === "in" ? "stretchIn" : "stretchOut") : edge);
+  };
+  stretch(clipId);
+  if (options.linked !== false) for (const id of [...moves.keys()]) for (const partner of linkedPartners(project, id)) stretch(partner);
+  return buildPlan(project, "stretch", clipId, edge, moves, false);
+}
+
+/** An edit as a gesture describes it (and the controller replays it on the current document). */
+export interface EditSpec {
+  kind: EditKind;
+  clipId: ClipId;
+  /** The dragged edge (trims and stretches); a roll's is the left clip's `out`. */
+  edge: TrimEdge;
+  /** A roll: the clip right of the cut. */
+  rightId?: ClipId | null;
+  ripple: boolean;
+  linked: boolean;
+}
+
+/** The plan of an edit spec. */
+export function planEdit(project: Project, spec: EditSpec): TrimPlan {
+  switch (spec.kind) {
+    case "trim":
+      return planTrim(project, [spec.clipId], spec.edge, { ripple: spec.ripple, linked: spec.linked });
+    case "roll":
+      return planRoll(project, spec.clipId, spec.rightId ?? "", { linked: spec.linked });
+    case "slip":
+      return planSlip(project, spec.clipId, { linked: spec.linked });
+    case "slide":
+      return planSlide(project, spec.clipId, { linked: spec.linked });
+    case "stretch":
+      return planStretch(project, spec.clipId, spec.edge, { linked: spec.linked });
+  }
 }
 
 /** Keyframes (relative to the clip start) moved by `frames`; out-of-range keys are kept for a later trim back. */
@@ -221,6 +420,18 @@ function shiftKeyframes(keyframes: Keyframes, frames: number): Keyframes {
   const result: Keyframes = {};
   for (const [prop, list] of Object.entries(keyframes)) result[prop] = list.map((key) => ({ ...key, frame: key.frame - frames }));
   return result;
+}
+
+/** Keyframe frames scaled by `ratio` (a rate stretch: proportional only, spec Batch 14). */
+function scaleKeyframes(keyframes: Keyframes, ratio: number): Keyframes {
+  const result: Keyframes = {};
+  for (const [prop, list] of Object.entries(keyframes)) result[prop] = list.map((key) => ({ ...key, frame: Math.round(key.frame * ratio) }));
+  return result;
+}
+
+/** Fades never outlast the clip. */
+function clampFades(next: Clip & Record<string, unknown>, clip: Clip): void {
+  if ("fades" in clip) next.fades = { in: Math.min(clip.fades.in, next.duration), out: Math.min(clip.fades.out, next.duration) };
 }
 
 /** The clip with its `edge` moved by `delta` frames (the delta is within the plan's limits). */
@@ -252,18 +463,73 @@ function trimmedClip(clip: Clip, edge: TrimEdge, delta: number, ripple: boolean,
     }
   }
   // Text, solids and images keep their keyframes on the clip start (spec §6.10: off for text clips).
-  if ("fades" in clip) next.fades = { in: Math.min(clip.fades.in, next.duration), out: Math.min(clip.fades.out, next.duration) };
+  clampFades(next, clip);
   // TODO(batch 36): shorten the transition on the trimmed side to the handle left, remove it when none is.
   // TODO(batch 32): caption words outside the new range.
   return next;
 }
 
-function trimLabel(plan: TrimPlan): string {
-  if (plan.ripple) return "Ripple trim";
-  return plan.trimmed.length === 1 ? "Trim clip" : "Trim clips";
+/** A video or audio clip whose source moved `delta` frames later (keyframes stay on their source frames). */
+function slippedClip(clip: MediaClip, delta: number, project: Project): Clip {
+  const { fps } = project.settings;
+  const next = { ...clip };
+  const moved = framesToSourceUs(delta, clip.speed, fps);
+  next.in = clip.in + moved;
+  next.out = Math.min(project.media[clip.mediaId]?.durationUs ?? clip.out + moved, clip.out + moved);
+  // TODO(batch 42): the "keyframes follow source" setting.
+  if (clip.keyframes) next.keyframes = shiftKeyframes(clip.keyframes, delta);
+  return next;
 }
 
-/** Applies a trim of `plan` by `deltaFrames` (rounded, then clamped to the limits) as one command. */
+/** A video or audio clip with an edge moved by `delta` and the speed that keeps its `in`/`out` (§5.1). */
+function stretchedClip(clip: MediaClip, move: "stretchIn" | "stretchOut", delta: number): Clip {
+  const next = { ...clip } as MediaClip & Record<string, unknown>;
+  const duration = move === "stretchIn" ? clip.duration - delta : clip.duration + delta;
+  if (move === "stretchIn") next.start = clip.start + delta;
+  next.duration = duration;
+  // The source frames played stay duration * speed: 100 frames at 1x stretched to 200 play at 0.5x.
+  next.speed = (clip.speed * clip.duration) / duration;
+  // TODO(batch 35): keyframe-aware stretching (eases, holds); keys scale proportionally for now.
+  if (clip.keyframes) next.keyframes = scaleKeyframes(clip.keyframes, duration / clip.duration);
+  clampFades(next, clip);
+  return next;
+}
+
+function editedClip(clip: Clip, move: ClipMove, delta: number, plan: TrimPlan): Clip {
+  switch (move) {
+    case "in":
+    case "out":
+      return trimmedClip(clip, move, delta, plan.ripple, plan.project);
+    case "move":
+      return { ...clip, start: clip.start + delta };
+    case "slip":
+      return hasSource(clip) ? slippedClip(clip, delta, plan.project) : clip;
+    case "stretchIn":
+    case "stretchOut":
+      return hasSource(clip) ? stretchedClip(clip, move, delta) : clip;
+  }
+}
+
+function editLabel(plan: TrimPlan): string {
+  const count = (moves: readonly ClipMove[]) => [...plan.moves.values()].filter((move) => moves.includes(move)).length;
+  switch (plan.kind) {
+    case "roll":
+      return "Rolling edit";
+    case "slip":
+      return count(["slip"]) === 1 ? "Slip clip" : "Slip clips";
+    case "slide":
+      return count(["move"]) === 1 ? "Slide clip" : "Slide clips";
+    case "stretch":
+      return count(["stretchIn", "stretchOut", "in", "out"]) === 1 ? "Rate stretch clip" : "Rate stretch clips";
+    case "trim":
+      if (plan.ripple) return "Ripple trim";
+      return plan.trimmed.length === 1 ? "Trim clip" : "Trim clips";
+  }
+}
+
+const COMMAND_IDS: Record<EditKind, string> = { trim: "clip.trim", roll: "clip.roll", slip: "clip.slip", slide: "clip.slide", stretch: "clip.rateStretch" };
+
+/** Applies an edit of `plan` by `deltaFrames` (rounded, then clamped to the limits) as one command. */
 export function resolveTrim(plan: TrimPlan, deltaFrames: number, options: { label?: string } = {}): TrimResult {
   const requested = Math.round(deltaFrames);
   let delta = requested;
@@ -277,28 +543,29 @@ export function resolveTrim(plan: TrimPlan, deltaFrames: number, options: { labe
   }
   delta ||= 0;
   const shift = plan.ripple ? (plan.edge === "out" ? delta : -delta) || 0 : 0;
-  const atBound = plan.mediaBounds.includes(delta);
-  const mediaBound = atBound ? (plan.edge === "in" ? "start" : "end") : null;
+  const bounds = new Map<ClipId, "start" | "end">();
+  for (const bound of plan.mediaBounds) if (bound.delta === delta && !bounds.has(bound.clipId)) bounds.set(bound.clipId, bound.side);
+  const mediaBound = bounds.get(plan.clipId) ?? bounds.values().next().value ?? null;
   const changes = new Map<ClipId, Clip>();
   if (delta !== 0) {
-    for (const clip of plan.trimmed) changes.set(clip.id, trimmedClip(clip, plan.edge, delta, plan.ripple, plan.project));
+    for (const clip of plan.trimmed) changes.set(clip.id, editedClip(clip, plan.moves.get(clip.id) as ClipMove, delta, plan));
     for (const clip of plan.shifted) changes.set(clip.id, { ...clip, start: clip.start + shift });
   }
-  const command = changes.size > 0 ? trimCommand(options.label ?? trimLabel(plan), changes) : null;
-  return { plan, requested, delta, shift, limit, mediaBound, changes, command };
+  const command = changes.size > 0 ? editCommand(COMMAND_IDS[plan.kind], options.label ?? editLabel(plan), changes) : null;
+  return { plan, requested, delta, shift, limit, mediaBound, bounds, changes, command };
 }
 
-/** Trims never reorder a track (shifts keep the order, limits keep every gap >= 0): only clips change. */
-function trimCommand(label: string, changes: ReadonlyMap<ClipId, Clip>): Command {
+/** Edits never reorder a track (shifts keep the order, limits keep every gap >= 0): only clips change. */
+function editCommand(id: string, label: string, changes: ReadonlyMap<ClipId, Clip>): Command {
   const entries = [...changes];
   return {
-    id: "clip.trim",
+    id,
     label,
     affects: ["clips", "timeline"],
     run(draft) {
-      for (const [id, clip] of entries) {
-        if (!draft.clips[id]) throw new Error(`clip.trim: clip ${id} does not exist`);
-        draft.clips[id] = clip as Draft<Clip>;
+      for (const [clipId, clip] of entries) {
+        if (!draft.clips[clipId]) throw new Error(`${id}: clip ${clipId} does not exist`);
+        draft.clips[clipId] = clip as Draft<Clip>;
       }
     },
   };
@@ -307,6 +574,26 @@ function trimCommand(label: string, changes: ReadonlyMap<ClipId, Clip>): Command
 /** `trimEdge(doc, clipId, edge, deltaFrames, { ripple })` (spec §6.10): one clip edge and, unless `linked: false`, its partners. */
 export function trimEdge(project: Project, clipId: ClipId, edge: TrimEdge, deltaFrames: number, options: TrimOptions): TrimResult {
   return resolveTrim(planTrim(project, [clipId], edge, options), deltaFrames);
+}
+
+/** `rollEdit(doc, leftId, rightId, deltaFrames)` (spec §6.10): the cut between two abutting clips moves by the delta. */
+export function rollEdit(project: Project, leftId: ClipId, rightId: ClipId, deltaFrames: number, options: { linked?: boolean } = {}): TrimResult {
+  return resolveTrim(planRoll(project, leftId, rightId, options), deltaFrames);
+}
+
+/** `slip(doc, clipId, deltaFrames)` (spec §6.10): the source moves `deltaFrames` later (earlier when < 0) under the clip. */
+export function slip(project: Project, clipId: ClipId, deltaFrames: number, options: { linked?: boolean } = {}): TrimResult {
+  return resolveTrim(planSlip(project, clipId, options), deltaFrames);
+}
+
+/** `slide(doc, clipId, deltaFrames)` (spec §6.10): the clip moves, its abutting neighbors trim to keep the total duration. */
+export function slide(project: Project, clipId: ClipId, deltaFrames: number, options: { linked?: boolean } = {}): TrimResult {
+  return resolveTrim(planSlide(project, clipId, options), deltaFrames);
+}
+
+/** `rateStretch(doc, clipId, edge, deltaFrames)` (spec §6.10, §5.1): speed from the new duration, `in`/`out` kept. */
+export function rateStretch(project: Project, clipId: ClipId, edge: TrimEdge, deltaFrames: number, options: { linked?: boolean } = {}): TrimResult {
+  return resolveTrim(planStretch(project, clipId, edge, options), deltaFrames);
 }
 
 /** The document a trim result leaves (the live preview and the overlay draw it during the drag). */

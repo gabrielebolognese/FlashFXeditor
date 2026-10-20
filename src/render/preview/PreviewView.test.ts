@@ -80,6 +80,7 @@ function setup(extra: Partial<PreviewViewDeps> = {}) {
     maxTextureSize: 8192,
     ready: true,
     draw: vi.fn(() => true),
+    drawPanes: vi.fn(() => true),
     resize: () => undefined,
     createCanvasTarget: () => ({ kind: "canvas" }),
     releaseTarget: () => undefined,
@@ -117,7 +118,7 @@ function setup(extra: Partial<PreviewViewDeps> = {}) {
     return tex;
   };
   const drawn = () => (renderer.draw as ReturnType<typeof vi.fn>).mock.lastCall?.[0].layers[0]?.texture as TextureHandle | undefined;
-  return { view, session, document, scheduler, engine, notify, frames, requests, cache, drawn };
+  return { view, session, document, scheduler, engine, notify, frames, requests, cache, drawn, renderer };
 }
 
 describe("PreviewView", () => {
@@ -146,6 +147,42 @@ describe("PreviewView", () => {
     scheduler.flush();
     expect(frames.getFrame.mock.calls.length).toBeGreaterThanOrEqual(count);
     expect(requests.at(-1)?.timeUs).toBe(timeOf(200));
+  });
+
+  it("shows a split override's two frames side by side, each in its half; back to one frame after it", () => {
+    let override: { project: Project; frame: number; previewSplit: { leftFrame: number; rightFrame: number } | null } | null = null;
+    const { view, document, scheduler, requests, cache, renderer } = setup({ override: () => override, priority: () => (override ? "scrub" : "idle") });
+    scheduler.flush();
+    const draw = renderer.draw as ReturnType<typeof vi.fn>;
+    const drawPanes = renderer.drawPanes as ReturnType<typeof vi.fn>;
+    expect(drawPanes).not.toHaveBeenCalled();
+    // A roll at frame 120: the left side's last frame and the right side's first.
+    const left = cache(119);
+    const right = cache(120);
+    override = { project: document.getState(), frame: 119, previewSplit: { leftFrame: 119, rightFrame: 120 } };
+    scheduler.invalidate("preview");
+    scheduler.flush();
+    expect(drawPanes).toHaveBeenCalledTimes(1);
+    const [panes] = drawPanes.mock.lastCall as [{ list: { layers: { texture: unknown }[] }; bounds: object; viewport: { transform: number[] } }[]];
+    expect(panes.map((pane) => pane.list.layers[0]?.texture)).toEqual([left, right]);
+    // 400 x 600 css px at dpr 1: two 200 px halves; each frame (1080 x 1920) fitted with the 16 px margin.
+    expect(panes.map((pane) => pane.bounds)).toEqual([
+      { x: 0, y: 0, width: 200, height: 600 },
+      { x: 200, y: 0, width: 200, height: 600 },
+    ]);
+    expect((panes[1]?.viewport.transform[4] ?? 0) - (panes[0]?.viewport.transform[4] ?? 0)).toBe(200);
+    // The same frames again: no redraw.
+    scheduler.invalidate("preview");
+    scheduler.flush();
+    expect(drawPanes).toHaveBeenCalledTimes(1);
+    expect(view.stats.textures).toMatchObject({ layers: 2, exact: 2 });
+    // The edit ends: the single frame is drawn again even though the left pane's list matches it.
+    const draws = draw.mock.calls.length;
+    override = { project: document.getState(), frame: 119, previewSplit: null };
+    scheduler.invalidate("preview");
+    scheduler.flush();
+    expect(draw.mock.calls.length).toBe(draws + 1);
+    expect(requests.every((request) => request.options.priority !== "playback")).toBe(true);
   });
 
   it("requests the playhead's frame when playback pauses on a held layer", async () => {

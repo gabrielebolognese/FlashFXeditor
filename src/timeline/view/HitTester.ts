@@ -1,14 +1,15 @@
 // Timeline hit testing (spec §6.18). `hit(x, y)` turns a view point into a typed target. Priority:
 // handles and diamonds > edges/junctions > transitions > clip body > gap > track. Real results so far:
-// the ruler, the playhead head, track headers (and the "+ track" rows), the trim zones of clip edges,
-// clip bodies and empty space; the other types are declared for the batches that draw them.
+// the ruler, the playhead head, track headers (and the "+ track" rows), the junction band on a cut
+// between abutting clips, the trim zones of clip edges, clip bodies and empty space; the other types
+// are declared for the batches that draw them. The active tool decides what a hit does (the view).
 import type { ClipId, Frame, Project, TrackId, TrackKind } from "../../core/document/types.js";
-import { clipAtFrame } from "../model/queries.js";
+import { clipAtFrame, neighbors } from "../model/queries.js";
 import { contains, type HeaderToggle, type TimelineGeometry } from "./geometry.js";
 
 export type HitType =
   | "clip"
-  // The trim zones (spec §6.4); TODO(batch 14): the roll zone on junctions.
+  // The trim zones (spec §6.4) and the band on a cut between abutting clips (the roll zone, §6.10).
   | "clipEdgeIn"
   | "clipEdgeOut"
   | "junction"
@@ -42,6 +43,15 @@ export interface HitResult {
   addTrack: TrackKind | null;
   /** `headerToggle`: which one. */
   toggle: HeaderToggle | null;
+  /** `junction`: the cut and the clips on both sides; `clipId` is the one on the pointer's side. */
+  junction: Junction | null;
+}
+
+/** A cut between two abutting clips on a track (spec §6.10: the roll zone). */
+export interface Junction {
+  left: ClipId;
+  right: ClipId;
+  frame: Frame;
 }
 
 export interface HitSource {
@@ -52,6 +62,8 @@ export interface HitSource {
   playheadHeadWidth: number;
   /** Width of the trim zone inside each clip edge, CSS px (spec §6.4: 8 px). */
   trimZone: number;
+  /** Width of the band centered on a cut between abutting clips, CSS px (spec §6.10: 6 px). */
+  junctionZone: number;
 }
 
 /** Extra CSS px on each side of the playhead head that still grab it. */
@@ -63,7 +75,7 @@ export class HitTester {
   hit(x: number, y: number): HitResult {
     const geometry = this.source.geometry();
     const frame = geometry.xToFrame(x);
-    const result: HitResult = { type: "empty", frame, trackId: null, clipId: null, addTrack: null, toggle: null };
+    const result: HitResult = { type: "empty", frame, trackId: null, clipId: null, addTrack: null, toggle: null, junction: null };
     if (x < 0 || y < 0 || x >= geometry.width || y >= geometry.height) return result;
 
     if (y < geometry.rulerHeight) {
@@ -100,14 +112,30 @@ export class HitTester {
     result.type = "clip";
     result.clipId = clip.id;
     // Trim zones (spec §6.4, §6.10): the outer 8 px inside each edge, so where two clips abut the
-    // left side of the junction is the left clip's out point and the right side the right clip's in
-    // point. A narrow clip keeps its middle third for moves. Clips on locked tracks take no edits.
+    // left side of the cut is the left clip's out point and the right side the right clip's in point.
+    // The 6 px band centered on such a cut is the junction (the roll zone, edit point clicks); its
+    // halves stay inside each clip's trim zone. A narrow clip keeps its middle third for moves.
+    // Clips on locked tracks take no edits.
     if (project.tracks[row.index]?.locked) return result;
     const x0 = geometry.frameToX(clip.start);
     const x1 = geometry.frameToX(clip.start + clip.duration);
     const zone = Math.min(this.source.trimZone, (x1 - x0) / 3);
-    if (x < x0 + zone) result.type = "clipEdgeIn";
-    else if (x >= x1 - zone) result.type = "clipEdgeOut";
+    const half = Math.min(this.source.junctionZone / 2, zone);
+    if (x < x0 + zone) {
+      result.type = "clipEdgeIn";
+      const prev = x < x0 + half ? neighbors(project, clip.id).prev : null;
+      if (prev && prev.start + prev.duration === clip.start) {
+        result.type = "junction";
+        result.junction = { left: prev.id, right: clip.id, frame: clip.start };
+      }
+    } else if (x >= x1 - zone) {
+      result.type = "clipEdgeOut";
+      const next = x >= x1 - half ? neighbors(project, clip.id).next : null;
+      if (next && next.start === clip.start + clip.duration) {
+        result.type = "junction";
+        result.junction = { left: clip.id, right: next.id, frame: next.start };
+      }
+    }
     return result;
   }
 }

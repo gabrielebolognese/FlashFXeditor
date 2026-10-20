@@ -179,3 +179,8 @@ export function formatDurationUs(us: Us, precise = false): string {
   const seconds = roundDiv(total, US_PER_SECOND);
   return clock(total > 0 ? Math.max(1, seconds) : 0);
 }
+
+/** A clip speed for badges and tooltips (spec §6.4: `2x`): at most two decimals, no trailing zeros (`0.5x`, `1.33x`). */
+export function formatSpeed(speed: number): string {
+  return `${Number(speed.toFixed(2))}x`;
+}

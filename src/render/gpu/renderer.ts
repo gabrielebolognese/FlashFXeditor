@@ -45,6 +45,16 @@ export interface Viewport {
   border: { color: RGBA; width: number } | null;
 }
 
+/**
+ * One part of a split draw (spec §6.10: the trim preview shows two frames side by side): a list drawn
+ * with its own viewport, everything (frame, layers, border) clipped to `bounds` (target px).
+ */
+export interface Pane {
+  list: DrawList;
+  viewport: Viewport;
+  bounds: { x: number; y: number; width: number; height: number };
+}
+
 export type DeviceEvent = "lost" | "ready";
 
 export interface TextureOptions {
@@ -69,6 +79,11 @@ export interface Renderer {
    * Returns false when nothing could be drawn (device not ready).
    */
   draw(list: DrawList, target: RenderTarget, viewport?: Viewport): boolean;
+  /**
+   * Renders several panes into `target` in one pass: clear to the first pane's `outside` color, then
+   * each pane as `draw` would, clipped to its bounds. Returns false when nothing could be drawn.
+   */
+  drawPanes(panes: readonly Pane[], target: RenderTarget): boolean;
   /** An empty texture that can be rendered into and sampled. */
   createTexture(width: number, height: number, options?: TextureOptions): TextureHandle;
   /** Copies the frame into a new texture and closes the frame at once (P5, P13). */

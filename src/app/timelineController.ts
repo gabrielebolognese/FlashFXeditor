@@ -1,9 +1,10 @@
-// Timeline wiring (spec §6): the timeline view, the zoom and edit-point/marker navigation actions
-// (§6.2, §6.5; the transport keys are in playbackController), the toolbar's direct-DOM bindings (zoom
-// slider, timecode field, duration: no React render while they change, P1), insert at the playhead
-// from the media panel (§6.14), the audio track header mute/solo toggles (§6.12), clip moves (drops,
-// nudges, Alt+Up/Down, §6.8), trims (edge drags, Q/W/E, Ripple mode, §6.10), the snap toggle (§6.9),
-// select all / deselect (§6.7), Esc for gestures and the dev clip generator.
+// Timeline wiring (spec §6): the timeline view, the zoom, center playhead and edit-point/marker
+// navigation actions (§6.2, §6.5, §6.6; the transport keys are in playbackController), the toolbar's
+// direct-DOM bindings (zoom slider, timecode field, duration: no React render while they change, P1),
+// insert at the playhead from the media panel (§6.14), the audio track header mute/solo toggles
+// (§6.12), clip moves (drops, nudges, Alt+Up/Down, §6.8), edits (trim, roll, slip, slide and rate
+// stretch drags, Q/W/E, Ripple mode, §6.10), the tools (§6.18), the snap toggle (§6.9), select all /
+// deselect (§6.7), Esc for gestures and the dev clip generator.
 import { addTrack, updateClip, updateTrack, type ClipPatch, type TrackPatch } from "../core/commands/basicCommands.js";
 import type { ActionRun } from "../core/commands/ActionRegistry.js";
 import { emptyTrack, nextTrackName } from "../core/document/project.js";
@@ -12,10 +13,10 @@ import type { ClipId, Frame, MediaId, Project, TrackId, TrackKind } from "../cor
 import { detectPlatform } from "../core/keyboard/keys.js";
 import { createStore } from "../core/store/createStore.js";
 import { EMPTY_SELECTION, selectClips, toSnapshot } from "../core/store/selection.js";
-import { setPlayhead, setSelection } from "../core/store/sessionStore.js";
+import { selectEditPoint, setPlayhead, setSelection, type Tool } from "../core/store/sessionStore.js";
 import { insertCommands, planMediaInsert } from "../timeline/edit/insertMedia.js";
 import { applyMoveRequest, moveToAdjacentLane, nudgeClips, type MoveRefusal, type MoveRequest, type MoveResult } from "../timeline/edit/move.js";
-import { extendToPlayhead, trimEdge, trimToPlayhead, type TrimLimit, type TrimResult } from "../timeline/edit/trim.js";
+import { extendToPlayhead, planEdit, resolveTrim, trimToPlayhead, type TrimLimit, type TrimResult } from "../timeline/edit/trim.js";
 import { contentEnd, laneOf, markerFrames, navigationPoints, nextEditPoint, prevEditPoint, selectableClipIds } from "../timeline/model/queries.js";
 import type { HeaderToggle } from "../timeline/view/geometry.js";
 import type { TrimRequest } from "../timeline/view/gestures/trimClip.js";
@@ -68,9 +69,9 @@ export function moveClips(request: MoveRequest): void {
   commitMove(applyMoveRequest(documentStore.getState(), request, newId), request.primary);
 }
 
-/** A trim drag was released (spec §6.10, P2): the one command of the gesture. The selection stays. */
+/** An edit drag (trim, roll, slip, slide, rate stretch) was released (spec §6.10, P2): the one command of the gesture. The selection stays. */
 export function trimClip(request: TrimRequest): void {
-  const result = trimEdge(documentStore.getState(), request.clipId, request.edge, request.deltaFrames, { ripple: request.ripple, linked: request.linked });
+  const result = resolveTrim(planEdit(documentStore.getState(), request), request.deltaFrames);
   if (result.command) documentStore.dispatch(result.command);
 }
 
@@ -83,6 +84,8 @@ function reportTrimLimit(limit: TrimLimit): void {
     mediaStart: { message: "Trim stopped at the media start", detail: `${clip} has no earlier frames.` },
     mediaEnd: { message: "Trim stopped at the media end", detail: `${clip} has no later frames.` },
     minDuration: { message: "Trim stopped at 1 frame", detail: "A clip is at least one frame long." },
+    minSpeed: { message: "Stopped at the slowest speed", detail: `${clip} can't play slower than 0.25x.` },
+    maxSpeed: { message: "Stopped at the fastest speed", detail: `${clip} can't play faster than 4x.` },
     neighbor: { message: "Trim stopped at the next clip", detail: `Clips on ${track} can't overlap.` },
     ripple: { message: `Ripple stopped by ${track}`, detail: `Clips on ${track} can't move further without overlapping.` },
     timelineStart: { message: "Trim stopped at the timeline start", detail: "Clips can't start before 0." },
@@ -170,6 +173,11 @@ const toggleSnap: ActionRun = (context) => {
   if (context?.phase === "up") return;
   sessionStore.state.set((state) => ({ ...state, snap: !state.snap }));
 };
+
+/** V, Y, U, R and the toolbar tools (spec §6.18): the active tool (session state, not undoable). */
+function selectTool(tool: Tool): ActionRun {
+  return () => sessionStore.state.set((state) => (state.activeTool === tool ? state : { ...state, activeTool: tool }));
+}
 
 /** Dev chrome of the timeline (not persisted). */
 export const timelineDev = createStore<{ stats: boolean }>({ stats: false });
@@ -312,6 +320,7 @@ export function installTimelineController(): () => void {
     actions.register("timeline.zoomIn", () => timelineView.zoomBy(ZOOM_IN_STEP)),
     actions.register("timeline.zoomOut", () => timelineView.zoomBy(ZOOM_OUT_STEP)),
     actions.register("timeline.zoomFit", () => timelineView.fit()),
+    actions.register("timeline.centerPlayhead", () => timelineView.centerPlayhead()),
     actions.register("timeline.prevEditPoint", jumpTo((project, frame) => prevEditPoint(navigationPoints(project, inOut()), frame))),
     actions.register("timeline.nextEditPoint", jumpTo((project, frame) => nextEditPoint(navigationPoints(project, inOut()), frame))),
     actions.register("timeline.prevMarker", jumpTo((project, frame) => prevEditPoint(markerFrames(project), frame))),
@@ -320,7 +329,10 @@ export function installTimelineController(): () => void {
       const { primary } = selectedClips();
       setSelection(sessionStore, selectClips(selectableClipIds(documentStore.getState()), primary));
     }),
-    actions.register("selection.deselect", () => setSelection(sessionStore, EMPTY_SELECTION)),
+    actions.register("selection.deselect", () => {
+      setSelection(sessionStore, EMPTY_SELECTION);
+      selectEditPoint(sessionStore, null);
+    }),
     actions.register("edit.nudgeLeft", nudge(-1)),
     actions.register("edit.nudgeRight", nudge(1)),
     actions.register("edit.nudgeLeft5", nudge(-5)),
@@ -331,6 +343,11 @@ export function installTimelineController(): () => void {
     actions.register("edit.rippleTrimNext", rippleTrimToPlayhead("end")),
     actions.register("edit.extendToPlayhead", extendEdit),
     actions.register("toggle.snap", toggleSnap),
+    // TODO(batch 15): the Razor tool (C); TODO(batch 18): the Hand tool (H).
+    actions.register("tool.select", selectTool("select")),
+    actions.register("tool.slip", selectTool("slip")),
+    actions.register("tool.slide", selectTool("slide")),
+    actions.register("tool.rateStretch", selectTool("rateStretch")),
     // Ripple mode (spec §6.10): edge drags ripple without Mod. Session state, not undoable.
     actions.register("toggle.rippleMode", () => sessionStore.state.set((state) => ({ ...state, ripple: !state.ripple }))),
     // Esc (spec §18 "Cancel gesture"): declined when no gesture runs, so popovers and the browser get it.

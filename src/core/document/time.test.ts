@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { FPS_30, firstFrameOfSecond, formatDurationUs, formatTimecode, framesToSourceUs, frameToUs, parseTimecode, playedFrames, secondOfFrame, secondsToFrames, ticksToUs, usPerFrame, usToFrame, usToFrameFloor } from "./time.js";
+import { FPS_30, firstFrameOfSecond, formatDurationUs, formatSpeed, formatTimecode, framesToSourceUs, frameToUs, parseTimecode, playedFrames, secondOfFrame, secondsToFrames, ticksToUs, usPerFrame, usToFrame, usToFrameFloor } from "./time.js";
 import type { Rational } from "./types.js";
 
 const NTSC: Rational = { num: 30000, den: 1001 };
@@ -209,5 +209,16 @@ describe("formatDurationUs", () => {
   it("formats precise durations with milliseconds", () => {
     expect(formatDurationUs(12_345_678, true)).toBe("00:12.345");
     expect(formatDurationUs(61_000_023, true)).toBe("01:01.000");
+  });
+});
+
+describe("formatSpeed", () => {
+  it("shows at most two decimals without trailing zeros", () => {
+    expect(formatSpeed(2)).toBe("2x");
+    expect(formatSpeed(0.5)).toBe("0.5x");
+    expect(formatSpeed(0.25)).toBe("0.25x");
+    expect(formatSpeed(4 / 3)).toBe("1.33x");
+    expect(formatSpeed(2 / 3)).toBe("0.67x");
+    expect(formatSpeed(0.49999995)).toBe("0.5x");
   });
 });

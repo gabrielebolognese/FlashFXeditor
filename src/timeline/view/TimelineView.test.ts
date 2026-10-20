@@ -3,6 +3,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { addClip, addTrack, removeClips, updateClip, updateTrack } from "../../core/commands/basicCommands.js";
 import { makeMedia, makeMediaClip, makeProject, makeTrack } from "../../core/document/fixtures.js";
+import { FPS_30, frameToUs } from "../../core/document/time.js";
 import type { TrackKind } from "../../core/document/types.js";
 import type { InvalidationFlag, RenderView } from "../../core/scheduler/FrameScheduler.js";
 import { DocumentStore } from "../../core/store/DocumentStore.js";
@@ -590,7 +591,7 @@ describe("TimelineView", () => {
       onTrimPreview.mockClear();
       pointer("pointerup", x(130) - 2, 200);
       expect(onTrimEdge).toHaveBeenCalledTimes(1);
-      expect(onTrimEdge).toHaveBeenCalledWith({ clipId: "b", edge: "out", deltaFrames: -10, ripple: false, linked: true });
+      expect(onTrimEdge).toHaveBeenCalledWith({ kind: "trim", clipId: "b", edge: "out", rightId: null, deltaFrames: -10, ripple: false, linked: true });
       expect(view.trimming).toBe(false);
       expect(view.trimPreview).toBeNull();
       expect(onTrimPreview).toHaveBeenCalledTimes(1);
@@ -613,7 +614,7 @@ describe("TimelineView", () => {
       session.state.set((state) => ({ ...state, ripple: true }));
       expect(view.trim?.proposal?.ripple).toBe(true);
       pointer("pointerup", x(30) - 2, 200, { altKey: true });
-      expect(onTrimEdge).toHaveBeenCalledWith({ clipId: "a", edge: "out", deltaFrames: 10, ripple: true, linked: false });
+      expect(onTrimEdge).toHaveBeenCalledWith({ kind: "trim", clipId: "a", edge: "out", rightId: null, deltaFrames: 10, ripple: true, linked: false });
     });
 
     it("turns the edge red at the media start, says so in the tooltip and clamps", () => {
@@ -683,6 +684,160 @@ describe("TimelineView", () => {
       expect(texts).toContainEqual({ style: testTheme().color.danger, text: "-3" });
       expect(texts).toContainEqual({ style: testTheme().color.danger, text: "+3" });
     });
+
+    describe("rolls, slips, slides, rate stretches and edit points (Batch 14)", () => {
+      /** V1: a [0, 50) at its media start, b [50, 90) 100 frames into its media, c [90, 120); all abutting. */
+      function cutSetup() {
+        const t = setup();
+        const add = (id: string, start: number, duration: number, inFrames: number) =>
+          t.document.dispatch(
+            addClip({ ...makeMediaClip(t.document.getState(), { id, trackId: "v1", start, duration, mediaId: "m" }), in: frameToUs(inFrames, FPS_30), out: frameToUs(inFrames + duration, FPS_30) }),
+          );
+        add("a", 0, 50, 0);
+        add("b", 50, 40, 100);
+        add("c", 90, 30, 0);
+        t.scheduler.flush();
+        return t;
+      }
+
+      it("shows the roll cursor on a cut with Mod+Alt and rolls it: both sides in the preview, one request", () => {
+        const { view, document, overlay, pointer, key, onTrimEdge } = cutSetup();
+        const before = document.getState();
+        pointer("pointermove", x(50) - 1, 200);
+        expect(overlay.style.cursor).toBe(cursors.out);
+        key("keydown", "Alt", { ctrlKey: true, altKey: true });
+        expect(overlay.style.cursor).toBe(cursors.roll);
+        key("keyup", "Alt", { ctrlKey: true });
+        expect(overlay.style.cursor).toBe(cursors.rippleOut);
+        pointer("pointerdown", x(50) - 1, 200, { ctrlKey: true, altKey: true });
+        pointer("pointermove", x(60) - 1, 200, { ctrlKey: true, altKey: true });
+        expect(view.trim?.kind).toBe("roll");
+        expect(overlay.style.cursor).toBe(cursors.roll);
+        expect(view.trim?.proposal?.result.delta).toBe(10);
+        expect(view.trimPreview?.previewSplit).toEqual({ leftFrame: 59, rightFrame: 60 });
+        expect(view.trimPreview?.project.clips.a).toMatchObject({ start: 0, duration: 60 });
+        expect(view.trimPreview?.project.clips.b).toMatchObject({ start: 60, duration: 30 });
+        expect(document.getState()).toBe(before);
+        // Releasing Alt mid-drag keeps the roll (Mod+Alt only starts it).
+        pointer("pointermove", x(62) - 1, 200, { ctrlKey: true });
+        expect(view.trim?.proposal?.result.delta).toBe(12);
+        pointer("pointerup", x(62) - 1, 200);
+        expect(onTrimEdge).toHaveBeenCalledWith({ kind: "roll", clipId: "a", edge: "out", rightId: "b", deltaFrames: 12, ripple: false, linked: true });
+      });
+
+      it("a click on a cut selects its edit point (a roll's, or a ripple side's), drawn as brackets; clicks elsewhere drop it", () => {
+        const { session, scheduler, pointer } = cutSetup();
+        pointer("pointerdown", x(25), 200);
+        pointer("pointerup", x(25), 200);
+        expect([...session.selection.getState().clipIds]).toEqual(["a"]);
+        pointer("pointerdown", x(50) + 1, 200);
+        pointer("pointerup", x(50) + 1, 200);
+        expect(session.editPoint.getState()).toEqual({ left: "a", right: "b", side: "both" });
+        expect(session.selection.getState().kind).toBe("none");
+        scheduler.flush();
+        expect(scene()?.editPoints).toEqual([{ trackId: "v1", frame: 50, side: "both" }]);
+        // With Ripple mode on, the side under the pointer.
+        session.state.set((state) => ({ ...state, ripple: true }));
+        pointer("pointerdown", x(90) - 1, 200);
+        pointer("pointerup", x(90) - 1, 200);
+        expect(session.editPoint.getState()).toEqual({ left: "b", right: "c", side: "left" });
+        // A click on a clip selects it and drops the edit point; so does a click on empty space.
+        pointer("pointerdown", x(100), 200);
+        pointer("pointerup", x(100), 200);
+        expect(session.editPoint.getState()).toBeNull();
+        pointer("pointerdown", x(50), 200);
+        pointer("pointerup", x(50), 200);
+        expect(session.editPoint.getState()).not.toBeNull();
+        pointer("pointerdown", x(300), 200);
+        pointer("pointerup", x(300), 200);
+        expect(session.editPoint.getState()).toBeNull();
+        scheduler.flush();
+        expect(scene()?.editPoints).toEqual([]);
+      });
+
+      it("Slip tool: the content moves with the pointer under the clip, both new edge frames side by side", () => {
+        const { view, session, document, scheduler, overlay, pointer, onTrimEdge } = cutSetup();
+        session.state.set((state) => ({ ...state, activeTool: "slip" }));
+        pointer("pointermove", x(70), 200);
+        expect(overlay.style.cursor).toBe(cursors.slip);
+        const before = document.getState();
+        pointer("pointerdown", x(70), 200);
+        pointer("pointermove", x(65), 200);
+        expect(view.trim?.kind).toBe("slip");
+        // Dragged 5 frames left: the source moves 5 frames later.
+        expect(view.trim?.proposal?.result.delta).toBe(5);
+        expect(view.trimPreview?.previewSplit).toEqual({ leftFrame: 50, rightFrame: 89 });
+        expect(view.trimPreview?.project.clips.b).toMatchObject({ start: 50, duration: 40, in: frameToUs(105, FPS_30) });
+        scheduler.flush();
+        expect(scene()?.tooltip?.text).toBe("Δ +00:00:05 · In 00:03:15");
+        expect(document.getState()).toBe(before);
+        pointer("pointerup", x(65), 200);
+        expect(onTrimEdge).toHaveBeenCalledWith({ kind: "slip", clipId: "b", edge: "in", rightId: null, deltaFrames: 5, ripple: false, linked: true });
+        // The press selected the clip.
+        expect([...session.selection.getState().clipIds]).toEqual(["b"]);
+      });
+
+      it("Slide tool: the clip follows the pointer, its neighbors trim, their new edges side by side", () => {
+        const { view, session, overlay, pointer, onTrimEdge } = cutSetup();
+        session.state.set((state) => ({ ...state, activeTool: "slide" }));
+        pointer("pointermove", x(50) + 1, 200);
+        expect(overlay.style.cursor).toBe(cursors.slide);
+        pointer("pointerdown", x(70), 200);
+        pointer("pointermove", x(75), 200);
+        expect(view.trim?.kind).toBe("slide");
+        expect(view.trimPreview?.project.clips.a).toMatchObject({ start: 0, duration: 55 });
+        expect(view.trimPreview?.project.clips.b).toMatchObject({ start: 55, duration: 40 });
+        expect(view.trimPreview?.project.clips.c).toMatchObject({ start: 95, duration: 25, in: frameToUs(5, FPS_30) });
+        expect(view.trimPreview?.previewSplit).toEqual({ leftFrame: 54, rightFrame: 95 });
+        pointer("pointerup", x(75), 200);
+        expect(onTrimEdge).toHaveBeenCalledWith({ kind: "slide", clipId: "b", edge: "in", rightId: null, deltaFrames: 5, ripple: false, linked: true });
+      });
+
+      it("draws the speed badge on video and audio clips whose speed is not 1", () => {
+        const { document, scheduler } = cutSetup();
+        texts.length = 0;
+        scheduler.flush();
+        expect(texts.some((text) => text.style === testTheme().color.textSecondary && text.text.endsWith("x"))).toBe(false);
+        document.dispatch(updateClip("c", { speed: 0.5 }));
+        scheduler.flush();
+        expect(texts).toContainEqual({ style: testTheme().color.textSecondary, text: "0.5x" });
+      });
+
+      it("Rate stretch tool: edges stretch with the new speed in the tooltip, bodies only select", () => {
+        const { view, session, scheduler, overlay, pointer, onTrimEdge, onMoveClips } = cutSetup();
+        session.state.set((state) => ({ ...state, activeTool: "rateStretch" }));
+        pointer("pointermove", x(120) - 2, 200);
+        expect(overlay.style.cursor).toBe(cursors.stretchOut);
+        pointer("pointermove", x(105), 200);
+        expect(overlay.style.cursor).toBe("default");
+        pointer("pointerdown", x(120) - 2, 200);
+        pointer("pointermove", x(150) - 2, 200);
+        expect(view.trim?.kind).toBe("stretch");
+        expect(view.trimPreview?.project.clips.c).toMatchObject({ start: 90, duration: 60, speed: 0.5, in: 0, out: frameToUs(30, FPS_30) });
+        scheduler.flush();
+        expect(scene()?.tooltip?.text).toBe("Δ +00:01:00 · 00:02:00 · 0.5x");
+        pointer("pointerup", x(150) - 2, 200);
+        expect(onTrimEdge).toHaveBeenCalledWith({ kind: "stretch", clipId: "c", edge: "out", rightId: null, deltaFrames: 30, ripple: false, linked: true });
+        // A body drag does nothing with this tool.
+        pointer("pointerdown", x(105), 200);
+        pointer("pointermove", x(130), 200);
+        expect(view.trimming).toBe(false);
+        expect(view.dragging).toBeNull();
+        pointer("pointerup", x(130), 200);
+        expect(onMoveClips).not.toHaveBeenCalled();
+      });
+    });
+  });
+
+  it("Mod+Shift+. centers the view on the playhead, within the scroll range", () => {
+    const { view, session } = setup(100);
+    setPlayhead(session, 500);
+    view.centerPlayhead();
+    // 824 px of track area at 4 px/frame: 103 frames left of the playhead.
+    expect(session.state.getState().timeline.scrollFrame).toBe(397);
+    setPlayhead(session, 10);
+    view.centerPlayhead();
+    expect(session.state.getState().timeline.scrollFrame).toBe(0);
   });
 
   it("stops drawing and listening once unmounted", () => {

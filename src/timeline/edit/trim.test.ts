@@ -6,7 +6,7 @@ import { validateProject } from "../../core/document/validate.js";
 import { DocumentStore } from "../../core/store/DocumentStore.js";
 import { createSessionStore } from "../../core/store/sessionStore.js";
 import { linkOffset } from "../model/queries.js";
-import { applyTrim, extendToPlayhead, headFrames, maxDurationFrames, planTrim, resolveTrim, trimEdge, trimToPlayhead, type TrimResult } from "./trim.js";
+import { applyTrim, extendToPlayhead, headFrames, maxDurationFrames, planEdit, planTrim, rateStretch, resolveTrim, rollEdit, slide, slip, trimEdge, trimToPlayhead, type TrimResult } from "./trim.js";
 
 const fps = makeProject().settings.fps;
 /** 10 s of media at 30 fps: 300 frames. */
@@ -457,5 +457,220 @@ describe("extendToPlayhead (E)", () => {
     expect(clamped?.limit?.reason).toBe("neighbor");
     expect(extendToPlayhead(p, "a", 100)).toBeNull();
     expect(extendToPlayhead(p, "missing", 10)).toBeNull();
+  });
+});
+
+describe("rollEdit (spec §6.10)", () => {
+  // a plays media frames 0..100, b 100..200: one shot cut at 100.
+  const cut = () => project([at("a", "v1", 0, 100, 0), at("b", "v1", 100, 100, 100), at("c", "v1", 200, 50, 0)]);
+
+  it("moves the cut: a's out and b's in together, the total duration unchanged, one undo step", () => {
+    const p = cut();
+    const result = rollEdit(p, "a", "b", 20);
+    expect(result.command).toMatchObject({ id: "clip.roll", label: "Rolling edit" });
+    const next = commit(p, result);
+    expect(span(next, "a")).toEqual([0, 120]);
+    expect(source(next, "a")).toEqual([0, frameToUs(120, fps)]);
+    expect(span(next, "b")).toEqual([120, 80]);
+    expect(source(next, "b")).toEqual([frameToUs(120, fps), frameToUs(200, fps)]);
+    expect(next.clips.c).toEqual(p.clips.c);
+    const back = commit(p, rollEdit(p, "a", "b", -30));
+    expect(span(back, "a")).toEqual([0, 70]);
+    expect(span(back, "b")).toEqual([70, 130]);
+    expect((back.clips.a as Clip).duration + (back.clips.b as Clip).duration).toBe(200);
+  });
+
+  it("stops at either media bound, reporting the side that hit it", () => {
+    // a ends at its media end (frame 300 of 300): the cut cannot move right.
+    const end = project([at("a", "v1", 0, 100, 200), at("b", "v1", 100, 100, 50)]);
+    const right = rollEdit(end, "a", "b", 10);
+    expect(right).toMatchObject({ delta: 0, mediaBound: "end", limit: { reason: "mediaEnd", clipId: "a" } });
+    expect([...right.bounds]).toEqual([["a", "end"]]);
+    expect(rollEdit(end, "a", "b", -10).bounds.size).toBe(0);
+    // b starts at its media start: the cut cannot move left; only b's side is on a bound.
+    const start = project([at("a", "v1", 0, 100, 0), at("b", "v1", 100, 100, 0)]);
+    const left = rollEdit(start, "a", "b", -10);
+    expect(left).toMatchObject({ delta: 0, mediaBound: "start", limit: { reason: "mediaStart", clipId: "b" } });
+    expect([...left.bounds]).toEqual([["b", "start"]]);
+    // In between, the nearer bound wins: b has 5 frames of head.
+    const head = project([at("a", "v1", 0, 100, 0), at("b", "v1", 100, 100, 5)]);
+    expect(rollEdit(head, "a", "b", -20)).toMatchObject({ delta: -5, limit: { reason: "mediaStart" } });
+  });
+
+  it("keeps both clips at least one frame long", () => {
+    const p = cut();
+    expect(rollEdit(p, "a", "b", 500)).toMatchObject({ delta: 99, limit: { reason: "minDuration", clipId: "b" } });
+    expect(rollEdit(p, "a", "b", -500)).toMatchObject({ delta: -99, limit: { reason: "minDuration", clipId: "a" } });
+  });
+
+  it("rolls the linked partners' cut too; a partner with nothing against it trims alone up to its neighbor", () => {
+    const p = project([
+      at("a", "v1", 0, 100, 0, { linkGroup: "A" }),
+      at("b", "v1", 100, 100, 100, { linkGroup: "B" }),
+      at("au", "a1", 0, 100, 0, { linkGroup: "A", kind: "audio" }),
+      at("bu", "a1", 100, 100, 100, { linkGroup: "B", kind: "audio" }),
+    ]);
+    const next = commit(p, rollEdit(p, "a", "b", 15));
+    expect(span(next, "au")).toEqual([0, 115]);
+    expect(span(next, "bu")).toEqual([115, 85]);
+    expect(rollEdit(p, "a", "b", 15, { linked: false }).changes.has("au")).toBe(false);
+    // The audio of a ends 10 frames before the next audio clip: the roll stops there.
+    const gap = project([
+      at("a", "v1", 0, 100, 0, { linkGroup: "A" }),
+      at("b", "v1", 100, 100, 100),
+      at("au", "a1", 0, 100, 0, { linkGroup: "A", kind: "audio" }),
+      at("x", "a1", 110, 20, 0, { kind: "audio" }),
+    ]);
+    expect(rollEdit(gap, "a", "b", 30)).toMatchObject({ delta: 10, limit: { reason: "neighbor", clipId: "au" } });
+  });
+
+  it("is reached through planEdit with the clip right of the cut", () => {
+    const plan = planEdit(cut(), { kind: "roll", clipId: "a", edge: "out", rightId: "b", ripple: false, linked: true });
+    expect([...plan.moves]).toEqual([
+      ["a", "out"],
+      ["b", "in"],
+    ]);
+    expect([...plan.moving].sort()).toEqual(["a", "b"]);
+  });
+});
+
+describe("slip (spec §6.10)", () => {
+  it("moves in and out by the same amount: position and duration stay, partners slip too", () => {
+    const p = project([at("v", "v1", 50, 100, 100, { linkGroup: "L" }), at("au", "a1", 50, 100, 100, { linkGroup: "L", kind: "audio" })]);
+    const result = slip(p, "v", 30);
+    expect(result.command).toMatchObject({ id: "clip.slip", label: "Slip clips" });
+    const next = commit(p, result);
+    expect(span(next, "v")).toEqual([50, 100]);
+    expect(source(next, "v")).toEqual([frameToUs(130, fps), frameToUs(230, fps)]);
+    expect(source(next, "au")).toEqual([frameToUs(130, fps), frameToUs(230, fps)]);
+    expect(slip(p, "v", -40, { linked: false }).command?.label).toBe("Slip clip");
+    expect(source(commit(p, slip(p, "v", -40, { linked: false })), "au")).toEqual(source(p, "au"));
+  });
+
+  it("stops at the media start and end with the bound side", () => {
+    const p = project([at("a", "v1", 0, 100, 20)]);
+    expect(slip(p, "a", -50)).toMatchObject({ delta: -20, mediaBound: "start", limit: { reason: "mediaStart" } });
+    // 300 frames of media, out at frame 120: 180 frames of tail.
+    expect(slip(p, "a", 500)).toMatchObject({ delta: 180, mediaBound: "end", limit: { reason: "mediaEnd" } });
+    const last = commit(p, slip(p, "a", 500));
+    expect(source(last, "a")).toEqual([frameToUs(200, fps), MEDIA_US]);
+    expect(validateProject(last)).toEqual([]);
+  });
+
+  it("keeps keyframes on their source frames; images and solids have nothing to slip", () => {
+    const keyed = at("a", "v1", 0, 100, 20, { keyframes: { opacity: [{ frame: 10, value: 1, ease: "linear" }] } });
+    const image = clip("i", "v2", 0, 50, { kind: "image", mediaId: "img", in: 0, out: frameToUs(50, fps) });
+    const p = project([keyed, image, makeSolidClip({ id: "s", trackId: "v2", start: 60, duration: 20 })]);
+    const next = commit(p, slip(p, "a", 5));
+    expect((next.clips.a as MediaClip).keyframes?.opacity?.[0]?.frame).toBe(5);
+    expect(slip(p, "i", 10).command).toBeNull();
+    expect(slip(p, "s", 10).command).toBeNull();
+  });
+});
+
+describe("slide (spec §6.10)", () => {
+  const row = () => project([at("a", "v1", 0, 100, 0), at("b", "v1", 100, 50, 100), at("c", "v1", 150, 100, 150)]);
+
+  it("moves the clip and trims both neighbors symmetrically: the total duration stays", () => {
+    const p = row();
+    const result = slide(p, "b", 20);
+    expect(result.command).toMatchObject({ id: "clip.slide", label: "Slide clip" });
+    const next = commit(p, result);
+    expect(span(next, "a")).toEqual([0, 120]);
+    expect(source(next, "a")).toEqual([0, frameToUs(120, fps)]);
+    expect(span(next, "b")).toEqual([120, 50]);
+    expect(source(next, "b")).toEqual(source(p, "b"));
+    expect(span(next, "c")).toEqual([170, 80]);
+    expect(source(next, "c")).toEqual([frameToUs(170, fps), frameToUs(250, fps)]);
+    const left = commit(p, slide(p, "b", -30));
+    expect(span(left, "a")).toEqual([0, 70]);
+    expect(span(left, "b")).toEqual([70, 50]);
+    expect(span(left, "c")).toEqual([120, 130]);
+    expect((left.clips.c as Clip).start + (left.clips.c as Clip).duration).toBe(250);
+  });
+
+  it("is limited by the neighbors' media bounds and their 1-frame minimum", () => {
+    // c starts at its media start: b cannot slide left (c's in would go before 0).
+    const p = project([at("a", "v1", 0, 100, 0), at("b", "v1", 100, 50, 100), at("c", "v1", 150, 100, 0)]);
+    expect(slide(p, "b", -10)).toMatchObject({ delta: 0, limit: { reason: "mediaStart", clipId: "c" } });
+    expect([...slide(p, "b", -10).bounds]).toEqual([["c", "start"]]);
+    // a ends at its media end: b cannot slide right.
+    const q = project([at("a", "v1", 0, 100, 200), at("b", "v1", 100, 50, 100), at("c", "v1", 150, 100, 150)]);
+    expect(slide(q, "b", 10)).toMatchObject({ delta: 0, limit: { reason: "mediaEnd", clipId: "a" } });
+    expect(slide(row(), "b", 500)).toMatchObject({ delta: 99, limit: { reason: "minDuration", clipId: "c" } });
+    expect(slide(row(), "b", -500)).toMatchObject({ delta: -99, limit: { reason: "minDuration", clipId: "a" } });
+  });
+
+  it("takes a gap side as room: the gap shrinks up to the clip beyond it, or frame 0", () => {
+    const p = project([at("a", "v1", 0, 80, 0), at("b", "v1", 100, 50, 100), at("c", "v1", 150, 100, 150)]);
+    const left = slide(p, "b", -50);
+    expect(left).toMatchObject({ delta: -20, limit: { reason: "neighbor", clipId: "b" } });
+    const next = commit(p, left);
+    expect(span(next, "a")).toEqual([0, 80]);
+    expect(span(next, "b")).toEqual([80, 50]);
+    expect(span(next, "c")).toEqual([130, 120]);
+    const first = project([at("b", "v1", 10, 50, 100), at("c", "v1", 60, 100, 150)]);
+    expect(slide(first, "b", -30)).toMatchObject({ delta: -10, limit: { reason: "timelineStart" } });
+  });
+
+  it("slides linked partners with their own neighbors", () => {
+    const p = project([
+      at("a", "v1", 0, 100, 0),
+      at("b", "v1", 100, 50, 100, { linkGroup: "L" }),
+      at("c", "v1", 150, 100, 150),
+      at("x", "a1", 0, 100, 0, { kind: "audio" }),
+      at("bu", "a1", 100, 50, 100, { linkGroup: "L", kind: "audio" }),
+    ]);
+    const next = commit(p, slide(p, "b", 10));
+    expect(span(next, "bu")).toEqual([110, 50]);
+    expect(span(next, "x")).toEqual([0, 110]);
+    expect(span(next, "c")).toEqual([160, 90]);
+  });
+});
+
+describe("rateStretch (spec §6.10, §5.1)", () => {
+  it("doubles the duration to 0.5x speed with in and out unchanged, partners too", () => {
+    const p = project([at("v", "v1", 0, 100, 30, { linkGroup: "L" }), at("au", "a1", 0, 100, 30, { linkGroup: "L", kind: "audio" })]);
+    const result = rateStretch(p, "v", "out", 100);
+    expect(result.command).toMatchObject({ id: "clip.rateStretch", label: "Rate stretch clips" });
+    const next = commit(p, result);
+    for (const id of ["v", "au"]) {
+      expect(span(next, id)).toEqual([0, 200]);
+      expect((next.clips[id] as MediaClip).speed).toBe(0.5);
+      expect(source(next, id)).toEqual(source(p, id));
+    }
+    // Back to 100 frames: 1x again.
+    const back = commit(next, rateStretch(next, "v", "out", -100));
+    expect(back.clips.v).toEqual(p.clips.v);
+  });
+
+  it("stretches from the in point: the end stays, the start moves", () => {
+    const p = project([at("a", "v1", 100, 60, 0)]);
+    const next = commit(p, rateStretch(p, "a", "in", -60));
+    expect(span(next, "a")).toEqual([40, 120]);
+    expect((next.clips.a as MediaClip).speed).toBe(0.5);
+    expect(source(next, "a")).toEqual(source(p, "a"));
+    expect(validateProject(next)).toEqual([]);
+  });
+
+  it("keeps the speed within 0.25x..4x and the clip off its neighbors", () => {
+    const p = project([at("a", "v1", 0, 100, 0), at("b", "v1", 500, 20, 0)]);
+    expect(rateStretch(p, "a", "out", -90)).toMatchObject({ delta: -75, limit: { reason: "maxSpeed" } });
+    expect((commit(p, rateStretch(p, "a", "out", -90)).clips.a as MediaClip).speed).toBe(4);
+    expect(rateStretch(p, "a", "out", 1000)).toMatchObject({ delta: 300, limit: { reason: "minSpeed" } });
+    expect((commit(p, rateStretch(p, "a", "out", 1000)).clips.a as MediaClip).speed).toBe(0.25);
+    const tight = project([at("a", "v1", 0, 100, 0), at("b", "v1", 150, 20, 0)]);
+    expect(rateStretch(tight, "a", "out", 100)).toMatchObject({ delta: 50, limit: { reason: "neighbor" } });
+  });
+
+  it("scales keyframe frames proportionally; solids trim instead", () => {
+    const keys = [
+      { frame: 0, value: 0, ease: "linear" as const },
+      { frame: 50, value: 1, ease: "linear" as const },
+    ];
+    const p = project([at("a", "v1", 0, 100, 0, { keyframes: { opacity: keys } }), makeSolidClip({ id: "s", trackId: "v2", start: 0, duration: 20 })]);
+    const next = commit(p, rateStretch(p, "a", "out", 100));
+    expect((next.clips.a as MediaClip).keyframes?.opacity?.map((key) => key.frame)).toEqual([0, 100]);
+    expect(span(commit(p, rateStretch(p, "s", "out", 10)), "s")).toEqual([0, 30]);
   });
 });
