@@ -34,7 +34,13 @@
 // - Transport: play/pause/toggle, the J/L ladder (`shuttleSpeed`), K held (pause; J and L step), play
 //   around, steps, the end of the content (stop on the last frame, or wrap when loop is on), and
 //   playhead moves by others (Home, End, the timecode field: play on from there). A ruler scrub pauses.
+// - Audio (spec §8, §14): the engine owns the audio scheduler. The preroll also waits for the decoded
+//   audio of the clips under the playhead; the clock starts (and re-anchors after a seek) `lead`
+//   seconds ahead, the time the render clock runs ahead of what is heard, so the first samples are
+//   not cut; every tick hands the scheduler the anchor, and a pause stops it. A loop wraps at its
+//   exact time (not at the tick that sees it), so audio scheduled across the wrap stays in sync.
 import type { PlaybackClock } from "../audio/AudioClock.js";
+import type { PlayMapping } from "../audio/scheduler/AudioScheduler.js";
 import { fpsToNumber, playedFrames, secondsToFrames, usPerFrame } from "../core/document/time.js";
 import type { Clip, ClipId, Frame, MediaClip, MediaId, Project, Rational } from "../core/document/types.js";
 import type { FrameScheduler } from "../core/scheduler/FrameScheduler.js";
@@ -90,6 +96,19 @@ export interface PlaybackStats {
   received: number;
 }
 
+/** The audio scheduler, as the engine drives it (audio/scheduler/AudioScheduler.ts). */
+export interface PlaybackAudio {
+  /** Seconds to start the clock ahead of now so the first samples are heard on time (0 when silent). */
+  lead(): number;
+  /** True when the audio under `frame` is decoded; asks for what is missing. */
+  prepare(project: Project, frame: Frame): boolean;
+  /** Loads the audio of clips playing soon. */
+  prefetch(project: Project, frame: Frame): void;
+  /** Follows the anchor and schedules what comes next. */
+  sync(mapping: PlayMapping): void;
+  stop(): void;
+}
+
 export interface PlaybackEngineDeps {
   scheduler: Pick<FrameScheduler, "addTicker">;
   clock: PlaybackClock;
@@ -103,6 +122,7 @@ export interface PlaybackEngineDeps {
   scrubbing(): boolean;
   /** Background work pauses while playing (spec §3.4). */
   idle: Pick<IdleQueue, "pause" | "resume">;
+  audio?: PlaybackAudio;
 }
 
 /** Play around: from `from` up to (not including) `to`, then back to `returnTo`. */
@@ -160,6 +180,8 @@ export class PlaybackEngine {
   private readonly opening = new Set<MediaId>();
   private readonly listeners = new Set<() => void>();
   private readonly key: TextureKey = { mediaId: "", lod: "full", timeUs: 0 };
+  /** Handed to the audio scheduler every tick (it copies what changed). */
+  private readonly mapping: PlayMapping = { frame: 0, clock: 0, speed: 0, end: 0, loop: false, fps: { num: 30, den: 1 } };
 
   constructor(private readonly deps: PlaybackEngineDeps) {}
 
@@ -245,6 +267,7 @@ export class PlaybackEngine {
     this.stopTicker?.();
     this.stopTicker = null;
     for (const stream of [...this.streams.values()]) this.release(stream);
+    this.deps.audio?.stop();
     this.deps.idle.resume();
     this.notify();
   }
@@ -273,7 +296,7 @@ export class PlaybackEngine {
     }
     this.write(from, false);
     const now = this.deps.clock.now();
-    this.anchorAt(from, now);
+    this.anchorAt(from, wasPlaying ? now + this.audioLead() : now);
     this.prerollUntil = wasPlaying ? null : now + PREROLL_SECONDS;
     this.lastScan = -Infinity;
     this.notify();
@@ -292,7 +315,7 @@ export class PlaybackEngine {
       // Moved by someone else (Home, End, the timecode field): play on from there.
       this.range = null;
       this.written = playhead;
-      this.anchorAt(playhead, now);
+      this.anchorAt(playhead, now + this.audioLead());
       this.pending = null;
     }
     this.checkShown();
@@ -301,15 +324,18 @@ export class PlaybackEngine {
       this.feed(doc, this.written, false);
       this.scanIfDue(doc, this.written, now);
       this.releaseUnused();
-      if (now < this.prerollUntil && !this.ready(doc, this.written)) return;
+      const audioReady = this.deps.audio?.prepare(doc, this.written) ?? true;
+      if (now < this.prerollUntil && !(this.ready(doc, this.written) && audioReady)) return;
       this.prerollUntil = null;
-      this.anchorAt(this.written, now);
+      this.anchorAt(this.written, now + this.audioLead());
     }
 
     const direction = Math.sign(this.velocity);
-    const counting = Math.abs(this.velocity) === 1;
+    const speed = Math.abs(this.velocity);
+    const counting = speed === 1;
+    const fps = doc.settings.fps;
     const end = this.range ? this.range.to : contentEnd(doc);
-    let frame = this.anchorFrame + direction * playedFrames(now - this.anchorTime, Math.abs(this.velocity), doc.settings.fps);
+    let frame = this.anchorFrame + direction * playedFrames(now - this.anchorTime, speed, fps);
     let natural = true;
     if (direction > 0 && frame >= end) {
       if (this.range) {
@@ -321,7 +347,10 @@ export class PlaybackEngine {
         this.pause();
         return;
       }
-      frame = 0;
+      // Wrap at the exact time the end frame would have started.
+      this.anchorTime += (end - this.anchorFrame) / (fpsToNumber(fps) * speed);
+      this.anchorFrame = 0;
+      frame = Math.min(end - 1, playedFrames(now - this.anchorTime, speed, fps));
       natural = false;
     } else if (direction < 0 && frame < 0) {
       if (!loop || end <= 0) {
@@ -329,10 +358,13 @@ export class PlaybackEngine {
         this.pause();
         return;
       }
-      frame = end - 1;
+      // Frame -1 would have started at this time: the last frame shows from then on.
+      this.anchorTime += (this.anchorFrame + 1) / (fpsToNumber(fps) * speed);
+      this.anchorFrame = end - 1;
+      frame = Math.max(0, end - 1 - playedFrames(now - this.anchorTime, speed, fps));
       natural = false;
     }
-    if (!natural) this.anchorAt(frame, now);
+    this.syncAudio(end, !this.range && loop, fps);
     const advanced = frame !== this.written;
     if (advanced) {
       if (counting && natural) {
@@ -349,6 +381,24 @@ export class PlaybackEngine {
     this.scanIfDue(doc, frame, now);
     this.releaseUnused();
   };
+
+  /** Clock lead for a start or a seek at 1x (audio only plays at 1x). */
+  private audioLead(): number {
+    return this.velocity === 1 ? (this.deps.audio?.lead() ?? 0) : 0;
+  }
+
+  private syncAudio(end: Frame, loop: boolean, fps: Rational): void {
+    const audio = this.deps.audio;
+    if (!audio) return;
+    const mapping = this.mapping;
+    mapping.frame = this.anchorFrame;
+    mapping.clock = this.anchorTime;
+    mapping.speed = this.velocity;
+    mapping.end = end;
+    mapping.loop = loop;
+    mapping.fps = fps;
+    audio.sync(mapping);
+  }
 
   /** Frame `frame` shows from clock time `now` on (see PHASE_SECONDS). */
   private anchorAt(frame: Frame, now: number): void {
@@ -411,6 +461,7 @@ export class PlaybackEngine {
     this.scanId += 1;
     const reach = secondsToFrames(LOOKAHEAD_SECONDS, doc.settings.fps);
     const forward = this.velocity > 0;
+    if (this.velocity === 1) this.deps.audio?.prefetch(doc, frame);
     const end = this.range ? this.range.to : contentEnd(doc);
     const loop = !this.range && this.deps.session.state.getState().loop;
     for (const track of doc.tracks) {

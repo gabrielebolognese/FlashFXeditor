@@ -10,7 +10,7 @@ import { errorMessage } from "../project/errorMessage.js";
 import type { FsDir } from "../project/fs.js";
 import { subdir } from "../project/layout.js";
 import { copyIntoMedia, MEDIA_DIR, removeFileAt, takenNames } from "../project/mediaFiles.js";
-import { browserDecodeAudio, probeAudioFile, type DecodeAudio } from "./probe/audioProbe.js";
+import { browserDecodeAudio, probeAudioFile, type DecodeAudio, type DecodedAudioInfo } from "./probe/audioProbe.js";
 import { probeSvg } from "./probe/svgProbe.js";
 import type { ProbeResult } from "./probe/types.js";
 import { classifyFile, type FileKind } from "./mediaKinds.js";
@@ -19,15 +19,18 @@ import type { WorkerPool } from "./workers/WorkerPool.js";
 
 export type ProbeFile = (file: File, kind: FileKind, signal?: AbortSignal) => Promise<ProbeResult>;
 
-/** The probe for each container. */
-export function createProbeFile(pool: Pick<WorkerPool, "request">, decodeAudio: DecodeAudio = browserDecodeAudio()): ProbeFile {
+/**
+ * The probe for each container. `onDecodedAudio` receives what decodeAudioData made of an audio file
+ * (the decoded-audio cache keeps it instead of decoding the file again).
+ */
+export function createProbeFile(pool: Pick<WorkerPool, "request">, decodeAudio: DecodeAudio = browserDecodeAudio(), onDecodedAudio?: (file: File, decoded: DecodedAudioInfo) => void): ProbeFile {
   return (file, kind, signal) => {
     switch (kind.container) {
       case "mp4":
       case "image":
         return pool.request("probe", { file, container: kind.container, type: kind.mime }, { priority: "user", ...(signal && { signal }) });
       case "audio":
-        return probeAudioFile(file, kind.audioCodec ?? "", decodeAudio);
+        return probeAudioFile(file, kind.audioCodec ?? "", decodeAudio, onDecodedAudio && ((decoded) => onDecodedAudio(file, decoded)));
       case "svg":
         return probeSvg(file);
     }
@@ -92,6 +95,8 @@ export interface MediaImporterDeps {
   importMode?: () => ImportMode;
   newId?: () => string;
   now?: () => string;
+  /** Each media item added, with the file it was probed from. */
+  onAdded?: (item: MediaItem, file: File) => void;
 }
 
 const PROBE_CONCURRENCY = 3;
@@ -160,6 +165,7 @@ export class MediaImporter {
     const taken = await takenNames(await subdir(dir, MEDIA_DIR));
     const totalBytes = ready.reduce((sum, entry) => sum + entry.file.size, 0);
     const items: MediaItem[] = [];
+    const sources: File[] = [];
     const copied: string[] = [];
     let bytes = 0;
     try {
@@ -177,9 +183,11 @@ export class MediaImporter {
         copied.push(relPath);
         bytes += file.size;
         items.push(mediaItemFrom(probe, { id: this.newId(), name: file.name, relPath, addedAt: this.now() }));
+        sources.push(file);
       }
       signal?.throwIfAborted();
       if (items.length > 0) this.deps.documentStore.dispatch(addMedia(items));
+      items.forEach((item, i) => this.deps.onAdded?.(item, sources[i] as File));
     } catch (error) {
       await Promise.all(copied.map((relPath) => removeFileAt(dir, relPath).catch(() => undefined)));
       throw error;

@@ -64,3 +64,16 @@ export function renameMedia(id: MediaId, name: string): Command {
     },
   };
 }
+
+/** Analysis status of a media item (peaks, thumbnails). Dispatched through `DocumentStore.amend`: no undo step. */
+export function setMediaAnalysis(id: MediaId, analysis: Partial<MediaItem["analysis"]>): Command {
+  return {
+    id: "media.analysis",
+    label: "Media analysis",
+    affects: ["media"],
+    run(draft) {
+      const media = draft.media[id];
+      if (media) Object.assign(media.analysis, analysis);
+    },
+  };
+}

@@ -184,16 +184,48 @@ function drawHeaders(scene: ContentScene): void {
   for (const row of geometry.rows) {
     if (row.y + row.height <= geometry.area.y || row.y >= geometry.height) continue;
     const track = project.tracks[row.index] as Track;
-    // Icon and name on the first line, whatever the row height.
-    // TODO(batch 16): target, lock, mute, solo and hide toggles; double-click rename.
+    // Icon, name and toggles on the first line, whatever the row height.
+    // TODO(batch 16): target, lock and hide toggles, video mute; double-click rename.
     const centerY = row.y + Math.min(row.height, theme.control.comfortable) / 2;
     drawGlyph(ctx, TRACK_GLYPHS[track.kind], pad, centerY - icon / 2, icon, theme.color.textTertiary);
     const textX = pad + icon + theme.space[2];
+    const toggles = geometry.headerToggles(row);
+    const textRight = toggles ? toggles.mute.x - theme.space[2] : geometry.headerWidth - pad;
+    ctx.font = fontOf(theme, "body");
     ctx.fillStyle = theme.color.textSecondary;
-    ctx.fillText(text.fit(ctx, track.name, geometry.headerWidth - textX - pad), textX, centerY);
+    ctx.fillText(text.fit(ctx, track.name, textRight - textX), textX, centerY);
+    if (toggles) {
+      drawToggle(scene, toggles.mute, "M", track.muted);
+      drawToggle(scene, toggles.solo, "S", track.solo);
+    }
   }
   drawAddRow(scene, geometry.addVideo, "Video track");
   drawAddRow(scene, geometry.addAudio, "Audio track");
+}
+
+/** A header toggle (mute, solo): a letter in a hairline square, accent when on (its hover wash is on the overlay). */
+function drawToggle(scene: ContentScene, rect: Rect, letter: string, on: boolean): void {
+  const { ctx, dpr, theme } = scene;
+  const { color } = theme;
+  const line = 1 / dpr;
+  const x = snap(rect.x, dpr) + line / 2;
+  const y = snap(rect.y, dpr) + line / 2;
+  const size = snap(rect.width, dpr) - line;
+  ctx.beginPath();
+  ctx.roundRect(x, y, size, size, theme.radius.sm);
+  if (on) {
+    ctx.fillStyle = color.accentWash;
+    ctx.fill();
+  }
+  ctx.strokeStyle = on ? color.accentDim : color.hairline;
+  ctx.lineWidth = line;
+  ctx.stroke();
+  ctx.font = fontOf(theme, "caption");
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = on ? color.accent : color.textTertiary;
+  ctx.fillText(letter, rect.x + rect.width / 2, rect.y + rect.height / 2);
+  ctx.textAlign = "left";
 }
 
 /** The drawn "+ track" button in the header column (its hover wash is on the overlay). */

@@ -3,7 +3,8 @@
 // mdat is never read. Gives codec strings, the decoder description (avcC/hvcC/av1C/vpcC), coded
 // size, rotation from the tkhd matrix, durations, the frame rate from sample deltas, and the audio
 // codec, channels and rate. The sample table feeds the poster frame and the decode engine's sample
-// index (demux/sampleIndex.ts, persisted in cache/index/).
+// index (demux/sampleIndex.ts, persisted in cache/index/). The audio track's sample table, AAC
+// configuration and the edit lists feed the audio decoder (decode/audioTrack.ts).
 import { createFile, DataStream, Endianness, MP4BoxBuffer, type Movie, type Sample, type Track } from "mp4box";
 import type { Rational } from "../../core/document/types.js";
 import { ticksToUs } from "../../core/document/time.js";
@@ -15,6 +16,16 @@ import { ProbeError, type ProbeResult } from "./types.js";
 const READ_SIZE = 1024 * 1024;
 /** A moov is never this fragmented; stops parsing garbage that keeps asking for more. */
 const MAX_READS = 4096;
+
+/** Where a track's edit list starts it in the movie (no edit list: media time 0 at movie time 0). */
+export interface EditStart {
+  /** Empty edits before the first media: the track starts this late in the movie (s). */
+  leadSeconds: number;
+  /** Media time of the first edit, in track ticks (AAC priming, B-frame composition offset). */
+  mediaTime: number;
+  /** Length of the first edit (s); null without an edit list or when the edit runs to the end. */
+  segmentSeconds: number | null;
+}
 
 export interface Mp4Video {
   trackId: number;
@@ -29,6 +40,7 @@ export interface Mp4Video {
   description: Uint8Array | undefined;
   /** Decode order. */
   samples: readonly Sample[];
+  edit: EditStart;
 }
 
 export interface Mp4Audio {
@@ -37,11 +49,48 @@ export interface Mp4Audio {
   channels: number;
   sampleRate: number;
   durationUs: number;
+  timescale: number;
+  /** AudioSpecificConfig (AAC) from the esds; undefined for codecs without one. */
+  description: Uint8Array | undefined;
+  /** Decode order. */
+  samples: readonly Sample[];
+  edit: EditStart;
 }
 
 export interface Mp4File {
   video: Mp4Video | null;
   audio: Mp4Audio | null;
+}
+
+interface EditEntry {
+  segment_duration: number;
+  media_time: number;
+}
+
+interface EsDescriptor {
+  findDescriptor(tag: number): EsDescriptor | undefined;
+  data?: Uint8Array;
+}
+
+interface AudioEntry {
+  esds?: { esd?: EsDescriptor };
+  wave?: { esds?: { esd?: EsDescriptor } };
+}
+
+const DECODER_CONFIG_TAG = 0x04;
+const DECODER_SPECIFIC_TAG = 0x05;
+
+/** The first edit of `entries` (empty edits are a leading delay). */
+export function editStart(entries: readonly EditEntry[] | undefined, movieTimescale: number): EditStart {
+  let lead = 0;
+  for (const entry of entries ?? []) {
+    if (entry.media_time === -1) {
+      lead += entry.segment_duration;
+      continue;
+    }
+    return { leadSeconds: lead / movieTimescale, mediaTime: entry.media_time, segmentSeconds: entry.segment_duration > 0 ? entry.segment_duration / movieTimescale : null };
+  }
+  return { leadSeconds: lead / movieTimescale, mediaTime: 0, segmentSeconds: null };
 }
 
 interface ConfigBox {
@@ -91,6 +140,7 @@ export async function readMp4(source: ByteSource, signal?: AbortSignal): Promise
 
   const videoTrack = info.videoTracks[0];
   const audioTrack = info.audioTracks[0];
+  const edits = (trak: { edts?: { elst?: { entries: EditEntry[] } } }) => editStart(trak.edts?.elst?.entries, info.timescale);
   let video: Mp4Video | null = null;
   if (videoTrack) {
     const trak = file.getTrackById(videoTrack.id);
@@ -117,17 +167,27 @@ export async function readMp4(source: ByteSource, signal?: AbortSignal): Promise
       ),
       description,
       samples,
+      edit: edits(trak),
     };
   }
-  const audio: Mp4Audio | null = audioTrack
-    ? {
-        trackId: audioTrack.id,
-        codec: audioTrack.codec,
-        channels: audioTrack.audio?.channel_count ?? 0,
-        sampleRate: audioTrack.audio?.sample_rate ?? 0,
-        durationUs: trackDurationUs(audioTrack),
-      }
-    : null;
+  let audio: Mp4Audio | null = null;
+  if (audioTrack) {
+    const trak = file.getTrackById(audioTrack.id);
+    const entry = trak.mdia.minf.stbl.stsd.entries[0] as unknown as AudioEntry | undefined;
+    const esd = entry?.esds?.esd ?? entry?.wave?.esds?.esd;
+    const specific = esd?.findDescriptor(DECODER_CONFIG_TAG)?.findDescriptor(DECODER_SPECIFIC_TAG)?.data;
+    audio = {
+      trackId: audioTrack.id,
+      codec: audioTrack.codec,
+      channels: audioTrack.audio?.channel_count ?? 0,
+      sampleRate: audioTrack.audio?.sample_rate ?? 0,
+      durationUs: trackDurationUs(audioTrack),
+      timescale: audioTrack.timescale,
+      description: specific && specific.length > 0 ? specific.slice() : undefined,
+      samples: trak.samples ?? [],
+      edit: edits(trak),
+    };
+  }
   return { video, audio };
 }
 

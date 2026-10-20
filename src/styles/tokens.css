@@ -164,6 +164,15 @@
   --playhead-head-height: 10px;
   --playhead: var(--live); /* DS: "scrub red, distinct from selection gold" */
   --clip-hover-wash: rgba(255, 255, 255, 0.07); /* spec §6.4 "subtle lift"; the DS menu wash (4%) does not show on clip colors */
+  --track-toggle-size: var(--space-5); /* audio track header M/S toggles (Batch 10; full header UI in Batch 16) */
+  --track-toggle-gap: var(--space-1);
+
+  /* Audio (gap: the DS has no meter or knob). Stereo peak meter along the preview's right edge, master volume knob. */
+  --meter-bar-width: var(--space-1);
+  --meter-bar-gap: var(--space-0);
+  --meter-led-height: var(--space-1);
+  --meter-width: calc(2 * var(--meter-bar-width) + var(--meter-bar-gap) + 2 * var(--space-2));
+  --knob-size: var(--space-5);
 
   /* Clip bodies and label bars per kind (gap): washes of DS colors, never the gold */
   --clip-video: rgba(76, 134, 214, 0.34); /* info */

@@ -1,7 +1,10 @@
-// decode.worker entry (spec §3.5): probes and poster frames, and the video decode sessions (sample
-// index, requestFrame, prefetch). Frame methods start at once (each session orders its own jobs);
-// probes, posters and image decodes share the two queued slots.
+// decode.worker entry (spec §3.5): probes and poster frames, the video decode sessions (sample
+// index, requestFrame, prefetch) and MP4/MOV audio (decode/AudioTracks.ts). Frame methods start at
+// once (each session orders its own jobs); probes, posters, image decodes and audio decodes share the
+// two queued slots, in priority order.
 import { ByteSource } from "../bytes/ByteSource.js";
+import { browserAudioDecodeDeps } from "../decode/audioTrack.js";
+import { AudioTracks } from "../decode/AudioTracks.js";
 import { DecodeSessions } from "../decode/DecodeSessions.js";
 import { decodeImage, imagePoster, videoPoster } from "../decode/poster.js";
 import { createVideoDecoder } from "../decode/VideoDecodeSession.js";
@@ -15,7 +18,12 @@ const videos = new DecodeSessions<VideoFrame>({
   isConfigSupported: async (config) => (await VideoDecoder.isConfigSupported(config)).supported === true,
 });
 
-const IMMEDIATE: ReadonlySet<Method> = new Set<Method>(["openVideo", "requestFrame", "prefetch", "closeVideo", "decodeStats"]);
+const audio = new AudioTracks({
+  decodeDeps: (source) => browserAudioDecodeDeps((offset, size) => source.read(offset, size)),
+  isConfigSupported: async (config) => (await AudioDecoder.isConfigSupported(config)).supported === true,
+});
+
+const IMMEDIATE: ReadonlySet<Method> = new Set<Method>(["openVideo", "requestFrame", "prefetch", "closeVideo", "decodeStats", "closeAudio"]);
 
 new WorkerHost(
   self as unknown as HostScope,
@@ -31,6 +39,12 @@ new WorkerHost(
       return null;
     },
     decodeStats: async () => videos.stats(),
+    openAudio: (params, signal) => audio.open(params, signal),
+    decodeAudio: (params, signal) => audio.decode(params, signal),
+    closeAudio: async ({ mediaId }) => {
+      audio.close(mediaId);
+      return null;
+    },
   },
   2,
   IMMEDIATE,

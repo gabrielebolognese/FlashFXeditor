@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { addClip, removeClips, updateClip } from "../commands/basicCommands.js";
+import { addClip, removeClips, updateClip, updateTrack } from "../commands/basicCommands.js";
+import { setMediaAnalysis } from "../commands/mediaCommands.js";
 import type { Command, CommandContext } from "../commands/command.js";
 import { makeMedia, makeMediaClip, makeProject, makeTrack, withClips } from "../document/fixtures.js";
 import { DocumentInvariantError } from "../document/validate.js";
@@ -286,5 +287,26 @@ describe("DocumentStore", () => {
     expect(() => store.load(broken)).toThrow(DocumentInvariantError);
     expect(store.getState().tracks[0]?.clipIds).toEqual(["c1", "c2"]);
   });
-});
 
+  it("amend() changes the document with no undo step, notifies and validates", () => {
+    const { store } = setup();
+    store.dispatch(updateTrack("a1", { muted: true }, "Mute track"));
+    const listener = vi.fn();
+    store.subscribe(listener, { affects: ["media"] });
+    store.amend(setMediaAnalysis("m1", { peaks: "ready" }));
+    expect(store.getState().media.m1?.analysis.peaks).toBe("ready");
+    expect(listener).toHaveBeenCalledTimes(1);
+    expect(store.history.getState()).toMatchObject({ canUndo: true, undoLabel: "Mute track" });
+    // Undo reverts the command before it and keeps the amended status.
+    store.undo();
+    expect(store.getState().tracks.find((track) => track.id === "a1")?.muted).toBe(false);
+    expect(store.getState().media.m1?.analysis.peaks).toBe("ready");
+    // No change, no notification.
+    store.amend(setMediaAnalysis("m1", { peaks: "ready" }));
+    expect(listener).toHaveBeenCalledTimes(1);
+    expect(() =>
+      store.amend({ id: "test.bad", label: "Bad", affects: ["clips"], run: (draft) => void ((draft.clips.c1 as { duration: number }).duration = 0) }),
+    ).toThrow(DocumentInvariantError);
+    expect(store.getState().clips.c1?.duration).toBe(30);
+  });
+});

@@ -1,14 +1,17 @@
-import { Expand, Gauge, ImageDown, Pause, Play, Repeat, SkipBack, SkipForward, StepBack, StepForward } from "lucide-react";
-import { useEffect, useRef, useSyncExternalStore } from "react";
+import { Expand, Gauge, ImageDown, Pause, Play, Repeat, SkipBack, SkipForward, StepBack, StepForward, Volume2, VolumeX } from "lucide-react";
+import { useEffect, useRef, useSyncExternalStore, type MouseEvent } from "react";
+import { commitMonitorVolume, meterView, previewMonitorVolume } from "../app/audioController.js";
 import { CanvasHost } from "../app/CanvasHost.js";
 import { PanelFrame, PanelTitle } from "../app/PanelFrame.js";
 import { bindPlaybackStatus } from "../app/playbackController.js";
 import { bindPreviewReadouts, exportFrame, playbackEngine, POOL_BUDGETS, previewDev, previewStats, previewView, setPreviewZoom, type PreviewDevState } from "../app/previewController.js";
-import { actions, sessionStore } from "../app/services.js";
+import { actions, appSettings, sessionStore } from "../app/services.js";
 import type { SessionState } from "../core/store/sessionStore.js";
 import { useStoreSelector } from "../core/store/useStoreSelector.js";
+import { MONITOR_MAX_DB, MONITOR_MIN_DB, type AppSettings } from "../project/appSettings.js";
 import { ZOOM_CHOICES, zoomLabel, type PreviewZoom } from "../render/preview/viewport.js";
 import { IconButton } from "../ui/IconButton.js";
+import { Knob } from "../ui/Knob.js";
 import { Select } from "../ui/Select.js";
 import styles from "./PreviewPanel.module.css";
 import wellStyles from "./Well.module.css";
@@ -23,6 +26,12 @@ const selectBudget = (state: PreviewDevState) => state.budget;
 const toggleStats = () => previewDev.set((state) => ({ ...state, stats: !state.stats }));
 const setBudget = (value: string) => previewDev.set((state) => ({ ...state, budget: Number(value) }));
 const setZoom = (value: string) => setPreviewZoom((value === "fit" ? "fit" : Number(value)) as PreviewZoom);
+
+const selectMuted = (state: AppSettings) => state.monitorMuted;
+const selectVolume = (state: AppSettings) => state.monitorVolumeDb;
+const formatDb = (db: number) => `${db.toFixed(1)} dB`;
+const keepFocus = (event: MouseEvent) => event.preventDefault();
+const resetClip = () => meterView.resetClip();
 
 const fit = () => setPreviewZoom("fit");
 const run = (id: string) => () => void actions.run(id);
@@ -77,10 +86,7 @@ function Readouts() {
   );
 }
 
-/**
- * Transport (spec §7.8). React renders it on play and pause only.
- * TODO(batch 19): play in/out. TODO(batch 10): mute and the master volume knob.
- */
+/** Transport (spec §7.8). React renders it on play and pause only. TODO(batch 19): play in/out. */
 function Transport() {
   const playing = useSyncExternalStore(subscribePlayback, isPlaying);
   return (
@@ -90,6 +96,36 @@ function Transport() {
       <IconButton icon={playing ? Pause : Play} label={playing ? "Pause" : "Play"} commandId="transport.playPause" size="default" onClick={run("transport.playPause")} />
       <IconButton icon={StepForward} label="Next frame" commandId="transport.stepForward" onClick={run("transport.stepForward")} />
       <IconButton icon={SkipForward} label="Go to end" commandId="transport.goToEnd" onClick={run("transport.goToEnd")} />
+    </div>
+  );
+}
+
+/**
+ * Monitoring mute and the master volume knob next to it (spec §7.8, §14: what is heard, never the
+ * export). The knob drives the monitor gain directly while dragged and is stored on release.
+ */
+function MasterVolume() {
+  const muted = useStoreSelector(appSettings, selectMuted);
+  const volume = useStoreSelector(appSettings, selectVolume);
+  return (
+    <>
+      <IconButton icon={muted ? VolumeX : Volume2} label={muted ? "Unmute" : "Mute"} commandId="audio.toggleMute" pressed={muted} onClick={run("audio.toggleMute")} />
+      <Knob label="Master volume" value={volume} min={MONITOR_MIN_DB} max={MONITOR_MAX_DB} step={1} defaultValue={MONITOR_MAX_DB} format={formatDb} onInput={previewMonitorVolume} onCommit={commitMonitorVolume} />
+    </>
+  );
+}
+
+/** The stereo peak meter along the panel's right edge (spec §7.8), drawn by `meterView`; the top strip resets the clip LEDs. */
+function MeterStrip() {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const host = ref.current;
+    return host ? meterView.mount(host) : undefined;
+  }, []);
+  return (
+    <div className={styles.meter}>
+      <div ref={ref} className={styles.meterCanvas} />
+      <button type="button" className={styles.clipReset} aria-label="Reset the clip indicator" data-tooltip="Clip indicator: click to reset" onMouseDown={keepFocus} onClick={resetClip} />
     </div>
   );
 }
@@ -122,7 +158,7 @@ function StatusStrip() {
   );
 }
 
-/** Preview chrome (spec §7.8, §13): readouts, transport, loop and Fit, then the status strip. */
+/** Preview chrome (spec §7.8, §13): readouts, transport, mute, master volume, loop and Fit, then the status strip. */
 function PreviewChrome() {
   return (
     <>
@@ -130,6 +166,7 @@ function PreviewChrome() {
         <Readouts />
         <Transport />
         <div className={styles.tools}>
+          <MasterVolume />
           <LoopToggle />
           <IconButton icon={Expand} label="Fit the frame in the panel" text="Fit" onClick={fit} />
         </div>
@@ -147,7 +184,7 @@ export function PreviewPanel() {
     return host ? previewView.mount(host) : undefined;
   }, []);
   return (
-    <PanelFrame id="preview" header={<PanelTitle>Preview</PanelTitle>} actions={<PreviewActions />} footer={<PreviewChrome />}>
+    <PanelFrame id="preview" header={<PanelTitle>Preview</PanelTitle>} actions={<PreviewActions />} footer={<PreviewChrome />} aside={<MeterStrip />}>
       <div className={wellStyles.well}>
         <CanvasHost panel="preview">
           <div ref={canvasRef} className={styles.canvas} />

@@ -11,11 +11,13 @@ export interface PanelFrameProps {
   actions?: ReactNode;
   /** A strip under the body (the preview chrome); the body size excludes it. */
   footer?: ReactNode;
+  /** A column right of the body (the preview's audio meter); the body size excludes it. */
+  aside?: ReactNode;
   children: ReactNode;
 }
 
-/** A panel: header strip + body (+ footer strip). The body size is reported to the layout store. */
-export function PanelFrame({ id, header, actions, footer, children }: PanelFrameProps) {
+/** A panel: header strip + body (+ aside column) (+ footer strip). The body size is reported to the layout store. */
+export function PanelFrame({ id, header, actions, footer, aside, children }: PanelFrameProps) {
   const bodyRef = useRef<HTMLDivElement>(null);
   usePanelSize(id, bodyRef);
   return (
@@ -24,9 +26,18 @@ export function PanelFrame({ id, header, actions, footer, children }: PanelFrame
         <div className={styles.headerMain}>{header}</div>
         {actions && <div className={styles.actions}>{actions}</div>}
       </header>
-      <div ref={bodyRef} className={styles.body}>
-        {children}
-      </div>
+      {aside ? (
+        <div className={styles.row}>
+          <div ref={bodyRef} className={styles.body}>
+            {children}
+          </div>
+          <aside className={styles.aside}>{aside}</aside>
+        </div>
+      ) : (
+        <div ref={bodyRef} className={styles.body}>
+          {children}
+        </div>
+      )}
       {footer && <footer className={styles.footer}>{footer}</footer>}
     </section>
   );

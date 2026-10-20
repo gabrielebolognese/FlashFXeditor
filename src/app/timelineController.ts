@@ -1,16 +1,18 @@
 // Timeline wiring (spec §6): the timeline view, the zoom and edit-point/marker navigation actions
 // (§6.2, §6.5; the transport keys are in playbackController), the toolbar's direct-DOM bindings (zoom
 // slider, timecode field, duration: no React render while they change, P1), insert at the playhead
-// from the media panel (§6.14) and the dev clip generator.
-import { addTrack, updateClip, type ClipPatch } from "../core/commands/basicCommands.js";
+// from the media panel (§6.14), the audio track header mute/solo toggles (§6.12) and the dev clip
+// generator.
+import { addTrack, updateClip, updateTrack, type ClipPatch } from "../core/commands/basicCommands.js";
 import type { ActionRun } from "../core/commands/ActionRegistry.js";
 import { emptyTrack, nextTrackName } from "../core/document/project.js";
 import { formatTimecode, parseTimecode } from "../core/document/time.js";
-import type { Frame, MediaId, Project, TrackKind } from "../core/document/types.js";
+import type { Frame, MediaId, Project, TrackId, TrackKind } from "../core/document/types.js";
 import { createStore } from "../core/store/createStore.js";
 import { setPlayhead } from "../core/store/sessionStore.js";
 import { insertCommands, planMediaInsert } from "../timeline/edit/insertMedia.js";
 import { contentEnd, markerFrames, navigationPoints, nextEditPoint, prevEditPoint } from "../timeline/model/queries.js";
+import type { HeaderToggle } from "../timeline/view/geometry.js";
 import { TimelineView } from "../timeline/view/TimelineView.js";
 import { pxToSlider, sliderToPx, zoomLimits, ZOOM_IN_STEP, ZOOM_OUT_STEP, type ZoomContext } from "../timeline/view/zoom.js";
 import { showToast } from "../ui/toasts.js";
@@ -25,6 +27,14 @@ function addTrackOfKind(kind: TrackKind): void {
   documentStore.dispatch(addTrack(emptyTrack(crypto.randomUUID(), kind, nextTrackName(tracks, kind))));
 }
 
+/** Mute or solo of an audio track (one undo step; the audio engine applies it at once while playing). */
+export function toggleTrack(trackId: TrackId, toggle: HeaderToggle): void {
+  const track = documentStore.getState().tracks.find((candidate) => candidate.id === trackId);
+  if (!track) return;
+  if (toggle === "mute") documentStore.dispatch(updateTrack(trackId, { muted: !track.muted }, track.muted ? "Unmute track" : "Mute track"));
+  else documentStore.dispatch(updateTrack(trackId, { solo: !track.solo }, track.solo ? "Unsolo track" : "Solo track"));
+}
+
 export const timelineView = new TimelineView({
   scheduler,
   document: documentStore,
@@ -32,6 +42,7 @@ export const timelineView = new TimelineView({
   layout: layoutStore,
   theme: themeBridge,
   onAddTrack: addTrackOfKind,
+  onToggleTrack: toggleTrack,
 });
 
 /** Dev chrome of the timeline (not persisted). */

@@ -127,4 +127,28 @@ describe("AudioClock", () => {
     expect(clock.now() - t0).toBeCloseTo(0.5, 9);
     expect(clock.running).toBe(false);
   });
+
+  it("maps clock readings to context time and reports how far the render clock runs ahead", async () => {
+    const { clock, ctx, advance, perf } = setup();
+    expect(clock.contextTime(clock.now())).toBeNull();
+    expect(clock.renderLead()).toBeNull();
+    clock.start();
+    await Promise.resolve();
+    ctx.stamp = { contextTime: 10, performanceTime: perf() };
+    ctx.currentTime = 10.03;
+    const epoch = clock.epoch;
+    const now = clock.now();
+    expect(clock.epoch).toBe(epoch + 1);
+    expect(clock.contextTime(now)).toBeCloseTo(10, 9);
+    expect(clock.contextTime(now + 0.5)).toBeCloseTo(10.5, 9);
+    expect(clock.renderLead()).toBeCloseTo(0.03, 9);
+    advance(10);
+    ctx.currentTime = 10.04;
+    expect(clock.renderLead()).toBeCloseTo(0.03, 9);
+    expect(clock.epoch).toBe(epoch + 1);
+    // A large step back (the device stalled): re-based, a new epoch.
+    ctx.stamp = { contextTime: 5, performanceTime: perf() };
+    clock.now();
+    expect(clock.epoch).toBe(epoch + 2);
+  });
 });

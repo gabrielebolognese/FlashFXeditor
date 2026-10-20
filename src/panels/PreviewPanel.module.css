@@ -103,3 +103,31 @@
 .statusValue[hidden] {
   display: none;
 }
+
+/*
+ * Audio meter strip (§7.8, gap: the DS has no meter): along the panel's right edge, the canvas fills
+ * it; the top row (LEDs) is a button that resets the clip indicator.
+ */
+.meter {
+  position: relative;
+  width: var(--meter-width);
+}
+
+.meterCanvas {
+  position: absolute;
+  inset: 0;
+}
+
+.clipReset {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: calc(var(--space-2) + var(--meter-led-height) + var(--space-1));
+  cursor: pointer;
+  transition: background-color var(--duration-micro) var(--ease-out);
+}
+
+.clipReset:hover {
+  background: var(--hover-wash);
+}

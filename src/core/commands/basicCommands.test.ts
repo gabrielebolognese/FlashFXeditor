@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { makeMedia, makeMediaClip, makeProject, makeSolidClip, makeTrack, withClips } from "../document/fixtures.js";
 import { DocumentStore } from "../store/DocumentStore.js";
 import { createSessionStore } from "../store/sessionStore.js";
-import { addClip, addTrack, removeClips, removeTrack, updateClip } from "./basicCommands.js";
+import { addClip, addTrack, removeClips, removeTrack, updateClip, updateTrack } from "./basicCommands.js";
 
 function setup() {
   let project = makeProject();
@@ -47,6 +47,23 @@ describe("track commands", () => {
     store.undo();
     expect(trackIds()).toEqual(["v1", "cap", "a1"]);
     expect(store.getState().tracks[0]?.clipIds).toEqual(["c1", "c2"]);
+  });
+
+  it("sets track flags as one undo step, mute and solo flagged for the audio engine", () => {
+    const { store } = setup();
+    const affects: string[][] = [];
+    store.subscribe((_state, _prev, flags) => void affects.push([...flags]));
+    store.dispatch(updateTrack("a1", { muted: true }, "Mute track"));
+    store.dispatch(updateTrack("a1", { solo: true }, "Solo track"));
+    store.dispatch(updateTrack("v1", { name: "Main" }));
+    const a1 = store.getState().tracks.find((t) => t.id === "a1");
+    expect(a1).toMatchObject({ muted: true, solo: true });
+    expect(affects).toEqual([["tracks", "audio"], ["tracks", "audio"], ["tracks"]]);
+    expect(store.history.getState().undoLabel).toBe("Edit track");
+    store.undo();
+    store.undo();
+    expect(store.getState().tracks.find((t) => t.id === "a1")?.solo).toBe(false);
+    expect(() => store.dispatch(updateTrack("nope", { muted: true }))).toThrow(/does not exist/);
   });
 
   it("treats removing an unknown track as a no-op", () => {
