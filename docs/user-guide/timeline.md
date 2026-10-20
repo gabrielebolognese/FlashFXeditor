@@ -1,11 +1,11 @@
 # Timeline
 
-The timeline is where your short takes shape: clips sit on tracks in time order, and the playhead marks the frame the preview shows. In this version you add clips by double-clicking media, select clips and arrange them by dragging (also onto other tracks), duplicate them, add tracks, zoom and scroll, and move the playhead with the mouse, the keyboard or a typed timecode. Trimming and splitting clips are available in a later version.
+The timeline is where your short takes shape: clips sit on tracks in time order, and the playhead marks the frame the preview shows. In this version you add clips by double-clicking media, select clips and arrange them by dragging (also onto other tracks), snap them to the edges of other clips and to the playhead, duplicate them, add tracks, zoom and scroll, and move the playhead with the mouse, the keyboard or a typed timecode. Trimming and splitting clips are available in a later version.
 
 > **Video placeholder: Timeline tour**
 > - File: `videos/timeline/timeline-overview.mp4` (not recorded yet)
 > - Length: about 60 seconds
-> - Shows: a project with a few clips on V1 and A1; point in turn at the toolbar, the timecode and duration at its right end, the ruler, the track headers (V1, A1) and the **M** and **S** toggles on A1, the divider between video and audio tracks, a blue video clip, a green audio clip, and the thin line where the content ends; click the ruler to move the red playhead; press <kbd>\\</kbd> to fit everything; press <kbd>=</kbd> three times to zoom in, then <kbd>-</kbd> to zoom out; click a video clip: it and its sound on A1 turn gold; drag it to the right and release.
+> - Shows: a project with a few clips on V1 and A1; point in turn at the toolbar, the timecode and duration at its right end, the ruler, the track headers (V1, A1) and the **M** and **S** toggles on A1, the divider between video and audio tracks, a blue video clip, a green audio clip, and the thin line where the content ends; click the ruler to move the red playhead; press <kbd>\\</kbd> to fit everything; press <kbd>=</kbd> three times to zoom in, then <kbd>-</kbd> to zoom out; click a video clip: it and its sound on A1 turn gold; drag it to the right until its start comes near the end of another clip: it jumps onto the edge and a thin gold line runs through the timeline; release.
 
 ## In this page
 - [Find your way around the timeline](#find-your-way-around-the-timeline)
@@ -18,6 +18,7 @@ The timeline is where your short takes shape: clips sit on tracks in time order,
 - [Follow the playhead during playback](#follow-the-playhead-during-playback)
 - [Select clips](#select-clips)
 - [Move clips](#move-clips)
+- [Snap clips into place](#snap-clips-into-place)
 - [Insert clips and push the rest to the right](#insert-clips-and-push-the-rest-to-the-right)
 - [Move clips to another track](#move-clips-to-another-track)
 - [Duplicate clips](#duplicate-clips)
@@ -28,7 +29,7 @@ The timeline is where your short takes shape: clips sit on tracks in time order,
 
 | Part | Where | What it does |
 |---|---|---|
-| **Toolbar** | Top of the panel | Zoom controls, and at the right end the playhead timecode and the total duration. |
+| **Toolbar** | Top of the panel | The **Snap** toggle, zoom controls, and at the right end the playhead timecode and the total duration. |
 | **Ruler** | Above the tracks | Shows time. Click or drag in it to move the playhead. |
 | **Track headers** | Left column | Each track's icon and name (V1, V2 for video; A1, A2 for audio), the **M** (mute) and **S** (solo) toggles of audio tracks, plus the **+ Video track** and **+ Audio track** rows. |
 | **Tracks** | Main area | Video tracks above the divider, audio tracks below it. Each row holds that track's clips. |
@@ -55,9 +56,9 @@ Thumbnails and waveforms inside clips are available in a later version.
 
 ### Toolbar
 
-In this version the toolbar's zoom group, the timecode field and the duration work. The other buttons (tools such as **Select** and **Razor**, toggles such as **Snap**, edit actions such as **Split at playhead**, and add actions such as **Title**) are shown but disabled; they are available in a later version.
+In this version the toolbar's **Snap** toggle (see [Turn snapping on or off](#turn-snapping-on-or-off)), the zoom group, the timecode field and the duration work. The other buttons (tools such as **Select** and **Razor**, toggles such as **Linked selection**, edit actions such as **Split at playhead**, and add actions such as **Title**) are shown but disabled; they are available in a later version.
 
-> **Note:** When the timeline panel is too narrow for the whole toolbar, the zoom group is the first to move into the **More tools** (…) menu. Click **More tools** to reach the zoom slider and buttons.
+> **Note:** When the timeline panel is too narrow for the whole toolbar, the zoom group is the first to move into the **More tools** (…) menu, followed by the toggles with **Snap**. Click **More tools** to reach them.
 
 ## Add clips from the Media panel
 
@@ -156,6 +157,8 @@ Scrollbars and panning by dragging (the **Hand** tool) are available in a later 
 - Drag along the ruler to scrub: the playhead and the preview follow the pointer. The playhead line gets wider while you drag.
 - To scrub past the part of the timeline you can see, hold the pointer near the left or right edge of the tracks, or past it: the timeline scrolls. The further out you go, the faster it scrolls.
 - If the editor is playing, dragging in the ruler pauses it.
+- Hold <kbd>Shift</kbd> while you click or drag in the ruler to snap the playhead to the nearest clip start or end. See [Snap the playhead in the ruler](#snap-the-playhead-in-the-ruler).
+- If you scroll or zoom with the mouse wheel while you drag in the ruler, the playhead stays under the pointer.
 
 You can't drag the playhead line inside the tracks: that keeps you from moving it by accident while you work on clips. Use the ruler.
 
@@ -269,6 +272,7 @@ What you see while you drag:
 | Diagonal hatching over part of a ghost | The part of another clip that the moved clip will cover and remove. |
 | A gold vertical line with an arrow | An insert: the clips at and after the line shift to the right. See [Insert clips and push the rest to the right](#insert-clips-and-push-the-rest-to-the-right). |
 | An extra track row with a name such as V3 | A new track the drop creates. See [Move clips to another track](#move-clips-to-another-track). |
+| A thin gold line through the ruler and all tracks, and a name in gold in the tooltip, such as **End of Intro** | The clips snapped to that edge. See [Snap clips into place](#snap-clips-into-place). |
 
 Keys you can hold while you drag:
 
@@ -280,7 +284,7 @@ Keys you can hold while you drag:
 | <kbd>Alt</kbd> | Leaves the clips in place and drops copies. See [Duplicate clips](#duplicate-clips). |
 | <kbd>Ctrl</kbd>+<kbd>Alt</kbd> | Inserts copies. |
 
-You can press and release these keys during the drag: the ghosts change at once. The keys you hold when you release the mouse button decide what happens.
+You can press and release these keys during the drag: the ghosts change at once. The keys you hold when you release the mouse button decide what happens. Hold <kbd>S</kbd> as well to switch snapping for the drag; see [Switch snapping for one drag](#switch-snapping-for-one-drag).
 
 ### What happens to the clips underneath
 
@@ -304,7 +308,70 @@ A plain drop covers what the moved clips land on. The clip underneath gives up e
 
 > **Tip:** Hold the pointer near the edge of the tracks, or past it, to scroll the timeline while you drag, left and right or up and down. The further out you go, the faster it scrolls, so you can carry clips to a part of the timeline you can't see.
 
-Snapping clips to edges and the playhead is available in a later version.
+Clips snap to the edges of other clips and to the playhead while you drag. See [Snap clips into place](#snap-clips-into-place).
+
+## Snap clips into place
+
+While you drag clips, they snap: when the start or the end of the moved clips comes within 8 pixels of the edge of another clip, the playhead or the start of the timeline, the clips jump onto it. This lines clips up end to end, with no gap and no overlap, at any zoom. Snapping is on in a new project.
+
+> **Video placeholder: Snap clips and the playhead**
+> - File: `videos/timeline/snapping.mp4` (not recorded yet)
+> - Length: about 60 seconds
+> - Shows: a timeline with a clip named "Intro" at the start of V1 and a clip named "Beach" further right on V1; drag "Beach" to the left until its start comes near the end of "Intro": it jumps onto the edge, a thin gold line runs through the ruler and all tracks, and the tooltip reads the move followed by **End of Intro** in gold; move the pointer a little: the clip stays on the edge; drag further: it lets go and the line disappears; drag back and release on the edge: the clips touch with no gap; press <kbd>=</kbd> twice and drag again: it snaps at the same distance on screen; click **Snap** (the magnet) in the toolbar to turn snapping off and drag again: no snapping; hold <kbd>S</kbd> during the drag: it snaps; release <kbd>S</kbd>: free again; release the mouse button and press <kbd>S</kbd> to turn snapping back on; drag in the ruler near the start of "Beach", then hold <kbd>Shift</kbd>: the playhead jumps onto the edge and **Start of Beach** appears next to the pointer.
+
+1. Press on a clip and drag it toward the edge where it should go.
+2. When the start or the end of the moved clips comes within 8 pixels of a target, the clips jump onto it. A thin gold line runs through the ruler and all tracks at that frame, and the tooltip names the target in gold after the move, for example `Δ -00:04:20` **End of Intro**.
+3. Release the mouse button while the line shows. The clips land exactly on that frame.
+
+What clips snap to:
+
+| Target | Name in the tooltip |
+|---|---|
+| The start or end of any other clip, on any track | **Start of** *clip name* or **End of** *clip name* |
+| The playhead | **Playhead** |
+| The start of the timeline (`00:00:00`) | **Timeline start** |
+
+Markers and in and out points become snap targets as well when they are available in a later version.
+
+How snapping decides:
+
+- **Distance on screen.** The reach is 8 pixels at every zoom. Zoomed out, 8 pixels span more frames, so clips snap from further away in time; zoomed in, they snap only close to the edge.
+- **Both ends.** The start of the moved clips (of the earliest one) and their end (of the latest one) can both snap. Whichever is closer to a target lands on it.
+- **Closest target first.** When several targets are within reach, the closest one wins. When two are equally close, the playhead wins over a clip edge, and a clip edge over the start of the timeline.
+- **The moved clips are not targets,** and neither are the linked clips that move with them. When you duplicate with <kbd>Alt</kbd>, the originals stay in place and are targets, so a copy snaps to the end of its original.
+- **It holds.** Small pointer movements keep the clips on the edge. They let go once the edge is more than 8 pixels away.
+- Snapping changes the time only. Moving clips to another track works as without snapping, and clips still can't move before `00:00:00`.
+- Nudging with the keyboard never snaps: the clips move by exactly 1 or 5 frames.
+
+### Turn snapping on or off
+
+- Click **Snap** (the magnet icon) in the timeline toolbar, or press <kbd>S</kbd>. The magnet is gold while snapping is on.
+- <kbd>S</kbd> works in every panel, except while you type in a text field.
+- Each project remembers whether snapping is on. Turning it on or off is not a step in the history.
+
+### Switch snapping for one drag
+
+Hold <kbd>S</kbd> while you drag to do the opposite of the setting: with snapping on, the clips move freely; with snapping off, they snap. Release <kbd>S</kbd> and the setting applies again at once. The **Snap** magnet and the setting do not change.
+
+1. Start dragging the clips.
+2. Press and hold <kbd>S</kbd>.
+3. Release the mouse button while you still hold <kbd>S</kbd>.
+
+- Press <kbd>S</kbd> after the drag has started. An <kbd>S</kbd> pressed before you start dragging turns snapping on or off, as it does outside a drag.
+- You can hold <kbd>S</kbd> together with <kbd>Shift</kbd>, <kbd>Ctrl</kbd> or <kbd>Alt</kbd>. During a drag, <kbd>S</kbd> never starts a shortcut: <kbd>Ctrl</kbd>+<kbd>S</kbd> does not save until you release the mouse button.
+
+### Snap the playhead in the ruler
+
+The playhead moves freely when you click or drag in the ruler. Hold <kbd>Shift</kbd> to snap it to the start or end of a clip, or to the start of the timeline.
+
+1. Click or drag in the ruler, or drag the playhead's head, near a clip edge.
+2. Hold <kbd>Shift</kbd>. Within 8 pixels of an edge, the playhead jumps onto it. A gold line shows in the ruler, and the name of the edge, such as **Start of Beach**, appears next to the pointer.
+3. Release <kbd>Shift</kbd> to move freely again, or release the mouse button to leave the playhead on the edge.
+
+- <kbd>Shift</kbd> snaps only while snapping is on. With snapping off, hold <kbd>Shift</kbd> and <kbd>S</kbd> together.
+- You can press and release <kbd>Shift</kbd> during the drag: the playhead reacts at once.
+
+> **Note:** <kbd>Shift</kbd> snaps only in the ruler. When you drag clips, they snap without it, and <kbd>Shift</kbd> keeps every clip on its track.
 
 ## Insert clips and push the rest to the right
 
@@ -359,6 +426,7 @@ Hold <kbd>Alt</kbd> while you drag to copy clips instead of moving them.
 - The originals stay where they are. The copies are selected after the drop.
 - Copies of linked clips are linked to each other, not to the originals.
 - Copies cover what they land on, like moved clips, including their own originals. Hold <kbd>Ctrl</kbd> as well to insert the copies instead.
+- The originals are snap targets: drag a copy to the right and it snaps to the end of its original, with no gap. See [Snap clips into place](#snap-clips-into-place).
 - <kbd>Alt</kbd>+pressing a clip that is not selected selects only that clip, without its linked clips, so only that clip is copied. To copy a video together with its sound, select it with a plain click first.
 - The history step is named **Duplicate clip** or **Duplicate clips** (**Duplicate and insert clips** with <kbd>Ctrl</kbd>).
 
@@ -405,4 +473,4 @@ Trimming, splitting and deleting clips are available in a later version.
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 11, 2026-10-15</sub>
+<sub>Last updated: Batch 12, 2026-10-15</sub>

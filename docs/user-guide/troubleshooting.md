@@ -4,7 +4,7 @@ This page helps you when something does not work as expected: the editor does no
 
 > **Video placeholder: Fix common problems**
 > - File: `videos/troubleshooting/overview.mp4` (not recorded yet)
-> - Length: about 75 seconds
+> - Length: about 85 seconds
 > - Shows:
 >   1. Open the editor in a browser without the required features: the screen "This browser cannot run Shorts Editor" lists what is missing.
 >   2. In Chrome, open `chrome://settings/system` and show **Use graphics acceleration when available** turned on.
@@ -13,6 +13,7 @@ This page helps you when something does not work as expected: the editor does no
 >   5. Pick a value in the preview **Zoom** dropdown and press <kbd>Space</kbd>: playback does not start. Click the preview picture and press <kbd>Space</kbd> again: playback starts.
 >   6. Play a 4K clip and point at **Dropped** in the status strip under the preview.
 >   7. Play a clip with sound while **Mute** is on: nothing is heard, but the meter moves. Click **Unmute**: the sound is back.
+>   8. Drag a clip near the end of another clip: it jumps onto the edge with a gold line. Hold <kbd>S</kbd> and place it a few frames away instead.
 
 ## In this page
 - [Browser and graphics](#browser-and-graphics)
@@ -36,6 +37,8 @@ This page helps you when something does not work as expected: the editor does no
   - [A drag copied clips or pushed other clips to the right](#a-drag-copied-clips-or-pushed-other-clips-to-the-right)
   - [A drag cut another clip short or split it](#a-drag-cut-another-clip-short-or-split-it)
   - [A sound clip moved to another audio track](#a-sound-clip-moved-to-another-audio-track)
+  - [A clip jumps to an edge while you drag it](#a-clip-jumps-to-an-edge-while-you-drag-it)
+  - [Clips no longer snap](#clips-no-longer-snap)
 - [Playback and preview](#playback-and-preview)
   - [Playback stutters or drops frames](#playback-stutters-or-drops-frames)
   - [The preview shows a nearby frame for a moment](#the-preview-shows-a-nearby-frame-for-a-moment)
@@ -148,6 +151,24 @@ This page helps you when something does not work as expected: the editor does no
 **Cause:** A video with sound is a linked pair: the video and its sound move together, by the same number of tracks away from the divider between video and audio tracks.
 
 **Fix:** Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>. To move only the video, <kbd>Alt</kbd>+click it, release, and then drag it. See [Move clips to another track](timeline.md#move-clips-to-another-track).
+
+### A clip jumps to an edge while you drag it
+
+**Symptom:** While you drag a clip, it jumps a few frames onto the edge of another clip, onto the playhead or onto the start of the timeline, and you can't place it just next to that edge.
+
+**Cause:** Snapping. When the start or the end of the dragged clips comes within 8 pixels of one of these targets, the clips jump onto it. A thin gold line through the timeline shows the snap.
+
+**Fix:** Hold <kbd>S</kbd> while you drag to place the clips freely. To turn snapping off, click **Snap** in the timeline toolbar or press <kbd>S</kbd>. Zooming in also helps, because 8 pixels then cover fewer frames. To move a clip by exact frames, select it and nudge it with <kbd>Alt</kbd>+<kbd>Left</kbd> or <kbd>Alt</kbd>+<kbd>Right</kbd>: nudges never snap. See [Snap clips into place](timeline.md#snap-clips-into-place).
+
+### Clips no longer snap
+
+**Symptom:** Dragged clips don't snap to edges or the playhead anymore, and the **Snap** magnet in the timeline toolbar is not gold.
+
+**Cause:** Snapping is off. <kbd>S</kbd> turns it on or off in every panel, not only in the timeline, so a stray <kbd>S</kbd> turns it off. An <kbd>S</kbd> pressed just before you start a drag counts too. Each project keeps its own setting.
+
+**Fix:** Click **Snap** or press <kbd>S</kbd> so that the magnet is gold. To switch snapping for a single drag, press and hold <kbd>S</kbd> after the drag has started. See [Turn snapping on or off](timeline.md#turn-snapping-on-or-off).
+
+> **Note:** If you switch to another window while you hold <kbd>S</kbd> during a drag, the drag keeps the switched snapping until you release the mouse button.
 
 ## Folders and saving
 
@@ -296,7 +317,7 @@ See [Audio](audio.md).
 The current version cannot do these things yet. Each one is available in a later version.
 
 - **Sound:** no sound while you scrub, step frames, play backward or shuttle faster than 1x. Audio clips show no waveforms. Changing the volume of a clip, fades and audio effects are not available, and video tracks have no mute toggle.
-- **Editing clips:** you can select, move, insert, duplicate and nudge clips, but not trim, split or delete them. Clips do not snap to edges or the playhead while you drag. To remove a clip you just added, use **Undo** (<kbd>Ctrl</kbd>+<kbd>Z</kbd>).
+- **Editing clips:** you can select, move, insert, duplicate and nudge clips, but not trim, split or delete them. Clips snap only to clip edges, the playhead and the start of the timeline, because markers and in and out points are not available yet. To remove a clip you just added, use **Undo** (<kbd>Ctrl</kbd>+<kbd>Z</kbd>).
 - **Tracks:** double-clicked media always goes to the first video track (V1); drag clips to move them to other tracks. Tracks can't be locked, hidden, renamed or removed (**Undo** removes a track you just added). Clicking a track header does nothing yet (only the **+ Video track** and **+ Audio track** rows and the **M** and **S** toggles of audio tracks work), and the timeline has no scrollbars (scroll with the mouse wheel).
 - **Preview:** no panning, no mouse-wheel zoom, and no <kbd>Ctrl</kbd>+<kbd>0</kbd>/<kbd>1</kbd>/<kbd>2</kbd>. The preview timecode is read-only; type times in the timeline toolbar. The quality is always **Auto: full**.
 - **Fit only:** inserted clips fit the frame with bands; one-click Fill is not available. Changing the project resolution does not refit existing clips.
@@ -316,4 +337,4 @@ The current version cannot do these things yet. Each one is available in a later
 - [Preview and playback](preview-and-playback.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 11, 2026-10-15</sub>
+<sub>Last updated: Batch 12, 2026-10-15</sub>
