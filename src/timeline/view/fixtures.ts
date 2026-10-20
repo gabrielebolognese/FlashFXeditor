@@ -30,6 +30,13 @@ const TOKENS: Record<string, string> = {
   "--space-3": "8px",
   "--track-toggle-size": "16px",
   "--track-toggle-gap": "4px",
+  "--timeline-drag-threshold": "4px",
+  "--timeline-autoscroll-zone": "24px",
+  "--timeline-ghost-opacity": "0.7",
+  "--timeline-hatch-gap": "6px",
+  "--timeline-insert-width": "2px",
+  "--timeline-insert-arrow": "8px",
+  "--type-caption-line": "14px",
 };
 
 /** A Theme with the timeline metrics set; colors are their token names (canvases take any string). */

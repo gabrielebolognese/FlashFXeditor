@@ -268,7 +268,7 @@ export class PlaybackEngine {
     this.stopTicker = null;
     for (const stream of [...this.streams.values()]) this.release(stream);
     this.deps.audio?.stop();
-    this.deps.idle.resume();
+    this.deps.idle.resume("playback");
     this.notify();
   }
 
@@ -291,7 +291,7 @@ export class PlaybackEngine {
       this.stats.dropped = 0;
       this.stats.frames = 0;
       this.autoProxy.clear();
-      this.deps.idle.pause();
+      this.deps.idle.pause("playback");
       this.stopTicker = this.deps.scheduler.addTicker(this.tick);
     }
     this.write(from, false);

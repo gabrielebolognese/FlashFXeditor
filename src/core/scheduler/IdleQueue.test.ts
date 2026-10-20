@@ -46,6 +46,21 @@ describe("IdleQueue", () => {
     expect(task).toHaveBeenCalledTimes(1);
   });
 
+  it("stays paused until every pauser has resumed", () => {
+    const idle = fakeIdle();
+    const queue = new IdleQueue(idle.request, idle.cancel);
+    const task = vi.fn();
+    queue.pause("playback");
+    queue.pause("gesture");
+    queue.enqueue(task);
+    queue.resume("gesture");
+    expect(queue.isPaused).toBe(true);
+    expect(idle.pending()).toBe(0);
+    queue.resume("playback");
+    idle.slice(10);
+    expect(task).toHaveBeenCalledTimes(1);
+  });
+
   it("cancels a pending task", () => {
     const idle = fakeIdle();
     const queue = new IdleQueue(idle.request, idle.cancel);

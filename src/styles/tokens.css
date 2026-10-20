@@ -48,6 +48,7 @@
   --danger: #e5545a;
   --info: #4c86d6;
   --live: #ff3b5c;
+  --danger-wash: rgba(229, 84, 90, 0.24); /* DS: "semantic states use success/danger/info at low opacity" (refused drops) */
 
   /* Typography */
   --font-ui: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", Roboto, sans-serif;
@@ -166,6 +167,14 @@
   --clip-hover-wash: rgba(255, 255, 255, 0.07); /* spec §6.4 "subtle lift"; the DS menu wash (4%) does not show on clip colors */
   --track-toggle-size: var(--space-5); /* audio track header M/S toggles (Batch 10; full header UI in Batch 16) */
   --track-toggle-gap: var(--space-1);
+  /* Clip drags (Batch 11, gap: the DS has no drag visuals; distances are the spec §6.6/§6.8 defaults) */
+  --timeline-drag-threshold: 4px; /* spec §6.8: dead zone before a move starts */
+  --timeline-autoscroll-zone: 24px; /* spec §6.6: edge band that scrolls the view while dragging */
+  --timeline-ghost-opacity: 0.7;
+  --timeline-hatch: rgba(255, 255, 255, 0.34); /* overwritten regions; DS: lines are white-alpha */
+  --timeline-hatch-gap: var(--space-2);
+  --timeline-insert-width: 2px;
+  --timeline-insert-arrow: var(--space-3);
 
   /* Audio (gap: the DS has no meter or knob). Stereo peak meter along the preview's right edge, master volume knob. */
   --meter-bar-width: var(--space-1);

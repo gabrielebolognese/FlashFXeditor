@@ -1,5 +1,5 @@
-// Timeline queries (spec §3.2, P10). Per-track indexes (start-sorted clips, longest clip, track end)
-// are built lazily and cached per document version, so lookups are binary searches.
+// Timeline queries (spec §3.2, P10). Per-track indexes (start-sorted clips, their ends, longest clip,
+// track end) are built lazily and cached per document version, so lookups are binary searches.
 import type { Clip, ClipId, Frame, Project, Track, TrackId } from "../../core/document/types.js";
 
 export interface Gap {
@@ -12,6 +12,8 @@ export interface TrackIndex {
   /** Clips sorted by start. */
   clips: readonly Clip[];
   starts: readonly Frame[];
+  /** Clip ends, sorted too: clips on a track never overlap (spec §5.2). */
+  ends: readonly Frame[];
   /** Longest clip on the track: bounds how far back a range query must look. */
   maxDuration: Frame;
   /** End of the last clip; 0 when empty. */
@@ -37,7 +39,7 @@ export function trackIndex(project: Project, track: Track): TrackIndex {
       maxDuration = Math.max(maxDuration, clip.duration);
       end = Math.max(end, clip.start + clip.duration);
     }
-    index = { clips, starts: clips.map((clip) => clip.start), maxDuration, end };
+    index = { clips, starts: clips.map((clip) => clip.start), ends: clips.map((clip) => clip.start + clip.duration), maxDuration, end };
     byTrack.set(track, index);
   }
   return index;
@@ -99,6 +101,23 @@ export function clipsInRange(project: Project, trackId: TrackId, from: Frame, to
     if (clip.start + clip.duration > from) result.push(clip);
   }
   return result;
+}
+
+/** Clips of an indexed track intersecting [from, to): a binary search on the ends, then the hits (O(log n + k)). */
+export function clipsOverlapping(index: TrackIndex, from: Frame, to: Frame): Clip[] {
+  const result: Clip[] = [];
+  if (to <= from) return result;
+  for (let i = countAtOrBelow(index.ends, from); i < index.clips.length; i++) {
+    const clip = index.clips[i] as Clip;
+    if (clip.start >= to) break;
+    result.push(clip);
+  }
+  return result;
+}
+
+/** Position in `index.clips` of the first clip ending after `frame` (the clips from there on end after it). */
+export function firstEndingAfter(index: TrackIndex, frame: Frame): number {
+  return countAtOrBelow(index.ends, frame);
 }
 
 /** The clips just before and after a clip on its track. */
@@ -179,4 +198,77 @@ export function navigationPoints(project: Project, inOut: readonly (Frame | null
   for (const marker of project.markers) points.add(marker.frame);
   for (const frame of inOut) if (frame !== null) points.add(frame);
   return [...points].sort((a, b) => a - b);
+}
+
+export function trackOf(project: Project, trackId: TrackId): Track | null {
+  return project.tracks.find((track) => track.id === trackId) ?? null;
+}
+
+/** True when the clip sits on a locked track (spec §6.12: no edits, no selection). */
+export function isClipLocked(project: Project, clipId: ClipId): boolean {
+  const clip = project.clips[clipId];
+  return clip !== undefined && trackOf(project, clip.trackId)?.locked === true;
+}
+
+// Link groups by document version: the clip ids sharing each `linkGroup`.
+const linkCache = new WeakMap<Project["clips"], Map<string, ClipId[]>>();
+
+function linkGroups(project: Project): Map<string, ClipId[]> {
+  let groups = linkCache.get(project.clips);
+  if (!groups) {
+    groups = new Map();
+    for (const clip of Object.values(project.clips)) {
+      if (clip.linkGroup === undefined) continue;
+      const ids = groups.get(clip.linkGroup);
+      if (ids) ids.push(clip.id);
+      else groups.set(clip.linkGroup, [clip.id]);
+    }
+    linkCache.set(project.clips, groups);
+  }
+  return groups;
+}
+
+/** The other clips sharing the clip's `linkGroup` (spec §6.12), on unlocked tracks only. */
+export function linkedPartners(project: Project, clipId: ClipId): ClipId[] {
+  const group = project.clips[clipId]?.linkGroup;
+  if (group === undefined) return [];
+  return (linkGroups(project).get(group) ?? []).filter((id) => id !== clipId && !isClipLocked(project, id));
+}
+
+/** Every clip on an unlocked track (spec §6.7 `Mod+A`), track by track in start order. */
+export function selectableClipIds(project: Project): ClipId[] {
+  const ids: ClipId[] = [];
+  for (const track of project.tracks) if (!track.locked) ids.push(...track.clipIds);
+  return ids;
+}
+
+/**
+ * Lanes (spec §6.8): video and audio tracks are numbered outward from the divider, V1 upward and A1
+ * downward, from 0. A vertical move shifts every clip by the same lane delta within its own kind, so
+ * linked audio follows its video (V1 -> V2 takes A1 -> A2). Caption tracks have no lane.
+ */
+export type LaneKind = "video" | "audio";
+
+export interface Lane {
+  kind: LaneKind;
+  number: number;
+}
+
+/** The tracks of a kind in lane order (V1, V2... bottom to top; A1, A2... top to bottom). */
+export function laneTracks(tracks: readonly Track[], kind: LaneKind): Track[] {
+  return tracks.filter((track) => track.kind === kind);
+}
+
+export function laneOf(tracks: readonly Track[], trackId: TrackId): Lane | null {
+  let video = 0;
+  let audio = 0;
+  for (const track of tracks) {
+    if (track.id === trackId) {
+      if (track.kind === "caption") return null;
+      return { kind: track.kind, number: track.kind === "video" ? video : audio };
+    }
+    if (track.kind === "video") video += 1;
+    else if (track.kind === "audio") audio += 1;
+  }
+  return null;
 }
