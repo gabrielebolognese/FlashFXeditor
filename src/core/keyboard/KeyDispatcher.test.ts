@@ -63,6 +63,23 @@ describe("KeyDispatcher", () => {
     expect(none.onAction).toHaveBeenLastCalledWith("canvas.zoomFit", expect.anything());
   });
 
+  it("falls through to the global binding when the scope's handler declines", () => {
+    // Nothing on the canvas to nudge: the preview's arrows step frames (a held key, with its key-up).
+    const t = setup("preview");
+    t.onAction.mockImplementation((id: string) => (id.startsWith("canvas.nudge") ? false : undefined));
+    const first = t.down({ key: "ArrowLeft", code: "ArrowLeft" });
+    expect(t.onAction.mock.calls.map(([id]) => id)).toEqual(["canvas.nudgeLeft", "transport.stepBack"]);
+    expect(first.defaultPrevented).toBe(true);
+    const repeat = t.down({ key: "ArrowLeft", code: "ArrowLeft", repeat: true });
+    expect(repeat.defaultPrevented).toBe(true);
+    t.up("ArrowLeft");
+    expect(t.onAction).toHaveBeenLastCalledWith("transport.stepBack", { scope: "preview", phase: "up", repeat: false });
+    // A handled nudge stops there.
+    t.onAction.mockReset();
+    t.down({ key: "ArrowUp", code: "ArrowUp", shiftKey: true });
+    expect(t.onAction.mock.calls.map(([id]) => id)).toEqual(["canvas.nudgeUp10"]);
+  });
+
   it("ignores scope-only bindings outside their scope", () => {
     const t = setup("media");
     const event = t.down({ key: "g", code: "KeyG" });

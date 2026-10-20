@@ -1,7 +1,8 @@
 // The single keyboard listener (spec §3.6). Resolves a key event against the keymap for the current
 // focus scope (scope bindings first, then global) and dispatches the command id. A scope binding whose
-// command is not available yet (`isAvailable`: a later batch builds it) gives way to the global
-// binding of the same key, e.g. the preview's arrow keys step frames until the canvas nudges exist.
+// command is not available yet (`isAvailable`: a later batch builds it), or whose handler declines
+// (returns false), gives way to the global binding of the same key: the preview's arrow keys nudge the
+// selected layers and step frames when there is nothing to nudge.
 import type { FocusScope } from "./focusScope.js";
 import type { KeyBinding } from "./keymap.js";
 import { eventChords, parseChord, type Platform } from "./keys.js";
@@ -76,24 +77,32 @@ export class KeyDispatcher {
 
   /** Finds the binding for the event in the given scope, or undefined. */
   resolve(event: KeyEventLike, scope: FocusScope): KeyBinding | undefined {
+    return this.candidates(event, scope)[0];
+  }
+
+  /**
+   * The bindings for the event in the order they are tried: the scope's, then the global one (a
+   * scope binding not available yet goes after it; with nothing else bound it stays, so the key is
+   * still consumed).
+   */
+  candidates(event: KeyEventLike, scope: FocusScope): KeyBinding[] {
     const scopes: FocusScope[] = ISOLATED_SCOPES.has(scope) || scope === "global" ? [scope] : [scope, "global"];
     const chords = eventChords(event);
     const available = this.options.isAvailable;
-    let unavailable: KeyBinding | undefined;
+    const found: KeyBinding[] = [];
+    const unavailable: KeyBinding[] = [];
     for (const s of scopes) {
       const map = this.index.get(s);
       if (!map) continue;
       for (const chord of chords) {
         const binding = map.get(chord);
         if (!binding) continue;
-        if (s !== "global" && available && !available(binding.id)) {
-          unavailable ??= binding;
-          continue;
-        }
-        return binding;
+        if (s !== "global" && available && !available(binding.id)) unavailable.push(binding);
+        else found.push(binding);
+        break;
       }
     }
-    return unavailable;
+    return found.length > 0 ? found : unavailable.slice(0, 1);
   }
 
   handleKeyDown(event: KeyEventLike): void {
@@ -102,22 +111,24 @@ export class KeyDispatcher {
     // Text inputs own their keys; only the inline text editor scope gets its own bindings.
     if (isEditableTarget(event.target) && scope !== "textEditing") return;
 
-    const binding = this.resolve(event, scope);
-    if (!binding) return;
-
-    if (binding.hold) {
-      if (event.repeat || this.held.has(event.code)) {
+    for (const binding of this.candidates(event, scope)) {
+      if (binding.hold) {
+        if (event.repeat || this.held.has(event.code)) {
+          event.preventDefault();
+          return;
+        }
+        if (this.dispatch(binding, { scope, phase: "down", repeat: false })) {
+          this.held.set(event.code, { binding, scope });
+          event.preventDefault();
+          return;
+        }
+        continue;
+      }
+      if (this.dispatch(binding, { scope, phase: "down", repeat: event.repeat })) {
         event.preventDefault();
         return;
       }
-      if (this.dispatch(binding, { scope, phase: "down", repeat: false })) {
-        this.held.set(event.code, { binding, scope });
-        event.preventDefault();
-      }
-      return;
     }
-
-    if (this.dispatch(binding, { scope, phase: "down", repeat: event.repeat })) event.preventDefault();
   }
 
   handleKeyUp(event: Pick<KeyboardEvent, "code">): void {

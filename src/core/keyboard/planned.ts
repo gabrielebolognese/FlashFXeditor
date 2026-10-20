@@ -10,15 +10,6 @@ export interface PlannedCommand {
 }
 
 export const PLANNED_COMMANDS: Readonly<Record<string, PlannedCommand>> = {
-  // Batch 22: the transform gizmo's nudges.
-  "canvas.nudgeLeft": { batch: 22, label: "Canvas nudge" },
-  "canvas.nudgeRight": { batch: 22, label: "Canvas nudge" },
-  "canvas.nudgeUp": { batch: 22, label: "Canvas nudge" },
-  "canvas.nudgeDown": { batch: 22, label: "Canvas nudge" },
-  "canvas.nudgeLeft10": { batch: 22, label: "Canvas nudge 10 px" },
-  "canvas.nudgeRight10": { batch: 22, label: "Canvas nudge 10 px" },
-  "canvas.nudgeUp10": { batch: 22, label: "Canvas nudge 10 px" },
-  "canvas.nudgeDown10": { batch: 22, label: "Canvas nudge 10 px" },
   // Batch 27: freeze frame, punch zoom.
   "edit.freezeFrame": { batch: 27, label: "Freeze frame" },
   "edit.punchZoom": { batch: 27, label: "Punch zoom" },

@@ -28,6 +28,8 @@ export interface ViewportInputDeps {
   playing(): boolean;
   /** Space was pressed and released over the canvas without panning. */
   onSpaceTap(): void;
+  /** The cursor when no pan is armed or running (the canvas selection's, Batch 22). */
+  cursor?(): string;
 }
 
 interface PanDrag {
@@ -195,7 +197,7 @@ export class ViewportInput {
     const element = this.element;
     if (!element) return;
     const hand = this.space !== null || this.deps.session.getState().activeTool === "hand";
-    const cursor = this.drag ? "grabbing" : hand && this.view().zoom !== "fit" ? "grab" : "";
+    const cursor = this.drag ? "grabbing" : hand && this.view().zoom !== "fit" ? "grab" : hand ? "" : (this.deps.cursor?.() ?? "");
     if (element.style.cursor !== cursor) element.style.cursor = cursor;
   }
 

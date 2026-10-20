@@ -59,6 +59,8 @@ export interface Theme {
   meter: { barWidth: number; barGap: number; ledHeight: number };
   /** Preview overlays (CSS px) and the fullscreen chrome's hide delay (ms) (spec §7.5, §7.6, §7.8). */
   preview: { mask: string; guide: string; grid: string; pixelGrid: string; dash: number; crossSize: number; rulerSize: number; rulerTick: number; chromeHideDelay: number };
+  /** The canvas selection and transform gizmo (CSS px, spec §7.2, §7.3). */
+  gizmo: { lineWidth: number; handleSize: number; handleHit: number; rotateZone: number; anchorSize: number; snapWidth: number; minEdge: number; dragThreshold: number };
 }
 
 /** Timeline canvas metrics (CSS px) and clip colors (spec §6.2, §6.4). */
@@ -291,6 +293,16 @@ export function readTheme(read: TokenReader, root?: Element): { theme: Theme; mi
       rulerSize: num("--preview-ruler-size"),
       rulerTick: num("--preview-ruler-tick"),
       chromeHideDelay: num("--preview-chrome-hide-delay"),
+    },
+    gizmo: {
+      lineWidth: num("--gizmo-line-width"),
+      handleSize: num("--gizmo-handle-size"),
+      handleHit: num("--gizmo-handle-hit"),
+      rotateZone: num("--gizmo-rotate-zone"),
+      anchorSize: num("--gizmo-anchor-size"),
+      snapWidth: num("--gizmo-snap-width"),
+      minEdge: num("--gizmo-min-edge"),
+      dragThreshold: num("--canvas-drag-threshold"),
     },
   };
   return { theme, missing };

@@ -1,15 +1,21 @@
-// The 2D canvas over the preview (spec §7.5, §7.6; Batch 22 draws the transform gizmo on it too): the
-// overlays of the Overlays menu, drawn with the frame placement of the preview's last render, never
-// into the composite (Export frame and export never see them).
+// The 2D canvas over the preview (spec §7.3, §7.5, §7.6): the overlays of the Overlays menu and the
+// canvas selection with the transform gizmo, drawn with the frame placement of the preview's last
+// render, never into the composite (Export frame and export never see them).
 // - Pixel grid from 800% (a line between project pixels), the grid (thirds, centered squares, N x N),
 //   title-safe / action-safe rectangles (dashed), the platform safe zone (masks over the UI areas with
 //   their names, the safe rectangle dashed), the center cross, and above 100% px rulers along the top
 //   and left canvas edges (labels in project px from the frame's top-left corner).
-// - It renders with the preview (registered on `preview` after the preview view: a zoom or pan moves
-//   both in the same frame) and on `gizmo` (overlay settings, theme). It redraws only when the
-//   placement, the canvas size, the settings or the theme changed; playback frames cost a comparison.
+// - Selection (§7.2, §7.3, from `CanvasEditInput.scene`): a thin --accent-dim outline on the hovered
+//   layer, --accent outlines on the selected ones, the gizmo box with its 8 handles (edge handles only
+//   on sides long enough on screen; a group box around several layers), the anchor marker while Alt is
+//   held, the marquee, the 100% scale snap line on the dragged handle's sides, and the numeric readout
+//   near the cursor (the timeline's drag tooltip style).
+// - It renders with the preview (registered on `preview` after the preview view: a zoom, a pan, a
+//   gesture step or a playhead move redraws both in the same frame) and on `gizmo` (overlay settings,
+//   theme, selection, hover). It redraws only when the placement, the canvas size, the settings, the
+//   theme or the selection geometry changed; playback frames cost a comparison (P3).
 // - Hidden while the split preview shows two frames (spec §6.10).
-// TODO(batch 22): selection outlines and the transform gizmo. TODO(batch 23): smart guides when `guides` is on.
+// TODO(batch 23): smart guides when `guides` is on.
 import { watchDevicePixelRatio } from "../../core/scheduler/devicePixelRatio.js";
 import type { FrameScheduler, RenderView } from "../../core/scheduler/FrameScheduler.js";
 import type { Store } from "../../core/store/createStore.js";
@@ -17,7 +23,11 @@ import type { DocumentStore } from "../../core/store/DocumentStore.js";
 import type { LayoutState } from "../../core/store/layoutStore.js";
 import type { PreviewSession, SessionState } from "../../core/store/sessionStore.js";
 import type { Theme, ThemeBridge } from "../../core/theme/theme.js";
+import type { Point } from "../../timeline/edit/transform.js";
 import type { Mat3 } from "../mat3.js";
+import type { Quad } from "./canvasLayers.js";
+import type { GizmoScene } from "./CanvasEditInput.js";
+import { CORNERS, EDGES, edgeHandlesShown, handlePoint, toScreen, type HandleId } from "./gizmo.js";
 import { ACTION_SAFE, centeredRect, gridLines, rulerStep, safeZoneOn, ticksIn, TITLE_SAFE } from "./overlays.js";
 import type { PreviewPlacement } from "./PreviewView.js";
 import type { ZoneRect } from "./safeZones.js";
@@ -29,6 +39,8 @@ export interface PreviewOverlayDeps {
   document: Pick<DocumentStore, "getState" | "subscribe">;
   theme: Pick<ThemeBridge, "theme" | "subscribe">;
   preview: { readonly placement: PreviewPlacement | null };
+  /** The canvas selection and gizmo to draw (spec §7.2, §7.3). */
+  gizmo?: { scene(): GizmoScene };
 }
 
 /** What the canvas shows; a render that would draw the same draws nothing. */
@@ -49,6 +61,10 @@ export class PreviewOverlayView implements RenderView {
   private theme: Theme;
   private readonly drawn: Drawn = { transform: [0, 0, 0, 0, 0, 0], width: 0, height: 0, settings: null, theme: null, frameWidth: 0, frameHeight: 0, shown: false };
   private readonly stops: (() => void)[] = [];
+  /** The gizmo scene drawn last, flattened (numbers and the readout text) for the comparison. */
+  private sceneNumbers: number[] = [];
+  private nextNumbers: number[] = [];
+  private sceneText = "";
   /** Renders that drew (the others compared and returned). */
   draws = 0;
 
@@ -103,7 +119,9 @@ export class PreviewOverlayView implements RenderView {
     const { width: frameWidth, height: frameHeight } = this.deps.document.getState().settings;
     const drawn = this.drawn;
     const shown = placement !== null;
-    if (!this.changed(placement, settings, frameWidth, frameHeight)) return;
+    const scene = placement ? (this.deps.gizmo?.scene() ?? null) : null;
+    const sceneChanged = this.sceneChanged(scene);
+    if (!this.changed(placement, settings, frameWidth, frameHeight) && !sceneChanged) return;
     drawn.shown = shown;
     drawn.settings = settings;
     drawn.theme = this.theme;
@@ -121,6 +139,7 @@ export class PreviewOverlayView implements RenderView {
     this.draws += 1;
     if (!placement) return;
     this.draw(ctx, placement, settings, { width: frameWidth, height: frameHeight });
+    if (scene) this.drawGizmo(ctx, placement, scene);
   }
 
   unmount(): void {
@@ -130,6 +149,186 @@ export class PreviewOverlayView implements RenderView {
     this.ctx = null;
     this.drawn.settings = null;
     this.drawn.shown = false;
+    this.sceneNumbers.length = 0;
+    this.sceneText = "";
+  }
+
+  /** Flattens `scene` and compares it with the one drawn last (keeping the new one). */
+  private sceneChanged(scene: GizmoScene | null): boolean {
+    const out = this.nextNumbers;
+    out.length = 0;
+    let text = "";
+    if (scene) {
+      const quad = (q: Quad | null) => {
+        if (!q) out.push(0);
+        else for (const p of q) out.push(p.x, p.y);
+      };
+      quad(scene.hover);
+      out.push(scene.outlines.length);
+      for (const q of scene.outlines) quad(q);
+      quad(scene.box);
+      out.push(scene.group ? 1 : 0);
+      if (scene.anchor) out.push(1, scene.anchor.x, scene.anchor.y);
+      else out.push(0);
+      if (scene.marquee) out.push(1, scene.marquee.x0, scene.marquee.y0, scene.marquee.x1, scene.marquee.y1);
+      else out.push(0);
+      if (scene.snap) out.push(1, CORNERS.indexOf(scene.snap.handle), EDGES.indexOf(scene.snap.handle), scene.snap.x ? 1 : 0, scene.snap.y ? 1 : 0);
+      else out.push(0);
+      if (scene.readout) {
+        out.push(1, scene.readout.x, scene.readout.y);
+        text = scene.readout.text;
+      } else out.push(0);
+    } else out.push(-1);
+    const previous = this.sceneNumbers;
+    let changed = text !== this.sceneText || previous.length !== out.length;
+    for (let i = 0; !changed && i < out.length; i++) if (previous[i] !== out[i]) changed = true;
+    this.sceneNumbers = out;
+    this.nextNumbers = previous;
+    this.sceneText = text;
+    return changed;
+  }
+
+  /** The canvas selection and the gizmo (spec §7.2, §7.3), in device px. */
+  private drawGizmo(ctx: CanvasRenderingContext2D, placement: PreviewPlacement, scene: GizmoScene): void {
+    const { transform: t, dpr } = placement;
+    const { color, gizmo } = this.theme;
+    const line = Math.max(1, Math.round(gizmo.lineWidth * dpr));
+    const at = (p: Point) => toScreen(t, p);
+    const path = (quad: Quad) => {
+      ctx.beginPath();
+      quad.forEach((p, i) => {
+        const s = at(p);
+        if (i === 0) ctx.moveTo(s.x, s.y);
+        else ctx.lineTo(s.x, s.y);
+      });
+      ctx.closePath();
+    };
+    ctx.save();
+    ctx.lineWidth = line;
+    if (scene.hover) {
+      ctx.strokeStyle = color.accentDim;
+      path(scene.hover);
+      ctx.stroke();
+    }
+    if (scene.marquee) {
+      const a = at({ x: Math.min(scene.marquee.x0, scene.marquee.x1), y: Math.min(scene.marquee.y0, scene.marquee.y1) });
+      const b = at({ x: Math.max(scene.marquee.x0, scene.marquee.x1), y: Math.max(scene.marquee.y0, scene.marquee.y1) });
+      const x = Math.round(a.x);
+      const y = Math.round(a.y);
+      const w = Math.round(b.x) - x;
+      const h = Math.round(b.y) - y;
+      ctx.fillStyle = color.accentWash;
+      ctx.fillRect(x, y, w, h);
+      ctx.strokeStyle = color.accentDim;
+      ctx.strokeRect(x + line / 2, y + line / 2, w - line, h - line);
+    }
+    ctx.strokeStyle = color.accent;
+    for (const quad of scene.outlines) {
+      path(quad);
+      ctx.stroke();
+    }
+    const box = scene.box;
+    if (box) {
+      if (scene.group) {
+        path(box);
+        ctx.stroke();
+      }
+      if (scene.snap) this.drawSnapLine(ctx, t, box, scene.snap, dpr);
+      // Square handles on screen: the corners always, the edge handles on sides long enough.
+      const shown = edgeHandlesShown(box, t, gizmo.minEdge * dpr);
+      const size = Math.round(gizmo.handleSize * dpr);
+      const handles: HandleId[] = [...CORNERS, ...EDGES.filter((h) => (h === "n" || h === "s" ? shown.horizontal : shown.vertical))];
+      ctx.fillStyle = color.textPrimary;
+      ctx.strokeStyle = color.accent;
+      for (const handle of handles) {
+        const p = at(handlePoint(box, handle));
+        const x = Math.round(p.x - size / 2);
+        const y = Math.round(p.y - size / 2);
+        ctx.fillRect(x, y, size, size);
+        ctx.strokeRect(x + line / 2, y + line / 2, size - line, size - line);
+      }
+    }
+    if (scene.anchor) this.drawAnchor(ctx, at(scene.anchor), dpr, line);
+    ctx.restore();
+    if (scene.readout) this.drawReadout(ctx, placement, scene.readout);
+  }
+
+  /** The 100% scale snap (§7.3): the box sides through the dragged handle, on the snapped axes, in --accent. */
+  private drawSnapLine(ctx: CanvasRenderingContext2D, t: Mat3, box: Quad, snap: NonNullable<GizmoScene["snap"]>, dpr: number): void {
+    const [tl, tr, br, bl] = box;
+    const sides: Record<"n" | "e" | "s" | "w", [Point, Point]> = { n: [tl, tr], e: [tr, br], s: [br, bl], w: [bl, tl] };
+    const { handle } = snap;
+    const xSide: "e" | "w" | null = handle.includes("e") ? "e" : handle.includes("w") ? "w" : null;
+    const ySide: "n" | "s" | null = handle.includes("n") ? "n" : handle.includes("s") ? "s" : null;
+    ctx.save();
+    ctx.strokeStyle = this.theme.color.accent;
+    ctx.lineWidth = Math.max(1, Math.round(this.theme.gizmo.snapWidth * dpr));
+    ctx.beginPath();
+    for (const name of [snap.x ? xSide : null, snap.y ? ySide : null]) {
+      if (!name) continue;
+      const [a, b] = sides[name];
+      const sa = toScreen(t, a);
+      const sb = toScreen(t, b);
+      ctx.moveTo(sa.x, sa.y);
+      ctx.lineTo(sb.x, sb.y);
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  /** The anchor marker: a ring with a cross in primary text over a sunken outline. */
+  private drawAnchor(ctx: CanvasRenderingContext2D, p: Point, dpr: number, line: number): void {
+    const { color, gizmo } = this.theme;
+    const r = (gizmo.anchorSize * dpr) / 2;
+    const x = Math.round(p.x) + line / 2;
+    const y = Math.round(p.y) + line / 2;
+    const shape = () => {
+      ctx.beginPath();
+      ctx.moveTo(x + r / 2, y);
+      ctx.arc(x, y, r / 2, 0, Math.PI * 2);
+      ctx.moveTo(x - r, y);
+      ctx.lineTo(x + r, y);
+      ctx.moveTo(x, y - r);
+      ctx.lineTo(x, y + r);
+    };
+    ctx.strokeStyle = color.bgSunken;
+    ctx.lineWidth = line * 3;
+    shape();
+    ctx.stroke();
+    ctx.strokeStyle = color.textPrimary;
+    ctx.lineWidth = line;
+    shape();
+    ctx.stroke();
+  }
+
+  /** The readout near the cursor (§7.3) in the timeline's drag tooltip style: --surface-4, hairline, radius-sm, caption mono, up and right of the pointer. */
+  private drawReadout(ctx: CanvasRenderingContext2D, placement: PreviewPlacement, readout: NonNullable<GizmoScene["readout"]>): void {
+    const { dpr, width, height } = placement;
+    const theme = this.theme;
+    const { space, color } = theme;
+    const caption = theme.type.caption;
+    ctx.save();
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.font = `${caption.weight} ${caption.size}px ${theme.font.mono}`;
+    const w = Math.ceil(ctx.measureText(readout.text).width) + 2 * space[2];
+    const h = caption.line + 2 * space[1];
+    const snap = (v: number) => Math.round(v * dpr) / dpr;
+    const x = snap(Math.max(0, Math.min(readout.x + space[3], width / dpr - w)));
+    let y = readout.y - space[3] - h;
+    if (y < 0) y = readout.y + space[5];
+    y = snap(Math.max(0, Math.min(y, height / dpr - h)));
+    const hair = 1 / dpr;
+    ctx.beginPath();
+    ctx.roundRect(x + hair / 2, y + hair / 2, w - hair, h - hair, theme.radius.sm);
+    ctx.fillStyle = color.surface4;
+    ctx.fill();
+    ctx.strokeStyle = color.hairline;
+    ctx.lineWidth = hair;
+    ctx.stroke();
+    ctx.fillStyle = color.textPrimary;
+    ctx.textBaseline = "middle";
+    ctx.fillText(readout.text, x + space[2], y + h / 2);
+    ctx.restore();
   }
 
   private changed(placement: PreviewPlacement | null, settings: PreviewSession, frameWidth: number, frameHeight: number): boolean {

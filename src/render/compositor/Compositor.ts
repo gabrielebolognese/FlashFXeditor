@@ -8,13 +8,15 @@
 // - Crop fractions apply to the media as shown (upright and flipped): `left` always cuts the visible
 //   left side.
 // - Media time 0 is the first frame: `timeUs` is relative to it, whatever cts the container starts at.
+// - Gesture-aware (spec P2): during a canvas gesture `transforms` gives the clips' ephemeral
+//   transforms, used instead of the document's until the gesture commits.
 // Layer structs and arrays are reused between frames; evaluating allocates nothing once warm.
 // TODO(batch 28): text layers. TODO(batch 32): the caption track's current cue. TODO(batch 34): solid
 // shapes other than rect, gradient fills, corner radius. TODO(batch 35): keyframes.
 // TODO(batch 36): transitions (two contributing clips and a mix amount).
 import { isRgba } from "../../core/document/color.js";
 import { framesToSourceUs, secondsToFrames } from "../../core/document/time.js";
-import type { Clip, Frame, MediaClip, MediaId, Project, RGBA, SolidClip, Transform } from "../../core/document/types.js";
+import type { Clip, ClipId, Frame, MediaClip, MediaId, Project, RGBA, SolidClip, Transform } from "../../core/document/types.js";
 import { clipInIndex, lastClipStartingBy, trackIndex } from "../../timeline/model/queries.js";
 import { multiplyInto, mutableIdentity, setMat, type MutableMat3 } from "../mat3.js";
 import type { Composite, CompositeLayer, MediaLayer, SolidLayer } from "./drawList.js";
@@ -97,10 +99,10 @@ export class Compositor {
   private readonly step = mutableIdentity();
 
   /**
-   * The document at `frame`, bottom track first. The result and its layers are reused by the next
-   * call: read it before evaluating again.
+   * The document at `frame`, bottom track first, with `transforms` (a canvas gesture's) replacing the
+   * clips' own. The result and its layers are reused by the next call: read it before evaluating again.
    */
-  evaluate(doc: Project, frame: Frame): Composite {
+  evaluate(doc: Project, frame: Frame, transforms: ReadonlyMap<ClipId, Transform> | null = null): Composite {
     const out = this.out;
     const { width, height, background } = doc.settings;
     out.width = width;
@@ -117,13 +119,13 @@ export class Compositor {
       if (!clip?.enabled) continue;
       if (clip.kind === "video" || clip.kind === "image") {
         const layer = (this.mediaPool[media] ??= newMediaLayer());
-        if (this.writeMedia(layer, doc, clip, frame)) {
+        if (this.writeMedia(layer, doc, clip, frame, transforms?.get(clip.id) ?? clip.transform)) {
           out.layers.push(layer);
           media += 1;
         }
       } else if (clip.kind === "solid") {
         const layer = (this.solidPool[solids] ??= newSolidLayer());
-        if (this.writeSolid(layer, doc, clip)) {
+        if (this.writeSolid(layer, doc, clip, transforms?.get(clip.id) ?? clip.transform)) {
           out.layers.push(layer);
           solids += 1;
         }
@@ -164,14 +166,14 @@ export class Compositor {
     list.push(neighbor);
   }
 
-  private writeMedia(layer: WritableMediaLayer, doc: Project, clip: MediaClip, frame: Frame): boolean {
+  private writeMedia(layer: WritableMediaLayer, doc: Project, clip: MediaClip, frame: Frame, transform: Transform): boolean {
     const item = doc.media[clip.mediaId];
     if (!item?.width || !item.height) return false;
     const rotation = item.rotation ?? 0;
     const quarter = rotation === 90 || rotation === 270;
     const shownWidth = quarter ? item.height : item.width;
     const shownHeight = quarter ? item.width : item.height;
-    const { flipH, flipV } = clip.transform;
+    const { flipH, flipV } = transform;
 
     // The visible part of the shown (upright, flipped) media, then where it lies in the texture.
     const left = clamp01(clip.crop.left);
@@ -220,7 +222,7 @@ export class Compositor {
     else if (rotation === 270) multiplyInto(m, setMat(step, 0, -1, 1, 0, 0, 1), m);
     if (flipH || flipV) multiplyInto(m, setMat(step, flipH ? -1 : 1, 0, 0, flipV ? -1 : 1, flipH ? 1 : 0, flipV ? 1 : 0), m);
     multiplyInto(m, setMat(step, shownWidth, 0, 0, shownHeight, 0, 0), m);
-    multiplyInto(m, writeModel(step, clip.transform, shownWidth, shownHeight, doc.settings.width, doc.settings.height), m);
+    multiplyInto(m, writeModel(step, transform, shownWidth, shownHeight, doc.settings.width, doc.settings.height), m);
 
     layer.trackId = clip.trackId;
     layer.clipId = clip.id;
@@ -231,11 +233,11 @@ export class Compositor {
     return true;
   }
 
-  private writeSolid(layer: WritableSolidLayer, doc: Project, clip: SolidClip): boolean {
+  private writeSolid(layer: WritableSolidLayer, doc: Project, clip: SolidClip, transform: Transform): boolean {
     const fill = clip.fill;
     // TODO(batch 34): rounded rects, ellipses, lines and gradient fills.
     if (clip.shape !== "rect" || !isRgba(fill) || clip.size.w <= 0 || clip.size.h <= 0) return false;
-    const m = writeModel(layer.transform, clip.transform, clip.size.w, clip.size.h, doc.settings.width, doc.settings.height);
+    const m = writeModel(layer.transform, transform, clip.size.w, clip.size.h, doc.settings.width, doc.settings.height);
     multiplyInto(m, m, setMat(this.step, clip.size.w, 0, 0, clip.size.h, 0, 0));
     layer.color.r = fill.r;
     layer.color.g = fill.g;

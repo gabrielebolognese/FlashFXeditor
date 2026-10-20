@@ -11,6 +11,7 @@
 //   does), and draws. While a trim runs, `override` gives the document and frame to show instead;
 //   with `previewSplit` (rolls, slips, slides, spec §6.10) it shows two frames side by side, each
 //   fitted (or at the zoom) in its half of the canvas: two evaluations, one texture pass, one draw.
+//   While a canvas gesture runs (spec §7.3, P2), `transforms` gives the layers' ephemeral transforms.
 //   A pause leaves the playhead where it is, but playback may have held a track's previous layer
 //   there (shuttle speeds deliver every n-th frame): the render after it requests the exact frame.
 //   When the draw list, the viewport and the render scale equal the last ones drawn, the GPU draw is
@@ -26,7 +27,7 @@
 // - `firstShown` reports what the first render of each playhead frame drew, for the playback
 //   engine's dropped-frame count.
 // - The backing store is resized inside `render`, so a resize never shows a cleared canvas.
-import type { Frame, Project, RGBA } from "../../core/document/types.js";
+import type { ClipId, Frame, Project, RGBA, Transform } from "../../core/document/types.js";
 import { watchDevicePixelRatio } from "../../core/scheduler/devicePixelRatio.js";
 import type { FrameScheduler, RenderView } from "../../core/scheduler/FrameScheduler.js";
 import { createStore, type Store } from "../../core/store/createStore.js";
@@ -64,6 +65,8 @@ export interface PreviewViewDeps extends Omit<LayerTexturesDeps, "onChange"> {
    * `preview` when it changes.
    */
   override?(): { project: Project; frame: Frame; previewSplit?: { leftFrame: Frame; rightFrame: Frame } | null } | null;
+  /** A canvas gesture's ephemeral transforms by clip id (the gizmo, spec §7.3), or null. The owner invalidates `preview` when they change. */
+  transforms?(): ReadonlyMap<ClipId, Transform> | null;
   /** Clock of the Auto settle time (ms); `performance.now` by default. */
   now?(): number;
 }
@@ -275,7 +278,7 @@ export class PreviewView implements RenderView {
       this.renderSplit(doc, split.leftFrame, split.rightFrame, preview, priority, size, dpr, resized, started);
       return;
     }
-    const composite = this.compositor.evaluate(doc, frame);
+    const composite = this.compositor.evaluate(doc, frame, override ? null : (this.deps.transforms?.() ?? null));
     const transform = frameTransformInto(this.transform, preview.zoom, composite, size, this.chrome.margin * dpr, preview.panX, preview.panY);
     const scale = this.detailOf(doc, composite, transform[0], preview, activity);
     const list = this.textures.resolve(composite, priority, this.stats.detail.upload);
