@@ -1,4 +1,5 @@
-// The timeline overlay canvas (spec §6.17, P3): hover highlights (a clip, a gap), the selected gap,
+// The timeline overlay canvas (spec §6.17, P3): hover highlights (a clip, a gap, a track header and
+// its toggles), a dragged track header with the line where it lands (spec §6.12), the selected gap,
 // the Razor's cut line, the trim preview (the rows an edit changes, redrawn as the drop would leave
 // them), the selected edit point's brackets, the snap line, clip drag ghosts with the new track rows,
 // overwrite hatching and the insert line, the edit's ghost edges, the marquee, the playhead and the
@@ -10,7 +11,7 @@ import type { Theme } from "../../core/theme/theme.js";
 import { edgeFrame, type TrimEdge } from "../edit/trim.js";
 import { clipsInRange, linkOffset, type Gap } from "../model/queries.js";
 import { clipLod, clipSpan, devicePx, LOD_LABEL_PX } from "./clipLayout.js";
-import { drawClip, fillClip, fontOf } from "./drawContent.js";
+import { drawClip, drawDiagonalHatch, drawHeader, fillClip, fontOf } from "./drawContent.js";
 import type { Rect, Row, TimelineGeometry } from "./geometry.js";
 import type { Ghost, MoveProposal, NewLane } from "./gestures/moveClips.js";
 import type { TrimProposal } from "./gestures/trimClip.js";
@@ -39,6 +40,17 @@ export interface EditPointMark {
   side: "both" | "left" | "right";
 }
 
+/**
+ * A track header dragged to reorder (spec §6.12): its header follows the pointer (`y`: the ghost's top)
+ * and an insert line marks where it lands (`insertY`, null when it would land where it is).
+ */
+export interface TrackDragScene {
+  track: Track;
+  height: number;
+  y: number;
+  insertY: number | null;
+}
+
 /** The Razor at the pointer (spec §6.11): a cut line at `frame` over each clip it would cut. */
 export interface RazorScene {
   frame: Frame;
@@ -57,6 +69,9 @@ export interface OverlayScene {
   hoverAddRow: Rect | null;
   /** A header toggle under the pointer. */
   hoverToggle: Rect | null;
+  /** The track header under the pointer (outside its toggles). */
+  hoverHeader?: Rect | null;
+  trackDrag?: TrackDragScene | null;
   /** The gap under the pointer, and the selected gap (spec §6.7: a dashed outline). */
   hoverGap?: Gap | null;
   gap?: Gap | null;
@@ -112,6 +127,7 @@ export function drawOverlay(scene: OverlayScene): void {
   // Over the snap line it may stand on: the clips the Razor would cut stay visible.
   if (scene.razor) drawRazor(scene, scene.razor);
   ctx.restore();
+  if (scene.trackDrag) drawTrackDrag(scene, scene.trackDrag);
   drawPlayhead(scene);
   if (scene.tooltip) drawTooltip(scene, scene.tooltip);
 }
@@ -378,22 +394,7 @@ function drawHatch(scene: OverlayScene, x0: number, x1: number, y: number, heigh
   // the length of the overwritten span (spec §6.17: off-screen parts cost nothing).
   const left = Math.max(x0, geometry.area.x);
   const right = Math.min(x1, geometry.area.x + geometry.area.width);
-  if (right <= left) return;
-  const gap = Math.max(theme.timeline.hatchGap, 1);
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(left, y, right - left, height);
-  ctx.clip();
-  ctx.strokeStyle = theme.timeline.hatch;
-  ctx.lineWidth = 1 / dpr;
-  ctx.beginPath();
-  // Lines on a fixed grid (by x), so the pattern does not crawl while the ghost moves.
-  for (let x = Math.floor((left - height) / gap) * gap; x < right; x += gap) {
-    ctx.moveTo(x, y + height);
-    ctx.lineTo(x + height, y);
-  }
-  ctx.stroke();
-  ctx.restore();
+  drawDiagonalHatch(ctx, dpr, left, right, y, height, theme.timeline.hatch, theme.timeline.hatchGap);
 }
 
 /** Insert drops (Mod): a vertical line at the insert frame through every track and an arrow showing the shift. */
@@ -501,8 +502,38 @@ function drawTooltip(scene: OverlayScene, tooltip: Tooltip): void {
   }
 }
 
+/** The dragged header at the pointer, at the ghost opacity, and the accent line where the track lands. */
+function drawTrackDrag(scene: OverlayScene, drag: TrackDragScene): void {
+  const { ctx, dpr, geometry, theme } = scene;
+  const tl = theme.timeline;
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, geometry.area.y, geometry.width, geometry.area.height);
+  ctx.clip();
+  if (drag.insertY !== null) {
+    const width = devicePx(tl.insertWidth, dpr) / dpr;
+    ctx.fillStyle = theme.color.accent;
+    ctx.fillRect(0, Math.round(drag.insertY * dpr - (width * dpr) / 2) / dpr, geometry.width, width);
+  }
+  const row: Row = { trackId: drag.track.id, kind: drag.track.kind, index: -1, lane: 0, y: drag.y, height: drag.height };
+  ctx.globalAlpha = tl.ghostOpacity;
+  ctx.fillStyle = theme.color.surface1;
+  ctx.fillRect(0, drag.y, geometry.headerWidth, drag.height);
+  drawHeader(scene, row, drag.track, true);
+  ctx.globalAlpha = 1;
+  ctx.strokeStyle = theme.color.accent;
+  ctx.lineWidth = 1 / dpr;
+  ctx.strokeRect(snap(0, dpr) + 0.5 / dpr, snap(drag.y, dpr) + 0.5 / dpr, snap(geometry.headerWidth, dpr) - 1 / dpr, snap(drag.height, dpr) - 1 / dpr);
+  ctx.restore();
+}
+
 function drawHover(scene: OverlayScene): void {
   const { ctx, dpr, geometry, theme } = scene;
+  if (scene.hoverHeader) {
+    const rect = scene.hoverHeader;
+    ctx.fillStyle = theme.color.hoverWash;
+    ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
+  }
   if (scene.hoverAddRow) {
     const row = scene.hoverAddRow;
     ctx.fillStyle = theme.color.hoverWash;

@@ -70,9 +70,13 @@ export interface TimelineTheme {
   playheadWidthActive: number;
   playheadHeadWidth: number;
   playheadHeadHeight: number;
-  /** Mute/solo toggles of audio track headers. */
+  /** Track header toggles (target, lock, mute, solo, hide, height). */
   toggleSize: number;
   toggleGap: number;
+  /** Locked track rows: diagonal hatch lines (spec §6.12). */
+  lockHatch: string;
+  /** Clips of tracks that are muted, hidden or not heard (another track soloed) are drawn at this opacity. */
+  inactiveOpacity: number;
   playhead: string;
   /** Hover wash over a clip. */
   clipHover: string;
@@ -226,6 +230,8 @@ export function readTheme(read: TokenReader, root?: Element): { theme: Theme; mi
       playheadHeadHeight: num("--playhead-head-height"),
       toggleSize: num("--track-toggle-size"),
       toggleGap: num("--track-toggle-gap"),
+      lockHatch: str("--timeline-lock-hatch"),
+      inactiveOpacity: num("--timeline-inactive-opacity"),
       playhead: str("--playhead"),
       clipHover: str("--clip-hover-wash"),
       clip,

@@ -73,4 +73,39 @@ describe("TimelineGeometry", () => {
     // Below the divider: 4 + 6 * 56 + 24 = 364 px against 200 px of room.
     expect(audio.scrollYRange).toEqual({ min: 0, max: 164 });
   });
+
+  it("lays out each kind's header toggles right-aligned on the first line, with the name before them", () => {
+    const g = geometry([makeTrack("v1"), makeTrack("cc", "caption"), makeTrack("a1", "audio")]);
+    const v1 = g.rowOf("v1")!;
+    // Header 176 wide, 8 px padding, 16 px toggles 4 apart: x 72, 92, 112, 132, 152; centered on the 32 px first line.
+    expect(g.headerToggles(v1).map(({ toggle, rect }) => [toggle, rect.x, rect.y - v1.y])).toEqual([
+      ["target", 72, 8],
+      ["lock", 92, 8],
+      ["mute", 112, 8],
+      ["hide", 132, 8],
+      ["height", 152, 8],
+    ]);
+    expect(g.headerToggles(g.rowOf("a1")!).map(({ toggle }) => toggle)).toEqual(["target", "lock", "mute", "solo", "height"]);
+    const cc = g.rowOf("cc")!;
+    expect(g.headerToggles(cc).map(({ toggle, rect }) => [toggle, rect.x])).toEqual([
+      ["target", 112],
+      ["lock", 132],
+      ["hide", 152],
+    ]);
+    expect(g.headerToggle(cc, "solo")).toBeNull();
+    // The name: after the 14 px icon and a 6 px gap, up to 6 px before the first toggle.
+    expect(g.headerName(v1, 14, 6)).toEqual({ x: 28, y: v1.y, width: 72 - 6 - 28, height: 32 });
+    expect(g.headerName(cc, 14, 6).width).toBe(112 - 6 - 28);
+  });
+
+  it("finds the lane a dragged header lands on: the row under it, the outermost lane beyond, lane 0 toward the divider", () => {
+    const g = geometry([makeTrack("v1"), makeTrack("v2"), makeTrack("v3"), makeTrack("a1", "audio"), makeTrack("a2", "audio")]);
+    const mid = (id: string) => g.rowOf(id)!.y + 10;
+    expect(["v1", "v2", "v3"].map((id) => g.reorderLane("video", mid(id)))).toEqual([0, 1, 2]);
+    expect(g.reorderLane("video", g.rowOf("v3")!.y - 50)).toBe(2);
+    expect(g.reorderLane("video", mid("a2"))).toBe(0);
+    expect(["a1", "a2"].map((id) => g.reorderLane("audio", mid(id)))).toEqual([0, 1]);
+    expect(g.reorderLane("audio", g.rowOf("a2")!.y + 500)).toBe(1);
+    expect(g.reorderLane("audio", mid("v3"))).toBe(0);
+  });
 });

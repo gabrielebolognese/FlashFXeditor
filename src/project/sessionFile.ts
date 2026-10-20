@@ -93,7 +93,10 @@ function sanitizeSelection(value: unknown): SelectionSnapshot {
   const primary = typeof raw.primary === "string" && clipIds.includes(raw.primary) ? raw.primary : (clipIds[0] ?? null);
   const kind = oneOf<SelectionKind>(SELECTION_KINDS, raw.kind, "none");
   if (kind === "clips" && clipIds.length === 0) return EMPTY_SELECTION_SNAPSHOT;
-  return { clipIds, primary, kind };
+  if (kind !== "track") return { clipIds, primary, kind };
+  // A track selection lists its tracks (Batch 16); one without any is no selection.
+  const trackIds = Array.isArray(raw.trackIds) ? [...new Set(raw.trackIds.filter((id): id is string => typeof id === "string"))] : [];
+  return trackIds.length > 0 ? { clipIds: [], primary: null, kind, trackIds } : EMPTY_SELECTION_SNAPSHOT;
 }
 
 /** Never throws; `null` (no file) and garbage both give the defaults. */

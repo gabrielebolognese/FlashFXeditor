@@ -125,14 +125,17 @@ describe("HitTester", () => {
     expect(hits.hit(x(20), 150).type).toBe("empty");
   });
 
-  it("finds the mute and solo toggles of audio track headers", () => {
+  it("finds the header toggles of each track kind", () => {
     const hits = setup();
-    // a1 232..288: first line 232..264, toggles 16 px centered on it (240..256), right-aligned 8 px in: solo 152..168, mute 132..148.
-    expect(hits.hit(160, 248)).toMatchObject({ type: "headerToggle", toggle: "solo", trackId: "a1" });
-    expect(hits.hit(140, 248)).toMatchObject({ type: "headerToggle", toggle: "mute", trackId: "a1" });
+    // a1 232..288: first line 232..264, toggles 16 px centered on it (240..256), 4 px apart, right-aligned
+    // 8 px in: target 72..88, lock 92..108, mute 112..128, solo 132..148, height 152..168.
+    const audio = [80, 100, 120, 140, 160].map((at) => hits.hit(at, 248).toggle);
+    expect(audio).toEqual(["target", "lock", "mute", "solo", "height"]);
+    expect(hits.hit(160, 248)).toMatchObject({ type: "headerToggle", toggle: "height", trackId: "a1" });
     expect(hits.hit(150, 248)).toMatchObject({ type: "trackHeader", toggle: null, trackId: "a1" });
     expect(hits.hit(160, 270)).toMatchObject({ type: "trackHeader", toggle: null });
-    // Video tracks have none yet (Batch 16).
-    expect(hits.hit(160, 188)).toMatchObject({ type: "trackHeader", toggle: null, trackId: "v1" });
+    // Video: hide where audio has solo (v1's first line 172..204, toggles 180..196).
+    expect([80, 100, 120, 140, 160].map((at) => hits.hit(at, 188).toggle)).toEqual(["target", "lock", "mute", "hide", "height"]);
+    expect(hits.hit(40, 188)).toMatchObject({ type: "trackHeader", toggle: null, trackId: "v1" });
   });
 });

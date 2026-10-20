@@ -63,6 +63,10 @@ describe("Compositor.evaluate", () => {
     expect(list.layers.map((l) => media(l).clipId)).toEqual(["late"]);
     expect([list.width, list.height]).toEqual([W, H]);
     expect(list.background).toBe(doc.settings.background);
+    // A muted video track is out of the composite too (spec §6.12), and out of the cut warming.
+    doc.tracks[1] = { ...(doc.tracks[1] as Project["tracks"][number]), muted: true };
+    expect(compositor.evaluate(doc, 15).layers.map((l) => media(l).clipId)).toEqual(["c1"]);
+    expect(compositor.neighbors(doc, 5).map((neighbor) => neighbor.timeUs)).toEqual(compositor.neighbors({ ...doc, tracks: doc.tracks.filter((track) => track.id !== "v2") }, 5).map((neighbor) => neighbor.timeUs));
   });
 
   it("computes the source time with speed and in point, inside the clip's media range", () => {

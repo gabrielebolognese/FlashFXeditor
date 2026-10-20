@@ -10,8 +10,10 @@
 // (spec §6.10). The active tool decides what a hit does (spec §6.18): Select drags clips and trims
 // edges (Mod+Alt on a cut rolls, a click on a cut selects the edit point), Slip and Slide drag clip
 // bodies, Rate stretch drags edges, Razor cuts at the click (spec §6.11: hovering shows the cut line).
-// A click on a gap selects it (spec §6.7); a right-click on a clip or a gap asks for its context menu
-// (spec §6.16).
+// A click on a gap selects it (spec §6.7); a right-click on a clip, a gap or a track header asks for
+// its context menu (spec §6.16). Track headers (spec §6.1, §6.12): a click selects the track (Shift or
+// Mod adds or removes it, Mod+Shift selects its clips), a toggle click flips its flag, a vertical drag
+// reorders the track among those of its kind (one command on release), a double-click renames it.
 // Snapping (spec §6.9): clip drags and edits snap while the toggle is on, ruler scrubs only with Shift
 // too, and holding S during a drag inverts the toggle until it is released.
 import type { Affect } from "../../core/commands/command.js";
@@ -24,17 +26,17 @@ import type { IdleQueue } from "../../core/scheduler/IdleQueue.js";
 import type { Store } from "../../core/store/createStore.js";
 import type { DocumentStore } from "../../core/store/DocumentStore.js";
 import type { LayoutState, Size } from "../../core/store/layoutStore.js";
-import { clickSelection, EMPTY_SELECTION, type ClickModifier, type Selection } from "../../core/store/selection.js";
+import { clickSelection, EMPTY_SELECTION, selectClips, selectedTrackIds, selectTracks, trackClickSelection, type ClickModifier, type Selection } from "../../core/store/selection.js";
 import { selectEditPoint, selectGap, setPlayhead, setSelection, type EditPoint, type SessionStore, type Tool } from "../../core/store/sessionStore.js";
 import type { Theme, ThemeBridge } from "../../core/theme/theme.js";
 import type { MoveRequest } from "../edit/move.js";
 import { clipsToSplit } from "../edit/split.js";
 import { MAX_SPEED, MIN_SPEED, type TrimEdge } from "../edit/trim.js";
-import { contentEnd, gapAt, isClipLocked, linkedPartners, neighbors, type Gap } from "../model/queries.js";
+import { contentEnd, gapAt, isClipLocked, laneOf, linkedPartners, neighbors, selectionPartners, type Gap } from "../model/queries.js";
 import { resolveSnap, SnapIndex, snapLabel, type SnapCandidates, type SnapTarget } from "../snap/snapIndex.js";
 import { trimCursor, trimCursors, type TrimCursors } from "./cursors.js";
 import { drawContent } from "./drawContent.js";
-import { drawOverlay, type EditPointMark, type RazorScene } from "./drawOverlay.js";
+import { drawOverlay, type EditPointMark, type RazorScene, type TrackDragScene } from "./drawOverlay.js";
 import { TimelineGeometry, type HeaderToggle, type Rect, type TimelineMetrics } from "./geometry.js";
 import { edgeStep } from "./gestures/autoScroll.js";
 import { MarqueeGesture } from "./gestures/marquee.js";
@@ -67,8 +69,12 @@ export interface TimelineViewDeps {
   theme: Pick<ThemeBridge, "theme" | "subscribe">;
   /** A "+ track" row was clicked. */
   onAddTrack(kind: TrackKind): void;
-  /** A track header toggle (mute, solo) was clicked. */
+  /** A track header toggle (target, lock, mute, solo, hide, height) was clicked. */
   onToggleTrack(trackId: TrackId, toggle: HeaderToggle): void;
+  /** A track header was dragged to `lane` among the tracks of its kind (spec §6.12): one command. */
+  onReorderTrack?(trackId: TrackId, lane: number): void;
+  /** A track header was double-clicked (spec §6.1): the controller opens the inline rename. */
+  onRenameTrack?(trackId: TrackId): void;
   /** A clip drag was dropped: the controller applies it as one command (spec §6.8, P2). */
   onMoveClips(request: MoveRequest): void;
   /** An edit drag (trim, roll, slip, slide, rate stretch) was released: the controller applies it as one command (spec §6.10, P2). */
@@ -77,7 +83,7 @@ export interface TimelineViewDeps {
   onTrimPreview?(): void;
   /** A Razor click (spec §6.11): the controller splits as one command. */
   onRazor?(request: RazorRequest): void;
-  /** A right-click on a clip or a gap (spec §6.16), already selected: the controller opens its menu. */
+  /** A right-click on a clip, a gap or a track header (spec §6.16), already selected: the controller opens its menu. */
   onContextMenu?(request: ContextMenuRequest): void;
   /** Background work pauses while a gesture runs (spec §3.4). */
   idle?: Pick<IdleQueue, "pause" | "resume">;
@@ -94,7 +100,10 @@ export interface RazorRequest {
 }
 
 /** A context menu to open (spec §6.16) at a client (page) point. */
-export type ContextMenuRequest = { kind: "clip"; clipId: ClipId; x: number; y: number } | { kind: "gap"; gap: Gap; x: number; y: number };
+export type ContextMenuRequest =
+  | { kind: "clip"; clipId: ClipId; x: number; y: number }
+  | { kind: "gap"; gap: Gap; x: number; y: number }
+  | { kind: "track"; trackId: TrackId; x: number; y: number };
 
 export interface TimelineStats {
   contentDraws: number;
@@ -135,7 +144,11 @@ type Gesture =
   | { kind: "trim"; pointerId: number; trim: TrimGesture }
   /** A press on empty track space or a gap: a marquee once it moves, else a click (on a gap: selects it). */
   | { kind: "pendingMarquee"; pointerId: number; x: number; y: number; additive: boolean; gap: Gap | null }
-  | { kind: "marquee"; pointerId: number; marquee: MarqueeGesture };
+  | { kind: "marquee"; pointerId: number; marquee: MarqueeGesture }
+  /** A press on a track header: a reorder drag once it moves past the dead zone, else a click setting `click`. */
+  | { kind: "pressHeader"; pointerId: number; x: number; y: number; trackId: TrackId; click: Selection }
+  /** A track header dragged to reorder (spec §6.12): `grab` is the pointer's offset in the row, `lane` where it would land. */
+  | { kind: "trackDrag"; pointerId: number; trackId: TrackId; grab: number; lane: number };
 
 /** Auto-scroll steps are given per 60 Hz frame. */
 const FRAME_MS = 1000 / 60;
@@ -224,6 +237,7 @@ function editCursor(cursors: TrimCursors, target: EditTarget, ripple: boolean): 
 /** The cursor for the hover hit and the gesture (spec §6.18: set from the hover hit, by tool). */
 function cursorFor(hit: HitResult | null, gesture: Gesture | null, cursors: TrimCursors, context: CursorContext): string {
   if (gesture?.kind === "scrub") return "ew-resize";
+  if (gesture?.kind === "trackDrag") return "grabbing";
   if (gesture?.kind === "move") {
     const proposal = gesture.move.proposal;
     return proposal?.refused ? "not-allowed" : proposal?.duplicate ? "copy" : "grabbing";
@@ -325,6 +339,7 @@ export class TimelineView {
     };
     const onWheel = (event: WheelEvent) => this.onWheel(event);
     const onContextMenu = (event: MouseEvent) => this.onContextMenu(event);
+    const onDoubleClick = (event: MouseEvent) => this.onDoubleClick(event);
     // Mod pressed or released over a trim edge switches it to the ripple cursor (spec §6.4), Mod+Alt
     // over a cut to the roll cursor (§6.10). The modifier state is only read here: keys still go to
     // the KeyDispatcher.
@@ -346,6 +361,7 @@ export class TimelineView {
     overlay.addEventListener("pointerleave", onPointerLeave);
     overlay.addEventListener("wheel", onWheel, { passive: false });
     overlay.addEventListener("contextmenu", onContextMenu);
+    overlay.addEventListener("dblclick", onDoubleClick);
 
     this.stops.push(
       scheduler.register("timelineContent", this.contentView),
@@ -409,6 +425,7 @@ export class TimelineView {
         overlay.removeEventListener("pointerleave", onPointerLeave);
         overlay.removeEventListener("wheel", onWheel);
         overlay.removeEventListener("contextmenu", onContextMenu);
+        overlay.removeEventListener("dblclick", onDoubleClick);
         win?.removeEventListener("keydown", onHoverKey);
         win?.removeEventListener("keyup", onHoverKey);
       },
@@ -655,9 +672,9 @@ export class TimelineView {
     return { shift: event.shiftKey, alt: event.altKey, mod: this.deps.platform === "mac" ? event.metaKey : event.ctrlKey };
   }
 
-  /** The linked partners a click selects with a clip, when Linked selection is on (spec §6.7). */
+  /** The clips a click selects with a clip (spec §6.7, §6.12): its group, and its linked partners while Linked selection is on. */
   private partners(clipId: ClipId): ClipId[] {
-    return this.deps.session.state.getState().linkedSelection ? linkedPartners(this.deps.document.getState(), clipId) : [];
+    return selectionPartners(this.deps.document.getState(), clipId, this.deps.session.state.getState().linkedSelection);
   }
 
   private onPointerDown(event: PointerEvent): void {
@@ -691,8 +708,8 @@ export class TimelineView {
         this.pressEdgeHit(event, hit, tool);
         break;
       case "trackHeader":
-        // TODO(batch 16): track selection, Mod+Shift+click selects the track's clips.
         if (hit.addTrack) this.deps.onAddTrack(hit.addTrack);
+        else if (hit.trackId) this.pressHeader(event, hit.trackId);
         break;
       case "headerToggle":
         if (hit.trackId && hit.toggle) this.deps.onToggleTrack(hit.trackId, hit.toggle);
@@ -777,6 +794,60 @@ export class TimelineView {
   }
 
   /**
+   * A press on a track header (spec §6.7, §6.12): a click selects the track for the properties panel
+   * (Shift or Mod adds or removes it; Mod+Shift selects the clips on it instead, none on a locked
+   * track); a vertical drag past the dead zone reorders it. The selection waits for the release.
+   */
+  private pressHeader(event: PointerEvent, trackId: TrackId): void {
+    const track = this.deps.document.getState().tracks.find((candidate) => candidate.id === trackId);
+    const { mod, shift } = this.modifiers;
+    const click =
+      mod && shift ? selectClips(track && !track.locked ? track.clipIds : []) : trackClickSelection(this.deps.session.selection.getState(), trackId, mod || shift ? "toggle" : "none");
+    this.capture(event.pointerId);
+    this.gesture = { kind: "pressHeader", pointerId: event.pointerId, x: event.offsetX, y: event.offsetY, trackId, click };
+  }
+
+  /** The header press became a drag: the track follows the pointer (video and audio tracks; the caption track has a fixed place). */
+  private startTrackDrag(press: Extract<Gesture, { kind: "pressHeader" }>): void {
+    const tracks = this.deps.document.getState().tracks;
+    const lane = laneOf(tracks, press.trackId);
+    const row = this.geometry().rowOf(press.trackId);
+    if (!lane || !row) return;
+    this.gesture = { kind: "trackDrag", pointerId: press.pointerId, trackId: press.trackId, grab: press.y - row.y, lane: lane.number };
+    this.startDrag();
+    this.followPointer();
+  }
+
+  /** Double-click on a track header (spec §6.1): rename it inline. */
+  private onDoubleClick(event: MouseEvent): void {
+    if (this.gesture) return;
+    const hit = this.hitTester.hit(event.offsetX, event.offsetY);
+    if (hit.type === "trackHeader" && hit.trackId) this.deps.onRenameTrack?.(hit.trackId);
+  }
+
+  /**
+   * Where a track header's name is (view CSS px), widened to the header's right edge, for the inline
+   * rename field. The view first scrolls the row into view. Null when the track has no row.
+   */
+  trackNameRect(trackId: TrackId): Rect | null {
+    if (!this.mounted) return null;
+    let geometry = this.geometry();
+    let row = geometry.rowOf(trackId);
+    if (!row) return null;
+    const { area } = geometry;
+    if (row.y < area.y || row.y + Math.min(row.height, area.height) > area.y + area.height) {
+      const delta = row.y < area.y ? row.y - area.y : row.y + Math.min(row.height, area.height) - (area.y + area.height);
+      this.writeViewport(this.viewport(), this.deps.session.state.getState().timeline.scrollY + delta);
+      geometry = this.geometry();
+      row = geometry.rowOf(trackId);
+      if (!row) return null;
+    }
+    const { theme } = this.deps.theme;
+    const name = geometry.headerName(row, theme.icon.size, theme.space[2]);
+    return { ...name, width: geometry.headerWidth - name.x - theme.space[1] };
+  }
+
+  /**
    * A press on empty track space or a gap: a marquee once it moves past the dead zone, else a click
    * that selects the gap (spec §6.7) or clears the selection.
    */
@@ -842,6 +913,10 @@ export class TimelineView {
     } else if (hit.type === "gap" && hit.gap) {
       selectGap(session, hit.gap);
       this.deps.onContextMenu?.({ kind: "gap", gap: hit.gap, x: event.clientX, y: event.clientY });
+    } else if ((hit.type === "trackHeader" || hit.type === "headerToggle") && hit.trackId) {
+      // The track menu acts on the selected tracks: the clicked one joins them, or replaces a selection without it.
+      if (!selectedTrackIds(session.selection.getState()).includes(hit.trackId)) setSelection(session, selectTracks([hit.trackId]));
+      this.deps.onContextMenu?.({ kind: "track", trackId: hit.trackId, x: event.clientX, y: event.clientY });
     }
   }
 
@@ -874,12 +949,16 @@ export class TimelineView {
       case "pendingMarquee":
         if (Math.hypot(event.offsetX - gesture.x, event.offsetY - gesture.y) > threshold) this.startMarquee(gesture);
         break;
+      case "pressHeader":
+        if (Math.abs(event.offsetY - gesture.y) > threshold) this.startTrackDrag(gesture);
+        break;
       case "pressEdge":
         if (Math.hypot(event.offsetX - gesture.x, event.offsetY - gesture.y) > threshold) this.startEdit(gesture.pointerId, gesture.target, gesture.frame);
         break;
       case "move":
       case "trim":
       case "marquee":
+      case "trackDrag":
         this.followPointer();
         break;
     }
@@ -942,6 +1021,11 @@ export class TimelineView {
       const project = this.deps.document.getState();
       if (gesture.marquee.update(geometry, project, pointer.x, pointer.y, (id) => this.partners(id))) this.deps.scheduler.invalidate("timelineContent");
       this.deps.scheduler.invalidate("timelineOverlay");
+    } else if (gesture.kind === "trackDrag") {
+      const row = geometry.rowOf(gesture.trackId);
+      if (row && row.kind !== "caption") gesture.lane = geometry.reorderLane(row.kind, pointer.y);
+      this.updateCursor();
+      this.deps.scheduler.invalidate("timelineOverlay");
     }
   }
 
@@ -995,12 +1079,13 @@ export class TimelineView {
     const pointer = this.pointer;
     const elapsed = this.lastTick === null ? FRAME_MS : Math.min(Math.max(time - this.lastTick, 0), 3 * FRAME_MS);
     this.lastTick = time;
-    if (!gesture || !pointer || (gesture.kind !== "scrub" && gesture.kind !== "move" && gesture.kind !== "trim" && gesture.kind !== "marquee")) return;
+    if (!gesture || !pointer || (gesture.kind !== "scrub" && gesture.kind !== "move" && gesture.kind !== "trim" && gesture.kind !== "marquee" && gesture.kind !== "trackDrag")) return;
     const geometry = this.geometry();
     const { area } = geometry;
     const zone = this.deps.theme.theme.timeline.autoScrollZone;
     const scale = elapsed / FRAME_MS;
-    const dx = edgeStep(pointer.x, area.x, area.x + area.width, zone) * scale;
+    // A track drag is vertical.
+    const dx = gesture.kind === "trackDrag" ? 0 : edgeStep(pointer.x, area.x, area.x + area.width, zone) * scale;
     // Scrubs and trims are horizontal.
     const dy = gesture.kind === "scrub" || gesture.kind === "trim" ? 0 : edgeStep(pointer.y, area.y, area.y + area.height, zone) * scale;
     if (dx === 0 && dy === 0) return;
@@ -1108,6 +1193,12 @@ export class TimelineView {
         this.deps.onTrimPreview?.();
         break;
       }
+      case "pressHeader":
+        if (commit) setSelection(session, gesture.click);
+        break;
+      case "trackDrag":
+        if (commit && gesture.lane !== laneOf(this.deps.document.getState().tracks, gesture.trackId)?.number) this.deps.onReorderTrack?.(gesture.trackId, gesture.lane);
+        break;
       case "scrub":
         break;
     }
@@ -1226,7 +1317,7 @@ export class TimelineView {
     // The brackets stand on the document's cut: not while a drag moves clips.
     const editPoints = proposal || gesture?.kind === "trim" ? [] : this.editPointMarks(project);
     // Hover highlights are for a pointer at rest: none while dragging.
-    const idle = gesture === null || gesture.kind === "scrub" || gesture.kind === "press" || gesture.kind === "pressEdge";
+    const idle = gesture === null || gesture.kind === "scrub" || gesture.kind === "press" || gesture.kind === "pressEdge" || gesture.kind === "pressHeader";
     drawOverlay({
       ctx: layer.ctx,
       dpr: this.dpr(),
@@ -1237,6 +1328,8 @@ export class TimelineView {
       hoverClip: idle ? this.hoverClip(project, geometry) : null,
       hoverAddRow: idle && this.hover?.addTrack ? (this.hover.addTrack === "video" ? geometry.addVideo : geometry.addAudio) : null,
       hoverToggle: idle ? this.hoverToggle(geometry) : null,
+      hoverHeader: idle ? this.hoverHeader(geometry) : null,
+      trackDrag: gesture?.kind === "trackDrag" ? this.trackDragScene(project, geometry, gesture) : null,
       hoverGap: idle && !razor && this.hover?.type === "gap" ? this.hover.gap : null,
       gap: this.selectedGap(project),
       razor,
@@ -1308,7 +1401,24 @@ export class TimelineView {
     const hover = this.hover;
     if (hover?.type !== "headerToggle" || !hover.trackId || !hover.toggle) return null;
     const row = geometry.rowOf(hover.trackId);
-    return row ? (geometry.headerToggles(row)?.[hover.toggle] ?? null) : null;
+    return row ? geometry.headerToggle(row, hover.toggle) : null;
+  }
+
+  /** The header cell of the track under the pointer (its toggles have their own wash). */
+  private hoverHeader(geometry: TimelineGeometry): Rect | null {
+    const hover = this.hover;
+    const row = hover?.type === "trackHeader" && hover.trackId ? geometry.rowOf(hover.trackId) : null;
+    return row ? { x: 0, y: row.y, width: geometry.headerWidth, height: row.height } : null;
+  }
+
+  /** The dragged header at the pointer and the edge of the row it lands on (toward where it comes from), or no line when it stays. */
+  private trackDragScene(project: Project, geometry: TimelineGeometry, drag: Extract<Gesture, { kind: "trackDrag" }>): TrackDragScene | null {
+    const track = project.tracks.find((candidate) => candidate.id === drag.trackId);
+    const row = geometry.rowOf(drag.trackId);
+    if (!track || !row || row.kind === "caption" || !this.pointer) return null;
+    const target = geometry.laneRows[row.kind][drag.lane];
+    const insertY = !target || target.trackId === track.id ? null : target.y < row.y ? target.y : target.y + target.height;
+    return { track, height: row.height, y: this.pointer.y - drag.grab, insertY };
   }
 
   private hoverClip(project: Project, geometry: TimelineGeometry) {

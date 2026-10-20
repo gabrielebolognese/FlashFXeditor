@@ -49,7 +49,7 @@ export class ProjectSession {
     // Document first (load clears the selection), then the session on top of it.
     documentStore.load(opened.project);
     session.state.set(structuredClone(opened.session.state));
-    setSelection(session, fromSnapshot(filterSelection(opened.session.selection, (id) => Object.hasOwn(opened.project.clips, id))));
+    setSelection(session, fromSnapshot(filterSelection(opened.session.selection, (id) => Object.hasOwn(opened.project.clips, id), (id) => opened.project.tracks.some((track) => track.id === id))));
     if (opened.session.layout) layout.setRatios(opened.session.layout);
 
     this.autosaver = new Autosaver({

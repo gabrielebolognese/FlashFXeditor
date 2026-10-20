@@ -64,6 +64,12 @@ describe("session file", () => {
     expect(parsed.layout).toEqual({ left: DEFAULT_RATIOS.left, top: 0.3, media: DEFAULT_RATIOS.media });
   });
 
+  it("keeps a track selection's track ids; one without any is no selection", () => {
+    const text = (selection: unknown) => JSON.stringify({ version: 1, selection });
+    expect(parseSessionFile(text({ clipIds: [], primary: null, kind: "track", trackIds: ["v1", 3, "v1", "a1"] })).selection).toEqual({ clipIds: [], primary: null, kind: "track", trackIds: ["v1", "a1"] });
+    expect(parseSessionFile(text({ clipIds: [], primary: null, kind: "track" })).selection).toEqual({ clipIds: [], primary: null, kind: "none" });
+  });
+
   it("turns a clips selection without ids into no selection", () => {
     const text = JSON.stringify({ version: 1, selection: { clipIds: [], primary: null, kind: "clips" } });
     expect(parseSessionFile(text).selection).toEqual({ clipIds: [], primary: null, kind: "none" });

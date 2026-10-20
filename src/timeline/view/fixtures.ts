@@ -43,6 +43,7 @@ const TOKENS: Record<string, string> = {
   "--timeline-junction-zone": "6px",
   "--timeline-cut-line-width": "1px",
   "--timeline-gap-dash": "4px",
+  "--timeline-inactive-opacity": "0.6",
   "--clip-label-body-alpha": "0.34",
   "--clip-label-bar-alpha": "0.62",
   "--type-caption-line": "14px",

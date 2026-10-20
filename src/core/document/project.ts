@@ -37,3 +37,15 @@ export function nextTrackName(tracks: readonly Pick<Track, "kind" | "name">[], k
 export function defaultTracks(newId: () => string): Track[] {
   return [emptyTrack(newId(), "video", "V1"), emptyTrack(newId(), "audio", "A1")];
 }
+
+/**
+ * `next` with the height of every track that also exists in `current` taken from `current` (the same
+ * object when nothing differs). Track heights are session state (spec §5.3, Batch 16): they live in the
+ * document (one source of truth, §5.2) but are written with no undo step, so an undo or redo that puts
+ * back a whole track object (a reorder, a removed track) must not bring an old height back with it.
+ */
+export function carryTrackHeights(next: Project, current: Project): Project {
+  const heights = new Map(current.tracks.map((track) => [track.id, track.height]));
+  if (next.tracks.every((track) => (heights.get(track.id) ?? track.height) === track.height)) return next;
+  return { ...next, tracks: next.tracks.map((track) => ({ ...track, height: heights.get(track.id) ?? track.height })) };
+}

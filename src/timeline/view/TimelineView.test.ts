@@ -108,6 +108,8 @@ function setup(clipCount = 0) {
   const onTrimPreview = vi.fn();
   const onRazor = vi.fn();
   const onContextMenu = vi.fn();
+  const onReorderTrack = vi.fn();
+  const onRenameTrack = vi.fn();
   const idle = { pause: vi.fn(), resume: vi.fn() };
   const view = new TimelineView({
     scheduler,
@@ -122,6 +124,8 @@ function setup(clipCount = 0) {
     onTrimPreview,
     onRazor,
     onContextMenu,
+    onReorderTrack,
+    onRenameTrack,
     idle,
     platform: "other",
   });
@@ -135,7 +139,7 @@ function setup(clipCount = 0) {
     overlay.dispatchEvent(new PointerEvent(type, { clientX: x, clientY: y, pointerId: 1, button: 0, bubbles: true, ...init }));
   /** A key event on the window (modifier changes during a drag). */
   const key = (type: "keydown" | "keyup", keyName: string, init: KeyboardEventInit = {}) => window.dispatchEvent(new KeyboardEvent(type, { key: keyName, bubbles: true, ...init }));
-  return { view, session, document, layout, scheduler, overlay, pointer, key, onAddTrack, onToggleTrack, onMoveClips, onTrimEdge, onTrimPreview, onRazor, onContextMenu, idle, unmount };
+  return { view, session, document, layout, scheduler, overlay, pointer, key, onAddTrack, onToggleTrack, onMoveClips, onTrimEdge, onTrimPreview, onRazor, onContextMenu, onReorderTrack, onRenameTrack, idle, unmount };
 }
 
 describe("TimelineView", () => {
@@ -286,11 +290,11 @@ describe("TimelineView", () => {
 
   it("toggles mute and solo from the audio track header with a pointer cursor", () => {
     const { overlay, pointer, onToggleTrack } = setup();
-    // A1 232..288: mute 132..148 x 240..256, solo 152..168.
+    // A1 232..288: target 72..88, lock 92..108, mute 112..128, solo 132..148, height 152..168 x 240..256.
     pointer("pointermove", 140, 248);
     expect(overlay.style.cursor).toBe("pointer");
+    pointer("pointerdown", 120, 248);
     pointer("pointerdown", 140, 248);
-    pointer("pointerdown", 160, 248);
     expect(onToggleTrack.mock.calls).toEqual([
       ["a1", "mute"],
       ["a1", "solo"],
@@ -1173,6 +1177,94 @@ describe("TimelineView", () => {
       scheduler.flush();
       expect(fills.filter((fill) => fill.style === "--label-teal")).toHaveLength(2);
       expect(fills.some((fill) => fill.style === "--clip-video")).toBe(true);
+    });
+  });
+
+  describe("track headers, links and groups (Batch 16)", () => {
+    /** V1 c0..c2 (10 frames each) at 172..228, V2 at 116..172, V3 at 60..116, A1 at 232..288; header 176 wide. */
+    function headerSetup() {
+      const t = setup(3);
+      t.document.dispatch(addTrack(makeTrack("v2"), 1));
+      t.document.dispatch(addTrack(makeTrack("v3"), 2));
+      t.scheduler.flush();
+      return t;
+    }
+    const scene = () => vi.mocked(drawOverlay).mock.lastCall?.[0];
+    const trackIds = (selection: { trackIds?: ReadonlySet<string> }) => [...(selection.trackIds ?? [])];
+
+    it("selects a track with a header click (Shift adds), and its clips with Mod+Shift", () => {
+      const { session, scheduler, pointer } = headerSetup();
+      pointer("pointerdown", 40, 200);
+      pointer("pointerup", 40, 200);
+      expect(session.selection.getState().kind).toBe("track");
+      expect(trackIds(session.selection.getState())).toEqual(["v1"]);
+      expect(scheduler.flush()).toContain("timelineContent");
+      pointer("pointerdown", 40, 250, { shiftKey: true });
+      pointer("pointerup", 40, 250, { shiftKey: true });
+      expect(trackIds(session.selection.getState())).toEqual(["v1", "a1"]);
+      pointer("pointerdown", 40, 200, { ctrlKey: true, shiftKey: true });
+      pointer("pointerup", 40, 200, { ctrlKey: true, shiftKey: true });
+      expect(session.selection.getState().kind).toBe("clips");
+      expect([...session.selection.getState().clipIds]).toEqual(["c0", "c1", "c2"]);
+    });
+
+    it("reorders a track by dragging its header vertically: a ghost and an insert line, one request on release", () => {
+      const { view, session, scheduler, overlay, pointer, onReorderTrack } = headerSetup();
+      const contentDraws = view.stats.contentDraws;
+      pointer("pointerdown", 40, 200);
+      pointer("pointermove", 40, 190);
+      expect(overlay.style.cursor).toBe("grabbing");
+      pointer("pointermove", 40, 80);
+      scheduler.flush();
+      // Onto V3 (60..116), coming from below: the line at V3's top; the ghost keeps the 28 px grab offset.
+      expect(scene()?.trackDrag).toMatchObject({ track: { id: "v1" }, insertY: 60, y: 80 - 28, height: 56 });
+      expect(view.stats.contentDraws).toBe(contentDraws);
+      pointer("pointerup", 40, 80);
+      expect(onReorderTrack).toHaveBeenCalledWith("v1", 2);
+      // A drag is not a click: the selection did not change.
+      expect(session.selection.getState().kind).toBe("none");
+      scheduler.flush();
+      expect(scene()?.trackDrag).toBeNull();
+      // Back over its own row: nothing to do.
+      pointer("pointerdown", 40, 200);
+      pointer("pointermove", 40, 150);
+      pointer("pointermove", 40, 210);
+      scheduler.flush();
+      expect(scene()?.trackDrag?.insertY).toBeNull();
+      pointer("pointerup", 40, 210);
+      expect(onReorderTrack).toHaveBeenCalledTimes(1);
+    });
+
+    it("asks to rename a track on a double-click of its header, and opens the track menu on a right-click", () => {
+      const { session, overlay, onRenameTrack, onContextMenu } = headerSetup();
+      overlay.dispatchEvent(new MouseEvent("dblclick", { clientX: 40, clientY: 130, bubbles: true }));
+      expect(onRenameTrack).toHaveBeenCalledWith("v2");
+      overlay.dispatchEvent(new MouseEvent("contextmenu", { clientX: 40, clientY: 250, button: 2, bubbles: true, cancelable: true }));
+      expect(trackIds(session.selection.getState())).toEqual(["a1"]);
+      expect(onContextMenu).toHaveBeenLastCalledWith({ kind: "track", trackId: "a1", x: 40, y: 250 });
+    });
+
+    it("lights the header under the pointer and its toggles", () => {
+      const { scheduler, pointer } = headerSetup();
+      pointer("pointermove", 40, 200);
+      scheduler.flush();
+      expect(scene()?.hoverHeader).toEqual({ x: 0, y: 172, width: 176, height: 56 });
+      pointer("pointermove", 80, 188);
+      scheduler.flush();
+      expect(scene()?.hoverHeader).toBeNull();
+      expect(scene()?.hoverToggle).toMatchObject({ x: 72, width: 16 });
+    });
+
+    it("selects a whole group with a click on one member (and Alt still picks the clip alone)", () => {
+      const { document, session, pointer } = headerSetup();
+      document.dispatch(updateClip("c0", { group: "G" }));
+      document.dispatch(updateClip("c2", { group: "G" }));
+      pointer("pointerdown", 176 + 5 * 4, 200);
+      pointer("pointerup", 176 + 5 * 4, 200);
+      expect([...session.selection.getState().clipIds]).toEqual(["c0", "c2"]);
+      pointer("pointerdown", 176 + 25 * 4, 200, { altKey: true });
+      pointer("pointerup", 176 + 25 * 4, 200, { altKey: true });
+      expect([...session.selection.getState().clipIds]).toEqual(["c2"]);
     });
   });
 });

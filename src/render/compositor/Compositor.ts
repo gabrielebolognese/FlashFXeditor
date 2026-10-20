@@ -110,7 +110,8 @@ export class Compositor {
     let solids = 0;
     for (const track of doc.tracks) {
       // TODO(batch 32): caption tracks draw their cue above the video tracks.
-      if (track.kind !== "video" || track.hidden) continue;
+      // Muted and hidden video tracks are not in the composite (spec §6.12).
+      if (track.kind !== "video" || track.hidden || track.muted) continue;
       const clip = clipInIndex(trackIndex(doc, track), frame);
       if (!clip?.enabled) continue;
       if (clip.kind === "video" || clip.kind === "image") {
@@ -139,7 +140,7 @@ export class Compositor {
     this.neighborList.length = 0;
     const reach = secondsToFrames(NEIGHBOR_SECONDS, doc.settings.fps);
     for (const track of doc.tracks) {
-      if (track.kind !== "video" || track.hidden) continue;
+      if (track.kind !== "video" || track.hidden || track.muted) continue;
       const index = trackIndex(doc, track);
       const at = lastClipStartingBy(index, frame);
       const current = index.clips[at];

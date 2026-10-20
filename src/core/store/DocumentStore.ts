@@ -4,6 +4,7 @@
 import { applyPatches, enablePatches, freeze, produceWithPatches, type Patch } from "immer";
 import type { Affect, Command, CommandContext } from "../commands/command.js";
 import { UndoStack, type UndoEntry } from "../commands/UndoStack.js";
+import { carryTrackHeights } from "../document/project.js";
 import type { Project } from "../document/types.js";
 import { assertValid } from "../document/validate.js";
 import { createStore, shallowEqual, type Store } from "./createStore.js";
@@ -258,11 +259,13 @@ export class DocumentStore {
     this.notify(prev, entry.affects);
   }
 
-  private restore(next: Project, entry: UndoEntry, selection: SelectionSnapshot, context: string): void {
+  private restore(undone: Project, entry: UndoEntry, selection: SelectionSnapshot, context: string): void {
+    // Track heights are session state (spec §5.3, written with `amend`): undo and redo keep them.
+    const next = freeze(carryTrackHeights(undone, this.state), true);
     if (this.validate) assertValid(next, context);
     const prev = this.state;
     this.state = next;
-    this.applySelection(filterSelection(selection, (id) => Object.hasOwn(next.clips, id)));
+    this.applySelection(filterSelection(selection, (id) => Object.hasOwn(next.clips, id), (id) => next.tracks.some((track) => track.id === id)));
     this.history.set((current) => this.historyState(current));
     this.notify(prev, entry.affects);
   }

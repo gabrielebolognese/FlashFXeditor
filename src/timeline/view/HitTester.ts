@@ -23,7 +23,7 @@ export type HitType =
   | "transitionEdge"
   | "gap"
   | "trackHeader"
-  // Mute and solo of audio tracks; TODO(batch 16): the other header toggles.
+  // Target, lock, mute, solo, hide and height of a track header (spec §6.1).
   | "headerToggle"
   | "ruler"
   // TODO(batch 19): markers and in/out handles.
@@ -92,12 +92,10 @@ export class HitTester {
       if (row) {
         result.type = "trackHeader";
         result.trackId = row.trackId;
-        const toggles = geometry.headerToggles(row);
-        for (const toggle of ["mute", "solo"] as const) {
-          if (toggles && contains(toggles[toggle], x, y)) {
-            result.type = "headerToggle";
-            result.toggle = toggle;
-          }
+        const toggle = geometry.headerToggles(row).find((entry) => contains(entry.rect, x, y));
+        if (toggle) {
+          result.type = "headerToggle";
+          result.toggle = toggle.toggle;
         }
       } else if (contains(geometry.addVideo, x, y) || contains(geometry.addAudio, x, y)) {
         result.type = "trackHeader";
