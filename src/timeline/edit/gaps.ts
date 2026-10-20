@@ -4,15 +4,17 @@
 // - Each track with gaps to close (a source track) closes its own gaps, each by its own length, so
 //   two tracks with different gaps close them independently.
 // - The other unlocked tracks (passive tracks) move with the ripple, keeping their content in sync
-//   with what moved: gaps overlapping in time on several tracks form a cluster, and the clips of a
-//   passive track starting at or after a cluster's end move left by the cluster's amount (the most
-//   any one source track closes in it).
-// - A passive clip that would collide (one spanning the cluster's end, with another after it, or
-//   one inside the cluster) limits the cluster to the largest safe amount; its gaps then close
-//   that far only, left to right, and the limit is reported (the toast names the track).
+//   with what moved: a passive clip moves left by the most any one source track has closed before
+//   its start (in the gaps ending at or before it). Gaps on different tracks apart in time do not
+//   add up: a passive clip never moves more than the source content beside it.
+// - A passive clip that would collide (it would move more than the clip before it plus the free
+//   space between them: one spanning a gap's end, or one inside a gap, with another after it) limits
+//   the gaps ending before it to the largest safe amount; they then close that far only, left to
+//   right, and the limit is reported (the toast names the track).
 // - Locked tracks neither move nor limit. Nothing is ever trimmed, split or reordered.
-// One sweep per track computes the new starts, one pass over the clusters checks the passive tracks,
-// and one command commits it (never a loop of close-gap commands), so 500 clips compact at once.
+// One sweep over the gaps by end (each passive track's clips walked once alongside it) gives the
+// closed amounts and the passive shifts, one pass per source track its new starts, and one command
+// commits it (never a loop of close-gap commands), so 500 clips compact at once.
 import type { Command } from "../../core/commands/command.js";
 import type { Clip, ClipId, Frame, Project, TrackId } from "../../core/document/types.js";
 import { clipInIndex, gapAt, lastClipStartingBy, trackGaps, trackIndex, type Gap } from "../model/queries.js";
@@ -47,35 +49,23 @@ export interface CloseOptions {
   label?: string;
 }
 
-interface Cluster {
-  start: Frame;
+/** A passive track as the sweep walks it: the clips before `next` have their shift. */
+interface Lane {
+  clips: readonly Clip[];
+  /** The first clip starting at or after the sweep's position. */
+  next: number;
+  /** Shift and end of the clip before `next` (0 and frame 0 before the first clip). */
+  shift: number;
   end: Frame;
-  /** Gap length per source track inside the cluster. */
-  perTrack: Map<TrackId, number>;
-  /** Frames the cluster closes (the largest per-track length, then limited by collisions). */
-  amount: number;
 }
 
-interface Entry {
-  gap: Gap;
-  /** Position in the input. */
-  input: number;
-  cluster: Cluster;
+/** Closed amounts of one source track in sweep order: after `ends[i]`, its clips move `shifts[i]`. */
+interface Steps {
+  ends: Frame[];
+  shifts: number[];
 }
 
 const NO_CLIPS: ReadonlySet<ClipId> = new Set();
-
-/** Index of the first value >= `value` in sorted `values`. */
-function firstAtOrAfter(values: readonly number[], value: number): number {
-  let lo = 0;
-  let hi = values.length;
-  while (lo < hi) {
-    const mid = (lo + hi) >>> 1;
-    if ((values[mid] as number) < value) lo = mid + 1;
-    else hi = mid;
-  }
-  return lo;
-}
 
 /**
  * Closes `gaps` with ripple semantics (see the module comment) as one command. Each gap must be empty
@@ -92,100 +82,67 @@ export function closeGaps(project: Project, gaps: readonly Gap[], options: Close
     return removed.size === 0 ? clips : clips.filter((clip) => !removed.has(clip.id));
   };
 
-  // Clusters: the gaps overlapping in time, across tracks, sorted by start (and so by end).
+  // By end: a gap moves the clips starting at or after its end.
   const valid: { gap: Gap; input: number }[] = [];
   gaps.forEach((gap, input) => {
     const track = tracks.get(gap.trackId);
     if (track && !track.locked && gap.end > gap.start) valid.push({ gap, input });
   });
-  valid.sort((a, b) => a.gap.start - b.gap.start || a.gap.end - b.gap.end);
-  const clusters: Cluster[] = [];
-  const entries: Entry[] = valid.map(({ gap, input }) => {
-    let cluster = clusters[clusters.length - 1];
-    if (!cluster || gap.start >= cluster.end) {
-      cluster = { start: gap.start, end: gap.end, perTrack: new Map(), amount: 0 };
-      clusters.push(cluster);
-    }
-    cluster.end = Math.max(cluster.end, gap.end);
-    cluster.perTrack.set(gap.trackId, (cluster.perTrack.get(gap.trackId) ?? 0) + gap.end - gap.start);
-    return { gap, input, cluster };
-  });
-  for (const cluster of clusters) cluster.amount = Math.max(...cluster.perTrack.values());
+  valid.sort((a, b) => a.gap.end - b.gap.end || a.gap.start - b.gap.start);
 
-  // Passive tracks: for each cluster, the first clip at or after its end moves by the cluster's
-  // amount more than the clip before it. The free space between the two bounds the clusters ending
-  // between their starts (they share it, earliest first).
-  const sources = new Set(entries.map((entry) => entry.gap.trackId));
-  const passive = project.tracks.filter((track) => !track.locked && !sources.has(track.id)).map((track) => kept(track.id));
-  let limit: GapLimit | null = null;
-  if (passive.length > 0 && clusters.length > 0) {
-    const lanes = passive.map((clips) => ({ clips, starts: clips.map((clip) => clip.start), used: new Map<number, number>() }));
-    const next = new Array<number>(lanes.length);
-    for (const cluster of clusters) {
-      let amount = cluster.amount;
-      let blocker: GapLimit | null = null;
-      for (let i = 0; i < lanes.length; i++) {
-        const lane = lanes[i] as (typeof lanes)[number];
-        const q = firstAtOrAfter(lane.starts, cluster.end);
-        next[i] = q;
-        const after = lane.clips[q];
-        if (!after) continue;
-        const before = lane.clips[q - 1];
-        const room = after.start - (before ? before.start + before.duration : 0) - (lane.used.get(q) ?? 0);
-        if (room < amount) {
-          amount = Math.max(0, room);
-          blocker = { trackId: after.trackId, clipId: after.id };
-        }
-      }
-      if (amount < cluster.amount) {
-        cluster.amount = amount;
-        limit ??= blocker;
-      }
-      for (let i = 0; i < lanes.length; i++) {
-        const lane = lanes[i] as (typeof lanes)[number];
-        const q = next[i] as number;
-        if (q < lane.clips.length) lane.used.set(q, (lane.used.get(q) ?? 0) + amount);
-      }
-    }
-  }
-
-  // Source tracks: each gap closes up to what its cluster's amount leaves for its track, left to
-  // right; the clips after it move by everything closed before them.
-  const closed = new Array<number>(gaps.length).fill(0);
+  const sources = new Set(valid.map((entry) => entry.gap.trackId));
+  const lanes: Lane[] = project.tracks.filter((track) => !track.locked && !sources.has(track.id)).map((track) => ({ clips: kept(track.id), next: 0, shift: 0, end: 0 }));
   const starts = new Map<ClipId, Frame>();
-  const byTrack = new Map<TrackId, Entry[]>();
-  for (const entry of entries) {
-    const list = byTrack.get(entry.gap.trackId);
-    if (list) list.push(entry);
-    else byTrack.set(entry.gap.trackId, [entry]);
-  }
-  for (const [trackId, list] of byTrack) {
-    const budget = new Map<Cluster, number>();
-    const ends: Frame[] = [];
-    const shifts: number[] = [];
-    let total = 0;
-    for (const entry of list) {
-      const left = budget.get(entry.cluster) ?? entry.cluster.amount;
-      const amount = Math.min(entry.gap.end - entry.gap.start, left);
-      budget.set(entry.cluster, left - amount);
-      closed[entry.input] = amount;
-      total += amount;
-      ends.push(entry.gap.end);
-      shifts.push(total);
+  /** Moves a lane's clips starting before `frame` by `shift` (what was closed at or before their starts). */
+  const settle = (lane: Lane, frame: Frame, shift: number): void => {
+    for (let clip = lane.clips[lane.next]; clip && clip.start < frame; clip = lane.clips[++lane.next]) {
+      if (shift > 0) starts.set(clip.id, clip.start - shift);
+      lane.shift = shift;
+      lane.end = clip.start + clip.duration;
     }
+  };
+
+  // The sweep. `moved` is the most any source track has closed so far: the shift of a passive clip
+  // starting here. The first passive clip after a gap may move at most its free space more than the
+  // clip before it, which caps every source track's total there.
+  const closed = new Array<number>(gaps.length).fill(0);
+  const steps = new Map<TrackId, Steps>();
+  let moved = 0;
+  let limit: GapLimit | null = null;
+  for (const { gap, input } of valid) {
+    let cap = Infinity;
+    let blocker: GapLimit | null = null;
+    for (const lane of lanes) {
+      settle(lane, gap.end, moved);
+      const after = lane.clips[lane.next];
+      if (!after) continue;
+      const room = lane.shift + after.start - lane.end;
+      if (room < cap) {
+        cap = room;
+        blocker = { trackId: after.trackId, clipId: after.id };
+      }
+    }
+    let step = steps.get(gap.trackId);
+    if (!step) {
+      step = { ends: [], shifts: [] };
+      steps.set(gap.trackId, step);
+    }
+    const total = step.shifts[step.shifts.length - 1] ?? 0;
+    const amount = Math.max(0, Math.min(gap.end - gap.start, cap - total));
+    if (amount < gap.end - gap.start) limit ??= blocker;
+    closed[input] = amount;
+    step.ends.push(gap.end);
+    step.shifts.push(total + amount);
+    moved = Math.max(moved, total + amount);
+  }
+  for (const lane of lanes) settle(lane, Infinity, moved);
+
+  // Source tracks: the clips after each gap move by everything their track closed before them.
+  for (const [trackId, { ends, shifts }] of steps) {
     let g = 0;
     let shift = 0;
     for (const clip of kept(trackId)) {
       while (g < ends.length && (ends[g] as number) <= clip.start) shift = shifts[g++] as number;
-      if (shift > 0) starts.set(clip.id, clip.start - shift);
-    }
-  }
-  // Passive tracks: by the clusters ending at or before each clip's start.
-  for (const clips of passive) {
-    let k = 0;
-    let shift = 0;
-    for (const clip of clips) {
-      while (k < clusters.length && (clusters[k] as Cluster).end <= clip.start) shift += (clusters[k++] as Cluster).amount;
       if (shift > 0) starts.set(clip.id, clip.start - shift);
     }
   }

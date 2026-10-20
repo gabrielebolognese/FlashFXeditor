@@ -102,15 +102,58 @@ describe("closeGaps with gaps on several tracks", () => {
     expect(starts(next, "b", "d", "t")).toEqual([100, 100, 120]);
   });
 
-  it("gaps apart in time each move the other tracks by their own length", () => {
+  it("gaps apart in time: other tracks follow the most any one track closed before them, never the sum", () => {
     const p = project([clip("a", "v1", 0, 100), clip("b", "v1", 120, 300), clip("c", "v2", 0, 300), clip("d", "v2", 330, 50), clip("t", "a1", 150, 10), clip("u", "a1", 400, 10)]);
     const result = closeGaps(p, [
       { trackId: "v1", start: 100, end: 120 },
       { trackId: "v2", start: 300, end: 330 },
     ]);
     const { next } = commit(p, result);
-    // v1 and v2 close their own gaps only; a1 follows both.
-    expect(starts(next, "b", "d", "t", "u")).toEqual([100, 300, 130, 350]);
+    // v1 and v2 close their own gaps only; a1 follows v1's 20 after its gap, v2's 30 after both.
+    expect(starts(next, "b", "d", "t", "u")).toEqual([100, 300, 130, 370]);
+  });
+
+  it("keeps a clip after gaps apart in time in sync with the content beside it", () => {
+    // v1 and v2 each close 100 (at 100 and at 300); k on a2 started where e and j ended.
+    const p = project([
+      ...["a", "b", "c", "d", "e"].map((id, i) => clip(id, "v1", i * 100, 100)),
+      ...["f", "g", "h", "i", "j"].map((id, i) => clip(id, "v2", i * 100, 100)),
+      clip("k", "a2", 500, 100),
+    ]);
+    const result = closeGaps(
+      p,
+      [
+        { trackId: "v1", start: 100, end: 200 },
+        { trackId: "v2", start: 300, end: 400 },
+      ],
+      { removed: new Set(["b", "i"]) },
+    );
+    expect(result.closed).toEqual([100, 100]);
+    expect(result.limit).toBeNull();
+    const { next } = commit(p, result);
+    expect(starts(next, "c", "e", "j", "k")).toEqual([100, 300, 300, 400]);
+  });
+
+  it("checks collisions against what the clip really moves, not the sum of the gaps", () => {
+    // z spans v1's gap end with 160 free frames before k: moving k by 100 fits.
+    const layout = (extra: Clip[]) =>
+      project([...["a", "b", "c", "d", "e"].map((id, i) => clip(id, "v1", i * 100, 100)), ...["f", "g", "h", "i", "j"].map((id, i) => clip(id, "v2", i * 100, 100)), ...extra]);
+    const gaps = [
+      { trackId: "v1", start: 100, end: 200 },
+      { trackId: "v2", start: 300, end: 400 },
+    ];
+    const p = layout([clip("z", "a2", 150, 140), clip("k", "a2", 450, 100)]);
+    const result = closeGaps(p, gaps, { removed: new Set(["b", "i"]) });
+    expect(result.closed).toEqual([100, 100]);
+    expect(result.limit).toBeNull();
+    expect(starts(commit(p, result).next, "z", "k", "e", "j")).toEqual([150, 350, 300, 300]);
+    // k between the gaps with 50 free frames after z: v1 closes 50 and k stops at z's end; v2's gap,
+    // with nothing after it on a2, closes fully.
+    const q = layout([clip("z", "a2", 150, 140), clip("k", "a2", 340, 50)]);
+    const limited = closeGaps(q, gaps, { removed: new Set(["b", "i"]) });
+    expect(limited.closed).toEqual([50, 100]);
+    expect(limited.limit).toEqual({ trackId: "a2", clipId: "k" });
+    expect(starts(commit(q, limited).next, "c", "e", "j", "k")).toEqual([150, 350, 300, 290]);
   });
 });
 
@@ -131,6 +174,19 @@ describe("compactGaps (spec §6.11 Close all gaps)", () => {
     expect(starts(next, "t", "u")).toEqual([50, 180]);
     doc.undo();
     expect(doc.getState()).toEqual(p);
+  });
+
+  it("moves an untargeted track by the most any one track closed before it, never the sum", () => {
+    // v1 closes 100 at 100, v2 100 at 300; b2 and d2 both end at 600, where e starts.
+    const p = project(
+      [clip("a", "v1", 0, 100), clip("b", "v1", 200, 100), clip("b2", "v1", 300, 300), clip("c", "v2", 0, 300), clip("d", "v2", 400, 100), clip("d2", "v2", 500, 100), clip("e", "a2", 600, 100)],
+      TRACKS(),
+      ["a2"],
+    );
+    const result = compactGaps(p);
+    expect(result.limit).toBeNull();
+    const { next } = commit(p, result);
+    expect(starts(next, "b", "b2", "d", "d2", "e")).toEqual([100, 200, 300, 400, 500]);
   });
 
   it("compacts the given tracks only; nothing to do gives no command", () => {

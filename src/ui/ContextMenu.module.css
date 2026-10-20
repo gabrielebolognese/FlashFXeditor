@@ -79,7 +79,7 @@
 }
 
 .swatch:hover {
-  transform: scale(1.15);
+  transform: scale(var(--swatch-hover-scale));
 }
 
 .swatch:focus-visible {
@@ -88,5 +88,5 @@
 }
 
 .swatchActive {
-  box-shadow: 0 0 0 1px var(--bg-sunken), 0 0 0 2px var(--accent);
+  box-shadow: var(--swatch-active-ring);
 }

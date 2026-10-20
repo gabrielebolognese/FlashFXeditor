@@ -119,6 +119,27 @@ describe("rippleDelete (spec §6.11, §6.19)", () => {
     expect(tight?.closed).toEqual([20, 20]);
   });
 
+  it("deletes apart in time on several tracks keep the other tracks in sync with the cut after them", () => {
+    // A linked pair at 100..200 and a title at 300..350; the sound effect sits on the next video cut.
+    const p = project([
+      clip("v0", "v1", 0, 100),
+      clip("vx", "v1", 100, 100, { linkGroup: "L" }),
+      clip("v2c", "v1", 200, 300),
+      clip("v3", "v1", 500, 100),
+      clip("a0", "a1", 0, 100),
+      clip("ax", "a1", 100, 100, { linkGroup: "L" }),
+      clip("a2c", "a1", 200, 400),
+      clip("title", "v2", 300, 50),
+      clip("title2", "v2", 400, 50),
+      clip("sfx", "a2", 500, 10),
+    ]);
+    const result = rippleDelete(p, ["vx", "title"]);
+    expect(result?.limit).toBeNull();
+    const doc = store(p);
+    doc.dispatch(result!.command!);
+    expect(starts(doc.getState(), "v3", "a2c", "title2", "sfx")).toEqual([400, 100, 350, 400]);
+  });
+
   it("with a locked track: it neither moves nor limits (spec §6.19)", () => {
     const tracks = [makeTrack("v1"), { ...makeTrack("a1", "audio"), locked: true }];
     const p = project([clip("a", "v1", 0, 50), clip("b", "v1", 50, 50), clip("x", "a1", 0, 80), clip("y", "a1", 80, 50)], tracks);

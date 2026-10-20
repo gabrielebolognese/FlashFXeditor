@@ -220,6 +220,10 @@
   --label-grey: var(--text-secondary);
   --clip-label-body-alpha: 0.34;
   --clip-label-bar-alpha: 0.62;
+  /* Label swatches in the clip menu (gap): grow a little under the pointer; the current label gets a
+     2px --accent ring set off the swatch by a 1px --bg-sunken gap. */
+  --swatch-hover-scale: 1.15;
+  --swatch-active-ring: 0 0 0 1px var(--bg-sunken), 0 0 0 2px var(--accent);
 
   /* Elevation, floating only */
   --shadow-overlay: 0 8px 24px -4px rgba(0, 0, 0, 0.5), 0 2px 6px -2px rgba(0, 0, 0, 0.4);
