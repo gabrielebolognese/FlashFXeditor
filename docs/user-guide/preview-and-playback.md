@@ -1,6 +1,6 @@
 # Preview and playback
 
-The Preview panel shows your video as it looks at the playhead: every video and image clip under the playhead, stacked track by track inside the project frame. Use it to check a frame while you scrub the timeline, to play your edit back, and to save a still of the current frame.
+The Preview panel shows your video as it looks at the playhead: every video and image clip under the playhead, stacked track by track inside the project frame. Use it to check a frame while you scrub the timeline, to play your edit back with its sound, and to save a still of the current frame.
 
 > **Video placeholder: Preview and playback overview**
 > - File: `videos/preview-and-playback/overview.mp4` (not recorded yet)
@@ -46,7 +46,7 @@ When several video tracks have a clip at the playhead, the preview draws **V1** 
 
 ### Sound
 
-Playback is silent in this version. Audio clips appear on the timeline, but you do not hear them yet. Audio playback is available in a later version.
+Playback plays the sound of your audio tracks in sync with the picture. The audio meter is the narrow strip along the right edge of the Preview panel, and the **Mute** button and **Master volume** knob sit in the transport bar. See [Audio](audio.md).
 
 ### Media that cannot be shown
 
@@ -121,7 +121,8 @@ You can also move the playhead with the keyboard (see [Step through frames](#ste
 How playback behaves:
 
 - Playback starts at the playhead. If the playhead is at the end of the content, playback starts again from the beginning.
-- Before the first frame moves, the editor may wait up to half a second while it decodes the frames ahead. This is normal.
+- Before the first frame moves, the editor may wait up to half a second while it decodes the frames and the sound ahead. This is normal.
+- You hear the sound of your audio tracks while you play at 1x. See [Audio](audio.md).
 - At the end of the content, playback stops on the last frame, unless **Loop playback** is on (see [Loop playback](#loop-playback)).
 - The timeline follows the playhead by pages: when the playhead reaches the right edge, the view jumps ahead by most of its width. If you scroll the timeline sideways or zoom it with the mouse wheel during playback, it stops following until you start playback again. Scrolling up and down does not stop it.
 - <kbd>Home</kbd>, <kbd>End</kbd> and the timecode field of the timeline toolbar move the playhead without stopping playback: it plays on from the new position. The arrow keys pause first, then step.
@@ -143,6 +144,7 @@ How playback behaves:
 - <kbd>J</kbd> while you play forward, or <kbd>L</kbd> while you play backward, switches direction at 1x.
 - Holding <kbd>J</kbd> or <kbd>L</kbd> down does not change the speed: only presses count.
 - At 2x and faster, the preview shows at most 60 pictures per second and skips the frames in between. These skipped frames are not counted as dropped.
+- Sound plays only at 1x forward. At 2x and faster, and backward at any speed, playback is silent.
 - Backward playback stops on the first frame, unless **Loop playback** is on. It needs more decoding work than forward playback, so heavy footage can play less smoothly backward.
 - When you pause, the preview shows the exact frame at the playhead.
 
@@ -166,7 +168,7 @@ How playback behaves:
 | Go to the end of the content | <kbd>End</kbd> | **Go to end** |
 
 - Hold an arrow key to keep stepping: after 0.3 seconds, it repeats about 30 times per second until you release the key.
-- Stepping pauses playback first.
+- Stepping pauses playback first. Steps are silent.
 - The playhead never goes before the first frame.
 - **Go to end** puts the playhead just after the last frame, where the frame is empty. Click **Previous frame** to see the last frame.
 - The timeline scrolls by a page when a step or jump moves the playhead out of view.
@@ -181,6 +183,7 @@ Press <kbd>Shift</kbd>+<kbd>K</kbd> to check the moment around the playhead. The
 - Near the start or the end of the content, the range is shorter.
 - Press <kbd>K</kbd> or <kbd>Space</kbd> to stop early. The playhead then stays where you stopped.
 - Play around ignores **Loop playback**.
+- You hear the sound while it plays.
 
 ## Loop playback
 
@@ -213,6 +216,8 @@ The preview timecode is read-only. To type a time, use the timecode field in the
 | **Play** / **Pause** | <kbd>Space</kbd> | Starts or stops playback. |
 | **Next frame** | <kbd>→</kbd> | Steps one frame forward. |
 | **Go to end** | <kbd>End</kbd> | Moves the playhead to the end of the content. |
+| **Mute** / **Unmute** | | Silences the sound you hear, or brings it back. See [Audio](audio.md#set-the-listening-volume). |
+| **Master volume** (knob) | | Sets how loud you hear the sound, from -60.0 dB to 0.0 dB. See [Audio](audio.md#set-the-listening-volume). |
 | **Loop playback** | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd> | Turns looping on or off. |
 | **Fit** | | Fits the whole frame in the panel. |
 
@@ -245,7 +250,7 @@ If the file cannot be written, a message "Can't export the frame" gives the reas
 
 The preview draws with your graphics card (GPU) and decodes video with the browser's hardware video decoder. What you can expect:
 
-- **Starting playback:** up to half a second of waiting while the first frames are decoded.
+- **Starting playback:** up to half a second of waiting while the first frames and the sound under the playhead are decoded. Sound and picture then start together.
 - **During playback:** each clip under the playhead is decoded up to 15 frames ahead, and never more than half a second ahead. Clips that start within the next 2 seconds are prepared before their cut, so cuts play smoothly.
 - **1080p footage:** plays smoothly, even with a cut every second. On the development machine, a one-minute timeline of one-second 1080p cuts from five different videos played with no dropped frames.
 - **4K 60 fps HEVC footage** (common on recent phones): at the limit of what a laptop GPU decodes at full quality. Expect a few dropped frames (about 1% on the development machine), and more when the computer runs hot. Lighter proxy copies are available in a later version.
@@ -255,10 +260,11 @@ The preview draws with your graphics card (GPU) and decodes video with the brows
 If playback stutters, see [Troubleshooting](troubleshooting.md).
 
 ## Related pages
+- [Audio](audio.md)
 - [Timeline](timeline.md)
 - [Importing media](importing-media.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Workspace](workspace.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 09, 2026-10-15</sub>
+<sub>Last updated: Batch 10, 2026-10-15</sub>

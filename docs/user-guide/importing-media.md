@@ -80,6 +80,7 @@ For each file, Shorts Editor:
    - Characters that are not allowed in file names are replaced with `_`.
 4. **Adds all the items to the project in one step**, so one Undo removes the whole import. Undo does not delete the copied files from the `media` folder.
 5. **Makes a thumbnail** from the first frame of each video, and from each image. Audio items show an audio icon. Thumbnails are saved in the project's `cache` folder, so they appear at once the next time you open the project. If that folder is deleted, the thumbnails are made again.
+6. **Analyzes the sound** of each audio file and each video with sound, in the background while you are not playing, and saves the result in the `cache` folder. Waveforms drawn from it are available in a later version. See [Know how sound is loaded](audio.md#know-how-sound-is-loaded).
 
 ### Progress of large imports
 
@@ -208,7 +209,8 @@ If a card keeps its kind icon instead of a thumbnail, Chrome could not decode th
 - [Projects and saving](projects-and-saving.md)
 - [Timeline](timeline.md)
 - [Preview and playback](preview-and-playback.md)
+- [Audio](audio.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 09, 2026-10-15</sub>
+<sub>Last updated: Batch 10, 2026-10-15</sub>

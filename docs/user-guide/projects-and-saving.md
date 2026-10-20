@@ -29,7 +29,7 @@ When you create a project, the editor fills the folder you picked with these ite
 | `project.json` | The project itself: settings, tracks, clips and the list of media. |
 | `session.json` | Where you left off: playhead, zoom, panel sizes and similar view settings. If it is missing or damaged, the project still opens, with default view settings. |
 | `media` | Copies of the files you import. See [Importing media](importing-media.md). |
-| `cache` | Thumbnails and indexes the editor builds from your media. If you delete this folder while the project is closed, the editor builds what it needs again the next time (this takes a little longer). |
+| `cache` | Thumbnails, sound analysis and indexes the editor builds from your media. If you delete this folder while the project is closed, the editor builds what it needs again the next time (this takes a little longer). |
 | `history` | Automatic backups of `project.json`: the newest 20. See [Restore an older version](#restore-an-older-version). |
 | `exports` | The default place for exported videos. Export is available in a later version. |
 | `presets/text` | Text presets saved with the project. Available in a later version. |
@@ -197,4 +197,4 @@ Each change to **Name**, **Resolution**, **Size**, **Frame rate** or **Backgroun
 - [Timeline](timeline.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 09, 2026-10-15</sub>
+<sub>Last updated: Batch 10, 2026-10-15</sub>

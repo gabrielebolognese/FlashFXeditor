@@ -1,6 +1,6 @@
 # Troubleshooting
 
-This page helps you when something does not work as expected: the editor does not start in your browser, the preview stays empty, a folder or a file does not open, or playback stutters. Each problem lists what you see, why it happens and what to do. The last section lists what the current version cannot do yet.
+This page helps you when something does not work as expected: the editor does not start in your browser, the preview stays empty, a folder or a file does not open, playback stutters, or you hear no sound. Each problem lists what you see, why it happens and what to do. The last section lists what the current version cannot do yet.
 
 > **Video placeholder: Fix common problems**
 > - File: `videos/troubleshooting/overview.mp4` (not recorded yet)
@@ -12,6 +12,7 @@ This page helps you when something does not work as expected: the editor does no
 >   4. Import a `.webm` file: the message "Can't import ..." with "Unsupported file type" appears.
 >   5. Pick a value in the preview **Zoom** dropdown and press <kbd>Space</kbd>: playback does not start. Click the preview picture and press <kbd>Space</kbd> again: playback starts.
 >   6. Play a 4K clip and point at **Dropped** in the status strip under the preview.
+>   7. Play a clip with sound while **Mute** is on: nothing is heard, but the meter moves. Click **Unmute**: the sound is back.
 
 ## In this page
 - [Browser and graphics](#browser-and-graphics)
@@ -34,6 +35,7 @@ This page helps you when something does not work as expected: the editor does no
   - [Playback stutters or drops frames](#playback-stutters-or-drops-frames)
   - [The preview shows a nearby frame for a moment](#the-preview-shows-a-nearby-frame-for-a-moment)
   - [Playback has no sound](#playback-has-no-sound)
+  - [Sound and picture are out of sync](#sound-and-picture-are-out-of-sync)
 - [Known limitations](#known-limitations)
 
 ## Browser and graphics
@@ -224,19 +226,39 @@ See [Preview and playback](preview-and-playback.md#know-what-to-expect-from-perf
 
 ### Playback has no sound
 
-**Symptom:** Video plays, but you hear nothing.
+**Symptom:** The picture plays, but you hear nothing, or one clip stays silent.
 
-**Cause:** Audio playback is not part of this version. Audio clips appear on the timeline but are not played.
+**Cause and fix:** Check these in order.
 
-**Fix:** None yet. Audio playback is available in a later version.
+| Check | Fix |
+| --- | --- |
+| The button left of the **Master volume** knob shows a crossed-out speaker and reads **Unmute**. | Click **Unmute**. |
+| The **Master volume** knob is turned far down: its tooltip reads, for example, **Master volume: -60.0 dB**. | Double-click the knob to go back to 0.0 dB. |
+| You play backward, at 2x or faster, step frames or drag in the ruler. | Sound plays only at 1x forward. Press <kbd>K</kbd> to pause, then <kbd>Space</kbd> to play forward at 1x. |
+| **M** is highlighted in the header of the clip's audio track, or **S** is highlighted on another audio track. | Click the toggle to turn it off. See [Mute and solo audio tracks](audio.md#mute-and-solo-audio-tracks). |
+| The meter at the right edge of the preview moves, but you still hear nothing. | The sound leaves the editor. Check the browser tab: if it shows a crossed-out speaker, right-click the tab and choose **Unmute site**. Then check your system volume and output device. |
+| The clip's file is an .mp3, .aac, .wav or .ogg file over 1 GB. | Such files play no sound. Convert the file to .m4a (AAC) and import it again. |
+| The sound cannot be decoded, or the clip's file is missing from the project's `media` folder. | Convert the file to .m4a, .mp3 or .wav and import it again, or put the missing file back in `media` with the same name. |
+
+**Not a problem:** Right after you open a project, the sound of a long .mp3 or .wav file can join a moment after the picture: the editor decodes the whole file first. It then fades in and stays in sync.
+
+See [Audio](audio.md).
+
+### Sound and picture are out of sync
+
+**Symptom:** Lips move before or after the voice.
+
+**Cause:** The editor keeps sound and picture less than one frame apart, also in phone videos. Delays outside the editor come on top: wireless (Bluetooth) headphones and speakers add a delay of their own that the editor cannot see.
+
+**Fix:** Check the sync with wired headphones or the computer's speakers. If the voice is still off, check the same clip in another video player: the file itself may be out of sync.
 
 ## Known limitations
 
 The current version cannot do these things yet. Each one is available in a later version.
 
-- **Sound:** playback is silent.
+- **Sound:** no sound while you scrub, step frames, play backward or shuttle faster than 1x. Audio clips show no waveforms. Changing the volume of a clip, fades and audio effects are not available, and video tracks have no mute toggle.
 - **Editing clips:** you can select clips, but not move, trim, split or delete them. To remove a clip you just inserted, use **Undo** (<kbd>Ctrl</kbd>+<kbd>Z</kbd>).
-- **Tracks:** new clips always go to the first video track (V1). Clicking a track header does nothing yet (only the **+ Video track** and **+ Audio track** rows work), and the timeline has no scrollbars (scroll with the mouse wheel).
+- **Tracks:** new clips always go to the first video track (V1). Clicking a track header does nothing yet (only the **+ Video track** and **+ Audio track** rows and the **M** and **S** toggles of audio tracks work), and the timeline has no scrollbars (scroll with the mouse wheel).
 - **Preview:** no panning, no mouse-wheel zoom, and no <kbd>Ctrl</kbd>+<kbd>0</kbd>/<kbd>1</kbd>/<kbd>2</kbd>. The preview timecode is read-only; type times in the timeline toolbar. The quality is always **Auto: full**.
 - **Fit only:** inserted clips fit the frame with bands; one-click Fill is not available. Changing the project resolution does not refit existing clips.
 - **Animated GIF and WebP files** show as still images (their first frame).
@@ -248,10 +270,11 @@ The current version cannot do these things yet. Each one is available in a later
 - **Heavy footage:** 4K 60 fps HEVC at full quality can drop frames, and exact frames deep inside long phone clips take a moment to appear.
 
 ## Related pages
+- [Audio](audio.md)
 - [Getting started](getting-started.md)
 - [Projects and saving](projects-and-saving.md)
 - [Importing media](importing-media.md)
 - [Preview and playback](preview-and-playback.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 09, 2026-10-15</sub>
+<sub>Last updated: Batch 10, 2026-10-15</sub>

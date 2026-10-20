@@ -5,7 +5,7 @@ The timeline is where your short takes shape: clips sit on tracks in time order,
 > **Video placeholder: Timeline tour**
 > - File: `videos/timeline/timeline-overview.mp4` (not recorded yet)
 > - Length: about 60 seconds
-> - Shows: a project with a few clips on V1 and A1; point in turn at the toolbar, the timecode and duration at its right end, the ruler, the track headers (V1, A1), the divider between video and audio tracks, a blue video clip, a green audio clip, and the thin line where the content ends; click the ruler to move the red playhead; press <kbd>\\</kbd> to fit everything; press <kbd>=</kbd> three times to zoom in, then <kbd>-</kbd> to zoom out; click a clip to select it.
+> - Shows: a project with a few clips on V1 and A1; point in turn at the toolbar, the timecode and duration at its right end, the ruler, the track headers (V1, A1) and the **M** and **S** toggles on A1, the divider between video and audio tracks, a blue video clip, a green audio clip, and the thin line where the content ends; click the ruler to move the red playhead; press <kbd>\\</kbd> to fit everything; press <kbd>=</kbd> three times to zoom in, then <kbd>-</kbd> to zoom out; click a clip to select it.
 
 ## In this page
 - [Find your way around the timeline](#find-your-way-around-the-timeline)
@@ -24,7 +24,7 @@ The timeline is where your short takes shape: clips sit on tracks in time order,
 |---|---|---|
 | **Toolbar** | Top of the panel | Zoom controls, and at the right end the playhead timecode and the total duration. |
 | **Ruler** | Above the tracks | Shows time. Click or drag in it to move the playhead. |
-| **Track headers** | Left column | Each track's icon and name (V1, V2 for video; A1, A2 for audio), plus the **+ Video track** and **+ Audio track** rows. |
+| **Track headers** | Left column | Each track's icon and name (V1, V2 for video; A1, A2 for audio), the **M** (mute) and **S** (solo) toggles of audio tracks, plus the **+ Video track** and **+ Audio track** rows. |
 | **Tracks** | Main area | Video tracks above the divider, audio tracks below it. Each row holds that track's clips. |
 | **Playhead** | Red vertical line | Marks the current frame. Its head sits in the ruler. |
 | **Content end** | Thin vertical line | Marks the end of the last clip, in the ruler and across the tracks. |
@@ -93,7 +93,11 @@ If an item has no usable duration, the message **Can't insert** *name*, **It has
 
 The divider between video and audio tracks stays where it is, so the tracks you are working on do not jump. Adding a track is one step in the history; <kbd>Ctrl</kbd>+<kbd>Z</kbd> removes it.
 
-Track controls (lock, mute, solo, hide), renaming tracks and track heights are available in a later version.
+### Mute and solo audio tracks
+
+Each audio track header has an **M** toggle that silences the track and an **S** toggle that plays only the soloed tracks. Each click is one step in the history, and you hear the change at once, also during playback. See [Mute and solo audio tracks](audio.md#mute-and-solo-audio-tracks).
+
+Other track controls (lock, hide, mute for video tracks), renaming tracks and track heights are available in a later version.
 
 ## Zoom in and out
 
@@ -211,6 +215,7 @@ A selected clip has a gold outline and a gold tint. The clip you clicked last ha
 Moving, trimming, splitting and deleting clips are available in a later version.
 
 ## Related pages
+- [Audio](audio.md)
 - [Getting started](getting-started.md)
 - [Workspace](workspace.md)
 - [Importing media](importing-media.md)
@@ -219,4 +224,4 @@ Moving, trimming, splitting and deleting clips are available in a later version.
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 09, 2026-10-15</sub>
+<sub>Last updated: Batch 10, 2026-10-15</sub>
