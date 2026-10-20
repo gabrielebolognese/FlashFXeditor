@@ -25,6 +25,7 @@ Shorts Editor: browser video editor. Vite + React 18 (chrome only) + TypeScript 
 - `docs/EDITOR_SPEC.md`: the master specification. Sections are referenced as §n.n from the batches. §3 (architecture) and §4 (performance rules) are binding in every batch.
 - `docs/BATCHES.md`: the ordered build plan with acceptance criteria. Work happens one batch at a time through `/next-batch`.
 - `docs/PROGRESS.md`: current state, deviations, follow-ups, design system gaps. Update it at the end of every batch.
+- `docs/user-guide/`: the user documentation, extended after every batch by `/document-batch` (rules, page template and video placeholders are in `.claude/commands/document-batch.md`).
 - `DESIGN_SYSTEM.md` (the docs call it `DESIGN_SYSTEMS.md`; same file): the only source for colors, typography, spacing, radii, icon size, button size, control heights, shadows and theme. Read it before any UI work. No color or size literals in code: tokens only (CSS custom properties + the `Theme` bridge for canvases).
 
 ## Workflow
@@ -32,6 +33,7 @@ Shorts Editor: browser video editor. Vite + React 18 (chrome only) + TypeScript 
 - One batch = one commit `batch-NN: <title>`. `npm run check` must be green before a batch is marked done.
 - Do not build features from later batches. Leave `// TODO(batch NN)` hooks instead.
 - Deviations from the spec are allowed only with a written reason in `docs/PROGRESS.md`.
+- Port 5300 is the user's progress preview (`vite preview` of `dist/`, started by `scripts/run-batches.sh`). Never stop it or use it; run your own dev servers on other ports.
 
 ## Architecture reminders (details in EDITOR_SPEC.md §3 and §4)
 - React is for panel chrome only. Timeline, preview, gizmo and text rasterizer are framework-free classes drawing to canvases through the single `FrameScheduler`.

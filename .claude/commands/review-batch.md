@@ -12,5 +12,8 @@ Verify, in order:
 3. No color, font or size literal outside the tokens file.
 4. The new code respects EDITOR_SPEC §3 and §4: React only for chrome, one command per gesture, integer time, media work in workers, canvases drawn through the scheduler.
 5. Every TODO has a `(batch NN)` tag.
+6. If the entry already has earlier `review: rejected` lists, every problem in them is fixed.
 
-Write the verdict into the batch entry in `docs/PROGRESS.md`: `review: accepted` or `review: rejected` followed by a numbered list of concrete problems with file paths and line numbers. Commit `batch-NN: review`. The very last line of your output must be exactly `REVIEW: ACCEPTED` or `REVIEW: REJECTED`.
+Write the verdict into the batch entry in `docs/PROGRESS.md` as a new line starting exactly with `- review: accepted` or `- review: rejected` (scripts/run-batches.sh counts these lines), the rejection followed by a numbered list of concrete problems with file paths and line numbers. Commit `batch-NN: review`. The very last line of your output must be exactly `REVIEW: ACCEPTED` or `REVIEW: REJECTED`.
+
+Port 5300 is the user's progress preview started by the runner: never stop it or use it for your own checks.
