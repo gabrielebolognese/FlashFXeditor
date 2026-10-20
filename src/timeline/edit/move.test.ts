@@ -196,6 +196,30 @@ describe("moveClips: overwrite", () => {
     expect(lone).toBeDefined();
     expect(lone?.linkGroup).toBeUndefined();
   });
+
+  it("keeps the right pieces of a linked pair of different lengths linked when both are cut at the same frame", () => {
+    const p = project([
+      clip("lv", "v1", 0, 100, { linkGroup: "L" }),
+      clip("la", "a1", 0, 120, { linkGroup: "L" }),
+      clip("mv", "v2", 300, 10, { linkGroup: "M" }),
+      clip("ma", "a2", 300, 10, { linkGroup: "M" }),
+    ]);
+    const { doc } = setup(p);
+    apply(doc, moveClips(p, ["mv", "ma"], -260, new Map([["v2", "v1"], ["a2", "a1"]]), "overwrite", { newId: counter() }));
+    const after = doc.getState();
+    const [, , rightVideo] = layout(after, "v1");
+    const [, , rightAudio] = layout(after, "a1");
+    expect(rightVideo?.slice(1)).toEqual([50, 50]);
+    expect(rightAudio?.slice(1)).toEqual([50, 70]);
+    const video = after.clips[rightVideo?.[0] as string] as Clip;
+    const audio = after.clips[rightAudio?.[0] as string] as Clip;
+    expect(video.linkGroup).toBeDefined();
+    expect(video.linkGroup).toBe(audio.linkGroup);
+    expect(video.linkGroup).not.toBe("L");
+    expect(after.clips.lv?.linkGroup).toBe("L");
+    expect(after.clips.la?.linkGroup).toBe("L");
+    expect(validateProject(after)).toEqual([]);
+  });
 });
 
 describe("moveClips: insert", () => {
@@ -239,6 +263,28 @@ describe("moveClips: insert", () => {
       ["ma", 105, 10],
       ["y", 115, 10],
     ]);
+  });
+
+  it("keeps the right pieces of a linked pair of different lengths linked after the split", () => {
+    const p = project([clip("lv", "v1", 0, 100, { linkGroup: "L" }), clip("la", "a1", 0, 120, { linkGroup: "L" }), clip("m", "v2", 300, 10)]);
+    const { doc } = setup(p);
+    apply(doc, moveClips(p, ["m"], -240, new Map([["v2", "v1"]]), "insert", { newId: counter() }));
+    const after = doc.getState();
+    expect(layout(after, "v1")).toEqual([
+      ["lv", 0, 60],
+      ["m", 60, 10],
+      ["n1", 70, 40],
+    ]);
+    expect(layout(after, "a1")).toEqual([
+      ["la", 0, 60],
+      ["n2", 70, 60],
+    ]);
+    expect(after.clips.n1?.linkGroup).toBeDefined();
+    expect(after.clips.n1?.linkGroup).toBe(after.clips.n2?.linkGroup);
+    expect(after.clips.n1?.linkGroup).not.toBe("L");
+    expect(after.clips.lv?.linkGroup).toBe("L");
+    expect(after.clips.la?.linkGroup).toBe("L");
+    expect(validateProject(after)).toEqual([]);
   });
 });
 
