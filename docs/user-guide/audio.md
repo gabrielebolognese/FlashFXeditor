@@ -49,6 +49,10 @@ Sound and picture run on the same clock, so they stay together for the whole len
 
 > **Tip:** Wireless (Bluetooth) headphones and speakers add a delay of their own that the editor cannot see. To check lip sync, use wired headphones or the computer's speakers.
 
+### Clips at another speed
+
+A clip you stretched with **Rate stretch** plays its sound at the clip's speed, and the pitch changes with the speed: at 0.5x the sound is an octave lower and lasts twice as long, at 2x it is an octave higher. The editor does not keep the original pitch. A video and its sound stretch together, so they stay in sync. See [Change a clip's speed with Rate stretch](advanced-trimming.md#change-a-clips-speed-with-rate-stretch).
+
 ### Jump, pause and change things while you listen
 
 - <kbd>Home</kbd>, <kbd>End</kbd> and a timecode typed in the timeline toolbar move the playhead while playback continues. The sound picks up at the new place at once.
@@ -193,8 +197,9 @@ After you import an audio file or a video with sound, the editor analyzes its so
 ## Related pages
 - [Preview and playback](preview-and-playback.md)
 - [Timeline](timeline.md)
+- [Advanced trimming](advanced-trimming.md)
 - [Importing media](importing-media.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 10, 2026-10-15</sub>
+<sub>Last updated: Batch 14, 2026-10-15</sub>

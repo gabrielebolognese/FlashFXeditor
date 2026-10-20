@@ -1,6 +1,6 @@
 # Trimming clips
 
-Trimming changes where a clip starts or ends. Drag a clip's edge, or press one key to cut the clip to the playhead. A regular trim changes one clip and leaves everything else in place. A ripple trim also moves the rest of your edit, so no gap opens. While you drag, the preview shows the frame where the clip will start or end.
+Trimming changes where a clip starts or ends. Drag a clip's edge, or press one key to cut the clip to the playhead. A regular trim changes one clip and leaves everything else in place. A ripple trim also moves the rest of your edit, so no gap opens. While you drag, the preview shows the frame where the clip will start or end. To roll a cut, slip, slide or change a clip's speed, see [Advanced trimming](advanced-trimming.md).
 
 > **Video placeholder: Trim clips**
 > - File: `videos/trimming/trimming-overview.mp4` (not recorded yet)
@@ -21,6 +21,8 @@ Trimming changes where a clip starts or ends. Drag a clip's edge, or press one k
 
 Each end of a clip has a trim zone: the outer 8 pixels inside the clip. Point at one and the cursor changes to a bracket with a double arrow.
 
+Trim zones trim with the **Select** tool, the one active in a new project. If another tool is active, press <kbd>V</kbd> or click **Select** in the timeline toolbar. See [Choose a tool](advanced-trimming.md#choose-a-tool).
+
 | Cursor | Where | Drag it to change |
 | --- | --- | --- |
 | `[` | The start of a clip | Where the clip starts |
@@ -28,8 +30,9 @@ Each end of a clip has a trim zone: the outer 8 pixels inside the clip. Point at
 
 - The bracket turns gold when the trim will ripple: while you hold <kbd>Ctrl</kbd> over the edge, or while **Ripple mode** is on. See [Trim without leaving a gap (ripple trim)](#trim-without-leaving-a-gap-ripple-trim).
 - Where two clips touch, the left side of the cut is the end of the left clip, and the right side is the start of the right clip. Point just left of the cut to trim the first clip, just right of it to trim the second.
+- Within 3 pixels of such a cut, a click without dragging selects the cut as an edit point instead of the clip, and holding <kbd>Ctrl</kbd>+<kbd>Alt</kbd> rolls the cut. See [Select a cut (edit point)](advanced-trimming.md#select-a-cut-edit-point) and [Roll a cut between two clips](advanced-trimming.md#roll-a-cut-between-two-clips).
 - On a clip narrower than 24 pixels, each trim zone is a third of the clip, so you can still press its middle to move it. To grab the edge of a very short clip, zoom in first.
-- Clicking a trim zone without dragging selects the clip, like a click on its middle. A trim itself does not change the selection.
+- Clicking a trim zone without dragging selects the clip, like a click on its middle (except right on a cut, see above). A trim itself does not change the selection.
 
 Press anywhere else on a clip to select or move it. See [Move clips](timeline.md#move-clips).
 
@@ -192,13 +195,14 @@ When a limit stops <kbd>Q</kbd>, <kbd>W</kbd> or <kbd>E</kbd> before the playhea
 - An undo or redo during a trim (<kbd>Ctrl</kbd>+<kbd>Z</kbd>) also cancels it.
 - After you release, <kbd>Ctrl</kbd>+<kbd>Z</kbd> undoes the whole trim in one step: the trimmed clip, its linked clips and every clip a ripple moved.
 
-Rolling a cut between two clips, and the **Slip**, **Slide** and **Rate stretch** tools in the toolbar, are available in a later version.
+To move a cut between two clips without changing their total length, to change the part of the media a clip shows, or to change a clip's speed, see [Advanced trimming](advanced-trimming.md).
 
 ## Related pages
+- [Advanced trimming](advanced-trimming.md)
 - [Timeline](timeline.md)
 - [Preview and playback](preview-and-playback.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Projects and saving](projects-and-saving.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 13, 2026-10-15</sub>
+<sub>Last updated: Batch 14, 2026-10-15</sub>

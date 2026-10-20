@@ -1,10 +1,10 @@
 # Troubleshooting
 
-This page helps you when something does not work as expected: the editor does not start in your browser, the preview stays empty, a folder or a file does not open, a clip drag or a trim does something you did not expect, playback stutters, or you hear no sound. Each problem lists what you see, why it happens and what to do. The last section lists what the current version cannot do yet.
+This page helps you when something does not work as expected: the editor does not start in your browser, the preview stays empty, a folder or a file does not open, a clip drag, a trim or a timeline tool does something you did not expect, playback stutters, or you hear no sound. Each problem lists what you see, why it happens and what to do. The last section lists what the current version cannot do yet.
 
 > **Video placeholder: Fix common problems**
 > - File: `videos/troubleshooting/overview.mp4` (not recorded yet)
-> - Length: about 95 seconds
+> - Length: about 105 seconds
 > - Shows:
 >   1. Open the editor in a browser without the required features: the screen "This browser cannot run Shorts Editor" lists what is missing.
 >   2. In Chrome, open `chrome://settings/system` and show **Use graphics acceleration when available** turned on.
@@ -15,6 +15,7 @@ This page helps you when something does not work as expected: the editor does no
 >   7. Play a clip with sound while **Mute** is on: nothing is heard, but the meter moves. Click **Unmute**: the sound is back.
 >   8. Drag a clip near the end of another clip: it jumps onto the edge with a gold line. Hold <kbd>S</kbd> and place it a few frames away instead.
 >   9. Click **Ripple mode** in the timeline toolbar so it is gold, and drag the end of a clip to the left: the later clips move too. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> and click **Ripple mode** again to turn it off.
+>   10. Press <kbd>Y</kbd> and drag a clip: it stays in place while its picture changes. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>, then <kbd>V</kbd>, and drag the clip again: it moves.
 
 ## In this page
 - [Browser and graphics](#browser-and-graphics)
@@ -45,11 +46,16 @@ This page helps you when something does not work as expected: the editor does no
   - [A clip edge stops before where you drag it](#a-clip-edge-stops-before-where-you-drag-it)
   - [Linked clips show a red number](#linked-clips-show-a-red-number)
   - [Q, W or E does nothing](#q-w-or-e-does-nothing)
+  - [Dragging a clip slips, slides or stretches it](#dragging-a-clip-slips-slides-or-stretches-it)
+  - [Ctrl+Alt does not roll the cut](#ctrlalt-does-not-roll-the-cut)
+  - [Brackets appear on a cut](#brackets-appear-on-a-cut)
+  - [A clip shows a speed badge](#a-clip-shows-a-speed-badge)
 - [Playback and preview](#playback-and-preview)
   - [Playback stutters or drops frames](#playback-stutters-or-drops-frames)
   - [The preview shows a nearby frame for a moment](#the-preview-shows-a-nearby-frame-for-a-moment)
   - [Playback has no sound](#playback-has-no-sound)
   - [Sound and picture are out of sync](#sound-and-picture-are-out-of-sync)
+  - [The preview shows two pictures side by side](#the-preview-shows-two-pictures-side-by-side)
 - [Known limitations](#known-limitations)
 
 ## Browser and graphics
@@ -194,7 +200,7 @@ This page helps you when something does not work as expected: the editor does no
 
 ### A clip edge stops before where you drag it
 
-**Symptom:** While you trim, the edge stops following the pointer.
+**Symptom:** While you trim, roll, slip, slide or stretch, the edge or the clip stops following the pointer.
 
 **Cause:** The trim reached a limit. Check what you see:
 
@@ -205,8 +211,11 @@ This page helps you when something does not work as expected: the editor does no
 | The edge stopped although nothing is next to the clip. | Its linked clip (for example its sound) reached a limit, or a ripple trim would make clips on another track overlap. | Hold <kbd>Alt</kbd> to trim the clip without its linked clip, or move the clip that blocks the ripple. |
 | The clip is 1 frame long. | A clip is at least 1 frame long. | None. |
 | The clip starts at `00:00:00`. | Clips can't start before the start of the timeline. | None. |
+| During a roll, slip or slide, one end of a clip or one half of the cut is red, and the tooltip shows **Media start** or **Media end** in red. | That clip, or a neighbor of the clip you slide, has no more frames in its media. | None: drag the other way, or use a clip with more media. |
+| The tooltip shows **Max speed 4x** or **Min speed 0.25x** in red. | A rate stretch reached its speed limit. | None: speeds go from 0.25x to 4x. |
+| A rate stretch stops at the next or the previous clip. | Rate stretches never ripple. | Move the neighboring clip first. |
 
-When <kbd>Q</kbd>, <kbd>W</kbd> or <kbd>E</kbd> stops short, a message names the limit. See [Know where a trim stops](trimming.md#know-where-a-trim-stops).
+When <kbd>Q</kbd>, <kbd>W</kbd> or <kbd>E</kbd> stops short, a message names the limit. See [Know where a trim stops](trimming.md#know-where-a-trim-stops) and [Know where an edit stops](advanced-trimming.md#know-where-an-edit-stops).
 
 ### Linked clips show a red number
 
@@ -227,6 +236,42 @@ When <kbd>Q</kbd>, <kbd>W</kbd> or <kbd>E</kbd> stops short, a message names the
 - A text field has the keyboard focus.
 
 **Fix:** Move the playhead into the clip, select the clip for <kbd>E</kbd>, and click the timeline before you press the key. See [Trim to the playhead with Q and W](trimming.md#trim-to-the-playhead-with-q-and-w) and [Extend a clip to the playhead with E](trimming.md#extend-a-clip-to-the-playhead-with-e).
+
+### Dragging a clip slips, slides or stretches it
+
+**Symptom:** You drag a clip to move it, but it stays in place while its picture changes, or its neighbors get longer and shorter, or nothing happens. Or dragging its edge changes its speed, and a badge such as `0.5x` appears.
+
+**Cause:** A tool other than **Select** is active: **Slip**, **Slide** or **Rate stretch**. Its button in the timeline toolbar is gold. <kbd>Y</kbd>, <kbd>U</kbd> and <kbd>R</kbd> choose these tools in every panel, so a stray key press switches the tool. Each project remembers its tool.
+
+**Fix:** Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> to undo the edit, then press <kbd>V</kbd> or click **Select**. See [Choose a tool](advanced-trimming.md#choose-a-tool).
+
+### Ctrl+Alt does not roll the cut
+
+**Symptom:** You hold <kbd>Ctrl</kbd>+<kbd>Alt</kbd> over a cut, but the cursor does not become `][`, or the drag trims only one clip.
+
+**Cause:** One of these:
+- The pointer is more than 3 pixels away from the cut.
+- The two clips do not touch: there is a gap between them, even of 1 frame.
+- A tool other than **Select** is active.
+- You pressed the keys after you started the drag. A roll starts only when <kbd>Ctrl</kbd>+<kbd>Alt</kbd> are held as you press the mouse button.
+
+**Fix:** Press <kbd>Esc</kbd> before you release, or <kbd>Ctrl</kbd>+<kbd>Z</kbd> after. Press <kbd>V</kbd>, zoom in so the cut is easier to hit, hold <kbd>Ctrl</kbd>+<kbd>Alt</kbd>, then press on the cut and drag. To remove a gap, drag the second clip onto the end of the first: it snaps there. See [Roll a cut between two clips](advanced-trimming.md#roll-a-cut-between-two-clips).
+
+### Brackets appear on a cut
+
+**Symptom:** Red brackets `][`, or one gold bracket, appear on a cut, and no clip is selected anymore.
+
+**Cause:** You clicked right on the cut, within 3 pixels of it, without dragging. That selects the cut as an edit point. With <kbd>Ctrl</kbd> held or **Ripple mode** on, the click selects one side of the cut, shown in gold.
+
+**Fix:** Nothing is wrong: the brackets only mark the cut. To clear them, click a clip or an empty part of a track, or press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd>. To select a clip next to a cut, click further inside the clip. See [Select a cut (edit point)](advanced-trimming.md#select-a-cut-edit-point).
+
+### A clip shows a speed badge
+
+**Symptom:** A clip shows a badge such as `0.5x`, `2x` or `1x` in its label bar, and plays faster or slower than its media.
+
+**Cause:** The clip was stretched with **Rate stretch**, which changes its speed. A `1x` badge means the clip was stretched and then dragged back to its old length in a separate drag: its speed is a tiny bit off normal speed. The difference is too small to see or hear.
+
+**Fix:** Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> until the badge disappears; each stretch is one step. Typing an exact speed is available in a later version. See [Change a clip's speed with Rate stretch](advanced-trimming.md#change-a-clips-speed-with-rate-stretch).
 
 ## Folders and saving
 
@@ -370,13 +415,22 @@ See [Audio](audio.md).
 
 **Fix:** Check the sync with wired headphones or the computer's speakers. If the voice is still off, check the same clip in another video player: the file itself may be out of sync.
 
+### The preview shows two pictures side by side
+
+**Symptom:** While you drag on the timeline, the preview splits into two halves, each with a different frame.
+
+**Cause:** You are rolling a cut, or slipping or sliding a clip. The two halves show the frames on both sides of the edit.
+
+**Fix:** Nothing to fix. When you release the mouse button or press <kbd>Esc</kbd>, the preview goes back to the frame at the playhead. See [Read the split preview](advanced-trimming.md#read-the-split-preview).
+
 ## Known limitations
 
 The current version cannot do these things yet. Each one is available in a later version.
 
 - **Sound:** no sound while you scrub, step frames, play backward or shuttle faster than 1x. Audio clips show no waveforms. Changing the volume of a clip, fades and audio effects are not available, and video tracks have no mute toggle.
-- **Editing clips:** you can select, move, insert, duplicate, nudge and trim clips, but not split or delete them, roll a cut between two clips, slip, slide or stretch them. Clips snap only to clip edges, the playhead and the start of the timeline, because markers and in and out points are not available yet. To remove a clip you just added, use **Undo** (<kbd>Ctrl</kbd>+<kbd>Z</kbd>).
+- **Editing clips:** you can select, move, insert, duplicate, nudge, trim, roll, slip, slide and rate stretch clips, but not split or delete them. The **Razor** and **Hand** tools are not available. Clips snap only to clip edges, the playhead and the start of the timeline, because markers and in and out points are not available yet. To remove a clip you just added, use **Undo** (<kbd>Ctrl</kbd>+<kbd>Z</kbd>).
 - **Trimming:** <kbd>Q</kbd> and <kbd>W</kbd> always look at every track; choosing the tracks they act on is not available yet. Linked clips that are out of step can't be moved back into sync with one command.
+- **Speed and edit points:** a clip's speed changes only with **Rate stretch**; typing an exact speed is not available. A selected cut (edit point) only marks the cut; transitions are not available.
 - **Tracks:** double-clicked media always goes to the first video track (V1); drag clips to move them to other tracks. Tracks can't be locked, hidden, renamed or removed (**Undo** removes a track you just added). Clicking a track header does nothing yet (only the **+ Video track** and **+ Audio track** rows and the **M** and **S** toggles of audio tracks work), and the timeline has no scrollbars (scroll with the mouse wheel).
 - **Preview:** no panning, no mouse-wheel zoom, and no <kbd>Ctrl</kbd>+<kbd>0</kbd>/<kbd>1</kbd>/<kbd>2</kbd>. The preview timecode is read-only; type times in the timeline toolbar. The quality is always **Auto: full**.
 - **Fit only:** inserted clips fit the frame with bands; one-click Fill is not available. Changing the project resolution does not refit existing clips.
@@ -391,10 +445,11 @@ The current version cannot do these things yet. Each one is available in a later
 ## Related pages
 - [Audio](audio.md)
 - [Trimming clips](trimming.md)
+- [Advanced trimming](advanced-trimming.md)
 - [Getting started](getting-started.md)
 - [Projects and saving](projects-and-saving.md)
 - [Importing media](importing-media.md)
 - [Preview and playback](preview-and-playback.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 13, 2026-10-15</sub>
+<sub>Last updated: Batch 14, 2026-10-15</sub>

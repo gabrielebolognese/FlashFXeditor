@@ -1,6 +1,6 @@
 # Timeline
 
-The timeline is where your short takes shape: clips sit on tracks in time order, and the playhead marks the frame the preview shows. In this version you add clips by double-clicking media, select clips and arrange them by dragging (also onto other tracks), snap them to the edges of other clips and to the playhead, duplicate them, add tracks, zoom and scroll, and move the playhead with the mouse, the keyboard or a typed timecode. To shorten or lengthen clips, see [Trimming clips](trimming.md). Splitting and deleting clips are available in a later version.
+The timeline is where your short takes shape: clips sit on tracks in time order, and the playhead marks the frame the preview shows. In this version you add clips by double-clicking media, select clips and arrange them by dragging (also onto other tracks), snap them to the edges of other clips and to the playhead, duplicate them, add tracks, zoom and scroll, and move the playhead with the mouse, the keyboard or a typed timecode. To shorten or lengthen clips, see [Trimming clips](trimming.md); to roll cuts, slip, slide or change a clip's speed, see [Advanced trimming](advanced-trimming.md). Splitting and deleting clips are available in a later version.
 
 > **Video placeholder: Timeline tour**
 > - File: `videos/timeline/timeline-overview.mp4` (not recorded yet)
@@ -29,7 +29,7 @@ The timeline is where your short takes shape: clips sit on tracks in time order,
 
 | Part | Where | What it does |
 |---|---|---|
-| **Toolbar** | Top of the panel | The **Snap** toggle, zoom controls, and at the right end the playhead timecode and the total duration. |
+| **Toolbar** | Top of the panel | The tools, the **Snap** and **Ripple mode** toggles, zoom controls, and at the right end the playhead timecode and the total duration. |
 | **Ruler** | Above the tracks | Shows time. Click or drag in it to move the playhead. |
 | **Track headers** | Left column | Each track's icon and name (V1, V2 for video; A1, A2 for audio), the **M** (mute) and **S** (solo) toggles of audio tracks, plus the **+ Video track** and **+ Audio track** rows. |
 | **Tracks** | Main area | Video tracks above the divider, audio tracks below it. Each row holds that track's clips. |
@@ -52,13 +52,21 @@ The spacing of the ticks follows the zoom. Zoomed out, labels can be minutes apa
 - Clips that touch are separated by a thin line, so you can always see the cut.
 - A clip gets lighter while you point at it. A selected clip has a gold outline and tint (see [Select clips](#select-clips)).
 - The outer 8 pixels at each end of a clip are its trim zones: the cursor turns into a bracket there, and dragging trims the clip. See [Trimming clips](trimming.md).
+- Where two clips touch, a click within 3 pixels of the cut selects the cut (red brackets `][` mark it), and <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+drag there rolls the cut. See [Advanced trimming](advanced-trimming.md#select-a-cut-edit-point).
 - A red number such as **+12** or **-12** at the right end of the label bar means the clip is that many frames out of step with its linked clip. See [Trim a video without its sound](trimming.md#trim-a-video-without-its-sound).
+- A badge such as `0.5x` or `2x` in the label bar, left of any red number, is the speed of a video or audio clip that does not play at normal speed. See [Change a clip's speed with Rate stretch](advanced-trimming.md#change-a-clips-speed-with-rate-stretch).
 
 Thumbnails and waveforms inside clips are available in a later version.
 
 ### Toolbar
 
-In this version the toolbar's **Snap** toggle (see [Turn snapping on or off](#turn-snapping-on-or-off)), the **Ripple mode** toggle (see [Turn Ripple mode on or off](trimming.md#turn-ripple-mode-on-or-off)), the zoom group, the timecode field and the duration work. The other buttons (tools such as **Select** and **Razor**, toggles such as **Linked selection**, edit actions such as **Split at playhead**, and add actions such as **Title**) are shown but disabled; they are available in a later version.
+In this version these parts of the toolbar work:
+
+- the **Select**, **Slip**, **Slide** and **Rate stretch** tools (see [Choose a tool](advanced-trimming.md#choose-a-tool));
+- the **Snap** toggle (see [Turn snapping on or off](#turn-snapping-on-or-off)) and the **Ripple mode** toggle (see [Turn Ripple mode on or off](trimming.md#turn-ripple-mode-on-or-off));
+- the zoom group, the timecode field and the duration.
+
+The other buttons (the **Razor** and **Hand** tools, toggles such as **Linked selection**, edit actions such as **Split at playhead**, and add actions such as **Title**) are shown but disabled; they are available in a later version.
 
 > **Note:** When the timeline panel is too narrow for the whole toolbar, the zoom group is the first to move into the **More tools** (…) menu, followed by the toggles with **Snap** and **Ripple mode**. Click **More tools** to reach them.
 
@@ -140,11 +148,13 @@ Your zoom and scroll position are saved with the project and come back when you 
 |---|---|
 | Scroll the tracks up or down | Roll the mouse wheel over the timeline |
 | Scroll left or right | Hold <kbd>Shift</kbd> and roll the mouse wheel, or swipe sideways on a trackpad |
+| Center the view on the playhead | Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>.</kbd> while the Timeline panel is active |
 
 - The view can't scroll before the start of the timeline. It can scroll past the end of the last clip by up to a quarter of its width.
 - Scrolling up and down moves the video and audio tracks together.
+- <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>.</kbd> keeps the zoom and scrolls the playhead to the middle of the view. Near the start of the timeline the view can't scroll that far, so the playhead stays left of the middle.
 
-Scrollbars and panning by dragging (the **Hand** tool) are available in a later version.
+Scrollbars, a toolbar button to center the playhead, and panning by dragging (the **Hand** tool) are available in a later version.
 
 ## Move the playhead
 
@@ -175,10 +185,11 @@ Click the timeline first so it has the keyboard. (While the preview has the keyb
 | Step 1 second | <kbd>Ctrl</kbd>+<kbd>Left</kbd> or <kbd>Ctrl</kbd>+<kbd>Right</kbd> |
 | Go to the start | <kbd>Home</kbd> |
 | Go to the end of the last clip | <kbd>End</kbd> |
-| Jump to the previous or next clip start or end | <kbd>Up</kbd> or <kbd>Down</kbd> |
+| Jump to the previous or next edit point: a clip start or end on any track | <kbd>Up</kbd> or <kbd>Down</kbd> |
 
 - Hold a step key to keep stepping.
 - The step keys pause playback first.
+- <kbd>Up</kbd> and <kbd>Down</kbd> visit every clip start and end on all tracks in time order, also where only one track has a cut. When there is no edit point further in that direction, the playhead stays where it is.
 - When a key moves the playhead out of view, the timeline pages to show it.
 
 For playback keys such as <kbd>Space</kbd> and <kbd>J</kbd>/<kbd>K</kbd>/<kbd>L</kbd>, see [Preview and playback](preview-and-playback.md). All shortcuts are listed in [Keyboard shortcuts](keyboard-shortcuts.md).
@@ -231,6 +242,7 @@ While the editor plays, the timeline follows the playhead. When the playhead rea
 | Add the clips a rectangle touches to the selection | <kbd>Shift</kbd>+drag on an empty part of the tracks |
 | Select all clips | <kbd>Ctrl</kbd>+<kbd>A</kbd> |
 | Clear the selection | Click an empty part of a track, or press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd> |
+| Select a cut between two clips instead | Click right on the cut. See [Select a cut (edit point)](advanced-trimming.md#select-a-cut-edit-point). |
 
 A selected clip has a gold outline and a gold tint. The clip you clicked last has a slightly thicker outline.
 
@@ -464,10 +476,11 @@ Click the timeline first, so it has the keyboard, and select the clips to move.
 
 > **Note:** <kbd>Alt</kbd>+<kbd>Left</kbd> is also the browser's Back key. The editor keeps it while the Timeline panel is active, also when no clip is selected. In the other panels, the browser gets it. See [Keys the browser keeps](keyboard-shortcuts.md#keys-the-browser-keeps).
 
-To trim clips, see [Trimming clips](trimming.md). Splitting and deleting clips are available in a later version.
+To trim clips, see [Trimming clips](trimming.md) and [Advanced trimming](advanced-trimming.md). Splitting and deleting clips are available in a later version.
 
 ## Related pages
 - [Trimming clips](trimming.md)
+- [Advanced trimming](advanced-trimming.md)
 - [Audio](audio.md)
 - [Getting started](getting-started.md)
 - [Workspace](workspace.md)
@@ -477,4 +490,4 @@ To trim clips, see [Trimming clips](trimming.md). Splitting and deleting clips a
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 13, 2026-10-15</sub>
+<sub>Last updated: Batch 14, 2026-10-15</sub>
