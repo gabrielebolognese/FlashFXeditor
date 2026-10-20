@@ -1,6 +1,6 @@
 # Trimming clips
 
-Trimming changes where a clip starts or ends. Drag a clip's edge, or press one key to cut the clip to the playhead. A regular trim changes one clip and leaves everything else in place. A ripple trim also moves the rest of your edit, so no gap opens. While you drag, the preview shows the frame where the clip will start or end. To roll a cut, slip, slide or change a clip's speed, see [Advanced trimming](advanced-trimming.md).
+Trimming changes where a clip starts or ends. Drag a clip's edge, or press one key to cut the clip to the playhead. A regular trim changes one clip and leaves everything else in place. A ripple trim also moves the rest of your edit, so no gap opens. While you drag, the preview shows the frame where the clip will start or end. To roll a cut, slip, slide or change a clip's speed, see [Advanced trimming](advanced-trimming.md). To cut a clip in two, delete it or close a gap, see [Splitting, deleting and closing gaps](splitting-and-deleting.md).
 
 > **Video placeholder: Trim clips**
 > - File: `videos/trimming/trimming-overview.mp4` (not recorded yet)
@@ -199,10 +199,11 @@ To move a cut between two clips without changing their total length, to change t
 
 ## Related pages
 - [Advanced trimming](advanced-trimming.md)
+- [Splitting, deleting and closing gaps](splitting-and-deleting.md)
 - [Timeline](timeline.md)
 - [Preview and playback](preview-and-playback.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Projects and saving](projects-and-saving.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 14, 2026-10-15</sub>
+<sub>Last updated: Batch 15, 2026-10-15</sub>

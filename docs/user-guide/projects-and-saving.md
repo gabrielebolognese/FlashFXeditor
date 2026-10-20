@@ -95,12 +95,15 @@ What you can undo:
 | Undoable (one step each) | Not undoable |
 | --- | --- |
 | Renaming the project | Moving the playhead and playing |
-| Changing the resolution, frame rate or background color | Selecting clips or a cut (edit point) |
+| Changing the resolution, frame rate or background color | Selecting clips, a cut (edit point) or a gap |
 | Importing media, renaming media, removing media | Zooming and scrolling the timeline, zooming the preview |
 | Inserting a clip on the timeline | Panel sizes, panel tabs, the media view and sort order |
 | Moving, inserting, duplicating and nudging clips (a quick series of nudges is one step) | **Loop playback**, **Snap**, **Ripple mode** and the **Autosave** setting |
-| Trimming clips: each trim drag and each press of <kbd>Q</kbd>, <kbd>W</kbd> or <kbd>E</kbd> | Choosing a tool (**Select**, **Slip**, **Slide**, **Rate stretch**) |
+| Trimming clips: each trim drag and each press of <kbd>Q</kbd>, <kbd>W</kbd> or <kbd>E</kbd> | Choosing a tool (**Select**, **Razor**, **Slip**, **Slide**, **Rate stretch**) |
 | Rolling a cut, slipping, sliding and rate stretching clips (one step per drag) | |
+| Splitting clips (each <kbd>Ctrl</kbd>+<kbd>K</kbd> and each **Razor** click), deleting and ripple deleting clips | |
+| Closing a gap, closing all gaps (one step for all of them) | |
+| Renaming clips and setting or removing their label color | |
 | Adding a track, muting or soloing an audio track | |
 
 ## Pick up where you left off
@@ -114,11 +117,11 @@ When you open a project again, the editor restores your view from the last sessi
 - whether **Loop playback** is on
 - whether **Snap** is on
 - whether **Ripple mode** is on
-- the active tool (**Select**, **Slip**, **Slide** or **Rate stretch**)
+- the active tool (**Select**, **Razor**, **Slip**, **Slide** or **Rate stretch**)
 - the selected clips
 - the panel sizes
 
-The undo history and a selected cut (edit point) are not restored. Because the view is saved every 10 seconds, the last few seconds of view changes can be missing after a browser crash; your project changes are saved separately by autosave.
+The undo history, a selected cut (edit point) and a selected gap are not restored. Because the view is saved every 10 seconds, the last few seconds of view changes can be missing after a browser crash; your project changes are saved separately by autosave.
 
 ## Restore unsaved changes after a crash
 
@@ -202,7 +205,8 @@ Each change to **Name**, **Resolution**, **Size**, **Frame rate** or **Backgroun
 - [Importing media](importing-media.md)
 - [Timeline](timeline.md)
 - [Trimming clips](trimming.md)
+- [Splitting, deleting and closing gaps](splitting-and-deleting.md)
 - [Advanced trimming](advanced-trimming.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 14, 2026-10-15</sub>
+<sub>Last updated: Batch 15, 2026-10-15</sub>

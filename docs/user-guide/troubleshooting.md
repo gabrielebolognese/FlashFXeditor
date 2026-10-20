@@ -1,10 +1,10 @@
 # Troubleshooting
 
-This page helps you when something does not work as expected: the editor does not start in your browser, the preview stays empty, a folder or a file does not open, a clip drag, a trim or a timeline tool does something you did not expect, playback stutters, or you hear no sound. Each problem lists what you see, why it happens and what to do. The last section lists what the current version cannot do yet.
+This page helps you when something does not work as expected: the editor does not start in your browser, the preview stays empty, a folder or a file does not open, a clip drag, a trim, a split, a delete or a timeline tool does something you did not expect, playback stutters, or you hear no sound. Each problem lists what you see, why it happens and what to do. The last section lists what the current version cannot do yet.
 
 > **Video placeholder: Fix common problems**
 > - File: `videos/troubleshooting/overview.mp4` (not recorded yet)
-> - Length: about 105 seconds
+> - Length: about 120 seconds
 > - Shows:
 >   1. Open the editor in a browser without the required features: the screen "This browser cannot run Shorts Editor" lists what is missing.
 >   2. In Chrome, open `chrome://settings/system` and show **Use graphics acceleration when available** turned on.
@@ -16,6 +16,8 @@ This page helps you when something does not work as expected: the editor does no
 >   8. Drag a clip near the end of another clip: it jumps onto the edge with a gold line. Hold <kbd>S</kbd> and place it a few frames away instead.
 >   9. Click **Ripple mode** in the timeline toolbar so it is gold, and drag the end of a clip to the left: the later clips move too. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> and click **Ripple mode** again to turn it off.
 >   10. Press <kbd>Y</kbd> and drag a clip: it stays in place while its picture changes. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>, then <kbd>V</kbd>, and drag the clip again: it moves.
+>   11. Press <kbd>C</kbd> and click a clip: it splits in two. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>, then <kbd>V</kbd>.
+>   12. With three videos end to end on V1, put a music clip on A2 that runs under the second video and ends after it, and a short sound effect on A2 one second after the music. Select the second video and press <kbd>Shift</kbd>+<kbd>Delete</kbd>: the message **Ripple delete stopped short** names the sound effect, and the third video moves only one second to the left.
 
 ## In this page
 - [Browser and graphics](#browser-and-graphics)
@@ -50,6 +52,12 @@ This page helps you when something does not work as expected: the editor does no
   - [Ctrl+Alt does not roll the cut](#ctrlalt-does-not-roll-the-cut)
   - [Brackets appear on a cut](#brackets-appear-on-a-cut)
   - [A clip shows a speed badge](#a-clip-shows-a-speed-badge)
+  - [Clicking a clip cuts it](#clicking-a-clip-cuts-it)
+  - [Ctrl+K or the Razor does not split a clip](#ctrlk-or-the-razor-does-not-split-a-clip)
+  - [Deleting a video also deleted its sound](#deleting-a-video-also-deleted-its-sound)
+  - [Closing a gap moved clips on other tracks](#closing-a-gap-moved-clips-on-other-tracks)
+  - [A ripple delete or Close gap stopped short](#a-ripple-delete-or-close-gap-stopped-short)
+  - [G does nothing or closes another gap](#g-does-nothing-or-closes-another-gap)
 - [Playback and preview](#playback-and-preview)
   - [Playback stutters or drops frames](#playback-stutters-or-drops-frames)
   - [The preview shows a nearby frame for a moment](#the-preview-shows-a-nearby-frame-for-a-moment)
@@ -273,6 +281,58 @@ When <kbd>Q</kbd>, <kbd>W</kbd> or <kbd>E</kbd> stops short, a message names the
 
 **Fix:** Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> until the badge disappears; each stretch is one step. Typing an exact speed is available in a later version. See [Change a clip's speed with Rate stretch](advanced-trimming.md#change-a-clips-speed-with-rate-stretch).
 
+### Clicking a clip cuts it
+
+**Symptom:** You click a clip to select it, and it splits in two instead, together with its sound. Dragging on the tracks draws no selection rectangle.
+
+**Cause:** The **Razor** tool is active: its button in the timeline toolbar is gold. <kbd>C</kbd> chooses it in every panel, so a stray key press switches the tool. Each project remembers its tool.
+
+**Fix:** Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> to undo the cut, then press <kbd>V</kbd> or click **Select**. See [Cut clips with the Razor tool](splitting-and-deleting.md#cut-clips-with-the-razor-tool).
+
+### Ctrl+K or the Razor does not split a clip
+
+**Symptom:** You press <kbd>Ctrl</kbd>+<kbd>K</kbd>, or click a clip with the **Razor**, and the clip stays whole.
+
+**Cause:** One of these:
+- Other clips are selected. With a selection, <kbd>Ctrl</kbd>+<kbd>K</kbd> splits only the selected clips.
+- The playhead is not over the clip, or it is exactly on the clip's start or end.
+- With the **Razor**, the cut line snapped onto the clip's start or end.
+- A text field has the keyboard focus.
+
+**Fix:** Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd> to clear the selection, or press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>K</kbd> to split every track. Move the playhead into the clip. With the **Razor**, zoom in, or turn snapping off with <kbd>S</kbd>, so the line stays inside the clip. See [Split clips at the playhead](splitting-and-deleting.md#split-clips-at-the-playhead).
+
+### Deleting a video also deleted its sound
+
+**Symptom:** You deleted a video clip, and its sound on the audio track disappeared too, or the other way round.
+
+**Cause:** A video and its sound are linked, and a delete always removes linked clips, also when you selected only one of them with <kbd>Alt</kbd>+click.
+
+**Fix:** Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> to bring both back. Deleting one of two linked clips alone is available in a later version. See [Delete clips](splitting-and-deleting.md#delete-clips).
+
+### Closing a gap moved clips on other tracks
+
+**Symptom:** You closed a gap, ripple deleted a clip or closed all gaps, and clips on other tracks moved left too.
+
+**Cause:** That is how a ripple works: the clips on the other tracks after the gap move along, so titles, sound effects and music that sit on a cut stay on it. See [How other tracks follow a ripple](splitting-and-deleting.md#how-other-tracks-follow-a-ripple).
+
+**Fix:** Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>. To close a gap on one track only, select the clips after the gap on that track and drag them to the left: they snap onto the end of the clip before the gap.
+
+### A ripple delete or Close gap stopped short
+
+**Symptom:** After **Ripple delete**, **Close gap** or **Close all gaps**, a gap is still there or only got smaller. A message such as **Ripple delete stopped short**, **Gap closed partly**, **Can't close the gap**, **Some gaps stayed open** or **Deleted without closing the gap** names a clip and a track, for example "Music on A2 can't move further left without overlapping."
+
+**Cause:** The clips on the other tracks move with the ripple to stay in step. The clip in the message can't move that far without overlapping the clip before it on its track, for example a long music clip that runs under the gap. The gap then closes only as far as that clip can follow.
+
+**Fix:** Move, trim or delete the clip in the message, or the clip before it, so it has room. Then select the gap and press <kbd>G</kbd> to close the rest. See [How other tracks follow a ripple](splitting-and-deleting.md#how-other-tracks-follow-a-ripple).
+
+### G does nothing or closes another gap
+
+**Symptom:** You press <kbd>G</kbd> and nothing happens, or a gap other than the one you meant closes.
+
+**Cause:** With no gap selected, <kbd>G</kbd> closes the gap at the playhead: the gap the playhead is in, or the gap right after the clip it is on. When several tracks have such a gap, the one that ends first closes. When there is none, nothing happens. <kbd>G</kbd> also needs the Timeline panel to be active.
+
+**Fix:** Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> if the wrong gap closed. Click the gap you mean to select it (it gets a dashed gold outline), then press <kbd>G</kbd>. See [Close a gap](splitting-and-deleting.md#close-a-gap).
+
 ## Folders and saving
 
 ### The browser asks for access to a folder
@@ -428,7 +488,9 @@ See [Audio](audio.md).
 The current version cannot do these things yet. Each one is available in a later version.
 
 - **Sound:** no sound while you scrub, step frames, play backward or shuttle faster than 1x. Audio clips show no waveforms. Changing the volume of a clip, fades and audio effects are not available, and video tracks have no mute toggle.
-- **Editing clips:** you can select, move, insert, duplicate, nudge, trim, roll, slip, slide and rate stretch clips, but not split or delete them. The **Razor** and **Hand** tools are not available. Clips snap only to clip edges, the playhead and the start of the timeline, because markers and in and out points are not available yet. To remove a clip you just added, use **Undo** (<kbd>Ctrl</kbd>+<kbd>Z</kbd>).
+- **Editing clips:** the **Hand** tool is not available, and clips can't be cut, copied or pasted (the **Cut**, **Copy** and **Paste** rows of the clip menu are dimmed). Deleting a clip always deletes its linked clips too. Clips snap only to clip edges, the playhead and the start of the timeline, because markers and in and out points are not available yet.
+- **Splitting and gaps:** <kbd>Ctrl</kbd>+<kbd>K</kbd> with nothing selected and **Close all gaps** always act on every track; choosing the tracks is not available.
+- **Menus:** only clips and gaps have a right-click menu, with a first set of rows. Menu rows can't be chosen with the arrow keys.
 - **Trimming:** <kbd>Q</kbd> and <kbd>W</kbd> always look at every track; choosing the tracks they act on is not available yet. Linked clips that are out of step can't be moved back into sync with one command.
 - **Speed and edit points:** a clip's speed changes only with **Rate stretch**; typing an exact speed is not available. A selected cut (edit point) only marks the cut; transitions are not available.
 - **Tracks:** double-clicked media always goes to the first video track (V1); drag clips to move them to other tracks. Tracks can't be locked, hidden, renamed or removed (**Undo** removes a track you just added). Clicking a track header does nothing yet (only the **+ Video track** and **+ Audio track** rows and the **M** and **S** toggles of audio tracks work), and the timeline has no scrollbars (scroll with the mouse wheel).
@@ -445,6 +507,7 @@ The current version cannot do these things yet. Each one is available in a later
 ## Related pages
 - [Audio](audio.md)
 - [Trimming clips](trimming.md)
+- [Splitting, deleting and closing gaps](splitting-and-deleting.md)
 - [Advanced trimming](advanced-trimming.md)
 - [Getting started](getting-started.md)
 - [Projects and saving](projects-and-saving.md)
@@ -452,4 +515,4 @@ The current version cannot do these things yet. Each one is available in a later
 - [Preview and playback](preview-and-playback.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 14, 2026-10-15</sub>
+<sub>Last updated: Batch 15, 2026-10-15</sub>
