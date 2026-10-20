@@ -2,6 +2,11 @@
 
 Shorts Editor grows in steps called batches. This page lists what each batch added that you can see or use, newest first. Follow the links for the full instructions.
 
+> **Video placeholder: What's new in Batch 16**
+> - File: `videos/whats-new/batch-16.mp4` (not recorded yet)
+> - Length: about 60 seconds
+> - Shows: a timeline with a video with sound on V1 and A1 and a title image on V2; point at the toggles in the V1 header; click the padlock in the A1 header: diagonal lines cover the row; click it again; double-click the name V2, type "Titles" and press <kbd>Enter</kbd>; drag the V1 header above Titles: the video now covers the title in the preview; press <kbd>Ctrl</kbd>+<kbd>Z</kbd>; click the crosshair in the A1 header, put the playhead in the video and press <kbd>Ctrl</kbd>+<kbd>K</kbd>: the video and its linked sound split, although A1 is not targeted; click the video and press <kbd>Ctrl</kbd>+<kbd>L</kbd> to unlink; click the sound alone and press <kbd>Alt</kbd>+<kbd>Right</kbd> a few times: red sync numbers appear; right-click it and choose **Move into sync**; click the rows icon in the V1 header: the row gets taller.
+
 > **Video placeholder: What's new in Batch 15**
 > - File: `videos/whats-new/batch-15.mp4` (not recorded yet)
 > - Length: about 60 seconds
@@ -38,6 +43,7 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 > - Shows: open a project with three clips on the timeline; press <kbd>Space</kbd> to play and let the timeline page forward; press <kbd>L</kbd> three times to reach 8x, then <kbd>K</kbd>; hold <kbd>K</kbd> and tap <kbd>L</kbd> to step one frame; turn on **Loop playback**; point at the **Dropped** readout in the status strip.
 
 ## In this page
+- [Batch 16: Tracks, links and groups](#batch-16-tracks-links-and-groups)
 - [Batch 15: Split, delete and close gaps](#batch-15-split-delete-and-close-gaps)
 - [Batch 14: Roll, slip, slide and rate stretch](#batch-14-roll-slip-slide-and-rate-stretch)
 - [Batch 13: Trimming](#batch-13-trimming)
@@ -53,6 +59,21 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 - [Batch 03: Projects, autosave and recovery](#batch-03-projects-autosave-and-recovery)
 - [Batch 02: Undo, redo and frame-exact time](#batch-02-undo-redo-and-frame-exact-time)
 - [Batch 01: The workspace](#batch-01-the-workspace)
+
+## Batch 16: Tracks, links and groups
+- Track headers have working toggles: **Target** (crosshair), **Lock** (padlock), **M** (mute), **S** (solo, audio tracks), **Hide** (eye, video tracks) and **Height**. Video tracks can now be muted and hidden: their clips leave the preview.
+- Lock a track to protect it: its row is hatched, and its clips can't be selected, moved, trimmed, split or deleted. Ripples leave locked tracks alone.
+- Untarget a track to keep it out of <kbd>Ctrl</kbd>+<kbd>K</kbd> with nothing selected, <kbd>Q</kbd>, <kbd>W</kbd>, <kbd>G</kbd> and **Close all gaps**. Double-clicked media goes to the targeted track nearest the divider.
+- Double-click a track name (or select the track and press <kbd>F2</kbd>) to rename it. Drag a track header up or down to reorder tracks; the higher video track is drawn on top in the preview.
+- Click a header to select the track: the **Edit Properties** panel shows its **Track** section. <kbd>Shift</kbd>+<kbd>G</kbd> then compacts only the selected tracks.
+- Tracks come in three heights, S, M and L: click the height toggle, press <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>Up</kbd> or <kbd>Down</kbd>, or click **Track height** in the toolbar.
+- Right-click a track header for the track menu: add tracks above or below, rename, delete a track or all empty tracks, set the height, select the track's clips, lock all tracks, mute all others.
+- **Linked selection** (<kbd>Shift</kbd>+<kbd>S</kbd>) works: turn it off to select, trim, split and delete a video without its sound. <kbd>Ctrl</kbd>+<kbd>L</kbd> unlinks or links clips.
+- Linked clips that are out of step show red numbers such as **+12** and **-12**. Right-click a clip and choose **Move into sync** to line it up again. Trimming one side of a video and its sound (a J or L cut) no longer shows a number.
+- <kbd>Ctrl</kbd>+<kbd>G</kbd> groups clips so that one click selects them all; <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>G</kbd> ungroups them. Deleting a grouped clip deletes the group.
+- Deleting an audio track while it plays now fades it out without a click.
+
+See [Tracks](tracks.md), [Linking and grouping clips](links-and-groups.md) and [Keyboard shortcuts](keyboard-shortcuts.md#tracks-links-and-groups).
 
 ## Batch 15: Split, delete and close gaps
 - Press <kbd>Ctrl</kbd>+<kbd>K</kbd>, or click **Split at playhead**, to split clips at the playhead: the selected clips, or every clip under the playhead when nothing is selected. <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>K</kbd> splits every track. Both parts keep everything the clip had, and a video and its sound split together.
@@ -180,4 +201,4 @@ See [The workspace](workspace.md) and [Getting started](getting-started.md).
 - [User guide home](README.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 15, 2026-10-15</sub>
+<sub>Last updated: Batch 16, 2026-10-15</sub>

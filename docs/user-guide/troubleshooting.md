@@ -18,6 +18,7 @@ This page helps you when something does not work as expected: the editor does no
 >   10. Press <kbd>Y</kbd> and drag a clip: it stays in place while its picture changes. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>, then <kbd>V</kbd>, and drag the clip again: it moves.
 >   11. Press <kbd>C</kbd> and click a clip: it splits in two. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>, then <kbd>V</kbd>.
 >   12. With three videos end to end on V1, put a music clip on A2 that runs under the second video and ends after it, and a short sound effect on A2 one second after the music. Select the second video and press <kbd>Shift</kbd>+<kbd>Delete</kbd>: the message **Ripple delete stopped short** names the sound effect, and the third video moves only one second to the left.
+>   13. Click the padlock in the V1 header: diagonal lines cover the row, and clicking its clips selects nothing. Click the padlock again: the clips can be selected.
 
 ## In this page
 - [Browser and graphics](#browser-and-graphics)
@@ -58,12 +59,19 @@ This page helps you when something does not work as expected: the editor does no
   - [Closing a gap moved clips on other tracks](#closing-a-gap-moved-clips-on-other-tracks)
   - [A ripple delete or Close gap stopped short](#a-ripple-delete-or-close-gap-stopped-short)
   - [G does nothing or closes another gap](#g-does-nothing-or-closes-another-gap)
+  - [Clicking a clip selects nothing](#clicking-a-clip-selects-nothing)
+  - [A drop or a move is refused on a locked track](#a-drop-or-a-move-is-refused-on-a-locked-track)
+  - [A track can't be deleted](#a-track-cant-be-deleted)
+  - [Clicking a clip selects other clips too](#clicking-a-clip-selects-other-clips-too)
+  - [Clicking a video no longer selects its sound](#clicking-a-video-no-longer-selects-its-sound)
+  - [Ctrl+L does not link the clips](#ctrll-does-not-link-the-clips)
 - [Playback and preview](#playback-and-preview)
   - [Playback stutters or drops frames](#playback-stutters-or-drops-frames)
   - [The preview shows a nearby frame for a moment](#the-preview-shows-a-nearby-frame-for-a-moment)
   - [Playback has no sound](#playback-has-no-sound)
   - [Sound and picture are out of sync](#sound-and-picture-are-out-of-sync)
   - [The preview shows two pictures side by side](#the-preview-shows-two-pictures-side-by-side)
+  - [A clip does not show in the preview](#a-clip-does-not-show-in-the-preview)
 - [Known limitations](#known-limitations)
 
 ## Browser and graphics
@@ -229,9 +237,9 @@ When <kbd>Q</kbd>, <kbd>W</kbd> or <kbd>E</kbd> stops short, a message names the
 
 **Symptom:** A video clip and its sound clip each show a red number, such as **-20** and **+20**, at the right end of their label bar.
 
-**Cause:** The two clips are out of step by that many frames. This happens when you trim one of them with <kbd>Alt</kbd> held, or move one of them on its own after you selected it with <kbd>Alt</kbd>+click.
+**Cause:** The two clips are out of step by that many frames. This happens when you move or slip one of them on its own, for example after you selected it with <kbd>Alt</kbd>+click or with **Linked selection** off, or when one of them sits on a locked track and only the other one moved. Trimming one side alone (a J or L cut) does not cause it.
 
-**Fix:** Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> until the numbers disappear, or trim or move the other clip by the same number of frames. A command that moves clips back into sync is available in a later version. See [Trim a video without its sound](trimming.md#trim-a-video-without-its-sound).
+**Fix:** Right-click the clip that should move and choose **Move into sync**, or press <kbd>Ctrl</kbd>+<kbd>Z</kbd> until the numbers disappear. See [Keep linked clips in sync](links-and-groups.md#keep-linked-clips-in-sync).
 
 ### Q, W or E does nothing
 
@@ -239,6 +247,7 @@ When <kbd>Q</kbd>, <kbd>W</kbd> or <kbd>E</kbd> stops short, a message names the
 
 **Cause:** One of these:
 - <kbd>Q</kbd> and <kbd>W</kbd>: no clip is under the playhead, or the clip under it starts exactly at the playhead, so there is nothing to trim.
+- <kbd>Q</kbd> and <kbd>W</kbd>: the clip's track is not targeted (its crosshair is dimmed) or is locked. See [Choose the tracks your edits use](tracks.md#choose-the-tracks-your-edits-use-target).
 - <kbd>E</kbd>: no clip is selected, the playhead is already on the selected clip's start or end, or another panel than the Timeline is active.
 - The clip is already at a limit, for example its media start; a message then says so.
 - A text field has the keyboard focus.
@@ -295,19 +304,20 @@ When <kbd>Q</kbd>, <kbd>W</kbd> or <kbd>E</kbd> stops short, a message names the
 
 **Cause:** One of these:
 - Other clips are selected. With a selection, <kbd>Ctrl</kbd>+<kbd>K</kbd> splits only the selected clips.
+- The clip's track is locked, or, for <kbd>Ctrl</kbd>+<kbd>K</kbd> with nothing selected, not targeted (its crosshair is dimmed).
 - The playhead is not over the clip, or it is exactly on the clip's start or end.
 - With the **Razor**, the cut line snapped onto the clip's start or end.
 - A text field has the keyboard focus.
 
-**Fix:** Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd> to clear the selection, or press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>K</kbd> to split every track. Move the playhead into the clip. With the **Razor**, zoom in, or turn snapping off with <kbd>S</kbd>, so the line stays inside the clip. See [Split clips at the playhead](splitting-and-deleting.md#split-clips-at-the-playhead).
+**Fix:** Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd> to clear the selection, or press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>K</kbd> to split every unlocked track. Unlock or target the track in its header. Move the playhead into the clip. With the **Razor**, zoom in, or turn snapping off with <kbd>S</kbd>, so the line stays inside the clip. See [Split clips at the playhead](splitting-and-deleting.md#split-clips-at-the-playhead).
 
 ### Deleting a video also deleted its sound
 
 **Symptom:** You deleted a video clip, and its sound on the audio track disappeared too, or the other way round.
 
-**Cause:** A video and its sound are linked, and a delete always removes linked clips, also when you selected only one of them with <kbd>Alt</kbd>+click.
+**Cause:** A video and its sound are linked, and while **Linked selection** is on, a delete removes linked clips, also when you selected only one of them with <kbd>Alt</kbd>+click. A delete also removes every clip of a group.
 
-**Fix:** Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> to bring both back. Deleting one of two linked clips alone is available in a later version. See [Delete clips](splitting-and-deleting.md#delete-clips).
+**Fix:** Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> to bring both back. Then turn off **Linked selection** (<kbd>Shift</kbd>+<kbd>S</kbd>), or unlink the clips with <kbd>Ctrl</kbd>+<kbd>L</kbd>, and delete again. See [Delete clips](splitting-and-deleting.md#delete-clips) and [Linking and grouping clips](links-and-groups.md).
 
 ### Closing a gap moved clips on other tracks
 
@@ -315,7 +325,7 @@ When <kbd>Q</kbd>, <kbd>W</kbd> or <kbd>E</kbd> stops short, a message names the
 
 **Cause:** That is how a ripple works: the clips on the other tracks after the gap move along, so titles, sound effects and music that sit on a cut stay on it. See [How other tracks follow a ripple](splitting-and-deleting.md#how-other-tracks-follow-a-ripple).
 
-**Fix:** Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>. To close a gap on one track only, select the clips after the gap on that track and drag them to the left: they snap onto the end of the clip before the gap.
+**Fix:** Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>. To close a gap on one track only, select the clips after the gap on that track and drag them to the left: they snap onto the end of the clip before the gap. Or lock the tracks that should stay where they are, then close the gap: locked tracks never move. See [Lock a track](tracks.md#lock-a-track).
 
 ### A ripple delete or Close gap stopped short
 
@@ -329,9 +339,57 @@ When <kbd>Q</kbd>, <kbd>W</kbd> or <kbd>E</kbd> stops short, a message names the
 
 **Symptom:** You press <kbd>G</kbd> and nothing happens, or a gap other than the one you meant closes.
 
-**Cause:** With no gap selected, <kbd>G</kbd> closes the gap at the playhead: the gap the playhead is in, or the gap right after the clip it is on. When several tracks have such a gap, the one that ends first closes. When there is none, nothing happens. <kbd>G</kbd> also needs the Timeline panel to be active.
+**Cause:** With no gap selected, <kbd>G</kbd> closes the gap at the playhead: the gap the playhead is in, or the gap right after the clip it is on. When several tracks have such a gap, the one that ends first closes. Only targeted tracks that are not locked count. When there is none, nothing happens. <kbd>G</kbd> also needs the Timeline panel to be active.
 
 **Fix:** Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> if the wrong gap closed. Click the gap you mean to select it (it gets a dashed gold outline), then press <kbd>G</kbd>. See [Close a gap](splitting-and-deleting.md#close-a-gap).
+
+### Clicking a clip selects nothing
+
+**Symptom:** You click a clip, and it does not turn gold. <kbd>Ctrl</kbd>+<kbd>A</kbd> and selection rectangles skip it, and its edges can't be dragged.
+
+**Cause:** The clip's track is locked: its padlock is closed and gold, and diagonal lines cover the row. Clips on a locked track can't be selected or changed.
+
+**Fix:** Click the padlock in the track header to unlock the track. See [Lock a track](tracks.md#lock-a-track).
+
+### A drop or a move is refused on a locked track
+
+**Symptom:** You drop or nudge clips, and nothing changes. The message **Can't drop clips onto a locked track** or **Can't move clips on a locked track** names a track.
+
+**Cause:** That track is locked. No clip can be moved onto it or off it.
+
+**Fix:** Unlock the track with the padlock in its header, or drop the clips on another track. See [Lock a track](tracks.md#lock-a-track).
+
+### A track can't be deleted
+
+**Symptom:** **Delete track** is dimmed in the track menu, or the message **Can't delete a locked track** appears.
+
+**Cause:** The track, or one of the selected tracks, is locked.
+
+**Fix:** Click the padlock in its header to unlock it, then delete the track again. See [Delete tracks](tracks.md#delete-tracks).
+
+### Clicking a clip selects other clips too
+
+**Symptom:** You click one clip, and other clips, also on other tracks, turn gold with it.
+
+**Cause:** The clip is in a group, or it is linked to them (a video and its sound). A click selects the whole group and, while **Linked selection** is on, the linked clips.
+
+**Fix:** <kbd>Alt</kbd>+click the clip to select it alone. To end the group, select it and press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>G</kbd>. See [Linking and grouping clips](links-and-groups.md).
+
+### Clicking a video no longer selects its sound
+
+**Symptom:** A click on a video clip selects only the video, and trims, splits and deletes no longer change its sound.
+
+**Cause:** **Linked selection** is off (its chain button in the timeline toolbar is not gold). <kbd>Shift</kbd>+<kbd>S</kbd> switches it in every panel, so a stray key press can turn it off. Or the two clips were unlinked with <kbd>Ctrl</kbd>+<kbd>L</kbd>.
+
+**Fix:** Press <kbd>Shift</kbd>+<kbd>S</kbd>, or click **Linked selection**, so it is gold. If the clips were unlinked, select both and press <kbd>Ctrl</kbd>+<kbd>L</kbd>. See [Turn Linked selection off](links-and-groups.md#turn-linked-selection-off).
+
+### Ctrl+L does not link the clips
+
+**Symptom:** You press <kbd>Ctrl</kbd>+<kbd>L</kbd>, and the message **Select a video and an audio clip to link** appears. Or the clips you meant to link get unlinked.
+
+**Cause:** Linking needs at least one audio clip and at least one video or image clip, each on its own track. When any selected clip is already linked, <kbd>Ctrl</kbd>+<kbd>L</kbd> unlinks instead. Outside the Timeline panel, the browser gets <kbd>Ctrl</kbd>+<kbd>L</kbd> and moves to its address bar.
+
+**Fix:** Click the timeline, select one audio clip and one video or image clip on different tracks, and press <kbd>Ctrl</kbd>+<kbd>L</kbd> again. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> if the wrong clips were unlinked. See [Link clips](links-and-groups.md#link-clips).
 
 ## Folders and saving
 
@@ -483,17 +541,23 @@ See [Audio](audio.md).
 
 **Fix:** Nothing to fix. When you release the mouse button or press <kbd>Esc</kbd>, the preview goes back to the frame at the playhead. See [Read the split preview](advanced-trimming.md#read-the-split-preview).
 
+### A clip does not show in the preview
+
+**Symptom:** A video or image clip is under the playhead, but the preview shows the background or the tracks below it. On the timeline, the clip is drawn faded.
+
+**Cause:** Its track is muted (**M** is gold) or hidden (the eye is crossed out) in the track header.
+
+**Fix:** Click **M** or the eye to turn it off. If the clip is not faded, a clip on a higher video track covers it: drag its track header above the other video tracks. See [Mute, solo and hide tracks](tracks.md#mute-solo-and-hide-tracks) and [Reorder tracks](tracks.md#reorder-tracks).
+
 ## Known limitations
 
 The current version cannot do these things yet. Each one is available in a later version.
 
-- **Sound:** no sound while you scrub, step frames, play backward or shuttle faster than 1x. Audio clips show no waveforms. Changing the volume of a clip, fades and audio effects are not available, and video tracks have no mute toggle.
-- **Editing clips:** the **Hand** tool is not available, and clips can't be cut, copied or pasted (the **Cut**, **Copy** and **Paste** rows of the clip menu are dimmed). Deleting a clip always deletes its linked clips too. Clips snap only to clip edges, the playhead and the start of the timeline, because markers and in and out points are not available yet.
-- **Splitting and gaps:** <kbd>Ctrl</kbd>+<kbd>K</kbd> with nothing selected and **Close all gaps** always act on every track; choosing the tracks is not available.
-- **Menus:** only clips and gaps have a right-click menu, with a first set of rows. Menu rows can't be chosen with the arrow keys.
-- **Trimming:** <kbd>Q</kbd> and <kbd>W</kbd> always look at every track; choosing the tracks they act on is not available yet. Linked clips that are out of step can't be moved back into sync with one command.
+- **Sound:** no sound while you scrub, step frames, play backward or shuttle faster than 1x. Audio clips show no waveforms. Changing the volume of a clip, fades and audio effects are not available.
+- **Editing clips:** the **Hand** tool is not available, and clips can't be cut, copied or pasted (the **Cut**, **Copy** and **Paste** rows of the clip menu are dimmed). Clips snap only to clip edges, the playhead and the start of the timeline, because markers and in and out points are not available yet.
+- **Menus:** only clips, gaps and track headers have a right-click menu, with a first set of rows. Menu rows can't be chosen with the arrow keys.
 - **Speed and edit points:** a clip's speed changes only with **Rate stretch**; typing an exact speed is not available. A selected cut (edit point) only marks the cut; transitions are not available.
-- **Tracks:** double-clicked media always goes to the first video track (V1); drag clips to move them to other tracks. Tracks can't be locked, hidden, renamed or removed (**Undo** removes a track you just added). Clicking a track header does nothing yet (only the **+ Video track** and **+ Audio track** rows and the **M** and **S** toggles of audio tracks work), and the timeline has no scrollbars (scroll with the mouse wheel).
+- **Tracks:** the timeline has no scrollbars (scroll with the mouse wheel). Track headers have room for names of about 9 characters; longer names are shortened. Taller tracks show no thumbnails or waveforms yet. Groups are not marked on the timeline, and a clip's link shows only through the red sync numbers. In the **Track** section of **Edit Properties**, several selected tracks show the first track's settings, with no sign of mixed values.
 - **Preview:** no panning, no mouse-wheel zoom, and no <kbd>Ctrl</kbd>+<kbd>0</kbd>/<kbd>1</kbd>/<kbd>2</kbd>. The preview timecode is read-only; type times in the timeline toolbar. The quality is always **Auto: full**.
 - **Fit only:** inserted clips fit the frame with bands; one-click Fill is not available. Changing the project resolution does not refit existing clips.
 - **Animated GIF and WebP files** show as still images (their first frame).
@@ -505,6 +569,8 @@ The current version cannot do these things yet. Each one is available in a later
 - **Heavy footage:** 4K 60 fps HEVC at full quality can drop frames, and exact frames deep inside long phone clips take a moment to appear.
 
 ## Related pages
+- [Tracks](tracks.md)
+- [Linking and grouping clips](links-and-groups.md)
 - [Audio](audio.md)
 - [Trimming clips](trimming.md)
 - [Splitting, deleting and closing gaps](splitting-and-deleting.md)
@@ -515,4 +581,4 @@ The current version cannot do these things yet. Each one is available in a later
 - [Preview and playback](preview-and-playback.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 15, 2026-10-15</sub>
+<sub>Last updated: Batch 16, 2026-10-15</sub>

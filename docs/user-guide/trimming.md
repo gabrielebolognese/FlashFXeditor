@@ -99,6 +99,7 @@ What a ripple trim does:
 - **The end of a clip:** the clip ends earlier or later, and every clip that starts at or after its old end moves by the same number of frames, on every track.
 - **The start of a clip:** the clip stays where it starts. Instead, frames are removed from its beginning (drag right) or added to it from its media (drag left), and its end moves. Every clip that starts at or after the clip's start, on every track, moves by the same number of frames. Watch the preview for the clip's new first frame.
 - **Clips that run across the edit point** on other tracks, such as a music clip under several shots, do not move.
+- **Locked tracks** do not move. See [Lock a track](tracks.md#lock-a-track).
 - **Where a ripple stops:** when you shorten a clip, the later clips move left until one of them would run into a clip that does not move, for example a music clip that runs across the edit point, or would move before `00:00:00`. The trim stops there. When you lengthen a clip, the later clips make room, so they never stop it.
 
 The history step is named **Ripple trim**.
@@ -116,11 +117,12 @@ The history step is named **Ripple trim**.
 
 The video and the sound of a video with sound are linked: when you trim one, the other trims by the same amount, so they stay in sync.
 
-To trim only the clip you drag, hold <kbd>Alt</kbd> while you drag. You can press or release <kbd>Alt</kbd> during the drag.
+To trim only the clip you drag, hold <kbd>Alt</kbd> while you drag. You can press or release <kbd>Alt</kbd> during the drag. While **Linked selection** is off in the toolbar, every trim changes only the clip you drag, without <kbd>Alt</kbd>. See [Turn Linked selection off](links-and-groups.md#turn-linked-selection-off).
 
 - When you trim both and the linked clip reaches a limit first, for example the end of its media, both stop there. Hold <kbd>Alt</kbd> to trim the other clip further on its own.
-- After you trim one side alone, the two clips are out of step. Both show a red number, such as **-20** on one and **+20** on the other, at the right end of their label bar. It is the offset in frames between their starts or, when the starts match, between their ends. A clip you move on its own (after you select it with <kbd>Alt</kbd>+click) shows it too.
-- To bring them back in step, undo the trim, or trim the other clip by the same amount. A command that moves clips back into sync is available in a later version.
+- Trimming one side alone keeps a video and its own sound in sync: the same moment of the recording still plays at the same time, and the sound simply starts earlier or ends later than the picture (a J or L cut). No red number appears.
+- A clip you move or slip on its own does get out of step. Both clips then show a red number, such as **-20** on one and **+20** on the other, at the right end of their label bar. Right-click the clip and choose **Move into sync** to put it back. See [Keep linked clips in sync](links-and-groups.md#keep-linked-clips-in-sync).
+- A linked clip on a locked track is never trimmed. See [Lock a track](tracks.md#lock-a-track).
 
 ## Know where a trim stops
 
@@ -132,7 +134,7 @@ The edge stops following the pointer at these limits, and the clip never goes pa
 | Media start and media end | A video or audio clip can't show frames before the first frame or after the last frame of its file. The edge and **Media start** or **Media end** in the tooltip turn red. |
 | The next or previous clip | In a regular trim, a clip can't grow over its neighbor on the same track. Use a ripple trim to push the neighbor along. |
 | The start of the timeline | A clip can't start before `00:00:00`. |
-| Clips on other tracks | A ripple trim stops when a clip that moves would run into a clip that does not move. |
+| Clips on other tracks | A ripple trim stops when a clip that moves would run into a clip that does not move. Clips on locked tracks never move and never stop a ripple. |
 | The linked clip | When the linked clip reaches one of these limits first, both stop. Hold <kbd>Alt</kbd> to trim one side only. |
 
 > **Tip:** Trimmed frames are never lost. Drag the edge back to bring them back: a clip trimmed to 1 frame can be stretched back to its full length. Zoom in first so you can grab its edge.
@@ -153,8 +155,8 @@ This is the fastest way to cut. Play or scrub to the frame where a clip should s
 
 How <kbd>Q</kbd> and <kbd>W</kbd> choose what to trim:
 
-- They look at the clips under the playhead on every track. <kbd>Q</kbd> uses the last cut before the playhead: the latest start among those clips. <kbd>W</kbd> uses the first cut after the playhead: the earliest end among them.
-- Every clip that starts (<kbd>Q</kbd>) or ends (<kbd>W</kbd>) at that cut is trimmed, together with its linked clips. Everything after the cut moves left, on every track.
+- They look at the clips under the playhead on the targeted tracks that are not locked: every track, unless you clicked a track's crosshair to untarget it. See [Choose the tracks your edits use](tracks.md#choose-the-tracks-your-edits-use-target). <kbd>Q</kbd> uses the last cut before the playhead: the latest start among those clips. <kbd>W</kbd> uses the first cut after the playhead: the earliest end among them.
+- Every clip that starts (<kbd>Q</kbd>) or ends (<kbd>W</kbd>) at that cut is trimmed, together with its linked clips while **Linked selection** is on, also on an untargeted track. Everything after the cut moves left, on every unlocked track.
 - Clips that run across that cut, such as a music clip under several shots, are left alone.
 - A clip that starts exactly at the playhead has nothing to trim. If no clip is under the playhead, the key does nothing.
 - Each press is one step in the history.
@@ -200,10 +202,12 @@ To move a cut between two clips without changing their total length, to change t
 ## Related pages
 - [Advanced trimming](advanced-trimming.md)
 - [Splitting, deleting and closing gaps](splitting-and-deleting.md)
+- [Linking and grouping clips](links-and-groups.md)
+- [Tracks](tracks.md)
 - [Timeline](timeline.md)
 - [Preview and playback](preview-and-playback.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Projects and saving](projects-and-saving.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 15, 2026-10-15</sub>
+<sub>Last updated: Batch 16, 2026-10-15</sub>

@@ -56,7 +56,7 @@ A clip you stretched with **Rate stretch** plays its sound at the clip's speed, 
 ### Jump, pause and change things while you listen
 
 - <kbd>Home</kbd>, <kbd>End</kbd> and a timecode typed in the timeline toolbar move the playhead while playback continues. The sound picks up at the new place at once.
-- Pausing, jumping and stopping fade the sound out over 10 milliseconds, and new sound fades in just as fast, so you hear no clicks or pops.
+- Pausing, jumping and stopping fade the sound out over 10 milliseconds, and new sound fades in just as fast, so you hear no clicks or pops. The same goes for an audio track you delete during playback, or that an undo removes.
 - Changes you make while playing are heard at once: muting or soloing a track, **Undo**, inserting a clip.
 
 ## Set the listening volume
@@ -112,7 +112,7 @@ There is no keyboard shortcut for **Mute**.
 
 ## Mute and solo audio tracks
 
-Each audio track header has two toggles at the right of the track name: **M** (mute) and **S** (solo). Use them to leave a track out of the mix, or to hear one track on its own.
+Each audio track header has, among its toggles at the right of the track name, **M** (mute) and **S** (solo). Use them to leave a track out of the mix, or to hear one track on its own. The other toggles are described in [Tracks](tracks.md#read-a-track-header).
 
 > **Video placeholder: Mute and solo audio tracks**
 > - File: `videos/audio/mute-and-solo.mp4` (not recorded yet)
@@ -136,8 +136,11 @@ Each audio track header has two toggles at the right of the track name: **M** (m
 - Each click is one step in the history. The **Undo** tooltip names it: **Undo Mute track**, **Undo Unmute track**, **Undo Solo track** or **Undo Unsolo track**.
 - Mute and solo are saved with the project.
 - The meter follows them: a track you do not hear is not counted in the meter.
+- Clips on a track you do not hear are drawn faded on the timeline.
+- To hear only one track, you can also right-click its header and choose **Mute all others**: the other audio tracks are muted and this one is unmuted, in one step.
+- The **Mute** and **Solo** switches in the **Track** section of **Edit Properties** do the same for every selected track. See [Change track settings in Edit Properties](tracks.md#change-track-settings-in-edit-properties).
 
-Video tracks have no **M** and **S** toggles yet. Muting video tracks, locking and hiding tracks, and changing the volume of a single clip are available in a later version.
+The **M** toggle of a video track takes its picture out of the preview; video tracks have no sound of their own. Changing the volume of a single clip is available in a later version.
 
 ## Read the audio meter
 
@@ -197,9 +200,10 @@ After you import an audio file or a video with sound, the editor analyzes its so
 ## Related pages
 - [Preview and playback](preview-and-playback.md)
 - [Timeline](timeline.md)
+- [Tracks](tracks.md)
 - [Advanced trimming](advanced-trimming.md)
 - [Importing media](importing-media.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 14, 2026-10-15</sub>
+<sub>Last updated: Batch 16, 2026-10-15</sub>
