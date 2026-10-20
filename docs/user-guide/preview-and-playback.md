@@ -42,7 +42,7 @@ What you see in the Preview panel:
 
 When several video tracks have a clip at the playhead, the preview draws **V1** at the bottom and each higher video track over the tracks below it. Audio tracks never show in the preview.
 
-> **Note:** In this version, every clip you insert goes to the first video track (**V1**). Moving clips to other tracks is available in a later version.
+> **Note:** Every clip you add by double-clicking goes to the first video track (**V1**). To stack clips, drag one up to **V2** or higher. See [Move clips to another track](timeline.md#move-clips-to-another-track).
 
 ### Sound
 
@@ -267,4 +267,4 @@ If playback stutters, see [Troubleshooting](troubleshooting.md).
 - [Workspace](workspace.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 10, 2026-10-15</sub>
+<sub>Last updated: Batch 11, 2026-10-15</sub>

@@ -2,6 +2,11 @@
 
 Shorts Editor grows in steps called batches. This page lists what each batch added that you can see or use, newest first. Follow the links for the full instructions.
 
+> **Video placeholder: What's new in Batch 11**
+> - File: `videos/whats-new/batch-11.mp4` (not recorded yet)
+> - Length: about 50 seconds
+> - Shows: a timeline with clips on V1, V2 and A1; drag on empty track space across three clips to select them; drag the selection to the right while the tooltip shows `Δ +00:01:00`; drag a short clip onto the middle of a long one (the covered part is hatched) and release: the long clip splits around it; hold <kbd>Ctrl</kbd> during a drag to show the gold insert line and release; <kbd>Alt</kbd>+drag a clip to copy it; drag a clip above the top video track to create V3; press <kbd>Alt</kbd>+<kbd>Right</kbd> a few times to nudge a clip, then <kbd>Ctrl</kbd>+<kbd>Z</kbd>.
+
 > **Video placeholder: What's new in Batch 10**
 > - File: `videos/whats-new/batch-10.mp4` (not recorded yet)
 > - Length: about 45 seconds
@@ -13,6 +18,7 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 > - Shows: open a project with three clips on the timeline; press <kbd>Space</kbd> to play and let the timeline page forward; press <kbd>L</kbd> three times to reach 8x, then <kbd>K</kbd>; hold <kbd>K</kbd> and tap <kbd>L</kbd> to step one frame; turn on **Loop playback**; point at the **Dropped** readout in the status strip.
 
 ## In this page
+- [Batch 11: Select and move clips](#batch-11-select-and-move-clips)
 - [Batch 10: Sound](#batch-10-sound)
 - [Batch 09: Playback](#batch-09-playback)
 - [Batch 08: Preview at the playhead](#batch-08-preview-at-the-playhead)
@@ -23,6 +29,15 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 - [Batch 03: Projects, autosave and recovery](#batch-03-projects-autosave-and-recovery)
 - [Batch 02: Undo, redo and frame-exact time](#batch-02-undo-redo-and-frame-exact-time)
 - [Batch 01: The workspace](#batch-01-the-workspace)
+
+## Batch 11: Select and move clips
+- Select clips with a click (a video and its linked sound together), <kbd>Shift</kbd>+click, <kbd>Ctrl</kbd>+click (that clip alone) and <kbd>Alt</kbd>+click (only that clip), or drag a rectangle on empty track space to select every clip it touches. <kbd>Ctrl</kbd>+<kbd>A</kbd> selects all clips and <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd> clears the selection.
+- Drag clips to move them in time and onto other tracks. Ghosts show where they land, hatching shows what they will cover, and a tooltip shows how far they moved. A clip dropped onto the middle of another splits it in two.
+- Hold <kbd>Ctrl</kbd> to insert (later clips on every track shift right), <kbd>Alt</kbd> to duplicate, <kbd>Shift</kbd> to keep clips on their tracks, and press <kbd>Esc</kbd> to cancel. Drag above the top video track or below the bottom audio track to create a track.
+- Nudge selected clips by 1 frame with <kbd>Alt</kbd>+<kbd>Left</kbd>/<kbd>Right</kbd> (5 frames with <kbd>Shift</kbd>), and move them to the next track with <kbd>Alt</kbd>+<kbd>Up</kbd>/<kbd>Down</kbd>.
+- Every move is one undo step, and undo brings the selection back. The timeline scrolls when you hold the pointer near its edge while dragging clips, drawing a rectangle or scrubbing in the ruler.
+
+See [Timeline](timeline.md) and [Keyboard shortcuts](keyboard-shortcuts.md).
 
 ## Batch 10: Sound
 - Playback now plays the sound of your audio tracks, in sync with the picture (less than one frame apart, with no drift), also for phone videos. Sound plays at 1x forward, in play around and across loops; jumps and pauses are free of clicks.
@@ -101,4 +116,4 @@ See [The workspace](workspace.md) and [Getting started](getting-started.md).
 - [User guide home](README.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 10, 2026-10-15</sub>
+<sub>Last updated: Batch 11, 2026-10-15</sub>

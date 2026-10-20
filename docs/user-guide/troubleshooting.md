@@ -1,6 +1,6 @@
 # Troubleshooting
 
-This page helps you when something does not work as expected: the editor does not start in your browser, the preview stays empty, a folder or a file does not open, playback stutters, or you hear no sound. Each problem lists what you see, why it happens and what to do. The last section lists what the current version cannot do yet.
+This page helps you when something does not work as expected: the editor does not start in your browser, the preview stays empty, a folder or a file does not open, a clip drag does something you did not expect, playback stutters, or you hear no sound. Each problem lists what you see, why it happens and what to do. The last section lists what the current version cannot do yet.
 
 > **Video placeholder: Fix common problems**
 > - File: `videos/troubleshooting/overview.mp4` (not recorded yet)
@@ -23,6 +23,7 @@ This page helps you when something does not work as expected: the editor does no
   - [Shortcuts do nothing](#shortcuts-do-nothing)
   - [The new project shortcut opens a browser window](#the-new-project-shortcut-opens-a-browser-window)
   - [The save shortcut opens the browser's Save dialog](#the-save-shortcut-opens-the-browsers-save-dialog)
+  - [Alt+Left leaves the editor](#altleft-leaves-the-editor)
 - [Folders and saving](#folders-and-saving)
   - [The browser asks for access to a folder](#the-browser-asks-for-access-to-a-folder)
   - [The project opens read-only](#the-project-opens-read-only)
@@ -31,6 +32,10 @@ This page helps you when something does not work as expected: the editor does no
 - [Importing](#importing)
   - [A file cannot be imported](#a-file-cannot-be-imported)
   - [A video imports but shows nothing](#a-video-imports-but-shows-nothing)
+- [Timeline](#timeline)
+  - [A drag copied clips or pushed other clips to the right](#a-drag-copied-clips-or-pushed-other-clips-to-the-right)
+  - [A drag cut another clip short or split it](#a-drag-cut-another-clip-short-or-split-it)
+  - [A sound clip moved to another audio track](#a-sound-clip-moved-to-another-audio-track)
 - [Playback and preview](#playback-and-preview)
   - [Playback stutters or drops frames](#playback-stutters-or-drops-frames)
   - [The preview shows a nearby frame for a moment](#the-preview-shows-a-nearby-frame-for-a-moment)
@@ -109,6 +114,40 @@ This page helps you when something does not work as expected: the editor does no
 **Cause:** A text field had the keyboard focus, or a dialog was open. There the editor leaves the key to the browser.
 
 **Fix:** Cancel the browser's dialog. Press <kbd>Enter</kbd> or <kbd>Escape</kbd> to leave the field, or close the editor's dialog, then press <kbd>Ctrl</kbd>+<kbd>S</kbd> again. Your project also saves automatically after each change.
+
+### Alt+Left leaves the editor
+
+**Symptom:** You pressed <kbd>Alt</kbd>+<kbd>←</kbd> to nudge a clip, and the browser went back to the page you visited before the editor.
+
+**Cause:** <kbd>Alt</kbd>+<kbd>←</kbd> is the browser's Back key on Windows. The editor uses it to nudge clips only while the Timeline panel is active. When another panel was the last one you clicked, the browser gets the key.
+
+**Fix:** Open the editor again and open your project from **Recent projects**. Your project saves automatically, 1 second after each change by default. Before you nudge clips, click the timeline. See [Nudge clips with the keyboard](timeline.md#nudge-clips-with-the-keyboard).
+
+## Timeline
+
+### A drag copied clips or pushed other clips to the right
+
+**Symptom:** After a drag, the original clips are still in place next to copies, or clips on every track moved to the right.
+
+**Cause:** A key was held when you released the mouse button. <kbd>Alt</kbd> copies the clips, and <kbd>Ctrl</kbd> inserts them, which shifts everything after the drop point to the right on every track. The keys count even if you pressed them in the middle of the drag.
+
+**Fix:** Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> to undo the whole drop, then drag again without the key. While you drag, a gold vertical line means an insert. To give up a drag before you release, press <kbd>Esc</kbd>. See [Move clips](timeline.md#move-clips).
+
+### A drag cut another clip short or split it
+
+**Symptom:** After a drop, a clip under the moved clip is shorter, has disappeared, or is now two clips.
+
+**Cause:** A plain drop covers what it lands on. The covered part of the clip underneath is removed: its start or end is cut, a fully covered clip is removed, and a clip covered in the middle is split. The hatching on the ghost showed that part before you released.
+
+**Fix:** Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> to get the clip back. To make room instead of covering, hold <kbd>Ctrl</kbd> when you release. See [What happens to the clips underneath](timeline.md#what-happens-to-the-clips-underneath).
+
+### A sound clip moved to another audio track
+
+**Symptom:** You dragged a video clip up one track, and its sound moved down from A1 to A2 (a new A2 track may have appeared).
+
+**Cause:** A video with sound is a linked pair: the video and its sound move together, by the same number of tracks away from the divider between video and audio tracks.
+
+**Fix:** Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>. To move only the video, <kbd>Alt</kbd>+click it, release, and then drag it. See [Move clips to another track](timeline.md#move-clips-to-another-track).
 
 ## Folders and saving
 
@@ -257,8 +296,8 @@ See [Audio](audio.md).
 The current version cannot do these things yet. Each one is available in a later version.
 
 - **Sound:** no sound while you scrub, step frames, play backward or shuttle faster than 1x. Audio clips show no waveforms. Changing the volume of a clip, fades and audio effects are not available, and video tracks have no mute toggle.
-- **Editing clips:** you can select clips, but not move, trim, split or delete them. To remove a clip you just inserted, use **Undo** (<kbd>Ctrl</kbd>+<kbd>Z</kbd>).
-- **Tracks:** new clips always go to the first video track (V1). Clicking a track header does nothing yet (only the **+ Video track** and **+ Audio track** rows and the **M** and **S** toggles of audio tracks work), and the timeline has no scrollbars (scroll with the mouse wheel).
+- **Editing clips:** you can select, move, insert, duplicate and nudge clips, but not trim, split or delete them. Clips do not snap to edges or the playhead while you drag. To remove a clip you just added, use **Undo** (<kbd>Ctrl</kbd>+<kbd>Z</kbd>).
+- **Tracks:** double-clicked media always goes to the first video track (V1); drag clips to move them to other tracks. Tracks can't be locked, hidden, renamed or removed (**Undo** removes a track you just added). Clicking a track header does nothing yet (only the **+ Video track** and **+ Audio track** rows and the **M** and **S** toggles of audio tracks work), and the timeline has no scrollbars (scroll with the mouse wheel).
 - **Preview:** no panning, no mouse-wheel zoom, and no <kbd>Ctrl</kbd>+<kbd>0</kbd>/<kbd>1</kbd>/<kbd>2</kbd>. The preview timecode is read-only; type times in the timeline toolbar. The quality is always **Auto: full**.
 - **Fit only:** inserted clips fit the frame with bands; one-click Fill is not available. Changing the project resolution does not refit existing clips.
 - **Animated GIF and WebP files** show as still images (their first frame).
@@ -277,4 +316,4 @@ The current version cannot do these things yet. Each one is available in a later
 - [Preview and playback](preview-and-playback.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 10, 2026-10-15</sub>
+<sub>Last updated: Batch 11, 2026-10-15</sub>

@@ -1,11 +1,11 @@
 # Timeline
 
-The timeline is where your short takes shape: clips sit on tracks in time order, and the playhead marks the frame the preview shows. In this version you add clips by double-clicking media, add tracks, zoom and scroll, and move the playhead with the mouse, the keyboard or a typed timecode. Moving, trimming and splitting clips are available in a later version.
+The timeline is where your short takes shape: clips sit on tracks in time order, and the playhead marks the frame the preview shows. In this version you add clips by double-clicking media, select clips and arrange them by dragging (also onto other tracks), duplicate them, add tracks, zoom and scroll, and move the playhead with the mouse, the keyboard or a typed timecode. Trimming and splitting clips are available in a later version.
 
 > **Video placeholder: Timeline tour**
 > - File: `videos/timeline/timeline-overview.mp4` (not recorded yet)
 > - Length: about 60 seconds
-> - Shows: a project with a few clips on V1 and A1; point in turn at the toolbar, the timecode and duration at its right end, the ruler, the track headers (V1, A1) and the **M** and **S** toggles on A1, the divider between video and audio tracks, a blue video clip, a green audio clip, and the thin line where the content ends; click the ruler to move the red playhead; press <kbd>\\</kbd> to fit everything; press <kbd>=</kbd> three times to zoom in, then <kbd>-</kbd> to zoom out; click a clip to select it.
+> - Shows: a project with a few clips on V1 and A1; point in turn at the toolbar, the timecode and duration at its right end, the ruler, the track headers (V1, A1) and the **M** and **S** toggles on A1, the divider between video and audio tracks, a blue video clip, a green audio clip, and the thin line where the content ends; click the ruler to move the red playhead; press <kbd>\\</kbd> to fit everything; press <kbd>=</kbd> three times to zoom in, then <kbd>-</kbd> to zoom out; click a video clip: it and its sound on A1 turn gold; drag it to the right and release.
 
 ## In this page
 - [Find your way around the timeline](#find-your-way-around-the-timeline)
@@ -17,6 +17,12 @@ The timeline is where your short takes shape: clips sit on tracks in time order,
 - [Jump to a timecode](#jump-to-a-timecode)
 - [Follow the playhead during playback](#follow-the-playhead-during-playback)
 - [Select clips](#select-clips)
+- [Move clips](#move-clips)
+- [Insert clips and push the rest to the right](#insert-clips-and-push-the-rest-to-the-right)
+- [Move clips to another track](#move-clips-to-another-track)
+- [Duplicate clips](#duplicate-clips)
+- [Cancel a drag](#cancel-a-drag)
+- [Nudge clips with the keyboard](#nudge-clips-with-the-keyboard)
 
 ## Find your way around the timeline
 
@@ -148,6 +154,7 @@ Scrollbars and panning by dragging (the **Hand** tool) are available in a later 
 
 - Click anywhere in the ruler to move the playhead there.
 - Drag along the ruler to scrub: the playhead and the preview follow the pointer. The playhead line gets wider while you drag.
+- To scrub past the part of the timeline you can see, hold the pointer near the left or right edge of the tracks, or past it: the timeline scrolls. The further out you go, the faster it scrolls.
 - If the editor is playing, dragging in the ruler pauses it.
 
 You can't drag the playhead line inside the tracks: that keeps you from moving it by accident while you work on clips. Use the ruler.
@@ -204,15 +211,189 @@ While the editor plays, the timeline follows the playhead. When the playhead rea
 
 ## Select clips
 
+> **Video placeholder: Select clips**
+> - File: `videos/timeline/select-clips.mp4` (not recorded yet)
+> - Length: about 45 seconds
+> - Shows: a timeline with three videos with sound on V1 and A1 and a music clip on A2; click the first video clip: it and its sound turn gold; <kbd>Shift</kbd>+click the second video clip: both pairs are selected; <kbd>Ctrl</kbd>+click the sound of the second clip: only that sound is removed; <kbd>Alt</kbd>+click the third video clip: only that clip is selected; click an empty part of a track: nothing is selected; drag on empty track space from left of the first clip across parts of the first two clips and the music: the clips turn gold as the rectangle touches them; release; press <kbd>Ctrl</kbd>+<kbd>A</kbd>, then <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd>.
+
 | To | Do this |
 |---|---|
-| Select a clip | Click it |
-| Add or remove a clip | <kbd>Shift</kbd>+click it |
-| Clear the selection | Click an empty part of a track |
+| Select a clip (with its linked clips) | Click it |
+| Add a clip (with its linked clips) to the selection, or remove it | <kbd>Shift</kbd>+click it |
+| Add or remove only that clip, without its linked clips | <kbd>Ctrl</kbd>+click it |
+| Select only that clip, without its linked clips | <kbd>Alt</kbd>+click it |
+| Select every clip a rectangle touches | Drag on an empty part of the tracks |
+| Add the clips a rectangle touches to the selection | <kbd>Shift</kbd>+drag on an empty part of the tracks |
+| Select all clips | <kbd>Ctrl</kbd>+<kbd>A</kbd> |
+| Clear the selection | Click an empty part of a track, or press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd> |
 
 A selected clip has a gold outline and a gold tint. The clip you clicked last has a slightly thicker outline.
 
-Moving, trimming, splitting and deleting clips are available in a later version.
+- **Linked clips.** When you add a video with sound, its video clip and its sound clip are linked: a click selects both, and they move together. To work on one of them alone, <kbd>Alt</kbd>+click it. Linked selection is always on in this version; the **Linked selection** toggle in the toolbar is available in a later version.
+- **Clicking a selected clip.** When you press on a clip that is already selected, the editor waits to see what you do: if you drag, the whole selection moves; if you release without dragging, the click applies (a plain click then keeps only that clip and its linked clips).
+- <kbd>Ctrl</kbd>+<kbd>A</kbd> and <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd> work while the Timeline or the Preview panel is active. The other selection shortcuts are mouse actions in the timeline.
+- Selecting is not a step in the history, but undo brings back the selection you had before the change you undo. See [Undo and redo](projects-and-saving.md#undo-and-redo-changes).
+- While clips are selected, the **Edit Properties** panel shows a placeholder: clip properties are available in a later version.
+
+### Select with a rectangle
+
+1. Press on an empty part of a track, away from any clip.
+2. Drag. A gold rectangle follows the pointer, and every clip it touches lights up gold, also when the rectangle covers only part of the clip. The linked clips of those clips are selected too.
+3. Release. The lit clips become the selection.
+
+- Hold <kbd>Shift</kbd> when you start the drag to add to the clips that are already selected.
+- Hold the pointer near the edge of the tracks, or past it, to scroll the timeline while you drag. Clips that scroll out of view stay in the rectangle.
+- Press <kbd>Esc</kbd> before you release to cancel: the selection stays as it was.
+
+## Move clips
+
+Drag clips to move them in time, and up or down to other tracks. While you drag, nothing changes yet: a see-through copy of each clip (a ghost) shows where it will land. Releasing the mouse button makes the whole move one step in the history.
+
+> **Video placeholder: Move clips**
+> - File: `videos/timeline/move-clips.mp4` (not recorded yet)
+> - Length: about 60 seconds
+> - Shows: a timeline with a 10-second clip on V1 and a 2-second clip on V2; drag the short clip to the right: its ghost follows and the tooltip reads `Δ +00:01:00` after one second; drag it down onto the middle of the long clip: the part it will cover is hatched; release: the long clip is now two clips around the short one; point at the **Undo** tooltip, which reads **Undo Move clip**; press <kbd>Ctrl</kbd>+<kbd>Z</kbd>: the long clip is whole again and the short clip is back on V2; select both clips and drag them right together.
+
+1. Select the clips you want to move. You can also skip this step and press directly on an unselected clip: it is selected at once and moves on its own (with its linked clips).
+2. Press on one of the selected clips and drag. The move starts once the pointer has moved 4 pixels, so a click never moves a clip by accident.
+3. Watch the ghosts, the hatching and the tooltip, then release where you want the clips.
+
+All selected clips move together and keep their distances to each other.
+
+What you see while you drag:
+
+| You see | It means |
+|---|---|
+| Ghosts: see-through copies of the clips with a gold outline | Where each clip lands when you release. |
+| The tooltip `Δ +00:00:12` next to the pointer | How far the clips moved, as `mm:ss:ff`. A minus sign means to the left. |
+| Diagonal hatching over part of a ghost | The part of another clip that the moved clip will cover and remove. |
+| A gold vertical line with an arrow | An insert: the clips at and after the line shift to the right. See [Insert clips and push the rest to the right](#insert-clips-and-push-the-rest-to-the-right). |
+| An extra track row with a name such as V3 | A new track the drop creates. See [Move clips to another track](#move-clips-to-another-track). |
+
+Keys you can hold while you drag:
+
+| Hold | What the drop does |
+|---|---|
+| Nothing | Moves the clips. They cover whatever they land on. |
+| <kbd>Shift</kbd> | Moves the clips in time only: every clip stays on its track. |
+| <kbd>Ctrl</kbd> | Inserts the clips: everything after them shifts right. |
+| <kbd>Alt</kbd> | Leaves the clips in place and drops copies. See [Duplicate clips](#duplicate-clips). |
+| <kbd>Ctrl</kbd>+<kbd>Alt</kbd> | Inserts copies. |
+
+You can press and release these keys during the drag: the ghosts change at once. The keys you hold when you release the mouse button decide what happens.
+
+### What happens to the clips underneath
+
+A plain drop covers what the moved clips land on. The clip underneath gives up exactly the part that is covered:
+
+| The moved clip covers | The clip underneath |
+|---|---|
+| Its start or its end | Is shortened. |
+| All of it | Is removed. |
+| A part in the middle | Is split into two clips, one on each side. |
+
+- The moved clips never cover each other: they all leave their old places first.
+- The places the clips came from stay empty.
+- Clips can't move before `00:00:00`. When you drag further left, the earliest clip stops at the start.
+
+### After the drop
+
+- The moved clips stay selected, and the clip you dragged is the one with the thicker outline.
+- The **Undo** tooltip names the move, for example **Undo Move clip** or **Undo Move clips**. <kbd>Ctrl</kbd>+<kbd>Z</kbd> undoes the whole move at once: clips that were shortened, split or removed come back, any track the move created disappears, and the selection is restored.
+- Dropping moved clips back where they started changes nothing and adds no step to the history.
+
+> **Tip:** Hold the pointer near the edge of the tracks, or past it, to scroll the timeline while you drag, left and right or up and down. The further out you go, the faster it scrolls, so you can carry clips to a part of the timeline you can't see.
+
+Snapping clips to edges and the playhead is available in a later version.
+
+## Insert clips and push the rest to the right
+
+Hold <kbd>Ctrl</kbd> when you release a drag to insert the clips instead of covering what is there. The clips land at the drop position, and the rest of the timeline makes room for them.
+
+> **Video placeholder: Insert clips**
+> - File: `videos/timeline/insert-clips.mp4` (not recorded yet)
+> - Length: about 40 seconds
+> - Shows: a timeline with three clips end to end on V1, a music clip on A1 under all of them, and a short clip on V2 further right; drag the short clip down to the cut between the first and second clip on V1; hold <kbd>Ctrl</kbd>: a gold line with an arrow appears at the cut; release: the second and third clips shift right, the music is cut in two at the line and its second part shifts right as well; point at the **Undo** tooltip, which reads **Undo Insert clip**.
+
+What an insert does:
+
+- A gold vertical line with an arrow shows the insert point: the start of the earliest moved clip.
+- On every track, everything from the insert point onward shifts right by the length of the moved clips (from the start of the earliest to the end of the latest).
+- A clip that runs across the insert point, on any track, is split there, and its second part shifts right with the rest. This keeps every track in step, so sound stays in sync with its picture.
+- The places the clips came from stay empty.
+- The history step is named **Insert clip** or **Insert clips**.
+
+## Move clips to another track
+
+Drag clips up or down to put them on other tracks. Video tracks count up from the divider (V1, V2, V3…) and audio tracks count down from it (A1, A2, A3…).
+
+> **Video placeholder: Move clips to another track**
+> - File: `videos/timeline/move-to-track.mp4` (not recorded yet)
+> - Length: about 45 seconds
+> - Shows: a timeline with a clip on V1 and a clip on V2 at different times; select both with a click and a <kbd>Shift</kbd>+click; drag them up by one row: both ghosts move up one track and keep their distance; release: the clips are on V2 and V3; drag the top clip above the top video track: a new row named V4 appears with the ghost in it; release: track V4 is created; press <kbd>Ctrl</kbd>+<kbd>Z</kbd>: V4 is gone; select a clip and press <kbd>Alt</kbd>+<kbd>Down</kbd> to move it one track down.
+
+- The clip you press on follows the track under the pointer. The other selected clips move by the same number of tracks and keep their distances.
+- Video clips stay on video tracks and audio clips on audio tracks. A video clip dragged over the audio tracks goes to V1; an audio clip dragged over the video tracks goes to A1.
+- When the selection holds both video and audio clips, for example a video with its linked sound, both move the same number of tracks away from the divider (or toward it). Dragging the video from V1 to V2 takes its sound from A1 to A2.
+- To change the time only and keep every clip on its track, hold <kbd>Shift</kbd> while you drag.
+
+### Create a track by dragging
+
+Drag above the top video track to put a clip on a new video track, or below the bottom audio track to put it on a new audio track. While you drag, the new track shows as an extra row with the name it will get, such as **V3**, and the ghost sits in it. If the row is out of view, hold the pointer at the edge of the tracks to scroll to it. The drop creates the track. A move that needs a track that does not exist yet, for example a sound going from A1 to A2 when there is no A2, creates it the same way.
+
+Undo removes the tracks the move created, together with the move.
+
+## Duplicate clips
+
+Hold <kbd>Alt</kbd> while you drag to copy clips instead of moving them.
+
+> **Video placeholder: Duplicate clips and cancel a drag**
+> - File: `videos/timeline/duplicate-and-cancel.mp4` (not recorded yet)
+> - Length: about 35 seconds
+> - Shows: select two clips on V1; hold <kbd>Alt</kbd> and drag them to the right: the ghosts follow while the originals stay; release: the copies appear, selected, and the **Undo** tooltip reads **Undo Duplicate clips**; start dragging one of the copies, press <kbd>Esc</kbd> before releasing: the ghosts disappear and nothing changes; the **Undo** tooltip still reads **Undo Duplicate clips**.
+
+1. Select the clips to copy.
+2. Hold <kbd>Alt</kbd>, press on one of the selected clips and drag.
+3. Release where the copies should go.
+
+- The originals stay where they are. The copies are selected after the drop.
+- Copies of linked clips are linked to each other, not to the originals.
+- Copies cover what they land on, like moved clips, including their own originals. Hold <kbd>Ctrl</kbd> as well to insert the copies instead.
+- <kbd>Alt</kbd>+pressing a clip that is not selected selects only that clip, without its linked clips, so only that clip is copied. To copy a video together with its sound, select it with a plain click first.
+- The history step is named **Duplicate clip** or **Duplicate clips** (**Duplicate and insert clips** with <kbd>Ctrl</kbd>).
+
+## Cancel a drag
+
+Press <kbd>Esc</kbd> before you release the mouse button. The ghosts disappear, and releasing then changes nothing: no clip moves and no step is added to the history. <kbd>Esc</kbd> also cancels a selection rectangle.
+
+An undo or redo during a drag (<kbd>Ctrl</kbd>+<kbd>Z</kbd>) also cancels the drag.
+
+## Nudge clips with the keyboard
+
+Click the timeline first, so it has the keyboard, and select the clips to move.
+
+| To | Press |
+|---|---|
+| Move the selected clips 1 frame left or right | <kbd>Alt</kbd>+<kbd>Left</kbd> or <kbd>Alt</kbd>+<kbd>Right</kbd> |
+| Move the selected clips 5 frames left or right | <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>Left</kbd> or <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>Right</kbd> |
+| Move the selected clips to the track above or below | <kbd>Alt</kbd>+<kbd>Up</kbd> or <kbd>Alt</kbd>+<kbd>Down</kbd> |
+
+**Nudging left and right**
+
+- Nudged clips cover what they land on, like a drop. See [What happens to the clips underneath](#what-happens-to-the-clips-underneath).
+- Hold the keys to keep nudging. Nudges less than 0.3 seconds apart count as one step in the history, named **Nudge clip** or **Nudge clips**, so one <kbd>Ctrl</kbd>+<kbd>Z</kbd> undoes a quick series.
+- Clips can't move before `00:00:00`.
+
+**Moving to the track above or below**
+
+- The clips move one track up or down on screen when that track exists and has room for them. The step is named **Move clip to track** or **Move clips to track**.
+- The clip you clicked last decides the direction. Linked clips of the other kind move by the same number of tracks, as in a drag: a video going from V1 to V2 takes its sound from A1 to A2. If its sound has no track to go to, it stays where it is.
+- These keys never create a track. On the top video track, <kbd>Alt</kbd>+<kbd>Up</kbd> does nothing (and the same for the bottom audio track and <kbd>Alt</kbd>+<kbd>Down</kbd>).
+- If a clip is in the way, nothing moves, and the message **No room on that track** names the track that already has a clip there.
+
+> **Note:** <kbd>Alt</kbd>+<kbd>Left</kbd> is also the browser's Back key. The editor keeps it while the Timeline panel is active, also when no clip is selected. In the other panels, the browser gets it. See [Keys the browser keeps](keyboard-shortcuts.md#keys-the-browser-keeps).
+
+Trimming, splitting and deleting clips are available in a later version.
 
 ## Related pages
 - [Audio](audio.md)
@@ -224,4 +405,4 @@ Moving, trimming, splitting and deleting clips are available in a later version.
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 10, 2026-10-15</sub>
+<sub>Last updated: Batch 11, 2026-10-15</sub>
