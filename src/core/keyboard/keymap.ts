@@ -138,6 +138,11 @@ export const DEFAULT_KEYMAP: readonly KeyBinding[] = [
   { id: "text.commit", keys: ["Mod+Enter"], scopes: ["textEditing"] },
   { id: "text.cancel", keys: ["Escape"], scopes: ["textEditing"] },
 
+  // Media into the timeline (spec §6.14: `,` insert / `.` overwrite at the playhead, Premiere style;
+  // over a hovered card they take that card, see panels/media/hoverScrub.ts)
+  { id: "media.insertAtPlayhead", keys: [","], scopes: ["media"] },
+  { id: "media.overwriteAtPlayhead", keys: ["."], scopes: ["media"] },
+
   // App
   { id: "media.import", keys: ["Mod+I"], scopes: G },
   { id: "project.new", keys: ["Mod+N"], scopes: G },

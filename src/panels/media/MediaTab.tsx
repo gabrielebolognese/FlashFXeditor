@@ -1,16 +1,20 @@
 import { ArrowDownWideNarrow, ArrowUpNarrowWide, AudioLines, ChevronDown, ChevronUp, Film, Image, Import, LayoutGrid, List, type LucideIcon } from "lucide-react";
-import { memo, useMemo, useRef, type DragEvent, type MouseEvent } from "react";
-import { clearMediaSelection, dropMedia, importFromPicker, mediaPanel, selectMedia } from "../../app/mediaController.js";
+import { memo, useMemo, useRef, type DragEvent, type MouseEvent, type PointerEvent } from "react";
+import { insertMediaAtPlayhead } from "../../app/dropController.js";
+import { clearMediaSelection, dropMedia, importFromPicker, mediaPanel, openMediaMenu, selectMedia } from "../../app/mediaController.js";
+import { mediaHover, pressMediaCard, takeClickAfterDrag } from "../../app/mediaGestures.js";
 import { documentStore, sessionStore } from "../../app/services.js";
-import { insertMediaAtPlayhead } from "../../app/timelineController.js";
 import { mediaUseCounts } from "../../core/commands/mediaCommands.js";
 import { formatDurationUs } from "../../core/document/time.js";
 import type { MediaId, MediaItem, Project } from "../../core/document/types.js";
 import type { MediaSort, MediaView, SessionState } from "../../core/store/sessionStore.js";
+import { isEditableTarget } from "../../core/keyboard/KeyDispatcher.js";
 import { useStoreSelector } from "../../core/store/useStoreSelector.js";
 import { Button } from "../../ui/Button.js";
 import { IconButton } from "../../ui/IconButton.js";
 import { Select } from "../../ui/Select.js";
+import { rangeFractions } from "./hoverScrub.js";
+import { MediaContextMenu } from "./MediaContextMenu.js";
 import { MediaName } from "./MediaName.js";
 import { audioLabel, codecLabel, durationBadge, fpsLabel, metaLabel, resolutionLabel, sortMedia } from "./mediaList.js";
 import styles from "./MediaTab.module.css";
@@ -64,16 +68,45 @@ export function MediaActions() {
   );
 }
 
-const MediaCard = memo(function MediaCard({ item }: { item: MediaItem }) {
+/** The source range bar (spec §12): the part of the media that inserts and drags take. */
+const RangeBar = memo(function RangeBar({ id, durationUs }: { id: MediaId; durationUs: number }) {
+  const range = useStoreSelector(sessionStore.state, (state) => state.sourceRanges[id]);
+  if (!range) return null;
+  const { from, to } = rangeFractions(range, durationUs);
+  return <span className={styles.rangeBar} style={{ left: `${from * 100}%`, width: `${(to - from) * 100}%` }} aria-hidden="true" />;
+});
+
+/**
+ * The hover-scrub parts of a thumbnail (spec §12), driven by `mediaHover` through direct DOM writes:
+ * the progress line, and the range bar. Media without a duration (stills) have neither.
+ */
+function ScrubParts({ item }: { item: MediaItem }) {
+  if (item.kind === "image" || item.durationUs <= 0) return null;
+  return (
+    <>
+      <RangeBar id={item.id} durationUs={item.durationUs} />
+      <span className={styles.progress} data-progress="" aria-hidden="true" />
+    </>
+  );
+}
+
+const MediaCard = memo(function MediaCard({ item, uses }: { item: MediaItem; uses: number }) {
   const selected = useStoreSelector(mediaPanel, (state) => state.selection.ids.has(item.id));
   const Icon = KIND_ICONS[item.kind];
   const badge = durationBadge(item);
   return (
-    <div className={styles.card} data-media-id={item.id} role="option" aria-selected={selected}>
-      <div className={styles.thumb}>
+    <div className={styles.card} data-media-id={item.id} data-unused={uses === 0 || undefined} role="option" aria-selected={selected}>
+      <div className={styles.thumb} data-thumb="">
         <Icon className={styles.placeholderIcon} aria-hidden="true" />
         {item.kind !== "audio" && <PosterCanvas id={item.id} />}
-        {badge && <span className={styles.badge}>{badge}</span>}
+        <ScrubParts item={item} />
+        {badge && (
+          <span className={styles.badge}>
+            <span className={styles.duration}>{badge}</span>
+            <span className={styles.hoverTime} data-hover-time="" />
+          </span>
+        )}
+        <span className={styles.uses}>{uses === 0 ? "Unused" : `Used ${uses}×`}</span>
       </div>
       <div className={styles.cardInfo}>
         <Icon className={styles.kindIcon} aria-label={item.kind} />
@@ -89,9 +122,10 @@ const MediaRow = memo(function MediaRow({ item, uses }: { item: MediaItem; uses:
   const Icon = KIND_ICONS[item.kind];
   return (
     <div className={styles.row} data-media-id={item.id} role="option" aria-selected={selected}>
-      <div className={styles.rowThumb}>
+      <div className={styles.rowThumb} data-thumb="">
         <Icon className={styles.placeholderIcon} aria-hidden="true" />
         {item.kind !== "audio" && <PosterCanvas id={item.id} />}
+        <ScrubParts item={item} />
       </div>
       <div className={styles.rowName}>
         <Icon className={styles.kindIcon} aria-label={item.kind} />
@@ -155,7 +189,7 @@ function EmptyState() {
   );
 }
 
-/** The Media tab body (spec §12): grid or list, selection, drop target. */
+/** The Media tab body (spec §12): grid or list, selection, drop target, hover-scrub, drags out, context menu. */
 export function MediaTab() {
   const media = useStoreSelector(documentStore, selectMediaRecord);
   const useKey = useStoreSelector(documentStore, selectUseKey);
@@ -169,6 +203,8 @@ export function MediaTab() {
 
   // Selection by event delegation: cards stay dumb and keep their memoized props.
   const onClick = (event: MouseEvent) => {
+    // The release of a drag out of the panel is no click.
+    if (takeClickAfterDrag()) return;
     const card = (event.target as Element).closest<HTMLElement>("[data-media-id]");
     const id = card?.dataset.mediaId as MediaId | undefined;
     if (!id) {
@@ -183,6 +219,23 @@ export function MediaTab() {
     const id = (event.target as Element).closest<HTMLElement>("[data-media-id]")?.dataset.mediaId as MediaId | undefined;
     if (id) insertMediaAtPlayhead(id);
   };
+
+  // Drags out of the panel (spec §6.14) and the hover-scrub (§12): handed to framework-free gestures.
+  const onPointerDown = (event: PointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0 || isEditableTarget(event.target)) return;
+    const id = (event.target as Element).closest<HTMLElement>("[data-media-id]")?.dataset.mediaId as MediaId | undefined;
+    if (id) pressMediaCard(event.nativeEvent, event.currentTarget, id);
+  };
+  const onPointerMove = (event: PointerEvent) => mediaHover.move(event.nativeEvent);
+  const onPointerLeave = () => mediaHover.leave();
+  const onContextMenu = (event: MouseEvent) => {
+    const id = (event.target as Element).closest<HTMLElement>("[data-media-id]")?.dataset.mediaId as MediaId | undefined;
+    if (!id || isEditableTarget(event.target)) return;
+    event.preventDefault();
+    mediaHover.leave();
+    openMediaMenu(id, event.clientX, event.clientY);
+  };
+  const listHandlers = { onClick, onDoubleClick, onPointerDown, onPointerMove, onPointerLeave, onContextMenu, onScroll: onPointerLeave };
 
   // Drop highlight through a data attribute: no React render while dragging.
   const setDropping = (on: boolean) => {
@@ -220,15 +273,15 @@ export function MediaTab() {
       {items.length === 0 ? (
         <EmptyState />
       ) : panel.view === "grid" ? (
-        <div className={styles.scroll} role="listbox" aria-label="Media" aria-multiselectable="true" onClick={onClick} onDoubleClick={onDoubleClick}>
+        <div className={styles.scroll} role="listbox" aria-label="Media" aria-multiselectable="true" {...listHandlers}>
           <div className={styles.grid}>
             {items.map((item) => (
-              <MediaCard key={item.id} item={item} />
+              <MediaCard key={item.id} item={item} uses={uses.get(item.id) ?? 0} />
             ))}
           </div>
         </div>
       ) : (
-        <div className={styles.scroll} role="listbox" aria-label="Media" aria-multiselectable="true" onClick={onClick} onDoubleClick={onDoubleClick}>
+        <div className={styles.scroll} role="listbox" aria-label="Media" aria-multiselectable="true" {...listHandlers}>
           <div className={styles.list}>
             <ListHeader sort={panel.sort} descending={panel.descending} />
             {items.map((item) => (
@@ -241,6 +294,7 @@ export function MediaTab() {
         <Import className={styles.dropIcon} />
         Drop files to import them
       </div>
+      <MediaContextMenu />
     </div>
   );
 }

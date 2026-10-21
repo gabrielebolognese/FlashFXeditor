@@ -4,7 +4,7 @@ import type { TimecodeMode } from "../core/document/time.js";
 import type { LayoutRatios } from "../core/store/layoutStore.js";
 import { sanitizeRatios } from "../core/store/layoutStore.js";
 import type { SelectionKind, SelectionSnapshot } from "../core/store/selection.js";
-import { DEFAULT_SESSION, type MediaSort, type MediaTab, type MediaView, type PreviewQuality, type SafeZone, type SessionState, type Tool } from "../core/store/sessionStore.js";
+import { DEFAULT_SESSION, type MediaSort, type MediaTab, type MediaView, type PreviewQuality, type SafeZone, type SessionState, type SourceRange, type Tool } from "../core/store/sessionStore.js";
 
 export const SESSION_FILE_VERSION = 1;
 
@@ -43,6 +43,19 @@ const bool = (value: unknown, fallback: boolean) => (typeof value === "boolean" 
 const finite = (value: unknown, fallback: number) => (typeof value === "number" && Number.isFinite(value) ? value : fallback);
 const frame = (value: unknown, fallback: number) => (typeof value === "number" && Number.isInteger(value) && value >= 0 ? value : fallback);
 const frameOrNull = (value: unknown) => (value === null ? null : frame(value, -1) === -1 ? null : (value as number));
+
+/** Source ranges (spec §12): integer microseconds >= 0 or null, at least one end, the out after the in. */
+function sanitizeRanges(value: unknown): Record<string, SourceRange> {
+  const ranges: Record<string, SourceRange> = {};
+  for (const [mediaId, entry] of Object.entries(obj(value))) {
+    const range = obj(entry);
+    const inUs = frameOrNull(range.inUs);
+    const outUs = frameOrNull(range.outUs);
+    if ((inUs === null && outUs === null) || (inUs !== null && outUs !== null && outUs <= inUs) || outUs === 0) continue;
+    ranges[mediaId] = { inUs, outUs };
+  }
+  return ranges;
+}
 
 function sanitizeState(value: unknown): SessionState {
   const raw = obj(value);
@@ -89,6 +102,7 @@ function sanitizeState(value: unknown): SessionState {
       sort: oneOf(MEDIA_SORTS, mediaPanel.sort, d.mediaPanel.sort),
       descending: bool(mediaPanel.descending, d.mediaPanel.descending),
     },
+    sourceRanges: sanitizeRanges(raw.sourceRanges),
     collapsedSections,
   };
 }

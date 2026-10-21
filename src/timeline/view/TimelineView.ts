@@ -26,6 +26,10 @@
 // (snapping, one command on release through `onMoveMarker`), a double-click asks for its inline editor
 // (`onEditMarker`), hovering shows its label and timecode; the in and out handles drag with snapping and
 // write the session once on release; a right-click on the ruler asks for the ruler/marker menu.
+// Media drops (spec §6.14): a drag from the Media panel is fed in from outside (`dragMedia`,
+// `leaveMediaDrag`, `endMediaDrag`: the pointer is captured by the panel it started in) and shows its
+// ghosts like a clip drag; files dragged from the OS (native drag and drop on the overlay) show where
+// they will start and reach the controller through `onDropFiles`.
 import type { Affect } from "../../core/commands/command.js";
 import { formatSpeed, formatTimecode, usToFrame } from "../../core/document/time.js";
 import { isMediaClip, type Clip, type ClipId, type Frame, type Project, type TrackId, type TrackKind } from "../../core/document/types.js";
@@ -41,6 +45,7 @@ import { clickSelection, EMPTY_SELECTION, selectClips, selectedTrackIds, selectT
 import { selectEditPoint, selectGap, selectMarker, setInOut, setPlayhead, setSelection, type EditPoint, type SessionStore, type Tool } from "../../core/store/sessionStore.js";
 import { ease } from "../../core/theme/easing.js";
 import type { Theme, ThemeBridge } from "../../core/theme/theme.js";
+import type { DropItem, DropLanes, MediaDropRequest } from "../edit/dropMedia.js";
 import type { MoveRequest } from "../edit/move.js";
 import { clipsToSplit } from "../edit/split.js";
 import { MAX_SPEED, MIN_SPEED, type TrimEdge } from "../edit/trim.js";
@@ -53,6 +58,7 @@ import { drawContent } from "./drawContent.js";
 import { drawOverlay, type EditPointMark, type MarkerScene, type RangeScene, type RazorScene, type TrackDragScene } from "./drawOverlay.js";
 import { contains, TimelineGeometry, type HeaderToggle, type Rect, type TimelineMetrics } from "./geometry.js";
 import { edgeStep } from "./gestures/autoScroll.js";
+import { MediaDropGesture } from "./gestures/dropMedia.js";
 import { MarqueeGesture } from "./gestures/marquee.js";
 import { MoveGesture, NO_MODIFIERS, type DragModifiers, type MoveSnap } from "./gestures/moveClips.js";
 import { TrimGesture, type EditTarget, type PreviewSplit, type TrimRequest } from "./gestures/trimClip.js";
@@ -119,6 +125,11 @@ export interface TimelineViewDeps {
    * play/pause the key would have been.
    */
   onSpaceTap?(): void;
+  /**
+   * Files from the OS were dropped on the timeline (spec §6.14): the controller imports them, then
+   * places them as `request` says (its items are empty). `transfer` must be read before this returns.
+   */
+  onDropFiles?(transfer: DataTransfer, request: MediaDropRequest): void;
 }
 
 /** A Razor click (spec §6.11): cut `clipId` (and its linked partners) at `frame`, or with `all` every unlocked track. */
@@ -193,7 +204,9 @@ type Gesture =
   /** A marker dragged (spec §6.3): `frame` where it would land, snapped (spec §6.9). */
   | { kind: "markerDrag"; pointerId: number; markerId: string; from: Frame; frame: Frame; grab: number; snap: SnapTarget | null }
   /** An in or out handle dragged (spec §6.3): the range it would leave, snapped. */
-  | { kind: "rangeDrag"; pointerId: number; point: "in" | "out"; from: InOut; range: InOut; snap: SnapTarget | null };
+  | { kind: "rangeDrag"; pointerId: number; point: "in" | "out"; from: InOut; range: InOut; snap: SnapTarget | null }
+  /** Media dragged in from the Media panel or files from the OS (spec §6.14); no pointer of its own (-1). */
+  | { kind: "mediaDrop"; pointerId: number; drop: MediaDropGesture };
 
 /** A keyboard zoom step on its way (spec §6.2): from `from` to `to` with `anchor` held; `start` is set by the first frame. */
 interface ZoomAnimation {
@@ -431,6 +444,10 @@ export class TimelineView {
     };
     const onContextMenu = (event: MouseEvent) => this.onContextMenu(event);
     const onDoubleClick = (event: MouseEvent) => this.onDoubleClick(event);
+    // Files from the OS (spec §6.14): the drop frame follows the pointer; the drop goes to the controller.
+    const onFileDragOver = (event: DragEvent) => this.onFileDrag(event);
+    const onFileDragLeave = () => this.leaveMediaDrag();
+    const onFileDrop = (event: DragEvent) => this.onFileDrop(event);
     // Mod pressed or released over a trim edge switches it to the ripple cursor (spec §6.4), Mod+Alt
     // over a cut to the roll cursor (§6.10). The modifier state is only read here: keys still go to
     // the KeyDispatcher.
@@ -461,6 +478,10 @@ export class TimelineView {
     overlay.addEventListener("dblclick", onDoubleClick);
     overlay.addEventListener("mousedown", onMiddle);
     overlay.addEventListener("auxclick", onMiddle);
+    overlay.addEventListener("dragenter", onFileDragOver);
+    overlay.addEventListener("dragover", onFileDragOver);
+    overlay.addEventListener("dragleave", onFileDragLeave);
+    overlay.addEventListener("drop", onFileDrop);
 
     this.stops.push(
       scheduler.register("timelineContent", this.contentView),
@@ -482,7 +503,7 @@ export class TimelineView {
         () => {
           scheduler.invalidate("timelineOverlay");
           // The playhead is a snap candidate: a drag while playing follows it.
-          if (this.gesture?.kind === "move" || this.gesture?.kind === "trim") this.followPointer();
+          if (this.gesture?.kind === "move" || this.gesture?.kind === "trim" || this.gesture?.kind === "mediaDrop") this.followPointer();
         },
       ),
       // Ripple mode switches the trim cursors (and a trim in progress, spec §6.10).
@@ -551,6 +572,10 @@ export class TimelineView {
         overlay.removeEventListener("dblclick", onDoubleClick);
         overlay.removeEventListener("mousedown", onMiddle);
         overlay.removeEventListener("auxclick", onMiddle);
+        overlay.removeEventListener("dragenter", onFileDragOver);
+        overlay.removeEventListener("dragover", onFileDragOver);
+        overlay.removeEventListener("dragleave", onFileDragLeave);
+        overlay.removeEventListener("drop", onFileDrop);
         win?.removeEventListener("keydown", onHoverKey);
         win?.removeEventListener("keyup", onHoverKey);
         win?.removeEventListener("keydown", onSpaceKey, true);
@@ -595,6 +620,49 @@ export class TimelineView {
     return this.gesture?.kind === "move" ? this.gesture.move : null;
   }
 
+  /** The media drag over the timeline (spec §6.14), or null. */
+  get mediaDrop(): MediaDropGesture | null {
+    return this.gesture?.kind === "mediaDrop" ? this.gesture.drop : null;
+  }
+
+  /** The overlay canvas (the Media panel's drag reads its page rect once per drag), or null when unmounted. */
+  get element(): HTMLCanvasElement | null {
+    return this.overlay?.canvas ?? null;
+  }
+
+  /**
+   * A drag from the Media panel at overlay point (`x`, `y`) in CSS px (spec §6.14): the first call
+   * starts the drop gesture (background work pauses, the edges auto-scroll, S inverts snapping), each
+   * call moves its ghosts. Ignored while another gesture runs.
+   */
+  dragMedia(items: readonly DropItem[], x: number, y: number, modifiers: DragModifiers): void {
+    if (!this.overlay || (this.gesture && this.gesture.kind !== "mediaDrop")) return;
+    this.pointer = { x, y };
+    this.modifiers = modifiers;
+    if (!this.gesture) {
+      this.gesture = { kind: "mediaDrop", pointerId: -1, drop: new MediaDropGesture(this.deps.document.getState(), items) };
+      this.startDrag();
+    }
+    this.followPointer();
+  }
+
+  /** The media drag left the timeline (or ended elsewhere): its ghosts go. */
+  leaveMediaDrag(): void {
+    if (this.gesture?.kind === "mediaDrop") this.cancelGesture();
+  }
+
+  /** The media drag was released over the timeline: the drop as a request (null without one); the gesture ends. */
+  endMediaDrag(): MediaDropRequest | null {
+    const gesture = this.gesture;
+    if (gesture?.kind !== "mediaDrop") return null;
+    this.gesture = null;
+    this.finishDrag();
+    this.settleScrollY();
+    this.refreshHover();
+    this.deps.scheduler.invalidate("timelineOverlay");
+    return gesture.drop.request();
+  }
+
   /** True while an edit drags (the preview then asks frames with scrub priority, P8, and playback pauses). */
   get trimming(): boolean {
     return this.gesture?.kind === "trim";
@@ -625,7 +693,7 @@ export class TimelineView {
     this.gesture = null;
     this.finishDrag();
     if (gesture.kind === "marquee" || gesture.kind === "markerDrag") this.deps.scheduler.invalidate("timelineContent");
-    if (gesture.kind === "move") this.settleScrollY();
+    if (gesture.kind === "move" || gesture.kind === "mediaDrop") this.settleScrollY();
     if (gesture.kind === "trim") this.deps.onTrimPreview?.();
     if (this.overlay?.canvas.hasPointerCapture?.(gesture.pointerId)) this.overlay.canvas.releasePointerCapture(gesture.pointerId);
     this.refreshHover();
@@ -1435,6 +1503,9 @@ export class TimelineView {
       move.update(geometry.xToFrame(pointer.x), lane, this.modifiers, this.moveSnap());
       this.updateCursor();
       this.deps.scheduler.invalidate("timelineOverlay");
+    } else if (gesture.kind === "mediaDrop") {
+      gesture.drop.update(geometry.xToFrame(pointer.x), dropLanes(geometry, pointer.y), this.modifiers, this.moveSnap());
+      this.deps.scheduler.invalidate("timelineOverlay");
     } else if (gesture.kind === "trim") {
       const { trim } = gesture;
       const before = trim.proposal;
@@ -1487,7 +1558,7 @@ export class TimelineView {
       }
       this.modifiers = this.modifiersOf(event);
       const kind = this.gesture?.kind;
-      if (kind === "move" || kind === "trim" || kind === "scrub" || kind === "markerDrag" || kind === "rangeDrag") this.followPointer();
+      if (kind === "move" || kind === "trim" || kind === "scrub" || kind === "markerDrag" || kind === "rangeDrag" || kind === "mediaDrop") this.followPointer();
     };
     win?.addEventListener("keydown", onKey, true);
     win?.addEventListener("keyup", onKey, true);
@@ -1512,7 +1583,7 @@ export class TimelineView {
     const elapsed = this.lastTick === null ? FRAME_MS : Math.min(Math.max(time - this.lastTick, 0), 3 * FRAME_MS);
     this.lastTick = time;
     const kind = gesture?.kind;
-    if (!gesture || !pointer || (kind !== "scrub" && kind !== "move" && kind !== "trim" && kind !== "marquee" && kind !== "trackDrag" && kind !== "markerDrag" && kind !== "rangeDrag")) return;
+    if (!gesture || !pointer || (kind !== "scrub" && kind !== "move" && kind !== "trim" && kind !== "marquee" && kind !== "trackDrag" && kind !== "markerDrag" && kind !== "rangeDrag" && kind !== "mediaDrop")) return;
     const geometry = this.geometry();
     const { area } = geometry;
     const zone = this.deps.theme.theme.timeline.autoScrollZone;
@@ -1526,10 +1597,10 @@ export class TimelineView {
       const context = this.zoomContext();
       // A drag may take clips past the content end: the view can follow them there.
       const trimmed = gesture.kind === "trim" ? gesture.trim.proposal : null;
-      const end =
-        gesture.kind === "move"
-          ? Math.max(context.contentEnd, gesture.move.proposal?.end ?? 0)
-          : trimmed
+      const dropped = gesture.kind === "move" ? gesture.move.proposal : gesture.kind === "mediaDrop" ? gesture.drop.proposal : null;
+      const end = dropped
+        ? Math.max(context.contentEnd, dropped.end)
+        : trimmed
             ? Math.max(context.contentEnd, contentEnd(trimmed.project))
             : context.contentEnd;
       this.following = false;
@@ -1649,6 +1720,9 @@ export class TimelineView {
       case "scrollbar":
         // The session already holds the view.
         break;
+      case "mediaDrop":
+        // Fed from outside (no pointer of its own): ended by `endMediaDrag` or `leaveMediaDrag`.
+        break;
     }
     this.refreshHover();
     this.deps.scheduler.invalidate("timelineOverlay");
@@ -1693,6 +1767,25 @@ export class TimelineView {
     if (cursor === this.cursor || !this.overlay) return;
     this.cursor = cursor;
     this.overlay.canvas.style.cursor = cursor;
+  }
+
+  /** Files dragged from the OS over the overlay (spec §6.14): the drop frame and lanes follow the pointer. */
+  private onFileDrag(event: DragEvent): void {
+    if (!this.deps.onDropFiles || !event.dataTransfer?.types.includes("Files")) return;
+    if (this.gesture && this.gesture.kind !== "mediaDrop") return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "copy";
+    this.dragMedia([], event.offsetX, event.offsetY, this.modifiersOf(event));
+  }
+
+  /** Files dropped from the OS: the controller imports and places them (one undo step). */
+  private onFileDrop(event: DragEvent): void {
+    const transfer = event.dataTransfer;
+    if (!this.deps.onDropFiles || !transfer?.types.includes("Files") || this.gesture?.kind !== "mediaDrop") return;
+    event.preventDefault();
+    this.dragMedia([], event.offsetX, event.offsetY, this.modifiersOf(event));
+    const request = this.endMediaDrag();
+    if (request) this.deps.onDropFiles(transfer, request);
   }
 
   private onWheel(event: WheelEvent): void {
@@ -1768,7 +1861,7 @@ export class TimelineView {
     const geometry = this.geometry();
     const theme = this.deps.theme.theme;
     const gesture = this.gesture;
-    const proposal = gesture?.kind === "move" ? gesture.move.proposal : null;
+    const proposal = gesture?.kind === "move" ? gesture.move.proposal : gesture?.kind === "mediaDrop" ? gesture.drop.proposal : null;
     const trim = gesture?.kind === "trim" ? gesture.trim.proposal : null;
     const razor = this.razorPreview(project);
     const snap = proposal
@@ -1803,7 +1896,10 @@ export class TimelineView {
       trim: trim ? { proposal: trim, selection: this.deps.session.selection.getState() } : null,
       editPoints,
       marquee: gesture?.kind === "marquee" ? (gesture.marquee.current?.rect ?? null) : null,
-      tooltip: this.pointer ? (this.rulerTooltip(project, markers, snap, this.pointer) ?? (proposal || trim || snap ? this.tooltip(project, proposal?.deltaFrames ?? null, trim, snap, this.pointer) : null)) : null,
+      tooltip: this.pointer
+        ? (this.rulerTooltip(project, markers, snap, this.pointer) ??
+          (gesture?.kind === "mediaDrop" ? this.dropTooltip(project, gesture.drop, snap, this.pointer) : proposal || trim || snap ? this.tooltip(project, proposal?.deltaFrames ?? null, trim, snap, this.pointer) : null))
+        : null,
       text: this.text,
       visuals: this.deps.visuals ?? null,
       scrollbar: this.scrollbarState(idle),
@@ -1852,6 +1948,15 @@ export class TimelineView {
     const point = gesture.point === "in" ? `In ${time(inPoint ?? 0)}` : `Out ${time(lastFrameOf(outPoint ?? 1))}`;
     const span = inPoint !== null && outPoint !== null ? ` · ${time(outPoint - inPoint)}` : "";
     return { text: `${point}${span}`, target, alert: null, x: pointer.x, y: pointer.y };
+  }
+
+  /** A media drop's tooltip (spec §6.14): where the block starts (`mm:ss:ff`, frame-exact) and its length, with the snap target's name. */
+  private dropTooltip(project: Project, drop: MediaDropGesture, snap: SnapTarget | null, pointer: { x: number; y: number }) {
+    const fps = project.settings.fps;
+    const start = drop.startFrame;
+    if (start === null) return null;
+    const text = drop.length > 0 ? `${formatTimecode(start, fps)} · ${formatTimecode(drop.length, fps)}` : formatTimecode(start, fps);
+    return { text, target: snap ? snapLabel(project, snap) : null, alert: null, x: pointer.x, y: pointer.y };
   }
 
   /**
@@ -2009,6 +2114,17 @@ export class TimelineView {
       `overlay ${s.overlayDraws} draws · ${s.overlayMs.toFixed(1)} ms · ${view.pxPerFrame.toFixed(3)} px/f` +
       (visuals ? `\n${visuals}` : "");
   }
+}
+
+/**
+ * The lanes a media drop lands on (spec §6.14): the lane under the pointer on its side of the divider
+ * (one past the last beyond the outermost row: a new track), for both kinds, so a video dropped on V2
+ * puts its audio on A2 and one dropped on A2 its picture on V2.
+ */
+function dropLanes(geometry: TimelineGeometry, y: number): DropLanes {
+  const side = y < geometry.divider.y + geometry.divider.height / 2 ? "video" : "audio";
+  const lane = geometry.laneAt(side, y);
+  return { video: lane, audio: lane };
 }
 
 /** What a drag of a clip body does with each tool (spec §6.18); the Razor cuts and the Hand pans on the press. */

@@ -171,7 +171,7 @@ export class MoveGesture {
 }
 
 /** The tracks a drop would create, in lane order per kind, with the names they will get. */
-function newLanes(tracks: readonly Track[], targets: Iterable<LaneTarget>): NewLane[] {
+export function newLanes(tracks: readonly Track[], targets: Iterable<LaneTarget>): NewLane[] {
   const highest: Record<LaneKind, number> = { video: -1, audio: -1 };
   for (const target of targets) if (target.kind !== null && target.track === null) highest[target.kind] = Math.max(highest[target.kind], target.number);
   const lanes: NewLane[] = [];

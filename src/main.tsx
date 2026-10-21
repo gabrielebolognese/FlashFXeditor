@@ -6,6 +6,7 @@ import { App } from "./app/App.js";
 import { findMissingApis, GPU_ADAPTER_LABEL } from "./app/compat.js";
 import { installAudioController } from "./app/audioController.js";
 import { installCutController } from "./app/cutController.js";
+import { installDropController } from "./app/dropController.js";
 import { installMarkerController } from "./app/markerController.js";
 import { installMediaController } from "./app/mediaController.js";
 import { installPlaybackController } from "./app/playbackController.js";
@@ -33,6 +34,7 @@ async function start(): Promise<void> {
   startGpu(adapter);
   installProjectController();
   installMediaController();
+  installDropController();
   installPreviewController();
   installTimelineController();
   installCutController();

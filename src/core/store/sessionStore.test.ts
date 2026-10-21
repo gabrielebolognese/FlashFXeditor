@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { EMPTY_SELECTION, filterSelection, fromSnapshot, selectClips, selectionEquals, toSnapshot } from "./selection.js";
-import { createSessionStore, DEFAULT_SESSION, selectEditPoint, selectGap, selectMarker, setInOut, setPlayhead, setSelection } from "./sessionStore.js";
+import { createSessionStore, DEFAULT_SESSION, selectEditPoint, selectGap, selectMarker, setInOut, setPlayhead, setSelection, setSourceRange } from "./sessionStore.js";
 
 describe("SessionStore", () => {
   it("starts from the defaults, with overrides", () => {
@@ -145,5 +145,23 @@ describe("marker selection and the in/out range", () => {
     expect(listener).toHaveBeenCalledTimes(1);
     setInOut(session, null, null);
     expect(session.state.getState()).toMatchObject({ inPoint: null, outPoint: null });
+  });
+});
+
+describe("source ranges (spec §12)", () => {
+  it("sets and clears a media item's range, notifying only on a change and keeping the others", () => {
+    const session = createSessionStore();
+    const listener = vi.fn();
+    session.state.subscribe(listener);
+    setSourceRange(session, "a", { inUs: 2_000_000, outUs: 5_000_000 });
+    setSourceRange(session, "a", { inUs: 2_000_000, outUs: 5_000_000 });
+    setSourceRange(session, "b", { inUs: null, outUs: 1_000_000 });
+    expect(listener).toHaveBeenCalledTimes(2);
+    const kept = session.state.getState().sourceRanges.b;
+    setSourceRange(session, "a", null);
+    setSourceRange(session, "a", null);
+    expect(listener).toHaveBeenCalledTimes(3);
+    expect(session.state.getState().sourceRanges).toEqual({ b: { inUs: null, outUs: 1_000_000 } });
+    expect(session.state.getState().sourceRanges.b).toBe(kept);
   });
 });

@@ -5,7 +5,7 @@
 // channels of their own too: they are not clip selections (§3.3 fixes the selection kinds), they are
 // never persisted, and selecting one of the four clears the other three.
 import type { TimecodeMode } from "../document/time.js";
-import type { ClipId, Frame, TrackId } from "../document/types.js";
+import type { ClipId, Frame, MediaId, TrackId, Us } from "../document/types.js";
 import { createStore, type Store } from "./createStore.js";
 import { EMPTY_SELECTION, selectionEquals, type Selection } from "./selection.js";
 
@@ -16,6 +16,15 @@ export type MediaTab = "media" | "presets" | "captions";
 /** Header sort choices (§12) plus the list-view columns. */
 export type MediaSort = "name" | "date" | "duration" | "kind" | "resolution" | "fps" | "codec" | "audio" | "used";
 export type MediaView = "grid" | "list";
+
+/**
+ * A source in/out range on a media item (spec §12: set with I / O while hovering its card): media
+ * microseconds, `outUs` exclusive. A null end is the media's own; at least one end is set.
+ */
+export interface SourceRange {
+  inUs: Us | null;
+  outUs: Us | null;
+}
 
 export interface SessionState {
   playhead: Frame;
@@ -32,6 +41,8 @@ export interface SessionState {
   /** Timecodes as `mm:ss:ff` or `mm:ss.mmm` (spec §5.1: the preview panel's toggle; the timeline field and ruler follow). */
   timecodeFormat: TimecodeMode;
   mediaPanel: { tab: MediaTab; view: MediaView; sort: MediaSort; descending: boolean };
+  /** Source ranges of media items (spec §12), by media id; inserts and drags take only that range. */
+  sourceRanges: Readonly<Record<MediaId, SourceRange>>;
   /** Properties panel sections by id; true = collapsed. */
   collapsedSections: Record<string, boolean>;
 }
@@ -51,6 +62,7 @@ export const DEFAULT_SESSION: SessionState = {
   audioScrub: false,
   timecodeFormat: "frames",
   mediaPanel: { tab: "media", view: "grid", sort: "date", descending: false },
+  sourceRanges: {},
   collapsedSections: {},
 };
 
@@ -102,6 +114,18 @@ export function setPlayhead(session: SessionStore, frame: Frame): void {
 /** Sets the in/out range (spec §6.13; `outPoint` is the exclusive end). No notification when it does not change. */
 export function setInOut(session: SessionStore, inPoint: Frame | null, outPoint: Frame | null): void {
   session.state.set((state) => (state.inPoint === inPoint && state.outPoint === outPoint ? state : { ...state, inPoint, outPoint }));
+}
+
+/** Sets (or with null clears) a media item's source range (spec §12). No notification when it does not change. */
+export function setSourceRange(session: SessionStore, mediaId: MediaId, range: SourceRange | null): void {
+  session.state.set((state) => {
+    const current = state.sourceRanges[mediaId];
+    if (range === null ? current === undefined : current?.inUs === range.inUs && current.outUs === range.outUs) return state;
+    const sourceRanges = { ...state.sourceRanges };
+    if (range === null) delete sourceRanges[mediaId];
+    else sourceRanges[mediaId] = { inUs: range.inUs, outUs: range.outUs };
+    return { ...state, sourceRanges };
+  });
 }
 
 /** Replaces the selection (selecting clips drops a selected edit point, gap or marker). No notification when it is equal to the current one. */

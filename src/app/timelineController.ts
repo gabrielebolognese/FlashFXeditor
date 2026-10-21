@@ -2,8 +2,8 @@
 // in/out navigation actions (§6.2, §6.5, §6.6, §6.13; the transport keys are in playbackController,
 // the markers and the range in markerController), the toolbar's
 // direct-DOM bindings (zoom slider, timecode field, duration: no React render while they change, P1),
-// the timecode format toggle shared with the preview (§5.1), insert at the playhead from the media
-// panel (§6.14), the track header gestures (toggles, reorder,
+// the timecode format toggle shared with the preview (§5.1), files dropped from the OS (§6.14, placed
+// by dropController), the track header gestures (toggles, reorder,
 // rename: handled by trackController, §6.12), clip moves (drops, nudges, Alt+Up/Down, §6.8), edits (trim, roll, slip, slide and rate
 // stretch drags, Q/W/E, Ripple mode, §6.10), the tools (§6.18), the snap toggle (§6.9), select all /
 // deselect (§6.7), Esc for gestures and the dev clip generator.
@@ -11,12 +11,11 @@ import { addTrack, updateClip, updateTrack, type ClipPatch, type TrackPatch } fr
 import type { ActionRun } from "../core/commands/ActionRegistry.js";
 import { emptyTrack, nextTrackName } from "../core/document/project.js";
 import { formatTimecode, parseTimecode } from "../core/document/time.js";
-import type { ClipId, Frame, MediaId, Project, TrackKind } from "../core/document/types.js";
+import type { ClipId, Frame, Project, TrackKind } from "../core/document/types.js";
 import { detectPlatform } from "../core/keyboard/keys.js";
 import { createStore } from "../core/store/createStore.js";
 import { EMPTY_SELECTION, selectClips, toSnapshot } from "../core/store/selection.js";
 import { selectEditPoint, selectGap, setPlayhead, setSelection, type Tool } from "../core/store/sessionStore.js";
-import { insertCommands, planMediaInsert } from "../timeline/edit/insertMedia.js";
 import { applyMoveRequest, moveToAdjacentLane, nudgeClips, type MoveRefusal, type MoveRequest, type MoveResult } from "../timeline/edit/move.js";
 import { extendToPlayhead, planEdit, resolveTrim, trimToPlayhead, type TrimLimit, type TrimResult } from "../timeline/edit/trim.js";
 import { lastFrameOf, selectionSpan } from "../timeline/model/inOut.js";
@@ -26,6 +25,7 @@ import { TimelineView } from "../timeline/view/TimelineView.js";
 import { pxToSlider, sliderToPx, zoomLimits, ZOOM_IN_STEP, ZOOM_OUT_STEP, type ZoomContext } from "../timeline/view/zoom.js";
 import { showToast } from "../ui/toasts.js";
 import { openContextMenu, razorCut } from "./cutController.js";
+import { dropFilesOnTimeline, insertMediaAtPlayhead } from "./dropController.js";
 import { moveMarker, openMarkerEditor } from "./markerController.js";
 import { clipVisuals } from "./mediaController.js";
 import { moveTrackTo, startTrackRename, toggleTrack } from "./trackController.js";
@@ -42,8 +42,8 @@ function addTrackOfKind(kind: TrackKind): void {
 
 const newId = () => crypto.randomUUID();
 
-/** Why a move was refused, as a toast (spec §6.8: refused drops are reported). */
-function reportRefusal(refusal: MoveRefusal): void {
+/** Why a move or a drop was refused, as a toast (spec §6.8: refused drops are reported). */
+export function reportMoveRefusal(refusal: MoveRefusal): void {
   const name = documentStore.getState().tracks.find((track) => track.id === refusal.trackId)?.name ?? "The track";
   if (refusal.reason === "occupied") {
     showToast({ tone: "info", message: "No room on that track", detail: `${name} already has a clip there.` });
@@ -55,7 +55,7 @@ function reportRefusal(refusal: MoveRefusal): void {
 
 /** Dispatches a move as one undo step, selecting the moved clips (or the copies), the dragged one primary. */
 function commitMove(result: MoveResult, primary: ClipId | null): void {
-  if (result.kind === "refused") reportRefusal(result.refusal);
+  if (result.kind === "refused") reportMoveRefusal(result.refusal);
   if (result.kind !== "ok") return;
   const placed = [...result.placed.values()];
   const selection = selectClips(placed, primary !== null ? (result.placed.get(primary) ?? null) : null);
@@ -144,6 +144,8 @@ export const timelineView = new TimelineView({
   platform: detectPlatform(),
   // Space armed for Space+drag and released without a drag: the play/pause it would have been (spec §6.6).
   onSpaceTap: () => void actions.run("transport.playPause"),
+  // Called at drop time only (dropController imports this module).
+  onDropFiles: (transfer, request) => dropFilesOnTimeline(transfer, request),
 });
 
 /** The selected clip ids (none for a track or cue selection) and the primary. */
@@ -190,25 +192,6 @@ function selectTool(tool: Tool): ActionRun {
 export const timelineDev = createStore<{ stats: boolean }>({ stats: false });
 
 const playhead = () => sessionStore.state.getState().playhead;
-
-/**
- * Double-click on a media item (spec §6.14): its clip(s) at the playhead on the first targeted
- * tracks (created when missing), then the playhead moves to the clip end. One undo step.
- */
-export function insertMediaAtPlayhead(mediaId: MediaId): void {
-  const project = documentStore.getState();
-  const media = project.media[mediaId];
-  if (!media) return;
-  const plan = planMediaInsert(project, media, playhead(), () => crypto.randomUUID());
-  if (!plan) {
-    showToast({ tone: "error", message: `Can't insert ${media.name}`, detail: "It has no duration." });
-    return;
-  }
-  documentStore.transaction("Insert clip", () => {
-    for (const command of insertCommands(plan)) documentStore.dispatch(command);
-  });
-  setPlayhead(sessionStore, plan.end);
-}
 
 /** Zoom limits from the stores (the view need not be mounted): track area width, content end, fps. */
 function zoomContext(project: Project = documentStore.getState()): ZoomContext {
