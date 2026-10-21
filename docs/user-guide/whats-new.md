@@ -2,6 +2,11 @@
 
 Shorts Editor grows in steps called batches. This page lists what each batch added that you can see or use, newest first. Follow the links for the full instructions.
 
+> **Video placeholder: What's new in Batch 20**
+> - File: `videos/whats-new/batch-20.mp4` (not recorded yet)
+> - Length: about 60 seconds
+> - Shows: a project with three phone clips and a logo PNG in the Media panel and one clip on V1 and A1; point at a card and skim it: a red line and the time follow the pointer; press <kbd>I</kbd> and <kbd>O</kbd>: a gold bar marks the part; press <kbd>End</kbd>, then <kbd>,</kbd>: the part lands after the clip and the playhead jumps to its end; drag the second card onto V2: its sound lands on a new A2, snapped to the end of the first clip; drag the logo card onto the top right of the preview: it appears there on a new track; drag a file from File Explorer onto the end of V1: it imports and lands there; right-click a card to show the media menu; point at a card to show **Used 2×**.
+
 > **Video placeholder: What's new in Batch 19**
 > - File: `videos/whats-new/batch-19.mp4` (not recorded yet)
 > - Length: about 60 seconds
@@ -58,6 +63,7 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 > - Shows: open a project with three clips on the timeline; press <kbd>Space</kbd> to play and let the timeline page forward; press <kbd>L</kbd> three times to reach 8x, then <kbd>K</kbd>; hold <kbd>K</kbd> and tap <kbd>L</kbd> to step one frame; turn on **Loop playback**; point at the **Dropped** readout in the status strip.
 
 ## In this page
+- [Batch 20: Media to the timeline](#batch-20-media-to-the-timeline)
 - [Batch 19: Markers, in and out points](#batch-19-markers-in-and-out-points)
 - [Batch 18: Timeline navigation](#batch-18-timeline-navigation)
 - [Batch 17: Thumbnails, waveforms and badges](#batch-17-thumbnails-waveforms-and-badges)
@@ -77,6 +83,18 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 - [Batch 03: Projects, autosave and recovery](#batch-03-projects-autosave-and-recovery)
 - [Batch 02: Undo, redo and frame-exact time](#batch-02-undo-redo-and-frame-exact-time)
 - [Batch 01: The workspace](#batch-01-the-workspace)
+
+## Batch 20: Media to the timeline
+- Drag cards from the Media panel onto any track. Ghosts show where the clips land, a video's sound goes on the audio track with the same number (V2 with A2, created when missing), the clips snap to edges, and <kbd>Ctrl</kbd> inserts instead of covering. Several selected cards land back to back.
+- Drag a card onto the preview to put its picture where you release, at the playhead, on the top video track or a new one. **Add to canvas** in the media menu does the same in the middle of the frame.
+- Drop files or folders from File Explorer straight onto a track: they are imported and placed in one undo step, **Drop files**.
+- Point at a card's picture to skim through the media: a red line and the time follow the pointer. Press <kbd>I</kbd> and <kbd>O</kbd> there to mark only the part you want (a gold bar on the card), and <kbd>Alt</kbd>+<kbd>X</kbd> to clear it. Every way of adding the item then uses that part, and the marks come back when you reopen the project.
+- Double-click a card, or press <kbd>,</kbd>, to insert at the playhead. This is now a real insert: the later clips on every unlocked track move right, and a clip under the playhead is split. Press <kbd>.</kbd> to overwrite instead. Both move the playhead to the end of the new clips, so repeated presses build a sequence. The keys work on the selected cards while the Media panel is active, or on the card under the pointer.
+- New clips from the Media panel are now selected after they are added.
+- Right-click a card for the new media menu: **Insert at playhead**, **Overwrite at playhead**, **Add to canvas**, **Rename** and **Remove**.
+- Point at a card to see whether the timeline uses it: **Unused** or **Used 2×**. Unused cards are dimmed.
+
+See [Adding media to the timeline](adding-media-to-the-timeline.md) and [Use the media menu](importing-media.md#use-the-media-menu).
 
 ## Batch 19: Markers, in and out points
 - Press <kbd>M</kbd> (or click **Add marker** in the timeline toolbar) to add a marker at the playhead, also while the video plays. Markers are small triangles at the bottom of the ruler; point at one to see its name and time.
@@ -252,6 +270,7 @@ See [The workspace](workspace.md) and [Getting started](getting-started.md).
 
 ## Related pages
 - [User guide home](README.md)
+- [Adding media to the timeline](adding-media-to-the-timeline.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 19, 2026-10-15</sub>
+<sub>Last updated: Batch 20, 2026-10-15</sub>

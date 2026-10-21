@@ -25,7 +25,7 @@ Shorts Editor plays the sound of your edit together with the picture. Use the **
 
 Press <kbd>Space</kbd> to play. You hear every clip on the audio tracks (A1, A2 and so on) under the playhead, mixed together in stereo.
 
-When you insert a video with sound, the picture goes on V1 and the sound becomes a separate audio clip on A1, right under it (see [Add clips from the Media panel](timeline.md#add-clips-from-the-media-panel)). The sound you hear comes from that audio clip; the video clip itself carries only the picture. The audio clip shows the sound's waveform on M and L tracks; see [Read a waveform](clip-thumbnails-and-waveforms.md#read-a-waveform).
+When you add a video with sound, the picture goes on a video track and the sound becomes a separate audio clip on an audio track, with the same start and length, for example on V1 and A1 (see [Know what each media item becomes](adding-media-to-the-timeline.md#know-what-each-media-item-becomes)). The sound you hear comes from that audio clip; the video clip itself carries only the picture. The audio clip shows the sound's waveform on M and L tracks; see [Read a waveform](clip-thumbnails-and-waveforms.md#read-a-waveform).
 
 ### When you hear sound
 
@@ -206,7 +206,8 @@ After you import an audio file or a video with sound, the editor analyzes its so
 - [Tracks](tracks.md)
 - [Advanced trimming](advanced-trimming.md)
 - [Importing media](importing-media.md)
+- [Adding media to the timeline](adding-media-to-the-timeline.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 19, 2026-10-15</sub>
+<sub>Last updated: Batch 20, 2026-10-15</sub>

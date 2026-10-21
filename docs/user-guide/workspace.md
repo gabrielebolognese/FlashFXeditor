@@ -60,7 +60,7 @@ When the editor cannot write to the project folder, a read-only banner appears u
 
 Top left. Its header has three tabs: **Media**, **Presets** and **Captions**.
 
-- **Media** shows the files you imported. Its header buttons sort the files (**Sort media by**, plus **Ascending** / **Descending**), switch between **Grid view** and **List view**, and import files (**Import media**, <kbd>Ctrl</kbd>+<kbd>I</kbd>). See [Importing media](importing-media.md).
+- **Media** shows the files you imported. Its header buttons sort the files (**Sort media by**, plus **Ascending** / **Descending**), switch between **Grid view** and **List view**, and import files (**Import media**, <kbd>Ctrl</kbd>+<kbd>I</kbd>). See [Importing media](importing-media.md). Point at a card to skim it, double-click it or press <kbd>,</kbd> to insert it at the playhead, and drag it onto the timeline or the preview. See [Adding media to the timeline](adding-media-to-the-timeline.md).
 - **Presets** and **Captions** are available in a later version.
 
 The tab, view and sort order you choose are remembered with the project.
@@ -135,7 +135,7 @@ At the right end, the playhead timecode field shows where the playhead is (you c
 
 Under the tracks and along their right side run the timeline's scrollbars. The bottom one also zooms: drag an end of its thumb. See [Use the scrollbars](timeline.md#use-the-scrollbars).
 
-Right-click a clip or a gap on the timeline for a menu with the most common edits for it. See [Use the clip and gap menus](splitting-and-deleting.md#use-the-clip-and-gap-menus). Right-click a track header for the track menu. See [Use the track menu](tracks.md#use-the-track-menu). Right-click the ruler for the ruler menu, with markers and the in and out points. See [Use the ruler menu](markers-and-in-out-points.md#use-the-ruler-menu).
+Right-click a clip or a gap on the timeline for a menu with the most common edits for it. See [Use the clip and gap menus](splitting-and-deleting.md#use-the-clip-and-gap-menus). Right-click a track header for the track menu. See [Use the track menu](tracks.md#use-the-track-menu). Right-click the ruler for the ruler menu, with markers and the in and out points. See [Use the ruler menu](markers-and-in-out-points.md#use-the-ruler-menu). In the Media panel, right-click a card or a row for the media menu. See [Use the media menu](importing-media.md#use-the-media-menu).
 
 Buttons that are not available yet are dimmed. They still show their tooltip, but clicking them does nothing.
 
@@ -185,8 +185,11 @@ Examples:
 | <kbd>F2</kbd> | Renames the selected clip or track | Nothing | Renames the selected media |
 | <kbd>G</kbd> | Closes the selected gap, or the gap at the playhead | Nothing | Nothing |
 | <kbd>M</kbd>, <kbd>I</kbd>, <kbd>O</kbd> | Adds a marker, sets the in point, sets the out point at the playhead | Same | Same |
+| <kbd>,</kbd> / <kbd>.</kbd> | Nothing | Nothing | Inserts / overwrites the selected media at the playhead |
 | <kbd>X</kbd>, <kbd>;</kbd>, <kbd>'</kbd> | Marks the clip under the playhead, **Lift**, **Extract** | Nothing | Nothing |
 | <kbd>Ctrl</kbd>+<kbd>L</kbd> / <kbd>Ctrl</kbd>+<kbd>G</kbd> | Links or unlinks / groups the selected clips | Nothing (the browser gets them) | Nothing (the browser gets them) |
+
+The pointer can take a few keys away from the panel you clicked: while it is over the picture of a media card, <kbd>,</kbd> and <kbd>.</kbd> place that card, and over a video or audio card <kbd>I</kbd>, <kbd>O</kbd> and <kbd>Alt</kbd>+<kbd>X</kbd> mark a part of it instead of the timeline. See [Use only part of a media item](adding-media-to-the-timeline.md#use-only-part-of-a-media-item).
 
 > **Tip:** If a shortcut seems to do nothing, click the panel it belongs to and try again. After clicking the Preview, click the timeline before you step through frames with the arrow keys.
 
@@ -204,6 +207,7 @@ To jump to a time, type it into the timecode field of the timeline toolbar. See 
 - [Getting started](getting-started.md)
 - [Projects and saving](projects-and-saving.md)
 - [Importing media](importing-media.md)
+- [Adding media to the timeline](adding-media-to-the-timeline.md)
 - [Timeline](timeline.md)
 - [Trimming clips](trimming.md)
 - [Splitting, deleting and closing gaps](splitting-and-deleting.md)
@@ -215,4 +219,4 @@ To jump to a time, type it into the timecode field of the timeline toolbar. See 
 - [Audio](audio.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 19, 2026-10-15</sub>
+<sub>Last updated: Batch 20, 2026-10-15</sub>

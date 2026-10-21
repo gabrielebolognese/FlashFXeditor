@@ -1,11 +1,11 @@
 # Shorts Editor user guide
 
-Shorts Editor is a video editor for short vertical videos (9:16 by default) that runs in your desktop browser. Your projects are folders on your own disk, and your media never leaves your computer. This guide shows you how to set up a project, bring in your media, arrange, trim, cut and fine-tune it on the timeline with thumbnails and waveforms in every clip, mark moments and ranges, organize your tracks and play it back with its sound.
+Shorts Editor is a video editor for short vertical videos (9:16 by default) that runs in your desktop browser. Your projects are folders on your own disk, and your media never leaves your computer. This guide shows you how to set up a project, bring in your media, skim it and add the parts you want to the timeline, arrange, trim, cut and fine-tune it there with thumbnails and waveforms in every clip, mark moments and ranges, organize your tracks and play it back with its sound.
 
 > **Video placeholder: Shorts Editor in two minutes**
 > - File: `videos/home/overview.mp4` (not recorded yet)
-> - Length: about 120 seconds
-> - Shows: open Shorts Editor in Chrome; click **New project**, pick an empty folder, keep **9:16 · 1080×1920** and **30 fps**, click **Create project**; drop three phone clips on the Media panel and wait for the thumbnails; double-click each clip to build a sequence on the timeline, with thumbnails in the video clips and waveforms in their sound; hold <kbd>Ctrl</kbd> and drag the end of the first clip to the left to tighten the cut; put the playhead in the middle of the second clip, press <kbd>Ctrl</kbd>+<kbd>K</kbd>, click the second half and press <kbd>Shift</kbd>+<kbd>Delete</kbd>; drag the last clip up to V2; press <kbd>\\</kbd> to fit the timeline; press <kbd>M</kbd> on the best moment to add a green marker; press <kbd>Home</kbd>, then <kbd>Space</kbd> to play it back with sound while the audio meter moves; drag in the ruler to scrub; point at the green save dot.
+> - Length: about 135 seconds
+> - Shows: open Shorts Editor in Chrome; click **New project**, pick an empty folder, keep **9:16 · 1080×1920** and **30 fps**, click **Create project**; drop three phone clips on the Media panel and wait for the thumbnails; point at the first card and skim it, press <kbd>I</kbd> and <kbd>O</kbd> around the best moment, and press <kbd>,</kbd>; double-click the other two clips to build a sequence on the timeline, with thumbnails in the video clips and waveforms in their sound; drag a logo image onto the corner of the preview; hold <kbd>Ctrl</kbd> and drag the end of the first clip to the left to tighten the cut; put the playhead in the middle of the second clip, press <kbd>Ctrl</kbd>+<kbd>K</kbd>, click the second half and press <kbd>Shift</kbd>+<kbd>Delete</kbd>; drag the last clip up to V2; press <kbd>\\</kbd> to fit the timeline; press <kbd>M</kbd> on the best moment to add a green marker; press <kbd>Home</kbd>, then <kbd>Space</kbd> to play it back with sound while the audio meter moves; drag in the ruler to scrub; point at the green save dot.
 
 ## In this page
 - [Start here](#start-here)
@@ -17,16 +17,17 @@ Shorts Editor is a video editor for short vertical videos (9:16 by default) that
 1. [Getting started](getting-started.md): check your browser and create your first project.
 2. [The workspace](workspace.md): learn the app bar and the four panels.
 3. [Importing media](importing-media.md): bring in your clips, sounds and images.
-4. [Timeline](timeline.md): put clips in order, select and move them, and move around your edit.
-5. [Trimming clips](trimming.md): shorten and lengthen clips, and cut them to the playhead.
-6. [Splitting, deleting and closing gaps](splitting-and-deleting.md): cut clips in two, remove them and tidy up the gaps.
-7. [Advanced trimming](advanced-trimming.md): roll cuts, slip and slide clips, and change their speed.
-8. [Markers and in/out points](markers-and-in-out-points.md): mark moments, mark a range, loop it, and lift or extract it.
-9. [Tracks](tracks.md): add, rename, reorder, lock, target, hide and resize tracks.
-10. [Linking and grouping clips](links-and-groups.md): keep a video and its sound together, put them back in sync, and group clips.
-11. [Clip thumbnails, waveforms and badges](clip-thumbnails-and-waveforms.md): read what each clip shows.
-12. [Preview and playback](preview-and-playback.md): watch and check your video.
-13. [Audio](audio.md): listen, set the volume and check your levels.
+4. [Adding media to the timeline](adding-media-to-the-timeline.md): skim your clips, mark the part you want, and insert, overwrite or drag them onto the timeline or the preview.
+5. [Timeline](timeline.md): put clips in order, select and move them, and move around your edit.
+6. [Trimming clips](trimming.md): shorten and lengthen clips, and cut them to the playhead.
+7. [Splitting, deleting and closing gaps](splitting-and-deleting.md): cut clips in two, remove them and tidy up the gaps.
+8. [Advanced trimming](advanced-trimming.md): roll cuts, slip and slide clips, and change their speed.
+9. [Markers and in/out points](markers-and-in-out-points.md): mark moments, mark a range, loop it, and lift or extract it.
+10. [Tracks](tracks.md): add, rename, reorder, lock, target, hide and resize tracks.
+11. [Linking and grouping clips](links-and-groups.md): keep a video and its sound together, put them back in sync, and group clips.
+12. [Clip thumbnails, waveforms and badges](clip-thumbnails-and-waveforms.md): read what each clip shows.
+13. [Preview and playback](preview-and-playback.md): watch and check your video.
+14. [Audio](audio.md): listen, set the volume and check your levels.
 
 ## All pages
 
@@ -35,7 +36,8 @@ Shorts Editor is a video editor for short vertical videos (9:16 by default) that
 | [Getting started](getting-started.md) | Browser requirements, the start screen, creating, opening and reopening projects, folder access |
 | [The workspace](workspace.md) | The app bar, the four panels, resizing panels, the timeline toolbar and right-click menus, tooltips, how shortcuts follow the panel you clicked |
 | [Projects and saving](projects-and-saving.md) | The project folder, autosave and the save dot, undo and redo, crash recovery, backups, read-only mode, project settings |
-| [Importing media](importing-media.md) | Importing, dropping and pasting files, supported types, the Media panel views, sorting, renaming and removing media |
+| [Importing media](importing-media.md) | Importing, dropping and pasting files, supported types, the Media panel views and the usage chip, sorting, renaming and removing media, the media menu |
+| [Adding media to the timeline](adding-media-to-the-timeline.md) | What each media item becomes, skimming cards, marking the part of a media item to use, inserting and overwriting at the playhead, building a sequence, dragging media onto the timeline, dropping media on the preview, dropping files from File Explorer onto the timeline |
 | [Timeline](timeline.md) | Ruler, tracks and clips, adding clips, zooming and zooming to the selection, the scrollbars and their zoom handles, scrolling, panning with the **Hand** tool, the middle mouse button or <kbd>Space</kbd>, centering on the playhead, moving the playhead and jumping between edit points, typing timecodes, timecodes in frames or milliseconds, selecting, moving, inserting, duplicating and nudging clips, snapping, renaming clips, label colors |
 | [Trimming clips](trimming.md) | Trimming clip edges, ripple trims and **Ripple mode**, trimming one side of a linked clip, trim limits, trimming to the playhead with Q, W and E |
 | [Splitting, deleting and closing gaps](splitting-and-deleting.md) | Splitting at the playhead, the **Razor** tool, deleting and ripple deleting clips, selecting and closing gaps, closing all gaps, how other tracks follow a ripple, the clip and gap menus |
@@ -53,7 +55,9 @@ Shorts Editor is a video editor for short vertical videos (9:16 by default) that
 ## What you can do in this version
 - Create projects in a folder you choose, with autosave, backups, undo and crash recovery.
 - Import video, audio and image files and organize them in the Media panel.
-- Build a sequence by adding clips to the timeline, and move the playhead to any frame.
+- Skim a clip by pointing at its card, mark just the part you want with <kbd>I</kbd> and <kbd>O</kbd>, and insert or overwrite it at the playhead with a double-click, <kbd>,</kbd> or <kbd>.</kbd>, so a sequence builds up clip after clip.
+- Drag media onto any track with snapping, onto the preview to place a picture where you drop it, or drop files from File Explorer straight onto the timeline.
+- Move the playhead to any frame.
 - Get around the timeline: zoom with the keys, the wheel or the handles of the scrollbar, fill the view with the selection, pan with the **Hand** tool, the middle mouse button or <kbd>Space</kbd>, center the playhead, and read and type times in frames or milliseconds.
 - Select clips, drag them to new times and tracks, insert them between other clips, duplicate them and nudge them frame by frame, with every move one undo step.
 - Snap clips to the edges of other clips and to the playhead as you drag, and snap the playhead to clip edges in the ruler.
@@ -77,4 +81,4 @@ More editing tools (copy and paste, freeze frames), audio editing (clip volume, 
 - Notes, tips and warnings appear as **Note**, **Tip** and **Important** boxes.
 - Each page starts with a **Video placeholder**: the planned walkthrough video for that page, with its file name, length and the steps it will show. The videos are not recorded yet; they will live in the `videos/` folder next to these pages.
 
-<sub>Last updated: Batch 19, 2026-10-15</sub>
+<sub>Last updated: Batch 20, 2026-10-15</sub>
