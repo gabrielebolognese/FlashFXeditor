@@ -10,11 +10,6 @@ export interface PlannedCommand {
 }
 
 export const PLANNED_COMMANDS: Readonly<Record<string, PlannedCommand>> = {
-  // Batch 21: preview viewport and fullscreen.
-  "preview.toggleFullscreen": { batch: 21, label: "Fullscreen preview" },
-  "canvas.zoomFit": { batch: 21, label: "Canvas zoom to fit" },
-  "canvas.zoom100": { batch: 21, label: "Canvas zoom 100%" },
-  "canvas.zoom200": { batch: 21, label: "Canvas zoom 200%" },
   // Batch 22: the transform gizmo's nudges.
   "canvas.nudgeLeft": { batch: 22, label: "Canvas nudge" },
   "canvas.nudgeRight": { batch: 22, label: "Canvas nudge" },
@@ -48,7 +43,7 @@ export const PLANNED_COMMANDS: Readonly<Record<string, PlannedCommand>> = {
   "app.export": { batch: 44, label: "Export" },
 };
 
-/** The dev toast for a bound key whose command is not built yet: `Fullscreen preview: coming in Batch 21`. */
+/** The dev toast for a bound key whose command is not built yet: `Freeze frame: coming in Batch 27`. */
 export function plannedMessage(id: string): string | null {
   const planned = PLANNED_COMMANDS[id];
   return planned ? `${planned.label}: coming in Batch ${planned.batch}` : null;

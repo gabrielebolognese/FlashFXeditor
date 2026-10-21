@@ -1,0 +1,75 @@
+/*
+ * Dropdown trigger (DS: menus/dropdowns float; the trigger takes the compact Select's look for a value,
+ * the IconButton's for an icon): a value in caption type on --surface-1 with the input border, or a
+ * tertiary icon; a small chevron after either. Open or pressed: the accent states.
+ */
+.button {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-1);
+  height: var(--control-compact);
+  padding: 0 var(--space-1) 0 var(--space-2);
+  border-radius: var(--radius-sm);
+  color: var(--text-tertiary);
+  transition:
+    background-color var(--duration-micro) var(--ease-out),
+    border-color var(--duration-micro) var(--ease-out),
+    color var(--duration-micro) var(--ease-out);
+}
+
+.button[data-kind="value"] {
+  border: 1px solid var(--border);
+  background: var(--surface-1);
+  color: var(--text-primary);
+}
+
+.button[data-kind="icon"] {
+  padding: 0 var(--space-0) 0 var(--space-1);
+  border-radius: var(--radius-md);
+}
+
+.button:hover {
+  background: var(--hover-wash);
+  color: var(--text-primary);
+}
+
+.button[data-kind="value"]:hover {
+  border-color: var(--surface-5);
+  background: var(--surface-1);
+}
+
+.button[aria-expanded="true"][data-kind="value"] {
+  border-color: var(--accent-dim);
+  box-shadow: 0 0 0 1px var(--accent-wash);
+}
+
+.button[aria-pressed="true"],
+.button[aria-expanded="true"][data-kind="icon"] {
+  background: var(--accent-wash);
+  color: var(--accent);
+}
+
+.button:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.icon {
+  width: var(--icon-size);
+  height: var(--icon-size);
+}
+
+.text {
+  min-width: calc(var(--space-6) + var(--space-3));
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-track);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.chevron {
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+  color: var(--text-tertiary);
+}

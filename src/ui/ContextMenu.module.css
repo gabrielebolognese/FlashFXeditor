@@ -68,3 +68,63 @@
   font: var(--type-caption);
   letter-spacing: var(--type-caption-track);
 }
+
+/* Section heading (gap: the DS gives menus no headings): the overline type in tertiary text. */
+.heading {
+  padding: var(--space-2) var(--space-2) var(--space-1);
+  color: var(--text-tertiary);
+  font: var(--type-overline);
+  letter-spacing: var(--type-overline-track);
+  text-transform: uppercase;
+}
+
+/* Stepper row (gap): the label, then - value + as compact square buttons; the value in mono. */
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  height: var(--control-compact);
+  padding: 0 var(--space-1) 0 var(--space-2);
+  color: var(--text-secondary);
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-track);
+}
+
+.dim {
+  opacity: var(--disabled-opacity);
+}
+
+.step {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--space-5);
+  height: var(--space-5);
+  border-radius: var(--radius-sm);
+  color: var(--text-tertiary);
+  transition:
+    background-color var(--duration-instant) var(--ease-out),
+    color var(--duration-instant) var(--ease-out);
+}
+
+.step:not([aria-disabled]):hover {
+  background: var(--hover-wash);
+  color: var(--text-primary);
+}
+
+.step[aria-disabled] {
+  opacity: var(--disabled-opacity);
+}
+
+.stepIcon {
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+}
+
+.value {
+  min-width: var(--icon-size);
+  color: var(--text-primary);
+  font: var(--type-mono);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}

@@ -23,7 +23,8 @@
 
 /*
  * Preview chrome (§7.8, gap: the DS has no transport bar): readouts on the left, the transport
- * centered, loop and Fit on the right, in a strip with the panel header's metrics.
+ * centered, mute, volume, loop and play in/out on the right, in a strip with the panel header's
+ * metrics. Zoom, Fit, Quality, Overlays, Snap, Guides and Fullscreen sit in the panel header (§13).
  */
 .bar {
   display: grid;
@@ -42,11 +43,38 @@
   overflow: hidden;
 }
 
+/* Editable playhead timecode (§7.8): the timeline toolbar's field, reading as text until hovered or
+   focused (the DS input on focus), as wide as its text (the narrow footer keeps the fps badge). */
 .timecode {
+  flex: none;
+  field-sizing: content;
+  height: var(--control-compact);
+  padding: 0 var(--space-1);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  outline: none;
+  background: transparent;
   color: var(--text-primary);
   font: var(--type-mono);
   font-variant-numeric: tabular-nums;
-  white-space: nowrap;
+  transition:
+    border-color var(--duration-micro) var(--ease-out),
+    background-color var(--duration-micro) var(--ease-out);
+}
+
+.timecode:hover {
+  border-color: var(--border);
+}
+
+.timecode:focus {
+  border-color: var(--accent-dim);
+  background: var(--surface-1);
+  box-shadow: 0 0 0 1px var(--accent-wash);
+}
+
+.timecode[aria-invalid="true"] {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 1px var(--danger-wash);
 }
 
 .duration {

@@ -1,4 +1,5 @@
 import { ChevronDown } from "lucide-react";
+import { useRef } from "react";
 import styles from "./Select.module.css";
 
 export interface SelectOption<T extends string> {
@@ -16,8 +17,13 @@ export interface SelectProps<T extends string> {
   size?: "compact" | "default" | undefined;
 }
 
-/** Native select (keyboard and accessibility for free), styled with tokens. */
+/**
+ * Native select (keyboard and accessibility for free), styled with tokens. A choice made with the
+ * pointer gives the focus back (the select would otherwise keep every shortcut, Space included); one
+ * made with the keyboard keeps it.
+ */
 export function Select<T extends string>({ value, options, onChange, label, disabled, size = "default" }: SelectProps<T>) {
+  const pointer = useRef(false);
   return (
     <span className={styles.wrap}>
       <select
@@ -26,7 +32,16 @@ export function Select<T extends string>({ value, options, onChange, label, disa
         value={value}
         aria-label={label}
         disabled={disabled}
-        onChange={(event) => onChange(event.target.value as T)}
+        onPointerDown={() => {
+          pointer.current = true;
+        }}
+        onKeyDown={() => {
+          pointer.current = false;
+        }}
+        onChange={(event) => {
+          onChange(event.target.value as T);
+          if (pointer.current) event.currentTarget.blur();
+        }}
       >
         {options.map((option) => (
           <option key={option.value} value={option.value}>

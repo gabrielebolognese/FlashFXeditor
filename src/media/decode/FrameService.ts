@@ -7,9 +7,14 @@
 // - Progressive scrub (P8): the nearest cached frame is shown at once, then the keyframe the worker
 //   decodes first when it is closer, then the exact frame.
 // - The project supplies the files and the cache/index/ files through a `FrameSource`.
+// - Frames are uploaded at most at `uploadSize()` on the long edge (the preview's detail, §7.1). A
+//   request with `minLongEdge` decodes a cached frame that is smaller again, and a frame that arrives
+//   for a key cached smaller than the current upload size replaces it (the old texture is destroyed;
+//   whoever draws it takes the new one from the pool on its next pass).
 // - Frame requests that go to the decoder are announced (`onDecodeRequest`) and counted
 //   (`decodesInFlight`): background decoders (thumbnail sheets) yield to them.
 import type { MediaId } from "../../core/document/types.js";
+import { fitWithin } from "../../render/gpu/fitWithin.js";
 import type { Renderer, TextureHandle } from "../../render/gpu/renderer.js";
 import type { Lod, TextureKey, TexturePool } from "../cache/TexturePool.js";
 import { mediaTimePosition, positionAt } from "../demux/sampleIndex.js";
@@ -59,6 +64,8 @@ export interface FrameRequestOptions {
   signal?: AbortSignal;
   /** Stand-ins until the exact frame is ready (P8): the nearest cached frame, then a closer keyframe. */
   onApproximate?: (result: FrameResult) => void;
+  /** A cached frame with a shorter long edge is decoded again at the current upload size (detail on zoom, §7.1). */
+  minLongEdge?: number;
 }
 
 export interface FrameServiceStats {
@@ -194,7 +201,7 @@ export class FrameService {
 
   /** The frame shown at `timeUs` as a pool texture. Rejects with an AbortError when superseded or aborted. */
   async getFrame(mediaId: MediaId, timeUs: number, options: FrameRequestOptions = {}): Promise<FrameResult> {
-    const { lod = "full", priority = "scrub", signal, onApproximate } = options;
+    const { lod = "full", priority = "scrub", signal, onApproximate, minLongEdge } = options;
     const started = this.now();
     this.counters.requests += 1;
     const lane = this.lane(mediaId, lod);
@@ -213,7 +220,7 @@ export class FrameService {
     try {
       for (let attempt = 0; ; attempt++) {
         try {
-          return await this.fetchFrame(mediaId, lod, timeUs, priority, controller.signal, started, onApproximate);
+          return await this.fetchFrame(mediaId, lod, timeUs, priority, controller.signal, started, onApproximate, minLongEdge);
         } catch (error) {
           // The worker was restarted and lost its sessions: open the video again, once.
           if (attempt > 0 || !isNamed(error, "NotOpenError")) throw error;
@@ -343,7 +350,16 @@ export class FrameService {
     return info;
   }
 
-  private async fetchFrame(mediaId: MediaId, lod: Lod, timeUs: number, priority: FramePriority, signal: AbortSignal, started: number, onApproximate?: (result: FrameResult) => void): Promise<FrameResult> {
+  private async fetchFrame(
+    mediaId: MediaId,
+    lod: Lod,
+    timeUs: number,
+    priority: FramePriority,
+    signal: AbortSignal,
+    started: number,
+    onApproximate?: (result: FrameResult) => void,
+    minLongEdge?: number,
+  ): Promise<FrameResult> {
     // Known videos answer synchronously up to the worker request, so a cached stand-in shows this frame.
     const info = this.infos.get(keyOf(mediaId, lod)) ?? (await this.video(mediaId, lod));
     signal.throwIfAborted();
@@ -351,7 +367,7 @@ export class FrameService {
     const frameUs = info.frameTimesUs[positionAt(info.frameTimesUs, timeUs)] as number;
     const key: TextureKey = { mediaId, lod, timeUs: frameUs };
     const cached = this.deps.pool.get(key);
-    if (cached) {
+    if (cached && !(minLongEdge !== undefined && Math.max(cached.width, cached.height) < minLongEdge)) {
       this.counters.poolHits += 1;
       return { texture: cached, key, timeUs: frameUs, approximate: false };
     }
@@ -408,11 +424,14 @@ export class FrameService {
     this.counters.openFrames += 1;
     try {
       const key: TextureKey = { mediaId, lod, timeUs };
-      // Never replace a cached texture: it may be on screen (pinned).
-      const existing = this.deps.pool.get(key);
-      if (existing) return { texture: existing, key, timeUs, approximate };
-      if (!this.deps.renderer.ready) return null;
       const maxSize = this.deps.uploadSize?.();
+      // A cached texture stays unless it is smaller than this upload would be (detail on zoom).
+      const existing = this.deps.pool.get(key);
+      if (existing) {
+        const wanted = fitWithin(frame.displayWidth, frame.displayHeight, maxSize);
+        if (!(Math.max(existing.width, existing.height) < Math.max(wanted.width, wanted.height))) return { texture: existing, key, timeUs, approximate };
+      }
+      if (!this.deps.renderer.ready) return existing ? { texture: existing, key, timeUs, approximate } : null;
       const texture = this.deps.renderer.uploadVideoFrame(frame, { label: `${mediaId} @${timeUs}us`, ...(maxSize !== undefined && { maxSize }) });
       this.deps.pool.put(key, texture);
       return { texture, key, timeUs, approximate };

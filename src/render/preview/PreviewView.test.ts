@@ -7,8 +7,8 @@ import type { InvalidationFlag, RenderView } from "../../core/scheduler/FrameSch
 import { DocumentStore } from "../../core/store/DocumentStore.js";
 import { createLayoutStore } from "../../core/store/layoutStore.js";
 import { frameToUs } from "../../core/document/time.js";
-import type { Project } from "../../core/document/types.js";
-import { createSessionStore, setPlayhead } from "../../core/store/sessionStore.js";
+import type { MediaClip, Project } from "../../core/document/types.js";
+import { createSessionStore, setPlayhead, type SessionState } from "../../core/store/sessionStore.js";
 import { readTheme } from "../../core/theme/theme.js";
 import { TexturePool } from "../../media/cache/TexturePool.js";
 import type { FrameRequestOptions, FrameResult } from "../../media/decode/FrameService.js";
@@ -54,11 +54,11 @@ interface Request {
 const TIMES = Float64Array.from({ length: 300 }, (_, i) => Math.round((i * 1_000_000) / 30));
 const timeOf = (frame: number) => TIMES[frame] as number;
 
-function setup(extra: Partial<PreviewViewDeps> = {}) {
+function setup(extra: Partial<PreviewViewDeps> = {}, tweak: (doc: Project) => Project = (doc) => doc) {
   let doc = makeProject();
   doc.media.m = { ...makeMedia("m"), width: 1920, height: 1080 };
   doc.tracks = [makeTrack("v1")];
-  doc = withClips(doc, [makeMediaClip(doc, { id: "c1", trackId: "v1", start: 0, duration: 300, mediaId: "m" })]);
+  doc = tweak(withClips(doc, [makeMediaClip(doc, { id: "c1", trackId: "v1", start: 0, duration: 300, mediaId: "m" })]));
   const session = createSessionStore();
   const document = new DocumentStore(doc, { session, validate: false });
   const layout = createLayoutStore(null);
@@ -81,7 +81,12 @@ function setup(extra: Partial<PreviewViewDeps> = {}) {
     ready: true,
     draw: vi.fn(() => true),
     drawPanes: vi.fn(() => true),
-    resize: () => undefined,
+    resize: (target: { width: number; height: number; texture?: { width: number; height: number } }, width: number, height: number) => {
+      target.width = width;
+      target.height = height;
+      if (target.texture) target.texture = { ...target.texture, width, height };
+    },
+    createOffscreenTarget: vi.fn((width: number, height: number) => ({ kind: "offscreen", width, height, texture: { ...texture(), width, height } })),
     createCanvasTarget: () => ({ kind: "canvas" }),
     releaseTarget: () => undefined,
     subscribe: () => () => undefined,
@@ -183,6 +188,86 @@ describe("PreviewView", () => {
     scheduler.flush();
     expect(draw.mock.calls.length).toBe(draws + 1);
     expect(requests.every((request) => request.options.priority !== "playback")).toBe(true);
+  });
+
+  it("renders detail on zoom: the visible part at the source detail offscreen, frames uploaded bigger (spec §7.1)", () => {
+    vi.useFakeTimers();
+    try {
+      let clock = 0;
+      // A 4K video fitted to the 1080 px width of the frame: 3840 / 1080 source px per project px.
+      const { view, session, scheduler, renderer, engine, notify } = setup({ now: () => clock }, (doc) => ({
+        ...doc,
+        media: { ...doc.media, m: { ...doc.media.m!, width: 3840, height: 2160 } },
+        clips: { ...doc.clips, c1: { ...(doc.clips.c1 as MediaClip), transform: { ...(doc.clips.c1 as MediaClip).transform, scale: 1080 / 3840 } } },
+      }));
+      const draw = renderer.draw as ReturnType<typeof vi.fn>;
+      const drawPanes = renderer.drawPanes as ReturnType<typeof vi.fn>;
+      const setPreview = (fields: Partial<SessionState["preview"]>) => session.state.set((state) => ({ ...state, preview: { ...state.preview, ...fields } }));
+      scheduler.flush();
+      // Fit: at the panel's device size, straight onto the canvas.
+      expect(view.stats.detail).toMatchObject({ offscreenWidth: 0, upload: 1920, activity: "idle" });
+      expect(view.stats.detail.render).toBe(view.stats.detail.view);
+      expect(drawPanes).not.toHaveBeenCalled();
+
+      // 400%: the source detail (3.56) is under the zoom: the visible 100 x 150 project px offscreen at 3.56.
+      setPreview({ zoom: 4 });
+      scheduler.flush();
+      const detail = view.stats.detail;
+      expect(detail.source).toBeCloseTo(3840 / 1080, 6);
+      expect(detail.render).toBeCloseTo(3840 / 1080, 6);
+      expect(detail.upload).toBe(4096);
+      expect(Math.abs(detail.offscreenWidth - 100 * detail.render)).toBeLessThanOrEqual(2);
+      expect(Math.abs(detail.offscreenHeight - 150 * detail.render)).toBeLessThanOrEqual(2);
+      expect(drawPanes).toHaveBeenCalledTimes(1);
+      const [panes, offscreen] = drawPanes.mock.lastCall as [{ viewport: { transform: number[] } }[], { kind: string }];
+      expect(offscreen.kind).toBe("offscreen");
+      expect(panes[0]?.viewport.transform[0]).toBeCloseTo(detail.render, 6);
+      // The blit: one texture layer over the visible part (in project px), drawn with the 400% viewport.
+      const [blit, , viewport] = draw.mock.lastCall as [{ layers: { kind: string; transform: number[] }[] }, unknown, { transform: number[] }];
+      expect(blit.layers).toHaveLength(1);
+      expect(blit.layers[0]?.kind).toBe("texture");
+      expect(Math.abs((blit.layers[0]?.transform[0] ?? 0) - 100)).toBeLessThan(1);
+      expect(viewport.transform[0]).toBe(4);
+      expect(view.quality.getState()).toBe("Auto: full");
+
+      // Playing (Auto): reduced to the project's own pixels.
+      engine.playing = true;
+      notify();
+      scheduler.flush();
+      expect(view.stats.detail).toMatchObject({ render: 1, upload: 1920, activity: "playing" });
+      expect(view.quality.getState()).toBe("Auto: reduced");
+
+      // Paused: reduced for 300 ms, then full again (a timer redraws).
+      clock = 100;
+      engine.playing = false;
+      notify();
+      scheduler.flush();
+      expect(view.stats.detail).toMatchObject({ render: 1, activity: "settling" });
+      clock = 300;
+      vi.advanceTimersByTime(200);
+      expect(scheduler.flush()).toEqual(["preview"]);
+      expect(view.stats.detail.activity).toBe("idle");
+      expect(view.stats.detail.render).toBeCloseTo(3840 / 1080, 6);
+      expect(view.quality.getState()).toBe("Auto: full");
+
+      // Full at 200%: the zoom is under the source detail, so straight onto the canvas with 3840 px uploads.
+      const offscreenDraws = drawPanes.mock.calls.length;
+      setPreview({ quality: "full", zoom: 2 });
+      scheduler.flush();
+      expect(view.stats.detail).toMatchObject({ render: 2, offscreenWidth: 0, upload: 3840 });
+      expect(drawPanes.mock.calls.length).toBe(offscreenDraws);
+      expect(view.uploadLongEdge).toBe(3840);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("pans the zoomed frame: the pan's project point sits at the canvas center", () => {
+    const { view, session, scheduler } = setup();
+    session.state.set((state) => ({ ...state, preview: { ...state.preview, zoom: 2, panX: 100, panY: -40 } }));
+    scheduler.flush();
+    expect(view.projectPoint(200, 300)).toEqual({ x: 640, y: 920 });
+    expect(view.placement?.transform[0]).toBe(2);
   });
 
   it("requests the playhead's frame when playback pauses on a held layer", async () => {

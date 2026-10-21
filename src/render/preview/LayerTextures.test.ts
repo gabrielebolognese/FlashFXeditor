@@ -11,10 +11,10 @@ const FRAME = 33_333;
 /** Frame times starting at a composition offset of 1000 us. */
 const times = (count: number) => Float64Array.from({ length: count }, (_, i) => 1000 + i * FRAME);
 
-function texture(): TextureHandle & { destroyed: boolean } {
+function texture(width = 4, height = 4): TextureHandle & { destroyed: boolean } {
   return {
-    width: 4,
-    height: 4,
+    width,
+    height,
     mipLevels: 1,
     bytes: 64,
     destroyed: false,
@@ -109,6 +109,40 @@ const textureOf = (layer: unknown) => (layer as TextureLayer).texture;
 const resolve = (textures: LayerTextures, priority: FramePriority, ...layers: (MediaLayer | SolidLayer)[]) => textures.resolve(composite(...layers), priority).layers;
 
 describe("LayerTextures", () => {
+  it("decodes a cached frame again once for detail at rest, drawing it meanwhile (spec §7.1)", async () => {
+    const { textures, infos, pool, requests, flush, onChange } = setup();
+    infos.set("a", info({ codedWidth: 3840, codedHeight: 2160 }));
+    infos.set("b", info({ codedWidth: 1920, codedHeight: 1088 }));
+    const key: TextureKey = { mediaId: "a", lod: "full", timeUs: 1000 };
+    const small = texture(1920, 1080);
+    pool.put(key, small);
+    const layer = media({ trackId: "v1", mediaId: "a", timeUs: 0 });
+    const pass = (priority: FramePriority) => textures.resolve(composite(layer), priority, 3840).layers;
+    // Playing or scrubbing: the cached frame as it is.
+    pass("playback");
+    pass("scrub");
+    expect(requests).toHaveLength(0);
+    expect(textureOf(pass("idle")[0])).toBe(small);
+    expect(requests).toHaveLength(1);
+    expect(requests[0]?.options).toMatchObject({ priority: "idle", minLongEdge: 3456 });
+    expect(requests[0]?.options.onApproximate).toBeUndefined();
+    // Asked once: later passes draw the small texture and leave the request running.
+    expect(textureOf(pass("idle")[0])).toBe(small);
+    expect(requests).toHaveLength(1);
+    expect(requests[0]?.options.signal?.aborted).toBe(false);
+    const big = texture(3840, 2160);
+    pool.put(key, big);
+    requests[0]?.resolve({ texture: big, key, timeUs: 1000, approximate: false });
+    await flush();
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(textureOf(pass("idle")[0])).toBe(big);
+    expect(requests).toHaveLength(1);
+    // A frame at its video's size (coded 1088 for 1080) is not decoded again.
+    pool.put({ mediaId: "b", lod: "full", timeUs: 1000 }, texture(1920, 1080));
+    textures.resolve(composite(media({ trackId: "v1", mediaId: "b", timeUs: 0 })), "idle", 3840);
+    expect(requests).toHaveLength(1);
+  });
+
   it("draws a cached frame at once, picking the frame time nearest to the media time, and pins it", () => {
     const { textures, cache, pool, frames } = setup();
     // Media time 50 ms = cts 51 000: nearest frame 2 (67 666 us is 16.7 ms away, 34 333 is 16.7 ms + 1 away).

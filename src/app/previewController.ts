@@ -1,10 +1,12 @@
-// Preview wiring (spec §7.1, §8, §9.3, §9.4): the app's one GPU device, renderer and texture pool, the
-// frame service (video frames from decode.worker into the pool), still images, the preview canvas
-// view (the composite at the playhead) and its dev stats, the playback engine that drives it (and the
-// audio scheduler, Batch 10), the preview chrome readouts and Export frame. Framework-free;
-// PreviewPanel only mounts the canvas host, the chrome bar, the meter and the stats element.
+// Preview wiring (spec §7.1, §7.5, §7.6, §8, §9.3, §9.4): the app's one GPU device, renderer and
+// texture pool, the frame service (video frames from decode.worker into the pool), still images, the
+// preview canvas view (the composite at the playhead) with its overlay canvas and zoom/pan input, its
+// dev stats, the playback engine that drives it (and the audio scheduler, Batch 10), the preview
+// chrome readouts, the view and overlay settings, fullscreen and Export frame. Framework-free;
+// PreviewPanel only mounts the canvas host, the chrome, the meter and the stats element.
 import type { MediaId } from "../core/document/types.js";
 import { createStore } from "../core/store/createStore.js";
+import type { PreviewSession } from "../core/store/sessionStore.js";
 import { DEFAULT_TEXTURE_BUDGET, TexturePool } from "../media/cache/TexturePool.js";
 import { FrameService, type FrameSource } from "../media/decode/FrameService.js";
 import { ImageService } from "../media/decode/ImageService.js";
@@ -17,14 +19,16 @@ import { resolveFile, safeFileName, sampleIndexPath, writeFileAt } from "../proj
 import { formatFps } from "../project/projectPresets.js";
 import { GpuDevice } from "../render/gpu/GpuDevice.js";
 import { WebGpuRenderer } from "../render/gpu/WebGpuRenderer.js";
+import { PreviewOverlayView } from "../render/preview/PreviewOverlayView.js";
 import { PreviewStatsOverlay } from "../render/preview/PreviewStatsOverlay.js";
 import { PreviewView } from "../render/preview/PreviewView.js";
-import type { PreviewZoom } from "../render/preview/viewport.js";
-import { contentEnd } from "../timeline/model/queries.js";
+import { ViewportInput } from "../render/preview/ViewportInput.js";
+import { zoomAround, type PreviewZoom } from "../render/preview/viewport.js";
 import { showToast } from "../ui/toasts.js";
 import { attachAudio, audioScheduler, detachAudio, meterView } from "./audioController.js";
+import { toggleFullscreen } from "./fullscreen.js";
 import { actions, audioClock, documentStore, idleQueue, layoutStore, scheduler, sessionStore, themeBridge, workerPool } from "./services.js";
-import { formatFrame, timelineView } from "./timelineController.js";
+import { timelineView } from "./timelineController.js";
 
 const MB = 1024 * 1024;
 
@@ -32,18 +36,14 @@ export const gpuDevice = new GpuDevice();
 export const renderer = new WebGpuRenderer(gpuDevice);
 export const texturePool = new TexturePool();
 /**
- * Video frames for the preview and playback. Frames are uploaded at most at the project's long edge:
- * the preview never draws more of them (a 4K frame in a 1080x1920 project).
- * TODO(batch 21): detail-on-zoom renders above 100% need more than the project size.
+ * Video frames for the preview and playback. Frames are uploaded at most at the size the preview
+ * needs (spec §7.1): the project's long edge, more for detail on zoom, less for 1/2 and 1/4 playback.
  */
 export const frameService = new FrameService({
   workers: workerPool,
   renderer,
   pool: texturePool,
-  uploadSize: () => {
-    const { width, height } = documentStore.getState().settings;
-    return Math.max(width, height);
-  },
+  uploadSize: () => previewView.uploadLongEdge,
 });
 /** Still image textures. */
 export const imageService = new ImageService({ workers: workerPool, renderer, pool: texturePool, document: documentStore, svgBitmap: svgPoster });
@@ -82,6 +82,24 @@ playbackEngine.subscribe(() => {
   if (playbackEngine.playing) meterView.wake();
 });
 export const previewStats = new PreviewStatsOverlay({ scheduler, preview: previewView, pool: texturePool, gpu: gpuDevice, frames: frameService, playback: playbackEngine });
+/** The 2D canvas over the preview: overlays (spec §7.6), the gizmo from Batch 22. */
+export const previewOverlay = new PreviewOverlayView({ scheduler, layout: layoutStore, session: sessionStore.state, document: documentStore, theme: themeBridge, preview: previewView });
+
+/** The preview canvas in device px with the Fit margin, as last rendered. */
+function viewTarget(): { width: number; height: number; margin: number; dpr: number } {
+  const { width, height, dpr } = previewView.stats;
+  return { width, height, dpr, margin: themeBridge.theme.layout.previewMargin * dpr };
+}
+
+/** Wheel zoom at the cursor, wheel / Space / middle / Hand pans on the overlay canvas (spec §7.1). */
+export const viewportInput = new ViewportInput({
+  session: sessionStore.state,
+  layout: layoutStore,
+  frame: () => documentStore.getState().settings,
+  target: viewTarget,
+  playing: () => playbackEngine.playing,
+  onSpaceTap: () => void actions.run("transport.playPause"),
+});
 
 /** Pool budgets of the dev select: the P6 default and the Batch 05 test budget. */
 export const POOL_BUDGETS: readonly number[] = [DEFAULT_TEXTURE_BUDGET, 64 * MB];
@@ -184,40 +202,49 @@ export function detachPreview(): void {
   detachAudio();
 }
 
+/** A zoom level (the Zoom menu, Mod+0/1/2, Fit) around the canvas center; Fit comes back centered (spec §7.1). */
 export function setPreviewZoom(zoom: PreviewZoom): void {
-  sessionStore.state.set((state) => (state.preview.zoom === zoom ? state : { ...state, preview: { ...state.preview, zoom } }));
+  const target = viewTarget();
+  const frame = documentStore.getState().settings;
+  sessionStore.state.set((state) => {
+    const { preview } = state;
+    const next = target.width > 0 ? zoomAround(preview, zoom, target.width / 2, target.height / 2, frame, target, target.margin) : { zoom, panX: 0, panY: 0 };
+    if (next.zoom === preview.zoom && next.panX === preview.panX && next.panY === preview.panY) return state;
+    return { ...state, preview: { ...preview, ...next } };
+  });
 }
 
-export interface PreviewReadouts {
-  timecode: HTMLElement;
-  duration: HTMLElement;
-  fps: HTMLElement;
+/** Changes overlay and quality settings of the preview (session state, never undoable). */
+export function setPreviewOptions(patch: Partial<Omit<PreviewSession, "zoom" | "panX" | "panY">>): void {
+  sessionStore.state.set((state) => {
+    const { preview } = state;
+    if ((Object.keys(patch) as (keyof typeof patch)[]).every((key) => preview[key] === patch[key])) return state;
+    return { ...state, preview: { ...preview, ...patch } };
+  });
+}
+
+/** The status strip's quality text (§13), written on change (never by React, P1). */
+export function bindQualityLabel(element: HTMLElement): () => void {
+  return previewView.quality.select(
+    (label) => label,
+    (label) => {
+      if (element.textContent !== label) element.textContent = label;
+    },
+    { fireImmediately: true },
+  );
 }
 
 /**
- * The preview chrome's readouts (spec §7.8): playhead timecode, duration and fps badge, written by
- * subscriptions, never by React (P1). The timecode changes every frame during playback.
+ * The preview chrome's fps badge (spec §7.8), written by a subscription, never by React (P1). The
+ * timecode (editable) and the duration are bound like the timeline toolbar's (`bindTimecode`).
  */
-export function bindPreviewReadouts({ timecode, duration, fps }: PreviewReadouts): () => void {
-  const write = (element: HTMLElement, text: string) => {
-    if (element.textContent !== text) element.textContent = text;
+export function bindFpsBadge(fps: HTMLElement): () => void {
+  const show = () => {
+    const text = `${formatFps(documentStore.getState().settings.fps)} fps`;
+    if (fps.textContent !== text) fps.textContent = text;
   };
-  const showTimecode = () => write(timecode, formatFrame(sessionStore.state.getState().playhead));
-  const showDocument = () => {
-    const project = documentStore.getState();
-    write(duration, formatFrame(contentEnd(project), project));
-    write(fps, `${formatFps(project.settings.fps)} fps`);
-    showTimecode();
-  };
-  const stops = [
-    sessionStore.state.select((state) => state.playhead, showTimecode),
-    sessionStore.state.select((state) => state.timecodeFormat, showDocument),
-    documentStore.subscribe(showDocument, { affects: ["timeline", "clips", "settings"] }),
-  ];
-  showDocument();
-  return () => {
-    for (const stop of stops) stop();
-  };
+  show();
+  return documentStore.subscribe(show, { affects: ["settings"] });
 }
 
 interface SaveFilePickerWindow {
@@ -255,5 +282,17 @@ export async function exportFrame(): Promise<void> {
 
 /** Registers the preview actions. Returns a stop function. */
 export function installPreviewController(): () => void {
-  return actions.register("preview.exportFrame", () => void exportFrame());
+  const stops = [
+    actions.register("preview.exportFrame", () => void exportFrame()),
+    // Spec §18: preview scope (the canvas zoom), Fit / 100% / 200% around the canvas center.
+    actions.register("canvas.zoomFit", () => setPreviewZoom("fit")),
+    actions.register("canvas.zoom100", () => setPreviewZoom(1)),
+    actions.register("canvas.zoom200", () => setPreviewZoom(2)),
+    actions.register("preview.toggleFullscreen", toggleFullscreen),
+    // Smart guides on the canvas (spec §7.4, §13 "Guides toggle"); Batch 23 draws them.
+    actions.register("preview.toggleGuides", () => setPreviewOptions({ guides: !sessionStore.state.getState().preview.guides })),
+  ];
+  return () => {
+    for (const stop of stops) stop();
+  };
 }

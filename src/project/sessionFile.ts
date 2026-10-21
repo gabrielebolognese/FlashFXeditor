@@ -4,7 +4,7 @@ import type { TimecodeMode } from "../core/document/time.js";
 import type { LayoutRatios } from "../core/store/layoutStore.js";
 import { sanitizeRatios } from "../core/store/layoutStore.js";
 import type { SelectionKind, SelectionSnapshot } from "../core/store/selection.js";
-import { DEFAULT_SESSION, type MediaSort, type MediaTab, type MediaView, type PreviewQuality, type SafeZone, type SessionState, type SourceRange, type Tool } from "../core/store/sessionStore.js";
+import { DEFAULT_SESSION, GRID_DIVISIONS_MAX, GRID_DIVISIONS_MIN, PREVIEW_MAX_ZOOM, PREVIEW_MIN_ZOOM, type MediaSort, type MediaTab, type MediaView, type PreviewGrid, type PreviewQuality, type SafeZone, type SessionState, type SourceRange, type Tool } from "../core/store/sessionStore.js";
 
 export const SESSION_FILE_VERSION = 1;
 
@@ -29,6 +29,7 @@ export function serializeSession(data: SessionFileData): string {
 const TOOLS: Record<Tool, true> = { select: true, razor: true, hand: true, slip: true, slide: true, rateStretch: true };
 const QUALITIES: Record<PreviewQuality, true> = { auto: true, full: true, proxy: true, half: true, quarter: true };
 const SAFE_ZONES: Record<SafeZone, true> = { none: true, reels: true, tiktok: true, shorts: true };
+const GRIDS: Record<PreviewGrid, true> = { none: true, thirds: true, squares: true, custom: true };
 const MEDIA_TABS: Record<MediaTab, true> = { media: true, presets: true, captions: true };
 const MEDIA_SORTS: Record<MediaSort, true> = { name: true, date: true, duration: true, kind: true, resolution: true, fps: true, codec: true, audio: true, used: true };
 const MEDIA_VIEWS: Record<MediaView, true> = { grid: true, list: true };
@@ -64,7 +65,9 @@ function sanitizeState(value: unknown): SessionState {
   const preview = obj(raw.preview);
   const mediaPanel = obj(raw.mediaPanel);
   const pxPerFrame = finite(timeline.pxPerFrame, d.timeline.pxPerFrame);
-  const zoom = preview.zoom === "fit" ? "fit" : finite(preview.zoom, 0) > 0 ? (preview.zoom as number) : d.preview.zoom;
+  const zoom = preview.zoom === "fit" ? "fit" : finite(preview.zoom, 0) > 0 ? Math.min(PREVIEW_MAX_ZOOM, Math.max(PREVIEW_MIN_ZOOM, preview.zoom as number)) : d.preview.zoom;
+  const divisions = preview.gridDivisions;
+  const gridDivisions = typeof divisions === "number" && Number.isInteger(divisions) && divisions >= GRID_DIVISIONS_MIN && divisions <= GRID_DIVISIONS_MAX ? divisions : d.preview.gridDivisions;
   const collapsedSections: Record<string, boolean> = {};
   for (const [key, collapsed] of Object.entries(obj(raw.collapsedSections))) {
     if (typeof collapsed === "boolean") collapsedSections[key] = collapsed;
@@ -88,6 +91,13 @@ function sanitizeState(value: unknown): SessionState {
       panY: finite(preview.panY, d.preview.panY),
       quality: oneOf(QUALITIES, preview.quality, d.preview.quality),
       safeZone: oneOf(SAFE_ZONES, preview.safeZone, d.preview.safeZone),
+      grid: oneOf(GRIDS, preview.grid, d.preview.grid),
+      gridDivisions,
+      centerCross: bool(preview.centerCross, d.preview.centerCross),
+      safeMargins: bool(preview.safeMargins, d.preview.safeMargins),
+      rulers: bool(preview.rulers, d.preview.rulers),
+      pixelGrid: bool(preview.pixelGrid, d.preview.pixelGrid),
+      guides: bool(preview.guides, d.preview.guides),
     },
     activeTool: oneOf(TOOLS, raw.activeTool, d.activeTool),
     snap: bool(raw.snap, d.snap),

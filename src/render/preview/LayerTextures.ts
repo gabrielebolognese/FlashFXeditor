@@ -16,6 +16,9 @@
 // - What is drawn stays pinned in the pool. Late frames call `onChange` (the view redraws).
 // - `warm` prefetches the edge frames of the clips next to the playhead, so a scrub across a cut
 //   finds the new clip's frame cached.
+// - Detail on zoom (spec §7.1): at rest (`idle` priority) a pass can name the long edge frames should
+//   have (`detailLongEdge`). A cached frame well under it (and under the video's own size) is drawn
+//   at once and decoded again once at that size; the bigger texture replaces it in the pool.
 // - `resolveSplit` resolves two composites in one pass (the trim preview's two frames side by side,
 //   spec §6.10), each pane with its own slots and draw list. The scrub rule spans both: a media shown
 //   in both panes gets one scrub request, so the two never supersede each other.
@@ -62,7 +65,12 @@ type WritableTextureLayer = Omit<TextureLayer, "transform"> & { transform: Mutab
 interface Pending {
   key: TextureKey;
   controller: AbortController;
+  /** A detail refresh of a frame already drawn from the pool. */
+  refresh: boolean;
 }
+
+/** A cached frame is decoded again for detail when its long edge is under this share of the wanted one (coded sizes pad, e.g. 1088 for 1080). */
+const DETAIL_TOLERANCE = 0.9;
 
 interface Slot {
   pending: Pending | null;
@@ -76,6 +84,9 @@ interface Slot {
   hasShown: boolean;
   /** The key pinned for what is drawn; meaningful while `unpin` is set. */
   pinnedKey: TextureKey;
+  /** The last detail refresh: its key and the long edge it asked for (each is asked once). */
+  refreshKey: TextureKey;
+  refreshedTo: number;
   unpin: (() => void) | null;
   pass: number;
 }
@@ -113,9 +124,15 @@ export class LayerTextures {
 
   constructor(private readonly deps: LayerTexturesDeps) {}
 
-  /** The draw list for `composite` with every media layer resolved to a texture (or held, or left out). */
-  resolve(composite: Composite, priority: FramePriority): DrawList {
-    this.begin();
+  /** Long edge video frames should have in this pass (idle only; 0: no detail refresh). */
+  private detailLongEdge = 0;
+
+  /**
+   * The draw list for `composite` with every media layer resolved to a texture (or held, or left out).
+   * `detailLongEdge`: at `idle`, cached frames well under it are decoded again (detail on zoom).
+   */
+  resolve(composite: Composite, priority: FramePriority, detailLongEdge = 0): DrawList {
+    this.begin(priority, detailLongEdge);
     try {
       this.resolveInto(0, composite, priority);
     } finally {
@@ -128,8 +145,8 @@ export class LayerTextures {
    * Two composites resolved in one pass, into two draw lists (the left and right panes of a split
    * preview). Reused like `resolve`'s list: read both before resolving again.
    */
-  resolveSplit(left: Composite, right: Composite, priority: FramePriority): readonly [DrawList, DrawList] {
-    this.begin();
+  resolveSplit(left: Composite, right: Composite, priority: FramePriority, detailLongEdge = 0): readonly [DrawList, DrawList] {
+    this.begin(priority, detailLongEdge);
     try {
       this.resolveInto(0, left, priority);
       this.resolveInto(1, right, priority);
@@ -139,8 +156,9 @@ export class LayerTextures {
     return this.lists;
   }
 
-  private begin(): void {
+  private begin(priority: FramePriority, detailLongEdge: number): void {
     this.pass += 1;
+    this.detailLongEdge = priority === "idle" ? detailLongEdge : 0;
     this.scrubbed.clear();
     this.active.clear();
     const stats = this.stats;
@@ -254,7 +272,14 @@ export class LayerTextures {
       texture = key ? this.deps.pool.get(key) : null;
     }
     if (texture && key) {
-      this.cancel(slot);
+      if (!layer.still && this.wantsDetail(slot, texture, mediaId, key)) {
+        // The exact frame at less detail: shown while it is decoded again at the wanted size.
+        copyKey(slot.refreshKey, key);
+        slot.refreshedTo = this.detailLongEdge;
+        this.request(slot, key, priority, this.minLongEdge(mediaId));
+      } else if (!(slot.pending?.refresh && sameKey(slot.pending.key, key))) {
+        this.cancel(slot);
+      }
       slot.standIn = null;
       slot.settled = false;
       this.stats.exact += 1;
@@ -299,7 +324,22 @@ export class LayerTextures {
     return key;
   }
 
-  private request(slot: Slot, wantedKey: TextureKey, priority: FramePriority): void {
+  /** The long edge a detail refresh asks for: the pass's, at most the video's coded size, with the tolerance. */
+  private minLongEdge(mediaId: MediaId): number {
+    const info = this.deps.frames.info(mediaId);
+    const coded = info ? Math.max(info.codedWidth, info.codedHeight) : Infinity;
+    return Math.floor(Math.min(this.detailLongEdge, coded) * DETAIL_TOLERANCE);
+  }
+
+  /** A cached frame is short of this pass's detail and was not refreshed to it yet. */
+  private wantsDetail(slot: Slot, texture: TextureHandle, mediaId: MediaId, key: TextureKey): boolean {
+    if (this.detailLongEdge <= 0 || Math.max(texture.width, texture.height) >= this.minLongEdge(mediaId)) return false;
+    if (slot.pending && sameKey(slot.pending.key, key)) return false;
+    return !(sameKey(slot.refreshKey, key) && slot.refreshedTo >= this.detailLongEdge);
+  }
+
+  /** Asks for a frame (`minLongEdge`: a detail refresh of the cached one: no stand-ins, it is on screen). */
+  private request(slot: Slot, wantedKey: TextureKey, priority: FramePriority, minLongEdge?: number): void {
     if ((slot.pending && sameKey(slot.pending.key, wantedKey)) || (slot.settled && sameKey(slot.settledKey, wantedKey))) return;
     this.cancel(slot);
     slot.standIn = null;
@@ -310,19 +350,17 @@ export class LayerTextures {
       if (this.scrubbed.has(key.mediaId)) wanted = "idle";
       else this.scrubbed.add(key.mediaId);
     }
-    const pending: Pending = { key, controller: new AbortController() };
+    const refresh = minLongEdge !== undefined;
+    const pending: Pending = { key, controller: new AbortController(), refresh };
     slot.pending = pending;
+    const onApproximate = (result: FrameResult) => {
+      if (slot.pending !== pending) return;
+      slot.standIn = result;
+      // During `resolve` the pass uses it at once; later it needs a new pass.
+      if (!this.resolving) this.deps.onChange();
+    };
     this.deps.frames
-      .getFrame(key.mediaId, key.timeUs, {
-        priority: wanted,
-        signal: pending.controller.signal,
-        onApproximate: (result) => {
-          if (slot.pending !== pending) return;
-          slot.standIn = result;
-          // During `resolve` the pass uses it at once; later it needs a new pass.
-          if (!this.resolving) this.deps.onChange();
-        },
-      })
+      .getFrame(key.mediaId, key.timeUs, { priority: wanted, signal: pending.controller.signal, ...(refresh ? { minLongEdge } : { onApproximate }) })
       .then(
         (result) => {
           if (slot.pending !== pending) return;
@@ -422,6 +460,8 @@ export class LayerTextures {
         shown: { kind: "texture", texture: NO_TEXTURE, transform: mutableIdentity(), opacity: 1, crop: { u0: 0, v0: 0, u1: 1, v1: 1 }, flipX: false, flipY: false },
         hasShown: false,
         pinnedKey: newKey(),
+        refreshKey: newKey(),
+        refreshedTo: 0,
         unpin: null,
         pass: 0,
       };
