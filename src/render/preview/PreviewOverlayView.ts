@@ -31,9 +31,6 @@ export interface PreviewOverlayDeps {
   preview: { readonly placement: PreviewPlacement | null };
 }
 
-/** Ruler labels at least this many CSS px apart. */
-const RULER_LABEL_GAP = 64;
-
 /** What the canvas shows; a render that would draw the same draws nothing. */
 interface Drawn {
   transform: number[];
@@ -267,7 +264,6 @@ export class PreviewOverlayView implements RenderView {
     const size = Math.round(theme.preview.rulerSize * dpr);
     const line = Math.max(1, Math.round(dpr));
     const minor = Math.round(theme.preview.rulerTick * dpr);
-    const step = rulerStep(t[0], RULER_LABEL_GAP * dpr);
     const badge = theme.type.overline;
     ctx.save();
     ctx.fillStyle = theme.color.surface1;
@@ -279,6 +275,8 @@ export class PreviewOverlayView implements RenderView {
     ctx.font = `${badge.weight} ${badge.size * dpr}px ${theme.font.mono}`;
     ctx.textBaseline = "top";
     const pad = theme.space[0] * dpr;
+    // Majors at least the widest label (the frame's long edge) plus --space-3 apart, as on the timeline ruler.
+    const step = rulerStep(t[0], ctx.measureText(String(Math.max(frame.width, frame.height))).width + theme.space[3] * dpr);
 
     // Top ruler: project x.
     const fromX = (size - t[4]) / t[0];
