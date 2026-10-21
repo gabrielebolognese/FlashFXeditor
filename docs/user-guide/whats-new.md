@@ -2,6 +2,11 @@
 
 Shorts Editor grows in steps called batches. This page lists what each batch added that you can see or use, newest first. Follow the links for the full instructions.
 
+> **Video placeholder: What's new in Batch 18**
+> - File: `videos/whats-new/batch-18.mp4` (not recorded yet)
+> - Length: about 60 seconds
+> - Shows: a timeline with about twenty clips on several tracks; drag the dot at the right end of the scrollbar thumb under the tracks to the left: the view zooms in while its left edge stays put; drag the middle of the thumb: the view scrolls; press <kbd>H</kbd> and drag on the tracks: the view pans in both directions; press <kbd>V</kbd>; drag with the middle mouse button; select two clips and press <kbd>Shift</kbd>+<kbd>\\</kbd>: they fill the view; press <kbd>=</kbd> twice: the zoom glides; click **Center playhead**; click the timecode field, type `1:x5` and press <kbd>Enter</kbd>: the field turns red; type `+30` and press <kbd>Enter</kbd>; click **ff** under the preview: the timecodes and the ruler switch to milliseconds.
+
 > **Video placeholder: What's new in Batch 17**
 > - File: `videos/whats-new/batch-17.mp4` (not recorded yet)
 > - Length: about 45 seconds
@@ -65,6 +70,18 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 - [Batch 03: Projects, autosave and recovery](#batch-03-projects-autosave-and-recovery)
 - [Batch 02: Undo, redo and frame-exact time](#batch-02-undo-redo-and-frame-exact-time)
 - [Batch 01: The workspace](#batch-01-the-workspace)
+
+## Batch 18: Timeline navigation
+- The timeline has scrollbars: one under the tracks, one at their right. Drag the middle of the bottom thumb to scroll, or drag one of its ends to zoom while the opposite edge of the view stays in place. Click the empty part of a bar to jump there.
+- The **Hand** tool (<kbd>H</kbd>) works: drag anywhere on the tracks to pan left, right, up and down. You can also pan with the middle mouse button with any tool, or, while playback is stopped, by holding <kbd>Space</kbd> over empty track space and dragging.
+- **Zoom to selection** (<kbd>Shift</kbd>+<kbd>\\</kbd>) fills the view with the selected clips, tracks, gap or cut, with 10% room on each side.
+- **Center playhead** is now also a button in the toolbar's zoom group (shortcut <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>.</kbd>).
+- Zooming with <kbd>=</kbd>, <kbd>-</kbd>, **Zoom in** and **Zoom out** glides to the new zoom instead of jumping. Wheel zoom stays immediate.
+- Click the new **ff** chip under the preview to show every timecode in milliseconds (`mm:ss.mmm`): the preview, the timeline toolbar and the ruler follow, and you can type times such as `1:05.5`. Each project remembers the choice.
+- The timecode field marks text it can't read with a red border and stays open, so you can correct it. <kbd>Esc</kbd> puts the playhead's time back.
+- [Keyboard shortcuts](keyboard-shortcuts.md#shortcuts-for-features-not-available-yet) now lists every key that is reserved for a feature of a later version; those keys do nothing yet.
+
+See [Timeline](timeline.md), [Use the scrollbars](timeline.md#use-the-scrollbars), [Pan the view](timeline.md#pan-the-view) and [Show times in milliseconds](timeline.md#show-times-in-milliseconds).
 
 ## Batch 17: Thumbnails, waveforms and badges
 - Video clips show a strip of thumbnails on M and L tracks. Zoom in and the thumbnails get closer together, down to one every 5 frames; while closer ones are made, the nearest ones stand in for a moment.
@@ -166,7 +183,7 @@ See [Preview and playback](preview-and-playback.md).
 
 ## Batch 07: Timeline
 - The timeline shows a ruler, track headers, and video and audio tracks with colored clips. Add tracks with **+ Video track** and **+ Audio track**.
-- Zoom with the toolbar slider and buttons, with <kbd>=</kbd>, <kbd>-</kbd> and <kbd>\</kbd>, or with <kbd>Ctrl</kbd>+wheel at the pointer. Scroll with the wheel or <kbd>Shift</kbd>+wheel.
+- Zoom with the toolbar slider and buttons, with <kbd>=</kbd>, <kbd>-</kbd> and <kbd>\\</kbd>, or with <kbd>Ctrl</kbd>+wheel at the pointer. Scroll with the wheel or <kbd>Shift</kbd>+wheel.
 - Move the playhead by clicking or dragging in the ruler, with the arrow keys, <kbd>Home</kbd>, <kbd>End</kbd>, <kbd>Up</kbd> and <kbd>Down</kbd>, or by typing a timecode such as `1:05:10` or `+30`.
 - Double-click a media item to add it at the playhead: a video with sound becomes a video clip on V1 and its sound on A1, an image becomes a 5-second clip, and the playhead moves to the end so you can build a sequence quickly.
 
@@ -217,4 +234,4 @@ See [The workspace](workspace.md) and [Getting started](getting-started.md).
 - [User guide home](README.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 17, 2026-10-15</sub>
+<sub>Last updated: Batch 18, 2026-10-15</sub>

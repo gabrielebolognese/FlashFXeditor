@@ -96,10 +96,10 @@ What you can undo:
 | --- | --- |
 | Renaming the project | Moving the playhead and playing |
 | Changing the resolution, frame rate or background color | Selecting clips, tracks, a cut (edit point) or a gap |
-| Importing media, renaming media, removing media | Zooming and scrolling the timeline, zooming the preview |
+| Importing media, renaming media, removing media | Zooming, scrolling and panning the timeline (also with the scrollbars), zooming the preview |
 | Inserting a clip on the timeline | Panel sizes, panel tabs, the media view and sort order |
-| Moving, inserting, duplicating and nudging clips (a quick series of nudges is one step) | **Loop playback**, **Snap**, **Linked selection**, **Ripple mode** and the **Autosave** setting |
-| Trimming clips: each trim drag and each press of <kbd>Q</kbd>, <kbd>W</kbd> or <kbd>E</kbd> | Choosing a tool (**Select**, **Razor**, **Slip**, **Slide**, **Rate stretch**) |
+| Moving, inserting, duplicating and nudging clips (a quick series of nudges is one step) | **Loop playback**, **Snap**, **Linked selection**, **Ripple mode**, the timecode format and the **Autosave** setting |
+| Trimming clips: each trim drag and each press of <kbd>Q</kbd>, <kbd>W</kbd> or <kbd>E</kbd> | Choosing a tool (**Select**, **Razor**, **Hand**, **Slip**, **Slide**, **Rate stretch**) |
 | Rolling a cut, slipping, sliding and rate stretching clips (one step per drag) | |
 | Splitting clips (each <kbd>Ctrl</kbd>+<kbd>K</kbd> and each **Razor** click), deleting and ripple deleting clips | |
 | Closing a gap, closing all gaps (one step for all of them) | |
@@ -113,14 +113,15 @@ What you can undo:
 When you open a project again, the editor restores your view from the last session:
 
 - the playhead position
-- the timeline zoom and scroll position
+- the timeline zoom and scroll position, also after you pan or use the scrollbars
+- the timecode format: frames (**ff**) or milliseconds (**ms**)
 - the preview zoom
 - the media panel tab, view (grid or list) and sort order
 - whether **Loop playback** is on
 - whether **Snap** is on
 - whether **Linked selection** is on
 - whether **Ripple mode** is on
-- the active tool (**Select**, **Razor**, **Slip**, **Slide** or **Rate stretch**)
+- the active tool (**Select**, **Razor**, **Hand**, **Slip**, **Slide** or **Rate stretch**)
 - the selected clips or tracks
 - the panel sizes
 
@@ -214,4 +215,4 @@ Each change to **Name**, **Resolution**, **Size**, **Frame rate** or **Backgroun
 - [Linking and grouping clips](links-and-groups.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 16, 2026-10-15</sub>
+<sub>Last updated: Batch 18, 2026-10-15</sub>

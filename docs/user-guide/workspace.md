@@ -5,7 +5,7 @@ When a project is open, the editor shows one fixed layout: a slim app bar at the
 > **Video placeholder: Tour of the workspace**
 > - File: `videos/workspace/workspace-tour.mp4` (not recorded yet)
 > - Length: about 90 seconds
-> - Shows: with a project open at 1920×1080, point at the app bar from left to right (project name, save dot, **Undo**, **Redo**, the badge **1080×1920 · 30 fps**, **Export**, **Settings**); click the **Media**, **Presets** and **Captions** tabs, then back to **Media**; point at the **Edit Properties** panel showing the **Project** section; point at the **Preview** panel, the transport bar under the picture and the audio meter along its right edge; point at the timeline toolbar groups from left to right and at the timecode field at the right end; hover **Split at playhead** until its tooltip shows "Ctrl+K"; drag the splitter left of the Preview to the right until the **More tools** button (…) appears; click it to show the hidden groups; press <kbd>Escape</kbd>.
+> - Shows: with a project open at 1920×1080, point at the app bar from left to right (project name, save dot, **Undo**, **Redo**, the badge **1080×1920 · 30 fps**, **Export**, **Settings**); click the **Media**, **Presets** and **Captions** tabs, then back to **Media**; point at the **Edit Properties** panel showing the **Project** section; point at the **Preview** panel, the transport bar under the picture and the audio meter along its right edge; point at the timeline toolbar groups from left to right, at the timecode field at the right end and at the scrollbars under and beside the tracks; hover **Split at playhead** until its tooltip shows "Ctrl+K"; drag the splitter left of the Preview to the right until the **More tools** button (…) appears; click it to show the hidden groups; press <kbd>Escape</kbd>.
 
 ## In this page
 - [The layout at a glance](#the-layout-at-a-glance)
@@ -80,7 +80,7 @@ To get back to the **Project** section, click an empty area of the timeline trac
 The right column. It shows the frame at the playhead.
 
 - The header has the **Zoom** menu and the **Export frame** button.
-- Under the picture, a bar shows the playhead timecode, the duration and the frame rate, the transport buttons (**Go to start**, **Previous frame**, **Play** / **Pause**, **Next frame**, **Go to end**), **Mute**, the **Master volume** knob, **Loop playback** and **Fit**. A status line underneath shows the preview quality and the dropped frames of the last playback.
+- Under the picture, a bar shows the timecode format chip (**ff** or **ms**), the playhead timecode, the duration and the frame rate, the transport buttons (**Go to start**, **Previous frame**, **Play** / **Pause**, **Next frame**, **Go to end**), **Mute**, the **Master volume** knob, **Loop playback** and **Fit**. A status line underneath shows the preview quality and the dropped frames of the last playback.
 - Along the right edge of the panel, a narrow strip holds the audio meter. See [Audio](audio.md).
 
 See [Preview and playback](preview-and-playback.md).
@@ -124,13 +124,15 @@ The toolbar is one row of button groups, from left to right:
 
 | Group | Buttons | What works now |
 | --- | --- | --- |
-| Tools | **Select**, **Razor**, **Hand**, **Slip**, **Slide**, **Rate stretch** | **Select** (<kbd>V</kbd>), **Razor** (<kbd>C</kbd>), **Slip** (<kbd>Y</kbd>), **Slide** (<kbd>U</kbd>) and **Rate stretch** (<kbd>R</kbd>) work: the active tool is gold. See [Choose a tool](advanced-trimming.md#choose-a-tool). **Hand** is available in a later version. |
+| Tools | **Select**, **Razor**, **Hand**, **Slip**, **Slide**, **Rate stretch** | All work: **Select** (<kbd>V</kbd>), **Razor** (<kbd>C</kbd>), **Hand** (<kbd>H</kbd>), **Slip** (<kbd>Y</kbd>), **Slide** (<kbd>U</kbd>) and **Rate stretch** (<kbd>R</kbd>). The active tool is gold. See [Choose a tool](advanced-trimming.md#choose-a-tool) and [Pan the view](timeline.md#pan-the-view). |
 | Toggles | **Snap**, **Linked selection**, **Ripple mode**, **Show clip keyframes**, **Audio scrub** | **Snap** (<kbd>S</kbd>), **Linked selection** (<kbd>Shift</kbd>+<kbd>S</kbd>) and **Ripple mode** work: each is gold while it is on. See [Snap clips into place](timeline.md#snap-clips-into-place), [Turn Linked selection off](links-and-groups.md#turn-linked-selection-off) and [Turn Ripple mode on or off](trimming.md#turn-ripple-mode-on-or-off). The others are available in a later version. |
 | Edit | **Split at playhead**, **Delete**, **Ripple delete**, **Close gap**, **Close all gaps (compact)**, **Add marker**, **Freeze frame**, **Punch zoom** | **Split at playhead** (<kbd>Ctrl</kbd>+<kbd>K</kbd>), **Delete** (<kbd>Delete</kbd>), **Ripple delete** (<kbd>Shift</kbd>+<kbd>Delete</kbd>), **Close gap** (<kbd>G</kbd>) and **Close all gaps (compact)** (<kbd>Shift</kbd>+<kbd>G</kbd>) work. See [Splitting, deleting and closing gaps](splitting-and-deleting.md). The others are available in a later version. |
 | Add | **Title**, **Subtitle**, **Add caption track**, **Add solid**, **Add image** | Available in a later version. |
-| Zoom | **Zoom out**, the zoom slider, **Zoom in**, **Zoom to fit**, **Zoom to selection**, **Track height** | **Zoom out**, the slider, **Zoom in** and **Zoom to fit** work (see [Timeline](timeline.md)), and **Track height** changes the height of all tracks (see [Change track height](tracks.md#change-track-height)). **Zoom to selection** is available in a later version. |
+| Zoom | **Zoom out**, the zoom slider, **Zoom in**, **Zoom to fit**, **Zoom to selection**, **Center playhead**, **Track height** | All work. **Zoom to selection** (<kbd>Shift</kbd>+<kbd>\\</kbd>) fills the view with the selection, **Center playhead** (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>.</kbd>) scrolls the playhead to the middle of the view (see [Zoom in and out](timeline.md#zoom-in-and-out) and [Scroll the timeline](timeline.md#scroll-the-timeline)), and **Track height** changes the height of all tracks (see [Change track height](tracks.md#change-track-height)). |
 
 At the right end, the playhead timecode field shows where the playhead is (you can type a time into it) and, next to it, the total duration of the timeline.
+
+Under the tracks and along their right side run the timeline's scrollbars. The bottom one also zooms: drag an end of its thumb. See [Use the scrollbars](timeline.md#use-the-scrollbars).
 
 Right-click a clip or a gap on the timeline for a menu with the most common edits for it. See [Use the clip and gap menus](splitting-and-deleting.md#use-the-clip-and-gap-menus). Right-click a track header for the track menu. See [Use the track menu](tracks.md#use-the-track-menu).
 
@@ -191,7 +193,9 @@ Positions in a project are whole frames at the project frame rate. Timecodes sho
 
 The seconds are real clock seconds and the last field counts the frames since that second began. At 29.97 fps the timecode therefore stays in step with the clock, even in long projects.
 
-To jump to a time, type it into the timecode field of the timeline toolbar. See [Timeline](timeline.md).
+To read times in milliseconds instead (`mm:ss.mmm`, for example `00:05.400`), click the **ff** chip next to the timecode under the preview; click **ms** to go back. The preview, the timeline toolbar and the ruler all follow. See [Show times in milliseconds](timeline.md#show-times-in-milliseconds).
+
+To jump to a time, type it into the timecode field of the timeline toolbar. See [Jump to a timecode](timeline.md#jump-to-a-timecode).
 
 ## Related pages
 - [Getting started](getting-started.md)
@@ -207,4 +211,4 @@ To jump to a time, type it into the timecode field of the timeline toolbar. See 
 - [Audio](audio.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 17, 2026-10-15</sub>
+<sub>Last updated: Batch 18, 2026-10-15</sub>

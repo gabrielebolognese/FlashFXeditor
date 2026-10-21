@@ -1,20 +1,23 @@
 # Timeline
 
-The timeline is where your short takes shape: clips sit on tracks in time order, and the playhead marks the frame the preview shows. In this version you add clips by double-clicking media, select clips and arrange them by dragging (also onto other tracks), snap them to the edges of other clips and to the playhead, duplicate them, zoom and scroll, move the playhead with the mouse, the keyboard or a typed timecode, and rename clips or give them a label color. To shorten or lengthen clips, see [Trimming clips](trimming.md); to split and delete clips and close gaps, see [Splitting, deleting and closing gaps](splitting-and-deleting.md); to roll cuts, slip, slide or change a clip's speed, see [Advanced trimming](advanced-trimming.md). To add, lock, target or rearrange tracks, see [Tracks](tracks.md); to link, sync and group clips, see [Linking and grouping clips](links-and-groups.md). To read the thumbnails, waveforms and badges inside clips, see [Clip thumbnails, waveforms and badges](clip-thumbnails-and-waveforms.md).
+The timeline is where your short takes shape: clips sit on tracks in time order, and the playhead marks the frame the preview shows. In this version you add clips by double-clicking media, select clips and arrange them by dragging (also onto other tracks), snap them to the edges of other clips and to the playhead, duplicate them, zoom, scroll and pan with the scrollbars, the **Hand** tool or the mouse, move the playhead with the mouse, the keyboard or a typed timecode, read times in frames or milliseconds, and rename clips or give them a label color. To shorten or lengthen clips, see [Trimming clips](trimming.md); to split and delete clips and close gaps, see [Splitting, deleting and closing gaps](splitting-and-deleting.md); to roll cuts, slip, slide or change a clip's speed, see [Advanced trimming](advanced-trimming.md). To add, lock, target or rearrange tracks, see [Tracks](tracks.md); to link, sync and group clips, see [Linking and grouping clips](links-and-groups.md). To read the thumbnails, waveforms and badges inside clips, see [Clip thumbnails, waveforms and badges](clip-thumbnails-and-waveforms.md).
 
 > **Video placeholder: Timeline tour**
 > - File: `videos/timeline/timeline-overview.mp4` (not recorded yet)
 > - Length: about 60 seconds
-> - Shows: a project with a few clips on V1 and A1; point in turn at the toolbar, the timecode and duration at its right end, the ruler, the track headers (V1, A1) and their toggles, the divider between video and audio tracks, a blue video clip with its thumbnails, a green audio clip with its waveform, and the thin line where the content ends; click the ruler to move the red playhead; press <kbd>\\</kbd> to fit everything; press <kbd>=</kbd> three times to zoom in, then <kbd>-</kbd> to zoom out; click a video clip: it and its sound on A1 turn gold; drag it to the right until its start comes near the end of another clip: it jumps onto the edge and a thin gold line runs through the timeline; release.
+> - Shows: a project with a few clips on V1 and A1; point in turn at the toolbar, the timecode and duration at its right end, the ruler, the track headers (V1, A1) and their toggles, the divider between video and audio tracks, a blue video clip with its thumbnails, a green audio clip with its waveform, the thin line where the content ends, and the scrollbars under and to the right of the tracks; click the ruler to move the red playhead; press <kbd>\\</kbd> to fit everything; press <kbd>=</kbd> three times to zoom in, then <kbd>-</kbd> to zoom out; click a video clip: it and its sound on A1 turn gold; drag it to the right until its start comes near the end of another clip: it jumps onto the edge and a thin gold line runs through the timeline; release.
 
 ## In this page
 - [Find your way around the timeline](#find-your-way-around-the-timeline)
 - [Add clips from the Media panel](#add-clips-from-the-media-panel)
 - [Add and manage tracks](#add-and-manage-tracks)
 - [Zoom in and out](#zoom-in-and-out)
+- [Use the scrollbars](#use-the-scrollbars)
 - [Scroll the timeline](#scroll-the-timeline)
+- [Pan the view](#pan-the-view)
 - [Move the playhead](#move-the-playhead)
 - [Jump to a timecode](#jump-to-a-timecode)
+- [Show times in milliseconds](#show-times-in-milliseconds)
 - [Follow the playhead during playback](#follow-the-playhead-during-playback)
 - [Select clips](#select-clips)
 - [Move clips](#move-clips)
@@ -37,12 +40,13 @@ The timeline is where your short takes shape: clips sit on tracks in time order,
 | **Tracks** | Main area | Video tracks above the divider, audio tracks below it. Each row holds that track's clips. |
 | **Playhead** | Red vertical line | Marks the current frame. Its head sits in the ruler. |
 | **Content end** | Thin vertical line | Marks the end of the last clip, in the ruler and across the tracks. |
+| **Scrollbars** | Under the tracks and at their right | The bar under the tracks scrolls the view left and right, and zooms it with the handles at the ends of its thumb. The bar at the right scrolls the tracks up and down. See [Use the scrollbars](#use-the-scrollbars). |
 
 A project created from the start screen begins with one video track (V1) and one audio track (A1).
 
 ### Ruler
 
-The ruler labels show time as `mm:ss:ff` (minutes, seconds, frames), with hours added in front when needed. For example, `00:06:15` is 6 seconds and 15 frames.
+The ruler labels show time as `mm:ss:ff` (minutes, seconds, frames), with hours added in front when needed. For example, `00:06:15` is 6 seconds and 15 frames. When you show times in milliseconds, the labels read `mm:ss.mmm` instead, such as `00:06.500`, and the labels between two seconds show only the milliseconds, such as `.500`. See [Show times in milliseconds](#show-times-in-milliseconds).
 
 The spacing of the ticks follows the zoom. Zoomed out, labels can be minutes apart; zoomed in, they reach every second. Zoom in further and frame numbers appear between the second labels; zoom in all the way and every frame gets its full timecode. Labels never overlap.
 
@@ -63,14 +67,14 @@ The spacing of the ticks follows the zoom. Zoomed out, labels can be minutes apa
 
 In this version these parts of the toolbar work:
 
-- the **Select**, **Razor**, **Slip**, **Slide** and **Rate stretch** tools (see [Choose a tool](advanced-trimming.md#choose-a-tool) and [Cut clips with the Razor tool](splitting-and-deleting.md#cut-clips-with-the-razor-tool));
+- the **Select**, **Razor**, **Hand**, **Slip**, **Slide** and **Rate stretch** tools (see [Choose a tool](advanced-trimming.md#choose-a-tool), [Cut clips with the Razor tool](splitting-and-deleting.md#cut-clips-with-the-razor-tool) and [Pan the view](#pan-the-view));
 - the **Snap** toggle (see [Turn snapping on or off](#turn-snapping-on-or-off)), the **Linked selection** toggle (see [Turn Linked selection off](links-and-groups.md#turn-linked-selection-off)) and the **Ripple mode** toggle (see [Turn Ripple mode on or off](trimming.md#turn-ripple-mode-on-or-off));
 - the edit buttons **Split at playhead**, **Delete**, **Ripple delete**, **Close gap** and **Close all gaps (compact)** (see [Splitting, deleting and closing gaps](splitting-and-deleting.md));
-- the zoom group with **Track height** (see [Change track height](tracks.md#change-track-height)), the timecode field and the duration.
+- the whole zoom group: **Zoom out**, the zoom slider, **Zoom in**, **Zoom to fit**, **Zoom to selection** (see [Zoom in and out](#zoom-in-and-out)), **Center playhead** (see [Scroll the timeline](#scroll-the-timeline)) and **Track height** (see [Change track height](tracks.md#change-track-height)), then the timecode field and the duration.
 
-The other buttons (the **Hand** tool, the **Show clip keyframes** and **Audio scrub** toggles, edit actions such as **Add marker**, add actions such as **Title**, and **Zoom to selection**) are shown but disabled; they are available in a later version.
+The other buttons (the **Show clip keyframes** and **Audio scrub** toggles, edit actions such as **Add marker**, and add actions such as **Title**) are shown but disabled; they are available in a later version.
 
-> **Note:** When the timeline panel is too narrow for the whole toolbar, the zoom group is the first to move into the **More tools** (…) menu, followed by the toggles with **Snap**, **Linked selection** and **Ripple mode**. Click **More tools** to reach them.
+> **Note:** When the timeline panel is too narrow for the whole toolbar, the zoom group (with **Zoom to selection** and **Center playhead**) is the first to move into the **More tools** (…) menu, followed by the toggles with **Snap**, **Linked selection** and **Ripple mode**. Click **More tools** to reach them.
 
 ## Add clips from the Media panel
 
@@ -115,47 +119,119 @@ Click **+ Video track** above the top video track, or **+ Audio track** below th
 > **Video placeholder: Zoom and scroll the timeline**
 > - File: `videos/timeline/zoom-and-scroll.mp4` (not recorded yet)
 > - Length: about 40 seconds
-> - Shows: a timeline with about twenty clips; hold <kbd>Ctrl</kbd> and roll the mouse wheel over a clip edge: the edge stays under the pointer while the view zooms; drag the toolbar zoom slider left and right; click **Zoom in** and **Zoom out**; roll the wheel to scroll the tracks up and down; hold <kbd>Shift</kbd> and roll the wheel to scroll sideways; press <kbd>\\</kbd> to fit the whole project.
+> - Shows: a timeline with about twenty clips; hold <kbd>Ctrl</kbd> and roll the mouse wheel over a clip edge: the edge stays under the pointer while the view zooms; drag the toolbar zoom slider left and right; click **Zoom in** and **Zoom out**, then press <kbd>=</kbd> three times quickly: the view glides in; roll the wheel to scroll the tracks up and down; hold <kbd>Shift</kbd> and roll the wheel to scroll sideways; click two clips (the second with <kbd>Shift</kbd>) and press <kbd>Shift</kbd>+<kbd>\\</kbd>: they fill the view with a little room on each side; press <kbd>\\</kbd> to fit the whole project.
 
 | To | Do this |
 |---|---|
 | Zoom in | Click **Zoom in**, press <kbd>=</kbd>, or drag the zoom slider to the right |
 | Zoom out | Click **Zoom out**, press <kbd>-</kbd>, or drag the zoom slider to the left |
 | Zoom around the mouse pointer | Hold <kbd>Ctrl</kbd> or <kbd>Alt</kbd> and roll the mouse wheel, or pinch on a trackpad |
+| Zoom with one edge of the view held in place | Drag an end of the thumb in the scrollbar under the tracks. See [Use the scrollbars](#use-the-scrollbars). |
+| Fill the view with the selection | Click **Zoom to selection** or press <kbd>Shift</kbd>+<kbd>\\</kbd>. See [Zoom to the selection](#zoom-to-the-selection). |
 | See the whole project | Click **Zoom to fit** or press <kbd>\\</kbd> |
 
 - The buttons and keys zoom by 25% per step. They zoom around the playhead when it is in view, otherwise around the center of the view.
-- With the mouse wheel, each notch is one step, and the frame under the pointer stays under the pointer.
+- A step from the buttons or keys glides to the new zoom in 120 milliseconds. Press again before it arrives and the steps add up, so three quick presses zoom three steps.
+- With the mouse wheel, each notch is one step, and the frame under the pointer stays under the pointer. Wheel zoom changes at once, without the glide.
 - The zoom slider runs from **Zoom to fit** at the far left to the closest zoom, where one frame is 400 pixels wide, at the far right. Moving it by the same distance always changes the zoom by the same factor, so it is as precise zoomed out as zoomed in.
 - You can't zoom out further than **Zoom to fit**.
 - **Zoom to fit** shows everything from the start to the end of the last clip, plus 2 seconds (at least 1 second in all). It also scrolls back to the start and returns the tracks to their resting position.
 
 The keyboard shortcuts work when the timeline has the keyboard: click in the timeline first.
 
-**Zoom to selection** is in the toolbar but disabled; it is available in a later version. **Track height**, next to it, changes the height of the tracks; see [Change track height](tracks.md#change-track-height).
+**Track height**, at the end of the zoom group, changes the height of the tracks; see [Change track height](tracks.md#change-track-height).
 
 Your zoom and scroll position are saved with the project and come back when you reopen it.
+
+### Zoom to the selection
+
+1. Select what you want to look at: clips, a gap, a cut, or tracks.
+2. Click **Zoom to selection** in the toolbar, or press <kbd>Shift</kbd>+<kbd>\\</kbd> while the Timeline panel is active.
+
+The selection fills the view, centered, with 10% of the view's width left free on each side.
+
+| Selected | The view shows |
+|---|---|
+| Clips | From the start of the earliest to the end of the latest selected clip |
+| Tracks | All clips on the selected tracks |
+| A gap | The gap |
+| A cut (edit point) | The clips on both sides of the cut |
+| Nothing | Nothing happens |
+
+- The zoom stops at its limit: a very short selection is shown at the closest zoom, one frame per 400 pixels.
+- The tracks don't scroll up or down.
+- Press <kbd>\\</kbd> to see the whole project again.
+
+## Use the scrollbars
+
+A scrollbar runs under the tracks and another one along their right side. The thumb in the bottom bar shows which part of the timeline you see, and its two ends are zoom handles, each marked by a dot.
+
+> **Video placeholder: Zoom and scroll with the scrollbars**
+> - File: `videos/timeline/scrollbars.mp4` (not recorded yet)
+> - Length: about 45 seconds
+> - Shows: a timeline with about twenty clips at a medium zoom; point at the scrollbar under the tracks and the dots at both ends of its thumb; drag the middle of the thumb to the right: the view scrolls; point at the dot at the right end: the cursor becomes a double arrow and the dot lights up; drag it to the left: the view zooms in while its left edge stays where it was; drag it back to the right: the view zooms out; drag the dot at the left end to the left: the view zooms out while its right edge stays where it was; click the empty part of the bar near its right end: the thumb jumps there; press <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>Up</kbd> until the tracks no longer fit, then drag the thumb of the bar at the right: the tracks scroll up and down.
+
+| To | Do this |
+|---|---|
+| Scroll left or right | Drag the middle of the thumb in the bottom scrollbar |
+| Zoom in or out, keeping the left edge of the view where it is | Drag the right end of the thumb: to the left to zoom in, to the right to zoom out |
+| Zoom in or out, keeping the right edge of the view where it is | Drag the left end of the thumb: to the right to zoom in, to the left to zoom out |
+| Jump to another part of the timeline | Click the empty part of the bottom scrollbar: the middle of the thumb jumps under the pointer. Keep the button down to go on dragging from there. |
+| Scroll the tracks up or down | Drag the thumb of the scrollbar at the right of the tracks, or click the empty part of that bar |
+
+- The bottom bar stands for the timeline from its start to the end of the last clip, plus a quarter of the view's width. The more you zoom in, the shorter the thumb.
+- Over a zoom handle, the cursor becomes a double arrow and the handle's dot lights up.
+- The thumb is never shorter than 36 pixels, so both handles stay easy to grab.
+- Zooming with a handle stays within the zoom limits: no further out than **Zoom to fit**, no further in than one frame per 400 pixels.
+- The scrollbar at the right has a thumb only when the tracks don't all fit in the panel. Otherwise there is nothing to scroll, and clicking it does nothing.
+- During playback, dragging the bottom scrollbar stops the view from following the playhead. See [Follow the playhead during playback](#follow-the-playhead-during-playback).
 
 ## Scroll the timeline
 
 | To | Do this |
 |---|---|
-| Scroll the tracks up or down | Roll the mouse wheel over the timeline |
-| Scroll left or right | Hold <kbd>Shift</kbd> and roll the mouse wheel, or swipe sideways on a trackpad |
-| Center the view on the playhead | Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>.</kbd> while the Timeline panel is active |
+| Scroll the tracks up or down | Roll the mouse wheel over the timeline, or drag the thumb of the scrollbar at the right of the tracks |
+| Scroll left or right | Hold <kbd>Shift</kbd> and roll the mouse wheel, swipe sideways on a trackpad, or drag the thumb of the scrollbar under the tracks |
+| Move the view in any direction | Drag with the **Hand** tool, with the middle mouse button, or while you hold <kbd>Space</kbd>. See [Pan the view](#pan-the-view). |
+| Center the view on the playhead | Click **Center playhead** in the toolbar, or press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>.</kbd> while the Timeline panel is active |
 
 - The view can't scroll before the start of the timeline. It can scroll past the end of the last clip by up to a quarter of its width.
 - Scrolling up and down moves the video and audio tracks together.
-- <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>.</kbd> keeps the zoom and scrolls the playhead to the middle of the view. Near the start of the timeline the view can't scroll that far, so the playhead stays left of the middle.
+- **Center playhead** and <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>.</kbd> keep the zoom and scroll the playhead to the middle of the view. Near the start of the timeline the view can't scroll that far, so the playhead stays left of the middle.
+- **Center playhead** sits in the zoom group of the toolbar. When the panel is too narrow, find it in the **More tools** (…) menu.
 
-Scrollbars, a toolbar button to center the playhead, and panning by dragging (the **Hand** tool) are available in a later version.
+## Pan the view
+
+Panning moves the view with the pointer, as if you were dragging the timeline itself: left and right in time and up and down through the tracks, in one drag. Nothing in your edit changes.
+
+> **Video placeholder: Pan the timeline**
+> - File: `videos/timeline/pan.mp4` (not recorded yet)
+> - Length: about 40 seconds
+> - Shows: a zoomed-in timeline with clips on several video and audio tracks; press <kbd>H</kbd>: the **Hand** button turns gold and the cursor over the tracks becomes an open hand; press on a clip and drag to the left and up: the hand closes, the view follows the pointer, and the clip stays where it was; press <kbd>V</kbd>; drag with the middle mouse button: the view pans the same way and nothing is selected; with playback stopped, point at an empty part of a track and hold <kbd>Space</kbd>: the cursor becomes a hand; drag, then release the mouse button and <kbd>Space</kbd>; point at the same empty part and tap <kbd>Space</kbd>: playback starts; press <kbd>Space</kbd> to pause.
+
+| Pan with | Do this | Where it works |
+|---|---|---|
+| The **Hand** tool | Press <kbd>H</kbd> or click **Hand** in the toolbar, then drag | Anywhere on the tracks, also on clips |
+| The middle mouse button | Press the mouse wheel and drag | Anywhere in the timeline, with any tool |
+| <kbd>Space</kbd> | While playback is stopped, point at an empty part of a track, hold <kbd>Space</kbd> and drag | Empty track space |
+
+- The content under the pointer stays under the pointer: drag to the left to see later parts of the timeline, drag up to see the tracks further down.
+- The view stops at the same limits as scrolling: the start of the timeline, a quarter of a view past the last clip, and the top and bottom tracks.
+- While you pan, the cursor is a closed hand. Panning is not a step in the history.
+- During playback, a pan to the left or right stops the view from following the playhead. See [Follow the playhead during playback](#follow-the-playhead-during-playback).
+
+**The Hand tool.** A drag on a clip pans instead of moving the clip, and a click selects nothing. The ruler, the track headers and the scrollbars work as usual, and a right-click on a clip still opens its menu. The tool stays active until you choose another one, and each project remembers it: press <kbd>V</kbd> to go back to **Select**.
+
+**The middle mouse button** never selects or moves anything, whatever the tool.
+
+**<kbd>Space</kbd>** pans only while playback is stopped, while the pointer rests on empty track space (no clip under it) and while no other key is held. The cursor turns into an open hand as soon as you press <kbd>Space</kbd> there. If you release <kbd>Space</kbd> without dragging, playback starts, on the release instead of the press. Anywhere else, and during playback, <kbd>Space</kbd> plays and pauses at once, as usual.
 
 ## Move the playhead
 
 > **Video placeholder: Move the playhead and follow playback**
 > - File: `videos/timeline/playhead-and-timecode.mp4` (not recorded yet)
 > - Length: about 45 seconds
-> - Shows: click in the ruler: the playhead jumps there and the preview updates; drag along the ruler to scrub; click the timeline, then press <kbd>Right</kbd> a few times, <kbd>Shift</kbd>+<kbd>Right</kbd>, <kbd>Ctrl</kbd>+<kbd>Right</kbd>, <kbd>Down</kbd> twice to jump between cuts, <kbd>Home</kbd> and <kbd>End</kbd>; click the timecode field, type `+30` and press <kbd>Enter</kbd>, then type `1:05:10` and press <kbd>Enter</kbd>; zoom in, press <kbd>Space</kbd> to play, and watch the view page forward each time the playhead reaches the right edge.
+> - Shows: click in the ruler: the playhead jumps there and the preview updates; drag along the ruler to scrub; click the timeline, then press <kbd>Right</kbd> a few times, <kbd>Shift</kbd>+<kbd>Right</kbd>, <kbd>Ctrl</kbd>+<kbd>Right</kbd>, <kbd>Down</kbd> twice to jump between cuts, <kbd>Home</kbd> and <kbd>End</kbd>; click the timecode field, type `+30` and press <kbd>Enter</kbd>, then type `1:05:10` and press <kbd>Enter</kbd>; type `1:x5` and press <kbd>Enter</kbd>: the field gets a red border and stays open; press <kbd>Esc</kbd>: the playhead's time comes back; zoom in, press <kbd>Space</kbd> to play, and watch the view page forward each time the playhead reaches the right edge.
 
 ### With the mouse
 
@@ -190,10 +266,10 @@ For playback keys such as <kbd>Space</kbd> and <kbd>J</kbd>/<kbd>K</kbd>/<kbd>L<
 
 ## Jump to a timecode
 
-The field at the right end of the toolbar shows the playhead position as `mm:ss:ff`. Next to it, **Duration** shows the end of the last clip in the same format.
+The field at the right end of the toolbar shows the playhead position as `mm:ss:ff`, or as `mm:ss.mmm` when you show times in milliseconds. Next to it, **Duration** shows the end of the last clip in the same format.
 
 1. Click the timecode field. Its text is selected.
-2. Type a position, then press <kbd>Enter</kbd>. Press <kbd>Esc</kbd> to cancel.
+2. Type a position, then press <kbd>Enter</kbd>. Press <kbd>Esc</kbd> to cancel: the field shows the playhead's time again.
 
 | You type | The playhead goes to |
 |---|---|
@@ -206,16 +282,63 @@ The field at the right end of the toolbar shows the playhead position as `mm:ss:
 | `+1.15` | 1 second and 15 frames later |
 
 - `:` and `.` both separate the fields, counted from the right: frames, then seconds, minutes and hours.
-- A position before the start goes to the start. Text the editor can't read is ignored, and the playhead stays where it was.
+- A number on its own is always a frame number.
+- A position before the start goes to the start.
 - The timeline pages to show the new position. During playback, playback continues from there.
 
-The field's tooltip is a reminder: **Playhead (type a timecode, +30 or -15 frames, +2. seconds)**.
+The field's tooltip is a reminder: **Playhead: type a timecode (1:05:10), +30 or -15 frames, +2. seconds; Enter jumps, Esc cancels**.
+
+### When the editor can't read what you typed
+
+If you press <kbd>Enter</kbd> on text that is not a time, for example `1:x5`, the playhead does not move. The field gets a red border and stays open with your text selected.
+
+- Correct the text: the red border goes away as soon as it reads as a time. Then press <kbd>Enter</kbd>.
+- Or press <kbd>Esc</kbd>, or click elsewhere: the field shows the playhead's time again.
+
+### Type times in milliseconds
+
+While you show times in milliseconds (see [Show times in milliseconds](#show-times-in-milliseconds)), the field reads what you type as minutes, seconds and fractions of a second:
+
+| You type | The playhead goes to |
+|---|---|
+| `1:05.5` | 1 minute, 5.5 seconds |
+| `12.25` | 12.25 seconds |
+| `+2.` | 2 seconds later |
+| `+1.5` | 1.5 seconds later |
+| `+30` | 30 frames later |
+| `120` | Frame 120 |
+
+- `:` separates hours, minutes and seconds, and `.` starts the fraction of a second. So `5:00` means 5 minutes here, not 5 seconds.
+- The playhead goes to the frame nearest the time you typed.
+
+## Show times in milliseconds
+
+Timecodes count frames by default. To read times in milliseconds instead, for example to match a time from a script or a music cue, switch the format with the small chip under the preview.
+
+> **Video placeholder: Switch timecodes to milliseconds**
+> - File: `videos/timeline/timecode-format.mp4` (not recorded yet)
+> - Length: about 30 seconds
+> - Shows: under the preview, point at the chip **ff** left of the playhead timecode until its tooltip appears; click it: the chip reads **ms**, the preview timecode, the duration, the timeline's timecode field and **Duration** switch to `mm:ss.mmm`, and the ruler labels read `00:01.000`, `00:02.000`; click the timeline's timecode field, type `1:05.5` and press <kbd>Enter</kbd>: the playhead jumps to 1 minute 5.5 seconds; click **ms**: everything shows frames again.
+
+1. Under the preview, click **ff**, just left of the playhead timecode. Its tooltip reads **Timecode in frames (mm:ss:ff): click for milliseconds**.
+2. The chip now reads **ms**, and times show as `mm:ss.mmm`: for example, `00:12.500` is 12 and a half seconds.
+3. To go back to frames, click **ms**. Its tooltip reads **Timecode in milliseconds (mm:ss.mmm): click for frames**.
+
+The format applies to:
+
+- the playhead timecode and the duration under the preview;
+- the timecode field and **Duration** in the timeline toolbar, including what you type into the field (see [Type times in milliseconds](#type-times-in-milliseconds));
+- the ruler labels.
+
+The tooltips you see while you drag clips, edges or cuts always show frames. Hours appear in front when needed, as in `01:02:03.500`. Times are rounded down to the millisecond: at 30 fps, for example, the second frame (`00:00:01`) shows as `00:00.033`.
+
+Each project remembers the format. Switching it is not a step in the history, and it has no keyboard shortcut. Clicking the chip does not take the keyboard focus, so your shortcuts keep working right after.
 
 ## Follow the playhead during playback
 
 While the editor plays, the timeline follows the playhead. When the playhead reaches the right edge of the tracks, the view jumps forward by one view width minus 10%, so the playhead reappears near the left edge. The view moves a page at a time rather than scrolling continuously, so clips stay easy to read. During backward playback it pages the other way.
 
-- Scrolling sideways or zooming with the mouse wheel during playback stops following, so you can look at another part of the timeline. Following starts again the next time you start playback.
+- Scrolling or panning sideways, dragging the thumb or a zoom handle of the bottom scrollbar, or zooming with the mouse wheel during playback stops following, so you can look at another part of the timeline. Following starts again the next time you start playback.
 - Scrolling the tracks up or down does not stop following.
 - Keyboard jumps (the step keys, <kbd>Home</kbd>, <kbd>End</kbd>, <kbd>Up</kbd>, <kbd>Down</kbd>) and typed timecodes always bring the playhead into view, whether the editor is playing or not.
 
@@ -529,4 +652,4 @@ Label colors help you see at a glance which clips belong together, for example a
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 17, 2026-10-15</sub>
+<sub>Last updated: Batch 18, 2026-10-15</sub>
