@@ -2,6 +2,11 @@
 
 Shorts Editor grows in steps called batches. This page lists what each batch added that you can see or use, newest first. Follow the links for the full instructions.
 
+> **Video placeholder: What's new in Batch 21**
+> - File: `videos/whats-new/batch-21.mp4` (not recorded yet)
+> - Length: about 60 seconds
+> - Shows: a 1080×1920 project with a 4K landscape clip on V1; point at a face in the preview, hold <kbd>Ctrl</kbd> and roll the wheel: the preview zooms in around the face; wait a moment: hair and edges get sharp and the status line reads **Auto: full**; roll the wheel alone to pan, then press <kbd>Ctrl</kbd>+<kbd>0</kbd>; open **Overlays** and choose **Reels**: the top bar, the action column and the caption area are shaded; choose **Thirds** under **Grid**; click outside the menu; click the playhead timecode under the preview, type `+30` and press <kbd>Enter</kbd>; press <kbd>F</kbd>: the preview fills the window, and its bars fade out after 2 seconds; press <kbd>Space</kbd> to play, then <kbd>Esc</kbd>: the panels are back.
+
 > **Video placeholder: What's new in Batch 20**
 > - File: `videos/whats-new/batch-20.mp4` (not recorded yet)
 > - Length: about 60 seconds
@@ -63,6 +68,7 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 > - Shows: open a project with three clips on the timeline; press <kbd>Space</kbd> to play and let the timeline page forward; press <kbd>L</kbd> three times to reach 8x, then <kbd>K</kbd>; hold <kbd>K</kbd> and tap <kbd>L</kbd> to step one frame; turn on **Loop playback**; point at the **Dropped** readout in the status strip.
 
 ## In this page
+- [Batch 21: Preview zoom, overlays and fullscreen](#batch-21-preview-zoom-overlays-and-fullscreen)
 - [Batch 20: Media to the timeline](#batch-20-media-to-the-timeline)
 - [Batch 19: Markers, in and out points](#batch-19-markers-in-and-out-points)
 - [Batch 18: Timeline navigation](#batch-18-timeline-navigation)
@@ -83,6 +89,22 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 - [Batch 03: Projects, autosave and recovery](#batch-03-projects-autosave-and-recovery)
 - [Batch 02: Undo, redo and frame-exact time](#batch-02-undo-redo-and-frame-exact-time)
 - [Batch 01: The workspace](#batch-01-the-workspace)
+
+## Batch 21: Preview zoom, overlays and fullscreen
+- Zoom the preview at the pointer with <kbd>Ctrl</kbd>+wheel or <kbd>Alt</kbd>+wheel (or a touchpad pinch), from 5% to 3200%. The point under the pointer stays put. In the Preview panel, <kbd>Ctrl</kbd>+<kbd>0</kbd> fits the frame, and <kbd>Ctrl</kbd>+<kbd>1</kbd> and <kbd>Ctrl</kbd>+<kbd>2</kbd> zoom to 100% and 200%.
+- Pan a zoomed preview with the wheel (<kbd>Shift</kbd> for sideways), the middle mouse button, the **Hand** tool, or by holding <kbd>Space</kbd> and dragging.
+- Above 100%, the preview now shows the real pixels of your media: a 4K clip is sharp at 200% and beyond instead of an enlarged 1080p picture.
+- The new **Preview quality** menu chooses how much detail the preview draws: **Auto** (full detail when the picture is still, the project's resolution while you play or scrub), **Full**, **Proxy**, **1/2** and **1/4** (lighter playback). The status line under the transport bar shows what the preview draws right now, for example **Auto: reduced**.
+- The new **Overlays** menu lays safe zones for **Reels**, **TikTok** and **Shorts** over the picture, with the top bar, the action column and the caption area shaded. It also has grids (**Thirds**, **Squares**, **Custom** with 2 to 16 cells per side), a **Center cross**, **Title / action safe** rectangles, pixel rulers above 100% and a pixel grid from 800%. Overlays never appear in **Export frame**.
+- Press <kbd>F</kbd> (or click **Fullscreen**) to let the preview fill the browser window. Its bars fade out after 2 seconds without mouse movement. <kbd>Esc</kbd> brings every panel back exactly as it was.
+- The preview header now holds **Zoom**, **Fit the frame in the panel** (moved from the transport bar), **Preview quality**, **Overlays**, **Snap**, **Smart guides** (the guides themselves arrive in a later version), **Fullscreen** and **Export frame**. The zoom and quality menus open and choose with single clicks and no longer keep the keyboard, so <kbd>Space</kbd> plays right after a choice.
+- Click the playhead timecode under the preview to type a time, as in the timeline toolbar.
+- <kbd>←</kbd> and <kbd>→</kbd> (also with <kbd>Shift</kbd>) now step frames after you click the preview too.
+- A dropdown list such as **Sort media by** gives the keyboard back to the shortcuts after you pick a value with the mouse.
+- Media you drop on the preview lands where you release it at any zoom and pan.
+- Each project remembers the preview zoom and pan, the quality and the overlays.
+
+See [Preview zoom, overlays and fullscreen](preview-zoom-overlays-fullscreen.md) and [Preview and playback](preview-and-playback.md).
 
 ## Batch 20: Media to the timeline
 - Drag cards from the Media panel onto any track. Ghosts show where the clips land, a video's sound goes on the audio track with the same number (V2 with A2, created when missing), the clips snap to edges, and <kbd>Ctrl</kbd> inserts instead of covering. Several selected cards land back to back.
@@ -270,7 +292,8 @@ See [The workspace](workspace.md) and [Getting started](getting-started.md).
 
 ## Related pages
 - [User guide home](README.md)
+- [Preview zoom, overlays and fullscreen](preview-zoom-overlays-fullscreen.md)
 - [Adding media to the timeline](adding-media-to-the-timeline.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 20, 2026-10-15</sub>
+<sub>Last updated: Batch 21, 2026-10-15</sub>

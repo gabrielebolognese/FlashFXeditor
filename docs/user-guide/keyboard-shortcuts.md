@@ -27,10 +27,12 @@ This page lists every keyboard shortcut that works in the current version of Sho
 >   19. Click the timeline. Press <kbd>M</kbd> at two places: green markers appear in the ruler. Press <kbd>Home</kbd>, then <kbd>Shift</kbd>+<kbd>Down</kbd> twice to jump from marker to marker.
 >   20. Press <kbd>I</kbd>, move the playhead one second on with <kbd>Ctrl</kbd>+<kbd>→</kbd> and press <kbd>O</kbd>: the range is shaded. Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Space</kbd>: the range plays once. Press <kbd>'</kbd>: the range is removed and the rest moves left. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>.
 >   21. Hover over **Play** to show the tooltip with its shortcut.
+>   22. Click the preview picture and press <kbd>Ctrl</kbd>+<kbd>2</kbd>: the preview zooms to 200%. Press <kbd>Ctrl</kbd>+<kbd>0</kbd>: the whole frame is back. Press <kbd>F</kbd>: the preview fills the window; press <kbd>Esc</kbd> to return.
 
 ## In this page
 - [How shortcuts work](#how-shortcuts-work)
 - [Playback and navigation](#playback-and-navigation)
+- [Preview](#preview)
 - [Timeline](#timeline)
 - [Trimming](#trimming)
 - [Cutting and deleting](#cutting-and-deleting)
@@ -51,11 +53,11 @@ This page lists every keyboard shortcut that works in the current version of Sho
 
 - **All panels** shortcuts work wherever you are, also when no panel is active.
 - **Panel** shortcuts work only while that panel is active.
-- When a panel uses the same key as an all-panels shortcut, the panel wins. For example, the arrow keys step frames everywhere except in the Preview panel, where they are reserved for a later feature.
+- When a panel uses the same key as an all-panels shortcut, the panel wins. While the panel's own action belongs to a later feature, the all-panels shortcut works there. For example, the Preview panel reserves the arrow keys for moving items on the canvas, a later feature; until then <kbd>←</kbd> and <kbd>→</kbd> step frames in the Preview panel as everywhere else.
 
-**Typing comes first.** Shortcuts are off while you type in a text field (a name, the timecode field, a number), while a dropdown such as **Zoom** has focus, and while a dialog is open. Press <kbd>Enter</kbd> or <kbd>Escape</kbd> to leave a text field, or click the preview picture or the timeline to leave a dropdown.
+**Typing comes first.** Shortcuts are off while you type in a text field (a name, a timecode field, a number), while a dropdown list such as **Sort media by** or **Resolution** has the keyboard focus, and while a dialog or a menu is open. Press <kbd>Enter</kbd> or <kbd>Escape</kbd> to leave a text field. A dropdown list gives the keyboard back as soon as you pick a value with the mouse; after you pick one with the keyboard, click the preview picture or the timeline.
 
-**Icon buttons keep your shortcuts.** Clicking an icon button, such as the transport buttons, **Mute**, **Loop playback** or **Fit**, or dragging the **Master volume** knob, does not take the keyboard focus, so <kbd>Space</kbd> still plays right after.
+**Icon buttons keep your shortcuts.** Clicking an icon button, such as the transport buttons, **Mute**, **Loop playback** or **Fit the frame in the panel**, choosing from the **Zoom**, **Preview quality** or **Overlays** menu of the preview, or dragging the **Master volume** knob, does not take the keyboard focus, so <kbd>Space</kbd> still plays right after.
 
 **Tooltips show shortcuts.** Hover over a button to see its name and shortcut. Tooltips write the arrow keys as Left, Right, Up and Down.
 
@@ -75,8 +77,8 @@ These shortcuts work in all panels, except where noted. See [Preview and playbac
 | Pause | <kbd>K</kbd> | <kbd>K</kbd> | All panels |
 | Step one frame forward or back | Hold <kbd>K</kbd>, tap <kbd>L</kbd> or <kbd>J</kbd> | Hold <kbd>K</kbd>, tap <kbd>L</kbd> or <kbd>J</kbd> | All panels |
 | Play around the playhead (2 s before to 2 s after, then back) | <kbd>Shift</kbd>+<kbd>K</kbd> | <kbd>⇧</kbd>+<kbd>K</kbd> | All panels |
-| Previous or next frame (hold to repeat) | <kbd>←</kbd> or <kbd>→</kbd> | <kbd>←</kbd> or <kbd>→</kbd> | All panels except Preview |
-| 5 frames back or forward (hold to repeat) | <kbd>Shift</kbd>+<kbd>←</kbd> or <kbd>Shift</kbd>+<kbd>→</kbd> | <kbd>⇧</kbd>+<kbd>←</kbd> or <kbd>⇧</kbd>+<kbd>→</kbd> | All panels except Preview |
+| Previous or next frame (hold to repeat) | <kbd>←</kbd> or <kbd>→</kbd> | <kbd>←</kbd> or <kbd>→</kbd> | All panels |
+| 5 frames back or forward (hold to repeat) | <kbd>Shift</kbd>+<kbd>←</kbd> or <kbd>Shift</kbd>+<kbd>→</kbd> | <kbd>⇧</kbd>+<kbd>←</kbd> or <kbd>⇧</kbd>+<kbd>→</kbd> | All panels |
 | 1 second back or forward (hold to repeat) | <kbd>Ctrl</kbd>+<kbd>←</kbd> or <kbd>Ctrl</kbd>+<kbd>→</kbd> | <kbd>⌘</kbd>+<kbd>←</kbd> or <kbd>⌘</kbd>+<kbd>→</kbd> | All panels |
 | Go to the start | <kbd>Home</kbd> | <kbd>Home</kbd> | All panels |
 | Go to the end of the content | <kbd>End</kbd> | <kbd>End</kbd> | All panels |
@@ -88,8 +90,35 @@ These shortcuts work in all panels, except where noted. See [Preview and playbac
 - **Arrow keys** (alone, with <kbd>Shift</kbd> or with <kbd>Ctrl</kbd>): one step when you press, then, after 0.3 seconds, about 30 steps per second until you release the key. Each step pauses playback first.
 - **<kbd>J</kbd> and <kbd>L</kbd>**: holding them down does not repeat or speed up. Only presses count: press again to double the speed.
 - **<kbd>K</kbd>**: holding it keeps playback paused and turns <kbd>J</kbd> and <kbd>L</kbd> into one-frame steps.
-- **<kbd>Space</kbd> over empty track space**: while playback is stopped and the pointer rests on an empty part of a timeline track, holding <kbd>Space</kbd> lets you drag to pan the timeline. A short press there still plays, but playback starts when you release the key. Over a clip, anywhere else, and during playback, <kbd>Space</kbd> plays and pauses at once. See [Pan the view](timeline.md#pan-the-view).
+- **<kbd>Space</kbd> over empty track space or the zoomed preview**: while playback is stopped and the pointer rests on an empty part of a timeline track, or on the preview picture while it is zoomed in (not at **Fit**), holding <kbd>Space</kbd> lets you drag to pan the timeline or the picture. A short press there still plays, but playback starts when you release the key. Over a clip, anywhere else, and during playback, <kbd>Space</kbd> plays and pauses at once. See [Pan the view](timeline.md#pan-the-view) and [Pan the preview](preview-zoom-overlays-fullscreen.md#pan-the-preview).
 - If the browser window loses focus while you hold a key, the editor treats the key as released.
+
+## Preview
+
+See [Preview zoom, overlays and fullscreen](preview-zoom-overlays-fullscreen.md) for details.
+
+| Action | Windows | macOS | Works in |
+| --- | --- | --- | --- |
+| Fit the whole frame in the panel (same as **Fit the frame in the panel**) | <kbd>Ctrl</kbd>+<kbd>0</kbd> | <kbd>⌘</kbd>+<kbd>0</kbd> | Preview panel |
+| Zoom the preview to 100% | <kbd>Ctrl</kbd>+<kbd>1</kbd> | <kbd>⌘</kbd>+<kbd>1</kbd> | Preview panel |
+| Zoom the preview to 200% | <kbd>Ctrl</kbd>+<kbd>2</kbd> | <kbd>⌘</kbd>+<kbd>2</kbd> | Preview panel |
+| Fill the browser window with the preview, or go back (same as **Fullscreen**) | <kbd>F</kbd> | <kbd>F</kbd> | All panels |
+| Leave the fullscreen preview | <kbd>Escape</kbd> | <kbd>Esc</kbd> | All panels |
+
+- <kbd>Ctrl</kbd>+<kbd>0</kbd>, <kbd>Ctrl</kbd>+<kbd>1</kbd> and <kbd>Ctrl</kbd>+<kbd>2</kbd> keep the point in the middle of the panel where it is; **Fit** centers the frame. Outside the Preview panel the browser gets these keys; see [Keys the browser keeps](#keys-the-browser-keeps).
+- <kbd>Escape</kbd> first cancels a drag in progress or closes an open menu; the next press leaves fullscreen.
+- In the Preview panel, <kbd>←</kbd> and <kbd>→</kbd> (with or without <kbd>Shift</kbd>) step frames as in the other panels. <kbd>↑</kbd> and <kbd>↓</kbd> do nothing there yet.
+
+### Preview mouse and wheel
+
+These work over the preview picture.
+
+| Action | Windows | macOS |
+| --- | --- | --- |
+| Zoom at the pointer (5% to 3200%) | <kbd>Ctrl</kbd>+wheel or <kbd>Alt</kbd>+wheel, or pinch on a touchpad | <kbd>⌘</kbd>+wheel or <kbd>⌥</kbd>+wheel, or pinch on a trackpad |
+| Pan up and down (zoomed in) | Wheel | Wheel |
+| Pan sideways (zoomed in) | <kbd>Shift</kbd>+wheel, or swipe sideways on a touchpad | <kbd>⇧</kbd>+wheel, or swipe sideways on a trackpad |
+| Pan in any direction (zoomed in) | Drag with the middle mouse button (any tool), drag with the **Hand** tool, or hold <kbd>Space</kbd> and drag (playback stopped) | Same |
 
 ## Timeline
 
@@ -233,9 +262,9 @@ The tool decides what a drag on a clip does. The active tool's button in the tim
 | **Slide** tool: move a clip between its neighbors | <kbd>U</kbd> | <kbd>U</kbd> | All panels |
 | **Rate stretch** tool: change a clip's speed by dragging its edge | <kbd>R</kbd> | <kbd>R</kbd> | All panels |
 | **Razor** tool: cut clips where you click | <kbd>C</kbd> | <kbd>C</kbd> | All panels |
-| **Hand** tool: drag to pan the timeline | <kbd>H</kbd> | <kbd>H</kbd> | All panels |
+| **Hand** tool: drag to pan the timeline, or the preview when it is zoomed in | <kbd>H</kbd> | <kbd>H</kbd> | All panels |
 
-The tool stays active until you choose another one, and each project remembers it. See [Pan the view](timeline.md#pan-the-view) for the **Hand** tool.
+The tool stays active until you choose another one, and each project remembers it. See [Pan the view](timeline.md#pan-the-view) and [Pan the preview](preview-zoom-overlays-fullscreen.md#pan-the-preview) for the **Hand** tool.
 
 ## Audio
 
@@ -315,7 +344,7 @@ See [Projects and saving](projects-and-saving.md).
 | Cancel the change and leave the field | <kbd>Escape</kbd> | <kbd>Esc</kbd> |
 | Close a dialog or a menu | <kbd>Escape</kbd> | <kbd>Esc</kbd> |
 
-In the timecode field of the timeline toolbar, <kbd>Enter</kbd> moves the playhead to the time you typed. Besides a full timecode, the field accepts `+30` or `-15` to move by frames and `+2.` to move by seconds. If the editor can't read the text, the field gets a red border and stays open: correct it and press <kbd>Enter</kbd>, or press <kbd>Escape</kbd> to put the playhead's time back. See [Jump to a timecode](timeline.md#jump-to-a-timecode).
+In the timecode field of the timeline toolbar, and in the playhead timecode under the preview, <kbd>Enter</kbd> moves the playhead to the time you typed. Besides a full timecode, the field accepts `+30` or `-15` to move by frames and `+2.` to move by seconds. If the editor can't read the text, the field gets a red border and stays open: correct it and press <kbd>Enter</kbd>, or press <kbd>Escape</kbd> to put the playhead's time back. See [Jump to a timecode](timeline.md#jump-to-a-timecode).
 
 ## Mouse and wheel
 
@@ -381,6 +410,8 @@ In a normal browser tab, the browser keeps some shortcuts for itself, and a web 
 | <kbd>Alt</kbd>+<kbd>←</kbd> (Windows), outside the Timeline panel | Goes back to the previous page in the tab, if there is one. In the Timeline panel the editor keeps it for nudging clips. |
 | <kbd>Ctrl</kbd>+<kbd>L</kbd> (<kbd>⌘</kbd>+<kbd>L</kbd>), outside the Timeline panel | Moves the keyboard to the browser's address bar. In the Timeline panel the editor keeps it for linking clips. |
 | <kbd>Ctrl</kbd>+<kbd>G</kbd> and <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>G</kbd> (<kbd>⌘</kbd>+<kbd>G</kbd>, <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>G</kbd>), outside the Timeline panel | Search the page. In the Timeline panel the editor keeps them for grouping clips. |
+| <kbd>Ctrl</kbd>+<kbd>0</kbd> (<kbd>⌘</kbd>+<kbd>0</kbd>), outside the Preview panel | Resets the browser's page zoom. In the Preview panel the editor keeps it for **Fit**. |
+| <kbd>Ctrl</kbd>+<kbd>1</kbd> and <kbd>Ctrl</kbd>+<kbd>2</kbd> (<kbd>⌘</kbd>+<kbd>1</kbd>, <kbd>⌘</kbd>+<kbd>2</kbd>), outside the Preview panel | Switch to your first or second browser tab. In the Preview panel the editor keeps them for zooming the preview to 100% and 200%. |
 
 Because of this, <kbd>Ctrl</kbd>+<kbd>N</kbd> opens a new browser window instead of a new project. To create a project, click **New project** on the start screen.
 
@@ -392,12 +423,13 @@ While you type in a text field, or while a dialog is open, the editor leaves <kb
 
 Some buttons already show a shortcut in their tooltip although the button is disabled, for example **Freeze frame** in the timeline toolbar and **Export** in the app bar. These shortcuts start working when their feature is available in a later version; until then the keys do nothing. In the current version this also applies to:
 
-- <kbd>T</kbd> and <kbd>Shift</kbd>+<kbd>T</kbd> (titles and subtitles), <kbd>F</kbd> (full-screen preview), <kbd>Shift</kbd>+<kbd>F</kbd> (freeze frame), <kbd>Shift</kbd>+<kbd>Z</kbd> (punch zoom), <kbd>Ctrl</kbd>+<kbd>D</kbd> (duplicate), <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd> (default transition), <kbd>Ctrl</kbd>+<kbd>E</kbd> (export) and <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> (command palette).
+- <kbd>T</kbd> and <kbd>Shift</kbd>+<kbd>T</kbd> (titles and subtitles), <kbd>Shift</kbd>+<kbd>F</kbd> (freeze frame), <kbd>Shift</kbd>+<kbd>Z</kbd> (punch zoom), <kbd>Ctrl</kbd>+<kbd>D</kbd> (duplicate), <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd> (default transition), <kbd>Ctrl</kbd>+<kbd>E</kbd> (export) and <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> (command palette).
 - <kbd>Ctrl</kbd>+<kbd>X</kbd>, <kbd>Ctrl</kbd>+<kbd>C</kbd> and <kbd>Ctrl</kbd>+<kbd>V</kbd> in the Timeline and Preview panels (cutting, copying and pasting clips; the **Cut**, **Copy** and **Paste** rows of the clip menu are dimmed).
-- The arrow keys and <kbd>Ctrl</kbd>+<kbd>0</kbd>, <kbd>Ctrl</kbd>+<kbd>1</kbd>, <kbd>Ctrl</kbd>+<kbd>2</kbd> in the Preview panel (moving items and zooming the preview). Use the **Zoom** dropdown and the **Fit** button instead.
+- <kbd>↑</kbd> and <kbd>↓</kbd>, with or without <kbd>Shift</kbd>, in the Preview panel (moving items on the canvas). <kbd>←</kbd> and <kbd>→</kbd>, with or without <kbd>Shift</kbd>, step frames there until then.
 
 ## Related pages
 - [Preview and playback](preview-and-playback.md)
+- [Preview zoom, overlays and fullscreen](preview-zoom-overlays-fullscreen.md)
 - [Timeline](timeline.md)
 - [Trimming clips](trimming.md)
 - [Splitting, deleting and closing gaps](splitting-and-deleting.md)
@@ -411,4 +443,4 @@ Some buttons already show a shortcut in their tooltip although the button is dis
 - [Projects and saving](projects-and-saving.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 20, 2026-10-15</sub>
+<sub>Last updated: Batch 21, 2026-10-15</sub>

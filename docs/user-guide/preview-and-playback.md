@@ -1,6 +1,6 @@
 # Preview and playback
 
-The Preview panel shows your video as it looks at the playhead: every video and image clip under the playhead, stacked track by track inside the project frame. Use it to check a frame while you scrub the timeline, to play your edit back with its sound, and to save a still of the current frame.
+The Preview panel shows your video as it looks at the playhead: every video and image clip under the playhead, stacked track by track inside the project frame. Use it to check a frame while you scrub the timeline, to play your edit back with its sound, and to save a still of the current frame. To zoom in on detail, show safe zones and grids, or fill the window with the preview, see [Preview zoom, overlays and fullscreen](preview-zoom-overlays-fullscreen.md).
 
 > **Video placeholder: Preview and playback overview**
 > - File: `videos/preview-and-playback/overview.mp4` (not recorded yet)
@@ -11,12 +11,13 @@ The Preview panel shows your video as it looks at the playhead: every video and 
 >   3. Press <kbd>Space</kbd> to play, then <kbd>Space</kbd> to pause. The **Play** button turns into **Pause** and back.
 >   4. Press <kbd>L</kbd> three times (1x, 2x, 4x), then <kbd>K</kbd> to stop.
 >   5. Hold <kbd>K</kbd> and tap <kbd>L</kbd> twice to step two frames.
->   6. Point at the timecode, the duration, the fps badge and **Dropped 0** in the status strip. Click the **ff** chip left of the timecode: the times switch to milliseconds; click **ms** to switch back.
+>   6. Point at the timecode, the duration, the fps badge, and **Auto: full** and **Dropped 0** in the status strip. Click the **ff** chip left of the timecode: the times switch to milliseconds; click **ms** to switch back.
+>   7. Click the playhead timecode under the preview, type `+30` and press <kbd>Enter</kbd>: the playhead moves 30 frames on.
 
 ## In this page
 - [Read the preview](#read-the-preview)
 - [See how clips fit the frame](#see-how-clips-fit-the-frame)
-- [Zoom the preview](#zoom-the-preview)
+- [Zoom in, add overlays and go fullscreen](#zoom-in-add-overlays-and-go-fullscreen)
 - [Scrub through the timeline](#scrub-through-the-timeline)
 - [Play and pause](#play-and-pause)
 - [Shuttle with J, K and L](#shuttle-with-j-k-and-l)
@@ -71,25 +72,22 @@ The bands show the project background color.
 
 > **Note:** The fit is set when you add the clip. If you change the project resolution later, existing clips keep their size and position. One-click Fill (no bands) is available in a later version.
 
-## Zoom the preview
+## Zoom in, add overlays and go fullscreen
 
-1. Open the **Zoom** dropdown in the Preview panel header.
-2. Choose a level:
+The Preview panel header holds the controls that change how you look at the frame, from left to right:
 
-   | Level | What you see |
-   | --- | --- |
-   | **Fit** (default) | The whole frame, as large as the panel allows, with a small margin. |
-   | **25%**, **50%** | The frame smaller than actual size. |
-   | **100%** | Actual size: one pixel of your video on one pixel of your screen. |
-   | **200%**, **400%** | The center of the frame, enlarged. |
+| Control | What it does |
+| --- | --- |
+| **Zoom** | Shows the zoom level and opens the menu of levels: **Fit**, **25%**, **50%**, **100%**, **200%**, **400%**. |
+| **Fit the frame in the panel** | Shows the whole frame again, centered (<kbd>Ctrl</kbd>+<kbd>0</kbd> in the Preview panel). |
+| **Preview quality** | Shows the quality mode and opens the menu of modes: **Auto**, **Full**, **Proxy**, **1/2**, **1/4**. |
+| **Overlays** (grid icon) | Safe zones for Reels, TikTok and Shorts, grids, the center cross, title / action safe, rulers and the pixel grid. |
+| **Snap** (magnet) | Turns snapping on or off, as in the timeline toolbar (<kbd>S</kbd>). |
+| **Smart guides** | Turns smart guides on or off. The guides are available in a later version. |
+| **Fullscreen** | Fills the browser window with the preview (<kbd>F</kbd>); <kbd>Esc</kbd> returns. |
+| **Export frame** | Saves the current frame as a PNG. See [Export the current frame](#export-the-current-frame). |
 
-3. To return to the whole frame, click **Fit** at the right of the transport bar.
-
-The frame stays centered at every zoom level. Panning and zooming with the mouse wheel are available in a later version. The project remembers the zoom level you chose.
-
-> **Note:** Video is prepared at the project's resolution, so at 200% and 400% video frames are enlarged, not sharper. More detail when zoomed in is available in a later version.
-
-> **Tip:** The **Zoom** dropdown keeps the keyboard focus after you choose a level, and shortcuts do not work while a dropdown has focus. Click the preview picture before you press <kbd>Space</kbd> or other shortcuts.
+You can also zoom at the pointer with <kbd>Ctrl</kbd>+wheel and pan with the wheel, the middle mouse button or <kbd>Space</kbd>. Above 100%, the preview shows the real detail of your media. See [Preview zoom, overlays and fullscreen](preview-zoom-overlays-fullscreen.md).
 
 ## Scrub through the timeline
 
@@ -134,8 +132,9 @@ How playback behaves:
 - The timeline follows the playhead by pages: when the playhead reaches the right edge, the view jumps ahead by most of its width. If you scroll or pan the timeline sideways, drag its bottom scrollbar, or zoom it with the mouse wheel during playback, it stops following until you start playback again. Scrolling up and down does not stop it.
 - <kbd>Home</kbd>, <kbd>End</kbd> and the timecode field of the timeline toolbar move the playhead without stopping playback: it plays on from the new position. The arrow keys pause first, then step.
 - <kbd>Q</kbd> and <kbd>W</kbd> trim the clip under the playhead while you play, and playback goes on. Dragging a clip edge, and rolling, slipping, sliding or stretching a clip, pauses playback. See [Trim to the playhead with Q and W](trimming.md#trim-to-the-playhead-with-q-and-w).
-- Shortcuts work in every panel, except while you type in a text field, while a dropdown has focus, or while a dialog is open.
-- While playback is stopped and the pointer rests on an empty part of a timeline track, <kbd>Space</kbd> starts playback when you release it rather than when you press it: holding it there lets you drag to pan the timeline. See [Pan the view](timeline.md#pan-the-view).
+- Shortcuts work in every panel, except while you type in a text field, while a dropdown list has the keyboard focus, or while a dialog is open.
+- While playback is stopped and the pointer rests on an empty part of a timeline track, or on the preview picture while it is zoomed in, <kbd>Space</kbd> starts playback when you release it rather than when you press it: holding it there lets you drag to pan the timeline or the picture. See [Pan the view](timeline.md#pan-the-view) and [Pan the preview](preview-zoom-overlays-fullscreen.md#pan-the-preview).
+- To watch your edit without the other panels, press <kbd>F</kbd>: the preview fills the browser window. Press <kbd>Esc</kbd> to return. See [Fill the window with the preview](preview-zoom-overlays-fullscreen.md#fill-the-window-with-the-preview).
 
 ## Shuttle with J, K and L
 
@@ -183,7 +182,9 @@ How playback behaves:
 - The timeline scrolls by a page when a step or jump moves the playhead out of view.
 - In the Timeline panel, <kbd>↑</kbd> and <kbd>↓</kbd> jump to the previous or next edit point (the start or end of a clip, a marker, the in or out point), and <kbd>Shift</kbd>+<kbd>↑</kbd> and <kbd>Shift</kbd>+<kbd>↓</kbd> to the previous or next marker. See [Keyboard shortcuts](keyboard-shortcuts.md).
 
-> **Note:** The arrow keys, with or without <kbd>Shift</kbd>, do not step when the Preview panel is the panel you clicked last: there they are reserved for moving items on the canvas, available in a later version. Click the timeline first. <kbd>Ctrl</kbd>+<kbd>←</kbd>, <kbd>Ctrl</kbd>+<kbd>→</kbd>, <kbd>Home</kbd>, <kbd>End</kbd> and the transport buttons work everywhere.
+The stepping keys work in every panel, also after you click the preview.
+
+> **Note:** In the Preview panel, <kbd>↑</kbd> and <kbd>↓</kbd> (with or without <kbd>Shift</kbd>) do nothing: there they are reserved for moving items on the canvas, available in a later version. Click the timeline to jump between edit points and markers.
 
 ## Play around the playhead
 
@@ -226,13 +227,21 @@ Under the preview sit the transport bar and, below it, a thin status strip. Hove
 | Readout | Meaning |
 | --- | --- |
 | Format chip **ff** or **ms** (far left) | The timecode format. Click it to switch between frames (**ff**) and milliseconds (**ms**). See [Show times in milliseconds](timeline.md#show-times-in-milliseconds). |
-| Playhead timecode (bright) | The playhead position as minutes:seconds:frames, for example `00:12:15` is 12 seconds and 15 frames; in milliseconds, as minutes:seconds.milliseconds, for example `00:12.500`. Hours appear in front when needed. |
+| Playhead timecode (bright) | The playhead position as minutes:seconds:frames, for example `00:12:15` is 12 seconds and 15 frames; in milliseconds, as minutes:seconds.milliseconds, for example `00:12.500`. Hours appear in front when needed. Click it to type a time; see [Jump to a time from the preview](#jump-to-a-time-from-the-preview). |
 | Duration (the dimmer timecode next to it) | The length of your content: the end of the last clip, in the same format. Its tooltip reads **Duration**. |
 | Frame rate badge, for example **30 fps** | The project frame rate. Its tooltip reads **Project frame rate**. |
 
-The preview timecode is read-only. To type a time, use the timecode field in the timeline toolbar. See [Jump to a timecode](timeline.md#jump-to-a-timecode).
-
 The format chip switches the timecodes everywhere: under the preview, in the timeline toolbar and in the ruler. Each project remembers it.
+
+### Jump to a time from the preview
+
+The playhead timecode under the preview is also a field you can type in. It works like the timecode field of the timeline toolbar.
+
+1. Click the playhead timecode. A border appears and its text is selected.
+2. Type a time, for example `1:05:10`, `+30` (30 frames later), `-15` (15 frames earlier) or `+2.` (2 seconds later).
+3. Press <kbd>Enter</kbd> to move the playhead there, or <kbd>Esc</kbd> to cancel.
+
+If the editor can't read what you typed, the field gets a red border and stays open: correct the text and press <kbd>Enter</kbd>, or press <kbd>Esc</kbd>. Its tooltip reads **Playhead: type a timecode (1:05:10), +30 or -15 frames, +2. seconds; Enter jumps, Esc cancels**. For every format the field accepts, also in milliseconds, see [Jump to a timecode](timeline.md#jump-to-a-timecode).
 
 ### Transport buttons
 
@@ -247,13 +256,14 @@ The format chip switches the timecodes everywhere: under the preview, in the tim
 | **Master volume** (knob) | | Sets how loud you hear the sound, from -60.0 dB to 0.0 dB. See [Audio](audio.md#set-the-listening-volume). |
 | **Loop playback** | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd> | Turns looping on or off. |
 | **Play in to out** | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Space</kbd> | Plays from the in point to the out point. See [Play from the in point to the out point](#play-from-the-in-point-to-the-out-point). |
-| **Fit** | | Fits the whole frame in the panel. |
+
+The zoom controls, including **Fit the frame in the panel**, are in the Preview panel header. See [Zoom in, add overlays and go fullscreen](#zoom-in-add-overlays-and-go-fullscreen).
 
 ### Status strip
 
 | Item | Meaning |
 | --- | --- |
-| **Auto: full** | The preview quality. In this version the preview always uses your full-quality media. Lighter proxy copies for smoother playback are available in a later version. |
+| Quality, for example **Auto: full** | The quality mode, then what the preview draws right now: **full** (all the detail it can show at this zoom), **reduced** (the project's resolution, for example while you play zoomed in), **half** or **quarter**. See [Read the quality in the status line](preview-zoom-overlays-fullscreen.md#read-the-quality-in-the-status-line). |
 | **Dropped** *N* | The frames dropped during the last playback. It resets to 0 each time you start playing. |
 
 A frame counts as dropped when the playback clock had to skip it, or when it was due before its exact picture was ready (the preview held the previous picture instead). Only playback at 1x counts, forward or backward, including play around. At 2x and faster, frames are skipped on purpose and not counted.
@@ -268,7 +278,7 @@ Save the frame at the playhead as a PNG image, for a thumbnail or a cover pictur
 4. In the save dialog, choose a folder and a name. The editor suggests "*project name* frame.png".
 5. Click **Save**. A message confirms "Saved *file name*" with the image size, for example "1080×1920 PNG".
 
-The image has the project resolution and contains only the frame: no border and none of the panel around it. The zoom level does not matter.
+The image has the project resolution and contains only the frame: no border, none of the panel around it, and none of the overlays (safe zones, grids, guides, rulers). The zoom level, the pan and the quality mode do not matter.
 
 > **Note:** If you export while the preview still shows a nearby frame (during or right after scrubbing), the PNG contains that frame. Wait for the picture to settle first.
 
@@ -284,11 +294,14 @@ The preview draws with your graphics card (GPU) and decodes video with the brows
 - **4K 60 fps HEVC footage** (common on recent phones): at the limit of what a laptop GPU decodes at full quality. Expect a few dropped frames (about 1% on the development machine), and more when the computer runs hot. Lighter proxy copies are available in a later version.
 - **Scrubbing:** the exact frame usually follows within a fraction of a second. Video is stored in groups of frames that start with a keyframe, so the editor decodes from the previous keyframe to show a frame. Deep inside a 4K HEVC phone clip this can take about half a second; the preview shows the closest frame meanwhile.
 - **Backward playback and fast shuttle speeds** need more decoding work than 1x forward.
+- **Zoomed in above 100%:** with the default **Auto** quality, playback and scrubbing show the project's resolution, and the full detail of your media follows 0.3 seconds after you stop. **Full** keeps full detail while playing, which is heavier. **1/2** and **1/4** draw playback at half or a quarter of the resolution, which is lighter at every zoom. See [Choose the preview quality](preview-zoom-overlays-fullscreen.md#choose-the-preview-quality).
+- **Fullscreen:** on the development laptop, a 60 fps 1080×1920 project played in the fullscreen preview with at most about 0.5% dropped frames. The first playback after the page loads can drop many more frames while the editor warms up, especially with a large preview; the following playbacks are smoother.
 - **Thumbnails:** the editor makes the timeline's thumbnails only while you don't play, scrub or drag, and lets the preview's frames go first, so they don't slow the preview down. See [Know when thumbnails and waveforms appear](clip-thumbnails-and-waveforms.md#know-when-thumbnails-and-waveforms-appear).
 
 If playback stutters, see [Troubleshooting](troubleshooting.md).
 
 ## Related pages
+- [Preview zoom, overlays and fullscreen](preview-zoom-overlays-fullscreen.md)
 - [Audio](audio.md)
 - [Timeline](timeline.md)
 - [Markers and in/out points](markers-and-in-out-points.md)
@@ -301,4 +314,4 @@ If playback stutters, see [Troubleshooting](troubleshooting.md).
 - [Workspace](workspace.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 20, 2026-10-15</sub>
+<sub>Last updated: Batch 21, 2026-10-15</sub>
