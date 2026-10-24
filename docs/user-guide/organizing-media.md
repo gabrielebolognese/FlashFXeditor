@@ -36,6 +36,7 @@ The **Media** tab has these parts, from top to bottom and left to right:
 | Failed imports | Appear only after a file could not be imported: one row per file, with a red **Failed** badge, the file name, the reason and an **X** to dismiss it. See [Check failed imports](importing-media.md#check-failed-imports). |
 | Bin strip | A column of chips on the left: **All**, **Video**, **Audio** and **Images**, then the bins you create. Each chip shows how many media items it holds. Click a chip to show its media. |
 | Cards or rows | The media the bin, the chips and the search let through, in grid or list view. See [Browse your media](importing-media.md#browse-your-media). |
+| Bottom strip | **Import more**, once the panel has media. See [Import files](importing-media.md#import-files). |
 
 The chip of the bin you are looking at is highlighted. The counts on the chips never change with the search or the filter chips: they always count every item in the bin.
 
