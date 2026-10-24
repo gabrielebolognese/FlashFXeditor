@@ -74,12 +74,13 @@ Top middle. It shows the settings of what is selected.
 - With tracks selected (click a track header), it shows the **Track** section: name, kind, height and the **Target**, **Lock**, **Mute**, **Solo** or **Hide** switches. See [Change track settings in Edit Properties](tracks.md#change-track-settings-in-edit-properties).
 - With a marker selected (click it in the ruler), it shows the **Marker** section: label, color, time and **Delete marker**. See [Edit a marker in Edit Properties](markers-and-in-out-points.md#edit-a-marker-in-edit-properties).
 
-To get back to the **Project** section, click an empty area of the timeline tracks so that nothing is selected. A selected marker stays selected when you do that: click a clip or a track header first, then the empty area.
+To get back to the **Project** section, click an empty area of the timeline tracks, or the preview beside the frame where no layer is, so that nothing is selected. A selected marker stays selected when you do that: click a clip or a track header first, then the empty area.
 
 ### Preview panel
 
 The right column. It shows the frame at the playhead.
 
+- Click a picture in the frame to select its clip; drag it to move it, drag its handles to resize it, and drag just outside a corner to rotate it. Right-click it for the layer menu. See [Arranging layers in the preview](arranging-layers-in-the-preview.md).
 - The header has, from left to right, the **Zoom** menu, **Fit the frame in the panel**, the **Preview quality** menu, the **Overlays** menu (safe zones, grids and guides), **Snap**, **Smart guides**, **Fullscreen** and **Export frame**. See [Preview zoom, overlays and fullscreen](preview-zoom-overlays-fullscreen.md).
 - Under the picture, a bar shows the timecode format chip (**ff** or **ms**), the playhead timecode (click it to type a time), the duration and the frame rate, the transport buttons (**Go to start**, **Previous frame**, **Play** / **Pause**, **Next frame**, **Go to end**), **Mute**, the **Master volume** knob, **Loop playback** and **Play in to out**. A status line underneath shows the preview quality and the dropped frames of the last playback.
 - Press <kbd>F</kbd> to let the preview fill the browser window, over the other panels; <kbd>Esc</kbd> brings the panels back at their sizes.
@@ -136,7 +137,7 @@ At the right end, the playhead timecode field shows where the playhead is (you c
 
 Under the tracks and along their right side run the timeline's scrollbars. The bottom one also zooms: drag an end of its thumb. See [Use the scrollbars](timeline.md#use-the-scrollbars).
 
-Right-click a clip or a gap on the timeline for a menu with the most common edits for it. See [Use the clip and gap menus](splitting-and-deleting.md#use-the-clip-and-gap-menus). Right-click a track header for the track menu. See [Use the track menu](tracks.md#use-the-track-menu). Right-click the ruler for the ruler menu, with markers and the in and out points. See [Use the ruler menu](markers-and-in-out-points.md#use-the-ruler-menu). In the Media panel, right-click a card or a row for the media menu. See [Use the media menu](importing-media.md#use-the-media-menu).
+Right-click a clip or a gap on the timeline for a menu with the most common edits for it. See [Use the clip and gap menus](splitting-and-deleting.md#use-the-clip-and-gap-menus). Right-click a track header for the track menu. See [Use the track menu](tracks.md#use-the-track-menu). Right-click the ruler for the ruler menu, with markers and the in and out points. See [Use the ruler menu](markers-and-in-out-points.md#use-the-ruler-menu). In the Media panel, right-click a card or a row for the media menu. See [Use the media menu](importing-media.md#use-the-media-menu). In the Preview panel, right-click a picture for the layer menu. See [Use the layer menu](arranging-layers-in-the-preview.md#use-the-layer-menu).
 
 Buttons that are not available yet are dimmed. They still show their tooltip, but clicking them does nothing.
 
@@ -161,7 +162,7 @@ For the full list of shortcuts, see [Keyboard shortcuts](keyboard-shortcuts.md).
 > **Video placeholder: Shortcuts follow the panel you clicked**
 > - File: `videos/workspace/shortcuts-follow-panel.mp4` (not recorded yet)
 > - Length: about 40 seconds
-> - Shows: click an empty area of the timeline and press <kbd>=</kbd> twice: the timeline zooms in; click the Preview picture and press <kbd>=</kbd>: nothing happens; press <kbd>Space</kbd>: playback starts and stops on a second press, whichever panel was clicked; click the timeline and press <kbd>Down</kbd>: the playhead jumps to the next cut; click the Preview and press <kbd>Down</kbd>: the playhead does not move; press <kbd>Right</kbd>: the playhead steps one frame; press <kbd>Ctrl</kbd>+<kbd>2</kbd>: the preview zooms to 200%, then <kbd>Ctrl</kbd>+<kbd>0</kbd>; click the project name in the app bar, type a letter, press <kbd>Escape</kbd>: no shortcut ran while typing.
+> - Shows: click an empty area of the timeline and press <kbd>=</kbd> twice: the timeline zooms in; click the Preview picture and press <kbd>=</kbd>: nothing happens; press <kbd>Space</kbd>: playback starts and stops on a second press, whichever panel was clicked; click the timeline and press <kbd>Down</kbd>: the playhead jumps to the next cut; click the area around the frame in the Preview and press <kbd>Down</kbd>: the playhead does not move; press <kbd>Right</kbd>: the playhead steps one frame; click the picture in the frame: it gets a gold box; press <kbd>Right</kbd>: the picture moves 1 pixel and the playhead stays; press <kbd>Ctrl</kbd>+<kbd>Z</kbd>; press <kbd>Ctrl</kbd>+<kbd>2</kbd>: the preview zooms to 200%, then <kbd>Ctrl</kbd>+<kbd>0</kbd>; click the project name in the app bar, type a letter, press <kbd>Escape</kbd>: no shortcut ran while typing.
 
 The editor sends your key presses to the panel you clicked last (or moved into with <kbd>Tab</kbd>). Some shortcuts work everywhere; others belong to one panel. The same key can do different things in different panels.
 
@@ -176,8 +177,8 @@ Examples:
 | Key | Timeline clicked last | Preview clicked last | Media panel clicked last |
 | --- | --- | --- | --- |
 | <kbd>=</kbd> / <kbd>-</kbd> | Zoom the timeline in / out | Nothing | Nothing |
-| <kbd>Left</kbd> / <kbd>Right</kbd> | One frame back / forward | One frame back / forward (reserved for moving layers on the canvas in a later version) | One frame back / forward |
-| <kbd>Up</kbd> / <kbd>Down</kbd> | Previous / next edit point | Nothing: reserved for moving layers on the canvas, available in a later version | Nothing |
+| <kbd>Left</kbd> / <kbd>Right</kbd> | One frame back / forward | Moves the selected layer 1 pixel; with no layer selected, one frame back / forward | One frame back / forward |
+| <kbd>Up</kbd> / <kbd>Down</kbd> | Previous / next edit point | Moves the selected layer 1 pixel; with no layer selected, nothing | Nothing |
 | <kbd>Ctrl</kbd>+<kbd>0</kbd> / <kbd>Ctrl</kbd>+<kbd>1</kbd> / <kbd>Ctrl</kbd>+<kbd>2</kbd> | The browser gets them: page zoom reset, first or second tab | Zooms the preview to **Fit** / 100% / 200% | The browser gets them |
 | <kbd>Ctrl</kbd>+<kbd>A</kbd> | Selects all clips | Selects all clips | Does not select clips |
 | <kbd>Alt</kbd>+<kbd>Left</kbd> / <kbd>Alt</kbd>+<kbd>Right</kbd> | Nudges the selected clips one frame | Nothing (the browser gets <kbd>Alt</kbd>+<kbd>Left</kbd>) | Nothing (the browser gets <kbd>Alt</kbd>+<kbd>Left</kbd>) |
@@ -193,7 +194,7 @@ Examples:
 
 The pointer can take a few keys away from the panel you clicked: while it is over the picture of a media card, <kbd>,</kbd> and <kbd>.</kbd> place that card, and over a video or audio card <kbd>I</kbd>, <kbd>O</kbd> and <kbd>Alt</kbd>+<kbd>X</kbd> mark a part of it instead of the timeline. See [Use only part of a media item](adding-media-to-the-timeline.md#use-only-part-of-a-media-item).
 
-> **Tip:** If a shortcut seems to do nothing, click the panel it belongs to and try again. After clicking the Preview, click the timeline before you jump between edit points with <kbd>Up</kbd> and <kbd>Down</kbd>.
+> **Tip:** If a shortcut seems to do nothing, click the panel it belongs to and try again. After clicking the Preview, click the timeline before you jump between edit points with <kbd>Up</kbd> and <kbd>Down</kbd>, or before you step frames while a layer is selected in the preview.
 
 ## Read timecodes
 
@@ -219,7 +220,8 @@ To jump to a time, type it into the timecode field of the timeline toolbar, or c
 - [Linking and grouping clips](links-and-groups.md)
 - [Preview and playback](preview-and-playback.md)
 - [Preview zoom, overlays and fullscreen](preview-zoom-overlays-fullscreen.md)
+- [Arranging layers in the preview](arranging-layers-in-the-preview.md)
 - [Audio](audio.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 21, 2026-10-15</sub>
+<sub>Last updated: Batch 22, 2026-10-16</sub>

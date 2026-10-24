@@ -1,11 +1,11 @@
 # Shorts Editor user guide
 
-Shorts Editor is a video editor for short vertical videos (9:16 by default) that runs in your desktop browser. Your projects are folders on your own disk, and your media never leaves your computer. This guide shows you how to set up a project, bring in your media, skim it and add the parts you want to the timeline, arrange, trim, cut and fine-tune it there with thumbnails and waveforms in every clip, mark moments and ranges, organize your tracks, check every pixel and the platform safe zones in the preview, and play it back with its sound.
+Shorts Editor is a video editor for short vertical videos (9:16 by default) that runs in your desktop browser. Your projects are folders on your own disk, and your media never leaves your computer. This guide shows you how to set up a project, bring in your media, skim it and add the parts you want to the timeline, arrange, trim, cut and fine-tune it there with thumbnails and waveforms in every clip, mark moments and ranges, organize your tracks, place, resize and rotate the pictures in the frame, check every pixel and the platform safe zones in the preview, and play it back with its sound.
 
 > **Video placeholder: Shorts Editor in two minutes**
 > - File: `videos/home/overview.mp4` (not recorded yet)
 > - Length: about 150 seconds
-> - Shows: open Shorts Editor in Chrome; click **New project**, pick an empty folder, keep **9:16 · 1080×1920** and **30 fps**, click **Create project**; drop three phone clips on the Media panel and wait for the thumbnails; point at the first card and skim it, press <kbd>I</kbd> and <kbd>O</kbd> around the best moment, and press <kbd>,</kbd>; double-click the other two clips to build a sequence on the timeline, with thumbnails in the video clips and waveforms in their sound; drag a logo image onto the corner of the preview; hold <kbd>Ctrl</kbd> and drag the end of the first clip to the left to tighten the cut; put the playhead in the middle of the second clip, press <kbd>Ctrl</kbd>+<kbd>K</kbd>, click the second half and press <kbd>Shift</kbd>+<kbd>Delete</kbd>; drag the last clip up to V2; press <kbd>\\</kbd> to fit the timeline; press <kbd>M</kbd> on the best moment to add a green marker; press <kbd>Home</kbd>, then <kbd>Space</kbd> to play it back with sound while the audio meter moves; drag in the ruler to scrub; open **Overlays** in the preview header and choose **Reels** to check the safe zone; press <kbd>F</kbd> to watch it in the fullscreen preview, then <kbd>Esc</kbd>; point at the green save dot.
+> - Shows: open Shorts Editor in Chrome; click **New project**, pick an empty folder, keep **9:16 · 1080×1920** and **30 fps**, click **Create project**; drop three phone clips on the Media panel and wait for the thumbnails; point at the first card and skim it, press <kbd>I</kbd> and <kbd>O</kbd> around the best moment, and press <kbd>,</kbd>; double-click the other two clips to build a sequence on the timeline, with thumbnails in the video clips and waveforms in their sound; drag a logo image onto the corner of the preview, drag its corner handle to make it smaller and drag just outside the corner to tilt it; hold <kbd>Ctrl</kbd> and drag the end of the first clip to the left to tighten the cut; put the playhead in the middle of the second clip, press <kbd>Ctrl</kbd>+<kbd>K</kbd>, click the second half and press <kbd>Shift</kbd>+<kbd>Delete</kbd>; drag the last clip up to V2; press <kbd>\\</kbd> to fit the timeline; press <kbd>M</kbd> on the best moment to add a green marker; press <kbd>Home</kbd>, then <kbd>Space</kbd> to play it back with sound while the audio meter moves; drag in the ruler to scrub; open **Overlays** in the preview header and choose **Reels** to check the safe zone; press <kbd>F</kbd> to watch it in the fullscreen preview, then <kbd>Esc</kbd>; point at the green save dot.
 
 ## In this page
 - [Start here](#start-here)
@@ -27,8 +27,9 @@ Shorts Editor is a video editor for short vertical videos (9:16 by default) that
 11. [Linking and grouping clips](links-and-groups.md): keep a video and its sound together, put them back in sync, and group clips.
 12. [Clip thumbnails, waveforms and badges](clip-thumbnails-and-waveforms.md): read what each clip shows.
 13. [Preview and playback](preview-and-playback.md): watch and check your video.
-14. [Preview zoom, overlays and fullscreen](preview-zoom-overlays-fullscreen.md): zoom in on real detail, check safe zones and grids, and watch in fullscreen.
-15. [Audio](audio.md): listen, set the volume and check your levels.
+14. [Arranging layers in the preview](arranging-layers-in-the-preview.md): select pictures in the frame, move, resize and rotate them, and change which one is on top.
+15. [Preview zoom, overlays and fullscreen](preview-zoom-overlays-fullscreen.md): zoom in on real detail, check safe zones and grids, and watch in fullscreen.
+16. [Audio](audio.md): listen, set the volume and check your levels.
 
 ## All pages
 
@@ -48,10 +49,11 @@ Shorts Editor is a video editor for short vertical videos (9:16 by default) that
 | [Linking and grouping clips](links-and-groups.md) | How linked clips work, **Linked selection**, unlinking and linking clips, sync numbers and **Move into sync**, grouping and ungrouping clips |
 | [Clip thumbnails, waveforms and badges](clip-thumbnails-and-waveforms.md) | Thumbnails in video clips and how zoom changes them, waveforms in audio clips, image clips, which track heights and clip widths show them, the sync, speed and link badges, when thumbnails and waveforms appear, label colors with thumbnails |
 | [Preview and playback](preview-and-playback.md) | The preview frame and its header controls, scrubbing, playing, shuttling, stepping, looping the timeline or the in/out range, playing from in to out, the transport bar with the timecode format chip, typing a time under the preview, the status strip, exporting a frame |
+| [Arranging layers in the preview](arranging-layers-in-the-preview.md) | Which pictures you can pick, selecting in the preview (click, <kbd>Shift</kbd>, <kbd>Ctrl</kbd>, rectangles) and with <kbd>Alt</kbd>+click under other pictures, moving, resizing with the eight handles and the 100% snap, rotating with 45° steps, the anchor point, nudging with the arrow keys, transforming several pictures at once, the readouts, the layer menu, **Bring forward** and **Send backward**, cancel and undo |
 | [Preview zoom, overlays and fullscreen](preview-zoom-overlays-fullscreen.md) | Zoom levels and <kbd>Ctrl</kbd>+<kbd>0</kbd>/<kbd>1</kbd>/<kbd>2</kbd>, wheel zoom at the pointer, panning, real detail when zoomed in, the quality modes and the status line, Reels, TikTok and Shorts safe zones, grids, center cross, title / action safe, rulers, the pixel grid, the fullscreen preview |
 | [Audio](audio.md) | Hearing your edit in sync, sound of clips at another speed, the listening volume and mute, muting and soloing audio tracks, the audio meter, how sound loads |
 | [Keyboard shortcuts](keyboard-shortcuts.md) | Every working shortcut, with the panel it needs and the macOS keys |
-| [Troubleshooting](troubleshooting.md) | Problems with the browser, graphics, the timeline, folders, saving, importing and playback, and known limitations |
+| [Troubleshooting](troubleshooting.md) | Problems with the browser, graphics, the timeline, folders, saving, importing, playback and layers in the preview, and known limitations |
 | [What's new](whats-new.md) | What each batch added, newest first |
 
 ## What you can do in this version
@@ -72,6 +74,7 @@ Shorts Editor is a video editor for short vertical videos (9:16 by default) that
 - Add, rename, reorder and delete tracks; choose the tracks your edits use; lock tracks to protect them; mute, solo or hide tracks; and make rows taller or shorter.
 - Link and unlink a video and its sound, turn **Linked selection** off to edit one side, move clips back into sync, and group clips that belong together.
 - Play your edit back frame-accurately, shuttle with J, K and L, loop the whole timeline or a range, and save any frame as a PNG.
+- Click a picture in the preview to select it, drag it into place, resize it with its handles (with a snap at 100%), rotate it (in 45° steps with <kbd>Shift</kbd>), nudge it pixel by pixel with the arrow keys, reach pictures underneath with <kbd>Alt</kbd>+click, transform several at once, and bring one forward or send it backward.
 - Zoom the preview up to 3200% at the pointer and pan around, see the real pixels of 4K footage, choose how much detail the preview draws while playing, lay Reels, TikTok or Shorts safe zones, grids and guides over the picture, and fill the window with the preview.
 - Hear your edit in sync with the picture, set the listening volume, mute or solo audio tracks, and check your levels on the audio meter.
 
@@ -84,4 +87,4 @@ More editing tools (copy and paste, freeze frames), audio editing (clip volume, 
 - Notes, tips and warnings appear as **Note**, **Tip** and **Important** boxes.
 - Each page starts with a **Video placeholder**: the planned walkthrough video for that page, with its file name, length and the steps it will show. The videos are not recorded yet; they will live in the `videos/` folder next to these pages.
 
-<sub>Last updated: Batch 21, 2026-10-15</sub>
+<sub>Last updated: Batch 22, 2026-10-16</sub>

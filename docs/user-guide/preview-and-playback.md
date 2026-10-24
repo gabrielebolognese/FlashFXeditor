@@ -1,6 +1,6 @@
 # Preview and playback
 
-The Preview panel shows your video as it looks at the playhead: every video and image clip under the playhead, stacked track by track inside the project frame. Use it to check a frame while you scrub the timeline, to play your edit back with its sound, and to save a still of the current frame. To zoom in on detail, show safe zones and grids, or fill the window with the preview, see [Preview zoom, overlays and fullscreen](preview-zoom-overlays-fullscreen.md).
+The Preview panel shows your video as it looks at the playhead: every video and image clip under the playhead, stacked track by track inside the project frame. Use it to check a frame while you scrub the timeline, to play your edit back with its sound, and to save a still of the current frame. To select, move, resize and rotate the pictures in the frame, see [Arranging layers in the preview](arranging-layers-in-the-preview.md). To zoom in on detail, show safe zones and grids, or fill the window with the preview, see [Preview zoom, overlays and fullscreen](preview-zoom-overlays-fullscreen.md).
 
 > **Video placeholder: Preview and playback overview**
 > - File: `videos/preview-and-playback/overview.mp4` (not recorded yet)
@@ -39,12 +39,13 @@ What you see in the Preview panel:
 - **The area around the frame.** It belongs to the panel, not to your video. It never appears in an exported frame.
 - **The background.** Wherever no clip covers the frame, you see the project background color: black by default. Change it in the **Background** field of the same **Project** section (a hex color such as `#000000`).
 - **Empty frames.** In a gap between clips, past the end of the last clip, or in a project with no clips, the frame shows only the background.
+- **Outlines and handles.** A selected clip under the playhead has a gold outline with eight handles in the preview, and the picture under the pointer gets a thin, darker gold outline. They are only on your screen, never in an exported frame. See [Arranging layers in the preview](arranging-layers-in-the-preview.md).
 
 ### Stacked tracks
 
 When several video tracks have a clip at the playhead, the preview draws the bottom video track (the one next to the divider, **V1** in a new project) first, and each higher video track over the tracks below it. Audio tracks never show in the preview.
 
-- To change which picture is on top, drag a track header up or down. See [Reorder tracks](tracks.md#reorder-tracks).
+- To change which picture is on top, drag a track header up or down. See [Reorder tracks](tracks.md#reorder-tracks). To move one clip above or below the others, right-click its picture in the preview and choose **Bring forward** or **Send backward**. See [Change which layer is on top](arranging-layers-in-the-preview.md#change-which-layer-is-on-top).
 - A video track that is muted (**M**) or hidden (the eye) is left out of the preview. See [Mute, solo and hide tracks](tracks.md#mute-solo-and-hide-tracks).
 
 > **Note:** Every clip you add by double-clicking goes to the targeted video track nearest the divider (**V1** in a new project). To stack clips, drag one up to **V2** or higher. See [Move clips to another track](timeline.md#move-clips-to-another-track).
@@ -70,7 +71,9 @@ When you add a video or an image to the timeline, the editor scales it to fit in
 
 The bands show the project background color.
 
-> **Note:** The fit is set when you add the clip. If you change the project resolution later, existing clips keep their size and position. One-click Fill (no bands) is available in a later version.
+To change the fit afterwards, click the picture in the preview and drag it, or drag its handles to resize it. To fill the frame without bands, drag a corner handle until the picture covers the frame. See [Arranging layers in the preview](arranging-layers-in-the-preview.md).
+
+> **Note:** The fit is set when you add the clip. If you change the project resolution later, existing clips keep their size and position. To fit a clip to the new frame, right-click its picture in the preview and choose **Reset transform**. One-click Fill (no bands) is available in a later version.
 
 ## Zoom in, add overlays and go fullscreen
 
@@ -131,7 +134,7 @@ How playback behaves:
 - At the end of the content, playback stops on the last frame, unless **Loop playback** is on (see [Loop playback](#loop-playback)).
 - The timeline follows the playhead by pages: when the playhead reaches the right edge, the view jumps ahead by most of its width. If you scroll or pan the timeline sideways, drag its bottom scrollbar, or zoom it with the mouse wheel during playback, it stops following until you start playback again. Scrolling up and down does not stop it.
 - <kbd>Home</kbd>, <kbd>End</kbd> and the timecode field of the timeline toolbar move the playhead without stopping playback: it plays on from the new position. The arrow keys pause first, then step.
-- <kbd>Q</kbd> and <kbd>W</kbd> trim the clip under the playhead while you play, and playback goes on. Dragging a clip edge, and rolling, slipping, sliding or stretching a clip, pauses playback. See [Trim to the playhead with Q and W](trimming.md#trim-to-the-playhead-with-q-and-w).
+- <kbd>Q</kbd> and <kbd>W</kbd> trim the clip under the playhead while you play, and playback goes on. Dragging a clip edge, rolling, slipping, sliding or stretching a clip, and dragging a layer in the preview pause playback. See [Trim to the playhead with Q and W](trimming.md#trim-to-the-playhead-with-q-and-w).
 - Shortcuts work in every panel, except while you type in a text field, while a dropdown list has the keyboard focus, or while a dialog is open.
 - While playback is stopped and the pointer rests on an empty part of a timeline track, or on the preview picture while it is zoomed in, <kbd>Space</kbd> starts playback when you release it rather than when you press it: holding it there lets you drag to pan the timeline or the picture. See [Pan the view](timeline.md#pan-the-view) and [Pan the preview](preview-zoom-overlays-fullscreen.md#pan-the-preview).
 - To watch your edit without the other panels, press <kbd>F</kbd>: the preview fills the browser window. Press <kbd>Esc</kbd> to return. See [Fill the window with the preview](preview-zoom-overlays-fullscreen.md#fill-the-window-with-the-preview).
@@ -182,9 +185,9 @@ How playback behaves:
 - The timeline scrolls by a page when a step or jump moves the playhead out of view.
 - In the Timeline panel, <kbd>↑</kbd> and <kbd>↓</kbd> jump to the previous or next edit point (the start or end of a clip, a marker, the in or out point), and <kbd>Shift</kbd>+<kbd>↑</kbd> and <kbd>Shift</kbd>+<kbd>↓</kbd> to the previous or next marker. See [Keyboard shortcuts](keyboard-shortcuts.md).
 
-The stepping keys work in every panel, also after you click the preview.
+The stepping keys work in every panel, also after you click the preview, with one exception: while the Preview panel is active and a layer under the playhead is selected there, <kbd>←</kbd> and <kbd>→</kbd> (with or without <kbd>Shift</kbd>) move that layer instead. Click the timeline, or click beside the frame where no layer is, to step frames again. See [Nudge layers with the arrow keys](arranging-layers-in-the-preview.md#nudge-layers-with-the-arrow-keys).
 
-> **Note:** In the Preview panel, <kbd>↑</kbd> and <kbd>↓</kbd> (with or without <kbd>Shift</kbd>) do nothing: there they are reserved for moving items on the canvas, available in a later version. Click the timeline to jump between edit points and markers.
+> **Note:** In the Preview panel, <kbd>↑</kbd> and <kbd>↓</kbd> (with or without <kbd>Shift</kbd>) move the selected layer, and do nothing when no layer is selected there. Click the timeline to jump between edit points and markers.
 
 ## Play around the playhead
 
@@ -278,7 +281,7 @@ Save the frame at the playhead as a PNG image, for a thumbnail or a cover pictur
 4. In the save dialog, choose a folder and a name. The editor suggests "*project name* frame.png".
 5. Click **Save**. A message confirms "Saved *file name*" with the image size, for example "1080×1920 PNG".
 
-The image has the project resolution and contains only the frame: no border, none of the panel around it, and none of the overlays (safe zones, grids, guides, rulers). The zoom level, the pan and the quality mode do not matter.
+The image has the project resolution and contains only the frame: no border, none of the panel around it, none of the overlays (safe zones, grids, guides, rulers), and no selection outlines or handles. The zoom level, the pan and the quality mode do not matter.
 
 > **Note:** If you export while the preview still shows a nearby frame (during or right after scrubbing), the PNG contains that frame. Wait for the picture to settle first.
 
@@ -302,6 +305,7 @@ If playback stutters, see [Troubleshooting](troubleshooting.md).
 
 ## Related pages
 - [Preview zoom, overlays and fullscreen](preview-zoom-overlays-fullscreen.md)
+- [Arranging layers in the preview](arranging-layers-in-the-preview.md)
 - [Audio](audio.md)
 - [Timeline](timeline.md)
 - [Markers and in/out points](markers-and-in-out-points.md)
@@ -314,4 +318,4 @@ If playback stutters, see [Troubleshooting](troubleshooting.md).
 - [Workspace](workspace.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 21, 2026-10-15</sub>
+<sub>Last updated: Batch 22, 2026-10-16</sub>

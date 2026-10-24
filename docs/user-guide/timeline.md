@@ -1,6 +1,6 @@
 # Timeline
 
-The timeline is where your short takes shape: clips sit on tracks in time order, and the playhead marks the frame the preview shows. In this version you add clips by double-clicking or dragging media (see [Adding media to the timeline](adding-media-to-the-timeline.md)), select clips and arrange them by dragging (also onto other tracks), snap them to the edges of other clips and to the playhead, duplicate them, zoom, scroll and pan with the scrollbars, the **Hand** tool or the mouse, move the playhead with the mouse, the keyboard or a typed timecode, read times in frames or milliseconds, and rename clips or give them a label color. To shorten or lengthen clips, see [Trimming clips](trimming.md); to split and delete clips and close gaps, see [Splitting, deleting and closing gaps](splitting-and-deleting.md); to roll cuts, slip, slide or change a clip's speed, see [Advanced trimming](advanced-trimming.md). To add, lock, target or rearrange tracks, see [Tracks](tracks.md); to link, sync and group clips, see [Linking and grouping clips](links-and-groups.md). To mark moments with markers, mark a range with in and out points, loop it or lift and extract it, see [Markers and in/out points](markers-and-in-out-points.md). To read the thumbnails, waveforms and badges inside clips, see [Clip thumbnails, waveforms and badges](clip-thumbnails-and-waveforms.md).
+The timeline is where your short takes shape: clips sit on tracks in time order, and the playhead marks the frame the preview shows. In this version you add clips by double-clicking or dragging media (see [Adding media to the timeline](adding-media-to-the-timeline.md)), select clips and arrange them by dragging (also onto other tracks), snap them to the edges of other clips and to the playhead, duplicate them, zoom, scroll and pan with the scrollbars, the **Hand** tool or the mouse, move the playhead with the mouse, the keyboard or a typed timecode, read times in frames or milliseconds, and rename clips or give them a label color. To shorten or lengthen clips, see [Trimming clips](trimming.md); to split and delete clips and close gaps, see [Splitting, deleting and closing gaps](splitting-and-deleting.md); to roll cuts, slip, slide or change a clip's speed, see [Advanced trimming](advanced-trimming.md). To add, lock, target or rearrange tracks, see [Tracks](tracks.md); to link, sync and group clips, see [Linking and grouping clips](links-and-groups.md). To mark moments with markers, mark a range with in and out points, loop it or lift and extract it, see [Markers and in/out points](markers-and-in-out-points.md). To read the thumbnails, waveforms and badges inside clips, see [Clip thumbnails, waveforms and badges](clip-thumbnails-and-waveforms.md). To place, resize and rotate the pictures of your clips in the frame, see [Arranging layers in the preview](arranging-layers-in-the-preview.md).
 
 > **Video placeholder: Timeline tour**
 > - File: `videos/timeline/timeline-overview.mp4` (not recorded yet)
@@ -232,7 +232,7 @@ You can't drag the playhead line inside the tracks: that keeps you from moving i
 
 ### With the keyboard
 
-Click the timeline first so it has the keyboard. (While the preview has the keyboard, the arrow keys are reserved for the preview.)
+Click the timeline first so it has the keyboard. (While the Preview panel is active, the arrow keys move the layer selected there; see [Nudge layers with the arrow keys](arranging-layers-in-the-preview.md#nudge-layers-with-the-arrow-keys).)
 
 | To | Press |
 |---|---|
@@ -359,6 +359,7 @@ A selected clip has a gold outline and a gold tint. The clip you clicked last ha
 - **Locked tracks.** Clips on a locked track can't be selected: a click on them works like a click on empty space, and <kbd>Ctrl</kbd>+<kbd>A</kbd> and rectangles skip them. See [Lock a track](tracks.md#lock-a-track).
 - **Clicking a selected clip.** When you press on a clip that is already selected, the editor waits to see what you do: if you drag, the whole selection moves; if you release without dragging, the click applies (a plain click then keeps only that clip and its linked clips).
 - <kbd>Ctrl</kbd>+<kbd>A</kbd> and <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd> work while the Timeline or the Preview panel is active. The other selection shortcuts are mouse actions in the timeline.
+- **The preview shares the selection.** Clicking a picture in the preview selects its clip on the timeline, and a selected clip under the playhead gets a gold box with handles in the preview. See [Select layers in the preview](arranging-layers-in-the-preview.md#select-layers-in-the-preview).
 - Selecting is not a step in the history, but undo brings back the selection you had before the change you undo. See [Undo and redo](projects-and-saving.md#undo-and-redo-changes).
 - While clips are selected, the **Edit Properties** panel shows a placeholder: clip properties are available in a later version. While tracks are selected, it shows their **Track** section; see [Change track settings in Edit Properties](tracks.md#change-track-settings-in-edit-properties).
 
@@ -641,8 +642,9 @@ Label colors help you see at a glance which clips belong together, for example a
 - [Workspace](workspace.md)
 - [Importing media](importing-media.md)
 - [Preview and playback](preview-and-playback.md)
+- [Arranging layers in the preview](arranging-layers-in-the-preview.md)
 - [Projects and saving](projects-and-saving.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 21, 2026-10-15</sub>
+<sub>Last updated: Batch 22, 2026-10-16</sub>

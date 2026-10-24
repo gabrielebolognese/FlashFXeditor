@@ -212,6 +212,7 @@ Drag a card onto the preview to put its picture exactly where you want it in the
 - **Position.** The picture is scaled to fit inside the frame, as any new clip, and its center sits where you released, at any zoom level and pan of the preview. You can release beside the frame too; the picture then sits partly outside it. Zoom the preview in to place it precisely; see [Preview zoom, overlays and fullscreen](preview-zoom-overlays-fullscreen.md).
 - **Several items** go back to back from the playhead, each centered on the same point.
 - The playhead does not move. The new clips are selected. The step is named **Add to canvas** or **Add clips to canvas**.
+- To change the place or size afterwards, drag the picture or its handles in the preview. See [Arranging layers in the preview](arranging-layers-in-the-preview.md).
 
 To put the selected items at the playhead in the middle of the frame, right-click a card and choose **Add to canvas**. It follows the same track rules.
 
@@ -261,8 +262,9 @@ Every way of adding media is one step in the history. Point at **Undo** in the a
 - [Linking and grouping clips](links-and-groups.md)
 - [Markers and in/out points](markers-and-in-out-points.md)
 - [Preview and playback](preview-and-playback.md)
+- [Arranging layers in the preview](arranging-layers-in-the-preview.md)
 - [Trimming clips](trimming.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 21, 2026-10-15</sub>
+<sub>Last updated: Batch 22, 2026-10-16</sub>
