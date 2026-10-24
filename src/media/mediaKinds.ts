@@ -50,11 +50,20 @@ export function classifyFile(name: string, type: string): FileKind | null {
   return BY_MIME.get(type.toLowerCase()) ?? null;
 }
 
-/** `showOpenFilePicker` types. "All files" stays available so unknown files reach the refusal toast. */
-export const PICKER_TYPES = [
-  { description: "Video", accept: { "video/*": [".mp4", ".mov", ".m4v", ".webm"] } },
-  { description: "Audio", accept: { "audio/*": [".mp3", ".m4a", ".aac", ".wav", ".ogg"] } },
-  { description: "Images", accept: { "image/*": [".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg"] } },
+const VIDEO_ACCEPT = { "video/*": [".mp4", ".mov", ".m4v", ".webm"] };
+const AUDIO_ACCEPT = { "audio/*": [".mp3", ".m4a", ".aac", ".wav", ".ogg"] };
+const IMAGE_ACCEPT = { "image/*": [".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg"] };
+
+/**
+ * `showOpenFilePicker` types. The picker opens on the first one, so it is every accepted type at once
+ * (with Video first, images and audio stayed hidden until the type list was switched). "All files"
+ * stays available so unknown files reach the refusal toast.
+ */
+export const PICKER_TYPES: { description: string; accept: Record<string, string[]> }[] = [
+  { description: "All media", accept: { ...VIDEO_ACCEPT, ...AUDIO_ACCEPT, ...IMAGE_ACCEPT } },
+  { description: "Video", accept: VIDEO_ACCEPT },
+  { description: "Audio", accept: AUDIO_ACCEPT },
+  { description: "Images", accept: IMAGE_ACCEPT },
 ];
 
 /** `+ Image`'s picker types (spec §6.1): images only. */

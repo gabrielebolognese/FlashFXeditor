@@ -34,7 +34,7 @@ Import brings your video, audio and image files into the project so you can use 
    - If the Media panel is empty, it reads **No media yet** ("Import video, audio and images, or drop files here."): click the **Import media** button in the middle of the panel.
    - Once the Media panel has media, click **Import more** at the bottom of the panel. It stays there even when the panel is too narrow to show the header's import icon.
    - If the timeline has no clips yet, click **Import media** in the middle of the tracks.
-3. In the file picker, select one or more files. The file-type list offers **Video**, **Audio** and **Images**, and you can switch to showing all files.
+3. In the file picker, select one or more files. The picker opens on **All media**, which shows every video, audio and image file the editor imports. The file-type list also offers **Video**, **Audio** and **Images** to narrow it down, and you can switch to showing all files.
 4. Click **Open**.
 
 The imported items appear in the Media panel and are selected. A single import is one step in the history: <kbd>Ctrl</kbd>+<kbd>Z</kbd> removes all the items it added.
