@@ -14,7 +14,7 @@ This file is the ordered build plan. One batch at a time, driven by the `/next-b
 8. **Keep it small**: no new dependency without a line in `PROGRESS.md` saying why. No abstractions for hypothetical future needs. Prefer a 30-line function over a configurable system.
 9. **Ask, then build**: when the batch is loaded, present the plan and wait for `Go`. If an acceptance item is impossible as written, say so in the plan and propose the closest achievable version; do not silently drop it.
 
-Phases: A Foundations (01-06), B Timeline and playback (07-20), C Canvas editing (21-24), D Properties and clip operations (25-27), E Text (28-33), F Graphics, keyframes, transitions, audio (34-38), G Workflow (39-44), H Quality and release (45-50). Batches 33, 48 and 49 are optional and can be skipped with a note.
+Phases: A Foundations (01-06), B Timeline and playback (07-20), C Canvas editing (21-24), D Properties and clip operations (25-27), E Text (28-33), F Graphics, keyframes, transitions, audio (34-38), G Workflow (39-44), H Quality and release (45-50), I Extensions after v1 (51-53: font library, preset bar, caption styles per cue). Batches 33, 48 and 49 are optional and can be skipped with a note.
 
 ---
 
@@ -1216,3 +1216,101 @@ Phases: A Foundations (01-06), B Timeline and playback (07-20), C Canvas editing
 - [ ] The full common path (import, cut, compact, title, subtitle, export) is recorded as a short screen capture and linked in PROGRESS.md.
 
 **State after:** v1 shipped.
+
+---
+
+## Batch 51: Font library: hundreds of categorized fonts, weight filters, your own fonts
+
+**Goal:** A bundled library of 200-300 open-license fonts sorted by look (Luxury, Bold, Futuristic, Handwritten, ...) with weight filters, a fast font browser with live previews on the canvas, and importing your own font files.
+
+**Spec refs:** §20.1, §10.1, §11 (Text section), §15, §16, §5.2 `TextClip`, §4.
+
+**Build:**
+- `scripts/fonts/families.json`: the curated list (at least 200 families, target about 300) with categories and tags per §20.1. `scripts/fonts/fetch-library.mjs` (Node 22 `fetch`, no new dependency): downloads the woff2 Latin and Latin Extended subsets (variable font where available, otherwise each existing static weight and italic) and the license texts, writes `public/fonts/library/` with `catalog.json`, and prints the total size. Run it and commit its output.
+- `src/text/fonts/catalog.ts`: lazy catalog loading, search over names, categories and tags, category and weight-band filtering, sorting. Unit tests.
+- Font loading: extend the Batch 28 font module with on-demand `FontFace` loading per family, weight and subset (at most 6 in flight, cancellable, cached for the session). Workers that rasterize text, and the export worker, register the same font descriptors before rendering.
+- Font browser replacing the Batch 28 picker popover: search, category chips, weight chips, sections (Recent, Favorites, My fonts, Library, On this computer), a virtualized list whose rows are rendered in their own font, favorite stars, keyboard navigation, hover and Up/Down live preview on the selected text clips (ephemeral), commit on click or Enter, Esc restores.
+- My fonts: `Add fonts` button and file drops on the font browser and the Presets tab; validation through `FontFace`; a `name` table parser for TTF/OTF/WOFF (unit tests with small fixture fonts) with the file-name fallback; storage in the global IndexedDB store and the library folder; rename, categories and tags, remove.
+- Projects: a font record with its source (`library`, `user`, `system`); every used font is copied into `<project>/fonts/`; missing-font fallback and badge for all sources; schema version bump with a migration if the record shape changes.
+- `Settings > About > Font licenses`.
+- New actions (open font browser, add fonts, toggle favorite) registered in the `CommandRegistry` with palette entries (Batch 40).
+
+**Do not build yet:** the preset bar and the starter pack (Batch 52), caption styles per cue (Batch 53). No online font search or runtime download: the library ships with the app.
+
+**Implementation notes:** Choosing the families is a curation job: pick faces that clearly read as their category at caption sizes, and prefer families with several weights in Luxury, Bold and Futuristic so the weight filter has results. Check every family's license in its metadata before adding it. If a download fails, drop the family and list it in `PROGRESS.md`. Batch 52's starter presets will use library fonts, so include strong caption faces. This batch comes after the quality passes of Batches 45-47, so it carries their rules itself: measure the §4 budgets it touches, follow `DESIGN_SYSTEM.md` exactly (log gaps), and extend the property-based tests of Batch 47 to font records.
+
+**Acceptance:**
+- [ ] The library has at least 200 families under redistributable licenses, every family in at least one category, and Luxury, Modern, Bold, Futuristic and Handwritten have at least 25 families each. The total size is recorded in `PROGRESS.md` and is at most 40 MB. The app builds and runs with the network off.
+- [ ] Category Luxury with weight Bold lists only families that have a bold weight, each row rendered in it. Clicking one sets the family and the weight on the selected text clip in one undo step.
+- [ ] Hovering rows or moving with Up/Down previews the font on the canvas without an undo step; Esc restores the original font.
+- [ ] Scrolling the whole list holds 60 fps, and only visible rows load their font files (load counter or network panel).
+- [ ] Dropping a `.ttf` and a `.woff2` file adds both to My fonts (family names from the `.ttf` and from the `.woff2` file name). They are available in a second project, and a project that uses one still renders with it after the font is removed from My fonts (copy in `fonts/`).
+- [ ] An exported MP4 of a project with library, imported and system fonts matches the preview.
+
+**State after:** hundreds of fonts, sorted by look, one click away.
+
+---
+
+## Batch 52: Preset bar above the preview: visual one-click text presets
+
+**Goal:** A strip of visual preset buttons at the top of the preview, each showing exactly how its text looks, that adds or restyles text in one click, plus a starter pack of about 40 presets.
+
+**Spec refs:** §20.2, §10.2, §10.3, §2.1, §7.8, §13, §17, §18, §20.1, §4.
+
+**Build:**
+- Preset model: `sampleText?` and set membership (Titles, Subtitles, Captions, user tags), with a schema migration if needed. Unit tests.
+- Thumbnail service: preset to `ImageBitmap` through the text engine at the bar's button size and device pixel ratio, cached per preset id and style hash, generated through the idle queue and again when the preset changes; the Presets tab cards switch to it.
+- `PresetBar` in the preview panel: the set selector, the scrollable row of visual buttons, `+` (save the selection as a preset into the current set) and `Manage`; the `Presets` toggle in the preview header; visibility and the chosen set persisted in session state; the canvas re-fits when it is toggled.
+- Click and hover behavior for each selection kind of §20.2 (text clips, caption track, nothing: create the clip and start inline editing). Cue selections: leave a `TODO(batch 53)` hook.
+- `Alt+1`..`Alt+9` in the keymap (global scope), shown in the tooltips and listed in the shortcut editor and the cheat sheet.
+- Right-click menu, drag to reorder, wheel and arrow scrolling.
+- Remove the favorite chips from the timeline toolbar and update its overflow groups.
+- Starter pack: about 40 presets in the Titles, Subtitles and Captions sets (§20.2), using library fonts. Starters from Batch 30 that match a new one keep their ids, so defaults and favorites survive.
+
+**Do not build yet:** styles per caption cue (Batch 53).
+
+**Implementation notes:** The bar must cost the preview nothing: thumbnails are `ImageBitmap`s drawn into the buttons, never rasterized during playback, and hover is handled through direct DOM or canvas state rather than React state per button. Buttons must be tall enough for the style to read; the design system's control heights are for controls, so log the chosen thumbnail size as a design gap. This batch comes after the quality passes of Batches 45-47, so it carries their rules itself: measure the §4 budgets it touches (playback with the bar visible), follow `DESIGN_SYSTEM.md` exactly, and register every action in the `CommandRegistry`.
+
+**Acceptance:**
+- [ ] With nothing selected, one click on a bar button creates a text clip at the playhead with exactly that look and starts inline editing; typing replaces the content.
+- [ ] With three text clips selected, one click restyles all three in one undo step; hovering another button previews it on the canvas, and moving away restores.
+- [ ] `Alt+3` applies the third visible button, and its tooltip shows `Alt+3`.
+- [ ] Every button shows the real look of its preset (font, weight, fill, stroke, shadow, box) and updates when the preset is updated.
+- [ ] Hiding the bar re-fits the preview without a jump and is remembered after a reload. Playback with the bar visible holds 60 fps with zero React commits.
+- [ ] The starter pack has about 40 presets in the Titles, Subtitles and Captions sets, and the timeline toolbar no longer shows favorite chips.
+
+**State after:** the look of any text is one visible click away.
+
+---
+
+## Batch 53: Caption styles per cue: fonts, colors, sizes and positions
+
+**Goal:** Any caption cue can have its own font, color, size and position on top of the track's caption style, set from the properties panel, the preset bar or by dragging it on the canvas, with v1.1 closed out.
+
+**Spec refs:** §20.3, §10.5, §5.2, §11, §7.2, §7.3, §7.4, §7.7, §10.6, §20.2, §4.
+
+**Build:**
+- Model: `CaptionClip.styleOverride` and `presetId`, schema version bump with a migration, validation, and the effective-style resolver. Unit tests, including old projects opening unchanged.
+- Commands: set and reset cue overrides, copy and paste style; split, merge, move, trim, undo and redo carry the override as §20.3 says. Unit tests for each.
+- Properties panel: the `All cues | Selected (n)` scope switch, overridden-field markers, per-field reset and `Reset to track style`.
+- Preset bar and Presets tab apply to selected cues (resolve the Batch 52 `TODO(batch 53)`).
+- Canvas: the active cue's caption can be selected and dragged per cue with snapping and smart guides; corner handles change its font size; `All cues` scope moves the track position; double-click edits the cue text inline.
+- Cue list: Shift and Ctrl multi-select, the style dot, and the context menu items; paste attributes offers `Caption style` for cues.
+- Timeline: a small badge on caption clips with an override.
+- Rendering: the raster cache keyed by the effective style; per-cue positions and highlight colors in the compositor and the export.
+- Property-based tests of Batch 47 extended with cue overrides (random edit sequences keep the document valid; undo returns to the start).
+- v1.1 close-out: the README and `docs/user-guide/` are current, `appVersion` is `1.1.0`, zero `TODO(batch` comments remain in `src/`, tag `v1.1.0`.
+
+**Do not build yet:** rich text inside one cue (several fonts or colors within a cue) stays out of scope (§10.1), apart from the word highlight.
+
+**Implementation notes:** Keep the track style as the single default and the override as a sparse set of fields, so changing the track style still changes every field a cue did not override. Dragging a caption is a gesture: ephemeral state while dragging, one command on release, no React commits. This batch comes after the quality passes of Batches 45-47, so it carries their rules itself: measure the §4 budgets it touches, follow `DESIGN_SYSTEM.md` exactly, and register every action in the `CommandRegistry`.
+
+**Acceptance:**
+- [ ] Select two cues, switch to `Selected (2)` and change the font, color and size: only those two cues change, in one undo step, and the others keep the track style.
+- [ ] Dragging one cue's caption to the top of the frame snaps to the safe zone and moves only that cue; in `All cues` scope the whole track moves.
+- [ ] Applying a Captions preset from the preset bar to selected cues styles them, and `Reset to track style` returns them to the track style.
+- [ ] Splitting a styled cue keeps the style on both halves, merging keeps the first cue's style, undo and redo restore exactly, and a project saved before this batch opens unchanged.
+- [ ] Word highlight uses each cue's own colors.
+- [ ] The exported MP4 shows every cue with its own style and position, identical to the preview.
+
+**State after:** every caption can look and sit exactly as needed; v1.1 shipped.
