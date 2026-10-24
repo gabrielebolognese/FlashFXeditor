@@ -623,6 +623,14 @@ export function MediaTab() {
           )}
         </div>
       </div>
+      {/* Import more: the header's Import icon is the first one cut off in a narrow panel; this one always shows once there is media. */}
+      {items.length > 0 && (
+        <div className={styles.footer}>
+          <Button size="compact" icon={Import} commandId="media.import">
+            Import more
+          </Button>
+        </div>
+      )}
       <div className={styles.dropOverlay} aria-hidden="true">
         <Import className={styles.dropIcon} />
         Drop files to import them

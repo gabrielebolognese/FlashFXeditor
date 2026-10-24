@@ -1,5 +1,5 @@
 /* The Media tab (spec §12; Batch 41 adds the tool row, the offline notice and the bin strip): a column
-   of the tool row, the notice, then the bin strip beside the cards or rows. */
+   of the tool row, the notice, then the bin strip beside the cards or rows, then the Import more strip. */
 .root {
   position: relative;
   display: flex;
@@ -738,6 +738,18 @@ button.column:hover,
 /* Nothing matches (the shared inline empty state, above the empty grid): the grid takes no height. */
 .grid[data-empty] {
   min-height: 0;
+}
+
+/* Import more: a strip under the media, the tool row's padding and hairline, one compact button the strip's width. */
+.footer {
+  display: flex;
+  flex: none;
+  padding: var(--space-2) var(--space-3);
+  border-top: 1px solid var(--hairline);
+}
+
+.footer > button {
+  flex: 1 1 auto;
 }
 
 /* Drop target (gap logged in Batch 03): dashed accent-dim outline on accent-wash. */
