@@ -858,3 +858,68 @@ Conflicts with browser shortcuts are prevented inside the app window only. The s
 - **LOD**: level of detail (proxy vs full decode; thumbnail density).
 - **Ghost**: the semi-transparent preview of clips during a drag.
 - **Compact**: close all gaps on the targeted tracks.
+
+---
+
+## 20. Extensions after v1 (Batches 51-53)
+
+These sections extend the spec after the v1 release. Where they change an earlier section, they say so and win over it from their batch onward; earlier batches keep following the earlier text. The rules of §0, §3 and §4 apply unchanged.
+
+### 20.1 Font library (Batch 51)
+
+Amends §10.1 (Fonts).
+
+- **Sources**, shown as sections of one font browser: `Recent` (last 8), `Favorites`, `My fonts` (imported by the user), `Library` (bundled with the app), `On this computer` (`queryLocalFonts()`, as §10.1). The 6-8 core bundled fonts of Batch 28 become part of `Library`.
+- **Library**: at least 200 families (target about 300) from Google Fonts, only under licenses that allow redistribution (SIL OFL 1.1, Apache 2.0, Ubuntu Font Licence). Files are woff2, Latin and Latin Extended subsets with `unicode-range`, the variable font where the family has one, otherwise each static weight that exists (100-900, italics when they exist). Layout: `public/fonts/library/<family-slug>/...`, `public/fonts/library/catalog.json`, `public/fonts/library/LICENSES/<family-slug>.txt`. The folder is checked into the repo so the app works offline and a fresh clone builds with no network. Total size cap 40 MB, measured and recorded in `PROGRESS.md`.
+- **Source of truth**: `scripts/fonts/families.json` (hand-curated: family, categories, tags) and `scripts/fonts/fetch-library.mjs` (Node 22, no new dependency), which downloads the files and license texts and writes the catalog. Rerunning the script reproduces the folder.
+- **Catalog entry**: `{ id, family, slug, categories: CategoryId[], tags: string[], weights: number[], italic: boolean, variable: { wght: [min, max] } | null, files: { subset, weight | range, style, path, bytes }[], license, designer }`.
+- **Categories** (a family can be in several; each category has at least 10 families, and Luxury, Modern, Bold, Futuristic and Handwritten at least 25):
+  - Luxury & Elegant (e.g. Playfair Display, Cormorant Garamond, Cinzel, Bodoni Moda, Italiana, Marcellus)
+  - Modern & Clean (Inter, Montserrat, Poppins, DM Sans, Manrope, Outfit)
+  - Bold & Impact, the thick faces (Anton, Bebas Neue, Archivo Black, Titan One, Alfa Slab One)
+  - Condensed (Oswald, Barlow Condensed, League Gothic, Fjalla One)
+  - Futuristic & Tech (Orbitron, Audiowide, Exo 2, Michroma, Rajdhani, Oxanium, Chakra Petch)
+  - Handwritten & Script (Caveat, Dancing Script, Pacifico, Great Vibes, Sacramento, Allura)
+  - Retro & Vintage (Righteous, Monoton, Shrikhand, Abril Fatface, Bungee, Lobster)
+  - Playful & Fun (Fredoka, Baloo 2, Chewy, Luckiest Guy, Bangers)
+  - Classic Serif (Merriweather, Lora, EB Garamond, Libre Baskerville)
+  - Rounded (Nunito, Varela Round, Quicksand)
+  - Horror & Grunge (Creepster, Nosifer, Eater)
+  - Typewriter & Mono (JetBrains Mono, Space Mono, Courier Prime, Special Elite)
+  - Pixel & Gaming (Press Start 2P, VT323, Silkscreen)
+  - Captions (thick, very legible faces that read well as burned-in captions)
+- **Weight filter**, combinable with a category: Thin (100-200), Light (300), Regular (400-500), Bold (600-700), Black (800-900). Category Luxury + weight Bold ("luxury bold") lists only families that have a weight in that band and renders each row in it; choosing a row sets the family and that weight.
+- **Font browser** (replaces the Batch 28 picker; a dropdown is allowed here because it chooses among many values, §0): search over family names, categories and tags; one scrollable row of category chips; a row of weight chips; the sections above. Each row shows the family name rendered in the font itself at the active weight, the number of weights and a favorite star. The list is virtualized. A row's font file loads only when the row becomes visible (at most 6 loads in flight, cancelled when the row scrolls away) and stays cached for the session. A row whose file is still loading shows the name in the UI font with a loading state and never shifts the layout.
+- **Live preview**: with text clips selected, hovering a row or moving through rows with Up/Down shows that font on the canvas without committing (ephemeral, like the preset hover in §10.3). Click or Enter commits one undo step; Esc restores.
+- **My fonts**: an `Add fonts` button, and dropping `.ttf`, `.otf`, `.woff` or `.woff2` files (several at once) on the font browser or the Presets tab. Each file is validated by loading it as a `FontFace`. Family and style names come from the font's `name` table (own small parser for TTF/OTF/WOFF); for WOFF2, or when parsing fails, the file name is used and can be renamed. User fonts are stored in the global store (IndexedDB, next to the global presets) and in the library folder when one is set (§10.3), so every project can use them. The user can rename them, assign categories and tags, and remove them.
+- **Projects**: every used font is recorded with its source (`library`, `user`, `system`) and copied into `<project>/fonts/` (library files too, they are small), so a project never depends on the machine or on the app version's library. Missing-font fallback and badge as §10.1.
+- **Workers**: every worker that rasterizes text, the export worker included, registers the same font files before rendering, so exports match the preview.
+- **Performance**: the catalog loads once, lazily, on the first browser open, and never delays app start. Opening the browser takes under 100 ms once the catalog is loaded; scrolling the whole list holds 60 fps; the canvas preview goes through the scheduler.
+- **Licenses**: `Settings > About > Font licenses` lists every library family with its designer and license.
+
+### 20.2 Preset bar (Batch 52)
+
+Amends §2 and §13 (preview panel), §6.1 item 4 and §17 (the favorite chips move here), §10.3.
+
+- **Place**: a one-row strip at the top of the preview panel, directly under the panel header, the full width of the panel. Shown by default; the `Presets` toggle in the preview header hides it (remembered in session state). The canvas viewport shrinks by the strip's height and re-fits without a jump when it is toggled.
+- **Visual buttons**: each button shows its preset rendered by the real text engine: the preset's `sampleText` (default: the preset name, cut to about 14 characters) with its exact font, weight, fill, stroke, shadow and background box, on a neutral swatch that keeps both white and black text visible. No text label; the tooltip shows the name and, for the first nine, the shortcut. Thumbnails are bitmaps cached per preset id, style hash and device pixel ratio, generated lazily in idle time and again when the preset changes. The Presets tab cards use the same thumbnails.
+- **Sets**: a set selector at the left (Favorites by default, Titles, Subtitles, Captions, Recent, All, and each user tag). At the right: `+` saves the selected text clip's style as a preset into the current set (as `Save as preset`), and `Manage` opens the Presets tab.
+- **Click** (§10.3 Apply): text clips selected: apply to them, one undo step. Caption cues selected: apply as a cue style (§20.3). Caption track selected: set the track style. Nothing selected: create a text clip at the playhead with that preset (placement rules of §10.2) and enter inline editing with the content selected. Hover with text clips or cues selected: non-committed preview on the canvas.
+- **Keys**: `Alt+1`..`Alt+9` apply the first nine buttons of the visible set (global scope, editable in the shortcut editor).
+- **More**: right-click opens the preset card menu (§10.3). Dragging a button within the bar reorders it (Favorites and user sets keep their order). Overflow scrolls horizontally with the wheel and with arrow buttons at the ends; the row never wraps.
+- **Favorite chips** leave the timeline toolbar, which keeps `+ Title` and `+ Subtitle`; the bar is the single home of one-click presets.
+- **Starter pack**: the bundled starter presets grow to about 40, each in a set: Titles (Luxury, Bold, Futuristic, Handwritten, Minimal, Retro, Neon glow through the shadow), Subtitles (box, lower third, outline) and Captions (bold white with a black stroke, yellow active word, boxed word highlight, big centered, all-caps impact). They use library fonts (§20.1). Their colors are content colors and are free.
+- **Performance**: the bar is React chrome that re-renders only when presets or the set change. Hover previews and scrolling cause no React commit outside the bar's own hover state, and thumbnails are never rasterized during playback.
+
+### 20.3 Caption styles per cue (Batch 53)
+
+Amends §5.2 (`CaptionClip`) and §10.5: the track's `CaptionStyle` becomes the default style of its cues, and each cue can override it.
+
+- **Model**: `CaptionClip.styleOverride?: CaptionStyleOverride`, where every `CaptionStyle` field is optional: font family, weight, italic, size, fill, stroke, shadow, background box, case, letter spacing, line height, alignment, position (preset or custom `{ x, y }` in project px), max width, max lines, word highlight mode and colors; plus `presetId?`. The effective style of a cue = the track style with the override's fields on top. Schema version bump with a migration (older projects have no overrides) and validation of every field.
+- **Editing scope**: with cues selected (cue list or timeline), the Caption style section of the properties panel shows a scope switch `All cues | Selected (n)`. `All cues` edits the track style (§10.5). `Selected` writes overrides to the selected cues, one undo step per gesture. Overridden fields show a marker dot and a reset button; `Reset to track style` clears the overrides of the selected cues.
+- **Presets**: applying a text preset (preset bar or Presets tab) with cues selected writes its style into their overrides (and the position when the preset's "apply position" is on).
+- **Canvas**: the active cue's caption can be selected on the canvas. Dragging it moves only that cue (custom position override) with canvas snapping and smart guides (§7.4); corner handles change its font size; in `All cues` scope the drag moves the track's position instead. Double-click edits the cue's text inline (§7.7).
+- **Cue list**: Shift and Ctrl click select several cues; cues with an override show a style dot; the cue context menu has `Copy style`, `Paste style` and `Reset to track style`; paste attributes (`Mod+Alt+V`, Batch 39) offers `Caption style` for cues.
+- **Operations**: splitting a cue gives both halves its override; merging keeps the first cue's override; moving, trimming, undo and redo carry it. SRT/VTT import and transcription (§10.6) create cues without overrides; SRT/VTT export writes text and timing only.
+- **Rendering**: the raster cache key uses the effective style; position and word highlight colors come from the effective style; export burns in exactly what the preview shows.
+- Rich text inside a cue (several fonts or colors within one cue) stays out of scope (§10.1), apart from the word highlight.
