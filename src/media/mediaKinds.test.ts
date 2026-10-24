@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ACCEPTED_EXTENSIONS, classifyFile, extensionOf } from "./mediaKinds.js";
+import { ACCEPTED_EXTENSIONS, classifyFile, extensionOf, IMAGE_PICKER_TYPES, PICKER_TYPES } from "./mediaKinds.js";
 
 describe("classifyFile", () => {
   it("accepts the §9.1 types by extension, in any case", () => {
@@ -38,5 +38,21 @@ describe("classifyFile", () => {
     expect(extensionOf("a.b.MP4")).toBe("mp4");
     expect(extensionOf(".hidden")).toBe("");
     expect(extensionOf("none")).toBe("");
+  });
+});
+
+describe("PICKER_TYPES", () => {
+  const extensions = (type: { accept: Record<string, string[]> }) => Object.values(type.accept).flat();
+
+  it("opens on every accepted type (images and MP3s show without switching the type list)", () => {
+    const first = PICKER_TYPES[0] ?? { description: "", accept: {} };
+    expect(first.description).toBe("All media");
+    expect(extensions(first).sort()).toEqual([...ACCEPTED_EXTENSIONS].sort());
+  });
+
+  it("keeps one narrowing type per kind that together cover every accepted type", () => {
+    expect(PICKER_TYPES.slice(1).map((type) => type.description)).toEqual(["Video", "Audio", "Images"]);
+    expect(PICKER_TYPES.slice(1).flatMap(extensions).sort()).toEqual([...ACCEPTED_EXTENSIONS].sort());
+    expect(IMAGE_PICKER_TYPES.map((type) => type.description)).toEqual(["Images"]);
   });
 });
