@@ -20,6 +20,7 @@ const ALLOWED_CLIPS: Record<TrackKind, ReadonlySet<ClipKind>> = {
 };
 
 const ROTATIONS: ReadonlySet<number> = new Set([0, 90, 180, 270]);
+const PROXY_STATUSES: ReadonlySet<string> = new Set(["none", "pending", "ready", "failed"]);
 const LABEL_SET: ReadonlySet<string> = new Set(LABEL_COLORS);
 const isPositiveInteger = (value: unknown) => Number.isInteger(value) && (value as number) > 0;
 
@@ -38,13 +39,18 @@ function mediaIssues(key: string, media: MediaItem): string[] {
   if (media.fps !== undefined && !(isPositiveInteger(media.fps.num) && isPositiveInteger(media.fps.den))) {
     issues.push(`${label}: fps ${media.fps.num}/${media.fps.den} must be a ratio of positive integers`);
   }
-  if ("relPath" in media.file) {
-    const path = media.file.relPath;
-    if (path.startsWith("/") || path.split("/").some((part) => part === "" || part === "." || part === "..")) {
-      issues.push(`${label}: relPath "${path}" must be a relative path inside the project folder`);
-    }
+  if ("relPath" in media.file && !isInsidePath(media.file.relPath)) issues.push(`${label}: relPath "${media.file.relPath}" must be a relative path inside the project folder`);
+  const { proxy } = media;
+  if (proxy) {
+    if (!PROXY_STATUSES.has(proxy.status)) issues.push(`${label}: proxy status "${proxy.status}" is not none, pending, ready or failed`);
+    if (!isPositiveInteger(proxy.width) || !isPositiveInteger(proxy.height)) issues.push(`${label}: proxy size ${proxy.width}x${proxy.height} must be positive integers`);
+    if (!isInsidePath(proxy.relPath)) issues.push(`${label}: proxy relPath "${proxy.relPath}" must be a relative path inside the project folder`);
   }
   return issues;
+}
+
+function isInsidePath(path: string): boolean {
+  return !path.startsWith("/") && !path.split("/").some((part) => part === "" || part === "." || part === "..");
 }
 
 function clipIssues(project: Project, clip: Clip): string[] {

@@ -1,8 +1,9 @@
 // Media flows of the open project (spec §9.1, §12): import from the picker (button, Mod+I), drops and
 // pasted images; posters, thumbnail sheets and peaks per project (the media cards' pictures and the
-// timeline's clip visuals, `clipVisuals`; the hover-scrub's sheets, `scrubSheets`); panel selection,
-// inline rename, removal and the context menu; source ranges of removed media are dropped.
-// Framework-free; the media panel reads `mediaPanel` through narrow selectors.
+// timeline's clip visuals, `clipVisuals`; the hover-scrub's sheets, `scrubSheets`); proxies (§9.5:
+// `ProxyJobs`, their progress in `proxyProgress`, Generate / Remove proxy and Regenerate thumbnails);
+// panel selection, inline rename, removal and the context menu; source ranges of removed media are
+// dropped. Framework-free; the media panel reads `mediaPanel` through narrow selectors.
 import { mediaUseCounts, removeMedia, renameMedia } from "../core/commands/mediaCommands.js";
 import type { MediaId, MediaItem } from "../core/document/types.js";
 import { isEditableTarget } from "../core/keyboard/KeyDispatcher.js";
@@ -11,6 +12,7 @@ import { AnalysisScheduler } from "../media/AnalysisScheduler.js";
 import { PeaksJobs } from "../media/PeaksJobs.js";
 import { browserDecodeAudio } from "../media/probe/audioProbe.js";
 import { createProbeFile, MediaImporter, type Refusal } from "../media/MediaImporter.js";
+import { ProxyJobs, type ProxyFiles, type ProxyProgress } from "../media/ProxyJobs.js";
 import { PICKER_TYPES } from "../media/mediaKinds.js";
 import { PosterStore } from "../media/PosterStore.js";
 import { svgPoster } from "../media/probe/svgProbe.js";
@@ -21,7 +23,8 @@ import { clickSelection, EMPTY_MEDIA_SELECTION, pruneSelection, type MediaSelect
 import { PosterPainter, wholeImage, type PosterSource } from "../panels/media/PosterPainter.js";
 import { errorMessage } from "../project/errorMessage.js";
 import type { FsDir } from "../project/fs.js";
-import { resolveFile, sampleIndexPath, writeFileAt } from "../project/mediaFiles.js";
+import { proxySettings } from "../project/appSettings.js";
+import { openWritableAt, PROXIES_DIR, proxyPartPath, proxyPath, removeFileAt, renameFileAt, resolveFile, sampleIndexPath, writeFileAt } from "../project/mediaFiles.js";
 import type { ClipVisualsSource } from "../timeline/view/clipVisuals.js";
 import { dismissToast, showToast, updateToast } from "../ui/toasts.js";
 import { decodedAudio, peaksFiles } from "./audioController.js";
@@ -48,6 +51,25 @@ export const cardImages = createStore<PosterSource | null>(null);
 /** Draws the card pictures in the FrameScheduler loop (the `mediaThumbs` view). */
 export const posterPainter = new PosterPainter(scheduler);
 
+/** The running proxy job's progress (cards and list rows draw it through direct DOM writes, P1). */
+export const proxyProgress = createStore<ProxyProgress>({ mediaId: null, fraction: 0 });
+
+/**
+ * Writes a media's proxy progress into `text` ("42%", or `idle` while it waits for its turn) and the
+ * width of `bar`, on change only, never through React (P1). Returns a stop function.
+ */
+export function bindProxyProgress(mediaId: MediaId, text: HTMLElement | null, bar: HTMLElement | null, idle = ""): () => void {
+  return proxyProgress.select(
+    (state) => (state.mediaId === mediaId ? Math.floor(state.fraction * 100) : -1),
+    (percent) => {
+      const label = percent < 0 ? idle : `${percent}%`;
+      if (text && text.textContent !== label) text.textContent = label;
+      if (bar) bar.style.width = `${Math.max(0, percent)}%`;
+    },
+    { fireImmediately: true },
+  );
+}
+
 /** Imports at least this large show a progress toast (gap: the spec says "large copies"). */
 export const LARGE_IMPORT_BYTES = 32 * 1024 * 1024;
 const PROGRESS_INTERVAL_MS = 150;
@@ -58,6 +80,7 @@ interface OpenMedia {
   thumbs: ThumbnailStore;
   peaks: PeaksJobs;
   analysis: AnalysisScheduler;
+  proxies: ProxyJobs;
   /** Aborted when the project closes: running imports stop and clean up. */
   controller: AbortController;
   isWritable: () => boolean;
@@ -107,20 +130,45 @@ export const scrubSheets: ScrubSheets = {
   },
 };
 
-/** The project's files for the thumbnail sheets (cache/thumbs/, the sources, cache/index/). */
+/** A media's source file, or its ready proxy (`lod` "proxy"); null when missing. */
+function mediaFile(dir: FsDir, mediaId: MediaId, lod: "full" | "proxy"): Promise<File | null> {
+  // TODO(batch 41): media referenced by a file handle.
+  const item = documentStore.getState().media[mediaId];
+  if (!item) return Promise.resolve(null);
+  if (lod === "proxy") return item.proxy?.status === "ready" ? resolveFile(dir, item.proxy.relPath) : Promise.resolve(null);
+  return "relPath" in item.file ? resolveFile(dir, item.file.relPath) : Promise.resolve(null);
+}
+
+/** The project's files for the thumbnail sheets (cache/thumbs/, the sources or proxies, cache/index/). */
 function thumbFiles(dir: FsDir, isWritable: () => boolean): ThumbFiles {
   return {
-    source: async (mediaId, lod) => {
-      // TODO(batch 24): proxy files; TODO(batch 41): media referenced by a file handle.
-      const item = documentStore.getState().media[mediaId];
-      if (lod !== "full" || !item || !("relPath" in item.file)) return null;
-      return resolveFile(dir, item.file.relPath);
-    },
-    sampleIndex: async (mediaId, lod) => (lod === "full" ? resolveFile(dir, sampleIndexPath(mediaId)) : null),
+    source: (mediaId, lod) => mediaFile(dir, mediaId, lod),
+    sampleIndex: (mediaId, lod) => resolveFile(dir, sampleIndexPath(mediaId, lod)),
     read: (relPath) => resolveFile(dir, relPath),
     write: async (relPath, data) => {
       if (isWritable()) await writeFileAt(dir, relPath, data);
     },
+  };
+}
+
+/** The project's files for the proxy jobs (the sources, cache/index/, cache/proxies/). */
+function proxyFiles(dir: FsDir): ProxyFiles {
+  return {
+    source: (mediaId) => mediaFile(dir, mediaId, "full"),
+    sampleIndex: (mediaId) => resolveFile(dir, sampleIndexPath(mediaId)),
+    openPart: (mediaId) => openWritableAt(dir, proxyPartPath(mediaId)),
+    commit: (mediaId) => renameFileAt(dir, proxyPartPath(mediaId), proxyPath(mediaId)),
+    removePart: (mediaId) => removeFileAt(dir, proxyPartPath(mediaId)),
+    remove: async (mediaId) => {
+      await removeFileAt(dir, proxyPartPath(mediaId));
+      await removeFileAt(dir, proxyPath(mediaId));
+    },
+    list: async () => {
+      const cache = await dir.dir("cache");
+      const proxies = await cache?.dir(PROXIES_DIR.slice(PROXIES_DIR.indexOf("/") + 1));
+      return proxies ? (await proxies.list()).filter((entry) => entry.kind === "file").map((entry) => entry.name) : [];
+    },
+    removeName: (name) => removeFileAt(dir, `${PROXIES_DIR}/${name}`),
   };
 }
 
@@ -133,6 +181,15 @@ export function attachMedia(dir: FsDir, isWritable: () => boolean, preview?: Thu
   const peaks = new PeaksJobs({ idle: idleQueue, document: documentStore, audio: decodedAudio, workers: workerPool, ...peaksFiles(dir, isWritable), onLoaded: notifyArrival });
   const thumbs = new ThumbnailStore({ idle: idleQueue, document: documentStore, workers: workerPool, files: thumbFiles(dir, isWritable), onArrival: notifyArrival, ...(preview && { preview }) });
   const analysis = new AnalysisScheduler({ peaks, thumbs });
+  const proxies = new ProxyJobs({
+    document: documentStore,
+    workers: workerPool,
+    files: proxyFiles(dir),
+    settings: () => proxySettings(appSettings.getState()),
+    watchSettings: (listener) => appSettings.subscribe(listener),
+    idle: idleQueue,
+    isWritable,
+  });
   // Audio files the probe decodes (decodeAudioData) are not decoded again for playback and peaks.
   const decodedByFile = new WeakMap<File, AudioBuffer>();
   const probe = createProbeFile(workerPool, browserDecodeAudio(), (file, decoded) => {
@@ -154,11 +211,14 @@ export function attachMedia(dir: FsDir, isWritable: () => boolean, preview?: Thu
     thumbs,
     peaks,
     analysis,
+    proxies,
     controller: new AbortController(),
     isWritable,
     stops: [
       posters.attach(documentStore),
       analysis.attach(documentStore),
+      proxies.progress.subscribe((progress) => proxyProgress.set(progress)),
+      proxies.attach(),
       documentStore.subscribe(
         (state) => {
           const exists = (id: MediaId) => Object.hasOwn(state.media, id);
@@ -181,7 +241,7 @@ export function attachMedia(dir: FsDir, isWritable: () => boolean, preview?: Thu
     observe: (id, listener) =>
       documentStore.getState().media[id]?.kind === "video" ? thumbs.observeCard(id, listener) : posters.observe(id, (bitmap) => listener(wholeImage(bitmap))),
   });
-  if (import.meta.env.DEV) ((globalThis as { __editor?: Record<string, unknown> }).__editor ??= {}).thumbs = thumbs;
+  if (import.meta.env.DEV) Object.assign(((globalThis as { __editor?: Record<string, unknown> }).__editor ??= {}), { thumbs, proxies });
   notifyArrival();
 }
 
@@ -195,6 +255,8 @@ export function detachMedia(): void {
   cardImages.set(null);
   current.posters.dispose();
   current.analysis.dispose();
+  current.proxies.dispose();
+  proxyProgress.set({ mediaId: null, fraction: 0 });
   mediaPanel.set({ selection: EMPTY_MEDIA_SELECTION, renaming: null, removing: null });
   mediaMenu.set(null);
 }
@@ -381,6 +443,28 @@ export function clipsUsing(ids: readonly MediaId[]): number {
   return ids.reduce((sum, id) => sum + (counts.get(id) ?? 0), 0);
 }
 
+/** Playback fell behind on a media (Auto quality): a proxy is queued when none was decided yet. */
+export function requestProxyIfUndecided(mediaId: MediaId): void {
+  open?.proxies.generateIfUndecided(mediaId);
+}
+
+const readOnlyToast = () => showToast({ tone: "error", message: "This project is read-only", detail: "Allow editing to change proxies." });
+
+/** Generate proxy (media menu, spec §12): the selected videos without a ready or running proxy. */
+export function generateProxies(): void {
+  if (open && !open.proxies.generate(selectedMedia())) readOnlyToast();
+}
+
+/** Remove proxy: cancels running jobs (their .part goes) and deletes the proxies of the selected media. */
+export function removeProxies(): void {
+  if (open && !open.proxies.remove(selectedMedia())) readOnlyToast();
+}
+
+/** Regenerate thumbnails of the selected videos (from the proxy when it is ready). */
+export function regenerateThumbnails(): void {
+  for (const id of selectedMedia()) open?.thumbs.regenerate(id);
+}
+
 /** Pasted images (Mod+V outside text inputs, when the media panel or nothing owns the keyboard). */
 function onPaste(event: ClipboardEvent): void {
   if (!open || isEditableTarget(event.target)) return;
@@ -398,6 +482,9 @@ export function installMediaController(doc: Document = document): () => void {
   const stops = [
     () => doc.removeEventListener("paste", onPaste),
     actions.register("media.import", () => void importFromPicker()),
+    actions.register("media.generateProxy", generateProxies),
+    actions.register("media.removeProxy", removeProxies),
+    actions.register("media.regenerateThumbnails", regenerateThumbnails),
     // Delete and F2 in the media panel (`edit.delete`, `edit.rename`) are routed here by cutController.
     // The remove dialog owned the keyboard: give it back to the media panel.
     mediaPanel.select(

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { addMedia, removeMedia } from "../core/commands/mediaCommands.js";
+import { addMedia, removeMedia, setMediaProxy } from "../core/commands/mediaCommands.js";
 import { makeMedia, makeProject } from "../core/document/fixtures.js";
 import type { MediaItem, Project } from "../core/document/types.js";
 import { IdleQueue } from "../core/scheduler/IdleQueue.js";
@@ -44,7 +44,7 @@ function setup(options: { project?: Project; files?: Map<string, Blob>; maxSheet
   );
   const documentStore = new DocumentStore(options.project ?? makeProject(), { session: createSessionStore(), validate: true });
   const files = options.files ?? new Map<string, Blob>();
-  const made: { mediaId: string; times: number[] }[] = [];
+  const made: { mediaId: string; times: number[]; source: string; file: string }[] = [];
   const bitmaps: FakeBitmap[] = [];
   let hold: Promise<void> | undefined;
   const signals: AbortSignal[] = [];
@@ -56,7 +56,7 @@ function setup(options: { project?: Project; files?: Map<string, Blob>; maxSheet
       return abortable(
         opts.signal,
         () => {
-          made.push({ mediaId: p.mediaId, times: p.timesUs });
+          made.push({ mediaId: p.mediaId, times: p.timesUs, source: p.source, file: p.file.name });
           const b = bitmap(Math.min(4, p.timesUs.length) * p.width, Math.ceil(p.timesUs.length / 4) * p.height);
           bitmaps.push(b);
           return { bitmap: b, blob: new Blob([`sheet ${p.timesUs[0]}`]) };
@@ -75,13 +75,16 @@ function setup(options: { project?: Project; files?: Map<string, Blob>; maxSheet
     return Promise.reject(new Error(method));
   });
   const source = new File(["video bytes"], "v.mp4", { lastModified: 7 });
+  const proxy = new File(["proxy bytes"], "v.proxy.mp4", { lastModified: 9 });
+  /** Media whose proxy file exists. */
+  const proxyFiles = new Set<string>();
   const arrivals = vi.fn();
   const deps: ThumbnailDeps = {
     idle,
     document: documentStore,
     workers: { request } as unknown as ThumbnailDeps["workers"],
     files: {
-      source: async (id) => (documentStore.getState().media[id] ? source : null),
+      source: async (id, lod) => (!documentStore.getState().media[id] ? null : lod === "full" ? source : proxyFiles.has(id) ? proxy : null),
       sampleIndex: async () => null,
       read: async (path) => files.get(path) ?? null,
       write: vi.fn(async (path: string, data: Blob) => void files.set(path, data)),
@@ -114,7 +117,7 @@ function setup(options: { project?: Project; files?: Map<string, Blob>; maxSheet
       release();
     };
   };
-  return { store, documentStore, files, made, bitmaps, request, deps, settle, idle, arrivals, signals, holdSheets, stop };
+  return { store, documentStore, files, made, bitmaps, request, deps, settle, idle, arrivals, signals, holdSheets, stop, proxyFiles };
 }
 
 const methods = (request: ReturnType<typeof vi.fn>) => request.mock.calls.map(([method]) => method as string);
@@ -294,5 +297,48 @@ describe("ThumbnailStore", { timeout: 20_000 }, () => {
     clock = 1300;
     await until(() => t.made.length === 3);
     expect(t.made).toHaveLength(3);
+  });
+
+  it("makes the sheets again from the proxy once it is ready, the shown ones staying until replaced (spec §9.6)", async () => {
+    const t = setup();
+    t.documentStore.dispatch(addMedia([video("v")]));
+    t.store.want([{ mediaId: "v", level: 0, sheet: 0 }]);
+    await t.settle();
+    expect(t.made.map((m) => m.source)).toEqual(["full", "full", "full"]);
+    const shown = t.store.sheet("v", 0, 0);
+    expect(shown).not.toBeNull();
+    t.proxyFiles.add("v");
+    t.documentStore.amend(setMediaProxy("v", { relPath: "cache/proxies/v.mp4", width: 960, height: 540, status: "ready" }));
+    // Until the new sheet arrives the old one shows.
+    expect(t.store.sheet("v", 0, 0)).toBe(shown);
+    await t.settle();
+    expect(t.made.slice(3).map((m) => [m.source, m.file, m.times[0]])).toEqual([
+      ["proxy", "v.proxy.mp4", 0],
+      ["proxy", "v.proxy.mp4", 0],
+      ["proxy", "v.proxy.mp4", 8_000_000],
+    ]);
+    expect(t.store.sheet("v", 0, 0)).not.toBe(shown);
+    const index = JSON.parse(await (t.files.get(thumbIndexPath("v")) as Blob).text());
+    expect(index.source).toBe("proxy");
+    expect(t.documentStore.getState().media.v?.analysis.thumbs).toBe("ready");
+  });
+
+  it("decodes from the source when the proxy file is missing", async () => {
+    const t = setup();
+    t.documentStore.dispatch(addMedia([video("v", { proxy: { relPath: "cache/proxies/v.mp4", width: 960, height: 540, status: "ready" } })]));
+    await t.settle();
+    expect(t.made.map((m) => m.source)).toEqual(["full", "full", "full"]);
+    expect(t.documentStore.getState().media.v?.analysis.thumbs).toBe("ready");
+  });
+
+  it("Regenerate thumbnails makes the eager sheets again, ignoring the cached ones", async () => {
+    const t = setup();
+    t.documentStore.dispatch(addMedia([video("v")]));
+    await t.settle();
+    expect(t.made).toHaveLength(3);
+    t.store.regenerate("v");
+    await t.settle();
+    expect(t.made).toHaveLength(6);
+    expect(methods(t.request)).not.toContain("decodeSheet");
   });
 });

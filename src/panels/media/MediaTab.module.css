@@ -145,6 +145,44 @@
   display: block;
 }
 
+/* Proxy chip (spec §12, §9.5; the DS has no progress visuals): a badge in the thumbnail's top-right
+   corner. Pending: tertiary text with the share done and a bar along its bottom edge in the accent;
+   ready: success; failed: danger. */
+.proxyBadge {
+  position: absolute;
+  top: var(--space-1);
+  right: var(--space-1);
+  z-index: 1;
+  overflow: hidden;
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-sm);
+  background: var(--surface-3);
+  color: var(--text-tertiary);
+  font: var(--type-badge);
+}
+
+.proxyBadge[data-status="ready"] {
+  color: var(--success);
+}
+
+.proxyBadge[data-status="failed"] {
+  color: var(--danger);
+}
+
+.proxyPercent:not(:empty) {
+  margin-left: var(--space-1);
+}
+
+.proxyBar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 0;
+  height: var(--space-0);
+  background: var(--accent);
+  pointer-events: none;
+}
+
 .cardInfo {
   display: flex;
   align-items: center;
@@ -306,6 +344,10 @@ button.column:hover,
 
 .muted {
   color: var(--text-muted);
+}
+
+.failed {
+  color: var(--danger);
 }
 
 /* Empty state with its one action. */

@@ -24,8 +24,16 @@
 //   without the copy). At rest, frames the pool holds smaller than the detail needs are decoded again
 //   (`LayerTextures`); `uploadLongEdge` gives the frame service the upload size. Auto goes back to
 //   full 300 ms after playback or a scrub (a timer redraws then).
+// - Proxies (spec §7.5, §9.5, detail.ts `wantedLod`): each pass asks for the frames of the lod the
+//   quality mode wants for what the preview is doing: in Auto proxies while playing or scrubbing, full
+//   frames from the moment either ends (the proxy frame shows until the full one is decoded). A scrub
+//   or trim that has not moved the frame for AUTO_SETTLE_MS is at rest. `behind` names the media
+//   whose playback fell behind (1/2 and 1/4 switch them to their proxy). The status text reads
+//   `Auto: proxy` while proxy frames are drawn.
 // - `firstShown` reports what the first render of each playhead frame drew, for the playback
 //   engine's dropped-frame count.
+// - `renderFrame` (Export frame) draws the frame at the playhead from exact full-resolution frames at
+//   project size, whatever the quality mode and whatever is on screen.
 // - The backing store is resized inside `render`, so a resize never shows a cleared canvas.
 import type { ClipId, Frame, Project, RGBA, Transform } from "../../core/document/types.js";
 import { watchDevicePixelRatio } from "../../core/scheduler/devicePixelRatio.js";
@@ -33,7 +41,7 @@ import type { FrameScheduler, RenderView } from "../../core/scheduler/FrameSched
 import { createStore, type Store } from "../../core/store/createStore.js";
 import type { DocumentStore } from "../../core/store/DocumentStore.js";
 import type { LayoutState } from "../../core/store/layoutStore.js";
-import type { PreviewSession, SessionState } from "../../core/store/sessionStore.js";
+import type { PreviewQuality, PreviewSession, SessionState } from "../../core/store/sessionStore.js";
 import { cssColorToRgba } from "../../core/theme/cssColor.js";
 import type { Theme, ThemeBridge } from "../../core/theme/theme.js";
 import { Compositor } from "../compositor/Compositor.js";
@@ -42,13 +50,13 @@ import { DrawListSnapshot } from "../compositor/DrawListSnapshot.js";
 import type { FramePriority } from "../../media/workers/protocol.js";
 import type { CanvasTarget, OffscreenTarget, Pane, Renderer, TextureHandle, Viewport } from "../gpu/renderer.js";
 import { mutableIdentity, setMat, type Mat3, type MutableMat3 } from "../mat3.js";
-import { AUTO_SETTLE_MS, DETAIL_MAX_SIZE, fullScale, qualityLabel, renderScale, sourceDetail, uploadLongEdge, type PreviewActivity } from "./detail.js";
+import { AUTO_SETTLE_MS, DETAIL_MAX_SIZE, fullScale, qualityLabel, renderScale, sourceDetail, uploadLongEdge, wantedLod, type PreviewActivity } from "./detail.js";
 import { LayerTextures, type LayerTexturesDeps, type LayerTexturesStats } from "./LayerTextures.js";
 import { deviceSizeInto, frameTransformInto, type Size } from "./viewport.js";
 
 const TRANSPARENT: RGBA = { r: 0, g: 0, b: 0, a: 0 };
 
-export interface PreviewViewDeps extends Omit<LayerTexturesDeps, "onChange"> {
+export interface PreviewViewDeps extends Omit<LayerTexturesDeps, "onChange" | "wantedLod"> {
   renderer: Renderer;
   scheduler: Pick<FrameScheduler, "register" | "invalidate">;
   layout: Store<LayoutState>;
@@ -57,7 +65,7 @@ export interface PreviewViewDeps extends Omit<LayerTexturesDeps, "onChange"> {
   theme: Pick<ThemeBridge, "theme" | "subscribe">;
   /** How frames are asked for now: `playback` while playing, `scrub` while the ruler is dragged, else `idle`. */
   priority(): FramePriority;
-  /** Calls `listener` when `priority()` may have changed to or from `playback` (play, pause). */
+  /** Calls `listener` when `priority()` may have changed (play, pause, the end of a scrub or a trim). */
   watchPriority(listener: () => void): () => void;
   /**
    * What to show instead of the document at the playhead (a trim's proposed document at its new edge
@@ -67,6 +75,8 @@ export interface PreviewViewDeps extends Omit<LayerTexturesDeps, "onChange"> {
   override?(): { project: Project; frame: Frame; previewSplit?: { leftFrame: Frame; rightFrame: Frame } | null } | null;
   /** A canvas gesture's ephemeral transforms by clip id (the gizmo, spec §7.3), or null. The owner invalidates `preview` when they change. */
   transforms?(): ReadonlyMap<ClipId, Transform> | null;
+  /** True when playback fell behind on the media this playback (1/2 and 1/4 then play its proxy). */
+  behind?(mediaId: string): boolean;
   /** Clock of the Auto settle time (ms); `performance.now` by default. */
   now?(): number;
 }
@@ -170,6 +180,14 @@ export class PreviewView implements RenderView {
   private readonly drawnOffscreen = { scale: 0, x: 0, y: 0, width: 0, height: 0 };
   /** Auto settle: playback or a scrub last seen + AUTO_SETTLE_MS, and the timer redrawing then. */
   private activeUntil = -Infinity;
+  /** The frame shown last and when it last changed (a scrub at rest). */
+  private shownFrame: Frame = -1;
+  private lastMove = -Infinity;
+  /** What this pass resolves frames for: the quality mode and the activity (the lod rule). */
+  private passQuality: PreviewQuality = "auto";
+  private passActivity: PreviewActivity = "idle";
+  /** Evaluates Export frame's composite apart from the view's. */
+  private readonly exportCompositor = new Compositor();
   private settleTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly now: () => number;
   private readonly viewListeners = new Set<() => void>();
@@ -181,7 +199,13 @@ export class PreviewView implements RenderView {
 
   constructor(private readonly deps: PreviewViewDeps) {
     this.chrome = chromeFromTheme(deps.theme.theme);
-    this.textures = new LayerTextures({ frames: deps.frames, images: deps.images, pool: deps.pool, onChange: () => deps.scheduler.invalidate("preview") });
+    this.textures = new LayerTextures({
+      frames: deps.frames,
+      images: deps.images,
+      pool: deps.pool,
+      onChange: () => deps.scheduler.invalidate("preview"),
+      wantedLod: (mediaId) => wantedLod(this.passQuality, this.passActivity, deps.behind?.(mediaId) ?? false),
+    });
     this.now = deps.now ?? (() => performance.now());
     this.stats = {
       renders: 0,
@@ -222,7 +246,8 @@ export class PreviewView implements RenderView {
       session.select((state) => state.preview.panX, invalidate),
       session.select((state) => state.preview.panY, invalidate),
       session.select((state) => state.preview.quality, invalidate),
-      // Back from `playback`, the frame on screen may be a held layer that was never requested.
+      // Back from `playback`, the frame on screen may be a held layer that was never requested; back
+      // from a scrub, Auto asks for the full frame at once.
       this.deps.watchPriority(() => {
         if (this.deps.priority() !== this.drawnPriority) invalidate();
       }),
@@ -272,7 +297,13 @@ export class PreviewView implements RenderView {
     const frame = override?.frame ?? playhead;
     const priority = this.deps.priority();
     this.drawnPriority = priority;
+    if (frame !== this.shownFrame) {
+      this.shownFrame = frame;
+      this.lastMove = this.now();
+    }
     const activity = this.activity(priority);
+    this.passQuality = preview.quality;
+    this.passActivity = activity;
     const split = override?.previewSplit ?? null;
     if (split) {
       this.renderSplit(doc, split.leftFrame, split.rightFrame, preview, priority, size, dpr, resized, started);
@@ -282,6 +313,7 @@ export class PreviewView implements RenderView {
     const transform = frameTransformInto(this.transform, preview.zoom, composite, size, this.chrome.margin * dpr, preview.panX, preview.panY);
     const scale = this.detailOf(doc, composite, transform[0], preview, activity);
     const list = this.textures.resolve(composite, priority, this.stats.detail.upload);
+    this.showQuality(preview.quality);
     if (priority !== "playback") this.textures.warm(this.compositor.neighbors(doc, frame));
     const shown = this.firstShown;
     if (!override && shown.frame !== playhead) {
@@ -389,24 +421,45 @@ export class PreviewView implements RenderView {
     else this.offscreen = renderer.createOffscreenTarget(w, h);
   }
 
-  /** What the preview is doing for the quality rule: Auto stays reduced AUTO_SETTLE_MS after playback or a scrub (§8). */
+  /**
+   * What the preview is doing for the quality rules: Auto stays reduced AUTO_SETTLE_MS after playback
+   * or a scrub (§8); a scrub (or trim) whose frame has not moved for AUTO_SETTLE_MS is at rest (§7.5
+   * "full resolution when paused for 300 ms").
+   */
   private activity(priority: FramePriority): PreviewActivity {
     const now = this.now();
-    if (priority !== "idle") {
+    if (priority === "playback") {
       this.activeUntil = now + AUTO_SETTLE_MS;
-      return priority === "playback" ? "playing" : "scrubbing";
+      return "playing";
+    }
+    if (priority === "scrub") {
+      const rest = this.lastMove + AUTO_SETTLE_MS;
+      if (now >= rest) return "idle";
+      this.activeUntil = rest;
+      this.wakeAt(rest - now);
+      return "scrubbing";
     }
     if (now >= this.activeUntil) return "idle";
-    if (this.settleTimer === null) {
-      this.settleTimer = setTimeout(
-        () => {
-          this.settleTimer = null;
-          this.deps.scheduler.invalidate("preview");
-        },
-        Math.ceil(this.activeUntil - now),
-      );
-    }
+    this.wakeAt(this.activeUntil - now);
     return "settling";
+  }
+
+  /** Redraws `ms` from now (the settle or rest time ends), unless a redraw is already timed. */
+  private wakeAt(ms: number): void {
+    if (this.settleTimer !== null) return;
+    this.settleTimer = setTimeout(
+      () => {
+        this.settleTimer = null;
+        this.deps.scheduler.invalidate("preview");
+      },
+      Math.ceil(ms),
+    );
+  }
+
+  /** The status strip's text for this pass (after the frames are resolved: proxies drawn or not). */
+  private showQuality(mode: PreviewQuality): void {
+    const label = qualityLabel(mode, this.stats.detail, this.textures.stats.proxy > 0);
+    if (this.quality.getState() !== label) this.quality.set(label);
   }
 
   /** The render scale of this frame (detail.ts) into `stats.detail`, with the upload size and the status text. */
@@ -425,8 +478,6 @@ export class PreviewView implements RenderView {
     detail.render = render;
     detail.activity = activity;
     detail.upload = uploadLongEdge(Math.max(width, height), preview.quality, activity, render, this.deps.renderer.maxTextureSize);
-    const label = qualityLabel(preview.quality, detail);
-    if (this.quality.getState() !== label) this.quality.set(label);
     return render;
   }
 
@@ -474,16 +525,23 @@ export class PreviewView implements RenderView {
     if (!wasSplit && this.splitDrawn) for (const listener of [...this.viewListeners]) listener();
   }
 
-  /** The frame at project size with straight alpha (Export frame), as last drawn. Overlays are never in it. */
+  /**
+   * The frame at the playhead at project size with straight alpha (Export frame): every video layer
+   * from its exact full-resolution frame at the video's own size (at most DETAIL_MAX_SIZE; decoded
+   * again when the pool holds it smaller or only has its proxy), whatever the quality mode. Overlays
+   * are never in it.
+   */
   async renderFrame(): Promise<ImageBitmap> {
-    const { renderer } = this.deps;
-    const list: DrawList = this.textures.current;
+    const { renderer, document, session } = this.deps;
+    const composite = this.exportCompositor.evaluate(document.getState(), session.getState().playhead);
+    const { list, release } = await this.textures.resolveExact(composite, Math.min(DETAIL_MAX_SIZE, renderer.maxTextureSize));
     const target = renderer.createOffscreenTarget(list.width, list.height);
     try {
       if (!renderer.draw(list, target)) throw new Error("The GPU device is not ready");
       return await renderer.readBitmap(target);
     } finally {
       renderer.releaseTarget(target);
+      release();
     }
   }
 

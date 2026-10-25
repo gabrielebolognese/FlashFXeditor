@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createAppSettings, DEFAULT_APP_SETTINGS } from "./appSettings.js";
+import { createAppSettings, DEFAULT_APP_SETTINGS, proxySettings } from "./appSettings.js";
 import { memoryKeyValueStore } from "./kv.js";
 import { RECENT_LIMIT, RecentProjects, type RecentProject } from "./recentProjects.js";
 
@@ -83,7 +83,7 @@ describe("app settings", () => {
     await settings.load();
     expect(settings.getState()).toEqual(DEFAULT_APP_SETTINGS);
     await settings.update({ autosaveDelayMs: 5000 });
-    expect(kv.data.get("settings.v1")).toEqual({ autosaveDelayMs: 5000, importMode: "copy", monitorVolumeDb: 0, monitorMuted: false });
+    expect(kv.data.get("settings.v1")).toEqual({ autosaveDelayMs: 5000, importMode: "copy", monitorVolumeDb: 0, monitorMuted: false, proxyAuto: true, proxyRule: "heavy", proxyShortEdge: 540 });
     await settings.update({ autosaveDelayMs: 1234 });
     expect(settings.getState().autosaveDelayMs).toBe(5000);
 
@@ -113,5 +113,16 @@ describe("app settings", () => {
     expect(settings.getState().monitorVolumeDb).toBe(0);
     await settings.update({ monitorVolumeDb: Number.NaN, monitorMuted: "yes" as never });
     expect(settings.getState()).toMatchObject({ monitorVolumeDb: 0, monitorMuted: true });
+  });
+
+  it("keeps the proxy settings, rejecting unknown rules and sizes", async () => {
+    const kv = memoryKeyValueStore();
+    kv.data.set("settings.v1", { proxyAuto: false, proxyRule: "all", proxyShortEdge: 720 });
+    const settings = createAppSettings(kv);
+    await settings.load();
+    expect(proxySettings(settings.getState())).toEqual({ auto: false, rule: "all", shortEdge: 720 });
+    await settings.update({ proxyRule: "sometimes" as never, proxyShortEdge: 500 as never, proxyAuto: 1 as never });
+    expect(proxySettings(settings.getState())).toEqual({ auto: false, rule: "all", shortEdge: 720 });
+    expect(proxySettings(DEFAULT_APP_SETTINGS)).toEqual({ auto: true, rule: "heavy", shortEdge: 540 });
   });
 });

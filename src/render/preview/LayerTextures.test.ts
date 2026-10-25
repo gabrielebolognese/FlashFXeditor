@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { imageKey, TexturePool, type TextureKey } from "../../media/cache/TexturePool.js";
+import { imageKey, TexturePool, type Lod, type TextureKey } from "../../media/cache/TexturePool.js";
 import type { FrameRequestOptions, FrameResult } from "../../media/decode/FrameService.js";
 import type { FramePriority, VideoInfo } from "../../media/workers/protocol.js";
 import type { Composite, MediaLayer, SolidLayer, TextureLayer } from "../compositor/drawList.js";
@@ -39,54 +39,58 @@ function info(overrides: Partial<VideoInfo> = {}): VideoInfo {
   return { frameTimesUs: times(300), codec: "avc1.64001f", codedWidth: 1920, codedHeight: 1080, rotation: 0, decodable: true, indexFromCache: true, ...overrides };
 }
 
-function setup() {
+function setup(options: { wantedLod?: (mediaId: string) => Lod; proxies?: Set<string> } = {}) {
   const pool = new TexturePool();
+  /** Opened videos by `mediaId` (full) or `mediaId|proxy`. */
   const infos = new Map<string, VideoInfo>([
     ["a", info()],
     ["b", info()],
   ]);
+  const proxies = options.proxies ?? new Set<string>();
   const requests: Request[] = [];
-  const prefetches: { mediaId: string; fromUs: number; toUs: number }[] = [];
+  const prefetches: { mediaId: string; fromUs: number; toUs: number; lod?: Lod }[] = [];
   const opens: string[] = [];
   let openResolve: (() => void) | null = null;
   const frames = {
-    info: (mediaId: string) => infos.get(mediaId) ?? null,
-    video: vi.fn((mediaId: string) => {
-      opens.push(mediaId);
+    info: (mediaId: string, lod: Lod = "full") => infos.get(lod === "full" ? mediaId : `${mediaId}|${lod}`) ?? null,
+    video: vi.fn((mediaId: string, lod: Lod = "full") => {
+      opens.push(lod === "full" ? mediaId : `${mediaId}|${lod}`);
       return new Promise<VideoInfo>((resolve) => {
         openResolve = () => {
           const value = info();
-          infos.set(mediaId, value);
+          infos.set(lod === "full" ? mediaId : `${mediaId}|${lod}`, value);
           resolve(value);
         };
       });
     }),
+    lodFor: (mediaId: string, wanted: Lod): Lod => (wanted === "proxy" && proxies.has(mediaId) ? "proxy" : "full"),
     getFrame: vi.fn((mediaId: string, timeUs: number, options: FrameRequestOptions = {}) => {
-      // Like FrameService: the nearest cached frame as a stand-in, synchronously.
-      const near = pool.nearest(mediaId, "full", timeUs);
+      // Like FrameService: the nearest cached frame of the lod as a stand-in, synchronously.
+      const near = pool.nearest(mediaId, options.lod ?? "full", timeUs);
       if (near && options.onApproximate) options.onApproximate({ texture: near.texture, key: near.key, timeUs: near.key.timeUs, approximate: true });
       return new Promise<FrameResult>((resolve, reject) => {
         requests.push({ mediaId, timeUs, options, resolve, reject });
         options.signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")), { once: true });
       });
     }),
-    prefetch: vi.fn(async (mediaId: string, fromUs: number, toUs: number) => {
-      prefetches.push({ mediaId, fromUs, toUs });
+    prefetch: vi.fn(async (mediaId: string, fromUs: number, toUs: number, prefetchOptions: { lod?: Lod } = {}) => {
+      prefetches.push({ mediaId, fromUs, toUs, ...(prefetchOptions.lod === "proxy" && { lod: "proxy" }) });
       return 1;
     }),
   };
   const images = { get: (mediaId: string) => pool.get(imageKey(mediaId)), load: vi.fn(() => new Promise<TextureHandle | null>(() => undefined)) };
   const onChange = vi.fn();
-  const textures = new LayerTextures({ frames, images, pool, onChange });
+  const textures = new LayerTextures({ frames, images, pool, onChange, ...(options.wantedLod && { wantedLod: options.wantedLod }) });
   /** Uploads a frame into the pool, as the frame service does on delivery. */
-  const cache = (mediaId: string, timeUs: number) => {
+  const cache = (mediaId: string, timeUs: number, lod: Lod = "full") => {
     const tex = texture();
-    pool.put({ mediaId, lod: "full", timeUs }, tex);
+    pool.put({ mediaId, lod, timeUs }, tex);
     return tex;
   };
   const deliver = (request: Request, timeUs = request.timeUs, approximate = false) => {
-    const tex = cache(request.mediaId, timeUs);
-    const key: TextureKey = { mediaId: request.mediaId, lod: "full", timeUs };
+    const lod = request.options.lod ?? "full";
+    const tex = cache(request.mediaId, timeUs, lod);
+    const key: TextureKey = { mediaId: request.mediaId, lod, timeUs };
     request.resolve({ texture: tex, key, timeUs, approximate });
     return tex;
   };
@@ -349,5 +353,105 @@ describe("LayerTextures: split panes (spec §6.10)", () => {
     // Back to one pane: the right pane's slot is released (its pin with it), the left one stays.
     expect(textureOf(resolve(t.textures, "idle", media({ trackId: "v1", mediaId: "a", timeUs: 1000 + 10 * FRAME }))[0])).toBe(leftTex);
     expect(t.pool.stats.pinned).toBe(1);
+  });
+});
+
+describe("LayerTextures: proxies (spec §9.5)", () => {
+  /** Media time of frame `n` (frame times start at 1000 us; media time 0 is the first frame). */
+  const at = (n: number) => n * FRAME;
+  const timeOf = (n: number) => 1000 + n * FRAME;
+
+  it("asks for proxy frames when the pass wants them and the media has a proxy, opening the proxy first", async () => {
+    let wanted: Lod = "proxy";
+    const t = setup({ wantedLod: () => wanted, proxies: new Set(["a"]) });
+    resolve(t.textures, "scrub", media({ trackId: "v1", mediaId: "a", timeUs: at(10) }));
+    expect(t.opens).toEqual(["a|proxy"]);
+    expect(t.requests).toHaveLength(0);
+    t.open();
+    await t.flush();
+    resolve(t.textures, "scrub", media({ trackId: "v1", mediaId: "a", timeUs: at(10) }));
+    expect(t.live()[0]?.options).toMatchObject({ lod: "proxy", priority: "scrub" });
+    const tex = t.deliver(t.live()[0] as Request);
+    await t.flush();
+    expect(textureOf(resolve(t.textures, "scrub", media({ trackId: "v1", mediaId: "a", timeUs: at(10) }))[0])).toBe(tex);
+    expect(t.textures.stats).toMatchObject({ exact: 1, proxy: 1 });
+    // A media without a proxy stays on its full frames.
+    wanted = "proxy";
+    resolve(t.textures, "scrub", media({ trackId: "v2", mediaId: "b", timeUs: at(3) }));
+    expect(t.live().at(-1)).toMatchObject({ mediaId: "b" });
+    expect(t.live().at(-1)?.options.lod).toBe("full");
+  });
+
+  it("shows the proxy frame of the same time while the full one decodes, then the full one", async () => {
+    const t = setup({ wantedLod: () => "full", proxies: new Set(["a"]) });
+    t.infos.set("a|proxy", info());
+    const proxyTex = t.cache("a", timeOf(10), "proxy");
+    // A full frame at another time is no match for the right picture.
+    t.cache("a", timeOf(9));
+    const layers = resolve(t.textures, "idle", media({ trackId: "v1", mediaId: "a", timeUs: at(10) }));
+    expect(textureOf(layers[0])).toBe(proxyTex);
+    expect(t.textures.stats).toMatchObject({ standIns: 1, exact: 0, proxy: 1 });
+    expect(t.live()).toHaveLength(1);
+    expect(t.live()[0]?.options).toMatchObject({ priority: "idle" });
+    expect(t.live()[0]?.options.lod).toBe("full");
+    const full = t.deliver(t.live()[0] as Request);
+    await t.flush();
+    expect(textureOf(resolve(t.textures, "idle", media({ trackId: "v1", mediaId: "a", timeUs: at(10) }))[0])).toBe(full);
+    expect(t.textures.stats).toMatchObject({ exact: 1, proxy: 0 });
+  });
+
+  it("draws a cached full frame as big as the proxy where the proxy is wanted, with nothing to decode", () => {
+    const t = setup({ wantedLod: () => "proxy", proxies: new Set(["a"]) });
+    t.infos.set("a|proxy", info({ codedWidth: 960, codedHeight: 540 }));
+    const full = texture(1920, 1080);
+    t.pool.put({ mediaId: "a", lod: "full", timeUs: timeOf(4) }, full);
+    expect(textureOf(resolve(t.textures, "scrub", media({ trackId: "v1", mediaId: "a", timeUs: at(4) }))[0])).toBe(full);
+    expect(t.requests).toHaveLength(0);
+    expect(t.textures.stats).toMatchObject({ exact: 1, proxy: 0 });
+  });
+
+  it("asks for the proxy when the cached full frame is smaller (a 1/4 playback's), showing that one meanwhile", () => {
+    const t = setup({ wantedLod: () => "proxy", proxies: new Set(["a"]) });
+    t.infos.set("a|proxy", info({ codedWidth: 960, codedHeight: 540 }));
+    const small = texture(240, 135);
+    t.pool.put({ mediaId: "a", lod: "full", timeUs: timeOf(4) }, small);
+    expect(textureOf(resolve(t.textures, "scrub", media({ trackId: "v1", mediaId: "a", timeUs: at(4) }))[0])).toBe(small);
+    expect(t.live()[0]?.options.lod).toBe("proxy");
+    expect(t.textures.stats).toMatchObject({ exact: 0, standIns: 1 });
+  });
+
+  it("never refreshes proxy frames for detail", () => {
+    const t = setup({ wantedLod: () => "proxy", proxies: new Set(["a"]) });
+    t.infos.set("a|proxy", info());
+    const small = texture(960, 540);
+    t.pool.put({ mediaId: "a", lod: "proxy", timeUs: timeOf(2) }, small);
+    expect(textureOf(t.textures.resolve(composite(media({ trackId: "v1", mediaId: "a", timeUs: at(2) })), "idle", 3840).layers[0])).toBe(small);
+    expect(t.requests).toHaveLength(0);
+  });
+
+  it("warms the neighbours on the lod the pass uses", () => {
+    const t = setup({ wantedLod: () => "proxy", proxies: new Set(["b"]) });
+    t.infos.set("b|proxy", info());
+    t.textures.warm([{ mediaId: "b", timeUs: at(5), still: false }]);
+    expect(t.prefetches).toEqual([{ mediaId: "b", fromUs: timeOf(5), toUs: timeOf(5), lod: "proxy" }]);
+  });
+
+  it("resolves exact full frames at the export size whatever is cached, and lets go of them", async () => {
+    const t = setup({ wantedLod: () => "proxy", proxies: new Set(["a"]) });
+    t.cache("a", timeOf(7), "proxy");
+    const solid: SolidLayer = { kind: "solid", color: { r: 1, g: 0, b: 0, a: 1 }, transform: [10, 0, 0, 10, 0, 0], opacity: 1 };
+    // At scale 1 (one source px per project px).
+    const exporting = t.textures.resolveExact(composite(solid, media({ trackId: "v1", mediaId: "a", timeUs: at(7), transform: [1920, 0, 0, 1080, 0, 0] })), 4096);
+    await t.flush();
+    expect(t.requests).toHaveLength(1);
+    // At the video's own size (1920 x 1080 coded).
+    expect(t.requests[0]?.options).toMatchObject({ lod: "full", priority: "playback", minLongEdge: Math.floor(1920 * 0.9), uploadAtLeast: 1920 });
+    const full = t.deliver(t.requests[0] as Request);
+    const { list, release } = await exporting;
+    expect(list.layers.map((layer) => layer.kind)).toEqual(["solid", "texture"]);
+    expect(textureOf(list.layers[1])).toBe(full);
+    expect(t.pool.isPinned({ mediaId: "a", lod: "full", timeUs: timeOf(7) })).toBe(true);
+    release();
+    expect(t.pool.isPinned({ mediaId: "a", lod: "full", timeUs: timeOf(7) })).toBe(false);
   });
 });

@@ -2,11 +2,21 @@ import { describe, expect, it } from "vitest";
 import { makeMedia, makeMediaClip, makeProject, makeTrack, withClips } from "../document/fixtures.js";
 import { DocumentStore } from "../store/DocumentStore.js";
 import { createSessionStore } from "../store/sessionStore.js";
-import { addMedia, cleanMediaName, mediaUseCounts, removeMedia, renameMedia } from "./mediaCommands.js";
+import { addMedia, cleanMediaName, mediaUseCounts, removeMedia, renameMedia, setMediaProxy } from "./mediaCommands.js";
 
 const storeFor = (project = makeProject()) => new DocumentStore(project, { session: createSessionStore(), validate: true });
 
 describe("media commands", () => {
+  it("records a proxy's status with no undo step", () => {
+    const store = storeFor();
+    store.dispatch(addMedia([makeMedia("a")]));
+    store.amend(setMediaProxy("a", { relPath: "cache/proxies/a.mp4", width: 960, height: 540, status: "pending" }));
+    store.amend(setMediaProxy("a", { relPath: "cache/proxies/a.mp4", width: 960, height: 540, status: "ready" }));
+    store.amend(setMediaProxy("missing", { relPath: "cache/proxies/x.mp4", width: 2, height: 2, status: "ready" }));
+    expect(store.getState().media.a?.proxy).toEqual({ relPath: "cache/proxies/a.mp4", width: 960, height: 540, status: "ready" });
+    expect(store.history.getState().undoLabel).toBe("Import media");
+  });
+
   it("adds a whole import batch as one undo step", () => {
     const store = storeFor();
     const seen: string[][] = [];

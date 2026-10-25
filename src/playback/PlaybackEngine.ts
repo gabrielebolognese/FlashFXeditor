@@ -30,7 +30,11 @@
 //   (`DecodeSessions` IDLE_MS), so media not needed any more are released without a message.
 // - Dropped frames (1x only; shuttle speeds skip frames by design): frames the clock skipped, and
 //   frames whose first preview render lacked the exact frame of a layer. A clip whose frame is late on
-//   more than BEHIND_FRAMES consecutive frames flags its media for proxy playback (`autoProxy`).
+//   more than BEHIND_FRAMES consecutive frames flags its media (`autoProxy`, `onBehind`).
+// - Proxies (spec §7.5, §8, §9.5): each clip's windows come from the lod the quality mode wants while
+//   playing (detail.ts `wantedLod`: Auto and Proxy play proxies, 1/2 and 1/4 switch a flagged media
+//   to its proxy for the rest of the playback), routed by the frame service (only media with a ready
+//   proxy get it). A lod change starts the clip's windows over on the other file.
 // - Transport: play/pause/toggle, the J/L ladder (`shuttleSpeed`), K held (pause; J and L step), play
 //   around, play in to out, steps, the end of the content (stop on the last frame, or wrap when loop is
 //   on), and playhead moves by others (Home, End, the timecode field: play on from there). A ruler
@@ -52,12 +56,14 @@ import type { FrameScheduler } from "../core/scheduler/FrameScheduler.js";
 import type { IdleQueue } from "../core/scheduler/IdleQueue.js";
 import type { DocumentStore } from "../core/store/DocumentStore.js";
 import { setPlayhead, type SessionStore } from "../core/store/sessionStore.js";
-import type { TextureKey, TexturePool } from "../media/cache/TexturePool.js";
+import type { PreviewQuality } from "../core/store/sessionStore.js";
+import type { Lod, TextureKey, TexturePool } from "../media/cache/TexturePool.js";
 import type { FrameResult, FrameService } from "../media/decode/FrameService.js";
 import type { ImageService } from "../media/decode/ImageService.js";
 import { nearestPosition } from "../media/demux/sampleIndex.js";
 import { isAbortError } from "../media/workers/protocol.js";
 import { sourceTimeUs } from "../render/compositor/Compositor.js";
+import { wantedLod } from "../render/preview/detail.js";
 import { markedRange } from "../timeline/model/inOut.js";
 import { clipInIndex, contentEnd, lastClipStartingBy, trackIndex } from "../timeline/model/queries.js";
 import { shuttleSpeed } from "./transport.js";
@@ -120,7 +126,7 @@ export interface PlaybackEngineDeps {
   clock: PlaybackClock;
   document: Pick<DocumentStore, "getState">;
   session: SessionStore;
-  frames: Pick<FrameService, "info" | "video" | "frameKeyInto" | "prefetch">;
+  frames: Pick<FrameService, "info" | "video" | "frameKeyInto" | "prefetch" | "lodFor">;
   images: Pick<ImageService, "get" | "load">;
   pool: Pick<TexturePool, "has" | "pin">;
   preview: { readonly firstShown: ShownFrame };
@@ -129,6 +135,10 @@ export interface PlaybackEngineDeps {
   /** Background work pauses while playing (spec §3.4). */
   idle: Pick<IdleQueue, "pause" | "resume">;
   audio?: PlaybackAudio;
+  /** The preview's quality mode (which lod plays); full frames when absent. */
+  quality?(): PreviewQuality;
+  /** Playback fell behind on a media (Auto quality: a proxy is worth making). */
+  onBehind?(mediaId: MediaId): void;
 }
 
 /**
@@ -154,6 +164,8 @@ interface Bounds {
 interface Stream {
   /** The clip as it was; an edit (a new object) starts the stream over. */
   clip: MediaClip;
+  /** The file its frames come from; a change starts the stream over. */
+  lod: Lod;
   /** Media frame duration (us) and frame times of the open video. */
   frameUs: number;
   times: Float64Array;
@@ -174,7 +186,7 @@ interface Stream {
 
 export class PlaybackEngine {
   readonly stats: PlaybackStats = { dropped: 0, frames: 0, windows: 0, received: 0 };
-  /** Media whose decoding fell behind in this playback: Auto quality plays their proxy (Batch 24). */
+  /** Media whose decoding fell behind in this playback (1/2 and 1/4 play their proxy for the rest of it). */
   readonly autoProxy = new Set<MediaId>();
 
   /** Signed speed; 0 = paused. */
@@ -196,7 +208,8 @@ export class PlaybackEngine {
   /** True when a clip under the playhead has no stream yet (its video is opening). */
   private waiting = false;
   private readonly streams = new Map<ClipId, Stream>();
-  private readonly opening = new Set<MediaId>();
+  /** Videos opening, as `mediaId|lod`. */
+  private readonly opening = new Set<string>();
   private readonly listeners = new Set<() => void>();
   private readonly key: TextureKey = { mediaId: "", lod: "full", timeUs: 0 };
   /** Handed to the audio scheduler every tick (it copies what changed). */
@@ -603,6 +616,7 @@ export class PlaybackEngine {
     this.stats.windows += 1;
     this.deps.frames
       .prefetch(stream.clip.mediaId, times[lo] as number, times[hi] as number, {
+        lod: stream.lod,
         priority,
         stride,
         signal: controller.signal,
@@ -665,8 +679,8 @@ export class PlaybackEngine {
     const { mediaId } = stream.clip;
     if (stream.late > BEHIND_FRAMES && !this.autoProxy.has(mediaId)) {
       this.autoProxy.add(mediaId);
-      // TODO(batch 24): Auto quality switches this media to its proxy for the rest of the playback.
-      console.info(`[playback] decoding of ${mediaId} fell more than ${BEHIND_FRAMES} frames behind (Auto quality: proxy from Batch 24)`);
+      console.info(`[playback] decoding of ${mediaId} (${stream.lod}) fell more than ${BEHIND_FRAMES} frames behind`);
+      this.deps.onBehind?.(mediaId);
     }
   }
 
@@ -691,45 +705,55 @@ export class PlaybackEngine {
   private hasFrame(stream: Stream, position: number): boolean {
     const key = this.key;
     key.mediaId = stream.clip.mediaId;
-    key.lod = "full";
+    key.lod = stream.lod;
     key.timeUs = stream.times[position] as number;
     return this.deps.pool.has(key);
   }
 
   /** Display position of the media frame `clip` shows at timeline `frame`; -1 when the video is not open. */
   private position(stream: Stream, frame: Frame, fps: Rational): number {
-    return this.deps.frames.frameKeyInto(this.key, stream.clip.mediaId, sourceTimeUs(stream.clip, frame, fps));
+    return this.deps.frames.frameKeyInto(this.key, stream.clip.mediaId, sourceTimeUs(stream.clip, frame, fps), stream.lod);
+  }
+
+  /** The lod a media plays from now. */
+  private lodOf(mediaId: MediaId): Lod {
+    const quality = this.deps.quality?.();
+    if (!quality) return "full";
+    const wanted = wantedLod(quality, "playing", this.autoProxy.has(mediaId));
+    return wanted === "full" ? "full" : this.deps.frames.lodFor(mediaId, wanted);
   }
 
   private stream(clip: MediaClip): Stream | null {
     const { mediaId } = clip;
-    const info = this.deps.frames.info(mediaId);
+    const lod = this.lodOf(mediaId);
+    const info = this.deps.frames.info(mediaId, lod);
     if (!info) {
-      this.open(mediaId);
+      this.open(mediaId, lod);
       return null;
     }
     const times = info.frameTimesUs;
     if (!info.decodable || times.length === 0) return null;
     let stream = this.streams.get(clip.id);
-    if (stream && stream.clip !== clip) {
+    if (stream && (stream.clip !== clip || stream.lod !== lod)) {
       this.release(stream);
       stream = undefined;
     }
     if (!stream) {
       const frameUs = times.length > 1 ? ((times[times.length - 1] as number) - (times[0] as number)) / (times.length - 1) : 0;
-      stream = { clip, frameUs, times, requested: null, inFlight: null, failed: false, pins: new Map(), late: 0, pass: 0, scan: 0 };
+      stream = { clip, lod, frameUs, times, requested: null, inFlight: null, failed: false, pins: new Map(), late: 0, pass: 0, scan: 0 };
       this.streams.set(clip.id, stream);
     }
     return stream;
   }
 
-  private open(mediaId: MediaId): void {
-    if (this.opening.has(mediaId)) return;
-    this.opening.add(mediaId);
+  private open(mediaId: MediaId, lod: Lod): void {
+    const id = `${mediaId}|${lod}`;
+    if (this.opening.has(id)) return;
+    this.opening.add(id);
     this.deps.frames
-      .video(mediaId)
+      .video(mediaId, lod)
       .catch(() => undefined)
-      .finally(() => this.opening.delete(mediaId));
+      .finally(() => this.opening.delete(id));
   }
 
   /** Drops the streams of clips neither under the playhead nor starting soon. */

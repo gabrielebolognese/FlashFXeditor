@@ -5,6 +5,9 @@
 // scheduler, Batch 10), the preview chrome readouts, the view and overlay settings, fullscreen and
 // Export frame. Framework-free; PreviewPanel only mounts the canvas host, the chrome, the meter, the
 // stats element and the canvas context menu (`canvasMenu`; its actions are in canvasController).
+// Proxies (spec §9.5): the frame service opens cache/proxies/<id>.mp4 of media whose proxy is ready
+// (its sample index cached apart), the preview and the engine pick the lod of the quality mode, and
+// a media whose playback falls behind gets a proxy queued when it has no proxy decision yet.
 import type { MediaId } from "../core/document/types.js";
 import { detectPlatform } from "../core/keyboard/keys.js";
 import { createStore } from "../core/store/createStore.js";
@@ -30,6 +33,7 @@ import { zoomAround, type PreviewZoom } from "../render/preview/viewport.js";
 import { showToast } from "../ui/toasts.js";
 import { attachAudio, audioScheduler, detachAudio, meterView } from "./audioController.js";
 import { toggleFullscreen } from "./fullscreen.js";
+import { requestProxyIfUndecided } from "./mediaController.js";
 import { actions, audioClock, documentStore, idleQueue, layoutStore, scheduler, sessionStore, themeBridge, workerPool } from "./services.js";
 import { timelineView } from "./timelineController.js";
 
@@ -47,6 +51,7 @@ export const frameService = new FrameService({
   renderer,
   pool: texturePool,
   uploadSize: () => previewView.uploadLongEdge,
+  proxyReady: (mediaId) => documentStore.getState().media[mediaId]?.proxy?.status === "ready",
 });
 /** Still image textures. */
 export const imageService = new ImageService({ workers: workerPool, renderer, pool: texturePool, document: documentStore, svgBitmap: svgPoster });
@@ -61,11 +66,19 @@ export const previewView: PreviewView = new PreviewView({
   images: imageService,
   pool: texturePool,
   priority: (): FramePriority => (playbackEngine.playing ? "playback" : timelineView.scrubbing || timelineView.trimming ? "scrub" : "idle"),
-  watchPriority: (listener) => playbackEngine.subscribe(listener),
+  // Play and pause, and the end of a ruler scrub or an edge trim (timeline gestures pause the IdleQueue
+  // until they end): Auto asks for full frames at once (spec §7.5, §9.5).
+  watchPriority: (listener) => {
+    const stops = [playbackEngine.subscribe(listener), idleQueue.onPauseChange(() => listener())];
+    return () => {
+      for (const stop of stops) stop();
+    };
+  },
   // A trim shows its new edge frame live (spec §6.10).
   override: () => timelineView.trimPreview,
   // A canvas gesture shows its transforms live (spec §7.3, P2).
   transforms: () => canvasInput.transforms,
+  behind: (mediaId) => playbackEngine.playing && playbackEngine.autoProxy.has(mediaId),
 });
 /** Plays the timeline through the preview (spec §8). */
 export const playbackEngine: PlaybackEngine = new PlaybackEngine({
@@ -81,6 +94,9 @@ export const playbackEngine: PlaybackEngine = new PlaybackEngine({
   scrubbing: () => timelineView.scrubbing || timelineView.trimming,
   idle: idleQueue,
   audio: audioScheduler,
+  quality: () => sessionStore.state.getState().preview.quality,
+  // Auto quality: a media too heavy to play at full gets a proxy, unless one was decided against.
+  onBehind: (mediaId) => requestProxyIfUndecided(mediaId),
 });
 // The meter reads the mix from the first frame of a playback on.
 playbackEngine.subscribe(() => {
@@ -171,29 +187,39 @@ export function startGpu(adapter: GPUAdapter): void {
   }
 }
 
-/** The project's media files and cache/index/ for the frame service. */
+/** The project's media files, their ready proxies and cache/index/ for the frame service. */
 function frameSource(dir: FsDir, isWritable: () => boolean): FrameSource {
   return {
     file: async (mediaId, lod) => {
-      // TODO(batch 24): proxy files; TODO(batch 41): media referenced by a file handle.
+      // TODO(batch 41): media referenced by a file handle.
       const item = documentStore.getState().media[mediaId];
-      if (lod !== "full" || !item || !("relPath" in item.file)) return null;
-      return resolveFile(dir, item.file.relPath);
+      if (!item) return null;
+      if (lod === "proxy") return item.proxy?.status === "ready" ? resolveFile(dir, item.proxy.relPath) : null;
+      return "relPath" in item.file ? resolveFile(dir, item.file.relPath) : null;
     },
-    readIndex: async (mediaId, lod) => (lod === "full" ? resolveFile(dir, sampleIndexPath(mediaId)) : null),
+    readIndex: (mediaId, lod) => resolveFile(dir, sampleIndexPath(mediaId, lod)),
     writeIndex: async (mediaId, lod, bytes) => {
-      if (lod === "full" && isWritable()) await writeFileAt(dir, sampleIndexPath(mediaId), new Blob([bytes]));
+      if (isWritable()) await writeFileAt(dir, sampleIndexPath(mediaId, lod), new Blob([bytes]));
     },
   };
 }
 
-/** Frees the frames, decoders and images of media that leave the project (removal, undo of an import). */
+/**
+ * Frees the frames, decoders and images of media that leave the project (removal, undo of an import),
+ * and the proxy sessions and frames of a proxy that stops being ready (removed, made again).
+ */
 function releaseRemovedMedia(): () => void {
   let media = documentStore.getState().media;
   return documentStore.subscribe(
     (state) => {
       for (const id of Object.keys(media) as MediaId[]) if (!Object.hasOwn(state.media, id)) frameService.release(id);
-      for (const id of Object.keys(state.media) as MediaId[]) if (state.media[id] !== media[id]) previewView.forgetMedia(id);
+      for (const id of Object.keys(state.media) as MediaId[]) {
+        const before = media[id];
+        const now = state.media[id];
+        if (now === before) continue;
+        previewView.forgetMedia(id);
+        if (before?.proxy?.status === "ready" && now?.proxy?.status !== "ready") frameService.release(id, "proxy");
+      }
       media = state.media;
     },
     { affects: ["media"] },

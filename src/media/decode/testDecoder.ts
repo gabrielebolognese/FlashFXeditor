@@ -8,6 +8,7 @@ export const frameCounter = { open: 0 };
 
 export class FakeFrame implements DecodedFrame {
   private closed = false;
+  readonly duration: number | null = null;
   constructor(
     readonly timestamp: number,
     /** Decoded without the references it needs (a leading picture fed without the GOP before it). */
@@ -23,6 +24,9 @@ export class FakeFrame implements DecodedFrame {
     if (this.closed) return;
     this.closed = true;
     frameCounter.open -= 1;
+  }
+  get isClosed(): boolean {
+    return this.closed;
   }
 }
 

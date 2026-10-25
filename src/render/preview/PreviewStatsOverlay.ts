@@ -92,7 +92,7 @@ export class PreviewStatsOverlay implements RenderView {
     this.element.textContent = [
       `GPU ${gpu.state} · device ${gpu.generation} · restores ${gpu.restores}${recovery}`,
       `draws ${p.renders} · skipped ${p.skipped} · ${p.ms.toFixed(2)} ms · resizes ${p.resizes} · ${p.width}×${p.height} @${p.dpr}x`,
-      `layers ${p.textures.layers}: exact ${p.textures.exact} · stand-in ${p.textures.standIns} · held ${p.textures.held} · missing ${p.textures.missing} · pending ${p.textures.pending} · warming ${p.textures.warming} · failed ${p.textures.failed}`,
+      `layers ${p.textures.layers}: exact ${p.textures.exact} · stand-in ${p.textures.standIns} · held ${p.textures.held} · missing ${p.textures.missing} · pending ${p.textures.pending} · warming ${p.textures.warming} · failed ${p.textures.failed} · proxy ${p.textures.proxy}`,
       `pool ${s.count} tex · ${mb(s.bytes)} / ${mb(s.budget)} MB · pinned ${s.pinned} · evicted ${s.evictions}`,
       `frame ms: approx ${ms(f.approxLastMs)} (p95 ${ms(f.approxP95Ms)}) · exact ${ms(f.exactLastMs)} (p95 ${ms(f.exactP95Ms)}) · requests ${f.requests} · pool hits ${f.poolHits} · superseded ${f.superseded} · failed ${f.failed}`,
       decode,

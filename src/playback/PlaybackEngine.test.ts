@@ -2,8 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 import { makeMedia, makeMediaClip, makeProject, makeTrack, withClips } from "../core/document/fixtures.js";
 import type { Project } from "../core/document/types.js";
 import type { Ticker } from "../core/scheduler/FrameScheduler.js";
-import { createSessionStore, setPlayhead } from "../core/store/sessionStore.js";
-import { TexturePool, type TextureKey } from "../media/cache/TexturePool.js";
+import { createSessionStore, setPlayhead, type PreviewQuality } from "../core/store/sessionStore.js";
+import { TexturePool, type Lod, type TextureKey } from "../media/cache/TexturePool.js";
 import type { FrameResult, PrefetchOptions } from "../media/decode/FrameService.js";
 import { mediaTimePosition } from "../media/demux/sampleIndex.js";
 import type { VideoInfo } from "../media/workers/protocol.js";
@@ -68,28 +68,32 @@ function project(clips: { id: string; media: string; start: number; duration: nu
   return doc;
 }
 
-function setup(doc: Project, options: { infos?: Record<string, VideoInfo>; audio?: PlaybackAudio } = {}) {
+function setup(doc: Project, options: { infos?: Record<string, VideoInfo>; audio?: PlaybackAudio; quality?: PreviewQuality; proxies?: Set<string> } = {}) {
   let now = 100;
   const tickers = new Set<Ticker>();
   const scheduler = { addTicker: (ticker: Ticker) => (tickers.add(ticker), () => void tickers.delete(ticker)) };
   const session = createSessionStore();
   let current = doc;
   const pool = new TexturePool();
+  /** Opened videos by `mediaId` (full) or `mediaId|proxy`. */
   const infos = new Map<string, VideoInfo>(Object.entries(options.infos ?? { a: videoInfo(), b: videoInfo(), c: videoInfo() }));
+  const infoKey = (mediaId: string, lod: Lod = "full") => (lod === "full" ? mediaId : `${mediaId}|${lod}`);
   const windows: Window[] = [];
+  const onBehind = vi.fn();
   const frames = {
-    info: (mediaId: string) => infos.get(mediaId) ?? null,
-    video: vi.fn(async (mediaId: string) => {
+    info: (mediaId: string, lod: Lod = "full") => infos.get(infoKey(mediaId, lod)) ?? null,
+    video: vi.fn(async (mediaId: string, lod: Lod = "full") => {
       const value = videoInfo();
-      infos.set(mediaId, value);
+      infos.set(infoKey(mediaId, lod), value);
       return value;
     }),
-    frameKeyInto: (out: TextureKey, mediaId: string, mediaTimeUs: number) => {
-      const times = infos.get(mediaId)?.frameTimesUs;
+    lodFor: (mediaId: string, wanted: Lod): Lod => (wanted === "proxy" && options.proxies?.has(mediaId) ? "proxy" : "full"),
+    frameKeyInto: (out: TextureKey, mediaId: string, mediaTimeUs: number, lod: Lod = "full") => {
+      const times = infos.get(infoKey(mediaId, lod))?.frameTimesUs;
       if (!times) return -1;
       const position = mediaTimePosition(times, mediaTimeUs);
       out.mediaId = mediaId;
-      out.lod = "full";
+      out.lod = lod;
       out.timeUs = times[position] as number;
       return position;
     },
@@ -116,13 +120,15 @@ function setup(doc: Project, options: { infos?: Record<string, VideoInfo>; audio
     scrubbing: () => scrubbing,
     idle,
     ...(options.audio && { audio: options.audio }),
+    ...(options.quality && { quality: () => options.quality as PreviewQuality }),
+    onBehind,
   });
   const flush = async () => {
     for (let i = 0; i < 5; i++) await Promise.resolve();
   };
   const live = () => windows.filter((w) => !w.done && !w.options.signal?.aborted);
   const positionsOf = (w: Window) => {
-    const times = infos.get(w.mediaId)?.frameTimesUs as Float64Array;
+    const times = infos.get(infoKey(w.mediaId, w.options.lod))?.frameTimesUs as Float64Array;
     const from = mediaTimePosition(times, w.fromUs);
     const to = mediaTimePosition(times, w.toUs);
     const stride = w.options.stride ?? 1;
@@ -132,10 +138,10 @@ function setup(doc: Project, options: { infos?: Record<string, VideoInfo>; audio
   };
   /** Delivers a window's frames into the pool, as the frame service does, and completes it. */
   const deliver = async (w: Window) => {
-    const times = infos.get(w.mediaId)?.frameTimesUs as Float64Array;
+    const times = infos.get(infoKey(w.mediaId, w.options.lod))?.frameTimesUs as Float64Array;
     const positions = positionsOf(w);
     for (const p of positions) {
-      const key: TextureKey = { mediaId: w.mediaId, lod: "full", timeUs: times[p] as number };
+      const key: TextureKey = { mediaId: w.mediaId, lod: w.options.lod ?? "full", timeUs: times[p] as number };
       const tex = texture();
       pool.put(key, tex);
       w.options.onFrame?.({ texture: tex, key, timeUs: key.timeUs, approximate: false } satisfies FrameResult);
@@ -180,6 +186,8 @@ function setup(doc: Project, options: { infos?: Record<string, VideoInfo>; audio
     frames,
     infos,
     tickers,
+    onBehind,
+    flush,
     playhead: () => session.state.getState().playhead,
     advance: (seconds: number) => {
       now += seconds;
@@ -648,6 +656,60 @@ describe("PlaybackEngine dropped frames", () => {
     }
     expect(t.playhead()).toBe(18);
     expect(t.engine.autoProxy.has("a")).toBe(true);
+    expect(t.onBehind).toHaveBeenCalledWith("a");
+  });
+});
+
+describe("PlaybackEngine proxies (spec §7.5, §8, §9.5)", () => {
+  const TWO_CLIPS = () =>
+    project([
+      { id: "c1", media: "a", start: 0, duration: 30 },
+      { id: "c2", media: "b", start: 30, duration: 30 },
+    ]);
+
+  it("plays Auto from the proxy of media that have one, the full file of the others", async () => {
+    const t = setup(TWO_CLIPS(), { quality: "auto", proxies: new Set(["a"]) });
+    t.engine.play(1);
+    t.frame();
+    await t.flush();
+    expect(t.frames.video).toHaveBeenCalledWith("a", "proxy");
+    t.frame();
+    await t.deliverAll();
+    expect(t.windows.filter((w) => w.mediaId === "a").every((w) => w.options.lod === "proxy")).toBe(true);
+    expect(t.windows.filter((w) => w.mediaId === "b").every((w) => w.options.lod === "full")).toBe(true);
+    // The preroll waits for the proxy frames, then the clock runs.
+    t.frame();
+    t.advance(1 / 30 + 0.0001);
+    t.frame();
+    expect(t.playhead()).toBe(1);
+  });
+
+  it("plays Full from the full file even when a proxy is ready", async () => {
+    const t = setup(ONE_CLIP(), { quality: "full", proxies: new Set(["a"]) });
+    await t.startPlaying();
+    expect(t.windows.length).toBeGreaterThan(0);
+    expect(t.windows.every((w) => w.options.lod === "full")).toBe(true);
+  });
+
+  it("1/2 switches a media that falls behind to its proxy for the rest of the playback", async () => {
+    vi.spyOn(console, "info").mockImplementation(() => {});
+    const t = setup(ONE_CLIP(), { quality: "half", proxies: new Set(["a"]) });
+    await t.startPlaying();
+    expect(t.windows.every((w) => w.options.lod === "full")).toBe(true);
+    const before = t.windows.length;
+    for (let i = 0; i < 18; i++) {
+      t.advance(1 / 30 + 0.0001);
+      t.frame();
+    }
+    expect(t.onBehind).toHaveBeenCalledWith("a");
+    await t.flush();
+    t.frame();
+    const after = t.windows.slice(before).filter((w) => !w.options.signal?.aborted);
+    expect(after.at(-1)?.options.lod).toBe("proxy");
+    // The next playback starts on the full file again.
+    t.engine.pause();
+    await t.startPlaying();
+    expect(t.windows.at(-1)?.options.lod).toBe("full");
   });
 });
 

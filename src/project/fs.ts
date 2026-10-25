@@ -22,6 +22,16 @@ export interface WriteFileOptions {
   signal?: AbortSignal;
 }
 
+/** A file being written in place: positional writes, committed by `close` (spec §9.5: the proxy muxer). */
+export interface FsWritable {
+  /** Writes `data` at byte `position` (the file grows as needed). */
+  write(data: Uint8Array, position: number): Promise<void>;
+  /** Commits what was written. */
+  close(): Promise<void>;
+  /** Discards what was written since the file was opened. */
+  abort(): Promise<void>;
+}
+
 export interface FsDir {
   readonly name: string;
   /** What to persist in IndexedDB to reopen this folder later (a FileSystemDirectoryHandle). */
@@ -34,6 +44,10 @@ export interface FsDir {
   getFile(name: string): Promise<File | null>;
   /** Creates or replaces a file by streaming a blob into it (large media copies). */
   writeFile(name: string, data: Blob, options?: WriteFileOptions): Promise<void>;
+  /** Creates (or empties) a file and opens it for positional writes. */
+  openWritable(name: string): Promise<FsWritable>;
+  /** Renames a file in this directory, replacing `to`: a move where the browser has one, else a copy and a removal. */
+  rename(from: string, to: string): Promise<void>;
   /** Deletes a file; a missing file is not an error. */
   remove(name: string): Promise<void>;
   list(): Promise<FsEntry[]>;
@@ -45,6 +59,10 @@ export interface FsDir {
 }
 
 // Chromium-only parts of the API that lib.dom does not declare.
+interface MovableHandle {
+  move?(name: string): Promise<void>;
+}
+
 interface PermissionedHandle {
   queryPermission?(descriptor: { mode: PermissionMode }): Promise<PermissionStatus>;
   requestPermission?(descriptor: { mode: PermissionMode }): Promise<PermissionStatus>;
@@ -108,6 +126,32 @@ class NativeDir implements FsDir {
     });
     // pipeTo closes the file stream on success and aborts it (discarding the data) on failure.
     await data.stream().pipeThrough(count).pipeTo(stream, signal ? { signal } : {});
+  }
+
+  async openWritable(name: string): Promise<FsWritable> {
+    const fileHandle = await this.handle.getFileHandle(name, { create: true });
+    const stream = await fileHandle.createWritable({ keepExistingData: false });
+    return {
+      write: (data, position) => stream.write({ type: "write", position, data: data as Uint8Array<ArrayBuffer> }),
+      close: () => stream.close(),
+      abort: () => stream.abort(),
+    };
+  }
+
+  async rename(from: string, to: string): Promise<void> {
+    const source = await this.handle.getFileHandle(from);
+    const movable = source as unknown as MovableHandle;
+    if (typeof movable.move === "function") {
+      try {
+        await movable.move(to);
+        return;
+      } catch (error) {
+        // Some folders refuse moves: copy instead.
+        if (!(error instanceof DOMException)) throw error;
+      }
+    }
+    await this.writeFile(to, await source.getFile());
+    await this.remove(from);
   }
 
   async remove(name: string): Promise<void> {

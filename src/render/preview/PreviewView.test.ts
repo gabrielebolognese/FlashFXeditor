@@ -10,7 +10,7 @@ import { frameToUs } from "../../core/document/time.js";
 import type { MediaClip, Project } from "../../core/document/types.js";
 import { createSessionStore, setPlayhead, type SessionState } from "../../core/store/sessionStore.js";
 import { readTheme } from "../../core/theme/theme.js";
-import { TexturePool } from "../../media/cache/TexturePool.js";
+import { TexturePool, type Lod } from "../../media/cache/TexturePool.js";
 import type { FrameRequestOptions, FrameResult } from "../../media/decode/FrameService.js";
 import type { FramePriority, VideoInfo } from "../../media/workers/protocol.js";
 import type { Renderer, TextureHandle } from "../gpu/renderer.js";
@@ -54,7 +54,7 @@ interface Request {
 const TIMES = Float64Array.from({ length: 300 }, (_, i) => Math.round((i * 1_000_000) / 30));
 const timeOf = (frame: number) => TIMES[frame] as number;
 
-function setup(extra: Partial<PreviewViewDeps> = {}, tweak: (doc: Project) => Project = (doc) => doc) {
+function setup(extra: Partial<PreviewViewDeps> = {}, tweak: (doc: Project) => Project = (doc) => doc, proxyReady = false) {
   let doc = makeProject();
   doc.media.m = { ...makeMedia("m"), width: 1920, height: 1080 };
   doc.tracks = [makeTrack("v1")];
@@ -70,6 +70,7 @@ function setup(extra: Partial<PreviewViewDeps> = {}, tweak: (doc: Project) => Pr
   const frames = {
     info: () => info,
     video: vi.fn(async () => info),
+    lodFor: (_mediaId: string, wanted: Lod): Lod => (proxyReady ? wanted : "full"),
     getFrame: vi.fn((_mediaId: string, timeUs: number, options: FrameRequestOptions = {}) => {
       return new Promise<FrameResult>((resolve) => requests.push({ timeUs, options, resolve }));
     }),
@@ -88,6 +89,7 @@ function setup(extra: Partial<PreviewViewDeps> = {}, tweak: (doc: Project) => Pr
     },
     createOffscreenTarget: vi.fn((width: number, height: number) => ({ kind: "offscreen", width, height, texture: { ...texture(), width, height } })),
     createCanvasTarget: () => ({ kind: "canvas" }),
+    readBitmap: vi.fn(async () => ({ width: 1080, height: 1920, close: () => undefined })),
     releaseTarget: () => undefined,
     subscribe: () => () => undefined,
   } as unknown as Renderer;
@@ -123,7 +125,7 @@ function setup(extra: Partial<PreviewViewDeps> = {}, tweak: (doc: Project) => Pr
     return tex;
   };
   const drawn = () => (renderer.draw as ReturnType<typeof vi.fn>).mock.lastCall?.[0].layers[0]?.texture as TextureHandle | undefined;
-  return { view, session, document, scheduler, engine, notify, frames, requests, cache, drawn, renderer };
+  return { view, session, document, scheduler, engine, notify, frames, requests, cache, drawn, renderer, pool };
 }
 
 describe("PreviewView", () => {
@@ -305,5 +307,94 @@ describe("PreviewView", () => {
     expect(scheduler.flush()).toEqual(["preview"]);
     expect(drawn()).toBe(exact);
     expect(view.stats.textures).toMatchObject({ exact: 1, held: 0 });
+  });
+});
+
+describe("PreviewView: proxies (spec §7.5, §9.5)", () => {
+  afterEach(() => {
+    window.document.body.replaceChildren();
+    vi.useRealTimers();
+  });
+
+  const settle = async () => {
+    for (let i = 0; i < 5; i++) await Promise.resolve();
+  };
+
+  it("Auto scrubs on proxy frames and asks for full ones once the scrub rests or ends, the proxy frame on screen meanwhile", async () => {
+    vi.useFakeTimers();
+    let clock = 0;
+    let scrubbing = false;
+    const { view, session, scheduler, requests, pool, drawn } = setup({ now: () => clock, priority: () => (scrubbing ? "scrub" : "idle") }, undefined, true);
+    scheduler.flush();
+    expect(requests.at(-1)?.options.lod).toBe("full");
+    scrubbing = true;
+    setPlayhead(session, 10);
+    scheduler.flush();
+    expect(requests.at(-1)?.options).toMatchObject({ lod: "proxy", priority: "scrub" });
+    expect(requests.at(-1)?.timeUs).toBe(timeOf(10));
+    const proxy = texture();
+    const proxyKey = { mediaId: "m", lod: "proxy" as const, timeUs: timeOf(10) };
+    pool.put(proxyKey, proxy);
+    requests.at(-1)?.resolve({ texture: proxy, key: proxyKey, timeUs: timeOf(10), approximate: false });
+    await settle();
+    scheduler.flush();
+    expect(drawn()).toBe(proxy);
+    expect(view.quality.getState()).toBe("Auto: proxy");
+    expect(view.stats.detail.activity).toBe("scrubbing");
+    // Held still for 300 ms: at rest. The full frame is asked for; the proxy frame stays meanwhile.
+    clock = 300;
+    vi.advanceTimersByTime(300);
+    expect(scheduler.flush()).toEqual(["preview"]);
+    expect(view.stats.detail.activity).toBe("idle");
+    expect(requests.at(-1)?.options.lod).toBe("full");
+    expect(requests.at(-1)?.timeUs).toBe(timeOf(10));
+    expect(drawn()).toBe(proxy);
+    // Moving again: proxies. Released: full frames at once (settling), not 300 ms later.
+    clock = 400;
+    setPlayhead(session, 12);
+    scheduler.flush();
+    expect(requests.at(-1)?.options.lod).toBe("proxy");
+    scrubbing = false;
+    clock = 450;
+    scheduler.invalidate("preview");
+    scheduler.flush();
+    expect(view.stats.detail.activity).toBe("settling");
+    expect(requests.at(-1)?.options).toMatchObject({ lod: "full", priority: "idle" });
+    expect(requests.at(-1)?.timeUs).toBe(timeOf(12));
+  });
+
+  it("stays on full frames for media without a proxy", () => {
+    let scrubbing = true;
+    const { session, scheduler, requests, view } = setup({ priority: () => (scrubbing ? "scrub" : "idle") });
+    setPlayhead(session, 10);
+    scheduler.flush();
+    expect(requests.at(-1)?.options.lod).toBe("full");
+    expect(view.quality.getState()).not.toBe("Auto: proxy");
+    scrubbing = false;
+  });
+
+  it("Export frame draws exact full-resolution frames whatever the quality mode", async () => {
+    const { view, session, scheduler, requests, renderer, pool } = setup({}, undefined, true);
+    session.state.set((state) => ({ ...state, preview: { ...state.preview, quality: "proxy" } }));
+    setPlayhead(session, 5);
+    scheduler.flush();
+    expect(requests.at(-1)?.options.lod).toBe("proxy");
+    const shown = requests.length;
+    const exporting = view.renderFrame();
+    await settle();
+    expect(requests).toHaveLength(shown + 1);
+    expect(requests.at(-1)?.options).toMatchObject({ lod: "full", priority: "playback", uploadAtLeast: 1920, minLongEdge: 1728 });
+    const full = texture();
+    const key = { mediaId: "m", lod: "full" as const, timeUs: timeOf(5) };
+    pool.put(key, full);
+    requests.at(-1)?.resolve({ texture: full, key, timeUs: timeOf(5), approximate: false });
+    await exporting;
+    const draw = renderer.draw as ReturnType<typeof vi.fn>;
+    const [list, target] = draw.mock.lastCall as [{ width: number; height: number; layers: { texture: unknown }[] }, { kind: string }];
+    expect(target.kind).toBe("offscreen");
+    expect([list.width, list.height]).toEqual([1080, 1920]);
+    expect(list.layers[0]?.texture).toBe(full);
+    expect(renderer.readBitmap).toHaveBeenCalledTimes(1);
+    expect(pool.isPinned(key)).toBe(false);
   });
 });

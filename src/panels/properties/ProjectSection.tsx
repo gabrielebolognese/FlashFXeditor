@@ -4,11 +4,13 @@ import { canChangeFrameRate, MAX_DIMENSION, MAX_PROJECT_NAME, MIN_DIMENSION, ren
 import { formatHexColor, parseHexColor } from "../../core/document/color.js";
 import type { Project } from "../../core/document/types.js";
 import { useStoreSelector } from "../../core/store/useStoreSelector.js";
+import { PROXY_SHORT_EDGES, type ProxyRule } from "../../media/proxy/proxyFormat.js";
 import { AUTOSAVE_DELAYS_MS, type AppSettings } from "../../project/appSettings.js";
 import { CUSTOM_RESOLUTION, FRAME_RATES, RESOLUTION_PRESETS, formatFps, fpsKey, parseFpsKey, resolutionPresetId } from "../../project/projectPresets.js";
 import { NumberField } from "../../ui/NumberField.js";
 import { Select } from "../../ui/Select.js";
 import { TextField } from "../../ui/TextField.js";
+import { Toggle } from "../../ui/Toggle.js";
 import styles from "./ProjectSection.module.css";
 
 const selectName = (p: Project) => p.name;
@@ -17,9 +19,18 @@ const selectHeight = (p: Project) => p.settings.height;
 const selectFps = (p: Project) => fpsKey(p.settings.fps);
 const selectBackground = (p: Project) => formatHexColor(p.settings.background);
 const selectDelay = (s: AppSettings) => s.autosaveDelayMs;
+const selectProxyAuto = (s: AppSettings) => s.proxyAuto;
+const selectProxyRule = (s: AppSettings) => s.proxyRule;
+const selectProxyEdge = (s: AppSettings) => s.proxyShortEdge;
 
 const RESOLUTION_OPTIONS = [...RESOLUTION_PRESETS.map((p) => ({ value: p.id, label: p.label })), { value: CUSTOM_RESOLUTION, label: "Custom" }];
 const DELAY_OPTIONS = AUTOSAVE_DELAYS_MS.map((ms) => ({ value: String(ms), label: `${ms / 1000} s after the last change` }));
+const PROXY_RULE_OPTIONS: { value: ProxyRule; label: string }[] = [
+  { value: "heavy", label: "Above 1080p or 30 fps" },
+  { value: "large", label: "Above 1080p" },
+  { value: "all", label: "Every video" },
+];
+const PROXY_EDGE_OPTIONS = PROXY_SHORT_EDGES.map((edge) => ({ value: String(edge), label: `${edge}p` }));
 
 function fpsOptions(current: string) {
   const options = FRAME_RATES.map((fps) => ({ value: fpsKey(fps), label: `${formatFps(fps)} fps` }));
@@ -30,9 +41,9 @@ function fpsOptions(current: string) {
 
 /**
  * Project settings, shown when nothing is selected (spec §11). Every edit is one undoable command,
- * except the autosave delay, which is a global app setting.
+ * except the autosave delay and the proxy settings (spec §9.5), which are global app settings.
  * TODO(batch 25): collapsible section framework. TODO(batch 42): resolution "Scale layout" / fps
- * conversion dialogs, default durations, proxy settings, cache size and clear cache.
+ * conversion dialogs, default durations, cache size and clear cache.
  */
 export function ProjectSection() {
   const name = useStoreSelector(documentStore, selectName);
@@ -42,6 +53,9 @@ export function ProjectSection() {
   const background = useStoreSelector(documentStore, selectBackground);
   const fpsEditable = useStoreSelector(documentStore, canChangeFrameRate);
   const delay = useStoreSelector(appSettings, selectDelay);
+  const proxyAuto = useStoreSelector(appSettings, selectProxyAuto);
+  const proxyRule = useStoreSelector(appSettings, selectProxyRule);
+  const proxyEdge = useStoreSelector(appSettings, selectProxyEdge);
   // "Custom" picked while the size still matches a preset: show the size fields anyway.
   const [customOpen, setCustomOpen] = useState(false);
   const preset = customOpen ? CUSTOM_RESOLUTION : resolutionPresetId(width, height);
@@ -90,6 +104,16 @@ export function ProjectSection() {
 
         <span className={styles.label}>Autosave</span>
         <Select value={String(delay)} options={DELAY_OPTIONS} onChange={(ms) => void appSettings.update({ autosaveDelayMs: Number(ms) })} label="Autosave delay" />
+
+        <span className={styles.label}>Proxies</span>
+        <div className={styles.switchCell}>
+          <Toggle checked={proxyAuto} onChange={(on) => void appSettings.update({ proxyAuto: on })} label="Make proxies on import" />
+        </div>
+        <span className={styles.label}>Proxy for</span>
+        <Select value={proxyRule} options={PROXY_RULE_OPTIONS} onChange={(rule) => void appSettings.update({ proxyRule: rule })} label="Videos that get a proxy" disabled={!proxyAuto} />
+        <span className={styles.label}>Proxy size</span>
+        <Select value={String(proxyEdge)} options={PROXY_EDGE_OPTIONS} onChange={(edge) => void appSettings.update({ proxyShortEdge: Number(edge) as AppSettings["proxyShortEdge"] })} label="Proxy short edge" />
+        <span className={styles.hint}>New proxies use these; Generate or Remove proxy in the media menu.</span>
       </div>
     </section>
   );

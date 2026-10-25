@@ -7,14 +7,20 @@
 //   scrubbing and for 300 ms after (§8), else full. `proxy` always renders reduced. `half` and `quarter`
 //   render at 1/2 and 1/4 of the reduced scale while playing, else as `auto`.
 //   Reduced = the full scale capped at the project size: no detail beyond the project's pixels, the
-//   render playback has always had. TODO(batch 24): reduced means proxy frames for media that have one.
+//   render playback has always had.
+// - Frames (spec §9.5, `wantedLod`): Auto plays and scrubs on proxies and asks for full frames as soon
+//   as playback or a scrub ends (a scrub held still for AUTO_SETTLE_MS counts as ended); the proxy
+//   frame stays on screen until the full one is decoded. Proxy always uses proxies, Full never; 1/2
+//   and 1/4 decode the full file and switch a media whose playback falls behind to its proxy. Only
+//   media with a ready proxy get one (`FrameService.lodFor`).
 // - Video frames are uploaded at most at `projectLongEdge * max(1, r)` (at most 4096 px and the
 //   device limit): detail needs bigger frames, a reduced render does not; 1/2 and 1/4 playback uploads
 //   at the reduced size itself.
 // TODO(batch 28): text layers have no source limit (re-rasterized at `r`), so a visible text layer
 // raises the source detail to the zoom.
 import type { PreviewQuality } from "../../core/store/sessionStore.js";
-import type { Composite } from "../compositor/drawList.js";
+import type { Lod } from "../../media/cache/TexturePool.js";
+import type { Composite, MediaLayer } from "../compositor/drawList.js";
 
 /** Long-edge cap of detail renders and frame uploads (§7.1). */
 export const DETAIL_MAX_SIZE = 4096;
@@ -42,15 +48,32 @@ export function sourceDetail(composite: Composite, size: (mediaId: string) => { 
   for (const layer of composite.layers) {
     if (layer.kind !== "media") continue;
     const media = size(layer.mediaId);
-    if (!media || media.width <= 0 || media.height <= 0) continue;
-    const t = layer.transform;
-    const area = Math.abs(t[0] * t[3] - t[1] * t[2]);
-    if (!(area > 0)) continue;
-    const crop = Math.abs((layer.crop.u1 - layer.crop.u0) * (layer.crop.v1 - layer.crop.v0));
-    const ratio = Math.sqrt((media.width * media.height * crop) / area);
+    if (!media) continue;
+    const ratio = layerDetail(layer, media.width, media.height);
     if (ratio > detail) detail = ratio;
   }
   return detail;
+}
+
+/** Source px per project px of one media layer whose source is `width` x `height` (0 when it covers nothing). */
+export function layerDetail(layer: Pick<MediaLayer, "transform" | "crop">, width: number, height: number): number {
+  if (width <= 0 || height <= 0) return 0;
+  const t = layer.transform;
+  const area = Math.abs(t[0] * t[3] - t[1] * t[2]);
+  if (!(area > 0)) return 0;
+  const crop = Math.abs((layer.crop.u1 - layer.crop.u0) * (layer.crop.v1 - layer.crop.v0));
+  return Math.sqrt((width * height * crop) / area);
+}
+
+/**
+ * The long edge Export frame uploads a video at (spec §9.5 "full resolution"): its own size, or twice
+ * its size on the frame when it is drawn smaller than half its size (the upload and the draw filter
+ * bilinearly, without mipmaps: a 2x step each keeps the lines of the source without aliasing), at most
+ * `cap`. `detail` is the layer's source px per project px (`layerDetail`).
+ */
+export function exportLongEdge(codedLongEdge: number, detail: number, cap: number): number {
+  const drawn = detail > 2 ? Math.ceil((2 * codedLongEdge) / detail) : codedLongEdge;
+  return Math.max(1, Math.min(cap, codedLongEdge, drawn));
 }
 
 /** The full-quality render scale at view scale `zoom` (device px per project px). */
@@ -75,6 +98,21 @@ export function renderScale(mode: PreviewQuality, activity: PreviewActivity, ful
   }
 }
 
+/** The lod video frames are asked for in `mode` while the preview is `activity`; `behind`: playback fell behind on the media. */
+export function wantedLod(mode: PreviewQuality, activity: PreviewActivity, behind = false): Lod {
+  switch (mode) {
+    case "full":
+      return "full";
+    case "proxy":
+      return "proxy";
+    case "auto":
+      return activity === "playing" || activity === "scrubbing" ? "proxy" : "full";
+    case "half":
+    case "quarter":
+      return activity === "playing" && behind ? "proxy" : "full";
+  }
+}
+
 /** Long edge video frames are uploaded at for a render at scale `render` (§7.1 caps, the device limit). */
 export function uploadLongEdge(projectLongEdge: number, mode: PreviewQuality, activity: PreviewActivity, render: number, maxTextureSize: number): number {
   const fraction = activity === "playing" && (mode === "half" || mode === "quarter");
@@ -89,11 +127,13 @@ export const qualityName = (mode: PreviewQuality): string => MODE_LABELS[mode];
 
 /**
  * The status strip's quality text (§13 `Auto: proxy` / `Auto: full`): the mode, then what this render
- * is: `full`, `reduced` (below the full scale; `half` / `quarter` for those playback renders).
+ * is: `proxy` (a layer drew a proxy frame), `full`, `reduced` (below the full scale; `half` /
+ * `quarter` for those playback renders).
  */
-export function qualityLabel(mode: PreviewQuality, scales: DetailScales): string {
+export function qualityLabel(mode: PreviewQuality, scales: DetailScales, proxy = false): string {
   if (mode === "full") return "Full";
   const name = MODE_LABELS[mode];
+  if (proxy) return `${name}: proxy`;
   if (scales.render >= scales.full - 1e-6) return `${name}: full`;
   if (mode === "half" || mode === "quarter") {
     const reduced = Math.min(scales.full, 1);

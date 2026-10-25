@@ -13,6 +13,9 @@
 //   whoever draws it takes the new one from the pool on its next pass).
 // - Frame requests that go to the decoder are announced (`onDecodeRequest`) and counted
 //   (`decodesInFlight`): background decoders (thumbnail sheets) yield to them.
+// - Proxies (spec §9.5): `lodFor` routes a request that wants the proxy to it when the media has one
+//   ready (`proxyReady`) and it opened, else to the full file. A proxy that fails to open (file gone,
+//   no decoder) is not used again until it is released (removed or made again).
 import type { MediaId } from "../../core/document/types.js";
 import { fitWithin } from "../../render/gpu/fitWithin.js";
 import type { Renderer, TextureHandle } from "../../render/gpu/renderer.js";
@@ -66,6 +69,8 @@ export interface FrameRequestOptions {
   onApproximate?: (result: FrameResult) => void;
   /** A cached frame with a shorter long edge is decoded again at the current upload size (detail on zoom, §7.1). */
   minLongEdge?: number;
+  /** Uploads frames at least this long on the long edge, whatever `uploadSize` says (Export frame at full resolution). */
+  uploadAtLeast?: number;
 }
 
 export interface FrameServiceStats {
@@ -98,6 +103,8 @@ export interface FrameServiceDeps {
   pool: Pick<TexturePool, "get" | "put" | "nearest" | "deleteMedia">;
   /** Long edge frames are scaled down to on upload (the project's long edge); none when undefined. */
   uploadSize?: () => number | undefined;
+  /** True when the media's proxy is ready to use (the document says so). */
+  proxyReady?: (mediaId: MediaId) => boolean;
   now?: () => number;
 }
 
@@ -135,6 +142,8 @@ export class FrameService {
   private readonly lanes = new Map<string, Lane>();
   private readonly listeners = new Set<() => void>();
   private readonly decodeListeners = new Set<() => void>();
+  /** Media whose proxy failed to open: their requests go to the full file. */
+  private readonly brokenProxies = new Set<MediaId>();
   private decoding = 0;
   private readonly approxSamples: number[] = [];
   private readonly exactSamples: number[] = [];
@@ -166,16 +175,33 @@ export class FrameService {
       this.opening.set(key, controller);
       video.then(
         (info) => {
-          if (this.videos.get(key) === video) this.infos.set(key, info);
+          if (this.videos.get(key) !== video) return;
+          this.infos.set(key, info);
+          if (lod === "proxy" && !info.decodable) this.breakProxy(mediaId, `this browser cannot decode ${info.codec}`);
         },
-        () => {
-          if (this.videos.get(key) === video) this.videos.delete(key);
+        (error: unknown) => {
+          if (this.videos.get(key) !== video) return;
+          this.videos.delete(key);
+          if (lod === "proxy" && !isNamed(error, "AbortError")) this.breakProxy(mediaId, error instanceof Error ? error.message : String(error));
         },
       ).finally(() => {
         if (this.opening.get(key) === controller) this.opening.delete(key);
       });
     }
     return video;
+  }
+
+  /**
+   * The lod a request that wants `wanted` gets (spec §9.5 "per-media availability"): the proxy only
+   * when the media has one ready that did not fail to open.
+   */
+  lodFor(mediaId: MediaId, wanted: Lod): Lod {
+    return wanted === "proxy" && this.hasProxy(mediaId) ? "proxy" : "full";
+  }
+
+  /** True when requests for the media's proxy go to it. */
+  hasProxy(mediaId: MediaId): boolean {
+    return this.deps.proxyReady?.(mediaId) === true && !this.brokenProxies.has(mediaId);
   }
 
   /** The info of an opened video, synchronously; null before `video` resolved. */
@@ -201,7 +227,7 @@ export class FrameService {
 
   /** The frame shown at `timeUs` as a pool texture. Rejects with an AbortError when superseded or aborted. */
   async getFrame(mediaId: MediaId, timeUs: number, options: FrameRequestOptions = {}): Promise<FrameResult> {
-    const { lod = "full", priority = "scrub", signal, onApproximate, minLongEdge } = options;
+    const { lod = "full", priority = "scrub", signal, onApproximate, minLongEdge, uploadAtLeast } = options;
     const started = this.now();
     this.counters.requests += 1;
     const lane = this.lane(mediaId, lod);
@@ -220,7 +246,7 @@ export class FrameService {
     try {
       for (let attempt = 0; ; attempt++) {
         try {
-          return await this.fetchFrame(mediaId, lod, timeUs, priority, controller.signal, started, onApproximate, minLongEdge);
+          return await this.fetchFrame(mediaId, lod, timeUs, priority, controller.signal, started, onApproximate, minLongEdge, uploadAtLeast);
         } catch (error) {
           // The worker was restarted and lost its sessions: open the video again, once.
           if (attempt > 0 || !isNamed(error, "NotOpenError")) throw error;
@@ -272,16 +298,21 @@ export class FrameService {
     }
   }
 
-  /** A media left the project: cancel its requests, close its worker sessions, free its textures. */
-  release(mediaId: MediaId): void {
+  /**
+   * A media left the project: cancel its requests, close its worker sessions, free its textures. With
+   * `lod`, only those of that lod (a proxy removed or made again).
+   */
+  release(mediaId: MediaId, lod?: Lod): void {
     let known = false;
+    const matches = (key: string) => (lod ? key === keyOf(mediaId, lod) : key.startsWith(`${mediaId}|`));
+    if (!lod || lod === "proxy") this.brokenProxies.delete(mediaId);
     for (const [key, lane] of [...this.lanes]) {
-      if (!key.startsWith(`${mediaId}|`)) continue;
+      if (!matches(key)) continue;
       for (const controller of lane.all) controller.abort(abortError());
       this.lanes.delete(key);
     }
     for (const key of [...this.videos.keys()]) {
-      if (!key.startsWith(`${mediaId}|`)) continue;
+      if (!matches(key)) continue;
       known = true;
       this.videos.delete(key);
       this.infos.delete(key);
@@ -289,8 +320,8 @@ export class FrameService {
       this.opening.get(key)?.abort(abortError());
       this.opening.delete(key);
     }
-    if (known) void this.deps.workers.request("closeVideo", { mediaId }, { priority: "user" }).catch(() => undefined);
-    this.deps.pool.deleteMedia(mediaId);
+    if (known) void this.deps.workers.request("closeVideo", { mediaId, ...(lod && { lod }) }, { priority: "user" }).catch(() => undefined);
+    this.deps.pool.deleteMedia(mediaId, lod);
   }
 
   get stats(): FrameServiceStats {
@@ -323,6 +354,13 @@ export class FrameService {
   onDecodeRequest(listener: () => void): () => void {
     this.decodeListeners.add(listener);
     return () => this.decodeListeners.delete(listener);
+  }
+
+  private breakProxy(mediaId: MediaId, reason: string): void {
+    if (this.brokenProxies.has(mediaId)) return;
+    this.brokenProxies.add(mediaId);
+    console.warn(`[media] the proxy of ${mediaId} cannot be used (${reason}): using the full file`);
+    this.changed();
   }
 
   private detach(): void {
@@ -359,6 +397,7 @@ export class FrameService {
     started: number,
     onApproximate?: (result: FrameResult) => void,
     minLongEdge?: number,
+    uploadAtLeast?: number,
   ): Promise<FrameResult> {
     // Known videos answer synchronously up to the worker request, so a cached stand-in shows this frame.
     const info = this.infos.get(keyOf(mediaId, lod)) ?? (await this.video(mediaId, lod));
@@ -400,12 +439,12 @@ export class FrameService {
           priority: WORKER_PRIORITY[priority],
           signal,
           onProgress: (value) => {
-            const result = this.receive(mediaId, lod, value);
+            const result = this.receive(mediaId, lod, value, uploadAtLeast);
             if (result) show(result);
           },
         },
       );
-      const result = this.receive(mediaId, lod, delivered);
+      const result = this.receive(mediaId, lod, delivered, uploadAtLeast);
       if (!result) throw new Error("The GPU device is not ready");
       if (shownDistance === Infinity) this.recordApprox(started);
       // The decoder could not produce the frame: its nearest one is no exact-latency sample.
@@ -418,13 +457,14 @@ export class FrameService {
   }
 
   /** Uploads a frame from the worker into the pool and closes it at once (P5, P13). */
-  private receive(mediaId: MediaId, lod: Lod, delivered: DeliveredFrame): FrameResult | null {
+  private receive(mediaId: MediaId, lod: Lod, delivered: DeliveredFrame, uploadAtLeast?: number): FrameResult | null {
     const { frame, timeUs, approximate } = delivered;
     this.counters.framesReceived += 1;
     this.counters.openFrames += 1;
     try {
       const key: TextureKey = { mediaId, lod, timeUs };
-      const maxSize = this.deps.uploadSize?.();
+      const size = this.deps.uploadSize?.();
+      const maxSize = size !== undefined && uploadAtLeast !== undefined ? Math.max(size, uploadAtLeast) : size;
       // A cached texture stays unless it is smaller than this upload would be (detail on zoom).
       const existing = this.deps.pool.get(key);
       if (existing) {

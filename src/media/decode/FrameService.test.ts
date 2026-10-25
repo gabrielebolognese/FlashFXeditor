@@ -39,13 +39,14 @@ function texture(width = 4, height = 4): TextureHandle & { destroyed: boolean } 
 }
 
 /** A FrameService over a scripted worker: openVideo answers at once, frame requests wait for `deliver`. */
-function setup(options: { info?: VideoInfo; cachedIndex?: boolean; ready?: boolean; uploadSize?: number | (() => number) } = {}) {
+function setup(options: { info?: VideoInfo; cachedIndex?: boolean; ready?: boolean; uploadSize?: number | (() => number); proxyReady?: (mediaId: string) => boolean; failProxy?: boolean } = {}) {
   const calls: Call[] = [];
   const opens: unknown[] = [];
   const workers = {
     request: vi.fn((method: Method, params: unknown, requestOptions: RequestOptions<DeliveredFrame> = {}) => {
       if (method === "openVideo") {
         opens.push(params);
+        if (options.failProxy && (params as { lod: string }).lod === "proxy") return Promise.reject(new Error("The media file is missing"));
         return Promise.resolve({ info: { ...(options.info ?? info()), indexFromCache: options.cachedIndex ?? false }, index: options.cachedIndex ? null : new ArrayBuffer(8) });
       }
       if (method === "closeVideo") return Promise.resolve(null);
@@ -81,7 +82,14 @@ function setup(options: { info?: VideoInfo; cachedIndex?: boolean; ready?: boole
   };
   let clock = 0;
   const { uploadSize } = options;
-  const frames = new FrameService({ workers: workers as never, renderer, pool, now: () => clock, ...(uploadSize && { uploadSize: typeof uploadSize === "function" ? uploadSize : () => uploadSize }) });
+  const frames = new FrameService({
+    workers: workers as never,
+    renderer,
+    pool,
+    now: () => clock,
+    ...(uploadSize && { uploadSize: typeof uploadSize === "function" ? uploadSize : () => uploadSize }),
+    ...(options.proxyReady && { proxyReady: options.proxyReady }),
+  });
   const detach = frames.attach(source);
   const frameCalls = () => calls.filter((c) => c.method === "requestFrame" && !c.options.signal?.aborted);
   /** Answers a frame request with a frame at its requested time (or `timeUs`). */
@@ -334,6 +342,51 @@ describe("FrameService", () => {
     expect(workers.request).toHaveBeenCalledWith("closeVideo", { mediaId: "m1" }, expect.anything());
     expect(pool.has(key)).toBe(false);
     expect(frames.info("m1")).toBeNull();
+  });
+
+  it("routes proxy requests to media with a ready proxy only (spec §9.5)", () => {
+    const { frames } = setup({ proxyReady: (mediaId) => mediaId === "px" });
+    expect(frames.lodFor("px", "proxy")).toBe("proxy");
+    expect(frames.lodFor("px", "full")).toBe("full");
+    expect(frames.lodFor("m1", "proxy")).toBe("full");
+    expect(setup().frames.lodFor("px", "proxy")).toBe("full");
+  });
+
+  it("goes back to the full file when the proxy fails to open, until the proxy is released", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const { frames } = setup({ proxyReady: () => true, failProxy: true });
+    await expect(frames.video("px", "proxy")).rejects.toThrow("missing");
+    expect(frames.lodFor("px", "proxy")).toBe("full");
+    expect(warn).toHaveBeenCalledTimes(1);
+    frames.release("px", "proxy");
+    expect(frames.lodFor("px", "proxy")).toBe("proxy");
+    warn.mockRestore();
+  });
+
+  it("releases one lod of a media: its proxy sessions and textures, not the full ones", async () => {
+    const { frames, frameCalls, deliver, workers, pool, opens } = setup({ proxyReady: () => true });
+    const full = frames.getFrame("m1", 0, { priority: "playback" });
+    const proxy = frames.getFrame("m1", 0, { priority: "playback", lod: "proxy" });
+    await settle();
+    expect(opens.map((o) => (o as { lod: string }).lod)).toEqual(["full", "proxy"]);
+    for (const call of frameCalls()) deliver(call);
+    const [fullFrame, proxyFrame] = await Promise.all([full, proxy]);
+    expect(proxyFrame.key.lod).toBe("proxy");
+    frames.release("m1", "proxy");
+    expect(workers.request).toHaveBeenCalledWith("closeVideo", { mediaId: "m1", lod: "proxy" }, expect.anything());
+    expect(pool.has(proxyFrame.key)).toBe(false);
+    expect(pool.has(fullFrame.key)).toBe(true);
+    expect(frames.info("m1", "proxy")).toBeNull();
+    expect(frames.info("m1")).not.toBeNull();
+  });
+
+  it("uploads at least at `uploadAtLeast` (Export frame at full resolution)", async () => {
+    const { frames, frameCalls, deliver, uploadOptions } = setup({ uploadSize: 960 });
+    const request = frames.getFrame("m1", 0, { uploadAtLeast: 1920 });
+    await settle();
+    deliver(frameCalls()[0] as Call);
+    await request;
+    expect(uploadOptions[0]).toMatchObject({ maxSize: 1920 });
   });
 
   it("closes every video when the project detaches", async () => {

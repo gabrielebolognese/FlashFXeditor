@@ -42,6 +42,13 @@
   min-height: var(--control-compact);
 }
 
+/* A switch in the control column, at the start of the row. */
+.switchCell {
+  display: flex;
+  align-items: center;
+  min-height: var(--control-default);
+}
+
 .pair {
   display: grid;
   grid-template-columns: 1fr 1fr;
