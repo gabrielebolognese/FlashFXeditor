@@ -105,12 +105,12 @@ export class ProxyJobs {
     return () => this.dispose();
   }
 
-  /** Marks videos pending (Generate proxy). False in a read-only project. */
+  /** Marks videos pending (Generate proxy); those with a ready or running proxy are left as they are. False in a read-only project. */
   generate(ids: readonly MediaId[]): boolean {
     if (!this.deps.isWritable()) return false;
     for (const id of ids) {
       const item = this.deps.document.getState().media[id];
-      if (!isVideo(item) || item.proxy?.status === "pending") continue;
+      if (!isVideo(item) || item.proxy?.status === "pending" || item.proxy?.status === "ready") continue;
       this.failed.delete(id);
       this.markPending(item);
     }
