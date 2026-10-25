@@ -81,7 +81,8 @@ To get back to the **Project** section, click an empty area of the timeline trac
 The right column. It shows the frame at the playhead.
 
 - Click a picture in the frame to select its clip; drag it to move it, drag its handles to resize it, and drag just outside a corner to rotate it. Right-click it for the layer menu. See [Arranging layers in the preview](arranging-layers-in-the-preview.md).
-- The header has, from left to right, the **Zoom** menu, **Fit the frame in the panel**, the **Preview quality** menu, the **Overlays** menu (safe zones, grids and guides), **Snap**, **Smart guides**, **Fullscreen** and **Export frame**. See [Preview zoom, overlays and fullscreen](preview-zoom-overlays-fullscreen.md).
+- Pictures you drag snap to the frame, the overlays and each other, with gold smart guides; hold <kbd>Alt</kbd> to measure distances. See [Snapping and smart guides in the preview](snapping-and-smart-guides.md).
+- The header has, from left to right, the **Zoom** menu, **Fit the frame in the panel**, the **Preview quality** menu, the **Overlays** menu (safe zones, grids and guides), **Snap** and **Smart guides** (see [Turn snapping and smart guides on or off](snapping-and-smart-guides.md#turn-snapping-and-smart-guides-on-or-off)), **Fullscreen** and **Export frame**. See [Preview zoom, overlays and fullscreen](preview-zoom-overlays-fullscreen.md).
 - Under the picture, a bar shows the timecode format chip (**ff** or **ms**), the playhead timecode (click it to type a time), the duration and the frame rate, the transport buttons (**Go to start**, **Previous frame**, **Play** / **Pause**, **Next frame**, **Go to end**), **Mute**, the **Master volume** knob, **Loop playback** and **Play in to out**. A status line underneath shows the preview quality and the dropped frames of the last playback.
 - Press <kbd>F</kbd> to let the preview fill the browser window, over the other panels; <kbd>Esc</kbd> brings the panels back at their sizes.
 - Along the right edge of the panel, a narrow strip holds the audio meter. See [Audio](audio.md).
@@ -221,7 +222,8 @@ To jump to a time, type it into the timecode field of the timeline toolbar, or c
 - [Preview and playback](preview-and-playback.md)
 - [Preview zoom, overlays and fullscreen](preview-zoom-overlays-fullscreen.md)
 - [Arranging layers in the preview](arranging-layers-in-the-preview.md)
+- [Snapping and smart guides in the preview](snapping-and-smart-guides.md)
 - [Audio](audio.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 22, 2026-10-16</sub>
+<sub>Last updated: Batch 23, 2026-10-16</sub>
