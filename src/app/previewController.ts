@@ -86,7 +86,6 @@ export const playbackEngine: PlaybackEngine = new PlaybackEngine({
 playbackEngine.subscribe(() => {
   if (playbackEngine.playing) meterView.wake();
 });
-export const previewStats = new PreviewStatsOverlay({ scheduler, preview: previewView, pool: texturePool, gpu: gpuDevice, frames: frameService, playback: playbackEngine });
 /** The open canvas context menu (spec §7.2) at client px, or null. React renders it from this store. */
 export const canvasMenu = createStore<{ x: number; y: number } | null>(null);
 /** Selection, hover, marquee and the transform gizmo on the preview canvas (spec §7.2, §7.3). */
@@ -104,6 +103,7 @@ export const canvasInput: CanvasEditInput = new CanvasEditInput({
   onDragStart: () => playbackEngine.pause(),
   onContextMenu: (request) => canvasMenu.set(request),
 });
+export const previewStats = new PreviewStatsOverlay({ scheduler, preview: previewView, pool: texturePool, gpu: gpuDevice, frames: frameService, playback: playbackEngine, canvas: canvasInput });
 /** The 2D canvas over the preview: overlays (spec §7.6), the selection and the gizmo (§7.3). */
 export const previewOverlay = new PreviewOverlayView({ scheduler, layout: layoutStore, session: sessionStore.state, document: documentStore, theme: themeBridge, preview: previewView, gizmo: canvasInput });
 
@@ -315,7 +315,7 @@ export function installPreviewController(): () => void {
     actions.register("canvas.zoom100", () => setPreviewZoom(1)),
     actions.register("canvas.zoom200", () => setPreviewZoom(2)),
     actions.register("preview.toggleFullscreen", toggleFullscreen),
-    // Smart guides on the canvas (spec §7.4, §13 "Guides toggle"); Batch 23 draws them.
+    // Smart guides on the canvas (spec §7.4, §13 "Guides toggle"): other layers and equal spacing as snap targets, and the Alt measure mode.
     actions.register("preview.toggleGuides", () => setPreviewOptions({ guides: !sessionStore.state.getState().preview.guides })),
   ];
   return () => {

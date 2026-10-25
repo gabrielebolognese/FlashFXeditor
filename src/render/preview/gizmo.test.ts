@@ -8,6 +8,7 @@ import {
   gizmoBoxOf,
   handlePoint,
   hitGizmo,
+  moveDelta,
   moveGesture,
   resizeCursor,
   rotateGesture,
@@ -87,6 +88,15 @@ describe("move (spec §7.3)", () => {
     expect(result(moveGesture(s, 10, -30, { shift: true, alt: false }))).toMatchObject({ x: 0.25, y: -30 });
     expect(moveGesture(start([{ id: "a", transform: t({ x: 4 }) }]), 6, 1, NONE).readout).toBe("X 10 · Y 1");
   });
+
+  it("adds a snap offset after the rounding (spec §7.4: a snapped axis lands on its target)", () => {
+    const s = start([{ id: "a", transform: t() }]);
+    const r = moveGesture(s, 10.6, -3.2, NONE, { x: -0.5, y: 0 });
+    expect(result(r)).toMatchObject({ x: 10.5, y: -3 });
+    expect(r.box[0]).toEqual({ x: 450.5, y: 907 });
+    expect(moveDelta(10, -30, true)).toEqual({ x: 0, y: -30, free: { x: false, y: true } });
+    expect(moveDelta(10.4, -3, false)).toEqual({ x: 10, y: -3, free: { x: true, y: true } });
+  });
 });
 
 describe("scale (spec §7.3)", () => {
@@ -136,6 +146,10 @@ describe("scale (spec §7.3)", () => {
     expect(r.snapX).toBe(true);
     const past = result(scaleGesture(s, "se", { x: 100, y: 500 }, NONE));
     expect(past.scale).toBeCloseTo(0.01, 12);
+    // Snapping off (§7.4's one snap state): no 100% snap.
+    const free = scaleGesture(half, "e", { x: 540 - 50 + 203, y: 960 }, NONE, false);
+    expect(result(free).scale).toBeCloseTo(1.015, 12);
+    expect(free.snapX).toBe(false);
   });
 
   it("scales a group around its box: positions and sizes proportionally", () => {

@@ -127,3 +127,13 @@ export function formatChord(text: string, platform: Platform): string {
     .map((part) => MAC_SYMBOLS[part] ?? part)
     .join("");
 }
+
+/**
+ * The S key as the KeyDispatcher reads it: by the letter typed, or by the key position when no plain
+ * letter comes (Option+S on macOS types "ß"). During a drag (timeline or canvas) it is the hold-to-invert
+ * snapping modifier (spec §6.9, §7.4).
+ */
+export function isSnapKey(event: Pick<KeyboardEvent, "key" | "code">): boolean {
+  const key = event.key.toLowerCase();
+  return /^[a-z]$/.test(key) ? key === "s" : event.code === "KeyS";
+}

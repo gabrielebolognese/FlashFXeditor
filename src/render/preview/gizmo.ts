@@ -4,7 +4,8 @@
 // - One layer: the box is its visible quad (rotated with it). Several: the axis-aligned group box of
 //   their quads; transforms apply relative to it (positions scale and turn around it).
 // - Scale: corners scale uniformly, Shift+corner per axis, edges one axis (writing `scaleY`), Alt
-//   from the box center instead of the opposite handle. Scale snaps to 100% within 2%.
+//   from the box center instead of the opposite handle. Scale snaps to 100% within 2% while snapping
+//   is on (the edge snapping of §7.4 is in snap.ts).
 // - Rotate: around the anchor (one layer) or the group box center; Shift snaps to 45° multiples
 //   within 3°; otherwise free at 0.1°. The pointer angle is unwrapped, so turns add up.
 // - Move: whole project px; Shift keeps the dominant axis. Anchor (one layer, Alt): the anchor goes
@@ -173,29 +174,36 @@ function mapBox(box: GizmoBox, map: (p: Point) => Point): GizmoBox {
   return [map(box[0]), map(box[1]), map(box[2]), map(box[3])];
 }
 
-/** Move (§7.3): every layer by the pointer's delta in whole project px; Shift keeps its dominant axis. */
-export function moveGesture(start: GestureStart, dx: number, dy: number, mods: Modifiers): GestureResult {
-  let mx = Math.round(dx);
-  let my = Math.round(dy);
-  if (mods.shift) {
-    if (Math.abs(dx) >= Math.abs(dy)) my = 0;
-    else mx = 0;
-  }
+/** The move of a pointer delta (§7.3): whole project px; Shift keeps the dominant axis (`free` says which axes move). */
+export function moveDelta(dx: number, dy: number, shift: boolean): { x: number; y: number; free: { x: boolean; y: boolean } } {
+  const horizontal = Math.abs(dx) >= Math.abs(dy);
+  const free = { x: !shift || horizontal, y: !shift || !horizontal };
+  return { x: free.x ? Math.round(dx) : 0, y: free.y ? Math.round(dy) : 0, free };
+}
+
+/**
+ * Move (§7.3): every layer by the pointer's delta in whole project px; Shift keeps its dominant axis.
+ * `snap` (§7.4) is added after the rounding: a snapped axis lands exactly on its target.
+ */
+export function moveGesture(start: GestureStart, dx: number, dy: number, mods: Modifiers, snap: Point = { x: 0, y: 0 }): GestureResult {
+  const delta = moveDelta(dx, dy, mods.shift);
+  const mx = delta.x + snap.x;
+  const my = delta.y + snap.y;
   const transforms = new Map<ClipId, Transform>();
   for (const layer of start.layers) transforms.set(layer.clipId, { ...layer.transform, x: layer.transform.x + mx, y: layer.transform.y + my });
   const single = start.layers.length === 1 ? start.layers[0] : undefined;
-  const readout = single ? `X ${Math.round(single.transform.x + mx)} · Y ${Math.round(single.transform.y + my)}` : `ΔX ${signed(mx)} · ΔY ${signed(my)}`;
+  const readout = single ? `X ${Math.round(single.transform.x + mx)} · Y ${Math.round(single.transform.y + my)}` : `ΔX ${signed(Math.round(mx))} · ΔY ${signed(Math.round(my))}`;
   return { transforms, box: mapBox(start.box, (p) => ({ x: p.x + mx, y: p.y + my })), snapX: false, snapY: false, readout };
 }
 
-/** `value` snapped to 1 within SCALE_SNAP (and whether it snapped), at least `min`. */
-function snapScale(value: number, min: number): [number, boolean] {
-  if (Math.abs(value - 1) <= SCALE_SNAP) return [1, true];
+/** `value` snapped to 1 within SCALE_SNAP (and whether it snapped) while `snap` holds, at least `min`. */
+function snapScale(value: number, min: number, snap: boolean): [number, boolean] {
+  if (snap && Math.abs(value - 1) <= SCALE_SNAP) return [1, true];
   return [Math.max(min, value), false];
 }
 
 /** Scale one layer by a handle (§7.3), in the layer's own axes. */
-function scaleLayer(layer: HeldLayer, frame: Size, handle: HandleId, pointer: Point, mods: Modifiers): { transform: Transform; snapX: boolean; snapY: boolean } {
+function scaleLayer(layer: HeldLayer, frame: Size, handle: HandleId, pointer: Point, mods: Modifiers, snap: boolean): { transform: Transform; snapX: boolean; snapY: boolean } {
   const t0 = layer.transform;
   const b = layer.box;
   const { u, v } = HANDLES[handle];
@@ -226,7 +234,7 @@ function scaleLayer(layer: HeldLayer, frame: Size, handle: HandleId, pointer: Po
     const ay = hy * sy0;
     let k = (dx * ax + dy * ay) / (ax * ax + ay * ay);
     k = Math.max(k, MIN_SCALE / Math.min(sx0, sy0));
-    if (Math.abs(sx0 * k - 1) <= SCALE_SNAP) {
+    if (snap && Math.abs(sx0 * k - 1) <= SCALE_SNAP) {
       k = 1 / sx0;
       snapX = true;
       snapY = sy0 === sx0;
@@ -234,8 +242,8 @@ function scaleLayer(layer: HeldLayer, frame: Size, handle: HandleId, pointer: Po
     sx = sx0 * k;
     sy = sy0 * k;
   } else {
-    if (hx !== 0) [sx, snapX] = snapScale(dx / hx, MIN_SCALE);
-    if (hy !== 0) [sy, snapY] = snapScale(dy / hy, MIN_SCALE);
+    if (hx !== 0) [sx, snapX] = snapScale(dx / hx, MIN_SCALE, snap);
+    if (hy !== 0) [sy, snapY] = snapScale(dy / hy, MIN_SCALE, snap);
   }
   const scaled: Transform = { ...t0, x: 0, y: 0, scale: sx, scaleY: sy };
   const at = layerPoint(scaled, b, frame, fx, fy);
@@ -245,13 +253,14 @@ function scaleLayer(layer: HeldLayer, frame: Size, handle: HandleId, pointer: Po
 /**
  * Scale by a handle (§7.3): one layer in its own axes; several around the group box (opposite handle
  * or, with Alt, the center), each member's position scaled from it and its scale by the box factors
- * along its own axes (a turned member takes the factors without shear).
+ * along its own axes (a turned member takes the factors without shear). `snap` is the 100% snap
+ * (off with snapping, §7.4's one snap state).
  */
-export function scaleGesture(start: GestureStart, handle: HandleId, pointer: Point, mods: Modifiers): GestureResult {
+export function scaleGesture(start: GestureStart, handle: HandleId, pointer: Point, mods: Modifiers, snap = true): GestureResult {
   const { frame } = start;
   if (start.layers.length === 1) {
     const layer = start.layers[0] as HeldLayer;
-    const { transform, snapX, snapY } = scaleLayer(layer, frame, handle, pointer, mods);
+    const { transform, snapX, snapY } = scaleLayer(layer, frame, handle, pointer, mods, snap);
     const box = layerCorners(transform, layer.box, frame);
     const sy = scaleYOf(transform);
     const readout = sy === transform.scale ? percent(transform.scale) : `${percent(transform.scale)} × ${percent(sy)}`;
@@ -269,12 +278,12 @@ export function scaleGesture(start: GestureStart, handle: HandleId, pointer: Poi
   let snapX = false;
   let snapY = false;
   if (isCorner(handle) && !mods.shift) {
-    [kx, snapX] = snapScale((dx * hx + dy * hy) / (hx * hx + hy * hy), MIN_SCALE);
+    [kx, snapX] = snapScale((dx * hx + dy * hy) / (hx * hx + hy * hy), MIN_SCALE, snap);
     ky = kx;
     snapY = snapX;
   } else {
-    if (hx !== 0) [kx, snapX] = snapScale(dx / hx, MIN_SCALE);
-    if (hy !== 0) [ky, snapY] = snapScale(dy / hy, MIN_SCALE);
+    if (hx !== 0) [kx, snapX] = snapScale(dx / hx, MIN_SCALE, snap);
+    if (hy !== 0) [ky, snapY] = snapScale(dy / hy, MIN_SCALE, snap);
   }
   const transforms = new Map<ClipId, Transform>();
   for (const layer of start.layers) {

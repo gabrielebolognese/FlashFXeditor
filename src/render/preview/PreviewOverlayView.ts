@@ -10,12 +10,14 @@
 //   on sides long enough on screen; a group box around several layers), the anchor marker while Alt is
 //   held, the marquee, the 100% scale snap line on the dragged handle's sides, and the numeric readout
 //   near the cursor (the timeline's drag tooltip style).
+// - Smart guides (§7.4, the scene's `guides`): 1 px --accent lines (across the frame for the frame and
+//   safe-zone targets, from the dragged box to the layer for a layer), distance spans with end caps
+//   and their distance chips (--accent, --on-accent mono caption), equal-spacing gaps, measure mode.
 // - It renders with the preview (registered on `preview` after the preview view: a zoom, a pan, a
 //   gesture step or a playhead move redraws both in the same frame) and on `gizmo` (overlay settings,
 //   theme, selection, hover). It redraws only when the placement, the canvas size, the settings, the
 //   theme or the selection geometry changed; playback frames cost a comparison (P3).
 // - Hidden while the split preview shows two frames (spec §6.10).
-// TODO(batch 23): smart guides when `guides` is on.
 import { watchDevicePixelRatio } from "../../core/scheduler/devicePixelRatio.js";
 import type { FrameScheduler, RenderView } from "../../core/scheduler/FrameScheduler.js";
 import type { Store } from "../../core/store/createStore.js";
@@ -31,6 +33,7 @@ import { CORNERS, EDGES, edgeHandlesShown, handlePoint, toScreen, type HandleId 
 import { ACTION_SAFE, centeredRect, gridLines, rulerStep, safeZoneOn, ticksIn, TITLE_SAFE } from "./overlays.js";
 import type { PreviewPlacement } from "./PreviewView.js";
 import type { ZoneRect } from "./safeZones.js";
+import { formatDistance, type GuideLine, type Guides, type GuideSpan } from "./snap.js";
 
 export interface PreviewOverlayDeps {
   scheduler: Pick<FrameScheduler, "register" | "invalidate">;
@@ -178,6 +181,11 @@ export class PreviewOverlayView implements RenderView {
         out.push(1, scene.readout.x, scene.readout.y);
         text = scene.readout.text;
       } else out.push(0);
+      if (scene.guides) {
+        out.push(1, scene.guides.lines.length, scene.guides.spans.length);
+        for (const line of scene.guides.lines) out.push(line.vertical ? 1 : 0, line.at, line.from, line.to);
+        for (const span of scene.guides.spans) out.push(span.vertical ? 1 : 0, span.at, span.from, span.to, span.distance);
+      } else out.push(0);
     } else out.push(-1);
     const previous = this.sceneNumbers;
     let changed = text !== this.sceneText || previous.length !== out.length;
@@ -227,6 +235,7 @@ export class PreviewOverlayView implements RenderView {
       path(quad);
       ctx.stroke();
     }
+    if (scene.guides) this.drawGuides(ctx, t, dpr, scene.guides);
     const box = scene.box;
     if (box) {
       if (scene.group) {
@@ -250,7 +259,84 @@ export class PreviewOverlayView implements RenderView {
     }
     if (scene.anchor) this.drawAnchor(ctx, at(scene.anchor), dpr, line);
     ctx.restore();
+    if (scene.guides && scene.guides.spans.length > 0) this.drawDistances(ctx, placement, scene.guides.spans);
     if (scene.readout) this.drawReadout(ctx, placement, scene.readout);
+  }
+
+  /** Smart guides (§7.4) in device px: --accent lines, and distance spans with end caps across them. */
+  private drawGuides(ctx: CanvasRenderingContext2D, t: Mat3, dpr: number, guides: Guides): void {
+    const { color, gizmo } = this.theme;
+    const width = Math.max(1, Math.round(gizmo.guideWidth * dpr));
+    const cap = (gizmo.guideCap * dpr) / 2;
+    // Crisp lines: centered on device pixels.
+    const crisp = (v: number) => Math.round(v) + width / 2;
+    const segment = (guide: GuideLine, caps: boolean) => {
+      if (guide.vertical) {
+        const x = crisp(t[0] * guide.at + t[4]);
+        const y0 = t[3] * guide.from + t[5];
+        const y1 = t[3] * guide.to + t[5];
+        ctx.moveTo(x, y0);
+        ctx.lineTo(x, y1);
+        if (caps) {
+          for (const y of [crisp(y0), crisp(y1)]) {
+            ctx.moveTo(x - cap, y);
+            ctx.lineTo(x + cap, y);
+          }
+        }
+      } else {
+        const y = crisp(t[3] * guide.at + t[5]);
+        const x0 = t[0] * guide.from + t[4];
+        const x1 = t[0] * guide.to + t[4];
+        ctx.moveTo(x0, y);
+        ctx.lineTo(x1, y);
+        if (caps) {
+          for (const x of [crisp(x0), crisp(x1)]) {
+            ctx.moveTo(x, y - cap);
+            ctx.lineTo(x, y + cap);
+          }
+        }
+      }
+    };
+    ctx.save();
+    ctx.strokeStyle = color.accent;
+    ctx.lineWidth = width;
+    ctx.beginPath();
+    for (const guide of guides.lines) segment(guide, false);
+    for (const guide of guides.spans) segment(guide, true);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  /** The distance chips (§7.4 proximity readout) centered on their spans: --accent, --on-accent mono caption, radius-sm. */
+  private drawDistances(ctx: CanvasRenderingContext2D, placement: PreviewPlacement, spans: readonly GuideSpan[]): void {
+    const { transform: t, dpr } = placement;
+    const theme = this.theme;
+    const { space, color } = theme;
+    const caption = theme.type.caption;
+    ctx.save();
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.font = `${caption.weight} ${caption.size}px ${theme.font.mono}`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    const snap = (v: number) => Math.round(v * dpr) / dpr;
+    const h = caption.line + 2 * space[0];
+    for (const span of spans) {
+      const text = formatDistance(span.distance);
+      const w = Math.ceil(ctx.measureText(text).width) + 2 * space[1];
+      // The span's middle in CSS px.
+      const mid = (span.from + span.to) / 2;
+      const cx = (span.vertical ? t[0] * span.at + t[4] : t[0] * mid + t[4]) / dpr;
+      const cy = (span.vertical ? t[3] * mid + t[5] : t[3] * span.at + t[5]) / dpr;
+      const x = snap(cx - w / 2);
+      const y = snap(cy - h / 2);
+      ctx.beginPath();
+      ctx.roundRect(x, y, w, h, theme.radius.sm);
+      ctx.fillStyle = color.accent;
+      ctx.fill();
+      ctx.fillStyle = color.onAccent;
+      ctx.fillText(text, x + w / 2, y + h / 2);
+    }
+    ctx.restore();
   }
 
   /** The 100% scale snap (§7.3): the box sides through the dragged handle, on the snapped axes, in --accent. */

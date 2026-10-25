@@ -21,6 +21,8 @@ export interface CanvasLayer {
   box: ContentBox;
   /** Visible box corners: content top-left, top-right, bottom-right, bottom-left. */
   quad: Quad;
+  /** On a muted track: selectable, but out of the picture (no snap target, §7.4 "visible layers"). */
+  muted: boolean;
 }
 
 /** Axis-aligned rectangle in project px. */
@@ -41,7 +43,7 @@ export function canvasLayersAt(project: Project, frame: Frame, transforms: Reado
     const box = layerContent(project, clip);
     if (!box) continue;
     const transform = transforms?.get(clip.id) ?? clip.transform;
-    layers.push({ clipId: clip.id, trackId: track.id, transform, box, quad: layerCorners(transform, box, project.settings) });
+    layers.push({ clipId: clip.id, trackId: track.id, transform, box, quad: layerCorners(transform, box, project.settings), muted: track.muted });
   }
   return layers;
 }

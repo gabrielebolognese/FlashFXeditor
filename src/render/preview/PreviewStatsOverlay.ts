@@ -3,7 +3,8 @@
 // layers (exact, stand-in, held, missing) and requests, the texture pool's count, bytes and evictions,
 // and the decode engine: latencies to the first and to the exact frame, seeks, live decoders, frames
 // held on each side (the main thread's must stay 0, P13), sample index cache hits, and playback
-// (speed, dropped frames against frames played, prefetch windows, media flagged for proxy). Plain text
+// (speed, dropped frames against frames played, prefetch windows, media flagged for proxy), and the
+// canvas snap candidates (rebuilds against queries, §7.4). Plain text
 // written in the scheduler loop; the worker's counters are polled while the overlay is shown. React
 // only mounts the element.
 import type { FrameScheduler, RenderView } from "../../core/scheduler/FrameScheduler.js";
@@ -24,6 +25,8 @@ export interface PreviewStatsDeps {
   gpu: Pick<GpuDevice, "state" | "generation" | "restores" | "lastRecoveryMs" | "subscribe">;
   frames: Pick<FrameService, "stats" | "subscribe" | "workerStats">;
   playback?: Pick<PlaybackEngine, "stats" | "speed" | "autoProxy" | "subscribe">;
+  /** Canvas snapping: candidate rebuilds (only when the layers or overlays change) and queries. */
+  canvas?: { readonly snapStats: { readonly rebuilds: number; readonly queries: number } };
 }
 
 const mb = (bytes: number) => (bytes / (1024 * 1024)).toFixed(1);
@@ -77,7 +80,7 @@ export class PreviewStatsOverlay implements RenderView {
 
   render(): void {
     if (!this.element) return;
-    const { preview, pool, gpu, frames, playback } = this.deps;
+    const { preview, pool, gpu, frames, playback, canvas } = this.deps;
     const p = preview.stats;
     const s = pool.stats;
     const f = frames.stats;
@@ -95,6 +98,7 @@ export class PreviewStatsOverlay implements RenderView {
       decode,
       `open VideoFrames: main ${f.openFrames} · worker ${w ? w.openFrames : 0}`,
       ...(playback ? [playbackLine(playback)] : []),
+      ...(canvas ? [`canvas snap: candidates rebuilt ${canvas.snapStats.rebuilds} · queries ${canvas.snapStats.queries}`] : []),
     ].join("\n");
   }
 }
