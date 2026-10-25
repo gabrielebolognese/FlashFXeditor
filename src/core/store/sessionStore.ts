@@ -217,3 +217,14 @@ export function selectMarker(session: SessionStore, markerId: string | null): vo
   }
   session.marker.set(markerId);
 }
+
+/** Collapses or expands a properties panel section (spec §11: "collapsible, state persisted"). No notification when it does not change. */
+export function setSectionCollapsed(session: SessionStore, sectionId: string, collapsed: boolean): void {
+  session.state.set((state) => {
+    if ((state.collapsedSections[sectionId] === true) === collapsed) return state;
+    const collapsedSections = { ...state.collapsedSections };
+    if (collapsed) collapsedSections[sectionId] = true;
+    else delete collapsedSections[sectionId];
+    return { ...state, collapsedSections };
+  });
+}

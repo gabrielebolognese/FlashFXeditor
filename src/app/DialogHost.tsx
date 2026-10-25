@@ -1,12 +1,12 @@
 import { FolderPlus, History, KeyRound, Trash2, TriangleAlert } from "lucide-react";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useStoreSelector } from "../core/store/useStoreSelector.js";
 import type { FsDir } from "../project/fs.js";
 import { CUSTOM_RESOLUTION, DEFAULT_NEW_PROJECT, FRAME_RATES, RESOLUTION_PRESETS, formatFps, fpsKey, parseFpsKey } from "../project/projectPresets.js";
 import type { Recovery } from "../project/recovery.js";
 import { Button } from "../ui/Button.js";
 import { Modal } from "../ui/Modal.js";
-import { NumberField } from "../ui/NumberField.js";
+import { NumberField, useValueBinding } from "../ui/NumberField.js";
 import { Select } from "../ui/Select.js";
 import { TextField } from "../ui/TextField.js";
 import { MAX_DIMENSION, MAX_PROJECT_NAME, MIN_DIMENSION } from "../core/commands/projectCommands.js";
@@ -29,6 +29,8 @@ function NewProjectDialog({ dir }: { dir: FsDir }) {
   const [preset, setPreset] = useState<string>(RESOLUTION_PRESETS[0]?.id ?? CUSTOM_RESOLUTION);
   const [size, setSize] = useState({ width: DEFAULT_NEW_PROJECT.width, height: DEFAULT_NEW_PROJECT.height });
   const [fps, setFps] = useState(fpsKey(DEFAULT_NEW_PROJECT.fps));
+  const widthBinding = useValueBinding(size.width, useCallback((width: number) => setSize((s) => ({ ...s, width })), []));
+  const heightBinding = useValueBinding(size.height, useCallback((height: number) => setSize((s) => ({ ...s, height })), []));
 
   const choosePreset = (id: string) => {
     setPreset(id);
@@ -66,8 +68,8 @@ function NewProjectDialog({ dir }: { dir: FsDir }) {
           <>
             <span className={styles.label}>Size</span>
             <div className={styles.pair}>
-              <NumberField label="W" unit="px" value={size.width} min={MIN_DIMENSION} max={MAX_DIMENSION} onChange={(width) => setSize((s) => ({ ...s, width }))} ariaLabel="Width" />
-              <NumberField label="H" unit="px" value={size.height} min={MIN_DIMENSION} max={MAX_DIMENSION} onChange={(height) => setSize((s) => ({ ...s, height }))} ariaLabel="Height" />
+              <NumberField label="W" unit="px" binding={widthBinding} min={MIN_DIMENSION} max={MAX_DIMENSION} step={2} ariaLabel="Width" />
+              <NumberField label="H" unit="px" binding={heightBinding} min={MIN_DIMENSION} max={MAX_DIMENSION} step={2} ariaLabel="Height" />
             </div>
           </>
         )}

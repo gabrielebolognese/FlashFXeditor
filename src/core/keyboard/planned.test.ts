@@ -7,7 +7,7 @@ describe("planned commands", () => {
     const ids = new Set(DEFAULT_KEYMAP.map((binding) => binding.id));
     for (const [id, planned] of Object.entries(PLANNED_COMMANDS)) {
       expect(ids.has(id), id).toBe(true);
-      expect(planned.batch, id).toBeGreaterThan(22);
+      expect(planned.batch, id).toBeGreaterThan(25);
       expect(planned.label.length, id).toBeGreaterThan(0);
     }
   });
@@ -19,5 +19,6 @@ describe("planned commands", () => {
     expect(plannedMessage("marker.add")).toBeNull();
     expect(plannedMessage("clipboard.paste")).toBe("Paste: coming in Batch 39");
     expect(plannedMessage("timeline.zoomToSelection")).toBeNull();
+    expect(plannedMessage("edit.duplicate")).toBeNull();
   });
 });

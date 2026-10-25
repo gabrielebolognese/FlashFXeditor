@@ -1,4 +1,21 @@
-.scroll {
+/* The quick-action row stays on top; the sections scroll under it. */
+.body {
+  display: flex;
+  flex-direction: column;
   height: 100%;
+  min-height: 0;
+}
+
+.scroll {
+  flex: 1 1 auto;
+  min-height: 0;
   overflow: auto;
+}
+
+/* "3 clips" / "2 tracks" in the header strip for a selection of several items. */
+.count {
+  color: var(--text-tertiary);
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-track);
+  white-space: nowrap;
 }

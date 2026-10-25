@@ -20,11 +20,62 @@
   opacity: var(--disabled-opacity);
 }
 
-.label,
 .unit {
+  flex: none;
   font: var(--type-caption);
   letter-spacing: var(--type-caption-track);
   color: var(--text-tertiary);
+}
+
+/* The scrub handle (spec §11: drag the label to scrub): a text label or an icon, ew-resize; gold while
+   it scrubs (the active state), as the field's edge. */
+.scrub {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  align-self: stretch;
+  margin-left: calc(-1 * var(--space-2));
+  padding: 0 var(--space-1) 0 var(--space-2);
+  color: var(--text-tertiary);
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-track);
+  cursor: ew-resize;
+  user-select: none;
+  touch-action: none;
+  transition: color var(--duration-micro) var(--ease-out);
+}
+
+.scrub svg {
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+}
+
+.field:not([data-disabled]) .scrub:hover {
+  color: var(--text-primary);
+}
+
+.field[data-disabled] .scrub {
+  cursor: default;
+}
+
+.field[data-scrubbing] {
+  border-color: var(--accent-dim);
+  box-shadow: 0 0 0 1px var(--accent-wash);
+}
+
+.field[data-scrubbing] .scrub {
+  color: var(--accent);
+}
+
+/* While a label scrubs, the cursor stays ew-resize over whatever the pointer crosses. */
+:global(html[data-number-scrub]),
+:global(html[data-number-scrub]) * {
+  cursor: ew-resize !important;
+}
+
+/* A mixed value (spec §11 "--"): the muted placeholder. */
+.input::placeholder {
+  color: var(--text-muted);
 }
 
 .input {

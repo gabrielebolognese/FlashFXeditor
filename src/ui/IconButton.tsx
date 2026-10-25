@@ -5,7 +5,8 @@ import styles from "./IconButton.module.css";
 import { shortcutLabel } from "./shortcutLabel.js";
 
 export interface IconButtonProps {
-  icon: LucideIcon;
+  /** Omit for a text chip (`text` alone, e.g. the speed chips). */
+  icon?: LucideIcon | undefined;
   /** Accessible name and tooltip text. */
   label: string;
   /** Command id; its shortcut from the keymap is shown in the tooltip. */
@@ -26,7 +27,7 @@ export function IconButton({ icon: Icon, label, commandId, text, pressed, disabl
   return (
     <button
       type="button"
-      className={cx(styles.button, text && styles.withText)}
+      className={cx(styles.button, text && (Icon ? styles.withText : styles.textOnly))}
       data-size={size}
       aria-label={label}
       aria-pressed={pressed}
@@ -38,7 +39,7 @@ export function IconButton({ icon: Icon, label, commandId, text, pressed, disabl
       onMouseDown={keepFocus}
       onClick={disabled ? undefined : onClick}
     >
-      <Icon className={styles.icon} aria-hidden="true" />
+      {Icon && <Icon className={styles.icon} aria-hidden="true" />}
       {text && <span className={styles.text}>{text}</span>}
     </button>
   );

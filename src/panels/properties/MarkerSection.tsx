@@ -10,8 +10,8 @@ import { labelSwatches } from "../../timeline/menus/labelSwatches.js";
 import { Button } from "../../ui/Button.js";
 import { Swatches } from "../../ui/Swatches.js";
 import { TextField } from "../../ui/TextField.js";
-// The section layout of the properties panel (shared until the Batch 25 framework).
-import styles from "./ProjectSection.module.css";
+import { Row } from "./Section.js";
+import styles from "./Section.module.css";
 
 const selectFps = (project: Project): Rational => project.settings.fps;
 const selectFormat = (state: SessionState) => state.timecodeFormat;
@@ -20,7 +20,6 @@ const selectFormat = (state: SessionState) => state.timecodeFormat;
  * The Marker section (spec §11: label, color, frame), shown while a timeline marker is selected (a click
  * on it in the ruler). Each edit is one undo step; the time field takes a timecode (relative input as
  * in the toolbar field) in the preview's format.
- * TODO(batch 25): the collapsible section framework.
  */
 export function MarkerSection({ markerId }: { markerId: string }) {
   const select = useCallback((project: Project): Marker | undefined => project.markers.find((marker) => marker.id === markerId), [markerId]);
@@ -33,26 +32,24 @@ export function MarkerSection({ markerId }: { markerId: string }) {
     if (frame !== null) moveMarker(marker.id, frame);
   };
   return (
-    <section className={styles.section} aria-labelledby="marker-section-title">
-      <h3 id="marker-section-title" className={styles.title}>
-        Marker
-      </h3>
-      <div className={styles.grid}>
-        <span className={styles.label}>Label</span>
+    <>
+      <Row label="Label">
         <TextField value={marker.label} onCommit={(text) => setMarkerFields(marker.id, { label: text })} ariaLabel="Marker label" maxLength={MAX_MARKER_LABEL} placeholder="No label" />
-        <span className={styles.label}>Color</span>
+      </Row>
+      <Row label="Color">
         <span className={styles.swatches} role="radiogroup" aria-label="Marker color">
           <Swatches swatches={labelSwatches(marker.color)} onPick={(color) => setMarkerFields(marker.id, { color: color as LabelColor })} />
         </span>
-        <span className={styles.label}>Time</span>
+      </Row>
+      <Row label="Time">
         <TextField value={formatTimecode(marker.frame, fps, mode)} onCommit={setTime} ariaLabel="Marker time" mono />
-        <span />
-        <span>
-          <Button size="compact" onClick={() => deleteMarker(marker.id)}>
-            Delete marker
-          </Button>
-        </span>
-      </div>
-    </section>
+      </Row>
+      <span />
+      <span>
+        <Button size="compact" onClick={() => deleteMarker(marker.id)}>
+          Delete marker
+        </Button>
+      </span>
+    </>
   );
 }

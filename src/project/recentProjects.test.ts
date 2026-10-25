@@ -83,7 +83,7 @@ describe("app settings", () => {
     await settings.load();
     expect(settings.getState()).toEqual(DEFAULT_APP_SETTINGS);
     await settings.update({ autosaveDelayMs: 5000 });
-    expect(kv.data.get("settings.v1")).toEqual({ autosaveDelayMs: 5000, importMode: "copy", monitorVolumeDb: 0, monitorMuted: false, proxyAuto: true, proxyRule: "heavy", proxyShortEdge: 540 });
+    expect(kv.data.get("settings.v1")).toEqual({ autosaveDelayMs: 5000, importMode: "copy", monitorVolumeDb: 0, monitorMuted: false, proxyAuto: true, proxyRule: "heavy", proxyShortEdge: 540, recentColors: [] });
     await settings.update({ autosaveDelayMs: 1234 });
     expect(settings.getState().autosaveDelayMs).toBe(5000);
 
@@ -124,5 +124,17 @@ describe("app settings", () => {
     await settings.update({ proxyRule: "sometimes" as never, proxyShortEdge: 500 as never, proxyAuto: 1 as never });
     expect(proxySettings(settings.getState())).toEqual({ auto: false, rule: "all", shortEdge: 720 });
     expect(proxySettings(DEFAULT_APP_SETTINGS)).toEqual({ auto: true, rule: "heavy", shortEdge: 540 });
+  });
+
+  it("keeps the color picker's recent colors (hex only, at most 8)", async () => {
+    const kv = memoryKeyValueStore();
+    // eslint-disable-next-line no-restricted-syntax -- hex strings are the stored data here, not UI colors
+    kv.data.set("settings.v1", { recentColors: ["#d9a521", "red", 3, "#11223344", ...Array.from({ length: 9 }, (_, i) => `#00000${i}`)] });
+    const settings = createAppSettings(kv);
+    await settings.load();
+    // eslint-disable-next-line no-restricted-syntax -- as above
+    expect(settings.getState().recentColors).toEqual(["#d9a521", "#11223344", "#000000", "#000001", "#000002", "#000003", "#000004", "#000005"]);
+    await settings.update({ recentColors: "x" as never });
+    expect(settings.getState().recentColors).toHaveLength(8);
   });
 });

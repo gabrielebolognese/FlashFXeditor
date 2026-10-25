@@ -81,6 +81,8 @@ export interface CanvasEditDeps {
   onDragStart(): void;
   /** A right-click on a layer or the selection (client px); the layer is selected first. */
   onContextMenu(request: { x: number; y: number }): void;
+  /** Ephemeral transforms written outside the canvas (a properties field scrub, spec §11, P2), or null; the gizmo follows them. */
+  live?(): ReadonlyMap<ClipId, Transform> | null;
 }
 
 /** What the overlay draws for selection and the gizmo; null parts are not drawn. */
@@ -178,9 +180,9 @@ export class CanvasEditInput {
     this.cursors = canvasCursors(this.theme);
   }
 
-  /** A running gesture's ephemeral transforms by clip id (the compositor reads them, P2), or null. */
+  /** A running gesture's (else a field scrub's) ephemeral transforms by clip id (the compositor reads them, P2), or null. */
   get transforms(): ReadonlyMap<ClipId, Transform> | null {
-    return this.drag?.result?.transforms ?? null;
+    return this.drag?.result?.transforms ?? this.deps.live?.() ?? null;
   }
 
   /** A gesture or marquee runs. */

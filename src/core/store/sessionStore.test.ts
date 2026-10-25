@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { EMPTY_SELECTION, filterSelection, fromSnapshot, selectClips, selectionEquals, toSnapshot } from "./selection.js";
-import { createSessionStore, DEFAULT_SESSION, selectEditPoint, selectGap, selectMarker, setInOut, setPlayhead, setSelection, setSourceRange } from "./sessionStore.js";
+import { createSessionStore, DEFAULT_SESSION, selectEditPoint, selectGap, selectMarker, setInOut, setPlayhead, setSectionCollapsed, setSelection, setSourceRange } from "./sessionStore.js";
 
 describe("SessionStore", () => {
   it("starts from the defaults, with overrides", () => {
@@ -163,5 +163,20 @@ describe("source ranges (spec §12)", () => {
     expect(listener).toHaveBeenCalledTimes(3);
     expect(session.state.getState().sourceRanges).toEqual({ b: { inUs: null, outUs: 1_000_000 } });
     expect(session.state.getState().sourceRanges.b).toBe(kept);
+  });
+});
+
+describe("properties sections (spec §11)", () => {
+  it("collapses and expands a section, notifying only on a change", () => {
+    const session = createSessionStore();
+    const listener = vi.fn();
+    session.state.subscribe(listener);
+    setSectionCollapsed(session, "transform", true);
+    setSectionCollapsed(session, "transform", true);
+    expect(session.state.getState().collapsedSections).toEqual({ transform: true });
+    setSectionCollapsed(session, "transform", false);
+    setSectionCollapsed(session, "clip", false);
+    expect(session.state.getState().collapsedSections).toEqual({});
+    expect(listener).toHaveBeenCalledTimes(2);
   });
 });

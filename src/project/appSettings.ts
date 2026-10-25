@@ -1,7 +1,7 @@
 // Global app settings (spec §3.1: persisted with idb-keyval). For now the autosave delay and the proxy
-// settings of the Project section (§11, §9.5), the import mode (§9.1, no UI yet) and the monitoring
-// volume and mute of the preview chrome (§14: monitoring only, never the export). TODO(batch 42): the
-// settings panel.
+// settings of the Project section (§11, §9.5), the import mode (§9.1, no UI yet), the monitoring
+// volume and mute of the preview chrome (§14: monitoring only, never the export) and the color
+// picker's recent colors (§11). TODO(batch 42): the settings panel.
 import { createStore, type Store } from "../core/store/createStore.js";
 import { DEFAULT_PROXY_SHORT_EDGE, PROXY_RULES, PROXY_SHORT_EDGES, type ProxyRule, type ProxySettings, type ProxyShortEdge } from "../media/proxy/proxyFormat.js";
 import { AUTOSAVE_DELAY_MS } from "./Autosaver.js";
@@ -22,6 +22,8 @@ export interface AppSettings {
   proxyRule: ProxyRule;
   /** The short edge of new proxies (px). */
   proxyShortEdge: ProxyShortEdge;
+  /** The color picker's recent colors (`#rrggbb` / `#rrggbbaa`), newest first. */
+  recentColors: readonly string[];
 }
 
 export const AUTOSAVE_DELAYS_MS = [1000, 2000, 5000, 10_000] as const;
@@ -35,7 +37,18 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   proxyAuto: true,
   proxyRule: "heavy",
   proxyShortEdge: DEFAULT_PROXY_SHORT_EDGE,
+  recentColors: [],
 };
+
+const HEX_COLOR = /^#[0-9a-f]{6}([0-9a-f]{2})?$/;
+/** The colors kept in the color picker's recent row. */
+export const MAX_RECENT_COLORS = 8;
+
+/** `hex` first in the recent colors (lowercase, once), at most MAX_RECENT_COLORS. */
+export function pushRecentColor(recent: readonly string[], hex: string): string[] {
+  const color = hex.toLowerCase();
+  return [color, ...recent.filter((other) => other !== color)].slice(0, MAX_RECENT_COLORS);
+}
 
 /** The proxy part of the settings. */
 export function proxySettings(settings: AppSettings): ProxySettings {
@@ -57,6 +70,9 @@ function sanitize(value: unknown, fallback: AppSettings = DEFAULT_APP_SETTINGS):
     proxyAuto: typeof raw.proxyAuto === "boolean" ? raw.proxyAuto : fallback.proxyAuto,
     proxyRule: PROXY_RULES.some((rule) => rule === raw.proxyRule) ? (raw.proxyRule as ProxyRule) : fallback.proxyRule,
     proxyShortEdge: PROXY_SHORT_EDGES.some((edge) => edge === raw.proxyShortEdge) ? (raw.proxyShortEdge as ProxyShortEdge) : fallback.proxyShortEdge,
+    recentColors: Array.isArray(raw.recentColors)
+      ? raw.recentColors.filter((color): color is string => typeof color === "string" && HEX_COLOR.test(color)).slice(0, MAX_RECENT_COLORS)
+      : fallback.recentColors,
   };
 }
 

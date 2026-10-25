@@ -23,6 +23,10 @@
   padding: 0 var(--space-2) 0 var(--space-1);
 }
 
+.textOnly {
+  padding: 0 var(--space-1);
+}
+
 .button:not([aria-disabled]):hover {
   background: var(--hover-wash);
   color: var(--text-primary);

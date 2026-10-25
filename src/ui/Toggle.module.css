@@ -32,6 +32,11 @@
   transform: translateX(calc(var(--control-default) - var(--space-4) - 2 * var(--space-0)));
 }
 
+/* Mixed (spec §11): the thumb halfway, the track off. */
+.toggle[aria-checked="mixed"] .thumb {
+  transform: translateX(calc((var(--control-default) - var(--space-4) - 2 * var(--space-0)) / 2));
+}
+
 .toggle[aria-disabled] {
   opacity: var(--disabled-opacity);
 }

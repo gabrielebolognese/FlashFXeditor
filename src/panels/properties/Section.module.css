@@ -1,0 +1,129 @@
+/* Properties sections (spec §11; gap: the DS has no inspector). A section is a header row and a
+   label / control grid, separated by hairlines; headers are overline titles in tertiary text with a
+   12px chevron (turned when collapsed), hover wash and secondary text. */
+.section {
+  border-bottom: 1px solid var(--hairline);
+}
+
+.heading {
+  margin: 0;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  width: 100%;
+  height: var(--properties-section-header);
+  padding: 0 var(--space-4) 0 var(--space-3);
+  color: var(--text-tertiary);
+  font: var(--type-overline);
+  letter-spacing: var(--type-overline-track);
+  text-align: left;
+  text-transform: uppercase;
+  transition:
+    background-color var(--duration-micro) var(--ease-out),
+    color var(--duration-micro) var(--ease-out);
+}
+
+.header:hover {
+  background: var(--hover-wash);
+  color: var(--text-secondary);
+}
+
+.chevron {
+  flex: none;
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+  transition: transform var(--duration-micro) var(--ease-out);
+}
+
+.header[aria-expanded="false"] .chevron {
+  transform: rotate(-90deg);
+}
+
+/* Label column sized to the longest label, controls fill the rest. */
+.grid {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-2) var(--space-4);
+  padding: var(--space-1) var(--space-4) var(--space-4);
+}
+
+.label {
+  color: var(--text-secondary);
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-track);
+  white-space: nowrap;
+}
+
+/* A read-only value (the Track section's kind). */
+.value {
+  color: var(--text-primary);
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-track);
+}
+
+/* A row of swatches (the label colors). */
+.swatches {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: var(--control-compact);
+}
+
+/* A switch in the control column, at the start of the row. */
+.switchCell {
+  display: flex;
+  align-items: center;
+  min-height: var(--control-default);
+}
+
+/* Two fields side by side (X / Y). */
+.pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space-2);
+}
+
+/* Two fields with the lock between them (scale W / H). */
+.locked {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-1);
+}
+
+/* A row of icon buttons (flips). */
+.buttons {
+  display: flex;
+  align-items: center;
+  gap: var(--space-0);
+}
+
+.hint {
+  grid-column: 2;
+  margin-top: calc(-1 * var(--space-1));
+  color: var(--text-muted);
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-track);
+}
+
+/* A row of a later batch, disabled: the wrapper takes the pointer (a disabled input gets none) so its
+   tooltip shows. */
+.planned {
+  display: grid;
+  justify-items: stretch;
+  min-width: 0;
+}
+
+/* A button keeps its own width. */
+.planned > button {
+  justify-self: start;
+}
+
+.planned input {
+  pointer-events: none;
+}

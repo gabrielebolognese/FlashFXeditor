@@ -1,5 +1,5 @@
 // Project settings commands (spec §11 Project section). Undoable like any other document change.
-import type { Project, Rational, RGBA } from "../document/types.js";
+import type { Clip, Project, Rational, RGBA, Transform } from "../document/types.js";
 import type { Command } from "./command.js";
 
 export const MAX_PROJECT_NAME = 120;
@@ -31,17 +31,45 @@ export function renameProject(name: string): Command {
   };
 }
 
-/** "Keep" mode: transforms are not scaled. TODO(batch 42): offer "Scale layout". */
-export function setResolution(width: number, height: number): Command {
+/** Clips with a transform the compositor draws (video, image, solid, text): what "Scale layout" scales. */
+function hasLayout(clip: Clip): clip is Extract<Clip, { transform: Transform }> {
+  return clip.kind === "video" || clip.kind === "image" || clip.kind === "solid" || clip.kind === "text";
+}
+
+/**
+ * The layout scaled from one frame size to another (spec §15 "Scale layout": transforms scaled
+ * proportionally): positions per axis, scale by the smaller ratio, so a layer that fits the old frame
+ * fits the new one the same way (a same-aspect change scales everything exactly).
+ */
+export function scaledTransform(transform: Transform, from: { width: number; height: number }, to: { width: number; height: number }): Transform {
+  const kx = to.width / from.width;
+  const ky = to.height / from.height;
+  const k = Math.min(kx, ky);
+  const next: Transform = { ...transform, anchor: { ...transform.anchor }, x: transform.x * kx, y: transform.y * ky, scale: transform.scale * k };
+  if (transform.scaleY !== undefined) next.scaleY = transform.scaleY * k;
+  return next;
+}
+
+/**
+ * New frame size, even and in range. With `scaleLayout` the clips' transforms follow the frame
+ * (`scaledTransform`; locked tracks too: the frame changes under them), else they are kept.
+ * TODO(batch 42): the "Scale layout" / "Keep" choice of §15. TODO(batch 35): position and scale keyframes.
+ */
+export function setResolution(width: number, height: number, options: { scaleLayout?: boolean } = {}): Command {
   const w = clampDimension(width);
   const h = clampDimension(height);
   return {
     id: "project.setResolution",
     label: "Change resolution",
-    affects: ["settings"],
+    affects: options.scaleLayout ? ["settings", "composite"] : ["settings"],
     run(draft) {
+      const from = { width: draft.settings.width, height: draft.settings.height };
       draft.settings.width = w;
       draft.settings.height = h;
+      if (!options.scaleLayout || (from.width === w && from.height === h)) return;
+      for (const clip of Object.values(draft.clips)) {
+        if (hasLayout(clip)) clip.transform = scaledTransform(clip.transform, from, { width: w, height: h });
+      }
     },
   };
 }

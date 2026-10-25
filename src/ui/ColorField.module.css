@@ -1,0 +1,129 @@
+/* Color field (spec §11; gap: the DS has no color control): a swatch button sized like a compact
+   control on the checkerboard (alpha shows through), then the hex text field. */
+.field {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.field[data-disabled] {
+  opacity: var(--disabled-opacity);
+}
+
+.swatch,
+.preview {
+  position: relative;
+  flex: none;
+  width: var(--control-default);
+  height: var(--control-default);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--picker-checker);
+}
+
+.swatch::after,
+.preview::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--swatch-color);
+}
+
+.swatch {
+  cursor: pointer;
+  transition: border-color var(--duration-micro) var(--ease-out);
+}
+
+.swatch:not([aria-disabled]):hover,
+.swatch[aria-expanded="true"] {
+  border-color: var(--accent-dim);
+}
+
+/* The popover: the menu material (floating: glass, hairline, overlay shadow, radius-lg). */
+.picker {
+  position: fixed;
+  z-index: var(--z-overlay);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: var(--picker-width);
+  padding: var(--space-3);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  background: var(--material-menu-bg);
+  backdrop-filter: var(--material-menu-filter);
+  box-shadow: var(--shadow-overlay);
+  visibility: hidden;
+}
+
+.square {
+  position: relative;
+  height: var(--picker-square-height);
+  border-radius: var(--radius-sm);
+  background-image: linear-gradient(to top, var(--picker-dark), transparent), linear-gradient(to right, var(--picker-light), transparent);
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.strip {
+  position: relative;
+  height: var(--picker-strip-height);
+  border-radius: var(--radius-pill);
+  cursor: ew-resize;
+  touch-action: none;
+}
+
+.strip[data-kind="hue"] {
+  background: var(--picker-hue);
+}
+
+.strip[data-kind="alpha"] {
+  background: var(--picker-checker);
+}
+
+.alphaFill {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+
+/* Thumbs: a ring in --text-primary over a --bg-sunken edge (the gizmo markers' look). */
+.thumb,
+.stripThumb {
+  position: absolute;
+  width: var(--picker-thumb-size);
+  height: var(--picker-thumb-size);
+  border: 2px solid var(--text-primary);
+  border-radius: var(--radius-pill);
+  box-shadow: 0 0 0 1px var(--bg-sunken);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.stripThumb {
+  top: 50%;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.channels {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-1);
+}
+
+.recent {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--hairline);
+}

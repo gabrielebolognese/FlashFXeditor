@@ -14,7 +14,7 @@ import { labelSwatches } from "./labelSwatches.js";
 // dispatch command ids (the same as the keys and the toolbar); the label swatches set the selected
 // clips' label color. Rendered only while a menu is open (a right-click is not a P1 interaction).
 // TODO(batch 27): Speed and Freeze frame rows; TODO(batch 36): fades and transitions; TODO(batch 39):
-// Duplicate; TODO(batch 41): Enable/Disable and Reveal in media panel.
+// Duplicate; TODO(batch 41): Reveal in media panel.
 
 const SWATCH_PREFIX = "label:";
 /** The ruler menu's Add marker: at the frame right-clicked (the `M` key adds at the playhead). */
@@ -34,6 +34,14 @@ function linkEntries(project: Project, clipId: ClipId): ContextMenuEntry[] {
   ];
 }
 
+/** Enable/Disable (spec §6.16) names what it would do to the selection: Disable while any clip is enabled. */
+function enableEntry(project: Project, clipId: ClipId): ContextMenuEntry {
+  const selection = sessionStore.selection.getState();
+  const ids = selection.kind === "clips" ? [...selection.clipIds] : [clipId];
+  const anyEnabled = ids.some((id) => project.clips[id]?.enabled === true);
+  return { kind: "item", id: "clip.toggleEnabled", label: anyEnabled ? "Disable" : "Enable", commandId: "clip.toggleEnabled" };
+}
+
 function clipEntries(project: Project, clipId: ClipId, current: LabelColor | null): ContextMenuEntry[] {
   return [
     // TODO(batch 39): clipboard.
@@ -44,6 +52,7 @@ function clipEntries(project: Project, clipId: ClipId, current: LabelColor | nul
     { kind: "item", id: "edit.split", label: "Split at playhead", commandId: "edit.split" },
     { kind: "item", id: "edit.delete", label: "Delete", commandId: "edit.delete" },
     { kind: "item", id: "edit.rippleDelete", label: "Ripple delete", commandId: "edit.rippleDelete" },
+    enableEntry(project, clipId),
     { kind: "separator" },
     ...linkEntries(project, clipId),
     { kind: "separator" },

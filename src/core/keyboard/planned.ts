@@ -21,13 +21,12 @@ export const PLANNED_COMMANDS: Readonly<Record<string, PlannedCommand>> = {
   "text.cancel": { batch: 29, label: "Cancel text editing" },
   // Batch 36: transitions.
   "edit.defaultTransition": { batch: 36, label: "Default transition" },
-  // Batch 39: clipboard and duplicate.
+  // Batch 39: clipboard (Duplicate, Mod+D, is registered since Batch 25).
   "clipboard.cut": { batch: 39, label: "Cut" },
   "clipboard.copy": { batch: 39, label: "Copy" },
   "clipboard.paste": { batch: 39, label: "Paste" },
   "clipboard.pasteInsert": { batch: 39, label: "Paste insert" },
   "clipboard.pasteAttributes": { batch: 39, label: "Paste attributes" },
-  "edit.duplicate": { batch: 39, label: "Duplicate" },
   // Batch 40: command palette.
   "app.commandPalette": { batch: 40, label: "Command palette" },
   // Batch 44: export.
