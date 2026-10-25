@@ -1,6 +1,6 @@
 # Importing media
 
-Import brings your video, audio and image files into the project so you can use them on the timeline. Shorts Editor copies each file into the project folder, reads its details (duration, size, frame rate, rotation) and shows it in the Media panel. There you can browse, skim, sort, rename and remove your media.
+Import brings your video, audio and image files into the project so you can use them on the timeline. Shorts Editor copies each file into the project folder, reads its details (duration, size, frame rate, rotation) and shows it in the Media panel. There you can browse, skim, sort, rename and remove your media, and follow the proxies the editor makes of heavy videos.
 
 > **Video placeholder: Import and organize media**
 > - File: `videos/importing-media/import-overview.mp4` (not recorded yet)
@@ -82,6 +82,7 @@ For each file, Shorts Editor:
 4. **Adds all the items to the project in one step**, so one Undo removes the whole import. Undo does not delete the copied files from the `media` folder.
 5. **Makes thumbnails** in the background. For each image, a thumbnail of the picture. For each video, first its card thumbnail (the first frame), then the thumbnails that its clips show on the timeline: one every 2 seconds and one every half second of the video. Video thumbnails wait while you play, scrub or drag. Audio items show an audio icon. Thumbnails are saved in the project's `cache` folder, so they appear at once the next time you open the project. If that folder is deleted, the thumbnails are made again. See [Clip thumbnails, waveforms and badges](clip-thumbnails-and-waveforms.md).
 6. **Analyzes the sound** of each audio file and each video with sound, in the background while you are not playing, and saves the result in the `cache` folder. Audio clips on the timeline draw their waveform from it. See [Know how sound is loaded](audio.md#know-how-sound-is-loaded).
+7. **Makes a proxy** of each heavy video (by default, above 1080p or above 30 fps, such as 4K or 60 fps phone clips): a light copy that the preview plays and scrubs on. Its card shows a **PX** chip that counts up while you keep working. See [Proxies](proxies.md).
 
 ### Progress of large imports
 
@@ -102,7 +103,7 @@ The **Media** tab has two views. Switch between them with the **Grid view** and 
 > **Video placeholder: Sort, rename and remove media**
 > - File: `videos/importing-media/organize-media.mp4` (not recorded yet)
 > - Length: about 55 seconds
-> - Shows: a Media panel with six items in grid view; choose **Duration** in the **Sort media by** list, then click the **Ascending** button so it becomes **Descending**; switch to **List view** and click the **Resolution** column twice; Shift+click to select three rows; double-click a name, type a new name and press <kbd>Enter</kbd>; select an item, press <kbd>Delete</kbd>, and click **Remove from project** in the **Remove media** dialog; press <kbd>Ctrl</kbd>+<kbd>Z</kbd> and the item comes back; switch back to **Grid view**, point at a card to show its **Unused** chip, right-click it to show the media menu with **Insert at playhead**, **Overwrite at playhead**, **Add to canvas**, **Rename** and **Remove**, and press <kbd>Esc</kbd>.
+> - Shows: a Media panel with six items in grid view, one of them a 4K clip with a green **PX** chip; choose **Duration** in the **Sort media by** list, then click the **Ascending** button so it becomes **Descending**; switch to **List view**, click the **Resolution** column twice and point at the **Proxy** column (**960×540** for the 4K clip, **None** for the others); Shift+click to select three rows; double-click a name, type a new name and press <kbd>Enter</kbd>; select an item, press <kbd>Delete</kbd>, and click **Remove from project** in the **Remove media** dialog; press <kbd>Ctrl</kbd>+<kbd>Z</kbd> and the item comes back; switch back to **Grid view**, point at a card to show its **Unused** chip, right-click it to show the media menu with **Insert at playhead**, **Overwrite at playhead**, **Add to canvas**, **Generate proxy**, **Remove proxy**, **Regenerate thumbnails**, **Rename** and **Remove**, and press <kbd>Esc</kbd>.
 
 ### Grid view
 
@@ -126,6 +127,8 @@ When you point at a card:
 
 The thumbnail of an item that no clip uses is dimmed. A gold bar along the bottom of a thumbnail marks the part of the item you marked with <kbd>I</kbd> and <kbd>O</kbd>. See [Use only part of a media item](adding-media-to-the-timeline.md#use-only-part-of-a-media-item).
 
+A **PX** chip in the top-right corner of a video's thumbnail shows its proxy: grey while it waits or is being made (with the percentage done and a thin gold bar), green when it is ready, red when it failed. A video with no proxy has no chip. See [Follow a proxy while it is made](proxies.md#follow-a-proxy-while-it-is-made).
+
 ### List view
 
 List view shows one row per item, with these columns:
@@ -139,7 +142,7 @@ List view shows one row per item, with these columns:
 | **FPS** | Frame rate, for example 29.97 fps |
 | **Codec** | Video or image format, for example HEVC, H.264, PNG |
 | **Audio** | Audio format, or empty when there is no sound |
-| **Proxy** | Always **None** (proxies are available in a later version) |
+| **Proxy** | The video's proxy: **None**, **Queued**, the percentage done while it is made (for example **42%**), the proxy's size when it is ready (for example **960×540**), or **Failed**. See [Proxies](proxies.md). |
 | **Used** | How many clips on the timeline use the item |
 
 The small thumbnail of a row skims too when you move the pointer across it.
@@ -199,6 +202,9 @@ Right-click a card or a row to open the media menu. The item you right-click is 
 | **Insert at playhead** (<kbd>,</kbd>) | Inserts the items at the playhead and pushes the later clips right. See [Insert at the playhead](adding-media-to-the-timeline.md#insert-at-the-playhead). |
 | **Overwrite at playhead** (<kbd>.</kbd>) | Puts the items at the playhead over what is there. See [Overwrite at the playhead](adding-media-to-the-timeline.md#overwrite-at-the-playhead). |
 | **Add to canvas** | Puts the items at the playhead on the top video track (or a new one), in the middle of the frame. See [Drop media on the preview](adding-media-to-the-timeline.md#drop-media-on-the-preview). |
+| **Generate proxy** | Makes a proxy of the selected videos that have none, or whose proxy failed. Dimmed when there is none. See [Make a proxy yourself](proxies.md#make-a-proxy-yourself). |
+| **Remove proxy** | Deletes the proxies of the selected videos, and stops one that is being made. Dimmed when none of them has a proxy. See [Remove a proxy or stop one being made](proxies.md#remove-a-proxy-or-stop-one-being-made). |
+| **Regenerate thumbnails** | Makes the card picture and timeline thumbnails of the selected videos again. Dimmed when no video is selected. See [Make thumbnails again](proxies.md#make-thumbnails-again). |
 | **Rename** (<kbd>F2</kbd>) | Renames the item. See [Rename media](#rename-media). |
 | **Remove** (<kbd>Delete</kbd>) | Opens the **Remove media** dialog. See [Remove media](#remove-media). |
 
@@ -234,7 +240,8 @@ If a card keeps its kind icon instead of a thumbnail, Chrome could not decode th
 - [Clip thumbnails, waveforms and badges](clip-thumbnails-and-waveforms.md)
 - [Preview and playback](preview-and-playback.md)
 - [Audio](audio.md)
+- [Proxies](proxies.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 20, 2026-10-15</sub>
+<sub>Last updated: Batch 24, 2026-10-16</sub>

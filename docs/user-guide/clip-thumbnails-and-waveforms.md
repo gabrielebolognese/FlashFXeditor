@@ -102,9 +102,12 @@ The editor makes thumbnails and analyzes the sound in the background after you i
 - **After import.** Each video's card picture in the Media panel (its first frame) comes first, then the thumbnails every 2 seconds and every half second. Each audio file and video with sound is analyzed for its waveform. See [What happens when you import](importing-media.md#what-happens-when-you-import).
 - **Clips on screen first.** Thumbnails and waveforms of the clips you are looking at are made before the others.
 - **Not while you play, scrub or drag.** The editor pauses this work while you play, scrub or drag anything on the timeline, so the preview stays smooth. Clips keep what they already show (or their color) and fill in right after you stop.
+- **From the proxy once it is ready.** When a video's [proxy](proxies.md) is ready, its card picture and thumbnails are made again from the proxy, which is quicker. The thumbnails you see stay until the new ones replace them. After **Remove proxy**, they are made again from the original video.
 - **Saved with the project.** Thumbnails and the sound analysis are saved in the project's `cache` folder. The next time you open the project, they appear at once, without being made again. If you delete the `cache` folder while the project is closed, they are made again. A [read-only project](projects-and-saving.md#work-in-read-only-mode) uses what is already in its `cache` folder but saves nothing new, so anything missing is made again each time you open it.
 
 A video that Chrome can't decode on your computer, such as HEVC without a hardware decoder, or whose file is missing from the project's `media` folder, gets no thumbnails: its card keeps the film icon and its clips show only their color. See [A video imports but shows nothing](troubleshooting.md#a-video-imports-but-shows-nothing).
+
+If a video's thumbnails look wrong or out of date, right-click its card in the Media panel and choose **Regenerate thumbnails**: the card picture and the thumbnails of its clips are made again from scratch. See [Make thumbnails again](proxies.md#make-thumbnails-again).
 
 ## Combine label colors with thumbnails
 
@@ -119,6 +122,7 @@ A clip with a label color shows that color in its label bar above the thumbnails
 - [Advanced trimming](advanced-trimming.md)
 - [Audio](audio.md)
 - [Importing media](importing-media.md)
+- [Proxies](proxies.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 17, 2026-10-15</sub>
+<sub>Last updated: Batch 24, 2026-10-16</sub>
