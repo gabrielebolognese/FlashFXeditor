@@ -1,13 +1,13 @@
 # Editing properties
 
-The **Edit Properties** panel shows the settings of what you selected: a clip, a track, a marker, or the project itself when nothing is selected. Use it to type exact values, such as a position in pixels or the end time of a clip, to drag a value while you watch the preview, to fit or fill the frame with one click, to crop a picture, and to change several clips at once.
+The **Edit Properties** panel shows the settings of what you selected: a clip, a track, a marker, or the project itself when nothing is selected. Use it to type exact values, such as a position in pixels or the end time of a clip, to drag a value while you watch the preview, to fit or fill the frame with one click, to crop a picture, to change a clip's speed, and to change several clips at once.
 
 > **Video placeholder: Edit Properties in action**
 > - File: `videos/editing-properties/overview.mp4` (not recorded yet)
 > - Length: about 90 seconds
 > - Shows:
 >   1. A 1080×1920 project with a 16:9 video with sound on V1 and A1 and a logo PNG on V2, the playhead over both. Click an empty area of the timeline tracks: **Edit Properties** shows the **Project** section.
->   2. Click the video clip on the timeline: the panel header reads **2 clips**, and the quick actions row appears above the **Clip**, **Transform**, **Crop** and **Opacity** sections.
+>   2. Click the video clip on the timeline: the panel header reads **2 clips**, and the quick actions row appears above the **Clip**, **Transform**, **Crop**, **Opacity** and **Speed** sections.
 >   3. Click **Fill frame** in the quick actions: the video covers the frame and its sides are cut off. Click **Fit in frame**: it fills the width again, with bands above and below.
 >   4. Click the logo in the preview. In **Transform**, press on the **X** of **Position** and drag to the right: the logo slides across the preview while the **X** turns gold. Release.
 >   5. Click in the **Y** field, type `-600` and press <kbd>Enter</kbd>: the logo jumps up.
@@ -28,6 +28,7 @@ The **Edit Properties** panel shows the settings of what you selected: a clip, a
 - [Turn a clip off](#turn-a-clip-off)
 - [Place a picture with exact values](#place-a-picture-with-exact-values)
 - [Crop a picture](#crop-a-picture)
+- [Change a clip's speed](#change-a-clips-speed)
 - [Pick a color](#pick-a-color)
 - [Undo and cancel](#undo-and-cancel)
 - [What is not available yet](#what-is-not-available-yet)
@@ -40,7 +41,7 @@ The **Edit Properties** panel sits at the top of the left side, next to the Medi
 | You selected | The panel shows | See |
 | --- | --- | --- |
 | Nothing (click an empty area of the timeline tracks) | The **Project** section | [Change project settings](projects-and-saving.md#change-project-settings) |
-| One or more clips | The quick actions, then the **Clip** section. When a video or image clip is among them, also **Transform**, **Crop** and **Opacity**. | This page, and [Cropping and reframing](cropping-and-reframing.md) for **Crop** |
+| One or more clips | The quick actions, then the **Clip** section. When a video or image clip is among them, also **Transform**, **Crop** and **Opacity**. When a video or audio clip is among them, also **Speed**, as the last section. | This page, [Cropping and reframing](cropping-and-reframing.md) for **Crop**, and [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md) for **Speed** |
 | One or more track headers | The **Track** section | [Change track settings in Edit Properties](tracks.md#change-track-settings-in-edit-properties) |
 | A marker in the ruler | The **Marker** section | [Edit a marker in Edit Properties](markers-and-in-out-points.md#edit-a-marker-in-edit-properties) |
 
@@ -62,7 +63,7 @@ In a number field you can also press <kbd>↑</kbd> or <kbd>↓</kbd> to add or 
 - Both a comma and a point work as the decimal sign: `3,5` and `3.5` are the same.
 - A value outside the range of a field stops at its limit, for example 100 in **Opacity**.
 - Text that is not a number is ignored, and the field shows its value again.
-- Each typed value is one step in the history. In the **Transform**, **Crop** and **Opacity** sections, arrow presses less than 0.3 seconds apart are one step together, so one <kbd>Ctrl</kbd>+<kbd>Z</kbd> undoes a quick series. In the other number fields, each press is one step.
+- Each typed value is one step in the history. In the **Transform**, **Crop**, **Opacity** and **Speed** sections, arrow presses less than 0.3 seconds apart are one step together, so one <kbd>Ctrl</kbd>+<kbd>Z</kbd> undoes a quick series. In the other number fields, each press is one step.
 - Clicking the letter or icon at the left of a number field (the field's label), without dragging, also puts you in the field.
 - While you type in a field, shortcuts are off: <kbd>Space</kbd>, for example, types a space instead of playing.
 
@@ -81,7 +82,7 @@ Drag the label of a number field (the letter or icon at its left, such as **X**,
 | <kbd>Alt</kbd> | 0.1 per pixel |
 
 - The drag starts once the mouse has moved 3 pixels. You can press and release <kbd>Shift</kbd> and <kbd>Alt</kbd> during the drag.
-- While you drag, the label and the edge of the field turn gold. In the **Transform**, **Crop** and **Opacity** sections, the preview and the gold box around the picture follow at once.
+- While you drag, the label and the edge of the field turn gold. In the **Transform**, **Crop** and **Opacity** sections, the preview and the gold box around the picture follow at once. **Speed** is different: the field counts along, and the clip, the timeline and the preview change when you release.
 - The project's **W** and **H** fields (with a **Custom** resolution) change by 2 per pixel, and the frame takes the new size when you release.
 - The value stops at the limits of the field. Drag back and it moves again at once.
 - Press <kbd>Esc</kbd> before you release to cancel: the value goes back, and nothing is added to the history.
@@ -96,11 +97,12 @@ Select several clips, on the timeline or in the preview (see [Select clips](time
 - **Name** renames every selected clip, and **Color** gives every selected clip the label color.
 - **Start**, **End**, **Duration**, **Source in** and **Source out** trim each selected clip to the time you type, all in one step.
 - **Transform**, **Crop** and **Opacity** change only the pictures among the selected clips, the video and image clips. A video's linked sound is left alone.
+- **Speed** changes the video and audio clips among them. With **Linked selection** on, a video's linked sound gets the same speed. See [Change the speed of a video and its sound](speed-freeze-frames-and-punch-zoom.md#change-the-speed-of-a-video-and-its-sound).
 - Clips on locked tracks keep their values.
 
 ## Use the quick actions
 
-With clips selected, a row of one-click buttons sits at the top of the panel. Point at a button to see its name; **Duplicate** and **Delete** also show their shortcut. When the panel is narrow, the row continues on a second line.
+With clips selected, a row of one-click buttons sits at the top of the panel. Point at a button to see its name; **Freeze frame**, **Punch zoom**, **Duplicate** and **Delete** also show their shortcut. When the panel is narrow, the row continues on a second line.
 
 | Button | What it does |
 | --- | --- |
@@ -109,11 +111,15 @@ With clips selected, a row of one-click buttons sits at the top of the panel. Po
 | **Center in frame** | Centers the selected pictures without changing their size. |
 | **Flip horizontal**, **Flip vertical** | Mirror the selected pictures left to right, or upside down. Click again to mirror them back. |
 | **Reset transform** | Puts the selected pictures back to how a new clip is placed. |
+| **Freeze frame** | Holds the frame at the playhead for 2 seconds (<kbd>Shift</kbd>+<kbd>F</kbd>). See [Hold a frame (freeze frame)](speed-freeze-frames-and-punch-zoom.md#hold-a-frame-freeze-frame). |
+| **Punch zoom** | Cuts the clip at the playhead and makes the part after the cut 20% larger (<kbd>Shift</kbd>+<kbd>Z</kbd>). See [Punch in at a cut (punch zoom)](speed-freeze-frames-and-punch-zoom.md#punch-in-at-a-cut-punch-zoom). |
+| **0.5x**, **1x**, **1.5x**, **2x** | Set the speed of the selected video and audio clips. See [Change a clip's speed with one click](speed-freeze-frames-and-punch-zoom.md#change-a-clips-speed-with-one-click). |
 | **Duplicate** | Copies the clip you clicked last right after itself (<kbd>Ctrl</kbd>+<kbd>D</kbd>). See [Duplicate a clip](#duplicate-a-clip). |
 | **Delete** | Deletes the selected clips and leaves gaps, like the <kbd>Delete</kbd> key. See [Delete clips](splitting-and-deleting.md#delete-clips). |
 
-- A button is dimmed when none of the selected clips can take it. The picture buttons need a video or image clip; an audio clip has no picture. Clips on locked tracks are skipped.
-- The other buttons of the row (fades, freeze frame, punch zoom, the speeds, mute, presets and transitions) are dimmed: they are available in a later version.
+- A button is dimmed when none of the selected clips can take it. The picture buttons and **Punch zoom** need a video or image clip; an audio clip has no picture. **Freeze frame** needs a video clip, and the speed buttons a video or audio clip that is not a freeze frame. Clips on locked tracks are skipped.
+- Whether a button is dimmed depends on the selection only, not on the playhead. **Freeze frame** and **Punch zoom** act at the playhead: when it is not over the selected clip, a message says so.
+- The other buttons of the row (fades, mute, presets and transitions) are dimmed: they are available in a later version.
 - The buttons don't take the keyboard focus, but a click in the panel makes **Edit Properties** the active panel. See [How shortcuts work](keyboard-shortcuts.md#how-shortcuts-work).
 
 ## Fit, fill or center a picture
@@ -274,6 +280,17 @@ Select a video or image clip. The **Crop** section, between **Transform** and **
 
 See [Cropping and reframing](cropping-and-reframing.md).
 
+## Change a clip's speed
+
+Select a video or audio clip. The **Speed** section, the last one of the panel, sets how fast the clip plays:
+
+- **Speed** sets the speed in percent, from 25% to 400%. The chain button next to it decides whether the clip's length follows the speed (gold, the default) or stays.
+- **Duration** sets the clip's length. With the chain button gold, the speed changes to fill it.
+- **Ripple** (on by default) moves the clips after it with the change of length.
+- **Freeze frame** holds the frame at the playhead for 2 seconds.
+
+Right-click a video or audio clip on the timeline and choose **Speed...** to open the section with **Speed** ready for typing. See [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md).
+
 ## Pick a color
 
 A color field is a swatch with the color's hex code next to it. In this version the **Background** of the project uses one (in the **Project** section, shown when nothing is selected).
@@ -324,6 +341,9 @@ A color field is a swatch with the color's hex code next to it. In this version 
 | **Disable clip**, **Enable clip** (and the plural names) | **Enabled**, and **Disable** or **Enable** in the clip menu |
 | **Trim clip**, **Trim clips** | **Start**, **End**, **Duration**, **Source in**, **Source out** |
 | **Duplicate clip** | **Duplicate** or <kbd>Ctrl</kbd>+<kbd>D</kbd> |
+| **Change speed** | A speed button, **Speed**, or a quick series of <kbd>↑</kbd> and <kbd>↓</kbd> presses in it |
+| **Change duration** | **Duration** in the **Speed** section |
+| **Freeze frame**, **Freeze frames**, **Punch zoom** | **Freeze frame** and **Punch zoom**. See [Undo a pacing change](speed-freeze-frames-and-punch-zoom.md#undo-a-pacing-change). |
 | **Change background color** | **Background** in the **Project** section |
 
 See [Undo and redo changes](projects-and-saving.md#undo-and-redo-changes).
@@ -332,14 +352,15 @@ See [Undo and redo changes](projects-and-saving.md#undo-and-redo-changes).
 
 These parts are available in a later version:
 
-- More sections for clips: speed, audio (volume and fades), text, animation and transitions.
-- The dimmed quick actions: fades, freeze frame, punch zoom, the speed buttons, mute, presets and transitions.
+- More sections for clips: audio (volume and fades), text, animation and transitions.
+- The dimmed quick actions: fades, mute, presets and transitions.
 - Values that change over time (keyframes): every value applies to the whole clip.
 - Duplicating several clips, or a clip with its linked sound, with <kbd>Ctrl</kbd>+<kbd>D</kbd>, and the **Duplicate** row of the layer menu.
 - The dimmed rows of the **Project** section: **Still duration**, **Transition** and **Cache** with **Clear cache**.
 
 ## Related pages
 - [Cropping and reframing](cropping-and-reframing.md)
+- [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md)
 - [Arranging layers in the preview](arranging-layers-in-the-preview.md)
 - [Snapping and smart guides in the preview](snapping-and-smart-guides.md)
 - [Timeline](timeline.md)
@@ -352,4 +373,4 @@ These parts are available in a later version:
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 26, 2026-10-16</sub>
+<sub>Last updated: Batch 27, 2026-10-16</sub>

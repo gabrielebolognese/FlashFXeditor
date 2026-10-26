@@ -109,7 +109,7 @@ Slipping changes which part of its media a clip shows, without moving the clip o
 - Gold bars mark both ends of the clip. When the clip reaches the first or the last frame of its media, the bar on that end turns red, the tooltip shows **Media start** or **Media end** in red, and the slip stops. A clip that already shows its whole media can't slip.
 - The clip's sound slips with the picture. Hold <kbd>Alt</kbd> to slip only the clip you drag.
 - Slips do not snap.
-- Slip works on video and audio clips. An image has no other frames to show, so slipping it changes nothing.
+- Slip works on video and audio clips. An image or a freeze frame has no other frames to show, so slipping it changes nothing. See [Change a freeze frame](speed-freeze-frames-and-punch-zoom.md#change-a-freeze-frame).
 - The history step is named **Slip clip**, or **Slip clips** when linked clips slip with it.
 
 > **Important:** After you slip a video without its sound (<kbd>Alt</kbd>), the picture and the sound no longer match, although both clips stay in place. Both show a red offset number, such as **+10** and **-10**. Undo the slip, or slip the other clip by the same amount. See [Keep linked clips in sync](links-and-groups.md#keep-linked-clips-in-sync).
@@ -166,10 +166,10 @@ More things to know:
 - A rate stretch never ripples. Like a regular trim, the edge stops at the next or the previous clip and at `00:00:00`. <kbd>Ctrl</kbd> and **Ripple mode** do not change it. To stretch a clip into the space of the next one, move the next one first.
 - Linked clips stretch with it, so a video and its sound keep the same speed. Hold <kbd>Alt</kbd> to stretch only the clip you drag.
 - The edge snaps like a trimmed edge. Hold <kbd>S</kbd> during the drag to do the opposite of the snapping setting.
-- Image clips have no speed: **Rate stretch** trims them like the **Select** tool.
-- Typing an exact speed is available in a later version.
+- Image clips and freeze frames have no speed: **Rate stretch** trims them like the **Select** tool.
+- To set an exact speed, such as 2x or 150%, use the speed buttons or the **Speed** section of **Edit Properties**. See [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md).
 
-> **Tip:** To get back to normal speed, undo the stretch with <kbd>Ctrl</kbd>+<kbd>Z</kbd> instead of dragging the edge back. Separate drags can leave the speed a tiny bit off 1x; the clip then shows a `1x` badge.
+> **Tip:** To get back to normal speed, undo the stretch with <kbd>Ctrl</kbd>+<kbd>Z</kbd>, or select the clip and click **1x** in the quick actions of **Edit Properties**, instead of dragging the edge back. Separate drags can leave the speed a tiny bit off 1x; the clip then shows a `1x` badge.
 
 ## Read the split preview
 
@@ -208,6 +208,7 @@ The edit stops following the pointer at these limits:
 
 ## Related pages
 - [Trimming clips](trimming.md)
+- [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md)
 - [Splitting, deleting and closing gaps](splitting-and-deleting.md)
 - [Linking and grouping clips](links-and-groups.md)
 - [Timeline](timeline.md)
@@ -216,4 +217,4 @@ The edit stops following the pointer at these limits:
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 22, 2026-10-16</sub>
+<sub>Last updated: Batch 27, 2026-10-16</sub>

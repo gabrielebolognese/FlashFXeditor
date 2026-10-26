@@ -2,6 +2,11 @@
 
 Shorts Editor grows in steps called batches. This page lists what each batch added that you can see or use, newest first. Follow the links for the full instructions.
 
+> **Video placeholder: What's new in Batch 27**
+> - File: `videos/whats-new/batch-27.mp4` (not recorded yet)
+> - Length: about 50 seconds
+> - Shows: a 1080×1920 project with a 10-second talking-head video with sound on V1 and A1 and a second clip after it; click the video and click **2x** in the quick actions of **Edit Properties**: the video and its sound get half as long with `2x` badges, and the second clip moves up; press <kbd>Home</kbd> and <kbd>Space</kbd>: the voice plays fast and higher; scroll to the new **Speed** section and type `75` in **Speed**; put the playhead on a strong expression and press <kbd>Shift</kbd>+<kbd>F</kbd>: a 2-second clip with a snowflake appears and the rest moves 2 seconds later; play over it: the picture holds in silence; move the playhead to a punchline and press <kbd>Shift</kbd>+<kbd>Z</kbd>: the clip is cut and the face is 20% closer after the cut; right-click a clip to show **Speed...** and **Freeze frame at playhead**.
+
 > **Video placeholder: What's new in Batch 26**
 > - File: `videos/whats-new/batch-26.mp4` (not recorded yet)
 > - Length: about 50 seconds
@@ -93,6 +98,7 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 > - Shows: open a project with three clips on the timeline; press <kbd>Space</kbd> to play and let the timeline page forward; press <kbd>L</kbd> three times to reach 8x, then <kbd>K</kbd>; hold <kbd>K</kbd> and tap <kbd>L</kbd> to step one frame; turn on **Loop playback**; point at the **Dropped** readout in the status strip.
 
 ## In this page
+- [Batch 27: Speed, freeze frames and punch zoom](#batch-27-speed-freeze-frames-and-punch-zoom)
 - [Batch 26: Cropping and reframing](#batch-26-cropping-and-reframing)
 - [Batch 25: Edit Properties for clips](#batch-25-edit-properties-for-clips)
 - [Batch 24: Proxies](#batch-24-proxies)
@@ -119,6 +125,16 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 - [Batch 03: Projects, autosave and recovery](#batch-03-projects-autosave-and-recovery)
 - [Batch 02: Undo, redo and frame-exact time](#batch-02-undo-redo-and-frame-exact-time)
 - [Batch 01: The workspace](#batch-01-the-workspace)
+
+## Batch 27: Speed, freeze frames and punch zoom
+- Change a clip's speed with one click: the quick actions of **Edit Properties** now have **0.5x**, **1x**, **1.5x** and **2x**. A 10-second clip at 2x lasts 5 seconds, its linked sound follows with a higher pitch, and the clips after it move up.
+- The new **Speed** section of **Edit Properties** sets an exact speed from 25% to 400%, and the clip's **Duration**. Its chain button decides whether the length follows the speed or stays, and its **Ripple** switch whether the clips after it move along.
+- **Freeze frame** (<kbd>Shift</kbd>+<kbd>F</kbd>) holds the frame at the playhead for 2 seconds: the clip is cut, the hold goes between the parts, and the rest of your edit moves 2 seconds later. The clip's own sound pauses for the hold. Freeze frames show a snowflake badge, and you can make them as long as you like.
+- **Punch zoom** (<kbd>Shift</kbd>+<kbd>Z</kbd>) cuts a clip at the playhead and makes the part after the cut 20% larger, so the shot jumps closer.
+- **Freeze frame** and **Punch zoom** now work in the timeline toolbar and the quick actions. The clip menu gets **Speed...**, which opens the **Speed** section ready for typing, and **Freeze frame at playhead**.
+- When a limit stops a speed change, or there is nothing to freeze or zoom at the playhead, a message tells you why.
+
+See [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md).
 
 ## Batch 26: Cropping and reframing
 - Crop video and image clips: the new **Crop** section of **Edit Properties** cuts away the left, right, top and bottom of a picture, in pixels of the media or in percent, for one clip or several at once.
@@ -383,6 +399,7 @@ See [Projects and saving](projects-and-saving.md).
 See [The workspace](workspace.md) and [Getting started](getting-started.md).
 
 ## Related pages
+- [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md)
 - [User guide home](README.md)
 - [Cropping and reframing](cropping-and-reframing.md)
 - [Editing properties](editing-properties.md)
@@ -393,4 +410,4 @@ See [The workspace](workspace.md) and [Getting started](getting-started.md).
 - [Adding media to the timeline](adding-media-to-the-timeline.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 26, 2026-10-16</sub>
+<sub>Last updated: Batch 27, 2026-10-16</sub>
