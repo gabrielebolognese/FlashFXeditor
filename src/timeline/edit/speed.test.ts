@@ -329,7 +329,8 @@ function randomProject(rng: Rng): Project {
   return shortMedia(project(clips, tracks));
 }
 
-describe("speed changes on random documents", () => {
+// ~1 s alone, several times that in the full parallel run on a loaded machine: an explicit timeout.
+describe("speed changes on random documents", { timeout: 30_000 }, () => {
   it("leave a valid document, also after later rate stretches and in-point trims; retimed clips keep `in` (linked with ripple, `out` too) and their start; undo restores", () => {
     const rng = random(27);
     let commands = 0;
@@ -337,7 +338,7 @@ describe("speed changes on random documents", () => {
       const p = randomProject(rng);
       expect(validateProject(p)).toEqual([]);
       const ids = Object.keys(p.clips);
-      // A validating store: an invalid document throws on dispatch.
+      // A validating store: an invalid document throws on dispatch and on undo (`validateProject`, once per step).
       const doc = new DocumentStore(p, { session: createSessionStore(), validate: true });
       for (let step = 0; step < 12; step++) {
         const before = doc.getState();
@@ -360,7 +361,6 @@ describe("speed changes on random documents", () => {
         doc.dispatch(result.command);
         commands++;
         const after = doc.getState();
-        expect(validateProject(after)).toEqual([]);
         if (!speeds) continue;
         for (const id of ids) {
           const was = before.clips[id] as Clip;

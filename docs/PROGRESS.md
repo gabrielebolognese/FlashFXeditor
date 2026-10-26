@@ -2928,3 +2928,10 @@ Why each dependency exists (Batch rule 8).
       - Each edit is one command, and time stays integer frames and microseconds.
       - The badge is drawn in the content pass, and no media work runs on the main thread.
     - Every TODO in the batch's diff has a batch tag, and no `TODO(batch 27)` is left in `src`.
+- fix-attempt: done (2026-10-16)
+  1. `src/timeline/edit/speed.test.ts`, "speed changes on random documents":
+    - The describe has an explicit `{ timeout: 30_000 }` (as `ThumbnailStore.test.ts` does). The default 5000 ms timeout is what failed under the full parallel run.
+    - The test is a little cheaper. Each step dropped its `expect(validateProject(after))`, which repeated what the validating `DocumentStore` already asserts on every dispatch and every undo (`assertValid` = `validateProject`, throws `DocumentInvariantError`). Coverage is unchanged: same seed, same 300 documents x 12 steps, same assertions on `in`, `out`, start and undo.
+    - Measured: 815 ms alone (was 868 ms). In a full parallel `npx vitest run --project unit` it took 3355 ms; the review saw 5607 and 8944 ms. The 30 s timeout leaves headroom for a loaded machine.
+  - Checks: `npm run check` ran twice in a row, both green: typecheck, lint plus the CSS color check, 1307 unit tests in 132 files, 3 perf tests, build 721.05 kB JS (232.50 kB gzip), 58.14 kB CSS. The >500 kB chunk warning is the logged Batch 45 follow-up. A third full unit run (JSON reporter, for the timing above) also passed, 1307/1307.
+  - Acceptance: only a test file changed, and no app code. The unit tests that cover acceptance 1-3 (`speed.test.ts`, `freeze.test.ts`, `PlaybackEngine.test.ts`, `AudioScheduler.test.ts`) passed in all three runs. The browser results from the previous fix-attempt (`%TEMP%/b27/acc.mjs` 33/34, `fix2.mjs` 15/15) still hold for the same app code. They were not re-run.
