@@ -7,6 +7,7 @@ import { DocumentStore } from "../../core/store/DocumentStore.js";
 import { createSessionStore } from "../../core/store/sessionStore.js";
 import { linkOffset } from "../model/queries.js";
 import { setSpeedDurations, setSpeeds, type SpeedOptions, type SpeedResult } from "./speed.js";
+import { maxDurationFrames, rateStretch, trimEdge } from "./trim.js";
 
 const fps = makeProject().settings.fps;
 /** 20 s of media at 30 fps: 600 frames. */
@@ -211,6 +212,61 @@ describe("setSpeeds with partners that differ", () => {
   });
 });
 
+describe("setSpeeds on the media's last frames", () => {
+  /** A linked Change duration and a Rate stretch of each edge after the speed change: all valid (§5.2). */
+  function expectStretchable(p: Project, id: string, frames: number) {
+    for (const duration of [frames, frames + 1, frames + 3, 2 * frames]) {
+      const result = setSpeedDurations(p, [id], duration, LINKED);
+      if (result.command) expect(validateProject(commit(p, result).next)).toEqual([]);
+    }
+    for (const [edge, delta] of [["out", 1], ["out", 3], ["in", -1]] as const) {
+      const result = rateStretch(p, id, edge, delta, { linked: true });
+      if (result.command) expect(validateProject(commit(p, result).next)).toEqual([]);
+    }
+  }
+
+  it("a clip with less than one frame of media left at the new speed keeps its speed and warns; its partner changes", () => {
+    // v plays the media's last frame (299); its sound plays all 300 frames.
+    const p = shortMedia(project([clip("v", "v1", 299, 1, 299, { linkGroup: "g" }), clip("a", "a1", 0, 300, 0, { linkGroup: "g" })]));
+    const result = setSpeeds(p, ["v"], 2, LINKED);
+    expect(result.limit).toMatchObject({ reason: "mediaEnd", clipId: "v" });
+    const next = commit(p, result).next;
+    expect(validateProject(next)).toEqual([]);
+    expect([span(next, "v"), get(next, "v").speed, get(next, "v").in, get(next, "v").out]).toEqual([[299, 1], 1, frameToUs(299, fps), SHORT_US]);
+    expect([span(next, "a"), get(next, "a").speed, get(next, "a").out]).toEqual([[0, 150], 2, SHORT_US]);
+    expectStretchable(next, "v", 1);
+    // Alone, nothing changes: no command, the warning only.
+    const alone = setSpeeds(shortMedia(project([clip("w", "v1", 0, 1, 299)])), ["w"], 2, LINKED);
+    expect(alone.command).toBeNull();
+    expect(alone.limit).toMatchObject({ reason: "mediaEnd", clipId: "w" });
+  });
+
+  it("unlinked: a clip on the media's last 2 frames keeps its speed at 4x and becomes 1 frame at 2x, `out` exact", () => {
+    const options: SpeedOptions = { link: false, ripple: true, linked: true };
+    const p = shortMedia(project([clip("v", "v1", 0, 2, 298)]));
+    const fast = setSpeeds(p, ["v"], 4, options);
+    expect(fast.command).toBeNull();
+    expect(fast.limit).toMatchObject({ reason: "mediaEnd", clipId: "v" });
+    expectStretchable(p, "v", 2);
+    const result = setSpeeds(p, ["v"], 2, options);
+    expect(result.limit).toMatchObject({ reason: "mediaEnd", clipId: "v" });
+    const next = commit(p, result).next;
+    expect([span(next, "v"), get(next, "v").speed, get(next, "v").out]).toEqual([[0, 1], 2, frameToUs(298, fps) + framesToSourceUs(1, 2, fps)]);
+    expect(get(next, "v").out).toBeLessThanOrEqual(SHORT_US);
+    expectStretchable(next, "v", 1);
+  });
+
+  it("linked: a clip shorter than one frame at the new speed rounds up only when the media has that frame", () => {
+    // 3 source frames left after `in`; the clip plays 2 of them. At 3x one frame needs all 3.
+    const p = shortMedia(project([clip("v", "v1", 0, 2, 297)]));
+    const next = commit(p, setSpeeds(p, ["v"], 3, LINKED)).next;
+    expect([span(next, "v"), get(next, "v").out]).toEqual([[0, 1], frameToUs(297, fps) + framesToSourceUs(1, 3, fps)]);
+    expectStretchable(next, "v", 1);
+    // At 4x it does not fit: the speed stays.
+    expect(setSpeeds(p, ["v"], 4, LINKED).limit).toMatchObject({ reason: "mediaEnd", clipId: "v" });
+  });
+});
+
 /** Deterministic PRNG (mulberry32), as in undoFuzz.test.ts. */
 function random(seed: number) {
   let state = seed;
@@ -229,8 +285,8 @@ type Rng = ReturnType<typeof random>;
 
 /**
  * Two video and two audio tracks (one maybe locked) of clips at various speeds, sources and gaps over
- * 10 s of media, a few freeze frames, and link groups of a video clip with one or two sounds that start,
- * end and play at their own speed: partners that differ.
+ * 10 s of media (some on its last frames), a few freeze frames, and link groups of a video clip with one
+ * or two sounds that start, end and play at their own speed: partners that differ.
  */
 function randomProject(rng: Rng): Project {
   const tracks = [makeTrack("v1"), makeTrack("v2"), makeTrack("a1", "audio"), makeTrack("a2", "audio")];
@@ -240,14 +296,19 @@ function randomProject(rng: Rng): Project {
     let cursor = rng.int(0, 30);
     for (let k = rng.int(1, 4); k > 0; k--) {
       const id = `${track.id}-${k}`;
-      const inFrames = rng.int(0, 250);
+      // A quarter of the clips start on the media's last 5 frames, where a faster speed may not fit one frame.
+      const inFrames = rng.next() < 0.25 ? rng.int(295, 299) : rng.int(0, 250);
       let next: MediaClip;
       if (track.kind === "video" && rng.next() < 0.15) {
         next = clip(id, track.id, cursor, rng.int(1, 90), inFrames, { speed: 0, out: frameToUs(inFrames + 1, fps) });
       } else {
-        const speed = rng.pick([0.5, 1, 1, 1, 1.5, 2, 3]);
-        const duration = rng.int(1, Math.max(1, Math.floor((300 - inFrames) / speed)));
-        next = clip(id, track.id, cursor, duration, inFrames, { speed, out: Math.min(SHORT_US, frameToUs(inFrames, fps) + framesToSourceUs(duration, speed, fps)) });
+        const room = (speed: number) => maxDurationFrames(clip(id, track.id, cursor, 1, inFrames, { speed }), SHORT_US, fps);
+        let speed = rng.pick([0.5, 1, 1, 1, 1.5, 2, 3]);
+        // 1x always fits the media's last frame.
+        if (room(speed) === 0) speed = 1;
+        const duration = rng.int(1, room(speed));
+        // `out` follows `in` exactly, as every edit leaves it.
+        next = clip(id, track.id, cursor, duration, inFrames, { speed, out: frameToUs(inFrames, fps) + framesToSourceUs(duration, speed, fps) });
       }
       clips.push(next);
       cursor += next.duration + rng.pick([0, 0, rng.int(1, 40)]);
@@ -269,7 +330,7 @@ function randomProject(rng: Rng): Project {
 }
 
 describe("speed changes on random documents", () => {
-  it("leave a valid document; retimed clips keep `in` (linked with ripple, `out` too) and their start; undo restores", () => {
+  it("leave a valid document, also after later rate stretches and in-point trims; retimed clips keep `in` (linked with ripple, `out` too) and their start; undo restores", () => {
     const rng = random(27);
     let commands = 0;
     for (let round = 0; round < 300; round++) {
@@ -282,12 +343,19 @@ describe("speed changes on random documents", () => {
         const before = doc.getState();
         const picked = rng.next() < 0.3 ? [rng.pick(ids), rng.pick(ids)] : [rng.pick(ids)];
         const options: SpeedOptions = { link: rng.next() < 0.7, ripple: rng.next() < 0.6, linked: rng.next() < 0.7 };
-        const speeds = rng.next() < 0.75;
+        const op = rng.next();
+        const speeds = op < 0.55;
         const arrow = rng.pick([-0.1, 0.1]);
         const value = rng.pick([0.25, 0.5, 0.75, 1, 1.5, 2, 3, 4, 8]);
+        const target = picked[0] as string;
+        // The Rate stretch tool and in-point trims after speed changes (a stretch to a slower speed narrows the §5.2 tolerance).
         const result = speeds
           ? setSpeeds(before, picked, rng.next() < 0.8 ? value : (c) => c.speed + arrow, options)
-          : setSpeedDurations(before, picked, rng.int(1, 400), options);
+          : op < 0.75
+            ? setSpeedDurations(before, picked, rng.int(1, 400), options)
+            : op < 0.9
+              ? rateStretch(before, target, rng.pick(["in", "out"] as const), rng.int(-40, 40), { linked: options.linked })
+              : trimEdge(before, target, "in", rng.int(-20, 20), { ripple: options.ripple, linked: options.linked });
         if (!result.command) continue;
         doc.dispatch(result.command);
         commands++;

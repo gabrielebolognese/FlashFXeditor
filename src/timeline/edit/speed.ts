@@ -6,6 +6,8 @@
 // - Speed unlinked: the duration stays and the source range follows from `in` (`out = in + duration *
 //   speed`); when the media ends first the clip is shortened to it (§6.19 "clamp, warn": the result
 //   reports `mediaEnd`).
+// - A clip with less than one frame of media left after `in` at the new speed keeps its speed, linked
+//   or not (`mediaEnd`): its `out` always follows `in` exactly.
 // - The speed is kept as asked (0.25x..4x, §14), never rounded through the duration (the duration is
 //   rounded instead, within the §5.2 one-frame invariant). A clip and its linked partners get the same
 //   speed. Each keeps its start and is retimed from its own source range, so partners that differ (an L
@@ -121,11 +123,19 @@ function retimeGroup(project: Project, group: readonly MediaClip[], speed: numbe
       continue;
     }
     const media = project.media[clip.mediaId];
+    const room = media ? maxDurationFrames({ ...clip, speed }, media.durationUs, fps) : Infinity;
+    if (room === 0) {
+      // Not even one frame fits between `in` and the media end at this speed: the member keeps its
+      // speed (§6.19 "clamp, warn"). Clamping `out` instead would leave `out - in` short of `duration x
+      // speed`, which a later rate stretch to a slower speed turns into a §5.2 violation.
+      limit ??= at("mediaEnd", clip);
+      delta = Math.max(delta, 0);
+      continue;
+    }
     let clipLimit: TrimLimit | null = null;
     // Linked, the member's own source range stays (§5.1): the duration plays it at the new speed, to
     // the nearest frame. Unlinked, the duration stays and the source range follows from `in`.
     let duration = options.link ? Math.max(1, Math.round((clip.out - clip.in) / sourceFrameUs)) : clip.duration;
-    const room = media ? Math.max(1, maxDurationFrames({ ...clip, speed }, media.durationUs, fps)) : Infinity;
     if (duration > room) {
       duration = room;
       // Linked, only the rounding frame is lost: no warning. Unlinked, §6.19 "clamp, warn".
@@ -141,9 +151,9 @@ function retimeGroup(project: Project, group: readonly MediaClip[], speed: numbe
     }
     limit ??= clipLimit;
     delta = Math.max(delta, duration - clip.duration);
-    // `out` follows `in` exactly (so a later rate stretch keeps the §5.2 invariant); only a 1-frame
-    // clip at the media end is clamped to it.
-    const out = Math.min(media?.durationUs ?? Infinity, clip.in + framesToSourceUs(duration, speed, fps));
+    // `out` follows `in` exactly (so a later rate stretch keeps the §5.2 invariant); `duration <= room`
+    // keeps it within the media.
+    const out = clip.in + framesToSourceUs(duration, speed, fps);
     const next: MediaClip = { ...clip, speed, duration, out };
     // TODO(batch 35): keyframe-aware retiming (eases, holds); keys scale with the duration for now.
     if (clip.keyframes && duration !== clip.duration) next.keyframes = scaleKeyframes(clip.keyframes, duration / clip.duration);
