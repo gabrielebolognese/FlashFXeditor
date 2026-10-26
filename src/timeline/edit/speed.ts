@@ -6,20 +6,23 @@
 // - Speed unlinked: the duration stays and the source range follows from `in` (`out = in + duration *
 //   speed`); when the media ends first the clip is shortened to it (§6.19 "clamp, warn": the result
 //   reports `mediaEnd`).
-// - The speed is kept as asked (0.25x..4x, §14), never rounded through the duration; `out` follows it
-//   within the §5.2 one-frame invariant. A clip and its linked partners get the same speed and the
-//   same change of duration (each within its own media).
-// - Ripple: every clip after the clip's end on every unlocked track shifts by the change of duration
-//   (the ripple trim's rule, spec §6.10); a shift to the left stops where a track would overlap, and a
-//   gap stays (`ripple`). Without ripple a faster clip leaves a gap and a slower one stops at the next
-//   clip: the speed stays as asked and the out point comes in (`neighbor`).
+// - The speed is kept as asked (0.25x..4x, §14), never rounded through the duration (the duration is
+//   rounded instead, within the §5.2 one-frame invariant). A clip and its linked partners get the same
+//   speed. Each keeps its start and is retimed from its own source range, so partners that differ (an L
+//   cut, a speed set with Linked selection off) keep their own `in`/`out` and get their own duration.
+//   Partners that start apart (a J cut) then show a sync offset ("Move into sync" puts them back).
+// - Ripple: every clip after the clip's end on every unlocked track shifts by the largest change of
+//   duration among the members (the ripple trim's rule, spec §6.10), so none of them runs into what
+//   follows; a shift to the left stops where a track would overlap, and a gap stays (`ripple`).
+//   Without ripple a faster clip leaves a gap and a slower one stops at the next clip: the speed stays
+//   as asked and the out point comes in (`neighbor`).
 // - The duration field: linked, a rate stretch of the out point (speed = speed x old / new duration,
 //   clamped to 0.25x..4x); unlinked, and for freeze frames (no speed), a trim of the out point. Both
 //   ripple with the option, and stop at the next clip without it.
 // Freeze frames, images, text, solids and captions have no speed. Locked clips never change. Each call
 // is one command (one undo step).
 import type { Command } from "../../core/commands/command.js";
-import { framesToSourceUs } from "../../core/document/time.js";
+import { framesToSourceUs, usPerFrame } from "../../core/document/time.js";
 import { isMediaClip, type Clip, type ClipId, type MediaClip, type Project } from "../../core/document/types.js";
 import { isClipLocked, lastClipStartingBy, linkedPartners, trackIndex, trackOf } from "../model/queries.js";
 import { applyTrim, editCommand, hasSource, maxDurationFrames, MAX_SPEED, MIN_SPEED, planStretch, planTrim, resolveTrim, scaleKeyframes, type TrimLimit } from "./trim.js";
@@ -99,44 +102,49 @@ function withChanges(project: Project, changes: ReadonlyMap<ClipId, Clip>): Proj
 }
 
 /**
- * One group at `speed`: the change of duration every limit allows, the changed members and the ripple
- * shift of what follows, on `project` (the document with the later groups already changed).
+ * One group at `speed`, on `project` (the document with the later groups already changed): each member
+ * retimed from its own start and source range, and the ripple shift of what follows.
  */
 function retimeGroup(project: Project, group: readonly MediaClip[], speed: number, options: SpeedOptions): { changes: Map<ClipId, Clip>; limit: TrimLimit | null } {
   const { fps } = project.settings;
-  const primary = group[0] as MediaClip;
   const at = (reason: TrimLimit["reason"], clip: Clip): TrimLimit => ({ reason, clipId: clip.id, trackId: clip.trackId });
-  let limit: TrimLimit | null = null;
-  // The source frames the clip plays stay duration * speed when linked (§5.1); unlinked, the duration stays.
-  let delta = options.link ? Math.max(1, Math.round((primary.duration * primary.speed) / speed)) - primary.duration : 0;
-  for (const clip of group) {
-    const media = project.media[clip.mediaId];
-    if (!media) continue;
-    const room = maxDurationFrames({ ...clip, speed }, media.durationUs, fps) - clip.duration;
-    if (delta > room) {
-      delta = room;
-      // Linked, only a rounding frame can be lost (the source range stays): no warning.
-      if (!options.link) limit ??= at("mediaEnd", clip);
-    }
-  }
-  delta = Math.max(delta, ...group.map((clip) => 1 - clip.duration));
+  const sourceFrameUs = usPerFrame(fps) * speed;
   const ids = new Set(group.map((clip) => clip.id));
-  if (!options.ripple && delta > 0) {
-    for (const clip of group) {
-      const next = nextStart(project, clip, ids);
-      if (next !== null && next - endOf(clip) < delta) {
-        delta = Math.max(0, next - endOf(clip));
-        limit = at("neighbor", clip);
+  const changes = new Map<ClipId, Clip>();
+  let limit: TrimLimit | null = null;
+  // The largest change of duration among the members (0 for one already at the speed): what follows
+  // shifts by it, so no member runs into the clip after it, even when they end apart (an L cut).
+  let delta = -Infinity;
+  for (const clip of group) {
+    if (clip.speed === speed) {
+      delta = Math.max(delta, 0);
+      continue;
+    }
+    const media = project.media[clip.mediaId];
+    let clipLimit: TrimLimit | null = null;
+    // Linked, the member's own source range stays (§5.1): the duration plays it at the new speed, to
+    // the nearest frame. Unlinked, the duration stays and the source range follows from `in`.
+    let duration = options.link ? Math.max(1, Math.round((clip.out - clip.in) / sourceFrameUs)) : clip.duration;
+    const room = media ? Math.max(1, maxDurationFrames({ ...clip, speed }, media.durationUs, fps)) : Infinity;
+    if (duration > room) {
+      duration = room;
+      // Linked, only the rounding frame is lost: no warning. Unlinked, §6.19 "clamp, warn".
+      if (!options.link) clipLimit = at("mediaEnd", clip);
+    }
+    if (!options.ripple) {
+      // A longer clip stops at the next clip: the speed stays as asked and the out point comes in.
+      const following = nextStart(project, clip, ids);
+      if (following !== null && clip.start + duration > following) {
+        duration = following - clip.start;
+        clipLimit = at("neighbor", clip);
       }
     }
-  }
-
-  const changes = new Map<ClipId, Clip>();
-  for (const clip of group) {
-    const duration = clip.duration + delta;
-    if (duration === clip.duration && speed === clip.speed) continue;
-    const durationUs = project.media[clip.mediaId]?.durationUs ?? Infinity;
-    const next: MediaClip = { ...clip, speed, duration, out: Math.min(durationUs, clip.in + framesToSourceUs(duration, speed, fps)) };
+    limit ??= clipLimit;
+    delta = Math.max(delta, duration - clip.duration);
+    // `out` follows `in` exactly (so a later rate stretch keeps the §5.2 invariant); only a 1-frame
+    // clip at the media end is clamped to it.
+    const out = Math.min(media?.durationUs ?? Infinity, clip.in + framesToSourceUs(duration, speed, fps));
+    const next: MediaClip = { ...clip, speed, duration, out };
     // TODO(batch 35): keyframe-aware retiming (eases, holds); keys scale with the duration for now.
     if (clip.keyframes && duration !== clip.duration) next.keyframes = scaleKeyframes(clip.keyframes, duration / clip.duration);
     next.fades = { in: Math.min(clip.fades.in, duration), out: Math.min(clip.fades.out, duration) };
