@@ -39,7 +39,7 @@ Click **Linked selection** (the chain icon) in the timeline toolbar, or press <k
 While it is off:
 
 - A click or a selection rectangle selects only the clips you touch, not their linked clips.
-- Trims, rolls, slips, slides, rate stretches, <kbd>Q</kbd>, <kbd>W</kbd>, <kbd>E</kbd>, splits and deletes change only the clips you drag or selected. For example, select a video and press <kbd>Delete</kbd>: its sound stays.
+- Trims, rolls, slips, slides, rate stretches, <kbd>Q</kbd>, <kbd>W</kbd>, <kbd>E</kbd>, times typed in the **Clip** section of **Edit Properties**, splits and deletes change only the clips you drag or selected. For example, select a video and press <kbd>Delete</kbd>: its sound stays.
 - The clips stay linked. Turn Linked selection back on, and they work together again.
 - The red sync numbers still show when linked clips get out of step. See [Keep linked clips in sync](#keep-linked-clips-in-sync).
 - Groups are not affected: a click on a grouped clip still selects its group.
@@ -139,4 +139,4 @@ What a group does:
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 22, 2026-10-16</sub>
+<sub>Last updated: Batch 25, 2026-10-16</sub>

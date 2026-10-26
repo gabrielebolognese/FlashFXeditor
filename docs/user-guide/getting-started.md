@@ -78,7 +78,7 @@ A project is a folder. The editor writes the project file and its subfolders int
 | --- | --- | --- |
 | **Name** | Any text up to 120 characters. | The folder name. |
 | **Resolution** | **9:16 · 1080×1920**, **4:5 · 1080×1350**, **1:1 · 1080×1080**, **16:9 · 1920×1080**, or **Custom**. | **9:16 · 1080×1920** |
-| **Size** (with **Custom** only) | **W** and **H** in pixels, from 16 to 7680. Odd values are rounded to an even number. | 1080 × 1920 |
+| **Size** (with **Custom** only) | **W** and **H** in pixels, from 16 to 7680. Odd values are rounded to an even number. Type a value, press <kbd>↑</kbd> or <kbd>↓</kbd> to change it by 2, or drag the **W** or **H** letter left or right. | 1080 × 1920 |
 | **Frame rate** | **23.976 fps**, **24 fps**, **25 fps**, **29.97 fps**, **30 fps**, **50 fps**, **59.94 fps**, **60 fps** | **30 fps** |
 
 The editor opens with the new project. It starts with one video track (**V1**), one audio track (**A1**) and a black background, and it appears at the top of **Recent projects**.
@@ -153,4 +153,4 @@ For other problems, see [Troubleshooting](troubleshooting.md).
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 09, 2026-10-15</sub>
+<sub>Last updated: Batch 25, 2026-10-16</sub>

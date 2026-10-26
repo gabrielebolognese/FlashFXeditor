@@ -1,6 +1,6 @@
 # Timeline
 
-The timeline is where your short takes shape: clips sit on tracks in time order, and the playhead marks the frame the preview shows. In this version you add clips by double-clicking or dragging media (see [Adding media to the timeline](adding-media-to-the-timeline.md)), select clips and arrange them by dragging (also onto other tracks), snap them to the edges of other clips and to the playhead, duplicate them, zoom, scroll and pan with the scrollbars, the **Hand** tool or the mouse, move the playhead with the mouse, the keyboard or a typed timecode, read times in frames or milliseconds, and rename clips or give them a label color. To shorten or lengthen clips, see [Trimming clips](trimming.md); to split and delete clips and close gaps, see [Splitting, deleting and closing gaps](splitting-and-deleting.md); to roll cuts, slip, slide or change a clip's speed, see [Advanced trimming](advanced-trimming.md). To add, lock, target or rearrange tracks, see [Tracks](tracks.md); to link, sync and group clips, see [Linking and grouping clips](links-and-groups.md). To mark moments with markers, mark a range with in and out points, loop it or lift and extract it, see [Markers and in/out points](markers-and-in-out-points.md). To read the thumbnails, waveforms and badges inside clips, see [Clip thumbnails, waveforms and badges](clip-thumbnails-and-waveforms.md). To place, resize and rotate the pictures of your clips in the frame, see [Arranging layers in the preview](arranging-layers-in-the-preview.md).
+The timeline is where your short takes shape: clips sit on tracks in time order, and the playhead marks the frame the preview shows. In this version you add clips by double-clicking or dragging media (see [Adding media to the timeline](adding-media-to-the-timeline.md)), select clips and arrange them by dragging (also onto other tracks), snap them to the edges of other clips and to the playhead, duplicate them, zoom, scroll and pan with the scrollbars, the **Hand** tool or the mouse, move the playhead with the mouse, the keyboard or a typed timecode, read times in frames or milliseconds, and rename clips or give them a label color. To shorten or lengthen clips, see [Trimming clips](trimming.md); to split and delete clips and close gaps, see [Splitting, deleting and closing gaps](splitting-and-deleting.md); to roll cuts, slip, slide or change a clip's speed, see [Advanced trimming](advanced-trimming.md). To add, lock, target or rearrange tracks, see [Tracks](tracks.md); to link, sync and group clips, see [Linking and grouping clips](links-and-groups.md). To mark moments with markers, mark a range with in and out points, loop it or lift and extract it, see [Markers and in/out points](markers-and-in-out-points.md). To read the thumbnails, waveforms and badges inside clips, see [Clip thumbnails, waveforms and badges](clip-thumbnails-and-waveforms.md). To place, resize and rotate the pictures of your clips in the frame, see [Arranging layers in the preview](arranging-layers-in-the-preview.md). To type a clip's exact times, copy a clip right after itself, or turn a clip off, see [Editing properties](editing-properties.md).
 
 > **Video placeholder: Timeline tour**
 > - File: `videos/timeline/timeline-overview.mp4` (not recorded yet)
@@ -65,7 +65,7 @@ The ruler also holds your markers (small colored triangles along its bottom edge
 - The outer 8 pixels at each end of a clip are its trim zones: the cursor turns into a bracket there, and dragging trims the clip. See [Trimming clips](trimming.md).
 - Where two clips touch, a click within 3 pixels of the cut selects the cut (red brackets `][` mark it), and <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+drag there rolls the cut. See [Advanced trimming](advanced-trimming.md#select-a-cut-edit-point).
 - Badges at the right end of the label bar: a red number such as **+12** when the clip is out of step with its linked clip, a speed such as `2x` when it doesn't play at normal speed, and a chain icon when it is linked. They stay visible at the right edge of the tracks when the clip ends after the view. See [Read the badges in the label bar](clip-thumbnails-and-waveforms.md#read-the-badges-in-the-label-bar).
-- Clips on a locked track are covered with diagonal lines, and clips of a track you don't see or hear (muted, hidden, or left out by a solo) are drawn faded. See [Tracks](tracks.md).
+- Clips on a locked track are covered with diagonal lines, and clips of a track you don't see or hear (muted, hidden, or left out by a solo) are drawn faded. See [Tracks](tracks.md). A clip you turned off with **Disable** is drawn faded and covered with diagonal lines; see [Turn a clip off](editing-properties.md#turn-a-clip-off).
 
 ### Toolbar
 
@@ -361,7 +361,7 @@ A selected clip has a gold outline and a gold tint. The clip you clicked last ha
 - <kbd>Ctrl</kbd>+<kbd>A</kbd> and <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd> work while the Timeline or the Preview panel is active. The other selection shortcuts are mouse actions in the timeline.
 - **The preview shares the selection.** Clicking a picture in the preview selects its clip on the timeline, and a selected clip under the playhead gets a gold box with handles in the preview. See [Select layers in the preview](arranging-layers-in-the-preview.md#select-layers-in-the-preview).
 - Selecting is not a step in the history, but undo brings back the selection you had before the change you undo. See [Undo and redo](projects-and-saving.md#undo-and-redo-changes).
-- While clips are selected, the **Edit Properties** panel shows a placeholder: clip properties are available in a later version. While tracks are selected, it shows their **Track** section; see [Change track settings in Edit Properties](tracks.md#change-track-settings-in-edit-properties).
+- While clips are selected, the **Edit Properties** panel shows the quick actions and their **Clip** section, plus **Transform** and **Opacity** for video and image clips. See [Editing properties](editing-properties.md). While tracks are selected, it shows their **Track** section; see [Change track settings in Edit Properties](tracks.md#change-track-settings-in-edit-properties).
 
 ### Select with a rectangle
 
@@ -563,6 +563,8 @@ Hold <kbd>Alt</kbd> while you drag to copy clips instead of moving them.
 - <kbd>Alt</kbd>+pressing a clip that is not selected selects only that clip, without its linked clips, so only that clip is copied. To copy a video together with its sound, select it with a plain click first.
 - The history step is named **Duplicate clip** or **Duplicate clips** (**Duplicate and insert clips** with <kbd>Ctrl</kbd>).
 
+To copy one clip right after itself without dragging, select it and press <kbd>Ctrl</kbd>+<kbd>D</kbd>, or click **Duplicate** in **Edit Properties**. See [Duplicate a clip](editing-properties.md#duplicate-a-clip).
+
 ## Cancel a drag
 
 Press <kbd>Esc</kbd> before you release the mouse button. The ghosts disappear, and releasing then changes nothing: no clip moves and no step is added to the history. <kbd>Esc</kbd> also cancels a selection rectangle and a trim.
@@ -615,6 +617,8 @@ A new clip takes the name of its media. Rename it to find it again quickly: the 
 - Renaming a clip changes neither its media nor its linked clip.
 - The history step is named **Rename clip**.
 
+You can also type the name in the **Name** field of the **Clip** section in **Edit Properties**. There, the name goes to every selected clip; see [Change a clip's name, color and times](editing-properties.md#change-a-clips-name-color-and-times).
+
 In the Media panel, <kbd>F2</kbd> renames the selected media instead; see [Rename media](importing-media.md#rename-media).
 
 ## Give clips a label color
@@ -629,6 +633,7 @@ Label colors help you see at a glance which clips belong together, for example a
 - A labeled clip is drawn in its label color instead of the color of its kind. In a video clip, the color shows in the label bar above the thumbnails; in an audio clip, the waveform is drawn on it. A selected clip keeps its gold outline.
 - In the menu, the current color of the clip you right-clicked has a gold ring, and its tooltip reads, for example, **Teal (click to remove)**. Click it to remove the label from the selected clips: they go back to the color of their kind.
 - Each change is one step in the history, named **Label clip** or **Label clips**. Labels are saved with the project, and both parts of a split clip keep the label.
+- The **Color** row of the **Clip** section in **Edit Properties** has the same eight swatches, for the selected clips.
 
 ## Related pages
 - [Adding media to the timeline](adding-media-to-the-timeline.md)
@@ -646,8 +651,9 @@ Label colors help you see at a glance which clips belong together, for example a
 - [Preview and playback](preview-and-playback.md)
 - [Arranging layers in the preview](arranging-layers-in-the-preview.md)
 - [Snapping and smart guides in the preview](snapping-and-smart-guides.md)
+- [Editing properties](editing-properties.md)
 - [Projects and saving](projects-and-saving.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 23, 2026-10-16</sub>
+<sub>Last updated: Batch 25, 2026-10-16</sub>

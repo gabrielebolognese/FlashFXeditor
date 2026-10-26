@@ -69,7 +69,7 @@ To cut all tracks at once, hold <kbd>Shift</kbd>: the line runs over every clip 
 ## Delete clips
 
 1. Select the clips, on the timeline or by clicking their pictures in the preview. See [Select clips](timeline.md#select-clips) and [Select layers in the preview](arranging-layers-in-the-preview.md#select-layers-in-the-preview).
-2. Press <kbd>Delete</kbd> or <kbd>Backspace</kbd>, click **Delete** (the trash can) in the timeline toolbar, or right-click one of the clips (or its picture in the preview) and choose **Delete**.
+2. Press <kbd>Delete</kbd> or <kbd>Backspace</kbd>, click **Delete** (the trash can) in the timeline toolbar or in the quick actions of **Edit Properties**, or right-click one of the clips (or its picture in the preview) and choose **Delete**.
 
 - The clips are removed and their places stay empty: gaps open. To close them at the same time, use [Ripple delete](#ripple-delete-clips) instead.
 - Linked clips go too: deleting a video also deletes its sound, also when you selected only one of them with <kbd>Alt</kbd>+click. To delete one of them alone, turn off **Linked selection** (<kbd>Shift</kbd>+<kbd>S</kbd>) first, or unlink them. See [Linking and grouping clips](links-and-groups.md).
@@ -171,7 +171,7 @@ Right-click a clip or a gap to open its menu. Rows that have a keyboard shortcut
 > **Video placeholder: The clip and gap menus**
 > - File: `videos/splitting-and-deleting/menus.mp4` (not recorded yet)
 > - Length: about 40 seconds
-> - Shows: right-click a video clip: it and its sound are selected and the menu opens with **Cut**, **Copy** and **Paste** dimmed, then **Split at playhead**, **Delete**, **Ripple delete**, **Unlink**, **Group**, **Ungroup** (dimmed), **Move into sync** (dimmed), **Rename** and the **Label** row of eight colors; point at the teal swatch: its tooltip reads **Teal**; click it: the video and its sound turn teal; right-click the clip again: the teal swatch has a gold ring; press <kbd>Escape</kbd>; right-click a gap: **Close gap** and **Close all gaps on track**; click **Close gap**.
+> - Shows: right-click a video clip: it and its sound are selected and the menu opens with **Cut**, **Copy** and **Paste** dimmed, then **Split at playhead**, **Delete**, **Ripple delete**, **Disable**, **Unlink**, **Group**, **Ungroup** (dimmed), **Move into sync** (dimmed), **Rename** and the **Label** row of eight colors; point at the teal swatch: its tooltip reads **Teal**; click it: the video and its sound turn teal; right-click the clip again: the teal swatch has a gold ring; press <kbd>Escape</kbd>; right-click a gap: **Close gap** and **Close all gaps on track**; click **Close gap**.
 
 **Right-click a clip.** If the clip is not selected, it is selected first, with its linked clips and its group. If it is already part of the selection, the selection stays, and the menu acts on all the selected clips. Clips on a locked track have no menu.
 
@@ -181,6 +181,7 @@ Right-click a clip or a gap to open its menu. Rows that have a keyboard shortcut
 | **Split at playhead** | Splits the selected clips at the playhead, if it crosses them. See [Split clips at the playhead](#split-clips-at-the-playhead). |
 | **Delete** | Deletes the selected clips and leaves gaps. See [Delete clips](#delete-clips). |
 | **Ripple delete** | Deletes the selected clips and closes the space. See [Ripple delete clips](#ripple-delete-clips). |
+| **Disable** or **Enable** | Turns the selected clips off, so they are neither seen nor heard but stay on the timeline, or turns them back on. Reads **Enable** when all of them are off. See [Turn a clip off](editing-properties.md#turn-a-clip-off). |
 | **Link** or **Unlink** | Links the selected clips, or unlinks them when one is linked. See [Link clips](links-and-groups.md#link-clips) and [Unlink clips](links-and-groups.md#unlink-clips). |
 | **Group** | Groups the selected clips. Dimmed with fewer than two clips selected. See [Group clips](links-and-groups.md#group-clips). |
 | **Ungroup** | Ungroups the selected clips. Dimmed when none is in a group. See [Ungroup clips](links-and-groups.md#ungroup-clips). |
@@ -207,8 +208,9 @@ Right-click a clip or a gap to open its menu. Rows that have a keyboard shortcut
 - [Linking and grouping clips](links-and-groups.md)
 - [Trimming clips](trimming.md)
 - [Advanced trimming](advanced-trimming.md)
+- [Editing properties](editing-properties.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Projects and saving](projects-and-saving.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 22, 2026-10-16</sub>
+<sub>Last updated: Batch 25, 2026-10-16</sub>

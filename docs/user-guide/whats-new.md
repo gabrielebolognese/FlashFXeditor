@@ -2,6 +2,11 @@
 
 Shorts Editor grows in steps called batches. This page lists what each batch added that you can see or use, newest first. Follow the links for the full instructions.
 
+> **Video placeholder: What's new in Batch 25**
+> - File: `videos/whats-new/batch-25.mp4` (not recorded yet)
+> - Length: about 60 seconds
+> - Shows: a 1080×1920 project with a 16:9 video with sound on V1 and A1 and a logo on V2; click the video: **Edit Properties** shows the quick actions and the **Clip**, **Transform** and **Opacity** sections; click **Fill frame**: the video covers the frame; click the logo and drag the **X** label of **Position**: the logo slides across the preview; type `50` in **Opacity**; select both clips: **Opacity** shows `--`; click the video and type an earlier time in **End**: the clip gets shorter; press <kbd>Ctrl</kbd>+<kbd>D</kbd> on the timeline: a copy appears after it; right-click the copy and choose **Disable**: it is hatched and leaves the preview; click an empty area of the tracks, click the **Background** swatch and drag in the color picker: the background follows live.
+
 > **Video placeholder: What's new in Batch 24**
 > - File: `videos/whats-new/batch-24.mp4` (not recorded yet)
 > - Length: about 50 seconds
@@ -83,6 +88,7 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 > - Shows: open a project with three clips on the timeline; press <kbd>Space</kbd> to play and let the timeline page forward; press <kbd>L</kbd> three times to reach 8x, then <kbd>K</kbd>; hold <kbd>K</kbd> and tap <kbd>L</kbd> to step one frame; turn on **Loop playback**; point at the **Dropped** readout in the status strip.
 
 ## In this page
+- [Batch 25: Edit Properties for clips](#batch-25-edit-properties-for-clips)
 - [Batch 24: Proxies](#batch-24-proxies)
 - [Batch 23: Snapping and smart guides in the preview](#batch-23-snapping-and-smart-guides-in-the-preview)
 - [Batch 22: Arrange layers in the preview](#batch-22-arrange-layers-in-the-preview)
@@ -107,6 +113,20 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 - [Batch 03: Projects, autosave and recovery](#batch-03-projects-autosave-and-recovery)
 - [Batch 02: Undo, redo and frame-exact time](#batch-02-undo-redo-and-frame-exact-time)
 - [Batch 01: The workspace](#batch-01-the-workspace)
+
+## Batch 25: Edit Properties for clips
+- Select clips and the **Edit Properties** panel now shows their settings: the **Clip** section (name, label color, **Enabled**, **Start**, **End**, **Duration**, **Source in** and **Source out**), and for video and image clips the **Transform** section (position, scale with a lock for the shape, rotation, anchor point, flips) and the **Opacity** section.
+- Type a value and press <kbd>Enter</kbd>, press <kbd>↑</kbd> or <kbd>↓</kbd> to step it, or drag a field's label left and right: the preview follows live while you drag, and the release is one undo step. <kbd>Shift</kbd> drags 10 times faster, <kbd>Alt</kbd> 10 times slower, and <kbd>Esc</kbd> cancels.
+- Typing a time into **Start**, **End** or **Duration** trims the clip, without moving other clips; a message tells you when the media or a neighbor stops it.
+- With several clips selected, values that differ show `--`; a typed value goes to all of them, in one step.
+- A row of quick actions sits at the top of the panel: **Fit in frame**, **Fill frame**, **Center in frame**, **Flip horizontal**, **Flip vertical**, **Reset transform**, **Duplicate** and **Delete**. The layer menu of the preview has **Fit**, **Fill**, **Center** and the flips too.
+- <kbd>Ctrl</kbd>+<kbd>D</kbd> in the Timeline or Preview panel copies the clip you clicked last right after itself on its track.
+- Turn clips off without deleting them: **Disable** in the clip menu, or the **Enabled** switch. A disabled clip is faded and hatched on the timeline, and neither seen nor heard.
+- Click a section header to fold the section; the project remembers it.
+- Several selected tracks now show `--` in the **Track** section where their settings differ, and a halfway switch.
+- The **Project** section's **Background** has a color picker with an eyedropper and your recent colors. A new resolution now scales the layout with the frame instead of leaving pictures as they were, and the **W** and **H** size fields step and drag like the other number fields.
+
+See [Editing properties](editing-properties.md).
 
 ## Batch 24: Proxies
 - Heavy videos now get a proxy: a light copy, 540 pixels on its short side, that the editor makes in the background after import while you keep editing. By default, every video above 1080p or above 30 fps gets one, such as 4K or 60 fps phone clips. Projects from earlier versions get proxies for their heavy videos when you open them.
@@ -347,6 +367,7 @@ See [The workspace](workspace.md) and [Getting started](getting-started.md).
 
 ## Related pages
 - [User guide home](README.md)
+- [Editing properties](editing-properties.md)
 - [Proxies](proxies.md)
 - [Arranging layers in the preview](arranging-layers-in-the-preview.md)
 - [Snapping and smart guides in the preview](snapping-and-smart-guides.md)
@@ -354,4 +375,4 @@ See [The workspace](workspace.md) and [Getting started](getting-started.md).
 - [Adding media to the timeline](adding-media-to-the-timeline.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 24, 2026-10-16</sub>
+<sub>Last updated: Batch 25, 2026-10-16</sub>

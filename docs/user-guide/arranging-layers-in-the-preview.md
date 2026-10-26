@@ -1,6 +1,6 @@
 # Arranging layers in the preview
 
-Every video or image clip under the playhead is a layer of the picture. In the Preview panel you can work on those layers directly: click one to select it, drag it to a new place, resize and rotate it with its handles, and change which layer is on top. Use this to place a logo in a corner, enlarge a shot to cut away its edges, tilt a sticker, or build a picture-in-picture layout. Layers snap into line with the frame and with each other as you drag; see [Snapping and smart guides in the preview](snapping-and-smart-guides.md).
+Every video or image clip under the playhead is a layer of the picture. In the Preview panel you can work on those layers directly: click one to select it, drag it to a new place, resize and rotate it with its handles, and change which layer is on top. Use this to place a logo in a corner, enlarge a shot to cut away its edges, tilt a sticker, or build a picture-in-picture layout. Layers snap into line with the frame and with each other as you drag; see [Snapping and smart guides in the preview](snapping-and-smart-guides.md). To type exact values, or to fit, fill or center a picture with one click, see [Editing properties](editing-properties.md).
 
 > **Video placeholder: Arrange layers in the preview**
 > - File: `videos/arranging-layers-in-the-preview/overview.mp4` (not recorded yet)
@@ -49,7 +49,7 @@ Which layers you can pick in the preview:
 | Locked (gold padlock) | No: a click goes to the layer below it. |
 | Muted (**M** is gold) | Yes. The picture is not drawn, but its outline and handles show where it is, so you can still place it. |
 
-See [Lock a track](tracks.md#lock-a-track) and [Mute, solo and hide tracks](tracks.md#mute-solo-and-hide-tracks).
+See [Lock a track](tracks.md#lock-a-track) and [Mute, solo and hide tracks](tracks.md#mute-solo-and-hide-tracks). A clip you turned off with **Disable** is not drawn and can't be picked; see [Turn a clip off](editing-properties.md#turn-a-clip-off).
 
 ## Select layers in the preview
 
@@ -231,7 +231,7 @@ While you drag, a readout next to the pointer shows the value you change:
 | Rotate | **45.0°**: the layer's angle | **Δ 30.0°**: the change from where you started |
 | Anchor point | **Anchor 50% · 50%**: where the anchor sits across the width and down the height of the layer | |
 
-A layer you just added, centered and fitted to the frame, reads **X 0 · Y 0**. A snapped layer can land between two pixels; the readout then shows the nearest whole pixel. Typing exact values is available in a later version.
+A layer you just added, centered and fitted to the frame, reads **X 0 · Y 0**. A snapped layer can land between two pixels; the readout then shows the nearest whole pixel. The **Transform** section of **Edit Properties** shows the same values with one decimal, and lets you type them. See [Place a picture with exact values](editing-properties.md#place-a-picture-with-exact-values).
 
 ## Use the layer menu
 
@@ -239,14 +239,19 @@ Right-click a layer in the preview. A layer that is not selected is selected fir
 
 | Row | What it does |
 | --- | --- |
-| **Copy**, **Paste**, **Duplicate** | Dimmed: available in a later version. |
-| **Reset transform** | Puts the selected layers back to how a new clip is placed: centered, fitted to the frame, not rotated, with the anchor point in the middle. One step, **Reset transform** (or **Reset transforms**). |
+| **Copy**, **Paste**, **Duplicate** | Dimmed: available in a later version. To duplicate a clip now, press <kbd>Ctrl</kbd>+<kbd>D</kbd>; see [Duplicate a clip](editing-properties.md#duplicate-a-clip). |
+| **Fit** | Sizes the selected layers to fit inside the frame, and centers them. One step, **Fit layer** (or **Fit layers**). See [Fit, fill or center a picture](editing-properties.md#fit-fill-or-center-a-picture). |
+| **Fill** | Sizes the selected layers to cover the whole frame, and centers them; what reaches past the frame is cut off. One step, **Fill frame**. |
+| **Center** | Moves the selected layers to the middle of the frame without changing their size. One step, **Center layer** (or **Center layers**). |
+| **Flip horizontal**, **Flip vertical** | Mirror the selected layers left to right, or upside down. Choose the row again to mirror them back. One step, named like the row. |
+| **Reset transform** | Puts the selected layers back to how a new clip is placed: centered, fitted to the frame, not rotated, not mirrored, with the anchor point in the middle. One step, **Reset transform** (or **Reset transforms**). |
 | **Bring forward** | Moves each selected layer one video track up, so it is drawn over the layer it passes. See [Change which layer is on top](#change-which-layer-is-on-top). |
 | **Send backward** | Moves each selected layer one video track down. |
 | **Lock track** | Locks the tracks of the selected layers, as the padlock in the track header does. Their clips leave the selection and can no longer be picked in the preview. One step, **Lock track** (or **Lock tracks**). See [Lock a track](tracks.md#lock-a-track). |
 | **Delete** | Deletes the selected clips and leaves a gap, as <kbd>Delete</kbd> does. With **Linked selection** on, their sound goes too. See [Delete clips](splitting-and-deleting.md#delete-clips). |
 
 - Click outside the menu or press <kbd>Esc</kbd> to close it.
+- **Fit**, **Fill**, **Center**, the flips and **Reset transform** act on every selected layer, also on selected clips that are not under the playhead. The same actions are buttons in the quick actions of **Edit Properties**.
 - **Reset transform** fits the picture to the current project frame. If you changed the project resolution after adding the clip, it refits the picture to the new size.
 
 ## Change which layer is on top
@@ -275,6 +280,7 @@ To change the order of whole tracks instead, drag a track header up or down. See
 | **Rotate layer**, **Rotate layers** | Dragging outside a corner |
 | **Move anchor point** | Dragging the anchor marker with <kbd>Alt</kbd> |
 | **Nudge layer**, **Nudge layers** | A burst of arrow key presses |
+| **Fit layer**, **Fit layers**, **Fill frame**, **Center layer**, **Center layers**, **Flip horizontal**, **Flip vertical** | **Fit**, **Fill**, **Center**, **Flip horizontal** and **Flip vertical** in the layer menu |
 | **Reset transform**, **Reset transforms** | **Reset transform** in the layer menu |
 | **Bring layer forward**, **Send layer backward** (and the plural names) | **Bring forward** and **Send backward** in the layer menu |
 
@@ -284,7 +290,6 @@ See [Undo and redo changes](projects-and-saving.md#undo-and-redo-changes).
 
 These parts are available in a later version:
 
-- **Fit**, **Fill**, **Center** and flipping a layer with one click, and typing exact position, scale and rotation values in **Edit Properties**.
 - Cropping a layer with handles in the preview.
 - Text layers.
 - Changes that differ over time (keyframes): a change always applies to the whole clip.
@@ -292,6 +297,7 @@ These parts are available in a later version:
 ## Related pages
 - [Preview and playback](preview-and-playback.md)
 - [Snapping and smart guides in the preview](snapping-and-smart-guides.md)
+- [Editing properties](editing-properties.md)
 - [Preview zoom, overlays and fullscreen](preview-zoom-overlays-fullscreen.md)
 - [Adding media to the timeline](adding-media-to-the-timeline.md)
 - [Timeline](timeline.md)
@@ -301,4 +307,4 @@ These parts are available in a later version:
 - [Projects and saving](projects-and-saving.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 23, 2026-10-16</sub>
+<sub>Last updated: Batch 25, 2026-10-16</sub>

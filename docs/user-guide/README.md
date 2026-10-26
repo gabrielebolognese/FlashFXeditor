@@ -1,6 +1,6 @@
 # Shorts Editor user guide
 
-Shorts Editor is a video editor for short vertical videos (9:16 by default) that runs in your desktop browser. Your projects are folders on your own disk, and your media never leaves your computer. This guide shows you how to set up a project, bring in your media, skim it and add the parts you want to the timeline, arrange, trim, cut and fine-tune it there with thumbnails and waveforms in every clip, mark moments and ranges, organize your tracks, place, resize and rotate the pictures in the frame with snapping and smart guides, check every pixel and the platform safe zones in the preview, and play it back with its sound, smoothly even with 4K footage thanks to proxies.
+Shorts Editor is a video editor for short vertical videos (9:16 by default) that runs in your desktop browser. Your projects are folders on your own disk, and your media never leaves your computer. This guide shows you how to set up a project, bring in your media, skim it and add the parts you want to the timeline, arrange, trim, cut and fine-tune it there with thumbnails and waveforms in every clip, mark moments and ranges, organize your tracks, place, resize and rotate the pictures in the frame with snapping and smart guides, type exact values in the Edit Properties panel, check every pixel and the platform safe zones in the preview, and play it back with its sound, smoothly even with 4K footage thanks to proxies.
 
 > **Video placeholder: Shorts Editor in two minutes**
 > - File: `videos/home/overview.mp4` (not recorded yet)
@@ -29,9 +29,10 @@ Shorts Editor is a video editor for short vertical videos (9:16 by default) that
 13. [Preview and playback](preview-and-playback.md): watch and check your video.
 14. [Arranging layers in the preview](arranging-layers-in-the-preview.md): select pictures in the frame, move, resize and rotate them, and change which one is on top.
 15. [Snapping and smart guides in the preview](snapping-and-smart-guides.md): snap pictures to the frame, the safe zones and each other, space them evenly, and measure distances.
-16. [Preview zoom, overlays and fullscreen](preview-zoom-overlays-fullscreen.md): zoom in on real detail, check safe zones and grids, and watch in fullscreen.
-17. [Proxies](proxies.md): edit heavy 4K and 60 fps footage smoothly with light copies the editor makes for you.
-18. [Audio](audio.md): listen, set the volume and check your levels.
+16. [Editing properties](editing-properties.md): type or drag exact values, fit or fill the frame with one click, duplicate a clip, turn clips off, and pick colors.
+17. [Preview zoom, overlays and fullscreen](preview-zoom-overlays-fullscreen.md): zoom in on real detail, check safe zones and grids, and watch in fullscreen.
+18. [Proxies](proxies.md): edit heavy 4K and 60 fps footage smoothly with light copies the editor makes for you.
+19. [Audio](audio.md): listen, set the volume and check your levels.
 
 ## All pages
 
@@ -39,7 +40,7 @@ Shorts Editor is a video editor for short vertical videos (9:16 by default) that
 | --- | --- |
 | [Getting started](getting-started.md) | Browser requirements, the start screen, creating, opening and reopening projects, folder access |
 | [The workspace](workspace.md) | The app bar, the four panels, resizing panels, the timeline toolbar and right-click menus, tooltips, how shortcuts follow the panel you clicked |
-| [Projects and saving](projects-and-saving.md) | The project folder, autosave and the save dot, undo and redo, crash recovery, backups, read-only mode, project settings |
+| [Projects and saving](projects-and-saving.md) | The project folder, autosave and the save dot, undo and redo, crash recovery, backups, read-only mode, project settings, what a new resolution does to your clips |
 | [Importing media](importing-media.md) | Importing, dropping and pasting files, supported types, the Media panel views, the usage and proxy chips, sorting, renaming and removing media, the media menu |
 | [Adding media to the timeline](adding-media-to-the-timeline.md) | What each media item becomes, skimming cards, marking the part of a media item to use, inserting and overwriting at the playhead, building a sequence, dragging media onto the timeline, dropping media on the preview, dropping files from File Explorer onto the timeline |
 | [Timeline](timeline.md) | Ruler, tracks and clips, adding clips, zooming and zooming to the selection, the scrollbars and their zoom handles, scrolling, panning with the **Hand** tool, the middle mouse button or <kbd>Space</kbd>, centering on the playhead, moving the playhead and jumping between edit points, typing timecodes, timecodes in frames or milliseconds, selecting, moving, inserting, duplicating and nudging clips, snapping, renaming clips, label colors |
@@ -53,11 +54,12 @@ Shorts Editor is a video editor for short vertical videos (9:16 by default) that
 | [Preview and playback](preview-and-playback.md) | The preview frame and its header controls, scrubbing, playing, shuttling, stepping, looping the timeline or the in/out range, playing from in to out, the transport bar with the timecode format chip, typing a time under the preview, the status strip, exporting a frame at full resolution, performance |
 | [Arranging layers in the preview](arranging-layers-in-the-preview.md) | Which pictures you can pick, selecting in the preview (click, <kbd>Shift</kbd>, <kbd>Ctrl</kbd>, rectangles) and with <kbd>Alt</kbd>+click under other pictures, moving, resizing with the eight handles and the 100% snap, rotating with 45° steps, the anchor point, nudging with the arrow keys, transforming several pictures at once, the readouts, the layer menu, **Bring forward** and **Send backward**, cancel and undo |
 | [Snapping and smart guides in the preview](snapping-and-smart-guides.md) | The **Snap** and **Smart guides** switches, snapping a moved picture to the frame, the thirds, safe areas and other pictures, reading the gold guides and distances, equal spacing, snapping edges while you resize, placing pictures without snapping, measuring with <kbd>Alt</kbd> |
+| [Editing properties](editing-properties.md) | What the **Edit Properties** panel shows for each selection, folding sections, typing and dragging number fields, mixed values with several clips, the quick actions, **Fit**, **Fill**, **Center**, the flips and **Reset transform**, duplicating a clip with <kbd>Ctrl</kbd>+<kbd>D</kbd>, the **Clip** section (name, color, enabled, start, end, duration, source in and out), turning clips off and on, the **Transform** and **Opacity** sections, the color picker |
 | [Preview zoom, overlays and fullscreen](preview-zoom-overlays-fullscreen.md) | Zoom levels and <kbd>Ctrl</kbd>+<kbd>0</kbd>/<kbd>1</kbd>/<kbd>2</kbd>, wheel zoom at the pointer, panning, real detail when zoomed in, the quality modes and the status line, Reels, TikTok and Shorts safe zones, grids, center cross, title / action safe, rulers, the pixel grid, the fullscreen preview |
 | [Proxies](proxies.md) | What proxies are, which videos get one, the **PX** chip and the **Proxy** column, **Generate proxy** and **Remove proxy**, the **Proxies**, **Proxy for** and **Proxy size** settings, proxies in the preview and the quality modes, **Regenerate thumbnails**, closing and reopening a project while a proxy is made |
 | [Audio](audio.md) | Hearing your edit in sync, sound of clips at another speed, the listening volume and mute, muting and soloing audio tracks, the audio meter, how sound loads |
 | [Keyboard shortcuts](keyboard-shortcuts.md) | Every working shortcut, with the panel it needs and the macOS keys |
-| [Troubleshooting](troubleshooting.md) | Problems with the browser, graphics, the timeline, folders, saving, importing, proxies, playback and layers in the preview, and known limitations |
+| [Troubleshooting](troubleshooting.md) | Problems with the browser, graphics, the timeline, folders, saving, importing, proxies, playback, layers in the preview and **Edit Properties**, and known limitations |
 | [What's new](whats-new.md) | What each batch added, newest first |
 
 ## What you can do in this version
@@ -79,6 +81,7 @@ Shorts Editor is a video editor for short vertical videos (9:16 by default) that
 - Link and unlink a video and its sound, turn **Linked selection** off to edit one side, move clips back into sync, and group clips that belong together.
 - Play your edit back frame-accurately, shuttle with J, K and L, loop the whole timeline or a range, and save any frame as a PNG.
 - Click a picture in the preview to select it, drag it into place, resize it with its handles (with a snap at 100%), rotate it (in 45° steps with <kbd>Shift</kbd>), nudge it pixel by pixel with the arrow keys, reach pictures underneath with <kbd>Alt</kbd>+click, transform several at once, and bring one forward or send it backward.
+- Type or drag exact values in **Edit Properties**: a clip's name, color, start, end and duration, a picture's position, scale, rotation, anchor and opacity, for one clip or many at once. Fit, fill or center pictures with one click, duplicate a clip right after itself with <kbd>Ctrl</kbd>+<kbd>D</kbd>, turn clips off without deleting them, and pick the background color with a color picker.
 - Snap pictures to the center and edges of the frame, the thirds, the safe areas and each other as you drag, with gold guides and pixel distances; space three pictures evenly; and hold <kbd>Alt</kbd> to measure the distances around a picture.
 - Edit 4K and 60 fps phone footage smoothly: the editor makes a light proxy of each heavy video in the background, plays and scrubs on it, and shows the original as soon as you stop. Follow its progress on the media card, and make or remove proxies yourself.
 - Zoom the preview up to 3200% at the pointer and pan around, see the real pixels of 4K footage, choose how much detail the preview draws while playing, lay Reels, TikTok or Shorts safe zones, grids and guides over the picture, and fill the window with the preview.
@@ -93,4 +96,4 @@ More editing tools (copy and paste, freeze frames), audio editing (clip volume, 
 - Notes, tips and warnings appear as **Note**, **Tip** and **Important** boxes.
 - Each page starts with a **Video placeholder**: the planned walkthrough video for that page, with its file name, length and the steps it will show. The videos are not recorded yet; they will live in the `videos/` folder next to these pages.
 
-<sub>Last updated: Batch 24, 2026-10-16</sub>
+<sub>Last updated: Batch 25, 2026-10-16</sub>
