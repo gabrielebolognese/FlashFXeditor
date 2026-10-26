@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { makeMedia, makeMediaClip, makeProject, makeTrack, withClips } from "../core/document/fixtures.js";
-import type { Project } from "../core/document/types.js";
+import type { MediaClip, Project } from "../core/document/types.js";
 import type { Ticker } from "../core/scheduler/FrameScheduler.js";
 import { createSessionStore, setPlayhead, type PreviewQuality } from "../core/store/sessionStore.js";
 import { TexturePool, type Lod, type TextureKey } from "../media/cache/TexturePool.js";
@@ -825,5 +825,23 @@ describe("PlaybackEngine audio", () => {
     t.frame();
     expect(a.last()).toMatchObject({ speed: 2 });
     expect(a.audio.lead).not.toHaveBeenCalled();
+  });
+});
+
+describe("PlaybackEngine freeze frames (Batch 27)", () => {
+  it("asks the decoder for the single frame a freeze holds, once, and plays the whole freeze on it", async () => {
+    const doc = project([{ id: "c1", media: "a", start: 0, duration: 90, in: 60 }]);
+    const clip = doc.clips.c1 as MediaClip;
+    const frozen: Project = { ...doc, clips: { ...doc.clips, c1: { ...clip, speed: 0, out: clip.in + 33_333 } } };
+    const t = setup(frozen);
+    await t.startPlaying();
+    for (let i = 0; i < 80; i++) {
+      t.advance(1 / 30);
+      t.frame();
+      await t.deliverAll();
+    }
+    expect(t.playhead()).toBe(80);
+    expect(t.windows.map((w) => [w.fromUs, w.toUs])).toEqual([[2 * US, 2 * US]]);
+    expect(t.engine.stats.dropped).toBe(0);
   });
 });

@@ -48,7 +48,7 @@ import type { Theme, ThemeBridge } from "../../core/theme/theme.js";
 import type { DropItem, DropLanes, MediaDropRequest } from "../edit/dropMedia.js";
 import type { MoveRequest } from "../edit/move.js";
 import { clipsToSplit } from "../edit/split.js";
-import { MAX_SPEED, MIN_SPEED, type TrimEdge } from "../edit/trim.js";
+import { hasSource, MAX_SPEED, MIN_SPEED, type TrimEdge } from "../edit/trim.js";
 import { dragIn, dragOut, lastFrameOf, type InOut } from "../model/inOut.js";
 import { contentEnd, gapAt, isClipLocked, laneOf, linkedPartners, neighbors, selectionPartners, type Gap } from "../model/queries.js";
 import { resolveSnap, SnapIndex, snapLabel, type SnapCandidates, type SnapTarget } from "../snap/snapIndex.js";
@@ -1974,7 +1974,7 @@ export class TimelineView {
     const duration = formatTimecode(clip.duration, fps);
     let text = delta;
     if (result.plan.kind === "trim") text = `${delta} · ${duration}`;
-    else if (result.plan.kind === "stretch") text = `${delta} · ${duration} · ${formatSpeed(isMediaClip(clip) ? clip.speed : 1)}`;
+    else if (result.plan.kind === "stretch") text = `${delta} · ${duration} · ${formatSpeed(hasSource(clip) ? clip.speed : 1)}`;
     else if (result.plan.kind === "slip" && isMediaClip(clip)) text = `${delta} · In ${formatTimecode(usToFrame(clip.in, fps), fps)}`;
     const bound = result.mediaBound;
     const reason = result.limit?.reason;

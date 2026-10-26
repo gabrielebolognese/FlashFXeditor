@@ -106,6 +106,14 @@
   gap: var(--space-1);
 }
 
+/* A field with a button after it (the speed and its duration link). */
+.withAction {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-1);
+}
+
 /* A row of icon buttons (flips). */
 .buttons {
   display: flex;

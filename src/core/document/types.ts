@@ -210,3 +210,12 @@ export interface Marker {
 export function isMediaClip(clip: Clip): clip is MediaClip {
   return clip.kind === "video" || clip.kind === "audio" || clip.kind === "image";
 }
+
+/**
+ * A freeze frame (Batch 27): a video clip with `speed = 0`, holding the source time `in` for its whole
+ * duration (`out` is one project frame after it). Its source never moves: no media bounds, no slip,
+ * no speed, no sound.
+ */
+export function isFreeze(clip: Clip): boolean {
+  return clip.kind === "video" && clip.speed === 0;
+}

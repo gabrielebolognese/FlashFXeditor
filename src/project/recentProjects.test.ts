@@ -83,7 +83,7 @@ describe("app settings", () => {
     await settings.load();
     expect(settings.getState()).toEqual(DEFAULT_APP_SETTINGS);
     await settings.update({ autosaveDelayMs: 5000 });
-    expect(kv.data.get("settings.v1")).toEqual({ autosaveDelayMs: 5000, importMode: "copy", monitorVolumeDb: 0, monitorMuted: false, proxyAuto: true, proxyRule: "heavy", proxyShortEdge: 540, recentColors: [] });
+    expect(kv.data.get("settings.v1")).toEqual({ autosaveDelayMs: 5000, importMode: "copy", monitorVolumeDb: 0, monitorMuted: false, proxyAuto: true, proxyRule: "heavy", proxyShortEdge: 540, recentColors: [], punchZoomScale: 1.2, punchZoomAnimated: false });
     await settings.update({ autosaveDelayMs: 1234 });
     expect(settings.getState().autosaveDelayMs).toBe(5000);
 
@@ -136,5 +136,18 @@ describe("app settings", () => {
     expect(settings.getState().recentColors).toEqual(["#d9a521", "#11223344", "#000000", "#000001", "#000002", "#000003", "#000004", "#000005"]);
     await settings.update({ recentColors: "x" as never });
     expect(settings.getState().recentColors).toHaveLength(8);
+  });
+
+  it("keeps the punch zoom scale in range and the reserved animated flag (Batch 27)", async () => {
+    const kv = memoryKeyValueStore();
+    kv.data.set("settings.v1", { punchZoomScale: 9, punchZoomAnimated: "yes" });
+    const settings = createAppSettings(kv);
+    await settings.load();
+    expect(settings.getState()).toMatchObject({ punchZoomScale: 3, punchZoomAnimated: false });
+    await settings.update({ punchZoomScale: 1.5, punchZoomAnimated: true });
+    expect(settings.getState()).toMatchObject({ punchZoomScale: 1.5, punchZoomAnimated: true });
+    await settings.update({ punchZoomScale: Number.NaN });
+    expect(settings.getState().punchZoomScale).toBe(1.5);
+    expect(DEFAULT_APP_SETTINGS).toMatchObject({ punchZoomScale: 1.2, punchZoomAnimated: false });
   });
 });

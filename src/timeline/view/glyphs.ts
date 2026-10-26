@@ -26,9 +26,23 @@ const PATHS = {
     "m2 2 20 20",
   ],
   rows3: [ROUNDED_SQUARE, "M21 9H3", "M21 15H3"],
-  // Clip label bar badges (Batch 17): linked, has keyframes.
+  // Clip label bar badges (Batch 17): linked, has keyframes; a freeze frame (Batch 27).
   link: ["M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71", "M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"],
   diamond: ["M2.7 10.3a2.41 2.41 0 0 0 0 3.41l7.59 7.59a2.41 2.41 0 0 0 3.41 0l7.59-7.59a2.41 2.41 0 0 0 0-3.41l-7.59-7.59a2.41 2.41 0 0 0-3.41 0Z"],
+  snowflake: [
+    "m10 20-1.25-2.5L6 18",
+    "M10 4 8.75 6.5 6 6",
+    "m14 20 1.25-2.5L18 18",
+    "m14 4 1.25 2.5L18 6",
+    "m17 21-3-6h-4",
+    "m17 3-3 6 1.5 3",
+    "M2 12h6.5L10 9",
+    "m20 10-1.5 2 1.5 2",
+    "M22 12h-6.5L14 15",
+    "m4 10 1.5 2L4 14",
+    "m7 21 3-6-1.5-3",
+    "m7 3 3 6h4",
+  ],
 } as const;
 
 export type GlyphName = keyof typeof PATHS;

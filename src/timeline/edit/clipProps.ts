@@ -8,7 +8,7 @@
 import type { Draft } from "immer";
 import type { Command } from "../../core/commands/command.js";
 import { usPerFrame } from "../../core/document/time.js";
-import { isMediaClip, type Clip, type ClipId, type Frame, type MediaClip, type Project, type Rational, type Us } from "../../core/document/types.js";
+import { isFreeze, isMediaClip, type Clip, type ClipId, type Frame, type MediaClip, type Project, type Rational, type Us } from "../../core/document/types.js";
 import { isClipLocked } from "../model/queries.js";
 import { isLayerClip, type LayerClip } from "./transform.js";
 import { applyTrim, trimEdge, type TrimEdge, type TrimLimit } from "./trim.js";
@@ -75,9 +75,9 @@ export function clipTime(clip: Clip, field: ClipTimeField): number | null {
   }
 }
 
-/** Video and audio clips have a source range (an image's in/out is meaningless: one still). */
+/** Video and audio clips have a source range (an image's or a freeze frame's in/out is meaningless: one still). */
 export function hasSourceRange(clip: Clip): clip is MediaClip {
-  return isMediaClip(clip) && clip.kind !== "image";
+  return isMediaClip(clip) && clip.kind !== "image" && !isFreeze(clip);
 }
 
 /** The edge and frame delta of a trim that puts `field` of `clip` at `value` (frames, or µs for the source fields), or null. */

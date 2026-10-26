@@ -10,7 +10,7 @@
 import { audibleTracks } from "../../audio/AudioMixer.js";
 import { formatHexColor, isRgba } from "../../core/document/color.js";
 import { formatSpeed, usPerFrame, type TimecodeMode } from "../../core/document/time.js";
-import { isMediaClip, type Clip, type Frame, type Marker, type MediaClip, type Project, type SolidClip, type Track, type TrackId } from "../../core/document/types.js";
+import { isFreeze, isMediaClip, type Clip, type Frame, type Marker, type MediaClip, type Project, type SolidClip, type Track, type TrackId } from "../../core/document/types.js";
 import type { Selection } from "../../core/store/selection.js";
 import type { Theme } from "../../core/theme/theme.js";
 import { cellOrigin, type ThumbLevel } from "../../media/cache/thumbSheets.js";
@@ -406,13 +406,15 @@ function drawLabel(scene: ClipScene, clip: Clip, x: number, y: number, width: nu
   // With the label bar spanning an S clip, keep the icon and name on the first text line.
   const lineY = Math.min(centerY, y + theme.timeline.labelHeight / 2);
   // Badges from the right end (spec §6.4): the sync offset, the speed (`2x` when it is not 1; video
-  // and audio only, stills and graphics have no speed), the link and the keyframe icons. The name
-  // ends before them. TODO(batch 36): the `fx` badge when the clip has a transition.
+  // and audio only, stills and graphics have no speed; a snowflake for a freeze frame, Batch 27), the
+  // link and the keyframe icons. The name ends before them. TODO(batch 36): the `fx` badge when the
+  // clip has a transition.
   const minX = left + pad + icon + pad;
   const badgesEnd = right - theme.space[0];
   let badgesStart = badgesEnd;
   if (syncOffset !== 0) badgesStart = drawBadge(scene, `${syncOffset > 0 ? "+" : "-"}${Math.abs(syncOffset)}`, theme.color.danger, minX, badgesStart, lineY);
-  if ((clip.kind === "video" || clip.kind === "audio") && clip.speed !== 1) badgesStart = drawBadge(scene, formatSpeed(clip.speed), theme.color.textSecondary, minX, badgesStart, lineY);
+  if (isFreeze(clip)) badgesStart = drawIconBadge(scene, "snowflake", minX, badgesStart, lineY);
+  else if ((clip.kind === "video" || clip.kind === "audio") && clip.speed !== 1) badgesStart = drawBadge(scene, formatSpeed(clip.speed), theme.color.textSecondary, minX, badgesStart, lineY);
   if (clip.linkGroup !== undefined) badgesStart = drawIconBadge(scene, "link", minX, badgesStart, lineY);
   if (hasKeyframes(clip)) badgesStart = drawIconBadge(scene, "diamond", minX, badgesStart, lineY);
   if (badgesStart < badgesEnd) right = badgesStart;

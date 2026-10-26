@@ -1,7 +1,7 @@
 // Timeline queries (spec §3.2, P10). Per-track indexes (start-sorted clips, their ends, longest clip,
 // track end) are built lazily and cached per document version, so lookups are binary searches.
 import { usPerFrame } from "../../core/document/time.js";
-import { isMediaClip, type Clip, type ClipId, type Frame, type MediaClip, type Project, type Rational, type Track, type TrackId } from "../../core/document/types.js";
+import { isFreeze, isMediaClip, type Clip, type ClipId, type Frame, type MediaClip, type Project, type Rational, type Track, type TrackId } from "../../core/document/types.js";
 
 export interface Gap {
   trackId: TrackId;
@@ -278,7 +278,8 @@ export function linkOffset(project: Project, clipId: ClipId): Frame {
   const clip = project.clips[clipId];
   const partner = clip ? syncPartner(project, clip) : null;
   if (!clip || !partner) return 0;
-  if (isMediaClip(clip) && isMediaClip(partner) && clip.mediaId === partner.mediaId) {
+  // A freeze frame plays no source over time: it is in sync when it starts with its partner.
+  if (isMediaClip(clip) && isMediaClip(partner) && clip.mediaId === partner.mediaId && !isFreeze(clip) && !isFreeze(partner)) {
     const fps = project.settings.fps;
     // `|| 0`: no -0.
     return Math.round(sourceOrigin(clip, fps) - sourceOrigin(partner, fps)) || 0;

@@ -23,24 +23,30 @@ import { useCallback } from "react";
 import { actions, documentStore } from "../../app/services.js";
 import type { ClipId, Project } from "../../core/document/types.js";
 import { useStoreSelector } from "../../core/store/useStoreSelector.js";
+import { hasSpeed } from "../../timeline/edit/speed.js";
 import { isLayerClip, layerContent } from "../../timeline/edit/transform.js";
 import { isClipLocked } from "../../timeline/model/queries.js";
 import { IconButton } from "../../ui/IconButton.js";
 import styles from "./QuickActions.module.css";
 
 // The quick-action row (spec §11, §17): one click each, at the top of the panel for a clip selection,
-// in the §17 order. Fit, Fill, Center, Flip H / V, Reset, Duplicate and Delete run their command ids;
+// in the §17 order. Fit, Fill, Center, Flip H / V, Reset, Freeze frame, Punch zoom, the speed chips
+// (0.5x, 1x, 1.5x, 2x: the Speed section's options apply), Duplicate and Delete run their command ids;
 // the chips of later batches are present and disabled (never hidden, so the row never shifts), their
-// tooltip naming the batch in dev builds. A button is disabled when nothing selected can take it.
+// tooltip naming the batch in dev builds. A button is disabled when nothing selected can take it (its
+// state follows the selection, never the playhead: Freeze frame and Punch zoom report a playhead that
+// is not over the clip).
 
 interface Live {
   kind: "live";
   id: string;
   label: string;
-  icon: LucideIcon;
+  icon?: LucideIcon;
+  /** A text chip (the speed chips). */
+  text?: string;
   /** Shown in the tooltip with its key. */
   commandId?: string;
-  needs: "content" | "layer" | "primary" | "clips";
+  needs: (typeof NEEDS)[number];
 }
 
 interface Planned {
@@ -63,13 +69,13 @@ const ENTRIES: readonly Entry[] = [
   { kind: "gap" },
   { kind: "planned", label: "Fade in 0.5 s", icon: TrendingUp, batch: 36 },
   { kind: "planned", label: "Fade out 0.5 s", icon: TrendingDown, batch: 36 },
-  { kind: "planned", label: "Freeze frame", icon: Snowflake, batch: 27 },
-  { kind: "planned", label: "Punch zoom", icon: ZoomIn, batch: 27 },
+  { kind: "live", id: "edit.freezeFrame", label: "Freeze frame", icon: Snowflake, commandId: "edit.freezeFrame", needs: "video" },
+  { kind: "live", id: "edit.punchZoom", label: "Punch zoom", icon: ZoomIn, commandId: "edit.punchZoom", needs: "layer" },
   { kind: "gap" },
-  { kind: "planned", label: "Speed 0.5x", text: "0.5x", batch: 27 },
-  { kind: "planned", label: "Speed 1x", text: "1x", batch: 27 },
-  { kind: "planned", label: "Speed 1.5x", text: "1.5x", batch: 27 },
-  { kind: "planned", label: "Speed 2x", text: "2x", batch: 27 },
+  { kind: "live", id: "clip.speed.50", label: "Speed 0.5x", text: "0.5x", needs: "speed" },
+  { kind: "live", id: "clip.speed.100", label: "Speed 1x", text: "1x", needs: "speed" },
+  { kind: "live", id: "clip.speed.150", label: "Speed 1.5x", text: "1.5x", needs: "speed" },
+  { kind: "live", id: "clip.speed.200", label: "Speed 2x", text: "2x", needs: "speed" },
   { kind: "gap" },
   { kind: "planned", label: "Mute", icon: VolumeX, batch: 37 },
   { kind: "planned", label: "Save as preset", icon: BookmarkPlus, batch: 30 },
@@ -83,7 +89,7 @@ const ENTRIES: readonly Entry[] = [
   { kind: "live", id: "edit.delete", label: "Delete", icon: Trash2, commandId: "edit.delete", needs: "clips" },
 ];
 
-const NEEDS = ["content", "layer", "primary", "clips"] as const;
+const NEEDS = ["content", "layer", "primary", "clips", "video", "speed"] as const;
 
 /** What the selection can take, as bits of NEEDS (a number: the row renders only when it changes). */
 function abilities(project: Project, ids: readonly ClipId[], primary: ClipId): number {
@@ -92,6 +98,8 @@ function abilities(project: Project, ids: readonly ClipId[], primary: ClipId): n
     const clip = project.clips[id];
     if (!clip || isClipLocked(project, id)) continue;
     bits |= 1 << 3;
+    if (clip.kind === "video") bits |= 1 << 4;
+    if (hasSpeed(clip)) bits |= 1 << 5;
     if (!isLayerClip(clip)) continue;
     bits |= 1 << 1;
     if (layerContent(project, clip)) bits |= 1 << 0;
@@ -112,7 +120,7 @@ export function QuickActions({ ids, primary }: { ids: readonly ClipId[]; primary
         if (entry.kind === "gap") return <span key={`gap-${index}`} className={styles.gap} aria-hidden="true" />;
         if (entry.kind === "planned") return <IconButton key={entry.label} icon={entry.icon} text={entry.text} label={plannedTooltip(entry)} disabled />;
         const enabled = (bits & (1 << NEEDS.indexOf(entry.needs))) !== 0;
-        return <IconButton key={entry.id} icon={entry.icon} label={entry.label} commandId={entry.commandId} disabled={!enabled} onClick={() => run(entry.id)} />;
+        return <IconButton key={entry.id} icon={entry.icon} text={entry.text} label={entry.label} commandId={entry.commandId} disabled={!enabled} onClick={() => run(entry.id)} />;
       })}
     </div>
   );

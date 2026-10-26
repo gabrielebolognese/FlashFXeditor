@@ -98,7 +98,8 @@ function sameTiming(a: MediaClip, b: MediaClip): boolean {
 const sameMapping = (a: PlayMapping, b: PlayMapping) =>
   a.frame === b.frame && a.clock === b.clock && a.speed === b.speed && a.start === b.start && a.end === b.end && a.loop === b.loop && a.fps.num === b.fps.num && a.fps.den === b.fps.den;
 
-const isAudioClip = (clip: Clip | null | undefined): clip is MediaClip => clip?.kind === "audio" && clip.enabled;
+// Speed 0 is a video freeze frame only (Batch 27); never scheduled.
+const isAudioClip = (clip: Clip | null | undefined): clip is MediaClip => clip?.kind === "audio" && clip.enabled && clip.speed > 0;
 
 /** Media seconds of a clip at timeline second `s`. */
 const mediaSeconds = (clip: MediaClip, clipStart: number, s: number) => clip.in / 1e6 + (s - clipStart) * clip.speed;
