@@ -2,6 +2,11 @@
 
 Shorts Editor grows in steps called batches. This page lists what each batch added that you can see or use, newest first. Follow the links for the full instructions.
 
+> **Video placeholder: What's new in Batch 26**
+> - File: `videos/whats-new/batch-26.mp4` (not recorded yet)
+> - Length: about 50 seconds
+> - Shows: a 1080×1920 project with a 1920×1080 landscape video on V1, fitted with bands above and below; click the video: **Edit Properties** shows the new **Crop** section between **Transform** and **Opacity**; click **Crop to frame**, then **Fill frame** in the quick actions: the video fills the frame with no bands; press <kbd>Ctrl</kbd>+<kbd>Z</kbd> twice; double-click the picture in the preview: white brackets and bars appear with the **Crop** chip; drag the left bar inward while **L** counts along; drag the right bar near two thirds of the frame: it snaps with a gold line; type `10` in **T** after clicking **%**; click **Done** in the chip.
+
 > **Video placeholder: What's new in Batch 25**
 > - File: `videos/whats-new/batch-25.mp4` (not recorded yet)
 > - Length: about 60 seconds
@@ -88,6 +93,7 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 > - Shows: open a project with three clips on the timeline; press <kbd>Space</kbd> to play and let the timeline page forward; press <kbd>L</kbd> three times to reach 8x, then <kbd>K</kbd>; hold <kbd>K</kbd> and tap <kbd>L</kbd> to step one frame; turn on **Loop playback**; point at the **Dropped** readout in the status strip.
 
 ## In this page
+- [Batch 26: Cropping and reframing](#batch-26-cropping-and-reframing)
 - [Batch 25: Edit Properties for clips](#batch-25-edit-properties-for-clips)
 - [Batch 24: Proxies](#batch-24-proxies)
 - [Batch 23: Snapping and smart guides in the preview](#batch-23-snapping-and-smart-guides-in-the-preview)
@@ -113,6 +119,17 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 - [Batch 03: Projects, autosave and recovery](#batch-03-projects-autosave-and-recovery)
 - [Batch 02: Undo, redo and frame-exact time](#batch-02-undo-redo-and-frame-exact-time)
 - [Batch 01: The workspace](#batch-01-the-workspace)
+
+## Batch 26: Cropping and reframing
+- Crop video and image clips: the new **Crop** section of **Edit Properties** cuts away the left, right, top and bottom of a picture, in pixels of the media or in percent, for one clip or several at once.
+- **Crop to frame** cuts a picture to the project frame. Followed by **Fill frame**, it turns a landscape video into a full vertical shot in two clicks, with no bands.
+- Double-click a picture in the preview, or click the crop button in the **Crop** section header, to crop it with handles: drag the white brackets and bars, hold <kbd>Shift</kbd> to keep the shape and <kbd>Alt</kbd> to crop both opposite sides. The **Crop** fields count along, and the **Crop** chip over the preview has **Reset crop** and **Done**.
+- Crop sides snap to the edges, the center lines and the thirds of the frame, with a gold guide.
+- The **Aspect** lock keeps the shape of the visible part while you change a side, in the fields and with the handles.
+- **Fit in frame**, **Fill frame** and **Center in frame** work on the part left after the crop, and a click on a cropped-away part of a picture goes to the picture below.
+- Crops follow phone videos recorded upright, flips and rotation, so you always crop the sides of the picture as you see it.
+
+See [Cropping and reframing](cropping-and-reframing.md).
 
 ## Batch 25: Edit Properties for clips
 - Select clips and the **Edit Properties** panel now shows their settings: the **Clip** section (name, label color, **Enabled**, **Start**, **End**, **Duration**, **Source in** and **Source out**), and for video and image clips the **Transform** section (position, scale with a lock for the shape, rotation, anchor point, flips) and the **Opacity** section.
@@ -367,6 +384,7 @@ See [The workspace](workspace.md) and [Getting started](getting-started.md).
 
 ## Related pages
 - [User guide home](README.md)
+- [Cropping and reframing](cropping-and-reframing.md)
 - [Editing properties](editing-properties.md)
 - [Proxies](proxies.md)
 - [Arranging layers in the preview](arranging-layers-in-the-preview.md)
@@ -375,4 +393,4 @@ See [The workspace](workspace.md) and [Getting started](getting-started.md).
 - [Adding media to the timeline](adding-media-to-the-timeline.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 25, 2026-10-16</sub>
+<sub>Last updated: Batch 26, 2026-10-16</sub>

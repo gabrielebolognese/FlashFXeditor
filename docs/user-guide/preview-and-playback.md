@@ -61,7 +61,7 @@ A video that your browser cannot decode (for example HEVC on a computer without 
 
 ## See how clips fit the frame
 
-When you add a video or an image to the timeline, the editor scales it to fit inside the project frame and centers it. The whole picture stays visible; nothing is cropped. To put a picture somewhere else in the frame, for example a logo in a corner, drag its card from the Media panel onto the preview: it is scaled the same way and centered where you release. See [Drop media on the preview](adding-media-to-the-timeline.md#drop-media-on-the-preview).
+When you add a video or an image to the timeline, the editor scales it to fit inside the project frame and centers it. The whole picture stays visible; nothing is cut off. To put a picture somewhere else in the frame, for example a logo in a corner, drag its card from the Media panel onto the preview: it is scaled the same way and centered where you release. See [Drop media on the preview](adding-media-to-the-timeline.md#drop-media-on-the-preview).
 
 | Media | In a 1080×1920 project |
 | --- | --- |
@@ -72,7 +72,7 @@ When you add a video or an image to the timeline, the editor scales it to fit in
 
 The bands show the project background color.
 
-To change the fit afterwards, click the picture in the preview and drag it, or drag its handles to resize it. See [Arranging layers in the preview](arranging-layers-in-the-preview.md). To fill the frame without bands, select the clip and click **Fill frame** in the quick actions of **Edit Properties**, or right-click the picture and choose **Fill**. To type an exact position and size, use the **Transform** section. See [Fit, fill or center a picture](editing-properties.md#fit-fill-or-center-a-picture).
+To change the fit afterwards, click the picture in the preview and drag it, or drag its handles to resize it. See [Arranging layers in the preview](arranging-layers-in-the-preview.md). To fill the frame without bands, select the clip and click **Fill frame** in the quick actions of **Edit Properties**, or right-click the picture and choose **Fill**. To type an exact position and size, use the **Transform** section. See [Fit, fill or center a picture](editing-properties.md#fit-fill-or-center-a-picture). To turn a landscape video into a full vertical shot with nothing hanging past the frame, click **Crop to frame** in the **Crop** section, then **Fill frame**. See [Reframe a landscape video for a vertical frame](cropping-and-reframing.md#reframe-a-landscape-video-for-a-vertical-frame).
 
 > **Note:** The fit is set when you add the clip. If you change the project resolution later, the pictures scale with the frame: a picture that fit inside the old frame fits inside the new one. See [What a new resolution does to your clips](projects-and-saving.md#what-a-new-resolution-does-to-your-clips).
 
@@ -303,6 +303,7 @@ The preview draws with your graphics card (GPU) and decodes video with the brows
 - **Fullscreen:** on the development laptop, a 60 fps 1080×1920 project played in the fullscreen preview with at most about 0.5% dropped frames. The first playback after the page loads can drop many more frames while the editor warms up, especially with a large preview; the following playbacks are smoother.
 - **Dragging layers:** moving a layer in the preview follows the pointer at the full rate of a 60 Hz screen, also while it snaps and shows smart guides. On the development laptop, frames during a snapped drag took about 17 milliseconds on average. See [Snapping and smart guides in the preview](snapping-and-smart-guides.md).
 - **Dragging a value in Edit Properties:** when you drag the label of a field such as **X** or **Opacity**, the preview follows at the full rate of a 60 Hz screen. On the development laptop, frames took about 17 milliseconds on average during such a drag, with none over 20 milliseconds. See [Drag a value](editing-properties.md#drag-a-value).
+- **Cropping:** while you drag a crop bracket or bar, the preview and the **Crop** fields follow the pointer at the full rate of a 60 Hz screen. On the development laptop, frames took about 17 milliseconds on average during such a drag. See [Crop with handles in the preview](cropping-and-reframing.md#crop-with-handles-in-the-preview).
 - **Thumbnails:** the editor makes the timeline's thumbnails only while you don't play, scrub or drag, and lets the preview's frames go first, so they don't slow the preview down. See [Know when thumbnails and waveforms appear](clip-thumbnails-and-waveforms.md#know-when-thumbnails-and-waveforms-appear).
 - **Proxies:** proxies are made one at a time in the background and pause while you play or drag on the timeline, so they don't slow the preview down. On the development laptop, the editor kept drawing at the full rate of a 60 Hz screen while a proxy was being made. See [Follow a proxy while it is made](proxies.md#follow-a-proxy-while-it-is-made).
 
@@ -313,6 +314,7 @@ If playback stutters, see [Troubleshooting](troubleshooting.md).
 - [Arranging layers in the preview](arranging-layers-in-the-preview.md)
 - [Snapping and smart guides in the preview](snapping-and-smart-guides.md)
 - [Editing properties](editing-properties.md)
+- [Cropping and reframing](cropping-and-reframing.md)
 - [Proxies](proxies.md)
 - [Audio](audio.md)
 - [Timeline](timeline.md)
@@ -326,4 +328,4 @@ If playback stutters, see [Troubleshooting](troubleshooting.md).
 - [Workspace](workspace.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 25, 2026-10-16</sub>
+<sub>Last updated: Batch 26, 2026-10-16</sub>

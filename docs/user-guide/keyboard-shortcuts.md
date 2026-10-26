@@ -31,6 +31,7 @@ This page lists every keyboard shortcut that works in the current version of Sho
 >   23. Click a logo in the preview: it gets a gold box with handles. Quickly press <kbd>→</kbd> three times and <kbd>Shift</kbd>+<kbd>↑</kbd> once: it moves 3 pixels right and 10 pixels up. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> once: it is back. Click beside the frame in the preview and press <kbd>→</kbd>: the playhead steps one frame.
 >   24. Drag the logo toward the middle of the frame: it snaps to the center with gold lines. Hold <kbd>S</kbd> while you keep dragging: it moves freely. Release the mouse button. Click the logo, rest the pointer on the preview and hold <kbd>Alt</kbd>: gold distances to the frame edges appear.
 >   25. With the logo selected, click in the **X** field of **Edit Properties** and press <kbd>↑</kbd> three times and <kbd>Shift</kbd>+<kbd>↑</kbd> once: the logo moves 13 pixels to the right. Press <kbd>Esc</kbd>, click the logo's clip on the timeline and press <kbd>Ctrl</kbd>+<kbd>D</kbd>: a copy appears right after it.
+>   26. Double-click the video under the logo in the preview: white brackets and bars appear on it, with the **Crop** chip at the top of the preview. Hold <kbd>Alt</kbd> and drag the left bar inward: the left and right sides are cut together. Press <kbd>Esc</kbd>: the chip disappears and the usual handles are back.
 
 ## In this page
 - [How shortcuts work](#how-shortcuts-work)
@@ -99,7 +100,7 @@ These shortcuts work in all panels, except where noted. See [Preview and playbac
 
 ## Preview
 
-See [Preview zoom, overlays and fullscreen](preview-zoom-overlays-fullscreen.md), [Arranging layers in the preview](arranging-layers-in-the-preview.md) and [Snapping and smart guides in the preview](snapping-and-smart-guides.md) for details.
+See [Preview zoom, overlays and fullscreen](preview-zoom-overlays-fullscreen.md), [Arranging layers in the preview](arranging-layers-in-the-preview.md), [Snapping and smart guides in the preview](snapping-and-smart-guides.md) and [Cropping and reframing](cropping-and-reframing.md) for details.
 
 | Action | Windows | macOS | Works in |
 | --- | --- | --- | --- |
@@ -109,10 +110,11 @@ See [Preview zoom, overlays and fullscreen](preview-zoom-overlays-fullscreen.md)
 | Zoom the preview to 100% | <kbd>Ctrl</kbd>+<kbd>1</kbd> | <kbd>⌘</kbd>+<kbd>1</kbd> | Preview panel |
 | Zoom the preview to 200% | <kbd>Ctrl</kbd>+<kbd>2</kbd> | <kbd>⌘</kbd>+<kbd>2</kbd> | Preview panel |
 | Fill the browser window with the preview, or go back (same as **Fullscreen**) | <kbd>F</kbd> | <kbd>F</kbd> | All panels |
+| Leave crop mode (same as **Done** in the **Crop** chip) | <kbd>Escape</kbd> | <kbd>Esc</kbd> | All panels |
 | Leave the fullscreen preview | <kbd>Escape</kbd> | <kbd>Esc</kbd> | All panels |
 
 - <kbd>Ctrl</kbd>+<kbd>0</kbd>, <kbd>Ctrl</kbd>+<kbd>1</kbd> and <kbd>Ctrl</kbd>+<kbd>2</kbd> keep the point in the middle of the panel where it is; **Fit** centers the frame. Outside the Preview panel the browser gets these keys; see [Keys the browser keeps](#keys-the-browser-keeps).
-- <kbd>Escape</kbd> first cancels a drag in progress (also a layer you move, resize or rotate in the preview) or closes an open menu; the next press leaves fullscreen.
+- <kbd>Escape</kbd> first cancels a drag in progress (also a layer you move, resize, rotate or crop in the preview) or closes an open menu; the next press leaves crop mode, and the press after that leaves fullscreen.
 - The arrow keys move layers only while a selected layer is under the playhead. Otherwise <kbd>←</kbd> and <kbd>→</kbd> (with or without <kbd>Shift</kbd>) step frames in the Preview panel as in the other panels, and <kbd>↑</kbd> and <kbd>↓</kbd> do nothing there. <kbd>Ctrl</kbd>+<kbd>←</kbd> and <kbd>Ctrl</kbd>+<kbd>→</kbd> always step one second.
 - Arrow presses less than 0.3 seconds apart are one undo step, **Nudge layer**.
 - <kbd>Delete</kbd> also works in the Preview panel: it deletes the selected clips. See [Cutting and deleting](#cutting-and-deleting).
@@ -142,7 +144,11 @@ These work over the preview picture.
 | Rotate in 45° steps | <kbd>Shift</kbd>+drag just outside a corner | <kbd>⇧</kbd>+drag just outside a corner |
 | Show and move the anchor point (one layer selected) | Hold <kbd>Alt</kbd>, then drag the ring marker | Hold <kbd>⌥</kbd>, then drag the ring marker |
 | Show the distances from the selected layers to their neighbors and the frame edges (**Smart guides** on) | Hold <kbd>Alt</kbd> with the pointer over the preview, without clicking | Hold <kbd>⌥</kbd> with the pointer over the preview, without clicking |
-| Move or resize without snapping (or with snapping, when **Snap** is off) | Hold <kbd>S</kbd> during the drag | Hold <kbd>S</kbd> during the drag |
+| Crop a video or image with handles (crop mode), or leave crop mode | Double-click it | Double-click it |
+| In crop mode: cut one side, or the two sides at a corner | Drag a bar, or a bracket | Same |
+| In crop mode: keep the shape of the visible part (with the **Aspect** lock on: change it freely) | <kbd>Shift</kbd>+drag a bracket or a bar | <kbd>⇧</kbd>+drag a bracket or a bar |
+| In crop mode: cut the opposite side by the same amount | <kbd>Alt</kbd>+drag a bracket or a bar | <kbd>⌥</kbd>+drag a bracket or a bar |
+| Move, resize or crop without snapping (or with snapping, when **Snap** is off) | Hold <kbd>S</kbd> during the drag | Hold <kbd>S</kbd> during the drag |
 | Cancel the drag | <kbd>Esc</kbd> before you release | <kbd>Esc</kbd> |
 | Open the layer menu | Right-click a layer | Right-click a layer |
 
@@ -180,7 +186,7 @@ These shortcuts work only while the Timeline panel is active. See [Timeline](tim
 | --- | --- | --- | --- |
 | Select all clips | <kbd>Ctrl</kbd>+<kbd>A</kbd> | <kbd>⌘</kbd>+<kbd>A</kbd> | Timeline, Preview |
 | Clear the selection (also selected tracks, an edit point or a gap) | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd> | <kbd>⌘</kbd>+<kbd>⇧</kbd>+<kbd>A</kbd> | Timeline, Preview |
-| Cancel a clip drag, a trim, a roll, slip, slide or rate stretch, a selection rectangle, a marker or in/out drag, or a move, resize, rotation or anchor drag in the preview | <kbd>Escape</kbd> (before you release the mouse button) | <kbd>Esc</kbd> | All panels |
+| Cancel a clip drag, a trim, a roll, slip, slide or rate stretch, a selection rectangle, a marker or in/out drag, or a move, resize, rotation, crop or anchor drag in the preview | <kbd>Escape</kbd> (before you release the mouse button) | <kbd>Esc</kbd> | All panels |
 
 ### Snapping
 
@@ -318,7 +324,7 @@ See [Editing properties](editing-properties.md).
 | Fold or open a section | Click its header | Click its header |
 
 - <kbd>Ctrl</kbd>+<kbd>D</kbd> copies only one clip, without its linked sound. In the Preview panel the copy goes later on the timeline, not at the playhead. While the Edit Properties or Media panel is active, the browser gets the key; see [Keys the browser keeps](#keys-the-browser-keeps).
-- Hold <kbd>↑</kbd> or <kbd>↓</kbd> to keep going. In the **Transform** and **Opacity** sections, presses less than 0.3 seconds apart are one undo step.
+- Hold <kbd>↑</kbd> or <kbd>↓</kbd> to keep going. In the **Transform**, **Crop** and **Opacity** sections, presses less than 0.3 seconds apart are one undo step.
 - Edit Properties has no other keys of its own. While it is active and no field has the keyboard, the all-panels shortcuts work there, for example <kbd>Space</kbd> to play.
 
 ## Audio
@@ -488,6 +494,7 @@ Some buttons already show a shortcut in their tooltip although the button is dis
 - [Arranging layers in the preview](arranging-layers-in-the-preview.md)
 - [Snapping and smart guides in the preview](snapping-and-smart-guides.md)
 - [Editing properties](editing-properties.md)
+- [Cropping and reframing](cropping-and-reframing.md)
 - [Timeline](timeline.md)
 - [Trimming clips](trimming.md)
 - [Splitting, deleting and closing gaps](splitting-and-deleting.md)
@@ -501,4 +508,4 @@ Some buttons already show a shortcut in their tooltip although the button is dis
 - [Projects and saving](projects-and-saving.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 25, 2026-10-16</sub>
+<sub>Last updated: Batch 26, 2026-10-16</sub>

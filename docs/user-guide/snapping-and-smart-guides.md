@@ -133,6 +133,8 @@ When you drag a handle of a selected layer, the edge you drag snaps to the same 
 - The 100% snap follows the **Snap** switch too: with snapping off, or while you hold <kbd>S</kbd>, the scale passes 100% without stopping. See [Resize a layer](arranging-layers-in-the-preview.md#resize-a-layer).
 - Each drag is one step in the history, **Scale layer** (or **Scale layers**).
 
+> **Note:** In crop mode, the sides you crop snap only to the frame: its edges, its center lines and its thirds, also when the **Thirds** grid is hidden. See [Snap crop edges to the frame](cropping-and-reframing.md#snap-crop-edges-to-the-frame).
+
 ## Place a layer without snapping
 
 To put a layer just next to a target instead of on it:
@@ -172,12 +174,13 @@ Good to know:
 - **Rotating** snaps only with <kbd>Shift</kbd>, to every multiple of 45° within 3° of it. See [Rotate a layer](arranging-layers-in-the-preview.md#rotate-a-layer).
 - **Dragging the anchor point** moves it freely.
 - **Arrow-key nudges** move by exactly 1 or 10 pixels.
-- **Values in Edit Properties**, typed or dragged on a field's label, land exactly where you set them. See [Place a picture with exact values](editing-properties.md#place-a-picture-with-exact-values).
+- **Values in Edit Properties**, typed or dragged on a field's label, land exactly where you set them, also in the **Crop** section. See [Place a picture with exact values](editing-properties.md#place-a-picture-with-exact-values).
 - **Fit**, **Fill** and **Center** place pictures relative to the frame; they don't line up with other pictures.
 
 ## Related pages
 - [Arranging layers in the preview](arranging-layers-in-the-preview.md)
 - [Editing properties](editing-properties.md)
+- [Cropping and reframing](cropping-and-reframing.md)
 - [Preview zoom, overlays and fullscreen](preview-zoom-overlays-fullscreen.md)
 - [Preview and playback](preview-and-playback.md)
 - [Timeline](timeline.md)
@@ -185,4 +188,4 @@ Good to know:
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 25, 2026-10-16</sub>
+<sub>Last updated: Batch 26, 2026-10-16</sub>

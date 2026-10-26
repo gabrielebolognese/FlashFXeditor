@@ -361,7 +361,7 @@ A selected clip has a gold outline and a gold tint. The clip you clicked last ha
 - <kbd>Ctrl</kbd>+<kbd>A</kbd> and <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd> work while the Timeline or the Preview panel is active. The other selection shortcuts are mouse actions in the timeline.
 - **The preview shares the selection.** Clicking a picture in the preview selects its clip on the timeline, and a selected clip under the playhead gets a gold box with handles in the preview. See [Select layers in the preview](arranging-layers-in-the-preview.md#select-layers-in-the-preview).
 - Selecting is not a step in the history, but undo brings back the selection you had before the change you undo. See [Undo and redo](projects-and-saving.md#undo-and-redo-changes).
-- While clips are selected, the **Edit Properties** panel shows the quick actions and their **Clip** section, plus **Transform** and **Opacity** for video and image clips. See [Editing properties](editing-properties.md). While tracks are selected, it shows their **Track** section; see [Change track settings in Edit Properties](tracks.md#change-track-settings-in-edit-properties).
+- While clips are selected, the **Edit Properties** panel shows the quick actions and their **Clip** section, plus **Transform**, **Crop** and **Opacity** for video and image clips. See [Editing properties](editing-properties.md). While tracks are selected, it shows their **Track** section; see [Change track settings in Edit Properties](tracks.md#change-track-settings-in-edit-properties).
 
 ### Select with a rectangle
 
@@ -656,4 +656,4 @@ Label colors help you see at a glance which clips belong together, for example a
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 25, 2026-10-16</sub>
+<sub>Last updated: Batch 26, 2026-10-16</sub>

@@ -1,13 +1,13 @@
 # Editing properties
 
-The **Edit Properties** panel shows the settings of what you selected: a clip, a track, a marker, or the project itself when nothing is selected. Use it to type exact values, such as a position in pixels or the end time of a clip, to drag a value while you watch the preview, to fit or fill the frame with one click, and to change several clips at once.
+The **Edit Properties** panel shows the settings of what you selected: a clip, a track, a marker, or the project itself when nothing is selected. Use it to type exact values, such as a position in pixels or the end time of a clip, to drag a value while you watch the preview, to fit or fill the frame with one click, to crop a picture, and to change several clips at once.
 
 > **Video placeholder: Edit Properties in action**
 > - File: `videos/editing-properties/overview.mp4` (not recorded yet)
 > - Length: about 90 seconds
 > - Shows:
 >   1. A 1080×1920 project with a 16:9 video with sound on V1 and A1 and a logo PNG on V2, the playhead over both. Click an empty area of the timeline tracks: **Edit Properties** shows the **Project** section.
->   2. Click the video clip on the timeline: the panel header reads **2 clips**, and the quick actions row appears above the **Clip**, **Transform** and **Opacity** sections.
+>   2. Click the video clip on the timeline: the panel header reads **2 clips**, and the quick actions row appears above the **Clip**, **Transform**, **Crop** and **Opacity** sections.
 >   3. Click **Fill frame** in the quick actions: the video covers the frame and its sides are cut off. Click **Fit in frame**: it fills the width again, with bands above and below.
 >   4. Click the logo in the preview. In **Transform**, press on the **X** of **Position** and drag to the right: the logo slides across the preview while the **X** turns gold. Release.
 >   5. Click in the **Y** field, type `-600` and press <kbd>Enter</kbd>: the logo jumps up.
@@ -27,6 +27,7 @@ The **Edit Properties** panel shows the settings of what you selected: a clip, a
 - [Change a clip's name, color and times](#change-a-clips-name-color-and-times)
 - [Turn a clip off](#turn-a-clip-off)
 - [Place a picture with exact values](#place-a-picture-with-exact-values)
+- [Crop a picture](#crop-a-picture)
 - [Pick a color](#pick-a-color)
 - [Undo and cancel](#undo-and-cancel)
 - [What is not available yet](#what-is-not-available-yet)
@@ -39,7 +40,7 @@ The **Edit Properties** panel sits at the top of the left side, next to the Medi
 | You selected | The panel shows | See |
 | --- | --- | --- |
 | Nothing (click an empty area of the timeline tracks) | The **Project** section | [Change project settings](projects-and-saving.md#change-project-settings) |
-| One or more clips | The quick actions, then the **Clip** section. When a video or image clip is among them, also **Transform** and **Opacity**. | This page |
+| One or more clips | The quick actions, then the **Clip** section. When a video or image clip is among them, also **Transform**, **Crop** and **Opacity**. | This page, and [Cropping and reframing](cropping-and-reframing.md) for **Crop** |
 | One or more track headers | The **Track** section | [Change track settings in Edit Properties](tracks.md#change-track-settings-in-edit-properties) |
 | A marker in the ruler | The **Marker** section | [Edit a marker in Edit Properties](markers-and-in-out-points.md#edit-a-marker-in-edit-properties) |
 
@@ -57,11 +58,11 @@ The **Edit Properties** panel sits at the top of the left side, next to the Medi
 
 In a number field you can also press <kbd>↑</kbd> or <kbd>↓</kbd> to add or subtract 1, and <kbd>Shift</kbd>+<kbd>↑</kbd> or <kbd>Shift</kbd>+<kbd>↓</kbd> to add or subtract 10. Hold the key to keep going.
 
-- Number fields show their unit after the value: **px** (pixels), **%** or **°** (degrees). They show one decimal, for example **100.0**, and round what you type to one decimal.
+- Number fields show their unit after the value: **px** (pixels), **%** or **°** (degrees). Most show one decimal, for example **100.0**, and round what you type to one decimal; the crop fields in **px** show whole pixels.
 - Both a comma and a point work as the decimal sign: `3,5` and `3.5` are the same.
 - A value outside the range of a field stops at its limit, for example 100 in **Opacity**.
 - Text that is not a number is ignored, and the field shows its value again.
-- Each typed value is one step in the history. In the **Transform** and **Opacity** sections, arrow presses less than 0.3 seconds apart are one step together, so one <kbd>Ctrl</kbd>+<kbd>Z</kbd> undoes a quick series. In the other number fields, each press is one step.
+- Each typed value is one step in the history. In the **Transform**, **Crop** and **Opacity** sections, arrow presses less than 0.3 seconds apart are one step together, so one <kbd>Ctrl</kbd>+<kbd>Z</kbd> undoes a quick series. In the other number fields, each press is one step.
 - Clicking the letter or icon at the left of a number field (the field's label), without dragging, also puts you in the field.
 - While you type in a field, shortcuts are off: <kbd>Space</kbd>, for example, types a space instead of playing.
 
@@ -80,7 +81,7 @@ Drag the label of a number field (the letter or icon at its left, such as **X**,
 | <kbd>Alt</kbd> | 0.1 per pixel |
 
 - The drag starts once the mouse has moved 3 pixels. You can press and release <kbd>Shift</kbd> and <kbd>Alt</kbd> during the drag.
-- While you drag, the label and the edge of the field turn gold. In the **Transform** and **Opacity** sections, the preview and the gold box around the picture follow at once.
+- While you drag, the label and the edge of the field turn gold. In the **Transform**, **Crop** and **Opacity** sections, the preview and the gold box around the picture follow at once.
 - The project's **W** and **H** fields (with a **Custom** resolution) change by 2 per pixel, and the frame takes the new size when you release.
 - The value stops at the limits of the field. Drag back and it moves again at once.
 - Press <kbd>Esc</kbd> before you release to cancel: the value goes back, and nothing is added to the history.
@@ -94,7 +95,7 @@ Select several clips, on the timeline or in the preview (see [Select clips](time
 - **A switch whose clips differ sits halfway.** Click it to turn it on for all of them.
 - **Name** renames every selected clip, and **Color** gives every selected clip the label color.
 - **Start**, **End**, **Duration**, **Source in** and **Source out** trim each selected clip to the time you type, all in one step.
-- **Transform** and **Opacity** change only the pictures among the selected clips, the video and image clips. A video's linked sound is left alone.
+- **Transform**, **Crop** and **Opacity** change only the pictures among the selected clips, the video and image clips. A video's linked sound is left alone.
 - Clips on locked tracks keep their values.
 
 ## Use the quick actions
@@ -136,9 +137,10 @@ Select one or more video or image clips, then click a button in the quick action
 | **Fill** | The picture gets the smallest size at which it covers the whole frame, and is centered. What reaches past the frame is cut off. | 3413.3×1920 pixels, **Scale** 177.8%, the left and right sides cut off |
 | **Center** | The middle of the picture moves to the middle of the frame. Its size and angle stay. | **Position** 0, 0 (with the anchor point in the middle) |
 | **Flip horizontal**, **Flip vertical** | The picture is mirrored in its place. A second click mirrors it back. | |
-| **Reset transform** | The picture goes back to how a new clip is placed: fitted to the frame and centered, upright, not mirrored, with the anchor point in the middle. | Same as **Fit** |
+| **Reset transform** | The picture goes back to how a new clip is placed: fitted to the frame and centered, upright, not mirrored, with the anchor point in the middle. Its crop stays. | Same as **Fit** |
 
 - These act on every selected video and image clip, also those that are not under the playhead.
+- On a cropped picture, **Fit**, **Fill** and **Center** size and center the part left after the crop. **Reset transform** leaves the crop as it is. See [Cropping and reframing](cropping-and-reframing.md).
 - A tilted picture keeps its angle. **Fit** and **Fill** size the upright box around the tilted picture: with **Fit** the whole tilted picture stays inside the frame; with **Fill** that box covers the frame, so small empty corners can remain where the tilted edges cross the frame.
 - **Fit** and **Fill** keep the shape of the picture: a picture stretched to a different width and height gets the same scale for both again.
 - **Reset transform** fits the picture to the current frame size, also after you changed the project resolution.
@@ -260,6 +262,18 @@ Select a video or image clip. The **Transform** and **Opacity** sections set whe
 - Typed and dragged values don't snap. Snapping works only while you drag a picture in the preview.
 - The steps are named **Change position**, **Change scale**, **Change rotation**, **Change anchor** and **Change opacity**; the flip buttons make **Flip horizontal** and **Flip vertical**.
 
+## Crop a picture
+
+Select a video or image clip. The **Crop** section, between **Transform** and **Opacity**, cuts away the sides of its picture:
+
+- **L**, **R**, **T** and **B** set how much is cut from the left, right, top and bottom, in pixels of the media (**px**) or in percent of it (**%**, chosen in the **Units** row).
+- The chain button in the **Aspect** row keeps the shape of the visible part while you change a side.
+- **Crop to frame** cuts the picture to the project frame; followed by **Fill frame**, it turns a landscape video into a full vertical shot.
+- **Reset** removes the crop.
+- The crop button in the section header turns on crop mode, with crop handles on the picture in the preview.
+
+See [Cropping and reframing](cropping-and-reframing.md).
+
 ## Pick a color
 
 A color field is a swatch with the color's hex code next to it. In this version the **Background** of the project uses one (in the **Project** section, shown when nothing is selected).
@@ -304,6 +318,7 @@ A color field is a swatch with the color's hex code next to it. In this version 
 | --- | --- |
 | **Change position**, **Change scale**, **Change rotation**, **Change anchor**, **Change opacity** | A typed value, a label drag, or a quick series of <kbd>↑</kbd> and <kbd>↓</kbd> presses in that field |
 | **Fit layer**, **Fill frame**, **Center layer**, **Flip horizontal**, **Flip vertical**, **Reset transform** (and the plural names) | The quick actions, the **Flip** buttons and the layer menu |
+| **Change crop**, **Crop to frame**, **Reset crop**, **Reset crops** | The **Crop** section. See [Undo and cancel](cropping-and-reframing.md#undo-and-cancel) on the cropping page. |
 | **Rename clip**, **Rename clips** | **Name** |
 | **Label clip**, **Label clips** | **Color** |
 | **Disable clip**, **Enable clip** (and the plural names) | **Enabled**, and **Disable** or **Enable** in the clip menu |
@@ -317,13 +332,14 @@ See [Undo and redo changes](projects-and-saving.md#undo-and-redo-changes).
 
 These parts are available in a later version:
 
-- More sections for clips: crop, speed, audio (volume and fades), text, animation and transitions.
+- More sections for clips: speed, audio (volume and fades), text, animation and transitions.
 - The dimmed quick actions: fades, freeze frame, punch zoom, the speed buttons, mute, presets and transitions.
 - Values that change over time (keyframes): every value applies to the whole clip.
 - Duplicating several clips, or a clip with its linked sound, with <kbd>Ctrl</kbd>+<kbd>D</kbd>, and the **Duplicate** row of the layer menu.
 - The dimmed rows of the **Project** section: **Still duration**, **Transition** and **Cache** with **Clear cache**.
 
 ## Related pages
+- [Cropping and reframing](cropping-and-reframing.md)
 - [Arranging layers in the preview](arranging-layers-in-the-preview.md)
 - [Snapping and smart guides in the preview](snapping-and-smart-guides.md)
 - [Timeline](timeline.md)
@@ -336,4 +352,4 @@ These parts are available in a later version:
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 25, 2026-10-16</sub>
+<sub>Last updated: Batch 26, 2026-10-16</sub>
