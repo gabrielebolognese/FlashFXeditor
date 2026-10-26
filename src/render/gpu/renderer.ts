@@ -88,8 +88,11 @@ export interface Renderer {
   createTexture(width: number, height: number, options?: TextureOptions): TextureHandle;
   /** Copies the frame into a new texture and closes the frame at once (P5, P13). */
   uploadVideoFrame(frame: VideoFrame, options?: TextureOptions): TextureHandle;
-  /** Copies the bitmap into a new texture (mipmapped by default). The caller still owns the bitmap. */
-  uploadImageBitmap(bitmap: ImageBitmap, options?: TextureOptions): TextureHandle;
+  /**
+   * Copies the bitmap (or a 2D canvas: text rasters) into a new texture (mipmapped by default). The
+   * caller still owns the source.
+   */
+  uploadImageBitmap(bitmap: ImageBitmap | OffscreenCanvas, options?: TextureOptions): TextureHandle;
   /** Sets the backing size of a target in device pixels (a no-op when unchanged). */
   resize(target: RenderTarget, width: number, height: number): void;
   createCanvasTarget(canvas: HTMLCanvasElement | OffscreenCanvas): CanvasTarget;

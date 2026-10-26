@@ -14,6 +14,7 @@ import { isFreeze, isMediaClip, type Clip, type Frame, type Marker, type MediaCl
 import type { Selection } from "../../core/store/selection.js";
 import type { Theme } from "../../core/theme/theme.js";
 import { cellOrigin, type ThumbLevel } from "../../media/cache/thumbSheets.js";
+import { firstLine } from "../../text/style.js";
 import { clipsInRange, contentEnd, linkOffset } from "../model/queries.js";
 import { clipLod, clipSpan, devicePx, LOD_THUMBS_PX, type ClipLod } from "./clipLayout.js";
 import { columnPeaks, peaksLevel, planFilmstrip, tileThumb, wantPeaks, wantSheet, type ClipVisuals, type WantsCollector } from "./clipVisuals.js";
@@ -42,10 +43,16 @@ export interface ContentScene {
   timecodeFormat?: TimecodeMode;
   /** A marker being dragged: the overlay draws it at its new frame, the ruler leaves it out. */
   hiddenMarker?: string | null;
+  /** Which font families are missing (text clips get a badge, spec §10.1). */
+  fonts?: TimelineFonts | null;
+}
+
+export interface TimelineFonts {
+  missing(family: string): boolean;
 }
 
 /** What drawing a clip needs (the overlay's trim preview draws clips too, from what is loaded). */
-export type ClipScene = Pick<ContentScene, "ctx" | "dpr" | "geometry" | "theme" | "selection" | "text" | "visuals" | "wants"> & { project: Pick<Project, "settings"> };
+export type ClipScene = Pick<ContentScene, "ctx" | "dpr" | "geometry" | "theme" | "selection" | "text" | "visuals" | "wants" | "fonts"> & { project: Pick<Project, "settings"> };
 
 export interface ContentStats {
   /** Clips drawn in this pass (the visible ones). */
@@ -267,8 +274,7 @@ function drawBody(scene: ClipScene, clip: Clip, x: number, y: number, width: num
       drawWaveform(scene, clip, y, height, left, right);
       return;
     case "text":
-      // TODO(batch 28): the first line of the text content (`TextContent` is defined there).
-      if (lod === "full") drawBodyText(scene, clip.name, left, right, y, height);
+      if (lod === "full") drawBodyText(scene, firstLine(clip.text, clip.style), left, right, y, height);
       return;
     case "caption":
       if (lod === "full") drawBodyText(scene, clip.text.split("\n")[0] ?? "", left, right, y, height);
@@ -407,7 +413,8 @@ function drawLabel(scene: ClipScene, clip: Clip, x: number, y: number, width: nu
   const lineY = Math.min(centerY, y + theme.timeline.labelHeight / 2);
   // Badges from the right end (spec §6.4): the sync offset, the speed (`2x` when it is not 1; video
   // and audio only, stills and graphics have no speed; a snowflake for a freeze frame, Batch 27), the
-  // link and the keyframe icons. The name ends before them. TODO(batch 36): the `fx` badge when the
+  // link and the keyframe icons, and a missing font (a text clip whose family is not available draws
+  // with the fallback font, §10.1). The name ends before them. TODO(batch 36): the `fx` badge when the
   // clip has a transition.
   const minX = left + pad + icon + pad;
   const badgesEnd = right - theme.space[0];
@@ -417,6 +424,7 @@ function drawLabel(scene: ClipScene, clip: Clip, x: number, y: number, width: nu
   else if ((clip.kind === "video" || clip.kind === "audio") && clip.speed !== 1) badgesStart = drawBadge(scene, formatSpeed(clip.speed), theme.color.textSecondary, minX, badgesStart, lineY);
   if (clip.linkGroup !== undefined) badgesStart = drawIconBadge(scene, "link", minX, badgesStart, lineY);
   if (hasKeyframes(clip)) badgesStart = drawIconBadge(scene, "diamond", minX, badgesStart, lineY);
+  if (clip.kind === "text" && scene.fonts?.missing(clip.style.fontFamily)) badgesStart = drawIconBadge(scene, "triangleAlert", minX, badgesStart, lineY, theme.color.danger);
   if (badgesStart < badgesEnd) right = badgesStart;
   drawGlyph(ctx, CLIP_GLYPHS[clip.kind], left + pad, lineY - icon / 2, icon, theme.color.textPrimary);
   const textX = left + pad + icon + pad;
@@ -452,13 +460,13 @@ function drawBadge(scene: ClipScene, label: string, fill: string, minX: number, 
   return x - space[0];
 }
 
-/** A label bar icon badge (link, keyframes) in the secondary text color, ending at `right`; see `drawBadge`. */
-function drawIconBadge(scene: ClipScene, glyph: GlyphName, minX: number, right: number, centerY: number): number {
+/** A label bar icon badge (link, keyframes; in the secondary text color by default), ending at `right`; see `drawBadge`. */
+function drawIconBadge(scene: ClipScene, glyph: GlyphName, minX: number, right: number, centerY: number, color = scene.theme.color.textSecondary): number {
   const { ctx, theme } = scene;
   const size = theme.icon.small;
   const x = right - size;
   if (x < minX) return right;
-  drawGlyph(ctx, glyph, x, centerY - size / 2, size, theme.color.textSecondary);
+  drawGlyph(ctx, glyph, x, centerY - size / 2, size, color);
   return x - theme.space[0];
 }
 

@@ -54,7 +54,7 @@ import { contentEnd, gapAt, isClipLocked, laneOf, linkedPartners, neighbors, sel
 import { resolveSnap, SnapIndex, snapLabel, type SnapCandidates, type SnapTarget } from "../snap/snapIndex.js";
 import { createWants, type ClipVisualsSource } from "./clipVisuals.js";
 import { trimCursor, trimCursors, type TrimCursors } from "./cursors.js";
-import { drawContent } from "./drawContent.js";
+import { drawContent, type TimelineFonts } from "./drawContent.js";
 import { drawOverlay, type EditPointMark, type MarkerScene, type RangeScene, type RazorScene, type TrackDragScene } from "./drawOverlay.js";
 import { contains, TimelineGeometry, type HeaderToggle, type Rect, type TimelineMetrics } from "./geometry.js";
 import { edgeStep } from "./gestures/autoScroll.js";
@@ -118,6 +118,8 @@ export interface TimelineViewDeps {
   idle?: Pick<IdleQueue, "pause" | "resume"> & Partial<Pick<IdleQueue, "isPaused" | "onPauseChange">>;
   /** Thumbnails, posters and peaks of the clip bodies (spec §6.4, §6.17). */
   visuals?: ClipVisualsSource;
+  /** Missing font families (text clip badges, spec §10.1); the owner invalidates the content when they change. */
+  fonts?: TimelineFonts;
   /** Which key is Mod (Ctrl, or Cmd on macOS). */
   platform?: Platform;
   /**
@@ -1837,6 +1839,7 @@ export class TimelineView {
       theme: this.deps.theme.theme,
       text: this.text,
       visuals: visuals ?? null,
+      fonts: this.deps.fonts ?? null,
       wants,
       scrollbars: this.scrollbars(),
       timecodeFormat: this.deps.session.state.getState().timecodeFormat,
@@ -1902,6 +1905,7 @@ export class TimelineView {
         : null,
       text: this.text,
       visuals: this.deps.visuals ?? null,
+      fonts: this.deps.fonts ?? null,
       scrollbar: this.scrollbarState(idle),
       range: this.rangeScene(project, idle),
       markers,

@@ -11,6 +11,7 @@ import { ProjectSection } from "./properties/ProjectSection.js";
 import { QuickActions } from "./properties/QuickActions.js";
 import { Section } from "./properties/Section.js";
 import { SpeedSection } from "./properties/SpeedSection.js";
+import { TextSection } from "./properties/TextSection.js";
 import { TrackSection } from "./properties/TrackSection.js";
 import { OpacitySection, TransformSection } from "./properties/TransformSection.js";
 import styles from "./PropertiesPanel.module.css";
@@ -23,6 +24,7 @@ import styles from "./PropertiesPanel.module.css";
 
 const SECTION_TITLES: Record<SectionId, string> = {
   clip: "Clip",
+  text: "Text",
   transform: "Transform",
   crop: "Crop",
   opacity: "Opacity",
@@ -36,6 +38,8 @@ function sectionBody(id: SectionId, context: PropertiesContext): ReactNode {
   switch (id) {
     case "clip":
       return context.kind === "clips" ? <ClipSection ids={context.clipIds} /> : null;
+    case "text":
+      return context.kind === "clips" ? <TextSection ids={context.textIds} /> : null;
     case "transform":
       return context.kind === "clips" ? <TransformSection ids={context.layerIds} /> : null;
     case "crop":

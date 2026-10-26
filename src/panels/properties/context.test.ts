@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { makeMedia, makeMediaClip, makeProject, makeSolidClip, makeTrack, withClips } from "../../core/document/fixtures.js";
+import { makeMedia, makeMediaClip, makeProject, makeSolidClip, makeTextClip, makeTrack, withClips } from "../../core/document/fixtures.js";
 import type { Clip, Project } from "../../core/document/types.js";
 import { EMPTY_SELECTION, selectClips, selectTracks } from "../../core/store/selection.js";
 import { contextKey, propertiesContext, sectionIds, shared } from "./context.js";
@@ -7,11 +7,12 @@ import { contextKey, propertiesContext, sectionIds, shared } from "./context.js"
 function project(): Project {
   const p = makeProject();
   p.media.m = makeMedia("m");
-  p.tracks.push(makeTrack("v1"), makeTrack("v2"), makeTrack("a1", "audio"));
+  p.tracks.push(makeTrack("v1"), makeTrack("v2"), makeTrack("v3"), makeTrack("a1", "audio"));
   const clips: Clip[] = [
     makeMediaClip(p, { id: "v", trackId: "v1", start: 0, duration: 30, mediaId: "m" }),
     makeMediaClip(p, { id: "a", trackId: "a1", start: 0, duration: 30, mediaId: "m", kind: "audio" }),
     makeSolidClip({ id: "s", trackId: "v2", start: 0, duration: 30 }),
+    makeTextClip({ id: "t", trackId: "v3", start: 0, duration: 30 }),
   ];
   return withClips(p, clips);
 }
@@ -30,7 +31,7 @@ describe("properties context (spec §11)", () => {
   it("lists the clips with their primary and the layers among them; layers add Transform and Opacity, media layers Crop, video and audio Speed", () => {
     const p = project();
     const linked = propertiesContext(selectClips(["a", "v"], "a"), null, p);
-    expect(linked).toEqual({ kind: "clips", clipIds: ["a", "v"], primary: "a", layerIds: ["v"], layerPrimary: "v", mediaIds: ["v"], speedIds: ["a", "v"] });
+    expect(linked).toEqual({ kind: "clips", clipIds: ["a", "v"], primary: "a", layerIds: ["v"], layerPrimary: "v", mediaIds: ["v"], speedIds: ["a", "v"], textIds: [] });
     expect(sectionIds(linked)).toEqual(["clip", "transform", "crop", "opacity", "speed"]);
     const audio = propertiesContext(selectClips(["a"]), null, p);
     expect(sectionIds(audio)).toEqual(["clip", "speed"]);
@@ -39,6 +40,13 @@ describe("properties context (spec §11)", () => {
     expect(sectionIds(solid)).toEqual(["clip", "transform", "opacity"]);
     expect(propertiesContext(selectClips(["s", "v"]), null, p)).toMatchObject({ layerIds: ["s", "v"], mediaIds: ["v"] });
     expect(propertiesContext(selectClips(["gone"]), null, p)).toEqual({ kind: "none" });
+  });
+
+  it("adds Text right after Clip for text clips (Batch 28)", () => {
+    const p = project();
+    const text = propertiesContext(selectClips(["t", "s"]), null, p);
+    expect(text).toMatchObject({ layerIds: ["t", "s"], textIds: ["t"], mediaIds: [] });
+    expect(sectionIds(text)).toEqual(["clip", "text", "transform", "opacity"]);
   });
 
   it("keys the context by kind, primary, ids and marker (React renders the panel when it changes)", () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { makeMedia, makeMediaClip, makeProject, makeSolidClip, makeTrack, withClips } from "./fixtures.js";
+import { makeMedia, makeMediaClip, makeProject, makeSolidClip, makeTextClip, makeTrack, withClips } from "./fixtures.js";
 import { createProject } from "./project.js";
 import type { Project } from "./types.js";
 import { assertValid, DocumentInvariantError, validateProject } from "./validate.js";
@@ -30,6 +30,20 @@ describe("validateProject", () => {
   it("accepts a new project and a valid document", () => {
     expect(validateProject(createProject({ id: "p", name: "P", now: "t", appVersion: "v" }))).toEqual([]);
     expect(validateProject(valid())).toEqual([]);
+  });
+
+  it("checks text clips: a string, a box width, a size, weight and line height the layout can use", () => {
+    const text = makeTextClip({ id: "t1", trackId: "v1", start: 60, duration: 30, value: "Hi" });
+    expect(validateProject(withClips(valid(), [text]))).toEqual([]);
+    const broken = { ...text, text: { value: "Hi", box: { mode: "fixed" as const, width: 0 } }, style: { ...text.style, fontSize: 0, lineHeight: Number.NaN, fontWeight: 1200 } };
+    const issues = validateProject(withClips(valid(), [broken]));
+    expect(issues).toHaveLength(4);
+    expect(issues[0]).toContain('clip "t1" (t1): text box width 0 must be > 0');
+    expect(issues.join("\n")).toContain("font size 0 must be > 0");
+    expect(issues.join("\n")).toContain("line height NaN must be > 0");
+    expect(issues.join("\n")).toContain("font weight 1200 must be in 1..1000");
+    // Text belongs on video tracks.
+    expect(validateProject(withClips(valid(), [{ ...text, trackId: "a1" }]))).toEqual([expect.stringContaining("a text clip cannot sit on audio")]);
   });
 
   it("reports overlapping clips, naming the track and both clips", () => {

@@ -12,7 +12,9 @@
 //   with `previewSplit` (rolls, slips, slides, spec §6.10) it shows two frames side by side, each
 //   fitted (or at the zoom) in its half of the canvas: two evaluations, one texture pass, one draw.
 //   While a canvas gesture or a properties field scrub runs (spec §7.3, §11, P2), `transforms`,
-//   `opacities` and `crops` give the layers' ephemeral values.
+//   `opacities`, `crops` and `texts` give the layers' ephemeral values.
+// - Text layers (spec §10.1) are drawn from the text raster cache at the render scale (detail on
+//   zoom re-rasterizes them); Export frame waits for their fonts.
 //   A pause leaves the playhead where it is, but playback may have held a track's previous layer
 //   there (shuttle speeds deliver every n-th frame): the render after it requests the exact frame.
 //   When the draw list, the viewport and the render scale equal the last ones drawn, the GPU draw is
@@ -36,7 +38,7 @@
 // - `renderFrame` (Export frame) draws the frame at the playhead from exact full-resolution frames at
 //   project size, whatever the quality mode and whatever is on screen.
 // - The backing store is resized inside `render`, so a resize never shows a cleared canvas.
-import type { ClipId, Crop, Frame, Project, RGBA, Transform } from "../../core/document/types.js";
+import type { ClipId, Crop, Frame, Project, RGBA, TextStyle, Transform } from "../../core/document/types.js";
 import { watchDevicePixelRatio } from "../../core/scheduler/devicePixelRatio.js";
 import type { FrameScheduler, RenderView } from "../../core/scheduler/FrameScheduler.js";
 import { createStore, type Store } from "../../core/store/createStore.js";
@@ -45,7 +47,7 @@ import type { LayoutState } from "../../core/store/layoutStore.js";
 import type { PreviewQuality, PreviewSession, SessionState } from "../../core/store/sessionStore.js";
 import { cssColorToRgba } from "../../core/theme/cssColor.js";
 import type { Theme, ThemeBridge } from "../../core/theme/theme.js";
-import { Compositor } from "../compositor/Compositor.js";
+import { Compositor, type LiveText } from "../compositor/Compositor.js";
 import type { Composite, DrawList, Layer, TextureLayer } from "../compositor/drawList.js";
 import { DrawListSnapshot } from "../compositor/DrawListSnapshot.js";
 import type { FramePriority } from "../../media/workers/protocol.js";
@@ -82,6 +84,10 @@ export interface PreviewViewDeps extends Omit<LayerTexturesDeps, "onChange" | "w
   crops?(): ReadonlyMap<ClipId, Crop> | null;
   /** The project background while the color picker is dragged (§11), or null. The owner invalidates `preview` when it changes. */
   background?(): RGBA | null;
+  /** A Text field scrub's ephemeral texts and styles by clip id (§11), or null. The owner invalidates `preview` when they change. */
+  texts?(): ReadonlyMap<ClipId, LiveText> | null;
+  /** Loads the fonts of `style` for `text` (Export frame); resolves true when it had to wait for them. */
+  loadFonts?(style: TextStyle, text: string): Promise<boolean>;
   /** True when playback fell behind on the media this playback (1/2 and 1/4 then play its proxy). */
   behind?(mediaId: string): boolean;
   /** Clock of the Auto settle time (ms); `performance.now` by default. */
@@ -210,6 +216,7 @@ export class PreviewView implements RenderView {
       frames: deps.frames,
       images: deps.images,
       pool: deps.pool,
+      ...(deps.text && { text: deps.text }),
       onChange: () => deps.scheduler.invalidate("preview"),
       wantedLod: (mediaId) => wantedLod(this.passQuality, this.passActivity, deps.behind?.(mediaId) ?? false),
     });
@@ -322,12 +329,13 @@ export class PreviewView implements RenderView {
       override ? null : (this.deps.transforms?.() ?? null),
       override ? null : (this.deps.opacities?.() ?? null),
       override ? null : (this.deps.crops?.() ?? null),
+      override ? null : (this.deps.texts?.() ?? null),
     );
     const background = override ? null : (this.deps.background?.() ?? null);
     if (background) composite.background = background;
     const transform = frameTransformInto(this.transform, preview.zoom, composite, size, this.chrome.margin * dpr, preview.panX, preview.panY);
     const scale = this.detailOf(doc, composite, transform[0], preview, activity);
-    const list = this.textures.resolve(composite, priority, this.stats.detail.upload);
+    const list = this.textures.resolve(composite, priority, this.stats.detail.upload, this.textScale(composite, transform, size, scale));
     this.showQuality(preview.quality);
     if (priority !== "playback") this.textures.warm(this.compositor.neighbors(doc, frame));
     const shown = this.firstShown;
@@ -357,6 +365,22 @@ export class PreviewView implements RenderView {
     }
     this.stats.ms = performance.now() - started;
     if (viewChanged || resized || wasSplit) for (const listener of [...this.viewListeners]) listener();
+  }
+
+  /**
+   * Device px per project px text is rasterized at: the render scale, as the offscreen part will be
+   * drawn (its 4096 px cap lowers it, see `placeOffscreen`).
+   */
+  private textScale(frame: Size, transform: Mat3, size: Size, scale: number): number {
+    const view = transform[0];
+    if (!(scale < view - 1e-6)) return scale;
+    const x0 = Math.max(0, -transform[4] / view);
+    const y0 = Math.max(0, -transform[5] / transform[3]);
+    const x1 = Math.min(frame.width, (size.width - transform[4]) / view);
+    const y1 = Math.min(frame.height, (size.height - transform[5]) / transform[3]);
+    const longest = Math.max(x1 - x0, y1 - y0) * scale;
+    const limit = Math.min(DETAIL_MAX_SIZE, this.deps.renderer.maxTextureSize) - 2;
+    return longest > limit ? scale * (limit / longest) : scale;
   }
 
   /** Draws `list` onto the canvas: through the offscreen target when one is placed, else directly. */
@@ -504,9 +528,12 @@ export class PreviewView implements RenderView {
   private renderSplit(doc: Project, leftFrame: Frame, rightFrame: Frame, preview: PreviewSession, priority: FramePriority, size: Size, dpr: number, resized: boolean, started: number): void {
     const { renderer } = this.deps;
     const target = this.target as CanvasTarget;
-    const lists = this.textures.resolveSplit(this.compositor.evaluate(doc, leftFrame), this.rightCompositor.evaluate(doc, rightFrame), priority);
-    const borderWidth = Math.max(1, Math.round(dpr));
     const half = Math.floor(size.width / 2);
+    const left = this.compositor.evaluate(doc, leftFrame);
+    // Text rasters at the panes' view scale.
+    const paneScale = frameTransformInto(this.paneTransform, preview.zoom, left, { width: half, height: size.height }, this.chrome.margin * dpr, preview.panX, preview.panY)[0];
+    const lists = this.textures.resolveSplit(left, this.rightCompositor.evaluate(doc, rightFrame), priority, 0, paneScale);
+    const borderWidth = Math.max(1, Math.round(dpr));
     const wasSplit = this.splitDrawn;
     let changed = resized || !wasSplit;
     for (let i = 0; i < 2; i++) {
@@ -548,7 +575,15 @@ export class PreviewView implements RenderView {
    */
   async renderFrame(): Promise<ImageBitmap> {
     const { renderer, document, session } = this.deps;
-    const composite = this.exportCompositor.evaluate(document.getState(), session.getState().playhead);
+    const doc = document.getState();
+    const frame = session.getState().playhead;
+    let composite = this.exportCompositor.evaluate(doc, frame);
+    // Text measured with a font that was still loading is laid out again once it is there.
+    const loadFonts = this.deps.loadFonts;
+    if (loadFonts) {
+      const waits = composite.layers.flatMap((layer) => (layer.kind === "text" ? [loadFonts(layer.style, layer.text.value)] : []));
+      if ((await Promise.all(waits)).includes(true)) composite = this.exportCompositor.evaluate(doc, frame);
+    }
     const { list, release } = await this.textures.resolveExact(composite, Math.min(DETAIL_MAX_SIZE, renderer.maxTextureSize));
     const target = renderer.createOffscreenTarget(list.width, list.height);
     try {

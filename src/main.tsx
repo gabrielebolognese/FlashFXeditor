@@ -16,6 +16,7 @@ import { installProjectController } from "./app/projectController.js";
 import { installPropertiesController } from "./app/propertiesController.js";
 import { startServices } from "./app/services.js";
 import { installSpeedController } from "./app/speedController.js";
+import { installTextController } from "./app/textController.js";
 import { installTimelineController } from "./app/timelineController.js";
 import { installTrackController } from "./app/trackController.js";
 import { UnsupportedScreen } from "./app/UnsupportedScreen.js";
@@ -44,6 +45,7 @@ async function start(): Promise<void> {
   installCanvasController();
   installPropertiesController();
   installSpeedController();
+  installTextController();
   installMarkerController();
   installTrackController();
   installPlaybackController();

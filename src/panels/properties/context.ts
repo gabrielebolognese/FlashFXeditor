@@ -1,8 +1,9 @@
 // What the properties panel shows (spec §11 "context-driven"): its sections by the selection kind and
 // the primary item. A marker selection (its own session channel, Batch 19) comes first; a clip
 // selection lists the clips that exist, its primary, the layer clips among them (video, image, solid,
-// text: the ones with a picture to transform), the media layers (video, image: the ones with a crop)
-// and the timed media (video, audio: the ones with a speed; freeze frames have a duration there).
+// text: the ones with a picture to transform), the media layers (video, image: the ones with a crop),
+// the timed media (video, audio: the ones with a speed; freeze frames have a duration there) and the
+// text clips (the Text section, Batch 28: right after Clip, the section a text clip is edited in).
 // React renders the panel only when this context changes (`contextKey`), never on value changes
 // (spec §11 implementation note, P1).
 import type { Clip, ClipId, Project, TrackId } from "../../core/document/types.js";
@@ -11,7 +12,7 @@ import { isCropClip } from "../../timeline/edit/crop.js";
 import { isLayerClip } from "../../timeline/edit/transform.js";
 
 /** The registered sections, top to bottom in their order of appearance. */
-export type SectionId = "clip" | "transform" | "crop" | "opacity" | "speed" | "track" | "marker" | "project";
+export type SectionId = "clip" | "text" | "transform" | "crop" | "opacity" | "speed" | "track" | "marker" | "project";
 
 export type PropertiesContext =
   | { kind: "none" }
@@ -30,6 +31,8 @@ export type PropertiesContext =
       mediaIds: readonly ClipId[];
       /** The video and audio clips: what Speed edits. */
       speedIds: readonly ClipId[];
+      /** The text clips: what Text edits. */
+      textIds: readonly ClipId[];
     }
   // TODO(batch 32): caption cues (the Caption style section).
   | { kind: "cue" };
@@ -62,7 +65,8 @@ export function propertiesContext(selection: Selection, markerId: string | null,
         const kind = project.clips[id]?.kind;
         return kind === "video" || kind === "audio";
       });
-      return { kind: "clips", clipIds, primary, layerIds, layerPrimary, mediaIds, speedIds };
+      const textIds = clipIds.filter((id) => project.clips[id]?.kind === "text");
+      return { kind: "clips", clipIds, primary, layerIds, layerPrimary, mediaIds, speedIds, textIds };
     }
   }
 }
@@ -76,7 +80,7 @@ export function contextKey(selection: Selection, markerId: string | null): strin
 
 /**
  * The sections of a context, top to bottom (the section registry keyed by selection kind).
- * TODO(batch 28): Text. TODO(batch 31): Animation.
+ * TODO(batch 31): Animation.
  * TODO(batch 36): Transition. TODO(batch 37): Audio. TODO(batch 32): Caption style for cues.
  */
 export function sectionIds(context: PropertiesContext): SectionId[] {
@@ -91,6 +95,7 @@ export function sectionIds(context: PropertiesContext): SectionId[] {
       return [];
     case "clips": {
       const ids: SectionId[] = ["clip"];
+      if (context.textIds.length > 0) ids.push("text");
       if (context.layerIds.length > 0) ids.push("transform");
       if (context.mediaIds.length > 0) ids.push("crop");
       if (context.layerIds.length > 0) ids.push("opacity");

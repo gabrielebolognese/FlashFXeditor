@@ -2,7 +2,9 @@
 // render scale `r` (device px per project px of the composite):
 // - The full scale: at the view scale up to 100% ("At Fit and below, it renders at the panel's device
 //   size"); above it, `min(zoom, source detail)`, where the source detail is how many source pixels the
-//   most detailed visible media layer has per project px (rendering finer shows nothing more).
+//   most detailed visible layer has per project px (rendering finer shows nothing more). A text layer
+//   is re-rasterized at the render scale (spec §7.1 "re-rasterized text"), so its detail is the most
+//   its raster can hold: the raster scale cap (4, and 4096 px) over the layer's own scale.
 // - Quality modes: `full` always renders at the full scale. `auto` renders reduced while playing or
 //   scrubbing and for 300 ms after (§8), else full. `proxy` always renders reduced. `half` and `quarter`
 //   render at 1/2 and 1/4 of the reduced scale while playing, else as `auto`.
@@ -16,8 +18,6 @@
 // - Video frames are uploaded at most at `projectLongEdge * max(1, r)` (at most 4096 px and the
 //   device limit): detail needs bigger frames, a reduced render does not; 1/2 and 1/4 playback uploads
 //   at the reduced size itself.
-// TODO(batch 28): text layers have no source limit (re-rasterized at `r`), so a visible text layer
-// raises the source detail to the zoom.
 import type { PreviewQuality } from "../../core/store/sessionStore.js";
 import type { Lod } from "../../media/cache/TexturePool.js";
 import type { Composite, MediaLayer } from "../compositor/drawList.js";
@@ -39,13 +39,17 @@ export interface DetailScales {
 }
 
 /**
- * Source pixels per project px of the most detailed media layer (at least 1); `size(mediaId)` gives a
+ * Source pixels per project px of the most detailed layer (at least 1); `size(mediaId)` gives a
  * media's pixel size. Rotation and crop count: the layer's crop area in source px over its area on
- * the frame.
+ * the frame. Text layers count their raster's limit (`TextCompositeLayer.detail`).
  */
 export function sourceDetail(composite: Composite, size: (mediaId: string) => { width: number; height: number } | null): number {
   let detail = 1;
   for (const layer of composite.layers) {
+    if (layer.kind === "text") {
+      if (layer.detail > detail) detail = layer.detail;
+      continue;
+    }
     if (layer.kind !== "media") continue;
     const media = size(layer.mediaId);
     if (!media) continue;

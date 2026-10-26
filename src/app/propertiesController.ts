@@ -16,7 +16,7 @@ import { duplicateClip } from "../timeline/edit/duplicate.js";
 import { isLayerClip, quickTransforms, type QuickTransform } from "../timeline/edit/transform.js";
 import { isClipLocked } from "../timeline/model/queries.js";
 import { MAX_CLIP_NAME } from "./cutController.js";
-import { liveEdit, NO_LIVE_EDIT } from "./liveEdit.js";
+import { patchLiveEdit } from "./liveEdit.js";
 import { canvasInput, cropMode } from "./previewController.js";
 import { actions, appSettings, documentStore, sessionStore } from "./services.js";
 import { reportTrimLimit } from "./timelineController.js";
@@ -132,8 +132,7 @@ export function changeBackground(color: RGBA): void {
 
 /** The color picker dragged over the background: shown live (P2), or null when the drag ends. */
 export function previewBackground(color: RGBA | null): void {
-  const current = liveEdit.getState();
-  if (current.background !== color) liveEdit.set(color === null && current.transforms === null && current.opacities === null && current.crops === null ? NO_LIVE_EDIT : { ...current, background: color });
+  patchLiveEdit({ background: color });
 }
 
 /** A picked color first in the picker's recent colors (app settings). */

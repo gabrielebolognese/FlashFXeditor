@@ -17,7 +17,7 @@ import { markedRange } from "../model/inOut.js";
 import { clipsInRange, linkOffset, type Gap } from "../model/queries.js";
 import { clipLod, clipSpan, devicePx, LOD_LABEL_PX } from "./clipLayout.js";
 import type { ClipVisuals } from "./clipVisuals.js";
-import { drawClip, drawDiagonalHatch, drawHeader, fillClip, fontOf, traceMarker } from "./drawContent.js";
+import { drawClip, drawDiagonalHatch, drawHeader, fillClip, fontOf, traceMarker, type TimelineFonts } from "./drawContent.js";
 import type { Rect, Row, TimelineGeometry } from "./geometry.js";
 import type { Ghost, MoveProposal, NewLane } from "./gestures/moveClips.js";
 import type { TrimProposal } from "./gestures/trimClip.js";
@@ -112,6 +112,8 @@ export interface OverlayScene {
   text: TextCache;
   /** Loaded thumbnails and peaks, for the clips the trim preview redraws. */
   visuals?: ClipVisuals | null;
+  /** Missing font families (text clip badges in the trim preview). */
+  fonts?: TimelineFonts | null;
   /** The scrollbar part under the pointer (or dragged: `active`), on the scrollbars as laid out. */
   scrollbar?: { layout: ScrollbarLayout; hit: ScrollbarHit; active: boolean } | null;
   /** The in/out range, when a point is set. */
@@ -201,7 +203,7 @@ function drawTrimLayout(scene: OverlayScene, trim: TrimScene): void {
   const { project } = proposal;
   const inset = theme.timeline.clipInset;
   const visible = geometry.visibleFrames;
-  const clipScene = { ctx, dpr, geometry, theme, selection: trim.selection, text: scene.text, project, visuals: scene.visuals ?? null };
+  const clipScene = { ctx, dpr, geometry, theme, selection: trim.selection, text: scene.text, project, visuals: scene.visuals ?? null, fonts: scene.fonts ?? null };
   ctx.save();
   ctx.beginPath();
   ctx.rect(geometry.area.x, geometry.area.y, geometry.area.width, geometry.area.height);

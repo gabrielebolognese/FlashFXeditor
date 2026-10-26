@@ -33,17 +33,89 @@ export interface RGBA {
 export const LABEL_COLORS = ["red", "orange", "green", "teal", "blue", "violet", "pink", "grey"] as const;
 export type LabelColor = (typeof LABEL_COLORS)[number];
 
+/**
+ * A vertical two-stop gradient, `from` at the top to `to` at the bottom (spec §10.1 text fill). Text
+ * fills use it since Batch 28. TODO(batch 34): solid fills.
+ */
+export interface Gradient {
+  from: RGBA;
+  to: RGBA;
+}
+
+/**
+ * How a text box is sized (spec §10.1): `auto` fits the lines (only explicit line breaks wrap),
+ * `fixed` wraps words at `width` project px.
+ */
+export interface TextBox {
+  mode: "auto" | "fixed";
+  /** Wrap width in project px (used while `fixed`). */
+  width: number;
+}
+
+/**
+ * What a text clip says (spec §10.1): plain text with `\n` line breaks (rich text is out of scope),
+ * and its box. The box is kept apart from the style, as presets keep it (§10.3).
+ */
+export interface TextContent {
+  value: string;
+  box: TextBox;
+}
+
+/** Text case (spec §10.1 `textTransform`). */
+export type TextCase = "none" | "upper" | "lower" | "title";
+export type TextAlign = "left" | "center" | "right";
+/** The vertical anchor (spec §10.1): the edge of the box that stays in place when the text grows or shrinks. */
+export type TextAnchor = "top" | "middle" | "bottom";
+
+/** An outline drawn outside the glyphs, `width` project px wide. */
+export interface TextStroke {
+  enabled: boolean;
+  width: number;
+  color: RGBA;
+}
+
+/** A drop shadow of the text (fill and stroke), in project px. */
+export interface TextShadow {
+  enabled: boolean;
+  x: number;
+  y: number;
+  blur: number;
+  color: RGBA;
+}
+
+/** A box behind each line (`line`) or the whole text (`block`), `padding` project px around it. */
+export interface TextBackground {
+  enabled: boolean;
+  color: RGBA;
+  paddingX: number;
+  paddingY: number;
+  radius: number;
+  mode: "line" | "block";
+}
+
+/** The look of a text clip (spec §10.1). Sizes are project px; `lineHeight` is a multiplier of the size. */
+export interface TextStyle {
+  fontFamily: string;
+  /** 1..1000 (variable fonts take any value in their range). */
+  fontWeight: number;
+  italic: boolean;
+  fontSize: number;
+  fill: RGBA | Gradient;
+  stroke: TextStroke;
+  shadow: TextShadow;
+  background: TextBackground;
+  textCase: TextCase;
+  letterSpacing: number;
+  lineHeight: number;
+  align: TextAlign;
+  verticalAnchor: TextAnchor;
+}
+
 // Types owned by later batches. They stay opaque JSON until their batch defines them.
 /** TODO(batch 35): easing ids. */
 export type EaseId = string;
-/** TODO(batch 34): vertical two-stop gradient fill. */
-export type Gradient = JsonObject;
 /** TODO(batch 36): transition kind, duration, alignment. */
 export type Transition = JsonObject;
-/** TODO(batch 28): text content (§10.1). */
-export type TextContent = JsonObject;
-/** TODO(batch 28): text style (§10.1). */
-export type TextStyle = JsonObject;
 /** TODO(batch 31): text animation (§10.4). */
 export type TextAnim = JsonObject;
 /** TODO(batch 30): text preset (§10.3). */

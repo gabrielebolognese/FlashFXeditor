@@ -26,7 +26,8 @@ const PATHS = {
     "m2 2 20 20",
   ],
   rows3: [ROUNDED_SQUARE, "M21 9H3", "M21 15H3"],
-  // Clip label bar badges (Batch 17): linked, has keyframes; a freeze frame (Batch 27).
+  // Clip label bar badges (Batch 17): linked, has keyframes; a freeze frame (Batch 27); a missing font (Batch 28).
+  triangleAlert: ["m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3", "M12 9v4", "M12 17h.01"],
   link: ["M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71", "M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"],
   diamond: ["M2.7 10.3a2.41 2.41 0 0 0 0 3.41l7.59 7.59a2.41 2.41 0 0 0 3.41 0l7.59-7.59a2.41 2.41 0 0 0 0-3.41l-7.59-7.59a2.41 2.41 0 0 0-3.41 0Z"],
   snowflake: [

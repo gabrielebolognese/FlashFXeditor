@@ -8,11 +8,19 @@
 //   tracks skipped, locked ones kept. They are the smart guides' other layers (§7.4 "other visible
 //   layers at the playhead"): a locked background or logo is still an alignment reference.
 // - Each layer's quad is its visible box after crop and transform, in project px from the frame's
-//   top-left (`layerCorners`), with a gesture's ephemeral transform and crop when one is given.
-// - Hit testing goes top layer first (§7.2); a marquee takes the layers whose quad intersects it.
-import type { ClipId, Crop, Frame, Project, Track, TrackId, Transform } from "../../core/document/types.js";
+//   top-left (`layerCorners`), with a gesture's ephemeral transform, crop and text when one is given.
+// - Hit testing goes top layer first (§7.2); a marquee takes the layers whose quad intersects it. Text
+//   layers are hit on their glyph bounds padded by TEXT_HIT_PADDING project px and on their
+//   background boxes (`hits`), not on the empty corners of their box.
+import type { ClipId, Crop, Frame, Project, TextClip, Track, TrackId, Transform } from "../../core/document/types.js";
 import { clipInIndex, trackIndex } from "../../timeline/model/queries.js";
-import { isLayerClip, layerContent, layerCorners, type ContentBox, type Point } from "../../timeline/edit/transform.js";
+import { isLayerClip, layerContent, layerCorners, layerPoint, scaleYOf, type ContentBox, type Point, type Size } from "../../timeline/edit/transform.js";
+import type { LiveText } from "../compositor/Compositor.js";
+import type { Rect as TextRect } from "../text/layout.js";
+import { textLayout } from "../text/layoutCache.js";
+
+/** Text glyph bounds are hit this far around them, in project px (spec §7.2 "padded by 4 px"). */
+export const TEXT_HIT_PADDING = 4;
 
 export type Quad = readonly [Point, Point, Point, Point];
 
@@ -24,6 +32,8 @@ export interface CanvasLayer {
   box: ContentBox;
   /** Visible box corners: content top-left, top-right, bottom-right, bottom-left. */
   quad: Quad;
+  /** Where a click selects it instead of the whole quad (text: padded glyph bounds and background boxes). */
+  hits?: readonly Quad[];
 }
 
 /** Axis-aligned rectangle in project px. */
@@ -35,13 +45,19 @@ export interface Rect {
 }
 
 /** The canvas layers of `project` at `frame`, bottom first: what selection and the gizmo act on. */
-export function canvasLayersAt(project: Project, frame: Frame, transforms: ReadonlyMap<ClipId, Transform> | null = null, crops: ReadonlyMap<ClipId, Crop> | null = null): CanvasLayer[] {
-  return layersAt(project, frame, transforms, crops, (track) => !track.hidden && !track.locked);
+export function canvasLayersAt(
+  project: Project,
+  frame: Frame,
+  transforms: ReadonlyMap<ClipId, Transform> | null = null,
+  crops: ReadonlyMap<ClipId, Crop> | null = null,
+  texts: ReadonlyMap<ClipId, LiveText> | null = null,
+): CanvasLayer[] {
+  return layersAt(project, frame, transforms, crops, texts, (track) => !track.hidden && !track.locked);
 }
 
 /** The layers in the picture at `frame`, bottom first: the compositor's tracks (locked included, §6.12). */
 export function pictureLayersAt(project: Project, frame: Frame, transforms: ReadonlyMap<ClipId, Transform> | null = null): CanvasLayer[] {
-  return layersAt(project, frame, transforms, null, (track) => !track.hidden && !track.muted);
+  return layersAt(project, frame, transforms, null, null, (track) => !track.hidden && !track.muted);
 }
 
 function layersAt(
@@ -49,19 +65,46 @@ function layersAt(
   frame: Frame,
   transforms: ReadonlyMap<ClipId, Transform> | null,
   crops: ReadonlyMap<ClipId, Crop> | null,
+  texts: ReadonlyMap<ClipId, LiveText> | null,
   include: (track: Track) => boolean,
 ): CanvasLayer[] {
   const layers: CanvasLayer[] = [];
   for (const track of project.tracks) {
     if (track.kind !== "video" || !include(track)) continue;
-    const clip = clipInIndex(trackIndex(project, track), frame);
-    if (!clip?.enabled || !isLayerClip(clip)) continue;
+    const found = clipInIndex(trackIndex(project, track), frame);
+    if (!found?.enabled || !isLayerClip(found)) continue;
+    const live = found.kind === "text" ? texts?.get(found.id) : undefined;
+    const clip = live && found.kind === "text" ? { ...found, text: live.text, style: live.style } : found;
     const box = layerContent(project, clip, crops?.get(clip.id));
     if (!box) continue;
     const transform = transforms?.get(clip.id) ?? clip.transform;
-    layers.push({ clipId: clip.id, trackId: track.id, transform, box, quad: layerCorners(transform, box, project.settings) });
+    const layer: CanvasLayer = { clipId: clip.id, trackId: track.id, transform, box, quad: layerCorners(transform, box, project.settings) };
+    if (clip.kind === "text") layer.hits = textHits(clip, transform, box, project.settings);
+    layers.push(layer);
   }
   return layers;
+}
+
+/** A text layer's hit areas (§7.2): each line's glyph bounds padded by TEXT_HIT_PADDING project px, and its background boxes. */
+function textHits(clip: TextClip, transform: Transform, box: Size, frame: Size): Quad[] {
+  const layout = textLayout(clip.text, clip.style);
+  const padX = TEXT_HIT_PADDING / Math.max(Math.abs(transform.scale), 1e-6);
+  const padY = TEXT_HIT_PADDING / Math.max(Math.abs(scaleYOf(transform)), 1e-6);
+  const rects: TextRect[] = layout.glyphs.map((g) => ({ x: g.x - padX, y: g.y - padY, width: g.width + 2 * padX, height: g.height + 2 * padY }));
+  rects.push(...layout.backgrounds);
+  return rects.map((rect) => {
+    // Flips mirror the text inside its box (the compositor's rule).
+    const x0 = transform.flipH ? box.width - rect.x - rect.width : rect.x;
+    const y0 = transform.flipV ? box.height - rect.y - rect.height : rect.y;
+    const x1 = x0 + rect.width;
+    const y1 = y0 + rect.height;
+    return [layerPoint(transform, box, frame, x0, y0), layerPoint(transform, box, frame, x1, y0), layerPoint(transform, box, frame, x1, y1), layerPoint(transform, box, frame, x0, y1)];
+  });
+}
+
+/** Where a click or a marquee selects a layer: its hit areas, or its whole quad. */
+export function hitQuads(layer: CanvasLayer): readonly Quad[] {
+  return layer.hits ?? [layer.quad];
 }
 
 const cross = (a: Point, b: Point, x: number, y: number) => (b.x - a.x) * (y - a.y) - (b.y - a.y) * (x - a.x);
@@ -84,7 +127,7 @@ export function layersUnder(layers: readonly CanvasLayer[], x: number, y: number
   const hits: CanvasLayer[] = [];
   for (let i = layers.length - 1; i >= 0; i--) {
     const layer = layers[i] as CanvasLayer;
-    if (pointInQuad(layer.quad, x, y)) hits.push(layer);
+    if (hitQuads(layer).some((quad) => pointInQuad(quad, x, y))) hits.push(layer);
   }
   return hits;
 }
@@ -129,7 +172,7 @@ export function quadIntersectsRect(quad: Quad, rect: Rect): boolean {
 /** Marquee selection (§7.2): the layers intersecting `rect`, bottom first. */
 export function layersInRect(layers: readonly CanvasLayer[], rect: Rect): CanvasLayer[] {
   const box = { x0: Math.min(rect.x0, rect.x1), y0: Math.min(rect.y0, rect.y1), x1: Math.max(rect.x0, rect.x1), y1: Math.max(rect.y0, rect.y1) };
-  return layers.filter((layer) => quadIntersectsRect(layer.quad, box));
+  return layers.filter((layer) => hitQuads(layer).some((quad) => quadIntersectsRect(quad, box)));
 }
 
 /** The axis-aligned bounds of the quads (the group box of a multi-selection, §7.3). */

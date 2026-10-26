@@ -23,6 +23,7 @@ vi.mock("./services.js", async () => {
   const { FrameScheduler } = await import("../core/scheduler/FrameScheduler.js");
   const { ThemeBridge } = await import("../core/theme/theme.js");
   const { AudioClock } = await import("../audio/AudioClock.js");
+  const { FontLibrary } = await import("../render/text/FontLibrary.js");
   const sessionStore = createSessionStore();
   return {
     actions: new ActionRegistry(),
@@ -31,6 +32,7 @@ vi.mock("./services.js", async () => {
     audioClock: new AudioClock(),
     documentStore: new DocumentStore(createDocument({ id: "placeholder", name: "Placeholder", now: "x", appVersion: "x" }), { session: sessionStore, validate: true }),
     focusScopes: new FocusScopeTracker(),
+    fontLibrary: new FontLibrary(null),
     idleQueue: new IdleQueue(
       () => 0,
       () => undefined,

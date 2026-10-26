@@ -29,8 +29,10 @@
 //   the proxy is wanted (a smaller one, e.g. from a 1/4 playback, only stands in). Detail refreshes
 //   are for full frames only. `resolveExact` resolves a composite to exact full frames at their own
 //   size (Export frame at full resolution, whatever the quality mode).
+// - Text layers (spec §10.1, P11) come from the text raster cache at the pass's render scale times the
+//   layer's own scale, drawn over the raster's rect; Export frame gets its own raster at project size.
 // The draw lists, the slot structs and their keys are reused between passes: a pass allocates nothing
-// unless it requests or pins a new frame.
+// unless it requests or pins a new frame (or rasterizes a text).
 import type { MediaId, TrackId } from "../../core/document/types.js";
 import { imageKey, type Lod, type TextureKey, type TexturePool } from "../../media/cache/TexturePool.js";
 import type { FrameResult, FrameService } from "../../media/decode/FrameService.js";
@@ -38,9 +40,10 @@ import type { ImageService } from "../../media/decode/ImageService.js";
 import { mediaTimePosition } from "../../media/demux/sampleIndex.js";
 import { isAbortError, type FramePriority } from "../../media/workers/protocol.js";
 import type { NeighborFrame } from "../compositor/Compositor.js";
-import type { Composite, DrawList, Layer, MediaLayer, TextureLayer } from "../compositor/drawList.js";
+import type { Composite, DrawList, Layer, MediaLayer, TextCompositeLayer, TextureLayer } from "../compositor/drawList.js";
 import type { TextureHandle } from "../gpu/renderer.js";
-import { mutableIdentity, type MutableMat3 } from "../mat3.js";
+import { multiplyInto, mutableIdentity, setMat, type Mat3, type MutableMat3 } from "../mat3.js";
+import type { ResolvedText, TextRasterCache } from "../text/TextRasterCache.js";
 import { exportLongEdge, layerDetail } from "./detail.js";
 
 export interface LayerTexturesDeps {
@@ -51,6 +54,8 @@ export interface LayerTexturesDeps {
   onChange(): void;
   /** The lod this pass asks a media's frames for (the quality mode's rule); full when absent. */
   wantedLod?(mediaId: MediaId): Lod;
+  /** Text rasters (spec §10.1); text layers draw nothing without it. */
+  text?: Pick<TextRasterCache, "begin" | "end" | "resolve" | "exact">;
 }
 
 export interface LayerTexturesStats {
@@ -70,6 +75,8 @@ export interface LayerTexturesStats {
   failed: number;
   /** Media layers drawn with a proxy frame. */
   proxy: number;
+  /** Text layers drawn. */
+  texts: number;
 }
 
 type WritableTextureLayer = Omit<TextureLayer, "transform"> & { transform: MutableMat3 };
@@ -123,6 +130,11 @@ export class LayerTextures {
   /** Per pane (0: the preview, 1: the right half of a split), one slot per video track. */
   private readonly slots: [Map<TrackId, Slot>, Map<TrackId, Slot>] = [new Map(), new Map()];
   private readonly lists: [WritableList, WritableList] = [newList(), newList()];
+  /** Per pane, the text layers of a pass (reused in order). */
+  private readonly textLayers: [WritableTextureLayer[], WritableTextureLayer[]] = [[], []];
+  private textCount = 0;
+  /** Device px per project px of this pass (text rasters follow it). */
+  private textScale = 1;
   private readonly scrubbed = new Set<MediaId>();
   private readonly active = new Set<MediaId>();
   /** Videos opening, as `mediaId|lod`. */
@@ -135,7 +147,7 @@ export class LayerTextures {
   /** Scratch keys of the frame a layer wants and of the other lod's frame at that time (copied when kept). */
   private readonly wanted = newKey();
   private readonly alternate = newKey();
-  readonly stats: LayerTexturesStats = { layers: 0, exact: 0, standIns: 0, held: 0, missing: 0, pending: 0, warming: 0, failed: 0, proxy: 0 };
+  readonly stats: LayerTexturesStats = { layers: 0, exact: 0, standIns: 0, held: 0, missing: 0, pending: 0, warming: 0, failed: 0, proxy: 0, texts: 0 };
 
   constructor(private readonly deps: LayerTexturesDeps) {}
 
@@ -145,9 +157,10 @@ export class LayerTextures {
   /**
    * The draw list for `composite` with every media layer resolved to a texture (or held, or left out).
    * `detailLongEdge`: at `idle`, cached frames well under it are decoded again (detail on zoom).
+   * `renderScale`: device px per project px of the render (text rasters follow it).
    */
-  resolve(composite: Composite, priority: FramePriority, detailLongEdge = 0): DrawList {
-    this.begin(priority, detailLongEdge);
+  resolve(composite: Composite, priority: FramePriority, detailLongEdge = 0, renderScale = 1): DrawList {
+    this.begin(priority, detailLongEdge, renderScale);
     try {
       this.resolveInto(0, composite, priority);
     } finally {
@@ -160,8 +173,8 @@ export class LayerTextures {
    * Two composites resolved in one pass, into two draw lists (the left and right panes of a split
    * preview). Reused like `resolve`'s list: read both before resolving again.
    */
-  resolveSplit(left: Composite, right: Composite, priority: FramePriority, detailLongEdge = 0): readonly [DrawList, DrawList] {
-    this.begin(priority, detailLongEdge);
+  resolveSplit(left: Composite, right: Composite, priority: FramePriority, detailLongEdge = 0, renderScale = 1): readonly [DrawList, DrawList] {
+    this.begin(priority, detailLongEdge, renderScale);
     try {
       this.resolveInto(0, left, priority);
       this.resolveInto(1, right, priority);
@@ -171,9 +184,11 @@ export class LayerTextures {
     return this.lists;
   }
 
-  private begin(priority: FramePriority, detailLongEdge: number): void {
+  private begin(priority: FramePriority, detailLongEdge: number, renderScale: number): void {
     this.pass += 1;
     this.detailLongEdge = priority === "idle" ? detailLongEdge : 0;
+    this.textScale = renderScale;
+    this.deps.text?.begin();
     this.scrubbed.clear();
     this.active.clear();
     const stats = this.stats;
@@ -183,6 +198,7 @@ export class LayerTextures {
     stats.held = 0;
     stats.missing = 0;
     stats.proxy = 0;
+    stats.texts = 0;
     this.resolving = true;
   }
 
@@ -192,10 +208,21 @@ export class LayerTextures {
     list.height = composite.height;
     list.background = composite.background;
     list.layers.length = 0;
+    this.textCount = 0;
     const stats = this.stats;
     for (const layer of composite.layers) {
       if (layer.kind === "solid") {
         list.layers.push(layer);
+        continue;
+      }
+      if (layer.kind === "text") {
+        const resolved = this.deps.text?.resolve(layer.clipId, layer.text, layer.style, this.textScale * layer.scale) ?? null;
+        if (resolved) {
+          const shown = (this.textLayers[pane][this.textCount] ??= newTextureLayer());
+          this.textCount += 1;
+          list.layers.push(writeTextLayer(shown, layer, resolved));
+          stats.texts += 1;
+        }
         continue;
       }
       stats.layers += 1;
@@ -212,6 +239,7 @@ export class LayerTextures {
   /** Releases the slots this pass did not use (a pane not resolved loses them all) and counts what is pending. */
   private end(): void {
     this.resolving = false;
+    this.deps.text?.end();
     const stats = this.stats;
     stats.pending = 0;
     for (const slots of this.slots) {
@@ -293,6 +321,16 @@ export class LayerTextures {
       for (const layer of composite.layers) {
         if (layer.kind === "solid") {
           layers.push(layer);
+          continue;
+        }
+        if (layer.kind === "text") {
+          // Copied before waiting: the composite's layers are reused by the next evaluation.
+          const model = [...layer.model] as unknown as Mat3;
+          const { opacity } = layer;
+          const exact = await this.deps.text?.exact(layer.text, layer.style, layer.scale);
+          if (!exact) continue;
+          unpins.push(exact.release);
+          layers.push(writeTextLayer(newTextureLayer(), { model, opacity }, exact));
           continue;
         }
         const { mediaId } = layer;
@@ -595,6 +633,24 @@ export class LayerTextures {
     slot.hasShown = false;
     slot.shown.texture = NO_TEXTURE;
   }
+}
+
+function newTextureLayer(): WritableTextureLayer {
+  return { kind: "texture", texture: NO_TEXTURE, transform: mutableIdentity(), opacity: 1, crop: { u0: 0, v0: 0, u1: 1, v1: 1 }, flipX: false, flipY: false };
+}
+
+/** `out` drawing a text raster: the unit quad onto the raster's rect in content px, then the layer's model. */
+function writeTextLayer(out: WritableTextureLayer, layer: Pick<TextCompositeLayer, "model" | "opacity">, resolved: ResolvedText): WritableTextureLayer {
+  const { rect } = resolved;
+  const m = setMat(out.transform, rect.width, 0, 0, rect.height, rect.x, rect.y);
+  multiplyInto(m, layer.model, m);
+  out.texture = resolved.texture;
+  out.opacity = layer.opacity;
+  out.crop.u0 = resolved.crop.u0;
+  out.crop.v0 = resolved.crop.v0;
+  out.crop.u1 = resolved.crop.u1;
+  out.crop.v1 = resolved.crop.v1;
+  return out;
 }
 
 /** The texture of a slot that has drawn nothing yet. */
