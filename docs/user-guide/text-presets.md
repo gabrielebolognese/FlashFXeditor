@@ -1,6 +1,6 @@
 # Text presets
 
-A text preset is a saved look for text: the font, size, colors, outline, shadow, background box, alignment and box width of a title. Save a title's style once, then give it to other titles with one click from the **Presets** tab of the Media panel, or add a new title in that look from a chip in the timeline toolbar. The editor comes with 12 starter presets, and you choose which presets <kbd>T</kbd> and <kbd>Shift</kbd>+<kbd>T</kbd> use.
+A text preset is a saved look for text: the font, size, colors, outline, shadow, background box, alignment and box width of a title, and its in and out animations. Save a title's style once, then give it to other titles with one click from the **Presets** tab of the Media panel, or add a new title in that look from a chip in the timeline toolbar. The editor comes with 12 starter presets, and you choose which presets <kbd>T</kbd> and <kbd>Shift</kbd>+<kbd>T</kbd> use.
 
 > **Video placeholder: Text presets in one minute**
 > - File: `videos/text-presets/overview.mp4` (not recorded yet)
@@ -23,6 +23,7 @@ A text preset is a saved look for text: the font, size, colors, outline, shadow,
 - [Add a new text with a preset](#add-a-new-text-with-a-preset)
 - [Drag a preset onto the timeline or the preview](#drag-a-preset-onto-the-timeline-or-the-preview)
 - [Update a preset](#update-a-preset)
+- [Animations in presets](#animations-in-presets)
 - [Choose the presets for T and Shift+T](#choose-the-presets-for-t-and-shiftt)
 - [Put favorite presets in the timeline toolbar](#put-favorite-presets-in-the-timeline-toolbar)
 - [Place text with a preset (Apply position)](#place-text-with-a-preset-apply-position)
@@ -43,6 +44,7 @@ A preset holds the look of a text clip, not its words or its place on the timeli
 | --- | --- |
 | Everything in the **Text** section except the words: **Font**, **Weight**, **Italic**, **Size**, **Fill** and its colors, **Stroke**, **Shadow**, **Background**, **Align**, **Anchor**, **Spacing**, **Line height** and **Case** | The words (the **Text** field) |
 | **Box**: **Auto**, or **Fixed** with its **Width** | Its start, length and track |
+| The in and out animations of the **Animation** section, with their **Duration**, **Stagger** and **Easing**. See [Animations in presets](#animations-in-presets). | |
 | Its position in the frame, only when the preset's **Apply position** is on. See [Place text with a preset (Apply position)](#place-text-with-a-preset-apply-position). | Its position (when **Apply position** is off) and the rest of the **Transform** and **Opacity** sections: scale, rotation, anchor point, flips and opacity |
 
 A text clip remembers the preset it uses: the preset it was made with, the last one you applied to it, or the one you saved it as. **Update preset** writes into that preset. See [Update a preset](#update-a-preset).
@@ -78,17 +80,19 @@ The first time you open the editor in a browser, your **Global** list gets 12 st
 | **Title** | White Inter ExtraBold, 120 px, centered, with a soft shadow. The default title: <kbd>T</kbd> uses it. |
 | **Subtitle** | White Inter SemiBold, 56 px, on a dark rounded box behind each line, in a 900 px fixed box, anchored at the bottom. The default subtitle: <kbd>Shift</kbd>+<kbd>T</kbd> uses it. |
 | **Bold outline** | Unbounded ExtraBold, 104 px, uppercase, with a thick black outline. |
-| **Lower third** | Inter Bold, 56 px, left-aligned, on a dark blue box around the whole text. Its **Apply position** is on: it moves the text to the lower part of the frame, left of the center. |
-| **Caption bold** | Montserrat ExtraBold, 76 px, uppercase, with a black outline and a shadow, in a 900 px fixed box. |
+| **Lower third** | Inter Bold, 56 px, left-aligned, on a dark blue box around the whole text. Its **Apply position** is on: it moves the text to the lower part of the frame, left of the center. Comes in with **Slide right** (0.5 s) and leaves with **Fade** (0.4 s). |
+| **Caption bold** | Montserrat ExtraBold, 76 px, uppercase, with a black outline and a shadow, in a 900 px fixed box. Comes in with **Word pop** (0.8 s). |
 | **Highlight** | Near-black Inter ExtraBold, 80 px, on a yellow box behind each line, like a marker pen. |
 | **Minimal mono** | JetBrains Mono Medium, 52 px, uppercase, widely spaced, off-white, with no shadow. |
 | **Big number** | Unbounded Black, 320 px, with a yellow-to-orange gradient and a shadow: for counts and numbers. |
 | **Elegant serif** | Playfair Display SemiBold Italic, 112 px, warm white, with a soft shadow. |
 | **Handwritten** | Caveat Bold, 132 px, with a soft shadow. |
-| **Neon glow** | Montserrat Bold, 100 px, pale pink with a bright pink glow. |
-| **Breaking** | Oswald SemiBold, 92 px, uppercase, white on a red box, like a news banner. |
+| **Neon glow** | Montserrat Bold, 100 px, pale pink with a bright pink glow. Comes in with **Blur** (0.6 s). |
+| **Breaking** | Oswald SemiBold, 92 px, uppercase, white on a red box, like a news banner. Comes in with **Slide up** (0.4 s). |
 
-The starters are yours to apply, change, rename or delete like your own presets.
+The starters are yours to apply, change, rename or delete like your own presets. **Title** and **Subtitle** have no animations, so <kbd>T</kbd> and <kbd>Shift</kbd>+<kbd>T</kbd> add still text unless you choose an animated default; see [Choose the presets for T and Shift+T](#choose-the-presets-for-t-and-shiftt).
+
+> **Note:** If your starters were added by an earlier version of the editor, **Lower third**, **Caption bold**, **Neon glow** and **Breaking** get their animations the next time you open the editor, as long as you never changed them. A starter you changed keeps its look as it is. To animate it, select a text, click the starter's card, choose the animations in the **Animation** section, then click **Update preset**.
 
 > **Note:** A starter preset you delete doesn't come back. Restoring the starters is available in a later version. To keep a copy before you change one, use **Duplicate**, or export your presets to a file; see [Export and import presets](#export-and-import-presets).
 
@@ -125,12 +129,13 @@ The starters are yours to apply, change, rename or delete like your own presets.
 
 What happens:
 
-- The preset's style and box replace those of every selected text clip. The words, the start, the length, the track and the position stay. Only a preset with **Apply position** on also moves the text; see [Place text with a preset (Apply position)](#place-text-with-a-preset-apply-position).
+- The preset's style, box and animations replace those of every selected text clip. The words, the start, the length, the track and the position stay. Only a preset with **Apply position** on also moves the text; see [Place text with a preset (Apply position)](#place-text-with-a-preset-apply-position).
+- A preset without animations removes the animations of the texts you apply it to. See [Animations in presets](#animations-in-presets).
 - The text clips now use this preset.
 - All the selected text clips change in one step in the history, named after the preset, for example **Apply "Breaking"**. Other selected clips (videos, images) are left alone, and so are text clips on locked tracks.
 - A clip named after its text keeps following it: a preset with another **Case** renames it to match, for example in uppercase.
 
-The live look while you point ends when the pointer leaves the cards, when you scroll the list, start a drag, change the selection or click.
+The live look while you point shows the preset's style, box and position, not its animations: they play once you click. It ends when the pointer leaves the cards, when you scroll the list, start a drag, change the selection or click.
 
 > **Note:** When no text clip is selected, or only text clips on locked tracks, a click on a card adds a new text instead. See [Add a new text with a preset](#add-a-new-text-with-a-preset). Press <kbd>Ctrl</kbd>+<kbd>Z</kbd> to remove it.
 
@@ -178,15 +183,32 @@ Drag a card out of the **Presets** tab like a media card. A small label with the
 
 Other text clips that use the preset keep the style they have. To give them the new look, select them and click the card. See [Apply a preset to text](#apply-a-preset-to-text).
 
-- The preset takes the clip's style, its box and its position (used only when **Apply position** is on). Its name, its favorite star, **Apply position** and the defaults stay as they were.
+- The preset takes the clip's style, its box, its animations and its position (used only when **Apply position** is on). Its name, its favorite star, **Apply position** and the defaults stay as they were.
 - **Update preset** is dimmed, with the tooltip **Update preset: the selected text has no preset, or already has its style**, when:
   - the selected text clip uses no preset;
   - its preset was deleted;
-  - its style is the same as the preset's;
+  - its style and its animations are the same as the preset's;
   - the preset belongs to a read-only project, or the clip is on a locked track.
 - With several text clips selected, the one you clicked last counts.
 
 > **Important:** Updating a preset is not a step in the history: <kbd>Ctrl</kbd>+<kbd>Z</kbd> doesn't take it back. To keep the old look too, **Duplicate** the preset first.
+
+## Animations in presets
+
+A preset keeps the in and out animations of the text it was saved or updated from, with their **Duration**, **Stagger** and **Easing**. To make an animated preset:
+
+1. Select a text and choose its animations in the **Animation** section of **Edit Properties**. See [Text animations](text-animations.md).
+2. Click **Save as preset** for a new preset, or **Update preset** for the preset the text uses.
+
+From then on:
+
+- Applying the preset gives its animations to the selected texts, in the same step as its style. A preset without animations removes theirs: press <kbd>Ctrl</kbd>+<kbd>Z</kbd> to get them back.
+- New texts from the preset start with its animations: a click on a card or a chip, a drag onto the timeline or the preview, and <kbd>T</kbd> or <kbd>Shift</kbd>+<kbd>T</kbd> when it is the default title or subtitle.
+- Changing only an animation is enough for **Update preset** to come alive.
+- The preset keeps animation lengths in seconds, so they last as long in projects of every frame rate: a 0.5 s animation is 15 frames at 30 fps and 30 frames at 60 fps.
+- Exported preset files keep the animations.
+
+The cards in the **Presets** tab show each preset at rest; the animations play in the preview once you apply the preset.
 
 ## Choose the presets for T and Shift+T
 
@@ -354,13 +376,13 @@ Changes to the presets themselves are not steps in the history and can't be undo
 
 These parts are available in a later version:
 
-- Text animations, and presets that carry them.
 - Applying a preset to captions.
 - Restoring the starter presets after you delete or change them.
 - Choosing the library folder in the editor's **Settings**: for now, the strip at the bottom of the **Global** list does it.
 
 ## Related pages
 - [Titles and text](titles-and-text.md)
+- [Text animations](text-animations.md)
 - [Editing properties](editing-properties.md)
 - [Adding media to the timeline](adding-media-to-the-timeline.md)
 - [The workspace](workspace.md)
@@ -368,4 +390,4 @@ These parts are available in a later version:
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 30, 2026-10-16</sub>
+<sub>Last updated: Batch 31, 2026-10-16</sub>

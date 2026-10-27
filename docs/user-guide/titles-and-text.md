@@ -1,6 +1,6 @@
 # Titles and text
 
-Text clips put words on your video: a hook at the start, a title over a shot, a subtitle in the lower third. Press <kbd>T</kbd> and type: the title appears at the playhead and you write it right in the preview. Then style it in the **Text** section of **Edit Properties**, with a font that comes with the editor or one from your computer, an outline, a shadow and a background box. To reuse a style, save it as a preset; see [Text presets](text-presets.md).
+Text clips put words on your video: a hook at the start, a title over a shot, a subtitle in the lower third. Press <kbd>T</kbd> and type: the title appears at the playhead and you write it right in the preview. Then style it in the **Text** section of **Edit Properties**, with a font that comes with the editor or one from your computer, an outline, a shadow and a background box. To make it move as it appears and leaves, give it an animation; see [Text animations](text-animations.md). To reuse a style, save it as a preset; see [Text presets](text-presets.md).
 
 > **Video placeholder: Titles and text in one minute**
 > - File: `videos/titles-and-text/overview.mp4` (not recorded yet)
@@ -92,7 +92,7 @@ Titles and subtitles follow the same rules:
 >   5. Click the text again and keep typing. Press <kbd>Esc</kbd>: the outline disappears and the handles are back.
 >   6. Hover **Undo** in the app bar: it reads **Undo Edit text**.
 
-You type text right on the picture, at its real size, font and color. What you see while you type is what the video shows.
+You type text right on the picture, at its real size, font and color. What you see while you type is what the video shows. A text with an animation shows at rest while you edit it, even on a frame where it is still coming in; see [Text animations](text-animations.md).
 
 ### Start editing
 
@@ -154,6 +154,7 @@ Editing ends, and what you typed is kept, when you:
 - press <kbd>Esc</kbd> or <kbd>Ctrl</kbd>+<kbd>Enter</kbd>;
 - click anywhere else: another part of the preview, the timeline, the Media panel or the app bar. The click then does what it normally does, for example selects another layer;
 - click in the **Text** field of the **Text** section: you go on typing there;
+- click a chip of the **Animation** section: the animation is set and plays;
 - select another clip, move the playhead off the text clip, or hide its track.
 
 The whole edit is one step in the history, named **Edit text**, whatever you typed.
@@ -367,6 +368,7 @@ To fix it, do one of these:
 
 - A text clip's label bar shows a **T** icon and the clip's name. Its body (on tracks of height M or L) shows the first line of its text, as shown in the picture (with its **Case**).
 - A new text clip is named after the first line of its text, up to 40 characters ("…" after that), or "Text" when it is empty. When you change the text, the name follows. Once you rename the clip yourself, your name stays. See [Rename clips](timeline.md#rename-clips).
+- A sparkles icon in the label bar means the text has an in or out animation. See [Text animations](text-animations.md).
 - A red warning triangle in the label bar means its font is missing. See [Fix a missing font](#fix-a-missing-font).
 - Text clips are trimmed, moved, split and deleted like other clips. Because text has no media behind it, its edges can go as far as you like.
 
@@ -386,6 +388,7 @@ Every text change is one step in the history. Hover **Undo** in the app bar to s
 | **Add background**, **Remove background**, **Change background** | **Background** and its values |
 | **Change alignment**, **Change anchor**, **Change letter spacing**, **Change line height**, **Change case** | **Align**, **Anchor**, **Spacing**, **Line height** and **Case** |
 | **Fixed text box**, **Auto size text box**, **Change box width** | **Box** and **Width** |
+| **In animation: Word pop**, **Remove out animation**, **Change in animation duration** and the other animation steps | The **Animation** section. See [Undo animation changes](text-animations.md#undo-animation-changes). |
 | **Save preset "Name"**, **Apply "Name"**, **Add "Name"** | Saving, applying and adding text presets. See [Undo and presets](text-presets.md#undo-and-presets). |
 
 Pressing <kbd>↑</kbd> or <kbd>↓</kbd> in a number field of the **Text** section several times in a row, less than 0.3 seconds apart, is one step.
@@ -395,12 +398,13 @@ Pressing <kbd>↑</kbd> or <kbd>↓</kbd> in a number field of the **Text** sect
 These parts are available in a later version:
 
 - A setting to always make new titles 3 seconds long, instead of matching the video clip under the playhead.
-- Text animations and captions (the **Captions** tab and **Add caption track**).
+- Captions (the **Captions** tab and **Add caption track**).
 - Snapping while you drag a text's handles.
 - Choosing a font in the font picker with the arrow keys.
-- Exporting the video with its text. **Export frame** already includes text; see [Export the current frame](preview-and-playback.md#export-the-current-frame).
+- Exporting the video with its text. **Export frame** already includes text and its animations; see [Export the current frame](preview-and-playback.md#export-the-current-frame).
 
 ## Related pages
+- [Text animations](text-animations.md)
 - [Text presets](text-presets.md)
 - [Editing properties](editing-properties.md)
 - [Arranging layers in the preview](arranging-layers-in-the-preview.md)
@@ -411,4 +415,4 @@ These parts are available in a later version:
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 30, 2026-10-16</sub>
+<sub>Last updated: Batch 31, 2026-10-16</sub>

@@ -282,7 +282,7 @@ Save the frame at the playhead as a PNG image, for a thumbnail or a cover pictur
 3. In the save dialog, choose a folder and a name. The editor suggests "*project name* frame.png".
 4. Click **Save**. A message confirms "Saved *file name*" with the image size, for example "1080×1920 PNG".
 
-The image has the project resolution and contains only the frame: no border, none of the panel around it, none of the overlays (safe zones, grids, guides, rulers), and no selection outlines or handles. The zoom level, the pan and the quality mode do not matter.
+Titles and other text appear as they are at that frame, partway through their animation when the playhead is on one (see [Text animations](text-animations.md)). The image has the project resolution and contains only the frame: no border, none of the panel around it, none of the overlays (safe zones, grids, guides, rulers), and no selection outlines or handles. The zoom level, the pan and the quality mode do not matter.
 
 The editor draws the PNG from the exact frame at the playhead of your original media, at full quality, whatever the preview shows at that moment: never from a [proxy](proxies.md), never at the lower resolution of **1/2** or **1/4**, and never a nearby frame the preview still shows after a scrub. Each video is read at full resolution (up to 4096 pixels on its long side), so fine lines and text in 4K footage stay as sharp as the project resolution allows. Saving can take a moment while that frame is decoded.
 
@@ -294,6 +294,7 @@ The preview draws with your graphics card (GPU) and decodes video with the brows
 
 - **Starting playback:** up to half a second of waiting while the first frames and the sound under the playhead are decoded. Sound and picture then start together.
 - **During playback:** each clip under the playhead is decoded up to 15 frames ahead, and never more than half a second ahead. Clips that start within the next 2 seconds are prepared before their cut, so cuts play smoothly.
+- **Text animations:** while playback is stopped, the editor prepares every text within 5 seconds of the playhead, so its animation plays smoothly from the first frame. Text further ahead is prepared during playback, before it shows.
 - **1080p footage:** plays smoothly, even with a cut every second. On the development machine, a one-minute timeline of one-second 1080p cuts from five different videos played with no dropped frames.
 - **4K 60 fps HEVC footage** (common on recent phones): at the limit of what a laptop GPU decodes at full quality. With the default **Auto** quality, the editor makes a [proxy](proxies.md) of such footage after import and plays it: on the development laptop, a 4K 60 fps clip played on its proxy with no or almost no dropped frames. Played in **Full** quality, or before its proxy is ready, expect dropped frames (about 1% on a rested development machine, many more when it runs hot).
 - **Scrubbing:** with a proxy, the exact frame follows within one or two screen refreshes (17 to 34 milliseconds on the development laptop). Without a proxy, it usually follows within a fraction of a second: video is stored in groups of frames that start with a keyframe, so the editor decodes from the previous keyframe to show a frame. Deep inside a 4K HEVC phone clip this can take about half a second; the preview shows the closest frame meanwhile.
@@ -328,4 +329,4 @@ If playback stutters, see [Troubleshooting](troubleshooting.md).
 - [Workspace](workspace.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 26, 2026-10-16</sub>
+<sub>Last updated: Batch 31, 2026-10-16</sub>
