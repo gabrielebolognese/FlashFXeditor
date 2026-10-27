@@ -121,6 +121,14 @@
   gap: var(--space-0);
 }
 
+/* A wrapping row of text chips (the Animation section's animations). */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-0);
+}
+
 /* A row of text buttons (Crop to frame, Reset). */
 .textButtons {
   display: flex;

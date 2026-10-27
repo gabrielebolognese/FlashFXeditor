@@ -39,7 +39,7 @@ import {
   sortPresets,
   uniquePresetName,
 } from "../text/presets.js";
-import { starterPresets } from "../text/starterPresets.js";
+import { starterPresets, upgradeStarters } from "../text/starterPresets.js";
 import type { TitleKind } from "../text/style.js";
 import type { DropItem } from "../timeline/edit/dropMedia.js";
 import { applyPreset, linkPreset, titleDuration, type TitleLook } from "../timeline/edit/text.js";
@@ -183,7 +183,11 @@ async function loadGlobal(): Promise<void> {
     if (Array.isArray(stored)) {
       const at = now();
       const presets = stored.map((value) => sanitizePreset(value, at)).filter((preset): preset is TextPreset => preset !== null);
-      setLibrary({ global: sortPresets(mergePresets(presets, list("global"))), loaded: true });
+      // Untouched starters seeded before they had animations take them (Batch 31), stored at once.
+      const upgraded = upgradeStarters(presets);
+      if (upgraded) commit("global", mergePresets(upgraded, list("global")));
+      else setLibrary({ global: sortPresets(mergePresets(presets, list("global"))) });
+      setLibrary({ loaded: true });
     } else {
       // The first start: the starters (spec §10.3 "bundled starter presets").
       commit("global", mergePresets(starterPresets(), list("global")));

@@ -1,10 +1,12 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { makeMedia, makeMediaClip, makeProject, makeSolidClip, makeTrack, withClips } from "../../core/document/fixtures.js";
-import type { Project, TextClip, TextStyle, Transform } from "../../core/document/types.js";
+import type { Project, TextClip, TextPreset, TextStyle, Transform } from "../../core/document/types.js";
 import { validateProject } from "../../core/document/validate.js";
 import { DocumentStore } from "../../core/store/DocumentStore.js";
 import { createSessionStore } from "../../core/store/sessionStore.js";
 import { approximateMeasurer, setTextMeasurer } from "../../render/text/layoutCache.js";
+import { presetLook } from "../../text/presets.js";
+import { starterPresets } from "../../text/starterPresets.js";
 import { DEFAULT_TEXT_STYLE, DEFAULT_TITLE_STYLE, textContent, titleDefaults } from "../../text/style.js";
 import { addTextClip, addTitle, applyPreset, keepAnchored, linkPreset, newTextClip, setTexts, SUBTITLE_BOTTOM, textClipName, titleDuration } from "./text.js";
 import { IDENTITY_TRANSFORM, layerContent, layerPoint } from "./transform.js";
@@ -259,6 +261,20 @@ describe("text presets on clips", () => {
     expect(validateProject(store.getState())).toEqual([]);
   });
 
+  it("brings a preset's animations to a selected clip and to new clips, in the project's frames (Batch 31)", () => {
+    const preset = starterPresets().find((p) => p.id === "starter-lower-third") as TextPreset;
+    const p = { ...project(), settings: { ...project().settings, fps: { num: 60, den: 1 } } };
+    const presetFrames = presetLook(preset, p.settings);
+    expect(presetFrames.animIn).toEqual({ id: "slideRight", duration: 30 });
+    const apply = { presetId: preset.id, style: presetFrames.style, box: presetFrames.box, position: null, ...(presetFrames.animIn && { animIn: presetFrames.animIn }), ...(presetFrames.animOut && { animOut: presetFrames.animOut }) };
+    const store = new DocumentStore(p, { session: createSessionStore(), validate: true });
+    store.dispatch(applyPreset(p, ["t"], apply, "Apply") as NonNullable<ReturnType<typeof applyPreset>>);
+    expect(store.getState().clips.t).toMatchObject({ animIn: { id: "slideRight", duration: 30 }, animOut: { id: "fade", duration: 24 } });
+    const added = addTitle(store.getState(), { kind: "title", playhead: 100, matchClip: false, look: { ...presetFrames, presetId: preset.id } }, () => crypto.randomUUID());
+    store.dispatch(added.command);
+    expect(store.getState().clips[added.clipId]).toMatchObject({ presetId: preset.id, animIn: { id: "slideRight", duration: 30 }, animOut: { id: "fade", duration: 24 } });
+  });
+
   it("applies a preset's style and box to the selected text clips, keeping content, timing and position", () => {
     const p = withClips(project({ name: "ab", transform: { ...IDENTITY_TRANSFORM, x: 30, y: 40 } }), [newTextClip({ id: "u", trackId: "v2", start: 0, duration: 30, value: "cd" }), makeSolidClip({ id: "s", trackId: "v2", start: 40, duration: 10 })]);
     const command = applyPreset(p, ["t", "u", "s", "gone"], look, 'Apply "Bold"');
@@ -282,12 +298,12 @@ describe("text presets on clips", () => {
   });
 
   it("skips locked clips and replaces the animations", () => {
-    const p = project({ animIn: { id: "fade" } });
+    const p = project({ animIn: { id: "fade", duration: 10 } });
     p.tracks[0]!.locked = true;
     expect(applyPreset(p, ["t"], look, "Apply")).toBeNull();
     p.tracks[0]!.locked = false;
     const store = new DocumentStore(p, { session: createSessionStore(), validate: true });
-    store.dispatch(applyPreset(p, ["t"], { ...look, animOut: { id: "pop" } }, "Apply") as NonNullable<ReturnType<typeof applyPreset>>);
+    store.dispatch(applyPreset(p, ["t"], { ...look, animOut: { id: "pop", duration: 8 } }, "Apply") as NonNullable<ReturnType<typeof applyPreset>>);
     expect(store.getState().clips.t).toMatchObject({ animOut: { id: "pop" } });
     expect((store.getState().clips.t as TextClip).animIn).toBeUndefined();
   });

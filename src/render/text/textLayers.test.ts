@@ -13,7 +13,8 @@ import { applyToPoint } from "../mat3.js";
 import { canvasLayersAt, layersInRect, layersUnder } from "../preview/canvasLayers.js";
 import { fullScale, sourceDetail } from "../preview/detail.js";
 import { LayerTextures } from "../preview/LayerTextures.js";
-import { approximateMeasurer, setTextMeasurer } from "./layoutCache.js";
+import { atlasUnits, type AtlasUnitKind } from "./atlas.js";
+import { approximateMeasurer, setTextMeasurer, textLayout } from "./layoutCache.js";
 import type { ResolvedText } from "./TextRasterCache.js";
 
 beforeAll(() => setTextMeasurer(approximateMeasurer));
@@ -77,8 +78,16 @@ describe("text layers in the compositor (spec §10.1)", () => {
 describe("text layers in the preview's textures", () => {
   function setup() {
     const texture: TextureHandle = { width: 64, height: 32, mipLevels: 1, bytes: 1, valid: true, destroy: () => undefined };
-    const resolved: ResolvedText = { texture, crop: { u0: 0, v0: 0, u1: 0.5, v1: 1 }, rect: { x: -1, y: 19, width: 112, height: 95 } };
-    const text = { begin: vi.fn(), end: vi.fn(), resolve: vi.fn(() => resolved), exact: vi.fn(async () => ({ ...resolved, release: () => undefined })) };
+    const resolved: ResolvedText = { texture, crop: { u0: 0, v0: 0, u1: 0.5, v1: 1 }, rect: { x: -1, y: 19, width: 112, height: 95 }, scale: 1, units: null };
+    const text = {
+      begin: vi.fn(),
+      end: vi.fn(),
+      resolve: vi.fn(() => resolved),
+      exact: vi.fn(async () => ({ ...resolved, release: () => undefined })),
+      resolveAtlas: vi.fn(() => null),
+      resolveBackground: vi.fn(() => null),
+      warm: vi.fn(() => false),
+    };
     const pool = new TexturePool();
     const textures = new LayerTextures({
       frames: { info: () => null, video: () => new Promise(() => undefined), getFrame: () => new Promise(() => undefined), prefetch: async () => 0, lodFor: () => "full" },
@@ -112,6 +121,151 @@ describe("text layers in the preview's textures", () => {
     const { list, release } = await textures.resolveExact(composite, 4096);
     expect(text.exact).toHaveBeenCalledWith(expect.objectContaining({ value: "ab" }), expect.anything(), 3);
     expect(list.layers).toHaveLength(1);
+    release();
+  });
+});
+
+describe("animated text layers (spec §10.4, Batch 31)", () => {
+  const texture: TextureHandle = { width: 256, height: 128, mipLevels: 1, bytes: 1, valid: true, destroy: () => undefined };
+  const raster: ResolvedText = { texture, crop: { u0: 0, v0: 0, u1: 0.5, v1: 1 }, rect: { x: -1, y: 19, width: 112, height: 95 }, scale: 1, units: null };
+
+  /** An atlas of `value`'s units as the compositor cuts them, one 0.25-wide cell each, at `scale` texture px per content px. */
+  function atlasOf(value: string, kind: AtlasUnitKind, s = style(), scale = 1): ResolvedText {
+    const units = atlasUnits(textLayout(textContent(value), s), s, approximateMeasurer, kind);
+    return { texture, crop: { u0: 0, v0: 0, u1: 1, v1: 1 }, rect: raster.rect, scale, units: units.map((unit, i) => ({ rect: unit.rect, crop: { u0: i * 0.25, v0: 0, u1: (i + 1) * 0.25, v1: 1 } })) };
+  }
+
+  function setup(atlas: ResolvedText | null = null, boxes: ResolvedText | null = null) {
+    const text = {
+      begin: vi.fn(),
+      end: vi.fn(),
+      resolve: vi.fn(() => raster),
+      exact: vi.fn(async (_t: unknown, _s: unknown, _k: unknown, part = "all") => ({ ...(part === "all" ? raster : part === "backgrounds" ? (boxes ?? raster) : (atlas ?? raster)), release: () => undefined })),
+      resolveAtlas: vi.fn(() => atlas),
+      resolveBackground: vi.fn(() => boxes),
+      warm: vi.fn(() => true),
+    };
+    const onChange = vi.fn();
+    const textures = new LayerTextures({
+      frames: { info: () => null, video: () => new Promise(() => undefined), getFrame: () => new Promise(() => undefined), prefetch: async () => 0, lodFor: () => "full" },
+      images: { get: () => null, load: async () => null },
+      pool: new TexturePool(),
+      onChange,
+      text,
+    });
+    return { textures, text, onChange };
+  }
+
+  const animated = (value: string, patch: Partial<TextClip>) => project({ text: textContent(value), ...patch });
+
+  it("evaluates the animation at the frame: units in, at rest, a whole-text out, none while edited inline", () => {
+    const p = animated("ab cd", { animIn: { id: "wordPop", duration: 10 }, animOut: { id: "fade", duration: 10 } });
+    const compositor = new Compositor();
+    const at = (frame: number, live: Map<string, { text: ReturnType<typeof textContent>; style: TextStyle; editing?: boolean }> | null = null) =>
+      (compositor.evaluate(p, frame, null, null, null, live).layers[0] as TextCompositeLayer).anim;
+    const first = at(0);
+    expect(first?.atlas).toBe("word");
+    expect(first?.units.map((unit) => unit.opacity)).toEqual([0, 0]);
+    expect(at(10)).toBeNull();
+    expect(at(25)).toMatchObject({ atlas: "block", units: [{ opacity: expect.closeTo(1 - (0.6 ** 3), 6) }] });
+    expect(at(29)?.units[0]?.opacity).toBe(0);
+    const clip = p.clips.t as TextClip;
+    expect(at(0, new Map([["t", { text: clip.text, style: clip.style, editing: true }]]))).toBeNull();
+    // Live animations (a field scrub) replace the clip's.
+    const live = compositor.evaluate(p, 12, null, null, null, null, new Map([["t", { animIn: { id: "fade", duration: 14 } }]])).layers[0] as TextCompositeLayer;
+    expect(live.anim?.atlas).toBe("block");
+  });
+
+  it("moves the layer raster for a whole-text animation: slide offset, opacity and blur in texture px", () => {
+    const { textures } = setup();
+    const slide = new Compositor().evaluate(animated("ab", { animIn: { id: "slideUp", duration: 10, ease: "linear" } }), 5);
+    const [layer] = textures.resolve(slide, "idle").layers as TextureLayer[];
+    // Half way: 0.5 x 0.6 x 100 px below its place, half opaque.
+    expect(applyToPoint(layer?.transform as TextureLayer["transform"], 0, 0)).toEqual({ x: 484, y: 949 });
+    expect(layer?.opacity).toBeCloseTo(0.5);
+    const blur = new Compositor().evaluate(animated("ab", { animIn: { id: "blurIn", duration: 10, ease: "linear" } }), 5);
+    expect((textures.resolve(blur, "idle").layers[0] as TextureLayer).blur).toBeCloseTo(10);
+    // Frame 0 of a fade: nothing drawn, the raster still asked for (kept).
+    const hidden = new Compositor().evaluate(animated("ab", { animIn: { id: "fade", duration: 10 } }), 0);
+    expect(textures.resolve(hidden, "idle").layers).toEqual([]);
+  });
+
+  it("draws one quad per unit from the atlas, over the background boxes at the leading unit's opacity", () => {
+    const boxes: ResolvedText = { ...raster, texture: { ...texture } };
+    const atlas = atlasOf("ab cd", "word");
+    const { textures, text } = setup(atlas, boxes);
+    const s = style({ background: { ...DEFAULT_TEXT_STYLE.background, enabled: true } });
+    // Word fade, 10 frames, 5 apart: the first word is 0.4 in at frame 2, the second not yet.
+    const composite = new Compositor().evaluate(animated("ab cd", { style: s, animIn: { id: "wordFade", duration: 10, stagger: 5, ease: "linear" } }), 2);
+    const layers = textures.resolve(composite, "idle").layers as TextureLayer[];
+    expect(text.resolveAtlas).toHaveBeenCalledWith("t", expect.anything(), s, 1, "word");
+    expect(layers).toHaveLength(2);
+    expect(layers[0]?.texture).toBe(boxes.texture);
+    expect(layers[0]?.opacity).toBeCloseTo(0.4);
+    expect(layers[1]?.crop).toEqual(atlas.units?.[0]?.crop);
+    expect(layers[1]?.opacity).toBeCloseTo(0.4);
+    expect(textures.stats.texts).toBe(1);
+  });
+
+  it("scales a popping unit about its middle", () => {
+    const atlas = atlasOf("ab", "word");
+    const { textures } = setup(atlas);
+    const composite = new Compositor().evaluate(animated("ab", { animIn: { id: "wordPop", duration: 10 } }), 7);
+    const state = (composite.layers[0] as TextCompositeLayer).anim?.units[0];
+    const [layer] = textures.resolve(composite, "idle").layers as TextureLayer[];
+    // The middle of the ink (55, baseline - 26) stays where it was: content (0, 0) is project (485, 900).
+    const middle = { x: 485 + (state?.ox as number), y: 900 + (state?.oy as number) };
+    const rect = atlas.units?.[0]?.rect as { x: number; y: number; width: number; height: number };
+    const u = ((state?.ox as number) - rect.x) / rect.width;
+    const v = ((state?.oy as number) - rect.y) / rect.height;
+    const at = applyToPoint(layer?.transform as TextureLayer["transform"], u, v);
+    expect(at.x).toBeCloseTo(middle.x);
+    expect(at.y).toBeCloseTo(middle.y);
+    expect(state?.scale).not.toBe(1);
+  });
+
+  it("cuts a typewriter's lines at the last typed character, and reveals a line through its place", () => {
+    const lines = atlasOf("ab\ncd", "line");
+    const { textures } = setup(lines);
+    // 4 characters in 8 frames: one typed at frame 3 (line 0 cut after "a", line 1 hidden).
+    const typing = new Compositor().evaluate(animated("ab\ncd", { animIn: { id: "typewriter", duration: 8 } }), 3);
+    const typed = textures.resolve(typing, "idle").layers as TextureLayer[];
+    expect(typed).toHaveLength(1);
+    const cell = lines.units?.[0] as { rect: { x: number; width: number }; crop: { u0: number; u1: number } };
+    expect(typed[0]?.crop.u1).toBeCloseTo(cell.crop.u0 + ((cell.crop.u1 - cell.crop.u0) * (55 - cell.rect.x)) / cell.rect.width);
+    const reveal = atlasOf("ab", "line");
+    const second = setup(reveal);
+    // Line reveal, linear, half way: the line half under its place; the top half of it shows in the bottom half of its place.
+    const composite = new Compositor().evaluate(animated("ab", { animIn: { id: "lineReveal", duration: 10, ease: "linear" } }), 5);
+    const [layer] = second.textures.resolve(composite, "idle").layers as TextureLayer[];
+    const rect = reveal.units?.[0]?.rect as { x: number; y: number; width: number; height: number };
+    expect(layer?.crop.v1).toBeCloseTo(0.5);
+    expect(applyToPoint(layer?.transform as TextureLayer["transform"], 0, 0).y).toBeCloseTo(900 + rect.y + rect.height / 2);
+    expect(applyToPoint(layer?.transform as TextureLayer["transform"], 0, 1).y).toBeCloseTo(900 + rect.y + rect.height);
+  });
+
+  it("lists the text clips about to show with their parts, and rasterizes them ahead (one per pass while playing)", () => {
+    const p = animated("ab cd", { start: 40, animIn: { id: "wordPop", duration: 10 }, animOut: { id: "typewriter", duration: 10 }, style: style({ background: { ...DEFAULT_TEXT_STYLE.background, enabled: true } }) });
+    const compositor = new Compositor();
+    expect(compositor.upcomingTexts(p, 0, 30)).toEqual([]);
+    const upcoming = compositor.upcomingTexts(p, 20, 30);
+    expect(upcoming.map((item) => [item.clipId, item.parts])).toEqual([["t", ["all", "word", "line", "backgrounds"]]]);
+    const { textures, text, onChange } = setup();
+    textures.resolve(compositor.evaluate(p, 20), "idle", 0, 1, upcoming);
+    expect(text.warm).toHaveBeenCalledTimes(4);
+    text.warm.mockClear();
+    textures.resolve(compositor.evaluate(p, 20), "playback", 0, 1, upcoming);
+    expect(text.warm).toHaveBeenCalledTimes(1);
+    expect(onChange).toHaveBeenCalled();
+  });
+
+  it("gives Export frame the animated units at their exact scale", async () => {
+    const atlas = atlasOf("ab cd", "word");
+    const { textures, text } = setup(atlas);
+    const composite = new Compositor().evaluate(animated("ab cd", { animIn: { id: "wordFade", duration: 10, stagger: 5, ease: "linear" } }), 7);
+    const { list, release } = await textures.resolveExact(composite, 4096);
+    expect(text.exact).toHaveBeenCalledWith(expect.anything(), expect.anything(), 1, "word");
+    expect(list.layers.map((layer) => layer.opacity)).toEqual([1, expect.closeTo(0.4, 6)]);
     release();
   });
 });

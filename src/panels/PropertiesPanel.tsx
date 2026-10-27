@@ -3,6 +3,7 @@ import { PanelFrame, PanelTitle } from "../app/PanelFrame.js";
 import { documentStore, sessionStore } from "../app/services.js";
 import type { Selection } from "../core/store/selection.js";
 import { useStoreSelector } from "../core/store/useStoreSelector.js";
+import { AnimationSection } from "./properties/AnimationSection.js";
 import { ClipSection } from "./properties/ClipSection.js";
 import { CropModeToggle, CropSection } from "./properties/CropSection.js";
 import { contextKey, propertiesContext, sectionIds, type PropertiesContext, type SectionId } from "./properties/context.js";
@@ -25,6 +26,7 @@ import styles from "./PropertiesPanel.module.css";
 const SECTION_TITLES: Record<SectionId, string> = {
   clip: "Clip",
   text: "Text",
+  animation: "Animation",
   transform: "Transform",
   crop: "Crop",
   opacity: "Opacity",
@@ -40,6 +42,8 @@ function sectionBody(id: SectionId, context: PropertiesContext): ReactNode {
       return context.kind === "clips" ? <ClipSection ids={context.clipIds} /> : null;
     case "text":
       return context.kind === "clips" ? <TextSection ids={context.textIds} /> : null;
+    case "animation":
+      return context.kind === "clips" ? <AnimationSection ids={context.textIds} primary={context.primary} /> : null;
     case "transform":
       return context.kind === "clips" ? <TransformSection ids={context.layerIds} /> : null;
     case "crop":

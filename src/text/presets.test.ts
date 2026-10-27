@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { makeTextClip } from "../core/document/fixtures.js";
-import type { TextClip, TextPreset } from "../core/document/types.js";
+import type { TextAnim, TextClip, TextPreset } from "../core/document/types.js";
 import { BUNDLED_FONTS } from "../render/text/bundledFonts.js";
 import {
   defaultPresetName,
@@ -24,11 +24,13 @@ import {
   thumbnailText,
   uniquePresetName,
 } from "./presets.js";
-import { STARTER_SUBTITLE_ID, STARTER_TITLE_ID, starterPresets } from "./starterPresets.js";
+import { sanitizePresetAnim } from "./anim.js";
+import { STARTER_SUBTITLE_ID, STARTER_TITLE_ID, starterPresets, upgradeStarters } from "./starterPresets.js";
 import { DEFAULT_SUBTITLE_BOX, DEFAULT_SUBTITLE_STYLE, DEFAULT_TEXT_STYLE, DEFAULT_TITLE_STYLE, styleKey } from "./style.js";
 
-const SHORT = { width: 1080, height: 1920 };
-const UHD = { width: 2160, height: 3840 };
+const FPS = { num: 30, den: 1 };
+const SHORT = { width: 1080, height: 1920, fps: FPS };
+const UHD = { width: 2160, height: 3840, fps: FPS };
 const NOW = "2026-10-16T10:00:00.000Z";
 const LATER = "2026-10-16T11:00:00.000Z";
 
@@ -90,7 +92,7 @@ describe("preset sizes", () => {
 
   it("tells whether a clip's look differs from its preset (the box width only counts when fixed)", () => {
     const clip = styledClip();
-    for (const frame of [SHORT, UHD, { width: 1000, height: 1777 }]) {
+    for (const frame of [SHORT, UHD, { width: 1000, height: 1777, fps: FPS }]) {
       const saved = presetFromClip(clip, frame, { id: "a", name: "A", now: NOW });
       expect(presetDiffers(saved, clip, frame)).toBe(false);
       expect(presetDiffers(saved, { ...clip, style: { ...clip.style, fontSize: 130 } }, frame)).toBe(true);
@@ -102,8 +104,22 @@ describe("preset sizes", () => {
     expect(presetDiffers(auto, styledClip({ text: { value: "a", box: { mode: "auto", width: 300 } } }), SHORT)).toBe(false);
   });
 
+  it("stores animations in milliseconds, brings them back in the project's frames and compares them there", () => {
+    const clip = styledClip({ animIn: { id: "wordPop", duration: 24, stagger: 3 }, animOut: { id: "fade", duration: 15 } });
+    const saved = presetFromClip(clip, SHORT, { id: "a", name: "Pop", now: NOW });
+    expect(saved.animIn).toEqual({ id: "wordPop", durationMs: 800, staggerMs: 100 });
+    expect(saved.animOut).toEqual({ id: "fade", durationMs: 500 });
+    expect(presetDiffers(saved, clip, SHORT)).toBe(false);
+    expect(presetDiffers(saved, { ...clip, animIn: { id: "wordPop", duration: 25, stagger: 3 } }, SHORT)).toBe(true);
+    expect(presetDiffers(saved, styledClip({ animIn: clip.animIn as TextAnim }), SHORT)).toBe(true);
+    const fps60 = { ...SHORT, fps: { num: 60, den: 1 } };
+    expect(presetLook(saved, fps60)).toMatchObject({ animIn: { id: "wordPop", duration: 48, stagger: 6 }, animOut: { id: "fade", duration: 30 } });
+    // An animation the engine cannot play is not saved.
+    expect(presetFromClip(styledClip({ animIn: { id: "fade" } as unknown as TextAnim }), SHORT, { id: "b", name: "B", now: NOW }).animIn).toBeUndefined();
+  });
+
   it("updates a preset with a clip's look, keeping its name, flags and creation date", () => {
-    const old = preset({ name: "Mine", favorite: true, applyPosition: true, tags: ["x"], animIn: { id: "fade" } });
+    const old = preset({ name: "Mine", favorite: true, applyPosition: true, tags: ["x"], animIn: { id: "fade", durationMs: 500 } });
     const clip = styledClip();
     const next = presetUpdatedFromClip(old, clip, SHORT, LATER);
     expect(next).toMatchObject({ id: "p", name: "Mine", favorite: true, applyPosition: true, tags: ["x"], createdAt: NOW, updatedAt: LATER, position: { x: 40, y: -300 } });
@@ -166,7 +182,7 @@ describe("lists", () => {
 
 describe("files", () => {
   it("reads a preset back exactly as written", () => {
-    const original = preset({ id: "p1", name: "Box", style: structuredClone(DEFAULT_SUBTITLE_STYLE), box: { ...DEFAULT_SUBTITLE_BOX }, position: { x: 0, y: 500 }, applyPosition: true, tags: ["a"], favorite: true, defaultDuration: 2500, animIn: { id: "fade", duration: 10 } });
+    const original = preset({ id: "p1", name: "Box", style: structuredClone(DEFAULT_SUBTITLE_STYLE), box: { ...DEFAULT_SUBTITLE_BOX }, position: { x: 0, y: 500 }, applyPosition: true, tags: ["a"], favorite: true, defaultDuration: 2500, animIn: { id: "fade", durationMs: 333, staggerMs: 0, ease: "easeIn" } });
     expect(sanitizePreset(JSON.parse(formatPresetFile(original)), LATER)).toEqual(original);
   });
 
@@ -215,6 +231,29 @@ describe("starter presets", () => {
     expect(new Set(starters.map((p) => styleKey(p.style))).size).toBe(starters.length);
     const families = new Set(BUNDLED_FONTS.map((font) => font.family));
     for (const starter of starters) expect(families.has(starter.style.fontFamily)).toBe(true);
+    // Animations (Batch 31): valid, and none on the defaults (T and Shift+T stay still).
+    for (const starter of starters) for (const anim of [starter.animIn, starter.animOut]) if (anim) expect(sanitizePresetAnim(anim)).toEqual(anim);
+    expect(starters.filter((p) => p.animIn).length).toBeGreaterThanOrEqual(3);
+    expect(starters.find((p) => p.id === STARTER_TITLE_ID)?.animIn).toBeUndefined();
+    expect(starters.find((p) => p.id === STARTER_SUBTITLE_ID)?.animIn).toBeUndefined();
+  });
+
+  it("gives untouched starters stored before Batch 31 their animations, and leaves changed ones alone", () => {
+    const old = starterPresets().map((p) => {
+      const copy = { ...p };
+      delete copy.animIn;
+      delete copy.animOut;
+      return copy;
+    });
+    const caption = old.findIndex((p) => p.id === "starter-caption");
+    const lower = old.findIndex((p) => p.id === "starter-lower-third");
+    old[lower] = { ...(old[lower] as TextPreset), updatedAt: "2026-10-16T10:00:00.000Z" };
+    const upgraded = upgradeStarters(old);
+    expect(upgraded?.[caption]?.animIn).toEqual({ id: "wordPop", durationMs: 800 });
+    expect(upgraded?.[caption]?.updatedAt).toBe(old[caption]?.updatedAt);
+    expect(upgraded?.[lower]?.animIn).toBeUndefined();
+    expect(upgradeStarters(upgraded as TextPreset[])).toBeNull();
+    expect(upgradeStarters([])).toBeNull();
   });
 
   it("read back unchanged from a file, oldest first in card order", () => {

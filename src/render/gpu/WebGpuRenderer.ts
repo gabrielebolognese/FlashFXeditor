@@ -6,6 +6,10 @@
 // frame, or the pane for the border). Each texture gets its bind group once, at creation, so a frame
 // creates no bind groups. Everything GPU-side is rebuilt when GpuDevice replaces a lost device; texture
 // handles of the old device turn invalid and their owners re-upload on "ready".
+// A textured layer with a blur (a text's blurIn, spec §10.4) is blurred first, in the same command
+// encoder: two passes of a separable Gaussian (horizontal into one pooled texture, vertical into
+// another, the radius capped at MAX_BLUR_SIGMA), then drawn from the second with its quad grown by
+// the blur's reach. The pooled textures are reused from draw to draw (text rasters are small).
 import type { RGBA } from "../../core/document/types.js";
 import type { DrawList, Layer, UvRect } from "../compositor/drawList.js";
 import { IDENTITY, invertInto, multiplyInto, mutableIdentity, setMat, type Mat3, type MutableMat3 } from "../mat3.js";
@@ -15,13 +19,21 @@ import { layerFloats, LAYER_SIZE, LAYER_STRIDE, packLayer, packMat3, pixelsToCli
 import { generateMipmaps, mipLevelCount, textureBytes, type MipGenerator } from "./mipmaps.js";
 import { paddedBytesPerRow, unpadAndUnpremultiply } from "./readback.js";
 import type { CanvasTarget, DeviceEvent, OffscreenTarget, Pane, Renderer, RenderTarget, TextureHandle, TextureOptions, Viewport } from "./renderer.js";
-import { DISSOLVE_WGSL, MIPMAP_WGSL, SCALE_WGSL, SOLID_WGSL, TEXTURED_WGSL } from "./shaders.js";
+import { BLUR_WGSL, DISSOLVE_WGSL, MIPMAP_WGSL, SCALE_WGSL, SOLID_WGSL, TEXTURED_WGSL } from "./shaders.js";
 
 /** Textures, offscreen targets and mip levels are rgba8 (spec §9.3); canvases use the preferred format. */
 const TEXTURE_FORMAT: GPUTextureFormat = "rgba8unorm";
 const TRANSPARENT: RGBA = { r: 0, g: 0, b: 0, a: 0 };
 const DEFAULT_MAX_TEXTURE = 8192;
 const INITIAL_LAYERS = 64;
+/** Largest blur (Gaussian sigma, texture px): the kernel reaches 3 sigma (spec §10.4 "cap the blur radius"). */
+export const MAX_BLUR_SIGMA = 16;
+/** Bytes the blur shader reads per pass (3 vec4), at the layers' 256-byte stride. */
+const BLUR_SIZE = 48;
+/** Blur textures are made in steps of this many px, so a blur of a slightly other size reuses one. */
+const BLUR_STEP = 64;
+/** Draws a pooled blur texture stays unused before it is freed. */
+const BLUR_KEEP_DRAWS = 120;
 
 type PipelineKind = "textured" | "dissolve" | "solid";
 
@@ -44,6 +56,8 @@ interface DeviceResources {
   mips: MipGenerator;
   /** Draws a video frame into a smaller texture (`TextureOptions.maxSize`). */
   scaler: { pipeline: GPURenderPipeline; layout: GPUBindGroupLayout; sampler: GPUSampler };
+  /** The blur passes: pipeline, uniforms (one 256-byte slot per pass), pooled textures. */
+  blur: { pipeline: GPURenderPipeline; layout: GPUBindGroupLayout; buffer: GPUBuffer; capacity: number; group: GPUBindGroup; pool: { texture: GpuTexture; used: number }[] };
   viewBuffer: GPUBuffer;
   layerBuffer: GPUBuffer;
   layerCapacity: number;
@@ -147,6 +161,8 @@ interface DrawRecord {
   /** Bound at groups 1 and 2 (none for solids, one for textured layers, two for dissolves). */
   texture0: GpuTexture | null;
   texture1: GpuTexture | null;
+  /** Gaussian sigma in texture px (textured layers; 0: none). */
+  blur: number;
   /** Target px it is clipped to: the frame within its pane (document layers), or the pane (the border). */
   scissor: Rect;
 }
@@ -163,6 +179,7 @@ const newRecord = (): DrawRecord => ({
   uniform: { transform: mutableIdentity(), uv: { u0: 0, v0: 0, u1: 1, v1: 1 }, color: { r: 0, g: 0, b: 0, a: 0 }, opacity: 1, flipX: false, flipY: false, mix: 0 },
   texture0: null,
   texture1: null,
+  blur: 0,
   scissor: { x: 0, y: 0, width: 0, height: 0 },
 });
 
@@ -189,6 +206,9 @@ export class WebGpuRenderer implements Renderer {
   private readonly lastScissor: Rect = { x: 0, y: 0, width: 0, height: 0 };
   private readonly clearValue = { r: 0, g: 0, b: 0, a: 0 };
   private readonly dynamicOffset = new Uint32Array(1);
+  private blurData = new Float32Array(LAYER_STRIDE / 4);
+  /** Draws so far (the blur pool's clock). */
+  private draws = 0;
   /** The pass descriptor, created on the first draw; each draw only swaps the attachment's view. */
   private pass: { attachment: GPURenderPassColorAttachment; descriptor: GPURenderPassDescriptor } | null = null;
 
@@ -346,10 +366,12 @@ export class WebGpuRenderer implements Renderer {
       const frameScissor = clipRect(this.frameScissor, frame, bounds.x + bounds.width, bounds.y + bounds.height, bounds.x, bounds.y);
       this.buildRecords(list, viewport, frame, frameScissor, bounds);
     }
+    const encoder = res.device.createCommandEncoder({ label: "draw list" });
+    this.draws += 1;
+    this.blurRecords(res, encoder);
     this.writeUniforms(res, pixelsToClipInto(this.toClip, target.width, target.height, IDENTITY));
 
     const pipelines = this.pipelines(res, format);
-    const encoder = res.device.createCommandEncoder({ label: "draw list" });
     premultipliedInto(this.clearValue, first.viewport.outside);
     if (this.pass) {
       this.pass.attachment.view = attachment;
@@ -378,6 +400,114 @@ export class WebGpuRenderer implements Renderer {
     pass.end();
     res.device.queue.submit([encoder.finish()]);
     return true;
+  }
+
+  /**
+   * Blurs the source of every blurred record into a pooled texture (two passes encoded before the
+   * draw's own) and points the record at it: the quad grown by the blur's reach on each side.
+   */
+  private blurRecords(res: DeviceResources, encoder: GPUCommandEncoder): void {
+    const blur = res.blur;
+    let passes = 0;
+    for (let index = 0; index < this.recordCount; index++) {
+      const record = this.recordPool[index] as DrawRecord;
+      const source = record.texture0;
+      if (record.kind !== "textured" || record.blur < 0.05 || !source) continue;
+      const sigma = Math.min(MAX_BLUR_SIGMA, record.blur);
+      const reach = Math.ceil(3 * sigma);
+      const uv = record.uniform.uv;
+      const x0 = Math.round(Math.min(uv.u0, uv.u1) * source.width);
+      const x1 = Math.round(Math.max(uv.u0, uv.u1) * source.width);
+      const y0 = Math.round(Math.min(uv.v0, uv.v1) * source.height);
+      const y1 = Math.round(Math.max(uv.v0, uv.v1) * source.height);
+      const width = x1 - x0;
+      const height = y1 - y0;
+      if (width < 1 || height < 1) continue;
+      const w = width + 2 * reach;
+      const h = height + 2 * reach;
+      const across = this.blurTexture(res, w, h);
+      const down = this.blurTexture(res, w, h);
+      if (passes + 2 > blur.capacity) this.growBlur(res, passes + 2);
+      this.writeBlurPass(passes, x0, y0, width, height, 1, 0, sigma, reach, reach);
+      this.blurPass(res, encoder, passes, source, across, w, h);
+      this.writeBlurPass(passes + 1, 0, 0, w, h, 0, 1, sigma, reach, 0);
+      this.blurPass(res, encoder, passes + 1, across, down, w, h);
+      passes += 2;
+      // The quad grows by the reach on each side and shows the blurred part of `down`.
+      const gx = reach / width;
+      const gy = reach / height;
+      const m = record.uniform.transform;
+      multiplyInto(m, m, setMat(this.blurGrow, 1 + 2 * gx, 0, 0, 1 + 2 * gy, -gx, -gy));
+      setUv(uv, 0, 0, w / down.width, h / down.height);
+      record.texture0 = down;
+    }
+    if (passes > 0) res.device.queue.writeBuffer(blur.buffer, 0, this.blurData.buffer, 0, passes * LAYER_STRIDE);
+    // Textures no draw used for a while go.
+    for (let i = blur.pool.length - 1; i >= 0; i--) {
+      const entry = blur.pool[i] as { texture: GpuTexture; used: number };
+      if (this.draws - entry.used > BLUR_KEEP_DRAWS) {
+        entry.texture.destroy();
+        blur.pool.splice(i, 1);
+      }
+    }
+  }
+
+  private readonly blurGrow = mutableIdentity();
+
+  /** A pooled texture at least `width` x `height` not used yet in this draw. */
+  private blurTexture(res: DeviceResources, width: number, height: number): GpuTexture {
+    const pool = res.blur.pool;
+    for (const entry of pool) {
+      const { texture } = entry;
+      if (entry.used === this.draws || texture.width < width || texture.height < height || texture.width > 2 * width + BLUR_STEP || texture.height > 2 * height + BLUR_STEP) continue;
+      entry.used = this.draws;
+      return texture;
+    }
+    const step = (size: number) => Math.min(this.maxTextureSize, Math.ceil(size / BLUR_STEP) * BLUR_STEP);
+    const texture = this.newTexture(res, step(width), step(height), { label: "blur" });
+    pool.push({ texture, used: this.draws });
+    return texture;
+  }
+
+  private writeBlurPass(index: number, x: number, y: number, width: number, height: number, dirX: number, dirY: number, sigma: number, reach: number, pad: number): void {
+    const o = (index * LAYER_STRIDE) / 4;
+    if (this.blurData.length < o + 12) {
+      const grown = new Float32Array(Math.max(this.blurData.length * 2, o + LAYER_STRIDE / 4));
+      grown.set(this.blurData);
+      this.blurData = grown;
+    }
+    const d = this.blurData;
+    d[o] = x;
+    d[o + 1] = y;
+    d[o + 2] = width;
+    d[o + 3] = height;
+    d[o + 4] = dirX;
+    d[o + 5] = dirY;
+    d[o + 6] = sigma;
+    d[o + 7] = reach;
+    d[o + 8] = pad;
+    d[o + 9] = pad;
+  }
+
+  private blurPass(res: DeviceResources, encoder: GPUCommandEncoder, index: number, source: GpuTexture, target: GpuTexture, width: number, height: number): void {
+    const pass = encoder.beginRenderPass({ label: "blur", colorAttachments: [{ view: target.view, loadOp: "clear", storeOp: "store", clearValue: [0, 0, 0, 0] }] });
+    pass.setPipeline(res.blur.pipeline);
+    pass.setScissorRect(0, 0, Math.min(width, target.width), Math.min(height, target.height));
+    this.dynamicOffset[0] = index * LAYER_STRIDE;
+    pass.setBindGroup(0, res.blur.group, this.dynamicOffset, 0, 1);
+    pass.setBindGroup(1, source.bindGroup);
+    pass.draw(3);
+    pass.end();
+  }
+
+  private growBlur(res: DeviceResources, count: number): void {
+    const blur = res.blur;
+    let capacity = blur.capacity;
+    while (capacity < count) capacity *= 2;
+    blur.buffer.destroy();
+    blur.buffer = res.device.createBuffer({ label: "blur", size: capacity * LAYER_STRIDE, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+    blur.capacity = capacity;
+    blur.group = res.device.createBindGroup({ label: "blur", layout: blur.layout, entries: [{ binding: 0, resource: { buffer: blur.buffer, size: BLUR_SIZE } }] });
   }
 
   async readBitmap(target: OffscreenTarget): Promise<ImageBitmap> {
@@ -526,6 +656,7 @@ export class WebGpuRenderer implements Renderer {
     setRect(record.scissor, scissor.x, scissor.y, scissor.width, scissor.height);
     record.texture0 = null;
     record.texture1 = null;
+    record.blur = 0;
     const u = record.uniform;
     u.opacity = 1;
     u.flipX = false;
@@ -554,6 +685,7 @@ export class WebGpuRenderer implements Renderer {
         if (!(layer.texture instanceof GpuTexture) || !layer.texture.valid) return;
         const record = this.nextRecord("textured", scissor);
         record.texture0 = layer.texture;
+        record.blur = layer.blur ?? 0;
         copyLayer(record, view, layer.transform, layer.opacity);
         setUv(record.uniform.uv, layer.crop.u0, layer.crop.v0, layer.crop.u1, layer.crop.v1);
         record.uniform.flipX = layer.flipX;
@@ -677,6 +809,26 @@ export class WebGpuRenderer implements Renderer {
         primitive: { topology: "triangle-list" },
       }),
     };
+    const blurLayout = device.createBindGroupLayout({
+      label: "blur",
+      entries: [{ binding: 0, visibility: GPUShaderStage.FRAGMENT, buffer: { type: "uniform", hasDynamicOffset: true, minBindingSize: BLUR_SIZE } }],
+    });
+    const blurModule = module("blur", BLUR_WGSL);
+    const blurBuffer = device.createBuffer({ label: "blur", size: 8 * LAYER_STRIDE, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+    const blur = {
+      layout: blurLayout,
+      buffer: blurBuffer,
+      capacity: 8,
+      group: device.createBindGroup({ label: "blur", layout: blurLayout, entries: [{ binding: 0, resource: { buffer: blurBuffer, size: BLUR_SIZE } }] }),
+      pool: [],
+      pipeline: device.createRenderPipeline({
+        label: "blur",
+        layout: layout("blur", [blurLayout, textureLayout]),
+        vertex: { module: blurModule, entryPoint: "vs" },
+        fragment: { module: blurModule, entryPoint: "fs", targets: [{ format: TEXTURE_FORMAT }] },
+        primitive: { topology: "triangle-list" },
+      }),
+    };
     const partial = {
       device,
       generation,
@@ -692,6 +844,7 @@ export class WebGpuRenderer implements Renderer {
       pipelines: new Map<GPUTextureFormat, Pipelines>(),
       mips,
       scaler,
+      blur,
       viewBuffer: device.createBuffer({ label: "view", size: VIEW_SIZE, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST }),
       layerBuffer: layerBuffer(device, INITIAL_LAYERS),
       layerCapacity: INITIAL_LAYERS,

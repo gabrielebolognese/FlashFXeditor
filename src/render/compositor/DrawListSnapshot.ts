@@ -34,6 +34,7 @@ export class DrawListSnapshot {
           this.uv(layer.crop);
           this.push(layer.flipX ? 1 : 0);
           this.push(layer.flipY ? 1 : 0);
+          this.push(layer.blur ?? 0);
           break;
         case "dissolve":
           this.ref(layer.from);

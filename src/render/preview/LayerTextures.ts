@@ -31,6 +31,11 @@
 //   size (Export frame at full resolution, whatever the quality mode).
 // - Text layers (spec §10.1, P11) come from the text raster cache at the pass's render scale times the
 //   layer's own scale, drawn over the raster's rect; Export frame gets its own raster at project size.
+// - Animated text (spec §10.4): a whole-text animation moves (scales, fades, blurs) the layer raster;
+//   a per-unit one draws the background boxes, then one quad per atlas cell with its unit's state (a
+//   line reveal crops its line to its place, a typewriter cuts a line at its last typed character).
+//   The text clips about to show (`upcoming`) are rasterized ahead, all at once while idle and one per
+//   pass otherwise, so playing into an animation rasterizes nothing.
 // The draw lists, the slot structs and their keys are reused between passes: a pass allocates nothing
 // unless it requests or pins a new frame (or rasterizes a text).
 import type { MediaId, TrackId } from "../../core/document/types.js";
@@ -39,11 +44,13 @@ import type { FrameResult, FrameService } from "../../media/decode/FrameService.
 import type { ImageService } from "../../media/decode/ImageService.js";
 import { mediaTimePosition } from "../../media/demux/sampleIndex.js";
 import { isAbortError, type FramePriority } from "../../media/workers/protocol.js";
-import type { NeighborFrame } from "../compositor/Compositor.js";
-import type { Composite, DrawList, Layer, MediaLayer, TextCompositeLayer, TextureLayer } from "../compositor/drawList.js";
+import type { UnitState } from "../../text/anim.js";
+import type { NeighborFrame, UpcomingText } from "../compositor/Compositor.js";
+import type { Composite, DrawList, Layer, MediaLayer, TextAnimFrame, TextCompositeLayer, TextureLayer, UvRect } from "../compositor/drawList.js";
 import type { TextureHandle } from "../gpu/renderer.js";
 import { multiplyInto, mutableIdentity, setMat, type Mat3, type MutableMat3 } from "../mat3.js";
-import type { ResolvedText, TextRasterCache } from "../text/TextRasterCache.js";
+import type { Rect } from "../text/layout.js";
+import type { ResolvedText, ResolvedUnit, TextRasterCache } from "../text/TextRasterCache.js";
 import { exportLongEdge, layerDetail } from "./detail.js";
 
 export interface LayerTexturesDeps {
@@ -55,7 +62,7 @@ export interface LayerTexturesDeps {
   /** The lod this pass asks a media's frames for (the quality mode's rule); full when absent. */
   wantedLod?(mediaId: MediaId): Lod;
   /** Text rasters (spec §10.1); text layers draw nothing without it. */
-  text?: Pick<TextRasterCache, "begin" | "end" | "resolve" | "exact">;
+  text?: Pick<TextRasterCache, "begin" | "end" | "resolve" | "exact" | "resolveAtlas" | "resolveBackground" | "warm">;
 }
 
 export interface LayerTexturesStats {
@@ -157,12 +164,14 @@ export class LayerTextures {
   /**
    * The draw list for `composite` with every media layer resolved to a texture (or held, or left out).
    * `detailLongEdge`: at `idle`, cached frames well under it are decoded again (detail on zoom).
-   * `renderScale`: device px per project px of the render (text rasters follow it).
+   * `renderScale`: device px per project px of the render (text rasters follow it). `upcoming`: text
+   * clips about to show, rasterized ahead.
    */
-  resolve(composite: Composite, priority: FramePriority, detailLongEdge = 0, renderScale = 1): DrawList {
+  resolve(composite: Composite, priority: FramePriority, detailLongEdge = 0, renderScale = 1, upcoming: readonly UpcomingText[] = []): DrawList {
     this.begin(priority, detailLongEdge, renderScale);
     try {
       this.resolveInto(0, composite, priority);
+      this.warmTexts(upcoming, priority === "idle" ? Infinity : 1);
     } finally {
       this.end();
     }
@@ -216,13 +225,7 @@ export class LayerTextures {
         continue;
       }
       if (layer.kind === "text") {
-        const resolved = this.deps.text?.resolve(layer.clipId, layer.text, layer.style, this.textScale * layer.scale, layer.highlight) ?? null;
-        if (resolved) {
-          const shown = (this.textLayers[pane][this.textCount] ??= newTextureLayer());
-          this.textCount += 1;
-          list.layers.push(writeTextLayer(shown, layer, resolved));
-          stats.texts += 1;
-        }
+        if (this.resolveText(pane, list.layers, layer)) stats.texts += 1;
         continue;
       }
       stats.layers += 1;
@@ -233,6 +236,60 @@ export class LayerTextures {
         list.layers.push(drawn);
         if (slot.pinnedKey.lod === "proxy" && !layer.still) stats.proxy += 1;
       } else stats.missing += 1;
+    }
+  }
+
+  /** Draws text `layer` into `layers` (its raster, or its animated units). False when it drew nothing. */
+  private resolveText(pane: 0 | 1, layers: Layer[], layer: TextCompositeLayer): boolean {
+    const text = this.deps.text;
+    if (!text) return false;
+    const scale = this.textScale * layer.scale;
+    const anim = layer.anim;
+    if (!anim || anim.atlas === "block") {
+      const resolved = text.resolve(layer.clipId, layer.text, layer.style, scale, layer.highlight);
+      if (!resolved) return false;
+      const state = anim?.units[0] ?? null;
+      const opacity = layer.opacity * (state?.opacity ?? 1);
+      if (opacity > 0) this.pushText(pane, layers, layer.model, resolved, resolved.crop, resolved.rect, state, opacity);
+      return true;
+    }
+    if (anim.background > 0 && layer.style.background.enabled) {
+      const boxes = text.resolveBackground(layer.clipId, layer.text, layer.style, scale);
+      if (boxes) this.pushText(pane, layers, layer.model, boxes, boxes.crop, boxes.rect, null, layer.opacity * anim.background);
+    }
+    const atlas = text.resolveAtlas(layer.clipId, layer.text, layer.style, scale, anim.atlas);
+    const cells = atlas?.units;
+    if (!atlas || !cells) return false;
+    const count = Math.min(cells.length, anim.units.length);
+    for (let i = 0; i < count; i++) {
+      const state = anim.units[i] as UnitState;
+      const cell = cells[i] as ResolvedUnit;
+      if (state.opacity > 0) this.pushText(pane, layers, layer.model, atlas, cell.crop, cell.rect, state, layer.opacity * state.opacity);
+    }
+    return true;
+  }
+
+  /** Adds a pooled texture layer drawing `crop` of `resolved` over `rect`, moved by `state` (`writeTextQuad`). */
+  private pushText(pane: 0 | 1, layers: Layer[], model: Mat3, resolved: Pick<ResolvedText, "texture" | "scale">, crop: UvRect, rect: Rect, state: UnitState | null, opacity: number): void {
+    const out = (this.textLayers[pane][this.textCount] ??= newTextureLayer());
+    if (!writeTextQuad(out, model, resolved.texture, crop, rect, resolved.scale, state, opacity)) return;
+    this.textCount += 1;
+    layers.push(out);
+  }
+
+  /** Rasterizes the parts of `upcoming` texts not cached yet, at most `limit` of them; asks for another pass when some are left. */
+  private warmTexts(upcoming: readonly UpcomingText[], limit: number): void {
+    const text = this.deps.text;
+    if (!text || upcoming.length === 0) return;
+    let made = 0;
+    for (const item of upcoming) {
+      for (const part of item.parts) {
+        if (made >= limit) {
+          this.deps.onChange();
+          return;
+        }
+        if (text.warm(item.clipId, part, item.text, item.style, this.textScale * item.scale)) made += 1;
+      }
     }
   }
 
@@ -324,13 +381,7 @@ export class LayerTextures {
           continue;
         }
         if (layer.kind === "text") {
-          // Copied before waiting: the composite's layers are reused by the next evaluation.
-          const model = [...layer.model] as unknown as Mat3;
-          const { opacity } = layer;
-          const exact = await this.deps.text?.exact(layer.text, layer.style, layer.scale);
-          if (!exact) continue;
-          unpins.push(exact.release);
-          layers.push(writeTextLayer(newTextureLayer(), { model, opacity }, exact));
+          await this.exactText(layer, layers, unpins);
           continue;
         }
         const { mediaId } = layer;
@@ -357,6 +408,47 @@ export class LayerTextures {
       throw error;
     }
     return { list: { width: composite.width, height: composite.height, background: composite.background, layers }, release };
+  }
+
+  /** Text `layer` at its exact scale (Export frame), animated as the preview draws it. */
+  private async exactText(layer: TextCompositeLayer, layers: Layer[], unpins: (() => void)[]): Promise<void> {
+    const text = this.deps.text;
+    if (!text) return;
+    // Copied before waiting: the composite's layers are reused by the next evaluation.
+    const model = [...layer.model] as unknown as Mat3;
+    const { opacity, style, scale } = layer;
+    const content = layer.text;
+    const anim: TextAnimFrame | null = layer.anim && { atlas: layer.anim.atlas, background: layer.anim.background, units: layer.anim.units.map((unit) => ({ ...unit })) };
+    const push = (resolved: ResolvedText, crop: UvRect, rect: Rect, state: UnitState | null, alpha: number) => {
+      const out = newTextureLayer();
+      if (writeTextQuad(out, model, resolved.texture, crop, rect, resolved.scale, state, alpha)) layers.push(out);
+    };
+    if (!anim || anim.atlas === "block") {
+      const exact = await text.exact(content, style, scale);
+      if (!exact) return;
+      unpins.push(exact.release);
+      const state = anim?.units[0] ?? null;
+      const alpha = opacity * (state?.opacity ?? 1);
+      if (alpha > 0) push(exact, exact.crop, exact.rect, state, alpha);
+      return;
+    }
+    if (anim.background > 0 && style.background.enabled) {
+      const boxes = await text.exact(content, style, scale, "backgrounds");
+      if (boxes) {
+        unpins.push(boxes.release);
+        push(boxes, boxes.crop, boxes.rect, null, opacity * anim.background);
+      }
+    }
+    const atlas = await text.exact(content, style, scale, anim.atlas);
+    if (!atlas?.units) return;
+    unpins.push(atlas.release);
+    const cells = atlas.units;
+    const count = Math.min(cells.length, anim.units.length);
+    for (let i = 0; i < count; i++) {
+      const state = anim.units[i] as UnitState;
+      const cell = cells[i] as ResolvedUnit;
+      if (state.opacity > 0) push(atlas, cell.crop, cell.rect, state, opacity * state.opacity);
+    }
   }
 
   /** The lod a media's frames come from in this pass. */
@@ -636,21 +728,54 @@ export class LayerTextures {
 }
 
 function newTextureLayer(): WritableTextureLayer {
-  return { kind: "texture", texture: NO_TEXTURE, transform: mutableIdentity(), opacity: 1, crop: { u0: 0, v0: 0, u1: 1, v1: 1 }, flipX: false, flipY: false };
+  return { kind: "texture", texture: NO_TEXTURE, transform: mutableIdentity(), opacity: 1, crop: { u0: 0, v0: 0, u1: 1, v1: 1 }, flipX: false, flipY: false, blur: 0 };
 }
 
-/** `out` drawing a text raster: the unit quad onto the raster's rect in content px, then the layer's model. */
-function writeTextLayer(out: WritableTextureLayer, layer: Pick<TextCompositeLayer, "model" | "opacity">, resolved: ResolvedText): WritableTextureLayer {
-  const { rect } = resolved;
-  const m = setMat(out.transform, rect.width, 0, 0, rect.height, rect.x, rect.y);
-  multiplyInto(m, layer.model, m);
-  out.texture = resolved.texture;
-  out.opacity = layer.opacity;
-  out.crop.u0 = resolved.crop.u0;
-  out.crop.v0 = resolved.crop.v0;
-  out.crop.u1 = resolved.crop.u1;
-  out.crop.v1 = resolved.crop.v1;
-  return out;
+/** Scratch matrix of a unit's own move. */
+const unitMove = mutableIdentity();
+
+/**
+ * `out` drawing a text raster or an atlas cell: the unit quad onto `rect` (content px) showing `crop`
+ * of `texture`, moved by an animation `state` (offset, scale about its middle, blur; a mask to its place
+ * or a cut at an x), then the layer's `model`. `scale`: texture px per content px. False when nothing
+ * of it shows.
+ */
+function writeTextQuad(out: WritableTextureLayer, model: Mat3, texture: TextureHandle, crop: UvRect, rect: Rect, scale: number, state: UnitState | null, opacity: number): boolean {
+  const { x } = rect;
+  const { u0 } = crop;
+  let { y, width, height } = rect;
+  let { v0, u1, v1 } = crop;
+  if (state) {
+    if (state.masked && state.y !== 0) {
+      // Slid by y inside its place: the part still inside shows.
+      const dy = state.y;
+      if (Math.abs(dy) >= height) return false;
+      if (dy > 0) {
+        v1 = v0 + ((v1 - v0) * (height - dy)) / height;
+        y += dy;
+      } else v0 += ((v1 - v0) * -dy) / height;
+      height -= Math.abs(dy);
+    }
+    if (state.cut < x + width) {
+      if (state.cut <= x) return false;
+      u1 = u0 + ((u1 - u0) * (state.cut - x)) / width;
+      width = state.cut - x;
+    }
+  }
+  const m = setMat(out.transform, width, 0, 0, height, x, y);
+  if (state && !state.masked && (state.scale !== 1 || state.x !== 0 || state.y !== 0)) {
+    const s = state.scale;
+    multiplyInto(m, setMat(unitMove, s, 0, 0, s, state.ox * (1 - s) + state.x, state.oy * (1 - s) + state.y), m);
+  }
+  multiplyInto(m, model, m);
+  out.texture = texture;
+  out.opacity = opacity;
+  out.crop.u0 = u0;
+  out.crop.v0 = v0;
+  out.crop.u1 = u1;
+  out.crop.v1 = v1;
+  out.blur = state ? state.blur * scale : 0;
+  return true;
 }
 
 /** The texture of a slot that has drawn nothing yet. */

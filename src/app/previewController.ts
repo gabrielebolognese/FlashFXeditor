@@ -96,6 +96,7 @@ export const previewView: PreviewView = new PreviewView({
   crops: () => liveEdit.getState().crops,
   background: () => liveEdit.getState().background,
   texts: () => liveTexts(),
+  anims: () => liveEdit.getState().anims,
   // Export frame waits for the fonts of its text layers.
   loadFonts: async (style, text) => {
     if (fontLibrary.ready(style, text)) return false;
@@ -211,7 +212,8 @@ function liveTexts(): ReadonlyMap<ClipId, LiveText> | null {
   if (!draft) return base;
   if (textsMemo.base !== base || textsMemo.draft !== draft) {
     const value = new Map<ClipId, LiveText>(base ?? []);
-    value.set(draft.clipId, { text: draft.text, style: draft.style, highlight: draft.highlight });
+    // Edited inline: shown at rest (no animation), where the caret and the box are.
+    value.set(draft.clipId, { text: draft.text, style: draft.style, highlight: draft.highlight, editing: true });
     textsMemo = { base, draft, value };
   }
   return textsMemo.value;

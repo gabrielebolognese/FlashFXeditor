@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { TextStyle } from "../../core/document/types.js";
 import { DEFAULT_TEXT_STYLE, textContent } from "../../text/style.js";
-import { atlasUnits, packShelves } from "./atlas.js";
+import { atlasUnits, lineStops, packShelves } from "./atlas.js";
 import { layoutText } from "./layout.js";
 import { approximateMeasurer } from "./layoutCache.js";
 
@@ -46,6 +46,28 @@ describe("atlasUnits", () => {
     // Ink 0..110 x baseline-72..baseline+20, whole px with one to spare.
     const baseline = layout.lines[0]?.baseline as number;
     expect(units[0]?.rect).toEqual({ x: -1, y: Math.floor(baseline - 72) - 1, width: 112, height: Math.ceil(baseline + 20) + 1 - (Math.floor(baseline - 72) - 1) });
+  });
+
+  it("gives characters as units (graphemes, spaces left out) at their advance, with their middles", () => {
+    const s = style();
+    const layout = layoutText(textContent("ab c\nd"), s, approximateMeasurer, "sans-serif");
+    const units = atlasUnits(layout, s, approximateMeasurer, "char");
+    expect(units.map((unit) => [unit.text, unit.line, unit.offset, unit.x])).toEqual([
+      ["a", 0, 0, 0],
+      ["b", 0, 1, 55],
+      ["c", 0, 3, 165],
+      ["d", 1, 0, 0],
+    ]);
+    const baseline = layout.lines[0]?.baseline as number;
+    // Ink 55..110 wide, baseline-72..baseline+20 tall.
+    expect([units[1]?.originX, units[1]?.originY]).toEqual([82.5, baseline - 26]);
+    expect(atlasUnits(layout, s, approximateMeasurer, "word")[1]).toMatchObject({ text: "c", offset: 3 });
+  });
+
+  it("gives each line's grapheme stops for a typewriter", () => {
+    const s = style();
+    const layout = layoutText(textContent("ab\n\nc"), s, approximateMeasurer, "sans-serif");
+    expect(lineStops(layout, s, approximateMeasurer)).toEqual([[0, 55, 110], [0], [0, 55]]);
   });
 
   it("covers the stroke and the shadow, and gives lines as units", () => {

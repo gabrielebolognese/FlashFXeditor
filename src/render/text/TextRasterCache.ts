@@ -9,6 +9,10 @@
 //   load redraws the preview.
 // - A clip edited inline (spec §7.7) draws its selection highlight in its raster: such a raster is the
 //   slot's own (never shared, destroyed when the slot draws something else).
+// - Animated text (spec §10.4) has two more parts per clip, cached the same way, each with its slot:
+//   the atlas of its characters, words or lines (one texture, a cell per unit) and its background
+//   boxes alone. `warm` makes any part ahead of time (the preview warms the clips about to play, so
+//   playback never rasterizes); a warmed part is held by a slot of its own while passes warm it.
 // - Entries in use by a slot of this or the last pass are kept; the others are evicted least recently
 //   used first once the byte budget is exceeded. A lost device's textures are rasterized again.
 // - Stats: entries, bytes, rasterizations (total), the clips rasterized in the last pass and the time
@@ -17,9 +21,10 @@ import type { ClipId, TextContent, TextStyle } from "../../core/document/types.j
 import { applyTextCase, contentKey, styleKey } from "../../text/style.js";
 import type { UvRect } from "../compositor/drawList.js";
 import type { TextureHandle } from "../gpu/renderer.js";
+import type { AtlasUnitKind } from "./atlas.js";
 import { layoutText, type Rect, type TextLayout } from "./layout.js";
 import { currentMeasurer, textFallback, textLayout } from "./layoutCache.js";
-import { rasterizeText, type TextHighlight, type TextRaster } from "./raster.js";
+import { buildTextAtlas, rasterizeText, type RasterPart, type TextAtlas, type TextHighlight, type TextRaster } from "./raster.js";
 
 /** Raster scale limits (spec §10.1 "clamped 0.25..4"). */
 export const MIN_TEXT_SCALE = 0.25;
@@ -28,6 +33,9 @@ export const MAX_TEXT_SCALE = 4;
 const BUCKETS_PER_OCTAVE = 8;
 /** Default GPU budget of text rasters. */
 export const DEFAULT_TEXT_BUDGET = 128 * 1024 * 1024;
+
+/** What an entry holds: the layer raster, its background boxes alone, or the atlas of its units. */
+export type TextPart = RasterPart | AtlasUnitKind;
 
 /** The raster scale for a wanted `scale`: clamped to 0.25..4 and rounded up to a 2^(1/8) step. */
 export function textScaleBucket(scale: number): number {
@@ -43,7 +51,8 @@ export interface TextRasterDeps {
   fontsReady(style: TextStyle, text: string): boolean;
   /** Waits for the fonts of `style` for `text` (Export frame). */
   loadFonts(style: TextStyle, text: string): Promise<void>;
-  rasterize?(layout: TextLayout, style: TextStyle, scale: number, highlight?: TextHighlight | null): TextRaster | null;
+  rasterize?(layout: TextLayout, style: TextStyle, scale: number, highlight?: TextHighlight | null, part?: RasterPart): TextRaster | null;
+  atlas?(layout: TextLayout, style: TextStyle, scale: number, kind: AtlasUnitKind): TextAtlas | null;
   /** The cached layout (`textLayout`). */
   layout?(content: TextContent, style: TextStyle): TextLayout;
   /**
@@ -54,11 +63,21 @@ export interface TextRasterDeps {
   budget?: number;
 }
 
+/** An atlas cell: the content px its unit covers and where it is in the texture. */
+export interface ResolvedUnit {
+  rect: Rect;
+  crop: UvRect;
+}
+
 /** A text drawn: its texture, the part of it the raster uses, and the content px it covers. */
 export interface ResolvedText {
   texture: TextureHandle;
   crop: UvRect;
   rect: Rect;
+  /** Texture px per content px. */
+  scale: number;
+  /** An atlas's cells, in reading order (null for a raster). */
+  units: readonly ResolvedUnit[] | null;
 }
 
 export interface TextRasterStats {
@@ -97,7 +116,8 @@ interface Slot {
 
 export class TextRasterCache {
   private readonly entries = new Map<string, Entry>();
-  private readonly slots = new Map<ClipId, Slot>();
+  /** By clip (its raster), or by purpose, part and clip (`${purpose}${part}|${clipId}`). */
+  private readonly slots = new Map<string, Slot>();
   private pass = 0;
   private bytes = 0;
   private budget: number;
@@ -123,55 +143,34 @@ export class TextRasterCache {
    */
   resolve(clipId: ClipId, text: TextContent, style: TextStyle, scale: number, highlight: TextHighlight | null = null): ResolvedText | null {
     this.stats.layers += 1;
-    const bucket = textScaleBucket(scale);
-    const slot = this.slots.get(clipId);
-    if (slot) slot.pass = this.pass;
-    const held = slot?.entry && slot.entry.texture.valid ? slot.entry : null;
-    if (slot && held && slot.text === text && slot.style === style && slot.highlight === highlight && slot.bucket === bucket) {
-      held.lastPass = this.pass;
-      return held;
-    }
-    const layout = (this.deps.layout ?? textLayout)(text, style);
-    if (!layout.raster) {
-      this.setSlot(clipId, text, style, highlight, bucket, null);
-      return null;
-    }
-    const mipmaps = bucket > scale * 1.5;
-    // A highlighted raster is never shared: no key.
-    const key = highlight ? "" : `${contentKey(text)}|${styleKey(style)}|${bucket}${mipmaps ? "m" : ""}`;
-    let entry = key === "" ? undefined : this.entries.get(key);
-    if (entry && !entry.texture.valid) {
-      this.remove(entry);
-      entry = undefined;
-    }
-    if (!entry) {
-      if (!this.deps.fontsReady(style, applyTextCase(text.value, style.textCase))) {
-        this.stats.waiting += 1;
-        // Keep showing what this clip showed (its fonts are loading); the load redraws.
-        if (held) held.lastPass = this.pass;
-        return held;
-      }
-      const started = performance.now();
-      entry = this.rasterize(key, this.fresh(text, style), style, bucket, mipmaps, highlight) ?? undefined;
-      this.stats.lastMs += performance.now() - started;
-      if (!entry) {
-        this.setSlot(clipId, text, style, highlight, bucket, null);
-        return null;
-      }
-      this.stats.rasterizations += 1;
-      this.stats.lastRasterized.push(clipId);
-    }
-    entry.lastPass = this.pass;
-    this.setSlot(clipId, text, style, highlight, bucket, entry);
-    return entry;
+    return this.part(clipId, "all", "", text, style, scale, highlight).entry;
+  }
+
+  /** The atlas of clip `clipId`'s characters, words or lines (an animated text, spec §10.4), as `resolve` gives its raster. */
+  resolveAtlas(clipId: ClipId, text: TextContent, style: TextStyle, scale: number, kind: AtlasUnitKind): ResolvedText | null {
+    this.stats.layers += 1;
+    return this.part(clipId, kind, "", text, style, scale, null).entry;
+  }
+
+  /** The background boxes alone of clip `clipId` (drawn under its animated units); null without any. */
+  resolveBackground(clipId: ClipId, text: TextContent, style: TextStyle, scale: number): ResolvedText | null {
+    return this.part(clipId, "backgrounds", "", text, style, scale, null).entry;
+  }
+
+  /**
+   * Makes `part` of clip `clipId` ahead of time, as a resolve of that part would (a slot of its own
+   * keeps it while passes warm it). True when it rasterized something now.
+   */
+  warm(clipId: ClipId, part: TextPart, text: TextContent, style: TextStyle, scale: number): boolean {
+    return this.part(clipId, part, "warm:", text, style, scale, null).rasterized;
   }
 
   /** Ends a pass: forgets the slots of clips not drawn in it, then keeps the cache within its budget. */
   end(): void {
-    for (const [clipId, slot] of this.slots) {
+    for (const [key, slot] of this.slots) {
       if (slot.pass === this.pass) continue;
       if (slot.entry) this.release(slot.entry);
-      this.slots.delete(clipId);
+      this.slots.delete(key);
     }
     this.evict();
     this.stats.rasters = this.entries.size;
@@ -179,16 +178,16 @@ export class TextRasterCache {
   }
 
   /**
-   * A raster of `text` at exactly `scale` (no bucket) after its fonts loaded, apart from the cache
+   * `part` of `text` at exactly `scale` (no bucket) after its fonts loaded, apart from the cache
    * (Export frame); `release` destroys it. Null when nothing is drawn.
    */
-  async exact(text: TextContent, style: TextStyle, scale: number): Promise<(ResolvedText & { release: () => void }) | null> {
+  async exact(text: TextContent, style: TextStyle, scale: number, part: TextPart = "all"): Promise<(ResolvedText & { release: () => void }) | null> {
     await this.deps.loadFonts(style, applyTextCase(text.value, style.textCase));
     const layout = this.fresh(text, style);
     if (!layout.raster) return null;
-    const entry = this.rasterize("", layout, style, Math.min(MAX_TEXT_SCALE, Math.max(MIN_TEXT_SCALE, scale)), false, null);
+    const entry = this.rasterize("", part, layout, style, Math.min(MAX_TEXT_SCALE, Math.max(MIN_TEXT_SCALE, scale)), false, null);
     if (!entry) return null;
-    return { texture: entry.texture, crop: entry.crop, rect: entry.rect, release: () => entry.texture.destroy() };
+    return { texture: entry.texture, crop: entry.crop, rect: entry.rect, scale: entry.scale, units: entry.units, release: () => entry.texture.destroy() };
   }
 
   /** Drops the rasters of `family` (all when absent; any case): its fonts changed. */
@@ -201,6 +200,8 @@ export class TextRasterCache {
       if (!entry || (entry.own ? !dropped(entry) : this.entries.has(entry.key))) continue;
       if (entry.own) entry.texture.destroy();
       slot.entry = null;
+      // Drawn again when next asked for.
+      slot.bucket = Number.NaN;
     }
     this.stats.rasters = this.entries.size;
     this.stats.bytes = this.bytes;
@@ -220,27 +221,79 @@ export class TextRasterCache {
     this.evict();
   }
 
+  /** `part` of a clip for this pass: the slot's entry when nothing changed, else the cached or a new one. */
+  private part(clipId: ClipId, part: TextPart, purpose: string, text: TextContent, style: TextStyle, scale: number, highlight: TextHighlight | null): { entry: Entry | null; rasterized: boolean } {
+    const bucket = textScaleBucket(scale);
+    // A clip's own raster is keyed by the clip alone (no string built per layer and frame).
+    const slotKey = purpose === "" && part === "all" ? clipId : `${purpose}${part}|${clipId}`;
+    const slot = this.slots.get(slotKey);
+    if (slot) slot.pass = this.pass;
+    const held = slot?.entry && slot.entry.texture.valid ? slot.entry : null;
+    if (slot && slot.text === text && slot.style === style && slot.highlight === highlight && slot.bucket === bucket && (held || slot.entry === null)) {
+      if (held) held.lastPass = this.pass;
+      return { entry: held, rasterized: false };
+    }
+    const layout = (this.deps.layout ?? textLayout)(text, style);
+    if (!layout.raster) {
+      this.setSlot(slotKey, text, style, highlight, bucket, null);
+      return { entry: null, rasterized: false };
+    }
+    const mipmaps = bucket > scale * 1.5;
+    // A highlighted raster is never shared: no key.
+    const key = highlight ? "" : `${contentKey(text)}|${styleKey(style)}|${bucket}${mipmaps ? "m" : ""}${part === "all" ? "" : `|${part}`}`;
+    let entry = key === "" ? undefined : this.entries.get(key);
+    if (entry && !entry.texture.valid) {
+      this.remove(entry);
+      entry = undefined;
+    }
+    let rasterized = false;
+    if (!entry) {
+      if (!this.deps.fontsReady(style, applyTextCase(text.value, style.textCase))) {
+        this.stats.waiting += 1;
+        // Keep showing what this clip showed (its fonts are loading); the load redraws.
+        if (held) held.lastPass = this.pass;
+        return { entry: held, rasterized: false };
+      }
+      const started = performance.now();
+      entry = this.rasterize(key, part, this.fresh(text, style), style, bucket, mipmaps, highlight) ?? undefined;
+      this.stats.lastMs += performance.now() - started;
+      if (!entry) {
+        this.setSlot(slotKey, text, style, highlight, bucket, null);
+        return { entry: null, rasterized: false };
+      }
+      rasterized = true;
+      this.stats.rasterizations += 1;
+      this.stats.lastRasterized.push(clipId);
+    }
+    entry.lastPass = this.pass;
+    this.setSlot(slotKey, text, style, highlight, bucket, entry);
+    return { entry, rasterized };
+  }
+
   private fresh(text: TextContent, style: TextStyle): TextLayout {
     if (this.deps.measure) return this.deps.measure(text, style);
     if (this.deps.layout) return this.deps.layout(text, style);
     return layoutText(text, style, currentMeasurer(), textFallback());
   }
 
-  private rasterize(key: string, layout: TextLayout, style: TextStyle, scale: number, mipmaps: boolean, highlight: TextHighlight | null): Entry | null {
-    const raster = (this.deps.rasterize ?? rasterizeText)(layout, style, scale, highlight);
-    if (!raster) return null;
-    const texture = this.deps.upload(raster.canvas, { mipmaps, label: "text" });
-    const entry: Entry = {
-      key,
-      family: style.fontFamily,
-      texture,
-      crop: { u0: 0, v0: 0, u1: Math.min(1, (raster.rect.width * raster.scale) / texture.width), v1: Math.min(1, (raster.rect.height * raster.scale) / texture.height) },
-      rect: raster.rect,
-      bytes: texture.bytes,
-      refs: 0,
-      lastPass: this.pass,
-      own: highlight !== null,
-    };
+  private rasterize(key: string, part: TextPart, layout: TextLayout, style: TextStyle, scale: number, mipmaps: boolean, highlight: TextHighlight | null): Entry | null {
+    let made: Omit<Entry, "key" | "family" | "bytes" | "refs" | "lastPass" | "own"> | null = null;
+    if (part === "all" || part === "backgrounds") {
+      const raster = (this.deps.rasterize ?? rasterizeText)(layout, style, scale, highlight, part);
+      if (!raster) return null;
+      const texture = this.deps.upload(raster.canvas, { mipmaps, label: "text" });
+      const crop = { u0: 0, v0: 0, u1: Math.min(1, (raster.rect.width * raster.scale) / texture.width), v1: Math.min(1, (raster.rect.height * raster.scale) / texture.height) };
+      made = { texture, crop, rect: raster.rect, scale: raster.scale, units: null };
+    } else {
+      const atlas = (this.deps.atlas ?? buildTextAtlas)(layout, style, scale, part);
+      if (!atlas) return null;
+      const texture = this.deps.upload(atlas.canvas, { mipmaps, label: "text atlas" });
+      const w = texture.width;
+      const h = texture.height;
+      const units = atlas.units.map((unit) => ({ rect: unit.rect, crop: { u0: unit.cell.x / w, v0: unit.cell.y / h, u1: (unit.cell.x + unit.cell.width) / w, v1: (unit.cell.y + unit.cell.height) / h } }));
+      made = { texture, crop: { u0: 0, v0: 0, u1: Math.min(1, atlas.width / w), v1: Math.min(1, atlas.height / h) }, rect: layout.raster ?? { x: 0, y: 0, width: 0, height: 0 }, scale: atlas.scale, units };
+    }
+    const entry: Entry = { ...made, key, family: style.fontFamily, bytes: made.texture.bytes, refs: 0, lastPass: this.pass, own: highlight !== null };
     if (key !== "") {
       this.entries.set(key, entry);
       this.bytes += entry.bytes;
@@ -248,11 +301,11 @@ export class TextRasterCache {
     return entry;
   }
 
-  private setSlot(clipId: ClipId, text: TextContent, style: TextStyle, highlight: TextHighlight | null, bucket: number, entry: Entry | null): void {
-    let slot = this.slots.get(clipId);
+  private setSlot(slotKey: string, text: TextContent, style: TextStyle, highlight: TextHighlight | null, bucket: number, entry: Entry | null): void {
+    let slot = this.slots.get(slotKey);
     if (!slot) {
       slot = { text, style, highlight, bucket, entry: null, pass: this.pass };
-      this.slots.set(clipId, slot);
+      this.slots.set(slotKey, slot);
     }
     if (slot.entry !== entry) {
       if (slot.entry) this.release(slot.entry);

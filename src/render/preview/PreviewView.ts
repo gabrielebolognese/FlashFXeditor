@@ -12,9 +12,10 @@
 //   with `previewSplit` (rolls, slips, slides, spec §6.10) it shows two frames side by side, each
 //   fitted (or at the zoom) in its half of the canvas: two evaluations, one texture pass, one draw.
 //   While a canvas gesture or a properties field scrub runs (spec §7.3, §11, P2), `transforms`,
-//   `opacities`, `crops` and `texts` give the layers' ephemeral values.
+//   `opacities`, `crops`, `texts` and `anims` give the layers' ephemeral values.
 // - Text layers (spec §10.1) are drawn from the text raster cache at the render scale (detail on
-//   zoom re-rasterizes them); Export frame waits for their fonts.
+//   zoom re-rasterizes them); Export frame waits for their fonts. The text clips starting within
+//   TEXT_LOOKAHEAD_SECONDS are rasterized ahead, animation atlases included (spec §10.4, P11).
 //   A pause leaves the playhead where it is, but playback may have held a track's previous layer
 //   there (shuttle speeds deliver every n-th frame): the render after it requests the exact frame.
 //   When the draw list, the viewport and the render scale equal the last ones drawn, the GPU draw is
@@ -47,7 +48,8 @@ import type { LayoutState } from "../../core/store/layoutStore.js";
 import type { PreviewQuality, PreviewSession, SessionState } from "../../core/store/sessionStore.js";
 import { cssColorToRgba } from "../../core/theme/cssColor.js";
 import type { Theme, ThemeBridge } from "../../core/theme/theme.js";
-import { Compositor, type LiveText } from "../compositor/Compositor.js";
+import { secondsToFrames } from "../../core/document/time.js";
+import { Compositor, type LiveAnims, type LiveText } from "../compositor/Compositor.js";
 import type { Composite, DrawList, Layer, TextureLayer } from "../compositor/drawList.js";
 import { DrawListSnapshot } from "../compositor/DrawListSnapshot.js";
 import type { FramePriority } from "../../media/workers/protocol.js";
@@ -58,6 +60,8 @@ import { LayerTextures, type LayerTexturesDeps, type LayerTexturesStats } from "
 import { deviceSizeInto, frameTransformInto, type Size } from "./viewport.js";
 
 const TRANSPARENT: RGBA = { r: 0, g: 0, b: 0, a: 0 };
+/** Text clips starting within this many seconds of the playhead are rasterized ahead (spec §10.4, P11). */
+export const TEXT_LOOKAHEAD_SECONDS = 5;
 
 export interface PreviewViewDeps extends Omit<LayerTexturesDeps, "onChange" | "wantedLod"> {
   renderer: Renderer;
@@ -86,6 +90,8 @@ export interface PreviewViewDeps extends Omit<LayerTexturesDeps, "onChange" | "w
   background?(): RGBA | null;
   /** A Text field scrub's ephemeral texts and styles by clip id (§11), or null. The owner invalidates `preview` when they change. */
   texts?(): ReadonlyMap<ClipId, LiveText> | null;
+  /** An Animation field scrub's ephemeral text animations by clip id (§10.4), or null. The owner invalidates `preview` when they change. */
+  anims?(): ReadonlyMap<ClipId, LiveAnims> | null;
   /** Loads the fonts of `style` for `text` (Export frame); resolves true when it had to wait for them. */
   loadFonts?(style: TextStyle, text: string): Promise<boolean>;
   /** True when playback fell behind on the media this playback (1/2 and 1/4 then play its proxy). */
@@ -332,13 +338,16 @@ export class PreviewView implements RenderView {
       override ? null : (this.deps.opacities?.() ?? null),
       override ? null : (this.deps.crops?.() ?? null),
       override ? null : (this.deps.texts?.() ?? null),
+      override ? null : (this.deps.anims?.() ?? null),
     );
     const background = override ? null : (this.deps.background?.() ?? null);
     if (background) composite.background = background;
     const transform = frameTransformInto(this.transform, preview.zoom, composite, size, this.chrome.margin * dpr, preview.panX, preview.panY);
     const scale = this.detailOf(doc, composite, transform[0], preview, activity);
     this.textRenderScale = this.textScale(composite, transform, size, scale);
-    const list = this.textures.resolve(composite, priority, this.stats.detail.upload, this.textRenderScale);
+    // The text clips about to play are rasterized ahead (their animations' atlases included).
+    const upcoming = override ? [] : this.compositor.upcomingTexts(doc, frame, secondsToFrames(TEXT_LOOKAHEAD_SECONDS, doc.settings.fps));
+    const list = this.textures.resolve(composite, priority, this.stats.detail.upload, this.textRenderScale, upcoming);
     this.showQuality(preview.quality);
     if (priority !== "playback") this.textures.warm(this.compositor.neighbors(doc, frame));
     const shown = this.firstShown;

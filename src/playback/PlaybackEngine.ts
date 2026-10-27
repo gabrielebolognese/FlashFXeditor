@@ -304,6 +304,17 @@ export class PlaybackEngine {
     this.start(1, from, { from, to, returnTo: playhead, loops: false });
   }
 
+  /**
+   * Plays [`from`, `to`) once, then puts the playhead back at `returnTo` (a text animation's preview,
+   * spec §10.4). Clamped to the content.
+   */
+  playRange(from: Frame, to: Frame, returnTo: Frame): void {
+    const start = Math.max(0, from);
+    const end = Math.min(to, contentEnd(this.doc()));
+    if (end <= start) return;
+    this.start(1, start, { from: start, to: end, returnTo, loops: false });
+  }
+
   /** Arrows, K+J / K+L: pause and move the playhead by `frames`. */
   step(frames: Frame): void {
     this.pause();
