@@ -15,6 +15,7 @@ import {
   presetLibrary,
   presetNaming,
   presetSourceClip,
+  presetThumbs,
   renamePreset,
   setDefaultPreset,
   stopLibraryFolder,
@@ -23,13 +24,11 @@ import {
   toggleFavorite,
   type LibraryFolder,
 } from "../../app/presetController.js";
-import { appSettings, fontLibrary, sessionStore, themeBridge } from "../../app/services.js";
-import { fontsVersion } from "../../app/textController.js";
+import { appSettings, sessionStore } from "../../app/services.js";
 import type { TextPreset } from "../../core/document/types.js";
 import { isEditableTarget } from "../../core/keyboard/KeyDispatcher.js";
 import type { PresetScope, SessionState } from "../../core/store/sessionStore.js";
 import { useStoreSelector } from "../../core/store/useStoreSelector.js";
-import { drawPresetThumbnail } from "../../render/text/presetThumbnails.js";
 import { MAX_PRESET_NAME, searchPresets } from "../../text/presets.js";
 import { Button } from "../../ui/Button.js";
 import { ContextMenu, type ContextMenuEntry } from "../../ui/ContextMenu.js";
@@ -63,20 +62,28 @@ export function PresetsActions() {
   );
 }
 
-/** A card's thumbnail: drawn when the preset, the fonts or the card size change. */
+/**
+ * A card's thumbnail. The canvas, its preset and its size go to `presetThumbs`, which draws it in the
+ * FrameScheduler loop (spec §3.4, P3) when one of them or the fonts change; nothing is drawn here.
+ */
 function PresetThumb({ preset }: { preset: TextPreset }) {
   const ref = useRef<HTMLCanvasElement>(null);
-  const fonts = useStoreSelector(fontsVersion, (version) => version);
   useEffect(() => {
     const canvas = ref.current;
     if (!canvas) return;
     // The observer reports the size once at the start, then on every change (P9: no layout reads here).
     const observer = new ResizeObserver(([entry]) => {
-      if (entry) drawPresetThumbnail(canvas, preset, entry.contentRect.width, entry.contentRect.height, window.devicePixelRatio || 1, themeBridge.theme.space[2], fontLibrary);
+      if (entry) presetThumbs.resize(canvas, entry.contentRect.width, entry.contentRect.height);
     });
     observer.observe(canvas);
-    return () => observer.disconnect();
-  }, [preset, fonts]);
+    return () => {
+      observer.disconnect();
+      presetThumbs.detach(canvas);
+    };
+  }, []);
+  useEffect(() => {
+    if (ref.current) presetThumbs.show(ref.current, preset);
+  }, [preset]);
   return <canvas ref={ref} className={styles.canvas} aria-hidden="true" />;
 }
 
