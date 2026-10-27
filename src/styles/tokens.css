@@ -181,6 +181,14 @@
   --canvas-snap-threshold: 6px; /* spec §7.4: in screen space, the same at every zoom */
   --canvas-guide-width: var(--gizmo-line-width);
   --canvas-guide-cap: var(--space-2); /* 6px end caps across a distance span */
+  /* Inline text editing (Batch 29, spec §7.7; the DS has no caret or text selection): the caret is a
+     2px --accent bar as tall as the font's em box, blinking while the editor has the focus (steady
+     without it); the selection highlight is the accent at 40% behind the glyphs (drawn in the text
+     raster, over a background box); the IME composition is underlined in --accent; the box being
+     edited keeps its --accent outline, without handles. */
+  --text-caret-width: var(--space-0);
+  --text-caret-blink: 530ms;
+  --text-selection: rgba(217, 165, 33, 0.4);
 
   /* Timeline (gap: the DS has no timeline metrics; track heights are the spec §6.2 defaults) */
   --timeline-header-width: 216px; /* Batch 16: five 16px header toggles beside the name (176px before) */

@@ -14,6 +14,7 @@ import {
   POOL_BUDGETS,
   previewDev,
   previewOverlay,
+  textEditor,
   previewStats,
   previewView,
   setPreviewOptions,
@@ -375,8 +376,9 @@ export function PreviewPanel() {
     const host = canvasRef.current;
     if (!host) return undefined;
     // The GPU canvas first, the overlay canvas over it, its input on the overlay: zoom and pan first,
-    // then selection and the gizmo (they skip presses a pan takes).
-    const stops = [previewView.mount(host), previewOverlay.mount(host)];
+    // then selection and the gizmo (they skip presses a pan takes); the inline text editor's textarea
+    // over them (it takes no pointer input).
+    const stops = [previewView.mount(host), previewOverlay.mount(host), textEditor.mount(host, styles.inlineText ?? "")];
     const overlay = previewOverlay.element;
     if (overlay) stops.push(viewportInput.attach(overlay), canvasInput.attach(overlay));
     return () => {

@@ -7,6 +7,7 @@
 import type { ClipId, MediaId, RGBA, TextContent, TextStyle, TrackId } from "../../core/document/types.js";
 import type { Mat3 } from "../mat3.js";
 import type { TextureHandle } from "../gpu/renderer.js";
+import type { TextHighlight } from "../text/raster.js";
 
 /** A region of a texture in UV space (0..1), left/top to right/bottom. */
 export interface UvRect {
@@ -82,6 +83,8 @@ export interface TextCompositeLayer {
   scale: number;
   /** Raster px per project px it can show at most (the raster scale cap over `scale`): its "source detail" (§7.1). */
   detail: number;
+  /** The selection highlight while it is edited inline (spec §7.7), drawn in its raster; else null. */
+  highlight: TextHighlight | null;
 }
 
 export type CompositeLayer = MediaLayer | SolidLayer | TextCompositeLayer;

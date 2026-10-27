@@ -3,15 +3,16 @@
 // Bring forward / Send backward (the clip to the adjacent video track, one created if needed), Lock
 // track. Fit, Fill, Center, Flip H / V and Reset transform are the properties quick row's actions
 // (`transform.*`, propertiesController); Delete is `edit.delete`. Esc cancels a canvas or timeline
-// gesture, else leaves crop mode, else the fullscreen preview. Each edit is one command (nudges
-// coalesce, spec §7.3).
+// gesture, else ends inline text editing (committed: focus in the properties panel while editing),
+// else leaves crop mode, else the fullscreen preview. Each edit is one command (nudges coalesce,
+// spec §7.3).
 // TODO(batch 39): Duplicate at +20 px, Copy, Paste.
 import type { ActionRun } from "../core/commands/ActionRegistry.js";
 import type { ClipId } from "../core/document/types.js";
 import { arrangeLayers, type ArrangeDirection } from "../timeline/edit/arrange.js";
 import { nudgeLayers } from "../timeline/edit/transform.js";
 import { exitFullscreen } from "./fullscreen.js";
-import { canvasInput, canvasMenu } from "./previewController.js";
+import { canvasInput, canvasMenu, textEditor } from "./previewController.js";
 import { actions, documentStore, focusScopes } from "./services.js";
 import { timelineView } from "./timelineController.js";
 import { setTracksFlag } from "./trackController.js";
@@ -68,9 +69,10 @@ export function installCanvasController(): () => void {
     actions.register("canvas.bringForward", () => arrange("forward")),
     actions.register("canvas.sendBackward", () => arrange("backward")),
     actions.register("canvas.lockTrack", lockTracks),
-    // Esc (spec §18 "Cancel gesture"): cancels a timeline or canvas gesture, else leaves crop mode
-    // (Batch 26), else the fullscreen preview (§7.8); declined when none, so popovers and the browser get it.
-    actions.register("app.cancel", () => timelineView.cancelGesture() || canvasInput.cancel() || canvasInput.exitCropMode() || exitFullscreen()),
+    // Esc (spec §18 "Cancel gesture"): cancels a timeline or canvas gesture, else ends inline text
+    // editing (§7.7), else leaves crop mode (Batch 26), else the fullscreen preview (§7.8); declined
+    // when none, so popovers and the browser get it.
+    actions.register("app.cancel", () => timelineView.cancelGesture() || canvasInput.cancel() || textEditor.end(true) || canvasInput.exitCropMode() || exitFullscreen()),
   ];
   return () => {
     for (const stop of stops) stop();

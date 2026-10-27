@@ -8,7 +8,9 @@
 // Proxies (spec §9.5): the frame service opens cache/proxies/<id>.mp4 of media whose proxy is ready
 // (its sample index cached apart), the preview and the engine pick the lod of the quality mode, and
 // a media whose playback falls behind gets a proxy queued when it has no proxy decision yet.
-import type { MediaId } from "../core/document/types.js";
+// Inline text editing (spec §7.7, `textEditor`): its textarea sits over the canvases; the preview and
+// the canvas show its draft over the other live values (`liveTexts`, `liveTransforms`).
+import type { ClipId, MediaId, Transform } from "../core/document/types.js";
 import { detectPlatform } from "../core/keyboard/keys.js";
 import { createStore } from "../core/store/createStore.js";
 import type { PreviewSession } from "../core/store/sessionStore.js";
@@ -25,6 +27,8 @@ import { formatFps } from "../project/projectPresets.js";
 import { GpuDevice } from "../render/gpu/GpuDevice.js";
 import { WebGpuRenderer } from "../render/gpu/WebGpuRenderer.js";
 import { CanvasEditInput } from "../render/preview/CanvasEditInput.js";
+import type { LiveText } from "../render/compositor/Compositor.js";
+import { InlineTextEditor, type DraftText } from "../render/preview/InlineTextEditor.js";
 import { NO_CROP_MODE, type CropModeState } from "../render/preview/cropGizmo.js";
 import { PreviewOverlayView } from "../render/preview/PreviewOverlayView.js";
 import { PreviewStatsOverlay } from "../render/preview/PreviewStatsOverlay.js";
@@ -37,7 +41,7 @@ import { attachAudio, audioScheduler, detachAudio, meterView } from "./audioCont
 import { toggleFullscreen } from "./fullscreen.js";
 import { liveEdit, setLiveCrops } from "./liveEdit.js";
 import { requestProxyIfUndecided } from "./mediaController.js";
-import { actions, audioClock, documentStore, fontLibrary, idleQueue, layoutStore, scheduler, sessionStore, themeBridge, workerPool } from "./services.js";
+import { actions, audioClock, documentStore, focusScopes, fontLibrary, idleQueue, layoutStore, scheduler, sessionStore, themeBridge, workerPool } from "./services.js";
 import { timelineView } from "./timelineController.js";
 
 const MB = 1024 * 1024;
@@ -86,12 +90,12 @@ export const previewView: PreviewView = new PreviewView({
   },
   // A trim shows its new edge frame live (spec §6.10).
   override: () => timelineView.trimPreview,
-  // A canvas gesture (spec §7.3) or a properties field scrub (§11) shows its values live (P2).
+  // A canvas gesture (spec §7.3), a properties field scrub (§11) or inline text editing (§7.7) shows its values live (P2).
   transforms: () => canvasInput.transforms,
   opacities: () => liveEdit.getState().opacities,
   crops: () => liveEdit.getState().crops,
   background: () => liveEdit.getState().background,
-  texts: () => liveEdit.getState().texts,
+  texts: () => liveTexts(),
   // Export frame waits for the fonts of its text layers.
   loadFonts: async (style, text) => {
     if (fontLibrary.ready(style, text)) return false;
@@ -143,14 +147,88 @@ export const canvasInput: CanvasEditInput = new CanvasEditInput({
   // A drag on the canvas pauses playback (the gesture edits the frame on screen).
   onDragStart: () => playbackEngine.pause(),
   onContextMenu: (request) => canvasMenu.set(request),
-  // A properties field scrub moves the gizmo with the layer (spec §11).
-  live: () => liveEdit.getState().transforms,
+  // A properties field scrub moves the gizmo with the layer (spec §11); inline editing moves its box.
+  live: () => liveTransforms(),
   // Crop handle drags and Crop field scrubs share the live crops (the Crop fields follow a drag).
   crops: { read: () => liveEdit.getState().crops, write: setLiveCrops },
-  // A Text field scrub resizes text boxes live.
-  texts: () => liveEdit.getState().texts,
+  // A Text field scrub resizes text boxes live, as the draft of inline editing does.
+  texts: () => liveTexts(),
   cropMode,
+  textEditor: {
+    get editing() {
+      return textEditor.editing;
+    },
+    begin: (clipId, at) => textEditor.begin(clipId, at),
+    end: (commit) => textEditor.end(commit),
+    contains: (point, reach) => textEditor.contains(point, reach),
+    press: (point, shift) => textEditor.press(point, shift),
+    drag: (point) => textEditor.drag(point),
+    release: () => textEditor.release(),
+    scene: () => textEditor.scene(),
+  },
 });
+
+/** Where a press or focus keeps inline text editing on: the canvas, the properties panel and the popovers and menus over the app. */
+function keepsTextEditing(target: EventTarget | null): boolean {
+  if (!(target instanceof Element)) return false;
+  return target === previewOverlay.element || target.closest('[data-scope="properties"], [role="dialog"], [role="menu"], [role="listbox"]') !== null;
+}
+
+/** Inline text editing on the canvas (spec §7.7, §10.2). */
+export const textEditor: InlineTextEditor = new InlineTextEditor({
+  document: documentStore,
+  session: sessionStore,
+  scheduler,
+  theme: themeBridge,
+  platform: detectPlatform(),
+  placement: () => previewView.placement,
+  textScale: () => previewView.textRenderScale,
+  // The clip as a Text field scrub shows it (the draft goes over it).
+  shown: (clipId) => {
+    const clip = documentStore.getState().clips[clipId];
+    if (clip?.kind !== "text") return null;
+    const live = liveEdit.getState();
+    const text = live.texts?.get(clipId);
+    return { text: text?.text ?? clip.text, style: text?.style ?? clip.style, transform: live.transforms?.get(clipId) ?? clip.transform };
+  },
+  commit: (command) => documentStore.dispatch(command),
+  keeps: keepsTextEditing,
+  // Editing owns the keyboard (a press on the text goes to the canvas first); out of it the keyboard
+  // goes back to the preview, unless a press already took it elsewhere.
+  onEditing: (clipId) => {
+    if (clipId !== null) focusScopes.set("textEditing");
+    else if (focusScopes.scope === "textEditing") focusScopes.set("preview");
+  },
+});
+
+let textsMemo: { base: ReadonlyMap<ClipId, LiveText> | null; draft: DraftText | null; value: ReadonlyMap<ClipId, LiveText> | null } = { base: null, draft: null, value: null };
+let transformsMemo: { base: ReadonlyMap<ClipId, Transform> | null; draft: DraftText | null; value: ReadonlyMap<ClipId, Transform> | null } = { base: null, draft: null, value: null };
+
+/** The live texts: a canvas text handle drag's or a Text field scrub's, with the inline draft over them (the same map while nothing changed). */
+function liveTexts(): ReadonlyMap<ClipId, LiveText> | null {
+  const base = canvasInput.texts ?? liveEdit.getState().texts;
+  const draft = textEditor.live();
+  if (!draft) return base;
+  if (textsMemo.base !== base || textsMemo.draft !== draft) {
+    const value = new Map<ClipId, LiveText>(base ?? []);
+    value.set(draft.clipId, { text: draft.text, style: draft.style, highlight: draft.highlight });
+    textsMemo = { base, draft, value };
+  }
+  return textsMemo.value;
+}
+
+/** The live transforms of field scrubs, with the inline draft's box (moved by its anchor) over them. */
+function liveTransforms(): ReadonlyMap<ClipId, Transform> | null {
+  const base = liveEdit.getState().transforms;
+  const draft = textEditor.live();
+  if (!draft) return base;
+  if (transformsMemo.base !== base || transformsMemo.draft !== draft) {
+    const value = new Map<ClipId, Transform>(base ?? []);
+    value.set(draft.clipId, draft.transform);
+    transformsMemo = { base, draft, value };
+  }
+  return transformsMemo.value;
+}
 export const previewStats = new PreviewStatsOverlay({ scheduler, preview: previewView, pool: texturePool, gpu: gpuDevice, frames: frameService, playback: playbackEngine, canvas: canvasInput, text: textRasters });
 /** The 2D canvas over the preview: overlays (spec §7.6), the selection and the gizmo (§7.3). */
 export const previewOverlay = new PreviewOverlayView({ scheduler, layout: layoutStore, session: sessionStore.state, document: documentStore, theme: themeBridge, preview: previewView, gizmo: canvasInput });
@@ -215,6 +293,7 @@ export function startGpu(adapter: GPUAdapter): void {
       preview: previewView,
       canvas: canvasInput,
       overlay: previewOverlay,
+      textEditor,
       frames: frameService,
       images: imageService,
       playback: playbackEngine,

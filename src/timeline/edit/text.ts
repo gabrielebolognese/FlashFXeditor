@@ -5,22 +5,36 @@
 //   and left / center / right. The clip's position moves so that point stays where it was on the
 //   frame (rotation and scale included); the default (center, middle) grows evenly.
 // - `setTexts` writes edits as one command `clip.text` (one undo step; a field's arrow steps coalesce
-//   by key). Locked clips and clips that would not change are skipped.
+//   by key). Locked clips and clips that would not change are skipped. An edit may bring its own
+//   transform (a text box handle drag keeps another point in place). A clip still named after its
+//   text (as created) keeps being named after it; a name the user gave stays.
+// - `addTitle` (spec §10.2, `+ Title` / `+ Subtitle`): a text clip at the playhead on the topmost
+//   video track when it is free there (unlocked, shown), else on a new video track above the others;
+//   3 s long, or the rest of the video clip under the playhead ("match clip under playhead"); the
+//   Title centered, or, created while a text clip is selected, 40 px below that one instead (stacked
+//   titles do not overlap); the Subtitle's bottom edge always in the lower third (T, then Shift+T with
+//   the title still selected, gives a subtitle under it in the lower third).
 // - `addTextClip` puts a new text clip at a frame on the topmost video track free there, or on a new
-//   video track above the others (the dev command; Batch 29's `+ Title` decides its own placement).
+//   video track above the others (the dev command).
 import type { Draft } from "immer";
 import { addTrack } from "../../core/commands/basicCommands.js";
 import type { Command } from "../../core/commands/command.js";
 import { emptyTrack, nextTrackName } from "../../core/document/project.js";
-import type { ClipId, Frame, Project, TextBox, TextClip, TextContent, TextStyle, Transform } from "../../core/document/types.js";
+import { secondsToFrames } from "../../core/document/time.js";
+import type { ClipId, Frame, Project, TextBox, TextClip, TextContent, TextStyle, Track, Transform } from "../../core/document/types.js";
 import { textLayout } from "../../render/text/layoutCache.js";
-import { DEFAULT_TEXT_BOX, DEFAULT_TEXT_STYLE, firstLine, textContent } from "../../text/style.js";
-import { clipsInRange, isClipLocked } from "../model/queries.js";
-import { IDENTITY_TRANSFORM, layerPoint, type Size } from "./transform.js";
+import { DEFAULT_TEXT_BOX, DEFAULT_TEXT_STYLE, firstLine, textContent, titleDefaults, type TitleKind } from "../../text/style.js";
+import { clipAtFrame, clipsInRange, isClipLocked } from "../model/queries.js";
+import { IDENTITY_TRANSFORM, layerContent, layerCorners, layerPoint, type Size } from "./transform.js";
 
 export interface TextEdit {
   text: TextContent;
   style: TextStyle;
+}
+
+/** A text clip's edit for `setTexts`: new content and/or style, and the transform to take (else the anchored one). */
+export interface TextEditInput extends Partial<TextEdit> {
+  transform?: Transform;
 }
 
 const ALIGN_FRACTION = { left: 0, center: 0.5, right: 1 } as const;
@@ -40,10 +54,11 @@ export function keepAnchored(transform: Transform, before: Size, after: Size, st
   return { ...transform, x: transform.x + from.x - to.x, y: transform.y + from.y - to.y };
 }
 
-/** A text clip after `edit`: its new content and style, and the transform that keeps its anchored point in place. */
-export function textEdit(project: Project, clip: TextClip, edit: Partial<TextEdit>, transform: Transform = clip.transform): TextEdit & { transform: Transform } {
+/** A text clip after `edit`: its new content and style, and the transform that keeps its anchored point in place (or the edit's own). */
+export function textEdit(project: Project, clip: TextClip, edit: TextEditInput, transform: Transform = clip.transform): TextEdit & { transform: Transform } {
   const text = edit.text ?? clip.text;
   const style = edit.style ?? clip.style;
+  if (edit.transform) return { text, style, transform: edit.transform };
   const before = textLayout(clip.text, clip.style);
   const after = textLayout(text, style);
   return { text, style, transform: keepAnchored(transform, before, after, style, project.settings) };
@@ -60,7 +75,7 @@ const sameJson = (a: unknown, b: unknown) => a === b || JSON.stringify(a) === JS
  * `edits` (new content and/or style by clip id) as one command `clip.text`, or null when nothing
  * changes. Clips that are gone, locked or not text are skipped.
  */
-export function setTexts(project: Project, edits: ReadonlyMap<ClipId, Partial<TextEdit>>, options: { label: string; coalesceKey?: string }): Command | null {
+export function setTexts(project: Project, edits: ReadonlyMap<ClipId, TextEditInput>, options: { label: string; coalesceKey?: string }): Command | null {
   const writes: [ClipId, TextEdit & { transform: Transform }][] = [];
   let timeline = false;
   for (const [id, edit] of edits) {
@@ -80,6 +95,7 @@ export function setTexts(project: Project, edits: ReadonlyMap<ClipId, Partial<Te
     run(draft) {
       for (const [id, next] of writes) {
         const clip = draft.clips[id] as Draft<TextClip>;
+        if (clip.name === textClipName(clip.text, clip.style)) clip.name = textClipName(next.text, next.style);
         clip.text = structuredClone(next.text);
         clip.style = structuredClone(next.style);
         clip.transform = structuredClone(next.transform);
@@ -122,15 +138,87 @@ export function addTextClip(project: Project, frame: Frame, duration: Frame, new
   const length = Math.max(1, Math.round(duration));
   const videos = project.tracks.filter((track) => track.kind === "video");
   const free = [...videos].reverse().find((track) => !track.locked && clipsInRange(project, track.id, start, start + length).length === 0);
-  const newTrack = free ? null : emptyTrack(newId(), "video", nextTrackName(project.tracks, "video"));
-  const trackId = free?.id ?? (newTrack as NonNullable<typeof newTrack>).id;
+  return insertTextClip(project, free ?? null, start, length, newId, fields, "Add text");
+}
+
+/** The default length of a title (spec §10.2). */
+export const TITLE_SECONDS = 3;
+/** The gap between a selected text clip and a title created under it (Batch 29), in project px. */
+export const TITLE_STACK_GAP = 40;
+/** Where the Subtitle's bottom edge sits, as a fraction of the frame height: in the lower third (spec §10.2). */
+export const SUBTITLE_BOTTOM = 0.78;
+
+export interface TitleOptions {
+  kind: TitleKind;
+  playhead: Frame;
+  /** "Match clip under playhead" (spec §10.2, an app setting, on by default). */
+  matchClip: boolean;
+  /** A selected text clip: a new Title goes TITLE_STACK_GAP px below it. */
+  below?: ClipId | null;
+}
+
+/** The topmost video clip under `frame` on a shown video track, or null. */
+function videoUnder(project: Project, frame: Frame): Track | null {
+  const videos = project.tracks.filter((track) => track.kind === "video" && !track.hidden);
+  for (let i = videos.length - 1; i >= 0; i--) {
+    const track = videos[i] as Track;
+    if (clipAtFrame(project, track.id, frame)?.kind === "video") return track;
+  }
+  return null;
+}
+
+/** A title's length in frames (spec §10.2): the rest of the video clip under the playhead when matching, else TITLE_SECONDS. */
+export function titleDuration(project: Project, playhead: Frame, matchClip: boolean): Frame {
+  const fallback = secondsToFrames(TITLE_SECONDS, project.settings.fps);
+  if (!matchClip) return fallback;
+  const track = videoUnder(project, playhead);
+  const clip = track ? clipAtFrame(project, track.id, playhead) : null;
+  return clip ? Math.max(1, clip.start + clip.duration - playhead) : fallback;
+}
+
+/** Where a new title sits: the Subtitle in the lower third, a Title under the selected text clip `below` or centered. */
+function titleTransform(project: Project, kind: TitleKind, box: Size, below: ClipId | null | undefined): Transform {
+  const frame = project.settings;
+  const over = below && kind === "title" ? project.clips[below] : undefined;
+  const content = over?.kind === "text" ? layerContent(project, over) : null;
+  if (over?.kind === "text" && content) {
+    const corners = layerCorners(over.transform, content, frame);
+    const xs = corners.map((p) => p.x);
+    const bottom = Math.max(...corners.map((p) => p.y));
+    const centerX = (Math.min(...xs) + Math.max(...xs)) / 2;
+    return { ...IDENTITY_TRANSFORM, x: Math.round(centerX - frame.width / 2), y: Math.round(bottom + TITLE_STACK_GAP + box.height / 2 - frame.height / 2) };
+  }
+  if (kind === "subtitle") return { ...IDENTITY_TRANSFORM, y: Math.round(SUBTITLE_BOTTOM * frame.height - box.height / 2 - frame.height / 2) };
+  return { ...IDENTITY_TRANSFORM };
+}
+
+/**
+ * `+ Title` / `+ Subtitle` (spec §10.2): a new text clip with the default Title or Subtitle (content,
+ * style, box) at the playhead. One command ("Add title" / "Add subtitle"); the new clip's id.
+ */
+export function addTitle(project: Project, options: TitleOptions, newId: () => string): { command: Command; clipId: ClipId } {
+  const start = Math.max(0, Math.round(options.playhead));
+  const length = titleDuration(project, start, options.matchClip);
+  const defaults = titleDefaults(options.kind, project.settings);
+  const videos = project.tracks.filter((track) => track.kind === "video");
+  const top = videos.at(-1);
+  const free = top && !top.locked && !top.hidden && clipsInRange(project, top.id, start, start + length).length === 0 ? top : null;
+  const box = textLayout(textContent(defaults.value, defaults.box), defaults.style);
+  const transform = titleTransform(project, options.kind, box, options.below);
+  return insertTextClip(project, free, start, length, newId, { ...defaults, transform }, options.kind === "title" ? "Add title" : "Add subtitle");
+}
+
+/** The command adding a text clip on `track`, or on a new video track above the others when null. */
+function insertTextClip(project: Project, track: Track | null, start: Frame, length: Frame, newId: () => string, fields: { value: string; style?: TextStyle; box?: TextBox; transform?: Transform }, label: string): { command: Command; clipId: ClipId } {
+  const newTrack = track ? null : emptyTrack(newId(), "video", nextTrackName(project.tracks, "video"));
+  const trackId = track?.id ?? (newTrack as NonNullable<typeof newTrack>).id;
   const clip = newTextClip({ id: newId(), trackId, start, duration: length, ...fields });
   const trackCommand = newTrack ? addTrack(newTrack) : null;
   return {
     clipId: clip.id,
     command: {
       id: "clip.addText",
-      label: "Add text",
+      label,
       affects: ["clips", "timeline", "composite", "text", ...(newTrack ? (["tracks"] as const) : [])],
       run(draft, ctx) {
         trackCommand?.run(draft, ctx);

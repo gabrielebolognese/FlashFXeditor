@@ -10,12 +10,6 @@ export interface PlannedCommand {
 }
 
 export const PLANNED_COMMANDS: Readonly<Record<string, PlannedCommand>> = {
-  // Batch 29: titles, subtitles, inline text editing.
-  "add.title": { batch: 29, label: "Add title" },
-  "add.subtitle": { batch: 29, label: "Add subtitle" },
-  "text.edit": { batch: 29, label: "Edit text" },
-  "text.commit": { batch: 29, label: "Commit text editing" },
-  "text.cancel": { batch: 29, label: "Cancel text editing" },
   // Batch 36: transitions.
   "edit.defaultTransition": { batch: 36, label: "Default transition" },
   // Batch 39: clipboard (Duplicate, Mod+D, is registered since Batch 25).

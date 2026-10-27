@@ -216,7 +216,7 @@ export class LayerTextures {
         continue;
       }
       if (layer.kind === "text") {
-        const resolved = this.deps.text?.resolve(layer.clipId, layer.text, layer.style, this.textScale * layer.scale) ?? null;
+        const resolved = this.deps.text?.resolve(layer.clipId, layer.text, layer.style, this.textScale * layer.scale, layer.highlight) ?? null;
         if (resolved) {
           const shown = (this.textLayers[pane][this.textCount] ??= newTextureLayer());
           this.textCount += 1;

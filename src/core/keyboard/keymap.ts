@@ -132,8 +132,8 @@ export const DEFAULT_KEYMAP: readonly KeyBinding[] = [
   { id: "canvas.zoom200", keys: ["Mod+2"], scopes: PV },
   { id: "preview.toggleFullscreen", keys: ["F"], scopes: G },
 
-  // Text
-  // TODO(batch 29): `when` the selection is a text clip.
+  // Text (spec §7.7): Enter edits the selected text clip (declined without one); Mod+Enter and Esc
+  // both commit and exit ("Esc commits and exits", §10.2 "Esc keeps the clip with the typed content").
   { id: "text.edit", keys: ["Enter"], scopes: TL_PV },
   { id: "text.commit", keys: ["Mod+Enter"], scopes: ["textEditing"] },
   { id: "text.cancel", keys: ["Escape"], scopes: ["textEditing"] },

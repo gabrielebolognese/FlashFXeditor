@@ -17,6 +17,7 @@ import { useMemo, useState, type ChangeEvent } from "react";
 import { liveEdit } from "../../app/liveEdit.js";
 import { rememberColor } from "../../app/propertiesController.js";
 import { appSettings, documentStore, fontLibrary } from "../../app/services.js";
+import { textEditor } from "../../app/previewController.js";
 import { editTexts, previewTexts, type TextChange } from "../../app/textController.js";
 import { systemFonts } from "../../app/fontController.js";
 import { formatHexColor, parseHexColor } from "../../core/document/color.js";
@@ -44,7 +45,8 @@ import { MIXED, NONE, SKIP, useClipsShared, type Shared } from "./useShared.js";
 // the box (auto size, or a fixed width that wraps). Every edit is one undo step over all the selected
 // text clips; mixed values show `--`. Number fields are bound outside React (textBinding.ts): a label
 // scrub shows live and re-rasterizes only those layers (P1, P2, P11). Content typing coalesces into
-// one step per burst. TODO(batch 29): inline editing on the canvas. TODO(batch 30): Save as preset.
+// one step per burst; while the text is edited on the canvas (spec §7.7) the content shows the draft,
+// and focusing it ends that editing first (committed). TODO(batch 30): Save as preset.
 
 const DEPS: TextBindingDeps = { document: documentStore, live: liveEdit };
 
@@ -123,10 +125,15 @@ const CASES: ChoiceProps<TextCase>["options"] = [
   { value: "title", label: "Title case", text: "Ab" },
 ];
 
+const selectInline = (state: { clipId: ClipId | null; value: string }) => state;
+
 /** The content: typing edits every selected text clip live, one undo step per burst of typing. */
 function ContentField({ ids }: { ids: readonly ClipId[] }) {
   const value = useClipsShared(ids, getValue);
-  const shown = typeof value === "string" ? value : "";
+  // Edited on the canvas: its draft.
+  const inline = useStoreSelector(textEditor.state, selectInline);
+  const drafting = inline.clipId !== null && ids.includes(inline.clipId);
+  const shown = drafting ? inline.value : typeof value === "string" ? value : "";
   // While the field has the focus it shows what was typed (the document follows it, one burst at a time).
   const [draft, setDraft] = useState(shown);
   const [editing, setEditing] = useState(false);
@@ -143,6 +150,8 @@ function ContentField({ ids }: { ids: readonly ClipId[] }) {
       aria-label="Text"
       spellCheck={false}
       onFocus={() => {
+        // One editor of the content at a time: the canvas's commits first.
+        textEditor.end(true);
         setDraft(shown);
         setEditing(true);
       }}

@@ -7,7 +7,7 @@ describe("planned commands", () => {
     const ids = new Set(DEFAULT_KEYMAP.map((binding) => binding.id));
     for (const [id, planned] of Object.entries(PLANNED_COMMANDS)) {
       expect(ids.has(id), id).toBe(true);
-      expect(planned.batch, id).toBeGreaterThan(27);
+      expect(planned.batch, id).toBeGreaterThan(29);
       expect(planned.label.length, id).toBeGreaterThan(0);
     }
   });
@@ -17,7 +17,8 @@ describe("planned commands", () => {
     expect(plannedMessage("canvas.nudgeLeft")).toBeNull();
     expect(plannedMessage("edit.freezeFrame")).toBeNull();
     expect(plannedMessage("edit.punchZoom")).toBeNull();
-    expect(plannedMessage("add.title")).toBe("Add title: coming in Batch 29");
+    expect(plannedMessage("add.title")).toBeNull();
+    expect(plannedMessage("text.edit")).toBeNull();
     expect(plannedMessage("marker.add")).toBeNull();
     expect(plannedMessage("clipboard.paste")).toBe("Paste: coming in Batch 39");
     expect(plannedMessage("timeline.zoomToSelection")).toBeNull();

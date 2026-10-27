@@ -51,6 +51,14 @@ describe("text layers in the compositor (spec §10.1)", () => {
     const shown = compositor.evaluate(doc, 5, null, null, null, live).layers[0] as TextCompositeLayer;
     expect(shown.text.value).toBe("abcd");
     expect(shown.style.fontSize).toBe(50);
+    expect(shown.highlight).toBeNull();
+  });
+
+  it("carries an inline edit's selection highlight to the layer (spec §7.7)", () => {
+    const highlight = { rects: [{ x: 0, y: 0, width: 55, height: 120 }], color: "gold" };
+    const live = new Map([["t", { text: textContent("ab"), style: style(), highlight }]]);
+    const layer = new Compositor().evaluate(project(), 5, null, null, null, live).layers[0] as TextCompositeLayer;
+    expect(layer.highlight).toBe(highlight);
   });
 
   it("draws nothing for an empty text", () => {
@@ -88,7 +96,7 @@ describe("text layers in the preview's textures", () => {
     const list = textures.resolve(composite, "idle", 0, 0.5);
     expect(text.begin).toHaveBeenCalledTimes(1);
     expect(text.end).toHaveBeenCalledTimes(1);
-    expect(text.resolve).toHaveBeenCalledWith("t", expect.objectContaining({ value: "ab" }), expect.objectContaining({ fontSize: 100 }), 1);
+    expect(text.resolve).toHaveBeenCalledWith("t", expect.objectContaining({ value: "ab" }), expect.objectContaining({ fontSize: 100 }), 1, null);
     const layer = list.layers[0] as TextureLayer;
     expect(layer.texture).toBe(resolved.texture);
     expect(layer.crop).toEqual(resolved.crop);
