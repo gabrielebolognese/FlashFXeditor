@@ -3411,3 +3411,40 @@ Why each dependency exists (Batch rule 8).
         - `extra.mjs` 23/23 (incl. the project preset written to `presets/text/` and read back after reopening), `smoke.mjs` (13 thumbnails drawn, no console errors).
         - `p1.mjs`: 613 frames, mean 16.66 ms, p95 17.1, none over 20 ms, 0 text rasterizations, 2 React commits. A clip drag: 0 commits until the release.
     - The first `acc.mjs` run failed 1h-1k because an earlier `p1.mjs` run had left the starter "Big number" favorited (two chips). `acc.mjs` now turns favorites off at its start. It then passed 32/32 right after a `p1.mjs` run.
+- review: accepted
+  - `npm run check` is green on my run: typecheck, lint plus the CSS color check, 1459 unit tests in 148 files, 3 perf tests, and the build (832.56 kB JS / 268.88 kB gzip, 68.06 kB CSS; the >500 kB chunk warning is the logged Batch 45 follow-up). These match the fix-attempt's numbers.
+  - 6. Every problem in the earlier `review: rejected` list is fixed:
+    - Rejection 1 (thumbnails outside the scheduler):
+      - `src/panels/media/PresetThumbPainter.ts:28` registers on `mediaThumbs`. The scheduler keeps a set of views per flag (`FrameScheduler.register`), so `PosterPainter` stays registered too.
+      - `show`, `resize` and `redrawAll` only mark cards dirty and invalidate. `render()` (`:60-66`) draws each dirty card once, at its latest preset and size, and skips cards with no preset or a 0 x 0 size.
+      - `PresetThumb` (`src/panels/media/PresetsTab.tsx:69-87`) no longer draws. The ResizeObserver hands sizes to `presetThumbs.resize` (`:76`), an effect hands the preset to `show` (`:85`), and unmounting calls `detach` (`:81`). The font reload goes through `fontsVersion.subscribe(() => presetThumbs.redrawAll())` (`src/app/presetController.ts:623`) rather than a React selector, so a font load no longer re-renders the cards.
+      - `PresetThumbPainter.test.ts:42-124` adds the tests the rejection asked for: a burst of sizes draws once per frame at the last size, a detached card is not drawn even with a draw pending, a hidden card is skipped, `redrawAll` draws each card once, and `dispose` unregisters.
+    - Rejection 2: the stale `TODO(batch 30)` in `src/panels/properties/TextSection.tsx` is gone. A grep finds no `TODO(batch 30)` (or older tag) left in `src/`.
+    - Non-blocking race:
+      - Fixed. The read merges what it found with the current list (`presetController.ts:293`). The queued write writes `list("project")` when it runs (`:147`), queued behind the read on `projectWrites` (`:284`, `:139`).
+      - I swapped in the pre-fix `presetController.ts` (from `f398ead`) and ran `src/app/presetController.test.ts:104`. It fails as the fix-attempt says (`expected [ 'a', 'b' ] to deeply equal [ 'a', 'b', 'c' ]`). With HEAD restored it passes in the full run.
+  - 1. Every acceptance item is covered:
+    - Acceptance 1 (Save as preset, card, favorite chip, chip click):
+      - Tests: `presets.test.ts:105` (`presetFromClip` / `presetUpdatedFromClip`), `:117` (prefilled name), `:147` (8 favorite chips) and `text.test.ts` ("adds a title with a preset's look, preset id, label and length"; "links a clip to the preset it was saved as").
+      - Browser runs: the entry's `acc.mjs` 32/32, including the red and black thumbnail pixels after the fix.
+      - Pending manual checks 1-2 give the steps.
+    - Acceptance 2 (Update preset, other clips keep their style, tooltip):
+      - Tests: `presets.test.ts:91` (`presetDiffers`) and `:105`; `text.test.ts` (Apply keeps content, timing and position).
+      - The tooltip (`QuickActions.tsx:132`) reads `Update "Name": saves this clip's style into the preset. Other clips that use "Name" keep their own style until you apply the preset to them again.`
+      - Pending manual check 3.
+    - Acceptance 3 (default subtitle, Shift+T): `recentProjects.test.ts:176` (the `defaultSubtitlePreset` setting, null = built-in) and `text.test.ts` (`addTitle` with a preset's look). Pending manual check 4.
+    - Acceptance 4 (export, delete, import): `presets.test.ts:168` and `:183` (round trip of an export file). Pending manual check 5.
+  - 2. Nothing from a later batch was built. The entry has no `Do not build yet` list.
+    - Animations stay opaque `TextAnim` values (Batch 31).
+    - `applyPreset` takes text clips only (captions are Batch 32).
+    - The library folder strip stands in for the settings panel (Batch 42), as a recorded deviation.
+    - The toolbar chips are §6.1 item 4. The §20.2 preset bar (Batch 52) is not built: no `sampleText`, no Alt+1..9, no bar.
+  - 3. There is no color, font or size literal outside the tokens file. The fix adds no CSS. `--preset-chip-max-width` lives in `tokens.css:147`, the 1 px hairlines match the existing CSS, and the starter colors and sizes are content values (spec §10.3).
+  - 4. EDITOR_SPEC §3 and §4 hold:
+    - Every on-screen canvas of the batch now draws in the scheduler loop.
+    - The card hover is a `liveEdit` preview with no React state (`hoverPreset` from pointer handlers).
+    - Apply, the Save as preset link and a card drop are one command each.
+    - `defaultDuration` becomes whole frames through `usToFrame`.
+    - The batch adds no media work.
+  - 5. Every TODO in `src/` has a `(batch NN)` tag (a grep over `src/` found none untagged).
+  - Note (not blocking): the painter reads `devicePixelRatio` at draw time, but nothing redraws the cards when only the ratio changes (browser zoom, or moving the window to another screen) while their CSS size stays the same. The thumbnails then stay at the old resolution until the next preset, size or font change. The draw before the fix behaved the same way. This fits the Batch 46 real-screen review (thumbnails at dpr 2).
