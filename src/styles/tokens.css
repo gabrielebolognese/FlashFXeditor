@@ -148,6 +148,7 @@
   /* Captions tab cue rows (Batch 32; the DS has no cue list): two body lines of text and the times. */
   --cue-row-height: 48px;
   --cue-time-width: calc(3 * var(--space-6) + var(--space-3)); /* 80px: the toolbar timecode field's width */
+  --cue-text-height: calc(2 * var(--type-body-line) + 2 * var(--space-0) + 2px); /* 38px: two body lines, their padding, the 1px borders */
   --type-badge: 500 10px / 12px var(--font-mono); /* DS chips: 9.5-10px */
 
   /* Preview (gap): space kept around the letterboxed frame at Fit */
