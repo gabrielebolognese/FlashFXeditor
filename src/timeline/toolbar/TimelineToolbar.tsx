@@ -1,10 +1,12 @@
 import { Ellipsis, Gauge } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { addPresetClip, presetLibrary, type PresetLibrary } from "../../app/presetController.js";
 import { actions, sessionStore } from "../../app/services.js";
 import { bindTimecode, bindZoomSlider, timelineDev } from "../../app/timelineController.js";
 import type { SessionState } from "../../core/store/sessionStore.js";
 import { useStoreSelector } from "../../core/store/useStoreSelector.js";
+import { favoriteChips } from "../../text/presets.js";
 import { IconButton } from "../../ui/IconButton.js";
 import { useDismiss } from "../../ui/useDismiss.js";
 import styles from "./TimelineToolbar.module.css";
@@ -94,8 +96,32 @@ function DevStatsToggle() {
   return <IconButton icon={Gauge} label="Timeline stats (dev)" pressed={stats} onClick={toggleStats} />;
 }
 
+/** The favorite chips as `id name` lines: a string, so the toolbar renders only when they change. */
+const selectChips = (library: PresetLibrary) =>
+  favoriteChips(library.global, library.project)
+    .map((preset) => `${preset.id}\t${preset.name}`)
+    .join("\n");
+
+/**
+ * Favorite text presets (spec §6.1, §10.2): up to 8 chips after the add buttons, following the Presets
+ * tab live. A click adds a text clip with the preset at the playhead and edits it, like `+ Title`.
+ */
+function FavoriteChips() {
+  const chips = useStoreSelector(presetLibrary, selectChips);
+  if (chips === "") return null;
+  return (
+    <span className={styles.chips}>
+      {chips.split("\n").map((line) => {
+        const [id = "", name = ""] = line.split("\t");
+        return <IconButton key={id} text={name} label={`Add "${name}" at the playhead`} onClick={() => void addPresetClip(id)} />;
+      })}
+    </span>
+  );
+}
+
 function renderItem(item: ToolbarItem) {
   if (item.kind === "zoomSlider") return <ZoomSlider key="zoom-slider" />;
+  if (item.kind === "presetChips") return <FavoriteChips key="preset-chips" />;
   const pressedIn = TOGGLE_STATE[item.id];
   if (pressedIn) return <SessionToggle key={item.id} item={item} pressedIn={pressedIn} />;
   const enabled = ENABLED.has(item.id);
@@ -131,6 +157,8 @@ export function TimelineToolbar() {
   const moreRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const [overflow, setOverflow] = useState<{ groups: readonly ToolbarGroup[]; right: number; top: number } | null>(null);
+  // The chips change the add group's width: measure again when they change.
+  const chips = useStoreSelector(presetLibrary, selectChips);
 
   useLayoutEffect(() => {
     const bar = barRef.current;
@@ -167,7 +195,7 @@ export function TimelineToolbar() {
     });
     observer.observe(bar);
     return () => observer.disconnect();
-  }, []);
+  }, [chips]);
 
   const openOverflow = () => {
     const bar = barRef.current;

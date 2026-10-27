@@ -143,6 +143,8 @@
   --media-card-min: 112px;
   --media-thumb-aspect: 16 / 9;
   --media-list-thumb-width: 40px;
+  /* Favorite preset chips in the timeline toolbar (Batch 30, gap): a long name ends in an ellipsis. */
+  --preset-chip-max-width: 96px;
   --type-badge: 500 10px / 12px var(--font-mono); /* DS chips: 9.5-10px */
 
   /* Preview (gap): space kept around the letterboxed frame at Fit */

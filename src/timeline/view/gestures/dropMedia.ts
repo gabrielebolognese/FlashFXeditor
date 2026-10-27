@@ -6,7 +6,7 @@
 // drop, which becomes one MediaDropRequest. Files from the OS have no duration before their import:
 // their proposal is the insert line at the drop frame alone.
 import type { Frame, Project } from "../../../core/document/types.js";
-import { blockLength, stageDrop, type DropItem, type DropLanes, type MediaDropRequest } from "../../edit/dropMedia.js";
+import { blockLength, requestItem, stageDrop, type DropItem, type DropLanes, type MediaDropRequest } from "../../edit/dropMedia.js";
 import { overwrittenSpans, type MoveMode, type MoveRefusal } from "../../edit/move.js";
 import { trackIndex } from "../../model/queries.js";
 import { resolveSnap, type SnapTarget } from "../../snap/snapIndex.js";
@@ -69,7 +69,7 @@ export class MediaDropGesture {
   request(): MediaDropRequest | null {
     const proposal = this.current;
     if (!proposal || this.start === null) return null;
-    return { items: this.items.map((item) => ({ mediaId: item.media.id, range: item.range })), start: this.start, lanes: { ...this.lanes }, mode: proposal.mode };
+    return { items: this.items.map(requestItem), start: this.start, lanes: { ...this.lanes }, mode: proposal.mode };
   }
 
   private propose(start: Frame, mode: MoveMode, snap: SnapTarget | null): MoveProposal {

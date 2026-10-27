@@ -118,8 +118,30 @@ export type EaseId = string;
 export type Transition = JsonObject;
 /** TODO(batch 31): text animation (§10.4). */
 export type TextAnim = JsonObject;
-/** TODO(batch 30): text preset (§10.3). */
-export type TextPreset = JsonObject;
+/**
+ * A text preset (spec §10.3): a look to apply to text clips. Sizes (font size, every px value of the
+ * style, the box width, the position) are given for a frame whose short side is 1080 px
+ * (`TEXT_REFERENCE_SIDE`) and scale with the project they are applied in.
+ */
+export interface TextPreset {
+  id: string;
+  name: string;
+  style: TextStyle;
+  box: TextBox;
+  animIn?: TextAnim;
+  animOut?: TextAnim;
+  /** The length of a clip made from the preset, in whole milliseconds (else the title length). */
+  defaultDuration?: number;
+  /** Where the clip sits (project px from the frame center), taken when `applyPosition` is on. */
+  position?: { x: number; y: number };
+  /** Applying the preset also moves clips to `position` (spec §10.3 "apply position"). */
+  applyPosition: boolean;
+  tags: string[];
+  favorite: boolean;
+  /** ISO times; the newer `updatedAt` wins when two copies of a preset meet (the library folder). */
+  createdAt: string;
+  updatedAt: string;
+}
 /** TODO(batch 32): caption track style and cue ids (§10.5). */
 export type CaptionTrackData = JsonObject;
 
@@ -137,7 +159,10 @@ export interface Project {
   markers: Marker[];
   /** Style + cue ids for tracks of kind 'caption'. */
   captionTracks: Record<TrackId, CaptionTrackData>;
-  /** Project-local presets (global ones live outside the project). */
+  /**
+   * Project-local presets (global ones live outside the project). Kept empty: the project's presets
+   * are files in `presets/text/` (spec §9.7, Batch 30), outside the undo history like the global ones.
+   */
   textPresetsLocal: TextPreset[];
   meta: { createdAt: string; modifiedAt: string; appVersion: string };
 }

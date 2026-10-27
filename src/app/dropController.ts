@@ -6,7 +6,7 @@
 import type { MediaId, MediaItem, Project } from "../core/document/types.js";
 import { selectClips, toSnapshot } from "../core/store/selection.js";
 import { setSourceRange, type SourceRange } from "../core/store/sessionStore.js";
-import { applyMediaDrop, commitPlan, dropLabel, planAtPlayhead, planCanvasDrop, stageDrop, type DropItem, type DropPlan, type MediaDropRequest } from "../timeline/edit/dropMedia.js";
+import { applyMediaDrop, commitPlan, dropLabel, planAtPlayhead, planCanvasDrop, stageDrop, type DropPlan, type MediaDropItem, type MediaDropRequest } from "../timeline/edit/dropMedia.js";
 import type { MoveMode, MoveResult } from "../timeline/edit/move.js";
 import { showToast } from "../ui/toasts.js";
 import { filesFromTransfer, importMediaFiles, selectedMedia } from "./mediaController.js";
@@ -16,9 +16,9 @@ import { movePlayhead, reportMoveRefusal } from "./timelineController.js";
 const newId = () => crypto.randomUUID();
 
 /** The media of `ids` (those still in the project) with their source ranges, in order. */
-function itemsOf(project: Project, ids: readonly MediaId[]): DropItem[] {
+export function itemsOf(project: Project, ids: readonly MediaId[]): MediaDropItem[] {
   const ranges = sessionStore.state.getState().sourceRanges;
-  const items: DropItem[] = [];
+  const items: MediaDropItem[] = [];
   for (const id of ids) {
     const media = project.media[id];
     if (media) items.push({ media, range: ranges[id] ?? null });
@@ -34,7 +34,7 @@ function commit(result: MoveResult, plan: DropPlan): boolean {
   return true;
 }
 
-function noDuration(items: readonly DropItem[]): void {
+function noDuration(items: readonly MediaDropItem[]): void {
   const [first] = items;
   if (first) showToast({ tone: "error", message: items.length === 1 ? `Can't insert ${first.media.name}` : "Can't insert these media", detail: "It has no duration." });
 }
@@ -62,7 +62,7 @@ export function insertMediaAtPlayhead(mediaId: MediaId): void {
   placeAtPlayhead([mediaId], "insert");
 }
 
-/** A media drag released over the timeline (spec §6.14, P2): the one command of the gesture. */
+/** A media (or text preset) drag released over the timeline (spec §6.14, P2): the one command of the gesture. */
 export function dropMediaOnTimeline(request: MediaDropRequest): void {
   const { result, plan } = applyMediaDrop(documentStore.getState(), request, newId);
   if (plan.clips.length > 0) commit(result, plan);

@@ -1,0 +1,220 @@
+/* The Presets tab (spec §10.3, §12; gap: the DS has no preset library). A tool row (scope chips and the
+   search field), an optional name row, the card grid (cards as the Media tab's: surface-1, hairline,
+   radius-lg, thumbnail on top), and the library folder strip at the bottom. */
+.root {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+.tools,
+.nameRow,
+.folder {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: var(--space-2) var(--space-3);
+}
+
+.tools,
+.nameRow {
+  border-bottom: 1px solid var(--hairline);
+}
+
+/* Global / Project: a two-chip toggle (chips: surface-4 when on, radius-sm). */
+.scope {
+  display: inline-flex;
+  flex: none;
+  gap: var(--space-0);
+  padding: var(--space-0);
+  border-radius: var(--radius-sm);
+  background: var(--surface-1);
+}
+
+.scopeChip {
+  height: var(--control-compact);
+  padding: 0 var(--space-2);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-tertiary);
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-track);
+  cursor: pointer;
+  transition:
+    background-color var(--duration-micro) var(--ease-out),
+    color var(--duration-micro) var(--ease-out);
+}
+
+.scopeChip:hover {
+  color: var(--text-primary);
+}
+
+.scopeChip[aria-pressed="true"] {
+  background: var(--surface-4);
+  color: var(--text-primary);
+}
+
+.search {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.search > label {
+  width: 100%;
+  height: var(--control-compact);
+}
+
+.nameRow > label {
+  flex: 1 1 auto;
+  height: var(--control-compact);
+}
+
+.scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--media-card-min), 1fr));
+  align-content: start;
+  gap: var(--space-3);
+  padding: var(--space-3);
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  background: var(--surface-1);
+  cursor: pointer;
+  transition: border-color var(--duration-micro) var(--ease-out);
+}
+
+.card:hover {
+  border-color: var(--surface-5);
+}
+
+.card:active {
+  border-color: var(--accent-dim);
+}
+
+/* The thumbnail: the preset rendered by the text engine on the card background (spec §10.3). */
+.thumb {
+  position: relative;
+  aspect-ratio: var(--media-thumb-aspect);
+}
+
+.canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* Badges in the top-left corner: favorite star, default Title / Subtitle (accent: the active state). */
+.badges {
+  position: absolute;
+  top: var(--space-1);
+  left: var(--space-1);
+  display: flex;
+  gap: var(--space-0);
+  pointer-events: none;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-0);
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-sm);
+  background: var(--surface-3);
+  color: var(--accent);
+  font: var(--type-badge);
+}
+
+.badgeIcon {
+  width: var(--icon-size-sm);
+  height: var(--icon-size-sm);
+}
+
+.info {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-width: 0;
+  height: var(--control-compact);
+  padding: 0 var(--space-2);
+  border-top: 1px solid var(--hairline);
+}
+
+.name {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-primary);
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-track);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.renameInput {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: var(--control-compact);
+  padding: 0 var(--space-1);
+  border: 1px solid var(--accent-dim);
+  border-radius: var(--radius-sm);
+  background: var(--surface-1);
+  box-shadow: 0 0 0 1px var(--accent-wash);
+  color: var(--text-primary);
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-track);
+  user-select: text;
+}
+
+.empty {
+  padding: var(--space-6) var(--space-4);
+  color: var(--text-tertiary);
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-track);
+  text-align: center;
+}
+
+/* The library folder (spec §10.3 "synced to a user-chosen library folder"): a strip at the bottom. */
+.folder {
+  border-top: 1px solid var(--hairline);
+  background: var(--surface-1);
+}
+
+.folderIcon {
+  flex: none;
+  width: var(--icon-size);
+  height: var(--icon-size);
+  color: var(--text-tertiary);
+}
+
+.folderText {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-secondary);
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-track);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.folderText[data-status="error"] {
+  color: var(--danger);
+}

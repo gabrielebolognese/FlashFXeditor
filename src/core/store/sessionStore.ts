@@ -47,6 +47,8 @@ export type MediaTab = "media" | "presets" | "captions";
 /** Header sort choices (§12) plus the list-view columns. */
 export type MediaSort = "name" | "date" | "duration" | "kind" | "resolution" | "fps" | "codec" | "audio" | "used";
 export type MediaView = "grid" | "list";
+/** Which presets the Presets tab shows (spec §10.3 "a toggle"), and where Save as preset puts new ones. */
+export type PresetScope = "global" | "project";
 
 /**
  * A source in/out range on a media item (spec §12: set with I / O while hovering its card): media
@@ -71,7 +73,7 @@ export interface SessionState {
   audioScrub: boolean;
   /** Timecodes as `mm:ss:ff` or `mm:ss.mmm` (spec §5.1: the preview panel's toggle; the timeline field and ruler follow). */
   timecodeFormat: TimecodeMode;
-  mediaPanel: { tab: MediaTab; view: MediaView; sort: MediaSort; descending: boolean };
+  mediaPanel: { tab: MediaTab; view: MediaView; sort: MediaSort; descending: boolean; presetScope: PresetScope };
   /** Source ranges of media items (spec §12), by media id; inserts and drags take only that range. */
   sourceRanges: Readonly<Record<MediaId, SourceRange>>;
   /** Properties panel sections by id; true = collapsed. */
@@ -105,7 +107,7 @@ export const DEFAULT_SESSION: SessionState = {
   loop: false,
   audioScrub: false,
   timecodeFormat: "frames",
-  mediaPanel: { tab: "media", view: "grid", sort: "date", descending: false },
+  mediaPanel: { tab: "media", view: "grid", sort: "date", descending: false, presetScope: "global" },
   sourceRanges: {},
   collapsedSections: {},
 };

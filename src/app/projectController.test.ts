@@ -37,6 +37,7 @@ vi.mock("./services.js", async () => {
       () => 0,
       () => undefined,
     ),
+    keyValueStore: memoryKeyValueStore(),
     layoutStore: createLayoutStore(null),
     recentProjects: new RecentProjects(memoryKeyValueStore()),
     saveStatus: createStore(INITIAL_SAVE_STATUS),

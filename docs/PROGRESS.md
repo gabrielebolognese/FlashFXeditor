@@ -1,6 +1,6 @@
 # Progress
 
-last_completed_batch: 29
+last_completed_batch: 30
 in_progress_batch: none
 skipped_batches: []
 needs_human: none
@@ -104,6 +104,13 @@ Items the design system did not define and the functional default that was used 
   - The edited box keeps its `--accent` outline, without handles or hover; the cursor is `text` over it.
   - The editing textarea is transparent, with no selection color and no focus ring (`PreviewPanel.module.css` `.inlineText`).
   - Text box gizmo: corner handles and the left and right side handles only (the handle look of Batch 22).
+
+- Text presets (Batch 30; the DS has no preset library):
+  - Presets tab: a tool row (Global / Project as two chips in a `--surface-1` track, on = `--surface-4`; the search field at `--control-compact` height), the Media tab's card grid (`--media-card-min`, `--media-thumb-aspect`, `--surface-1`, hairline, radius-lg; hover `--surface-5`, pressed `--accent-dim`), the name under the thumbnail at caption type. Thumbnails are the preset rendered by the text engine on the card background with a `--space-2` margin, no other backdrop.
+  - Card badges in the thumbnail's top-left corner: `--surface-3` chips with an `--accent` lucide Star (favorite), Type (default title) or Subtitles (default subtitle) icon at `--icon-size-sm`.
+  - Library folder strip at the bottom of the Global scope: `--surface-1`, a top hairline, a FolderOpen icon, caption text in `--text-secondary` (`--danger` on an error), compact icon buttons (FolderSync, FolderX) or a compact secondary `Library folder` button.
+  - Save as preset's name field: the DS input at `--control-compact` height in a row under the quick row (or under the Presets tool row), `--surface-1`, a bottom hairline.
+  - Favorite chips in the timeline toolbar: the text chips of IconButton on `--surface-3`, at most `--preset-chip-max-width` (96px) wide with an ellipsis, `--space-1` after the add buttons.
 
 ## Global deviations
 Decisions that diverge from docs/EDITOR_SPEC.md, with the reason. Each one also appears under its batch.
@@ -235,6 +242,8 @@ Decisions that diverge from docs/EDITOR_SPEC.md, with the reason. Each one also 
 - Punch zoom multiplies the right pieces' `scale` / `scaleY` by the app setting `punchZoomScale` (1.2, 1.05..3) around their anchor. It splits linked partners while Linked selection is on, and acts on the selected layers under the playhead, else the topmost video or image. A clip starting at the playhead is zoomed whole. `punchZoomAnimated` is reserved (false) until Batch 35. (Batch 27)
 - Text (Batch 28): the box lives in `TextContent` (`{ value, box }`); `Gradient` (`{ from, to }`, vertical) is defined for text fills. The vertical anchor (and the alignment) name the edge that stays in place when a text's box changes size: text edits move the position to keep it. Rasters are drawn at the render scale times the layer's own scale, rounded up to 2^(1/8) steps, clamped to 0.25..4, at most 4096 px. Glyph hit areas are padded by 4 project px and include the background boxes; text snaps with its content box. The Text section follows Clip. Rasterization runs on the main thread in the preview render. System fonts are listed on a click; only the faces used are copied into `fonts/` (with `fonts.json`). Bundled fonts carry latin and latin-ext only. Details under the batch. (Batch 28)
 - Text UX (Batch 29): `+ Title` / `+ Subtitle` go on the topmost video track when it is free there, else on a new top track; a Title made with a text clip selected sits 40 px under it, a Subtitle always in the lower third (bottom edge at 78%). Inline editing draws the caret on the overlay from the rasterizer's geometry and the selection highlight in the raster; Esc commits like Mod+Enter; one "Edit text" step; the properties panel and popovers keep an edit open. Text box corners size the font (and every px value), sides set a fixed box width; no top or bottom handles. Details under the batch. (Batch 29)
+
+- Text presets (Batch 30): project presets are files in `presets/text/<id>.json` (spec §9.7 and the batch), not `Project.textPresetsLocal` (§5.2: kept, always empty); preset changes are not undoable (only Save as preset's link and Apply are commands). Sizes are stored for a 1080 px short side and scale with the project. `TextPreset` adds `applyPosition` and `updatedAt`; applying replaces style, box and animations and keeps content, duration and position (unless Apply position). The library folder sync is a union (the newer copy wins). The Presets header keeps New from selection, Import and Export; the Global / Project toggle and the search sit in a tool row under it. Details under the batch. (Batch 30)
 
 ## Follow-ups
 Small things discovered during a batch that belong to a later batch. Format: `- [from Batch NN -> Batch MM] description`.
@@ -414,7 +423,7 @@ Small things discovered during a batch that belong to a later batch. Format: `- 
 - [from Batch 27 -> Batch 46] Review on a real screen: the Speed section (Gauge label, link button, Ripple switch, freeze hint), the snowflake badge; icon overlap: the toolbar's Punch zoom uses `Focus` (the quick row's Center in frame) and the quick row's Punch zoom `ZoomIn` (the toolbar's Zoom in).
 - [from Batch 27 -> Batch 47] A frame request in flight when a project closes logs `[preview] cannot show media <id>: No project is open` (`LayerTextures.fail`). It appears when the Batch 26 and 27 scripts switch OPFS projects; treat it as an abort.
 - [from Batch 28 -> Batch 29] Inline editing (caret and selection drawn by the rasterizer), the text gizmo rules (corner handles = font size for auto boxes, side handles = box width when fixed, `keepAnchored` for live typing), `+ Title` / `+ Subtitle` placement (`addTextClip` is the dev placement), default Title and Subtitle styles. (done in Batch 29: inline editing, `textGizmo.ts`, `addTitle`, `titleDefaults`)
-- [from Batch 28 -> Batch 30] Presets store `style` and `box` (`TextContent.box`); preset thumbnails can rasterize with `rasterizeText`.
+- [from Batch 28 -> Batch 30] Presets store `style` and `box` (`TextContent.box`); preset thumbnails can rasterize with `rasterizeText`. (done in Batch 30)
 - [from Batch 28 -> Batch 31] Text animations draw from `buildTextAtlas` (words or lines, shadows per unit); the raster cache then needs atlas entries (its entries are whole-layer rasters).
 - [from Batch 28 -> Batch 32] Captions render through the same layout and raster cache (per cue + style).
 - [from Batch 28 -> Batch 34] Solid gradient fills use the `Gradient` type defined in Batch 28 (`isRgba` already tells them apart).
@@ -422,10 +431,16 @@ Small things discovered during a batch that belong to a later batch. Format: `- 
 - [from Batch 28 -> Batch 43] Export rasterizes text with `TextRasterCache.exact` at the export scale (the Export frame path).
 - [from Batch 28 -> Batch 45] Bundle size: the main chunk grew by 52 kB (text engine, Text section, font picker); the section and picker could load on first use.
 - [from Batch 28 -> Batch 46] Review on a real screen: the Text section (row order, icon scrub labels, chips), the font picker (sizes, previews, stars), the Missing chip and the timeline badge; text snapping on glyph bounds and baselines (Batch 23 note).
-- [from Batch 29 -> Batch 30] The default Title and Subtitle (`titleDefaults`, `DEFAULT_TITLE_STYLE`, `DEFAULT_SUBTITLE_STYLE`, `DEFAULT_SUBTITLE_BOX`; `TODO(batch 30)` in `text/style.ts`) become the Presets tab's default presets; the favorite preset chips call `addTitle` with a preset's style and box.
+- [from Batch 29 -> Batch 30] The default Title and Subtitle (`titleDefaults`, `DEFAULT_TITLE_STYLE`, `DEFAULT_SUBTITLE_STYLE`, `DEFAULT_SUBTITLE_BOX`; `TODO(batch 30)` in `text/style.ts`) become the Presets tab's default presets; the favorite preset chips call `addTitle` with a preset's style and box. (done in Batch 30: the starters `Title` / `Subtitle` are the defaults; chips call `addTitleClip` with the preset's look)
 - [from Batch 29 -> Batch 42] The "match clip under playhead" switch (app setting `matchClipUnderPlayhead`, `TODO(batch 42)` in `appSettings.ts`).
 - [from Batch 29 -> Batch 45] Bundle size: +25 kB (inline editor, caret engine, text handles).
 - [from Batch 29 -> Batch 46] Text box handle drags snap (§7.4). Review on a real screen: the caret (width, blink), the gold highlight over video, the IME candidate window's place, the caret against the box outline at the line end, the subtitle's 78% height against the platforms' safe zones.
+
+- [from Batch 30 -> Batch 31] Presets carry `animIn` / `animOut` (opaque `TextAnim` until Batch 31): saved from the clip, replaced on Apply, compared by `presetDiffers`. The Animation section's chips write them on clips; the starters have none.
+- [from Batch 30 -> Batch 32] Applying a text preset to the caption track sets its style (spec §10.5); `applyPreset` takes text clips only.
+- [from Batch 30 -> Batch 42] The settings panel's library folder (the Presets tab's strip does it now: choose, sync, stop); templates (§15) carry the project's `presets/text/` presets; a way to restore deleted starter presets (they are seeded once, on the first start).
+- [from Batch 30 -> Batch 45] Bundle size: +33.5 kB (presets model, Presets tab, controller, starters).
+- [from Batch 30 -> Batch 46] Review on a real screen: the Presets tab (card size, thumbnails at dpr 2, badges, the tool row and folder strip), the name row under the quick row, the toolbar chips' look and ellipsis, the menu wording.
 
 ## Dependencies
 Why each dependency exists (Batch rule 8).
@@ -3270,3 +3285,74 @@ Why each dependency exists (Batch rule 8).
     - `InlineTextEditor.ts:239` and `:545`: if the editor unmounts or the clip leaves the document mid-edit (for example a project switch), editing ends with no command. An uncommitted draft is dropped.
     - `InlineTextEditor.ts:568-573`: `rasterScale` caps with `rasterRect(layout)`, without the highlight, but the raster grows over the highlight (`raster.ts` `rasterRect`). At the 4096 px raster cap, the caret can be measured at a slightly different scale from the one drawn.
 - docs: titles-and-text.md (new page; also covers the Batch 28 parts left to this run: the Text section, the font picker with Favorites, Used in project, Bundled and System, Show system fonts, the 8 bundled families with latin and latin-ext only, the project `fonts/` folder with `fonts.json`, the Missing chip and the timeline badge), README.md, whats-new.md, keyboard-shortcuts.md (new Text section and While you edit text), workspace.md, timeline.md, clip-thumbnails-and-waveforms.md, editing-properties.md, arranging-layers-in-the-preview.md, snapping-and-smart-guides.md, cropping-and-reframing.md, speed-freeze-frames-and-punch-zoom.md, projects-and-saving.md (`fonts` folder), troubleshooting.md (new Titles and text section) in docs/user-guide/ (2026-10-16)
+
+### Batch 30: Text presets library
+- status: done
+- date: 2026-10-16
+- notes:
+  - Model (unit tested):
+    - `TextPreset` (`core/document/types.ts`): id, name, style, box, animIn / animOut, defaultDuration (whole ms), position, applyPosition, tags, favorite, createdAt, updatedAt.
+    - New `text/presets.ts` (`presets.test.ts`, 18 tests):
+      - Sizes are stored for a 1080 px short side: `presetScale`, `presetLook` (style via `scaleTextStyle`, fixed box width, the position only when `applyPosition`); nothing is scaled on 1080 px projects.
+      - `presetFromClip`, `presetUpdatedFromClip` (name, flags and creation kept), `presetDiffers` (style, fixed box width, animations; content and position are the clip's own).
+      - `defaultPresetName` ("Oswald 140"), `thumbnailText` (the name, `Aa` over 12 characters), `uniquePresetName`, `duplicatePreset`, `sortPresets`, `searchPresets` (name, tags, family; every word), `favoriteChips` (8: global first), `mergePresets` (newer `updatedAt` wins).
+      - Files: `sanitizeTextStyle` / `sanitizePreset` (every value checked, defaults for bad ones), `formatPresetsFile` / `parsePresetsFile` (an export, a list or one preset; newer versions refused), `presetFileName`, `exportFileName`.
+    - New `text/starterPresets.ts`: 12 starters in the bundled fonts: Title and Subtitle (Batch 29's defaults, the default presets), Bold outline, Lower third (applies its position), Caption bold, Highlight, Minimal mono, Big number (gradient), Elegant serif, Handwritten, Neon glow, Breaking. Each has a position (the frame center; the Subtitle one line in the lower third), used once Apply position is on.
+    - `timeline/edit/text.ts` (`text.test.ts`, +4 tests): `applyPreset` (`clip.applyPreset`, "Apply "Name"": style, box, animations and `presetId` on the unlocked text clips; content, timing and position kept, the position taken when the preset applies it), `linkPreset` (`clip.linkPreset`), `addTitle({ look, label })` (a preset's look, id and default duration; its position or the Title / Subtitle placement), `newTextClip` takes `presetId` and animations.
+    - `timeline/edit/dropMedia.ts` (`dropMedia.test.ts`, +2 tests): a drop item is media or a text template (`TextDropItem`): a text clip on the video lane, through the same staging, ghosts, overwrite / insert rules and request.
+    - New `project/presetFiles.ts` (`presetFiles.test.ts`, 4 tests): `projectPresetsDir` (`presets/text/`, made on the first write), `readPresetFolder` (`*.json`, other files skipped, the newer of two copies), `PresetFolderWriter` (writes presets whose `updatedAt` changed, removes files of presets that left, one write at a time).
+    - App settings `defaultTitlePreset` / `defaultSubtitlePreset` (the starter ids; null = built-in; +1 test); session `mediaPanel.presetScope` (global / project, in session.json).
+  - App (`app/presetController.ts`):
+    - `presetLibrary` store: global presets from IndexedDB `textPresets.v1` (the starters put there on the first start), the open project's from `presets/text/` (attached and detached with the project; written while it is writable), the library folder state.
+    - Library folder (handle in IndexedDB `presetLibraryFolder.v1`): choosing one merges both ways and writes every global preset as `<id>.json`; later changes are written; on start it syncs when the browser still grants access, else the strip asks for a click (Sync); Stop forgets the folder.
+    - Actions: Save as preset (the primary selected text clip's look, a unique name, into the tab's scope, the clip linked: one undo step "Save preset "Name""), Update preset (toast: other clips keep their style until it is applied again), Apply (the selected text clips, else a new clip), Add (`addTitleClip` with the preset's look: at the playhead, edited at once), rename, duplicate, delete, favorite, apply position, default Title / Subtitle (T / Shift+T use them through `setDefaultTitleLook`), import / export (`showOpenFilePicker` / `showSaveFilePicker`, else an input and a download link).
+    - Hover: a hovered card shows the preset on the selected text clips through `liveEdit` (texts, and transforms for Apply position); it ends on leave, scroll, a drag, a selection change, a click.
+    - Drags: `presetDragSource` for `pressDragCard` (`mediaGestures.ts` now takes any `CardDragSource`): over the timeline the media drop ghosts, released there one "Add clip" command; over the canvas a new clip at the playhead centered on the point.
+    - Actions `preset.save` and `preset.update` (the quick row); dev `__editor.presets`.
+  - UI:
+    - New `panels/media/PresetsTab.tsx` (+ CSS): header actions New from selection, Import, Export; a tool row with Global / Project and the search; the name row; cards (thumbnail, name, badges: favorite, default title, default subtitle; tooltip with the gestures); the card menu (Apply / Add at playhead, Use as default title (T), Use as default subtitle (Shift+T), Favorite, Apply position, Rename (in place), Duplicate, Export…, Delete); the library folder strip (Global scope); empty, loading and read-only states.
+    - New `render/text/presetThumbnails.ts`: the name (or `Aa`) laid out and rasterized by the text engine in the preset's look, fitted to the card with a margin, cached by look + text + size + layout version (96 entries); a font still loading draws nothing, the font change redraws (`fontsVersion`).
+    - New `panels/media/PresetNameField.tsx`: prefilled with font + size, all selected; Enter saves, Esc or blur cancels.
+    - Quick row: `Save as preset` live (a text clip selected), `Update preset` with the preset's name and the tooltip `Update "Name": saves this clip's style into the preset. Other clips that use "Name" keep their own style until you apply the preset to them again.`; disabled when the clip has no preset, its preset is gone or read-only, or the style is the preset's.
+    - Timeline toolbar: up to 8 favorite chips after the add buttons (`presetChips` item), following the library live; the overflow fitting measures again when they change.
+  - Measured:
+    - `npm run check` green: 1453 unit tests in 146 files (+29 tests, +2 files), 3 perf tests. Build 831.49 kB JS (268.47 kB gzip; was 797.95 / 257.74), 68.06 kB CSS.
+    - Browser: headless Chrome 155 over CDP on the dev server (5181), 1600 x 900 at dpr 1. Scripts in `%TEMP%/b30/`: `acc.mjs` 32/32, `extra.mjs` 23/23, `p1.mjs`, `smoke.mjs`, `page.js` (`__b30`), `setup.mjs`.
+    - Acceptance 1 (project `b30-acc`): T, "Promo", Esc; styled Oswald 600 140 px red with an 8 px black stroke. A real click on Save as preset opened the name field focused with "Oswald 140" selected; "Red promo" + Enter saved it (global), linked the clip ("Save preset "Red promo""), and the card appeared: its 118 x 66 thumbnail had 682 red and 469 black pixels, centered. Favorite from the card menu: the chip appeared; a click on it at frame 150 made a title with exactly that style, linked, editing at once ("Add "Red promo"").
+    - Acceptance 2: Update was disabled while the clip matched; after a green 120 px change its label and hover tooltip read exactly the text above. A click wrote green 120 into the preset (the thumbnail turned green); the other clip kept red 140; a click on the card with that clip selected re-applied it (green 120, content and timing kept, one step "Apply "Red promo"").
+    - Acceptance 3: Use as default subtitle on Highlight (badge shown); Shift+T made "Subtitle" with the Highlight style, linked, its bottom at 78% (y 1498).
+    - Acceptance 4: Export (stubbed save picker) wrote one file with all 13 presets; all 13 cards deleted from their menus (the chip went too); Import (stubbed open picker) brought back the same cards in order with their badges, identical presets (ids, styles, dates), the chip, and the clips linked again. Thumbnails within 1 / 255 (5 values of 31 152 off by 1 on the stroked and shadowed one: canvas readback rounding).
+    - Extra: hovering five cards with a title selected previewed each family live, 14 preview renders, 0 React commits, the document unchanged, cleared on leave; Lower third moved the clip to (-180, 560), Breaking kept it; a card dragged onto V1 at frame 200 gave a 3 s linked clip ("Add clip", selected); one dropped on the canvas went to the playhead centered on the point; search, Duplicate, Rename; the library folder (an OPFS folder) got 13 files, lost the deleted one's, Sync read a file added there, Stop forgot it; a project preset was written to `presets/text/<id>.json` and read back after reopening.
+    - P1 (every 5 batches): 10 s of playback with the Presets tab, two preset text clips and a favorite chip on screen: 615 frames, rAF mean 16.66 ms, p95 17.0, none over 20 ms (a later run had one 33.7 ms gap), 0 text rasterizations, 2 React commits (the Play and Pause clicks). A clip drag on the timeline (selected first): 0 commits until the release, 1 on release (the app bar's undo label).
+    - Regression: Batch 29 `acc.mjs` 23/23, `extra.mjs` 15/15; Batch 28 `acc.mjs` 16/16, `reg_b29.mjs` 6/6.
+- deviations:
+  - Project presets are files in `presets/text/<id>.json` (spec §9.7 and the Build), not entries of `Project.textPresetsLocal` (§5.2, kept and always empty): a preset library is not document editing, so like the global presets they are outside the undo history. Save as preset's link (`presetId`) and Apply are commands.
+  - Preset sizes are stored for a 1080 px short side and scale with the project (Batch 29's defaults did so): a preset looks the same on a 4K project. A fixed box width scales by the same factor (Batch 29 sized the Subtitle's box from the frame width: on 16:9 the default subtitle box is now 900 px, was 1600).
+  - `TextPreset` adds `applyPosition` (the spec's "apply position" option) and `updatedAt` (the library folder sync). `defaultDuration` is whole milliseconds (presets cross projects of any fps); nothing sets it yet.
+  - Applying a preset replaces the box (auto / fixed width) with the style: the box is part of the look (§10.3 stores it).
+  - Apply keeps the clip's position as it is (X / Y unchanged), not the anchored edge, unless the preset applies its position.
+  - New clips from a preset (chips, a card with no text clip selected, a drop) say "Title" and are edited at once like `+ Title`; they use the Title placement (40 px under a selected text clip), or the preset's position. Shift+T keeps the Subtitle placement with the default Subtitle preset.
+  - Save as preset names are made unique within their scope ("Name 2"); the preset goes into the tab's scope (global when the project is read-only or none is open).
+  - Default Title / Subtitle are app settings by preset id; a missing one (deleted, or a closed project's) falls back to the built-in look. Choosing the default again turns it off (built-in).
+  - The library folder sync is a union by id where the newer `updatedAt` wins; a preset deleted on one machine comes back from another machine's copy. It runs on start (when the browser keeps the access) and on Sync; it lives in a strip at the bottom of the Global scope until the settings panel (Batch 42).
+  - Import puts presets into the shown scope; a preset with a known id replaces it (an export imported again changes nothing).
+  - The Presets header (§17) keeps New from selection, Import and Export as icon buttons; the Global / Project toggle and the search are a tool row under it (the media panel header is too narrow for five controls next to the tabs).
+  - Rename is in the card menu and edits in place; a double-click on a card applies twice (click = apply), so it does not rename.
+  - The starters are seeded into the global presets once (first start), then the user's to change or delete; there is no restore yet (follow-up).
+- follow-ups:
+  - [from Batch 28 -> Batch 30] done; [from Batch 29 -> Batch 30] done
+  - [from Batch 30 -> Batch 31] Presets carry `animIn` / `animOut` (opaque `TextAnim` until Batch 31): saved from the clip, replaced on Apply, compared by `presetDiffers`. The Animation section's chips write them on clips; the starters have none.
+  - [from Batch 30 -> Batch 32] Applying a text preset to the caption track sets its style (spec §10.5); `applyPreset` takes text clips only.
+  - [from Batch 30 -> Batch 42] The settings panel's library folder (the Presets tab's strip does it now: choose, sync, stop); templates (§15) carry the project's `presets/text/` presets; a way to restore deleted starter presets (they are seeded once, on the first start).
+  - [from Batch 30 -> Batch 45] Bundle size: +33.5 kB (presets model, Presets tab, controller, starters).
+  - [from Batch 30 -> Batch 46] Review on a real screen: the Presets tab (card size, thumbnails at dpr 2, badges, the tool row and folder strip), the name row under the quick row, the toolbar chips' look and ellipsis, the menu wording.
+- design gaps: the Presets tab (tool row, cards, badges, folder strip), the name row, the toolbar chips (details in Design system gaps)
+- pending manual checks (`npm run dev`, or the 5300 preview build):
+  1. Save as preset (acceptance 1): press T, type a word, press Esc. In Edit Properties > Text pick another font, a color and a stroke. Click the bookmark-plus button `Save as preset` in the quick row. Expected: a name field under the row shows the font and size, selected. Type a name and press Enter. Open Media > Presets: a card with your name drawn in that look.
+  2. Favorite and chip (acceptance 1): right-click the card, click `Favorite: chip in the timeline toolbar`. Expected: a star on the card and a chip with the name after the `+ Image` button in the timeline toolbar. Move the playhead, click the chip: a new title in that look at the playhead, ready for typing.
+  3. Update (acceptance 2): select the first title, change its color. Hover the bookmark-check button. Expected: the tooltip names the preset and says other clips keep their own style until you apply the preset again. Click it: the card's thumbnail changes; the second title (from the chip) keeps the old color. Select the second title and click the card: it takes the new color.
+  4. Default subtitle (acceptance 3): right-click a card (for example Highlight), click `Use as default subtitle`. Press Shift+T. Expected: a subtitle in that look in the lower third.
+  5. Export / import (acceptance 4): click the Export button in the Presets header and save the file. Delete every card (right-click, Delete). Click Import and pick the file. Expected: the same cards, in the same order, with their stars and badges; the chip is back.
+  6. Hover and drag: select a title and move the mouse over the cards. Expected: the title in the preview changes look while the mouse is on a card and goes back when it leaves. Drag a card onto the timeline: a new text clip where it is dropped.
+  7. Project presets and library folder: switch the tab to Project and save a preset; the project folder gets `presets/text/<id>.json`. In Global, click `Library folder` and pick an empty folder: it fills with one JSON file per preset.
+- other: `docs/BATCHES.md` (Batches 51-53) and `docs/EDITOR_SPEC.md` (§20), edited outside the batch runs, are left out of this batch's commit (as in Batch 29).

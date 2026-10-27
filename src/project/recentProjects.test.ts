@@ -83,7 +83,7 @@ describe("app settings", () => {
     await settings.load();
     expect(settings.getState()).toEqual(DEFAULT_APP_SETTINGS);
     await settings.update({ autosaveDelayMs: 5000 });
-    expect(kv.data.get("settings.v1")).toEqual({ autosaveDelayMs: 5000, importMode: "copy", monitorVolumeDb: 0, monitorMuted: false, proxyAuto: true, proxyRule: "heavy", proxyShortEdge: 540, recentColors: [], punchZoomScale: 1.2, punchZoomAnimated: false, favoriteFonts: [], matchClipUnderPlayhead: true });
+    expect(kv.data.get("settings.v1")).toEqual({ autosaveDelayMs: 5000, importMode: "copy", monitorVolumeDb: 0, monitorMuted: false, proxyAuto: true, proxyRule: "heavy", proxyShortEdge: 540, recentColors: [], punchZoomScale: 1.2, punchZoomAnimated: false, favoriteFonts: [], matchClipUnderPlayhead: true, defaultTitlePreset: "starter-title", defaultSubtitlePreset: "starter-subtitle" });
     await settings.update({ autosaveDelayMs: 1234 });
     expect(settings.getState().autosaveDelayMs).toBe(5000);
 
@@ -169,5 +169,15 @@ describe("app settings", () => {
     expect(settings.getState().matchClipUnderPlayhead).toBe(true);
     await settings.update({ matchClipUnderPlayhead: false });
     expect(settings.getState().matchClipUnderPlayhead).toBe(false);
+  });
+
+  it("starts with the starter Title and Subtitle as the default presets; null means built-in (Batch 30)", async () => {
+    const kv = memoryKeyValueStore();
+    kv.data.set("settings.v1", { defaultTitlePreset: 4, defaultSubtitlePreset: null });
+    const settings = createAppSettings(kv);
+    await settings.load();
+    expect(settings.getState()).toMatchObject({ defaultTitlePreset: "starter-title", defaultSubtitlePreset: null });
+    await settings.update({ defaultTitlePreset: "mine" });
+    expect(settings.getState().defaultTitlePreset).toBe("mine");
   });
 });
