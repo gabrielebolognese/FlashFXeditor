@@ -195,6 +195,8 @@ Hold keys while you drag:
 - A drop on a locked track adds nothing and shows **Can't drop clips onto a locked track**, with the track's name. Unlock the track or drop on another one.
 - The step is named **Add clip** or **Add clips** (**Insert clip** or **Insert clips** with <kbd>Ctrl</kbd>).
 
+> **Tip:** Cards of the **Presets** tab drag the same way: a text preset dropped on a track becomes a 3-second text clip in that look, and one dropped on the preview becomes a text at that point. See [Drag a preset onto the timeline or the preview](text-presets.md#drag-a-preset-onto-the-timeline-or-the-preview).
+
 ## Drop media on the preview
 
 Drag a card onto the preview to put its picture exactly where you want it in the frame, for example a logo in a corner. The clip lands at the playhead and never covers or moves other clips.
@@ -267,4 +269,4 @@ Every way of adding media is one step in the history. Point at **Undo** in the a
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 22, 2026-10-16</sub>
+<sub>Last updated: Batch 30, 2026-10-16</sub>

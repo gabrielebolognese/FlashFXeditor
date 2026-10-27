@@ -74,7 +74,7 @@ In this version these parts of the toolbar work:
 - the **Select**, **Razor**, **Hand**, **Slip**, **Slide** and **Rate stretch** tools (see [Choose a tool](advanced-trimming.md#choose-a-tool), [Cut clips with the Razor tool](splitting-and-deleting.md#cut-clips-with-the-razor-tool) and [Pan the view](#pan-the-view));
 - the **Snap** toggle (see [Turn snapping on or off](#turn-snapping-on-or-off)), the **Linked selection** toggle (see [Turn Linked selection off](links-and-groups.md#turn-linked-selection-off)) and the **Ripple mode** toggle (see [Turn Ripple mode on or off](trimming.md#turn-ripple-mode-on-or-off));
 - the edit buttons **Split at playhead**, **Delete**, **Ripple delete**, **Close gap** and **Close all gaps (compact)** (see [Splitting, deleting and closing gaps](splitting-and-deleting.md)), **Add marker** (see [Add markers](markers-and-in-out-points.md#add-markers)), and **Freeze frame** and **Punch zoom** (see [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md));
-- the add buttons **Title** and **Subtitle** (see [Titles and text](titles-and-text.md));
+- the add buttons **Title** and **Subtitle** (see [Titles and text](titles-and-text.md)), and after them the chips of your favorite text presets, which add a text in that look at the playhead (see [Put favorite presets in the timeline toolbar](text-presets.md#put-favorite-presets-in-the-timeline-toolbar));
 - the whole zoom group: **Zoom out**, the zoom slider, **Zoom in**, **Zoom to fit**, **Zoom to selection** (see [Zoom in and out](#zoom-in-and-out)), **Center playhead** (see [Scroll the timeline](#scroll-the-timeline)) and **Track height** (see [Change track height](tracks.md#change-track-height)), then the timecode field and the duration.
 
 The other buttons (the **Show clip keyframes** and **Audio scrub** toggles, and the add buttons **Add caption track**, **Add solid** and **Add image**) are shown but disabled; they are available in a later version.
@@ -659,4 +659,4 @@ Label colors help you see at a glance which clips belong together, for example a
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 29, 2026-10-16</sub>
+<sub>Last updated: Batch 30, 2026-10-16</sub>
