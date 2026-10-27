@@ -4,6 +4,7 @@
 // drop, which becomes one MoveRequest and so one command.
 import { nextTrackName } from "../../../core/document/project.js";
 import type { Clip, ClipId, Frame, Project, Track, TrackId } from "../../../core/document/types.js";
+import { captionTrackOf, clampCueDelta, cueMoveRange } from "../../edit/captions.js";
 import { clampLaneDelta, laneTarget, moveRefusal, overwrittenSpans, type LaneDelta, type LaneTarget, type MoveMode, type MoveRefusal, type MoveRequest } from "../../edit/move.js";
 import { laneOf, laneTracks, trackIndex, type Lane, type LaneKind } from "../../model/queries.js";
 import { resolveSnap, type SnapCandidates, type SnapTarget } from "../../snap/snapIndex.js";
@@ -67,6 +68,9 @@ export class MoveGesture {
   private readonly movingIds: ReadonlySet<ClipId>;
   private readonly minStart: Frame;
   private readonly maxEnd: Frame;
+  /** The deltas the dragged cues can take (spec §10.5: they stop at the cues that stay), or null without cues. */
+  private readonly cueRange: { lo: number; hi: number } | null;
+  private copyDelta: { delta: number; result: number | null } | null = null;
   private current: MoveProposal | null = null;
   private currentKey = "";
 
@@ -90,6 +94,7 @@ export class MoveGesture {
     this.movingIds = new Set(clips.map((clip) => clip.id));
     this.minStart = clips.reduce((min, clip) => Math.min(min, clip.start), Infinity);
     this.maxEnd = clips.reduce((max, clip) => Math.max(max, clip.start + clip.duration), 0);
+    this.cueRange = cueMoveRange(project, this.movingIds);
   }
 
   get proposal(): MoveProposal | null {
@@ -120,6 +125,18 @@ export class MoveGesture {
       deltaFrames = -this.minStart;
       hit = null;
     }
+    const mode: MoveMode = modifiers.mod ? "insert" : "overwrite";
+    // Cues never overwrite one another (spec §10.5): a move stops at the cues that stay, copies go to
+    // the free spot nearest the pointer (none: the drop is refused).
+    let noRoom = false;
+    if (this.cueRange && mode === "overwrite") {
+      const clamped = modifiers.alt ? this.cueCopyDelta(deltaFrames) : Math.min(this.cueRange.hi, Math.max(this.cueRange.lo, deltaFrames));
+      if (clamped === null) noRoom = true;
+      else if (clamped !== deltaFrames) {
+        deltaFrames = clamped;
+        hit = null;
+      }
+    }
     const target = hit?.target ?? null;
     const lanes = this.anchorLane && pointerLane !== null && !modifiers.shift ? pointerLane - this.anchorLane.number : 0;
     const laneDelta = clampLaneDelta(
@@ -127,13 +144,22 @@ export class MoveGesture {
       this.clips.map((clip) => clip.trackId),
       { video: lanes, audio: lanes },
     );
-    const mode: MoveMode = modifiers.mod ? "insert" : "overwrite";
     const snapKey = target ? `${target.kind}:${target.frame}:${target.ref ?? ""}` : "";
-    const key = `${deltaFrames}|${laneDelta.video}|${laneDelta.audio}|${mode}|${modifiers.alt}|${snapKey}`;
+    const key = `${deltaFrames}|${laneDelta.video}|${laneDelta.audio}|${mode}|${modifiers.alt}|${snapKey}|${noRoom}`;
     if (this.current && key === this.currentKey) return this.current;
     this.currentKey = key;
     this.current = this.propose(deltaFrames, laneDelta, mode, modifiers.alt, target);
+    if (noRoom) {
+      const track = captionTrackOf(this.project);
+      if (track) this.current = { ...this.current, refused: { reason: "occupied", trackId: track.id } };
+    }
     return this.current;
+  }
+
+  /** Where copies of the dragged cues go for `delta` (the last answer is kept: pointer moves repeat deltas). */
+  private cueCopyDelta(delta: number): number | null {
+    if (this.copyDelta?.delta !== delta) this.copyDelta = { delta, result: clampCueDelta(this.project, this.movingIds, delta, true) };
+    return this.copyDelta.result;
   }
 
   /** The drop as a request for the controller (null before the first update). */

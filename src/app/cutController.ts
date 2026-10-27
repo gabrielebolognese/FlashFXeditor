@@ -2,7 +2,7 @@
 // tool, Delete and Ripple delete (clips, a selected gap, or a selected marker), Close gap and Close all gaps (compact),
 // clip rename (F2), label colors, and the clip and gap context menus. Every edit is one command (one
 // undo step) built by the pure edits in `timeline/edit` (split, delete, gaps). Delete and F2 in the
-// media panel go to the media panel's own actions.
+// media panel go to the media panel's own actions; on its Captions tab Delete deletes the selected cues.
 import { updateClip } from "../core/commands/basicCommands.js";
 import type { ActionRun } from "../core/commands/ActionRegistry.js";
 import type { ClipId, LabelColor } from "../core/document/types.js";
@@ -183,9 +183,10 @@ export function installCutController(): () => void {
     actions.register("edit.split", splitAtPlayhead(false)),
     actions.register("edit.splitAll", splitAtPlayhead(true)),
     actions.register("tool.razor", () => sessionStore.state.set((state) => (state.activeTool === "razor" ? state : { ...state, activeTool: "razor" }))),
-    // §12: Delete in the media panel removes the selected media; elsewhere it deletes clips.
+    // §12: Delete in the media panel removes the selected media (§10.5: the selected cues on the
+    // Captions tab); elsewhere it deletes clips.
     actions.register("edit.delete", (context) => {
-      if (context?.scope === "media") return requestRemove();
+      if (context?.scope === "media" && sessionStore.state.getState().mediaPanel.tab !== "captions") return requestRemove();
       deleteSelection(false);
     }),
     actions.register("edit.rippleDelete", () => deleteSelection(true)),

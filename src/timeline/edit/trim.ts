@@ -5,7 +5,8 @@
 //   moves; the neighbor clip bounds it (no overlap, no overwrite);
 // - ripple trim: the in point keeps its timeline position (the clip's content slides under it), and
 //   every clip after the edit point on every unlocked track shifts by the change in duration, so no
-//   gap opens or closes. The shift stops at the largest one that keeps every track overlap-free;
+//   gap opens or closes. The shift stops at the largest one that keeps every track overlap-free. A
+//   dragged cue never pushes (spec §10.5): its trims are regular;
 // - roll: the cut between two abutting clips moves: the left clip's out and the right clip's in
 //   change together, so the total duration stays;
 // - slip: `in` and `out` move by the same amount; position and duration stay;
@@ -22,7 +23,7 @@
 import type { Draft } from "immer";
 import type { Command } from "../../core/commands/command.js";
 import { framesToSourceUs, usPerFrame } from "../../core/document/time.js";
-import { isFreeze, isMediaClip, type Clip, type ClipId, type Frame, type Keyframes, type MediaClip, type Project, type Rational, type TrackId } from "../../core/document/types.js";
+import { isFreeze, isMediaClip, type CaptionClip, type Clip, type ClipId, type Frame, type Keyframes, type MediaClip, type Project, type Rational, type TrackId } from "../../core/document/types.js";
 import { clipInIndex, isClipLocked, lastClipStartingBy, linkedPartners, trackIndex } from "../model/queries.js";
 
 export type TrimEdge = "in" | "out";
@@ -321,7 +322,9 @@ export function planTrim(project: Project, clipIds: readonly ClipId[], edge: Tri
   const moves = new Map<ClipId, ClipMove>();
   for (const id of clipIds) addMove(project, moves, id, edge);
   addPartners(project, moves, options.linked, () => edge);
-  return buildPlan(project, "trim", clipIds[0] ?? "", edge, moves, options.ripple);
+  // A dragged cue never pushes the cues after it (spec §10.5): its trims are regular.
+  const ripple = options.ripple && project.clips[clipIds[0] ?? ""]?.kind !== "caption";
+  return buildPlan(project, "trim", clipIds[0] ?? "", edge, moves, ripple);
 }
 
 /**
@@ -471,7 +474,12 @@ function trimmedClip(clip: Clip, edge: TrimEdge, delta: number, ripple: boolean,
   // Text, solids and images keep their keyframes on the clip start (spec §6.10: off for text clips).
   clampFades(next, clip);
   // TODO(batch 36): shorten the transition on the trimmed side to the handle left, remove it when none is.
-  // TODO(batch 32): caption words outside the new range.
+  // A cue's words are relative to its start: an in trim cuts `delta` frames off its head (moving the
+  // start, or sliding the rest under it in a ripple), so they are re-based. Words outside the new span
+  // are kept (a trim back shows them again).
+  if (clip.kind === "caption" && clip.words && edge === "in" && delta !== 0) {
+    (next as CaptionClip).words = clip.words.map((word) => ({ ...word, start: word.start - delta, end: word.end - delta }));
+  }
   return next;
 }
 

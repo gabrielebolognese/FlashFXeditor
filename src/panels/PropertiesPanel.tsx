@@ -1,9 +1,11 @@
-import { useMemo, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, type ReactNode } from "react";
+import { revealSection } from "../app/captionController.js";
 import { PanelFrame, PanelTitle } from "../app/PanelFrame.js";
 import { documentStore, sessionStore } from "../app/services.js";
 import type { Selection } from "../core/store/selection.js";
 import { useStoreSelector } from "../core/store/useStoreSelector.js";
 import { AnimationSection } from "./properties/AnimationSection.js";
+import { CaptionStyleSection } from "./properties/CaptionStyleSection.js";
 import { ClipSection } from "./properties/ClipSection.js";
 import { CropModeToggle, CropSection } from "./properties/CropSection.js";
 import { contextKey, propertiesContext, sectionIds, type PropertiesContext, type SectionId } from "./properties/context.js";
@@ -22,11 +24,13 @@ import styles from "./PropertiesPanel.module.css";
 // selection. The panel renders when the selection kind, its ids or the primary item change (one
 // selector on a key string), never on value changes: fields are bound to the store outside React.
 // The panel is the `properties` keyboard scope (PanelFrame's data-scope); Tab follows the visual order.
+// A section asked for by `revealSection` (the Captions header's Style) is scrolled to and focused.
 
 const SECTION_TITLES: Record<SectionId, string> = {
   clip: "Clip",
   text: "Text",
   animation: "Animation",
+  captionStyle: "Caption style",
   transform: "Transform",
   crop: "Crop",
   opacity: "Opacity",
@@ -44,6 +48,8 @@ function sectionBody(id: SectionId, context: PropertiesContext): ReactNode {
       return context.kind === "clips" ? <TextSection ids={context.textIds} /> : null;
     case "animation":
       return context.kind === "clips" ? <AnimationSection ids={context.textIds} primary={context.primary} /> : null;
+    case "captionStyle":
+      return (context.kind === "clips" || context.kind === "track") && context.captionTrackId ? <CaptionStyleSection trackId={context.captionTrackId} /> : null;
     case "transform":
       return context.kind === "clips" ? <TransformSection ids={context.layerIds} /> : null;
     case "crop":
@@ -76,10 +82,20 @@ export function PropertiesPanel() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const context = useMemo(() => propertiesContext(sessionStore.selection.getState(), markerId, documentStore.getState()), [selectionKey, markerId]);
   const key = contextKey(sessionStore.selection.getState(), markerId);
+  const body = useRef<HTMLDivElement>(null);
+  const reveal = useStoreSelector(revealSection, (id) => id);
+  useEffect(() => {
+    const section = reveal ? body.current?.querySelector<HTMLElement>(`[data-section="${reveal}"]`) : null;
+    // Waits for the context that shows the section (the effect runs again when it renders).
+    if (!section) return;
+    revealSection.set(null);
+    section.scrollIntoView({ block: "start" });
+    section.querySelector<HTMLElement>("[aria-pressed='true'], input, textarea, select")?.focus();
+  }, [reveal, key]);
   const title = context.kind === "clips" && context.clipIds.length > 1 ? `${context.clipIds.length} clips` : context.kind === "track" && context.trackIds.length > 1 ? `${context.trackIds.length} tracks` : null;
   return (
     <PanelFrame id="properties" header={<PanelTitle>Edit Properties</PanelTitle>} actions={title && <span className={styles.count}>{title}</span>}>
-      <div className={styles.body}>
+      <div ref={body} className={styles.body}>
         {context.kind === "clips" && <QuickActions ids={context.clipIds} primary={context.primary} />}
         {/* Keyed by the context: a new selection mounts fresh sections (their bindings follow it). */}
         <div key={key} className={styles.scroll}>

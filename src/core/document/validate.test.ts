@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { makeMedia, makeMediaClip, makeProject, makeSolidClip, makeTextClip, makeTrack, withClips } from "./fixtures.js";
+import { defaultCaptionStyle } from "../../text/captions.js";
+import { addCaptionTrack, makeCaptionClip, makeMedia, makeMediaClip, makeProject, makeSolidClip, makeTextClip, makeTrack, withClips } from "./fixtures.js";
 import { createProject } from "./project.js";
 import type { Project } from "./types.js";
 import { assertValid, DocumentInvariantError, validateProject } from "./validate.js";
@@ -143,8 +144,29 @@ describe("validateProject", () => {
 
   it("reports caption data without a caption track", () => {
     const project = base();
-    project.captionTracks.v1 = {};
-    expect(validateProject(project).join()).toContain("captionTracks entry v1");
+    project.captionTracks.v1 = { style: defaultCaptionStyle(project.settings) };
+    expect(validateProject(project).join()).toContain("captionTracks entry v1 has no caption track");
+  });
+
+  it("checks the caption track: one at most, above the video tracks, a valid style, cues with integer word frames", () => {
+    const project = addCaptionTrack(base());
+    const cue = makeCaptionClip({ id: "q1", trackId: "cc", start: 0, duration: 30, text: "Hi there", words: [{ text: "Hi", start: 0, end: 10 }] });
+    expect(validateProject(withClips(project, [cue]))).toEqual([]);
+    const twice = addCaptionTrack(project, "cc2");
+    expect(validateProject(twice).join()).toContain("2 caption tracks");
+    const low = structuredClone(project);
+    low.tracks = [low.tracks[1]!, low.tracks[0]!, low.tracks[2]!];
+    expect(validateProject(low).join()).toContain("must be above every video track");
+    const style = structuredClone(project);
+    style.captionTracks.cc!.style = { ...style.captionTracks.cc!.style, position: "left" as "top", maxLines: 0, highlight: { mode: "glow" as "none", color: { r: 1, g: 1, b: 1, a: 1 }, inactiveColor: { r: 1 } as never } };
+    const issues = validateProject(style).join(" | ");
+    expect(issues).toContain('position "left"');
+    expect(issues).toContain("max lines 0");
+    expect(issues).toContain('highlight mode "glow"');
+    expect(issues).toContain("highlight colors must be RGBA");
+    const words = validateProject(withClips(project, [{ ...cue, words: [{ text: "Hi", start: 5, end: 5 }, { text: "x", start: 0.5, end: 2 }] }]));
+    expect(words).toHaveLength(2);
+    expect(validateProject(withClips(project, [{ ...cue, trackId: "v1" }])).join()).toContain("a caption clip cannot sit on video");
   });
 
   it("assertValid throws a DocumentInvariantError listing every issue", () => {

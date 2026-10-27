@@ -145,6 +145,9 @@
   --media-list-thumb-width: 40px;
   /* Favorite preset chips in the timeline toolbar (Batch 30, gap): a long name ends in an ellipsis. */
   --preset-chip-max-width: 96px;
+  /* Captions tab cue rows (Batch 32; the DS has no cue list): two body lines of text and the times. */
+  --cue-row-height: 48px;
+  --cue-time-width: calc(3 * var(--space-6) + var(--space-3)); /* 80px: the toolbar timecode field's width */
   --type-badge: 500 10px / 12px var(--font-mono); /* DS chips: 9.5-10px */
 
   /* Preview (gap): space kept around the letterboxed frame at Fit */

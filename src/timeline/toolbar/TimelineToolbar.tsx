@@ -2,8 +2,9 @@ import { Ellipsis, Gauge } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { addPresetClip, presetLibrary, type PresetLibrary } from "../../app/presetController.js";
-import { actions, sessionStore } from "../../app/services.js";
+import { actions, documentStore, sessionStore } from "../../app/services.js";
 import { bindTimecode, bindZoomSlider, timelineDev } from "../../app/timelineController.js";
+import type { Project } from "../../core/document/types.js";
 import type { SessionState } from "../../core/store/sessionStore.js";
 import { useStoreSelector } from "../../core/store/useStoreSelector.js";
 import { favoriteChips } from "../../text/presets.js";
@@ -12,7 +13,7 @@ import { useDismiss } from "../../ui/useDismiss.js";
 import styles from "./TimelineToolbar.module.css";
 import { TOOLBAR_GROUPS, type ToolbarGroup, type ToolbarItem } from "./toolbarGroups.js";
 
-// Actions stay disabled until their batches wire them (toggles: 35/37, add: 32/34).
+// Actions stay disabled until their batches wire them (toggles: 35/37, add: 34).
 const ENABLED: ReadonlySet<string> = new Set([
   "timeline.zoomOut",
   "timeline.zoomIn",
@@ -119,9 +120,18 @@ function FavoriteChips() {
   );
 }
 
+const selectHasCaptions = (project: Project) => project.tracks.some((track) => track.kind === "caption");
+
+/** `+ Caption track` (spec §17): disabled once the project has its one caption track (never hidden). */
+function CaptionTrackButton({ item }: { item: Extract<ToolbarItem, { kind: "button" }> }) {
+  const has = useStoreSelector(documentStore, selectHasCaptions);
+  return <IconButton icon={item.icon} label={has ? "Caption track: the project has one (Media > Captions)" : item.label} commandId={item.id} disabled={has} onClick={() => actions.run(item.id)} />;
+}
+
 function renderItem(item: ToolbarItem) {
   if (item.kind === "zoomSlider") return <ZoomSlider key="zoom-slider" />;
   if (item.kind === "presetChips") return <FavoriteChips key="preset-chips" />;
+  if (item.id === "add.captionTrack") return <CaptionTrackButton key={item.id} item={item} />;
   const pressedIn = TOGGLE_STATE[item.id];
   if (pressedIn) return <SessionToggle key={item.id} item={item} pressedIn={pressedIn} />;
   const enabled = ENABLED.has(item.id);

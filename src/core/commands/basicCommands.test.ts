@@ -1,3 +1,4 @@
+import { defaultCaptionStyle } from "../../text/captions.js";
 import { describe, expect, it } from "vitest";
 import { makeMedia, makeMediaClip, makeProject, makeSolidClip, makeTrack, withClips } from "../document/fixtures.js";
 import { DocumentStore } from "../store/DocumentStore.js";
@@ -37,7 +38,7 @@ describe("track commands", () => {
   it("removes a track with its clips and caption data, and undoes it", () => {
     const { store, trackIds } = setup();
     store.dispatch(addTrack(makeTrack("cap", "caption")));
-    store.dispatch({ id: "test", label: "Caption data", affects: ["captions"], run: (d) => void (d.captionTracks.cap = { style: "x" }) });
+    store.dispatch({ id: "test", label: "Caption data", affects: ["captions"], run: (d) => void (d.captionTracks.cap = { style: defaultCaptionStyle(d.settings) }) });
     store.dispatch(removeTrack("v1"));
     store.dispatch(removeTrack("cap"));
     expect(trackIds()).toEqual(["a1"]);

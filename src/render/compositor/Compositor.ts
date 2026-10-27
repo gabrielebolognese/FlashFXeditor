@@ -20,13 +20,19 @@
 // - Gesture-aware (spec P2): during a canvas gesture or a properties field scrub `transforms`,
 //   `opacities`, `crops`, `texts` and `anims` give the clips' ephemeral values, used instead of the
 //   document's until it commits.
+// - Captions (spec §10.5): the caption track (above every video track, so drawn last) adds its cue at
+//   the frame as a text layer in the track's style (render/text/captionLayout.ts: wrapped at the max
+//   width, smaller when it has more lines than the max), centered at the style's position. When the
+//   cue has word timings and the style a highlight, the layer carries the active word
+//   (`CaptionHighlightFrame`). `captions` gives the cue list's live text and a style field scrub's
+//   live style. Cues about to show are listed by `upcomingTexts` too.
 // Layer structs and arrays are reused between frames; evaluating allocates nothing once warm.
-// TODO(batch 32): the caption track's current cue. TODO(batch 34): solid shapes other than rect,
-// gradient fills, corner radius. TODO(batch 35): keyframes.
+// TODO(batch 34): solid shapes other than rect, gradient fills, corner radius. TODO(batch 35): keyframes.
 // TODO(batch 36): transitions (two contributing clips and a mix amount).
 import { isRgba } from "../../core/document/color.js";
 import { framesToSourceUs, secondsToFrames } from "../../core/document/time.js";
-import type { Clip, ClipId, Crop, Frame, MediaClip, MediaId, Project, RGBA, SolidClip, TextAnim, TextClip, TextContent, TextStyle, Transform } from "../../core/document/types.js";
+import type { CaptionClip, CaptionStyle, Clip, ClipId, Crop, Frame, MediaClip, MediaId, Project, RGBA, SolidClip, TextAnim, TextClip, TextContent, TextStyle, Track, TrackId, Transform } from "../../core/document/types.js";
+import { activeWordIndex, captionPlace, defaultCaptionStyle } from "../../text/captions.js";
 import { activeAnim, animUnit, isPlayable, newUnitState, presence, resetUnitState, typedCount, unitProgress, writeUnitShape, type ActiveAnim, type UnitState } from "../../text/anim.js";
 import { clipInIndex, lastClipStartingBy, trackIndex } from "../../timeline/model/queries.js";
 import { multiplyInto, mutableIdentity, setMat, type MutableMat3 } from "../mat3.js";
@@ -35,9 +41,10 @@ import type { AtlasUnitKind } from "../text/atlas.js";
 import { layoutStops, layoutUnits } from "../text/animUnits.js";
 import type { TextLayout } from "../text/layout.js";
 import { textLayout } from "../text/layoutCache.js";
+import { captionLook, HIGHLIGHT_SCALE, highlightUnits, type CaptionLook } from "../text/captionLayout.js";
 import { TEXT_RASTER_MAX, type TextHighlight } from "../text/raster.js";
 import { MAX_TEXT_SCALE, type TextPart } from "../text/TextRasterCache.js";
-import type { Composite, CompositeLayer, MediaLayer, SolidLayer, TextAnimFrame, TextCompositeLayer } from "./drawList.js";
+import { HIGHLIGHT_SLOT, type CaptionHighlightFrame, type Composite, type CompositeLayer, type MediaLayer, type SolidLayer, type TextAnimFrame, type TextCompositeLayer } from "./drawList.js";
 
 /** How far from the playhead the clips next to it count as cut neighbours (seconds). */
 export const NEIGHBOR_SECONDS = 2;
@@ -45,7 +52,14 @@ export const NEIGHBOR_SECONDS = 2;
 type WritableMediaLayer = Omit<MediaLayer, "transform"> & { transform: MutableMat3 };
 type WritableSolidLayer = Omit<SolidLayer, "transform" | "color"> & { transform: MutableMat3; color: RGBA };
 type WritableAnimFrame = { atlas: TextAnimFrame["atlas"]; units: UnitState[]; background: number };
-type WritableTextLayer = Omit<TextCompositeLayer, "model" | "anim"> & { model: MutableMat3; anim: TextAnimFrame | null; animFrame: WritableAnimFrame };
+type WritableKaraoke = Omit<CaptionHighlightFrame, "box"> & { box: CaptionHighlightFrame["box"]; boxValue: NonNullable<CaptionHighlightFrame["box"]> };
+type WritableTextLayer = Omit<TextCompositeLayer, "model" | "anim" | "karaoke"> & {
+  model: MutableMat3;
+  anim: TextAnimFrame | null;
+  animFrame: WritableAnimFrame;
+  karaoke: CaptionHighlightFrame | null;
+  karaokeFrame: WritableKaraoke;
+};
 
 /** A text clip's ephemeral content and style (a Text field scrub, spec §11, P2; inline editing, §7.7). */
 export interface LiveText {
@@ -61,6 +75,12 @@ export interface LiveText {
 export interface LiveAnims {
   animIn?: TextAnim | undefined;
   animOut?: TextAnim | undefined;
+}
+
+/** The cue list's live cue texts and a Caption style field scrub's live style (spec §10.5, P2). */
+export interface LiveCaptions {
+  texts: ReadonlyMap<ClipId, string> | null;
+  styles: ReadonlyMap<TrackId, CaptionStyle> | null;
 }
 
 /** A text clip about to show and what it will draw (`upcomingTexts`). */
@@ -147,12 +167,14 @@ export class Compositor {
   private readonly upcomingList: UpcomingText[] = [];
   private readonly step = mutableIdentity();
   private readonly active: ActiveAnim = { anim: { id: "fade", duration: 1 }, phase: "in", progress: 0, length: 0 };
+  private readonly captionTransform: Transform = { x: 0, y: 0, scale: 1, rotation: 0, anchor: { x: 0.5, y: 0.5 }, flipH: false, flipV: false };
 
   /**
    * The document at `frame`, bottom track first, with `transforms` (a canvas gesture's or a field
    * scrub's), `opacities` (a field scrub's), `crops` (a crop handle drag's or a field scrub's), `texts`
-   * (a Text field scrub's) and `anims` (an Animation field scrub's) replacing the clips' own. The result
-   * and its layers are reused by the next call: read it before evaluating again.
+   * (a Text field scrub's), `anims` (an Animation field scrub's) and `captions` (the cue list's text,
+   * a Caption style scrub's style) replacing the clips' own. The result and its layers are reused by
+   * the next call: read it before evaluating again.
    */
   evaluate(
     doc: Project,
@@ -162,6 +184,7 @@ export class Compositor {
     crops: ReadonlyMap<ClipId, Crop> | null = null,
     texts: ReadonlyMap<ClipId, LiveText> | null = null,
     anims: ReadonlyMap<ClipId, LiveAnims> | null = null,
+    captions: LiveCaptions | null = null,
   ): Composite {
     const out = this.out;
     const { width, height, background } = doc.settings;
@@ -173,7 +196,15 @@ export class Compositor {
     let solids = 0;
     let textLayers = 0;
     for (const track of doc.tracks) {
-      // TODO(batch 32): caption tracks draw their cue above the video tracks.
+      // The caption track's cue (spec §10.5), unless the track is hidden.
+      if (track.kind === "caption") {
+        const layer = (this.textPool[textLayers] ??= newTextLayer());
+        if (!track.hidden && this.writeCaption(layer, doc, track, frame, captions)) {
+          out.layers.push(layer);
+          textLayers += 1;
+        }
+        continue;
+      }
       // Muted and hidden video tracks are not in the composite (spec §6.12).
       if (track.kind !== "video" || track.hidden || track.muted) continue;
       const clip = clipInIndex(trackIndex(doc, track), frame);
@@ -252,7 +283,42 @@ export class Compositor {
         list.push(item);
       }
     }
+    const captions = doc.tracks.find((track) => track.kind === "caption");
+    if (captions && !captions.hidden) this.upcomingCues(doc, captions, frame, reach);
     return list;
+  }
+
+  /** The cues showing in [`frame`, `frame` + `reach`): their raster, and with a highlight their word atlases. */
+  private upcomingCues(doc: Project, track: Track, frame: Frame, reach: Frame): void {
+    const index = trackIndex(doc, track);
+    const style = captionStyle(doc, track.id);
+    for (let at = lastClipStartingBy(index, frame + reach - 1); at >= 0; at--) {
+      const cue = index.clips[at] as CaptionClip;
+      if (cue.start + cue.duration <= frame) break;
+      if (!cue.enabled || cue.text.trim() === "") continue;
+      const look = captionLook(cue.text, style);
+      const highlighting = style.highlight.mode !== "none" && cue.words !== undefined && cue.words.length > 0;
+      const shown = highlighting ? look.inactive : look.style;
+      const parts = this.upcomingItem(cue.id, look.content, shown).parts;
+      if (!highlighting) continue;
+      parts.push("word");
+      if (shown.background.enabled) parts.push("backgrounds");
+      this.upcomingItem(cue.id + HIGHLIGHT_SLOT, look.content, look.active).parts.push("word");
+    }
+  }
+
+  /** A pooled upcoming entry drawing `text` in `style` at scale 1, its parts `all` only for now. */
+  private upcomingItem(clipId: ClipId, text: TextContent, style: TextStyle): UpcomingText {
+    const list = this.upcomingList;
+    const item = (this.upcomingPool[list.length] ??= { clipId: "", text, style, scale: 1, parts: [] });
+    item.clipId = clipId;
+    item.text = text;
+    item.style = style;
+    item.scale = 1;
+    item.parts.length = 0;
+    if (!clipId.endsWith(HIGHLIGHT_SLOT)) item.parts.push("all");
+    list.push(item);
+    return item;
   }
 
   private addNeighbor(doc: Project, clip: Clip, at: Frame, frame: Frame, reach: Frame): void {
@@ -350,7 +416,44 @@ export class Compositor {
     layer.opacity = clamp01(opacity) * fadeFactor(clip, frame);
     const active = shown.editing ? null : activeAnim({ duration: clip.duration, animIn: anims.animIn, animOut: anims.animOut }, frame - clip.start, this.active);
     layer.anim = active ? writeAnimFrame(layer.animFrame, active, layout, shown.style) : null;
+    layer.karaoke = null;
     return scale > 0;
+  }
+
+  /**
+   * The caption track's cue at `frame` (spec §10.5): its text (or the cue list's live text) laid out in
+   * the track's style (or a field scrub's), centered at the style's position, with its active word.
+   */
+  private writeCaption(layer: WritableTextLayer, doc: Project, track: Track, frame: Frame, live: LiveCaptions | null): boolean {
+    const cue = clipInIndex(trackIndex(doc, track), frame);
+    if (cue?.kind !== "caption" || !cue.enabled) return false;
+    const text = live?.texts?.get(cue.id) ?? cue.text;
+    if (text.trim() === "") return false;
+    // TODO(batch 53): the cue's style override over the track's style (spec §20.3).
+    const style = live?.styles?.get(track.id) ?? captionStyle(doc, track.id);
+    const look = captionLook(text, style);
+    const words = cue.words;
+    const highlighting = style.highlight.mode !== "none" && words !== undefined && words.length > 0 && text === cue.text;
+    const shown = highlighting ? look.inactive : look.style;
+    const layout = textLayout(look.content, shown);
+    const raster = layout.raster;
+    if (!raster) return false;
+    const place = captionPlace(style, doc.settings.height);
+    const transform = this.captionTransform;
+    transform.y = place.y;
+    transform.anchor.y = place.anchorY;
+    writeModel(layer.model, transform, layout.width, layout.height, doc.settings.width, doc.settings.height);
+    layer.trackId = track.id;
+    layer.clipId = cue.id;
+    layer.text = look.content;
+    layer.style = shown;
+    layer.highlight = null;
+    layer.scale = 1;
+    layer.detail = Math.min(MAX_TEXT_SCALE, TEXT_RASTER_MAX / Math.max(raster.width, raster.height));
+    layer.opacity = 1;
+    layer.anim = null;
+    layer.karaoke = highlighting ? writeKaraoke(layer.karaokeFrame, look, layout, style, words, frame - cue.start) : null;
+    return true;
   }
 
   private writeSolid(layer: WritableSolidLayer, doc: Project, clip: SolidClip, transform: Transform, opacity: number): boolean {
@@ -373,7 +476,59 @@ function newMediaLayer(): WritableMediaLayer {
 }
 
 function newTextLayer(): WritableTextLayer {
-  return { kind: "text", trackId: "", clipId: "", model: mutableIdentity(), opacity: 1, text: textContent(""), style: DEFAULT_TEXT_STYLE, scale: 1, detail: 1, highlight: null, anim: null, animFrame: { atlas: "block", units: [], background: 1 } };
+  return {
+    kind: "text",
+    trackId: "",
+    clipId: "",
+    model: mutableIdentity(),
+    opacity: 1,
+    text: textContent(""),
+    style: DEFAULT_TEXT_STYLE,
+    scale: 1,
+    detail: 1,
+    highlight: null,
+    anim: null,
+    animFrame: { atlas: "block", units: [], background: 1 },
+    karaoke: null,
+    karaokeFrame: { style: DEFAULT_TEXT_STYLE, from: 0, to: 0, scale: 1, ox: 0, oy: 0, box: null, boxValue: { rect: { x: 0, y: 0, width: 0, height: 0 }, color: { r: 0, g: 0, b: 0, a: 0 } } },
+  };
+}
+
+/** The default caption style per project settings (a caption track without data). */
+const defaultStyles = new WeakMap<Project["settings"], CaptionStyle>();
+
+/** The style of the caption track `trackId`. */
+function captionStyle(doc: Project, trackId: TrackId): CaptionStyle {
+  const style = doc.captionTracks[trackId]?.style;
+  if (style) return style;
+  let fallback = defaultStyles.get(doc.settings);
+  if (!fallback) {
+    fallback = defaultCaptionStyle(doc.settings);
+    defaultStyles.set(doc.settings, fallback);
+  }
+  return fallback;
+}
+
+/** The highlight of the word playing `rel` frames into a cue (spec §10.5), into `out`; null between words. */
+function writeKaraoke(out: WritableKaraoke, look: CaptionLook, layout: TextLayout, style: CaptionStyle, words: CaptionClip["words"] & object, rel: Frame): CaptionHighlightFrame | null {
+  const index = activeWordIndex(words, rel);
+  if (index === -1) return null;
+  const unit = highlightUnits(layout, look.content, look.inactive, words)[index];
+  if (!unit) return null;
+  const mode = style.highlight.mode;
+  out.style = look.active;
+  out.from = unit.from;
+  out.to = unit.to;
+  out.scale = mode === "scale" || mode === "colorAndScale" ? HIGHLIGHT_SCALE : 1;
+  out.ox = unit.ox;
+  out.oy = unit.oy;
+  if (mode === "background") {
+    const box = out.boxValue;
+    box.rect = unit.box;
+    box.color = style.highlight.color;
+    out.box = box;
+  } else out.box = null;
+  return out;
 }
 
 /** The atlas an animation draws from: none for the whole text, lines for a typewriter's characters. */

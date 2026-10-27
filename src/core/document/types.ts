@@ -169,8 +169,44 @@ export interface TextPreset {
   createdAt: string;
   updatedAt: string;
 }
-/** TODO(batch 32): caption track style and cue ids (§10.5). */
-export type CaptionTrackData = JsonObject;
+/** Where a caption sits (spec §10.5): a preset, or `custom` at `CaptionStyle.y`. */
+export type CaptionPosition = "bottom" | "center" | "top" | "custom";
+
+/** How the word being spoken stands out when a cue has word timings (spec §10.5). */
+export const CAPTION_HIGHLIGHTS = ["none", "color", "background", "scale", "colorAndScale"] as const;
+export type CaptionHighlightMode = (typeof CAPTION_HIGHLIGHTS)[number];
+
+export interface CaptionHighlight {
+  mode: CaptionHighlightMode;
+  /** The active word's fill (color modes) or its box (background). */
+  color: RGBA;
+  /** The fill of the other words while a cue has word timings. */
+  inactiveColor: RGBA;
+}
+
+/**
+ * The look of a caption track's cues (spec §10.5): a text style, where the cues sit, how wide and how
+ * many lines they may be, and the word highlight. Sizes are project px.
+ */
+export interface CaptionStyle {
+  text: TextStyle;
+  position: CaptionPosition;
+  /** `custom`: the middle of the caption, project px from the frame center (down is positive). */
+  y: number;
+  /** Words wrap at this width (project px). */
+  maxWidth: number;
+  /** A cue with more lines is drawn smaller until it fits. */
+  maxLines: number;
+  highlight: CaptionHighlight;
+}
+
+/**
+ * A caption track's data (spec §5.2 `captionTracks`): its style. The cue ids are the track's
+ * `clipIds` (one source of truth).
+ */
+export interface CaptionTrackData {
+  style: CaptionStyle;
+}
 
 export interface Project {
   schemaVersion: number;
@@ -286,10 +322,18 @@ export interface SolidClip extends ClipBase {
   keyframes?: Keyframes;
 }
 
+/** A word of a cue with its timing: frames relative to the cue's start, [start, end). */
+export interface CaptionWord {
+  text: string;
+  start: Frame;
+  end: Frame;
+}
+
+/** A cue (spec §10.5): plain text with `\n` line breaks, and optional word timings (karaoke). */
 export interface CaptionClip extends ClipBase {
   kind: "caption";
   text: string;
-  words?: { text: string; start: Frame; end: Frame }[];
+  words?: CaptionWord[];
 }
 
 export type Clip = MediaClip | TextClip | SolidClip | CaptionClip;
