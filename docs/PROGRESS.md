@@ -3591,3 +3591,41 @@ Why each dependency exists (Batch rule 8).
 - docs note: starters seeded before this version get their animations only if they were never changed (Lower third, Caption bold, Neon glow, Breaking); T and Shift+T (Title, Subtitle) stay still.
 - other: `docs/BATCHES.md` (Batches 51-53) and `docs/EDITOR_SPEC.md` (§20), edited outside the batch runs, are left out of this batch's commit (as in Batches 29 and 30).
 - review request: docs/PROGRESS.md src/app/liveEdit.ts src/app/presetController.ts src/app/previewController.ts src/app/textAnimController.ts src/core/document/types.ts src/panels/PropertiesPanel.tsx src/panels/properties/AnimationSection.tsx src/panels/properties/Section.module.css src/panels/properties/animBinding.test.ts src/panels/properties/animBinding.ts src/panels/properties/context.test.ts src/panels/properties/context.ts src/playback/PlaybackEngine.test.ts src/playback/PlaybackEngine.ts src/render/compositor/Compositor.ts src/render/compositor/DrawListSnapshot.ts src/render/compositor/drawList.ts src/render/gpu/WebGpuRenderer.ts src/render/gpu/shaders.ts src/render/preview/LayerTextures.ts src/render/preview/PreviewView.ts src/render/text/TextRasterCache.test.ts src/render/text/TextRasterCache.ts src/render/text/animUnits.ts src/render/text/atlas.test.ts src/render/text/atlas.ts src/render/text/raster.ts src/render/text/textLayers.test.ts src/text/anim.test.ts src/text/anim.ts src/text/index.ts src/text/presets.test.ts src/text/presets.ts src/text/starterPresets.ts src/timeline/edit/text.test.ts src/timeline/edit/textAnim.test.ts src/timeline/edit/textAnim.ts src/timeline/view/drawContent.ts src/timeline/view/glyphs.ts
+- review: accepted
+  - `npm run check` is green on my run: typecheck, lint plus the CSS color check, 1497 unit tests in 151 files, 3 perf tests, and the build (857.10 kB JS / 277.00 kB gzip, 68.15 kB CSS; the >500 kB chunk warning is the logged Batch 45 follow-up). These match the entry.
+  - 1. Every acceptance item is covered:
+    - Acceptance 1 (12-word wordPop in / fade out at 60 fps, no rasterization during playback):
+      - The per-unit states come from `writeAnimFrame` (`src/render/compositor/Compositor.ts`), with no rasterization per frame. The units and stops are cached per layout (`src/render/text/animUnits.ts`), and the atlas, background and raster parts are cache entries (`TextRasterCache.test.ts:260`).
+      - Parts are warmed ahead: `TextRasterCache.test.ts:290` ("drawing them later rasterizes nothing") and `textLayers.test.ts:247` (all parts while idle, one per pass while playing).
+      - The recorded `acc1.mjs` run: 361 frames per playback, p95 17.2 / 16.9 ms, a constant 2 rasterizations, 0 React commits. Pending manual check 1 reproduces it.
+      - Starting playback more than 5 s before a title still rasterizes that title during playback, before it shows. This is a logged deviation with its reason, and it is not per-frame rasterization (P11).
+    - Acceptance 2 (the in duration shows at once; the animation fits inside the clip):
+      - `animBinding.test.ts:33` (a typed value sets whole frames, one command), `:49` (the scrub writes `liveEdit.anims` only, then one command on release) and `:67` (automatic stagger, one-frame steps).
+      - `anim.test.ts:44`: each animation is clamped to half the clip, and in and out never overlap.
+      - `PlaybackEngine.test.ts:466`: the replay after a commit plays the range once and puts the playhead back.
+      - Also the recorded `acc2.mjs` 17/17, and pending manual check 2.
+    - Acceptance 3 (a preset's animations reach a selected clip and new clips):
+      - `text.test.ts:264` covers Apply and `addTitle` with a preset's look, in the project's frames (60 fps: 500 ms gives 30 frames).
+      - `presets.test.ts` covers ms storage, `presetDiffers` in frames and sanitizing. `starterPresets` covers `upgradeStarters`.
+      - Also `acc3`, and pending manual check 3.
+  - 2. Batch 31 has no `Do not build yet` list, and nothing from later batches was built:
+    - Karaoke (Batch 32) and keyframe easings (Batch 35, `TODO(batch 35)` in `types.ts` / `anim.ts`) are left as hooks.
+    - Export rendering (Batch 43) is a follow-up.
+    - `perUnit` for other animations exists in the model only; the section has no unit chooser.
+  - 3. No color, font or size literals:
+    - The new CSS (`.chips`) uses `--space-0` only.
+    - The section uses tokenized classes (`.hint` with `--text-muted`, caption type), the timeline badge uses Theme colors, and `sparkles` is lucide path data like the other glyphs.
+    - The motion constants (`SLIDE_EM`, `POP_FROM`, `BLUR_EM`, `MAX_BLUR_SIGMA`) shape content, not UI, and are listed under design gaps.
+  - 4. §3 and §4 are respected:
+    - The Animation section is chrome: narrow `useClipsShared` selectors, fields bound outside React (P1).
+    - A chip, a typed value or a scrub release each commits one `clip.animation` command. Arrow steps coalesce by key, and scrubs are ephemeral in `liveEdit.anims` (P2).
+    - Durations and staggers are whole frames in the document, and presets use whole ms (P4).
+    - The preview draws through the scheduler, and the snapshot includes `blur` (P3).
+    - The blur is two GPU passes in the draw's own encoder, with pooled textures freed after 120 idle draws (P13).
+    - No media work moved to the main thread (P5).
+  - 5. Every TODO in `src` carries a `(batch NN)` tag, and no `TODO(batch 31)` is left.
+  - 6. There were no earlier rejections.
+  - Non-blocking notes:
+    - `src/panels/properties/animBinding.ts:34` and `:83` convert seconds to frames by hand (`fpsNumber`, a copy of `fpsToNumber`) instead of through `core/document/time.ts` (P4). Values are rounded to whole frames before they reach the document, so no float is persisted.
+    - `slideDirection` (`src/text/anim.ts:227-241`) returns a new object on every call, and `TextRasterCache.part` (`src/render/text/TextRasterCache.ts:228`) builds slot-key strings each pass for atlas, background and warm parts. Both are small per-frame allocations, against the "allocation-free" comments (`anim.ts:2`, `LayerTextures.ts` header).
+    - The global follow-ups list still shows `[from Batch 28 -> Batch 31]` (`docs/PROGRESS.md:432`) and `[from Batch 30 -> Batch 31]` (`:444`) without the usual "(done in Batch 31)" marker. The batch entry marks them done.
