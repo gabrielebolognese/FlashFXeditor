@@ -1,6 +1,6 @@
 # Clip thumbnails, waveforms and badges
 
-Clips on the timeline show what is in them: video clips show a strip of thumbnails, audio clips show their waveform, and image clips show their picture. Small badges in each clip's label bar tell you about its speed, its link and its sync, and mark freeze frames. Use them to find a shot, a cut point or a loud moment without playing the timeline.
+Clips on the timeline show what is in them: video clips show a strip of thumbnails, audio clips show their waveform, image clips show their picture, and text clips show their text. Small badges in each clip's label bar tell you about its speed, its link and its sync, mark freeze frames, and warn about missing fonts. Use them to find a shot, a cut point or a loud moment without playing the timeline.
 
 > **Video placeholder: Thumbnails, waveforms and badges**
 > - File: `videos/clip-thumbnails-and-waveforms/overview.mp4` (not recorded yet)
@@ -29,6 +29,7 @@ A clip has two parts:
 | Freeze frame | The same picture in every thumbnail: it holds one frame. |
 | Audio | The waveform of its sound. See [Read a waveform](#read-a-waveform). |
 | Image | The picture, repeated across the clip. An animated GIF or WebP shows its first frame. |
+| Text | The first line of its text, as the picture shows it (in capitals when its **Case** is **AA**). See [Text clips on the timeline](titles-and-text.md#text-clips-on-the-timeline). |
 
 A video with sound gives you both: thumbnails in its video clip and the waveform in its sound clip on the audio track.
 
@@ -91,6 +92,7 @@ Badges sit at the right end of a clip's label bar, from right to left in this or
 | Speed | `0.5x`, `2x` or `1.33x` | The video or audio clip plays faster or slower than its media. See [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md) and [Change a clip's speed with Rate stretch](advanced-trimming.md#change-a-clips-speed-with-rate-stretch). |
 | Freeze frame | A snowflake, in the place of the speed | The clip holds one frame of its video. See [Hold a frame (freeze frame)](speed-freeze-frames-and-punch-zoom.md#hold-a-frame-freeze-frame). |
 | Link | A chain icon | The clip is linked to another clip, for example a video and its sound. See [Linking and grouping clips](links-and-groups.md). |
+| Missing font | A red warning triangle | The text clip uses a font this computer doesn't have, so it is drawn with a fallback font. See [Fix a missing font](titles-and-text.md#fix-a-missing-font). |
 
 - A clip at normal speed shows no speed badge, and a clip in sync shows no number.
 - The clip's name ends before the badges, shortened with "…" when needed. In a short clip, badges that don't fit are left out.
@@ -123,9 +125,10 @@ A clip with a label color shows that color in its label bar above the thumbnails
 - [Linking and grouping clips](links-and-groups.md)
 - [Advanced trimming](advanced-trimming.md)
 - [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md)
+- [Titles and text](titles-and-text.md)
 - [Audio](audio.md)
 - [Importing media](importing-media.md)
 - [Proxies](proxies.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 27, 2026-10-16</sub>
+<sub>Last updated: Batch 29, 2026-10-16</sub>

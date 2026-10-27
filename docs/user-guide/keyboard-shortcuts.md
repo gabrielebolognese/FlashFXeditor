@@ -33,6 +33,7 @@ This page lists every keyboard shortcut that works in the current version of Sho
 >   25. With the logo selected, click in the **X** field of **Edit Properties** and press <kbd>↑</kbd> three times and <kbd>Shift</kbd>+<kbd>↑</kbd> once: the logo moves 13 pixels to the right. Press <kbd>Esc</kbd>, click the logo's clip on the timeline and press <kbd>Ctrl</kbd>+<kbd>D</kbd>: a copy appears right after it.
 >   26. Double-click the video under the logo in the preview: white brackets and bars appear on it, with the **Crop** chip at the top of the preview. Hold <kbd>Alt</kbd> and drag the left bar inward: the left and right sides are cut together. Press <kbd>Esc</kbd>: the chip disappears and the usual handles are back.
 >   27. Click the timeline, put the playhead inside a video and press <kbd>Shift</kbd>+<kbd>F</kbd>: a 2-second clip with a snowflake appears at the playhead, and the later clips move right. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>, then <kbd>Shift</kbd>+<kbd>Z</kbd>: the clip is cut and the picture after the cut is 20% closer. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>.
+>   28. Press <kbd>T</kbd>: "Title" appears in the preview, selected. Type `hi`, press <kbd>Enter</kbd> and type `there`: a second line. Press <kbd>↑</kbd>, then <kbd>Shift</kbd>+<kbd>End</kbd>: "hi" is highlighted. Press <kbd>Esc</kbd>. Press <kbd>Enter</kbd>: the whole text is selected again. Press <kbd>Ctrl</kbd>+<kbd>Enter</kbd>. Press <kbd>Shift</kbd>+<kbd>T</kbd>: a subtitle appears in the lower third.
 
 ## In this page
 - [How shortcuts work](#how-shortcuts-work)
@@ -45,6 +46,7 @@ This page lists every keyboard shortcut that works in the current version of Sho
 - [Markers and in/out points](#markers-and-inout-points)
 - [Tracks, links and groups](#tracks-links-and-groups)
 - [Tools](#tools)
+- [Text](#text)
 - [Edit Properties](#edit-properties)
 - [Audio](#audio)
 - [Media panel](#media-panel)
@@ -62,7 +64,7 @@ This page lists every keyboard shortcut that works in the current version of Sho
 - **Panel** shortcuts work only while that panel is active.
 - When a panel uses the same key as an all-panels shortcut, the panel wins. When the panel's own action has nothing to act on, or belongs to a later feature, the all-panels shortcut works there. For example, in the Preview panel the arrow keys move the selected layers; with no layer selected there, <kbd>←</kbd> and <kbd>→</kbd> step frames as everywhere else.
 
-**Typing comes first.** Shortcuts are off while you type in a text field (a name, a timecode field, a number), while a dropdown list such as **Sort media by** or **Resolution** has the keyboard focus, and while a dialog or a menu is open. Press <kbd>Enter</kbd> or <kbd>Escape</kbd> to leave a text field. A dropdown list gives the keyboard back as soon as you pick a value with the mouse; after you pick one with the keyboard, click the preview picture or the timeline.
+**Typing comes first.** Shortcuts are off while you type in a text field (a name, a timecode field, a number) or edit a text in the preview (there only <kbd>Ctrl</kbd>+<kbd>Enter</kbd> and <kbd>Esc</kbd> work; see [While you edit text](#while-you-edit-text)), while a dropdown list such as **Sort media by** or **Resolution** has the keyboard focus, and while a dialog or a menu is open. Press <kbd>Enter</kbd> or <kbd>Escape</kbd> to leave a text field. A dropdown list gives the keyboard back as soon as you pick a value with the mouse; after you pick one with the keyboard, click the preview picture or the timeline.
 
 **Icon buttons keep your shortcuts.** Clicking an icon button, such as the transport buttons, **Mute**, **Loop playback** or **Fit the frame in the panel**, choosing from the **Zoom**, **Preview quality** or **Overlays** menu of the preview, or dragging the **Master volume** knob, does not take the keyboard focus, so <kbd>Space</kbd> still plays right after.
 
@@ -116,7 +118,7 @@ See [Preview zoom, overlays and fullscreen](preview-zoom-overlays-fullscreen.md)
 | Leave the fullscreen preview | <kbd>Escape</kbd> | <kbd>Esc</kbd> | All panels |
 
 - <kbd>Ctrl</kbd>+<kbd>0</kbd>, <kbd>Ctrl</kbd>+<kbd>1</kbd> and <kbd>Ctrl</kbd>+<kbd>2</kbd> keep the point in the middle of the panel where it is; **Fit** centers the frame. Outside the Preview panel the browser gets these keys; see [Keys the browser keeps](#keys-the-browser-keeps).
-- <kbd>Escape</kbd> first cancels a drag in progress (also a layer you move, resize, rotate or crop in the preview) or closes an open menu; the next press leaves crop mode, and the press after that leaves fullscreen.
+- <kbd>Escape</kbd> first cancels a drag in progress (also a layer you move, resize, rotate or crop in the preview) or closes an open menu; the next press finishes a text you are editing (keeping what you typed), then leaves crop mode, and the press after that leaves fullscreen.
 - The arrow keys move layers only while a selected layer is under the playhead. Otherwise <kbd>←</kbd> and <kbd>→</kbd> (with or without <kbd>Shift</kbd>) step frames in the Preview panel as in the other panels, and <kbd>↑</kbd> and <kbd>↓</kbd> do nothing there. <kbd>Ctrl</kbd>+<kbd>←</kbd> and <kbd>Ctrl</kbd>+<kbd>→</kbd> always step one second.
 - Arrow presses less than 0.3 seconds apart are one undo step, **Nudge layer**.
 - <kbd>Delete</kbd> also works in the Preview panel: it deletes the selected clips. See [Cutting and deleting](#cutting-and-deleting).
@@ -147,6 +149,8 @@ These work over the preview picture.
 | Show and move the anchor point (one layer selected) | Hold <kbd>Alt</kbd>, then drag the ring marker | Hold <kbd>⌥</kbd>, then drag the ring marker |
 | Show the distances from the selected layers to their neighbors and the frame edges (**Smart guides** on) | Hold <kbd>Alt</kbd> with the pointer over the preview, without clicking | Hold <kbd>⌥</kbd> with the pointer over the preview, without clicking |
 | Crop a video or image with handles (crop mode), or leave crop mode | Double-click it | Double-click it |
+| Edit a text, with the caret where you click | Double-click the text | Double-click the text |
+| Change the font size of one selected text (its corner handles) or the width of its box (its side handles) | Drag a handle of the text; <kbd>Alt</kbd>: around the center | Same; <kbd>⌥</kbd>: around the center |
 | In crop mode: cut one side, or the two sides at a corner | Drag a bar, or a bracket | Same |
 | In crop mode: keep the shape of the visible part (with the **Aspect** lock on: change it freely) | <kbd>Shift</kbd>+drag a bracket or a bar | <kbd>⇧</kbd>+drag a bracket or a bar |
 | In crop mode: cut the opposite side by the same amount | <kbd>Alt</kbd>+drag a bracket or a bar | <kbd>⌥</kbd>+drag a bracket or a bar |
@@ -317,6 +321,39 @@ The tool decides what a drag on a clip does. The active tool's button in the tim
 
 The tool stays active until you choose another one, and each project remembers it. See [Pan the view](timeline.md#pan-the-view) and [Pan the preview](preview-zoom-overlays-fullscreen.md#pan-the-preview) for the **Hand** tool.
 
+## Text
+
+See [Titles and text](titles-and-text.md).
+
+| Action | Windows | macOS | Works in |
+| --- | --- | --- | --- |
+| Add a title at the playhead and type it (same as **Title**) | <kbd>T</kbd> | <kbd>T</kbd> | All panels |
+| Add a subtitle at the playhead and type it (same as **Subtitle**) | <kbd>Shift</kbd>+<kbd>T</kbd> | <kbd>⇧</kbd>+<kbd>T</kbd> | All panels |
+| Edit the selected text clip in the preview, with all its text selected | <kbd>Enter</kbd> | <kbd>Return</kbd> | Timeline or Preview panel |
+
+- <kbd>T</kbd> and <kbd>Shift</kbd>+<kbd>T</kbd> pause playback, finish a text you are editing, and start editing the new one with its text selected.
+- With no text clip selected, <kbd>Enter</kbd> does nothing. When the playhead is not over the selected text clip, it jumps to the clip's start first.
+
+### While you edit text
+
+While you edit a text in the preview, every other shortcut is off and the keys type: <kbd>Space</kbd> types a space, <kbd>T</kbd> types a "t", <kbd>Delete</kbd> deletes a letter.
+
+| Action | Windows | macOS |
+| --- | --- | --- |
+| New line | <kbd>Enter</kbd> or <kbd>Shift</kbd>+<kbd>Enter</kbd> | <kbd>Return</kbd> or <kbd>⇧</kbd>+<kbd>Return</kbd> |
+| Finish editing and keep the text | <kbd>Ctrl</kbd>+<kbd>Enter</kbd> or <kbd>Esc</kbd> | <kbd>⌘</kbd>+<kbd>Return</kbd> or <kbd>Esc</kbd> |
+| Move the caret one letter, or one word | <kbd>←</kbd> or <kbd>→</kbd>; <kbd>Ctrl</kbd>+<kbd>←</kbd> or <kbd>Ctrl</kbd>+<kbd>→</kbd> | <kbd>←</kbd> or <kbd>→</kbd>; <kbd>⌥</kbd>+<kbd>←</kbd> or <kbd>⌥</kbd>+<kbd>→</kbd> |
+| Move the caret to the line above or below, as you see the lines | <kbd>↑</kbd> or <kbd>↓</kbd> | <kbd>↑</kbd> or <kbd>↓</kbd> |
+| Move the caret to the start or end of the line | <kbd>Home</kbd> or <kbd>End</kbd> | <kbd>Fn</kbd>+<kbd>←</kbd> or <kbd>Fn</kbd>+<kbd>→</kbd> |
+| Select while you move | Hold <kbd>Shift</kbd> with a move | Hold <kbd>⇧</kbd> with a move |
+| Select all the text | <kbd>Ctrl</kbd>+<kbd>A</kbd> | <kbd>⌘</kbd>+<kbd>A</kbd> |
+| Cut, copy, paste text | <kbd>Ctrl</kbd>+<kbd>X</kbd>, <kbd>Ctrl</kbd>+<kbd>C</kbd>, <kbd>Ctrl</kbd>+<kbd>V</kbd> | <kbd>⌘</kbd>+<kbd>X</kbd>, <kbd>⌘</kbd>+<kbd>C</kbd>, <kbd>⌘</kbd>+<kbd>V</kbd> |
+| Undo your typing | <kbd>Ctrl</kbd>+<kbd>Z</kbd> | <kbd>⌘</kbd>+<kbd>Z</kbd> |
+| Put the caret where you click; select a word; select all | Click; double-click; triple-click the text | Same |
+| Select from the caret to where you click | <kbd>Shift</kbd>+click the text | <kbd>⇧</kbd>+click the text |
+
+Clicking anywhere outside the text, except in **Edit Properties** and its pickers, also finishes editing. After you finish, <kbd>Ctrl</kbd>+<kbd>Z</kbd> takes back the whole edit at once (**Edit text**). See [Edit text in the preview](titles-and-text.md#edit-text-in-the-preview).
+
 ## Edit Properties
 
 See [Editing properties](editing-properties.md).
@@ -340,7 +377,8 @@ See [Editing properties](editing-properties.md).
 | Fold or open a section | Click its header | Click its header |
 
 - <kbd>Ctrl</kbd>+<kbd>D</kbd> copies only one clip, without its linked sound. In the Preview panel the copy goes later on the timeline, not at the playhead. While the Edit Properties or Media panel is active, the browser gets the key; see [Keys the browser keeps](#keys-the-browser-keeps).
-- Hold <kbd>↑</kbd> or <kbd>↓</kbd> to keep going. In the **Transform**, **Crop**, **Opacity** and **Speed** sections, presses less than 0.3 seconds apart are one undo step.
+- Hold <kbd>↑</kbd> or <kbd>↓</kbd> to keep going. In the **Text**, **Transform**, **Crop**, **Opacity** and **Speed** sections, presses less than 0.3 seconds apart are one undo step.
+- In the **Text** field of the **Text** section, <kbd>Enter</kbd> starts a new line. In the font picker, <kbd>Enter</kbd> in **Search fonts** picks the first font that matches, and <kbd>Esc</kbd> closes the picker.
 - Edit Properties has no other keys of its own. While it is active and no field has the keyboard, the all-panels shortcuts work there, for example <kbd>Space</kbd> to play.
 
 ## Audio
@@ -499,9 +537,9 @@ While you type in a text field, or while a dialog is open, the editor leaves <kb
 
 ## Shortcuts for features not available yet
 
-Some buttons already show a shortcut in their tooltip although the button is disabled, for example **Title** in the timeline toolbar and **Export** in the app bar. These shortcuts start working when their feature is available in a later version; until then the keys do nothing. In the current version this also applies to:
+Some buttons already show a shortcut in their tooltip although the button is disabled, for example **Export** in the app bar. These shortcuts start working when their feature is available in a later version; until then the keys do nothing. In the current version this also applies to:
 
-- <kbd>T</kbd> and <kbd>Shift</kbd>+<kbd>T</kbd> (titles and subtitles), <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd> (default transition), <kbd>Ctrl</kbd>+<kbd>E</kbd> (export) and <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> (command palette).
+- <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd> (default transition), <kbd>Ctrl</kbd>+<kbd>E</kbd> (export) and <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> (command palette).
 - <kbd>Ctrl</kbd>+<kbd>X</kbd>, <kbd>Ctrl</kbd>+<kbd>C</kbd> and <kbd>Ctrl</kbd>+<kbd>V</kbd> in the Timeline and Preview panels (cutting, copying and pasting clips; the **Cut**, **Copy** and **Paste** rows of the clip menu, and the **Copy**, **Paste** and **Duplicate** rows of the preview's layer menu, are dimmed).
 
 ## Related pages
@@ -517,6 +555,7 @@ Some buttons already show a shortcut in their tooltip although the button is dis
 - [Markers and in/out points](markers-and-in-out-points.md)
 - [Advanced trimming](advanced-trimming.md)
 - [Speed, freeze frames and punch zoom](speed-freeze-frames-and-punch-zoom.md)
+- [Titles and text](titles-and-text.md)
 - [Tracks](tracks.md)
 - [Linking and grouping clips](links-and-groups.md)
 - [Audio](audio.md)
@@ -525,4 +564,4 @@ Some buttons already show a shortcut in their tooltip although the button is dis
 - [Projects and saving](projects-and-saving.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 27, 2026-10-16</sub>
+<sub>Last updated: Batch 29, 2026-10-16</sub>

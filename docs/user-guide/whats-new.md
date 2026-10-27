@@ -2,6 +2,11 @@
 
 Shorts Editor grows in steps called batches. This page lists what each batch added that you can see or use, newest first. Follow the links for the full instructions.
 
+> **Video placeholder: What's new in Batch 29**
+> - File: `videos/whats-new/batch-29.mp4` (not recorded yet)
+> - Length: about 60 seconds
+> - Shows: a 1080×1920 project with a talking-head video on V1 and A1; put the playhead at the start and press <kbd>T</kbd>: "Title" appears in the middle of the preview, highlighted in gold; type `WAIT FOR IT` and press <kbd>Esc</kbd>: the clip on V2 is named "WAIT FOR IT" and runs to the end of the video; press <kbd>Shift</kbd>+<kbd>T</kbd> and type a long sentence: it wraps in the lower third with a dark box behind each line; press <kbd>Esc</kbd>; double-click a word of the title: a gold caret blinks where you clicked; drag across a word and type over it; click **Size** in the **Text** section, type `150` and press <kbd>Enter</kbd>: the text grows while you are still editing; press <kbd>Esc</kbd>; drag a corner of the title outward: the readout shows the font size; click the **Font** field, click **Show system fonts**, allow it and pick **Georgia**; open the project folder in File Explorer: a `fonts` folder holds the font file.
+
 > **Video placeholder: What's new in Batch 27**
 > - File: `videos/whats-new/batch-27.mp4` (not recorded yet)
 > - Length: about 50 seconds
@@ -98,6 +103,7 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 > - Shows: open a project with three clips on the timeline; press <kbd>Space</kbd> to play and let the timeline page forward; press <kbd>L</kbd> three times to reach 8x, then <kbd>K</kbd>; hold <kbd>K</kbd> and tap <kbd>L</kbd> to step one frame; turn on **Loop playback**; point at the **Dropped** readout in the status strip.
 
 ## In this page
+- [Batch 29: Titles and text](#batch-29-titles-and-text)
 - [Batch 28: Groundwork for text](#batch-28-groundwork-for-text)
 - [Batch 27: Speed, freeze frames and punch zoom](#batch-27-speed-freeze-frames-and-punch-zoom)
 - [Batch 26: Cropping and reframing](#batch-26-cropping-and-reframing)
@@ -126,6 +132,18 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 - [Batch 03: Projects, autosave and recovery](#batch-03-projects-autosave-and-recovery)
 - [Batch 02: Undo, redo and frame-exact time](#batch-02-undo-redo-and-frame-exact-time)
 - [Batch 01: The workspace](#batch-01-the-workspace)
+
+## Batch 29: Titles and text
+- Add a title with one key: press <kbd>T</kbd> (or click **Title** in the timeline toolbar), type, and press <kbd>Esc</kbd>. The title appears in the middle of the frame at the playhead, on the top video track or a new one above it, and lasts until the end of the video clip under the playhead (3 seconds when there is none). See [Add a title](titles-and-text.md#add-a-title).
+- Add a subtitle with <kbd>Shift</kbd>+<kbd>T</kbd> (or **Subtitle**): it sits in the lower third with a dark box behind each line, wraps at a fixed width, and grows upwards as you add lines. See [Add a subtitle](titles-and-text.md#add-a-subtitle).
+- With a text clip selected, <kbd>T</kbd> puts the new title 40 pixels below it, so stacked lines don't overlap.
+- Type text right in the preview, at its real size and font. Double-click a text, or select it and press <kbd>Enter</kbd>, to edit it. The gold caret sits exactly between the letters at any zoom; select with the mouse or <kbd>Shift</kbd> and the arrow keys; <kbd>Enter</kbd> starts a new line; input methods for Asian languages work. <kbd>Esc</kbd> or <kbd>Ctrl</kbd>+<kbd>Enter</kbd> finishes, and the whole edit is one undo step. See [Edit text in the preview](titles-and-text.md#edit-text-in-the-preview).
+- Change the font, the size or a color in **Edit Properties** while you type: the text updates and you keep typing where you were.
+- A selected text has its own handles: the corners change the font size (outline, shadow and box grow with it) and the sides change the width of the text box, so the words wrap. See [Resize text with its handles](titles-and-text.md#resize-text-with-its-handles).
+- The **Text** section of **Edit Properties**, built in the previous batch, is now yours: font, weight and italic, size, solid or gradient fill, outline, shadow, background box per line or for the whole block, alignment, anchor, letter spacing, line height, case, and an auto or fixed box. See [Style text in the Text section](titles-and-text.md#style-text-in-the-text-section).
+- The font picker lists your favorites, the fonts used in the project, the eight fonts that come with the editor and, after **Show system fonts**, the fonts on your computer. A font from your computer is copied into the project's new `fonts` folder, so the project looks the same elsewhere. A font that is missing shows a red **Missing** chip and a red triangle on the clip. See [Choose a font](titles-and-text.md#choose-a-font) and [Fix a missing font](titles-and-text.md#fix-a-missing-font).
+- A click on a text selects it only on its letters or its background box, so you can still click the picture behind the empty parts of a text.
+- New pages: [Titles and text](titles-and-text.md). New shortcuts: <kbd>T</kbd>, <kbd>Shift</kbd>+<kbd>T</kbd>, <kbd>Enter</kbd> and, while you edit text, <kbd>Ctrl</kbd>+<kbd>Enter</kbd> and <kbd>Esc</kbd>; see [Keyboard shortcuts](keyboard-shortcuts.md#text).
 
 ## Batch 28: Groundwork for text
 - Nothing changes on screen in this version. This batch builds the text engine that titles, subtitles and captions use. Adding text to your project, with the dimmed **Title** and **Subtitle** buttons of the timeline toolbar, is available in a later version.
@@ -415,4 +433,4 @@ See [The workspace](workspace.md) and [Getting started](getting-started.md).
 - [Adding media to the timeline](adding-media-to-the-timeline.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 28, 2026-10-16</sub>
+<sub>Last updated: Batch 29, 2026-10-16</sub>
