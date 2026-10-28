@@ -5,7 +5,7 @@ argument-hint: error | window
 
 You are checking on a batch another session was working on. Do not build features in this run.
 
-Read `docs/PROGRESS.md`. The batch is `in_progress_batch` if it is a number, otherwise `last_completed_batch` (a fix after a rejected review). Extract that batch from `docs/BATCHES.md` with a grep/sed line range (never the whole file) and read its entry in PROGRESS.md, including earlier `- check (...)` notes and review lists.
+Read `docs/PROGRESS.md` (the top fields and the entries named below; never the whole file: it is over 6000 lines). The batch is `in_progress_batch` if it is a number, otherwise `last_completed_batch` (a fix after a rejected review). Extract that batch from `docs/BATCHES.md` with a grep/sed line range (never the whole file) and read its entry in PROGRESS.md, including earlier `- check (...)` notes and review lists.
 
 `$ARGUMENTS` says why you were called:
 - `error`: the previous session ended before finishing. Its output is in `docs/last-session.log`. Find out why: API or network error, crash, a command that hung, a broken `node_modules`, a dev server or headless browser left holding a port, a red `npm run check`, a half-written file.

@@ -20,12 +20,18 @@ Interpret `$ARGUMENTS`:
 - `skip`: ask the user for a one-line reason, record the target batch as skipped in PROGRESS.md (`skipped_batches` and a batch entry with status skipped), then stop.
 - `auto` / `auto fix`: unattended run started by scripts/run-batches.sh. The runner decides what each run does; never pick a different batch than the one below.
   - `auto`: target `in_progress_batch` if it is a number (resume it), otherwise `last + 1`. Write the plan (Step 3) as text but do not stop; continue straight into Step 4.
-  - `auto fix`: target `last_completed_batch`. Fix every problem in the latest `review: rejected` list of its entry, re-run its acceptance checks, get `npm run check` green, add `- fix-attempt: done (<date>)` to the entry, commit `batch-NN: fixes`, and end the run. Do not start another batch.
+  - `auto fix`: target `last_completed_batch`. Fix every problem in the latest `review: rejected` list of its entry, re-run the acceptance checks those problems affect, get `npm run check` green, add `- fix-attempt: done (<date>)` to the entry, commit `batch-NN: fixes`, and end the run. Do not start another batch.
   - Before working, read the target batch's entry for `- check (...)` notes left by /check-batch and follow the directions in the latest one first.
   - Never ask a question. Any choice you would have asked about: decide it using the functional defaults in docs/EDITOR_SPEC.md and the Batch rules, log the decision under the batch entry's `deviations` (or `notes`), continue.
   - Problems are solved, not escalated: when the spec and the current code disagree, follow the spec, adapt the code and log a deviation; when a measurement cannot reach its target on this machine, record the measured number as a deviation or a `pending manual checks` item and move on; a red `npm run check` is fixed until it is green; a blocking manual check from an earlier batch is noted and does not stop the build.
   - Write `needs_human: <one-line reason>` (the top-level field in docs/PROGRESS.md) and stop only when the batch cannot be built at all without something only the user can provide: DESIGN_SYSTEM.md, docs/BATCHES.md or docs/EDITOR_SPEC.md is missing, or the batch needs an account, credential or hardware that is not available. Nothing else is a reason to stop.
   - Never mark a batch done with a red `npm run check`.
+  - Lean run (every `auto` and `auto fix` run; the runner picks a cheaper model for most of them, so keep the context small):
+    - Step 2.4 becomes: from `docs/PROGRESS.md` read the top fields, the Follow-ups lines addressed to this batch (`grep -n -- "-> Batch NN]" docs/PROGRESS.md`) and the previous batch's entry without its `- review:`, `- fix-attempt`, `- check` and `- docs` lines. Search the Global deviations and Design system gaps sections with grep for the modules, components and features the batch touches instead of reading them whole. Never read PROGRESS.md whole: it is over 6000 lines.
+    - Read files in ranges (`grep -n` first, then the lines you need) and keep long command output short with `tail`, `grep` or a count.
+    - Prefer unit tests. Use a browser (CDP) check only for an acceptance item that needs a real GPU, the DOM layout or the media pipeline, and for the Profiler checks of §4: write one script per batch that covers those items, run it, fix, and re-run only what failed.
+    - Batch rule 7 (no regressions) in auto runs: the full unit suite in `npm run check` is the regression pass; re-run an earlier batch's browser checks only when this batch changed the code they exercise. The playback check every 5 batches (P1) still runs.
+    - Keep the batch entry's notes current while you work (what is done, what remains), so a resumed session, or one whose context was compacted, can go on without re-reading.
 
 Batch numbers are two-digit in headings (`## Batch 07:`); optional batches have a suffix (`## Batch 33 (optional):`).
 

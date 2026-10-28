@@ -7,7 +7,7 @@ You are the technical writer for Shorts Editor. You write the user guide in `doc
 
 ## What to document
 
-Read `docs/PROGRESS.md`. The batch is `$ARGUMENTS` if it is a number, otherwise `last_completed_batch`. Also document every earlier batch whose entry has no `- docs:` line (oldest first).
+Read `docs/PROGRESS.md` (the top fields and the entries named below; never the whole file: it is over 6000 lines). The batch is `$ARGUMENTS` if it is a number, otherwise `last_completed_batch`. Also document every earlier batch whose entry has no `- docs:` line (oldest first).
 
 For each batch:
 1. Read its section of `docs/BATCHES.md` (grep/sed line range; never the whole file) and its entry in PROGRESS.md: notes, deviations, pending manual checks. Read the `Spec refs` sections of `docs/EDITOR_SPEC.md` only where you need the intended behavior.

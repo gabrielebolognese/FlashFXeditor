@@ -8,6 +8,10 @@
 # in docs/user-guide/ (/document-batch). Usage-limit waits are not counted.
 # The runner stops (needs_human) only when the windows or the reviews run out, Claude is logged out,
 # or a session sets needs_human. While it runs, the latest build is served on http://localhost:5300.
+# Each step runs on its own model and effort (lean runs, from Batch 54): builds and fixes on Sonnet at
+# medium effort, except the STRONG_BATCHES and the fixes after ESCALATE_AFTER rejections (Opus, high);
+# reviews on Opus at high effort; docs and progress checks on Sonnet at low effort. Every setting below
+# can be changed for one run, e.g. `BUILD_MODEL=claude-opus-5-5 scripts/run-batches.sh`.
 set -uo pipefail
 cd "$(git rev-parse --show-toplevel)" || exit 2
 
@@ -22,7 +26,15 @@ while [[ $# -gt 0 ]]; do
 done
 
 read -ra WINDOWS <<< "${WINDOWS_SECS:-21600 14400 7200}"  # session time per window: 6h, 4h, 2h
-MAX_REVIEWS=8                                 # reviews per batch before needs_human
+MAX_REVIEWS="${MAX_REVIEWS:-4}"               # reviews per batch before needs_human
+BUILD_MODEL="${BUILD_MODEL:-claude-sonnet-5-5}"; BUILD_EFFORT="${BUILD_EFFORT:-medium}"         # builds and fixes
+STRONG_MODEL="${STRONG_MODEL:-claude-opus-5-5}"; STRONG_EFFORT="${STRONG_EFFORT:-high}"         # hard batches, stuck fixes
+REVIEW_MODEL="${REVIEW_MODEL:-claude-opus-5-5}"; REVIEW_EFFORT="${REVIEW_EFFORT:-high}"         # reviews
+LIGHT_MODEL="${LIGHT_MODEL:-claude-sonnet-5-5}"; LIGHT_EFFORT="${LIGHT_EFFORT:-low}"            # docs, progress checks
+STRONG_BATCHES="${STRONG_BATCHES:-65 70 72 73 74 75 76}"   # built and fixed by the strong model from the start
+ESCALATE_AFTER="${ESCALATE_AFTER:-2}"         # rejections after which fixes use the strong model
+COMPACT_WINDOW="${COMPACT_WINDOW:-300000}"    # tokens; sessions compact their context before it (empty = Claude's default)
+[[ -n "$COMPACT_WINDOW" ]] && export CLAUDE_CODE_AUTO_COMPACT_WINDOW="$COMPACT_WINDOW"
 REVIEW_BUDGET="${REVIEW_BUDGET:-7200}"        # session time one review may take, reruns included
 CHECK_CAP="${CHECK_CAP:-3600}"                # session time one progress check may take
 DOCS_BUDGET="${DOCS_BUDGET:-7200}"            # session time the documentation of one batch may take
@@ -61,6 +73,19 @@ stop_if_human() {
   [[ -z "$reason" || "$reason" == none ]] || { log "STOP: needs_human: $reason"; exit 3; }
 }
 needs_human() { sed -i -E "s|^needs_human:.*|needs_human: $1|" docs/PROGRESS.md; log "STOP: needs_human: $1"; exit 3; }
+
+# The model and effort of the next run_claude call (set with `use` right before each call).
+MODEL="$BUILD_MODEL"; EFFORT="$BUILD_EFFORT"
+use() { MODEL="$1"; EFFORT="$2"; }
+in_list() { [[ " $2 " == *" $1 "* ]]; }
+# Picks the model of the build ($1 = build) or fix ($1 = fix) of batch $2.
+work_model() {
+  if in_list "$2" "$STRONG_BATCHES" || { [[ "$1" == fix ]] && (( $(review_count "$2") >= ESCALATE_AFTER )); }; then
+    use "$STRONG_MODEL" "$STRONG_EFFORT"
+  else
+    use "$BUILD_MODEL" "$BUILD_EFFORT"
+  fi
+}
 
 HEARTBEAT_PID=""; SESSION_PID=""; PREVIEW_PID=""; SESSION_SECS=0
 # Logs "still <label> (<used> of <total> min)" every HEARTBEAT_EVERY seconds; $2 = seconds already used.
@@ -111,7 +136,7 @@ run_claude() {
     ensure_preview
     start_heartbeat "$label" $(( base + SESSION_SECS )) "$total"
     started=$(date +%s)
-    MSYS_NO_PATHCONV=1 timeout "${left}s" claude -p "$prompt" --dangerously-skip-permissions \
+    MSYS_NO_PATHCONV=1 timeout "${left}s" claude -p "$prompt" --model "$MODEL" --effort "$EFFORT" --dangerously-skip-permissions \
       --output-format text < /dev/null > "$OUT" 2>&1 &
     SESSION_PID=$!
     wait "$SESSION_PID"; rc=$?
@@ -141,28 +166,30 @@ work_done() {
 # Builds batch $2 (build) or fixes its rejected review (fix) in the time windows. Returns when the work
 # is done; stops the runner with needs_human when every window is used up.
 work_phase() {
-  local kind="$1" n="$2" prompt verb w win budget spent rc head fixes
+  local kind="$1" n="$2" prompt verb w win budget spent rc head fixes wm we
   if [[ "$kind" == build ]]; then prompt="/next-batch auto"; verb=building; else prompt="/next-batch auto fix"; verb=fixing; fi
+  work_model "$kind" "$n"; wm="$MODEL"; we="$EFFORT"
+  log "$verb batch $n with $wm ($we effort)"
   for w in "${!WINDOWS[@]}"; do
     budget=${WINDOWS[w]}; spent=0; win="window $(( w + 1 ))/${#WINDOWS[@]}"
     (( w > 0 )) && log "$verb batch $n: $win ($(mins "$budget") min)"
     while (( spent < budget )); do
       head=$(git rev-parse HEAD); fixes=$(fix_count "$n")
-      run_claude "$prompt" "$verb batch $n, $win" $(( budget - spent )) "$spent" "$budget"; rc=$?
+      use "$wm" "$we"; run_claude "$prompt" "$verb batch $n, $win" $(( budget - spent )) "$spent" "$budget"; rc=$?
       spent=$(( spent + SESSION_SECS ))
       stop_if_human
       work_done "$kind" "$n" "$head" "$fixes" && return 0
       (( rc == 124 || spent >= budget )) && break
       log "$verb batch $n: session ended after $(mins "$SESSION_SECS") min without finishing (exit $rc); error check"
       if (( SESSION_SECS < 120 )); then log "pausing $(mins "$FAST_FAIL_PAUSE") min first"; sleep "$FAST_FAIL_PAUSE"; fi
-      run_claude "/check-batch error" "checking batch $n after an error, $win" $(( budget - spent )) "$spent" "$budget"
+      use "$LIGHT_MODEL" "$LIGHT_EFFORT"; run_claude "/check-batch error" "checking batch $n after an error, $win" $(( budget - spent )) "$spent" "$budget"
       spent=$(( spent + SESSION_SECS ))
       stop_if_human
     done
     log "$verb batch $n: $win used up"
     (( w + 1 < ${#WINDOWS[@]} )) || break
     log "=== progress check of batch $n ==="
-    run_claude "/check-batch window" "checking progress of batch $n" "$CHECK_CAP"
+    use "$LIGHT_MODEL" "$LIGHT_EFFORT"; run_claude "/check-batch window" "checking progress of batch $n" "$CHECK_CAP"
     stop_if_human
   done
   needs_human "batch $n: $verb not finished in any of the ${#WINDOWS[@]} time windows"
@@ -186,7 +213,7 @@ review_phase() {
     while (( $(review_count "$n") == before )); do
       (( spent < REVIEW_BUDGET )) || needs_human "review $k of batch $n gave no verdict"
       (( tries++ > 0 )) && log "review $k of batch $n ended without a verdict; running it again"
-      run_claude "/review-batch" "reviewing batch $n ($k/$MAX_REVIEWS)" $(( REVIEW_BUDGET - spent )) "$spent" "$REVIEW_BUDGET"
+      use "$REVIEW_MODEL" "$REVIEW_EFFORT"; run_claude "/review-batch" "reviewing batch $n ($k/$MAX_REVIEWS)" $(( REVIEW_BUDGET - spent )) "$spent" "$REVIEW_BUDGET"
       spent=$(( spent + SESSION_SECS ))
       stop_if_human
       if (( SESSION_SECS < 120 && $(review_count "$n") == before )); then sleep "$FAST_FAIL_PAUSE"; fi
@@ -206,7 +233,7 @@ docs_phase() {
       log "documentation of batch $n not finished; the next documentation run catches up"; return 0
     fi
     (( tries++ > 0 )) && log "documentation of batch $n ended without a docs line; running it again"
-    run_claude "/document-batch $n" "documenting batch $n" $(( DOCS_BUDGET - spent )) "$spent" "$DOCS_BUDGET"
+    use "$LIGHT_MODEL" "$LIGHT_EFFORT"; run_claude "/document-batch $n" "documenting batch $n" $(( DOCS_BUDGET - spent )) "$spent" "$DOCS_BUDGET"
     spent=$(( spent + SESSION_SECS ))
     stop_if_human
     if (( SESSION_SECS < 120 && $(docs_count "$n") == 0 )); then sleep "$FAST_FAIL_PAUSE"; fi
@@ -216,6 +243,7 @@ docs_phase() {
 
 windows_text() { local s out=""; for s in "${WINDOWS[@]}"; do out+="${out:+/}$(mins "$s")"; done; echo "$out min"; }
 log "runner started: up to batch $UNTIL; build windows $(windows_text); up to $MAX_REVIEWS reviews, then docs, per batch"
+log "models: build and fix $BUILD_MODEL ($BUILD_EFFORT); $STRONG_MODEL ($STRONG_EFFORT) for batches $STRONG_BATCHES and for fixes after $ESCALATE_AFTER rejections; review $REVIEW_MODEL ($REVIEW_EFFORT); docs and checks $LIGHT_MODEL ($LIGHT_EFFORT); compaction window ${COMPACT_WINDOW:-default}"
 ensure_preview; sleep 3
 if [[ -n "$PREVIEW_PID" ]] && kill -0 "$PREVIEW_PID" 2>/dev/null; then
   log "progress preview: http://localhost:$PREVIEW_PORT (latest passing build; refresh to update)"
