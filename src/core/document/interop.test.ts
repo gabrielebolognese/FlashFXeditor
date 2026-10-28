@@ -4,7 +4,9 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { normalizeCliPath, projectInfo, validateProjectFolder } from "../../../scripts/cli/folder.js";
 import { fieldReference, FIELDS_BEGIN_START, FIELDS_END } from "./interopDoc.js";
-import { random, randomProject } from "../../timeline/edit/fuzzKit.js";
+import { fuzzRun, random, randomProject } from "../../timeline/edit/fuzzKit.js";
+import { applyTrim, trimEdge } from "../../timeline/edit/trim.js";
+import type { Project } from "./types.js";
 import { createProject } from "./project.js";
 import { FIELD_TABLE } from "./schema.js";
 import { strictIssues, validateStrict } from "./strict.js";
@@ -108,6 +110,19 @@ describe("validateStrict", () => {
       const result = validateStrict(JSON.parse(JSON.stringify(randomProject(random(seed)))));
       expect(result.errors, `seed ${seed}`).toEqual([]);
     }
+  });
+
+  it("accepts the documents left by runs of edit operations (trimmed cues, pasted offline media, trimmed keys)", () => {
+    const strictCheck = (_before: Project, after: Project) => validateStrict(JSON.parse(JSON.stringify(after))).errors.map((issue) => `${issue.path}: ${issue.message}`);
+    for (let seed = 1; seed <= 12; seed++) fuzzRun({ seed, steps: 150, projectOptions: { captions: true }, check: strictCheck });
+  }, 60_000);
+
+  it("accepts a cue trimmed in past its first words (their frames go negative and are kept for a trim back)", () => {
+    const project = readProject(`${BASIC}/project.json`) as unknown as Project;
+    const trimmed = applyTrim(project, trimEdge(project, "q1", "in", 15, { ripple: false }));
+    const words = (trimmed.clips["q1"] as { words?: { start: number; end: number }[] }).words ?? [];
+    expect(words[0]?.start).toBeLessThan(0);
+    expect(validateStrict(JSON.parse(JSON.stringify(trimmed))).errors).toEqual([]);
   });
 
   const basic = () => readProject(`${BASIC}/project.json`);

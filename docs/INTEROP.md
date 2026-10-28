@@ -139,7 +139,7 @@ A text clip:
 
 ## 6. Captions and word timings
 
-The caption track's `captionTracks[<track id>].style` styles every cue; a cue's `styleOverride` sets only the fields it changes. A cue is a `caption` clip with `text` (`\n` for line breaks) and optional `words`: `start` and `end` are frames relative to the cue's start, `end` after `start`. With word timings the active word is highlighted as the style's `highlight` says.
+The caption track's `captionTracks[<track id>].style` styles every cue; a cue's `styleOverride` sets only the fields it changes. A cue is a `caption` clip with `text` (`\n` for line breaks) and optional `words`: `start` and `end` are integer frames relative to the cue's start, `end` after `start`. A word may start before the cue or end after it: an in-trim keeps the words it hides (negative frames), so a trim back shows them again. With word timings the active word is highlighted as the style's `highlight` says.
 
 ```json Clip
 {
@@ -561,8 +561,8 @@ A word of a cue with its timing.
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
 | `text` | string | yes |  | The word. |
-| `start` | integer (>= 0) | yes |  | Relative to the cue's start, inclusive. Integer frames at the project frame rate. |
-| `end` | integer (>= 1) | yes |  | Relative to the cue's start, exclusive; after `start`. Integer frames at the project frame rate. |
+| `start` | integer | yes |  | Relative to the cue's start, inclusive; may be negative or past the cue's end (an in-trim keeps the words it hides, so a trim back shows them again). Integer frames at the project frame rate. |
+| `end` | integer | yes |  | Relative to the cue's start, exclusive; after `start`. Integer frames at the project frame rate. |
 
 #### Settings
 
@@ -605,7 +605,7 @@ Where a media file is: a path inside the project folder (a generated project alw
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
 | `relPath` | string (not empty) | no |  | Path inside the project folder, `/` separated, no `..`. |
-| `handleKey` | string (not empty) | no |  | Browser file handle key (written by the app for linked files). |
+| `handleKey` | string | no |  | Browser file handle key (written by the app for linked files); empty for a pasted file the app cannot resolve, which stays offline until relinked. |
 | `pathHint` | string | no |  | Where the linked file was, for the relink dialog. |
 
 #### Proxy

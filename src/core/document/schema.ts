@@ -338,8 +338,8 @@ const SCHEMAS: ObjectSchema[] = [
     types: ["CaptionWord"],
     fields: {
       text: req(str, "The word."),
-      start: req(int(0), `Relative to the cue's start, inclusive. ${FRAMES}`),
-      end: req(int(1), `Relative to the cue's start, exclusive; after \`start\`. ${FRAMES}`),
+      start: req(int(), `Relative to the cue's start, inclusive; may be negative or past the cue's end (an in-trim keeps the words it hides, so a trim back shows them again). ${FRAMES}`),
+      end: req(int(), `Relative to the cue's start, exclusive; after \`start\`. ${FRAMES}`),
     },
   },
 
@@ -379,7 +379,7 @@ const SCHEMAS: ObjectSchema[] = [
     types: [],
     fields: {
       relPath: opt(text, "Path inside the project folder, `/` separated, no `..`."),
-      handleKey: opt(text, "Browser file handle key (written by the app for linked files)."),
+      handleKey: opt(str, "Browser file handle key (written by the app for linked files); empty for a pasted file the app cannot resolve, which stays offline until relinked."),
       pathHint: opt(str, "Where the linked file was, for the relink dialog."),
     },
   },
