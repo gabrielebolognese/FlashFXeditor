@@ -9,10 +9,12 @@
 //   ?mode=compare     no project: only `compare` is used
 import { installCatalogController } from "../../app/catalogController.js";
 import { attachFonts } from "../../app/fontController.js";
+import { installTextController } from "../../app/textController.js";
+import { projectTextStyles } from "../../text/fonts.js";
 import { gatherInputs, requestVideoExport } from "../../app/exportController.js";
 import { mediaStatus, setMediaSources } from "../../app/mediaOffline.js";
 import { attachPreview, gpuDevice, renderFramePng, startGpu } from "../../app/previewController.js";
-import { documentStore, keyValueStore, sessionStore, themeBridge } from "../../app/services.js";
+import { documentStore, fontLibrary, keyValueStore, sessionStore, themeBridge } from "../../app/services.js";
 import { contentEnd } from "../../timeline/model/queries.js";
 import { setPlayhead } from "../../core/store/sessionStore.js";
 import type { Frame, Project } from "../../core/document/types.js";
@@ -102,7 +104,10 @@ async function loadProject(dir: HttpDir): Promise<Project> {
   setMediaSources(sources);
   await sources.checkAll();
   attachPreview(dir, () => false);
-  attachFonts(dir, () => false);
+  // The text layouts and rasters follow the fonts that load (as in the app), and the project's faces are in before the first frame.
+  installTextController();
+  await attachFonts(dir, () => false);
+  await Promise.all(projectTextStyles(opened.project).map((style) => fontLibrary.load(style, "Aa")));
   installCatalogController();
   return opened.project;
 }

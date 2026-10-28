@@ -89,7 +89,7 @@ let open: OpenFonts | null = null;
 let queue: Promise<void> = Promise.resolve();
 
 /** Reads `fonts/` of a project that opened, registers its faces and starts copying the fonts it uses. */
-export function attachFonts(dir: FsDir, isWritable: () => boolean): void {
+export function attachFonts(dir: FsDir, isWritable: () => boolean): Promise<void> {
   detachFonts();
   const state: OpenFonts = { dir, isWritable, faces: [], data: new Map(), stop: () => undefined, closed: false };
   open = state;
@@ -120,6 +120,7 @@ export function attachFonts(dir: FsDir, isWritable: () => boolean): void {
     }
   });
   scheduleCopy();
+  return queue;
 }
 
 /** The project closed: its faces leave the font set. */

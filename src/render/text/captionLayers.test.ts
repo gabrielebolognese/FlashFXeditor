@@ -352,9 +352,7 @@ describe("captions v2 (spec §21.8, Batch 59)", () => {
     expect(captionLayer(boxed("reveal"), 7)!.karaoke!.wordBoxes!.shown).toEqual([0, 1]);
   });
 
-  it("draws the word boxes as solids behind their words", () => {
-    const text = { begin: () => undefined, end: () => undefined, resolve: () => null, exact: async () => null, resolveAtlas: () => null, resolveBackground: () => null, warm: () => false };
-    void text;
+  it("lays out one background rect per word (the solids themselves: LayerTextures.wordBoxes.test.ts)", () => {
     const layout = textLayout(captionLook("ab cd ef gh", boxed("color").captionTracks.cc!.style).content, boxed("color").captionTracks.cc!.style.text);
     // One background rect per word (the layout's own, used when the cue has no word timings).
     expect(layout.backgrounds).toHaveLength(4);
