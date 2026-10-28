@@ -13,7 +13,9 @@ Every JSON block in this file tagged `json <Type>` is checked by a test with the
 
 Use a copy of the editor at an accepted `batch-NN: review` commit for this, not the working folder of the editor, which can be in the middle of a change.
 
-Other commands: `npm run cli -- info <folder>` (duration, tracks, clips by kind, stand-ins, missing media) and `npm run cli -- schema` (a JSON Schema, draft 2020-12, of `project.json`). `normalize` (filling the fields a generator leaves out) and the media header readers come in a later batch (manifest key `cli.normalize`).
+Other commands: `npm run cli -- info <folder>` (duration, tracks, clips by kind, stand-ins, missing media and, for each media file, the facts its header gives), `npm run cli -- schema` (a JSON Schema, draft 2020-12, of `project.json`) and `npm run cli -- normalize <folder> [--write]` (completes a sparse project, section 4.1; manifest key `cli.normalize`).
+
+`validate` also reads the header of every media file (MP4, MOV, M4A, WebM, WAV, MP3, Ogg, PNG, JPEG, WebP, GIF, SVG) and compares it with the record: a `durationUs` that differs by more than one frame, or a `width` or `height` that differs, is an error naming both values; a smaller duration difference, another fact that differs, or a file whose header cannot be read is a warning (an unreadable file is left for the app's repair on open).
 
 ## 2. Manifest
 
@@ -93,6 +95,35 @@ A minimal valid project:
 ```
 
 The complete example with every v1.1 clip kind, a caption track with word timings and a library font is `fixtures/interop/basic/`. The projects in `fixtures/interop/broken/` each have one error, for testing a generator's own checks against the validator.
+
+### 4.1 Sparse input and `normalize`
+
+A generator does not have to write every field. `npm run cli -- normalize <folder>` reads a sparse `project.json` and prints the complete project the editor would have made (`--write` writes `project.json` and the fonts into the folder, but only when the result passes the strict `validate`; an invalid result leaves the folder untouched and exits 1). What a sparse project needs:
+
+- **Project:** nothing is required. A missing `schemaVersion` means the current one; an older one is migrated first, exactly as the app opens it. A missing `name` is the folder's name, a missing `id` a stable one made from the name, `meta` times are the time of the run (write `meta.createdAt` and `meta.modifiedAt` to make the output reproducible), `settings` default to 1080x1920 at 30 fps on black.
+- **Track:** `id` and `kind`. `name` becomes V1, V2, A1, CC1... and `clipIds` is rebuilt from the clips that name the track, sorted by start (so the order you write clips in does not matter).
+- **Clip:** `id` (it is also the key), `kind`, `trackId`, `start`, `duration` and the content: `mediaId` for video, audio and image clips, `text.value` for text clips, `text` for caption cues, `fill` and `size` for solids. Everything else is filled: `name` (the media's name, the first line of a text, "Caption", "Solid"), `enabled`, `opacity`, `volume`, `crop`, `fades`, `speed`, `in`, and `out` (the source span the clip plays at its speed, at most the media's length; a still image's length). A video or image clip is placed the way the editor places a dropped file (Fit: contained in the frame, centered), any other clip at the center at scale 1.
+- **Media item:** `id`, `kind` and `file.relPath`. `name` is the file name; `durationUs`, `width`, `height`, `rotation`, `fps`, `hasAudio`, `codec`, `audioCodec` and `size` are read from the file; `analysis` starts pending for what the file has (thumbnails for video, peaks for sound) and the app makes them on open; `addedAt` is `meta.createdAt`. A value you write wins over the file's; `validate` then compares the two. A file whose header cannot be read is reported as a note and left for the app's repair on open.
+- **Nested styles merge field by field** with the editor's defaults: `"style": { "fontSize": 140, "stroke": { "enabled": true } }` keeps every other text style field and the default stroke width and color. The track style of a caption track merges with the default caption style of the project's size. A color without `a` is opaque.
+- **Fonts:** the library fonts the texts and captions use (a text without `fontFamily` uses Inter) are recorded in `fonts/fonts.json` (version 2) and their files copied from the editor's `public/fonts/library/`, the same files and records the app writes. A family that is not in the library is reported: its file cannot be copied.
+
+A field added by a later version of the editor is filled the same way, so a generator written today keeps working as the schema grows.
+
+```jsonc
+{
+  "schemaVersion": 3,
+  "id": "demo",
+  "name": "Demo",
+  "media": { "m1": { "id": "m1", "kind": "video", "file": { "relPath": "media/clip.mp4" } } },
+  "tracks": [{ "id": "v1", "kind": "video" }],
+  "clips": {
+    "c1": { "id": "c1", "kind": "video", "trackId": "v1", "start": 0, "duration": 60, "mediaId": "m1" },
+    "c2": { "id": "c2", "kind": "text", "trackId": "v1", "start": 60, "duration": 30, "text": { "value": "Hello" }, "style": { "fontFamily": "Bebas Neue", "fontSize": 140 } }
+  }
+}
+```
+
+`fixtures/interop/sparse/` holds a project like this one (schema 3, three media files, a text with a library font, a solid and two cues) and `expected/` the result `normalize` gives, which a test compares.
 
 ## 5. Tracks and clips
 
@@ -221,7 +252,7 @@ A color: channels 0..1, straight (not premultiplied) alpha.
 | `r` | number (>= 0, <= 1) | yes |  | Red. |
 | `g` | number (>= 0, <= 1) | yes |  | Green. |
 | `b` | number (>= 0, <= 1) | yes |  | Blue. |
-| `a` | number (>= 0, <= 1) | yes |  | Alpha. |
+| `a` | number (>= 0, <= 1) | yes | `1` | Alpha. |
 
 #### Gradient
 
@@ -243,13 +274,13 @@ Where a layer sits. x and y are project pixels from the project center (right an
 | `scale` | number (> 0) | yes | `1` | Scale (the horizontal one when `scaleY` is present). |
 | `scaleY` | number (> 0) | no |  | Vertical scale when it differs from `scale`. |
 | `rotation` | number | yes | `0` | Degrees, clockwise. |
-| `anchor` | [Anchor](#anchor) | yes | `{"x":0,"y":0}` | The point the layer turns and scales around, fractions of its size from its center. |
+| `anchor` | [Anchor](#anchor) | yes | `{"x":0.5,"y":0.5}` | The point the layer turns and scales around, fractions of its size from its top-left corner (0.5, 0.5 is the center). |
 | `flipH` | boolean | yes | `false` | Mirrored left to right. |
 | `flipV` | boolean | yes | `false` | Mirrored top to bottom. |
 
 #### Anchor
 
-A point as fractions of a layer's size from its center.
+A point as fractions of a layer's size from its top-left corner.
 
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
@@ -293,7 +324,7 @@ One keyframe: a value at a frame relative to the clip start. A key's `ease` shap
 | --- | --- | --- | --- | --- |
 | `frame` | integer | yes |  | Relative to the clip start; one key per frame, sorted. Any integer: after a head trim keys before the clip start (negative) or past its end are kept so a trim back restores them. Integer frames at the project frame rate. |
 | `value` | number | yes |  | The value. |
-| `ease` | `"linear"` | `"easeIn"` | `"easeOut"` | `"easeInOut"` | `"hold"` | `"smooth"` | `"snap"` | `"overshoot"` | yes |  | The curve to the next key. |
+| `ease` | `"linear"` | `"easeIn"` | `"easeOut"` | `"easeInOut"` | `"hold"` | `"smooth"` | `"snap"` | `"overshoot"` | yes | `"linear"` | The curve to the next key. |
 
 #### Keyframes
 
@@ -383,7 +414,7 @@ The look of a text clip. Sizes are project px; `lineHeight` multiplies the size.
 
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| `fontFamily` | string (not empty) | yes |  | A family name; a missing family draws with the UI font. |
+| `fontFamily` | string (not empty) | yes | `"Inter"` | A family name; a missing family draws with the UI font. |
 | `fontWeight` | integer (>= 1, <= 1000) | yes | `700` | 1..1000 (variable fonts take any value in their range). |
 | `italic` | boolean | yes | `false` | Italic face. |
 | `fontSize` | number (> 0) | yes | `96` | Size, project px. |
@@ -867,7 +898,7 @@ A solid or shape layer: `size` project px at scale 1.
 | `enabled` | boolean | yes | `true` | Drawn and heard. |
 | `fallbackOf` | [FallbackOf](#fallbackof) | no |  | Set when the clip is a baked stand-in. |
 | `fill` | [RGBA](#rgba) | [Gradient](#gradient) | yes |  | A color or a vertical two-stop gradient. |
-| `shape` | `"rect"` | `"roundedRect"` | `"ellipse"` | `"line"` | yes |  | The shape. |
+| `shape` | `"rect"` | `"roundedRect"` | `"ellipse"` | `"line"` | yes | `"rect"` | The shape. |
 | `size` | [Size](#size) | yes |  | Width and height at scale 1, project px. |
 | `cornerRadius` | number (>= 0) | yes | `0` | Corner radius, project px (at most half the shorter side; rounds a line's ends). |
 | `transform` | [Transform](#transform) | yes |  | Placement. |

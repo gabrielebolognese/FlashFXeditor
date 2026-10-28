@@ -189,3 +189,9 @@ export function styleKey(style: TextStyle): string {
   }
   return key;
 }
+
+/** A clip's name from its text: the first line, trimmed, at most 40 characters ("Text" when empty). */
+export function textClipName(text: TextContent, style: Pick<TextStyle, "textCase">): string {
+  const line = firstLine(text, style).replace(/\s+/g, " ").trim();
+  return line === "" ? "Text" : line.length > 40 ? `${line.slice(0, 39)}…` : line;
+}

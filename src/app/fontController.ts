@@ -18,10 +18,10 @@ import { toggleFavoriteFont } from "../project/appSettings.js";
 import { propertiesContext } from "../panels/properties/context.js";
 import type { FsDir } from "../project/fs.js";
 import { safeFileName, takenNames, uniqueName } from "../project/mediaFiles.js";
-import { coreFont, libraryUrl, SUBSET_RANGES, appBaseUrl, type CoreFont } from "../render/text/bundledFonts.js";
+import { coreFont, libraryUrl, appBaseUrl } from "../render/text/bundledFonts.js";
 import type { FontDescriptor, ProjectFace } from "../render/text/FontLibrary.js";
 import type { LocalFace } from "../render/text/localFonts.js";
-import { faceFiles, fileRange, type CatalogFile } from "../text/fonts/catalog.js";
+import { libraryFaceRecord, libraryFiles, stem } from "../text/fonts/libraryFaces.js";
 import {
   faceCovers,
   faceWeightDescriptor,
@@ -174,30 +174,6 @@ interface WantedFile {
   read: () => Promise<Blob | null>;
 }
 
-const stem = (path: string) => (path.split("/").pop() ?? path).replace(/\.[^.]*$/, "");
-
-/** A core family's files of the face a style picks (its variable files, every subset), without the catalog. */
-function coreFiles(font: CoreFont, italic: boolean): CatalogFile[] {
-  const style = italic && font.italic ? "italic" : "normal";
-  return (Object.keys(SUBSET_RANGES) as (keyof typeof SUBSET_RANGES)[]).map((subset) => ({ subset, range: font.weights, style, path: `${font.slug}/${font.slug}-${subset}-wght-${style}.woff2`, bytes: 0 }));
-}
-
-/** A library style's files (core or catalog), with their unicode ranges; null when the family is not in the library (or the catalog is not read). */
-function libraryFiles(style: Pick<TextStyle, "fontFamily" | "fontWeight" | "italic">): { family: string; files: { file: CatalogFile; range?: string }[] } | null {
-  const core = coreFont(style.fontFamily);
-  if (core) return { family: core.family, files: coreFiles(core, style.italic).map((file) => ({ file, range: SUBSET_RANGES[file.subset as keyof typeof SUBSET_RANGES] })) };
-  const entry = fontLibrary.libraryFamily(style.fontFamily);
-  const catalog = fontCatalog.getState().catalog;
-  if (!entry || !catalog) return null;
-  return {
-    family: entry.family,
-    files: faceFiles(entry, style.fontWeight, style.italic).map((file) => {
-      const range = fileRange(catalog, entry, file);
-      return { file, ...(range && { range }) };
-    }),
-  };
-}
-
 const fetchBlob = async (url: string): Promise<Blob | null> => {
   const response = await fetch(url);
   return response.ok ? await response.blob() : null;
@@ -210,21 +186,12 @@ function wantedFiles(state: OpenFonts): WantedFile[] {
   const baseUrl = appBaseUrl();
   for (const style of projectTextStyles(documentStore.getState())) {
     const { fontFamily, fontWeight, italic } = style;
-    const library = libraryFiles(style);
+    const library = libraryFiles(style, fontCatalog.getState().catalog);
     if (library) {
-      for (const { file, range } of library.files) {
+      for (const entry of library.files) {
+        const { file } = entry;
         if (have(file.path) || wanted.has(file.path)) continue;
-        const face: Omit<ProjectFontFace, "file"> = {
-          family: library.family,
-          style: file.range ? "Variable" : String(file.weight ?? 400),
-          weight: file.weight ?? file.range?.[0] ?? 400,
-          ...(file.range && { weightRange: file.range }),
-          italic: file.style === "italic",
-          postscriptName: stem(file.path),
-          source: "library",
-          ...(range && { unicodeRange: range }),
-          origin: file.path,
-        };
+        const face = libraryFaceRecord(library.family, entry);
         wanted.set(file.path, { face, name: file.path.split("/").pop() ?? `${stem(file.path)}.woff2`, read: () => fetchBlob(libraryUrl(file.path, baseUrl)) });
       }
       continue;

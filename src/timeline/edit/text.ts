@@ -28,7 +28,7 @@ import type { Command } from "../../core/commands/command.js";
 import { emptyTrack, nextTrackName } from "../../core/document/project.js";
 import type { ClipId, Frame, Project, TextAnim, TextBox, TextClip, TextContent, TextStyle, Track, Transform } from "../../core/document/types.js";
 import { textLayout } from "../../render/text/layoutCache.js";
-import { DEFAULT_TEXT_BOX, DEFAULT_TEXT_STYLE, firstLine, textContent, titleDefaults, type TitleKind } from "../../text/style.js";
+import { DEFAULT_TEXT_BOX, DEFAULT_TEXT_STYLE, textClipName, textContent, titleDefaults, type TitleKind } from "../../text/style.js";
 import { clipAtFrame, clipsInRange, isClipLocked } from "../model/queries.js";
 import { defaultFrames, editDefaults } from "./editDefaults.js";
 import { applyTransformWrite, editedTransform, IDENTITY_TRANSFORM, layerContent, layerCorners, layerPoint, shiftedWrite, transformWrite, type Size, type TransformWrite } from "./transform.js";
@@ -114,11 +114,7 @@ export function setTexts(project: Project, edits: ReadonlyMap<ClipId, TextEditIn
   };
 }
 
-/** A clip's name from its text: the first line, trimmed, at most 40 characters ("Text" when empty). */
-export function textClipName(text: TextContent, style: Pick<TextStyle, "textCase">): string {
-  const line = firstLine(text, style).replace(/\s+/g, " ").trim();
-  return line === "" ? "Text" : line.length > 40 ? `${line.slice(0, 39)}…` : line;
-}
+export { textClipName };
 
 /** What a new text clip may take besides its place: content, look, transform and the preset it came from. */
 export interface TextClipFields {

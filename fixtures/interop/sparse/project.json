@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 3,
+  "id": "sparse-fixture",
+  "name": "Sparse fixture",
+  "meta": {
+    "createdAt": "2026-11-07T10:00:00.000Z",
+    "modifiedAt": "2026-11-07T10:00:00.000Z",
+    "appVersion": "1.1.0",
+    "generator": { "name": "interop-fixture", "version": "1", "source": "fixtures/interop/sparse" }
+  },
+  "media": {
+    "m1": { "id": "m1", "kind": "video", "file": { "relPath": "media/clip.mp4" } },
+    "m2": { "id": "m2", "kind": "audio", "file": { "relPath": "media/tone.wav" } },
+    "m3": { "id": "m3", "kind": "image", "file": { "relPath": "media/badge.png" } }
+  },
+  "tracks": [
+    { "id": "v1", "kind": "video" },
+    { "id": "v2", "kind": "video" },
+    { "id": "cc", "kind": "caption" },
+    { "id": "a1", "kind": "audio", "name": "Music" }
+  ],
+  "clips": {
+    "c-late": { "id": "c-late", "kind": "solid", "trackId": "v2", "start": 45, "duration": 30, "fill": { "r": 0.9, "g": 0.2, "b": 0.2 }, "size": { "w": 400, "h": 120 }, "transform": { "y": 500 } },
+    "c-video": { "id": "c-video", "kind": "video", "trackId": "v1", "start": 0, "duration": 60, "mediaId": "m1" },
+    "c-image": { "id": "c-image", "kind": "image", "trackId": "v1", "start": 60, "duration": 30, "mediaId": "m3" },
+    "c-title": { "id": "c-title", "kind": "text", "trackId": "v2", "start": 0, "duration": 40, "text": { "value": "Hello sparse" }, "style": { "fontFamily": "Bebas Neue", "fontWeight": 400, "fontSize": 140, "stroke": { "enabled": true } } },
+    "c-music": { "id": "c-music", "kind": "audio", "trackId": "a1", "start": 0, "duration": 15, "mediaId": "m2" },
+    "c-cue2": { "id": "c-cue2", "kind": "caption", "trackId": "cc", "start": 30, "duration": 30, "text": "second cue" },
+    "c-cue1": { "id": "c-cue1", "kind": "caption", "trackId": "cc", "start": 0, "duration": 30, "text": "first cue", "words": [{ "text": "first", "start": 0, "end": 12 }, { "text": "cue", "start": 12, "end": 30 }] }
+  },
+  "captionTracks": { "cc": { "style": { "position": "center" } } }
+}

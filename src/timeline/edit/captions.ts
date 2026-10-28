@@ -23,12 +23,12 @@ import { defaultTrackIndex } from "../../core/commands/basicCommands.js";
 import { emptyTrack } from "../../core/document/project.js";
 import { frameToUs, secondsToFrames, usToFrame } from "../../core/document/time.js";
 import type { CaptionClip, CaptionStyle, CaptionStyleOverride, CaptionWord, Clip, ClipId, Frame, Project, Track, TrackId } from "../../core/document/types.js";
-import { CAPTION_TRACK_NAME, CUE_SECONDS, defaultCaptionStyle, effectiveCaptionStyle, isEmptyOverride, mergeCues, NEW_CUE_TEXT, overrideWithout, splitCueAt } from "../../text/captions.js";
+import { CAPTION_TRACK_NAME, CUE_NAME, CUE_SECONDS, defaultCaptionStyle, effectiveCaptionStyle, isEmptyOverride, mergeCues, NEW_CUE_TEXT, overrideWithout, splitCueAt } from "../../text/captions.js";
 import type { SubtitleCue } from "../../text/subtitles.js";
 import { clipInIndex, clipsOverlapping, lastClipStartingBy, trackIndex, type TrackIndex } from "../model/queries.js";
 
 /** The name every cue gets (the cue list and the timeline show its text). */
-export const CUE_NAME = "Caption";
+export { CUE_NAME };
 
 /** The project's caption track, or null. */
 export function captionTrackOf(project: Project): Track | null {

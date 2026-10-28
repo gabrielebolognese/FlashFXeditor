@@ -20,6 +20,7 @@ import { browserDecodeAudio, probeAudioFile, type DecodeAudio, type DecodedAudio
 import { probeSvg } from "./probe/svgProbe.js";
 import type { ProbeResult } from "./probe/types.js";
 import { classifyFile, type Container, type FileKind } from "./mediaKinds.js";
+import { mediaItemFrom } from "./mediaItem.js";
 import { isAbortError } from "./workers/protocol.js";
 import type { WorkerPool } from "./workers/WorkerPool.js";
 
@@ -45,30 +46,7 @@ export function createProbeFile(pool: Pick<WorkerPool, "request">, decodeAudio: 
   };
 }
 
-/**
- * The document record of a probed, copied (or linked) file. Analysis that applies to the kind starts
- * pending (§9.1): thumbnails for video, peaks for anything with audio.
- */
-export function mediaItemFrom(probe: ProbeResult, fields: { id: string; name: string; file: MediaItem["file"]; addedAt: string; size?: number }): MediaItem {
-  const item: MediaItem = {
-    id: fields.id,
-    kind: probe.kind,
-    name: fields.name,
-    file: { ...fields.file },
-    durationUs: probe.durationUs,
-    hasAudio: probe.hasAudio,
-    analysis: { thumbs: probe.kind === "video" ? "pending" : "none", peaks: probe.hasAudio ? "pending" : "none" },
-    addedAt: fields.addedAt,
-  };
-  if (fields.size !== undefined) item.size = fields.size;
-  if (probe.width !== undefined) item.width = probe.width;
-  if (probe.height !== undefined) item.height = probe.height;
-  if (probe.rotation !== undefined && probe.kind === "video") item.rotation = probe.rotation;
-  if (probe.fps) item.fps = { ...probe.fps };
-  if (probe.codec) item.codec = probe.codec;
-  if (probe.audioCodec) item.audioCodec = probe.audioCodec;
-  return item;
-}
+export { mediaItemFrom };
 
 /** A file to import, with its handle and its path inside a dropped folder when there are ones (reference mode). */
 export type ImportSource = File | { file: File; handle?: FileHandleLike | undefined; path?: string | undefined };

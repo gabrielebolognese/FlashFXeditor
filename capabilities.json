@@ -2,7 +2,7 @@
   "manifestVersion": 1,
   "app": "shorts-editor",
   "appVersion": "1.1.0",
-  "lastBatch": 54,
+  "lastBatch": 55,
   "schemaVersion": 4,
   "project": {
     "file": "project.json",
@@ -220,7 +220,7 @@
   },
   "cli": {
     "validate": true,
-    "normalize": false,
+    "normalize": true,
     "info": true,
     "render": false,
     "compare": false

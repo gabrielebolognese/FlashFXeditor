@@ -17,8 +17,8 @@ const readProject = (path: string) => JSON.parse(readText(path)) as Record<strin
 const BASIC = "fixtures/interop/basic";
 
 describe("fixtures/interop/basic", () => {
-  it("is valid and holds every v1.1 clip kind, a caption track with word timings, a library font and a stand-in", () => {
-    const report = validateProjectFolder(rel(BASIC));
+  it("is valid and holds every v1.1 clip kind, a caption track with word timings, a library font and a stand-in", async () => {
+    const report = await validateProjectFolder(rel(BASIC));
     expect(report.errors).toEqual([]);
     expect(report.ok).toBe(true);
     expect(report.schemaVersion).toBe(4);
@@ -31,8 +31,8 @@ describe("fixtures/interop/basic", () => {
     expect(readProject(`${BASIC}/fonts/fonts.json`).faces[0].source).toBe("library");
   });
 
-  it("is described by `info`", () => {
-    const info = projectInfo(rel(BASIC));
+  it("is described by `info`", async () => {
+    const info = await projectInfo(rel(BASIC));
     expect(info.clipsByKind).toEqual({ video: 1, image: 1, solid: 2, text: 1, caption: 2, audio: 1 });
     expect(info.standIns).toEqual({ shape: 1 });
     expect(info.missingMedia).toEqual([]);
@@ -55,8 +55,8 @@ const BROKEN: Record<string, string> = {
 
 describe("fixtures/interop/broken (one error each, named with its JSON path)", () => {
   for (const [name, path] of Object.entries(BROKEN)) {
-    it(name, () => {
-      const report = validateProjectFolder(rel(`fixtures/interop/broken/${name}`));
+    it(name, async () => {
+      const report = await validateProjectFolder(rel(`fixtures/interop/broken/${name}`));
       expect(report.ok).toBe(false);
       expect(report.errors).toHaveLength(1);
       expect(report.errors[0]?.path).toBe(path);

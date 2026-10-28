@@ -16,6 +16,7 @@ import type { Draft } from "immer";
 import type { Command } from "../../core/commands/command.js";
 import { animatedTransform, clipRel, hasSectionKeys, mapKeyValues, transformValues, writeKeys } from "../../core/document/keyframes.js";
 import type { Clip, ClipId, Crop, Frame, Keyframes, MediaClip, Project, SolidClip, TextClip, Transform } from "../../core/document/types.js";
+import { IDENTITY_TRANSFORM } from "../../core/document/placement.js";
 import { displaySize } from "../../media/probe/rotation.js";
 import { textLayout } from "../../render/text/layoutCache.js";
 import { isClipLocked } from "../model/queries.js";
@@ -49,7 +50,7 @@ export interface Point {
 }
 
 /** The transform of a clip that has no media to fit (solids, text): centered, native size. */
-export const IDENTITY_TRANSFORM: Transform = { x: 0, y: 0, scale: 1, rotation: 0, anchor: { x: 0.5, y: 0.5 }, flipH: false, flipV: false };
+export { IDENTITY_TRANSFORM };
 
 const clamp01 = (value: number) => (Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : 0);
 

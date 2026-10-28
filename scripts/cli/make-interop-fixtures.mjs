@@ -11,7 +11,7 @@ const broken = join(root, "fixtures", "interop", "broken");
 
 const WHITE = { r: 1, g: 1, b: 1, a: 1 };
 const BLACK = { r: 0, g: 0, b: 0, a: 1 };
-const transform = (extra = {}) => ({ x: 0, y: 0, scale: 1, rotation: 0, anchor: { x: 0, y: 0 }, flipH: false, flipV: false, ...extra });
+const transform = (extra = {}) => ({ x: 0, y: 0, scale: 1, rotation: 0, anchor: { x: 0.5, y: 0.5 }, flipH: false, flipV: false, ...extra });
 const track = (id, kind, name, clipIds) => ({ id, kind, name, clipIds, locked: false, muted: false, solo: false, hidden: false, targeted: true, height: "M" });
 const base = (id, trackId, kind, name, start, duration, extra = {}) => ({ id, trackId, kind, name, start, duration, enabled: true, ...extra });
 const textStyle = (family) => ({
@@ -113,7 +113,10 @@ copyFileSync(join(root, "public", "fonts", "library", "silkscreen", "silkscreen-
 
 // --- broken copies: one error each --------------------------------------------------------------------
 const BROKEN = {
-  "clip-past-media-end": (p) => void (p.media.m1.durationUs = 1500000),
+  "clip-past-media-end": (p) => {
+    p.clips["c-video"].in = 500000;
+    p.clips["c-video"].out = 2500000;
+  },
   "overlapping-clips": (p) => void (p.clips["c-image"].start = 50),
   "missing-media-file": (p) => void (p.media.m3.file.relPath = "media/missing.png"),
   "caption-below-video": (p) => void (p.tracks = [p.tracks[0], p.tracks[2], p.tracks[1], p.tracks[3]]),

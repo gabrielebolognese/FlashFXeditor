@@ -167,8 +167,8 @@
         "scale": 1,
         "rotation": 0,
         "anchor": {
-          "x": 0,
-          "y": 0
+          "x": 0.5,
+          "y": 0.5
         },
         "flipH": false,
         "flipV": false
@@ -208,8 +208,8 @@
         "scale": 4,
         "rotation": 0,
         "anchor": {
-          "x": 0,
-          "y": 0
+          "x": 0.5,
+          "y": 0.5
         },
         "flipH": false,
         "flipV": false
@@ -264,8 +264,8 @@
         "scale": 1,
         "rotation": 0,
         "anchor": {
-          "x": 0,
-          "y": 0
+          "x": 0.5,
+          "y": 0.5
         },
         "flipH": false,
         "flipV": false
@@ -363,8 +363,8 @@
         "scale": 1,
         "rotation": 0,
         "anchor": {
-          "x": 0,
-          "y": 0
+          "x": 0.5,
+          "y": 0.5
         },
         "flipH": false,
         "flipV": false
@@ -401,8 +401,8 @@
         "scale": 1,
         "rotation": 0,
         "anchor": {
-          "x": 0,
-          "y": 0
+          "x": 0.5,
+          "y": 0.5
         },
         "flipH": false,
         "flipV": false
@@ -486,8 +486,8 @@
         "scale": 1,
         "rotation": 0,
         "anchor": {
-          "x": 0,
-          "y": 0
+          "x": 0.5,
+          "y": 0.5
         },
         "flipH": false,
         "flipV": false

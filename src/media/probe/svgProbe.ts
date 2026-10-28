@@ -11,22 +11,27 @@ function length(value: string | null): number | null {
   return match ? Number(match[1]) : null;
 }
 
-/** Intrinsic size of an SVG document, rounded to whole pixels; null when it has none. */
-export function svgSize(text: string): { width: number; height: number } | null {
-  const doc = new DOMParser().parseFromString(text, "image/svg+xml");
-  const svg = doc.documentElement;
-  if (svg.nodeName.toLowerCase() !== "svg" || doc.getElementsByTagName("parsererror").length > 0) return null;
-  const box = (svg.getAttribute("viewBox") ?? "").split(/[\s,]+/).filter(Boolean).map(Number);
+/** The size rule on the root element's attributes (shared with the Node header reader, no DOM). */
+export function svgSizeFromAttributes(attributes: { width: string | null; height: string | null; viewBox: string | null }): { width: number; height: number } | null {
+  const box = (attributes.viewBox ?? "").split(/[\s,]+/).filter(Boolean).map(Number);
   const boxW = box.length === 4 && (box[2] ?? 0) > 0 ? (box[2] as number) : null;
   const boxH = box.length === 4 && (box[3] ?? 0) > 0 ? (box[3] as number) : null;
-  let width = length(svg.getAttribute("width"));
-  let height = length(svg.getAttribute("height"));
+  let width = length(attributes.width);
+  let height = length(attributes.height);
   if (width === null && height !== null && boxW && boxH) width = (height * boxW) / boxH;
   if (height === null && width !== null && boxW && boxH) height = (width * boxH) / boxW;
   width ??= boxW;
   height ??= boxH;
   if (!width || !height) return null;
   return { width: Math.max(1, Math.round(width)), height: Math.max(1, Math.round(height)) };
+}
+
+/** Intrinsic size of an SVG document, rounded to whole pixels; null when it has none. */
+export function svgSize(text: string): { width: number; height: number } | null {
+  const doc = new DOMParser().parseFromString(text, "image/svg+xml");
+  const svg = doc.documentElement;
+  if (svg.nodeName.toLowerCase() !== "svg" || doc.getElementsByTagName("parsererror").length > 0) return null;
+  return svgSizeFromAttributes({ width: svg.getAttribute("width"), height: svg.getAttribute("height"), viewBox: svg.getAttribute("viewBox") });
 }
 
 export async function probeSvg(file: Blob): Promise<ProbeResult> {

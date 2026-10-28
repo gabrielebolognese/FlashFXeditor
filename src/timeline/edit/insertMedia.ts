@@ -5,7 +5,7 @@
 import { frameToUs, usToFrameFloor } from "../../core/document/time.js";
 import type { Frame, MediaClip, MediaItem, Rational, TrackId, Transform, Us } from "../../core/document/types.js";
 import type { SourceRange } from "../../core/store/sessionStore.js";
-import { displaySize } from "../../media/probe/rotation.js";
+import { defaultTransform } from "../../core/document/placement.js";
 import { defaultFrames, editDefaults } from "./editDefaults.js";
 
 export type { SourceRange };
@@ -32,18 +32,9 @@ export function mediaLanes(media: MediaItem): { video: boolean; audio: boolean }
   return { video: media.kind !== "audio", audio: media.kind === "audio" || (media.kind === "video" && media.hasAudio) };
 }
 
-/**
- * The transform of a newly placed clip (spec §6.19): Fit, the media contained in the frame (letterboxed
- * when the aspects differ, filling it exactly when they match), centered, anchored at the media center.
- * Rotation metadata swaps width and height first. Media without a size (audio) keep scale 1.
- */
-export function defaultTransform(media: MediaItem, frame: { width: number; height: number }): Transform {
-  const shown = media.width && media.height ? displaySize(media.width, media.height, media.rotation) : null;
-  const scale = shown ? Math.min(frame.width / shown.width, frame.height / shown.height) : 1;
-  return { x: 0, y: 0, scale, rotation: 0, anchor: { x: 0.5, y: 0.5 }, flipH: false, flipV: false };
-}
-
 /** The tracks a media item's clips go to (null for a kind it has no clip of). */
+export { defaultTransform };
+
 export interface ClipTracks {
   video: TrackId | null;
   audio: TrackId | null;

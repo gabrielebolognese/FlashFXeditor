@@ -11,7 +11,7 @@ import { CAPTION_HIGHLIGHTS, CLIP_KINDS, EASE_IDS, SCHEMA_VERSION, SOLID_SHAPE_I
 /** The `manifestVersion`: changes only when a key changes meaning (new keys do not change it). */
 export const MANIFEST_VERSION = 1;
 /** The last batch that touched the manifest (spec §21.1: each batch sets it to its own number). */
-export const LAST_BATCH = 54;
+export const LAST_BATCH = 55;
 
 /** The flags of the manifest: a batch that adds a capability flips its key here (spec §21.2 table). */
 export const FEATURES = {
@@ -28,7 +28,7 @@ export const FEATURES = {
   time: { freeze: true, reverse: false, remap: false, frameBlend: false },
   templates: false,
   export: { alpha: false, imageSequence: false, gif: false, stems: false },
-  cli: { validate: true, normalize: false, info: true, render: false, compare: false },
+  cli: { validate: true, normalize: true, info: true, render: false, compare: false },
   interop: { openLink: false, externalReload: false, repairOnOpen: false, fallbackOf: true, generatorMeta: true },
 } as const;
 

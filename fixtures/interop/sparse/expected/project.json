@@ -1,0 +1,508 @@
+{
+  "schemaVersion": 4,
+  "id": "sparse-fixture",
+  "name": "Sparse fixture",
+  "settings": {
+    "width": 1080,
+    "height": 1920,
+    "fps": {
+      "num": 30,
+      "den": 1
+    },
+    "background": {
+      "r": 0,
+      "g": 0,
+      "b": 0,
+      "a": 1
+    },
+    "sampleRate": 48000
+  },
+  "media": {
+    "m1": {
+      "id": "m1",
+      "kind": "video",
+      "name": "clip.mp4",
+      "file": {
+        "relPath": "media/clip.mp4"
+      },
+      "durationUs": 2000000,
+      "width": 270,
+      "height": 480,
+      "rotation": 0,
+      "fps": {
+        "num": 30,
+        "den": 1
+      },
+      "hasAudio": true,
+      "codec": "avc1.64001f",
+      "audioCodec": "mp4a.40.2",
+      "analysis": {
+        "thumbs": "pending",
+        "peaks": "pending"
+      },
+      "addedAt": "2026-11-07T10:00:00.000Z",
+      "size": 18761
+    },
+    "m2": {
+      "id": "m2",
+      "kind": "audio",
+      "name": "tone.wav",
+      "file": {
+        "relPath": "media/tone.wav"
+      },
+      "durationUs": 500000,
+      "hasAudio": true,
+      "audioCodec": "pcm",
+      "analysis": {
+        "thumbs": "none",
+        "peaks": "pending"
+      },
+      "addedAt": "2026-11-07T10:00:00.000Z",
+      "size": 48078
+    },
+    "m3": {
+      "id": "m3",
+      "kind": "image",
+      "name": "badge.png",
+      "file": {
+        "relPath": "media/badge.png"
+      },
+      "durationUs": 0,
+      "width": 64,
+      "height": 64,
+      "hasAudio": false,
+      "codec": "png",
+      "analysis": {
+        "thumbs": "none",
+        "peaks": "none"
+      },
+      "addedAt": "2026-11-07T10:00:00.000Z",
+      "size": 207
+    }
+  },
+  "bins": [],
+  "tracks": [
+    {
+      "id": "v1",
+      "kind": "video",
+      "name": "V1",
+      "clipIds": [
+        "c-video",
+        "c-image"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
+      "id": "v2",
+      "kind": "video",
+      "name": "V2",
+      "clipIds": [
+        "c-title",
+        "c-late"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
+      "id": "cc",
+      "kind": "caption",
+      "name": "CC1",
+      "clipIds": [
+        "c-cue1",
+        "c-cue2"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
+      "id": "a1",
+      "kind": "audio",
+      "name": "Music",
+      "clipIds": [
+        "c-music"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    }
+  ],
+  "clips": {
+    "c-late": {
+      "id": "c-late",
+      "trackId": "v2",
+      "kind": "solid",
+      "name": "Solid",
+      "start": 45,
+      "duration": 30,
+      "enabled": true,
+      "fill": {
+        "r": 0.9,
+        "g": 0.2,
+        "b": 0.2,
+        "a": 1
+      },
+      "shape": "rect",
+      "size": {
+        "w": 400,
+        "h": 120
+      },
+      "cornerRadius": 0,
+      "transform": {
+        "x": 0,
+        "y": 500,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1
+    },
+    "c-video": {
+      "id": "c-video",
+      "trackId": "v1",
+      "kind": "video",
+      "name": "clip.mp4",
+      "start": 0,
+      "duration": 60,
+      "enabled": true,
+      "mediaId": "m1",
+      "in": 0,
+      "out": 2000000,
+      "speed": 1,
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 4,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "crop": {
+        "left": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "volume": {
+        "gainDb": 0,
+        "muted": false
+      },
+      "fades": {
+        "in": 0,
+        "out": 0
+      }
+    },
+    "c-image": {
+      "id": "c-image",
+      "trackId": "v1",
+      "kind": "image",
+      "name": "badge.png",
+      "start": 60,
+      "duration": 30,
+      "enabled": true,
+      "mediaId": "m3",
+      "in": 0,
+      "out": 1000000,
+      "speed": 1,
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 16.875,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "crop": {
+        "left": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "volume": {
+        "gainDb": 0,
+        "muted": false
+      },
+      "fades": {
+        "in": 0,
+        "out": 0
+      }
+    },
+    "c-title": {
+      "id": "c-title",
+      "trackId": "v2",
+      "kind": "text",
+      "name": "Hello sparse",
+      "start": 0,
+      "duration": 40,
+      "enabled": true,
+      "text": {
+        "value": "Hello sparse",
+        "box": {
+          "mode": "auto",
+          "width": 900
+        }
+      },
+      "style": {
+        "fontFamily": "Bebas Neue",
+        "fontWeight": 400,
+        "italic": false,
+        "fontSize": 140,
+        "fill": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 1
+        },
+        "stroke": {
+          "enabled": true,
+          "width": 6,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 1
+          }
+        },
+        "shadow": {
+          "enabled": false,
+          "x": 0,
+          "y": 6,
+          "blur": 16,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.6
+          }
+        },
+        "background": {
+          "enabled": false,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.7
+          },
+          "paddingX": 28,
+          "paddingY": 12,
+          "radius": 16,
+          "mode": "block"
+        },
+        "textCase": "none",
+        "letterSpacing": 0,
+        "lineHeight": 1.2,
+        "align": "center",
+        "verticalAnchor": "middle"
+      },
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "fades": {
+        "in": 0,
+        "out": 0
+      }
+    },
+    "c-music": {
+      "id": "c-music",
+      "trackId": "a1",
+      "kind": "audio",
+      "name": "tone.wav",
+      "start": 0,
+      "duration": 15,
+      "enabled": true,
+      "mediaId": "m2",
+      "in": 0,
+      "out": 500000,
+      "speed": 1,
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "crop": {
+        "left": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "volume": {
+        "gainDb": 0,
+        "muted": false
+      },
+      "fades": {
+        "in": 0,
+        "out": 0
+      }
+    },
+    "c-cue2": {
+      "id": "c-cue2",
+      "trackId": "cc",
+      "kind": "caption",
+      "name": "Caption",
+      "start": 30,
+      "duration": 30,
+      "enabled": true,
+      "text": "second cue"
+    },
+    "c-cue1": {
+      "id": "c-cue1",
+      "trackId": "cc",
+      "kind": "caption",
+      "name": "Caption",
+      "start": 0,
+      "duration": 30,
+      "enabled": true,
+      "text": "first cue",
+      "words": [
+        {
+          "text": "first",
+          "start": 0,
+          "end": 12
+        },
+        {
+          "text": "cue",
+          "start": 12,
+          "end": 30
+        }
+      ]
+    }
+  },
+  "markers": [],
+  "captionTracks": {
+    "cc": {
+      "style": {
+        "text": {
+          "fontFamily": "Inter",
+          "fontWeight": 800,
+          "italic": false,
+          "fontSize": 64,
+          "fill": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "stroke": {
+            "enabled": true,
+            "width": 6,
+            "color": {
+              "r": 0,
+              "g": 0,
+              "b": 0,
+              "a": 1
+            }
+          },
+          "shadow": {
+            "enabled": true,
+            "x": 0,
+            "y": 4,
+            "blur": 12,
+            "color": {
+              "r": 0,
+              "g": 0,
+              "b": 0,
+              "a": 0.5
+            }
+          },
+          "background": {
+            "enabled": false,
+            "color": {
+              "r": 0,
+              "g": 0,
+              "b": 0,
+              "a": 0.7
+            },
+            "paddingX": 28,
+            "paddingY": 12,
+            "radius": 16,
+            "mode": "block"
+          },
+          "textCase": "none",
+          "letterSpacing": 0,
+          "lineHeight": 1.15,
+          "align": "center",
+          "verticalAnchor": "bottom"
+        },
+        "position": "center",
+        "x": 0,
+        "y": 0,
+        "maxWidth": 900,
+        "maxLines": 2,
+        "highlight": {
+          "mode": "color",
+          "color": {
+            "r": 1,
+            "g": 0.84,
+            "b": 0.04,
+            "a": 1
+          },
+          "inactiveColor": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          }
+        }
+      }
+    }
+  },
+  "textPresetsLocal": [],
+  "meta": {
+    "createdAt": "2026-11-07T10:00:00.000Z",
+    "modifiedAt": "2026-11-07T10:00:00.000Z",
+    "appVersion": "1.1.0",
+    "generator": {
+      "name": "interop-fixture",
+      "version": "1",
+      "source": "fixtures/interop/sparse"
+    }
+  }
+}

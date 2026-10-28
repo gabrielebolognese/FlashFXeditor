@@ -105,7 +105,7 @@ const SCHEMAS: ObjectSchema[] = [
     name: "RGBA",
     doc: "A color: channels 0..1, straight (not premultiplied) alpha.",
     types: ["RGBA"],
-    fields: { r: req(range(0, 1), "Red."), g: req(range(0, 1), "Green."), b: req(range(0, 1), "Blue."), a: req(range(0, 1), "Alpha.") },
+    fields: { r: req(range(0, 1), "Red."), g: req(range(0, 1), "Green."), b: req(range(0, 1), "Blue."), a: req(range(0, 1), "Alpha.", 1) },
   },
   {
     name: "Gradient",
@@ -123,12 +123,12 @@ const SCHEMAS: ObjectSchema[] = [
       scale: req(pos, "Scale (the horizontal one when `scaleY` is present).", 1),
       scaleY: opt(pos, "Vertical scale when it differs from `scale`."),
       rotation: req(num, "Degrees, clockwise.", 0),
-      anchor: req(obj("Anchor"), "The point the layer turns and scales around, fractions of its size from its center.", { x: 0, y: 0 }),
+      anchor: req(obj("Anchor"), "The point the layer turns and scales around, fractions of its size from its top-left corner (0.5, 0.5 is the center).", { x: 0.5, y: 0.5 }),
       flipH: req(bool, "Mirrored left to right.", false),
       flipV: req(bool, "Mirrored top to bottom.", false),
     },
   },
-  { name: "Anchor", doc: "A point as fractions of a layer's size from its center.", types: [], fields: { x: req(num, "Horizontal."), y: req(num, "Vertical.") } },
+  { name: "Anchor", doc: "A point as fractions of a layer's size from its top-left corner.", types: [], fields: { x: req(num, "Horizontal."), y: req(num, "Vertical.") } },
   {
     name: "Crop",
     doc: "The part of the picture cut off each side, fractions 0..1 of the media size.",
@@ -146,7 +146,7 @@ const SCHEMAS: ObjectSchema[] = [
     name: "Keyframe",
     doc: "One keyframe: a value at a frame relative to the clip start. A key's `ease` shapes the segment from it to the next key.",
     types: [],
-    fields: { frame: req(int(), `Relative to the clip start; one key per frame, sorted. Any integer: after a head trim keys before the clip start (negative) or past its end are kept so a trim back restores them. ${FRAMES}`), value: req(num, "The value."), ease: req(oneOf(EASE_IDS), "The curve to the next key.") },
+    fields: { frame: req(int(), `Relative to the clip start; one key per frame, sorted. Any integer: after a head trim keys before the clip start (negative) or past its end are kept so a trim back restores them. ${FRAMES}`), value: req(num, "The value."), ease: req(oneOf(EASE_IDS), "The curve to the next key.", "linear") },
   },
   {
     name: "Keyframes",
@@ -210,7 +210,7 @@ const SCHEMAS: ObjectSchema[] = [
     doc: "The look of a text clip. Sizes are project px; `lineHeight` multiplies the size.",
     types: ["TextStyle"],
     fields: {
-      fontFamily: req(text, "A family name; a missing family draws with the UI font."),
+      fontFamily: req(text, "A family name; a missing family draws with the UI font.", "Inter"),
       fontWeight: req(int(1, 1000), "1..1000 (variable fonts take any value in their range).", 700),
       italic: req(bool, "Italic face.", false),
       fontSize: req(pos, "Size, project px.", 96),
@@ -502,7 +502,7 @@ const SCHEMAS: ObjectSchema[] = [
     fields: {
       ...clipBaseFields("solid"),
       fill: req(FILL, "A color or a vertical two-stop gradient."),
-      shape: req(oneOf(SOLID_SHAPE_IDS), "The shape."),
+      shape: req(oneOf(SOLID_SHAPE_IDS), "The shape.", "rect"),
       size: req(obj("Size"), "Width and height at scale 1, project px."),
       cornerRadius: req(nonNeg, "Corner radius, project px (at most half the shorter side; rounds a line's ends).", 0),
       transform: req(obj("Transform"), "Placement."),
