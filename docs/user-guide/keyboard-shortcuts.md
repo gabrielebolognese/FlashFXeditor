@@ -89,6 +89,8 @@ This page lists every keyboard shortcut that works in the current version of Sho
 
 **Menus take the keyboard.** While a menu is open, the arrow keys, <kbd>Enter</kbd> and <kbd>Space</kbd> work on its rows. When it closes, the keyboard goes back to the panel you were in. See [Menus and lists](#menus-and-lists).
 
+**No keys in Batch 56.** Reload project from disk, Keep my version, Make all baked layers editable and Choose projects folder… have no default key; add one in **Settings** > **Shortcuts**.
+
 **Your keys.** The tables on this page show the default keys. If you changed keys in **Settings** > **Shortcuts**, yours apply instead, and the tooltips, menus, the command palette and the shortcut sheet (<kbd>?</kbd>) show yours. Many commands that have no key on this page, such as **Normalize**, **Ripple mode** or **Add solid**, can get one there. See [Change a shortcut](command-palette-and-custom-shortcuts.md#change-a-shortcut).
 
 **Clicks keep your shortcuts.** Clicking a control with the mouse never gives it <kbd>Space</kbd>, <kbd>Enter</kbd> or the arrow keys: after you click a transport button, **Mute**, a switch such as **Enabled**, a chip, a text button such as **Reset**, a tab or a card, choose from the **Zoom**, **Preview quality** or **Overlays** menu, or drag the **Master volume** knob or the zoom slider, <kbd>Space</kbd> still plays and the arrow keys still step frames. Only a control you reach with <kbd>Tab</kbd> takes these keys: <kbd>Space</kbd> or <kbd>Enter</kbd> presses it, and a slider or a list of cards keeps the arrow keys. See [Keyboard navigation](#keyboard-navigation).

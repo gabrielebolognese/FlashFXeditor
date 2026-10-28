@@ -2,6 +2,11 @@
 
 Shorts Editor grows in steps called batches. This page lists what each batch added that you can see or use, newest first. Follow the links for the full instructions.
 
+> **Video placeholder: What's new in Batch 56**
+> - File: `videos/whats-new/batch-56.mp4` (not recorded yet)
+> - Length: about 40 seconds
+> - Shows: choose the **Projects folder** and open `/?open=interop/basic`; edit `project.json` in another program and watch the project reload; open a project with **baked** layers and click **Make editable**.
+
 > **Video placeholder: What's new in Batch 55**
 > - File: `videos/whats-new/batch-55.mp4` (not recorded yet)
 > - Length: about 15 seconds
@@ -233,6 +238,7 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 > - Shows: open a project with three clips on the timeline; press <kbd>Space</kbd> to play and let the timeline page forward; press <kbd>L</kbd> three times to reach 8x, then <kbd>K</kbd>; hold <kbd>K</kbd> and tap <kbd>L</kbd> to step one frame; turn on **Loop playback**; point at the **Dropped** readout in the status strip.
 
 ## In this page
+- [Batch 56: Open links, live reload and editable stand-ins](#batch-56-open-links-live-reload-and-editable-stand-ins)
 - [Batch 55: Projects completed by other tools](#batch-55-projects-completed-by-other-tools)
 - [Batch 54: Projects from other tools](#batch-54-projects-from-other-tools)
 - [Batch 53: Version 1.1 and caption styles per cue](#batch-53-version-11-and-caption-styles-per-cue)
@@ -288,6 +294,12 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 - [Batch 03: Projects, autosave and recovery](#batch-03-projects-autosave-and-recovery)
 - [Batch 02: Undo, redo and frame-exact time](#batch-02-undo-redo-and-frame-exact-time)
 - [Batch 01: The workspace](#batch-01-the-workspace)
+
+## Batch 56: Open links, live reload and editable stand-ins
+- Choose a **Projects folder** on the start screen or in **Settings** > **General**, then open projects with a link like `/?open=interop/basic`.
+- When another tool changes `project.json`, the project reloads by itself. With unsaved changes, a banner offers **Reload** or **Keep mine**.
+- Opening a project corrects wrong media lengths, sizes and frame rates, with a **Repaired on open** toast.
+- **Baked** layers can become editable clips with **Make editable** or **Make all baked layers editable**. See [Open projects from other tools](projects-and-saving.md#open-projects-from-other-tools).
 
 ## Batch 55: Projects completed by other tools
 - Projects written by other tools no longer need every field. A command-line tool fills in what is missing (names, default looks, caption styles, fonts) so the project opens in the editor like one you made yourself. It adds no new screen: you open the folder with **Open project** as before.
@@ -858,4 +870,4 @@ See [The workspace](workspace.md) and [Getting started](getting-started.md).
 - [Adding media to the timeline](adding-media-to-the-timeline.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 55, 2026-11-07</sub>
+<sub>Last updated: Batch 56, 2026-11-07</sub>

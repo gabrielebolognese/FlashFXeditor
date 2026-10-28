@@ -18,6 +18,7 @@ Every Shorts Editor project is a folder on your disk. The editor saves your work
 - [Restore an older version](#restore-an-older-version)
 - [Clear the cache](#clear-the-cache)
 - [Work in read-only mode](#work-in-read-only-mode)
+- [Open projects from other tools](#open-projects-from-other-tools)
 - [Related pages](#related-pages)
 
 ## What is in the project folder
@@ -282,6 +283,44 @@ Changes made in read-only mode exist only in the tab. The editor asks before the
 
 - When you close or reload the tab, Chrome asks whether you want to leave (or reload) the site. Click **Cancel** to stay, then click **Allow editing**. Chrome also asks when the last save failed (red save dot).
 
+## Open projects from other tools
+Tools outside the editor can create projects and keep editing them. The editor opens them from a link, follows their changes, fixes small mismatches and turns stand-in layers into editable clips.
+
+> **Video placeholder: Projects from other tools**
+> - File: `videos/projects-and-saving/projects-from-other-tools.mp4` (not recorded yet)
+> - Length: about 75 seconds
+> - Shows: on the start screen click **Projects folder** and choose a folder; open `/?open=interop/basic` in a new tab and the project opens; edit `project.json` in another program and watch the project reload; make a change in the editor, edit the file again, and click **Reload** in the banner; open a project with **baked** layers, select a baked clip, click **Make editable** in the **Properties** header and confirm.
+
+### Open a project from a link
+1. On the start screen, click **Projects folder** and choose the folder that holds your generated projects. You can also do this in **Settings** > **General** (**Projects folder**, **Choose…** or **Change…**), or run **Choose projects folder…** from the command palette.
+2. Open a link like `/?open=interop/basic`. The path is relative to the projects folder.
+3. If the start screen shows **Choose your projects folder to open** and the path, choose the folder, or allow access again. The project opens after at most one click, and it joins **Recent projects**.
+
+To remove the folder, click the **x** next to it in **Settings** > **General**. A path that leaves the folder, or a folder without a project, does not open.
+
+### Reload when another tool changes the project
+The editor checks `project.json` when you return to its window and every 5 seconds while it is visible. It does not check during a drag or an export.
+
+- **No unsaved changes:** the project reloads in place. Your playhead, zoom and selection stay. A toast says **Reloaded from disk**, and your previous version is in **History**.
+- **Unsaved changes:** a banner shows **project.json changed on disk**. Nothing is saved until you choose. **Reload** takes the version on disk (yours goes to **History**). **Keep mine** saves over the file (the disk version goes to **History**).
+- If the file cannot be read, a toast tells you and your version stays open.
+
+> **Note:** If you close the project while the banner is up, it counts as **Keep mine**.
+
+### Repair on open
+When you open a project, or after a reload, the editor reads each media file again. If the project's record of its length, size, frame rate or sound is wrong, the editor corrects it. Clips that run past a shortened file are trimmed. A toast says **Repaired on open** with the counts, and a log is written in `history` as `repair-<date>.log`. Differences under one frame are ignored.
+
+### Make baked layers editable
+A tool can leave a **baked** stand-in for something this editor cannot make yet. A **baked** badge marks the clip on the timeline, and the **Properties** header says "Baked stand-in for a … clip" with the reason.
+
+1. Select the baked clip and click **Make editable** in the **Properties** header.
+2. Confirm **Make this layer editable?**. Changes you made to the baked layer itself (its transform, opacity, keys) are not carried over.
+3. To convert every layer at once, run **Make all baked layers editable** from the command palette. When a project opens with convertible layers, a toast offers **Make all editable**.
+
+One undo step reverts it. A layer that cannot convert stays baked, and the button shows the reason. In a read-only project, allow editing first.
+
+The **Project** section shows the generator's notes (`FALLBACKS.md`, `OPEN.txt`) as read-only text.
+
 ## Related pages
 - [Exporting your video](exporting-video.md)
 - [Getting started](getting-started.md)
@@ -306,4 +345,4 @@ Changes made in read-only mode exist only in the tab. The editor asks before the
 - [The preset bar](preset-bar.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 53, 2026-10-19</sub>
+<sub>Last updated: Batch 56, 2026-11-07</sub>
