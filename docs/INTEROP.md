@@ -25,7 +25,7 @@ Other commands: `npm run cli -- info <folder>` (duration, tracks, clips by kind,
 {
   "manifestVersion": 1,
   "schemaVersion": 4,
-  "cli": { "validate": true, "info": true, "normalize": true },
+  "cli": { "validate": true, "info": true, "normalize": true, "render": true, "compare": true },
   "interop": { "openLink": true, "externalReload": true, "repairOnOpen": true, "fallbackOf": true, "generatorMeta": true }
 }
 ```
@@ -227,6 +227,24 @@ Generator fallback levels, from best to worst: a **sprite** (a baked image or sh
 ```
 
 - **Large projects.** Up to 40 video tracks, 1,000 clips and 5,000 keyframes open in under 2 s on a warm cache (`fixtures/interop/large/`, made by `scripts/fixtures/make-large.mjs`); `fixtures/interop/standins/` has stand-ins to convert.
+
+### 7.2 Render your project and compare it with your reference (manifest keys `cli.render`, `cli.compare`)
+
+A generator can check its own pictures without opening the editor. `render` draws the project folder with the editor's compositor and encoders in headless Chrome or Edge (`CHROME_PATH` wins; WebGPU, or `--backend webgl2`); `compare` scores two renders frame by frame.
+
+```
+npm run build                                                  (once: the render serves dist/)
+npm run cli -- render <dir> --out out/project.mp4              (MP4 with the Reels preset: --preset reels|tiktok|shorts)
+npm run cli -- render <dir> --out out/part.mp4 --range 30:90   (frames 30 to 89)
+npm run cli -- render <dir> --frames 0,45,89 --png out/frames  (PNGs named <project name>-frame-<n>.png, as Export frame)
+npm run cli -- compare out/project.mp4 reference.mp4 --ssim 0.98 --diff out/diff
+npm run cli -- compare out/frames expected-frames --json
+```
+
+- `render` exits 0 on success, 1 on a failed render (the reason is printed), 2 on a usage error. Nothing is written into the project folder; the same project renders to the same bytes on the same machine and backend.
+- `compare <a> <b>`: each side is a video or a folder of PNGs (`<name>-frame-<n>.png` is frame n). Frames are matched by frame number; a video against a PNG folder compares the frames the folder names. It prints the SSIM (luma, 8x8 windows) and PSNR, the worst frames with the region that differs, and exits 1 when a frame is below `--ssim` (default 0.99) or `--psnr`, or when frames exist on one side only. `--region x,y,w,h` scores only that part, `--diff <dir>` writes difference images (amplified 8x), `--json` prints the report.
+- Stand-ins render as their baked layer. A render never asks a question: offline media draw their slate and are listed in the first line.
+- To test a generator: render its project, then `compare` the result with the video your own renderer made from the same project. A difference in SSIM of a few thousandths is normal (encoders, text anti-aliasing); a moved or missing layer shows as a region.
 
 ## 8. Fonts
 

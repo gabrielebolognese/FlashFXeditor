@@ -4,6 +4,8 @@
 //   validate <dir> [--json]  strict check of a project folder; exit 0 valid, 1 invalid, 2 usage error
 //   info <dir> [--json]      what the project holds, with the facts the media files' headers give
 //   normalize <dir> [--write] completes a sparse project (migration, defaults, media headers, library fonts)
+//   render <dir> --out <file.mp4> | --frames <list> --png <dir>   headless render with the app's own compositor (§21.6)
+//   compare <a> <b>          SSIM and PSNR of two videos or PNG folders (§21.6)
 //   schema                   the JSON Schema of project.json
 //   docs                     writes the field reference of docs/INTEROP.md (`npm run docs:interop`)
 import { readFileSync, writeFileSync } from "node:fs";
@@ -12,6 +14,7 @@ import { buildCapabilities, formatCapabilities } from "../../src/core/capabiliti
 import { projectJsonSchema } from "../../src/core/document/jsonSchema.js";
 import { FIELDS_BEGIN_START, FIELDS_END, fieldReference } from "../../src/core/document/interopDoc.js";
 import { normalizeProjectFolder, projectInfo, validateProjectFolder, type FolderReport } from "./folder.js";
+import { compareCommand, renderCommand, RENDER_USAGE } from "./render.js";
 
 const root = new URL("../", import.meta.url);
 
@@ -25,7 +28,7 @@ const USAGE = `Usage: project-cli <command>
   info <dir> [--json]       duration, tracks, clips by kind, stand-ins, media and what their headers say
   normalize <dir> [--write] complete a sparse project (print it; --write: write project.json and fonts/)
   schema                    print the JSON Schema of project.json
-`;
+${RENDER_USAGE}`;
 
 const list = (counts: Record<string, number>): string => Object.entries(counts).map(([kind, count]) => `${count} ${kind}`).join(", ");
 
@@ -96,6 +99,9 @@ async function normalizeCommand(dir: string, write: boolean): Promise<number> {
 /** Runs one command and returns the exit code. */
 export async function run(argv: readonly string[]): Promise<number> {
   const [command, ...rest] = argv;
+  // render and compare take options with values: they parse their own arguments.
+  if (command === "render") return renderCommand(rest);
+  if (command === "compare") return compareCommand(rest);
   const flags = new Set(rest.filter((arg) => arg.startsWith("--")));
   const args = rest.filter((arg) => !arg.startsWith("--"));
   const unknown = [...flags].filter((flag) => !["--json", "--write"].includes(flag));

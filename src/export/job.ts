@@ -41,6 +41,8 @@ export interface ExportJobParams {
   renderer: RendererBackend;
   /** Starts paused: Pause was pressed before the job was posted (`ExportPauseSync`). */
   paused: boolean;
+  /** Headless renders (spec §21.6): the MP4 gets a fixed creation time, so a project renders to the same bytes. */
+  fixedCreationTime?: boolean;
 }
 
 export type ExportProgress = PipelineProgress;

@@ -34,11 +34,11 @@ describe("capabilities.json (spec §21.2)", () => {
     expect(media).toEqual([...ACCEPTED_EXTENSIONS].sort());
   });
 
-  it("has schemaVersion 4 and the Batch 54 to 56 keys true, the keys of later batches false", () => {
+  it("has schemaVersion 4 and the Batch 54 to 57 keys true, the keys of later batches false", () => {
     expect(manifest.schemaVersion).toBe(4);
     expect(manifest.manifestVersion).toBe(MANIFEST_VERSION);
     expect(manifest.lastBatch).toBe(LAST_BATCH);
-    expect(manifest.cli).toEqual({ validate: true, normalize: true, info: true, render: false, compare: false });
+    expect(manifest.cli).toEqual({ validate: true, normalize: true, info: true, render: true, compare: true });
     expect(manifest.interop).toEqual({ openLink: true, externalReload: true, repairOnOpen: true, fallbackOf: true, generatorMeta: true });
     expect(FEATURES.templates).toBe(false);
   });

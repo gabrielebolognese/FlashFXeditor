@@ -41,7 +41,7 @@ new WorkerHost(
             videoSupported: async (config) => (await VideoEncoder.isConfigSupported(config)).supported === true,
             audioSupported: async (config) => (await AudioEncoder.isConfigSupported(config)).supported === true,
             audioData: planarAudioData,
-            createMuxer: createMp4Muxer,
+            createMuxer: (options, onData) => createMp4Muxer(options, onData, params.fixedCreationTime === true),
             now: () => performance.now(),
           },
           signal,

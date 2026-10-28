@@ -204,7 +204,7 @@ function syncProgressToast(): void {
 }
 
 /** What the worker needs besides the document, gathered on the main thread. */
-async function gatherInputs(dir: FsDir, project: Project, range: FrameRange, signal: AbortSignal): Promise<Pick<ExportJobParams, "media" | "svg" | "fonts" | "fontBaseUrl" | "offline" | "audio">> {
+export async function gatherInputs(dir: FsDir, project: Project, range: FrameRange, signal: AbortSignal): Promise<Pick<ExportJobParams, "media" | "svg" | "fonts" | "fontBaseUrl" | "offline" | "audio">> {
   const media: Record<MediaId, ExportMediaFile> = {};
   const svg: Record<MediaId, ImageBitmap> = {};
   const offline: Record<MediaId, string> = {};
@@ -229,6 +229,25 @@ async function gatherInputs(dir: FsDir, project: Project, range: FrameRange, sig
     for (const bitmap of Object.values(svg)) bitmap.close();
     throw error;
   }
+}
+
+/**
+ * Posts one video export to a fresh export worker: the one path of the Export tab and of the headless
+ * render (`cli render`, spec §21.6). `deterministic` fixes the MP4's creation time.
+ */
+export function requestVideoExport(
+  project: Project,
+  range: FrameRange,
+  format: ExportFormat,
+  inputs: Awaited<ReturnType<typeof gatherInputs>>,
+  paused: boolean,
+  signal: AbortSignal,
+  onProgress: (value: ExportProgress) => void,
+  deterministic = false,
+): Promise<ExportJobResult> {
+  const params: ExportJobParams = { project, range, format, slate: slateLook(themeBridge.theme), textureBudget: Math.round(textureBudget() * (1 - MAIN_TEXTURE_SHARE)), renderer: renderer.backend ?? "webgpu", ...inputs, paused, ...(deterministic && { fixedCreationTime: true }) };
+  const transfer: Transferable[] = [...Object.values(inputs.svg), ...(inputs.audio?.channels ?? []), ...inputs.fonts.flatMap((face) => (face.data ? [face.data] : []))];
+  return workerPool.request("exportVideo", params, { priority: "user", signal, transfer, onProgress });
 }
 
 /** The stereo mixdown of the range (the master volume is monitoring only, spec §14: never in it). */
@@ -266,9 +285,7 @@ async function runJob(job: QueueJob<ExportJobSpec>, signal: AbortSignal, fail: (
       signal.throwIfAborted();
       output = spec.picked ? await ExportFile.toPicked(spec.picked.file, fail) : await ExportFile.create(dir, crypto.randomUUID(), fail, ext);
       // Read right before the post (no await in between): a Pause from now on is sent after the job.
-      const params: ExportJobParams = { project: spec.project, range: spec.range, format: spec.format, slate: slateLook(themeBridge.theme), textureBudget: Math.round(textureBudget() * (1 - MAIN_TEXTURE_SHARE)), renderer: renderer.backend ?? "webgpu", ...inputs, paused: rt.pause.post() };
-      const transfer: Transferable[] = [...Object.values(inputs.svg), ...(inputs.audio?.channels ?? []), ...inputs.fonts.flatMap((face) => (face.data ? [face.data] : []))];
-      const result: ExportJobResult = await workerPool.request("exportVideo", params, { priority: "user", signal, transfer, onProgress });
+      const result = await requestVideoExport(spec.project, spec.range, spec.format, inputs, rt.pause.post(), signal, onProgress);
       const name = await output.finish(spec.fileName);
       const bytes = output.bytes;
       output = null;

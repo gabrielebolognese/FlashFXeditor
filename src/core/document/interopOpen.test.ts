@@ -57,6 +57,6 @@ describe("the manifest announces Batch 56", () => {
   it("has the open link, the external reload and the repair on open", () => {
     const manifest = buildCapabilities("test");
     expect(manifest.interop).toMatchObject({ openLink: true, externalReload: true, repairOnOpen: true });
-    expect(manifest.lastBatch).toBe(56);
+    expect(manifest.lastBatch).toBeGreaterThanOrEqual(56);
   });
 });

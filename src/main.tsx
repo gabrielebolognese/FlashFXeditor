@@ -51,6 +51,11 @@ const root = createRoot(container);
 
 async function start(): Promise<void> {
   performance.mark("app:start");
+  // `/?render=<token>`: the render-only entry of the headless CLI (spec §21.6): no panels, no React.
+  if (new URLSearchParams(location.search).has("render")) {
+    (await import("./render/headless/renderMode.js")).startRenderMode(location.search, location.origin);
+    return;
+  }
   const missing = findMissingApis(window);
   // A WebGPU adapter, else WebGL2 on the GPU (Batch 48); neither (blocklisted GPU, hardware
   // acceleration off) is unsupported too. `?renderer=webgl2` tries WebGL2 first (dev flag).

@@ -51,15 +51,31 @@ export function planarAudioData(planes: readonly Float32Array[], sampleRate: num
   return new AudioData({ format: "f32-planar", sampleRate, numberOfChannels: planes.length, numberOfFrames: frames, timestamp: timestampUs, data });
 }
 
-export function createMp4Muxer(options: MuxOptions, onData: (data: Uint8Array, position: number) => void): MuxerLike<EncodedVideoChunk, EncodedAudioChunk> {
-  const muxer = new Muxer({
+/** Runs `make` with the clock fixed at `FIXED_CREATION_MS` (mp4-muxer stamps its header with the time it is made). */
+function withFixedClock<T>(fixed: boolean, make: () => T): T {
+  if (!fixed) return make();
+  const now = Date.now;
+  Date.now = () => FIXED_CREATION_MS;
+  try {
+    return make();
+  } finally {
+    Date.now = now;
+  }
+}
+
+/** 2026-01-01T00:00:00Z: the creation time of headless renders. */
+export const FIXED_CREATION_MS = Date.UTC(2026, 0, 1);
+
+/** The video muxer; `fixedCreationTime`: a header that does not depend on when it was made (headless renders). */
+export function createMp4Muxer(options: MuxOptions, onData: (data: Uint8Array, position: number) => void, fixedCreationTime = false): MuxerLike<EncodedVideoChunk, EncodedAudioChunk> {
+  const muxer = withFixedClock(fixedCreationTime, () => new Muxer({
     target: new StreamTarget({ onData, chunked: true, chunkSize: MUX_CHUNK_BYTES }),
     // `frameRate` is the track's timescale: a whole number of ticks per frame.
     video: { codec: options.video.codec, width: options.video.width, height: options.video.height, frameRate: options.video.timescale },
     ...(options.audio && { audio: { codec: options.audio.codec, sampleRate: options.audio.sampleRate, numberOfChannels: options.audio.channels } }),
     fastStart: { expectedVideoChunks: options.expectedVideoChunks, ...(options.audio && { expectedAudioChunks: options.expectedAudioChunks }) },
     firstTimestampBehavior: "strict",
-  });
+  }));
   return {
     addVideo: (chunk, meta) => muxer.addVideoChunk(chunk, meta as EncodedVideoChunkMetadata | undefined),
     addAudio: (chunk, meta) => muxer.addAudioChunk(chunk, meta as EncodedAudioChunkMetadata | undefined),

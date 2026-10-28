@@ -13,3 +13,5 @@ fixtures/**/cache/
 fixtures/**/history/
 fixtures/**/session.json
 fixtures/**/exports/
+
+out/

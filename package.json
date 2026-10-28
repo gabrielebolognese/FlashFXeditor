@@ -18,6 +18,7 @@
     "build:cli": "vite build --config vite.cli.config.ts",
     "cli": "node scripts/cli/run.mjs",
     "capabilities": "node scripts/cli/run.mjs capabilities --write",
+    "test:render": "node scripts/test-render.mjs",
     "docs:interop": "node scripts/cli/run.mjs docs",
     "docs:shortcuts": "node scripts/update-shortcuts.mjs",
     "clean": "rm -rf dist"

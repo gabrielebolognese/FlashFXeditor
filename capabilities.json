@@ -2,7 +2,7 @@
   "manifestVersion": 1,
   "app": "shorts-editor",
   "appVersion": "1.1.0",
-  "lastBatch": 56,
+  "lastBatch": 57,
   "schemaVersion": 4,
   "project": {
     "file": "project.json",
@@ -222,8 +222,8 @@
     "validate": true,
     "normalize": true,
     "info": true,
-    "render": false,
-    "compare": false
+    "render": true,
+    "compare": true
   },
   "interop": {
     "openLink": true,
