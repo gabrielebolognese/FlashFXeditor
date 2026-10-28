@@ -2,6 +2,11 @@
 
 Shorts Editor grows in steps called batches. This page lists what each batch added that you can see or use, newest first. Follow the links for the full instructions.
 
+> **Video placeholder: What's new in Batch 57**
+> - File: `videos/whats-new/batch-57.mp4` (not recorded yet)
+> - Length: about 20 seconds
+> - Shows: in a terminal, run `npm run cli -- render` on a project folder with `--out out/project.mp4`; play the MP4; run `npm run cli -- compare` on two videos and show the similarity result.
+
 > **Video placeholder: What's new in Batch 56**
 > - File: `videos/whats-new/batch-56.mp4` (not recorded yet)
 > - Length: about 40 seconds
@@ -238,6 +243,7 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 > - Shows: open a project with three clips on the timeline; press <kbd>Space</kbd> to play and let the timeline page forward; press <kbd>L</kbd> three times to reach 8x, then <kbd>K</kbd>; hold <kbd>K</kbd> and tap <kbd>L</kbd> to step one frame; turn on **Loop playback**; point at the **Dropped** readout in the status strip.
 
 ## In this page
+- [Batch 57: Render and compare from the command line](#batch-57-render-and-compare-from-the-command-line)
 - [Batch 56: Open links, live reload and editable stand-ins](#batch-56-open-links-live-reload-and-editable-stand-ins)
 - [Batch 55: Projects completed by other tools](#batch-55-projects-completed-by-other-tools)
 - [Batch 54: Projects from other tools](#batch-54-projects-from-other-tools)
@@ -294,6 +300,11 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 - [Batch 03: Projects, autosave and recovery](#batch-03-projects-autosave-and-recovery)
 - [Batch 02: Undo, redo and frame-exact time](#batch-02-undo-redo-and-frame-exact-time)
 - [Batch 01: The workspace](#batch-01-the-workspace)
+
+## Batch 57: Render and compare from the command line
+- Nothing changes inside the editor. Other programs can now render a project folder to an MP4 or to PNG frames with the same picture and sound as the **Export** tab, without opening the editor window.
+- A second command compares two videos, or a video and a folder of frames, and reports how much they differ. It is meant for tools that generate projects.
+- Offline media show their slate in a render, and linked (not copied) media are offline.
 
 ## Batch 56: Open links, live reload and editable stand-ins
 - Choose a **Projects folder** on the start screen or in **Settings** > **General**, then open projects with a link like `/?open=interop/basic`.
@@ -870,4 +881,4 @@ See [The workspace](workspace.md) and [Getting started](getting-started.md).
 - [Adding media to the timeline](adding-media-to-the-timeline.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 56, 2026-11-07</sub>
+<sub>Last updated: Batch 57, 2026-11-07</sub>
