@@ -2,6 +2,11 @@
 
 Shorts Editor grows in steps called batches. This page lists what each batch added that you can see or use, newest first. Follow the links for the full instructions.
 
+> **Video placeholder: What's new in Batch 55**
+> - File: `videos/whats-new/batch-55.mp4` (not recorded yet)
+> - Length: about 15 seconds
+> - Shows: open a project folder that another tool completed with the command-line `normalize` tool, using **Open project**; the video, text, solid and captions appear and play; the title is in its font with no "missing font" mark.
+
 > **Video placeholder: What's new in Batch 54**
 > - File: `videos/whats-new/batch-54.mp4` (not recorded yet)
 > - Length: about 25 seconds
@@ -228,6 +233,7 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 > - Shows: open a project with three clips on the timeline; press <kbd>Space</kbd> to play and let the timeline page forward; press <kbd>L</kbd> three times to reach 8x, then <kbd>K</kbd>; hold <kbd>K</kbd> and tap <kbd>L</kbd> to step one frame; turn on **Loop playback**; point at the **Dropped** readout in the status strip.
 
 ## In this page
+- [Batch 55: Projects completed by other tools](#batch-55-projects-completed-by-other-tools)
 - [Batch 54: Projects from other tools](#batch-54-projects-from-other-tools)
 - [Batch 53: Version 1.1 and caption styles per cue](#batch-53-version-11-and-caption-styles-per-cue)
 - [Batch 52: Preset bar](#batch-52-preset-bar)
@@ -282,6 +288,10 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 - [Batch 03: Projects, autosave and recovery](#batch-03-projects-autosave-and-recovery)
 - [Batch 02: Undo, redo and frame-exact time](#batch-02-undo-redo-and-frame-exact-time)
 - [Batch 01: The workspace](#batch-01-the-workspace)
+
+## Batch 55: Projects completed by other tools
+- Projects written by other tools no longer need every field. A command-line tool fills in what is missing (names, default looks, caption styles, fonts) so the project opens in the editor like one you made yourself. It adds no new screen: you open the folder with **Open project** as before.
+- The same tool now checks that each media file's length and size match what the project says, so a project with a wrong record is caught before you open it.
 
 ## Batch 54: Projects from other tools
 - When another tool wrote a project, the **Project** section (click an empty area of the timeline tracks) shows a read-only **Generator** row with the tool's name and version. Point at it to see where it came from. See [What the Project section sets](project-settings-and-templates.md#what-the-project-section-sets).
@@ -848,4 +858,4 @@ See [The workspace](workspace.md) and [Getting started](getting-started.md).
 - [Adding media to the timeline](adding-media-to-the-timeline.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 54, 2026-11-07</sub>
+<sub>Last updated: Batch 55, 2026-11-07</sub>
