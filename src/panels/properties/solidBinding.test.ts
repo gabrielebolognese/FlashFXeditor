@@ -5,6 +5,7 @@ import { createStore } from "../../core/store/createStore.js";
 import { DocumentStore } from "../../core/store/DocumentStore.js";
 import { createSessionStore } from "../../core/store/sessionStore.js";
 import { NO_LIVE_EDIT, type LiveEdit } from "../../app/liveEdit.js";
+import { drawnRadii, setSolids } from "../../timeline/edit/solid.js";
 import { solidBinding } from "./solidBinding.js";
 import { SOLID_HEIGHT, SOLID_RADIUS, SOLID_WIDTH } from "./solidProps.js";
 
@@ -65,6 +66,28 @@ describe("solid bindings (spec §11 Solid section, P2, Batch 34)", () => {
     radius.change(40, "cancel");
     expect(live.getState()).toBe(NO_LIVE_EDIT);
     expect(clip("a").cornerRadius).toBe(30);
+  });
+
+  it("shows mixed for per-corner radii; a Radius scrub drops them live and on release (Batch 58 review)", () => {
+    const { deps, document, live, clip } = setup();
+    const corners = setSolids(document.getState(), new Map([["a", { cornerRadii: [0, 10, 10, 10] as [number, number, number, number] }]]), { label: "Corners" });
+    if (corners) document.dispatch(corners);
+    const radius = solidBinding(deps, SOLID_RADIUS, ["a"]);
+    expect(radius.read()).toBeNull();
+    radius.change(6, "scrub");
+    const look = live.getState().solids?.get("a");
+    expect(look?.cornerRadii).toBeUndefined();
+    expect(look && drawnRadii(look)).toEqual([16, 16, 16, 16]);
+    expect(radius.read()).toBe(16);
+    radius.change(6, "commit");
+    expect(clip("a").cornerRadii).toBeUndefined();
+    expect(drawnRadii(clip("a"))).toEqual([16, 16, 16, 16]);
+    expect(radius.read()).toBe(16);
+    document.undo();
+    expect(clip("a").cornerRadii).toEqual([0, 10, 10, 10]);
+    const same = setSolids(document.getState(), new Map([["a", { cornerRadii: [12, 12, 12, 12] as [number, number, number, number] }]]), { label: "Corners" });
+    if (same) document.dispatch(same);
+    expect(radius.read()).toBe(12);
   });
 
   it("coalesces arrow steps into one undo step and clamps at the limits", () => {

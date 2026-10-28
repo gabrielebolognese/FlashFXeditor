@@ -12,7 +12,10 @@ export interface SolidNumberProp {
   precision: number;
   min: number;
   max: number;
-  read(clip: SolidClip): number;
+  /** The one value of `clip`, or null when it has none (per-corner radii that differ: the field shows mixed). */
+  read(clip: SolidClip): number | null;
+  /** Where a step or a scrub starts when `read` is null. */
+  start?(clip: SolidClip): number;
   write(clip: SolidClip, value: number): SolidEdit;
 }
 
@@ -39,6 +42,11 @@ export const SOLID_RADIUS: SolidNumberProp = {
   label: "Change corner radius",
   precision: 0,
   ...SOLID_LIMITS.radius,
-  read: (clip) => clip.cornerRadius,
+  read: (clip) => {
+    const radii = clip.cornerRadii;
+    if (!radii || (clip.shape !== "rect" && clip.shape !== "roundedRect")) return clip.cornerRadius;
+    return radii.every((r) => r === radii[0]) ? radii[0] : null;
+  },
+  start: (clip) => clip.cornerRadius,
   write: (_clip, cornerRadius) => ({ cornerRadius }),
 };

@@ -10,7 +10,7 @@
 import type { ClipId, SolidClip } from "../core/document/types.js";
 import { selectClips, toSnapshot } from "../core/store/selection.js";
 import { IMAGE_PICKER_TYPES } from "../media/mediaKinds.js";
-import { addSolid, setSolids, solidLook, type SolidEdit, type SolidLook } from "../timeline/edit/solid.js";
+import { addSolid, editedLook, setSolids, type SolidEdit, type SolidLook } from "../timeline/edit/solid.js";
 import { isClipLocked } from "../timeline/model/queries.js";
 import { dropMediaOnCanvas } from "./dropController.js";
 import { patchLiveEdit } from "./liveEdit.js";
@@ -52,7 +52,9 @@ export function previewSolids(ids: readonly ClipId[], change: SolidChange | null
   for (const clip of solidClips(ids)) {
     const edit = change(clip);
     if (!edit) continue;
-    solids.set(clip.id, solidLook({ ...clip, ...edit } as SolidClip));
+    const patch: Omit<SolidEdit, "transform"> = { ...edit };
+    delete (patch as SolidEdit).transform;
+    solids.set(clip.id, editedLook(clip, patch));
   }
   patchLiveEdit({ solids: solids.size > 0 ? solids : null });
 }

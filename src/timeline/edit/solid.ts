@@ -154,6 +154,18 @@ function cleanLook(look: SolidLook): SolidLook {
 }
 
 /**
+ * `clip`'s look with `edit` applied (no transform): what a command writes and what a live scrub shows.
+ * One radius (a Solid section Radius edit) replaces per-corner radii, as in the Frame section; a null
+ * `cornerRadii`, `stroke` or `shadow` removes it.
+ */
+export function editedLook(clip: SolidClip, edit: Omit<SolidEdit, "transform">): SolidLook {
+  const merged = { ...solidLook(clip), ...edit } as SolidLook & { cornerRadii?: unknown; stroke?: unknown; shadow?: unknown };
+  if (edit.cornerRadius !== undefined && !("cornerRadii" in edit)) delete merged.cornerRadii;
+  for (const key of ["cornerRadii", "stroke", "shadow"] as const) if (merged[key] === null || merged[key] === undefined) delete merged[key];
+  return merged;
+}
+
+/**
  * `edits` (new looks and transforms by clip id) as one command `clip.solid`, or null when nothing
  * changes. Sizes and the radius are whole px within SOLID_LIMITS. A transform given with `at` (the
  * playhead) goes to the keys there when the solid's Transform section is keyed (Batch 35).
@@ -165,10 +177,7 @@ export function setSolids(project: Project, edits: ReadonlyMap<ClipId, SolidEdit
     const clip = project.clips[id];
     if (clip?.kind !== "solid" || isClipLocked(project, id)) continue;
     const { transform: moved, ...patch } = edit;
-    const merged = { ...solidLook(clip), ...patch } as SolidLook & { cornerRadii?: unknown; stroke?: unknown; shadow?: unknown };
-    // One radius typed in the Solid section replaces per-corner radii (the Frame section does the same).
-    if (patch.cornerRadius !== undefined && !("cornerRadii" in patch)) delete merged.cornerRadii;
-    for (const key of ["cornerRadii", "stroke", "shadow"] as const) if (merged[key] === null) delete merged[key];
+    const merged = editedLook(clip, patch);
     if (!validSize(merged.size) || !Number.isFinite(merged.cornerRadius)) continue;
     const look = cleanLook(merged);
     const write = moved ? transformWrite(clip, moved, options.at) : null;

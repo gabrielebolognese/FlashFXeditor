@@ -6,7 +6,7 @@
 import type { ClipId, Project, SolidClip } from "../../core/document/types.js";
 import type { Store } from "../../core/store/createStore.js";
 import type { DocumentStore } from "../../core/store/DocumentStore.js";
-import { setSolids, solidLook, type SolidEdit, type SolidLook } from "../../timeline/edit/solid.js";
+import { editedLook, setSolids, type SolidEdit, type SolidLook } from "../../timeline/edit/solid.js";
 import { isClipLocked } from "../../timeline/model/queries.js";
 import { roundTo, type NumberBinding } from "../../ui/NumberField.js";
 import { NO_LIVE_EDIT, type LiveEdit } from "../../app/liveEdit.js";
@@ -31,7 +31,11 @@ export function solidClipsOf(project: Project, ids: readonly ClipId[]): SolidCli
 /** `clip` as a live edit shows it. */
 function shownClip(clip: SolidClip, live: LiveEdit): SolidClip {
   const look = live.solids?.get(clip.id);
-  return look ? { ...clip, ...look } : clip;
+  if (!look) return clip;
+  // The look replaces the clip's look whole (as the compositor draws it): keys it lacks are gone.
+  const shown: SolidClip = { ...clip, ...look };
+  for (const key of ["cornerRadii", "stroke", "shadow"] as const) if (!look[key]) delete shown[key];
+  return shown;
 }
 
 export function solidBinding(deps: SolidBindingDeps, prop: SolidNumberProp, ids: readonly ClipId[]): NumberBinding {
@@ -56,8 +60,9 @@ export function solidBinding(deps: SolidBindingDeps, prop: SolidNumberProp, ids:
   return {
     read() {
       const live = deps.live.getState();
-      const values = solidClipsOf(deps.document.getState(), ids).map((clip) => roundTo(prop.read(shownClip(clip, live)), prop.precision));
-      const value = shared(values, (v) => v);
+      const values = solidClipsOf(deps.document.getState(), ids).map((clip) => prop.read(shownClip(clip, live)));
+      if (values.includes(null)) return null;
+      const value = shared(values.map((v) => roundTo(v ?? 0, prop.precision)), (v) => v);
       return value && !value.mixed ? value.value : null;
     },
     subscribe(listener) {
@@ -71,11 +76,11 @@ export function solidBinding(deps: SolidBindingDeps, prop: SolidNumberProp, ids:
     },
     change(delta, phase) {
       const project = deps.document.getState();
-      const valueOf = (clip: SolidClip) => clamp(prop.read(clip) + delta);
+      const valueOf = (clip: SolidClip) => clamp((prop.read(clip) ?? prop.start?.(clip) ?? 0) + delta);
       switch (phase) {
         case "scrub": {
           const solids = new Map<ClipId, SolidLook>();
-          for (const [id, edit] of editsOf(project, valueOf)) solids.set(id, solidLook({ ...(project.clips[id] as SolidClip), ...edit } as SolidClip));
+          for (const [id, edit] of editsOf(project, valueOf)) solids.set(id, editedLook(project.clips[id] as SolidClip, edit));
           deps.live.set({ ...NO_LIVE_EDIT, solids: solids.size > 0 ? solids : null });
           return;
         }
