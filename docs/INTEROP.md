@@ -101,7 +101,7 @@ The complete example with every v1.1 clip kind, a caption track with word timing
 - Video tracks hold `video`, `image`, `text` and `solid` clips; audio tracks `audio` clips; the caption track `caption` cues.
 - A media clip's `out - in` equals `duration * speed` frame times, within one frame, and `out` does not pass the media's `durationUs` (a still image has `durationUs` 0 and any `out`).
 - A transition's `transitionOut` on the left clip and `transitionIn` on the right clip hold the same values and the clips abut.
-- Keyframes are relative to the clip start, sorted, one per frame. Their property ids are in the manifest (`keyframes.props`).
+- Keyframes are relative to the clip start, sorted, one per frame. A key may lie before the clip start (negative frame) or past its end: a head or tail trim keeps such keys so a trim back restores them. Their property ids are in the manifest (`keyframes.props`).
 
 A text clip:
 
@@ -291,7 +291,7 @@ One keyframe: a value at a frame relative to the clip start. A key's `ease` shap
 
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| `frame` | integer (>= 0) | yes |  | Relative to the clip start; one key per frame, sorted. Integer frames at the project frame rate. |
+| `frame` | integer | yes |  | Relative to the clip start; one key per frame, sorted. Any integer: after a head trim keys before the clip start (negative) or past its end are kept so a trim back restores them. Integer frames at the project frame rate. |
 | `value` | number | yes |  | The value. |
 | `ease` | `"linear"` | `"easeIn"` | `"easeOut"` | `"easeInOut"` | `"hold"` | `"smooth"` | `"snap"` | `"overshoot"` | yes |  | The curve to the next key. |
 

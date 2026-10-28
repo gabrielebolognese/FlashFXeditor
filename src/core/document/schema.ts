@@ -146,7 +146,7 @@ const SCHEMAS: ObjectSchema[] = [
     name: "Keyframe",
     doc: "One keyframe: a value at a frame relative to the clip start. A key's `ease` shapes the segment from it to the next key.",
     types: [],
-    fields: { frame: req(int(0), `Relative to the clip start; one key per frame, sorted. ${FRAMES}`), value: req(num, "The value."), ease: req(oneOf(EASE_IDS), "The curve to the next key.") },
+    fields: { frame: req(int(), `Relative to the clip start; one key per frame, sorted. Any integer: after a head trim keys before the clip start (negative) or past its end are kept so a trim back restores them. ${FRAMES}`), value: req(num, "The value."), ease: req(oneOf(EASE_IDS), "The curve to the next key.") },
   },
   {
     name: "Keyframes",

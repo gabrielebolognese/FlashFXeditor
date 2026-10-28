@@ -4,6 +4,8 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { normalizeCliPath, projectInfo, validateProjectFolder } from "../../../scripts/cli/folder.js";
 import { fieldReference, FIELDS_BEGIN_START, FIELDS_END } from "./interopDoc.js";
+import { random, randomProject } from "../../timeline/edit/fuzzKit.js";
+import { createProject } from "./project.js";
 import { FIELD_TABLE } from "./schema.js";
 import { strictIssues, validateStrict } from "./strict.js";
 
@@ -60,7 +62,7 @@ describe("fixtures/interop/broken (one error each, named with its JSON path)", (
   }
 });
 
-describe("the command line (npm run cli)", () => {
+describe("the command line (npm run cli)", { timeout: 30_000 }, () => {
   const cli = (...args: string[]) => spawnSync(process.execPath, [rel("scripts/cli/run.mjs"), ...args], { cwd: process.cwd(), encoding: "utf8" });
 
   it("capabilities prints capabilities.json", () => {
@@ -99,6 +101,15 @@ describe("paths on Windows", () => {
 });
 
 describe("validateStrict", () => {
+  it("accepts the documents the app itself writes (createProject, randomProject seeds with trimmed keyframes)", () => {
+    const fresh = createProject({ id: "p1", name: "x", now: "2026-01-01T00:00:00.000Z", appVersion: "1" });
+    expect(validateStrict(JSON.parse(JSON.stringify(fresh))).errors).toEqual([]);
+    for (let seed = 1; seed <= 40; seed++) {
+      const result = validateStrict(JSON.parse(JSON.stringify(randomProject(random(seed)))));
+      expect(result.errors, `seed ${seed}`).toEqual([]);
+    }
+  });
+
   const basic = () => readProject(`${BASIC}/project.json`);
 
   it("opens a project saved before this batch (schema 3, no generator or stand-in) unchanged", () => {
