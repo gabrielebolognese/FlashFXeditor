@@ -112,9 +112,10 @@ export async function compareSources(a: FrameSource, b: FrameSource, options: Co
   const inB = new Set(b.keys);
   const inA = new Set(a.keys);
   const both = a.keys.filter((key) => inB.has(key));
-  // A PNG set is a sample of frames: only the video's frames it names count as unmatched when the other is a video of the same length.
-  const sparse = a.kind === "png" || b.kind === "png";
-  const unmatched = sparse ? a.keys.filter((key) => !inB.has(key)).concat(b.keys.filter((key) => !inA.has(key) && a.kind === "png")) : [...a.keys.filter((key) => !inB.has(key)), ...b.keys.filter((key) => !inA.has(key))];
+  // A PNG set is a sample of frames: against a video, only the PNG frames the video lacks are unmatched. Two PNG sets or two videos must match both ways.
+  const missingFromB = a.keys.filter((key) => !inB.has(key));
+  const missingFromA = b.keys.filter((key) => !inA.has(key));
+  const unmatched = [...(b.kind === "png" && a.kind === "video" ? [] : missingFromB), ...(a.kind === "png" && b.kind === "video" ? [] : missingFromA)];
   const frames: FrameReport[] = [];
   for (const key of both) {
     const [x, y] = [await a.get(key), await b.get(key)];

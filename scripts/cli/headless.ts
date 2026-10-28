@@ -364,6 +364,9 @@ export async function startSession(options: SessionOptions): Promise<Session> {
     if (cleaned) return;
     cleaned = true;
     clearInterval(watchdog);
+    process.off("exit", onExit);
+    process.off("SIGINT", onSignal);
+    process.off("SIGTERM", onSignal);
     try {
       socket?.close();
     } catch {
@@ -392,9 +395,16 @@ export async function startSession(options: SessionOptions): Promise<Session> {
   }, 1000);
   watchdog.unref();
   // A last resort if the process is ended without the handlers below.
-  process.once("exit", () => {
+  const onExit = () => {
     if (child) killTree(child);
-  });
+  };
+  process.once("exit", onExit);
+  // Ctrl+C or SIGTERM at any point of startup (and later, until cleanup) stops Chrome and removes the profile.
+  const onSignal = () => {
+    void cleanup().finally(() => process.exit(130));
+  };
+  process.once("SIGINT", onSignal);
+  process.once("SIGTERM", onSignal);
 
   try {
     const args = [...CHROME_FLAGS, `--user-data-dir=${profile}`, "--remote-debugging-port=0", "--remote-allow-origins=*", "--window-size=1280,720", "about:blank"];
@@ -478,18 +488,9 @@ export async function startSession(options: SessionOptions): Promise<Session> {
 /** Runs `work` in a session, always cleaning up, and installs Ctrl+C handling for its duration. */
 export async function withSession<T>(options: SessionOptions, work: (session: Session) => Promise<T>): Promise<T> {
   const session = await startSession(options);
-  const interrupted = async (): Promise<void> => {
-    await session.cleanup();
-    process.exit(130);
-  };
-  const onSignal = () => void interrupted();
-  process.once("SIGINT", onSignal);
-  process.once("SIGTERM", onSignal);
   try {
     return await Promise.race([work(session), session.failed]);
   } finally {
-    process.off("SIGINT", onSignal);
-    process.off("SIGTERM", onSignal);
     await session.cleanup();
   }
 }
