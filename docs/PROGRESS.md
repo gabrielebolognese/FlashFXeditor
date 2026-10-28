@@ -1,6 +1,6 @@
 # Progress
 
-last_completed_batch: 58
+last_completed_batch: 59
 in_progress_batch: none
 skipped_batches: []
 needs_human: none
@@ -510,7 +510,6 @@ Decisions that diverge from docs/EDITOR_SPEC.md, with the reason. Each one also 
 ## Follow-ups
 Small things discovered during a batch that belong to a later batch. Format: `- [from Batch NN -> Batch MM] description`.
 - [from Batch 56 -> Batch 57] The headless `render` can reuse `validateProjectFolder` and the stand-in report; stand-ins render as their baked layer. (Batch 57: stand-ins render as their baked layer; the page loads projects with the app's own `openProjectFolder`, so the CLI does not call `validateProjectFolder`.)
-- [from Batch 58 -> Batch 59] A caption's word boxes (Batch 59) draw through the same `drawBackgrounds` in `src/render/text/raster.ts` (shadow outside, fill, border inside); give them `stroke` and `shadow` from the same `TextBackground` fields.
 - [from Batch 58 -> Batch 60] Keyframes on the new fields (`stroke.width`, `stroke.color`, `stroke.dashOffset`, `shadow.x/y/blur/spread/color`, `cornerRadius`, solid `fill` color): the frame-style fields are written by `clip.frameStyle` and `clip.solid`; the compositor reads them in `writeSolid` and `writeMedia`/`writeFrameLayer`, so animated values only need to be resolved before those calls.
 - [from Batch 58 -> Batch 61] The Frame section's fields are commit-only (no `liveEdit` preview, unlike the Solid section's number fields): a scrub shows on release. Add a live path with the keyframe work if wanted.
 - [from Batch 58 -> Batch 65] Shape clips can reuse the solid shader's stroke, dash and shadow code (`STYLE` blocks in `shaders.ts` and `glShaders.ts`) for rounded boxes; paths need the tessellated stroke of Batch 65.
@@ -6526,3 +6525,32 @@ Why each dependency exists (Batch rule 8).
 - review: accepted
   Checked (third review): both problems from the second review are fixed. One helper, `editedLook` (`src/timeline/edit/solid.ts:161-166`), merges a Solid edit into a look. A Radius edit without `cornerRadii` drops them, and a null `cornerRadii`, `stroke` or `shadow` removes that key. `setSolids`, the label scrub in `solidBinding.ts:83` and `previewSolids` in `graphicsController.ts:55-57` all use it, so a scrubbed Radius moves the preview live and the picture does not jump on release. `SOLID_RADIUS.read` (`src/panels/properties/solidProps.ts:45-49`) returns null (mixed) when per-corner radii differ and the shared value when all four are equal. A step or scrub from mixed starts at `cornerRadius`. `shownClip` drops the style keys the live look lacks, matching what the compositor draws. The new test in `solidBinding.test.ts` covers the mixed read, the scrub look, the commit, undo and four equal radii. The gizmo-bounds and custom-dash deviations are in `deviations:` with written reasons. The gizmo-bounds follow-up points at Batch 65 (vector shapes moved by the gizmo, spec refs include §21.7) and is listed in the Follow-ups section. `npm run check` is green: typecheck, lint, 259 files / 2689 unit tests, 4 perf tests, build. The first run had one timeout under machine load (312 s run): `FontLoadQueue.test.ts`, a Batch 51 test that this batch did not touch. It passed alone (7/7) and in a full second run. Nothing from Do not build yet was built. There are no new literals or untagged TODOs, and the earlier §3/§4 checks still hold. The 60 fps item, the export equivalence and the narrow-panel layout stay under pending manual checks, with steps.
 - docs: shapes-and-images.md (Fill row, new section Add a border, a shadow or rounded corners), titles-and-text.md (gradient text, box border and shadow), whats-new.md, README.md in docs/user-guide/ (2026-11-07)
+
+### Batch 59: Captions v2: progressive highlight, emphasis words, cue animations, word boxes, words import
+- status: done
+- date: 2026-11-07
+- notes:
+  - Built in auto mode (lean run). Unit tests cover the renderer paths; the browser items (60 fps with zero React commits, the raster counter, export parity on a real GPU) are pending manual checks.
+  - Model (spec §21.8): `CaptionHighlight.mode` adds `progressive` and `reveal`, `emphasisColor?`; `CaptionStyle.anim` / `CaptionStyleOverride.anim` = `{ in?, out? }` of `{ kind: fade|pop|slideUp|slideDown, frames >= 0 }`; `CaptionWord.emphasis?` and `.color?`; `TextBackground.mode` adds `word`; `TextPreset.captionAnim?`. `SCHEMA_VERSION` 5 -> 6, migration 5 -> 6 is the identity (all new fields optional). Field table, strict validator, capabilities (`captions.wordEmphasis`, `wordsImport`, `cueAnims`, `boxModes`, `highlightModes`; `lastBatch` 59) and `docs/INTEROP.md` (section 6.1 with a validated example; the generated field reference is regenerated).
+  - Rendering: a "caption plan" per (words, layout, look, style) in `render/text/captionLayout.ts` gives the distinct paints, each word's lit and dim paint index, the word boxes and `stateful`. Each paint has its own cached word atlas (slot `#p<k>`), all warmed by `upcomingCues`, so nothing rasterizes during playback (P11). `LayerTextures.resolveKaraoke` and `exactText` (export) share the plan; hidden words (reveal) are left out of the draw list. The plain `color`/`scale`/`background` highlights keep their old slot and output.
+  - Word boxes: `background.mode = word` makes one rect per word in the layout. In a cue with word timings they are pooled solid layers with the box's stroke (inside) and shadow, and the spoken word's box takes the highlight color with the `background` highlight; cues without word timings use the raster's word rects.
+  - Cue animations (`src/text/cueAnim.ts`): opacity is linear, pop and slides ease; `frames` clamp to half the cue; scaling is about the box middle.
+  - Words import: `src/text/wordsImport.ts` reads `[{word,startMs,endMs}]`, `{words}` and Whisper `segments` (seconds or ms) with an optional `cues` chunk list (`from`, `to`, `emphasis` indexes); without it `wordsToCues` uses the dialog's rules (max words, characters per line, lines, break at punctuation, pause ms) through `cuesFromWords`. `captions.importWords` (Captions tab header and empty state, command catalog) opens the chunking dialog (no chunk list) or goes straight to the transcript review (`TranscriptReview.source`); confirm replaces the span in one undo step "Import words".
+  - UI: Captions tab: a word-chip strip under the selected cue (click toggles emphasis, `caption.emphasizeWord`, undo); Properties > Caption: Progressive and Reveal chips, Emphasis color, Animate in / out chips with frames, Word in the background Mode. Four starters (Paper box progressive, Yellow progressive, Reveal pop, Word boxes); starter pack 2 -> 3 (a pack 2 store gets exactly these four).
+  - Fixture `fixtures/interop/captions-v2/` (`scripts/cli/make-captions-v2-fixture.mjs`): project with every new field, `words.json` with its chunk list (two cues, emphasis word 2 in the first), fonts. A test checks that importing it makes exactly those cues.
+  - Tests: +cueAnim, +wordsImport, +captionLayers "captions v2" (progressive, reveal, emphasis, own color wins, stateful, warm list, word boxes, animations), +fixture and doc tests, fuzz: new style fields (derived generator so existing seeds keep their streams) and a `captions.emphasizeWord` run.
+- deviations:
+  - Reveal also hides emphasis words that have not started (the spec's "from the first frame" applies to the color of visible words).
+  - Cue animation `frames` are project frames, not scaled by fps; `frames: 0` means none and is allowed so a cue can drop its track's animation.
+  - A cue override can set `emphasisColor` but not unset it (no "unset" in an override; reset the field to follow the track).
+  - Word boxes in highlighted cues are solid layers, not raster rects (the same look; needed for the active box's color without rasterizing).
+  - The word chips float under the selected row (the list's rows keep their fixed height for the virtualized list).
+  - `fixtures/interop/captions-v2/expected/` has no frames yet: they come from the CLI render, which needs a real browser (see pending manual checks).
+  - Latent test finding: with the fuzz stream shifted, seed 9001 of the interleaved undo/redo run ended with a different clip transform after undo-all then redo-all (a position nudge, x -10, y 10). Not caused by captions (the run without the caption additions passes). The caption fuzz additions avoid shifting the stream; the cause is left open. [from Batch 59 -> Batch 60]
+- follow-ups:
+  - [from Batch 59 -> Batch 60] Look at the interleaved undo/redo fuzz with a shifted stream (see the last deviation): run `property({ seed: 9001, steps: 800, undo: 0.12, redo: 0.08 })` after adding one extra `rng.next()` at the start of `randomCaptionStyle`.
+  - [from Batch 59 -> Batch 67] Styled spans per word go through `CaptionWord` and the plan's per-word paint (`captionPlan` in `captionLayout.ts`); `emphasis` and `color` are the two cases built.
+- pending manual checks:
+  1. Run `npm run cli -- render fixtures/interop/captions-v2 --frames 5,20,40,55,65,85 --png --out fixtures/interop/captions-v2/expected` and look at the frames (word by word colors, boxes, fade, reveal), then keep them for `npm run test:render`.
+  2. Playback of a project with progressive captions at 60 fps in Chrome: Profiler shows zero React commits, and the raster counter (`__editor` stats) does not move during playback.
+  3. Export the fixture and compare a frame with the preview.

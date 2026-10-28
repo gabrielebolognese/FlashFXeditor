@@ -40,7 +40,7 @@ function highlightStyles(preset: TextPreset): { inactive: TextStyle; active: Tex
   if (!highlight || highlight.mode === "none") return null;
   const style = preset.style;
   const inactive: TextStyle = { ...style, fill: { ...highlight.inactiveColor } };
-  let active: TextStyle = highlight.mode === "color" || highlight.mode === "colorAndScale" ? { ...style, fill: { ...highlight.color } } : { ...style };
+  let active: TextStyle = highlight.mode === "color" || highlight.mode === "colorAndScale" || highlight.mode === "progressive" || highlight.mode === "reveal" ? { ...style, fill: { ...highlight.color } } : { ...style };
   if (highlight.mode === "scale" || highlight.mode === "colorAndScale") active = scaleTextStyle(active, HIGHLIGHT_SCALE);
   if (highlight.mode === "background") {
     // A pill behind the word, as the compositor draws it.

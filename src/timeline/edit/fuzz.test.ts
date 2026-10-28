@@ -313,6 +313,15 @@ describe("captions", { timeout: 30_000 }, () => {
   }
 });
 
+describe("word emphasis (Batch 59)", { timeout: 30_000 }, () => {
+  it("toggles words with undo and redo, cues and styles keeping every invariant", () => {
+    const emphasize = { ...(named("captions.emphasizeWord")[0] as FuzzOp), weight: 3 };
+    const ops = [emphasize, ...named("captions.add", "captions.cueStyle", "captions.style", "captions.import", "captions.split", "captions.merge", "captions.transcribe", "tracks.addCaption")];
+    const result = property({ seed: 104, steps: 400, ops, projectOptions: { captions: true } });
+    expect(result.names.get("captions.emphasizeWord") ?? 0).toBeGreaterThan(0);
+  });
+});
+
 describe("mixed operations with undo and redo", { timeout: 30_000 }, () => {
   for (const seed of [9001, 9002]) {
     it(`interleaved undo and redo keep every invariant and undo back to the original (seed ${seed})`, () => {

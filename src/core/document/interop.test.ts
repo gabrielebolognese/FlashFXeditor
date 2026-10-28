@@ -156,7 +156,7 @@ describe("validateStrict", () => {
     delete old.clips["c-standin"].fallbackOf;
     const result = validateStrict(old);
     expect(result.errors).toEqual([]);
-    expect(result.project?.schemaVersion).toBe(5);
+    expect(result.project?.schemaVersion).toBe(6);
     expect(result.project?.clips["c-video"]).toEqual(old.clips["c-video"]);
   });
 
@@ -222,5 +222,23 @@ describe("docs/INTEROP.md (spec §21.4)", () => {
 
   it("mentions every command and the manifest keys of this batch", () => {
     for (const word of ["validate", "info", "schema", "capabilities", "fallbackOf", "generatorMeta", "headTrim"]) expect(doc).toContain(word);
+  });
+});
+
+describe("fixtures/interop/captions-v2 (Batch 59)", () => {
+  const V2 = "fixtures/interop/captions-v2";
+
+  it("is valid and uses every Captions v2 field: progressive and reveal, emphasis, a word color, cue animations, word boxes", async () => {
+    const report = await validateProjectFolder(rel(V2));
+    expect(report.errors).toEqual([]);
+    expect(report.ok).toBe(true);
+    const project = readProject(`${V2}/project.json`);
+    const style = project.captionTracks.cc1.style;
+    expect(style.highlight).toMatchObject({ mode: "progressive", emphasisColor: { r: 1 } });
+    expect(style.anim).toEqual({ in: { kind: "fade", frames: 2 }, out: { kind: "fade", frames: 2 } });
+    expect(style.text.background.mode).toBe("word");
+    expect(project.clips.q1.words[2].emphasis).toBe(true);
+    expect(project.clips.q2.words[3].color).toBeDefined();
+    expect(project.clips.q2.styleOverride).toMatchObject({ highlight: { mode: "reveal" }, anim: { out: { kind: "pop", frames: 2 } } });
   });
 });

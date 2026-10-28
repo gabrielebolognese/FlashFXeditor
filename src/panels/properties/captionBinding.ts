@@ -39,6 +39,21 @@ export const CAPTION_Y: CaptionNumberProp = { id: "y", label: "Move captions", p
 export const CAPTION_MAX_WIDTH: CaptionNumberProp = { id: "maxWidth", label: "Change caption width", precision: 0, ...CAPTION_LIMITS.maxWidth, read: (s) => s.maxWidth, write: (s, maxWidth) => ({ ...s, maxWidth }) };
 export const CAPTION_MAX_LINES: CaptionNumberProp = { id: "maxLines", label: "Change caption lines", precision: 0, ...CAPTION_LIMITS.maxLines, read: (s) => s.maxLines, write: (s, maxLines) => ({ ...s, maxLines }) };
 
+/** Cue animation frames (Batch 59, spec §21.8): the in / out animation's length; 0 is none (a cue override may say so). */
+export const ANIM_FRAMES_MAX = 30;
+export const DEFAULT_ANIM_FRAMES = 4;
+const animFrames = (id: "in" | "out", label: string): CaptionNumberProp => ({
+  id: `anim.${id}.frames`,
+  label,
+  precision: 0,
+  min: 0,
+  max: ANIM_FRAMES_MAX,
+  read: (s) => s.anim?.[id]?.frames ?? 0,
+  write: (s, frames) => ({ ...s, anim: { ...s.anim, [id]: { kind: s.anim?.[id]?.kind ?? "fade", frames } } }),
+});
+export const CAPTION_ANIM_IN_FRAMES = animFrames("in", "Change cue animation in");
+export const CAPTION_ANIM_OUT_FRAMES = animFrames("out", "Change cue animation out");
+
 export interface CaptionBindingDeps {
   document: Pick<DocumentStore, "getState" | "subscribe" | "dispatch">;
   live: Store<LiveEdit>;

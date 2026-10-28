@@ -1,6 +1,6 @@
-import { Captions, Eraser, FileDown, FileUp, Mic, Paintbrush, Plus, SearchX } from "lucide-react";
+import { Captions, Eraser, FileDown, FileUp, ListOrdered, Mic, Paintbrush, Plus, SearchX } from "lucide-react";
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type FocusEvent, type KeyboardEvent, type MouseEvent, type UIEvent } from "react";
-import { commitCue, cueFocus, draftCue, mergeCueIntoPrevious, selectCue, splitCueAtCaret, type CueFocus } from "../../app/captionController.js";
+import { commitCue, cueFocus, draftCue, mergeCueIntoPrevious, selectCue, splitCueAtCaret, toggleEmphasis, type CueFocus } from "../../app/captionController.js";
 import { actions, documentStore, sessionStore } from "../../app/services.js";
 import { detectPlatform } from "../../core/keyboard/keys.js";
 import { transcription, type TranscriptionState } from "../../app/transcription.js";
@@ -59,6 +59,7 @@ export function CaptionsActions() {
     <>
       <IconButton icon={Plus} label="Add a 2 s cue at the playhead" commandId="captions.addCue" onClick={() => actions.run("captions.addCue")} />
       <IconButton icon={FileUp} label="Import SRT or VTT (replaces the cues)" commandId="captions.import" onClick={() => actions.run("captions.import")} />
+      <IconButton icon={ListOrdered} label="Import words (JSON with word timings; replaces the cues of that span)" commandId="captions.importWords" onClick={() => actions.run("captions.importWords")} />
       <IconButton icon={FileDown} label={count > 0 ? "Export SRT or VTT" : "Export SRT or VTT: no cues yet"} commandId="captions.export" disabled={count === 0} onClick={() => actions.run("captions.export")} />
       <IconButton
         icon={Paintbrush}
@@ -95,6 +96,9 @@ function NoCues({ hasTrack, hasAudio }: { hasTrack: boolean; hasAudio: boolean }
       </Button>
       <Button icon={FileUp} commandId="captions.import" onClick={() => actions.run("captions.import")}>
         Import SRT/VTT
+      </Button>
+      <Button icon={ListOrdered} commandId="captions.importWords" onClick={() => actions.run("captions.importWords")}>
+        Import words
       </Button>
     </EmptyState>
   );
@@ -246,6 +250,26 @@ const CueRow = memo(function CueRow({ id, index, top, selected, mode, order }: R
       <span className={styles.count} data-tooltip="Words">
         {wordCount(text)}
       </span>
+      {selected && cue.words && cue.words.length > 0 && (
+        <div className={styles.chips} role="group" aria-label={`Cue ${index + 1} words: click to emphasize`}>
+          {cue.words.map((word, at) => (
+            <button
+              key={at}
+              type="button"
+              className={styles.wordChip}
+              aria-pressed={word.emphasis === true}
+              data-tooltip={word.emphasis === true ? "Emphasized: click to remove" : "Click to emphasize"}
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={(event) => {
+                event.stopPropagation();
+                toggleEmphasis(id, at);
+              }}
+            >
+              {word.text}
+            </button>
+          ))}
+        </div>
+      )}
       {hasOwnStyle(cue) && <span className={styles.styleDot} role="img" aria-label="Own style" data-tooltip="This cue has its own style" />}
     </div>
   );

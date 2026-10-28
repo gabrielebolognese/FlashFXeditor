@@ -15,6 +15,8 @@ export interface SubtitleWord {
   text: string;
   startUs: number;
   endUs: number;
+  /** An emphasis word (a words import, Batch 59). */
+  emphasis?: boolean;
 }
 
 export interface SubtitleCue {

@@ -240,7 +240,7 @@ export async function startTranscription(options: TranscribeOptions): Promise<vo
     }
     transcription.set({
       kind: "review",
-      review: { projectId: project.id, range, cues, language: result.language, model: options.model, device: result.device, words: result.words.length, replaced: cuesInRange(now, range).length },
+      review: { projectId: project.id, range, cues, language: result.language, model: options.model, device: result.device, source: null, words: result.words.length, replaced: cuesInRange(now, range).length },
     });
   } catch (error) {
     if (run !== current) return;
@@ -286,7 +286,7 @@ export function applyTranscript(): boolean {
   transcription.set({ kind: "idle" });
   const project = documentStore.getState();
   if (project.id !== review.projectId) return false;
-  const result = replaceCuesInRange(project, review.range, review.cues, newId);
+  const result = replaceCuesInRange(project, review.range, review.cues, newId, review.source ? { id: "caption.importWords", label: "Import words" } : undefined);
   if (!result) {
     lockedToast();
     return false;
@@ -296,7 +296,7 @@ export function applyTranscript(): boolean {
   showToast({
     tone: "success",
     message: `Added ${result.count} caption${result.count === 1 ? "" : "s"}`,
-    detail: [result.replaced > 0 ? `Replaced ${result.replaced}.` : "", `${languageName(review.language)}, Whisper ${whisperModel(review.model).label}. Undo removes them.`].filter((part) => part !== "").join(" "),
+    detail: [result.replaced > 0 ? `Replaced ${result.replaced}.` : "", review.source ? `${review.source.fileName}. Undo removes them.` : `${languageName(review.language ?? "")}, Whisper ${whisperModel(review.model ?? "base").label}. Undo removes them.`].filter((part) => part !== "").join(" "),
   });
   return true;
 }

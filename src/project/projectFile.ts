@@ -26,6 +26,8 @@ export type Migration = (raw: JsonObject) => JsonObject;
  * - 3 -> 4 (Batch 54): `meta.generator` and `ClipBase.fallbackOf` (both optional).
  * - 4 -> 5 (Batch 58): solid `cornerRadii`, `stroke`, `shadow`; picture `cornerRadius`, `stroke`, `shadow`; `TextBackground.stroke`
  *   and `.shadow`; gradient fills with stops (all optional or a new `Fill` shape): older projects open unchanged.
+ * - 5 -> 6 (Batch 59): caption highlight modes `progressive` and `reveal`, `emphasisColor`, `CaptionWord.emphasis` and `.color`,
+ *   `CaptionStyle.anim` (and in overrides), background mode `word` (all optional or new values): older projects open unchanged.
  */
 export const MIGRATIONS: Readonly<Record<number, Migration>> = {
   1: (raw) => ({ ...raw, bins: Array.isArray(raw.bins) ? raw.bins : [] }),
@@ -42,6 +44,8 @@ export const MIGRATIONS: Readonly<Record<number, Migration>> = {
   3: (raw) => raw,
   // 4 -> 5 (Batch 58): every new field is optional and absent means none: nothing to change.
   4: (raw) => raw,
+  // 5 -> 6 (Batch 59): every new field is optional and absent means none: nothing to change.
+  5: (raw) => raw,
 };
 
 function isObject(value: unknown): value is JsonObject {

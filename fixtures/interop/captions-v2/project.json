@@ -1,0 +1,303 @@
+{
+  "schemaVersion": 6,
+  "id": "6d1c3a3e-8f5b-4f0c-9d6a-2b7e4c1a9a59",
+  "name": "Interop captions v2",
+  "settings": {
+    "width": 1080,
+    "height": 1920,
+    "fps": {
+      "num": 30,
+      "den": 1
+    },
+    "background": {
+      "r": 0.96,
+      "g": 0.93,
+      "b": 0.85,
+      "a": 1
+    },
+    "sampleRate": 48000
+  },
+  "media": {},
+  "bins": [],
+  "tracks": [
+    {
+      "id": "v1",
+      "kind": "video",
+      "name": "V1",
+      "clipIds": [
+        "bg"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
+      "id": "cc1",
+      "kind": "caption",
+      "name": "CC1",
+      "clipIds": [
+        "q1",
+        "q2"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    }
+  ],
+  "clips": {
+    "bg": {
+      "id": "bg",
+      "trackId": "v1",
+      "kind": "solid",
+      "name": "Background",
+      "start": 0,
+      "duration": 100,
+      "enabled": true,
+      "shape": "rect",
+      "size": {
+        "w": 1080,
+        "h": 1920
+      },
+      "cornerRadius": 0,
+      "fill": {
+        "r": 0.96,
+        "g": 0.93,
+        "b": 0.85,
+        "a": 1
+      },
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1
+    },
+    "q1": {
+      "id": "q1",
+      "trackId": "cc1",
+      "kind": "caption",
+      "name": "Cue q1",
+      "start": 0,
+      "duration": 45,
+      "enabled": true,
+      "text": "You will never\nguess",
+      "words": [
+        {
+          "text": "You",
+          "start": 0,
+          "end": 4
+        },
+        {
+          "text": "will",
+          "start": 4,
+          "end": 8
+        },
+        {
+          "text": "never",
+          "start": 8,
+          "end": 15,
+          "emphasis": true
+        },
+        {
+          "text": "guess",
+          "start": 15,
+          "end": 24
+        }
+      ]
+    },
+    "q2": {
+      "id": "q2",
+      "trackId": "cc1",
+      "kind": "caption",
+      "name": "Cue q2",
+      "start": 50,
+      "duration": 40,
+      "enabled": true,
+      "text": "what happens\nnext today",
+      "words": [
+        {
+          "text": "what",
+          "start": 0,
+          "end": 6
+        },
+        {
+          "text": "happens",
+          "start": 6,
+          "end": 16
+        },
+        {
+          "text": "next",
+          "start": 16,
+          "end": 25
+        },
+        {
+          "text": "today",
+          "start": 25,
+          "end": 38,
+          "color": {
+            "r": 0.2,
+            "g": 0.35,
+            "b": 0.95,
+            "a": 1
+          }
+        }
+      ],
+      "styleOverride": {
+        "highlight": {
+          "mode": "reveal"
+        },
+        "anim": {
+          "in": {
+            "kind": "slideUp",
+            "frames": 4
+          },
+          "out": {
+            "kind": "pop",
+            "frames": 2
+          }
+        }
+      }
+    }
+  },
+  "markers": [],
+  "captionTracks": {
+    "cc1": {
+      "style": {
+        "text": {
+          "fontFamily": "Silkscreen",
+          "fontWeight": 700,
+          "italic": false,
+          "fontSize": 64,
+          "fill": {
+            "r": 0.09,
+            "g": 0.09,
+            "b": 0.14,
+            "a": 1
+          },
+          "stroke": {
+            "enabled": false,
+            "width": 6,
+            "color": {
+              "r": 0.09,
+              "g": 0.09,
+              "b": 0.14,
+              "a": 1
+            }
+          },
+          "shadow": {
+            "enabled": false,
+            "x": 0,
+            "y": 6,
+            "blur": 16,
+            "color": {
+              "r": 0,
+              "g": 0,
+              "b": 0,
+              "a": 0.6
+            }
+          },
+          "background": {
+            "enabled": true,
+            "color": {
+              "r": 1,
+              "g": 1,
+              "b": 1,
+              "a": 1
+            },
+            "paddingX": 14,
+            "paddingY": 6,
+            "radius": 12,
+            "mode": "word",
+            "stroke": {
+              "enabled": true,
+              "width": 3,
+              "color": {
+                "r": 0.09,
+                "g": 0.09,
+                "b": 0.14,
+                "a": 1
+              }
+            },
+            "shadow": {
+              "enabled": true,
+              "x": 5,
+              "y": 5,
+              "blur": 0,
+              "color": {
+                "r": 0.09,
+                "g": 0.09,
+                "b": 0.14,
+                "a": 1
+              }
+            }
+          },
+          "textCase": "none",
+          "letterSpacing": 0,
+          "lineHeight": 1.2,
+          "align": "center",
+          "verticalAnchor": "bottom"
+        },
+        "position": "center",
+        "x": 0,
+        "y": 0,
+        "maxWidth": 900,
+        "maxLines": 2,
+        "highlight": {
+          "mode": "progressive",
+          "color": {
+            "r": 0.09,
+            "g": 0.09,
+            "b": 0.14,
+            "a": 1
+          },
+          "inactiveColor": {
+            "r": 0.62,
+            "g": 0.6,
+            "b": 0.55,
+            "a": 1
+          },
+          "emphasisColor": {
+            "r": 1,
+            "g": 0.36,
+            "b": 0.3,
+            "a": 1
+          }
+        },
+        "anim": {
+          "in": {
+            "kind": "fade",
+            "frames": 2
+          },
+          "out": {
+            "kind": "fade",
+            "frames": 2
+          }
+        }
+      }
+    }
+  },
+  "textPresetsLocal": [],
+  "meta": {
+    "createdAt": "2026-11-07T08:00:00.000Z",
+    "modifiedAt": "2026-11-07T08:00:00.000Z",
+    "appVersion": "1.1.0",
+    "generator": {
+      "name": "interop-fixture",
+      "version": "1",
+      "source": "scripts/cli/make-captions-v2-fixture.mjs"
+    }
+  }
+}

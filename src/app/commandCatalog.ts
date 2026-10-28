@@ -434,6 +434,7 @@ export const COMMANDS: readonly CommandInfo[] = [
   // Captions (spec §10.5, §10.6)
   captions("captions.addCue", "Add cue at playhead", { icon: Plus }),
   captions("captions.import", "Import SRT/VTT", { icon: FileUp, keywords: "subtitles captions file" }),
+  captions("captions.importWords", "Import words", { icon: FileUp, keywords: "word timings json whisper reels highlight emphasis chunks" }),
   captions("captions.export", "Export SRT/VTT", { icon: FileDown, keywords: "subtitles captions file" }),
   captions("captions.style", "Caption style", { icon: Paintbrush }),
   captions("captions.clear", "Clear all cues", { icon: Eraser }),

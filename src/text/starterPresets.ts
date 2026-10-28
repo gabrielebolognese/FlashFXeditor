@@ -6,13 +6,13 @@
 // governs the UI only. `Title` and `Subtitle` are the default Title (T) and Subtitle (Shift+T) until
 // others are chosen. The Batch 30 starters keep their ids, looks and dates, so defaults, favorites and
 // clips linked to them survive; stored ones are brought to the current pack by `upgradeStarterPack`.
-import type { CaptionHighlight, PresetSetId, PresetTextAnim, RGBA, TextPreset, TextStyle } from "../core/document/types.js";
+import type { CaptionAnim, CaptionHighlight, PresetSetId, PresetTextAnim, RGBA, TextPreset, TextStyle } from "../core/document/types.js";
 import { DEFAULT_SUBTITLE_BOX, DEFAULT_SUBTITLE_STYLE, DEFAULT_TEXT_BOX, DEFAULT_TEXT_STYLE, DEFAULT_TITLE_STYLE } from "./style.js";
 
 export const STARTER_TITLE_ID = "starter-title";
 export const STARTER_SUBTITLE_ID = "starter-subtitle";
-/** The pack the stored starters were last brought to (IndexedDB `textPresets.starterPack`): 1 = Batch 30's 12. */
-export const STARTER_PACK_VERSION = 2;
+/** The pack the stored starters were last brought to (IndexedDB `textPresets.starterPack`): 1 = Batch 30's 12, 2 = Batch 52's 43, 3 = Batch 59's four progressive and word box captions. */
+export const STARTER_PACK_VERSION = 3;
 
 const rgb = (r: number, g: number, b: number, a = 1): RGBA => ({ r, g, b, a });
 const BLACK = rgb(0, 0, 0);
@@ -25,7 +25,7 @@ const outline = (width: number) => ({ enabled: true, width, color: BLACK });
 const soft = (y: number, blur: number, alpha: number) => ({ enabled: true, x: 0, y, blur, color: rgb(0, 0, 0, alpha) });
 const hard = (x: number, y: number, color: RGBA) => ({ enabled: true, x, y, blur: 0, color });
 const glow = (blur: number, color: RGBA) => ({ enabled: true, x: 0, y: 0, blur, color });
-const box = (color: RGBA, paddingX: number, paddingY: number, radius: number, mode: "line" | "block") => ({ enabled: true, color, paddingX, paddingY, radius, mode });
+const box = (color: RGBA, paddingX: number, paddingY: number, radius: number, mode: "line" | "block" | "word") => ({ enabled: true, color, paddingX, paddingY, radius, mode });
 const word = (mode: CaptionHighlight["mode"], color: RGBA): CaptionHighlight => ({ mode, color, inactiveColor: { ...WHITE } });
 /** Captions wrap like the caption track's default (900 px). */
 const CAPTION_BOX: TextPreset["box"] = { mode: "fixed", width: 900 };
@@ -47,6 +47,8 @@ interface Starter {
   sets: PresetSetId[];
   sampleText?: string;
   highlight?: CaptionHighlight;
+  /** Cue animations (Batch 59). */
+  captionAnim?: CaptionAnim;
   favorite?: true;
 }
 
@@ -441,10 +443,56 @@ const STARTERS: readonly Starter[] = [
     sampleText: "Boxed line",
     highlight: word("color", rgb(1, 0.84, 0.04)),
   },
+
+  // Captions v2 (Batch 59, spec §21.8): word by word styles that stay lit, hidden upcoming words, word boxes.
+  {
+    id: "starter-caption-paper-progressive",
+    name: "Paper box progressive",
+    style: style({ fontFamily: "Poppins", fontWeight: 800, fontSize: 64, lineHeight: 1.25, fill: rgb(0.09, 0.09, 0.14), ...off, background: box(rgb(0.96, 0.93, 0.85), 30, 14, 14, "block") }),
+    box: { ...CAPTION_BOX },
+    tags: ["caption", "progressive", "paper", "box"],
+    sets: ["captions"],
+    sampleText: "Paper words",
+    highlight: { mode: "progressive", color: rgb(0.09, 0.09, 0.14), inactiveColor: rgb(0.62, 0.6, 0.55), emphasisColor: rgb(1, 0.36, 0.3) },
+    captionAnim: { in: { kind: "fade", frames: 2 }, out: { kind: "fade", frames: 2 } },
+  },
+  {
+    id: "starter-caption-yellow-progressive",
+    name: "Yellow progressive",
+    style: style({ fontFamily: "Montserrat", fontWeight: 800, fontSize: 70, textCase: "upper", lineHeight: 1.15, stroke: outline(8), shadow: soft(4, 10, 0.55) }),
+    box: { ...CAPTION_BOX },
+    tags: ["caption", "progressive", "yellow", "karaoke"],
+    sets: ["captions"],
+    sampleText: "Words stay lit",
+    highlight: { mode: "progressive", color: rgb(1, 0.84, 0.04), inactiveColor: { ...WHITE }, emphasisColor: rgb(1, 0.35, 0.3) },
+  },
+  {
+    id: "starter-caption-reveal-pop",
+    name: "Reveal pop",
+    style: style({ fontFamily: "Unbounded", fontWeight: 800, fontSize: 72, textCase: "upper", lineHeight: 1.1, stroke: outline(9), shadow: soft(4, 10, 0.55) }),
+    box: { ...CAPTION_BOX },
+    tags: ["caption", "reveal", "pop"],
+    sets: ["captions"],
+    sampleText: "Reveal pop",
+    highlight: { mode: "reveal", color: { ...WHITE }, inactiveColor: { ...WHITE }, emphasisColor: rgb(1, 0.84, 0.04) },
+    captionAnim: { in: { kind: "pop", frames: 3 }, out: { kind: "fade", frames: 2 } },
+  },
+  {
+    id: "starter-caption-word-boxes",
+    name: "Word boxes",
+    style: style({ fontFamily: "Poppins", fontWeight: 800, fontSize: 62, textCase: "upper", lineHeight: 1.3, fill: rgb(0.09, 0.09, 0.14), ...off, background: { ...box(WHITE, 16, 6, 12, "word"), stroke: { enabled: true, width: 3, color: rgb(0.09, 0.09, 0.14) }, shadow: hard(5, 5, rgb(0.09, 0.09, 0.14)) } }),
+    box: { ...CAPTION_BOX },
+    tags: ["caption", "word box", "box", "boxes"],
+    sets: ["captions"],
+    sampleText: "Word boxes",
+    highlight: { mode: "background", color: rgb(1, 0.84, 0.04), inactiveColor: rgb(0.09, 0.09, 0.14) },
+  },
 ];
 
 /** The ids Batch 30 shipped (pack 1): starters missing from a pack 1 store were deleted, not new. */
 const PACK_1_IDS: ReadonlySet<string> = new Set(STARTERS.slice(0, 12).map((starter) => starter.id));
+/** The four starters Batch 59 added (pack 3): a pack 2 store gets exactly these. */
+const PACK_3_IDS: ReadonlySet<string> = new Set(STARTERS.slice(-4).map((starter) => starter.id));
 
 /** The starters' own tags (lower case): search words, not preset bar sets. */
 export const STARTER_TAGS: ReadonlySet<string> = new Set(STARTERS.flatMap((starter) => starter.tags.map((tag) => tag.toLocaleLowerCase())));
@@ -491,7 +539,7 @@ export function upgradeStarterPack(stored: readonly TextPreset[], fromVersion: n
     return copy;
   });
   const ids = new Set(stored.map((preset) => preset.id));
-  const added = fromVersion < 2 ? [...bundled.values()].filter((preset) => !PACK_1_IDS.has(preset.id) && !ids.has(preset.id)) : [];
+  const added = [...bundled.values()].filter((preset) => !ids.has(preset.id) && (fromVersion < 2 ? !PACK_1_IDS.has(preset.id) : PACK_3_IDS.has(preset.id)));
   return changed || added.length > 0 ? [...next, ...added] : null;
 }
 
@@ -512,6 +560,7 @@ export function starterPresets(): TextPreset[] {
       ...(starter.sampleText !== undefined && { sampleText: starter.sampleText }),
       sets: [...starter.sets],
       ...(starter.highlight && { highlight: structuredClone(starter.highlight) }),
+      ...(starter.captionAnim && { captionAnim: structuredClone(starter.captionAnim) }),
       tags: [...starter.tags],
       favorite: starter.favorite ?? false,
       createdAt: at,

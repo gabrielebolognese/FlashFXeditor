@@ -59,7 +59,7 @@ import { isRgba } from "../../core/document/color.js";
 import { animatedOpacity, animatedTransform, maxKeyedScale } from "../../core/document/keyframes.js";
 import { framesToSourceUs, secondsToFrames } from "../../core/document/time.js";
 import { handleTimeUs, transitionMix } from "../../core/document/transitions.js";
-import type { CaptionClip, CaptionStyle, Clip, ClipId, Crop, Frame, MediaClip, MediaId, Project, RGBA, ShadowStyle, TextAnim, TextClip, TextContent, TextStyle, Track, TrackId, Transform } from "../../core/document/types.js";
+import type { CaptionClip, CaptionStyle, CaptionWord, Clip, ClipId, Crop, Frame, MediaClip, MediaId, Project, RGBA, ShadowStyle, TextAnim, TextClip, TextContent, TextStyle, Track, TrackId, Transform } from "../../core/document/types.js";
 import { activeWordIndex, captionPlace, defaultCaptionStyle, effectiveCaptionStyle } from "../../text/captions.js";
 import { activeAnim, animUnit, isPlayable, newUnitState, presence, resetUnitState, typedCount, unitProgress, writeUnitShape, type ActiveAnim, type UnitState } from "../../text/anim.js";
 import { clipInIndex, lastClipStartingBy, trackIndex, type TrackIndex } from "../../timeline/model/queries.js";
@@ -69,13 +69,14 @@ import type { AtlasUnitKind } from "../text/atlas.js";
 import { layoutStops, layoutUnits } from "../text/animUnits.js";
 import type { TextLayout } from "../text/layout.js";
 import { textLayout } from "../text/layoutCache.js";
-import { captionLook, HIGHLIGHT_SCALE, highlightUnits, type CaptionLook } from "../text/captionLayout.js";
+import { captionLook, captionPlan, HIGHLIGHT_SCALE, hasWordPaint, type CaptionLook } from "../text/captionLayout.js";
+import { cueAnimAt, newCueAnimState } from "../../text/cueAnim.js";
 import { TEXT_RASTER_MAX, type TextHighlight } from "../text/raster.js";
 import { MAX_TEXT_SCALE, type TextPart } from "../text/TextRasterCache.js";
 import { imageTimeUs } from "../../media/decode/animation.js";
 import { drawnRadii, drawnRadius, type SolidLook } from "../../timeline/edit/solid.js";
 import { isGradientFill } from "../../core/document/fill.js";
-import { HIGHLIGHT_SLOT, TRANSITION_SLOT, type CaptionHighlightFrame, type Composite, type CompositeLayer, type MediaLayer, type PictureShape, type SolidGeometry, type SolidLayer, type SolidStyle, type TextAnimFrame, type TextCompositeLayer, type TransitionCompositeLayer } from "./drawList.js";
+import { HIGHLIGHT_SLOT, TRANSITION_SLOT, type CaptionHighlightFrame, type CaptionWordBoxes, type Composite, type CompositeLayer, type MediaLayer, type PictureShape, type SolidGeometry, type SolidLayer, type SolidStyle, type TextAnimFrame, type TextCompositeLayer, type TransitionCompositeLayer } from "./drawList.js";
 
 /** How far from the playhead the clips next to it count as cut neighbours (seconds). */
 export const NEIGHBOR_SECONDS = 2;
@@ -116,7 +117,14 @@ type WritableMediaLayer = Omit<MediaLayer, "transform" | "shape"> & { transform:
 type WritableSolidLayer = Omit<SolidLayer, "transform" | "color" | "to" | "shape" | "style"> & { transform: MutableMat3; color: RGBA; to: RGBA | null; toValue: RGBA; shape: SolidGeometry | null; shapeValue: SolidGeometry; style: SolidStyle | null; styleValue: SolidStyle; shadowValue: ShadowStyle; radiiValue: [number, number, number, number] };
 type WritableTransitionLayer = Omit<TransitionCompositeLayer, "from" | "to"> & { from: WritableMediaLayer; to: WritableMediaLayer };
 type WritableAnimFrame = { atlas: TextAnimFrame["atlas"]; units: UnitState[]; background: number };
-type WritableKaraoke = Omit<CaptionHighlightFrame, "box"> & { box: CaptionHighlightFrame["box"]; boxValue: NonNullable<CaptionHighlightFrame["box"]> };
+type WritableWordBoxes = Omit<CaptionWordBoxes, "shown" | "rects"> & { shown: number[]; rects: CaptionWordBoxes["rects"] };
+type WritableKaraoke = Omit<CaptionHighlightFrame, "box" | "unitPaint" | "wordBoxes"> & {
+  box: CaptionHighlightFrame["box"];
+  boxValue: NonNullable<CaptionHighlightFrame["box"]>;
+  unitPaint: number[];
+  wordBoxes: CaptionWordBoxes | null;
+  wordBoxesValue: WritableWordBoxes;
+};
 type WritableTextLayer = Omit<TextCompositeLayer, "model" | "anim" | "karaoke"> & {
   model: MutableMat3;
   anim: TextAnimFrame | null;
@@ -245,6 +253,7 @@ export class Compositor {
   private readonly frameMatrix = mutableIdentity();
   private frameShape: PictureShape | null = null;
   private readonly active: ActiveAnim = { anim: { id: "fade", duration: 1 }, phase: "in", progress: 0, length: 0 };
+  private readonly cueAnim = newCueAnimState();
   private readonly captionTransform: Transform = { x: 0, y: 0, scale: 1, rotation: 0, anchor: { x: 0.5, y: 0.5 }, flipH: false, flipV: false };
   /** A keyed clip's transform at the frame (read before the next layer). */
   private readonly animated: Transform = { x: 0, y: 0, scale: 1, rotation: 0, anchor: { x: 0.5, y: 0.5 }, flipH: false, flipV: false };
@@ -464,13 +473,15 @@ export class Compositor {
       if (!cue.enabled || cue.text.trim() === "") continue;
       const style = effectiveCaptionStyle(trackStyle, cue.styleOverride);
       const look = captionLook(cue.text, style);
-      const highlighting = style.highlight.mode !== "none" && cue.words !== undefined && cue.words.length > 0;
+      const highlighting = (style.highlight.mode !== "none" || hasWordPaint(cue.words)) && cue.words !== undefined && cue.words.length > 0;
       const shown = highlighting ? look.inactive : look.style;
       const parts = this.upcomingItem(cue.id, look.content, shown).parts;
       if (!highlighting) continue;
       parts.push("word");
-      if (shown.background.enabled) parts.push("backgrounds");
-      this.upcomingItem(cue.id + HIGHLIGHT_SLOT, look.content, look.active).parts.push("word");
+      const plan = captionPlan(textLayout(look.content, shown), look, style, cue.words as CaptionClip["words"] & object);
+      // Word boxes are solids, not a raster.
+      if (shown.background.enabled && plan.boxes === null) parts.push("backgrounds");
+      for (const paint of plan.paints) if (paint.slot !== "") this.upcomingItem(cue.id + paint.slot, look.content, paint.style).parts.push("word");
     }
   }
 
@@ -654,7 +665,7 @@ export class Compositor {
     const look = captionLook(text, style);
     const words = cue.words;
     const edited = live?.editing?.cueId === cue.id ? live.editing : null;
-    const highlighting = style.highlight.mode !== "none" && words !== undefined && words.length > 0 && text === cue.text && !edited;
+    const highlighting = (style.highlight.mode !== "none" || hasWordPaint(words)) && words !== undefined && words.length > 0 && text === cue.text && !edited;
     const shown = highlighting ? look.inactive : look.style;
     const layout = textLayout(look.content, shown);
     const raster = layout.raster;
@@ -671,6 +682,14 @@ export class Compositor {
       transform.y = place.y;
       transform.anchor.y = place.anchorY;
     }
+    // The cue's own in and out animations: the whole box (not while its text is edited).
+    const anim = edited ? null : cueAnimAt(style.anim, frame - cue.start, cue.duration, this.cueAnim);
+    if (anim?.active) {
+      // About the box's middle, whatever its anchor.
+      transform.y += (0.5 - transform.anchor.y) * layout.height + anim.dy * layout.height;
+      transform.anchor.y = 0.5;
+      transform.scale = anim.scale;
+    } else transform.scale = 1;
     writeModel(layer.model, transform, layout.width, layout.height, doc.settings.width, doc.settings.height);
     layer.trackId = track.id;
     layer.clipId = cue.id;
@@ -679,7 +698,7 @@ export class Compositor {
     layer.highlight = edited?.highlight ?? null;
     layer.scale = 1;
     layer.detail = Math.min(MAX_TEXT_SCALE, TEXT_RASTER_MAX / Math.max(raster.width, raster.height));
-    layer.opacity = 1;
+    layer.opacity = anim ? anim.opacity : 1;
     layer.anim = null;
     layer.karaoke = highlighting ? writeKaraoke(layer.karaokeFrame, look, layout, style, words, frame - cue.start) : null;
     return true;
@@ -847,7 +866,21 @@ function newTextLayer(): WritableTextLayer {
     anim: null,
     animFrame: { atlas: "block", units: [], background: 1 },
     karaoke: null,
-    karaokeFrame: { style: DEFAULT_TEXT_STYLE, from: 0, to: 0, scale: 1, ox: 0, oy: 0, box: null, boxValue: { rect: { x: 0, y: 0, width: 0, height: 0 }, color: { r: 0, g: 0, b: 0, a: 0 }, radius: 0 } },
+    karaokeFrame: {
+      style: DEFAULT_TEXT_STYLE,
+      slot: HIGHLIGHT_SLOT,
+      from: 0,
+      to: 0,
+      scale: 1,
+      ox: 0,
+      oy: 0,
+      box: null,
+      boxValue: { rect: { x: 0, y: 0, width: 0, height: 0 }, color: { r: 0, g: 0, b: 0, a: 0 }, radius: 0 },
+      paints: null,
+      unitPaint: [],
+      wordBoxes: null,
+      wordBoxesValue: { rects: [], shown: [], active: -1, activeColor: { r: 0, g: 0, b: 0, a: 0 }, style: DEFAULT_TEXT_STYLE.background },
+    },
   };
 }
 
@@ -866,20 +899,38 @@ function captionStyle(doc: Project, trackId: TrackId): CaptionStyle {
   return fallback;
 }
 
-/** The highlight of the word playing `rel` frames into a cue (spec §10.5), into `out`; null between words. */
+/**
+ * The words of a cue at `rel` frames into it (spec §10.5, §21.8), into `out`: the active word (units,
+ * look, growth, box), and with a stateful plan each other word's paint (`unitPaint`): the spoken ones
+ * lit in the progressive and reveal modes, the upcoming ones hidden in reveal, a word's own or emphasis
+ * color always. Null when nothing differs from the cue's own look.
+ */
 function writeKaraoke(out: WritableKaraoke, look: CaptionLook, layout: TextLayout, style: CaptionStyle, words: CaptionClip["words"] & object, rel: Frame): CaptionHighlightFrame | null {
+  const plan = captionPlan(layout, look, style, words);
   const index = activeWordIndex(words, rel);
-  if (index === -1) return null;
-  const unit = highlightUnits(layout, look.content, look.inactive, words)[index];
-  if (!unit) return null;
+  const unit = index === -1 ? null : (plan.units[index] ?? null);
+  if (!unit && !plan.stateful) return null;
   const mode = style.highlight.mode;
-  out.style = look.active;
-  out.from = unit.from;
-  out.to = unit.to;
-  out.scale = mode === "scale" || mode === "colorAndScale" ? HIGHLIGHT_SCALE : 1;
-  out.ox = unit.ox;
-  out.oy = unit.oy;
-  if (mode === "background") {
+  if (unit) {
+    const paint = plan.paints[plan.lit[index] as number] as (typeof plan.paints)[number];
+    out.style = paint.style;
+    out.slot = paint.slot === "" ? HIGHLIGHT_SLOT : paint.slot;
+    out.from = unit.from;
+    out.to = unit.to;
+    out.scale = mode === "scale" || mode === "colorAndScale" ? HIGHLIGHT_SCALE : 1;
+    out.ox = unit.ox;
+    out.oy = unit.oy;
+  } else {
+    out.style = look.inactive;
+    out.slot = HIGHLIGHT_SLOT;
+    out.from = 0;
+    out.to = 0;
+    out.scale = 1;
+    out.ox = 0;
+    out.oy = 0;
+  }
+  const boxes = plan.boxes;
+  if (mode === "background" && unit && boxes === null) {
     const box = out.boxValue;
     box.rect = unit.box;
     box.color = style.highlight.color;
@@ -887,6 +938,38 @@ function writeKaraoke(out: WritableKaraoke, look: CaptionLook, layout: TextLayou
     box.radius = unit.box.height / 2;
     out.box = box;
   } else out.box = null;
+  if (!plan.stateful) {
+    out.paints = null;
+    out.wordBoxes = null;
+    return out;
+  }
+  // Per atlas unit: its word's paint, the layer's own for text no word covers.
+  const unitPaint = out.unitPaint;
+  const count = plan.units.reduce((n, u) => Math.max(n, u?.to ?? 0), 0);
+  unitPaint.length = count;
+  unitPaint.fill(0);
+  const reveals = mode === "reveal";
+  const progressive = mode === "progressive" || reveals;
+  const shown = out.wordBoxesValue.shown;
+  shown.length = 0;
+  for (let i = 0; i < words.length; i++) {
+    const at = plan.units[i];
+    if (!at) continue;
+    const word = words[i] as CaptionWord;
+    const spoken = progressive && rel >= word.start;
+    const paint = i === index ? 0 : spoken ? (plan.lit[i] as number) : reveals ? -1 : (plan.dim[i] as number);
+    for (let u = at.from; u < at.to; u++) unitPaint[u] = paint;
+    if (boxes && boxes[i] && (i === index || !reveals || spoken)) shown.push(i);
+  }
+  out.paints = plan.paints;
+  if (boxes) {
+    const value = out.wordBoxesValue;
+    value.rects = boxes;
+    value.active = mode === "background" && unit ? index : -1;
+    value.activeColor = style.highlight.color;
+    value.style = look.style.background;
+    out.wordBoxes = value;
+  } else out.wordBoxes = null;
   return out;
 }
 

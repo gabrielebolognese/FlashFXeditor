@@ -12,6 +12,7 @@ import { installClipboardController } from "./app/clipboardController.js";
 import { installCommandAudit } from "./app/commandAudit.js";
 import { installCommandController } from "./app/commandController.js";
 import { installTranscribeController } from "./app/transcribeController.js";
+import { installWordsImportController } from "./app/wordsImportController.js";
 import { installCutController } from "./app/cutController.js";
 import { installDropController } from "./app/dropController.js";
 import { installGraphicsController } from "./app/graphicsController.js";
@@ -93,6 +94,7 @@ async function start(): Promise<void> {
   installFontController();
   installCaptionController();
   installTranscribeController();
+  installWordsImportController();
   installMarkerController();
   installTrackController();
   installPlaybackController();

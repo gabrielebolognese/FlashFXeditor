@@ -6,6 +6,7 @@ import { createStore } from "../core/store/createStore.js";
 import type { TranscribeDevice, WhisperModelId } from "../media/transcribe/models.js";
 import type { TranscribePhase, TranscribeStatus } from "../media/workers/protocol.js";
 import type { ImportedCue } from "../timeline/edit/captions.js";
+import type { ChunkOptions, ImportedWords } from "../text/wordsImport.js";
 import { markedRange, type FrameRange } from "../timeline/model/inOut.js";
 import { contentEnd } from "../timeline/model/queries.js";
 
@@ -26,13 +27,24 @@ export interface TranscriptReview {
   projectId: string;
   range: FrameRange;
   cues: ImportedCue[];
-  language: string;
-  model: WhisperModelId;
-  device: TranscribeDevice;
+  /** A transcription's language, model and device; null for imported words. */
+  language: string | null;
+  model: WhisperModelId | null;
+  device: TranscribeDevice | null;
+  /** The words file of an import (Batch 59), or null for a transcription. */
+  source: { fileName: string } | null;
   words: number;
   /** The cues overlapping the range, which the confirmation replaces. */
   replaced: number;
 }
+
+/** The Import words dialog (spec §21.8): the file's words, asking for the chunking rules (null: closed). */
+export interface WordsImportState {
+  fileName: string;
+  imported: ImportedWords;
+  options: ChunkOptions;
+}
+export const wordsImportDialog = createStore<WordsImportState | null>(null);
 
 export type TranscriptionState =
   | { kind: "idle" }

@@ -160,6 +160,26 @@ export function setCueText(project: Project, id: ClipId, text: string): Command 
   return { id: "caption.text", label: "Edit caption", affects: ["clips", "captions"], run: cueFields(id, { text }, "keep") };
 }
 
+/** A word chip's click (spec §10.5, Batch 59): the word's emphasis flipped, one undo step "Emphasize word". Null for a cue without that word. */
+export function toggleWordEmphasis(project: Project, id: ClipId, index: number): Command | null {
+  const cue = editableCue(project, id);
+  const word = cue?.words?.[index];
+  if (!cue || !word) return null;
+  const on = word.emphasis !== true;
+  return {
+    id: "caption.emphasizeWord",
+    label: on ? "Emphasize word" : "Remove word emphasis",
+    affects: ["clips", "captions"],
+    run(draft) {
+      const target = draft.clips[id];
+      const entry = target?.kind === "caption" ? target.words?.[index] : undefined;
+      if (!entry) throw new Error(`caption: cue ${id} has no word ${index}`);
+      if (on) entry.emphasis = true;
+      else delete entry.emphasis;
+    },
+  };
+}
+
 export interface SplitCueResult {
   command: Command;
   /** The right half's id (the left keeps the cue's). */
@@ -275,7 +295,7 @@ export function cuesFromSubtitles(cues: readonly SubtitleCue[], fps: Project["se
     const duration = Math.max(1, usToFrame(cue.endUs, fps) - start);
     const words = cue.words?.map((word) => {
       const from = Math.min(duration - 1, Math.max(0, usToFrame(word.startUs, fps) - start));
-      return { text: word.text, start: from, end: Math.max(from + 1, Math.min(duration, usToFrame(word.endUs, fps) - start)) };
+      return { text: word.text, start: from, end: Math.max(from + 1, Math.min(duration, usToFrame(word.endUs, fps) - start)), ...(word.emphasis === true && { emphasis: true }) };
     });
     return { order, cue: { start, duration, text: cue.text, ...(words && words.length > 0 && { words }) } as ImportedCue };
   });
@@ -398,7 +418,7 @@ export interface TranscribeCuesResult {
  * style when missing. One undo step "Transcribe captions". Null when the track is locked or there is
  * no cue to place.
  */
-export function replaceCuesInRange(project: Project, range: { start: Frame; end: Frame }, cues: readonly ImportedCue[], newId: () => string): TranscribeCuesResult | null {
+export function replaceCuesInRange(project: Project, range: { start: Frame; end: Frame }, cues: readonly ImportedCue[], newId: () => string, name: { id: string; label: string } = { id: "caption.transcribe", label: "Transcribe captions" }): TranscribeCuesResult | null {
   const existing = captionTrackOf(project);
   if (existing?.locked || cues.length === 0) return null;
   const track = existing ?? newCaptionTrack(newId());
@@ -413,8 +433,8 @@ export function replaceCuesInRange(project: Project, range: { start: Frame; end:
     count: placed.length,
     replaced: replaced.size,
     command: {
-      id: "caption.transcribe",
-      label: "Transcribe captions",
+      id: name.id,
+      label: name.label,
       affects: ["tracks", "clips", "timeline", "captions"],
       run(draft) {
         if (style) insertCaptionTrack(draft, track, style);

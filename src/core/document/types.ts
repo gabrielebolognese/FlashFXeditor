@@ -1,7 +1,7 @@
 // The persistent document (spec §5.2). Plain JSON only: no classes, Maps, Sets or undefined-valued
 // keys, so a Project can be serialized as-is and diffed by Immer patches.
 
-export const SCHEMA_VERSION = 5;
+export const SCHEMA_VERSION = 6;
 
 export type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
 export type JsonObject = { [key: string]: JsonValue };
@@ -135,7 +135,8 @@ export interface TextBackground {
   stroke?: TextStroke;
   shadow?: TextShadow;
 }
-export const TEXT_BACKGROUND_MODES = ["line", "block"] as const;
+/** `word` (Batch 59, captions): a box behind each word. On a text clip it draws as `line`. */
+export const TEXT_BACKGROUND_MODES = ["line", "block", "word"] as const;
 export type TextBackgroundMode = (typeof TEXT_BACKGROUND_MODES)[number];
 
 /** The look of a text clip (spec §10.1). Sizes are project px; `lineHeight` is a multiplier of the size. */
@@ -240,6 +241,8 @@ export interface TextPreset {
   sets?: PresetSetId[];
   /** The word highlight it gives a caption track it styles (Batch 52: the Captions starters' active word). */
   highlight?: CaptionHighlight;
+  /** The cue animations it gives a caption track it styles (Batch 59). */
+  captionAnim?: CaptionAnim;
   /** Its user sets (spec §20.2 "each user tag"), also searched. */
   tags: string[];
   favorite: boolean;
@@ -255,7 +258,7 @@ export type PresetSetId = (typeof PRESET_SET_IDS)[number];
 export type CaptionPosition = "bottom" | "center" | "top" | "custom";
 
 /** How the word being spoken stands out when a cue has word timings (spec §10.5). */
-export const CAPTION_HIGHLIGHTS = ["none", "color", "background", "scale", "colorAndScale"] as const;
+export const CAPTION_HIGHLIGHTS = ["none", "color", "background", "scale", "colorAndScale", "progressive", "reveal"] as const;
 export type CaptionHighlightMode = (typeof CAPTION_HIGHLIGHTS)[number];
 
 export interface CaptionHighlight {
@@ -264,6 +267,24 @@ export interface CaptionHighlight {
   color: RGBA;
   /** The fill of the other words while a cue has word timings. */
   inactiveColor: RGBA;
+  /** The fill of a cue's emphasis words, from the cue's first frame (spec §21.8, Batch 59); absent: the highlight color. */
+  emphasisColor?: RGBA;
+}
+
+/** The cue animations (spec §21.8, Batch 59), in the order of the properties panel's chips. */
+export const CUE_ANIM_KINDS = ["fade", "pop", "slideUp", "slideDown"] as const;
+export type CueAnimKind = (typeof CUE_ANIM_KINDS)[number];
+
+/** A cue's in or out animation: the whole caption box, `frames` long (at most half the cue; 0: none, which a cue override sets to drop its track's). */
+export interface CueAnim {
+  kind: CueAnimKind;
+  frames: number;
+}
+
+/** The animations of a cue's start and end. */
+export interface CaptionAnim {
+  in?: CueAnim;
+  out?: CueAnim;
 }
 
 /**
@@ -282,6 +303,8 @@ export interface CaptionStyle {
   /** A cue with more lines is drawn smaller until it fits. */
   maxLines: number;
   highlight: CaptionHighlight;
+  /** Cue in and out animations (spec §21.8, Batch 59); absent: none. */
+  anim?: CaptionAnim;
 }
 
 /**
@@ -316,6 +339,7 @@ export interface CaptionStyleOverride {
   maxWidth?: number;
   maxLines?: number;
   highlight?: Partial<CaptionHighlight>;
+  anim?: CaptionAnim;
 }
 
 /**
@@ -511,6 +535,10 @@ export interface CaptionWord {
   text: string;
   start: Frame;
   end: Frame;
+  /** Shows the highlight's emphasis color from the cue's first frame (spec §21.8, Batch 59). */
+  emphasis?: boolean;
+  /** This word's own fill: over the highlight, inactive and emphasis colors. */
+  color?: RGBA;
 }
 
 /**

@@ -21,6 +21,7 @@ import { createProject, emptyTrack, nextTrackName } from "../../core/document/pr
 import { frameToUs } from "../../core/document/time.js";
 import {
   CAPTION_HIGHLIGHTS,
+  CUE_ANIM_KINDS,
   EASE_IDS,
   isFreeze,
   isMediaClip,
@@ -66,6 +67,7 @@ import {
   clearCues,
   importCues,
   mergeWithPrevious,
+  toggleWordEmphasis,
   replaceCuesInRange,
   setCaptionStyle,
   cueStyleOf,
@@ -305,7 +307,7 @@ function randomStyle(rng: Rng, base: TextStyle = DEFAULT_TEXT_STYLE): TextStyle 
     italic: rng.chance(0.2),
     fill: rng.chance(0.8) ? randomColor(rng) : { from: randomColor(rng), to: randomColor(rng) },
     stroke: { enabled: rng.chance(0.3), width: rng.int(0, 20), color: randomColor(rng) },
-    background: { ...base.background, enabled: rng.chance(0.3), mode: rng.pick(["line", "block"] as const) },
+    background: { ...base.background, enabled: rng.chance(0.3), mode: rng.pick(["line", "block", "word"] as const) },
     textCase: rng.pick(["none", "upper", "lower", "title"] as const),
     letterSpacing: rng.int(-5, 20),
     lineHeight: rng.pick([0.9, 1, 1.2, 1.6]),
@@ -378,7 +380,16 @@ function randomSubtitles(rng: Rng, count: number, fromUs: number, toUs: number):
   return cues;
 }
 
+/** A small string hash (32 bit) for deriving a generator from a document's values. */
+function hashOf(text: string): number {
+  let hash = 2166136261;
+  for (let i = 0; i < text.length; i++) hash = Math.imul(hash ^ text.charCodeAt(i), 16777619);
+  return (hash >>> 0) + 1;
+}
+
 function randomCaptionStyle(rng: Rng, base: CaptionStyle): CaptionStyle {
+  // The Captions v2 fields (Batch 59) come from a generator of their own, seeded by the base style, so the run's stream (and every seed's documents before them) stays what it was.
+  const extra = random(hashOf(JSON.stringify([base.highlight, base.anim, base.y, base.maxWidth, base.text.fontSize])));
   return {
     ...structuredClone(base),
     text: randomStyle(rng, base.text),
@@ -386,7 +397,8 @@ function randomCaptionStyle(rng: Rng, base: CaptionStyle): CaptionStyle {
     y: rng.int(-900, 900),
     maxWidth: rng.int(100, 1080),
     maxLines: rng.int(1, 4),
-    highlight: { mode: rng.pick(CAPTION_HIGHLIGHTS), color: randomColor(rng), inactiveColor: randomColor(rng) },
+    highlight: { mode: rng.pick(CAPTION_HIGHLIGHTS), color: randomColor(rng), inactiveColor: randomColor(rng), ...(extra.chance(0.5) && { emphasisColor: randomColor(extra) }) },
+    ...(extra.chance(0.5) && { anim: { ...(extra.chance(0.7) && { in: { kind: extra.pick(CUE_ANIM_KINDS), frames: extra.int(0, 12) } }), ...(extra.chance(0.7) && { out: { kind: extra.pick(CUE_ANIM_KINDS), frames: extra.int(0, 12) } }) } }),
   };
 }
 
@@ -1567,6 +1579,17 @@ const CAPTION_OPS: FuzzOp[] = [
       return cue ? exec(store, mergeWithPrevious(p, cue.id, rng.chance(0.3) ? randomText(rng) : undefined)?.command) : false;
     },
     { effect: "shrink" },
+  ),
+  // Weight 0: never drawn by the shared runs (their seeds keep their streams); the captions test runs it by name.
+  op(
+    "captions.emphasizeWord",
+    "captions",
+    (store, rng) => {
+      const p = store.getState();
+      const cue = pickCue(p, rng);
+      return cue?.words && cue.words.length > 0 ? exec(store, toggleWordEmphasis(p, cue.id, rng.int(0, cue.words.length - 1))) : false;
+    },
+    { weight: 0 },
   ),
   op(
     "captions.import",

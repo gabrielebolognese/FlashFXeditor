@@ -34,8 +34,8 @@ describe("capabilities.json (spec §21.2)", () => {
     expect(media).toEqual([...ACCEPTED_EXTENSIONS].sort());
   });
 
-  it("has schemaVersion 5 and the Batch 54 to 58 keys true, the keys of later batches false", () => {
-    expect(manifest.schemaVersion).toBe(5);
+  it("has schemaVersion 6 and the Batch 54 to 59 keys true, the keys of later batches false", () => {
+    expect(manifest.schemaVersion).toBe(6);
     expect(manifest.manifestVersion).toBe(MANIFEST_VERSION);
     expect(manifest.lastBatch).toBe(LAST_BATCH);
     expect(manifest.cli).toEqual({ validate: true, normalize: true, info: true, render: true, compare: true });
@@ -47,8 +47,8 @@ describe("capabilities.json (spec §21.2)", () => {
     expect(manifest.project).toEqual({ file: "project.json", fontsManifest: "fonts/fonts.json", fontsManifestVersion: 2, sampleRate: 48000 });
     expect(manifest.media).toMatchObject({ video: ["mp4", "mov", "m4v", "webm"], audio: ["mp3", "m4a", "aac", "wav", "ogg"], image: ["png", "jpg", "jpeg", "webp", "gif", "svg"], videoAlpha: false });
     expect(manifest.media.animatedImage).toEqual({ formats: ["gif", "webp"], alpha: true, maxSide: 2048, textureBudgetBytes: 134217728 });
-    expect(manifest.captions).toMatchObject({ perCueStyle: true, wordEmphasis: false, cueAnims: [], boxModes: ["line", "block"], wordsImport: false });
-    expect(manifest.text.background).toEqual({ modes: ["line", "block"], stroke: true, shadow: true });
+    expect(manifest.captions).toMatchObject({ perCueStyle: true, wordEmphasis: true, cueAnims: ["fade", "pop", "slideUp", "slideDown"], boxModes: ["line", "block", "word"], wordsImport: true });
+    expect(manifest.text.background).toEqual({ modes: ["line", "block", "word"], stroke: true, shadow: true });
     expect(manifest.solid).toMatchObject({ fills: ["color", "gradient2", "linear", "radial"], stroke: true, shadow: true, cornerRadii: true });
     expect(manifest.mediaFrame).toEqual({ stroke: true, shadow: true, cornerRadius: true });
     expect(manifest.text.fills).toEqual(["color", "gradient2", "linear", "radial"]);

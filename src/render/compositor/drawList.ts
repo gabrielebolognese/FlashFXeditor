@@ -146,6 +146,9 @@ export interface TextAnimFrame {
  */
 export interface CaptionHighlightFrame {
   style: TextStyle;
+  /** The raster slot suffix of the active word's atlas (`HIGHLIGHT_SLOT` unless a word color or emphasis changes it). */
+  slot: string;
+  /** The active word's units [from, to); empty (from = to) between words. */
   from: number;
   to: number;
   scale: number;
@@ -153,6 +156,27 @@ export interface CaptionHighlightFrame {
   oy: number;
   /** The background mode's box: a pill (`radius` half its height) behind the active word. */
   box: { rect: { x: number; y: number; width: number; height: number }; color: RGBA; radius: number } | null;
+  /**
+   * The other words' states (Batch 59: progressive and reveal modes, word colors, emphasis): `paints`
+   * are the looks of the word atlas (`paints[0]` is the layer's own, its slot the cue's), `unitPaint[i]`
+   * the paint of atlas unit i (-1: hidden). Null: every unit but the active word's is the layer's own.
+   */
+  paints: readonly { slot: string; style: TextStyle }[] | null;
+  unitPaint: readonly number[];
+  /** `word` background mode: a box behind each shown word (a solid layer each, with the box style's outline and shadow). */
+  wordBoxes: CaptionWordBoxes | null;
+}
+
+/** The boxes behind the words of a cue (spec §21.8, `word` background mode). */
+export interface CaptionWordBoxes {
+  /** Per cue word: its box (content px), null for a word the text does not show. */
+  rects: readonly ({ x: number; y: number; width: number; height: number } | null)[];
+  /** The words whose box shows now (the reveal mode hides the boxes of upcoming words). */
+  shown: readonly number[];
+  /** The word whose box takes `activeColor` (the background highlight), or -1. */
+  active: number;
+  activeColor: RGBA;
+  style: TextStyle["background"];
 }
 
 /** The raster cache slot suffix of a cue's active-word atlas. */

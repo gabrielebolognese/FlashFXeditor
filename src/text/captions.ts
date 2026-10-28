@@ -12,11 +12,13 @@
 //   second's end, the words of both.
 // - A new frame size (Adapt layout, spec §15): track styles and cue overrides follow it
 //   (`adaptCaptionStyle`, `adaptCaptionOverride`).
-import type { CaptionClip, CaptionPosition, CaptionStyle, CaptionStyleOverride, CaptionTextOverride, CaptionWord, Frame, RGBA, TextStyle } from "../core/document/types.js";
+import type { CaptionAnim, CaptionClip, CaptionPosition, CaptionStyle, CaptionStyleOverride, CaptionTextOverride, CaptionWord, CueAnim, Frame, RGBA, TextStyle } from "../core/document/types.js";
 import { DEFAULT_TEXT_STYLE, scaleTextStyle, TEXT_LIMITS, TEXT_REFERENCE_SIDE } from "./style.js";
 
 /** A new cue's length (spec §10.5 `+ Cue at playhead`: a 2 s cue). */
 export const CUE_SECONDS = 2;
+/** A cue animation of this many frames is none (a cue's override of its track's animation, Batch 59). */
+export const NO_ANIM_FRAMES = 0;
 /** The text of a cue made with `+ Cue` (selected in the list, typing replaces it). */
 export const NEW_CUE_TEXT = "Caption";
 /** The name the caption track gets (spec §6.1 `CC` header). */
@@ -124,6 +126,7 @@ export function applyCaptionOverride(track: CaptionStyle, override: CaptionStyle
   }
   for (const key of CAPTION_FIELDS) if (override[key] !== undefined) (style as unknown as Plain)[key] = override[key];
   if (override.highlight) style.highlight = { ...track.highlight, ...override.highlight };
+  if (override.anim) style.anim = { ...track.anim, ...override.anim };
   return style;
 }
 
@@ -179,7 +182,12 @@ export function overrideWith(override: CaptionStyleOverride | undefined, before:
   for (const key of CAPTION_FIELDS) if (!same(before[key], after[key])) (next as Plain)[key] = after[key];
   const highlight: Plain = { ...(next.highlight ?? {}) };
   for (const sub of ["mode", "color", "inactiveColor"] as const) if (!same(before.highlight[sub], after.highlight[sub])) highlight[sub] = structuredClone(after.highlight[sub]);
+  // The emphasis color has no "unset" in an override: a cue can only take one, never drop the track's.
+  if (after.highlight.emphasisColor && !same(before.highlight.emphasisColor, after.highlight.emphasisColor)) highlight.emphasisColor = structuredClone(after.highlight.emphasisColor);
   if (Object.keys(highlight).length > 0) next.highlight = highlight;
+  const anim: CaptionAnim = { ...(next.anim ?? {}) };
+  for (const sub of ["in", "out"] as const) if (!same(before.anim?.[sub], after.anim?.[sub])) setAnim(anim, sub, after.anim?.[sub]);
+  if (Object.keys(anim).length > 0) next.anim = anim;
   return isEmptyOverride(next) ? undefined : next;
 }
 
@@ -198,9 +206,14 @@ export function overrideFields(override: CaptionStyleOverride | undefined): stri
   return fields;
 }
 
-/** Fields whose values are objects but set whole: colors and the fill. */
+/** `anim[sub]` set to `value` (a cue animation), or removed; a removed animation of a cue is `frames` 0 (the cue shows none over its track's). */
+function setAnim(anim: CaptionAnim, sub: "in" | "out", value: CueAnim | undefined): void {
+  anim[sub] = value ? { ...value } : { kind: "fade", frames: NO_ANIM_FRAMES };
+}
+
+/** Fields whose values are objects but set whole: colors, the fill and a cue animation. */
 function isLeaf(path: string): boolean {
-  return path === "text.fill" || path.endsWith(".color") || path.endsWith("Color");
+  return path === "text.fill" || path === "anim.in" || path === "anim.out" || path.endsWith(".color") || path.endsWith("Color");
 }
 
 /**
@@ -236,11 +249,12 @@ export function overrideWithout(override: CaptionStyleOverride | undefined, path
  * style into their overrides"): its whole text style (not the vertical anchor: captions sit at their
  * position), its word highlight when it has one, and its position (as Custom) when it applies one.
  */
-export function presetOverride(override: CaptionStyleOverride | undefined, look: { style: TextStyle; position: { x: number; y: number } | null }, highlight?: CaptionStyle["highlight"]): CaptionStyleOverride {
+export function presetOverride(override: CaptionStyleOverride | undefined, look: { style: TextStyle; position: { x: number; y: number } | null }, highlight?: CaptionStyle["highlight"], anim?: CaptionAnim): CaptionStyleOverride {
   const text: Partial<TextStyle> = structuredClone(look.style);
   delete text.verticalAnchor;
   const next: CaptionStyleOverride = { ...structuredClone(override ?? {}), text: text as CaptionTextOverride };
   if (highlight) next.highlight = structuredClone(highlight);
+  if (anim) next.anim = structuredClone(anim);
   if (look.position) Object.assign(next, { position: "custom", x: Math.round(look.position.x), y: Math.round(look.position.y) });
   return next;
 }

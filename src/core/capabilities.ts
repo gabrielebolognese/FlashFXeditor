@@ -6,12 +6,12 @@ import { ACCEPTED_EXTENSIONS } from "../media/mediaKinds.js";
 import { ANIMATION_BUDGET_BYTES, ANIMATION_MAX_SIZE, MAX_GAIN_DB, MAX_SPEED, MIN_GAIN_DB, MIN_SPEED } from "./document/limits.js";
 import { KEYFRAME_PROPS } from "./document/keyframes.js";
 import { FONT_MANIFEST_VERSION } from "../text/fonts.js";
-import { CAPTION_HIGHLIGHTS, CLIP_KINDS, EASE_IDS, SCHEMA_VERSION, SOLID_SHAPE_IDS, TEXT_ANIM_IDS, TEXT_ANIM_UNITS, TEXT_BACKGROUND_MODES, TRACK_KINDS, TRANSITION_KINDS } from "./document/types.js";
+import { CAPTION_HIGHLIGHTS, CLIP_KINDS, CUE_ANIM_KINDS, EASE_IDS, SCHEMA_VERSION, SOLID_SHAPE_IDS, TEXT_ANIM_IDS, TEXT_ANIM_UNITS, TEXT_BACKGROUND_MODES, TRACK_KINDS, TRANSITION_KINDS } from "./document/types.js";
 
 /** The `manifestVersion`: changes only when a key changes meaning (new keys do not change it). */
 export const MANIFEST_VERSION = 1;
 /** The last batch that touched the manifest (spec §21.1: each batch sets it to its own number). */
-export const LAST_BATCH = 58;
+export const LAST_BATCH = 59;
 
 /** The flags of the manifest: a batch that adds a capability flips its key here (spec §21.2 table). */
 export const FEATURES = {
@@ -21,7 +21,7 @@ export const FEATURES = {
   solid: { stroke: true, shadow: true, cornerRadii: true },
   mediaFrame: { stroke: true, shadow: true, cornerRadius: true },
   text: { spans: false, counter: false, animators: false, backgroundStroke: true, backgroundShadow: true },
-  captions: { perCueStyle: true, wordEmphasis: false, wordsImport: false },
+  captions: { perCueStyle: true, wordEmphasis: true, wordsImport: true },
   compositing: { compound: false, trackMatte: false, masks: false, adjustment: false },
   vector: { shapes: false, trimPaths: false, svgImport: false },
   audio: { fades: true, trackGain: false, pan: false, loudness: false },
@@ -87,7 +87,7 @@ export function buildCapabilities(appVersion: string): Capabilities {
       highlightModes: [...CAPTION_HIGHLIGHTS],
       perCueStyle: f.captions.perCueStyle,
       wordEmphasis: f.captions.wordEmphasis,
-      cueAnims: [],
+      cueAnims: [...CUE_ANIM_KINDS],
       boxModes: [...TEXT_BACKGROUND_MODES],
       wordsImport: f.captions.wordsImport,
     },

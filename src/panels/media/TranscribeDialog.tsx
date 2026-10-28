@@ -1,8 +1,12 @@
-import { Captions, Check, Download, Mic, Trash2 } from "lucide-react";
+import { Captions, Check, Download, FileUp, Mic, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { documentStore, appSettings, sessionStore } from "../../app/services.js";
 import { applyTranscript, closeTranscribeDialog, discardTranscript, removeModel, startTranscription } from "../../app/transcribeController.js";
-import { transcribeDialog, transcribeRange, transcription, type TranscribeDialogState, type TranscribeRangeChoice, type TranscriptReview, type TranscriptionState } from "../../app/transcription.js";
+import { closeWordsImportDialog, reviewImportedWords } from "../../app/wordsImportController.js";
+import { CHUNK_LIMITS, wordsToCues, type ChunkOptions } from "../../text/wordsImport.js";
+import { NumberField, useValueBinding } from "../../ui/NumberField.js";
+import { Toggle } from "../../ui/Toggle.js";
+import { transcribeDialog, transcribeRange, transcription, wordsImportDialog, type WordsImportState, type TranscribeDialogState, type TranscribeRangeChoice, type TranscriptReview, type TranscriptionState } from "../../app/transcription.js";
 import { formatTimecode } from "../../core/document/time.js";
 import type { Project } from "../../core/document/types.js";
 import { useStoreSelector } from "../../core/store/useStoreSelector.js";
@@ -29,6 +33,7 @@ const LANGUAGE_SELECT = [{ value: AUTO, label: "Detect automatically" }, ...LANG
 const DEVICE_TEXT: Record<TranscribeDevice, string> = { webgpu: "the graphics card (WebGPU)", wasm: "the processor (WebAssembly)" };
 
 const selectDialog = (state: TranscribeDialogState | null) => state;
+const selectWords = (state: WordsImportState | null) => state;
 const selectReview = (state: TranscriptionState) => (state.kind === "review" ? state.review : null);
 const selectInOut = (state: { inPoint: number | null; outPoint: number | null }) => (state.inPoint === null && state.outPoint === null ? "" : `${state.inPoint ?? ""}-${state.outPoint ?? ""}`);
 
@@ -154,7 +159,7 @@ function ReviewDialog({ review }: { review: TranscriptReview }) {
   const add = () => void applyTranscript();
   return (
     <Modal
-      title="Review the transcript"
+      title={review.source ? "Review the imported words" : "Review the transcript"}
       icon={Captions}
       size="lg"
       onClose={discardTranscript}
@@ -168,7 +173,9 @@ function ReviewDialog({ review }: { review: TranscriptReview }) {
       }
     >
       <p className={styles.summary}>
-        {count} cue{count === 1 ? "" : "s"} · {review.words} words · {languageName(review.language)} · Whisper {whisperModel(review.model).label} on {review.device === "webgpu" ? "WebGPU" : "WebAssembly"}
+        {review.source
+          ? `${count} cue${count === 1 ? "" : "s"} · ${review.words} words · ${review.source.fileName}`
+          : `${count} cue${count === 1 ? "" : "s"} · ${review.words} words · ${languageName(review.language ?? "")} · Whisper ${whisperModel(review.model ?? "base").label} on ${review.device === "webgpu" ? "WebGPU" : "WebAssembly"}`}
       </p>
       <ol className={styles.cues} aria-label="Transcribed cues">
         {review.cues.map((cue, i) => (
@@ -181,16 +188,63 @@ function ReviewDialog({ review }: { review: TranscriptReview }) {
       <p className={review.replaced > 0 ? styles.warning : styles.note}>
         {review.replaced > 0
           ? `They replace the ${review.replaced} cue${review.replaced === 1 ? "" : "s"} in ${span(project, review.range)}. Undo brings them back.`
-          : `They go on the caption track with word timings, so the spoken word is highlighted. Undo removes them.`}
+          : `They go on the caption track with word timings, so the highlight follows the words. Undo removes them.`}
       </p>
     </Modal>
   );
 }
 
-/** The Transcribe dialog or the review, whichever is open. */
+/** The chunking rules of a words file without a chunk list (spec §21.8): live count of the cues they make. */
+function WordsImportDialog({ state }: { state: WordsImportState }) {
+  const [options, setOptions] = useState<ChunkOptions>(state.options);
+  const set = (patch: Partial<ChunkOptions>) => setOptions((now) => ({ ...now, ...patch }));
+  const cues = wordsToCues(state.imported, options).length;
+  const limits = CHUNK_LIMITS;
+  const maxWords = useValueBinding(options.maxWords, (value) => set({ maxWords: Math.round(value) }));
+  const perLine = useValueBinding(options.charsPerLine, (value) => set({ charsPerLine: Math.round(value) }));
+  const maxLines = useValueBinding(options.maxLines, (value) => set({ maxLines: Math.round(value) }));
+  const pause = useValueBinding(options.pauseMs, (value) => set({ pauseMs: Math.round(value) }));
+  const go = () => reviewImportedWords(state.imported, options, state.fileName);
+  return (
+    <Modal
+      title="Import words"
+      icon={FileUp}
+      onClose={closeWordsImportDialog}
+      footer={
+        <>
+          <Button control onClick={closeWordsImportDialog}>Cancel</Button>
+          <Button control variant="primary" autoFocus onClick={go}>
+            {`Review ${cues} cue${cues === 1 ? "" : "s"}`}
+          </Button>
+        </>
+      }
+    >
+      <p className={styles.summary}>
+        {state.imported.words.length} words in {state.fileName}, with no chunk list: they are cut into cues by these rules.
+      </p>
+      <div className={styles.form}>
+        <span className={styles.label}>Max words per cue</span>
+        <NumberField binding={maxWords} min={limits.maxWords.min} max={limits.maxWords.max} step={1} precision={0} ariaLabel="Maximum words per cue" />
+        <span className={styles.label}>Max characters per line</span>
+        <NumberField binding={perLine} min={limits.charsPerLine.min} max={limits.charsPerLine.max} step={1} precision={0} ariaLabel="Maximum characters per line" />
+        <span className={styles.label}>Max lines</span>
+        <NumberField binding={maxLines} min={limits.maxLines.min} max={limits.maxLines.max} step={1} precision={0} ariaLabel="Maximum lines per cue" />
+        <span className={styles.label}>Break at pauses over</span>
+        <NumberField binding={pause} min={limits.pauseMs.min} max={limits.pauseMs.max} step={50} precision={0} unit="ms" ariaLabel="Break at pauses longer than, in milliseconds" />
+        <span className={styles.label}>Break at punctuation</span>
+        <Toggle checked={options.breakAtPunctuation} onChange={(checked) => set({ breakAtPunctuation: checked })} label="Break cues at sentence ends" />
+      </div>
+      <p className={styles.note}>You review the cues before they go on the caption track; the cues of that span are replaced only when you confirm.</p>
+    </Modal>
+  );
+}
+
+/** The Transcribe dialog, the Import words dialog or the review, whichever is open. */
 export function TranscribeDialogs() {
   const dialog = useStoreSelector(transcribeDialog, selectDialog);
   const review = useStoreSelector(transcription, selectReview);
+  const words = useStoreSelector(wordsImportDialog, selectWords);
   if (review) return <ReviewDialog review={review} />;
+  if (words) return <WordsImportDialog state={words} />;
   return dialog ? <TranscribeSettingsDialog state={dialog} /> : null;
 }

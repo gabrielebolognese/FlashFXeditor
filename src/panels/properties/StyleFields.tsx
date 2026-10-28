@@ -329,6 +329,7 @@ export function StyleFields({ target, anchor }: { target: StyleTarget; anchor: b
           options={[
             { value: "line", label: "A box behind each line", text: "Per line" },
             { value: "block", label: "One box behind the whole text", text: "Block" },
+            { value: "word", label: "A box behind each word (the spoken word's takes the highlight color)", text: "Word" },
           ]}
           disabled={backgroundOff}
           onChange={(mode) => edit("Change background", (s) => ({ background: { ...s.background, mode } }))}

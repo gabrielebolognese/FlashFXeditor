@@ -5,7 +5,7 @@
 // (spec §21.1). Pure: no DOM.
 import { MAX_GAIN_DB, MAX_SPEED, MIN_GAIN_DB } from "./limits.js";
 import { KEYFRAME_PROPS } from "./keyframes.js";
-import { CAPTION_HIGHLIGHTS, CLIP_KINDS, EASE_IDS, LABEL_COLORS, PRESET_SET_IDS, SCHEMA_VERSION, SOLID_SHAPE_IDS, STROKE_ALIGNS, TEXT_ANIM_IDS, TEXT_ANIM_UNITS, TEXT_BACKGROUND_MODES, TRACK_KINDS, TRANSITION_KINDS, type JsonValue } from "./types.js";
+import { CAPTION_HIGHLIGHTS, CLIP_KINDS, CUE_ANIM_KINDS, EASE_IDS, LABEL_COLORS, PRESET_SET_IDS, SCHEMA_VERSION, SOLID_SHAPE_IDS, STROKE_ALIGNS, TEXT_ANIM_IDS, TEXT_ANIM_UNITS, TEXT_BACKGROUND_MODES, TRACK_KINDS, TRANSITION_KINDS, type JsonValue } from "./types.js";
 
 export type FieldType =
   | { t: "string"; nonEmpty?: boolean }
@@ -87,7 +87,7 @@ const BACKGROUND_FIELDS: Record<string, Field> = {
   paddingX: req(nonNeg, "Horizontal padding, project px.", 28),
   paddingY: req(nonNeg, "Vertical padding, project px.", 12),
   radius: req(nonNeg, "Corner radius, project px.", 16),
-  mode: req(oneOf(TEXT_BACKGROUND_MODES), "One box per line or one for the block.", "block"),
+  mode: req(oneOf(TEXT_BACKGROUND_MODES), "One box per line, one for the block, or (captions) one per word.", "block"),
   stroke: opt(obj("TextStroke"), "The box's border, drawn inside its edge (Batch 58); absent: none."),
   shadow: opt(obj("TextShadow"), "The box's shadow, drawn outside it (Batch 58); absent: none."),
 };
@@ -95,6 +95,7 @@ const HIGHLIGHT_FIELDS: Record<string, Field> = {
   mode: req(oneOf(CAPTION_HIGHLIGHTS), "The effect."),
   color: req(obj("RGBA"), "The active word's fill (color modes) or its box (background)."),
   inactiveColor: req(obj("RGBA"), "The fill of the other words while a cue has word timings."),
+  emphasisColor: opt(obj("RGBA"), "The fill of emphasis words from the cue's first frame (Batch 59); absent: the highlight color."),
 };
 
 const SCHEMAS: ObjectSchema[] = [
@@ -307,6 +308,7 @@ const SCHEMAS: ObjectSchema[] = [
       sampleText: opt(str, "What its button shows and a new clip reads."),
       sets: opt(list(oneOf(PRESET_SET_IDS)), "The bundled sets it is in."),
       highlight: opt(obj("CaptionHighlight"), "The word highlight it gives a caption track."),
+      captionAnim: opt(obj("CaptionAnim"), "The cue animations it gives a caption track (Batch 59)."),
       tags: req(list(str), "Its user sets."),
       favorite: req(bool, "Starred."),
       createdAt: req(str, "ISO time."),
@@ -333,7 +335,23 @@ const SCHEMAS: ObjectSchema[] = [
       maxWidth: req(pos, "Words wrap at this width, project px."),
       maxLines: req(int(1), "A cue with more lines is drawn smaller until it fits."),
       highlight: req(obj("CaptionHighlight"), "The word highlight."),
+      anim: opt(obj("CaptionAnim"), "Cue in and out animations (Batch 59); absent: none."),
     },
+  },
+  {
+    name: "CueAnim",
+    doc: "An animation of a cue's whole caption box at its start or end, at most half the cue long.",
+    types: ["CueAnim"],
+    fields: {
+      kind: req(oneOf(CUE_ANIM_KINDS), "The animation."),
+      frames: req(int(0), `How long it runs; 0 is none (a cue override of its track's animation). ${FRAMES}`),
+    },
+  },
+  {
+    name: "CaptionAnim",
+    doc: "The animations of a cue's start (`in`) and end (`out`).",
+    types: ["CaptionAnim"],
+    fields: { in: opt(obj("CueAnim"), "At the cue's start."), out: opt(obj("CueAnim"), "At the cue's end.") },
   },
   {
     name: "CaptionTextOverride",
@@ -370,6 +388,7 @@ const SCHEMAS: ObjectSchema[] = [
       maxWidth: opt(pos, "Wrap width."),
       maxLines: opt(int(1), "Line count."),
       highlight: opt(obj("CaptionHighlightOverride"), "Highlight parts."),
+      anim: opt(obj("CaptionAnim"), "Cue animations."),
     },
   },
   { name: "CaptionTrackData", doc: "A caption track's data; its cues are the track's clips.", types: ["CaptionTrackData"], fields: { style: req(obj("CaptionStyle"), "The style of its cues.") } },
@@ -381,6 +400,8 @@ const SCHEMAS: ObjectSchema[] = [
       text: req(str, "The word."),
       start: req(int(), `Relative to the cue's start, inclusive; may be negative or past the cue's end (an in-trim keeps the words it hides, so a trim back shows them again). ${FRAMES}`),
       end: req(int(), `Relative to the cue's start, exclusive; after \`start\`. ${FRAMES}`),
+      emphasis: opt(bool, "Shows the highlight's emphasis color from the cue's first frame (Batch 59)."),
+      color: opt(obj("RGBA"), "This word's own fill, over every other color (Batch 59)."),
     },
   },
 

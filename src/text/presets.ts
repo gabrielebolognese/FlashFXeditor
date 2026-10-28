@@ -13,9 +13,13 @@
 //   without an id or a style is skipped).
 import {
   CAPTION_HIGHLIGHTS,
+  CUE_ANIM_KINDS,
   MAX_GRADIENT_STOPS,
   PRESET_SET_IDS,
+  TEXT_BACKGROUND_MODES,
+  type CaptionAnim,
   type CaptionHighlight,
+  type CueAnim,
   type Fill,
   type PresetSetId,
   type PresetTextAnim,
@@ -442,7 +446,7 @@ export function sanitizeTextStyle(value: unknown, fallback: TextStyle = DEFAULT_
       paddingX: num(background.paddingX, d.background.paddingX, L.padding.min, L.padding.max),
       paddingY: num(background.paddingY, d.background.paddingY, L.padding.min, L.padding.max),
       radius: num(background.radius, d.background.radius, L.radius.min, L.radius.max),
-      mode: oneOf(["line", "block"], background.mode, d.background.mode),
+      mode: oneOf(TEXT_BACKGROUND_MODES, background.mode, d.background.mode),
       ...boxExtras(background, d.background),
     },
     textCase: oneOf(["none", "upper", "lower", "title"], raw.textCase, d.textCase),
@@ -460,7 +464,24 @@ function sanitizeHighlight(value: unknown): CaptionHighlight | null {
   const mode = oneOf(CAPTION_HIGHLIGHTS, raw.mode, "none");
   if (mode === "none") return null;
   const white = { r: 1, g: 1, b: 1, a: 1 };
-  return { mode, color: rgba(raw.color, white), inactiveColor: rgba(raw.inactiveColor, white) };
+  return { mode, color: rgba(raw.color, white), inactiveColor: rgba(raw.inactiveColor, white), ...(obj(raw.emphasisColor) && { emphasisColor: rgba(raw.emphasisColor, white) }) };
+}
+
+/** A preset's cue animations read from a file (none when absent or invalid); frames as for a project (Batch 59). */
+function sanitizeCaptionAnim(value: unknown): CaptionAnim | null {
+  const raw = obj(value);
+  if (!raw) return null;
+  const one = (inner: unknown): CueAnim | null => {
+    const o = obj(inner);
+    if (!o || typeof o.kind !== "string" || !(CUE_ANIM_KINDS as readonly string[]).includes(o.kind)) return null;
+    return { kind: o.kind as CueAnim["kind"], frames: Math.round(num(o.frames, 2, 0, 600)) };
+  };
+  const anim: CaptionAnim = {};
+  const inAnim = one(raw.in);
+  const outAnim = one(raw.out);
+  if (inAnim) anim.in = inAnim;
+  if (outAnim) anim.out = outAnim;
+  return inAnim || outAnim ? anim : null;
 }
 
 const isoTime = (value: unknown, fallback: string) => (typeof value === "string" && !Number.isNaN(Date.parse(value)) ? value : fallback);
@@ -481,6 +502,7 @@ export function sanitizePreset(value: unknown, now: string): TextPreset | null {
   const sampleText = typeof raw.sampleText === "string" ? cleanSampleText(raw.sampleText) : "";
   const sets = Array.isArray(raw.sets) ? PRESET_SET_IDS.filter((set) => (raw.sets as unknown[]).includes(set)) : [];
   const highlight = sanitizeHighlight(raw.highlight);
+  const captionAnim = sanitizeCaptionAnim(raw.captionAnim);
   return {
     id: raw.id,
     name: (typeof raw.name === "string" && cleanPresetName(raw.name)) || defaultPresetName(style),
@@ -494,6 +516,7 @@ export function sanitizePreset(value: unknown, now: string): TextPreset | null {
     ...(sampleText !== "" && { sampleText }),
     ...(sets.length > 0 && { sets }),
     ...(highlight && { highlight }),
+    ...(captionAnim && { captionAnim }),
     // A comma inside a tag would split it when edited as a list: it reads as a space.
     tags: Array.isArray(raw.tags) ? parseTags(raw.tags.filter((tag): tag is string => typeof tag === "string").map((tag) => tag.replace(/,/g, " ")).join(",")) : [],
     favorite: bool(raw.favorite, false),

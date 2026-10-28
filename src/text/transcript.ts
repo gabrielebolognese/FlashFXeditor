@@ -194,18 +194,27 @@ export interface CueOptions {
   charsPerLine?: number;
   /** The end of the audio (µs): no cue lasts past it. */
   durationUs: number;
+  /** Words per cue at most (a words import, Batch 59); absent: no limit but the lines. */
+  maxWords?: number;
+  /** A silence this long (µs) ends a cue (default PAUSE_US). */
+  pauseUs?: number;
+  /** A sentence end ends a cue (default true). */
+  breakAtPunctuation?: boolean;
 }
 
 /** Timed words as caption cues (see the header), with their words (µs, absolute). */
 export function cuesFromWords(words: readonly TimedWord[], options: CueOptions): SubtitleCue[] {
   const maxLines = Math.max(1, Math.floor(options.maxLines));
   const perLine = Math.max(8, options.charsPerLine ?? CHARS_PER_LINE);
+  const pauseUs = options.pauseUs ?? PAUSE_US;
+  const breakAtPunctuation = options.breakAtPunctuation ?? true;
+  const maxWords = options.maxWords !== undefined ? Math.max(1, Math.floor(options.maxWords)) : Infinity;
   // Phrases: cut at sentence ends and pauses.
   const phrases: TimedWord[][] = [];
   let current: TimedWord[] = [];
   for (const word of words) {
     const prev = current[current.length - 1];
-    if (prev && (SENTENCE_END.test(prev.text) || word.startUs - prev.endUs >= PAUSE_US)) {
+    if (prev && ((breakAtPunctuation && SENTENCE_END.test(prev.text)) || word.startUs - prev.endUs >= pauseUs)) {
       phrases.push(current);
       current = [];
     }
@@ -217,8 +226,15 @@ export function cuesFromWords(words: readonly TimedWord[], options: CueOptions):
   for (const phrase of phrases) {
     let at = 0;
     for (const count of phraseCues(phrase, maxLines, perLine)) {
-      groups.push(phrase.slice(at, at + count));
+      const group = phrase.slice(at, at + count);
       at += count;
+      // At most `maxWords` words a cue: the fewest cues, as even as possible.
+      const parts = Math.max(1, Math.ceil(group.length / maxWords));
+      for (let part = 0, from = 0; part < parts; part++) {
+        const size = Math.ceil((group.length - from) / (parts - part));
+        groups.push(group.slice(from, from + size));
+        from += size;
+      }
     }
   }
   // A cue the next one leaves on screen for less than MIN_ALONE_US joins it when they fit together.
@@ -226,7 +242,7 @@ export function cuesFromWords(words: readonly TimedWord[], options: CueOptions):
     const group = groups[i] as TimedWord[];
     const next = groups[i + 1] as TimedWord[];
     const joined = [...group, ...next];
-    if ((next[0] as TimedWord).startUs - (group[0] as TimedWord).startUs < MIN_ALONE_US && linesFor(joined, perLine) <= maxLines) groups.splice(i, 2, joined);
+    if ((next[0] as TimedWord).startUs - (group[0] as TimedWord).startUs < MIN_ALONE_US && linesFor(joined, perLine) <= maxLines && joined.length <= maxWords) groups.splice(i, 2, joined);
     else i += 1;
   }
 
@@ -242,7 +258,7 @@ export function cuesFromWords(words: readonly TimedWord[], options: CueOptions):
       startUs: first.startUs,
       endUs: Math.max(first.startUs + 1, end),
       text: cueText(group, perLine),
-      words: group.map(({ text, startUs, endUs }) => ({ text, startUs, endUs })),
+      words: group.map(({ text, startUs, endUs, emphasis }) => ({ text, startUs, endUs, ...(emphasis === true && { emphasis: true }) })),
     });
   });
   return cues;

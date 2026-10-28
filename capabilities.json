@@ -2,8 +2,8 @@
   "manifestVersion": 1,
   "app": "shorts-editor",
   "appVersion": "1.1.0",
-  "lastBatch": 58,
-  "schemaVersion": 5,
+  "lastBatch": 59,
+  "schemaVersion": 6,
   "project": {
     "file": "project.json",
     "fontsManifest": "fonts/fonts.json",
@@ -122,7 +122,8 @@
     "background": {
       "modes": [
         "line",
-        "block"
+        "block",
+        "word"
       ],
       "stroke": true,
       "shadow": true
@@ -156,16 +157,24 @@
       "color",
       "background",
       "scale",
-      "colorAndScale"
+      "colorAndScale",
+      "progressive",
+      "reveal"
     ],
     "perCueStyle": true,
-    "wordEmphasis": false,
-    "cueAnims": [],
+    "wordEmphasis": true,
+    "cueAnims": [
+      "fade",
+      "pop",
+      "slideUp",
+      "slideDown"
+    ],
     "boxModes": [
       "line",
-      "block"
+      "block",
+      "word"
     ],
-    "wordsImport": false
+    "wordsImport": true
   },
   "transitions": [
     "crossDissolve",

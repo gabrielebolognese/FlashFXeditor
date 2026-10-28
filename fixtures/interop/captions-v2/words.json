@@ -1,0 +1,59 @@
+{
+  "unit": "ms",
+  "words": [
+    {
+      "word": "You",
+      "startMs": 0,
+      "endMs": 133
+    },
+    {
+      "word": "will",
+      "startMs": 133,
+      "endMs": 267
+    },
+    {
+      "word": "never",
+      "startMs": 267,
+      "endMs": 500
+    },
+    {
+      "word": "guess",
+      "startMs": 500,
+      "endMs": 800
+    },
+    {
+      "word": "what",
+      "startMs": 1667,
+      "endMs": 1867
+    },
+    {
+      "word": "happens",
+      "startMs": 1867,
+      "endMs": 2200
+    },
+    {
+      "word": "next",
+      "startMs": 2200,
+      "endMs": 2500
+    },
+    {
+      "word": "today",
+      "startMs": 2500,
+      "endMs": 2933
+    }
+  ],
+  "cues": [
+    {
+      "from": 0,
+      "to": 3,
+      "emphasis": [
+        2
+      ]
+    },
+    {
+      "from": 4,
+      "to": 7,
+      "emphasis": []
+    }
+  ]
+}

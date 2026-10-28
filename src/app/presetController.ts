@@ -595,7 +595,7 @@ export function addPresetClip(id: string, point: { x: number; y: number } | null
 
 /** The caption style a preset gives `track`: its text style, and its word highlight when it has one. */
 function captionStyleWith(project: Project, track: TrackId, preset: TextPreset) {
-  return { ...captionStyleOf(project, track), text: presetLook(preset, project.settings).style, ...(preset.highlight && { highlight: structuredClone(preset.highlight) }) };
+  return { ...captionStyleOf(project, track), text: presetLook(preset, project.settings).style, ...(preset.highlight && { highlight: structuredClone(preset.highlight) }), ...(preset.captionAnim && { anim: structuredClone(preset.captionAnim) }) };
 }
 
 /** The own styles a preset gives the cues `ids` (spec §20.3), linked to it. */
@@ -604,7 +604,7 @@ function cueStylesWith(project: Project, ids: readonly ClipId[], preset: TextPre
   const styles = new Map<ClipId, CueStyle>();
   for (const id of ids) {
     const cue = project.clips[id];
-    if (cue?.kind === "caption") styles.set(id, { styleOverride: presetOverride(cue.styleOverride, look, preset.highlight), presetId: preset.id });
+    if (cue?.kind === "caption") styles.set(id, { styleOverride: presetOverride(cue.styleOverride, look, preset.highlight, preset.captionAnim), presetId: preset.id });
   }
   return styles;
 }

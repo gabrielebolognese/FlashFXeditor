@@ -357,7 +357,7 @@ describe("starter presets", () => {
 
   it("are about 40 distinct looks (spec §20.2) with unique ids and names, in library fonts at weights they have", () => {
     expect(starters.length).toBeGreaterThanOrEqual(36);
-    expect(starters.length).toBeLessThanOrEqual(44);
+    expect(starters.length).toBeLessThanOrEqual(48);
     expect(new Set(starters.map((p) => p.id)).size).toBe(starters.length);
     expect(new Set(starters.map((p) => p.name)).size).toBe(starters.length);
     expect(new Set(starters.map((p) => presetLookKey(p))).size).toBe(starters.length);
@@ -405,7 +405,7 @@ describe("starter presets", () => {
     for (const starter of starters) expect([...presetSampleText(starter)].length, starter.name).toBeLessThanOrEqual(14);
     // The captions' word highlights (yellow active word, boxed word, ...), and every mode once at least.
     const modes = new Set(starters.flatMap((p) => (p.highlight ? [p.highlight.mode] : [])));
-    expect([...modes].sort()).toEqual(["background", "color", "colorAndScale", "scale"]);
+    expect([...modes].sort()).toEqual(["background", "color", "colorAndScale", "progressive", "reveal", "scale"]);
     for (const starter of starters) if (starter.highlight) expect(starter.sets).toEqual(["captions"]);
     // Their tags are search words, not preset bar sets.
     expect(presetSetChoices(starters, STARTER_TAGS).map((c) => c.key)).toEqual([...FIXED_PRESET_SETS]);

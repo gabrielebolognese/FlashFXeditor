@@ -3,7 +3,7 @@
 import { keyframeIssues } from "./keyframes.js";
 import { transitionIssues } from "./transitions.js";
 import { usPerFrame } from "./time.js";
-import { CAPTION_HIGHLIGHTS, isFreeze, isMediaClip, LABEL_COLORS, SOLID_SHAPE_IDS, STROKE_ALIGNS, type CaptionClip, type CaptionStyle, type Clip, type ClipId, type ClipKind, type MediaClip, type MediaItem, type Project, type SolidClip, type TextClip, type TextStyle, type Track, type TrackId, type TrackKind } from "./types.js";
+import { CAPTION_HIGHLIGHTS, CUE_ANIM_KINDS, isFreeze, isMediaClip, LABEL_COLORS, SOLID_SHAPE_IDS, STROKE_ALIGNS, type CaptionClip, type CaptionStyle, type Clip, type ClipId, type ClipKind, type MediaClip, type MediaItem, type Project, type SolidClip, type TextClip, type TextStyle, type Track, type TrackId, type TrackKind } from "./types.js";
 
 export class DocumentInvariantError extends Error {
   readonly issues: readonly string[];
@@ -162,6 +162,8 @@ function cueIssues(clip: CaptionClip, label: string): string[] {
   clip.words.forEach((word, i) => {
     if (typeof word?.text !== "string") issues.push(`${label}: word ${i} text must be a string`);
     if (!Number.isInteger(word?.start) || !Number.isInteger(word?.end) || word.end <= word.start) issues.push(`${label}: word ${i} must have integer frames start < end (${String(word?.start)}, ${String(word?.end)})`);
+    if (word?.emphasis !== undefined && typeof word.emphasis !== "boolean") issues.push(`${label}: word ${i} emphasis must be true or false`);
+    if (word?.color !== undefined && !isColor(word.color)) issues.push(`${label}: word ${i} color must be RGBA`);
   });
   return issues;
 }
@@ -195,7 +197,7 @@ const isBoxShadow = (value: unknown) => isObjectLike(value) && isBoolean(value.e
 const PART_OVERRIDES: Readonly<Record<string, Readonly<Record<string, Check>>>> = {
   stroke: { enabled: isBoolean, width: isNonNegative, color: isRgba },
   shadow: { enabled: isBoolean, x: isFiniteNumber, y: isFiniteNumber, blur: isNonNegative, color: isRgba },
-  background: { enabled: isBoolean, color: isRgba, paddingX: isNonNegative, paddingY: isNonNegative, radius: isNonNegative, mode: oneOf("line", "block"), stroke: isBoxStroke, shadow: isBoxShadow },
+  background: { enabled: isBoolean, color: isRgba, paddingX: isNonNegative, paddingY: isNonNegative, radius: isNonNegative, mode: oneOf("line", "block", "word"), stroke: isBoxStroke, shadow: isBoxShadow },
 };
 const CAPTION_OVERRIDE: Readonly<Record<string, Check>> = {
   position: (value) => CAPTION_POSITIONS.has(value as string),
@@ -203,8 +205,12 @@ const CAPTION_OVERRIDE: Readonly<Record<string, Check>> = {
   y: isFiniteNumber,
   maxWidth: isPositive,
   maxLines: isPositiveInteger,
+  anim: (value) => isCaptionAnim(value),
 };
-const HIGHLIGHT_OVERRIDE: Readonly<Record<string, Check>> = { mode: (value) => HIGHLIGHT_MODES.has(value as string), color: isRgba, inactiveColor: isRgba };
+const HIGHLIGHT_OVERRIDE: Readonly<Record<string, Check>> = { mode: (value) => HIGHLIGHT_MODES.has(value as string), color: isRgba, inactiveColor: isRgba, emphasisColor: isRgba };
+const isCueAnim = (value: unknown) => isObjectLike(value) && Object.keys(value).every((key) => key === "kind" || key === "frames") && CUE_ANIMS.has(value.kind as string) && Number.isInteger(value.frames) && (value.frames as number) >= 0;
+/** A `CaptionAnim`: an object with at most `in` and `out`, each a valid cue animation. */
+const isCaptionAnim = (value: unknown) => isObjectLike(value) && Object.entries(value).every(([key, inner]) => (key === "in" || key === "out") && isCueAnim(inner));
 
 /** The fields of `value` (an object) against `checks`: unknown fields and bad values are issues. */
 function fieldIssues(value: unknown, checks: Readonly<Record<string, Check>>, label: string, path: string, nested: Readonly<Record<string, (inner: unknown, at: string) => string[]>> = {}): string[] {
@@ -231,6 +237,7 @@ function overrideIssues(override: unknown, label: string): string[] {
 
 const CAPTION_POSITIONS: ReadonlySet<string> = new Set(["bottom", "center", "top", "custom"]);
 const HIGHLIGHT_MODES: ReadonlySet<string> = new Set(CAPTION_HIGHLIGHTS);
+const CUE_ANIMS: ReadonlySet<string> = new Set(CUE_ANIM_KINDS);
 const isColor = (value: unknown) => typeof value === "object" && value !== null && ["r", "g", "b", "a"].every((key) => Number.isFinite((value as Record<string, unknown>)[key]));
 const SOLID_SHAPES: ReadonlySet<string> = new Set(SOLID_SHAPE_IDS);
 
@@ -303,6 +310,8 @@ function captionStyleIssues(style: CaptionStyle | undefined, label: string): str
   if (!isPositiveInteger(style.maxLines)) issues.push(`${label}: max lines ${String(style.maxLines)} must be a positive integer`);
   if (!HIGHLIGHT_MODES.has(style.highlight?.mode)) issues.push(`${label}: highlight mode "${String(style.highlight?.mode)}" is not ${CAPTION_HIGHLIGHTS.join(", ")}`);
   if (!isColor(style.highlight?.color) || !isColor(style.highlight?.inactiveColor)) issues.push(`${label}: highlight colors must be RGBA`);
+  if (style.highlight?.emphasisColor !== undefined && !isColor(style.highlight.emphasisColor)) issues.push(`${label}: emphasis color must be RGBA`);
+  if (style.anim !== undefined && !isCaptionAnim(style.anim)) issues.push(`${label}: anim must be { in?, out? } of { kind: ${CUE_ANIM_KINDS.join(" | ")}, frames: integer >= 0 }`);
   return issues;
 }
 

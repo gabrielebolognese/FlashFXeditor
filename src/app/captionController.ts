@@ -16,7 +16,7 @@ import { selectClips, selectTracks, toSnapshot } from "../core/store/selection.j
 import { setSectionCollapsed } from "../core/store/sessionStore.js";
 import { evenWords, hasOwnStyle } from "../text/captions.js";
 import { formatSubtitles, parseSubtitles, type SubtitleFormat } from "../text/subtitles.js";
-import { addCaptionTrack, addCueAt, captionTrackOf, clearCues, cuesOf, exportCues, importCues, mergeWithPrevious, resetCueStyles, setCueStyles, setCueText, splitCue, type CueStyle } from "../timeline/edit/captions.js";
+import { addCaptionTrack, addCueAt, captionTrackOf, clearCues, cuesOf, exportCues, importCues, mergeWithPrevious, resetCueStyles, setCueStyles, setCueText, splitCue, toggleWordEmphasis, type CueStyle } from "../timeline/edit/captions.js";
 import { isClipLocked } from "../timeline/model/queries.js";
 import { showToast } from "../ui/toasts.js";
 import { pickFile, saveFile, type PickerType } from "./filePickers.js";
@@ -91,6 +91,12 @@ export function commitCue(cueId: ClipId, text: string | null): void {
     if (command) documentStore.dispatch(command);
   }
   patchLiveEdit({ cues: null });
+}
+
+/** A word chip of the cue list: the word's emphasis toggled (one undo step). */
+export function toggleEmphasis(cueId: ClipId, index: number): void {
+  const command = toggleWordEmphasis(documentStore.getState(), cueId, index);
+  if (command) documentStore.dispatch(command);
 }
 
 /** Enter in the cue list: the cue split at the caret (proportional timing); the right half is focused. */

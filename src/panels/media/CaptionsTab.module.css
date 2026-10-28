@@ -165,3 +165,41 @@
   background: var(--accent);
   transform: translateY(-50%);
 }
+
+/* The selected cue's word chips (Batch 59, spec §10.5; the DS has no word chip): one scrolling line under
+   the row, over the next one. A click toggles the word's emphasis (pressed = --accent). */
+.chips {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  left: 0;
+  z-index: 1;
+  display: flex;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-3);
+  overflow-x: auto;
+  border-bottom: 1px solid var(--hairline);
+  background: var(--surface-2);
+  box-shadow: var(--shadow-overlay);
+}
+
+.wordChip {
+  flex: none;
+  padding: var(--space-0) var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--surface-3);
+  color: var(--text-secondary);
+  font: var(--type-badge);
+  cursor: pointer;
+}
+
+.wordChip:hover {
+  border-color: var(--accent-dim);
+}
+
+.wordChip[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: var(--accent-wash);
+  color: var(--text-primary);
+}

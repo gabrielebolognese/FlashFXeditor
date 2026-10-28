@@ -202,7 +202,18 @@ export function layoutText(content: TextContent, style: TextStyle, measurer: Tex
   const backgrounds: Rect[] = [];
   if (bg.enabled) {
     if (bg.mode === "block") backgrounds.push({ x: 0, y: 0, width: blockWidth + 2 * padX, height: blockHeight + 2 * padY });
-    else for (const line of lines) if (line.text.trim() !== "") backgrounds.push({ x: line.x - padX, y: line.top - padY, width: line.width + 2 * padX, height: slot + 2 * padY });
+    else if (bg.mode === "word") {
+      // One box per word (Batch 59): the word's advance, the line's slot, padded.
+      const advance = (text: string) => (text === "" ? 0 : (measurer.measure(text, font, size, spacing).width));
+      for (const line of lines) {
+        const pattern = /\S+/g;
+        for (let match = pattern.exec(line.text); match; match = pattern.exec(line.text)) {
+          const x0 = line.x + advance(line.text.slice(0, match.index));
+          const width = Math.max(0, advance(match[0]) - spacing);
+          backgrounds.push({ x: x0 - padX, y: line.top - padY, width: width + 2 * padX, height: slot + 2 * padY });
+        }
+      }
+    } else for (const line of lines) if (line.text.trim() !== "") backgrounds.push({ x: line.x - padX, y: line.top - padY, width: line.width + 2 * padX, height: slot + 2 * padY });
   }
 
   let raster: Rect | null = null;

@@ -4,7 +4,7 @@ import { patchLiveEdit, liveEdit } from "../../app/liveEdit.js";
 import { rememberColor } from "../../app/propertiesController.js";
 import { appSettings, documentStore, sessionStore } from "../../app/services.js";
 import { formatHexColor } from "../../core/document/color.js";
-import type { CaptionHighlightMode, CaptionPosition, CaptionStyle, ClipId, Project, RGBA, TextStyle, TrackId } from "../../core/document/types.js";
+import type { CaptionHighlightMode, CueAnimKind, CaptionPosition, CaptionStyle, ClipId, Project, RGBA, TextStyle, TrackId } from "../../core/document/types.js";
 import type { CaptionScope, SessionState } from "../../core/store/sessionStore.js";
 import { useStoreSelector } from "../../core/store/useStoreSelector.js";
 import type { AppSettings } from "../../project/appSettings.js";
@@ -13,7 +13,7 @@ import { captionStyleOf, cueStyleOf, setCaptionStyle, setCueStyles } from "../..
 import { Button } from "../../ui/Button.js";
 import { ColorField } from "../../ui/ColorField.js";
 import { NumberField } from "../../ui/NumberField.js";
-import { CAPTION_MAX_LINES, CAPTION_MAX_WIDTH, CAPTION_X, CAPTION_Y, captionBinding, captionTextProp, cueStylesAfter, editableCues, liveCueStyles, type CaptionBindingDeps, type CaptionTarget } from "./captionBinding.js";
+import { ANIM_FRAMES_MAX, CAPTION_ANIM_IN_FRAMES, CAPTION_ANIM_OUT_FRAMES, CAPTION_MAX_LINES, CAPTION_MAX_WIDTH, CAPTION_X, CAPTION_Y, captionBinding, captionTextProp, DEFAULT_ANIM_FRAMES, cueStylesAfter, editableCues, liveCueStyles, type CaptionBindingDeps, type CaptionTarget } from "./captionBinding.js";
 import marks from "./CaptionStyleSection.module.css";
 import { Row } from "./Section.js";
 import styles from "./Section.module.css";
@@ -169,7 +169,25 @@ const HIGHLIGHTS: { value: CaptionHighlightMode; label: string; text: string }[]
   { value: "background", label: "A box in the highlight color behind the spoken word", text: "Box" },
   { value: "scale", label: "The spoken word grows", text: "Scale" },
   { value: "colorAndScale", label: "The spoken word in the highlight color, grown", text: "Both" },
+  { value: "progressive", label: "Each word turns to the highlight color as it starts and stays", text: "Progressive" },
+  { value: "reveal", label: "Words appear as they start; upcoming words are hidden", text: "Reveal" },
 ];
+
+type AnimChoice = CueAnimKind | "none";
+const ANIM_CHOICES: { value: AnimChoice; label: string; text: string }[] = [
+  { value: "none", label: "No animation", text: "None" },
+  { value: "fade", label: "Fade", text: "Fade" },
+  { value: "pop", label: "Grow from smaller", text: "Pop" },
+  { value: "slideUp", label: "Slide up", text: "Up" },
+  { value: "slideDown", label: "Slide down", text: "Down" },
+];
+const animChoice = (style: CaptionStyle, side: "in" | "out"): AnimChoice => {
+  const anim = style.anim?.[side];
+  return anim && anim.frames > 0 ? anim.kind : "none";
+};
+const getAnimIn = (style: CaptionStyle) => animChoice(style, "in");
+const getAnimOut = (style: CaptionStyle) => animChoice(style, "out");
+const getEmphasis = (style: CaptionStyle) => formatHexColor(style.highlight.emphasisColor ?? style.highlight.color);
 
 const getPosition = (style: CaptionStyle) => style.position;
 const getMode = (style: CaptionStyle) => style.highlight.mode;
@@ -185,6 +203,9 @@ const PATHS = {
   mode: ["highlight.mode"],
   color: ["highlight.color"],
   inactive: ["highlight.inactiveColor"],
+  emphasis: ["highlight.emphasisColor"],
+  animIn: ["anim.in"],
+  animOut: ["anim.out"],
 } as const;
 
 /** Whether a selected cue has an override (Reset to track style has something to do). */
@@ -231,13 +252,16 @@ export function CaptionStyleSection({ trackId, cueIds }: { trackId: TrackId; cue
   const edits = useMemo(() => captionEdits(target), [target]);
   const textTarget = useMemo(() => captionStyleTarget(edits), [edits]);
   const bindings = useMemo(
-    () => ({ x: captionBinding(DEPS, CAPTION_X, target), y: captionBinding(DEPS, CAPTION_Y, target), maxWidth: captionBinding(DEPS, CAPTION_MAX_WIDTH, target), maxLines: captionBinding(DEPS, CAPTION_MAX_LINES, target) }),
+    () => ({ x: captionBinding(DEPS, CAPTION_X, target), y: captionBinding(DEPS, CAPTION_Y, target), maxWidth: captionBinding(DEPS, CAPTION_MAX_WIDTH, target), maxLines: captionBinding(DEPS, CAPTION_MAX_LINES, target), animIn: captionBinding(DEPS, CAPTION_ANIM_IN_FRAMES, target), animOut: captionBinding(DEPS, CAPTION_ANIM_OUT_FRAMES, target) }),
     [target],
   );
   const position = edits.useValue(getPosition);
   const mode = edits.useValue(getMode);
   const color = edits.useValue(getColor);
   const inactive = edits.useValue(getInactive);
+  const emphasis = edits.useValue(getEmphasis);
+  const animIn = edits.useValue(getAnimIn);
+  const animOut = edits.useValue(getAnimOut);
   const recent = useStoreSelector(appSettings, selectRecent);
   const highlight = (label: string, set: (style: CaptionStyle, color: RGBA) => CaptionStyle) => ({
     onChange: (next: RGBA) => {
@@ -246,6 +270,12 @@ export function CaptionStyleSection({ trackId, cueIds }: { trackId: TrackId; cue
     },
     onPreview: (next: RGBA | null) => edits.preview(next ? (style) => set(style, next) : null),
   });
+  const chooseAnim = (side: "in" | "out") => (next: AnimChoice) =>
+    edits.edit(side === "in" ? "Cue animation in" : "Cue animation out", (style) => {
+      const now = style.anim?.[side];
+      const frames = next === "none" ? 0 : now && now.frames > 0 ? now.frames : DEFAULT_ANIM_FRAMES;
+      return { ...style, anim: { ...style.anim, [side]: { kind: next === "none" ? (now?.kind ?? "fade") : next, frames } } };
+    });
   const choosePosition = (next: CaptionPosition) =>
     edits.edit("Caption position", (style) => {
       if (next !== "custom" || style.position === "custom") return { ...style, position: next };
@@ -281,6 +311,22 @@ export function CaptionStyleSection({ trackId, cueIds }: { trackId: TrackId; cue
       </Row>
       <Row label="Other words" marker={edits.marker(PATHS.inactive, "Other words color")}>
         <ColorField value={colorOf(inactive, DEFAULT_INACTIVE_COLOR)} recent={recent} ariaLabel="Other words color" {...highlight("Change highlight color", (style, c) => ({ ...style, highlight: { ...style.highlight, inactiveColor: c } }))} />
+      </Row>
+      <Row label="Emphasis" marker={edits.marker(PATHS.emphasis, "Emphasis color")}>
+        <ColorField value={colorOf(emphasis, DEFAULT_HIGHLIGHT_COLOR)} recent={recent} ariaLabel="Emphasis color" {...highlight("Change emphasis color", (style, c) => ({ ...style, highlight: { ...style.highlight, emphasisColor: c } }))} />
+      </Row>
+      <span className={styles.hint}>Words marked in the cue list (the word chips) show this color from the cue's first frame.</span>
+      <Row label="Animate in" marker={edits.marker(PATHS.animIn, "Cue animation in")}>
+        <Choice value={animIn} options={ANIM_CHOICES} onChange={chooseAnim("in")} />
+      </Row>
+      <Row label="In frames" marker={edits.marker(PATHS.animIn, "Cue animation in")}>
+        <NumberField unit="f" binding={bindings.animIn} precision={0} min={0} max={ANIM_FRAMES_MAX} disabled={animIn === "none"} ariaLabel="Cue animation in, frames" />
+      </Row>
+      <Row label="Animate out" marker={edits.marker(PATHS.animOut, "Cue animation out")}>
+        <Choice value={animOut} options={ANIM_CHOICES} onChange={chooseAnim("out")} />
+      </Row>
+      <Row label="Out frames" marker={edits.marker(PATHS.animOut, "Cue animation out")}>
+        <NumberField unit="f" binding={bindings.animOut} precision={0} min={0} max={ANIM_FRAMES_MAX} disabled={animOut === "none"} ariaLabel="Cue animation out, frames" />
       </Row>
       <StyleFields target={textTarget} anchor={false} />
     </>

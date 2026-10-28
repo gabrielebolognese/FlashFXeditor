@@ -49,7 +49,7 @@
 //   yet, the other is drawn alone. Export frame resolves both sides exactly.
 // The draw lists, the slot structs and their keys are reused between passes: a pass allocates nothing
 // unless it requests or pins a new frame (or rasterizes a text).
-import type { MediaId, TrackId } from "../../core/document/types.js";
+import type { MediaId, ShadowStyle, StrokeStyle, TextStyle, TrackId } from "../../core/document/types.js";
 import { imageKey, type Lod, type TextureKey, type TexturePool } from "../../media/cache/TexturePool.js";
 import type { FrameResult, FrameService } from "../../media/decode/FrameService.js";
 import type { ImageService } from "../../media/decode/ImageService.js";
@@ -57,7 +57,7 @@ import { mediaTimePosition } from "../../media/demux/sampleIndex.js";
 import { isAbortError, isWorkerCrash, type FramePriority } from "../../media/workers/protocol.js";
 import { newUnitState, type UnitState } from "../../text/anim.js";
 import type { NeighborFrame, UpcomingText } from "../compositor/Compositor.js";
-import { HIGHLIGHT_SLOT, type CaptionHighlightFrame, type Composite, type DissolveLayer, type DrawList, type Layer, type MediaLayer, type PictureShape, type SolidGeometry, type SolidLayer, type TextAnimFrame, type TextCompositeLayer, type TextureLayer, type TransitionCompositeLayer, type UvRect } from "../compositor/drawList.js";
+import { type CaptionHighlightFrame, type Composite, type DissolveLayer, type DrawList, type Layer, type MediaLayer, type PictureShape, type SolidGeometry, type SolidLayer, type SolidStyle, type TextAnimFrame, type TextCompositeLayer, type TextureLayer, type TransitionCompositeLayer, type UvRect } from "../compositor/drawList.js";
 import type { TextureHandle } from "../gpu/renderer.js";
 import { multiplyInto, mutableIdentity, setMat, type Mat3, type MutableMat3 } from "../mat3.js";
 import type { Rect } from "../text/layout.js";
@@ -168,6 +168,8 @@ export class LayerTextures {
   private dissolveCount = 0;
   /** The active word's move (a scale highlight). */
   private readonly highlightState = newUnitState();
+  /** The atlases of a highlighted cue's paints in a pass (reused). */
+  private readonly paintAtlases: (ResolvedText | null)[] = [];
   /** Device px per project px of this pass (text rasters follow it). */
   private textScale = 1;
   private readonly scrubbed = new Set<MediaId>();
@@ -332,19 +334,37 @@ export class LayerTextures {
   private resolveKaraoke(pane: 0 | 1, layers: Layer[], layer: TextCompositeLayer, karaoke: CaptionHighlightFrame, scale: number): boolean {
     const text = this.deps.text;
     if (!text) return false;
-    if (layer.style.background.enabled) {
+    const wordBoxes = karaoke.wordBoxes;
+    if (layer.style.background.enabled && !wordBoxes) {
       const boxes = text.resolveBackground(layer.clipId, layer.text, layer.style, scale);
       if (boxes) this.pushText(pane, layers, layer.model, boxes, boxes.crop, boxes.rect, null, layer.opacity);
     }
     const atlas = text.resolveAtlas(layer.clipId, layer.text, layer.style, scale, "word");
-    const active = text.resolveAtlas(layer.clipId + HIGHLIGHT_SLOT, layer.text, karaoke.style, scale, "word");
     const cells = atlas?.units;
     if (!atlas || !cells) return false;
+    const playing = karaoke.to > karaoke.from;
+    const active = playing ? text.resolveAtlas(layer.clipId + karaoke.slot, layer.text, karaoke.style, scale, "word") : null;
+    // The other looks of the words (progressive, reveal, word colors, emphasis), each from its own atlas.
+    const paints = karaoke.paints;
+    const looks = this.paintAtlases;
+    looks.length = 0;
+    if (paints) {
+      for (let k = 0; k < paints.length; k++) {
+        const paint = paints[k] as { slot: string; style: TextStyle };
+        looks.push(k === 0 ? atlas : text.resolveAtlas(layer.clipId + paint.slot, layer.text, paint.style, scale, "word"));
+      }
+    }
+    if (wordBoxes) this.pushWordBoxes(pane, layers, layer.model, wordBoxes, layer.opacity);
     for (let i = 0; i < cells.length; i++) {
       // The active word comes from the highlight atlas (or, while it is being made, this one).
-      if (i >= karaoke.from && i < karaoke.to && active?.units) continue;
-      const cell = cells[i] as ResolvedUnit;
-      this.pushText(pane, layers, layer.model, atlas, cell.crop, cell.rect, null, layer.opacity);
+      if (playing && i >= karaoke.from && i < karaoke.to && active?.units) continue;
+      const k = paints ? (karaoke.unitPaint[i] ?? 0) : 0;
+      if (k < 0) continue;
+      // A look still being made shows the cue's own.
+      const made = looks[k];
+      const source = made?.units ? made : atlas;
+      const cell = (source.units as ResolvedUnit[])[i] as ResolvedUnit;
+      this.pushText(pane, layers, layer.model, source, cell.crop, cell.rect, null, layer.opacity);
     }
     const hot = active?.units;
     if (!active || !hot) return true;
@@ -358,11 +378,20 @@ export class LayerTextures {
   }
 
   /** Adds a pooled solid layer filling `rect` (content px of `model`) with `color`, its corners rounded by `radius`. */
-  private pushBox(pane: 0 | 1, layers: Layer[], model: Mat3, rect: Rect, color: SolidLayer["color"], radius: number, opacity: number): void {
+  private pushBox(pane: 0 | 1, layers: Layer[], model: Mat3, rect: Rect, color: SolidLayer["color"], radius: number, opacity: number, style: TextStyle["background"] | null = null): void {
     const out = (this.boxLayers[pane][this.boxCount] ??= newSolidLayer());
     this.boxCount += 1;
-    writeBox(out, model, rect, color, radius, opacity);
+    writeBox(out, model, rect, color, radius, opacity, style);
     layers.push(out);
+  }
+
+  /** The `word` background mode's boxes (Batch 59): a solid behind each shown word, the active one in the highlight color. */
+  private pushWordBoxes(pane: 0 | 1, layers: Layer[], model: Mat3, boxes: NonNullable<CaptionHighlightFrame["wordBoxes"]>, opacity: number): void {
+    const style = boxes.style;
+    for (const word of boxes.shown) {
+      const rect = boxes.rects[word];
+      if (rect) this.pushBox(pane, layers, model, rect, word === boxes.active ? boxes.activeColor : style.color, Math.min(style.radius, rect.width / 2, rect.height / 2), opacity, style);
+    }
   }
 
   /** Adds a pooled texture layer drawing `crop` of `resolved` over `rect`, moved by `state` (`writeTextQuad`). */
@@ -552,8 +581,13 @@ export class LayerTextures {
       if (writeTextQuad(out, model, resolved.texture, crop, rect, resolved.scale, state, alpha)) layers.push(out);
     };
     if (layer.karaoke) {
-      const karaoke = { ...layer.karaoke, box: layer.karaoke.box && { rect: { ...layer.karaoke.box.rect }, color: { ...layer.karaoke.box.color }, radius: layer.karaoke.box.radius } };
-      if (style.background.enabled) {
+      const karaoke = {
+        ...layer.karaoke,
+        box: layer.karaoke.box && { rect: { ...layer.karaoke.box.rect }, color: { ...layer.karaoke.box.color }, radius: layer.karaoke.box.radius },
+        unitPaint: [...layer.karaoke.unitPaint],
+        wordBoxes: layer.karaoke.wordBoxes && { ...layer.karaoke.wordBoxes, shown: [...layer.karaoke.wordBoxes.shown], activeColor: { ...layer.karaoke.wordBoxes.activeColor } },
+      };
+      if (style.background.enabled && !karaoke.wordBoxes) {
         const boxes = await text.exact(content, style, scale, "backgrounds");
         if (boxes) {
           unpins.push(boxes.release);
@@ -561,19 +595,42 @@ export class LayerTextures {
         }
       }
       const atlas = await text.exact(content, style, scale, "word");
-      const active = await text.exact(content, karaoke.style, scale, "word");
-      for (const part of [atlas, active]) if (part) unpins.push(part.release);
-      if (!atlas?.units || !active?.units) return;
+      const playing = karaoke.to > karaoke.from;
+      const active = playing ? await text.exact(content, karaoke.style, scale, "word") : null;
+      // The other looks of the words, each from its own atlas.
+      const looks: (ResolvedText | null)[] = [atlas];
+      const paints = karaoke.paints;
+      if (paints) for (let k = 1; k < paints.length; k++) looks.push(await text.exact(content, (paints[k] as { style: TextStyle }).style, scale, "word"));
+      for (const part of [atlas, active, ...looks.slice(1)]) if (part && "release" in part) unpins.push((part as { release: () => void }).release);
+      if (!atlas?.units || (playing && !active?.units)) return;
+      if (karaoke.wordBoxes) {
+        const boxes = karaoke.wordBoxes;
+        for (const word of boxes.shown) {
+          const rect = boxes.rects[word];
+          if (!rect) continue;
+          const box = newSolidLayer();
+          writeBox(box, model, rect, word === boxes.active ? boxes.activeColor : boxes.style.color, Math.min(boxes.style.radius, rect.width / 2, rect.height / 2), opacity, boxes.style);
+          layers.push(box);
+        }
+      }
       atlas.units.forEach((cell, i) => {
-        if (i < karaoke.from || i >= karaoke.to) push(atlas, cell.crop, cell.rect, null, opacity);
+        if (playing && i >= karaoke.from && i < karaoke.to) return;
+        const k = paints ? (karaoke.unitPaint[i] ?? 0) : 0;
+        if (k < 0) return;
+        const made = looks[k];
+        const source = made?.units ? made : atlas;
+        const unit = (source.units as ResolvedUnit[])[i] as ResolvedUnit;
+        push(source, unit.crop, unit.rect, null, opacity);
       });
       if (karaoke.box) {
         const box = newSolidLayer();
         writeBox(box, model, karaoke.box.rect, karaoke.box.color, karaoke.box.radius, opacity);
         layers.push(box);
       }
-      const state = highlightMove(newUnitState(), karaoke);
-      active.units.slice(karaoke.from, karaoke.to).forEach((cell) => push(active, cell.crop, cell.rect, state, opacity));
+      if (active?.units) {
+        const state = highlightMove(newUnitState(), karaoke);
+        active.units.slice(karaoke.from, karaoke.to).forEach((cell) => push(active, cell.crop, cell.rect, state, opacity));
+      }
       return;
     }
     if (!anim || anim.atlas === "block") {
@@ -927,7 +984,7 @@ function newTextureLayer(): WritableTextureLayer {
   return { kind: "texture", texture: NO_TEXTURE, transform: mutableIdentity(), opacity: 1, crop: { u0: 0, v0: 0, u1: 1, v1: 1 }, flipX: false, flipY: false, blur: 0 };
 }
 
-type WritableSolidLayer = Omit<SolidLayer, "transform" | "shape"> & { transform: MutableMat3; shape: SolidGeometry };
+type WritableSolidLayer = Omit<SolidLayer, "transform" | "shape"> & { transform: MutableMat3; shape: SolidGeometry; styleValue?: SolidStyle; strokeValue?: StrokeStyle; shadowValue?: ShadowStyle };
 
 type WritableDissolveLayer = Omit<DissolveLayer, "transform"> & { transform: MutableMat3 };
 
@@ -950,13 +1007,38 @@ function newSolidLayer(): WritableSolidLayer {
 }
 
 /** `out` as a box over `rect` (content px of `model`) in `color`, its corners rounded by `radius` (anti-aliased). */
-function writeBox(out: WritableSolidLayer, model: Mat3, rect: Rect, color: SolidLayer["color"], radius: number, opacity: number): void {
+function writeBox(out: WritableSolidLayer, model: Mat3, rect: Rect, color: SolidLayer["color"], radius: number, opacity: number, box: TextStyle["background"] | null = null): void {
   multiplyInto(out.transform, model, setMat(out.transform, rect.width, 0, 0, rect.height, rect.x, rect.y));
   out.color = color;
   out.opacity = opacity;
   out.shape.width = rect.width;
   out.shape.height = rect.height;
   out.shape.radius = radius;
+  // A text box's border (inside its edge) and shadow, as its raster draws them.
+  const stroke = box?.stroke;
+  const shadow = box?.shadow;
+  const border = stroke !== undefined && stroke.enabled && stroke.width > 0 && stroke.color.a > 0 ? stroke : null;
+  const drop = shadow !== undefined && shadow.enabled && shadow.color.a > 0 ? shadow : null;
+  if (!border && !drop) {
+    out.style = null;
+    return;
+  }
+  const style = (out.styleValue ??= { gradient: null, stroke: null, shadow: null, part: "all" });
+  if (border) {
+    const value = (out.strokeValue ??= { width: 0, color: border.color, align: "inside" });
+    value.width = border.width;
+    value.color = border.color;
+    style.stroke = value;
+  } else style.stroke = null;
+  if (drop) {
+    const value = (out.shadowValue ??= { x: 0, y: 0, blur: 0, spread: 0, color: drop.color });
+    value.x = drop.x;
+    value.y = drop.y;
+    value.blur = drop.blur;
+    value.color = drop.color;
+    style.shadow = value;
+  } else style.shadow = null;
+  out.style = style;
 }
 
 /** `out` as the active word's move: grown by the highlight's scale about its middle. */

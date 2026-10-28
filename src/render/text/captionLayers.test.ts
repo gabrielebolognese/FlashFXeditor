@@ -261,3 +261,135 @@ describe("styles per cue (spec §20.3)", () => {
     expect(upcoming.map((item) => item.style.fontSize)).toEqual([100, 200]);
   });
 });
+
+describe("captions v2 (spec §21.8, Batch 59)", () => {
+  const CORAL = { r: 1, g: 0.4, b: 0.3, a: 1 };
+  const BLUE = { r: 0, g: 0, b: 1, a: 1 };
+  const FOUR: CaptionWord[] = [
+    { text: "ab", start: 0, end: 5 },
+    { text: "cd", start: 5, end: 10 },
+    { text: "ef", start: 10, end: 15 },
+    { text: "gh", start: 15, end: 20 },
+  ];
+  const four = (patch: Partial<CaptionStyle> = {}, mode: CaptionHighlightMode = "progressive", words: CaptionWord[] = FOUR) => project("ab cd ef gh", captionStyle({ maxWidth: 2000, ...patch }, mode), words);
+  const paintFills = (layer: TextCompositeLayer) => layer.karaoke!.paints!.map((paint) => paint.style.fill);
+
+  it("progressive: spoken words and the active one take the highlight color, the upcoming ones stay inactive", () => {
+    const at = (frame: number) => captionLayer(four(), frame)!;
+    expect(at(0).style.fill).toEqual(GREY);
+    expect(at(0).karaoke).toMatchObject({ from: 0, to: 1 });
+    expect(at(0).karaoke!.unitPaint).toEqual([0, 0, 0, 0]);
+    const k = at(12).karaoke!;
+    expect(k).toMatchObject({ from: 2, to: 3 });
+    expect(k.style.fill).toEqual(YELLOW);
+    // ab and cd are spoken: lit from the highlight look (paint 1); gh waits.
+    expect(k.unitPaint.map((paint) => (paint > 0 ? "lit" : "dim"))).toEqual(["lit", "lit", "dim", "dim"]);
+    expect(paintFills(at(12))[1]).toEqual(YELLOW);
+    // After the last word: all lit and nothing active.
+    const done = at(25).karaoke!;
+    expect(done).toMatchObject({ from: 0, to: 0 });
+    expect(done.unitPaint.every((paint) => paint > 0)).toBe(true);
+  });
+
+  it("reveal hides the upcoming words", () => {
+    const k = captionLayer(four({}, "reveal"), 7)!.karaoke!;
+    expect(k).toMatchObject({ from: 1, to: 2 });
+    expect(k.unitPaint[0]).toBeGreaterThan(0);
+    expect(k.unitPaint.slice(2)).toEqual([-1, -1]);
+    const first = captionLayer(four({}, "reveal"), 0)!.karaoke!;
+    expect(first.unitPaint.slice(1)).toEqual([-1, -1, -1]);
+  });
+
+  it("an emphasis word shows the emphasis color from the cue's first frame; its own color wins over everything", () => {
+    const words = FOUR.map((word, i) => (i === 2 ? { ...word, emphasis: true } : i === 3 ? { ...word, emphasis: true, color: BLUE } : word));
+    const layer = captionLayer(four({ highlight: { mode: "progressive", color: YELLOW, inactiveColor: GREY, emphasisColor: CORAL } }, "progressive", words), 0)!;
+    const k = layer.karaoke!;
+    const fills = paintFills(layer);
+    // ef: coral from frame 0 (upcoming), gh: its own blue.
+    expect(fills[k.unitPaint[2] as number]).toEqual(CORAL);
+    expect(fills[k.unitPaint[3] as number]).toEqual(BLUE);
+    expect(fills[k.unitPaint[1] as number]).toEqual(GREY);
+    // Playing the emphasis word: coral, not the highlight yellow.
+    const playing = captionLayer(four({ highlight: { mode: "progressive", color: YELLOW, inactiveColor: GREY, emphasisColor: CORAL } }, "progressive", words), 12)!.karaoke!;
+    expect(playing.style.fill).toEqual(CORAL);
+    // Without an emphasis color the highlight color stands in.
+    const plain = captionLayer(four({}, "color", words), 0)!;
+    expect(paintFills(plain)[plain.karaoke!.unitPaint[2] as number]).toEqual(YELLOW);
+  });
+
+  it("words with colors or emphasis make a cue stateful even with the mode none", () => {
+    const words = FOUR.map((word, i) => (i === 1 ? { ...word, color: BLUE } : word));
+    const layer = captionLayer(four({}, "none", words), 12)!;
+    expect(layer.style.fill).toEqual(DEFAULT_TEXT_STYLE.fill);
+    expect(paintFills(layer)[layer.karaoke!.unitPaint[1] as number]).toEqual(BLUE);
+    expect(captionLayer(four({}, "none"), 12)!.karaoke).toBeNull();
+  });
+
+  it("lists every paint's atlas among the texts about to show", () => {
+    const upcoming = new Compositor().upcomingTexts(four(), 0, 60);
+    expect(upcoming.map((item) => item.clipId)).toEqual(["q", `q${HIGHLIGHT_SLOT}`]);
+  });
+
+  const BOX = { enabled: true, color: { r: 0, g: 0, b: 0, a: 1 }, paddingX: 10, paddingY: 5, radius: 8, mode: "word" as const };
+  const boxed = (mode: CaptionHighlightMode = "color", words: CaptionWord[] = FOUR) => {
+    const base = captionStyle({ maxWidth: 2000 }, mode);
+    return project("ab cd ef gh", { ...base, text: { ...base.text, background: BOX } }, words);
+  };
+
+  it("word box mode: one box per word, the active one in the highlight color with the background highlight", () => {
+    const layer = captionLayer(boxed("background"), 7)!;
+    const boxes = layer.karaoke!.wordBoxes!;
+    expect(boxes.shown).toEqual([0, 1, 2, 3]);
+    expect(boxes.active).toBe(1);
+    expect(boxes.activeColor).toEqual(YELLOW);
+    expect(layer.karaoke!.box).toBeNull();
+    // 110 px words, the box padded by 10 px each side and 5 above and below the 120 px line.
+    expect(boxes.rects[0]).toMatchObject({ width: 130, height: 130 });
+    expect(captionLayer(boxed("color"), 7)!.karaoke!.wordBoxes!.active).toBe(-1);
+  });
+
+  it("word box mode with reveal shows only the boxes of the words that have started", () => {
+    expect(captionLayer(boxed("reveal"), 7)!.karaoke!.wordBoxes!.shown).toEqual([0, 1]);
+  });
+
+  it("draws the word boxes as solids behind their words", () => {
+    const text = { begin: () => undefined, end: () => undefined, resolve: () => null, exact: async () => null, resolveAtlas: () => null, resolveBackground: () => null, warm: () => false };
+    void text;
+    const layout = textLayout(captionLook("ab cd ef gh", boxed("color").captionTracks.cc!.style).content, boxed("color").captionTracks.cc!.style.text);
+    // One background rect per word (the layout's own, used when the cue has no word timings).
+    expect(layout.backgrounds).toHaveLength(4);
+    expect(layout.backgrounds[0]).toMatchObject({ width: 130 });
+  });
+
+  describe("cue animations", () => {
+    const anim = (value: NonNullable<CaptionStyle["anim"]>) => project("ab", captionStyle({ anim: value }));
+
+    it("a 2-frame fade in and a pop out render as specified", () => {
+      const p = anim({ in: { kind: "fade", frames: 2 }, out: { kind: "pop", frames: 2 } });
+      expect(captionLayer(p, 0)!.opacity).toBeCloseTo(0.5);
+      expect(captionLayer(p, 1)!.opacity).toBeCloseTo(1);
+      expect(captionLayer(p, 15)!.opacity).toBe(1);
+      const last = captionLayer(p, 29)!;
+      expect(last.opacity).toBeCloseTo(0.5);
+      // The box shrinks about its middle: narrower than at rest.
+      const rest = captionLayer(p, 15)!;
+      const wide = (layer: TextCompositeLayer) => Math.hypot(layer.model[0] as number, layer.model[1] as number);
+      expect(wide(last)).toBeLessThan(wide(rest));
+      const middle = (layer: TextCompositeLayer) => applyToPoint(layer.model, 55, 60);
+      expect(middle(last).x).toBeCloseTo(middle(rest).x);
+      expect(middle(last).y).toBeCloseTo(middle(rest).y);
+    });
+
+    it("is clamped on short cues", () => {
+      const p = project("ab", captionStyle({ anim: { in: { kind: "fade", frames: 50 }, out: { kind: "fade", frames: 50 } } }));
+      p.clips.q = { ...(p.clips.q as CaptionClip), duration: 6 };
+      expect([0, 1, 2, 3, 4, 5].map((frame) => captionLayer(p, frame)!.opacity.toFixed(2))).toEqual(["0.33", "0.67", "1.00", "1.00", "0.67", "0.33"]);
+    });
+
+    it("a cue's override replaces its track's animation", () => {
+      const p = project("ab", captionStyle({ anim: { in: { kind: "fade", frames: 4 } } }));
+      p.clips.q = { ...(p.clips.q as CaptionClip), styleOverride: { anim: { in: { kind: "fade", frames: 0 } } } };
+      expect(captionLayer(p, 0)!.opacity).toBe(1);
+    });
+  });
+});

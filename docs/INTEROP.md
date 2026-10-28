@@ -299,6 +299,41 @@ The caption track's `captionTracks[<track id>].style` styles every cue; a cue's 
 }
 ```
 
+### 6.1 Captions v2: progressive words, emphasis, cue animations, word boxes (manifest keys `captions.highlightModes`, `captions.wordEmphasis`, `captions.cueAnims`, `captions.boxModes`, `captions.wordsImport`; schema 6)
+
+Every field is optional: a project without them draws as before, and schema 5 projects open unchanged.
+
+- `highlight.mode` also takes `progressive` (each word turns from `inactiveColor` to `color` as it starts and stays) and `reveal` (the words that have not started are hidden; the spoken one shows in `color`, the earlier ones in `inactiveColor`). The same holds in the preview, the export and `cli render`.
+- `highlight.emphasisColor`: the color of the emphasis words, from the cue's first frame on. A word with `"emphasis": true` takes it; a word's own `color` wins over everything. A cue override can set `emphasisColor` but not remove the track's.
+- `anim` (on a caption style and in a cue's `styleOverride`): `in` and `out`, each `{ "kind": "fade" | "pop" | "slideUp" | "slideDown", "frames": <integer >= 0> }`. `frames` count project frames, are clamped to half the cue, and `0` means none (a cue uses it to drop its track's animation). `fade` is linear in opacity, `pop` grows from 60% (and back), the slides move by half the caption's height.
+- `text.background.mode` also takes `word`: one box per word, with the background's padding, radius, stroke and shadow. With the `background` highlight the spoken word's box takes the highlight color.
+- Text presets may carry `captionAnim` (the same `in` / `out`), applied with the preset.
+
+`fixtures/interop/captions-v2/` has a project that uses all of this and `words.json`, the word timings the editor's **Import words** reads: an array of `{ "word", "startMs", "endMs" }` (or `{ "words": [...] }`, or Whisper's `segments`), seconds or milliseconds (`"unit"`), with an optional `cues` list of `{ "from", "to", "emphasis": [word indexes] }` that makes exactly those cues; without it the dialog's rules (words per cue, characters per line, lines, breaks at punctuation and pauses) cut the words.
+
+```json Clip
+{
+  "id": "q2",
+  "trackId": "cc1",
+  "kind": "caption",
+  "name": "Cue q2",
+  "start": 50,
+  "duration": 40,
+  "enabled": true,
+  "text": "what happens\nnext today",
+  "words": [
+    { "text": "what", "start": 0, "end": 6 },
+    { "text": "happens", "start": 6, "end": 16, "emphasis": true },
+    { "text": "next", "start": 16, "end": 25 },
+    { "text": "today", "start": 25, "end": 38, "color": { "r": 0.2, "g": 0.35, "b": 0.95, "a": 1 } }
+  ],
+  "styleOverride": {
+    "highlight": { "mode": "reveal", "emphasisColor": { "r": 1, "g": 0.36, "b": 0.3, "a": 1 } },
+    "anim": { "in": { "kind": "slideUp", "frames": 4 }, "out": { "kind": "pop", "frames": 2 } }
+  }
+}
+```
+
 ## 7. Generator metadata and stand-ins
 
 `meta.generator` names the tool that wrote the project; the editor shows it in the Project section of the properties panel and never changes it.
@@ -602,7 +637,7 @@ A box behind each line or the whole text.
 | `paddingX` | number (>= 0) | yes | `28` | Horizontal padding, project px. |
 | `paddingY` | number (>= 0) | yes | `12` | Vertical padding, project px. |
 | `radius` | number (>= 0) | yes | `16` | Corner radius, project px. |
-| `mode` | `"line"` | `"block"` | yes | `"block"` | One box per line or one for the block. |
+| `mode` | `"line"` | `"block"` | `"word"` | yes | `"block"` | One box per line, one for the block, or (captions) one per word. |
 | `stroke` | [TextStroke](#textstroke) | no |  | The box's border, drawn inside its edge (Batch 58); absent: none. |
 | `shadow` | [TextShadow](#textshadow) | no |  | The box's shadow, drawn outside it (Batch 58); absent: none. |
 
@@ -668,6 +703,7 @@ A text preset. Project presets are files in `presets/text/`; `textPresetsLocal` 
 | `sampleText` | string | no |  | What its button shows and a new clip reads. |
 | `sets` | `"titles"` | `"subtitles"` | `"captions"`[] | no |  | The bundled sets it is in. |
 | `highlight` | [CaptionHighlight](#captionhighlight) | no |  | The word highlight it gives a caption track. |
+| `captionAnim` | [CaptionAnim](#captionanim) | no |  | The cue animations it gives a caption track (Batch 59). |
 | `tags` | string[] | yes |  | Its user sets. |
 | `favorite` | boolean | yes |  | Starred. |
 | `createdAt` | string | yes |  | ISO time. |
@@ -679,9 +715,10 @@ How the word being spoken stands out when a cue has word timings.
 
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| `mode` | `"none"` | `"color"` | `"background"` | `"scale"` | `"colorAndScale"` | yes |  | The effect. |
+| `mode` | `"none"` | `"color"` | `"background"` | `"scale"` | `"colorAndScale"` | `"progressive"` | `"reveal"` | yes |  | The effect. |
 | `color` | [RGBA](#rgba) | yes |  | The active word's fill (color modes) or its box (background). |
 | `inactiveColor` | [RGBA](#rgba) | yes |  | The fill of the other words while a cue has word timings. |
+| `emphasisColor` | [RGBA](#rgba) | no |  | The fill of emphasis words from the cue's first frame (Batch 59); absent: the highlight color. |
 
 #### CaptionStyle
 
@@ -696,6 +733,25 @@ The look of a caption track's cues.
 | `maxWidth` | number (> 0) | yes |  | Words wrap at this width, project px. |
 | `maxLines` | integer (>= 1) | yes |  | A cue with more lines is drawn smaller until it fits. |
 | `highlight` | [CaptionHighlight](#captionhighlight) | yes |  | The word highlight. |
+| `anim` | [CaptionAnim](#captionanim) | no |  | Cue in and out animations (Batch 59); absent: none. |
+
+#### CueAnim
+
+An animation of a cue's whole caption box at its start or end, at most half the cue long.
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `kind` | `"fade"` | `"pop"` | `"slideUp"` | `"slideDown"` | yes |  | The animation. |
+| `frames` | integer (>= 0) | yes |  | How long it runs; 0 is none (a cue override of its track's animation). Integer frames at the project frame rate. |
+
+#### CaptionAnim
+
+The animations of a cue's start (`in`) and end (`out`).
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `in` | [CueAnim](#cueanim) | no |  | At the cue's start. |
+| `out` | [CueAnim](#cueanim) | no |  | At the cue's end. |
 
 #### CaptionTextOverride
 
@@ -749,7 +805,7 @@ Any parts of `TextBackground`.
 | `paddingX` | number (>= 0) | no | `28` | Horizontal padding, project px. |
 | `paddingY` | number (>= 0) | no | `12` | Vertical padding, project px. |
 | `radius` | number (>= 0) | no | `16` | Corner radius, project px. |
-| `mode` | `"line"` | `"block"` | no | `"block"` | One box per line or one for the block. |
+| `mode` | `"line"` | `"block"` | `"word"` | no | `"block"` | One box per line, one for the block, or (captions) one per word. |
 | `stroke` | [TextStroke](#textstroke) | no |  | The box's border, drawn inside its edge (Batch 58); absent: none. |
 | `shadow` | [TextShadow](#textshadow) | no |  | The box's shadow, drawn outside it (Batch 58); absent: none. |
 
@@ -759,9 +815,10 @@ Any parts of `CaptionHighlight`.
 
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| `mode` | `"none"` | `"color"` | `"background"` | `"scale"` | `"colorAndScale"` | no |  | The effect. |
+| `mode` | `"none"` | `"color"` | `"background"` | `"scale"` | `"colorAndScale"` | `"progressive"` | `"reveal"` | no |  | The effect. |
 | `color` | [RGBA](#rgba) | no |  | The active word's fill (color modes) or its box (background). |
 | `inactiveColor` | [RGBA](#rgba) | no |  | The fill of the other words while a cue has word timings. |
+| `emphasisColor` | [RGBA](#rgba) | no |  | The fill of emphasis words from the cue's first frame (Batch 59); absent: the highlight color. |
 
 #### CaptionStyleOverride
 
@@ -776,6 +833,7 @@ A cue's own style over its track's: a sparse set of fields, so a change of the t
 | `maxWidth` | number (> 0) | no |  | Wrap width. |
 | `maxLines` | integer (>= 1) | no |  | Line count. |
 | `highlight` | [CaptionHighlightOverride](#captionhighlightoverride) | no |  | Highlight parts. |
+| `anim` | [CaptionAnim](#captionanim) | no |  | Cue animations. |
 
 #### CaptionTrackData
 
@@ -794,6 +852,8 @@ A word of a cue with its timing.
 | `text` | string | yes |  | The word. |
 | `start` | integer | yes |  | Relative to the cue's start, inclusive; may be negative or past the cue's end (an in-trim keeps the words it hides, so a trim back shows them again). Integer frames at the project frame rate. |
 | `end` | integer | yes |  | Relative to the cue's start, exclusive; after `start`. Integer frames at the project frame rate. |
+| `emphasis` | boolean | no |  | Shows the highlight's emphasis color from the cue's first frame (Batch 59). |
+| `color` | [RGBA](#rgba) | no |  | This word's own fill, over every other color (Batch 59). |
 
 #### Settings
 
@@ -926,7 +986,7 @@ project.json.
 
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| `schemaVersion` | integer (>= 1) | yes | `5` | The schema version; this build writes and reads up to the current one. |
+| `schemaVersion` | integer (>= 1) | yes | `6` | The schema version; this build writes and reads up to the current one. |
 | `id` | string (not empty) | yes |  | Unique id, never changes (uuid v4 recommended). |
 | `name` | string | yes |  | Project name. |
 | `settings` | [Settings](#settings) | yes |  | Frame and time base. |
