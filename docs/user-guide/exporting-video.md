@@ -105,7 +105,7 @@ The presets keep the shape of your project. A project larger than 1920 pixels on
 | **Custom** 2160×3840 | 1080×1920 | 2160×3840 |
 | **Custom** 720×1280 | 720×1280 | 720×1280 |
 
-To post a full-screen Reel, TikTok or Short, use a **9:16** project. See [Change the frame size](project-settings-and-templates.md#change-the-frame-size). **Custom** can export your project's full size, or 75% or 50% of it; see [Change the export settings](#change-the-export-settings).
+To post a full-screen Reel, TikTok or Short, use a **9:16** project; for YouTube or a TV, a **16:9** one. Switch with **Ratio** in the Preview panel header. See [Switch between vertical and horizontal](project-settings-and-templates.md#switch-between-vertical-and-horizontal). **Custom** can export your project's full size, or 75% or 50% of it; see [Change the export settings](#change-the-export-settings).
 
 ### Frame rate
 

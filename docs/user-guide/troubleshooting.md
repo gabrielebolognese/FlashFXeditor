@@ -1632,9 +1632,9 @@ See [Audio](audio.md).
 
 ### Pictures got smaller after a resolution change
 
-**Symptom:** After you chose another **Resolution** in the **Project** section, the pictures are smaller (or larger), and bands of the background show around them.
+**Symptom:** After you chose another **Resolution** in the **Project** section or another **Ratio** in the Preview panel header, a picture is smaller than the frame, and bands of the background show around it.
 
-**Cause:** You chose **Scale layout** in the **Change the frame size** dialog: each picture grows or shrinks by the smaller of the two size changes, so a picture that fit inside the old frame still fits inside the new one. With **Keep**, pictures keep their size in pixels instead, so they can be cut off by the new frame or leave bands.
+**Cause:** With **Adapt layout**, a picture that fit the old frame fits the new one: a vertical video in a horizontal frame shows whole, with bands at the sides. With **Keep**, pictures keep their size in pixels instead, so they can be cut off by the new frame or leave bands.
 
 **Fix:** Select the clips and click **Fill frame** to cover the new frame, or **Fit in frame** to fit it. To go back to the old resolution, press <kbd>Ctrl</kbd>+<kbd>Z</kbd>, then choose the resolution again and pick the other button. See [Change the frame size](project-settings-and-templates.md#change-the-frame-size).
 

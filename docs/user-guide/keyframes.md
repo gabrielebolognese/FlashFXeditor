@@ -279,7 +279,7 @@ Select several clips to work on their keyframes together:
 | Freeze frame | The frozen clip holds the look the picture has at the playhead, without keyframes. The parts before and after it keep their motion. |
 | Duplicate (<kbd>Ctrl</kbd>+<kbd>D</kbd>, <kbd>Alt</kbd>+drag), copy and paste | The copy gets the same keyframes. A copy made in the preview with <kbd>Ctrl</kbd>+<kbd>D</kbd> keeps the motion 20 pixels down and to the right. |
 | **Paste attributes** | With **Keyframes** checked, each pasted **Transform**, **Opacity** or **Audio gain** group replaces the clip's keyframes in that section with the copied clip's; unchecked, it removes them. See [Give clips the look of another clip (Paste attributes)](copy-and-paste.md#give-clips-the-look-of-another-clip-paste-attributes). |
-| A new project resolution | With **Scale layout**, position and scale keyframes scale with the layout, like the pictures; with **Keep**, they stay as they are. See [Change the frame size](project-settings-and-templates.md#change-the-frame-size). |
+| A new project resolution | With **Adapt layout**, position keyframes move with the frame and scale keyframes change with the picture; with **Keep**, they stay as they are. See [Change the frame size](project-settings-and-templates.md#change-the-frame-size). |
 | A new project frame rate | Each keyframe stays at the same moment of its clip. Two keyframes that land on the same frame of the new rate become one. See [Change the frame rate](project-settings-and-templates.md#change-the-frame-rate). |
 
 ## Zoom in smoothly with punch zoom

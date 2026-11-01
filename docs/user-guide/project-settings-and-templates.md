@@ -1,6 +1,6 @@
 # Project settings and templates
 
-The **Project** section of **Edit Properties** holds the settings of the open project: its name, frame size, frame rate and background, plus a few defaults that apply to every project. You can change the frame size and the frame rate at any time, also when the timeline is full: your clips, keyframes, captions and markers convert with them. Save a project's setup as a template to start new projects with the same size, tracks and text presets.
+The **Project** section of **Edit Properties** holds the settings of the open project: its name, frame size, frame rate and background, plus a few defaults that apply to every project. You can change the frame size and the frame rate at any time, also when the timeline is full: your clips, keyframes, captions and markers convert with them. To turn a vertical short into a horizontal video (or back) in one click, use **Ratio** in the Preview panel header. Save a project's setup as a template to start new projects with the same size, tracks and text presets.
 
 > **Video placeholder: Convert a project to 60 fps and save it as a template**
 > - File: `videos/project-settings-and-templates/overview.mp4` (not recorded yet)
@@ -9,13 +9,14 @@ The **Project** section of **Edit Properties** holds the settings of the open pr
 >   1. A 30 fps project with two videos and a dissolve on V1, their sound on A1, a title with the **Word pop** animation on V2 and two markers. Put the playhead at 2 seconds and click an empty area of the timeline tracks: the **Project** section shows.
 >   2. Choose **60 fps** in **Frame rate**: the message **Converted to 60 fps** appears; the clips, the dissolve and the markers stay at the same places on the ruler, and the preview shows the same picture.
 >   3. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>: the badge in the app bar reads 30 fps again. Press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd>.
->   4. Choose **1:1 · 1080×1080** in **Resolution**: the **Change the frame size** dialog opens; click **Scale layout**: the pictures fit inside the square frame.
+>   4. Choose **1:1 · 1080×1080** in **Resolution**: the **Change the frame size** dialog opens; click **Adapt layout**: the pictures refit the square frame.
 >   5. Click **Save as template…**, type `Square talk`, click **Save template**: the message **Saved the template Square talk** appears.
 >   6. Reload the page: the start screen lists **Square talk** under **New from template**.
 
 ## In this page
 - [Open the Project section](#open-the-project-section)
 - [What the Project section sets](#what-the-project-section-sets)
+- [Switch between vertical and horizontal](#switch-between-vertical-and-horizontal)
 - [Change the frame size](#change-the-frame-size)
 - [Change the frame rate](#change-the-frame-rate)
 - [Save a project as a template](#save-a-project-as-a-template)
@@ -65,36 +66,63 @@ The last row, **Project**, has two buttons:
 | **History…** | Lists the earlier versions of the project and restores one. See [Restore an older version](projects-and-saving.md#restore-an-older-version). |
 | **Save as template…** | Saves the project's setup as a template. See [Save a project as a template](#save-a-project-as-a-template). |
 
+## Switch between vertical and horizontal
+
+> **Video placeholder: Turn a vertical short into a horizontal video**
+> - File: `videos/project-settings-and-templates/ratio.mp4` (not recorded yet)
+> - Length: about 40 seconds
+> - Shows:
+>   1. A 9:16 project with a vertical phone video on V1, a landscape clip after it, a title near the top on V2 and captions on **CC**.
+>   2. In the Preview panel header, click **Ratio** (it reads **9:16**) and choose **16:9 Horizontal**: the **Change the frame size** dialog reads "From 1080×1920 to 1920×1080."
+>   3. Click **Adapt layout**: the frame turns horizontal. The vertical video shows whole in the middle with bands at the sides, the landscape clip fills the frame, the title stays near the top at the same size, and the captions run wider along the bottom.
+>   4. Click **Ratio**, choose **9:16 Vertical** and click **Adapt layout**: the short is vertical again.
+
+Click **Ratio** in the Preview panel header. It shows the current shape, for example **9:16**. Choose a shape:
+
+| Choice | Frame at 1080p | Made for |
+| --- | --- | --- |
+| **9:16 Vertical** | 1080×1920 | Reels, TikTok, Shorts |
+| **4:5 Portrait** | 1080×1350 | Feed posts |
+| **1:1 Square** | 1080×1080 | Feed posts |
+| **16:9 Horizontal** | 1920×1080 | YouTube, TV, laptops |
+
+The project keeps its resolution: a 4K vertical project (2160×3840) becomes 3840×2160, not 1920×1080. As with any new frame size, the **Change the frame size** dialog then asks how your clips follow the new frame; click **Adapt layout** to refit them. See [Change the frame size](#change-the-frame-size).
+
+You can switch as often as you like, at any time; each switch is one undo step. The same choices are in the command palette (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>, type `ratio`). For any other size, choose **Custom** in the **Resolution** row of the Project section. The exported video has the project's shape: a 16:9 project exports a horizontal video. See [Exporting video](exporting-video.md).
+
 ## Change the frame size
 
-> **Video placeholder: Change the frame size with Scale layout or Keep**
+> **Video placeholder: Change the frame size with Adapt layout or Keep**
 > - File: `videos/project-settings-and-templates/frame-size.mp4` (not recorded yet)
 > - Length: about 45 seconds
 > - Shows:
 >   1. A 9:16 project with a full-frame vertical video on V1 and a logo in the top right corner on V2. Click an empty area of the timeline tracks.
 >   2. Choose **4:5 · 1080×1350** in **Resolution**: the **Change the frame size** dialog reads "From 1080×1920 to 1080×1350."
->   3. Click **Scale layout**: the video now fits the height of the frame, with bands at the sides, and the logo stays in the corner, a little smaller.
+>   3. Click **Adapt layout**: the video now fits the height of the frame, with bands at the sides, and the logo stays in the corner at its size.
 >   4. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>, choose **4:5 · 1080×1350** again and click **Keep**: the video keeps its size and is cut off at the top and bottom; the logo keeps its size and its distance from the center.
 >   5. Press <kbd>Ctrl</kbd>+<kbd>Z</kbd>.
 
-Choose another **Resolution**, or type another size with **Custom**. When the timeline has pictures (videos, images, solids or text), the **Change the frame size** dialog asks how they should follow the new frame. It names the old and the new size, for example "From 1080×1920 to 1080×1350."
+Choose another **Resolution**, type another size with **Custom**, or pick a shape in **Ratio** (see [Switch between vertical and horizontal](#switch-between-vertical-and-horizontal)). When the timeline has pictures (videos, images, solids or text) or captions, the **Change the frame size** dialog asks how they should follow the new frame. It names the old and the new size, for example "From 1080×1920 to 1080×1350."
 
 | Button | What happens |
 | --- | --- |
-| **Scale layout** (highlighted; <kbd>Enter</kbd>) | "Positions and sizes follow the new frame": every picture sits in the new frame as it sat in the old one. See [What Scale layout does](#what-scale-layout-does). |
+| **Adapt layout** (highlighted; <kbd>Enter</kbd>) | "Every layer follows the new frame: videos and images refit it." See [What Adapt layout does](#what-adapt-layout-does). |
 | **Keep** | "Every layer keeps its size in pixels and its place from the center." A picture that filled the old frame can now be cut off or leave bands. |
 | **Cancel**, <kbd>Escape</kbd> | The frame size stays as it was. |
 
-Either choice is one undo step named **Change resolution**; <kbd>Ctrl</kbd>+<kbd>Z</kbd> puts back the old size and layout. When the timeline has no pictures, for example in a new project, the size changes at once without the dialog.
+Either choice is one undo step named **Change resolution**; <kbd>Ctrl</kbd>+<kbd>Z</kbd> puts back the old size and layout. When the timeline has no pictures and no captions, for example in a new project, the size changes at once without the dialog.
 
-### What Scale layout does
+### What Adapt layout does
 
-- Each picture keeps its place relative to the frame: its position moves in proportion to the new width and height.
-- Each picture grows or shrinks by the smaller of the two size changes, so a picture that fit inside the old frame fits inside the new one. Angles and flips stay.
-- Keyframes follow: the positions and scales stored in them change the same way, so animated pictures keep their motion in the new frame. See [Keyframes](keyframes.md).
-- Pictures on locked tracks are scaled too.
+- **Videos and images** refit the new frame. A picture that fit the old frame (as clips are placed when you add them) fits the new one; a picture that filled it (**Fill frame**) fills the new one. A vertical video in a vertical frame counts as fit: in a horizontal frame it shows whole, with bands of the background at the sides.
+- **Smaller pictures**, such as a picture in picture or a zoomed-in shot, keep their size compared with a fitted picture and their place in the frame: one in the top right corner stays in the top right corner.
+- **Text and shapes** keep their place in the frame and the size new ones get, which follows the short side of the frame: from 1080×1920 to 1920×1080, a title keeps its size. One that would not fit inside the new frame shrinks until it does, and one that was inside the old frame stays inside the new one.
+- **A solid as large as the frame**, such as a background color, takes the new frame's size.
+- **Captions** keep their place. Their text size follows the short side of the frame and their line width the width of the frame, so in a horizontal frame a line holds more words.
+- **Keyframes** follow: positions move with the frame and scales change with the picture, so animated pictures keep their motion in the new frame. See [Keyframes](keyframes.md).
+- Angles and flips stay, and pictures on locked tracks follow too.
 
-For example, going from **9:16 · 1080×1920** to **4:5 · 1080×1350** makes every picture about 70% of its size: a full-frame vertical video now fits the height of the new frame, with bands at the sides. To cover the new frame, select the clips and click **Fill frame** in **Edit Properties**; to refit a picture to the frame, click **Fit in frame** or **Reset transform**. See [Fit, fill or center a picture](editing-properties.md#fit-fill-or-center-a-picture).
+For example, going from **9:16 · 1080×1920** to **16:9 · 1920×1080**, a vertical phone video shows whole in the middle with bands at the sides, a landscape clip fills the frame, and a title near the top stays near the top at the same size. To cover the frame with the vertical video, select it and click **Fill frame** in **Edit Properties**; to refit a picture, click **Fit in frame** or **Reset transform**. See [Fit, fill or center a picture](editing-properties.md#fit-fill-or-center-a-picture).
 
 ## Change the frame rate
 
