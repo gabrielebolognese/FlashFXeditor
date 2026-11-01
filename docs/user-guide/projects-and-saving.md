@@ -98,7 +98,7 @@ What you can undo:
 | Undoable (one step each) | Not undoable |
 | --- | --- |
 | Renaming the project | Moving the playhead and playing |
-| Changing the resolution (with **Scale layout** or **Keep**), the background color, and the frame rate with every timing it converts | Selecting clips, tracks, a cut (edit point), a gap or a marker |
+| Changing the resolution (with **Adapt layout** or **Keep**), the background color, and the frame rate with every timing it converts | Selecting clips, tracks, a cut (edit point), a gap or a marker |
 | Importing media, renaming media, removing media | Zooming, scrolling and panning the timeline (also with the scrollbars), zooming and panning the preview, the preview quality, overlays and fullscreen |
 | Adding media to the timeline: each insert, overwrite, drag, drop on the preview or **Add to canvas**; dropped files with their import are one step | Panel sizes, panel tabs, the media view and sort order, skimming media cards |
 | Moving, inserting, duplicating and nudging clips (a quick series of nudges is one step) | **Loop playback**, **Snap**, **Linked selection**, **Ripple mode**, **Audio scrub**, the timecode format, and every setting of **Settings** (also the **Autosave**, duration, transition, proxy and cache rows of the **Project** section) |

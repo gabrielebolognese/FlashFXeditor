@@ -727,7 +727,7 @@ Cache is disposable: deleting it only costs regeneration. A `Clear cache` button
 
 ## 13. Preview panel chrome
 
-See §7.8. In addition: a tiny status strip under the transport shows the current quality mode (`Auto: proxy`/`full`), dropped frame count for the last playback (resets on play), and the GPU memory of the texture pool (dev toggle). The panel header has: `Fullscreen`, `Safe zones` dropdown, `Zoom` dropdown, `Quality` dropdown, `Snap` (same global toggle, mirrored), `Guides` toggle.
+See §7.8. In addition: a tiny status strip under the transport shows the current quality mode (`Auto: proxy`/`full`), dropped frame count for the last playback (resets on play), and the GPU memory of the texture pool (dev toggle). The panel header has: `Ratio` dropdown (9:16, 4:5, 1:1, 16:9 at the project's short side; changes the project resolution through the §15 dialog), `Fullscreen`, `Safe zones` dropdown, `Zoom` dropdown, `Quality` dropdown, `Snap` (same global toggle, mirrored), `Guides` toggle.
 
 ---
 
@@ -749,7 +749,7 @@ See §7.8. In addition: a tiny status strip under the transport shows the curren
 - **Autosave** (BINDING): debounced 1 s after the last command, max every 5 s during continuous editing; writes `project.json` through a `FileSystemWritableFileStream` (write to `project.json.tmp` then write the real file, then delete the tmp; since FSA has no rename, keep the previous version in `history/` before overwriting, rotating 20). Session state saves every 10 s when changed and on `visibilitychange`. The app bar dot shows: saved / saving / unsaved / error (hover shows details, click retries).
 - **Crash recovery**: on open, if `project.json.tmp` exists and is newer and valid, offer to restore it.
 - **Permissions**: directory handles persisted in IndexedDB; `queryPermission`/`requestPermission` on open; if denied, the project opens read-only with a banner.
-- **Project settings changes**: changing resolution offers "scale layout" (transforms scaled proportionally) or "keep"; changing fps converts all frame values by the rational ratio (rounding to nearest, warning if lossy).
+- **Project settings changes**: changing resolution offers "adapt layout" (videos and images refit the new frame: Fit stays Fit, Fill stays Fill, other pictures keep their size relative to Fit and their place; text and shapes keep their place at the short side's size, inside the frame; a frame-sized solid takes the new size; caption styles follow; keys too) or "keep"; changing fps converts all frame values by the rational ratio (rounding to nearest, warning if lossy).
 - **Multiple projects**: one at a time per tab; opening another closes the current after saving.
 - **Templates**: `Save as template` stores the current project settings + text presets + track layout (no media) in IndexedDB; `New from template` on the start screen.
 

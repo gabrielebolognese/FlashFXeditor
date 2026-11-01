@@ -76,7 +76,7 @@ The bands show the project background color.
 
 To change the fit afterwards, click the picture in the preview and drag it, or drag its handles to resize it. See [Arranging layers in the preview](arranging-layers-in-the-preview.md). To fill the frame without bands, select the clip and click **Fill frame** in the quick actions of **Edit Properties**, or right-click the picture and choose **Fill**. To type an exact position and size, use the **Transform** section. See [Fit, fill or center a picture](editing-properties.md#fit-fill-or-center-a-picture). To turn a landscape video into a full vertical shot with nothing hanging past the frame, click **Crop to frame** in the **Crop** section, then **Fill frame**. See [Reframe a landscape video for a vertical frame](cropping-and-reframing.md#reframe-a-landscape-video-for-a-vertical-frame).
 
-> **Note:** The fit is set when you add the clip. If you change the project resolution later, choose **Scale layout** to scale the pictures with the frame: a picture that fit inside the old frame fits inside the new one. **Keep** leaves each picture at its size in pixels. See [Change the frame size](project-settings-and-templates.md#change-the-frame-size).
+> **Note:** The fit is set when you add the clip. If you change the project resolution or **Ratio** later, choose **Adapt layout** to refit the pictures: a picture that fit the old frame fits the new one, and one that filled it fills the new one. **Keep** leaves each picture at its size in pixels. See [Change the frame size](project-settings-and-templates.md#change-the-frame-size).
 
 ## Zoom in, add overlays and go fullscreen
 
@@ -84,6 +84,7 @@ The Preview panel header holds the controls that change how you look at the fram
 
 | Control | What it does |
 | --- | --- |
+| **Ratio** | Shows the frame's shape (**9:16**, **4:5**, **1:1**, **16:9**, or the size of a custom frame) and opens the menu of shapes: **9:16 Vertical**, **4:5 Portrait**, **1:1 Square**, **16:9 Horizontal**. It changes the project's frame, not only the view. See [Switch between vertical and horizontal](project-settings-and-templates.md#switch-between-vertical-and-horizontal). |
 | **Zoom** | Shows the zoom level and opens the menu of levels: **Fit**, **25%**, **50%**, **100%**, **200%**, **400%**. |
 | **Fit the frame in the panel** | Shows the whole frame again, centered (<kbd>Ctrl</kbd>+<kbd>0</kbd> in the Preview panel). |
 | **Preview quality** | Shows the quality mode and opens the menu of modes: **Auto**, **Full**, **Proxy**, **1/2**, **1/4**. See [Choose the preview quality](preview-zoom-overlays-fullscreen.md#choose-the-preview-quality). |

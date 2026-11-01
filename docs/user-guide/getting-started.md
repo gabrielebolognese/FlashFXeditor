@@ -92,7 +92,7 @@ To stop without creating anything, click **Cancel**, press <kbd>Escape</kbd>, or
 
 > **Note:** A folder that already contains a project is refused with "The folder "<name>" already contains a project. Open it instead, or pick an empty folder." Other files already in the folder are left alone.
 
-> **Tip:** You can change the name, resolution, frame rate and background later, also with clips on the timeline. See [Project settings and templates](project-settings-and-templates.md).
+> **Tip:** You can change the name, resolution, frame rate and background later, also with clips on the timeline. To switch between vertical and horizontal, use **Ratio** in the Preview panel header. See [Project settings and templates](project-settings-and-templates.md).
 
 ## Open an existing project
 
