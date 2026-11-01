@@ -1,18 +1,22 @@
-// Choices offered for new projects and in the Project section (spec §11, §15).
+// Choices offered for new projects, in the Project section and in the preview's Ratio menu (spec §11,
+// §13, §15).
+import { MAX_DIMENSION, MIN_DIMENSION } from "../core/commands/projectCommands.js";
 import type { Rational } from "../core/document/types.js";
 
 export interface ResolutionPreset {
   id: string;
   label: string;
+  /** The frame's shape in a word (the Ratio menu, its command id). */
+  shape: string;
   width: number;
   height: number;
 }
 
 export const RESOLUTION_PRESETS: readonly ResolutionPreset[] = [
-  { id: "9:16", label: "9:16 · 1080×1920", width: 1080, height: 1920 },
-  { id: "4:5", label: "4:5 · 1080×1350", width: 1080, height: 1350 },
-  { id: "1:1", label: "1:1 · 1080×1080", width: 1080, height: 1080 },
-  { id: "16:9", label: "16:9 · 1920×1080", width: 1920, height: 1080 },
+  { id: "9:16", label: "9:16 · 1080×1920", shape: "Vertical", width: 1080, height: 1920 },
+  { id: "4:5", label: "4:5 · 1080×1350", shape: "Portrait", width: 1080, height: 1350 },
+  { id: "1:1", label: "1:1 · 1080×1080", shape: "Square", width: 1080, height: 1080 },
+  { id: "16:9", label: "16:9 · 1920×1080", shape: "Horizontal", width: 1920, height: 1080 },
 ];
 
 export const CUSTOM_RESOLUTION = "custom";
@@ -20,6 +24,24 @@ export const CUSTOM_RESOLUTION = "custom";
 /** The preset id matching a size, or "custom". */
 export function resolutionPresetId(width: number, height: number): string {
   return RESOLUTION_PRESETS.find((p) => p.width === width && p.height === height)?.id ?? CUSTOM_RESOLUTION;
+}
+
+/** The Ratio menu's command of a preset: `project.ratio.vertical`, `project.ratio.horizontal`... */
+export const ratioCommandId = (preset: ResolutionPreset): string => `project.ratio.${preset.shape.toLowerCase()}`;
+
+/** The preset with the shape of a size at any resolution (2160×3840 is 9:16), or null. */
+export function ratioPreset(width: number, height: number): ResolutionPreset | null {
+  return RESOLUTION_PRESETS.find((p) => p.width * height === p.height * width) ?? null;
+}
+
+/**
+ * A preset's shape at the short side of the `current` frame, so the resolution stays (a 4K 9:16
+ * project turns 16:9 at 3840×2160); even, the long side at most MAX_DIMENSION.
+ */
+export function ratioSize(preset: ResolutionPreset, current: { width: number; height: number }): { width: number; height: number } {
+  const k = Math.min(Math.min(current.width, current.height) / Math.min(preset.width, preset.height), MAX_DIMENSION / Math.max(preset.width, preset.height));
+  const even = (side: number) => Math.max(MIN_DIMENSION, Math.round((side * k) / 2) * 2);
+  return { width: even(preset.width), height: even(preset.height) };
 }
 
 export const FRAME_RATES: readonly Rational[] = [

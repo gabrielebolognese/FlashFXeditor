@@ -3,7 +3,7 @@
 // media, marker and project commands) runs on it once, aimed at the interesting clips. For each row:
 // the dispatch is valid (validateProject in the store: transitions and keyframes included), the locked
 // track's clips are unchanged (except where the design says otherwise: Remove media's "delete clips",
-// Scale layout, frame rate conversion), `documentChecks` finds nothing, and undo gives the document
+// Adapt layout, frame rate conversion), `documentChecks` finds nothing, and undo gives the document
 // back exactly (redo the result). Rows add what the behaviour defines for linked partners, groups,
 // transitions and keys. The single-feature tests (locks.test.ts, links.test.ts, transitions.test.ts,
 // keyframes.test.ts, split.test.ts) cover each rule in depth; this table crosses them.
@@ -24,6 +24,7 @@ import { presetLook } from "../../text/presets.js";
 import { starterPresets } from "../../text/starterPresets.js";
 import { textContent } from "../../text/style.js";
 import { linkOffset, selectionPartners } from "../model/queries.js";
+import { adaptResolution } from "./adaptLayout.js";
 import { arrangeLayers } from "./arrange.js";
 import { addCaptionTrack, addCueAt, captionStyleOf, clearCues, importCues, mergeWithPrevious, replaceCuesInRange, setCaptionStyle, setCueText, splitCue } from "./captions.js";
 import { copyClips, pasteClips } from "./clipboard.js";
@@ -541,7 +542,8 @@ const ROWS: Row[] = [
   { name: "updateMarker", run: (s) => s.dispatch(updateMarker("k1", { frame: 400 })) },
   { name: "removeMarker", run: (s) => s.dispatch(removeMarker("k1")) },
   { name: "renameProject", run: (s) => s.dispatch(renameProject("Matrix")) },
-  { name: "setResolution with Scale layout: locked layers scale too (spec §15)", lockedChanges: true, run: (s) => s.dispatch(setResolution(2160, 3840, { scaleLayout: true })) },
+  { name: "setResolution (Keep)", run: (s) => s.dispatch(setResolution(1920, 1080)) },
+  { name: "adaptResolution (Adapt layout): locked layers follow too (spec §15)", lockedChanges: true, run: (s) => s.dispatch(adaptResolution(s.getState(), 1920, 1080)) },
   { name: "setFrameRate: every frame converts, locked clips too (spec §15)", lockedChanges: true, run: (s) => s.dispatch(setFrameRate({ num: 60, den: 1 })), then: (p) => expect([get(p, "lk").start, transitionAt(p, { left: "a", right: "b" })?.before]).toEqual([100, 20]) },
   { name: "setBackground", run: (s) => s.dispatch(setBackground({ r: 0.1, g: 0.1, b: 0.1, a: 1 })) },
 ];

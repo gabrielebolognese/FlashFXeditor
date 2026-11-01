@@ -245,7 +245,7 @@ export function nudgeLayers(project: Project, ids: readonly ClipId[], dx: number
 }
 
 /** The visible box's size at scale 1 when turned by `rotation` (its axis-aligned extent). */
-function turnedExtent(box: ContentBox, rotation: number): Size {
+export function turnedExtent(box: ContentBox, rotation: number): Size {
   const { sin, cos } = rotationTrig(rotation);
   const w = box.right - box.left;
   const h = box.bottom - box.top;

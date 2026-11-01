@@ -10,8 +10,10 @@
 //   characters on each side, or at the first right word's start when the cue has word timings.
 // - Merging (Mod+Backspace): the texts joined by a space, the span from the first cue's start to the
 //   second's end, the words of both.
+// - A new frame size (Adapt layout, spec §15): track styles and cue overrides follow it
+//   (`adaptCaptionStyle`, `adaptCaptionOverride`).
 import type { CaptionClip, CaptionPosition, CaptionStyle, CaptionStyleOverride, CaptionTextOverride, CaptionWord, Frame, RGBA, TextStyle } from "../core/document/types.js";
-import { DEFAULT_TEXT_STYLE, scaleTextStyle, TEXT_REFERENCE_SIDE } from "./style.js";
+import { DEFAULT_TEXT_STYLE, scaleTextStyle, TEXT_LIMITS, TEXT_REFERENCE_SIDE } from "./style.js";
 
 /** A new cue's length (spec §10.5 `+ Cue at playhead`: a 2 s cue). */
 export const CUE_SECONDS = 2;
@@ -237,6 +239,51 @@ export function presetOverride(override: CaptionStyleOverride | undefined, look:
   const next: CaptionStyleOverride = { ...structuredClone(override ?? {}), text: text as CaptionTextOverride };
   if (highlight) next.highlight = structuredClone(highlight);
   if (look.position) Object.assign(next, { position: "custom", x: Math.round(look.position.x), y: Math.round(look.position.y) });
+  return next;
+}
+
+// --- A new frame size ----------------------------------------------------------------------------
+
+const round1 = (value: number) => Math.round(value * 10) / 10;
+const within = (value: number, { min, max }: { min: number; max: number }) => Math.min(max, Math.max(min, value));
+
+/** A cue's text fields scaled by `k` (its sizes only: font size, spacing, outline, shadow, box). */
+function scaleTextOverride(text: CaptionTextOverride, k: number): CaptionTextOverride {
+  const next: CaptionTextOverride = structuredClone(text);
+  if (text.fontSize !== undefined) next.fontSize = within(round1(text.fontSize * k), TEXT_LIMITS.fontSize);
+  if (text.letterSpacing !== undefined) next.letterSpacing = round1(text.letterSpacing * k);
+  if (next.stroke?.width !== undefined) next.stroke.width = round1(next.stroke.width * k);
+  if (next.shadow) {
+    for (const key of ["x", "y", "blur"] as const) if (next.shadow[key] !== undefined) next.shadow[key] = round1(next.shadow[key] * k);
+  }
+  if (next.background) {
+    for (const key of ["paddingX", "paddingY", "radius"] as const) if (next.background[key] !== undefined) next.background[key] = Math.round(next.background[key] * k);
+  }
+  return next;
+}
+
+/**
+ * A caption track's style for a new frame size (Adapt layout, spec §15): the text sizes follow the
+ * short side (`side`, as a new track's do, `defaultCaptionStyle`), the wrap width the width (`kx`), a
+ * Custom place each axis (`kx`, `ky`).
+ */
+export function adaptCaptionStyle(style: CaptionStyle, kx: number, ky: number, side: number): CaptionStyle {
+  return {
+    ...structuredClone(style),
+    ...(side !== 1 && { text: scaleTextStyle(style.text, side) }),
+    x: within(style.x * kx, CAPTION_LIMITS.x),
+    y: within(style.y * ky, CAPTION_LIMITS.y),
+    maxWidth: within(Math.round(style.maxWidth * kx), CAPTION_LIMITS.maxWidth),
+  };
+}
+
+/** A cue's own style for a new frame size: the fields it sets, changed as `adaptCaptionStyle` changes the track's. */
+export function adaptCaptionOverride(override: CaptionStyleOverride, kx: number, ky: number, side: number): CaptionStyleOverride {
+  const next = structuredClone(override);
+  if (override.text && side !== 1) next.text = scaleTextOverride(override.text, side);
+  if (override.x !== undefined) next.x = within(override.x * kx, CAPTION_LIMITS.x);
+  if (override.y !== undefined) next.y = within(override.y * ky, CAPTION_LIMITS.y);
+  if (override.maxWidth !== undefined) next.maxWidth = within(Math.round(override.maxWidth * kx), CAPTION_LIMITS.maxWidth);
   return next;
 }
 

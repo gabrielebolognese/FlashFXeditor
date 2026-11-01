@@ -1,7 +1,10 @@
 // Project settings conversions (spec §15, Batch 42), from the Project section:
-// - A new frame size asks "Scale layout" (positions per axis, scale by the smaller ratio, keys too) or
-//   "Keep" (every layer keeps its pixel size and its offset from the center) when the timeline has
-//   layers; without any the size just changes. One undo step either way.
+// - A new frame size asks "Adapt layout" (timeline/edit/adaptLayout.ts: videos and images refit the new
+//   frame, Fit staying Fit and Fill staying Fill, text, shapes and captions keep their place and a size
+//   that suits it, keys too) or "Keep" (every layer keeps its pixel size and its offset from the center)
+//   when the timeline has layers or caption cues; without any it adapts at once (the caption tracks'
+//   styles). One undo step either way. The preview's Ratio menu (`changeRatio`) changes the frame's
+//   shape at the project's short side.
 // - A new frame rate converts every frame value by the rational ratio (core/document/fpsConvert.ts):
 //   a lossless conversion (30 to 60 fps, or none needed) is made at once with a toast; one that rounds
 //   timings asks first, naming how many. One undo step; Undo reverts every frame value.
@@ -9,38 +12,45 @@
 //   project, Undo and Redo included, so the view keeps its place in time (`followFrameRate`).
 import { frameRateReport, setFrameRate, setResolution } from "../core/commands/projectCommands.js";
 import { FrameConverter, frameRatio, isLossless, sameFrameRate, type ConversionReport } from "../core/document/fpsConvert.js";
+import { adaptResolution } from "../timeline/edit/adaptLayout.js";
 import { isLayerClip } from "../timeline/edit/transform.js";
 import type { Project, Rational } from "../core/document/types.js";
-import { formatFps } from "../project/projectPresets.js";
+import { formatFps, ratioSize, type ResolutionPreset } from "../project/projectPresets.js";
 import { showToast } from "../ui/toasts.js";
 import { closeDialog, showDialog } from "./projectController.js";
 import { documentStore, sessionStore } from "./services.js";
 
-/** Clips whose transform the frame size changes the look of (what Scale layout scales). */
-function hasLayers(project: Project): boolean {
+/** Clips whose look the frame size changes (what Adapt layout adapts): layers and caption cues. */
+function hasLayout(project: Project): boolean {
   for (const id in project.clips) {
     const clip = project.clips[id];
-    if (clip && isLayerClip(clip)) return true;
+    if (clip && (isLayerClip(clip) || clip.kind === "caption")) return true;
   }
   return false;
 }
 
-/** The Project section's new frame size: asks Scale layout or Keep when there are layers. */
+/** A new frame size (the Project section, the Ratio menu): asks Adapt layout or Keep when there is a layout. */
 export function changeResolution(width: number, height: number): void {
   const project = documentStore.getState();
   const { settings } = project;
   if (width === settings.width && height === settings.height) return;
-  if (!hasLayers(project)) {
-    documentStore.dispatch(setResolution(width, height));
+  if (!hasLayout(project)) {
+    documentStore.dispatch(adaptResolution(project, width, height));
     return;
   }
   showDialog({ kind: "resolution", width, height });
 }
 
+/** The preview's Ratio menu: `preset`'s shape at the project's short side (`ratioSize`). */
+export function changeRatio(preset: ResolutionPreset): void {
+  const { width, height } = ratioSize(preset, documentStore.getState().settings);
+  changeResolution(width, height);
+}
+
 /** The resolution dialog's choice (one undo step). */
-export function confirmResolution(width: number, height: number, scaleLayout: boolean): void {
+export function confirmResolution(width: number, height: number, adapt: boolean): void {
   closeDialog();
-  documentStore.dispatch(setResolution(width, height, { scaleLayout }));
+  documentStore.dispatch(adapt ? adaptResolution(documentStore.getState(), width, height) : setResolution(width, height));
 }
 
 /** What a report says, in words ("12 timings rounded to the nearest frame, 1 clip moved by a frame"). */

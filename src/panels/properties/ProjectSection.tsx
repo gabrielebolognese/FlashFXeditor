@@ -21,7 +21,7 @@ import styles from "./Section.module.css";
 // size, frame rate, background color, the default durations and the default transition, proxies,
 // autosave and the cache, then History and Save as template (spec §15). Every document edit is one
 // undoable command; the rest are app settings shared with Settings > General (settings/SettingFields).
-// A new frame size asks Scale layout or Keep; a new frame rate converts every frame value, asking first
+// A new frame size asks Adapt layout or Keep; a new frame rate converts every frame value, asking first
 // when the conversion rounds timings (app/conversionController.ts).
 
 const selectName = (p: Project) => p.name;

@@ -1,4 +1,4 @@
-import { Grid3x3, Maximize, Minimize, Pause, Play, Volume2, VolumeX } from "lucide-react";
+import { Grid3x3, Maximize, Minimize, Pause, Play, Proportions, Volume2, VolumeX } from "lucide-react";
 import { useCallback, useEffect, useRef, useSyncExternalStore, type MouseEvent } from "react";
 import { commitMonitorVolume, meterView, previewMonitorVolume } from "../app/audioController.js";
 import { CanvasHost } from "../app/CanvasHost.js";
@@ -19,11 +19,13 @@ import {
   viewportInput,
   type PreviewDevState,
 } from "../app/previewController.js";
-import { actions, appSettings, focusScopes, scheduler, sessionStore, themeBridge } from "../app/services.js";
+import { actions, appSettings, documentStore, focusScopes, scheduler, sessionStore, themeBridge } from "../app/services.js";
 import { bindTimecode } from "../app/timelineController.js";
+import type { Project } from "../core/document/types.js";
 import { GRID_DIVISIONS_MAX, GRID_DIVISIONS_MIN, type PreviewGrid, type PreviewQuality, type SessionState } from "../core/store/sessionStore.js";
 import { useStoreSelector } from "../core/store/useStoreSelector.js";
 import { MONITOR_MAX_DB, MONITOR_MIN_DB, type AppSettings } from "../project/appSettings.js";
+import { RESOLUTION_PRESETS, ratioCommandId, ratioPreset } from "../project/projectPresets.js";
 import { qualityName } from "../render/preview/detail.js";
 import { SAFE_ZONE_CHOICES } from "../render/preview/safeZones.js";
 import { ZOOM_CHOICES, zoomLabel } from "../render/preview/viewport.js";
@@ -100,6 +102,26 @@ function ZoomMenu() {
   return (
     <MenuButton label="Zoom" entries={entries} onSelect={runCommand} onClose={backToPreview}>
       <ZoomValue />
+    </MenuButton>
+  );
+}
+
+// The frame's shape: a preset's id ("16:9" for 1920x1080 and 3840x2160 alike), or its size when it has none.
+const selectRatio = (project: Project) => ratioPreset(project.settings.width, project.settings.height)?.id ?? `${project.settings.width}×${project.settings.height}`;
+
+/**
+ * Ratio (spec §13): the frame's shape, 9:16, 4:5, 1:1 or 16:9 at the project's short side; a new
+ * shape asks Adapt layout or Keep (app/conversionController.ts). Custom sizes: the Project section.
+ */
+function RatioMenu() {
+  const ratio = useStoreSelector(documentStore, selectRatio);
+  const entries = useCallback(
+    (): ContextMenuEntry[] => RESOLUTION_PRESETS.map((preset) => ({ kind: "item", id: ratioCommandId(preset), label: `${preset.id} ${preset.shape}`, active: preset.id === ratio })),
+    [ratio],
+  );
+  return (
+    <MenuButton label="Frame ratio: vertical, square or horizontal" icon={Proportions} entries={entries} onSelect={runCommand} onClose={backToPreview}>
+      {ratio}
     </MenuButton>
   );
 }
@@ -194,7 +216,7 @@ function FullscreenButton() {
   return <IconButton icon={fullscreen ? Minimize : Maximize} label={fullscreen ? "Exit fullscreen" : "Fullscreen"} commandId="preview.toggleFullscreen" pressed={fullscreen} />;
 }
 
-/** Header (spec §13, §17, §20.2): Zoom, Fit, Quality, Overlays, Snap, Guides, Presets, Fullscreen, Export frame. */
+/** Header (spec §13, §17, §20.2): Ratio, Zoom, Fit, Quality, Overlays, Snap, Guides, Presets, Fullscreen, Export frame. */
 function PreviewActions() {
   const stats = useStoreSelector(previewDev, selectStats);
   const budget = useStoreSelector(previewDev, selectBudget);
@@ -206,6 +228,7 @@ function PreviewActions() {
           <IconButton commandId="dev.toggleGpuStats" label="GPU stats (dev)" pressed={stats} />
         </>
       )}
+      <RatioMenu />
       <ZoomMenu />
       <IconButton label="Fit the frame in the panel" commandId="canvas.zoomFit" />
       <QualityMenu />
