@@ -16,8 +16,9 @@ import { fromHandle, isDirectoryHandle, type FsDir } from "../project/fs.js";
 import { createProject, openProjectFolder, ProjectOpenError, type NewProjectSettings, type OpenedProject } from "../project/openProject.js";
 import { ProjectSession } from "../project/ProjectSession.js";
 import { RECENT_THUMB_HEIGHT, type RecentProject } from "../project/recentProjects.js";
+import { RESOLUTION_PRESETS, ratioCommandId } from "../project/projectPresets.js";
 import type { Recovery } from "../project/recovery.js";
-import { followFrameRate } from "./conversionController.js";
+import { changeRatio, followFrameRate } from "./conversionController.js";
 import { cancelExport, clearExportLeftovers } from "./exportController.js";
 import { attachFonts, detachFonts } from "./fontController.js";
 import { attachMedia, detachMedia } from "./mediaController.js";
@@ -36,7 +37,7 @@ export type Dialog =
   | { kind: "recovery"; recovery: Recovery }
   | { kind: "permission"; dir: FsDir; message: string }
   | { kind: "error"; title: string; message: string; issues: readonly string[] }
-  /** Scale layout or Keep (spec §15) for a new frame size. */
+  /** Adapt layout or Keep (spec §15) for a new frame size. */
   | { kind: "resolution"; width: number; height: number }
   /** A frame rate conversion that rounds timings (spec §15 "warning if lossy"). */
   | { kind: "frameRate"; fps: Rational; report: ConversionReport }
@@ -380,6 +381,7 @@ export function installProjectController(): () => void {
     actions.register("project.open", () => void openProject()),
     actions.register("project.rename", () => projectNaming.set(true), { enabled: () => current !== null }),
     actions.register("project.allowEditing", () => allowEditing(), { enabled: () => saveStatus.getState().readOnly }),
+    ...RESOLUTION_PRESETS.map((preset) => actions.register(ratioCommandId(preset), () => changeRatio(preset), { enabled: () => current !== null })),
     () => document.removeEventListener("visibilitychange", onVisibility),
     () => window.removeEventListener("beforeunload", onBeforeUnload),
   ];

@@ -18,7 +18,7 @@ import own from "./ProjectDialogs.module.css";
 import { documentStore, saveStatus } from "./services.js";
 import { saveAsTemplate } from "./templateController.js";
 
-// The project dialogs of Batch 42 (spec §15): Scale layout or Keep for a new frame size, the warning
+// The project dialogs of Batch 42 (spec §15): Adapt layout or Keep for a new frame size, the warning
 // before a frame rate conversion that rounds timings, the History list with its restore confirmation,
 // Save as template's name, Clear cache, and the read-only discard question before another project opens.
 
@@ -39,8 +39,8 @@ export function ResolutionDialog({ width, height }: { width: number; height: num
           <Button control tooltip="Every layer keeps its size in pixels and its place from the center" onClick={() => confirmResolution(width, height, false)}>
             Keep
           </Button>
-          <Button control variant="primary" autoFocus tooltip="Positions and sizes follow the new frame" onClick={() => confirmResolution(width, height, true)}>
-            Scale layout
+          <Button control variant="primary" autoFocus tooltip="Every layer follows the new frame: videos and images refit it" onClick={() => confirmResolution(width, height, true)}>
+            Adapt layout
           </Button>
         </>
       }
@@ -49,7 +49,7 @@ export function ResolutionDialog({ width, height }: { width: number; height: num
         From <span className={styles.mono}>{`${from.width}×${from.height}`}</span> to <span className={styles.mono}>{`${width}×${height}`}</span>.
       </p>
       <p className={styles.note}>
-        Scale layout moves and scales every layer (keyframes too) so it sits in the new frame as it sat in the old one. Keep leaves each layer at its size in pixels and its offset from the center. Undo reverts either.
+        Adapt layout refits every video and image to the new frame (Fit stays Fit, Fill stays Fill) and keeps titles, shapes and captions at their place in it, at a size that suits it; keyframes follow. Keep leaves each layer at its size in pixels and its offset from the center. Undo reverts either.
       </p>
     </Modal>
   );

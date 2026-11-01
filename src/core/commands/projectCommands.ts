@@ -1,8 +1,7 @@
 // Project settings commands (spec §11 Project section). Undoable like any other document change.
-import { current, produce, type Draft } from "immer";
+import { produce } from "immer";
 import { convertProjectFrames, sameFrameRate, type ConversionReport } from "../document/fpsConvert.js";
-import { mapKeyValues } from "../document/keyframes.js";
-import type { Clip, Keyframes, Project, Rational, RGBA, Transform } from "../document/types.js";
+import type { Project, Rational, RGBA } from "../document/types.js";
 import type { Command } from "./command.js";
 
 export const MAX_PROJECT_NAME = 120;
@@ -34,53 +33,21 @@ export function renameProject(name: string): Command {
   };
 }
 
-/** Clips with a transform the compositor draws (video, image, solid, text): what "Scale layout" scales. */
-function hasLayout(clip: Clip): clip is Extract<Clip, { transform: Transform }> {
-  return clip.kind === "video" || clip.kind === "image" || clip.kind === "solid" || clip.kind === "text";
-}
-
 /**
- * The layout scaled from one frame size to another (spec §15 "Scale layout": transforms scaled
- * proportionally): positions per axis, scale by the smaller ratio, so a layer that fits the old frame
- * fits the new one the same way (a same-aspect change scales everything exactly).
+ * New frame size, even and in range, every layer kept as it is: "Keep" of §15 (each layer keeps its
+ * pixel size and its offset from the frame center). "Adapt layout" is timeline/edit/adaptLayout.ts;
+ * the app asks which (app/conversionController.ts).
  */
-export function scaledTransform(transform: Transform, from: { width: number; height: number }, to: { width: number; height: number }): Transform {
-  const kx = to.width / from.width;
-  const ky = to.height / from.height;
-  const k = Math.min(kx, ky);
-  const next: Transform = { ...transform, anchor: { ...transform.anchor }, x: transform.x * kx, y: transform.y * ky, scale: transform.scale * k };
-  if (transform.scaleY !== undefined) next.scaleY = transform.scaleY * k;
-  return next;
-}
-
-/**
- * New frame size, even and in range. With `scaleLayout` the clips' transforms follow the frame
- * (`scaledTransform`; locked tracks too: the frame changes under them), their position and scale keys
- * too (Batch 35), else they are kept ("Keep" of §15: every layer keeps its pixel size and its offset
- * from the frame center). The app asks which (app/conversionController.ts).
- */
-export function setResolution(width: number, height: number, options: { scaleLayout?: boolean } = {}): Command {
+export function setResolution(width: number, height: number): Command {
   const w = clampDimension(width);
   const h = clampDimension(height);
   return {
     id: "project.setResolution",
     label: "Change resolution",
-    affects: options.scaleLayout ? ["settings", "composite"] : ["settings"],
+    affects: ["settings"],
     run(draft) {
-      const from = { width: draft.settings.width, height: draft.settings.height };
       draft.settings.width = w;
       draft.settings.height = h;
-      if (!options.scaleLayout || (from.width === w && from.height === h)) return;
-      for (const clip of Object.values(draft.clips)) {
-        if (!hasLayout(clip)) continue;
-        clip.transform = scaledTransform(clip.transform, from, { width: w, height: h });
-        if ("keyframes" in clip && clip.keyframes) {
-          const kx = w / from.width;
-          const ky = h / from.height;
-          const k = Math.min(kx, ky);
-          clip.keyframes = mapKeyValues(current(clip.keyframes) as Keyframes, { "transform.x": (x) => x * kx, "transform.y": (y) => y * ky, "transform.scale": (s) => s * k, "transform.scaleY": (s) => s * k }) as Draft<Keyframes>;
-        }
-      }
     },
   };
 }

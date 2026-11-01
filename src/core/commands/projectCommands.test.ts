@@ -3,7 +3,7 @@ import { makeProject, makeSolidClip, makeTrack, withClips } from "../document/fi
 import { DocumentStore } from "../store/DocumentStore.js";
 import { createSessionStore } from "../store/sessionStore.js";
 import type { SolidClip } from "../document/types.js";
-import { canChangeFrameRate, clampDimension, renameProject, scaledTransform, setBackground, setFrameRate, setResolution } from "./projectCommands.js";
+import { canChangeFrameRate, clampDimension, renameProject, setBackground, setFrameRate, setResolution } from "./projectCommands.js";
 
 const storeFor = (project = makeProject()) => new DocumentStore(project, { session: createSessionStore(), validate: true });
 
@@ -37,52 +37,18 @@ describe("project commands", () => {
     expect(clampDimension(3)).toBe(16);
   });
 
-  it("scales the layout with the frame (spec §15 Scale layout): positions per axis, scale by the smaller ratio; one undo step", () => {
-    const solid = (id: string, fields: Partial<SolidClip["transform"]>): SolidClip => {
-      const clip = makeSolidClip({ id, trackId: "v1", start: id === "a" ? 0 : 10, duration: 10 });
-      return { ...clip, transform: { ...clip.transform, ...fields } };
-    };
-    const project = withClips(
-      (() => {
-        const p = makeProject();
-        p.tracks.push({ ...makeTrack("v1"), locked: true });
-        return p;
-      })(),
-      [solid("a", { x: 100, y: -200, scale: 2 }), solid("b", { x: -50, y: 40, scale: 1, scaleY: 3 })],
-    );
-    const store = storeFor(project);
-    store.dispatch(setResolution(2160, 3840, { scaleLayout: true }));
-    expect((store.getState().clips.a as SolidClip).transform).toMatchObject({ x: 200, y: -400, scale: 4 });
-    // 9:16 to 1:1: x keeps, y and the scale follow the height.
-    store.dispatch(setResolution(2160, 2160, { scaleLayout: true }));
-    const b = (store.getState().clips.b as SolidClip).transform;
-    expect([b.x, b.y, b.scale, b.scaleY]).toEqual([-100, 45, 1.125, 3.375]);
+  it("keeps every layer as it is (spec §15 Keep; Adapt layout: timeline/edit/adaptLayout.test.ts); one undo step", () => {
+    const clip = makeSolidClip({ id: "a", trackId: "v1", start: 0, duration: 10 });
+    const placed: SolidClip = { ...clip, transform: { ...clip.transform, x: 100, y: -200, scale: 2 } };
+    const p = makeProject();
+    p.tracks.push({ ...makeTrack("v1"), locked: true });
+    const store = storeFor(withClips(p, [placed]));
+    store.dispatch(setResolution(1920, 1080));
+    expect(store.getState().settings).toMatchObject({ width: 1920, height: 1080 });
+    expect((store.getState().clips.a as SolidClip).transform).toEqual(placed.transform);
     expect(store.history.getState().undoLabel).toBe("Change resolution");
     store.undo();
-    store.undo();
-    expect((store.getState().clips.a as SolidClip).transform).toMatchObject({ x: 100, y: -200, scale: 2 });
-    // Keep (no option): transforms untouched.
-    store.dispatch(setResolution(720, 1280));
-    expect((store.getState().clips.a as SolidClip).transform).toMatchObject({ x: 100, y: -200, scale: 2 });
-    expect(scaledTransform(solid("c", {}).transform, { width: 1080, height: 1920 }, { width: 1080, height: 1920 })).toEqual(solid("c", {}).transform);
-  });
-
-  it("scales position and scale keys with the layout (Batch 35)", () => {
-    const keyed: SolidClip = {
-      ...makeSolidClip({ id: "k", trackId: "v1", start: 0, duration: 10 }),
-      keyframes: {
-        "transform.x": [{ frame: 0, value: 10, ease: "linear" }],
-        "transform.y": [{ frame: 0, value: -20, ease: "linear" }],
-        "transform.scale": [{ frame: 0, value: 1, ease: "linear" }],
-        opacity: [{ frame: 0, value: 0.5, ease: "linear" }],
-      },
-    };
-    const p = makeProject();
-    p.tracks.push(makeTrack("v1"));
-    const store = storeFor(withClips(p, [keyed]));
-    store.dispatch(setResolution(2160, 3840, { scaleLayout: true }));
-    const keys = (store.getState().clips.k as SolidClip).keyframes;
-    expect([keys?.["transform.x"]?.[0]?.value, keys?.["transform.y"]?.[0]?.value, keys?.["transform.scale"]?.[0]?.value, keys?.opacity?.[0]?.value]).toEqual([20, -40, 2, 0.5]);
+    expect(store.getState().settings).toMatchObject({ width: 1080, height: 1920 });
   });
 
   it("changes the frame rate of an empty project", () => {

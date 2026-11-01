@@ -77,6 +77,8 @@ import {
   Pause,
   Pencil,
   Plus,
+  RectangleHorizontal,
+  RectangleVertical,
   Redo2,
   Repeat,
   RotateCcw,
@@ -124,6 +126,7 @@ import { EASE_IDS, LABEL_COLORS, TRANSITION_KINDS } from "../core/document/types
 import type { FocusScope } from "../core/keyboard/focusScope.js";
 import { FADE_PRESET_SECONDS } from "../timeline/edit/fades.js";
 import { LABEL_NAMES } from "../timeline/menus/labelSwatches.js";
+import { RESOLUTION_PRESETS, ratioCommandId } from "../project/projectPresets.js";
 import { FIXED_PRESET_SETS, presetSetLabel } from "../text/presets.js";
 
 /** Palette and cheat sheet groups, in their order. */
@@ -550,6 +553,13 @@ export const COMMANDS: readonly CommandInfo[] = [
   project("project.saveAsTemplate", "Save as template…", { icon: LayoutTemplate, keywords: "reuse tracks presets layout" }),
   project("project.newFromTemplate", "New project from template", { icon: LayoutTemplate, anywhere: true, palette: false }),
   project("project.clearCache", "Clear cache", { icon: Eraser, keywords: "proxies thumbnails waveforms storage disk space" }),
+  // The preview's Ratio menu (spec §13): the frame's shape at the project's short side.
+  ...RESOLUTION_PRESETS.map((preset) =>
+    project(ratioCommandId(preset), `Frame ratio: ${preset.id} ${preset.shape.toLowerCase()}`, {
+      icon: preset.width > preset.height ? RectangleHorizontal : preset.width === preset.height ? Square : RectangleVertical,
+      keywords: "aspect resolution size orientation format landscape portrait vertical horizontal youtube reels tiktok",
+    }),
+  ),
 
   // App
   app("app.commandPalette", "Command palette", { icon: Command, anywhere: true, palette: false }),
