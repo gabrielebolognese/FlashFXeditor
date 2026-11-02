@@ -503,7 +503,7 @@ Decisions that diverge from docs/EDITOR_SPEC.md, with the reason. Each one also 
   - Copy style / Paste style keep the copied cue's own style and preset link in memory (not the system clipboard); a cue without one pastes "the track style" (a reset). Paste attributes' Caption style does the same from copied clips.
   - Inline editing of a cue (double-click on its caption): Enter inserts a line break as in titles (the cue list's Enter splits); the end is one "Edit caption" step.
   - A cue's own style is its override (`hasOwnStyle`, fix-attempt): the preset link goes with the last override (a row reset, an All cues drag, Paste style or Paste attributes from a cue without one), and the cue list's dot, the timeline's badge and Reset to track style look at the override only. A link alone, saved by the batch's first build, changes nothing the cue shows, so it is shown as no style (Reset to track style still clears it).
-- Plan v1.2 (2026-11-01): `docs/PLAN_V1_2.md` added spec §21 to `docs/EDITOR_SPEC.md` and Batches 54-82 to `docs/BATCHES.md`; §21 amends §1.3 and §10.1 for those batches. Port source: `../FlashFX-v2` at fc934bb (the plan was written against fc934bb).
+- Plan v1.2 (2026-11-01): `docs/PLAN_V1_2.md` added spec §21 to `docs/EDITOR_SPEC.md` and Batches 54-82 to `docs/BATCHES.md`; §21 amends §1.3 and §10.1 for those batches. Port source: `../project` (the user's FlashFX-v2 clone, read only) at fc934bb (the plan was written against fc934bb).
 
 ## Follow-ups
 Small things discovered during a batch that belong to a later batch. Format: `- [from Batch NN -> Batch MM] description`.
