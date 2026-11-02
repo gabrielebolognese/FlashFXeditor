@@ -34,6 +34,7 @@ Shorts Editor: browser video editor. Vite + React 18 (chrome only) + TypeScript 
 - Do not build features from later batches. Leave `// TODO(batch NN)` hooks instead.
 - Deviations from the spec are allowed only with a written reason in `docs/PROGRESS.md`.
 - Port 5300 is the user's progress preview (`vite preview` of `dist/`, started by `scripts/run-batches.sh`). Never stop it or use it; run your own dev servers on other ports.
+- Port 5310 and the folder next to this repo named like it with `-stable` added (for example `FlashFXeditor-stable`) belong to the reels autopilot, which serves and runs a stable copy of this editor from there, including headless Chrome renders started by its CLI. Never stop, use or change them; stop only processes your own sessions started.
 
 ## Architecture reminders (details in EDITOR_SPEC.md §3 and §4)
 - React is for panel chrome only. Timeline, preview, gizmo and text rasterizer are framework-free classes drawing to canvases through the single `FrameScheduler`.

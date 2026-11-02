@@ -45,6 +45,7 @@ Edit a raw phone recording (or several) into a finished vertical short in minute
 - Collaboration, cloud sync, accounts, analytics, plugins, scripting.
 - Mobile layouts, touch-first UI, Safari/Firefox support.
 - AI generation of any kind (optional local transcription for captions is the single exception, and it is an optional batch).
+- From Batch 54, §21 brings some of these into scope for the batches it names (compound clips, masks, track mattes, blend modes, adjustment clips, effects with basic color adjustment and LUTs, 2.5D layer rotation, a project command line) and lists what stays out.
 
 ### 1.4 Target platform
 
@@ -923,3 +924,405 @@ Amends §5.2 (`CaptionClip`) and §10.5: the track's `CaptionStyle` becomes the 
 - **Operations**: splitting a cue gives both halves its override; merging keeps the first cue's override; moving, trimming, undo and redo carry it. SRT/VTT import and transcription (§10.6) create cues without overrides; SRT/VTT export writes text and timing only.
 - **Rendering**: the raster cache key uses the effective style; position and word highlight colors come from the effective style; export burns in exactly what the preview shows.
 - Rich text inside a cue (several fonts or colors within one cue) stays out of scope (§10.1), apart from the word highlight.
+
+---
+
+## 21. Extensions for v1.2: interop and general-purpose editing (Batches 54-82)
+
+These sections extend the spec after v1.1. Where they change an earlier section, they say so and win over it from their batch onward; earlier batches keep following the earlier text. The rules of §0, §3 and §4 apply unchanged: every new picture goes through the one compositor and renderer shared by preview and export, every new property is a document field changed only by commands, time stays in integer frames and microseconds, and media work stays in workers.
+
+Amends §1.3 (non-goals), for the batches named here: compound clips (nested sequences, §21.10), masks (§21.18), track mattes and blend modes (§21.17), adjustment clips (§21.20), effects beyond the v1 list including basic color adjustment and LUTs (§21.19), 2.5D layer rotation with perspective (§21.15) and a project command line (§21.3, §21.6) are in scope. Still out: collaboration, cloud sync, accounts, analytics, plugins and in-app scripting, mobile, Safari and Firefox, AI generation (transcription stays the exception), multicam, 3D models, moving cameras and lights, motion tracking, and full color grading (curves, wheels, scopes). Amends §10.1: styled spans inside text clips are in scope from Batch 67 (§21.13).
+
+### 21.1 Rules for every v1.2 batch
+
+- **Capabilities.** `src/core/capabilities.ts` is the single source of the manifest (§21.2): its lists come from the model constants, its flags from one `FEATURES` object. A batch that adds a capability updates it in the same commit and regenerates `capabilities.json` with `npm run capabilities`, setting `lastBatch` to its number. A unit test fails when the file is stale or a list differs from its constant.
+- **Field table.** Every field a batch adds goes into the field table (`src/core/document/schema.ts`, §21.3) with its type, range, whether it is required, and its default, in the same commit as the model change.
+- **INTEROP.md.** Each batch adds to `docs/INTEROP.md` (§21.4) the JSON of every field and clip kind it introduces, its defaults, the manifest key that announces it and a minimal example. A doc test validates every JSON example block in it with the strict validator (§21.3).
+- **Fixtures.** Each batch adds `fixtures/interop/<area>/`: a small project folder (`project.json` and tiny media, at most 2 MB per area) that uses every field the batch adds; a unit test validates it. From Batch 57 on, the batch's acceptance renders it with `npm run cli -- render` on both backends and compares it with committed expected frames in `fixtures/interop/<area>/expected/` (SSIM at least 0.98 on WebGPU against the expected frames, at least 0.97 between WebGL2 and WebGPU). Expected frames are committed only after the session has looked at them.
+- **Schema.** Every model change bumps `SCHEMA_VERSION` with a migration (older projects open unchanged), validates the new fields in the app as v1 validates its fields, and extends the property-based tests of Batch 47. The strict CLI validator refuses unknown fields everywhere (§21.3); the app keeps loading as leniently as it does today.
+- **Both backends.** Every new draw path exists in the WebGPU and the WebGL2 renderer (`shaders.ts`, `glShaders.ts`) with matching output. Export uses the same compositor, and every batch's acceptance includes an export that matches the preview.
+- **Post-v1 quality rules.** Measure the §4 budgets the batch touches and record the numbers in `PROGRESS.md`; follow `DESIGN_SYSTEM.md` exactly (log gaps); register every action in the `CommandRegistry` with palette entries and, where natural, keys (free keys only, checked in `keymap.ts`, listed in the shortcut editor and the cheat sheet); animatable fields get stopwatches as in §11.
+- **Porting from FlashFX-v2.** The repository is expected next to this one at `../FlashFX-v2` (if missing: `git clone https://github.com/gabrielebolognese/FlashFX-v2.git ../FlashFX-v2`; read only, never commit there; this plan was written against commit fc934bb). Ported code is adapted: ESM imports ending in `.js`, strict TypeScript, the editor's types and integer time, no FlashFX store, WGSL plus a GLSL twin. Each ported file starts with `// Ported from FlashFX-v2 <path> @ <commit>, adapted.` Where FlashFX-v2 has a `scripts/verify-<name>.mjs` harness for a ported module, its checks become Vitest tests. If the repository cannot be cloned, implement from this section and log a deviation.
+- **Other tools on this machine.** Port 5310 and processes started from another folder (for example a stable copy of this editor used by the reels autopilot, and the headless Chrome its CLI renders start) belong to other tools: never stop or use them.
+- **Dependencies.** Only the ones §21 names: optionally `earcut` (Batch 65), `@lottiefiles/dotlottie-web` (Batch 79), `gifenc` and optionally `webm-muxer` (Batch 81), each with a line under Dependencies in `PROGRESS.md`.
+
+### 21.2 Capability manifest (Batch 54)
+
+`capabilities.json` at the repo root describes what the current build supports. Lists are exhaustive; a key that is false or absent means unsupported. Keyframe props written with `*` match any id. Generators (§21.4) read the manifest before writing a project, write `schemaVersion` exactly as listed (from Batch 55 they can let `normalize` complete what their JSON does not know), and use only what it lists. `manifestVersion` changes only when a key changes meaning; new keys do not change it. `npm run cli -- capabilities` prints the same JSON.
+
+The manifest of v1.1.0, as it reads before Batch 54 changes it (generators use it when they cannot find the file):
+
+```json
+{
+  "manifestVersion": 1,
+  "app": "shorts-editor",
+  "appVersion": "1.1.0",
+  "lastBatch": 53,
+  "schemaVersion": 3,
+  "project": { "file": "project.json", "fontsManifest": "fonts/fonts.json", "fontsManifestVersion": 2, "sampleRate": 48000 },
+  "media": {
+    "video": ["mp4", "mov", "m4v", "webm"],
+    "audio": ["mp3", "m4a", "aac", "wav", "ogg"],
+    "image": ["png", "jpg", "jpeg", "webp", "gif", "svg"],
+    "animatedImage": { "formats": ["gif", "webp"], "alpha": true, "maxSide": 2048, "textureBudgetBytes": 134217728 },
+    "videoAlpha": false,
+    "imageSequence": false,
+    "lottie": false
+  },
+  "trackKinds": ["video", "audio", "caption"],
+  "clipKinds": ["video", "audio", "image", "text", "solid", "caption"],
+  "transform": { "rotation3d": false, "parenting": false, "motionPaths": false, "autoOrient": false },
+  "keyframes": {
+    "props": ["transform.x", "transform.y", "transform.scale", "transform.scaleY", "transform.rotation", "opacity", "volume.gainDb"],
+    "eases": ["linear", "easeIn", "easeOut", "easeInOut", "hold", "smooth", "snap", "overshoot"],
+    "bezier": false,
+    "spring": false,
+    "vectorValues": false
+  },
+  "solid": { "shapes": ["rect", "roundedRect", "ellipse", "line"], "fills": ["color", "gradient2"], "stroke": false, "shadow": false, "cornerRadii": false },
+  "mediaFrame": { "stroke": false, "shadow": false, "cornerRadius": false },
+  "text": {
+    "fills": ["color", "gradient2"],
+    "stroke": true,
+    "shadow": true,
+    "background": { "modes": ["line", "block"], "stroke": false, "shadow": false },
+    "anims": ["fade", "slideUp", "slideDown", "slideLeft", "slideRight", "pop", "typewriter", "wordPop", "wordFade", "lineReveal", "blurIn", "scaleBounce"],
+    "animUnits": ["char", "word", "line"],
+    "spans": false,
+    "counter": false,
+    "animators": false
+  },
+  "captions": {
+    "highlightModes": ["none", "color", "background", "scale", "colorAndScale"],
+    "perCueStyle": true,
+    "wordEmphasis": false,
+    "cueAnims": [],
+    "boxModes": ["line", "block"],
+    "wordsImport": false
+  },
+  "transitions": ["crossDissolve", "dipToBlack", "dipToWhite"],
+  "compositing": { "compound": false, "blendModes": ["normal"], "trackMatte": false, "masks": false, "adjustment": false },
+  "vector": { "shapes": false, "trimPaths": false, "svgImport": false },
+  "effects": [],
+  "audio": { "clipGainDb": [-60, 12], "fades": true, "trackGain": false, "pan": false, "loudness": false },
+  "time": { "speedRange": [0.25, 4], "freeze": true, "reverse": false, "remap": false, "frameBlend": false },
+  "templates": false,
+  "export": { "containers": ["mp4"], "videoCodecs": ["h264", "hevc", "av1"], "alpha": false, "imageSequence": false, "gif": false, "stems": false },
+  "cli": { "validate": false, "normalize": false, "info": false, "render": false, "compare": false },
+  "interop": { "openLink": false, "externalReload": false, "repairOnOpen": false, "fallbackOf": false, "generatorMeta": false }
+}
+```
+
+`fills`: `color` = an RGBA fill, `gradient2` = the v1 vertical two-stop `Gradient`, `linear` and `radial` = `GradientFill` (§21.7). `animatedImage.textureBudgetBytes` is the texture memory one animated image may use: frames x width x height x 4 x 4/3 (mip levels); larger animations drop frames (§9.3), so generators stay under it.
+
+Keys each batch turns on or extends (each batch also adds the keyframe props of its own fields; batches not listed change no key):
+
+| Batch | Keys |
+|---|---|
+| 54 | `schemaVersion` 4; `cli.validate`, `cli.info`; `interop.fallbackOf`, `interop.generatorMeta` |
+| 55 | `cli.normalize` |
+| 56 | `interop.openLink`, `interop.externalReload`, `interop.repairOnOpen` |
+| 57 | `cli.render`, `cli.compare` |
+| 58 | `solid.stroke`, `solid.shadow`, `solid.cornerRadii`; `solid.fills` and `text.fills` add `linear`, `radial`; `mediaFrame.stroke`, `mediaFrame.shadow`, `mediaFrame.cornerRadius`; `text.background.stroke`, `text.background.shadow` |
+| 59 | `captions.highlightModes` adds `progressive`, `reveal`; `captions.wordEmphasis`; `captions.cueAnims` lists `fade`, `pop`, `slideUp`, `slideDown`; `captions.boxModes` adds `word`; `captions.wordsImport` |
+| 60 | `keyframes.eases` adds the 30 Penner names, `bezier` and `spring`; `keyframes.bezier`, `keyframes.spring`, `keyframes.vectorValues`; `keyframes.props` adds the §21.9 props |
+| 62 | `clipKinds` adds `compound`; `compositing.compound` |
+| 64 | `media.videoAlpha`, `media.imageSequence` |
+| 65 | `clipKinds` adds `shape`; `vector.shapes`, `vector.trimPaths` |
+| 66 | `vector.svgImport` |
+| 67 | `text.spans` |
+| 68 | `text.counter`, `text.animators`; `text.anims` adds the §21.13 presets |
+| 69 | `clipKinds` adds `null`; `transform.parenting`, `transform.motionPaths`, `transform.autoOrient` |
+| 70 | `transform.rotation3d` |
+| 71 | `transitions` adds the §21.16 kinds |
+| 72 | `compositing.blendModes` lists all 13; `compositing.trackMatte` |
+| 73 | `compositing.masks` |
+| 74, 75, 76 | `effects` lists each effect type |
+| 76 | `clipKinds` adds `adjustment`; `compositing.adjustment` |
+| 77 | `audio.trackGain`, `audio.pan`, `audio.loudness` |
+| 78 | `time.reverse`, `time.remap`, `time.frameBlend` |
+| 79 | `clipKinds` adds `lottie`; `media.lottie` |
+| 80 | `templates` |
+| 81 | `export.containers` adds `webm`; `export.alpha`, `export.imageSequence`, `export.gif`, `export.stems` |
+
+### 21.3 Field table and project CLI (Batches 54 and 55)
+
+- **Field table** (`src/core/document/schema.ts`, Batch 54): one description of every object in `project.json` (project, settings, media items, bins, tracks, every clip kind, transform, crop, volume, text content and style, caption styles and overrides, keyframes, markers, the font manifest): each field's type, allowed values or range, whether it is required, and where its default comes from (the constants the app uses when it creates the same thing). It drives the strict validator, the JSON Schema, the INTEROP.md field reference and the defaults of `normalize`. A test checks that every type in `types.ts` is covered.
+- `npm run cli -- <command> [args]` runs `dist-cli/project-cli.mjs`, built from `scripts/cli/project-cli.ts` by `npm run build:cli` (a Vite SSR build, no new dependency; `npm run cli` rebuilds first when sources changed; `dist-cli/` is gitignored and ignored by ESLint). It imports only modules without DOM access: the document model, the field table, migrations, validation, the app's defaults and Node-side media header readers. Paths may be written `C:\...`, `C:/...` or `/c/...`.
+- `capabilities` (Batch 54): prints the manifest.
+- `validate <dir> [--json]` (Batch 54): reads `project.json`, migrates it in memory, checks every field against the field table (types, ranges, required fields; unknown fields are refused everywhere except inside `fallbackOf.data`), runs the document invariants of `validate.ts`, and checks that every media `relPath` exists inside the folder and that `fonts/fonts.json` parses and its files exist. Exit 0 valid, 1 invalid, 2 usage error. `--json` prints `{ ok, schemaVersion, errors: [{ path, message }], warnings: [{ path, message }], standIns }`. From Batch 55 it also compares media records with the files' headers (a warning within 1 frame, an error beyond); from Batch 56 it reports which stand-ins are convertible.
+- `info <dir>` (Batch 54): duration, tracks, clips by kind, stand-ins by kind, missing media (and, from Batch 55, the probed media facts).
+- `schema` (Batch 54): prints a JSON Schema (2020-12) of `project.json` for the current schema version, generated from the field table.
+- `normalize <dir> [--write]` (Batch 55): accepts a sparse project (§21.4), migrates an older `schemaVersion` first, then fills every omitted field, at the project, track, clip and media level, with the defaults of the field table, so a generator that does not know a field added by a later batch still produces a valid project. It sorts track clip lists, computes missing media clip `out` points, reads media headers to fill `durationUs`, `width`, `height`, `fps`, `hasAudio`, `codec`, `size` and the analysis states, records the library fonts used by texts and captions in `fonts/fonts.json` and copies their files, then validates strictly. Without `--write` it prints the result.
+- Node media headers (Batch 55): MP4, MOV and M4A (mp4box), WebM (EBML header and track entries), WAV, MP3 (frame scan), OGG (last granule position), PNG, JPEG, WebP (still and animated), GIF, SVG (width and height or viewBox). Anything unreadable is left for the app's repair on open (§21.5).
+- The library functions `validateProjectFolder`, `normalizeProjectFolder` and `readMediaHeader` are exported for tests and for the INTEROP.md doc test.
+
+### 21.4 External projects: model fields and conventions (Batch 54)
+
+- `Project.meta.generator?: { name: string; version?: string; source?: string; url?: string }`: the tool that wrote the project, shown in the Project section of the properties panel.
+- `ClipBase.fallbackOf?: { kind: string; reason: string; schemaVersion: number; headTrim?: number; data: JsonObject }`: the clip is a baked stand-in.
+  - `data` is the native clip it stands for, in the editor's own JSON (any clip kind, present or future, possibly sparse), timed as the stand-in was when it was written: `id`, `trackId`, `start` and `duration` are left out and come from the stand-in. For a compound, `data.sequence` holds its sequence and `data.clips` its inner clips; media it needs are in `data.media` (records whose files are inside the project folder). `data.kind` must equal `kind`.
+  - `schemaVersion` is the schema version `data` follows; conversion migrates it from there (§21.5).
+  - `headTrim` (frames, default 0) is how far the stand-in's first frame has moved into the clip it stands for: the right half of a split, a head trim and a slip add to it, so a conversion starts the native clip at the same moment.
+  - The editor stores the block as it is and never migrates, normalizes or interprets `data` except to convert it. Copy, paste, split, trims and undo keep the block.
+- Sparse input (for `normalize`): a clip needs `id`, `kind`, `trackId`, `start`, `duration` and its content fields (`mediaId` for media clips, `text` for text and caption clips, `fill` and `size` for solids); a track needs `id` and `kind`; a media item needs `id`, `kind` and `file.relPath`. Everything else may be omitted. Nested style objects merge with the defaults field by field.
+- Conventions for generated projects (documented in INTEROP.md; the editor needs nothing special): track order as §5.2 and §10.5 (video tracks bottom to top, then the caption track, then audio tracks); label colors for baked layers (violet sprite, orange overlay, red plate); bins by kind (Audio, Images, Sprites, Overlays, Plates); labeled markers at scene starts; generator files the editor ignores but shows read-only in the Project section when present: `FALLBACKS.md` (the list of baked layers) and `OPEN.txt`.
+- `docs/INTEROP.md` is the contract for any tool that writes projects: the folder layout (§9.7); the field reference generated from the field table; ids (any unique strings, uuid v4 recommended); integer frames and microseconds (P4); track and clip invariants (§5.2); captions and word timings; fonts (`fonts/fonts.json` version 2 and the library catalog); the manifest; the CLI; the generator fallback levels (sprite, overlay, plate); stand-ins; the advice to use a copy of the editor at an accepted `batch-NN: review` commit rather than the working folder; and an ease name table for CSS, GSAP and After Effects (filled by Batch 60).
+
+### 21.5 Open links, reload, repair and Make editable (Batch 56)
+
+- **Projects folder.** A directory handle chosen once (start screen `Projects folder` button, Settings > General) and stored in IndexedDB (per origin: it works at the address where it was chosen).
+- **Open link.** `/?open=<path>` opens the project folder at `<path>` inside the projects folder (segments joined by `/`). Without a projects folder, the start screen shows `Choose your projects folder to open <path>` (one click opens the picker). With permission in the `prompt` state, one click on `Open <path>` gives `requestPermission` its user gesture. A missing folder or one without `project.json` gives a toast naming the path and the start screen. The opened project joins Recent projects; a project open with unsaved changes is saved first (§15).
+- **Reload on external change.** While a project is open and the window is visible, the app checks `project.json` (`lastModified` and size) when the window gets focus and every 5 s while no gesture, save or export is running. A change the app did not write itself: with no unsaved changes the project reloads in place (one step `Reloaded from disk`, not undoable; the previous document goes to `history/`; playhead, zoom and scroll kept; the selection keeps only clips that still exist); with unsaved changes a banner `project.json changed on disk` offers `Reload` and `Keep mine` (the next save backs up the disk version to `history/`, then overwrites it). Changed media files are probed again.
+- **Repair on open.** Media whose stored duration, size, frame rate or audio presence disagree with the probe are corrected; clips past a shortened media end are trimmed; analysis marked pending is scheduled. All of it is one step `Repaired on open` (not undoable), with a toast giving the counts and the details in `history/repair-<date>.log`.
+- **Make editable.** A clip with `fallbackOf` shows a `baked` badge on the timeline and, in the properties panel header, `Baked stand-in for a <kind> clip: <reason>` with a `Make editable` button. Conversion: take `data` (with `data.sequence`, `data.clips` and `data.media`), complete it with the field table's defaults (probing `data.media` files like an import), migrate it from `fallbackOf.schemaVersion` to the current version (by running the project migrations on a minimal project that holds it), give it the stand-in's id and track and the timing the stand-in had when it was written (`start - headTrim`, `duration + headTrim`), apply the editor's own head trim of `headTrim` frames (keys, in points, offsets and text animations shift as in a normal trim), and validate the project strictly with it in place of the stand-in. The button is enabled when this succeeds; converting is one undo step. Changes made to the stand-in itself (its transform, opacity, keys) are not carried over, and the confirmation says so. `Make all editable` (project menu and command palette) converts every convertible stand-in in one step and reports the rest with their reasons. A project with convertible stand-ins shows, once per open, the toast `N baked layers can be made editable` with the action.
+- **Large generated projects.** Up to 40 video tracks, 1,000 clips and 5,000 keyframes open in under 2 s on a warm cache and keep P1, P3 and P10.
+
+### 21.6 Headless render and compare (Batch 57)
+
+- `npm run cli -- render <dir> --out <file.mp4> [--range <from>:<to>] [--preset <id>] [--backend webgpu|webgl2]`, and `--frames <f1,f2,...> --png <outdir>` for single frames.
+- How it works: the CLI serves the built app (`dist/`) and the project folder on localhost (a free port, never 5300 or 5310), finds Chrome or Edge (`CHROME_PATH` wins), launches it headless with WebGPU enabled (or forced to WebGL2) with a temporary profile named `shorts-editor-render-<random>` in the system temp folder, and drives it over the DevTools protocol with Node's built-in `WebSocket` and `fetch` (no Puppeteer or Playwright). The page opens `/?render=<token>`, a render-only entry with no panels, no autosave, no IndexedDB writes and no service worker. It reads the project through `HttpDir`, a read-only implementation of the project file-system interface over HTTP (range requests for media bytes), runs the same export job as the Export tab and streams the file back through `HttpSink`; frames go through the same path as `Export frame`. Progress prints as frames done of total; a watchdog stops a render that makes no progress for 60 s; the CLI always removes the Chrome it started and its profile, Ctrl+C included, and never touches other Chrome processes.
+- `npm run cli -- compare <a> <b> [--ssim <min>] [--psnr <min>] [--region x,y,w,h] [--diff <dir>] [--json]`: `a` and `b` are videos or PNG folders. Frames are decoded with WebCodecs in the headless page, matched by timestamp and scored with SSIM (luma, 8x8 windows) and PSNR, over the whole frame or a region. It prints the worst frames and exits 1 below the thresholds; `--diff` writes difference images.
+- Render mode writes a fixed MP4 creation time, so a project renders to the same bytes on the same machine and backend (record whether this holds).
+- `npm run test:render` renders every fixture that has `expected/` frames and compares them; it needs a GPU and is not part of `npm test`. Renders go to `out/` (gitignored and ignored by ESLint).
+
+### 21.7 Shape, frame and box styles (Batch 58)
+
+Amends §5.2 (`SolidClip`, `MediaClip`, `TextStyle`, `TextBackground`).
+
+```ts
+type Fill = RGBA | Gradient | GradientFill;            // Gradient: the v1 vertical two-stop
+interface GradientFill {
+  type: "linear" | "radial";
+  angle: number;                                        // linear: degrees, 0 = top to bottom, clockwise
+  center: { x: number; y: number };                     // radial: fractions of the box
+  radius: number;                                       // radial: fraction of half the box diagonal
+  stops: { at: number; color: RGBA }[];                 // 2 to 8 stops, `at` 0..1 ascending
+}
+interface StrokeStyle { width: number; color: RGBA; align: "inside" | "center" | "outside"; dash?: number[]; dashOffset?: number }
+interface ShadowStyle { x: number; y: number; blur: number; spread: number; color: RGBA }   // blur 0 = hard edge
+
+// SolidClip adds:              fill: Fill; stroke?: StrokeStyle; shadow?: ShadowStyle;
+//                              cornerRadii?: [number, number, number, number]   // tl tr br bl, wins over cornerRadius
+// MediaClip (video, image):    cornerRadius?: number; stroke?: StrokeStyle; shadow?: ShadowStyle   // around the cropped picture
+// TextStyle.fill:              Fill
+// TextBackground adds:         stroke?: { enabled: boolean; width: number; color: RGBA };
+//                              shadow?: { enabled: boolean; x: number; y: number; blur: number; color: RGBA }
+```
+
+- Solids draw through one signed-distance shader (box with four radii, ellipse, line) that computes the fill (color, two-stop, linear or radial stops), the stroke (inside, centered on or outside the shape's edge; dashes spaced evenly along the perimeter, rounded corners included) and the shadow (hard when blur is 0, with pixel-exact edges; soft through an analytic Gaussian of the rounded box, without an extra pass), anti-aliased like v1 solids. An absent stroke or shadow on a solid or picture means none.
+- Pictures with a radius are clipped to the rounded rectangle; their stroke and shadow follow the same shape. The layout box never changes with the stroke; the gizmo bounds include stroke and shadow.
+- Text: gradient fills and the background box's stroke and shadow are drawn into the text raster (cached, P11). The box stroke and shadow carry `enabled`, like `TextStroke` and `TextShadow`, so a caption cue's override (§20.3) can turn off a border its track has. Caption styles get them through their `TextStyle` (§10.5, §20.3).
+- Properties panel: `Fill` (Color, Linear, Radial, with a stop bar: click to add, drag to move, Delete to remove), `Stroke` (enable, width, color, align, Solid / Dashed / Dotted / custom dash), `Shadow` (enable, Hard and Soft presets, x, y, blur, spread, color) and `Corners` (one radius or four, linked by a toggle) for solids and pictures; the text and caption `Background` rows gain Border and Shadow.
+
+### 21.8 Captions v2 (Batch 59)
+
+Amends §10.5 and §20.3.
+
+- Highlight modes add `progressive` (spoken words and the active word in `color`, upcoming words in `inactiveColor`) and `reveal` (upcoming words hidden, spoken words in `color`).
+- Emphasis: `CaptionHighlight.emphasisColor?: RGBA`; `CaptionWord.emphasis?: boolean` (the word shows the emphasis color from the cue's first frame, over the highlight and inactive colors); `CaptionWord.color?: RGBA` (one word's own fill, over everything).
+- Cue animations: `CaptionStyle.anim?: { in?: CueAnim; out?: CueAnim }` with `CueAnim = { kind: "fade" | "pop" | "slideUp" | "slideDown"; frames: number }`, applied to the whole caption box at each cue's start and end (each at most half the cue); cue overrides may set it.
+- Box per word: `TextBackground.mode` adds `"word"` for captions, a box behind each word; with the `background` highlight, the active word's box takes the highlight color.
+- Import words (Captions tab, `Import words`): JSON as an array of `{ word | text, start, end }` in seconds, or in milliseconds when the keys are `startMs` and `endMs` or `start_ms` and `end_ms`, or when the file has `"unit": "ms"`; Whisper-style `{ segments: [{ words: [...] }] }`; an optional `cues: [{ from: number; to: number; emphasis?: number[] }]` (inclusive word index ranges and emphasis word indexes) fixes cue boundaries and emphasis. Without `cues`, a dialog chunks the words (max words per cue 1 to 12, max characters per line, max lines, breaks at punctuation and at pauses longer than N ms) through `cuesFromWords`. The import creates the caption track if missing and replaces existing cues only after confirmation.
+- Rendering keeps P11: word states are drawn from the cue's word atlas, rasterized once per cue and style; nothing is rasterized during playback.
+
+### 21.9 Keyframes v2 (Batches 60 and 61)
+
+Amends §5.2 (`Keyframes`) and §6.15. Batch 60 builds the model, the evaluation and the rendering; Batch 61 the editing UI.
+
+```ts
+type EaseId = /* the 8 of v1 */ | PennerEase | "bezier" | "spring";
+type PennerEase =
+  | "sineIn" | "sineOut" | "sineInOut" | "quadIn" | "quadOut" | "quadInOut"
+  | "cubicIn" | "cubicOut" | "cubicInOut" | "quartIn" | "quartOut" | "quartInOut"
+  | "quintIn" | "quintOut" | "quintInOut" | "expoIn" | "expoOut" | "expoInOut"
+  | "circIn" | "circOut" | "circInOut" | "backIn" | "backOut" | "backInOut"
+  | "elasticIn" | "elasticOut" | "elasticInOut" | "bounceIn" | "bounceOut" | "bounceInOut";
+interface Key {
+  frame: Frame;
+  value: number | number[];                           // number[] for vector props
+  ease: EaseId;                                       // shapes the segment from this key to the next
+  bezier?: [number, number, number, number];          // ease "bezier": CSS cubic-bezier(x1, y1, x2, y2)
+  spring?: { damping: number; frequency: number };    // ease "spring": defaults 0.7 and 4
+}
+```
+
+- Vector values: colors are `[r, g, b, a]` (straight alpha, 0..1, interpolated per channel), points `[x, y]`. A key's value must match its prop (validated).
+- New props (the prop id is the field's path; valid only on clips that have the field): `transform.anchor.x`, `transform.anchor.y`; media `crop.left`, `crop.top`, `crop.right`, `crop.bottom`; solids `size.w`, `size.h`, `cornerRadius`, `fill` (vector, when the fill is a color), `stroke.width`, `stroke.color` (vector), `stroke.dashOffset`, `shadow.x`, `shadow.y`, `shadow.blur`, `shadow.spread`, `shadow.color` (vector); pictures `cornerRadius`; text `style.fontSize`, `style.letterSpacing`, `style.fill` (vector, color fills). Later batches add theirs.
+- P11 holds: an animated font size draws from a raster at the largest keyed size, scaled; animated letter spacing positions the character atlas; an animated text fill tints a separate fill layer. Text never re-rasterizes during playback.
+- UI (Batch 61): the ease selector becomes a searchable popover with groups (Basic, Sine, Quad, Cubic, Quart, Quint, Expo, Circ, Back, Elastic, Bounce, Custom) and a curve thumbnail per ease; `Custom bezier` opens a curve editor (two handles, presets, numeric fields, `Copy as CSS`); `Spring` shows damping and frequency. The new fields get stopwatches and timeline lanes. Keyframe lanes support copying and pasting selected keys (pasted at the playhead with their spacing), `Reverse keys` and `Set ease for selected`. Until then (Batch 60) the existing ease selector lists the new eases in a plain grouped list.
+- INTEROP.md gets the ease name table (Batch 60): CSS (`ease`, `ease-in`, `ease-out`, `ease-in-out` as beziers), GSAP (`power1` to `power4` = quad to quint, `sine`, `expo`, `circ`, `back` with overshoot 1.70158, `elastic`, `bounce`, each with `.in`, `.out`, `.inOut`), After Effects (Easy Ease = bezier with 33% influence).
+
+### 21.10 Compound clips (Batches 62 and 63)
+
+Amends §1.3 (nested sequences), §5.2 and §6.12. Batch 62 builds the model, rendering, audio and the make and break commands; Batch 63 editing inside a compound and the Compounds bin.
+
+```ts
+// Project adds:
+sequences: Record<SequenceId, Sequence>;               // empty in older projects
+interface Sequence {
+  id: string;
+  name: string;
+  size: { w: number; h: number };                      // project px
+  duration: Frame;
+  background: RGBA | null;                             // null = transparent
+  tracks: Track[];                                     // inner video and audio tracks, ordered like Project.tracks; no caption track
+}
+interface CompoundClip extends ClipBase {
+  kind: "compound";
+  sequenceId: string;
+  offset: Frame;                                       // the sequence frame shown at the clip's start
+  transform: Transform; opacity: number; keyframes?: Keyframes; fades: { in: Frame; out: Frame };
+  volume: Volume;                                      // gain of the inner audio
+}
+```
+
+- Inner clips live in `Project.clips` (ids unique project-wide) with `trackId` naming an inner track. Several compound clips may share one sequence (instances). Nesting goes up to 8 levels; cycles are refused.
+- Time: inner frame = `offset + (frame - start)`. A compound clip cannot run past its sequence's end; trimming changes `offset` and `duration` like a media clip's in and out, and slip works.
+- Rendering: the compositor renders the sequence at the inner frame into a pooled texture (the sequence size times the preview detail factor, P6) and draws it as one layer with the clip's transform, opacity and fades. A sequence without animation or video caches its texture until an edit. Inner audio is mixed with the compound's gain.
+- Commands (Batch 62): `Make compound` from selected clips (they move into a new sequence the size of the project, keeping their times and places; one compound clip replaces them on the lowest track they used); `Break apart` (only when the compound has no transform, opacity, fades or keys; otherwise disabled with the reason); `Make unique` (copies the sequence for this instance).
+- Editing (Batch 63): `Open compound` (double-click or Enter) switches the timeline and the canvas to the sequence with a breadcrumb (`Project > Card 3`; Esc or the breadcrumb closes it); edits inside are normal commands. The media panel lists sequences in a `Compounds` bin, and dragging one adds an instance; compound clips show their sequence's poster.
+
+### 21.11 Alpha video and image sequences (Batch 64)
+
+Amends §9.1 to §9.6.
+
+- Alpha video: WebM with VP8 or VP9 and an alpha channel (the alpha stream in Matroska BlockAdditions, BlockAddID 1, track flag `AlphaMode` 1). The decode worker runs a second `VideoDecoder` for the alpha stream and pairs frames by timestamp; the alpha plane is uploaded as a second texture and multiplied in the compositor, in both backends. The probe sets `MediaItem.alpha?: true`. AV1 and HEVC alpha import as opaque with a toast; ProRes is refused with the conversion command in INTEROP.md (`ffmpeg -i in.mov -c:v libvpx-vp9 -pix_fmt yuva420p -b:v 0 -crf 24 out.webm`).
+- Proxies of alpha media: VP9 with `alpha: "keep"` when `VideoEncoder.isConfigSupported` accepts it; otherwise no proxy (full decode and a `no proxy` badge).
+- Image sequences: a folder of numbered PNG or WebP frames of one size imports as one media item: `MediaItem.kind: "image"` with `sequence: { dir: string; pattern: string; first: number; count: number; fps: Rational }` (`dir` relative to the project folder, `pattern` printf-style such as `frame_%05d.png`); duration = count / fps. Picking or dropping such a folder asks once: `Import as image sequence (N frames) at <fps>?`. Frames decode on demand in workers (`createImageBitmap`) into the frame cache with the video keys (P6 to P8); thumbnails come from frames.
+- Exports flatten alpha over the project background as before (alpha export: §21.25).
+
+### 21.12 Vector shapes and SVG import (Batches 65 and 66)
+
+Amends §5.2 (a new clip kind) and §9.1 (SVG). Batch 65 builds the model and the renderer; Batch 66 SVG import and the shape tools.
+
+```ts
+interface ShapeClip extends ClipBase {
+  kind: "shape";
+  size: { w: number; h: number };                      // the view box, project px at scale 1
+  paths: ShapePath[];                                  // drawn in order
+  transform: Transform; opacity: number; keyframes?: Keyframes; fades?: { in: Frame; out: Frame };
+}
+interface ShapePath {
+  id: string;
+  d: string;                                           // SVG path data in view-box px, arcs allowed
+  fill: Fill | null;
+  fillRule: "nonzero" | "evenodd";
+  stroke?: StrokeStyle & { cap: "butt" | "round" | "square"; join: "miter" | "round" | "bevel"; miterLimit: number };
+  trim?: { start: number; end: number; offset: number };   // fractions of the path length
+  primitive?: Primitive;                               // when present, `d` is generated from it
+}
+type Primitive =
+  | { kind: "rect"; w: number; h: number; radius: number }
+  | { kind: "ellipse"; w: number; h: number }
+  | { kind: "polygon"; sides: number; radius: number; roundness: number }
+  | { kind: "star"; points: number; inner: number; outer: number; roundness: number }
+  | { kind: "arrow"; length: number; shaft: number; head: number; headLength: number }
+  | { kind: "arc"; radius: number; start: number; end: number }       // degrees, 0 = up, clockwise
+  | { kind: "line"; length: number };
+```
+
+- Keyframe props: `paths.<id>.trim.start`, `paths.<id>.trim.end`, `paths.<id>.trim.offset`, `paths.<id>.stroke.width`, `paths.<id>.stroke.color`, `paths.<id>.stroke.dashOffset`, `paths.<id>.fill` (color fills) and `paths.<id>.primitive.<param>` (number params).
+- Rendering (Batch 65): curves flatten to polylines with a tolerance tied to the on-screen scale; fills are exact for both fill rules (stencil-then-cover, preferred, or earcut tessellation as in FlashFX-v2 `src/engine/pathTessellation.ts`; log the choice); strokes are expanded with caps, joins, miter limit, dashes and trims; edges are anti-aliased to match solids. Geometry is cached by path and style, a trim rebuilds only the trimmed stroke, and geometry work above 2 ms moves to a worker. Shape clips move, scale and rotate with the existing gizmo.
+- SVG import (Batch 66): `Import as shapes` on an SVG media item (context menu), and as a choice when dropping an SVG: `path`, `rect`, `circle`, `ellipse`, `line`, `polyline`, `polygon`, `g` with transforms (flattened), fill, stroke and opacity attributes and style properties, linear and radial gradients (as `GradientFill`), `viewBox`. Anything else (filters, masks, clip paths, text, images, patterns) keeps the SVG as an image clip, and a toast names what was unsupported.
+- Tools (Batch 66): a `+ Shape` dropdown in the timeline toolbar (Rectangle, Ellipse, Polygon, Star, Arrow, Arc, Line) creates a shape at the playhead; a `Shape` section edits each path's fill, stroke and trim (with stopwatches) and the primitive's parameters. Point editing on the canvas stays out (later).
+
+### 21.13 Text v2: styled spans, counters, animators (Batches 67 and 68)
+
+Amends §10.1 (rich text) and §10.4. Batch 67 builds spans; Batch 68 counters, animators and the new presets.
+
+- Spans (Batch 67): `TextClip.spans?: { start: number; end: number; style: TextSpanStyle }[]`, UTF-16 offsets into `text.value`, sorted and not overlapping; `TextSpanStyle = { fill?: Fill; fontFamily?: string; fontWeight?: number; italic?: boolean; underline?: boolean; strike?: boolean; highlight?: RGBA }` (`highlight` is a box behind the span). Edits keep spans on their words (typing inside a span extends it; deleting shrinks or removes it). Inline editing gets a small format bar (Bold, Italic, Color, Highlight, Clear) and `Mod+B`, `Mod+I`. Spans are content: presets never store them, and applying a preset keeps them.
+- Counters (Batch 68): `TextClip.counter?: { from: number; to: number; decimals: number; prefix: string; suffix: string; separator: "" | "," | "." | " " | "'"; ease: EaseId }`: the clip shows `prefix + value + suffix`, the value going from `from` to `to` over the clip's duration, or following keys on the prop `text.counter.value` when present; `text.value` holds the final text (for layout bounds). It is drawn from a glyph atlas of the digits, separators, prefix and suffix and never re-rasterized per frame (P11).
+- Animators (Batch 68): `TextClip.animators?: TextAnimator[]` with `TextAnimator = { id: string; unit: "char" | "word" | "line"; selector: { start: number; end: number; offset: number; shape: "square" | "rampUp" | "rampDown" | "triangle" | "round" | "smooth"; ease: number; order: "forward" | "reverse" | "random"; seed: number }; props: { x?: number; y?: number; scale?: number; rotation?: number; opacity?: number; blur?: number; tracking?: number; fill?: RGBA } }`. Each unit gets an amount 0..1 from the selector (After Effects range-selector semantics, FlashFX-v2 `src/text/rangeSelector.ts`), and each prop applies times that amount (opacity moves toward its value). Keyframe props: `animators.<id>.selector.start`, `.selector.end`, `.selector.offset` and `animators.<id>.props.<name>`.
+- Presets (Batch 68): the In and Out chips add `typeOn`, `decode` (characters scramble before settling), `tumbleIn`, `cascadeUp`, `riseByLine`, `popInByChar`, `blurInByChar`, `fadeInByChar` and `highlightSweep` (a span highlight growing across the words); the existing animations are unchanged.
+- P11: per-unit transforms, opacity, blur and fill tint run on the GPU from the atlas; `decode` swaps glyphs from a per-text glyph atlas.
+
+### 21.14 Parenting, null clips and motion paths (Batch 69)
+
+- `ClipBase.parentId?: ClipId` on visual clips of video tracks: the clip's transform is in its parent's space (the parent's world transform applies after the clip's own, After Effects semantics); opacity is not inherited. The parent is evaluated at the frame clamped into its own range. Parent and child are in the same sequence; cycles are refused. Setting or clearing a parent keeps the child's world placement at the playhead (its local transform and keys are converted).
+- Null clips: `{ kind: "null"; transform: Transform; keyframes?: Keyframes; size: { w: number; h: number } }` on video tracks, never drawn, shown as an outline with a cross on the canvas when selected.
+- Motion paths: the vector prop `transform.position` (`[x, y]`), whose keys may carry `spatialIn?: [number, number]` and `spatialOut?: [number, number]` tangents (relative to the key's point). Positions move along the arc-length-parameterized path (FlashFX-v2 `src/core/positionPath.ts`), the ease shaping progress along it. A clip uses either `transform.x` and `transform.y` keys or `transform.position` keys; `Convert to motion path` and back are commands. With the clip selected, the canvas shows the path, its keys and draggable tangent handles (gestures, P2).
+- `ClipBase.autoOrient?: boolean`: rotation follows the path's tangent, added to the clip's rotation.
+- UI: a Parent field in the Transform section (a clip picker), `+ Null` in the toolbar overflow, and Motion path and Auto-orient toggles in the Transform section.
+
+### 21.15 2.5D layers (Batch 70)
+
+- `Transform.rotationX?` and `Transform.rotationY?` (degrees) and `Transform.z?` (px, positive = farther away); `Project.settings.perspective?: number | null` and `Sequence.perspective?: number | null` (viewing distance in px; null = none; 1600 when a layer first gets a 3D rotation); `Sequence.depthSort?: boolean` (inner layers drawn by depth instead of track order); `ClipBase.backfaceHidden?: boolean`.
+- Keyframe props `transform.rotationX`, `transform.rotationY`, `transform.z`.
+- Rendering: each layer's quad is projected on the CPU to a homography and drawn with perspective-correct texturing in both backends; hit testing and the gizmo use the projected quad. The gizmo gets X and Y rotation handles and the Transform section the fields.
+- Out: moving cameras, lights, depth of field, 3D models.
+
+### 21.16 Transitions v2 (Batch 71)
+
+Amends §6.15.
+
+- `TRANSITION_KINDS` adds `slide` (the incoming clip slides over), `push` (both move), `wipe` (a straight edge with softness), `iris` (a circle from a center), `zoomIn`, `zoomOut` (scale with a dissolve), `whip` (push with a directional blur peaking at the cut), `blurDissolve`, `glitch` and `flash` (to white and back).
+- `Transition.direction?: "left" | "right" | "up" | "down"` (slide, push, whip), `angle?: number` and `softness?: number` (wipe), `center?: { x: number; y: number }` (iris, fractions), `ease?: EaseId`. An absent `ease` means the v1 linear mix, so existing transitions play unchanged; the motion kinds (slide, push, whip, zoomIn, zoomOut, wipe, iris) are created with `easeInOut`. Both clips keep the same values (one transition).
+- Rendering: the two-picture transition layer takes a kind and its parameters, in both backends. Audio crossfades stay as they are.
+- UI: transition chips grouped (Dissolve, Motion, Wipe, Stylized) with hover previews, and direction buttons.
+
+### 21.17 Blend modes and track mattes (Batch 72)
+
+- `ClipBase.blend?: BlendMode` on visual clips: `normal`, `darken`, `multiply`, `colorBurn`, `lighten`, `screen`, `colorDodge`, `add`, `overlay`, `softLight`, `hardLight`, `difference`, `exclusion` (the formulas of FlashFX-v2 `src/core/effects/blendModes.ts`). Modes the GPU blend state can express use it; the others read a copy of the backdrop, made only when such a mode is visible in the frame.
+- `ClipBase.matte?: { clipId: ClipId; mode: "alpha" | "alphaInverted" | "luma" | "lumaInverted" }`: the clip shows only where the matte clip (a visual clip of the same sequence) is opaque or bright at that frame; `ClipBase.matteOnly?: boolean` hides a clip used as a matte.
+- UI: a Compositing section with a Blend list and a Matte picker.
+
+### 21.18 Masks (Batch 73)
+
+- `ClipBase.masks?: Mask[]` on visual clips, with `Mask = { id: string; shape: { kind: "rect" | "ellipse"; x: number; y: number; w: number; h: number; radius?: number } | { kind: "path"; d: string }; mode: "add" | "subtract" | "intersect"; feather: number; expansion: number; opacity: number; inverted: boolean }` in the clip's content px, combined in order into one coverage texture per clip (cached while static).
+- Keyframe props `masks.<id>.x`, `.y`, `.w`, `.h`, `.radius`, `.feather`, `.expansion`, `.opacity`, and `masks.<id>.path` (a vector of the path's points) while the point count stays the same.
+- Canvas mask mode (a button and a key): drag rectangle and ellipse handles, move, add and delete path points, drag a feather handle; each gesture commits one command (P2). One-click reveals: `Wipe in` and `Circle reveal` presets create mask keys.
+
+### 21.19 Effects (Batches 74 to 76)
+
+- `ClipBase.effects?: Effect[]` on visual clips, with `Effect = { id: string; type: EffectType; enabled: boolean; params: Record<string, number | number[] | string> }`. The order for a layer: content (with crop), masks, effects in order, transform, opacity and fades, blend and matte. A clip with effects renders into a pooled texture in its content space, padded by each effect's reach, then draws with its transform.
+- Registry (`src/render/effects/registry.ts`, Batch 74): for each type its params (name, kind, default, range, keyframeable), its passes (WGSL and GLSL), its reach and whether it reads neighboring pixels. Keyframe props `effects.<id>.<param>`.
+- Batch 74 types: `gaussianBlur`, `directionalBlur`, `glow` (outer or inner, threshold, color), `dropShadow` (shaped by alpha), `outline` (a stroke shaped by alpha).
+- Batch 75 types: `colorAdjust` (brightness, contrast, saturation, exposure, temperature, tint, hue, vibrance), `vignette`, `sharpen`, `grain`, `chromaKey` (color, tolerance, softness, spill), `lumaKey`, `lut` (a `.cube` file copied to `luts/` in the project, param `file`, plus intensity). Looks (Batch 75): an effect stack saved by name in the global store and applied in one click.
+- Batch 76 types: `rgbSplit`, `pixelate`, `mirror`, `wave`, `glitch`, `posterize`, `invert`.
+- Effects render at the preview detail factor (radii scale with it); static results are cached (P6).
+
+### 21.20 Adjustment clips (Batch 76)
+
+- `{ kind: "adjustment"; effects: Effect[]; opacity: number; keyframes?: Keyframes; fades?: { in: Frame; out: Frame }; masks?: Mask[] }` on video tracks: during its range its effects apply to the composite of every layer below it in the same sequence; masks limit the area and opacity mixes the result with the unaffected picture.
+
+### 21.21 Audio v2 (Batch 77)
+
+Amends §14.
+
+- `Track.gainDb?: number` (-60 to +12) and `Track.pan?: number` (-1 to 1) on audio tracks; `Volume.pan?: number` (-1 to 1) on audio clips, with the keyframe prop `volume.pan`; `fades.curve?: "linear" | "equalPower" | "exponential"` for audio fades.
+- Loudness: the meters show momentary, short-term and integrated loudness (ITU-R BS.1770-4) and true peak; `Project.settings.loudness?: { targetLufs: number; truePeakDb: number } | null` (off by default; the Instagram Reels, TikTok and YouTube Shorts export presets set -14 LUFS and -1 dBTP). Exporting with a target measures the offline mixdown, applies one gain and a true-peak limiter (5 ms lookahead), then encodes.
+- `Detect beats` on a music clip adds teal markers at its beats (FlashFX-v2 `src/core/beatDetection.ts`); snapping already uses markers.
+- A compact mixer popover from the track header: gain fader, pan, mute, solo.
+
+### 21.22 Time remapping and reverse (Batch 78)
+
+Amends §5.2 (`MediaClip`) and §14 (speed).
+
+- `MediaClip.timeRemap?: { frame: Frame; sourceUs: Us; ease: EaseId }[]` on video clips: keys relative to the clip's start (the first at 0, the last at the duration) map timeline frames to source times (freezes and backward segments allowed). When present it replaces `speed` for the picture, and the linked audio is muted (with a badge). One-click ramps: `Ramp in`, `Ramp out`, `Hero` (fast, slow, fast), `Bullet`.
+- `MediaClip.reverse?: boolean`: the clip plays its source backward (decoded a GOP at a time and served backward from the frame cache; proxies keep it smooth); its audio plays reversed from the decoded PCM.
+- `MediaClip.frameBlend?: boolean`: when the source advances less than one frame per timeline frame, the two nearest source frames are mixed.
+- UI: a time remap lane on the clip with the speed graph and draggable keys. The decoder lookahead (P7) follows remapped source times.
+
+### 21.23 Lottie clips (Batch 79)
+
+- Media kind `lottie` (`.json` files with bodymovin keys, sniffed before other JSON, and `.lottie` archives) with duration, size and frame rate from the file. Clip kind `lottie`: the media clip fields (media, in, out, speed, transform, opacity, keys, fades) plus `loop?: boolean` and `colorOverrides?: { from: RGBA; to: RGBA }[]`.
+- A worker renders frames at the on-screen scale with `@lottiefiles/dotlottie-web` (MIT, OffscreenCanvas) into the frame cache (P5 to P8). If it cannot run in a worker, port FlashFX-v2 `src/engine/lottieRenderer.ts` and list the unsupported features.
+
+### 21.24 Templates (Batch 80)
+
+- `Sequence.params?: TemplateParam[]` with `TemplateParam = { id: string; label: string; kind: "text" | "color" | "number" | "media" | "font" | "toggle"; targets: { clipId: ClipId; path: string }[]; default: JsonValue; min?: number; max?: number }` (`path` is a field path such as `text.value`, `style.fill`, `fill`, `mediaId` or `enabled`).
+- `CompoundClip.params?: Record<string, JsonValue>`: this instance's values, applied when its sequence is evaluated (instances share everything else; render caches key on the values).
+- `Expose as parameter` in a field's context menu (inside an open compound); `Save as template` (name, category, thumbnail; media copied) to the global store and the library folder; a Templates section in the Presets tab (search, thumbnails, drag to the timeline to create the sequence and an instance); selecting an instance shows its parameters as simple fields.
+- CLI `fill <dir> <values.json>`: sets instance parameters by clip id or name.
+
+### 21.25 Export v2 (Batch 81)
+
+Amends §16.
+
+- WebM (VP9 or AV1, with Opus) through a WebM muxer (`webm-muxer`, MIT, or a small EBML writer in `src/export/webm/`), with a `Transparent background` option (VP9 with `alpha: "keep"` when supported; the project background is not drawn).
+- PNG sequence (`<name>_%05d.png`, alpha optional) into a chosen folder.
+- GIF (`gifenc`, MIT): frame rate and width options (default 15 fps and 540 px), a palette per export, optional dithering.
+- Audio stems: one WAV per audio track over the export range.
+- Collect project: copies linked media into `media/` and rewrites the references; `Export as zip` writes a store-only zip of the project folder (own writer, no dependency).
+- Presets: Transparent overlay (WebM), GIF preview, PNG sequence. The CLI render accepts `--format mp4|webm|png|gif`.

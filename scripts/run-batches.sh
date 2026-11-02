@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Unattended batch runner. Usage: scripts/run-batches.sh [--until N]
+# Unattended batch runner. Usage: scripts/run-batches.sh [--until N] (default: the last batch in docs/BATCHES.md)
 #
 # Each batch is built in up to three time windows (6h, 4h, 2h of session time). A session that ends
 # early gets an error check (/check-batch error) and the work goes on in the same window; a window that
@@ -11,7 +11,9 @@
 set -uo pipefail
 cd "$(git rev-parse --show-toplevel)" || exit 2
 
-UNTIL=50
+# Default: the last batch in docs/BATCHES.md.
+UNTIL="$(grep -oE '^## Batch [0-9]+' docs/BATCHES.md | tail -1 | grep -oE '[0-9]+$')"
+UNTIL=$((10#${UNTIL:-50}))
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --until) UNTIL="$2"; shift 2;;
