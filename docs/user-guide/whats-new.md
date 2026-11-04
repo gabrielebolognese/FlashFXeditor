@@ -2,6 +2,14 @@
 
 Shorts Editor grows in steps called batches. This page lists what each batch added that you can see or use, newest first. Follow the links for the full instructions.
 
+## Batch 72: Blend modes and track mattes
+The new **Compositing** section has a **Blend** list of 13 modes (**Normal**, **Add**, **Multiply**, **Screen**, **Overlay**, **Difference** and more) and a track **Matte**: pick another clip and show your clip only where it is opaque, transparent, bright or dark (**Mode**). **Matte only** hides the matte clip itself. See [Blend modes and track mattes](blend-modes-and-track-mattes.md).
+
+> **Video placeholder: What's new in Batch 72**
+> - File: `videos/whats-new/batch-72.mp4` (not recorded yet)
+> - Length: about 35 seconds
+> - Shows: select a light-leak clip over a video; in **Compositing** pick **Screen** in **Blend**; select the video, pick a text in **Matte**, choose **Alpha**; play.
+
 ## Batch 71: More transitions
 There are ten new transitions besides the cross dissolve and the dips: **Slide**, **Push**, **Whip**, **Zoom in**, **Zoom out**, **Wipe**, **Iris**, **Blur dissolve**, **Glitch** and **Flash**. The **Transition** section groups them as **Dissolve**, **Motion**, **Wipe** and **Stylized**, shows a **Preview** of a kind when you point at it, and has **Direction**, **Angle**, **Softness**, **Center** and **Easing**. See [Fades and transitions](fades-and-transitions.md#change-a-transition-in-edit-properties).
 

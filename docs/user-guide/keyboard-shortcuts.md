@@ -518,6 +518,16 @@ Text animations have no keys of their own: you set them with the mouse in the **
 | Make it 10 frames longer or shorter | <kbd>Shift</kbd>+<kbd>↑</kbd> or <kbd>Shift</kbd>+<kbd>↓</kbd> | <kbd>⇧</kbd>+<kbd>↑</kbd> or <kbd>⇧</kbd>+<kbd>↓</kbd> |
 | Change **Duration** or **Stagger** while the preview at the playhead follows (1 frame per pixel) | Drag the field's icon left or right | Same |
 
+### Blend modes and track mattes
+
+These commands have no keys by default. Run them from **Compositing** in **Edit Properties** or the command palette, or give them keys in **Settings** > **Shortcuts**. See [Blend modes and track mattes](blend-modes-and-track-mattes.md).
+
+| Action | Windows | macOS |
+| --- | --- | --- |
+| Set a blend mode | **Blend: Screen** and the other modes (palette) | Same |
+| Remove the track matte | **Remove track matte** (palette) | Same |
+| Use the clip as a matte only | **Use as matte only (toggle)** (palette) | Same |
+
 ### Parenting, nulls and motion paths
 
 These commands have no keys by default. Run them from the toolbar, **Edit Properties** or the command palette, or give them keys in **Settings** > **Shortcuts**. See [Parenting, nulls and motion paths](parenting-and-motion-paths.md).
