@@ -11,6 +11,7 @@ function snapshot(patch: Partial<PerfSnapshot> = {}): PerfSnapshot {
     preview: { draws: 59.6, skipped: 0, ms: 1.05 },
     decode: { approx: [3.4, 9, 15], exact: [12, 30.6, null], requests: 240 },
     playback: { dropped: 3, frames: 600 },
+    compounds: { renders: 0, kept: 0, layers: 0, bytes: 0 },
     memory: { poolTextures: 12, poolBytes: 210 * MB, poolBudget: 768 * MB, gpuTextures: 40, gpuBytes: 260 * MB, textBytes: 3 * MB, audioBytes: 0, heapUsed: 85 * MB, heapTotal: 120 * MB },
     frames: { main: 0, worker: 2 },
     decoders: { sessions: 2, live: 1 },

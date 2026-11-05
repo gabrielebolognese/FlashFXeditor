@@ -62,6 +62,19 @@ describe("CompoundTargets (spec §21.10, P3)", () => {
     expect(targets.stats.bytes).toBe(0);
   });
 
+  it("tells its owner the bytes it holds after each pass and when cleared (the pool reserves them: P6)", () => {
+    const { gpu } = fakeGpu();
+    const heard: number[] = [];
+    const targets = new CompoundTargets(gpu, (bytes) => heard.push(bytes));
+    targets.begin();
+    targets.render("a", list(0), 10, 10);
+    targets.end();
+    targets.begin();
+    targets.end();
+    targets.clear();
+    expect(heard).toEqual([400, 0, 0]);
+  });
+
   it("clamps the texture size to the limit and keeps the aspect", () => {
     const { gpu } = fakeGpu();
     const targets = new CompoundTargets(gpu);

@@ -3,7 +3,9 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, type Keyboar
 import { createPortal } from "react-dom";
 import { actions, documentStore, sessionStore } from "../../app/services.js";
 import { bindTimecode, bindZoomSlider, timelineDev } from "../../app/timelineController.js";
-import type { Project } from "../../core/document/types.js";
+import type { ClipId, Project } from "../../core/document/types.js";
+import { breakApartProblem, makeCompoundProblem } from "../edit/compound.js";
+import type { Selection } from "../../core/store/selection.js";
 import type { SessionState } from "../../core/store/sessionStore.js";
 import { useStoreSelector } from "../../core/store/useStoreSelector.js";
 import { IconButton } from "../../ui/IconButton.js";
@@ -84,8 +86,29 @@ function CaptionTrackButton({ item }: { item: Extract<ToolbarItem, { kind: "butt
   return <IconButton label={has ? "Caption track: the project has one (Media > Captions)" : item.label} commandId={item.id} disabled={has} />;
 }
 
+const selectWhole = <T,>(state: T) => state;
+const clipSelection = (selection: Selection) => (selection.kind === "clips" ? { ids: [...selection.clipIds] as ClipId[], primary: selection.primary } : { ids: [] as ClipId[], primary: null });
+
+/** Make compound / Break apart: disabled with the reason in the tooltip when the selection can't take it (spec §21.10). */
+function CompoundButton({ item }: { item: Extract<ToolbarItem, { kind: "button" }> }) {
+  const project = useStoreSelector(documentStore, selectWhole<Project>);
+  const selection = useStoreSelector(sessionStore.selection, selectWhole<Selection>);
+  const { ids, primary } = clipSelection(selection);
+  const problem =
+    item.id === "clip.makeCompound"
+      ? ids.length === 0
+        ? "Select clips first"
+        : makeCompoundProblem(project, ids)
+      : primary === null
+        ? "Select a compound clip"
+        : breakApartProblem(project, primary);
+  const base = item.id === "clip.makeCompound" ? "Make compound clip" : "Break apart compound clip";
+  return <IconButton label={problem === null ? base : `${base}: ${problem}`} commandId={item.id} disabled={problem !== null} />;
+}
+
 function renderItem(item: ToolbarItem) {
   if (item.kind === "zoomSlider") return <ZoomSlider key="zoom-slider" />;
+  if (item.id === "clip.makeCompound" || item.id === "clip.breakApart") return <CompoundButton key={item.id} item={item} />;
   if (item.id === "add.captionTrack") return <CaptionTrackButton key={item.id} item={item} />;
   const pressedIn = TOGGLE_STATE[item.id];
   if (pressedIn) return <SessionToggle key={item.id} item={item} pressedIn={pressedIn} />;

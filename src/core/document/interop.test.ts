@@ -304,6 +304,7 @@ describe("fixtures/interop/compound (Batch 62)", () => {
     expect(project.clips.b.offset).toBe(10);
     expect(project.clips["badge-card"].sequenceId).toBe("card");
     expect(project.clips["card-audio"].kind).toBe("audio");
+    expect(project.clips["card-image"].kind).toBe("image");
   });
 
   it("refuses a sequence that contains itself, a missing sequence and a clip past the sequence's end", () => {

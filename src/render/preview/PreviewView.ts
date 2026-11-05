@@ -58,7 +58,8 @@ import type { SolidLook } from "../../timeline/edit/solid.js";
 import type { CanvasTarget, OffscreenTarget, Pane, Renderer, TextureHandle, Viewport } from "../gpu/renderer.js";
 import { mutableIdentity, setMat, type Mat3, type MutableMat3 } from "../mat3.js";
 import { AUTO_SETTLE_MS, DETAIL_MAX_SIZE, fullScale, qualityLabel, renderScale, sourceDetail, uploadLongEdge, vectorDetailSize, wantedLod, type PreviewActivity } from "./detail.js";
-import { CompoundTargets } from "./CompoundTargets.js";
+import type { TexturePool } from "../../media/cache/TexturePool.js";
+import { CompoundTargets, type CompoundStats } from "./CompoundTargets.js";
 import { LayerTextures, type LayerTexturesDeps, type LayerTexturesStats } from "./LayerTextures.js";
 import { deviceSizeInto, frameTransformInto, type Size } from "./viewport.js";
 import { canvasCapacity } from "../../core/scheduler/canvasCapacity.js";
@@ -67,7 +68,9 @@ const TRANSPARENT: RGBA = { r: 0, g: 0, b: 0, a: 0 };
 /** Text clips starting within this many seconds of the playhead are rasterized ahead (spec §10.4, P11). */
 export const TEXT_LOOKAHEAD_SECONDS = 5;
 
-export interface PreviewViewDeps extends Omit<LayerTexturesDeps, "onChange" | "wantedLod"> {
+export interface PreviewViewDeps extends Omit<LayerTexturesDeps, "onChange" | "wantedLod" | "pool"> {
+  /** `reserve`: the pool counts the compound targets against its budget (P6). */
+  pool: LayerTexturesDeps["pool"] & Partial<Pick<TexturePool, "reserve">>;
   renderer: Renderer;
   scheduler: Pick<FrameScheduler, "register" | "invalidate">;
   layout: Store<LayoutState>;
@@ -238,6 +241,11 @@ export class PreviewView implements RenderView {
   readonly firstShown: FirstShown = { frame: -1, layers: 0, exact: 0 };
   /** The status strip's quality text (§13), changed only when it reads differently. */
   readonly quality: Store<string> = createStore("Auto: full");
+  /** The offscreen targets of compound clips: `compoundStats.renders` is the render counter (a static compound draws once per edit). */
+  private readonly compoundTargets: CompoundTargets;
+  get compoundStats(): Readonly<CompoundStats> {
+    return this.compoundTargets.stats;
+  }
 
   constructor(private readonly deps: PreviewViewDeps) {
     this.chrome = chromeFromTheme(deps.theme.theme);
@@ -246,11 +254,12 @@ export class PreviewView implements RenderView {
     this.compositor = new Compositor(this.slates);
     this.rightCompositor = new Compositor(this.slates);
     this.exportCompositor = new Compositor(this.slates);
+    this.compoundTargets = new CompoundTargets(deps.renderer, (bytes) => deps.pool.reserve?.(bytes));
     this.textures = new LayerTextures({
       frames: deps.frames,
       images: deps.images,
       pool: deps.pool,
-      compounds: new CompoundTargets(deps.renderer),
+      compounds: this.compoundTargets,
       ...(deps.text && { text: deps.text }),
       onChange: () => deps.scheduler.invalidate("preview"),
       wantedLod: (mediaId) => wantedLod(this.passQuality, this.passActivity, deps.behind?.(mediaId) ?? false),

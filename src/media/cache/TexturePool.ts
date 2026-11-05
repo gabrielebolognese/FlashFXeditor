@@ -28,6 +28,8 @@ export interface TexturePoolStats {
   count: number;
   bytes: number;
   budget: number;
+  /** Bytes held outside the pool that count against the budget (compound targets). */
+  reserved: number;
   pinned: number;
   /** Textures evicted for the budget since the pool was created. */
   evictions: number;
@@ -47,6 +49,8 @@ export class TexturePool {
   private readonly pins = new Map<string, number>();
   private readonly listeners = new Set<() => void>();
   private bytes = 0;
+  /** GPU bytes held outside the pool that count against its budget (the render targets of compound clips, Batch 62). */
+  private reserved = 0;
   private evictions = 0;
 
   constructor(private budget: number = DEFAULT_TEXTURE_BUDGET) {}
@@ -137,7 +141,7 @@ export class TexturePool {
       const count = (this.pins.get(id) ?? 1) - 1;
       if (count > 0) this.pins.set(id, count);
       else this.pins.delete(id);
-      if (this.bytes > this.budget) {
+      if (this.bytes + this.reserved > this.budget) {
         this.evict(null);
         this.changed();
       }
@@ -154,10 +158,19 @@ export class TexturePool {
     this.changed();
   }
 
+  /** Sets the bytes held outside the pool that share its budget (P6); the pool evicts to make room. */
+  reserve(bytes: number): void {
+    const next = Math.max(0, bytes);
+    if (next === this.reserved) return;
+    this.reserved = next;
+    this.evict(null);
+    this.changed();
+  }
+
   get stats(): TexturePoolStats {
     let pinned = 0;
     for (const id of this.entries.keys()) if (this.pins.has(id)) pinned += 1;
-    return { count: this.entries.size, bytes: this.bytes, budget: this.budget, pinned, evictions: this.evictions };
+    return { count: this.entries.size, bytes: this.bytes, budget: this.budget, reserved: this.reserved, pinned, evictions: this.evictions };
   }
 
   /** Called after every change (dev stats). */
@@ -168,9 +181,9 @@ export class TexturePool {
 
   /** Evicts unpinned entries, oldest first, until the pool fits its budget. `keep` (just added) stays. */
   private evict(keep: string | null): void {
-    if (this.bytes <= this.budget) return;
+    if (this.bytes + this.reserved <= this.budget) return;
     for (const [id, entry] of [...this.entries]) {
-      if (this.bytes <= this.budget) break;
+      if (this.bytes + this.reserved <= this.budget) break;
       if (id === keep || this.pins.has(id)) continue;
       this.remove(id, entry);
       this.evictions += 1;

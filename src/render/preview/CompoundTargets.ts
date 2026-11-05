@@ -43,7 +43,11 @@ export class CompoundTargets {
   private pass = 0;
   readonly stats: CompoundStats = { renders: 0, kept: 0, layers: 0, bytes: 0 };
 
-  constructor(private readonly gpu: CompoundGpu) {}
+  /** `onBytes` hears the bytes the targets hold after every pass (the texture pool reserves them: P6). */
+  constructor(
+    private readonly gpu: CompoundGpu,
+    private readonly onBytes?: (bytes: number) => void,
+  ) {}
 
   /** The pixel size a compound's texture has for a sequence of `width` x `height` drawn at `scale` device px per sequence px. */
   sizeFor(width: number, height: number, scale: number): { width: number; height: number } {
@@ -115,6 +119,7 @@ export class CompoundTargets {
       for (const target of entry.targets) bytes += target?.texture.bytes ?? 0;
     }
     this.stats.bytes = bytes;
+    this.onBytes?.(bytes);
   }
 
   /** Releases everything (project closed, device lost). */
@@ -122,6 +127,7 @@ export class CompoundTargets {
     for (const entry of this.entries.values()) this.free(entry);
     this.entries.clear();
     this.stats.bytes = 0;
+    this.onBytes?.(0);
   }
 
   /** Forgets what each compound drew (the next pass draws all again): the device was replaced. */

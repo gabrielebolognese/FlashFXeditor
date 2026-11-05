@@ -16,13 +16,14 @@ import type { PlaybackEngine } from "../../playback/PlaybackEngine.js";
 import type { RenderDevice } from "../gpu/backend.js";
 import type { TextRasterStats } from "../text/TextRasterCache.js";
 import type { PreviewStats } from "./PreviewView.js";
+import type { CompoundStats } from "./CompoundTargets.js";
 
 /** How often the worker's decode counters are fetched while the overlay is shown. */
 const WORKER_POLL_MS = 500;
 
 export interface PreviewStatsDeps {
   scheduler: Pick<FrameScheduler, "register" | "invalidate">;
-  preview: { readonly stats: PreviewStats };
+  preview: { readonly stats: PreviewStats; readonly compoundStats: Readonly<CompoundStats> };
   pool: Pick<TexturePool, "stats" | "subscribe">;
   gpu: Pick<RenderDevice, "backend" | "state" | "generation" | "restores" | "lastRecoveryMs" | "subscribe">;
   frames: Pick<FrameService, "stats" | "subscribe" | "workerStats">;
@@ -102,7 +103,8 @@ export class PreviewStatsOverlay implements RenderView {
       `GPU ${gpu.state} · ${gpu.backend === "webgl2" ? "WebGL2" : "WebGPU"} · device ${gpu.generation} · restores ${gpu.restores}${recovery}`,
       `draws ${p.renders} · skipped ${p.skipped} · ${p.ms.toFixed(2)} ms · resizes ${p.resizes} · ${p.width}×${p.height} @${p.dpr}x`,
       `layers ${p.textures.layers}: exact ${p.textures.exact} · stand-in ${p.textures.standIns} · held ${p.textures.held} · missing ${p.textures.missing} · pending ${p.textures.pending} · warming ${p.textures.warming} · failed ${p.textures.failed} · proxy ${p.textures.proxy}`,
-      `pool ${s.count} tex · ${mb(s.bytes)} / ${mb(s.budget)} MB · pinned ${s.pinned} · evicted ${s.evictions}`,
+      `pool ${s.count} tex · ${mb(s.bytes)} + ${mb(s.reserved)} compound / ${mb(s.budget)} MB · pinned ${s.pinned} · evicted ${s.evictions}`,
+      `compounds ${preview.compoundStats.layers} layers · ${preview.compoundStats.renders} renders · ${preview.compoundStats.kept} kept`,
       `frame ms: approx ${ms(f.approxLastMs)} (p95 ${ms(f.approxP95Ms)}) · exact ${ms(f.exactLastMs)} (p95 ${ms(f.exactP95Ms)}) · requests ${f.requests} · pool hits ${f.poolHits} · superseded ${f.superseded} · failed ${f.failed}`,
       decode,
       `open VideoFrames: main ${f.openFrames} · worker ${w ? w.openFrames : 0}`,

@@ -51,6 +51,8 @@ export const TOOLBAR_GROUPS: readonly ToolbarGroup[] = [
       { kind: "button", id: "edit.closeAllGaps", label: "Close all gaps (compact)" },
       { kind: "button", id: "marker.add" },
       { kind: "button", id: "edit.freezeFrame" },
+      { kind: "button", id: "clip.makeCompound" },
+      { kind: "button", id: "clip.breakApart" },
       { kind: "button", id: "edit.punchZoom" },
     ],
   },

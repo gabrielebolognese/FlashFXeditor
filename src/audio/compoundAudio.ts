@@ -7,8 +7,8 @@
 // - The compound's fades and its sequence's transitions do not apply to the audio (Batch 62 follow-up).
 // - A muted inner or host track is left out, solo is inherited from the host track.
 // - The result is cached per project object; a project without compounds is returned as is.
-import { fpsToNumber } from "../core/document/time.js";
-import type { Clip, ClipId, CompoundClip, MediaClip, Project, SequenceId, Track } from "../core/document/types.js";
+import { framesToSourceUs } from "../core/document/time.js";
+import type { Clip, ClipId, CompoundClip, MediaClip, Project, Rational, SequenceId, Track } from "../core/document/types.js";
 
 interface Entry {
   /** The audio clip, its times in the time of the scope it was collected in. */
@@ -23,12 +23,12 @@ const cache = new WeakMap<Project, Project>();
 const isAudio = (clip: Clip | undefined): clip is MediaClip => clip?.kind === "audio" && clip.enabled;
 
 /** `entry` as heard through `compound`: inside its window, at its place, with its volume. Null when it falls outside. */
-function through(entry: Entry, compound: CompoundClip, hostSolo: boolean, fps: number): Entry | null {
+function through(entry: Entry, compound: CompoundClip, hostSolo: boolean, fps: Rational): Entry | null {
   const { clip } = entry;
   const lo = Math.max(clip.start, compound.offset);
   const hi = Math.min(clip.start + clip.duration, compound.offset + compound.duration);
   if (hi <= lo) return null;
-  const microseconds = (frames: number) => Math.round((frames / fps) * 1e6 * clip.speed);
+  const microseconds = (frames: number) => framesToSourceUs(frames, clip.speed, fps);
   const trimmedIn = lo > clip.start;
   const trimmedOut = hi < clip.start + clip.duration;
   const duration = hi - lo;
@@ -48,7 +48,7 @@ function through(entry: Entry, compound: CompoundClip, hostSolo: boolean, fps: n
   return { clip: next, key: `${compound.id}/${entry.key}`, solo: entry.solo || hostSolo };
 }
 
-function collect(project: Project, tracks: readonly Track[], fps: number, sequences: Map<SequenceId, Entry[]>, depth: number): Entry[] {
+function collect(project: Project, tracks: readonly Track[], fps: Rational, sequences: Map<SequenceId, Entry[]>, depth: number): Entry[] {
   const out: Entry[] = [];
   if (depth > 8) return out;
   for (const track of tracks) {
@@ -81,7 +81,7 @@ export function flattenAudio(project: Project): Project {
   if (!sequences || Object.keys(sequences).length === 0) return project;
   const known = cache.get(project);
   if (known) return known;
-  const fps = fpsToNumber(project.settings.fps);
+  const fps = project.settings.fps;
   // Only compounds on the project's own tracks start a flattening; their inner entries come back keyed by path.
   const compoundTracks = project.tracks.filter((track) => track.kind !== "audio");
   const entries = collect(project, compoundTracks, fps, new Map(), 0).filter((entry) => entry.clip.id.includes("/"));

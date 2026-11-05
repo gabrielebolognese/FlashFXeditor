@@ -319,6 +319,7 @@ export class LayerTextures {
 
   /** A compound clip: its sequence resolved by its own resolver, drawn into its texture (unchanged: kept), shown as one layer. */
   private resolveCompound(pane: 0 | 1, layer: CompoundCompositeLayer, priority: FramePriority): TextureLayer | null {
+    // TODO(batch 72): blend mode and matte, TODO(batch 73): masks, TODO(batch 74): effects run on the compound target here.
     const targets = this.deps.compounds;
     if (!targets) return null;
     const scale = this.renderScale * layer.scale;

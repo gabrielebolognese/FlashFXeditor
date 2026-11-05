@@ -98,6 +98,7 @@ class PerfMonitor {
       preview: { draws: this.rates.preview.rate(now), skipped: this.rates.skipped.rate(now), ms: p.ms },
       decode: { approx: [f.approxP50Ms, f.approxP95Ms, f.approxP99Ms], exact: [f.exactP50Ms, f.exactP95Ms, f.exactP99Ms], requests: f.requests },
       playback: { dropped: playbackEngine.stats.dropped, frames: playbackEngine.stats.frames },
+      compounds: { ...previewView.compoundStats },
       memory: {
         poolTextures: pool.count,
         poolBytes: pool.bytes,

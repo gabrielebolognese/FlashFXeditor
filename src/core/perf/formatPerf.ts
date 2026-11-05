@@ -11,6 +11,8 @@ export interface PerfSnapshot {
   /** ms to the first frame shown and to the exact frame (p50, p95, p99 of the last 128 requests). */
   decode: { approx: readonly (number | null)[]; exact: readonly (number | null)[]; requests: number };
   playback: { dropped: number; frames: number };
+  /** Compound clip targets (Batch 62): textures drawn since the start (a static compound adds one per edit), kept in the last pass, layers and bytes. */
+  compounds: { renders: number; kept: number; layers: number; bytes: number };
   memory: {
     poolTextures: number;
     poolBytes: number;
@@ -50,6 +52,7 @@ export function formatPerf(s: PerfSnapshot): string {
     `preview ${rate(s.preview.draws)} draws/s · ${rate(s.preview.skipped)} skipped/s · ${s.preview.ms.toFixed(1)} ms`,
     `decode ms p50/p95/p99: first ${triple(s.decode.approx)} · exact ${triple(s.decode.exact)} · ${s.decode.requests} requests`,
     `dropped ${s.playback.dropped} / ${s.playback.frames}${dropRate}`,
+    ...(s.compounds.renders > 0 || s.compounds.layers > 0 ? [`compounds ${s.compounds.layers} layers · ${s.compounds.renders} renders · ${s.compounds.kept} kept · ${mb(s.compounds.bytes)} MB`] : []),
     `GPU ${m.gpuTextures} tex ${mb(m.gpuBytes)} MB · pool ${m.poolTextures} tex ${mb(m.poolBytes)} / ${mb(m.poolBudget)} MB · text ${mb(m.textBytes)} MB · audio ${mb(m.audioBytes)} MB`,
     `VideoFrames open: main ${s.frames.main} · worker ${s.frames.worker ?? "-"}` + (s.decoders ? ` · decoders ${s.decoders.live} / ${s.decoders.sessions} sessions` : ""),
     `queues: ${kinds.length > 0 ? kinds.join(" · ") : "idle"} · decode jobs ${q.decodeJobs ?? "-"} · idle tasks ${q.idle}`,

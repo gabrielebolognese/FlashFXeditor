@@ -485,6 +485,9 @@ export class Compositor {
     layer.width = w;
     layer.height = h;
     layer.scale = Math.max(Math.hypot(m[0], m[1]) / w, Math.hypot(m[2], m[3]) / h);
+    // TODO(batch 72): blend mode and track matte of a compound clip.
+    // TODO(batch 73): masks on a compound clip.
+    // TODO(batch 74): the effect stack of a compound clip (applied to its target before it is drawn).
     layer.opacity = clamp01(opacity) * fadeFactor(clip, frame);
     return true;
   }

@@ -41,6 +41,25 @@
       "codec": "h264",
       "audioCodec": "aac",
       "size": 18761
+    },
+    "m2": {
+      "id": "m2",
+      "kind": "image",
+      "name": "badge.png",
+      "file": {
+        "relPath": "media/badge.png"
+      },
+      "durationUs": 0,
+      "hasAudio": false,
+      "analysis": {
+        "thumbs": "none",
+        "peaks": "none"
+      },
+      "addedAt": "2026-11-07T08:00:00.000Z",
+      "width": 64,
+      "height": 64,
+      "codec": "png",
+      "size": 207
     }
   },
   "bins": [],
@@ -410,6 +429,46 @@
         "gainDb": 0,
         "muted": false
       }
+    },
+    "card-image": {
+      "id": "card-image",
+      "trackId": "c-v3",
+      "kind": "image",
+      "name": "Badge",
+      "start": 0,
+      "duration": 60,
+      "enabled": true,
+      "mediaId": "m2",
+      "in": 0,
+      "out": 2000000,
+      "speed": 1,
+      "transform": {
+        "x": 0,
+        "y": 300,
+        "scale": 4,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "crop": {
+        "left": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "volume": {
+        "gainDb": 0,
+        "muted": false
+      },
+      "fades": {
+        "in": 0,
+        "out": 0
+      }
     }
   },
   "markers": [],
@@ -461,6 +520,20 @@
           "name": "V2",
           "clipIds": [
             "card-title"
+          ],
+          "locked": false,
+          "muted": false,
+          "solo": false,
+          "hidden": false,
+          "targeted": true,
+          "height": "M"
+        },
+        {
+          "id": "c-v3",
+          "kind": "video",
+          "name": "V3",
+          "clipIds": [
+            "card-image"
           ],
           "locked": false,
           "muted": false,

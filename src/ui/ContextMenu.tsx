@@ -24,7 +24,7 @@ export type ContextMenuSwatch = Swatch;
 
 export type ContextMenuEntry =
   /** `commandId`: where the row's shortcut comes from when it is not the row's own command. */
-  | { kind: "item"; id: string; label: string; commandId?: string; disabled?: boolean; active?: boolean; keepOpen?: boolean }
+  | { kind: "item"; id: string; label: string; commandId?: string; disabled?: boolean; /** Why the row is disabled (tooltip). */ hint?: string | undefined; active?: boolean; keepOpen?: boolean }
   | { kind: "swatches"; id: string; label: string; swatches: readonly ContextMenuSwatch[] }
   /** `dec` / `inc` are the commands of the - / + buttons; the ends of the range disable them. */
   | { kind: "stepper"; id: string; label: string; value: number; min: number; max: number; dec: string; inc: string; disabled?: boolean }
@@ -240,6 +240,7 @@ export function ContextMenu({ x, y, entries, onSelect, onClose, anchorRef, value
             data-command={command?.(entry.id)}
             data-control={control}
             aria-disabled={entry.disabled || undefined}
+            data-tooltip={entry.disabled ? entry.hint : undefined}
             onMouseDown={keepFocus}
             onClick={
               entry.disabled

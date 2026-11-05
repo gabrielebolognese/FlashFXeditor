@@ -33,6 +33,20 @@ describe("TexturePool", () => {
     expect(pool.stats).toMatchObject({ count: 1, bytes: MB });
   });
 
+  it("counts reserved bytes (compound targets) against the budget and evicts to make room", () => {
+    const pool = new TexturePool(64 * MB);
+    const a = texture(30 * MB);
+    const b = texture(30 * MB);
+    pool.put(frame("m1", 0), a);
+    pool.put(frame("m1", 1), b);
+    pool.reserve(30 * MB);
+    expect(a.destroyed).toBe(1);
+    expect(b.destroyed).toBe(0);
+    expect(pool.stats).toMatchObject({ count: 1, bytes: 30 * MB, reserved: 30 * MB });
+    pool.reserve(0);
+    expect(pool.stats.reserved).toBe(0);
+  });
+
   it("evicts the least recently used textures to fit the budget and destroys them", () => {
     const pool = new TexturePool(64 * MB);
     const a = texture(30 * MB);

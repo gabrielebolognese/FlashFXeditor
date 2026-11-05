@@ -61,11 +61,11 @@ function compoundEntries(project: Project, clipId: ClipId, ids: ClipId[]): Conte
   const apart = compound ? breakApartProblem(project, clipId) : "Select a compound clip";
   const unique = compound ? makeUniqueProblem(project, clipId) : "Select a compound clip";
   return [
-    { kind: "item", id: "clip.makeCompound", label: "Make compound clip", commandId: "clip.makeCompound", disabled: make !== null },
+    { kind: "item", id: "clip.makeCompound", label: "Make compound clip", commandId: "clip.makeCompound", disabled: make !== null, hint: make ?? undefined },
     ...(compound
       ? ([
-          { kind: "item", id: "clip.breakApart", label: "Break apart", commandId: "clip.breakApart", disabled: apart !== null },
-          { kind: "item", id: "clip.makeUnique", label: "Make unique", commandId: "clip.makeUnique", disabled: unique !== null },
+          { kind: "item", id: "clip.breakApart", label: "Break apart", commandId: "clip.breakApart", disabled: apart !== null, hint: apart ?? undefined },
+          { kind: "item", id: "clip.makeUnique", label: "Make unique", commandId: "clip.makeUnique", disabled: unique !== null, hint: unique ?? undefined },
         ] satisfies ContextMenuEntry[])
       : []),
   ];
