@@ -15,6 +15,7 @@
 // - Dev builds: `dev.addText` adds a plain text clip at the playhead, and `__editor.text` exposes the
 //   engine to the acceptance scripts.
 import type { ClipId, Project, TextClip, Transform } from "../core/document/types.js";
+import { lookAtFrame } from "../core/document/keyProps.js";
 import { secondsToFrames } from "../core/document/time.js";
 import { createStore } from "../core/store/createStore.js";
 import { selectClips, toSnapshot, type Selection } from "../core/store/selection.js";
@@ -49,11 +50,11 @@ function textClips(ids: readonly ClipId[]): TextClip[] {
 /** `change` on the text clips among `ids` as one undo step (`coalesceKey`: consecutive steps merge). */
 export function editTexts(ids: readonly ClipId[], change: TextChange, label: string, coalesceKey?: string): void {
   const edits = new Map<ClipId, Partial<TextEdit>>();
+  const at = sessionStore.state.getState().playhead;
   for (const clip of textClips(ids)) {
-    const edit = change(clip);
+    const edit = change(lookAtFrame(clip, at));
     if (edit) edits.set(clip.id, edit);
   }
-  const at = sessionStore.state.getState().playhead;
   const command = setTexts(documentStore.getState(), edits, { label, at, ...(coalesceKey !== undefined && { coalesceKey }) });
   if (command) documentStore.dispatch(command);
 }

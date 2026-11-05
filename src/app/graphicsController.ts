@@ -8,6 +8,7 @@
 // - `editSolids` writes a change of the selected solids as one command; `previewSolids` shows one live
 //   (a fill color dragged in the picker: ephemeral, P2).
 import type { ClipId, SolidClip } from "../core/document/types.js";
+import { lookAtFrame } from "../core/document/keyProps.js";
 import { selectClips, toSnapshot } from "../core/store/selection.js";
 import { IMAGE_PICKER_TYPES } from "../media/mediaKinds.js";
 import { addSolid, editedLook, setSolids, type SolidEdit, type SolidLook } from "../timeline/edit/solid.js";
@@ -34,11 +35,13 @@ function solidClips(ids: readonly ClipId[]): SolidClip[] {
 /** `change` on the solids among `ids` as one undo step (`coalesceKey`: consecutive steps merge). */
 export function editSolids(ids: readonly ClipId[], change: SolidChange, label: string, coalesceKey?: string): void {
   const edits = new Map<ClipId, SolidEdit>();
+  const at = sessionStore.state.getState().playhead;
   for (const clip of solidClips(ids)) {
-    const edit = change(clip);
+    // A solid with keyed look properties is edited as it shows at the playhead (Batch 61).
+    const edit = change(lookAtFrame(clip, at));
     if (edit) edits.set(clip.id, edit);
   }
-  const command = setSolids(documentStore.getState(), edits, { label, ...(coalesceKey !== undefined && { coalesceKey }) });
+  const command = setSolids(documentStore.getState(), edits, { label, at, ...(coalesceKey !== undefined && { coalesceKey }) });
   if (command) documentStore.dispatch(command);
 }
 

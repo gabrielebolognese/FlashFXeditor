@@ -149,6 +149,23 @@ export function clipLookAt<C extends Clip>(clip: C, rel: Frame): C {
   return copy as C;
 }
 
+/** `clip` as it shows at timeline frame `at` (itself without `at` or without keys). */
+export function lookAtFrame<C extends Clip>(clip: C, at: Frame | undefined): C {
+  return at === undefined ? clip : clipLookAt(clip, clipRel(clip, at));
+}
+
+const NO_SHOWN: ReadonlySet<string> = new Set();
+
+/** Sets every keyed look property of the draft `clip` to its value `rel` frames from its start (what a field edit starts from). */
+export function showKeyed(clip: Draft<Clip>, rel: Frame): void {
+  const keyframes = "keyframes" in clip ? (clip.keyframes as Keyframes | undefined) : undefined;
+  if (!hasLookKeys(keyframes)) return;
+  for (const prop of EXTRA_KEYFRAME_PROPS) {
+    const keys = keyframes?.[prop];
+    if (keys && keys.length > 0) writeProp(clip, prop, sampleValue(keys, rel));
+  }
+}
+
 /**
  * Field edits on keyed properties become keys (spec §11 stopwatch): after a command ran on `draft`
  * (the project `base` before it), every clip that has keys on a look property and whose base value of
@@ -156,7 +173,7 @@ export function clipLookAt<C extends Clip>(clip: C, rel: Frame): C {
  * stay valid per `propValidFor`. A keyed anchor edit also keeps the position (the base anchor edit
  * moved it to hold the picture still, which keys do not).
  */
-export function keyFollow(base: Project, draft: Draft<Project>, at: Frame): void {
+export function keyFollow(base: Project, draft: Draft<Project>, at: Frame, shown: ReadonlySet<string> = NO_SHOWN): void {
   for (const id in base.clips) {
     const before = base.clips[id];
     if (!before || !("keyframes" in before) || !hasLookKeys(before.keyframes)) continue;
@@ -169,8 +186,11 @@ export function keyFollow(base: Project, draft: Draft<Project>, at: Frame): void
       if (!keys || keys.length === 0) continue;
       const was = readProp(before, prop);
       const now = readProp(after as Clip, prop);
-      if (was === undefined || now === undefined || sameValue(was, now)) continue;
-      writeProp(after, prop, was);
+      if (was === undefined || now === undefined) continue;
+      // A command that showed the keyed values first (`showKeyed`) edits from them: what differs there is the edit.
+      const changed = shown.has(id) ? !sameValue(sampleValue(keys, rel), now) : !sameValue(was, now);
+      if (!sameValue(was, now)) writeProp(after, prop, was);
+      if (!changed) continue;
       const own = (after as { keyframes?: Keyframes }).keyframes;
       (after as { keyframes?: Keyframes }).keyframes = withKeys(own as Keyframes | undefined, prop, setKey((own?.[prop] as never) ?? keys, rel, now)) as Draft<Keyframes>;
       if (prop.startsWith("transform.anchor")) anchorMoved = true;

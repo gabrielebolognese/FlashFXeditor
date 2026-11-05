@@ -26,5 +26,11 @@ export interface Command {
   /** Consecutive commands with the same key within 300 ms merge into one undo step. */
   coalesceKey?: string;
   affects: readonly Affect[];
+  /**
+   * Clips whose keyed look properties `run` first sets to their values at the playhead (`showKeyed`)
+   * and then edits: `keyFollow` keys what differs from those values there, even a value equal to the
+   * clip's base (Batch 61).
+   */
+  keyShown?: readonly string[];
   run(draft: Draft<Project>, ctx: CommandContext): void;
 }

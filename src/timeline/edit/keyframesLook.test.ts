@@ -6,6 +6,7 @@ import type { Clip, Keyframes, Project, SolidClip, TextClip } from "../../core/d
 import { DocumentStore } from "../../core/store/DocumentStore.js";
 import { createSessionStore } from "../../core/store/sessionStore.js";
 import { copyKeys, keyable, pasteKeys, reverseKeys, setKeysEase, setStopwatch, stopwatchOn, toggleKeyAt } from "./keyframes.js";
+import { setFrameStyle } from "./frameStyle.js";
 import { setSolids } from "./solid.js";
 
 const CORAL = { r: 1, g: 0.4, b: 0.3, a: 1 };
@@ -80,6 +81,65 @@ describe("look sections", () => {
     expect(sectionFrames(get<SolidClip>(store, "s").keyframes, "corners")).toEqual([0, 20]);
     store.dispatch(toggleKeyAt(store.getState(), ["s"], "corners", 120)!);
     expect(sectionFrames(get<SolidClip>(store, "s").keyframes, "corners")).toEqual([0]);
+  });
+});
+
+describe("edits at the playhead of a keyed look", () => {
+  const atEdit = (store: DocumentStore, frame: number, fields: Record<string, unknown>) => {
+    const command = setSolids(store.getState(), new Map([["s", fields as never]]), { label: "Edit", at: frame });
+    if (command) store.dispatch(command);
+  };
+
+  it("an edit back to the base value at a frame whose key differs updates that key", () => {
+    const { store, at } = setup([solid("s")]);
+    store.dispatch(setStopwatch(store.getState(), ["s"], "fill", true, 100)!);
+    at(130);
+    atEdit(store, 130, { fill: INK });
+    atEdit(store, 130, { fill: CORAL });
+    const keys = get<SolidClip>(store, "s").keyframes?.fill;
+    expect(keys?.map((key) => key.frame)).toEqual([0, 30]);
+    expect(keys?.[1]?.value).toEqual([1, 0.4, 0.3, 1]);
+    expect(get<SolidClip>(store, "s").fill).toEqual(CORAL);
+  });
+
+  it("a number typed as the base value at a key frame that differs keys it", () => {
+    const { store, at } = setup([solid("s", { size: { w: 100, h: 100 } })]);
+    store.dispatch(setStopwatch(store.getState(), ["s"], "size", true, 100)!);
+    at(130);
+    atEdit(store, 130, { size: { w: 200, h: 100 } });
+    atEdit(store, 130, { size: { w: 100, h: 100 } });
+    const keys = get<SolidClip>(store, "s").keyframes?.["size.w"];
+    expect(keys?.map((key) => key.value)).toEqual([100, 100]);
+    expect(get<SolidClip>(store, "s").size.w).toBe(100);
+  });
+
+  it("an edit of another property adds no key to a keyed one whose value differs from the base", () => {
+    const { store, at } = setup([solid("s")]);
+    store.dispatch(setStopwatch(store.getState(), ["s"], "fill", true, 100)!);
+    at(130);
+    atEdit(store, 130, { fill: INK });
+    atEdit(store, 145, { cornerRadius: 12 });
+    const next = get<SolidClip>(store, "s");
+    expect(next.cornerRadius).toBe(12);
+    expect(next.keyframes?.fill?.map((key) => key.frame)).toEqual([0, 30]);
+  });
+});
+
+describe("Frame section edits of keyed look", () => {
+  it("a shadow blur step starts from the keyed value at the playhead and keys it", () => {
+    const shadow = { x: 0, y: 0, blur: 0, spread: 0, color: INK };
+    const { store, at } = setup([solid("s", { shadow })]);
+    store.dispatch(setStopwatch(store.getState(), ["s"], "shadow", true, 100)!);
+    at(130);
+    const blur = (value: number) => store.dispatch(setFrameStyle(store.getState(), ["s"], (clip) => ({ shadow: { ...clip.shadow!, blur: value } }), { label: "Blur", at: 130 })!);
+    blur(40);
+    const shown = clipLookAt(get<SolidClip>(store, "s"), 30);
+    expect(shown.shadow?.blur).toBe(40);
+    const step = setFrameStyle(store.getState(), ["s"], (clip) => ({ shadow: { ...clip.shadow!, blur: clip.shadow!.blur + 1 } }), { label: "Blur", at: 130 })!;
+    store.dispatch(step);
+    expect(clipLookAt(get<SolidClip>(store, "s"), 30).shadow?.blur).toBe(41);
+    expect(get<SolidClip>(store, "s").shadow?.blur).toBe(0);
+    expect(get<SolidClip>(store, "s").keyframes?.["shadow.color"]?.map((key) => key.frame)).toEqual([0]);
   });
 });
 

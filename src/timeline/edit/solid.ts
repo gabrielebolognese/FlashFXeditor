@@ -15,6 +15,8 @@
 import type { Draft } from "immer";
 import { addTrack } from "../../core/commands/basicCommands.js";
 import type { Command } from "../../core/commands/command.js";
+import { clipRel } from "../../core/document/keyframes.js";
+import { lookAtFrame, showKeyed } from "../../core/document/keyProps.js";
 import { emptyTrack, nextTrackName } from "../../core/document/project.js";
 import type { ClipId, Frame, Project, SolidClip, SolidShape, Track, Transform } from "../../core/document/types.js";
 import { clipsInRange, isClipLocked } from "../model/queries.js";
@@ -177,11 +179,13 @@ export function setSolids(project: Project, edits: ReadonlyMap<ClipId, SolidEdit
     const clip = project.clips[id];
     if (clip?.kind !== "solid" || isClipLocked(project, id)) continue;
     const { transform: moved, ...patch } = edit;
-    const merged = editedLook(clip, patch);
+    // A clip with keyed look properties is edited as it shows at the playhead (Batch 61).
+    const shown = lookAtFrame(clip, options.at);
+    const merged = editedLook(shown, patch);
     if (!validSize(merged.size) || !Number.isFinite(merged.cornerRadius)) continue;
     const look = cleanLook(merged);
     const write = moved ? transformWrite(clip, moved, options.at) : null;
-    if (sameJson(solidLook(clip), look) && !write) continue;
+    if (sameJson(solidLook(shown), look) && !write) continue;
     // The timeline's swatch shows the shape and the fill (and the lane its keys).
     if (look.shape !== clip.shape || !sameJson(look.fill, clip.fill) || (write && "keyframes" in write)) timeline = true;
     writes.push([id, look, write]);
@@ -192,9 +196,12 @@ export function setSolids(project: Project, edits: ReadonlyMap<ClipId, SolidEdit
     label: options.label,
     ...(options.coalesceKey !== undefined && { coalesceKey: options.coalesceKey }),
     affects: timeline ? ["composite", "clips"] : ["composite"],
-    run(draft) {
+    // Only an edit made at a playhead frame starts from the keyed values shown there.
+    ...(options.at !== undefined && { keyShown: writes.map(([id]) => id) }),
+    run(draft, ctx) {
       for (const [id, look, write] of writes) {
         const clip = draft.clips[id] as Draft<SolidClip>;
+        if (options.at !== undefined) showKeyed(clip, clipRel(clip, ctx.playhead));
         clip.shape = look.shape;
         clip.fill = structuredClone(look.fill);
         clip.size = { ...look.size };

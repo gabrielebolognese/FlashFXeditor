@@ -25,6 +25,8 @@
 import type { Draft } from "immer";
 import { addTrack } from "../../core/commands/basicCommands.js";
 import type { Command } from "../../core/commands/command.js";
+import { clipRel } from "../../core/document/keyframes.js";
+import { lookAtFrame, showKeyed } from "../../core/document/keyProps.js";
 import { emptyTrack, nextTrackName } from "../../core/document/project.js";
 import type { ClipId, Frame, Project, TextAnim, TextBox, TextClip, TextContent, TextStyle, Track, Transform } from "../../core/document/types.js";
 import { textLayout } from "../../render/text/layoutCache.js";
@@ -90,9 +92,10 @@ export function setTexts(project: Project, edits: ReadonlyMap<ClipId, TextEditIn
     const clip = project.clips[id];
     if (clip?.kind !== "text" || isClipLocked(project, id)) continue;
     const shown = editedTransform(clip, options.at);
-    const next = textEdit(project, clip, edit, shown);
+    const lookClip = lookAtFrame(clip, options.at);
+    const next = textEdit(project, lookClip, edit, shown);
     const write = edit.transform ? transformWrite(clip, edit.transform, options.at) : shiftedWrite(clip, next.transform.x - shown.x, next.transform.y - shown.y);
-    if (sameJson(clip.text, next.text) && sameJson(clip.style, next.style) && !write) continue;
+    if (sameJson(lookClip.text, next.text) && sameJson(lookClip.style, next.style) && !write) continue;
     if (showsOnTimeline(clip, next) || (write && "keyframes" in write)) timeline = true;
     writes.push([id, { text: next.text, style: next.style }, write]);
   }
@@ -102,9 +105,12 @@ export function setTexts(project: Project, edits: ReadonlyMap<ClipId, TextEditIn
     label: options.label,
     ...(options.coalesceKey !== undefined && { coalesceKey: options.coalesceKey }),
     affects: timeline ? ["composite", "text", "clips"] : ["composite", "text"],
-    run(draft) {
+    // Only an edit made at a playhead frame starts from the keyed values shown there.
+    ...(options.at !== undefined && { keyShown: writes.map(([id]) => id) }),
+    run(draft, ctx) {
       for (const [id, next, write] of writes) {
         const clip = draft.clips[id] as Draft<TextClip>;
+        if (options.at !== undefined) showKeyed(clip, clipRel(clip, ctx.playhead));
         if (clip.name === textClipName(clip.text, clip.style)) clip.name = textClipName(next.text, next.style);
         clip.text = structuredClone(next.text);
         clip.style = structuredClone(next.style);

@@ -5,7 +5,7 @@
 // so the preview re-rasterizes only the scrubbed layers and no React component renders, then one
 // command on release.
 import { clipRel } from "../../core/document/keyframes.js";
-import { clipLookAt, hasLookKeys } from "../../core/document/keyProps.js";
+import { clipLookAt, hasLookKeys, lookAtFrame } from "../../core/document/keyProps.js";
 import type { ClipId, Frame, Project, TextClip, Transform } from "../../core/document/types.js";
 import type { Store } from "../../core/store/createStore.js";
 import type { DocumentStore } from "../../core/store/DocumentStore.js";
@@ -49,7 +49,7 @@ export function textBinding(deps: TextBindingDeps, prop: TextNumberProp, ids: re
 
   const editsOf = (project: Project, valueOf: (clip: TextClip) => number) => {
     const edits = new Map<ClipId, Partial<TextEdit>>();
-    for (const clip of textClipsOf(project, ids)) if (!isClipLocked(project, clip.id)) edits.set(clip.id, prop.write(clip, valueOf(clip)));
+    for (const clip of textClipsOf(project, ids)) if (!isClipLocked(project, clip.id)) edits.set(clip.id, prop.write(lookAtFrame(clip, deps.playhead?.()), valueOf(clip)));
     return edits;
   };
 
@@ -94,7 +94,7 @@ export function textBinding(deps: TextBindingDeps, prop: TextNumberProp, ids: re
           for (const [id, edit] of editsOf(project, valueOf)) {
             const clip = project.clips[id] as TextClip;
             const shown = editedTransform(clip, deps.playhead?.());
-            const next = textEdit(project, clip, edit, shown);
+            const next = textEdit(project, lookAtFrame(clip, deps.playhead?.()), edit, shown);
             texts.set(id, { text: next.text, style: next.style });
             if (next.transform !== shown) transforms.set(id, next.transform);
           }

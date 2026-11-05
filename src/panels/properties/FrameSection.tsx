@@ -1,7 +1,8 @@
 import { SquareRoundCorner } from "lucide-react";
 import { useMemo } from "react";
 import { rememberColor } from "../../app/propertiesController.js";
-import { appSettings, documentStore } from "../../app/services.js";
+import { appSettings, documentStore, sessionStore } from "../../app/services.js";
+import { hasLookKeys, lookAtFrame } from "../../core/document/keyProps.js";
 import { formatHexColor } from "../../core/document/color.js";
 import type { ClipId, RGBA, ShadowStyle, StrokeAlign, StrokeStyle } from "../../core/document/types.js";
 import { useStoreSelector } from "../../core/store/useStoreSelector.js";
@@ -62,14 +63,26 @@ const getStrokeColor = (clip: import("../../core/document/types.js").Clip) => (i
 const getShadow = (clip: import("../../core/document/types.js").Clip) => (isFrameClip(clip) ? shadowKind(clip.shadow) : SKIP);
 const getShadowColor = (clip: import("../../core/document/types.js").Clip) => (isFrameClip(clip) && clip.shadow ? formatHexColor(clip.shadow.color) : SKIP);
 
+const playhead = (): number => sessionStore.state.getState().playhead;
+
+/** The frame clips among `ids`, each as it shows at the playhead when it has keyed look properties (Batch 61). */
 const frameClips = (ids: readonly ClipId[]): FrameClip[] => {
   const project = documentStore.getState();
+  const at = playhead();
   const out: FrameClip[] = [];
   for (const id of ids) {
     const clip = project.clips[id];
-    if (isFrameClip(clip)) out.push(clip);
+    if (isFrameClip(clip)) out.push(lookAtFrame(clip, at));
   }
   return out;
+};
+
+const anyKeyed = (ids: readonly ClipId[]): boolean => {
+  const project = documentStore.getState();
+  return ids.some((id) => {
+    const clip = project.clips[id];
+    return !!clip && "keyframes" in clip && hasLookKeys(clip.keyframes);
+  });
 };
 
 /** A number field over `read` of the clips it applies to (`null`: not applicable), written as a patch. */
@@ -86,10 +99,19 @@ function frameBinding(ids: readonly ClipId[], label: string, min: number, max: n
         const value = shared(values, (v) => v);
         return value && !value.mixed ? value.value : null;
       },
-      subscribe: (listener) => documentStore.subscribe(() => listener(), { affects: ["composite"] }),
+      subscribe: (listener) => {
+        const stops = [
+          documentStore.subscribe(() => listener(), { affects: ["composite"] }),
+          // Keyed values change along the timeline: re-read when the playhead moves (DOM only, P1).
+          sessionStore.state.select((state) => state.playhead, () => anyKeyed(ids) && listener()),
+        ];
+        return () => {
+          for (const stop of stops) stop();
+        };
+      },
     },
     (value) => {
-      const command = setFrameStyle(documentStore.getState(), ids, (clip) => (read(clip) === null ? null : write(clip, clamp(value))), { label, coalesceKey: `properties.frame.${label}` });
+      const command = setFrameStyle(documentStore.getState(), ids, (clip) => (read(clip) === null ? null : write(clip, clamp(value))), { label, at: playhead(), coalesceKey: `properties.frame.${label}` });
       if (command) documentStore.dispatch(command);
     },
   );
@@ -159,7 +181,7 @@ export function FrameSection({ ids }: { ids: readonly ClipId[] }) {
   const allSolids = useClipsShared(ids, (clip) => (isFrameClip(clip) ? clip.kind === "solid" : SKIP)) === true;
 
   const edit = (label: string, change: (clip: FrameClip) => FramePatch | null) => {
-    const command = setFrameStyle(documentStore.getState(), ids, change, { label });
+    const command = setFrameStyle(documentStore.getState(), ids, change, { label, at: playhead() });
     if (command) documentStore.dispatch(command);
   };
   const colorProps = (label: string, field: "stroke" | "shadow") => ({

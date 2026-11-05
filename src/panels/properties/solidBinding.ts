@@ -4,7 +4,7 @@
 // values live (`liveEdit.solids`: the preview and the gizmo draw them, no React component renders),
 // then one command on release.
 import { clipRel } from "../../core/document/keyframes.js";
-import { clipLookAt, hasLookKeys } from "../../core/document/keyProps.js";
+import { clipLookAt, hasLookKeys, lookAtFrame } from "../../core/document/keyProps.js";
 import type { ClipId, Frame, Project, SolidClip } from "../../core/document/types.js";
 import type { Store } from "../../core/store/createStore.js";
 import type { DocumentStore } from "../../core/store/DocumentStore.js";
@@ -48,13 +48,15 @@ export function solidBinding(deps: SolidBindingDeps, prop: SolidNumberProp, ids:
 
   const editsOf = (project: Project, valueOf: (clip: SolidClip) => number) => {
     const edits = new Map<ClipId, SolidEdit>();
-    for (const clip of solidClipsOf(project, ids)) if (!isClipLocked(project, clip.id)) edits.set(clip.id, prop.write(clip, valueOf(clip)));
+    const at = deps.playhead?.get();
+    for (const clip of solidClipsOf(project, ids)) if (!isClipLocked(project, clip.id)) edits.set(clip.id, prop.write(lookAtFrame(clip, at), valueOf(clip)));
     return edits;
   };
 
   const commit = (valueOf: (clip: SolidClip) => number, coalesceKey?: string) => {
     const project = deps.document.getState();
-    const command = setSolids(project, editsOf(project, valueOf), { label: prop.label, ...(coalesceKey !== undefined && { coalesceKey }) });
+    const at = deps.playhead?.get();
+    const command = setSolids(project, editsOf(project, valueOf), { label: prop.label, ...(coalesceKey !== undefined && { coalesceKey }), ...(at !== undefined && { at }) });
     if (command) deps.document.dispatch(command);
   };
 
@@ -91,7 +93,7 @@ export function solidBinding(deps: SolidBindingDeps, prop: SolidNumberProp, ids:
       switch (phase) {
         case "scrub": {
           const solids = new Map<ClipId, SolidLook>();
-          for (const [id, edit] of editsOf(project, valueOf)) solids.set(id, editedLook(project.clips[id] as SolidClip, edit));
+          for (const [id, edit] of editsOf(project, valueOf)) solids.set(id, editedLook(lookAtFrame(project.clips[id] as SolidClip, deps.playhead?.get()), edit));
           deps.live.set({ ...NO_LIVE_EDIT, solids: solids.size > 0 ? solids : null });
           return;
         }

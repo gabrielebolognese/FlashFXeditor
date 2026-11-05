@@ -101,7 +101,7 @@ export class DocumentStore {
     const [next, patches, inversePatches] = produceWithPatches(base, (draft) => {
       command.run(draft, ctx);
       // A field edit on a keyed look property becomes a key at the playhead (Batch 61, keyProps.ts).
-      if (!command.id.startsWith("keyframe.")) keyFollow(base, draft, ctx.playhead);
+      if (!command.id.startsWith("keyframe.")) keyFollow(base, draft, ctx.playhead, command.keyShown ? new Set(command.keyShown) : undefined);
       if (reconcile) reconcileTransitions(base, draft, this.newId);
     });
     const tx = this.transactionState;
