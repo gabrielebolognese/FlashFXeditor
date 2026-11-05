@@ -3,7 +3,9 @@
 // arrow steps add to each solid's own value (consecutive steps one undo step); a label scrub shows its
 // values live (`liveEdit.solids`: the preview and the gizmo draw them, no React component renders),
 // then one command on release.
-import type { ClipId, Project, SolidClip } from "../../core/document/types.js";
+import { clipRel } from "../../core/document/keyframes.js";
+import { clipLookAt, hasLookKeys } from "../../core/document/keyProps.js";
+import type { ClipId, Frame, Project, SolidClip } from "../../core/document/types.js";
 import type { Store } from "../../core/store/createStore.js";
 import type { DocumentStore } from "../../core/store/DocumentStore.js";
 import { editedLook, setSolids, type SolidEdit, type SolidLook } from "../../timeline/edit/solid.js";
@@ -16,6 +18,8 @@ import type { SolidNumberProp } from "./solidProps.js";
 export interface SolidBindingDeps {
   document: Pick<DocumentStore, "getState" | "subscribe" | "dispatch">;
   live: Store<LiveEdit>;
+  /** The playhead: a solid with keyed look properties shows (and steps from) its values there (Batch 61). */
+  playhead?: { get(): Frame; subscribe(listener: () => void): () => void };
 }
 
 /** The solids among `ids` (in order). */
@@ -29,11 +33,12 @@ export function solidClipsOf(project: Project, ids: readonly ClipId[]): SolidCli
 }
 
 /** `clip` as a live edit shows it. */
-function shownClip(clip: SolidClip, live: LiveEdit): SolidClip {
+function shownClip(clip: SolidClip, live: LiveEdit, at: Frame | null): SolidClip {
+  const keyed = at === null ? clip : clipLookAt(clip, clipRel(clip, at));
   const look = live.solids?.get(clip.id);
-  if (!look) return clip;
+  if (!look) return keyed;
   // The look replaces the clip's look whole (as the compositor draws it): keys it lacks are gone.
-  const shown: SolidClip = { ...clip, ...look };
+  const shown: SolidClip = { ...keyed, ...look };
   for (const key of ["cornerRadii", "stroke", "shadow"] as const) if (!look[key]) delete shown[key];
   return shown;
 }
@@ -60,13 +65,15 @@ export function solidBinding(deps: SolidBindingDeps, prop: SolidNumberProp, ids:
   return {
     read() {
       const live = deps.live.getState();
-      const values = solidClipsOf(deps.document.getState(), ids).map((clip) => prop.read(shownClip(clip, live)));
+      const values = solidClipsOf(deps.document.getState(), ids).map((clip) => prop.read(shownClip(clip, live, deps.playhead?.get() ?? null)));
       if (values.includes(null)) return null;
       const value = shared(values.map((v) => roundTo(v ?? 0, prop.precision)), (v) => v);
       return value && !value.mixed ? value.value : null;
     },
     subscribe(listener) {
       const stops = [deps.document.subscribe(() => listener(), { affects: ["composite", "clips"] }), deps.live.subscribe(() => listener())];
+      // Keyed look properties change along the timeline: re-read when the playhead moves (DOM only, P1).
+      if (deps.playhead) stops.push(deps.playhead.subscribe(() => solidClipsOf(deps.document.getState(), ids).some((clip) => hasLookKeys(clip.keyframes)) && listener()));
       return () => {
         for (const stop of stops) stop();
       };
@@ -76,7 +83,11 @@ export function solidBinding(deps: SolidBindingDeps, prop: SolidNumberProp, ids:
     },
     change(delta, phase) {
       const project = deps.document.getState();
-      const valueOf = (clip: SolidClip) => clamp((prop.read(clip) ?? prop.start?.(clip) ?? 0) + delta);
+      const at = deps.playhead?.get() ?? null;
+      const valueOf = (clip: SolidClip) => {
+        const shown = at === null ? clip : clipLookAt(clip, clipRel(clip, at));
+        return clamp((prop.read(shown) ?? prop.start?.(shown) ?? 0) + delta);
+      };
       switch (phase) {
         case "scrub": {
           const solids = new Map<ClipId, SolidLook>();

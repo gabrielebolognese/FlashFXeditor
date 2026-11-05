@@ -1,0 +1,145 @@
+/*
+ * Ease popover (Batch 61). Design system gaps (the DS has no searchable popover or curve thumbnails):
+ * the popover takes the menu material, border, radius and overlay shadow of ContextMenu; the search
+ * field the compact input look (--surface-1, --border); rows the menu row look at --control-default
+ * height so a thumbnail fits; thumbnails are 28 x 18 SVG units in the row text color (accent on the
+ * active row); the popover width is 8 x --control-comfortable.
+ */
+.popover {
+  position: fixed;
+  z-index: var(--z-overlay);
+  display: flex;
+  flex-direction: column;
+  width: calc(var(--control-comfortable) * 8);
+  max-height: calc(100vh - var(--space-6));
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  background: var(--material-menu-bg);
+  backdrop-filter: var(--material-menu-filter);
+  box-shadow: var(--shadow-overlay);
+  overflow: hidden;
+}
+
+.search {
+  flex: none;
+  height: var(--control-compact);
+  margin: var(--space-1);
+  padding: 0 var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-1);
+  color: var(--text-primary);
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-track);
+}
+
+.search::placeholder {
+  color: var(--text-tertiary);
+}
+
+.search:focus-visible {
+  outline: none;
+  border-color: var(--accent-dim);
+  box-shadow: var(--focus-ring);
+}
+
+.list {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: calc(var(--control-default) * 8);
+  padding: 0 var(--space-1) var(--space-1);
+  overflow-y: auto;
+}
+
+.heading {
+  padding: var(--space-2) var(--space-2) var(--space-1);
+  color: var(--text-tertiary);
+  font: var(--type-overline);
+  letter-spacing: var(--type-overline-track);
+  text-transform: uppercase;
+}
+
+.empty {
+  padding: var(--space-3) var(--space-2);
+  color: var(--text-tertiary);
+  font: var(--type-caption);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  height: var(--control-default);
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-track);
+  text-align: left;
+  transition: background-color var(--duration-instant) var(--ease-out);
+}
+
+.row:hover {
+  background: var(--hover-wash);
+  color: var(--text-primary);
+}
+
+.row:focus-visible {
+  outline: none;
+  background: var(--hover-wash);
+  color: var(--text-primary);
+  box-shadow: var(--focus-ring-inset);
+}
+
+.active {
+  background: var(--accent-wash);
+  color: var(--accent);
+}
+
+.name {
+  flex: 1 1 auto;
+  white-space: nowrap;
+}
+
+.thumb {
+  flex: none;
+  width: calc(var(--space-6) + var(--space-1));
+  height: var(--space-5);
+  border-radius: var(--radius-sm);
+  background: var(--surface-1);
+}
+
+.thumb path {
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.custom {
+  flex: none;
+  border-top: 1px solid var(--hairline);
+}
+
+.editor {
+  display: block;
+}
+
+.spring {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+}
+
+.springField {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  color: var(--text-secondary);
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-track);
+}

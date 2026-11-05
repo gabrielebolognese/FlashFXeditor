@@ -28,6 +28,9 @@ import {
   sectionValues,
   setKey,
   setSectionEase,
+  reverseSectionKeys,
+  sampleValue,
+  type EaseParams,
   withKeys,
   writeKeys,
   type KeyframeProp,
@@ -35,6 +38,7 @@ import {
   propValidFor,
   type Key,
 } from "../../core/document/keyframes.js";
+import { readProp, writeProp, type KeyValues } from "../../core/document/keyProps.js";
 import type { Clip, ClipId, EaseId, Frame, Keyframes, MediaClip, Project, SolidClip, TextClip, Transform } from "../../core/document/types.js";
 import { isClipLocked } from "../model/queries.js";
 import { isLayerClip, normalizeTransform } from "./transform.js";
@@ -42,10 +46,25 @@ import { isLayerClip, normalizeTransform } from "./transform.js";
 /** Clips that carry keyframes (spec §5.2): media, text and solid clips. */
 export type KeyedClip = MediaClip | TextClip | SolidClip;
 
-/** Whether `clip` can be keyed in `section`: Transform and Opacity on layers, Volume on audio clips. */
+/**
+ * Whether `clip` can be keyed in `section`: Transform, Opacity and Anchor on layers, Volume on audio
+ * clips, and the look sections on the clips that have their fields (a stroke or a shadow only when the
+ * solid has one, a fill only when it is a flat color).
+ */
 export function keyable(clip: Clip, section: KeyframeSection): clip is KeyedClip {
-  if (section === "look") return clip.kind === "video" || clip.kind === "image" || clip.kind === "solid" || clip.kind === "text";
-  return section === "volume" ? clip.kind === "audio" : isLayerClip(clip);
+  switch (section) {
+    case "volume":
+      return clip.kind === "audio";
+    case "transform":
+    case "opacity":
+    case "anchor":
+      return isLayerClip(clip);
+    case "look":
+      return clip.kind === "video" || clip.kind === "image" || clip.kind === "solid" || clip.kind === "text";
+    default:
+      // The first property of the group stands for it (a group's properties all exist or none does).
+      return (clip.kind === "video" || clip.kind === "image" || clip.kind === "solid" || clip.kind === "text") && readProp(clip, SECTION_PROPS[section][0] as KeyframeProp) !== undefined;
+  }
 }
 
 /** The unlocked clips among `ids` that can be keyed in `section`. */
@@ -65,6 +84,8 @@ interface KeyEdit {
 }
 
 interface KeyBase {
+  /** Look properties (colors as [r, g, b, a]) the clip takes as its own values. */
+  props?: KeyValues;
   transform?: Transform;
   opacity?: number;
   gainDb?: number;
@@ -75,13 +96,22 @@ const AFFECTS: Readonly<Record<KeyframeSection, readonly Affect[]>> = {
   opacity: ["composite", "clips"],
   volume: ["audio", "clips"],
   look: ["composite", "clips"],
+  anchor: ["composite", "clips"],
+  size: ["composite", "clips"],
+  crop: ["composite", "clips"],
+  corners: ["composite", "clips"],
+  fill: ["composite", "clips"],
+  stroke: ["composite", "clips"],
+  shadow: ["composite", "clips"],
+  text: ["composite", "clips", "text"],
 };
 
-function editCommand(id: string, label: string, section: KeyframeSection, edits: ReadonlyMap<ClipId, KeyEdit>): Command | null {
+function editCommand(id: string, label: string, section: KeyframeSection, edits: ReadonlyMap<ClipId, KeyEdit>, coalesceKey?: string): Command | null {
   if (edits.size === 0) return null;
   return {
     id,
     label,
+    ...(coalesceKey !== undefined && { coalesceKey }),
     affects: AFFECTS[section],
     run(draft) {
       for (const [clipId, edit] of edits) {
@@ -89,6 +119,7 @@ function editCommand(id: string, label: string, section: KeyframeSection, edits:
         if (edit.keyframes) clip.keyframes = structuredClone(edit.keyframes);
         else delete clip.keyframes;
         const base = edit.base;
+        if (base?.props) for (const [prop, value] of Object.entries(base.props)) writeProp(clip as Draft<Clip>, prop as KeyframeProp, value);
         if (base?.transform) clip.transform = structuredClone(base.transform);
         if (base?.opacity !== undefined && "opacity" in clip) clip.opacity = base.opacity;
         if (base?.gainDb !== undefined && "volume" in clip) clip.volume.gainDb = base.gainDb;
@@ -106,14 +137,27 @@ function baseAt(clip: KeyedClip, section: KeyframeSection, rel: Frame): KeyBase 
       return "opacity" in clip ? { opacity: animatedOpacity(clip, rel) } : {};
     case "volume":
       return "volume" in clip ? { gainDb: gainDbAt(clip, rel) } : {};
-    case "look":
-      return {};
+    case "anchor":
+    default:
+      return { props: lookValues(clip, section, rel) };
   }
 }
 
+/** The look section's values shown at `rel`: the keyed ones sampled, the others the clip's own. */
+function lookValues(clip: KeyedClip, section: KeyframeSection, rel: Frame): KeyValues {
+  const values: KeyValues = {};
+  for (const prop of SECTION_PROPS[section]) {
+    const keys = clip.keyframes?.[prop];
+    const value = keys && keys.length > 0 ? sampleValue(keys, rel) : readProp(clip, prop);
+    if (value !== undefined) values[prop] = Array.isArray(value) ? [...value] : value;
+  }
+  return values;
+}
+
 /** The section's values shown at `rel` (what a new key there holds). */
-function valuesAt(clip: KeyedClip, section: KeyframeSection, rel: Frame): Partial<Record<KeyframeProp, number>> {
-  return sectionValues(clip, section, rel);
+function valuesAt(clip: KeyedClip, section: KeyframeSection, rel: Frame): KeyValues {
+  if (section === "transform" || section === "opacity" || section === "volume") return sectionValues(clip, section, rel);
+  return lookValues(clip, section, rel);
 }
 
 const plural = (count: number, one: string, many: string) => (count === 1 ? one : many);
@@ -217,13 +261,28 @@ export function moveKeys(project: Project, clipId: ClipId, section: KeyframeSect
 }
 
 /** Sets the ease of the keys of `section` at the frames given per clip (spec §6.15 keyframe menu, §11 ease selector). */
-export function setKeysEase(project: Project, frames: ReadonlyMap<ClipId, readonly Frame[]>, section: KeyframeSection, ease: EaseId): Command | null {
+export function setKeysEase(project: Project, frames: ReadonlyMap<ClipId, readonly Frame[]>, section: KeyframeSection, ease: EaseId, params?: EaseParams): Command | null {
   const edits = new Map<ClipId, KeyEdit>();
+  const same = (key: Key) => key.ease === ease && (ease === "bezier" ? sameList(key.bezier, params?.bezier) : ease === "spring" ? sameSpring(key.spring, params?.spring) : true);
   for (const clip of targets(project, frames.keys(), section)) {
-    const at = new Set((frames.get(clip.id) ?? []).filter((frame) => SECTION_PROPS[section].some((prop) => clip.keyframes?.[prop]?.some((key) => key.frame === frame && key.ease !== ease))));
-    if (at.size > 0) edits.set(clip.id, { keyframes: setSectionEase(clip.keyframes, section, at, ease) });
+    const at = new Set((frames.get(clip.id) ?? []).filter((frame) => SECTION_PROPS[section].some((prop) => clip.keyframes?.[prop]?.some((key) => key.frame === frame && !same(key)))));
+    if (at.size > 0) edits.set(clip.id, { keyframes: setSectionEase(clip.keyframes, section, at, ease, params) });
   }
-  return editCommand("keyframe.ease", "Change keyframe easing", section, edits);
+  return editCommand("keyframe.ease", "Change keyframe easing", section, edits, params ? `keyframe.ease.${section}` : undefined);
+}
+
+// A change that leaves a bezier or spring key's own parameters alone (no params given) is not a change.
+const sameList = (a: readonly number[] | undefined, b: readonly number[] | undefined) => b === undefined || (a !== undefined && a.length === b.length && a.every((v, i) => v === b[i]));
+const sameSpring = (a: Key["spring"], b: Key["spring"]) => b === undefined || (a !== undefined && a.damping === b.damping && a.frequency === b.frequency);
+
+/** Reverses `clipId`'s keys of `section` at `frames` in time (spec §21.9 Reverse keys): values stay, frames and segment eases mirror. */
+export function reverseKeys(project: Project, clipId: ClipId, section: KeyframeSection, frames: readonly Frame[]): Command | null {
+  const clip = targets(project, [clipId], section)[0];
+  if (!clip) return null;
+  const own = new Set(sectionFrames(clip.keyframes, section));
+  const picked = new Set(frames.filter((frame) => own.has(frame)));
+  if (picked.size < 2) return null;
+  return editCommand("keyframe.reverse", "Reverse keyframes", section, new Map([[clipId, { keyframes: reverseSectionKeys(clip.keyframes, section, picked) }]]));
 }
 
 /** Keys copied from one section (spec §6.15): per property, each key timed from the first copied frame. */

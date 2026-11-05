@@ -11,7 +11,8 @@
 // playhead; the field re-reads when the playhead moves (DOM writes only, P1) while a target is keyed,
 // and commits write the key there (`at`).
 import type { Command } from "../../core/commands/command.js";
-import { clipAt, hasAnyKeys } from "../../core/document/keyframes.js";
+import { clipAt, clipRel, hasAnyKeys } from "../../core/document/keyframes.js";
+import { clipLookAt } from "../../core/document/keyProps.js";
 import type { ClipId, Crop, Frame, Project, Transform } from "../../core/document/types.js";
 import type { Store } from "../../core/store/createStore.js";
 import type { DocumentStore } from "../../core/store/DocumentStore.js";
@@ -42,7 +43,7 @@ function layers(project: Project, ids: readonly ClipId[], prop: LayerNumberProp)
 }
 
 /** `clip` at the playhead `at` (its keyed values there; itself when unkeyed or `at` is null). */
-const atFrame = (clip: LayerClip, at: Frame | null): LayerClip => (at === null ? clip : clipAt(clip, at));
+const atFrame = (clip: LayerClip, at: Frame | null): LayerClip => (at === null ? clip : clipLookAt(clipAt(clip, at), clipRel(clip, at)));
 
 /** `clip` as a live edit shows it (at the playhead `at` when keyed). */
 function shownClip(clip: LayerClip, live: LiveEdit, at: Frame | null): LayerClip {

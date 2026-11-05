@@ -6,6 +6,7 @@ import { editTexts, previewTexts, type TextChange } from "../../app/textControll
 import type { Clip, ClipId, TextClip, TextStyle } from "../../core/document/types.js";
 import { useStoreSelector } from "../../core/store/useStoreSelector.js";
 import { NumberField } from "../../ui/NumberField.js";
+import { KeyRows } from "./KeyframeControls.js";
 import { Row } from "./Section.js";
 import { Choice, StyleFields, type StyleTarget } from "./StyleFields.js";
 import { textBinding, type TextBindingDeps } from "./textBinding.js";
@@ -21,7 +22,7 @@ import { MIXED, SKIP, useClipsShared } from "./useShared.js";
 // P11). Content typing coalesces into one step per burst; while the text is edited on the canvas (spec
 // §7.7) the content shows the draft, and focusing it ends that editing first (committed).
 
-const DEPS: TextBindingDeps = { document: documentStore, live: liveEdit, playhead: () => sessionStore.state.getState().playhead };
+const DEPS: TextBindingDeps = { document: documentStore, live: liveEdit, playhead: () => sessionStore.state.getState().playhead, subscribePlayhead: (listener) => sessionStore.state.select((state) => state.playhead, listener) };
 
 const getValue = (clip: Clip) => (clip.kind === "text" ? clip.text.value : SKIP);
 const getBoxMode = (clip: Clip) => (clip.kind === "text" ? clip.text.box.mode : SKIP);
@@ -96,6 +97,7 @@ export function TextSection({ ids }: { ids: readonly ClipId[] }) {
   const boxMode = useClipsShared(ids, getBoxMode);
   return (
     <>
+      <KeyRows ids={ids} section="text" />
       <Row label="Text">
         <ContentField ids={ids} />
       </Row>

@@ -6,12 +6,12 @@ import { chipCut, fadePresetId } from "../../app/transitionController.js";
 import { TRANSITION_LABELS } from "../../core/document/transitions.js";
 import { canFade, FADE_PRESET_SECONDS } from "../edit/fades.js";
 import { actions, documentStore, sessionStore } from "../../app/services.js";
-import { EASE_LABELS, SECTION_LABELS, sectionEaseAt, type KeyframeSection } from "../../core/document/keyframes.js";
+import { EASE_GROUPS, EASE_LABELS, SECTION_LABELS, sectionEaseAt, type KeyframeSection } from "../../core/document/keyframes.js";
 import { laneSection } from "../../core/store/sessionStore.js";
 import { keyable } from "../edit/keyframes.js";
 import { isLayerClip, layerContent } from "../edit/transform.js";
 import { allMuted, audioTargets, canDetach } from "../edit/volume.js";
-import { EASE_IDS, TRANSITION_KINDS, type ClipId, type Frame, type LabelColor, type Project, type Track } from "../../core/document/types.js";
+import { TRANSITION_KINDS, type ClipId, type Frame, type LabelColor, type Project, type Track } from "../../core/document/types.js";
 import { useStoreSelector } from "../../core/store/useStoreSelector.js";
 import { ContextMenu, type ContextMenuEntry } from "../../ui/ContextMenu.js";
 import { selectionSpan } from "../model/inOut.js";
@@ -149,7 +149,7 @@ function laneEntries(project: Project, clipId: ClipId): ContextMenuEntry[] {
   return [
     { kind: "separator" },
     { kind: "heading", label: "Show keyframes for" },
-    ...LANE_SECTIONS.map((section) => ({ kind: "item" as const, id: `keyframes.lane.${section}`, label: SECTION_LABELS[section], active: shown === section })),
+    ...LANE_SECTIONS.filter((section) => section === "transform" || section === "opacity" || section === "look" || keyable(clip, section)).map((section) => ({ kind: "item" as const, id: `keyframes.lane.${section}`, label: SECTION_LABELS[section], active: shown === section })),
   ];
 }
 
@@ -159,9 +159,12 @@ function keyframeEntries(project: Project, clipId: ClipId, section: KeyframeSect
   const current = clip && "keyframes" in clip ? sectionEaseAt(clip.keyframes, section, frame) : null;
   const count = sessionStore.keyframes.getState()?.frames.length ?? 1;
   return [
-    { kind: "heading", label: "Easing" },
-    ...EASE_IDS.map((ease) => ({ kind: "item" as const, id: `keyframe.ease.${ease}`, label: EASE_LABELS[ease], active: current === ease })),
+    ...EASE_GROUPS.flatMap((group) => [
+      { kind: "heading" as const, label: group.label === "Basic" ? "Easing" : group.label },
+      ...group.eases.map((ease) => ({ kind: "item" as const, id: `keyframe.ease.${ease}`, label: EASE_LABELS[ease], active: current === ease })),
+    ]),
     { kind: "separator" },
+    { kind: "item", id: "keyframe.reverse", label: "Reverse keyframes", disabled: count < 2 },
     { kind: "item", id: "keyframe.delete", label: count === 1 ? "Delete keyframe" : "Delete keyframes", commandId: "edit.delete" },
     { kind: "item", id: "keyframe.copy", label: count === 1 ? "Copy keyframe" : "Copy keyframes" },
     { kind: "item", id: "keyframe.paste", label: "Paste keyframes", disabled: keyframeClipboard.getState()?.section !== section },

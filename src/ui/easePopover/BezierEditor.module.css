@@ -1,0 +1,148 @@
+/*
+ * Bezier curve editor (Batch 61). Design system gaps (the DS defines no curve editors): the plot is a
+ * --surface-1 well with the input border; the curve, handles and stems use the accent, the diagonal
+ * and frame hairlines; stroke widths and the handle radius are SVG units of the 100-unit viewBox; the
+ * preset and action chips reuse the look of the menu choice chips (ContextMenu.module.css .choice).
+ */
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2);
+}
+
+.plot {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  max-height: calc(var(--control-comfortable) * 5);
+  margin: 0 auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-1);
+  touch-action: none;
+}
+
+.frame {
+  fill: none;
+  stroke: var(--hairline);
+  stroke-width: 0.5;
+}
+
+.diagonal {
+  stroke: var(--text-muted);
+  stroke-width: 0.5;
+  stroke-dasharray: 2 2;
+}
+
+.curve {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+
+.stem {
+  stroke: var(--text-tertiary);
+  stroke-width: 0.75;
+}
+
+.handle {
+  fill: var(--surface-1);
+  stroke: var(--accent);
+  stroke-width: 1.5;
+  cursor: grab;
+  outline: none;
+}
+
+.handle:hover,
+.handle:focus-visible {
+  fill: var(--accent);
+}
+
+.handle:active {
+  cursor: grabbing;
+}
+
+.dot {
+  fill: var(--text-primary);
+}
+
+.fields {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-1);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-0);
+  color: var(--text-tertiary);
+  font: var(--type-overline);
+  letter-spacing: var(--type-overline-track);
+}
+
+.fieldName {
+  text-transform: uppercase;
+}
+
+.input {
+  width: 100%;
+  min-width: 0;
+  height: var(--control-compact);
+  padding: 0 var(--space-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-1);
+  color: var(--text-primary);
+  font: var(--type-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.input:focus-visible {
+  outline: none;
+  border-color: var(--accent-dim);
+  box-shadow: var(--focus-ring);
+}
+
+.presets,
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-0);
+}
+
+.actions {
+  justify-content: flex-end;
+}
+
+.chip {
+  height: var(--space-5);
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-sm);
+  color: var(--text-tertiary);
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-track);
+  white-space: nowrap;
+  transition:
+    background-color var(--duration-instant) var(--ease-out),
+    color var(--duration-instant) var(--ease-out);
+}
+
+.chip:hover {
+  background: var(--hover-wash);
+  color: var(--text-primary);
+}
+
+.chip[aria-pressed="true"] {
+  background: var(--accent-wash);
+  color: var(--accent);
+}
+
+.chip:focus-visible {
+  outline: none;
+  background: var(--hover-wash);
+  color: var(--text-primary);
+  box-shadow: var(--focus-ring-inset);
+}

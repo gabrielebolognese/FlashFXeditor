@@ -1,13 +1,13 @@
 import { ChevronLeft, ChevronRight, Diamond, Timer } from "lucide-react";
 import { useEffect, useRef, type MouseEvent } from "react";
-import { setEaseAtPlayhead } from "../../app/keyframeController.js";
+import { easeAtPlayhead, setEaseAtPlayhead } from "../../app/keyframeController.js";
 import { actions, documentStore, sessionStore } from "../../app/services.js";
-import { EASE_GROUPS, EASE_LABELS, SECTION_LABELS, type KeyframeSection } from "../../core/document/keyframes.js";
-import { type Clip, type ClipId, type EaseId } from "../../core/document/types.js";
-import { keyCount, stopwatchOn } from "../../timeline/edit/keyframes.js";
+import { KEYFRAME_SECTIONS, SECTION_LABELS, type KeyframeSection } from "../../core/document/keyframes.js";
+import { type Clip, type ClipId } from "../../core/document/types.js";
+import { keyable, keyCount, stopwatchOn } from "../../timeline/edit/keyframes.js";
 import { IconButton } from "../../ui/IconButton.js";
 import iconStyles from "../../ui/IconButton.module.css";
-import { MenuButton } from "../../ui/MenuButton.js";
+import { EasePopover } from "../../ui/easePopover/EasePopover.js";
 import { bindEaseLabel, bindKeyButton, keyStateAt, type KeyBindingDeps } from "./keyframeBinding.js";
 import { Row } from "./Section.js";
 import styles from "./KeyframeControls.module.css";
@@ -28,19 +28,10 @@ const DEPS: KeyBindingDeps = {
 
 const keepFocus = (event: MouseEvent) => event.preventDefault();
 
-const STOPWATCH: Record<KeyframeSection, (clip: Clip) => boolean | typeof SKIP> = {
-  transform: (clip) => ("transform" in clip ? stopwatchOn(clip, "transform") : SKIP),
-  opacity: (clip) => ("opacity" in clip ? stopwatchOn(clip, "opacity") : SKIP),
-  volume: (clip) => ("volume" in clip ? stopwatchOn(clip, "volume") : SKIP),
-  look: () => SKIP,
-};
-
-const COUNT: Record<KeyframeSection, (clip: Clip) => number | typeof SKIP> = {
-  transform: (clip) => ("transform" in clip ? keyCount(clip, "transform") : SKIP),
-  opacity: (clip) => ("opacity" in clip ? keyCount(clip, "opacity") : SKIP),
-  volume: (clip) => ("volume" in clip ? keyCount(clip, "volume") : SKIP),
-  look: () => SKIP,
-};
+// Selectors per section, made once so they stay stable for the store hook. A clip the section cannot
+// key (an audio clip for Transform, a solid without a stroke for Stroke) is skipped.
+const STOPWATCH = Object.fromEntries(KEYFRAME_SECTIONS.map((section) => [section, (clip: Clip) => (keyable(clip, section) ? stopwatchOn(clip, section) : SKIP)])) as Record<KeyframeSection, (clip: Clip) => boolean | typeof SKIP>;
+const COUNT = Object.fromEntries(KEYFRAME_SECTIONS.map((section) => [section, (clip: Clip) => (keyable(clip, section) ? keyCount(clip, section) : SKIP)])) as Record<KeyframeSection, (clip: Clip) => number | typeof SKIP>;
 
 /** Whether the section is animated on every target (true), on none (false), or on some (mixed). */
 export function useStopwatch(ids: readonly ClipId[], section: KeyframeSection): boolean | typeof MIXED | typeof NONE {
@@ -129,31 +120,40 @@ function EaseText({ ids, section }: { ids: readonly ClipId[]; section: KeyframeS
   return <span ref={ref} className={styles.ease} />;
 }
 
-/** The Ease row (spec §11 "ease selector for the keyframe at the playhead"): disabled while the section is not animated. */
+/** The Ease row (spec §11 "ease selector for the keyframe at the playhead", §21.9 popover): disabled while the section is not animated. */
 export function EaseRow({ ids, section }: { ids: readonly ClipId[]; section: KeyframeSection }) {
   const on = useStopwatch(ids, section);
   const animated = on === true || on === MIXED;
-  const entries = () => {
-    const state = keyStateAt(documentStore.getState(), ids, section, sessionStore.state.getState().playhead);
-    // A plain grouped list (spec §21.9; the searchable popover with thumbnails is Batch 61).
-    return EASE_GROUPS.flatMap((group) => [
-      { kind: "heading" as const, label: group.label },
-      ...group.eases.map((ease) => ({ kind: "item" as const, id: ease, label: EASE_LABELS[ease], active: state.ease === ease, disabled: !state.onKey })),
-    ]);
-  };
   return (
     <Row label="Ease">
       <span className={styles.easeCell}>
-        <MenuButton
+        <EasePopover
           label={animated ? "Ease of the keyframe at the playhead" : `Ease of the keyframe at the playhead: ${offReason(section)}`}
-          values
           disabled={!animated}
-          entries={entries}
-          onSelect={(id) => setEaseAtPlayhead(section, id as EaseId)}
+          current={() => easeAtPlayhead(section)}
+          onChange={(ease, params) => setEaseAtPlayhead(section, ease, params)}
         >
           <EaseText ids={ids} section={section} />
-        </MenuButton>
+        </EasePopover>
       </span>
     </Row>
+  );
+}
+
+/**
+ * The stopwatch row and the Ease row of a look section (Batch 61: anchor, size, crop, corners, fill,
+ * stroke, shadow, text), placed in the section's body over its fields. Nothing shows when no selected
+ * clip can key the section (a solid without a stroke has no Stroke stopwatch).
+ */
+export function KeyRows({ ids, section }: { ids: readonly ClipId[]; section: KeyframeSection }) {
+  const on = useStopwatch(ids, section);
+  if (on === NONE) return null;
+  return (
+    <>
+      <Row label={`${SECTION_LABELS[section]} keys`}>
+        <KeyframeControls ids={ids} section={section} />
+      </Row>
+      <EaseRow ids={ids} section={section} />
+    </>
   );
 }

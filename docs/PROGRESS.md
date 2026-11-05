@@ -1,6 +1,6 @@
 # Progress
 
-last_completed_batch: 60
+last_completed_batch: 61
 in_progress_batch: none
 skipped_batches: []
 needs_human: none
@@ -6602,3 +6602,26 @@ Why each dependency exists (Batch rule 8).
 - review: accepted
   - Both problems of the earlier rejection are fixed. (1) `setKey` (src/core/document/keyframes.ts:429) keeps a key's `bezier`/`spring` when only the value changes and drops them when a new ease is given; every value-edit caller (`writeKeys` from the panel fields, gizmo, stopwatch, volume) passes no ease, so the parameters survive. Covered by keyframes.test.ts "keeps a key's bezier and spring points when only its value changes". (2) `copyKeys`/`KeyframeClipboard` (src/timeline/edit/keyframes.ts:232, :243) carry whole keys (vector values, bezier, spring), the clipboard validator (src/timeline/edit/clipboard.ts:183) accepts them, and `pasteKeys` skips props that fail `propValidFor` for the target clip kind (:261). Covered by timeline/edit/keyframes.test.ts "copies whole keys (bezier, spring, color values) and skips props the target lacks". This extends the existing §6.15 copy and paste so it no longer corrupts or refuses data; the Batch 61 selected-keys paste at the playhead, Reverse keys and Set ease for selected are not built.
   - Checked by the reviewer: `npm run check` green (264 test files, 2757 tests); no untagged TODOs and no color literals in the batch diff. The acceptance items and pending manual checks are as recorded in the first review (CLI renders on both backends match `expected/` at SSIM 1.0000; playback raster counter and export-vs-preview stay manual checks 1 and 2).
+
+### Batch 61: Keyframes v2 II: ease popover, curve editor and key editing
+- status: done
+- date: 2026-11-07
+- notes:
+  - Built in auto mode (lean run); `npm run check` green. Engine and edit paths are unit-tested (`keyframesLook.test.ts`); popover, curve editor and panel wiring are pending manual checks (no browser run in this session).
+  - Sections: stopwatch groups anchor, size, crop, corners, fill, stroke, shadow, text (`SECTION_PROPS`); `look` stays as the all-properties lane. Each has navigator, count, stopwatch and Ease rows (`KeyRows` in the Transform, Crop, Solid, Frame and Text sections); lanes for every section via the clip menu.
+  - `core/document/keyProps.ts`: base read/write per look prop, `clipLookAt` (fields show keyed values at the playhead), `keyFollow` (called in `DocumentStore.dispatch`: a field edit on a keyed look prop restores the base and writes a key at the playhead; `keyframe.*` commands exempt).
+  - Ease popover (search, groups, curve thumbnails, spring fields) and curve editor (SVG, direct writes while dragging, one commit on release, presets, numeric fields, Copy as CSS) in `src/ui/easePopover/`. Bezier/spring edits share coalesce key `keyframe.ease.<section>` (one undo step per gesture).
+  - New: `reverseKeys` / command `keyframe.reverse` (mirrors frames and segment eases), `setKeysEase` with params, keyframe menu lists the grouped eases plus Reverse.
+- deviations:
+  - Fields of keyed look props refresh at the playhead outside React for number fields; React fields (colors, choices via `useClipsShared`) refresh 150 ms after the playhead settles, never during playback or scrubs (P1).
+  - No live preview in the canvas while scrubbing a keyed field (the key wins over the live value); the edit shows on release. The curve editor previews its own curve live.
+  - No default keys for Reverse keys / the new stopwatches (free keys not assigned); palette entries exist.
+  - "Set ease for selected" from the lane uses the keyframe menu (plain eases, default bezier/spring); custom curve fine-tuning is done in the panel's popover with the playhead on the key.
+  - An anchor edit on a keyed anchor also restores the base position (no compensation).
+- follow-ups:
+  - [from Batch 61 -> Batch 62] Fuzz seed 9001 (interleaved undo/redo with a shifted stream, from Batch 59) is still not investigated.
+- pending manual checks:
+  1. Curve editor: drag a handle in a bezier ease: live curve, one undo step, `Copy as CSS` matches the points.
+  2. Solid: Fill stopwatch, change the color at two frames, play back; compare with the Batch 60 fixture.
+  3. Copy three keys, paste on another clip at the playhead, Reverse keys, Set ease for selected: one undo step each.
+  4. Profiler: zero React commits while dragging in the curve editor and scrubbing the new lanes; DS look of the popover (gaps logged in the CSS headers).

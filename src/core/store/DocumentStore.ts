@@ -6,6 +6,7 @@ import type { Affect, Command, CommandContext } from "../commands/command.js";
 import { UndoStack, type UndoEntry } from "../commands/UndoStack.js";
 import { carryTrackHeights } from "../document/project.js";
 import { hasTransitions, reconcileTransitions } from "../document/transitions.js";
+import { keyFollow } from "../document/keyProps.js";
 import type { Project } from "../document/types.js";
 import { assertValid } from "../document/validate.js";
 import { createStore, shallowEqual, type Store } from "./createStore.js";
@@ -99,6 +100,8 @@ export class DocumentStore {
     const reconcile = hasTransitions(base) && (command.affects.includes("clips") || command.affects.includes("timeline"));
     const [next, patches, inversePatches] = produceWithPatches(base, (draft) => {
       command.run(draft, ctx);
+      // A field edit on a keyed look property becomes a key at the playhead (Batch 61, keyProps.ts).
+      if (!command.id.startsWith("keyframe.")) keyFollow(base, draft, ctx.playhead);
       if (reconcile) reconcileTransitions(base, draft, this.newId);
     });
     const tx = this.transactionState;

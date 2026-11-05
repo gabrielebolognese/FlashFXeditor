@@ -4,6 +4,8 @@
 // (`liveEdit.texts`, and the moved boxes in `liveEdit.transforms`: each box keeps its anchored point),
 // so the preview re-rasterizes only the scrubbed layers and no React component renders, then one
 // command on release.
+import { clipRel } from "../../core/document/keyframes.js";
+import { clipLookAt, hasLookKeys } from "../../core/document/keyProps.js";
 import type { ClipId, Frame, Project, TextClip, Transform } from "../../core/document/types.js";
 import type { Store } from "../../core/store/createStore.js";
 import type { DocumentStore } from "../../core/store/DocumentStore.js";
@@ -21,6 +23,8 @@ export interface TextBindingDeps {
   live: Store<LiveEdit>;
   /** The playhead: a keyed text is edited as it shows there (Batch 35). */
   playhead?: () => Frame;
+  /** Called when the playhead moves: a text with keyed look properties re-reads its fields (DOM only, P1). */
+  subscribePlayhead?: (listener: () => void) => () => void;
 }
 
 /** The text clips among `ids` (in order). */
@@ -34,9 +38,10 @@ export function textClipsOf(project: Project, ids: readonly ClipId[]): TextClip[
 }
 
 /** `clip` as a live edit shows it. */
-function shownClip(clip: TextClip, live: LiveEdit): TextClip {
+function shownClip(clip: TextClip, live: LiveEdit, at?: Frame): TextClip {
+  const keyed = at === undefined ? clip : clipLookAt(clip, clipRel(clip, at));
   const text = live.texts?.get(clip.id);
-  return text ? { ...clip, text: text.text, style: text.style } : clip;
+  return text ? { ...keyed, text: text.text, style: text.style } : keyed;
 }
 
 export function textBinding(deps: TextBindingDeps, prop: TextNumberProp, ids: readonly ClipId[]): NumberBinding {
@@ -62,12 +67,15 @@ export function textBinding(deps: TextBindingDeps, prop: TextNumberProp, ids: re
   return {
     read() {
       const live = deps.live.getState();
-      const values = textClipsOf(deps.document.getState(), ids).map((clip) => roundTo(prop.read(shownClip(clip, live)), prop.precision));
+      const values = textClipsOf(deps.document.getState(), ids).map((clip) => roundTo(prop.read(shownClip(clip, live, deps.playhead?.())), prop.precision));
       const value = shared(values, (v) => v);
       return value && !value.mixed ? value.value : null;
     },
     subscribe(listener) {
       const stops = [deps.document.subscribe(() => listener(), { affects: ["composite", "text", "clips"] }), deps.live.subscribe(() => listener())];
+      if (deps.subscribePlayhead) {
+        stops.push(deps.subscribePlayhead(() => textClipsOf(deps.document.getState(), ids).some((clip) => hasLookKeys(clip.keyframes)) && listener()));
+      }
       return () => {
         for (const stop of stops) stop();
       };
@@ -77,7 +85,8 @@ export function textBinding(deps: TextBindingDeps, prop: TextNumberProp, ids: re
     },
     change(delta, phase) {
       const project = deps.document.getState();
-      const valueOf = (clip: TextClip) => clamp(prop.read(clip) + delta);
+      const at = deps.playhead?.();
+      const valueOf = (clip: TextClip) => clamp(prop.read(at === undefined ? clip : clipLookAt(clip, clipRel(clip, at))) + delta);
       switch (phase) {
         case "scrub": {
           const texts = new Map<ClipId, LiveText>();

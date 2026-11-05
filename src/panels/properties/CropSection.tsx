@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import { liveEdit } from "../../app/liveEdit.js";
 import { cropMode } from "../../app/previewController.js";
 import { toggleCropLock } from "../../app/propertiesController.js";
-import { documentStore } from "../../app/services.js";
+import { documentStore, sessionStore } from "../../app/services.js";
 import type { ClipId } from "../../core/document/types.js";
 import { createStore } from "../../core/store/createStore.js";
 import { useStoreSelector } from "../../core/store/useStoreSelector.js";
@@ -13,6 +13,7 @@ import { IconButton } from "../../ui/IconButton.js";
 import { NumberField } from "../../ui/NumberField.js";
 import { layerBinding, type BindingDeps } from "./bindings.js";
 import { cropProp, type CropUnit } from "./layerProps.js";
+import { KeyRows } from "./KeyframeControls.js";
 import { Row } from "./Section.js";
 import styles from "./Section.module.css";
 
@@ -23,7 +24,7 @@ import styles from "./Section.module.css";
 // are bound outside React (bindings.ts): a label scrub crops live with no React render and commits one
 // undo step; a crop handle drag on the canvas shows in the fields as it runs (live crops).
 
-const DEPS: BindingDeps = { document: documentStore, live: liveEdit };
+const DEPS: BindingDeps = { document: documentStore, live: liveEdit, playhead: { get: () => sessionStore.state.getState().playhead, subscribe: (listener) => sessionStore.state.select((state) => state.playhead, listener) } };
 
 /** The crop fields' units, for the session (not persisted): media px first. */
 const cropUnits = createStore<CropUnit>("px");
@@ -48,6 +49,7 @@ export function CropSection({ ids }: { ids: readonly ClipId[] }) {
   const max = unit === "%" ? 100 : undefined;
   return (
     <>
+      <KeyRows ids={ids} section="crop" />
       <Row label="Left / Right">
         <div className={styles.pair}>
           <NumberField label="L" unit={unit} binding={bindings.left} precision={precision} min={0} max={max} ariaLabel="Crop left" />

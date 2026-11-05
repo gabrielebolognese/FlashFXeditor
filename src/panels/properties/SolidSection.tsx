@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import { editSolids, previewSolids, type SolidChange } from "../../app/graphicsController.js";
 import { liveEdit } from "../../app/liveEdit.js";
 import { rememberColor } from "../../app/propertiesController.js";
-import { appSettings, documentStore } from "../../app/services.js";
+import { appSettings, documentStore, sessionStore } from "../../app/services.js";
 import { formatHexColor, isRgba } from "../../core/document/color.js";
 import { fillAsMode, fillAsStops, fillFirstColor, fillLastColor, fillMode, fillWithFirst, fillWithLast, type FillMode } from "../../core/document/fill.js";
 import type { Clip, ClipId, GradientFill, RGBA, SolidClip, SolidShape } from "../../core/document/types.js";
@@ -12,6 +12,7 @@ import type { AppSettings } from "../../project/appSettings.js";
 import { shapeName, solidLook, withShape } from "../../timeline/edit/solid.js";
 import { ColorField } from "../../ui/ColorField.js";
 import { NumberField, roundTo, valueBinding, type NumberBinding } from "../../ui/NumberField.js";
+import { KeyRows } from "./KeyframeControls.js";
 import { Row } from "./Section.js";
 import styles from "./Section.module.css";
 import { solidBinding, type SolidBindingDeps } from "./solidBinding.js";
@@ -25,7 +26,7 @@ import { MIXED, SKIP, useClipsShared } from "./useShared.js";
 // undo step over all the selected solids; mixed values show `--`. Number fields are bound outside
 // React (solidBinding.ts): a label scrub shows live (P1, P2); a color dragged in the picker too.
 
-const DEPS: SolidBindingDeps = { document: documentStore, live: liveEdit };
+const DEPS: SolidBindingDeps = { document: documentStore, live: liveEdit, playhead: { get: () => sessionStore.state.getState().playhead, subscribe: (listener) => sessionStore.state.select((state) => state.playhead, listener) } };
 
 const getShape = (clip: Clip) => (clip.kind === "solid" ? clip.shape : SKIP);
 const modeOf = fillMode;
@@ -101,6 +102,7 @@ export function SolidSection({ ids }: { ids: readonly ClipId[] }) {
       <Row label="Shape">
         <Choice value={shape} options={SHAPES} onChange={(next) => editSolids(ids, (clip) => withShape(solidLook(clip), next, documentStore.getState().settings), "Change shape")} />
       </Row>
+      <KeyRows ids={ids} section="fill" />
       <Row label="Fill">
         <Choice
           value={mode}
@@ -131,12 +133,14 @@ export function SolidSection({ ids }: { ids: readonly ClipId[] }) {
       <Row label="Reach">
         <NumberField label="R" unit="%" binding={gradients.radius} precision={0} min={1} max={1000} disabled={mode !== "radial"} ariaLabel="Gradient radius" />
       </Row>
+      <KeyRows ids={ids} section="size" />
       <Row label="Size">
         <div className={styles.pair}>
           <NumberField label="W" unit="px" binding={bindings.width} precision={0} min={SOLID_WIDTH.min} max={SOLID_WIDTH.max} ariaLabel="Solid width" />
           <NumberField label="H" unit="px" binding={bindings.height} precision={0} min={SOLID_HEIGHT.min} max={SOLID_HEIGHT.max} ariaLabel="Solid height" />
         </div>
       </Row>
+      <KeyRows ids={ids} section="corners" />
       <Row label="Radius">
         <NumberField label={<SquareRoundCorner aria-hidden="true" />} unit="px" binding={bindings.radius} precision={0} min={SOLID_RADIUS.min} max={SOLID_RADIUS.max} disabled={!rounds} ariaLabel="Corner radius" />
       </Row>

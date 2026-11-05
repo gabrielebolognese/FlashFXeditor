@@ -14,11 +14,11 @@
 //   ones and those linked to selected video clips); its keys show on the clips' rubber bands, not on a
 //   lane (audio tracks have none).
 import type { Command } from "../core/commands/command.js";
-import { KEYFRAME_SECTIONS, type KeyframeSection } from "../core/document/keyframes.js";
+import { KEYFRAME_SECTIONS, sectionKeyAt, type EaseParams, type KeyframeSection } from "../core/document/keyframes.js";
 import { EASE_IDS, type ClipId, type EaseId } from "../core/document/types.js";
 import { createStore } from "../core/store/createStore.js";
 import { selectKeyframes, setPlayhead } from "../core/store/sessionStore.js";
-import { adjacentKey, copyKeys, deleteKeys, pasteKeys, setKeysEase, setStopwatch, stopwatchOn, toggleKeyAt, type KeyframeClipboard } from "../timeline/edit/keyframes.js";
+import { adjacentKey, copyKeys, deleteKeys, pasteKeys, reverseKeys, setKeysEase, setStopwatch, stopwatchOn, toggleKeyAt, type KeyframeClipboard } from "../timeline/edit/keyframes.js";
 import { keyableIds } from "../panels/properties/keyframeBinding.js";
 import { audioTargets } from "../timeline/edit/volume.js";
 import { LANE_SECTIONS, PANEL_SECTIONS } from "./commandCatalog.js";
@@ -69,7 +69,7 @@ export function jumpToKey(section: KeyframeSection, direction: -1 | 1): void {
 }
 
 /** The ease of the keys of `section` at the playhead on the selected clips (the panel's Ease dropdown). */
-export function setEaseAtPlayhead(section: KeyframeSection, ease: EaseId): void {
+export function setEaseAtPlayhead(section: KeyframeSection, ease: EaseId, params?: EaseParams): void {
   const at = playhead();
   const project = documentStore.getState();
   const frames = new Map<ClipId, number[]>();
@@ -77,7 +77,28 @@ export function setEaseAtPlayhead(section: KeyframeSection, ease: EaseId): void 
     const clip = project.clips[id];
     if (clip && at >= clip.start && at < clip.start + clip.duration) frames.set(id, [at - clip.start]);
   }
-  const command = setKeysEase(project, frames, section, ease);
+  const command = setKeysEase(project, frames, section, ease, params);
+  if (command) documentStore.dispatch(command);
+}
+
+/** The ease (with its bezier or spring parameters) of the first key of `section` at the playhead on the selected clips: what the ease popover shows. */
+export function easeAtPlayhead(section: KeyframeSection): { ease: EaseId | null; bezier?: [number, number, number, number]; spring?: { damping: number; frequency: number } } {
+  const at = playhead();
+  const project = documentStore.getState();
+  for (const id of targets(section)) {
+    const clip = project.clips[id];
+    if (!clip || !("keyframes" in clip) || at < clip.start || at >= clip.start + clip.duration) continue;
+    const key = sectionKeyAt(clip.keyframes, section, at - clip.start);
+    if (key) return { ease: key.ease, ...(key.bezier && { bezier: key.bezier }), ...(key.spring && { spring: key.spring }) };
+  }
+  return { ease: null };
+}
+
+/** Reverses the selected keys in time (keyframe menu, palette). */
+function reverseSelected(): void {
+  const keys = sessionStore.keyframes.getState();
+  if (!keys) return;
+  const command = reverseKeys(documentStore.getState(), keys.clipId, keys.section, keys.frames);
   if (command) documentStore.dispatch(command);
 }
 
@@ -154,6 +175,7 @@ export function installKeyframeController(): () => void {
     ...KEYFRAME_SECTIONS.filter((section) => LANE_SECTIONS.includes(section)).map((section) => actions.register(`keyframes.lane.${section}`, () => showLane(section))),
     ...EASE_IDS.map((ease) => actions.register(`keyframe.ease.${ease}`, () => easeSelected(ease))),
     actions.register("keyframe.delete", () => void deleteSelectedKeys()),
+    actions.register("keyframe.reverse", reverseSelected),
     actions.register("keyframe.copy", () => void copySelectedKeys()),
     actions.register("keyframe.paste", () => void pasteKeyframes()),
   ];

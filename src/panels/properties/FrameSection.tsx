@@ -11,6 +11,7 @@ import { cornerRadiiOf } from "../../core/document/fill.js";
 import { ColorField } from "../../ui/ColorField.js";
 import { NumberField, roundTo, valueBinding, type NumberBinding } from "../../ui/NumberField.js";
 import { shared } from "./context.js";
+import { KeyRows } from "./KeyframeControls.js";
 import { Row } from "./Section.js";
 import styles from "./Section.module.css";
 import { Choice, colorOf, type ChoiceProps } from "./StyleFields.js";
@@ -170,6 +171,7 @@ export function FrameSection({ ids }: { ids: readonly ClipId[] }) {
 
   return (
     <>
+      <KeyRows ids={ids} section="stroke" />
       <Row label="Stroke">
         <Choice value={stroke} options={ON_OFF} onChange={(mode) => edit(mode === "on" ? "Add stroke" : "Remove stroke", (clip) => ({ stroke: mode === "on" ? (clip.stroke ?? { ...DEFAULT_STROKE }) : null }))} />
       </Row>
@@ -200,6 +202,7 @@ export function FrameSection({ ids }: { ids: readonly ClipId[] }) {
       <Row label="Dash offset">
         <NumberField label="O" unit="px" binding={bindings.dashOffset} precision={0} min={-100000} max={100000} disabled={!hasStroke || dash === "solid"} ariaLabel="Dash offset" />
       </Row>
+      <KeyRows ids={ids} section="shadow" />
       <Row label="Shadow">
         <Choice
           value={shadow}
@@ -230,9 +233,12 @@ export function FrameSection({ ids }: { ids: readonly ClipId[] }) {
       </Row>
       {/* Solids keep their one radius in the Solid section; here pictures get theirs, and solids a radius per corner. */}
       {!allSolids && (
+        <>
+        <KeyRows ids={ids} section="corners" />
         <Row label="Radius">
           <NumberField label={<SquareRoundCorner aria-hidden="true" />} unit="px" binding={bindings.radius} precision={0} min={0} max={8192} ariaLabel="Picture corner radius" />
         </Row>
+        </>
       )}
       {allSolids && (
         <>

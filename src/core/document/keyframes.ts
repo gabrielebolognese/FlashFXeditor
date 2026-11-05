@@ -79,18 +79,33 @@ export function propValidFor(prop: string, kind: string): boolean {
 }
 
 /** The animatable sections (spec §11), in the panel's order. */
-export const KEYFRAME_SECTIONS = ["transform", "opacity", "volume", "look"] as const;
+export const KEYFRAME_SECTIONS = ["transform", "opacity", "volume", "anchor", "size", "crop", "corners", "fill", "stroke", "shadow", "text", "look"] as const;
 export type KeyframeSection = (typeof KEYFRAME_SECTIONS)[number];
 
 export const SECTION_PROPS: Readonly<Record<KeyframeSection, readonly KeyframeProp[]>> = {
   transform: ["transform.x", "transform.y", "transform.scale", "transform.scaleY", "transform.rotation"],
   opacity: ["opacity"],
   volume: ["volume.gainDb"],
-  /** Batch 60's properties (spec §21.9): shown on a lane of their own; their stopwatches come in Batch 61. */
+  /** The stopwatch groups of Batch 61 (spec §21.9, §11): each sits in the panel's Transform, Crop, Solid, Frame or Text section. */
+  anchor: ["transform.anchor.x", "transform.anchor.y"],
+  size: ["size.w", "size.h"],
+  crop: ["crop.left", "crop.top", "crop.right", "crop.bottom"],
+  corners: ["cornerRadius"],
+  fill: ["fill"],
+  stroke: ["stroke.width", "stroke.color", "stroke.dashOffset"],
+  shadow: ["shadow.x", "shadow.y", "shadow.blur", "shadow.spread", "shadow.color"],
+  text: ["style.fontSize", "style.letterSpacing", "style.fill"],
+  /** Every look property: the lane that shows all of them (no stopwatch). */
   look: EXTRA_KEYFRAME_PROPS,
 };
 
-export const SECTION_LABELS: Readonly<Record<KeyframeSection, string>> = { transform: "Transform", opacity: "Opacity", volume: "Volume", look: "Look" };
+export const SECTION_LABELS: Readonly<Record<KeyframeSection, string>> = {
+  transform: "Transform", opacity: "Opacity", volume: "Volume", anchor: "Anchor", size: "Size", crop: "Crop", corners: "Corners",
+  fill: "Fill", stroke: "Stroke", shadow: "Shadow", text: "Text", look: "Look",
+};
+
+/** The sections with a stopwatch of their own (every one but the all-properties Look lane). */
+export const STOPWATCH_SECTIONS: readonly KeyframeSection[] = KEYFRAME_SECTIONS.filter((section) => section !== "look");
 
 export function isKeyframeProp(value: unknown): value is KeyframeProp {
   return typeof value === "string" && (KEYFRAME_PROPS as readonly string[]).includes(value);
@@ -362,7 +377,8 @@ export function sectionValues(clip: Keyed & { opacity?: number; volume?: { gainD
       return { opacity: propValue(clip.keyframes, "opacity", rel, clip.opacity ?? 1) };
     case "volume":
       return { "volume.gainDb": propValue(clip.keyframes, "volume.gainDb", rel, clip.volume?.gainDb ?? 0) };
-    case "look":
+    default:
+      // The look sections' values come from the clip's own fields (timeline/edit/keyframes.ts `valuesAt`).
       return {};
   }
 }
@@ -447,11 +463,11 @@ export function setKey(keys: readonly Key[], frame: Frame, value: number | numbe
 }
 
 /** `keyframes` with a key for every property of `values` at `rel` (`setKey` rules). */
-export function writeKeys(keyframes: Keyframes | undefined, rel: Frame, values: Partial<Record<KeyframeProp, number>>, ease?: EaseId): Keyframes | undefined {
+export function writeKeys(keyframes: Keyframes | undefined, rel: Frame, values: Partial<Record<KeyframeProp, number | number[]>>, ease?: EaseId): Keyframes | undefined {
   let next = keyframes;
   for (const prop of KEYFRAME_PROPS) {
     const value = values[prop];
-    if (value === undefined || !Number.isFinite(value)) continue;
+    if (value === undefined || !(Array.isArray(value) ? value.every(Number.isFinite) : Number.isFinite(value))) continue;
     next = withKeys(next, prop, setKey(next?.[prop] ?? [], rel, value, ease));
   }
   return next;
@@ -488,7 +504,7 @@ export function moveSectionKeys(keyframes: Keyframes | undefined, section: Keyfr
 }
 
 /** `keyframes` with the ease of `section`'s keys at `frames` set to `ease`. */
-export function setSectionEase(keyframes: Keyframes | undefined, section: KeyframeSection, frames: ReadonlySet<Frame>, ease: EaseId): Keyframes | undefined {
+export function setSectionEase(keyframes: Keyframes | undefined, section: KeyframeSection, frames: ReadonlySet<Frame>, ease: EaseId, params?: EaseParams): Keyframes | undefined {
   let next = keyframes;
   for (const prop of SECTION_PROPS[section]) {
     const keys = next?.[prop];
@@ -496,10 +512,83 @@ export function setSectionEase(keyframes: Keyframes | undefined, section: Keyfra
     next = withKeys(
       next,
       prop,
-      keys.map((key) => (frames.has(key.frame) ? { ...key, ease } : key)),
+      keys.map((key) => (frames.has(key.frame) ? withEase(key, ease, params) : key)),
     );
   }
   return next;
+}
+
+/** The parameters of a `bezier` or `spring` ease (spec §21.9). */
+export type EaseParams = Pick<Key, "bezier" | "spring">;
+
+/** `key` with `ease`: a bezier or spring ease takes `params` (else keeps its own points when the ease does not change), any other drops them. */
+export function withEase(key: Key, ease: EaseId, params?: EaseParams): Key {
+  const next: Key = { frame: key.frame, value: key.value, ease };
+  const source = params ?? (key.ease === ease ? key : undefined);
+  if (ease === "bezier" && source?.bezier) next.bezier = [...source.bezier];
+  if (ease === "spring" && source?.spring) next.spring = { ...source.spring };
+  return next;
+}
+
+/** The first key of `section` at `rel` (its first property's that has one), or null: the ease popover's current curve. */
+export function sectionKeyAt(keyframes: Keyframes | undefined, section: KeyframeSection, rel: Frame): Key | null {
+  if (!keyframes) return null;
+  for (const prop of SECTION_PROPS[section]) {
+    const key = keyframes[prop]?.find((candidate) => candidate.frame === rel);
+    if (key) return key;
+  }
+  return null;
+}
+
+/**
+ * `keyframes` with `section`'s keys at `frames` reversed in time: the keys keep their values and
+ * mirror their frames inside the selection's span (first <-> last), the eases of the segments reverse
+ * with them (a segment's curve is mirrored: In <-> Out, a bezier (x1, y1, x2, y2) becomes
+ * (1 - x2, 1 - y2, 1 - x1, 1 - y1)), spring and hold segments keep their kind. (Spec §21.9 Reverse keys.)
+ */
+export function reverseSectionKeys(keyframes: Keyframes | undefined, section: KeyframeSection, frames: ReadonlySet<Frame>): Keyframes | undefined {
+  if (frames.size < 2) return keyframes;
+  const ordered = [...frames].sort((a, b) => a - b);
+  const first = ordered[0] as number;
+  const last = ordered[ordered.length - 1] as number;
+  let next = keyframes;
+  for (const prop of SECTION_PROPS[section]) {
+    const keys = next?.[prop];
+    if (!keys) continue;
+    const picked = keys.filter((key) => frames.has(key.frame));
+    if (picked.length < 2) continue;
+    // The segment from picked[i] to picked[i + 1] (with picked[i]'s ease) now runs from the mirrored
+    // picked[i + 1] to the mirrored picked[i]: the mirrored key of picked[i + 1] carries picked[i]'s ease, mirrored.
+    const mirrored = picked.map((key, i) => {
+      const segment = i > 0 ? picked[i - 1] : undefined;
+      const base: Key = { frame: first + last - key.frame, value: key.value, ease: "linear" };
+      if (segment) Object.assign(base, mirrorEase(segment));
+      return base;
+    });
+    mirrored.sort((a, b) => a.frame - b.frame);
+    // The last picked key (now first after mirroring the order) keeps the ease it had if it was the end of the span.
+    const tail = mirrored[mirrored.length - 1];
+    const original = picked[picked.length - 1] as Key;
+    if (tail) Object.assign(tail, { ease: original.ease, ...(original.bezier ? { bezier: [...original.bezier] } : {}), ...(original.spring ? { spring: { ...original.spring } } : {}) });
+    const kept = keys.filter((key) => !frames.has(key.frame));
+    next = withKeys(next, prop, [...kept, ...mirrored].sort((a, b) => a.frame - b.frame));
+  }
+  return next;
+}
+
+const MIRRORED: Readonly<Partial<Record<EaseId, EaseId>>> = {
+  easeIn: "easeOut", easeOut: "easeIn",
+  ...Object.fromEntries(PENNER_EASES.flatMap((id) => (id.endsWith("InOut") ? [] : [[id, id.endsWith("In") ? `${id.slice(0, -2)}Out` : `${id.slice(0, -3)}In`]]))),
+};
+
+/** The ease fields of the segment `key` starts, as that segment plays backwards. */
+function mirrorEase(key: Key): Pick<Key, "ease" | "bezier" | "spring"> {
+  if (key.ease === "bezier") {
+    const [x1, y1, x2, y2] = key.bezier ?? DEFAULT_BEZIER;
+    return { ease: "bezier", bezier: [1 - x2, 1 - y2, 1 - x1, 1 - y1] };
+  }
+  if (key.ease === "spring") return { ease: "spring", ...(key.spring ? { spring: { ...key.spring } } : {}) };
+  return { ease: MIRRORED[key.ease] ?? key.ease };
 }
 
 /**

@@ -7,7 +7,7 @@ import { isLayerClip, scaleYOf } from "../../timeline/edit/transform.js";
 import { IconButton } from "../../ui/IconButton.js";
 import { NumberField } from "../../ui/NumberField.js";
 import { layerBinding, type BindingDeps } from "./bindings.js";
-import { EaseRow } from "./KeyframeControls.js";
+import { EaseRow, KeyRows } from "./KeyframeControls.js";
 import { ANCHOR_X, ANCHOR_Y, MAX_SCALE_PERCENT, MIN_SCALE_PERCENT, OPACITY, POSITION_X, POSITION_Y, ROTATION, scaleProp } from "./layerProps.js";
 import { Row } from "./Section.js";
 import styles from "./Section.module.css";
@@ -81,6 +81,7 @@ export function TransformSection({ ids }: { ids: readonly ClipId[] }) {
           <NumberField label="Y" unit="%" binding={bindings.anchorY} precision={1} ariaLabel="Anchor Y" />
         </div>
       </Row>
+      <KeyRows ids={ids} section="anchor" />
       <Row label="Flip">
         <div className={styles.buttons}>
           <IconButton icon={FlipHorizontal2} label="Flip horizontal" commandId="transform.flipH" pressed={flipH === true} />
