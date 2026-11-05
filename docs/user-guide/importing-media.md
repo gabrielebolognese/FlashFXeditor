@@ -14,6 +14,8 @@ Import brings your video, audio and image files into the project so you can use 
 - [Supported file types](#supported-file-types)
   - [HDR videos](#hdr-videos)
   - [WebM files and screen recordings](#webm-files-and-screen-recordings)
+- [Transparent video](#transparent-video)
+- [Image sequences](#image-sequences)
 - [What happens when you import](#what-happens-when-you-import)
 - [Copy or link your files](#copy-or-link-your-files)
 - [Browse your media](#browse-your-media)
@@ -113,8 +115,42 @@ What is not supported:
 
 - Other video codecs, for example HEVC or Theora, are refused. The message names the codec. See [Fix import problems](#fix-import-problems).
 - .mkv files are refused, although WebM is a kind of Matroska file. Convert them to .mp4 or .webm.
-- Transparency is not kept: a VP9 video with a transparent background shows as an opaque picture that covers the layers below. For a sticker with a transparent background, use an animated GIF or WebP instead; see [Shapes and images](shapes-and-images.md).
+- Transparency is kept only for **VP8** and **VP9** WebM files; see [Transparent video](#transparent-video). A WebM file with **AV1** transparency imports opaque.
 - A recording whose window changed size while you recorded keeps the size it started with.
+
+### Transparent video
+
+A **VP8** or **VP9** WebM file with a transparent background, for example an animated sticker, a lower third or a 3D object from a motion program, imports with its transparency. On the timeline, the layers below show through the clear parts, in the preview, in the export and in the command-line render.
+
+- The clip's card shows a **no proxy** chip. Video with transparency always plays from the file you imported, so it gets no proxy.
+- To make such a file from another video, convert it with ffmpeg: `ffmpeg -i in.mov -c:v libvpx-vp9 -pix_fmt yuva420p -b:v 0 -crf 24 out.webm`.
+- A video whose transparency the editor cannot read imports opaque. A message says **imports without transparency** and tells you how to convert it. This happens to WebM with **AV1** transparency and to MP4 or MOV files with HEVC or AV1 transparency.
+- **ProRes** files are refused. The message gives the ffmpeg command to convert them to a VP9 WebM with transparency, or you can convert them to an H.264 MP4.
+
+> **Note:** Exporting a video with transparency is not available yet. An export is always opaque.
+
+### Image sequences
+
+Animation programs often save a clip as a folder of numbered pictures, for example `frame_00001.png`, `frame_00002.png`. Drop such a folder on the **Media** panel to import the frames as one clip.
+
+> **Video placeholder: Import an image sequence**
+> - File: `videos/importing-media/image-sequence.mp4` (not recorded yet)
+> - Length: about 40 seconds
+> - Shows: a folder with 300 numbered PNG files in File Explorer; drag the folder over the **Media** panel and release; the **Image sequence** window asks "Import as image sequence (300 frames) at 60 fps?"; open the **Frame rate** list and keep the default; click **Import as sequence**; one card appears; double-click it and press <kbd>Space</kbd>: the frames play as a video; drag the playhead along the ruler: the preview follows.
+
+1. In File Explorer, find the folder with the numbered frames. The frames must be **.png** or **.webp**, all the same size, and numbered one after the other, for example `frame_0001.png`, `frame_0002.png`. Use the same number of digits in every name.
+2. Drag the folder over the **Media** panel and release.
+3. The **Image sequence** window shows the folder name and the question **Import as image sequence (N frames) at** *rate*. Choose the **Frame rate**. It starts at the project's frame rate.
+4. Click **Import as sequence**. Click **Import as separate images** to import every file as its own picture instead. Close the window to import nothing.
+
+What to know:
+
+- The sequence is one item in the **Media** panel. It plays like a video and shows its frames as thumbnails on the timeline.
+- The editor offers a sequence for at least two frames in a row. If numbers are missing, it takes the longest unbroken run. The other files import as ordinary images.
+- The frames are always copied into your project's `media` folder, in a folder named like the one you dropped, even if you chose to link files in **Settings**. The clip loops when you make it longer than the sequence.
+- Transparency in PNG and WebP frames is kept. A sequence gets no proxy.
+- When you remove a sequence and delete its files, its whole frame folder goes.
+- Only a dropped folder is offered as a sequence. **Import media** and pasting import the files as separate images.
 
 ## What happens when you import
 
@@ -382,4 +418,4 @@ If a card keeps its kind icon instead of a thumbnail, Chrome could not decode th
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 50, 2026-10-18</sub>
+<sub>Last updated: Batch 64, 2026-11-07</sub>

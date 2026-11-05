@@ -2,6 +2,14 @@
 
 Shorts Editor grows in steps called batches. This page lists what each batch added that you can see or use, newest first. Follow the links for the full instructions.
 
+## Batch 64: Transparent video and image sequences
+WebM files with transparency (VP8 or VP9) now keep it: the layers below show through. Drop a folder of numbered PNG or WebP frames on the **Media** panel and choose **Import as sequence** to get one clip. Files with HEVC or AV1 transparency import opaque with a message, and ProRes files are refused with a conversion command. See [Transparent video](importing-media.md#transparent-video) and [Image sequences](importing-media.md#image-sequences).
+
+> **Video placeholder: What's new in Batch 64**
+> - File: `videos/whats-new/batch-64.mp4` (not recorded yet)
+> - Length: about 35 seconds
+> - Shows: drag a VP9 WebM with a transparent background onto a track above a video: the video shows around it; drag a folder of numbered PNG files over the **Media** panel; click **Import as sequence**; double-click the card and press <kbd>Space</kbd>.
+
 ## Batch 63: Edit inside compound clips
 Double-click a compound clip, or press <kbd>Enter</kbd>, to open it: the timeline and preview show its content, and a bar shows **Project** > the compound's name. Press <kbd>Esc</kbd> to go back. The new **Compounds** bin in the **Media** tab lists every compound and lets you drag a copy onto the timeline. See [Compound clips](compound-clips.md).
 

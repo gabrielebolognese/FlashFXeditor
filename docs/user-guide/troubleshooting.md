@@ -1111,13 +1111,13 @@ If the card shows **Offline** instead, the video's file is missing: see [Cards s
 
 **Fix:** Nothing to fix: on a normal screen, the two look alike. To record SDR video on an iPhone, turn off **HDR Video** in **Settings** > **Camera** > **Record Video**. See [HDR videos](importing-media.md#hdr-videos).
 
-### A WebM video covers the layers below it
+### A video covers the layers below it
 
-**Symptom:** A WebM overlay with a transparent background, for example an animated sticker or a lower third, shows its background in the preview and in the export, and hides the clips on the tracks below.
+**Symptom:** An overlay with a transparent background, for example an animated sticker or a lower third, shows its background in the preview and in the export, and hides the clips on the tracks below. A message said **imports without transparency**.
 
-**Cause:** The editor shows WebM videos without their transparency (VP9 alpha): the whole picture is opaque.
+**Cause:** The editor reads the transparency of **VP8** and **VP9** WebM files only. A WebM file with **AV1** transparency, or an MP4 or MOV file with HEVC or AV1 transparency, plays opaque.
 
-**Fix:** Use a format that keeps transparency: an animated GIF or WebP, or a PNG. See [Shapes and images](shapes-and-images.md) and [WebM files and screen recordings](importing-media.md#webm-files-and-screen-recordings).
+**Fix:** Convert the file to a VP9 WebM with transparency: `ffmpeg -i in.mov -c:v libvpx-vp9 -pix_fmt yuva420p -b:v 0 -crf 24 out.webm`. You can also use an animated GIF or WebP, or a PNG. See [Transparent video](importing-media.md#transparent-video) and [Shapes and images](shapes-and-images.md).
 
 ## Organizing media
 
@@ -3108,4 +3108,4 @@ The current version cannot do these things yet. Each one is available in a later
 - [Command palette and custom shortcuts](command-palette-and-custom-shortcuts.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 53, 2026-10-19</sub>
+<sub>Last updated: Batch 64, 2026-11-07</sub>
