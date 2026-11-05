@@ -390,7 +390,7 @@ A compound clip is a `compound` clip on a **video** track of the project (or of 
 
 Transparent animated overlays from any renderer play natively, in the preview, the export and `cli render`, on both backends.
 
-**Alpha WebM.** A VP8 or VP9 WebM whose blocks carry the alpha stream (Matroska BlockAdditions, BlockAddID 1; ffmpeg also flags the track with an ALPHA_MODE tag) imports as a video with `"alpha": true`. The transparency is exact; the clip composites like any layer (opacity, transform, blend). Make one with ffmpeg:
+**Alpha WebM.** A VP8 or VP9 WebM whose blocks carry the alpha stream (Matroska BlockAdditions, BlockAddID 1; ffmpeg also sets the track's AlphaMode element to 1, which the app does not require) imports as a video with `"alpha": true`. The transparency is exact; the clip composites like any layer (opacity, transform, blend). Make one with ffmpeg:
 
 ```
 ffmpeg -i in.mov -c:v libvpx-vp9 -pix_fmt yuva420p -b:v 0 -crf 24 -auto-alt-ref 0 out.webm

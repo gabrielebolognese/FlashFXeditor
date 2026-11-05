@@ -8,7 +8,7 @@ import { alphaPlaneOf, createAlphaDecoder, PairedFrame } from "../decode/AlphaDe
 import { browserAudioDecodeDeps } from "../decode/audioTrack.js";
 import { AudioTracks } from "../decode/AudioTracks.js";
 import { DecodeSessions, type Delivered } from "../decode/DecodeSessions.js";
-import { animationStrip, decodeAnimation } from "../decode/animatedImage.js";
+import { animationStrip, decodeAnimation, sequenceStrip } from "../decode/animatedImage.js";
 import { decodeImage, imagePoster } from "../decode/poster.js";
 import { browserSequenceDeps, createSequenceDecoder } from "../decode/SequenceDecoder.js";
 import { createVideoDecoder } from "../decode/VideoDecodeSession.js";
@@ -71,6 +71,7 @@ export function decodeHandlers(): Handlers {
     decodeImage: ({ blob, maxSize }) => decodeImage(blob, maxSize),
     decodeAnimation: (params, signal, emit) => decodeAnimation(params, signal, emit),
     animationStrip: (params, signal) => animationStrip(params, signal),
+    sequenceStrip: (params, signal) => sequenceStrip(params, signal),
     openVideo: ({ sequence, ...params }, signal) => videos.open({ ...params, sequence }, signal),
     requestFrame: async (params, signal, emit) => {
       const sent = emitInOrder(emit);

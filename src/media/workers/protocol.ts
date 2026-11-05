@@ -202,6 +202,8 @@ export interface WorkerMethods {
   /** The frames of an animated GIF or WebP as bitmaps of at most `maxSize` px within `budgetBytes` of textures (`only`: some of them). */
   decodeAnimation: { params: { blob: Blob; type: string; maxSize: number; budgetBytes: number; only: number[] | null }; result: { frames: number }; progress: AnimationProgress };
   /** The filmstrip of an animated image for the timeline. */
+  /** The strip of an image sequence: the given frames (already picked, spread over it) side by side. */
+  sequenceStrip: { params: { blobs: Blob[]; startsUs: number[]; durationUs: number; cellHeight: number }; result: AnimationStrip };
   animationStrip: { params: { blob: Blob; type: string; cellHeight: number; maxCells: number }; result: AnimationStrip };
   /** Loads (cachedIndex) or builds the sample index of a video and checks that it can be decoded. */
   openVideo: { params: { mediaId: string; lod: Lod; file: File; cachedIndex: Blob | null; sequence?: OpenSequence }; result: OpenVideoResult };
@@ -261,6 +263,7 @@ export const METHOD_WORKER: Record<Method, WorkerKind> = {
   decodeImage: "decode",
   decodeAnimation: "decode",
   animationStrip: "decode",
+  sequenceStrip: "decode",
   openVideo: "decode",
   requestFrame: "decode",
   prefetch: "decode",

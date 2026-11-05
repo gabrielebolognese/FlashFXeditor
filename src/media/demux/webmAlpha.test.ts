@@ -26,7 +26,7 @@ describe("WebM alpha (BlockAdditions, spec §21.11)", () => {
   it("probes alpha: true, and nothing for a file without alpha streams", async () => {
     const withAlpha = await probeWebm(reader(buildWebm({ tracks: [track("V_VP9", 1)], blocks: blocks([true, true]) })));
     expect(withAlpha.alpha).toBe(true);
-    // Streams without the AlphaMode element (ffmpeg flags alpha with a tag) are alpha all the same.
+    // Streams without the AlphaMode element (a block with BlockAddID 1 is the alpha stream either way) are alpha all the same.
     const noElement = await probeWebm(reader(buildWebm({ tracks: [track("V_VP9")], blocks: blocks([true, true]) })));
     expect(noElement.alpha).toBe(true);
     const flagOnly = await probeWebm(reader(buildWebm({ tracks: [track("V_VP9", 1)], blocks: blocks([false, false]) })));
@@ -48,6 +48,8 @@ describe("the interop fixture (a real ffmpeg VP9 alpha WebM)", () => {
     const bytes = new Uint8Array(readFileSync("fixtures/interop/alpha/media/overlay.webm"));
     expect((await probeWebm(reader(bytes))).alpha).toBe(true);
     const file = await readWebm(reader(bytes));
+    // ffmpeg writes the AlphaMode element (0x53C0 = 1): it must be read from a real file.
+    expect(file.video?.track.alphaMode).toBe(true);
     const { table } = webmVideoTable(file);
     expect(table.sizes.length).toBe(30);
     expect(Array.from(table.alphaSizes ?? []).every((size) => size > 0)).toBe(true);

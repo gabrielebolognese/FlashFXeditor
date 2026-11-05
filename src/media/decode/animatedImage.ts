@@ -112,3 +112,30 @@ export async function animationStrip(params: { blob: Blob; type: string; cellHei
     decoder.close();
   }
 }
+
+/** The filmstrip of an image sequence: `blobs` (one frame image each) side by side, `startsUs` their start times. */
+export async function sequenceStrip(params: { blobs: Blob[]; startsUs: number[]; durationUs: number; cellHeight: number }, signal: AbortSignal): Promise<AnimationStrip> {
+  if (params.blobs.length === 0) throw new Error("The sequence has no frames");
+  let canvas: OffscreenCanvas | null = null;
+  let ctx: OffscreenCanvasRenderingContext2D | null = null;
+  let cellWidth = 1;
+  let cellHeight = 1;
+  for (let k = 0; k < params.blobs.length; k++) {
+    signal.throwIfAborted();
+    const image = await createImageBitmap(params.blobs[k] as Blob);
+    try {
+      if (!canvas) {
+        cellHeight = Math.max(1, Math.round(Math.min(params.cellHeight, image.height)));
+        cellWidth = Math.max(1, Math.round((image.width * cellHeight) / Math.max(1, image.height)));
+        canvas = new OffscreenCanvas(cellWidth * params.blobs.length, cellHeight);
+        ctx = canvas.getContext("2d");
+        if (!ctx) throw new Error("No 2D context for the strip");
+        ctx.imageSmoothingQuality = "high";
+      }
+      ctx?.drawImage(image, k * cellWidth, 0, cellWidth, cellHeight);
+    } finally {
+      image.close();
+    }
+  }
+  return { bitmap: (canvas as OffscreenCanvas).transferToImageBitmap(), cellWidth, cellHeight, startsUs: params.startsUs, durationUs: params.durationUs };
+}

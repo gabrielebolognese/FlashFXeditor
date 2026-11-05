@@ -46,7 +46,7 @@ export const ID = {
   Video: 0xe0,
   PixelWidth: 0xb0,
   PixelHeight: 0xba,
-  AlphaMode: 0x55c0,
+  AlphaMode: 0x53c0,
   Audio: 0xe1,
   SamplingFrequency: 0xb5,
   Channels: 0x9f,
@@ -400,8 +400,9 @@ export async function readWebm(source: RangeReader, signal?: AbortSignal, window
 
 /**
  * Alpha the app decodes: a VP8 or VP9 track whose blocks carry alpha streams (Batch 64, spec §21.11).
- * The AlphaMode element is not required: ffmpeg flags alpha with an ALPHA_MODE tag instead, and a block with
- * BlockAddID 1 is the alpha stream of VP8 and VP9 either way.
+ * The AlphaMode element (0x53C0) is not required here: a block with BlockAddID 1 is the alpha stream of VP8 and
+ * VP9 whether or not the flag is set, and decoding what is there is the useful behavior. The flag is only read to
+ * tell AV1 alpha (not decoded) from plain AV1.
  */
 export function webmHasAlpha(file: WebmFile): boolean {
   const video = file.video;

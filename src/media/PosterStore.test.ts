@@ -23,6 +23,11 @@ function fakePool() {
       calls.push(`strip ${(params.blob as File).name}`);
       return { bitmap: asBitmap(bitmap("strip")), cellWidth: 160, cellHeight: 144, startsUs: [0, 100_000], durationUs: 200_000 };
     }
+    if (method === "sequenceStrip") {
+      const strip = params as unknown as { blobs: File[]; startsUs: number[]; durationUs: number };
+      calls.push(`sequenceStrip ${strip.blobs.map((b) => b.name).join(",")} @${strip.startsUs.join(",")}`);
+      return { bitmap: asBitmap(bitmap("seq")), cellWidth: 81, cellHeight: 144, startsUs: strip.startsUs, durationUs: strip.durationUs };
+    }
     if (method === "decodeImage") {
       const text = await (params.blob as Blob).text();
       calls.push(`decodeImage ${text}`);
@@ -172,5 +177,21 @@ describe("PosterStore animation strips (Batch 34)", () => {
     documentStore.dispatch(removeMedia(["g"]));
     expect(store.strip("g")).toBeNull();
     expect((strip?.bitmap as unknown as FakeBitmap).close).toHaveBeenCalled();
+  });
+
+  it("makes the strip of an image sequence from frames spread over it (at most 48 cells)", async () => {
+    const sequence = { dir: "media/seq", pattern: "f_%03d.png", first: 1, count: 100, fps: { num: 10, den: 1 } };
+    const item: MediaItem = { ...makeMedia("q", "image", 10_000_000), sequence, file: { relPath: "media/seq/f_001.png" } };
+    const dir = createMemoryDir();
+    for (let n = 1; n <= 100; n++) await writeFileAt(dir, `media/seq/f_${String(n).padStart(3, "0")}.png`, new Blob([String(n)]));
+    const { store, pool } = await setup([item], { dir });
+    await store.whenIdle();
+    const call = pool.calls.find((c) => c.startsWith("sequenceStrip")) as string;
+    // step = ceil(100 / 48) = 3: frames 1, 4, 7 ... 100 (indexes 0, 3 ... 99), 34 cells.
+    expect(call.startsWith("sequenceStrip f_001.png,f_004.png,f_007.png")).toBe(true);
+    expect(call.split("@")[1]?.split(",").length).toBe(34);
+    expect(call.endsWith(",9900000")).toBe(true);
+    expect(store.strip("q")).toMatchObject({ cellHeight: 144, durationUs: 10_000_000 });
+    expect(pool.calls).not.toContain("strip f_001.png");
   });
 });

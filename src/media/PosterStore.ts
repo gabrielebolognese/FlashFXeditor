@@ -6,12 +6,14 @@
 // `PosterPainter`, which draws the bitmaps in the FrameScheduler loop (no React state). An animated
 // image also gets its filmstrip (`strip`, Batch 34: up to STRIP_CELLS frames spread over it, made by
 // the decode worker each session) for the timeline's clip bodies.
-import type { MediaId, MediaItem } from "../core/document/types.js";
+import type { ImageSequence, MediaId, MediaItem } from "../core/document/types.js";
 import type { DocumentStore } from "../core/store/DocumentStore.js";
 import { errorMessage } from "../project/errorMessage.js";
 import type { FsDir } from "../project/fs.js";
 import { posterPath, removeFileAt, resolveFile, writeFileAt } from "../project/mediaFiles.js";
+import { frameToUs } from "../core/document/time.js";
 import { isAnimatedImage } from "./mediaKinds.js";
+import { sequencePaths } from "./sequence.js";
 import { isAbortError, type AnimationStrip } from "./workers/protocol.js";
 import type { WorkerPool } from "./workers/WorkerPool.js";
 
@@ -184,9 +186,8 @@ export class PosterStore {
   }
 
   private async loadStrip(item: MediaItem, signal: AbortSignal): Promise<void> {
-    const source = await this.source(item);
-    if (!source) return;
-    const strip = await this.deps.pool.request("animationStrip", { blob: source, type: `image/${item.codec ?? "gif"}`, cellHeight: STRIP_HEIGHT, maxCells: STRIP_CELLS }, { signal });
+    const strip = item.sequence ? await this.sequenceStrip(item, item.sequence, signal) : await this.animationStrip(item, signal);
+    if (!strip) return;
     if (signal.aborted || !this.present[item.id]) {
       strip.bitmap.close();
       return;
@@ -194,6 +195,32 @@ export class PosterStore {
     this.strips.get(item.id)?.bitmap.close();
     this.strips.set(item.id, strip);
     this.deps.onChange?.(item.id);
+  }
+
+  /** The strip of an image sequence: up to STRIP_CELLS of its frames, every k-th, read from the project folder. */
+  private async sequenceStrip(item: MediaItem, sequence: ImageSequence, signal: AbortSignal): Promise<AnimationStrip | null> {
+    const step = Math.max(1, Math.ceil(sequence.count / STRIP_CELLS));
+    const paths = sequencePaths(sequence);
+    const indexes: number[] = [];
+    for (let i = 0; i < sequence.count; i += step) indexes.push(i);
+    const blobs: File[] = [];
+    const picked: number[] = [];
+    for (const i of indexes) {
+      const file = await resolveFile(this.deps.dir, paths[i] as string).catch(() => null);
+      if (file) {
+        blobs.push(file);
+        picked.push(i);
+      }
+    }
+    if (blobs.length === 0) return null;
+    const startsUs = picked.map((i) => frameToUs(i, sequence.fps));
+    return this.deps.pool.request("sequenceStrip", { blobs, startsUs, durationUs: item.durationUs, cellHeight: STRIP_HEIGHT }, { signal });
+  }
+
+  private async animationStrip(item: MediaItem, signal: AbortSignal): Promise<AnimationStrip | null> {
+    const source = await this.source(item);
+    if (!source) return null;
+    return this.deps.pool.request("animationStrip", { blob: source, type: `image/${item.codec ?? "gif"}`, cellHeight: STRIP_HEIGHT, maxCells: STRIP_CELLS }, { signal });
   }
 
   private async fromCache(item: MediaItem, signal: AbortSignal): Promise<ImageBitmap | null> {

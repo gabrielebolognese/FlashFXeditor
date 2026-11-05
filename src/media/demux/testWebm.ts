@@ -136,7 +136,7 @@ function trackEntry(track: TestWebmTrack): Uint8Array {
   if (track.codecPrivate) parts.push(el(0x63a2, track.codecPrivate));
   if (track.defaultDuration) parts.push(uintEl(0x23e383, track.defaultDuration));
   if (track.encoded) parts.push(el(0x6d80, el(0x6240, uintEl(0x5031, 0))));
-  if (track.type === "video") parts.push(el(0xe0, uintEl(0xb0, track.width ?? 640), uintEl(0xba, track.height ?? 360), ...(track.alphaMode !== undefined ? [uintEl(0x55c0, track.alphaMode)] : [])));
+  if (track.type === "video") parts.push(el(0xe0, uintEl(0xb0, track.width ?? 640), uintEl(0xba, track.height ?? 360), ...(track.alphaMode !== undefined ? [uintEl(0x53c0, track.alphaMode)] : [])));
   else parts.push(el(0xe1, floatEl(0xb5, track.sampleRate ?? 48000), uintEl(0x9f, track.channels ?? 2)));
   return el(0xae, ...parts);
 }
