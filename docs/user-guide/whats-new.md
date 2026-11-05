@@ -2,6 +2,11 @@
 
 Shorts Editor grows in steps called batches. This page lists what each batch added that you can see or use, newest first. Follow the links for the full instructions.
 
+> **Video placeholder: What's new in Batch 61**
+> - File: `videos/whats-new/batch-61.mp4` (not recorded yet)
+> - Length: about 40 seconds
+> - Shows: select a clip with two **Transform** keyframes; park the playhead on the first; click **Ease** and choose **Custom bezier**; drag a handle, then click **Copy as CSS**; on a solid turn on the **Fill** stopwatch and change the color at two frames; play back.
+
 > **Video placeholder: What's new in Batch 60**
 > - File: `videos/whats-new/batch-60.mp4` (not recorded yet)
 > - Length: about 25 seconds
@@ -316,6 +321,12 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 - [Batch 03: Projects, autosave and recovery](#batch-03-projects-autosave-and-recovery)
 - [Batch 02: Undo, redo and frame-exact time](#batch-02-undo-redo-and-frame-exact-time)
 - [Batch 01: The workspace](#batch-01-the-workspace)
+
+## Batch 61: Edit curves and key more properties
+
+- The **Ease** list is now a panel with search and curve pictures. **Custom bezier** opens a curve editor (handles, **X1** to **Y2** fields, presets, **Copy as CSS**); **Spring** has **Damping** and **Frequency**. See [Edit a custom curve](keyframes.md#edit-a-custom-curve).
+- Anchor, size, crop, corners, fill, stroke, shadow and title text now have stopwatches. See [Keyframes on more properties](keyframes.md#keyframes-on-more-properties).
+- **Reverse keyframes** in the keyframe menu mirrors selected keyframes.
 
 ## Batch 60: More easings and keyframe types
 

@@ -154,15 +154,34 @@ The easing of a keyframe sets how the values travel from that keyframe to the ne
 
 The **Ease** list is grouped under headings: **Basic** (the eight easings above), then **Sine**, **Quad**, **Cubic**, **Quart**, **Quint**, **Expo**, **Circ**, **Back**, **Elastic** and **Bounce** (each with **in**, **out** and **in-out**, for example **Back out**), and **Custom** with **Custom bezier** and **Spring**.
 
-- **Custom bezier** follows a curve you cannot edit in the app yet. A project that comes from another tool (CSS, GSAP or After Effects motion) can carry its own curve and spring settings; they play as written and survive when you change the keyframe's value. A **Custom bezier** you pick yourself uses the CSS `ease` curve, and **Spring** uses a default spring.
-- Editing curves and spring settings in the app is available in a later version.
+- Click **Ease** to open a panel with a search box (**Search eases**), the groups, and a small curve picture next to each easing. Type to filter by name or group.
 - Copying keyframes keeps their whole easing, including curves and springs.
+
+#### Edit a custom curve
+
+1. Put the playhead on a keyframe.
+2. Click **Ease** and choose **Custom bezier**. A curve editor opens with two handles.
+3. Drag the handles, or type the four numbers in the **X1**, **Y1**, **X2** and **Y2** fields. Click a preset (**Ease**, **Ease in**, **Ease out**, **Ease in-out**, **Back out**, **Expo out**, **Snap** or **Easy Ease**) to start from a known curve.
+4. Click the play button to preview the curve. Click **Copy as CSS** to copy it as `cubic-bezier(...)`.
+
+A whole drag is one undo step. The curve you pick is applied to the keyframe at the playhead, or to the keyframes you selected.
+
+#### Edit a spring
+
+Choose **Spring** in the **Ease** panel, then set **Damping** (0.05 to 1) and **Frequency** (0.5 to 20). A lower damping bounces more; a higher frequency bounces faster.
 
 ### Keyframes on more properties
 
-Projects from other tools can also hold keyframes on a clip's anchor point, crop, size, corner radius, fill, border and shadow, and on a title's size, letter spacing and fill color. Colors fade from one value to the next, or hold when the easing is **Hold**. These keyframes show on a **Look** lane under the clip when **Show clip keyframes** is on. You cannot add them with a stopwatch yet: that comes in a later version.
+These sections have their own stopwatch, **Previous keyframe**, **Add keyframe**, **Next keyframe**, key count and **Ease** row, like **Transform**: **Anchor**, **Size**, **Crop**, **Corners**, **Fill**, **Stroke**, **Shadow** and **Text** (title size, letter spacing and color). They appear in the **Transform**, **Crop**, solid, **Frame** and **Text** sections of **Edit Properties**, for the clips that have those properties.
 
-> **Note:** A keyed title size or letter spacing is not redrawn during playback, and a keyed title color fades by blending two drawings, so it is exact for opaque colors only.
+1. Select a clip and click the stopwatch of the section (for example **Fill** on a solid).
+2. Move the playhead and change the value: a keyframe is added at the playhead.
+3. To see the keyframes, right-click the clip and, under **Show keyframes for**, choose the section. **Look** shows all of these properties on one lane.
+
+At a keyframe, the fields show the animated value at the playhead. Colors fade from one value to the next, or hold when the easing is **Hold**.
+
+> **Note:** While you drag a keyed field, the picture does not change until you release. A keyed title size or letter spacing is not redrawn during playback, and a keyed title color fades by blending two drawings, so it is exact for opaque colors only.
+
 
 ## Stop animating
 
@@ -235,10 +254,11 @@ Right-click a diamond on a keyframe lane, or on the rubber band of an audio clip
 
 | Row | What it does |
 | --- | --- |
-| **Easing**: **Linear**, **Ease in**, **Ease out**, **Ease in-out**, **Hold**, **Smooth**, **Snap**, **Overshoot** | Sets the easing of the selected keyframes. The easing of the keyframe you right-clicked is gold. See [Choose the easing](#choose-the-easing). |
+| **Easing**: the grouped list of the **Ease** panel | Sets the easing of the selected keyframes (a plain easing; for a custom curve or spring tuning, use **Ease** in the panel). The easing of the keyframe you right-clicked is gold. See [Choose the easing](#choose-the-easing). |
+| **Reverse keyframes** | Mirrors the timing of the selected keyframes and their easings. Needs two or more. It is also in the command palette as **Reverse selected keyframes**; it has no key. |
 | **Delete keyframe** or **Delete keyframes** | Deletes the selected keyframes, like <kbd>Delete</kbd>. |
 | **Copy keyframe** or **Copy keyframes** | Copies the selected keyframes, like <kbd>Ctrl</kbd>+<kbd>C</kbd>. |
-| **Paste keyframes** | Pastes the copied keyframes on the selected clips, from the playhead on. Dimmed until you copy keyframes of the same section as this lane (**Transform** or **Opacity**), or volume keyframes for a rubber band. |
+| **Paste keyframes** | Pastes the copied keyframes on the selected clips, from the playhead on. Dimmed until you copy keyframes of the same section as this lane (for example **Transform** or **Fill**), or volume keyframes for a rubber band. |
 
 <kbd>Esc</kbd> closes the menu.
 
@@ -335,4 +355,4 @@ See [Undo and redo changes](projects-and-saving.md#undo-and-redo-changes).
 - [Keyboard shortcuts](keyboard-shortcuts.md#keyframes)
 - [Troubleshooting](troubleshooting.md#keyframes)
 
-<sub>Last updated: Batch 60, 2026-11-07</sub>
+<sub>Last updated: Batch 61, 2026-11-07</sub>
