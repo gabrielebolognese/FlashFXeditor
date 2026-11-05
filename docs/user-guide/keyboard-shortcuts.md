@@ -307,6 +307,8 @@ See [Compound clips](compound-clips.md).
 | Action | Windows | macOS | Works in |
 | --- | --- | --- | --- |
 | Make the selected clips one compound clip | <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>G</kbd> | <kbd>⌘</kbd>+<kbd>⌥</kbd>+<kbd>G</kbd> | Timeline |
+| Open the selected compound clip | <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>O</kbd> or <kbd>Enter</kbd> | <kbd>⌘</kbd>+<kbd>⌥</kbd>+<kbd>O</kbd> or <kbd>Return</kbd> | Timeline |
+| Close the open compound (one level) | <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>U</kbd> or <kbd>Esc</kbd> | <kbd>⌘</kbd>+<kbd>⌥</kbd>+<kbd>U</kbd> or <kbd>Esc</kbd> | Timeline and preview |
 
 ## Clipboard and duplicate
 

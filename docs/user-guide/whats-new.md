@@ -2,6 +2,14 @@
 
 Shorts Editor grows in steps called batches. This page lists what each batch added that you can see or use, newest first. Follow the links for the full instructions.
 
+## Batch 63: Edit inside compound clips
+Double-click a compound clip, or press <kbd>Enter</kbd>, to open it: the timeline and preview show its content, and a bar shows **Project** > the compound's name. Press <kbd>Esc</kbd> to go back. The new **Compounds** bin in the **Media** tab lists every compound and lets you drag a copy onto the timeline. See [Compound clips](compound-clips.md).
+
+> **Video placeholder: What's new in Batch 63**
+> - File: `videos/whats-new/batch-63.mp4` (not recorded yet)
+> - Length: about 35 seconds
+> - Shows: duplicate a compound clip; double-click the first copy; change its text; press <kbd>Esc</kbd>; both copies update; open the **Compounds** bin and drag its card onto the timeline.
+
 > **Video placeholder: What's new in Batch 62**
 > - File: `videos/whats-new/batch-62.mp4` (not recorded yet)
 > - Length: about 35 seconds
