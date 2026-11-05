@@ -2,8 +2,9 @@
 // builds; messages name the track and clip so a broken command is found at once.
 import { keyframeIssues } from "./keyframes.js";
 import { transitionIssues } from "./transitions.js";
+import { sequenceGraphIssues } from "./sequences.js";
 import { usPerFrame } from "./time.js";
-import { CAPTION_HIGHLIGHTS, CUE_ANIM_KINDS, isFreeze, isMediaClip, LABEL_COLORS, SOLID_SHAPE_IDS, STROKE_ALIGNS, type CaptionClip, type CaptionStyle, type Clip, type ClipId, type ClipKind, type MediaClip, type MediaItem, type Project, type SolidClip, type TextClip, type TextStyle, type Track, type TrackId, type TrackKind } from "./types.js";
+import { CAPTION_HIGHLIGHTS, CUE_ANIM_KINDS, isFreeze, isMediaClip, LABEL_COLORS, SOLID_SHAPE_IDS, STROKE_ALIGNS, type CaptionClip, type CaptionStyle, type Clip, type ClipId, type ClipKind, type CompoundClip, type Sequence, type MediaClip, type MediaItem, type Project, type SolidClip, type TextClip, type TextStyle, type Track, type TrackId, type TrackKind } from "./types.js";
 
 export class DocumentInvariantError extends Error {
   readonly issues: readonly string[];
@@ -16,7 +17,7 @@ export class DocumentInvariantError extends Error {
 }
 
 const ALLOWED_CLIPS: Record<TrackKind, ReadonlySet<ClipKind>> = {
-  video: new Set(["video", "image", "text", "solid"]),
+  video: new Set(["video", "image", "text", "solid", "compound"]),
   audio: new Set(["audio"]),
   caption: new Set(["caption"]),
 };
@@ -66,6 +67,7 @@ function clipIssues(project: Project, clip: Clip): string[] {
   if (clip.kind === "text") issues.push(...textIssues(clip, label));
   if (clip.kind === "caption") issues.push(...cueIssues(clip, label));
   if (clip.kind === "solid") issues.push(...solidIssues(clip, label));
+  if (clip.kind === "compound") issues.push(...compoundIssues(project, clip, label));
   // Frame styles (spec §21.7): pictures have rounded corners, an outline and a shadow.
   if (clip.kind === "video" || clip.kind === "image") issues.push(...frameIssues(clip, label));
   // Keyframes (Batch 35): known properties, one key per integer frame in order, finite values, known eases.
@@ -98,6 +100,34 @@ function clipIssues(project: Project, clip: Clip): string[] {
       issues.push(`${label}: out - in = ${clip.out - clip.in} us, expected duration * speed = ${Math.round(expected)} us (within 1 frame)`);
     }
   }
+  return issues;
+}
+
+/** A compound clip (spec §21.10): a sequence that exists, an offset and a length inside it, a gain. */
+function compoundIssues(project: Project, clip: CompoundClip, label: string): string[] {
+  const issues: string[] = [];
+  const sequence = project.sequences[clip.sequenceId];
+  if (typeof clip.sequenceId !== "string" || !sequence) issues.push(`${label}: sequence ${String(clip.sequenceId)} does not exist`);
+  if (!Number.isInteger(clip.offset) || clip.offset < 0) issues.push(`${label}: offset ${String(clip.offset)} must be an integer frame >= 0`);
+  else if (sequence && Number.isInteger(clip.duration) && clip.offset + clip.duration > sequence.duration) {
+    issues.push(`${label}: runs to sequence frame ${clip.offset + clip.duration}, past the sequence's end (${sequence.duration})`);
+  }
+  if (!isFiniteNumber(clip.opacity) || clip.opacity < 0 || clip.opacity > 1) issues.push(`${label}: opacity ${String(clip.opacity)} must be 0..1`);
+  if (!isObjectLike(clip.volume) || !isFiniteNumber(clip.volume.gainDb) || typeof clip.volume.muted !== "boolean") issues.push(`${label}: volume must be { gainDb, muted }`);
+  return issues;
+}
+
+/** A sequence (spec §21.10): its own id, a size and length, a background, inner tracks without a caption track. */
+function sequenceIssues(key: string, sequence: Sequence): string[] {
+  const issues: string[] = [];
+  const label = `sequence "${String(sequence?.name)}" (${key})`;
+  if (!isObjectLike(sequence)) return [`${label}: must be an object`];
+  if (key !== sequence.id) issues.push(`${label}: stored under key ${key}`);
+  if (typeof sequence.name !== "string") issues.push(`${label}: name must be a string`);
+  if (!isPositiveInteger(sequence.size?.w) || !isPositiveInteger(sequence.size?.h)) issues.push(`${label}: size ${String(sequence.size?.w)}x${String(sequence.size?.h)} must be positive integers`);
+  if (!isPositiveInteger(sequence.duration)) issues.push(`${label}: duration ${String(sequence.duration)} must be an integer >= 1`);
+  if (sequence.background !== null && !isColor(sequence.background)) issues.push(`${label}: background must be RGBA or null`);
+  if (!Array.isArray(sequence.tracks)) issues.push(`${label}: tracks must be a list`);
   return issues;
 }
 
@@ -315,20 +345,21 @@ function captionStyleIssues(style: CaptionStyle | undefined, label: string): str
   return issues;
 }
 
-/**
- * Returns every violated invariant (empty when valid). Linked clips may be offset on purpose
- * (flagged with a sync badge, Batch 16), so link groups are not checked here.
- */
-export function validateProject(project: Project): string[] {
-  const issues: string[] = [];
-  const trackIds = new Set<TrackId>();
-  const placed = new Set<ClipId>();
-  const transitionIds = new Set<string>();
-  let sawAudio = false;
+interface TrackScan {
+  trackIds: Set<TrackId>;
+  placed: Set<ClipId>;
+  transitionIds: Set<string>;
+}
 
-  for (const track of project.tracks) {
+/** The tracks of the project (`scope` null) or of one sequence: order, overlaps, clip kinds, transitions. */
+function trackIssues(project: Project, tracks: readonly Track[], scope: Sequence | null, state: TrackScan): string[] {
+  const { trackIds, placed, transitionIds } = state;
+  const issues: string[] = [];
+  let sawAudio = false;
+  for (const track of tracks) {
     if (trackIds.has(track.id)) issues.push(`${trackLabel(track)}: duplicate track id`);
     trackIds.add(track.id);
+    if (scope && track.kind === "caption") issues.push(`${trackLabel(track)}: sequence "${scope.name}" cannot have a caption track`);
     if (track.kind === "audio") sawAudio = true;
     else if (track.kind === "video" && sawAudio) issues.push(`${trackLabel(track)}: video track placed after an audio track`);
 
@@ -345,6 +376,9 @@ export function validateProject(project: Project): string[] {
       if (clip.trackId !== track.id) issues.push(`${clipLabel(clip)}: listed on ${trackLabel(track)} but points to track ${clip.trackId}`);
       if (!ALLOWED_CLIPS[track.kind].has(clip.kind)) issues.push(`${clipLabel(clip)}: a ${clip.kind} clip cannot sit on ${track.kind} ${trackLabel(track)}`);
       issues.push(...clipIssues(project, clip));
+      if (scope && Number.isInteger(clip.start) && Number.isInteger(clip.duration) && clip.start + clip.duration > scope.duration) {
+        issues.push(`${clipLabel(clip)}: ends at frame ${clip.start + clip.duration}, past the end of sequence "${scope.name}" (${scope.duration})`);
+      }
       ordered.push(clip);
       if (prev) {
         if (clip.start < prev.start) issues.push(`${trackLabel(track)}: ${clipLabel(clip)} is listed after ${clipLabel(prev)} but starts earlier`);
@@ -361,6 +395,27 @@ export function validateProject(project: Project): string[] {
       transitionIds.add(id);
     }
   }
+  return issues;
+}
+
+/**
+ * Returns every violated invariant (empty when valid). Linked clips may be offset on purpose
+ * (flagged with a sync badge, Batch 16), so link groups are not checked here.
+ */
+export function validateProject(project: Project): string[] {
+  const issues: string[] = [];
+  const trackIds = new Set<TrackId>();
+  const placed = new Set<ClipId>();
+  const transitionIds = new Set<string>();
+
+  const state: TrackScan = { trackIds, placed, transitionIds };
+  issues.push(...trackIssues(project, project.tracks, null, state));
+  for (const [key, sequence] of Object.entries(project.sequences ?? {})) {
+    issues.push(...sequenceIssues(key, sequence));
+    if (!Array.isArray(sequence?.tracks)) continue;
+    issues.push(...trackIssues(project, sequence.tracks, sequence, state));
+  }
+  issues.push(...sequenceGraphIssues(project));
 
   for (const [key, clip] of Object.entries(project.clips)) {
     if (key !== clip.id) issues.push(`${clipLabel(clip)}: stored under key ${key}`);

@@ -11,7 +11,7 @@ import { CAPTION_HIGHLIGHTS, CLIP_KINDS, CUE_ANIM_KINDS, EASE_IDS, SCHEMA_VERSIO
 /** The `manifestVersion`: changes only when a key changes meaning (new keys do not change it). */
 export const MANIFEST_VERSION = 1;
 /** The last batch that touched the manifest (spec §21.1: each batch sets it to its own number). */
-export const LAST_BATCH = 60;
+export const LAST_BATCH = 62;
 
 /** The flags of the manifest: a batch that adds a capability flips its key here (spec §21.2 table). */
 export const FEATURES = {
@@ -22,7 +22,7 @@ export const FEATURES = {
   mediaFrame: { stroke: true, shadow: true, cornerRadius: true },
   text: { spans: false, counter: false, animators: false, backgroundStroke: true, backgroundShadow: true },
   captions: { perCueStyle: true, wordEmphasis: true, wordsImport: true },
-  compositing: { compound: false, trackMatte: false, masks: false, adjustment: false },
+  compositing: { compound: true, trackMatte: false, masks: false, adjustment: false },
   vector: { shapes: false, trimPaths: false, svgImport: false },
   audio: { fades: true, trackGain: false, pan: false, loudness: false },
   time: { freeze: true, reverse: false, remap: false, frameBlend: false },

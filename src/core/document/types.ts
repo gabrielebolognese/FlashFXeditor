@@ -1,7 +1,7 @@
 // The persistent document (spec §5.2). Plain JSON only: no classes, Maps, Sets or undefined-valued
 // keys, so a Project can be serialized as-is and diffed by Immer patches.
 
-export const SCHEMA_VERSION = 7;
+export const SCHEMA_VERSION = 8;
 
 export type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
 export type JsonObject = { [key: string]: JsonValue };
@@ -394,8 +394,31 @@ export interface Project {
    * are files in `presets/text/` (spec §9.7, Batch 30), outside the undo history like the global ones.
    */
   textPresetsLocal: TextPreset[];
+  /**
+   * Nested sequences (spec §21.10, Batch 62; schema 8): what compound clips show. Their inner clips live
+   * in `clips` (ids unique project-wide) on the inner tracks of the sequence. Empty in older projects.
+   */
+  sequences: Record<SequenceId, Sequence>;
   meta: ProjectMeta;
 }
+
+export type SequenceId = string;
+
+/** A sequence a compound clip shows (spec §21.10): its own size, length, background and inner tracks. */
+export interface Sequence {
+  id: SequenceId;
+  name: string;
+  /** Project px. */
+  size: { w: number; h: number };
+  duration: Frame;
+  /** Null: transparent. */
+  background: RGBA | null;
+  /** Inner video and audio tracks, ordered like `Project.tracks`; no caption track. */
+  tracks: Track[];
+}
+
+/** The deepest a compound may nest (a compound in a compound in ...): spec §21.10. */
+export const MAX_COMPOUND_DEPTH = 8;
 
 /** The tool that wrote a project (spec §21.4, Batch 54); the editor shows it and never changes it. */
 export interface ProjectGenerator {
@@ -470,7 +493,7 @@ export interface Track {
   height: "S" | "M" | "L";
 }
 
-export const CLIP_KINDS = ["video", "audio", "image", "text", "solid", "caption"] as const;
+export const CLIP_KINDS = ["video", "audio", "image", "text", "solid", "caption", "compound"] as const;
 export type ClipKind = (typeof CLIP_KINDS)[number];
 
 export interface ClipBase {
@@ -573,7 +596,23 @@ export interface CaptionClip extends ClipBase {
   presetId?: string;
 }
 
-export type Clip = MediaClip | TextClip | SolidClip | CaptionClip;
+/**
+ * A sequence shown as one layer (spec §21.10, Batch 62). The sequence frame shown at the clip's start is
+ * `offset`; inner frame = `offset + (frame - start)`. Trimming moves `offset` and `duration`; the clip
+ * cannot run past the sequence's end. `volume` is the gain of the inner audio.
+ */
+export interface CompoundClip extends ClipBase {
+  kind: "compound";
+  sequenceId: SequenceId;
+  offset: Frame;
+  transform: Transform;
+  opacity: number;
+  keyframes?: Keyframes;
+  fades: { in: Frame; out: Frame };
+  volume: Volume;
+}
+
+export type Clip = MediaClip | TextClip | SolidClip | CaptionClip | CompoundClip;
 
 /** x,y in project pixels relative to project center; scale 1 = native media size; rotation degrees. */
 export interface Transform {

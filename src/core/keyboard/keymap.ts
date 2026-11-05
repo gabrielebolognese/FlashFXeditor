@@ -76,6 +76,7 @@ export const DEFAULT_KEYMAP: readonly KeyBinding[] = [
   { id: "edit.punchZoom", keys: ["Shift+Z"], scopes: G },
   { id: "edit.duplicate", keys: ["Mod+D"], scopes: TL_PV },
   { id: "edit.defaultTransition", keys: ["Mod+Shift+D"], scopes: TL },
+  { id: "clip.makeCompound", keys: ["Mod+Alt+G"], scopes: TL },
   { id: "edit.group", keys: ["Mod+G"], scopes: TL },
   { id: "edit.ungroup", keys: ["Mod+Shift+G"], scopes: TL },
   { id: "edit.toggleLink", keys: ["Mod+L"], scopes: TL },

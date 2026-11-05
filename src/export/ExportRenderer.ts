@@ -30,6 +30,7 @@ import type { BackendRenderer, RenderDevice } from "../render/gpu/backend.js";
 import { createBackend } from "../render/gpu/createBackend.js";
 import type { CanvasTarget } from "../render/gpu/renderer.js";
 import { DETAIL_MAX_SIZE } from "../render/preview/detail.js";
+import { CompoundTargets } from "../render/preview/CompoundTargets.js";
 import { LayerTextures } from "../render/preview/LayerTextures.js";
 import { FontLibrary } from "../render/text/FontLibrary.js";
 import { TextRasterCache } from "../render/text/TextRasterCache.js";
@@ -110,6 +111,7 @@ export class ExportRenderer {
       frames: this.frames,
       images: this.images,
       pool: this.pool,
+      compounds: new CompoundTargets(this.renderer),
       onChange: () => undefined,
       text: this.text,
       onFail: (mediaId) => this.offline.set(mediaId, FAILED_LABEL),

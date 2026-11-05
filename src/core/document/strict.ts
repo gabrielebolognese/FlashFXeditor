@@ -86,6 +86,7 @@ function checkType(type: FieldType, value: unknown, path: string, issues: Strict
       if (!type.values.includes(value as string | number)) issues.push({ path, message: `must be one of ${type.values.map((v) => JSON.stringify(v)).join(", ")}, found ${describe(value)}` });
       return;
     case "object":
+      if (value === null && type.nullable) return;
       return checkSchema(type.schema, value, path, issues);
     case "array":
       if (!Array.isArray(value)) return void issues.push({ path, message: `must be an array, found ${describe(value)}` });

@@ -49,8 +49,8 @@ export function isColorProp(prop: string): boolean {
 
 /** The clip kinds each new property is valid on (the section properties are valid on any clip with them). */
 const PROP_KINDS: Readonly<Record<string, readonly string[]>> = {
-  "transform.anchor.x": ["video", "image", "solid", "text"],
-  "transform.anchor.y": ["video", "image", "solid", "text"],
+  "transform.anchor.x": ["video", "image", "solid", "text", "compound"],
+  "transform.anchor.y": ["video", "image", "solid", "text", "compound"],
   "crop.left": ["video", "image"],
   "crop.top": ["video", "image"],
   "crop.right": ["video", "image"],

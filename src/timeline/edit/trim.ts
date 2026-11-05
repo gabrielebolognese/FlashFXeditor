@@ -29,7 +29,7 @@ import { fitFades } from "../../core/document/fades.js";
 import { retimeKeyframes, shiftKeyframes } from "../../core/document/keyframes.js";
 import { editDefaults } from "./editDefaults.js";
 import { BOUND_SLACK_US, headFrames, reconciled, tailFrames } from "../../core/document/transitions.js";
-import { isFreeze, isMediaClip, type CaptionClip, type Clip, type ClipId, type Frame, type MediaClip, type Project, type Rational, type TrackId } from "../../core/document/types.js";
+import { isFreeze, isMediaClip, type CaptionClip, type Clip, type ClipId, type CompoundClip, type Frame, type MediaClip, type Project, type Rational, type TrackId } from "../../core/document/types.js";
 import { loopTimeUs } from "../../media/decode/animation.js";
 import { clipInIndex, isClipLocked, lastClipStartingBy, linkedPartners, trackIndex } from "../model/queries.js";
 
@@ -140,6 +140,12 @@ export function hasSource(clip: Clip): clip is MediaClip {
 }
 
 
+/** The frames a compound clip can still grow at its end: the sequence's length past its last shown frame. */
+function compoundTail(project: Project, clip: CompoundClip): number {
+  const sequence = project.sequences[clip.sequenceId];
+  return sequence ? sequence.duration - clip.offset - clip.duration : 0;
+}
+
 /** The longest duration a clip can have from its `in` without passing the media end (largest d with in + d frames <= durationUs). */
 export function maxDurationFrames(clip: MediaClip, durationUs: number, fps: Rational): number {
   const room = durationUs - clip.in;
@@ -230,12 +236,20 @@ function buildPlan(project: Project, kind: EditKind, clipId: ClipId, edge: TrimE
           const bound = -headFrames(clip, fps);
           mediaBounds.push({ delta: bound, clipId: clip.id, side: "start" });
           lo = tighter(lo, bound, at("mediaStart"), "lo");
+        } else if (clip.kind === "compound") {
+          // A compound's "media" is its sequence: its head is the frames before `offset`.
+          mediaBounds.push({ delta: -clip.offset, clipId: clip.id, side: "start" });
+          lo = tighter(lo, -clip.offset, at("mediaStart"), "lo");
         }
         break;
       case "out":
         lo = tighter(lo, 1 - clip.duration, at("minDuration"), "lo");
         if (hasSource(clip)) {
           const bound = media ? Math.max(0, maxDurationFrames(clip, media.durationUs, fps) - clip.duration) : 0;
+          mediaBounds.push({ delta: bound, clipId: clip.id, side: "end" });
+          hi = tighter(hi, bound, at("mediaEnd"), "hi");
+        } else if (clip.kind === "compound") {
+          const bound = Math.max(0, compoundTail(project, clip));
           mediaBounds.push({ delta: bound, clipId: clip.id, side: "end" });
           hi = tighter(hi, bound, at("mediaEnd"), "hi");
         }
@@ -246,6 +260,11 @@ function buildPlan(project: Project, kind: EditKind, clipId: ClipId, edge: TrimE
           const tail = media ? tailFrames(clip, media.durationUs, fps) : 0;
           mediaBounds.push({ delta: head, clipId: clip.id, side: "start" }, { delta: tail, clipId: clip.id, side: "end" });
           lo = tighter(lo, head, at("mediaStart"), "lo");
+          hi = tighter(hi, tail, at("mediaEnd"), "hi");
+        } else if (clip.kind === "compound") {
+          const tail = Math.max(0, compoundTail(project, clip));
+          mediaBounds.push({ delta: -clip.offset, clipId: clip.id, side: "start" }, { delta: tail, clipId: clip.id, side: "end" });
+          lo = tighter(lo, -clip.offset, at("mediaStart"), "lo");
           hi = tighter(hi, tail, at("mediaEnd"), "hi");
         }
         break;
@@ -344,7 +363,7 @@ export function planSlip(project: Project, clipId: ClipId, options: { linked?: b
   const moves = new Map<ClipId, ClipMove>();
   const slip = (id: ClipId) => {
     const clip = project.clips[id];
-    if (clip && hasSource(clip)) addMove(project, moves, id, "slip");
+    if (clip && (hasSource(clip) || clip.kind === "compound")) addMove(project, moves, id, "slip");
   };
   slip(clipId);
   if (options.linked !== false) for (const id of [...moves.keys()]) for (const partner of linkedPartners(project, id)) slip(partner);
@@ -459,6 +478,8 @@ export function trimmedClip(clip: Clip, edge: TrimEdge, delta: number, ripple: b
       media.out = Math.min(durationUs, clip.out + framesToSourceUs(delta, clip.speed, fps));
     }
   }
+  // A compound's in edge moves the sequence frame it starts on (spec §21.10).
+  if (clip.kind === "compound" && edge === "in") (next as CompoundClip).offset = clip.offset + delta;
   // A stand-in's first frame moves with an in edge (spec §21.4 `headTrim`).
   if (edge === "in") shiftHeadTrim(next, delta);
   // Text, solids and images keep their keyframes on the clip start (spec §6.10: off for text clips).
@@ -508,6 +529,7 @@ function editedClip(clip: Clip, move: ClipMove, delta: number, plan: TrimPlan): 
     case "move":
       return { ...clip, start: clip.start + delta };
     case "slip":
+      if (clip.kind === "compound") return { ...clip, offset: clip.offset + delta };
       return hasSource(clip) ? slippedClip(clip, delta, plan.project) : clip;
     case "stretchIn":
     case "stretchOut":

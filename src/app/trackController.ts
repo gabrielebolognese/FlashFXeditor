@@ -9,6 +9,7 @@ import type { ClipId, Project, Track, TrackId } from "../core/document/types.js"
 import { createStore } from "../core/store/createStore.js";
 import { EMPTY_SELECTION, selectClips, selectedTrackIds, toSnapshot, type Selection } from "../core/store/selection.js";
 import { selectEditPoint, selectGap, setSelection } from "../core/store/sessionStore.js";
+import { breakApart, breakApartProblem, makeCompound, makeCompoundProblem, makeUnique, makeUniqueProblem } from "../timeline/edit/compound.js";
 import { groupClips, moveIntoSync, toggleLink, ungroupClips } from "../timeline/edit/links.js";
 import type { MoveResult } from "../timeline/edit/move.js";
 import {
@@ -234,6 +235,49 @@ const moveIntoSyncAction: CommandRun = () => {
   if (result?.kind === "ok") documentStore.dispatch(result.command);
 };
 
+/** Make compound (spec §21.10): the selected clips become one compound clip, which is selected; the reason is toasted when it cannot. */
+function makeCompoundAction(): void {
+  const project = documentStore.getState();
+  const { ids } = selectedClips();
+  const problem = makeCompoundProblem(project, ids);
+  const made = problem === null ? makeCompound(project, ids, newId) : null;
+  if (!made) {
+    showToast({ tone: "warning", message: "Can't make a compound", ...(problem && { detail: problem }) });
+    return;
+  }
+  documentStore.dispatch(made.command, { selection: toSnapshot(selectClips([made.compoundId], made.compoundId)) });
+}
+
+/** Break apart: the compound clip's contents go back onto the tracks (the primary selected clip, or the one the menu was opened on). */
+function breakApartAction(): void {
+  const project = documentStore.getState();
+  const menu = timelineMenu.getState();
+  const clipId = menu?.kind === "clip" ? menu.clipId : selectedClips().primary;
+  if (clipId === null) return;
+  const problem = breakApartProblem(project, clipId);
+  const command = problem === null ? breakApart(project, clipId, newId) : null;
+  if (!command) {
+    showToast({ tone: "warning", message: "Can't break apart", ...(problem && { detail: problem }) });
+    return;
+  }
+  documentStore.dispatch(command, { selection: toSnapshot(EMPTY_SELECTION) });
+}
+
+/** Make unique: the compound clip gets a copy of its sequence, so editing it no longer changes its other instances. */
+function makeUniqueAction(): void {
+  const project = documentStore.getState();
+  const menu = timelineMenu.getState();
+  const clipId = menu?.kind === "clip" ? menu.clipId : selectedClips().primary;
+  if (clipId === null) return;
+  const problem = makeUniqueProblem(project, clipId);
+  const command = problem === null ? makeUnique(project, clipId, newId) : null;
+  if (!command) {
+    showToast({ tone: "warning", message: "Can't make unique", ...(problem && { detail: problem }) });
+    return;
+  }
+  documentStore.dispatch(command);
+}
+
 /** Registers the track, link and group actions. Returns a stop function. */
 export function installTrackController(): () => void {
   const stops = [
@@ -248,6 +292,9 @@ export function installTrackController(): () => void {
       if (command) documentStore.dispatch(command);
     }),
     actions.register("edit.moveIntoSync", moveIntoSyncAction),
+    actions.register("clip.makeCompound", makeCompoundAction),
+    actions.register("clip.breakApart", breakApartAction),
+    actions.register("clip.makeUnique", makeUniqueAction),
     actions.register("timeline.trackHeightUp", cycleSelectedHeights("up")),
     actions.register("timeline.trackHeightDown", cycleSelectedHeights("down")),
     actions.register("timeline.trackHeightCycle", cycleAllHeights),

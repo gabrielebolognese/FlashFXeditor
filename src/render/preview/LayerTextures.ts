@@ -57,11 +57,12 @@ import { mediaTimePosition } from "../../media/demux/sampleIndex.js";
 import { isAbortError, isWorkerCrash, type FramePriority } from "../../media/workers/protocol.js";
 import { newUnitState, type UnitState } from "../../text/anim.js";
 import type { NeighborFrame, UpcomingText } from "../compositor/Compositor.js";
-import { type CaptionHighlightFrame, type Composite, type DissolveLayer, type DrawList, type Layer, type MediaLayer, type PictureShape, type SolidGeometry, type SolidLayer, type SolidStyle, type TextAnimFrame, type TextCompositeLayer, type TextureLayer, type TransitionCompositeLayer, type UvRect } from "../compositor/drawList.js";
+import { type CaptionHighlightFrame, type Composite, type CompoundCompositeLayer, type DissolveLayer, type DrawList, type Layer, type MediaLayer, type PictureShape, type SolidGeometry, type SolidLayer, type SolidStyle, type TextAnimFrame, type TextCompositeLayer, type TextureLayer, type TransitionCompositeLayer, type UvRect } from "../compositor/drawList.js";
 import type { TextureHandle } from "../gpu/renderer.js";
 import { multiplyInto, mutableIdentity, setMat, type Mat3, type MutableMat3 } from "../mat3.js";
 import type { Rect } from "../text/layout.js";
 import type { ResolvedText, ResolvedUnit, TextRasterCache } from "../text/TextRasterCache.js";
+import type { CompoundTargets } from "./CompoundTargets.js";
 import { exportLongEdge, layerDetail, vectorLongEdge } from "./detail.js";
 
 /** After a decode worker crash the frame service already asked twice: a new pass asks again this much later (Batch 47). */
@@ -79,6 +80,8 @@ export interface LayerTexturesDeps {
   text?: Pick<TextRasterCache, "begin" | "end" | "resolve" | "exact" | "resolveAtlas" | "resolveBackground" | "warm">;
   /** A media cannot be shown (its file is missing or cannot be decoded): it is drawn as an offline slate (Batch 41). */
   onFail?(mediaId: MediaId, reason: string): void;
+  /** Where compound clips (spec §21.10) draw their sequences; compound layers draw nothing without it. */
+  compounds?: CompoundTargets;
 }
 
 export interface LayerTexturesStats {
@@ -189,7 +192,14 @@ export class LayerTextures {
   private readonly alternate = newKey();
   readonly stats: LayerTexturesStats = { layers: 0, exact: 0, standIns: 0, held: 0, missing: 0, pending: 0, warming: 0, failed: 0, proxy: 0, texts: 0 };
 
-  constructor(private readonly deps: LayerTexturesDeps) {}
+  /** The resolvers of the compound clips shown (by clip path), and the compound layers of a pass (reused in order). */
+  private readonly children = new Map<string, { textures: LayerTextures; pass: number }>();
+  private readonly compoundLayers: [WritableTextureLayer[], WritableTextureLayer[]] = [[], []];
+  private compoundCount = 0;
+  private renderScale = 1;
+
+  /** `path`: set on the resolver of a compound clip, which the outermost resolver drives (text and target passes are the root's). */
+  constructor(private readonly deps: LayerTexturesDeps, private readonly path: string | null = null) {}
 
   /** Long edge video frames should have in this pass (idle only; 0: no detail refresh). */
   private detailLongEdge = 0;
@@ -230,7 +240,11 @@ export class LayerTextures {
     this.pass += 1;
     this.detailLongEdge = priority === "idle" ? detailLongEdge : 0;
     this.textScale = renderScale;
-    this.deps.text?.begin();
+    this.renderScale = renderScale;
+    if (this.path === null) {
+      this.deps.text?.begin();
+      this.deps.compounds?.begin();
+    }
     this.scrubbed.clear();
     this.active.clear();
     const stats = this.stats;
@@ -253,8 +267,14 @@ export class LayerTextures {
     this.textCount = 0;
     this.boxCount = 0;
     this.dissolveCount = 0;
+    this.compoundCount = 0;
     const stats = this.stats;
     for (const layer of composite.layers) {
+      if (layer.kind === "compound") {
+        const drawn = this.resolveCompound(pane, layer, priority);
+        if (drawn) list.layers.push(drawn);
+        continue;
+      }
       if (layer.kind === "solid") {
         list.layers.push(layer);
         continue;
@@ -270,6 +290,50 @@ export class LayerTextures {
       const drawn = this.resolveLayer(pane, layer, priority);
       if (drawn) list.layers.push(drawn);
     }
+  }
+
+  /** The resolver of the compound clip `clipId` of this scope (made on first use). */
+  private child(clipId: string): LayerTextures {
+    const key = this.path === null ? clipId : `${this.path}/${clipId}`;
+    let entry = this.children.get(key);
+    if (!entry) {
+      const text = this.deps.text;
+      // The scope's own text cache, without its pass calls (the root's cover the whole pass).
+      const quiet: LayerTexturesDeps["text"] | undefined = text && {
+        begin() {},
+        end() {},
+        resolve: (...args) => text.resolve(...args),
+        exact: (...args) => text.exact(...args),
+        resolveAtlas: (...args) => text.resolveAtlas(...args),
+        resolveBackground: (...args) => text.resolveBackground(...args),
+        warm: (...args) => text.warm(...args),
+      };
+      const deps: LayerTexturesDeps = { ...this.deps };
+      if (quiet) deps.text = quiet;
+      entry = { textures: new LayerTextures(deps, key), pass: 0 };
+      this.children.set(key, entry);
+    }
+    entry.pass = this.pass;
+    return entry.textures;
+  }
+
+  /** A compound clip: its sequence resolved by its own resolver, drawn into its texture (unchanged: kept), shown as one layer. */
+  private resolveCompound(pane: 0 | 1, layer: CompoundCompositeLayer, priority: FramePriority): TextureLayer | null {
+    const targets = this.deps.compounds;
+    if (!targets) return null;
+    const scale = this.renderScale * layer.scale;
+    const size = targets.sizeFor(layer.width, layer.height, scale);
+    const child = this.child(layer.clipId);
+    const inner = child.resolve(layer.inner, priority, 0, size.width / Math.max(1, layer.width));
+    const texture = targets.render(child.path as string, inner, size.width, size.height);
+    if (!texture) return null;
+    const pool = this.compoundLayers[pane];
+    const out = (pool[this.compoundCount] ??= newTextureLayer());
+    this.compoundCount += 1;
+    out.texture = texture;
+    setMat(out.transform, ...(layer.model as unknown as [number, number, number, number, number, number]));
+    out.opacity = layer.opacity;
+    return out;
   }
 
   /** One media layer on its track's slot (counted in the stats), or null when nothing of it can be drawn. */
@@ -421,7 +485,15 @@ export class LayerTextures {
   /** Releases the slots this pass did not use (a pane not resolved loses them all) and counts what is pending. */
   private end(): void {
     this.resolving = false;
-    this.deps.text?.end();
+    if (this.path === null) {
+      this.deps.text?.end();
+      for (const [key, child] of this.children) {
+        if (child.pass === this.pass) continue;
+        child.textures.clear();
+        this.children.delete(key);
+      }
+      this.deps.compounds?.end();
+    }
     const stats = this.stats;
     stats.pending = 0;
     for (const slots of this.slots) {
@@ -483,6 +555,9 @@ export class LayerTextures {
     this.loadingImages.clear();
     this.refining.clear();
     for (const list of this.lists) list.layers.length = 0;
+    for (const child of this.children.values()) child.textures.clear();
+    this.children.clear();
+    if (this.path === null) this.deps.compounds?.clear();
   }
 
   /** The last resolved draw list (of a split, the left one). */
@@ -504,6 +579,11 @@ export class LayerTextures {
     const layers: Layer[] = [];
     try {
       for (const layer of composite.layers) {
+        if (layer.kind === "compound") {
+          const drawn = await this.exactCompound(layer, maxLongEdge, unpins);
+          if (drawn) layers.push(drawn);
+          continue;
+        }
         if (layer.kind === "solid") {
           layers.push(layer);
           continue;
@@ -527,6 +607,25 @@ export class LayerTextures {
       throw error;
     }
     return { list: { width: composite.width, height: composite.height, background: composite.background, layers }, release };
+  }
+
+  /** A compound clip for Export frame: its sequence resolved exactly (by its own resolver) and drawn into a texture held until `unpins` run. */
+  private async exactCompound(layer: CompoundCompositeLayer, maxLongEdge: number, unpins: (() => void)[]): Promise<TextureLayer | null> {
+    const targets = this.deps.compounds;
+    if (!targets) return null;
+    // Copied before waiting: the composite's layers are reused by the next evaluation.
+    const model = [...layer.model] as unknown as Mat3;
+    const { opacity, width, height, scale } = layer;
+    const size = targets.sizeFor(width, height, scale);
+    const inner = await this.child(layer.clipId).resolveExact(layer.inner, maxLongEdge);
+    try {
+      const made = targets.renderOnce(inner.list, size.width, size.height);
+      if (!made) return null;
+      unpins.push(made.release);
+      return { kind: "texture", texture: made.texture, transform: model, opacity, crop: { u0: 0, v0: 0, u1: 1, v1: 1 }, flipX: false, flipY: false, shape: null };
+    } finally {
+      inner.release();
+    }
   }
 
   /** A media layer at its exact full-resolution frame (Export frame, see `resolveExact`), pinned until `unpins` run; null when it cannot be shown. */

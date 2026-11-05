@@ -223,7 +223,29 @@ export interface TransitionCompositeLayer {
 /** The texture slot suffix of a transition's incoming clip (one slot per picture of a track). */
 export const TRANSITION_SLOT = "#in";
 
-export type CompositeLayer = MediaLayer | SolidLayer | TextCompositeLayer | TransitionCompositeLayer;
+/**
+ * A compound clip at its frame (spec §21.10, Batch 62): the sequence it shows evaluated at the inner
+ * frame (`inner`, a composite of its own at the sequence's size), drawn as one layer. The preview and the
+ * export render `inner` into a pooled texture and draw it over `model`.
+ */
+export interface CompoundCompositeLayer {
+  kind: "compound";
+  trackId: TrackId;
+  clipId: ClipId;
+  sequenceId: string;
+  /** Maps the unit quad (0..1, 0..1) into project pixels: the sequence frame under the clip's transform. */
+  model: Mat3;
+  opacity: number;
+  /** The sequence frame's size in its own px. */
+  width: number;
+  height: number;
+  /** The layer's own scale (its larger axis): its texture is the sequence size times it (and the render scale). */
+  scale: number;
+  /** The sequence at the inner frame; reused by the next evaluation of this layer: read it before evaluating again. */
+  inner: Composite;
+}
+
+export type CompositeLayer = MediaLayer | SolidLayer | TextCompositeLayer | TransitionCompositeLayer | CompoundCompositeLayer;
 
 /** The document evaluated at a frame (`Compositor.evaluate`), before texture resolution. */
 export interface Composite {

@@ -15,6 +15,7 @@ export function createProject(options: { id: string; name: string; now: string; 
     markers: [],
     captionTracks: {},
     textPresetsLocal: [],
+    sequences: {},
     meta: { createdAt: options.now, modifiedAt: options.now, appVersion: options.appVersion },
   };
 }

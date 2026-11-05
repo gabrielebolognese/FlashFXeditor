@@ -4,6 +4,7 @@ import { closeContextMenu, timelineMenu } from "../../app/cutController.js";
 import { keyframeClipboard, LANE_SECTIONS } from "../../app/keyframeController.js";
 import { chipCut, fadePresetId } from "../../app/transitionController.js";
 import { TRANSITION_LABELS } from "../../core/document/transitions.js";
+import { breakApartProblem, makeCompoundProblem, makeUniqueProblem } from "../edit/compound.js";
 import { canFade, FADE_PRESET_SECONDS } from "../edit/fades.js";
 import { actions, documentStore, sessionStore } from "../../app/services.js";
 import { EASE_GROUPS, EASE_LABELS, SECTION_LABELS, sectionEaseAt, type KeyframeSection } from "../../core/document/keyframes.js";
@@ -48,6 +49,25 @@ function linkEntries(project: Project, clipId: ClipId): ContextMenuEntry[] {
     { kind: "item", id: "edit.group", label: "Group", commandId: "edit.group", disabled: clips.length < 2 },
     { kind: "item", id: "edit.ungroup", label: "Ungroup", commandId: "edit.ungroup", disabled: !grouped },
     { kind: "item", id: "edit.moveIntoSync", label: "Move into sync", disabled: linkOffset(project, clipId) === 0 },
+    { kind: "separator" },
+    ...compoundEntries(project, clipId, clips.map((clip) => clip.id)),
+  ];
+}
+
+/** Make compound, Break apart and Make unique (spec §21.10): disabled rows carry their reason as the hint. */
+function compoundEntries(project: Project, clipId: ClipId, ids: ClipId[]): ContextMenuEntry[] {
+  const compound = project.clips[clipId]?.kind === "compound";
+  const make = makeCompoundProblem(project, ids);
+  const apart = compound ? breakApartProblem(project, clipId) : "Select a compound clip";
+  const unique = compound ? makeUniqueProblem(project, clipId) : "Select a compound clip";
+  return [
+    { kind: "item", id: "clip.makeCompound", label: "Make compound clip", commandId: "clip.makeCompound", disabled: make !== null },
+    ...(compound
+      ? ([
+          { kind: "item", id: "clip.breakApart", label: "Break apart", commandId: "clip.breakApart", disabled: apart !== null },
+          { kind: "item", id: "clip.makeUnique", label: "Make unique", commandId: "clip.makeUnique", disabled: unique !== null },
+        ] satisfies ContextMenuEntry[])
+      : []),
   ];
 }
 

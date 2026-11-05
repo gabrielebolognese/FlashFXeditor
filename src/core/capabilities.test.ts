@@ -34,8 +34,8 @@ describe("capabilities.json (spec §21.2)", () => {
     expect(media).toEqual([...ACCEPTED_EXTENSIONS].sort());
   });
 
-  it("has schemaVersion 7 and the Batch 54 to 60 keys true, the keys of later batches false", () => {
-    expect(manifest.schemaVersion).toBe(7);
+  it("has schemaVersion 8 and the Batch 54 to 62 keys true, the keys of later batches false", () => {
+    expect(manifest.schemaVersion).toBe(8);
     expect(manifest.manifestVersion).toBe(MANIFEST_VERSION);
     expect(manifest.lastBatch).toBe(LAST_BATCH);
     expect(manifest.cli).toEqual({ validate: true, normalize: true, info: true, render: true, compare: true });
@@ -52,7 +52,7 @@ describe("capabilities.json (spec §21.2)", () => {
     expect(manifest.solid).toMatchObject({ fills: ["color", "gradient2", "linear", "radial"], stroke: true, shadow: true, cornerRadii: true });
     expect(manifest.mediaFrame).toEqual({ stroke: true, shadow: true, cornerRadius: true });
     expect(manifest.text.fills).toEqual(["color", "gradient2", "linear", "radial"]);
-    expect(manifest.compositing).toEqual({ compound: false, blendModes: ["normal"], trackMatte: false, masks: false, adjustment: false });
+    expect(manifest.compositing).toEqual({ compound: true, blendModes: ["normal"], trackMatte: false, masks: false, adjustment: false });
     expect(manifest.export).toEqual({ containers: ["mp4"], videoCodecs: ["h264", "hevc", "av1"], alpha: false, imageSequence: false, gif: false, stems: false });
     expect(manifest.effects).toEqual([]);
   });

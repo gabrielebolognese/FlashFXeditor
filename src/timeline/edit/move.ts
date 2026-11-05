@@ -162,6 +162,8 @@ export function sliceClip(clip: Clip, from: Frame, to: Frame, fps: Rational): Cl
     if (newIn) media.in = clip.in + framesToSourceUs(from - clip.start, clip.speed, fps);
     if (newOut) media.out = Math.min(clip.out, clip.in + framesToSourceUs(to - clip.start, clip.speed, fps));
   }
+  // A compound's right part shows the sequence from the frame it starts on (spec §21.10).
+  if (clip.kind === "compound" && newIn) (piece as unknown as { offset: number }).offset = clip.offset + (from - clip.start);
   if ("keyframes" in clip && clip.keyframes) {
     const keyframes = sliceKeyframes(clip.keyframes, from - clip.start, to - clip.start, newIn, newOut);
     if (keyframes) piece.keyframes = keyframes;

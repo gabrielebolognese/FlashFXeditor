@@ -11,6 +11,7 @@
 // - The master volume knob is monitoring only (spec §14): the monitor gain stays at 1.
 import { fpsToNumber } from "../core/document/time.js";
 import type { Clip, Frame, MediaClip, Project } from "../core/document/types.js";
+import { flattenAudio } from "./compoundAudio.js";
 import { AudioMixer, audibleTracks, type AudioGraphContext } from "./AudioMixer.js";
 import type { DecodedAudio } from "./decode/DecodedAudio.js";
 import { segmentsIn } from "./decode/segments.js";
@@ -46,7 +47,8 @@ export interface Mixdown {
 const isHeard = (clip: Clip): clip is MediaClip => clip.kind === "audio" && clip.enabled && clip.speed > 0;
 
 /** The audio clips heard in [start, end): enabled, on audible tracks (mute, solo), with the partners of their crossfades (Batch 36). */
-export function heardClips(project: Project, start: Frame, end: Frame): MediaClip[] {
+export function heardClips(source: Project, start: Frame, end: Frame): MediaClip[] {
+  const project = flattenAudio(source);
   const audible = audibleTracks(project);
   const clips: MediaClip[] = [];
   for (const track of project.tracks) {
@@ -62,8 +64,9 @@ const keyOf = (mediaId: string, segment: number) => `${mediaId}#${segment}`;
  * The mix of frames [start, end) of `project`, or null when no audio is heard there (no clip, every
  * track muted, no decodable audio). Rejects with the signal's reason when it is aborted.
  */
-export async function renderMixdown(project: Project, range: { start: Frame; end: Frame }, options: MixdownOptions, deps: MixdownDeps): Promise<Mixdown | null> {
+export async function renderMixdown(source: Project, range: { start: Frame; end: Frame }, options: MixdownOptions, deps: MixdownDeps): Promise<Mixdown | null> {
   const { signal } = options;
+  const project = flattenAudio(source);
   const fps = fpsToNumber(project.settings.fps);
   const clips = heardClips(project, range.start, range.end);
   // Load what the range plays, segment by segment.

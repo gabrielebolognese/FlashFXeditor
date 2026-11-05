@@ -3,7 +3,7 @@ import { createProject } from "./project.js";
 import { frameToUs } from "./time.js";
 import { defaultCaptionStyle } from "../../text/captions.js";
 import { DEFAULT_TEXT_STYLE, textContent } from "../../text/style.js";
-import type { CaptionClip, CaptionWord, Clip, MediaClip, MediaItem, Project, SolidClip, TextClip, Track, TrackKind } from "./types.js";
+import type { CaptionClip, CaptionWord, Clip, CompoundClip, MediaClip, MediaItem, Project, SolidClip, TextClip, Track, TrackKind } from "./types.js";
 
 export function makeProject(): Project {
   return createProject({ id: "project-1", name: "Test", now: "2026-01-01T00:00:00.000Z", appVersion: "test" });
@@ -73,6 +73,20 @@ export function makeTextClip(fields: { id: string; trackId: string; start: numbe
     opacity: 1,
     fades: { in: 0, out: 0 },
     ...rest,
+  };
+}
+
+export function makeCompoundClip(fields: { id: string; trackId: string; start: number; duration: number; sequenceId: string; offset?: number }): CompoundClip {
+  return {
+    kind: "compound",
+    name: fields.id,
+    enabled: true,
+    transform: { x: 0, y: 0, scale: 1, rotation: 0, anchor: { x: 0.5, y: 0.5 }, flipH: false, flipV: false },
+    opacity: 1,
+    fades: { in: 0, out: 0 },
+    volume: { gainDb: 0, muted: false },
+    offset: 0,
+    ...fields,
   };
 }
 

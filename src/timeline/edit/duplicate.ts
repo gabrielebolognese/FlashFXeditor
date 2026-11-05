@@ -72,7 +72,7 @@ function freeOffset(project: Project, clips: readonly Clip[], from: number): num
 }
 
 /** Copies of `clips` with new ids, their shared link groups and groups renamed; transition pairs renamed or, with `transitions` false, dropped. */
-function copies(clips: readonly Clip[], newId: () => string, options: { links: boolean; transitions: boolean }): Clip[] {
+export function copyClips(clips: readonly Clip[], newId: () => string, options: { links: boolean; transitions: boolean }): Clip[] {
   const links = regroup(clips, "linkGroup", newId);
   const groups = regroup(clips, "group", newId);
   const outs = new Set<string>();
@@ -112,7 +112,7 @@ export function duplicateClips(project: Project, ids: Iterable<ClipId>, newId: (
   const first = Math.min(...clips.map((clip) => clip.start));
   const last = Math.max(...clips.map((clip) => clip.start + clip.duration));
   const offset = freeOffset(project, clips, last - first);
-  const made = copies(clips, newId, { links: true, transitions: true }).map((copy) => ({ ...copy, start: copy.start + offset }) as Clip);
+  const made = copyClips(clips, newId, { links: true, transitions: true }).map((copy) => ({ ...copy, start: copy.start + offset }) as Clip);
   const placed = new Map(clips.map((clip, i) => [clip.id, (made[i] as Clip).id]));
   return {
     command: {
@@ -148,7 +148,7 @@ export function duplicateLayers(project: Project, ids: Iterable<ClipId>, newId: 
     .filter((clip): clip is LayerClip => isLayerClip(clip) && trackOf(project, clip.trackId)?.kind === "video")
     .sort((a, b) => (order.get(b.trackId) ?? 0) - (order.get(a.trackId) ?? 0) || a.start - b.start);
   if (clips.length === 0) return null;
-  const made = copies(clips, newId, { links: false, transitions: false }).map((copy) => {
+  const made = copyClips(clips, newId, { links: false, transitions: false }).map((copy) => {
     const write = shiftedWrite(copy as LayerClip, offset, offset);
     if (!write) return copy;
     const moved = structuredClone(copy) as LayerClip;

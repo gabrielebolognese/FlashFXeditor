@@ -32,6 +32,7 @@
 // - Document changes while playing: mute/solo ramp the track gains, a clip whose gain or mute changed
 //   ramps its voice, a clip moved, trimmed, faded, re-keyed or removed stops its voice and is
 //   scheduled again.
+import { flattenAudio } from "../compoundAudio.js";
 import type { PlaybackClock } from "../AudioClock.js";
 import { fpsToNumber } from "../../core/document/time.js";
 import { extendedEnd, extendedStart, sameTransition } from "../../core/document/transitions.js";
@@ -246,7 +247,8 @@ export class AudioScheduler {
    * True when the audio of every clip under `frame` is in memory (the preroll waits for it); asks for
    * what is missing. Media that cannot be decoded do not hold playback.
    */
-  prepare(project: Project, frame: Frame): boolean {
+  prepare(source: Project, frame: Frame): boolean {
+    const project = flattenAudio(source);
     let ready = true;
     const fps = fpsToNumber(project.settings.fps);
     for (const track of project.tracks) {
@@ -260,7 +262,8 @@ export class AudioScheduler {
   }
 
   /** Loads the audio of clips playing within LOAD_AHEAD_SECONDS of `frame` (forward). */
-  prefetch(project: Project, frame: Frame): void {
+  prefetch(source: Project, frame: Frame): void {
+    const project = flattenAudio(source);
     const fps = fpsToNumber(project.settings.fps);
     const to = frame + Math.ceil(LOAD_AHEAD_SECONDS * fps);
     for (const track of project.tracks) {
@@ -309,14 +312,14 @@ export class AudioScheduler {
       // A new graph (first play, or a new context): start from the document's mute/solo.
       this.mixerSeen = mixer;
       this.voices.length = 0;
-      mixer.updateTracks(this.deps.document.getState());
+      mixer.updateTracks(flattenAudio(this.deps.document.getState()));
     }
     if (this.deps.clock.epoch !== this.epoch) {
       // The clock-to-context mapping changed: what is scheduled plays at the wrong time.
       this.stopAll();
       this.epoch = this.deps.clock.epoch;
     }
-    const project = this.deps.document.getState();
+    const project = flattenAudio(this.deps.document.getState());
     const fps = fpsToNumber(mapping.fps);
     const start = mapping.start / fps;
     const end = mapping.end / fps;
@@ -544,7 +547,8 @@ export class AudioScheduler {
     else disconnect();
   }
 
-  private onDocument(project: Project): void {
+  private onDocument(state: Project): void {
+    const project = flattenAudio(state);
     const mixer = this.deps.mixer();
     if (!mixer || mixer !== this.mixerSeen) return;
     mixer.updateTracks(project);

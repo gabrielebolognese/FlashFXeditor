@@ -58,6 +58,7 @@ import type { SolidLook } from "../../timeline/edit/solid.js";
 import type { CanvasTarget, OffscreenTarget, Pane, Renderer, TextureHandle, Viewport } from "../gpu/renderer.js";
 import { mutableIdentity, setMat, type Mat3, type MutableMat3 } from "../mat3.js";
 import { AUTO_SETTLE_MS, DETAIL_MAX_SIZE, fullScale, qualityLabel, renderScale, sourceDetail, uploadLongEdge, vectorDetailSize, wantedLod, type PreviewActivity } from "./detail.js";
+import { CompoundTargets } from "./CompoundTargets.js";
 import { LayerTextures, type LayerTexturesDeps, type LayerTexturesStats } from "./LayerTextures.js";
 import { deviceSizeInto, frameTransformInto, type Size } from "./viewport.js";
 import { canvasCapacity } from "../../core/scheduler/canvasCapacity.js";
@@ -249,6 +250,7 @@ export class PreviewView implements RenderView {
       frames: deps.frames,
       images: deps.images,
       pool: deps.pool,
+      compounds: new CompoundTargets(deps.renderer),
       ...(deps.text && { text: deps.text }),
       onChange: () => deps.scheduler.invalidate("preview"),
       wantedLod: (mediaId) => wantedLod(this.passQuality, this.passActivity, deps.behind?.(mediaId) ?? false),

@@ -347,6 +347,45 @@ Motion written in another tool maps to these ease ids. The editor's curves are t
 | | | Easy Ease Out | `bezier` `[0.3333, 0, 0.8333, 0.8333]` |
 | | a physics or spring plugin | the overshoot expression | `spring` (match the look by eye: damping and frequency) or a few keys with `backOut` |
 
+### 5.3 Compound clips: sequences shown inside a clip (manifest keys `clipKinds` (adds `compound`), `compositing.compound`; schema 8)
+
+A compound clip shows a *sequence*: a small timeline of its own (video and audio tracks, a size, a duration and an optional background) listed in the project's `sequences`, keyed by id. The sequence's clips are ordinary clips in the project's `clips`, on the sequence's own tracks (`sequences.<id>.tracks`), with times counted from the sequence's frame 0. A sequence is used by any number of compound clips (instances: edit it once, every instance changes), and a sequence may hold compound clips itself (at most 8 levels, never a cycle).
+
+A compound clip is a `compound` clip on a **video** track of the project (or of another sequence): `sequenceId`, `offset` (the sequence frame shown at the clip's first frame, so the clip shows the window `[offset, offset + duration)` of the sequence and `offset + duration` is at most the sequence's `duration`), and the picture fields `transform`, `opacity`, `fades` and `keyframes` of any layer (the transform places the sequence frame, centred, in the project frame: scale 1 is the sequence's own size in pixels), plus `volume` for the audio inside. Clips inside a sequence must end by the sequence's `duration`; sequences take no caption tracks.
+
+```json Clip.compound
+{
+  "id": "b",
+  "trackId": "v2",
+  "kind": "compound",
+  "name": "Card, second half",
+  "start": 60,
+  "duration": 50,
+  "enabled": true,
+  "sequenceId": "card",
+  "offset": 10,
+  "transform": { "x": 0, "y": 400, "scale": 0.6, "rotation": 0, "anchor": { "x": 0.5, "y": 0.5 }, "flipH": false, "flipV": false },
+  "opacity": 0.9,
+  "fades": { "in": 0, "out": 0 },
+  "volume": { "gainDb": 0, "muted": false }
+}
+```
+
+```json Sequence
+{
+  "id": "card",
+  "name": "Card",
+  "size": { "w": 1080, "h": 1080 },
+  "duration": 60,
+  "background": { "r": 0.1, "g": 0.1, "b": 0.2, "a": 1 },
+  "tracks": [
+    { "id": "c-v1", "kind": "video", "name": "V1", "clipIds": ["card-bg"], "locked": false, "muted": false, "solo": false, "hidden": false, "targeted": true, "height": "M" }
+  ]
+}
+```
+
+`background` is `null` for a transparent sequence. `fixtures/interop/compound` is a complete project: a card sequence (solid, text and audio) shown twice, one instance windowed with `offset`, and a second sequence that nests the card. Audio inside a compound plays and exports through the compound's `volume`; the compound's fades and a sequence's transitions do not touch its audio in this version.
+
 ## 6. Captions and word timings
 
 The caption track's `captionTracks[<track id>].style` styles every cue; a cue's `styleOverride` sets only the fields it changes. A cue is a `caption` clip with `text` (`\n` for line breaks) and optional `words`: `start` and `end` are integer frames relative to the cue's start, `end` after `start`. A word may start before the cue or end after it: an in-trim keeps the words it hides (negative frames), so a trim back shows them again. With word timings the active word is highlighted as the style's `highlight` says.
@@ -1067,7 +1106,7 @@ project.json.
 
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| `schemaVersion` | integer (>= 1) | yes | `7` | The schema version; this build writes and reads up to the current one. |
+| `schemaVersion` | integer (>= 1) | yes | `8` | The schema version; this build writes and reads up to the current one. |
 | `id` | string (not empty) | yes |  | Unique id, never changes (uuid v4 recommended). |
 | `name` | string | yes |  | Project name. |
 | `settings` | [Settings](#settings) | yes |  | Frame and time base. |
@@ -1078,13 +1117,14 @@ project.json.
 | `markers` | [Marker](#marker)[] | yes | `[]` | Markers sorted by frame. |
 | `captionTracks` | object of [CaptionTrackData](#captiontrackdata) by id | yes | `{}` | Style of the caption track, by track id. |
 | `textPresetsLocal` | [TextPreset](#textpreset)[] | yes | `[]` | Kept empty. |
+| `sequences` | object of [Sequence](#sequence) by id | no | `{}` | Nested sequences by id (Batch 62); what compound clips show. Absent: none. |
 | `meta` | [ProjectMeta](#projectmeta) | yes |  | Bookkeeping. |
 
 #### Clip
 
 A clip: the `kind` field selects its description.
 
-Told apart by `kind`: `video` is [Clip.video](#clip-video), `audio` is [Clip.audio](#clip-audio), `image` is [Clip.image](#clip-image), `text` is [Clip.text](#clip-text), `solid` is [Clip.solid](#clip-solid), `caption` is [Clip.caption](#clip-caption).
+Told apart by `kind`: `video` is [Clip.video](#clip-video), `audio` is [Clip.audio](#clip-audio), `image` is [Clip.image](#clip-image), `text` is [Clip.text](#clip-text), `solid` is [Clip.solid](#clip-solid), `caption` is [Clip.caption](#clip-caption), `compound` is [Clip.compound](#clip-compound).
 
 #### ClipBase
 
@@ -1094,7 +1134,7 @@ The fields every clip has.
 | --- | --- | --- | --- | --- |
 | `id` | string (not empty) | yes |  | Unique id; the key it is stored under. |
 | `trackId` | string (not empty) | yes |  | The track listing it. |
-| `kind` | `"video"` | `"audio"` | `"image"` | `"text"` | `"solid"` | `"caption"` | yes |  | Kind. |
+| `kind` | `"video"` | `"audio"` | `"image"` | `"text"` | `"solid"` | `"caption"` | `"compound"` | yes |  | Kind. |
 | `name` | string | yes |  | Display name. |
 | `start` | integer (>= 0) | yes |  | First frame on the timeline. Integer frames at the project frame rate. |
 | `duration` | integer (>= 1) | yes |  | Length, at least 1. Integer frames at the project frame rate. |
@@ -1255,6 +1295,44 @@ A solid or shape layer: `size` project px at scale 1.
 | `opacity` | number (>= 0, <= 1) | yes | `1` | Opacity. |
 | `keyframes` | [Keyframes](#keyframes) | no |  | Animated properties. |
 | `fades` | [Fades](#fades) | no |  | Opacity fades. |
+
+#### Clip.compound
+
+A nested sequence shown as one layer (Batch 62): inner frame = `offset + (frame - start)`; `offset + duration` stays within the sequence.
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `id` | string (not empty) | yes |  | Unique id; the key it is stored under. |
+| `trackId` | string (not empty) | yes |  | The track listing it. |
+| `kind` | `"compound"` | yes |  | Kind. |
+| `name` | string | yes |  | Display name. |
+| `start` | integer (>= 0) | yes |  | First frame on the timeline. Integer frames at the project frame rate. |
+| `duration` | integer (>= 1) | yes |  | Length, at least 1. Integer frames at the project frame rate. |
+| `color` | `"red"` | `"orange"` | `"green"` | `"teal"` | `"blue"` | `"violet"` | `"pink"` | `"grey"` | no |  | Label color. |
+| `linkGroup` | string (not empty) | no |  | Clips sharing it move and trim together. |
+| `group` | string (not empty) | no |  | Clips sharing it select together. |
+| `enabled` | boolean | yes | `true` | Drawn and heard. |
+| `fallbackOf` | [FallbackOf](#fallbackof) | no |  | Set when the clip is a baked stand-in. |
+| `sequenceId` | string (not empty) | yes |  | The sequence it shows (a key of `Project.sequences`); instances may share one. |
+| `offset` | integer (>= 0) | yes | `0` | The sequence frame shown at the clip's first frame. Integer frames at the project frame rate. |
+| `transform` | [Transform](#transform) | yes |  | Placement. |
+| `opacity` | number (>= 0, <= 1) | yes | `1` | Opacity. |
+| `keyframes` | [Keyframes](#keyframes) | no |  | Animated properties. |
+| `fades` | [Fades](#fades) | yes | `{"in":0,"out":0}` | Opacity fades. |
+| `volume` | [Volume](#volume) | yes |  | Gain of the inner audio. |
+
+#### Sequence
+
+A nested sequence (Batch 62): its inner clips are in `Project.clips` on its own tracks. Up to 8 levels of nesting; a cycle is invalid.
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `id` | string (not empty) | yes |  | Unique id; the key it is stored under. |
+| `name` | string | yes |  | Display name. |
+| `size` | [Size](#size) | yes |  | Frame size, project px. |
+| `duration` | integer (>= 1) | yes |  | Length. Integer frames at the project frame rate. |
+| `background` | [RGBA](#rgba) or null | yes | `null` | Color behind the inner layers; null: transparent. |
+| `tracks` | [Track](#track)[] | yes |  | Inner video and audio tracks, ordered like `Project.tracks`; no caption track. |
 
 #### Size
 

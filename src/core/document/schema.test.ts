@@ -74,6 +74,7 @@ function defaultIssues(type: FieldType, value: unknown): string[] {
     case "boolean":
       return typeof value === "boolean" ? [] : ["not a boolean"];
     case "object":
+      if (value === null && type.nullable) return [];
       return strictIssues(type.schema, value).map((issue) => `${issue.path} ${issue.message}`);
     case "union":
       return strictIssues("RGBA", value).map((issue) => `${issue.path} ${issue.message}`);

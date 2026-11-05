@@ -2,8 +2,8 @@
   "manifestVersion": 1,
   "app": "shorts-editor",
   "appVersion": "1.1.0",
-  "lastBatch": 60,
-  "schemaVersion": 7,
+  "lastBatch": 62,
+  "schemaVersion": 8,
   "project": {
     "file": "project.json",
     "fontsManifest": "fonts/fonts.json",
@@ -56,7 +56,8 @@
     "image",
     "text",
     "solid",
-    "caption"
+    "caption",
+    "compound"
   ],
   "transform": {
     "rotation3d": false,
@@ -235,7 +236,7 @@
     "dipToWhite"
   ],
   "compositing": {
-    "compound": false,
+    "compound": true,
     "blendModes": [
       "normal"
     ],

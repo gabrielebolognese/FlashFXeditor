@@ -15,7 +15,7 @@
 import type { Draft } from "immer";
 import type { Command } from "../../core/commands/command.js";
 import { animatedTransform, clipRel, hasSectionKeys, mapKeyValues, transformValues, writeKeys } from "../../core/document/keyframes.js";
-import type { Clip, ClipId, Crop, Frame, Keyframes, MediaClip, Project, SolidClip, TextClip, Transform } from "../../core/document/types.js";
+import type { Clip, ClipId, CompoundClip, Crop, Frame, Keyframes, MediaClip, Project, SolidClip, TextClip, Transform } from "../../core/document/types.js";
 import { IDENTITY_TRANSFORM } from "../../core/document/placement.js";
 import { displaySize } from "../../media/probe/rotation.js";
 import { textLayout } from "../../render/text/layoutCache.js";
@@ -23,10 +23,10 @@ import { isClipLocked } from "../model/queries.js";
 import { defaultTransform } from "./insertMedia.js";
 
 /** Clips drawn on the canvas with a transform (spec §5.2): video, image, solid and text (`isLayerClip`; audio clips carry one but draw nothing). */
-export type LayerClip = MediaClip | TextClip | SolidClip;
+export type LayerClip = MediaClip | TextClip | SolidClip | CompoundClip;
 
 export function isLayerClip(clip: Clip): clip is LayerClip {
-  return clip.kind === "video" || clip.kind === "image" || clip.kind === "solid" || clip.kind === "text";
+  return clip.kind === "video" || clip.kind === "image" || clip.kind === "solid" || clip.kind === "text" || clip.kind === "compound";
 }
 
 /** A layer's content in its own px (the transform's input) and the visible part of it. */
@@ -81,6 +81,11 @@ export function layerContent(project: Project, clip: Clip, crop?: Crop): Content
   if (clip.kind === "text") {
     const { width, height } = textLayout(clip.text, clip.style);
     return { width, height, left: 0, top: 0, right: width, bottom: height };
+  }
+  if (clip.kind === "compound") {
+    // A compound is drawn as its sequence's frame (spec §21.10).
+    const size = project.sequences[clip.sequenceId]?.size;
+    return size ? { width: size.w, height: size.h, left: 0, top: 0, right: size.w, bottom: size.h } : null;
   }
   return null;
 }

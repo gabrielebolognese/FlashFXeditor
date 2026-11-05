@@ -193,6 +193,7 @@ The default keys (spec §18). Every key can be changed in Settings > Shortcuts; 
 | Add default transition | `Ctrl+Shift+D` | `⌘⇧D` | Timeline |
 | Group | `Ctrl+G` | `⌘G` | Timeline |
 | Ungroup | `Ctrl+Shift+G` | `⌘⇧G` | Timeline |
+| Make compound clip | `Ctrl+Alt+G` | `⌘⌥G` | Timeline |
 | Link / Unlink | `Ctrl+L` | `⌘L` | Timeline |
 | Nudge clips 1 frame left | `Alt+Left` | `⌥Left` | Timeline |
 | Nudge clips 1 frame right | `Alt+Right` | `⌥Right` | Timeline |

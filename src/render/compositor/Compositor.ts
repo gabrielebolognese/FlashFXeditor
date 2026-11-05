@@ -54,12 +54,17 @@
 //   transform; the frame's size when the record is gone) and a text layer with the media's name and
 //   why it is offline, centered on it (its raster keyed `clipId + OFFLINE_SLOT`). In a transition an
 //   offline side has no picture (the other side shows alone).
+// - Compound clips (spec §21.10, Batch 62): a compound at its frame is one `compound` layer holding the
+//   sequence evaluated at the inner frame (`offset + frame - start`) by a compositor of its own (one per
+//   layer slot, so two instances never share a pooled composite) over a view of the document whose
+//   tracks, size and background are the sequence's. The preview and the export render that composite into
+//   a pooled texture and draw it under the clip's transform, opacity and fades.
 // Layer structs and arrays are reused between frames; evaluating allocates nothing once warm.
 import { isRgba } from "../../core/document/color.js";
 import { animatedOpacity, animatedTransform, maxKeyedScale } from "../../core/document/keyframes.js";
 import { framesToSourceUs, secondsToFrames } from "../../core/document/time.js";
 import { handleTimeUs, transitionMix } from "../../core/document/transitions.js";
-import type { CaptionClip, CaptionStyle, CaptionWord, Clip, ClipId, Crop, Frame, MediaClip, MediaId, Project, RGBA, ShadowStyle, TextAnim, TextClip, TextContent, TextStyle, Track, TrackId, Transform } from "../../core/document/types.js";
+import type { CaptionClip, CaptionStyle, CaptionWord, Clip, ClipId, CompoundClip, Crop, Frame, MediaClip, MediaId, Project, RGBA, Sequence, ShadowStyle, TextAnim, TextClip, TextContent, TextStyle, Track, TrackId, Transform } from "../../core/document/types.js";
 import { activeWordIndex, captionPlace, defaultCaptionStyle, effectiveCaptionStyle } from "../../text/captions.js";
 import { activeAnim, animUnit, isPlayable, newUnitState, presence, resetUnitState, typedCount, unitProgress, writeUnitShape, type ActiveAnim, type UnitState } from "../../text/anim.js";
 import { clipInIndex, lastClipStartingBy, trackIndex, type TrackIndex } from "../../timeline/model/queries.js";
@@ -79,7 +84,7 @@ import { animatedCrop, animatedRadius, animatedSolidLook, newSolidScratch } from
 import { keyedFillColors, maxKeyedFontSize, newTextMotion, styleVariant, textMotion, type TextMotion } from "./animatedText.js";
 import { hasTextKeys } from "./animatedText.js";
 import { isGradientFill } from "../../core/document/fill.js";
-import { HIGHLIGHT_SLOT, TRANSITION_SLOT, type CaptionHighlightFrame, type CaptionWordBoxes, type Composite, type CompositeLayer, type MediaLayer, type PictureShape, type SolidGeometry, type SolidLayer, type SolidStyle, type TextAnimFrame, type TextCompositeLayer, type TransitionCompositeLayer } from "./drawList.js";
+import { HIGHLIGHT_SLOT, TRANSITION_SLOT, type CaptionHighlightFrame, type CompoundCompositeLayer, type CaptionWordBoxes, type Composite, type CompositeLayer, type MediaLayer, type PictureShape, type SolidGeometry, type SolidLayer, type SolidStyle, type TextAnimFrame, type TextCompositeLayer, type TransitionCompositeLayer } from "./drawList.js";
 
 /** How far from the playhead the clips next to it count as cut neighbours (seconds). */
 export const NEIGHBOR_SECONDS = 2;
@@ -185,6 +190,20 @@ interface WritableComposite extends Composite {
   layers: CompositeLayer[];
 }
 
+type WritableCompoundLayer = Omit<CompoundCompositeLayer, "model" | "inner"> & { model: MutableMat3; inner: Composite; child: Compositor };
+
+/** The document seen from inside a sequence: its tracks, size and background (transparent when it has none). */
+const sequenceViews = new WeakMap<Sequence, { doc: Project; view: Project }>();
+const TRANSPARENT: RGBA = { r: 0, g: 0, b: 0, a: 0 };
+
+function sequenceView(doc: Project, sequence: Sequence): Project {
+  const known = sequenceViews.get(sequence);
+  if (known?.doc === doc) return known.view;
+  const view: Project = { ...doc, tracks: sequence.tracks, settings: { ...doc.settings, width: sequence.size.w, height: sequence.size.h, background: sequence.background ?? TRANSPARENT } };
+  sequenceViews.set(sequence, { doc, view });
+  return view;
+}
+
 const DEG = Math.PI / 180;
 
 /** Scratch result of `sinCos` (evaluating runs every playback frame: no allocation). */
@@ -248,6 +267,7 @@ export class Compositor {
   private readonly solidPool: WritableSolidLayer[] = [];
   private readonly transitionPool: WritableTransitionLayer[] = [];
   private readonly textPool: WritableTextLayer[] = [];
+  private readonly compoundPool: WritableCompoundLayer[] = [];
   private readonly neighborPool: NeighborFrame[] = [];
   private readonly neighborList: NeighborFrame[] = [];
   private readonly upcomingPool: UpcomingText[] = [];
@@ -302,6 +322,7 @@ export class Compositor {
     let solidLayers = 0;
     let textLayers = 0;
     let transitions = 0;
+    let compounds = 0;
     for (const track of doc.tracks) {
       // The caption track's cue (spec §10.5), unless the track is hidden.
       if (track.kind === "caption") {
@@ -398,6 +419,12 @@ export class Compositor {
             solidLayers += 1;
           }
         }
+      } else if (clip.kind === "compound") {
+        const layer = (this.compoundPool[compounds] ??= this.newCompoundLayer());
+        if (this.writeCompound(layer, doc, clip, frame, transform, opacity)) {
+          out.layers.push(layer);
+          compounds += 1;
+        }
       } else if (clip.kind === "solid") {
         const layer = (this.solidPool[solidLayers] ??= newSolidLayer());
         if (this.writeSolid(layer, doc, animatedSolidLook(clip, solids?.get(clip.id) ?? clip, rel, this.solidScratch), transform, opacity * fadeFactor(clip, frame))) {
@@ -438,6 +465,28 @@ export class Compositor {
       }
     }
     return out;
+  }
+
+  private newCompoundLayer(): WritableCompoundLayer {
+    return { kind: "compound", trackId: "", clipId: "", sequenceId: "", model: mutableIdentity(), opacity: 1, width: 0, height: 0, scale: 1, inner: this.out, child: new Compositor(this.offline) };
+  }
+
+  /** A compound layer: the sequence at the inner frame (false when the sequence is missing). */
+  private writeCompound(layer: WritableCompoundLayer, doc: Project, clip: CompoundClip, frame: Frame, transform: Transform, opacity: number): boolean {
+    const sequence = doc.sequences?.[clip.sequenceId];
+    if (!sequence) return false;
+    const innerFrame = Math.min(sequence.duration - 1, Math.max(0, clip.offset + (frame - clip.start)));
+    layer.inner = layer.child.evaluate(sequenceView(doc, sequence), innerFrame);
+    const { w, h } = sequence.size;
+    const m = multiplyInto(layer.model, writeModel(this.step, transform, w, h, doc.settings.width, doc.settings.height), setMat(this.step2, w, 0, 0, h, 0, 0));
+    layer.trackId = clip.trackId;
+    layer.clipId = clip.id;
+    layer.sequenceId = clip.sequenceId;
+    layer.width = w;
+    layer.height = h;
+    layer.scale = Math.max(Math.hypot(m[0], m[1]) / w, Math.hypot(m[2], m[3]) / h);
+    layer.opacity = clamp01(opacity) * fadeFactor(clip, frame);
+    return true;
   }
 
   /**

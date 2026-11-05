@@ -13,7 +13,7 @@ export type FieldType =
   | { t: "boolean" }
   | { t: "enum"; values: readonly (string | number)[] }
   /** An object described by the schema `schema`. */
-  | { t: "object"; schema: string }
+  | { t: "object"; schema: string; nullable?: boolean }
   | { t: "array"; item: FieldType; length?: number }
   /** An object with free keys (ids, property names), or only `keys` when given. */
   | { t: "record"; item: FieldType; keys?: readonly string[] }
@@ -540,6 +540,7 @@ const SCHEMAS: ObjectSchema[] = [
       markers: req(list(obj("Marker")), "Markers sorted by frame.", []),
       captionTracks: req({ t: "record", item: obj("CaptionTrackData") }, "Style of the caption track, by track id.", {}),
       textPresetsLocal: req(list(obj("TextPreset")), "Kept empty.", []),
+      sequences: opt({ t: "record", item: obj("Sequence") }, "Nested sequences by id (Batch 62); what compound clips show. Absent: none.", {}),
       meta: req(obj("ProjectMeta"), "Bookkeeping."),
     },
   },
@@ -588,6 +589,34 @@ const SCHEMAS: ObjectSchema[] = [
       opacity: req(range(0, 1), "Opacity.", 1),
       keyframes: opt(obj("Keyframes"), "Animated properties."),
       fades: opt(obj("Fades"), "Opacity fades."),
+    },
+  },
+  {
+    name: "Clip.compound",
+    doc: "A nested sequence shown as one layer (Batch 62): inner frame = `offset + (frame - start)`; `offset + duration` stays within the sequence.",
+    types: ["CompoundClip"],
+    fields: {
+      ...clipBaseFields("compound"),
+      sequenceId: req(text, "The sequence it shows (a key of `Project.sequences`); instances may share one."),
+      offset: req(int(0), `The sequence frame shown at the clip's first frame. ${FRAMES}`, 0),
+      transform: req(obj("Transform"), "Placement."),
+      opacity: req(range(0, 1), "Opacity.", 1),
+      keyframes: opt(obj("Keyframes"), "Animated properties."),
+      fades: req(obj("Fades"), "Opacity fades.", { in: 0, out: 0 }),
+      volume: req(obj("Volume"), "Gain of the inner audio."),
+    },
+  },
+  {
+    name: "Sequence",
+    doc: "A nested sequence (Batch 62): its inner clips are in `Project.clips` on its own tracks. Up to 8 levels of nesting; a cycle is invalid.",
+    types: ["Sequence"],
+    fields: {
+      id: req(text, "Unique id; the key it is stored under."),
+      name: req(str, "Display name."),
+      size: req(obj("Size"), "Frame size, project px."),
+      duration: req(int(1), `Length. ${FRAMES}`),
+      background: { type: { t: "object", schema: "RGBA", nullable: true }, required: true, default: null, doc: "Color behind the inner layers; null: transparent." },
+      tracks: req(list(obj("Track")), "Inner video and audio tracks, ordered like `Project.tracks`; no caption track."),
     },
   },
   { name: "Size", doc: "A width and a height in project px.", types: [], fields: { w: req(pos, "Width."), h: req(pos, "Height.") } },

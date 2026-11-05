@@ -23,7 +23,7 @@ function typeLabel(type: FieldType): string {
     case "enum":
       return type.values.map((value) => `\`${JSON.stringify(value)}\``).join(" \| ");
     case "object":
-      return `[${type.schema}](#${anchor(type.schema)})`;
+      return `[${type.schema}](#${anchor(type.schema)})${type.nullable ? " or null" : ""}`;
     case "array":
       return `${typeLabel(type.item)}[]${type.length !== undefined ? ` (${type.length} items)` : ""}`;
     case "record":

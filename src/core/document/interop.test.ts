@@ -157,7 +157,7 @@ describe("validateStrict", () => {
     delete old.clips["c-standin"].fallbackOf;
     const result = validateStrict(old);
     expect(result.errors).toEqual([]);
-    expect(result.project?.schemaVersion).toBe(7);
+    expect(result.project?.schemaVersion).toBe(8);
     expect(result.project?.clips["c-video"]).toEqual(old.clips["c-video"]);
   });
 
@@ -273,7 +273,7 @@ describe("fixtures/interop/keyframes (Batch 60)", () => {
     old.tracks = old.tracks.filter((track: { id: string }) => ["v1", "v6"].includes(track.id));
     const result = validateStrict(old);
     expect(result.errors).toEqual([]);
-    expect(result.project?.schemaVersion).toBe(7);
+    expect(result.project?.schemaVersion).toBe(8);
     expect((result.project?.clips.label as { keyframes?: unknown } | undefined)?.keyframes).toEqual(old.clips.label.keyframes);
   });
 
@@ -287,5 +287,34 @@ describe("fixtures/interop/keyframes (Batch 60)", () => {
     const wide = readProject(`${KF}/project.json`);
     wide.clips.hold.keyframes.fill[0].value = [1, 0, 0, 1, 1];
     expect(validateStrict(wide).ok).toBe(false);
+  });
+});
+
+describe("fixtures/interop/compound (Batch 62)", () => {
+  const COMPOUND = "fixtures/interop/compound";
+
+  it("is valid: a card sequence shown twice (one instance windowed), nested into a second sequence, with audio inside", async () => {
+    const report = await validateProjectFolder(rel(COMPOUND));
+    expect(report.errors).toEqual([]);
+    expect(report.ok).toBe(true);
+    const project = readProject(`${COMPOUND}/project.json`);
+    expect(Object.keys(project.sequences)).toEqual(["card", "badge"]);
+    expect(project.clips.a.sequenceId).toBe("card");
+    expect(project.clips.b.sequenceId).toBe("card");
+    expect(project.clips.b.offset).toBe(10);
+    expect(project.clips["badge-card"].sequenceId).toBe("card");
+    expect(project.clips["card-audio"].kind).toBe("audio");
+  });
+
+  it("refuses a sequence that contains itself, a missing sequence and a clip past the sequence's end", () => {
+    const loop = readProject(`${COMPOUND}/project.json`);
+    loop.clips["badge-card"].sequenceId = "badge";
+    expect(validateStrict(loop).errors.map((e) => e.message).join("\n")).toMatch(/contains itself/);
+    const missing = readProject(`${COMPOUND}/project.json`);
+    missing.clips.a.sequenceId = "nope";
+    expect(validateStrict(missing).ok).toBe(false);
+    const late = readProject(`${COMPOUND}/project.json`);
+    late.clips["card-bg"].duration = 90;
+    expect(validateStrict(late).ok).toBe(false);
   });
 });

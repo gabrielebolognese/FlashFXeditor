@@ -80,7 +80,7 @@ describe("migration hook", () => {
   it("leaves a current file alone", () => {
     const raw = v1();
     expect(migrateProject(raw)).toEqual(raw);
-    expect(SCHEMA_VERSION).toBe(7);
+    expect(SCHEMA_VERSION).toBe(8);
   });
 
   it("opens a schema 1 project (Batch 41): no bins yet, media without sizes", () => {
@@ -115,7 +115,7 @@ describe("migration hook", () => {
     const raw = JSON.parse(serializeProject(project, STAMP)) as JsonObject;
     raw.schemaVersion = 3;
     const parsed = parseProjectFile(JSON.stringify(raw));
-    expect(parsed.schemaVersion).toBe(7);
+    expect(parsed.schemaVersion).toBe(8);
     expect(parsed.meta).not.toHaveProperty("generator");
     expect(parsed.clips).toEqual(project.clips);
     expect(parsed.media).toEqual(project.media);

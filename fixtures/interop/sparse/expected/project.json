@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 7,
+  "schemaVersion": 8,
   "id": "sparse-fixture",
   "name": "Sparse fixture",
   "settings": {
@@ -495,6 +495,7 @@
     }
   },
   "textPresetsLocal": [],
+  "sequences": {},
   "meta": {
     "createdAt": "2026-11-07T10:00:00.000Z",
     "modifiedAt": "2026-11-07T10:00:00.000Z",

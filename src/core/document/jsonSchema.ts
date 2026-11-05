@@ -22,7 +22,7 @@ function typeSchema(type: FieldType): Json {
     case "enum":
       return { enum: [...type.values] };
     case "object":
-      return ref(type.schema);
+      return type.nullable ? { anyOf: [ref(type.schema), { type: "null" }] } : ref(type.schema);
     case "array":
       return { type: "array", items: typeSchema(type.item), ...(type.length !== undefined && { minItems: type.length, maxItems: type.length }) };
     case "record":
