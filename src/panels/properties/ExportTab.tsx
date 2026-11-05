@@ -77,6 +77,8 @@ const selectCustom = (s: AppSettings) => s.exportCustom;
 const selectPresets = (s: AppSettings) => s.exportPresets;
 const selectTemplate = (s: AppSettings) => s.exportFileTemplate;
 const selectDestination = (s: AppSettings) => s.exportDestination;
+/** The real document: the Export tab is about the whole project, also while a compound is open for editing. */
+const rootDocument = { getState: () => documentStore.getRoot(), subscribe: (listener: () => void) => documentStore.subscribe(() => listener()) };
 const selectAudioFormat = (s: AppSettings) => s.exportAudioFormat;
 const selectCaptionFormat = (s: AppSettings) => s.exportCaptionFormat;
 const selectSize = (p: Project) => `${p.settings.width}x${p.settings.height}`;
@@ -146,7 +148,7 @@ function Chips({ label, children }: { label: string; children: ReactNode }) {
 function settingBinding(read: (settings: ExportSettings, project: Project) => number, write: (value: number) => Partial<ExportSettings>): NumberBinding {
   return valueBinding(
     {
-      read: () => read(editableSettings(), documentStore.getState()),
+      read: () => read(editableSettings(), documentStore.getRoot()),
       subscribe: (listener) => {
         const stops = [appSettings.subscribe(() => listener()), documentStore.subscribe(() => listener(), { affects: ["settings"] })];
         return () => {
@@ -187,11 +189,11 @@ export function ExportTab() {
   const destination = useStoreSelector(appSettings, selectDestination);
   const audioFormat = useStoreSelector(appSettings, selectAudioFormat);
   const captionFormat = useStoreSelector(appSettings, selectCaptionFormat);
-  const size = useStoreSelector(documentStore, selectSize);
-  const fpsValue = useStoreSelector(documentStore, selectFps);
-  const name = useStoreSelector(documentStore, selectName);
-  const end = useStoreSelector(documentStore, selectEnd);
-  const hasCues = useStoreSelector(documentStore, selectHasCues);
+  const size = useStoreSelector(rootDocument, selectSize);
+  const fpsValue = useStoreSelector(rootDocument, selectFps);
+  const name = useStoreSelector(rootDocument, selectName);
+  const end = useStoreSelector(rootDocument, selectEnd);
+  const hasCues = useStoreSelector(rootDocument, selectHasCues);
   const rangeMode = useStoreSelector(sessionStore.state, selectRangeMode);
   const inOut = useStoreSelector(sessionStore.state, selectInOut);
   const timecode = useStoreSelector(sessionStore.state, selectTimecode);
@@ -200,7 +202,7 @@ export function ExportTab() {
 
   // Everything below derives from the selected values (the document is read once per change of them).
   const view = useMemo(() => {
-    const project = documentStore.getState();
+    const project = documentStore.getRoot();
     const settings = appSettings.getState();
     const preset = chosenPreset(settings);
     const editable = editableSettings(settings, project);

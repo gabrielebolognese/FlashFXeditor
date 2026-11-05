@@ -31,6 +31,7 @@ import { installSpeedController } from "./app/speedController.js";
 import { installTextController } from "./app/textController.js";
 import { installTimelineController } from "./app/timelineController.js";
 import { installTransitionController } from "./app/transitionController.js";
+import { installCompoundController } from "./app/compoundController.js";
 import { installTrackController } from "./app/trackController.js";
 import { UnsupportedScreen } from "./app/UnsupportedScreen.js";
 import { AppBoundary, FatalScreen } from "./app/FatalScreen.js";
@@ -97,6 +98,7 @@ async function start(): Promise<void> {
   installWordsImportController();
   installMarkerController();
   installTrackController();
+  installCompoundController();
   installPlaybackController();
   installAudioController();
   installAudioEditController();

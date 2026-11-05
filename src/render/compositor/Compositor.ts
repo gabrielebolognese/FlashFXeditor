@@ -60,11 +60,12 @@
 //   tracks, size and background are the sequence's. The preview and the export render that composite into
 //   a pooled texture and draw it under the clip's transform, opacity and fades.
 // Layer structs and arrays are reused between frames; evaluating allocates nothing once warm.
+import { sequenceView } from "../../core/document/sequences.js";
 import { isRgba } from "../../core/document/color.js";
 import { animatedOpacity, animatedTransform, maxKeyedScale } from "../../core/document/keyframes.js";
 import { framesToSourceUs, secondsToFrames } from "../../core/document/time.js";
 import { handleTimeUs, transitionMix } from "../../core/document/transitions.js";
-import type { CaptionClip, CaptionStyle, CaptionWord, Clip, ClipId, CompoundClip, Crop, Frame, MediaClip, MediaId, Project, RGBA, Sequence, ShadowStyle, TextAnim, TextClip, TextContent, TextStyle, Track, TrackId, Transform } from "../../core/document/types.js";
+import type { CaptionClip, CaptionStyle, CaptionWord, Clip, ClipId, CompoundClip, Crop, Frame, MediaClip, MediaId, Project, RGBA, ShadowStyle, TextAnim, TextClip, TextContent, TextStyle, Track, TrackId, Transform } from "../../core/document/types.js";
 import { activeWordIndex, captionPlace, defaultCaptionStyle, effectiveCaptionStyle } from "../../text/captions.js";
 import { activeAnim, animUnit, isPlayable, newUnitState, presence, resetUnitState, typedCount, unitProgress, writeUnitShape, type ActiveAnim, type UnitState } from "../../text/anim.js";
 import { clipInIndex, lastClipStartingBy, trackIndex, type TrackIndex } from "../../timeline/model/queries.js";
@@ -191,18 +192,6 @@ interface WritableComposite extends Composite {
 }
 
 type WritableCompoundLayer = Omit<CompoundCompositeLayer, "model" | "inner"> & { model: MutableMat3; inner: Composite; child: Compositor };
-
-/** The document seen from inside a sequence: its tracks, size and background (transparent when it has none). */
-const sequenceViews = new WeakMap<Sequence, { doc: Project; view: Project }>();
-const TRANSPARENT: RGBA = { r: 0, g: 0, b: 0, a: 0 };
-
-function sequenceView(doc: Project, sequence: Sequence): Project {
-  const known = sequenceViews.get(sequence);
-  if (known?.doc === doc) return known.view;
-  const view: Project = { ...doc, tracks: sequence.tracks, settings: { ...doc.settings, width: sequence.size.w, height: sequence.size.h, background: sequence.background ?? TRANSPARENT } };
-  sequenceViews.set(sequence, { doc, view });
-  return view;
-}
 
 const DEG = Math.PI / 180;
 

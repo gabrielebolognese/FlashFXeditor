@@ -64,7 +64,7 @@ export class ProjectSession {
 
     this.autosaver = new Autosaver({
       dir: this.dir,
-      getProject: documentStore.getState,
+      getProject: documentStore.getRoot,
       appVersion: deps.appVersion,
       status: deps.saveStatus,
       delayMs: settings.getState().autosaveDelayMs,
@@ -172,13 +172,13 @@ export class ProjectSession {
       const now = new Date();
       const history = await subdir(this.dir, HISTORY_DIR);
       const existing = new Set((await history.list()).map((entry) => entry.name));
-      await history.writeText(backupName(now, existing), serializeProject(documentStore.getState(), { now: now.toISOString(), appVersion: this.deps.appVersion }));
+      await history.writeText(backupName(now, existing), serializeProject(documentStore.getRoot(), { now: now.toISOString(), appVersion: this.deps.appVersion }));
     }
     const selection = toSnapshot(session.selection.getState());
     documentStore.load({ ...repaired, id: this.projectId });
     this.autosaver.markClean();
     if (repaired !== project) this.autosaver.markDirty();
-    const loaded = documentStore.getState();
+    const loaded = documentStore.getRoot();
     setSelection(session, fromSnapshot(filterSelection(selection, (id) => Object.hasOwn(loaded.clips, id), (id) => loaded.tracks.some((track) => track.id === id))));
     return { result: "reloaded", stamp };
   }

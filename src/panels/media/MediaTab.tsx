@@ -26,6 +26,7 @@ import { gridColumns, pressWithoutFocus, setTabStop, stepIndex } from "./listNav
 import { MediaContextMenu } from "./MediaContextMenu.js";
 import { MediaName } from "./MediaName.js";
 import { ProxyBadge, ProxyCell } from "./ProxyBadge.js";
+import { CompoundsBin } from "./CompoundsBin.js";
 import { audioLabel, codecLabel, durationBadge, fpsLabel, mediaMatcher, metaLabel, resolutionLabel, shownBin, sortMedia } from "./mediaList.js";
 import styles from "./MediaTab.module.css";
 import { PosterCanvas } from "./PosterCanvas.js";
@@ -599,7 +600,9 @@ export function MediaTab() {
       <div className={styles.body}>
         <BinStrip />
         <div className={styles.content}>
-          {items.length === 0 ? (
+          {bin === "compounds" ? (
+            <CompoundsBin />
+          ) : items.length === 0 ? (
             <NoMedia />
           ) : panel.view === "grid" ? (
             <div className={styles.scroll} role="listbox" aria-label="Media" aria-multiselectable="true" {...listHandlers}>
@@ -624,7 +627,7 @@ export function MediaTab() {
         </div>
       </div>
       {/* Import more: the header's Import icon is the first one cut off in a narrow panel; this one always shows once there is media. */}
-      {items.length > 0 && (
+      {items.length > 0 && bin !== "compounds" && (
         <div className={styles.footer}>
           <Button size="compact" icon={Import} commandId="media.import">
             Import more

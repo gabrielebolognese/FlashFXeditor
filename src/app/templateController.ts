@@ -16,7 +16,7 @@ export function openSaveTemplate(): void {
 /** Saves the open project as a template named `name` (one of the same name is replaced). */
 export async function saveAsTemplate(name: string): Promise<void> {
   if (!currentSession()) return;
-  const template = templateFromProject(documentStore.getState(), presetLibrary.getState().project, { id: crypto.randomUUID(), name, now: new Date().toISOString() });
+  const template = templateFromProject(documentStore.getRoot(), presetLibrary.getState().project, { id: crypto.randomUUID(), name, now: new Date().toISOString() });
   const replaced = templateStore.list.getState().some((other) => other.name.toLowerCase() === template.name.toLowerCase());
   await templateStore.save(template);
   closeDialog();

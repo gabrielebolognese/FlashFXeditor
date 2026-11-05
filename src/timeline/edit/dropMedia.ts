@@ -5,9 +5,11 @@
 // Presets tab (spec §10.3) is an item too: one text clip on the video lane. Pure.
 import { emptyTrack, nextTrackName } from "../../core/document/project.js";
 import type { Clip, Frame, MediaClip, MediaId, MediaItem, Project, Track, TrackId, Transform } from "../../core/document/types.js";
+import { hostSequenceOf, nestingProblem } from "../../core/document/sequences.js";
 import { clipsInRange, laneOf, laneTracks, type LaneKind } from "../model/queries.js";
 import { defaultTransform, mediaClips, mediaLanes, naturalDuration, type ClipTracks, type SourceRange } from "./insertMedia.js";
 import { dropClips, type LaneTarget, type MoveMode, type MoveResult } from "./move.js";
+import { newCompoundClip } from "./compound.js";
 import { newTextClip, type TextClipFields } from "./text.js";
 
 /** One media item to place, with its source range (spec §12) or null for all of it. */
@@ -28,12 +30,18 @@ export interface TextDropItem {
   text: TextDropTemplate;
 }
 
-export type DropItem = MediaDropItem | TextDropItem;
+/** A compound clip to place: a sequence dragged from the Compounds bin (spec §21.10, Batch 63). */
+export interface CompoundDropItem {
+  compound: { sequenceId: string; name: string; duration: Frame };
+}
+
+export type DropItem = MediaDropItem | TextDropItem | CompoundDropItem;
 
 export const isTextDrop = (item: DropItem | DropRequestItem): item is TextDropItem => "text" in item;
+export const isCompoundDrop = (item: DropItem | DropRequestItem): item is CompoundDropItem => "compound" in item;
 
-/** A dropped item as the request names it: media by id, a text clip by its template. */
-export type DropRequestItem = { mediaId: MediaId; range: SourceRange | null } | TextDropItem;
+/** A dropped item as the request names it: media by id, a text clip by its template, a compound by its sequence. */
+export type DropRequestItem = { mediaId: MediaId; range: SourceRange | null } | TextDropItem | CompoundDropItem;
 
 /** The lane of each kind a drag lands on (0 = V1 / A1, counted away from the divider). */
 export interface DropLanes {
@@ -65,6 +73,7 @@ export interface StagedDrop extends DropPlan {
 
 /** An item's length on the timeline, or null when it has none (a media item without a duration). */
 function itemLength(item: DropItem, project: Project): Frame | null {
+  if (isCompoundDrop(item)) return Math.max(1, item.compound.duration);
   return isTextDrop(item) ? Math.max(1, Math.round(item.text.duration)) : naturalDuration(item.media, project.settings.fps, item.range);
 }
 
@@ -122,6 +131,12 @@ function layout(project: Project, items: readonly DropItem[], start: Frame, pick
     if (isTextDrop(item)) {
       const duration = itemLength(item, project) as Frame;
       clips.push(newTextClip({ ...item.text.fields, id: newId(), trackId: pick("video"), start: at, duration }));
+      at += duration;
+      continue;
+    }
+    if (isCompoundDrop(item)) {
+      const duration = itemLength(item, project) as Frame;
+      clips.push(newCompoundClip({ id: newId(), trackId: pick("video"), name: item.compound.name, start: at, duration, sequenceId: item.compound.sequenceId }));
       at += duration;
       continue;
     }
@@ -222,6 +237,11 @@ export function requestItems(project: Project, request: Pick<MediaDropRequest, "
       items.push(item);
       continue;
     }
+    if (isCompoundDrop(item)) {
+      const sequence = project.sequences[item.compound.sequenceId];
+      if (sequence && nestingProblem(project, hostSequenceOf(project), sequence.id) === null) items.push({ compound: { sequenceId: sequence.id, name: sequence.name, duration: sequence.duration } });
+      continue;
+    }
     const media = project.media[item.mediaId];
     if (media) items.push({ media, range: item.range });
   }
@@ -230,7 +250,7 @@ export function requestItems(project: Project, request: Pick<MediaDropRequest, "
 
 /** The request's name of a dropped item. */
 export function requestItem(item: DropItem): DropRequestItem {
-  return isTextDrop(item) ? item : { mediaId: item.media.id, range: item.range };
+  return isTextDrop(item) || isCompoundDrop(item) ? item : { mediaId: item.media.id, range: item.range };
 }
 
 /** A released media drag as the edit (one command), with the plan it applied. */

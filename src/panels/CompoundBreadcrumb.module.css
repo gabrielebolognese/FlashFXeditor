@@ -1,0 +1,29 @@
+/* The open-compound breadcrumb (gap: the DS has no breadcrumb): a slim strip under the timeline's
+   header in the panel header's colors; ancestors are compact text buttons, the open level is text. */
+.bar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-1);
+  height: var(--control-compact);
+  padding: 0 var(--space-3);
+  border-bottom: 1px solid var(--hairline);
+  background: var(--surface-1);
+}
+
+.separator {
+  flex: none;
+  width: var(--icon-size);
+  height: var(--icon-size);
+  color: var(--text-muted);
+}
+
+.current {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-primary);
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-track);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

@@ -149,21 +149,7 @@ export function makeCompound(project: Project, ids: Iterable<ClipId>, newId: () 
     background: null,
     tracks: tracks.map((track) => ({ ...emptyTrack(innerTracks.get(track.id) as TrackId, track.kind, track.name), clipIds: moved.filter((clip) => clip.trackId === innerTracks.get(track.id)).map((clip) => clip.id) })),
   };
-  const compound: CompoundClip = {
-    id: compoundId,
-    trackId: host.id,
-    kind: "compound",
-    name,
-    start,
-    duration: end - start,
-    enabled: true,
-    sequenceId,
-    offset: 0,
-    transform: structuredClone(IDENTITY_TRANSFORM),
-    opacity: 1,
-    fades: { in: 0, out: 0 },
-    volume: { gainDb: 0, muted: false },
-  };
+  const compound = newCompoundClip({ id: compoundId, trackId: host.id, name, start, duration: end - start, sequenceId });
   const removed = new Set(clips.map((clip) => clip.id));
   return {
     compoundId,
@@ -395,6 +381,20 @@ export function makeUnique(project: Project, clipId: ClipId, newId: () => string
       if (target?.kind !== "compound") throw new Error(`clip.makeUnique: ${clipId} is not a compound clip`);
       target.sequenceId = sequenceId;
     },
+  };
+}
+
+/** A compound clip showing the sequence from its first frame, untransformed (Make compound, a drop from the Compounds bin). */
+export function newCompoundClip(fields: { id: ClipId; trackId: TrackId; name: string; start: Frame; duration: Frame; sequenceId: SequenceId; offset?: Frame }): CompoundClip {
+  return {
+    kind: "compound",
+    enabled: true,
+    offset: 0,
+    transform: structuredClone(IDENTITY_TRANSFORM),
+    opacity: 1,
+    fades: { in: 0, out: 0 },
+    volume: { gainDb: 0, muted: false },
+    ...fields,
   };
 }
 

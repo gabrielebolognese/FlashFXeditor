@@ -159,6 +159,8 @@ export interface TimelineViewDeps {
   onTransitionEdge?(cut: Cut, before: Frame, after: Frame): void;
   /** A transition block was double-clicked (spec §6.4): the controller opens its Transition section. */
   onOpenTransition?(cut: Cut): void;
+  /** Double-click on a compound clip (spec §21.10, Batch 63): open it for editing. */
+  onOpenCompound?(clipId: ClipId): void;
   /** A rubber band drag was released (spec §6.4, Batch 37): the controller applies it (one command). */
   onBandEdit?(clipId: ClipId, edit: BandEdit): void;
   /** A ruler scrub showed `frame` (Batch 37: the audio scrub plays a grain there). */
@@ -1745,6 +1747,7 @@ export class TimelineView {
     const hit = this.hitTester.hit(event.offsetX, event.offsetY);
     if (hit.type === "trackHeader" && hit.trackId) this.deps.onRenameTrack?.(hit.trackId);
     else if (hit.type === "marker" && hit.markerId !== null) this.deps.onEditMarker?.(hit.markerId);
+    else if (hit.type === "clip" && hit.clipId !== null && this.deps.document.getState().clips[hit.clipId]?.kind === "compound") this.deps.onOpenCompound?.(hit.clipId);
     else if ((hit.type === "transition" || hit.type === "transitionEdge") && hit.transition) {
       const cut = { left: hit.transition.left, right: hit.transition.right };
       selectTransition(this.deps.session, cut);

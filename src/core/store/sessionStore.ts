@@ -10,7 +10,7 @@
 // bar's visibility and set (Batch 52), are session state of the project, kept in session.json.
 import type { TimecodeMode } from "../document/time.js";
 import type { KeyframeSection } from "../document/keyframes.js";
-import type { ClipId, Frame, MediaId, TrackId, Us } from "../document/types.js";
+import type { ClipId, Frame, MediaId, SequenceId, TrackId, Us } from "../document/types.js";
 import type { ExportLogEntry, ExportRangeMode } from "../../export/log.js";
 import type { PresetSetKey } from "../../text/presets.js";
 import { createStore, type Store } from "./createStore.js";
@@ -54,8 +54,8 @@ export type MediaTab = "media" | "presets" | "captions";
 /** Header sort choices (§12) plus the list-view columns. */
 export type MediaSort = "name" | "date" | "duration" | "kind" | "resolution" | "fps" | "codec" | "audio" | "used";
 export type MediaView = "grid" | "list";
-/** The virtual bins of the Media tab (spec §12: All, Video, Audio, Images); any other value is a bin id. */
-export const VIRTUAL_BINS = ["all", "video", "audio", "image"] as const;
+/** The virtual bins of the Media tab (spec §12: All, Video, Audio, Images; §21.10: Compounds, the project's sequences); any other value is a bin id. */
+export const VIRTUAL_BINS = ["all", "video", "audio", "image", "compounds"] as const;
 export type VirtualBin = (typeof VIRTUAL_BINS)[number];
 /** The filter chips (spec §12): kinds (none on = every kind) and `unused`. */
 export interface MediaFilters {
@@ -114,7 +114,22 @@ export interface SessionState {
   presetBar: { visible: boolean; set: PresetSetKey };
   /** The Caption style section's scope switch (spec §20.3 `All cues | Selected (n)`). */
   captionScope: CaptionScope;
+  /**
+   * The compound clips opened for editing, outermost first (spec §21.10, Batch 63): the timeline,
+   * the canvas and playback show the last one's sequence. `returns` holds the playhead of each level
+   * the path left, so closing goes back to where the user was. Never saved in session.json.
+   */
+  scope: ScopeState;
 }
+
+export interface ScopeState {
+  path: readonly SequenceId[];
+  returns: readonly Frame[];
+  /** The compound clip opened at each level (selected again when it closes). */
+  opened: readonly ClipId[];
+}
+
+export const NO_SCOPE: ScopeState = { path: [], returns: [], opened: [] };
 
 export const DEFAULT_SESSION: SessionState = {
   playhead: 0,
@@ -152,6 +167,7 @@ export const DEFAULT_SESSION: SessionState = {
   exportLog: [],
   presetBar: { visible: true, set: "favorites" },
   captionScope: "all",
+  scope: NO_SCOPE,
 };
 
 /**

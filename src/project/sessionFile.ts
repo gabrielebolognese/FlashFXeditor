@@ -7,7 +7,7 @@ import type { TimecodeMode } from "../core/document/time.js";
 import type { LayoutRatios } from "../core/store/layoutStore.js";
 import { sanitizeRatios } from "../core/store/layoutStore.js";
 import type { SelectionKind, SelectionSnapshot } from "../core/store/selection.js";
-import { DEFAULT_SESSION, GRID_DIVISIONS_MAX, GRID_DIVISIONS_MIN, MEDIA_COLUMNS, PREVIEW_MAX_ZOOM, PREVIEW_MIN_ZOOM, type MediaColumn, type MediaFilters, type MediaSort, type MediaTab, type MediaView, type PresetScope, type PreviewGrid, type PreviewQuality, type SafeZone, type SessionState, type SourceRange, type Tool } from "../core/store/sessionStore.js";
+import { DEFAULT_SESSION, NO_SCOPE, GRID_DIVISIONS_MAX, GRID_DIVISIONS_MIN, MEDIA_COLUMNS, PREVIEW_MAX_ZOOM, PREVIEW_MIN_ZOOM, type MediaColumn, type MediaFilters, type MediaSort, type MediaTab, type MediaView, type PresetScope, type PreviewGrid, type PreviewQuality, type SafeZone, type SessionState, type SourceRange, type Tool } from "../core/store/sessionStore.js";
 
 export const SESSION_FILE_VERSION = 1;
 
@@ -153,6 +153,7 @@ function sanitizeState(value: unknown): SessionState {
     exportLog: sanitizeExportLog(raw.exportLog),
     presetBar: { visible: bool(presetBar.visible, d.presetBar.visible), set: isPresetSetKey(presetBar.set) ? presetBar.set : d.presetBar.set },
     captionScope: raw.captionScope === "selected" ? "selected" : "all",
+    scope: NO_SCOPE,
   };
 }
 

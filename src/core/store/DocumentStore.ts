@@ -1,17 +1,18 @@
 // The document store (spec §3.3). Holds the immutable Project, runs commands through Immer
 // `produceWithPatches`, records undo steps, and notifies subscribers with the command's `affects`
 // flags so each one can bail out cheaply.
-import { applyPatches, enablePatches, freeze, produceWithPatches, type Patch } from "immer";
+import { applyPatches, enablePatches, freeze, produceWithPatches, type Draft, type Patch } from "immer";
 import type { Affect, Command, CommandContext } from "../commands/command.js";
 import { UndoStack, type UndoEntry } from "../commands/UndoStack.js";
 import { carryTrackHeights } from "../document/project.js";
+import { findTrack, scopeSequence, sequenceView } from "../document/sequences.js";
 import { hasTransitions, reconcileTransitions } from "../document/transitions.js";
 import { keyFollow } from "../document/keyProps.js";
-import type { Project } from "../document/types.js";
+import type { Project, SequenceId } from "../document/types.js";
 import { assertValid } from "../document/validate.js";
 import { createStore, shallowEqual, type Store } from "./createStore.js";
 import { EMPTY_SELECTION, filterSelection, fromSnapshot, toSnapshot, type Selection, type SelectionSnapshot } from "./selection.js";
-import { setSelection, type SessionStore } from "./sessionStore.js";
+import { NO_SCOPE, setSelection, type SessionStore } from "./sessionStore.js";
 
 enablePatches();
 
@@ -52,6 +53,45 @@ interface Transaction {
   selectionAfter: SelectionSnapshot | undefined;
 }
 
+/**
+ * Runs `fn` on a draft whose `tracks` and picture size are those of sequence `scope` (a compound
+ * opened for editing, spec 21.10): every command and every piece of code written for the project's
+ * own timeline then edits the sequence unchanged. The tracks go back to their places afterwards, and
+ * the sequence grows to hold the clips that now end after it (it never shrinks: instances keep their
+ * own windows).
+ */
+export function runInScope(draft: Draft<Project>, scope: SequenceId | null, fn: (target: Draft<Project>) => void): void {
+  const sequence = scope === null ? undefined : draft.sequences[scope];
+  if (!sequence) {
+    fn(draft);
+    return;
+  }
+  const outer = { tracks: draft.tracks, width: draft.settings.width, height: draft.settings.height, background: draft.settings.background };
+  draft.tracks = sequence.tracks;
+  draft.settings.width = sequence.size.w;
+  draft.settings.height = sequence.size.h;
+  draft.settings.background = sequence.background ?? { r: 0, g: 0, b: 0, a: 0 };
+  try {
+    fn(draft);
+    // A sequence has no caption track (spec 21.10): refuse the edit instead of saving a document the validator rejects.
+    if (draft.tracks.some((track) => track.kind === "caption")) throw new Error("Captions are not available inside a compound: close it first");
+    sequence.tracks = draft.tracks;
+    let end = sequence.duration;
+    for (const track of sequence.tracks) {
+      for (const id of track.clipIds) {
+        const clip = draft.clips[id];
+        if (clip && clip.start + clip.duration > end) end = clip.start + clip.duration;
+      }
+    }
+    sequence.duration = end;
+  } finally {
+    draft.tracks = outer.tracks;
+    draft.settings.width = outer.width;
+    draft.settings.height = outer.height;
+    draft.settings.background = outer.background;
+  }
+}
+
 function intersects(a: ReadonlySet<Affect>, b: ReadonlySet<Affect>): boolean {
   for (const flag of b) if (a.has(flag)) return true;
   return false;
@@ -69,6 +109,7 @@ export class DocumentStore {
   private readonly validate: boolean;
   private readonly now: () => number;
   private transactionState: Transaction | null = null;
+  private muteScope = false;
   private snapshotCache: { selection: Selection; snapshot: SelectionSnapshot } | null = null;
 
   constructor(project: Project, options: DocumentStoreOptions) {
@@ -79,10 +120,35 @@ export class DocumentStore {
     this.validate = options.validate ?? import.meta.env.DEV;
     this.now = options.now ?? (() => performance.now());
     this.history = createStore<HistoryState>(this.historyState());
+    // Opening or closing a compound swaps what every view shows: tell them all, as a load does.
+    this.session.state.subscribe((next, prev) => {
+      if (next.scope === prev.scope || this.muteScope) return;
+      this.notifyWith(this.viewOf(this.state, prev.scope.path), this.viewOf(this.state, next.scope.path), ALL_AFFECTS);
+    });
   }
 
   // Arrow properties: safe to pass around unbound (useSyncExternalStore, destructuring).
-  readonly getState = (): Project => this.state;
+  /**
+   * The document as the editor shows it: the project, or while a compound is open for editing the
+   * sequence seen as a project (its tracks, size and background). Everything that draws, plays or
+   * edits reads this; saving and exporting read `getRoot`.
+   */
+  readonly getState = (): Project => this.viewOf(this.state, this.session.state.getState().scope.path);
+
+  /** The real document (what is saved and exported), whatever compound is open. */
+  readonly getRoot = (): Project => this.state;
+
+  /** The id of the sequence the editor is inside (null: the project; also when the open one is gone). */
+  readonly scopeId = (): SequenceId | null => this.scopeIdOf(this.state, this.session.state.getState().scope.path);
+
+  private scopeIdOf(root: Project, path: readonly SequenceId[]): SequenceId | null {
+    return scopeSequence(root, path)?.id ?? null;
+  }
+
+  private viewOf(root: Project, path: readonly SequenceId[]): Project {
+    const sequence = scopeSequence(root, path);
+    return sequence ? sequenceView(root, sequence) : root;
+  }
 
   /** `affects` limits calls to changes carrying at least one of these flags. */
   readonly subscribe = (listener: DocumentListener, options: { affects?: readonly Affect[] } = {}): (() => void) => {
@@ -96,13 +162,17 @@ export class DocumentStore {
   dispatch(command: Command, options: DispatchOptions = {}): void {
     const ctx = this.context();
     const base = this.state;
+    const scope = this.scopeIdOf(base, this.session.state.getState().scope.path);
+    const baseView = scope === null ? base : this.viewOf(base, [scope]);
     // Transitions stay valid after any edit of the clips, in the command's own undo step (Batch 36).
-    const reconcile = hasTransitions(base) && (command.affects.includes("clips") || command.affects.includes("timeline"));
-    const [next, patches, inversePatches] = produceWithPatches(base, (draft) => {
-      command.run(draft, ctx);
-      // A field edit on a keyed look property becomes a key at the playhead (Batch 61, keyProps.ts).
-      if (!command.id.startsWith("keyframe.")) keyFollow(base, draft, ctx.playhead, command.keyShown ? new Set(command.keyShown) : undefined);
-      if (reconcile) reconcileTransitions(base, draft, this.newId);
+    const reconcile = hasTransitions(baseView) && (command.affects.includes("clips") || command.affects.includes("timeline"));
+    const [next, patches, inversePatches] = produceWithPatches(base, (root) => {
+      runInScope(root, scope, (draft) => {
+        command.run(draft, ctx);
+        // A field edit on a keyed look property becomes a key at the playhead (Batch 61, keyProps.ts).
+        if (!command.id.startsWith("keyframe.")) keyFollow(baseView, draft, ctx.playhead, command.keyShown ? new Set(command.keyShown) : undefined);
+        if (reconcile) reconcileTransitions(baseView, draft, this.newId);
+      });
     });
     const tx = this.transactionState;
     if (tx) {
@@ -230,7 +300,8 @@ export class DocumentStore {
    */
   amend(command: Command): void {
     this.assertNoTransaction("amend");
-    const [next, patches] = produceWithPatches(this.state, (draft) => command.run(draft, this.context()));
+    const scope = this.scopeId();
+    const [next, patches] = produceWithPatches(this.state, (root) => runInScope(root, scope, (draft) => command.run(draft, this.context())));
     if (patches.length === 0) return;
     if (this.validate) assertValid(next, `after "${command.label}" (${command.id}, no undo step)`);
     const prev = this.state;
@@ -246,11 +317,18 @@ export class DocumentStore {
     this.assertNoTransaction("load");
     if (this.validate) assertValid(project, "on load");
     const prev = this.state;
+    const prevPath = this.session.state.getState().scope.path;
     this.state = freeze(project, true);
     this.undoStack.clear();
     setSelection(this.session, EMPTY_SELECTION);
+    this.muteScope = true;
+    try {
+      this.session.state.set((current) => (current.scope === NO_SCOPE ? current : { ...current, scope: NO_SCOPE }));
+    } finally {
+      this.muteScope = false;
+    }
     this.history.set((current) => this.historyState(current));
-    this.notify(prev, ALL_AFFECTS);
+    this.notifyWith(this.viewOf(prev, prevPath), this.state, ALL_AFFECTS);
   }
 
   private context(): CommandContext {
@@ -275,7 +353,7 @@ export class DocumentStore {
     if (this.validate) assertValid(next, context);
     const prev = this.state;
     this.state = next;
-    this.applySelection(filterSelection(selection, (id) => Object.hasOwn(next.clips, id), (id) => next.tracks.some((track) => track.id === id)));
+    this.applySelection(filterSelection(selection, (id) => Object.hasOwn(next.clips, id), (id) => findTrack(next, id) !== undefined));
     this.history.set((current) => this.historyState(current));
     this.notify(prev, entry.affects);
   }
@@ -295,9 +373,14 @@ export class DocumentStore {
   }
 
   private notify(prev: Project, affects: ReadonlySet<Affect>): void {
+    const path = this.session.state.getState().scope.path;
+    this.notifyWith(this.viewOf(prev, path), this.viewOf(this.state, path), affects);
+  }
+
+  private notifyWith(prev: Project, state: Project, affects: ReadonlySet<Affect>): void {
     for (const { listener, affects: filter } of this.listeners) {
       if (filter && !intersects(filter, affects)) continue;
-      listener(this.state, prev, affects);
+      listener(state, prev, affects);
     }
   }
 

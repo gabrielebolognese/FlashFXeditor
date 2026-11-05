@@ -15,7 +15,7 @@ import { audibleTracks } from "../../audio/AudioMixer.js";
 import { formatHexColor, isRgba } from "../../core/document/color.js";
 import { fillAsStops } from "../../core/document/fill.js";
 import { formatSpeed, usPerFrame, type TimecodeMode } from "../../core/document/time.js";
-import { isFreeze, isMediaClip, type Clip, type Frame, type Marker, type MediaClip, type Project, type SolidClip, type Track, type TrackId } from "../../core/document/types.js";
+import { isFreeze, isMediaClip, type Clip, type CompoundClip, type Frame, type Marker, type MediaClip, type Project, type SolidClip, type Track, type TrackId } from "../../core/document/types.js";
 import type { Selection } from "../../core/store/selection.js";
 import type { TransitionSelection } from "../../core/store/sessionStore.js";
 import type { Theme } from "../../core/theme/theme.js";
@@ -25,6 +25,7 @@ import { isPlayable } from "../../text/anim.js";
 import { cueLine, hasOwnStyle } from "../../text/captions.js";
 import { firstLine } from "../../text/style.js";
 import { clipsInRange, contentEnd, linkOffset, neighbors } from "../model/queries.js";
+import { drawCompoundPoster, type PosterMedia } from "./compoundPoster.js";
 import { clipLod, clipSpan, devicePx, LOD_THUMBS_PX, type ClipLod } from "./clipLayout.js";
 import { columnPeaks, peaksLevel, planFilmstrip, tileThumb, wantPeaks, wantSheet, type AnimationStripView, type ClipVisuals, type WantsCollector } from "./clipVisuals.js";
 import type { HeaderToggle, Rect, Row, TimelineGeometry } from "./geometry.js";
@@ -70,7 +71,7 @@ export interface TimelineFonts {
 }
 
 /** What drawing a clip needs (the overlay's trim preview draws clips too, from what is loaded). */
-export type ClipScene = Pick<ContentScene, "ctx" | "dpr" | "geometry" | "theme" | "selection" | "text" | "visuals" | "wants" | "fonts" | "lanes"> & { project: Pick<Project, "settings"> };
+export type ClipScene = Pick<ContentScene, "ctx" | "dpr" | "geometry" | "theme" | "selection" | "text" | "visuals" | "wants" | "fonts" | "lanes"> & { project: Project };
 
 export interface ContentStats {
   /** Clips drawn in this pass (the visible ones). */
@@ -325,7 +326,53 @@ function drawBody(scene: ClipScene, clip: Clip, x: number, y: number, width: num
     case "solid":
       if (lod === "full") drawSwatch(scene, clip, left, y, height);
       return;
+    case "compound":
+      if (width >= LOD_THUMBS_PX) drawCompoundTiles(scene, clip, y, height, left, right);
+      return;
   }
+}
+
+/**
+ * A compound clip's poster (spec §21.10, Batch 63): the sequence sketched at the inner frame under the
+ * clip's left edge, tiled across the clip like a filmstrip (each tile the inner frame at its left
+ * edge). The media pictures come from the thumbnail stores the clip bodies already use.
+ */
+function drawCompoundTiles(scene: ClipScene, clip: CompoundClip, y: number, height: number, left: number, right: number): void {
+  const { ctx, dpr, geometry, theme } = scene;
+  const sequence = scene.project.sequences[clip.sequenceId];
+  if (!sequence || sequence.size.h <= 0 || height <= 0) return;
+  const tileWidth = Math.max(1, (height * sequence.size.w) / sequence.size.h);
+  const clipX = geometry.frameToX(clip.start);
+  const first = Math.max(0, Math.floor((left - clipX) / tileWidth));
+  const end = Math.ceil((right - clipX) / tileWidth);
+  const colors = { backdrop: theme.color.surface3, placeholder: theme.color.surface5 };
+  const media = (mediaId: string): PosterMedia | null => posterMedia(scene, mediaId);
+  for (let tile = first; tile < Math.min(end, first + 64); tile++) {
+    const x0 = snap(clipX + tile * tileWidth, dpr);
+    const x1 = snap(clipX + (tile + 1) * tileWidth, dpr);
+    const frame = clip.offset + Math.min(clip.duration - 1, Math.max(0, Math.floor((x0 - clipX) / geometry.pxPerFrame)));
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(Math.max(x0, left), y, Math.min(x1, right) - Math.max(x0, left), height);
+    ctx.clip();
+    drawCompoundPoster(ctx, scene.project, sequence, frame, { x: x0, y, w: x1 - x0, h: height }, media, colors);
+    ctx.restore();
+  }
+}
+
+/** The picture of a media for a poster: an image's poster or the first cell of a video's lowest thumbnail level. */
+function posterMedia(scene: ClipScene, mediaId: string): PosterMedia | null {
+  const visuals = scene.visuals;
+  if (!visuals) return null;
+  const poster = visuals.poster(mediaId);
+  if (poster && poster.width > 0 && poster.height > 0) return { image: poster, sx: 0, sy: 0, sw: poster.width, sh: poster.height };
+  const layout = visuals.thumbLayout(mediaId);
+  if (!layout) return null;
+  for (const level of STAND_INS[0]) {
+    const sheet = visuals.sheet(mediaId, level, 0);
+    if (sheet) return { image: sheet, sx: 0, sy: 0, sw: layout.width, sh: layout.height };
+  }
+  return null;
 }
 
 /**

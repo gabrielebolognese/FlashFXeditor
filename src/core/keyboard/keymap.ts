@@ -77,6 +77,9 @@ export const DEFAULT_KEYMAP: readonly KeyBinding[] = [
   { id: "edit.duplicate", keys: ["Mod+D"], scopes: TL_PV },
   { id: "edit.defaultTransition", keys: ["Mod+Shift+D"], scopes: TL },
   { id: "clip.makeCompound", keys: ["Mod+Alt+G"], scopes: TL },
+  // Editing inside a compound (Batch 63). Enter opens a selected compound through text.edit (the chord is taken); Esc closes through app.cancel.
+  { id: "compound.open", keys: ["Mod+Alt+O"], scopes: TL },
+  { id: "compound.close", keys: ["Mod+Alt+U"], scopes: TL_PV },
   { id: "edit.group", keys: ["Mod+G"], scopes: TL },
   { id: "edit.ungroup", keys: ["Mod+Shift+G"], scopes: TL },
   { id: "edit.toggleLink", keys: ["Mod+L"], scopes: TL },

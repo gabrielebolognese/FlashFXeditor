@@ -17,6 +17,7 @@ import { nudgeLayers } from "../timeline/edit/transform.js";
 import { closeExportTab } from "./exportState.js";
 import { exitFullscreen } from "./fullscreen.js";
 import { canvasInput, canvasMenu, textEditor } from "./previewController.js";
+import { closeCompound } from "./compoundController.js";
 import { actions, documentStore, focusScopes, sessionStore } from "./services.js";
 import { cancelRemoveSilence } from "./silenceController.js";
 import { timelineView } from "./timelineController.js";
@@ -92,7 +93,7 @@ export function installCanvasController(): () => void {
     // editing (§7.7), else leaves crop mode (Batch 26), else closes Remove silence's row (Batch 38),
     // else the fullscreen preview (§7.8), else the Export tab (§16: back to the properties); declined
     // when none, so popovers and the browser get it.
-    actions.register("app.cancel", () => timelineView.cancelGesture() || canvasInput.cancel() || textEditor.end(true) || canvasInput.exitCropMode() || cancelRemoveSilence() || exitFullscreen() || closeExportTab()),
+    actions.register("app.cancel", () => timelineView.cancelGesture() || canvasInput.cancel() || textEditor.end(true) || canvasInput.exitCropMode() || cancelRemoveSilence() || exitFullscreen() || closeExportTab() || closeCompound(sessionStore)),
   ];
   return () => {
     for (const stop of stops) stop();

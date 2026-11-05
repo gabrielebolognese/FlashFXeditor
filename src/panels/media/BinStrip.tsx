@@ -1,4 +1,4 @@
-import { AudioLines, Film, Folder, Image, Library, type LucideIcon } from "lucide-react";
+import { AudioLines, Film, Folder, Image, Layers, Library, type LucideIcon } from "lucide-react";
 import { useEffect, useRef, type KeyboardEvent, type MouseEvent } from "react";
 import { binMenu, closeBinMenu, finishBinRename, mediaPanel, openBinMenu } from "../../app/mediaController.js";
 import { actions, documentStore, sessionStore } from "../../app/services.js";
@@ -20,11 +20,13 @@ const VIRTUAL: readonly { id: VirtualBin; label: string; icon: LucideIcon; toolt
   { id: "video", label: "Video", icon: Film, tooltip: "The videos, whatever their bin" },
   { id: "audio", label: "Audio", icon: AudioLines, tooltip: "The audio files, whatever their bin" },
   { id: "image", label: "Images", icon: Image, tooltip: "The images, whatever their bin" },
+  { id: "compounds", label: "Compounds", icon: Layers, tooltip: "The sequences of the project: drag one to the timeline to add an instance" },
 ];
 
 const selectBins = (project: Project) => project.bins;
 /** Counts as a string: media edits that do not change them do not re-render the strip. */
 const selectCounts = (project: Project) => [...binCounts(Object.values(project.media))].map(([id, n]) => `${id}:${n}`).join(",");
+const selectSequenceCount = (project: Project) => Object.keys(project.sequences).length;
 const keep = (event: MouseEvent) => event.preventDefault();
 const MEDIA_CONTEXT = { scope: "media", phase: "down", repeat: false } as const;
 
@@ -112,6 +114,7 @@ function BinRename({ bin }: { bin: Bin }) {
 export function BinStrip() {
   const bins = useStoreSelector(documentStore, selectBins);
   const countKey = useStoreSelector(documentStore, selectCounts);
+  const sequenceCount = useStoreSelector(documentStore, selectSequenceCount);
   const shown = useStoreSelector(sessionStore.state, (state) => state.mediaPanel.bin);
   const renaming = useStoreSelector(mediaPanel, (state) => state.renamingBin);
   const counts = new Map(countKey ? countKey.split(",").map((entry) => [entry.slice(0, entry.lastIndexOf(":")), Number(entry.slice(entry.lastIndexOf(":") + 1))] as const) : []);
@@ -119,7 +122,7 @@ export function BinStrip() {
   return (
     <nav className={styles.bins} aria-label="Bins" data-control="">
       {VIRTUAL.map((bin) => (
-        <BinRow key={bin.id} id={bin.id} label={bin.label} icon={bin.icon} tooltip={bin.tooltip} count={counts.get(bin.id) ?? 0} active={active === bin.id} drop={false} />
+        <BinRow key={bin.id} id={bin.id} label={bin.label} icon={bin.icon} tooltip={bin.tooltip} count={bin.id === "compounds" ? sequenceCount : (counts.get(bin.id) ?? 0)} active={active === bin.id} drop={false} />
       ))}
       {bins.length > 0 && <div className={styles.binSeparator} role="separator" />}
       {bins.map((bin) => (renaming === bin.id ? <BinRename key={bin.id} bin={bin} /> : <BinRow key={bin.id} id={bin.id} label={bin.name} icon={Folder} count={counts.get(bin.id) ?? 0} active={active === bin.id} drop />))}

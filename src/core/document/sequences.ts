@@ -1,6 +1,6 @@
 // Nested sequences (spec §21.10, Batch 62): the graph of compound clips (a sequence holds compound
 // clips that show other sequences), its cycle and depth rules, and lookups of a clip's scope. Pure.
-import { MAX_COMPOUND_DEPTH, type Clip, type ClipId, type CompoundClip, type Project, type Sequence, type SequenceId, type Track, type TrackId } from "./types.js";
+import { MAX_COMPOUND_DEPTH, type Clip, type ClipId, type CompoundClip, type Project, type RGBA, type Sequence, type SequenceId, type Track, type TrackId } from "./types.js";
 
 /** The compound clips on `tracks`, in track order. */
 function compoundsOn(project: Project, tracks: readonly Track[]): CompoundClip[] {
@@ -126,4 +126,32 @@ export function isInnerClip(project: Project, clip: Clip): boolean {
 /** The compound clips that show `sequenceId` (the project's and the sequences'), the instances. */
 export function instancesOf(project: Project, sequenceId: SequenceId): CompoundClip[] {
   return Object.values(project.clips).filter((clip): clip is CompoundClip => clip.kind === "compound" && clip.sequenceId === sequenceId);
+}
+
+const TRANSPARENT: RGBA = { r: 0, g: 0, b: 0, a: 0 };
+const views = new WeakMap<Sequence, { doc: Project; view: Project }>();
+
+/**
+ * The document seen from inside a sequence: its tracks, size and background (transparent when it has
+ * none) in place of the project's. Cached per sequence and document, so an unrelated edit of the
+ * project costs one object and an edit inside the sequence keeps `tracks` and `settings` stable.
+ */
+export function sequenceView(doc: Project, sequence: Sequence): Project {
+  const known = views.get(sequence);
+  if (known?.doc === doc) return known.view;
+  const view: Project = { ...doc, tracks: sequence.tracks, settings: { ...doc.settings, width: sequence.size.w, height: sequence.size.h, background: sequence.background ?? TRANSPARENT } };
+  views.set(sequence, { doc, view });
+  return view;
+}
+
+/** The sequence `project` is a view of (see `sequenceView`: its tracks are the sequence's), or null for the real project. */
+export function hostSequenceOf(project: Project): SequenceId | null {
+  for (const sequence of Object.values(project.sequences)) if (sequence.tracks === project.tracks) return sequence.id;
+  return null;
+}
+
+/** The sequence a path of open compounds ends in (null: the project, also when it no longer exists). */
+export function scopeSequence(project: Project, path: readonly SequenceId[]): Sequence | null {
+  const last = path[path.length - 1];
+  return last === undefined ? null : (project.sequences[last] ?? null);
 }

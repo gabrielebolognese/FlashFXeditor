@@ -28,6 +28,7 @@ import { editedTransform } from "../timeline/edit/transform.js";
 import { isClipLocked } from "../timeline/model/queries.js";
 import { patchLiveEdit } from "./liveEdit.js";
 import { playbackEngine, textEditor, textRasters } from "./previewController.js";
+import { openSelectedCompound } from "./compoundController.js";
 import { actions, appSettings, documentStore, fontLibrary, scheduler, sessionStore, themeBridge } from "./services.js";
 
 /** Changes when fonts load or project fonts change: React reads font sources again (missing badges). */
@@ -169,7 +170,7 @@ export function installTextController(): () => void {
     }),
     actions.register("add.title", () => void addTitleClip("title")),
     actions.register("add.subtitle", () => void addTitleClip("subtitle")),
-    actions.register("text.edit", editSelectedText),
+    actions.register("text.edit", () => editSelectedText() || openSelectedCompound()),
     // Esc and Mod+Enter both commit and exit (spec §7.7); declined (the key goes on) when not editing.
     actions.register("text.commit", () => textEditor.end(true)),
     actions.register("text.cancel", () => textEditor.end(true)),

@@ -3,10 +3,10 @@
 // timeline, drops on the preview canvas (and Add to canvas), and files dropped from the OS (imported,
 // then placed: one undo step). Every placement is one command through the §6.8 drop rules, takes the
 // items' source ranges (§12) and selects the new clips. Framework-free.
-import type { MediaId, MediaItem, Project } from "../core/document/types.js";
+import type { MediaId, MediaItem, Project, SequenceId } from "../core/document/types.js";
 import { selectClips, toSnapshot } from "../core/store/selection.js";
 import { setSourceRange, type SourceRange } from "../core/store/sessionStore.js";
-import { applyMediaDrop, commitPlan, dropLabel, planAtPlayhead, planCanvasDrop, stageDrop, type DropPlan, type MediaDropItem, type MediaDropRequest } from "../timeline/edit/dropMedia.js";
+import { applyMediaDrop, commitPlan, dropLabel, planAtPlayhead, planCanvasDrop, requestItems, stageDrop, type DropItem, type DropPlan, type MediaDropItem, type MediaDropRequest } from "../timeline/edit/dropMedia.js";
 import type { MoveMode, MoveResult } from "../timeline/edit/move.js";
 import { showToast } from "../ui/toasts.js";
 import { filesFromTransfer, importMediaFiles, selectedMedia } from "./mediaController.js";
@@ -24,6 +24,33 @@ export function itemsOf(project: Project, ids: readonly MediaId[]): MediaDropIte
     if (media) items.push({ media, range: ranges[id] ?? null });
   }
   return items;
+}
+
+/** The drop item of sequence `id` (an instance of its whole length), or null when it cannot be placed here (missing, or it would contain itself). */
+export function compoundItem(project: Project, id: SequenceId): DropItem | null {
+  return requestItems(project, { items: [{ compound: { sequenceId: id, name: "", duration: 1 } }] })[0] ?? null;
+}
+
+/** Double-click on a Compounds bin card: an instance at the playhead on the first targeted track (the playhead then moves to its end). */
+export function placeCompoundAtPlayhead(id: SequenceId, mode: MoveMode = "overwrite"): void {
+  const project = documentStore.getState();
+  const item = compoundItem(project, id);
+  if (!item) {
+    showToast({ tone: "warning", message: "Can't add the compound", detail: "A compound cannot contain itself." });
+    return;
+  }
+  const plan = planAtPlayhead(project, [item], sessionStore.state.getState().playhead, newId);
+  if (plan.clips.length === 0) return;
+  if (commit(commitPlan(project, plan, mode, "Add compound clip", newId), plan)) movePlayhead(plan.end);
+}
+
+/** A Compounds bin card dropped on the preview canvas: an instance at the playhead on the topmost free track. */
+export function dropCompoundOnCanvas(id: SequenceId, point: { x: number; y: number } | null): void {
+  const project = documentStore.getState();
+  const item = compoundItem(project, id);
+  if (!item) return;
+  const plan = planCanvasDrop(project, [item], sessionStore.state.getState().playhead, point, newId);
+  if (plan.clips.length > 0) commit(commitPlan(project, plan, "overwrite", "Add compound clip", newId), plan);
 }
 
 /** Dispatches a placement (one undo step), selecting its clips; a refusal gets a toast. True when it landed. */

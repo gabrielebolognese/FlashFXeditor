@@ -7,6 +7,7 @@ import { timelineDev, timelineView } from "../app/timelineController.js";
 import { useStoreSelector } from "../core/store/useStoreSelector.js";
 import { ClipRenameField } from "../timeline/menus/ClipRenameField.js";
 import { MarkerPopover } from "../timeline/menus/MarkerPopover.js";
+import { CompoundBreadcrumb } from "./CompoundBreadcrumb.js";
 import { TimelineContextMenu } from "../timeline/menus/TimelineContextMenu.js";
 import { TrackRenameField } from "../timeline/menus/TrackRenameField.js";
 import { TimelineToolbar } from "../timeline/toolbar/TimelineToolbar.js";
@@ -63,6 +64,7 @@ export function TimelinePanel() {
   }, []);
   return (
     <PanelFrame id="timeline" header={<TimelineToolbar />}>
+      <CompoundBreadcrumb />
       <div className={wellStyles.well}>
         <CanvasHost panel="timeline">
           <div ref={canvasRef} className={styles.canvas} />

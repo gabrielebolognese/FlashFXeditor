@@ -34,6 +34,7 @@ import { moveMarker, openMarkerEditor } from "./markerController.js";
 import { clipVisuals, selectAllMedia } from "./mediaController.js";
 import { moveTrackTo, startTrackRename, toggleTrack } from "./trackController.js";
 import { generateCutTimeline, generateTestClips } from "./timelineDev.js";
+import { openCompound } from "./compoundController.js";
 import { openTransition, setFade, setTransitionSides } from "./transitionController.js";
 import { actions, documentStore, fontLibrary, idleQueue, layoutStore, scheduler, sessionStore, themeBridge } from "./services.js";
 
@@ -154,6 +155,7 @@ export const timelineView = new TimelineView({
   onSetFade: (clipId, edge, frames) => setFade(clipId, edge, frames),
   onTransitionEdge: (cut, before, after) => setTransitionSides(cut, before, after),
   onOpenTransition: (cut) => openTransition(cut),
+  onOpenCompound: (clipId) => void openCompound(documentStore, sessionStore, clipId),
   onAddKeyframe: (clipId, section, frame) => {
     const command = addKeyAt(documentStore.getState(), clipId, section, frame);
     if (command) documentStore.dispatch(command);

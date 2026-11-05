@@ -194,6 +194,8 @@ The default keys (spec §18). Every key can be changed in Settings > Shortcuts; 
 | Group | `Ctrl+G` | `⌘G` | Timeline |
 | Ungroup | `Ctrl+Shift+G` | `⌘⇧G` | Timeline |
 | Make compound clip | `Ctrl+Alt+G` | `⌘⌥G` | Timeline |
+| Open compound clip | `Ctrl+Alt+O` | `⌘⌥O` | Timeline |
+| Close compound clip | `Ctrl+Alt+U` | `⌘⌥U` | Timeline, Preview |
 | Link / Unlink | `Ctrl+L` | `⌘L` | Timeline |
 | Nudge clips 1 frame left | `Alt+Left` | `⌥Left` | Timeline |
 | Nudge clips 1 frame right | `Alt+Right` | `⌥Right` | Timeline |

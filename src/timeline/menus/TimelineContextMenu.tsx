@@ -64,6 +64,7 @@ function compoundEntries(project: Project, clipId: ClipId, ids: ClipId[]): Conte
     { kind: "item", id: "clip.makeCompound", label: "Make compound clip", commandId: "clip.makeCompound", disabled: make !== null, hint: make ?? undefined },
     ...(compound
       ? ([
+          { kind: "item", id: "compound.open", label: "Open compound", commandId: "compound.open" },
           { kind: "item", id: "clip.breakApart", label: "Break apart", commandId: "clip.breakApart", disabled: apart !== null, hint: apart ?? undefined },
           { kind: "item", id: "clip.makeUnique", label: "Make unique", commandId: "clip.makeUnique", disabled: unique !== null, hint: unique ?? undefined },
         ] satisfies ContextMenuEntry[])

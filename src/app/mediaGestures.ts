@@ -12,7 +12,7 @@
 import type { MediaId } from "../core/document/types.js";
 import { detectPlatform } from "../core/keyboard/keys.js";
 import { HoverScrub } from "../panels/media/hoverScrub.js";
-import { isTextDrop, type DropItem } from "../timeline/edit/dropMedia.js";
+import { isCompoundDrop, isTextDrop, type DropItem } from "../timeline/edit/dropMedia.js";
 import type { DragModifiers } from "../timeline/view/gestures/moveClips.js";
 import { dropMediaOnCanvas, dropMediaOnTimeline, itemsOf, placeAtPlayhead, setMediaRange } from "./dropController.js";
 import styles from "./MediaGestures.module.css";
@@ -120,7 +120,7 @@ export function draggingMedia(): boolean {
   return gesture?.kind === "drag";
 }
 
-const itemName = (item: DropItem) => (isTextDrop(item) ? item.text.name : item.media.name);
+const itemName = (item: DropItem) => (isTextDrop(item) ? item.text.name : isCompoundDrop(item) ? item.compound.name : item.media.name);
 
 function start(press: Press, event: PointerEvent): void {
   const items = press.source.items();

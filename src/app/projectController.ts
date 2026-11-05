@@ -158,7 +158,7 @@ async function captureRecentThumbnail(session: ProjectSession, timeoutMs?: numbe
 let thumbnailOf: { project: unknown; playhead: number } | null = null;
 
 function captureIfChanged(session: ProjectSession): void {
-  const shown = { project: documentStore.getState(), playhead: sessionStore.state.getState().playhead };
+  const shown = { project: documentStore.getRoot(), playhead: sessionStore.state.getState().playhead };
   if (thumbnailOf && thumbnailOf.project === shown.project && thumbnailOf.playhead === shown.playhead) return;
   thumbnailOf = shown;
   void captureRecentThumbnail(session);

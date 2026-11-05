@@ -384,7 +384,7 @@ export function chosenPreset(settings: AppSettings = appSettings.getState()): Ex
 export const isBuiltIn = (id: string): boolean => BUILT_IN_PRESETS.some((p) => p.id === id);
 
 /** The settings the tab's fields show: a built-in preset's as Custom would hold them for this project. */
-export function editableSettings(settings: AppSettings = appSettings.getState(), project: Project = documentStore.getState()): ExportSettings {
+export function editableSettings(settings: AppSettings = appSettings.getState(), project: Project = documentStore.getRoot()): ExportSettings {
   const preset = chosenPreset(settings);
   return isBuiltIn(preset.id) ? customFrom(preset.settings, project) : preset.settings;
 }
@@ -430,7 +430,7 @@ export function deleteExportPreset(id?: string): void {
 }
 
 /** The in/out range when the tab exports it and one is marked, else null (the whole timeline). */
-export function exportRange(project: Project = documentStore.getState()): FrameRange | null {
+export function exportRange(project: Project = documentStore.getRoot()): FrameRange | null {
   const state = sessionStore.state.getState();
   return state.exportRange === "inOut" ? markedRange(state, contentEnd(project)) : null;
 }
@@ -498,7 +498,7 @@ export async function enqueueExport(request: ExportRequest): Promise<string | nu
     refuseReadOnly("export into the project's folder");
     return null;
   }
-  const project = documentStore.getState();
+  const project = documentStore.getRoot();
   const range = request.range ?? { start: 0, end: contentEnd(project) };
   if (range.end <= range.start) {
     showToast({ tone: "info", message: "Nothing to export", detail: "Add clips to the timeline first." });
@@ -585,7 +585,7 @@ function savedToast(name: string, picked: boolean, detail: string, handle: FileS
 
 /** Export frame (spec §16): the composite at the playhead at project size as a PNG (no overlays). */
 export async function exportFrameNow(): Promise<string | null> {
-  const project = documentStore.getState();
+  const project = documentStore.getRoot();
   const frame = sessionStore.state.getState().playhead;
   const name = safeFileName(`${project.name}-frame-${frame}.png`);
   const destination = await extraDestination(name, "png");
@@ -620,7 +620,7 @@ export async function copyFrame(): Promise<boolean> {
 
 /** Export captions (spec §16): the cues of the range (the tab's) as SRT or VTT. */
 export async function exportCaptions(format: SubtitleFormat = appSettings.getState().exportCaptionFormat): Promise<string | null> {
-  const project = documentStore.getState();
+  const project = documentStore.getRoot();
   const range = exportRange(project) ?? undefined;
   const cues = exportCues(project, range);
   if (cues.length === 0) {
