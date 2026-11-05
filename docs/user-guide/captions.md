@@ -32,6 +32,9 @@ Captions are the subtitles that run along with the speech of your video. They li
 - [Move and size captions in the preview](#move-and-size-captions-in-the-preview)
 - [Type a cue's text in the preview](#type-a-cues-text-in-the-preview)
 - [Highlight the spoken word](#highlight-the-spoken-word)
+- [Mark emphasis words](#mark-emphasis-words)
+- [Animate cues in and out](#animate-cues-in-and-out)
+- [Import word timings](#import-word-timings)
 - [Give captions the look of a preset](#give-captions-the-look-of-a-preset)
 - [Copy a cue's style to other cues](#copy-a-cues-style-to-other-cues)
 - [Export an SRT or VTT file](#export-an-srt-or-vtt-file)
@@ -418,6 +421,8 @@ Choose the look in the **Highlight** row of **Caption style**:
 | **Box** | **A box in the highlight color behind the spoken word** | Keeps its text color, on a box in the **Active** color |
 | **Scale** | **The spoken word grows** | Grows to 1.15 times its size |
 | **Both** | **The spoken word in the highlight color, grown** | Takes the **Active** color and grows to 1.15 times its size |
+| **Progressive** | **Each word turns to the highlight color as it starts and stays** | Takes the **Active** color when it starts and keeps it |
+| **Reveal** | **Words appear as they start; upcoming words are hidden** | Appears when it starts, in the **Active** color; words not yet spoken are hidden |
 
 - With **Color**, **Box**, **Scale** or **Both**, the other words take the **Other words** color. The defaults are a warm yellow for **Active** and white for **Other words**.
 - A cue with its own **Highlight**, **Active** or **Other words** highlights its words its own way, in the preview and in the export; the other cues use the track's. Set them with **Selected** in the **Edit** row, or with a preset. See [Give single cues their own style](#give-single-cues-their-own-style).
@@ -426,6 +431,29 @@ Choose the look in the **Highlight** row of **Caption style**:
 - Word timings move with their cue. A split shares them between the two cues, and a trim keeps them: trim the start back out and the words are there again.
 
 > **Note:** The highlight box is a pill: its ends are rounded by half its height.
+
+To put a box behind every word instead of only the spoken one, set the background **Mode** to **Word** (tooltip: **A box behind each word (the spoken word's takes the highlight color)**). Combine it with **Box** in the **Highlight** row so the spoken word's box takes the **Active** color.
+
+## Mark emphasis words
+
+Select a cue in the **Captions** tab. A row of word chips shows under it. Click a chip to emphasize that word (tooltip **Click to emphasize**). Click it again to remove the emphasis (**Emphasized: click to remove**). Undo reverts it.
+
+Emphasized words show in the **Emphasis** color from the cue's first frame. Set the color in the **Emphasis** row of **Caption style**. Until you set it, emphasized words use the **Active** color.
+
+## Animate cues in and out
+
+In **Caption style**, **Animate in** and **Animate out** each take one of **None**, **Fade**, **Pop** (grows from smaller), **Up** (slides up) or **Down** (slides down). The **In frames** and **Out frames** fields set the length, from 0 to 30 frames. A new animation starts at 4 frames. An animation never takes more than half the cue. Give one cue its own animation with **Selected** in the **Edit** row.
+
+## Import word timings
+
+Use this to bring in word timings from another tool, such as a reels transcript.
+
+1. In the **Captions** tab, click **Import words**, or the **Import words** icon in the header.
+2. Pick a JSON file. It can hold a list of `{word, startMs, endMs}`, an object with `words`, or a Whisper result with `segments`. A file can also list its own cues and emphasis words.
+3. If the file has no cue list, the **Import words** dialog opens. Set **Max words per cue**, **Max characters per line**, **Max lines**, **Break at pauses over** and **Break cues at sentence ends**, then click **Review N cues**.
+4. Check the cues in the review and confirm. The import replaces the cues in the span in one undo step, **Import words**.
+
+If the file cannot be read, a message says **Couldn't import the words**.
 
 ## Give captions the look of a preset
 
@@ -543,4 +571,4 @@ These parts are available in a later version:
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 53, 2026-10-19</sub>
+<sub>Last updated: Batch 59, 2026-11-07</sub>

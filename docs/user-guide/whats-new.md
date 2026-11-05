@@ -2,6 +2,11 @@
 
 Shorts Editor grows in steps called batches. This page lists what each batch added that you can see or use, newest first. Follow the links for the full instructions.
 
+> **Video placeholder: What's new in Batch 59**
+> - File: `videos/whats-new/batch-59.mp4` (not recorded yet)
+> - Length: about 40 seconds
+> - Shows: select a caption track with word timings; in **Caption style** click **Progressive**, then **Reveal**; in the **Captions** tab select a cue and click a word chip to emphasize it; set **Animate in** to **Pop**; click **Import words** and pick a JSON file; click **Review N cues**; play the result.
+
 > **Video placeholder: What's new in Batch 58**
 > - File: `videos/whats-new/batch-58.mp4` (not recorded yet)
 > - Length: about 40 seconds
@@ -306,6 +311,13 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 - [Batch 03: Projects, autosave and recovery](#batch-03-projects-autosave-and-recovery)
 - [Batch 02: Undo, redo and frame-exact time](#batch-02-undo-redo-and-frame-exact-time)
 - [Batch 01: The workspace](#batch-01-the-workspace)
+
+## Batch 59: Word-by-word captions
+- New highlight modes **Progressive** and **Reveal**, an **Emphasis** color, and word chips in the **Captions** tab to emphasize single words.
+- Cues can animate in and out (**Fade**, **Pop**, **Up**, **Down**), and the background **Mode** **Word** puts a box behind each word.
+- **Import words** reads word timings from JSON, with optional cue chunks and emphasis words.
+- Four new caption starters in the preset bar.
+- See [Captions](captions.md).
 
 ## Batch 58: Borders, shadows, corners and gradients
 - Solids take **Linear** and **Radial** gradients, and text takes them too.
