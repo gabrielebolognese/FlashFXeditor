@@ -150,6 +150,20 @@ The easing of a keyframe sets how the values travel from that keyframe to the ne
 
 > **Tip:** **Ease out** suits a picture that slides in and lands; **Ease in** suits one that leaves. **Overshoot** gives a playful bounce to stickers and titles.
 
+### More easings, custom curves and springs
+
+The **Ease** list is grouped under headings: **Basic** (the eight easings above), then **Sine**, **Quad**, **Cubic**, **Quart**, **Quint**, **Expo**, **Circ**, **Back**, **Elastic** and **Bounce** (each with **in**, **out** and **in-out**, for example **Back out**), and **Custom** with **Custom bezier** and **Spring**.
+
+- **Custom bezier** follows a curve you cannot edit in the app yet. A project that comes from another tool (CSS, GSAP or After Effects motion) can carry its own curve and spring settings; they play as written and survive when you change the keyframe's value. A **Custom bezier** you pick yourself uses the CSS `ease` curve, and **Spring** uses a default spring.
+- Editing curves and spring settings in the app is available in a later version.
+- Copying keyframes keeps their whole easing, including curves and springs.
+
+### Keyframes on more properties
+
+Projects from other tools can also hold keyframes on a clip's anchor point, crop, size, corner radius, fill, border and shadow, and on a title's size, letter spacing and fill color. Colors fade from one value to the next, or hold when the easing is **Hold**. These keyframes show on a **Look** lane under the clip when **Show clip keyframes** is on. You cannot add them with a stopwatch yet: that comes in a later version.
+
+> **Note:** A keyed title size or letter spacing is not redrawn during playback, and a keyed title color fades by blending two drawings, so it is exact for opaque colors only.
+
 ## Stop animating
 
 Click the gold stopwatch of the section (tooltip **Stop animating transform (removes its keyframes)** or **Stop animating opacity (removes its keyframes)**).
@@ -321,4 +335,4 @@ See [Undo and redo changes](projects-and-saving.md#undo-and-redo-changes).
 - [Keyboard shortcuts](keyboard-shortcuts.md#keyframes)
 - [Troubleshooting](troubleshooting.md#keyframes)
 
-<sub>Last updated: Batch 42, 2026-10-18</sub>
+<sub>Last updated: Batch 60, 2026-11-07</sub>

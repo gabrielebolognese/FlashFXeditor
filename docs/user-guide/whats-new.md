@@ -2,6 +2,11 @@
 
 Shorts Editor grows in steps called batches. This page lists what each batch added that you can see or use, newest first. Follow the links for the full instructions.
 
+> **Video placeholder: What's new in Batch 60**
+> - File: `videos/whats-new/batch-60.mp4` (not recorded yet)
+> - Length: about 25 seconds
+> - Shows: select a clip with two **Transform** keyframes; move the playhead onto the first diamond; click **Ease** and scroll the grouped list; choose **Back out**, then **Bounce out**; press <kbd>Space</kbd> to play each.
+
 > **Video placeholder: What's new in Batch 59**
 > - File: `videos/whats-new/batch-59.mp4` (not recorded yet)
 > - Length: about 40 seconds
@@ -311,6 +316,12 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 - [Batch 03: Projects, autosave and recovery](#batch-03-projects-autosave-and-recovery)
 - [Batch 02: Undo, redo and frame-exact time](#batch-02-undo-redo-and-frame-exact-time)
 - [Batch 01: The workspace](#batch-01-the-workspace)
+
+## Batch 60: More easings and keyframe types
+
+- The **Ease** list now holds 30 more easings in groups (**Sine** to **Bounce**), plus **Custom bezier** and **Spring**. See [Choose the easing](keyframes.md#choose-the-easing).
+- Projects from other tools can keyframe crop, size, corners, fill, border, shadow and title size, spacing and color. They show on a **Look** lane. See [More easings, custom curves and springs](keyframes.md#more-easings-custom-curves-and-springs).
+- Copying and pasting keyframes keeps curves, springs and color values, and skips properties the target clip does not have.
 
 ## Batch 59: Word-by-word captions
 - New highlight modes **Progressive** and **Reveal**, an **Emphasis** color, and word chips in the **Captions** tab to emphasize single words.
