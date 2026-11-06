@@ -1,6 +1,6 @@
 # Effects
 
-Effects change how a layer looks after it is drawn: blur it, make it glow, give it a shadow or an outline, grade its color, key out a green screen or apply a LUT. You stack several effects on one clip, change their order and animate their numbers. You add and tune them in the **Effects** section of **Edit Properties**.
+Effects change how a layer looks after it is drawn: blur it, make it glow, give it a shadow or an outline, grade its color, key out a green screen, apply a LUT, split its colors, pixelate it or glitch it. You stack several effects on one clip, change their order and animate their numbers. You add and tune them in the **Effects** section of **Edit Properties**. An adjustment clip applies effects to everything below it on the timeline.
 
 > **Video placeholder: Effects overview**
 > - File: `videos/effects/overview.mp4` (not recorded yet)
@@ -12,11 +12,18 @@ Effects change how a layer looks after it is drawn: blur it, make it glow, give 
 > - Length: about 60 seconds
 > - Shows: select a green screen clip; on the **Color** row click **Add chroma key**, pick the screen color and raise **Spill**; click **Add color adjust** and drag **Exposure**; click **Add LUT**, click the load button of **File**, pick a `.cube` file and set **Intensity** to `0.5`; type `Green screen` in **Look name** and click **Save these effects as a look**; select another clip and click the **Green screen** chip; press <kbd>Ctrl</kbd>+<kbd>Z</kbd>.
 
+> **Video placeholder: Distortion, glitch and adjustment clips**
+> - File: `videos/effects/stylize-and-adjustment.mp4` (not recorded yet)
+> - Length: about 60 seconds
+> - Shows: select a video clip; on the **Stylize** row click **Add RGB split** and raise **Distance**; click **Add glitch** and raise **Amount**; turn both off; place the playhead over a clip on **V1** and click **Add adjustment** in the timeline toolbar; on the **Color** row click **Add color adjust** and set **Saturation** to `-100`; on the **Masks** section draw an ellipse mask in the preview; drag the adjustment clip's edge shorter; press <kbd>Ctrl</kbd>+<kbd>Z</kbd>.
+
 ## In this page
 - [Add an effect](#add-an-effect)
 - [The five basic effects](#the-five-basic-effects)
 - [Color, stylize and key effects](#color-stylize-and-key-effects)
+- [Stylize effects](#stylize-effects)
 - [Use a LUT](#use-a-lut)
+- [Adjustment clips](#adjustment-clips)
 - [Save and apply looks](#save-and-apply-looks)
 - [Reorder, turn off and remove effects](#reorder-turn-off-and-remove-effects)
 - [Animate an effect](#animate-an-effect)
@@ -27,7 +34,7 @@ Effects change how a layer looks after it is drawn: blur it, make it glow, give 
 ## Add an effect
 1. Select one clip that shows a picture: video, image, text, solid, shape or compound.
 2. In **Edit Properties**, open the **Effects** section, after **Masks**.
-3. On the **Add** row, click **Add Gaussian blur**, **Add directional blur**, **Add glow**, **Add drop shadow** or **Add outline**. On the **Color** row, click **Add color adjust**, **Add vignette**, **Add sharpen**, **Add grain**, **Add chroma key**, **Add luma key** or **Add LUT**.
+3. On the **Add** row, click **Add Gaussian blur**, **Add directional blur**, **Add glow**, **Add drop shadow** or **Add outline**. On the **Color** row, click **Add color adjust**, **Add vignette**, **Add sharpen**, **Add grain**, **Add chroma key**, **Add luma key** or **Add LUT**. On the **Stylize** row, click **Add RGB split**, **Add pixelate**, **Add mirror**, **Add wave**, **Add glitch**, **Add posterize** or **Add invert**.
 4. Set the numbers of the block that appears.
 
 The same commands are in the command palette. Each change is one undo step.
@@ -60,6 +67,20 @@ The same commands are in the command palette. Each change is one undo step.
 
 > **Tip:** Still grain costs nothing while the picture does not change. Animated grain redraws on every frame, so turn **Animated** off when you do not need it.
 
+## Stylize effects
+
+| Effect | Fields |
+| --- | --- |
+| **RGB split** | **Distance** 0 to 500 px (default 8), **Angle** (default 0°). Red shifts toward the angle, blue the opposite way, green stays. |
+| **Pixelate** | **Size** 1 to 500 px (default 16): the width of each square cell. |
+| **Mirror** | **Keep** (**Left**, **Right**, **Top** or **Bottom**), **Center** 0 to 1 (default 0.5): the kept side is reflected onto the other. |
+| **Wave** | **Amplitude** 0 to 500 px (default 20), **Wavelength** 2 to 4000 px (default 200), **Direction** (**Horizontal** or **Vertical**), **Speed** -10 to 10 waves per second (default 1) |
+| **Glitch** | **Amount** 0 to 1 (default 0.5), **Band** 2 to 400 px (default 24), **Shift** 0 to 1000 px (default 60), **Split** 0 to 200 px (default 8), **Rate** 0 to 60 per second (default 12), **Seed** 0 to 9999 |
+| **Posterize** | **Levels** 2 to 64 (default 6): the steps each color channel is rounded to. |
+| **Invert** | **Amount** 0 to 1 (default 1): how much the colors are turned over. |
+
+**Glitch** moves horizontal bands of the picture sideways and splits their red and blue. **Amount** is the share of bands that move. The pattern changes **Rate** times a second; set **Rate** to `0` for a still glitch, and change **Seed** to get another pattern. **Wave** moves on its own; set **Speed** to `0` for a still wave. **Mirror**, **Direction** and **Seed** cannot be animated.
+
 ## Use a LUT
 A LUT is a `.cube` file that applies a color grade, such as one from a LUT pack or from DaVinci Resolve.
 
@@ -73,6 +94,22 @@ The editor copies the file into the project's `luts` folder. Loading a file you 
 In the command palette, **Load LUT (.cube)…** gives a file to all selected clips in one undo step: each clip's first LUT effect uses it, and a clip without one gets a LUT effect.
 
 > **Note:** If a LUT file goes missing from the project, the clip draws without it and nothing warns you.
+
+## Adjustment clips
+An adjustment clip has no picture of its own. Its effects apply to everything below it, on lower tracks, while the clip lasts. Use one to grade or glitch a whole stretch of your edit at once.
+
+1. Move the playhead to where the effect should start.
+2. Click **Add adjustment** in the **Add** group of the timeline toolbar, or run **Add adjustment** from the command palette. The clip is 150 frames long at 30 fps (the same as a new solid) and is selected.
+3. In **Edit Properties**, add effects in the **Effects** section as for any clip.
+4. Drag the clip's edges on the timeline to set where the effects start and end.
+
+The clip goes on the topmost video track if that track is free at the playhead (not locked, hidden or muted), otherwise on a new track above. Only layers on lower tracks are changed.
+
+An adjustment clip has **Opacity**, **Masks** and **Effects** sections. **Opacity** mixes the adjusted picture with the original, and fades and keyframes work as on other clips. A mask limits the change to a shape, for example a grade inside an ellipse; the mask is in frame coordinates. It has no position, scale, parent, blend mode or matte, and it cannot be used as a track matte.
+
+> **Note:** An adjustment with no effect, or with all effects off, changes nothing. Beyond the edge of the frame the adjusted picture is transparent.
+
+> **Tip:** Adjustment clips redraw on every frame, so a long adjustment with several effects can slow playback of a 1080x1920 project. Keep them as short as the part you need.
 
 ## Save and apply looks
 A look is a complete effect stack with its numbers and any LUT it uses. Looks are kept for all your projects, newest first, up to 50.
@@ -103,18 +140,20 @@ Every number and color has a stopwatch and a key diamond, as in [Keyframes](keyf
 - In a transition, the effects of the clip that dominates the frame apply to the whole transition.
 
 ## Limits
-- Effects are available on clips that show a picture; audio clips and nulls have none.
+- Effects are available on clips that show a picture, and on adjustment clips; audio clips and nulls have none.
 - Wide outlines (past about 96 px at the shown size) can show slight scallops.
 - Effects are computed at up to 4096 px on the long side.
 - Blurs are costly at full resolution: a Gaussian blur on a 1080x1920 video can add about 60 to 130 ms of graphics time per exported frame, so exports with wide blurs take longer. Playback in the preview runs at the preview's size.
 - There are no curves, color wheels or scopes.
 - LUTs are read at 8 bits per color channel.
-- **Mode**, **Repeat edges**, **Animated**, **Invert** and the LUT **File** cannot be animated.
+- **Mode**, **Repeat edges**, **Animated**, **Invert** (of **Luma key**), **Keep**, **Direction**, **Seed** and the LUT **File** cannot be animated.
+- There are no built-in glitch looks yet.
 
 ## Related pages
 - [Masks](masks.md)
+- [Tracks](tracks.md)
 - [Blend modes and track mattes](blend-modes-and-track-mattes.md)
 - [Keyframes](keyframes.md)
 - [Editing properties](editing-properties.md)
 
-<sub>Last updated: Batch 75, 2026-11-09</sub>
+<sub>Last updated: Batch 76, 2026-11-09</sub>

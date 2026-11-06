@@ -548,6 +548,7 @@ These commands have no keys by default. Run them from the toolbar, **Edit Proper
 | Action | Windows | macOS |
 | --- | --- | --- |
 | Add a null at the playhead | **Add null** (toolbar or palette) | Same |
+| Add an adjustment clip at the playhead | **Add adjustment** (toolbar or palette) | Same |
 | Clear the parent of the selected clips | **Clear parent** (palette) | Same |
 | Turn a motion path on or off | **Motion path (toggle)** (palette) | Same |
 | Smooth the path | **Smooth motion path** (palette) | Same |

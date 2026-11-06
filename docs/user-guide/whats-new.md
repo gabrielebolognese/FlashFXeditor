@@ -2,6 +2,14 @@
 
 Shorts Editor grows in steps called batches. This page lists what each batch added that you can see or use, newest first. Follow the links for the full instructions.
 
+## Batch 76: Distortion, glitch and adjustment clips
+The **Effects** section gets a **Stylize** row with seven more effects: **RGB split**, **Pixelate**, **Mirror**, **Wave**, **Glitch**, **Posterize** and **Invert**. **Add adjustment** in the timeline toolbar adds an adjustment clip that applies its effects to everything below it while it lasts, with opacity, fades and masks, for example a black and white grade inside an ellipse. See [Effects](effects.md#stylize-effects) and [adjustment clips](effects.md#adjustment-clips).
+
+> **Video placeholder: What's new in Batch 76**
+> - File: `videos/whats-new/batch-76.mp4` (not recorded yet)
+> - Length: about 40 seconds
+> - Shows: select a video clip; on the **Stylize** row click **Add glitch**; click **Add RGB split**; click **Add adjustment** in the timeline toolbar; click **Add color adjust** and set **Saturation** to `-100`; draw an ellipse mask in the preview; press <kbd>Ctrl</kbd>+<kbd>Z</kbd>.
+
 ## Batch 75: Color, keys, LUTs and looks
 The **Effects** section gets a **Color** row with seven more effects: **Color adjust**, **Vignette**, **Sharpen**, **Grain**, **Chroma key** (with spill suppression for green screens), **Luma key** and **LUT** (load a `.cube` file). Save a clip's effects as a look and apply it to other clips in one click and one undo step. See [Effects](effects.md).
 
