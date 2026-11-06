@@ -2,6 +2,14 @@
 
 Shorts Editor grows in steps called batches. This page lists what each batch added that you can see or use, newest first. Follow the links for the full instructions.
 
+## Batch 74: Effects
+The new **Effects** section stacks effects on any layer: **Gaussian blur**, **Directional blur**, **Glow**, **Drop shadow** and **Outline**. Shadows and outlines follow the shape of a transparent picture. Reorder effects by dragging, turn them off and on, and animate their numbers with stopwatches. See [Effects](effects.md).
+
+> **Video placeholder: What's new in Batch 74**
+> - File: `videos/whats-new/batch-74.mp4` (not recorded yet)
+> - Length: about 35 seconds
+> - Shows: select a title; in **Effects** click **Add glow** and **Add drop shadow**; drag the shadow above the glow; key **Intensity** with its stopwatch; play.
+
 ## Batch 73: Masks
 The new **Masks** section shows only part of a layer. Add a rectangle, ellipse or path mask, soften it with **Feather**, grow or shrink it with **Expansion**, combine masks (**Add**, **Subtract**, **Intersect**) and **Invert** them. Press <kbd>Alt</kbd>+<kbd>M</kbd> to edit masks with handles in the preview. Animate any number, morph path shapes, or click **Wipe in** or **Circle reveal** for a ready reveal. See [Masks](masks.md).
 
