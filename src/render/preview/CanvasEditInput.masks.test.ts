@@ -10,7 +10,7 @@ import { selectClips } from "../../core/store/selection.js";
 import { readTheme } from "../../core/theme/theme.js";
 import { mutableIdentity, setMat } from "../mat3.js";
 import { CanvasEditInput } from "./CanvasEditInput.js";
-import { hitMask, maskDrag, maskScene, NO_MASK_MODE, type MaskModeState, type MaskSpace } from "./maskGizmo.js";
+import { hitMask, maskDrag, maskFeatherGap, maskScene, NO_MASK_MODE, type MaskModeState, type MaskSpace } from "./maskGizmo.js";
 
 const TOKENS: Record<string, string> = {
   "--gizmo-line-width": "1px",
@@ -33,7 +33,7 @@ const SPACE: MaskSpace = { model: setMat(mutableIdentity(), 1, 0, 0, 1, 40, 60),
 
 describe("mask gizmo (spec §21.18, Batch 73)", () => {
   it("lays out a box mask's outline and 8 handles in project px; a path's anchors", () => {
-    const scene = maskScene("s", [rect(), path], SPACE);
+    const scene = maskScene("s", [rect(), path], SPACE, 12);
     const box = scene.masks[0];
     expect(box?.line.slice(0, 4)).toEqual([140, 160, 540, 160]);
     expect(box?.box.find((h) => h.id === "se")).toEqual({ id: "se", x: 540, y: 360 });
@@ -48,7 +48,7 @@ describe("mask gizmo (spec §21.18, Batch 73)", () => {
 
   it("hits handles first, then the topmost mask's body", () => {
     const masks = [rect(), path];
-    const scene = maskScene("s", masks, SPACE);
+    const scene = maskScene("s", masks, SPACE, 12);
     expect(hitMask(scene, masks, SPACE, 541, 361, 6)).toEqual({ kind: "box", mask: 0, handle: "se" });
     expect(hitMask(scene, masks, SPACE, 140, 460, 6)).toEqual({ kind: "point", mask: 1, pair: 3 });
     expect(hitMask(scene, masks, SPACE, 300, 300, 6)).toEqual({ kind: "body", mask: 1 });
@@ -64,10 +64,41 @@ describe("mask gizmo (spec §21.18, Batch 73)", () => {
     expect(maskDrag(start, 0, { kind: "body", mask: 0 }, { x: 0, y: 0 }, { x: 10, y: -5 }, false)[0]?.shape).toMatchObject({ x: 110, y: 95 });
     const moved = maskDrag([path], 0, { kind: "point", mask: 0, pair: 2 }, { x: 0, y: 0 }, { x: 20, y: 30 }, false)[0]?.shape as { d: string };
     expect(maskPathPoints(moved.d)).toEqual([100, 100, 500, 100, 520, 430, 100, 400]);
-    const feather = maskDrag(start, 0, { kind: "feather", mask: 0 }, { x: 0, y: 0 }, { x: 552, y: 0 }, false)[0];
+    const feather = maskDrag(start, 0, { kind: "feather", mask: 0, gap: 12 }, { x: 0, y: 0 }, { x: 552, y: 0 }, false)[0];
     expect(feather?.feather).toBe(40);
     // The start is not touched.
     expect(start[0]?.shape).toMatchObject({ w: 400 });
+  });
+
+  it("the feather handle of a feather-0 mask clears the box handles at small preview scales", () => {
+    // The default ellipse of a 1080 x 1920 clip (x 108, w 864, feather 0); the gap and reach come from the
+    // gizmo tokens in device px, as CanvasEditInput sizes them.
+    const ellipse: Mask = { id: "e", shape: { kind: "ellipse", x: 108, y: 192, w: 864, h: 1536 }, mode: "add", feather: 0, expansion: 0, opacity: 1, inverted: false };
+    const cases = [
+      // [device px per project px, dpr, content px per project px]
+      [0.36, 1, 1],
+      [0.5, 2, 1],
+      [0.25, 1, 1],
+      // A 4K picture shown at 1080 x 1920: content larger than its shown size.
+      [0.36, 1, 0.5],
+    ] as const;
+    for (const [scale, dpr, content] of cases) {
+      const space: MaskSpace = { model: setMat(mutableIdentity(), content, 0, 0, content, 0, 0), width: 1080 / content, height: 1920 / content };
+      const masks = [{ ...ellipse, shape: { ...ellipse.shape, x: 108 / content, y: 192 / content, w: 864 / content, h: 1536 / content } } as Mask];
+      const scene = maskScene("s", masks, space, maskFeatherGap(space, theme.gizmo.rotateZone * dpr, scale));
+      const reach = (theme.gizmo.handleHit * dpr) / 2 / scale;
+      const diamond = scene.masks[0]?.feather as { x: number; y: number };
+      const east = scene.masks[0]?.box.find((h) => h.id === "e") as { x: number; y: number };
+      // On screen the diamond is `rotateZone` device px right of the east handle.
+      expect((diamond.x - east.x) * scale).toBeCloseTo(theme.gizmo.rotateZone * dpr, 6);
+      const hit = hitMask(scene, masks, space, diamond.x, diamond.y, reach);
+      expect(hit?.kind).toBe("feather");
+      expect(hitMask(scene, masks, space, east.x, east.y, reach)).toEqual({ kind: "box", mask: 0, handle: "e" });
+      // Dragging the diamond 40 content px right sets feather 40 (the gap the scene used is in the hit).
+      const from = { x: diamond.x / content, y: diamond.y / content };
+      const dragged = maskDrag(masks, 0, hit as Parameters<typeof maskDrag>[2], from, { x: from.x + 40, y: from.y }, false)[0];
+      expect(dragged?.feather).toBeCloseTo(40, 2);
+    }
   });
 });
 
@@ -150,6 +181,23 @@ describe("CanvasEditInput mask mode (Batch 73)", () => {
     s.pointer("pointerup", 350, 250);
     expect(s.commits).toHaveBeenCalledTimes(1);
     expect(s.masks()[0]?.shape).toMatchObject({ x: 100, y: 100 });
+  });
+
+  it("a drag on the feather diamond of a feather-0 mask sets the feather (it is not the east box handle)", () => {
+    const s = setup();
+    s.session.selection.set(selectClips(["s"]));
+    s.input.enterMaskMode("s");
+    // 0.5 device px per project px: the diamond is rotateZone / 0.5 project px right of the box (x 100, w 400).
+    const featherX = 500 + theme.gizmo.rotateZone / 0.5;
+    const diamond = s.input.scene().mask?.masks[0]?.feather;
+    expect(diamond?.x).toBeCloseTo(featherX, 6);
+    expect(diamond?.y).toBeCloseTo(200, 6);
+    s.pointer("pointerdown", featherX, 200);
+    for (let i = 1; i <= 4; i++) s.pointer("pointermove", featherX + 10 * i, 200);
+    s.pointer("pointerup", featherX + 40, 200);
+    expect(s.commits).toHaveBeenCalledTimes(1);
+    expect(s.commits.mock.calls[0]?.[0].id).toBe("clip.mask.edit");
+    expect(s.masks()[0]).toMatchObject({ feather: 40, shape: { x: 100, y: 100, w: 400, h: 200 } });
   });
 
   it("outside mask mode a press on the mask is a normal canvas press", () => {

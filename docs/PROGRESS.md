@@ -25,6 +25,7 @@ What release 1.1.0 does not do, or does not do well. Next steps for each are in 
 
 ## Design system gaps
 Items the design system did not define and the functional default that was used instead.
+- The canvas feather handle of a mask has no DESIGN_SYSTEM.md definition: it sits `gizmo.rotateZone` (16 px) on screen past the box's right side plus the feather, the same offset token as the 2.5D tilt handles, so it always clears the box handles' 12 px hit area (Batch 73 fix).
 - The Compositing section (Blend, Matte, Mode, Matte only) has no DESIGN_SYSTEM.md definition: it reuses Row, Select and Toggle with no new CSS; the Mode select is disabled with the tooltip "Pick a matte first" until a matte is picked.
 - The transition Preview row, Direction arrows, Angle, Softness, Center and Easing rows have no DESIGN_SYSTEM.md definition: they reuse Row, IconButton chips, NumberField and Select; the preview canvas uses `--hairline`, `--radius-sm`, `--control-default`. (Batch 71)
 - The X and Y tilt handles of a 2.5D layer have no DESIGN_SYSTEM.md definition: they reuse the round tangent handle look of the path overlay, and their offset past the box is `gizmo.rotateZone` (no dedicated token). (Batch 70)
@@ -7200,6 +7201,7 @@ Why each dependency exists (Batch rule 8).
   - Coverage textures are not counted in `textureCounts` (they have their own `maskCoveragePasses` counter and are freed with the clip).
   - A field scrub in the Masks section moves the picture live but not the canvas handles until release (follow-up).
   - Fuzz weights: the masks area first took 887 picks per run and pushed `fuzz.perf.test` to 62-65 s against its 60 s budget on this machine; the area was re-weighted to 4.8 in total and its dedicated describe boosts it x4.
+  - Fix run: the feather handle's gap past the box is laid out in screen px (`gizmo.rotateZone`, turned into content px by `maskFeatherGap` from the preview scale and the content box scale) instead of 12 content px, so it clears the box handles' hit area at every preview scale; the feather hit carries the gap the scene used so a drag sets the feather from it.
   - "20 masked layers play at 60 fps" could not be shown on this machine on 2026-11-09 (rAF only 16-25 fps): measured as keeping up with rAF with 0 React commits (numbers above); kept as a pending manual check and a follow-up.
 - follow-ups:
   - [from Batch 73 -> Batch 82] Measure 20 masked layers at 60 fps on an unloaded machine with a normal GPU: on 2026-11-09 headless Chrome reached only 16-25 rAF frames per second here.
@@ -7208,6 +7210,7 @@ Why each dependency exists (Batch rule 8).
   - Done here: [from Batch 72 -> Batch 73] masks and track mattes on one clip (mask before matte) and a masked clip as a matte source.
 - design gaps:
   - The Masks section and the canvas mask handles have no DESIGN_SYSTEM.md definition: the section reuses Row, Select, Toggle, IconButton and the keyframe diamond and stopwatch styles; the mask outline uses `--accent` and the `preview.dash` theme pattern (see Design system gaps).
+  - The feather handle's offset past the box is `gizmo.rotateZone` screen px (no dedicated token; Batch 73 fix, see Design system gaps).
 - pending manual checks:
   - 20 masked layers at 60 fps (acceptance 4): on a 1080x1920 60 fps project put 20 solids or videos with a feathered ellipse mask each (10 of them with a keyed mask width) and play 10 s with the Profiler open. Expect 60 fps, no dropped frames, no React commits; in the dev server console `(await import("/src/app/previewController.ts")).renderer.maskCoveragePasses` grows by 10 per frame while playing and stays the same when paused. Or run `node b73tmp/run.mjs` (`BASELINE=1` adds the no-mask pass) on a machine whose rAF reaches 60.
   - Masks section: select a video, Add ellipse, set Feather 40, add a second mask with Mode Subtract, Invert one; drag Feather (the picture follows, no React commits); one Ctrl+Z undoes each change; the Wipe in preset reveals the clip over its first second.
@@ -7219,3 +7222,7 @@ Why each dependency exists (Batch rule 8).
   2. `FEATHER_HANDLE_GAP = 12` (`src/render/preview/maskGizmo.ts:59`) is a gizmo size literal outside the tokens and the Theme bridge (review check 3, CLAUDE.md "No color or size literals in code"); item 1's fix should move it to a token (log the design gap if none fits).
   3. The port headers of the coverage shaders name a source that does not exist: `src/render/gpu/shaders.ts:801` and `src/render/gpu/glShaders.ts:696` say "Ported from FlashFX-v2 src/engine/renderer.ts (MASK_SHADER) @ a91c675"; at a91c675 `renderer.ts` has no `MASK_SHADER` (it imports `MASK_WGSL` from `src/engine/maskWgsl.ts`, the file BATCHES.md names). §21.1 requires the header to name the ported path.
   Checked and fine: `npm run check` green (3282 tests, 4 perf, build); acceptance 1, 2 and 4 covered by `masksFixture.test.ts`, the committed expected frames and the recorded test:render / CDP numbers (60 fps kept as a pending manual check with steps); acceptance 3 covered for box and body drags (one `clip.mask.edit` per release, live masks through `maskDrag.live`, Esc/undo cancels); mask tracking not built; WGSL and GLSL coverage shaders match line for line; schema 17 migration, validation, field table, manifest, INTEROP and fuzz area present; every TODO tagged.
+- fix-attempt: done (2026-11-09)
+  - 1, 2: `FEATHER_HANDLE_GAP` removed; `maskScene` takes the gap (content px) from `maskFeatherGap(space, gizmo.rotateZone x dpr, device px per project px)` in `CanvasEditInput.maskSceneOf`, so the diamond is 16 screen px right of the east handle (reach 6 px each) at any scale or content size; the feather hit carries the gap for `maskDrag`. New tests in `CanvasEditInput.masks.test.ts`: `hitMask` on the default ellipse of a 1080x1920 clip at 0.36, 0.5 (dpr 2), 0.25 device px per project px and with a 4K-sized content box returns `feather` on the diamond and `box` on the east handle, and the drag sets feather 40; a pointer-event drag on the diamond in mask mode commits one `clip.mask.edit` with feather 40 and the box unchanged. Design gap logged.
+  - 3: the port headers in `shaders.ts` and `glShaders.ts` now name FlashFX-v2 `src/engine/maskWgsl.ts` (MASK_WGSL) @ a91c675.
+  - `npm run check` green: 3284 unit tests (8 skipped), 4 perf, build.

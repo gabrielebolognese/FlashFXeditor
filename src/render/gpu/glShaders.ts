@@ -693,7 +693,7 @@ export const COMPOSITE_BACKDROP_FRAGMENT = compositeFragment(true);
 /**
  * See MASK_WGSL in shaders.ts: the coverage of a clip's masks over its coverage texture (drawn with
  * FULLSCREEN_VERTEX). Rows count from the content box's top as gl_FragCoord rows from row 0, the row the
- * composite reads first. Ported from FlashFX-v2 src/engine/renderer.ts (MASK_SHADER) @ a91c675, adapted.
+ * composite reads first. Ported from FlashFX-v2 src/engine/maskWgsl.ts (MASK_WGSL, as its GLSL twin) @ a91c675, adapted.
  */
 export const MASK_FRAGMENT = /* glsl */ `${HEADER}
 uniform sampler2D u_data;

@@ -105,7 +105,7 @@ import { solidSizeGesture, type SolidGestureStart } from "./solidGizmo.js";
 import { setSolids, solidLook, type SolidLook } from "../../timeline/edit/solid.js";
 import { setPathKeys } from "../../timeline/edit/rig.js";
 import { hitPath, liveByFrame, pathDragEdit, pathScene, type PathHit, type PathLive, type PathScene } from "./pathGizmo.js";
-import { hitMask, maskDrag as maskDragEdit, maskScene, maskSegmentAt, toContent, type MaskHit, type MaskModeState, type MaskScene, type MaskSpace } from "./maskGizmo.js";
+import { hitMask, maskDrag as maskDragEdit, maskFeatherGap, maskScene, maskSegmentAt, toContent, type MaskHit, type MaskModeState, type MaskScene, type MaskSpace } from "./maskGizmo.js";
 import { masksAt } from "../../core/masks/maskEval.js";
 import { commitMaskGesture, deleteMaskPoint, insertMaskPoint, isMaskable } from "../../timeline/edit/masks.js";
 import { projectPoint as projectThrough, unprojectPoint, viewingDistance, type Homography } from "../projection.js";
@@ -684,7 +684,13 @@ export class CanvasEditInput {
 
   private maskSceneNow(): MaskScene | null {
     const target = this.maskTargetNow();
-    return target ? maskScene(target.clipId, target.masks, target.space) : null;
+    return target ? this.maskSceneOf(target, this.deps.placement()) : null;
+  }
+
+  /** The mask scene of `target` at the preview's scale: the feather handle sits `gizmo.rotateZone` screen px past the box (clear of the box handles' hit area). */
+  private maskSceneOf(target: { clipId: ClipId; masks: readonly Mask[]; space: MaskSpace }, placement: PreviewPlacement | null): MaskScene {
+    const gap = placement ? maskFeatherGap(target.space, this.theme.gizmo.rotateZone * placement.dpr, placement.transform[0]) : 0;
+    return maskScene(target.clipId, target.masks, target.space, gap);
   }
 
   private maskReach(placement: PreviewPlacement): number {
@@ -794,7 +800,7 @@ export class CanvasEditInput {
     }
     const mask = this.maskTargetNow();
     if (mask) {
-      const scene = maskScene(mask.clipId, mask.masks, mask.space);
+      const scene = this.maskSceneOf(mask, placement);
       const hit = hitMask(scene, mask.masks, mask.space, point.x, point.y, this.maskReach(placement));
       const from = hit ? toContent(mask.space, point.x, point.y) : null;
       if (hit && from) {
@@ -1591,7 +1597,7 @@ export class CanvasEditInput {
     const mask = this.maskTargetNow();
     if (mask) {
       const point = this.projectPoint(this.pointer, placement);
-      const hit = point ? hitMask(maskScene(mask.clipId, mask.masks, mask.space), mask.masks, mask.space, point.x, point.y, this.maskReach(placement)) : null;
+      const hit = point ? hitMask(this.maskSceneOf(mask, placement), mask.masks, mask.space, point.x, point.y, this.maskReach(placement)) : null;
       if (hit) return hit.kind === "body" ? "move" : "crosshair";
     }
     const editor = this.deps.textEditor;

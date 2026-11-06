@@ -3,7 +3,7 @@
 // A rectangle or ellipse has its box with 8 handles (a press inside moves it); a path has its anchors
 // (squares) and the controls of its curves (dots on a line to their anchor; a press inside its bounds
 // moves it whole); every mask has a feather handle (a diamond right of its box, as far out as the
-// feather). Masks live in the clip's content px: `model` (content px -> project px, from the compositor's
+// feather past a gap the caller sizes in screen px from the theme, so it always clears the box handles). Masks live in the clip's content px: `model` (content px -> project px, from the compositor's
 // content box) maps them. CanvasEditInput owns the gesture (ephemeral masks while dragging, one command
 // on release, P2) and PreviewOverlayView draws.
 import type { ClipId, Mask } from "../../core/document/types.js";
@@ -33,13 +33,15 @@ export interface MaskMark {
 export interface MaskScene {
   clipId: ClipId;
   masks: MaskMark[];
+  /** Content px between the box's right side and a feather-0 handle (see `maskScene`). */
+  featherGap: number;
 }
 
 /** What a press grabbed. */
 export type MaskHit =
   | { kind: "box"; mask: number; handle: HandleId }
   | { kind: "point"; mask: number; pair: number }
-  | { kind: "feather"; mask: number }
+  | { kind: "feather"; mask: number; gap: number }
   | { kind: "body"; mask: number };
 
 /** Mask mode on the canvas (Alt+M): the clip whose masks get handles, or none. */
@@ -55,9 +57,6 @@ export interface MaskSpace {
   height: number;
 }
 
-/** Content px of the feather handle's offset past the box (so a feather of 0 still has a handle off the edge). */
-export const FEATHER_HANDLE_GAP = 12;
-
 /** A mask's box in content px: its own for rectangles and ellipses, its points' bounds for a path. */
 export function maskBounds(mask: Mask): { x: number; y: number; w: number; h: number } | null {
   const shape = mask.shape;
@@ -67,8 +66,13 @@ export function maskBounds(mask: Mask): { x: number; y: number; w: number; h: nu
   return b ? { x: b[0], y: b[1], w: b[2] - b[0], h: b[3] - b[1] } : null;
 }
 
-/** The scene of `masks` laid out by `space`. */
-export function maskScene(clipId: ClipId, masks: readonly Mask[], space: MaskSpace): MaskScene {
+/**
+ * The scene of `masks` laid out by `space`. `featherGap` (content px) puts the feather handle that far
+ * past the box's right side plus the feather, so a feather of 0 still has a handle off the edge; the
+ * caller derives it from a screen px token (`maskFeatherGap`) so it clears the box handles' hit area at
+ * every preview scale.
+ */
+export function maskScene(clipId: ClipId, masks: readonly Mask[], space: MaskSpace, featherGap: number): MaskScene {
   const m = space.model;
   const at = (x: number, y: number): Pt => applyToPoint(m, x, y);
   const out: MaskMark[] = [];
@@ -81,7 +85,7 @@ export function maskScene(clipId: ClipId, masks: readonly Mask[], space: MaskSpa
       const p = at(x, y);
       line.push(p.x, p.y);
     };
-    const mark: MaskMark = { maskId: mask.id, kind: shape.kind, dashed: mask.mode === "subtract" || mask.inverted, line, box: [], anchors: [], controls: [], feather: at(bounds.x + bounds.w + FEATHER_HANDLE_GAP + mask.feather, bounds.y + bounds.h / 2) };
+    const mark: MaskMark = { maskId: mask.id, kind: shape.kind, dashed: mask.mode === "subtract" || mask.inverted, line, box: [], anchors: [], controls: [], feather: at(bounds.x + bounds.w + featherGap + mask.feather, bounds.y + bounds.h / 2) };
     if (shape.kind === "rect") {
       push(shape.x, shape.y);
       push(shape.x + shape.w, shape.y);
@@ -122,7 +126,17 @@ export function maskScene(clipId: ClipId, masks: readonly Mask[], space: MaskSpa
     }
     out.push(mark);
   }
-  return { clipId, masks: out };
+  return { clipId, masks: out, featherGap };
+}
+
+/**
+ * The feather handle's gap in content px for a gap of `screenGap` device px: `devicePerProject` device px
+ * per project px (the preview's scale) and the content box's scale along content x.
+ */
+export function maskFeatherGap(space: MaskSpace, screenGap: number, devicePerProject: number): number {
+  const m = space.model;
+  const contentScale = Math.hypot(m[0] as number, m[1] as number) || 1;
+  return devicePerProject > 0 ? screenGap / devicePerProject / contentScale : 0;
 }
 
 /** The handle, point or mask under project point (x, y) (`reach` project px), topmost (last) mask first; null when none. */
@@ -133,7 +147,7 @@ export function hitMask(scene: MaskScene, masks: readonly Mask[], space: MaskSpa
     for (const point of mark.anchors) if (near(point)) return { kind: "point", mask: i, pair: point.pair };
     for (const point of mark.controls) if (near(point)) return { kind: "point", mask: i, pair: point.pair };
     for (const handle of mark.box) if (near(handle)) return { kind: "box", mask: i, handle: handle.id };
-    if (near(mark.feather)) return { kind: "feather", mask: i };
+    if (near(mark.feather)) return { kind: "feather", mask: i, gap: scene.featherGap };
   }
   const content = toContent(space, x, y);
   if (!content) return null;
@@ -179,7 +193,7 @@ export function maskDrag(start: readonly Mask[], index: number, hit: MaskHit, fr
   const shape = mask.shape;
   if (hit.kind === "feather") {
     const b = maskBounds(start[index] as Mask);
-    if (b) mask.feather = round(Math.max(0, to.x - (b.x + b.w + FEATHER_HANDLE_GAP)));
+    if (b) mask.feather = round(Math.max(0, to.x - (b.x + b.w + hit.gap)));
     return out;
   }
   if (hit.kind === "body") {

@@ -798,7 +798,7 @@ fn fsBackdrop(in: VertexOut) -> @location(0) vec4f {
  * texture; each texel evaluates the packed block (core/masks/maskCoverage.ts `maskStackCoverage`, line
  * for line) at its center in content px. `dataTex` (rgba32float, MASK_DATA_WIDTH texels a row) holds the
  * lead texel (content px per texel) and then the block.
- * Ported from FlashFX-v2 src/engine/renderer.ts (MASK_SHADER) @ a91c675, adapted.
+ * Ported from FlashFX-v2 src/engine/maskWgsl.ts (MASK_WGSL) @ a91c675, adapted.
  */
 export const MASK_WGSL = /* wgsl */ `
 @group(0) @binding(0) var dataTex: texture_2d<f32>;
