@@ -2,7 +2,7 @@
 import type { Rational } from "../../core/document/types.js";
 import type { Rotation } from "./rotation.js";
 
-export type MediaKind = "video" | "audio" | "image";
+export type MediaKind = "video" | "audio" | "image" | "lottie";
 
 export interface ProbeResult {
   kind: MediaKind;

@@ -108,6 +108,7 @@ export function drawCompoundPoster(
         break;
       }
       case "image":
+      case "lottie":
       case "video": {
         place(ctx, clip.transform, w, h);
         ctx.globalAlpha = clip.opacity;

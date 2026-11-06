@@ -1023,6 +1023,18 @@ Three optional fields of video clips (`reverse` also of audio clips); a missing 
 
 `fixtures/interop/time` holds a Hero ramp (fast, slow, fast), a reversed clip and a 25 percent clip with frame blending, with the expected source times in `expected/source-times.json`.
 
+**Lottie clips (manifest keys `lottie`, true, and `media.lottieFormats`: `json`, `lottie`).** A Lottie animation (a bodymovin `.json` file or a `.lottie` archive) is a media of `kind` `"lottie"` and plays as a `lottie` clip on a video track, resolution independent: it is drawn at the size it is shown at, so a clip scaled to 300 percent stays sharp, in the preview, the export and `cli render`, on both backends. The media record carries the animation's own facts: `width` and `height` (its `w` and `h`), `fps` (its frame rate as a ratio), `durationUs` (`(op - ip) / fr`) and `codec` (`lottie` for a `.json`, `dotlottie` for an archive). A file that is not an animation, or has no frames, size or layers, is refused when imported and by `validate`.
+
+- A `lottie` clip has the fields of an image clip (`transform`, `opacity`, `fades`, `blend`, `matte`, `masks`, `effects`, keyframes) plus `in`, `out` and `speed` like a video clip. Like an image, its `out` is not bound by the media length: the clip may be longer than the animation.
+- **`loop`** (`true`) repeats the animation from its start while the clip lasts; absent or `false` holds the last frame after the end. The animation time is `(frame - start) * speed / fps + in`, wrapped when `loop` is set. `reverse` and `timeRemap` are not allowed on a Lottie clip.
+- **`colorOverrides`** is a list of `{ "from", "to" }` colors (RGBA, channels 0 to 1, the same as Lottie writes them). Every solid fill, stroke and keyed color of the animation equal to `from` (within one 8-bit step) becomes `to`; the first matching row wins. Gradient colors are not replaced. Clips of the same media with the same overrides share their frames.
+
+```json ColorOverride
+{ "from": { "r": 1, "g": 0.5, "b": 0.1, "a": 1 }, "to": { "r": 0.2, "g": 0.8, "b": 0.3, "a": 1 } }
+```
+
+`fixtures/interop/lottie` holds three animations (`spinner.json`, `bounce.json` and the archive `pulse.lottie`, original and CC0, with `LICENSE.md`) in a 60 fps project: a looping spinner, the spinner with two replaced colors at speed 2, the bounce with and without a replaced color, and the archive scaled to 300 percent, with expected frames in `expected/`. `npm run test:render` renders them on both backends. Schema 22 projects open unchanged (migration 22 to 23 changes nothing). Editing the inside of an animation beyond color overrides is not part of this version.
+
 ## 6. Captions and word timings
 
 The caption track's `captionTracks[<track id>].style` styles every cue; a cue's `styleOverride` sets only the fields it changes. A cue is a `caption` clip with `text` (`\n` for line breaks) and optional `words`: `start` and `end` are integer frames relative to the cue's start, `end` after `start`. A word may start before the cue or end after it: an in-trim keeps the words it hides (negative frames), so a trim back shows them again. With word timings the active word is highlighted as the style's `highlight` says.
@@ -1361,6 +1373,15 @@ A key of a clip's `timeRemap` (Batch 78): the source time the picture shows at a
 | `frame` | integer (>= 0) | yes |  | Clip-relative frame. Integer frames at the project frame rate. |
 | `sourceUs` | integer (>= 0) | yes |  | Source time shown. Integer microseconds. |
 | `ease` | `"linear"` | `"easeIn"` | `"easeOut"` | `"easeInOut"` | `"hold"` | `"smooth"` | `"snap"` | `"overshoot"` | `"sineIn"` | `"sineOut"` | `"sineInOut"` | `"quadIn"` | `"quadOut"` | `"quadInOut"` | `"cubicIn"` | `"cubicOut"` | `"cubicInOut"` | `"quartIn"` | `"quartOut"` | `"quartInOut"` | `"quintIn"` | `"quintOut"` | `"quintInOut"` | `"expoIn"` | `"expoOut"` | `"expoInOut"` | `"circIn"` | `"circOut"` | `"circInOut"` | `"backIn"` | `"backOut"` | `"backInOut"` | `"elasticIn"` | `"elasticOut"` | `"elasticInOut"` | `"bounceIn"` | `"bounceOut"` | `"bounceInOut"` | `"bezier"` | `"spring"` | yes | `"linear"` | The curve of the segment that starts at this key (linear: a constant speed). |
+
+#### ColorOverride
+
+A color change of a lottie clip (Batch 79): colors of the animation equal to `from` (within one 8-bit step) become `to`.
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `from` | [RGBA](#rgba) | yes |  | The color to replace (channels 0..1). |
+| `to` | [RGBA](#rgba) | yes |  | The color that replaces it (channels 0..1). |
 
 #### TrackMatte
 
@@ -1772,7 +1793,7 @@ A file of the media bin.
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
 | `id` | string (not empty) | yes |  | Unique id; the key it is stored under. |
-| `kind` | `"video"` | `"audio"` | `"image"` | yes |  | Kind. |
+| `kind` | `"video"` | `"audio"` | `"image"` | `"lottie"` | yes |  | Kind (`lottie`: a Lottie animation, Batch 79; `codec` is `lottie` or `dotlottie`, `fps` the animation's frame rate, `width` and `height` its size). |
 | `name` | string | yes |  | Display name. |
 | `file` | [FileRef](#fileref) | yes |  | The file. |
 | `durationUs` | integer (>= 0) | yes |  | Length; 0 for a still image. Integer microseconds. |
@@ -1848,7 +1869,7 @@ project.json.
 
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| `schemaVersion` | integer (>= 1) | yes | `22` | The schema version; this build writes and reads up to the current one. |
+| `schemaVersion` | integer (>= 1) | yes | `23` | The schema version; this build writes and reads up to the current one. |
 | `id` | string (not empty) | yes |  | Unique id, never changes (uuid v4 recommended). |
 | `name` | string | yes |  | Project name. |
 | `settings` | [Settings](#settings) | yes |  | Frame and time base. |
@@ -1866,7 +1887,7 @@ project.json.
 
 A clip: the `kind` field selects its description.
 
-Told apart by `kind`: `video` is [Clip.video](#clip-video), `audio` is [Clip.audio](#clip-audio), `image` is [Clip.image](#clip-image), `text` is [Clip.text](#clip-text), `solid` is [Clip.solid](#clip-solid), `caption` is [Clip.caption](#clip-caption), `compound` is [Clip.compound](#clip-compound), `shape` is [Clip.shape](#clip-shape), `null` is [Clip.null](#clip-null), `adjustment` is [Clip.adjustment](#clip-adjustment).
+Told apart by `kind`: `video` is [Clip.video](#clip-video), `audio` is [Clip.audio](#clip-audio), `image` is [Clip.image](#clip-image), `lottie` is [Clip.lottie](#clip-lottie), `text` is [Clip.text](#clip-text), `solid` is [Clip.solid](#clip-solid), `caption` is [Clip.caption](#clip-caption), `compound` is [Clip.compound](#clip-compound), `shape` is [Clip.shape](#clip-shape), `null` is [Clip.null](#clip-null), `adjustment` is [Clip.adjustment](#clip-adjustment).
 
 #### ClipBase
 
@@ -1876,7 +1897,7 @@ The fields every clip has.
 | --- | --- | --- | --- | --- |
 | `id` | string (not empty) | yes |  | Unique id; the key it is stored under. |
 | `trackId` | string (not empty) | yes |  | The track listing it. |
-| `kind` | `"video"` | `"audio"` | `"image"` | `"text"` | `"solid"` | `"caption"` | `"compound"` | `"shape"` | `"null"` | `"adjustment"` | yes |  | Kind. |
+| `kind` | `"video"` | `"audio"` | `"image"` | `"lottie"` | `"text"` | `"solid"` | `"caption"` | `"compound"` | `"shape"` | `"null"` | `"adjustment"` | yes |  | Kind. |
 | `name` | string | yes |  | Display name. |
 | `start` | integer (>= 0) | yes |  | First frame on the timeline. Integer frames at the project frame rate. |
 | `duration` | integer (>= 1) | yes |  | Length, at least 1. Integer frames at the project frame rate. |
@@ -1935,6 +1956,8 @@ A video clip.
 | `timeRemap` | [RemapKey](#remapkey)[] | no |  | Video clips (Batch 78): keys mapping timeline frames to source times; replaces `speed` for the picture and mutes the linked audio. At least two keys. |
 | `reverse` | boolean | no | `false` | Video and audio clips (Batch 78): the source plays backward, from `out` to `in`. Ignored when `timeRemap` is set. |
 | `frameBlend` | boolean | no | `false` | Video clips (Batch 78): when the source advances less than one frame per timeline frame, the two nearest source frames are mixed. |
+| `loop` | boolean | no | `false` | Lottie clips (Batch 79): the animation repeats from its start when the clip is longer; false or absent = it holds its last frame. Other clips: not allowed. |
+| `colorOverrides` | [ColorOverride](#coloroverride)[] | no |  | Lottie clips (Batch 79): color replacements applied in order (the first `from` that matches wins). Other clips: not allowed. |
 | `transitionIn` | [Transition](#transition) | no |  | Transition at the start. |
 | `transitionOut` | [Transition](#transition) | no |  | Transition at the end. |
 
@@ -1976,6 +1999,8 @@ A audio clip.
 | `timeRemap` | [RemapKey](#remapkey)[] | no |  | Video clips (Batch 78): keys mapping timeline frames to source times; replaces `speed` for the picture and mutes the linked audio. At least two keys. |
 | `reverse` | boolean | no | `false` | Video and audio clips (Batch 78): the source plays backward, from `out` to `in`. Ignored when `timeRemap` is set. |
 | `frameBlend` | boolean | no | `false` | Video clips (Batch 78): when the source advances less than one frame per timeline frame, the two nearest source frames are mixed. |
+| `loop` | boolean | no | `false` | Lottie clips (Batch 79): the animation repeats from its start when the clip is longer; false or absent = it holds its last frame. Other clips: not allowed. |
+| `colorOverrides` | [ColorOverride](#coloroverride)[] | no |  | Lottie clips (Batch 79): color replacements applied in order (the first `from` that matches wins). Other clips: not allowed. |
 | `transitionIn` | [Transition](#transition) | no |  | Transition at the start. |
 | `transitionOut` | [Transition](#transition) | no |  | Transition at the end. |
 
@@ -2020,6 +2045,54 @@ A image clip.
 | `timeRemap` | [RemapKey](#remapkey)[] | no |  | Video clips (Batch 78): keys mapping timeline frames to source times; replaces `speed` for the picture and mutes the linked audio. At least two keys. |
 | `reverse` | boolean | no | `false` | Video and audio clips (Batch 78): the source plays backward, from `out` to `in`. Ignored when `timeRemap` is set. |
 | `frameBlend` | boolean | no | `false` | Video clips (Batch 78): when the source advances less than one frame per timeline frame, the two nearest source frames are mixed. |
+| `loop` | boolean | no | `false` | Lottie clips (Batch 79): the animation repeats from its start when the clip is longer; false or absent = it holds its last frame. Other clips: not allowed. |
+| `colorOverrides` | [ColorOverride](#coloroverride)[] | no |  | Lottie clips (Batch 79): color replacements applied in order (the first `from` that matches wins). Other clips: not allowed. |
+| `transitionIn` | [Transition](#transition) | no |  | Transition at the start. |
+| `transitionOut` | [Transition](#transition) | no |  | Transition at the end. |
+
+#### Clip.lottie
+
+A lottie clip.
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `id` | string (not empty) | yes |  | Unique id; the key it is stored under. |
+| `trackId` | string (not empty) | yes |  | The track listing it. |
+| `kind` | `"lottie"` | yes |  | Kind. |
+| `name` | string | yes |  | Display name. |
+| `start` | integer (>= 0) | yes |  | First frame on the timeline. Integer frames at the project frame rate. |
+| `duration` | integer (>= 1) | yes |  | Length, at least 1. Integer frames at the project frame rate. |
+| `color` | `"red"` | `"orange"` | `"green"` | `"teal"` | `"blue"` | `"violet"` | `"pink"` | `"grey"` | no |  | Label color. |
+| `linkGroup` | string (not empty) | no |  | Clips sharing it move and trim together. |
+| `group` | string (not empty) | no |  | Clips sharing it select together. |
+| `enabled` | boolean | yes | `true` | Drawn and heard. |
+| `fallbackOf` | [FallbackOf](#fallbackof) | no |  | Set when the clip is a baked stand-in. |
+| `parentId` | string (not empty) | no |  | A visual clip of a video track in the same sequence: this clip's transform is in the parent's space (Batch 69). No cycles. |
+| `autoOrient` | boolean | no |  | Rotation follows the tangent of the `transform.position` motion path (Batch 69). |
+| `backfaceHidden` | boolean | no | `false` | 2.5D (Batch 70): not drawn while its back faces the viewer. |
+| `blend` | `"normal"` | `"darken"` | `"multiply"` | `"colorBurn"` | `"lighten"` | `"screen"` | `"colorDodge"` | `"add"` | `"overlay"` | `"softLight"` | `"hardLight"` | `"difference"` | `"exclusion"` | no | `"normal"` | Visual clips (Batch 72): how the clip blends with the picture below it (W3C formulas; `add` is linear dodge). |
+| `matte` | [TrackMatte](#trackmatte) | no |  | Visual clips (Batch 72): the clip shows only through another clip's alpha or luma. |
+| `matteOnly` | boolean | no | `false` | Visual clips (Batch 72): not drawn on its own; it is another clip's matte. |
+| `masks` | [Mask](#mask)[] | no |  | Visual clips (Batch 73): masks combined in order; absent or empty = the whole clip shows. |
+| `effects` | [Effect](#effect)[] | no |  | Visual clips (Batch 74): the effect stack, applied in order after the masks; absent or empty = none. |
+| `mediaId` | string (not empty) | yes |  | The media item it plays; a clip whose item was removed stays as an offline clip. |
+| `in` | integer (>= 0) | yes |  | Source in point. Integer microseconds. |
+| `out` | integer (>= 1) | yes |  | Source out point; `out - in` equals `duration * speed` frame times (within one frame). Integer microseconds. |
+| `speed` | number (>= 0, <= 4) | yes | `1` | Playback speed 0.25..4 (0 only for a video freeze frame). |
+| `transform` | [Transform](#transform) | yes |  | Placement. |
+| `opacity` | number (>= 0, <= 1) | yes | `1` | Opacity. |
+| `crop` | [Crop](#crop) | yes |  | Cropping. |
+| `cornerRadius` | number (>= 0) | no |  | Rounded corners of the cropped picture, project px (Batch 58). |
+| `stroke` | [StrokeStyle](#strokestyle) | no |  | Outline around the cropped picture (Batch 58). |
+| `shadow` | [ShadowStyle](#shadowstyle) | no |  | Shadow of the cropped picture (Batch 58). |
+| `volume` | [Volume](#volume) | yes |  | Sound level. |
+| `fades` | [Fades](#fades) | yes | `{"in":0,"out":0}` | Opacity and volume fades. |
+| `keyframes` | [Keyframes](#keyframes) | no |  | Animated properties. |
+| `timeRemap` | [RemapKey](#remapkey)[] | no |  | Video clips (Batch 78): keys mapping timeline frames to source times; replaces `speed` for the picture and mutes the linked audio. At least two keys. |
+| `reverse` | boolean | no | `false` | Video and audio clips (Batch 78): the source plays backward, from `out` to `in`. Ignored when `timeRemap` is set. |
+| `frameBlend` | boolean | no | `false` | Video clips (Batch 78): when the source advances less than one frame per timeline frame, the two nearest source frames are mixed. |
+| `loop` | boolean | no | `false` | Lottie clips (Batch 79): the animation repeats from its start when the clip is longer; false or absent = it holds its last frame. Other clips: not allowed. |
+| `colorOverrides` | [ColorOverride](#coloroverride)[] | no |  | Lottie clips (Batch 79): color replacements applied in order (the first `from` that matches wins). Other clips: not allowed. |
 | `transitionIn` | [Transition](#transition) | no |  | Transition at the start. |
 | `transitionOut` | [Transition](#transition) | no |  | Transition at the end. |
 

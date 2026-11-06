@@ -196,7 +196,11 @@ export interface WorkerMethods {
   /** Metadata of a media file. */
   probe: { params: { file: Blob; container: WorkerContainer; type: string }; result: ProbeResult };
   /** An image's poster, at most `maxSize` px (videos show their thumbnail sheets). */
-  poster: { params: { file: Blob; kind: "image"; maxSize: number }; result: PosterResult };
+  poster: { params: { file: Blob; kind: "image" | "lottie"; maxSize: number }; result: PosterResult };
+  /** The pictures of a Lottie animation (spec §21.23, Batch 79): `variant` is `lottieVariantId` (media id and color overrides), `timesUs` animation times; each frame, `longEdge` px on its long side, comes as progress. */
+  renderLottie: { params: { file: Blob; variant: string; timesUs: number[]; longEdge: number }; result: { frames: number }; progress: { timeUs: number; bitmap: ImageBitmap } };
+  /** Forgets the loaded animations of a media (removed from the project, or the project closed). */
+  closeLottie: { params: { mediaId: string }; result: null };
   /** Decodes an image file (cached posters) into a bitmap of at most `maxSize` px. */
   decodeImage: { params: { blob: Blob; maxSize: number }; result: ImageBitmap };
   /** The frames of an animated GIF or WebP as bitmaps of at most `maxSize` px within `budgetBytes` of textures (`only`: some of them). */
@@ -262,6 +266,8 @@ export type Progress<M extends Method> = WorkerMethods[M] extends { progress: in
 export const METHOD_WORKER: Record<Method, WorkerKind> = {
   probe: "decode",
   poster: "decode",
+  renderLottie: "decode",
+  closeLottie: "decode",
   decodeImage: "decode",
   decodeAnimation: "decode",
   animationStrip: "decode",

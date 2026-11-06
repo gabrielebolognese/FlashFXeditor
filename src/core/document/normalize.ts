@@ -16,7 +16,7 @@ import { defaultTransform, IDENTITY_TRANSFORM } from "./placement.js";
 import { createProject, nextTrackName } from "./project.js";
 import { schemaOf, type FieldType } from "./schema.js";
 import { framesToSourceUs, frameToUs } from "./time.js";
-import { SCHEMA_VERSION, type JsonObject, type JsonValue, type Project, type TextContent, type TextStyle, type TrackKind } from "./types.js";
+import { isUnboundedMedia, SCHEMA_VERSION, type JsonObject, type JsonValue, type Project, type TextContent, type TextStyle, type TrackKind } from "./types.js";
 
 type Obj = Record<string, unknown>;
 
@@ -149,6 +149,7 @@ function clipName(clip: Obj, media: Obj | undefined): string | undefined {
     case "video":
     case "audio":
     case "image":
+    case "lottie":
       return typeof media?.name === "string" ? media.name : undefined;
     case "text": {
       const text = merge({ value: "", box: { mode: "auto", width: 900 } }, clip.text) as unknown as TextContent;
@@ -175,13 +176,13 @@ function normalizeClip(id: string, raw: Obj, project: Project): Obj {
   const defaults: Obj = {};
   const name = clipName(clip, media);
   if (name !== undefined) defaults.name = name;
-  if (clip.kind === "video" || clip.kind === "audio" || clip.kind === "image") {
+  if (clip.kind === "video" || clip.kind === "audio" || clip.kind === "image" || clip.kind === "lottie") {
     const speed = typeof clip.speed === "number" ? clip.speed : 1;
     const start = typeof clip.in === "number" ? clip.in : 0;
     defaults.in = 0;
     if (typeof clip.duration === "number") {
       const played = clip.kind === "image" ? frameToUs(clip.duration, fps) : framesToSourceUs(clip.duration, speed, fps);
-      const length = typeof media?.durationUs === "number" && media.durationUs > 0 && clip.kind !== "image" ? media.durationUs : Infinity;
+      const length = typeof media?.durationUs === "number" && media.durationUs > 0 && !isUnboundedMedia(clip.kind) ? media.durationUs : Infinity;
       defaults.out = clip.kind === "image" ? start + played : Math.min(length, start + played);
     }
     defaults.transform = media && clip.kind !== "audio" ? defaultTransform(media as { width?: number; height?: number; rotation?: 0 | 90 | 180 | 270 }, project.settings) : IDENTITY_TRANSFORM;
@@ -193,7 +194,7 @@ function normalizeClip(id: string, raw: Obj, project: Project): Obj {
   if (clip.kind === "adjustment") Object.assign(defaults, { effects: [], opacity: 1 });
   const merged = merge(defaults, clip) as Obj;
   // Only a clip kind with a transform gets one.
-  if (!(clip.kind === "video" || clip.kind === "audio" || clip.kind === "image" || clip.kind === "text" || clip.kind === "solid" || clip.kind === "shape" || clip.kind === "null")) delete merged.transform;
+  if (!(clip.kind === "video" || clip.kind === "audio" || clip.kind === "image" || clip.kind === "lottie" || clip.kind === "text" || clip.kind === "solid" || clip.kind === "shape" || clip.kind === "null")) delete merged.transform;
   return fillObject("Clip", merged);
 }
 

@@ -4,6 +4,8 @@
 // - SVG: rasterized on the main thread (workers have no DOM to draw SVG, the Batch 04 deviation), first
 //   at the frame's long side, then again at the size the preview draws it at (`refine`, spec §7.1: a
 //   zoom, a scaled layer), at most SVG_MAX_SIZE px; the new raster replaces the old one in the pool.
+// - Lottie (Batch 79): LottieFrames, the animation's frames rendered in decode.worker at the detail they are shown at; the
+//   preview and export ask for them by variant id (media id and color overrides) and animation time.
 // - Animated GIF and WebP (Batch 34): decode.worker decodes the frames the memory budget keeps
 //   (animation.ts), at most ANIMATION_MAX_SIZE px; each kept frame is one texture keyed by its start
 //   time (`frameKey`). Frames arrive one by one (`onChange`: the preview draws them as they come).
@@ -17,6 +19,7 @@ import { abortError } from "../workers/protocol.js";
 import type { WorkerPool } from "../workers/WorkerPool.js";
 import { ANIMATION_BUDGET_BYTES, frameAt, loopTimeUs } from "./animation.js";
 import { ANIMATION_MAX_SIZE } from "../../core/document/limits.js";
+import { LottieFrames } from "./LottieFrames.js";
 
 /** Long-edge cap of SVG rasters (spec §7.1's detail cap). */
 export const SVG_MAX_SIZE = 4096;
@@ -57,13 +60,18 @@ export class ImageService {
   private readonly animations = new Map<MediaId, Animation>();
   /** The key `frameKey` returns (valid until its next call). */
   private readonly scratch: TextureKey = { mediaId: "", lod: "full", timeUs: STILL_US };
+  /** The Lottie clips' frames (Batch 79). */
+  readonly lottie: LottieFrames;
 
-  constructor(private readonly deps: ImageServiceDeps) {}
+  constructor(private readonly deps: ImageServiceDeps) {
+    this.lottie = new LottieFrames({ ...deps, file: (mediaId) => (this.source ? this.source.file(mediaId) : Promise.resolve(null)) });
+  }
 
   /** Serves the images of a project until the returned function is called (which cancels the loads). */
   attach(source: ImageSource): () => void {
     this.detach();
     this.source = source;
+    this.lottie.attach();
     return () => {
       if (this.source === source) this.detach();
     };
@@ -71,6 +79,7 @@ export class ImageService {
 
   /** The uploaded texture of an image (an animation's first frame), or null when it is not loaded (yet). */
   get(mediaId: MediaId): TextureHandle | null {
+    if (this.lottie.is(mediaId)) return this.lottie.get(mediaId);
     const key = this.frameKey(mediaId, 0);
     return key ? this.deps.pool.get(key) : null;
   }
@@ -81,6 +90,7 @@ export class ImageService {
    * animation's frame list is not known yet.
    */
   frameKey(mediaId: MediaId, timeUs: number): TextureKey | null {
+    if (this.lottie.is(mediaId)) return this.lottie.key(mediaId, timeUs);
     const item = this.deps.document.getState().media[mediaId];
     const key = this.scratch;
     key.mediaId = mediaId;
@@ -97,6 +107,7 @@ export class ImageService {
 
   /** The size of an SVG image (vector: `refine` draws it sharper), or null for other media. */
   vectorSize(mediaId: MediaId): { width: number; height: number } | null {
+    if (this.lottie.is(mediaId)) return this.lottie.size(mediaId);
     const item = this.deps.document.getState().media[mediaId];
     return item?.width && item.height && isSvgImage(item) ? { width: item.width, height: item.height } : null;
   }
@@ -107,6 +118,7 @@ export class ImageService {
    * animation's first frame) once done; null when it cannot be shown now.
    */
   load(mediaId: MediaId): Promise<TextureHandle | null> {
+    if (this.lottie.is(mediaId)) return this.lottie.load(mediaId);
     const item = this.deps.document.getState().media[mediaId];
     const cached = this.get(mediaId);
     if (cached && !(item && isAnimatedImage(item) && this.missingFrames(mediaId).length > 0)) return Promise.resolve(cached);
@@ -129,6 +141,8 @@ export class ImageService {
    * size gives way. Resolves with the texture shown afterwards (null for other media).
    */
   refine(mediaId: MediaId, longEdge: number): Promise<TextureHandle | null> {
+    // A Lottie clip's detail is set per frame request (`lottie.setEdge`), not by replacing a raster.
+    if (this.lottie.is(mediaId)) return Promise.resolve(null);
     if (!this.vectorSize(mediaId) || !this.source) return Promise.resolve(null);
     const target = Math.max(1, Math.min(SVG_MAX_SIZE, this.deps.renderer.maxTextureSize, Math.ceil(longEdge)));
     const current = this.get(mediaId);
@@ -151,6 +165,7 @@ export class ImageService {
       loads.delete(mediaId);
     }
     this.animations.delete(mediaId);
+    this.lottie.release(mediaId);
     this.deps.pool.deleteMedia(mediaId);
   }
 
@@ -160,6 +175,7 @@ export class ImageService {
       loads.clear();
     }
     this.animations.clear();
+    this.lottie.detach();
     this.source = null;
   }
 

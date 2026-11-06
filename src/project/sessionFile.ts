@@ -65,7 +65,7 @@ function sanitizeRanges(value: unknown): Record<string, SourceRange> {
 /** The media filter chips (Batch 41): known kinds once each, `unused` a boolean. */
 function sanitizeFilters(value: unknown): MediaFilters {
   const raw = obj(value);
-  const kinds = Array.isArray(raw.kinds) ? [...new Set(raw.kinds.filter((kind): kind is MediaFilters["kinds"][number] => kind === "video" || kind === "audio" || kind === "image"))] : [];
+  const kinds = Array.isArray(raw.kinds) ? [...new Set(raw.kinds.filter((kind): kind is MediaFilters["kinds"][number] => kind === "video" || kind === "audio" || kind === "image" || kind === "lottie"))] : [];
   return { kinds, unused: bool(raw.unused, false) };
 }
 

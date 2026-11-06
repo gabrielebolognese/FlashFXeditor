@@ -418,6 +418,13 @@ renderer.subscribe((event) => {
 });
 
 let stopProject: (() => void) | null = null;
+/** The open project's media files (the frame source), for code outside the preview that reads a media file (Batch 79: the Lottie color list). */
+let mediaSource: ReturnType<typeof frameSource> | null = null;
+
+/** The file of a media of the open project, or null when it is missing or no project is open. */
+export function openMediaFile(mediaId: MediaId): Promise<File | null> {
+  return mediaSource ? mediaSource.file(mediaId, "full") : Promise.resolve(null);
+}
 let chosenBackend: RendererBackend | null = null;
 
 /** The backend the startup check chose (Settings > About shows it); null before `startGpu`. */
@@ -516,6 +523,7 @@ export function attachPreview(dir: FsDir, isWritable: () => boolean): void {
   detachPreview();
   playbackEngine.pause();
   const source = frameSource(dir, isWritable);
+  mediaSource = source;
   const stops = [
     frameService.attach(source),
     imageService.attach({ file: (mediaId) => source.file(mediaId, "full") }),
@@ -550,6 +558,7 @@ export function detachPreview(): void {
   playbackEngine.pause();
   stopProject?.();
   stopProject = null;
+  mediaSource = null;
   texturePool.clear();
   textRasters.clear();
   // The pool's frame textures went to the renderer's spares: those go too.

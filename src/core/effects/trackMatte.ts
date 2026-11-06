@@ -11,7 +11,7 @@ import type { Clip, MatteMode } from "../document/types.js";
 
 /** Whether a clip draws a picture (spec §21.17: blend modes, mattes and matte sources are visual clips). */
 export function isVisualClip(clip: Pick<Clip, "kind">): boolean {
-  return clip.kind === "video" || clip.kind === "image" || clip.kind === "text" || clip.kind === "solid" || clip.kind === "shape" || clip.kind === "compound";
+  return clip.kind === "video" || clip.kind === "image" || clip.kind === "lottie" || clip.kind === "text" || clip.kind === "solid" || clip.kind === "shape" || clip.kind === "compound";
 }
 
 /** Whether a matte mode uses luminance (else alpha), and whether it is inverted - for the shader. */

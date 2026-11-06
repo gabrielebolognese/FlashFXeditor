@@ -23,7 +23,7 @@ export function hoverFrame(fraction: number, total: Frame): Frame {
 
 /** Whole project frames of a media item (its hover-scrub positions run 0..this); 0 for stills. */
 export function scrubFrames(media: MediaItem, fps: Project["settings"]["fps"]): Frame {
-  return media.kind === "image" || media.durationUs <= 0 ? 0 : usToFrameFloor(media.durationUs, fps);
+  return media.kind === "image" || media.kind === "lottie" || media.durationUs <= 0 ? 0 : usToFrameFloor(media.durationUs, fps);
 }
 
 /**

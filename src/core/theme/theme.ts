@@ -257,6 +257,8 @@ export function readTheme(read: TokenReader, root?: Element): { theme: Theme; mi
 
   const clip = {} as TimelineTheme["clip"];
   for (const kind of CLIP_KINDS) clip[kind] = { body: str(`--clip-${kind}`), label: str(`--clip-${kind}-label`) };
+  // The design system has no Lottie clip color (Batch 79 gap): a Lottie clip is drawn like an image clip.
+  clip.lottie = clip.image;
   const labels = {} as TimelineTheme["labels"];
   for (const name of LABEL_COLORS) labels[name] = str(`--label-${name}`);
 

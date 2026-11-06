@@ -229,6 +229,8 @@ export interface MediaLayer extends LayerBase {
   still: boolean;
   /** Media time in us (0 = the first frame), for videos. */
   timeUs: number;
+  /** A Lottie animation (Batch 79): `still` is true, `mediaId` is the clip's variant id (media id and color overrides, `lottieVariantId`) and `timeUs` the animation time of its frame. */
+  lottie?: boolean;
   /** The visible part of the texture (crop), in texture UV space. */
   crop: UvRect;
   /** Rounded corners of the picture (spec §21.7). */

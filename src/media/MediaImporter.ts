@@ -18,6 +18,7 @@ import { subdir } from "../project/layout.js";
 import { copyIntoMedia, MEDIA_DIR, removeFileAt, safeFileName, takenNames, uniqueName } from "../project/mediaFiles.js";
 import { browserDecodeAudio, probeAudioFile, type DecodeAudio, type DecodedAudioInfo, type ReadDuration } from "./probe/audioProbe.js";
 import { ignoredAlphaNote } from "./probe/alphaHints.js";
+import { probeLottie } from "./probe/lottieProbe.js";
 import { probeSvg } from "./probe/svgProbe.js";
 import type { ProbeResult } from "./probe/types.js";
 import { classifyFile, type Container, type FileKind } from "./mediaKinds.js";
@@ -44,6 +45,8 @@ export function createProbeFile(pool: Pick<WorkerPool, "request">, decodeAudio: 
         return probeAudioFile(file, kind.audioCodec ?? "", decodeAudio, onDecodedAudio && ((decoded) => onDecodedAudio(file, decoded)), readAudioDuration);
       case "svg":
         return probeSvg(file);
+      case "lottie":
+        return probeLottie(file);
     }
   };
 }

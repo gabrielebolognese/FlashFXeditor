@@ -26,7 +26,7 @@ export interface CompoundResult {
   sequenceId: SequenceId;
 }
 
-const VISUAL = new Set(["video", "image", "text", "solid", "compound", "shape"]);
+const VISUAL = new Set(["video", "image", "lottie", "text", "solid", "compound", "shape"]);
 
 /** True when two transforms place a layer the same way. */
 function isIdentityTransform(t: Transform): boolean {

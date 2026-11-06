@@ -3,6 +3,7 @@
 // run on a Blob); WAV, MP3, OGG, PNG, JPEG, WebP, GIF and SVG are small pure readers here. Every reader
 // answers with a `ProbeResult`, the shape the app's importer turns into a media record, and throws a
 // `ProbeError` for a file it cannot read (left for the app's repair on open, §21.5). No DOM.
+import { probeLottie } from "./lottieProbe.js";
 import { probeVideoFile } from "../demux/container.js";
 import { frameDurationUs } from "../decode/animation.js";
 import { ticksToUs } from "../../core/document/time.js";
@@ -296,6 +297,8 @@ export async function readMediaHeader(file: Blob, name: string): Promise<ProbeRe
       throw new ProbeError(`no header reader for .${ext} files`);
     case "svg":
       return svgHeader(await file.text());
+    case "lottie":
+      return probeLottie(file);
     case "image": {
       const head = await bytesOf(file, 0, file.size > 4_000_000 ? 4_000_000 : file.size);
       if (ext === "png") return pngHeader(head);

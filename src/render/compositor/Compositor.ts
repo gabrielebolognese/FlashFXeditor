@@ -97,6 +97,7 @@ import { cueAnimAt, newCueAnimState } from "../../text/cueAnim.js";
 import { TEXT_RASTER_MAX, type TextHighlight } from "../text/raster.js";
 import { MAX_TEXT_SCALE, type TextPart } from "../text/TextRasterCache.js";
 import { imageTimeUs } from "../../media/decode/animation.js";
+import { lottieTimeUs, lottieVariantId } from "../../media/lottie/lottieFile.js";
 import { drawnRadii, drawnRadius, type SolidLook } from "../../timeline/edit/solid.js";
 import { animatedCrop, animatedRadius, animatedSolidLook, newSolidScratch } from "./animatedLook.js";
 import { keyedFillColors, maxKeyedFontSize, newTextMotion, styleVariant, textMotion, type TextMotion } from "./animatedText.js";
@@ -445,7 +446,7 @@ export class Compositor {
       if (clip.matteOnly === true && !this.plain) continue;
       const first = out.layers.length;
       // A frame of a transition (Batch 36): the track's two clips.
-      const pair = (clip.kind === "video" || clip.kind === "image") && (clip.transitionIn || clip.transitionOut) ? transitionPair(index, clip, frame) : null;
+      const pair = (clip.kind === "video" || clip.kind === "image" || clip.kind === "lottie") && (clip.transitionIn || clip.transitionOut) ? transitionPair(index, clip, frame) : null;
       if (pair) {
         const { left, right } = pair;
         const transition = right.transitionIn as NonNullable<MediaClip["transitionIn"]>;
@@ -510,7 +511,7 @@ export class Compositor {
       }
       const transform = this.rig.resolve(clip, transforms?.get(clip.id) ?? animatedTransform(clip, rel, this.animated), this.world);
       const opacity = opacities?.get(clip.id) ?? animatedOpacity(clip, rel);
-      if (clip.kind === "video" || clip.kind === "image") {
+      if (clip.kind === "video" || clip.kind === "image" || clip.kind === "lottie") {
         const reason = this.offline?.label(clip.mediaId) ?? null;
         if (reason !== null && this.offline) {
           const slate = (this.solidPool[solidLayers] ??= newSolidLayer());
@@ -1017,15 +1018,16 @@ export class Compositor {
   }
 
   private addNeighbor(doc: Project, clip: Clip, at: Frame, frame: Frame, reach: Frame): void {
-    if (!clip.enabled || (clip.kind !== "video" && clip.kind !== "image") || Math.abs(at - frame) > reach) return;
+    if (!clip.enabled || (clip.kind !== "video" && clip.kind !== "image" && clip.kind !== "lottie") || Math.abs(at - frame) > reach) return;
     // An offline media has nothing to warm (its slate is drawn).
     if (this.offline?.label(clip.mediaId) != null) return;
     const list = this.neighborList;
     const neighbor = (this.neighborPool[list.length] ??= { mediaId: "", still: false, timeUs: 0 });
-    neighbor.mediaId = clip.mediaId;
+    const lottie = clip.kind === "lottie";
+    neighbor.mediaId = lottie ? variantOf(clip) : clip.mediaId;
     const sequence = clip.kind === "image" && doc.media[clip.mediaId]?.sequence !== undefined;
-    neighbor.still = clip.kind === "image" && !sequence;
-    neighbor.timeUs = neighbor.still ? 0 : sequence ? imageTimeUs(clip, at, doc.settings.fps, doc.media[clip.mediaId]?.durationUs ?? 0) : sourceTimeUs(clip, at, doc.settings.fps);
+    neighbor.still = lottie || (clip.kind === "image" && !sequence);
+    neighbor.timeUs = lottie ? lottieTimeUs(sourceTimeUs(clip, at, doc.settings.fps), doc.media[clip.mediaId]?.durationUs ?? 0, clip.loop === true) : neighbor.still ? 0 : sequence ? imageTimeUs(clip, at, doc.settings.fps, doc.media[clip.mediaId]?.durationUs ?? 0) : sourceTimeUs(clip, at, doc.settings.fps);
     list.push(neighbor);
   }
 
@@ -1139,13 +1141,15 @@ export class Compositor {
 
     layer.trackId = clip.trackId;
     layer.clipId = clip.id;
-    layer.mediaId = clip.mediaId;
+    const lottie = clip.kind === "lottie";
+    layer.mediaId = lottie ? variantOf(clip) : clip.mediaId;
+    layer.lottie = lottie;
     // An image sequence (Batch 64) is decoded like a video: its frames come from the frame service.
     const sequence = clip.kind === "image" && item.sequence !== undefined;
-    layer.still = clip.kind === "image" && !sequence;
+    layer.still = lottie || (clip.kind === "image" && !sequence);
     // An animated image or a sequence loops from its in point (a still has no duration: time 0).
     const fps = doc.settings.fps;
-    layer.timeUs = layer.still || sequence ? imageTimeUs(clip, frame, fps, item.durationUs) : handles ? handleTimeUs(clip, frame, fps, item.durationUs) : sourceTimeUs(clip, frame, fps);
+    layer.timeUs = lottie ? lottieTimeUs(sourceTimeUs(clip, frame, fps), item.durationUs, clip.loop === true) : layer.still || sequence ? imageTimeUs(clip, frame, fps, item.durationUs) : handles ? handleTimeUs(clip, frame, fps, item.durationUs) : sourceTimeUs(clip, frame, fps);
     layer.opacity = clamp01(opacity) * fadeFactor(clip, frame);
     return true;
   }
@@ -1779,11 +1783,26 @@ const BLACK: RGBA = { r: 0, g: 0, b: 0, a: 1 };
 const BLACK_CLEAR: RGBA = { r: 0, g: 0, b: 0, a: 0 };
 const WHITE: RGBA = { r: 1, g: 1, b: 1, a: 1 };
 
+const variants = new WeakMap<object, string>();
+
+/** The texture identity of a lottie clip (its media and color overrides), made once per override list. */
+function variantOf(clip: MediaClip): string {
+  const overrides = clip.colorOverrides;
+  if (!overrides || overrides.length === 0) return clip.mediaId;
+  let id = variants.get(overrides);
+  if (id === undefined || !id.startsWith(clip.mediaId)) {
+    id = lottieVariantId(clip.mediaId, overrides);
+    variants.set(overrides, id);
+  }
+  return id;
+}
+
 function copyMediaLayer(out: WritableMediaLayer, from: MediaLayer): void {
   out.trackId = from.trackId;
   out.clipId = from.clipId;
   out.mediaId = from.mediaId;
   out.still = from.still;
+  out.lottie = from.lottie === true;
   out.timeUs = from.timeUs;
   for (let i = 0; i < 6; i++) out.transform[i] = from.transform[i] as number;
   out.persp = from.persp ?? null;
@@ -1810,7 +1829,7 @@ function transitionPair(index: TrackIndex, clip: MediaClip, frame: Frame): { lef
     left = clip;
     right = index.clips[at + 1];
   }
-  if (!left || !right || (left.kind !== "video" && left.kind !== "image") || (right.kind !== "video" && right.kind !== "image")) return null;
+  if (!left || !right || (left.kind !== "video" && left.kind !== "image" && left.kind !== "lottie") || (right.kind !== "video" && right.kind !== "image" && right.kind !== "lottie")) return null;
   if (!left.enabled || !right.enabled || left.start + left.duration !== right.start || left.transitionOut?.id !== right.transitionIn?.id) return null;
   return { left, right };
 }

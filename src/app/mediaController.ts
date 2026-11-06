@@ -1195,6 +1195,7 @@ export function installMediaController(doc: Document = document): () => void {
     actions.register("media.filterVideo", () => toggleKind("video")),
     actions.register("media.filterAudio", () => toggleKind("audio")),
     actions.register("media.filterImage", () => toggleKind("image")),
+    actions.register("media.filterLottie", () => toggleKind("lottie")),
     actions.register("media.filterUnused", () => setPanelFilters({ unused: !sessionStore.state.getState().mediaPanel.filters.unused })),
     actions.register(
       "media.clearFilters",

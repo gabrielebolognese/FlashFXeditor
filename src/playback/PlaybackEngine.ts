@@ -62,6 +62,7 @@ import { setPlayhead, type SessionStore } from "../core/store/sessionStore.js";
 import type { PreviewQuality } from "../core/store/sessionStore.js";
 import type { Lod, TextureKey, TexturePool } from "../media/cache/TexturePool.js";
 import type { FrameResult, FrameService } from "../media/decode/FrameService.js";
+import { lottieVariantId } from "../media/lottie/lottieFile.js";
 import type { ImageService } from "../media/decode/ImageService.js";
 import { nearestPosition } from "../media/demux/sampleIndex.js";
 import { isAbortError, isWorkerCrash } from "../media/workers/protocol.js";
@@ -598,8 +599,10 @@ export class PlaybackEngine {
 
   private warm(doc: Project, clip: Clip, cursor: Frame): void {
     if (!clip.enabled) return;
-    if (clip.kind === "image") {
-      if (!this.deps.images.get(clip.mediaId)) this.deps.images.load(clip.mediaId).catch(() => undefined);
+    if (clip.kind === "image" || clip.kind === "lottie") {
+      // A Lottie clip's frames are keyed by its variant (media and color overrides): its first frame is warmed.
+      const id = clip.kind === "lottie" ? lottieVariantId(clip.mediaId, clip.colorOverrides) : clip.mediaId;
+      if (!this.deps.images.get(id)) this.deps.images.load(id).catch(() => undefined);
       return;
     }
     if (clip.kind !== "video") return;

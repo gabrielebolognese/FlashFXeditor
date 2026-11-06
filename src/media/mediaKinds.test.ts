@@ -12,7 +12,7 @@ describe("classifyFile", () => {
     expect(classifyFile("anim.gif", "")).toMatchObject({ container: "image" });
     expect(classifyFile("logo.svg", "")).toMatchObject({ container: "svg" });
     expect(classifyFile("Screen Recording.WEBM", "")).toEqual({ container: "webm", mime: "video/webm" });
-    expect(ACCEPTED_EXTENSIONS).toHaveLength(15);
+    expect(ACCEPTED_EXTENSIONS).toHaveLength(17);
   });
 
   it("refuses unknown types, Matroska by name and documents", () => {
@@ -51,7 +51,7 @@ describe("PICKER_TYPES", () => {
   });
 
   it("keeps one narrowing type per kind that together cover every accepted type", () => {
-    expect(PICKER_TYPES.slice(1).map((type) => type.description)).toEqual(["Video", "Audio", "Images"]);
+    expect(PICKER_TYPES.slice(1).map((type) => type.description)).toEqual(["Video", "Audio", "Images", "Lottie animations"]);
     expect(PICKER_TYPES.slice(1).flatMap(extensions).sort()).toEqual([...ACCEPTED_EXTENSIONS].sort());
     expect(IMAGE_PICKER_TYPES.map((type) => type.description)).toEqual(["Images"]);
   });

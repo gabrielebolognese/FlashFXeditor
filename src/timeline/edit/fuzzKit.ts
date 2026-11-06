@@ -804,7 +804,7 @@ function withStandIns(project: Project): Project {
     Object.entries(project.clips).map(([id, clip]) => {
       const hash = idHash(id);
       if (hash % 4 !== 0) return [id, clip];
-      const fallbackOf: FallbackOf = { kind: "lottie", reason: "fuzz", schemaVersion: 4, ...(hash % 8 === 0 && { headTrim: 1 + (hash % 40) }), data: { kind: "lottie", seed: hash, nested: { list: [1, 2.5, { deep: "x" }] } } };
+      const fallbackOf: FallbackOf = { kind: "hologram", reason: "fuzz", schemaVersion: 4, ...(hash % 8 === 0 && { headTrim: 1 + (hash % 40) }), data: { kind: "hologram", seed: hash, nested: { list: [1, 2.5, { deep: "x" }] } } };
       return [id, { ...clip, fallbackOf } as Clip];
     }),
   );

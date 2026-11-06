@@ -53,7 +53,7 @@ describe("convertStandIn", () => {
 
   it("keeps a stand-in whose data names an unknown kind, with the reason", () => {
     const result = convertStandIn(standInsProject(), "b-unknown", OPTIONS);
-    expect(result).toEqual({ ok: false, reason: 'This editor has no "lottie" clip yet' });
+    expect(result).toEqual({ ok: false, reason: 'This editor has no "hologram" clip yet' });
   });
 
   it("refuses data from a newer schema and a clip that is not a stand-in", () => {
@@ -94,7 +94,7 @@ describe("convertAll", () => {
     const project = standInsProject();
     const result = convertAll(project, OPTIONS);
     expect(result.converted.sort()).toEqual(["b-solid", "b-split-a", "b-split-b"]);
-    expect(result.remaining).toEqual([{ clipId: "b-unknown", reason: 'This editor has no "lottie" clip yet' }]);
+    expect(result.remaining).toEqual([{ clipId: "b-unknown", reason: 'This editor has no "hologram" clip yet' }]);
     expect(standIns(result.project).map((clip) => clip.id)).toEqual(["b-unknown"]);
     expect(validateStrict(JSON.parse(JSON.stringify(result.project))).ok).toBe(true);
   });

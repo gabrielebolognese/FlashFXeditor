@@ -1,7 +1,7 @@
 // The persistent document (spec §5.2). Plain JSON only: no classes, Maps, Sets or undefined-valued
 // keys, so a Project can be serialized as-is and diffed by Immer patches.
 
-export const SCHEMA_VERSION = 22;
+export const SCHEMA_VERSION = 23;
 
 export type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
 export type JsonObject = { [key: string]: JsonValue };
@@ -485,7 +485,7 @@ export interface FallbackOf {
 
 export interface MediaItem {
   id: MediaId;
-  kind: "video" | "audio" | "image";
+  kind: "video" | "audio" | "image" | "lottie";
   name: string;
   file: { relPath: string } | { handleKey: string; pathHint: string };
   durationUs: number;
@@ -635,7 +635,7 @@ export interface Effect {
   params: Record<string, number | number[] | string>;
 }
 
-export const CLIP_KINDS = ["video", "audio", "image", "text", "solid", "caption", "compound", "shape", "null", "adjustment"] as const;
+export const CLIP_KINDS = ["video", "audio", "image", "lottie", "text", "solid", "caption", "compound", "shape", "null", "adjustment"] as const;
 export type ClipKind = (typeof CLIP_KINDS)[number];
 
 export interface ClipBase {
@@ -671,7 +671,7 @@ export interface ClipBase {
 }
 
 export interface MediaClip extends ClipBase {
-  kind: "video" | "audio" | "image";
+  kind: "video" | "audio" | "image" | "lottie";
   mediaId: MediaId;
   /** out - in == duration * speed * usPerFrame (invariant, within 1 frame) */
   in: Us;
@@ -693,6 +693,10 @@ export interface MediaClip extends ClipBase {
   reverse?: boolean;
   /** Video clips: when the source advances less than a frame per timeline frame, the two nearest source frames are mixed; absent = off. */
   frameBlend?: boolean;
+  /** Lottie clips (spec §21.23, Batch 79; schema 23): the animation repeats from its start when the clip is longer; absent or false = it holds its last frame. */
+  loop?: boolean;
+  /** Lottie clips: colors of the animation that are replaced, in order (the first `from` that matches wins). Channels 0..1. */
+  colorOverrides?: { from: RGBA; to: RGBA }[];
   transitionIn?: Transition;
   transitionOut?: Transition;
 }
@@ -993,8 +997,11 @@ export interface Marker {
 }
 
 export function isMediaClip(clip: Clip): clip is MediaClip {
-  return clip.kind === "video" || clip.kind === "audio" || clip.kind === "image";
+  return clip.kind === "video" || clip.kind === "audio" || clip.kind === "image" || clip.kind === "lottie";
 }
+
+/** A clip that shows a picture and takes media timing but is not bound by its media's length (a still, an animated image, a Lottie animation). */
+export const isUnboundedMedia = (kind: string): boolean => kind === "image" || kind === "lottie";
 
 /**
  * A freeze frame (Batch 27): a video clip with `speed = 0`, holding the source time `in` for its whole

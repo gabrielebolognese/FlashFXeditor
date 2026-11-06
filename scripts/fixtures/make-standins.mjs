@@ -38,7 +38,7 @@ const sparse = {
   ],
   clips: {
     "b-solid": standIn("b-solid", "v1", 10, 40, "solid", "Sparse solid written for schema 3", 3, BAR),
-    "b-unknown": standIn("b-unknown", "v1", 60, 30, "lottie", "A Lottie animation baked to a solid", 4, { kind: "lottie", src: "anim/logo.json" }),
+    "b-unknown": standIn("b-unknown", "v1", 60, 30, "hologram", "A hologram baked to a solid", 4, { kind: "hologram", src: "anim/logo.holo" }),
     "b-split-a": standIn("b-split-a", "v2", 0, 24, "solid", "A solid baked, split at frame 24", 4, SPLIT),
     "b-split-b": standIn("b-split-b", "v2", 24, 36, "solid", "A solid baked, split at frame 24", 4, SPLIT, { headTrim: 24 }),
   },

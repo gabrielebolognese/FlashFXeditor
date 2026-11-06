@@ -9,7 +9,7 @@ import { formatFps } from "../../project/projectPresets.js";
 
 export { codecLabel };
 
-const KIND_ORDER: Record<MediaItem["kind"], number> = { video: 0, audio: 1, image: 2 };
+const KIND_ORDER: Record<MediaItem["kind"], number> = { video: 0, audio: 1, image: 2, lottie: 3 };
 const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
 
 function pixels(item: MediaItem): number {
@@ -192,5 +192,7 @@ export function metaLabel(item: MediaItem): string {
       return audioLabel(item);
     case "image":
       return [codecLabel(item.codec), resolutionLabel(item)].filter(Boolean).join(" · ");
+    case "lottie":
+      return ["Lottie", resolutionLabel(item), fpsLabel(item)].filter(Boolean).join(" · ");
   }
 }

@@ -25,7 +25,7 @@ import { produce, type Draft } from "immer";
 import { ease, isEaseId } from "./keyframes.js";
 import { framesToSourceUs, usPerFrame } from "./time.js";
 import { remapUs } from "./timeRemap.js";
-import { isFreeze, isMediaClip, TRANSITION_DIRECTIONS, TRANSITION_KINDS, type Clip, type Frame, type MediaClip, type Project, type Rational, type Transition, type TransitionDirection, type TransitionKind } from "./types.js";
+import { isFreeze, isMediaClip, isUnboundedMedia, TRANSITION_DIRECTIONS, TRANSITION_KINDS, type Clip, type Frame, type MediaClip, type Project, type Rational, type Transition, type TransitionDirection, type TransitionKind } from "./types.js";
 
 /** Spec §6.15: the default transition is 15 frames; the built-in value of the setting (timeline/edit/editDefaults.ts). */
 export const DEFAULT_TRANSITION_FRAMES = 15;
@@ -124,7 +124,7 @@ export function tailFrames(clip: MediaClip, durationUs: number, fps: Rational): 
 export function handleOf(project: Pick<Project, "media" | "settings">, clip: Clip, side: "head" | "tail"): number {
   if (!isMediaClip(clip)) return 0;
   // A still holds its picture, an animated image loops, a freeze frame holds its time.
-  if (clip.kind === "image" || isFreeze(clip)) return Infinity;
+  if (isUnboundedMedia(clip.kind) || isFreeze(clip)) return Infinity;
   const { fps } = project.settings;
   // A reversed clip's head lies after its `out` and its tail before its `in`.
   const reversed = clip.reverse === true;

@@ -125,7 +125,8 @@ function retimeGroup(project: Project, group: readonly MediaClip[], speed: numbe
       delta = Math.max(delta, 0);
       continue;
     }
-    const media = project.media[clip.mediaId];
+    // A Lottie clip holds or loops past its animation: no media bound (Batch 79).
+    const media = clip.kind === "lottie" ? undefined : project.media[clip.mediaId];
     const room = media ? maxDurationFrames({ ...clip, speed }, media.durationUs, fps) : Infinity;
     if (room === 0) {
       // Not even one frame fits between `in` and the media end at this speed: the member keeps its

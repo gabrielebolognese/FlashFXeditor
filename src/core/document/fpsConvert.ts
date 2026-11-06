@@ -21,7 +21,7 @@ import type { Draft } from "immer";
 import { fitFades } from "./fades.js";
 import { framesToSourceUs, frameToUs, usPerFrame } from "./time.js";
 import type { CaptionClip, Clip, Keyframes, MediaClip, MediaItem, Project, Rational, TextAnim, Transition } from "./types.js";
-import { isFreeze, isMediaClip } from "./types.js";
+import { isFreeze, isMediaClip, isUnboundedMedia } from "./types.js";
 
 /** to / from as a reduced fraction of positive integers. */
 export interface FrameRatio {
@@ -133,7 +133,7 @@ function fitSource(clip: MediaClip, to: Rational, media: MediaItem | undefined, 
   if (Math.abs(clip.out - clip.in - clip.duration * sourceFrame) <= sourceFrame) return;
   const out = clip.out;
   clip.out = clip.in + framesToSourceUs(clip.duration, clip.speed, to);
-  if (media && clip.kind !== "image" && clip.out > media.durationUs) {
+  if (media && !isUnboundedMedia(clip.kind) && clip.out > media.durationUs) {
     clip.out = media.durationUs;
     clip.duration = Math.max(1, Math.floor((clip.out - clip.in) / sourceFrame));
   }

@@ -105,6 +105,8 @@ export const MIGRATIONS: Readonly<Record<number, Migration>> = {
   20: (raw) => raw,
   // 21 -> 22 (Batch 78): `timeRemap`, `reverse` and `frameBlend` on media clips, all optional: none in an older project.
   21: (raw) => raw,
+  // 22 -> 23 (Batch 79): `lottie` media and clips, `loop` and `colorOverrides`, all new: none in an older project.
+  22: (raw) => raw,
 };
 
 function isObject(value: unknown): value is JsonObject {

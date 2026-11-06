@@ -23,7 +23,7 @@ import type { Command } from "../../core/commands/command.js";
 import { convertClipRuns, FrameConverter, frameRatio, sameFrameRate } from "../../core/document/fpsConvert.js";
 import { isEaseId, isKeyframeSection, SECTION_PROPS } from "../../core/document/keyframes.js";
 import type { CaptionStyle, Clip, ClipId, Frame, MediaId, MediaItem, Project, Rational, Track, TrackId } from "../../core/document/types.js";
-import { isMediaClip } from "../../core/document/types.js";
+import { isMediaClip, isUnboundedMedia } from "../../core/document/types.js";
 import { upgradeCaptionStyle } from "../../text/captions.js";
 import type { KeyframeClipboard } from "./keyframes.js";
 import { captionStyleOf, captionTrackOf, freeCueDelta, newCaptionTrack } from "./captions.js";
@@ -192,7 +192,7 @@ function isMediaRecord(value: unknown): value is MediaItem {
   if (!isRecord(value) || typeof value.id !== "string" || typeof value.name !== "string" || !isRecord(value.file)) return false;
   const { file } = value;
   const fileOk = typeof file.relPath === "string" || (typeof file.handleKey === "string" && typeof file.pathHint === "string");
-  return fileOk && (value.kind === "video" || value.kind === "audio" || value.kind === "image") && isInt(value.durationUs) && value.durationUs >= 0;
+  return fileOk && (value.kind === "video" || value.kind === "audio" || value.kind === "image" || value.kind === "lottie") && isInt(value.durationUs) && value.durationUs >= 0;
 }
 
 /**
@@ -254,10 +254,10 @@ export function resolveMedia(project: Project, payload: ClipsPayload, newId: () 
     let needsSound = false;
     for (const { clip } of payload.clips) {
       if (!isMediaClip(clip) || clip.mediaId !== item.id) continue;
-      if (clip.kind !== "image") needUs = Math.max(needUs, clip.out);
+      if (!isUnboundedMedia(clip.kind)) needUs = Math.max(needUs, clip.out);
       if (clip.kind === "audio") needsSound = true;
     }
-    const holds = (candidate: MediaItem) => candidate.kind === item.kind && (item.kind === "image" || candidate.durationUs >= needUs) && (!needsSound || candidate.hasAudio);
+    const holds = (candidate: MediaItem) => candidate.kind === item.kind && (isUnboundedMedia(item.kind) || candidate.durationUs >= needUs) && (!needsSound || candidate.hasAudio);
     const found = items.find((candidate) => holds(candidate) && candidate.name === item.name) ?? items.find((candidate) => holds(candidate) && fileName(candidate) === fileName(item));
     if (found) {
       ids.set(item.id, found.id);

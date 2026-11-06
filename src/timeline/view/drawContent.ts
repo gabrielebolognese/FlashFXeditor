@@ -316,6 +316,7 @@ function drawBody(scene: ClipScene, clip: Clip, x: number, y: number, width: num
       if (clip.timeRemap && lod === "full") drawRemapGraph(scene, clip, y, height, left, right);
       return;
     case "image":
+    case "lottie":
       if (width >= LOD_THUMBS_PX) drawPosterTiles(scene, clip, y, height, left, right);
       return;
     case "audio":

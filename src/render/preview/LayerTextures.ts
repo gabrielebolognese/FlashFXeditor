@@ -53,6 +53,7 @@ import type { MatteMode, MediaId, ShadowStyle, StrokeStyle, TextStyle, TrackId }
 import { imageKey, type Lod, type TextureKey, type TexturePool } from "../../media/cache/TexturePool.js";
 import type { FrameResult, FrameService } from "../../media/decode/FrameService.js";
 import type { ImageService } from "../../media/decode/ImageService.js";
+import type { LottieFrames } from "../../media/decode/LottieFrames.js";
 import { mediaTimePosition } from "../../media/demux/sampleIndex.js";
 import { isAbortError, isWorkerCrash, type FramePriority } from "../../media/workers/protocol.js";
 import { newUnitState, type UnitState } from "../../text/anim.js";
@@ -73,7 +74,7 @@ export const CRASH_RETRY_MS = 500;
 
 export interface LayerTexturesDeps {
   frames: Pick<FrameService, "info" | "video" | "getFrame" | "prefetch" | "lodFor">;
-  images: Pick<ImageService, "get" | "load" | "frameKey" | "vectorSize" | "refine">;
+  images: Pick<ImageService, "get" | "load" | "frameKey" | "vectorSize" | "refine"> & { lottie?: Pick<LottieFrames, "setEdge" | "edgeOf" | "frame" | "size"> };
   pool: Pick<TexturePool, "get" | "has" | "pin">;
   /** A frame arrived after the pass that wanted it: draw again. */
   onChange(): void;
@@ -798,7 +799,19 @@ export class LayerTextures {
     const { mediaId } = layer;
     let key: TextureKey;
     let texture: TextureHandle | null;
-    if (layer.still) {
+    if (layer.lottie) {
+      // A Lottie frame (Batch 79): rendered at the exact time and at the detail the frame shows it at.
+      const lottie = this.deps.images.lottie;
+      const size = lottie?.size(mediaId);
+      if (!lottie || !size) return null;
+      const edge = vectorLongEdge(layer, size.width, size.height, 1);
+      // The first render of a run also starts the renderer (the WASM module): one retry keeps an export from losing its first frame to a slow start.
+      const attempt = () => lottie.frame(mediaId, layer.timeUs, edge).catch(() => null);
+      const found = (await attempt()) ?? (await attempt());
+      if (!found) return null;
+      key = found.key;
+      texture = found.texture;
+    } else if (layer.still) {
       // The frame at its time (an animation's frames all loaded), an SVG as sharp as the frame shows it.
       await this.deps.images.load(mediaId).catch(() => null);
       const vector = this.deps.images.vectorSize(mediaId);
@@ -985,10 +998,11 @@ export class LayerTextures {
     let other: TextureHandle | null = null;
     const lod = layer.still ? "full" : this.lodOf(mediaId);
     if (layer.still) {
+      if (layer.lottie) this.lottieDetail(layer);
       key = this.deps.images.frameKey(mediaId, layer.timeUs);
       texture = key ? this.deps.pool.get(key) : null;
       if (!texture) this.loadImage(mediaId);
-      else if (priority === "idle") this.refineVector(layer, texture, this.textScale);
+      else if (priority === "idle" && !layer.lottie) this.refineVector(layer, texture, this.textScale);
     } else {
       key = this.videoKey(mediaId, layer.timeUs, lod);
       texture = key ? this.deps.pool.get(key) : null;
@@ -1187,6 +1201,18 @@ export class LayerTextures {
       },
       () => this.refining.delete(mediaId),
     );
+  }
+
+  /** A Lottie layer drawn bigger than its frames hold, or much smaller: its next frames are rendered at the size it is drawn at (Batch 79). */
+  private lottieDetail(layer: MediaLayer): void {
+    const { mediaId } = layer;
+    const lottie = this.deps.images.lottie;
+    const size = lottie?.size(mediaId);
+    if (!lottie || !size) return;
+    const want = vectorLongEdge(layer, size.width, size.height, this.textScale);
+    const have = lottie.edgeOf(mediaId);
+    if (have >= want * DETAIL_TOLERANCE && have <= want * VECTOR_OVERSIZE) return;
+    lottie.setEdge(mediaId, want);
   }
 
   private loadImage(mediaId: MediaId): void {

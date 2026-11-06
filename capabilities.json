@@ -2,8 +2,8 @@
   "manifestVersion": 1,
   "app": "shorts-editor",
   "appVersion": "1.1.0",
-  "lastBatch": 78,
-  "schemaVersion": 22,
+  "lastBatch": 79,
+  "schemaVersion": 23,
   "project": {
     "file": "project.json",
     "fontsManifest": "fonts/fonts.json",
@@ -43,7 +43,11 @@
     },
     "videoAlpha": true,
     "imageSequence": true,
-    "lottie": false
+    "lottie": true,
+    "lottieFormats": [
+      "json",
+      "lottie"
+    ]
   },
   "trackKinds": [
     "video",
@@ -54,6 +58,7 @@
     "video",
     "audio",
     "image",
+    "lottie",
     "text",
     "solid",
     "caption",

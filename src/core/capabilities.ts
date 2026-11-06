@@ -12,11 +12,11 @@ import { BLEND_MODES, EFFECT_TYPES, FADE_CURVES, MASK_MODES, CAPTION_HIGHLIGHTS,
 /** The `manifestVersion`: changes only when a key changes meaning (new keys do not change it). */
 export const MANIFEST_VERSION = 1;
 /** The last batch that touched the manifest (spec §21.1: each batch sets it to its own number). */
-export const LAST_BATCH = 78;
+export const LAST_BATCH = 79;
 
 /** The flags of the manifest: a batch that adds a capability flips its key here (spec §21.2 table). */
 export const FEATURES = {
-  media: { videoAlpha: true, imageSequence: true, lottie: false },
+  media: { videoAlpha: true, imageSequence: true, lottie: true },
   transform: { rotation3d: true, parenting: true, motionPaths: true, autoOrient: true },
   keyframes: { bezier: true, spring: true, vectorValues: true },
   solid: { stroke: true, shadow: true, cornerRadii: true },
@@ -66,6 +66,8 @@ export function buildCapabilities(appVersion: string): Capabilities {
       videoAlpha: f.media.videoAlpha,
       imageSequence: f.media.imageSequence,
       lottie: f.media.lottie,
+      // Lottie (Batch 79): `.json` bodymovin files and `.lottie` archives; clips take `loop` and `colorOverrides`.
+      lottieFormats: accepted(["json", "lottie"]),
     },
     trackKinds: [...TRACK_KINDS],
     clipKinds: [...CLIP_KINDS],

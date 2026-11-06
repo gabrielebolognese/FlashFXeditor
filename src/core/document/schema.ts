@@ -261,6 +261,15 @@ const SCHEMAS: ObjectSchema[] = [
     },
   },
   {
+    name: "ColorOverride",
+    doc: "A color change of a lottie clip (Batch 79): colors of the animation equal to `from` (within one 8-bit step) become `to`.",
+    types: [],
+    fields: {
+      from: req(obj("RGBA"), "The color to replace (channels 0..1)."),
+      to: req(obj("RGBA"), "The color that replaces it (channels 0..1)."),
+    },
+  },
+  {
     name: "TrackMatte",
     doc: "A track matte (Batch 72): the clip shows only where the matte clip is opaque (alpha) or bright (luma) at the frame, or the opposite (inverted).",
     types: ["TrackMatte"],
@@ -578,7 +587,7 @@ const SCHEMAS: ObjectSchema[] = [
     types: ["MediaItem"],
     fields: {
       id: req(text, "Unique id; the key it is stored under."),
-      kind: req(oneOf(["video", "audio", "image"]), "Kind."),
+      kind: req(oneOf(["video", "audio", "image", "lottie"]), "Kind (`lottie`: a Lottie animation, Batch 79; `codec` is `lottie` or `dotlottie`, `fps` the animation's frame rate, `width` and `height` its size)."),
       name: req(str, "Display name."),
       file: req(obj("FileRef"), "The file."),
       durationUs: req(int(0), `Length; 0 for a still image. ${US}`),
@@ -666,7 +675,7 @@ const SCHEMAS: ObjectSchema[] = [
     variants: Object.fromEntries(CLIP_KINDS.map((kind) => [kind, `Clip.${kind}`])),
   },
   { name: "ClipBase", doc: "The fields every clip has.", types: ["ClipBase"], fields: clipBaseFields() },
-  ...(["video", "audio", "image"] as const).map((kind): ObjectSchema => ({ name: `Clip.${kind}`, doc: `A ${kind} clip.`, types: kind === "video" ? ["MediaClip"] : [], fields: { ...clipBaseFields(kind), ...mediaClipFields(kind) } })),
+  ...(["video", "audio", "image", "lottie"] as const).map((kind): ObjectSchema => ({ name: `Clip.${kind}`, doc: `A ${kind} clip.`, types: kind === "video" ? ["MediaClip"] : [], fields: { ...clipBaseFields(kind), ...mediaClipFields(kind) } })),
   {
     name: "Clip.text",
     doc: "A text clip.",
@@ -995,7 +1004,7 @@ function clipBaseFields(kind?: string): Record<string, Field> {
   };
 }
 
-function mediaClipFields(kind: "video" | "audio" | "image"): Record<string, Field> {
+function mediaClipFields(kind: "video" | "audio" | "image" | "lottie"): Record<string, Field> {
   return {
     mediaId: req(text, "The media item it plays; a clip whose item was removed stays as an offline clip."),
     in: req(int(0), `Source in point. ${US}`),
@@ -1017,6 +1026,8 @@ function mediaClipFields(kind: "video" | "audio" | "image"): Record<string, Fiel
     timeRemap: opt(list(obj("RemapKey")), "Video clips (Batch 78): keys mapping timeline frames to source times; replaces `speed` for the picture and mutes the linked audio. At least two keys."),
     reverse: opt(bool, "Video and audio clips (Batch 78): the source plays backward, from `out` to `in`. Ignored when `timeRemap` is set.", false),
     frameBlend: opt(bool, "Video clips (Batch 78): when the source advances less than one frame per timeline frame, the two nearest source frames are mixed.", false),
+    loop: opt(bool, "Lottie clips (Batch 79): the animation repeats from its start when the clip is longer; false or absent = it holds its last frame. Other clips: not allowed.", false),
+    colorOverrides: opt(list(obj("ColorOverride")), "Lottie clips (Batch 79): color replacements applied in order (the first `from` that matches wins). Other clips: not allowed."),
     transitionIn: opt(obj("Transition"), "Transition at the start."),
     transitionOut: opt(obj("Transition"), "Transition at the end."),
   };

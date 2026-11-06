@@ -117,12 +117,12 @@
       "color": "orange",
       "enabled": true,
       "fallbackOf": {
-        "kind": "lottie",
-        "reason": "A Lottie animation baked to a solid",
+        "kind": "hologram",
+        "reason": "A hologram baked to a solid",
         "schemaVersion": 4,
         "data": {
-          "kind": "lottie",
-          "src": "anim/logo.json"
+          "kind": "hologram",
+          "src": "anim/logo.holo"
         }
       },
       "fill": {

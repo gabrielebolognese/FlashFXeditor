@@ -56,6 +56,7 @@ import { plainLayers, type Composite, type DrawList, type Layer, type TextureLay
 import { DrawListSnapshot } from "../compositor/DrawListSnapshot.js";
 import type { FramePriority } from "../../media/workers/protocol.js";
 import { isSvgImage } from "../../media/mediaKinds.js";
+import { parseLottieVariant } from "../../media/lottie/lottieFile.js";
 import type { SolidLook } from "../../timeline/edit/solid.js";
 import type { CanvasTarget, OffscreenTarget, Pane, Renderer, TextureHandle, Viewport } from "../gpu/renderer.js";
 import { mutableIdentity, setMat, type Mat3, type MutableMat3 } from "../mat3.js";
@@ -591,10 +592,11 @@ export class PreviewView implements RenderView {
   private detailOf(doc: Project, composite: Composite, view: number, quality: PreviewQuality, activity: PreviewActivity): number {
     const detail = this.stats.detail;
     const source = sourceDetail(composite, (mediaId) => {
-      const item = doc.media[mediaId];
+      // A Lottie layer's id carries its color overrides after the media id (Batch 79).
+      const item = doc.media[mediaId] ?? doc.media[parseLottieVariant(mediaId).mediaId];
       if (!item?.width || !item.height) return null;
-      // An SVG is vector: a zoom renders it finer (it is rasterized again at that detail).
-      return isSvgImage(item) ? vectorDetailSize(item.width, item.height) : { width: item.width, height: item.height };
+      // An SVG or a Lottie animation is vector: a zoom renders it finer (it is rasterized again at that detail).
+      return isSvgImage(item) || item.kind === "lottie" ? vectorDetailSize(item.width, item.height) : { width: item.width, height: item.height };
     });
     const full = fullScale(view, source);
     const render = renderScale(quality, activity, full);

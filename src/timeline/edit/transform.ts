@@ -33,7 +33,7 @@ export function isTransformClip(clip: Clip): clip is TransformClip {
 }
 
 export function isLayerClip(clip: Clip): clip is LayerClip {
-  return clip.kind === "video" || clip.kind === "image" || clip.kind === "solid" || clip.kind === "text" || clip.kind === "compound" || clip.kind === "shape";
+  return clip.kind === "video" || clip.kind === "image" || clip.kind === "lottie" || clip.kind === "solid" || clip.kind === "text" || clip.kind === "compound" || clip.kind === "shape";
 }
 
 /** A layer's content in its own px (the transform's input) and the visible part of it. */
@@ -68,7 +68,7 @@ const clamp01 = (value: number) => (Number.isFinite(value) ? Math.min(1, Math.ma
  * scrub's ephemeral crop, P2).
  */
 export function layerContent(project: Project, clip: Clip, crop?: Crop): ContentBox | null {
-  if (clip.kind === "video" || clip.kind === "image") {
+  if (clip.kind === "video" || clip.kind === "image" || clip.kind === "lottie") {
     const item = project.media[clip.mediaId];
     if (!item?.width || !item.height) return null;
     const { width, height } = displaySize(item.width, item.height, item.rotation);
@@ -295,7 +295,7 @@ export function flipTransform(transform: Transform, axis: "h" | "v"): Transform 
 
 /** The transform a newly placed clip gets (§7.2 Reset transform): media at Fit (spec §6.19), others centered at native size. */
 export function resetTransform(project: Project, clip: LayerClip): Transform {
-  if (clip.kind === "video" || clip.kind === "image") {
+  if (clip.kind === "video" || clip.kind === "image" || clip.kind === "lottie") {
     const item = project.media[clip.mediaId];
     if (item) return defaultTransform(item, project.settings);
   }

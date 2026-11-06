@@ -13,14 +13,14 @@ describe("fixtures/interop/standins", () => {
   it("is valid and reports which stand-ins can be made editable", async () => {
     const report = await validateProjectFolder(rel("fixtures/interop/standins"));
     expect(report.errors).toEqual([]);
-    expect(report.standIns).toEqual({ solid: 3, lottie: 1 });
+    expect(report.standIns).toEqual({ solid: 3, hologram: 1 });
     expect(report.convertible.map((s) => [s.clipId, s.convertible])).toEqual([
       ["b-solid", true],
       ["b-unknown", false],
       ["b-split-a", true],
       ["b-split-b", true],
     ]);
-    expect(report.convertible.find((s) => s.clipId === "b-unknown")?.reason).toContain("lottie");
+    expect(report.convertible.find((s) => s.clipId === "b-unknown")?.reason).toContain("hologram");
     const info = await projectInfo(rel("fixtures/interop/standins"));
     expect(info.convertible).toHaveLength(4);
   });

@@ -8,7 +8,7 @@ import { sequenceDurationUs, sequenceRecordIssues } from "./sequence.js";
 import { pathDataIssue } from "../shapes/pathData.js";
 import { effectIssues, isEffectProp } from "../effects/effectParams.js";
 import { PRIMITIVE_LIMITS, PRIMITIVE_PARAMS } from "../shapes/primitives.js";
-import { type AdjustmentClip, BLEND_MODES, EASE_IDS, FADE_CURVES, MASK_MODES, MATTE_MODES, CAPTION_HIGHLIGHTS, COUNTER_SEPARATORS, CUE_ANIM_KINDS, FILL_RULES, SELECTOR_ORDERS, SELECTOR_SHAPES, TEXT_ANIM_UNITS, isFreeze, isMediaClip, LABEL_COLORS, LINE_CAPS, LINE_JOINS, PRIMITIVE_KINDS, SOLID_SHAPE_IDS, type NullClip, type PrimitiveKind, type ShapeClip, STROKE_ALIGNS, type CaptionClip, type CaptionStyle, type Clip, type ClipId, type ClipKind, type CompoundClip, type Sequence, type MediaClip, type MediaItem, type Project, type SolidClip, type TextClip, type TextSpan, type TextStyle, type Track, type TrackId, type TrackKind } from "./types.js";
+import { type AdjustmentClip, BLEND_MODES, isUnboundedMedia, EASE_IDS, FADE_CURVES, MASK_MODES, MATTE_MODES, CAPTION_HIGHLIGHTS, COUNTER_SEPARATORS, CUE_ANIM_KINDS, FILL_RULES, SELECTOR_ORDERS, SELECTOR_SHAPES, TEXT_ANIM_UNITS, isFreeze, isMediaClip, LABEL_COLORS, LINE_CAPS, LINE_JOINS, PRIMITIVE_KINDS, SOLID_SHAPE_IDS, type NullClip, type PrimitiveKind, type ShapeClip, STROKE_ALIGNS, type CaptionClip, type CaptionStyle, type Clip, type ClipId, type ClipKind, type CompoundClip, type Sequence, type MediaClip, type MediaItem, type Project, type SolidClip, type TextClip, type TextSpan, type TextStyle, type Track, type TrackId, type TrackKind } from "./types.js";
 
 export class DocumentInvariantError extends Error {
   readonly issues: readonly string[];
@@ -21,7 +21,7 @@ export class DocumentInvariantError extends Error {
 }
 
 const ALLOWED_CLIPS: Record<TrackKind, ReadonlySet<ClipKind>> = {
-  video: new Set(["video", "image", "text", "solid", "compound", "shape", "null", "adjustment"]),
+  video: new Set(["video", "image", "lottie", "text", "solid", "compound", "shape", "null", "adjustment"]),
   audio: new Set(["audio"]),
   caption: new Set(["caption"]),
 };
@@ -111,7 +111,7 @@ function clipIssues(project: Project, clip: Clip): string[] {
   // "Remove, keep offline clips", Batch 41): no media bound to check. Image clips show their picture
   // for any length: a still holds it (durationUs 0), an animated image loops (Batch 34), so `out` is
   // not bound by the media.
-  if (media && clip.kind !== "image" && clip.out > media.durationUs) issues.push(`${label}: out ${clip.out} > media duration ${media.durationUs}`);
+  if (media && !isUnboundedMedia(clip.kind) && clip.out > media.durationUs) issues.push(`${label}: out ${clip.out} > media duration ${media.durationUs}`);
   if (isFreeze(clip)) {
     // A freeze frame holds `in` for any duration (Batch 27): no duration * speed invariant.
   } else if (!(clip.speed > 0)) {
@@ -130,7 +130,10 @@ function clipIssues(project: Project, clip: Clip): string[] {
 function timeIssues(clip: MediaClip, label: string): string[] {
   const issues: string[] = [];
   if (clip.reverse !== undefined && typeof clip.reverse !== "boolean") issues.push(`${label}: reverse must be true or false`);
-  if (clip.reverse === true && clip.kind === "image") issues.push(`${label}: an image clip cannot be reversed`);
+  if (clip.reverse === true && isUnboundedMedia(clip.kind)) issues.push(`${label}: a ${clip.kind} clip cannot be reversed`);
+  if (clip.loop !== undefined && typeof clip.loop !== "boolean") issues.push(`${label}: loop must be true or false`);
+  if (clip.loop !== undefined && clip.kind !== "lottie") issues.push(`${label}: only a lottie clip can loop its animation`);
+  if (clip.colorOverrides !== undefined && clip.kind !== "lottie") issues.push(`${label}: only a lottie clip has colorOverrides`);
   if (clip.frameBlend !== undefined) {
     if (typeof clip.frameBlend !== "boolean") issues.push(`${label}: frameBlend must be true or false`);
     else if (clip.frameBlend && clip.kind !== "video") issues.push(`${label}: only a video clip blends frames`);
@@ -501,7 +504,7 @@ function parentIssues(project: Project): string[] {
 
 /** Clip kinds drawn in the picture: the ones that take a blend mode and a track matte (spec §21.17). */
 /** Clip kinds that draw a picture (`isVisualClip` of core/effects/trackMatte.ts). */
-const VISUAL_KINDS: ReadonlySet<ClipKind> = new Set(["video", "image", "text", "solid", "shape", "compound"]);
+const VISUAL_KINDS: ReadonlySet<ClipKind> = new Set(["video", "image", "lottie", "text", "solid", "shape", "compound"]);
 const BLEND_SET: ReadonlySet<string> = new Set(BLEND_MODES);
 const MATTE_SET: ReadonlySet<string> = new Set(MATTE_MODES);
 

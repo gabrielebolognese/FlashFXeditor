@@ -1,6 +1,6 @@
 # Progress
 
-last_completed_batch: 78
+last_completed_batch: 79
 in_progress_batch: none
 skipped_batches: []
 needs_human: none
@@ -887,6 +887,8 @@ Small things discovered during a batch that belong to a later batch. Format: `- 
 - [from Batch 73 -> Batch 82] Measure 20 masked layers at 60 fps on an unloaded machine with a normal GPU: on 2026-11-09 headless Chrome reached only 16-25 rAF frames per second here.
 - [from Batch 73 -> Batch 82] Draw mask coverage at the shown scale in the preview (content resolution capped at 2048 px now) if large masked clips cost frames.
 - [from Batch 73 -> Batch 82] Mask handles on a 2.5D clip follow the projected picture; mask handles follow a field scrub live.
+- [from Batch 79 -> Batch 82] Browser (CDP) measurements of Lottie playback, scrub and 300 percent sharpness, once a GPU session is free.
+- [from Batch 79 -> Batch 82] Gradient color overrides for Lottie clips.
 
 ## Dependencies
 Why each dependency exists (Batch rule 8).
@@ -913,6 +915,7 @@ Why each dependency exists (Batch rule 8).
 - [from Batch 78 -> Batch 82] Keys editable directly on the timeline clip (HitTester and gesture integration), with snapping to markers.
 - [from Batch 78 -> Batch 82] Exact frame blending at clip opacity below 1 (two-pass or a blend shader).
 - [from Batch 78 -> Batch 82] Browser checks of Batch 78 (reverse 4K at 60 fps on proxy, Hero smoothness, zero React commits).
+- `@lottiefiles/dotlottie-web` (MIT, WASM ThorVG build): draws Lottie animations in decode.worker (and the export worker and CLI render through the same handlers) with deterministic frame seeks; the WASM file is a Vite asset, no CDN (spec §21.23). (Batch 79)
 
 ## Batch log
 
@@ -7475,3 +7478,34 @@ Why each dependency exists (Batch rule 8).
 - review: accepted (2026-11-09, third review). `npm run check`: typecheck, lint (ESLint + CSS color and token checks) and 3456 unit tests in 353 files (13 skipped) pass; the perf project fails only `fuzz.perf.test.ts` on time (70.7 s vs 60 s, the environmental miss Batches 74-78 recorded; this fix touches no edit code). `npm run build` run separately: exit 0. Second-review problem 1 is fixed: `fixtures/interop/time/media/clip.mp4` (written by `scripts/fixtures/make-time-media.mjs`) matches the media record (H.264 High 270 x 480 at 30/1, mono 48 kHz AAC, 2.000 s, checked with ffprobe); the slow clip's `in` 250000 us is source frame 7.5, so the committed frames 90, 91, 93 and 125 mix 0.5, 0.75, 0.25 and 0.25, and `expected/Interop time-frame-90.png` visibly shows two half-bright copies of each moving bar and of the counter, while the reversed frame 50 is a single sharp source frame (counter 47, as the second review measured); frames 92 and 108 (mix 0) are gone and `timeFixture.ts:6` names the new frames. First-review problems 2 and 3 stay fixed. Acceptance: the Hero ramp, reverse, reversed audio and blend are covered by unit, property and fixture tests; smooth proxy playback at 60 fps, the app Export against the CLI frames, and the Profiler are pending manual checks 1-4 with steps. Nothing from `Do not build yet` (optical flow) was built; no color or size literals; no untagged TODOs.
 
 - docs: speed-freeze-frames-and-punch-zoom.md, clip-thumbnails-and-waveforms.md, whats-new.md, README.md in docs/user-guide/ (2026-11-09)
+
+### Batch 79: Lottie clips
+- status: done
+- date: 2026-11-09
+- notes:
+  - Built in auto mode. `npm run check`: typecheck, lint (CSS checks), 3490+ unit tests and `npm run build` pass (wasm bundled as `dotlottie-player-*.wasm`); the perf project fails only `fuzz.perf.test.ts` on time (73.6 s against 60 s: the environmental miss Batches 74-78 recorded; every invariant holds).
+  - Schema 23 (migration 22 to 23 is the identity): media `kind` `lottie` (`codec` `lottie` or `dotlottie`, size, `fps` and `durationUs` from the file), clip kind `lottie` (a media clip: `in`, `out`, `speed`, plus `loop` and `colorOverrides` `{from, to}` RGBA 0..1). Like an image its `out` is not bound by the media length (`isUnboundedMedia`); `reverse` and `timeRemap` are refused. `loop` and `colorOverrides` on other clip kinds are validation errors.
+  - Import: `.json` is sniffed by the bodymovin keys (`fr ip op w h layers`) and `.lottie` by its zip header (own zip reader: stored and deflate entries via `DecompressionStream`, images inlined as data URIs); a file that is not an animation, has no frames, size or layers is refused with a message (`probeLottie`, `ProbeError`).
+  - Rendering: `LottieRenderer` (`media/lottie/lottieRender.ts`) runs dotlottie-web in decode.worker (`renderLottie`, `closeLottie`); the export worker and CLI render use the same handlers (loopback), so one function draws preview, export and CLI. `LottieFrames` (inside `ImageService`) keeps one texture per frame keyed `(variant@edge, full, animation time)`; `edge` is the long side in px in half-octave buckets of the on-screen size, so 300 percent gets sharp frames of its own and the old ones age out by LRU. While the time steps by 250 ms or less it requests the next 6 frames in one request (P7); a jump asks for one frame and the layer keeps the nearest frame meanwhile (P8). The main thread only uploads and closes each bitmap (P5, P13).
+  - Colors: `applyColorOverrides` rewrites the animation JSON (fills, strokes and keyed colors, matching within one 8-bit step) before it loads; the texture identity is the variant id `<mediaId>~lc:<from>><to>;...`, so clips with the same overrides share frames. Gradient colors are not replaced (listed unsupported).
+  - Both backends: Lottie is drawn as a bitmap uploaded as a texture, so no shader changed; WebGL2 against WebGPU on the fixture: SSIM 1.0000 on all five frames, and WebGPU against the committed expected frames 1.0000.
+  - Edits (`timeline/edit/lottie.ts`): `clip.lottie.loop`, `clip.lottie.colors` (coalesced per picker drag); actions `clip.lottie.loop`, `clip.lottie.addColor` (starts from a color the animation really uses), `clip.lottie.clearColors`, palette entries and `media.filterLottie`. Properties has a Lottie section (Loop, From/To color rows, Add color, Clear). Media tab: Lottie chip, sparkles icon, poster at 40 percent of the animation.
+  - Fixture `fixtures/interop/lottie` (`core/document/lottieFixture.ts` + test; media builder `scripts/build-lottie-fixtures.mjs`): `spinner.json`, `bounce.json`, `pulse.lottie` (original, CC0, 3.5 KB in all, `LICENSE.md`), 60 fps project of five segments, expected frames 20, 80, 140, 200, 260 rendered by `cli render` and looked at (loop, two replaced colors at speed 2, a replaced keyed color, the archive at 300 percent: ring and disc sharp). `docs/INTEROP.md` has the Lottie section with a validated example; `capabilities.json` regenerated (`lottie: true`, `media.lottieFormats`).
+  - Property tests: seeded random loop and color edits over random projects keep the document valid (`lottie.test.ts`). The fuzz kit's unknown-kind stand-ins now use `hologram` (`lottie` is a real kind now); the other interop fixtures were regenerated for schemaVersion 23.
+  - Found by the CLI render: the first exact frame of a run could come back empty while the renderer starts; `exactMedia` retries once.
+- deviations:
+  - A non-looping clip holds the animation's last frame after its end (and a clip's `in` is clamped at 0); a Lottie clip longer than the animation without Loop therefore freezes.
+  - Hover scrub of the media card is off for Lottie (the poster is static); Lottie clips take no Crop, Frame (corner, stroke, shadow) or time-remap sections.
+  - The timeline clip color reuses the image color (`clip.lottie = clip.image` in the Theme bridge).
+  - Gradient fills and strokes are not color-overridable; images inside `.lottie` archives are inlined, other archive content (themes, state machines) is ignored.
+- follow-ups:
+  - [from Batch 79 -> Batch 82] Browser (CDP) measurements below, once a GPU session is free.
+  - [from Batch 79 -> Batch 82] Gradient color overrides; Lottie expressions and text layers are drawn as ThorVG draws them.
+- design gaps:
+  - No clip color for Lottie in DESIGN_SYSTEM.md (the image color is reused); the Lottie section uses existing Row, Toggle, ColorField and IconButton; the media chip and glyph reuse the Sparkles icon.
+- pending manual checks:
+  1. Import `fixtures/interop/lottie/animations/*` (the `.lottie` archive too); each plays at 60 fps in the preview, scrubbing shows the nearest frame at once and then the exact one, and Zero React commits (Profiler) during playback.
+  2. Scale a Lottie clip to 300 percent: edges stay sharp (new frames after the zoom settles).
+  3. Properties > Lottie > Add color, change the To color: the animation recolors live; Loop on and off; Speed 2.
+  4. Import a `.json` that is not an animation (for example `package.json`): refused with a message.
+  5. Export (Export tab) the fixture project and play the file next to `npm run cli -- render` frames: identical.

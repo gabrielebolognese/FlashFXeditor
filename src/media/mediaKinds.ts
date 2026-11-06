@@ -4,7 +4,7 @@
 import type { MediaItem } from "../core/document/types.js";
 
 /** How a file is probed: mp4box or the WebM demuxer in the worker, decodeAudioData, the worker image probe, or SVG. */
-export type Container = "mp4" | "webm" | "audio" | "image" | "svg";
+export type Container = "mp4" | "webm" | "audio" | "image" | "svg" | "lottie";
 
 export interface FileKind {
   container: Container;
@@ -31,6 +31,9 @@ const BY_EXTENSION = new Map<string, FileKind>([
   ["webp", { container: "image", mime: "image/webp" }],
   ["gif", { container: "image", mime: "image/gif" }],
   ["svg", { container: "svg", mime: "image/svg+xml" }],
+  // Lottie (Batch 79): `.json` files are sniffed for bodymovin keys by the probe (other JSON is refused), `.lottie` is an archive.
+  ["json", { container: "lottie", mime: "application/json" }],
+  ["lottie", { container: "lottie", mime: "application/zip" }],
 ]);
 
 const BY_MIME = new Map<string, FileKind>([...BY_EXTENSION.values()].map((kind) => [kind.mime, kind]));
@@ -53,6 +56,7 @@ export function classifyFile(name: string, type: string): FileKind | null {
 const VIDEO_ACCEPT = { "video/*": [".mp4", ".mov", ".m4v", ".webm"] };
 const AUDIO_ACCEPT = { "audio/*": [".mp3", ".m4a", ".aac", ".wav", ".ogg"] };
 const IMAGE_ACCEPT = { "image/*": [".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg"] };
+const LOTTIE_ACCEPT = { "application/json": [".json"], "application/zip": [".lottie"] };
 
 /**
  * `showOpenFilePicker` types. The picker opens on the first one, so it is every accepted type at once
@@ -60,10 +64,11 @@ const IMAGE_ACCEPT = { "image/*": [".png", ".jpg", ".jpeg", ".webp", ".gif", ".s
  * stays available so unknown files reach the refusal toast.
  */
 export const PICKER_TYPES: { description: string; accept: Record<string, string[]> }[] = [
-  { description: "All media", accept: { ...VIDEO_ACCEPT, ...AUDIO_ACCEPT, ...IMAGE_ACCEPT } },
+  { description: "All media", accept: { ...VIDEO_ACCEPT, ...AUDIO_ACCEPT, ...IMAGE_ACCEPT, ...LOTTIE_ACCEPT } },
   { description: "Video", accept: VIDEO_ACCEPT },
   { description: "Audio", accept: AUDIO_ACCEPT },
   { description: "Images", accept: IMAGE_ACCEPT },
+  { description: "Lottie animations", accept: LOTTIE_ACCEPT },
 ];
 
 /** `+ Image`'s picker types (spec §6.1): images only. */

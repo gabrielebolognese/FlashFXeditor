@@ -53,7 +53,8 @@ export function maskContentSize(project: Project, clip: Clip): ContentSize | nul
     case "shape":
       return { w: clip.size.w, h: clip.size.h };
     case "video":
-    case "image": {
+    case "image":
+    case "lottie": {
       const item = project.media[clip.mediaId];
       if (!item || !item.width || !item.height) return null;
       const quarter = item.rotation === 90 || item.rotation === 270;

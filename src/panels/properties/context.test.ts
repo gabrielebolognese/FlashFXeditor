@@ -28,6 +28,15 @@ describe("properties context (spec §11)", () => {
     expect(propertiesContext(selectTracks(["gone"]), null, p)).toEqual({ kind: "none" });
   });
 
+  it("gives a Lottie clip its own section after the layer sections and before Speed (no Crop or Frame)", () => {
+    const p = project();
+    p.media.l = { ...makeMedia("l", "lottie", 2_000_000), hasAudio: false };
+    const withLottie = withClips(p, [makeMediaClip(p, { id: "l", trackId: "v1", start: 40, duration: 30, mediaId: "l", kind: "lottie" })]);
+    const context = propertiesContext(selectClips(["l"]), null, withLottie);
+    expect(context).toMatchObject({ lottieIds: ["l"], layerIds: ["l"], speedIds: ["l"] });
+    expect(sectionIds(context)).toEqual(["clip", "transform", "opacity", "compositing", "masks", "effects", "lottie", "speed"]);
+  });
+
   it("lists the clips with their primary and the layers among them; layers add Transform and Opacity, media layers Crop, video and audio Speed", () => {
     const p = project();
     const linked = propertiesContext(selectClips(["a", "v"], "a"), null, p);
@@ -39,6 +48,7 @@ describe("properties context (spec §11)", () => {
       maskIds: ["v"],
       transformIds: ["v"],
       layerPrimary: "v",
+      lottieIds: [],
       mediaIds: ["v"],
       opacityIds: ["v"],
       speedIds: ["a", "v"],

@@ -36,7 +36,7 @@ describe("convertAll on random projects", () => {
       const result = convertAll(project, { now: "2026-11-07T08:00:00.000Z", appVersion: "test" });
       expect(result.converted.sort()).toEqual([...ids].sort());
       expect(standIns(result.project).length).toBe(before - ids.length);
-      for (const entry of result.remaining) expect(entry.reason).toContain("no \"lottie\" clip");
+      for (const entry of result.remaining) expect(entry.reason).toContain("no \"hologram\" clip");
       expect(validateProject(result.project)).toEqual(validateProject(project));
       for (const [id, clip] of Object.entries(project.clips)) {
         const now = result.project.clips[id] as Clip;

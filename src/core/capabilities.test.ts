@@ -30,12 +30,12 @@ describe("capabilities.json (spec §21.2)", () => {
     expect(manifest.transitions).toEqual([...TRANSITION_KINDS]);
     expect(manifest.audio.clipGainDb).toEqual([MIN_GAIN_DB, MAX_GAIN_DB]);
     expect(manifest.time.speedRange).toEqual([MIN_SPEED, MAX_SPEED]);
-    const media = [...manifest.media.video, ...manifest.media.audio, ...manifest.media.image].map((ext: string) => `.${ext}`).sort();
+    const media = [...manifest.media.video, ...manifest.media.audio, ...manifest.media.image, ...manifest.media.lottieFormats].map((ext: string) => `.${ext}`).sort();
     expect(media).toEqual([...ACCEPTED_EXTENSIONS].sort());
   });
 
   it("has schemaVersion 9 and the Batch 54 to 64 keys true, the keys of later batches false", () => {
-    expect(manifest.schemaVersion).toBe(22);
+    expect(manifest.schemaVersion).toBe(23);
     expect(manifest.manifestVersion).toBe(MANIFEST_VERSION);
     expect(manifest.lastBatch).toBe(LAST_BATCH);
     expect(manifest.cli).toEqual({ validate: true, normalize: true, info: true, render: true, compare: true });

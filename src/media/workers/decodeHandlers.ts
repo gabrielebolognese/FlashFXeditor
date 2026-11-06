@@ -13,12 +13,13 @@ import { decodeImage, imagePoster } from "../decode/poster.js";
 import { browserSequenceDeps, createSequenceDecoder } from "../decode/SequenceDecoder.js";
 import { createVideoDecoder } from "../decode/VideoDecodeSession.js";
 import { probeVideoFile } from "../demux/container.js";
+import { createLottieRenderer, lottiePoster } from "../lottie/lottieRender.js";
 import { probeImage } from "../probe/imageProbe.js";
 import type { DeliveredFrame, Method } from "./protocol.js";
 import type { Handlers } from "./WorkerHost.js";
 
 export const DECODE_CONCURRENCY = 2;
-export const DECODE_IMMEDIATE: ReadonlySet<Method> = new Set<Method>(["openVideo", "requestFrame", "prefetch", "closeVideo", "decodeStats", "closeAudio"]);
+export const DECODE_IMMEDIATE: ReadonlySet<Method> = new Set<Method>(["openVideo", "requestFrame", "prefetch", "closeVideo", "decodeStats", "closeAudio", "closeLottie"]);
 
 /** What a worker session holds: a plain frame, or the color and alpha frames of a WebM with alpha (Batch 64). */
 type WorkerFrame = VideoFrame | PairedFrame<VideoFrame>;
@@ -65,9 +66,18 @@ export function decodeHandlers(): Handlers {
     decodeDeps: (source) => browserAudioDecodeDeps((offset, size) => source.read(offset, size)),
     isConfigSupported: async (config) => (await AudioDecoder.isConfigSupported(config)).supported === true,
   });
+  const lottie = createLottieRenderer();
   return {
     probe: ({ file, container, type }, signal) => (container === "image" ? probeImage(file, type, signal) : probeVideoFile(file, signal, container)),
-    poster: ({ file, maxSize }) => imagePoster(file, maxSize),
+    poster: ({ file, kind, maxSize }) => (kind === "lottie" ? lottiePoster(lottie, file, maxSize) : imagePoster(file, maxSize)),
+    renderLottie: async ({ file, variant, timesUs, longEdge }, signal, emit) => {
+      await lottie.render(file, variant, timesUs, longEdge, (timeUs, bitmap) => emit({ timeUs, bitmap }), signal);
+      return { frames: timesUs.length };
+    },
+    closeLottie: async ({ mediaId }) => {
+      lottie.close(mediaId);
+      return null;
+    },
     decodeImage: ({ blob, maxSize }) => decodeImage(blob, maxSize),
     decodeAnimation: (params, signal, emit) => decodeAnimation(params, signal, emit),
     animationStrip: (params, signal) => animationStrip(params, signal),

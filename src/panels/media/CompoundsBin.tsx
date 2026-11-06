@@ -28,7 +28,7 @@ function mediaOf(project: Project, sequence: Sequence, seen = new Set<string>())
   for (const track of sequence.tracks) {
     for (const clipId of track.clipIds) {
       const clip = project.clips[clipId];
-      if (clip && (clip.kind === "image" || clip.kind === "video")) ids.add(clip.mediaId);
+      if (clip && (clip.kind === "image" || clip.kind === "video" || clip.kind === "lottie")) ids.add(clip.mediaId);
       if (clip?.kind === "compound") {
         const inner = project.sequences[clip.sequenceId];
         if (inner) for (const id of mediaOf(project, inner, seen)) ids.add(id);

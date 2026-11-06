@@ -1,0 +1,425 @@
+{
+  "schemaVersion": 23,
+  "id": "2d8c5e17-9b34-4f60-a1d2-6e03c7b94f58",
+  "name": "Interop lottie",
+  "settings": {
+    "width": 360,
+    "height": 640,
+    "fps": {
+      "num": 60,
+      "den": 1
+    },
+    "background": {
+      "r": 0.08,
+      "g": 0.09,
+      "b": 0.12,
+      "a": 1
+    },
+    "sampleRate": 48000
+  },
+  "media": {
+    "spinner": {
+      "id": "spinner",
+      "kind": "lottie",
+      "name": "spinner.json",
+      "file": {
+        "relPath": "animations/spinner.json"
+      },
+      "durationUs": 2000000,
+      "hasAudio": false,
+      "analysis": {
+        "thumbs": "none",
+        "peaks": "none"
+      },
+      "addedAt": "2026-11-09T12:00:00.000Z",
+      "width": 240,
+      "height": 240,
+      "fps": {
+        "num": 60,
+        "den": 1
+      },
+      "codec": "lottie",
+      "size": 1385
+    },
+    "bounce": {
+      "id": "bounce",
+      "kind": "lottie",
+      "name": "bounce.json",
+      "file": {
+        "relPath": "animations/bounce.json"
+      },
+      "durationUs": 1500000,
+      "hasAudio": false,
+      "analysis": {
+        "thumbs": "none",
+        "peaks": "none"
+      },
+      "addedAt": "2026-11-09T12:00:00.000Z",
+      "width": 320,
+      "height": 200,
+      "fps": {
+        "num": 60,
+        "den": 1
+      },
+      "codec": "lottie",
+      "size": 1476
+    },
+    "pulse": {
+      "id": "pulse",
+      "kind": "lottie",
+      "name": "pulse.lottie",
+      "file": {
+        "relPath": "animations/pulse.lottie"
+      },
+      "durationUs": 2000000,
+      "hasAudio": false,
+      "analysis": {
+        "thumbs": "none",
+        "peaks": "none"
+      },
+      "addedAt": "2026-11-09T12:00:00.000Z",
+      "width": 200,
+      "height": 200,
+      "fps": {
+        "num": 30,
+        "den": 1
+      },
+      "codec": "dotlottie",
+      "size": 658
+    }
+  },
+  "bins": [],
+  "tracks": [
+    {
+      "id": "v1",
+      "kind": "video",
+      "name": "V1",
+      "clipIds": [
+        "backdrop"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
+      "id": "v2",
+      "kind": "video",
+      "name": "V2",
+      "clipIds": [
+        "spinner-loop",
+        "spinner-green",
+        "bounce-plain",
+        "bounce-violet",
+        "pulse-big"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    }
+  ],
+  "clips": {
+    "backdrop": {
+      "kind": "solid",
+      "name": "backdrop",
+      "enabled": true,
+      "fill": {
+        "r": 0.16,
+        "g": 0.18,
+        "b": 0.28,
+        "a": 1
+      },
+      "shape": "rect",
+      "size": {
+        "w": 360,
+        "h": 640
+      },
+      "cornerRadius": 0,
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "id": "backdrop",
+      "trackId": "v1",
+      "start": 0,
+      "duration": 300
+    },
+    "spinner-loop": {
+      "kind": "lottie",
+      "name": "spinner-loop",
+      "enabled": true,
+      "in": 0,
+      "out": 1000000,
+      "speed": 1,
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "crop": {
+        "left": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "volume": {
+        "gainDb": 0,
+        "muted": false
+      },
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "id": "spinner-loop",
+      "trackId": "v2",
+      "start": 0,
+      "duration": 60,
+      "mediaId": "spinner",
+      "loop": true
+    },
+    "spinner-green": {
+      "kind": "lottie",
+      "name": "spinner-green",
+      "enabled": true,
+      "in": 0,
+      "out": 2000000,
+      "speed": 2,
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "crop": {
+        "left": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "volume": {
+        "gainDb": 0,
+        "muted": false
+      },
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "id": "spinner-green",
+      "trackId": "v2",
+      "start": 60,
+      "duration": 60,
+      "mediaId": "spinner",
+      "loop": true,
+      "colorOverrides": [
+        {
+          "from": {
+            "r": 1,
+            "g": 0.5,
+            "b": 0.1,
+            "a": 1
+          },
+          "to": {
+            "r": 0.2,
+            "g": 0.8,
+            "b": 0.3,
+            "a": 1
+          }
+        },
+        {
+          "from": {
+            "r": 0.1,
+            "g": 0.5,
+            "b": 1,
+            "a": 1
+          },
+          "to": {
+            "r": 1,
+            "g": 0.9,
+            "b": 0.2,
+            "a": 1
+          }
+        }
+      ]
+    },
+    "bounce-plain": {
+      "kind": "lottie",
+      "name": "bounce-plain",
+      "enabled": true,
+      "in": 0,
+      "out": 1000000,
+      "speed": 1,
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 1.1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "crop": {
+        "left": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "volume": {
+        "gainDb": 0,
+        "muted": false
+      },
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "id": "bounce-plain",
+      "trackId": "v2",
+      "start": 120,
+      "duration": 60,
+      "mediaId": "bounce"
+    },
+    "bounce-violet": {
+      "kind": "lottie",
+      "name": "bounce-violet",
+      "enabled": true,
+      "in": 0,
+      "out": 1000000,
+      "speed": 1,
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 1.1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "crop": {
+        "left": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "volume": {
+        "gainDb": 0,
+        "muted": false
+      },
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "id": "bounce-violet",
+      "trackId": "v2",
+      "start": 180,
+      "duration": 60,
+      "mediaId": "bounce",
+      "colorOverrides": [
+        {
+          "from": {
+            "r": 0.95,
+            "g": 0.2,
+            "b": 0.3,
+            "a": 1
+          },
+          "to": {
+            "r": 0.55,
+            "g": 0.3,
+            "b": 0.95,
+            "a": 1
+          }
+        }
+      ]
+    },
+    "pulse-big": {
+      "kind": "lottie",
+      "name": "pulse-big",
+      "enabled": true,
+      "in": 0,
+      "out": 1000000,
+      "speed": 1,
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 3,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "crop": {
+        "left": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "volume": {
+        "gainDb": 0,
+        "muted": false
+      },
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "id": "pulse-big",
+      "trackId": "v2",
+      "start": 240,
+      "duration": 60,
+      "mediaId": "pulse",
+      "loop": true
+    }
+  },
+  "markers": [],
+  "captionTracks": {},
+  "textPresetsLocal": [],
+  "sequences": {},
+  "meta": {
+    "createdAt": "2026-11-09T12:00:00.000Z",
+    "modifiedAt": "2026-11-09T12:00:00.000Z",
+    "appVersion": "1.1.0",
+    "generator": {
+      "name": "interop-fixture",
+      "version": "1",
+      "source": "fixtures/interop/lottie (Batch 79)"
+    }
+  }
+}

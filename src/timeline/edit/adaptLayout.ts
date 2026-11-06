@@ -148,7 +148,7 @@ export function adaptResolution(project: Project, width: number, height: number)
       }
       if (!isLayerClip(clip)) continue;
       const box = layerContent(project, clip);
-      if (box) layers.set(clip.id, clip.kind === "video" || clip.kind === "image" ? adaptPicture(clip, box, change) : adaptOverlay(clip, box, change));
+      if (box) layers.set(clip.id, clip.kind === "video" || clip.kind === "image" || clip.kind === "lottie" ? adaptPicture(clip, box, change) : adaptOverlay(clip, box, change));
     }
     for (const [id, data] of Object.entries(project.captionTracks)) styles.set(id, adaptCaptionStyle(data.style, change.kx, change.ky, change.side));
   }

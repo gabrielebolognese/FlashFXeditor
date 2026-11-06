@@ -80,7 +80,7 @@ export function mediaClips(
   const linkGroup = lanes.video && lanes.audio ? { linkGroup: newId() } : {};
   const fields = { name: media.name, start, duration, mediaId: media.id, in: inUs, out, ...linkGroup };
   const clips: MediaClip[] = [];
-  if (lanes.video) clips.push(mediaClip({ ...fields, id: newId(), trackId: tracks.video as TrackId, kind: media.kind === "image" ? "image" : "video", transform: picture }));
+  if (lanes.video) clips.push(mediaClip({ ...fields, id: newId(), trackId: tracks.video as TrackId, kind: media.kind === "image" ? "image" : media.kind === "lottie" ? "lottie" : "video", transform: picture }));
   // The audio clip of a video draws nothing: it keeps scale 1.
   if (lanes.audio) clips.push(mediaClip({ ...fields, id: newId(), trackId: tracks.audio as TrackId, kind: "audio", transform: { ...picture, scale: 1 } }));
   return clips;

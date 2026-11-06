@@ -22,7 +22,7 @@ import { isLayerClip, isTransformClip } from "../../timeline/edit/transform.js";
 import { audioTargets, canDetach } from "../../timeline/edit/volume.js";
 
 /** The registered sections, top to bottom in their order of appearance. */
-export type SectionId = "clip" | "text" | "animation" | "animators" | "solid" | "shape" | "captionStyle" | "transform" | "crop" | "frame" | "opacity" | "compositing" | "masks" | "effects" | "speed" | "audio" | "transition" | "track" | "marker" | "project";
+export type SectionId = "clip" | "text" | "animation" | "animators" | "solid" | "shape" | "captionStyle" | "transform" | "crop" | "frame" | "opacity" | "compositing" | "masks" | "effects" | "lottie" | "speed" | "audio" | "transition" | "track" | "marker" | "project";
 
 export type PropertiesContext =
   | { kind: "none" }
@@ -54,8 +54,10 @@ export type PropertiesContext =
       layerPrimary: ClipId | null;
       /** The video and image clips among the layers: what Crop edits. */
       mediaIds: readonly ClipId[];
-      /** The video and audio clips: what Speed edits. */
+      /** The video, audio and Lottie clips: what Speed edits. */
       speedIds: readonly ClipId[];
+      /** The Lottie clips: what Lottie (Loop, Colors) edits (Batch 79). */
+      lottieIds: readonly ClipId[];
       /** The text clips: what Text edits. */
       textIds: readonly ClipId[];
       /** The solids: what Solid edits. */
@@ -121,8 +123,9 @@ export function propertiesContext(selection: Selection, markerId: string | null,
       const mediaIds = layerIds.filter((id) => isCropClip(project.clips[id] as Clip));
       const speedIds = clipIds.filter((id) => {
         const kind = project.clips[id]?.kind;
-        return kind === "video" || kind === "audio";
+        return kind === "video" || kind === "audio" || kind === "lottie";
       });
+      const lottieIds = clipIds.filter((id) => project.clips[id]?.kind === "lottie");
       const textIds = clipIds.filter((id) => project.clips[id]?.kind === "text");
       const solidIds = clipIds.filter((id) => project.clips[id]?.kind === "solid");
       const shapeIds = clipIds.filter((id) => project.clips[id]?.kind === "shape");
@@ -130,7 +133,7 @@ export function propertiesContext(selection: Selection, markerId: string | null,
       const cue = cueIds.length > 0 ? project.clips[cueIds[0] as ClipId] : undefined;
       const audioIds = audioTargets(project, clipIds);
       const detachIds = clipIds.filter((id) => canDetach(project, id));
-      return { kind: "clips", clipIds, primary, layerIds, opacityIds, maskIds, transformIds, layerPrimary, mediaIds, speedIds, textIds, solidIds, shapeIds, audioIds, detachIds, captionTrackId: cue?.trackId ?? null, cueIds };
+      return { kind: "clips", clipIds, primary, layerIds, opacityIds, maskIds, transformIds, layerPrimary, mediaIds, speedIds, lottieIds, textIds, solidIds, shapeIds, audioIds, detachIds, captionTrackId: cue?.trackId ?? null, cueIds };
     }
   }
 }
@@ -176,6 +179,7 @@ export function sectionIds(context: PropertiesContext): SectionId[] {
       if (context.maskIds.length > 0) ids.push("masks");
       // Effects (Batch 74): the same visual clips (EFFECT_KINDS = MASKABLE_KINDS).
       if (context.maskIds.length > 0) ids.push("effects");
+      if (context.lottieIds.length > 0) ids.push("lottie");
       if (context.speedIds.length > 0) ids.push("speed");
       if (context.audioIds.length > 0 || context.detachIds.length > 0) ids.push("audio");
       return ids;

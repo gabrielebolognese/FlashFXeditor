@@ -59,7 +59,7 @@ export const VIRTUAL_BINS = ["all", "video", "audio", "image", "compounds"] as c
 export type VirtualBin = (typeof VIRTUAL_BINS)[number];
 /** The filter chips (spec §12): kinds (none on = every kind) and `unused`. */
 export interface MediaFilters {
-  kinds: ("video" | "audio" | "image")[];
+  kinds: ("video" | "audio" | "image" | "lottie")[];
   unused: boolean;
 }
 /** The list view's resizable columns (spec §12), in order. */

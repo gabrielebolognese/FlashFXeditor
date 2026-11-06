@@ -26,7 +26,7 @@ export function exportNeeds(project: Project, range: { start: Frame; end: Frame 
       for (const id of track.clipIds) {
         const clip = project.clips[id];
         if (!clip || extendedEnd(clip) <= window.start || extendedStart(clip) >= window.end) continue;
-        if ((clip.kind === "video" || clip.kind === "image") && track.kind === "video") media.add(clip.mediaId);
+        if ((clip.kind === "video" || clip.kind === "image" || clip.kind === "lottie") && track.kind === "video") media.add(clip.mediaId);
         else if (clip.kind === "text") {
           texts.push({ style: clip.style, text: clip.text.value });
           for (const style of spanFaceStyles(clip.style, clip.spans)) texts.push({ style, text: clip.text.value });

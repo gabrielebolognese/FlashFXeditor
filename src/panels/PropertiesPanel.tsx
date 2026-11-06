@@ -17,6 +17,7 @@ import { ExportTab } from "./properties/ExportTab.js";
 import { contextKey, propertiesContext, sectionIds, type PropertiesContext, type SectionId, type SelectedCuts } from "./properties/context.js";
 import { useFocusReturn } from "./properties/focusReturn.js";
 import { KeyframeControls } from "./properties/KeyframeControls.js";
+import { LottieSection } from "./properties/LottieSection.js";
 import { MarkerSection } from "./properties/MarkerSection.js";
 import { ProjectSection } from "./properties/ProjectSection.js";
 import { QuickActions } from "./properties/QuickActions.js";
@@ -63,6 +64,7 @@ const SECTION_TITLES: Record<SectionId, string> = {
   compositing: "Compositing",
   masks: "Masks",
   effects: "Effects",
+  lottie: "Lottie",
   speed: "Speed",
   audio: "Audio",
   transition: "Transition",
@@ -101,6 +103,8 @@ function sectionBody(id: SectionId, context: PropertiesContext): ReactNode {
       return context.kind === "clips" ? <MasksSection ids={context.maskIds} /> : null;
     case "effects":
       return context.kind === "clips" ? <EffectsSection ids={context.maskIds} /> : null;
+    case "lottie":
+      return context.kind === "clips" ? <LottieSection ids={context.lottieIds} /> : null;
     case "speed":
       return context.kind === "clips" ? <SpeedSection ids={context.speedIds} /> : null;
     case "audio":

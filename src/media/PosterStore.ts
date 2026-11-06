@@ -105,7 +105,7 @@ export class PosterStore {
     }
     for (const id of [...this.attempted]) if (!media[id] && !this.waiting.some((m) => m.id === id)) this.attempted.delete(id);
     for (const item of Object.values(media)) {
-      if (item.kind !== "image" || this.attempted.has(item.id)) continue;
+      if ((item.kind !== "image" && item.kind !== "lottie") || this.attempted.has(item.id)) continue;
       this.attempted.add(item.id);
       this.waiting.push(item);
     }
@@ -128,7 +128,7 @@ export class PosterStore {
    * and filmstrips go at once and are made again from the file, not from cache/thumbs/.
    */
   regenerate(ids: readonly MediaId[]): void {
-    const images = ids.filter((id) => this.present[id]?.kind === "image");
+    const images = ids.filter((id) => this.present[id]?.kind === "image" || this.present[id]?.kind === "lottie");
     for (const id of images) {
       this.fresh.add(id);
       const bitmap = this.bitmaps.get(id);
@@ -247,7 +247,7 @@ export class PosterStore {
     if (!source) return null;
     signal.throwIfAborted();
     if (isSvg(item)) return this.deps.svgPoster(source, POSTER_SIZE);
-    const { bitmap, blob } = await this.deps.pool.request("poster", { file: source, kind: "image", maxSize: POSTER_SIZE }, { signal });
+    const { bitmap, blob } = await this.deps.pool.request("poster", { file: source, kind: item.kind === "lottie" ? "lottie" : "image", maxSize: POSTER_SIZE }, { signal });
     if (this.deps.isWritable()) {
       writeFileAt(this.deps.dir, posterPath(item.id), blob).catch((error: unknown) => console.warn(`[media] could not cache the poster of "${item.name}"`, error));
     }

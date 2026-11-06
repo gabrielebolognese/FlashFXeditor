@@ -176,7 +176,7 @@ export function isEffectProp(prop: string): boolean {
 export const effectProp = (id: string, param: string): string => `effects.${id}.${param}`;
 
 /** Clip kinds that take effects (spec §21.19): the ones that draw a picture, and adjustment clips (§21.20, Batch 76). */
-export const EFFECT_KINDS: readonly string[] = ["video", "image", "text", "solid", "shape", "compound", "adjustment"];
+export const EFFECT_KINDS: readonly string[] = ["video", "image", "lottie", "text", "solid", "shape", "compound", "adjustment"];
 
 /** The value a definition gives a parameter missing from `params` (a copy for colors). */
 function fallback(def: EffectParamDef): number | number[] | string {

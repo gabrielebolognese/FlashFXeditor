@@ -1,4 +1,4 @@
-import { ArrowDownWideNarrow, ArrowUpNarrowWide, AudioLines, ChevronDown, ChevronUp, FileSearch, Film, Folder, FolderPlus, FolderSearch, FunnelX, Image, Import, KeyRound, LayoutGrid, Library, List, SearchX, TriangleAlert, X, type LucideIcon } from "lucide-react";
+import { ArrowDownWideNarrow, ArrowUpNarrowWide, AudioLines, ChevronDown, ChevronUp, FileSearch, Film, Folder, FolderPlus, FolderSearch, FunnelX, Image, Import, KeyRound, LayoutGrid, Library, List, SearchX, Sparkles, TriangleAlert, X, type LucideIcon } from "lucide-react";
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, type CSSProperties, type DragEvent, type FocusEvent, type KeyboardEvent, type MouseEvent, type PointerEvent, type RefObject } from "react";
 import { insertMediaAtPlayhead } from "../../app/dropController.js";
 import { failedImports } from "../../app/failedImports.js";
@@ -31,8 +31,8 @@ import { audioLabel, codecLabel, durationBadge, fpsLabel, mediaMatcher, metaLabe
 import styles from "./MediaTab.module.css";
 import { PosterCanvas } from "./PosterCanvas.js";
 
-const KIND_ICONS: Record<MediaItem["kind"], LucideIcon> = { video: Film, audio: AudioLines, image: Image };
-const CONTAINER_ICONS: Record<Container, LucideIcon> = { mp4: Film, webm: Film, audio: AudioLines, image: Image, svg: Image };
+const KIND_ICONS: Record<MediaItem["kind"], LucideIcon> = { video: Film, audio: AudioLines, image: Image, lottie: Sparkles };
+const CONTAINER_ICONS: Record<Container, LucideIcon> = { mp4: Film, webm: Film, audio: AudioLines, image: Image, svg: Image, lottie: Sparkles };
 
 const SORT_LABELS: Record<MediaSort, string> = {
   name: "Name",
@@ -92,6 +92,7 @@ const FILTER_CHIPS = [
   { kind: "video", label: "Video", command: "media.filterVideo", tooltip: "Show only videos (with the other checked kinds)" },
   { kind: "audio", label: "Audio", command: "media.filterAudio", tooltip: "Show only audio (with the other checked kinds)" },
   { kind: "image", label: "Images", command: "media.filterImage", tooltip: "Show only images (with the other checked kinds)" },
+  { kind: "lottie", label: "Lottie", command: "media.filterLottie", tooltip: "Show only Lottie animations (with the other checked kinds)" },
 ] as const;
 
 /** The search field and the filter chips (spec §12; a tool row like the Presets tab's). */
@@ -391,8 +392,8 @@ function NoMedia() {
   );
 }
 
-const KIND_BIN_EMPTY: Record<MediaItem["kind"], string> = { video: "No videos yet", audio: "No audio yet", image: "No images yet" };
-const isKindBin = (bin: string): bin is MediaItem["kind"] => bin === "video" || bin === "audio" || bin === "image";
+const KIND_BIN_EMPTY: Record<MediaItem["kind"], string> = { video: "No videos yet", audio: "No audio yet", image: "No images yet", lottie: "No Lottie animations yet" };
+const isKindBin = (bin: string): bin is MediaItem["kind"] => bin === "video" || bin === "audio" || bin === "image" || bin === "lottie";
 
 /**
  * Nothing matches the bin, the filter chips and the search (Batch 46: with the action that fixes it):

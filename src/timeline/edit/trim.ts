@@ -459,12 +459,16 @@ export function trimmedClip(clip: Clip, edge: TrimEdge, delta: number, ripple: b
   }
   if (isMediaClip(clip)) {
     const media = next as MediaClip;
-    if (clip.kind === "image") {
+    if (clip.kind === "image" || clip.kind === "lottie") {
       // An image has no media bounds: its source range is just the duration. A still holds its picture;
       // an animated one loops (Batch 34), so an in trim moves `in` with the edge (the frames left in
       // place keep playing as they did), wrapped into one loop.
       const loopUs = project.media[clip.mediaId]?.durationUs ?? 0;
-      if (edge === "in" && loopUs > 0) media.in = loopTimeUs(clip.in + framesToSourceUs(delta, clip.speed, fps), loopUs);
+      if (edge === "in" && loopUs > 0) {
+        const moved = clip.in + framesToSourceUs(delta, clip.speed, fps);
+        // A Lottie clip that does not loop holds its last frame past the end: its in point just stays at or after 0.
+        media.in = clip.kind === "lottie" && clip.loop !== true ? Math.max(0, moved) : loopTimeUs(moved, loopUs);
+      }
       media.out = media.in + framesToSourceUs(media.duration, clip.speed, fps);
     } else if (isFreeze(clip)) {
       // A freeze frame holds its source time for any duration: `in` and `out` stay.
