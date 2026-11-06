@@ -62,7 +62,7 @@ export async function loadLut(clipId: ClipId, effectId: string): Promise<boolean
 
 /**
  * The "Load LUT" command: a `.cube` for the selected clips: each one's first LUT effect uses it, a clip without
- * one gets a LUT effect (one undo step for each kind of change).
+ * one gets a LUT effect. Every change is made inside one transaction: one undo step for the whole selection.
  */
 export async function loadLutForSelection(): Promise<boolean> {
   const project = documentStore.getState();
@@ -70,16 +70,17 @@ export async function loadLutForSelection(): Promise<boolean> {
   if (targets.length === 0) return false;
   const path = await pickLut();
   if (path === null) return false;
-  const current = documentStore.getState();
-  const without: ClipId[] = [];
-  let done = false;
-  for (const clip of effectClips(current, targets.map((t) => t.id))) {
-    const lut = clip.effects?.find((e) => e.type === "lut");
-    if (lut) done = run(setEffectParam(documentStore.getState(), clip.id, lut.id, "file", path, playhead())) || done;
-    else without.push(clip.id);
-  }
-  if (without.length > 0) done = run(addEffect(documentStore.getState(), without, "lut", { file: path })) || done;
-  return done;
+  return documentStore.transaction("Load LUT", () => {
+    const without: ClipId[] = [];
+    let done = false;
+    for (const clip of effectClips(documentStore.getState(), targets.map((t) => t.id))) {
+      const lut = clip.effects?.find((e) => e.type === "lut");
+      if (lut) done = run(setEffectParam(documentStore.getState(), clip.id, lut.id, "file", path, playhead())) || done;
+      else without.push(clip.id);
+    }
+    if (without.length > 0) done = run(addEffect(documentStore.getState(), without, "lut", { file: path })) || done;
+    return done;
+  });
 }
 
 /** The one selected clip's stack, or null (none or several selected, or no effects). */
