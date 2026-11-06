@@ -2,6 +2,14 @@
 
 Shorts Editor grows in steps called batches. This page lists what each batch added that you can see or use, newest first. Follow the links for the full instructions.
 
+## Batch 77: Track mixer, pan, loudness and beat markers
+Right-click an audio track's header and choose **Mixer...** for track **Gain**, **Pan**, **Mute** and **Solo**. The **Audio** section gets **Pan** and **Fade curve** rows. **Detect beats** (command palette) puts teal **Beat** markers on music. The **Reels**, **TikTok** and **Shorts** presets export at -14 LUFS with a true peak at or below -1 dBTP, and the meter shows loudness bars. See [Editing audio](audio-editing.md#mix-a-track-and-normalize-the-export).
+
+> **Video placeholder: What's new in Batch 77**
+> - File: `videos/whats-new/batch-77.mp4` (not recorded yet)
+> - Length: about 40 seconds
+> - Shows: right-click the A1 header, choose **Mixer...**, drag **Gain** to `-6` and **Pan** to the left; select a music clip, set **Pan** and **Fade curve**; run **Detect beats** from the command palette and drag a clip until it snaps to a beat marker; play with the meter moving.
+
 ## Batch 76: Distortion, glitch and adjustment clips
 The **Effects** section gets a **Stylize** row with seven more effects: **RGB split**, **Pixelate**, **Mirror**, **Wave**, **Glitch**, **Posterize** and **Invert**. **Add adjustment** in the timeline toolbar adds an adjustment clip that applies its effects to everything below it while it lasts, with opacity, fades and masks, for example a black and white grade inside an ellipse. See [Effects](effects.md#stylize-effects) and [adjustment clips](effects.md#adjustment-clips).
 
@@ -1050,4 +1058,4 @@ See [The workspace](workspace.md) and [Getting started](getting-started.md).
 - [Adding media to the timeline](adding-media-to-the-timeline.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 58, 2026-11-07</sub>
+<sub>Last updated: Batch 77, 2026-11-09</sub>

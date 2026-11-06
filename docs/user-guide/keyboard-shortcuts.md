@@ -687,7 +687,7 @@ See [Editing audio](audio-editing.md).
 | --- | --- | --- | --- |
 | Turn **Audio scrub** on or off | <kbd>Alt</kbd>+<kbd>S</kbd> | <kbd>⌥</kbd>+<kbd>S</kbd> | All panels |
 
-With **Audio scrub** on, the frame-stepping keys (<kbd>←</kbd> and <kbd>→</kbd>, also with <kbd>Shift</kbd> or <kbd>Ctrl</kbd>, and <kbd>K</kbd>+<kbd>J</kbd> or <kbd>K</kbd>+<kbd>L</kbd>) play a short bit of sound at each step. **Mute**, **Remove silence**, **Normalize**, **Auto-duck**, **Detach audio** and the **Volume** stopwatch have no key by default: click them, run them from the command palette, or give them a key in **Settings** > **Shortcuts**.
+With **Audio scrub** on, the frame-stepping keys (<kbd>←</kbd> and <kbd>→</kbd>, also with <kbd>Shift</kbd> or <kbd>Ctrl</kbd>, and <kbd>K</kbd>+<kbd>J</kbd> or <kbd>K</kbd>+<kbd>L</kbd>) play a short bit of sound at each step. **Mute**, **Remove silence**, **Normalize**, **Auto-duck**, **Detach audio**, **Detect beats**, **Track mixer** and the **Volume** stopwatch have no key by default: click them, run them from the command palette, or give them a key in **Settings** > **Shortcuts**.
 
 ### Master volume knob
 

@@ -342,6 +342,30 @@ These parts are available in a later version:
 
 - Audio effects.
 
+## Pan a clip and choose a fade curve
+
+In the **Audio** section, the **Pan** field places a clip's sound between the speakers: `-1` is fully left, `0` is the center and `1` is fully right (steps of 0.05, two decimals). It can be keyframed like **Volume** (see [Keyframes](keyframes.md)). The **Fade curve** select sets the shape of the clip's fades:
+
+| Curve | Effect |
+| --- | --- |
+| **Equal power** | The default. Keeps the loudness even through a crossfade. |
+| **Linear** | A straight ramp in level. |
+| **Exponential** | A steeper ramp. |
+
+> **Note:** Scrubbing with **Audio scrub** does not apply the clip's pan.
+
+## Detect beats in music
+
+Select a music clip and run **Detect beats** from the command palette (<kbd>Ctrl</kbd>+<kbd>K</kbd>). The editor adds a teal marker named **Beat** on the timeline at every beat, in one undo step. Beats that already have a marker are skipped. Markers are snap targets, so clips you drag or trim snap to the beats. See [Markers and in and out points](markers-and-in-out-points.md).
+
+## Mix a track and normalize the export
+
+Right-click an audio track's header and choose **Mixer...** (or run **Track mixer** from the command palette) to open the track mixer. It has a **Gain** fader (-60 to +12 dB), a **Pan** slider (`-1` to `1`, shown as L, C or R), and the **Mute** and **Solo** toggles of the track. Drag a fader to hear the change live; a whole drag is one undo step. Double-clicking is not needed to reset: set the fader back to `0`.
+
+The **Reels**, **TikTok** and **Shorts** export presets normalize the whole mix to -14 LUFS with a true peak at or below -1 dBTP. The meter at the edge of the preview now also shows momentary, short-term and integrated loudness bars with a true-peak tick. See [Exporting your video](exporting-video.md).
+
+> **Note:** There is no loudness field in the **Export** tab yet, and effects such as EQ, compression and reverb are not available yet.
+
 ## Related pages
 - [Exporting your video](exporting-video.md)
 - [Audio](audio.md)
@@ -356,4 +380,4 @@ These parts are available in a later version:
 - [Keyboard shortcuts](keyboard-shortcuts.md#audio)
 - [Troubleshooting](troubleshooting.md#audio-editing)
 
-<sub>Last updated: Batch 44, 2026-10-18</sub>
+<sub>Last updated: Batch 77, 2026-11-09</sub>

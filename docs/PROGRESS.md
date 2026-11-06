@@ -7401,6 +7401,7 @@ Why each dependency exists (Batch rule 8).
   - [from Batch 77 -> Batch 82] Browser checks: meters at 60 fps with zero React commits during playback; export of the audio fixture read back by the app's loudness meter.
   - [from Batch 77 -> Batch 82] Project loudness target and an Export tab loudness row in the UI (only presets and the document field set it now).
   - [from Batch 77 -> Batch 82] Apply the clip pan to scrub grains.
+- docs: audio-editing.md, whats-new.md, keyboard-shortcuts.md, README.md in docs/user-guide/ (2026-11-09)
 - design gaps:
   - The track mixer popover and its faders have no DESIGN_SYSTEM.md component: marker-popover material, native range inputs with `accent-color`, token `--mixer-popover-width`. The loudness bars reuse `color.info` and `color.accent`.
 - pending manual checks:
