@@ -251,6 +251,16 @@ const SCHEMAS: ObjectSchema[] = [
     },
   },
   {
+    name: "RemapKey",
+    doc: "A key of a clip's `timeRemap` (Batch 78): the source time the picture shows at a clip-relative frame. The first key is at frame 0, the last at the clip's duration; frames strictly increase.",
+    types: [],
+    fields: {
+      frame: req(int(0), `Clip-relative frame. ${FRAMES}`),
+      sourceUs: req(int(0), `Source time shown. ${US}`),
+      ease: req(oneOf(EASE_IDS), "The curve of the segment that starts at this key (linear: a constant speed).", "linear"),
+    },
+  },
+  {
     name: "TrackMatte",
     doc: "A track matte (Batch 72): the clip shows only where the matte clip is opaque (alpha) or bright (luma) at the frame, or the opposite (inverted).",
     types: ["TrackMatte"],
@@ -1004,6 +1014,9 @@ function mediaClipFields(kind: "video" | "audio" | "image"): Record<string, Fiel
     volume: req(obj("Volume"), "Sound level."),
     fades: req(obj("Fades"), kind === "audio" ? "Volume fades." : "Opacity and volume fades.", { in: 0, out: 0 }),
     keyframes: opt(obj("Keyframes"), "Animated properties."),
+    timeRemap: opt(list(obj("RemapKey")), "Video clips (Batch 78): keys mapping timeline frames to source times; replaces `speed` for the picture and mutes the linked audio. At least two keys."),
+    reverse: opt(bool, "Video and audio clips (Batch 78): the source plays backward, from `out` to `in`. Ignored when `timeRemap` is set.", false),
+    frameBlend: opt(bool, "Video clips (Batch 78): when the source advances less than one frame per timeline frame, the two nearest source frames are mixed.", false),
     transitionIn: opt(obj("Transition"), "Transition at the start."),
     transitionOut: opt(obj("Transition"), "Transition at the end."),
   };

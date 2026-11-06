@@ -5,7 +5,7 @@ import { AudioMixer, audibleTracks, RAMP_SECONDS } from "../AudioMixer.js";
 import { segmentLayout, type SegmentLayout } from "../decode/segments.js";
 import { FakeContext, fakeBuffer, type FakeGain, type FakePanner, type FakeSource } from "../testAudio.js";
 import { applyTrim, rateStretch } from "../../timeline/edit/trim.js";
-import { AHEAD_SECONDS, AudioScheduler, START_MARGIN_SECONDS, type AudioSchedulerDeps, type PlayMapping } from "./AudioScheduler.js";
+import { AHEAD_SECONDS, AudioScheduler, reversedOf, START_MARGIN_SECONDS, type AudioSchedulerDeps, type PlayMapping } from "./AudioScheduler.js";
 
 const FPS = { num: 30, den: 1 };
 /** Context time = clock time + CONTEXT_OFFSET. */
@@ -494,5 +494,47 @@ describe("audibleTracks", () => {
       ["a2", false],
       ["a3", false],
     ]);
+  });
+});
+
+describe("AudioScheduler: reverse and time remap (spec §21.22, Batch 78)", () => {
+  it("plays a reversed clip from a reversed copy of its segment, from where its out point leads", () => {
+    const t = setup({ clips: (p) => [audioClip(p, "c1", 0, 300, { reverse: true })] });
+    t.at(9.95);
+    t.scheduler.sync(t.mapping({ frame: 60, clock: 10 }));
+    const [source] = voiceSources(t.ctx);
+    // Timeline 2 s of a 10 s clip playing backward = media 8 s; in the reversed 60 s segment that is 52 s in.
+    expect(source?.started).toEqual({ when: 110, offset: expect.closeTo(52, 9) });
+    expect(source?.stoppedAt).toBeCloseTo(110 + 8, 9);
+    expect(source?.playbackRate.value).toBe(1);
+  });
+
+  it("reverses the samples (a copy, made once per buffer)", () => {
+    const buffer = fakeBuffer(0.001, 8000, 1);
+    buffer.getChannelData(0).set([1, 2, 3, 4, 5, 6, 7, 8]);
+    const ctx = new FakeContext();
+    const copy = reversedOf(buffer, ctx.asGraph());
+    expect([...copy.getChannelData(0)]).toEqual([8, 7, 6, 5, 4, 3, 2, 1]);
+    expect(reversedOf(buffer, ctx.asGraph())).toBe(copy);
+    expect([...buffer.getChannelData(0)]).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
+  });
+
+  it("does not play the audio linked to a remapped video clip, and plays it again when the remap goes", () => {
+    const t = setup({
+      clips: (p) => [
+        audioClip(p, "c1", 0, 300, { linkGroup: "g" }),
+        { ...makeMediaClip(p, { id: "v1c", trackId: "v1", start: 0, duration: 300, mediaId: "m" }), linkGroup: "g", timeRemap: [{ frame: 0, sourceUs: 0, ease: "linear" }, { frame: 300, sourceUs: 10_000_000, ease: "linear" }] },
+      ],
+    });
+    t.at(9.95);
+    t.scheduler.sync(t.mapping({ frame: 60, clock: 10 }));
+    expect(voiceSources(t.ctx)).toHaveLength(0);
+    t.edit((project) => {
+      const next = structuredClone(project);
+      delete (next.clips.v1c as MediaClip).timeRemap;
+      return next;
+    });
+    t.scheduler.sync(t.mapping({ frame: 60, clock: 10 }));
+    expect(voiceSources(t.ctx)).toHaveLength(1);
   });
 });

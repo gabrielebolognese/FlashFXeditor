@@ -169,6 +169,9 @@ export class FakeContext {
   createStereoPanner() {
     return new FakePanner();
   }
+  createBuffer(numberOfChannels: number, length: number, sampleRate: number) {
+    return new FakeAudioBuffer({ length, numberOfChannels, sampleRate }) as unknown as AudioBuffer;
+  }
   createBufferSource() {
     const source = new FakeSource();
     this.sources.push(source);

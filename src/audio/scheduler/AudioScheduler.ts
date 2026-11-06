@@ -35,6 +35,7 @@
 import { flattenAudio } from "../compoundAudio.js";
 import type { PlaybackClock } from "../AudioClock.js";
 import { fpsToNumber } from "../../core/document/time.js";
+import { mutedByRemap } from "../../core/document/timeRemap.js";
 import { extendedEnd, extendedStart, sameTransition } from "../../core/document/transitions.js";
 import { isMediaClip, type Clip, type ClipId, type Frame, type MediaClip, type Project, type Rational } from "../../core/document/types.js";
 import { clipsInRange, lastClipStartingBy, trackIndex } from "../../timeline/model/queries.js";
@@ -179,6 +180,7 @@ function sameTiming(a: MediaClip, b: MediaClip): boolean {
     a.in === b.in &&
     a.out === b.out &&
     a.speed === b.speed &&
+    (a.reverse === true) === (b.reverse === true) &&
     a.mediaId === b.mediaId &&
     a.enabled === b.enabled &&
     a.kind === b.kind &&
@@ -195,14 +197,16 @@ const sameMapping = (a: PlayMapping, b: PlayMapping) =>
   a.frame === b.frame && a.clock === b.clock && a.speed === b.speed && a.start === b.start && a.end === b.end && a.loop === b.loop && a.fps.num === b.fps.num && a.fps.den === b.fps.den;
 
 // Speed 0 is a video freeze frame only (Batch 27); never scheduled.
-const isAudioClip = (clip: Clip | null | undefined): clip is MediaClip => clip?.kind === "audio" && clip.enabled && clip.speed > 0;
+// Audio linked to a remapped video clip is muted (spec §21.22, Batch 78).
+const isAudioClip = (clip: Clip | null | undefined, project: Project): clip is MediaClip => clip?.kind === "audio" && clip.enabled && clip.speed > 0 && !mutedByRemap(project.clips, clip);
 
-/** Media seconds of a clip at timeline second `s`. */
-const mediaSeconds = (clip: MediaClip, clipStart: number, s: number) => clip.in / 1e6 + (s - clipStart) * clip.speed;
+/** Media seconds of a clip at timeline second `s`; a reversed clip (Batch 78) starts at its out point and moves back. */
+export const mediaSeconds = (clip: MediaClip, clipStart: number, s: number) => (clip.reverse === true ? clip.out / 1e6 - (s - clipStart) * clip.speed : clip.in / 1e6 + (s - clipStart) * clip.speed);
 
 /** The timeline seconds a clip's audio exists in: from its media's start to its end, at its speed. */
 export function audioLimits(clip: MediaClip, fps: number, durationUs: number): AudioLimits {
   const clipStart = clip.start / fps;
+  if (clip.reverse === true) return { start: clipStart + (clip.out - durationUs) / 1e6 / clip.speed, end: clipStart + clip.out / 1e6 / clip.speed };
   return { start: clipStart - clip.in / 1e6 / clip.speed, end: clipStart + (durationUs - clip.in) / 1e6 / clip.speed };
 }
 
@@ -234,6 +238,18 @@ export function playingClips(project: Project, track: Project["tracks"][number],
     }
   }
   return result;
+}
+
+const reversedBuffers = new WeakMap<AudioBuffer, AudioBuffer>();
+
+/** The samples of `buffer` played backward (cached per buffer). */
+export function reversedOf(buffer: AudioBuffer, ctx: { createBuffer(channels: number, length: number, sampleRate: number): AudioBuffer }): AudioBuffer {
+  let copy = reversedBuffers.get(buffer);
+  if (copy) return copy;
+  copy = ctx.createBuffer(buffer.numberOfChannels, buffer.length, buffer.sampleRate);
+  for (let channel = 0; channel < buffer.numberOfChannels; channel++) copy.getChannelData(channel).set(buffer.getChannelData(channel).slice().reverse());
+  reversedBuffers.set(buffer, copy);
+  return copy;
 }
 
 export class AudioScheduler {
@@ -271,7 +287,7 @@ export class AudioScheduler {
     for (const track of project.tracks) {
       if (track.kind !== "audio") continue;
       for (const clip of playingClips(project, track, frame, frame + 1)) {
-        if (!isAudioClip(clip) || frame < extendedStart(clip) || frame >= extendedEnd(clip)) continue;
+        if (!isAudioClip(clip, project) || frame < extendedStart(clip) || frame >= extendedEnd(clip)) continue;
         if (!this.ensure(clip, Math.max(0, mediaSeconds(clip, clip.start / fps, frame / fps)))) ready = false;
       }
     }
@@ -286,7 +302,7 @@ export class AudioScheduler {
     for (const track of project.tracks) {
       if (track.kind !== "audio") continue;
       for (const clip of playingClips(project, track, frame, to)) {
-        if (!isAudioClip(clip)) continue;
+        if (!isAudioClip(clip, project)) continue;
         const s = Math.max(frame, extendedStart(clip)) / fps;
         this.ensure(clip, Math.max(0, mediaSeconds(clip, clip.start / fps, s)));
       }
@@ -369,7 +385,7 @@ export class AudioScheduler {
     for (const track of project.tracks) {
       if (track.kind !== "audio") continue;
       for (const clip of playingClips(project, track, Math.floor(a * fps), Math.ceil(b * fps) + 1)) {
-        if (!isAudioClip(clip)) continue;
+        if (!isAudioClip(clip, project)) continue;
         const clipStart = clip.start / fps;
         // Past its edges under a transition (Batch 36), within its media.
         const limits = audioLimits(clip, fps, project.media[clip.mediaId]?.durationUs ?? clip.out);
@@ -388,14 +404,16 @@ export class AudioScheduler {
       this.ensure(clip, mediaSeconds(clip, clipStart, Math.max(spanStart, w0 - origin)));
       return;
     }
-    // The segments the span plays, each from its timeline start to its timeline end.
+    // The segments the span plays, each from its timeline start to its timeline end (a reversed clip walks them backward).
+    const reversed = clip.reverse === true;
     const first = segmentAt(layout, Math.max(0, mediaSeconds(clip, clipStart, Math.max(spanStart, w0 - origin))));
-    for (let segment = first; segment < layout.count; segment++) {
+    for (let segment = first, step = 0; reversed ? segment >= 0 : segment < layout.count; segment += reversed ? -1 : 1, step++) {
       const segStart = segmentStartSeconds(layout, segment);
       const segEnd = segment + 1 < layout.count ? segmentStartSeconds(layout, segment + 1) : Infinity;
       // Timeline seconds where the clip's media reaches the segment's edges.
-      const sStart = Math.max(spanStart, clipStart + (segStart - clip.in / 1e6) / clip.speed);
-      const sEnd = Math.min(spanEnd, clipStart + (segEnd - clip.in / 1e6) / clip.speed);
+      const at = (media: number) => clipStart + (reversed ? clip.out / 1e6 - media : media - clip.in / 1e6) / clip.speed;
+      const sStart = Math.max(spanStart, reversed ? at(segEnd) : at(segStart));
+      const sEnd = Math.min(spanEnd, reversed ? at(segStart) : at(segEnd));
       if (origin + sStart >= w1) break;
       if (sEnd <= sStart || origin + sEnd <= w0) continue;
       if (this.voices.some((voice) => voice.clip.id === clip.id && voice.segment === segment && Math.abs(voice.origin - origin) < ORIGIN_TOLERANCE)) continue;
@@ -406,7 +424,7 @@ export class AudioScheduler {
         until: w0 + AUTOMATION_AHEAD_SECONDS,
         segStart,
         // A clip's own start and a segment continuing the previous one start exactly; anything else joins mid-sound.
-        natural: Math.abs(sStart - clipStart) < 1e-9 || (segment > first && Math.abs(sStart - spanStart) > 1e-9),
+        natural: Math.abs(sStart - clipStart) < 1e-9 || (step > 0 && Math.abs(sStart - spanStart) > 1e-9),
         fps,
         limits,
       });
@@ -433,7 +451,10 @@ export class AudioScheduler {
     if (start === null || end === null) return;
     // Where the span's start sounds, before a late start moves `start` on.
     const nominal = start;
-    let offset = mediaSeconds(clip, span.clipStart, span.start) - span.segStart;
+    // A reversed clip plays the segment reversed (a copy of its samples, made once): the offset counts from the segment end.
+    const reversed = clip.reverse === true;
+    const media = mediaSeconds(clip, span.clipStart, span.start) - span.segStart;
+    let offset = reversed ? buffer.duration - media : media;
     const earliest = ctx.currentTime + MIN_AHEAD_SECONDS;
     const late = start < earliest;
     if (late) {
@@ -445,7 +466,7 @@ export class AudioScheduler {
     const fadeIn = late || !span.natural;
     if (late) this.stats.late += 1;
     const source = ctx.createBufferSource();
-    source.buffer = buffer;
+    source.buffer = reversed ? reversedOf(buffer, ctx) : buffer;
     source.playbackRate.value = clip.speed;
     const envelope = ctx.createGain();
     const fade = ctx.createGain();
@@ -583,8 +604,8 @@ export class AudioScheduler {
     mixer.updateTracks(project);
     for (const voice of [...this.voices]) {
       const current = project.clips[voice.clip.id];
-      if (current === voice.clip) continue;
-      if (!isAudioClip(current) || !sameTiming(current, voice.clip)) {
+      if (current === voice.clip && !mutedByRemap(project.clips, voice.clip)) continue;
+      if (!isAudioClip(current, project) || !sameTiming(current, voice.clip)) {
         this.stopVoice(voice);
         continue;
       }

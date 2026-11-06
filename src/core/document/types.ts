@@ -1,7 +1,7 @@
 // The persistent document (spec §5.2). Plain JSON only: no classes, Maps, Sets or undefined-valued
 // keys, so a Project can be serialized as-is and diffed by Immer patches.
 
-export const SCHEMA_VERSION = 21;
+export const SCHEMA_VERSION = 22;
 
 export type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
 export type JsonObject = { [key: string]: JsonValue };
@@ -687,6 +687,12 @@ export interface MediaClip extends ClipBase {
   volume: Volume;
   fades: { in: Frame; out: Frame; curve?: FadeCurve };
   keyframes?: Keyframes;
+  /** Video clips (spec §21.22, Batch 78; schema 22): keys (clip-relative frames) mapping timeline frames to source times; replaces `speed` for the picture and mutes the linked audio. */
+  timeRemap?: { frame: Frame; sourceUs: Us; ease: EaseId }[];
+  /** Video and audio clips: the source plays backward (from `out` to `in`); ignored when `timeRemap` is set. */
+  reverse?: boolean;
+  /** Video clips: when the source advances less than a frame per timeline frame, the two nearest source frames are mixed; absent = off. */
+  frameBlend?: boolean;
   transitionIn?: Transition;
   transitionOut?: Transition;
 }

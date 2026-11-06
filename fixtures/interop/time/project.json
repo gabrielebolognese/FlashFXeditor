@@ -1,0 +1,242 @@
+{
+  "schemaVersion": 22,
+  "id": "b2f4a7c1-5d36-4e18-8a90-3c7e1d6f2b45",
+  "name": "Interop time",
+  "settings": {
+    "width": 360,
+    "height": 640,
+    "fps": {
+      "num": 30,
+      "den": 1
+    },
+    "background": {
+      "r": 0,
+      "g": 0,
+      "b": 0,
+      "a": 1
+    },
+    "sampleRate": 48000
+  },
+  "media": {
+    "src": {
+      "id": "src",
+      "kind": "video",
+      "name": "clip.mp4",
+      "file": {
+        "relPath": "media/clip.mp4"
+      },
+      "durationUs": 10000000,
+      "hasAudio": true,
+      "analysis": {
+        "thumbs": "none",
+        "peaks": "none"
+      },
+      "addedAt": "2026-11-09T12:00:00.000Z"
+    }
+  },
+  "bins": [],
+  "tracks": [
+    {
+      "id": "v1",
+      "kind": "video",
+      "name": "Ramp",
+      "clipIds": [
+        "ramp"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
+      "id": "v2",
+      "kind": "video",
+      "name": "Reverse",
+      "clipIds": [
+        "back"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
+      "id": "v3",
+      "kind": "video",
+      "name": "Slow",
+      "clipIds": [
+        "slow"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    }
+  ],
+  "clips": {
+    "ramp": {
+      "kind": "video",
+      "name": "ramp",
+      "enabled": true,
+      "in": 5000000,
+      "out": 7000000,
+      "speed": 1,
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "crop": {
+        "left": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "volume": {
+        "gainDb": 0,
+        "muted": false
+      },
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "id": "ramp",
+      "trackId": "v1",
+      "start": 0,
+      "duration": 60,
+      "mediaId": "src",
+      "timeRemap": [
+        {
+          "frame": 0,
+          "sourceUs": 5000000,
+          "ease": "easeOut"
+        },
+        {
+          "frame": 18,
+          "sourceUs": 5880000,
+          "ease": "linear"
+        },
+        {
+          "frame": 42,
+          "sourceUs": 6120000,
+          "ease": "easeIn"
+        },
+        {
+          "frame": 60,
+          "sourceUs": 7000000,
+          "ease": "linear"
+        }
+      ]
+    },
+    "back": {
+      "kind": "video",
+      "name": "back",
+      "enabled": true,
+      "in": 5000000,
+      "out": 7000000,
+      "speed": 1,
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "crop": {
+        "left": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "volume": {
+        "gainDb": 0,
+        "muted": false
+      },
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "id": "back",
+      "trackId": "v2",
+      "start": 0,
+      "duration": 60,
+      "mediaId": "src",
+      "reverse": true
+    },
+    "slow": {
+      "kind": "video",
+      "name": "slow",
+      "enabled": true,
+      "in": 5000000,
+      "out": 5500000,
+      "speed": 0.25,
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "crop": {
+        "left": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "volume": {
+        "gainDb": 0,
+        "muted": false
+      },
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "id": "slow",
+      "trackId": "v3",
+      "start": 0,
+      "duration": 60,
+      "mediaId": "src",
+      "frameBlend": true
+    }
+  },
+  "markers": [],
+  "captionTracks": {},
+  "textPresetsLocal": [],
+  "sequences": {},
+  "meta": {
+    "createdAt": "2026-11-09T12:00:00.000Z",
+    "modifiedAt": "2026-11-09T12:00:00.000Z",
+    "appVersion": "1.1.0",
+    "generator": {
+      "name": "interop-fixture",
+      "version": "1",
+      "source": "fixtures/interop/time (Batch 78)"
+    }
+  }
+}

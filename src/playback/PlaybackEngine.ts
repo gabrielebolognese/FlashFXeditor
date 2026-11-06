@@ -53,7 +53,7 @@
 //   exact time (not at the tick that sees it), so audio scheduled across the wrap stays in sync.
 import type { PlaybackClock } from "../audio/AudioClock.js";
 import type { PlayMapping } from "../audio/scheduler/AudioScheduler.js";
-import { fpsToNumber, playedFrames, secondsToFrames, usPerFrame } from "../core/document/time.js";
+import { fpsToNumber, playedFrames, secondsToFrames } from "../core/document/time.js";
 import { isMediaClip, type Clip, type ClipId, type Frame, type MediaClip, type MediaId, type Project, type Rational } from "../core/document/types.js";
 import type { FrameScheduler } from "../core/scheduler/FrameScheduler.js";
 import type { IdleQueue } from "../core/scheduler/IdleQueue.js";
@@ -66,6 +66,7 @@ import type { ImageService } from "../media/decode/ImageService.js";
 import { nearestPosition } from "../media/demux/sampleIndex.js";
 import { isAbortError, isWorkerCrash } from "../media/workers/protocol.js";
 import { sourceTimeUs } from "../render/compositor/Compositor.js";
+import { remapAdvanceUs } from "../core/document/timeRemap.js";
 import { extendedEnd, extendedStart, handleTimeUs } from "../core/document/transitions.js";
 import { wantedLod } from "../render/preview/detail.js";
 import { markedRange } from "../timeline/model/inOut.js";
@@ -611,15 +612,21 @@ export class PlaybackEngine {
 
   /** Tops up the windows of `stream` so TARGET_READY frames lie ahead of `need` (see the header). */
   private fill(stream: Stream, doc: Project, cursor: Frame, need: number, priority: "playback" | "idle"): void {
-    const direction = this.velocity > 0 ? 1 : -1;
+    const { clip } = stream;
+    const fps = doc.settings.fps;
+    // The windows run in the direction the media moves: a reversed clip (or a backward segment of a remap curve) played forward decodes backward (Batch 78).
+    const timeline = this.velocity > 0 ? 1 : -1;
+    let direction = timeline;
+    if (need >= 0 && (clip.reverse === true || clip.timeRemap !== undefined)) {
+      const next = this.position(stream, Math.min(extendedEnd(clip) - 1, Math.max(extendedStart(clip), cursor + timeline)), fps);
+      if (next >= 0 && next !== need) direction = next > need ? 1 : -1;
+    }
     const forward = direction > 0;
     this.unpinPassed(stream, need, direction);
     if (stream.failed || need < 0) return;
-    const { clip } = stream;
-    const fps = doc.settings.fps;
-    const stride = strideFor(stream, Math.abs(this.velocity), fps);
+    const stride = strideFor(stream, Math.abs(this.velocity), fps, cursor);
     const last = extendedEnd(clip) - 1;
-    const horizon = Math.min(last, Math.max(extendedStart(clip), cursor + direction * secondsToFrames(PREFETCH_SECONDS, fps)));
+    const horizon = Math.min(last, Math.max(extendedStart(clip), cursor + timeline * secondsToFrames(PREFETCH_SECONDS, fps)));
     let goal = this.position(stream, horizon, fps);
     goal = forward ? Math.min(goal, need + (TARGET_READY - 1) * stride) : Math.max(goal, need - (TARGET_READY - 1) * stride);
     const { requested } = stream;
@@ -849,9 +856,9 @@ function transitionPartner(index: TrackIndex, clip: Clip, frame: Frame): Clip | 
  * Media positions between delivered frames: every frame the clip shows at 1x (2 for 60 fps media in
  * a 30 fps project), and at shuttle speeds only as many as a DISPLAY_HZ screen can show.
  */
-function strideFor(stream: Stream, speed: number, fps: Rational): number {
+function strideFor(stream: Stream, speed: number, fps: Rational, cursor: Frame): number {
   if (stream.frameUs <= 0) return 1;
-  const perFrame = (stream.clip.speed * usPerFrame(fps)) / stream.frameUs;
+  const perFrame = Math.abs(remapAdvanceUs(stream.clip, cursor, fps)) / stream.frameUs;
   const framesPerSecond = fpsToNumber(fps) * speed;
   const framesPerShown = framesPerSecond / Math.min(framesPerSecond, DISPLAY_HZ);
   return Math.max(1, Math.floor(perFrame * framesPerShown + 1e-6));

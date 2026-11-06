@@ -50,6 +50,8 @@ export type Migration = (raw: JsonObject) => JsonObject;
  *   and invert (new values of existing fields): older projects open unchanged.
  * - 20 -> 21 (Batch 77): `Track.gainDb`, `Track.pan`, `Volume.pan`, `fades.curve` and `settings.loudness` (all optional;
  *   absent = 0 dB, centered, equal power, no target): older projects open unchanged.
+ * - 21 -> 22 (Batch 78): `MediaClip.timeRemap`, `.reverse` and `.frameBlend` (all optional; absent = the constant speed, forward, no
+ *   blending): older projects open unchanged.
  * - 7 -> 8 (Batch 62): `sequences` (empty) and the `compound` clip kind: older projects open unchanged.
  * - 6 -> 7 (Batch 60): the 30 Penner eases, `bezier` and `spring` on keys, vector (color) key values and the keyframe
  *   properties of spec §21.9 (all new values of existing fields): older projects open unchanged.
@@ -101,6 +103,8 @@ export const MIGRATIONS: Readonly<Record<number, Migration>> = {
   19: (raw) => raw,
   // 20 -> 21 (Batch 77): audio v2 fields, all optional: none in an older project.
   20: (raw) => raw,
+  // 21 -> 22 (Batch 78): `timeRemap`, `reverse` and `frameBlend` on media clips, all optional: none in an older project.
+  21: (raw) => raw,
 };
 
 function isObject(value: unknown): value is JsonObject {

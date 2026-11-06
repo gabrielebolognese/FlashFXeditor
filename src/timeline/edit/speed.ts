@@ -26,6 +26,7 @@
 import type { Command } from "../../core/commands/command.js";
 import { fitFades } from "../../core/document/fades.js";
 import { retimeKeyframes } from "../../core/document/keyframes.js";
+import { scaleRemap } from "../../core/document/timeRemap.js";
 import { framesToSourceUs, usPerFrame } from "../../core/document/time.js";
 import { isMediaClip, type Clip, type ClipId, type MediaClip, type Project } from "../../core/document/types.js";
 import { isClipLocked, lastClipStartingBy, linkedPartners, trackIndex, trackOf } from "../model/queries.js";
@@ -159,6 +160,7 @@ function retimeGroup(project: Project, group: readonly MediaClip[], speed: numbe
     const next: MediaClip = { ...clip, speed, duration, out };
     // Keys scale with the duration; keys landing on one frame merge, eases and holds stay (Batch 35).
     if (clip.keyframes && duration !== clip.duration) next.keyframes = retimeKeyframes(clip.keyframes, duration / clip.duration);
+    if (clip.timeRemap && duration !== clip.duration) next.timeRemap = scaleRemap(clip.timeRemap, clip.duration, duration);
     next.fades = fitFades(clip.fades, duration);
     // Transitions are shortened to the handles left (or removed) by `reconcileTransitions` after the command.
     changes.set(clip.id, next);

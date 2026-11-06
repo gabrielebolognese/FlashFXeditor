@@ -1009,6 +1009,20 @@ Beat markers are plain markers (color `teal`, label `Beat`), one per detected be
 
 A minimal use is `"pan": 0.3` in an existing clip's `volume`, or `"gainDb": -3` on an audio track. `fixtures/interop/audio` holds a project with all four, a stereo file at -20 LUFS and a 120 BPM click track.
 
+### 5.17 Time remap, reverse and frame blending (manifest key `time`; schema 22)
+
+Three optional fields of video clips (`reverse` also of audio clips); a missing field means "as before", so schema 21 projects open unchanged (migration 21 to 22 changes nothing).
+
+- **`timeRemap`** is a list of keys `{ "frame", "sourceUs", "ease" }`: the source time shown at a clip-relative frame. The first key is at frame 0 and the last at the clip's `duration`; frames strictly increase; `ease` (the ease of the segment that starts at the key) is any keyframe ease id. Between keys the source time is interpolated, so a segment may stand still (equal `sourceUs`: a freeze) or go backward. The curve replaces `speed` for the picture and mutes the audio linked to the clip (same `linkGroup`). `in` and `out` stay the nominal source range.
+- **`reverse`** (`true`) plays the clip's source range backward, picture and sound. Ignored when `timeRemap` is set.
+- **`frameBlend`** (`true`, video only) mixes the two source frames around the shown time when the clip plays slower than its media's frame rate. Off by default; there is no optical flow.
+
+```json RemapKey
+{ "frame": 18, "sourceUs": 5440000, "ease": "easeOut" }
+```
+
+`fixtures/interop/time` holds a Hero ramp (fast, slow, fast), a reversed clip and a 25 percent clip with frame blending, with the expected source times in `expected/source-times.json`.
+
 ## 6. Captions and word timings
 
 The caption track's `captionTracks[<track id>].style` styles every cue; a cue's `styleOverride` sets only the fields it changes. A cue is a `caption` clip with `text` (`\n` for line breaks) and optional `words`: `start` and `end` are integer frames relative to the cue's start, `end` after `start`. A word may start before the cue or end after it: an in-trim keeps the words it hides (negative frames), so a trim back shows them again. With word timings the active word is highlighted as the style's `highlight` says.
@@ -1337,6 +1351,16 @@ A transition at the cut between two abutting clips: the left clip's `transitionO
 | `softness` | number | no | `0` | Wipe, iris: the soft width of the edge, 0 to 1. |
 | `center` | [FractionPoint](#fractionpoint) | no | `{"x":0.5,"y":0.5}` | Iris: the circle's center, fractions of the frame. |
 | `ease` | `"linear"` | `"easeIn"` | `"easeOut"` | `"easeInOut"` | `"hold"` | `"smooth"` | `"snap"` | `"overshoot"` | `"sineIn"` | `"sineOut"` | `"sineInOut"` | `"quadIn"` | `"quadOut"` | `"quadInOut"` | `"cubicIn"` | `"cubicOut"` | `"cubicInOut"` | `"quartIn"` | `"quartOut"` | `"quartInOut"` | `"quintIn"` | `"quintOut"` | `"quintInOut"` | `"expoIn"` | `"expoOut"` | `"expoInOut"` | `"circIn"` | `"circOut"` | `"circInOut"` | `"backIn"` | `"backOut"` | `"backInOut"` | `"elasticIn"` | `"elasticOut"` | `"elasticInOut"` | `"bounceIn"` | `"bounceOut"` | `"bounceInOut"` | `"bezier"` | `"spring"` | no |  | The progress curve. Absent = the linear mix of schema 14 and before; the motion kinds are created with easeInOut. |
+
+#### RemapKey
+
+A key of a clip's `timeRemap` (Batch 78): the source time the picture shows at a clip-relative frame. The first key is at frame 0, the last at the clip's duration; frames strictly increase.
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `frame` | integer (>= 0) | yes |  | Clip-relative frame. Integer frames at the project frame rate. |
+| `sourceUs` | integer (>= 0) | yes |  | Source time shown. Integer microseconds. |
+| `ease` | `"linear"` | `"easeIn"` | `"easeOut"` | `"easeInOut"` | `"hold"` | `"smooth"` | `"snap"` | `"overshoot"` | `"sineIn"` | `"sineOut"` | `"sineInOut"` | `"quadIn"` | `"quadOut"` | `"quadInOut"` | `"cubicIn"` | `"cubicOut"` | `"cubicInOut"` | `"quartIn"` | `"quartOut"` | `"quartInOut"` | `"quintIn"` | `"quintOut"` | `"quintInOut"` | `"expoIn"` | `"expoOut"` | `"expoInOut"` | `"circIn"` | `"circOut"` | `"circInOut"` | `"backIn"` | `"backOut"` | `"backInOut"` | `"elasticIn"` | `"elasticOut"` | `"elasticInOut"` | `"bounceIn"` | `"bounceOut"` | `"bounceInOut"` | `"bezier"` | `"spring"` | yes | `"linear"` | The curve of the segment that starts at this key (linear: a constant speed). |
 
 #### TrackMatte
 
@@ -1824,7 +1848,7 @@ project.json.
 
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| `schemaVersion` | integer (>= 1) | yes | `21` | The schema version; this build writes and reads up to the current one. |
+| `schemaVersion` | integer (>= 1) | yes | `22` | The schema version; this build writes and reads up to the current one. |
 | `id` | string (not empty) | yes |  | Unique id, never changes (uuid v4 recommended). |
 | `name` | string | yes |  | Project name. |
 | `settings` | [Settings](#settings) | yes |  | Frame and time base. |
@@ -1908,6 +1932,9 @@ A video clip.
 | `volume` | [Volume](#volume) | yes |  | Sound level. |
 | `fades` | [Fades](#fades) | yes | `{"in":0,"out":0}` | Opacity and volume fades. |
 | `keyframes` | [Keyframes](#keyframes) | no |  | Animated properties. |
+| `timeRemap` | [RemapKey](#remapkey)[] | no |  | Video clips (Batch 78): keys mapping timeline frames to source times; replaces `speed` for the picture and mutes the linked audio. At least two keys. |
+| `reverse` | boolean | no | `false` | Video and audio clips (Batch 78): the source plays backward, from `out` to `in`. Ignored when `timeRemap` is set. |
+| `frameBlend` | boolean | no | `false` | Video clips (Batch 78): when the source advances less than one frame per timeline frame, the two nearest source frames are mixed. |
 | `transitionIn` | [Transition](#transition) | no |  | Transition at the start. |
 | `transitionOut` | [Transition](#transition) | no |  | Transition at the end. |
 
@@ -1946,6 +1973,9 @@ A audio clip.
 | `volume` | [Volume](#volume) | yes |  | Sound level. |
 | `fades` | [Fades](#fades) | yes | `{"in":0,"out":0}` | Volume fades. |
 | `keyframes` | [Keyframes](#keyframes) | no |  | Animated properties. |
+| `timeRemap` | [RemapKey](#remapkey)[] | no |  | Video clips (Batch 78): keys mapping timeline frames to source times; replaces `speed` for the picture and mutes the linked audio. At least two keys. |
+| `reverse` | boolean | no | `false` | Video and audio clips (Batch 78): the source plays backward, from `out` to `in`. Ignored when `timeRemap` is set. |
+| `frameBlend` | boolean | no | `false` | Video clips (Batch 78): when the source advances less than one frame per timeline frame, the two nearest source frames are mixed. |
 | `transitionIn` | [Transition](#transition) | no |  | Transition at the start. |
 | `transitionOut` | [Transition](#transition) | no |  | Transition at the end. |
 
@@ -1987,6 +2017,9 @@ A image clip.
 | `volume` | [Volume](#volume) | yes |  | Sound level. |
 | `fades` | [Fades](#fades) | yes | `{"in":0,"out":0}` | Opacity and volume fades. |
 | `keyframes` | [Keyframes](#keyframes) | no |  | Animated properties. |
+| `timeRemap` | [RemapKey](#remapkey)[] | no |  | Video clips (Batch 78): keys mapping timeline frames to source times; replaces `speed` for the picture and mutes the linked audio. At least two keys. |
+| `reverse` | boolean | no | `false` | Video and audio clips (Batch 78): the source plays backward, from `out` to `in`. Ignored when `timeRemap` is set. |
+| `frameBlend` | boolean | no | `false` | Video clips (Batch 78): when the source advances less than one frame per timeline frame, the two nearest source frames are mixed. |
 | `transitionIn` | [Transition](#transition) | no |  | Transition at the start. |
 | `transitionOut` | [Transition](#transition) | no |  | Transition at the end. |
 

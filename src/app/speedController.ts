@@ -8,6 +8,8 @@ import type { ClipId, MediaClip } from "../core/document/types.js";
 import { createStore } from "../core/store/createStore.js";
 import { selectClips, toSnapshot } from "../core/store/selection.js";
 import { setSectionCollapsed } from "../core/store/sessionStore.js";
+import { RAMP_IDS, type RampId } from "../core/document/timeRemap.js";
+import { applyRamp, clearRemap, enableRemap, frameBlendAll, remappedAll, reversedAll, setFrameBlend, setReverse } from "../timeline/edit/remap.js";
 import { freezeFrame, punchZoom, type OneClickMiss } from "../timeline/edit/freeze.js";
 import { setSpeedDurations, setSpeeds, type SpeedOptions } from "../timeline/edit/speed.js";
 import type { TrimLimit } from "../timeline/edit/trim.js";
@@ -108,6 +110,40 @@ function punchZoomAtPlayhead(): void {
   documentStore.dispatch(result.command, { selection: toSnapshot(selectClips(result.zoomedIds, result.zoomedIds[0] ?? null)) });
 }
 
+/** Reverse on for the selected clips and their linked ones, off when all already play backward (spec §21.22). */
+export function toggleReverse(): void {
+  const project = documentStore.getState();
+  const ids = selectedIds();
+  const command = setReverse(project, ids, !reversedAll(project, ids));
+  if (command) documentStore.dispatch(command);
+  else noVideo("reverse");
+}
+
+/** Frame blending on or off for the selected video clips. */
+export function toggleFrameBlend(): void {
+  const project = documentStore.getState();
+  const ids = selectedIds();
+  const command = setFrameBlend(project, ids, !frameBlendAll(project, ids));
+  if (command) documentStore.dispatch(command);
+  else noVideo("blend");
+}
+
+/** Time remap on for the selected video clips (the straight line of their speed), off when all have it. */
+export function toggleRemap(): void {
+  const project = documentStore.getState();
+  const ids = selectedIds();
+  const command = remappedAll(project, ids) ? clearRemap(project, ids) : enableRemap(project, ids);
+  if (command) documentStore.dispatch(command);
+  else noVideo("remap");
+}
+
+/** A one-click ramp on the selected video clips. */
+export function rampSelected(ramp: RampId): void {
+  const command = applyRamp(documentStore.getState(), selectedIds(), ramp);
+  if (command) documentStore.dispatch(command);
+  else noVideo("ramp");
+}
+
 /** "Speed..." (spec §6.16): the Speed section opens (expanded) with its speed field focused. */
 function openSpeedSection(): void {
   setSectionCollapsed(sessionStore, "speed", false);
@@ -120,9 +156,18 @@ export function installSpeedController(): () => void {
     actions.register("edit.freezeFrame", freezeAtPlayhead),
     actions.register("edit.punchZoom", punchZoomAtPlayhead),
     actions.register("clip.speedPanel", openSpeedSection),
+    actions.register("clip.reverse", toggleReverse),
+    actions.register("clip.frameBlend", toggleFrameBlend),
+    actions.register("clip.timeRemap", toggleRemap),
+    ...RAMP_IDS.map((ramp) => actions.register(`clip.ramp.${ramp}`, () => rampSelected(ramp))),
     ...SPEED_CHIPS.map((chip) => actions.register(chip.id, () => applySpeed(selectedIds(), chip.speed))),
   ];
   return () => {
     for (const stop of stops) stop();
   };
+}
+
+/** A time edit with nothing to act on: the selection has no video (reverse: no video or audio) clip. */
+function noVideo(what: "reverse" | "blend" | "remap" | "ramp"): void {
+  showToast({ tone: "info", message: what === "reverse" ? "Select a video or audio clip" : "Select a video clip", detail: what === "remap" || what === "ramp" ? "Time remap and ramps are for video clips." : "Nothing to change in the selection." });
 }

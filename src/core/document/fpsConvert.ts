@@ -146,6 +146,19 @@ function convertInside(clip: Clip, conv: FrameConverter, oldStart: number, to: R
   if ("keyframes" in clip && clip.keyframes) clip.keyframes = convertKeys(clip.keyframes, conv, oldStart, newStart);
   if (isMediaClip(clip)) {
     fitSource(clip, to, media, conv);
+    // A remap curve (Batch 78): its keys at their converted positions, the ends on the clip's ends, colliding keys merged.
+    if (clip.timeRemap) {
+      const keys: typeof clip.timeRemap = [];
+      for (const [i, key] of clip.timeRemap.entries()) {
+        const frame = i === 0 ? 0 : i === clip.timeRemap.length - 1 ? clip.duration : Math.min(clip.duration - 1, conv.frame(oldStart + key.frame) - newStart);
+        const last = keys[keys.length - 1];
+        if (last && frame <= last.frame) {
+          if (i === clip.timeRemap.length - 1) keys[keys.length - 1] = { ...key, frame: clip.duration };
+          conv.report.merged += 1;
+        } else keys.push({ ...key, frame });
+      }
+      clip.timeRemap = keys.length >= 2 ? keys : [{ ...(keys[0] ?? { sourceUs: 0, ease: "linear" as const }), frame: 0 }, { ...(keys[0] ?? { sourceUs: 0, ease: "linear" as const }), frame: clip.duration }];
+    }
     if (clip.transitionIn) clip.transitionIn = convertTransition(clip.transitionIn, conv);
     if (clip.transitionOut) clip.transitionOut = convertTransition(clip.transitionOut, conv);
   }

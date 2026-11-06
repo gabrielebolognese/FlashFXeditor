@@ -23,7 +23,8 @@
 // change. One command each (one undo step).
 import { current, isDraft, type Draft } from "immer";
 import type { Command } from "../../core/commands/command.js";
-import { framesToSourceUs, frameToUs } from "../../core/document/time.js";
+import { frameToUs } from "../../core/document/time.js";
+import { clipSourceUs } from "../../core/document/timeRemap.js";
 import { clipAt, hasSectionKeys, mapKeyValues, transformValues, writeKeys } from "../../core/document/keyframes.js";
 import type { Clip, ClipId, Frame, Keyframes, MediaClip, Project, Transform } from "../../core/document/types.js";
 import { clipInIndex, isClipLocked, linkedPartners, trackIndex } from "../model/queries.js";
@@ -89,14 +90,18 @@ function splitSet(project: Project, clips: readonly Clip[], frame: Frame, linked
 function freezeOf(project: Project, clip: MediaClip, frame: Frame, duration: Frame, id: ClipId): MediaClip {
   const { fps } = project.settings;
   // The source time the clip shows at the frame (§5.1; a freeze frame's own `in`).
-  const time = Math.min(clip.out - 1, clip.in + framesToSourceUs(frame - clip.start, clip.speed, fps));
   const durationUs = project.media[clip.mediaId]?.durationUs ?? clip.out;
+  // Through the clip's reverse or remap curve (Batch 78); the freeze itself holds a plain forward frame.
+  const time = clip.timeRemap ? Math.max(0, Math.min(durationUs - 1, clipSourceUs(clip, frame, fps))) : Math.min(clip.out - 1, clipSourceUs(clip, frame, fps));
   // A keyed clip's look is the one at the frame (Batch 35): the freeze holds it, unkeyed.
   const look = clipAt(clip, frame);
   const freeze: MediaClip = { ...look, transform: normalizeTransform(look.transform), id, start: frame, duration, speed: 0, in: time, out: Math.min(durationUs, time + frameToUs(1, fps)), fades: { in: 0, out: 0 } };
   delete freeze.linkGroup;
   delete freeze.group;
   delete freeze.keyframes;
+  delete freeze.timeRemap;
+  delete freeze.reverse;
+  delete freeze.frameBlend;
   delete freeze.transitionIn;
   delete freeze.transitionOut;
   return freeze;

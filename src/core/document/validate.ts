@@ -8,7 +8,7 @@ import { sequenceDurationUs, sequenceRecordIssues } from "./sequence.js";
 import { pathDataIssue } from "../shapes/pathData.js";
 import { effectIssues, isEffectProp } from "../effects/effectParams.js";
 import { PRIMITIVE_LIMITS, PRIMITIVE_PARAMS } from "../shapes/primitives.js";
-import { type AdjustmentClip, BLEND_MODES, FADE_CURVES, MASK_MODES, MATTE_MODES, CAPTION_HIGHLIGHTS, COUNTER_SEPARATORS, CUE_ANIM_KINDS, FILL_RULES, SELECTOR_ORDERS, SELECTOR_SHAPES, TEXT_ANIM_UNITS, isFreeze, isMediaClip, LABEL_COLORS, LINE_CAPS, LINE_JOINS, PRIMITIVE_KINDS, SOLID_SHAPE_IDS, type NullClip, type PrimitiveKind, type ShapeClip, STROKE_ALIGNS, type CaptionClip, type CaptionStyle, type Clip, type ClipId, type ClipKind, type CompoundClip, type Sequence, type MediaClip, type MediaItem, type Project, type SolidClip, type TextClip, type TextSpan, type TextStyle, type Track, type TrackId, type TrackKind } from "./types.js";
+import { type AdjustmentClip, BLEND_MODES, EASE_IDS, FADE_CURVES, MASK_MODES, MATTE_MODES, CAPTION_HIGHLIGHTS, COUNTER_SEPARATORS, CUE_ANIM_KINDS, FILL_RULES, SELECTOR_ORDERS, SELECTOR_SHAPES, TEXT_ANIM_UNITS, isFreeze, isMediaClip, LABEL_COLORS, LINE_CAPS, LINE_JOINS, PRIMITIVE_KINDS, SOLID_SHAPE_IDS, type NullClip, type PrimitiveKind, type ShapeClip, STROKE_ALIGNS, type CaptionClip, type CaptionStyle, type Clip, type ClipId, type ClipKind, type CompoundClip, type Sequence, type MediaClip, type MediaItem, type Project, type SolidClip, type TextClip, type TextSpan, type TextStyle, type Track, type TrackId, type TrackKind } from "./types.js";
 
 export class DocumentInvariantError extends Error {
   readonly issues: readonly string[];
@@ -101,6 +101,7 @@ function clipIssues(project: Project, clip: Clip): string[] {
     else if (fades.in > clip.duration || fades.out > clip.duration) issues.push(`${label}: fades ${fades.in}/${fades.out} are longer than the clip (${clip.duration})`);
   }
   if (!isMediaClip(clip)) return issues;
+  issues.push(...timeIssues(clip, label));
 
   if (!Number.isInteger(clip.in) || !Number.isInteger(clip.out)) issues.push(`${label}: in/out must be integer microseconds`);
   if (clip.in < 0) issues.push(`${label}: in ${clip.in} < 0`);
@@ -122,6 +123,37 @@ function clipIssues(project: Project, clip: Clip): string[] {
       issues.push(`${label}: out - in = ${clip.out - clip.in} us, expected duration * speed = ${Math.round(expected)} us (within 1 frame)`);
     }
   }
+  return issues;
+}
+
+/** Time remap, reverse and frame blend (spec §21.22, Batch 78): video clips (reverse: audio too); keys strictly increasing, the first at 0, the last at the duration. */
+function timeIssues(clip: MediaClip, label: string): string[] {
+  const issues: string[] = [];
+  if (clip.reverse !== undefined && typeof clip.reverse !== "boolean") issues.push(`${label}: reverse must be true or false`);
+  if (clip.reverse === true && clip.kind === "image") issues.push(`${label}: an image clip cannot be reversed`);
+  if (clip.frameBlend !== undefined) {
+    if (typeof clip.frameBlend !== "boolean") issues.push(`${label}: frameBlend must be true or false`);
+    else if (clip.frameBlend && clip.kind !== "video") issues.push(`${label}: only a video clip blends frames`);
+  }
+  const keys = clip.timeRemap as unknown;
+  if (keys === undefined) return issues;
+  if (clip.kind !== "video") return [...issues, `${label}: only a video clip has a time remap`];
+  if (!Array.isArray(keys) || keys.length < 2) return [...issues, `${label}: timeRemap needs at least two keys`];
+  let previous = -1;
+  for (const [i, key] of keys.entries()) {
+    const k = key as { frame?: unknown; sourceUs?: unknown; ease?: unknown };
+    if (typeof k !== "object" || k === null || !Number.isInteger(k.frame) || !Number.isInteger(k.sourceUs) || (k.sourceUs as number) < 0) {
+      issues.push(`${label}: timeRemap key ${i} needs an integer frame and an integer sourceUs >= 0`);
+      continue;
+    }
+    if (typeof k.ease !== "string" || !(EASE_IDS as readonly string[]).includes(k.ease)) issues.push(`${label}: timeRemap key ${i} has an unknown ease`);
+    if ((k.frame as number) <= previous) issues.push(`${label}: timeRemap key ${i} (frame ${String(k.frame)}) is not after the previous key`);
+    previous = k.frame as number;
+  }
+  const first = keys[0] as { frame?: unknown };
+  const last = keys[keys.length - 1] as { frame?: unknown };
+  if (first.frame !== 0) issues.push(`${label}: the first timeRemap key must be at frame 0`);
+  if (last.frame !== clip.duration) issues.push(`${label}: the last timeRemap key must be at the clip's duration (${clip.duration})`);
   return issues;
 }
 

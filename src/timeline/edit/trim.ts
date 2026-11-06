@@ -23,12 +23,13 @@
 import type { Draft } from "immer";
 import type { Command } from "../../core/commands/command.js";
 import { framesToSourceUs, usPerFrame } from "../../core/document/time.js";
+import { isReversed, refitRemap, scaleRemap } from "../../core/document/timeRemap.js";
 import { MAX_SPEED, MIN_SPEED } from "../../core/document/limits.js";
 import { shiftHeadTrim } from "../../core/document/fallback.js";
 import { fitFades } from "../../core/document/fades.js";
 import { retimeKeyframes, shiftKeyframes } from "../../core/document/keyframes.js";
 import { editDefaults } from "./editDefaults.js";
-import { BOUND_SLACK_US, headFrames, reconciled, tailFrames } from "../../core/document/transitions.js";
+import { BOUND_SLACK_US, handleOf, headFrames, reconciled, tailFrames } from "../../core/document/transitions.js";
 import { isFreeze, isMediaClip, type CaptionClip, type Clip, type ClipId, type CompoundClip, type Frame, type MediaClip, type Project, type Rational, type TrackId } from "../../core/document/types.js";
 import { loopTimeUs } from "../../media/decode/animation.js";
 import { clipInIndex, isClipLocked, lastClipStartingBy, linkedPartners, trackIndex } from "../model/queries.js";
@@ -233,7 +234,8 @@ function buildPlan(project: Project, kind: EditKind, clipId: ClipId, edge: TrimE
       case "in":
         hi = tighter(hi, clip.duration - 1, at("minDuration"), "hi");
         if (hasSource(clip)) {
-          const bound = -headFrames(clip, fps);
+          // A reversed clip's head frames lie after its `out`.
+          const bound = -handleOf(project, clip, "head");
           mediaBounds.push({ delta: bound, clipId: clip.id, side: "start" });
           lo = tighter(lo, bound, at("mediaStart"), "lo");
         } else if (clip.kind === "compound") {
@@ -245,7 +247,7 @@ function buildPlan(project: Project, kind: EditKind, clipId: ClipId, edge: TrimE
       case "out":
         lo = tighter(lo, 1 - clip.duration, at("minDuration"), "lo");
         if (hasSource(clip)) {
-          const bound = media ? Math.max(0, maxDurationFrames(clip, media.durationUs, fps) - clip.duration) : 0;
+          const bound = isReversed(clip) ? handleOf(project, clip, "tail") : media ? Math.max(0, maxDurationFrames(clip, media.durationUs, fps) - clip.duration) : 0;
           mediaBounds.push({ delta: bound, clipId: clip.id, side: "end" });
           hi = tighter(hi, bound, at("mediaEnd"), "hi");
         } else if (clip.kind === "compound") {
@@ -466,6 +468,12 @@ export function trimmedClip(clip: Clip, edge: TrimEdge, delta: number, ripple: b
       media.out = media.in + framesToSourceUs(media.duration, clip.speed, fps);
     } else if (isFreeze(clip)) {
       // A freeze frame holds its source time for any duration: `in` and `out` stay.
+    } else if (isReversed(clip)) {
+      // A reversed clip plays from `out` back to `in`: its start edge moves `out`, its end edge moves `in` (Batch 78).
+      const durationUs = project.media[clip.mediaId]?.durationUs ?? Infinity;
+      if (edge === "in") media.out = Math.min(durationUs, clip.out - framesToSourceUs(delta, clip.speed, fps));
+      else media.in = Math.max(0, clip.in - framesToSourceUs(delta, clip.speed, fps));
+      if (edge === "in" && clip.keyframes && editDefaults().keyframesFollowSource) media.keyframes = shiftKeyframes(clip.keyframes, delta);
     } else if (edge === "in") {
       // Never before the media start (a handle counted within the rounding slack, BOUND_SLACK_US).
       media.in = Math.max(0, clip.in + framesToSourceUs(delta, clip.speed, fps));
@@ -478,6 +486,8 @@ export function trimmedClip(clip: Clip, edge: TrimEdge, delta: number, ripple: b
       media.out = Math.min(durationUs, clip.out + framesToSourceUs(delta, clip.speed, fps));
     }
   }
+  // A remap curve keeps the picture of every frame left: the new ends are read off the old curve (Batch 78).
+  if (isMediaClip(clip) && clip.timeRemap) (next as MediaClip).timeRemap = refitRemap(clip.timeRemap, edge === "in" ? delta : 0, next.duration);
   // A compound's in edge moves the sequence frame it starts on (spec §21.10).
   if (clip.kind === "compound" && edge === "in") (next as CompoundClip).offset = clip.offset + delta;
   // A stand-in's first frame moves with an in edge (spec §21.4 `headTrim`).
@@ -508,7 +518,7 @@ function slippedClip(clip: MediaClip, delta: number, project: Project): Clip {
 }
 
 /** A video or audio clip with an edge moved by `delta` and the speed that keeps its `in`/`out` (§5.1). */
-function stretchedClip(clip: MediaClip, move: "stretchIn" | "stretchOut", delta: number): Clip {
+export function stretchedClip(clip: MediaClip, move: "stretchIn" | "stretchOut", delta: number): Clip {
   const next = { ...clip } as MediaClip & Record<string, unknown>;
   const duration = move === "stretchIn" ? clip.duration - delta : clip.duration + delta;
   if (move === "stretchIn") next.start = clip.start + delta;
@@ -517,6 +527,7 @@ function stretchedClip(clip: MediaClip, move: "stretchIn" | "stretchOut", delta:
   next.speed = (clip.speed * clip.duration) / duration;
   // Keys scale with the duration; keys landing on one frame merge, eases and holds stay (Batch 35).
   if (clip.keyframes) next.keyframes = retimeKeyframes(clip.keyframes, duration / clip.duration);
+  if (clip.timeRemap) next.timeRemap = scaleRemap(clip.timeRemap, clip.duration, duration);
   clampFades(next, clip);
   return next;
 }

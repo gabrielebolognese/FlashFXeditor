@@ -15,6 +15,8 @@ import { audibleTracks } from "../../audio/AudioMixer.js";
 import { formatHexColor, isRgba } from "../../core/document/color.js";
 import { fillAsStops } from "../../core/document/fill.js";
 import { formatSpeed, usPerFrame, type TimecodeMode } from "../../core/document/time.js";
+import { thumbIndex } from "../../media/cache/thumbSheets.js";
+import { clipSourceUs, mutedByRemap, remapSpeedAt } from "../../core/document/timeRemap.js";
 import { isFreeze, isMediaClip, type Clip, type CompoundClip, type Frame, type Marker, type MediaClip, type Project, type SolidClip, type Track, type TrackId } from "../../core/document/types.js";
 import type { Selection } from "../../core/store/selection.js";
 import type { TransitionSelection } from "../../core/store/sessionStore.js";
@@ -311,6 +313,7 @@ function drawBody(scene: ClipScene, clip: Clip, x: number, y: number, width: num
   switch (clip.kind) {
     case "video":
       if (width >= LOD_THUMBS_PX) drawFilmstrip(scene, clip, y, height, left, right);
+      if (clip.timeRemap && lod === "full") drawRemapGraph(scene, clip, y, height, left, right);
       return;
     case "image":
       if (width >= LOD_THUMBS_PX) drawPosterTiles(scene, clip, y, height, left, right);
@@ -389,12 +392,16 @@ function drawFilmstrip(scene: ClipScene, clip: MediaClip, y: number, height: num
   const clipX = geometry.frameToX(clip.start);
   const usPerPx = (usPerFrame(scene.project.settings.fps) * clip.speed) / geometry.pxPerFrame;
   const plan = planFilmstrip(layout, clipX, tileWidth, left, right, usPerPx);
+  // A remapped or reversed clip: each tile shows the source time of its left edge's frame (Batch 78).
+  const mapped = clip.timeRemap !== undefined || clip.reverse === true;
+  const fps = scene.project.settings.fps;
   for (let tile = plan.first; tile < plan.end; tile++) {
-    let thumb = tileThumb(layout, plan.level, clip.in, tile, plan.tileUs);
+    const sourceUs = mapped ? clipSourceUs(clip, clip.start + Math.round((tile * tileWidth) / geometry.pxPerFrame), fps) : 0;
+    let thumb = mapped ? thumbIndex(layout, plan.level, sourceUs) : tileThumb(layout, plan.level, clip.in, tile, plan.tileUs);
     if (wants) wantSheet(wants, clip.mediaId, plan.level, Math.floor(thumb / layout.perSheet));
     let bitmap: ImageBitmap | null = null;
     for (const level of STAND_INS[plan.level]) {
-      thumb = tileThumb(layout, level, clip.in, tile, plan.tileUs);
+      thumb = mapped ? thumbIndex(layout, level, sourceUs) : tileThumb(layout, level, clip.in, tile, plan.tileUs);
       bitmap = visuals.sheet(clip.mediaId, level, Math.floor(thumb / layout.perSheet));
       if (bitmap) break;
     }
@@ -404,6 +411,58 @@ function drawFilmstrip(scene: ClipScene, clip: MediaClip, y: number, height: num
     const x1 = snap(clipX + (tile + 1) * tileWidth, dpr);
     ctx.drawImage(bitmap, cell.x, cell.y, layout.width, layout.height, x0, y, x1 - x0, height);
   }
+}
+
+/** The speed range the remap graph shows (x real time, either direction). */
+const GRAPH_SPEED = 4;
+
+/**
+ * The speed graph of a remapped clip (spec §21.22, Batch 78): a band along the bottom of the body with the clip's
+ * speed at every pixel column (the 1x line in the middle's quarter marks, backward below the middle) and a square
+ * on each key. Read-only here: the keys are edited in the Speed section's graph.
+ */
+function drawRemapGraph(scene: ClipScene, clip: MediaClip, y: number, height: number, left: number, right: number): void {
+  const keys = clip.timeRemap;
+  const { ctx, dpr, geometry, theme } = scene;
+  const band = theme.timeline.keyframeLaneHeight * 2;
+  if (!keys || height < band * 1.5) return;
+  const top = y + height - band - theme.space[0];
+  const mid = top + band / 2;
+  const half = band / 2;
+  const fps = scene.project.settings.fps;
+  ctx.save();
+  ctx.fillStyle = theme.color.surface3;
+  ctx.fillRect(left, top, right - left, band);
+  // The 1x line.
+  const one = mid - half / GRAPH_SPEED;
+  ctx.strokeStyle = theme.color.hairline;
+  ctx.lineWidth = 1 / dpr;
+  ctx.beginPath();
+  ctx.moveTo(left, snap(one, dpr));
+  ctx.lineTo(right, snap(one, dpr));
+  ctx.stroke();
+  // The speed, a column every 2 px, within the clip.
+  const clipLeft = Math.max(left, geometry.frameToX(clip.start));
+  const clipRight = Math.min(right, geometry.frameToX(clip.start + clip.duration));
+  ctx.strokeStyle = theme.color.accent;
+  ctx.lineWidth = 2 / dpr;
+  ctx.beginPath();
+  for (let px = clipLeft; px <= clipRight; px += 2) {
+    const speed = Math.max(-GRAPH_SPEED, Math.min(GRAPH_SPEED, remapSpeedAt(keys, Math.floor(geometry.xToFrame(px)) - clip.start, fps)));
+    const gy = mid - (speed / GRAPH_SPEED) * half;
+    if (px === clipLeft) ctx.moveTo(px, gy);
+    else ctx.lineTo(px, gy);
+  }
+  ctx.stroke();
+  // The keys.
+  const size = theme.timeline.keyframeSize;
+  ctx.fillStyle = theme.color.accent;
+  for (const key of keys) {
+    const kx = geometry.frameToX(clip.start + key.frame);
+    if (kx < left - size || kx > right + size) continue;
+    ctx.fillRect(Math.min(Math.max(kx, clipLeft), clipRight) - size / 4, top + band - size / 2, size / 2, size / 2);
+  }
+  ctx.restore();
 }
 
 /** The levels a tile tries, in order: the one it wants, then coarser, then finer ones. */
@@ -472,8 +531,11 @@ function drawWaveform(scene: ClipScene, clip: MediaClip, y: number, height: numb
   const sourceUsPerFrame = usPerFrame(scene.project.settings.fps) * clip.speed;
   const samplesPerUs = peaks.sampleRate / 1_000_000;
   const samplesPerPx = (sourceUsPerFrame / geometry.pxPerFrame) * samplesPerUs;
-  const s0 = (clip.in + (geometry.xToFrame(c0 / dpr) - clip.start) * sourceUsPerFrame) * samplesPerUs;
+  // A reversed clip reads the mirrored source range and flips it (Batch 78).
+  const reversed = clip.reverse === true;
+  const s0 = reversed ? (clip.out - (geometry.xToFrame((c0 + count) / dpr) - clip.start) * sourceUsPerFrame) * samplesPerUs : (clip.in + (geometry.xToFrame(c0 / dpr) - clip.start) * sourceUsPerFrame) * samplesPerUs;
   columnPeaks(peaks, peaksLevel(peaks, samplesPerPx), s0, samplesPerPx / dpr, columns, count);
+  if (reversed) columns.subarray(0, count).reverse();
   const mid = Math.round((y + height / 2) * dpr);
   const half = Math.max(1, (height / 2 - theme.space[0]) * dpr);
   ctx.fillStyle = theme.timeline.waveform;
@@ -557,6 +619,10 @@ function drawLabel(scene: ClipScene, clip: Clip, x: number, y: number, width: nu
   // A baked stand-in for a clip kind this build lacks (spec §21.5, Batch 56).
   if (clip.fallbackOf) badgesStart = drawBadge(scene, "baked", theme.color.textSecondary, minX, badgesStart, lineY);
   if (syncOffset !== 0) badgesStart = drawBadge(scene, `${syncOffset > 0 ? "+" : "-"}${Math.abs(syncOffset)}`, theme.color.danger, minX, badgesStart, lineY);
+  // Time remap, reverse, and the audio a remap mutes (spec §21.22, Batch 78).
+  if (clip.kind === "video" && clip.timeRemap !== undefined) badgesStart = drawBadge(scene, "remap", theme.color.textSecondary, minX, badgesStart, lineY);
+  else if ((clip.kind === "video" || clip.kind === "audio") && clip.reverse === true) badgesStart = drawBadge(scene, "rev", theme.color.textSecondary, minX, badgesStart, lineY);
+  if (mutedByRemap(scene.project.clips, clip)) badgesStart = drawBadge(scene, "muted", theme.color.danger, minX, badgesStart, lineY);
   if (isFreeze(clip)) badgesStart = drawIconBadge(scene, "snowflake", minX, badgesStart, lineY);
   else if ((clip.kind === "video" || clip.kind === "audio") && clip.speed !== 1) badgesStart = drawBadge(scene, formatSpeed(clip.speed), theme.color.textSecondary, minX, badgesStart, lineY);
   if (clip.linkGroup !== undefined) badgesStart = drawIconBadge(scene, "link", minX, badgesStart, lineY);

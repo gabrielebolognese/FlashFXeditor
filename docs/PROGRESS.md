@@ -1,6 +1,6 @@
 # Progress
 
-last_completed_batch: 77
+last_completed_batch: 78
 in_progress_batch: none
 skipped_batches: []
 needs_human: none
@@ -238,6 +238,7 @@ Items the design system did not define and the functional default that was used 
 - Shape section path heading (Batch 66): a muted caption with a hairline between paths; the DS has no multi-item group heading.
 - Masks section and canvas mask handles (Batch 73; the DS has no mask UI): the section reuses Row, Select, Toggle, IconButton and the keyframe diamond and stopwatch; mask outlines use `--accent` with the `preview.dash` pattern (dashed for subtract or inverted), handles as the transform box's.
 - The track mixer popover and its faders (Batch 77) have no DESIGN_SYSTEM.md component: marker-popover material, native range inputs with `accent-color`, token `--mixer-popover-width`; the loudness bars reuse `color.info` and `color.accent`.
+- The remap graph, ramp buttons and timeline remap badges (Batch 78) have no DESIGN_SYSTEM.md component: Speed section rows with existing switch and button styles, graph colors from the `Theme` bridge.
 
 ## Global deviations
 Decisions that diverge from docs/EDITOR_SPEC.md, with the reason. Each one also appears under its batch.
@@ -909,6 +910,9 @@ Why each dependency exists (Batch rule 8).
 - [from Batch 77 -> Batch 82] Browser checks: meters at 60 fps with zero React commits during playback; export of the audio fixture read back by the app's loudness meter.
 - [from Batch 77 -> Batch 82] Project loudness target and an Export tab loudness row in the UI (only presets and the document field set it now).
 - [from Batch 77 -> Batch 82] Apply the clip pan to scrub grains.
+- [from Batch 78 -> Batch 82] Keys editable directly on the timeline clip (HitTester and gesture integration), with snapping to markers.
+- [from Batch 78 -> Batch 82] Exact frame blending at clip opacity below 1 (two-pass or a blend shader).
+- [from Batch 78 -> Batch 82] Browser checks of Batch 78 (reverse 4K at 60 fps on proxy, Hero smoothness, zero React commits).
 
 ## Batch log
 
@@ -7416,3 +7420,36 @@ Why each dependency exists (Batch rule 8).
   3. Acceptance 1's "checked by the app's meter" has no pending manual check either: it is only a Batch 82 follow-up. The third pending manual check is also wrong. It says the export log shows "-20.0 -> -14.0 LUFS, peak <= -1.0 dBTP", but the `LoudnessReport` only goes to `console.info` (`src/app/exportController.ts:299` and `:311`). `ExportLogEntry` (`src/export/log.ts`) has no loudness field, so the Export tab log (`ExportJobs.tsx`) shows nothing. `loudnessText` also prints "→" and "peak X dBTP", not "->" and "<=". The note "logged in the export log" is wrong for the same reason. Fix: put the loudness line in the export log entry that the Export tab shows (§16 export log), or correct the steps to the DevTools console line with its real format. Also add the steps for reading an exported file back with the app's meter: import the exported mp4, play it through, then read `__editor.audio.loudness()`, with integrated expected at -14 ± 0.5 LUFS and truePeakDb at or below -1.
 - fix-attempt: done (2026-11-09). 1: `TrackMixerPopover` now selects name, muted and solo as primitives and reads gain and pan once (`useState` initializer), so a fader drag makes no React commit. 2 and 3: the export log entry has a `loudness` field (`ExportLogEntry`, sanitized, test in `log.test.ts`) shown in the Export tab's log row after the summary; the pending manual checks now carry the exact steps and values for the meter draws and commits and the read-back of an export. The meter fps and the commit counter were not measured in a browser in this fix run (pending manual check).
 - review: accepted (2026-11-09, second review). `npm run check`: typecheck, lint (ESLint + CSS color and token checks) and 3418 unit tests in 349 files (12 skipped) pass; the perf project fails only `fuzz.perf.test.ts` (70.8 s vs 60 s), the environmental miss already recorded in Batches 74-76 and in the first review; `npm run build` run separately: exit 0. Earlier rejection: 1 fixed (`src/timeline/menus/TrackMixerPopover.tsx:28-32` selects name, muted and solo as primitives and reads gain and pan once; the history store is shallow-compared (`DocumentStore.historyState`), so a coalesced `track.audio` dispatch per fader input re-renders neither the popover nor the AppBar); 2 fixed (pending manual check with exact steps and expected values, using `__editor.audio.meter.draws` (`MeterView.draws`) and the dev React commit counter, both present); 3 fixed (`ExportLogEntry.loudness` sanitized and tested in `log.test.ts`, shown in the Export tab log row (`ExportJobs.tsx:87`); the pending check's text matches `loudnessText`; read-back steps through `__editor.audio.loudness()` added). Acceptance 1 (PCM), 2 and 3 covered by tests; acceptance 1 (app meter) and 4 are pending manual checks with steps. Nothing from Do not build yet, no literals outside `tokens.css`, no untagged TODO. Non-blocking note: the mixer faders are uncontrolled, so an undo or redo while the popover is open leaves the fader and readout at the pre-undo value until it is reopened.
+
+### Batch 78: Time remapping, reverse and frame blending
+- status: done
+- date: 2026-11-09
+- notes:
+  - Built in auto mode (lean run). `npm run check`: typecheck, lint (CSS checks) and all unit tests pass; `npm run build` run separately: exit 0; the perf project fails only `fuzz.perf.test.ts` on time (66.7 s against its 60 s budget; the same environmental miss Batches 74-77 recorded), its 10,000 steps hold every invariant. The perf fuzz found a reversed clip with offline media having its `out` clamped on a trim: fixed. No browser check in this run: the GPU, playback and Profiler items are pending manual checks below; everything else is covered by unit and property tests.
+  - Schema 22 (migration 21 to 22 is the identity): `MediaClip.timeRemap` (`{frame, sourceUs, ease}[]`, clip-relative frames, first key 0, last key the duration), `reverse` (video and audio; ignored when `timeRemap` is set) and `frameBlend` (video). Validation in `validate.ts` (`timeIssues`), schema in `schema.ts`, field tables and `docs/INTEROP.md` section 5.17 regenerated; manifest `time: { freeze, reverse, remap, frameBlend }`, `LAST_BATCH` 78.
+  - One source-time function, `clipSourceUs` (`core/document/timeRemap.ts`), feeds the compositor, the playback engine, the transition handles, freeze frame and the timeline thumbnails, so preview, export and CLI render agree. Easing uses `ease()` of `keyframes.ts`.
+  - Playback engine: decode windows run in the media direction (reverse and backward segments decode backward through the existing reverse GOP decoding); stride uses `remapAdvanceUs`.
+  - Audio: reversed audio is a reversed copy of each segment buffer (cached per buffer), segments walked backward, in the live scheduler and the offline mixdown. Audio linked (same `linkGroup`) to a remapped video clip is muted (`mutedByRemap`).
+  - Frame blending: the compositor adds a second media layer (the next source frame at opacity times mix); the mix is computed on the media's frame grid (`frameBlendSplit`), only when the clip advances less than a media frame per timeline frame (`blends`). Off by default; no optical flow.
+  - Commands (`timeline/edit/remap.ts`): `clip.reverse`, `clip.frameBlend`, `clip.timeRemap`, `clip.timeRemapOff`, `clip.ramp.<id>` (rampIn, rampOut, hero, bullet), `clip.timeRemapKeys`; all skip locked tracks. Actions registered in `speedController`, entries in `commandCatalog`.
+  - UI: Properties Speed section has Reverse, Frame blend and Time remap switches, ramp preset buttons and a remap graph (`RemapGraphPainter`, a scheduler view; drag keys, double click adds or removes a key, one command per gesture). The timeline shows badges (remap, rev, muted) and a read-only speed graph band on remapped clips; the waveform of a reversed clip is mirrored.
+  - Edits keep curves valid: trim, split, stretch, speed change and frame-rate conversion refit or scale the keys so the ends stay on the clip's ends (`refitRemap`, `scaleRemap`, `fpsConvert`). A reversed clip's head trim moves `out`, its tail trim moves `in`; split swaps the halves.
+  - Property tests (`fuzzKit` ops `speed.reverse`, `speed.blend`, `speed.remap`, `speed.remapKeys`) found and fixed: locked tracks edited by the new commands, a freeze frame keeping a stale remap, a ramp on a 1-frame clip, and a frame-rate change breaking key frames.
+  - Fixture `fixtures/interop/time` (`core/document/timeFixture.ts` + test): Hero ramp, reversed clip and 25 percent clip with blending, plus `expected/source-times.json` (expected source time per sampled frame). Hero unit test: 1.47x, 0.3x, 1.47x over a 60-frame range.
+  - The other interop fixtures were regenerated for schemaVersion 22.
+- deviations:
+  - The editable key graph is in the Speed section (source time against frames, keys draggable in both directions), not on the timeline clip; the timeline lane is a read-only speed graph. Integrating key hit testing into the 2900-line TimelineView was too large for this batch.
+  - The blend layer is drawn at opacity times mix over the first frame, so it is exact only at clip opacity 1.
+  - A remap ignores `reverse` (a curve can run backward itself); `in` and `out` stay nominal for a remapped clip.
+  - At the edge of an engine decode window the blend's second frame can be missing; it falls back to the nearest frame.
+- follow-ups:
+  - [from Batch 78 -> Batch 82] Keys editable directly on the timeline clip (HitTester and gesture integration), with snapping to markers.
+  - [from Batch 78 -> Batch 82] Exact frame blending at clip opacity below 1 (two-pass or a blend shader).
+  - [from Batch 78 -> Batch 82] Browser checks below, once a GPU session is free.
+- design gaps:
+  - The remap graph, ramp buttons and timeline badges have no DESIGN_SYSTEM.md component: Speed section rows with existing switch and button styles, graph colors from the `Theme` bridge, badges in the existing clip badge style.
+- pending manual checks:
+  1. Hero ramp: import a 4K clip, select it, Properties > Speed > Ramps > Hero; play on proxy: smooth fast-slow-fast, no stutter; the graph's keys drag and one Ctrl+Z undoes a drag.
+  2. Reverse: select a 4K clip, Reverse; play on proxy at 60 fps backward with reversed sound; export (Export tab) and play the file: the same backward picture and sound.
+  3. Frame blend: set speed 25 percent, switch Frame blend on: mixed frames between source frames; off by default; export and `npm run cli -- render` match the preview.
+  4. Zero React commits (Profiler) during playback of a remapped clip and while dragging a graph key.

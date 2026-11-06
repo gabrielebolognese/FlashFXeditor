@@ -2,8 +2,8 @@
   "manifestVersion": 1,
   "app": "shorts-editor",
   "appVersion": "1.1.0",
-  "lastBatch": 77,
-  "schemaVersion": 21,
+  "lastBatch": 78,
+  "schemaVersion": 22,
   "project": {
     "file": "project.json",
     "fontsManifest": "fonts/fonts.json",
@@ -405,9 +405,9 @@
       4
     ],
     "freeze": true,
-    "reverse": false,
-    "remap": false,
-    "frameBlend": false
+    "reverse": true,
+    "remap": true,
+    "frameBlend": true
   },
   "templates": false,
   "export": {

@@ -12,7 +12,7 @@ import { BLEND_MODES, EFFECT_TYPES, FADE_CURVES, MASK_MODES, CAPTION_HIGHLIGHTS,
 /** The `manifestVersion`: changes only when a key changes meaning (new keys do not change it). */
 export const MANIFEST_VERSION = 1;
 /** The last batch that touched the manifest (spec §21.1: each batch sets it to its own number). */
-export const LAST_BATCH = 77;
+export const LAST_BATCH = 78;
 
 /** The flags of the manifest: a batch that adds a capability flips its key here (spec §21.2 table). */
 export const FEATURES = {
@@ -26,7 +26,7 @@ export const FEATURES = {
   compositing: { compound: true, trackMatte: true, masks: true, adjustment: true },
   vector: { shapes: true, trimPaths: true, svgImport: true },
   audio: { fades: true, trackGain: true, pan: true, loudness: true, beatMarkers: true },
-  time: { freeze: true, reverse: false, remap: false, frameBlend: false },
+  time: { freeze: true, reverse: true, remap: true, frameBlend: true },
   templates: false,
   export: { alpha: false, imageSequence: false, gif: false, stems: false },
   cli: { validate: true, normalize: true, info: true, render: true, compare: true },

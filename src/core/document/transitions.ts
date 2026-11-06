@@ -24,6 +24,7 @@
 import { produce, type Draft } from "immer";
 import { ease, isEaseId } from "./keyframes.js";
 import { framesToSourceUs, usPerFrame } from "./time.js";
+import { remapUs } from "./timeRemap.js";
 import { isFreeze, isMediaClip, TRANSITION_DIRECTIONS, TRANSITION_KINDS, type Clip, type Frame, type MediaClip, type Project, type Rational, type Transition, type TransitionDirection, type TransitionKind } from "./types.js";
 
 /** Spec §6.15: the default transition is 15 frames; the built-in value of the setting (timeline/edit/editDefaults.ts). */
@@ -125,7 +126,9 @@ export function handleOf(project: Pick<Project, "media" | "settings">, clip: Cli
   // A still holds its picture, an animated image loops, a freeze frame holds its time.
   if (clip.kind === "image" || isFreeze(clip)) return Infinity;
   const { fps } = project.settings;
-  if (side === "head") return headFrames(clip, fps);
+  // A reversed clip's head lies after its `out` and its tail before its `in`.
+  const reversed = clip.reverse === true;
+  if ((side === "head") !== reversed) return headFrames(clip, fps);
   // A clip whose media record is gone ("Remove from project", Batch 41) is offline: nothing bounds its
   // tail, so removing the record changes none of its transitions.
   const media = project.media[clip.mediaId];
@@ -201,8 +204,11 @@ export const extendedEnd = (clip: Clip): Frame => clip.start + clip.duration + (
  * Media time (us, 0 = the first frame) a video or audio clip shows at `frame`, inside its span or out
  * of it under a transition (its handles), kept within the media: past a handle the edge frame repeats.
  */
-export function handleTimeUs(clip: Pick<MediaClip, "start" | "in" | "speed">, frame: Frame, fps: Rational, durationUs: number): number {
-  const time = clip.in + framesToSourceUs(frame - clip.start, clip.speed, fps);
+export function handleTimeUs(clip: Pick<MediaClip, "start" | "in" | "speed"> & Partial<Pick<MediaClip, "out" | "reverse" | "timeRemap">>, frame: Frame, fps: Rational, durationUs: number): number {
+  // A remap curve holds its end values past its ends; a reversed clip's handles lie before `out` and after `in` (Batch 78).
+  if (clip.timeRemap && clip.timeRemap.length > 0) return Math.min(remapUs(clip.timeRemap, frame - clip.start), Math.max(0, durationUs - 1));
+  const advance = framesToSourceUs(frame - clip.start, clip.speed, fps);
+  const time = clip.reverse === true && clip.out !== undefined ? clip.out - 1 - advance : clip.in + advance;
   return Math.min(Math.max(0, time), Math.max(0, durationUs - 1));
 }
 

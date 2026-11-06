@@ -77,7 +77,8 @@ import { animatedOpacity, animatedTransform, maxKeyedScale } from "../../core/do
 import { RigResolver } from "../../core/document/rig.js";
 import { painterOrder, type DepthSortItem } from "../../core/space/camera3d.js";
 import { facesAway, isDepthTransform, newHomography, projectedCorners, viewingDistance, writeProjection, type Homography } from "../projection.js";
-import { framesToSourceUs, secondsToFrames } from "../../core/document/time.js";
+import { secondsToFrames, usPerFrame } from "../../core/document/time.js";
+import { blends, clipSourceUs, frameBlendSplit, remapAdvanceUs, type RemapSource } from "../../core/document/timeRemap.js";
 import { handleTimeUs, TRANSITION_CODE, transitionFx, transitionMix } from "../../core/document/transitions.js";
 import type { AdjustmentClip, CaptionClip, CaptionStyle, CaptionWord, Clip, ClipId, CompoundClip, Crop, Effect, Frame, Keyframes, Mask, MatteMode, MediaClip, MediaId, Project, RGBA, ShadowStyle, ShapeClip, TextAnim, TextClip, TextContent, TextStyle, Track, TrackId, Transform } from "../../core/document/types.js";
 import { pathFramesAt, type PathFrameScratch } from "./shapeFrames.js";
@@ -282,9 +283,8 @@ export function fadeFactor(clip: { start: Frame; duration: Frame; fades?: { in: 
 }
 
 /** Media time (us, 0 = first frame) a media clip shows at timeline `frame` (§5.1), inside [in, out). */
-export function sourceTimeUs(clip: Pick<MediaClip, "start" | "in" | "out" | "speed">, frame: Frame, fps: Project["settings"]["fps"]): number {
-  const time = clip.in + framesToSourceUs(frame - clip.start, clip.speed, fps);
-  return Math.min(Math.max(clip.in, time), Math.max(clip.in, clip.out - 1));
+export function sourceTimeUs(clip: RemapSource, frame: Frame, fps: Project["settings"]["fps"]): number {
+  return clipSourceUs(clip, frame, fps);
 }
 
 /**
@@ -540,6 +540,14 @@ export class Compositor {
           }
           out.layers.push(layer);
           media += 1;
+          // Frame blending (spec §21.22): the next source frame over this one, by the fraction between them.
+          if (clip.kind === "video" && clip.frameBlend === true) {
+            const second = (this.mediaPool[media] ??= newMediaLayer());
+            if (this.writeBlend(layer, second, doc, clip, frame)) {
+              out.layers.push(second);
+              media += 1;
+            }
+          }
           if (framed && clip.stroke) {
             const outline = (this.solidPool[solidLayers] ??= newSolidLayer());
             this.writeFrameLayer(outline, layer, clip, "stroke", transform);
@@ -1139,6 +1147,24 @@ export class Compositor {
     const fps = doc.settings.fps;
     layer.timeUs = layer.still || sequence ? imageTimeUs(clip, frame, fps, item.durationUs) : handles ? handleTimeUs(clip, frame, fps, item.durationUs) : sourceTimeUs(clip, frame, fps);
     layer.opacity = clamp01(opacity) * fadeFactor(clip, frame);
+    return true;
+  }
+
+  /**
+   * Frame blending (Batch 78): when the picture advances less than one source frame per timeline frame, `layer` shows the
+   * source frame before the time and `second` the one after it at the mix between them. False: nothing to blend.
+   */
+  private writeBlend(layer: WritableMediaLayer, second: WritableMediaLayer, doc: Project, clip: MediaClip, frame: Frame): boolean {
+    const item = doc.media[clip.mediaId];
+    const frameUs = item?.fps ? usPerFrame(item.fps) : 0;
+    if (!item || layer.still || !blends(remapAdvanceUs(clip, frame, doc.settings.fps), frameUs)) return false;
+    const split = frameBlendSplit(layer.timeUs, frameUs, item.durationUs - 1);
+    if (split.mix <= 0 || split.bUs === split.aUs) return false;
+    copyMediaLayer(second, layer);
+    second.shape = layer.shape;
+    layer.timeUs = split.aUs;
+    second.timeUs = split.bUs;
+    second.opacity = layer.opacity * split.mix;
     return true;
   }
 

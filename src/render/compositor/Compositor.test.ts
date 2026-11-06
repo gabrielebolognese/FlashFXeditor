@@ -632,3 +632,44 @@ describe("DrawListSnapshot", () => {
     expect(snapshot.update(list(tex))).toBe(true);
   });
 });
+
+describe("Compositor: reverse, time remap and frame blending (spec §21.22, Batch 78)", () => {
+  const FPS = { num: 30, den: 1 };
+  const withFps = (): Project => project(["v1"], [{ ...video("m1", 1920, 1080), fps: FPS }]);
+
+  it("shows the last source frame first on a reversed clip, and follows a remap curve", () => {
+    let doc = withFps();
+    const reversed = clip(doc, { id: "r", trackId: "v1", start: 0, duration: 30, in: 1_000_000, out: 2_000_000, reverse: true });
+    doc = withClips(doc, [reversed]);
+    const compositor = new Compositor();
+    expect(media(compositor.evaluate(doc, 0).layers[0]).timeUs).toBe(1_999_999);
+    expect(media(compositor.evaluate(doc, 15).layers[0]).timeUs).toBe(1_999_999 - frameToUs(15, FPS));
+    let remapped = withFps();
+    const curve = clip(remapped, { id: "m", trackId: "v1", start: 0, duration: 30, timeRemap: [{ frame: 0, sourceUs: 0, ease: "linear" }, { frame: 10, sourceUs: 100_000, ease: "linear" }, { frame: 30, sourceUs: 3_100_000, ease: "linear" }] });
+    remapped = withClips(remapped, [curve]);
+    expect(media(compositor.evaluate(remapped, 5).layers[0]).timeUs).toBe(50_000);
+    expect(media(compositor.evaluate(remapped, 20).layers[0]).timeUs).toBe(1_600_000);
+  });
+
+  it("blends the two source frames in slow motion: the second over the first by the fraction between them", () => {
+    const frameUs = 1_000_000 / 30;
+    let doc = withFps();
+    doc = withClips(doc, [clip(doc, { id: "s", trackId: "v1", start: 0, duration: 40, speed: 0.25, out: Math.round(10 * frameUs), frameBlend: true })]);
+    const compositor = new Compositor();
+    // Frame 2 at 0.25x: source frame 0.5.
+    const layers = compositor.evaluate(doc, 2).layers.map(media);
+    expect(layers).toHaveLength(2);
+    expect(layers[0]?.timeUs).toBe(0);
+    expect(layers[1]?.timeUs).toBe(Math.round(frameUs));
+    expect(layers[0]?.opacity).toBe(1);
+    expect(layers[1]?.opacity).toBeCloseTo(0.5, 2);
+    expect(layers[1]?.clipId).toBe("s");
+    // An exact source frame (frame 4 = source frame 1) draws once; blending is off by default.
+    expect(compositor.evaluate(doc, 4).layers).toHaveLength(1);
+    const plain = withClips(withFps(), [clip(withFps(), { id: "p", trackId: "v1", start: 0, duration: 40, speed: 0.25, out: Math.round(10 * frameUs) })]);
+    expect(compositor.evaluate(plain, 2).layers).toHaveLength(1);
+    // At normal speed there is nothing to mix.
+    const normal = withClips(withFps(), [clip(withFps(), { id: "n", trackId: "v1", start: 0, duration: 40, frameBlend: true })]);
+    expect(compositor.evaluate(normal, 2).layers).toHaveLength(1);
+  });
+});

@@ -128,6 +128,8 @@ import {
   Tag,
   Timer,
   Trash2,
+  Rewind,
+  ChartSpline,
   TypeOutline,
   TrendingDown,
   TrendingUp,
@@ -387,6 +389,14 @@ export const COMMANDS: readonly CommandInfo[] = [
 
   // Speed (spec §11, Batch 27)
   speed("clip.speedPanel", "Speed…", { icon: Gauge, keywords: "rate duration" }),
+  // Time remap, reverse and frame blending (spec §21.22, Batch 78)
+  speed("clip.reverse", "Reverse (toggle)", { icon: Rewind, keywords: "backward play reversed" }),
+  speed("clip.frameBlend", "Frame blending (toggle)", { icon: Blend, keywords: "slow motion smooth mix frames" }),
+  speed("clip.timeRemap", "Time remap (toggle)", { icon: ChartSpline, keywords: "speed ramp curve remap graph" }),
+  speed("clip.ramp.rampIn", "Ramp in", { icon: ChartSpline, keywords: "speed ramp slow fast" }),
+  speed("clip.ramp.rampOut", "Ramp out", { icon: ChartSpline, keywords: "speed ramp fast slow" }),
+  speed("clip.ramp.hero", "Hero ramp (fast, slow, fast)", { icon: ChartSpline, keywords: "speed ramp slow motion" }),
+  speed("clip.ramp.bullet", "Bullet ramp", { icon: ChartSpline, keywords: "speed ramp slow motion hold" }),
   ...SPEED_CHIPS.map((chip) => speed(chip.id, `Speed ${chip.speed}x`, { keywords: "rate" })),
 
   // Fades and transitions (spec §6.15, Batch 36)

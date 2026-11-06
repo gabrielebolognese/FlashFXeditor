@@ -134,6 +134,8 @@ import { setPerspective } from "../../core/commands/projectCommands.js";
 import { addSolid, newSolidClip, setSolids, type SolidEdit, type SolidLook } from "./solid.js";
 import { normalizeSpans } from "../../text/spans.js";
 import { setSpeedDurations, setSpeeds } from "./speed.js";
+import { applyRamp, clearRemap, currentKeys, enableRemap, setFrameBlend, setRemapKeys, setReverse } from "./remap.js";
+import { RAMP_IDS } from "../../core/document/timeRemap.js";
 import { clipsToSplit, splitClips, type SplitScope } from "./split.js";
 import { addTextClip, addTitle, applyPreset, linkPreset, newTextClip, setTexts, type PresetApply, type TextEditInput, type TitleLook } from "./text.js";
 import { setTextAnims } from "./textAnim.js";
@@ -1380,6 +1382,46 @@ const SPEED_OPS: FuzzOp[] = [
     },
     { effect: "grow" },
   ),
+  // Time remap, reverse and frame blending (Batch 78): the curve keeps its ends on the clip's ends through every edit.
+  op("speed.reverse", "speed", (store, rng) => {
+    const p = store.getState();
+    const clip = pickClip(p, rng, (candidate) => candidate.kind === "video" || candidate.kind === "audio");
+    return clip ? exec(store, setReverse(p, selection(p, rng, clip, false), rng.chance(0.7))) : false;
+  }),
+  op("speed.blend", "speed", (store, rng) => {
+    const p = store.getState();
+    const clip = pickClip(p, rng, (candidate) => candidate.kind === "video");
+    return clip ? exec(store, setFrameBlend(p, [clip.id], rng.chance(0.7))) : false;
+  }),
+  op(
+    "speed.remap",
+    "speed",
+    (store, rng) => {
+      const p = store.getState();
+      const clip = pickClip(p, rng, (candidate) => candidate.kind === "video");
+      if (!clip) return false;
+      const ids = selection(p, rng, clip, false);
+      if (rng.chance(0.25)) return exec(store, clearRemap(p, ids));
+      if (rng.chance(0.5)) return exec(store, applyRamp(p, ids, rng.pick(RAMP_IDS)));
+      return exec(store, enableRemap(p, ids));
+    },
+    { weight: 2 },
+  ),
+  op("speed.remapKeys", "speed", (store, rng) => {
+    const p = store.getState();
+    const clip = pickClip(p, rng, (candidate) => candidate.kind === "video" && candidate.timeRemap !== undefined);
+    if (clip?.kind !== "video") return false;
+    const keys = currentKeys(p, clip);
+    if (rng.chance(0.4) && clip.duration > 2) {
+      const frame = rng.int(1, clip.duration - 1);
+      if (!keys.some((key) => key.frame === frame)) keys.push({ frame, sourceUs: rng.int(0, 2_000_000), ease: "linear" });
+      keys.sort((a, b) => a.frame - b.frame);
+    } else {
+      const key = rng.pick(keys);
+      key.sourceUs = Math.max(0, key.sourceUs + rng.int(-500_000, 500_000));
+    }
+    return exec(store, setRemapKeys(p, clip.id, keys));
+  }),
   op("speed.punchZoom", "speed", (store, rng, ctx) => {
     const p = store.getState();
     const clip = pickClip(p, rng, isLayerClip);

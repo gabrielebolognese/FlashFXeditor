@@ -21,6 +21,7 @@ export interface AudioGraphContext {
   createGain(): GainNode;
   createStereoPanner(): StereoPannerNode;
   createBufferSource(): AudioBufferSourceNode;
+  createBuffer(numberOfChannels: number, length: number, sampleRate: number): AudioBuffer;
   createAnalyser(): AnalyserNode;
   createChannelSplitter(outputs?: number): ChannelSplitterNode;
 }

@@ -13,9 +13,10 @@ import { defaultTrackIndex } from "../../core/commands/basicCommands.js";
 import type { Affect, Command } from "../../core/commands/command.js";
 import { emptyTrack, nextTrackName } from "../../core/document/project.js";
 import { framesToSourceUs } from "../../core/document/time.js";
+import { isReversed, refitRemap } from "../../core/document/timeRemap.js";
 import { shiftHeadTrim } from "../../core/document/fallback.js";
 import { sliceKeyframes } from "../../core/document/keyframes.js";
-import { isFreeze, isMediaClip, type Clip, type ClipId, type Frame, type Project, type Rational, type Track, type TrackId } from "../../core/document/types.js";
+import { isFreeze, isMediaClip, type Clip, type ClipId, type Frame, type MediaClip, type Project, type Rational, type Track, type TrackId } from "../../core/document/types.js";
 import { cueSlice } from "../../text/captions.js";
 import { clipsOverlapping, firstEndingAfter, laneOf, laneTracks, trackIndex, type LaneKind, type TrackIndex } from "../model/queries.js";
 import { clampCueDelta } from "./captions.js";
@@ -159,8 +160,15 @@ export function sliceClip(clip: Clip, from: Frame, to: Frame, fps: Rational): Cl
   // A freeze frame's pieces hold the same source time (Batch 27).
   if (isMediaClip(clip) && !isFreeze(clip)) {
     const media = piece as Clip & { in: number; out: number };
-    if (newIn) media.in = clip.in + framesToSourceUs(from - clip.start, clip.speed, fps);
-    if (newOut) media.out = Math.min(clip.out, clip.in + framesToSourceUs(to - clip.start, clip.speed, fps));
+    if (isReversed(clip)) {
+      // A reversed clip's head is its `out` end (Batch 78).
+      if (newIn) media.out = clip.out - framesToSourceUs(from - clip.start, clip.speed, fps);
+      if (newOut) media.in = Math.max(clip.in, clip.out - framesToSourceUs(to - clip.start, clip.speed, fps));
+    } else {
+      if (newIn) media.in = clip.in + framesToSourceUs(from - clip.start, clip.speed, fps);
+      if (newOut) media.out = Math.min(clip.out, clip.in + framesToSourceUs(to - clip.start, clip.speed, fps));
+    }
+    if (clip.kind === "video" && clip.timeRemap) (piece as unknown as MediaClip).timeRemap = refitRemap(clip.timeRemap, from - clip.start, to - from);
   }
   // A compound's right part shows the sequence from the frame it starts on (spec §21.10).
   if (clip.kind === "compound" && newIn) (piece as unknown as { offset: number }).offset = clip.offset + (from - clip.start);

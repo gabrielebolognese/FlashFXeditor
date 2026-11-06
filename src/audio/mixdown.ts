@@ -15,7 +15,8 @@ import { flattenAudio } from "./compoundAudio.js";
 import { AudioMixer, audibleTracks, type AudioGraphContext } from "./AudioMixer.js";
 import type { DecodedAudio } from "./decode/DecodedAudio.js";
 import { segmentsIn } from "./decode/segments.js";
-import { AudioScheduler, playingClips, STEP_SECONDS, type PlayMapping } from "./scheduler/AudioScheduler.js";
+import { AudioScheduler, mediaSeconds, playingClips, STEP_SECONDS, type PlayMapping } from "./scheduler/AudioScheduler.js";
+import { mutedByRemap } from "../core/document/timeRemap.js";
 import { extendedEnd, extendedStart } from "../core/document/transitions.js";
 
 /** Context time ahead of the stand-in clock (s). */
@@ -44,7 +45,7 @@ export interface Mixdown {
 }
 
 // As the scheduler: speed 0 is a video freeze frame only (Batch 27).
-const isHeard = (clip: Clip): clip is MediaClip => clip.kind === "audio" && clip.enabled && clip.speed > 0;
+const isHeard = (clip: Clip, project: Project): clip is MediaClip => clip.kind === "audio" && clip.enabled && clip.speed > 0 && !mutedByRemap(project.clips, clip);
 
 /** The audio clips heard in [start, end): enabled, on audible tracks (mute, solo), with the partners of their crossfades (Batch 36). */
 export function heardClips(source: Project, start: Frame, end: Frame): MediaClip[] {
@@ -53,7 +54,7 @@ export function heardClips(source: Project, start: Frame, end: Frame): MediaClip
   const clips: MediaClip[] = [];
   for (const track of project.tracks) {
     if (track.kind !== "audio" || audible.get(track.id) !== true) continue;
-    for (const clip of playingClips(project, track, start, end)) if (isHeard(clip) && extendedEnd(clip) > start && extendedStart(clip) < end) clips.push(clip);
+    for (const clip of playingClips(project, track, start, end)) if (isHeard(clip, project) && extendedEnd(clip) > start && extendedStart(clip) < end) clips.push(clip);
   }
   return clips;
 }
@@ -81,8 +82,11 @@ export async function renderMixdown(source: Project, range: { start: Frame; end:
     }
     const clipStart = clip.start / fps;
     // Past its edges under a crossfade (its handles).
-    const from = Math.max(0, clip.in / 1e6 + (Math.max(extendedStart(clip), range.start) / fps - clipStart) * clip.speed);
-    const to = clip.in / 1e6 + (Math.min(extendedEnd(clip), range.end) / fps - clipStart) * clip.speed;
+    const a = mediaSeconds(clip, clipStart, Math.max(extendedStart(clip), range.start) / fps);
+    const b = mediaSeconds(clip, clipStart, Math.min(extendedEnd(clip), range.end) / fps);
+    // A reversed clip (Batch 78) reads the media backward: the range is the mirror.
+    const from = Math.max(0, Math.min(a, b));
+    const to = Math.max(a, b);
     for (const segment of segmentsIn(layout, from, to)) {
       if (held.has(keyOf(clip.mediaId, segment))) continue;
       try {

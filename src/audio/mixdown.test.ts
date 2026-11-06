@@ -113,3 +113,24 @@ describe("renderMixdown", () => {
     await expect(renderMixdown(project, { start: 0, end: 30 }, { sampleRate: RATE, channels: 1, signal: controller.signal }, deps)).rejects.toMatchObject({ name: "AbortError" });
   });
 });
+
+describe("renderMixdown: reverse and time remap (spec §21.22, Batch 78)", () => {
+  it("renders a reversed clip from its out point backward (the export matches playback)", async () => {
+    // A 2 s clip of media seconds 4..6, reversed; the range starts 0.5 s into it: media 5.5 s, 54.5 s into the reversed 60 s segment.
+    const { project, deps, contexts, audio } = setup((p) => [audioClip(p, "c1", "a1", 0, 60, { in: 4_000_000, out: 6_000_000, reverse: true })]);
+    await renderMixdown(project, { start: 15, end: 60 }, { sampleRate: RATE, channels: 1 }, deps);
+    const [source] = (contexts[0] as FakeOffline).sources;
+    expect(source?.started?.offset).toBeCloseTo(54.5, 6);
+    expect(source?.started?.when).toBeCloseTo(LEAD, 6);
+    expect(source?.stoppedAt).toBeCloseTo(LEAD + 1.5, 6);
+    expect(audio.load).toHaveBeenCalledWith("m", 0, "background");
+  });
+
+  it("leaves out the audio linked to a remapped video clip", async () => {
+    const { project } = setup((p) => [
+      audioClip(p, "c1", "a1", 0, 60, { linkGroup: "g" }),
+      { ...makeMediaClip(p, { id: "v", trackId: "v1", start: 0, duration: 60, mediaId: "m" }), linkGroup: "g", timeRemap: [{ frame: 0, sourceUs: 0, ease: "linear" }, { frame: 60, sourceUs: 2_000_000, ease: "linear" }] },
+    ]);
+    expect(heardClips(project, 0, 60)).toHaveLength(0);
+  });
+});
