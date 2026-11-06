@@ -67,6 +67,7 @@ Switch on **Matte only** to hide a clip so that it is drawn only as another clip
 - [Editing properties](editing-properties.md)
 - [Fades and transitions](fades-and-transitions.md)
 - [3D layers](3d-layers.md)
+- [Masks](masks.md)
 - [Compound clips](compound-clips.md)
 - [Titles and text](titles-and-text.md)
 

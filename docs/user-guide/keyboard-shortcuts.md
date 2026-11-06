@@ -528,6 +528,19 @@ These commands have no keys by default. Run them from **Compositing** in **Edit 
 | Remove the track matte | **Remove track matte** (palette) | Same |
 | Use the clip as a matte only | **Use as matte only (toggle)** (palette) | Same |
 
+### Masks
+
+See [Masks](masks.md).
+
+| Action | Windows | macOS |
+| --- | --- | --- |
+| Turn mask mode on or off for the selected clip (Timeline or Preview) | <kbd>Alt</kbd>+<kbd>M</kbd> | <kbd>⌥</kbd>+<kbd>M</kbd> |
+| Leave mask mode | <kbd>Esc</kbd> | <kbd>Esc</kbd> |
+| Keep the proportions while resizing a mask box | Hold <kbd>Shift</kbd> | Hold <kbd>⇧</kbd> |
+| Delete a path point in mask mode | <kbd>Alt</kbd>+click the point | <kbd>⌥</kbd>+click the point |
+| Add a path point in mask mode | Double-click a segment | Same |
+| Add a mask or a preset | **Add rectangle mask**, **Add ellipse mask**, **Add path mask**, **Mask preset: Wipe in**, **Mask preset: Circle reveal**, **Remove masks** (palette) | Same |
+
 ### Parenting, nulls and motion paths
 
 These commands have no keys by default. Run them from the toolbar, **Edit Properties** or the command palette, or give them keys in **Settings** > **Shortcuts**. See [Parenting, nulls and motion paths](parenting-and-motion-paths.md).

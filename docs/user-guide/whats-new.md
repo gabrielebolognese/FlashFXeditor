@@ -2,6 +2,14 @@
 
 Shorts Editor grows in steps called batches. This page lists what each batch added that you can see or use, newest first. Follow the links for the full instructions.
 
+## Batch 73: Masks
+The new **Masks** section shows only part of a layer. Add a rectangle, ellipse or path mask, soften it with **Feather**, grow or shrink it with **Expansion**, combine masks (**Add**, **Subtract**, **Intersect**) and **Invert** them. Press <kbd>Alt</kbd>+<kbd>M</kbd> to edit masks with handles in the preview. Animate any number, morph path shapes, or click **Wipe in** or **Circle reveal** for a ready reveal. See [Masks](masks.md).
+
+> **Video placeholder: What's new in Batch 73**
+> - File: `videos/whats-new/batch-73.mp4` (not recorded yet)
+> - Length: about 35 seconds
+> - Shows: select a video; in **Masks** click **Add ellipse mask**; set **Feather** to `40`; press <kbd>Alt</kbd>+<kbd>M</kbd> and drag a handle; select a title and click **Wipe in**; play.
+
 ## Batch 72: Blend modes and track mattes
 The new **Compositing** section has a **Blend** list of 13 modes (**Normal**, **Add**, **Multiply**, **Screen**, **Overlay**, **Difference** and more) and a track **Matte**: pick another clip and show your clip only where it is opaque, transparent, bright or dark (**Mode**). **Matte only** hides the matte clip itself. See [Blend modes and track mattes](blend-modes-and-track-mattes.md).
 
