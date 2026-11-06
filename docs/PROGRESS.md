@@ -7283,6 +7283,7 @@ Why each dependency exists (Batch rule 8).
 
 ### Batch 75: Effects II: color, stylize, keys, LUTs and looks
 - status: done
+- docs: effects.md, whats-new.md, README.md in docs/user-guide/ (2026-11-09)
 - date: 2026-11-09
 - notes:
   - Built in auto mode (lean run). `npm run check`: typecheck, lint (ESLint + CSS color and token checks), 3348 unit tests in 339 files (10 skipped) and the build pass; the perf project passes 3 / 4 (`fuzz.perf.test.ts` misses its 60 s budget under other sessions' CPU load, HEAD too: see deviations). `npm run test:render`: every fixture on both backends, `effects-2` included (its WebGL2 frames are bit-identical to WebGPU: SSIM 1.0000, PSNR inf; the WebGPU frames are the committed expected frames).

@@ -2,6 +2,14 @@
 
 Shorts Editor grows in steps called batches. This page lists what each batch added that you can see or use, newest first. Follow the links for the full instructions.
 
+## Batch 75: Color, keys, LUTs and looks
+The **Effects** section gets a **Color** row with seven more effects: **Color adjust**, **Vignette**, **Sharpen**, **Grain**, **Chroma key** (with spill suppression for green screens), **Luma key** and **LUT** (load a `.cube` file). Save a clip's effects as a look and apply it to other clips in one click and one undo step. See [Effects](effects.md).
+
+> **Video placeholder: What's new in Batch 75**
+> - File: `videos/whats-new/batch-75.mp4` (not recorded yet)
+> - Length: about 40 seconds
+> - Shows: select a green screen clip; click **Add chroma key** and raise **Spill**; click **Add LUT** and load a `.cube` file; type a **Look name** and click **Save these effects as a look**; select another clip and click the look's chip; press <kbd>Ctrl</kbd>+<kbd>Z</kbd>.
+
 ## Batch 74: Effects
 The new **Effects** section stacks effects on any layer: **Gaussian blur**, **Directional blur**, **Glow**, **Drop shadow** and **Outline**. Shadows and outlines follow the shape of a transparent picture. Reorder effects by dragging, turn them off and on, and animate their numbers with stopwatches. See [Effects](effects.md).
 

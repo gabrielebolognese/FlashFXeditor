@@ -61,7 +61,7 @@ Shorts Editor is a video editor for short vertical videos (9:16 by default) that
 45. [3D layers](3d-layers.md): turn a layer on X and Y with perspective, push it back in depth, hide its back side and sort a compound's layers by depth.
 46. [Blend modes and track mattes](blend-modes-and-track-mattes.md): mix a layer with the picture below it using 13 blend modes, and cut it with another clip as a matte.
 47. [Masks](masks.md): show only part of a layer with rectangle, ellipse and path masks, edit them in the preview and animate reveals.
-48. [Effects](effects.md): stack blur, glow, drop shadow and outline effects on a layer, reorder them and animate them.
+48. [Effects](effects.md): stack blur, glow, shadow, outline, color, vignette, sharpen, grain, key and LUT effects on a layer, save looks, reorder effects and animate them.
 
 ## All pages
 
@@ -100,7 +100,7 @@ Shorts Editor is a video editor for short vertical videos (9:16 by default) that
 | [3D layers](3d-layers.md) | **3D rotation**, **Depth**, the tilt handles in the preview, **Hide back side**, **Reset 3D rotation**, **Depth sort**, the **Perspective** field, limits |
 | [Blend modes and track mattes](blend-modes-and-track-mattes.md) | The **Compositing** section, the **Blend** list and its 13 modes, **Matte**, **Mode** (alpha and luma, inverted), **Matte only**, transitions, 3D layers, limits |
 | [Masks](masks.md) | The **Masks** section, rectangle, ellipse and path masks, **Feather**, **Expansion**, **Subtract** and **Intersect**, **Invert**, mask mode in the preview (<kbd>Alt</kbd>+<kbd>M</kbd>), keyframes and path morphs, **Wipe in** and **Circle reveal**, limits |
-| [Effects](effects.md) | The **Effects** section, **Gaussian blur**, **Directional blur**, **Glow**, **Drop shadow**, **Outline**, reordering, turning effects off, **Remove effects**, keyframes, masks and mattes, limits |
+| [Effects](effects.md) | The **Effects** section, **Gaussian blur**, **Directional blur**, **Glow**, **Drop shadow**, **Outline**, **Color adjust**, **Vignette**, **Sharpen**, **Grain**, **Chroma key**, **Luma key**, **LUT**, looks, reordering, turning effects off, **Remove effects**, keyframes, masks and mattes, limits |
 | [Text presets](text-presets.md) | What a preset keeps (sample text, sets, word highlight), animations in presets, the **Presets** tab and its cards, the 43 starter presets in **Titles**, **Subtitles** and **Captions**, **Save as preset** and **Update preset**, applying presets to texts and captions with a live look while you point, adding and dragging texts from presets (the lower third for subtitle and caption looks), the default title and subtitle for <kbd>T</kbd> and <kbd>Shift</kbd>+<kbd>T</kbd>, putting presets in the preset bar, **Apply position**, searching by name, font or tag, the card menu, renaming, duplicating and deleting, **Global** and **Project** presets, exporting and importing JSON files, the library folder, presets in projects of other sizes, undo |
 | [The preset bar](preset-bar.md) | The bar under the preview header and its parts, showing and hiding it with **Presets**, the sets (**Favorites**, **Titles**, **Subtitles**, **Captions**, **Recent**, **All** and your tags) and their messages, styling texts with one click, the live look while you point, adding a new text with the sample text selected, styling captions with a word highlight, <kbd>Alt</kbd>+<kbd>1</kbd> to <kbd>Alt</kbd>+<kbd>9</kbd>, scrolling, reordering, **+**, the preset menu's **Preset bar sets** and **Tags…**, the keyboard, what the bar remembers, undo |
 | [Captions](captions.md) | The **CC** caption track, the **Captions** tab and its cue list, the cue menu, adding cues at the playhead, importing SRT and VTT files (overlaps, formatting, karaoke timings), editing, splitting, merging, searching, selecting several and deleting cues, cues on the timeline that never overlap, the **Caption style** section (position, **Offset**, max width, max lines, text style), styles for single cues (the **Edit** row with **All cues** and **Selected**, the row dots, **Reset to track style**, the cue list's dot and the timeline's brush), moving, sizing, nudging and typing captions in the preview, word highlight, presets on captions and on cues, **Copy style** and **Paste style**, exporting SRT and VTT files, hiding and locking the captions, undo |
@@ -167,7 +167,7 @@ Shorts Editor is a video editor for short vertical videos (9:16 by default) that
 - Keep working when something goes wrong: a panel that stops working comes back with **Reload panel** while the others keep going, playback carries on by itself if the video decoder crashes, and an export stops with a clear message if the graphics chip is reset.
 - Edit on computers without WebGPU: the editor uses WebGL2 there by itself, with the same picture and the same exported files.
 
-Video effects arrive in a later version. [What's new](whats-new.md) tracks each addition.
+Some effects (distortion, glitch, adjustment clips) arrive in a later version. [What's new](whats-new.md) tracks each addition.
 
 ## Conventions in this guide
 - **Bold text** is a label exactly as it appears on screen, such as **New project**.
