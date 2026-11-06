@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useRef } from "react";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { closeTrackMixer, setTrackMixValue, toggleTrackMixFlag, trackMixer } from "../../app/trackController.js";
 import { documentStore, sessionStore, themeBridge } from "../../app/services.js";
 import { timelineView } from "../../app/timelineController.js";
@@ -22,9 +22,14 @@ function Mixer({ trackId }: { trackId: string }) {
   const panel = useRef<HTMLDivElement>(null);
   const gainOut = useRef<HTMLSpanElement>(null);
   const panOut = useRef<HTMLSpanElement>(null);
-  const selectTrack = useCallback((project: Project): Track | undefined => project.tracks.find((track) => track.id === trackId), [trackId]);
-  const track = useStoreSelector(documentStore, selectTrack);
-  const mix = track ? trackMix(track) : { gainDb: 0, pan: 0 };
+  // Primitives only: a fader drag replaces the track object on every input (coalesced command), and a
+  // subscription to it would commit React on each pointer move (P1). Gain and pan are read once (the
+  // faders are uncontrolled and written by the DOM).
+  const find = (project: Project): Track | undefined => project.tracks.find((candidate) => candidate.id === trackId);
+  const name = useStoreSelector(documentStore, useCallback((project: Project) => project.tracks.find((t) => t.id === trackId)?.name ?? null, [trackId]));
+  const muted = useStoreSelector(documentStore, useCallback((project: Project) => project.tracks.find((t) => t.id === trackId)?.muted ?? false, [trackId]));
+  const solo = useStoreSelector(documentStore, useCallback((project: Project) => project.tracks.find((t) => t.id === trackId)?.solo ?? false, [trackId]));
+  const [mix] = useState(() => trackMix(find(documentStore.getState()) ?? { gainDb: 0, pan: 0 }));
 
   useLayoutEffect(() => {
     const element = panel.current;
@@ -58,7 +63,7 @@ function Mixer({ trackId }: { trackId: string }) {
     };
   }, [trackId]);
 
-  if (!track) return null;
+  if (name === null) return null;
   const onGain = (value: number) => {
     if (gainOut.current) gainOut.current.textContent = formatDb(value);
     setTrackMixValue(trackId, { gainDb: value });
@@ -73,8 +78,8 @@ function Mixer({ trackId }: { trackId: string }) {
     else onPan(0);
   };
   return (
-    <div ref={panel} className={styles.popover} role="dialog" aria-label={`${track.name} mixer`} data-scope="dialog">
-      <div className={styles.title}>{track.name}</div>
+    <div ref={panel} className={styles.popover} role="dialog" aria-label={`${name} mixer`} data-scope="dialog">
+      <div className={styles.title}>{name}</div>
       <label className={styles.label} htmlFor="mixer-gain">
         Gain
       </label>
@@ -117,11 +122,11 @@ function Mixer({ trackId }: { trackId: string }) {
       </div>
       <span className={styles.label}>Mute</span>
       <span className={styles.switch}>
-        <Toggle checked={track.muted} onChange={(value) => toggleTrackMixFlag(trackId, "muted", value)} label="Mute the track" />
+        <Toggle checked={muted} onChange={(value) => toggleTrackMixFlag(trackId, "muted", value)} label="Mute the track" />
       </span>
       <span className={styles.label}>Solo</span>
       <span className={styles.switch}>
-        <Toggle checked={track.solo} onChange={(value) => toggleTrackMixFlag(trackId, "solo", value)} label="Solo the track" />
+        <Toggle checked={solo} onChange={(value) => toggleTrackMixFlag(trackId, "solo", value)} label="Solo the track" />
       </span>
     </div>
   );

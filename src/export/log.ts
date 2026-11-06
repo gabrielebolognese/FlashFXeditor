@@ -38,6 +38,8 @@ export interface ExportLogEntry {
   bytes: number;
   /** The format in one line ("1080×1920 · 30 fps · H.264 · 12 Mbps · AAC 192 kbps", "WAV · 48 kHz stereo"). */
   summary: string;
+  /** The loudness normalization result ("-20.0 → -14.0 LUFS, peak -1.0 dBTP"), shown in the log row. */
+  loudness?: string;
   request: ExportRequest;
 }
 
@@ -94,6 +96,7 @@ export function sanitizeExportLog(value: unknown): ExportLogEntry[] {
       at: typeof raw.at === "number" && Number.isFinite(raw.at) ? raw.at : 0,
       bytes: typeof raw.bytes === "number" && Number.isFinite(raw.bytes) && raw.bytes >= 0 ? Math.round(raw.bytes) : 0,
       summary: str(raw.summary, ""),
+      ...(typeof raw.loudness === "string" && raw.loudness !== "" && { loudness: raw.loudness.slice(0, 200) }),
       request: sanitizeRequest(raw.request),
     });
     if (entries.length === MAX_LOG_ENTRIES) break;

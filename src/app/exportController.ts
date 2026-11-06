@@ -108,6 +108,8 @@ interface JobDone {
   bytes: number;
   /** The success toast's detail after the path and size. */
   detail: string;
+  /** The loudness normalization line, when the export normalized. */
+  loudness?: string;
 }
 
 /** A job's progress on the main thread. */
@@ -297,7 +299,7 @@ async function runJob(job: QueueJob<ExportJobSpec>, signal: AbortSignal, fail: (
       const bytes = output.bytes;
       output = null;
       console.info(`[export] ${name}: ${result.frames} frames ${result.width}x${result.height} ${result.videoCodec} / ${result.audioCodec ?? "no audio"} in ${Math.round(result.ms)} ms, ${bytes} bytes${result.loudness ? `, ${loudnessText(result.loudness)}` : ""}`);
-      return { name, bytes, detail: `${result.width}×${result.height} · ${plural(result.frames, "frame")}` };
+      return { name, bytes, detail: `${result.width}×${result.height} · ${plural(result.frames, "frame")}`, ...(result.loudness && { loudness: loudnessText(result.loudness) }) };
     }
     const audio = await mixdown(spec.project, spec.range, signal);
     signal.throwIfAborted();
@@ -309,7 +311,7 @@ async function runJob(job: QueueJob<ExportJobSpec>, signal: AbortSignal, fail: (
     const bytes = output.bytes;
     output = null;
     console.info(`[export] ${name}: ${result.samples} samples ${result.codec} in ${Math.round(result.ms)} ms, ${bytes} bytes${result.loudness ? `, ${loudnessText(result.loudness)}` : ""}`);
-    return { name, bytes, detail: audioDuration(samples) };
+    return { name, bytes, detail: audioDuration(samples), ...(result.loudness && { loudness: loudnessText(result.loudness) }) };
   } catch (error) {
     await output?.discard();
     throw error;
@@ -348,6 +350,7 @@ function jobEnded(job: QueueJob<ExportJobSpec>, outcome: JobOutcome<JobDone>): v
     at: Date.now(),
     bytes: done?.bytes ?? 0,
     summary: spec.summary,
+    ...(done?.loudness && { loudness: done.loudness }),
     request: spec.request,
   };
   sessionStore.state.set((state) => ({ ...state, exportLog: pushLogEntry(state.exportLog, entry) }));

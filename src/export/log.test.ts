@@ -33,6 +33,11 @@ describe("export log", () => {
     expect(sanitizeExportLog(null)).toEqual([]);
   });
 
+  it("keeps the loudness line of a normalized export", () => {
+    const line = "-20.0 → -14.0 LUFS, peak -1.0 dBTP";
+    expect(sanitizeExportLog(JSON.parse(JSON.stringify([entry("a", { loudness: line })])))).toEqual([entry("a", { loudness: line })]);
+  });
+
   it("sanitizes a request field by field", () => {
     expect(sanitizeRequest(JSON.parse(JSON.stringify(request)))).toEqual(request);
     expect(sanitizeRequest({ kind: "x", range: { start: 5, end: 5 }, template: "  ", destination: "cloud", settings: "x", audioFormat: "flac" })).toEqual({

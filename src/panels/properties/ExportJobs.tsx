@@ -84,7 +84,7 @@ const when = (at: number) => new Date(at).toLocaleString(undefined, { month: "sh
 
 function LogRow({ entry }: { entry: ExportLogEntry }) {
   const Icon = STATUS_ICONS[entry.status];
-  const meta = entry.status === "done" ? `${when(entry.at)} · ${formatBytes(entry.bytes)} · ${entry.summary}` : `${STATUS_TEXT[entry.status]} ${when(entry.at)}${entry.error ? ` · ${entry.error}` : ""}`;
+  const meta = entry.status === "done" ? `${when(entry.at)} · ${formatBytes(entry.bytes)} · ${entry.summary}${entry.loudness ? ` · ${entry.loudness}` : ""}` : `${STATUS_TEXT[entry.status]} ${when(entry.at)}${entry.error ? ` · ${entry.error}` : ""}`;
   return (
     <li className={styles.logRow} data-status={entry.status}>
       <Icon className={styles.logIcon} aria-label={STATUS_TEXT[entry.status]} />
