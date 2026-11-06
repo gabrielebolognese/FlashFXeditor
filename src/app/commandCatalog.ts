@@ -375,6 +375,10 @@ export const COMMANDS: readonly CommandInfo[] = [
   clip("clip.lottie.loop", "Lottie: loop animation (toggle)", { icon: Repeat, keywords: "lottie animation repeat hold last frame sticker" }),
   clip("clip.lottie.addColor", "Lottie: replace a color", { icon: Palette, keywords: "lottie animation color override recolor" }),
   clip("clip.lottie.clearColors", "Lottie: remove color replacements", { icon: Sparkles, keywords: "lottie animation color override reset" }),
+  // Templates (spec §21.24, Batch 80)
+  clip("template.expose", "Expose as parameter", { icon: SlidersHorizontal, keywords: "template parameter compound field expose" }),
+  clip("template.reset", "Template: reset fields", { icon: RotateCcw, keywords: "template parameter instance values default" }),
+  clip("template.save", "Save as template", { icon: Sparkles, keywords: "template compound library save reusable" }),
   clip("crop.toFrame", "Crop to frame", { icon: Frame }),
   clip("crop.reset", "Reset crop", { icon: RotateCcw }),
   clip("crop.toggleMode", "Crop mode", { icon: Crop, keywords: "enter leave crop" }),

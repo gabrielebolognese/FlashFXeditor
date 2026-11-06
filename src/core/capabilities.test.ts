@@ -35,14 +35,14 @@ describe("capabilities.json (spec §21.2)", () => {
   });
 
   it("has schemaVersion 9 and the Batch 54 to 64 keys true, the keys of later batches false", () => {
-    expect(manifest.schemaVersion).toBe(23);
+    expect(manifest.schemaVersion).toBe(24);
     expect(manifest.manifestVersion).toBe(MANIFEST_VERSION);
     expect(manifest.lastBatch).toBe(LAST_BATCH);
-    expect(manifest.cli).toEqual({ validate: true, normalize: true, info: true, render: true, compare: true });
+    expect(manifest.cli).toEqual({ validate: true, normalize: true, info: true, render: true, compare: true, fill: true });
     expect(manifest.text).toMatchObject({ spans: true, counter: true, animators: true });
     expect(manifest.interop).toEqual({ openLink: true, externalReload: true, repairOnOpen: true, fallbackOf: true, generatorMeta: true });
     expect(manifest.audio).toMatchObject({ fades: true, trackGain: true, pan: true, loudness: true, beatMarkers: true, panRange: [-1, 1], fadeCurves: ["linear", "equalPower", "exponential"] });
-    expect(FEATURES.templates).toBe(false);
+    expect(FEATURES.templates).toBe(true);
   });
 
   it("keeps every other key of the v1.1.0 manifest of §21.2", () => {

@@ -107,6 +107,8 @@ function checkType(type: FieldType, value: unknown, path: string, issues: Strict
       if (!option) return void issues.push({ path, message: `must be ${type.options.map((candidate) => candidate.label).join(" or ")}, found ${describe(value)}` });
       return checkType(option.type, value, path, issues);
     }
+    case "any":
+      return;
     case "json":
       if (!isObject(value)) issues.push({ path, message: `must be an object, found ${describe(value)}` });
       return;

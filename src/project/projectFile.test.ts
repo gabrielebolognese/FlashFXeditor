@@ -80,7 +80,7 @@ describe("migration hook", () => {
   it("leaves a current file alone", () => {
     const raw = v1();
     expect(migrateProject(raw)).toEqual(raw);
-    expect(SCHEMA_VERSION).toBe(23);
+    expect(SCHEMA_VERSION).toBe(24);
   });
 
   it("opens a schema 1 project (Batch 41): no bins yet, media without sizes", () => {
@@ -115,7 +115,7 @@ describe("migration hook", () => {
     const raw = JSON.parse(serializeProject(project, STAMP)) as JsonObject;
     raw.schemaVersion = 3;
     const parsed = parseProjectFile(JSON.stringify(raw));
-    expect(parsed.schemaVersion).toBe(23);
+    expect(parsed.schemaVersion).toBe(24);
     expect(parsed.meta).not.toHaveProperty("generator");
     expect(parsed.clips).toEqual(project.clips);
     expect(parsed.media).toEqual(project.media);
@@ -126,7 +126,7 @@ describe("migration hook", () => {
     const raw = JSON.parse(serializeProject(project, STAMP)) as JsonObject;
     raw.schemaVersion = 13;
     const parsed = parseProjectFile(JSON.stringify(raw));
-    expect(parsed.schemaVersion).toBe(23);
+    expect(parsed.schemaVersion).toBe(24);
     expect(parsed.settings).not.toHaveProperty("perspective");
     expect(parsed.clips).toEqual(project.clips);
     const clip = Object.values(project.clips).find((c) => "transform" in c) as Project["clips"][string] & { transform: Record<string, unknown> };
@@ -144,7 +144,7 @@ describe("migration hook", () => {
     const raw = JSON.parse(serializeProject(project, STAMP)) as JsonObject;
     raw.schemaVersion = 15;
     const parsed = parseProjectFile(JSON.stringify(raw));
-    expect(parsed.schemaVersion).toBe(23);
+    expect(parsed.schemaVersion).toBe(24);
     expect(parsed.clips).toEqual(project.clips);
     const visual = Object.values(project.clips).filter((c) => c.kind === "video" || c.kind === "text" || c.kind === "solid" || c.kind === "image");
     const [a, b] = visual as [Project["clips"][string], Project["clips"][string]];
@@ -163,7 +163,7 @@ describe("migration hook", () => {
     const raw = JSON.parse(serializeProject(project, STAMP)) as JsonObject;
     raw.schemaVersion = 16;
     const parsed = parseProjectFile(JSON.stringify(raw));
-    expect(parsed.schemaVersion).toBe(23);
+    expect(parsed.schemaVersion).toBe(24);
     expect(parsed.clips).toEqual(project.clips);
     const solid = Object.values(project.clips).find((c) => c.kind === "solid") as Project["clips"][string];
     expect(solid).toBeDefined();
@@ -185,7 +185,7 @@ describe("migration hook", () => {
     const raw = JSON.parse(serializeProject(project, STAMP)) as JsonObject;
     raw.schemaVersion = 17;
     const parsed = parseProjectFile(JSON.stringify(raw));
-    expect(parsed.schemaVersion).toBe(23);
+    expect(parsed.schemaVersion).toBe(24);
     expect(parsed.clips).toEqual(project.clips);
     const solid = Object.values(project.clips).find((c) => c.kind === "solid") as Project["clips"][string];
     expect(solid).toBeDefined();
@@ -210,7 +210,7 @@ describe("migration hook", () => {
     const raw = JSON.parse(serializeProject(project, STAMP)) as JsonObject;
     raw.schemaVersion = 18;
     const parsed = parseProjectFile(JSON.stringify(raw));
-    expect(parsed.schemaVersion).toBe(23);
+    expect(parsed.schemaVersion).toBe(24);
     expect(parsed.clips).toEqual(project.clips);
     const solid = Object.values(project.clips).find((c) => c.kind === "solid") as Project["clips"][string];
     const effects = [
@@ -237,7 +237,7 @@ describe("migration hook", () => {
     const raw = JSON.parse(serializeProject(project, STAMP)) as JsonObject;
     raw.schemaVersion = 19;
     const parsed = parseProjectFile(JSON.stringify(raw));
-    expect(parsed.schemaVersion).toBe(23);
+    expect(parsed.schemaVersion).toBe(24);
     expect(parsed.clips).toEqual(project.clips);
     const track = project.tracks.find((t) => t.kind === "video") as Project["tracks"][number];
     const effects = [

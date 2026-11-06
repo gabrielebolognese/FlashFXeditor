@@ -3,6 +3,7 @@
 import { isEaseId, isMaskProp, keyframeIssues } from "./keyframes.js";
 import { transitionIssues } from "./transitions.js";
 import { sequenceGraphIssues } from "./sequences.js";
+import { instanceParamIssues, templateParamIssues } from "./templates.js";
 import { usPerFrame } from "./time.js";
 import { sequenceDurationUs, sequenceRecordIssues } from "./sequence.js";
 import { pathDataIssue } from "../shapes/pathData.js";
@@ -177,11 +178,12 @@ function compoundIssues(project: Project, clip: CompoundClip, label: string): st
   }
   if (!isFiniteNumber(clip.opacity) || clip.opacity < 0 || clip.opacity > 1) issues.push(`${label}: opacity ${String(clip.opacity)} must be 0..1`);
   if (!isObjectLike(clip.volume) || !isFiniteNumber(clip.volume.gainDb) || typeof clip.volume.muted !== "boolean") issues.push(`${label}: volume must be { gainDb, muted }`);
+  issues.push(...instanceParamIssues(project, clip, label));
   return issues;
 }
 
 /** A sequence (spec §21.10): its own id, a size and length, a background, inner tracks without a caption track. */
-function sequenceIssues(key: string, sequence: Sequence): string[] {
+function sequenceIssues(project: Project, key: string, sequence: Sequence): string[] {
   const issues: string[] = [];
   const label = `sequence "${String(sequence?.name)}" (${key})`;
   if (!isObjectLike(sequence)) return [`${label}: must be an object`];
@@ -193,6 +195,7 @@ function sequenceIssues(key: string, sequence: Sequence): string[] {
   if (!Array.isArray(sequence.tracks)) issues.push(`${label}: tracks must be a list`);
   issues.push(...perspectiveIssues(sequence.perspective, label));
   if (sequence.depthSort !== undefined && typeof sequence.depthSort !== "boolean") issues.push(`${label}: depthSort must be true or false`);
+  issues.push(...templateParamIssues(project, sequence, label));
   return issues;
 }
 
@@ -842,7 +845,7 @@ export function validateProject(project: Project): string[] {
   issues.push(...perspectiveIssues(project.settings?.perspective, "settings"));
   issues.push(...loudnessIssues(project.settings?.loudness));
   for (const [key, sequence] of Object.entries(project.sequences ?? {})) {
-    issues.push(...sequenceIssues(key, sequence));
+    issues.push(...sequenceIssues(project, key, sequence));
     if (!Array.isArray(sequence?.tracks)) continue;
     issues.push(...trackIssues(project, sequence.tracks, sequence, state));
   }

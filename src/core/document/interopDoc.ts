@@ -32,6 +32,8 @@ function typeLabel(type: FieldType): string {
       return `${type.options.map((option) => typeLabel(option.type)).join(" \| ")}${type.nullable ? " or null" : ""}`;
     case "json":
       return "object (opaque)";
+    case "any":
+      return "any JSON value";
     case "numberOrVector":
       return `number, ${type.strings ? "string, " : ""}or number[] (1 to ${type.max} items)`;
   }

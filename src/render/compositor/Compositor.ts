@@ -71,7 +71,7 @@ import { masksAt } from "../../core/masks/maskEval.js";
 import { maskBlockFloats, packMasks } from "../../core/masks/maskCoverage.js";
 import { effectBlockFloats, hasActiveEffects, packEffects } from "../../core/effects/effectEval.js";
 import { lutLibrary } from "../effects/lutLibrary.js";
-import { sequenceView } from "../../core/document/sequences.js";
+import { instanceView } from "../../core/document/templates.js";
 import { isRgba } from "../../core/document/color.js";
 import { animatedOpacity, animatedTransform, maxKeyedScale } from "../../core/document/keyframes.js";
 import { RigResolver } from "../../core/document/rig.js";
@@ -862,7 +862,7 @@ export class Compositor {
     if (!sequence) return false;
     const innerFrame = Math.min(sequence.duration - 1, Math.max(0, clip.offset + (frame - clip.start)));
     layer.child.depthSort = sequence.depthSort === true;
-    layer.inner = layer.child.evaluate(sequenceView(doc, sequence), innerFrame);
+    layer.inner = layer.child.evaluate(instanceView(doc, sequence, clip), innerFrame);
     const { w, h } = sequence.size;
     this.noteContent(clip.id, writeModel(this.step, transform, w, h, doc.settings.width, doc.settings.height), w, h);
     const m = multiplyInto(layer.model, this.step, setMat(this.step2, w, 0, 0, h, 0, 0));

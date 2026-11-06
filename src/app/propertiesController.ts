@@ -4,6 +4,7 @@
 // section's (Batch 26): Crop to frame, Reset crop, the crop mode toggle and the aspect lock. Each edit
 // is one command. The number fields' bindings (panels/properties/bindings.ts) write through `liveEdit`
 // and the document store. Duplicate (the quick row, Mod+D) is the clipboard controller's (Batch 39).
+import { installCompoundTemplateActions } from "./compoundTemplateController.js";
 import { installLottieController } from "./lottieController.js";
 import { updateClip } from "../core/commands/basicCommands.js";
 import { setBackground, setPerspective } from "../core/commands/projectCommands.js";
@@ -259,6 +260,8 @@ export function installPropertiesController(): () => void {
     actions.register("clip.effect.applyLastLook", () => void applyLastLook()),
     // Lottie clips (Batch 79).
     installLottieController(),
+    // Template parameters (Batch 80).
+    installCompoundTemplateActions(),
   ];
   return () => {
     for (const stop of stops) stop();

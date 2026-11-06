@@ -243,3 +243,34 @@
 .folderText[data-status="error"] {
   color: var(--danger);
 }
+/* The Templates section (Batch 80; gap: the DS has no template cards): under the presets, the same cards with the
+   saved first frame as the thumbnail. */
+.templates {
+  flex: none;
+  max-height: 45%;
+  overflow: auto;
+  border-top: 1px solid var(--hairline);
+}
+
+.templatesHead {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3) 0;
+}
+
+.templatesTitle {
+  flex: none;
+  color: var(--text-tertiary);
+  font: var(--type-overline);
+  letter-spacing: var(--type-overline-track);
+  text-transform: uppercase;
+}
+
+.templateImage {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}

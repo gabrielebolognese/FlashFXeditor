@@ -7,6 +7,7 @@ import { createSessionStore } from "../../core/store/sessionStore.js";
 import { breakApart, makeCompound, makeUnique } from "./compound.js";
 import { duplicateClips } from "./duplicate.js";
 import { planSlip, planTrim, resolveTrim } from "./trim.js";
+import { exposeParam, removeParam, resetInstanceValues, setInstanceValue } from "./templates.js";
 
 // A seeded stream (mulberry32): the same seed always runs the same operations.
 function stream(seed: number): () => number {
@@ -95,4 +96,73 @@ describe("compound fuzz (spec §21.10)", () => {
       expect(doc.getState()).toStrictEqual(initial);
     });
   }
+});
+// Template parameters (spec §21.24, Batch 80): the same seeded stream with Expose as parameter, instance values,
+// resets, removals, Break apart and Make unique; the document stays valid and everything undoes.
+describe("template parameter fuzz (spec §21.24)", () => {
+  const seen = { exposed: 0, valued: 0 };
+  const FIELDS = ["text.value", "fill", "enabled", "opacity", "size.w"];
+  const sample = (kind: string, random: () => number) => (kind === "text" ? `t${Math.floor(random() * 100)}` : kind === "number" ? Math.floor(random() * 300) : kind === "toggle" ? random() < 0.5 : { r: random(), g: random(), b: random(), a: 1 });
+  for (const seed of [11, 12, 13, 14, 15, 16]) {
+    it(`keeps parameters, instance values and the document valid through random edits, and undoes all of it (seed ${seed})`, () => {
+      const random = stream(seed);
+      let n = 0;
+      const newId = () => `p${seed}-${++n}`;
+      const initial = start();
+      const doc = new DocumentStore(initial, { session: createSessionStore(), validate: true });
+      let applied = 0;
+      for (let step = 0; step < 80; step++) {
+        const project = doc.getState();
+        const outer = Object.values(project.clips).filter((clip) => project.tracks.some((track) => track.id === clip.trackId));
+        const inner = Object.values(project.clips).filter((clip) => !outer.includes(clip));
+        const compounds = outer.filter((clip) => clip.kind === "compound");
+        const any = <T,>(list: T[]): T | undefined => list[Math.floor(random() * list.length)];
+        const op = Math.floor(random() * 8);
+        let command = null;
+        if (op === 0 && outer.length > 0) {
+          const first = any(outer)!;
+          command = makeCompound(project, [first.id], newId)?.command ?? null;
+        } else if (op === 1) {
+          const clip = any(inner);
+          command = clip ? exposeParam(project, clip.id, any(FIELDS)!) : null;
+        } else if (op === 2 || op === 3) {
+          const instance = any(compounds);
+          const param = instance?.kind === "compound" ? any(project.sequences[instance.sequenceId]?.params ?? []) : undefined;
+          command = instance && param ? setInstanceValue(project, [instance.id], param.id, sample(param.kind, random) as never) : null;
+        } else if (op === 4) {
+          const instance = any(compounds);
+          command = instance ? resetInstanceValues(project, [instance.id], random() < 0.5 ? null : "p1") : null;
+        } else if (op === 5) {
+          const instance = any(compounds);
+          const param = instance?.kind === "compound" ? any(project.sequences[instance.sequenceId]?.params ?? []) : undefined;
+          command = instance?.kind === "compound" && param ? removeParam(project, instance.sequenceId, param.id) : null;
+        } else if (op === 6) {
+          const instance = any(compounds);
+          command = instance ? (random() < 0.5 ? breakApart(project, instance.id, newId) : makeUnique(project, instance.id, newId)) : null;
+        } else if (compounds.length > 0) {
+          command = duplicateClips(project, [any(compounds)!.id], newId)?.command ?? null;
+        }
+        if (!command) continue;
+        const before = doc.getState();
+        try {
+          doc.dispatch(command);
+        } catch {
+          expect(doc.getState()).toBe(before);
+          continue;
+        }
+        applied += 1;
+        if (op === 1) seen.exposed += 1;
+        if (op === 2 || op === 3) seen.valued += 1;
+        expect(validateProject(doc.getState()), `seed ${seed} step ${step} op ${op}`).toEqual([]);
+      }
+      expect(applied).toBeGreaterThan(0);
+      for (let i = 0; i < applied; i++) doc.undo();
+      expect(doc.getState()).toStrictEqual(initial);
+    });
+  }
+
+  it("the streams expose parameters and set instance values", () => {
+    expect(seen.exposed).toBeGreaterThan(0);
+    expect(seen.valued).toBeGreaterThan(0);
+  });
 });

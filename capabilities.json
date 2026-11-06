@@ -2,8 +2,8 @@
   "manifestVersion": 1,
   "app": "shorts-editor",
   "appVersion": "1.1.0",
-  "lastBatch": 79,
-  "schemaVersion": 23,
+  "lastBatch": 80,
+  "schemaVersion": 24,
   "project": {
     "file": "project.json",
     "fontsManifest": "fonts/fonts.json",
@@ -414,7 +414,15 @@
     "remap": true,
     "frameBlend": true
   },
-  "templates": false,
+  "templates": true,
+  "templateParamKinds": [
+    "text",
+    "color",
+    "number",
+    "media",
+    "font",
+    "toggle"
+  ],
   "export": {
     "containers": [
       "mp4"
@@ -434,7 +442,8 @@
     "normalize": true,
     "info": true,
     "render": true,
-    "compare": true
+    "compare": true,
+    "fill": true
   },
   "interop": {
     "openLink": true,

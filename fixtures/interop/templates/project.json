@@ -1,0 +1,654 @@
+{
+  "schemaVersion": 24,
+  "id": "5b0e3c92-7a41-4d68-93f5-2c8d1e06b7a4",
+  "name": "Interop templates",
+  "settings": {
+    "width": 360,
+    "height": 640,
+    "fps": {
+      "num": 30,
+      "den": 1
+    },
+    "background": {
+      "r": 0.08,
+      "g": 0.09,
+      "b": 0.12,
+      "a": 1
+    },
+    "sampleRate": 48000
+  },
+  "media": {},
+  "bins": [],
+  "tracks": [
+    {
+      "id": "v1",
+      "kind": "video",
+      "name": "V1",
+      "clipIds": [
+        "backdrop"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
+      "id": "v2",
+      "kind": "video",
+      "name": "V2",
+      "clipIds": [
+        "card-a",
+        "card-b",
+        "card-c"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    }
+  ],
+  "clips": {
+    "card-paper": {
+      "kind": "solid",
+      "name": "card-paper",
+      "enabled": true,
+      "fill": {
+        "r": 0.97,
+        "g": 0.94,
+        "b": 0.86,
+        "a": 1
+      },
+      "shape": "roundedRect",
+      "size": {
+        "w": 300,
+        "h": 420
+      },
+      "cornerRadius": 18,
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "id": "card-paper",
+      "trackId": "t-paper",
+      "start": 0,
+      "duration": 30
+    },
+    "card-bar": {
+      "kind": "solid",
+      "name": "card-bar",
+      "enabled": true,
+      "fill": {
+        "r": 0.12,
+        "g": 0.62,
+        "b": 0.62,
+        "a": 1
+      },
+      "shape": "rect",
+      "size": {
+        "w": 220,
+        "h": 14
+      },
+      "cornerRadius": 0,
+      "transform": {
+        "x": 0,
+        "y": -150,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "id": "card-bar",
+      "trackId": "t-bar",
+      "start": 0,
+      "duration": 30
+    },
+    "card-dot": {
+      "kind": "solid",
+      "name": "card-dot",
+      "enabled": true,
+      "fill": {
+        "r": 0.12,
+        "g": 0.62,
+        "b": 0.62,
+        "a": 1
+      },
+      "shape": "ellipse",
+      "size": {
+        "w": 36,
+        "h": 36
+      },
+      "cornerRadius": 0,
+      "transform": {
+        "x": -110,
+        "y": 150,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "id": "card-dot",
+      "trackId": "t-dot",
+      "start": 0,
+      "duration": 30
+    },
+    "card-title": {
+      "kind": "text",
+      "name": "card-title",
+      "enabled": true,
+      "text": {
+        "value": "Paper card",
+        "box": {
+          "mode": "fixed",
+          "width": 250
+        }
+      },
+      "style": {
+        "fontFamily": "Inter",
+        "fontWeight": 700,
+        "italic": false,
+        "fontSize": 44,
+        "fill": {
+          "r": 0.13,
+          "g": 0.12,
+          "b": 0.16,
+          "a": 1
+        },
+        "stroke": {
+          "enabled": false,
+          "width": 6,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 1
+          }
+        },
+        "shadow": {
+          "enabled": false,
+          "x": 0,
+          "y": 6,
+          "blur": 16,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.6
+          }
+        },
+        "background": {
+          "enabled": false,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.7
+          },
+          "paddingX": 28,
+          "paddingY": 12,
+          "radius": 16,
+          "mode": "block"
+        },
+        "textCase": "none",
+        "letterSpacing": 0,
+        "lineHeight": 1.2,
+        "align": "center",
+        "verticalAnchor": "middle"
+      },
+      "transform": {
+        "x": 0,
+        "y": -60,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "id": "card-title",
+      "trackId": "t-title",
+      "start": 0,
+      "duration": 30
+    },
+    "card-body": {
+      "kind": "text",
+      "name": "card-body",
+      "enabled": true,
+      "text": {
+        "value": "A small card with a title and a few words.",
+        "box": {
+          "mode": "fixed",
+          "width": 250
+        }
+      },
+      "style": {
+        "fontFamily": "Inter",
+        "fontWeight": 700,
+        "italic": false,
+        "fontSize": 26,
+        "fill": {
+          "r": 0.13,
+          "g": 0.12,
+          "b": 0.16,
+          "a": 1
+        },
+        "stroke": {
+          "enabled": false,
+          "width": 6,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 1
+          }
+        },
+        "shadow": {
+          "enabled": false,
+          "x": 0,
+          "y": 6,
+          "blur": 16,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.6
+          }
+        },
+        "background": {
+          "enabled": false,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.7
+          },
+          "paddingX": 28,
+          "paddingY": 12,
+          "radius": 16,
+          "mode": "block"
+        },
+        "textCase": "none",
+        "letterSpacing": 0,
+        "lineHeight": 1.2,
+        "align": "center",
+        "verticalAnchor": "middle"
+      },
+      "transform": {
+        "x": 0,
+        "y": 40,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "id": "card-body",
+      "trackId": "t-body",
+      "start": 0,
+      "duration": 30
+    },
+    "backdrop": {
+      "kind": "solid",
+      "name": "backdrop",
+      "enabled": true,
+      "fill": {
+        "r": 0.16,
+        "g": 0.18,
+        "b": 0.28,
+        "a": 1
+      },
+      "shape": "rect",
+      "size": {
+        "w": 360,
+        "h": 640
+      },
+      "cornerRadius": 0,
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "id": "backdrop",
+      "trackId": "v1",
+      "start": 0,
+      "duration": 90
+    },
+    "card-a": {
+      "kind": "compound",
+      "name": "Card A",
+      "enabled": true,
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "volume": {
+        "gainDb": 0,
+        "muted": false
+      },
+      "offset": 0,
+      "id": "card-a",
+      "trackId": "v2",
+      "start": 0,
+      "duration": 30,
+      "sequenceId": "paper-card"
+    },
+    "card-b": {
+      "kind": "compound",
+      "name": "Card B",
+      "enabled": true,
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "volume": {
+        "gainDb": 0,
+        "muted": false
+      },
+      "offset": 0,
+      "id": "card-b",
+      "trackId": "v2",
+      "start": 30,
+      "duration": 30,
+      "sequenceId": "paper-card",
+      "params": {
+        "title": "Launch day",
+        "body": "Doors open at nine. Bring a friend.",
+        "accent": {
+          "r": 0.95,
+          "g": 0.5,
+          "b": 0.12,
+          "a": 1
+        },
+        "width": 260
+      }
+    },
+    "card-c": {
+      "kind": "compound",
+      "name": "Card C",
+      "enabled": true,
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "volume": {
+        "gainDb": 0,
+        "muted": false
+      },
+      "offset": 0,
+      "id": "card-c",
+      "trackId": "v2",
+      "start": 60,
+      "duration": 30,
+      "sequenceId": "paper-card",
+      "params": {
+        "title": "Thank you",
+        "body": "See you next week.",
+        "accent": {
+          "r": 0.55,
+          "g": 0.3,
+          "b": 0.85,
+          "a": 1
+        },
+        "show": false
+      }
+    }
+  },
+  "markers": [],
+  "captionTracks": {},
+  "textPresetsLocal": [],
+  "sequences": {
+    "paper-card": {
+      "id": "paper-card",
+      "name": "Paper card",
+      "size": {
+        "w": 360,
+        "h": 640
+      },
+      "duration": 30,
+      "background": null,
+      "tracks": [
+        {
+          "id": "t-paper",
+          "kind": "video",
+          "name": "paper",
+          "clipIds": [
+            "card-paper"
+          ],
+          "locked": false,
+          "muted": false,
+          "solo": false,
+          "hidden": false,
+          "targeted": true,
+          "height": "M"
+        },
+        {
+          "id": "t-bar",
+          "kind": "video",
+          "name": "bar",
+          "clipIds": [
+            "card-bar"
+          ],
+          "locked": false,
+          "muted": false,
+          "solo": false,
+          "hidden": false,
+          "targeted": true,
+          "height": "M"
+        },
+        {
+          "id": "t-dot",
+          "kind": "video",
+          "name": "dot",
+          "clipIds": [
+            "card-dot"
+          ],
+          "locked": false,
+          "muted": false,
+          "solo": false,
+          "hidden": false,
+          "targeted": true,
+          "height": "M"
+        },
+        {
+          "id": "t-title",
+          "kind": "video",
+          "name": "title",
+          "clipIds": [
+            "card-title"
+          ],
+          "locked": false,
+          "muted": false,
+          "solo": false,
+          "hidden": false,
+          "targeted": true,
+          "height": "M"
+        },
+        {
+          "id": "t-body",
+          "kind": "video",
+          "name": "body",
+          "clipIds": [
+            "card-body"
+          ],
+          "locked": false,
+          "muted": false,
+          "solo": false,
+          "hidden": false,
+          "targeted": true,
+          "height": "M"
+        }
+      ],
+      "params": [
+        {
+          "id": "title",
+          "label": "Title",
+          "kind": "text",
+          "targets": [
+            {
+              "clipId": "card-title",
+              "path": "text.value"
+            }
+          ],
+          "default": "Paper card"
+        },
+        {
+          "id": "body",
+          "label": "Body",
+          "kind": "text",
+          "targets": [
+            {
+              "clipId": "card-body",
+              "path": "text.value"
+            }
+          ],
+          "default": "A small card with a title and a few words."
+        },
+        {
+          "id": "accent",
+          "label": "Accent color",
+          "kind": "color",
+          "targets": [
+            {
+              "clipId": "card-bar",
+              "path": "fill"
+            },
+            {
+              "clipId": "card-dot",
+              "path": "fill"
+            }
+          ],
+          "default": {
+            "r": 0.12,
+            "g": 0.62,
+            "b": 0.62,
+            "a": 1
+          }
+        },
+        {
+          "id": "width",
+          "label": "Accent width",
+          "kind": "number",
+          "targets": [
+            {
+              "clipId": "card-bar",
+              "path": "size.w"
+            }
+          ],
+          "default": 220,
+          "min": 40,
+          "max": 280
+        },
+        {
+          "id": "show",
+          "label": "Show accent",
+          "kind": "toggle",
+          "targets": [
+            {
+              "clipId": "card-bar",
+              "path": "enabled"
+            },
+            {
+              "clipId": "card-dot",
+              "path": "enabled"
+            }
+          ],
+          "default": true
+        }
+      ]
+    }
+  },
+  "meta": {
+    "createdAt": "2026-11-09T12:00:00.000Z",
+    "modifiedAt": "2026-11-09T12:00:00.000Z",
+    "appVersion": "1.1.0",
+    "generator": {
+      "name": "interop-fixture",
+      "version": "1",
+      "source": "fixtures/interop/templates (Batch 80)"
+    }
+  }
+}

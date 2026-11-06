@@ -13,7 +13,8 @@
 // detach shows it too (its Detach audio button).
 // React renders the panel only when this context changes (`contextKey`), never on value changes
 // (spec §11 implementation note, P1).
-import type { Clip, ClipId, Project, TrackId } from "../../core/document/types.js";
+import { hostSequenceOf } from "../../core/document/sequences.js";
+import type { Clip, ClipId, Project, SequenceId, TrackId } from "../../core/document/types.js";
 import { selectedTrackIds, type Selection } from "../../core/store/selection.js";
 import { transitionAt, type Cut } from "../../timeline/edit/transitions.js";
 import { isCropClip } from "../../timeline/edit/crop.js";
@@ -22,7 +23,7 @@ import { isLayerClip, isTransformClip } from "../../timeline/edit/transform.js";
 import { audioTargets, canDetach } from "../../timeline/edit/volume.js";
 
 /** The registered sections, top to bottom in their order of appearance. */
-export type SectionId = "clip" | "text" | "animation" | "animators" | "solid" | "shape" | "captionStyle" | "transform" | "crop" | "frame" | "opacity" | "compositing" | "masks" | "effects" | "lottie" | "speed" | "audio" | "transition" | "track" | "marker" | "project";
+export type SectionId = "clip" | "text" | "animation" | "animators" | "solid" | "shape" | "captionStyle" | "transform" | "crop" | "frame" | "opacity" | "compositing" | "masks" | "effects" | "lottie" | "template" | "parameters" | "speed" | "audio" | "transition" | "track" | "marker" | "project";
 
 export type PropertiesContext =
   | { kind: "none" }
@@ -58,6 +59,10 @@ export type PropertiesContext =
       speedIds: readonly ClipId[];
       /** The Lottie clips: what Lottie (Loop, Colors) edits (Batch 79). */
       lottieIds: readonly ClipId[];
+      /** The compound clips whose sequence has parameters: what the Template form edits (Batch 80). */
+      templateIds: readonly ClipId[];
+      /** The sequence of the open compound (the Parameters section exposes fields of its clips), or null at the top level. */
+      hostSequence: SequenceId | null;
       /** The text clips: what Text edits. */
       textIds: readonly ClipId[];
       /** The solids: what Solid edits. */
@@ -126,6 +131,11 @@ export function propertiesContext(selection: Selection, markerId: string | null,
         return kind === "video" || kind === "audio" || kind === "lottie";
       });
       const lottieIds = clipIds.filter((id) => project.clips[id]?.kind === "lottie");
+      const templateIds = clipIds.filter((id) => {
+        const clip = project.clips[id];
+        return clip?.kind === "compound" && (project.sequences[clip.sequenceId]?.params?.length ?? 0) > 0;
+      });
+      const hostSequence = hostSequenceOf(project);
       const textIds = clipIds.filter((id) => project.clips[id]?.kind === "text");
       const solidIds = clipIds.filter((id) => project.clips[id]?.kind === "solid");
       const shapeIds = clipIds.filter((id) => project.clips[id]?.kind === "shape");
@@ -133,7 +143,7 @@ export function propertiesContext(selection: Selection, markerId: string | null,
       const cue = cueIds.length > 0 ? project.clips[cueIds[0] as ClipId] : undefined;
       const audioIds = audioTargets(project, clipIds);
       const detachIds = clipIds.filter((id) => canDetach(project, id));
-      return { kind: "clips", clipIds, primary, layerIds, opacityIds, maskIds, transformIds, layerPrimary, mediaIds, speedIds, lottieIds, textIds, solidIds, shapeIds, audioIds, detachIds, captionTrackId: cue?.trackId ?? null, cueIds };
+      return { kind: "clips", clipIds, primary, layerIds, opacityIds, maskIds, transformIds, layerPrimary, mediaIds, speedIds, lottieIds, templateIds, hostSequence, textIds, solidIds, shapeIds, audioIds, detachIds, captionTrackId: cue?.trackId ?? null, cueIds };
     }
   }
 }
@@ -180,6 +190,8 @@ export function sectionIds(context: PropertiesContext): SectionId[] {
       // Effects (Batch 74): the same visual clips (EFFECT_KINDS = MASKABLE_KINDS).
       if (context.maskIds.length > 0) ids.push("effects");
       if (context.lottieIds.length > 0) ids.push("lottie");
+      if (context.templateIds.length > 0) ids.push("template");
+      if (context.hostSequence !== null) ids.push("parameters");
       if (context.speedIds.length > 0) ids.push("speed");
       if (context.audioIds.length > 0 || context.detachIds.length > 0) ids.push("audio");
       return ids;

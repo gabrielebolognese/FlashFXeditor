@@ -6,8 +6,8 @@
 // poster `media` gives, a nested compound as its own sequence. Every color comes from the document
 // or the caller's `colors` (design tokens). Pure apart from the drawing calls.
 import { formatHexColor, isRgba } from "../../core/document/color.js";
-import { sequenceView } from "../../core/document/sequences.js";
-import type { Fill, Frame, Project, RGBA, Sequence, Transform } from "../../core/document/types.js";
+import { instanceView } from "../../core/document/templates.js";
+import type { CompoundClip, Fill, Frame, Project, RGBA, Sequence, Transform } from "../../core/document/types.js";
 import { firstLine } from "../../text/style.js";
 import { clipsAtFrame } from "../model/queries.js";
 
@@ -55,6 +55,8 @@ function place(ctx: PosterContext, transform: Transform, frameW: number, frameH:
   ctx.scale(transform.scale * (transform.flipH ? -1 : 1), (transform.scaleY ?? transform.scale) * (transform.flipV ? -1 : 1));
 }
 
+const NO_INSTANCE = { params: undefined } as unknown as CompoundClip;
+
 /**
  * Draws `sequence` at inner frame `frame` into `rect` of `ctx`. The sequence is fitted (contain) and
  * centered; clips outside the sequence's frame are cut.
@@ -68,6 +70,8 @@ export function drawCompoundPoster(
   media: (mediaId: string) => PosterMedia | null,
   colors: PosterColors,
   depth = 0,
+  /** The instance whose template values are drawn; none: the sequence as it is. */
+  instance?: CompoundClip,
 ): void {
   const { w, h } = sequence.size;
   if (w <= 0 || h <= 0 || rect.w <= 0 || rect.h <= 0) return;
@@ -80,7 +84,7 @@ export function drawCompoundPoster(
   ctx.clip();
   ctx.fillStyle = sequence.background && sequence.background.a > 0 ? formatHexColor(sequence.background) : colors.backdrop;
   ctx.fillRect(0, 0, w, h);
-  const view = sequenceView(project, sequence);
+  const view = instance ? instanceView(project, sequence, instance) : instanceView(project, sequence, NO_INSTANCE);
   for (const clip of clipsAtFrame(view, Math.min(Math.max(0, frame), Math.max(0, sequence.duration - 1)))) {
     if (!clip.enabled) continue;
     if (view.tracks.find((track) => track.id === clip.trackId)?.hidden) continue;
@@ -128,7 +132,7 @@ export function drawCompoundPoster(
         const inner = project.sequences[clip.sequenceId];
         if (inner && depth + 1 < MAX_DEPTH) {
           ctx.globalAlpha = clip.opacity;
-          drawCompoundPoster(ctx, project, inner, clip.offset + frame - clip.start, { x: 0, y: 0, w, h }, media, colors, depth + 1);
+          drawCompoundPoster(ctx, project, inner, clip.offset + frame - clip.start, { x: 0, y: 0, w, h }, media, colors, depth + 1, clip);
         }
         break;
       }

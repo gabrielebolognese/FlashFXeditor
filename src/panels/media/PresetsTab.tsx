@@ -28,6 +28,7 @@ import { ContextMenu } from "../../ui/ContextMenu.js";
 import { EmptyState } from "../../ui/EmptyState.js";
 import { IconButton } from "../../ui/IconButton.js";
 import { TextField } from "../../ui/TextField.js";
+import { CompoundTemplates } from "./CompoundTemplates.js";
 import { gridColumns, pressWithoutFocus, setTabStop, stepIndex } from "./listNavigation.js";
 import { PresetNameField } from "./PresetNameField.js";
 import { presetMenuEntries } from "./presetMenu.js";
@@ -476,6 +477,7 @@ export function PresetsTab() {
           </div>
         )}
       </div>
+      <CompoundTemplates />
       <FolderStrip scope={scope} projectOpen={projectOpen} writable={writable} />
       {menu && menuPreset && (
         <ContextMenu

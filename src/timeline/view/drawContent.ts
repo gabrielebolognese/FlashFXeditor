@@ -360,7 +360,7 @@ function drawCompoundTiles(scene: ClipScene, clip: CompoundClip, y: number, heig
     ctx.beginPath();
     ctx.rect(Math.max(x0, left), y, Math.min(x1, right) - Math.max(x0, left), height);
     ctx.clip();
-    drawCompoundPoster(ctx, scene.project, sequence, frame, { x: x0, y, w: x1 - x0, h: height }, media, colors);
+    drawCompoundPoster(ctx, scene.project, sequence, frame, { x: x0, y, w: x1 - x0, h: height }, media, colors, 0, clip);
     ctx.restore();
   }
 }

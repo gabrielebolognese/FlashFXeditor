@@ -7,7 +7,7 @@ import { MAX_GAIN_DB, MAX_SPEED, MIN_GAIN_DB } from "./limits.js";
 import { ANIMATOR_PROP_PATTERN, KEYFRAME_PROPS, MASK_PROP_PATTERN, SHAPE_PROP_PATTERN } from "./keyframes.js";
 import { EFFECT_PROP_PATTERN } from "../effects/effectParams.js";
 import { PRIMITIVE_LIMITS } from "../shapes/primitives.js";
-import { BLEND_MODES, EFFECT_TYPES, FADE_CURVES, MASK_MODES, MATTE_MODES, CAPTION_HIGHLIGHTS, CLIP_KINDS, CUE_ANIM_KINDS, EASE_IDS, LABEL_COLORS, PRESET_SET_IDS, SCHEMA_VERSION, FILL_RULES, LINE_CAPS, LINE_JOINS, SOLID_SHAPE_IDS, STROKE_ALIGNS, COUNTER_SEPARATORS, SELECTOR_ORDERS, SELECTOR_SHAPES, TEXT_ANIM_IDS, TEXT_ANIM_UNITS, TEXT_BACKGROUND_MODES, TRACK_KINDS, TRANSITION_DIRECTIONS, TRANSITION_KINDS, type JsonValue } from "./types.js";
+import { BLEND_MODES, EFFECT_TYPES, FADE_CURVES, MASK_MODES, MATTE_MODES, CAPTION_HIGHLIGHTS, CLIP_KINDS, CUE_ANIM_KINDS, EASE_IDS, LABEL_COLORS, PRESET_SET_IDS, SCHEMA_VERSION, FILL_RULES, LINE_CAPS, LINE_JOINS, SOLID_SHAPE_IDS, STROKE_ALIGNS, COUNTER_SEPARATORS, SELECTOR_ORDERS, SELECTOR_SHAPES, TEXT_ANIM_IDS, TEMPLATE_PARAM_KINDS, TEXT_ANIM_UNITS, TEXT_BACKGROUND_MODES, TRACK_KINDS, TRANSITION_DIRECTIONS, TRANSITION_KINDS, type JsonValue } from "./types.js";
 
 export type FieldType =
   | { t: "string"; nonEmpty?: boolean }
@@ -23,6 +23,8 @@ export type FieldType =
   | { t: "union"; options: readonly { when: string; label: string; type: FieldType }[]; nullable?: boolean }
   /** Any JSON object: the content is not described (`fallbackOf.data`). */
   | { t: "json" }
+  /** Any JSON value (a template parameter's default or value, Batch 80). */
+  | { t: "any" }
   /** A finite number, or an array of 1 to `max` finite numbers (a keyframe value: a number, a point or a color); also a string with `strings` (an effect parameter, Batch 74). */
   | { t: "numberOrVector"; max: number; strings?: boolean };
 
@@ -806,6 +808,7 @@ const SCHEMAS: ObjectSchema[] = [
       keyframes: opt(obj("Keyframes"), "Animated properties."),
       fades: req(obj("Fades"), "Opacity fades.", { in: 0, out: 0 }),
       volume: req(obj("Volume"), "Gain of the inner audio."),
+      params: opt({ t: "record", item: { t: "any" } }, "Template parameter values of this instance by parameter id (Batch 80); a missing one leaves the field as the sequence has it."),
     },
   },
   {
@@ -938,6 +941,30 @@ const SCHEMAS: ObjectSchema[] = [
       tracks: req(list(obj("Track")), "Inner video and audio tracks, ordered like `Project.tracks`; no caption track."),
       perspective: opt({ ...pos, nullable: true }, "Viewing distance of its 2.5D layers, px (Batch 70); null: none. Absent: 1600.", 1600),
       depthSort: opt(bool, "Inner layers drawn by depth, farthest first, instead of track order (Batch 70).", false),
+      params: opt(list(obj("TemplateParam")), "Template parameters (Batch 80): fields of inner clips that each instance can set. Absent: none."),
+    },
+  },
+  {
+    name: "TemplateParam",
+    doc: "A template parameter (Batch 80): a named field of one or more inner clips of the sequence, set per instance in `Clip.compound.params`.",
+    types: ["TemplateParam"],
+    fields: {
+      id: req(text, "Unique within the sequence; the key of the instance values."),
+      label: req(str, "Name shown in the instance form."),
+      kind: req(oneOf(TEMPLATE_PARAM_KINDS), "What it holds: `text` (string), `color` (RGBA, channels 0..1), `number`, `media` (a media id), `font` (a font family name) or `toggle` (boolean)."),
+      targets: req(list(obj("TemplateTarget")), "The inner clip fields it sets; at least one."),
+      default: { type: { t: "any" }, required: true, doc: "The value of the field when the parameter was exposed, and the value an instance starts with." },
+      min: opt(num, "Number parameters: the lowest value."),
+      max: opt(num, "Number parameters: the highest value."),
+    },
+  },
+  {
+    name: "TemplateTarget",
+    doc: "A field a template parameter sets.",
+    types: [],
+    fields: {
+      clipId: req(text, "An inner clip of the sequence."),
+      path: req(text, "Dotted path of the field on that clip, for example `text.value`, `style.fontFamily`, `fill`, `mediaId` or `enabled`; never `id`, `trackId`, `kind`, `start` or `duration`."),
     },
   },
   { name: "Size", doc: "A width and a height in project px.", types: [], fields: { w: req(pos, "Width."), h: req(pos, "Height.") } },

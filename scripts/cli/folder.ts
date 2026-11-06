@@ -5,6 +5,8 @@ import { existsSync, openAsBlob, readdirSync, readFileSync, statSync, writeFileS
 import { basename, join, resolve, sep } from "node:path";
 import { convertStandIn, standInMedia, standIns } from "../../src/core/document/makeEditable.js";
 import { normalizeProject, type MediaFacts, type NormalizeNote } from "../../src/core/document/normalize.js";
+import { fillTemplates } from "../../src/core/document/templateFill.js";
+import { validateProject } from "../../src/core/document/validate.js";
 import { formatTimecode, usPerFrame } from "../../src/core/document/time.js";
 import { strictIssues, validateStrict, type StrictIssue } from "../../src/core/document/strict.js";
 import type { JsonObject, MediaItem, Project } from "../../src/core/document/types.js";
@@ -311,4 +313,37 @@ export async function normalizeProjectFolder(dirPath: string, options: Normalize
     written = true;
   }
   return { project: result.project, errors, warnings, notes, fonts: plan, written };
+}
+
+export interface FillReport {
+  ok: boolean;
+  applied: string[];
+  errors: string[];
+  written: boolean;
+}
+
+/**
+ * `fill <dir> <values.json>` (spec §21.24, Batch 80): sets the template parameters of the compound instances the
+ * values file names and writes project.json (nothing is written when any value is refused). The project goes through the
+ * strict check first, so an invalid one is reported, not changed.
+ */
+export async function fillProjectFolder(dirPath: string, valuesPath: string): Promise<FillReport> {
+  const dir = resolve(normalizeCliPath(dirPath));
+  const file = join(dir, PROJECT_FILE);
+  const fail = (...errors: string[]): FillReport => ({ ok: false, applied: [], errors, written: false });
+  if (!fileExists(file)) return fail(`${PROJECT_FILE} not found in ${dir}`);
+  const values = resolve(normalizeCliPath(valuesPath));
+  if (!fileExists(values)) return fail(`${valuesPath} not found`);
+  const project = readJson(file);
+  if ("error" in project) return fail(`${PROJECT_FILE} is not valid JSON (${project.error})`);
+  const parsed = readJson(values);
+  if ("error" in parsed) return fail(`${valuesPath} is not valid JSON (${parsed.error})`);
+  const strict = validateStrict(project.value);
+  if (!strict.project) return fail(...strict.errors.map((issue) => `${issue.path}: ${issue.message}`));
+  const result = fillTemplates(strict.project, parsed.value);
+  if (result.errors.length > 0) return fail(...result.errors);
+  const issues = validateProject(result.project);
+  if (issues.length > 0) return fail(...issues);
+  writeFileSync(file, `${JSON.stringify(result.project, null, 2)}\n`, "utf8");
+  return { ok: true, applied: result.applied, errors: [], written: true };
 }

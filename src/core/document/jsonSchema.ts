@@ -31,6 +31,8 @@ function typeSchema(type: FieldType): Json {
       return { anyOf: [...type.options.map((option) => typeSchema(option.type)), ...(type.nullable ? [{ type: "null" }] : [])] };
     case "json":
       return { type: "object" };
+    case "any":
+      return {};
     case "numberOrVector":
       return { anyOf: [{ type: "number" }, ...(type.strings ? [{ type: "string" }] : []), { type: "array", items: { type: "number" }, minItems: 1, maxItems: type.max }] };
   }

@@ -215,6 +215,7 @@ function planBreak(project: Project, clipId: ClipId): BreakPlan | string {
   if (!sequence) return "Its sequence is missing";
   const look = bakedLook(clip);
   if (look) return look;
+  if (clip.params && Object.keys(clip.params).length > 0) return "Break apart needs an instance without template values: reset them first";
   if (sequence.size.w !== project.settings.width || sequence.size.h !== project.settings.height) return "Break apart needs a sequence the size of the project";
   const from = clip.offset;
   const to = clip.offset + clip.duration;
@@ -379,6 +380,8 @@ export function makeUnique(project: Project, clipId: ClipId, newId: () => string
     name: `${source.name} copy`,
     tracks: source.tracks.map((track) => ({ ...structuredClone(track), id: trackIds.get(track.id) as TrackId, clipIds: track.clipIds.map((id) => (byOld.get(id) as Clip).id) })),
   };
+  // The copy's template parameters point at the copied clips (a target whose clip is gone stays as it is: it dangles).
+  if (sequence.params) for (const param of sequence.params) for (const target of param.targets) target.clipId = byOld.get(target.clipId)?.id ?? target.clipId;
   return {
     id: "clip.makeUnique",
     label: "Make unique",

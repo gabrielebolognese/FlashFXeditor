@@ -49,6 +49,8 @@ describe("properties context (spec §11)", () => {
       transformIds: ["v"],
       layerPrimary: "v",
       lottieIds: [],
+      templateIds: [],
+      hostSequence: null,
       mediaIds: ["v"],
       opacityIds: ["v"],
       speedIds: ["a", "v"],

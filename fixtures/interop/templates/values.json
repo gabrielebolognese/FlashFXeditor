@@ -1,0 +1,24 @@
+{
+  "Card B": {
+    "title": "Launch day",
+    "body": "Doors open at nine. Bring a friend.",
+    "accent": {
+      "r": 0.95,
+      "g": 0.5,
+      "b": 0.12,
+      "a": 1
+    },
+    "width": 260
+  },
+  "Card C": {
+    "title": "Thank you",
+    "body": "See you next week.",
+    "accent": {
+      "r": 0.55,
+      "g": 0.3,
+      "b": 0.85,
+      "a": 1
+    },
+    "show": false
+  }
+}

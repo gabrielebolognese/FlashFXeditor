@@ -30,7 +30,8 @@ import { attachMedia, detachMedia } from "./mediaController.js";
 import { attachPresets, detachPresets } from "./presetController.js";
 import { attachPreview, captureThumbnail, detachPreview, frameService } from "./previewController.js";
 import { reportRepair, repairOpened } from "./repairController.js";
-import { actions, appSettings, appVersion, documentStore, focusScopes, layoutStore, projectsFolder, recentProjects, saveStatus, sessionStore, templateStore, lookStore, workerPool } from "./services.js";
+import { syncTemplatesFromLibrary } from "./compoundTemplateController.js";
+import { actions, appSettings, appVersion, documentStore, focusScopes, layoutStore, projectsFolder, recentProjects, saveStatus, sessionStore, templateStore, lookStore, compoundTemplateStore, workerPool } from "./services.js";
 
 /** Workers that serve one project (sessions, indexes, analysis and proxy jobs): stopped when it closes (P13). */
 const PROJECT_WORKERS = ["decode", "analysis", "proxy"] as const;
@@ -469,6 +470,7 @@ export function installProjectController(): () => void {
   void appSettings.load();
   void templateStore.load();
   void lookStore.load();
+  void compoundTemplateStore.load().then(() => syncTemplatesFromLibrary());
   const onVisibility = () => {
     if (document.visibilityState === "hidden" && current) captureIfChanged(current);
   };

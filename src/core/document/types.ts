@@ -1,7 +1,7 @@
 // The persistent document (spec §5.2). Plain JSON only: no classes, Maps, Sets or undefined-valued
 // keys, so a Project can be serialized as-is and diffed by Immer patches.
 
-export const SCHEMA_VERSION = 23;
+export const SCHEMA_VERSION = 24;
 
 export type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
 export type JsonObject = { [key: string]: JsonValue };
@@ -449,6 +449,22 @@ export interface Sequence {
   perspective?: number | null;
   /** Inner layers drawn by depth (farthest first) instead of track order (spec §21.15). */
   depthSort?: boolean;
+  /** Template parameters (spec §21.24, Batch 80; schema 24): named fields of inner clips an instance can set. */
+  params?: TemplateParam[];
+}
+
+export const TEMPLATE_PARAM_KINDS = ["text", "color", "number", "media", "font", "toggle"] as const;
+export type TemplateParamKind = (typeof TEMPLATE_PARAM_KINDS)[number];
+
+/** A field of an inner clip a template exposes (spec §21.24): `path` is a dotted field path such as `text.value`, `fill` or `enabled`. */
+export interface TemplateParam {
+  id: string;
+  label: string;
+  kind: TemplateParamKind;
+  targets: { clipId: ClipId; path: string }[];
+  default: JsonValue;
+  min?: number;
+  max?: number;
 }
 
 /** The deepest a compound may nest (a compound in a compound in ...): spec §21.10. */
@@ -861,6 +877,8 @@ export interface CompoundClip extends ClipBase {
   keyframes?: Keyframes;
   fades: { in: Frame; out: Frame };
   volume: Volume;
+  /** This instance's template parameter values by parameter id (spec §21.24, schema 24): applied when its sequence is evaluated; a missing one leaves the field as the sequence has it. */
+  params?: Record<string, JsonValue>;
 }
 
 export const LINE_CAPS = ["butt", "round", "square"] as const;

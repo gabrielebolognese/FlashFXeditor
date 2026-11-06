@@ -1,6 +1,6 @@
 # Progress
 
-last_completed_batch: 79
+last_completed_batch: 80
 in_progress_batch: none
 skipped_batches: []
 needs_human: none
@@ -25,6 +25,7 @@ What release 1.1.0 does not do, or does not do well. Next steps for each are in 
 
 ## Design system gaps
 Items the design system did not define and the functional default that was used instead.
+- Template cards, the Templates section header and the Template and Parameters rows have no DESIGN_SYSTEM.md definition: the Presets cards, overline type, Row, TextField, NumberField, ColorField, Select and IconButton are reused. (Batch 80)
 - Adjustment clips on the timeline have no DESIGN_SYSTEM.md color or glyph: they are drawn with the solid colors (`--clip-solid`, `--clip-solid-label`) and the lucide `layers` glyph (the same as compound clips); `+ Adjustment` uses lucide `sliders-horizontal` (Batch 76).
 - The Looks rows of the Effects section have no DESIGN_SYSTEM.md definition (the DS has no chip list): a compact TextField with a Save look IconButton, then each look as a compact secondary Button with a delete IconButton (X), wrapping with `--space-1` gaps, `--space-0` inside a chip (Batch 75).
 - A LUT effect's File row has no DS definition: the file name in `--type-body-size`, ellipsized at `calc(var(--space-6) * 4)`, muted (`--text-tertiary`) as "No LUT", followed by a Load .cube IconButton (Batch 75).
@@ -889,6 +890,9 @@ Small things discovered during a batch that belong to a later batch. Format: `- 
 - [from Batch 73 -> Batch 82] Mask handles on a 2.5D clip follow the projected picture; mask handles follow a field scrub live.
 - [from Batch 79 -> Batch 82] Browser (CDP) measurements of Lottie playback, scrub and 300 percent sharpness, once a GPU session is free.
 - [from Batch 79 -> Batch 82] Gradient color overrides for Lottie clips.
+- [from Batch 80 -> Batch 82] Drag a template card onto the timeline; rename a template and its category in the UI (`updateCompoundTemplate` exists); the Compounds bin rename of a sequence (`sequence.rename` exists).
+- [from Batch 80 -> Batch 82] Right-click Expose as parameter on the fields of Text, Solid and Transform rows; the font parameter as a font picker; media parameter as a thumbnail picker.
+- [from Batch 80 -> Batch 82] Browser (CDP) Profiler check of the Template form (zero commits while scrubbing a number field) once a GPU session is free.
 
 ## Dependencies
 Why each dependency exists (Batch rule 8).
@@ -7516,3 +7520,38 @@ Why each dependency exists (Batch rule 8).
   2. Two visible clips of the same Lottie variant (the same sticker twice, or one duplicated at another offset, with no or equal color overrides) share one playhead record in `LottieFrames`: `wanted` is keyed by variant (`src/media/decode/LottieFrames.ts:48`), so each `key()` call overwrites the other clip's time and step in `note()` (`:134`). Clips more than 250 ms apart then compute step 0 and the lookahead never runs; `get()` and `load()` (`:161`, `:172`) use only the time asked for last. Measured with the `LottieFrames.test.ts` setup over 60 frames of playback at 60 fps: one clip has 58 of 60 frames cached with 59 render requests, while two clips of `l1` 1 s apart have 0 of 60 cached for either clip and 0 render requests. Each frame then depends on `LayerTextures.loadImage`, which runs one load per media at a time (`src/render/preview/LayerTextures.ts:1219`), so both copies wait on worker round trips one after the other. That breaks P7 (frames must be ready ahead of playback) for an ordinary use of stickers. The fixture only ever shows one clip at a time, so tests and the expected frames miss it. Fix: track the wanted time and step per clip or per layer, not per variant, and add a test with two clips of the same variant.
 - fix-attempt: done (2026-11-09). 1) `validate.ts`: `colorOverrides` must be a list of `{from, to}` RGBA colors (test in `validate.test.ts`). 2) `LottieFrames`: playheads are tracked per clip (`key(variant, timeUs, clipId)`, `ImageService.frameKey` and `LayerTextures` pass the clip id), `load` renders the frame of every clip of the variant; tests with two clips of one variant in `LottieFrames.test.ts`. `npm run check`: typecheck, lint, unit tests and build pass; the perf project fails only `fuzz.perf.test.ts` on time (79.9 s against 60 s, the environmental miss of Batches 74-79). Not added: Batch 47 property generators for this case (they generate no Lottie clips).
 - review: accepted (second independent review, 2026-11-09). `npm run check`: typecheck, lint with the CSS color and token checks and 3496 / 3496 unit tests in 359 files pass; the perf project fails only `fuzz.perf.test.ts` on time (79.1 s against 60 s, every invariant holds: the environmental miss of Batches 74-79), so `npm run build` was run on its own and passes. I read the fix commit (`git show d1ca576`) file by file and ran no browser script. Earlier rejection: 1) fixed: `src/core/document/validate.ts:137-142` refuses a `colorOverrides` that is not a list of `{from, to}` with finite RGBA channels (the same `isColor` rule v1 uses for every color), covered by `validate.test.ts` with `[{}]`, `"x"`, wrong types and NaN; `parseProjectText` (`src/project/projectFile.ts:187-192`) refuses a project with issues, so the compositor never sees the bad value. 2) fixed: `LottieFrames` keeps one playhead per `clipId|variant` slot (`src/media/decode/LottieFrames.ts:128-158`), `LayerTextures.ts:1002` passes the layer's clip id, `get` shows the last time asked and `load` renders the frame of every clip of the variant; `LottieFrames.test.ts` checks that two clips of one variant 1 s apart both prefetch ahead and that `load` asks for both frames. The Batch 47 property generators still make no Lottie clips; the seeded loop and color property tests of `lottie.test.ts` cover the new fields, which I accept. Note (not a defect): slots of deleted clips are not pruned until the media is released, so a `load` can add the stale clip's frame if the LRU evicted it. Acceptance, Do not build yet, tokens, §3/§4 and TODO tags as in the first review; the fix adds no TODOs.
+
+### Batch 80: Templates: compound clips with parameters
+- status: done
+- date: 2026-11-09
+- notes:
+  - Built in auto mode. `npm run check`: typecheck, lint (CSS checks), 3565 unit tests and `npm run build` pass; the perf project fails only `fuzz.perf.test.ts` on time (the environmental miss of Batches 74-79; every invariant holds).
+  - Schema 24 (migration 23 to 24 is the identity): `Sequence.params` (`TemplateParam`: id, label, kind text/color/number/media/font/toggle, targets `{clipId, path}`, default, number min/max) and `CompoundClip.params` (values by parameter id). New field-table type `{t:"any"}` for JSON values (handled in interopDoc, jsonSchema, strict). Manifest keys `templates` and `templateParamKinds`, `cli.fill`; `capabilities.json` regenerated; the other interop fixtures regenerated for schemaVersion 24.
+  - Evaluation (`core/document/templates.ts`, `instanceView`): values override the target fields only when an instance is drawn, so instances share one sequence. A patched inner clip gets the id `<id>~<hash of applied values>`, so text rasters and textures are separate for different values and shared for equal ones. Cached per `params` object. Measured: cache hit 0.10 us, miss 15 us (5-parameter card). Used by the Compositor, the timeline poster and nested compounds. Bad values and unresolved targets are ignored (Batch 79 review lesson); the validator refuses them in files.
+  - Commands (`timeline/edit/templates.ts`): `template.expose`, `template.addTarget`, `template.updateParam` (clamps or drops instance values that no longer fit), `template.removeParam`, `template.setValue` (coalesced), `template.resetValues`, `sequence.rename`. Make unique remaps targets; Break apart is refused while an instance holds values.
+  - Library: `project/compoundTemplates.ts` (bundle collect/instantiate with fresh ids and media remap, one-undo insert command, sanitizer), `compoundTemplateStore.ts` (IndexedDB `compoundTemplates.v1` + files, and the library folder `templates/<id>/{template.json,files.json,media/,fonts/}`), `app/compoundTemplateController.ts` (Save as template with thumbnail, media and fonts; Insert copies media via the import pipeline and fonts into My fonts, adds the sequence and an instance at the playhead in one undo step; syncs templates from the library folder on load).
+  - UI: Properties gets a Template section (one field per parameter by kind, per-field Reset, Reset all, Save as template) and, inside an open compound, a Parameters section (rename, number range, default from the current value, remove, expose a field of the selected clip as a new parameter or add it to one). Presets tab gets a Templates section (search, cards with the saved frame, insert by double-click, Enter or Space, delete). Actions `template.expose`, `template.reset`, `template.save` with palette entries.
+  - CLI: `fill <folder> <values.json>` (instances by clip id or name, parameters by id or label, `#rrggbb` colors; all or nothing; validated before writing).
+  - Fixture `fixtures/interop/templates` (paper card, 5 parameters, 3 instances, `values.json`), expected frames 15, 45, 75 rendered by `cli render` and looked at (three different cards from one sequence). WebGPU against expected SSIM 1.0000, WebGL2 against WebGPU 1.0000; `cli fill` on a copy without values renders the expected frames (SSIM 1.0000). No shader changed.
+  - INTEROP.md: templates section with a validated `TemplateParam` example, fill format; field reference regenerated.
+  - Property tests: 8 seeded tests in `timeline/edit/templates.test.ts`, and a seeded stream in `compound.fuzz.test.ts` mixing make, expose, set, reset, remove, break apart, make unique and duplicate (valid at every step, undoes fully).
+- deviations:
+  - A missing instance value leaves the inner field as the sequence has it; `default` is what new values, Reset and the form show (the spec says default).
+  - Parameters may target a deleted clip or an absent optional field (they set nothing); other bad targets are refused.
+  - Break apart is refused while an instance has values (reset them first).
+  - Template cards cannot be dragged onto the timeline (media copy is asynchronous): double-click, Enter or Space inserts.
+  - Audio fields (such as volume) as parameters are not applied inside `compoundAudio`.
+  - Fonts travel as files added to My fonts; the default is shown, not edited, by a field control for `font` (plain family name text field).
+- follow-ups:
+  - [from Batch 80 -> Batch 82] Drag a template card onto the timeline; rename a template and its category in the UI (`updateCompoundTemplate` exists); the Compounds bin rename of a sequence (`sequence.rename` exists).
+  - [from Batch 80 -> Batch 82] Right-click Expose as parameter on the fields of Text, Solid and Transform rows; the font parameter as a font picker; media parameter as a thumbnail picker.
+  - [from Batch 80 -> Batch 82] Browser (CDP) Profiler check of the Template form (zero commits while scrubbing a number field) once a GPU session is free.
+  - [from Batch 70 -> Batch 82] (from Batch 70, addressed to Batch 80) counter and animator fields have no LiveEdit channel: still open, template parameters commit coalesced commands instead.
+- design gaps:
+  - No DS definition for template cards, the Templates section header, or the Template and Parameters rows: the Presets card, overline, Row, TextField, NumberField, ColorField, Select and IconButton are reused.
+- pending manual checks:
+  1. Select a card compound, open its sequence, select the title text, Properties > Parameters > Expose as parameter; do the same for the bar color. Back out: the Template section shows both fields; two instances with different values show two different cards.
+  2. Edit the template sequence (move the title): every instance changes and keeps its values.
+  3. Save as template, open another project, Presets tab > Templates: double-click inserts it with its media and font, one undo removes it.
+  4. `npm run cli -- fill fixtures/interop/templates fixtures/interop/templates/values.json` on a copy; render and compare with `expected/`.
+  5. Profiler: dragging a number parameter and playing a project with instances commits nothing in React during playback.

@@ -5,6 +5,7 @@
 //   info <dir> [--json]      what the project holds, with the facts the media files' headers give
 //   normalize <dir> [--write] completes a sparse project (migration, defaults, media headers, library fonts)
 //   render <dir> --out <file.mp4> | --frames <list> --png <dir>   headless render with the app's own compositor (§21.6)
+//   fill <dir> <values.json> sets template parameters of compound instances (§21.24)
 //   compare <a> <b>          SSIM and PSNR of two videos or PNG folders (§21.6)
 //   schema                   the JSON Schema of project.json
 //   docs                     writes the field reference of docs/INTEROP.md (`npm run docs:interop`)
@@ -13,7 +14,7 @@ import { fileURLToPath } from "node:url";
 import { buildCapabilities, formatCapabilities } from "../../src/core/capabilities.js";
 import { projectJsonSchema } from "../../src/core/document/jsonSchema.js";
 import { FIELDS_BEGIN_START, FIELDS_END, fieldReference } from "../../src/core/document/interopDoc.js";
-import { normalizeProjectFolder, projectInfo, validateProjectFolder, type FolderReport } from "./folder.js";
+import { fillProjectFolder, normalizeProjectFolder, projectInfo, validateProjectFolder, type FolderReport } from "./folder.js";
 import { compareCommand, renderCommand, RENDER_USAGE } from "./render.js";
 
 const root = new URL("../", import.meta.url);
@@ -28,6 +29,7 @@ const USAGE = `Usage: project-cli <command>
   info <dir> [--json]       duration, tracks, clips by kind, stand-ins, media and what their headers say
   normalize <dir> [--write] complete a sparse project (print it; --write: write project.json and fonts/)
   schema                    print the JSON Schema of project.json
+  fill <dir> <values.json>  set the template parameters of compound instances (by clip id or name) and write project.json
 ${RENDER_USAGE}`;
 
 const list = (counts: Record<string, number>): string => Object.entries(counts).map(([kind, count]) => `${count} ${kind}`).join(", ");
@@ -77,6 +79,20 @@ function writeDocs(): number {
   writeFileSync(file, `${text.slice(0, begin)}${fieldReference()}${text.slice(end + FIELDS_END.length)}`);
   console.log("docs/INTEROP.md field reference written");
   return 0;
+}
+
+async function fillCommand(dir: string, values: string): Promise<number> {
+  try {
+    const report = await fillProjectFolder(dir, values);
+    for (const error of report.errors) console.error(`error   ${error}`);
+    if (report.written) console.error(`filled ${report.applied.length} values: ${report.applied.join(", ")}
+written: ${dir}/project.json`);
+    else console.error("not written: nothing was changed");
+    return report.ok ? 0 : 1;
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error));
+    return 1;
+  }
 }
 
 async function normalizeCommand(dir: string, write: boolean): Promise<number> {
@@ -131,6 +147,9 @@ export async function run(argv: readonly string[]): Promise<number> {
     case "normalize":
       if (args.length !== 1) break;
       return normalizeCommand(args[0] as string, flags.has("--write"));
+    case "fill":
+      if (args.length !== 2) break;
+      return fillCommand(args[0] as string, args[1] as string);
     case "schema":
       if (args.length > 0) break;
       console.log(JSON.stringify(projectJsonSchema(), null, 2));

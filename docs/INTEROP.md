@@ -1035,6 +1035,21 @@ Three optional fields of video clips (`reverse` also of audio clips); a missing 
 
 `fixtures/interop/lottie` holds three animations (`spinner.json`, `bounce.json` and the archive `pulse.lottie`, original and CC0, with `LICENSE.md`) in a 60 fps project: a looping spinner, the spinner with two replaced colors at speed 2, the bounce with and without a replaced color, and the archive scaled to 300 percent, with expected frames in `expected/`. `npm run test:render` renders them on both backends. Schema 22 projects open unchanged (migration 22 to 23 changes nothing). Editing the inside of an animation beyond color overrides is not part of this version.
 
+**Templates: compound clips with parameters (manifest keys `templates`, true, and `templateParamKinds`: `text`, `color`, `number`, `media`, `font`, `toggle`; schema 24).** Any compound clip's sequence can expose named parameters, and every compound clip that shows the sequence carries its own values. The sequence is shared (editing it changes every instance); the values only replace the target fields while the instance is evaluated, so one sequence shows as many different cards as there are instances. Schema 23 projects open unchanged (migration 23 to 24 changes nothing).
+
+- **`sequences.<id>.params`** is a list of parameters: `id` (unique in the sequence), `label` (the name shown and the name `fill` matches, one line, at most 40 characters), `kind` (`text`, `color`, `number`, `media`, `font` or `toggle`), `targets` (a list of `{ "clipId", "path" }`: the fields of clips of this sequence the value is written to) and `default` (a value of the kind). A `number` parameter may have `min` and `max`.
+- A `path` is a dotted path into the target clip (`text.value`, `fill`, `size.w`, `enabled`, `style.fontFamily`, `mediaId`). The roots `id`, `trackId`, `kind`, `start`, `duration`, `sequenceId`, `linkId` and `linkGroup` are refused. The field must hold a value of the kind: text for `text` and `font`, an RGBA color (channels 0 to 1) for `color`, a number for `number`, a media id of the project for `media`, a boolean for `toggle`. A target whose clip was deleted, or an optional field the clip does not have, is allowed and sets nothing; a target clip of another sequence is an error.
+- **`clips.<id>.params`** (compound clips only) maps parameter ids to values. A missing entry leaves the field as the sequence has it (new instances start from the defaults); an entry that no longer fits the parameter, or names an unknown parameter, is an error for `validate` and is ignored when drawing.
+- Caches that depend on a clip's fields (text rasters, textures) are keyed on the values, so instances with equal values share their frames and instances with different values never do.
+
+```json TemplateParam
+{ "id": "p1", "label": "Title text", "kind": "text", "targets": [{ "clipId": "card-title", "path": "text.value" }], "default": "Title" }
+```
+
+`npm run cli -- fill <folder> <values.json>` writes values into the instances: `values.json` is `{ "<instance clip id or name>": { "<parameter id or label>": <value> } }`, a color may be `"#rrggbb"`, and nothing is written unless every entry is valid (all or nothing; the project is validated again before it is saved).
+
+`fixtures/interop/templates` holds a paper card template (title and body text, an accent color for the bar and the dot, a width and a visibility toggle) with three instances, `values.json` for `fill`, and the expected frames in `expected/`. `fill` on the project without values reproduces the committed project. A template saved in the editor is the sequence tree, its clips, its media files and the fonts of its text, stored in the global store and in the library folder's `templates/` (one folder per template); a public template marketplace is not part of this version.
+
 ## 6. Captions and word timings
 
 The caption track's `captionTracks[<track id>].style` styles every cue; a cue's `styleOverride` sets only the fields it changes. A cue is a `caption` clip with `text` (`\n` for line breaks) and optional `words`: `start` and `end` are integer frames relative to the cue's start, `end` after `start`. A word may start before the cue or end after it: an in-trim keeps the words it hides (negative frames), so a trim back shows them again. With word timings the active word is highlighted as the style's `highlight` says.
@@ -1869,7 +1884,7 @@ project.json.
 
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| `schemaVersion` | integer (>= 1) | yes | `23` | The schema version; this build writes and reads up to the current one. |
+| `schemaVersion` | integer (>= 1) | yes | `24` | The schema version; this build writes and reads up to the current one. |
 | `id` | string (not empty) | yes |  | Unique id, never changes (uuid v4 recommended). |
 | `name` | string | yes |  | Project name. |
 | `settings` | [Settings](#settings) | yes |  | Frame and time base. |
@@ -2281,6 +2296,7 @@ A nested sequence shown as one layer (Batch 62): inner frame = `offset + (frame 
 | `keyframes` | [Keyframes](#keyframes) | no |  | Animated properties. |
 | `fades` | [Fades](#fades) | yes | `{"in":0,"out":0}` | Opacity fades. |
 | `volume` | [Volume](#volume) | yes |  | Gain of the inner audio. |
+| `params` | object of any JSON value by id | no |  | Template parameter values of this instance by parameter id (Batch 80); a missing one leaves the field as the sequence has it. |
 
 #### Clip.shape
 
@@ -2507,6 +2523,30 @@ A nested sequence (Batch 62): its inner clips are in `Project.clips` on its own 
 | `tracks` | [Track](#track)[] | yes |  | Inner video and audio tracks, ordered like `Project.tracks`; no caption track. |
 | `perspective` | number (> 0) or null | no | `1600` | Viewing distance of its 2.5D layers, px (Batch 70); null: none. Absent: 1600. |
 | `depthSort` | boolean | no | `false` | Inner layers drawn by depth, farthest first, instead of track order (Batch 70). |
+| `params` | [TemplateParam](#templateparam)[] | no |  | Template parameters (Batch 80): fields of inner clips that each instance can set. Absent: none. |
+
+#### TemplateParam
+
+A template parameter (Batch 80): a named field of one or more inner clips of the sequence, set per instance in `Clip.compound.params`.
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `id` | string (not empty) | yes |  | Unique within the sequence; the key of the instance values. |
+| `label` | string | yes |  | Name shown in the instance form. |
+| `kind` | `"text"` | `"color"` | `"number"` | `"media"` | `"font"` | `"toggle"` | yes |  | What it holds: `text` (string), `color` (RGBA, channels 0..1), `number`, `media` (a media id), `font` (a font family name) or `toggle` (boolean). |
+| `targets` | [TemplateTarget](#templatetarget)[] | yes |  | The inner clip fields it sets; at least one. |
+| `default` | any JSON value | yes |  | The value of the field when the parameter was exposed, and the value an instance starts with. |
+| `min` | number | no |  | Number parameters: the lowest value. |
+| `max` | number | no |  | Number parameters: the highest value. |
+
+#### TemplateTarget
+
+A field a template parameter sets.
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `clipId` | string (not empty) | yes |  | An inner clip of the sequence. |
+| `path` | string (not empty) | yes |  | Dotted path of the field on that clip, for example `text.value`, `style.fontFamily`, `fill`, `mediaId` or `enabled`; never `id`, `trackId`, `kind`, `start` or `duration`. |
 
 #### Size
 

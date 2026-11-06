@@ -18,6 +18,8 @@ import { contextKey, propertiesContext, sectionIds, type PropertiesContext, type
 import { useFocusReturn } from "./properties/focusReturn.js";
 import { KeyframeControls } from "./properties/KeyframeControls.js";
 import { LottieSection } from "./properties/LottieSection.js";
+import { ParametersSection } from "./properties/ParametersSection.js";
+import { TemplateSection } from "./properties/TemplateSection.js";
 import { MarkerSection } from "./properties/MarkerSection.js";
 import { ProjectSection } from "./properties/ProjectSection.js";
 import { QuickActions } from "./properties/QuickActions.js";
@@ -65,6 +67,8 @@ const SECTION_TITLES: Record<SectionId, string> = {
   masks: "Masks",
   effects: "Effects",
   lottie: "Lottie",
+  template: "Template",
+  parameters: "Parameters",
   speed: "Speed",
   audio: "Audio",
   transition: "Transition",
@@ -105,6 +109,10 @@ function sectionBody(id: SectionId, context: PropertiesContext): ReactNode {
       return context.kind === "clips" ? <EffectsSection ids={context.maskIds} /> : null;
     case "lottie":
       return context.kind === "clips" ? <LottieSection ids={context.lottieIds} /> : null;
+    case "template":
+      return context.kind === "clips" ? <TemplateSection ids={context.templateIds} /> : null;
+    case "parameters":
+      return context.kind === "clips" && context.hostSequence !== null ? <ParametersSection sequenceId={context.hostSequence} primary={context.primary} /> : null;
     case "speed":
       return context.kind === "clips" ? <SpeedSection ids={context.speedIds} /> : null;
     case "audio":
