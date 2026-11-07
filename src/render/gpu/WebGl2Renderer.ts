@@ -15,14 +15,16 @@
 //   canvas (hdr.ts). Spare video-frame textures are reused as WebGPU's are.
 // - Per-record uniforms (packLayer's 13 vec4) go through uniform4fv with an offset into one array: a
 //   frame allocates nothing on our side. A lost context drops everything; owners re-upload on "ready".
+// - Vector shapes (Batch 65) as WebGpuRenderer draws them: stencil then cover into a 4x multisampled
+//   framebuffer (renderbuffers), resolved with blitFramebuffer into a pooled texture.
 import type { RGBA } from "../../core/document/types.js";
 import type { DrawList } from "../compositor/drawList.js";
 import { IDENTITY, mutableIdentity, setMat, type MutableMat3 } from "../mat3.js";
 import type { BackendRenderer } from "./backend.js";
-import { blurRegionInto, DrawRecords, premultipliedInto, showBlurred, type BlurRegion, type RecordKind } from "./drawRecords.js";
+import { blurRegionInto, DrawRecords, newRecordUniform, pathRegionInto, premultipliedInto, showBlurred, showPath, writePathUniform, type BlurRegion, type QuadKind, type Rect } from "./drawRecords.js";
 import { fitWithin, hasAlphaFormat } from "./fitWithin.js";
 import type { GlContext } from "./GlContext.js";
-import { BLUR_FRAGMENT, DISSOLVE_FRAGMENT, DISSOLVE_VERTEX, FULLSCREEN_VERTEX, LAYER_VERTEX, SCALE_ALPHA_FRAGMENT, SCALE_FRAGMENT, SOLID_FRAGMENT, TEXTURED_FRAGMENT } from "./glShaders.js";
+import { BLUR_FRAGMENT, DISSOLVE_FRAGMENT, DISSOLVE_VERTEX, FULLSCREEN_VERTEX, LAYER_VERTEX, PATH_COVER_FRAGMENT, PATH_COVER_VERTEX, PATH_STENCIL_FRAGMENT, PATH_STENCIL_VERTEX, SCALE_ALPHA_FRAGMENT, SCALE_FRAGMENT, SOLID_FRAGMENT, TEXTURED_FRAGMENT } from "./glShaders.js";
 import { isHdrColorSpace, toneMapToCanvas } from "./hdr.js";
 import { layerFloats, LAYER_SIZE, LAYER_STRIDE, packLayer, packMat3, pixelsToClipInto } from "./layerUniforms.js";
 import { mipLevelCount, textureBytes } from "./mipmaps.js";
@@ -31,6 +33,7 @@ import type { AlphaPlane, CanvasTarget, DeviceEvent, OffscreenTarget, Pane, Rend
 import { BLUR_KEEP_DRAWS, BLUR_STEP } from "./WebGpuRenderer.js";
 
 const TRANSPARENT: RGBA = { r: 0, g: 0, b: 0, a: 0 };
+type DrawRecordPath = ReturnType<DrawRecords<GlTexture>["at"]>["path"];
 /** WebGPU's default maxTextureDimension2D (what WebGpuRenderer gets): the same sizes on both backends. */
 const MAX_TEXTURE = 8192;
 const INITIAL_LAYERS = 64;
@@ -39,6 +42,20 @@ const LAYER_FLOATS = LAYER_SIZE / 4;
 const LAYER_STRIDE_FLOATS = LAYER_STRIDE / 4;
 /** As WebGpuRenderer: spare video-frame textures kept at most. */
 const MAX_SPARE_FRAMES = 4;
+/** As WebGpuRenderer: samples of a shape's scratch, and the steps it grows in. */
+const PATH_SAMPLES = 4;
+const PATH_STEP = 256;
+
+/** Shapes (Batch 65): the stencil and cover programs, the multisampled scratch and the triangles' buffer. */
+interface GlPath {
+  stencil: Program;
+  cover: Program;
+  vao: WebGLVertexArrayObject;
+  buffer: WebGLBuffer;
+  /** Bytes. */
+  capacity: number;
+  scratch: { framebuffer: WebGLFramebuffer; color: WebGLRenderbuffer; stencil: WebGLRenderbuffer; width: number; height: number } | null;
+}
 
 /** A GL texture and its framebuffer (made when it is first rendered into). */
 interface Surface {
@@ -143,7 +160,11 @@ interface Resources {
   gl: WebGL2RenderingContext;
   generation: number;
   maxTextureSize: number;
-  programs: Record<RecordKind, Program>;
+  programs: Record<QuadKind, Program>;
+  /** The vertex array of quads (no attributes: they come from gl_VertexID). */
+  quads: WebGLVertexArrayObject;
+  /** Shapes; null until the first one is drawn. */
+  path: GlPath | null;
   scale: Program;
   /** `scale` with an alpha plane on unit 1 (Batch 64); linked on the first video with alpha. */
   scaleAlpha: Program | null;
@@ -173,6 +194,12 @@ export class WebGl2Renderer implements BackendRenderer {
   private readonly lastScissor = { x: 0, y: 0, width: 0, height: 0 };
   private readonly blurRegion: BlurRegion = { x: 0, y: 0, width: 0, height: 0, sigma: 0, reach: 0 };
   private readonly blurGrow = mutableIdentity();
+  /** Shapes in this draw: their records' indices and regions, a draw's uniform and the packed triangles. */
+  private readonly pathIndices: number[] = [];
+  private readonly pathRegions: Rect[] = [];
+  private readonly pathUniform = newRecordUniform();
+  private readonly pathData = new Float32Array(LAYER_STRIDE_FLOATS);
+  private pathVertices = new Float32Array(1024);
   /** Draws so far (the blur pool's clock, and which draw a program's view belongs to). */
   private draws = 0;
 
@@ -288,6 +315,7 @@ export class WebGl2Renderer implements BackendRenderer {
     if (res) {
       for (const entry of res.blurPool.splice(0)) entry.texture.destroy();
       this.dropScratch(res);
+      this.dropPathScratch(res);
     }
     this.hdrCanvas = null;
   }
@@ -328,6 +356,7 @@ export class WebGl2Renderer implements BackendRenderer {
     if (gl.isContextLost()) return false;
     const count = this.records.build(panes, target.width, target.height);
     this.draws += 1;
+    this.pathRecords(res, count);
     this.blurRecords(res, count);
 
     // Framebuffers keep row 0 at the top: the view turns y for them.
@@ -375,6 +404,7 @@ export class WebGl2Renderer implements BackendRenderer {
         last.width = scissor.width;
         last.height = scissor.height;
       }
+      if (record.kind === "path" || (record.kind === "textured" && !record.texture0)) continue;
       const program = res.programs[record.kind];
       if (program !== current) {
         gl.useProgram(program.program);
@@ -414,6 +444,200 @@ export class WebGl2Renderer implements BackendRenderer {
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     // Rows come top first (framebuffers are drawn that way up), premultiplied.
     return createImageBitmap(new ImageData(unpadAndUnpremultiply(pixels, width, height, width * 4), width, height), { premultiplyAlpha: "none" });
+  }
+
+  /** See WebGpuRenderer.pathRecords: every shape record drawn into a pooled texture, the record pointed at it. */
+  private pathRecords(res: Resources, count: number): void {
+    const indices = this.pathIndices;
+    indices.length = 0;
+    let floats = 0;
+    let width = 0;
+    let height = 0;
+    for (let index = 0; index < count; index++) {
+      const record = this.records.at(index);
+      if (record.kind !== "path" || !record.path) continue;
+      const region = pathRegionInto((this.pathRegions[indices.length] ??= { x: 0, y: 0, width: 0, height: 0 }), record);
+      if (!region) {
+        record.kind = "textured";
+        record.path = null;
+        record.uniform.opacity = 0;
+        record.texture0 = null;
+        continue;
+      }
+      indices.push(index);
+      width = Math.max(width, region.width);
+      height = Math.max(height, region.height);
+      for (const draw of record.path.draws) floats += draw.triangles.length + (draw.clip?.length ?? 0);
+    }
+    if (indices.length === 0) return;
+    const { gl } = res;
+    const path = (res.path ??= this.buildPath(res));
+    const scratch = this.pathScratch(res, path, width, height);
+    if (this.pathVertices.length < floats) this.pathVertices = new Float32Array(Math.max(floats, 2 * this.pathVertices.length));
+    let at = 0;
+    for (const index of indices) {
+      for (const draw of (this.records.at(index).path as NonNullable<DrawRecordPath>).draws) {
+        if (draw.clip) {
+          this.pathVertices.set(draw.clip, at);
+          at += draw.clip.length;
+        }
+        this.pathVertices.set(draw.triangles, at);
+        at += draw.triangles.length;
+      }
+    }
+    gl.bindVertexArray(path.vao);
+    gl.bindBuffer(gl.ARRAY_BUFFER, path.buffer);
+    if (floats * 4 > path.capacity) {
+      while (path.capacity < floats * 4) path.capacity *= 2;
+      gl.bufferData(gl.ARRAY_BUFFER, path.capacity, gl.DYNAMIC_DRAW);
+    }
+    gl.bufferSubData(gl.ARRAY_BUFFER, 0, this.pathVertices, 0, floats);
+
+    gl.enable(gl.SCISSOR_TEST);
+    gl.enable(gl.STENCIL_TEST);
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+    at = 0;
+    let current: Program | null = null;
+    const bindProgram = (program: Program) => {
+      if (program !== current) {
+        gl.useProgram(program.program);
+        current = program;
+      }
+      gl.uniform4fv(program.layer, this.pathData, 0, LAYER_FLOATS);
+    };
+    const stencilPass = (rule: "nonzero" | "evenodd" | "union", first: number, length: number) => {
+      gl.colorMask(false, false, false, false);
+      gl.stencilMask(0x7f);
+      gl.stencilFunc(gl.ALWAYS, 1, 0xff);
+      if (rule === "nonzero") {
+        // Front faces count up and back faces down (the winding number, modulo 128); evenodd flips.
+        gl.stencilOpSeparate(gl.FRONT, gl.KEEP, gl.KEEP, gl.INCR_WRAP);
+        gl.stencilOpSeparate(gl.BACK, gl.KEEP, gl.KEEP, gl.DECR_WRAP);
+      } else {
+        gl.stencilOp(gl.KEEP, gl.KEEP, rule === "evenodd" ? gl.INVERT : gl.REPLACE);
+      }
+      gl.drawArrays(gl.TRIANGLES, first / 2, length / 2);
+    };
+    for (let i = 0; i < indices.length; i++) {
+      const record = this.records.at(indices[i] as number);
+      const region = this.pathRegions[i] as Rect;
+      gl.bindFramebuffer(gl.FRAMEBUFFER, scratch.framebuffer);
+      gl.viewport(0, 0, scratch.width, scratch.height);
+      // Framebuffers keep row 0 at the top (the matrices turn y): the region is rows 0..height.
+      gl.scissor(0, 0, region.width, region.height);
+      gl.colorMask(true, true, true, true);
+      gl.stencilMask(0xff);
+      gl.clearColor(0, 0, 0, 0);
+      gl.clearStencil(0);
+      gl.clear(gl.COLOR_BUFFER_BIT | gl.STENCIL_BUFFER_BIT);
+      for (const draw of (record.path as NonNullable<DrawRecordPath>).draws) {
+        writePathUniform(this.pathUniform, record, draw, region, scratch.width, scratch.height, true);
+        packLayer(this.pathData, 0, this.pathUniform);
+        if (draw.rule === "inside" || draw.rule === "outside") {
+          const clip = draw.clip as Float32Array;
+          bindProgram(path.stencil);
+          stencilPass(draw.clipRule, at, clip.length);
+          at += clip.length;
+          // The fill's inside into the top bit (0x80), zero elsewhere.
+          bindProgram(path.cover);
+          gl.stencilMask(0xff);
+          gl.stencilFunc(gl.NOTEQUAL, 0x80, 0x7f);
+          gl.stencilOp(gl.ZERO, gl.ZERO, gl.REPLACE);
+          gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+          bindProgram(path.stencil);
+          stencilPass("union", at, draw.triangles.length);
+          at += draw.triangles.length;
+          bindProgram(path.cover);
+          gl.colorMask(true, true, true, true);
+          gl.stencilMask(0xff);
+          gl.stencilFunc(gl.EQUAL, draw.rule === "inside" ? 0x81 : 0x01, 0xff);
+        } else {
+          bindProgram(path.stencil);
+          stencilPass(draw.rule, at, draw.triangles.length);
+          at += draw.triangles.length;
+          bindProgram(path.cover);
+          gl.colorMask(true, true, true, true);
+          gl.stencilMask(0xff);
+          gl.stencilFunc(gl.NOTEQUAL, 0, 0x7f);
+        }
+        // Paint where the stencil says inside; clear it everywhere under the cover.
+        gl.stencilOp(gl.ZERO, gl.ZERO, gl.ZERO);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      }
+      const texture = this.blurTexture(res, region.width, region.height);
+      // Bound as both, then the scratch as the one read from.
+      this.framebufferOf(res, texture.surface);
+      gl.bindFramebuffer(gl.READ_FRAMEBUFFER, scratch.framebuffer);
+      gl.blitFramebuffer(0, 0, region.width, region.height, 0, 0, region.width, region.height, gl.COLOR_BUFFER_BIT, gl.NEAREST);
+      showPath(record, region, texture);
+    }
+    gl.disable(gl.STENCIL_TEST);
+    gl.disable(gl.BLEND);
+    gl.disable(gl.SCISSOR_TEST);
+    gl.colorMask(true, true, true, true);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.bindVertexArray(res.quads);
+  }
+
+  /** The shapes' scratch, at least `width` x `height` (grown in steps, never shrunk until `releaseCaches`). */
+  private pathScratch(res: Resources, path: GlPath, width: number, height: number): NonNullable<GlPath["scratch"]> {
+    const current = path.scratch;
+    if (current && current.width >= width && current.height >= height) return current;
+    const { gl } = res;
+    const step = (size: number) => Math.min(res.maxTextureSize, Math.ceil(size / PATH_STEP) * PATH_STEP);
+    const w = Math.max(step(width), current?.width ?? 0);
+    const h = Math.max(step(height), current?.height ?? 0);
+    this.dropPathScratch(res);
+    const samples = Math.min(PATH_SAMPLES, gl.getParameter(gl.MAX_SAMPLES) as number);
+    const color = gl.createRenderbuffer();
+    gl.bindRenderbuffer(gl.RENDERBUFFER, color);
+    gl.renderbufferStorageMultisample(gl.RENDERBUFFER, samples, gl.RGBA8, w, h);
+    const stencil = gl.createRenderbuffer();
+    gl.bindRenderbuffer(gl.RENDERBUFFER, stencil);
+    gl.renderbufferStorageMultisample(gl.RENDERBUFFER, samples, gl.STENCIL_INDEX8, w, h);
+    gl.bindRenderbuffer(gl.RENDERBUFFER, null);
+    const framebuffer = gl.createFramebuffer();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
+    gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.RENDERBUFFER, color);
+    gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.STENCIL_ATTACHMENT, gl.RENDERBUFFER, stencil);
+    path.scratch = { framebuffer, color, stencil, width: w, height: h };
+    return path.scratch;
+  }
+
+  private dropPathScratch(res: Resources): void {
+    const scratch = res.path?.scratch;
+    if (!scratch || !res.path) return;
+    const { gl } = res;
+    gl.deleteFramebuffer(scratch.framebuffer);
+    gl.deleteRenderbuffer(scratch.color);
+    gl.deleteRenderbuffer(scratch.stencil);
+    res.path.scratch = null;
+  }
+
+  private buildPath(res: Resources): GlPath {
+    const { gl } = res;
+    const program = (label: string, vertex: string, fragment: string): Program => {
+      const made = linkProgram(gl, label, vertex, fragment);
+      return { program: made, view: null, layer: gl.getUniformLocation(made, "u_layer"), mipmapped: null, blur: null, viewDraw: -1 };
+    };
+    const vao = gl.createVertexArray();
+    const buffer = gl.createBuffer();
+    gl.bindVertexArray(vao);
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    const capacity = 64 * 1024;
+    gl.bufferData(gl.ARRAY_BUFFER, capacity, gl.DYNAMIC_DRAW);
+    gl.enableVertexAttribArray(0);
+    gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 8, 0);
+    gl.bindVertexArray(res.quads);
+    return {
+      stencil: program("shape stencil", PATH_STENCIL_VERTEX, PATH_STENCIL_FRAGMENT),
+      cover: program("shape cover", PATH_COVER_VERTEX, PATH_COVER_FRAGMENT),
+      vao,
+      buffer,
+      capacity,
+      scratch: null,
+    };
   }
 
   /**
@@ -684,7 +908,8 @@ export class WebGl2Renderer implements BackendRenderer {
     gl.disable(gl.DEPTH_TEST);
     gl.disable(gl.CULL_FACE);
     // Quads come from gl_VertexID: an empty vertex array.
-    gl.bindVertexArray(gl.createVertexArray());
+    const quads = gl.createVertexArray();
+    gl.bindVertexArray(quads);
     const limits = [gl.getParameter(gl.MAX_TEXTURE_SIZE), gl.getParameter(gl.MAX_RENDERBUFFER_SIZE), ...(gl.getParameter(gl.MAX_VIEWPORT_DIMS) as Int32Array)] as number[];
     const program = (label: string, vertex: string, fragment: string, samplers: readonly string[]): Program => {
       const made = linkProgram(gl, label, vertex, fragment);
@@ -713,6 +938,8 @@ export class WebGl2Renderer implements BackendRenderer {
       blurProgram: program("blur", FULLSCREEN_VERTEX, BLUR_FRAGMENT, ["u_source"]),
       scratch: null,
       blurPool: [],
+      quads,
+      path: null,
     };
     gl.useProgram(null);
     return resources;

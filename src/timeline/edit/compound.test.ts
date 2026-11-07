@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { makeCompoundClip, makeMedia, makeMediaClip, makeProject, makeSolidClip, makeTextClip, makeTrack, withClips } from "../../core/document/fixtures.js";
-import { nestingProblem } from "../../core/document/sequences.js";
+import { nestingProblem, sequenceView } from "../../core/document/sequences.js";
 import type { Clip, CompoundClip, MediaClip, Project, Sequence, SolidClip } from "../../core/document/types.js";
 import { validateProject } from "../../core/document/validate.js";
 import { DocumentStore } from "../../core/store/DocumentStore.js";
@@ -103,6 +103,11 @@ describe("Make compound (spec §21.10)", () => {
     }
     expect(validateProject(doc.getState())).toEqual([]);
     expect(makeCompoundProblem(doc.getState(), [made.compoundId])).toMatch(/at most 8/);
+    // Inside the open top compound, wrapping its inner compound again would make a ninth level too.
+    const top = doc.getState().clips[made.compoundId] as CompoundClip;
+    const opened = sequenceView(doc.getState(), doc.getState().sequences[top.sequenceId] as Sequence);
+    const innerId = Object.values(opened.clips).find((clip) => clip.kind === "compound" && opened.tracks.some((track) => track.clipIds.includes(clip.id)))!.id;
+    expect(makeCompoundProblem(opened, [innerId])).toMatch(/at most 8/);
   });
 });
 

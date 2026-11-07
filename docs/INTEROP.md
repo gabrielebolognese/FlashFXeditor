@@ -425,6 +425,90 @@ Add `-start_number 0` for a sequence that starts at 0. Dropping or importing a f
 
 `fixtures/interop/alpha` is a complete project: a VP9 alpha WebM (`media/overlay.webm`, about 2 KB) and the same 30-frame animation as a PNG sequence (`media/sequence/frame_%04d.png`), both over a blue solid, with expected frames in `expected/`. Alpha export (a transparent output file) is not part of this version.
 
+### 5.5 Vector shapes and trim paths (manifest keys `clipKinds` (adds `shape`), `vector.shapes`, `vector.trimPaths`, `vector.primitives`, `vector.keyframeProps`; schema 10)
+
+A `shape` clip draws vector paths, resolution independent, in the preview, the export and `cli render`, on both backends. It goes on a video track like a solid. `size` is its view box in project px at scale 1: path coordinates are view-box px with y down, and the clip's `transform` (position, scale, rotation, anchor, flips), `opacity`, `fades` and keyframes work as on a solid. Paths draw in order, the first one at the back; each path draws its fill, then its stroke.
+
+A path (`ShapePath`) has:
+
+- `id`: letters, digits, `_` or `-`, unique in the clip (keyframe properties name it).
+- `d`: SVG path data (all of `M L H V C S Q T A Z`, relative forms, implicit repeats and compact numbers; arcs are converted to cubics). Bad data is refused with its position.
+- `fill`: a color, a gradient (laid out in the path's box, as a solid's in its size), or `null` for none. `fillRule`: `nonzero` or `evenodd`.
+- `stroke` (optional): a solid's stroke (`width`, `color`, `align` `center`, `inside` or `outside`, `dash`, `dashOffset`) plus `cap` (`butt`, `round`, `square`), `join` (`miter`, `round`, `bevel`) and `miterLimit` (SVG's: a miter longer than `miterLimit` times the width is beveled). Dashes restart at each subpath; an odd dash list repeats; a zero-length dash with round or square caps draws a dot.
+- `trim` (optional): `start` and `end` (fractions 0..1 of the path's whole length, its subpaths in order) and `offset` (turns: 0.25 moves the window a quarter of the length along, wrapping round). Only the stroke is trimmed. `start` after `end` draws the same as swapped.
+- `primitive` (optional): a parametric shape centered in the view box, which replaces `d` when drawn (write its path in `d` as well, or `""`). Angles are degrees, 0 at the top, clockwise.
+
+| `kind` | params |
+|---|---|
+| `rect` | `w`, `h`, `radius` (corner, clamped to half the shorter side) |
+| `ellipse` | `w`, `h` |
+| `polygon` | `sides` (3..64), `radius`, `roundness` (0..1) |
+| `star` | `points` (3..64), `inner`, `outer` (radii), `roundness` (0..1) |
+| `arrow` | `length`, `shaft` (width), `head` (width), `headLength`, pointing right |
+| `arc` | `radius`, `start`, `end` (an open arc, for strokes) |
+| `line` | `length`, horizontal |
+
+Keyframe properties of paths (`<id>` is a path id; the path must exist and have what the key animates): `paths.<id>.trim.start`, `paths.<id>.trim.end`, `paths.<id>.trim.offset`, `paths.<id>.stroke.width`, `paths.<id>.stroke.color` and `paths.<id>.fill` (colors as `[r, g, b, a]`, a color fill only), `paths.<id>.stroke.dashOffset` and `paths.<id>.primitive.<param>` (any number param of its primitive). A trim key needs no `trim` on the path (absent is 0, 1, 0); keyed trims stay within 0..1.
+
+A checkmark that draws on over 10 frames:
+
+```json Clip.shape
+{
+  "id": "check",
+  "trackId": "v2",
+  "kind": "shape",
+  "name": "Checkmark",
+  "start": 0,
+  "duration": 60,
+  "enabled": true,
+  "size": { "w": 300, "h": 250 },
+  "paths": [
+    {
+      "id": "tick",
+      "d": "M40 130 L110 200 L260 50",
+      "fill": null,
+      "fillRule": "nonzero",
+      "stroke": { "width": 28, "color": { "r": 0.2, "g": 0.85, "b": 0.45, "a": 1 }, "align": "center", "cap": "round", "join": "round", "miterLimit": 4 },
+      "trim": { "start": 0, "end": 1, "offset": 0 }
+    }
+  ],
+  "transform": { "x": -260, "y": -620, "scale": 1, "rotation": 0, "anchor": { "x": 0.5, "y": 0.5 }, "flipH": false, "flipV": false },
+  "opacity": 1,
+  "keyframes": {
+    "paths.tick.trim.end": [
+      { "frame": 0, "value": 0, "ease": "linear" },
+      { "frame": 10, "value": 1, "ease": "linear" }
+    ]
+  }
+}
+```
+
+A gauge's value arc (key `paths.value.primitive.end` from 0 to 270 on the clip):
+
+```json ShapePath
+{
+  "id": "value",
+  "d": "",
+  "fill": null,
+  "fillRule": "nonzero",
+  "stroke": { "width": 24, "color": { "r": 1, "g": 0.55, "b": 0.15, "a": 1 }, "align": "center", "cap": "round", "join": "miter", "miterLimit": 4 },
+  "primitive": { "kind": "arc", "radius": 120, "start": 0, "end": 270 }
+}
+```
+
+A pentagram with a hole (`nonzero` fills the middle as well):
+
+```json ShapePath
+{
+  "id": "p",
+  "d": "M150 20 L238 280 L10 115 L290 115 L62 280 Z",
+  "fill": { "r": 1, "g": 0.35, "b": 0.6, "a": 1 },
+  "fillRule": "evenodd"
+}
+```
+
+Edges are anti-aliased with 4 samples per pixel. Curves are flattened finely enough for the size they are shown at, so a shape scaled up stays smooth. `fixtures/interop/shapes` is a complete project with all of the above, every primitive, an inside and an outside stroke, a gradient fill and expected frames 0, 5, 10 and 30. SVG import, point editing and boolean operations are not part of this version (`vector.svgImport` is false).
+
 ## 6. Captions and word timings
 
 The caption track's `captionTracks[<track id>].style` styles every cue; a cue's `styleOverride` sets only the fields it changes. A cue is a `caption` clip with `text` (`\n` for line breaks) and optional `words`: `start` and `end` are integer frames relative to the cue's start, `end` after `start`. A word may start before the cue or end after it: an in-trim keeps the words it hides (negative frames), so a trim back shows them again. With word timings the active word is highlighted as the style's `highlight` says.
@@ -720,7 +804,7 @@ The parameters of a `spring` ease: a damped cosine over the segment that ends ex
 
 Keyframe lists by property id, each sorted by frame.
 
-Value: object of [Keyframe](#keyframe)[] (keys: `transform.x`, `transform.y`, `transform.scale`, `transform.scaleY`, `transform.rotation`, `opacity`, `volume.gainDb`, `transform.anchor.x`, `transform.anchor.y`, `crop.left`, `crop.top`, `crop.right`, `crop.bottom`, `size.w`, `size.h`, `cornerRadius`, `fill`, `stroke.width`, `stroke.color`, `stroke.dashOffset`, `shadow.x`, `shadow.y`, `shadow.blur`, `shadow.spread`, `shadow.color`, `style.fontSize`, `style.letterSpacing`, `style.fill`).
+Value: object of [Keyframe](#keyframe)[] (keys: `transform.x`, `transform.y`, `transform.scale`, `transform.scaleY`, `transform.rotation`, `opacity`, `volume.gainDb`, `transform.anchor.x`, `transform.anchor.y`, `crop.left`, `crop.top`, `crop.right`, `crop.bottom`, `size.w`, `size.h`, `cornerRadius`, `fill`, `stroke.width`, `stroke.color`, `stroke.dashOffset`, `shadow.x`, `shadow.y`, `shadow.blur`, `shadow.spread`, `shadow.color`, `style.fontSize`, `style.letterSpacing`, `style.fill`, and keys matching `^paths\.([A-Za-z0-9_-]+)\.(trim\.(?:start|end|offset)|stroke\.(?:width|color|dashOffset)|fill|primitive\.([A-Za-z]+))$`).
 
 #### Transition
 
@@ -1159,7 +1243,7 @@ project.json.
 
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| `schemaVersion` | integer (>= 1) | yes | `9` | The schema version; this build writes and reads up to the current one. |
+| `schemaVersion` | integer (>= 1) | yes | `10` | The schema version; this build writes and reads up to the current one. |
 | `id` | string (not empty) | yes |  | Unique id, never changes (uuid v4 recommended). |
 | `name` | string | yes |  | Project name. |
 | `settings` | [Settings](#settings) | yes |  | Frame and time base. |
@@ -1177,7 +1261,7 @@ project.json.
 
 A clip: the `kind` field selects its description.
 
-Told apart by `kind`: `video` is [Clip.video](#clip-video), `audio` is [Clip.audio](#clip-audio), `image` is [Clip.image](#clip-image), `text` is [Clip.text](#clip-text), `solid` is [Clip.solid](#clip-solid), `caption` is [Clip.caption](#clip-caption), `compound` is [Clip.compound](#clip-compound).
+Told apart by `kind`: `video` is [Clip.video](#clip-video), `audio` is [Clip.audio](#clip-audio), `image` is [Clip.image](#clip-image), `text` is [Clip.text](#clip-text), `solid` is [Clip.solid](#clip-solid), `caption` is [Clip.caption](#clip-caption), `compound` is [Clip.compound](#clip-compound), `shape` is [Clip.shape](#clip-shape).
 
 #### ClipBase
 
@@ -1187,7 +1271,7 @@ The fields every clip has.
 | --- | --- | --- | --- | --- |
 | `id` | string (not empty) | yes |  | Unique id; the key it is stored under. |
 | `trackId` | string (not empty) | yes |  | The track listing it. |
-| `kind` | `"video"` | `"audio"` | `"image"` | `"text"` | `"solid"` | `"caption"` | `"compound"` | yes |  | Kind. |
+| `kind` | `"video"` | `"audio"` | `"image"` | `"text"` | `"solid"` | `"caption"` | `"compound"` | `"shape"` | yes |  | Kind. |
 | `name` | string | yes |  | Display name. |
 | `start` | integer (>= 0) | yes |  | First frame on the timeline. Integer frames at the project frame rate. |
 | `duration` | integer (>= 1) | yes |  | Length, at least 1. Integer frames at the project frame rate. |
@@ -1373,6 +1457,151 @@ A nested sequence shown as one layer (Batch 62): inner frame = `offset + (frame 
 | `keyframes` | [Keyframes](#keyframes) | no |  | Animated properties. |
 | `fades` | [Fades](#fades) | yes | `{"in":0,"out":0}` | Opacity fades. |
 | `volume` | [Volume](#volume) | yes |  | Gain of the inner audio. |
+
+#### Clip.shape
+
+A vector graphic (Batch 65): paths drawn in order in a view box of `size` project px at scale 1.
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `id` | string (not empty) | yes |  | Unique id; the key it is stored under. |
+| `trackId` | string (not empty) | yes |  | The track listing it. |
+| `kind` | `"shape"` | yes |  | Kind. |
+| `name` | string | yes |  | Display name. |
+| `start` | integer (>= 0) | yes |  | First frame on the timeline. Integer frames at the project frame rate. |
+| `duration` | integer (>= 1) | yes |  | Length, at least 1. Integer frames at the project frame rate. |
+| `color` | `"red"` | `"orange"` | `"green"` | `"teal"` | `"blue"` | `"violet"` | `"pink"` | `"grey"` | no |  | Label color. |
+| `linkGroup` | string (not empty) | no |  | Clips sharing it move and trim together. |
+| `group` | string (not empty) | no |  | Clips sharing it select together. |
+| `enabled` | boolean | yes | `true` | Drawn and heard. |
+| `fallbackOf` | [FallbackOf](#fallbackof) | no |  | Set when the clip is a baked stand-in. |
+| `size` | [Size](#size) | yes |  | The view box: width and height at scale 1, project px. |
+| `paths` | [ShapePath](#shapepath)[] | yes | `[]` | The paths, bottom to top. |
+| `transform` | [Transform](#transform) | yes |  | Placement. |
+| `opacity` | number (>= 0, <= 1) | yes | `1` | Opacity. |
+| `keyframes` | [Keyframes](#keyframes) | no |  | Animated properties, including `paths.<id>.*`. |
+| `fades` | [Fades](#fades) | no |  | Opacity fades. |
+
+#### ShapePath
+
+One path of a shape clip (Batch 65). With `primitive`, the path is generated from it and `d` holds the generated data.
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `id` | string (not empty) | yes |  | Unique within the clip: letters, digits, `_` and `-` (keyframe ids name it). |
+| `d` | string | yes | `""` | SVG path data in view-box px (M L H V C S Q T A Z, absolute and relative); empty: nothing. |
+| `fill` | [RGBA](#rgba) | [Gradient](#gradient) | [GradientFill](#gradientfill) or null | yes | `null` | A color, a vertical two-stop gradient or a gradient with stops (laid out in the path's box); null: no fill. |
+| `fillRule` | `"nonzero"` | `"evenodd"` | yes | `"nonzero"` | Which points are inside where the path crosses itself. |
+| `stroke` | [PathStroke](#pathstroke) | no |  | Outline; absent: none. |
+| `trim` | [PathTrim](#pathtrim) | no |  | The drawn part of the stroke; absent: all of it. |
+| `primitive` | [Primitive](#primitive) | no |  | The generator of the path; absent: `d` is the path. |
+
+#### PathStroke
+
+The stroke of a path (Batch 65): a StrokeStyle in view-box px with caps, joins and a miter limit. `inside` and `outside` apply to closed paths (open ones are centered).
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `width` | number (>= 0) | yes | `4` | Width, view-box px. |
+| `color` | [RGBA](#rgba) | yes | `{"r":0,"g":0,"b":0,"a":1}` | Color. |
+| `align` | `"inside"` | `"center"` | `"outside"` | yes | `"center"` | Inside the fill, centered on the path or outside it. |
+| `dash` | number (>= 0)[] | no |  | Dash and gap lengths, view-box px (an odd list repeats); absent or empty: a solid line. |
+| `dashOffset` | number | no |  | Where the pattern starts along each subpath, view-box px. |
+| `cap` | `"butt"` | `"round"` | `"square"` | yes | `"butt"` | Ends of open subpaths and dashes. |
+| `join` | `"miter"` | `"round"` | `"bevel"` | yes | `"miter"` | Corners. |
+| `miterLimit` | number (>= 1) | yes | `4` | Longest miter as a multiple of the width; longer ones are beveled. |
+
+#### PathTrim
+
+The part of a path's stroke that is drawn (Batch 65): fractions of the whole path length (subpaths in order); `offset` shifts both ends and wraps.
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `start` | number (>= 0, <= 1) | yes | `0` | Start. |
+| `end` | number (>= 0, <= 1) | yes | `1` | End. |
+| `offset` | number | yes | `0` | Shift of both ends, fractions of the length. |
+
+#### Primitive
+
+A generated path, centered in the view box (Batch 65); angles in degrees, 0 = up, clockwise.
+
+Told apart by `kind`: `rect` is [Primitive.rect](#primitive-rect), `ellipse` is [Primitive.ellipse](#primitive-ellipse), `polygon` is [Primitive.polygon](#primitive-polygon), `star` is [Primitive.star](#primitive-star), `arrow` is [Primitive.arrow](#primitive-arrow), `arc` is [Primitive.arc](#primitive-arc), `line` is [Primitive.line](#primitive-line).
+
+#### Primitive.rect
+
+A rectangle.
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `kind` | `"rect"` | yes |  | Kind. |
+| `w` | number (>= 0) | yes |  | Width. |
+| `h` | number (>= 0) | yes |  | Height. |
+| `radius` | number (>= 0) | yes | `0` | Corner radius (at most half the shorter side). |
+
+#### Primitive.ellipse
+
+An ellipse.
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `kind` | `"ellipse"` | yes |  | Kind. |
+| `w` | number (>= 0) | yes |  | Width. |
+| `h` | number (>= 0) | yes |  | Height. |
+
+#### Primitive.polygon
+
+A regular polygon, its first corner up.
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `kind` | `"polygon"` | yes |  | Kind. |
+| `sides` | integer (>= 3, <= 64) | yes | `6` | Corners. |
+| `radius` | number (>= 0) | yes |  | Center to corner. |
+| `roundness` | number (>= 0, <= 1) | yes | `0` | Corner rounding (fraction of half the shorter neighboring edge). |
+
+#### Primitive.star
+
+A star, its first point up.
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `kind` | `"star"` | yes |  | Kind. |
+| `points` | integer (>= 3, <= 64) | yes | `5` | Points. |
+| `inner` | number (>= 0) | yes |  | Center to the inner corners. |
+| `outer` | number (>= 0) | yes |  | Center to the points. |
+| `roundness` | number (>= 0, <= 1) | yes | `0` | Corner rounding (fraction of half the shorter neighboring edge). |
+
+#### Primitive.arrow
+
+An arrow pointing right (a closed outline).
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `kind` | `"arrow"` | yes |  | Kind. |
+| `length` | number (>= 0) | yes |  | Tail to tip. |
+| `shaft` | number (>= 0) | yes |  | Shaft thickness. |
+| `head` | number (>= 0) | yes |  | Head width. |
+| `headLength` | number (>= 0) | yes |  | Head length (at most the length). |
+
+#### Primitive.arc
+
+An open circular arc from `start` to `end` (clockwise when `end` is larger); stroke it.
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `kind` | `"arc"` | yes |  | Kind. |
+| `radius` | number (>= 0) | yes |  | Radius. |
+| `start` | number (>= -3600, <= 3600) | yes | `0` | Start angle, degrees. |
+| `end` | number (>= -3600, <= 3600) | yes | `270` | End angle, degrees (the sweep is at most a full turn). |
+
+#### Primitive.line
+
+A horizontal line (open); stroke it.
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `kind` | `"line"` | yes |  | Kind. |
+| `length` | number (>= 0) | yes |  | Length. |
 
 #### Sequence
 

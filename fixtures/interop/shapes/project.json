@@ -1,0 +1,830 @@
+{
+  "schemaVersion": 10,
+  "id": "7f3a9c2e-5b1d-4e8a-9c6f-2d4b8e1a3c57",
+  "name": "Interop shapes",
+  "settings": {
+    "width": 1080,
+    "height": 1920,
+    "fps": {
+      "num": 30,
+      "den": 1
+    },
+    "background": {
+      "r": 0.08,
+      "g": 0.09,
+      "b": 0.12,
+      "a": 1
+    },
+    "sampleRate": 48000
+  },
+  "media": {},
+  "bins": [],
+  "tracks": [
+    {
+      "id": "v1",
+      "kind": "video",
+      "name": "V1",
+      "clipIds": [
+        "bg"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
+      "id": "v2",
+      "kind": "video",
+      "name": "V2",
+      "clipIds": [
+        "check"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
+      "id": "v3",
+      "kind": "video",
+      "name": "V3",
+      "clipIds": [
+        "gauge"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
+      "id": "v4",
+      "kind": "video",
+      "name": "V4",
+      "clipIds": [
+        "star"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
+      "id": "v5",
+      "kind": "video",
+      "name": "V5",
+      "clipIds": [
+        "arrow"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
+      "id": "v6",
+      "kind": "video",
+      "name": "V6",
+      "clipIds": [
+        "nonzero"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
+      "id": "v7",
+      "kind": "video",
+      "name": "V7",
+      "clipIds": [
+        "evenodd"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
+      "id": "v8",
+      "kind": "video",
+      "name": "V8",
+      "clipIds": [
+        "hex"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
+      "id": "v9",
+      "kind": "video",
+      "name": "V9",
+      "clipIds": [
+        "ring"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
+      "id": "v10",
+      "kind": "video",
+      "name": "V10",
+      "clipIds": [
+        "box"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
+      "id": "v11",
+      "kind": "video",
+      "name": "V11",
+      "clipIds": [
+        "line"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    }
+  ],
+  "clips": {
+    "bg": {
+      "id": "bg",
+      "trackId": "v1",
+      "kind": "solid",
+      "name": "Background",
+      "start": 0,
+      "duration": 60,
+      "enabled": true,
+      "shape": "rect",
+      "size": {
+        "w": 1080,
+        "h": 1920
+      },
+      "cornerRadius": 0,
+      "fill": {
+        "r": 0.08,
+        "g": 0.09,
+        "b": 0.12,
+        "a": 1
+      },
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1
+    },
+    "check": {
+      "id": "check",
+      "trackId": "v2",
+      "kind": "shape",
+      "name": "Checkmark",
+      "start": 0,
+      "duration": 60,
+      "enabled": true,
+      "size": {
+        "w": 300,
+        "h": 250
+      },
+      "paths": [
+        {
+          "id": "tick",
+          "d": "M40 130 L110 200 L260 50",
+          "fill": null,
+          "fillRule": "nonzero",
+          "stroke": {
+            "width": 28,
+            "color": {
+              "r": 0.2,
+              "g": 0.85,
+              "b": 0.45,
+              "a": 1
+            },
+            "align": "center",
+            "cap": "round",
+            "join": "round",
+            "miterLimit": 4
+          },
+          "trim": {
+            "start": 0,
+            "end": 1,
+            "offset": 0
+          }
+        }
+      ],
+      "transform": {
+        "x": -260,
+        "y": -620,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "keyframes": {
+        "paths.tick.trim.end": [
+          {
+            "frame": 0,
+            "value": 0,
+            "ease": "linear"
+          },
+          {
+            "frame": 10,
+            "value": 1,
+            "ease": "linear"
+          }
+        ]
+      }
+    },
+    "gauge": {
+      "id": "gauge",
+      "trackId": "v3",
+      "kind": "shape",
+      "name": "Gauge",
+      "start": 0,
+      "duration": 60,
+      "enabled": true,
+      "size": {
+        "w": 300,
+        "h": 300
+      },
+      "paths": [
+        {
+          "id": "track",
+          "d": "M150 30C216.274 30 270 83.726 270 150C270 216.274 216.274 270 150 270C83.726 270 30 216.274 30 150",
+          "fill": null,
+          "fillRule": "nonzero",
+          "stroke": {
+            "width": 24,
+            "color": {
+              "r": 0.32,
+              "g": 0.34,
+              "b": 0.4,
+              "a": 1
+            },
+            "align": "center",
+            "cap": "round",
+            "join": "miter",
+            "miterLimit": 4
+          },
+          "primitive": {
+            "kind": "arc",
+            "radius": 120,
+            "start": 0,
+            "end": 270
+          }
+        },
+        {
+          "id": "value",
+          "d": "M150 30C216.274 30 270 83.726 270 150C270 216.274 216.274 270 150 270C83.726 270 30 216.274 30 150",
+          "fill": null,
+          "fillRule": "nonzero",
+          "stroke": {
+            "width": 24,
+            "color": {
+              "r": 1,
+              "g": 0.55,
+              "b": 0.15,
+              "a": 1
+            },
+            "align": "center",
+            "cap": "round",
+            "join": "miter",
+            "miterLimit": 4
+          },
+          "primitive": {
+            "kind": "arc",
+            "radius": 120,
+            "start": 0,
+            "end": 270
+          }
+        }
+      ],
+      "transform": {
+        "x": 260,
+        "y": -620,
+        "scale": 1,
+        "rotation": -135,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "keyframes": {
+        "paths.value.primitive.end": [
+          {
+            "frame": 0,
+            "value": 0,
+            "ease": "linear"
+          },
+          {
+            "frame": 30,
+            "value": 270,
+            "ease": "linear"
+          }
+        ]
+      }
+    },
+    "star": {
+      "id": "star",
+      "trackId": "v4",
+      "kind": "shape",
+      "name": "Star",
+      "start": 0,
+      "duration": 60,
+      "enabled": true,
+      "size": {
+        "w": 300,
+        "h": 300
+      },
+      "paths": [
+        {
+          "id": "star",
+          "d": "M150 10L185.267 101.459L283.148 106.738L207.063 168.541L232.29 263.262L150 210L67.71 263.262L92.937 168.541L16.852 106.738L114.733 101.459Z",
+          "fill": {
+            "type": "linear",
+            "angle": 0,
+            "center": {
+              "x": 0.5,
+              "y": 0.5
+            },
+            "radius": 1,
+            "stops": [
+              {
+                "at": 0,
+                "color": {
+                  "r": 1,
+                  "g": 0.85,
+                  "b": 0.2,
+                  "a": 1
+                }
+              },
+              {
+                "at": 1,
+                "color": {
+                  "r": 1,
+                  "g": 0.55,
+                  "b": 0.15,
+                  "a": 1
+                }
+              }
+            ]
+          },
+          "fillRule": "nonzero",
+          "stroke": {
+            "width": 6,
+            "color": {
+              "r": 1,
+              "g": 1,
+              "b": 1,
+              "a": 1
+            },
+            "align": "center",
+            "cap": "butt",
+            "join": "miter",
+            "miterLimit": 10
+          },
+          "primitive": {
+            "kind": "star",
+            "points": 5,
+            "inner": 60,
+            "outer": 140,
+            "roundness": 0
+          }
+        }
+      ],
+      "transform": {
+        "x": -260,
+        "y": -140,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1
+    },
+    "arrow": {
+      "id": "arrow",
+      "trackId": "v5",
+      "kind": "shape",
+      "name": "Dashed arrow",
+      "start": 0,
+      "duration": 60,
+      "enabled": true,
+      "size": {
+        "w": 300,
+        "h": 200
+      },
+      "paths": [
+        {
+          "id": "arrow",
+          "d": "M20 80L190 80L190 30L280 100L190 170L190 120L20 120Z",
+          "fill": null,
+          "fillRule": "nonzero",
+          "stroke": {
+            "width": 8,
+            "color": {
+              "r": 0.3,
+              "g": 0.6,
+              "b": 1,
+              "a": 1
+            },
+            "align": "center",
+            "cap": "butt",
+            "join": "miter",
+            "miterLimit": 4,
+            "dash": [
+              24,
+              14
+            ],
+            "dashOffset": 0
+          },
+          "primitive": {
+            "kind": "arrow",
+            "length": 260,
+            "shaft": 40,
+            "head": 140,
+            "headLength": 90
+          }
+        }
+      ],
+      "transform": {
+        "x": 260,
+        "y": -140,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "keyframes": {
+        "paths.arrow.stroke.dashOffset": [
+          {
+            "frame": 0,
+            "value": 0,
+            "ease": "linear"
+          },
+          {
+            "frame": 30,
+            "value": 76,
+            "ease": "linear"
+          }
+        ]
+      }
+    },
+    "nonzero": {
+      "id": "nonzero",
+      "trackId": "v6",
+      "kind": "shape",
+      "name": "Nonzero fill",
+      "start": 0,
+      "duration": 60,
+      "enabled": true,
+      "size": {
+        "w": 300,
+        "h": 300
+      },
+      "paths": [
+        {
+          "id": "p",
+          "d": "M150 20 L238 280 L10 115 L290 115 L62 280 Z",
+          "fill": {
+            "r": 1,
+            "g": 0.35,
+            "b": 0.6,
+            "a": 1
+          },
+          "fillRule": "nonzero"
+        }
+      ],
+      "transform": {
+        "x": -260,
+        "y": 340,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1
+    },
+    "evenodd": {
+      "id": "evenodd",
+      "trackId": "v7",
+      "kind": "shape",
+      "name": "Evenodd fill",
+      "start": 0,
+      "duration": 60,
+      "enabled": true,
+      "size": {
+        "w": 300,
+        "h": 300
+      },
+      "paths": [
+        {
+          "id": "p",
+          "d": "M150 20 L238 280 L10 115 L290 115 L62 280 Z",
+          "fill": {
+            "r": 1,
+            "g": 0.35,
+            "b": 0.6,
+            "a": 1
+          },
+          "fillRule": "evenodd"
+        }
+      ],
+      "transform": {
+        "x": 260,
+        "y": 340,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1
+    },
+    "hex": {
+      "id": "hex",
+      "trackId": "v8",
+      "kind": "shape",
+      "name": "Polygon",
+      "start": 0,
+      "duration": 60,
+      "enabled": true,
+      "size": {
+        "w": 200,
+        "h": 200
+      },
+      "paths": [
+        {
+          "id": "hex",
+          "d": "M111.042 21.375L162.57 51.125C168.669 54.646 173.612 63.208 173.612 70.25L173.612 129.75C173.612 136.792 168.669 145.354 162.57 148.875L111.042 178.625C104.944 182.146 95.056 182.146 88.958 178.625L37.43 148.875C31.331 145.354 26.388 136.792 26.388 129.75L26.388 70.25C26.388 63.208 31.331 54.646 37.43 51.125L88.958 21.375C95.056 17.854 104.944 17.854 111.042 21.375Z",
+          "fill": {
+            "r": 0.3,
+            "g": 0.6,
+            "b": 1,
+            "a": 1
+          },
+          "fillRule": "nonzero",
+          "primitive": {
+            "kind": "polygon",
+            "sides": 6,
+            "radius": 85,
+            "roundness": 0.3
+          }
+        }
+      ],
+      "transform": {
+        "x": -390,
+        "y": 740,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1
+    },
+    "ring": {
+      "id": "ring",
+      "trackId": "v9",
+      "kind": "shape",
+      "name": "Ellipse with an inside stroke",
+      "start": 0,
+      "duration": 60,
+      "enabled": true,
+      "size": {
+        "w": 200,
+        "h": 200
+      },
+      "paths": [
+        {
+          "id": "ring",
+          "d": "M100 15C146.944 15 185 53.056 185 100C185 146.944 146.944 185 100 185C53.056 185 15 146.944 15 100C15 53.056 53.056 15 100 15Z",
+          "fill": {
+            "r": 0.32,
+            "g": 0.34,
+            "b": 0.4,
+            "a": 1
+          },
+          "fillRule": "nonzero",
+          "stroke": {
+            "width": 18,
+            "color": {
+              "r": 0.2,
+              "g": 0.85,
+              "b": 0.45,
+              "a": 1
+            },
+            "align": "inside",
+            "cap": "butt",
+            "join": "miter",
+            "miterLimit": 4
+          },
+          "primitive": {
+            "kind": "ellipse",
+            "w": 170,
+            "h": 170
+          }
+        }
+      ],
+      "transform": {
+        "x": -130,
+        "y": 740,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1
+    },
+    "box": {
+      "id": "box",
+      "trackId": "v10",
+      "kind": "shape",
+      "name": "Rect with an outside stroke",
+      "start": 0,
+      "duration": 60,
+      "enabled": true,
+      "size": {
+        "w": 200,
+        "h": 200
+      },
+      "paths": [
+        {
+          "id": "box",
+          "d": "M49 25L151 25C164.255 25 175 35.745 175 49L175 151C175 164.255 164.255 175 151 175L49 175C35.745 175 25 164.255 25 151L25 49C25 35.745 35.745 25 49 25Z",
+          "fill": {
+            "r": 0.32,
+            "g": 0.34,
+            "b": 0.4,
+            "a": 1
+          },
+          "fillRule": "nonzero",
+          "stroke": {
+            "width": 12,
+            "color": {
+              "r": 1,
+              "g": 0.55,
+              "b": 0.15,
+              "a": 1
+            },
+            "align": "outside",
+            "cap": "butt",
+            "join": "miter",
+            "miterLimit": 4
+          },
+          "primitive": {
+            "kind": "rect",
+            "w": 150,
+            "h": 150,
+            "radius": 24
+          }
+        }
+      ],
+      "transform": {
+        "x": 130,
+        "y": 740,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1
+    },
+    "line": {
+      "id": "line",
+      "trackId": "v11",
+      "kind": "shape",
+      "name": "Line",
+      "start": 0,
+      "duration": 60,
+      "enabled": true,
+      "size": {
+        "w": 200,
+        "h": 200
+      },
+      "paths": [
+        {
+          "id": "line",
+          "d": "M30 100L170 100",
+          "fill": null,
+          "fillRule": "nonzero",
+          "stroke": {
+            "width": 20,
+            "color": {
+              "r": 1,
+              "g": 1,
+              "b": 1,
+              "a": 1
+            },
+            "align": "center",
+            "cap": "square",
+            "join": "miter",
+            "miterLimit": 4
+          },
+          "primitive": {
+            "kind": "line",
+            "length": 140
+          }
+        }
+      ],
+      "transform": {
+        "x": 390,
+        "y": 740,
+        "scale": 1,
+        "rotation": -45,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1
+    }
+  },
+  "markers": [],
+  "captionTracks": {},
+  "textPresetsLocal": [],
+  "sequences": {},
+  "meta": {
+    "createdAt": "2026-11-07T08:00:00.000Z",
+    "modifiedAt": "2026-11-07T08:00:00.000Z",
+    "appVersion": "1.1.0",
+    "generator": {
+      "name": "interop-fixture",
+      "version": "1",
+      "source": "fixtures/interop/shapes (Batch 65)"
+    }
+  }
+}

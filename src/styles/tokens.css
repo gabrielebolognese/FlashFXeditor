@@ -349,6 +349,8 @@
   --clip-text-label: rgba(230, 237, 246, 0.3);
   --clip-solid: var(--surface-4);
   --clip-solid-label: var(--surface-5);
+  --clip-shape: var(--surface-4); /* vector shapes (Batch 65): drawn like solids */
+  --clip-shape-label: var(--surface-5);
   --clip-caption: rgba(100, 116, 139, 0.3); /* text-tertiary */
   --clip-caption-label: rgba(100, 116, 139, 0.55);
 

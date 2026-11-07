@@ -348,7 +348,7 @@ describe("random documents", () => {
         if ("keyframes" in clip && clip.keyframes) keyed++;
       }
     }
-    expect([...kinds].sort()).toEqual(["audio", "caption", "image", "solid", "text", "video"]);
+    expect([...kinds].sort()).toEqual(["audio", "caption", "image", "shape", "solid", "text", "video"]);
     expect(transitions).toBeGreaterThan(5);
     expect(keyed).toBeGreaterThan(5);
   });

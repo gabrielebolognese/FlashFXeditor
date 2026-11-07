@@ -391,3 +391,62 @@ void main() {
   outColor = sum / total;
 }
 `;
+
+/** See PATH_WGSL in shaders.ts: the stencil stage takes the triangles from attribute 0 (view-box px). */
+export const PATH_STENCIL_VERTEX = /* glsl */ `${HEADER}${LAYER}
+layout(location = 0) in vec2 a_position;
+
+void main() {
+  mat3 m = mat3(L_C0.xyz, L_C1.xyz, L_C2.xyz);
+  gl_Position = vec4((m * vec3(a_position, 1.0)).xy, 0.0, 1.0);
+}
+`;
+
+/** See PATH_WGSL in shaders.ts: the cover rectangle (L_UV, view-box px) from gl_VertexID. */
+export const PATH_COVER_VERTEX = /* glsl */ `${HEADER}${LAYER}
+out vec2 v_local;
+
+void main() {
+  vec2 corner = vec2(float(gl_VertexID & 1), float((gl_VertexID >> 1) & 1));
+  vec2 p = mix(L_UV.xy, L_UV.zw, corner);
+  mat3 m = mat3(L_C0.xyz, L_C1.xyz, L_C2.xyz);
+  v_local = p;
+  gl_Position = vec4((m * vec3(p, 1.0)).xy, 0.0, 1.0);
+}
+`;
+
+/** The stencil stage writes no color (the color mask is off as well). */
+export const PATH_STENCIL_FRAGMENT = /* glsl */ `${HEADER}
+out vec4 outColor;
+
+void main() {
+  outColor = vec4(0.0);
+}
+`;
+
+/** See PATH_WGSL fsCover in shaders.ts. */
+export const PATH_COVER_FRAGMENT = /* glsl */ `${HEADER}${LAYER}${STYLE}
+in vec2 v_local;
+out vec4 outColor;
+
+void main() {
+  float kind = L_FILLP.x;
+  if (kind < 0.5) {
+    outColor = premultiplied(L_COLOR);
+    return;
+  }
+  vec2 size = max(L_SHAPE.zw, vec2(1e-4));
+  vec2 halfSize = 0.5 * size;
+  vec2 p = v_local - L_SHAPE.xy - halfSize;
+  float t = 0.0;
+  if (kind < 1.5) {
+    vec2 dir = vec2(-sin(L_FILLP.y), cos(L_FILLP.y));
+    float extent = max(abs(dir.x) * size.x + abs(dir.y) * size.y, 1e-4);
+    t = 0.5 + dot(p, dir) / extent;
+  } else {
+    vec2 center = L_FILLC.xy * size - halfSize;
+    t = length(p - center) / max(L_FILLP.z * 0.5 * length(size), 1e-4);
+  }
+  outColor = gradientColor(t, int(L_FILLP.w));
+}
+`;

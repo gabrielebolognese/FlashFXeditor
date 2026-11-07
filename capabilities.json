@@ -2,8 +2,8 @@
   "manifestVersion": 1,
   "app": "shorts-editor",
   "appVersion": "1.1.0",
-  "lastBatch": 64,
-  "schemaVersion": 9,
+  "lastBatch": 65,
+  "schemaVersion": 10,
   "project": {
     "file": "project.json",
     "fontsManifest": "fonts/fonts.json",
@@ -57,7 +57,8 @@
     "text",
     "solid",
     "caption",
-    "compound"
+    "compound",
+    "shape"
   ],
   "transform": {
     "rotation3d": false,
@@ -245,9 +246,42 @@
     "adjustment": false
   },
   "vector": {
-    "shapes": false,
-    "trimPaths": false,
-    "svgImport": false
+    "shapes": true,
+    "trimPaths": true,
+    "svgImport": false,
+    "primitives": [
+      "rect",
+      "ellipse",
+      "polygon",
+      "star",
+      "arrow",
+      "arc",
+      "line"
+    ],
+    "caps": [
+      "butt",
+      "round",
+      "square"
+    ],
+    "joins": [
+      "miter",
+      "round",
+      "bevel"
+    ],
+    "fillRules": [
+      "nonzero",
+      "evenodd"
+    ],
+    "keyframeProps": [
+      "paths.<id>.trim.start",
+      "paths.<id>.trim.end",
+      "paths.<id>.trim.offset",
+      "paths.<id>.stroke.width",
+      "paths.<id>.stroke.color",
+      "paths.<id>.stroke.dashOffset",
+      "paths.<id>.fill",
+      "paths.<id>.primitive.<param>"
+    ]
   },
   "effects": [],
   "audio": {

@@ -1,7 +1,7 @@
 // The persistent document (spec §5.2). Plain JSON only: no classes, Maps, Sets or undefined-valued
 // keys, so a Project can be serialized as-is and diffed by Immer patches.
 
-export const SCHEMA_VERSION = 9;
+export const SCHEMA_VERSION = 10;
 
 export type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
 export type JsonObject = { [key: string]: JsonValue };
@@ -509,7 +509,7 @@ export interface Track {
   height: "S" | "M" | "L";
 }
 
-export const CLIP_KINDS = ["video", "audio", "image", "text", "solid", "caption", "compound"] as const;
+export const CLIP_KINDS = ["video", "audio", "image", "text", "solid", "caption", "compound", "shape"] as const;
 export type ClipKind = (typeof CLIP_KINDS)[number];
 
 export interface ClipBase {
@@ -628,7 +628,67 @@ export interface CompoundClip extends ClipBase {
   volume: Volume;
 }
 
-export type Clip = MediaClip | TextClip | SolidClip | CaptionClip | CompoundClip;
+export const LINE_CAPS = ["butt", "round", "square"] as const;
+export type LineCap = (typeof LINE_CAPS)[number];
+export const LINE_JOINS = ["miter", "round", "bevel"] as const;
+export type LineJoin = (typeof LINE_JOINS)[number];
+export const FILL_RULES = ["nonzero", "evenodd"] as const;
+export type FillRule = (typeof FILL_RULES)[number];
+export const PRIMITIVE_KINDS = ["rect", "ellipse", "polygon", "star", "arrow", "arc", "line"] as const;
+export type PrimitiveKind = (typeof PRIMITIVE_KINDS)[number];
+
+/** The stroke of a vector path (spec §21.12): a frame stroke with caps, joins and a miter limit (view-box px). */
+export interface PathStroke extends StrokeStyle {
+  cap: LineCap;
+  join: LineJoin;
+  /** Longest miter as a multiple of the width (SVG `stroke-miterlimit`); a longer one is beveled. */
+  miterLimit: number;
+}
+
+/**
+ * The part of a path's stroke that is drawn (spec §21.12): fractions 0..1 of the path length (all its
+ * subpaths in order), `offset` shifting both ends (wrapping around).
+ */
+export interface PathTrim {
+  start: number;
+  end: number;
+  offset: number;
+}
+
+/** A generated path (spec §21.12), centered in the view box; angles in degrees, 0 = up, clockwise. */
+export type Primitive =
+  | { kind: "rect"; w: number; h: number; radius: number }
+  | { kind: "ellipse"; w: number; h: number }
+  | { kind: "polygon"; sides: number; radius: number; roundness: number }
+  | { kind: "star"; points: number; inner: number; outer: number; roundness: number }
+  | { kind: "arrow"; length: number; shaft: number; head: number; headLength: number }
+  | { kind: "arc"; radius: number; start: number; end: number }
+  | { kind: "line"; length: number };
+
+/** One path of a shape clip (spec §21.12), drawn in order. */
+export interface ShapePath {
+  id: string;
+  /** SVG path data in view-box px, arcs allowed; generated from `primitive` when that is present. */
+  d: string;
+  fill: Fill | null;
+  fillRule: FillRule;
+  stroke?: PathStroke;
+  trim?: PathTrim;
+  primitive?: Primitive;
+}
+
+/** A vector graphic (spec §21.12, Batch 65): paths in a view box of `size` project px at scale 1. */
+export interface ShapeClip extends ClipBase {
+  kind: "shape";
+  size: { w: number; h: number };
+  paths: ShapePath[];
+  transform: Transform;
+  opacity: number;
+  keyframes?: Keyframes;
+  fades?: { in: Frame; out: Frame };
+}
+
+export type Clip = MediaClip | TextClip | SolidClip | CaptionClip | CompoundClip | ShapeClip;
 
 /** x,y in project pixels relative to project center; scale 1 = native media size; rotation degrees. */
 export interface Transform {

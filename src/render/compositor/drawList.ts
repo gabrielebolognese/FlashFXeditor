@@ -4,7 +4,8 @@
 // frame (media and time) and text layers their text instead of a texture. The preview resolves them
 // to pool textures and text rasters, and skips the redraw when the resolved list equals the one it
 // drew last (`DrawListSnapshot`).
-import type { ClipId, GradientFill, MediaId, RGBA, ShadowStyle, StrokeStyle, TextContent, TextStyle, TrackId } from "../../core/document/types.js";
+import type { ClipId, Fill, FillRule, GradientFill, MediaId, PathStroke, PathTrim, RGBA, ShadowStyle, StrokeStyle, TextContent, TextStyle, TrackId } from "../../core/document/types.js";
+import type { Bounds, PathSource } from "../../core/shapes/geometry.js";
 import type { UnitState } from "../../text/anim.js";
 import type { Mat3 } from "../mat3.js";
 import type { TextureHandle } from "../gpu/renderer.js";
@@ -109,7 +110,38 @@ export interface SolidLayer extends LayerBase {
   style?: SolidStyle | null;
 }
 
-export type Layer = TextureLayer | DissolveLayer | SolidLayer;
+/**
+ * One draw of a path layer (spec §21.12, Batch 65): `triangles` (x, y view-box px per vertex) written to
+ * the stencil by `rule`, then `paint` covers `cover` (the triangles' box) where the stencil says inside.
+ * `nonzero` / `evenodd`: a fill's fans counted by winding. `union`: stroke triangles, any coverage.
+ * `inside` / `outside`: a stroke of twice the width kept inside or outside the fill fans in `clip`.
+ */
+export interface PathDraw {
+  rule: "nonzero" | "evenodd" | "union" | "inside" | "outside";
+  triangles: Float32Array;
+  /** The fill fans (and their rule) an inside or outside stroke is cut by; null otherwise. */
+  clip: Float32Array | null;
+  clipRule: FillRule;
+  cover: Bounds;
+  /** A color (straight alpha), or a gradient laid out in `box` (the path's box, view-box px). */
+  color: RGBA;
+  gradient: GradientFill | null;
+  box: Bounds;
+}
+
+/**
+ * A vector shape (spec §21.12, Batch 65): its paths' draws in order, in view-box px mapped into project
+ * px by `transform` (not the unit quad), with one group opacity. The renderer draws them into a layer
+ * texture (stencil then cover, multisampled) over `bounds` and composites that.
+ */
+export interface PathLayer extends LayerBase {
+  kind: "path";
+  draws: readonly PathDraw[];
+  /** The box of every draw (view-box px). */
+  bounds: Bounds;
+}
+
+export type Layer = TextureLayer | DissolveLayer | SolidLayer | PathLayer;
 
 /** A media frame not resolved to a texture yet: what a video or image clip shows at the frame. */
 export interface MediaLayer extends LayerBase {
@@ -245,7 +277,37 @@ export interface CompoundCompositeLayer {
   inner: Composite;
 }
 
-export type CompositeLayer = MediaLayer | SolidLayer | TextCompositeLayer | TransitionCompositeLayer | CompoundCompositeLayer;
+/** One path of a shape layer at its frame (keyed values applied), before its geometry is built. */
+export interface ShapePathFrame {
+  id: string;
+  source: PathSource;
+  fill: Fill | null;
+  fillRule: FillRule;
+  stroke: PathStroke | null;
+  trim: PathTrim | null;
+}
+
+/**
+ * A shape clip at its frame (spec §21.12, Batch 65): its paths with their keyed values. The preview and the
+ * export build the geometry (cached by path and style, `render/shapes`) at the render's scale and draw a
+ * `PathLayer`.
+ */
+export interface ShapeCompositeLayer {
+  kind: "shape";
+  trackId: TrackId;
+  clipId: ClipId;
+  /** Maps view-box px into project pixels. */
+  model: Mat3;
+  opacity: number;
+  /** The view box, px. */
+  width: number;
+  height: number;
+  /** The layer's own scale (its larger axis): curves are flattened for the render scale times it. */
+  scale: number;
+  paths: readonly ShapePathFrame[];
+}
+
+export type CompositeLayer = MediaLayer | SolidLayer | TextCompositeLayer | TransitionCompositeLayer | CompoundCompositeLayer | ShapeCompositeLayer;
 
 /** The document evaluated at a frame (`Compositor.evaluate`), before texture resolution. */
 export interface Composite {

@@ -39,6 +39,7 @@
 // - `renderFrame` (Export frame) draws the frame at the playhead from exact full-resolution frames at
 //   project size, whatever the quality mode and whatever is on screen.
 // - The backing store is resized inside `render`, so a resize never shows a cleared canvas.
+import { ShapeGeometryCache, workerBuilder, type ShapeGeometryStats } from "../shapes/ShapeGeometryCache.js";
 import type { ClipId, Crop, Frame, Project, RGBA, TextStyle, Transform } from "../../core/document/types.js";
 import { watchDevicePixelRatio } from "../../core/scheduler/devicePixelRatio.js";
 import type { FrameScheduler, RenderView } from "../../core/scheduler/FrameScheduler.js";
@@ -236,6 +237,11 @@ export class PreviewView implements RenderView {
   private readonly viewListeners = new Set<() => void>();
   private readonly stops: (() => void)[] = [];
   readonly stats: PreviewStats;
+
+  /** The shape geometry counters (spec §21.12: rebuilt only when a path or its style changes; `__editor.preview.shapeStats`). */
+  get shapeStats(): ShapeGeometryStats {
+    return this.textures.shapeStats;
+  }
   /** Device px per project px text was rasterized at in the last render (inline editing measures carets at it). */
   textRenderScale = 1;
   readonly firstShown: FirstShown = { frame: -1, layers: 0, exact: 0 };
@@ -255,11 +261,17 @@ export class PreviewView implements RenderView {
     this.rightCompositor = new Compositor(this.slates);
     this.exportCompositor = new Compositor(this.slates);
     this.compoundTargets = new CompoundTargets(deps.renderer, (bytes) => deps.pool.reserve?.(bytes));
+    // Shape geometry (spec §21.12): paths that took over 2 ms to build are rebuilt in a worker from then on.
+    const shapes = new ShapeGeometryCache({
+      onReady: () => deps.scheduler.invalidate("preview"),
+      builder: () => (typeof Worker === "undefined" ? null : workerBuilder(new Worker(new URL("../shapes/geometry.worker.ts", import.meta.url), { type: "module", name: "shape geometry" }))),
+    });
     this.textures = new LayerTextures({
       frames: deps.frames,
       images: deps.images,
       pool: deps.pool,
       compounds: this.compoundTargets,
+      shapes,
       ...(deps.text && { text: deps.text }),
       onChange: () => deps.scheduler.invalidate("preview"),
       wantedLod: (mediaId) => wantedLod(this.passQuality, this.passActivity, deps.behind?.(mediaId) ?? false),

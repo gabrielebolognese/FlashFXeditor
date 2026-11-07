@@ -3,7 +3,7 @@ import { createProject } from "./project.js";
 import { frameToUs } from "./time.js";
 import { defaultCaptionStyle } from "../../text/captions.js";
 import { DEFAULT_TEXT_STYLE, textContent } from "../../text/style.js";
-import type { CaptionClip, CaptionWord, Clip, CompoundClip, MediaClip, MediaItem, Project, SolidClip, TextClip, Track, TrackKind } from "./types.js";
+import type { CaptionClip, CaptionWord, Clip, CompoundClip, MediaClip, MediaItem, Project, ShapeClip, ShapePath, SolidClip, TextClip, Track, TrackKind } from "./types.js";
 
 export function makeProject(): Project {
   return createProject({ id: "project-1", name: "Test", now: "2026-01-01T00:00:00.000Z", appVersion: "test" });
@@ -55,6 +55,20 @@ export function makeSolidClip(fields: { id: string; trackId: string; start: numb
     shape: "rect",
     size: { w: 100, h: 100 },
     cornerRadius: 0,
+    transform: { x: 0, y: 0, scale: 1, rotation: 0, anchor: { x: 0.5, y: 0.5 }, flipH: false, flipV: false },
+    opacity: 1,
+    ...fields,
+  };
+}
+
+/** A shape clip (Batch 65): a 100 x 100 view box with one filled square path `p` unless `paths` are given. */
+export function makeShapeClip(fields: { id: string; trackId: string; start: number; duration: number; paths?: ShapePath[] }): ShapeClip {
+  return {
+    kind: "shape",
+    name: fields.id,
+    enabled: true,
+    size: { w: 100, h: 100 },
+    paths: [{ id: "p", d: "M10 10 L90 10 L90 90 L10 90 Z", fill: { r: 1, g: 1, b: 1, a: 1 }, fillRule: "nonzero" }],
     transform: { x: 0, y: 0, scale: 1, rotation: 0, anchor: { x: 0.5, y: 0.5 }, flipH: false, flipV: false },
     opacity: 1,
     ...fields,

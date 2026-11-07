@@ -5,7 +5,9 @@ import { transitionIssues } from "./transitions.js";
 import { sequenceGraphIssues } from "./sequences.js";
 import { usPerFrame } from "./time.js";
 import { sequenceDurationUs, sequenceRecordIssues } from "./sequence.js";
-import { CAPTION_HIGHLIGHTS, CUE_ANIM_KINDS, isFreeze, isMediaClip, LABEL_COLORS, SOLID_SHAPE_IDS, STROKE_ALIGNS, type CaptionClip, type CaptionStyle, type Clip, type ClipId, type ClipKind, type CompoundClip, type Sequence, type MediaClip, type MediaItem, type Project, type SolidClip, type TextClip, type TextStyle, type Track, type TrackId, type TrackKind } from "./types.js";
+import { pathDataIssue } from "../shapes/pathData.js";
+import { PRIMITIVE_LIMITS, PRIMITIVE_PARAMS } from "../shapes/primitives.js";
+import { CAPTION_HIGHLIGHTS, CUE_ANIM_KINDS, FILL_RULES, isFreeze, isMediaClip, LABEL_COLORS, LINE_CAPS, LINE_JOINS, PRIMITIVE_KINDS, SOLID_SHAPE_IDS, type PrimitiveKind, type ShapeClip, STROKE_ALIGNS, type CaptionClip, type CaptionStyle, type Clip, type ClipId, type ClipKind, type CompoundClip, type Sequence, type MediaClip, type MediaItem, type Project, type SolidClip, type TextClip, type TextStyle, type Track, type TrackId, type TrackKind } from "./types.js";
 
 export class DocumentInvariantError extends Error {
   readonly issues: readonly string[];
@@ -18,7 +20,7 @@ export class DocumentInvariantError extends Error {
 }
 
 const ALLOWED_CLIPS: Record<TrackKind, ReadonlySet<ClipKind>> = {
-  video: new Set(["video", "image", "text", "solid", "compound"]),
+  video: new Set(["video", "image", "text", "solid", "compound", "shape"]),
   audio: new Set(["audio"]),
   caption: new Set(["caption"]),
 };
@@ -76,6 +78,7 @@ function clipIssues(project: Project, clip: Clip): string[] {
   if (clip.kind === "caption") issues.push(...cueIssues(clip, label));
   if (clip.kind === "solid") issues.push(...solidIssues(clip, label));
   if (clip.kind === "compound") issues.push(...compoundIssues(project, clip, label));
+  if (clip.kind === "shape") issues.push(...shapeIssues(clip, label));
   // Frame styles (spec §21.7): pictures have rounded corners, an outline and a shadow.
   if (clip.kind === "video" || clip.kind === "image") issues.push(...frameIssues(clip, label));
   // Keyframes (Batch 35): known properties, one key per integer frame in order, finite values, known eases.
@@ -290,6 +293,72 @@ function solidIssues(clip: SolidClip, label: string): string[] {
   if (clip.cornerRadii !== undefined && !(Array.isArray(clip.cornerRadii) && clip.cornerRadii.length === 4 && clip.cornerRadii.every((r) => Number.isFinite(r) && r >= 0))) issues.push(`${label}: cornerRadii must be 4 numbers >= 0`);
   issues.push(...strokeShadowIssues(clip, label));
   return issues;
+}
+
+const PATH_ID = /^[A-Za-z0-9_-]+$/;
+const FILL_RULE_SET: ReadonlySet<string> = new Set(FILL_RULES);
+const CAP_SET: ReadonlySet<string> = new Set(LINE_CAPS);
+const JOIN_SET: ReadonlySet<string> = new Set(LINE_JOINS);
+
+/** A shape clip (spec §21.12, Batch 65): a view box, paths with unique ids, path data that parses, known styles and primitives. */
+function shapeIssues(clip: ShapeClip, label: string): string[] {
+  const issues: string[] = [];
+  if (!isPositive(clip.size?.w) || !isPositive(clip.size?.h)) issues.push(`${label}: size ${String(clip.size?.w)}x${String(clip.size?.h)} must be > 0`);
+  if (!Array.isArray(clip.paths)) return [...issues, `${label}: paths must be a list`];
+  const ids = new Set<string>();
+  clip.paths.forEach((path, index) => {
+    const at = `${label}: paths[${index}]`;
+    if (!isObjectLike(path)) return void issues.push(`${at} must be an object`);
+    if (typeof path.id !== "string" || !PATH_ID.test(path.id)) issues.push(`${at}: id ${JSON.stringify(path.id)} must be letters, digits, _ or -`);
+    else if (ids.has(path.id)) issues.push(`${at}: id "${path.id}" is used twice`);
+    else ids.add(path.id);
+    if (typeof path.d !== "string") issues.push(`${at}: d must be a string`);
+    else {
+      const problem = pathDataIssue(path.d);
+      if (problem) issues.push(`${at}: d: ${problem}`);
+    }
+    if (path.fill !== null) {
+      const problem = fillIssue(path.fill);
+      if (problem) issues.push(`${at}: fill ${problem}`);
+    }
+    if (!FILL_RULE_SET.has(path.fillRule)) issues.push(`${at}: fillRule must be nonzero or evenodd`);
+    if (path.stroke !== undefined) {
+      issues.push(...strokeShadowIssues({ stroke: path.stroke }, at));
+      const s = path.stroke as unknown as Record<string, unknown>;
+      if (!CAP_SET.has(s.cap as string) || !JOIN_SET.has(s.join as string) || !(isFiniteNumber(s.miterLimit) && (s.miterLimit as number) >= 1)) issues.push(`${at}: stroke needs cap butt, round or square, join miter, round or bevel and miterLimit >= 1`);
+    }
+    if (path.trim !== undefined) {
+      const t = path.trim as unknown as Record<string, unknown>;
+      if (!isObjectLike(t) || !isUnit(t.start) || !isUnit(t.end) || !isFiniteNumber(t.offset)) issues.push(`${at}: trim needs start and end within 0..1 and a numeric offset`);
+    }
+    if (path.primitive !== undefined) {
+      const problem = primitiveIssue(path.primitive);
+      if (problem) issues.push(`${at}: primitive ${problem}`);
+    }
+  });
+  return issues;
+}
+
+const isUnit = (v: unknown) => isFiniteNumber(v) && (v as number) >= 0 && (v as number) <= 1;
+
+/** What is wrong with a primitive: its kind, its params (numbers >= 0, counts, roundness, angles); null when valid. */
+function primitiveIssue(value: unknown): string | null {
+  if (!isObjectLike(value) || !PRIMITIVE_KINDS.includes(value.kind as PrimitiveKind)) return `kind must be one of ${PRIMITIVE_KINDS.join(", ")}`;
+  const kind = value.kind as PrimitiveKind;
+  for (const param of PRIMITIVE_PARAMS[kind]) {
+    const v = value[param];
+    if (!isFiniteNumber(v)) return `${kind} needs a number ${param}`;
+    const n = v as number;
+    if (param === "sides" || param === "points") {
+      const limits = PRIMITIVE_LIMITS[param];
+      if (!Number.isInteger(n) || n < limits.min || n > limits.max) return `${param} must be an integer ${limits.min}..${limits.max}`;
+    } else if (param === "roundness") {
+      if (n < 0 || n > 1) return "roundness must be within 0..1";
+    } else if (kind === "arc" && param !== "radius") {
+      if (n < PRIMITIVE_LIMITS.angle.min || n > PRIMITIVE_LIMITS.angle.max) return `${param} must be within ${PRIMITIVE_LIMITS.angle.min}..${PRIMITIVE_LIMITS.angle.max} degrees`;
+    } else if (n < 0) return `${param} must be >= 0`;
+  }
+  return null;
 }
 
 /** What is wrong with `value` as a fill (spec §21.7): a color, `{ from, to }`, or a gradient with 2 to 8 ascending stops; null when valid. */

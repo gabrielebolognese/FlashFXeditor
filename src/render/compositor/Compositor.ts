@@ -65,7 +65,8 @@ import { isRgba } from "../../core/document/color.js";
 import { animatedOpacity, animatedTransform, maxKeyedScale } from "../../core/document/keyframes.js";
 import { framesToSourceUs, secondsToFrames } from "../../core/document/time.js";
 import { handleTimeUs, transitionMix } from "../../core/document/transitions.js";
-import type { CaptionClip, CaptionStyle, CaptionWord, Clip, ClipId, CompoundClip, Crop, Frame, MediaClip, MediaId, Project, RGBA, ShadowStyle, TextAnim, TextClip, TextContent, TextStyle, Track, TrackId, Transform } from "../../core/document/types.js";
+import type { CaptionClip, CaptionStyle, CaptionWord, Clip, ClipId, CompoundClip, Crop, Frame, MediaClip, MediaId, Project, RGBA, ShadowStyle, ShapeClip, TextAnim, TextClip, TextContent, TextStyle, Track, TrackId, Transform } from "../../core/document/types.js";
+import { pathFramesAt, type PathFrameScratch } from "./shapeFrames.js";
 import { activeWordIndex, captionPlace, defaultCaptionStyle, effectiveCaptionStyle } from "../../text/captions.js";
 import { activeAnim, animUnit, isPlayable, newUnitState, presence, resetUnitState, typedCount, unitProgress, writeUnitShape, type ActiveAnim, type UnitState } from "../../text/anim.js";
 import { clipInIndex, lastClipStartingBy, trackIndex, type TrackIndex } from "../../timeline/model/queries.js";
@@ -85,7 +86,7 @@ import { animatedCrop, animatedRadius, animatedSolidLook, newSolidScratch } from
 import { keyedFillColors, maxKeyedFontSize, newTextMotion, styleVariant, textMotion, type TextMotion } from "./animatedText.js";
 import { hasTextKeys } from "./animatedText.js";
 import { isGradientFill } from "../../core/document/fill.js";
-import { HIGHLIGHT_SLOT, TRANSITION_SLOT, type CaptionHighlightFrame, type CompoundCompositeLayer, type CaptionWordBoxes, type Composite, type CompositeLayer, type MediaLayer, type PictureShape, type SolidGeometry, type SolidLayer, type SolidStyle, type TextAnimFrame, type TextCompositeLayer, type TransitionCompositeLayer } from "./drawList.js";
+import { HIGHLIGHT_SLOT, TRANSITION_SLOT, type CaptionHighlightFrame, type CompoundCompositeLayer, type CaptionWordBoxes, type Composite, type CompositeLayer, type ShapeCompositeLayer, type ShapePathFrame, type MediaLayer, type PictureShape, type SolidGeometry, type SolidLayer, type SolidStyle, type TextAnimFrame, type TextCompositeLayer, type TransitionCompositeLayer } from "./drawList.js";
 
 /** How far from the playhead the clips next to it count as cut neighbours (seconds). */
 export const NEIGHBOR_SECONDS = 2;
@@ -192,6 +193,8 @@ interface WritableComposite extends Composite {
 }
 
 type WritableCompoundLayer = Omit<CompoundCompositeLayer, "model" | "inner"> & { model: MutableMat3; inner: Composite; child: Compositor };
+/** A shape layer with the frames its keyed paths are written into (per path index). */
+type WritableShapeLayer = Omit<ShapeCompositeLayer, "model" | "paths"> & { model: MutableMat3; paths: readonly ShapePathFrame[]; keyed: ShapePathFrame[]; scratch: PathFrameScratch[] };
 
 const DEG = Math.PI / 180;
 
@@ -257,6 +260,7 @@ export class Compositor {
   private readonly transitionPool: WritableTransitionLayer[] = [];
   private readonly textPool: WritableTextLayer[] = [];
   private readonly compoundPool: WritableCompoundLayer[] = [];
+  private readonly shapePool: WritableShapeLayer[] = [];
   private readonly neighborPool: NeighborFrame[] = [];
   private readonly neighborList: NeighborFrame[] = [];
   private readonly upcomingPool: UpcomingText[] = [];
@@ -312,6 +316,7 @@ export class Compositor {
     let textLayers = 0;
     let transitions = 0;
     let compounds = 0;
+    let shapes = 0;
     for (const track of doc.tracks) {
       // The caption track's cue (spec §10.5), unless the track is hidden.
       if (track.kind === "caption") {
@@ -413,6 +418,12 @@ export class Compositor {
         if (this.writeCompound(layer, doc, clip, frame, transform, opacity)) {
           out.layers.push(layer);
           compounds += 1;
+        }
+      } else if (clip.kind === "shape") {
+        const layer = (this.shapePool[shapes] ??= newShapeLayer());
+        if (this.writeShape(layer, doc, clip, transform, opacity * fadeFactor(clip, frame), rel)) {
+          out.layers.push(layer);
+          shapes += 1;
         }
       } else if (clip.kind === "solid") {
         const layer = (this.solidPool[solidLayers] ??= newSolidLayer());
@@ -871,6 +882,25 @@ export class Compositor {
     return text;
   }
 
+  /**
+   * A shape clip (spec §21.12): its view box placed like a solid's box (flips mirror the drawing), its
+   * paths at the frame with their keyed trims, strokes, fills and primitive params.
+   */
+  private writeShape(layer: WritableShapeLayer, doc: Project, clip: ShapeClip, transform: Transform, opacity: number, rel: Frame): boolean {
+    const { w, h } = clip.size;
+    if (!(w > 0) || !(h > 0) || clip.paths.length === 0) return false;
+    const m = writeModel(layer.model, transform, w, h, doc.settings.width, doc.settings.height);
+    if (transform.flipH || transform.flipV) multiplyInto(m, m, setMat(this.step, transform.flipH ? -1 : 1, 0, 0, transform.flipV ? -1 : 1, transform.flipH ? w : 0, transform.flipV ? h : 0));
+    layer.trackId = clip.trackId;
+    layer.clipId = clip.id;
+    layer.width = w;
+    layer.height = h;
+    layer.scale = Math.max(Math.hypot(m[0], m[1]), Math.hypot(m[2], m[3]));
+    layer.opacity = clamp01(opacity);
+    layer.paths = pathFramesAt(clip, rel, layer.scratch, layer.keyed);
+    return true;
+  }
+
   /** A solid in `look` (its own, or a live one): its size's box as its shape, in its color or gradient, with its stroke and shadow. */
   private writeSolid(layer: WritableSolidLayer, doc: Project, look: SolidLook, transform: Transform, opacity: number): boolean {
     const { fill, size } = look;
@@ -1179,6 +1209,10 @@ function writeSpacingFrame(out: WritableAnimFrame, layout: TextLayout, style: Te
     state.oy = unit.originY;
   }
   return out;
+}
+
+function newShapeLayer(): WritableShapeLayer {
+  return { kind: "shape", trackId: "", clipId: "", model: mutableIdentity(), opacity: 1, width: 0, height: 0, scale: 1, paths: [], keyed: [], scratch: [] };
 }
 
 function newSolidLayer(): WritableSolidLayer {

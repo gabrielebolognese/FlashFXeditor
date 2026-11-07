@@ -26,7 +26,12 @@ import {
   isFreeze,
   isMediaClip,
   LABEL_COLORS,
+  FILL_RULES,
+  LINE_CAPS,
+  LINE_JOINS,
+  PRIMITIVE_KINDS,
   SOLID_SHAPE_IDS,
+  STROKE_ALIGNS,
   TEXT_ANIM_IDS,
   TRANSITION_KINDS,
   type CaptionClip,
@@ -36,16 +41,20 @@ import {
   type FallbackOf,
   type Frame,
   type Gradient,
+  type Keyframes,
   type MediaClip,
   type MediaItem,
   type Project,
   type Rational,
   type RGBA,
+  type ShapeClip,
+  type ShapePath,
   type TextStyle,
   type Track,
   type TrackId,
   type Transform,
 } from "../../core/document/types.js";
+import { defaultPrimitive, primitivePathData } from "../../core/shapes/primitives.js";
 import { DocumentStore } from "../../core/store/DocumentStore.js";
 import { createSessionStore } from "../../core/store/sessionStore.js";
 import { PEAKS_BUCKET, type Peaks } from "../../media/cache/peaks.js";
@@ -331,6 +340,32 @@ function randomSolidEdit(rng: Rng): SolidEdit {
   return edit;
 }
 
+const SHAPE_DATA = ["M10 10 L90 10 L90 90 L10 90 Z", "M50 5 L95 95 L5 95 Z M50 30 L70 80 L30 80 Z", "M10 50 C10 0 90 0 90 50 S50 120 10 50", "M20 20 Q50 -10 80 20 T80 80", "M50 50 m-40 0 a40 40 0 1 0 80 0 a40 40 0 1 0 -80 0", "M0 0 h100 v100 h-100 z M25 25 v50 h50 v-50 z", "M10 90 L50 10 L90 90"];
+
+/** A shape clip (Batch 65): one to three paths from path data or primitives, random strokes, trims and fill rules, sometimes keyed. */
+function randomShapeClip(rng: Rng, id: string, trackId: string, start: number, duration: number): ShapeClip {
+  const w = rng.int(20, 600);
+  const h = rng.int(20, 600);
+  const keyframes: Keyframes = {};
+  const paths: ShapePath[] = [];
+  for (let i = rng.int(1, 3); i > 0; i--) {
+    const pathId = `p${paths.length}`;
+    const primitive = rng.chance(0.5) ? defaultPrimitive(rng.pick(PRIMITIVE_KINDS), w, h) : undefined;
+    const path: ShapePath = { id: pathId, d: primitive ? primitivePathData(primitive, w, h) : rng.pick(SHAPE_DATA), fill: rng.chance(0.7) ? randomFill(rng) : null, fillRule: rng.pick(FILL_RULES) };
+    if (primitive) path.primitive = primitive;
+    if (rng.chance(0.6)) {
+      path.stroke = { width: rng.int(0, 40), color: randomColor(rng), align: rng.pick(STROKE_ALIGNS), cap: rng.pick(LINE_CAPS), join: rng.pick(LINE_JOINS), miterLimit: rng.pick([1, 4, 10]) };
+      if (rng.chance(0.3)) Object.assign(path.stroke, { dash: [rng.int(0, 30), rng.int(1, 20)], dashOffset: rng.int(-50, 50) });
+      if (rng.chance(0.4)) path.trim = { start: rng.int(0, 10) / 10, end: rng.int(0, 10) / 10, offset: rng.int(-10, 10) / 10 };
+      if (rng.chance(0.3)) keyframes[`paths.${pathId}.trim.end`] = [{ frame: 0, value: 0, ease: "linear" }, { frame: Math.max(1, duration - 1), value: 1, ease: "linear" }];
+    }
+    paths.push(path);
+  }
+  const clip: ShapeClip = { kind: "shape", id, trackId, name: "Shape", start, duration, enabled: true, size: { w, h }, paths, transform: randomTransform(rng), opacity: rng.pick([1, 1, 0.5]) };
+  if (Object.keys(keyframes).length > 0) clip.keyframes = keyframes;
+  return clip;
+}
+
 function randomMedia(rng: Rng, newId: () => string, kind: MediaItem["kind"], hasAudio = true): MediaItem {
   const id = newId();
   const ext = kind === "audio" ? "m4a" : kind === "image" ? "png" : "mp4";
@@ -534,8 +569,10 @@ export function randomProject(rng: Rng, options: RandomProjectOptions = {}): Pro
         placed = mediaClips(image, null, cursor, { video: track.id, audio: null }, state().settings, newId);
       } else if (roll < 0.86) {
         placed = [newTextClip({ id: newId(), trackId: track.id, start: cursor, duration: frames, value: randomText(rng) || "Title", style: randomStyle(rng) })];
-      } else {
+      } else if (roll < 0.93) {
         placed = [newSolidClip({ id: newId(), trackId: track.id, start: cursor, duration: frames, look: randomLook(rng), transform: randomTransform(rng) })];
+      } else {
+        placed = [randomShapeClip(rng, newId(), track.id, cursor, frames)];
       }
       drop(placed);
       const picture = placed?.[0];
@@ -1802,7 +1839,7 @@ const LOCK_EXEMPT = /^(tracks\.flag|media\.removeDelete|project\.)/;
 /** Deleting a track takes the lone partners' link and group away, on locked tracks too (tracks.ts `deleteTracks`). */
 const DROPS_LONE_GROUPS = /^tracks\.(delete|deleteEmpty)$/;
 
-/** Walks a value: every number finite (and not -0, which JSON writes as 0), no undefined-valued keys, only plain objects and arrays. */
+/** Walks a value: every number finite (and not -0, which JSON writes as 0), no undefined-valued keys, only plain objects, arrays and null. */
 function plainIssues(value: unknown, path: string, issues: string[]): void {
   if (typeof value === "number") {
     if (!Number.isFinite(value)) issues.push(`${path}: ${value} is not finite`);
@@ -1811,6 +1848,7 @@ function plainIssues(value: unknown, path: string, issues: string[]): void {
   }
   if (typeof value !== "object" || value === null) {
     if (value === undefined) issues.push(`${path}: undefined`);
+    else if (value === null) return; // JSON null (a shape path's `fill: null`, schema 10)
     else if (typeof value !== "string" && typeof value !== "boolean") issues.push(`${path}: a ${typeof value} is not JSON`);
     return;
   }

@@ -19,6 +19,8 @@ const PATHS = {
     "M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12",
     "M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17",
   ],
+  // A vector shape clip (Batch 65): lucide shapes.
+  shapes: ["M8.3 10a.7.7 0 0 1-.626-1.079L11.4 3a.7.7 0 0 1 1.198-.043L16.3 8.9a.7.7 0 0 1-.572 1.1Z", "M4 14h5a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-5a1 1 0 0 1 1-1z", "M14 17.5a3.5 3.5 0 1 0 7 0a3.5 3.5 0 1 0-7 0"],
   plus: ["M5 12h14", "M12 5v14"],
   // Track header toggles (Batch 16): target, lock, hide, height.
   crosshair: ["M2 12a10 10 0 1 0 20 0a10 10 0 1 0-20 0", "M22 12h-4", "M6 12H2", "M12 6V2", "M12 22v-4"],
@@ -70,7 +72,7 @@ const PATHS = {
 
 export type GlyphName = keyof typeof PATHS;
 
-export const CLIP_GLYPHS: Record<ClipKind, GlyphName> = { video: "film", audio: "audioLines", image: "image", text: "type", solid: "square", caption: "captions", compound: "layers" };
+export const CLIP_GLYPHS: Record<ClipKind, GlyphName> = { video: "film", audio: "audioLines", image: "image", text: "type", solid: "square", caption: "captions", compound: "layers", shape: "shapes" };
 export const TRACK_GLYPHS: Record<TrackKind, GlyphName> = { video: "film", audio: "audioLines", caption: "captions" };
 
 const VIEWBOX = 24;

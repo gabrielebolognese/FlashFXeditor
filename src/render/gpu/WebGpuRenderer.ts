@@ -11,11 +11,15 @@
 // encoder: two passes of a separable Gaussian (horizontal into one pooled texture, vertical into
 // another, the radius capped at MAX_BLUR_SIGMA), then drawn from the second with its quad grown by
 // the blur's reach. The pooled textures are reused from draw to draw (text rasters are small).
+// A vector shape (spec §21.12, Batch 65) is drawn first as well: per shape one pass into a 4x
+// multisampled scratch with a stencil (each path's fill fans counted by winding, or its stroke's
+// triangles, then a cover rectangle painted where the stencil says inside and the stencil cleared),
+// resolved into a pooled texture that the draw shows as a textured quad with the shape's opacity.
 import type { RGBA } from "../../core/document/types.js";
 import type { DrawList } from "../compositor/drawList.js";
 import { IDENTITY, mutableIdentity, setMat, type Mat3, type MutableMat3 } from "../mat3.js";
 import type { BackendRenderer } from "./backend.js";
-import { blurRegionInto, DrawRecords, premultipliedInto, setRect, showBlurred, type BlurRegion, type RecordKind } from "./drawRecords.js";
+import { blurRegionInto, DrawRecords, newRecordUniform, pathRegionInto, premultipliedInto, setRect, showBlurred, showPath, writePathUniform, type BlurRegion, type QuadKind, type Rect } from "./drawRecords.js";
 import { fitWithin, hasAlphaFormat } from "./fitWithin.js";
 import type { GpuDevice } from "./GpuDevice.js";
 import { isHdrColorSpace, toneMapToCanvas } from "./hdr.js";
@@ -23,7 +27,7 @@ import { layerFloats, LAYER_SIZE, LAYER_STRIDE, packLayer, packMat3, pixelsToCli
 import { generateMipmaps, mipLevelCount, textureBytes, type MipGenerator } from "./mipmaps.js";
 import { paddedBytesPerRow, unpadAndUnpremultiply } from "./readback.js";
 import type { AlphaPlane, CanvasTarget, DeviceEvent, OffscreenTarget, Pane, RenderTarget, TextureHandle, TextureOptions, Viewport } from "./renderer.js";
-import { BLUR_WGSL, DISSOLVE_WGSL, MIPMAP_WGSL, SCALE_ALPHA_WGSL, SCALE_WGSL, SOLID_WGSL, TEXTURED_WGSL } from "./shaders.js";
+import { BLUR_WGSL, DISSOLVE_WGSL, MIPMAP_WGSL, PATH_RESOLVE_WGSL, PATH_WGSL, SCALE_ALPHA_WGSL, SCALE_WGSL, SOLID_WGSL, TEXTURED_WGSL } from "./shaders.js";
 
 /** Textures, offscreen targets and mip levels are rgba8 (spec §9.3); canvases use the preferred format. */
 const TEXTURE_FORMAT: GPUTextureFormat = "rgba8unorm";
@@ -37,7 +41,29 @@ export const BLUR_STEP = 64;
 /** Draws a pooled blur texture stays unused before it is freed. */
 export const BLUR_KEEP_DRAWS = 120;
 
-type PipelineKind = RecordKind;
+type PipelineKind = QuadKind;
+/** Samples of a shape's scratch (WebGPU offers 1 or 4). */
+const PATH_SAMPLES = 4;
+/** Shape scratch textures grow in steps of this many px. */
+const PATH_STEP = 256;
+
+/** The stencil-then-cover pipelines of shapes (built on the first shape) and their scratch. */
+interface PathResources {
+  /** Stencil writes: fill fans by winding, stroke triangles, and a fill's inside moved into the top bit. */
+  nonzero: GPURenderPipeline;
+  evenodd: GPURenderPipeline;
+  union: GPURenderPipeline;
+  clip: GPURenderPipeline;
+  /** Paint where the low bits are set, or where the stencil equals the reference (cut strokes). */
+  cover: GPURenderPipeline;
+  coverEqual: GPURenderPipeline;
+  resolve: GPURenderPipeline;
+  resolveLayout: GPUBindGroupLayout;
+  scratch: { color: GPUTexture; colorView: GPUTextureView; stencil: GPUTexture; stencilView: GPUTextureView; group: GPUBindGroup; width: number; height: number } | null;
+  vertices: GPUBuffer;
+  /** Bytes. */
+  vertexCapacity: number;
+}
 
 interface Pipelines {
   textured: GPURenderPipeline;
@@ -60,6 +86,8 @@ interface DeviceResources {
   scaler: { pipeline: GPURenderPipeline; layout: GPUBindGroupLayout; sampler: GPUSampler };
   /** The scaler with an alpha plane multiplied in (Batch 64); built on the first video with alpha. */
   scalerAlpha?: { pipeline: GPURenderPipeline; layout: GPUBindGroupLayout };
+  /** Shapes (Batch 65); null until the first one is drawn. */
+  path: PathResources | null;
   /** The blur passes: pipeline, uniforms (one 256-byte slot per pass), pooled textures. */
   blur: { pipeline: GPURenderPipeline; layout: GPUBindGroupLayout; buffer: GPUBuffer; capacity: number; group: GPUBindGroup; pool: { texture: GpuTexture; used: number }[] };
   viewBuffer: GPUBuffer;
@@ -195,6 +223,12 @@ export class WebGpuRenderer implements BackendRenderer {
   private readonly clearValue = { r: 0, g: 0, b: 0, a: 0 };
   private readonly dynamicOffset = new Uint32Array(1);
   private blurData = new Float32Array(LAYER_STRIDE / 4);
+  /** Shapes in this draw: their records' indices and regions; their draws' uniforms and triangles, packed. */
+  private readonly pathIndices: number[] = [];
+  private readonly pathRegions: Rect[] = [];
+  private readonly pathUniform = newRecordUniform();
+  private pathData = new Float32Array(LAYER_STRIDE / 4);
+  private pathVertices = new Float32Array(1024);
   /** Draws so far (the blur pool's clock). */
   private draws = 0;
   /** The pass descriptor, created on the first draw; each draw only swaps the attachment's view. */
@@ -323,6 +357,12 @@ export class WebGpuRenderer implements BackendRenderer {
     }
     const pool = this.resources?.blur.pool;
     if (pool) for (const entry of pool.splice(0)) entry.texture.destroy();
+    const path = this.resources?.path;
+    if (path?.scratch) {
+      path.scratch.color.destroy();
+      path.scratch.stencil.destroy();
+      path.scratch = null;
+    }
     this.hdrCanvas = null;
   }
 
@@ -375,6 +415,7 @@ export class WebGpuRenderer implements BackendRenderer {
     const count = this.records.build(panes, target.width, target.height);
     const encoder = res.device.createCommandEncoder({ label: "draw list" });
     this.draws += 1;
+    this.pathRecords(res, encoder, count);
     this.blurRecords(res, encoder, count);
     this.writeUniforms(res, count, pixelsToClipInto(this.toClip, target.width, target.height, IDENTITY));
 
@@ -397,6 +438,7 @@ export class WebGpuRenderer implements BackendRenderer {
         pass.setScissorRect(scissor.x, scissor.y, scissor.width, scissor.height);
         setRect(last, scissor.x, scissor.y, scissor.width, scissor.height);
       }
+      if (record.kind === "path" || (record.kind === "textured" && !record.texture0)) continue;
       pass.setPipeline(pipelines[record.kind]);
       offset[0] = index * LAYER_STRIDE;
       pass.setBindGroup(0, res.group, offset, 0, 1);
@@ -407,6 +449,189 @@ export class WebGpuRenderer implements BackendRenderer {
     pass.end();
     res.device.queue.submit([encoder.finish()]);
     return true;
+  }
+
+  /**
+   * Draws every shape record into a pooled texture (a multisampled pass and its resolve, encoded before
+   * the draw's own) and points the record at it. Their draws' uniforms take the slots after the records'.
+   */
+  private pathRecords(res: DeviceResources, encoder: GPUCommandEncoder, count: number): void {
+    const indices = this.pathIndices;
+    indices.length = 0;
+    let draws = 0;
+    let floats = 0;
+    let width = 0;
+    let height = 0;
+    for (let index = 0; index < count; index++) {
+      const record = this.records.at(index);
+      if (record.kind !== "path" || !record.path) continue;
+      const region = pathRegionInto((this.pathRegions[indices.length] ??= { x: 0, y: 0, width: 0, height: 0 }), record);
+      if (!region) {
+        // Out of view: an empty textured record draws nothing.
+        record.kind = "textured";
+        record.path = null;
+        record.uniform.opacity = 0;
+        record.texture0 = null;
+        continue;
+      }
+      indices.push(index);
+      width = Math.max(width, region.width);
+      height = Math.max(height, region.height);
+      for (const draw of record.path.draws) {
+        draws += 1;
+        floats += draw.triangles.length + (draw.clip?.length ?? 0);
+      }
+    }
+    if (indices.length === 0) return;
+    const path = (res.path ??= this.buildPath(res));
+    const scratch = this.pathScratch(res, path, width, height);
+    if (count + draws > res.layerCapacity) this.growLayers(res, count + draws);
+    if (floats * 4 > path.vertexCapacity) {
+      let capacity = path.vertexCapacity;
+      while (capacity < floats * 4) capacity *= 2;
+      path.vertices.destroy();
+      path.vertices = res.device.createBuffer({ label: "shape triangles", size: capacity, usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST });
+      path.vertexCapacity = capacity;
+    }
+    if (this.pathVertices.length < floats) this.pathVertices = new Float32Array(Math.max(floats, 2 * this.pathVertices.length));
+    if (this.pathData.length < layerFloats(draws)) this.pathData = new Float32Array(layerFloats(Math.max(draws, 2 * (this.pathData.length / (LAYER_STRIDE / 4)))));
+    // Pack every draw's uniform and triangles first: the passes below only record commands.
+    let slot = 0;
+    let at = 0;
+    for (let i = 0; i < indices.length; i++) {
+      const record = this.records.at(indices[i] as number);
+      const region = this.pathRegions[i] as Rect;
+      for (const draw of (record.path as NonNullable<typeof record.path>).draws) {
+        writePathUniform(this.pathUniform, record, draw, region, scratch.width, scratch.height, false);
+        packLayer(this.pathData, slot, this.pathUniform);
+        slot += 1;
+        if (draw.clip) {
+          this.pathVertices.set(draw.clip, at);
+          at += draw.clip.length;
+        }
+        this.pathVertices.set(draw.triangles, at);
+        at += draw.triangles.length;
+      }
+    }
+    res.device.queue.writeBuffer(res.layerBuffer, count * LAYER_STRIDE, this.pathData.buffer, 0, draws * LAYER_STRIDE);
+    res.device.queue.writeBuffer(path.vertices, 0, this.pathVertices.buffer, 0, floats * 4);
+
+    const offset = this.dynamicOffset;
+    slot = 0;
+    at = 0;
+    for (let i = 0; i < indices.length; i++) {
+      const record = this.records.at(indices[i] as number);
+      const region = this.pathRegions[i] as Rect;
+      const pass = encoder.beginRenderPass({
+        label: "shape",
+        colorAttachments: [{ view: scratch.colorView, loadOp: "clear", storeOp: "store", clearValue: [0, 0, 0, 0] }],
+        depthStencilAttachment: { view: scratch.stencilView, stencilLoadOp: "clear", stencilStoreOp: "discard", stencilClearValue: 0 },
+      });
+      pass.setScissorRect(0, 0, region.width, region.height);
+      pass.setVertexBuffer(0, path.vertices);
+      for (const draw of (record.path as NonNullable<typeof record.path>).draws) {
+        offset[0] = (count + slot) * LAYER_STRIDE;
+        slot += 1;
+        pass.setBindGroup(0, res.group, offset, 0, 1);
+        if (draw.rule === "inside" || draw.rule === "outside") {
+          const clip = draw.clip as Float32Array;
+          // The fill's inside into the top bit, then the stroke (twice as wide) into the low bits: kept where both are (inside) or only the stroke is (outside).
+          pass.setPipeline(draw.clipRule === "evenodd" ? path.evenodd : path.nonzero);
+          pass.draw(clip.length / 2, 1, at / 2);
+          at += clip.length;
+          pass.setPipeline(path.clip);
+          pass.setStencilReference(0x80);
+          pass.draw(4);
+          pass.setPipeline(path.union);
+          pass.setStencilReference(1);
+          pass.draw(draw.triangles.length / 2, 1, at / 2);
+          at += draw.triangles.length;
+          pass.setPipeline(path.coverEqual);
+          pass.setStencilReference(draw.rule === "inside" ? 0x81 : 0x01);
+          pass.draw(4);
+        } else {
+          pass.setPipeline(draw.rule === "union" ? path.union : draw.rule === "evenodd" ? path.evenodd : path.nonzero);
+          pass.setStencilReference(1);
+          pass.draw(draw.triangles.length / 2, 1, at / 2);
+          at += draw.triangles.length;
+          pass.setPipeline(path.cover);
+          pass.setStencilReference(0);
+          pass.draw(4);
+        }
+      }
+      pass.end();
+      const texture = this.blurTexture(res, region.width, region.height);
+      const resolve = encoder.beginRenderPass({ label: "shape resolve", colorAttachments: [{ view: texture.view, loadOp: "clear", storeOp: "store", clearValue: [0, 0, 0, 0] }] });
+      resolve.setPipeline(path.resolve);
+      resolve.setScissorRect(0, 0, region.width, region.height);
+      resolve.setBindGroup(0, scratch.group);
+      resolve.draw(3);
+      resolve.end();
+      showPath(record, region, texture);
+    }
+  }
+
+  /** The shapes' scratch, at least `width` x `height` (grown in steps, never shrunk until `releaseCaches`). */
+  private pathScratch(res: DeviceResources, path: PathResources, width: number, height: number): NonNullable<PathResources["scratch"]> {
+    const current = path.scratch;
+    if (current && current.width >= width && current.height >= height) return current;
+    const step = (size: number) => Math.min(this.maxTextureSize, Math.ceil(size / PATH_STEP) * PATH_STEP);
+    const w = Math.max(step(width), current?.width ?? 0);
+    const h = Math.max(step(height), current?.height ?? 0);
+    current?.color.destroy();
+    current?.stencil.destroy();
+    const color = res.device.createTexture({ label: "shape scratch", size: [w, h], format: TEXTURE_FORMAT, sampleCount: PATH_SAMPLES, usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING });
+    const stencil = res.device.createTexture({ label: "shape stencil", size: [w, h], format: "stencil8", sampleCount: PATH_SAMPLES, usage: GPUTextureUsage.RENDER_ATTACHMENT });
+    const colorView = color.createView();
+    const group = res.device.createBindGroup({ label: "shape scratch", layout: path.resolveLayout, entries: [{ binding: 0, resource: colorView }] });
+    path.scratch = { color, colorView, stencil, stencilView: stencil.createView(), group, width: w, height: h };
+    return path.scratch;
+  }
+
+  private buildPath(res: DeviceResources): PathResources {
+    const { device } = res;
+    const module = device.createShaderModule({ label: "shape", code: PATH_WGSL });
+    const layout = device.createPipelineLayout({ label: "shape", bindGroupLayouts: [res.groupLayout] });
+    const make = (label: string, stencilPass: boolean, front: GPUStencilFaceState, back: GPUStencilFaceState, readMask: number, writeMask: number, paint: boolean) =>
+      device.createRenderPipeline({
+        label: `shape ${label}`,
+        layout,
+        vertex: stencilPass
+          ? { module, entryPoint: "vsStencil", buffers: [{ arrayStride: 8, attributes: [{ shaderLocation: 0, offset: 0, format: "float32x2" }] }] }
+          : { module, entryPoint: "vsCover" },
+        fragment: { module, entryPoint: paint ? "fsCover" : "fsStencil", targets: [paint ? { format: TEXTURE_FORMAT, blend: PREMULTIPLIED_BLEND } : { format: TEXTURE_FORMAT, writeMask: 0 }] },
+        primitive: { topology: stencilPass ? "triangle-list" : "triangle-strip", cullMode: "none" },
+        depthStencil: { format: "stencil8", depthWriteEnabled: false, depthCompare: "always", stencilFront: front, stencilBack: back, stencilReadMask: readMask, stencilWriteMask: writeMask },
+        multisample: { count: PATH_SAMPLES },
+      });
+    const both = (face: GPUStencilFaceState) => [face, face] as const;
+    const zeroing = (compare: GPUCompareFunction): GPUStencilFaceState => ({ compare, passOp: "zero", failOp: "zero" });
+    const resolveLayout = device.createBindGroupLayout({
+      label: "shape scratch",
+      entries: [{ binding: 0, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: "unfilterable-float", multisampled: true } }],
+    });
+    const resolveModule = device.createShaderModule({ label: "shape resolve", code: PATH_RESOLVE_WGSL });
+    return {
+      // Front faces count up and back faces down (the winding number, modulo 128); evenodd flips.
+      nonzero: make("nonzero", true, { compare: "always", passOp: "increment-wrap" }, { compare: "always", passOp: "decrement-wrap" }, 0xff, 0x7f, false),
+      evenodd: make("evenodd", true, ...both({ compare: "always", passOp: "invert" }), 0xff, 0x7f, false),
+      union: make("union", true, ...both({ compare: "always", passOp: "replace" }), 0xff, 0x7f, false),
+      // Where the low bits are set: the reference (0x80) replaces the whole value; elsewhere zero.
+      clip: make("clip", false, ...both({ compare: "not-equal", passOp: "replace", failOp: "zero" }), 0x7f, 0xff, false),
+      cover: make("cover", false, ...both(zeroing("not-equal")), 0x7f, 0xff, true),
+      coverEqual: make("cover equal", false, ...both(zeroing("equal")), 0xff, 0xff, true),
+      resolve: device.createRenderPipeline({
+        label: "shape resolve",
+        layout: device.createPipelineLayout({ label: "shape resolve", bindGroupLayouts: [resolveLayout] }),
+        vertex: { module: resolveModule, entryPoint: "vs" },
+        fragment: { module: resolveModule, entryPoint: "fs", targets: [{ format: TEXTURE_FORMAT }] },
+        primitive: { topology: "triangle-list" },
+      }),
+      resolveLayout,
+      scratch: null,
+      vertices: device.createBuffer({ label: "shape triangles", size: 64 * 1024, usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST }),
+      vertexCapacity: 64 * 1024,
+    };
   }
 
   /**
@@ -807,6 +1032,7 @@ export class WebGpuRenderer implements BackendRenderer {
       },
       modules: { textured: module("textured", TEXTURED_WGSL), dissolve: module("dissolve", DISSOLVE_WGSL), solid: module("solid", SOLID_WGSL) },
       pipelines: new Map<GPUTextureFormat, Pipelines>(),
+      path: null,
       mips,
       scaler,
       blur,

@@ -15,18 +15,18 @@
 import type { Draft } from "immer";
 import type { Command } from "../../core/commands/command.js";
 import { animatedTransform, clipRel, hasSectionKeys, mapKeyValues, transformValues, writeKeys } from "../../core/document/keyframes.js";
-import type { Clip, ClipId, CompoundClip, Crop, Frame, Keyframes, MediaClip, Project, SolidClip, TextClip, Transform } from "../../core/document/types.js";
+import type { Clip, ClipId, CompoundClip, Crop, Frame, Keyframes, MediaClip, Project, ShapeClip, SolidClip, TextClip, Transform } from "../../core/document/types.js";
 import { IDENTITY_TRANSFORM } from "../../core/document/placement.js";
 import { displaySize } from "../../media/probe/rotation.js";
 import { textLayout } from "../../render/text/layoutCache.js";
 import { isClipLocked } from "../model/queries.js";
 import { defaultTransform } from "./insertMedia.js";
 
-/** Clips drawn on the canvas with a transform (spec §5.2): video, image, solid and text (`isLayerClip`; audio clips carry one but draw nothing). */
-export type LayerClip = MediaClip | TextClip | SolidClip | CompoundClip;
+/** Clips drawn on the canvas with a transform (spec §5.2): video, image, solid, text, compound and shape (`isLayerClip`; audio clips carry one but draw nothing). */
+export type LayerClip = MediaClip | TextClip | SolidClip | CompoundClip | ShapeClip;
 
 export function isLayerClip(clip: Clip): clip is LayerClip {
-  return clip.kind === "video" || clip.kind === "image" || clip.kind === "solid" || clip.kind === "text" || clip.kind === "compound";
+  return clip.kind === "video" || clip.kind === "image" || clip.kind === "solid" || clip.kind === "text" || clip.kind === "compound" || clip.kind === "shape";
 }
 
 /** A layer's content in its own px (the transform's input) and the visible part of it. */
@@ -72,8 +72,8 @@ export function layerContent(project: Project, clip: Clip, crop?: Crop): Content
     const bottom = (1 - clamp01(shown.bottom)) * height;
     return right > left && bottom > top ? { width, height, left, top, right, bottom } : null;
   }
-  if (clip.kind === "solid") {
-    // Every shape is drawn in its size's box (an ellipse inscribed, a line `h` thick).
+  if (clip.kind === "solid" || clip.kind === "shape") {
+    // Every solid shape is drawn in its size's box; a vector shape's layout box is its view box (spec §21.12) (an ellipse inscribed, a line `h` thick).
     const { w, h } = clip.size;
     if (!(w > 0) || !(h > 0)) return null;
     return { width: w, height: h, left: 0, top: 0, right: w, bottom: h };

@@ -1,6 +1,6 @@
 # Progress
 
-last_completed_batch: 64
+last_completed_batch: 65
 in_progress_batch: none
 skipped_batches: []
 needs_human: none
@@ -224,6 +224,8 @@ Items the design system did not define and the functional default that was used 
 - Preset bar buttons (Batch 52, gap: "buttons must be tall enough for the style to read"; the Batch 46 token audit flags their height as no DS control height, as expected): thumbnails `--preset-button-width` 84px x `--preset-button-height` 40px, radius-md, a 1px hairline border that goes `--surface-5` on hover and `--accent-dim` when pressed (the DS card hover), the inset focus ring from the keyboard, `--space-1` between them and `--space-1` (theme) around the text. The neutral swatch behind the text is `--preset-swatch` = `--text-tertiary` (#64748b, about 4.5:1 against both white and black text). While a button is dragged it shows at `--disabled-opacity`, and the gap it would drop into gets the timeline's insert line (`--timeline-insert-width`, `--accent`).
 - Preset card menu (Batch 52): a "Preset bar sets" heading over Favorites, Titles, Subtitles and Captions (toggle rows with checks, the menu stays open) and Tags…; the Presets tab's card shows a tags field (comma-separated) in place of its name, like Rename.
 - Caption styles per cue (Batch 53; the DS has no override marker): in the Selected scope every Caption style row has a `--space-5` (16px) slot at the label column's right edge; a row a selected cue overrides shows an `--accent` dot (`--space-2`, 6px, the save dot's size) there. The dot is the row's reset button: under the pointer or the focus it turns into the reset arrow (`--icon-size-sm`, primary text) on the `--hover-wash`, radius-sm, the DS focus ring. The scope switch is a row of `Choice` text chips (**Edit**: All cues | Selected (n)); Reset to track style is a compact secondary Button with the reset icon. A cue with its own style has the same 6px `--accent` dot in the cue list row's right padding, and a lucide `paintbrush` icon badge on its timeline clip (the icon badge style of the link and keyframe badges).
+- Shape clips on the timeline (Batch 65; the DS has no color for them): `--clip-shape` = `--surface-4`, `--clip-shape-label` = `--surface-5` (drawn like solids), glyph lucide `shapes`.
+
 ## Global deviations
 Decisions that diverge from docs/EDITOR_SPEC.md, with the reason. Each one also appears under its batch.
 - The design system file is `DESIGN_SYSTEM.md` (repo root), not `DESIGN_SYSTEMS.md` as the docs say. Every reference to `DESIGN_SYSTEMS.md` means this file. Reason: the real filename, kept as-is per NEXT_BATCH_SETUP §0.
@@ -835,6 +837,8 @@ Small things discovered during a batch that belong to a later batch. Format: `- 
 - [from Batch 64 -> Batch 80] Proxies for alpha media: a proxy needs BlockAdditions muxing (no muxer in the dependencies) and the VideoEncoder has no alpha output we could rely on. Alpha videos play from the original; a 4K alpha clip may need a smaller version made outside the editor. Revisit with the media performance pass.
 - [from Batch 64 -> Batch 80] Relinking a missing image sequence is not supported (`relinkMedia` skips sequence items): the Media tab has no folder relink. A sequence with a missing frame shows the offline slate.
 - [from Batch 64 -> Batch 81] The sequence frames are decoded at full size and uploaded as RGBA (no LOD ladder); a 300-frame 4K sequence costs about 33 MB per cached frame. Measure it against the section 4 texture budget in the performance pass.
+- [from Batch 65 -> Batch 66] The Shape section in Properties (paths, fill, stroke, trim, primitive params; `TODO(batch 66)` in PropertiesPanel.tsx), `+ Shape` with `defaultPrimitive` (primitives.ts), SVG import into shape clips, and writing a primitive's `d` back on edit.
+- [from Batch 65 -> Batch 66] A path marked slow (one build over 2 ms) stays on the worker for the session, so its trim animation shows each new stroke one frame late; seen on WebGL2 (301 offloaded builds in 5 s, still 60 fps). Consider unmarking it after fast worker builds when the tools make editing interactive.
 
 ## Dependencies
 Why each dependency exists (Batch rule 8).
@@ -6771,3 +6775,40 @@ Why each dependency exists (Batch rule 8).
   - Not blocking: in `src/media/workers/protocol.ts:204` the doc comment "The filmstrip of an animated image for the timeline." now sits above `sequenceStrip` instead of `animationStrip` (two stacked comments). The HEVC alpha single-track note stays open as pending manual check 3.
   - Checked: `npm run check` green (281 + 4 test files, 2864 + 4 tests, build); nothing from Do not build yet; no color or size literals; no untagged TODOs; the strip decode runs in the decode worker, the main thread only resolves file handles.
 - docs: importing-media.md (Transparent video, Image sequences), troubleshooting.md, whats-new.md, README.md in docs/user-guide/ (2026-11-07)
+
+### Batch 65: Vector shapes I: model and renderer
+- status: done
+- date: 2026-11-07
+- notes:
+  - Built in auto mode (lean run, resumed once after a context compaction).
+  - Model (spec §21.12): schema 10 adds the `shape` clip kind (`size` = view box, `paths[]` with `d`, `fill` (color, gradient or null), `fillRule`, optional `stroke` (a solid's stroke + `cap`, `join`, `miterLimit`), `trim` and `primitive`), validation with positions for bad path data, the JSON schema, strict mode, the field table and the keyframe props `paths.<id>.trim.start|end|offset`, `stroke.width|color|dashOffset`, `fill`, `primitive.<param>` (`readShapeProp`/`writeShapeProp` in keyProps.ts). Migration 9 -> 10 is a no-op (new kind only).
+  - `src/core/shapes/`: SVG path parser (all commands, relative forms, implicit repeats, compact numbers, arcs to cubics), adaptive flattening by scale, polyline stroker (caps, joins, miter limit, dashes, inside/outside), trim over the whole length with offset wrap, the seven primitives (rect, ellipse, polygon, star, arrow, arc, line), `buildPathGeometry` (pure, shared with `geometry.worker.ts`).
+  - `ShapeGeometryCache` (render/shapes): flattened lines per source and scale bucket, fill fans per flattening, strokes per stroke params + trim; counters `flattens`, `fillBuilds`, `strokeBuilds`, `hits`, `offloaded` (`__editor.preview.shapeStats` in dev builds). A build over 2 ms marks the path slow: its later builds go to the worker and the last geometry shows until the new one lands; exports never wait (`exact`).
+  - Renderer: stencil-then-cover per shape layer into a 4x MSAA scratch (nonzero incr/decr wrap, evenodd invert, strokes as a stencil union, inside/outside strokes cut by the fill's winding), resolved into a pooled texture (WebGPU resolve shader; WebGL2 blitFramebuffer) and drawn as a textured quad with the layer opacity. The fill cover reuses the solid STYLE gradient code (follow-up 58 done: `writeGradient` shared by `writeStyle` and paths).
+  - Compositor: shape layers with keyed path frames written into per-layer scratch (`shapeFrames.ts`, frames of unkeyed clips cached per clip object), flips, fades, opacity; LayerTextures resolves them for preview and export alike, so the CLI render takes the same path.
+  - Drawn bounds (follow-up 58 done): `drawnBounds.ts` gives solids and pictures their stroke and shadow reach and shapes their path control box + stroke reach; only the selection and hover outlines use it (`outlineQuad`); hit testing, snapping, crop and handles stay on the layout box.
+  - Follow-up 63 done: `planMake` checks the depth of the open compound's host sequence (`scopeDepth`).
+  - Timeline: shape clips draw with the lucide `shapes` glyph and the `--clip-shape` colors; the Transform section and the gizmo work on them (layer clips).
+  - Interop: `fixtures/interop/shapes` (checkmark trim 0 -> 1 over frames 0-10 with round caps, gauge arc end 0 -> 270, gradient star with a miter stroke, dashed arrow with an animated dash offset, nonzero and evenodd pentagrams, polygon, inside and outside strokes, square-cap line) with expected frames 0/5/10/30; INTEROP.md section 5.5; capabilities `lastBatch` 65, `vector.shapes`/`trimPaths` true, `svgImport` false, plus `primitives`, `caps`, `joins`, `fillRules`, `keyframeProps`.
+  - Fuzz: `randomProject` places shape clips (path data or primitives, strokes, dashes, trims, fill rules, keyed trims); the fuzz JSON check accepts `null` (a path's `fill: null`).
+  - Tests: ShapeGeometryCache (7), Compositor.shapes (4), pathRecords (5), drawnBounds (3), core/shapes, interop shapes (validity + refusals), fuzz. `npm run check` green: 286 + 4 test files, 2904 + 4 tests, build ok (one run before had a CLI spawn test, interopOpen "prints the report", read empty stdout under load; it passes alone and on the re-run). `npm run test:render` passes every fixture (alpha, basic, captions-v2, compound, keyframes, shapes, styles); shapes: WebGPU vs expected SSIM >= 0.98, WebGL2 vs WebGPU SSIM 1.0000 (PSNR > 81 dB).
+  - CDP perf (headless Chrome, own dev server on 5321, 50 shape clips on 50 tracks, 1080x1920 at 60 fps, 5 s measured after a 1 s warm-up): transform, opacity and fill-color animation: 60 fps rAF and 60.2 preview renders/s, p95 frame 16.8 ms, 0 missed frames, 0 React commits, render avg 1.67 ms max 3.6 ms (WebGPU) / avg 1.14 ms max 2.5 ms (WebGL2), geometry counters +0 flattens, +0 fill builds, +0 stroke builds over 300 frames (21140 hits). Same with animated scale: +0 (the scale stays inside its buckets). Every shape's trim end animated: 60 fps, 0 React commits, render avg 2.42 ms max 4.0 ms (WebGPU) / avg 1.44 ms max 3.0 ms (WebGL2), +2718 stroke builds and 0 fill builds or flattens over 300 frames (identical shapes share geometry), 0-2 dropped frames.
+- deviations:
+  - Edges are anti-aliased with a 4x MSAA scratch per shape layer, not the analytic edge AA of the solids: arbitrary paths have no distance function. Reason: stencil-then-cover needs a stencil target; MSAA gives even quality on curves and thin strokes on both backends.
+  - Trim runs over the path's whole length (its subpaths in order; After Effects' "individually" is not offered); the offset in turns wraps round. Only the stroke is trimmed (the fill stays whole).
+  - Gradients in a path are laid out in the path's own box (as a solid's in its size), not the view box.
+  - Dashes restart at each subpath (SVG behavior), and an odd dash list repeats.
+  - FlashFX-v2's pathOps booleans and its polygon-clipping stroke union are not ported: overlapping stroke pieces merge in the stencil (union pass) instead, which needs no geometry boolean; boolean operations are not part of this batch.
+  - A path with a `primitive` may carry `d: ""`; the primitive is drawn and `d` is ignored (the Batch 66 tools write it back).
+  - The timeline fill color of clip kinds without one (`fillClip`) falls back to the theme: compounds had none either.
+  - New manifest keys under `vector` (`primitives`, `caps`, `joins`, `fillRules`, `keyframeProps`) beyond the spec's three booleans, so agents can read the vocabulary.
+  - The shape geometry cache builds its key strings per resolve (a few short strings per path per frame); their cost is inside the render averages above.
+  - Tests adapted: projectFile expects schema 10; the makeEditable fuzz samples 10 seeds (shape clips took part of the solids' share of random clips); the fuzz kinds list includes `shape`.
+- follow-ups:
+  - [from Batch 65 -> Batch 66] The Shape section in Properties (paths, fill, stroke, trim, primitive params; `TODO(batch 66)` in PropertiesPanel.tsx), `+ Shape` with `defaultPrimitive` (primitives.ts), SVG import into shape clips, and writing a primitive's `d` back on edit.
+  - [from Batch 65 -> Batch 66] A path marked slow (one build over 2 ms) stays on the worker for the session, so its trim animation shows each new stroke one frame late; seen on WebGL2 (301 offloaded builds in 5 s, still 60 fps). Consider unmarking it after fast worker builds when the tools make editing interactive.
+- design gaps:
+  - Shape clips on the timeline (Batch 65; the DS has no color for them): `--clip-shape` = `--surface-4`, `--clip-shape-label` = `--surface-5` (drawn like solids), glyph lucide `shapes`.
+- pending manual checks:
+  1. Preview vs export parity in the running app: open `fixtures/interop/shapes` as a project (or paste its clips into one), set the playhead to 5, Export frame (PNG) and compare it with the preview at 100% zoom and with `fixtures/interop/shapes/expected/Interop shapes-frame-5.png`: half checkmark, gauge at 45 degrees, dashed arrow, the evenodd star with a hole and the nonzero one filled. Repeat with `?renderer=webgl2`. Pass: no visible difference.
+  2. 50 animated shapes at 60 fps on the user's GPU with the Profiler: duplicate the gauge clip onto 50 tracks, play 10 s with the React Profiler recording and Dev stats on. Pass: 0 commits, no dropped frames in the stats, and `__editor.preview.shapeStats` (dev build) unchanged across a second playback of the same range.

@@ -44,13 +44,30 @@ export type SectionKeyframeProp = (typeof SECTION_KEYFRAME_PROPS)[number];
 export const COLOR_PROPS: readonly KeyframeProp[] = ["fill", "stroke.color", "shadow.color", "style.fill"];
 
 export function isColorProp(prop: string): boolean {
-  return (COLOR_PROPS as readonly string[]).includes(prop);
+  return (COLOR_PROPS as readonly string[]).includes(prop) || (prop.startsWith("paths.") && (prop.endsWith(".stroke.color") || prop.endsWith(".fill")));
+}
+
+/**
+ * The keyframe properties of a shape clip's paths (spec §21.12, Batch 65): `paths.<id>.trim.start|end|offset`,
+ * `paths.<id>.stroke.width|color|dashOffset`, `paths.<id>.fill` (color fills) and `paths.<id>.primitive.<param>`.
+ * Groups: 1 the path id, 2 the field path, 3 the primitive param.
+ */
+export const SHAPE_PROP_PATTERN = /^paths\.([A-Za-z0-9_-]+)\.(trim\.(?:start|end|offset)|stroke\.(?:width|color|dashOffset)|fill|primitive\.([A-Za-z]+))$/;
+/** The same, as the template ids listed in the manifest and INTEROP.md. */
+export const SHAPE_KEYFRAME_PROPS = [
+  "paths.<id>.trim.start", "paths.<id>.trim.end", "paths.<id>.trim.offset",
+  "paths.<id>.stroke.width", "paths.<id>.stroke.color", "paths.<id>.stroke.dashOffset",
+  "paths.<id>.fill", "paths.<id>.primitive.<param>",
+] as const;
+
+export function isShapeProp(prop: string): boolean {
+  return SHAPE_PROP_PATTERN.test(prop);
 }
 
 /** The clip kinds each new property is valid on (the section properties are valid on any clip with them). */
 const PROP_KINDS: Readonly<Record<string, readonly string[]>> = {
-  "transform.anchor.x": ["video", "image", "solid", "text", "compound"],
-  "transform.anchor.y": ["video", "image", "solid", "text", "compound"],
+  "transform.anchor.x": ["video", "image", "solid", "text", "compound", "shape"],
+  "transform.anchor.y": ["video", "image", "solid", "text", "compound", "shape"],
   "crop.left": ["video", "image"],
   "crop.top": ["video", "image"],
   "crop.right": ["video", "image"],
@@ -74,6 +91,7 @@ const PROP_KINDS: Readonly<Record<string, readonly string[]>> = {
 
 /** Whether keys of `prop` make sense on a clip of `kind`. */
 export function propValidFor(prop: string, kind: string): boolean {
+  if (prop.startsWith("paths.")) return kind === "shape";
   const kinds = PROP_KINDS[prop];
   return kinds === undefined || kinds.includes(kind);
 }
@@ -678,16 +696,36 @@ function validBezier(value: unknown): boolean {
   return Array.isArray(value) && value.length === 4 && value.every((n) => Number.isFinite(n)) && value[0] >= 0 && value[0] <= 1 && value[2] >= 0 && value[2] <= 1;
 }
 
+/** What a shape clip lacks for keys of the path property `prop` (its path, a stroke, a color fill, the primitive's param); null when it has it. */
+export function shapePropIssue(prop: string, paths: unknown): string | null {
+  const match = SHAPE_PROP_PATTERN.exec(prop);
+  if (!match) return "not a path property";
+  const list = Array.isArray(paths) ? (paths as { id?: unknown; fill?: unknown; stroke?: unknown; trim?: unknown; primitive?: { kind?: unknown } & Record<string, unknown> }[]) : [];
+  const path = list.find((candidate) => candidate?.id === match[1]);
+  if (!path) return `the shape has no path "${match[1]}"`;
+  const field = match[2] as string;
+  if (field.startsWith("stroke.") && !path.stroke) return "the path has no stroke";
+  if (field === "fill" && !isColorFill(path.fill)) return "the path's fill is not a plain color";
+  if (match[3] !== undefined && typeof path.primitive?.[match[3]] !== "number") return `the path has no primitive with "${match[3]}"`;
+  return null;
+}
+
 /** Whether a solid's `fill` is a plain color (the only fill `fill` keys can animate). */
 export function isColorFill(fill: unknown): boolean {
   return typeof fill === "object" && fill !== null && "r" in fill;
 }
 
 /** What is wrong with a clip's keyframes (spec §5.2 invariants, Batch 35): known properties, sorted integer frames, finite values, known eases, no empty list. */
-export function keyframeIssues(keyframes: Keyframes, clip?: { kind: string; fill?: unknown }): string[] {
+export function keyframeIssues(keyframes: Keyframes, clip?: { kind: string; fill?: unknown; paths?: unknown }): string[] {
   const issues: string[] = [];
   for (const [prop, keys] of Object.entries(keyframes)) {
-    if (!isKeyframeProp(prop)) issues.push(`keyframes: unknown property "${prop}"`);
+    if (isShapeProp(prop)) {
+      if (clip && clip.kind !== "shape") issues.push(`keyframes.${prop}: not a property of a ${clip.kind} clip`);
+      else if (clip) {
+        const issue = shapePropIssue(prop, clip.paths);
+        if (issue) issues.push(`keyframes.${prop}: ${issue}`);
+      }
+    } else if (!isKeyframeProp(prop)) issues.push(`keyframes: unknown property "${prop}"`);
     else if (clip && !propValidFor(prop, clip.kind)) issues.push(`keyframes.${prop}: not a property of a ${clip.kind} clip`);
     else if (clip && prop === "fill" && clip.kind === "solid" && !isColorFill(clip.fill)) issues.push("keyframes.fill: the solid's fill is not a plain color");
     const vector = isColorProp(prop);

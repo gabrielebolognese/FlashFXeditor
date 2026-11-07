@@ -7,14 +7,19 @@
 // px on each side, its UV past 0..1 with it, so the shader's anti-aliased edge is drawn whole.
 // A textured layer with a blur (a text's blurIn, spec §10.4) is blurred by the backend in two passes
 // into a pooled texture; `blurRegionInto` says what to read and `showBlurred` points the record at it.
-import type { RGBA } from "../../core/document/types.js";
-import type { DrawList, Layer, SolidLayer, UvRect } from "../compositor/drawList.js";
+// A vector shape (spec §21.12, Batch 65) is a "path" record: the backend draws its draws (stencil, then
+// cover) into a multisampled scratch over `pathRegionInto`, resolves it into a pooled texture and
+// `showPath` turns the record into a textured quad of that texture (the shape's group opacity).
+import type { GradientFill, RGBA } from "../../core/document/types.js";
+import type { DrawList, Layer, PathDraw, PathLayer, SolidLayer, UvRect } from "../compositor/drawList.js";
 import { invertInto, multiplyInto, mutableIdentity, setMat, type Mat3, type MutableMat3 } from "../mat3.js";
 import { boxPerimeter } from "../../core/document/fill.js";
 import { newStyleUniform, resetStyleUniform, SHAPE_CODE, type LayerUniform } from "./layerUniforms.js";
 import type { Pane, TextureHandle, Viewport } from "./renderer.js";
 
-export type RecordKind = "textured" | "dissolve" | "solid";
+export type RecordKind = "textured" | "dissolve" | "solid" | "path";
+/** The kinds the main pass draws ("path" records become "textured" before it). */
+export type QuadKind = Exclude<RecordKind, "path">;
 
 export interface Rect {
   x: number;
@@ -34,7 +39,12 @@ export interface DrawRecord<T extends TextureHandle> {
   blur: number;
   /** Target px it is clipped to: the frame within its pane (document layers), or the pane (the border). */
   scissor: Rect;
+  /** A "path" record's shape (its uniform's matrix maps view-box px to target px). */
+  path: PathLayer | null;
 }
+
+/** A record's uniform, writable. */
+export type RecordUniform = DrawRecord<TextureHandle>["uniform"];
 
 /** Largest blur (Gaussian sigma, texture px): the kernel reaches 3 sigma (spec §10.4 "cap the blur radius"). */
 export const MAX_BLUR_SIGMA = 16;
@@ -42,30 +52,36 @@ export const MAX_BLUR_SIGMA = 16;
 const SHAPE_MARGIN = 1;
 const TRANSPARENT: RGBA = { r: 0, g: 0, b: 0, a: 0 };
 
+/** A uniform at rest (a plain fill). */
+export function newRecordUniform(): RecordUniform {
+  return {
+    transform: mutableIdentity(),
+    uv: { u0: 0, v0: 0, u1: 1, v1: 1 },
+    color: { r: 0, g: 0, b: 0, a: 0 },
+    to: { r: 0, g: 0, b: 0, a: 0 },
+    shape: { width: 0, height: 0, radius: 0, code: SHAPE_CODE.quad },
+    radii: new Float32Array(4),
+    style: newStyleUniform(),
+    opacity: 1,
+    flipX: false,
+    flipY: false,
+    mix: 0,
+    uv2: { u0: 0, v0: 0, u1: 1, v1: 1 },
+    mapA: mutableIdentity(),
+    mapB: mutableIdentity(),
+    sides: { from: 1, to: 1 },
+  };
+}
+
 function newRecord<T extends TextureHandle>(): DrawRecord<T> {
   return {
     kind: "solid",
-    uniform: {
-      transform: mutableIdentity(),
-      uv: { u0: 0, v0: 0, u1: 1, v1: 1 },
-      color: { r: 0, g: 0, b: 0, a: 0 },
-      to: { r: 0, g: 0, b: 0, a: 0 },
-      shape: { width: 0, height: 0, radius: 0, code: SHAPE_CODE.quad },
-      radii: new Float32Array(4),
-      style: newStyleUniform(),
-      opacity: 1,
-      flipX: false,
-      flipY: false,
-      mix: 0,
-      uv2: { u0: 0, v0: 0, u1: 1, v1: 1 },
-      mapA: mutableIdentity(),
-      mapB: mutableIdentity(),
-      sides: { from: 1, to: 1 },
-    },
+    uniform: newRecordUniform(),
     texture0: null,
     texture1: null,
     blur: 0,
     scissor: { x: 0, y: 0, width: 0, height: 0 },
+    path: null,
   };
 }
 
@@ -132,6 +148,7 @@ export class DrawRecords<T extends TextureHandle> {
     record.texture0 = null;
     record.texture1 = null;
     record.blur = 0;
+    record.path = null;
     const u = record.uniform;
     u.opacity = 1;
     u.flipX = false;
@@ -201,6 +218,13 @@ export class DrawRecords<T extends TextureHandle> {
         u.mix = layer.mix;
         return;
       }
+      case "path": {
+        if (layer.draws.length === 0 || layer.opacity <= 0) return;
+        const record = this.nextRecord("path", scissor);
+        record.path = layer;
+        copyLayer(record, view, layer.transform, layer.opacity);
+        return;
+      }
       case "solid": {
         const record = this.solidRecord(layer.color, scissor);
         copyLayer(record, view, layer.transform, layer.opacity);
@@ -223,6 +247,103 @@ export class DrawRecords<T extends TextureHandle> {
       }
     }
   }
+}
+
+/** A gradient fill into a style uniform (at most 8 stops are drawn). */
+function writeGradient(out: LayerUniform["style"], g: GradientFill): void {
+  out.fillKind = g.type === "radial" ? 2 : 1;
+  out.fillAngle = (g.angle * Math.PI) / 180;
+  out.fillRadius = g.radius;
+  out.fillCx = g.center.x;
+  out.fillCy = g.center.y;
+  const count = Math.min(8, g.stops.length);
+  out.stopCount = count;
+  for (let i = 0; i < count; i++) {
+    const stop = g.stops[i] as (typeof g.stops)[number];
+    out.stopAt[i] = stop.at;
+    out.stopColor[4 * i] = stop.color.r;
+    out.stopColor[4 * i + 1] = stop.color.g;
+    out.stopColor[4 * i + 2] = stop.color.b;
+    out.stopColor[4 * i + 3] = stop.color.a;
+  }
+}
+
+/** Target px a shape's region reaches past its draws' box on each side (the multisampled edge). */
+const PATH_MARGIN = 1;
+
+/**
+ * The target px a "path" record draws into: its draws' box through its matrix, grown by the edge and
+ * rounded out to whole px, clipped to its scissor; null when nothing of it is in view.
+ */
+export function pathRegionInto(out: Rect, record: DrawRecord<TextureHandle>): Rect | null {
+  const layer = record.path;
+  if (record.kind !== "path" || !layer) return null;
+  const m = record.uniform.transform;
+  const [x0, y0, x1, y1] = layer.bounds;
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (let i = 0; i < 4; i++) {
+    const x = i & 1 ? x1 : x0;
+    const y = i & 2 ? y1 : y0;
+    const tx = m[0] * x + m[2] * y + m[4];
+    const ty = m[1] * x + m[3] * y + m[5];
+    if (tx < minX) minX = tx;
+    if (tx > maxX) maxX = tx;
+    if (ty < minY) minY = ty;
+    if (ty > maxY) maxY = ty;
+  }
+  if (!Number.isFinite(minX + minY + maxX + maxY)) return null;
+  const { scissor } = record;
+  const left = Math.max(scissor.x, Math.floor(minX) - PATH_MARGIN);
+  const top = Math.max(scissor.y, Math.floor(minY) - PATH_MARGIN);
+  const right = Math.min(scissor.x + scissor.width, Math.ceil(maxX) + PATH_MARGIN);
+  const bottom = Math.min(scissor.y + scissor.height, Math.ceil(maxY) + PATH_MARGIN);
+  if (right - left < 1 || bottom - top < 1) return null;
+  return setRect(out, left, top, right - left, bottom - top);
+}
+
+/**
+ * The uniform of one draw of a "path" record into its scratch (`width` x `height` px, the region at its
+ * top-left): the matrix maps view-box px to the scratch's clip space (`flipY`: GL framebuffers, whose
+ * clip y runs the other way), `uv` holds the cover rectangle, `shape` the gradient's box (x, y, w, h).
+ */
+export function writePathUniform(out: RecordUniform, record: DrawRecord<TextureHandle>, draw: PathDraw, region: Rect, width: number, height: number, flipY: boolean): void {
+  const m = record.uniform.transform;
+  const sx = 2 / width;
+  const sy = (flipY ? 2 : -2) / height;
+  const t = out.transform;
+  t[0] = sx * m[0];
+  t[1] = sy * m[1];
+  t[2] = sx * m[2];
+  t[3] = sy * m[3];
+  t[4] = sx * (m[4] - region.x) - 1;
+  t[5] = sy * (m[5] - region.y) + (flipY ? -1 : 1);
+  const [c0, c1, c2, c3] = draw.cover;
+  setUv(out.uv, c0, c1, c2, c3);
+  setColor(out.color, draw.color);
+  const [b0, b1, b2, b3] = draw.box;
+  out.shape.width = b0;
+  out.shape.height = b1;
+  out.shape.radius = b2 - b0;
+  out.shape.code = b3 - b1;
+  out.opacity = 1;
+  resetStyleUniform(out.style);
+  if (draw.gradient) writeGradient(out.style, draw.gradient);
+}
+
+/** Points a "path" record at `texture`, which holds its region from its top-left: a textured quad over the region. */
+export function showPath<T extends TextureHandle>(record: DrawRecord<T>, region: Rect, texture: T): void {
+  record.kind = "textured";
+  record.path = null;
+  record.texture0 = texture;
+  const u = record.uniform;
+  setMat(u.transform, region.width, 0, 0, region.height, region.x, region.y);
+  setUv(u.uv, 0, 0, region.width / texture.width, region.height / texture.height);
+  u.flipX = false;
+  u.flipY = false;
+  u.shape.code = SHAPE_CODE.quad;
 }
 
 /** What a blurred record's two passes read and write (texture px). */
@@ -368,24 +489,7 @@ export function premultipliedInto(out: { r: number; g: number; b: number; a: num
  */
 function writeStyle(out: LayerUniform["style"], style: NonNullable<SolidLayer["style"]>, radii: Float32Array, shape: NonNullable<SolidLayer["shape"]>): number {
   let reach = 0;
-  const g = style.gradient;
-  if (g) {
-    out.fillKind = g.type === "radial" ? 2 : 1;
-    out.fillAngle = (g.angle * Math.PI) / 180;
-    out.fillRadius = g.radius;
-    out.fillCx = g.center.x;
-    out.fillCy = g.center.y;
-    const count = Math.min(8, g.stops.length);
-    out.stopCount = count;
-    for (let i = 0; i < count; i++) {
-      const stop = g.stops[i] as (typeof g.stops)[number];
-      out.stopAt[i] = stop.at;
-      out.stopColor[4 * i] = stop.color.r;
-      out.stopColor[4 * i + 1] = stop.color.g;
-      out.stopColor[4 * i + 2] = stop.color.b;
-      out.stopColor[4 * i + 3] = stop.color.a;
-    }
-  }
+  if (style.gradient) writeGradient(out, style.gradient);
   const stroke = style.stroke;
   const w = shape.width;
   const h = shape.height;

@@ -96,11 +96,12 @@ function checkType(type: FieldType, value: unknown, path: string, issues: Strict
     case "record":
       if (!isObject(value)) return void issues.push({ path, message: `must be an object, found ${describe(value)}` });
       for (const [key, item] of Object.entries(value)) {
-        if (type.keys && !type.keys.includes(key)) issues.push({ path: join(path, key), message: `is not one of ${type.keys.join(", ")}` });
+        if (type.keys && !type.keys.includes(key) && !(type.keyPatterns ?? []).some((pattern) => new RegExp(pattern).test(key))) issues.push({ path: join(path, key), message: `is not one of ${type.keys.join(", ")}` });
         else checkType(type.item, item, join(path, key), issues);
       }
       return;
     case "union": {
+      if (value === null && type.nullable) return;
       const option = isObject(value) ? type.options.find((candidate) => candidate.when in value) : undefined;
       if (!option) return void issues.push({ path, message: `must be ${type.options.map((candidate) => candidate.label).join(" or ")}, found ${describe(value)}` });
       return checkType(option.type, value, path, issues);

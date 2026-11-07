@@ -93,7 +93,8 @@ export function fillClip(ctx: CanvasRenderingContext2D, theme: Theme, clip: Clip
   const tl = theme.timeline;
   const label = clip.color !== undefined ? tl.labels[clip.color] : undefined;
   if (!label) {
-    ctx.fillStyle = tl.clip[clip.kind][part];
+    // Kinds without colors of their own (compound clips) take the solids'.
+    ctx.fillStyle = (tl.clip[clip.kind] ?? tl.clip.solid)[part];
     ctx.fillRect(x, y, width, height);
     return;
   }

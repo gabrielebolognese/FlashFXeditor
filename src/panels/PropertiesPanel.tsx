@@ -71,6 +71,7 @@ function sectionBody(id: SectionId, context: PropertiesContext): ReactNode {
       return context.kind === "clips" ? <AnimationSection ids={context.textIds} primary={context.primary} /> : null;
     case "solid":
       return context.kind === "clips" ? <SolidSection ids={context.solidIds} /> : null;
+    // TODO(batch 66): the Shape section (paths, fill, stroke, trim, primitive params) for shape clips; Transform already lists them.
     case "captionStyle":
       return (context.kind === "clips" || context.kind === "track") && context.captionTrackId ? <CaptionStyleSection trackId={context.captionTrackId} cueIds={context.kind === "clips" ? context.cueIds : NO_CUES} /> : null;
     case "transform":

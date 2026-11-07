@@ -471,3 +471,81 @@ fn fs(in: VertexOut) -> @location(0) vec4f {
   return textureSample(source, sourceSampler, in.uv);
 }
 `;
+
+/**
+ * Vector shapes (spec §21.12, Batch 65): stencil, then cover, into a 4x multisampled scratch texture.
+ * Per draw the layer uniform holds the view box -> scratch clip matrix (c0..c2), the cover rectangle in
+ * view-box px (uv: x0, y0, x1, y1), the paint (color, or the solid's gradient: fillParams, fillCenter,
+ * stops) and the box the gradient is laid out in (shape: x, y, w, h). `vsStencil` takes the triangles
+ * (view-box px) from a vertex buffer; `vsCover` makes the rectangle from the vertex index.
+ */
+export const PATH_WGSL = /* wgsl */ `${DECLARATIONS}${STYLE}
+struct CoverOut {
+  @builtin(position) position: vec4f,
+  @location(0) local: vec2f,
+};
+
+fn toScratch(p: vec2f) -> vec4f {
+  let m = mat3x3f(layer.c0.xyz, layer.c1.xyz, layer.c2.xyz);
+  return vec4f((m * vec3f(p, 1.0)).xy, 0.0, 1.0);
+}
+
+@vertex
+fn vsStencil(@location(0) position: vec2f) -> @builtin(position) vec4f {
+  return toScratch(position);
+}
+
+@vertex
+fn vsCover(@builtin(vertex_index) index: u32) -> CoverOut {
+  var corners = array<vec2f, 4>(vec2f(0.0, 0.0), vec2f(1.0, 0.0), vec2f(0.0, 1.0), vec2f(1.0, 1.0));
+  let p = mix(layer.uv.xy, layer.uv.zw, corners[index]);
+  var out: CoverOut;
+  out.position = toScratch(p);
+  out.local = p;
+  return out;
+}
+
+@fragment
+fn fsStencil() -> @location(0) vec4f {
+  return vec4f(0.0);
+}
+
+@fragment
+fn fsCover(in: CoverOut) -> @location(0) vec4f {
+  let kind = layer.fillParams.x;
+  if (kind < 0.5) { return premultiplied(layer.color); }
+  // The solid's gradient (Batch 58), laid out in the path's box.
+  let size = max(layer.shape.zw, vec2f(1e-4));
+  let halfSize = 0.5 * size;
+  let p = in.local - layer.shape.xy - halfSize;
+  var t = 0.0;
+  if (kind < 1.5) {
+    let dir = vec2f(-sin(layer.fillParams.y), cos(layer.fillParams.y));
+    let extent = max(abs(dir.x) * size.x + abs(dir.y) * size.y, 1e-4);
+    t = 0.5 + dot(p, dir) / extent;
+  } else {
+    let center = layer.fillCenter.xy * size - halfSize;
+    t = length(p - center) / max(layer.fillParams.z * 0.5 * length(size), 1e-4);
+  }
+  return gradientColor(t, i32(layer.fillParams.w));
+}
+`;
+
+/** Resolves the 4x scratch texture of a shape into its single-sampled texture: the mean of the samples (premultiplied). */
+export const PATH_RESOLVE_WGSL = /* wgsl */ `
+@group(0) @binding(0) var scratch: texture_multisampled_2d<f32>;
+
+@vertex
+fn vs(@builtin(vertex_index) index: u32) -> @builtin(position) vec4f {
+  var points = array<vec2f, 3>(vec2f(-1.0, -1.0), vec2f(3.0, -1.0), vec2f(-1.0, 3.0));
+  return vec4f(points[index], 0.0, 1.0);
+}
+
+@fragment
+fn fs(@builtin(position) position: vec4f) -> @location(0) vec4f {
+  let p = vec2i(floor(position.xy));
+  var sum = vec4f(0.0);
+  for (var i = 0; i < 4; i++) { sum += textureLoad(scratch, p, i); }
+  return sum * 0.25;
+}
+`;

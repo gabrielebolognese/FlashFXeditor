@@ -77,6 +77,7 @@ function defaultIssues(type: FieldType, value: unknown): string[] {
       if (value === null && type.nullable) return [];
       return strictIssues(type.schema, value).map((issue) => `${issue.path} ${issue.message}`);
     case "union":
+      if (value === null && type.nullable) return [];
       return strictIssues("RGBA", value).map((issue) => `${issue.path} ${issue.message}`);
     case "record":
       return typeof value === "object" && value !== null ? [] : ["not an object"];

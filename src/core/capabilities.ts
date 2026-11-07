@@ -4,14 +4,14 @@
 // `npm run capabilities` (a unit test fails when the file is stale). Pure: no DOM.
 import { ACCEPTED_EXTENSIONS } from "../media/mediaKinds.js";
 import { ANIMATION_BUDGET_BYTES, ANIMATION_MAX_SIZE, MAX_GAIN_DB, MAX_SPEED, MIN_GAIN_DB, MIN_SPEED } from "./document/limits.js";
-import { KEYFRAME_PROPS } from "./document/keyframes.js";
+import { KEYFRAME_PROPS, SHAPE_KEYFRAME_PROPS } from "./document/keyframes.js";
 import { FONT_MANIFEST_VERSION } from "../text/fonts.js";
-import { CAPTION_HIGHLIGHTS, CLIP_KINDS, CUE_ANIM_KINDS, EASE_IDS, SCHEMA_VERSION, SOLID_SHAPE_IDS, TEXT_ANIM_IDS, TEXT_ANIM_UNITS, TEXT_BACKGROUND_MODES, TRACK_KINDS, TRANSITION_KINDS } from "./document/types.js";
+import { CAPTION_HIGHLIGHTS, CLIP_KINDS, CUE_ANIM_KINDS, EASE_IDS, SCHEMA_VERSION, SOLID_SHAPE_IDS, TEXT_ANIM_IDS, TEXT_ANIM_UNITS, TEXT_BACKGROUND_MODES, TRACK_KINDS, TRANSITION_KINDS, PRIMITIVE_KINDS, LINE_CAPS, LINE_JOINS, FILL_RULES } from "./document/types.js";
 
 /** The `manifestVersion`: changes only when a key changes meaning (new keys do not change it). */
 export const MANIFEST_VERSION = 1;
 /** The last batch that touched the manifest (spec §21.1: each batch sets it to its own number). */
-export const LAST_BATCH = 64;
+export const LAST_BATCH = 65;
 
 /** The flags of the manifest: a batch that adds a capability flips its key here (spec §21.2 table). */
 export const FEATURES = {
@@ -23,7 +23,7 @@ export const FEATURES = {
   text: { spans: false, counter: false, animators: false, backgroundStroke: true, backgroundShadow: true },
   captions: { perCueStyle: true, wordEmphasis: true, wordsImport: true },
   compositing: { compound: true, trackMatte: false, masks: false, adjustment: false },
-  vector: { shapes: false, trimPaths: false, svgImport: false },
+  vector: { shapes: true, trimPaths: true, svgImport: false },
   audio: { fades: true, trackGain: false, pan: false, loudness: false },
   time: { freeze: true, reverse: false, remap: false, frameBlend: false },
   templates: false,
@@ -93,7 +93,8 @@ export function buildCapabilities(appVersion: string): Capabilities {
     },
     transitions: [...TRANSITION_KINDS],
     compositing: { compound: f.compositing.compound, blendModes: ["normal"], trackMatte: f.compositing.trackMatte, masks: f.compositing.masks, adjustment: f.compositing.adjustment },
-    vector: { ...f.vector },
+    // Shapes (Batch 65): primitives, stroke caps and joins, fill rules and the keyframe props of paths (`<id>`: a path id).
+    vector: { ...f.vector, primitives: [...PRIMITIVE_KINDS], caps: [...LINE_CAPS], joins: [...LINE_JOINS], fillRules: [...FILL_RULES], keyframeProps: [...SHAPE_KEYFRAME_PROPS] },
     effects: [],
     audio: { clipGainDb: [MIN_GAIN_DB, MAX_GAIN_DB], ...f.audio },
     time: { speedRange: [MIN_SPEED, MAX_SPEED], ...f.time },

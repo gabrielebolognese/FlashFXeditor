@@ -3,8 +3,8 @@
 // can bake the value back, and a field edit on a keyed property becomes a key (`keyFollow`).
 // Pure and framework-free. Colors are RGBA objects on the clip and [r, g, b, a] in a key.
 import type { Draft } from "immer";
-import { clipRel, EXTRA_KEYFRAME_PROPS, propValidFor, sampleValue, setKey, withKeys, type KeyframeProp } from "./keyframes.js";
-import type { Clip, Frame, Keyframes, Project, RGBA } from "./types.js";
+import { clipRel, EXTRA_KEYFRAME_PROPS, propValidFor, sampleValue, setKey, SHAPE_PROP_PATTERN, withKeys, type KeyframeProp } from "./keyframes.js";
+import type { Clip, Frame, Keyframes, Project, RGBA, ShapeClip } from "./types.js";
 
 export type KeyValue = number | number[];
 export type KeyValues = Partial<Record<KeyframeProp, KeyValue>>;
@@ -57,8 +57,51 @@ export function readProp(clip: Clip, prop: KeyframeProp): KeyValue | undefined {
     case "style.fill":
       return clip.kind === "text" && isColor(clip.style.fill) ? toVector(clip.style.fill) : undefined;
     default:
-      return undefined;
+      return clip.kind === "shape" ? readShapeProp(clip, prop) : undefined;
   }
+}
+
+/**
+ * A shape path's base value (spec §21.12, Batch 65): `paths.<id>.trim.*` (an absent trim is 0, 1, 0),
+ * `stroke.*` when the path has a stroke, `fill` when it is a color, `primitive.<param>` when its
+ * primitive has the number param.
+ */
+function readShapeProp(clip: ShapeClip, prop: string): KeyValue | undefined {
+  const match = SHAPE_PROP_PATTERN.exec(prop);
+  const path = match ? clip.paths.find((p) => p.id === match[1]) : undefined;
+  if (!match || !path) return undefined;
+  const field = match[2] as string;
+  if (field.startsWith("trim.")) return (path.trim ?? { start: 0, end: 1, offset: 0 })[field.slice(5) as "start" | "end" | "offset"];
+  if (field === "fill") return isColor(path.fill) ? toVector(path.fill) : undefined;
+  if (field.startsWith("primitive.")) {
+    const value = (path.primitive as Record<string, unknown> | undefined)?.[field.slice(10)];
+    return typeof value === "number" ? value : undefined;
+  }
+  const stroke = path.stroke;
+  if (!stroke) return undefined;
+  if (field === "stroke.width") return stroke.width;
+  if (field === "stroke.dashOffset") return stroke.dashOffset ?? 0;
+  return toVector(stroke.color);
+}
+
+function writeShapeProp(clip: Draft<ShapeClip>, prop: string, value: KeyValue): boolean {
+  const match = SHAPE_PROP_PATTERN.exec(prop);
+  const path = match ? clip.paths.find((p) => p.id === match[1]) : undefined;
+  if (!match || !path) return false;
+  const field = match[2] as string;
+  const n = Array.isArray(value) ? (value[0] ?? 0) : value;
+  if (field.startsWith("trim.")) {
+    path.trim ??= { start: 0, end: 1, offset: 0 };
+    const key = field.slice(5) as "start" | "end" | "offset";
+    path.trim[key] = key === "offset" ? n : Math.min(1, Math.max(0, n));
+  } else if (field === "fill") path.fill = toColor(value);
+  else if (field.startsWith("primitive.")) (path.primitive as unknown as Record<string, number>)[field.slice(10)] = n;
+  else if (path.stroke) {
+    if (field === "stroke.width") path.stroke.width = Math.max(0, n);
+    else if (field === "stroke.dashOffset") path.stroke.dashOffset = n;
+    else path.stroke.color = toColor(value);
+  }
+  return true;
 }
 
 /** Sets the base value of `prop` on a draft clip; false when the clip has no such field. */
@@ -117,7 +160,7 @@ export function writeProp(clip: Draft<Clip>, prop: KeyframeProp, value: KeyValue
       if (clip.kind === "text") clip.style.fill = toColor(value);
       return true;
     default:
-      return false;
+      return clip.kind === "shape" ? writeShapeProp(clip, prop, value) : false;
   }
 }
 

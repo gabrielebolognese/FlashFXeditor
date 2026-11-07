@@ -26,6 +26,7 @@ import { cueGeometry } from "./captionGizmo.js";
 import type { SolidLook } from "../../timeline/edit/solid.js";
 import type { Rect as TextRect } from "../text/layout.js";
 import { textLayout } from "../text/layoutCache.js";
+import { drawnReach } from "./drawnBounds.js";
 
 /** Text glyph bounds are hit this far around them, in project px (spec §7.2 "padded by 4 px"). */
 export const TEXT_HIT_PADDING = 4;
@@ -40,6 +41,11 @@ export interface CanvasLayer {
   box: ContentBox;
   /** Visible box corners: content top-left, top-right, bottom-right, bottom-left. */
   quad: Quad;
+  /**
+   * The drawn bounds when the layer draws past its box (a stroke, a shadow, a shape's paths; Batch 65):
+   * what the selection and hover outlines show. Hit testing, snapping, crop and the handles use `quad`.
+   */
+  drawn?: Quad;
   /** Where a click selects it instead of the whole quad (text: padded glyph bounds and background boxes). */
   hits?: readonly Quad[];
   /** The caption track's cue (spec §20.3): moved and sized as a caption, not transformed. */
@@ -98,6 +104,15 @@ function layersAt(
     const transform = transforms?.get(clip.id) ?? animatedTransform(clip, frame - clip.start);
     const layer: CanvasLayer = { clipId: clip.id, trackId: track.id, transform, box, quad: layerCorners(transform, box, project.settings) };
     if (clip.kind === "text") layer.hits = textHits(clip.text, clip.style, transform, box, project.settings);
+    const reach = drawnReach(clip);
+    if (reach) {
+      const { settings } = project;
+      const x0 = box.left - reach.left;
+      const y0 = box.top - reach.top;
+      const x1 = box.right + reach.right;
+      const y1 = box.bottom + reach.bottom;
+      layer.drawn = [layerPoint(transform, box, settings, x0, y0), layerPoint(transform, box, settings, x1, y0), layerPoint(transform, box, settings, x1, y1), layerPoint(transform, box, settings, x0, y1)];
+    }
     layers.push(layer);
   }
   // The cue at the frame, on top (spec §20.3).
@@ -132,6 +147,11 @@ function textHits(text: TextContent, style: TextStyle, transform: Transform, box
 /** Where a click or a marquee selects a layer: its hit areas, or its whole quad. */
 export function hitQuads(layer: CanvasLayer): readonly Quad[] {
   return layer.hits ?? [layer.quad];
+}
+
+/** What a layer's selection or hover outline follows: its drawn bounds, or its box. */
+export function outlineQuad(layer: CanvasLayer): Quad {
+  return layer.drawn ?? layer.quad;
 }
 
 const cross = (a: Point, b: Point, x: number, y: number) => (b.x - a.x) * (y - a.y) - (b.y - a.y) * (x - a.x);

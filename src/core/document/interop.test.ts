@@ -157,7 +157,7 @@ describe("validateStrict", () => {
     delete old.clips["c-standin"].fallbackOf;
     const result = validateStrict(old);
     expect(result.errors).toEqual([]);
-    expect(result.project?.schemaVersion).toBe(9);
+    expect(result.project?.schemaVersion).toBe(10);
     expect(result.project?.clips["c-video"]).toEqual(old.clips["c-video"]);
   });
 
@@ -273,7 +273,7 @@ describe("fixtures/interop/keyframes (Batch 60)", () => {
     old.tracks = old.tracks.filter((track: { id: string }) => ["v1", "v6"].includes(track.id));
     const result = validateStrict(old);
     expect(result.errors).toEqual([]);
-    expect(result.project?.schemaVersion).toBe(9);
+    expect(result.project?.schemaVersion).toBe(10);
     expect((result.project?.clips.label as { keyframes?: unknown } | undefined)?.keyframes).toEqual(old.clips.label.keyframes);
   });
 
@@ -343,5 +343,42 @@ describe("fixtures/interop/alpha (Batch 64)", () => {
       Object.assign(project.media.m2.sequence, patch);
       expect(validateStrict(project).ok, JSON.stringify(patch)).toBe(false);
     }
+  });
+});
+
+describe("fixtures/interop/shapes (Batch 65)", () => {
+  const SHAPES = "fixtures/interop/shapes";
+
+  it("is valid: a checkmark drawing on, a gauge arc 0 to 270 degrees, a star, a dashed arrow, nonzero and evenodd fills and every primitive", async () => {
+    const report = await validateProjectFolder(rel(SHAPES));
+    expect(report.errors).toEqual([]);
+    expect(report.ok).toBe(true);
+    const project = readProject(`${SHAPES}/project.json`);
+    const clips = project.clips;
+    expect(clips.check.keyframes["paths.tick.trim.end"].map((k: { frame: number; value: number }) => [k.frame, k.value])).toEqual([[0, 0], [10, 1]]);
+    expect(clips.gauge.paths[1].stroke.cap).toBe("round");
+    expect(clips.gauge.keyframes["paths.value.primitive.end"].map((k: { value: number }) => k.value)).toEqual([0, 270]);
+    expect(clips.arrow.keyframes["paths.arrow.stroke.dashOffset"]).toHaveLength(2);
+    expect(clips.nonzero.paths[0].fillRule).toBe("nonzero");
+    expect(clips.evenodd.paths[0].fillRule).toBe("evenodd");
+    const kinds = new Set<string>();
+    for (const clip of Object.values(clips) as { kind: string; paths?: { primitive?: { kind: string } }[] }[]) for (const path of clip.paths ?? []) if (path.primitive) kinds.add(path.primitive.kind);
+    expect([...kinds].sort()).toEqual(["arc", "arrow", "ellipse", "line", "polygon", "rect", "star"]);
+    expect(readFileSync(`${SHAPES}/expected/Interop shapes-frame-10.png`).length).toBeGreaterThan(0);
+  });
+
+  it("refuses a key on a path that does not exist, a stroke key on a path without a stroke, bad path data and a trim past 1", () => {
+    const missing = readProject(`${SHAPES}/project.json`);
+    missing.clips.check.keyframes["paths.nope.trim.end"] = missing.clips.check.keyframes["paths.tick.trim.end"];
+    expect(validateStrict(missing).ok).toBe(false);
+    const unstroked = readProject(`${SHAPES}/project.json`);
+    unstroked.clips.nonzero.keyframes = { "paths.p.stroke.width": [{ frame: 0, value: 4, ease: "linear" }] };
+    expect(validateStrict(unstroked).ok).toBe(false);
+    const bad = readProject(`${SHAPES}/project.json`);
+    bad.clips.nonzero.paths[0].d = "M 0 0 L";
+    expect(validateStrict(bad).ok).toBe(false);
+    const trim = readProject(`${SHAPES}/project.json`);
+    trim.clips.check.paths[0].trim.end = 1.5;
+    expect(validateStrict(trim).ok).toBe(false);
   });
 });

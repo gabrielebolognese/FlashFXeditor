@@ -215,7 +215,7 @@ const COLOR_TOKENS: Record<keyof Theme["color"], string> = {
   live: "--live",
 };
 
-const CLIP_KINDS: readonly ClipKind[] = ["video", "audio", "image", "text", "solid", "caption"];
+const CLIP_KINDS: readonly ClipKind[] = ["video", "audio", "image", "text", "solid", "caption", "shape"];
 
 const TYPE_STEPS: readonly TypeStep[] = ["overline", "caption", "body", "body-strong", "title", "stat", "display"];
 

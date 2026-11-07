@@ -4,8 +4,9 @@
 // the defaults of `normalize` all come from it. A batch that adds a field adds it here in the same commit
 // (spec §21.1). Pure: no DOM.
 import { MAX_GAIN_DB, MAX_SPEED, MIN_GAIN_DB } from "./limits.js";
-import { KEYFRAME_PROPS } from "./keyframes.js";
-import { CAPTION_HIGHLIGHTS, CLIP_KINDS, CUE_ANIM_KINDS, EASE_IDS, LABEL_COLORS, PRESET_SET_IDS, SCHEMA_VERSION, SOLID_SHAPE_IDS, STROKE_ALIGNS, TEXT_ANIM_IDS, TEXT_ANIM_UNITS, TEXT_BACKGROUND_MODES, TRACK_KINDS, TRANSITION_KINDS, type JsonValue } from "./types.js";
+import { KEYFRAME_PROPS, SHAPE_PROP_PATTERN } from "./keyframes.js";
+import { PRIMITIVE_LIMITS } from "../shapes/primitives.js";
+import { CAPTION_HIGHLIGHTS, CLIP_KINDS, CUE_ANIM_KINDS, EASE_IDS, LABEL_COLORS, PRESET_SET_IDS, SCHEMA_VERSION, FILL_RULES, LINE_CAPS, LINE_JOINS, SOLID_SHAPE_IDS, STROKE_ALIGNS, TEXT_ANIM_IDS, TEXT_ANIM_UNITS, TEXT_BACKGROUND_MODES, TRACK_KINDS, TRANSITION_KINDS, type JsonValue } from "./types.js";
 
 export type FieldType =
   | { t: "string"; nonEmpty?: boolean }
@@ -15,10 +16,10 @@ export type FieldType =
   /** An object described by the schema `schema`. */
   | { t: "object"; schema: string; nullable?: boolean }
   | { t: "array"; item: FieldType; length?: number }
-  /** An object with free keys (ids, property names), or only `keys` when given. */
-  | { t: "record"; item: FieldType; keys?: readonly string[] }
-  /** One of several shapes, told apart by a key only that shape has. */
-  | { t: "union"; options: readonly { when: string; label: string; type: FieldType }[] }
+  /** An object with free keys (ids, property names), or only `keys` (and keys matching `keyPatterns`, regex sources) when given. */
+  | { t: "record"; item: FieldType; keys?: readonly string[]; keyPatterns?: readonly string[] }
+  /** One of several shapes, told apart by a key only that shape has; or null when `nullable`. */
+  | { t: "union"; options: readonly { when: string; label: string; type: FieldType }[]; nullable?: boolean }
   /** Any JSON object: the content is not described (`fallbackOf.data`). */
   | { t: "json" }
   /** A finite number, or an array of 1 to `max` finite numbers (a keyframe value: a number, a point or a color). */
@@ -60,14 +61,15 @@ const list = (item: FieldType): FieldType => ({ t: "array", item });
 const req = (type: FieldType, doc: string, def?: JsonValue): Field => ({ type, required: true, doc, ...(def !== undefined && { default: def }) });
 const opt = (type: FieldType, doc: string, def?: JsonValue): Field => ({ type, required: false, doc, ...(def !== undefined && { default: def }) });
 
-const FILL: FieldType = {
-  t: "union",
+const FILL_UNION = {
+  t: "union" as const,
   options: [
     { when: "r", label: "RGBA", type: obj("RGBA") },
     { when: "from", label: "gradient", type: obj("Gradient") },
     { when: "stops", label: "gradient with stops", type: obj("GradientFill") },
   ],
 };
+const FILL: FieldType = FILL_UNION;
 const WHITE = { r: 1, g: 1, b: 1, a: 1 };
 const BLACK = { r: 0, g: 0, b: 0, a: 1 };
 const FRAMES = "Integer frames at the project frame rate.";
@@ -209,7 +211,7 @@ const SCHEMAS: ObjectSchema[] = [
     doc: "Keyframe lists by property id, each sorted by frame.",
     types: ["Keyframes"],
     fields: {},
-    value: { t: "record", item: { t: "array", item: obj("Keyframe") }, keys: KEYFRAME_PROPS },
+    value: { t: "record", item: { t: "array", item: obj("Keyframe") }, keys: KEYFRAME_PROPS, keyPatterns: [SHAPE_PROP_PATTERN.source] },
   },
   {
     name: "Transition",
@@ -620,6 +622,100 @@ const SCHEMAS: ObjectSchema[] = [
       volume: req(obj("Volume"), "Gain of the inner audio."),
     },
   },
+  {
+    name: "Clip.shape",
+    doc: "A vector graphic (Batch 65): paths drawn in order in a view box of `size` project px at scale 1.",
+    types: ["ShapeClip"],
+    fields: {
+      ...clipBaseFields("shape"),
+      size: req(obj("Size"), "The view box: width and height at scale 1, project px."),
+      paths: req(list(obj("ShapePath")), "The paths, bottom to top.", []),
+      transform: req(obj("Transform"), "Placement."),
+      opacity: req(range(0, 1), "Opacity.", 1),
+      keyframes: opt(obj("Keyframes"), "Animated properties, including `paths.<id>.*`."),
+      fades: opt(obj("Fades"), "Opacity fades."),
+    },
+  },
+  {
+    name: "ShapePath",
+    doc: "One path of a shape clip (Batch 65). With `primitive`, the path is generated from it and `d` holds the generated data.",
+    types: ["ShapePath"],
+    fields: {
+      id: req(text, "Unique within the clip: letters, digits, `_` and `-` (keyframe ids name it)."),
+      d: req(str, "SVG path data in view-box px (M L H V C S Q T A Z, absolute and relative); empty: nothing.", ""),
+      fill: { type: { ...FILL_UNION, nullable: true }, required: true, default: null, doc: "A color, a vertical two-stop gradient or a gradient with stops (laid out in the path's box); null: no fill." },
+      fillRule: req(oneOf(FILL_RULES), "Which points are inside where the path crosses itself.", "nonzero"),
+      stroke: opt(obj("PathStroke"), "Outline; absent: none."),
+      trim: opt(obj("PathTrim"), "The drawn part of the stroke; absent: all of it."),
+      primitive: opt(obj("Primitive"), "The generator of the path; absent: `d` is the path."),
+    },
+  },
+  {
+    name: "PathStroke",
+    doc: "The stroke of a path (Batch 65): a StrokeStyle in view-box px with caps, joins and a miter limit. `inside` and `outside` apply to closed paths (open ones are centered).",
+    types: ["PathStroke"],
+    fields: {
+      width: req(nonNeg, "Width, view-box px.", 4),
+      color: req(obj("RGBA"), "Color.", BLACK),
+      align: req(oneOf(STROKE_ALIGNS), "Inside the fill, centered on the path or outside it.", "center"),
+      dash: opt(list(nonNeg), "Dash and gap lengths, view-box px (an odd list repeats); absent or empty: a solid line."),
+      dashOffset: opt(num, "Where the pattern starts along each subpath, view-box px."),
+      cap: req(oneOf(LINE_CAPS), "Ends of open subpaths and dashes.", "butt"),
+      join: req(oneOf(LINE_JOINS), "Corners.", "miter"),
+      miterLimit: req({ t: "number", min: 1 }, "Longest miter as a multiple of the width; longer ones are beveled.", 4),
+    },
+  },
+  {
+    name: "PathTrim",
+    doc: "The part of a path's stroke that is drawn (Batch 65): fractions of the whole path length (subpaths in order); `offset` shifts both ends and wraps.",
+    types: ["PathTrim"],
+    fields: { start: req(range(0, 1), "Start.", 0), end: req(range(0, 1), "End.", 1), offset: req(num, "Shift of both ends, fractions of the length.", 0) },
+  },
+  {
+    name: "Primitive",
+    doc: "A generated path, centered in the view box (Batch 65); angles in degrees, 0 = up, clockwise.",
+    types: [],
+    fields: {},
+    variants: { rect: "Primitive.rect", ellipse: "Primitive.ellipse", polygon: "Primitive.polygon", star: "Primitive.star", arrow: "Primitive.arrow", arc: "Primitive.arc", line: "Primitive.line" },
+  },
+  { name: "Primitive.rect", doc: "A rectangle.", types: [], fields: { kind: req(oneOf(["rect"]), "Kind."), w: req(nonNeg, "Width."), h: req(nonNeg, "Height."), radius: req(nonNeg, "Corner radius (at most half the shorter side).", 0) } },
+  { name: "Primitive.ellipse", doc: "An ellipse.", types: [], fields: { kind: req(oneOf(["ellipse"]), "Kind."), w: req(nonNeg, "Width."), h: req(nonNeg, "Height.") } },
+  {
+    name: "Primitive.polygon",
+    doc: "A regular polygon, its first corner up.",
+    types: [],
+    fields: { kind: req(oneOf(["polygon"]), "Kind."), sides: req(int(PRIMITIVE_LIMITS.sides.min, PRIMITIVE_LIMITS.sides.max), "Corners.", 6), radius: req(nonNeg, "Center to corner."), roundness: req(range(0, 1), "Corner rounding (fraction of half the shorter neighboring edge).", 0) },
+  },
+  {
+    name: "Primitive.star",
+    doc: "A star, its first point up.",
+    types: [],
+    fields: {
+      kind: req(oneOf(["star"]), "Kind."),
+      points: req(int(PRIMITIVE_LIMITS.points.min, PRIMITIVE_LIMITS.points.max), "Points.", 5),
+      inner: req(nonNeg, "Center to the inner corners."),
+      outer: req(nonNeg, "Center to the points."),
+      roundness: req(range(0, 1), "Corner rounding (fraction of half the shorter neighboring edge).", 0),
+    },
+  },
+  {
+    name: "Primitive.arrow",
+    doc: "An arrow pointing right (a closed outline).",
+    types: [],
+    fields: { kind: req(oneOf(["arrow"]), "Kind."), length: req(nonNeg, "Tail to tip."), shaft: req(nonNeg, "Shaft thickness."), head: req(nonNeg, "Head width."), headLength: req(nonNeg, "Head length (at most the length).") },
+  },
+  {
+    name: "Primitive.arc",
+    doc: "An open circular arc from `start` to `end` (clockwise when `end` is larger); stroke it.",
+    types: [],
+    fields: {
+      kind: req(oneOf(["arc"]), "Kind."),
+      radius: req(nonNeg, "Radius."),
+      start: req(range(PRIMITIVE_LIMITS.angle.min, PRIMITIVE_LIMITS.angle.max), "Start angle, degrees.", 0),
+      end: req(range(PRIMITIVE_LIMITS.angle.min, PRIMITIVE_LIMITS.angle.max), "End angle, degrees (the sweep is at most a full turn).", 270),
+    },
+  },
+  { name: "Primitive.line", doc: "A horizontal line (open); stroke it.", types: [], fields: { kind: req(oneOf(["line"]), "Kind."), length: req(nonNeg, "Length.") } },
   {
     name: "Sequence",
     doc: "A nested sequence (Batch 62): its inner clips are in `Project.clips` on its own tracks. Up to 8 levels of nesting; a cycle is invalid.",

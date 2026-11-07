@@ -13,7 +13,7 @@ import type { Draft } from "immer";
 import type { Command } from "../../core/commands/command.js";
 import { emptyTrack, nextTrackName } from "../../core/document/project.js";
 import { IDENTITY_TRANSFORM } from "../../core/document/placement.js";
-import { instancesOf, nestingProblem, sequenceHeight } from "../../core/document/sequences.js";
+import { hostSequenceOf, instancesOf, nestingProblem, scopeDepth, sequenceHeight } from "../../core/document/sequences.js";
 import { MAX_COMPOUND_DEPTH, isMediaClip, type Clip, type ClipId, type CompoundClip, type Frame, type Project, type Sequence, type SequenceId, type Track, type TrackId, type Transform } from "../../core/document/types.js";
 import { isClipLocked } from "../model/queries.js";
 import { copyClips } from "./duplicate.js";
@@ -26,7 +26,7 @@ export interface CompoundResult {
   sequenceId: SequenceId;
 }
 
-const VISUAL = new Set(["video", "image", "text", "solid", "compound"]);
+const VISUAL = new Set(["video", "image", "text", "solid", "compound", "shape"]);
 
 /** True when two transforms place a layer the same way. */
 function isIdentityTransform(t: Transform): boolean {
@@ -71,7 +71,9 @@ function planMake(project: Project, ids: Iterable<ClipId>): MakePlan | string {
   }
   const memo = new Map<SequenceId, number>();
   const inner = Math.max(0, ...clips.filter((clip): clip is CompoundClip => clip.kind === "compound").map((clip) => 1 + sequenceHeight(project, clip.sequenceId, memo)));
-  if (1 + inner > MAX_COMPOUND_DEPTH) return `Compounds nest at most ${MAX_COMPOUND_DEPTH} levels`;
+  // Inside an open compound (a sequence view), the new level sits under the levels above that sequence.
+  const hostScope = hostSequenceOf(project);
+  if (scopeDepth(project, hostScope) + 1 + inner > MAX_COMPOUND_DEPTH) return `Compounds nest at most ${MAX_COMPOUND_DEPTH} levels`;
   return { clips, tracks, host, start, end };
 }
 

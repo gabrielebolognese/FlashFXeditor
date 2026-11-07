@@ -186,7 +186,7 @@ function normalizeClip(id: string, raw: Obj, project: Project): Obj {
   if (clip.kind === "solid") Object.assign(defaults, defaultSolid(project.settings));
   const merged = merge(defaults, clip) as Obj;
   // Only a clip kind with a transform gets one.
-  if (!(clip.kind === "video" || clip.kind === "audio" || clip.kind === "image" || clip.kind === "text" || clip.kind === "solid")) delete merged.transform;
+  if (!(clip.kind === "video" || clip.kind === "audio" || clip.kind === "image" || clip.kind === "text" || clip.kind === "solid" || clip.kind === "shape")) delete merged.transform;
   return fillObject("Clip", merged);
 }
 

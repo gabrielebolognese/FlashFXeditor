@@ -26,9 +26,9 @@ function typeSchema(type: FieldType): Json {
     case "array":
       return { type: "array", items: typeSchema(type.item), ...(type.length !== undefined && { minItems: type.length, maxItems: type.length }) };
     case "record":
-      return { type: "object", ...(type.keys && { propertyNames: { enum: [...type.keys] } }), additionalProperties: typeSchema(type.item) };
+      return { type: "object", ...(type.keys && { propertyNames: type.keyPatterns ? { anyOf: [{ enum: [...type.keys] }, ...type.keyPatterns.map((pattern) => ({ pattern }))] } : { enum: [...type.keys] } }), additionalProperties: typeSchema(type.item) };
     case "union":
-      return { anyOf: type.options.map((option) => typeSchema(option.type)) };
+      return { anyOf: [...type.options.map((option) => typeSchema(option.type)), ...(type.nullable ? [{ type: "null" }] : [])] };
     case "json":
       return { type: "object" };
     case "numberOrVector":

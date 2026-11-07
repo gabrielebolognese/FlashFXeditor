@@ -63,6 +63,7 @@ import { multiplyInto, mutableIdentity, setMat, type Mat3, type MutableMat3 } fr
 import type { Rect } from "../text/layout.js";
 import type { ResolvedText, ResolvedUnit, TextRasterCache } from "../text/TextRasterCache.js";
 import type { CompoundTargets } from "./CompoundTargets.js";
+import { newPathLayer, ShapeGeometryCache, type ShapeGeometryStats, type WritablePathLayer } from "../shapes/ShapeGeometryCache.js";
 import { exportLongEdge, layerDetail, vectorLongEdge } from "./detail.js";
 
 /** After a decode worker crash the frame service already asked twice: a new pass asks again this much later (Batch 47). */
@@ -82,6 +83,8 @@ export interface LayerTexturesDeps {
   onFail?(mediaId: MediaId, reason: string): void;
   /** Where compound clips (spec §21.10) draw their sequences; compound layers draw nothing without it. */
   compounds?: CompoundTargets;
+  /** Shape geometry (spec §21.12, shared by the resolvers of a view); one of its own when absent. */
+  shapes?: ShapeGeometryCache;
 }
 
 export interface LayerTexturesStats {
@@ -199,7 +202,19 @@ export class LayerTextures {
   private renderScale = 1;
 
   /** `path`: set on the resolver of a compound clip, which the outermost resolver drives (text and target passes are the root's). */
-  constructor(private readonly deps: LayerTexturesDeps, private readonly path: string | null = null) {}
+  /** Shape layers of each pane (reused in order) and the shape geometry cache. */
+  private readonly pathLayers: [WritablePathLayer[], WritablePathLayer[]] = [[], []];
+  private pathCount = 0;
+  private readonly shapes: ShapeGeometryCache;
+
+  constructor(private readonly deps: LayerTexturesDeps, private readonly path: string | null = null) {
+    this.shapes = deps.shapes ?? new ShapeGeometryCache({ onReady: () => deps.onChange() });
+  }
+
+  /** The shape geometry counters (spec §21.12: geometry is rebuilt only when a path or its style changes). */
+  get shapeStats(): ShapeGeometryStats {
+    return this.shapes.stats();
+  }
 
   /** Long edge video frames should have in this pass (idle only; 0: no detail refresh). */
   private detailLongEdge = 0;
@@ -268,8 +283,18 @@ export class LayerTextures {
     this.boxCount = 0;
     this.dissolveCount = 0;
     this.compoundCount = 0;
+    this.pathCount = 0;
     const stats = this.stats;
     for (const layer of composite.layers) {
+      if (layer.kind === "shape") {
+        const pool = this.pathLayers[pane];
+        const out = (pool[this.pathCount] ??= newPathLayer());
+        if (this.shapes.resolve(layer, this.renderScale, false, out)) {
+          this.pathCount += 1;
+          list.layers.push(out);
+        }
+        continue;
+      }
       if (layer.kind === "compound") {
         const drawn = this.resolveCompound(pane, layer, priority);
         if (drawn) list.layers.push(drawn);
@@ -308,7 +333,7 @@ export class LayerTextures {
         resolveBackground: (...args) => text.resolveBackground(...args),
         warm: (...args) => text.warm(...args),
       };
-      const deps: LayerTexturesDeps = { ...this.deps };
+      const deps: LayerTexturesDeps = { ...this.deps, shapes: this.shapes };
       if (quiet) deps.text = quiet;
       entry = { textures: new LayerTextures(deps, key), pass: 0 };
       this.children.set(key, entry);
@@ -572,7 +597,7 @@ export class LayerTextures {
    * Export frame, whatever the quality mode and whatever the pool holds (spec §9.5). Waits for the
    * frames; `release` lets go of their pins. Media that cannot be shown are left out.
    */
-  async resolveExact(composite: Composite, maxLongEdge: number): Promise<{ list: DrawList; release: () => void }> {
+  async resolveExact(composite: Composite, maxLongEdge: number, renderScale = 1): Promise<{ list: DrawList; release: () => void }> {
     const unpins: (() => void)[] = [];
     const release = () => {
       for (const unpin of unpins.splice(0)) unpin();
@@ -580,6 +605,12 @@ export class LayerTextures {
     const layers: Layer[] = [];
     try {
       for (const layer of composite.layers) {
+        if (layer.kind === "shape") {
+          // Export draws at project size: one device px per project px (compounds pass their own scale).
+          const out = newPathLayer();
+          if (this.shapes.resolve(layer, renderScale, true, out)) layers.push(out);
+          continue;
+        }
         if (layer.kind === "compound") {
           const drawn = await this.exactCompound(layer, maxLongEdge, unpins);
           if (drawn) layers.push(drawn);
@@ -618,7 +649,7 @@ export class LayerTextures {
     const model = [...layer.model] as unknown as Mat3;
     const { opacity, width, height, scale } = layer;
     const size = targets.sizeFor(width, height, scale);
-    const inner = await this.child(layer.clipId).resolveExact(layer.inner, maxLongEdge);
+    const inner = await this.child(layer.clipId).resolveExact(layer.inner, maxLongEdge, size.width / Math.max(1, width));
     try {
       const made = targets.renderOnce(inner.list, size.width, size.height);
       if (!made) return null;

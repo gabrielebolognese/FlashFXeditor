@@ -2,15 +2,18 @@
 // draws exactly the same thing (same textures, transforms, opacities, crops, colors), the view skips
 // the GPU redraw. Comparing allocates nothing once the buffers are big enough.
 import type { TextureHandle } from "../gpu/renderer.js";
+import type { GradientFill } from "../../core/document/types.js";
 import type { DissolveSide, DrawList } from "./drawList.js";
 
-const KIND_CODE = { texture: 1, dissolve: 2, solid: 3 } as const;
+const KIND_CODE = { texture: 1, dissolve: 2, solid: 3, path: 4 } as const;
+const RULE_CODE = { nonzero: 1, evenodd: 2, union: 3, inside: 4, outside: 5 } as const;
 
 export class DrawListSnapshot {
   private current = new Float64Array(64);
   private next = new Float64Array(64);
-  private currentRefs: (TextureHandle | null)[] = [];
-  private nextRefs: (TextureHandle | null)[] = [];
+  /** Textures, and the geometry arrays of path layers (the cache returns the same array while a path is unchanged). */
+  private currentRefs: (object | null)[] = [];
+  private nextRefs: (object | null)[] = [];
   private currentLength = -1;
   private length = 0;
   private refCount = 0;
@@ -56,19 +59,7 @@ export class DrawListSnapshot {
           if (!style) this.push(0);
           else {
             this.push(style.part === "all" ? 1 : style.part === "shadow" ? 2 : 3);
-            const g = style.gradient;
-            this.push(g ? (g.type === "radial" ? 2 : 1) : 0);
-            if (g) {
-              this.push(g.angle);
-              this.push(g.radius);
-              this.push(g.center.x);
-              this.push(g.center.y);
-              this.push(g.stops.length);
-              for (const stop of g.stops) {
-                this.push(stop.at);
-                this.color(stop.color);
-              }
-            }
+            this.gradient(style.gradient);
             const stroke = style.stroke;
             this.push(stroke ? stroke.width : -1);
             if (stroke) {
@@ -90,6 +81,20 @@ export class DrawListSnapshot {
           }
           break;
         }
+        case "path":
+          this.push(layer.draws.length);
+          for (const draw of layer.draws) {
+            this.push(RULE_CODE[draw.rule]);
+            this.nextRefs[this.refCount++] = draw.triangles;
+            this.nextRefs[this.refCount++] = draw.clip;
+            this.push(draw.clipRule === "evenodd" ? 1 : 0);
+            this.color(draw.color);
+            this.gradient(draw.gradient);
+            for (let i = 0; i < 4; i++) this.push(draw.box[i] as number);
+            for (let i = 0; i < 4; i++) this.push(draw.cover[i] as number);
+          }
+          for (let i = 0; i < 4; i++) this.push(layer.bounds[i] as number);
+          break;
       }
     }
     const changed = !this.same();
@@ -129,6 +134,20 @@ export class DrawListSnapshot {
     this.nextRefs[this.refCount++] = texture;
     // A texture destroyed since (evicted, device lost) must not count as the same picture.
     this.push(texture.valid ? 1 : 0);
+  }
+
+  private gradient(g: GradientFill | null): void {
+    this.push(g ? (g.type === "radial" ? 2 : 1) : 0);
+    if (!g) return;
+    this.push(g.angle);
+    this.push(g.radius);
+    this.push(g.center.x);
+    this.push(g.center.y);
+    this.push(g.stops.length);
+    for (const stop of g.stops) {
+      this.push(stop.at);
+      this.color(stop.color);
+    }
   }
 
   /** A dissolve's picture: its texture, quad, crop and opacity. */

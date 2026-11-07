@@ -66,7 +66,7 @@ import type { LiveCaptions, LiveText } from "../compositor/Compositor.js";
 import { moveCaption, sizeCaption } from "../../timeline/edit/captions.js";
 import { captionMiddle, captionSizeGesture, shownCueStyle, type CaptionSizeStart } from "./captionGizmo.js";
 import { onTextLayoutsChanged, textLayoutVersion } from "../text/layoutCache.js";
-import { canvasLayersAt, layersInRect, layersUnder, pictureLayersAt, quadsBounds, type CanvasLayer, type Quad, type Rect } from "./canvasLayers.js";
+import { canvasLayersAt, layersInRect, layersUnder, outlineQuad, pictureLayersAt, quadsBounds, type CanvasLayer, type Quad, type Rect } from "./canvasLayers.js";
 import { canvasCursors, type CanvasCursors } from "./canvasCursors.js";
 import { cropGesture, type CropModeState, type CropStart } from "./cropGizmo.js";
 import {
@@ -577,7 +577,7 @@ export class CanvasEditInput {
     if (editing !== null) {
       // Inline editing (§7.7): the edited box outlined, no handles, the caret.
       const edited = layers.find((layer) => layer.clipId === editing);
-      return { hover: null, outlines: edited ? [edited.quad] : [], box: null, group: false, anchor: null, marquee: null, snap: null, readout: null, guides: null, crop: null, textBox: false, text: this.deps.textEditor?.scene() ?? null };
+      return { hover: null, outlines: edited ? [outlineQuad(edited)] : [], box: null, group: false, anchor: null, marquee: null, snap: null, readout: null, guides: null, crop: null, textBox: false, text: this.deps.textEditor?.scene() ?? null };
     }
     const selection = this.deps.session.selection.getState();
     const all = selection.kind === "clips" ? layers.filter((layer) => selection.clipIds.has(layer.clipId)) : [];
@@ -586,7 +586,7 @@ export class CanvasEditInput {
     const marquee = this.marquee;
     // A marquee shows the selection it would make: its layers, plus the current ones when it adds.
     const outlined = marquee ? layers.filter((layer) => marquee.hits.includes(layer.clipId) || (marquee.additive && all.includes(layer))) : all;
-    const outlines = outlined.map((layer) => layer.quad);
+    const outlines = outlined.map(outlineQuad);
     const box = drag?.result?.box ?? (marquee ? null : gizmoBoxOf(selected.map((layer) => layer.quad)));
     const hoverLayer = !drag && !marquee && this.hover !== null ? layers.find((layer) => layer.clipId === this.hover && !selected.includes(layer)) : undefined;
     const single = selected.length === 1 ? selected[0] : undefined;
@@ -600,7 +600,7 @@ export class CanvasEditInput {
     const measuring = !drag && !marquee && !this.press && !cropLayer && this.modifiers.alt && this.over && box !== null && this.deps.session.state.getState().preview.guides;
     const guides = drag ? drag.guides : measuring && box ? measureGuides(this.snapCandidates(new Set(selected.map((layer) => layer.clipId))), quadsBounds([box]) as Rect) : null;
     return {
-      hover: hoverLayer?.quad ?? null,
+      hover: hoverLayer ? outlineQuad(hoverLayer) : null,
       outlines,
       box,
       group: (drag?.start.layers.length ?? selected.length) > 1,

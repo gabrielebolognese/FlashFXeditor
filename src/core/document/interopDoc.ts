@@ -27,9 +27,9 @@ function typeLabel(type: FieldType): string {
     case "array":
       return `${typeLabel(type.item)}[]${type.length !== undefined ? ` (${type.length} items)` : ""}`;
     case "record":
-      return `object of ${typeLabel(type.item)}${type.keys ? ` (keys: ${type.keys.map((key) => `\`${key}\``).join(", ")})` : " by id"}`;
+      return `object of ${typeLabel(type.item)}${type.keys ? ` (keys: ${type.keys.map((key) => `\`${key}\``).join(", ")}${type.keyPatterns ? `, and keys matching ${type.keyPatterns.map((pattern) => `\`${pattern}\``).join(", ")}` : ""})` : " by id"}`;
     case "union":
-      return type.options.map((option) => typeLabel(option.type)).join(" \| ");
+      return `${type.options.map((option) => typeLabel(option.type)).join(" \| ")}${type.nullable ? " or null" : ""}`;
     case "json":
       return "object (opaque)";
     case "numberOrVector":
