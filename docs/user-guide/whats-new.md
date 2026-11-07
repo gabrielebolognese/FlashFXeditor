@@ -2,6 +2,11 @@
 
 Shorts Editor grows in steps called batches. This page lists what each batch added that you can see or use, newest first. Follow the links for the full instructions.
 
+> **Video placeholder: What's new in Batch 62**
+> - File: `videos/whats-new/batch-62.mp4` (not recorded yet)
+> - Length: about 35 seconds
+> - Shows: select a solid and a text clip; press <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>G</kbd>; scale and fade the compound; duplicate it twice; right-click a copy and choose **Make unique**; hover a disabled **Break apart compound clip** button to read its reason.
+
 > **Video placeholder: What's new in Batch 61**
 > - File: `videos/whats-new/batch-61.mp4` (not recorded yet)
 > - Length: about 40 seconds
@@ -263,6 +268,7 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 > - Shows: open a project with three clips on the timeline; press <kbd>Space</kbd> to play and let the timeline page forward; press <kbd>L</kbd> three times to reach 8x, then <kbd>K</kbd>; hold <kbd>K</kbd> and tap <kbd>L</kbd> to step one frame; turn on **Loop playback**; point at the **Dropped** readout in the status strip.
 
 ## In this page
+- [Batch 62: Compound clips](#batch-62-compound-clips)
 - [Batch 58: Borders, shadows, corners and gradients](#batch-58-borders-shadows-corners-and-gradients)
 - [Batch 57: Render and compare from the command line](#batch-57-render-and-compare-from-the-command-line)
 - [Batch 56: Open links, live reload and editable stand-ins](#batch-56-open-links-live-reload-and-editable-stand-ins)
@@ -321,6 +327,11 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 - [Batch 03: Projects, autosave and recovery](#batch-03-projects-autosave-and-recovery)
 - [Batch 02: Undo, redo and frame-exact time](#batch-02-undo-redo-and-frame-exact-time)
 - [Batch 01: The workspace](#batch-01-the-workspace)
+
+## Batch 62: Compound clips
+
+- Select clips and press <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>G</kbd> to make one **compound clip** that moves, scales, fades and duplicates as one. **Make unique** gives a copy its own content, and **Break apart** puts the clips back. See [Compound clips](compound-clips.md).
+- The sound inside a compound plays with the compound's volume.
 
 ## Batch 61: Edit curves and key more properties
 

@@ -55,6 +55,7 @@ This page lists every keyboard shortcut that works in the current version of Sho
 - [Timeline](#timeline)
 - [Trimming](#trimming)
 - [Cutting and deleting](#cutting-and-deleting)
+- [Compound clips](#compound-clips)
 - [Clipboard and duplicate](#clipboard-and-duplicate)
 - [Speed, freeze frames and punch zoom](#speed-freeze-frames-and-punch-zoom)
 - [Keyframes](#keyframes)
@@ -298,6 +299,14 @@ See [Splitting, deleting and closing gaps](splitting-and-deleting.md).
 - In the Media panel, <kbd>Delete</kbd>, <kbd>Backspace</kbd> and <kbd>F2</kbd> work on media instead. See [Media panel](#media-panel).
 - The clip and gap menus (right-click) show these shortcuts next to their rows. <kbd>Escape</kbd> closes a menu.
 - Clips on locked tracks are never split or deleted. <kbd>Ctrl</kbd>+<kbd>K</kbd> with nothing selected and <kbd>G</kbd> with no gap selected act on the targeted tracks; <kbd>Shift</kbd>+<kbd>G</kbd> acts on the selected tracks, or on the targeted tracks when no track is selected. See [Tracks](tracks.md).
+
+## Compound clips
+
+See [Compound clips](compound-clips.md).
+
+| Action | Windows | macOS | Works in |
+| --- | --- | --- | --- |
+| Make the selected clips one compound clip | <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>G</kbd> | <kbd>⌘</kbd>+<kbd>⌥</kbd>+<kbd>G</kbd> | Timeline |
 
 ## Clipboard and duplicate
 

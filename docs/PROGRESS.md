@@ -6659,6 +6659,7 @@ Why each dependency exists (Batch rule 8).
   - The FlashFX-v2 precomp port was not used: its model (per-composition clip lists) does not fit the shared `Project.clips` and the `Command` patches; the design above follows spec §21.10.
   - A compound's fades and a sequence's transitions are not applied to the audio (follow-up).
 - follow-ups: see the Follow-ups section (`[from Batch 62 -> ...]`).
+- docs: compound-clips.md (new), keyboard-shortcuts.md, whats-new.md, README.md in docs/user-guide/ (2026-11-07)
 - design gaps: none (the `layers` glyph is a new lucide icon in `glyphs.ts`; the compound clip color on the timeline uses the existing clip palette).
 - pending manual checks:
   1. GPU look (needs a real browser): add a solid and a text clip, select both, press Mod+Alt+G (or right-click a clip > Make compound clip). The preview must look exactly as before (same position, no flipped or dark edges, semi-transparent text keeps its alpha). Select the compound, set Opacity 50%, Scale 50%, Rotation 20: the whole card moves as one picture.
