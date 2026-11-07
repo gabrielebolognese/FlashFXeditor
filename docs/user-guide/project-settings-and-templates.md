@@ -43,6 +43,7 @@ The first rows belong to the project. Each change to them is one undo step.
 | **Size** (with **Custom** only) | **W** and **H** in pixels. | From 16 to 7680; odd values are rounded to an even number. Type a value, press <kbd>↑</kbd> or <kbd>↓</kbd> to change it by 2 (<kbd>Shift</kbd>: by 20), or drag the **W** or **H** letter: the frame takes the new size when you release. |
 | **Frame rate** | **23.976 fps**, **24 fps**, **25 fps**, **29.97 fps**, **30 fps**, **50 fps**, **59.94 fps** or **60 fps**. | "Clips, keyframes, captions and markers convert to the new rate." See [Change the frame rate](#change-the-frame-rate). |
 | **Background** | The color of the frame where no clip covers it: a swatch and its hex code. | Type a hex code (`#RGB`, `#RRGGBB` or `#RRGGBBAA`, with or without `#`), or click the swatch to open the color picker; see [Pick a color](editing-properties.md#pick-a-color). The default is `#000000` (black). Text that is not a valid color is ignored. |
+| **Generator** | The tool that wrote the project, with its version (for example `interop-fixture 1`). Point at it to see its source and web address. | Read only, and shown only when another tool created the project. Projects you make in the editor do not have it. |
 
 The next rows are app settings: they apply to every project in this browser, they are not part of the project, and changing them is not an undo step. The same rows are in **Settings** > **General**, which has more of them; see [Settings](settings.md).
 
@@ -242,4 +243,4 @@ The template is deleted at once, without a question, and can't be brought back. 
 - [Proxies](proxies.md)
 - [Troubleshooting](troubleshooting.md#project-settings-and-templates)
 
-<sub>Last updated: Batch 50, 2026-10-18</sub>
+<sub>Last updated: Batch 54, 2026-11-07</sub>

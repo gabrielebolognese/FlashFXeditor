@@ -2,6 +2,11 @@
 
 Shorts Editor grows in steps called batches. This page lists what each batch added that you can see or use, newest first. Follow the links for the full instructions.
 
+> **Video placeholder: What's new in Batch 54**
+> - File: `videos/whats-new/batch-54.mp4` (not recorded yet)
+> - Length: about 25 seconds
+> - Shows: open a project that another tool created with **Open project**; click an empty area of the timeline tracks; in the **Project** section point at the **Generator** row to show its source in the tooltip; then open a project saved by the editor: no **Generator** row.
+
 > **Video placeholder: What's new in Batch 53**
 > - File: `videos/whats-new/batch-53.mp4` (not recorded yet)
 > - Length: about 60 seconds
@@ -223,6 +228,7 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 > - Shows: open a project with three clips on the timeline; press <kbd>Space</kbd> to play and let the timeline page forward; press <kbd>L</kbd> three times to reach 8x, then <kbd>K</kbd>; hold <kbd>K</kbd> and tap <kbd>L</kbd> to step one frame; turn on **Loop playback**; point at the **Dropped** readout in the status strip.
 
 ## In this page
+- [Batch 54: Projects from other tools](#batch-54-projects-from-other-tools)
 - [Batch 53: Version 1.1 and caption styles per cue](#batch-53-version-11-and-caption-styles-per-cue)
 - [Batch 52: Preset bar](#batch-52-preset-bar)
 - [Batch 51: Font library](#batch-51-font-library)
@@ -276,6 +282,10 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 - [Batch 03: Projects, autosave and recovery](#batch-03-projects-autosave-and-recovery)
 - [Batch 02: Undo, redo and frame-exact time](#batch-02-undo-redo-and-frame-exact-time)
 - [Batch 01: The workspace](#batch-01-the-workspace)
+
+## Batch 54: Projects from other tools
+- When another tool wrote a project, the **Project** section (click an empty area of the timeline tracks) shows a read-only **Generator** row with the tool's name and version. Point at it to see where it came from. See [What the Project section sets](project-settings-and-templates.md#what-the-project-section-sets).
+- Projects open as before. This batch otherwise prepares the file format for tools that create projects, and changes nothing else you can see.
 
 ## Batch 53: Version 1.1 and caption styles per cue
 - Any caption cue can have a look of its own. Select cues and click **Selected (n)** in the new **Edit** row of **Caption style**: the rows then change only those cues, in one undo step, and the other cues keep the track's look. **All cues** changes the track's style, as before. Only the settings you change become a cue's own, so later changes to the track still reach everything else. See [Give single cues their own style](captions.md#give-single-cues-their-own-style).
@@ -838,4 +848,4 @@ See [The workspace](workspace.md) and [Getting started](getting-started.md).
 - [Adding media to the timeline](adding-media-to-the-timeline.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 53, 2026-10-19</sub>
+<sub>Last updated: Batch 54, 2026-11-07</sub>
