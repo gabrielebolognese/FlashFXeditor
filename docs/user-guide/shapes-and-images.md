@@ -27,6 +27,7 @@ Solids are shapes you add with one click: a rectangle, a rounded rectangle, an e
 - [Use animated GIF and WebP images](#use-animated-gif-and-webp-images)
 - [Keep SVG images sharp](#keep-svg-images-sharp)
 - [Shapes and images on the timeline](#shapes-and-images-on-the-timeline)
+- [Shape clips](#shape-clips)
 - [Undo shape and image changes](#undo-shape-and-image-changes)
 - [Related pages](#related-pages)
 
@@ -249,6 +250,9 @@ An SVG image is a drawing, not a grid of pixels. The editor draws it again at th
 - The swatch follows the **Shape** and **Fill** of the solid as soon as you change them.
 - A solid clip narrower than 24 pixels on screen shows no swatch, and an image clip narrower than 48 pixels shows no pictures. Zoom in to see them. See [Clip thumbnails, waveforms and badges](clip-thumbnails-and-waveforms.md).
 
+## Shape clips
+Vector shape clips (paths, stars, arrows, arcs and lines with strokes, dashes and a trim that draws a line on over time) are shown on the timeline with a shapes icon. They play in the preview and export exactly alike, and you move, scale, rotate and fade them with the handles in the preview and the **Transform** section. You cannot create or edit them in the editor yet: this is available in a later version.
+
 ## Undo shape and image changes
 
 | Step name | What made it |
@@ -275,4 +279,4 @@ See [Undo and redo changes](projects-and-saving.md#undo-and-redo-changes).
 - [Titles and text](titles-and-text.md)
 - [Troubleshooting](troubleshooting.md#shapes-and-images)
 
-<sub>Last updated: Batch 58, 2026-11-07</sub>
+<sub>Last updated: Batch 65, 2026-11-08</sub>

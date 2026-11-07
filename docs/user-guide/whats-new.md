@@ -2,6 +2,14 @@
 
 Shorts Editor grows in steps called batches. This page lists what each batch added that you can see or use, newest first. Follow the links for the full instructions.
 
+## Batch 65: Vector shapes (engine only)
+The editor can now draw vector shapes: paths, rectangles, ellipses, polygons, stars, arrows, arcs and lines, with fills, strokes, round or square ends, dashes and a trim that makes a line draw itself. A shape clip appears on the timeline with a shapes icon, and you move, scale and rotate it in the preview like any other layer. Preview and export look the same. There is no way yet to create or edit a shape inside the editor: the **+ Shape** menu, the shape properties and SVG import come in a later version. See [Shape clips](shapes-and-images.md#shape-clips).
+
+> **Video placeholder: What's new in Batch 65**
+> - File: `videos/whats-new/batch-65.mp4` (not recorded yet)
+> - Length: about 25 seconds
+> - Shows: open a project that contains shape clips; press <kbd>Space</kbd>: a checkmark draws itself and a gauge arc fills; click a shape clip and drag its handle in the preview to scale it.
+
 ## Batch 64: Transparent video and image sequences
 WebM files with transparency (VP8 or VP9) now keep it: the layers below show through. Drop a folder of numbered PNG or WebP frames on the **Media** panel and choose **Import as sequence** to get one clip. Files with HEVC or AV1 transparency import opaque with a message, and ProRes files are refused with a conversion command. See [Transparent video](importing-media.md#transparent-video) and [Image sequences](importing-media.md#image-sequences).
 
