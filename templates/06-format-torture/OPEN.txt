@@ -1,0 +1,1 @@
+Format torture test. Expect some clips to be offline or failed on purpose: ProRes (not decodable in browsers), 8K H.264 and HEVC depend on the GPU decoder. Section markers A to G on the timeline.

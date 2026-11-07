@@ -1,0 +1,9 @@
+# Written by the editor when a template is opened: never commit them.
+*/cache/
+*/history/
+*/exports/
+*/session.json
+*/project.json.tmp
+# Build inputs (downloads, generated media, voices) of _build/.
+_build/work/
+_build/__pycache__/

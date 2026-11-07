@@ -1,0 +1,1 @@
+Podcast audio lab. Dave and Zoe are text to speech voices recorded on separate tracks (WAV, M4A, MP3, Opus). Part 1 is the raw take with gaps, part 2 the tightened edit with ducked music, part 3 the speed and level lab.

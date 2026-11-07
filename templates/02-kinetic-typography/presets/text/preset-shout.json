@@ -1,0 +1,78 @@
+{
+  "id": "preset-shout",
+  "name": "Shout",
+  "style": {
+    "fontFamily": "Archivo Black",
+    "fontWeight": 400,
+    "italic": false,
+    "fontSize": 260,
+    "fill": {
+      "r": 1,
+      "g": 1,
+      "b": 1,
+      "a": 1.0
+    },
+    "stroke": {
+      "enabled": true,
+      "width": 10,
+      "color": {
+        "r": 0,
+        "g": 0,
+        "b": 0,
+        "a": 1.0
+      }
+    },
+    "shadow": {
+      "enabled": false,
+      "x": 0,
+      "y": 6,
+      "blur": 16,
+      "color": {
+        "r": 0,
+        "g": 0,
+        "b": 0,
+        "a": 0.6
+      }
+    },
+    "background": {
+      "enabled": false,
+      "color": {
+        "r": 0,
+        "g": 0,
+        "b": 0,
+        "a": 0.7
+      },
+      "paddingX": 28,
+      "paddingY": 12,
+      "radius": 16,
+      "mode": "block"
+    },
+    "textCase": "none",
+    "letterSpacing": 0,
+    "lineHeight": 1.2,
+    "align": "center",
+    "verticalAnchor": "middle"
+  },
+  "box": {
+    "mode": "auto",
+    "width": 900
+  },
+  "applyPosition": false,
+  "tags": [
+    "kinetic",
+    "big"
+  ],
+  "favorite": true,
+  "createdAt": "2026-11-07T09:00:00.000Z",
+  "updatedAt": "2026-11-07T09:00:00.000Z",
+  "animIn": {
+    "id": "pop",
+    "durationMs": 250,
+    "ease": "overshoot"
+  },
+  "animOut": {
+    "id": "fade",
+    "durationMs": 200
+  },
+  "sampleText": "LOUD"
+}

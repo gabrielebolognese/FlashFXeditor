@@ -1,0 +1,84 @@
+{
+  "id": "preset-karaoke",
+  "name": "Karaoke caption",
+  "style": {
+    "fontFamily": "Poppins",
+    "fontWeight": 800,
+    "italic": false,
+    "fontSize": 64,
+    "fill": {
+      "r": 1,
+      "g": 1,
+      "b": 1,
+      "a": 1.0
+    },
+    "stroke": {
+      "enabled": true,
+      "width": 6,
+      "color": {
+        "r": 0,
+        "g": 0,
+        "b": 0,
+        "a": 1.0
+      }
+    },
+    "shadow": {
+      "enabled": false,
+      "x": 0,
+      "y": 6,
+      "blur": 16,
+      "color": {
+        "r": 0,
+        "g": 0,
+        "b": 0,
+        "a": 0.6
+      }
+    },
+    "background": {
+      "enabled": false,
+      "color": {
+        "r": 0,
+        "g": 0,
+        "b": 0,
+        "a": 0.7
+      },
+      "paddingX": 28,
+      "paddingY": 12,
+      "radius": 16,
+      "mode": "block"
+    },
+    "textCase": "none",
+    "letterSpacing": 0,
+    "lineHeight": 1.2,
+    "align": "center",
+    "verticalAnchor": "middle"
+  },
+  "box": {
+    "mode": "auto",
+    "width": 900
+  },
+  "applyPosition": false,
+  "tags": [],
+  "favorite": false,
+  "createdAt": "2026-11-07T09:00:00.000Z",
+  "updatedAt": "2026-11-07T09:00:00.000Z",
+  "sampleText": "Captions follow every word",
+  "sets": [
+    "captions"
+  ],
+  "highlight": {
+    "mode": "colorAndScale",
+    "color": {
+      "r": 1.0,
+      "g": 0.8275,
+      "b": 0.1647,
+      "a": 1.0
+    },
+    "inactiveColor": {
+      "r": 1,
+      "g": 1,
+      "b": 1,
+      "a": 0.9
+    }
+  }
+}

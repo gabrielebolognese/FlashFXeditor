@@ -1,0 +1,74 @@
+{
+  "id": "preset-typewriter",
+  "name": "Typewriter",
+  "style": {
+    "fontFamily": "Special Elite",
+    "fontWeight": 400,
+    "italic": false,
+    "fontSize": 80,
+    "fill": {
+      "r": 1,
+      "g": 1,
+      "b": 1,
+      "a": 1.0
+    },
+    "stroke": {
+      "enabled": false,
+      "width": 6,
+      "color": {
+        "r": 0,
+        "g": 0,
+        "b": 0,
+        "a": 1.0
+      }
+    },
+    "shadow": {
+      "enabled": false,
+      "x": 0,
+      "y": 6,
+      "blur": 16,
+      "color": {
+        "r": 0,
+        "g": 0,
+        "b": 0,
+        "a": 0.6
+      }
+    },
+    "background": {
+      "enabled": false,
+      "color": {
+        "r": 0,
+        "g": 0,
+        "b": 0,
+        "a": 0.7
+      },
+      "paddingX": 28,
+      "paddingY": 12,
+      "radius": 16,
+      "mode": "block"
+    },
+    "textCase": "none",
+    "letterSpacing": 0,
+    "lineHeight": 1.2,
+    "align": "center",
+    "verticalAnchor": "middle"
+  },
+  "box": {
+    "mode": "auto",
+    "width": 900
+  },
+  "applyPosition": false,
+  "tags": [
+    "kinetic"
+  ],
+  "favorite": false,
+  "createdAt": "2026-11-07T09:00:00.000Z",
+  "updatedAt": "2026-11-07T09:00:00.000Z",
+  "animIn": {
+    "id": "typewriter",
+    "durationMs": 1500,
+    "perUnit": "char",
+    "ease": "linear"
+  },
+  "sampleText": "one letter at a time"
+}

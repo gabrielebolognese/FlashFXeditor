@@ -1,0 +1,79 @@
+{
+  "id": "preset-subtitle",
+  "name": "Boxed subtitle",
+  "style": {
+    "fontFamily": "Inter",
+    "fontWeight": 600,
+    "italic": false,
+    "fontSize": 58,
+    "fill": {
+      "r": 1,
+      "g": 1,
+      "b": 1,
+      "a": 1.0
+    },
+    "stroke": {
+      "enabled": false,
+      "width": 6,
+      "color": {
+        "r": 0,
+        "g": 0,
+        "b": 0,
+        "a": 1.0
+      }
+    },
+    "shadow": {
+      "enabled": false,
+      "x": 0,
+      "y": 6,
+      "blur": 16,
+      "color": {
+        "r": 0,
+        "g": 0,
+        "b": 0,
+        "a": 0.6
+      }
+    },
+    "background": {
+      "enabled": true,
+      "color": {
+        "r": 0,
+        "g": 0,
+        "b": 0,
+        "a": 0.75
+      },
+      "paddingX": 24,
+      "paddingY": 10,
+      "radius": 8,
+      "mode": "line"
+    },
+    "textCase": "none",
+    "letterSpacing": 0,
+    "lineHeight": 1.2,
+    "align": "center",
+    "verticalAnchor": "middle"
+  },
+  "box": {
+    "mode": "auto",
+    "width": 900
+  },
+  "applyPosition": true,
+  "tags": [
+    "kinetic"
+  ],
+  "favorite": false,
+  "createdAt": "2026-11-07T09:00:00.000Z",
+  "updatedAt": "2026-11-07T09:00:00.000Z",
+  "animIn": {
+    "id": "fade",
+    "durationMs": 160
+  },
+  "sampleText": "Subtitles tell you what was said.",
+  "sets": [
+    "subtitles"
+  ],
+  "position": {
+    "x": 0,
+    "y": 600
+  }
+}
