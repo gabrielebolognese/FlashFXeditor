@@ -10,6 +10,8 @@ import { mediaItemFrom } from "../../media/mediaItem.js";
 import type { ProbeResult } from "../../media/probe/types.js";
 import { CUE_NAME, defaultCaptionStyle } from "../../text/captions.js";
 import { textClipName } from "../../text/style.js";
+import { newCaptionTrack } from "../../timeline/edit/captions.js";
+import { defaultSolid } from "../../timeline/edit/solid.js";
 import { defaultTransform, IDENTITY_TRANSFORM } from "./placement.js";
 import { createProject, nextTrackName } from "./project.js";
 import { schemaOf, type FieldType } from "./schema.js";
@@ -180,6 +182,8 @@ function normalizeClip(id: string, raw: Obj, project: Project): Obj {
     }
     defaults.transform = media && clip.kind !== "audio" ? defaultTransform(media as { width?: number; height?: number; rotation?: 0 | 90 | 180 | 270 }, project.settings) : IDENTITY_TRANSFORM;
   } else defaults.transform = IDENTITY_TRANSFORM;
+  // A solid starts as `+ Solid` makes it in this frame (rounded rectangle, white).
+  if (clip.kind === "solid") Object.assign(defaults, defaultSolid(project.settings));
   const merged = merge(defaults, clip) as Obj;
   // Only a clip kind with a transform gets one.
   if (!(clip.kind === "video" || clip.kind === "audio" || clip.kind === "image" || clip.kind === "text" || clip.kind === "solid")) delete merged.transform;
@@ -213,8 +217,10 @@ export function normalizeProject(raw: unknown, options: NormalizeOptions): Norma
       continue;
     }
     const kind = entry.kind as TrackKind;
-    const named = typeof entry.name === "string" ? entry.name : nextTrackName(tracks as unknown as { kind: TrackKind; name: string }[], kind);
-    tracks.push({ ...entry, name: named });
+    // A caption track is what `newCaptionTrack` makes (CC, height S); the others are numbered.
+    const base = kind === "caption" && typeof entry.id === "string" ? (newCaptionTrack(entry.id) as unknown as Obj) : {};
+    const named = typeof entry.name === "string" ? entry.name : (base.name as string | undefined) ?? nextTrackName(tracks as unknown as { kind: TrackKind; name: string }[], kind);
+    tracks.push({ ...base, ...entry, name: named });
   }
   project.tracks = tracks;
 

@@ -33,10 +33,10 @@ export const CAPTION_LIMITS = {
 export const DEFAULT_HIGHLIGHT_COLOR: Readonly<RGBA> = { r: 1, g: 0.84, b: 0.04, a: 1 };
 export const DEFAULT_INACTIVE_COLOR: Readonly<RGBA> = { r: 1, g: 1, b: 1, a: 1 };
 
-/** The caption text at the reference size: heavy white Inter at 64 px with a black outline and a soft shadow. */
 /** The name of a new cue. */
 export const CUE_NAME = "Caption";
 
+/** The caption text at the reference size: heavy white Inter at 64 px with a black outline and a soft shadow. */
 export const DEFAULT_CAPTION_TEXT: TextStyle = {
   ...DEFAULT_TEXT_STYLE,
   fontWeight: 800,

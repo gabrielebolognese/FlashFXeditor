@@ -32,9 +32,9 @@ export function mediaLanes(media: MediaItem): { video: boolean; audio: boolean }
   return { video: media.kind !== "audio", audio: media.kind === "audio" || (media.kind === "video" && media.hasAudio) };
 }
 
-/** The tracks a media item's clips go to (null for a kind it has no clip of). */
 export { defaultTransform };
 
+/** The tracks a media item's clips go to (null for a kind it has no clip of). */
 export interface ClipTracks {
   video: TrackId | null;
   audio: TrackId | null;

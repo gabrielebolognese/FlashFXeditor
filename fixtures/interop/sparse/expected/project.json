@@ -115,7 +115,7 @@
     {
       "id": "cc",
       "kind": "caption",
-      "name": "CC1",
+      "name": "CC",
       "clipIds": [
         "c-cue1",
         "c-cue2"
@@ -125,7 +125,7 @@
       "solo": false,
       "hidden": false,
       "targeted": true,
-      "height": "M"
+      "height": "S"
     },
     {
       "id": "a1",
@@ -157,12 +157,12 @@
         "b": 0.2,
         "a": 1
       },
-      "shape": "rect",
+      "shape": "roundedRect",
       "size": {
         "w": 400,
         "h": 120
       },
-      "cornerRadius": 0,
+      "cornerRadius": 54,
       "transform": {
         "x": 0,
         "y": 500,

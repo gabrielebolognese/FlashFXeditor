@@ -3,6 +3,9 @@ import { mediaClips } from "../../timeline/edit/insertMedia.js";
 import { IDENTITY_TRANSFORM } from "./placement.js";
 import { DEFAULT_TEXT_BOX, DEFAULT_TEXT_STYLE } from "../../text/style.js";
 import { defaultCaptionStyle } from "../../text/captions.js";
+import { newCaptionTrack, newCue } from "../../timeline/edit/captions.js";
+import { defaultSolid, newSolidClip } from "../../timeline/edit/solid.js";
+import { newTextClip } from "../../timeline/edit/text.js";
 import { fillObject, normalizeProject, type NormalizeOptions } from "./normalize.js";
 import { createProject, emptyTrack } from "./project.js";
 import { validateStrict } from "./strict.js";
@@ -37,6 +40,30 @@ describe("the field table's defaults are the app's own constants", () => {
   it("a caption track's style", () => {
     const result = normalizeProject({ ...blank, tracks: [{ id: "cc", kind: "caption" }] }, OPTIONS);
     expect((result.project.captionTracks as Record<string, { style: unknown }>).cc?.style).toEqual(defaultCaptionStyle(blank.settings));
+  });
+});
+
+describe("a sparse clip or track is what the app's factories make", () => {
+  const sparseProject = (tracks: unknown[], clips: Record<string, unknown>) => normalizeProject({ ...blank, tracks, clips }, OPTIONS).project;
+
+  it("a caption track and a cue", () => {
+    const cue = newCue("q", "cc", 0, 30, "Hello");
+    const { id, trackId, kind, start, duration, text } = cue;
+    const project = sparseProject([{ id: "cc", kind: "caption" }], { q: { id, trackId, kind, start, duration, text } });
+    expect((project.tracks as unknown[])[0]).toEqual({ ...newCaptionTrack("cc"), clipIds: ["q"] });
+    expect((project.clips as Record<string, unknown>).q).toEqual(cue);
+  });
+
+  it("a text clip", () => {
+    const text = newTextClip({ id: "x", trackId: "t", start: 0, duration: 30, value: "Hi" });
+    const project = sparseProject([{ id: "t", kind: "video" }], { x: { id: "x", trackId: "t", kind: "text", start: 0, duration: 30, text: { value: "Hi" } } });
+    expect((project.clips as Record<string, unknown>).x).toEqual(text);
+  });
+
+  it("a solid", () => {
+    const solid = newSolidClip({ id: "s", trackId: "t", start: 0, duration: 30, look: defaultSolid(blank.settings) });
+    const project = sparseProject([{ id: "t", kind: "video" }], { s: { id: "s", trackId: "t", kind: "solid", start: 0, duration: 30 } });
+    expect((project.clips as Record<string, unknown>).s).toEqual(solid);
   });
 });
 
