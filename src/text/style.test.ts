@@ -74,3 +74,34 @@ describe("scaleTextStyle", () => {
     expect(DEFAULT_SUBTITLE_STYLE.background.enabled).toBe(true);
   });
 });
+
+describe("styles of Batch 58: gradient fills and the background box's border and shadow", () => {
+  const red = { r: 1, g: 0, b: 0, a: 1 };
+  const blue = { r: 0, g: 0, b: 1, a: 1 };
+  const gradient = { type: "linear" as const, angle: 0, center: { x: 0.5, y: 0.5 }, radius: 1, stops: [{ at: 0, color: red }, { at: 1, color: blue }] };
+
+  it("shows a gradient's first color as the text color", () => {
+    expect(fillColor(gradient)).toEqual(red);
+  });
+
+  it("changes the key with the gradient, the box border and the box shadow, and not without them", () => {
+    const base = { ...DEFAULT_TEXT_STYLE };
+    const key = styleKey(base);
+    expect(styleKey({ ...base })).toBe(key);
+    expect(styleKey({ ...base, fill: gradient })).not.toBe(key);
+    expect(styleKey({ ...base, fill: { ...gradient, stops: [{ at: 0, color: red }, { at: 0.5, color: blue }, { at: 1, color: red }] } })).not.toBe(styleKey({ ...base, fill: gradient }));
+    const border = { ...base, background: { ...base.background, stroke: { enabled: true, width: 3, color: red } } };
+    expect(styleKey(border)).not.toBe(key);
+    expect(styleKey({ ...border, background: { ...border.background, stroke: { enabled: true, width: 4, color: red } } })).not.toBe(styleKey(border));
+    const shadow = { ...base, background: { ...base.background, shadow: { enabled: true, x: 7, y: 7, blur: 0, color: red } } };
+    expect(styleKey(shadow)).not.toBe(key);
+  });
+
+  it("scales the box border and shadow with the style", () => {
+    const style = { ...DEFAULT_TEXT_STYLE, background: { ...DEFAULT_TEXT_STYLE.background, stroke: { enabled: true, width: 4, color: red }, shadow: { enabled: true, x: 8, y: 8, blur: 10, color: red } } };
+    const doubled = scaleTextStyle(style, 2);
+    expect(doubled.background.stroke?.width).toBe(8);
+    expect(doubled.background.shadow).toMatchObject({ x: 16, y: 16, blur: 20 });
+    expect(style.background.stroke?.width).toBe(4);
+  });
+});

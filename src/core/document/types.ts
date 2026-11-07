@@ -1,7 +1,7 @@
 // The persistent document (spec §5.2). Plain JSON only: no classes, Maps, Sets or undefined-valued
 // keys, so a Project can be serialized as-is and diffed by Immer patches.
 
-export const SCHEMA_VERSION = 4;
+export const SCHEMA_VERSION = 5;
 
 export type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
 export type JsonObject = { [key: string]: JsonValue };
@@ -40,6 +40,46 @@ export type LabelColor = (typeof LABEL_COLORS)[number];
 export interface Gradient {
   from: RGBA;
   to: RGBA;
+}
+
+/** A gradient with 2 to 8 stops (spec §21.7, Batch 58), linear or radial. */
+export interface GradientFill {
+  type: "linear" | "radial";
+  /** Linear: degrees, 0 = top to bottom, clockwise. */
+  angle: number;
+  /** Radial: fractions of the box. */
+  center: { x: number; y: number };
+  /** Radial: a fraction of half the box diagonal. */
+  radius: number;
+  /** 2 to 8 stops, `at` 0..1 ascending. */
+  stops: GradientStop[];
+}
+export interface GradientStop {
+  at: number;
+  color: RGBA;
+}
+/** What a solid, a text or a box is filled with: a color, the v1 vertical two-stop gradient, or a gradient with stops. */
+export type Fill = RGBA | Gradient | GradientFill;
+export const MAX_GRADIENT_STOPS = 8;
+
+export const STROKE_ALIGNS = ["inside", "center", "outside"] as const;
+export type StrokeAlign = (typeof STROKE_ALIGNS)[number];
+/** The outline of a solid or a picture (spec §21.7), project px; an absent stroke is none. */
+export interface StrokeStyle {
+  width: number;
+  color: RGBA;
+  align: StrokeAlign;
+  /** Dash and gap lengths, project px (at most 4 are drawn); absent or empty: a solid line. */
+  dash?: number[];
+  dashOffset?: number;
+}
+/** The shadow of a solid or a picture (spec §21.7): `blur` 0 is a hard edge; an absent shadow is none. */
+export interface ShadowStyle {
+  x: number;
+  y: number;
+  blur: number;
+  spread: number;
+  color: RGBA;
 }
 
 /**
@@ -91,6 +131,9 @@ export interface TextBackground {
   paddingY: number;
   radius: number;
   mode: TextBackgroundMode;
+  /** The box's outline and shadow (spec §21.7); `enabled` lets a cue's override turn off what its track has. */
+  stroke?: TextStroke;
+  shadow?: TextShadow;
 }
 export const TEXT_BACKGROUND_MODES = ["line", "block"] as const;
 export type TextBackgroundMode = (typeof TEXT_BACKGROUND_MODES)[number];
@@ -102,7 +145,7 @@ export interface TextStyle {
   fontWeight: number;
   italic: boolean;
   fontSize: number;
-  fill: RGBA | Gradient;
+  fill: Fill;
   stroke: TextStroke;
   shadow: TextShadow;
   background: TextBackground;
@@ -413,6 +456,10 @@ export interface MediaClip extends ClipBase {
   transform: Transform;
   opacity: number;
   crop: Crop;
+  /** Video and image clips: rounded corners, an outline and a shadow around the cropped picture (spec §21.7). */
+  cornerRadius?: number;
+  stroke?: StrokeStyle;
+  shadow?: ShadowStyle;
   volume: Volume;
   fades: { in: Frame; out: Frame };
   keyframes?: Keyframes;
@@ -444,10 +491,14 @@ export type SolidShape = (typeof SOLID_SHAPE_IDS)[number];
  */
 export interface SolidClip extends ClipBase {
   kind: "solid";
-  fill: RGBA | Gradient;
+  fill: Fill;
   shape: SolidShape;
   size: { w: number; h: number };
   cornerRadius: number;
+  /** Radii of the four corners (tl, tr, br, bl); wins over `cornerRadius` (spec §21.7). */
+  cornerRadii?: [number, number, number, number];
+  stroke?: StrokeStyle;
+  shadow?: ShadowStyle;
   transform: Transform;
   opacity: number;
   keyframes?: Keyframes;

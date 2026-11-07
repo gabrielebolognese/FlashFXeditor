@@ -11,16 +11,16 @@ import { CAPTION_HIGHLIGHTS, CLIP_KINDS, EASE_IDS, SCHEMA_VERSION, SOLID_SHAPE_I
 /** The `manifestVersion`: changes only when a key changes meaning (new keys do not change it). */
 export const MANIFEST_VERSION = 1;
 /** The last batch that touched the manifest (spec §21.1: each batch sets it to its own number). */
-export const LAST_BATCH = 57;
+export const LAST_BATCH = 58;
 
 /** The flags of the manifest: a batch that adds a capability flips its key here (spec §21.2 table). */
 export const FEATURES = {
   media: { videoAlpha: false, imageSequence: false, lottie: false },
   transform: { rotation3d: false, parenting: false, motionPaths: false, autoOrient: false },
   keyframes: { bezier: false, spring: false, vectorValues: false },
-  solid: { stroke: false, shadow: false, cornerRadii: false },
-  mediaFrame: { stroke: false, shadow: false, cornerRadius: false },
-  text: { spans: false, counter: false, animators: false, backgroundStroke: false, backgroundShadow: false },
+  solid: { stroke: true, shadow: true, cornerRadii: true },
+  mediaFrame: { stroke: true, shadow: true, cornerRadius: true },
+  text: { spans: false, counter: false, animators: false, backgroundStroke: true, backgroundShadow: true },
   captions: { perCueStyle: true, wordEmphasis: false, wordsImport: false },
   compositing: { compound: false, trackMatte: false, masks: false, adjustment: false },
   vector: { shapes: false, trimPaths: false, svgImport: false },
@@ -70,10 +70,10 @@ export function buildCapabilities(appVersion: string): Capabilities {
     clipKinds: [...CLIP_KINDS],
     transform: { ...f.transform },
     keyframes: { props: [...KEYFRAME_PROPS], eases: [...EASE_IDS], ...f.keyframes },
-    solid: { shapes: [...SOLID_SHAPE_IDS], fills: ["color", "gradient2"], ...f.solid },
+    solid: { shapes: [...SOLID_SHAPE_IDS], fills: ["color", "gradient2", "linear", "radial"], ...f.solid },
     mediaFrame: { ...f.mediaFrame },
     text: {
-      fills: ["color", "gradient2"],
+      fills: ["color", "gradient2", "linear", "radial"],
       stroke: true,
       shadow: true,
       background: { modes: [...TEXT_BACKGROUND_MODES], stroke: f.text.backgroundStroke, shadow: f.text.backgroundShadow },

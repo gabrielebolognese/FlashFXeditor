@@ -219,3 +219,29 @@ describe("styles per cue (spec §20.3)", () => {
     expect(placed).toMatchObject({ position: "custom", x: 10, y: -100, highlight: { mode: "background" } });
   });
 });
+
+describe("cue overrides of the box border and shadow (Batch 58)", () => {
+  const ink = { r: 0.1, g: 0.1, b: 0.1, a: 1 };
+  const track = (() => {
+    const style = defaultCaptionStyle({ width: 1080, height: 1920 });
+    style.text.background = { ...style.text.background, enabled: true, stroke: { enabled: true, width: 3, color: ink }, shadow: { enabled: true, x: 7, y: 7, blur: 0, color: ink } };
+    return style;
+  })();
+
+  it("an override turns the border off and keeps the track's shadow", () => {
+    const override: CaptionStyleOverride = { text: { background: { stroke: { enabled: false, width: 3, color: ink } } } };
+    const style = effectiveCaptionStyle(track, override);
+    expect(style.text.background.stroke?.enabled).toBe(false);
+    expect(style.text.background.shadow).toEqual(track.text.background.shadow);
+    expect(track.text.background.stroke?.enabled).toBe(true);
+    expect(overrideFields(override)).toContain("text.background.stroke.enabled");
+  });
+
+  it("a cue edit that changes the border becomes an override of the whole border", () => {
+    const after = structuredClone(track);
+    after.text.background.stroke = { enabled: false, width: 3, color: ink };
+    const override = overrideWith(undefined, track, after);
+    expect(override?.text?.background?.stroke).toEqual({ enabled: false, width: 3, color: ink });
+    expect(override?.text?.background?.shadow).toBeUndefined();
+  });
+});

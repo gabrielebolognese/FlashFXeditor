@@ -3,7 +3,7 @@
 import { keyframeIssues } from "./keyframes.js";
 import { transitionIssues } from "./transitions.js";
 import { usPerFrame } from "./time.js";
-import { CAPTION_HIGHLIGHTS, isFreeze, isMediaClip, LABEL_COLORS, SOLID_SHAPE_IDS, type CaptionClip, type CaptionStyle, type Clip, type ClipId, type ClipKind, type MediaItem, type Project, type SolidClip, type TextClip, type TextStyle, type Track, type TrackId, type TrackKind } from "./types.js";
+import { CAPTION_HIGHLIGHTS, isFreeze, isMediaClip, LABEL_COLORS, SOLID_SHAPE_IDS, STROKE_ALIGNS, type CaptionClip, type CaptionStyle, type Clip, type ClipId, type ClipKind, type MediaClip, type MediaItem, type Project, type SolidClip, type TextClip, type TextStyle, type Track, type TrackId, type TrackKind } from "./types.js";
 
 export class DocumentInvariantError extends Error {
   readonly issues: readonly string[];
@@ -66,6 +66,8 @@ function clipIssues(project: Project, clip: Clip): string[] {
   if (clip.kind === "text") issues.push(...textIssues(clip, label));
   if (clip.kind === "caption") issues.push(...cueIssues(clip, label));
   if (clip.kind === "solid") issues.push(...solidIssues(clip, label));
+  // Frame styles (spec §21.7): pictures have rounded corners, an outline and a shadow.
+  if (clip.kind === "video" || clip.kind === "image") issues.push(...frameIssues(clip, label));
   // Keyframes (Batch 35): known properties, one key per integer frame in order, finite values, known eases.
   if ("keyframes" in clip && clip.keyframes !== undefined) issues.push(...keyframeIssues(clip.keyframes).map((issue) => `${label}: ${issue}`));
   // Fades (Batch 36): integer frames, each within the clip.
@@ -181,16 +183,19 @@ const TEXT_OVERRIDE: Readonly<Record<string, Check>> = {
   fontWeight: (value) => isPositive(value) && (value as number) <= 1000,
   italic: isBoolean,
   fontSize: isPositive,
-  fill: (value) => isColor(value) || (typeof value === "object" && value !== null && isColor((value as Record<string, unknown>).from) && isColor((value as Record<string, unknown>).to)),
+  fill: (value) => fillIssue(value) === null,
   textCase: oneOf("none", "upper", "lower", "title"),
   letterSpacing: isFiniteNumber,
   lineHeight: isPositive,
   align: oneOf("left", "center", "right"),
 };
+const isObjectLike = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null && !Array.isArray(value);
+const isBoxStroke = (value: unknown) => isObjectLike(value) && isBoolean(value.enabled) && isNonNegative(value.width) && isRgba(value.color);
+const isBoxShadow = (value: unknown) => isObjectLike(value) && isBoolean(value.enabled) && isFiniteNumber(value.x) && isFiniteNumber(value.y) && isNonNegative(value.blur) && isRgba(value.color);
 const PART_OVERRIDES: Readonly<Record<string, Readonly<Record<string, Check>>>> = {
   stroke: { enabled: isBoolean, width: isNonNegative, color: isRgba },
   shadow: { enabled: isBoolean, x: isFiniteNumber, y: isFiniteNumber, blur: isNonNegative, color: isRgba },
-  background: { enabled: isBoolean, color: isRgba, paddingX: isNonNegative, paddingY: isNonNegative, radius: isNonNegative, mode: oneOf("line", "block") },
+  background: { enabled: isBoolean, color: isRgba, paddingX: isNonNegative, paddingY: isNonNegative, radius: isNonNegative, mode: oneOf("line", "block"), stroke: isBoxStroke, shadow: isBoxShadow },
 };
 const CAPTION_OVERRIDE: Readonly<Record<string, Check>> = {
   position: (value) => CAPTION_POSITIONS.has(value as string),
@@ -235,10 +240,57 @@ function solidIssues(clip: SolidClip, label: string): string[] {
   if (!SOLID_SHAPES.has(clip.shape)) issues.push(`${label}: shape "${String(clip.shape)}" is not ${SOLID_SHAPE_IDS.join(", ")}`);
   if (!isPositive(clip.size?.w) || !isPositive(clip.size?.h)) issues.push(`${label}: size ${String(clip.size?.w)}x${String(clip.size?.h)} must be > 0`);
   if (!(Number.isFinite(clip.cornerRadius) && clip.cornerRadius >= 0)) issues.push(`${label}: corner radius ${String(clip.cornerRadius)} must be >= 0`);
-  const fill = clip.fill as unknown as Record<string, unknown> | undefined;
-  if (!isColor(fill) && !(isColor(fill?.from) && isColor(fill?.to))) issues.push(`${label}: fill must be RGBA or a gradient { from, to }`);
+  const problem = fillIssue(clip.fill);
+  if (problem) issues.push(`${label}: fill ${problem}`);
+  if (clip.cornerRadii !== undefined && !(Array.isArray(clip.cornerRadii) && clip.cornerRadii.length === 4 && clip.cornerRadii.every((r) => Number.isFinite(r) && r >= 0))) issues.push(`${label}: cornerRadii must be 4 numbers >= 0`);
+  issues.push(...strokeShadowIssues(clip, label));
   return issues;
 }
+
+/** What is wrong with `value` as a fill (spec §21.7): a color, `{ from, to }`, or a gradient with 2 to 8 ascending stops; null when valid. */
+function fillIssue(value: unknown): string | null {
+  if (!isObjectLike(value)) return "must be an RGBA color or a gradient";
+  if (isColor(value)) return null;
+  if (isColor(value.from) && isColor(value.to)) return null;
+  if (!Array.isArray(value.stops)) return "must be RGBA, a gradient { from, to } or a gradient with stops";
+  if (value.type !== "linear" && value.type !== "radial") return 'gradient type must be "linear" or "radial"';
+  if (!isFiniteNumber(value.angle) || !isFiniteNumber(value.radius) || !isObjectLike(value.center) || !isFiniteNumber(value.center.x) || !isFiniteNumber(value.center.y)) return "gradient needs a numeric angle, center { x, y } and radius";
+  const stops = value.stops as unknown[];
+  if (stops.length < 2 || stops.length > 8) return `gradient has ${stops.length} stops: 2 to 8 are allowed`;
+  let last = -1;
+  for (const stop of stops) {
+    if (!isObjectLike(stop) || !isColor(stop.color) || !isFiniteNumber(stop.at) || (stop.at as number) < 0 || (stop.at as number) > 1) return "every stop needs a color and an `at` within 0..1";
+    if ((stop.at as number) < last) return "stops must be in ascending `at` order";
+    last = stop.at as number;
+  }
+  return null;
+}
+
+/** `stroke` and `shadow` of a solid or a picture (spec §21.7): known values only. */
+function strokeShadowIssues(clip: { stroke?: unknown; shadow?: unknown }, label: string): string[] {
+  const issues: string[] = [];
+  const stroke = clip.stroke;
+  if (stroke !== undefined) {
+    if (!isObjectLike(stroke) || !isNonNegative(stroke.width) || !isColor(stroke.color) || !STROKE_ALIGN_SET.has(stroke.align as string)) issues.push(`${label}: stroke needs width >= 0, a color and align inside, center or outside`);
+    else {
+      if (stroke.dash !== undefined && !(Array.isArray(stroke.dash) && stroke.dash.every((v) => isNonNegative(v)))) issues.push(`${label}: stroke dash must be a list of numbers >= 0`);
+      if (stroke.dashOffset !== undefined && !isFiniteNumber(stroke.dashOffset)) issues.push(`${label}: stroke dashOffset must be a number`);
+    }
+  }
+  const shadow = clip.shadow;
+  if (shadow !== undefined && !(isObjectLike(shadow) && isFiniteNumber(shadow.x) && isFiniteNumber(shadow.y) && isNonNegative(shadow.blur) && isFiniteNumber(shadow.spread) && isColor(shadow.color))) issues.push(`${label}: shadow needs x, y, blur >= 0, spread and a color`);
+  return issues;
+}
+
+/** A picture's frame (spec §21.7): a corner radius >= 0, a stroke, a shadow. */
+function frameIssues(clip: MediaClip, label: string): string[] {
+  const issues: string[] = [];
+  if (clip.cornerRadius !== undefined && !isNonNegative(clip.cornerRadius)) issues.push(`${label}: corner radius ${String(clip.cornerRadius)} must be >= 0`);
+  issues.push(...strokeShadowIssues(clip, label));
+  return issues;
+}
+
+const STROKE_ALIGN_SET: ReadonlySet<string> = new Set(STROKE_ALIGNS);
 
 /** A caption track's style (spec §10.5): a text style, a position preset, a positive width and line count, a highlight. */
 function captionStyleIssues(style: CaptionStyle | undefined, label: string): string[] {

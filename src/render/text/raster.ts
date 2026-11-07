@@ -16,7 +16,7 @@
 import { formatHexColor } from "../../core/document/color.js";
 import type { TextStyle } from "../../core/document/types.js";
 import { fontShorthand } from "../../text/fonts.js";
-import { isGradient } from "../../text/style.js";
+import { isGradientFill, isTwoStop } from "../../core/document/fill.js";
 import { atlasUnits, packShelves, type AtlasUnit, type AtlasUnitKind } from "./atlas.js";
 import type { Rect, TextLayout, TextLine } from "./layout.js";
 import { currentMeasurer, textFallback } from "./layoutCache.js";
@@ -94,8 +94,47 @@ function applyFont(ctx: Ctx, style: TextStyle, scale: number): void {
   ctx.textAlign = "left";
 }
 
-/** Draws `runs`: the stroke outside the glyphs, then the fill (`top`..`bottom`: the gradient's span in canvas px). */
-function drawRuns(ctx: Ctx, runs: readonly Run[], style: TextStyle, scale: number, top: number, bottom: number): void {
+/** The box a gradient fill spans, in canvas px. */
+interface FillBox {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+}
+
+/** `fill` as a canvas fill style over `box` (spec §21.7: the same geometry as the solid shader's). */
+function fillStyleOf(ctx: Ctx, fill: TextStyle["fill"], box: FillBox): string | CanvasGradient {
+  if (isGradientFill(fill)) {
+    const w = Math.max(1, box.right - box.left);
+    const h = Math.max(1, box.bottom - box.top);
+    const cx = box.left + w / 2;
+    const cy = box.top + h / 2;
+    let gradient: CanvasGradient;
+    if (fill.type === "radial") {
+      const x = box.left + fill.center.x * w;
+      const y = box.top + fill.center.y * h;
+      gradient = ctx.createRadialGradient(x, y, 0, x, y, Math.max(0.01, fill.radius * 0.5 * Math.hypot(w, h)));
+    } else {
+      const a = (fill.angle * Math.PI) / 180;
+      const dx = -Math.sin(a);
+      const dy = Math.cos(a);
+      const half = (Math.abs(dx) * w + Math.abs(dy) * h) / 2;
+      gradient = ctx.createLinearGradient(cx - dx * half, cy - dy * half, cx + dx * half, cy + dy * half);
+    }
+    for (const stop of fill.stops) gradient.addColorStop(Math.min(1, Math.max(0, stop.at)), formatHexColor(stop.color));
+    return gradient;
+  }
+  if (isTwoStop(fill)) {
+    const gradient = ctx.createLinearGradient(0, box.top, 0, Math.max(box.top + 1, box.bottom));
+    gradient.addColorStop(0, formatHexColor(fill.from));
+    gradient.addColorStop(1, formatHexColor(fill.to));
+    return gradient;
+  }
+  return formatHexColor(fill);
+}
+
+/** Draws `runs`: the stroke outside the glyphs, then the fill (`box`: the gradient's span in canvas px). */
+function drawRuns(ctx: Ctx, runs: readonly Run[], style: TextStyle, scale: number, box: FillBox): void {
   const stroke = style.stroke;
   if (stroke.enabled && stroke.width > 0 && stroke.color.a > 0) {
     ctx.lineJoin = "round";
@@ -109,13 +148,7 @@ function drawRuns(ctx: Ctx, runs: readonly Run[], style: TextStyle, scale: numbe
     for (const run of runs) ctx.fillText(run.text, run.x, run.y);
     ctx.globalCompositeOperation = "source-over";
   }
-  const fill = style.fill;
-  if (isGradient(fill)) {
-    const gradient = ctx.createLinearGradient(0, top, 0, Math.max(top + 1, bottom));
-    gradient.addColorStop(0, formatHexColor(fill.from));
-    gradient.addColorStop(1, formatHexColor(fill.to));
-    ctx.fillStyle = gradient;
-  } else ctx.fillStyle = formatHexColor(fill);
+  ctx.fillStyle = fillStyleOf(ctx, style.fill, box);
   for (const run of runs) ctx.fillText(run.text, run.x, run.y);
 }
 
@@ -168,7 +201,62 @@ export type RasterPart = "all" | "backgrounds";
 
 /** Whether `layout` in `style` draws background boxes. */
 export function hasBackgrounds(layout: TextLayout, style: TextStyle): boolean {
-  return style.background.enabled && style.background.color.a > 0 && layout.backgrounds.length > 0;
+  const bg = style.background;
+  return bg.enabled && layout.backgrounds.length > 0 && (bg.color.a > 0 || boxBorder(bg) !== null || boxShadow(bg) !== null);
+}
+
+/** The box's border when it is drawn (enabled, a width and a visible color). */
+export function boxBorder(bg: TextStyle["background"]): { width: number; color: TextStyle["background"]["color"] } | null {
+  const stroke = bg.stroke;
+  return stroke && stroke.enabled && stroke.width > 0 && stroke.color.a > 0 ? stroke : null;
+}
+
+/** The box's shadow when it is drawn. */
+export function boxShadow(bg: TextStyle["background"]): { x: number; y: number; blur: number; color: TextStyle["background"]["color"] } | null {
+  const shadow = bg.shadow;
+  return shadow && shadow.enabled && shadow.color.a > 0 ? shadow : null;
+}
+
+/**
+ * The background boxes (spec §21.7): the shadow outside them (hard when blur is 0, else a Gaussian of
+ * sigma blur / 2), the fill, then the border inside their edge. One path, so boxes that overlap fill once.
+ */
+function drawBackgrounds(ctx: Ctx, layout: TextLayout, style: TextStyle, s: number, ox: number, oy: number): void {
+  const bg = style.background;
+  const path = new Path2D();
+  for (const box of layout.backgrounds) {
+    const w = box.width * s;
+    const h = box.height * s;
+    path.roundRect(box.x * s + ox, box.y * s + oy, w, h, Math.max(0, Math.min(bg.radius * s, w / 2, h / 2)));
+  }
+  const shadow = boxShadow(bg);
+  if (shadow) {
+    ctx.save();
+    if (shadow.blur > 0) ctx.filter = `blur(${(shadow.blur * s) / 2}px)`;
+    ctx.fillStyle = formatHexColor(shadow.color);
+    ctx.translate(shadow.x * s, shadow.y * s);
+    ctx.fill(path);
+    ctx.restore();
+    // The shadow stays outside the box, as a CSS box-shadow does.
+    ctx.save();
+    ctx.globalCompositeOperation = "destination-out";
+    ctx.fill(path);
+    ctx.restore();
+  }
+  if (bg.color.a > 0) {
+    ctx.fillStyle = formatHexColor(bg.color);
+    ctx.fill(path);
+  }
+  const border = boxBorder(bg);
+  if (border) {
+    ctx.save();
+    ctx.clip(path);
+    ctx.lineWidth = 2 * border.width * s;
+    ctx.lineJoin = "round";
+    ctx.strokeStyle = formatHexColor(border.color);
+    ctx.stroke(path);
+    ctx.restore();
+  }
 }
 
 /**
@@ -187,26 +275,15 @@ export function rasterizeText(layout: TextLayout, style: TextStyle, scale: numbe
   if (!ctx) return null;
   const ox = -rect.x * s;
   const oy = -rect.y * s;
-  const bg = style.background;
-  if (hasBackgrounds(layout, style)) {
-    ctx.fillStyle = formatHexColor(bg.color);
-    ctx.beginPath();
-    for (const box of layout.backgrounds) {
-      const w = box.width * s;
-      const h = box.height * s;
-      ctx.roundRect(box.x * s + ox, box.y * s + oy, w, h, Math.max(0, Math.min(bg.radius * s, w / 2, h / 2)));
-    }
-    ctx.fill();
-  }
+  if (hasBackgrounds(layout, style)) drawBackgrounds(ctx, layout, style, s, ox, oy);
   if (part === "backgrounds") return { canvas, width, height, scale: s, rect };
   if (highlight && highlight.rects.length > 0) {
     ctx.fillStyle = highlight.color;
     for (const box of highlight.rects) ctx.fillRect(box.x * s + ox, box.y * s + oy, box.width * s, box.height * s);
   }
   if (layout.glyphs.length > 0) {
-    const top = layout.block.y * s + oy;
-    const bottom = (layout.block.y + layout.block.height) * s + oy;
-    paintText(ctx, width, height, style, s, (target) => drawRuns(target, lineRuns(target, layout, style, s, ox, oy), style, s, top, bottom));
+    const box: FillBox = { left: layout.block.x * s + ox, top: layout.block.y * s + oy, right: (layout.block.x + layout.block.width) * s + ox, bottom: (layout.block.y + layout.block.height) * s + oy };
+    paintText(ctx, width, height, style, s, (target) => drawRuns(target, lineRuns(target, layout, style, s, ox, oy), style, s, box));
   }
   return { canvas, width, height, scale: s, rect };
 }
@@ -239,6 +316,8 @@ export function buildTextAtlas(layout: TextLayout, style: TextStyle, scale: numb
   const canvas = new OffscreenCanvas(packed.width, Math.min(TEXT_RASTER_MAX, packed.height));
   const ctx = canvas.getContext("2d");
   if (!ctx) return null;
+  const blockLeft = layout.block.x * s;
+  const blockRight = (layout.block.x + layout.block.width) * s;
   const top = layout.block.y * s;
   const bottom = (layout.block.y + layout.block.height) * s;
   const cells = units.map((unit, i) => {
@@ -259,7 +338,7 @@ export function buildTextAtlas(layout: TextLayout, style: TextStyle, scale: numb
       target.beginPath();
       target.rect(unit.cell.x, unit.cell.y, unit.cell.width, unit.cell.height);
       target.clip();
-      drawRuns(target, [{ text: unit.text, x: x + dx, y: unit.baseline * s + dy }], style, s, top + dy, bottom + dy);
+      drawRuns(target, [{ text: unit.text, x: x + dx, y: unit.baseline * s + dy }], style, s, { left: blockLeft + dx, top: top + dy, right: blockRight + dx, bottom: bottom + dy });
       target.restore();
     }
   });

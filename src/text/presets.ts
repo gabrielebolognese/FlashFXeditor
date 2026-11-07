@@ -13,9 +13,10 @@
 //   without an id or a style is skipped).
 import {
   CAPTION_HIGHLIGHTS,
+  MAX_GRADIENT_STOPS,
   PRESET_SET_IDS,
   type CaptionHighlight,
-  type Gradient,
+  type Fill,
   type PresetSetId,
   type PresetTextAnim,
   type Rational,
@@ -26,8 +27,9 @@ import {
   type TextPreset,
   type TextStyle,
 } from "../core/document/types.js";
+import { fillFirstColor } from "../core/document/fill.js";
 import { fromPresetAnim, isPlayable, sameAnim, sanitizePresetAnim, toPresetAnim } from "./anim.js";
-import { DEFAULT_TEXT_BOX, DEFAULT_TEXT_STYLE, isGradient, scaleTextStyle, styleKey, TEXT_LIMITS, TEXT_REFERENCE_SIDE } from "./style.js";
+import { DEFAULT_TEXT_BOX, DEFAULT_TEXT_STYLE, scaleTextStyle, styleKey, TEXT_LIMITS, TEXT_REFERENCE_SIDE } from "./style.js";
 
 /** The `format` of an exported presets file. */
 export const PRESETS_FILE_FORMAT = "shorts-editor.text-presets";
@@ -368,10 +370,45 @@ function rgba(value: unknown, fallback: RGBA): RGBA {
   return { r: num(raw.r, fallback.r, 0, 1), g: num(raw.g, fallback.g, 0, 1), b: num(raw.b, fallback.b, 0, 1), a: num(raw.a, fallback.a, 0, 1) };
 }
 
-function fill(value: unknown, fallback: RGBA): RGBA | Gradient {
+function fill(value: unknown, fallback: RGBA): Fill {
   const raw = obj(value);
   if (raw && obj(raw.from) && obj(raw.to)) return { from: rgba(raw.from, fallback), to: rgba(raw.to, fallback) };
+  if (raw && Array.isArray(raw.stops)) {
+    const stops = raw.stops
+      .slice(0, MAX_GRADIENT_STOPS)
+      .map((stop) => ({ at: num(obj(stop)?.at, 0, 0, 1), color: rgba(obj(stop)?.color, fallback) }))
+      .sort((a, b) => a.at - b.at);
+    if (stops.length >= 2) {
+      const center = obj(raw.center) ?? {};
+      return { type: raw.type === "radial" ? "radial" : "linear", angle: num(raw.angle, 0, -3600, 3600), center: { x: num(center.x, 0.5, -10, 10), y: num(center.y, 0.5, -10, 10) }, radius: num(raw.radius, 1, 0, 100), stops };
+    }
+    return rgba(stops[0]?.color, fallback);
+  }
   return rgba(value, fallback);
+}
+
+/** A text box's border read from a file (absent when the file has none). */
+function boxStroke(value: unknown, fallback: TextStyle["background"]["stroke"]): TextStyle["background"]["stroke"] | undefined {
+  const raw = obj(value);
+  if (!raw) return fallback ? { ...fallback, color: { ...fallback.color } } : undefined;
+  const d = fallback ?? { enabled: false, width: 3, color: { r: 0, g: 0, b: 0, a: 1 } };
+  return { enabled: bool(raw.enabled, d.enabled), width: num(raw.width, d.width, TEXT_LIMITS.strokeWidth.min, TEXT_LIMITS.strokeWidth.max), color: rgba(raw.color, d.color) };
+}
+
+function boxShadow(value: unknown, fallback: TextStyle["background"]["shadow"]): TextStyle["background"]["shadow"] | undefined {
+  const raw = obj(value);
+  if (!raw) return fallback ? { ...fallback, color: { ...fallback.color } } : undefined;
+  const d = fallback ?? { enabled: false, x: 7, y: 7, blur: 0, color: { r: 0, g: 0, b: 0, a: 1 } };
+  return { enabled: bool(raw.enabled, d.enabled), x: num(raw.x, d.x, -1000, 1000), y: num(raw.y, d.y, -1000, 1000), blur: num(raw.blur, d.blur, TEXT_LIMITS.shadowBlur.min, TEXT_LIMITS.shadowBlur.max), color: rgba(raw.color, d.color) };
+}
+
+function boxExtras(raw: Record<string, unknown>, d: TextStyle["background"]): Pick<TextStyle["background"], "stroke" | "shadow"> {
+  const out: Pick<TextStyle["background"], "stroke" | "shadow"> = {};
+  const stroke = boxStroke(raw.stroke, d.stroke);
+  if (stroke) out.stroke = stroke;
+  const shadow = boxShadow(raw.shadow, d.shadow);
+  if (shadow) out.shadow = shadow;
+  return out;
 }
 
 /** A text style read from a file: every value checked, a missing or bad one is the default's. */
@@ -384,7 +421,7 @@ export function sanitizeTextStyle(value: unknown, fallback: TextStyle = DEFAULT_
   const shadow = obj(raw.shadow) ?? {};
   const background = obj(raw.background) ?? {};
   const family = typeof raw.fontFamily === "string" && raw.fontFamily.trim() !== "" ? raw.fontFamily.trim().slice(0, 200) : d.fontFamily;
-  const solid = isGradient(d.fill) ? d.fill.from : d.fill;
+  const solid = fillFirstColor(d.fill);
   return {
     fontFamily: family,
     fontWeight: Math.round(num(raw.fontWeight, d.fontWeight, L.fontWeight.min, L.fontWeight.max)),
@@ -406,6 +443,7 @@ export function sanitizeTextStyle(value: unknown, fallback: TextStyle = DEFAULT_
       paddingY: num(background.paddingY, d.background.paddingY, L.padding.min, L.padding.max),
       radius: num(background.radius, d.background.radius, L.radius.min, L.radius.max),
       mode: oneOf(["line", "block"], background.mode, d.background.mode),
+      ...boxExtras(background, d.background),
     },
     textCase: oneOf(["none", "upper", "lower", "title"], raw.textCase, d.textCase),
     letterSpacing: num(raw.letterSpacing, d.letterSpacing, L.letterSpacing.min, L.letterSpacing.max),

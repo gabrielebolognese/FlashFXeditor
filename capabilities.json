@@ -2,8 +2,8 @@
   "manifestVersion": 1,
   "app": "shorts-editor",
   "appVersion": "1.1.0",
-  "lastBatch": 57,
-  "schemaVersion": 4,
+  "lastBatch": 58,
+  "schemaVersion": 5,
   "project": {
     "file": "project.json",
     "fontsManifest": "fonts/fonts.json",
@@ -97,21 +97,25 @@
     ],
     "fills": [
       "color",
-      "gradient2"
+      "gradient2",
+      "linear",
+      "radial"
     ],
-    "stroke": false,
-    "shadow": false,
-    "cornerRadii": false
+    "stroke": true,
+    "shadow": true,
+    "cornerRadii": true
   },
   "mediaFrame": {
-    "stroke": false,
-    "shadow": false,
-    "cornerRadius": false
+    "stroke": true,
+    "shadow": true,
+    "cornerRadius": true
   },
   "text": {
     "fills": [
       "color",
-      "gradient2"
+      "gradient2",
+      "linear",
+      "radial"
     ],
     "stroke": true,
     "shadow": true,
@@ -120,8 +124,8 @@
         "line",
         "block"
       ],
-      "stroke": false,
-      "shadow": false
+      "stroke": true,
+      "shadow": true
     },
     "anims": [
       "fade",

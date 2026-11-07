@@ -463,3 +463,27 @@ describe("starter presets", () => {
     expect(subtitle?.applyPosition).toBe(false);
   });
 });
+
+describe("styles read from a file (Batch 58)", () => {
+  const red = { r: 1, g: 0, b: 0, a: 1 };
+
+  it("keeps a gradient fill with stops, sorted, at most 8, and falls back to a color when it has fewer than two", () => {
+    const stops = Array.from({ length: 10 }, (_, i) => ({ at: 1 - i / 9, color: red }));
+    const style = sanitizeTextStyle({ fill: { type: "radial", angle: 400, center: { x: 0.25, y: 0.75 }, radius: 2, stops } }, DEFAULT_TEXT_STYLE)!;
+    const fill = style.fill as { type: string; stops: { at: number }[]; center: { x: number } };
+    expect(fill.type).toBe("radial");
+    expect(fill.stops).toHaveLength(8);
+    expect(fill.stops.map((s) => s.at)).toEqual([...fill.stops.map((s) => s.at)].sort((a, b) => a - b));
+    expect(fill.center.x).toBe(0.25);
+    expect(sanitizeTextStyle({ fill: { type: "linear", stops: [{ at: 0, color: red }] } }, DEFAULT_TEXT_STYLE)?.fill).toEqual(red);
+  });
+
+  it("reads a box border and shadow, clamped, and leaves them out when the file has none", () => {
+    const style = sanitizeTextStyle({ background: { enabled: true, stroke: { enabled: true, width: 9999, color: red }, shadow: { enabled: true, x: 7, y: 7, blur: -3, color: red } } }, DEFAULT_TEXT_STYLE)!;
+    expect(style.background.stroke).toMatchObject({ enabled: true, width: 200 });
+    expect(style.background.shadow).toMatchObject({ x: 7, y: 7, blur: 0 });
+    const plain = sanitizeTextStyle({ background: { enabled: true } }, DEFAULT_TEXT_STYLE)!;
+    expect(plain.background).not.toHaveProperty("stroke");
+    expect(plain.background).not.toHaveProperty("shadow");
+  });
+});

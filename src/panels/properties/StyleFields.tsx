@@ -24,7 +24,8 @@ import type { RGBA, TextAlign, TextAnchor, TextCase, TextStyle } from "../../cor
 import { useStoreSelector } from "../../core/store/useStoreSelector.js";
 import type { AppSettings } from "../../project/appSettings.js";
 import { coreFont } from "../../render/text/bundledFonts.js";
-import { fillColor, isGradient } from "../../text/style.js";
+import { fillAsMode, fillFirstColor, fillLastColor, fillMode, fillWithFirst, fillWithLast } from "../../core/document/fill.js";
+import { isColorFill } from "../../core/document/fill.js";
 import { ColorField } from "../../ui/ColorField.js";
 import { IconButton } from "../../ui/IconButton.js";
 import { NumberField, type NumberBinding } from "../../ui/NumberField.js";
@@ -33,7 +34,7 @@ import { Toggle } from "../../ui/Toggle.js";
 import { FontField } from "./FontBrowser.js";
 import { Row } from "./Section.js";
 import styles from "./Section.module.css";
-import { FONT_SIZE, LETTER_SPACING, LINE_HEIGHT, PADDING_X, PADDING_Y, RADIUS, SHADOW_BLUR, SHADOW_X, SHADOW_Y, STROKE_WIDTH, type TextNumberProp } from "./textProps.js";
+import { BOX_SHADOW_BLUR, BOX_SHADOW_X, BOX_SHADOW_Y, BOX_STROKE_WIDTH, boxShadowOf, boxStrokeOf, FONT_SIZE, LETTER_SPACING, LINE_HEIGHT, PADDING_X, PADDING_Y, RADIUS, SHADOW_BLUR, SHADOW_X, SHADOW_Y, STROKE_WIDTH, type TextNumberProp } from "./textProps.js";
 import { MIXED, NONE, SKIP, type Shared } from "./useShared.js";
 
 // The text style rows (spec §11 Text section, §10.1), shared by the Text section (the selected text
@@ -62,9 +63,9 @@ export interface StyleTarget {
 const getFamily = (s: TextStyle) => s.fontFamily;
 const getWeight = (s: TextStyle) => s.fontWeight;
 const getItalic = (s: TextStyle) => s.italic;
-const getGradient = (s: TextStyle) => isGradient(s.fill);
-const getFill = (s: TextStyle) => formatHexColor(fillColor(s.fill));
-const getFillBottom = (s: TextStyle) => (isGradient(s.fill) ? formatHexColor(s.fill.to) : SKIP);
+const getGradient = (s: TextStyle) => fillMode(s.fill);
+const getFill = (s: TextStyle) => formatHexColor(fillFirstColor(s.fill));
+const getFillBottom = (s: TextStyle) => (isColorFill(s.fill) ? SKIP : formatHexColor(fillLastColor(s.fill)));
 const getStroke = (s: TextStyle) => s.stroke.enabled;
 const getStrokeColor = (s: TextStyle) => formatHexColor(s.stroke.color);
 const getShadow = (s: TextStyle) => s.shadow.enabled;
@@ -72,6 +73,10 @@ const getShadowColor = (s: TextStyle) => formatHexColor(s.shadow.color);
 const getBackground = (s: TextStyle) => s.background.enabled;
 const getBackgroundColor = (s: TextStyle) => formatHexColor(s.background.color);
 const getBackgroundMode = (s: TextStyle) => s.background.mode;
+const getBoxStroke = (s: TextStyle) => boxStrokeOf(s).enabled;
+const getBoxStrokeColor = (s: TextStyle) => formatHexColor(boxStrokeOf(s).color);
+const getBoxShadow = (s: TextStyle) => boxShadowOf(s).enabled;
+const getBoxShadowColor = (s: TextStyle) => formatHexColor(boxShadowOf(s).color);
 const getAlign = (s: TextStyle) => s.align;
 const getAnchor = (s: TextStyle) => s.verticalAnchor;
 const getCase = (s: TextStyle) => s.textCase;
@@ -162,6 +167,13 @@ const MARK = {
   PADDING: ["background.paddingX", "background.paddingY"],
   RADIUS: ["background.radius"],
   BACKGROUND_COLOR: ["background.color"],
+  BOX_STROKE: ["background.stroke.enabled"],
+  BOX_STROKE_WIDTH: ["background.stroke.width"],
+  BOX_STROKE_COLOR: ["background.stroke.color"],
+  BOX_SHADOW: ["background.shadow.enabled"],
+  BOX_SHADOW_OFFSET: ["background.shadow.x", "background.shadow.y"],
+  BOX_SHADOW_BLUR: ["background.shadow.blur"],
+  BOX_SHADOW_COLOR: ["background.shadow.color"],
   ALIGN: ["align"],
   SPACING: ["letterSpacing"],
   LINE_HEIGHT: ["lineHeight"],
@@ -183,6 +195,10 @@ export function StyleFields({ target, anchor }: { target: StyleTarget; anchor: b
       padX: target.binding(PADDING_X),
       padY: target.binding(PADDING_Y),
       radius: target.binding(RADIUS),
+      boxStroke: target.binding(BOX_STROKE_WIDTH),
+      boxShadowX: target.binding(BOX_SHADOW_X),
+      boxShadowY: target.binding(BOX_SHADOW_Y),
+      boxShadowBlur: target.binding(BOX_SHADOW_BLUR),
     }),
     [target],
   );
@@ -199,6 +215,10 @@ export function StyleFields({ target, anchor }: { target: StyleTarget; anchor: b
   const background = target.useShared(getBackground);
   const backgroundColor = target.useShared(getBackgroundColor);
   const backgroundMode = target.useShared(getBackgroundMode);
+  const boxStroke = target.useShared(getBoxStroke);
+  const boxStrokeColor = target.useShared(getBoxStrokeColor);
+  const boxShadow = target.useShared(getBoxShadow);
+  const boxShadowColor = target.useShared(getBoxShadowColor);
   const align = target.useShared(getAlign);
   const verticalAnchor = target.useShared(getAnchor);
   const textCase = target.useShared(getCase);
@@ -219,11 +239,13 @@ export function StyleFields({ target, anchor }: { target: StyleTarget; anchor: b
   });
   const familyName = typeof family === "string" ? family : null;
   const weightValue = typeof weight === "number" ? weight : null;
-  const isGradientFill = gradient === true;
+  const isGradientFill = gradient === "linear" || gradient === "radial";
   // Off on every target: its rows are disabled (mixed: they edit every target).
   const strokeOff = stroke === false || stroke === NONE;
   const shadowOff = shadow === false || shadow === NONE;
   const backgroundOff = background === false || background === NONE;
+  const boxStrokeOff = backgroundOff || boxStroke === false || boxStroke === NONE;
+  const boxShadowOff = backgroundOff || boxShadow === false || boxShadow === NONE;
 
   return (
     <>
@@ -246,16 +268,17 @@ export function StyleFields({ target, anchor }: { target: StyleTarget; anchor: b
       </Row>
       <Row label="Fill" marker={mark(MARK.FILL, "Fill")}>
         <Choice
-          value={gradient === MIXED || gradient === NONE ? gradient : isGradientFill ? "gradient" : "solid"}
+          value={gradient}
           options={[
             { value: "solid", label: "Solid color", text: "Solid" },
-            { value: "gradient", label: "Vertical gradient", text: "Gradient" },
+            { value: "linear", label: "Linear gradient", text: "Linear" },
+            { value: "radial", label: "Radial gradient", text: "Radial" },
           ]}
-          onChange={(mode) => edit("Change fill", (s) => (mode === "gradient" ? { fill: isGradient(s.fill) ? s.fill : { from: s.fill, to: s.stroke.color } } : { fill: fillColor(s.fill) }))}
+          onChange={(mode) => edit("Change fill", (s) => ({ fill: fillAsMode(s.fill, mode, s.stroke.color) }))}
         />
       </Row>
       <Row label={isGradientFill ? "Top" : "Color"} marker={mark(MARK.FILL, "Text color")}>
-        <ColorField value={colorOf(fill, WHITE)} recent={recent} ariaLabel={isGradientFill ? "Gradient top color" : "Text color"} {...color("Change text color", (s, c) => ({ fill: isGradient(s.fill) ? { ...s.fill, from: c } : c }))} />
+        <ColorField value={colorOf(fill, WHITE)} recent={recent} ariaLabel={isGradientFill ? "Gradient top color" : "Text color"} {...color("Change text color", (s, c) => ({ fill: fillWithFirst(s.fill, c) }))} />
       </Row>
       {/* A solid fill shows the bottom a gradient would start with (the stroke color), disabled. */}
       <Row label="Bottom">
@@ -264,7 +287,7 @@ export function StyleFields({ target, anchor }: { target: StyleTarget; anchor: b
           recent={recent}
           ariaLabel="Gradient bottom color"
           disabled={!isGradientFill}
-          {...color("Change text color", (s, c) => ({ fill: isGradient(s.fill) ? { ...s.fill, to: c } : c }))}
+          {...color("Change text color", (s, c) => ({ fill: fillWithLast(s.fill, c) }))}
         />
       </Row>
       <Row label="Stroke" marker={mark(MARK.STROKE, "Stroke")}>
@@ -322,6 +345,34 @@ export function StyleFields({ target, anchor }: { target: StyleTarget; anchor: b
       </Row>
       <Row label="Color" marker={mark(MARK.BACKGROUND_COLOR, "Background color")}>
         <ColorField value={colorOf(backgroundColor, BLACK)} recent={recent} ariaLabel="Background color" disabled={backgroundOff} {...color("Change background", (s, c) => ({ background: { ...s.background, color: c } }))} />
+      </Row>
+      <Row label="Border" marker={mark(MARK.BOX_STROKE, "Background border")}>
+        <span className={styles.switchCell}>
+          <Toggle checked={boxStroke === true} mixed={boxStroke === MIXED} label="Background border" disabled={backgroundOff} onChange={(on) => edit(on ? "Add background border" : "Remove background border", (s) => ({ background: { ...s.background, stroke: { ...boxStrokeOf(s), enabled: on } } }))} />
+        </span>
+      </Row>
+      <Row label="Border width" marker={mark(MARK.BOX_STROKE_WIDTH, "Background border width")}>
+        <NumberField label="W" unit="px" binding={bindings.boxStroke} precision={0} min={BOX_STROKE_WIDTH.min} max={BOX_STROKE_WIDTH.max} disabled={boxStrokeOff} ariaLabel="Background border width" />
+      </Row>
+      <Row label="Border color" marker={mark(MARK.BOX_STROKE_COLOR, "Background border color")}>
+        <ColorField value={colorOf(boxStrokeColor, BLACK)} recent={recent} ariaLabel="Background border color" disabled={boxStrokeOff} {...color("Change background border", (s, c) => ({ background: { ...s.background, stroke: { ...boxStrokeOf(s), color: c } } }))} />
+      </Row>
+      <Row label="Box shadow" marker={mark(MARK.BOX_SHADOW, "Background shadow")}>
+        <span className={styles.switchCell}>
+          <Toggle checked={boxShadow === true} mixed={boxShadow === MIXED} label="Background shadow" disabled={backgroundOff} onChange={(on) => edit(on ? "Add background shadow" : "Remove background shadow", (s) => ({ background: { ...s.background, shadow: { ...boxShadowOf(s), enabled: on } } }))} />
+        </span>
+      </Row>
+      <Row label="Shadow offset" marker={mark(MARK.BOX_SHADOW_OFFSET, "Background shadow offset")}>
+        <div className={styles.pair}>
+          <NumberField label="X" unit="px" binding={bindings.boxShadowX} precision={0} min={BOX_SHADOW_X.min} max={BOX_SHADOW_X.max} disabled={boxShadowOff} ariaLabel="Background shadow X" />
+          <NumberField label="Y" unit="px" binding={bindings.boxShadowY} precision={0} min={BOX_SHADOW_Y.min} max={BOX_SHADOW_Y.max} disabled={boxShadowOff} ariaLabel="Background shadow Y" />
+        </div>
+      </Row>
+      <Row label="Shadow blur" marker={mark(MARK.BOX_SHADOW_BLUR, "Background shadow blur")}>
+        <NumberField label="B" unit="px" binding={bindings.boxShadowBlur} precision={0} min={BOX_SHADOW_BLUR.min} max={BOX_SHADOW_BLUR.max} disabled={boxShadowOff} ariaLabel="Background shadow blur" />
+      </Row>
+      <Row label="Shadow color" marker={mark(MARK.BOX_SHADOW_COLOR, "Background shadow color")}>
+        <ColorField value={colorOf(boxShadowColor, BLACK)} recent={recent} ariaLabel="Background shadow color" disabled={boxShadowOff} {...color("Change background shadow", (s, c) => ({ background: { ...s.background, shadow: { ...boxShadowOf(s), color: c } } }))} />
       </Row>
       <Row label="Align" marker={mark(MARK.ALIGN, "Alignment")}>
         <Choice value={align} options={ALIGNS} onChange={(next) => edit("Change alignment", () => ({ align: next }))} />

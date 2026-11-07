@@ -5,7 +5,7 @@
 // (spec §21.1). Pure: no DOM.
 import { MAX_GAIN_DB, MAX_SPEED, MIN_GAIN_DB } from "./limits.js";
 import { KEYFRAME_PROPS } from "./keyframes.js";
-import { CAPTION_HIGHLIGHTS, CLIP_KINDS, EASE_IDS, LABEL_COLORS, PRESET_SET_IDS, SCHEMA_VERSION, SOLID_SHAPE_IDS, TEXT_ANIM_IDS, TEXT_ANIM_UNITS, TEXT_BACKGROUND_MODES, TRACK_KINDS, TRANSITION_KINDS, type JsonValue } from "./types.js";
+import { CAPTION_HIGHLIGHTS, CLIP_KINDS, EASE_IDS, LABEL_COLORS, PRESET_SET_IDS, SCHEMA_VERSION, SOLID_SHAPE_IDS, STROKE_ALIGNS, TEXT_ANIM_IDS, TEXT_ANIM_UNITS, TEXT_BACKGROUND_MODES, TRACK_KINDS, TRANSITION_KINDS, type JsonValue } from "./types.js";
 
 export type FieldType =
   | { t: "string"; nonEmpty?: boolean }
@@ -63,6 +63,7 @@ const FILL: FieldType = {
   options: [
     { when: "r", label: "RGBA", type: obj("RGBA") },
     { when: "from", label: "gradient", type: obj("Gradient") },
+    { when: "stops", label: "gradient with stops", type: obj("GradientFill") },
   ],
 };
 const WHITE = { r: 1, g: 1, b: 1, a: 1 };
@@ -87,6 +88,8 @@ const BACKGROUND_FIELDS: Record<string, Field> = {
   paddingY: req(nonNeg, "Vertical padding, project px.", 12),
   radius: req(nonNeg, "Corner radius, project px.", 16),
   mode: req(oneOf(TEXT_BACKGROUND_MODES), "One box per line or one for the block.", "block"),
+  stroke: opt(obj("TextStroke"), "The box's border, drawn inside its edge (Batch 58); absent: none."),
+  shadow: opt(obj("TextShadow"), "The box's shadow, drawn outside it (Batch 58); absent: none."),
 };
 const HIGHLIGHT_FIELDS: Record<string, Field> = {
   mode: req(oneOf(CAPTION_HIGHLIGHTS), "The effect."),
@@ -112,6 +115,44 @@ const SCHEMAS: ObjectSchema[] = [
     doc: "A vertical two-stop gradient, `from` at the top of the box it fills to `to` at the bottom.",
     types: ["Gradient"],
     fields: { from: req(obj("RGBA"), "Top color."), to: req(obj("RGBA"), "Bottom color.") },
+  },
+  {
+    name: "GradientFill",
+    doc: "A gradient with 2 to 8 stops, linear or radial (Batch 58).",
+    types: ["GradientFill"],
+    fields: {
+      type: req(oneOf(["linear", "radial"]), "Linear or radial.", "linear"),
+      angle: req(num, "Linear: degrees, 0 = top to bottom, clockwise.", 0),
+      center: req(obj("FractionPoint"), "Radial: the center, fractions of the box.", { x: 0.5, y: 0.5 }),
+      radius: req(nonNeg, "Radial: a fraction of half the box diagonal.", 1),
+      stops: req(list(obj("GradientStop")), "2 to 8 stops, `at` ascending."),
+    },
+  },
+  { name: "GradientStop", doc: "One color of a gradient.", types: ["GradientStop"], fields: { at: req(range(0, 1), "Position along the gradient."), color: req(obj("RGBA"), "Color.") } },
+  { name: "FractionPoint", doc: "A point as fractions of a box.", types: [], fields: { x: req(num, "Fraction of the width."), y: req(num, "Fraction of the height.") } },
+  {
+    name: "StrokeStyle",
+    doc: "The outline of a solid or a picture (Batch 58); absent: none.",
+    types: ["StrokeStyle"],
+    fields: {
+      width: req(nonNeg, "Width, project px.", 3),
+      color: req(obj("RGBA"), "Color.", BLACK),
+      align: req(oneOf(STROKE_ALIGNS), "Inside the edge, centered on it or outside it.", "inside"),
+      dash: opt(list(nonNeg), "Dash and gap lengths, project px (at most 4 are drawn); absent: a solid line."),
+      dashOffset: opt(num, "Where the pattern starts along the outline, project px."),
+    },
+  },
+  {
+    name: "ShadowStyle",
+    doc: "The shadow of a solid or a picture (Batch 58); absent: none. `blur` 0 is a hard edge.",
+    types: ["ShadowStyle"],
+    fields: {
+      x: req(num, "Offset x, project px.", 7),
+      y: req(num, "Offset y, project px.", 7),
+      blur: req(nonNeg, "Blur, project px (0: a hard edge).", 0),
+      spread: req(num, "Grows the shadow by this much on every side, project px.", 0),
+      color: req(obj("RGBA"), "Color.", BLACK),
+    },
   },
   {
     name: "Transform",
@@ -505,6 +546,9 @@ const SCHEMAS: ObjectSchema[] = [
       shape: req(oneOf(SOLID_SHAPE_IDS), "The shape.", "rect"),
       size: req(obj("Size"), "Width and height at scale 1, project px."),
       cornerRadius: req(nonNeg, "Corner radius, project px (at most half the shorter side; rounds a line's ends).", 0),
+      cornerRadii: opt({ t: "array", item: nonNeg, length: 4 }, "Radii of the corners tl, tr, br, bl; wins over `cornerRadius` (Batch 58)."),
+      stroke: opt(obj("StrokeStyle"), "Outline (Batch 58)."),
+      shadow: opt(obj("ShadowStyle"), "Shadow (Batch 58)."),
       transform: req(obj("Transform"), "Placement."),
       opacity: req(range(0, 1), "Opacity.", 1),
       keyframes: opt(obj("Keyframes"), "Animated properties."),
@@ -576,6 +620,13 @@ function mediaClipFields(kind: "video" | "audio" | "image"): Record<string, Fiel
     transform: req(obj("Transform"), "Placement."),
     opacity: req(range(0, 1), "Opacity.", 1),
     crop: req(obj("Crop"), "Cropping."),
+    ...(kind === "audio"
+      ? {}
+      : {
+          cornerRadius: opt(nonNeg, "Rounded corners of the cropped picture, project px (Batch 58)."),
+          stroke: opt(obj("StrokeStyle"), "Outline around the cropped picture (Batch 58)."),
+          shadow: opt(obj("ShadowStyle"), "Shadow of the cropped picture (Batch 58)."),
+        }),
     volume: req(obj("Volume"), "Sound level."),
     fades: req(obj("Fades"), kind === "audio" ? "Volume fades." : "Opacity and volume fades.", { in: 0, out: 0 }),
     keyframes: opt(obj("Keyframes"), "Animated properties."),

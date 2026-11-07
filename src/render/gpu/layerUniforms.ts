@@ -4,15 +4,77 @@ import type { RGBA } from "../../core/document/types.js";
 import type { UvRect } from "../compositor/drawList.js";
 import type { Mat3, MutableMat3 } from "../mat3.js";
 
-/** Bytes between layers: WebGPU's default minUniformBufferOffsetAlignment. */
-export const LAYER_STRIDE = 256;
-/** Bytes the shader reads per layer (13 vec4). */
-export const LAYER_SIZE = 208;
+/** Bytes between layers: a multiple of WebGPU's default minUniformBufferOffsetAlignment (256). */
+export const LAYER_STRIDE = 512;
+/** Bytes the shader reads per layer (31 vec4: the Batch 58 style follows the 13 of Batch 48). */
+export const LAYER_SIZE = 496;
 export const VIEW_SIZE = 48;
 const STRIDE_FLOATS = LAYER_STRIDE / 4;
 
 /** How a solid is cut (shaders.ts SOLID_WGSL): the hard quad, a box with rounded corners, or an ellipse. */
 export const SHAPE_CODE = { quad: 0, box: 1, ellipse: 2 } as const;
+
+/** What a solid is drawn with beyond its shape (shaders.ts SOLID_WGSL); all zero is a plain fill. */
+export interface StyleUniform {
+  /** 0 color or two-stop (`color`, `to`), 1 linear, 2 radial. */
+  fillKind: number;
+  /** Radians, linear. */
+  fillAngle: number;
+  fillRadius: number;
+  fillCx: number;
+  fillCy: number;
+  stopCount: number;
+  stopAt: Float32Array;
+  /** 8 stops x (r, g, b, a), straight alpha. */
+  stopColor: Float32Array;
+  strokeColor: RGBA;
+  /** 0: no stroke. */
+  strokeWidth: number;
+  /** -1 inside, 0 center, 1 outside. */
+  strokeAlign: number;
+  dashOffset: number;
+  /** Stretches the dash pattern so a whole number of periods fits the outline. */
+  dashScale: number;
+  dash: Float32Array;
+  shadowColor: RGBA;
+  shadowX: number;
+  shadowY: number;
+  shadowBlur: number;
+  shadowSpread: number;
+  /** 0 everything, 1 only the shadow, 2 only the stroke. */
+  part: number;
+  /** The outline length in layer px (dash positions of ellipses). */
+  perimeter: number;
+}
+
+export function newStyleUniform(): StyleUniform {
+  const clear = () => ({ r: 0, g: 0, b: 0, a: 0 });
+  return {
+    fillKind: 0, fillAngle: 0, fillRadius: 1, fillCx: 0.5, fillCy: 0.5, stopCount: 0,
+    stopAt: new Float32Array(8), stopColor: new Float32Array(32),
+    strokeColor: clear(), strokeWidth: 0, strokeAlign: 0, dashOffset: 0, dashScale: 1, dash: new Float32Array(4),
+    shadowColor: clear(), shadowX: 0, shadowY: 0, shadowBlur: 0, shadowSpread: 0,
+    part: 0, perimeter: 1,
+  };
+}
+
+/** Puts `style` back to a plain fill. */
+export function resetStyleUniform(style: StyleUniform): void {
+  style.fillKind = 0;
+  style.stopCount = 0;
+  style.strokeWidth = 0;
+  style.strokeColor.a = 0;
+  style.dashOffset = 0;
+  style.dashScale = 1;
+  style.dash.fill(0);
+  style.shadowColor.a = 0;
+  style.shadowBlur = 0;
+  style.shadowX = 0;
+  style.shadowY = 0;
+  style.shadowSpread = 0;
+  style.part = 0;
+  style.perimeter = 1;
+}
 
 export interface LayerUniform {
   transform: Mat3;
@@ -23,6 +85,9 @@ export interface LayerUniform {
   to: RGBA;
   /** A solid's shape: its size in its own px, corner radius, and SHAPE_CODE. */
   shape: { width: number; height: number; radius: number; code: number };
+  /** Corner radii tl, tr, br, bl (layer px) of a shaped solid or a framed picture. */
+  radii: Float32Array;
+  style: StyleUniform;
   opacity: number;
   flipX: boolean;
   flipY: boolean;
@@ -61,6 +126,17 @@ export function packLayer(out: Float32Array, index: number, layer: LayerUniform)
   write4(out, o + 40, b[0], b[1], b[2], b[3]);
   write4(out, o + 44, a[4], a[5], b[4], b[5]);
   write4(out, o + 48, clamp01(layer.sides.from), clamp01(layer.sides.to), 0, 0);
+  const st = layer.style;
+  write4(out, o + 52, st.strokeColor.r, st.strokeColor.g, st.strokeColor.b, st.strokeColor.a);
+  write4(out, o + 56, st.strokeWidth, st.strokeAlign, st.dashOffset, st.dashScale);
+  write4(out, o + 60, st.dash[0] as number, st.dash[1] as number, st.dash[2] as number, st.dash[3] as number);
+  write4(out, o + 64, st.shadowColor.r, st.shadowColor.g, st.shadowColor.b, st.shadowColor.a);
+  write4(out, o + 68, st.shadowX, st.shadowY, st.shadowBlur, st.shadowSpread);
+  write4(out, o + 72, layer.radii[0] as number, layer.radii[1] as number, layer.radii[2] as number, layer.radii[3] as number);
+  write4(out, o + 76, st.fillKind, st.fillAngle, st.fillRadius, st.stopCount);
+  write4(out, o + 80, st.fillCx, st.fillCy, st.part, st.perimeter);
+  for (let i = 0; i < 32; i++) out[o + 84 + i] = st.stopColor[i] as number;
+  for (let i = 0; i < 8; i++) out[o + 116 + i] = st.stopAt[i] as number;
 }
 
 function write4(out: Float32Array, offset: number, x: number, y: number, z: number, w: number): void {

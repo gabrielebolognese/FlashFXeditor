@@ -42,8 +42,34 @@ describe("validateProject", () => {
       expect.stringContaining('shape "star"'),
       expect.stringContaining("size 0xNaN"),
       expect.stringContaining("corner radius -1"),
-      expect.stringContaining("fill must be RGBA or a gradient"),
+      expect.stringContaining("fill must be RGBA, a gradient"),
     ]);
+  });
+
+  it("checks fills with stops, strokes, shadows and corner radii (Batch 58)", () => {
+    const red = { r: 1, g: 0, b: 0, a: 1 };
+    const stop = (at: number) => ({ at, color: red });
+    const gradient = (stops: unknown[], extra: object = {}) => ({ type: "radial", angle: 0, center: { x: 0.5, y: 0.5 }, radius: 1, stops, ...extra });
+    const solid = makeSolidClip({ id: "s1", trackId: "v1", start: 60, duration: 30 });
+    const styled = { ...solid, fill: gradient([stop(0), stop(0.4), stop(0.7), stop(1)]), cornerRadii: [0, 4, 8, 12], stroke: { width: 3, color: red, align: "outside", dash: [6, 3], dashOffset: 2 }, shadow: { x: 7, y: 7, blur: 0, spread: 0, color: red } };
+    expect(validateProject(withClips(valid(), [styled as never]))).toEqual([]);
+    const issues = (patch: object) => validateProject(withClips(valid(), [{ ...solid, ...patch } as never])).join(" | ");
+    expect(issues({ fill: gradient([stop(0)]) })).toContain("1 stops: 2 to 8");
+    expect(issues({ fill: gradient(Array.from({ length: 9 }, (_, i) => stop(i / 9))) })).toContain("9 stops: 2 to 8");
+    expect(issues({ fill: gradient([stop(0.8), stop(0.2)]) })).toContain("ascending");
+    expect(issues({ fill: gradient([stop(0), stop(2)]) })).toContain("within 0..1");
+    expect(issues({ fill: gradient([stop(0), stop(1)], { type: "conic" }) })).toContain("gradient type");
+    expect(issues({ cornerRadii: [1, 2, 3] })).toContain("cornerRadii must be 4 numbers");
+    expect(issues({ cornerRadii: [1, 2, 3, -1] })).toContain("cornerRadii must be 4 numbers");
+    expect(issues({ stroke: { width: -1, color: red, align: "inside" } })).toContain("stroke needs width");
+    expect(issues({ stroke: { width: 1, color: red, align: "middle" } })).toContain("stroke needs width");
+    expect(issues({ stroke: { width: 1, color: red, align: "inside", dash: [1, -1] } })).toContain("dash must be a list");
+    expect(issues({ shadow: { x: 1, y: 1, blur: -2, spread: 0, color: red } })).toContain("shadow needs");
+    // Pictures: a radius >= 0, a stroke and a shadow.
+    const picture = (patch: object) => { const p = valid(); return validateProject({ ...p, clips: { ...p.clips, c1: { ...p.clips.c1!, ...patch } as never } }).join(" | "); };
+    expect(picture({ cornerRadius: 40, stroke: { width: 4, color: red, align: "inside" }, shadow: { x: 0, y: 8, blur: 24, spread: 0, color: red } })).toBe("");
+    expect(picture({ cornerRadius: -1 })).toContain("corner radius -1");
+    expect(picture({ stroke: { width: "x" } })).toContain("stroke needs width");
   });
 
   it("checks text clips: a string, a box width, a size, weight and line height the layout can use", () => {

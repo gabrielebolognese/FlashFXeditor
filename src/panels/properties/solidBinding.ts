@@ -75,7 +75,7 @@ export function solidBinding(deps: SolidBindingDeps, prop: SolidNumberProp, ids:
       switch (phase) {
         case "scrub": {
           const solids = new Map<ClipId, SolidLook>();
-          for (const [id, edit] of editsOf(project, valueOf)) solids.set(id, solidLook({ ...(project.clips[id] as SolidClip), ...edit }));
+          for (const [id, edit] of editsOf(project, valueOf)) solids.set(id, solidLook({ ...(project.clips[id] as SolidClip), ...edit } as SolidClip));
           deps.live.set({ ...NO_LIVE_EDIT, solids: solids.size > 0 ? solids : null });
           return;
         }

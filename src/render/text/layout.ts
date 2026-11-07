@@ -207,6 +207,11 @@ export function layoutText(content: TextContent, style: TextStyle, measurer: Tex
 
   let raster: Rect | null = null;
   for (const box of backgrounds) raster = union(raster, box);
+  // The box's shadow (spec §21.7) reaches past the boxes by its offset and blur.
+  const boxShadow = bg.shadow;
+  if (bg.enabled && boxShadow && boxShadow.enabled && boxShadow.color.a > 0) {
+    for (const box of backgrounds) raster = union(raster, grow({ ...box, x: box.x + boxShadow.x, y: box.y + boxShadow.y }, Math.max(0, boxShadow.blur) * SHADOW_REACH));
+  }
   if (inkBounds) {
     const stroke = style.stroke.enabled ? Math.max(0, style.stroke.width) : 0;
     const stroked = grow(inkBounds, stroke);

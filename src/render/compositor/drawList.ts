@@ -4,7 +4,7 @@
 // frame (media and time) and text layers their text instead of a texture. The preview resolves them
 // to pool textures and text rasters, and skips the redraw when the resolved list equals the one it
 // drew last (`DrawListSnapshot`).
-import type { ClipId, MediaId, RGBA, TextContent, TextStyle, TrackId } from "../../core/document/types.js";
+import type { ClipId, GradientFill, MediaId, RGBA, ShadowStyle, StrokeStyle, TextContent, TextStyle, TrackId } from "../../core/document/types.js";
 import type { UnitState } from "../../text/anim.js";
 import type { Mat3 } from "../mat3.js";
 import type { TextureHandle } from "../gpu/renderer.js";
@@ -28,8 +28,17 @@ interface LayerBase {
   opacity: number;
 }
 
+/** A picture cut to a rounded rectangle (spec §21.7): its size in the layer's own px and the radii tl, tr, br, bl. */
+export interface PictureShape {
+  width: number;
+  height: number;
+  radii: [number, number, number, number];
+}
+
 export interface TextureLayer extends LayerBase {
   kind: "texture";
+  /** Rounded corners of the picture; absent or null: the plain quad. */
+  shape?: PictureShape | null;
   texture: TextureHandle;
   /** The part of the texture shown on the quad (crop). */
   crop: UvRect;
@@ -71,6 +80,20 @@ export interface SolidGeometry {
   width: number;
   height: number;
   radius: number;
+  /** Radii tl, tr, br, bl (layer px); when absent `radius` is used four times. */
+  radii?: [number, number, number, number] | null;
+}
+
+/**
+ * What a shaped solid has besides its color (spec §21.7, Batch 58): a gradient with stops (instead of
+ * `color` / `to`), an outline, a shadow. `part` draws only the shadow or only the stroke of a layer (the
+ * shadow below and the frame above a picture).
+ */
+export interface SolidStyle {
+  gradient: GradientFill | null;
+  stroke: StrokeStyle | null;
+  shadow: ShadowStyle | null;
+  part: "all" | "shadow" | "stroke";
 }
 
 /**
@@ -83,6 +106,7 @@ export interface SolidLayer extends LayerBase {
   color: RGBA;
   to?: RGBA | null;
   shape?: SolidGeometry | null;
+  style?: SolidStyle | null;
 }
 
 export type Layer = TextureLayer | DissolveLayer | SolidLayer;
@@ -99,6 +123,8 @@ export interface MediaLayer extends LayerBase {
   timeUs: number;
   /** The visible part of the texture (crop), in texture UV space. */
   crop: UvRect;
+  /** Rounded corners of the picture (spec §21.7). */
+  shape?: PictureShape | null;
 }
 
 /**

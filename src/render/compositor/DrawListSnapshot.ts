@@ -35,6 +35,7 @@ export class DrawListSnapshot {
           this.push(layer.flipX ? 1 : 0);
           this.push(layer.flipY ? 1 : 0);
           this.push(layer.blur ?? 0);
+          this.frame(layer.shape);
           break;
         case "dissolve":
           this.side(layer.from);
@@ -49,6 +50,44 @@ export class DrawListSnapshot {
           this.push(shape?.width ?? 0);
           this.push(shape?.height ?? 0);
           this.push(shape?.radius ?? 0);
+          const radii = shape?.radii;
+          for (let i = 0; i < 4; i++) this.push(radii ? (radii[i] as number) : 0);
+          const style = layer.style;
+          if (!style) this.push(0);
+          else {
+            this.push(style.part === "all" ? 1 : style.part === "shadow" ? 2 : 3);
+            const g = style.gradient;
+            this.push(g ? (g.type === "radial" ? 2 : 1) : 0);
+            if (g) {
+              this.push(g.angle);
+              this.push(g.radius);
+              this.push(g.center.x);
+              this.push(g.center.y);
+              this.push(g.stops.length);
+              for (const stop of g.stops) {
+                this.push(stop.at);
+                this.color(stop.color);
+              }
+            }
+            const stroke = style.stroke;
+            this.push(stroke ? stroke.width : -1);
+            if (stroke) {
+              this.color(stroke.color);
+              this.push(stroke.align === "inside" ? 0 : stroke.align === "center" ? 1 : 2);
+              this.push(stroke.dashOffset ?? 0);
+              this.push(stroke.dash?.length ?? 0);
+              for (const v of stroke.dash ?? []) this.push(v);
+            }
+            const shadow = style.shadow;
+            this.push(shadow ? 1 : 0);
+            if (shadow) {
+              this.push(shadow.x);
+              this.push(shadow.y);
+              this.push(shadow.blur);
+              this.push(shadow.spread);
+              this.color(shadow.color);
+            }
+          }
           break;
         }
       }
@@ -98,6 +137,14 @@ export class DrawListSnapshot {
     for (let i = 0; i < 6; i++) this.push(side.transform[i] as number);
     this.uv(side.crop);
     this.push(side.opacity);
+  }
+
+  /** A picture's rounded rectangle (or none). */
+  private frame(shape: { width: number; height: number; radii: readonly number[] } | null | undefined): void {
+    this.push(shape ? shape.width : -1);
+    if (!shape) return;
+    this.push(shape.height);
+    for (const r of shape.radii) this.push(r);
   }
 
   private uv(rect: { u0: number; v0: number; u1: number; v1: number }): void {

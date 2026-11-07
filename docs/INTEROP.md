@@ -168,6 +168,115 @@ A text clip:
 }
 ```
 
+### 5.1 Styles: fills, strokes, shadows and corners (manifest keys `solid.*`, `mediaFrame.*`, `text.background.*`; schema 5)
+
+All of these fields are optional: a project without them draws as before, and `normalize` leaves them out.
+
+- `fill` (solids and text) is an RGBA color, the v1 `{ "from", "to" }` vertical gradient, or a gradient with stops: `type` `linear` or `radial`, `angle` (degrees, 0 runs top to bottom, clockwise; linear), `center` (fractions of the box) and `radius` (a fraction of half the box diagonal; radial), and 2 to 8 `stops` with `at` ascending in 0..1. Between stops colors mix in premultiplied space, as canvas gradients do.
+- `stroke` (solids, videos, images): `width` in project px, `color`, `align` `inside` (the fill box stays put and the line grows inward), `center` or `outside`, and an optional `dash` (dash and gap lengths in project px; at most 4 are drawn) with `dashOffset`. Dashes follow the outline from the top middle, clockwise, and the pattern is stretched a little so a whole number of periods fits the outline.
+- `shadow` (solids, videos, images): `x`, `y`, `blur` (project px; 0 is a hard edge), `spread`, `color`. The shadow is drawn outside the shape only; a flipped picture keeps its shadow on the same side.
+- `cornerRadii` (solids): the radii of the corners top left, top right, bottom right, bottom left; it wins over `cornerRadius` for `rect` and `roundedRect`. Videos and images have one `cornerRadius`; their `stroke` and `shadow` follow the cropped picture.
+- Text and caption `background` take `stroke` and `shadow` with the same fields as the text's own (`enabled`, `width`, `color`; `enabled`, `x`, `y`, `blur`, `color`): the border is drawn inside the box edge, the shadow outside it. A caption cue's `styleOverride.text.background.stroke` replaces the track's whole, so `{ "enabled": false, ... }` turns a track's border off for that cue.
+
+A paper card (white fill, 3 px ink stroke inside, hard 7/7 shadow, square corners):
+
+```json Clip
+{
+  "id": "card",
+  "trackId": "v2",
+  "kind": "solid",
+  "name": "Paper card",
+  "start": 0,
+  "duration": 90,
+  "enabled": true,
+  "fill": { "r": 1, "g": 1, "b": 1, "a": 1 },
+  "shape": "rect",
+  "size": { "w": 440, "h": 260 },
+  "cornerRadius": 0,
+  "stroke": { "width": 3, "color": { "r": 0.09, "g": 0.09, "b": 0.14, "a": 1 }, "align": "inside" },
+  "shadow": { "x": 7, "y": 7, "blur": 0, "spread": 0, "color": { "r": 0.09, "g": 0.09, "b": 0.14, "a": 1 } },
+  "transform": { "x": -255, "y": -720, "scale": 1, "rotation": 0, "anchor": { "x": 0.5, "y": 0.5 }, "flipH": false, "flipV": false },
+  "opacity": 1
+}
+```
+
+A dashed outline with a four-stop radial gradient fill and a radius per corner:
+
+```json Clip
+{
+  "id": "badge",
+  "trackId": "v3",
+  "kind": "solid",
+  "name": "Badge",
+  "start": 0,
+  "duration": 90,
+  "enabled": true,
+  "fill": {
+    "type": "radial",
+    "angle": 0,
+    "center": { "x": 0.5, "y": 0.5 },
+    "radius": 1,
+    "stops": [
+      { "at": 0, "color": { "r": 1, "g": 0.95, "b": 0.4, "a": 1 } },
+      { "at": 0.35, "color": { "r": 0.95, "g": 0.35, "b": 0.3, "a": 1 } },
+      { "at": 0.7, "color": { "r": 0.4, "g": 0.2, "b": 0.7, "a": 1 } },
+      { "at": 1, "color": { "r": 0.08, "g": 0.1, "b": 0.3, "a": 1 } }
+    ]
+  },
+  "shape": "roundedRect",
+  "size": { "w": 440, "h": 240 },
+  "cornerRadius": 28,
+  "cornerRadii": [28, 28, 120, 0],
+  "stroke": { "width": 6, "color": { "r": 0.09, "g": 0.09, "b": 0.14, "a": 1 }, "align": "center", "dash": [24, 16], "dashOffset": 0 },
+  "transform": { "x": 255, "y": -430, "scale": 1, "rotation": 0, "anchor": { "x": 0.5, "y": 0.5 }, "flipH": false, "flipV": false },
+  "opacity": 1
+}
+```
+
+A rounded video with a border and a soft shadow:
+
+```json Clip
+{
+  "id": "video",
+  "trackId": "v1",
+  "kind": "video",
+  "name": "Rounded video",
+  "start": 0,
+  "duration": 60,
+  "enabled": true,
+  "mediaId": "m1",
+  "in": 0,
+  "out": 2000000,
+  "speed": 1,
+  "transform": { "x": 0, "y": 330, "scale": 1.1, "rotation": 0, "anchor": { "x": 0.5, "y": 0.5 }, "flipH": false, "flipV": false },
+  "opacity": 1,
+  "crop": { "left": 0, "top": 0, "right": 0, "bottom": 0 },
+  "volume": { "gainDb": 0, "muted": true },
+  "fades": { "in": 0, "out": 0 },
+  "cornerRadius": 40,
+  "stroke": { "width": 4, "color": { "r": 0.09, "g": 0.09, "b": 0.14, "a": 1 }, "align": "inside" },
+  "shadow": { "x": 0, "y": 14, "blur": 36, "spread": 0, "color": { "r": 0, "g": 0, "b": 0, "a": 0.45 } }
+}
+```
+
+A caption cue that turns its track's box border off (the track's boxed style keeps its hard shadow):
+
+```json Clip
+{
+  "id": "q3",
+  "trackId": "cc1",
+  "kind": "caption",
+  "name": "Cue q3",
+  "start": 60,
+  "duration": 30,
+  "enabled": true,
+  "text": "No border here",
+  "styleOverride": { "text": { "background": { "stroke": { "enabled": false, "width": 3, "color": { "r": 0.09, "g": 0.09, "b": 0.14, "a": 1 } } } } }
+}
+```
+
+`fixtures/interop/styles/` holds all of these in one project with expected frames (`npm run test:render` renders it on both backends); `scripts/cli/make-styles-fixture.mjs` writes it.
+
 ## 6. Captions and word timings
 
 The caption track's `captionTracks[<track id>].style` styles every cue; a cue's `styleOverride` sets only the fields it changes. A cue is a `caption` clip with `text` (`\n` for line breaks) and optional `words`: `start` and `end` are integer frames relative to the cue's start, `end` after `start`. A word may start before the cue or end after it: an in-trim keeps the words it hides (negative frames), so a trim back shows them again. With word timings the active word is highlighted as the style's `highlight` says.
@@ -295,6 +404,60 @@ A vertical two-stop gradient, `from` at the top of the box it fills to `to` at t
 | --- | --- | --- | --- | --- |
 | `from` | [RGBA](#rgba) | yes |  | Top color. |
 | `to` | [RGBA](#rgba) | yes |  | Bottom color. |
+
+#### GradientFill
+
+A gradient with 2 to 8 stops, linear or radial (Batch 58).
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `type` | `"linear"` | `"radial"` | yes | `"linear"` | Linear or radial. |
+| `angle` | number | yes | `0` | Linear: degrees, 0 = top to bottom, clockwise. |
+| `center` | [FractionPoint](#fractionpoint) | yes | `{"x":0.5,"y":0.5}` | Radial: the center, fractions of the box. |
+| `radius` | number (>= 0) | yes | `1` | Radial: a fraction of half the box diagonal. |
+| `stops` | [GradientStop](#gradientstop)[] | yes |  | 2 to 8 stops, `at` ascending. |
+
+#### GradientStop
+
+One color of a gradient.
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `at` | number (>= 0, <= 1) | yes |  | Position along the gradient. |
+| `color` | [RGBA](#rgba) | yes |  | Color. |
+
+#### FractionPoint
+
+A point as fractions of a box.
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `x` | number | yes |  | Fraction of the width. |
+| `y` | number | yes |  | Fraction of the height. |
+
+#### StrokeStyle
+
+The outline of a solid or a picture (Batch 58); absent: none.
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `width` | number (>= 0) | yes | `3` | Width, project px. |
+| `color` | [RGBA](#rgba) | yes | `{"r":0,"g":0,"b":0,"a":1}` | Color. |
+| `align` | `"inside"` | `"center"` | `"outside"` | yes | `"inside"` | Inside the edge, centered on it or outside it. |
+| `dash` | number (>= 0)[] | no |  | Dash and gap lengths, project px (at most 4 are drawn); absent: a solid line. |
+| `dashOffset` | number | no |  | Where the pattern starts along the outline, project px. |
+
+#### ShadowStyle
+
+The shadow of a solid or a picture (Batch 58); absent: none. `blur` 0 is a hard edge.
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `x` | number | yes | `7` | Offset x, project px. |
+| `y` | number | yes | `7` | Offset y, project px. |
+| `blur` | number (>= 0) | yes | `0` | Blur, project px (0: a hard edge). |
+| `spread` | number | yes | `0` | Grows the shadow by this much on every side, project px. |
+| `color` | [RGBA](#rgba) | yes | `{"r":0,"g":0,"b":0,"a":1}` | Color. |
 
 #### Transform
 
@@ -440,6 +603,8 @@ A box behind each line or the whole text.
 | `paddingY` | number (>= 0) | yes | `12` | Vertical padding, project px. |
 | `radius` | number (>= 0) | yes | `16` | Corner radius, project px. |
 | `mode` | `"line"` | `"block"` | yes | `"block"` | One box per line or one for the block. |
+| `stroke` | [TextStroke](#textstroke) | no |  | The box's border, drawn inside its edge (Batch 58); absent: none. |
+| `shadow` | [TextShadow](#textshadow) | no |  | The box's shadow, drawn outside it (Batch 58); absent: none. |
 
 #### TextStyle
 
@@ -451,7 +616,7 @@ The look of a text clip. Sizes are project px; `lineHeight` multiplies the size.
 | `fontWeight` | integer (>= 1, <= 1000) | yes | `700` | 1..1000 (variable fonts take any value in their range). |
 | `italic` | boolean | yes | `false` | Italic face. |
 | `fontSize` | number (> 0) | yes | `96` | Size, project px. |
-| `fill` | [RGBA](#rgba) | [Gradient](#gradient) | yes | `{"r":1,"g":1,"b":1,"a":1}` | A color or a vertical two-stop gradient. |
+| `fill` | [RGBA](#rgba) | [Gradient](#gradient) | [GradientFill](#gradientfill) | yes | `{"r":1,"g":1,"b":1,"a":1}` | A color or a vertical two-stop gradient. |
 | `stroke` | [TextStroke](#textstroke) | yes |  | Outline. |
 | `shadow` | [TextShadow](#textshadow) | yes |  | Shadow. |
 | `background` | [TextBackground](#textbackground) | yes |  | Background box. |
@@ -542,7 +707,7 @@ The text style fields a cue can set over its track's; the parts of the stroke, s
 | `fontWeight` | integer (>= 1, <= 1000) | no |  | Weight. |
 | `italic` | boolean | no |  | Italic. |
 | `fontSize` | number (> 0) | no |  | Size. |
-| `fill` | [RGBA](#rgba) | [Gradient](#gradient) | no |  | Fill. |
+| `fill` | [RGBA](#rgba) | [Gradient](#gradient) | [GradientFill](#gradientfill) | no |  | Fill. |
 | `stroke` | [TextStrokeOverride](#textstrokeoverride) | no |  | Parts of the outline. |
 | `shadow` | [TextShadowOverride](#textshadowoverride) | no |  | Parts of the shadow. |
 | `background` | [TextBackgroundOverride](#textbackgroundoverride) | no |  | Parts of the background box. |
@@ -585,6 +750,8 @@ Any parts of `TextBackground`.
 | `paddingY` | number (>= 0) | no | `12` | Vertical padding, project px. |
 | `radius` | number (>= 0) | no | `16` | Corner radius, project px. |
 | `mode` | `"line"` | `"block"` | no | `"block"` | One box per line or one for the block. |
+| `stroke` | [TextStroke](#textstroke) | no |  | The box's border, drawn inside its edge (Batch 58); absent: none. |
+| `shadow` | [TextShadow](#textshadow) | no |  | The box's shadow, drawn outside it (Batch 58); absent: none. |
 
 #### CaptionHighlightOverride
 
@@ -759,7 +926,7 @@ project.json.
 
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| `schemaVersion` | integer (>= 1) | yes | `4` | The schema version; this build writes and reads up to the current one. |
+| `schemaVersion` | integer (>= 1) | yes | `5` | The schema version; this build writes and reads up to the current one. |
 | `id` | string (not empty) | yes |  | Unique id, never changes (uuid v4 recommended). |
 | `name` | string | yes |  | Project name. |
 | `settings` | [Settings](#settings) | yes |  | Frame and time base. |
@@ -820,6 +987,9 @@ A video clip.
 | `transform` | [Transform](#transform) | yes |  | Placement. |
 | `opacity` | number (>= 0, <= 1) | yes | `1` | Opacity. |
 | `crop` | [Crop](#crop) | yes |  | Cropping. |
+| `cornerRadius` | number (>= 0) | no |  | Rounded corners of the cropped picture, project px (Batch 58). |
+| `stroke` | [StrokeStyle](#strokestyle) | no |  | Outline around the cropped picture (Batch 58). |
+| `shadow` | [ShadowStyle](#shadowstyle) | no |  | Shadow of the cropped picture (Batch 58). |
 | `volume` | [Volume](#volume) | yes |  | Sound level. |
 | `fades` | [Fades](#fades) | yes | `{"in":0,"out":0}` | Opacity and volume fades. |
 | `keyframes` | [Keyframes](#keyframes) | no |  | Animated properties. |
@@ -880,6 +1050,9 @@ A image clip.
 | `transform` | [Transform](#transform) | yes |  | Placement. |
 | `opacity` | number (>= 0, <= 1) | yes | `1` | Opacity. |
 | `crop` | [Crop](#crop) | yes |  | Cropping. |
+| `cornerRadius` | number (>= 0) | no |  | Rounded corners of the cropped picture, project px (Batch 58). |
+| `stroke` | [StrokeStyle](#strokestyle) | no |  | Outline around the cropped picture (Batch 58). |
+| `shadow` | [ShadowStyle](#shadowstyle) | no |  | Shadow of the cropped picture (Batch 58). |
 | `volume` | [Volume](#volume) | yes |  | Sound level. |
 | `fades` | [Fades](#fades) | yes | `{"in":0,"out":0}` | Opacity and volume fades. |
 | `keyframes` | [Keyframes](#keyframes) | no |  | Animated properties. |
@@ -930,10 +1103,13 @@ A solid or shape layer: `size` project px at scale 1.
 | `group` | string (not empty) | no |  | Clips sharing it select together. |
 | `enabled` | boolean | yes | `true` | Drawn and heard. |
 | `fallbackOf` | [FallbackOf](#fallbackof) | no |  | Set when the clip is a baked stand-in. |
-| `fill` | [RGBA](#rgba) | [Gradient](#gradient) | yes |  | A color or a vertical two-stop gradient. |
+| `fill` | [RGBA](#rgba) | [Gradient](#gradient) | [GradientFill](#gradientfill) | yes |  | A color or a vertical two-stop gradient. |
 | `shape` | `"rect"` | `"roundedRect"` | `"ellipse"` | `"line"` | yes | `"rect"` | The shape. |
 | `size` | [Size](#size) | yes |  | Width and height at scale 1, project px. |
 | `cornerRadius` | number (>= 0) | yes | `0` | Corner radius, project px (at most half the shorter side; rounds a line's ends). |
+| `cornerRadii` | number (>= 0)[] (4 items) | no |  | Radii of the corners tl, tr, br, bl; wins over `cornerRadius` (Batch 58). |
+| `stroke` | [StrokeStyle](#strokestyle) | no |  | Outline (Batch 58). |
+| `shadow` | [ShadowStyle](#shadowstyle) | no |  | Shadow (Batch 58). |
 | `transform` | [Transform](#transform) | yes |  | Placement. |
 | `opacity` | number (>= 0, <= 1) | yes | `1` | Opacity. |
 | `keyframes` | [Keyframes](#keyframes) | no |  | Animated properties. |

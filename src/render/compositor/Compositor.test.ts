@@ -364,16 +364,60 @@ describe("Compositor.evaluate", () => {
     expect(a.kind).toBe("solid");
     expect(a.color).toEqual({ r: 1, g: 0, b: 0, a: 0.5 });
     expect(a.to).toBeNull();
-    expect(a.shape).toEqual({ kind: "box", width: 100, height: 100, radius: 0 });
+    expect(a.shape).toEqual({ kind: "box", width: 100, height: 100, radius: 0, radii: [0, 0, 0, 0] });
     expect(a.opacity).toBe(0.8);
     close(applyToPoint(a.transform, 0, 0), { x: W / 2 + 10 - 50, y: H / 2 - 50 });
     close(applyToPoint(a.transform, 1, 1), { x: W / 2 + 10 + 50, y: H / 2 + 50 });
     expect(b.color).toEqual(red);
     expect(b.to).toEqual(blue);
-    expect(b.shape).toEqual({ kind: "ellipse", width: 300, height: 200, radius: 0 });
+    expect(b.shape).toEqual({ kind: "ellipse", width: 300, height: 200, radius: 0, radii: [0, 0, 0, 0] });
     close(applyToPoint(b.transform, 0, 0), { x: W / 2 - 150, y: H / 2 - 100 });
     // A radius past half the shorter side is drawn as half of it (a pill).
-    expect(c.shape).toEqual({ kind: "box", width: 200, height: 60, radius: 30 });
+    expect(c.shape).toEqual({ kind: "box", width: 200, height: 60, radius: 30, radii: [30, 30, 30, 30] });
+  });
+
+  it("frames a picture (Batch 58): a shadow layer below, the rounded picture, a stroke layer above; flips keep the shadow's side", () => {
+    let doc = project(["v1"]);
+    const black = { r: 0, g: 0, b: 0, a: 1 };
+    doc = withClips(doc, [
+      clip(doc, { id: "c1", trackId: "v1", start: 0, duration: 30, cornerRadius: 40, stroke: { width: 4, color: black, align: "inside" }, shadow: { x: 10, y: 20, blur: 30, spread: 0, color: black } }),
+      clip(doc, { id: "c2", trackId: "v1", start: 30, duration: 30, cornerRadius: 40, shadow: { x: 10, y: 20, blur: 0, spread: 0, color: black }, transform: transform({ flipH: true }) }),
+      clip(doc, { id: "c3", trackId: "v1", start: 60, duration: 30 }),
+    ]);
+    const compositor = new Compositor();
+    const framed = compositor.evaluate(doc, 5).layers;
+    expect(framed.map((l) => l.kind)).toEqual(["solid", "media", "solid"]);
+    const [below, picture, above] = framed as [SolidLayer, MediaLayer, SolidLayer];
+    expect(below.style?.part).toBe("shadow");
+    expect(below.style?.shadow).toMatchObject({ x: 10, y: 20, blur: 30 });
+    expect(above.style?.part).toBe("stroke");
+    expect(above.style?.stroke).toMatchObject({ width: 4, align: "inside" });
+    expect(picture.shape?.radii).toEqual([40, 40, 40, 40]);
+    expect(below.shape).toMatchObject({ kind: "box", radii: [40, 40, 40, 40] });
+    // A flipped picture mirrors its transform; the shadow keeps its side on the canvas.
+    const flipped = compositor.evaluate(doc, 35).layers as SolidLayer[];
+    expect(flipped[0]?.style?.shadow?.x).toBe(-10);
+    expect(flipped[0]?.style?.shadow?.y).toBe(20);
+    // An unframed clip is one layer with no shape.
+    const plain = compositor.evaluate(doc, 65).layers;
+    expect(plain).toHaveLength(1);
+    expect(media(plain[0]).shape ?? null).toBeNull();
+  });
+
+  it("draws a solid's stroke, shadow, corner radii and gradient stops (Batch 58)", () => {
+    let doc = project(["v1"]);
+    const red = { r: 1, g: 0, b: 0, a: 1 };
+    const fill = { type: "radial" as const, angle: 0, center: { x: 0.5, y: 0.5 }, radius: 1, stops: [{ at: 0, color: red }, { at: 0.3, color: { r: 0, g: 1, b: 0, a: 1 } }, { at: 0.6, color: { r: 0, g: 0, b: 1, a: 1 } }, { at: 1, color: { r: 1, g: 1, b: 1, a: 1 } }] };
+    const solid = { ...makeSolidClip({ id: "s", trackId: "v1", start: 0, duration: 10 }), shape: "roundedRect" as const, size: { w: 200, h: 100 }, cornerRadius: 10, cornerRadii: [0, 10, 20, 500] as [number, number, number, number], fill, stroke: { width: 3, color: red, align: "outside" as const, dash: [6, 3] }, shadow: { x: 7, y: 7, blur: 0, spread: 0, color: red } };
+    doc = withClips(doc, [solid as Clip]);
+    const layers = new Compositor().evaluate(doc, 0).layers as SolidLayer[];
+    expect(layers).toHaveLength(1);
+    const layer = layers[0] as SolidLayer;
+    expect(layer.shape).toMatchObject({ kind: "box", width: 200, height: 100, radii: [0, 10, 20, 50] });
+    expect(layer.style?.gradient?.stops).toHaveLength(4);
+    expect(layer.style?.stroke).toMatchObject({ width: 3, align: "outside", dash: [6, 3] });
+    expect(layer.style?.shadow).toMatchObject({ x: 7, y: 7, blur: 0 });
+    expect(layer.style?.part).toBe("all");
   });
 
   it("mirrors a solid's fill inside its box on flips and draws live looks (a field scrub, a size drag)", () => {
@@ -385,7 +429,7 @@ describe("Compositor.evaluate", () => {
     close(applyToPoint(flipped.transform, 0, 0), { x: W / 2 - 50, y: H / 2 + 50 });
     const live = new Map([["s", { shape: "line" as const, fill: { r: 0, g: 1, b: 0, a: 1 }, size: { w: 400, h: 8 }, cornerRadius: 4 }]]);
     const layer = compositor.evaluate(doc, 0, null, null, null, null, null, null, live).layers[0] as SolidLayer;
-    expect(layer.shape).toEqual({ kind: "box", width: 400, height: 8, radius: 4 });
+    expect(layer.shape).toEqual({ kind: "box", width: 400, height: 8, radius: 4, radii: [4, 4, 4, 4] });
     expect(layer.color).toEqual({ r: 0, g: 1, b: 0, a: 1 });
     close(applyToPoint(layer.transform, 1, 0), { x: W / 2 + 200, y: H / 2 + 4 });
   });

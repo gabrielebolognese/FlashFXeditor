@@ -16,6 +16,28 @@ const readText = (path: string) => readFileSync(rel(path), "utf8").replace(/\r\n
 const readProject = (path: string) => JSON.parse(readText(path)) as Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
 const BASIC = "fixtures/interop/basic";
 
+describe("fixtures/interop/styles (Batch 58)", () => {
+  const STYLES = "fixtures/interop/styles";
+
+  it("is valid and holds every style: stroke, shadow, radii, dashes, a four-stop radial, a gradient text, a framed video and a boxed caption track with one border-less cue", async () => {
+    const report = await validateProjectFolder(rel(STYLES));
+    expect(report.errors).toEqual([]);
+    expect(report.ok).toBe(true);
+    expect(report.schemaVersion).toBe(5);
+    const project = readProject(`${STYLES}/project.json`);
+    const clips = project.clips;
+    expect(clips.card).toMatchObject({ shape: "rect", stroke: { width: 3, align: "inside" }, shadow: { x: 7, y: 7, blur: 0 } });
+    expect(clips.pill.cornerRadius).toBeGreaterThan(clips.pill.size.h / 2);
+    expect(clips.dashed.stroke.dash).toEqual([24, 16]);
+    expect(clips.radial.fill.stops).toHaveLength(4);
+    expect(clips.gradtext.style.fill.type).toBe("linear");
+    expect(clips.video).toMatchObject({ cornerRadius: 40, stroke: { width: 4 }, shadow: { blur: 36 } });
+    expect(project.captionTracks.cc1.style.text.background).toMatchObject({ stroke: { enabled: true, width: 3 }, shadow: { enabled: true, x: 7, y: 7, blur: 0 } });
+    expect(clips.q3.styleOverride.text.background.stroke.enabled).toBe(false);
+    expect(clips.q1.styleOverride).toBeUndefined();
+  });
+});
+
 describe("fixtures/interop/basic", () => {
   it("is valid and holds every v1.1 clip kind, a caption track with word timings, a library font and a stand-in", async () => {
     const report = await validateProjectFolder(rel(BASIC));
@@ -134,7 +156,7 @@ describe("validateStrict", () => {
     delete old.clips["c-standin"].fallbackOf;
     const result = validateStrict(old);
     expect(result.errors).toEqual([]);
-    expect(result.project?.schemaVersion).toBe(4);
+    expect(result.project?.schemaVersion).toBe(5);
     expect(result.project?.clips["c-video"]).toEqual(old.clips["c-video"]);
   });
 

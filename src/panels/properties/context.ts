@@ -21,7 +21,7 @@ import { isLayerClip } from "../../timeline/edit/transform.js";
 import { audioTargets, canDetach } from "../../timeline/edit/volume.js";
 
 /** The registered sections, top to bottom in their order of appearance. */
-export type SectionId = "clip" | "text" | "animation" | "solid" | "captionStyle" | "transform" | "crop" | "opacity" | "speed" | "audio" | "transition" | "track" | "marker" | "project";
+export type SectionId = "clip" | "text" | "animation" | "solid" | "captionStyle" | "transform" | "crop" | "frame" | "opacity" | "speed" | "audio" | "transition" | "track" | "marker" | "project";
 
 export type PropertiesContext =
   | { kind: "none" }
@@ -146,6 +146,8 @@ export function sectionIds(context: PropertiesContext): SectionId[] {
       if (context.captionTrackId) ids.push("captionStyle");
       if (context.layerIds.length > 0) ids.push("transform");
       if (context.mediaIds.length > 0) ids.push("crop");
+      // Frame (Batch 58): stroke, shadow and corners of the solids and the pictures.
+      if (context.solidIds.length > 0 || context.mediaIds.length > 0) ids.push("frame");
       if (context.layerIds.length > 0) ids.push("opacity");
       if (context.speedIds.length > 0) ids.push("speed");
       if (context.audioIds.length > 0 || context.detachIds.length > 0) ids.push("audio");

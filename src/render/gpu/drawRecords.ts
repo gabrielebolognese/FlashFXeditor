@@ -8,9 +8,10 @@
 // A textured layer with a blur (a text's blurIn, spec §10.4) is blurred by the backend in two passes
 // into a pooled texture; `blurRegionInto` says what to read and `showBlurred` points the record at it.
 import type { RGBA } from "../../core/document/types.js";
-import type { DrawList, Layer, UvRect } from "../compositor/drawList.js";
+import type { DrawList, Layer, SolidLayer, UvRect } from "../compositor/drawList.js";
 import { invertInto, multiplyInto, mutableIdentity, setMat, type Mat3, type MutableMat3 } from "../mat3.js";
-import { SHAPE_CODE, type LayerUniform } from "./layerUniforms.js";
+import { boxPerimeter } from "../../core/document/fill.js";
+import { newStyleUniform, resetStyleUniform, SHAPE_CODE, type LayerUniform } from "./layerUniforms.js";
 import type { Pane, TextureHandle, Viewport } from "./renderer.js";
 
 export type RecordKind = "textured" | "dissolve" | "solid";
@@ -50,6 +51,8 @@ function newRecord<T extends TextureHandle>(): DrawRecord<T> {
       color: { r: 0, g: 0, b: 0, a: 0 },
       to: { r: 0, g: 0, b: 0, a: 0 },
       shape: { width: 0, height: 0, radius: 0, code: SHAPE_CODE.quad },
+      radii: new Float32Array(4),
+      style: newStyleUniform(),
       opacity: 1,
       flipX: false,
       flipY: false,
@@ -138,6 +141,8 @@ export class DrawRecords<T extends TextureHandle> {
     setColor(u.color, TRANSPARENT);
     setColor(u.to, TRANSPARENT);
     u.shape.code = SHAPE_CODE.quad;
+    u.radii.fill(0);
+    resetStyleUniform(u.style);
     return record;
   }
 
@@ -166,6 +171,14 @@ export class DrawRecords<T extends TextureHandle> {
         setUv(record.uniform.uv, layer.crop.u0, layer.crop.v0, layer.crop.u1, layer.crop.v1);
         record.uniform.flipX = layer.flipX;
         record.uniform.flipY = layer.flipY;
+        const frame = layer.shape;
+        if (frame && frame.width > 0 && frame.height > 0) {
+          const u = record.uniform;
+          u.shape.width = frame.width;
+          u.shape.height = frame.height;
+          u.shape.code = SHAPE_CODE.box;
+          for (let i = 0; i < 4; i++) u.radii[i] = frame.radii[i] as number;
+        }
         return;
       }
       case "dissolve": {
@@ -199,7 +212,12 @@ export class DrawRecords<T extends TextureHandle> {
           u.shape.height = shape.height;
           u.shape.radius = shape.radius;
           u.shape.code = shape.kind === "ellipse" ? SHAPE_CODE.ellipse : SHAPE_CODE.box;
-          growQuad(u.transform, u.uv, SHAPE_MARGIN);
+          for (let i = 0; i < 4; i++) u.radii[i] = shape.radii ? (shape.radii[i] as number) : shape.radius;
+          const style = layer.style;
+          const reach = style ? writeStyle(u.style, style, u.radii, shape) : 0;
+          // The quad grows by the edge's half px, and by what the stroke and the shadow reach past the shape (layer px -> target px).
+          const scale = Math.hypot(u.transform[0], u.transform[1]) / shape.width;
+          growQuad(u.transform, u.uv, SHAPE_MARGIN + reach * scale);
         }
         return;
       }
@@ -342,4 +360,73 @@ export function premultipliedInto(out: { r: number; g: number; b: number; a: num
   out.g = color.g * color.a;
   out.b = color.b * color.a;
   out.a = color.a;
+}
+
+/**
+ * Writes `style` into `out` (the uniform of a shaped solid) and returns how far, in layer px, the
+ * stroke and the shadow reach past the shape's edge (the quad grows by it).
+ */
+function writeStyle(out: LayerUniform["style"], style: NonNullable<SolidLayer["style"]>, radii: Float32Array, shape: NonNullable<SolidLayer["shape"]>): number {
+  let reach = 0;
+  const g = style.gradient;
+  if (g) {
+    out.fillKind = g.type === "radial" ? 2 : 1;
+    out.fillAngle = (g.angle * Math.PI) / 180;
+    out.fillRadius = g.radius;
+    out.fillCx = g.center.x;
+    out.fillCy = g.center.y;
+    const count = Math.min(8, g.stops.length);
+    out.stopCount = count;
+    for (let i = 0; i < count; i++) {
+      const stop = g.stops[i] as (typeof g.stops)[number];
+      out.stopAt[i] = stop.at;
+      out.stopColor[4 * i] = stop.color.r;
+      out.stopColor[4 * i + 1] = stop.color.g;
+      out.stopColor[4 * i + 2] = stop.color.b;
+      out.stopColor[4 * i + 3] = stop.color.a;
+    }
+  }
+  const stroke = style.stroke;
+  const w = shape.width;
+  const h = shape.height;
+  out.perimeter = shape.kind === "ellipse" ? ellipsePerimeter(w / 2, h / 2) : boxPerimeter(w, h, [radii[0] as number, radii[1] as number, radii[2] as number, radii[3] as number]);
+  if (stroke && stroke.width > 0 && stroke.color.a > 0) {
+    out.strokeWidth = stroke.width;
+    out.strokeAlign = stroke.align === "inside" ? -1 : stroke.align === "outside" ? 1 : 0;
+    setColor(out.strokeColor, stroke.color);
+    reach = Math.max(reach, stroke.align === "inside" ? 0 : stroke.align === "outside" ? stroke.width : stroke.width / 2);
+    const dash = stroke.dash;
+    if (dash && dash.length > 0) {
+      // An odd list repeats (as canvas does); at most 4 entries are drawn.
+      const list = dash.length % 2 === 1 ? [...dash, ...dash] : dash;
+      let period = 0;
+      for (let i = 0; i < 4; i++) {
+        const v = Math.max(0, list[i] ?? 0);
+        out.dash[i] = v;
+        period += v;
+      }
+      if (period > 0) {
+        // Evenly around the outline: a whole number of periods.
+        out.dashScale = out.perimeter / (Math.max(1, Math.round(out.perimeter / period)) * period);
+        out.dashOffset = (stroke.dashOffset ?? 0) * out.dashScale;
+      }
+    }
+  }
+  const shadow = style.shadow;
+  if (shadow && shadow.color.a > 0) {
+    setColor(out.shadowColor, shadow.color);
+    out.shadowX = shadow.x;
+    out.shadowY = shadow.y;
+    out.shadowBlur = Math.max(0, shadow.blur);
+    out.shadowSpread = shadow.spread;
+    reach = Math.max(reach, Math.max(Math.abs(shadow.x), Math.abs(shadow.y)) * Math.SQRT2 + Math.max(0, shadow.spread) + 1.5 * Math.max(0, shadow.blur) + 1);
+  }
+  out.part = style.part === "shadow" ? 1 : style.part === "stroke" ? 2 : 0;
+  return reach;
+}
+
+/** Ramanujan's approximation of an ellipse's perimeter (semi-axes a and b). */
+function ellipsePerimeter(a: number, b: number): number {
+  const h = ((a - b) * (a - b)) / ((a + b) * (a + b) || 1);
+  return Math.PI * (a + b) * (1 + (3 * h) / (10 + Math.sqrt(4 - 3 * h)));
 }

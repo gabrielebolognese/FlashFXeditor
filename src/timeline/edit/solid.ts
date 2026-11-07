@@ -23,10 +23,16 @@ import { applyTransformWrite, IDENTITY_TRANSFORM, transformWrite, type Transform
 
 
 /** What the Solid section edits: the solid's own look, apart from its transform. */
-export type SolidLook = Pick<SolidClip, "shape" | "fill" | "size" | "cornerRadius">;
+export type SolidLook = Pick<SolidClip, "shape" | "fill" | "size" | "cornerRadius"> & Partial<Pick<SolidClip, "cornerRadii" | "stroke" | "shadow">>;
 
 /** A solid's edit: a new look (any of its fields) and the transform that goes with it (a size handle drag). */
-export type SolidEdit = Partial<SolidLook> & { transform?: Transform };
+export type SolidEdit = Partial<Omit<SolidLook, "cornerRadii" | "stroke" | "shadow">> & {
+  /** Per-corner radii, a stroke or a shadow; null removes it (Batch 58). */
+  cornerRadii?: SolidClip["cornerRadii"] | null;
+  stroke?: SolidClip["stroke"] | null;
+  shadow?: SolidClip["shadow"] | null;
+  transform?: Transform;
+};
 
 /** Field limits of the Solid section (project px). */
 export const SOLID_LIMITS = {
@@ -47,7 +53,11 @@ const shortSide = (frame: { width: number; height: number }) => Math.min(frame.w
 
 /** A solid's look. */
 export function solidLook(clip: SolidClip): SolidLook {
-  return { shape: clip.shape, fill: clip.fill, size: clip.size, cornerRadius: clip.cornerRadius };
+  const look: SolidLook = { shape: clip.shape, fill: clip.fill, size: clip.size, cornerRadius: clip.cornerRadius };
+  if (clip.cornerRadii) look.cornerRadii = clip.cornerRadii;
+  if (clip.stroke) look.stroke = clip.stroke;
+  if (clip.shadow) look.shadow = clip.shadow;
+  return look;
 }
 
 /** The look of `+ Solid` in a frame: a white rounded rectangle. */
@@ -155,7 +165,8 @@ export function setSolids(project: Project, edits: ReadonlyMap<ClipId, SolidEdit
     const clip = project.clips[id];
     if (clip?.kind !== "solid" || isClipLocked(project, id)) continue;
     const { transform: moved, ...patch } = edit;
-    const merged = { ...solidLook(clip), ...patch };
+    const merged = { ...solidLook(clip), ...patch } as SolidLook & { cornerRadii?: unknown; stroke?: unknown; shadow?: unknown };
+    for (const key of ["cornerRadii", "stroke", "shadow"] as const) if (merged[key] === null) delete merged[key];
     if (!validSize(merged.size) || !Number.isFinite(merged.cornerRadius)) continue;
     const look = cleanLook(merged);
     const write = moved ? transformWrite(clip, moved, options.at) : null;
@@ -177,8 +188,28 @@ export function setSolids(project: Project, edits: ReadonlyMap<ClipId, SolidEdit
         clip.fill = structuredClone(look.fill);
         clip.size = { ...look.size };
         clip.cornerRadius = look.cornerRadius;
+        if (look.cornerRadii) clip.cornerRadii = [...look.cornerRadii];
+        else delete clip.cornerRadii;
+        if (look.stroke) clip.stroke = structuredClone(look.stroke);
+        else delete clip.stroke;
+        if (look.shadow) clip.shadow = structuredClone(look.shadow);
+        else delete clip.shadow;
         if (write) applyTransformWrite(clip, write);
       }
     },
   };
+}
+
+/**
+ * The four corner radii (tl, tr, br, bl) a solid is drawn with (spec §21.7): `cornerRadii` for a rect or a
+ * rounded rect (each at most half the shorter side), else the one radius four times (none for an ellipse).
+ */
+export function drawnRadii(look: Pick<SolidLook, "shape" | "size" | "cornerRadius" | "cornerRadii">): [number, number, number, number] {
+  const limit = Math.min(look.size.w, look.size.h) / 2;
+  if (look.cornerRadii && (look.shape === "rect" || look.shape === "roundedRect")) {
+    const pick = (i: number) => Math.max(0, Math.min(look.cornerRadii?.[i] ?? 0, limit));
+    return [pick(0), pick(1), pick(2), pick(3)];
+  }
+  const r = drawnRadius(look);
+  return [r, r, r, r];
 }

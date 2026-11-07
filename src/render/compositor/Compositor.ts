@@ -59,7 +59,7 @@ import { isRgba } from "../../core/document/color.js";
 import { animatedOpacity, animatedTransform, maxKeyedScale } from "../../core/document/keyframes.js";
 import { framesToSourceUs, secondsToFrames } from "../../core/document/time.js";
 import { handleTimeUs, transitionMix } from "../../core/document/transitions.js";
-import type { CaptionClip, CaptionStyle, Clip, ClipId, Crop, Frame, MediaClip, MediaId, Project, RGBA, TextAnim, TextClip, TextContent, TextStyle, Track, TrackId, Transform } from "../../core/document/types.js";
+import type { CaptionClip, CaptionStyle, Clip, ClipId, Crop, Frame, MediaClip, MediaId, Project, RGBA, ShadowStyle, TextAnim, TextClip, TextContent, TextStyle, Track, TrackId, Transform } from "../../core/document/types.js";
 import { activeWordIndex, captionPlace, defaultCaptionStyle, effectiveCaptionStyle } from "../../text/captions.js";
 import { activeAnim, animUnit, isPlayable, newUnitState, presence, resetUnitState, typedCount, unitProgress, writeUnitShape, type ActiveAnim, type UnitState } from "../../text/anim.js";
 import { clipInIndex, lastClipStartingBy, trackIndex, type TrackIndex } from "../../timeline/model/queries.js";
@@ -73,8 +73,9 @@ import { captionLook, HIGHLIGHT_SCALE, highlightUnits, type CaptionLook } from "
 import { TEXT_RASTER_MAX, type TextHighlight } from "../text/raster.js";
 import { MAX_TEXT_SCALE, type TextPart } from "../text/TextRasterCache.js";
 import { imageTimeUs } from "../../media/decode/animation.js";
-import { drawnRadius, type SolidLook } from "../../timeline/edit/solid.js";
-import { HIGHLIGHT_SLOT, TRANSITION_SLOT, type CaptionHighlightFrame, type Composite, type CompositeLayer, type MediaLayer, type SolidGeometry, type SolidLayer, type TextAnimFrame, type TextCompositeLayer, type TransitionCompositeLayer } from "./drawList.js";
+import { drawnRadii, drawnRadius, type SolidLook } from "../../timeline/edit/solid.js";
+import { isGradientFill } from "../../core/document/fill.js";
+import { HIGHLIGHT_SLOT, TRANSITION_SLOT, type CaptionHighlightFrame, type Composite, type CompositeLayer, type MediaLayer, type PictureShape, type SolidGeometry, type SolidLayer, type SolidStyle, type TextAnimFrame, type TextCompositeLayer, type TransitionCompositeLayer } from "./drawList.js";
 
 /** How far from the playhead the clips next to it count as cut neighbours (seconds). */
 export const NEIGHBOR_SECONDS = 2;
@@ -111,8 +112,8 @@ export const OFFLINE_SLOT = "#offline";
 /** Names longer than this are cut with an ellipsis on the slate. */
 const SLATE_NAME_MAX = 60;
 
-type WritableMediaLayer = Omit<MediaLayer, "transform"> & { transform: MutableMat3 };
-type WritableSolidLayer = Omit<SolidLayer, "transform" | "color" | "to" | "shape"> & { transform: MutableMat3; color: RGBA; to: RGBA | null; toValue: RGBA; shape: SolidGeometry | null; shapeValue: SolidGeometry };
+type WritableMediaLayer = Omit<MediaLayer, "transform" | "shape"> & { transform: MutableMat3; shape: PictureShape | null; shapeValue: PictureShape };
+type WritableSolidLayer = Omit<SolidLayer, "transform" | "color" | "to" | "shape" | "style"> & { transform: MutableMat3; color: RGBA; to: RGBA | null; toValue: RGBA; shape: SolidGeometry | null; shapeValue: SolidGeometry; style: SolidStyle | null; styleValue: SolidStyle; shadowValue: ShadowStyle; radiiValue: [number, number, number, number] };
 type WritableTransitionLayer = Omit<TransitionCompositeLayer, "from" | "to"> & { from: WritableMediaLayer; to: WritableMediaLayer };
 type WritableAnimFrame = { atlas: TextAnimFrame["atlas"]; units: UnitState[]; background: number };
 type WritableKaraoke = Omit<CaptionHighlightFrame, "box"> & { box: CaptionHighlightFrame["box"]; boxValue: NonNullable<CaptionHighlightFrame["box"]> };
@@ -239,6 +240,10 @@ export class Compositor {
   private readonly upcomingPool: UpcomingText[] = [];
   private readonly upcomingList: UpcomingText[] = [];
   private readonly step = mutableIdentity();
+  private readonly step2 = mutableIdentity();
+  /** The last written picture's frame (visible part) in project px, and its rounded rectangle (null: no frame style). */
+  private readonly frameMatrix = mutableIdentity();
+  private frameShape: PictureShape | null = null;
   private readonly active: ActiveAnim = { anim: { id: "fade", duration: 1 }, phase: "in", progress: 0, length: 0 };
   private readonly captionTransform: Transform = { x: 0, y: 0, scale: 1, rotation: 0, anchor: { x: 0.5, y: 0.5 }, flipH: false, flipV: false };
   /** A keyed clip's transform at the frame (read before the next layer). */
@@ -357,8 +362,22 @@ export class Compositor {
         }
         const layer = (this.mediaPool[media] ??= newMediaLayer());
         if (this.writeMedia(layer, doc, clip, frame, transform, opacity, crops?.get(clip.id) ?? clip.crop)) {
+          // A framed picture (spec §21.7): its shadow below it and its outline above it, in its own quad.
+          const framed = this.frameShape !== null && (clip.shadow !== undefined || clip.stroke !== undefined);
+          if (framed && clip.shadow) {
+            const shadow = (this.solidPool[solidLayers] ??= newSolidLayer());
+            this.writeFrameLayer(shadow, layer, clip, "shadow", transform);
+            out.layers.push(shadow);
+            solidLayers += 1;
+          }
           out.layers.push(layer);
           media += 1;
+          if (framed && clip.stroke) {
+            const outline = (this.solidPool[solidLayers] ??= newSolidLayer());
+            this.writeFrameLayer(outline, layer, clip, "stroke", transform);
+            out.layers.push(outline);
+            solidLayers += 1;
+          }
         }
       } else if (clip.kind === "solid") {
         const layer = (this.solidPool[solidLayers] ??= newSolidLayer());
@@ -564,6 +583,25 @@ export class Compositor {
     multiplyInto(m, setMat(step, shownWidth, 0, 0, shownHeight, 0, 0), m);
     multiplyInto(m, writeModel(step, transform, shownWidth, shownHeight, doc.settings.width, doc.settings.height), m);
 
+    // The picture's rounded rectangle (spec §21.7): the visible part in shown px at scale 1, its corners at most half the shorter side.
+    const frameW = (right - left) * shownWidth;
+    const frameH = (bottom - top) * shownHeight;
+    const frameMatrix = this.frameMatrix;
+    multiplyInto(frameMatrix, writeModel(step, transform, shownWidth, shownHeight, doc.settings.width, doc.settings.height), setMat(this.step2, frameW, 0, 0, frameH, left * shownWidth, top * shownHeight));
+    const radius = Math.max(0, Math.min(clip.cornerRadius ?? 0, frameW / 2, frameH / 2));
+    if (radius > 0 || clip.stroke || clip.shadow) {
+      const shape = layer.shapeValue;
+      shape.width = frameW;
+      shape.height = frameH;
+      shape.radii[0] = shape.radii[1] = shape.radii[2] = shape.radii[3] = radius;
+      layer.shape = radius > 0 ? shape : null;
+      // Even with square corners the stroke and the shadow follow the box: they use the frame matrix.
+      this.frameShape = shape;
+    } else {
+      layer.shape = null;
+      this.frameShape = null;
+    }
+
     layer.trackId = clip.trackId;
     layer.clipId = clip.id;
     layer.mediaId = clip.mediaId;
@@ -725,7 +763,7 @@ export class Compositor {
     return text;
   }
 
-  /** A solid in `look` (its own, or a live one): its size's box as its shape, in its color or gradient. */
+  /** A solid in `look` (its own, or a live one): its size's box as its shape, in its color or gradient, with its stroke and shadow. */
   private writeSolid(layer: WritableSolidLayer, doc: Project, look: SolidLook, transform: Transform, opacity: number): boolean {
     const { fill, size } = look;
     if (!(size.w > 0) || !(size.h > 0)) return false;
@@ -733,20 +771,65 @@ export class Compositor {
     multiplyInto(m, m, setMat(this.step, size.w, 0, 0, size.h, 0, 0));
     // Flips mirror the fill inside the box (a gradient turns upside down).
     if (transform.flipH || transform.flipV) multiplyInto(m, m, setMat(this.step, transform.flipH ? -1 : 1, 0, 0, transform.flipV ? -1 : 1, transform.flipH ? 1 : 0, transform.flipV ? 1 : 0));
-    copyColor(layer.color, isRgba(fill) ? fill : fill.from);
-    layer.to = isRgba(fill) ? null : copyColor(layer.toValue, fill.to);
+    const stops = isGradientFill(fill);
+    copyColor(layer.color, isRgba(fill) ? fill : stops ? (fill.stops[0]?.color ?? BLACK) : (fill as { from: RGBA }).from);
+    layer.to = isRgba(fill) || stops ? null : copyColor(layer.toValue, (fill as { to: RGBA }).to);
     const shape = (layer.shape = layer.shapeValue);
     shape.kind = look.shape === "ellipse" ? "ellipse" : "box";
     shape.width = size.w;
     shape.height = size.h;
     shape.radius = drawnRadius(look);
+    const radii = drawnRadii(look);
+    for (let i = 0; i < 4; i++) layer.radiiValue[i] = radii[i] as number;
+    shape.radii = layer.radiiValue;
     layer.opacity = clamp01(opacity);
+    if (stops || look.stroke || look.shadow) {
+      const style = layer.styleValue;
+      style.gradient = stops ? fill : null;
+      style.stroke = look.stroke ?? null;
+      style.shadow = look.shadow ? this.mirroredShadow(layer.shadowValue, look.shadow, transform) : null;
+      style.part = "all";
+      layer.style = style;
+    } else layer.style = null;
     return true;
+  }
+
+  /** `shadow` for a layer drawn with `transform`: its offset stays on the same side of a mirrored layer. */
+  private mirroredShadow(out: ShadowStyle, shadow: ShadowStyle, transform: Transform): ShadowStyle {
+    out.x = transform.flipH ? -shadow.x : shadow.x;
+    out.y = transform.flipV ? -shadow.y : shadow.y;
+    out.blur = shadow.blur;
+    out.spread = shadow.spread;
+    out.color = shadow.color;
+    return out;
+  }
+
+  /** The shadow (`part` "shadow") or the outline ("stroke") of the picture just written to `picture`, in its visible frame. */
+  private writeFrameLayer(layer: WritableSolidLayer, picture: WritableMediaLayer, clip: MediaClip, part: "shadow" | "stroke", transform: Transform): void {
+    const frame = this.frameShape as PictureShape;
+    for (let i = 0; i < 6; i++) layer.transform[i] = this.frameMatrix[i] as number;
+    copyColor(layer.color, BLACK_CLEAR);
+    layer.to = null;
+    const shape = (layer.shape = layer.shapeValue);
+    shape.kind = "box";
+    shape.width = frame.width;
+    shape.height = frame.height;
+    shape.radius = frame.radii[0];
+    for (let i = 0; i < 4; i++) layer.radiiValue[i] = frame.radii[i] as number;
+    shape.radii = layer.radiiValue;
+    layer.opacity = picture.opacity;
+    const style = layer.styleValue;
+    style.gradient = null;
+    style.stroke = part === "stroke" ? (clip.stroke ?? null) : null;
+    style.shadow = part === "shadow" && clip.shadow ? this.mirroredShadow(layer.shadowValue, clip.shadow, transform) : null;
+    style.part = part;
+    layer.style = style;
   }
 }
 
 function newMediaLayer(): WritableMediaLayer {
-  return { kind: "media", trackId: "", clipId: "", mediaId: "", still: false, timeUs: 0, transform: mutableIdentity(), opacity: 1, crop: { u0: 0, v0: 0, u1: 1, v1: 1 } };
+  const shapeValue: PictureShape = { width: 0, height: 0, radii: [0, 0, 0, 0] };
+  return { kind: "media", trackId: "", clipId: "", mediaId: "", still: false, timeUs: 0, transform: mutableIdentity(), opacity: 1, crop: { u0: 0, v0: 0, u1: 1, v1: 1 }, shape: null, shapeValue };
 }
 
 function newTextLayer(): WritableTextLayer {
@@ -884,7 +967,21 @@ function writeAnimFrame(out: WritableAnimFrame, active: ActiveAnim, layout: Text
 
 function newSolidLayer(): WritableSolidLayer {
   const shapeValue: SolidGeometry = { kind: "box", width: 0, height: 0, radius: 0 };
-  return { kind: "solid", transform: mutableIdentity(), opacity: 1, color: { r: 0, g: 0, b: 0, a: 1 }, to: null, toValue: { r: 0, g: 0, b: 0, a: 1 }, shape: shapeValue, shapeValue };
+  const styleValue: SolidStyle = { gradient: null, stroke: null, shadow: null, part: "all" };
+  return {
+    kind: "solid",
+    transform: mutableIdentity(),
+    opacity: 1,
+    color: { r: 0, g: 0, b: 0, a: 1 },
+    to: null,
+    toValue: { r: 0, g: 0, b: 0, a: 1 },
+    shape: shapeValue,
+    shapeValue,
+    style: null,
+    styleValue,
+    shadowValue: { x: 0, y: 0, blur: 0, spread: 0, color: BLACK },
+    radiiValue: [0, 0, 0, 0],
+  };
 }
 
 function newTransitionLayer(): WritableTransitionLayer {
@@ -892,6 +989,7 @@ function newTransitionLayer(): WritableTransitionLayer {
 }
 
 const BLACK: RGBA = { r: 0, g: 0, b: 0, a: 1 };
+const BLACK_CLEAR: RGBA = { r: 0, g: 0, b: 0, a: 0 };
 const WHITE: RGBA = { r: 1, g: 1, b: 1, a: 1 };
 
 function copyMediaLayer(out: WritableMediaLayer, from: MediaLayer): void {
@@ -906,6 +1004,7 @@ function copyMediaLayer(out: WritableMediaLayer, from: MediaLayer): void {
   out.crop.v0 = from.crop.v0;
   out.crop.u1 = from.crop.u1;
   out.crop.v1 = from.crop.v1;
+  out.shape = null;
 }
 
 /**

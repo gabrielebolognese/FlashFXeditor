@@ -261,6 +261,9 @@ function scaleTextOverride(text: CaptionTextOverride, k: number): CaptionTextOve
   }
   if (next.background) {
     for (const key of ["paddingX", "paddingY", "radius"] as const) if (next.background[key] !== undefined) next.background[key] = Math.round(next.background[key] * k);
+    if (next.background.stroke) next.background.stroke.width = round1(next.background.stroke.width * k);
+    const boxShadow = next.background.shadow;
+    if (boxShadow) for (const key of ["x", "y", "blur"] as const) boxShadow[key] = round1(boxShadow[key] * k);
   }
   return next;
 }

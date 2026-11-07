@@ -57,7 +57,7 @@ import { mediaTimePosition } from "../../media/demux/sampleIndex.js";
 import { isAbortError, isWorkerCrash, type FramePriority } from "../../media/workers/protocol.js";
 import { newUnitState, type UnitState } from "../../text/anim.js";
 import type { NeighborFrame, UpcomingText } from "../compositor/Compositor.js";
-import { HIGHLIGHT_SLOT, type CaptionHighlightFrame, type Composite, type DissolveLayer, type DrawList, type Layer, type MediaLayer, type SolidGeometry, type SolidLayer, type TextAnimFrame, type TextCompositeLayer, type TextureLayer, type TransitionCompositeLayer, type UvRect } from "../compositor/drawList.js";
+import { HIGHLIGHT_SLOT, type CaptionHighlightFrame, type Composite, type DissolveLayer, type DrawList, type Layer, type MediaLayer, type PictureShape, type SolidGeometry, type SolidLayer, type TextAnimFrame, type TextCompositeLayer, type TextureLayer, type TransitionCompositeLayer, type UvRect } from "../compositor/drawList.js";
 import type { TextureHandle } from "../gpu/renderer.js";
 import { multiplyInto, mutableIdentity, setMat, type Mat3, type MutableMat3 } from "../mat3.js";
 import type { Rect } from "../text/layout.js";
@@ -126,6 +126,8 @@ interface Slot {
   /** The layer drawn last; `texture` is null before the first draw. */
   shown: WritableTextureLayer;
   hasShown: boolean;
+  /** The rounded corners `shown` draws with (reused). */
+  shapeValue?: PictureShape;
   /** The key pinned for what is drawn; meaningful while `unpin` is set. */
   pinnedKey: TextureKey;
   /** The last detail refresh: its key and the long edge it asked for (each is asked once). */
@@ -533,7 +535,7 @@ export class LayerTextures {
     if (!texture?.valid) return null;
     unpins.push(this.deps.pool.pin(key));
     // Copied: the composite's layers are reused by its next evaluation.
-    return { kind: "texture", texture, transform: [...layer.transform] as unknown as Mat3, opacity: layer.opacity, crop: { ...layer.crop }, flipX: false, flipY: false };
+    return { kind: "texture", texture, transform: [...layer.transform] as unknown as Mat3, opacity: layer.opacity, crop: { ...layer.crop }, flipX: false, flipY: false, shape: layer.shape ? { width: layer.shape.width, height: layer.shape.height, radii: [...layer.shape.radii] as PictureShape["radii"] } : null };
   }
 
   /** Text `layer` at its exact scale (Export frame), animated as the preview draws it. */
@@ -870,6 +872,15 @@ export class LayerTextures {
     shown.crop.v0 = layer.crop.v0;
     shown.crop.u1 = layer.crop.u1;
     shown.crop.v1 = layer.crop.v1;
+    // The picture's rounded corners (Batch 58), in the slot's own object (no per-frame allocation).
+    const frame = layer.shape;
+    if (frame) {
+      const value = (slot.shapeValue ??= { width: 0, height: 0, radii: [0, 0, 0, 0] });
+      value.width = frame.width;
+      value.height = frame.height;
+      for (let i = 0; i < 4; i++) value.radii[i] = frame.radii[i] as number;
+      shown.shape = value;
+    } else shown.shape = null;
     slot.hasShown = true;
     return shown;
   }

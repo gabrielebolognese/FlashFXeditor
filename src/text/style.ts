@@ -1,5 +1,6 @@
 // Text styles (spec §10.1): the defaults of a new text clip, text case, the fill kinds and the keys the
 // layout and raster caches use. Pure.
+import { fillFirstColor, isGradientFill } from "../core/document/fill.js";
 import type { Gradient, RGBA, TextBox, TextCase, TextContent, TextStyle } from "../core/document/types.js";
 
 /** The bundled family new text uses (render/text/bundledFonts.ts). */
@@ -100,6 +101,9 @@ export function scaleTextStyle(style: TextStyle, k: number): TextStyle {
       paddingX: Math.round(style.background.paddingX * f),
       paddingY: Math.round(style.background.paddingY * f),
       radius: Math.round(style.background.radius * f),
+      // The box's border and shadow (Batch 58) scale with it.
+      ...(style.background.stroke && { stroke: { ...style.background.stroke, color: { ...style.background.stroke.color }, width: round1(style.background.stroke.width * f) } }),
+      ...(style.background.shadow && { shadow: { ...style.background.shadow, color: { ...style.background.shadow.color }, x: round1(style.background.shadow.x * f), y: round1(style.background.shadow.y * f), blur: round1(style.background.shadow.blur * f) } }),
     },
   };
 }
@@ -121,9 +125,9 @@ export function isGradient(fill: TextStyle["fill"]): fill is Gradient {
   return typeof (fill as Partial<Gradient>).from === "object" && typeof (fill as Partial<Gradient>).to === "object";
 }
 
-/** The fill's solid color, or the gradient's top color. */
+/** The fill's solid color, or the gradient's first color. */
 export function fillColor(fill: TextStyle["fill"]): RGBA {
-  return isGradient(fill) ? fill.from : fill;
+  return fillFirstColor(fill);
 }
 
 /**
@@ -169,7 +173,10 @@ export function styleKey(style: TextStyle): string {
   if (key === undefined) {
     const { stroke: k, shadow: h, background: b } = style;
     const color = (c: RGBA) => [c.r, c.g, c.b, c.a];
-    const fill = isGradient(style.fill) ? [color(style.fill.from), color(style.fill.to)] : color(style.fill);
+    const f = style.fill;
+    const fill = isGradientFill(f) ? [f.type, f.angle, f.center.x, f.center.y, f.radius, f.stops.map((stop) => [stop.at, color(stop.color)])] : isGradient(f) ? [color(f.from), color(f.to)] : color(f);
+    const box = (e: { enabled: boolean; width: number; color: RGBA } | undefined) => (e ? [e.enabled, e.width, color(e.color)] : 0);
+    const boxShadowKey = b.shadow ? [b.shadow.enabled, b.shadow.x, b.shadow.y, b.shadow.blur, color(b.shadow.color)] : 0;
     key = JSON.stringify([
       style.fontFamily,
       style.fontWeight,
@@ -178,7 +185,7 @@ export function styleKey(style: TextStyle): string {
       fill,
       [k.enabled, k.width, color(k.color)],
       [h.enabled, h.x, h.y, h.blur, color(h.color)],
-      [b.enabled, color(b.color), b.paddingX, b.paddingY, b.radius, b.mode],
+      [b.enabled, color(b.color), b.paddingX, b.paddingY, b.radius, b.mode, box(b.stroke), boxShadowKey],
       style.textCase,
       style.letterSpacing,
       style.lineHeight,

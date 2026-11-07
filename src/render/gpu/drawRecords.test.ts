@@ -110,6 +110,34 @@ describe("DrawRecords", () => {
     expect(record.uniform.uv.v1).toBeCloseTo(1 + 1 / 20);
   });
 
+  it("writes a solid's style (Batch 58): radii, stops, an evenly dashed stroke, a shadow, and grows the quad by their reach", () => {
+    const records = new DrawRecords(usable);
+    const stop = (at: number) => ({ at, color: RED });
+    const box = (align: "inside" | "center" | "outside") => {
+      const solid: Layer = {
+        kind: "solid", color: RED, to: null, transform: rectTransform(100, 100, 200, 100), opacity: 1,
+        shape: { kind: "box", width: 200, height: 100, radius: 10, radii: [0, 10, 20, 30] },
+        style: { gradient: { type: "radial", angle: 0, center: { x: 0.25, y: 0.5 }, radius: 0.5, stops: [stop(0), stop(0.3), stop(0.6), stop(1)] }, stroke: { width: 10, color: BLACK, align, dash: [20, 10] }, shadow: { x: 7, y: 7, blur: 0, spread: 0, color: BLACK }, part: "all" },
+      };
+      records.build([pane(list([solid]), IDENTITY)], 400, 400);
+      return records.at(1).uniform;
+    };
+    const inside = box("inside");
+    expect([...inside.radii]).toEqual([0, 10, 20, 30]);
+    expect(inside.style).toMatchObject({ fillKind: 2, stopCount: 4, fillCx: 0.25, fillRadius: 0.5, strokeWidth: 10, strokeAlign: -1 });
+    expect([...inside.style.stopAt.slice(0, 4)].map((v) => Math.round(v * 10) / 10)).toEqual([0, 0.3, 0.6, 1]);
+    // A whole number of 30 px periods fits the outline, so the dashes meet evenly at the start.
+    const periods = inside.style.perimeter / (30 * inside.style.dashScale);
+    expect(periods).toBeCloseTo(Math.round(periods), 6);
+    const innerCorner = corner(inside.transform, 0, 0);
+    const insideGrow = 100 - innerCorner.x;
+    const outside = box("outside");
+    // Switching to outside only grows the quad (room for the line): the shape box in layer px is unchanged.
+    expect(outside.shape).toEqual(inside.shape);
+    expect(100 - corner(outside.transform, 0, 0).x).toBeGreaterThanOrEqual(insideGrow);
+    expect(outside.style.strokeAlign).toBe(1);
+  });
+
   it("maps a dissolve's unit quad onto each picture's quad", () => {
     const records = new DrawRecords(usable);
     const from = new FakeTexture(10, 10);

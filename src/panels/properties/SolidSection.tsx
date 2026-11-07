@@ -5,18 +5,19 @@ import { liveEdit } from "../../app/liveEdit.js";
 import { rememberColor } from "../../app/propertiesController.js";
 import { appSettings, documentStore } from "../../app/services.js";
 import { formatHexColor, isRgba } from "../../core/document/color.js";
-import type { Clip, ClipId, RGBA, SolidClip, SolidShape } from "../../core/document/types.js";
+import { fillAsMode, fillAsStops, fillFirstColor, fillLastColor, fillMode, fillWithFirst, fillWithLast, type FillMode } from "../../core/document/fill.js";
+import type { Clip, ClipId, GradientFill, RGBA, SolidClip, SolidShape } from "../../core/document/types.js";
 import { useStoreSelector } from "../../core/store/useStoreSelector.js";
 import type { AppSettings } from "../../project/appSettings.js";
 import { shapeName, solidLook, withShape } from "../../timeline/edit/solid.js";
 import { ColorField } from "../../ui/ColorField.js";
-import { NumberField } from "../../ui/NumberField.js";
+import { NumberField, roundTo, valueBinding, type NumberBinding } from "../../ui/NumberField.js";
 import { Row } from "./Section.js";
 import styles from "./Section.module.css";
 import { solidBinding, type SolidBindingDeps } from "./solidBinding.js";
 import { SOLID_HEIGHT, SOLID_RADIUS, SOLID_WIDTH } from "./solidProps.js";
 import { Choice, colorOf, type ChoiceProps } from "./StyleFields.js";
-import { MIXED, NONE, SKIP, useClipsShared } from "./useShared.js";
+import { MIXED, SKIP, useClipsShared } from "./useShared.js";
 
 // The Solid section (spec §11 "Solid properties: fill, shape, size, radius", Batch 34) of the selected
 // solids: the shape (rect, rounded rect, ellipse, line), the fill (a color, or a vertical gradient's
@@ -27,9 +28,10 @@ import { MIXED, NONE, SKIP, useClipsShared } from "./useShared.js";
 const DEPS: SolidBindingDeps = { document: documentStore, live: liveEdit };
 
 const getShape = (clip: Clip) => (clip.kind === "solid" ? clip.shape : SKIP);
-const getGradient = (clip: Clip) => (clip.kind === "solid" ? !isRgba(clip.fill) : SKIP);
-const getTop = (clip: Clip) => (clip.kind === "solid" ? formatHexColor(isRgba(clip.fill) ? clip.fill : clip.fill.from) : SKIP);
-const getBottom = (clip: Clip) => (clip.kind === "solid" && !isRgba(clip.fill) ? formatHexColor(clip.fill.to) : SKIP);
+const modeOf = fillMode;
+const getMode = (clip: Clip) => (clip.kind === "solid" ? modeOf(clip.fill) : SKIP);
+const getTop = (clip: Clip) => (clip.kind === "solid" ? formatHexColor(fillFirstColor(clip.fill)) : SKIP);
+const getBottom = (clip: Clip) => (clip.kind === "solid" && !isRgba(clip.fill) ? formatHexColor(fillLastColor(clip.fill)) : SKIP);
 const selectRecent = (settings: AppSettings) => settings.recentColors;
 
 const SHAPES: ChoiceProps<SolidShape>["options"] = [
@@ -42,19 +44,47 @@ const SHAPES: ChoiceProps<SolidShape>["options"] = [
 const WHITE: RGBA = { r: 1, g: 1, b: 1, a: 1 };
 const BLACK: RGBA = { r: 0, g: 0, b: 0, a: 1 };
 
-/** The fill of `clip` with its top (or only) color `color`. */
-const withTop = (clip: SolidClip, color: RGBA) => (isRgba(clip.fill) ? color : { ...clip.fill, from: color });
-/** The fill of `clip` with its bottom color `color` (a gradient made from its color when it has none). */
-const withBottom = (clip: SolidClip, color: RGBA) => (isRgba(clip.fill) ? { from: clip.fill, to: color } : { ...clip.fill, to: color });
+const withTop = (clip: SolidClip, color: RGBA) => fillWithFirst(clip.fill, color);
+const withBottom = (clip: SolidClip, color: RGBA) => fillWithLast(clip.fill, color);
+
+/** A gradient's number (angle, radial center and radius) as a field over the selected solids; commit-only. */
+function gradientBinding(ids: readonly ClipId[], label: string, mode: FillMode, read: (fill: GradientFill) => number, write: (fill: GradientFill, value: number) => GradientFill, min: number, max: number): NumberBinding {
+  const gradientOf = (clip: SolidClip): GradientFill | null => (!isRgba(clip.fill) && modeOf(clip.fill) === mode ? fillAsStops(clip.fill) : null);
+  const clamp = (value: number) => roundTo(Math.min(max, Math.max(min, value)), 0);
+  return valueBinding(
+    {
+      read() {
+        const values: number[] = [];
+        for (const id of ids) {
+          const clip = documentStore.getState().clips[id];
+          const gradient = clip?.kind === "solid" ? gradientOf(clip) : null;
+          if (gradient) values.push(read(gradient));
+        }
+        return values.length > 0 && values.every((v) => v === values[0]) ? (values[0] ?? null) : null;
+      },
+      subscribe: (listener) => documentStore.subscribe(() => listener(), { affects: ["composite"] }),
+    },
+    (value) => editSolids(ids, (clip) => { const gradient = gradientOf(clip); return gradient ? { fill: write(gradient, clamp(value)) } : null; }, label, `properties.solid.${label}`),
+  );
+}
 
 export function SolidSection({ ids }: { ids: readonly ClipId[] }) {
   const bindings = useMemo(() => ({ width: solidBinding(DEPS, SOLID_WIDTH, ids), height: solidBinding(DEPS, SOLID_HEIGHT, ids), radius: solidBinding(DEPS, SOLID_RADIUS, ids) }), [ids]);
   const shape = useClipsShared(ids, getShape);
-  const gradient = useClipsShared(ids, getGradient);
+  const mode = useClipsShared(ids, getMode);
   const top = useClipsShared(ids, getTop);
   const bottom = useClipsShared(ids, getBottom);
   const recent = useStoreSelector(appSettings, selectRecent);
-  const isGradient = gradient === true;
+  const isGradient = mode === "linear" || mode === "radial";
+  const gradients = useMemo(
+    () => ({
+      angle: gradientBinding(ids, "Gradient angle", "linear", (g) => g.angle, (g, v) => ({ ...g, angle: v }), -360, 360),
+      cx: gradientBinding(ids, "Gradient center x", "radial", (g) => Math.round(g.center.x * 100), (g, v) => ({ ...g, center: { ...g.center, x: v / 100 } }), -500, 500),
+      cy: gradientBinding(ids, "Gradient center y", "radial", (g) => Math.round(g.center.y * 100), (g, v) => ({ ...g, center: { ...g.center, y: v / 100 } }), -500, 500),
+      radius: gradientBinding(ids, "Gradient radius", "radial", (g) => Math.round(g.radius * 100), (g, v) => ({ ...g, radius: v / 100 }), 1, 1000),
+    }),
+    [ids],
+  );
   // Corners round on rounded rects and line ends only.
   const rounds = shape === "roundedRect" || shape === "line" || shape === MIXED;
 
@@ -73,22 +103,33 @@ export function SolidSection({ ids }: { ids: readonly ClipId[] }) {
       </Row>
       <Row label="Fill">
         <Choice
-          value={gradient === MIXED || gradient === NONE ? gradient : isGradient ? "gradient" : "solid"}
+          value={mode}
           options={[
             { value: "solid", label: "Solid color", text: "Solid" },
-            { value: "gradient", label: "Vertical gradient", text: "Gradient" },
+            { value: "linear", label: "Linear gradient", text: "Linear" },
+            { value: "radial", label: "Radial gradient", text: "Radial" },
           ]}
-          onChange={(mode) =>
-            editSolids(ids, (clip) => ({ fill: mode === "gradient" ? (isRgba(clip.fill) ? { from: clip.fill, to: BLACK } : clip.fill) : isRgba(clip.fill) ? clip.fill : clip.fill.from }), "Change fill")
-          }
+          onChange={(next) => editSolids(ids, (clip) => ({ fill: fillAsMode(clip.fill, next) }), "Change fill")}
         />
       </Row>
-      <Row label={isGradient ? "Top" : "Color"}>
-        <ColorField value={colorOf(top, WHITE)} recent={recent} ariaLabel={isGradient ? "Gradient top color" : "Fill color"} {...color("Change fill", withTop)} />
+      <Row label={isGradient ? "From" : "Color"}>
+        <ColorField value={colorOf(top, WHITE)} recent={recent} ariaLabel={isGradient ? "Gradient first color" : "Fill color"} {...color("Change fill", withTop)} />
       </Row>
-      {/* Disabled, never hidden (spec §17): choosing Gradient moves nothing; a solid fill shows the bottom a gradient starts with. */}
-      <Row label="Bottom">
-        <ColorField value={colorOf(bottom, BLACK)} recent={recent} ariaLabel="Gradient bottom color" disabled={!isGradient} {...color("Change fill", withBottom)} />
+      {/* Disabled, never hidden (spec §17): choosing a gradient moves nothing; a solid fill shows the last color a gradient starts with. */}
+      <Row label="To">
+        <ColorField value={colorOf(bottom, BLACK)} recent={recent} ariaLabel="Gradient last color" disabled={!isGradient} {...color("Change fill", withBottom)} />
+      </Row>
+      <Row label="Angle">
+        <NumberField label="A" unit="deg" binding={gradients.angle} precision={0} min={-360} max={360} disabled={mode !== "linear"} ariaLabel="Gradient angle" />
+      </Row>
+      <Row label="Center">
+        <div className={styles.pair}>
+          <NumberField label="X" unit="%" binding={gradients.cx} precision={0} min={-500} max={500} disabled={mode !== "radial"} ariaLabel="Gradient center x" />
+          <NumberField label="Y" unit="%" binding={gradients.cy} precision={0} min={-500} max={500} disabled={mode !== "radial"} ariaLabel="Gradient center y" />
+        </div>
+      </Row>
+      <Row label="Reach">
+        <NumberField label="R" unit="%" binding={gradients.radius} precision={0} min={1} max={1000} disabled={mode !== "radial"} ariaLabel="Gradient radius" />
       </Row>
       <Row label="Size">
         <div className={styles.pair}>

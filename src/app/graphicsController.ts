@@ -52,7 +52,7 @@ export function previewSolids(ids: readonly ClipId[], change: SolidChange | null
   for (const clip of solidClips(ids)) {
     const edit = change(clip);
     if (!edit) continue;
-    solids.set(clip.id, solidLook({ ...clip, ...edit }));
+    solids.set(clip.id, solidLook({ ...clip, ...edit } as SolidClip));
   }
   patchLiveEdit({ solids: solids.size > 0 ? solids : null });
 }

@@ -1,0 +1,756 @@
+{
+  "schemaVersion": 5,
+  "id": "0b6d6b43-5c4e-4f5d-9d0a-58a3a1c2e158",
+  "name": "Interop styles",
+  "settings": {
+    "width": 1080,
+    "height": 1920,
+    "fps": {
+      "num": 30,
+      "den": 1
+    },
+    "background": {
+      "r": 0.96,
+      "g": 0.93,
+      "b": 0.85,
+      "a": 1
+    },
+    "sampleRate": 48000
+  },
+  "media": {
+    "m1": {
+      "id": "m1",
+      "kind": "video",
+      "name": "clip.mp4",
+      "file": {
+        "relPath": "media/clip.mp4"
+      },
+      "durationUs": 2000000,
+      "hasAudio": true,
+      "analysis": {
+        "thumbs": "none",
+        "peaks": "none"
+      },
+      "addedAt": "2026-11-07T08:00:00.000Z",
+      "width": 270,
+      "height": 480,
+      "fps": {
+        "num": 30,
+        "den": 1
+      },
+      "codec": "h264",
+      "audioCodec": "aac",
+      "size": 18761
+    }
+  },
+  "bins": [],
+  "tracks": [
+    {
+      "id": "v1",
+      "kind": "video",
+      "name": "V1",
+      "clipIds": [
+        "video"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
+      "id": "v2",
+      "kind": "video",
+      "name": "V2",
+      "clipIds": [
+        "card"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
+      "id": "v3",
+      "kind": "video",
+      "name": "V3",
+      "clipIds": [
+        "pill"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
+      "id": "v4",
+      "kind": "video",
+      "name": "V4",
+      "clipIds": [
+        "dashed"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
+      "id": "v5",
+      "kind": "video",
+      "name": "V5",
+      "clipIds": [
+        "radial"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
+      "id": "v6",
+      "kind": "video",
+      "name": "V6",
+      "clipIds": [
+        "gradtext"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
+      "id": "cc1",
+      "kind": "caption",
+      "name": "CC1",
+      "clipIds": [
+        "q1",
+        "q2",
+        "q3"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    }
+  ],
+  "clips": {
+    "video": {
+      "id": "video",
+      "trackId": "v1",
+      "kind": "video",
+      "name": "Rounded video",
+      "start": 0,
+      "duration": 60,
+      "enabled": true,
+      "mediaId": "m1",
+      "in": 0,
+      "out": 2000000,
+      "speed": 1,
+      "transform": {
+        "x": 0,
+        "y": 330,
+        "scale": 1.1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "crop": {
+        "left": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "volume": {
+        "gainDb": 0,
+        "muted": true
+      },
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "cornerRadius": 40,
+      "stroke": {
+        "width": 4,
+        "color": {
+          "r": 0.09,
+          "g": 0.09,
+          "b": 0.14,
+          "a": 1
+        },
+        "align": "inside"
+      },
+      "shadow": {
+        "x": 0,
+        "y": 14,
+        "blur": 36,
+        "spread": 0,
+        "color": {
+          "r": 0,
+          "g": 0,
+          "b": 0,
+          "a": 0.45
+        }
+      }
+    },
+    "card": {
+      "id": "card",
+      "trackId": "v2",
+      "kind": "solid",
+      "name": "Paper card",
+      "start": 0,
+      "duration": 90,
+      "enabled": true,
+      "shape": "rect",
+      "size": {
+        "w": 440,
+        "h": 260
+      },
+      "cornerRadius": 0,
+      "transform": {
+        "x": -255,
+        "y": -720,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "fill": {
+        "r": 1,
+        "g": 1,
+        "b": 1,
+        "a": 1
+      },
+      "stroke": {
+        "width": 3,
+        "color": {
+          "r": 0.09,
+          "g": 0.09,
+          "b": 0.14,
+          "a": 1
+        },
+        "align": "inside"
+      },
+      "shadow": {
+        "x": 7,
+        "y": 7,
+        "blur": 0,
+        "spread": 0,
+        "color": {
+          "r": 0.09,
+          "g": 0.09,
+          "b": 0.14,
+          "a": 1
+        }
+      }
+    },
+    "pill": {
+      "id": "pill",
+      "trackId": "v3",
+      "kind": "solid",
+      "name": "Pill",
+      "start": 0,
+      "duration": 90,
+      "enabled": true,
+      "shape": "roundedRect",
+      "size": {
+        "w": 440,
+        "h": 110
+      },
+      "cornerRadius": 500,
+      "transform": {
+        "x": 255,
+        "y": -720,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "fill": {
+        "r": 1,
+        "g": 0.82,
+        "b": 0.25,
+        "a": 1
+      },
+      "stroke": {
+        "width": 3,
+        "color": {
+          "r": 0.09,
+          "g": 0.09,
+          "b": 0.14,
+          "a": 1
+        },
+        "align": "inside"
+      },
+      "shadow": {
+        "x": 7,
+        "y": 7,
+        "blur": 0,
+        "spread": 0,
+        "color": {
+          "r": 0.09,
+          "g": 0.09,
+          "b": 0.14,
+          "a": 1
+        }
+      }
+    },
+    "dashed": {
+      "id": "dashed",
+      "trackId": "v4",
+      "kind": "solid",
+      "name": "Dashed outline",
+      "start": 0,
+      "duration": 90,
+      "enabled": true,
+      "shape": "roundedRect",
+      "size": {
+        "w": 440,
+        "h": 240
+      },
+      "cornerRadius": 56,
+      "transform": {
+        "x": -255,
+        "y": -430,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "fill": {
+        "r": 1,
+        "g": 1,
+        "b": 1,
+        "a": 0
+      },
+      "stroke": {
+        "width": 6,
+        "color": {
+          "r": 0.09,
+          "g": 0.09,
+          "b": 0.14,
+          "a": 1
+        },
+        "align": "center",
+        "dash": [
+          24,
+          16
+        ]
+      }
+    },
+    "radial": {
+      "id": "radial",
+      "trackId": "v5",
+      "kind": "solid",
+      "name": "Four-stop radial",
+      "start": 0,
+      "duration": 90,
+      "enabled": true,
+      "shape": "roundedRect",
+      "size": {
+        "w": 440,
+        "h": 240
+      },
+      "cornerRadius": 28,
+      "transform": {
+        "x": 255,
+        "y": -430,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "fill": {
+        "type": "radial",
+        "angle": 0,
+        "center": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "radius": 1,
+        "stops": [
+          {
+            "at": 0,
+            "color": {
+              "r": 1,
+              "g": 0.95,
+              "b": 0.4,
+              "a": 1
+            }
+          },
+          {
+            "at": 0.35,
+            "color": {
+              "r": 0.95,
+              "g": 0.35,
+              "b": 0.3,
+              "a": 1
+            }
+          },
+          {
+            "at": 0.7,
+            "color": {
+              "r": 0.4,
+              "g": 0.2,
+              "b": 0.7,
+              "a": 1
+            }
+          },
+          {
+            "at": 1,
+            "color": {
+              "r": 0.08,
+              "g": 0.1,
+              "b": 0.3,
+              "a": 1
+            }
+          }
+        ]
+      }
+    },
+    "gradtext": {
+      "id": "gradtext",
+      "trackId": "v6",
+      "kind": "text",
+      "name": "Gradient text",
+      "start": 0,
+      "duration": 90,
+      "enabled": true,
+      "text": {
+        "value": "GRADIENT",
+        "box": {
+          "mode": "auto",
+          "width": 900
+        }
+      },
+      "style": {
+        "fontFamily": "Silkscreen",
+        "fontWeight": 700,
+        "italic": false,
+        "fontSize": 96,
+        "fill": {
+          "type": "linear",
+          "angle": 0,
+          "center": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "radius": 1,
+          "stops": [
+            {
+              "at": 0,
+              "color": {
+                "r": 0.95,
+                "g": 0.35,
+                "b": 0.3,
+                "a": 1
+              }
+            },
+            {
+              "at": 1,
+              "color": {
+                "r": 0.25,
+                "g": 0.3,
+                "b": 0.9,
+                "a": 1
+              }
+            }
+          ]
+        },
+        "stroke": {
+          "enabled": false,
+          "width": 6,
+          "color": {
+            "r": 0.09,
+            "g": 0.09,
+            "b": 0.14,
+            "a": 1
+          }
+        },
+        "shadow": {
+          "enabled": false,
+          "x": 0,
+          "y": 6,
+          "blur": 16,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.6
+          }
+        },
+        "background": {
+          "enabled": false,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.7
+          },
+          "paddingX": 28,
+          "paddingY": 12,
+          "radius": 16,
+          "mode": "block"
+        },
+        "textCase": "none",
+        "letterSpacing": 0,
+        "lineHeight": 1.2,
+        "align": "center",
+        "verticalAnchor": "middle"
+      },
+      "transform": {
+        "x": 0,
+        "y": -140,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "fades": {
+        "in": 0,
+        "out": 0
+      }
+    },
+    "q1": {
+      "id": "q1",
+      "trackId": "cc1",
+      "kind": "caption",
+      "name": "Cue q1",
+      "start": 0,
+      "duration": 30,
+      "enabled": true,
+      "text": "Boxed caption",
+      "words": [
+        {
+          "text": "Boxed",
+          "start": 0,
+          "end": 14
+        },
+        {
+          "text": "caption",
+          "start": 14,
+          "end": 30
+        }
+      ]
+    },
+    "q2": {
+      "id": "q2",
+      "trackId": "cc1",
+      "kind": "caption",
+      "name": "Cue q2",
+      "start": 30,
+      "duration": 30,
+      "enabled": true,
+      "text": "Second cue",
+      "words": [
+        {
+          "text": "Second",
+          "start": 0,
+          "end": 15
+        },
+        {
+          "text": "cue",
+          "start": 15,
+          "end": 30
+        }
+      ]
+    },
+    "q3": {
+      "id": "q3",
+      "trackId": "cc1",
+      "kind": "caption",
+      "name": "Cue q3",
+      "start": 60,
+      "duration": 30,
+      "enabled": true,
+      "text": "No border here",
+      "words": [
+        {
+          "text": "No",
+          "start": 0,
+          "end": 8
+        },
+        {
+          "text": "border",
+          "start": 8,
+          "end": 18
+        },
+        {
+          "text": "here",
+          "start": 18,
+          "end": 30
+        }
+      ],
+      "styleOverride": {
+        "text": {
+          "background": {
+            "stroke": {
+              "enabled": false,
+              "width": 3,
+              "color": {
+                "r": 0.09,
+                "g": 0.09,
+                "b": 0.14,
+                "a": 1
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "markers": [],
+  "captionTracks": {
+    "cc1": {
+      "style": {
+        "text": {
+          "fontFamily": "Silkscreen",
+          "fontWeight": 700,
+          "italic": false,
+          "fontSize": 64,
+          "fill": {
+            "r": 0.09,
+            "g": 0.09,
+            "b": 0.14,
+            "a": 1
+          },
+          "stroke": {
+            "enabled": false,
+            "width": 6,
+            "color": {
+              "r": 0.09,
+              "g": 0.09,
+              "b": 0.14,
+              "a": 1
+            }
+          },
+          "shadow": {
+            "enabled": false,
+            "x": 0,
+            "y": 6,
+            "blur": 16,
+            "color": {
+              "r": 0,
+              "g": 0,
+              "b": 0,
+              "a": 0.6
+            }
+          },
+          "background": {
+            "enabled": true,
+            "color": {
+              "r": 1,
+              "g": 1,
+              "b": 1,
+              "a": 1
+            },
+            "paddingX": 32,
+            "paddingY": 18,
+            "radius": 0,
+            "mode": "block",
+            "stroke": {
+              "enabled": true,
+              "width": 3,
+              "color": {
+                "r": 0.09,
+                "g": 0.09,
+                "b": 0.14,
+                "a": 1
+              }
+            },
+            "shadow": {
+              "enabled": true,
+              "x": 7,
+              "y": 7,
+              "blur": 0,
+              "color": {
+                "r": 0.09,
+                "g": 0.09,
+                "b": 0.14,
+                "a": 1
+              }
+            }
+          },
+          "textCase": "none",
+          "letterSpacing": 0,
+          "lineHeight": 1.2,
+          "align": "center",
+          "verticalAnchor": "middle"
+        },
+        "position": "bottom",
+        "x": 0,
+        "y": 0,
+        "maxWidth": 900,
+        "maxLines": 2,
+        "highlight": {
+          "mode": "none",
+          "color": {
+            "r": 1,
+            "g": 0.82,
+            "b": 0.25,
+            "a": 1
+          },
+          "inactiveColor": {
+            "r": 0.09,
+            "g": 0.09,
+            "b": 0.14,
+            "a": 1
+          }
+        }
+      }
+    }
+  },
+  "textPresetsLocal": [],
+  "meta": {
+    "createdAt": "2026-11-07T08:00:00.000Z",
+    "modifiedAt": "2026-11-07T08:00:00.000Z",
+    "appVersion": "1.1.0",
+    "generator": {
+      "name": "interop-fixture",
+      "version": "1",
+      "source": "scripts/cli/make-styles-fixture.mjs"
+    }
+  }
+}

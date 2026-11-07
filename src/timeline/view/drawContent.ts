@@ -13,6 +13,7 @@
 // a longest-clip lookback, P10). The scrollbars (spec §6.1) close the bottom and right edges.
 import { audibleTracks } from "../../audio/AudioMixer.js";
 import { formatHexColor, isRgba } from "../../core/document/color.js";
+import { fillAsStops } from "../../core/document/fill.js";
 import { formatSpeed, usPerFrame, type TimecodeMode } from "../../core/document/time.js";
 import { isFreeze, isMediaClip, type Clip, type Frame, type Marker, type MediaClip, type Project, type SolidClip, type Track, type TrackId } from "../../core/document/types.js";
 import type { Selection } from "../../core/store/selection.js";
@@ -470,9 +471,10 @@ function drawSwatch(scene: ClipScene, clip: SolidClip, left: number, y: number, 
   } else ctx.roundRect(x, top, size, size, clip.shape === "roundedRect" ? theme.radius.sm : 0);
   if (isRgba(clip.fill)) ctx.fillStyle = formatHexColor(clip.fill);
   else {
+    // The thumbnail shows a vertical run from the fill's first to its last color (a gradient with stops included).
+    const stops = fillAsStops(clip.fill).stops;
     const gradient = ctx.createLinearGradient(0, top, 0, top + size);
-    gradient.addColorStop(0, formatHexColor(clip.fill.from));
-    gradient.addColorStop(1, formatHexColor(clip.fill.to));
+    for (const stop of stops) gradient.addColorStop(Math.min(1, Math.max(0, stop.at)), formatHexColor(stop.color));
     ctx.fillStyle = gradient;
   }
   ctx.fill();
