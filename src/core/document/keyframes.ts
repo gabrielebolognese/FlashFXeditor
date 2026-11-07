@@ -426,12 +426,23 @@ export function withKeys(keyframes: Keyframes | undefined, prop: string, keys: r
  * `keys` with a key at `frame` set to `value`: an existing key keeps its ease (or takes `ease`); a new
  * one takes `ease`, else the ease of the segment it lands in (the key before it), else linear.
  */
-export function setKey(keys: readonly Key[], frame: Frame, value: number, ease?: EaseId): Key[] {
+export function setKey(keys: readonly Key[], frame: Frame, value: number | number[], ease?: EaseId, params?: Pick<Key, "bezier" | "spring">): Key[] {
   const at = keyIndexAt(keys, frame);
   const next = keys.slice();
   const current = keys[at];
-  if (current && current.frame === frame) next[at] = { frame, value, ease: ease ?? current.ease };
-  else next.splice(at + 1, 0, { frame, value, ease: ease ?? (current && keys[at + 1] ? current.ease : "linear") });
+  if (current && current.frame === frame) {
+    // A value edit keeps the key's own bezier/spring points; a new ease (or explicit params) replaces them.
+    const key: Key = { frame, value, ease: ease ?? current.ease };
+    const source = params ?? (key.ease === current.ease ? current : undefined);
+    if (source?.bezier && key.ease === "bezier") key.bezier = [...source.bezier];
+    if (source?.spring && key.ease === "spring") key.spring = { ...source.spring };
+    next[at] = key;
+  } else {
+    const key: Key = { frame, value, ease: ease ?? (current && keys[at + 1] ? current.ease : "linear") };
+    if (params?.bezier && key.ease === "bezier") key.bezier = [...params.bezier];
+    if (params?.spring && key.ease === "spring") key.spring = { ...params.spring };
+    next.splice(at + 1, 0, key);
+  }
   return next;
 }
 

@@ -165,6 +165,12 @@ function isCopiedClip(value: unknown): value is CopiedClip {
   return laneOk && typeof clip.id === "string" && typeof clip.kind === "string" && isInt(clip.start) && clip.start >= 0 && isInt(clip.duration) && clip.duration >= 1;
 }
 
+function isNums(value: unknown, length?: number): value is number[] {
+  return Array.isArray(value) && (length === undefined || value.length === length) && value.every((n) => typeof n === "number" && Number.isFinite(n));
+}
+function isKeyValue(value: unknown): boolean {
+  return (typeof value === "number" && Number.isFinite(value)) || (isNums(value) && value.length > 0);
+}
 /**
  * Copied keys' shape, as strict as the document's keyframe invariants (`keyframeIssues`): a known
  * section, only its properties, whole-frame offsets from 0, finite values, known eases. Keys go
@@ -174,7 +180,7 @@ function isKeyframeClipboard(value: unknown): value is KeyframeClipboard {
   if (!isRecord(value) || !isKeyframeSection(value.section) || !isRecord(value.keys)) return false;
   const props: readonly string[] = SECTION_PROPS[value.section];
   const lists = Object.entries(value.keys);
-  const isKey = (key: unknown) => isRecord(key) && isInt(key.offset) && key.offset >= 0 && Number.isFinite(key.value) && isEaseId(key.ease);
+  const isKey = (key: unknown) => isRecord(key) && isInt(key.offset) && key.offset >= 0 && isKeyValue(key.value) && isEaseId(key.ease) && (key.bezier === undefined || isNums(key.bezier, 4)) && (key.spring === undefined || (isRecord(key.spring) && Number.isFinite(key.spring.damping) && Number.isFinite(key.spring.frequency)));
   return lists.length > 0 && lists.every(([prop, keys]) => props.includes(prop) && Array.isArray(keys) && keys.length > 0 && keys.every(isKey));
 }
 

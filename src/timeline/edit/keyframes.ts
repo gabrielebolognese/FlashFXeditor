@@ -32,7 +32,8 @@ import {
   writeKeys,
   type KeyframeProp,
   type KeyframeSection,
-  scalar,
+  propValidFor,
+  type Key,
 } from "../../core/document/keyframes.js";
 import type { Clip, ClipId, EaseId, Frame, Keyframes, MediaClip, Project, SolidClip, TextClip, Transform } from "../../core/document/types.js";
 import { isClipLocked } from "../model/queries.js";
@@ -228,7 +229,7 @@ export function setKeysEase(project: Project, frames: ReadonlyMap<ClipId, readon
 /** Keys copied from one section (spec §6.15): per property, each key timed from the first copied frame. */
 export interface KeyframeClipboard {
   section: KeyframeSection;
-  keys: Partial<Record<KeyframeProp, { offset: Frame; value: number; ease: EaseId }[]>>;
+  keys: Partial<Record<KeyframeProp, ({ offset: Frame; value: number | number[]; ease: EaseId } & Pick<Key, "bezier" | "spring">)[]>>;
 }
 
 /** `clip`'s keys of `section` at `frames`, or null when there are none. */
@@ -239,7 +240,7 @@ export function copyKeys(clip: Clip, section: KeyframeSection, frames: readonly 
   const keys: KeyframeClipboard["keys"] = {};
   let any = false;
   for (const prop of SECTION_PROPS[section]) {
-    const list = clip.keyframes?.[prop]?.filter((key) => wanted.has(key.frame)).map((key) => ({ offset: key.frame - first, value: scalar(key.value), ease: key.ease }));
+    const list = clip.keyframes?.[prop]?.filter((key) => wanted.has(key.frame)).map((key) => ({ offset: key.frame - first, value: Array.isArray(key.value) ? [...key.value] : key.value, ease: key.ease, ...(key.bezier ? { bezier: key.bezier } : {}), ...(key.spring ? { spring: key.spring } : {}) }));
     if (list && list.length > 0) {
       keys[prop] = list;
       any = true;
@@ -257,10 +258,11 @@ export function pasteKeys(project: Project, ids: Iterable<ClipId>, clipboard: Ke
     let keyframes = clip.keyframes;
     let wrote = false;
     for (const prop of SECTION_PROPS[section]) {
+      if (!propValidFor(prop, clip.kind)) continue;
       for (const key of clipboard.keys[prop] ?? []) {
         const frame = from + key.offset;
         if (frame >= clip.duration) continue;
-        keyframes = withKeys(keyframes, prop, setKey(keyframes?.[prop] ?? [], frame, key.value, key.ease));
+        keyframes = withKeys(keyframes, prop, setKey(keyframes?.[prop] ?? [], frame, key.value, key.ease, key));
         wrote = true;
       }
     }

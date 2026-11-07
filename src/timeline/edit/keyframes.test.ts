@@ -163,6 +163,29 @@ describe("navigator, lane and menu edits", () => {
     expect(copyKeys(get(s, "s"), "opacity", [7])).toBeNull();
   });
 
+  it("copies whole keys (bezier, spring, color values) and skips props the target lacks", () => {
+    const bz: [number, number, number, number] = [0.68, -0.55, 0.27, 1.55];
+    const src = solid("s", {
+      keyframes: {
+        opacity: [{ frame: 0, value: 1, ease: "bezier", bezier: bz }, { frame: 30, value: 0.2, ease: "spring", spring: { damping: 0.3, frequency: 6 } }],
+        fill: [{ frame: 0, value: [1, 0, 0, 1], ease: "linear" }, { frame: 30, value: [0, 0, 1, 1], ease: "linear" }],
+      },
+    });
+    const crop = { frame: 0, value: 0, ease: "linear" } as const;
+    const s = store(project([src, solid("t", { trackId: "v2", start: 200, duration: 60 })]));
+    const op = copyKeys(get(s, "s"), "opacity", [0, 30])!;
+    s.dispatch(pasteKeys(s.getState(), ["t"], op, 200)!);
+    expect(get<SolidClip>(s, "t").keyframes?.opacity).toEqual(src.keyframes?.opacity);
+    const look = copyKeys(get(s, "s"), "look", [0, 30])!;
+    expect(look.keys.fill?.[0]?.value).toEqual([1, 0, 0, 1]);
+    // A crop key (not a property of a solid) is skipped on paste instead of breaking the document.
+    look.keys["crop.left"] = [{ offset: 0, value: crop.value, ease: crop.ease }];
+    s.dispatch(pasteKeys(s.getState(), ["t"], look, 200)!);
+    const t = get<SolidClip>(s, "t");
+    expect(t.keyframes?.fill?.map((key) => key.value)).toEqual([[1, 0, 0, 1], [0, 0, 1, 1]]);
+    expect(t.keyframes?.["crop.left"]).toBeUndefined();
+  });
+
   it("works on audio clips (volume)", () => {
     const p = project([]);
     const clip: MediaClip = { ...makeMediaClip(p, { id: "v", trackId: "a1", start: 0, duration: 30, mediaId: "a", kind: "audio" }) };

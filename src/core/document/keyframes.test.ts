@@ -108,6 +108,15 @@ describe("key list edits", () => {
     expect(setKey(list, -5, 3)[0]).toEqual({ frame: -5, value: 3, ease: "linear" });
   });
 
+  it("keeps a key's bezier and spring points when only its value changes", () => {
+    const bz: [number, number, number, number] = [0.68, -0.55, 0.27, 1.55];
+    const list: Key[] = [{ frame: 0, value: 0, ease: "bezier", bezier: bz }, { frame: 30, value: 100, ease: "spring", spring: { damping: 0.3, frequency: 6 } }];
+    expect(setKey(list, 0, 5)[0]).toEqual({ frame: 0, value: 5, ease: "bezier", bezier: bz });
+    expect(setKey(list, 30, 7)[1]).toEqual({ frame: 30, value: 7, ease: "spring", spring: { damping: 0.3, frequency: 6 } });
+    // A new ease drops the old parameters.
+    expect(setKey(list, 0, 5, "linear")[0]).toEqual({ frame: 0, value: 5, ease: "linear" });
+  });
+
   it("writes, moves, eases and removes a section's keys together", () => {
     let k = writeKeys(undefined, 0, { "transform.x": 0, "transform.y": 0, "transform.scale": 1, "transform.scaleY": 1, "transform.rotation": 0 });
     k = writeKeys(k, 30, { "transform.x": 100, "transform.y": 0, "transform.scale": 1, "transform.scaleY": 1, "transform.rotation": 0 });
