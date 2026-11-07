@@ -1,6 +1,6 @@
 # Shapes and images
 
-Solids are shapes you add with one click: a rectangle, a rounded rectangle, an ellipse or a line, filled with a color or a two-color gradient. Use them as color backgrounds, bars behind a title, frames and dividers. Images bring in logos, stickers and pictures: **Add image** picks and places them in one go, animated GIF and WebP stickers play at their own speed, and SVG logos stay sharp at any zoom.
+Solids are shapes you add with one click: a rectangle, a rounded rectangle, an ellipse or a line, filled with a color or a gradient, with an optional border, shadow and rounded corners of your choice. Use them as color backgrounds, bars behind a title, frames and dividers. Images bring in logos, stickers and pictures: **Add image** picks and places them in one go, animated GIF and WebP stickers play at their own speed, and SVG logos stay sharp at any zoom.
 
 > **Video placeholder: Shapes and images in one minute**
 > - File: `videos/shapes-and-images/overview.mp4` (not recorded yet)
@@ -20,6 +20,7 @@ Solids are shapes you add with one click: a rectangle, a rounded rectangle, an e
 - [Choose the shape](#choose-the-shape)
 - [Fill a shape with a color or a gradient](#fill-a-shape-with-a-color-or-a-gradient)
 - [Set the size and the corner radius](#set-the-size-and-the-corner-radius)
+- [Add a border, a shadow or rounded corners](#add-a-border-a-shadow-or-rounded-corners)
 - [Resize a shape in the preview](#resize-a-shape-in-the-preview)
 - [Move, turn and fade shapes](#move-turn-and-fade-shapes)
 - [Add an image](#add-an-image)
@@ -78,24 +79,23 @@ In the **Shape** row of the **Solid** section, click one of four buttons. Point 
 
 ## Fill a shape with a color or a gradient
 
-The **Fill** row has two buttons: **Solid** (tooltip **Solid color**) and **Gradient** (tooltip **Vertical gradient**).
+The **Fill** row has three buttons: **Solid** (tooltip **Solid color**), **Linear** (**Linear gradient**) and **Radial** (**Radial gradient**).
 
 | Fill | Rows below it | What you see |
 | --- | --- | --- |
 | **Solid** | **Color** | The whole shape in one color. |
-| **Gradient** | **Top** and **Bottom** | A smooth blend from the **Top** color at the top edge of the shape to the **Bottom** color at its bottom edge. |
+| **Linear** | **From**, **To** and **Angle** | A blend from the **From** color to the **To** color along the angle, in degrees (-360 to 360). |
+| **Radial** | **From**, **To**, **Center** and **Reach** | A blend from the **From** color at the center to the **To** color at the reach. **Center** is X and Y in percent of the shape; **Reach** is 1% to 1000%. |
 
 1. Select the solid.
-2. Click **Solid** or **Gradient** in the **Fill** row.
-3. Click a swatch (**Color**, **Top** or **Bottom**) to open the color picker, or click in its hex code and type a color.
+2. Click **Solid**, **Linear** or **Radial** in the **Fill** row.
+3. Click a swatch (**Color**, **From** or **To**) to open the color picker, or click in its hex code and type a color.
 
-- Clicking **Gradient** the first time keeps the shape's color at the top and puts black at the bottom. Clicking **Solid** goes back to one color: the **Top** color.
+- The first time you choose a gradient, the shape's color becomes **From** and **To** starts as black. Choosing **Solid** again goes back to **From**.
 - While you drag in the color picker, the shape in the preview follows live. Release to apply the color. See [Pick a color](editing-properties.md#pick-a-color).
-- A color with a lower **A** (opacity) makes the shape see-through in that color only; a gradient can fade from a solid color to a fully transparent one. To fade the whole shape, use **Opacity**.
-- The gradient always runs from the top to the bottom of the shape itself: when you turn the shape, the gradient turns with it, and **Flip vertical** swaps its two colors.
-- Each color you apply, and each click on **Solid** or **Gradient**, is one step in the history, named **Change fill**.
-
-> **Note:** Gradients are vertical and have two colors. To get a sideways gradient, turn the shape by 90° and swap its **W** and **H**.
+- A color with a lower **A** (opacity) makes the shape see-through in that color only. To fade the whole shape, use **Opacity**.
+- The gradient turns with the shape. A project file from another tool can hold gradients with up to 8 colors: they draw, and the editor keeps them, but the panel edits only the first and last color.
+- Each color you apply, and each click on a fill button, is one step in the history, named **Change fill**.
 
 ## Set the size and the corner radius
 
@@ -110,6 +110,39 @@ The **Fill** row has two buttons: **Solid** (tooltip **Solid color**) and **Grad
 - The **Scale** of the **Transform** section multiplies the size: a 648×324 shape at 50% scale covers 324×162 pixels of the frame. Change **W** and **H** instead to keep the corners and the line thickness exactly as you set them.
 - With several solids selected, a typed value applies to all of them; arrow presses and label drags change each one by the same amount. A field whose values differ shows `--`.
 - Each typed value, label drag or quick series of arrow presses is one step in the history, named **Change size** or **Change corner radius**.
+
+## Add a border, a shadow or rounded corners
+
+> **Video placeholder: Border, shadow and corners**
+> - File: `videos/shapes-and-images/frame-styles.mp4` (not recorded yet)
+> - Length: about 50 seconds
+> - Shows:
+>   1. A selected solid. In the **Frame** section, click **On** in the **Stroke** row, set **W** to `6` and pick a dark color in **Stroke color**: the shape has a border.
+>   2. Click **In**, **Mid**, **Out**: the border moves in, onto and out of the edge while the fill stays.
+>   3. Click **Dash**, then **Dot**, then drag **Dash offset**: the dashes slide around the outline.
+>   4. Click **Hard** in the **Shadow** row, set **X** and **Y** to `7`; click **Soft** and raise **B**.
+>   5. Set **TL** to `0` in **Corners**: only the top-left corner turns square.
+>   6. Select a video clip and set **Radius** to `40`, **Stroke** **On** and **Shadow** **Soft**: the video has rounded corners, a border and a shadow.
+
+Solids, video clips and images have a **Frame** section in **Edit Properties**, after **Crop**. With several clips selected, an edit applies to all of them.
+
+| Row | What it sets |
+| --- | --- |
+| **Stroke** | **None** or **On**: a border along the edge. |
+| **Width**, **Stroke color** | Border thickness (0 to 1000 px) and color. |
+| **Align** | **In**, **Mid** or **Out**: whether the border sits inside, on or outside the edge. The fill box does not move. |
+| **Dash**, **Dash offset** | **Solid**, **Dash** or **Dot** line, and where the pattern starts. A whole number of dashes always fits the outline. |
+| **Shadow** | **None**, **Hard** (sharp edge) or **Soft** (blurred). |
+| **Offset**, **Blur**, **Shadow color** | **X** and **Y** distance (-4000 to 4000 px), **B** blur (0 to 1000) and **S** spread (-1000 to 1000), and the color. |
+| **Radius** | Pictures only: corner radius, 0 to 8192 px. |
+| **Corners** | Solids only: **TL**, **TR**, **BL**, **BR** radius for each corner. |
+
+- Changing **Radius** in the **Solid** section clears the per-corner values, so one radius applies again.
+- Frame fields apply when you release or press <kbd>Enter</kbd>; the preview does not follow a label drag live.
+- A flipped picture keeps its shadow on the same side.
+- Each change is one step in the history, such as **Add stroke**, **Change stroke align** or **Change shadow**.
+
+> **Note:** The selection box and handles in the preview follow the layout box, not the border or shadow. A dissolve between two rounded pictures draws them without rounded corners.
 
 ## Resize a shape in the preview
 
@@ -222,7 +255,7 @@ An SVG image is a drawing, not a grid of pixels. The editor draws it again at th
 | --- | --- |
 | **Add solid** | **Add solid** in the timeline toolbar |
 | **Change shape** | A button of the **Shape** row |
-| **Change fill** | **Solid** or **Gradient**, or a color applied to **Color**, **Top** or **Bottom** |
+| **Change fill** | **Solid**, **Linear** or **Radial**, or a color applied to **Color**, **From** or **To** |
 | **Change size** | **W** or **H** in the **Solid** section |
 | **Change corner radius** | **Radius** |
 | **Resize shape** | Dragging a handle of one selected solid in the preview |
@@ -242,4 +275,4 @@ See [Undo and redo changes](projects-and-saving.md#undo-and-redo-changes).
 - [Titles and text](titles-and-text.md)
 - [Troubleshooting](troubleshooting.md#shapes-and-images)
 
-<sub>Last updated: Batch 43, 2026-10-18</sub>
+<sub>Last updated: Batch 58, 2026-11-07</sub>

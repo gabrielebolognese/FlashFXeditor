@@ -306,6 +306,12 @@ Every text change is one step in the history. Hover **Undo** in the app bar to s
 
 Pressing <kbd>↑</kbd> or <kbd>↓</kbd> in a number field of the **Text** section several times in a row, less than 0.3 seconds apart, is one step.
 
+## Gradient text and a boxed look
+
+- **Gradient fill.** In the **Fill** row of the **Text** section, click **Linear** or **Radial** instead of **Solid**. **Color** becomes **Top** and a **Bottom** row sets the second color.
+- **Box border.** With **Background** on, the **Border** toggle adds an outline to the box, with **Border width** and **Border color**.
+- **Box shadow.** The **Box shadow** toggle adds a shadow behind the box, with **Shadow offset** (X, Y), **Shadow blur** and **Shadow color**. These rows work on captions too, where a cue can turn the border off on its own.
+
 ## Related pages
 - [Fonts](fonts.md)
 - [Exporting your video](exporting-video.md)
@@ -322,4 +328,4 @@ Pressing <kbd>↑</kbd> or <kbd>↓</kbd> in a number field of the **Text** sect
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 - [Troubleshooting](troubleshooting.md)
 
-<sub>Last updated: Batch 52, 2026-10-19</sub>
+<sub>Last updated: Batch 58, 2026-11-07</sub>

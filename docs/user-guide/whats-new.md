@@ -2,6 +2,11 @@
 
 Shorts Editor grows in steps called batches. This page lists what each batch added that you can see or use, newest first. Follow the links for the full instructions.
 
+> **Video placeholder: What's new in Batch 58**
+> - File: `videos/whats-new/batch-58.mp4` (not recorded yet)
+> - Length: about 40 seconds
+> - Shows: select a solid; choose **Radial** in **Fill**; in the new **Frame** section turn **Stroke** **On**, click **Out** and **Dash**, then set **Shadow** to **Soft**; select a video clip and set **Radius** to `40` with a stroke and shadow; select a title, click **Linear** in **Fill** and turn on **Border** and **Box shadow**.
+
 > **Video placeholder: What's new in Batch 57**
 > - File: `videos/whats-new/batch-57.mp4` (not recorded yet)
 > - Length: about 20 seconds
@@ -243,6 +248,7 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 > - Shows: open a project with three clips on the timeline; press <kbd>Space</kbd> to play and let the timeline page forward; press <kbd>L</kbd> three times to reach 8x, then <kbd>K</kbd>; hold <kbd>K</kbd> and tap <kbd>L</kbd> to step one frame; turn on **Loop playback**; point at the **Dropped** readout in the status strip.
 
 ## In this page
+- [Batch 58: Borders, shadows, corners and gradients](#batch-58-borders-shadows-corners-and-gradients)
 - [Batch 57: Render and compare from the command line](#batch-57-render-and-compare-from-the-command-line)
 - [Batch 56: Open links, live reload and editable stand-ins](#batch-56-open-links-live-reload-and-editable-stand-ins)
 - [Batch 55: Projects completed by other tools](#batch-55-projects-completed-by-other-tools)
@@ -300,6 +306,12 @@ Shorts Editor grows in steps called batches. This page lists what each batch add
 - [Batch 03: Projects, autosave and recovery](#batch-03-projects-autosave-and-recovery)
 - [Batch 02: Undo, redo and frame-exact time](#batch-02-undo-redo-and-frame-exact-time)
 - [Batch 01: The workspace](#batch-01-the-workspace)
+
+## Batch 58: Borders, shadows, corners and gradients
+- Solids take **Linear** and **Radial** gradients, and text takes them too.
+- A new **Frame** section gives solids, videos and images a border (inside, middle or outside; solid, dashed or dotted), a hard or soft shadow, and rounded corners (one radius, or one per corner on solids).
+- Text and caption boxes get **Border** and **Box shadow** rows.
+- The preview and exports draw all of it the same way. See [Add a border, a shadow or rounded corners](shapes-and-images.md#add-a-border-a-shadow-or-rounded-corners) and [Gradient text and a boxed look](titles-and-text.md#gradient-text-and-a-boxed-look).
 
 ## Batch 57: Render and compare from the command line
 - Nothing changes inside the editor. Other programs can now render a project folder to an MP4 or to PNG frames with the same picture and sound as the **Export** tab, without opening the editor window.
@@ -881,4 +893,4 @@ See [The workspace](workspace.md) and [Getting started](getting-started.md).
 - [Adding media to the timeline](adding-media-to-the-timeline.md)
 - [Keyboard shortcuts](keyboard-shortcuts.md)
 
-<sub>Last updated: Batch 57, 2026-11-07</sub>
+<sub>Last updated: Batch 58, 2026-11-07</sub>
