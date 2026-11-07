@@ -18,6 +18,10 @@ export interface ProbeResult {
   audioCodec?: string;
   /** sampleRate is 0 when the container does not say (decodeAudioData resamples). */
   audio?: { channels: number; sampleRate: number };
+  /** A VP8/VP9 WebM with an alpha channel the decoder reads (Batch 64, spec §21.11). */
+  alpha?: true;
+  /** The codec of an alpha channel this app cannot decode (AV1, HEVC): the file imports opaque and the importer says why. */
+  alphaIgnored?: string;
   /** Animated images: frame durations in us. Not persisted: the preview decodes the frames again (ImageService, Batch 34). */
   frameDurationsUs?: number[];
 }

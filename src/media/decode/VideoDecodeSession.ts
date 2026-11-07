@@ -65,6 +65,8 @@ export interface ChunkInit {
   timestamp: number;
   duration: number;
   data: ArrayBuffer;
+  /** The frame's alpha stream (WebM with alpha, Batch 64); only an alpha-pairing decoder reads it. */
+  alpha?: ArrayBuffer;
 }
 
 /** The parts of a VideoDecoder the session uses; `decode` takes the chunk's fields. */
@@ -88,6 +90,8 @@ export interface DecoderCallbacks<F> {
 export interface SessionDeps<F extends DecodedFrame> {
   createDecoder(callbacks: DecoderCallbacks<F>): DecoderLike;
   readSample(offset: number, size: number): Promise<ArrayBuffer>;
+  /** Reads the alpha streams of an index that has them (Batch 64). */
+  readAlpha?(offset: number, size: number): Promise<ArrayBuffer>;
   /** A job starts while none was running / the last job ended. */
   onActive?(): void;
   onIdle?(): void;
@@ -471,13 +475,17 @@ export class VideoDecodeSession<F extends DecodedFrame = VideoFrame> {
     const { index } = this;
     const i = this.nextFeed;
     const decoder = this.decoder as DecoderLike;
-    const data = await this.deps.readSample(index.offsets[i] as number, index.sizes[i] as number);
+    const alphaSize = index.alphaSizes?.[i] ?? 0;
+    const [data, alpha] = await Promise.all([
+      this.deps.readSample(index.offsets[i] as number, index.sizes[i] as number),
+      alphaSize > 0 && this.deps.readAlpha ? this.deps.readAlpha((index.alphaOffsets as Float64Array)[i] as number, alphaSize) : undefined,
+    ]);
     // A seek, close or failure happened while reading: this sample belongs to an old run.
     if (this.decoder !== decoder || this.nextFeed !== i) return;
     const timestamp = index.timesUs[i] as number;
     const duration = Math.round(((index.durations[i] as number) * 1_000_000) / index.timescale);
     try {
-      decoder.decode({ type: index.sync[i] || i === index.syncBefore[i] ? "key" : "delta", timestamp, duration, data });
+      decoder.decode({ type: index.sync[i] || i === index.syncBefore[i] ? "key" : "delta", timestamp, duration, data, ...(alpha && { alpha }) });
     } catch (error) {
       // A refused chunk leaves the run unusable: the next request seeks.
       this.nextFeed = -1;

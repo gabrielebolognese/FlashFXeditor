@@ -3,6 +3,7 @@
 // through WorkerHost. Results carry transferables (ImageBitmap, VideoFrame, ArrayBuffer) only. A
 // request may also post `progress` values before its result (frames of a prefetch, the approximate
 // frame of a scrub, the bytes and progress of a proxy or an export).
+import type { Rational } from "../../core/document/types.js";
 import type { AudioJobParams, AudioJobResult, ExportJobParams, ExportJobResult, ExportProgress } from "../../export/job.js";
 import type { Lod } from "../cache/TexturePool.js";
 import type { ThumbSheetParams, ThumbSheetResult } from "../decode/thumbSheet.js";
@@ -35,6 +36,17 @@ export type FramePriority = "scrub" | "playback" | "idle";
 
 export const FRAME_PRIORITY_RANK: Record<FramePriority, number> = { scrub: 0, playback: 1, idle: 2 };
 
+/**
+ * An image sequence opened as a video (Batch 64): its frame files in order, the rate and the picture
+ * size. `file` of the request is the first frame.
+ */
+export interface OpenSequence {
+  frames: File[];
+  fps: Rational;
+  width: number;
+  height: number;
+}
+
 /** A video opened for frame requests. */
 export interface VideoInfo {
   /** Frame times in display order: integer us of the container cts (edit lists not applied). */
@@ -59,6 +71,10 @@ export interface OpenVideoResult {
 /** A decoded frame posted to the main thread, which uploads and closes it at once (P5, P13). */
 export interface DeliveredFrame {
   frame: VideoFrame;
+  /** The frame's alpha channel (VP8/VP9 WebM with alpha, Batch 64): one byte per pixel, transferred. */
+  alphaPlane?: ArrayBuffer;
+  alphaWidth?: number;
+  alphaHeight?: number;
   /** The frame's time (us), a value of `VideoInfo.frameTimesUs`. */
   timeUs: number;
   /**
@@ -188,7 +204,7 @@ export interface WorkerMethods {
   /** The filmstrip of an animated image for the timeline. */
   animationStrip: { params: { blob: Blob; type: string; cellHeight: number; maxCells: number }; result: AnimationStrip };
   /** Loads (cachedIndex) or builds the sample index of a video and checks that it can be decoded. */
-  openVideo: { params: { mediaId: string; lod: Lod; file: File; cachedIndex: Blob | null }; result: OpenVideoResult };
+  openVideo: { params: { mediaId: string; lod: Lod; file: File; cachedIndex: Blob | null; sequence?: OpenSequence }; result: OpenVideoResult };
   /** The frame shown at `timeUs`. Scrubs far from a keyframe post the keyframe first as progress. */
   requestFrame: { params: { mediaId: string; lod: Lod; timeUs: number; priority: FramePriority }; result: DeliveredFrame; progress: DeliveredFrame };
   /** Decodes the frames shown in [fromUs, toUs] and posts each one (every `stride`-th) as progress. */

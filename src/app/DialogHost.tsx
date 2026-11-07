@@ -1,4 +1,4 @@
-import { Check, FolderPlus, History, KeyRound, Trash2, TriangleAlert } from "lucide-react";
+import { Check, Film, FolderPlus, History, KeyRound, Trash2, TriangleAlert } from "lucide-react";
 import { useCallback, useState } from "react";
 import { useStoreSelector } from "../core/store/useStoreSelector.js";
 import type { FsDir } from "../project/fs.js";
@@ -16,12 +16,14 @@ import { documentStore, templateStore } from "./services.js";
 import { ClearCacheDialog, DiscardChangesDialog, FrameRateDialog, HistoryDialog, MakeEditableDialog, ResolutionDialog, SaveTemplateDialog } from "./ProjectDialogs.js";
 import { TranscribeDialogs } from "../panels/media/TranscribeDialog.js";
 import styles from "./DialogHost.module.css";
-import { cancelRemove, clipsUsing, confirmRemove, copiedCount, mediaPanel, type MediaPanelState } from "./mediaController.js";
+import { answerSequence, cancelRemove, clipsUsing, confirmRemove, copiedCount, mediaPanel, type MediaPanelState, type SequenceOffer } from "./mediaController.js";
+import { sequenceQuestion } from "../media/sequence.js";
 import { appView, closeDialog, confirmNewProject, keepSavedVersion, restoreRecovery, retryOpen, type Dialog } from "./projectController.js";
 
 const selectDialog = (view: { dialog: Dialog | null }) => view.dialog;
 const selectBusy = (view: { busy: boolean }) => view.busy;
 const selectRemoving = (state: MediaPanelState) => state.removing;
+const selectSequenceOffer = (state: MediaPanelState) => state.sequenceOffer;
 
 const RESOLUTION_OPTIONS = [...RESOLUTION_PRESETS.map((p) => ({ value: p.id, label: p.label })), { value: CUSTOM_RESOLUTION, label: "Custom" }];
 const FPS_OPTIONS = FRAME_RATES.map((fps) => ({ value: fpsKey(fps), label: `${formatFps(fps)} fps` }));
@@ -193,6 +195,43 @@ function ErrorDialog({ title, message, issues }: { title: string; message: strin
 }
 
 /**
+ * A folder of numbered PNG or WebP frames was dropped (Batch 64, spec §21.11): "Import as image sequence (N frames) at <fps>?",
+ * the rate chosen here (the project's by default), or the files as separate images.
+ */
+function SequenceDialog({ offer }: { offer: SequenceOffer }) {
+  const [fps, setFps] = useState(fpsKey(offer.fps));
+  const choose = () => answerSequence({ kind: "sequence", fps: parseFpsKey(fps) ?? offer.fps });
+  return (
+    <Modal
+      title="Image sequence"
+      icon={Film}
+      size="md"
+      onClose={() => answerSequence({ kind: "cancel" })}
+      footer={
+        <>
+          <Button control onClick={() => answerSequence({ kind: "images" })}>
+            Import as separate images
+          </Button>
+          <Button control variant="primary" autoFocus onClick={choose}>
+            Import as sequence
+          </Button>
+        </>
+      }
+    >
+      <p className={styles.text}>
+        <span className={styles.folder}>{offer.name}</span>
+      </p>
+      <p className={styles.text}>{sequenceQuestion(offer.frames, `${formatFps(parseFpsKey(fps) ?? offer.fps)} fps`)}</p>
+      <div className={styles.form}>
+        <span className={styles.label}>Frame rate</span>
+        <Select value={fps} options={fpsChoices(fps)} onChange={setFps} label="Frame rate" />
+      </div>
+      <p className={styles.note}>The frames are copied into the project's media folder and play as one clip, which loops when it is longer than the sequence.</p>
+    </Modal>
+  );
+}
+
+/**
  * Delete in the media panel (spec §12): "Remove from project" (used media leave their clips offline,
  * a gray slate) or "Remove and delete clips", and a checkbox that deletes the copied files from media/.
  */
@@ -246,7 +285,8 @@ function RemoveMediaDialog({ ids }: { ids: readonly MediaId[] }) {
 export function DialogHost() {
   const dialog = useStoreSelector(appView, selectDialog);
   const removing = useStoreSelector(mediaPanel, selectRemoving);
-  if (!dialog) return removing ? <RemoveMediaDialog ids={removing} /> : <TranscribeDialogs />;
+  const sequenceOffer = useStoreSelector(mediaPanel, selectSequenceOffer);
+  if (!dialog) return sequenceOffer ? <SequenceDialog offer={sequenceOffer} /> : removing ? <RemoveMediaDialog ids={removing} /> : <TranscribeDialogs />;
   switch (dialog.kind) {
     case "newProject":
       return <NewProjectDialog dir={dialog.dir} initialTemplate={dialog.template} />;

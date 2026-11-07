@@ -34,8 +34,8 @@ describe("capabilities.json (spec §21.2)", () => {
     expect(media).toEqual([...ACCEPTED_EXTENSIONS].sort());
   });
 
-  it("has schemaVersion 8 and the Batch 54 to 62 keys true, the keys of later batches false", () => {
-    expect(manifest.schemaVersion).toBe(8);
+  it("has schemaVersion 9 and the Batch 54 to 64 keys true, the keys of later batches false", () => {
+    expect(manifest.schemaVersion).toBe(9);
     expect(manifest.manifestVersion).toBe(MANIFEST_VERSION);
     expect(manifest.lastBatch).toBe(LAST_BATCH);
     expect(manifest.cli).toEqual({ validate: true, normalize: true, info: true, render: true, compare: true });
@@ -45,7 +45,7 @@ describe("capabilities.json (spec §21.2)", () => {
 
   it("keeps every other key of the v1.1.0 manifest of §21.2", () => {
     expect(manifest.project).toEqual({ file: "project.json", fontsManifest: "fonts/fonts.json", fontsManifestVersion: 2, sampleRate: 48000 });
-    expect(manifest.media).toMatchObject({ video: ["mp4", "mov", "m4v", "webm"], audio: ["mp3", "m4a", "aac", "wav", "ogg"], image: ["png", "jpg", "jpeg", "webp", "gif", "svg"], videoAlpha: false });
+    expect(manifest.media).toMatchObject({ video: ["mp4", "mov", "m4v", "webm"], audio: ["mp3", "m4a", "aac", "wav", "ogg"], image: ["png", "jpg", "jpeg", "webp", "gif", "svg"], videoAlpha: true, imageSequence: true });
     expect(manifest.media.animatedImage).toEqual({ formats: ["gif", "webp"], alpha: true, maxSide: 2048, textureBudgetBytes: 134217728 });
     expect(manifest.captions).toMatchObject({ perCueStyle: true, wordEmphasis: true, cueAnims: ["fade", "pop", "slideUp", "slideDown"], boxModes: ["line", "block", "word"], wordsImport: true });
     expect(manifest.text.background).toEqual({ modes: ["line", "block", "word"], stroke: true, shadow: true });

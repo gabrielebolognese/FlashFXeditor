@@ -331,8 +331,10 @@ void main() {
 `;
 
 /** See SCALE_WGSL in shaders.ts: the frame (uploaded whole into a scratch texture) drawn smaller. */
-export const SCALE_FRAGMENT = /* glsl */ `${HEADER}${FOOTPRINT_TAPS}
+function scaleFragment(alpha: boolean): string {
+  return /* glsl */ `${HEADER}${FOOTPRINT_TAPS}
 uniform sampler2D u_source;
+${alpha ? "uniform sampler2D u_alpha;" : ""}
 in vec2 v_uv;
 out vec4 outColor;
 
@@ -347,9 +349,23 @@ void main() {
     + texture(u_source, v_uv + ox - oy)
     + texture(u_source, v_uv - ox + oy)
     + texture(u_source, v_uv + ox + oy);
-  outColor = vec4(sum.rgb * 0.25, 1.0);
+${
+  alpha
+    ? `  // The alpha channel of a WebM with alpha (Batch 64): an R8 texture on unit 1, the same taps; the color is premultiplied by it.
+  float a = (texture(u_alpha, v_uv - ox - oy).r
+    + texture(u_alpha, v_uv + ox - oy).r
+    + texture(u_alpha, v_uv - ox + oy).r
+    + texture(u_alpha, v_uv + ox + oy).r) * 0.25;
+  outColor = vec4(sum.rgb * 0.25 * a, a);`
+    : "  outColor = vec4(sum.rgb * 0.25, 1.0);"
+}
 }
 `;
+}
+
+export const SCALE_FRAGMENT = scaleFragment(false);
+/** SCALE_FRAGMENT with the alpha plane of a video with alpha multiplied in (sampler u_alpha, unit 1). */
+export const SCALE_ALPHA_FRAGMENT = scaleFragment(true);
 
 /** See BLUR_WGSL in shaders.ts: one pass of the separable Gaussian. */
 export const BLUR_FRAGMENT = /* glsl */ `${HEADER}

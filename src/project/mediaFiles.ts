@@ -67,6 +67,25 @@ export async function resolveFile(root: FsDir, relPath: string): Promise<File | 
   return found ? found[0].getFile(found[1]) : null;
 }
 
+/** How many frame files are opened at once when a sequence's files are gathered. */
+const SEQUENCE_OPEN_BATCH = 24;
+
+/**
+ * The frame files of an image sequence, in order (Batch 64). A missing frame fails the whole sequence
+ * with its name: a hole would play as a frozen frame.
+ */
+export async function resolveSequenceFiles(root: FsDir, paths: readonly string[]): Promise<File[]> {
+  const files: File[] = [];
+  for (let at = 0; at < paths.length; at += SEQUENCE_OPEN_BATCH) {
+    const part = await Promise.all(paths.slice(at, at + SEQUENCE_OPEN_BATCH).map((path) => resolveFile(root, path).catch(() => null)));
+    for (const [i, file] of part.entries()) {
+      if (!file) throw new Error(`The sequence frame ${paths[at + i]} is missing`);
+      files.push(file);
+    }
+  }
+  return files;
+}
+
 /** Writes a blob at a project-relative path, creating folders on the way. */
 export async function writeFileAt(root: FsDir, relPath: string, data: Blob, options?: WriteFileOptions): Promise<void> {
   const found = await locate(root, relPath, true);

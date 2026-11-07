@@ -28,6 +28,7 @@ export type Migration = (raw: JsonObject) => JsonObject;
  *   and `.shadow`; gradient fills with stops (all optional or a new `Fill` shape): older projects open unchanged.
  * - 5 -> 6 (Batch 59): caption highlight modes `progressive` and `reveal`, `emphasisColor`, `CaptionWord.emphasis` and `.color`,
  *   `CaptionStyle.anim` (and in overrides), background mode `word` (all optional or new values): older projects open unchanged.
+ * - 8 -> 9 (Batch 64): `MediaItem.alpha` and `MediaItem.sequence` (both optional): older projects open unchanged.
  * - 7 -> 8 (Batch 62): `sequences` (empty) and the `compound` clip kind: older projects open unchanged.
  * - 6 -> 7 (Batch 60): the 30 Penner eases, `bezier` and `spring` on keys, vector (color) key values and the keyframe
  *   properties of spec §21.9 (all new values of existing fields): older projects open unchanged.
@@ -53,6 +54,8 @@ export const MIGRATIONS: Readonly<Record<number, Migration>> = {
   6: (raw) => raw,
   // 7 -> 8 (Batch 62): nested sequences: none in an older project.
   7: (raw) => ({ ...raw, sequences: isObject(raw.sequences) ? raw.sequences : {} }),
+  // 8 -> 9 (Batch 64): alpha video and image sequences: none in an older project.
+  8: (raw) => raw,
 };
 
 function isObject(value: unknown): value is JsonObject {

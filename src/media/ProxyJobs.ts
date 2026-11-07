@@ -77,7 +77,7 @@ interface Running {
 /** Files of interrupted jobs: the part file and the browser's swap file of a writable stream. */
 const LEFTOVER = /\.(part|crswap)$/;
 
-const isVideo = (item: MediaItem | undefined): item is MediaItem => item?.kind === "video" && Boolean(item.width && item.height);
+const isVideo = (item: MediaItem | undefined): item is MediaItem => item?.kind === "video" && Boolean(item.width && item.height) && !item.alpha;
 
 export class ProxyJobs {
   readonly progress: Store<ProxyProgress> = createStore<ProxyProgress>({ mediaId: null, fraction: 0 });

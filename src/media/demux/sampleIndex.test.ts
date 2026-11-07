@@ -139,6 +139,20 @@ describe("sample index file", () => {
     }
   });
 
+  it("keeps the alpha stream locations of a WebM with alpha (index version 2)", () => {
+    const base = table([{ cts: 0, sync: true }, { cts: 1 }]);
+    const withAlpha = createSampleIndex({ ...base, alphaOffsets: Float64Array.from([1000, 0]), alphaSizes: Uint32Array.from([40, 0]) });
+    const back = readSampleIndex(writeSampleIndex(withAlpha, stamp), stamp) as SampleIndex;
+    expect(Array.from(back.alphaOffsets ?? [])).toEqual([1000, 0]);
+    expect(Array.from(back.alphaSizes ?? [])).toEqual([40, 0]);
+    const plain = readSampleIndex(writeSampleIndex(createSampleIndex(base), stamp), stamp) as SampleIndex;
+    expect(plain.alphaOffsets).toBeUndefined();
+    // A file written before alpha existed (version 1) is rebuilt, not read.
+    const old = writeSampleIndex(createSampleIndex(base), stamp).slice(0);
+    new DataView(old).setUint32(4, 1, true);
+    expect(readSampleIndex(old, stamp)).toBeNull();
+  });
+
   it("rejects an index of another version of the file, or a damaged one", () => {
     const index = createSampleIndex(table([{ cts: 0, sync: true }, { cts: 2 }, { cts: 1 }]));
     const bytes = writeSampleIndex(index, stamp);

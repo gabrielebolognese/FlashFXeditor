@@ -46,6 +46,7 @@ export const ID = {
   Video: 0xe0,
   PixelWidth: 0xb0,
   PixelHeight: 0xba,
+  AlphaMode: 0x55c0,
   Audio: 0xe1,
   SamplingFrequency: 0xb5,
   Channels: 0x9f,
@@ -55,6 +56,10 @@ export const ID = {
   BlockGroup: 0xa0,
   Block: 0xa1,
   BlockDuration: 0x9b,
+  BlockAdditions: 0x75a1,
+  BlockMore: 0xa6,
+  BlockAddID: 0xee,
+  BlockAdditional: 0xa5,
   ReferenceBlock: 0xfb,
   Cues: 0x1c53bb6b,
   Tags: 0x1254c367,
@@ -85,6 +90,8 @@ export interface WebmTrack {
 export interface WebmVideoTrack extends WebmTrack {
   width: number;
   height: number;
+  /** The track flag AlphaMode is 1: the alpha stream sits in the blocks' BlockAdditions (Batch 64). */
+  alphaMode: boolean;
 }
 
 export interface WebmAudioTrack extends WebmTrack {
@@ -100,6 +107,9 @@ export interface WebmVideo {
   sizes: number[];
   times: number[];
   keys: boolean[];
+  /** Per frame: payload offset and size of its alpha stream (BlockAddID 1); size 0 when the frame has none. Empty unless some frame has one. */
+  alphaOffsets: number[];
+  alphaSizes: number[];
   /** BlockDuration of the last frame (ticks), when it has one. */
   lastDuration: number | null;
   /** The start of the first key frame (its codec header). */
@@ -143,6 +153,7 @@ function timeBase(scale: number): { timescale: number; toTicks: (raw: number) =>
 }
 
 function parseTrack(bytes: Uint8Array, at: number, size: number): { type: number; enabled: boolean; encoded: boolean; video: WebmVideoTrack; audio: WebmAudioTrack } {
+  let alphaMode = false;
   let type = 0;
   let enabled = true;
   let encoded = false;
@@ -178,6 +189,7 @@ function parseTrack(bytes: Uint8Array, at: number, size: number): { type: number
         for (const v of children(bytes, child.at, child.at + child.size)) {
           if (v.id === ID.PixelWidth) width = readUint(bytes, v.at, v.size);
           else if (v.id === ID.PixelHeight) height = readUint(bytes, v.at, v.size);
+          else if (v.id === ID.AlphaMode) alphaMode = readUint(bytes, v.at, v.size) === 1;
         }
         break;
       case ID.Audio:
@@ -188,7 +200,7 @@ function parseTrack(bytes: Uint8Array, at: number, size: number): { type: number
         break;
     }
   }
-  return { type, enabled, encoded, video: { ...base, width, height }, audio: { ...base, channels, sampleRate } };
+  return { type, enabled, encoded, video: { ...base, width, height, alphaMode }, audio: { ...base, channels, sampleRate } };
 }
 
 /** The demuxer's state while it walks the clusters. */
@@ -224,7 +236,7 @@ class Scan {
       if (!track.enabled) continue;
       if (track.type === 1 && !this.video) {
         if (track.encoded) throw new ProbeError("The video track of this WebM file is compressed or encrypted");
-        this.video = { track: track.video, offsets: [], sizes: [], times: [], keys: [], lastDuration: null, keyFrame: null };
+        this.video = { track: track.video, offsets: [], sizes: [], times: [], keys: [], alphaOffsets: [], alphaSizes: [], lastDuration: null, keyFrame: null };
       } else if (track.type === 2 && !this.audio) {
         this.audio = { track: track.audio, offsets: [], sizes: [], times: [], laced: false, start: Infinity, end: -Infinity };
       }
@@ -245,7 +257,7 @@ class Scan {
       // A recording cut short: its last block is incomplete.
       if (data + header.size > this.reader.size) return null;
       if (header.id === ID.Timestamp) clusterTime = readUint(await this.reader.view(data, header.size), 0, header.size);
-      else if (header.id === ID.SimpleBlock) await this.block(data, header.size, clusterTime, null, null);
+      else if (header.id === ID.SimpleBlock) await this.block(data, header.size, clusterTime, null, null, null);
       else if (header.id === ID.BlockGroup) await this.blockGroup(data, header.size, clusterTime);
       at = data + header.size;
     }
@@ -256,6 +268,7 @@ class Scan {
     let block: { at: number; size: number } | null = null;
     let duration: number | null = null;
     let referenced = false;
+    let alpha: { at: number; size: number } | null = null;
     for (let at = offset; at < offset + size; ) {
       const header = await this.reader.header(at);
       if (!header || header.size === UNKNOWN_SIZE) throw unreadable("damaged block group");
@@ -263,13 +276,39 @@ class Scan {
       if (header.id === ID.Block) block = { at: data, size: header.size };
       else if (header.id === ID.BlockDuration) duration = readUint(await this.reader.view(data, header.size), 0, header.size);
       else if (header.id === ID.ReferenceBlock) referenced = true;
+      else if (header.id === ID.BlockAdditions) alpha = (await this.additionOf(data, header.size)) ?? alpha;
       at = data + header.size;
     }
-    if (block) await this.block(block.at, block.size, clusterTime, !referenced, duration);
+    if (block) await this.block(block.at, block.size, clusterTime, !referenced, duration, alpha);
+  }
+
+  /** The BlockAdditional with BlockAddID 1 (the alpha stream; the default id is 1) inside a BlockAdditions element. */
+  private async additionOf(offset: number, size: number): Promise<{ at: number; size: number } | null> {
+    let found: { at: number; size: number } | null = null;
+    for (let at = offset; at < offset + size; ) {
+      const more = await this.reader.header(at);
+      if (!more || more.size === UNKNOWN_SIZE) throw unreadable("damaged block additions");
+      const body = at + more.headerLength;
+      if (more.id === ID.BlockMore) {
+        let id = 1;
+        let payload: { at: number; size: number } | null = null;
+        for (let inner = body; inner < body + more.size; ) {
+          const part = await this.reader.header(inner);
+          if (!part || part.size === UNKNOWN_SIZE) throw unreadable("damaged block addition");
+          const partBody = inner + part.headerLength;
+          if (part.id === ID.BlockAddID) id = readUint(await this.reader.view(partBody, part.size), 0, part.size);
+          else if (part.id === ID.BlockAdditional) payload = { at: partBody, size: part.size };
+          inner = partBody + part.size;
+        }
+        if (id === 1 && payload) found = payload;
+      }
+      at = body + more.size;
+    }
+    return found;
   }
 
   /** `groupKey`: a Block's key state (it references no other frame); null for a SimpleBlock, whose flags say. */
-  private async block(offset: number, size: number, clusterTime: number, groupKey: boolean | null, duration: number | null): Promise<void> {
+  private async block(offset: number, size: number, clusterTime: number, groupKey: boolean | null, duration: number | null, alpha: { at: number; size: number } | null): Promise<void> {
     const head = await this.reader.view(offset, Math.min(size, BLOCK_HEADER_BYTES));
     const track = readVint(head, 0);
     if (!track || track[0] === UNKNOWN_SIZE || head.length < track[1] + 3) throw unreadable("damaged block header");
@@ -285,6 +324,15 @@ class Scan {
       video.times.push(time);
       const isKey = groupKey ?? (flags & 0x80) !== 0;
       video.keys.push(isKey);
+      if (alpha || video.alphaOffsets.length > 0) {
+        // Frames before the first alpha one get size 0 (opaque).
+        while (video.alphaOffsets.length < video.offsets.length - 1) {
+          video.alphaOffsets.push(0);
+          video.alphaSizes.push(0);
+        }
+        video.alphaOffsets.push(alpha?.at ?? 0);
+        video.alphaSizes.push(alpha?.size ?? 0);
+      }
       video.lastDuration = duration === null ? null : this.toTicks(duration);
       if (isKey && !video.keyFrame) video.keyFrame = (await this.reader.view(offset + headerBytes, Math.min(size - headerBytes, KEY_FRAME_BYTES))).slice();
     } else if (audio && number === audio.track.number) {
@@ -350,6 +398,23 @@ export async function readWebm(source: RangeReader, signal?: AbortSignal, window
   return { docType: scan.docType, timescale, video: scan.video, audio };
 }
 
+/**
+ * Alpha the app decodes: a VP8 or VP9 track whose blocks carry alpha streams (Batch 64, spec §21.11).
+ * The AlphaMode element is not required: ffmpeg flags alpha with an ALPHA_MODE tag instead, and a block with
+ * BlockAddID 1 is the alpha stream of VP8 and VP9 either way.
+ */
+export function webmHasAlpha(file: WebmFile): boolean {
+  const video = file.video;
+  if (!video || !video.alphaSizes.some((size) => size > 0)) return false;
+  return video.track.codecId === "V_VP8" || video.track.codecId === "V_VP9";
+}
+
+/** The codec family of alpha the app cannot decode (AV1 flagged AlphaMode), or null. */
+export function webmIgnoredAlpha(file: WebmFile): string | null {
+  const video = file.video;
+  return video && video.track.alphaMode && video.track.codecId === "V_AV1" ? "AV1" : null;
+}
+
 /** The video track as a sample table (spec §9.2 format), with its frame rate and duration. */
 export function webmVideoTable(file: WebmFile): { table: SampleTable; fps: Rational | null; durationUs: number } {
   const video = file.video;
@@ -388,6 +453,12 @@ export function webmVideoTable(file: WebmFile): { table: SampleTable; fps: Ratio
     durations,
     sync: Uint8Array.from(video.keys, (key) => (key ? 1 : 0)),
   };
+  if (webmHasAlpha(file)) {
+    table.alphaOffsets = new Float64Array(count);
+    table.alphaSizes = new Uint32Array(count);
+    table.alphaOffsets.set(video.alphaOffsets.slice(0, count));
+    table.alphaSizes.set(video.alphaSizes.slice(0, count));
+  }
   const durationUs = ticksToUs((cts[last] as number) + (durations[last] as number) - (cts[first] as number), timescale);
   return { table, fps, durationUs };
 }
@@ -455,7 +526,7 @@ export function webmProbeResult(file: WebmFile): ProbeResult {
   const audioFields = audio ? { audioCodec: audioCodec(audio.track.codecId), audio: { channels: audio.track.channels, sampleRate: audio.track.sampleRate } } : {};
   if (file.video) {
     const { table, fps, durationUs } = webmVideoTable(file);
-    return { kind: "video", durationUs, width: table.codedWidth, height: table.codedHeight, rotation: 0, ...(fps && { fps }), hasAudio: audio !== null, codec: table.codec, ...audioFields };
+    return { kind: "video", durationUs, width: table.codedWidth, height: table.codedHeight, rotation: 0, ...(fps && { fps }), hasAudio: audio !== null, codec: table.codec, ...(webmHasAlpha(file) && { alpha: true }), ...(webmIgnoredAlpha(file) && { alphaIgnored: "AV1" }), ...audioFields };
   }
   if (audio) return { kind: "audio", durationUs: ticksToUs(Math.max(0, audio.end - audio.start), file.timescale), hasAudio: true, ...audioFields };
   throw new ProbeError("The file has no video or audio track");

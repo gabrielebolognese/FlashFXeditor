@@ -16,14 +16,14 @@ import type { DrawList } from "../compositor/drawList.js";
 import { IDENTITY, mutableIdentity, setMat, type Mat3, type MutableMat3 } from "../mat3.js";
 import type { BackendRenderer } from "./backend.js";
 import { blurRegionInto, DrawRecords, premultipliedInto, setRect, showBlurred, type BlurRegion, type RecordKind } from "./drawRecords.js";
-import { fitWithin } from "./fitWithin.js";
+import { fitWithin, hasAlphaFormat } from "./fitWithin.js";
 import type { GpuDevice } from "./GpuDevice.js";
 import { isHdrColorSpace, toneMapToCanvas } from "./hdr.js";
 import { layerFloats, LAYER_SIZE, LAYER_STRIDE, packLayer, packMat3, pixelsToClipInto, VIEW_SIZE } from "./layerUniforms.js";
 import { generateMipmaps, mipLevelCount, textureBytes, type MipGenerator } from "./mipmaps.js";
 import { paddedBytesPerRow, unpadAndUnpremultiply } from "./readback.js";
-import type { CanvasTarget, DeviceEvent, OffscreenTarget, Pane, RenderTarget, TextureHandle, TextureOptions, Viewport } from "./renderer.js";
-import { BLUR_WGSL, DISSOLVE_WGSL, MIPMAP_WGSL, SCALE_WGSL, SOLID_WGSL, TEXTURED_WGSL } from "./shaders.js";
+import type { AlphaPlane, CanvasTarget, DeviceEvent, OffscreenTarget, Pane, RenderTarget, TextureHandle, TextureOptions, Viewport } from "./renderer.js";
+import { BLUR_WGSL, DISSOLVE_WGSL, MIPMAP_WGSL, SCALE_ALPHA_WGSL, SCALE_WGSL, SOLID_WGSL, TEXTURED_WGSL } from "./shaders.js";
 
 /** Textures, offscreen targets and mip levels are rgba8 (spec §9.3); canvases use the preferred format. */
 const TEXTURE_FORMAT: GPUTextureFormat = "rgba8unorm";
@@ -58,6 +58,8 @@ interface DeviceResources {
   mips: MipGenerator;
   /** Draws a video frame into a smaller texture (`TextureOptions.maxSize`). */
   scaler: { pipeline: GPURenderPipeline; layout: GPUBindGroupLayout; sampler: GPUSampler };
+  /** The scaler with an alpha plane multiplied in (Batch 64); built on the first video with alpha. */
+  scalerAlpha?: { pipeline: GPURenderPipeline; layout: GPUBindGroupLayout };
   /** The blur passes: pipeline, uniforms (one 256-byte slot per pass), pooled textures. */
   blur: { pipeline: GPURenderPipeline; layout: GPUBindGroupLayout; buffer: GPUBuffer; capacity: number; group: GPUBindGroup; pool: { texture: GpuTexture; used: number }[] };
   viewBuffer: GPUBuffer;
@@ -246,9 +248,12 @@ export class WebGpuRenderer implements BackendRenderer {
   uploadVideoFrame(frame: VideoFrame, options: TextureOptions = {}): TextureHandle {
     try {
       const res = this.require();
-      const { width, height } = fitWithin(frame.displayWidth, frame.displayHeight, options.maxSize);
+      // An RGBA frame (an image sequence's, Batch 64) keeps its alpha only through a plain copy: the scaler's external texture would drop it.
+      const { width, height } = hasAlphaFormat(frame) ? { width: frame.displayWidth, height: frame.displayHeight } : fitWithin(frame.displayWidth, frame.displayHeight, options.maxSize);
       const into = this.spareFor(res, width, height);
-      const texture = isHdrColorSpace(frame.colorSpace)
+      const texture = options.alpha
+        ? this.scaleIn(res, frame, width, height, options, into, options.alpha)
+        : isHdrColorSpace(frame.colorSpace)
         ? this.toneMapIn(res, frame, width, height, options, into)
         : width === frame.displayWidth && height === frame.displayHeight
           ? this.copyIn(res, frame, width, height, { mipmaps: false, ...options }, into, this.recycleFrame)
@@ -548,18 +553,23 @@ export class WebGpuRenderer implements BackendRenderer {
    * texture) and drawn once, which costs far less than copying it at full size (4K HEVC on an RDNA2
    * GPU: 70 decoded frames/s scaled to 1080p, 56 copied at 4K, 103 decoded and dropped).
    */
-  private scaleIn(res: DeviceResources, frame: VideoFrame, width: number, height: number, options: TextureOptions, into: GpuTexture | null): GpuTexture {
+  private scaleIn(res: DeviceResources, frame: VideoFrame, width: number, height: number, options: TextureOptions, into: GpuTexture | null, alpha?: AlphaPlane): GpuTexture {
     const texture = into ?? this.newTexture(res, width, height, { ...options, mipmaps: false }, this.recycleFrame);
+    let alphaTexture: GPUTexture | null = null;
     try {
-      const { scaler, device } = res;
+      const { device } = res;
+      const scaler = alpha ? this.alphaScaler(res) : res.scaler;
       const source = device.importExternalTexture({ source: frame });
-      const bindGroup = device.createBindGroup({
-        layout: scaler.layout,
-        entries: [
-          { binding: 0, resource: scaler.sampler },
-          { binding: 1, resource: source },
-        ],
-      });
+      const entries: GPUBindGroupEntry[] = [
+        { binding: 0, resource: res.scaler.sampler },
+        { binding: 1, resource: source },
+      ];
+      if (alpha) {
+        alphaTexture = device.createTexture({ label: "alpha plane", size: [alpha.width, alpha.height], format: "r8unorm", usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST });
+        device.queue.writeTexture({ texture: alphaTexture }, alpha.data, { bytesPerRow: alpha.width }, [alpha.width, alpha.height]);
+        entries.push({ binding: 2, resource: alphaTexture.createView() });
+      }
+      const bindGroup = device.createBindGroup({ layout: scaler.layout, entries });
       const encoder = device.createCommandEncoder({ label: "scale frame" });
       const pass = encoder.beginRenderPass({ colorAttachments: [{ view: texture.view, loadOp: "clear", storeOp: "store", clearValue: [0, 0, 0, 1] }] });
       pass.setPipeline(scaler.pipeline);
@@ -568,11 +578,38 @@ export class WebGpuRenderer implements BackendRenderer {
       pass.end();
       // Submitted before the frame is closed: the queued work keeps the picture alive.
       device.queue.submit([encoder.finish()]);
+      // destroy() waits for the submitted work that uses the texture.
+      alphaTexture?.destroy();
     } catch (error) {
+      alphaTexture?.destroy();
       texture.destroy();
       throw error;
     }
     return texture;
+  }
+
+  /** The scaler pipeline with the alpha plane (binding 2), built on first use. */
+  private alphaScaler(res: DeviceResources): { pipeline: GPURenderPipeline; layout: GPUBindGroupLayout } {
+    if (res.scalerAlpha) return res.scalerAlpha;
+    const { device } = res;
+    const layout = device.createBindGroupLayout({
+      label: "scale source with alpha",
+      entries: [
+        { binding: 0, visibility: GPUShaderStage.FRAGMENT, sampler: { type: "filtering" } },
+        { binding: 1, visibility: GPUShaderStage.FRAGMENT, externalTexture: {} },
+        { binding: 2, visibility: GPUShaderStage.FRAGMENT, texture: { sampleType: "float" } },
+      ],
+    });
+    const module = device.createShaderModule({ label: "scale alpha", code: SCALE_ALPHA_WGSL });
+    const pipeline = device.createRenderPipeline({
+      label: "scale frame with alpha",
+      layout: device.createPipelineLayout({ label: "scale alpha", bindGroupLayouts: [layout] }),
+      vertex: { module, entryPoint: "vs" },
+      fragment: { module, entryPoint: "fs", targets: [{ format: TEXTURE_FORMAT }] },
+      primitive: { topology: "triangle-list" },
+    });
+    res.scalerAlpha = { pipeline, layout };
+    return res.scalerAlpha;
   }
 
   /**

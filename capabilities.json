@@ -2,8 +2,8 @@
   "manifestVersion": 1,
   "app": "shorts-editor",
   "appVersion": "1.1.0",
-  "lastBatch": 62,
-  "schemaVersion": 8,
+  "lastBatch": 64,
+  "schemaVersion": 9,
   "project": {
     "file": "project.json",
     "fontsManifest": "fonts/fonts.json",
@@ -41,8 +41,8 @@
       "maxSide": 2048,
       "textureBudgetBytes": 134217728
     },
-    "videoAlpha": false,
-    "imageSequence": false,
+    "videoAlpha": true,
+    "imageSequence": true,
     "lottie": false
   },
   "trackKinds": [

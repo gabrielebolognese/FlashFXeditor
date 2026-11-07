@@ -386,6 +386,45 @@ A compound clip is a `compound` clip on a **video** track of the project (or of 
 
 `background` is `null` for a transparent sequence. `fixtures/interop/compound` is a complete project: a card sequence (solid, text and audio) shown twice, one instance windowed with `offset`, and a second sequence that nests the card. Audio inside a compound plays and exports through the compound's `volume`; the compound's fades and a sequence's transitions do not touch its audio in this version.
 
+### 5.4 Alpha video and image sequences (manifest keys `media.videoAlpha`, `media.imageSequence`; schema 9)
+
+Transparent animated overlays from any renderer play natively, in the preview, the export and `cli render`, on both backends.
+
+**Alpha WebM.** A VP8 or VP9 WebM whose blocks carry the alpha stream (Matroska BlockAdditions, BlockAddID 1; ffmpeg also flags the track with an ALPHA_MODE tag) imports as a video with `"alpha": true`. The transparency is exact; the clip composites like any layer (opacity, transform, blend). Make one with ffmpeg:
+
+```
+ffmpeg -i in.mov -c:v libvpx-vp9 -pix_fmt yuva420p -b:v 0 -crf 24 -auto-alt-ref 0 out.webm
+```
+
+`-auto-alt-ref 0` is required: with hidden alternate-reference frames libvpx writes no alpha for them and the stream cannot be decoded frame by frame. Alpha media gets no proxy (a proxy would lose the transparency); the Media tab shows a "no proxy" chip. A WebM with AV1 alpha, and an MP4 or MOV with HEVC or AV1 alpha, import opaque and the editor tells you so with a toast. ProRes (4444 or not) is refused: convert it to VP9 alpha WebM or to a PNG sequence with the commands here.
+
+**Image sequence.** Numbered PNG or WebP files of one size become one `image` media item with a `sequence` record: `dir` (a folder inside the project, `media/<name>`), `pattern` (`frame_%05d.png`: one `%d` or `%0Nd`, N 1 to 9), `first` (the number of the first frame), `count` and `fps`. The files must be consecutive (`first` to `first + count - 1`) and all have the size in `width` x `height`. The item's `durationUs` is `count` frames at `fps` (integer microseconds) and `file.relPath` is the first frame. A clip of a sequence is an ordinary `image` clip: it plays the frames at the sequence's rate and loops when the clip is longer. Make one with ffmpeg:
+
+```
+ffmpeg -i in.mov -vf fps=30 media/smoke/frame_%05d.png
+```
+
+Add `-start_number 0` for a sequence that starts at 0. Dropping or importing a folder of numbered frames asks "Import as image sequence (N frames) at 30 fps?"; a generator writes the record itself.
+
+```json MediaItem
+{
+  "id": "m2",
+  "kind": "image",
+  "name": "sparks",
+  "file": { "relPath": "media/sparks/frame_0001.png" },
+  "durationUs": 1000000,
+  "hasAudio": false,
+  "analysis": { "thumbs": "none", "peaks": "none" },
+  "addedAt": "2026-11-07T08:00:00.000Z",
+  "width": 270,
+  "height": 480,
+  "codec": "png",
+  "sequence": { "dir": "media/sparks", "pattern": "frame_%04d.png", "first": 1, "count": 30, "fps": { "num": 30, "den": 1 } }
+}
+```
+
+`fixtures/interop/alpha` is a complete project: a VP9 alpha WebM (`media/overlay.webm`, about 2 KB) and the same 30-frame animation as a PNG sequence (`media/sequence/frame_%04d.png`), both over a blue solid, with expected frames in `expected/`. Alpha export (a transparent output file) is not part of this version.
+
 ## 6. Captions and word timings
 
 The caption track's `captionTracks[<track id>].style` styles every cue; a cue's `styleOverride` sets only the fields it changes. A cue is a `caption` clip with `text` (`\n` for line breaks) and optional `words`: `start` and `end` are integer frames relative to the cue's start, `end` after `start`. A word may start before the cue or end after it: an in-trim keeps the words it hides (negative frames), so a trim back shows them again. With word timings the active word is highlighted as the style's `highlight` says.
@@ -1062,6 +1101,20 @@ A file of the media bin.
 | `binId` | string (not empty) | no |  | The bin it is in; names an entry of `bins`. |
 | `addedAt` | string | yes |  | ISO time. |
 | `size` | integer (>= 0) | no |  | File size in bytes when imported. |
+| `alpha` | boolean | no |  | True for a VP8/VP9 WebM whose alpha channel is decoded (set by the probe; omit it for any other file). |
+| `sequence` | [ImageSequence](#imagesequence) | no |  | An image sequence: numbered PNG or WebP frames of one size, played at `fps`. `kind` is `image`, `file.relPath` names the first frame and `durationUs` is count / fps. |
+
+#### ImageSequence
+
+The numbered frames of an image sequence (spec §21.11).
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `dir` | string (not empty) | yes |  | The folder of the frames, relative to the project folder, `/` separated, no `..`. |
+| `pattern` | string (not empty) | yes |  | printf-style file name of a frame: `%d` or `%0Nd` once, such as `frame_%05d.png`. The extension is `.png` or `.webp`. |
+| `first` | integer (>= 0) | yes | `0` | The number of the first frame (the value `%d` takes). |
+| `count` | integer (>= 1) | yes |  | How many frames, numbered first .. first + count - 1 without gaps. |
+| `fps` | [Rational](#rational) | yes |  | Playback rate of the sequence. |
 
 #### Bin
 
@@ -1106,7 +1159,7 @@ project.json.
 
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| `schemaVersion` | integer (>= 1) | yes | `8` | The schema version; this build writes and reads up to the current one. |
+| `schemaVersion` | integer (>= 1) | yes | `9` | The schema version; this build writes and reads up to the current one. |
 | `id` | string (not empty) | yes |  | Unique id, never changes (uuid v4 recommended). |
 | `name` | string | yes |  | Project name. |
 | `settings` | [Settings](#settings) | yes |  | Frame and time base. |

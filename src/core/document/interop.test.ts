@@ -157,7 +157,7 @@ describe("validateStrict", () => {
     delete old.clips["c-standin"].fallbackOf;
     const result = validateStrict(old);
     expect(result.errors).toEqual([]);
-    expect(result.project?.schemaVersion).toBe(8);
+    expect(result.project?.schemaVersion).toBe(9);
     expect(result.project?.clips["c-video"]).toEqual(old.clips["c-video"]);
   });
 
@@ -273,7 +273,7 @@ describe("fixtures/interop/keyframes (Batch 60)", () => {
     old.tracks = old.tracks.filter((track: { id: string }) => ["v1", "v6"].includes(track.id));
     const result = validateStrict(old);
     expect(result.errors).toEqual([]);
-    expect(result.project?.schemaVersion).toBe(8);
+    expect(result.project?.schemaVersion).toBe(9);
     expect((result.project?.clips.label as { keyframes?: unknown } | undefined)?.keyframes).toEqual(old.clips.label.keyframes);
   });
 
@@ -317,5 +317,31 @@ describe("fixtures/interop/compound (Batch 62)", () => {
     const late = readProject(`${COMPOUND}/project.json`);
     late.clips["card-bg"].duration = 90;
     expect(validateStrict(late).ok).toBe(false);
+  });
+});
+
+describe("fixtures/interop/alpha (Batch 64)", () => {
+  const ALPHA = "fixtures/interop/alpha";
+
+  it("is valid: a VP9 alpha WebM under 300 KB and a 30-frame PNG sequence whose files are all there", async () => {
+    const report = await validateProjectFolder(rel(ALPHA));
+    expect(report.errors).toEqual([]);
+    expect(report.ok).toBe(true);
+    const project = readProject(`${ALPHA}/project.json`);
+    expect(project.media.m1).toMatchObject({ kind: "video", alpha: true, codec: "vp9" });
+    expect(project.media.m1.size).toBeLessThan(300_000);
+    const sequence = project.media.m2.sequence;
+    expect(sequence).toMatchObject({ count: 30, pattern: "frame_%04d.png", first: 1 });
+    for (let n = sequence.first; n < sequence.first + sequence.count; n++) {
+      expect(readFileSync(`${ALPHA}/media/sequence/frame_${String(n).padStart(4, "0")}.png`).length).toBeGreaterThan(0);
+    }
+  });
+
+  it("refuses a sequence with a bad pattern, a count of zero or a folder outside the project", () => {
+    for (const patch of [{ pattern: "frame.png" }, { count: 0 }, { dir: "../outside" }]) {
+      const project = readProject(`${ALPHA}/project.json`);
+      Object.assign(project.media.m2.sequence, patch);
+      expect(validateStrict(project).ok, JSON.stringify(patch)).toBe(false);
+    }
   });
 });

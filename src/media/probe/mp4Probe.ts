@@ -11,6 +11,7 @@ import { ticksToUs } from "../../core/document/time.js";
 import type { ByteSource } from "../bytes/ByteSource.js";
 import { estimateFps, FPS_SAMPLE_COUNT } from "./fps.js";
 import { rotationFromMatrix, type Rotation } from "./rotation.js";
+import { isProRes, PRORES_REFUSAL } from "./alphaHints.js";
 import { ProbeError, type ProbeResult } from "./types.js";
 
 const READ_SIZE = 1024 * 1024;
@@ -41,6 +42,8 @@ export interface Mp4Video {
   /** Decode order. */
   samples: readonly Sample[];
   edit: EditStart;
+  /** The codec family of an alpha channel the app cannot decode (an auxiliary alpha video track of HEVC or AV1), or null. */
+  alphaIgnored: string | null;
 }
 
 export interface Mp4Audio {
@@ -117,6 +120,13 @@ function unreadable(detail: string): ProbeError {
   return new ProbeError("Not a readable MP4/MOV file: it is damaged or is not a video");
 }
 
+/** HEVC and AV1 files carry alpha as a second (auxiliary) video track; the family names it for the toast. */
+function alphaFamily(codec: string): string | null {
+  if (/^(hvc1|hev1)/i.test(codec)) return "HEVC";
+  if (/^av01/i.test(codec)) return "AV1";
+  return null;
+}
+
 /** Parses the movie header. Throws ProbeError when the file is not a readable MP4/MOV. */
 export async function readMp4(source: ByteSource, signal?: AbortSignal): Promise<Mp4File> {
   const file = createFile();
@@ -177,6 +187,7 @@ export async function readMp4(source: ByteSource, signal?: AbortSignal): Promise
       description,
       samples,
       edit: edits(trak),
+      alphaIgnored: info.videoTracks.length > 1 ? alphaFamily(videoTrack.codec) : null,
     };
   }
   let audio: Mp4Audio | null = null;
@@ -205,6 +216,7 @@ export function mp4ProbeResult({ video, audio }: Mp4File): ProbeResult {
   const audioFields = audio ? { audioCodec: audio.codec, audio: { channels: audio.channels, sampleRate: audio.sampleRate } } : {};
   if (video) {
     if (video.samples.length === 0) throw new ProbeError("The video track has no samples");
+    if (isProRes(video.codec)) throw new ProbeError(PRORES_REFUSAL);
     return {
       kind: "video",
       durationUs: video.durationUs,
@@ -214,6 +226,7 @@ export function mp4ProbeResult({ video, audio }: Mp4File): ProbeResult {
       ...(video.fps && { fps: video.fps }),
       hasAudio: audio !== null,
       codec: video.codec,
+      ...(video.alphaIgnored && { alphaIgnored: video.alphaIgnored }),
       ...audioFields,
     };
   }

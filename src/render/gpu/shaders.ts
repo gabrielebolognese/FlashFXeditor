@@ -351,9 +351,11 @@ fn fs(in: VertexOut) -> @location(0) vec4f {
  * A video frame drawn into a smaller texture (sampled as decoded: no full-size copy first), with the
  * layers' footprint taps: a 4K frame scaled to a 1080 x 1920 project's size no longer aliases.
  */
-export const SCALE_WGSL = /* wgsl */ `${FOOTPRINT_TAPS}
+function scaleWgsl(alpha: boolean): string {
+  return /* wgsl */ `${FOOTPRINT_TAPS}
 @group(0) @binding(0) var sourceSampler: sampler;
 @group(0) @binding(1) var source: texture_external;
+${alpha ? "@group(0) @binding(2) var alphaPlane: texture_2d<f32>;" : ""}
 
 struct VertexOut {
   @builtin(position) position: vec4f,
@@ -382,9 +384,23 @@ fn fs(in: VertexOut) -> @location(0) vec4f {
     + textureSampleBaseClampToEdge(source, sourceSampler, in.uv + ox - oy)
     + textureSampleBaseClampToEdge(source, sourceSampler, in.uv - ox + oy)
     + textureSampleBaseClampToEdge(source, sourceSampler, in.uv + ox + oy);
-  return vec4f(sum.rgb * 0.25, 1.0);
+${
+  alpha
+    ? `  // The alpha channel of a WebM with alpha (Batch 64): raw bytes in an r8 texture, the same taps; the color is premultiplied by it.
+  let a = (textureSampleLevel(alphaPlane, sourceSampler, in.uv - ox - oy, 0.0).r
+    + textureSampleLevel(alphaPlane, sourceSampler, in.uv + ox - oy, 0.0).r
+    + textureSampleLevel(alphaPlane, sourceSampler, in.uv - ox + oy, 0.0).r
+    + textureSampleLevel(alphaPlane, sourceSampler, in.uv + ox + oy, 0.0).r) * 0.25;
+  return vec4f(sum.rgb * 0.25 * a, a);`
+    : "  return vec4f(sum.rgb * 0.25, 1.0);"
+}
 }
 `;
+}
+
+export const SCALE_WGSL = scaleWgsl(false);
+/** SCALE_WGSL with the alpha plane of a video with alpha multiplied in (binding 2). */
+export const SCALE_ALPHA_WGSL = scaleWgsl(true);
 
 /**
  * One pass of a separable Gaussian blur (spec §10.4 blurIn): each target px sums the source texels

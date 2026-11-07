@@ -589,8 +589,9 @@ export class Compositor {
     const list = this.neighborList;
     const neighbor = (this.neighborPool[list.length] ??= { mediaId: "", still: false, timeUs: 0 });
     neighbor.mediaId = clip.mediaId;
-    neighbor.still = clip.kind === "image";
-    neighbor.timeUs = neighbor.still ? 0 : sourceTimeUs(clip, at, doc.settings.fps);
+    const sequence = clip.kind === "image" && doc.media[clip.mediaId]?.sequence !== undefined;
+    neighbor.still = clip.kind === "image" && !sequence;
+    neighbor.timeUs = neighbor.still ? 0 : sequence ? imageTimeUs(clip, at, doc.settings.fps, doc.media[clip.mediaId]?.durationUs ?? 0) : sourceTimeUs(clip, at, doc.settings.fps);
     list.push(neighbor);
   }
 
@@ -699,10 +700,12 @@ export class Compositor {
     layer.trackId = clip.trackId;
     layer.clipId = clip.id;
     layer.mediaId = clip.mediaId;
-    layer.still = clip.kind === "image";
-    // An animated image loops from its in point (a still has no duration: time 0).
+    // An image sequence (Batch 64) is decoded like a video: its frames come from the frame service.
+    const sequence = clip.kind === "image" && item.sequence !== undefined;
+    layer.still = clip.kind === "image" && !sequence;
+    // An animated image or a sequence loops from its in point (a still has no duration: time 0).
     const fps = doc.settings.fps;
-    layer.timeUs = layer.still ? imageTimeUs(clip, frame, fps, item.durationUs) : handles ? handleTimeUs(clip, frame, fps, item.durationUs) : sourceTimeUs(clip, frame, fps);
+    layer.timeUs = layer.still || sequence ? imageTimeUs(clip, frame, fps, item.durationUs) : handles ? handleTimeUs(clip, frame, fps, item.durationUs) : sourceTimeUs(clip, frame, fps);
     layer.opacity = clamp01(opacity) * fadeFactor(clip, frame);
     return true;
   }

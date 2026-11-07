@@ -7,3 +7,8 @@ export function fitWithin(width: number, height: number, maxSize?: number): { wi
   const scale = maxSize / longEdge;
   return { width: Math.max(1, Math.round(width * scale)), height: Math.max(1, Math.round(height * scale)) };
 }
+
+/** A frame whose pixels are RGBA (made from an image: a sequence's frames) and so carry alpha of their own. */
+export function hasAlphaFormat(frame: { format: string | null }): boolean {
+  return frame.format === "RGBA" || frame.format === "BGRA";
+}

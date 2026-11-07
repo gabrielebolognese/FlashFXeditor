@@ -24,5 +24,6 @@ export function mediaItemFrom(probe: ProbeResult, fields: { id: string; name: st
   if (probe.fps) item.fps = { ...probe.fps };
   if (probe.codec) item.codec = probe.codec;
   if (probe.audioCodec) item.audioCodec = probe.audioCodec;
+  if (probe.alpha) item.alpha = true;
   return item;
 }

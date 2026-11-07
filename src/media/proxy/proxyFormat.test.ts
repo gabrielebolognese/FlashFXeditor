@@ -58,6 +58,10 @@ describe("wantsProxy", () => {
     expect(wantsProxy(video(1920, 1080, 60000, 1001), "heavy")).toBe(true);
   });
 
+  it("never proxies alpha media (a proxy would lose the transparency)", () => {
+    expect(wantsProxy({ ...video(3840, 2160, 60), alpha: true }, "all")).toBe(false);
+  });
+
   it("large only, all videos, never audio or images", () => {
     expect(wantsProxy(video(1080, 1920, 60), "large")).toBe(false);
     expect(wantsProxy(video(1440, 2560, 30), "large")).toBe(true);

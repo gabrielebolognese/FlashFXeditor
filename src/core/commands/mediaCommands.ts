@@ -105,7 +105,8 @@ export function relinkMedia(entries: readonly { id: MediaId; fields: RelinkField
     run(draft) {
       for (const { id, fields } of entries) {
         const media = draft.media[id];
-        if (!media) continue;
+        // A sequence is its folder of frames (Batch 64): one replacement file cannot stand for it.
+        if (!media || media.sequence) continue;
         for (const [key, value] of Object.entries(structuredClone(fields))) {
           if (value === undefined) delete (media as Record<string, unknown>)[key];
           else (media as Record<string, unknown>)[key] = value;

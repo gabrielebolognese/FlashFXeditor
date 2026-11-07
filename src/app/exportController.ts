@@ -61,7 +61,8 @@ import { formatBytes } from "../project/cache.js";
 import { errorMessage } from "../project/errorMessage.js";
 import { isDirectoryHandle, type FsDir } from "../project/fs.js";
 import { subdir } from "../project/layout.js";
-import { resolveFile, safeFileName, sampleIndexPath } from "../project/mediaFiles.js";
+import { resolveFile, resolveSequenceFiles, safeFileName, sampleIndexPath } from "../project/mediaFiles.js";
+import { sequencePaths } from "../media/sequence.js";
 import type { ProjectSession } from "../project/ProjectSession.js";
 import { slateLook } from "../render/preview/PreviewView.js";
 import type { SubtitleFormat } from "../text/subtitles.js";
@@ -219,7 +220,8 @@ export async function gatherInputs(dir: FsDir, project: Project, range: FrameRan
         continue;
       }
       const index = item.kind === "video" ? await resolveFile(dir, sampleIndexPath(mediaId, "full")).catch(() => null) : null;
-      media[mediaId] = { file, index };
+      const frames = item.sequence ? await resolveSequenceFiles(dir, sequencePaths(item.sequence)) : undefined;
+      media[mediaId] = { file, index, ...(frames && { frames }) };
       if (isSvgImage(item)) svg[mediaId] = await svgPoster(file, SVG_MAX_SIZE);
     }
     signal.throwIfAborted();

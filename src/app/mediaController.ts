@@ -10,7 +10,7 @@
 // in folder (the path, copied). Batch 46: Show all media (an empty bin's or search's way out).
 // Framework-free; the media panel reads `mediaPanel` through narrow selectors.
 import { addBin, clipsOfMedia, mediaUseCounts, nextBinName, relinkMedia, removeBin, removeMedia, renameBin, renameMedia, setMediaBin, type RelinkFields } from "../core/commands/mediaCommands.js";
-import { isMediaClip, type MediaId, type MediaItem } from "../core/document/types.js";
+import { isMediaClip, type MediaId, type MediaItem, type Rational } from "../core/document/types.js";
 import { isEditableTarget } from "../core/keyboard/KeyDispatcher.js";
 import { createStore } from "../core/store/createStore.js";
 import { filterSelection, toSnapshot } from "../core/store/selection.js";
@@ -18,7 +18,8 @@ import type { SessionState } from "../core/store/sessionStore.js";
 import { AnalysisScheduler } from "../media/AnalysisScheduler.js";
 import { PeaksJobs } from "../media/PeaksJobs.js";
 import { browserAudioDuration, browserDecodeAudio } from "../media/probe/audioProbe.js";
-import { createProbeFile, MediaImporter, type ImportSource, type ProbeFile, type Refusal } from "../media/MediaImporter.js";
+import { createProbeFile, MediaImporter, type ImportSource, type ProbeFile, type Refusal, type SequenceRequest } from "../media/MediaImporter.js";
+import { detectSequences, folderOf, sequenceName, sequencePaths } from "../media/sequence.js";
 import { ProxyJobs, type ProxyFiles, type ProxyProgress } from "../media/ProxyJobs.js";
 import { classifyFile, PICKER_TYPES } from "../media/mediaKinds.js";
 import { PosterStore } from "../media/PosterStore.js";
@@ -49,13 +50,15 @@ export interface MediaPanelState {
   renaming: MediaId | null;
   /** Media waiting for the Remove dialog. */
   removing: readonly MediaId[] | null;
+  /** A folder of numbered frames waiting for the sequence dialog (Batch 64). */
+  sequenceOffer: SequenceOffer | null;
   /** The bin whose name is being edited inline (Batch 41). */
   renamingBin: string | null;
   /** The search field's words (spec §12; not kept in session.json). */
   search: string;
 }
 
-const initialPanel = (): MediaPanelState => ({ selection: EMPTY_MEDIA_SELECTION, renaming: null, removing: null, renamingBin: null, search: "" });
+const initialPanel = (): MediaPanelState => ({ selection: EMPTY_MEDIA_SELECTION, renaming: null, removing: null, sequenceOffer: null, renamingBin: null, search: "" });
 
 export const mediaPanel = createStore<MediaPanelState>(initialPanel());
 
@@ -390,6 +393,57 @@ function refusalToast(refused: readonly Refusal[]): void {
   );
 }
 
+/** A folder of numbered frames the user is asked about (spec §21.11). */
+export interface SequenceOffer {
+  name: string;
+  frames: number;
+  fps: Rational;
+}
+
+export type SequenceAnswer = { kind: "sequence"; fps: Rational } | { kind: "images" } | { kind: "cancel" };
+
+let pendingOffer: ((answer: SequenceAnswer) => void) | null = null;
+
+/** Shows the sequence dialog and resolves with the choice. */
+function askSequence(offer: SequenceOffer): Promise<SequenceAnswer> {
+  return new Promise((resolve) => {
+    pendingOffer?.({ kind: "cancel" });
+    pendingOffer = resolve;
+    patch({ sequenceOffer: offer });
+  });
+}
+
+/** The dialog's answer (also Escape: cancel). */
+export function answerSequence(answer: SequenceAnswer): void {
+  patch({ sequenceOffer: null });
+  const resolve = pendingOffer;
+  pendingOffer = null;
+  resolve?.(answer);
+}
+
+/**
+ * Splits the sequences out of dropped files: every folder with numbered PNG or WebP frames is offered
+ * as one image sequence at the project's rate. "As images" leaves its files in the list; Cancel drops
+ * the whole import.
+ */
+async function offerSequences(input: readonly ImportSource[]): Promise<{ files: readonly ImportSource[]; sequences: SequenceRequest[] }> {
+  const named = input.map((source) => ({ item: source, name: fileOfSource(source).name, folder: folderOf(source instanceof File ? "" : (source.path ?? "")) }));
+  const candidates = detectSequences(named);
+  if (candidates.length === 0) return { files: input, sequences: [] };
+  const sequences: SequenceRequest[] = [];
+  const taken = new Set<ImportSource>();
+  for (const candidate of candidates) {
+    const answer = await askSequence({ name: sequenceName(candidate), frames: candidate.count, fps: documentStore.getState().settings.fps });
+    if (answer.kind === "cancel") return { files: [], sequences: [] };
+    if (answer.kind === "images") continue;
+    sequences.push({ folder: candidate.folder, pattern: candidate.pattern, first: candidate.first, files: candidate.files.map((source) => fileOfSource(source)), fps: answer.fps });
+    for (const source of candidate.files) taken.add(source);
+  }
+  return { files: input.filter((source) => !taken.has(source)), sequences };
+}
+
+const fileOfSource = (source: ImportSource): File => (source instanceof File ? source : source.file);
+
 /** Placing imported items right away (files dropped on the timeline, spec §6.14): one undo step with the import. */
 export interface ImportPlacement {
   place: (items: readonly MediaItem[]) => void;
@@ -400,19 +454,24 @@ export interface ImportPlacement {
  * Imports files into the open project, with refusal, progress and failure toasts; `placement` adds
  * their clips in the same undo step. Files that come with their handle are linked in reference mode.
  */
-export async function importMediaFiles(files: readonly ImportSource[], placement?: ImportPlacement): Promise<void> {
+export async function importMediaFiles(input: readonly ImportSource[], placement?: ImportPlacement): Promise<void> {
   const current = open;
-  if (!current || files.length === 0) return;
+  if (!current || input.length === 0) return;
   if (!current.isWritable()) {
     showToast({ tone: "warning", message: "This project is read-only", detail: "Allow editing to import media." });
     return;
   }
-  const totalBytes = files.reduce((sum, source) => sum + (source instanceof File ? source : source.file).size, 0);
+  // Folders of numbered PNG or WebP frames: asked once each, then imported with the rest (Batch 64).
+  const { files, sequences } = await offerSequences(input);
+  if (files.length === 0 && sequences.length === 0) return;
+  if (open !== current) return;
+  const totalBytes = [...files, ...sequences.flatMap((request) => request.files)].reduce((sum, source) => sum + (source instanceof File ? source : source.file).size, 0);
   let toast: number | null = null;
   let lastUpdate = 0;
   try {
     const report = await current.importer.importFiles(files, {
       signal: current.controller.signal,
+      ...(sequences.length > 0 && { sequences }),
       ...(placement && { place: placement.place, placeLabel: placement.label }),
       ...(totalBytes >= LARGE_IMPORT_BYTES && {
         onProgress: ({ index, count, name, copiedBytes, totalBytes: total }) => {
@@ -432,6 +491,7 @@ export async function importMediaFiles(files: readonly ImportSource[], placement
       toast = null;
     }
     refusalToast(report.refused);
+    for (const note of report.notes ?? []) showToast({ tone: "info", message: note.message, detail: note.detail });
     // Files of an accepted type that could not be read stay listed as failed imports (Batch 47).
     if (open === current) {
       const refusedNames = new Set(report.refused.map((refusal) => refusal.name));
@@ -589,8 +649,9 @@ export function confirmRemove(clips: "keep" | "delete" = "keep", deleteFiles = f
 
 /** The copied files of removed media that no other media item uses (spec §12 "delete the copied file from media/"). */
 export function copiedFiles(items: readonly MediaItem[], remaining: Readonly<Record<MediaId, MediaItem>>): string[] {
-  const kept = new Set(Object.values(remaining).map(mediaPath));
-  const paths = items.map((item) => ("relPath" in item.file ? item.file.relPath : null)).filter((path): path is string => path !== null && path.startsWith(`${MEDIA_DIR}/`));
+  const pathsOf = (item: MediaItem): string[] => (item.sequence ? sequencePaths(item.sequence) : "relPath" in item.file ? [item.file.relPath] : []);
+  const kept = new Set(Object.values(remaining).flatMap(pathsOf));
+  const paths = items.flatMap(pathsOf).filter((path) => path.startsWith(`${MEDIA_DIR}/`));
   return [...new Set(paths)].filter((path) => !kept.has(path));
 }
 

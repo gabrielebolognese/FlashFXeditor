@@ -24,6 +24,9 @@ export interface SampleTable {
   durations: Uint32Array;
   /** 1 for sync (key) samples. */
   sync: Uint8Array;
+  /** Alpha stream of each sample (VP8/VP9 WebM with alpha, Batch 64): offset in the file and size (0 = the frame has none). Both or neither. */
+  alphaOffsets?: Float64Array;
+  alphaSizes?: Uint32Array;
 }
 
 export interface SampleIndex extends SampleTable {

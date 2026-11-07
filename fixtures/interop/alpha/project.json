@@ -1,0 +1,254 @@
+{
+  "schemaVersion": 9,
+  "id": "9d3a6f20-51c8-4b7e-8a2d-6c1f0e7b4a35",
+  "name": "Interop alpha",
+  "settings": {
+    "width": 1080,
+    "height": 1920,
+    "fps": {
+      "num": 30,
+      "den": 1
+    },
+    "background": {
+      "r": 0,
+      "g": 0,
+      "b": 0,
+      "a": 1
+    },
+    "sampleRate": 48000
+  },
+  "media": {
+    "m1": {
+      "id": "m1",
+      "kind": "video",
+      "name": "overlay.webm",
+      "file": {
+        "relPath": "media/overlay.webm"
+      },
+      "durationUs": 1000000,
+      "codec": "vp9",
+      "size": 3386,
+      "alpha": true,
+      "analysis": {
+        "thumbs": "none",
+        "peaks": "none"
+      },
+      "addedAt": "2026-11-07T08:00:00.000Z",
+      "width": 270,
+      "height": 480,
+      "fps": {
+        "num": 30,
+        "den": 1
+      },
+      "hasAudio": false
+    },
+    "m2": {
+      "id": "m2",
+      "kind": "image",
+      "name": "sequence",
+      "file": {
+        "relPath": "media/sequence/frame_0001.png"
+      },
+      "durationUs": 1000000,
+      "codec": "png",
+      "size": 145695,
+      "sequence": {
+        "dir": "media/sequence",
+        "pattern": "frame_%04d.png",
+        "first": 1,
+        "count": 30,
+        "fps": {
+          "num": 30,
+          "den": 1
+        }
+      },
+      "analysis": {
+        "thumbs": "none",
+        "peaks": "none"
+      },
+      "addedAt": "2026-11-07T08:00:00.000Z",
+      "width": 270,
+      "height": 480,
+      "fps": {
+        "num": 30,
+        "den": 1
+      },
+      "hasAudio": false
+    }
+  },
+  "bins": [],
+  "tracks": [
+    {
+      "id": "v1",
+      "kind": "video",
+      "name": "V1",
+      "clipIds": [
+        "bg"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
+      "id": "v2",
+      "kind": "video",
+      "name": "V2",
+      "clipIds": [
+        "webm"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
+      "id": "v3",
+      "kind": "video",
+      "name": "V3",
+      "clipIds": [
+        "seq"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    }
+  ],
+  "clips": {
+    "bg": {
+      "id": "bg",
+      "trackId": "v1",
+      "kind": "solid",
+      "name": "Background",
+      "start": 0,
+      "duration": 30,
+      "enabled": true,
+      "shape": "rect",
+      "size": {
+        "w": 1080,
+        "h": 1920
+      },
+      "cornerRadius": 0,
+      "fill": {
+        "r": 0.2,
+        "g": 0.45,
+        "b": 0.8,
+        "a": 1
+      },
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1
+    },
+    "webm": {
+      "id": "webm",
+      "trackId": "v2",
+      "kind": "video",
+      "name": "webm",
+      "start": 0,
+      "duration": 30,
+      "enabled": true,
+      "mediaId": "m1",
+      "in": 0,
+      "out": 1000000,
+      "speed": 1,
+      "transform": {
+        "x": 0,
+        "y": -450,
+        "scale": 2,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "crop": {
+        "left": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "volume": {
+        "gainDb": 0,
+        "muted": false
+      }
+    },
+    "seq": {
+      "id": "seq",
+      "trackId": "v3",
+      "kind": "image",
+      "name": "seq",
+      "start": 0,
+      "duration": 30,
+      "enabled": true,
+      "mediaId": "m2",
+      "in": 0,
+      "out": 1000000,
+      "speed": 1,
+      "transform": {
+        "x": 0,
+        "y": 450,
+        "scale": 2,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "crop": {
+        "left": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "volume": {
+        "gainDb": 0,
+        "muted": false
+      }
+    }
+  },
+  "markers": [],
+  "captionTracks": {},
+  "textPresetsLocal": [],
+  "meta": {
+    "createdAt": "2026-11-07T08:00:00.000Z",
+    "modifiedAt": "2026-11-07T08:00:00.000Z",
+    "appVersion": "1.1.0",
+    "generator": {
+      "name": "interop-fixture",
+      "version": "1",
+      "source": "fixtures/interop/alpha (ffmpeg commands in docs/INTEROP.md)"
+    }
+  },
+  "sequences": {}
+}

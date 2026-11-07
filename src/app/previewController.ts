@@ -24,7 +24,8 @@ import { svgPoster } from "../media/probe/svgProbe.js";
 import type { FramePriority } from "../media/workers/protocol.js";
 import { PlaybackEngine } from "../playback/PlaybackEngine.js";
 import type { FsDir } from "../project/fs.js";
-import { resolveFile, sampleIndexPath, writeFileAt } from "../project/mediaFiles.js";
+import { resolveFile, resolveSequenceFiles, sampleIndexPath, writeFileAt } from "../project/mediaFiles.js";
+import { sequencePaths } from "../media/sequence.js";
 import { formatFps } from "../project/projectPresets.js";
 import type { BackendChoice, RendererBackend } from "../render/gpu/backend.js";
 import { createBackend } from "../render/gpu/createBackend.js";
@@ -450,6 +451,11 @@ function frameSource(dir: FsDir, isWritable: () => boolean): FrameSource {
       return sourceFile(mediaId);
     },
     readIndex: (mediaId, lod) => resolveFile(dir, sampleIndexPath(mediaId, lod)),
+    sequence: async (mediaId) => {
+      const item = documentStore.getState().media[mediaId];
+      if (!item?.sequence) return null;
+      return { frames: await resolveSequenceFiles(dir, sequencePaths(item.sequence)), fps: item.sequence.fps, width: item.width ?? 0, height: item.height ?? 0 };
+    },
     writeIndex: async (mediaId, lod, bytes) => {
       if (isWritable()) await writeFileAt(dir, sampleIndexPath(mediaId, lod), new Blob([bytes]));
     },

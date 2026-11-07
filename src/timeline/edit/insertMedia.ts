@@ -22,6 +22,8 @@ export function sourceSpan(media: MediaItem, range: SourceRange | null): { inUs:
 /** Timeline duration of a media item (over its source range) at speed 1; null when it has no usable duration. */
 export function naturalDuration(media: MediaItem, fps: Rational, range: SourceRange | null = null): Frame | null {
   // A still's length is the default still duration (spec §6.14 5 s; a setting since Batch 42).
+  // An image sequence plays its own length (Batch 64).
+  if (media.kind === "image" && media.sequence) return Math.max(1, usToFrameFloor(media.durationUs, fps));
   if (media.kind === "image") return defaultFrames(editDefaults().stillMs, fps);
   const span = sourceSpan(media, range);
   return span ? Math.max(1, usToFrameFloor(span.outUs - span.inUs, fps)) : null;

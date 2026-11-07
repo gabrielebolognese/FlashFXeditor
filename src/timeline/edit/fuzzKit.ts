@@ -353,6 +353,18 @@ function randomMedia(rng: Rng, newId: () => string, kind: MediaItem["kind"], has
     if (rng.chance(0.15)) item.rotation = 90;
   }
   if (kind === "video") item.fps = { num: 30, den: 1 };
+  // Batch 64: some videos carry alpha, some images are numbered-frame sequences with their own length. Chosen
+  // from the id, not the random stream, so the documents of every older seed stay the ones they were.
+  let hash = 0;
+  for (const char of id) hash = (Math.imul(hash, 31) + char.charCodeAt(0)) >>> 0;
+  if (kind === "video" && hash % 7 === 0) item.alpha = true;
+  if (kind === "image" && hash % 7 === 0) {
+    const count = 2 + (hash % 119);
+    item.sequence = { dir: `media/${id}`, pattern: "frame_%05d.png", first: hash % 2, count, fps: { num: 30, den: 1 } };
+    item.file = { relPath: `media/${id}/frame_${String(item.sequence.first).padStart(5, "0")}.png` };
+    item.durationUs = frameToUs(count, item.sequence.fps);
+    item.name = `seq-${id}`;
+  }
   return item;
 }
 

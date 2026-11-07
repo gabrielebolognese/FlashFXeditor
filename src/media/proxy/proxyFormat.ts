@@ -33,6 +33,8 @@ export const HEAVY_FPS = 30;
 /** True when the rule picks this media for an automatic proxy. */
 export function wantsProxy(item: MediaItem, rule: ProxyRule): boolean {
   if (item.kind !== "video" || !item.width || !item.height) return false;
+  // Alpha media has no proxy (Batch 64, spec §21.11): the proxy encoder keeps no alpha.
+  if (item.alpha) return false;
   if (rule === "all") return true;
   const large = Math.min(item.width, item.height) > LARGE_SHORT_EDGE;
   if (rule === "large") return large;

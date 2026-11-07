@@ -279,7 +279,8 @@ const MediaCard = memo(function MediaCard({ item, uses }: { item: MediaItem; use
           </span>
         )}
         <span className={styles.uses}>{uses === 0 ? "Unused" : `Used ${uses}×`}</span>
-        {item.kind === "video" && item.proxy && <ProxyBadge id={item.id} status={item.proxy.status} />}
+        {item.kind === "video" && item.alpha && <ProxyBadge id={item.id} status="none" alpha />}
+        {item.kind === "video" && !item.alpha && item.proxy && <ProxyBadge id={item.id} status={item.proxy.status} />}
         <OfflineBadge id={item.id} card />
       </div>
       <div className={styles.cardInfo}>

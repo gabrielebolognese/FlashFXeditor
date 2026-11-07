@@ -25,7 +25,7 @@ import { fitWithin } from "../../render/gpu/fitWithin.js";
 import type { Renderer, TextureHandle } from "../../render/gpu/renderer.js";
 import type { Lod, TextureKey, TexturePool } from "../cache/TexturePool.js";
 import { mediaTimePosition, positionAt } from "../demux/sampleIndex.js";
-import { abortError, FRAME_PRIORITY_RANK, type DeliveredFrame, type FramePriority, type Priority, type VideoInfo, type WorkerDecodeStats } from "../workers/protocol.js";
+import { abortError, FRAME_PRIORITY_RANK, type DeliveredFrame, type FramePriority, type OpenSequence, type Priority, type VideoInfo, type WorkerDecodeStats } from "../workers/protocol.js";
 import type { WorkerPool } from "../workers/WorkerPool.js";
 
 export const MAX_IN_FLIGHT_PER_MEDIA = 4;
@@ -42,6 +42,8 @@ export interface FrameSource {
   readIndex(mediaId: MediaId, lod: Lod): Promise<Blob | null>;
   /** Stores a newly built index (a read-only project skips it). */
   writeIndex(mediaId: MediaId, lod: Lod, bytes: ArrayBuffer): Promise<void>;
+  /** The frame files of an image sequence (Batch 64); null for any other media. */
+  sequence?(mediaId: MediaId): Promise<OpenSequence | null>;
 }
 
 export interface FrameResult {
@@ -395,11 +397,11 @@ export class FrameService {
     const generation = this.generation;
     // The project closed (or none is open yet): the request is moot, as a superseded one (no warning).
     if (!source) throw abortError();
-    const [file, cachedIndex] = await Promise.all([source.file(mediaId, lod), source.readIndex(mediaId, lod).catch(() => null)]);
+    const [file, cachedIndex, sequence] = await Promise.all([source.file(mediaId, lod), source.readIndex(mediaId, lod).catch(() => null), source.sequence?.(mediaId) ?? null]);
     if (!file) throw new Error("The media file is missing");
     if (generation !== this.generation) throw abortError();
     signal.throwIfAborted();
-    const request = () => this.deps.workers.request("openVideo", { mediaId, lod, file, cachedIndex }, { priority: "user", signal });
+    const request = () => this.deps.workers.request("openVideo", { mediaId, lod, file, cachedIndex, ...(sequence && { sequence }) }, { priority: "user", signal });
     // A crash while it opens: the next request starts a new worker; ask that one, once.
     const { info, index } = await request().catch((error: unknown) => {
       if (!isNamed(error, "WorkerCrashError")) throw error;
@@ -498,7 +500,8 @@ export class FrameService {
         if (!(Math.max(existing.width, existing.height) < Math.max(wanted.width, wanted.height))) return { texture: existing, key, timeUs, approximate };
       }
       if (!this.deps.renderer.ready) return existing ? { texture: existing, key, timeUs, approximate } : null;
-      const texture = this.deps.renderer.uploadVideoFrame(frame, { label: `${mediaId} @${timeUs}us`, ...(maxSize !== undefined && { maxSize }) });
+      const alpha = delivered.alphaPlane && delivered.alphaWidth && delivered.alphaHeight ? { data: delivered.alphaPlane, width: delivered.alphaWidth, height: delivered.alphaHeight } : undefined;
+      const texture = this.deps.renderer.uploadVideoFrame(frame, { label: `${mediaId} @${timeUs}us`, ...(maxSize !== undefined && { maxSize }), ...(alpha && { alpha }) });
       this.deps.pool.put(key, texture);
       return { texture, key, timeUs, approximate };
     } finally {

@@ -15,10 +15,18 @@ const CHIP_TOOLTIPS: Record<Exclude<ProxyStatus, "none">, string> = {
 };
 
 /** The card's `PX` chip: tertiary while pending (with its percentage and bar), success when ready, danger when failed. */
-export const ProxyBadge = memo(function ProxyBadge({ id, status }: { id: MediaId; status: ProxyStatus }) {
+export const ProxyBadge = memo(function ProxyBadge({ id, status, alpha = false }: { id: MediaId; status: ProxyStatus; alpha?: boolean }) {
   const text = useRef<HTMLSpanElement>(null);
   const bar = useRef<HTMLSpanElement>(null);
   useEffect(() => (status === "pending" ? bindProxyProgress(id, text.current, bar.current) : undefined), [id, status]);
+  // Media with alpha plays from its source: a `no proxy` chip says so (Batch 64).
+  if (alpha) {
+    return (
+      <span className={styles.proxyBadge} data-status="failed" data-tooltip="No proxy: video with transparency plays from the source file">
+        no proxy
+      </span>
+    );
+  }
   if (status === "none") return null;
   return (
     <span className={styles.proxyBadge} data-status={status} data-tooltip={CHIP_TOOLTIPS[status]}>
@@ -36,10 +44,10 @@ export const ProxyBadge = memo(function ProxyBadge({ id, status }: { id: MediaId
 /** The list view's Proxy column: None, Queued or the share done, the proxy's size, Failed. */
 export const ProxyCell = memo(function ProxyCell({ item }: { item: MediaItem }) {
   const text = useRef<HTMLSpanElement>(null);
-  const status = item.kind === "video" ? (item.proxy?.status ?? "none") : "none";
+  const status = item.kind === "video" && !item.alpha ? (item.proxy?.status ?? "none") : "none";
   useEffect(() => (status === "pending" ? bindProxyProgress(item.id, text.current, null, "Queued") : undefined), [item.id, status]);
   if (status === "pending") return <span ref={text} className={styles.mono} />;
   if (status === "ready" && item.proxy) return <span className={styles.mono}>{`${item.proxy.width}×${item.proxy.height}`}</span>;
   if (status === "failed") return <span className={styles.failed}>Failed</span>;
-  return <span className={styles.muted}>None</span>;
+  return <span className={styles.muted}>{item.alpha ? "None (alpha)" : "None"}</span>;
 });

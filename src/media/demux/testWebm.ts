@@ -18,6 +18,8 @@ export interface TestWebmTrack {
   /** Adds a ContentEncodings element (compressed or encrypted frames). */
   encoded?: boolean;
   enabled?: boolean;
+  /** Adds an AlphaMode element with this value (1: the blocks may carry alpha). */
+  alphaMode?: number;
 }
 
 export interface TestBlock {
@@ -28,6 +30,8 @@ export interface TestBlock {
   data?: Uint8Array;
   /** Written as a BlockGroup: a ReferenceBlock unless `key`, and BlockDuration when given. */
   group?: { duration?: number };
+  /** The alpha bitstream, written as BlockAdditions (BlockAddID 1) in a BlockGroup. */
+  alpha?: Uint8Array;
   /** Xiph lacing flag (with a fake lace count). */
   laced?: boolean;
 }
@@ -132,7 +136,7 @@ function trackEntry(track: TestWebmTrack): Uint8Array {
   if (track.codecPrivate) parts.push(el(0x63a2, track.codecPrivate));
   if (track.defaultDuration) parts.push(uintEl(0x23e383, track.defaultDuration));
   if (track.encoded) parts.push(el(0x6d80, el(0x6240, uintEl(0x5031, 0))));
-  if (track.type === "video") parts.push(el(0xe0, uintEl(0xb0, track.width ?? 640), uintEl(0xba, track.height ?? 360)));
+  if (track.type === "video") parts.push(el(0xe0, uintEl(0xb0, track.width ?? 640), uintEl(0xba, track.height ?? 360), ...(track.alphaMode !== undefined ? [uintEl(0x55c0, track.alphaMode)] : [])));
   else parts.push(el(0xe1, floatEl(0xb5, track.sampleRate ?? 48000), uintEl(0x9f, track.channels ?? 2)));
   return el(0xae, ...parts);
 }
@@ -164,9 +168,10 @@ export function buildWebm(options: TestWebmOptions): Uint8Array {
     const parts: Uint8Array[] = [uintEl(0xe7, clusterTime)];
     if (options.voids) parts.push(voidEl());
     blocks.forEach((block, i) => {
-      if (block.group) {
+      if (block.group || block.alpha) {
         const group = [el(0xa1, blockBytes(block, clusterTime, first + i, false))];
-        if (block.group.duration !== undefined) group.push(uintEl(0x9b, block.group.duration));
+        if (block.alpha) group.push(el(0x75a1, el(0xa6, uintEl(0xee, 1), el(0xa5, block.alpha))));
+        if (block.group?.duration !== undefined) group.push(uintEl(0x9b, block.group.duration));
         if (!block.key) group.push(el(0xfb, Uint8Array.of(0xff)));
         parts.push(el(0xa0, ...group));
       } else {

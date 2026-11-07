@@ -6,7 +6,9 @@ import type { Rotation } from "../probe/rotation.js";
 import { createSampleIndex, type SampleIndex } from "./sampleIndex.js";
 
 const MAGIC = 0x58495853; // "SXIX" little-endian
-export const INDEX_VERSION = 1;
+export const INDEX_VERSION = 2;
+/** Header flag (high half of the version word): the file also holds the alpha arrays. */
+const FLAG_ALPHA = 1;
 
 /** What identifies the source file the index was built from. */
 export interface SourceStamp {
@@ -20,17 +22,20 @@ const align8 = (n: number) => (n + 7) & ~7;
 export function writeSampleIndex(index: SampleIndex, source: SourceStamp): ArrayBuffer {
   const codec = new TextEncoder().encode(index.codec);
   const n = index.count;
+  const alpha = index.alphaOffsets !== undefined && index.alphaSizes !== undefined;
   const headerBytes = 48 + codec.length + index.description.length;
   const layout: [ArrayBufferView, number][] = [];
   let offset = align8(headerBytes);
-  for (const array of [index.offsets, index.dts, index.cts, index.sizes, index.durations, index.sync]) {
+  const arrays: ArrayBufferView[] = [index.offsets, index.dts, index.cts, index.sizes, index.durations, index.sync];
+  if (alpha) arrays.push(index.alphaOffsets as Float64Array, index.alphaSizes as Uint32Array);
+  for (const array of arrays) {
     layout.push([array, offset]);
     offset = align8(offset + array.byteLength);
   }
   const buffer = new ArrayBuffer(offset);
   const view = new DataView(buffer);
   view.setUint32(0, MAGIC, true);
-  view.setUint32(4, INDEX_VERSION, true);
+  view.setUint32(4, INDEX_VERSION | (alpha ? FLAG_ALPHA << 16 : 0), true);
   view.setFloat64(8, source.size, true);
   view.setFloat64(16, source.lastModified, true);
   view.setUint32(24, index.timescale, true);
@@ -53,7 +58,8 @@ const ROTATIONS: readonly number[] = [0, 90, 180, 270];
 export function readSampleIndex(buffer: ArrayBuffer, source: SourceStamp): SampleIndex | null {
   if (buffer.byteLength < 48) return null;
   const view = new DataView(buffer);
-  if (view.getUint32(0, true) !== MAGIC || view.getUint32(4, true) !== INDEX_VERSION) return null;
+  if (view.getUint32(0, true) !== MAGIC || (view.getUint32(4, true) & 0xffff) !== INDEX_VERSION) return null;
+  const alpha = ((view.getUint32(4, true) >>> 16) & FLAG_ALPHA) !== 0;
   if (view.getFloat64(8, true) !== source.size || view.getFloat64(16, true) !== source.lastModified) return null;
   const rotation = view.getUint16(36, true);
   const codecLength = view.getUint16(38, true);
@@ -74,7 +80,10 @@ export function readSampleIndex(buffer: ArrayBuffer, source: SourceStamp): Sampl
   const sizes = take(Uint32Array);
   const durations = take(Uint32Array);
   const sync = take(Uint8Array);
+  const alphaOffsets = alpha ? take(Float64Array) : null;
+  const alphaSizes = alpha ? take(Uint32Array) : null;
   if (!offsets || !dts || !cts || !sizes || !durations || !sync) return null;
+  if (alpha && (!alphaOffsets || !alphaSizes)) return null;
   const bytes = new Uint8Array(buffer);
   return createSampleIndex({
     codec: new TextDecoder().decode(bytes.subarray(48, 48 + codecLength)),
@@ -89,5 +98,6 @@ export function readSampleIndex(buffer: ArrayBuffer, source: SourceStamp): Sampl
     cts,
     durations,
     sync,
+    ...(alphaOffsets && alphaSizes && { alphaOffsets, alphaSizes }),
   });
 }

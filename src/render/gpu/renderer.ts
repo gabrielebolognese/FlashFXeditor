@@ -66,6 +66,19 @@ export interface TextureOptions {
    * (the preview of a 1080x1920 project never draws more than 1920 px of a 4K frame).
    */
   maxSize?: number;
+  /**
+   * Video frames with an alpha channel (Batch 64, spec §21.11): one byte per pixel, row after row, at
+   * `width` x `height` (the alpha stream's size). The frame's color is multiplied by it into one
+   * premultiplied texture, so the draw paths stay as they are.
+   */
+  alpha?: AlphaPlane;
+}
+
+/** The alpha channel of a video frame as bytes. */
+export interface AlphaPlane {
+  data: ArrayBuffer;
+  width: number;
+  height: number;
 }
 
 export interface Renderer {

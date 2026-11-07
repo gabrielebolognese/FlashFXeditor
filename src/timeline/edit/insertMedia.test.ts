@@ -11,6 +11,13 @@ function counter(prefix = "n") {
   return () => `${prefix}${++n}`;
 }
 
+describe("naturalDuration of an image sequence", () => {
+  it("is the sequence's own length, not the still-image default", () => {
+    const media = { ...makeMedia("s", "image", 2_000_000), sequence: { dir: "media/s", pattern: "f_%d.png", first: 0, count: 60, fps: FPS } };
+    expect(naturalDuration(media, FPS)).toBe(60);
+  });
+});
+
 describe("naturalDuration", () => {
   it("uses the whole frames of the media, 5 s for stills, and refuses empty media", () => {
     expect(naturalDuration(makeMedia("a", "video", 10_000_000), FPS)).toBe(300);

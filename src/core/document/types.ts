@@ -1,7 +1,7 @@
 // The persistent document (spec §5.2). Plain JSON only: no classes, Maps, Sets or undefined-valued
 // keys, so a Project can be serialized as-is and diffed by Immer patches.
 
-export const SCHEMA_VERSION = 8;
+export const SCHEMA_VERSION = 9;
 
 export type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
 export type JsonObject = { [key: string]: JsonValue };
@@ -468,6 +468,22 @@ export interface MediaItem {
   addedAt: string;
   /** The source file's size in bytes when it was imported (Batch 41): a folder relink matches by name and size. */
   size?: number;
+  /** A VP8/VP9 WebM whose alpha channel the app decodes (Batch 64, spec §21.11). */
+  alpha?: true;
+  /** An image sequence (Batch 64): `kind` is "image", `durationUs` = count / fps, `file` names the first frame. */
+  sequence?: ImageSequence;
+}
+
+/** The numbered frames of an image sequence (spec §21.11). */
+export interface ImageSequence {
+  /** The folder of the frames, relative to the project folder, `/` separated. */
+  dir: string;
+  /** printf-style file name of a frame, such as `frame_%05d.png`. */
+  pattern: string;
+  /** The number of the first frame (the %d value). */
+  first: number;
+  count: number;
+  fps: Rational;
 }
 
 /** A media panel bin (spec §12). */

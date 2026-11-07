@@ -93,7 +93,16 @@ export class ExportRenderer {
     });
     const fileOf = (mediaId: MediaId) => Promise.resolve(media[mediaId]?.file ?? null);
     this.stops.push(
-      this.frames.attach({ file: fileOf, readIndex: (mediaId) => Promise.resolve(media[mediaId]?.index ?? null), writeIndex: () => Promise.resolve() }),
+      this.frames.attach({
+        file: fileOf,
+        readIndex: (mediaId) => Promise.resolve(media[mediaId]?.index ?? null),
+        writeIndex: () => Promise.resolve(),
+        sequence: (mediaId) => {
+          const item = project.media[mediaId];
+          const frames = media[mediaId]?.frames;
+          return Promise.resolve(item?.sequence && frames ? { frames, fps: item.sequence.fps, width: item.width ?? 0, height: item.height ?? 0 } : null);
+        },
+      }),
       this.images.attach({ file: fileOf }),
     );
     for (const [mediaId, bitmap] of Object.entries(svg) as [MediaId, ImageBitmap][]) {

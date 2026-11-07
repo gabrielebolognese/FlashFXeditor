@@ -12,7 +12,8 @@ import { ByteSource } from "../bytes/ByteSource.js";
 import { parseSampleIndex } from "../demux/container.js";
 import { frameAt, type SampleIndex } from "../demux/sampleIndex.js";
 import { readSampleIndex, writeSampleIndex } from "../demux/sampleIndexFile.js";
-import { abortError, type FramePriority, type OpenVideoResult, type PrefetchParams, type VideoInfo, type WorkerDecodeStats } from "../workers/protocol.js";
+import { SEQUENCE_CODEC, sequenceIndex } from "../demux/sequenceIndex.js";
+import { abortError, type FramePriority, type OpenSequence, type OpenVideoResult, type PrefetchParams, type VideoInfo, type WorkerDecodeStats } from "../workers/protocol.js";
 import { UnsupportedCodecError, VideoDecodeSession, type DecodedFrame, type DecoderCallbacks, type DecoderLike } from "./VideoDecodeSession.js";
 
 export { UnsupportedCodecError };
@@ -24,17 +25,29 @@ export const RING_IDLE_MS = 1_000;
 /** Open decoders at most (hardware decoders are a limited resource). */
 export const MAX_LIVE_DECODERS = 6;
 
+export type DecoderMode = "alpha" | "sequence";
+
 export interface DecodeSessionsDeps<F extends DecodedFrame> {
-  createDecoder(callbacks: DecoderCallbacks<F>): DecoderLike;
+  /**
+   * `mode` (Batch 64): `alpha` when the video has alpha streams (the decoder pairs two decoders and takes
+   * AlphaChunks), `sequence` for an image sequence (each chunk is a frame file).
+   */
+  createDecoder(callbacks: DecoderCallbacks<F>, mode?: DecoderMode): DecoderLike;
   isConfigSupported(config: VideoDecoderConfig): Promise<boolean>;
   idleMs?: number;
   ringIdleMs?: number;
   maxLiveDecoders?: number;
 }
 
+/** Where a session reads its samples from: a file's bytes, or an image sequence's frame files. */
+interface SampleSource {
+  read(offset: number, size: number): Promise<ArrayBuffer>;
+  release(): void;
+}
+
 interface Entry<F extends DecodedFrame> {
   session: VideoDecodeSession<F>;
-  source: ByteSource;
+  source: SampleSource;
   info: VideoInfo;
   lastUsed: number;
   idleTimer: ReturnType<typeof setTimeout> | null;
@@ -53,11 +66,21 @@ export interface OpenParams {
   lod: Lod;
   file: File;
   cachedIndex: Blob | null;
+  /** An image sequence (Batch 64): `file` is its first frame and no index is read or built. */
+  sequence?: OpenSequence | undefined;
 }
 
 /** A frame was requested for a video that was not opened (or was closed). */
 export class NotOpenError extends Error {
   override name = "NotOpenError";
+}
+
+/** The frame files of a sequence as a sample source: sample `offset` is the frame's number. */
+function frameFiles(files: readonly File[]): SampleSource {
+  return {
+    read: (offset) => (files[offset] as File).arrayBuffer(),
+    release: () => undefined,
+  };
 }
 
 const keyOf = (mediaId: string, lod: Lod) => `${mediaId}|${lod}`;
@@ -76,11 +99,11 @@ export class DecodeSessions<F extends DecodedFrame = VideoFrame> {
 
   constructor(private readonly deps: DecodeSessionsDeps<F>) {}
 
-  async open({ mediaId, lod, file, cachedIndex }: OpenParams, signal?: AbortSignal): Promise<OpenVideoResult> {
+  async open({ mediaId, lod, file, cachedIndex, sequence }: OpenParams, signal?: AbortSignal): Promise<OpenVideoResult> {
     const opening = { mediaId, lod, closed: false };
     this.opening.add(opening);
     try {
-      return await this.load({ mediaId, lod, file, cachedIndex }, opening, signal);
+      return await this.load({ mediaId, lod, file, cachedIndex, sequence }, opening, signal);
     } finally {
       this.opening.delete(opening);
     }
@@ -128,15 +151,17 @@ export class DecodeSessions<F extends DecodedFrame = VideoFrame> {
   }
 
   /** Reads or builds the index and registers the session, unless `opening` was closed meanwhile. */
-  private async load({ mediaId, lod, file, cachedIndex }: OpenParams, opening: { closed: boolean }, signal?: AbortSignal): Promise<OpenVideoResult> {
+  private async load({ mediaId, lod, file, cachedIndex, sequence }: OpenParams, opening: { closed: boolean }, signal?: AbortSignal): Promise<OpenVideoResult> {
     const stamp = { size: file.size, lastModified: file.lastModified };
-    let index: SampleIndex | null = cachedIndex ? readSampleIndex(await cachedIndex.arrayBuffer(), stamp) : null;
+    let index: SampleIndex | null = !sequence && cachedIndex ? readSampleIndex(await cachedIndex.arrayBuffer(), stamp) : null;
     const fromCache = index !== null;
     let bytes: ArrayBuffer | null = null;
-    const source = new ByteSource(file);
+    const source: SampleSource = sequence ? frameFiles(sequence.frames) : new ByteSource(file);
     try {
-      if (!index) {
-        index = await parseSampleIndex(file, source, signal);
+      if (sequence) {
+        index = sequenceIndex(sequence.frames.map((frame) => frame.size), sequence.fps, sequence.width, sequence.height);
+      } else if (!index) {
+        index = await parseSampleIndex(file, source as ByteSource, signal);
         bytes = writeSampleIndex(index, stamp);
         this.indexParsed += 1;
       } else {
@@ -144,7 +169,8 @@ export class DecodeSessions<F extends DecodedFrame = VideoFrame> {
       }
       signal?.throwIfAborted();
       const session = this.createSession(index, source);
-      const decodable = await this.deps.isConfigSupported(session.config).catch(() => false);
+      // A sequence has no codec: its frames are decoded as images.
+      const decodable = index.codec === SEQUENCE_CODEC ? true : await this.deps.isConfigSupported(session.config).catch(() => false);
       signal?.throwIfAborted();
       // Closed meanwhile (the media left the project): registering it now would keep it for good.
       if (opening.closed) throw abortError();
@@ -185,13 +211,14 @@ export class DecodeSessions<F extends DecodedFrame = VideoFrame> {
     return entry;
   }
 
-  private createSession(index: SampleIndex, source: ByteSource): VideoDecodeSession<F> {
+  private createSession(index: SampleIndex, source: SampleSource): VideoDecodeSession<F> {
     const session: VideoDecodeSession<F> = new VideoDecodeSession<F>(index, {
       createDecoder: (callbacks) => {
         this.makeRoom(session);
-        return this.deps.createDecoder(callbacks);
+        return this.deps.createDecoder(callbacks, index.codec === SEQUENCE_CODEC ? "sequence" : index.alphaSizes !== undefined ? "alpha" : undefined);
       },
       readSample: (offset, size) => source.read(offset, size),
+      readAlpha: (offset, size) => source.read(offset, size),
       onActive: () => {
         const entry = this.entryOf(session);
         if (!entry) return;

@@ -4,6 +4,7 @@ import { keyframeIssues } from "./keyframes.js";
 import { transitionIssues } from "./transitions.js";
 import { sequenceGraphIssues } from "./sequences.js";
 import { usPerFrame } from "./time.js";
+import { sequenceDurationUs, sequenceRecordIssues } from "./sequence.js";
 import { CAPTION_HIGHLIGHTS, CUE_ANIM_KINDS, isFreeze, isMediaClip, LABEL_COLORS, SOLID_SHAPE_IDS, STROKE_ALIGNS, type CaptionClip, type CaptionStyle, type Clip, type ClipId, type ClipKind, type CompoundClip, type Sequence, type MediaClip, type MediaItem, type Project, type SolidClip, type TextClip, type TextStyle, type Track, type TrackId, type TrackKind } from "./types.js";
 
 export class DocumentInvariantError extends Error {
@@ -44,6 +45,13 @@ function mediaIssues(key: string, media: MediaItem): string[] {
   }
   if ("relPath" in media.file && !isInsidePath(media.file.relPath)) issues.push(`${label}: relPath "${media.file.relPath}" must be a relative path inside the project folder`);
   if (media.size !== undefined && !(Number.isInteger(media.size) && media.size >= 0)) issues.push(`${label}: size ${media.size} must be an integer >= 0`);
+  if (media.sequence) {
+    if (media.kind !== "image") issues.push(`${label}: only an image can be a sequence`);
+    const problems = sequenceRecordIssues(media.sequence);
+    for (const issue of problems) issues.push(`${label}: sequence ${issue}`);
+    if (problems.length === 0 && media.durationUs !== sequenceDurationUs(media.sequence)) issues.push(`${label}: durationUs ${media.durationUs} must be the sequence's ${sequenceDurationUs(media.sequence)}`);
+  }
+  if (media.alpha !== undefined && media.kind !== "video") issues.push(`${label}: alpha only applies to a video`);
   const { proxy } = media;
   if (proxy) {
     if (!PROXY_STATUSES.has(proxy.status)) issues.push(`${label}: proxy status "${proxy.status}" is not none, pending, ready or failed`);

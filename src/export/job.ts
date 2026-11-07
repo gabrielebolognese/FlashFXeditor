@@ -12,6 +12,8 @@ import type { ExportFormat } from "./presets.js";
 export interface ExportMediaFile {
   file: File;
   index: Blob | null;
+  /** The frame files of an image sequence (Batch 64), in order; `file` is the first one. */
+  frames?: File[];
 }
 
 export interface ExportJobParams {

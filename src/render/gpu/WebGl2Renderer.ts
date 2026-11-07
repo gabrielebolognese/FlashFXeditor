@@ -20,14 +20,14 @@ import type { DrawList } from "../compositor/drawList.js";
 import { IDENTITY, mutableIdentity, setMat, type MutableMat3 } from "../mat3.js";
 import type { BackendRenderer } from "./backend.js";
 import { blurRegionInto, DrawRecords, premultipliedInto, showBlurred, type BlurRegion, type RecordKind } from "./drawRecords.js";
-import { fitWithin } from "./fitWithin.js";
+import { fitWithin, hasAlphaFormat } from "./fitWithin.js";
 import type { GlContext } from "./GlContext.js";
-import { BLUR_FRAGMENT, DISSOLVE_FRAGMENT, DISSOLVE_VERTEX, FULLSCREEN_VERTEX, LAYER_VERTEX, SCALE_FRAGMENT, SOLID_FRAGMENT, TEXTURED_FRAGMENT } from "./glShaders.js";
+import { BLUR_FRAGMENT, DISSOLVE_FRAGMENT, DISSOLVE_VERTEX, FULLSCREEN_VERTEX, LAYER_VERTEX, SCALE_ALPHA_FRAGMENT, SCALE_FRAGMENT, SOLID_FRAGMENT, TEXTURED_FRAGMENT } from "./glShaders.js";
 import { isHdrColorSpace, toneMapToCanvas } from "./hdr.js";
 import { layerFloats, LAYER_SIZE, LAYER_STRIDE, packLayer, packMat3, pixelsToClipInto } from "./layerUniforms.js";
 import { mipLevelCount, textureBytes } from "./mipmaps.js";
 import { unpadAndUnpremultiply } from "./readback.js";
-import type { CanvasTarget, DeviceEvent, OffscreenTarget, Pane, RenderTarget, TextureHandle, TextureOptions, Viewport } from "./renderer.js";
+import type { AlphaPlane, CanvasTarget, DeviceEvent, OffscreenTarget, Pane, RenderTarget, TextureHandle, TextureOptions, Viewport } from "./renderer.js";
 import { BLUR_KEEP_DRAWS, BLUR_STEP } from "./WebGpuRenderer.js";
 
 const TRANSPARENT: RGBA = { r: 0, g: 0, b: 0, a: 0 };
@@ -145,6 +145,8 @@ interface Resources {
   maxTextureSize: number;
   programs: Record<RecordKind, Program>;
   scale: Program;
+  /** `scale` with an alpha plane on unit 1 (Batch 64); linked on the first video with alpha. */
+  scaleAlpha: Program | null;
   blurProgram: Program;
   /** The whole frame of a scaled upload (`scaleIn`), reallocated when the frame size changes. */
   scratch: { texture: WebGLTexture; width: number; height: number; bytes: number } | null;
@@ -233,12 +235,15 @@ export class WebGl2Renderer implements BackendRenderer {
   uploadVideoFrame(frame: VideoFrame, options: TextureOptions = {}): TextureHandle {
     try {
       const res = this.require();
-      const { width, height } = fitWithin(frame.displayWidth, frame.displayHeight, options.maxSize);
+      // An RGBA frame (an image sequence's, Batch 64) is uploaded whole: scaling it would drop its alpha.
+      const { width, height } = hasAlphaFormat(frame) ? { width: frame.displayWidth, height: frame.displayHeight } : fitWithin(frame.displayWidth, frame.displayHeight, options.maxSize);
       const into = this.spareFor(res, width, height);
       const visible = frame.visibleRect;
       // Uploaded as is only when its pixels are its display size (no scaling, square pixels).
       const direct = width === frame.displayWidth && height === frame.displayHeight && visible !== null && visible.width === width && visible.height === height;
-      const texture = isHdrColorSpace(frame.colorSpace)
+      const texture = options.alpha
+        ? this.scaleIn(res, frame, width, height, into, options.alpha)
+        : isHdrColorSpace(frame.colorSpace)
         ? this.toneMapIn(res, frame, width, height, into)
         : direct
           ? this.copyIn(res, frame, width, height, { mipmaps: false, ...options }, into, true)
@@ -527,24 +532,48 @@ export class WebGl2Renderer implements BackendRenderer {
    * A `width` x `height` texture showing the whole frame: the frame is uploaded whole into the scratch
    * texture and drawn once at the smaller size with the footprint taps (SCALE_FRAGMENT).
    */
-  private scaleIn(res: Resources, frame: VideoFrame, width: number, height: number, into: GlTexture | null): GlTexture {
+  private scaleIn(res: Resources, frame: VideoFrame, width: number, height: number, into: GlTexture | null, alpha?: AlphaPlane): GlTexture {
     const texture = into ?? this.newTexture(res, width, height, { mipmaps: false }, true);
+    let alphaTexture: WebGLTexture | null = null;
     try {
       const { gl } = res;
       bindTexture(gl, this.scratchFor(res, frame));
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, gl.RGBA, gl.UNSIGNED_BYTE, frame);
+      if (alpha) {
+        // The alpha bytes as an R8 texture on unit 1 (rows are tightly packed: UNPACK_ALIGNMENT is 1).
+        alphaTexture = gl.createTexture();
+        gl.activeTexture(gl.TEXTURE1);
+        gl.bindTexture(gl.TEXTURE_2D, alphaTexture);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.R8, alpha.width, alpha.height, 0, gl.RED, gl.UNSIGNED_BYTE, new Uint8Array(alpha.data));
+        setSampling(gl, 1);
+        gl.activeTexture(gl.TEXTURE0);
+      }
       gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebufferOf(res, texture.surface));
       gl.viewport(0, 0, texture.width, texture.height);
       gl.disable(gl.SCISSOR_TEST);
       gl.disable(gl.BLEND);
-      gl.useProgram(res.scale.program);
+      gl.useProgram(alpha ? this.alphaProgram(res).program : res.scale.program);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
       gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      if (alphaTexture) gl.deleteTexture(alphaTexture);
     } catch (error) {
+      if (alphaTexture) res.gl.deleteTexture(alphaTexture);
       texture.destroy();
       throw error;
     }
     return texture;
+  }
+
+  /** The scale program with the alpha plane (u_alpha on unit 1), linked on first use. */
+  private alphaProgram(res: Resources): Program {
+    if (res.scaleAlpha) return res.scaleAlpha;
+    const { gl } = res;
+    const made = linkProgram(gl, "scale alpha", FULLSCREEN_VERTEX, SCALE_ALPHA_FRAGMENT);
+    gl.useProgram(made);
+    gl.uniform1i(gl.getUniformLocation(made, "u_source"), 0);
+    gl.uniform1i(gl.getUniformLocation(made, "u_alpha"), 1);
+    res.scaleAlpha = { program: made, view: null, layer: null, mipmapped: null, blur: null, viewDraw: -1 };
+    return res.scaleAlpha;
   }
 
   /**
@@ -680,6 +709,7 @@ export class WebGl2Renderer implements BackendRenderer {
         solid: program("solid", LAYER_VERTEX, SOLID_FRAGMENT, []),
       },
       scale: program("scale", FULLSCREEN_VERTEX, SCALE_FRAGMENT, ["u_source"]),
+      scaleAlpha: null,
       blurProgram: program("blur", FULLSCREEN_VERTEX, BLUR_FRAGMENT, ["u_source"]),
       scratch: null,
       blurPool: [],
