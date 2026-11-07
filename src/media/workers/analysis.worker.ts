@@ -5,6 +5,7 @@
 import { silenceSpans } from "../analysis/silence.js";
 import { buildPeaks, peaksLevel0, writePeaksFile } from "../cache/peaks.js";
 import { decodeImage } from "../decode/poster.js";
+import { readMediaHeader } from "../probe/nodeHeaders.js";
 import { ThumbSheetMaker } from "../decode/thumbSheet.js";
 import { createVideoDecoder } from "../decode/VideoDecodeSession.js";
 import type { Method } from "./protocol.js";
@@ -23,6 +24,7 @@ new WorkerHost(
     peaksLevel0: async ({ channels }) => peaksLevel0(channels.map((buffer) => new Float32Array(buffer))).buffer as ArrayBuffer,
     peaksFile: async ({ level0, sampleRate, frames, channels, stamp }) => writePeaksFile(buildPeaks(new Int8Array(level0), { sampleRate, frames, channels }), stamp),
     detectSilence: async ({ level0, sampleRate, frames, channels, ranges, ...params }) => ({ spans: silenceSpans(new Int8Array(level0), { sampleRate, frames, channels }, params, ranges) }),
+    mediaHeader: ({ file, name }) => readMediaHeader(file, name),
     thumbSheet: (params, signal) => thumbs.sheet(params, signal),
     decodeSheet: ({ blob }) => decodeImage(blob, Infinity),
     closeThumbs: async ({ mediaId }) => {

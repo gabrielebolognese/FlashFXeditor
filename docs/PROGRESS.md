@@ -1,6 +1,6 @@
 # Progress
 
-last_completed_batch: 55
+last_completed_batch: 56
 in_progress_batch: none
 skipped_batches: []
 needs_human: none
@@ -25,6 +25,7 @@ What release 1.1.0 does not do, or does not do well. Next steps for each are in 
 
 ## Design system gaps
 Items the design system did not define and the functional default that was used instead.
+- External-change banner reuses the read-only notice look; the stand-in notice and generator-notes block have no DS definition and use tokens. (Batch 56)
 - Spacing scale: DS uses Tailwind steps without tokens. Added `--space-0..6` = 2/4/6/8/12/16/24px. (Batch 01)
 - Type tracking unit: DS gives unitless values (+0.4, −0.1); used px. (Batch 01)
 - Shell metrics: DS says headers ~36–44px. App bar 40px (`--appbar-height`), panel header 32px (`--panel-header-height`). (Batch 01)
@@ -508,6 +509,7 @@ Decisions that diverge from docs/EDITOR_SPEC.md, with the reason. Each one also 
 
 ## Follow-ups
 Small things discovered during a batch that belong to a later batch. Format: `- [from Batch NN -> Batch MM] description`.
+- [from Batch 56 -> Batch 57] The headless `render` can reuse `validateProjectFolder` and the stand-in report; stand-ins render as their baked layer.
 - [from Batch 00 -> Batch 01] `npm run check` and `npm run lint` do not exist yet; Batch 01 creates them along with the Vite + React scaffold. (done in Batch 01)
 - [from Batch 01 -> Batch 02] `KeyDispatcher.onAction` only logs (`app/services.ts`); route it to the command registry. (done in Batch 02: `ActionRegistry`)
 - [from Batch 01 -> Batch 03] Persist splitter positions per project (session.json); localStorage `layout.v1` stays the global fallback. (done in Batch 03)
@@ -6388,3 +6390,36 @@ Why each dependency exists (Batch rule 8).
 - fix-attempt: done (2026-11-07). Caption tracks: `normalizeProject` starts a sparse caption track from `newCaptionTrack` (name `CC`, height `S`) under what the input writes. Solids: `normalizeClip` takes shape, fill, size and corner radius from `defaultSolid(project.settings)` under the input (rounded rectangle, 54 px radius at 1080x1920), no deviation. `normalize.test.ts` now compares a sparse caption track + cue (`newCaptionTrack`, `newCue`), text clip (`newTextClip`) and solid (`newSolidClip` + `defaultSolid`) with the factories. `fixtures/interop/sparse/expected/project.json` regenerated (4 lines: `CC`, `S`, `roundedRect`, 54) and INTEROP.md 4.1 corrected. Doc comments displaced by the re-exports restored (`text/captions.ts`, `timeline/edit/insertMedia.ts`).
 - review: accepted (second independent review, 2026-11-07). `npm run check` green (246 files / 2593 tests, perf 4/4, build). Every item of the earlier rejection is fixed: a sparse caption track starts from `newCaptionTrack` (`src/core/document/normalize.ts:220-223`, `CC` / `S`), a sparse solid starts from `defaultSolid(project.settings)` (`normalize.ts:185-186`, rounded rectangle, radius 54 at 1080x1920), `normalize.test.ts:46-68` compares a caption track + cue, a text clip and a solid with `newCaptionTrack`/`newCue`, `newTextClip` and `newSolidClip` + `defaultSolid`, the expected fixture and INTEROP.md 4.1 are corrected, and the displaced doc comments are back on their declarations. `npm run cli -- normalize fixtures/interop/sparse` (run here) exits 0 and prints JSON equal to `fixtures/interop/sparse/expected/project.json`. Acceptance 1, 2 and 4 are covered by `normalizeCli.test.ts` / `normalize.test.ts`; item 3's app half stays a pending manual check with steps. Nothing from Batch 56 built; no literals, untagged TODOs or §3/§4 issues (CLI and pure modules only).
 - docs: whats-new.md (Batch 55 entry and video) in docs/user-guide/ (2026-11-07)
+
+### Batch 56: Interop III: open links, reload on external change, repair on open, Make editable
+- status: done
+- date: 2026-11-07
+- notes:
+  - Built in auto mode (lean run). Unit tests cover the logic; the large-fixture timing (open under 2 s, 60 fps, zero React commits) and the live browser flows were not measured here and are pending manual checks.
+  - Open link: `src/project/projectsFolder.ts` (`ProjectsFolder` keeps the handle in the IndexedDB kv store, `parseOpenLink`, `resolveLinkTarget`); `?open=interop/basic` needs at most one click (choose the projects folder once, or grant permission again). The opened project joins Recent projects. Start screen and Settings > General > Storage have a Projects folder control. Command `project.chooseProjectsFolder`.
+  - External change: `src/project/externalChange.ts` (`ExternalWatcher`: compares the file `lastModified` and `size` with the stamp the app wrote, on window focus and every 5 s idle, skipped during gestures or export). `ProjectSession.reloadFromDisk` backs the in-memory document up to `history/`, loads the file, keeps playhead, zoom and the still-existing selection. `Autosaver` got `hold`, `markClean`, `lastWritten`. With unsaved edits the autosaver is held and the banner (`ExternalChangeBanner`) offers Reload or Keep mine; commands `project.reloadFromDisk`, `project.keepMine`.
+  - Repair on open: `src/project/repair.ts` re-reads each media header (new worker method `mediaHeader` over `readMediaHeader`) and corrects duration, size, frame rate, audio presence and file size; clips past a shortened media end are trimmed. Toast with counts and `history/repair-<date>.log`. Also runs after an external reload.
+  - Make editable: `src/core/document/makeEditable.ts` (`convertStandIn`, `convertAll`, one undo step, reuses `normalizeProject` at the stand-in schema version, head trim restored with `trimmedClip`). `baked` badge on the timeline, notice in the Properties header, `Make editable` and `Make all editable` (confirmation dialog, toast on open with an action), result reports converted and remaining counts. Splits convert half by half to the same frames (tests).
+  - CLI: `validate` and `info` report `stand-in <name> (<kind>): can be made editable | stays baked (<reason>)`, and `convertible` in `--json`.
+  - Generator notes (`FALLBACKS.md`, `OPEN.txt`) are read-only in the Project section.
+  - Fixtures: `fixtures/interop/standins/` (3 convertible, 1 lottie that stays) and `fixtures/interop/large/` (40 video tracks, 1,000 clips, 5,000 keys, 1.29 MB) written by `scripts/fixtures/make-standins.mjs` and `make-large.mjs`. `.gitignore` has the four fixture patterns. Manifest `interop.openLink`, `externalReload`, `repairOnOpen` true, `lastBatch` 56.
+  - Tests: +8 files/new tests (makeEditable, fuzz, interopOpen, projectsFolder, externalChange, repair, ProjectSession.reload); check green: 253 files / 2628 tests, perf 4/4, build.
+- deviations:
+  - "Changed media files are probed again" is the repair pass over all media after a reload, not a separate size/mtime comparison.
+  - A repaired project is saved by the next autosave (repair is not an undo step).
+  - Repair tolerance is one frame, to avoid false repairs from small differences between probes.
+  - The enabled state of Make editable is decided from the records as written, without probing media.
+  - There is no project menu: `Make all editable` is in the command palette and the Project section.
+  - Closing while the banner is up acts as Keep mine (the save backs the disk version up to `history/`).
+  - Large fixture timing not measured in a browser in this run (see pending manual checks).
+- follow-ups:
+  - [from Batch 56 -> Batch 57] The headless `render` can reuse `validateProjectFolder` and the stand-in report; stand-ins render as their baked layer.
+- design gaps:
+  - The external-change banner reuses the read-only notice look (no DS definition for banners).
+  - The stand-in notice (Properties header) and the generator-notes block have no DS definition; built from tokens.
+- pending manual checks:
+  - Large fixture: copy `fixtures/interop/large` next to a projects folder, open it with a warm cache: opens in under 2 s, plays at 60 fps with zero React commits (Profiler), timeline zoom/scroll/drag hold 60 fps.
+  - Link: set the projects folder to `fixtures/` in Settings, open `/?open=interop/basic` in a fresh tab: opens after at most one click and appears in Recent projects.
+  - External edit: with a project open, edit `project.json` in another program: within 5 s (or on focus) it reloads with playhead and zoom kept; with unsaved edits the banner appears and Reload and Keep mine both work.
+  - Repair: change a media file in a scratch copy (record 10.0 s for a 9.5 s audio file): it opens corrected with a toast and `history/repair-*.log`.
+  - Make editable: open `fixtures/interop/standins`: toast, `baked` badges, Make editable on the solid (one undo restores), the lottie stays with its reason, Make all editable reports converted and remaining.

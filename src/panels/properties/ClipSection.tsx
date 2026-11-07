@@ -12,6 +12,7 @@ import { Swatches } from "../../ui/Swatches.js";
 import { TextField } from "../../ui/TextField.js";
 import { Toggle } from "../../ui/Toggle.js";
 import { Row } from "./Section.js";
+import { StandInNotice } from "./StandInNotice.js";
 import styles from "./Section.module.css";
 import { MIXED, NONE, SKIP, useClipsShared, type Shared } from "./useShared.js";
 
@@ -77,6 +78,7 @@ export function ClipSection({ ids }: { ids: readonly ClipId[] }) {
   const time = { fps, mode };
   return (
     <>
+      {ids.length === 1 && ids[0] !== undefined && <StandInNotice id={ids[0]} />}
       <Row label="Name">
         <TextField value={typeof name === "string" ? name : ""} placeholder={name === MIXED ? "--" : undefined} onCommit={(text) => renameClips(ids, text)} ariaLabel="Clip name" />
       </Row>

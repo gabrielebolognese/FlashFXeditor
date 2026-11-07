@@ -1,0 +1,45 @@
+/* The baked stand-in line of the Clip section and the generator notes of the Project section (Batch 56;
+   gap: the DS has no notice block): a muted caption block across both columns, hairline underneath. */
+.notice {
+  display: flex;
+  flex-direction: column;
+  grid-column: 1 / -1;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.text {
+  color: var(--text-secondary);
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-track);
+  overflow-wrap: anywhere;
+}
+
+.note {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+
+.noteTitle {
+  color: var(--text-secondary);
+  font: var(--type-caption);
+  letter-spacing: var(--type-caption-track);
+  cursor: pointer;
+}
+
+.noteBody {
+  max-height: calc(var(--control-default) * 6);
+  margin: var(--space-2) 0 0;
+  padding: var(--space-2) var(--space-3);
+  overflow: auto;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--text-secondary);
+  font: var(--type-mono);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  user-select: text;
+}

@@ -6,6 +6,7 @@ import { createStore, type Store } from "../core/store/createStore.js";
 import { errorMessage } from "./errorMessage.js";
 import type { FsDir } from "./fs.js";
 import { serializeProject } from "./projectFile.js";
+import { PROJECT_FILE } from "./layout.js";
 import { saveProjectFile } from "./saveProject.js";
 
 export const AUTOSAVE_DELAY_MS = 1000;
@@ -23,6 +24,12 @@ export interface SaveStatus {
 }
 
 export const INITIAL_SAVE_STATUS: SaveStatus = { state: "saved", savedAt: null, error: null, readOnly: false };
+
+/** What the file system says of project.json: compared to see whether another tool wrote it (spec §21.5). */
+export interface FileStamp {
+  lastModified: number;
+  size: number;
+}
 
 export interface AutosaverOptions {
   dir: FsDir;
@@ -48,6 +55,8 @@ export class Autosaver {
   private timer: ReturnType<typeof setTimeout> | undefined;
   private inFlight: Promise<boolean> | null = null;
   private disposed = false;
+  private held = false;
+  private written: FileStamp | null = null;
 
   constructor(options: AutosaverOptions) {
     this.options = options;
@@ -59,6 +68,30 @@ export class Autosaver {
 
   get isDirty(): boolean {
     return this.dirty;
+  }
+
+  /** The stamp project.json had right after this session's last write (null before the first one). */
+  get lastWritten(): FileStamp | null {
+    return this.written;
+  }
+
+  /**
+   * While held nothing is written (the banner of an external change waits for Reload or Keep mine);
+   * releasing schedules the save of what is unsaved.
+   */
+  hold(held: boolean): void {
+    if (this.held === held) return;
+    this.held = held;
+    if (held) this.cancelTimer();
+    else if (this.dirty && !this.readOnly) this.schedule();
+  }
+
+  /** The document was just replaced by what is on disk (a reload): nothing is unsaved. */
+  markClean(): void {
+    this.dirty = false;
+    this.firstDirtyAt = null;
+    this.cancelTimer();
+    if (!this.inFlight) this.setStatus({ state: "saved" });
   }
 
   /** Records a document change and schedules a save. Cheap: safe to call on every commit. */
@@ -126,7 +159,7 @@ export class Autosaver {
   private async run(force: boolean): Promise<boolean> {
     this.cancelTimer();
     while (this.inFlight) await this.inFlight;
-    if (this.readOnly || this.disposed) return false;
+    if (this.readOnly || this.disposed || this.held) return false;
     if (!this.dirty && !force) return this.status.getState().state !== "error";
     this.inFlight = this.write();
     try {
@@ -146,6 +179,7 @@ export class Autosaver {
     try {
       const text = serializeProject(project, { now: savedAt, appVersion: this.options.appVersion });
       await saveProjectFile(this.options.dir, text, { now, ...(this.options.historyLimit !== undefined && { historyLimit: this.options.historyLimit }) });
+      this.written = await this.stampOf();
     } catch (error) {
       this.dirty = true;
       console.error("[autosave] save failed", error);
@@ -161,6 +195,15 @@ export class Autosaver {
       console.error("[autosave] onSaved failed", error);
     }
     return true;
+  }
+
+  private async stampOf(): Promise<FileStamp | null> {
+    try {
+      const file = await this.options.dir.getFile(PROJECT_FILE);
+      return file ? { lastModified: file.lastModified, size: file.size } : null;
+    } catch {
+      return null;
+    }
   }
 
   private setStatus(patch: Partial<SaveStatus>): void {

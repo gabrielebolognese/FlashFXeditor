@@ -33,6 +33,7 @@ function printValidate(report: FolderReport, dir: string): void {
   for (const issue of report.errors) console.log(`error   ${issue.path}: ${issue.message}`);
   for (const issue of report.warnings) console.log(`warning ${issue.path}: ${issue.message}`);
   const stand = list(report.standIns);
+  for (const status of report.convertible) console.log(`stand-in ${status.name} (${status.kind}): ${status.convertible ? "can be made editable" : `stays baked (${status.reason ?? "not convertible"})`}`);
   console.log(`${report.ok ? "valid" : "invalid"}: ${dir} (${report.errors.length} errors, ${report.warnings.length} warnings${stand ? `; stand-ins: ${stand}` : ""})`);
 }
 
@@ -48,6 +49,7 @@ async function printInfo(dir: string, json: boolean): Promise<number> {
     for (const track of info.tracks) console.log(`  ${track.kind.padEnd(7)} ${track.name}: ${track.clips} clips`);
     console.log(`clips: ${list(info.clipsByKind) || "none"}`);
     console.log(`stand-ins: ${list(info.standIns) || "none"}`);
+    for (const status of info.convertible) console.log(`  ${status.name} (${status.kind}): ${status.convertible ? "can be made editable" : `stays baked (${status.reason ?? "not convertible"})`}`);
     console.log(`media: ${info.mediaCount}, missing: ${info.missingMedia.length > 0 ? info.missingMedia.join(", ") : "none"}`);
     for (const media of info.media) {
       const facts = [media.width && media.height ? `${media.width}x${media.height}` : "", media.fps ? `${media.fps} fps` : "", `${(media.durationUs / 1e6).toFixed(3)} s`, media.hasAudio ? `audio${media.audioCodec ? ` ${media.audioCodec}` : ""}` : "", media.codec ?? ""].filter(Boolean).join(", ");
@@ -113,7 +115,7 @@ export async function run(argv: readonly string[]): Promise<number> {
     case "validate": {
       if (args.length !== 1) break;
       const report = await validateProjectFolder(args[0] as string);
-      if (flags.has("--json")) console.log(JSON.stringify({ ok: report.ok, schemaVersion: report.schemaVersion, errors: report.errors, warnings: report.warnings, standIns: report.standIns }, null, 2));
+      if (flags.has("--json")) console.log(JSON.stringify({ ok: report.ok, schemaVersion: report.schemaVersion, errors: report.errors, warnings: report.warnings, standIns: report.standIns, convertible: report.convertible }, null, 2));
       else printValidate(report, args[0] as string);
       return report.ok ? 0 : 1;
     }

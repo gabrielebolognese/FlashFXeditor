@@ -15,16 +15,21 @@ import { errorMessage } from "../project/errorMessage.js";
 import { fromHandle, isDirectoryHandle, type FsDir } from "../project/fs.js";
 import { createProject, openProjectFolder, ProjectOpenError, type NewProjectSettings, type OpenedProject } from "../project/openProject.js";
 import { ProjectSession } from "../project/ProjectSession.js";
+import { parseOpenLink, resolveLinkTarget, withoutOpenLink } from "../project/projectsFolder.js";
 import { RECENT_THUMB_HEIGHT, type RecentProject } from "../project/recentProjects.js";
+import type { RepairReport } from "../project/repair.js";
 import { RESOLUTION_PRESETS, ratioCommandId } from "../project/projectPresets.js";
 import type { Recovery } from "../project/recovery.js";
 import { changeRatio, followFrameRate } from "./conversionController.js";
 import { cancelExport, clearExportLeftovers } from "./exportController.js";
+import { attachExternal, detachExternal } from "./externalController.js";
+import { clearGeneratorNotes, loadGeneratorNotes } from "./generatorNotes.js";
 import { attachFonts, detachFonts } from "./fontController.js";
 import { attachMedia, detachMedia } from "./mediaController.js";
 import { attachPresets, detachPresets } from "./presetController.js";
 import { attachPreview, captureThumbnail, detachPreview, frameService } from "./previewController.js";
-import { actions, appSettings, appVersion, documentStore, focusScopes, layoutStore, recentProjects, saveStatus, sessionStore, templateStore, workerPool } from "./services.js";
+import { reportRepair, repairOpened } from "./repairController.js";
+import { actions, appSettings, appVersion, documentStore, focusScopes, layoutStore, projectsFolder, recentProjects, saveStatus, sessionStore, templateStore, workerPool } from "./services.js";
 
 /** Workers that serve one project (sessions, indexes, analysis and proxy jobs): stopped when it closes (P13). */
 const PROJECT_WORKERS = ["decode", "analysis", "proxy"] as const;
@@ -45,6 +50,8 @@ export type Dialog =
   | { kind: "history" }
   | { kind: "saveTemplate" }
   | { kind: "clearCache" }
+  /** Make editable (one baked stand-in, or all of them when null): edits to the stand-in itself are not carried over (spec §21.5). */
+  | { kind: "makeEditable"; clipId: string | null }
   /** A read-only project has edits nothing saved: opening another drops them (asked first). */
   | { kind: "discardChanges"; next: Flow };
 
@@ -54,9 +61,11 @@ export interface AppView {
   dialog: Dialog | null;
   /** A pick/open/create flow is running; buttons that start another one are disabled. */
   busy: boolean;
+  /** `/?open=<path>` waits for the projects folder (a choice) or its permission (a click): the start screen says so (spec §21.5). */
+  openLink: { path: string; need: "folder" | "permission" } | null;
 }
 
-export const appView = createStore<AppView>({ project: null, dialog: null, busy: false });
+export const appView = createStore<AppView>({ project: null, dialog: null, busy: false, openLink: null });
 
 let current: ProjectSession | null = null;
 let stopFrameRate: (() => void) | null = null;
@@ -161,6 +170,8 @@ async function closeCurrent(): Promise<void> {
   if (!session) return;
   stopFrameRate?.();
   stopFrameRate = null;
+  detachExternal();
+  clearGeneratorNotes();
   // An export of this project stops (its temp file is deleted).
   cancelExport();
   // The thumbnail first: the preview still shows the project.
@@ -177,7 +188,7 @@ async function closeCurrent(): Promise<void> {
 }
 
 /** Opening another project closes the current one after saving (spec §15). */
-async function switchTo(opened: OpenedProject): Promise<void> {
+async function switchTo(opened: OpenedProject, repair: RepairReport | null = null): Promise<void> {
   await closeCurrent();
   const session = new ProjectSession(opened, {
     documentStore,
@@ -199,6 +210,9 @@ async function switchTo(opened: OpenedProject): Promise<void> {
   if (!session.readOnly) clearExportLeftovers(session.dir).catch((error: unknown) => console.warn("[export] cannot clear cache/export-temp/", error));
   // After the document is loaded: a conversion, its undo or a restore move the session's frames.
   stopFrameRate = followFrameRate();
+  attachExternal(session);
+  loadGeneratorNotes(session.dir);
+  if (repair) void reportRepair(session, repair);
   setView({
     project: { id: opened.project.id, folder: opened.dir.name },
     dialog: opened.recovery ? { kind: "recovery", recovery: opened.recovery } : null,
@@ -249,7 +263,9 @@ async function openDir(dir: FsDir, retry = false): Promise<void> {
     }
     return;
   }
-  await switchTo(opened);
+  // Media that disagree with their files are corrected before the project shows (one step, not undoable; spec §21.5).
+  const repaired = await repairOpened(opened);
+  await switchTo(repaired.opened, repaired.report);
 }
 
 /** New project: pick a folder, then the settings dialog (with a template preselected for New from template). */
@@ -355,9 +371,98 @@ function onBeforeUnload(event: BeforeUnloadEvent): void {
   }
 }
 
+// --- Projects folder and open links (spec §21.5) ---
+
+/** The projects folder picker (a user gesture); null when cancelled. */
+async function pickProjectsFolder(): Promise<FsDir | null> {
+  try {
+    const picker = window as unknown as DirectoryPickerWindow;
+    return fromHandle(await picker.showDirectoryPicker({ id: "shorts-editor-projects", mode: "readwrite" }));
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") return null;
+    throw error;
+  }
+}
+
+/** Opens the project at `path` inside the projects folder `root`; a missing folder is a toast and the start screen. */
+function openLinkTarget(root: FsDir, path: string): Promise<void> {
+  return guarded(async () => {
+    const target = await resolveLinkTarget(root, path);
+    setView({ openLink: null });
+    window.history.replaceState(null, "", `${window.location.pathname}${withoutOpenLink(window.location.search)}${window.location.hash}`);
+    if (!target.ok) {
+      showToast({
+        tone: "warning",
+        message: `Can't open ${path}`,
+        detail: target.reason === "missing" ? `There is no folder "${path}" inside ${root.name}.` : `The folder "${path}" has no project.json.`,
+      });
+      return;
+    }
+    await openDir(target.dir);
+  });
+}
+
+/** `/?open=<path>` at start: opens at once when the stored folder is allowed, else the start screen asks for the one click it needs. */
+export async function startOpenLink(path: string): Promise<void> {
+  const root = await projectsFolder.load();
+  if (!root) {
+    setView({ openLink: { path, need: "folder" } });
+    return;
+  }
+  let status: string = "prompt";
+  try {
+    status = await root.queryPermission("readwrite");
+  } catch (error) {
+    console.warn("[open-link] cannot query the projects folder", error);
+  }
+  if (status !== "granted") {
+    setView({ openLink: { path, need: "permission" } });
+    return;
+  }
+  await openLinkTarget(root, path);
+}
+
+/** Start screen, Settings > General and the palette: choose (or change) the projects folder; a waiting link opens with it. */
+export async function chooseProjectsFolder(): Promise<void> {
+  try {
+    const dir = await pickProjectsFolder();
+    if (!dir) return;
+    await projectsFolder.set(dir);
+    const pending = appView.getState().openLink;
+    if (pending) await openLinkTarget(dir, pending.path);
+  } catch (error) {
+    showError("Could not use that folder", error);
+  }
+}
+
+/** The start screen's "Open <path>": the click gives `requestPermission` its user gesture. */
+export async function continueOpenLink(): Promise<void> {
+  const pending = appView.getState().openLink;
+  const root = projectsFolder.dir;
+  if (!pending || !root) return;
+  try {
+    if ((await root.requestPermission("readwrite")) !== "granted") {
+      showToast({ tone: "warning", message: "No access to the projects folder", detail: `Allow access to ${root.name} to open ${pending.path}.` });
+      return;
+    }
+  } catch (error) {
+    showError("Could not ask for access", error);
+    return;
+  }
+  await openLinkTarget(root, pending.path);
+}
+
+/** Forgets the projects folder (Settings > General). */
+export function clearProjectsFolder(): void {
+  void projectsFolder.clear();
+}
+
 /** Registers project actions and loads persisted lists. Returns a stop function. */
 export function installProjectController(): () => void {
   void recentProjects.load();
+  void projectsFolder.load();
+  const link = parseOpenLink(window.location.search);
+  if (link) void startOpenLink(link);
   void appSettings.load();
   void templateStore.load();
   const onVisibility = () => {
@@ -379,6 +484,7 @@ export function installProjectController(): () => void {
       if (typeof id === "string") void newFromTemplate(id);
     }),
     actions.register("project.open", () => void openProject()),
+    actions.register("project.chooseProjectsFolder", () => void chooseProjectsFolder()),
     actions.register("project.rename", () => projectNaming.set(true), { enabled: () => current !== null }),
     actions.register("project.allowEditing", () => allowEditing(), { enabled: () => saveStatus.getState().readOnly }),
     ...RESOLUTION_PRESETS.map((preset) => actions.register(ratioCommandId(preset), () => changeRatio(preset), { enabled: () => current !== null })),

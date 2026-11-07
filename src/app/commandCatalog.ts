@@ -317,6 +317,7 @@ export const COMMANDS: readonly CommandInfo[] = [
   // Clip (spec §6.16, §11)
   clip("clip.toggleEnabled", "Enable / Disable clip", { keywords: "turn off hide" }),
   clip("clip.revealMedia", "Reveal in media panel", { icon: Search, keywords: "find source" }),
+  clip("clip.makeEditable", "Make editable (baked layer)", { icon: Pencil, keywords: "stand-in fallback generated native convert" }),
   ...LABEL_COLORS.map((color) => clip(`clip.label.${color}`, `Label: ${LABEL_NAMES[color]}`, { icon: Tag, keywords: "color" })),
   clip("clip.label.none", "Remove label", { icon: Tag, keywords: "color" }),
   clip("transform.fit", "Fit in frame", { icon: Shrink, keywords: "match project size" }),
@@ -549,6 +550,10 @@ export const COMMANDS: readonly CommandInfo[] = [
   project("project.save", "Save now", { icon: Save }),
   project("project.rename", "Rename project", { icon: Pencil }),
   project("project.allowEditing", "Allow editing (read-only project)", { keywords: "unlock write" }),
+  project("project.chooseProjectsFolder", "Choose projects folder…", { icon: FolderOpen, anywhere: true, keywords: "open link folder generated projects" }),
+  project("project.reloadFromDisk", "Reload project from disk", { keywords: "external change another tool changed on disk" }),
+  project("project.keepMine", "Keep my version (ignore the change on disk)", { keywords: "external change another tool overwrite" }),
+  project("project.makeAllEditable", "Make all baked layers editable", { icon: Pencil, keywords: "stand-in fallback generated native convert" }),
   project("project.history", "History…", { icon: History, keywords: "backups versions restore earlier" }),
   project("project.saveAsTemplate", "Save as template…", { icon: LayoutTemplate, keywords: "reuse tracks presets layout" }),
   project("project.newFromTemplate", "New project from template", { icon: LayoutTemplate, anywhere: true, palette: false }),

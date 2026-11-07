@@ -14,8 +14,11 @@ import { NumberField, valueBinding } from "../../ui/NumberField.js";
 import { Select } from "../../ui/Select.js";
 import { TextField } from "../../ui/TextField.js";
 import { AutosaveRow, CacheRow, DurationRow, ProxyRows, TransitionRows } from "../settings/SettingFields.js";
+import { generatorNotes, type GeneratorNote } from "../../app/generatorNotes.js";
+import { standIns } from "../../core/document/makeEditable.js";
 import { Row } from "./Section.js";
 import styles from "./Section.module.css";
+import notice from "./StandInNotice.module.css";
 
 // The Project section (spec §11), shown when nothing is selected: name, resolution presets and custom
 // size, frame rate, background color, the default durations and the default transition, proxies,
@@ -31,6 +34,8 @@ const selectFps = (p: Project) => fpsKey(p.settings.fps);
 /** The tool that wrote the project (spec §21.4 `meta.generator`), as one line; empty when none. */
 const selectGenerator = (p: Project) => (p.meta.generator ? `${p.meta.generator.name}${p.meta.generator.version ? ` ${p.meta.generator.version}` : ""}` : "");
 const selectGeneratorDetail = (p: Project) => [p.meta.generator?.source, p.meta.generator?.url].filter(Boolean).join("\n");
+const selectBakedCount = (p: Project) => standIns(p).length;
+const selectNotes = (notes: readonly GeneratorNote[]) => notes;
 const selectBackground = (p: Project): RGBA => p.settings.background;
 const selectRecent = (s: AppSettings) => s.recentColors;
 
@@ -62,6 +67,8 @@ export function ProjectSection() {
   const background = useStoreSelector(documentStore, selectBackground);
   const generator = useStoreSelector(documentStore, selectGenerator);
   const generatorDetail = useStoreSelector(documentStore, selectGeneratorDetail);
+  const baked = useStoreSelector(documentStore, selectBakedCount);
+  const notes = useStoreSelector(generatorNotes, selectNotes);
   const recent = useStoreSelector(appSettings, selectRecent);
   const sizes = useMemo(() => ({ width: sizeBinding("width"), height: sizeBinding("height") }), []);
   // "Custom" picked while the size still matches a preset: the size fields open to edits anyway.
@@ -90,6 +97,20 @@ export function ProjectSection() {
           <span className={styles.hint} title={generatorDetail || undefined}>
             {generator}
           </span>
+        </Row>
+      )}
+      {/* The generator's notes (FALLBACKS.md, OPEN.txt): read-only. */}
+      {notes.map((note) => (
+        <details key={note.name} className={notice.note}>
+          <summary className={notice.noteTitle}>{note.name}</summary>
+          <pre className={notice.noteBody}>{note.text}</pre>
+        </details>
+      ))}
+      {baked > 0 && (
+        <Row label="Baked layers">
+          <Button size="compact" commandId="project.makeAllEditable">
+            Make all editable
+          </Button>
         </Row>
       )}
       <Row label="Resolution">

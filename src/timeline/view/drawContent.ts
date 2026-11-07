@@ -504,6 +504,8 @@ function drawLabel(scene: ClipScene, clip: Clip, x: number, y: number, width: nu
   const badgesEnd = right - theme.space[0];
   let badgesStart = badgesEnd;
   if (offline) badgesStart = drawBadge(scene, "Offline", theme.color.danger, minX, badgesStart, lineY);
+  // A baked stand-in for a clip kind this build lacks (spec §21.5, Batch 56).
+  if (clip.fallbackOf) badgesStart = drawBadge(scene, "baked", theme.color.textSecondary, minX, badgesStart, lineY);
   if (syncOffset !== 0) badgesStart = drawBadge(scene, `${syncOffset > 0 ? "+" : "-"}${Math.abs(syncOffset)}`, theme.color.danger, minX, badgesStart, lineY);
   if (isFreeze(clip)) badgesStart = drawIconBadge(scene, "snowflake", minX, badgesStart, lineY);
   else if ((clip.kind === "video" || clip.kind === "audio") && clip.speed !== 1) badgesStart = drawBadge(scene, formatSpeed(clip.speed), theme.color.textSecondary, minX, badgesStart, lineY);

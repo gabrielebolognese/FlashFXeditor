@@ -212,6 +212,8 @@ export interface WorkerMethods {
   thumbSheet: { params: ThumbSheetParams; result: ThumbSheetResult };
   /** A cached sheet (cache/thumbs/) as a bitmap. */
   decodeSheet: { params: { blob: Blob }; result: ImageBitmap };
+  /** The header facts of a media file by its name's extension (repair on open, Make editable: spec §21.5), read without decoding. */
+  mediaHeader: { params: { file: Blob; name: string }; result: ProbeResult };
   /** Forgets the thumbnail sessions of a media. */
   closeThumbs: { params: { mediaId: string }; result: null };
   /** Makes a video's proxy (spec §9.5): the file's bytes and the frames done come as progress. */
@@ -256,6 +258,7 @@ export const METHOD_WORKER: Record<Method, WorkerKind> = {
   detectSilence: "analysis",
   thumbSheet: "analysis",
   decodeSheet: "analysis",
+  mediaHeader: "analysis",
   closeThumbs: "analysis",
   makeProxy: "proxy",
   pauseProxy: "proxy",

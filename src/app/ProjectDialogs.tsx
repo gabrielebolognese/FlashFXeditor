@@ -1,4 +1,4 @@
-import { Eraser, History, LayoutTemplate, Proportions, RotateCcw, Timer, TriangleAlert } from "lucide-react";
+import { Eraser, History, Pencil, LayoutTemplate, Proportions, RotateCcw, Timer, TriangleAlert } from "lucide-react";
 import { useState } from "react";
 import type { ConversionReport } from "../core/document/fpsConvert.js";
 import type { Project, Rational } from "../core/document/types.js";
@@ -15,6 +15,7 @@ import styles from "./DialogHost.module.css";
 import { backupLabel, historyList, restoreBackup } from "./historyController.js";
 import { closeDialog, continueDiscarding, currentSession } from "./projectController.js";
 import own from "./ProjectDialogs.module.css";
+import { confirmMakeEditable } from "./standInController.js";
 import { documentStore, saveStatus } from "./services.js";
 import { saveAsTemplate } from "./templateController.js";
 
@@ -222,6 +223,33 @@ export function ClearCacheDialog() {
         Deletes the proxies, thumbnails, waveforms and indexes of <span className={styles.folder}>{name}</span>. {size}
       </p>
       <p className={styles.note}>Nothing of the project is lost: they are made again in the background, proxies of long videos take a while. Media files stay where they are.</p>
+    </Modal>
+  );
+}
+
+/** Make editable (spec §21.5): the one confirmation; edits made to the baked layer itself are not carried over. */
+export function MakeEditableDialog({ clipId }: { clipId: string | null }) {
+  const clip = useStoreSelector(documentStore, (project: Project) => (clipId === null ? null : (project.clips[clipId] ?? null)));
+  const kind = clip?.fallbackOf?.kind ?? "";
+  const subject = clipId === null ? "Every baked layer that can be converted becomes the native clip it stands for." : `${clip?.name ?? "The baked layer"} becomes a native ${kind} clip, in the same place and time.`;
+  return (
+    <Modal
+      title={clipId === null ? "Make all baked layers editable?" : "Make this layer editable?"}
+      icon={Pencil}
+      onClose={closeDialog}
+      footer={
+        <>
+          <Button control onClick={closeDialog}>
+            Cancel
+          </Button>
+          <Button control variant="primary" autoFocus onClick={() => void confirmMakeEditable(clipId)}>
+            Make editable
+          </Button>
+        </>
+      }
+    >
+      <p className={styles.text}>{subject}</p>
+      <p className={styles.note}>Changes made to the baked layer itself (its transform, opacity, keys) are not carried over: the editable clip is the one the generator described. You can undo it in one step.</p>
     </Modal>
   );
 }

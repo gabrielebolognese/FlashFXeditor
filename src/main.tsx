@@ -36,6 +36,8 @@ import { AppBoundary, FatalScreen } from "./app/FatalScreen.js";
 import { installPanelController } from "./app/panelController.js";
 import { installSettingsController } from "./app/settingsController.js";
 import { installHistoryController } from "./app/historyController.js";
+import { installExternalController } from "./app/externalController.js";
+import { installStandInController } from "./app/standInController.js";
 import { installTemplateController } from "./app/templateController.js";
 import { installCacheController } from "./app/cacheController.js";
 import { installExportController } from "./app/exportController.js";
@@ -65,6 +67,8 @@ async function start(): Promise<void> {
   installSettingsController();
   installProjectController();
   installHistoryController();
+  installExternalController();
+  installStandInController();
   installTemplateController();
   installCacheController();
   installExportController();

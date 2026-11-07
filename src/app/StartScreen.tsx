@@ -6,13 +6,15 @@ import type { RecentProject } from "../project/recentProjects.js";
 import { describeTemplate, type ProjectTemplate } from "../project/templates.js";
 import { Button } from "../ui/Button.js";
 import { IconButton } from "../ui/IconButton.js";
-import { appView, openDropped, openRecent } from "./projectController.js";
-import { actions, recentProjects, templateStore } from "./services.js";
+import { appView, continueOpenLink, openDropped, openRecent } from "./projectController.js";
+import { actions, projectsFolder, recentProjects, templateStore } from "./services.js";
 import { removeTemplate } from "./templateController.js";
 import styles from "./StartScreen.module.css";
 
 const selectBusy = (view: { busy: boolean }) => view.busy;
 const selectRecent = (list: readonly RecentProject[]) => list;
+const selectOpenLink = (view: { openLink: { path: string; need: "folder" | "permission" } | null }) => view.openLink;
+const selectFolderName = (info: { name: string } | null) => info?.name ?? null;
 const selectTemplates = (list: readonly ProjectTemplate[]) => list;
 
 function formatModified(iso: string): string {
@@ -94,6 +96,8 @@ export function StartScreen() {
   const busy = useStoreSelector(appView, selectBusy);
   const recent = useStoreSelector(recentProjects.list, selectRecent);
   const templates = useStoreSelector(templateStore.list, selectTemplates);
+  const openLink = useStoreSelector(appView, selectOpenLink);
+  const folderName = useStoreSelector(projectsFolder.info, selectFolderName);
   const screenRef = useRef<HTMLDivElement>(null);
   const dragDepth = useRef(0);
   // The recent project being opened, for the status line (the other flows do not know the name yet).
@@ -169,6 +173,25 @@ export function StartScreen() {
           <span className={styles.status} role="status">
             {status}
           </span>
+        </div>
+
+        {/* An open link (/?open=<path>, spec §21.5) waits for one click; the projects folder is chosen once. */}
+        <div className={styles.actions}>
+          {openLink?.need === "permission" && (
+            <Button variant="hero" size="comfortable" icon={FolderOpen} control onClick={() => void continueOpenLink()}>
+              Open {openLink.path}
+            </Button>
+          )}
+          {openLink?.need === "folder" && (
+            <Button variant="hero" size="comfortable" icon={FolderOpen} commandId="project.chooseProjectsFolder" disabled={busy}>
+              Choose your projects folder to open {openLink.path}
+            </Button>
+          )}
+          {openLink?.need !== "folder" && (
+            <Button size="comfortable" icon={FolderOpen} commandId="project.chooseProjectsFolder" tooltip={folderName ? `Projects folder: ${folderName}. Choose another.` : "Choose the folder that holds your generated projects"} disabled={busy}>
+              Projects folder
+            </Button>
+          )}
         </div>
 
         <section className={styles.recentSection} aria-labelledby="recent-title">

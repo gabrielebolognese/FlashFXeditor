@@ -13,7 +13,7 @@ import { TextField } from "../ui/TextField.js";
 import { MAX_DIMENSION, MAX_PROJECT_NAME, MIN_DIMENSION } from "../core/commands/projectCommands.js";
 import type { MediaId } from "../core/document/types.js";
 import { documentStore, templateStore } from "./services.js";
-import { ClearCacheDialog, DiscardChangesDialog, FrameRateDialog, HistoryDialog, ResolutionDialog, SaveTemplateDialog } from "./ProjectDialogs.js";
+import { ClearCacheDialog, DiscardChangesDialog, FrameRateDialog, HistoryDialog, MakeEditableDialog, ResolutionDialog, SaveTemplateDialog } from "./ProjectDialogs.js";
 import { TranscribeDialogs } from "../panels/media/TranscribeDialog.js";
 import styles from "./DialogHost.module.css";
 import { cancelRemove, clipsUsing, confirmRemove, copiedCount, mediaPanel, type MediaPanelState } from "./mediaController.js";
@@ -268,5 +268,7 @@ export function DialogHost() {
       return <ClearCacheDialog />;
     case "discardChanges":
       return <DiscardChangesDialog next={dialog.next} />;
+    case "makeEditable":
+      return <MakeEditableDialog clipId={dialog.clipId} />;
   }
 }

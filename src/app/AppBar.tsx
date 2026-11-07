@@ -10,6 +10,7 @@ import { IconButton } from "../ui/IconButton.js";
 import styles from "./AppBar.module.css";
 import { perfDev } from "./perfDev.js";
 import { projectNaming } from "./projectController.js";
+import { ExternalChangeBanner } from "./ExternalChangeBanner.js";
 import { ReadOnlyBanner } from "./ReadOnlyBanner.js";
 import { actions, documentStore, saveStatus } from "./services.js";
 
@@ -146,6 +147,7 @@ export function AppBar() {
 
       <div className={styles.spacer}>
         <ReadOnlyBanner />
+        <ExternalChangeBanner />
       </div>
       <button
         type="button"

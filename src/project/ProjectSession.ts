@@ -8,12 +8,14 @@ import type { LayoutStore } from "../core/store/layoutStore.js";
 import { filterSelection, fromSnapshot, toSnapshot } from "../core/store/selection.js";
 import { setSelection, type SessionStore } from "../core/store/sessionStore.js";
 import type { AppSettingsStore } from "./appSettings.js";
-import { Autosaver, type SaveStatus } from "./Autosaver.js";
+import { Autosaver, type FileStamp, type SaveStatus } from "./Autosaver.js";
 import type { FsDir } from "./fs.js";
-import { ensureFolderLayout } from "./layout.js";
+import { backupName } from "./history.js";
+import { ensureFolderLayout, HISTORY_DIR, PROJECT_FILE, subdir } from "./layout.js";
 import type { OpenedProject } from "./openProject.js";
 import { ensureAccess } from "./permissions.js";
 import type { RecentProjects } from "./recentProjects.js";
+import { parseProjectFile, serializeProject } from "./projectFile.js";
 import { discardRecovery, type Recovery } from "./recovery.js";
 import { SessionSaver } from "./SessionSaver.js";
 import { formatFps } from "./projectPresets.js";
@@ -145,6 +147,42 @@ export class ProjectSession {
     return true;
   }
 
+  /**
+   * Reloads project.json from disk in place (spec §21.5, another tool wrote it): the document in memory
+   * goes to history/ first (so nothing is lost), the file's project replaces it with its undo history
+   * cleared, the selection keeps the clips and tracks that still exist, and the playhead, zoom and scroll
+   * (session state) stay. "unreadable": the file does not parse; the document is left as it is.
+   */
+  async reloadFromDisk(transform?: (project: Project) => Promise<Project>): Promise<{ result: "reloaded" | "unreadable" | "closed"; stamp: FileStamp | null; error?: string }> {
+    if (this.closed) return { result: "closed", stamp: null };
+    const { documentStore, session } = this.deps;
+    const file = await this.dir.getFile(PROJECT_FILE);
+    const stamp = file ? { lastModified: file.lastModified, size: file.size } : null;
+    let project: Project;
+    try {
+      if (!file) throw new Error("project.json is gone");
+      project = parseProjectFile(await file.text());
+    } catch (error) {
+      return { result: "unreadable", stamp, error: error instanceof Error ? (error.message.split("\n")[0] ?? "") : String(error) };
+    }
+    // Repair on open for the new file (changed media are read again): the result is saved by the next autosave.
+    const repaired = transform ? await transform(project) : project;
+    if (this.closed) return { result: "closed", stamp };
+    if (this.writable) {
+      const now = new Date();
+      const history = await subdir(this.dir, HISTORY_DIR);
+      const existing = new Set((await history.list()).map((entry) => entry.name));
+      await history.writeText(backupName(now, existing), serializeProject(documentStore.getState(), { now: now.toISOString(), appVersion: this.deps.appVersion }));
+    }
+    const selection = toSnapshot(session.selection.getState());
+    documentStore.load({ ...repaired, id: this.projectId });
+    this.autosaver.markClean();
+    if (repaired !== project) this.autosaver.markDirty();
+    const loaded = documentStore.getState();
+    setSelection(session, fromSnapshot(filterSelection(selection, (id) => Object.hasOwn(loaded.clips, id), (id) => loaded.tracks.some((track) => track.id === id))));
+    return { result: "reloaded", stamp };
+  }
+
   /** Replaces the document with the recovered one; it is saved by the next autosave. */
   restoreRecovery(recovery: Recovery): void {
     this.deps.documentStore.load(recovery.project);
@@ -163,6 +201,8 @@ export class ProjectSession {
     if (this.closed) return;
     this.closed = true;
     for (const stop of this.stops) stop();
+    // A banner still waiting is answered "Keep mine": closing never drops the work (the save backs up the disk version).
+    this.autosaver.hold(false);
     await this.flush();
     this.autosaver.dispose();
     this.sessionSaver.dispose();

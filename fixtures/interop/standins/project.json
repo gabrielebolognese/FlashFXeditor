@@ -1,0 +1,275 @@
+{
+  "schemaVersion": 4,
+  "id": "project-bb8da353",
+  "name": "Interop stand-ins",
+  "settings": {
+    "width": 1080,
+    "height": 1920,
+    "fps": {
+      "num": 30,
+      "den": 1
+    },
+    "background": {
+      "r": 0,
+      "g": 0,
+      "b": 0,
+      "a": 1
+    },
+    "sampleRate": 48000
+  },
+  "media": {},
+  "bins": [],
+  "tracks": [
+    {
+      "id": "v1",
+      "kind": "video",
+      "name": "V1",
+      "clipIds": [
+        "b-solid",
+        "b-unknown"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
+      "id": "v2",
+      "kind": "video",
+      "name": "V2",
+      "clipIds": [
+        "b-split-a",
+        "b-split-b"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    }
+  ],
+  "clips": {
+    "b-solid": {
+      "id": "b-solid",
+      "trackId": "v1",
+      "kind": "solid",
+      "name": "Solid",
+      "start": 10,
+      "duration": 40,
+      "color": "orange",
+      "enabled": true,
+      "fallbackOf": {
+        "kind": "solid",
+        "reason": "Sparse solid written for schema 3",
+        "schemaVersion": 3,
+        "data": {
+          "kind": "solid",
+          "shape": "roundedRect",
+          "fill": {
+            "r": 0.9,
+            "g": 0.2,
+            "b": 0.2
+          },
+          "size": {
+            "w": 600,
+            "h": 160
+          },
+          "cornerRadius": 40,
+          "opacity": 0.8
+        }
+      },
+      "fill": {
+        "r": 0.5,
+        "g": 0.5,
+        "b": 0.5,
+        "a": 1
+      },
+      "shape": "roundedRect",
+      "size": {
+        "w": 300,
+        "h": 300
+      },
+      "cornerRadius": 54,
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1
+    },
+    "b-unknown": {
+      "id": "b-unknown",
+      "trackId": "v1",
+      "kind": "solid",
+      "name": "Solid",
+      "start": 60,
+      "duration": 30,
+      "color": "orange",
+      "enabled": true,
+      "fallbackOf": {
+        "kind": "lottie",
+        "reason": "A Lottie animation baked to a solid",
+        "schemaVersion": 4,
+        "data": {
+          "kind": "lottie",
+          "src": "anim/logo.json"
+        }
+      },
+      "fill": {
+        "r": 0.5,
+        "g": 0.5,
+        "b": 0.5,
+        "a": 1
+      },
+      "shape": "roundedRect",
+      "size": {
+        "w": 300,
+        "h": 300
+      },
+      "cornerRadius": 54,
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1
+    },
+    "b-split-a": {
+      "id": "b-split-a",
+      "trackId": "v2",
+      "kind": "solid",
+      "name": "Solid",
+      "start": 0,
+      "duration": 24,
+      "color": "orange",
+      "enabled": true,
+      "fallbackOf": {
+        "kind": "solid",
+        "reason": "A solid baked, split at frame 24",
+        "schemaVersion": 4,
+        "data": {
+          "kind": "solid",
+          "fill": {
+            "r": 0.1,
+            "g": 0.5,
+            "b": 0.9
+          },
+          "size": {
+            "w": 500,
+            "h": 500
+          },
+          "opacity": 0.7
+        }
+      },
+      "fill": {
+        "r": 0.5,
+        "g": 0.5,
+        "b": 0.5,
+        "a": 1
+      },
+      "shape": "roundedRect",
+      "size": {
+        "w": 300,
+        "h": 300
+      },
+      "cornerRadius": 54,
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1
+    },
+    "b-split-b": {
+      "id": "b-split-b",
+      "trackId": "v2",
+      "kind": "solid",
+      "name": "Solid",
+      "start": 24,
+      "duration": 36,
+      "color": "orange",
+      "enabled": true,
+      "fallbackOf": {
+        "kind": "solid",
+        "reason": "A solid baked, split at frame 24",
+        "schemaVersion": 4,
+        "headTrim": 24,
+        "data": {
+          "kind": "solid",
+          "fill": {
+            "r": 0.1,
+            "g": 0.5,
+            "b": 0.9
+          },
+          "size": {
+            "w": 500,
+            "h": 500
+          },
+          "opacity": 0.7
+        }
+      },
+      "fill": {
+        "r": 0.5,
+        "g": 0.5,
+        "b": 0.5,
+        "a": 1
+      },
+      "shape": "roundedRect",
+      "size": {
+        "w": 300,
+        "h": 300
+      },
+      "cornerRadius": 54,
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0.5,
+          "y": 0.5
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1
+    }
+  },
+  "markers": [],
+  "captionTracks": {},
+  "textPresetsLocal": [],
+  "meta": {
+    "createdAt": "2026-11-07T08:00:00.000Z",
+    "modifiedAt": "2026-11-07T08:00:00.000Z",
+    "appVersion": "1.1.0",
+    "generator": {
+      "name": "interop-fixture",
+      "version": "1",
+      "source": "scripts/fixtures/make-standins.mjs"
+    }
+  }
+}

@@ -21,6 +21,8 @@ import { WorkerPool } from "../media/workers/WorkerPool.js";
 import { createAppSettings } from "../project/appSettings.js";
 import { INITIAL_SAVE_STATUS, type SaveStatus } from "../project/Autosaver.js";
 import { idbKeyValueStore } from "../project/kv.js";
+import { fromHandle, isDirectoryHandle } from "../project/fs.js";
+import { ProjectsFolder } from "../project/projectsFolder.js";
 import { RecentProjects } from "../project/recentProjects.js";
 import { TemplateStore } from "../project/templates.js";
 import { showToast } from "../ui/toasts.js";
@@ -55,6 +57,8 @@ export const audioClock = new AudioClock();
 /** IndexedDB key-value store of global things: recent projects, settings, global text presets (spec §3.1). */
 export const keyValueStore = idbKeyValueStore();
 export const recentProjects = new RecentProjects(keyValueStore);
+/** The folder `/?open=<path>` resolves against (spec §21.5): a directory handle in IndexedDB. */
+export const projectsFolder = new ProjectsFolder(keyValueStore, (handle) => (isDirectoryHandle(handle) ? fromHandle(handle) : null));
 /** Project templates (spec §15): settings, track layout and text presets, in IndexedDB. */
 export const templateStore = new TemplateStore(keyValueStore);
 export const appSettings = createAppSettings(keyValueStore);

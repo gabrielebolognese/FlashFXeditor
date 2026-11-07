@@ -1,9 +1,9 @@
-import { FolderOpen, RotateCcw, Trash2 } from "lucide-react";
+import { FolderOpen, RotateCcw, Trash2, X } from "lucide-react";
 import { useEffect, type ReactNode } from "react";
 import { commandLabel } from "../../app/commandCatalog.js";
 import { presetLibrary } from "../../app/presetController.js";
-import { appView } from "../../app/projectController.js";
-import { actions, appSettings } from "../../app/services.js";
+import { appView, clearProjectsFolder } from "../../app/projectController.js";
+import { actions, appSettings, projectsFolder } from "../../app/services.js";
 import { checkDownloadedModels, downloadedModels, releaseTranscribeWorker, removeDownloadedModel } from "../../app/transcribeController.js";
 import { useStoreSelector } from "../../core/store/useStoreSelector.js";
 import { LANGUAGE_OPTIONS } from "../../media/transcribe/languages.js";
@@ -126,6 +126,27 @@ function Transcription() {
  * The preset library folder (spec §10.3; the Presets tab's strip has the same buttons). Sync and Stop
  * are always there (Batch 46), disabled until a folder is chosen.
  */
+/** The projects folder `/?open=<path>` links resolve against (spec §21.5): chosen once, kept in this browser. */
+function ProjectsFolderRow() {
+  const folder = useStoreSelector(projectsFolder.info, (info) => info);
+  return (
+    <Row label="Projects folder">
+      <div className={styles.folder}>
+        <span className={styles.folderText}>
+          {folder && <span className={styles.folderName}>{folder.name}</span>}
+          <span className={styles.muted}>{folder ? "/?open=<path> opens a project inside it" : "None: needed for open links"}</span>
+        </span>
+        <span className={styles.folderButtons}>
+          <Button size="compact" icon={FolderOpen} commandId="project.chooseProjectsFolder">
+            {folder ? "Change…" : "Choose…"}
+          </Button>
+          <IconButton control icon={X} label={folder ? "Forget the projects folder" : "Forget the projects folder: none is set"} disabled={!folder} onClick={clearProjectsFolder} />
+        </span>
+      </div>
+    </Row>
+  );
+}
+
 function LibraryFolder() {
   const folder = useStoreSelector(presetLibrary, (state) => state.folder);
   const status = folder ? ({ syncing: "Syncing…", synced: "Synced", permission: "Needs permission: Sync to allow", error: folder.message ?? "Couldn't sync" } as const)[folder.status] : "None: presets stay in this browser";
@@ -210,6 +231,7 @@ export function GeneralSettings() {
       </Group>
       <Group title="Storage">
         <CacheRow projectOpen={projectOpen} />
+        <ProjectsFolderRow />
         <LibraryFolder />
         <Row label="Starter presets">
           <div className={styles.folderButtons}>

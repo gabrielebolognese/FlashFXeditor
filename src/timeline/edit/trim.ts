@@ -427,7 +427,7 @@ function clampFades(next: Clip & Record<string, unknown>, clip: Clip): void {
 }
 
 /** The clip with its `edge` moved by `delta` frames (the delta is within the plan's limits). */
-function trimmedClip(clip: Clip, edge: TrimEdge, delta: number, ripple: boolean, project: Project): Clip {
+export function trimmedClip(clip: Clip, edge: TrimEdge, delta: number, ripple: boolean, project: Project): Clip {
   const { fps } = project.settings;
   const next = { ...clip } as Clip & Record<string, unknown>;
   if (edge === "in") {

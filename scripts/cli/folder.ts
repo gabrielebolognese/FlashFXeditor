@@ -3,6 +3,7 @@
 // header readers and the defaults are the app's own modules.
 import { existsSync, openAsBlob, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { basename, join, resolve, sep } from "node:path";
+import { convertStandIn, standInMedia, standIns } from "../../src/core/document/makeEditable.js";
 import { normalizeProject, type MediaFacts, type NormalizeNote } from "../../src/core/document/normalize.js";
 import { formatTimecode, usPerFrame } from "../../src/core/document/time.js";
 import { strictIssues, validateStrict, type StrictIssue } from "../../src/core/document/strict.js";
@@ -21,6 +22,15 @@ export function normalizeCliPath(path: string, platform: string = process.platfo
   return path;
 }
 
+/** Whether a baked stand-in could be made editable (spec §21.5): the conversion run on a copy, with the header facts of its media. */
+export interface StandInStatus {
+  clipId: string;
+  name: string;
+  kind: string;
+  convertible: boolean;
+  reason?: string;
+}
+
 export interface FolderReport {
   ok: boolean;
   schemaVersion: number | null;
@@ -28,6 +38,8 @@ export interface FolderReport {
   warnings: StrictIssue[];
   /** Baked stand-ins by the kind they stand for. */
   standIns: Record<string, number>;
+  /** Each stand-in and whether it is convertible. */
+  convertible: StandInStatus[];
 }
 
 const fileExists = (path: string): boolean => existsSync(path) && statSync(path).isFile();
@@ -45,6 +57,24 @@ function standInsOf(project: Project): Record<string, number> {
   const counts: Record<string, number> = {};
   for (const clip of Object.values(project.clips)) if (clip.fallbackOf) counts[clip.fallbackOf.kind] = (counts[clip.fallbackOf.kind] ?? 0) + 1;
   return counts;
+}
+
+/** Runs the conversion of every stand-in on a copy (nothing is written). */
+export async function standInStatuses(dir: string, project: Project): Promise<StandInStatus[]> {
+  const out: StandInStatus[] = [];
+  for (const clip of standIns(project)) {
+    const facts: Record<string, MediaFacts> = {};
+    for (const [id, record] of Object.entries(standInMedia(clip))) {
+      const file = record.file as { relPath?: unknown } | undefined;
+      if (typeof record.durationUs !== "number" && typeof file?.relPath === "string") {
+        const found = await readFacts(dir, file.relPath);
+        if (found) facts[id] = found;
+      }
+    }
+    const result = convertStandIn(project, clip.id, { now: project.meta.modifiedAt, appVersion: project.meta.appVersion, facts });
+    out.push({ clipId: clip.id, name: clip.name, kind: clip.fallbackOf?.kind ?? "", convertible: result.ok, ...(!result.ok && { reason: result.reason }) });
+  }
+  return out;
 }
 
 /** The file of a media record inside the project folder (null for a path that leaves it). */
@@ -126,7 +156,7 @@ function fontIssues(dir: string, errors: StrictIssue[]): void {
 /** The strict check of a project folder: `project.json`, its media files and its fonts. */
 export async function validateProjectFolder(dirPath: string): Promise<FolderReport> {
   const dir = resolve(normalizeCliPath(dirPath));
-  const report: FolderReport = { ok: false, schemaVersion: null, errors: [], warnings: [], standIns: {} };
+  const report: FolderReport = { ok: false, schemaVersion: null, errors: [], warnings: [], standIns: {}, convertible: [] };
   const file = join(dir, PROJECT_FILE);
   if (!fileExists(file)) {
     report.errors.push({ path: PROJECT_FILE, message: `not found in ${dir}` });
@@ -143,6 +173,7 @@ export async function validateProjectFolder(dirPath: string): Promise<FolderRepo
   report.warnings.push(...result.warnings);
   if (result.project) {
     report.standIns = standInsOf(result.project);
+    report.convertible = await standInStatuses(dir, result.project);
     await mediaFileIssues(dir, result.project, report.errors, report.warnings);
   }
   fontIssues(dir, report.errors);
@@ -161,6 +192,8 @@ export interface InfoReport {
   tracks: { id: string; kind: string; name: string; clips: number }[];
   clipsByKind: Record<string, number>;
   standIns: Record<string, number>;
+  /** Each stand-in and whether it is convertible (Batch 56). */
+  convertible: StandInStatus[];
   mediaCount: number;
   missingMedia: string[];
   /** Each media record with the facts its file's header gives (Batch 55). */
@@ -213,6 +246,7 @@ export async function projectInfo(dirPath: string): Promise<InfoReport> {
     tracks: project.tracks.map((track) => ({ id: track.id, kind: track.kind, name: track.name, clips: track.clipIds.length })),
     clipsByKind,
     standIns: standInsOf(project),
+    convertible: await standInStatuses(dir, project),
     mediaCount: Object.keys(project.media).length,
     missingMedia: Object.entries(project.media)
       .filter(([, media]) => "relPath" in media.file && !fileExists(join(dir, media.file.relPath)))

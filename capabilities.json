@@ -2,7 +2,7 @@
   "manifestVersion": 1,
   "app": "shorts-editor",
   "appVersion": "1.1.0",
-  "lastBatch": 55,
+  "lastBatch": 56,
   "schemaVersion": 4,
   "project": {
     "file": "project.json",
@@ -226,9 +226,9 @@
     "compare": false
   },
   "interop": {
-    "openLink": false,
-    "externalReload": false,
-    "repairOnOpen": false,
+    "openLink": true,
+    "externalReload": true,
+    "repairOnOpen": true,
     "fallbackOf": true,
     "generatorMeta": true
   }

@@ -9,7 +9,7 @@ Every JSON block in this file tagged `json <Type>` is checked by a test with the
 1. Read the manifest (`capabilities.json` at the repo root, or `npm run cli -- capabilities`): it lists what this build supports. Write `schemaVersion` exactly as listed and use only what the lists name. A key that is `false` or absent is unsupported.
 2. Write the folder (section 3).
 3. Check it: `npm run cli -- validate <folder>` (exit 0 valid, 1 invalid, 2 usage error; `--json` prints `{ ok, schemaVersion, errors: [{ path, message }], warnings: [{ path, message }], standIns }`). It checks every field against the table, the document invariants (section 5) and the files.
-4. Open it in the editor.
+4. Open it in the editor: from the start screen (Open project), or with a link (section 7.1).
 
 Use a copy of the editor at an accepted `batch-NN: review` commit for this, not the working folder of the editor, which can be in the middle of a change.
 
@@ -25,8 +25,8 @@ Other commands: `npm run cli -- info <folder>` (duration, tracks, clips by kind,
 {
   "manifestVersion": 1,
   "schemaVersion": 4,
-  "cli": { "validate": true, "info": true },
-  "interop": { "fallbackOf": true, "generatorMeta": true }
+  "cli": { "validate": true, "info": true, "normalize": true },
+  "interop": { "openLink": true, "externalReload": true, "repairOnOpen": true, "fallbackOf": true, "generatorMeta": true }
 }
 ```
 
@@ -198,7 +198,7 @@ The caption track's `captionTracks[<track id>].style` styles every cue; a cue's 
 { "name": "reels-autopilot", "version": "2.3.0", "source": "script-0412.json", "url": "https://example.com/autopilot" }
 ```
 
-A **stand-in** is a clip the generator baked because it could not write what it wanted natively (a layer type the editor does not have yet): an image, video or solid that looks right, carrying the native clip in `fallbackOf`. The editor stores the block as it is and never migrates, normalizes or interprets `fallbackOf.data` (a later version converts the stand-in into the native clip).
+A **stand-in** is a clip the generator baked because it could not write what it wanted natively (a layer type the editor does not have yet): an image, video or solid that looks right, carrying the native clip in `fallbackOf`. The editor stores the block as it is and never migrates, normalizes or interprets `fallbackOf.data` except to convert the stand-in into the native clip (`Make editable`, section 7.1).
 
 - `kind` is the kind of the native clip (any kind, present or future) and equals `data.kind`.
 - `data` is the native clip in the editor's own JSON, possibly sparse, timed as the stand-in was when written: `id`, `trackId`, `start` and `duration` are left out and come from the stand-in. For a compound clip `data.sequence` holds its sequence and `data.clips` its inner clips; media it needs are in `data.media`, records whose files are inside the project folder.
@@ -211,7 +211,22 @@ A **stand-in** is a clip the generator baked because it could not write what it 
 
 Conventions for generated projects (the editor needs none of them): label colors for baked layers (violet sprite, orange overlay, red plate), bins by kind (Audio, Images, Sprites, Overlays, Plates), labeled markers at scene starts, and the optional `FALLBACKS.md` and `OPEN.txt` files shown read-only in the Project section.
 
+`validate` and `info` say, for each stand-in, whether the editor could make it editable now (`convertible` in the JSON: `clipId`, `name`, `kind`, `convertible`, `reason`). A stand-in whose `data.kind` the editor does not have yet stays baked until it does.
+
 Generator fallback levels, from best to worst: a **sprite** (a baked image or short video of one layer, label color violet), an **overlay** (the layer with its effects baked over transparent, orange), a **plate** (the whole frame baked, red). Use the lowest level that keeps the look.
+
+### 7.1 Opening, updating and converting (manifest keys `interop.openLink`, `interop.externalReload`, `interop.repairOnOpen`)
+
+- **Open link.** The user chooses a *projects folder* once (the start screen's `Projects folder` button, Settings > General); the editor keeps it in the browser, per address. `/?open=<path>` opens the project folder at `<path>` inside it (segments joined by `/`). Print that link when a generator finishes. With no projects folder set, or without permission, the start screen shows one button (`Choose your projects folder to open <path>`, `Open <path>`); a missing folder or one without `project.json` gives a toast naming the path. An opened project joins Recent projects.
+- **Edit it again.** While a project is open, the editor looks at `project.json` when its window gets focus and every 5 s while the window is visible and nothing is dragging, saving or exporting. A file it did not write itself reloads in place when the user has no unsaved changes (the document that was open goes to `history/`; playhead, zoom and selection stay). With unsaved changes a banner offers `Reload` and `Keep mine`; the editor writes nothing until the user answers, and a save that follows `Keep mine` copies your version of `project.json` to `history/` first. Write the file in one piece (write a temporary file, then replace `project.json`) so a check never reads half of it.
+- **Repair on open.** Media records whose `durationUs`, `width`/`height`, `fps` or `hasAudio` disagree with the file's header by more than one frame are corrected, clips that reach past a shortened media end are trimmed, and a toast gives the counts (details in `history/repair-<date>.log`). `normalize` writes the same facts, so a project it completed needs no repair.
+- **Make editable.** A stand-in shows a `baked` badge on its clip and, in the properties panel, `Make editable`. The conversion takes `data` (and `data.media`, whose files are inside the folder), completes it with the field table's defaults, migrates it from `fallbackOf.schemaVersion`, places it at `start - headTrim` for `duration + headTrim` frames and applies a head trim of `headTrim` frames with the editor's own trim, then validates the project strictly. It is one undo step; what was changed on the stand-in itself (transform, opacity, keys) is not carried over. `Make all editable` (palette) converts every convertible stand-in and reports the rest. A sparse stand-in written at an older schema:
+
+```json FallbackOf
+{ "kind": "solid", "reason": "A rounded bar baked to a solid", "schemaVersion": 3, "data": { "kind": "solid", "shape": "roundedRect", "fill": { "r": 0.9, "g": 0.2, "b": 0.2 }, "size": { "w": 600, "h": 160 }, "cornerRadius": 40, "opacity": 0.8 } }
+```
+
+- **Large projects.** Up to 40 video tracks, 1,000 clips and 5,000 keyframes open in under 2 s on a warm cache (`fixtures/interop/large/`, made by `scripts/fixtures/make-large.mjs`); `fixtures/interop/standins/` has stand-ins to convert.
 
 ## 8. Fonts
 
