@@ -23,6 +23,7 @@ export type Migration = (raw: JsonObject) => JsonObject;
  * - 1 -> 2 (Batch 41): media bins (`bins`, empty). `MediaItem.size` is optional: older items have none.
  * - 2 -> 3 (Batch 53): caption styles get a custom `x` (0: centered, as before). Cues may carry a
  *   `styleOverride` and a `presetId`; older cues have none, so they look as they did.
+ * - 3 -> 4 (Batch 54): `meta.generator` and `ClipBase.fallbackOf` (both optional).
  */
 export const MIGRATIONS: Readonly<Record<number, Migration>> = {
   1: (raw) => ({ ...raw, bins: Array.isArray(raw.bins) ? raw.bins : [] }),
@@ -35,6 +36,8 @@ export const MIGRATIONS: Readonly<Record<number, Migration>> = {
     }
     return { ...raw, captionTracks };
   },
+  // 3 -> 4 (Batch 54): `meta.generator` and `ClipBase.fallbackOf` are optional: nothing to change.
+  3: (raw) => raw,
 };
 
 function isObject(value: unknown): value is JsonObject {

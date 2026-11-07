@@ -15,6 +15,10 @@
     "test": "vitest run --project unit && vitest run --project perf",
     "test:watch": "vitest",
     "check": "npm run typecheck && npm run lint && npm run test && npm run build",
+    "build:cli": "vite build --config vite.cli.config.ts",
+    "cli": "node scripts/cli/run.mjs",
+    "capabilities": "node scripts/cli/run.mjs capabilities --write",
+    "docs:interop": "node scripts/cli/run.mjs docs",
     "docs:shortcuts": "node scripts/update-shortcuts.mjs",
     "clean": "rm -rf dist"
   },

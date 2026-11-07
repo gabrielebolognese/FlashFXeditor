@@ -80,7 +80,7 @@ describe("migration hook", () => {
   it("leaves a current file alone", () => {
     const raw = v1();
     expect(migrateProject(raw)).toEqual(raw);
-    expect(SCHEMA_VERSION).toBe(3);
+    expect(SCHEMA_VERSION).toBe(4);
   });
 
   it("opens a schema 1 project (Batch 41): no bins yet, media without sizes", () => {
@@ -104,10 +104,37 @@ describe("migration hook", () => {
     raw.schemaVersion = 2;
     delete raw.captionTracks.cc!.style.x;
     const parsed = parseProjectFile(JSON.stringify(raw));
-    expect(parsed.schemaVersion).toBe(3);
+    expect(parsed.schemaVersion).toBe(SCHEMA_VERSION);
     expect(parsed.captionTracks.cc!.style).toEqual({ ...style, x: 0 });
     expect(parsed.clips).toEqual(project.clips);
     expect(parsed.clips.q1).not.toHaveProperty("styleOverride");
+  });
+
+  it("opens a schema 3 project (before Batch 54) unchanged: no generator, no stand-in blocks", () => {
+    const project = richProject();
+    const raw = JSON.parse(serializeProject(project, STAMP)) as JsonObject;
+    raw.schemaVersion = 3;
+    const parsed = parseProjectFile(JSON.stringify(raw));
+    expect(parsed.schemaVersion).toBe(4);
+    expect(parsed.meta).not.toHaveProperty("generator");
+    expect(parsed.clips).toEqual(project.clips);
+    expect(parsed.media).toEqual(project.media);
+  });
+
+  it("keeps meta.generator and a clip's fallbackOf through save and open, and refuses malformed ones", () => {
+    const project = richProject();
+    const clip = Object.values(project.clips)[0] as Project["clips"][string];
+    const fallbackOf = { kind: "shape", reason: "baked", schemaVersion: 4, headTrim: 3, data: { kind: "shape", free: [1.5] } };
+    const stood = { ...project, meta: { ...project.meta, generator: { name: "tool", version: "1" } }, clips: { ...project.clips, [clip.id]: { ...clip, fallbackOf } } } as Project;
+    const parsed = parseProjectFile(serializeProject(stood, STAMP));
+    expect(parsed.meta.generator).toEqual({ name: "tool", version: "1" });
+    expect(parsed.clips[clip.id]?.fallbackOf).toEqual(fallbackOf);
+    const raw = JSON.parse(serializeProject(stood, STAMP)) as { clips: Record<string, { fallbackOf: { data: { kind: string } } }>; meta: { generator: unknown } };
+    raw.clips[clip.id]!.fallbackOf.data.kind = "other";
+    expect(() => parseProjectFile(JSON.stringify(raw))).toThrow(/fallbackOf\.data\.kind/);
+    raw.clips[clip.id]!.fallbackOf.data.kind = "shape";
+    raw.meta.generator = { version: "1" };
+    expect(() => parseProjectFile(JSON.stringify(raw))).toThrow(/meta\.generator\.name/);
   });
 
   it("refuses a cue override with an unknown or invalid field", () => {

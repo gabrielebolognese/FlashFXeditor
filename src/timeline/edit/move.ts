@@ -13,6 +13,7 @@ import { defaultTrackIndex } from "../../core/commands/basicCommands.js";
 import type { Affect, Command } from "../../core/commands/command.js";
 import { emptyTrack, nextTrackName } from "../../core/document/project.js";
 import { framesToSourceUs } from "../../core/document/time.js";
+import { shiftHeadTrim } from "../../core/document/fallback.js";
 import { sliceKeyframes } from "../../core/document/keyframes.js";
 import { isFreeze, isMediaClip, type Clip, type ClipId, type Frame, type Project, type Rational, type Track, type TrackId } from "../../core/document/types.js";
 import { cueSlice } from "../../text/captions.js";
@@ -176,6 +177,8 @@ export function sliceClip(clip: Clip, from: Frame, to: Frame, fps: Rational): Cl
     if (words) piece.words = words;
     else delete piece.words;
   }
+  // The right part of a stand-in starts further into what it stands for (spec §21.4 `headTrim`).
+  if (newIn) shiftHeadTrim(piece, from - clip.start);
   if (newIn) {
     delete piece.transitionIn;
     delete piece.animIn;

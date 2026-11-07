@@ -6,6 +6,7 @@
 //   smallest k that fits), each shown until the next kept one, so the animation keeps its length.
 // - An image clip plays its animation from its `in` point at the project's frame rate and loops it
 //   (`imageTimeUs`): the frame at a timeline frame is the one whose span holds that time.
+import { ANIMATION_BUDGET_BYTES } from "../../core/document/limits.js";
 import { framesToSourceUs } from "../../core/document/time.js";
 import type { Frame, Rational, Us } from "../../core/document/types.js";
 
@@ -14,7 +15,7 @@ export const MIN_FRAME_US = 20_000;
 export const DEFAULT_FRAME_US = 100_000;
 
 /** Texture memory one animated image may take (its frames' textures, mip levels included). */
-export const ANIMATION_BUDGET_BYTES = 128 * 1024 * 1024;
+export { ANIMATION_BUDGET_BYTES };
 
 /** The time a decoded frame is shown, from its own duration (us, or null when the file gives none). */
 export function frameDurationUs(duration: number | null | undefined): Us {

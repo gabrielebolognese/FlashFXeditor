@@ -1,0 +1,616 @@
+{
+  "schemaVersion": 4,
+  "id": "5f0a3c1e-9d3b-4c52-8a70-1b6f2d9e7a11",
+  "name": "Interop basic",
+  "settings": {
+    "width": 1080,
+    "height": 1920,
+    "fps": {
+      "num": 30,
+      "den": 1
+    },
+    "background": {
+      "r": 0,
+      "g": 0,
+      "b": 0,
+      "a": 1
+    },
+    "sampleRate": 48000
+  },
+  "media": {
+    "m1": {
+      "id": "m1",
+      "kind": "video",
+      "name": "clip.mp4",
+      "file": {
+        "relPath": "media/clip.mp4"
+      },
+      "durationUs": 1500000,
+      "hasAudio": true,
+      "analysis": {
+        "thumbs": "none",
+        "peaks": "none"
+      },
+      "addedAt": "2026-11-07T08:00:00.000Z",
+      "width": 270,
+      "height": 480,
+      "fps": {
+        "num": 30,
+        "den": 1
+      },
+      "codec": "h264",
+      "audioCodec": "aac",
+      "size": 18761
+    },
+    "m2": {
+      "id": "m2",
+      "kind": "audio",
+      "name": "tone.wav",
+      "file": {
+        "relPath": "media/tone.wav"
+      },
+      "durationUs": 500000,
+      "hasAudio": true,
+      "analysis": {
+        "thumbs": "none",
+        "peaks": "none"
+      },
+      "addedAt": "2026-11-07T08:00:00.000Z",
+      "audioCodec": "pcm",
+      "size": 48078,
+      "binId": "bin-audio"
+    },
+    "m3": {
+      "id": "m3",
+      "kind": "image",
+      "name": "badge.png",
+      "file": {
+        "relPath": "media/badge.png"
+      },
+      "durationUs": 0,
+      "hasAudio": false,
+      "analysis": {
+        "thumbs": "none",
+        "peaks": "none"
+      },
+      "addedAt": "2026-11-07T08:00:00.000Z",
+      "width": 64,
+      "height": 64,
+      "codec": "png",
+      "size": 207
+    }
+  },
+  "bins": [
+    {
+      "id": "bin-audio",
+      "name": "Audio"
+    }
+  ],
+  "tracks": [
+    {
+      "id": "v1",
+      "kind": "video",
+      "name": "V1",
+      "clipIds": [
+        "c-video",
+        "c-image"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
+      "id": "v2",
+      "kind": "video",
+      "name": "V2",
+      "clipIds": [
+        "c-solid",
+        "c-text",
+        "c-standin"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
+      "id": "cc1",
+      "kind": "caption",
+      "name": "CC1",
+      "clipIds": [
+        "q1",
+        "q2"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    },
+    {
+      "id": "a1",
+      "kind": "audio",
+      "name": "A1",
+      "clipIds": [
+        "c-audio"
+      ],
+      "locked": false,
+      "muted": false,
+      "solo": false,
+      "hidden": false,
+      "targeted": true,
+      "height": "M"
+    }
+  ],
+  "clips": {
+    "c-video": {
+      "id": "c-video",
+      "trackId": "v1",
+      "kind": "video",
+      "name": "Intro clip",
+      "start": 0,
+      "duration": 60,
+      "enabled": true,
+      "mediaId": "m1",
+      "in": 0,
+      "out": 2000000,
+      "speed": 1,
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0,
+          "y": 0
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "crop": {
+        "left": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "volume": {
+        "gainDb": 0,
+        "muted": false
+      },
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "color": "blue"
+    },
+    "c-image": {
+      "id": "c-image",
+      "trackId": "v1",
+      "kind": "image",
+      "name": "Badge",
+      "start": 60,
+      "duration": 30,
+      "enabled": true,
+      "mediaId": "m3",
+      "in": 0,
+      "out": 1000000,
+      "speed": 1,
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 4,
+        "rotation": 0,
+        "anchor": {
+          "x": 0,
+          "y": 0
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "crop": {
+        "left": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "volume": {
+        "gainDb": 0,
+        "muted": false
+      },
+      "fades": {
+        "in": 0,
+        "out": 0
+      }
+    },
+    "c-solid": {
+      "id": "c-solid",
+      "trackId": "v2",
+      "kind": "solid",
+      "name": "Bar",
+      "start": 0,
+      "duration": 30,
+      "enabled": true,
+      "fill": {
+        "from": {
+          "r": 0.1,
+          "g": 0.1,
+          "b": 0.6,
+          "a": 1
+        },
+        "to": {
+          "r": 0.6,
+          "g": 0.1,
+          "b": 0.1,
+          "a": 1
+        }
+      },
+      "shape": "roundedRect",
+      "size": {
+        "w": 800,
+        "h": 120
+      },
+      "cornerRadius": 24,
+      "transform": {
+        "x": 0,
+        "y": -600,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0,
+          "y": 0
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 0.9,
+      "keyframes": {
+        "opacity": [
+          {
+            "frame": 0,
+            "value": 0,
+            "ease": "easeOut"
+          },
+          {
+            "frame": 10,
+            "value": 0.9,
+            "ease": "linear"
+          }
+        ]
+      }
+    },
+    "c-text": {
+      "id": "c-text",
+      "trackId": "v2",
+      "kind": "text",
+      "name": "Title",
+      "start": 30,
+      "duration": 40,
+      "enabled": true,
+      "text": {
+        "value": "Hello\nworld",
+        "box": {
+          "mode": "auto",
+          "width": 900
+        }
+      },
+      "style": {
+        "fontFamily": "Silkscreen",
+        "fontWeight": 700,
+        "italic": false,
+        "fontSize": 96,
+        "fill": {
+          "r": 1,
+          "g": 1,
+          "b": 1,
+          "a": 1
+        },
+        "stroke": {
+          "enabled": true,
+          "width": 6,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 1
+          }
+        },
+        "shadow": {
+          "enabled": false,
+          "x": 0,
+          "y": 6,
+          "blur": 16,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.6
+          }
+        },
+        "background": {
+          "enabled": false,
+          "color": {
+            "r": 0,
+            "g": 0,
+            "b": 0,
+            "a": 0.7
+          },
+          "paddingX": 28,
+          "paddingY": 12,
+          "radius": 16,
+          "mode": "block"
+        },
+        "textCase": "none",
+        "letterSpacing": 0,
+        "lineHeight": 1.2,
+        "align": "center",
+        "verticalAnchor": "middle"
+      },
+      "animIn": {
+        "id": "pop",
+        "duration": 8
+      },
+      "transform": {
+        "x": 0,
+        "y": 200,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0,
+          "y": 0
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "fades": {
+        "in": 0,
+        "out": 5
+      }
+    },
+    "c-standin": {
+      "id": "c-standin",
+      "trackId": "v2",
+      "kind": "solid",
+      "name": "Baked overlay",
+      "start": 70,
+      "duration": 20,
+      "enabled": true,
+      "fill": {
+        "r": 1,
+        "g": 1,
+        "b": 1,
+        "a": 1
+      },
+      "shape": "rect",
+      "size": {
+        "w": 400,
+        "h": 400
+      },
+      "cornerRadius": 0,
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0,
+          "y": 0
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "color": "orange",
+      "fallbackOf": {
+        "kind": "shape",
+        "reason": "A vector shape (Batch 65) baked to a solid",
+        "schemaVersion": 4,
+        "headTrim": 5,
+        "data": {
+          "kind": "shape",
+          "name": "Star",
+          "transform": {
+            "x": 0,
+            "y": 0
+          }
+        }
+      }
+    },
+    "q1": {
+      "id": "q1",
+      "trackId": "cc1",
+      "kind": "caption",
+      "name": "Cue q1",
+      "start": 0,
+      "duration": 30,
+      "enabled": true,
+      "text": "Hello there",
+      "words": [
+        {
+          "text": "Hello",
+          "start": 0,
+          "end": 12
+        },
+        {
+          "text": "there",
+          "start": 12,
+          "end": 30
+        }
+      ]
+    },
+    "q2": {
+      "id": "q2",
+      "trackId": "cc1",
+      "kind": "caption",
+      "name": "Cue q2",
+      "start": 30,
+      "duration": 30,
+      "enabled": true,
+      "text": "welcome back",
+      "words": [
+        {
+          "text": "welcome",
+          "start": 0,
+          "end": 15
+        },
+        {
+          "text": "back",
+          "start": 15,
+          "end": 30
+        }
+      ]
+    },
+    "c-audio": {
+      "id": "c-audio",
+      "trackId": "a1",
+      "kind": "audio",
+      "name": "Tone",
+      "start": 0,
+      "duration": 15,
+      "enabled": true,
+      "mediaId": "m2",
+      "in": 0,
+      "out": 500000,
+      "speed": 1,
+      "transform": {
+        "x": 0,
+        "y": 0,
+        "scale": 1,
+        "rotation": 0,
+        "anchor": {
+          "x": 0,
+          "y": 0
+        },
+        "flipH": false,
+        "flipV": false
+      },
+      "opacity": 1,
+      "crop": {
+        "left": 0,
+        "top": 0,
+        "right": 0,
+        "bottom": 0
+      },
+      "volume": {
+        "gainDb": 0,
+        "muted": false
+      },
+      "fades": {
+        "in": 0,
+        "out": 0
+      },
+      "color": "green"
+    }
+  },
+  "markers": [
+    {
+      "id": "mk1",
+      "frame": 0,
+      "color": "green",
+      "label": "Scene 1"
+    },
+    {
+      "id": "mk2",
+      "frame": 60,
+      "color": "blue",
+      "label": "Scene 2"
+    }
+  ],
+  "captionTracks": {
+    "cc1": {
+      "style": {
+        "text": {
+          "fontFamily": "Silkscreen",
+          "fontWeight": 700,
+          "italic": false,
+          "fontSize": 72,
+          "fill": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "stroke": {
+            "enabled": true,
+            "width": 6,
+            "color": {
+              "r": 0,
+              "g": 0,
+              "b": 0,
+              "a": 1
+            }
+          },
+          "shadow": {
+            "enabled": false,
+            "x": 0,
+            "y": 6,
+            "blur": 16,
+            "color": {
+              "r": 0,
+              "g": 0,
+              "b": 0,
+              "a": 0.6
+            }
+          },
+          "background": {
+            "enabled": false,
+            "color": {
+              "r": 0,
+              "g": 0,
+              "b": 0,
+              "a": 0.7
+            },
+            "paddingX": 28,
+            "paddingY": 12,
+            "radius": 16,
+            "mode": "block"
+          },
+          "textCase": "none",
+          "letterSpacing": 0,
+          "lineHeight": 1.2,
+          "align": "center",
+          "verticalAnchor": "middle"
+        },
+        "position": "bottom",
+        "x": 0,
+        "y": 0,
+        "maxWidth": 900,
+        "maxLines": 2,
+        "highlight": {
+          "mode": "color",
+          "color": {
+            "r": 1,
+            "g": 0.85,
+            "b": 0.2,
+            "a": 1
+          },
+          "inactiveColor": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          }
+        }
+      }
+    }
+  },
+  "textPresetsLocal": [],
+  "meta": {
+    "createdAt": "2026-11-07T08:00:00.000Z",
+    "modifiedAt": "2026-11-07T08:00:00.000Z",
+    "appVersion": "1.1.0",
+    "generator": {
+      "name": "interop-fixture",
+      "version": "1",
+      "source": "scripts/cli/make-interop-fixtures.mjs"
+    }
+  }
+}

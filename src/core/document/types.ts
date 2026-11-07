@@ -1,7 +1,7 @@
 // The persistent document (spec §5.2). Plain JSON only: no classes, Maps, Sets or undefined-valued
 // keys, so a Project can be serialized as-is and diffed by Immer patches.
 
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 
 export type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
 export type JsonObject = { [key: string]: JsonValue };
@@ -90,8 +90,10 @@ export interface TextBackground {
   paddingX: number;
   paddingY: number;
   radius: number;
-  mode: "line" | "block";
+  mode: TextBackgroundMode;
 }
+export const TEXT_BACKGROUND_MODES = ["line", "block"] as const;
+export type TextBackgroundMode = (typeof TEXT_BACKGROUND_MODES)[number];
 
 /** The look of a text clip (spec §10.1). Sizes are project px; `lineHeight` is a multiplier of the size. */
 export interface TextStyle {
@@ -143,7 +145,8 @@ export interface Transition {
 export const TEXT_ANIM_IDS = ["fade", "slideUp", "slideDown", "slideLeft", "slideRight", "pop", "typewriter", "wordPop", "wordFade", "lineReveal", "blurIn", "scaleBounce"] as const;
 export type TextAnimId = (typeof TEXT_ANIM_IDS)[number];
 /** What a text animation moves one by one: characters (graphemes), words or lines; none = the whole text. */
-export type TextAnimUnit = "char" | "word" | "line";
+export const TEXT_ANIM_UNITS = ["char", "word", "line"] as const;
+export type TextAnimUnit = (typeof TEXT_ANIM_UNITS)[number];
 
 /**
  * A text clip's in or out animation (spec §10.4). `duration` is the whole animation, every unit's
@@ -305,7 +308,36 @@ export interface Project {
    * are files in `presets/text/` (spec §9.7, Batch 30), outside the undo history like the global ones.
    */
   textPresetsLocal: TextPreset[];
-  meta: { createdAt: string; modifiedAt: string; appVersion: string };
+  meta: ProjectMeta;
+}
+
+/** The tool that wrote a project (spec §21.4, Batch 54); the editor shows it and never changes it. */
+export interface ProjectGenerator {
+  name: string;
+  version?: string;
+  source?: string;
+  url?: string;
+}
+
+export interface ProjectMeta {
+  createdAt: string;
+  modifiedAt: string;
+  appVersion: string;
+  generator?: ProjectGenerator;
+}
+
+/**
+ * A baked stand-in (spec §21.4, Batch 54): the clip stands for the native clip in `data` (the editor's
+ * own JSON, possibly sparse, without `id`, `trackId`, `start` and `duration`). `data` is opaque apart
+ * from its `kind`, which equals `kind`: never migrated, normalized or interpreted until converted.
+ * `headTrim` (frames, default 0) is how far the stand-in's first frame moved into the native clip.
+ */
+export interface FallbackOf {
+  kind: string;
+  reason: string;
+  schemaVersion: number;
+  headTrim?: Frame;
+  data: JsonObject;
 }
 
 export interface MediaItem {
@@ -335,7 +367,8 @@ export interface Bin {
   name: string;
 }
 
-export type TrackKind = "video" | "audio" | "caption";
+export const TRACK_KINDS = ["video", "audio", "caption"] as const;
+export type TrackKind = (typeof TRACK_KINDS)[number];
 
 export interface Track {
   id: TrackId;
@@ -351,7 +384,8 @@ export interface Track {
   height: "S" | "M" | "L";
 }
 
-export type ClipKind = "video" | "audio" | "image" | "text" | "solid" | "caption";
+export const CLIP_KINDS = ["video", "audio", "image", "text", "solid", "caption"] as const;
+export type ClipKind = (typeof CLIP_KINDS)[number];
 
 export interface ClipBase {
   id: ClipId;
@@ -365,6 +399,8 @@ export interface ClipBase {
   linkGroup?: string;
   group?: string;
   enabled: boolean;
+  /** Set when the clip is a baked stand-in for a clip kind or feature this build lacks (spec §21.4). */
+  fallbackOf?: FallbackOf;
 }
 
 export interface MediaClip extends ClipBase {

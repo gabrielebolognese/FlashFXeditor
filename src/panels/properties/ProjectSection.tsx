@@ -28,6 +28,9 @@ const selectName = (p: Project) => p.name;
 const selectWidth = (p: Project) => p.settings.width;
 const selectHeight = (p: Project) => p.settings.height;
 const selectFps = (p: Project) => fpsKey(p.settings.fps);
+/** The tool that wrote the project (spec §21.4 `meta.generator`), as one line; empty when none. */
+const selectGenerator = (p: Project) => (p.meta.generator ? `${p.meta.generator.name}${p.meta.generator.version ? ` ${p.meta.generator.version}` : ""}` : "");
+const selectGeneratorDetail = (p: Project) => [p.meta.generator?.source, p.meta.generator?.url].filter(Boolean).join("\n");
 const selectBackground = (p: Project): RGBA => p.settings.background;
 const selectRecent = (s: AppSettings) => s.recentColors;
 
@@ -57,6 +60,8 @@ export function ProjectSection() {
   const height = useStoreSelector(documentStore, selectHeight);
   const fps = useStoreSelector(documentStore, selectFps);
   const background = useStoreSelector(documentStore, selectBackground);
+  const generator = useStoreSelector(documentStore, selectGenerator);
+  const generatorDetail = useStoreSelector(documentStore, selectGeneratorDetail);
   const recent = useStoreSelector(appSettings, selectRecent);
   const sizes = useMemo(() => ({ width: sizeBinding("width"), height: sizeBinding("height") }), []);
   // "Custom" picked while the size still matches a preset: the size fields open to edits anyway.
@@ -79,6 +84,14 @@ export function ProjectSection() {
       <Row label="Name">
         <TextField value={name} onCommit={(text) => documentStore.dispatch(renameProject(text))} ariaLabel="Project name" maxLength={MAX_PROJECT_NAME} />
       </Row>
+      {/* Read-only: the tool that wrote the project; the editor never changes it. */}
+      {generator !== "" && (
+        <Row label="Generator">
+          <span className={styles.hint} title={generatorDetail || undefined}>
+            {generator}
+          </span>
+        </Row>
+      )}
       <Row label="Resolution">
         <Select value={preset} options={RESOLUTION_OPTIONS} onChange={choosePreset} label="Resolution" />
       </Row>

@@ -25,12 +25,12 @@ import { clipRel, gainDbAt, hasSectionKeys, setKey, withKeys, writeKeys, type Ke
 import { usPerFrame } from "../../core/document/time.js";
 import type { ClipId, Frame, Keyframes, MediaClip, MediaId, Project, Track, TrackId } from "../../core/document/types.js";
 import type { Peaks } from "../../media/cache/peaks.js";
+import { MAX_GAIN_DB, MIN_GAIN_DB } from "../../core/document/limits.js";
 import { PEAKS_BUCKET } from "../../media/cache/peaks.js";
 import { clipsInRange, isClipLocked, linkGroupOf, linkedPartners } from "../model/queries.js";
 
-/** The clip gain range (spec §14). */
-export const MIN_GAIN_DB = -60;
-export const MAX_GAIN_DB = 12;
+/** The clip gain range (spec §14), in core/document/limits.ts. */
+export { MAX_GAIN_DB, MIN_GAIN_DB };
 /** Normalize's target peak (spec §14). */
 export const NORMALIZE_PEAK_DB = -1;
 /** Auto-duck's defaults (spec §14: keyframes at -12 dB, 10-frame ramps; app settings `duckDepthDb`, `duckRampFrames`). */

@@ -16,11 +16,12 @@ import { isAnimatedImage, isSvgImage } from "../mediaKinds.js";
 import { abortError } from "../workers/protocol.js";
 import type { WorkerPool } from "../workers/WorkerPool.js";
 import { ANIMATION_BUDGET_BYTES, frameAt, loopTimeUs } from "./animation.js";
+import { ANIMATION_MAX_SIZE } from "../../core/document/limits.js";
 
 /** Long-edge cap of SVG rasters (spec §7.1's detail cap). */
 export const SVG_MAX_SIZE = 4096;
 /** Long-edge cap of animation frames (they are drawn at most this big without losing detail). */
-export const ANIMATION_MAX_SIZE = 2048;
+export { ANIMATION_MAX_SIZE };
 
 export interface ImageSource {
   /** The image file of the open project, or null when it is missing. */

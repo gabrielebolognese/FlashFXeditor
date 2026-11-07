@@ -62,6 +62,7 @@ function clipIssues(project: Project, clip: Clip): string[] {
   if (!Number.isInteger(clip.start) || clip.start < 0) issues.push(`${label}: start ${clip.start} must be an integer frame >= 0`);
   if (!Number.isInteger(clip.duration) || clip.duration < 1) issues.push(`${label}: duration ${clip.duration} must be an integer >= 1`);
   if (clip.color !== undefined && !LABEL_SET.has(clip.color)) issues.push(`${label}: color "${clip.color}" is not a label color`);
+  if (clip.fallbackOf !== undefined) issues.push(...fallbackIssues(clip, label));
   if (clip.kind === "text") issues.push(...textIssues(clip, label));
   if (clip.kind === "caption") issues.push(...cueIssues(clip, label));
   if (clip.kind === "solid") issues.push(...solidIssues(clip, label));
@@ -95,6 +96,33 @@ function clipIssues(project: Project, clip: Clip): string[] {
       issues.push(`${label}: out - in = ${clip.out - clip.in} us, expected duration * speed = ${Math.round(expected)} us (within 1 frame)`);
     }
   }
+  return issues;
+}
+
+/** A baked stand-in (spec §21.4): the outer shape only; `data` is opaque apart from its `kind`. */
+function fallbackIssues(clip: Clip, label: string): string[] {
+  const block = clip.fallbackOf as unknown;
+  if (typeof block !== "object" || block === null || Array.isArray(block)) return [`${label}: fallbackOf must be an object`];
+  const { kind, reason, schemaVersion, headTrim, data } = block as Record<string, unknown>;
+  const issues: string[] = [];
+  if (typeof kind !== "string" || kind === "") issues.push(`${label}: fallbackOf.kind must be a non-empty string`);
+  if (typeof reason !== "string") issues.push(`${label}: fallbackOf.reason must be a string`);
+  if (!isPositiveInteger(schemaVersion)) issues.push(`${label}: fallbackOf.schemaVersion ${String(schemaVersion)} must be a positive integer`);
+  if (headTrim !== undefined && !(Number.isInteger(headTrim) && (headTrim as number) >= 0)) issues.push(`${label}: fallbackOf.headTrim ${String(headTrim)} must be an integer >= 0`);
+  if (typeof data !== "object" || data === null || Array.isArray(data)) issues.push(`${label}: fallbackOf.data must be an object`);
+  else if ((data as Record<string, unknown>).kind !== kind) issues.push(`${label}: fallbackOf.data.kind ${JSON.stringify((data as Record<string, unknown>).kind) ?? "undefined"} must equal fallbackOf.kind ${JSON.stringify(kind) ?? "undefined"}`);
+  return issues;
+}
+
+/** `meta.generator` (spec §21.4): a name and optional version, source and url strings. */
+function generatorIssues(project: Project): string[] {
+  const generator = project.meta?.generator as unknown;
+  if (generator === undefined) return [];
+  if (typeof generator !== "object" || generator === null || Array.isArray(generator)) return ["meta.generator must be an object"];
+  const issues: string[] = [];
+  const fields = generator as Record<string, unknown>;
+  if (typeof fields.name !== "string" || fields.name === "") issues.push("meta.generator.name must be a non-empty string");
+  for (const key of ["version", "source", "url"]) if (fields[key] !== undefined && typeof fields[key] !== "string") issues.push(`meta.generator.${key} must be a string`);
   return issues;
 }
 
@@ -290,6 +318,7 @@ export function validateProject(project: Project): string[] {
     issues.push(...captionStyleIssues(data?.style, `captionTracks entry ${trackId}`));
   }
   issues.push(...markerIssues(project));
+  issues.push(...generatorIssues(project));
   return issues;
 }
 

@@ -8,7 +8,7 @@ const HEX = "/(^|[^&0-9A-Za-z_])#([0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[
 const COLOR_FN = "/(^|[^A-Za-z])(rgba?|hsla?)[(]/";
 
 export default tseslint.config(
-  { ignores: ["dist/", "node_modules/", "coverage/"] },
+  { ignores: ["dist/", "dist-cli/", "node_modules/", "coverage/"] },
   ...tseslint.configs.recommended,
   {
     files: ["src/**/*.{ts,tsx}"],

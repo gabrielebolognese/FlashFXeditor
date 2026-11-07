@@ -23,6 +23,8 @@
 import type { Draft } from "immer";
 import type { Command } from "../../core/commands/command.js";
 import { framesToSourceUs, usPerFrame } from "../../core/document/time.js";
+import { MAX_SPEED, MIN_SPEED } from "../../core/document/limits.js";
+import { shiftHeadTrim } from "../../core/document/fallback.js";
 import { fitFades } from "../../core/document/fades.js";
 import { retimeKeyframes, shiftKeyframes } from "../../core/document/keyframes.js";
 import { editDefaults } from "./editDefaults.js";
@@ -55,9 +57,8 @@ export type TrimLimitReason = "mediaStart" | "mediaEnd" | "minDuration" | "minSp
 
 const REASON_ORDER: readonly TrimLimitReason[] = ["mediaStart", "mediaEnd", "minDuration", "minSpeed", "maxSpeed", "neighbor", "ripple", "timelineStart"];
 
-/** The speed range of clips (spec §14: 0.25x to 4x). */
-export const MIN_SPEED = 0.25;
-export const MAX_SPEED = 4;
+/** The speed range of clips (spec §14: 0.25x to 4x), in core/document/limits.ts. */
+export { MAX_SPEED, MIN_SPEED };
 
 export interface TrimLimit {
   reason: TrimLimitReason;
@@ -458,6 +459,8 @@ function trimmedClip(clip: Clip, edge: TrimEdge, delta: number, ripple: boolean,
       media.out = Math.min(durationUs, clip.out + framesToSourceUs(delta, clip.speed, fps));
     }
   }
+  // A stand-in's first frame moves with an in edge (spec §21.4 `headTrim`).
+  if (edge === "in") shiftHeadTrim(next, delta);
   // Text, solids and images keep their keyframes on the clip start (spec §6.10: off for text clips).
   clampFades(next, clip);
   // Transitions on a trimmed edge are shortened to the handle left, or removed when none is, by
@@ -479,6 +482,7 @@ function slippedClip(clip: MediaClip, delta: number, project: Project): Clip {
   next.in = Math.max(0, clip.in + moved);
   next.out = Math.min(project.media[clip.mediaId]?.durationUs ?? clip.out + moved, clip.out + moved);
   if (clip.keyframes && editDefaults().keyframesFollowSource) next.keyframes = shiftKeyframes(clip.keyframes, delta);
+  shiftHeadTrim(next, delta);
   return next;
 }
 

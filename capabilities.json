@@ -1,0 +1,235 @@
+{
+  "manifestVersion": 1,
+  "app": "shorts-editor",
+  "appVersion": "1.1.0",
+  "lastBatch": 54,
+  "schemaVersion": 4,
+  "project": {
+    "file": "project.json",
+    "fontsManifest": "fonts/fonts.json",
+    "fontsManifestVersion": 2,
+    "sampleRate": 48000
+  },
+  "media": {
+    "video": [
+      "mp4",
+      "mov",
+      "m4v",
+      "webm"
+    ],
+    "audio": [
+      "mp3",
+      "m4a",
+      "aac",
+      "wav",
+      "ogg"
+    ],
+    "image": [
+      "png",
+      "jpg",
+      "jpeg",
+      "webp",
+      "gif",
+      "svg"
+    ],
+    "animatedImage": {
+      "formats": [
+        "gif",
+        "webp"
+      ],
+      "alpha": true,
+      "maxSide": 2048,
+      "textureBudgetBytes": 134217728
+    },
+    "videoAlpha": false,
+    "imageSequence": false,
+    "lottie": false
+  },
+  "trackKinds": [
+    "video",
+    "audio",
+    "caption"
+  ],
+  "clipKinds": [
+    "video",
+    "audio",
+    "image",
+    "text",
+    "solid",
+    "caption"
+  ],
+  "transform": {
+    "rotation3d": false,
+    "parenting": false,
+    "motionPaths": false,
+    "autoOrient": false
+  },
+  "keyframes": {
+    "props": [
+      "transform.x",
+      "transform.y",
+      "transform.scale",
+      "transform.scaleY",
+      "transform.rotation",
+      "opacity",
+      "volume.gainDb"
+    ],
+    "eases": [
+      "linear",
+      "easeIn",
+      "easeOut",
+      "easeInOut",
+      "hold",
+      "smooth",
+      "snap",
+      "overshoot"
+    ],
+    "bezier": false,
+    "spring": false,
+    "vectorValues": false
+  },
+  "solid": {
+    "shapes": [
+      "rect",
+      "roundedRect",
+      "ellipse",
+      "line"
+    ],
+    "fills": [
+      "color",
+      "gradient2"
+    ],
+    "stroke": false,
+    "shadow": false,
+    "cornerRadii": false
+  },
+  "mediaFrame": {
+    "stroke": false,
+    "shadow": false,
+    "cornerRadius": false
+  },
+  "text": {
+    "fills": [
+      "color",
+      "gradient2"
+    ],
+    "stroke": true,
+    "shadow": true,
+    "background": {
+      "modes": [
+        "line",
+        "block"
+      ],
+      "stroke": false,
+      "shadow": false
+    },
+    "anims": [
+      "fade",
+      "slideUp",
+      "slideDown",
+      "slideLeft",
+      "slideRight",
+      "pop",
+      "typewriter",
+      "wordPop",
+      "wordFade",
+      "lineReveal",
+      "blurIn",
+      "scaleBounce"
+    ],
+    "animUnits": [
+      "char",
+      "word",
+      "line"
+    ],
+    "spans": false,
+    "counter": false,
+    "animators": false
+  },
+  "captions": {
+    "highlightModes": [
+      "none",
+      "color",
+      "background",
+      "scale",
+      "colorAndScale"
+    ],
+    "perCueStyle": true,
+    "wordEmphasis": false,
+    "cueAnims": [],
+    "boxModes": [
+      "line",
+      "block"
+    ],
+    "wordsImport": false
+  },
+  "transitions": [
+    "crossDissolve",
+    "dipToBlack",
+    "dipToWhite"
+  ],
+  "compositing": {
+    "compound": false,
+    "blendModes": [
+      "normal"
+    ],
+    "trackMatte": false,
+    "masks": false,
+    "adjustment": false
+  },
+  "vector": {
+    "shapes": false,
+    "trimPaths": false,
+    "svgImport": false
+  },
+  "effects": [],
+  "audio": {
+    "clipGainDb": [
+      -60,
+      12
+    ],
+    "fades": true,
+    "trackGain": false,
+    "pan": false,
+    "loudness": false
+  },
+  "time": {
+    "speedRange": [
+      0.25,
+      4
+    ],
+    "freeze": true,
+    "reverse": false,
+    "remap": false,
+    "frameBlend": false
+  },
+  "templates": false,
+  "export": {
+    "containers": [
+      "mp4"
+    ],
+    "videoCodecs": [
+      "h264",
+      "hevc",
+      "av1"
+    ],
+    "alpha": false,
+    "imageSequence": false,
+    "gif": false,
+    "stems": false
+  },
+  "cli": {
+    "validate": true,
+    "normalize": false,
+    "info": true,
+    "render": false,
+    "compare": false
+  },
+  "interop": {
+    "openLink": false,
+    "externalReload": false,
+    "repairOnOpen": false,
+    "fallbackOf": true,
+    "generatorMeta": true
+  }
+}

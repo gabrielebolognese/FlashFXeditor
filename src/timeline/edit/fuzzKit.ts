@@ -11,6 +11,7 @@
 //   kind, speeds within 0.25x..4x, crops within the media, non-empty link and group ids, cue style
 //   overrides never empty (an override that sets nothing is removed, spec §20.3), no cue preset link
 //   without an override, and every cue's effective style one the layout can draw.
+import { freeze } from "immer";
 import { addTrack, updateClip } from "../../core/commands/basicCommands.js";
 import type { Command } from "../../core/commands/command.js";
 import { addBin, addMedia, relinkMedia, removeBin, removeMedia, renameBin, renameMedia, setMediaBin } from "../../core/commands/mediaCommands.js";
@@ -31,6 +32,7 @@ import {
   type CaptionStyle,
   type Clip,
   type ClipId,
+  type FallbackOf,
   type Frame,
   type Gradient,
   type MediaClip,
@@ -624,7 +626,26 @@ export function randomProject(rng: Rng, options: RandomProjectOptions = {}): Pro
     if (rng.chance(0.15)) exec(store, setTrackFlag(state(), [track.id], "targeted", false));
     if (rng.chance(0.08)) exec(store, setTrackFlag(state(), [track.id], rng.pick(["muted", "hidden", "solo"] as const), true));
   }
-  return store.getState();
+  return withStandIns(store.getState());
+}
+
+const idHash = (id: string): number => [...id].reduce((hash, char) => (hash * 31 + char.charCodeAt(0)) >>> 0, 7);
+
+/**
+ * Baked stand-ins (spec §21.4, Batch 54): about a quarter of the clips, picked by a hash of their id (the
+ * random stream is not touched), carry a `fallbackOf` block of a kind this build does not know, some with a
+ * `headTrim`. Every operation must keep the blocks (`documentChecks`).
+ */
+function withStandIns(project: Project): Project {
+  const clips = Object.fromEntries(
+    Object.entries(project.clips).map(([id, clip]) => {
+      const hash = idHash(id);
+      if (hash % 4 !== 0) return [id, clip];
+      const fallbackOf: FallbackOf = { kind: "lottie", reason: "fuzz", schemaVersion: 4, ...(hash % 8 === 0 && { headTrim: 1 + (hash % 40) }), data: { kind: "lottie", seed: hash, nested: { list: [1, 2.5, { deep: "x" }] } } };
+      return [id, { ...clip, fallbackOf } as Clip];
+    }),
+  );
+  return freeze({ ...project, clips }, true);
 }
 
 /** Payload sources from other projects (Paste across projects), made once each. */
@@ -1785,6 +1806,11 @@ function withoutLoneGroups(clip: Clip, project: Project): Clip {
 function clipIssues(project: Project, clip: Clip): string[] {
   const issues: string[] = [];
   const label = `clip ${clip.id}`;
+  if (clip.fallbackOf !== undefined) {
+    const { headTrim, data, kind } = clip.fallbackOf;
+    if (headTrim !== undefined && !(Number.isInteger(headTrim) && headTrim > 0)) issues.push(`${label}: fallbackOf.headTrim ${headTrim} must be an integer > 0 (0 is left out)`);
+    if (data.kind !== kind) issues.push(`${label}: fallbackOf.data.kind ${String(data.kind)} differs from kind ${kind}`);
+  }
   if (clip.linkGroup === "" || clip.group === "") issues.push(`${label}: empty link group or group id`);
   if (clip.kind === "caption") {
     // An override that sets nothing is removed, a preset link goes with the last override (spec §20.3);
@@ -1826,6 +1852,9 @@ export function documentChecks(before: Project | null, after: Project, opName: s
     if (before?.clips[id] === clip) continue;
     plainIssues(clip, `clips.${id}`, issues);
     issues.push(...clipIssues(after, clip));
+    // A stand-in's block is never dropped or interpreted: its data is what it was (spec §21.4).
+    const was = before?.clips[id]?.fallbackOf;
+    if (was && !sameJson(was.data, clip.fallbackOf?.data)) issues.push(`clip ${id}: fallbackOf lost or changed its data`);
   }
   if (!before || before.media !== after.media) {
     for (const [id, media] of Object.entries(after.media)) if (before?.media[id] !== media) plainIssues(media, `media.${id}`, issues);

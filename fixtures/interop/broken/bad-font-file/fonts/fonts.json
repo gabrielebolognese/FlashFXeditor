@@ -1,0 +1,15 @@
+{
+  "version": 2,
+  "faces": [
+    {
+      "family": "Silkscreen",
+      "style": "Bold",
+      "weight": 700,
+      "italic": false,
+      "postscriptName": "Silkscreen-Bold",
+      "file": "silkscreen-latin-700-normal.woff2",
+      "source": "library",
+      "origin": "silkscreen/silkscreen-latin-700-normal.woff2"
+    }
+  ]
+}
