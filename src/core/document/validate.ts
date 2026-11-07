@@ -69,7 +69,7 @@ function clipIssues(project: Project, clip: Clip): string[] {
   // Frame styles (spec §21.7): pictures have rounded corners, an outline and a shadow.
   if (clip.kind === "video" || clip.kind === "image") issues.push(...frameIssues(clip, label));
   // Keyframes (Batch 35): known properties, one key per integer frame in order, finite values, known eases.
-  if ("keyframes" in clip && clip.keyframes !== undefined) issues.push(...keyframeIssues(clip.keyframes).map((issue) => `${label}: ${issue}`));
+  if ("keyframes" in clip && clip.keyframes !== undefined) issues.push(...keyframeIssues(clip.keyframes, clip).map((issue) => `${label}: ${issue}`));
   // Fades (Batch 36): integer frames, each within the clip.
   if ("fades" in clip && clip.fades !== undefined) {
     const { fades } = clip;

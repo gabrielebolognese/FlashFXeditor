@@ -6,7 +6,7 @@
 import { describe, expect, it } from "vitest";
 import { setFrameRate } from "../../core/commands/projectCommands.js";
 import { convertProjectFrames, isLossless } from "../../core/document/fpsConvert.js";
-import { keyframeIssues } from "../../core/document/keyframes.js";
+import { keyframeIssues, scalar } from "../../core/document/keyframes.js";
 import { createProject } from "../../core/document/project.js";
 import { usPerFrame } from "../../core/document/time.js";
 import { isFreeze, isMediaClip, type CaptionClip, type Clip, type Project, type Rational } from "../../core/document/types.js";
@@ -116,7 +116,7 @@ describe("audio edits (Batch 37 follow-up)", { timeout: 30_000 }, () => {
         check: (before, after) =>
           changedClips(before, after).flatMap((clip) => {
             if (clip.kind !== "audio") return [];
-            const gains = [clip.volume.gainDb, ...volumeKeys(clip).map((key) => key.value)];
+            const gains = [clip.volume.gainDb, ...volumeKeys(clip).map((key) => scalar(key.value))];
             return gains.every((db) => db >= MIN_GAIN_DB && db <= MAX_GAIN_DB) ? [] : [`audio ${clip.id}: gains ${gains.join(", ")} outside ${MIN_GAIN_DB}..${MAX_GAIN_DB} dB`];
           }),
       });

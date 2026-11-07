@@ -20,7 +20,9 @@ export type FieldType =
   /** One of several shapes, told apart by a key only that shape has. */
   | { t: "union"; options: readonly { when: string; label: string; type: FieldType }[] }
   /** Any JSON object: the content is not described (`fallbackOf.data`). */
-  | { t: "json" };
+  | { t: "json" }
+  /** A finite number, or an array of 1 to `max` finite numbers (a keyframe value: a number, a point or a color). */
+  | { t: "numberOrVector"; max: number };
 
 export interface Field {
   type: FieldType;
@@ -187,8 +189,20 @@ const SCHEMAS: ObjectSchema[] = [
   {
     name: "Keyframe",
     doc: "One keyframe: a value at a frame relative to the clip start. A key's `ease` shapes the segment from it to the next key.",
+    types: ["KeyData"],
+    fields: {
+      frame: req(int(), `Relative to the clip start; one key per frame, sorted. Any integer: after a head trim keys before the clip start (negative) or past its end are kept so a trim back restores them. ${FRAMES}`),
+      value: req({ t: "numberOrVector", max: 4 }, "The value: a number, or for a color property an array [r, g, b, a] (straight alpha, 0..1, interpolated per channel)."),
+      ease: req(oneOf(EASE_IDS), "The curve to the next key.", "linear"),
+      bezier: opt({ t: "array", item: num, length: 4 }, "Ease `bezier`: the CSS cubic-bezier(x1, y1, x2, y2); x1 and x2 are 0..1 (Batch 60)."),
+      spring: opt(obj("KeySpring"), "Ease `spring`: damping and frequency; 0.7 and 4 when absent (Batch 60)."),
+    },
+  },
+  {
+    name: "KeySpring",
+    doc: "The parameters of a `spring` ease: a damped cosine over the segment that ends exactly on the next key's value.",
     types: [],
-    fields: { frame: req(int(), `Relative to the clip start; one key per frame, sorted. Any integer: after a head trim keys before the clip start (negative) or past its end are kept so a trim back restores them. ${FRAMES}`), value: req(num, "The value."), ease: req(oneOf(EASE_IDS), "The curve to the next key.", "linear") },
+    fields: { damping: req(nonNeg, "Decay over the segment (0 never decays).", 0.7), frequency: req(pos, "Oscillations over the segment.", 4) },
   },
   {
     name: "Keyframes",

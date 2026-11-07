@@ -38,6 +38,7 @@ import { freezeFrame, punchZoom } from "./freeze.js";
 import { documentChecks, randomProject, random, setupFuzzKit } from "./fuzzKit.js";
 import { closeGap, compactGaps, gapAtPlayhead } from "./gaps.js";
 import { mediaClips } from "./insertMedia.js";
+import { scalar } from "../../core/document/keyframes.js";
 import { addKeyAt, copyKeys, deleteKeys, moveKeys, pasteKeys, setKeysEase, setStopwatch, toggleKeyAt } from "./keyframes.js";
 import { closeExtracted, liftRange, rangeTracks } from "./liftExtract.js";
 import { groupClips, moveIntoSync, toggleLink, ungroupClips } from "./links.js";
@@ -424,7 +425,7 @@ const ROWS: Row[] = [
     run: (s) => exec(s, normalizeClips(s.getState(), ["mu", "ca", "lka"], () => halfScalePeaks).command),
     then: (p, before) => {
       expect(mediaClip(p, "mu").volume.gainDb).toBeCloseTo(-1 - 20 * Math.log10(64 / 127), 6);
-      expect(volumeKeys(mediaClip(p, "ca"))[0]?.value).toBeGreaterThan(volumeKeys(mediaClip(before, "ca"))[0]?.value ?? 0);
+      expect(scalar(volumeKeys(mediaClip(p, "ca"))[0]?.value ?? 0)).toBeGreaterThan(scalar(volumeKeys(mediaClip(before, "ca"))[0]?.value ?? 0));
     },
   },
   { name: "bandEdit gain", run: (s) => exec(s, bandEdit(s.getState(), "mu", { kind: "gain", gainDb: -20 })) },

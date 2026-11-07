@@ -1,7 +1,7 @@
 // The persistent document (spec §5.2). Plain JSON only: no classes, Maps, Sets or undefined-valued
 // keys, so a Project can be serialized as-is and diffed by Immer patches.
 
-export const SCHEMA_VERSION = 6;
+export const SCHEMA_VERSION = 7;
 
 export type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
 export type JsonObject = { [key: string]: JsonValue };
@@ -163,8 +163,27 @@ export interface TextStyle {
  * jumps at the next key) and three cubic-bezier presets (smooth = CSS `ease`, snap = the DS `out`
  * curve, overshoot = a back-out). Curves live in `core/document/keyframes.ts`.
  */
-export const EASE_IDS = ["linear", "easeIn", "easeOut", "easeInOut", "hold", "smooth", "snap", "overshoot"] as const;
+export const PENNER_EASES = [
+  "sineIn", "sineOut", "sineInOut", "quadIn", "quadOut", "quadInOut", "cubicIn", "cubicOut", "cubicInOut",
+  "quartIn", "quartOut", "quartInOut", "quintIn", "quintOut", "quintInOut", "expoIn", "expoOut", "expoInOut",
+  "circIn", "circOut", "circInOut", "backIn", "backOut", "backInOut", "elasticIn", "elasticOut", "elasticInOut",
+  "bounceIn", "bounceOut", "bounceInOut",
+] as const;
+export type PennerEase = (typeof PENNER_EASES)[number];
+/** The ease ids (spec §21.9, Batch 60): the 8 of v1, the 30 Penner eases, a custom `bezier` and a `spring`. */
+export const EASE_IDS = ["linear", "easeIn", "easeOut", "easeInOut", "hold", "smooth", "snap", "overshoot", ...PENNER_EASES, "bezier", "spring"] as const;
 export type EaseId = (typeof EASE_IDS)[number];
+
+/** One key of a property (spec §21.9): `value` is a number, or an array for a color [r, g, b, a] or a point [x, y]. */
+export interface KeyData {
+  frame: Frame;
+  value: number | number[];
+  ease: EaseId;
+  /** Ease `bezier`: CSS cubic-bezier(x1, y1, x2, y2); absent: the CSS `ease` (0.25, 0.1, 0.25, 1). */
+  bezier?: [number, number, number, number];
+  /** Ease `spring`: defaults 0.7 and 4. */
+  spring?: { damping: number; frequency: number };
+}
 
 /** The transitions (spec §6.15, Batch 36), in the order of the properties panel's chips. Audio crossfades are `crossDissolve`. */
 export const TRANSITION_KINDS = ["crossDissolve", "dipToBlack", "dipToWhite"] as const;
@@ -587,7 +606,7 @@ export interface Volume {
  * `core/document/keyframes.ts` (Batch 35).
  */
 export interface Keyframes {
-  [prop: string]: { frame: Frame; value: number; ease: EaseId }[];
+  [prop: string]: KeyData[];
 }
 
 export interface Marker {

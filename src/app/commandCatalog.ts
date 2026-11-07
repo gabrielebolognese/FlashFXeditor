@@ -213,8 +213,9 @@ const app = entry("App");
 const dev = entry("Dev");
 
 /** The keyframe sections with a stopwatch in the properties panel, and those a clip's lane can show. */
-export const PANEL_SECTIONS: readonly KeyframeSection[] = KEYFRAME_SECTIONS;
-export const LANE_SECTIONS: readonly KeyframeSection[] = ["transform", "opacity"];
+/** The sections with a stopwatch in the panel: not "look", which has a lane only until Batch 61. */
+export const PANEL_SECTIONS: readonly KeyframeSection[] = KEYFRAME_SECTIONS.filter((section) => section !== "look");
+export const LANE_SECTIONS: readonly KeyframeSection[] = ["transform", "opacity", "look"];
 /** The command id of a fade preset of the clip menu (spec §6.16: 0.25 s, 0.5 s, 1 s). */
 export const fadePresetId = (edge: "in" | "out", seconds: number) => `clip.fade${edge === "in" ? "In" : "Out"}.${Math.round(seconds * 100)}`;
 /** The quick row's speed chips (spec §17). */

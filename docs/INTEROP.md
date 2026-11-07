@@ -277,6 +277,76 @@ A caption cue that turns its track's box border off (the track's boxed style kee
 
 `fixtures/interop/styles/` holds all of these in one project with expected frames (`npm run test:render` renders it on both backends); `scripts/cli/make-styles-fixture.mjs` writes it.
 
+### 5.2 Keyframes v2: eases, springs, colors and the new properties (manifest keys `keyframes.bezier`, `keyframes.spring`, `keyframes.vectorValues`; schema 7)
+
+A key is `{ "frame", "value", "ease" }` plus, for two eases, its parameters. `value` is a number, or for a color property an array `[r, g, b, a]` (straight alpha, 0..1; each channel is interpolated on its own). The `ease` of a key shapes the segment from it to the next key; a value stays put before the first key and after the last. Projects of schema 6 and earlier open unchanged.
+
+- `ease` takes the 8 of v1 (`linear`, `easeIn`, `easeOut`, `easeInOut`, `hold`, `smooth`, `snap`, `overshoot`), the 30 Penner eases (`sine`, `quad`, `cubic`, `quart`, `quint`, `expo`, `circ`, `back`, `elastic` and `bounce`, each with `In`, `Out` and `InOut`: `quadOut`, `bounceInOut`), `bezier` and `spring`. The list is in the manifest (`keyframes.eases`).
+- `bezier` (ease `bezier`): `[x1, y1, x2, y2]`, the CSS `cubic-bezier()` of the segment; `x1` and `x2` must lie in 0..1, `y1` and `y2` may go past it (overshoot). Absent: the CSS `ease`, `[0.25, 0.1, 0.25, 1]`.
+- `spring` (ease `spring`): `{ "damping", "frequency" }`, a damped cosine over the segment; absent: damping 0.7, frequency 4. The segment always ends exactly on the next key's value.
+- `hold` keeps the value until the next key, then jumps: use it for instant state changes, including colors.
+- Property ids and the clips they are valid on (the id is the field's path; the manifest lists them in `keyframes.props`):
+
+| Property | Clips | Value |
+| --- | --- | --- |
+| `transform.x`, `transform.y`, `transform.scale`, `transform.scaleY`, `transform.rotation`, `opacity` | any visual clip | number |
+| `transform.anchor.x`, `transform.anchor.y` | video, image, solid, text | number (0..1 of the clip's box) |
+| `crop.left`, `crop.top`, `crop.right`, `crop.bottom` | video, image | number (0..1 of the media) |
+| `cornerRadius` | solid, video, image | number (project px) |
+| `size.w`, `size.h` | solid | number (project px) |
+| `fill` | solid whose `fill` is a plain color | color |
+| `stroke.width`, `stroke.dashOffset`, `stroke.color` | solid that has a `stroke` | number, number, color |
+| `shadow.x`, `shadow.y`, `shadow.blur`, `shadow.spread`, `shadow.color` | solid that has a `shadow` | number, number, number, number, color |
+| `style.fontSize`, `style.letterSpacing` | text | number (project px) |
+| `style.fill` | text whose `style.fill` is a plain color | color |
+| `volume.gainDb` | audio and video | number (dB) |
+
+Rendering notes: a keyed text size is drawn from a raster at the largest keyed size (a fixed-width box wraps at its width scaled with the size); keyed letter spacing moves the characters and leaves the box and its background where the unkeyed spacing puts them, and is not applied while an in or out animation of the text plays; a keyed text fill draws the color of the key before the frame and, over it, the color of the key after it at the fade's progress (exact inside the letters, an approximation on their antialiased edges, and exact only for opaque colors). A key on a property the clip does not have (a `stroke.width` key on a solid without a stroke) is kept and does nothing. Per-corner `cornerRadii` of a solid win over a keyed `cornerRadius`.
+
+```jsonc
+{
+  "keyframes": {
+    "fill": [
+      { "frame": 0, "value": [0.96, 0.43, 0.36, 1], "ease": "hold" },
+      { "frame": 30, "value": [0.07, 0.07, 0.1, 1], "ease": "linear" }
+    ],
+    "size.w": [
+      { "frame": 0, "value": 400, "ease": "bezier", "bezier": [0.68, -0.55, 0.27, 1.55] },
+      { "frame": 20, "value": 800, "ease": "spring", "spring": { "damping": 0.7, "frequency": 4 } },
+      { "frame": 44, "value": 400, "ease": "linear" }
+    ]
+  }
+}
+```
+
+#### Ease names in CSS, GSAP and After Effects
+
+Motion written in another tool maps to these ease ids. The editor's curves are the same as the tools' for the entries marked exact.
+
+| CSS | GSAP | After Effects | Ease id |
+| --- | --- | --- | --- |
+| `linear` | `none` | Linear | `linear` (exact) |
+| `ease` | | | `smooth`, or `bezier` `[0.25, 0.1, 0.25, 1]` (exact) |
+| `ease-in` | | | `bezier` `[0.42, 0, 1, 1]` (exact) |
+| `ease-out` | | | `bezier` `[0, 0, 0.58, 1]` (exact) |
+| `ease-in-out` | | | `bezier` `[0.42, 0, 0.58, 1]` (exact) |
+| `cubic-bezier(a, b, c, d)` | `CustomEase` of one cubic | a keyframe pair with influence and speed | `bezier` `[a, b, c, d]` (exact; AE influence `i` at speed 0 is `x = i / 100`, `y = 0` on the out handle and `x = 1 - i / 100`, `y = 1` on the in handle) |
+| | `sine.in`, `sine.out`, `sine.inOut` | | `sineIn`, `sineOut`, `sineInOut` (exact) |
+| | `power1.in`, `.out`, `.inOut` | | `quadIn`, `quadOut`, `quadInOut` (exact) |
+| | `power2.in`, `.out`, `.inOut` | | `cubicIn`, `cubicOut`, `cubicInOut` (exact) |
+| | `power3.in`, `.out`, `.inOut` | | `quartIn`, `quartOut`, `quartInOut` (exact) |
+| | `power4.in`, `.out`, `.inOut` | | `quintIn`, `quintOut`, `quintInOut` (exact) |
+| | `expo.in`, `.out`, `.inOut` | | `expoIn`, `expoOut`, `expoInOut` (exact) |
+| | `circ.in`, `.out`, `.inOut` | | `circIn`, `circOut`, `circInOut` (exact) |
+| | `back.in(1.70158)`, `.out(1.70158)`, `.inOut(1.70158)` | | `backIn`, `backOut`, `backInOut` (overshoot 1.70158; for another overshoot use `bezier`) |
+| | `elastic.in`, `.out`, `.inOut` | | `elasticIn`, `elasticOut`, `elasticInOut` (the Penner shape; GSAP's amplitude and period options are not available) |
+| | `bounce.in`, `.out`, `.inOut` | | `bounceIn`, `bounceOut`, `bounceInOut` (exact) |
+| `steps(1, jump-end)` | `steps(1)` | Hold keyframe | `hold` |
+| | | Easy Ease (F9) | `bezier` `[0.3333, 0, 0.6667, 1]` (33.33% influence on both sides, speed 0) |
+| | | Easy Ease In | `bezier` `[0.1667, 0.1667, 0.6667, 1]` (the in side at 33.33% influence, the out side linear: 16.67% influence at the average speed) |
+| | | Easy Ease Out | `bezier` `[0.3333, 0, 0.8333, 0.8333]` |
+| | a physics or spring plugin | the overshoot expression | `spring` (match the look by eye: damping and frequency) or a few keys with `backOut` |
+
 ## 6. Captions and word timings
 
 The caption track's `captionTracks[<track id>].style` styles every cue; a cue's `styleOverride` sets only the fields it changes. A cue is a `caption` clip with `text` (`\n` for line breaks) and optional `words`: `start` and `end` are integer frames relative to the cue's start, `end` after `start`. A word may start before the cue or end after it: an in-trim keeps the words it hides (negative frames), so a trim back shows them again. With word timings the active word is highlighted as the style's `highlight` says.
@@ -554,14 +624,25 @@ One keyframe: a value at a frame relative to the clip start. A key's `ease` shap
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
 | `frame` | integer | yes |  | Relative to the clip start; one key per frame, sorted. Any integer: after a head trim keys before the clip start (negative) or past its end are kept so a trim back restores them. Integer frames at the project frame rate. |
-| `value` | number | yes |  | The value. |
-| `ease` | `"linear"` | `"easeIn"` | `"easeOut"` | `"easeInOut"` | `"hold"` | `"smooth"` | `"snap"` | `"overshoot"` | yes | `"linear"` | The curve to the next key. |
+| `value` | number, or number[] (1 to 4 items) | yes |  | The value: a number, or for a color property an array [r, g, b, a] (straight alpha, 0..1, interpolated per channel). |
+| `ease` | `"linear"` | `"easeIn"` | `"easeOut"` | `"easeInOut"` | `"hold"` | `"smooth"` | `"snap"` | `"overshoot"` | `"sineIn"` | `"sineOut"` | `"sineInOut"` | `"quadIn"` | `"quadOut"` | `"quadInOut"` | `"cubicIn"` | `"cubicOut"` | `"cubicInOut"` | `"quartIn"` | `"quartOut"` | `"quartInOut"` | `"quintIn"` | `"quintOut"` | `"quintInOut"` | `"expoIn"` | `"expoOut"` | `"expoInOut"` | `"circIn"` | `"circOut"` | `"circInOut"` | `"backIn"` | `"backOut"` | `"backInOut"` | `"elasticIn"` | `"elasticOut"` | `"elasticInOut"` | `"bounceIn"` | `"bounceOut"` | `"bounceInOut"` | `"bezier"` | `"spring"` | yes | `"linear"` | The curve to the next key. |
+| `bezier` | number[] (4 items) | no |  | Ease `bezier`: the CSS cubic-bezier(x1, y1, x2, y2); x1 and x2 are 0..1 (Batch 60). |
+| `spring` | [KeySpring](#keyspring) | no |  | Ease `spring`: damping and frequency; 0.7 and 4 when absent (Batch 60). |
+
+#### KeySpring
+
+The parameters of a `spring` ease: a damped cosine over the segment that ends exactly on the next key's value.
+
+| Field | Type | Required | Default | Description |
+| --- | --- | --- | --- | --- |
+| `damping` | number (>= 0) | yes | `0.7` | Decay over the segment (0 never decays). |
+| `frequency` | number (> 0) | yes | `4` | Oscillations over the segment. |
 
 #### Keyframes
 
 Keyframe lists by property id, each sorted by frame.
 
-Value: object of [Keyframe](#keyframe)[] (keys: `transform.x`, `transform.y`, `transform.scale`, `transform.scaleY`, `transform.rotation`, `opacity`, `volume.gainDb`).
+Value: object of [Keyframe](#keyframe)[] (keys: `transform.x`, `transform.y`, `transform.scale`, `transform.scaleY`, `transform.rotation`, `opacity`, `volume.gainDb`, `transform.anchor.x`, `transform.anchor.y`, `crop.left`, `crop.top`, `crop.right`, `crop.bottom`, `size.w`, `size.h`, `cornerRadius`, `fill`, `stroke.width`, `stroke.color`, `stroke.dashOffset`, `shadow.x`, `shadow.y`, `shadow.blur`, `shadow.spread`, `shadow.color`, `style.fontSize`, `style.letterSpacing`, `style.fill`).
 
 #### Transition
 
@@ -671,7 +752,7 @@ A text clip's in or out animation, played at most over half the clip.
 | `duration` | integer (>= 0) | yes |  | The whole animation, every unit's delay included. Integer frames at the project frame rate. |
 | `perUnit` | `"char"` | `"word"` | `"line"` | no |  | What moves one by one, instead of the animation's own unit. |
 | `stagger` | integer (>= 0) | no |  | Delay between two units; spread over the duration when absent. Integer frames at the project frame rate. |
-| `ease` | `"linear"` | `"easeIn"` | `"easeOut"` | `"easeInOut"` | `"hold"` | `"smooth"` | `"snap"` | `"overshoot"` | no |  | Timing curve; the animation's own when absent. |
+| `ease` | `"linear"` | `"easeIn"` | `"easeOut"` | `"easeInOut"` | `"hold"` | `"smooth"` | `"snap"` | `"overshoot"` | `"sineIn"` | `"sineOut"` | `"sineInOut"` | `"quadIn"` | `"quadOut"` | `"quadInOut"` | `"cubicIn"` | `"cubicOut"` | `"cubicInOut"` | `"quartIn"` | `"quartOut"` | `"quartInOut"` | `"quintIn"` | `"quintOut"` | `"quintInOut"` | `"expoIn"` | `"expoOut"` | `"expoInOut"` | `"circIn"` | `"circOut"` | `"circInOut"` | `"backIn"` | `"backOut"` | `"backInOut"` | `"elasticIn"` | `"elasticOut"` | `"elasticInOut"` | `"bounceIn"` | `"bounceOut"` | `"bounceInOut"` | `"bezier"` | `"spring"` | no |  | Timing curve; the animation's own when absent. |
 
 #### PresetTextAnim
 
@@ -683,7 +764,7 @@ A preset's animation, timed in milliseconds (presets cross frame rates).
 | `durationMs` | number (>= 0) | yes |  | Whole animation, ms. |
 | `perUnit` | `"char"` | `"word"` | `"line"` | no |  | What moves one by one. |
 | `staggerMs` | number (>= 0) | no |  | Delay between units, ms. |
-| `ease` | `"linear"` | `"easeIn"` | `"easeOut"` | `"easeInOut"` | `"hold"` | `"smooth"` | `"snap"` | `"overshoot"` | no |  | Timing curve. |
+| `ease` | `"linear"` | `"easeIn"` | `"easeOut"` | `"easeInOut"` | `"hold"` | `"smooth"` | `"snap"` | `"overshoot"` | `"sineIn"` | `"sineOut"` | `"sineInOut"` | `"quadIn"` | `"quadOut"` | `"quadInOut"` | `"cubicIn"` | `"cubicOut"` | `"cubicInOut"` | `"quartIn"` | `"quartOut"` | `"quartInOut"` | `"quintIn"` | `"quintOut"` | `"quintInOut"` | `"expoIn"` | `"expoOut"` | `"expoInOut"` | `"circIn"` | `"circOut"` | `"circInOut"` | `"backIn"` | `"backOut"` | `"backInOut"` | `"elasticIn"` | `"elasticOut"` | `"elasticInOut"` | `"bounceIn"` | `"bounceOut"` | `"bounceInOut"` | `"bezier"` | `"spring"` | no |  | Timing curve. |
 
 #### TextPreset
 
@@ -986,7 +1067,7 @@ project.json.
 
 | Field | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| `schemaVersion` | integer (>= 1) | yes | `6` | The schema version; this build writes and reads up to the current one. |
+| `schemaVersion` | integer (>= 1) | yes | `7` | The schema version; this build writes and reads up to the current one. |
 | `id` | string (not empty) | yes |  | Unique id, never changes (uuid v4 recommended). |
 | `name` | string | yes |  | Project name. |
 | `settings` | [Settings](#settings) | yes |  | Frame and time base. |

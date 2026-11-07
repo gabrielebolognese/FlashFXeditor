@@ -18,28 +18,79 @@
 // - Speed changes and rate stretches (`retimeKeyframes`) scale the frames; keys landing on one frame
 //   merge (the later one wins), eases and holds stay.
 import { ease as bezierEase, type CubicBezier } from "../theme/easing.js";
-import { EASE_IDS, type EaseId, type Frame, type Keyframes, type Transform } from "./types.js";
+import { cubicBezier, EASINGS, springProgress, type EasingName } from "./easings.js";
+import { EASE_IDS, PENNER_EASES, type EaseId, type Frame, type KeyData, type Keyframes, type Transform } from "./types.js";
 
-export interface Key {
-  frame: Frame;
-  value: number;
-  ease: EaseId;
+/** A key (spec §21.9): a number value, or an array for the vector properties (colors). */
+export type Key = KeyData;
+
+/** The properties of the Transform, Opacity and Volume sections (Batches 35 to 37). */
+const SECTION_KEYFRAME_PROPS = ["transform.x", "transform.y", "transform.scale", "transform.scaleY", "transform.rotation", "opacity", "volume.gainDb"] as const;
+/** The properties added in Batch 60 (spec §21.9): their stopwatches and lanes follow in Batch 61. */
+export const EXTRA_KEYFRAME_PROPS = [
+  "transform.anchor.x", "transform.anchor.y",
+  "crop.left", "crop.top", "crop.right", "crop.bottom",
+  "size.w", "size.h", "cornerRadius", "fill",
+  "stroke.width", "stroke.color", "stroke.dashOffset",
+  "shadow.x", "shadow.y", "shadow.blur", "shadow.spread", "shadow.color",
+  "style.fontSize", "style.letterSpacing", "style.fill",
+] as const;
+export const KEYFRAME_PROPS = [...SECTION_KEYFRAME_PROPS, ...EXTRA_KEYFRAME_PROPS] as const;
+export type KeyframeProp = (typeof KEYFRAME_PROPS)[number];
+/** The properties of the Transform, Opacity and Volume sections (the ones the panel's stopwatches key). */
+export type SectionKeyframeProp = (typeof SECTION_KEYFRAME_PROPS)[number];
+
+/** The vector properties: colors [r, g, b, a] (straight alpha, 0..1, interpolated per channel). */
+export const COLOR_PROPS: readonly KeyframeProp[] = ["fill", "stroke.color", "shadow.color", "style.fill"];
+
+export function isColorProp(prop: string): boolean {
+  return (COLOR_PROPS as readonly string[]).includes(prop);
 }
 
-export const KEYFRAME_PROPS = ["transform.x", "transform.y", "transform.scale", "transform.scaleY", "transform.rotation", "opacity", "volume.gainDb"] as const;
-export type KeyframeProp = (typeof KEYFRAME_PROPS)[number];
+/** The clip kinds each new property is valid on (the section properties are valid on any clip with them). */
+const PROP_KINDS: Readonly<Record<string, readonly string[]>> = {
+  "transform.anchor.x": ["video", "image", "solid", "text"],
+  "transform.anchor.y": ["video", "image", "solid", "text"],
+  "crop.left": ["video", "image"],
+  "crop.top": ["video", "image"],
+  "crop.right": ["video", "image"],
+  "crop.bottom": ["video", "image"],
+  "size.w": ["solid"],
+  "size.h": ["solid"],
+  cornerRadius: ["solid", "video", "image"],
+  fill: ["solid"],
+  "stroke.width": ["solid"],
+  "stroke.color": ["solid"],
+  "stroke.dashOffset": ["solid"],
+  "shadow.x": ["solid"],
+  "shadow.y": ["solid"],
+  "shadow.blur": ["solid"],
+  "shadow.spread": ["solid"],
+  "shadow.color": ["solid"],
+  "style.fontSize": ["text"],
+  "style.letterSpacing": ["text"],
+  "style.fill": ["text"],
+};
+
+/** Whether keys of `prop` make sense on a clip of `kind`. */
+export function propValidFor(prop: string, kind: string): boolean {
+  const kinds = PROP_KINDS[prop];
+  return kinds === undefined || kinds.includes(kind);
+}
 
 /** The animatable sections (spec §11), in the panel's order. */
-export const KEYFRAME_SECTIONS = ["transform", "opacity", "volume"] as const;
+export const KEYFRAME_SECTIONS = ["transform", "opacity", "volume", "look"] as const;
 export type KeyframeSection = (typeof KEYFRAME_SECTIONS)[number];
 
 export const SECTION_PROPS: Readonly<Record<KeyframeSection, readonly KeyframeProp[]>> = {
   transform: ["transform.x", "transform.y", "transform.scale", "transform.scaleY", "transform.rotation"],
   opacity: ["opacity"],
   volume: ["volume.gainDb"],
+  /** Batch 60's properties (spec §21.9): shown on a lane of their own; their stopwatches come in Batch 61. */
+  look: EXTRA_KEYFRAME_PROPS,
 };
 
-export const SECTION_LABELS: Readonly<Record<KeyframeSection, string>> = { transform: "Transform", opacity: "Opacity", volume: "Volume" };
+export const SECTION_LABELS: Readonly<Record<KeyframeSection, string>> = { transform: "Transform", opacity: "Opacity", volume: "Volume", look: "Look" };
 
 export function isKeyframeProp(value: unknown): value is KeyframeProp {
   return typeof value === "string" && (KEYFRAME_PROPS as readonly string[]).includes(value);
@@ -54,6 +105,7 @@ export function isEaseId(value: unknown): value is EaseId {
 }
 
 export function sectionOf(prop: KeyframeProp): KeyframeSection {
+  if ((EXTRA_KEYFRAME_PROPS as readonly string[]).includes(prop)) return "look";
   return prop === "opacity" ? "opacity" : prop === "volume.gainDb" ? "volume" : "transform";
 }
 
@@ -68,7 +120,26 @@ export const EASE_LABELS: Readonly<Record<EaseId, string>> = {
   smooth: "Smooth",
   snap: "Snap",
   overshoot: "Overshoot",
+  ...(Object.fromEntries(PENNER_EASES.map((id) => [id, pennerLabel(id)])) as Record<(typeof PENNER_EASES)[number], string>),
+  bezier: "Custom bezier",
+  spring: "Spring",
 };
+
+function pennerLabel(id: string): string {
+  const match = /^(sine|quad|cubic|quart|quint|expo|circ|back|elastic|bounce)(In|Out|InOut)$/.exec(id) as RegExpExecArray;
+  const family = match[1] as string;
+  return `${family.charAt(0).toUpperCase()}${family.slice(1)} ${match[2] === "InOut" ? "in-out" : (match[2] as string).toLowerCase()}`;
+}
+
+/** The ease selector's groups (spec §21.9; a plain grouped list until Batch 61's popover). */
+export const EASE_GROUPS: readonly { label: string; eases: readonly EaseId[] }[] = [
+  { label: "Basic", eases: ["linear", "easeIn", "easeOut", "easeInOut", "hold", "smooth", "snap", "overshoot"] },
+  ...(["sine", "quad", "cubic", "quart", "quint", "expo", "circ", "back", "elastic", "bounce"] as const).map((family) => ({
+    label: family.charAt(0).toUpperCase() + family.slice(1),
+    eases: PENNER_EASES.filter((id) => id.startsWith(family)) as readonly EaseId[],
+  })),
+  { label: "Custom", eases: ["bezier", "spring"] },
+];
 
 /** Control points (x1, y1, x2, y2) of the cubic-bezier presets. */
 const BEZIERS: Readonly<Partial<Record<EaseId, CubicBezier>>> = {
@@ -82,6 +153,8 @@ const clamp01 = (value: number) => (value <= 0 ? 0 : value >= 1 ? 1 : value);
 /** Progress of `curve` at `t` (0..1, clamped): 0 at the start, 1 at the end (overshoot passes 1 on its way). Hold stays 0. */
 export function ease(curve: EaseId, t: number): number {
   const x = clamp01(t);
+  if (x <= 0) return 0;
+  if (x >= 1) return 1;
   switch (curve) {
     case "linear":
       return x;
@@ -93,11 +166,31 @@ export function ease(curve: EaseId, t: number): number {
       return x < 0.5 ? 4 * x * x * x : 1 - (-2 * x + 2) ** 3 / 2;
     case "hold":
       return x >= 1 ? 1 : 0;
+    case "bezier":
+      return x;
+    case "spring":
+      return springProgress(x);
     default: {
+      const penner = EASINGS[curve as EasingName];
+      if (penner) return penner(x);
       const points = BEZIERS[curve];
       return points ? bezierEase(points, x) : x;
     }
   }
+}
+
+/** The curve of a `bezier` key without its own points: the CSS `ease`. */
+const DEFAULT_BEZIER: readonly [number, number, number, number] = [0.25, 0.1, 0.25, 1];
+
+/** Progress of the segment that starts at `key` at `t`: its ease, with its own bezier or spring parameters. */
+export function keyEase(key: Key, t: number): number {
+  if (key.ease === "bezier") {
+    const [x1, y1, x2, y2] = key.bezier ?? DEFAULT_BEZIER;
+    const x = clamp01(t);
+    return x <= 0 ? 0 : x >= 1 ? 1 : cubicBezier(x, x1, y1, x2, y2);
+  }
+  if (key.ease === "spring") return springProgress(clamp01(t), key.spring?.damping ?? 0.7, key.spring?.frequency ?? 4);
+  return ease(key.ease, t);
 }
 
 /** Whether a segment with `curve` can be cut at any frame by a key with the value there, keeping the motion (linear, hold). */
@@ -120,12 +213,43 @@ export function keyIndexAt(keys: readonly Key[], rel: number): number {
 /** The value of a sorted, non-empty key list at `rel` (frames from the clip start, fractional allowed). */
 export function sampleKeys(keys: readonly Key[], rel: number): number {
   const at = keyIndexAt(keys, rel);
-  if (at < 0) return (keys[0] as Key).value;
+  if (at < 0) return scalar((keys[0] as Key).value);
   const left = keys[at] as Key;
   const right = keys[at + 1];
-  if (!right || rel === left.frame) return left.value;
+  if (!right || rel === left.frame) return scalar(left.value);
   const t = (rel - left.frame) / (right.frame - left.frame);
-  return left.value + (right.value - left.value) * ease(left.ease, t);
+  const from = scalar(left.value);
+  return from + (scalar(right.value) - from) * keyEase(left, t);
+}
+
+/** A key value read as a number (the first component of a vector). */
+export function scalar(value: number | number[]): number {
+  return typeof value === "number" ? value : (value[0] ?? 0);
+}
+
+/**
+ * The vector value of a sorted, non-empty key list at `rel`, written into `out` (per component; a hold
+ * segment jumps at the next key). The same array comes back.
+ */
+export function sampleVector(keys: readonly Key[], rel: number, out: number[]): number[] {
+  const at = keyIndexAt(keys, rel);
+  const left = (at < 0 ? keys[0] : keys[at]) as Key;
+  const right = at < 0 ? undefined : keys[at + 1];
+  const a = Array.isArray(left.value) ? left.value : [left.value];
+  out.length = a.length;
+  if (!right || rel === left.frame) {
+    for (let i = 0; i < a.length; i++) out[i] = a[i] as number;
+    return out;
+  }
+  const b = Array.isArray(right.value) ? right.value : [right.value];
+  const progress = keyEase(left, (rel - left.frame) / (right.frame - left.frame));
+  for (let i = 0; i < a.length; i++) out[i] = (a[i] as number) + (((b[i] ?? a[i]) as number) - (a[i] as number)) * progress;
+  return out;
+}
+
+/** A key list's value at `rel` as it is stored: a number, or a new array for a vector property. */
+export function sampleValue(keys: readonly Key[], rel: number): number | number[] {
+  return Array.isArray((keys[0] as Key).value) ? sampleVector(keys, rel, []) : sampleKeys(keys, rel);
 }
 
 /** `prop` at `rel`: its keys' value, else `base`. */
@@ -153,6 +277,15 @@ interface Keyed {
   keyframes?: Keyframes | undefined;
 }
 
+/** Whether the transform moves over time: keys in the Transform section or on the anchor (spec §21.9). */
+export function hasTransformKeys(keyframes: Keyframes | undefined): boolean {
+  if (!keyframes) return false;
+  return hasSectionKeys(keyframes, "transform") || (keyframes["transform.anchor.x"]?.length ?? 0) > 0 || (keyframes["transform.anchor.y"]?.length ?? 0) > 0;
+}
+
+/** The anchor objects animated transforms own (written per frame; never the clip's own). */
+const ownAnchors = new WeakSet<object>();
+
 /**
  * The transform of `clip` at `rel` frames from its start: its own when the Transform section has no
  * keys (the same object), else the animated one written into `out` (a new object when absent).
@@ -160,7 +293,7 @@ interface Keyed {
  */
 export function animatedTransform(clip: Keyed, rel: number, out?: Transform): Transform {
   const keyframes = clip.keyframes;
-  if (!hasSectionKeys(keyframes, "transform")) return clip.transform;
+  if (!hasTransformKeys(keyframes)) return clip.transform;
   const base = clip.transform;
   const target: Transform = out ?? { ...base };
   target.x = propValue(keyframes, "transform.x", rel, base.x);
@@ -171,7 +304,19 @@ export function animatedTransform(clip: Keyed, rel: number, out?: Transform): Tr
   else if (base.scaleY !== undefined) target.scaleY = base.scaleY;
   else delete target.scaleY;
   target.rotation = propValue(keyframes, "transform.rotation", rel, base.rotation);
-  target.anchor = base.anchor;
+  const anchorX = keyframes?.["transform.anchor.x"];
+  const anchorY = keyframes?.["transform.anchor.y"];
+  if ((anchorX && anchorX.length > 0) || (anchorY && anchorY.length > 0)) {
+    // A keyed anchor: written into an object this scratch owns, so the clip's own is never touched.
+    let anchor = target.anchor;
+    if (!ownAnchors.has(anchor)) {
+      anchor = { x: base.anchor.x, y: base.anchor.y };
+      ownAnchors.add(anchor);
+      target.anchor = anchor;
+    }
+    anchor.x = anchorX && anchorX.length > 0 ? sampleKeys(anchorX, rel) : base.anchor.x;
+    anchor.y = anchorY && anchorY.length > 0 ? sampleKeys(anchorY, rel) : base.anchor.y;
+  } else target.anchor = base.anchor;
   target.flipH = base.flipH;
   target.flipV = base.flipV;
   return target;
@@ -201,7 +346,7 @@ export function clipRel(clip: { start: Frame; duration: Frame }, frame: Frame): 
  */
 export function clipAt<C extends Keyed & { opacity: number; start: Frame; duration: Frame }>(clip: C, frame: Frame): C {
   const keyframes = clip.keyframes;
-  const transform = hasSectionKeys(keyframes, "transform");
+  const transform = hasTransformKeys(keyframes);
   const opacity = hasSectionKeys(keyframes, "opacity");
   if (!transform && !opacity) return clip;
   const rel = clipRel(clip, frame);
@@ -217,6 +362,8 @@ export function sectionValues(clip: Keyed & { opacity?: number; volume?: { gainD
       return { opacity: propValue(clip.keyframes, "opacity", rel, clip.opacity ?? 1) };
     case "volume":
       return { "volume.gainDb": propValue(clip.keyframes, "volume.gainDb", rel, clip.volume?.gainDb ?? 0) };
+    case "look":
+      return {};
   }
 }
 
@@ -239,7 +386,7 @@ export function maxKeyedScale(keyframes: Keyframes | undefined, transform: Trans
   let cached = maxScales.get(keyframes);
   if (cached === undefined) {
     cached = 0;
-    for (const prop of ["transform.scale", "transform.scaleY"] as const) for (const key of keyframes[prop] ?? []) cached = Math.max(cached, Math.abs(key.value));
+    for (const prop of ["transform.scale", "transform.scaleY"] as const) for (const key of keyframes[prop] ?? []) cached = Math.max(cached, Math.abs(scalar(key.value)));
     maxScales.set(keyframes, cached);
   }
   return Math.max(own, cached);
@@ -270,7 +417,7 @@ export function sectionEaseAt(keyframes: Keyframes | undefined, section: Keyfram
 /** `keyframes` with `prop`'s list replaced (removed when empty); undefined when nothing is left. */
 export function withKeys(keyframes: Keyframes | undefined, prop: string, keys: readonly Key[] | undefined): Keyframes | undefined {
   const next: Keyframes = { ...keyframes };
-  if (keys && keys.length > 0) next[prop] = keys.map((key) => ({ frame: key.frame, value: key.value, ease: key.ease }));
+  if (keys && keys.length > 0) next[prop] = keys.map((key) => ({ ...key }));
   else delete next[prop];
   return Object.keys(next).length > 0 ? next : undefined;
 }
@@ -376,7 +523,7 @@ export function sliceKeyframes(keyframes: Keyframes, from: Frame, to: Frame, new
         if (side === "in") out.set(at, { frame: at, value: left.value, ease: left.ease });
         return;
       }
-      if (cuttable(left.ease)) out.set(at, { frame: at, value: sampleKeys(keys, at), ease: left.ease });
+      if (cuttable(left.ease)) out.set(at, { frame: at, value: sampleValue(keys, at), ease: left.ease });
       else if (side === "in") out.set(left.frame, { ...left });
       else out.set(right.frame, { ...right });
     };
@@ -420,18 +567,30 @@ export function mapKeyValues(keyframes: Keyframes, map: Partial<Record<KeyframeP
   const result: Keyframes = {};
   for (const [prop, keys] of Object.entries(keyframes)) {
     const fn = isKeyframeProp(prop) ? map[prop] : undefined;
-    result[prop] = fn ? keys.map((key) => ({ ...key, value: fn(key.value) })) : keys.map((key) => ({ ...key }));
+    result[prop] = fn ? keys.map((key) => ({ ...key, value: fn(scalar(key.value)) })) : keys.map((key) => ({ ...key }));
   }
   return result;
 }
 
 // --- Validation ----------------------------------------------------------------------------------
 
+function validBezier(value: unknown): boolean {
+  return Array.isArray(value) && value.length === 4 && value.every((n) => Number.isFinite(n)) && value[0] >= 0 && value[0] <= 1 && value[2] >= 0 && value[2] <= 1;
+}
+
+/** Whether a solid's `fill` is a plain color (the only fill `fill` keys can animate). */
+export function isColorFill(fill: unknown): boolean {
+  return typeof fill === "object" && fill !== null && "r" in fill;
+}
+
 /** What is wrong with a clip's keyframes (spec §5.2 invariants, Batch 35): known properties, sorted integer frames, finite values, known eases, no empty list. */
-export function keyframeIssues(keyframes: Keyframes): string[] {
+export function keyframeIssues(keyframes: Keyframes, clip?: { kind: string; fill?: unknown }): string[] {
   const issues: string[] = [];
   for (const [prop, keys] of Object.entries(keyframes)) {
     if (!isKeyframeProp(prop)) issues.push(`keyframes: unknown property "${prop}"`);
+    else if (clip && !propValidFor(prop, clip.kind)) issues.push(`keyframes.${prop}: not a property of a ${clip.kind} clip`);
+    else if (clip && prop === "fill" && clip.kind === "solid" && !isColorFill(clip.fill)) issues.push("keyframes.fill: the solid's fill is not a plain color");
+    const vector = isColorProp(prop);
     if (!Array.isArray(keys) || keys.length === 0) {
       issues.push(`keyframes.${prop}: an empty list`);
       continue;
@@ -440,8 +599,12 @@ export function keyframeIssues(keyframes: Keyframes): string[] {
     for (const key of keys) {
       if (!Number.isInteger(key.frame)) issues.push(`keyframes.${prop}: frame ${key.frame} must be an integer`);
       if (!(key.frame > previous)) issues.push(`keyframes.${prop}: frame ${key.frame} must come after ${previous}`);
-      if (!Number.isFinite(key.value)) issues.push(`keyframes.${prop}: value ${key.value} at frame ${key.frame} must be finite`);
+      if (vector) {
+        if (!Array.isArray(key.value) || key.value.length !== 4 || !key.value.every((channel) => Number.isFinite(channel))) issues.push(`keyframes.${prop}: value at frame ${key.frame} must be a color [r, g, b, a]`);
+      } else if (typeof key.value !== "number" || !Number.isFinite(key.value)) issues.push(`keyframes.${prop}: value ${String(key.value)} at frame ${key.frame} must be a finite number`);
       if (!isEaseId(key.ease)) issues.push(`keyframes.${prop}: unknown ease "${String(key.ease)}" at frame ${key.frame}`);
+      if (key.bezier !== undefined && !validBezier(key.bezier)) issues.push(`keyframes.${prop}: the bezier at frame ${key.frame} needs four finite numbers with x1 and x2 in 0..1`);
+      if (key.spring !== undefined && !(Number.isFinite(key.spring.damping) && key.spring.damping >= 0 && Number.isFinite(key.spring.frequency) && key.spring.frequency > 0)) issues.push(`keyframes.${prop}: the spring at frame ${key.frame} needs damping >= 0 and frequency > 0`);
       previous = key.frame;
     }
   }

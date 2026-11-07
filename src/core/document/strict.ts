@@ -106,6 +106,13 @@ function checkType(type: FieldType, value: unknown, path: string, issues: Strict
     }
     case "json":
       if (!isObject(value)) issues.push({ path, message: `must be an object, found ${describe(value)}` });
+      return;
+    case "numberOrVector":
+      if (typeof value === "number") {
+        if (!Number.isFinite(value)) issues.push({ path, message: `must be a finite number, found ${describe(value)}` });
+      } else if (!Array.isArray(value) || value.length < 1 || value.length > type.max || !value.every((item) => typeof item === "number" && Number.isFinite(item))) {
+        issues.push({ path, message: `must be a number or an array of 1 to ${type.max} numbers, found ${describe(value)}` });
+      }
   }
 }
 

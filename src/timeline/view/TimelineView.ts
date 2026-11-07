@@ -71,7 +71,7 @@ import type { MoveRequest } from "../edit/move.js";
 import { clampKeyDelta } from "../edit/keyframes.js";
 import { clampFade, fadesOf, type FadeEdge } from "../edit/fades.js";
 import { bandEditedClip, clampKeyShift, segmentKeys, volumeKeys, type BandEdit } from "../edit/volume.js";
-import { gainDbAt } from "../../core/document/keyframes.js";
+import { gainDbAt, scalar } from "../../core/document/keyframes.js";
 import { cutNear, dragTransitionEdge, transitionAt, type Cut, type TransitionDrag, type TransitionEdge } from "../edit/transitions.js";
 import { clipsToSplit } from "../edit/split.js";
 import { hasSource, MAX_SPEED, MIN_SPEED, type TrimEdge } from "../edit/trim.js";
@@ -1397,7 +1397,7 @@ export class TimelineView {
     if (press.key !== null) {
       const chosen = this.deps.session.keyframes.getState();
       frames = chosen && chosen.clipId === clip.id && chosen.section === "volume" && chosen.frames.includes(press.key) ? [...chosen.frames] : [press.key];
-      startDb = keys.find((key) => key.frame === press.key)?.value ?? clip.volume.gainDb;
+      startDb = scalar(keys.find((key) => key.frame === press.key)?.value ?? clip.volume.gainDb);
     } else if (keys.length === 0) {
       mode = "gain";
       frames = [];

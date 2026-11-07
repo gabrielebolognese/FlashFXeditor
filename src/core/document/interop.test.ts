@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { normalizeCliPath, projectInfo, validateProjectFolder } from "../../../scripts/cli/folder.js";
+import { EXTRA_KEYFRAME_PROPS } from "./keyframes.js";
 import { fieldReference, FIELDS_BEGIN_START, FIELDS_END } from "./interopDoc.js";
 import { fuzzRun, random, randomProject } from "../../timeline/edit/fuzzKit.js";
 import { applyTrim, trimEdge } from "../../timeline/edit/trim.js";
@@ -156,7 +157,7 @@ describe("validateStrict", () => {
     delete old.clips["c-standin"].fallbackOf;
     const result = validateStrict(old);
     expect(result.errors).toEqual([]);
-    expect(result.project?.schemaVersion).toBe(6);
+    expect(result.project?.schemaVersion).toBe(7);
     expect(result.project?.clips["c-video"]).toEqual(old.clips["c-video"]);
   });
 
@@ -240,5 +241,51 @@ describe("fixtures/interop/captions-v2 (Batch 59)", () => {
     expect(project.clips.q1.words[2].emphasis).toBe(true);
     expect(project.clips.q2.words[3].color).toBeDefined();
     expect(project.clips.q2.styleOverride).toMatchObject({ highlight: { mode: "reveal" }, anim: { out: { kind: "pop", frames: 2 } } });
+  });
+});
+
+describe("fixtures/interop/keyframes (Batch 60)", () => {
+  const KF = "fixtures/interop/keyframes";
+
+  it("is valid and keys every property of spec §21.9 on a clip that has it", async () => {
+    const report = await validateProjectFolder(rel(KF));
+    expect(report.errors).toEqual([]);
+    expect(report.ok).toBe(true);
+    const project = readProject(`${KF}/project.json`);
+    const keyed = new Set<string>();
+    const all = Object.values(project.clips) as { keyframes?: Record<string, { ease: string }[]> }[];
+    for (const clip of all) for (const prop of Object.keys(clip.keyframes ?? {})) keyed.add(prop);
+    for (const prop of EXTRA_KEYFRAME_PROPS) expect(keyed.has(prop), prop).toBe(true);
+    const eases = new Set<string>();
+    for (const clip of all) for (const list of Object.values(clip.keyframes ?? {})) for (const key of list) eases.add(key.ease);
+    for (const ease of ["hold", "linear", "backOut", "expoInOut", "bezier", "spring", "bounceOut", "cubicInOut"]) expect(eases.has(ease), ease).toBe(true);
+    expect(project.clips.hold.keyframes.fill[0].ease).toBe("hold");
+    expect(project.clips.fade.keyframes.fill[0].ease).toBe("linear");
+  });
+
+  it("opens a schema 6 project with v1 eases unchanged (migration 6 to 7)", () => {
+    const old = readProject(`${KF}/project.json`);
+    old.schemaVersion = 6;
+    old.clips = {
+      bg: old.clips.bg,
+      label: { ...old.clips.label, keyframes: { opacity: [{ frame: 0, value: 0, ease: "easeInOut" }, { frame: 10, value: 1, ease: "overshoot" }] } },
+    };
+    old.tracks = old.tracks.filter((track: { id: string }) => ["v1", "v6"].includes(track.id));
+    const result = validateStrict(old);
+    expect(result.errors).toEqual([]);
+    expect(result.project?.schemaVersion).toBe(7);
+    expect((result.project?.clips.label as { keyframes?: unknown } | undefined)?.keyframes).toEqual(old.clips.label.keyframes);
+  });
+
+  it("refuses a key of a property the clip kind does not have and a color that is not four numbers", () => {
+    const project = readProject(`${KF}/project.json`);
+    project.clips.label.keyframes = { "size.w": [{ frame: 0, value: 1, ease: "linear" }] };
+    expect(validateStrict(project).errors.map((e) => e.message).join("\n")).toMatch(/not a property of a text clip/);
+    const bad = readProject(`${KF}/project.json`);
+    bad.clips.hold.keyframes.fill[0].value = [1, 0, 0];
+    expect(validateStrict(bad).errors.map((e) => e.message).join("\n")).toMatch(/must be a color/);
+    const wide = readProject(`${KF}/project.json`);
+    wide.clips.hold.keyframes.fill[0].value = [1, 0, 0, 1, 1];
+    expect(validateStrict(wide).ok).toBe(false);
   });
 });

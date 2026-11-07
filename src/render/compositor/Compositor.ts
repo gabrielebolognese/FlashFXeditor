@@ -75,6 +75,9 @@ import { TEXT_RASTER_MAX, type TextHighlight } from "../text/raster.js";
 import { MAX_TEXT_SCALE, type TextPart } from "../text/TextRasterCache.js";
 import { imageTimeUs } from "../../media/decode/animation.js";
 import { drawnRadii, drawnRadius, type SolidLook } from "../../timeline/edit/solid.js";
+import { animatedCrop, animatedRadius, animatedSolidLook, newSolidScratch } from "./animatedLook.js";
+import { keyedFillColors, maxKeyedFontSize, newTextMotion, styleVariant, textMotion, type TextMotion } from "./animatedText.js";
+import { hasTextKeys } from "./animatedText.js";
 import { isGradientFill } from "../../core/document/fill.js";
 import { HIGHLIGHT_SLOT, TRANSITION_SLOT, type CaptionHighlightFrame, type CaptionWordBoxes, type Composite, type CompositeLayer, type MediaLayer, type PictureShape, type SolidGeometry, type SolidLayer, type SolidStyle, type TextAnimFrame, type TextCompositeLayer, type TransitionCompositeLayer } from "./drawList.js";
 
@@ -110,6 +113,8 @@ interface SlateText {
 
 /** The raster slot of a slate's label: its clip id plus this. */
 export const OFFLINE_SLOT = "#offline";
+/** The raster slot of a keyed text's second fill layer (Batch 60: `clipId + FILL_SLOT`). */
+export const FILL_SLOT = "#fill";
 /** Names longer than this are cut with an ellipsis on the slate. */
 const SLATE_NAME_MAX = 60;
 
@@ -257,6 +262,11 @@ export class Compositor {
   private readonly captionTransform: Transform = { x: 0, y: 0, scale: 1, rotation: 0, anchor: { x: 0.5, y: 0.5 }, flipH: false, flipV: false };
   /** A keyed clip's transform at the frame (read before the next layer). */
   private readonly animated: Transform = { x: 0, y: 0, scale: 1, rotation: 0, anchor: { x: 0.5, y: 0.5 }, flipH: false, flipV: false };
+  /** The crop, solid look, text motion and drawn transform of keyed clips at the frame (read before the next layer). */
+  private readonly cropScratch: Crop = { left: 0, top: 0, right: 0, bottom: 0 };
+  private readonly solidScratch = newSolidScratch();
+  private readonly motion: TextMotion = newTextMotion(DEFAULT_TEXT_STYLE);
+  private readonly scaledTransform: Transform = { x: 0, y: 0, scale: 1, rotation: 0, anchor: { x: 0.5, y: 0.5 }, flipH: false, flipV: false };
   /** Slate labels by clip (made again only when the name, reason, size or color changes, never per frame). */
   private readonly slateTexts = new Map<ClipId, SlateText>();
 
@@ -358,7 +368,7 @@ export class Compositor {
         if (reason !== null && this.offline) {
           const slate = (this.solidPool[solidLayers] ??= newSolidLayer());
           const label = (this.textPool[textLayers] ??= newTextLayer());
-          const drawn = this.writeSlate(slate, label, doc, clip, transform, opacity * fadeFactor(clip, frame), crops?.get(clip.id) ?? clip.crop, reason, this.offline.look());
+          const drawn = this.writeSlate(slate, label, doc, clip, transform, opacity * fadeFactor(clip, frame), crops?.get(clip.id) ?? animatedCrop(clip.keyframes, clip.crop, rel, this.cropScratch), reason, this.offline.look());
           if (drawn > 0) {
             out.layers.push(slate);
             solidLayers += 1;
@@ -370,7 +380,7 @@ export class Compositor {
           continue;
         }
         const layer = (this.mediaPool[media] ??= newMediaLayer());
-        if (this.writeMedia(layer, doc, clip, frame, transform, opacity, crops?.get(clip.id) ?? clip.crop)) {
+        if (this.writeMedia(layer, doc, clip, frame, transform, opacity, crops?.get(clip.id) ?? animatedCrop(clip.keyframes, clip.crop, rel, this.cropScratch))) {
           // A framed picture (spec §21.7): its shadow below it and its outline above it, in its own quad.
           const framed = this.frameShape !== null && (clip.shadow !== undefined || clip.stroke !== undefined);
           if (framed && clip.shadow) {
@@ -390,7 +400,7 @@ export class Compositor {
         }
       } else if (clip.kind === "solid") {
         const layer = (this.solidPool[solidLayers] ??= newSolidLayer());
-        if (this.writeSolid(layer, doc, solids?.get(clip.id) ?? clip, transform, opacity * fadeFactor(clip, frame))) {
+        if (this.writeSolid(layer, doc, animatedSolidLook(clip, solids?.get(clip.id) ?? clip, rel, this.solidScratch), transform, opacity * fadeFactor(clip, frame))) {
           out.layers.push(layer);
           solidLayers += 1;
         }
@@ -398,9 +408,32 @@ export class Compositor {
         const layer = (this.textPool[textLayers] ??= newTextLayer());
         // Live transforms (a gesture) raster at their own scale; keyed ones at the largest they reach.
         const rasterScale = transforms?.has(clip.id) ? null : maxKeyedScale(clip.keyframes, clip.transform);
-        if (this.writeText(layer, doc, clip, frame, transform, opacity, texts?.get(clip.id) ?? clip, anims?.get(clip.id) ?? clip, rasterScale)) {
+        const shown = texts?.get(clip.id) ?? clip;
+        // Keyed font size, letter spacing and fill (Batch 60; not while the text is edited inline).
+        const motion = ("editing" in shown && shown.editing) ? null : textMotion(clip.keyframes, shown.style, rel, this.motion);
+        let drawn = transform;
+        if (motion && motion.scale !== 1) {
+          const scaled = this.scaledTransform;
+          scaled.x = transform.x;
+          scaled.y = transform.y;
+          scaled.scale = transform.scale * motion.scale;
+          scaled.scaleY = (transform.scaleY ?? transform.scale) * motion.scale;
+          scaled.rotation = transform.rotation;
+          scaled.anchor = transform.anchor;
+          scaled.flipH = transform.flipH;
+          scaled.flipV = transform.flipV;
+          drawn = scaled;
+        }
+        if (this.writeText(layer, doc, clip, frame, drawn, opacity, shown, anims?.get(clip.id) ?? clip, rasterScale, motion, 0)) {
           out.layers.push(layer);
           textLayers += 1;
+          if (motion?.styleB) {
+            const second = (this.textPool[textLayers] ??= newTextLayer());
+            if (this.writeText(second, doc, clip, frame, drawn, opacity, shown, anims?.get(clip.id) ?? clip, rasterScale, motion, 1)) {
+              out.layers.push(second);
+              textLayers += 1;
+            }
+          }
         }
       }
     }
@@ -445,17 +478,26 @@ export class Compositor {
         if (clip.kind !== "text" || !clip.enabled) continue;
         const scale = maxKeyedScale(clip.keyframes, clip.transform);
         if (!(scale > 0)) continue;
-        const item = (this.upcomingPool[list.length] ??= { clipId: "", text: clip.text, style: clip.style, scale: 1, parts: [] });
-        item.clipId = clip.id;
-        item.text = clip.text;
-        item.style = clip.style;
-        item.scale = scale;
-        item.parts.length = 0;
-        item.parts.push("all");
-        addAnimParts(item.parts, clip.animIn);
-        addAnimParts(item.parts, clip.animOut);
-        if (item.parts.length > 1 && clip.style.background.enabled) item.parts.push("backgrounds");
-        list.push(item);
+        // Keyed text: its raster is the largest size in each key color, the characters from the atlas when the spacing is keyed.
+        const keyed = hasTextKeys(clip.keyframes);
+        const size = maxKeyedFontSize(clip.keyframes, clip.style);
+        const colors = keyed ? keyedFillColors(clip.keyframes) : [];
+        const spaced = keyed && (clip.keyframes?.["style.letterSpacing"]?.length ?? 0) > 0;
+        const variants = Math.max(1, colors.length);
+        for (let v = 0; v < variants; v++) {
+          const item = (this.upcomingPool[list.length] ??= { clipId: "", text: clip.text, style: clip.style, scale: 1, parts: [] });
+          item.clipId = v === 0 ? clip.id : `${clip.id}${FILL_SLOT}${v}`;
+          item.text = clip.text;
+          item.style = keyed ? styleVariant(clip.style, size, colors[v] ?? null) : clip.style;
+          item.scale = scale;
+          item.parts.length = 0;
+          item.parts.push("all");
+          addAnimParts(item.parts, clip.animIn);
+          addAnimParts(item.parts, clip.animOut);
+          if (spaced && !item.parts.includes("char")) item.parts.push("char");
+          if (item.parts.length > 1 && clip.style.background.enabled) item.parts.push("backgrounds");
+          list.push(item);
+        }
       }
     }
     const captions = doc.tracks.find((track) => track.kind === "caption");
@@ -528,7 +570,7 @@ export class Compositor {
     const rel = Math.min(clip.duration - 1, Math.max(0, frame - clip.start));
     const transform = transforms?.get(clip.id) ?? animatedTransform(clip, rel, this.animated);
     const opacity = opacities?.get(clip.id) ?? animatedOpacity(clip, rel);
-    if (!this.writeMedia(layer, doc, clip, frame, transform, opacity, crops?.get(clip.id) ?? clip.crop, true)) return false;
+    if (!this.writeMedia(layer, doc, clip, frame, transform, opacity, crops?.get(clip.id) ?? animatedCrop(clip.keyframes, clip.crop, rel, this.cropScratch), true)) return false;
     layer.trackId = slot;
     return true;
   }
@@ -599,7 +641,7 @@ export class Compositor {
     const frameH = (bottom - top) * shownHeight;
     const frameMatrix = this.frameMatrix;
     multiplyInto(frameMatrix, writeModel(step, transform, shownWidth, shownHeight, doc.settings.width, doc.settings.height), setMat(this.step2, frameW, 0, 0, frameH, left * shownWidth, top * shownHeight));
-    const radius = Math.max(0, Math.min(clip.cornerRadius ?? 0, frameW / 2, frameH / 2));
+    const radius = Math.max(0, Math.min(animatedRadius(clip.keyframes, clip.cornerRadius ?? 0, frame - clip.start), frameW / 2, frameH / 2));
     if (radius > 0 || clip.stroke || clip.shadow) {
       const shape = layer.shapeValue;
       shape.width = frameW;
@@ -625,8 +667,9 @@ export class Compositor {
   }
 
   /** `rasterScale`: the scale the raster is made at (the largest keyed scale), null for the transform's own. */
-  private writeText(layer: WritableTextLayer, doc: Project, clip: TextClip, frame: Frame, transform: Transform, opacity: number, shown: LiveText, anims: LiveAnims, rasterScale: number | null = null): boolean {
-    const layout = textLayout(shown.text, shown.style);
+  private writeText(layer: WritableTextLayer, doc: Project, clip: TextClip, frame: Frame, transform: Transform, opacity: number, shown: LiveText, anims: LiveAnims, rasterScale: number | null = null, motion: TextMotion | null = null, pass: 0 | 1 = 0): boolean {
+    const style = motion ? (pass === 1 ? (motion.styleB as TextStyle) : motion.style) : shown.style;
+    const layout = textLayout(shown.text, style);
     const raster = layout.raster;
     if (!raster) return false;
     const m = writeModel(layer.model, transform, layout.width, layout.height, doc.settings.width, doc.settings.height);
@@ -637,15 +680,17 @@ export class Compositor {
     if (!(own > 0)) return false;
     const scale = rasterScale !== null ? Math.max(own, rasterScale) : own;
     layer.trackId = clip.trackId;
-    layer.clipId = clip.id;
+    layer.clipId = pass === 1 ? clip.id + FILL_SLOT : clip.id;
     layer.text = shown.text;
-    layer.style = shown.style;
+    layer.style = style;
     layer.highlight = shown.highlight ?? null;
     layer.scale = scale;
     layer.detail = scale > 0 ? Math.min(MAX_TEXT_SCALE, TEXT_RASTER_MAX / Math.max(raster.width, raster.height)) / scale : 0;
-    layer.opacity = clamp01(opacity) * fadeFactor(clip, frame);
+    layer.opacity = clamp01(opacity) * fadeFactor(clip, frame) * (pass === 1 && motion ? motion.mix : 1);
     const active = shown.editing ? null : activeAnim({ duration: clip.duration, animIn: anims.animIn, animOut: anims.animOut }, frame - clip.start, this.active);
-    layer.anim = active ? writeAnimFrame(layer.animFrame, active, layout, shown.style) : null;
+    layer.anim = active ? writeAnimFrame(layer.animFrame, active, layout, style) : null;
+    // Keyed letter spacing: the characters move apart or together (an in or out animation playing wins).
+    if (!layer.anim && motion && motion.spacing !== 0) layer.anim = writeSpacingFrame(layer.animFrame, layout, style, motion.spacing);
     layer.karaoke = null;
     return scale > 0;
   }
@@ -1045,6 +1090,50 @@ function writeAnimFrame(out: WritableAnimFrame, active: ActiveAnim, layout: Text
     shown = Math.max(shown, state.opacity);
   }
   out.background = shown;
+  return out;
+}
+
+/** Per layout: each character unit's place in its line and the number of characters of that line (cached). */
+const spacingPlaces = new WeakMap<TextLayout, { index: number[]; count: number[] }>();
+
+/**
+ * A text with its letters `delta` px further apart (spec §21.9, keyed letter spacing): every character of
+ * the atlas moves by its place in its line times `delta`, less the line's alignment shift (half of the
+ * line's change for a centered one, all of it for a right-aligned one).
+ */
+function writeSpacingFrame(out: WritableAnimFrame, layout: TextLayout, style: TextStyle, delta: number): TextAnimFrame {
+  const units = layoutUnits(layout, style, "char");
+  let places = spacingPlaces.get(layout);
+  if (!places) {
+    const index: number[] = [];
+    const count: number[] = [];
+    const lengths = new Map<number, number>();
+    for (const unit of units) {
+      const line = layout.lines[unit.line];
+      let before = 0;
+      if (line) for (let i = 0; i < unit.offset; i++) before += (line.text.charCodeAt(i) & 0xfc00) === 0xdc00 ? 0 : 1;
+      index.push(before);
+      if (line && !lengths.has(unit.line)) {
+        let total = 0;
+        for (let i = 0; i < line.text.length; i++) total += (line.text.charCodeAt(i) & 0xfc00) === 0xdc00 ? 0 : 1;
+        lengths.set(unit.line, total);
+      }
+    }
+    for (const unit of units) count.push(lengths.get(unit.line) ?? 1);
+    places = { index, count };
+    spacingPlaces.set(layout, places);
+  }
+  out.atlas = "char";
+  out.background = 1;
+  const states = unitStates(out, units.length);
+  const shift = style.align === "center" ? 0.5 : style.align === "right" ? 1 : 0;
+  for (let i = 0; i < units.length; i++) {
+    const unit = units[i] as (typeof units)[number];
+    const state = resetUnitState(states[i] as UnitState);
+    state.x = delta * ((places.index[i] as number) - shift * ((places.count[i] as number) - 1));
+    state.ox = unit.originX;
+    state.oy = unit.originY;
+  }
   return out;
 }
 

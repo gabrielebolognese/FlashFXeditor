@@ -6,7 +6,7 @@
 //   `--space-0`, the waveform's margin), +12 dB at its top; 0 dB sits at about 60%.
 // - The line follows the keyed gain (`gainDbAt`, sampled every LINE_STEP_PX and at each key); keys are
 //   the keyframe lane's diamonds, kept inside the clip like the lane's (`diamondX`).
-import { gainDbAt } from "../../core/document/keyframes.js";
+import { gainDbAt, scalar } from "../../core/document/keyframes.js";
 import type { Clip, Frame, MediaClip, Track } from "../../core/document/types.js";
 import type { Theme } from "../../core/theme/theme.js";
 import { clampGain, MAX_GAIN_DB, MIN_GAIN_DB, volumeKeys } from "../edit/volume.js";
@@ -71,7 +71,7 @@ export function bandAt(geometry: TimelineGeometry, theme: Theme, clip: MediaClip
   for (const key of volumeKeys(clip)) {
     if (key.frame < 0 || key.frame >= clip.duration) continue;
     const dx = Math.abs(diamondX(geometry, clip, key.frame, inset) - x);
-    const dy = Math.abs(gainY(box, key.value) - y);
+    const dy = Math.abs(gainY(box, scalar(key.value)) - y);
     if (dx <= half && dy <= half && dx + dy < bestDistance) {
       best = key.frame;
       bestDistance = dx + dy;
@@ -137,7 +137,7 @@ export function drawBand(ctx: CanvasRenderingContext2D, dpr: number, geometry: T
     if (key.frame < 0 || key.frame >= clip.duration) continue;
     const x = snap(diamondX(geometry, clip, key.frame, inset), dpr);
     if (x < left - half || x > right + half) continue;
-    const y = snap(gainY(box, key.value), dpr);
+    const y = snap(gainY(box, scalar(key.value)), dpr);
     ctx.fillStyle = draw.dragged?.has(key.frame) ? color.accentHover : draw.selected.has(key.frame) ? color.accent : color.textPrimary;
     ctx.strokeStyle = color.bgSunken;
     ctx.beginPath();

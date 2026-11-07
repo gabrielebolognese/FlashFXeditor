@@ -2,8 +2,8 @@ import { ChevronLeft, ChevronRight, Diamond, Timer } from "lucide-react";
 import { useEffect, useRef, type MouseEvent } from "react";
 import { setEaseAtPlayhead } from "../../app/keyframeController.js";
 import { actions, documentStore, sessionStore } from "../../app/services.js";
-import { EASE_LABELS, SECTION_LABELS, type KeyframeSection } from "../../core/document/keyframes.js";
-import { EASE_IDS, type Clip, type ClipId, type EaseId } from "../../core/document/types.js";
+import { EASE_GROUPS, EASE_LABELS, SECTION_LABELS, type KeyframeSection } from "../../core/document/keyframes.js";
+import { type Clip, type ClipId, type EaseId } from "../../core/document/types.js";
 import { keyCount, stopwatchOn } from "../../timeline/edit/keyframes.js";
 import { IconButton } from "../../ui/IconButton.js";
 import iconStyles from "../../ui/IconButton.module.css";
@@ -32,12 +32,14 @@ const STOPWATCH: Record<KeyframeSection, (clip: Clip) => boolean | typeof SKIP> 
   transform: (clip) => ("transform" in clip ? stopwatchOn(clip, "transform") : SKIP),
   opacity: (clip) => ("opacity" in clip ? stopwatchOn(clip, "opacity") : SKIP),
   volume: (clip) => ("volume" in clip ? stopwatchOn(clip, "volume") : SKIP),
+  look: () => SKIP,
 };
 
 const COUNT: Record<KeyframeSection, (clip: Clip) => number | typeof SKIP> = {
   transform: (clip) => ("transform" in clip ? keyCount(clip, "transform") : SKIP),
   opacity: (clip) => ("opacity" in clip ? keyCount(clip, "opacity") : SKIP),
   volume: (clip) => ("volume" in clip ? keyCount(clip, "volume") : SKIP),
+  look: () => SKIP,
 };
 
 /** Whether the section is animated on every target (true), on none (false), or on some (mixed). */
@@ -133,7 +135,11 @@ export function EaseRow({ ids, section }: { ids: readonly ClipId[]; section: Key
   const animated = on === true || on === MIXED;
   const entries = () => {
     const state = keyStateAt(documentStore.getState(), ids, section, sessionStore.state.getState().playhead);
-    return EASE_IDS.map((ease) => ({ kind: "item" as const, id: ease, label: EASE_LABELS[ease], active: state.ease === ease, disabled: !state.onKey }));
+    // A plain grouped list (spec §21.9; the searchable popover with thumbnails is Batch 61).
+    return EASE_GROUPS.flatMap((group) => [
+      { kind: "heading" as const, label: group.label },
+      ...group.eases.map((ease) => ({ kind: "item" as const, id: ease, label: EASE_LABELS[ease], active: state.ease === ease, disabled: !state.onKey })),
+    ]);
   };
   return (
     <Row label="Ease">

@@ -21,7 +21,7 @@
 import type { Draft } from "immer";
 import type { Command } from "../../core/commands/command.js";
 import { emptyTrack, nextTrackName } from "../../core/document/project.js";
-import { clipRel, gainDbAt, hasSectionKeys, setKey, withKeys, writeKeys, type Key } from "../../core/document/keyframes.js";
+import { clipRel, gainDbAt, hasSectionKeys, setKey, withKeys, writeKeys, scalar, type Key } from "../../core/document/keyframes.js";
 import { usPerFrame } from "../../core/document/time.js";
 import type { ClipId, Frame, Keyframes, MediaClip, MediaId, Project, Track, TrackId } from "../../core/document/types.js";
 import type { Peaks } from "../../media/cache/peaks.js";
@@ -243,7 +243,7 @@ export function normalizeClips(project: Project, ids: readonly ClipId[], peaksOf
     }
     const delta = NORMALIZE_PEAK_DB - gainToDb(peak);
     if (Math.abs(delta) < 1e-9) continue;
-    writes.push({ id, keyframes: withKeys(clip.keyframes, PROP, keys.map((key) => ({ ...key, value: clampGain(key.value + delta) }))) });
+    writes.push({ id, keyframes: withKeys(clip.keyframes, PROP, keys.map((key) => ({ ...key, value: clampGain(scalar(key.value) + delta) }))) });
   }
   return { command: gainCommand("clip.normalize", plural(writes.length, "Normalize clip", "Normalize clips"), writes), silent, missing };
 }
@@ -288,7 +288,7 @@ export function bandEditedClip(clip: MediaClip, edit: BandEdit): MediaClip {
   const moving = new Set(edit.frames.filter((frame) => keys.some((key) => key.frame === frame)));
   if (moving.size === 0) return clip;
   const shift = moving.size === 1 ? clampKeyShift(clip, keys, [...moving][0] as Frame, edit.deltaFrames) : 0;
-  const next = keys.map((key) => (moving.has(key.frame) ? { ...key, frame: key.frame + shift, value: clampGain(key.value + edit.deltaDb) } : key));
+  const next = keys.map((key) => (moving.has(key.frame) ? { ...key, frame: key.frame + shift, value: clampGain(scalar(key.value) + edit.deltaDb) } : key));
   const edited: MediaClip = { ...clip };
   const keyframes = withKeys(clip.keyframes, PROP, next);
   if (keyframes) edited.keyframes = keyframes;

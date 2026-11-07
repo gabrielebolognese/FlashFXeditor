@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { addCaptionTrack, makeCaptionClip, makeMedia, makeMediaClip, makeProject, makeSolidClip, makeTrack, withClips } from "../../core/document/fixtures.js";
+import { scalar } from "../../core/document/keyframes.js";
 import type { CaptionClip, Clip, MediaClip, MediaItem, Project, SolidClip, Transform } from "../../core/document/types.js";
 import { DocumentStore } from "../../core/store/DocumentStore.js";
 import { createSessionStore } from "../../core/store/sessionStore.js";
@@ -69,7 +70,7 @@ describe("adaptResolution (Adapt layout, spec §15)", () => {
     const store = storeFor(projectWith([TALL], (p) => [keyed(p)]));
     store.dispatch(adaptResolution(store.getState(), 1920, 1080));
     const keys = (store.getState().clips.k as MediaClip).keyframes;
-    const value = (prop: string) => Number(keys?.[prop]?.[0]?.value.toFixed(4));
+    const value = (prop: string) => Number(scalar(keys?.[prop]?.[0]?.value ?? 0).toFixed(4));
     expect([value("transform.x"), value("transform.y"), value("transform.scale"), value("opacity")]).toEqual([177.7778, -112.5, 0.675, 0.5]);
   });
 

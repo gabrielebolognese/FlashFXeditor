@@ -34,8 +34,8 @@ describe("capabilities.json (spec §21.2)", () => {
     expect(media).toEqual([...ACCEPTED_EXTENSIONS].sort());
   });
 
-  it("has schemaVersion 6 and the Batch 54 to 59 keys true, the keys of later batches false", () => {
-    expect(manifest.schemaVersion).toBe(6);
+  it("has schemaVersion 7 and the Batch 54 to 60 keys true, the keys of later batches false", () => {
+    expect(manifest.schemaVersion).toBe(7);
     expect(manifest.manifestVersion).toBe(MANIFEST_VERSION);
     expect(manifest.lastBatch).toBe(LAST_BATCH);
     expect(manifest.cli).toEqual({ validate: true, normalize: true, info: true, render: true, compare: true });

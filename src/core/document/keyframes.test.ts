@@ -12,6 +12,7 @@ import {
   removeSectionKeys,
   retimeKeyframes,
   sampleKeys,
+  sampleVector,
   sectionEaseAt,
   sectionFrames,
   setKey,
@@ -199,12 +200,99 @@ describe("retimeKeyframes", () => {
 describe("keyframeIssues", () => {
   it("accepts sorted keys of known properties and eases, and names what is wrong", () => {
     expect(keyframeIssues({ opacity: keys([0, 1], [5, 0, "hold"]) })).toEqual([]);
-    const bad = keyframeIssues({ scale: keys([0, 1]), opacity: [{ frame: 5, value: 0, ease: "linear" }, { frame: 5, value: Number.NaN, ease: "bounce" as EaseId }], "transform.x": [{ frame: 0.5, value: 1, ease: "linear" }], "transform.y": [] });
+    const bad = keyframeIssues({ scale: keys([0, 1]), opacity: [{ frame: 5, value: 0, ease: "linear" }, { frame: 5, value: Number.NaN, ease: "wobble" as EaseId }], "transform.x": [{ frame: 0.5, value: 1, ease: "linear" }], "transform.y": [] });
     expect(bad.join("\n")).toMatch(/unknown property "scale"/);
     expect(bad.join("\n")).toMatch(/frame 5 must come after 5/);
-    expect(bad.join("\n")).toMatch(/must be finite/);
-    expect(bad.join("\n")).toMatch(/unknown ease "bounce"/);
+    expect(bad.join("\n")).toMatch(/must be a finite number/);
+    expect(bad.join("\n")).toMatch(/unknown ease "wobble"/);
     expect(bad.join("\n")).toMatch(/frame 0.5 must be an integer/);
     expect(bad.join("\n")).toMatch(/transform.y: an empty list/);
+  });
+});
+
+describe("keyframeIssues for the Batch 60 properties", () => {
+  const color = (frame: number, value: unknown = [1, 0, 0, 1]) => ({ frame, value: value as number[], ease: "linear" as const });
+  const num = (frame: number, value = 1) => ({ frame, value, ease: "linear" as const });
+
+  it("accepts each property on the clips it belongs to", () => {
+    expect(keyframeIssues({ "transform.anchor.x": [num(0)], "crop.left": [num(0)], cornerRadius: [num(0)] }, { kind: "video" })).toEqual([]);
+    expect(keyframeIssues({ cornerRadius: [num(0)], "crop.top": [num(0)] }, { kind: "image" })).toEqual([]);
+    const solidKeys = { "size.w": [num(0)], "size.h": [num(0)], cornerRadius: [num(0)], fill: [color(0)], "stroke.width": [num(0)], "stroke.color": [color(0)], "stroke.dashOffset": [num(0)], "shadow.x": [num(0)], "shadow.y": [num(0)], "shadow.blur": [num(0)], "shadow.spread": [num(0)], "shadow.color": [color(0)] };
+    expect(keyframeIssues(solidKeys, { kind: "solid", fill: { r: 1, g: 0, b: 0, a: 1 } })).toEqual([]);
+    expect(keyframeIssues({ "style.fontSize": [num(0)], "style.letterSpacing": [num(0)], "style.fill": [color(0)], "transform.anchor.y": [num(0)] }, { kind: "text" })).toEqual([]);
+  });
+
+  it("names a property on a clip that does not have it", () => {
+    expect(keyframeIssues({ "size.w": [num(0)] }, { kind: "text" }).join()).toMatch(/size.w: not a property of a text clip/);
+    expect(keyframeIssues({ "crop.left": [num(0)] }, { kind: "solid" }).join()).toMatch(/crop.left: not a property of a solid clip/);
+    expect(keyframeIssues({ "style.fontSize": [num(0)] }, { kind: "video" }).join()).toMatch(/style.fontSize: not a property of a video clip/);
+    expect(keyframeIssues({ cornerRadius: [num(0)] }, { kind: "text" }).join()).toMatch(/cornerRadius/);
+  });
+
+  it("wants a color on a vector property and a number on the others", () => {
+    expect(keyframeIssues({ fill: [color(0, 5)] }, { kind: "solid", fill: { r: 1, g: 0, b: 0, a: 1 } }).join()).toMatch(/must be a color/);
+    expect(keyframeIssues({ fill: [color(0, [1, 0, 0])] }, { kind: "solid", fill: { r: 1, g: 0, b: 0, a: 1 } }).join()).toMatch(/must be a color/);
+    expect(keyframeIssues({ "style.fill": [color(0, [1, 0, Number.NaN, 1])] }, { kind: "text" }).join()).toMatch(/must be a color/);
+    expect(keyframeIssues({ "size.w": [color(0)] }, { kind: "solid" }).join()).toMatch(/must be a finite number/);
+  });
+
+  it("refuses a fill key on a gradient fill", () => {
+    const gradient = { from: { r: 0, g: 0, b: 0, a: 1 }, to: { r: 1, g: 1, b: 1, a: 1 } };
+    expect(keyframeIssues({ fill: [color(0)] }, { kind: "solid", fill: gradient }).join()).toMatch(/not a plain color/);
+  });
+
+  it("checks bezier points and spring parameters", () => {
+    const withEase = (extra: object) => ({ opacity: [{ frame: 0, value: 1, ease: "linear" as const, ...extra }] });
+    expect(keyframeIssues(withEase({ ease: "bezier", bezier: [0.68, -0.55, 0.27, 1.55] }))).toEqual([]);
+    expect(keyframeIssues(withEase({ ease: "bezier" }))).toEqual([]);
+    expect(keyframeIssues(withEase({ ease: "bezier", bezier: [1.5, 0, 0.5, 1] })).join()).toMatch(/bezier/);
+    expect(keyframeIssues(withEase({ ease: "bezier", bezier: [0, 0, 1] })).join()).toMatch(/bezier/);
+    expect(keyframeIssues(withEase({ ease: "spring", spring: { damping: 0.5, frequency: 3 } }))).toEqual([]);
+    expect(keyframeIssues(withEase({ ease: "spring", spring: { damping: -1, frequency: 3 } })).join()).toMatch(/spring/);
+    expect(keyframeIssues(withEase({ ease: "spring", spring: { damping: 1, frequency: 0 } })).join()).toMatch(/spring/);
+  });
+});
+
+describe("random keys of the new properties (property test)", () => {
+  // A small deterministic generator: every key list built from it validates, samples to finite values
+  // inside the range its keys span (plus the overshoot of back, elastic, bezier and spring) and never throws.
+  const seed = (n: number) => () => ((n = (n * 1664525 + 1013904223) >>> 0) / 2 ** 32);
+
+  it("stays valid and finite for 400 random lists of every ease", () => {
+    const random = seed(60);
+    const eases = EASE_IDS;
+    for (let run = 0; run < 400; run++) {
+      const count = 1 + Math.floor(random() * 5);
+      let frame = Math.floor(random() * 10) - 5;
+      const vector = random() < 0.4;
+      const keys = Array.from({ length: count }, () => {
+        frame += 1 + Math.floor(random() * 20);
+        const ease = eases[Math.floor(random() * eases.length)] as EaseId;
+        const value = vector ? [random(), random(), random(), random()] : random() * 200 - 100;
+        return {
+          frame,
+          value,
+          ease,
+          ...(ease === "bezier" && { bezier: [random(), random() * 3 - 1, random(), random() * 3 - 1] as [number, number, number, number] }),
+          ...(ease === "spring" && { spring: { damping: random() * 2, frequency: 0.5 + random() * 8 } }),
+        };
+      });
+      expect(keyframeIssues({ [vector ? "fill" : "size.w"]: keys }, { kind: "solid", fill: { r: 0, g: 0, b: 0, a: 1 } })).toEqual([]);
+      for (let at = (keys[0]?.frame ?? 0) - 3; at <= frame + 3; at += 1.5) {
+        const sampled = vector ? sampleVector(keys, at, []) : [sampleKeys(keys, at)];
+        for (const channel of sampled) expect(Number.isFinite(channel)).toBe(true);
+      }
+      const last = keys[keys.length - 1] as (typeof keys)[number];
+      const end = vector ? sampleVector(keys, frame + 100, []) : [sampleKeys(keys, frame + 100)];
+      expect(end).toEqual(Array.isArray(last.value) ? last.value : [last.value]);
+    }
+  });
+
+  it("every key lands exactly on its value", () => {
+    const random = seed(61);
+    for (let run = 0; run < 200; run++) {
+      const keys = [0, 10, 25].map((frame) => ({ frame, value: random() * 50, ease: EASE_IDS[Math.floor(random() * EASE_IDS.length)] as EaseId }));
+      for (const key of keys) expect(sampleKeys(keys, key.frame)).toBe(key.value);
+    }
   });
 });

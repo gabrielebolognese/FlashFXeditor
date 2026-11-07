@@ -32,6 +32,7 @@ import {
   writeKeys,
   type KeyframeProp,
   type KeyframeSection,
+  scalar,
 } from "../../core/document/keyframes.js";
 import type { Clip, ClipId, EaseId, Frame, Keyframes, MediaClip, Project, SolidClip, TextClip, Transform } from "../../core/document/types.js";
 import { isClipLocked } from "../model/queries.js";
@@ -42,6 +43,7 @@ export type KeyedClip = MediaClip | TextClip | SolidClip;
 
 /** Whether `clip` can be keyed in `section`: Transform and Opacity on layers, Volume on audio clips. */
 export function keyable(clip: Clip, section: KeyframeSection): clip is KeyedClip {
+  if (section === "look") return clip.kind === "video" || clip.kind === "image" || clip.kind === "solid" || clip.kind === "text";
   return section === "volume" ? clip.kind === "audio" : isLayerClip(clip);
 }
 
@@ -71,6 +73,7 @@ const AFFECTS: Readonly<Record<KeyframeSection, readonly Affect[]>> = {
   transform: ["composite", "clips"],
   opacity: ["composite", "clips"],
   volume: ["audio", "clips"],
+  look: ["composite", "clips"],
 };
 
 function editCommand(id: string, label: string, section: KeyframeSection, edits: ReadonlyMap<ClipId, KeyEdit>): Command | null {
@@ -102,6 +105,8 @@ function baseAt(clip: KeyedClip, section: KeyframeSection, rel: Frame): KeyBase 
       return "opacity" in clip ? { opacity: animatedOpacity(clip, rel) } : {};
     case "volume":
       return "volume" in clip ? { gainDb: gainDbAt(clip, rel) } : {};
+    case "look":
+      return {};
   }
 }
 
@@ -234,7 +239,7 @@ export function copyKeys(clip: Clip, section: KeyframeSection, frames: readonly 
   const keys: KeyframeClipboard["keys"] = {};
   let any = false;
   for (const prop of SECTION_PROPS[section]) {
-    const list = clip.keyframes?.[prop]?.filter((key) => wanted.has(key.frame)).map((key) => ({ offset: key.frame - first, value: key.value, ease: key.ease }));
+    const list = clip.keyframes?.[prop]?.filter((key) => wanted.has(key.frame)).map((key) => ({ offset: key.frame - first, value: scalar(key.value), ease: key.ease }));
     if (list && list.length > 0) {
       keys[prop] = list;
       any = true;
