@@ -166,6 +166,8 @@ export function setSolids(project: Project, edits: ReadonlyMap<ClipId, SolidEdit
     if (clip?.kind !== "solid" || isClipLocked(project, id)) continue;
     const { transform: moved, ...patch } = edit;
     const merged = { ...solidLook(clip), ...patch } as SolidLook & { cornerRadii?: unknown; stroke?: unknown; shadow?: unknown };
+    // One radius typed in the Solid section replaces per-corner radii (the Frame section does the same).
+    if (patch.cornerRadius !== undefined && !("cornerRadii" in patch)) delete merged.cornerRadii;
     for (const key of ["cornerRadii", "stroke", "shadow"] as const) if (merged[key] === null) delete merged[key];
     if (!validSize(merged.size) || !Number.isFinite(merged.cornerRadius)) continue;
     const look = cleanLook(merged);

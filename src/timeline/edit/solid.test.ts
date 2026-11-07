@@ -4,7 +4,7 @@ import type { Project, SolidClip } from "../../core/document/types.js";
 import { DocumentStore } from "../../core/store/DocumentStore.js";
 import { createSessionStore } from "../../core/store/sessionStore.js";
 import { BUILT_IN_EDIT_DEFAULTS } from "./editDefaults.js";
-import { addSolid, defaultSolid, drawnRadius, lineThickness, setSolids, solidLook, withShape } from "./solid.js";
+import { addSolid, defaultSolid, drawnRadii, drawnRadius, lineThickness, setSolids, solidLook, withShape } from "./solid.js";
 import { IDENTITY_TRANSFORM, layerContent } from "./transform.js";
 
 function project(): Project {
@@ -81,6 +81,15 @@ describe("withShape and drawnRadius", () => {
 });
 
 describe("setSolids", () => {
+  it("a single radius edit clears per-corner radii so the drawn radius follows the field", () => {
+    const p = withClips(project(), [{ ...makeSolidClip({ id: "r", trackId: "v2", start: 0, duration: 90 }), shape: "roundedRect", cornerRadius: 10, cornerRadii: [0, 10, 10, 10] }]);
+    const s = store(p);
+    const command = setSolids(p, new Map([["r", { cornerRadius: 30 }]]), { label: "Change radius" });
+    s.dispatch(command as NonNullable<typeof command>);
+    const clip = s.getState().clips.r as SolidClip;
+    expect(clip.cornerRadii).toBeUndefined();
+    expect(drawnRadii(solidLook(clip))).toEqual([30, 30, 30, 30]);
+  });
   it("writes shape, fill, size and radius as one undo step and redraws the timeline only for shape and fill", () => {
     const p = project();
     const s = store(p);
