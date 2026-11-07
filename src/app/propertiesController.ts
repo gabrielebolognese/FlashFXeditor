@@ -13,6 +13,7 @@ import { retimeClips, setEnabled, type ClipTimeField } from "../timeline/edit/cl
 import { isCropClip, quickCrops, type QuickCrop } from "../timeline/edit/crop.js";
 import { isLayerClip, quickTransforms, type QuickTransform } from "../timeline/edit/transform.js";
 import { isClipLocked } from "../timeline/model/queries.js";
+import { projectSettingsLocked } from "./conversionController.js";
 import { MAX_CLIP_NAME } from "./cutController.js";
 import { patchLiveEdit } from "./liveEdit.js";
 import { canvasInput, cropMode } from "./previewController.js";
@@ -95,6 +96,7 @@ export function renameClips(ids: readonly ClipId[], name: string): void {
 
 /** The project background (one undo step); the color joins the picker's recent colors. */
 export function changeBackground(color: RGBA): void {
+  if (projectSettingsLocked()) return;
   documentStore.dispatch(setBackground(color));
   rememberColor(color);
 }

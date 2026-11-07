@@ -17,6 +17,7 @@ import { isLayerClip } from "../timeline/edit/transform.js";
 import type { Project, Rational } from "../core/document/types.js";
 import { formatFps, ratioSize, type ResolutionPreset } from "../project/projectPresets.js";
 import { showToast } from "../ui/toasts.js";
+import { PROJECT_SETTINGS_IN_COMPOUND } from "../core/store/DocumentStore.js";
 import { closeDialog, showDialog } from "./projectController.js";
 import { documentStore, sessionStore } from "./services.js";
 
@@ -29,8 +30,16 @@ function hasLayout(project: Project): boolean {
   return false;
 }
 
+/** True (with a toast) while a compound is open: frame size, frame rate and background are the project's. */
+export function projectSettingsLocked(): boolean {
+  if (documentStore.scopeId() === null) return false;
+  showToast({ tone: "info", message: PROJECT_SETTINGS_IN_COMPOUND });
+  return true;
+}
+
 /** A new frame size (the Project section, the Ratio menu): asks Adapt layout or Keep when there is a layout. */
 export function changeResolution(width: number, height: number): void {
+  if (projectSettingsLocked()) return;
   const project = documentStore.getState();
   const { settings } = project;
   if (width === settings.width && height === settings.height) return;
@@ -50,6 +59,7 @@ export function changeRatio(preset: ResolutionPreset): void {
 /** The resolution dialog's choice (one undo step). */
 export function confirmResolution(width: number, height: number, adapt: boolean): void {
   closeDialog();
+  if (projectSettingsLocked()) return;
   documentStore.dispatch(adapt ? adaptResolution(documentStore.getState(), width, height) : setResolution(width, height));
 }
 
@@ -65,6 +75,7 @@ export function describeRounding(report: ConversionReport): string {
 
 /** The Project section's new frame rate: converted at once when nothing rounds, else after the warning. */
 export function changeFrameRate(fps: Rational): void {
+  if (projectSettingsLocked()) return;
   const project = documentStore.getState();
   if (sameFrameRate(project.settings.fps, fps)) return;
   const report = frameRateReport(project, fps);
@@ -78,6 +89,7 @@ export function changeFrameRate(fps: Rational): void {
 /** Converts the project to `fps` (one undo step). */
 export function applyFrameRate(fps: Rational): void {
   closeDialog();
+  if (projectSettingsLocked()) return;
   const before = documentStore.getState().settings.fps;
   documentStore.dispatch(setFrameRate(fps));
   const after = documentStore.getState();

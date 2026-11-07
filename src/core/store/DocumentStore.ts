@@ -53,6 +53,9 @@ interface Transaction {
   selectionAfter: SelectionSnapshot | undefined;
 }
 
+/** Why the frame size, frame rate and background cannot change while a compound is open. */
+export const PROJECT_SETTINGS_IN_COMPOUND = "Project settings cannot be changed inside a compound: close it first";
+
 /**
  * Runs `fn` on a draft whose `tracks` and picture size are those of sequence `scope` (a compound
  * opened for editing, spec 21.10): every command and every piece of code written for the project's
@@ -71,8 +74,19 @@ export function runInScope(draft: Draft<Project>, scope: SequenceId | null, fn: 
   draft.settings.width = sequence.size.w;
   draft.settings.height = sequence.size.h;
   draft.settings.background = sequence.background ?? { r: 0, g: 0, b: 0, a: 0 };
+  const inner = { w: draft.settings.width, h: draft.settings.height, bg: { ...draft.settings.background }, fps: { ...draft.settings.fps } };
   try {
     fn(draft);
+    // Project settings are the project's: a write would be lost on restore while the rest of the command stayed.
+    const { settings } = draft;
+    const bg = settings.background;
+    if (
+      settings.width !== inner.w || settings.height !== inner.h ||
+      bg.r !== inner.bg.r || bg.g !== inner.bg.g || bg.b !== inner.bg.b || bg.a !== inner.bg.a ||
+      settings.fps.num !== inner.fps.num || settings.fps.den !== inner.fps.den
+    ) {
+      throw new Error(PROJECT_SETTINGS_IN_COMPOUND);
+    }
     // A sequence has no caption track (spec 21.10): refuse the edit instead of saving a document the validator rejects.
     if (draft.tracks.some((track) => track.kind === "caption")) throw new Error("Captions are not available inside a compound: close it first");
     sequence.tracks = draft.tracks;

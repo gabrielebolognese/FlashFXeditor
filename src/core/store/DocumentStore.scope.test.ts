@@ -3,7 +3,9 @@ import { makeMedia, makeProject, makeSolidClip, makeTextClip, makeTrack, withCli
 import type { Project } from "../document/types.js";
 import { validateProject } from "../document/validate.js";
 import { makeCompound } from "../../timeline/edit/compound.js";
-import { DocumentStore } from "./DocumentStore.js";
+import { setBackground, setFrameRate, setResolution } from "../commands/projectCommands.js";
+import { adaptResolution } from "../../timeline/edit/adaptLayout.js";
+import { DocumentStore, PROJECT_SETTINGS_IN_COMPOUND } from "./DocumentStore.js";
 import { createSessionStore, NO_SCOPE, type SessionStore } from "./sessionStore.js";
 
 let n = 0;
@@ -108,5 +110,17 @@ describe("DocumentStore scope (a compound opened for editing, spec §21.10)", ()
     open(session, sequenceId);
     expect(doc.scopeId()).toBeNull();
     expect(doc.getState()).toBe(doc.getRoot());
+  });
+
+  it("refuses project settings commands while open and leaves the document and history alone", () => {
+    const { doc, session, sequenceId } = opened();
+    open(session, sequenceId);
+    const root = doc.getRoot();
+    const view = doc.getState();
+    expect(() => doc.dispatch(setBackground({ r: 1, g: 0, b: 0, a: 1 }))).toThrow(PROJECT_SETTINGS_IN_COMPOUND);
+    expect(() => doc.dispatch(setResolution(540, 960))).toThrow(PROJECT_SETTINGS_IN_COMPOUND);
+    expect(() => doc.dispatch(adaptResolution(view, 540, 960))).toThrow(PROJECT_SETTINGS_IN_COMPOUND);
+    expect(() => doc.dispatch(setFrameRate({ num: 60, den: 1 }))).toThrow(PROJECT_SETTINGS_IN_COMPOUND);
+    expect(doc.getRoot()).toBe(root);
   });
 });

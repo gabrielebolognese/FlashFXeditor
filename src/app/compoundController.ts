@@ -6,7 +6,7 @@
 // that was open. Opening and closing are not undoable; the edits inside are.
 //
 // Actions: `compound.open` (Mod+Alt+O; Enter on a selected compound clip, as `text.edit` declines it)
-// and `compound.close` (Mod+Alt+Shift+O; Esc through `app.cancel`, after the gestures it cancels).
+// and `compound.close` (Mod+Alt+U; Esc through `app.cancel`, after the gestures it cancels).
 import type { ClipId, Frame, Project, SequenceId } from "../core/document/types.js";
 import { EMPTY_SELECTION, selectClips } from "../core/store/selection.js";
 import { NO_SCOPE, setPlayhead, setSelection, type ScopeState, type SessionStore } from "../core/store/sessionStore.js";
