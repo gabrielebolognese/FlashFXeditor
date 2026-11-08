@@ -104,6 +104,20 @@ A transition sits on a cut: the frame where one clip ends and the next one start
 | **Cross dissolve** | The first clip blends into the second one, frame by frame. |
 | **Dip to black** | The first clip darkens to black until the middle of the transition, then the second clip comes up out of black. |
 | **Dip to white** | The same, through white. |
+| **Blur dissolve** | The two clips blend while the picture blurs, most at the cut. |
+| **Slide** | The second clip slides in over the first one. |
+| **Push** | Both clips move together, the second pushing the first out of the frame. |
+| **Whip** | Like **Push**, with a strong motion blur along the direction, most at the cut. |
+| **Zoom in** | The picture zooms in as it dissolves into the next clip. |
+| **Zoom out** | The same, zooming out. |
+| **Wipe** | An edge sweeps across the picture at an angle and uncovers the second clip. |
+| **Iris** | A circle opens from a center point and shows the second clip. |
+| **Glitch** | The picture breaks into shifted bands with a red-green-blue split, and switches band by band to the second clip. |
+| **Flash** | The picture goes to white and comes back as the second clip. |
+
+The motion kinds (**Slide**, **Push**, **Whip**, **Zoom in**, **Zoom out**, **Wipe**, **Iris**) are created with an **Ease in-out** curve. The others keep the plain blend. You can change this in **Easing**.
+
+The three first kinds are in the quick actions and the clip menu. The other kinds are in the **Transition** section, the clip menu's **Transition** row and the command palette (**Add slide**, **Add push**, and so on). Audio clips take only the crossfade.
 
 - Transitions join video and image clips on a video track, and audio clips on an audio track. Text clips, solids and caption cues take no transitions.
 - On an audio track, a transition is always a crossfade. See [Crossfade the sound](#crossfade-the-sound).
@@ -230,7 +244,13 @@ Select a transition, or double-click its block. **Edit Properties** shows its **
 
 | Row | What it does |
 | --- | --- |
-| **Kind** | **Cross dissolve**, **Dip to black** or **Dip to white**. The current kind is lit; click another one to change it. On an audio track the row shows only **Crossfade**, lit: an audio transition is always a crossfade. |
+| **Kind** | Chips in four rows: **Dissolve** (**Cross dissolve**, **Dip to black**, **Dip to white**, **Blur dissolve**), **Motion** (**Slide**, **Push**, **Whip**, **Zoom in**, **Zoom out**), **Wipe** (**Wipe**, **Iris**) and **Stylized** (**Glitch**, **Flash**). The current kind is lit; click another one to change it. On an audio track the row shows only **Crossfade**, lit: an audio transition is always a crossfade. |
+| **Preview** | A small picture of the current kind at its midpoint. Point at a chip, or reach it with <kbd>Tab</kbd>, and the picture plays that kind. Nothing changes until you click. |
+| **Direction** | **Slide**, **Push** and **Whip** only. Four arrows (tooltips **Travel left**, **Travel right**, **Travel up**, **Travel down**). The default is left. |
+| **Angle** | **Wipe** only. The edge's angle in degrees. |
+| **Softness** | **Wipe** and **Iris**. The softness of the edge, 0 to 100%. |
+| **Center** | **Iris** only. **X** and **Y**, in percent of the picture. The default is 50 and 50. |
+| **Easing** | **Linear mix** (the plain blend) or an easing curve, such as **Ease in-out**, that speeds up and slows down the change. |
 | **Duration** | The length in frames (**f**). Type a number, press <kbd>↑</kbd> or <kbd>↓</kbd>, or drag the timer icon at its left (the change applies when you release). The transition keeps its alignment as it gets longer or shorter. |
 | **Alignment** | Where the transition sits on the cut: **Center** (tooltip **Center on the cut**), **Start** (**Start at the cut**: all its frames after the cut) or **End** (**End at the cut**: all its frames before the cut). After you drag one end with <kbd>Alt</kbd>, none of them is lit. |
 
@@ -239,7 +259,7 @@ Select a transition, or double-click its block. **Edit Properties** shows its **
 > **Video placeholder: Compare transition alignments**
 > - File: `videos/fades-and-transitions/alignment-preview.mp4` (not recorded yet)
 > - Length: about 25 seconds
-> - Shows: a cross dissolve on a cut between two clips, selected; in the **Transition** section, point at **Start**: the preview splits into the dissolve's first frame (left) and last frame (right); point at **End**: both halves change; point at **Center**; move the pointer away: the preview shows the playhead's frame again; click **End**: the block on the timeline moves before the cut.
+> - Shows: a cross dissolve on a cut between two clips, selected; in the **Transition** section, point at **Wipe** in the **Wipe** row: the **Preview** row plays it; click it, type `45` in **Angle** and `30` in **Softness**, then choose **Ease in-out** in **Easing**; point at **Start**: the preview splits into the dissolve's first frame (left) and last frame (right); point at **End**: both halves change; point at **Center**; move the pointer away: the preview shows the playhead's frame again; click **End**: the block on the timeline moves before the cut.
 
 - When some frames repeat an edge frame, a hint under **Duration** says how many, for example **Not enough media: 3 frames repeat an edge frame**.
 - **Duration** and **Alignment** can make the transition use more media than the handles have: the extra frames repeat edge frames, and the hint and the stripes show it. A drag on the block's ends stops at the handles instead.
@@ -302,4 +322,4 @@ See [Undo and redo changes](projects-and-saving.md#undo-and-redo-changes).
 - [Keyboard shortcuts](keyboard-shortcuts.md#fades-and-transitions)
 - [Troubleshooting](troubleshooting.md#fades-and-transitions)
 
-<sub>Last updated: Batch 50, 2026-10-18</sub>
+<sub>Last updated: Batch 71, 2026-11-08</sub>

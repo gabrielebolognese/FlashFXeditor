@@ -2,6 +2,14 @@
 
 Shorts Editor grows in steps called batches. This page lists what each batch added that you can see or use, newest first. Follow the links for the full instructions.
 
+## Batch 71: More transitions
+There are ten new transitions besides the cross dissolve and the dips: **Slide**, **Push**, **Whip**, **Zoom in**, **Zoom out**, **Wipe**, **Iris**, **Blur dissolve**, **Glitch** and **Flash**. The **Transition** section groups them as **Dissolve**, **Motion**, **Wipe** and **Stylized**, shows a **Preview** of a kind when you point at it, and has **Direction**, **Angle**, **Softness**, **Center** and **Easing**. See [Fades and transitions](fades-and-transitions.md#change-a-transition-in-edit-properties).
+
+> **Video placeholder: What's new in Batch 71**
+> - File: `videos/whats-new/batch-71.mp4` (not recorded yet)
+> - Length: about 35 seconds
+> - Shows: two clips end to end; press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd>; in **Edit Properties** point at **Whip**, **Iris** and **Glitch** to see the **Preview**; click **Slide** and click the right arrow in **Direction**; play the cut.
+
 ## Batch 70: 3D layers
 Layers can now turn in 3D. **3D rotation** (**X** and **Y**) and **Depth** in the **Transform** section tilt and push back a layer with perspective, and two round handles in the preview do the same by dragging. **Hide back side** hides a layer while its back faces you, **Reset 3D rotation** makes it flat, and **Depth sort** draws a compound's layers by depth. **Perspective** in the **Project** section sets the viewing distance. See [3D layers](3d-layers.md).
 
